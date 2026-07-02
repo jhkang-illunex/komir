@@ -1,0 +1,9 @@
+pandas>=2.0
+pyarrow>=15
+pydantic>=2.5
+pyyaml>=6
+requests>=2.31
+pypdf>=4.0
+olefile>=0.47
+duckdb>=1.0
+# 서버DB publish 시: pip install sqlalchemy + 드라이버(oracledb/pymysql/pyodbc)

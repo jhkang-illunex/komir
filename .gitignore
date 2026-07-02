@@ -1,0 +1,27 @@
+# 비밀
+.env
+**/.env
+*.key
+
+# 파이썬
+__pycache__/
+*.pyc
+**/.venv/
+.ipynb_checkpoints/
+
+# 대용량/생성 데이터 (커밋 금지)
+*.duckdb
+*.duckdb.wal
+*.parquet
+# 공유 DuckDB 볼륨 / geo 런타임
+warehouse/
+geo_data/
+# 수집·가공 산출
+**/data/processed/
+**/data/interim/
+**/outputs/
+
+# 참조데이터(data/raw/hs_commodity_map.csv 등)는 위에서 무시하지 않으므로 기본 추적됨.
+
+# 중첩 git (로컬에서 삭제했으면 무시됨)
+mineral_supply_risk/.git/

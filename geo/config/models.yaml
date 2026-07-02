@@ -1,0 +1,10 @@
+# LLM provider 설정. env(LLM_*)가 우선. provider: rule|mock|openai_compat|anthropic
+extractor:
+  provider: rule            # 키 없이 기본 동작(폴백). 실제는 env로 openai_compat/anthropic
+  base_url: http://host.docker.internal:11434/v1   # Ollama/vLLM 예시
+  model: qwen2.5:32b
+  api_key_env: LLM_API_KEY
+  temperature: 0
+  concurrency: 8
+  batch: false
+  json_mode: true

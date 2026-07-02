@@ -1,0 +1,20 @@
+# geo 지정학 지수 파이프라인 · Docker Compose
+# 각 스테이지는 일회성 실행(--rm). 예:
+#   docker compose run --rm all           # ingest→extract→index 한 번에
+#   docker compose run --rm ingest        # 개별 스테이지
+#   GEO_DATA_HOST=/data/geo docker compose run --rm all
+services:
+  geo: &geo
+    build: .
+    image: geo:0.1.0
+    env_file: [.env]                     # LLM_PROVIDER/LLM_BASE_URL/LLM_MODEL/LLM_API_KEY
+    volumes:
+      - ${GEO_DATA_HOST:-./geo_data}:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # 리눅스에서 호스트 LLM(Ollama/vLLM) 접근
+  all:      { <<: *geo, command: ["all"] }
+  ingest:   { <<: *geo, command: ["ingest"] }
+  extract:  { <<: *geo, command: ["extract"] }
+  index:    { <<: *geo, command: ["index"] }
+  refdata:  { <<: *geo, command: ["refdata", "--from", "2016", "--to", "2026"] }
+  publish:  { <<: *geo, command: ["publish"] }

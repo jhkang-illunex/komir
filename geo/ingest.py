@@ -1,0 +1,28 @@
+# -*- coding: utf-8 -*-
+"""[1] 입력·정리·구조화 엔트리: inbox 스캔 → 처리 → manifest → 이동."""
+from pathlib import Path
+from . import config as C, store
+
+
+def run():
+    C.ensure_dirs()
+    from .archive import process_file
+    known = store.known_hashes()
+    files = [p for p in C.INBOX.rglob("*") if p.is_file()]
+    print(f"[ingest] inbox {len(files)}건 처리 시작 (기존 {len(known)}건)")
+    recs, cnt = [], {"archived": 0, "failed": 0, "unclassified": 0, "duplicate": 0}
+    for p in files:
+        try:
+            rec = process_file(p, known)
+        except Exception as e:
+            print(f"  [error] {p.name}: {e}"); continue
+        known.add(rec["file_hash"]); recs.append(rec)
+        cnt[rec.get("status", "archived")] = cnt.get(rec.get("status", "archived"), 0) + 1
+        if len(recs) % 50 == 0: print(f"  ... {len(recs)}건")
+    store.upsert_manifest(recs)
+    print(f"[ingest] 완료: {cnt}")
+    return cnt
+
+
+if __name__ == "__main__":
+    run()

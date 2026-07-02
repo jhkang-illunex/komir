@@ -1,0 +1,17 @@
+# 발행처 신뢰도(0~1.5) 및 광종×공급국 집중 가중(HHI 대용, 1.0 기준)
+reliability:
+  WoodMac: 1.3
+  IEA: 1.3
+  Argus: 1.2
+  AsianMetal: 1.1
+  KOMIS: 1.0
+  PPS: 0.9
+  ETC: 0.7
+
+supply_concentration:      # "광종:국가": 가중 (공급집중 높을수록 ↑)
+  NI:Indonesia: 1.6
+  REE:China: 1.8
+  CO:DR Congo: 1.7
+  LI:Chile: 1.3
+  LI:Australia: 1.2
+  CU:Chile: 1.2

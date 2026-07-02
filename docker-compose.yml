@@ -1,0 +1,65 @@
+# 통합 개발/운영 오케스트레이션 — geo(지정학) + 정형수집 + 피처 + 모델학습
+# 코드는 각 패키지에 그대로 두고, 여기서 빌드·볼륨·서비스만 묶는다.
+# 공유 저장소: ./warehouse/minerals.duckdb (모든 결과가 여기로 모임)
+# 문서 투척:   ./geo_data/inbox  (geo 비정형 입력)
+#
+# 사용:
+#   make init && make build          # 폴더 생성 + 이미지 빌드
+#   make schema                      # DDL 적용
+#   make collect features            # 정형 수집·피처
+#   make geo geo-publish             # 지정학 지수 → DuckDB
+#   make train                       # 모델 학습(훅)
+name: minerals-dev
+
+x-msr: &msr
+  image: msr:dev
+  env_file: [.env]
+  environment:
+    MSR_DB: /warehouse/minerals.duckdb
+  volumes:
+    - ./warehouse:/warehouse
+
+x-geo: &geo
+  image: geo:dev
+  env_file: [.env]
+  environment:
+    GEO_DATA: /data
+    GEO_PUBLISH_DB: /warehouse/minerals.duckdb
+  volumes:
+    - ./geo_data:/data
+    - ./warehouse:/warehouse
+  extra_hosts:
+    - "host.docker.internal:host-gateway"   # 호스트 LLM(Ollama/vLLM) 접근
+
+services:
+  # ---- 정형 (mineral_supply_risk) ----
+  schema:                       # DDL 적용(최초 1회)
+    <<: *msr
+    build: { context: ./mineral_supply_risk }
+    command: ["-c", "from db import dbio; dbio.apply_schema('db/schema_core.sql','/warehouse/minerals.duckdb'); print('schema applied')"]
+  collect:                      # 관세청(연간)+ECOS+피처
+    <<: *msr
+    command: ["-m", "scripts.run", "all"]
+  collect-customs-monthly:      # 월간 수입(예측용)
+    <<: *msr
+    command: ["-m", "scripts.run", "collect-customs", "201501", "202512", "M"]
+  features:
+    <<: *msr
+    command: ["-m", "scripts.run", "features"]
+  train:                        # 3 템플릿 학습(훅) → out_* 테이블
+    <<: *msr
+    command: ["-m", "scripts.train", "all"]
+
+  # ---- 비정형 지정학 (geo) ----
+  geo:                          # ingest→extract→index
+    <<: *geo
+    build: { context: ./geo }
+    command: ["all"]
+  geo-refdata:                  # USGS HHI 2016~최근
+    <<: *geo
+    command: ["refdata", "--from", "2016", "--to", "2026"]
+  geo-publish:                  # 최종 지수만 공유 DuckDB로
+    <<: *geo
+    command: ["publish", "--db", "/warehouse/minerals.duckdb"]
+
+# 바인드 마운트(./warehouse, ./geo_data)로 호스트에서 결과·입력을 바로 확인

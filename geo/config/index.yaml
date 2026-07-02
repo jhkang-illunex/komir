@@ -1,0 +1,10 @@
+# 지수 공식 파라미터 ([3]의 심장 — 여기 값만 바꿔 재계산/튜닝)
+half_life_weeks: 4.0
+half_life_months: 3.0
+normalize: minmax0_100        # 확정: 광종별 0~100 (경보 4단계 연동)
+direction_sign:
+  supply_down: 1.0
+  price_up: 1.0
+  supply_up: -0.5
+  price_down: -0.5
+  neutral: 0.2
