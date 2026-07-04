@@ -34,6 +34,15 @@ docker run --rm -v /host/geo_data:/data --env-file .env geo:0.1.0 index
 - `archive/<발행처>/<카테고리>/<YYYY>/<MM>/` (원본 + `.txt`)
 - `wiki/<광종>/<YYYY>/<MM>.md` (이슈파일, provenance)
 
+## OKF(Open Knowledge Format) 익스포트 — 비파괴 파일럿
+```bash
+python -m geo okf-export       # 정본(parquet) → geo_data/okf/ 마크다운+YAML 프론트매터 번들
+```
+- 정본(parquet/DuckDB)은 **그대로 두고**, 지식 계층만 Google Cloud OKF v0.1(마크다운+프론트매터, 개념ID=파일경로)로 방출.
+- 매핑: `metrics/geo-index`(지수 공식) · `sources/<발행처>/`(원문) · `events/<광종>/`(이벤트) · `issues/<광종>/`(월별 이슈) · `index/<광종>/`(지수 시계열).
+- `GeoEvent`(schema.py) 필드가 그대로 프론트매터, 근거인용→본문 `# Citations`. GitHub 렌더·git diff·에이전트 컨텍스트로 사용.
+- ⚠️ v0.1(신규 스펙)이라 **부가 export 레이어**로 운용(정본 대체 아님).
+
 ## 계약(확정 대상)
 - `geo/schema.py` : `GeoEvent`([2]↔[3]), `ManifestRecord`([1]→[2])
 - `config/index.yaml` : 지수 공식 파라미터

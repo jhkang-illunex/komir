@@ -1,4 +1,4 @@
-.PHONY: init build schema collect monthly normalize synth features train geo refdata geo-publish all clean
+.PHONY: init build schema collect monthly normalize synth features train geo refdata geo-publish geo-okf all clean
 
 init:            ## 폴더 생성 + .env 준비
 	mkdir -p geo_data/inbox warehouse
@@ -34,6 +34,9 @@ refdata:         ## USGS HHI 2016~최근
 
 geo-publish:     ## 지정학 지수 → 공유 DuckDB
 	docker compose run --rm geo-publish
+
+geo-okf:         ## [비파괴] 정본 → OKF 마크다운 번들(geo_data/okf)
+	docker compose run --rm geo-okf
 
 train:           ## 모델 학습(3 템플릿 훅)
 	docker compose run --rm train

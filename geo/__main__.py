@@ -17,6 +17,8 @@ def main(argv=None):
     pr.add_argument("--to", dest="y_to", type=int, default=2026)
     pp = sub.add_parser("publish", help="지정학 지수(최종)만 공유/운영 DB에 적재")
     pp.add_argument("--db", default=None)
+    px = sub.add_parser("okf-export", help="[비파괴] 정본 → OKF(마크다운+프론트매터) 번들 방출")
+    px.add_argument("--root", default=None, help="출력 루트(기본 $GEO_DATA/okf)")
     pall = sub.add_parser("all", help="ingest→extract→index 연속 실행 (+선택 publish)")
     pall.add_argument("--provider", default=None)
     pall.add_argument("--publish-db", default=None)
@@ -32,6 +34,9 @@ def main(argv=None):
         from . import refdata; refdata.run(args.y_from, args.y_to)
     elif args.stage == "publish":
         from . import publish; publish.run(args.db)
+    elif args.stage == "okf-export":
+        from . import okf
+        okf.export(None if not args.root else __import__("pathlib").Path(args.root))
     elif args.stage == "all":
         from . import ingest, extract, index, publish
         ingest.run(); extract.run(provider_override=args.provider); index.run()

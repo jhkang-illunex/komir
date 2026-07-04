@@ -67,5 +67,8 @@ services:
   geo-publish:                  # 최종 지수만 공유 DuckDB로
     <<: *geo
     command: ["publish", "--db", "/warehouse/minerals.duckdb"]
+  geo-okf:                      # [비파괴] 정본 → OKF 번들(geo_data/okf)
+    <<: *geo
+    command: ["okf-export"]
 
 # 바인드 마운트(./warehouse, ./geo_data)로 호스트에서 결과·입력을 바로 확인
