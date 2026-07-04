@@ -30,9 +30,13 @@ def train_diagnosis():
 
 
 def train_forecast():
-    print("[train] 월간 예측 ×10 — mart_monthly_forecast_input 필요:", _has("mart_monthly_forecast_input"))
-    # TODO: from msr.models.forecast import run; run(DB_PATH) → out_import_forecast
-    print("  (훅) msr/models/forecast.py 구현 후 여기서 호출. 결과 → out_import_forecast")
+    print("[train] 월간 수입 예측 — raw_customs_monthly 기반 (홀드아웃 백테스트 + 12개월 재귀예측)")
+    from msr.models import forecast
+    res = forecast.run(DB_PATH)
+    print(f"  기준월={res['base_date']} · 광종={res['commodities']}")
+    for tgt, m in res["metrics"].items():
+        print(f"  [{tgt}] {m}")
+    print(f"  → mart_monthly_forecast_input={res['mart_rows']}행, out_import_forecast={res['forecast_rows']}행")
 
 
 def main():
@@ -42,7 +46,7 @@ def main():
         train_diagnosis()
     if what in ("forecast", "all"):
         train_forecast()
-    print("[train] 완료(스캐폴드). 템플릿 구현 시 out_* 테이블에 결과 적재.")
+    print("[train] 완료. forecast=실구현(out_import_forecast), diagnosis=스캐폴드(가격·지정학·교사신호 입력 확보 후 구현).")
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@
 __pycache__/
 *.pyc
 data/
+!data/raw/hs_commodity_map.csv
 outputs/
 *.duckdb
 *.duckdb.wal

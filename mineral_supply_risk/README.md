@@ -74,20 +74,43 @@ python -m scripts.run features
 # 전체
 python -m scripts.run all
 
+# 모델 학습/추론 (out_* 적재)
+python -m scripts.train forecast   # 월간 수입 예측(실구현): raw_customs_monthly → out_import_forecast
+python -m scripts.train all        # forecast + diagnosis(스캐폴드)
+
 # 스케줄(운영: crontab)
 #   0 6 * * 1  python -m scripts.schedule weekly     # 주간 진단
 #   0 7 1 * *  python -m scripts.schedule monthly    # 월간 예측
 ```
+> **모델 구현 현황**
+> - ✅ **수입 예측**(`msr/models/forecast.py`): 월간 패널→지연/계절 피처→홀드아웃 백테스트(MAE/R²)+12개월 재귀예측. `mart_monthly_forecast_input`·`out_import_forecast` 적재. 타깃 volume(kg)·value($). *실측 검증: 2023~2025 기준 백테스트 R² volume 0.90 / value 0.87.*
+> - 🔧 **진단·경보**(`diagnosis.py`/`alert.py`): 로직은 있으나 입력 마트(`mart_weekly_diagnosis`)가 **가격 변동성·지정학 지수·교사신호**를 요구 → 해당 수집·정규화(raw→fact) 확보 후 배선.
 
 ## 4. 데이터 소스·검증 상태
 | 소스 | 모듈 | 상태 |
 |---|---|---|
 | 한국은행 ECOS(GDP·산업생산) | ecos_api | ✅ **키·스키마·실수집 검증**(전산업생산지수 901Y033 월간) |
-| 관세청 품목별국가별 수출입 | customs_api | 코드·파라미터 정합(엔드포인트/HS/월간). *개발샌드박스 아웃바운드 차단으로 로컬 실행 필요* |
+| 관세청 품목별국가별 수출입 | customs_api | ✅ **연간 실수집 검증**(`raw_customs_annual` 232,001행). 월간은 일일 호출 한도 제약 — 아래 참조 |
 | USGS / 제공 xlsx·csv | komis_files | 기존 검증 로더 통합 |
 | 지정학 보고서 | geo_pipeline | 기존 파이프라인 통합(규칙+LLM) |
 
 > ⚠️ 참고: 본 개발 환경에서는 외부 아웃바운드가 제한되어 **ECOS만 원격 검증**되었고, **관세청은 사내/로컬 네트워크에서 실행**하면 동작합니다(코드·키 준비 완료). 실수집 증빙 샘플: `outputs/_ecos_sample_전산업생산지수_2025.csv`.
+
+### 4-B. ⚠️ 관세청(data.go.kr) 일일 호출 한도 — 월간 수집 제약
+관세청 `getNitemtradeList`는 **1콜당 최대 1개 기간창**만 허용하므로, 광종 HS 목록 전체를 조회하면 콜 수가 급증한다.
+
+| 모드 | 콜 수 산식 | 예(HS 161개) | 일 한도(≈10,000) |
+|---|---|---|---|
+| 연간(`freq=A`) | HS × 연도 | 161 × 13년 = **2,093** | ✅ 하루 완주 |
+| 월간(`freq=M`) | HS × 개월 | 161 × 132월(2015~2025) = **21,252** | ❌ **초과 → 완주 불가** |
+
+- **한도 초과 시 증상**: HTTP `429 Too Many Requests`. `fetch_one`이 3회(2·4·6초 백오프) 재시도하지만, 한도 소진 후에는 재시도도 모두 실패 → 해당 `(HS×월)` 레코드 **누락**. 한도는 **자정(KST) 기준 리셋**.
+- **부분 수집분은 저장되지 않음**: `customs_api.collect()`는 전체 콜을 메모리에 모은 뒤 **끝까지 성공해야 1회 적재**한다(중간 flush 없음). 도중에 중단하면 그때까지 수집분도 사라진다.
+- **권장 운용**:
+  1. **기간 축소로 한도 이내 유지** — 예: 최근 3년 `202301~202512` = 161 × 36 = **5,796콜**(하루 완주). 최근 5년 `202101~202512` = 9,660콜(한도 근접).
+  2. **운영계정 트래픽 상향** — data.go.kr 활용사례 등록으로 일 한도 상향/무제한(승인 대기 수일). 전 기간 1회 수집의 근본책.
+  3. **일 단위 분할 수집** — 하루 10k씩 나눠 수집. 단 현재 `pipeline.collect_customs()`의 `db.upsert_df(..., del_where="1=1")`가 매 실행마다 테이블을 전량 삭제·교체하므로, 분할하려면 **append 또는 기간조건 del_where로 코드 수정 필요**(그렇지 않으면 앞 청크가 사라짐).
+- **실측(2026-07-03)**: 월간 `201501~202512` 실행 중 약 10,000콜 지점부터 429가 지속 발생 → 일 한도 소진 확인. 이후 최근 3년(5,796콜) 범위로 재수집하기로 결정.
 
 ## 5. 운영 DB 이관
 `msr/storage/db.py`의 `export_parquet()`로 전 테이블을 Parquet로 내보내 Postgres/Oracle 등 납품 DB로 이관(스키마는 설계단계 ERD 확정 후).

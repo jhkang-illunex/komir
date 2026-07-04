@@ -54,6 +54,7 @@ GEO_PUBLISH_DB=oracle+oracledb://user:pw@host:1521/?service_name=ORCL
 
 ## 주의
 - 서비스는 일회성(`run --rm`). 자동화는 호스트 cron으로 `make collect`/`make geo` 등 호출.
+- **관세청 API 일일 호출 한도(≈10,000콜)**: `make monthly`(월간 전체 21,252콜)는 하루에 완주 불가 → 429. 기간 축소(예 최근 3년 ≈5,796콜)·운영계정 상향·일 분할 중 택. 상세: `mineral_supply_risk/README.md` §4-B.
 - DuckDB는 단일 파일 → 동시 쓰기 금지(순차 실행). 서버DB면 동시성 해결.
 - 로컬 LLM(Ollama/vLLM): `LLM_BASE_URL=http://host.docker.internal:PORT/v1`.
 - 비밀키는 `.env`(커밋 금지). 원본 데이터·`data/`는 이미지에서 제외(.dockerignore).
