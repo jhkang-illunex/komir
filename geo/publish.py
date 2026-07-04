@@ -5,7 +5,7 @@
   target: env GEO_PUBLISH_DB 또는 --db. 파일경로=DuckDB, '://' 포함=SQLAlchemy URL.
 """
 import argparse, os
-from datetime import datetime
+from datetime import datetime, timezone
 import pandas as pd
 from . import config as C, store
 
@@ -38,7 +38,7 @@ def run(target=None):
     if len(idx) == 0:
         print("[publish] geo_index 없음(먼저 index)"); return
     target = target or os.environ.get("GEO_PUBLISH_DB") or str(C.STORE / "geo_published.duckdb")
-    now = datetime.utcnow().isoformat(timespec="seconds")
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     # 1) 지수 (geo_index 계약)
     out = idx.rename(columns={"commodity": "commodity_code", "index": "idx_value"}).copy()
     out["index_config_version"] = os.environ.get("GEO_INDEX_VERSION", "v1")

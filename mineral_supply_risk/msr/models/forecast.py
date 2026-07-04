@@ -111,7 +111,9 @@ def run(db=None, model_version="fc_hgb_v1", horizon=12, test_months=6):
         for c in codes:
             series = d[d["commodity_code"] == c].sort_values("date")["y"].astype(float).tolist()
             sc = resid_std.get(c, np.nan)
-            sd = float(sc) if (sc == sc and sc) else (pooled if pooled == pooled else 0.0)
+            # NaN(잔차 <2점)만 pooled로 폴백. sd==0(퇴화: 잔차 전부 동일)은 결측이 아니므로
+            # 그대로 사용 — 결측/퇴화 혼동 제거(0폭 구간은 데이터가 말하는 그대로).
+            sd = float(sc) if sc == sc else (pooled if pooled == pooled else 0.0)
             for h in range(1, horizon + 1):
                 lag = lambda l: series[-l] if len(series) >= l else np.nan
                 frow = {f"lag{l}": lag(l) for l in _LAGS}

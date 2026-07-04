@@ -94,6 +94,7 @@ def compute() -> pd.DataFrame:
         for c, sub in ev.groupby("commodity"):
             g = (sub.set_index("date").resample(freq)["score"]
                     .agg(raw_score="sum", n_events="count").reset_index())
+            g = g[g["n_events"] > 0]          # 근거(이벤트) 없는 중간 공백 기간은 발행하지 않음
             g = g.rename(columns={"date": "period"})
             g["commodity"] = c
             g["freq"] = flabel

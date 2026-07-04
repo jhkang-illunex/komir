@@ -2,7 +2,8 @@
 """경보 사유(근거텍스트) 생성 — 자원안보특별법 붙임2 공식문안 + 데이터근거 + 지정학 이벤트 인용"""
 import duckdb, pandas as pd, numpy as np, csv, re
 import os as _os
-_DB_DEFAULT=_os.environ.get("MSR_DB", _os.path.join(_os.path.dirname(_os.path.abspath(__file__)),"..","..","data","processed","minerals.duckdb"))
+from ..config import DB_PATH as _DB_DEFAULT, OUT as _OUT
+_ALERT_DIR = _os.path.join(str(_OUT), "alert")   # alert.run()이 쓰는 산출 위치(cwd 의존 제거)
 
 # 자원안보특별법 붙임2 「자원안보위기 경보 발령의 기준」 공식 문안 (3대 기준 카테고리)
 OFFICIAL={
@@ -23,7 +24,8 @@ OFFICIAL={
 GEO_C1={"sanction","export_restriction","nationalization","conflict","tariff","policy_cost","policy_subsidy"}
 GEO_C2={"supply_disruption"}
 
-def build(db=_DB_DEFAULT, alert_csv="alert_timeline.csv"):
+def build(db=_DB_DEFAULT, alert_csv=None):
+    alert_csv = alert_csv or _os.path.join(_ALERT_DIR, "alert_timeline.csv")
     df=pd.read_csv(alert_csv, parse_dates=["obs_date"])
     con=duckdb.connect(db, read_only=True)
     # 광종×월 대표 지정학 이벤트(최고 severity + 유형 + 근거인용)
@@ -65,7 +67,8 @@ def build(db=_DB_DEFAULT, alert_csv="alert_timeline.csv"):
     # JSON 저장(견고) + 파이썬 csv 모듈로 CSV
     keep=["commodity_code","obs_date","alert_level","alert_name","crisis_index","triggers","사유"]
     d2=df[keep].copy(); d2["obs_date"]=d2["obs_date"].astype(str)
-    d2.to_json("alert_timeline_사유.json",orient="records",force_ascii=False,indent=1)
+    _os.makedirs(_ALERT_DIR, exist_ok=True)
+    d2.to_json(_os.path.join(_ALERT_DIR,"alert_timeline_사유.json"),orient="records",force_ascii=False,indent=1)
     return df
 
 if __name__=="__main__":

@@ -227,7 +227,7 @@ def load_usgs(con, root):
     col_prod=[c for c in df.columns if "생산" in c and not any(e in c for e in EXC)]
     col_res =[c for c in df.columns if "가채매장량" in c and not any(e in c for e in EXC)]
     def yr(c):
-        m=re.search(r"(20\d2|20\d{2})",c); return int(re.search(r"20\d{2}",c).group()) if re.search(r"20\d{2}",c) else None
+        m=re.search(r"20\d{2}",c); return int(m.group()) if m else None
     recs=[]
     for _,x in df.iterrows():
         src=x.get("SOURCE"); com=x.get("COMMODITY"); ctry=x.get("COUNTRY"); unit=x.get("UNIT")

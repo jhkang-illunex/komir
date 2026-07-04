@@ -28,7 +28,14 @@ def _doc(typ, meta, body=""):
     if yaml:
         front = yaml.safe_dump(fm, allow_unicode=True, sort_keys=False).strip()
     else:
-        front = "\n".join(f"{k}: {v}" for k, v in fm.items())
+        # 폴백(PyYAML 부재): LLM 유래 값의 개행/따옴표/'---'가 프론트매터를 깨뜨리지 않게
+        # JSON 문자열 인용으로 이스케이프(JSON은 YAML 부분집합이라 유효).
+        import json as _json
+        def _v(v):
+            if isinstance(v, (int, float, bool)): return str(v).lower() if isinstance(v, bool) else str(v)
+            if isinstance(v, list): return "[" + ", ".join(_json.dumps(str(x), ensure_ascii=False) for x in v) + "]"
+            return _json.dumps(str(v), ensure_ascii=False)
+        front = "\n".join(f"{k}: {_v(v)}" for k, v in fm.items())
     return f"---\n{front}\n---\n\n{body.strip()}\n"
 
 

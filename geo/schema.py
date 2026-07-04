@@ -2,7 +2,7 @@
 """데이터 계약(pydantic). [1]→[2]=ManifestRecord, [2]→[3]=GeoEvent."""
 from __future__ import annotations
 from typing import Optional, Literal
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 
 COMMODITIES = ("CU", "NI", "LI", "CO", "REE")
@@ -25,7 +25,7 @@ class ManifestRecord(BaseModel):
     fmt: str = ""                    # pdf/hwp/xlsx
     n_chars: int = 0
     status: str = "archived"         # archived/failed/unclassified/duplicate
-    ingested_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat(timespec="seconds"))
+    ingested_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds"))
     error_msg: str = ""
 
 
@@ -49,7 +49,7 @@ class GeoEvent(BaseModel):
     model: str = ""
     prompt_version: str = ""
     schema_version: str = "1.0"
-    analyzed_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat(timespec="seconds"))
+    analyzed_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds"))
 
 
 class IndexConfig(BaseModel):
