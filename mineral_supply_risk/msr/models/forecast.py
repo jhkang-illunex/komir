@@ -29,14 +29,14 @@ def walk_forward(df, target, feats, group="commodity_code", tcol="date", split=N
 
 
 def _monthly_panel(db):
-    """광종·월 수입 합계. 신뢰 가능한 q_year/q_month로 월 키 구성."""
+    """광종·월 수입 합계. 정본 팩트(fact_trade_monthly)에서 읽음(단일 소스)."""
     con = duckdb.connect(db, read_only=True)
     df = con.execute("""
         SELECT commodity_code,
-               make_date(CAST(q_year AS INT), CAST(q_month AS INT), 1) AS date,
+               make_date(yr, mon, 1) AS date,
                SUM(imp_wgt) AS volume, SUM(imp_usd) AS value
-        FROM raw_customs_monthly
-        WHERE q_year IS NOT NULL AND q_month IS NOT NULL
+        FROM fact_trade_monthly
+        WHERE commodity_code IS NOT NULL AND mon IS NOT NULL
         GROUP BY 1, 2 ORDER BY 1, 2
     """).df()
     con.close()

@@ -43,6 +43,9 @@ services:
   collect-customs-monthly:      # 월간 수입(예측용)
     <<: *msr
     command: ["-m", "scripts.run", "collect-customs", "201501", "202512", "M"]
+  normalize:                    # raw_customs_* → fact_trade_* + agg_trade_annual
+    <<: *msr
+    command: ["-m", "scripts.run", "normalize"]
   features:
     <<: *msr
     command: ["-m", "scripts.run", "features"]

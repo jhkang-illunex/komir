@@ -23,8 +23,9 @@ make build                # msr:dev, geo:dev 빌드
 make schema               # DDL 적용(공유 DuckDB)
 
 # 정형
-make collect              # 관세청(연간)+ECOS+피처
+make collect              # 관세청(연간)+ECOS → normalize(raw→fact) → 피처
 make monthly              # (예측용) 월간 수입 수집
+make normalize            # raw_customs_* → fact_trade_* + agg_trade_annual (정본 팩트)
 make refdata              # USGS HHI 2016~최근
 
 # 비정형 지정학  (geo_data/inbox 에 pdf·hwp·xlsx 투척 후)

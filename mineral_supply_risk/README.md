@@ -59,11 +59,15 @@ mineral_supply_risk/
 └─ data/{raw,interim,processed}/, outputs/
 ```
 
-> **스키마 계층 주의(미통합)**: 현재 두 스키마가 병존한다.
-> - `db/schema_core.sql` — 도커 수집 파이프라인(`scripts.run`/compose)이 적용. `raw_customs_*`·`fact_trade_annual` 계열.
-> - `data/raw/00_schema.sql` — canonical 정규화(`fact_trade`·`dim_commodity`·`dim_series`…). 모델 마트(`features/marts.py`)와 standalone 로더(`collectors/komis_files.py`)가 기대.
->
-> `collectors/komis_files.py`(로컬 xlsx/csv 일괄적재)·`collectors/geo_pipeline.py`(**레거시**, 운영 geo는 `../geo` 패키지)는 파이프라인에 연결되지 않은 **독립 스크립트**다. 진단·경보 모델을 켜려면 `raw→fact` 정규화로 두 계층을 잇는 작업이 선행돼야 한다.
+> **스키마 계층 — 정본은 `db/schema_core.sql`(warehouse)**
+> - **교역(trade)는 raw→fact 통합 완료**: `features/normalize.py`(`make normalize`)가 랜딩
+>   `raw_customs_*` → 정본 `fact_trade_monthly`/`fact_trade_annual`(+분석마트 `agg_trade_annual`)로
+>   정규화한다. 피처·예측은 이제 **정본 팩트에서** 읽는다(단일 소스). 파이프라인: collect → **normalize** → features/train.
+> - **아직 데이터 갭(모델 미가동)**: 진단(`mart_weekly_diagnosis`)은 **주간 가격변동성·교사신호(수급동향지표)**,
+>   경보는 **지정학 이벤트(`geo_event`)** 가 필요하나 해당 수집(가격·USGS·KOMIS 지표)이 미구현이라 비어 있다.
+>   → 진단·경보는 **스키마가 아니라 입력 데이터** 확보가 남은 과제.
+> - `data/raw/00_schema.sql`(`fact_trade`·`dim_*`)와 `collectors/komis_files.py`·`collectors/geo_pipeline.py`는
+>   현재 파이프라인에 미연결된 **레거시/standalone**(가격·USGS·지표 로컬 xlsx 적재용). 정본은 `schema_core.sql`.
 
 ## 3. 사용
 ```bash
@@ -74,7 +78,10 @@ python -m scripts.run ecos-search 생산
 python -m scripts.run collect-customs 201301 202512   # 관세청 월간 수입(5광종 167 HS)
 python -m scripts.run collect-ecos                     # 한국 GDP·산업생산
 
-# 피처 산출 → DuckDB(data/processed/minerals.duckdb)
+# 정규화(raw→fact) : raw_customs_* → fact_trade_* + agg_trade_annual
+python -m scripts.run normalize
+
+# 피처 산출(정본 팩트 기반) → DuckDB
 python -m scripts.run features
 
 # 전체

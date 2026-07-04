@@ -5,7 +5,7 @@ import pandas as pd
 from . import config
 from .collectors import customs_api, ecos_api
 from .preprocess import hs_mapping
-from .features import builders
+from .features import builders, normalize as normalize_mod
 from .storage import db
 
 # ---- 1) 수집 ----
@@ -46,18 +46,24 @@ def collect_ecos():
         out=pd.concat(frames); db.upsert_df(out, "raw_ecos", del_where="1=1"); return out
     return pd.DataFrame()
 
-# ---- 2) 피처 ----
+# ---- 2) 정규화(raw→fact) ----
+def normalize():
+    """랜딩(raw_customs_*) → 정본 팩트(fact_trade_*) + agg_trade_annual."""
+    return normalize_mod.run()
+
+# ---- 3) 피처(정본 팩트 기반) ----
 def build_features():
     con=db.connect(read_only=True)
-    try: trade=con.execute("SELECT * FROM raw_customs_monthly").df()
+    # raw가 아닌 정본 팩트에서 읽음(단일 소스). 없으면 먼저 normalize.
+    try: trade=con.execute("SELECT commodity_code, yr AS year, country, imp_usd FROM fact_trade_monthly").df()
     except Exception: trade=pd.DataFrame()
     con.close()
-    if trade.empty: print("[features] 관세청 데이터 없음(먼저 collect)"); return
+    if trade.empty: print("[features] fact_trade_monthly 비어있음(먼저 collect→normalize)"); return
     hhi=builders.import_hhi(trade); grw=builders.import_growth(trade)
     db.upsert_df(hhi,"feat_import_hhi",del_where="1=1")
     db.upsert_df(grw,"feat_import_growth",del_where="1=1")
     print(f"[features] HHI {len(hhi)} · growth {len(grw)}")
 
 def run_all():
-    collect_customs(); collect_ecos(); build_features()
+    collect_customs(); collect_ecos(); normalize(); build_features()
     print("[pipeline] 완료")
