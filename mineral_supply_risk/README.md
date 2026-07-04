@@ -97,15 +97,18 @@ python -m scripts.gen_synth        # ⚠️ 합성 fact_price/fact_indicator (sr
 
 # 모델 학습/추론 (out_* 적재)
 python -m scripts.train forecast   # 월간 수입 예측: fact_trade_monthly → out_import_forecast
-python -m scripts.train all        # forecast + diagnosis(가격·교사 있으면 학습: HistGBM R²·위기 AUC)
+python -m scripts.train alert      # 경보 4단계: 위기지수+geo_event → out_diagnosis_alert(사유 포함)
+python -m scripts.train all        # 진단 → 경보 → 예측 (입력 없으면 해당 단계 자동 스킵)
 
 # 스케줄(운영: crontab)
 #   0 6 * * 1  python -m scripts.schedule weekly     # 주간 진단
 #   0 7 1 * *  python -m scripts.schedule monthly    # 월간 예측
 ```
-> **모델 구현 현황**
-> - ✅ **수입 예측**(`msr/models/forecast.py`): 월간 패널→지연/계절 피처→홀드아웃 백테스트(MAE/R²)+12개월 재귀예측. `mart_monthly_forecast_input`·`out_import_forecast` 적재. 타깃 volume(kg)·value($). *실측 검증: 2023~2025 기준 백테스트 R² volume 0.90 / value 0.87.*
-> - 🔧 **진단·경보**(`diagnosis.py`/`alert.py`): 로직은 있으나 입력 마트(`mart_weekly_diagnosis`)가 **가격 변동성·지정학 지수·교사신호**를 요구 → 해당 수집·정규화(raw→fact) 확보 후 배선.
+> **모델 구현 현황** (`python -m scripts.train all` = 진단 → 경보 → 예측)
+> - ✅ **수입 예측**(`msr/models/forecast.py`): 월간 패널(월간 그리드 보장)→지연/계절 피처→홀드아웃 백테스트+12개월 재귀예측(80% 구간). `out_import_forecast` 적재. *실측: 2023~2025 백테스트 R² volume 0.90 / value 0.87.*
+> - ✅ **진단**(`diagnosis.py`): `run(db)` 함수형. weekly_mart(fact_price·fact_indicator→`mart_weekly_diagnosis`) 재생성 후 학습(Naive/Ridge/HistGBM + 위기 이진분류). 전-NULL 피처 자동 제외, 데이터 부족 시 스킵. *합성 데모 기준 HistGBM R²~0.9.*
+> - ✅ **경보 4단계**(`alert.py`): `run(db)` — 위기지수(100−교사) 분위수 기본단계 + 규칙 오버라이드(변동성·수입편중·**지정학 `geo_event`** — geo severity 0~3은 /3 정규화 후 임계 0.85 비교) + 히스테리시스 → **법정 문안(자원안보특별법 붙임2) 사유 + 이벤트 인용** → `out_diagnosis_alert`.
+> - ⚠️ 진단·경보의 **가격·교사신호는 현재 합성 데모**(`scripts/gen_synth.py`). 실 KOMIS/LME·수급동향지표를 같은 fact 테이블에 넣으면 코드 수정 없이 실운영 전환.
 
 ## 4. 데이터 소스·검증 상태
 | 소스 | 모듈 | 상태 |
