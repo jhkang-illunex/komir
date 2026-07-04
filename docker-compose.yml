@@ -46,6 +46,9 @@ services:
   normalize:                    # raw_customs_* → fact_trade_* + agg_trade_annual
     <<: *msr
     command: ["-m", "scripts.run", "normalize"]
+  synth:                        # ⚠️ 합성 데모: fact_price/indicator 채워 진단모델 검증
+    <<: *msr
+    command: ["-m", "scripts.gen_synth"]
   features:
     <<: *msr
     command: ["-m", "scripts.run", "features"]

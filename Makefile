@@ -1,4 +1,4 @@
-.PHONY: init build schema collect monthly normalize features train geo refdata geo-publish all clean
+.PHONY: init build schema collect monthly normalize synth features train geo refdata geo-publish all clean
 
 init:            ## 폴더 생성 + .env 준비
 	mkdir -p geo_data/inbox warehouse
@@ -19,6 +19,9 @@ monthly:         ## 월간 수입 수집(예측용)
 
 normalize:       ## raw→fact 정규화(fact_trade_* + agg_trade_annual)
 	docker compose run --rm normalize
+
+synth:           ## (데모) 합성 가격·지표 → fact_price/indicator (진단모델 검증용)
+	docker compose run --rm synth
 
 features:        ## 피처 마트
 	docker compose run --rm features

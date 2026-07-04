@@ -24,12 +24,14 @@ def _has(table):
 
 
 def train_diagnosis():
-    print("[train] 진단 — mart_weekly_diagnosis 학습(교사신호/데이터 부족 시 자동 스킵)")
+    print("[train] 진단 — 주간마트(fact_price/indicator→mart) 재생성 후 학습(데이터 부족 시 스킵)")
+    from msr.features import weekly_mart
     from msr.models import diagnosis
+    weekly_mart.run(DB_PATH)          # 정본 팩트 → mart_weekly_diagnosis
     res = diagnosis.run(DB_PATH)
     if res:
         print("  ", "; ".join(f"{r['model']}:R2={r['R2']}" for r in res["results"]))
-    # 현재 마트는 raw→fact 미통합으로 교사신호(teacher_supply_demand)가 없어 통상 스킵된다.
+        print(f"   위기분류 AUC={res.get('auc_crisis')}")
 
 
 def train_forecast():
@@ -49,7 +51,7 @@ def main():
         train_diagnosis()
     if what in ("forecast", "all"):
         train_forecast()
-    print("[train] 완료. forecast=실구현(out_import_forecast), diagnosis=구현(canonical 마트 확보 시 자동 학습; 현재 스키마 불일치로 스킵).")
+    print("[train] 완료. forecast=out_import_forecast · diagnosis=fact_price/indicator 존재 시 자동 학습(없으면 스킵).")
 
 
 if __name__ == "__main__":

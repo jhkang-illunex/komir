@@ -71,7 +71,15 @@ def run(db=None, out_dir=None, min_rows=20):
         print("[diagnosis] 학습/검증 분할 중 한쪽이 비어 스킵.")
         return None
 
-    X_cols = FEATS + ["commodity_code"]
+    # 전부 NULL/상수인 피처 제외(예: production_hhi·geopolitical_risk 미보유 → 학습 불가·binning 크래시 방지)
+    feats = [c for c in FEATS if train[c].notna().sum() >= 2 and train[c].nunique(dropna=True) >= 2]
+    dropped = [c for c in FEATS if c not in feats]
+    if dropped: print(f"  제외 피처(전-NULL/상수): {dropped}")
+    if not feats:
+        print("[diagnosis] 사용 가능한 피처 없음 → 스킵."); return None
+    print(f"  사용 피처 {len(feats)}: {feats}")
+
+    X_cols = feats + ["commodity_code"]
     Xtr, ytr = train[X_cols], train["y"].values
     Xte, yte = test[X_cols], test["y"].values
 
@@ -80,7 +88,7 @@ def run(db=None, out_dir=None, min_rows=20):
     naive_pred = test["commodity_code"].map(naive_map).values
     results = [_rep("Naive(광종평균)", yte, naive_pred)]
 
-    num, cat = FEATS, ["commodity_code"]
+    num, cat = feats, ["commodity_code"]
     # 1) Ridge + 광종더미 + 표준화 + 결측대치
     pre = ColumnTransformer([
         ("num", Pipeline([("imp", SimpleImputer(strategy="median")), ("sc", StandardScaler())]), num),
@@ -94,7 +102,7 @@ def run(db=None, out_dir=None, min_rows=20):
     Xtr2["commodity_code"] = Xtr2["commodity_code"].map(codes)
     Xte2["commodity_code"] = Xte2["commodity_code"].map(codes)
     gbm = HistGradientBoostingRegressor(max_iter=300, learning_rate=0.05, max_depth=3,
-          categorical_features=[len(FEATS)], random_state=42).fit(Xtr2, ytr)
+          categorical_features=[len(feats)], random_state=42).fit(Xtr2, ytr)
     results.append(_rep("HistGBM(+광종)", yte, gbm.predict(Xte2)))
 
     print("\n=== 회귀 성능 (test=2025~) ===")
@@ -106,7 +114,7 @@ def run(db=None, out_dir=None, min_rows=20):
     auc = None
     if yte_b.sum() > 0 and yte_b.sum() < len(yte_b):
         clf = HistGradientBoostingClassifier(max_iter=300, learning_rate=0.05, max_depth=3,
-            categorical_features=[len(FEATS)], random_state=42).fit(Xtr2, ytr_b)
+            categorical_features=[len(feats)], random_state=42).fit(Xtr2, ytr_b)
         auc = round(roc_auc_score(yte_b, clf.predict_proba(Xte2)[:, 1]), 3)
     print(f"\n=== 위기 이진분류(타깃<{thr}) AUC(test): {auc} | test 위기비율 {yte_b.mean():.2f} ===")
 

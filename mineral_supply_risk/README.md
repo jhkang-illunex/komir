@@ -63,9 +63,14 @@ mineral_supply_risk/
 > - **교역(trade)는 raw→fact 통합 완료**: `features/normalize.py`(`make normalize`)가 랜딩
 >   `raw_customs_*` → 정본 `fact_trade_monthly`/`fact_trade_annual`(+분석마트 `agg_trade_annual`)로
 >   정규화한다. 피처·예측은 이제 **정본 팩트에서** 읽는다(단일 소스). 파이프라인: collect → **normalize** → features/train.
-> - **아직 데이터 갭(모델 미가동)**: 진단(`mart_weekly_diagnosis`)은 **주간 가격변동성·교사신호(수급동향지표)**,
->   경보는 **지정학 이벤트(`geo_event`)** 가 필요하나 해당 수집(가격·USGS·KOMIS 지표)이 미구현이라 비어 있다.
->   → 진단·경보는 **스키마가 아니라 입력 데이터** 확보가 남은 과제.
+> - **진단 마트 빌더 통합**: `features/weekly_mart.py`가 정본 `fact_price`(주간)·`fact_indicator`
+>   (교사=수급동향지표)·`agg_trade_annual`에서 `mart_weekly_diagnosis`(진단 FEATS+교사)를 만든다.
+>   `make train`이 이 마트를 재생성 후 `diagnosis.run()` 학습(가격/교사 없으면 자동 스킵).
+>   **실데이터 연결 계약**: `fact_price`(price_type∈{LME_CASH,LME_3M,REF}, freq='W')와
+>   `fact_indicator`(indicator='SUPPLY_DEMAND', freq='M')에 넣으면 소스 무관하게 흐른다(src 무관).
+>   실데이터 부재 시 `make synth`(⚠️ **합성 데모**)로 진단 end-to-end 검증 가능.
+> - **남은 데이터 갭**: 실 가격(KOMIS/LME)·USGS 생산(`production_hhi`)·경보용 지정학 이벤트(`geo_event`)
+>   수집은 미구현. 진단·경보의 실운영은 이 **입력 데이터** 확보가 과제(스키마는 준비됨).
 > - `data/raw/00_schema.sql`(`fact_trade`·`dim_*`)와 `collectors/komis_files.py`·`collectors/geo_pipeline.py`는
 >   현재 파이프라인에 미연결된 **레거시/standalone**(가격·USGS·지표 로컬 xlsx 적재용). 정본은 `schema_core.sql`.
 
@@ -87,9 +92,12 @@ python -m scripts.run features
 # 전체
 python -m scripts.run all
 
+# (선택) 진단 데모: 실 가격·지표가 없으면 합성으로 end-to-end 검증
+python -m scripts.gen_synth        # ⚠️ 합성 fact_price/fact_indicator (src='SYNTH')
+
 # 모델 학습/추론 (out_* 적재)
-python -m scripts.train forecast   # 월간 수입 예측(실구현): raw_customs_monthly → out_import_forecast
-python -m scripts.train all        # forecast + diagnosis(스캐폴드)
+python -m scripts.train forecast   # 월간 수입 예측: fact_trade_monthly → out_import_forecast
+python -m scripts.train all        # forecast + diagnosis(가격·교사 있으면 학습: HistGBM R²·위기 AUC)
 
 # 스케줄(운영: crontab)
 #   0 6 * * 1  python -m scripts.schedule weekly     # 주간 진단
