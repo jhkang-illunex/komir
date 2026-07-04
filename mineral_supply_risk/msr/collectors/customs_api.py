@@ -5,11 +5,20 @@
  - 반환: XML → DataFrame(year,month,hscode,country,imp_usd,imp_wgt,exp_usd,exp_wgt)
 사용: collect(hs_list, start_yymm, end_yymm) -> DataFrame
 """
-import time, requests, pandas as pd, xml.etree.ElementTree as ET
+import re, time, requests, pandas as pd, xml.etree.ElementTree as ET
 from urllib.parse import unquote
 from ..config import DATA_GO_KR_KEY_ENC, DATA_GO_KR_KEY_DEC
 
 BASE = "https://apis.data.go.kr/1220000/nitemtrade/getNitemtradeList"
+
+
+class QuotaExceeded(RuntimeError):
+    """일일/트래픽 호출 한도 초과(429 또는 returnReasonCode 22/23). 재시도 무의미 → 즉시 중단."""
+
+
+def _mask(s) -> str:
+    """로그 노출용: URL 내 serviceKey 값을 가림(키 유출 방지)."""
+    return re.sub(r"(serviceKey=)[^&\s]+", r"\1***", str(s))
 
 def _key():
     """serviceKey 반환. Decoding(원문) 키를 params로 넘기면 requests가 인코딩키와
@@ -37,11 +46,11 @@ def _parse_xml(text):
         code = hdr.findtext("returnReasonCode")
         if code and code not in ("00", "0"):
             msg = hdr.findtext("returnAuthMsg") or hdr.findtext("errMsg") or ""
+            if code in ("22", "23"):
+                raise QuotaExceeded(f"API {code}: {msg} → 호출 한도 초과(트래픽/일일). 자정(KST) 리셋 후 재시도.")
             hint = ""
             if code == "30":
                 hint = " → 이 키가 '품목별 국가별 수출입실적' API에 활용신청/승인됐는지 확인(마이페이지)."
-            elif code in ("22","23"):
-                hint = " → 호출 한도 초과(트래픽/일일). 잠시 후 재시도."
             raise RuntimeError(f"API error {code}: {msg}{hint}")
     # 헤더 없이 resultCode 형태인 경우도 처리
     rc = root.findtext(".//resultCode")
@@ -66,8 +75,12 @@ def fetch_one(hs, strt_yymm, end_yymm, retries=3):
     for a in range(retries):
         try:
             r = requests.get(BASE, params=params, timeout=30)
+            if r.status_code == 429:
+                raise QuotaExceeded("HTTP 429 Too Many Requests (일일/트래픽 한도)")
             r.raise_for_status()
-            return _parse_xml(r.text)
+            return _parse_xml(r.text)        # 한도코드(22/23)면 QuotaExceeded 발생
+        except QuotaExceeded:
+            raise                            # 재시도 무의미 → 즉시 전파
         except Exception as e:
             if a == retries-1: raise
             time.sleep(2*(a+1))
@@ -94,44 +107,61 @@ def _month_windows(strt_yymm, end_yymm):
         if m > 12: m = 1; y += 1
     return out
 
-def collect(hs_list, strt_yymm, end_yymm, sleep=0.3, freq="A"):
-    """hs_list: HS부호 목록. freq: 'A'(연간 1콜=1년) | 'M'(월간 1콜=1개월).
-    반환: 정제 DataFrame(국가별). 월간은 month 컬럼 채움."""
-    windows = _month_windows(strt_yymm, end_yymm) if freq == "M" else _year_windows(strt_yymm, end_yymm)
-    all_rows = []
-    total = len(hs_list) * len(windows)
-    n = 0
-    for hs in hs_list:
-        for a, b in windows:
-            n += 1
-            try:
-                rows = fetch_one(hs, a, b) or []
-            except Exception as e:
-                print(f"  [warn] hs={hs} {a}~{b} 실패: {e}")
-                rows = []
-            for x in rows:
-                x["hs_query"] = hs
-                x["q_year"] = a[:4]          # 조회 연도(응답 year가 비거나 '총계'일 때 보정용)
-                x["q_month"] = a[4:6]        # 조회 월(월간 모드)
-            all_rows += rows
-            if n % 100 == 0: print(f"  ... {n}/{total} 콜")
-            time.sleep(sleep)
-    df = pd.DataFrame(all_rows)
-    if df.empty: return df
-    for c in ["exp_usd","exp_wgt","imp_usd","imp_wgt"]:
-        df[c] = pd.to_numeric(df[c].astype(str).str.replace(",",""), errors="coerce")
-    # ⚠️ getNitemtradeList는 연간 집계(연·HS·국가). '총계' 행(year='총계', country/hscode='-')이 섞여옴.
+def _clean_frame(rows, freq):
+    """원시 행 리스트 → 정제 DataFrame(총계행 제거·수치화·연/월 보정)."""
+    df = pd.DataFrame(rows)
+    if df.empty:
+        return df
+    for c in ["exp_usd", "exp_wgt", "imp_usd", "imp_wgt"]:
+        df[c] = pd.to_numeric(df[c].astype(str).str.replace(",", ""), errors="coerce")
+    # ⚠️ '총계' 행(year='총계', country/hscode='-')이 섞여옴 → 제거
     df["country"] = df["country"].astype(str).str.strip()
     df["hscode"] = df["hscode"].astype(str).str.strip()
-    # 총계/합계 행 제거
-    df = df[~df["country"].isin(["총계","합계","총 계","Total","World","-",""])]
-    df = df[~df["hscode"].isin(["-",""])]
+    df = df[~df["country"].isin(["총계", "합계", "총 계", "Total", "World", "-", ""])]
+    df = df[~df["hscode"].isin(["-", ""])]
     # year: 응답 year가 숫자 아니면 조회연도(q_year)로 보정
     df["year"] = pd.to_numeric(df["year"], errors="coerce").fillna(
         pd.to_numeric(df.get("q_year"), errors="coerce"))
     df = df.dropna(subset=["year"])
     df["year"] = df["year"].astype(int)
-    # month: 월간 모드면 조회월로 채움(연간은 비움)
-    if freq == "M":
+    if freq == "M":  # 월간 모드면 조회월로 채움(연간은 비움)
         df["month"] = pd.to_numeric(df.get("q_month"), errors="coerce").astype("Int64")
     return df.reset_index(drop=True)
+
+
+def collect(hs_list, strt_yymm, end_yymm, sleep=0.3, freq="A", sink=None):
+    """hs_list: HS부호 목록. freq: 'A'(연간 1콜=1년) | 'M'(월간 1콜=1개월).
+    sink=None: 전량 정제 DataFrame 반환(구 동작).
+    sink(df_hs): 지정 시 HS 단위로 정제분을 콜백에 흘려 **증분 적재**(중단 시 손실 최소화)하고 적재행수 반환.
+    QuotaExceeded는 상위로 전파되어 즉시 중단(그때까지 sink된 분은 보존)."""
+    windows = _month_windows(strt_yymm, end_yymm) if freq == "M" else _year_windows(strt_yymm, end_yymm)
+    total = len(hs_list) * len(windows)
+    n, written, all_rows = 0, 0, []
+    for hs in hs_list:
+        hs_rows = []
+        for a, b in windows:
+            n += 1
+            try:
+                rows = fetch_one(hs, a, b) or []
+            except QuotaExceeded:
+                raise                                    # 한도 초과 → 전체 중단
+            except Exception as e:
+                print(f"  [warn] hs={hs} {a}~{b} 실패: {_mask(e)}")
+                rows = []
+            for x in rows:
+                x["hs_query"] = hs
+                x["q_year"] = a[:4]
+                x["q_month"] = a[4:6]
+            hs_rows += rows
+            if n % 100 == 0:
+                print(f"  ... {n}/{total} 콜")
+            time.sleep(sleep)
+        if sink is not None:
+            df_hs = _clean_frame(hs_rows, freq)
+            if not df_hs.empty:
+                sink(df_hs); written += len(df_hs)
+        else:
+            all_rows += hs_rows
+    if sink is not None:
+        return written
+    return _clean_frame(all_rows, freq)

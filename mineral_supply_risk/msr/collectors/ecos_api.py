@@ -10,7 +10,16 @@ BASE = "https://ecos.bok.or.kr/api"
 
 def _get(path):
     r = requests.get(f"{BASE}/{path}", timeout=30); r.raise_for_status()
-    return r.json()
+    j = r.json()
+    # ECOS는 HTTP 200 + {"RESULT":{"CODE":..,"MESSAGE":..}} 로 에러/무자료를 알림.
+    # INFO-200(해당 자료 없음)은 정상적 빈 결과로 처리, 그 외 코드는 예외로 표면화.
+    res = j.get("RESULT")
+    if isinstance(res, dict) and res.get("CODE"):
+        code, msg = res.get("CODE"), res.get("MESSAGE", "")
+        if str(code).upper() == "INFO-200":
+            return {}
+        raise RuntimeError(f"ECOS API error {code}: {msg}")
+    return j
 
 def search_tables(keyword="", start=1, end=100):
     j = _get(f"StatisticTableList/{ECOS_API_KEY}/json/kr/{start}/{end}/")

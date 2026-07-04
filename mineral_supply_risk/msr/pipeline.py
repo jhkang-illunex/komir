@@ -11,16 +11,25 @@ from .storage import db
 # ---- 1) 수집 ----
 def collect_customs(strt="201301", end="202512", freq="A"):
     """freq: 'A' 연간(→raw_customs_annual) | 'M' 월간(→raw_customs_monthly).
-    월간은 콜 수 12배(HS×월). 예: collect_customs('201501','202512','M')."""
+    월간은 콜 수 12배(HS×월). 예: collect_customs('201501','202512','M').
+    HS 단위 증분 적재(중단 시 손실 최소화). 첫 적재에서만 기존 테이블 전삭제(멱등)."""
     hs = hs_mapping.core_hs_list()
     table = "raw_customs_monthly" if freq == "M" else "raw_customs_annual"
     print(f"[collect] 관세청 HS {len(hs)}개, {strt}~{end}, freq={freq} → {table}")
-    df = customs_api.collect(hs, strt, end, freq=freq)
-    if not df.empty:
-        df = hs_mapping.attach_commodity(df)
-        db.upsert_df(df, table, del_where="1=1")
-    print(f"  적재 {len(df)} 행 → {table}")
-    return df
+    state = {"first": True, "n": 0}
+
+    def _sink(df_hs):
+        df_hs = hs_mapping.attach_commodity(df_hs)
+        db.upsert_df(df_hs, table, del_where="1=1" if state["first"] else None)
+        state["first"] = False
+        state["n"] += len(df_hs)
+
+    try:
+        customs_api.collect(hs, strt, end, freq=freq, sink=_sink)
+    except customs_api.QuotaExceeded as e:
+        print(f"  [중단] {e}  (그때까지 {state['n']}행은 {table}에 보존됨)")
+    print(f"  적재 {state['n']} 행 → {table}")
+    return state["n"]
 
 def collect_ecos():
     frames=[]
