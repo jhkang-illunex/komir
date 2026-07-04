@@ -69,16 +69,21 @@ def _parse_xml(text):
         })
     return rows
 
+CNT = 10000  # 1콜 최대 행수 상한. 이 값에 도달하면 절단 가능(API 페이지네이션 파라미터 미확인).
+
 def fetch_one(hs, strt_yymm, end_yymm, retries=3):
     params = {"serviceKey": _key(), "strtYymm": strt_yymm, "endYymm": end_yymm,
-              "hsSgn": hs, "cnt": "1000"}
+              "hsSgn": hs, "cnt": str(CNT)}
     for a in range(retries):
         try:
             r = requests.get(BASE, params=params, timeout=30)
             if r.status_code == 429:
                 raise QuotaExceeded("HTTP 429 Too Many Requests (일일/트래픽 한도)")
             r.raise_for_status()
-            return _parse_xml(r.text)        # 한도코드(22/23)면 QuotaExceeded 발생
+            rows = _parse_xml(r.text)         # 한도코드(22/23)면 QuotaExceeded 발생
+            if len(rows) >= CNT:              # 상한 도달 → 절단 의심
+                print(f"  [warn] hs={hs} {strt_yymm}~{end_yymm}: {len(rows)}행 = cnt상한({CNT}) 도달 → 절단 가능(창을 좁히세요)")
+            return rows
         except QuotaExceeded:
             raise                            # 재시도 무의미 → 즉시 전파
         except Exception as e:
@@ -124,9 +129,14 @@ def _clean_frame(rows, freq):
         pd.to_numeric(df.get("q_year"), errors="coerce"))
     df = df.dropna(subset=["year"])
     df["year"] = df["year"].astype(int)
-    if freq == "M":  # 월간 모드면 조회월로 채움(연간은 비움)
+    if freq == "M":  # 월간 모드면 조회월로 채움
         df["month"] = pd.to_numeric(df.get("q_month"), errors="coerce").astype("Int64")
-    return df.reset_index(drop=True)
+        return df.reset_index(drop=True)
+    # 연간 모드: 연 1년창이 (국가×월) 행을 반환하므로 (연도·HS·국가) 단위로 집계해
+    #            진짜 '연간' 1행이 되도록 함(월행 중복 방지).
+    keys = ["year", "hscode", "country", "hs_query", "q_year"]
+    agg = {c: "sum" for c in ["exp_usd", "exp_wgt", "imp_usd", "imp_wgt"]}
+    return df.groupby(keys, as_index=False).agg(agg)
 
 
 def collect(hs_list, strt_yymm, end_yymm, sleep=0.3, freq="A", sink=None):

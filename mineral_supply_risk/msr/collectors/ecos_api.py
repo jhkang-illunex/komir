@@ -38,6 +38,8 @@ def fetch_series(stat_code, cycle, start, end, item1="", item2="", item3="", n=1
     path = f"StatisticSearch/{ECOS_API_KEY}/json/kr/1/{n}/{stat_code}/{cycle}/{start}/{end}/{item1}/{item2}/{item3}/"
     j = _get(path)
     rows = j.get("StatisticSearch", {}).get("row", [])
+    if len(rows) >= n:   # 단일 페이지 상한 도달 → 절단 가능(페이지네이션 필요)
+        print(f"  [warn] ECOS {stat_code}: {len(rows)}행 = 상한(n={n}) 도달 → 절단 가능(기간/주기 축소 또는 페이지 처리 필요)")
     df = pd.DataFrame(rows)
     if not df.empty:
         df["DATA_VALUE"] = pd.to_numeric(df["DATA_VALUE"], errors="coerce")

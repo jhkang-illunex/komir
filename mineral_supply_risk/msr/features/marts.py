@@ -108,7 +108,8 @@ ASOF LEFT JOIN agg_trade_annual ta
 CREATE OR REPLACE TABLE mart_weekly_diagnosis AS
 SELECT m.*, pa.production_hhi,                              -- ⑤
        CAST(NULL AS DOUBLE) AS supply_shortage,            -- ④ 소비데이터 미보유
-       CAST(NULL AS DOUBLE) AS geopolitical_risk           -- ⑥ 발주처 제공예정
+       CAST(NULL AS DOUBLE) AS geopolitical_risk,          -- ⑥ 지정학 지수(발주처/geo 파이프라인 제공예정)
+       CAST(NULL AS DOUBLE) AS geo_macro                   -- ⑥ 거시 지정학(모델 FEATS 요구 컬럼; 미보유 시 NULL)
 FROM mart_weekly_diagnosis m
 ASOF LEFT JOIN agg_production_annual pa
   ON m.commodity_code=pa.commodity_code AND m.obs_date >= pa.avail_date;
