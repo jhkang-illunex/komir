@@ -19,9 +19,10 @@ def main(argv=None):
     pp.add_argument("--db", default=None)
     px = sub.add_parser("okf-export", help="[비파괴] 정본 → OKF(마크다운+프론트매터) 번들 방출")
     px.add_argument("--root", default=None, help="출력 루트(기본 $GEO_DATA/okf)")
-    pall = sub.add_parser("all", help="ingest→extract→index 연속 실행 (+선택 publish)")
+    pall = sub.add_parser("all", help="ingest→extract→index→OKF 연속 실행 (+선택 publish)")
     pall.add_argument("--provider", default=None)
     pall.add_argument("--publish-db", default=None)
+    pall.add_argument("--no-okf", action="store_true", help="OKF 번들 생성 생략")
     args = ap.parse_args(argv)
 
     if args.stage == "ingest":
@@ -38,8 +39,10 @@ def main(argv=None):
         from . import okf
         okf.export(None if not args.root else __import__("pathlib").Path(args.root))
     elif args.stage == "all":
-        from . import ingest, extract, index, publish
+        from . import ingest, extract, index, publish, okf
         ingest.run(); extract.run(provider_override=args.provider); index.run()
+        if not args.no_okf:
+            okf.export()                       # 지수 산출 직후 OKF 번들 자동 생성
         if args.publish_db:
             publish.run(args.publish_db)
     else:

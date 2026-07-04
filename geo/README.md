@@ -36,8 +36,12 @@ docker run --rm -v /host/geo_data:/data --env-file .env geo:0.1.0 index
 
 ## OKF(Open Knowledge Format) 익스포트 — 비파괴 파일럿
 ```bash
-python -m geo okf-export       # 정본(parquet) → geo_data/okf/ 마크다운+YAML 프론트매터 번들
+python -m geo all              # ingest→extract→index→OKF 자동 연동(파일 업로드 처리 전 과정)
+python -m geo okf-export       # (단독) 정본(parquet) → geo_data/okf/ 번들만 재생성
 ```
+> **파일 업로드 자동 연동**: `geo_data/inbox`에 pdf/hwp/xlsx를 넣고 `make geo`(=`geo all`)를 돌리면
+> ingest→extract→index→**OKF 번들 생성**까지 한 번에 이어진다. `make geo-publish`로 warehouse `geo_index`까지.
+> 업로드를 감시해 자동 실행: **`make geo-watch`**(inbox 폴링→감지 시 파이프라인+publish 자동 실행).
 - 정본(parquet/DuckDB)은 **그대로 두고**, 지식 계층만 Google Cloud OKF v0.1(마크다운+프론트매터, 개념ID=파일경로)로 방출.
 - 매핑: `metrics/geo-index`(지수 공식) · `sources/<발행처>/`(원문) · `events/<광종>/`(이벤트) · `issues/<광종>/`(월별 이슈) · `index/<광종>/`(지수 시계열).
 - `GeoEvent`(schema.py) 필드가 그대로 프론트매터, 근거인용→본문 `# Citations`. GitHub 렌더·git diff·에이전트 컨텍스트로 사용.
