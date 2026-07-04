@@ -1,7 +1,10 @@
 # 지수 공식 파라미터 ([3]의 심장 — 여기 값만 바꿔 재계산/튜닝)
 half_life_weeks: 4.0
 half_life_months: 3.0
-normalize: minmax0_100        # 확정: 광종별 0~100 (경보 4단계 연동)
+# tanh0_100: 절대 스케일 0~100(50=중립). 새 기간이 추가돼도 과거 지수가 재척도되지 않음(발행값 안정).
+#   (구 minmax0_100은 광종별 자기 히스토리 재척도 결함 — H1 — 으로 교체)
+normalize: tanh0_100
+scale_k: 10.0                 # '심각 수준' raw 크기(지수 ~88에 대응)
 direction_sign:
   supply_down: 1.0
   price_up: 1.0

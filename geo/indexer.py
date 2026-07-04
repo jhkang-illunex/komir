@@ -41,10 +41,16 @@ def _nearest_weight(df, com, country, yr, keycols, valcol, default=1.0):
     return float(q.iloc[0][valcol])
 
 
-def _normalize(series: pd.Series, how: str) -> pd.Series:
+def _normalize(series: pd.Series, how: str, scale_k: float = 10.0) -> pd.Series:
+    import numpy as np
+    if how == "tanh0_100":
+        # 절대 스케일 유계 변환: 과거 지수가 새 데이터로 재척도되지 않음(발행값 불변).
+        # raw=0(이벤트 없음)→50, 심각(raw≈scale_k)→~88, 강한 호재(raw<0)→<50.
+        return 50 + 50 * np.tanh(series.astype(float) / float(scale_k))
     if how == "zscore":
         sd = series.std(ddof=0)
         return (series - series.mean()) / sd if sd else series * 0
+    # (구) minmax: 자기 히스토리 재척도 결함 — 하위호환용으로만 유지
     lo, hi = series.min(), series.max()
     return (series - lo) / (hi - lo) * 100 if hi > lo else series * 0 + 50
 
@@ -88,7 +94,7 @@ def compute() -> pd.DataFrame:
             g = g.rename(columns={"date": "period"})
             g["commodity"] = c
             g["freq"] = flabel
-            g["index"] = _normalize(g["raw_score"], cfg.normalize)
+            g["index"] = _normalize(g["raw_score"], cfg.normalize, cfg.scale_k)
             out.append(g)
     res = pd.concat(out, ignore_index=True)
     res["period"] = pd.to_datetime(res["period"]).dt.strftime("%Y-%m-%d")

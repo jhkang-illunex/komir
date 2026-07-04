@@ -20,6 +20,7 @@ CONFIG = GEO_DATA / "config"
 MANIFEST = STORE / "manifest.parquet"
 EVENTS = STORE / "geo_events.parquet"
 INDEX = STORE / "geo_index.parquet"
+EXTRACT_LOG = STORE / "extract_log.parquet"   # 추출 시도 이력(0건 문서 재추출 방지)
 
 # 패키지 기본 config (볼륨에 없으면 이걸 사용)
 PKG_CONFIG = Path(__file__).resolve().parent / "config"

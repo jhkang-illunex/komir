@@ -29,7 +29,9 @@ def walk_forward(df, target, feats, group="commodity_code", tcol="date", split=N
 
 
 def _monthly_panel(db):
-    """광종·월 수입 합계. 정본 팩트(fact_trade_monthly)에서 읽음(단일 소스)."""
+    """광종·월 수입 합계. 정본 팩트(fact_trade_monthly)에서 읽음(단일 소스).
+    광종별 월간 그리드로 reindex(결측월=0) — 수입 없는 달이 행에서 빠지면
+    행 기반 lag가 달력과 어긋나므로(builders DR3와 동일 원리) 그리드를 보장한다."""
     con = duckdb.connect(db, read_only=True)
     df = con.execute("""
         SELECT commodity_code,
@@ -41,7 +43,18 @@ def _monthly_panel(db):
     """).df()
     con.close()
     df["date"] = pd.to_datetime(df["date"])
-    return df
+    if df.empty:
+        return df
+    end = df["date"].max()
+    frames = []
+    for c, g in df.groupby("commodity_code"):
+        grid = pd.date_range(g["date"].min(), end, freq="MS")
+        g = (g.set_index("date").reindex(grid)
+               .rename_axis("date").reset_index())
+        g["commodity_code"] = c
+        g[["volume", "value"]] = g[["volume", "value"]].fillna(0.0)  # 결측월=수입 0
+        frames.append(g)
+    return pd.concat(frames, ignore_index=True)[["commodity_code", "date", "volume", "value"]]
 
 
 def _build_feats(d):

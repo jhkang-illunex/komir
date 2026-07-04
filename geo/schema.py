@@ -56,7 +56,11 @@ class IndexConfig(BaseModel):
     """[3] 지수 공식 파라미터(index.yaml)."""
     half_life_weeks: float = 4.0
     half_life_months: float = 3.0
-    normalize: Literal["zscore", "minmax0_100"] = "minmax0_100"
+    # tanh0_100: index = 50 + 50·tanh(raw/scale_k). 절대 스케일(히스토리 불변·광종 간 비교 가능).
+    #   0=강한 호재, 50=중립(이벤트 없음), 100=심각. 새 기간이 와도 과거 지수가 재척도되지 않음.
+    # minmax0_100(구): 광종별 자기 히스토리 min-max — 매 실행 전체 재척도되는 결함으로 비권장.
+    normalize: Literal["tanh0_100", "zscore", "minmax0_100"] = "tanh0_100"
+    scale_k: float = 10.0            # tanh 스케일(대략 '심각 수준' raw 크기)
     direction_sign: dict = Field(default_factory=lambda: {
         "supply_down": 1.0, "price_up": 1.0, "supply_up": -0.5,
         "price_down": -0.5, "neutral": 0.2})

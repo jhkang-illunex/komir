@@ -124,14 +124,20 @@ def _clean_frame(rows, freq):
     df["hscode"] = df["hscode"].astype(str).str.strip()
     df = df[~df["country"].isin(["총계", "합계", "총 계", "Total", "World", "-", ""])]
     df = df[~df["hscode"].isin(["-", ""])]
-    # year: 응답 year가 숫자 아니면 조회연도(q_year)로 보정
+    if freq == "M":
+        # 월간 모드: 창이 정확히 1개월이므로 (q_year, q_month)가 유일한 신뢰 축.
+        # year를 API 응답에서 받으면 month(쿼리창)와 출처가 어긋나 존재하지 않는
+        # (yr,mon) 셀로 오적재될 수 있음 → 두 축 모두 쿼리창으로 통일.
+        df["year"] = pd.to_numeric(df.get("q_year"), errors="coerce")
+        df["month"] = pd.to_numeric(df.get("q_month"), errors="coerce").astype("Int64")
+        df = df.dropna(subset=["year"])
+        df["year"] = df["year"].astype(int)
+        return df.reset_index(drop=True)
+    # 연간 모드: 응답 year 우선, 숫자 아니면 조회연도(q_year)로 보정
     df["year"] = pd.to_numeric(df["year"], errors="coerce").fillna(
         pd.to_numeric(df.get("q_year"), errors="coerce"))
     df = df.dropna(subset=["year"])
     df["year"] = df["year"].astype(int)
-    if freq == "M":  # 월간 모드면 조회월로 채움
-        df["month"] = pd.to_numeric(df.get("q_month"), errors="coerce").astype("Int64")
-        return df.reset_index(drop=True)
     # 연간 모드: 연 1년창이 (국가×월) 행을 반환하므로 (연도·HS·국가) 단위로 집계해
     #            진짜 '연간' 1행이 되도록 함(월행 중복 방지).
     keys = ["year", "hscode", "country", "hs_query", "q_year"]
