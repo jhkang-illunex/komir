@@ -1,14 +1,26 @@
 # -*- coding: utf-8 -*-
 """
-핵심광물 프로젝트 - 보유 데이터 -> DuckDB 적재 스크립트
+핵심광물 프로젝트 - 보유(로컬 xlsx/csv) 데이터 -> DuckDB 적재 **독립 스크립트**.
+
+⚠️ 스키마 계층 주의:
+  - 이 로더는 **canonical 스키마 `data/raw/00_schema.sql`**(fact_trade·dim_commodity·
+    dim_series 등 정규화 테이블)에 적재한다. 모델 마트(features/marts.py)가 기대하는 스키마.
+  - 도커 수집 파이프라인(scripts.run)이 적용하는 `db/schema_core.sql`(raw_customs_*·
+    fact_trade_annual 계열)과는 **별개 스키마**다. 아직 두 계층이 통합돼 있지 않다.
+  - 파이프라인(scripts.run/compose)에 연결돼 있지 않은 standalone 도구. 로컬 원본 파일을
+    한 번에 canonical DuckDB로 적재할 때 수동 실행한다.
+
 사용법:
-    python load_to_duckdb.py --data-root "<데이터폴더>" --db "minerals.duckdb"
+    python -m msr.collectors.komis_files --data-root "<데이터폴더>" --db "minerals.duckdb"
 의존성: duckdb, pandas, openpyxl
-    pip install duckdb pandas openpyxl
 """
 import argparse, os, glob, re, datetime as dt
 import pandas as pd
 import duckdb
+
+# canonical 스키마 파일(프로젝트 data/raw/00_schema.sql) 절대경로
+_SCHEMA_DEFAULT = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "data", "raw", "00_schema.sql"))
 
 def _bulk(con, table, cols, rows, del_where=None):
     """멱등 일괄삽입: del_where로 기존행 삭제 후 DataFrame로 고속 INSERT"""
@@ -298,7 +310,7 @@ def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--data-root",required=True)
     ap.add_argument("--db",default="minerals.duckdb")
-    ap.add_argument("--schema",default=os.path.join(os.path.dirname(__file__),"00_schema.sql"))
+    ap.add_argument("--schema",default=_SCHEMA_DEFAULT)
     a=ap.parse_args()
     con=duckdb.connect(a.db)
     con.execute(open(a.schema,encoding="utf-8").read())

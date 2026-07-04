@@ -59,6 +59,12 @@ mineral_supply_risk/
 └─ data/{raw,interim,processed}/, outputs/
 ```
 
+> **스키마 계층 주의(미통합)**: 현재 두 스키마가 병존한다.
+> - `db/schema_core.sql` — 도커 수집 파이프라인(`scripts.run`/compose)이 적용. `raw_customs_*`·`fact_trade_annual` 계열.
+> - `data/raw/00_schema.sql` — canonical 정규화(`fact_trade`·`dim_commodity`·`dim_series`…). 모델 마트(`features/marts.py`)와 standalone 로더(`collectors/komis_files.py`)가 기대.
+>
+> `collectors/komis_files.py`(로컬 xlsx/csv 일괄적재)·`collectors/geo_pipeline.py`(**레거시**, 운영 geo는 `../geo` 패키지)는 파이프라인에 연결되지 않은 **독립 스크립트**다. 진단·경보 모델을 켜려면 `raw→fact` 정규화로 두 계층을 잇는 작업이 선행돼야 한다.
+
 ## 3. 사용
 ```bash
 # ECOS 통계코드 탐색(정확 코드 확인)

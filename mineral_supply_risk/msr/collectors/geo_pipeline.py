@@ -1,17 +1,26 @@
 # -*- coding: utf-8 -*-
 """
-지정학 리스크 추출 파이프라인 (보고서 -> doc_raw -> geo_event)
+지정학 리스크 추출 파이프라인 (보고서 -> doc_raw -> geo_event)  ⚠️ LEGACY
+
+⚠️ 이 모듈은 **레거시**다. 운영 지정학 파이프라인의 canonical 구현은 별도의
+   **`geo/` 패키지**(3계층 ingest→extract→index, provider 무관, parquet 스토어,
+   docker `geo:dev`)이며 통합 파이프라인이 그것을 사용한다(README 참조).
+   이 DuckDB(doc_raw/geo_event) 버전은 참고·대체용으로만 유지한다. 신규 작업은 `geo/`에서.
+
 단계:  ingest(수집) -> parse(섹션태깅) -> analyze(이벤트추출)
 사용:
-  python geo_pipeline.py --db minerals.duckdb --schema geo_schema.sql \
-      ingest  --folder "<폴더>" --source AsianMetal --commodity LI
-  python geo_pipeline.py --db minerals.duckdb parse
-  python geo_pipeline.py --db minerals.duckdb analyze            # 규칙기반 baseline
-  # LLM 사용 시: analyze 내부 extract_events에 llm_callable 주입 (하단 어댑터 참조)
+  python -m msr.collectors.geo_pipeline --db minerals.duckdb \
+      ingest --folder "<폴더>" --source AsianMetal --commodity LI
+  python -m msr.collectors.geo_pipeline --db minerals.duckdb parse
+  python -m msr.collectors.geo_pipeline --db minerals.duckdb analyze     # 규칙기반 baseline
 의존성: duckdb, pdfplumber  (HWP는 사전에 PDF로 변환)
 """
 import argparse, os, glob, re, hashlib, json, datetime as dt, uuid
 import duckdb
+
+# canonical geo 스키마 파일(프로젝트 data/raw/geo_schema.sql) 절대경로
+_SCHEMA_DEFAULT = os.path.normpath(
+    os.path.join(os.path.dirname(__file__), "..", "..", "data", "raw", "geo_schema.sql"))
 
 # ---------- 공통 유틸 ----------
 def file_hash(path):
@@ -165,7 +174,7 @@ def llm_extract(sections, commodity_hint, call_llm):
 
 
 # ---------- 운영용 LLM 호출자 (Anthropic 예시) ----------
-def make_anthropic_caller(model="claude-sonnet-4-6", api_key=None):
+def make_anthropic_caller(model="claude-sonnet-5", api_key=None):
     """ANTHROPIC_API_KEY 환경변수 또는 인자로 키 주입. call_llm(prompt)->JSON문자열 반환."""
     import os, json as _json
     try:
@@ -237,13 +246,13 @@ def analyze(con, call_llm=None):
 def main():
     ap=argparse.ArgumentParser()
     ap.add_argument("--db",default="minerals.duckdb")
-    ap.add_argument("--schema",default=os.path.join(os.path.dirname(__file__),"geo_schema.sql"))
+    ap.add_argument("--schema",default=_SCHEMA_DEFAULT)
     sub=ap.add_subparsers(dest="cmd",required=True)
     pi=sub.add_parser("ingest"); pi.add_argument("--folder",required=True)
     pi.add_argument("--source",required=True); pi.add_argument("--commodity",default=None)
     pi.add_argument("--exts",default="pdf")
     sub.add_parser("parse")
-    pa=sub.add_parser("analyze"); pa.add_argument("--llm",action="store_true"); pa.add_argument("--model",default="claude-sonnet-4-6")
+    pa=sub.add_parser("analyze"); pa.add_argument("--llm",action="store_true"); pa.add_argument("--model",default="claude-sonnet-5")
     a=ap.parse_args()
     con=duckdb.connect(a.db)
     con.execute(open(a.schema,encoding="utf-8").read())
