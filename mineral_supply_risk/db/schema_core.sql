@@ -95,6 +95,18 @@ CREATE TABLE IF NOT EXISTS geo_index (
   PRIMARY KEY (commodity_code, freq, period)
 );
 
+-- 지정학 이벤트 상세 (geo publish → 경보 오버라이드·사유 인용용)
+CREATE TABLE IF NOT EXISTS geo_event (
+  event_id VARCHAR(32) NOT NULL, doc_id VARCHAR(32),
+  commodity_code VARCHAR(8) NOT NULL, obs_date DATE,
+  country VARCHAR(80), event_type VARCHAR(160),
+  direction VARCHAR(16), target VARCHAR(16),
+  severity DECIMAL(6,3),              -- 0~3 (geo GeoEvent 스케일)
+  confidence DECIMAL(6,3), evidence_quote VARCHAR(600),
+  source VARCHAR(40), published_at TIMESTAMP,
+  PRIMARY KEY (event_id)
+);
+
 -- ---------- 모델 결과 / 산출물 6종 (계층4~5, DB화) ----------
 -- ① 진단·경보 4단계
 CREATE TABLE IF NOT EXISTS out_diagnosis_alert (

@@ -74,24 +74,113 @@ def compute_alerts(df, geo_sev=None):
         out.append(g)
     return pd.concat(out)
 
-if __name__=="__main__":
-    con=duckdb.connect(_DB_DEFAULT, read_only=True)
-    df=con.execute("""SELECT commodity_code,obs_date,teacher_supply_demand,volatility_12w,
-        import_hhi,geopolitical_risk FROM mart_weekly_diagnosis
+# ---- 경보 사유(자원안보특별법 붙임2 문안) ----
+_C2_PAT = ("strike", "shutdown", "disruption", "curtail", "closure", "force majeure",
+           "파업", "차질", "가동중단", "폐쇄", "봉쇄", "감산")
+
+
+def _geo_category(event_type: str) -> str:
+    """자유텍스트 event_type → 공식기준 카테고리(c1 정세/수출제한, c2 시설/수송 차질)."""
+    t = (event_type or "").lower()
+    return "c2" if any(k in t for k in _C2_PAT) else "c1"
+
+
+def _build_reasons(res: pd.DataFrame, geo_df: pd.DataFrame) -> pd.Series:
+    from .alert_reason import OFFICIAL
+    gmap = {}
+    if geo_df is not None and len(geo_df):
+        g = geo_df.dropna(subset=["obs_date"]).copy()
+        g["m"] = pd.to_datetime(g["obs_date"]).values.astype("datetime64[M]")
+        for r in g.sort_values("severity", ascending=False).itertuples():
+            gmap.setdefault((r.commodity_code, pd.Timestamp(r.m)), []).append(r)
+
+    def reason(r):
+        L = int(r.alert_level)
+        if L == 0:
+            return "정상 — 위기지수·변동성·지정학 트리거 모두 임계 이하."
+        o = OFFICIAL[L]
+        evs = gmap.get((r.commodity_code, pd.Timestamp(r.obs_date).replace(day=1)), [])
+        crit = []
+        if any(_geo_category(e.event_type) == "c1" and (e.severity or 0) >= 2 for e in evs): crit.append(o["c1"])
+        if any(_geo_category(e.event_type) == "c2" and (e.severity or 0) >= 2 for e in evs): crit.append(o["c2"])
+        crit.append(o["c3"])                    # 가격변동성/조달(위기지수 기반)은 항상 관련
+        drv = [f"수급위기지수 {r.crisis_index:.0f}/100"]
+        if isinstance(r.triggers, str) and r.triggers: drv.append(r.triggers)
+        base = f"[{r.commodity_code} · {o['name']}] {' / '.join(crit[:2])}. (산출근거: {', '.join(drv)})"
+        if evs:
+            e = evs[0]
+            q = str(e.evidence_quote or "")[:90]
+            base += f" 관련 이벤트: '{q}' ({e.country or '-'}, sev {float(e.severity):.1f}/3)"
+        return base[:2000]
+
+    return res.apply(reason, axis=1)
+
+
+def run(db=None, model_version="alert_rule_v1"):
+    """mart_weekly_diagnosis(위기지수) + geo_event(지정학) → 경보 4단계 + 사유
+    → out_diagnosis_alert 적재. 입력 부족 시 None(스킵)."""
+    db = db or _DB_DEFAULT
+    con = duckdb.connect(db, read_only=True)
+    try:
+        have = {c[0] for c in con.execute("DESCRIBE mart_weekly_diagnosis").fetchall()}
+    except Exception:
+        con.close(); print("[alert] mart_weekly_diagnosis 없음 → 스킵."); return None
+    need = {"commodity_code", "obs_date", "teacher_supply_demand", "volatility_12w", "import_hhi"}
+    if need - have:
+        con.close(); print(f"[alert] 마트 컬럼 부족({sorted(need - have)}) → 스킵."); return None
+    df = con.execute("""SELECT commodity_code,obs_date,teacher_supply_demand,volatility_12w,import_hhi
+        FROM mart_weekly_diagnosis
         WHERE obs_date>='2020-01-01' AND teacher_supply_demand IS NOT NULL""").df()
-    # 지정학 최대 severity: (commodity, month)기준을 주간에 매핑
-    gs=con.execute("""SELECT commodity_code, date_trunc('month',obs_date) m, max(severity) s
-        FROM geo_event WHERE commodity_code IS NOT NULL GROUP BY 1,2""").df()
+    try:
+        geo_df = con.execute("""SELECT commodity_code, obs_date, event_type, country,
+            severity, evidence_quote FROM geo_event WHERE commodity_code IS NOT NULL""").df()
+    except Exception:
+        geo_df = pd.DataFrame()
+        print("  [warn] geo_event 없음 — 지정학 오버라이드 없이 산출(geo-publish 먼저 권장)")
     con.close()
-    df["m"]=pd.to_datetime(df["obs_date"]).values.astype("datetime64[M]")
-    gsmap={(r.commodity_code, pd.Timestamp(r.m)):r.s for r in gs.itertuples()}
-    df["obs_date"]=pd.to_datetime(df["obs_date"])
-    sev={(cc,d):gsmap.get((cc, pd.Timestamp(d).replace(day=1))) for cc,d in zip(df.commodity_code,df.obs_date)}
-    res=compute_alerts(df, sev)
+    if df.empty:
+        print("[alert] 교사신호 없음 → 스킵."); return None
+
+    # 지정학 최대 severity: (commodity, month) → 주간 매핑.
+    # 스케일 정합: geo severity는 0~3, OV_GEO_SEV(0.85)는 0~1 기준 → /3 정규화(2.55/3 이상만 격상).
+    df["obs_date"] = pd.to_datetime(df["obs_date"])
+    sev = {}
+    if len(geo_df):
+        g = geo_df.dropna(subset=["obs_date"]).copy()
+        g["m"] = pd.to_datetime(g["obs_date"]).values.astype("datetime64[M]")
+        gs = g.groupby(["commodity_code", "m"])["severity"].max()
+        gsmap = {(cc, pd.Timestamp(m)): float(s) / 3.0 for (cc, m), s in gs.items()}
+        sev = {(cc, d): gsmap.get((cc, pd.Timestamp(d).replace(day=1)))
+               for cc, d in zip(df.commodity_code, df.obs_date)}
+
+    res = compute_alerts(df, sev)
+    res["reason"] = _build_reasons(res, geo_df)
     print("경보 분포(광종×단계):")
-    print(res.groupby(["commodity_code","alert_name"]).size().unstack(fill_value=0))
-    out_dir=os.path.join(str(_OUT),"alert"); os.makedirs(out_dir,exist_ok=True)
-    res[["commodity_code","obs_date","teacher_supply_demand","crisis_index","base_level",
-         "rule_level","alert_level","alert_name","triggers"]].to_csv(
-         os.path.join(out_dir,"alert_timeline.csv"),index=False)
-    print(f"\n저장: {out_dir}/alert_timeline.csv")
+    print(res.groupby(["commodity_code", "alert_name"]).size().unstack(fill_value=0).to_string())
+
+    # out_diagnosis_alert 계약으로 적재
+    from ..storage import db as store
+    out = pd.DataFrame({
+        "commodity_code": res["commodity_code"],
+        "obs_date": pd.to_datetime(res["obs_date"]).dt.date,
+        "risk_score": res["crisis_index"].round(4),
+        "risk_proba": None,
+        "alert_level": res["alert_name"],
+        "reason": res["reason"],
+        "model_version": model_version,
+        "generated_at": pd.Timestamp.now().floor("s"),
+    })
+    store.upsert_df(out, "out_diagnosis_alert", del_where="1=1")
+    # CSV 부산물(감사용)
+    out_dir = os.path.join(str(_OUT), "alert"); os.makedirs(out_dir, exist_ok=True)
+    res[["commodity_code", "obs_date", "teacher_supply_demand", "crisis_index", "base_level",
+         "rule_level", "alert_level", "alert_name", "triggers", "reason"]].to_csv(
+         os.path.join(out_dir, "alert_timeline.csv"), index=False)
+    latest = res.sort_values("obs_date").groupby("commodity_code").tail(1)
+    print(f"[alert] out_diagnosis_alert {len(out)}행 적재 · 최신 경보:",
+          {r.commodity_code: r.alert_name for r in latest.itertuples()})
+    return {"rows": len(out), "latest": {r.commodity_code: r.alert_name for r in latest.itertuples()}}
+
+
+if __name__=="__main__":
+    run()

@@ -33,20 +33,37 @@ def _write(df, table, target):
 
 
 def run(target=None):
-    from .store import _read
+    from .store import _read, load_events, load_manifest
     idx = _read(C.INDEX)
     if len(idx) == 0:
         print("[publish] geo_index 없음(먼저 index)"); return
     target = target or os.environ.get("GEO_PUBLISH_DB") or str(C.STORE / "geo_published.duckdb")
-    # 스키마 컬럼명으로 정규화 (geo_index 테이블 계약)
+    now = datetime.utcnow().isoformat(timespec="seconds")
+    # 1) 지수 (geo_index 계약)
     out = idx.rename(columns={"commodity": "commodity_code", "index": "idx_value"}).copy()
     out["index_config_version"] = os.environ.get("GEO_INDEX_VERSION", "v1")
-    out["generated_at"] = datetime.utcnow().isoformat(timespec="seconds")
+    out["generated_at"] = now
     out = out[["commodity_code", "freq", "period", "raw_score", "n_events",
                "idx_value", "index_config_version", "generated_at"]]
     _write(out, "geo_index", target)
     print(f"[publish] geo_index {len(out)}행 → {target} (테이블 geo_index)")
-    return len(out)
+    # 2) 이벤트 상세 (geo_event 계약) — 경보 모델의 오버라이드·사유 인용 입력
+    ev = load_events()
+    n_ev = 0
+    if len(ev):
+        man = load_manifest()
+        src = man.set_index("doc_id")["source"].to_dict() if len(man) else {}
+        e = ev.rename(columns={"commodity": "commodity_code"}).copy()
+        e["source"] = e["doc_id"].map(src).fillna("")
+        e["evidence_quote"] = e["evidence_quote"].astype(str).str.slice(0, 600)
+        e["published_at"] = now
+        e = e[["event_id", "doc_id", "commodity_code", "obs_date", "country", "event_type",
+               "direction", "target", "severity", "confidence", "evidence_quote",
+               "source", "published_at"]]
+        _write(e, "geo_event", target)
+        n_ev = len(e)
+        print(f"[publish] geo_event {n_ev}행 → {target} (테이블 geo_event)")
+    return len(out) + n_ev
 
 
 if __name__ == "__main__":

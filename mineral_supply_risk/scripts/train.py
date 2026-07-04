@@ -44,14 +44,22 @@ def train_forecast():
     print(f"  → mart_monthly_forecast_input={res['mart_rows']}행, out_import_forecast={res['forecast_rows']}행")
 
 
+def train_alert():
+    print("[train] 경보 4단계 — 위기지수(교사) + geo_event 오버라이드 → out_diagnosis_alert")
+    from msr.models import alert
+    alert.run(DB_PATH)
+
+
 def main():
     what = sys.argv[1] if len(sys.argv) > 1 else "all"
     print(f"[train] DB={DB_PATH} · target={what}")
     if what in ("diagnosis", "all"):
         train_diagnosis()
+    if what in ("alert", "all"):
+        train_alert()
     if what in ("forecast", "all"):
         train_forecast()
-    print("[train] 완료. forecast=out_import_forecast · diagnosis=fact_price/indicator 존재 시 자동 학습(없으면 스킵).")
+    print("[train] 완료. forecast=out_import_forecast · diagnosis/alert=fact_price/indicator(+geo_event) 존재 시 자동(없으면 스킵).")
 
 
 if __name__ == "__main__":

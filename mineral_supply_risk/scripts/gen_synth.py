@@ -19,7 +19,7 @@ COMS = {"CU": (8500, 0.02), "NI": (18000, 0.03), "LI": (15000, 0.05),
 
 def generate(seed=42):
     rng = np.random.default_rng(seed)
-    weeks = pd.date_range("2020-01-03", "2025-12-26", freq="W-FRI")
+    weeks = pd.date_range("2020-01-03", "2026-02-27", freq="W-FRI")  # geo_event(2026-01~02)와 겹치도록
     price_rows, weekly = [], {}
     for com, (base, wv) in COMS.items():
         shocks = rng.normal(0, wv, len(weeks))
