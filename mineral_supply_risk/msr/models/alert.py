@@ -8,9 +8,9 @@
   - 위기지수 = 100 - 수급동향지표(교사신호/모델예측)  → 높을수록 위기
   - 광종별 임계값 차등(과업: 희토류 편중도 단독 트리거 등)
 """
+import os
 import duckdb, numpy as np, pandas as pd
-import os as _os
-_DB_DEFAULT=_os.environ.get("MSR_DB", _os.path.join(_os.path.dirname(_os.path.abspath(__file__)),"..","..","data","processed","minerals.duckdb"))
+from ..config import DB_PATH as _DB_DEFAULT, OUT as _OUT
 
 LEVELS={0:"정상",1:"관심",2:"주의",3:"경계",4:"심각"}
 COLORS={0:"#9e9e9e",1:"#2f6fed",2:"#f5c518",3:"#f28c1c",4:"#d0342c"}
@@ -90,7 +90,8 @@ if __name__=="__main__":
     res=compute_alerts(df, sev)
     print("경보 분포(광종×단계):")
     print(res.groupby(["commodity_code","alert_name"]).size().unstack(fill_value=0))
+    out_dir=os.path.join(str(_OUT),"alert"); os.makedirs(out_dir,exist_ok=True)
     res[["commodity_code","obs_date","teacher_supply_demand","crisis_index","base_level",
          "rule_level","alert_level","alert_name","triggers"]].to_csv(
-         "/sessions/dreamy-modest-lamport/mnt/광해광업/claude_output/alert/alert_timeline.csv",index=False)
-    print("\n저장: alert_timeline.csv")
+         os.path.join(out_dir,"alert_timeline.csv"),index=False)
+    print(f"\n저장: {out_dir}/alert_timeline.csv")

@@ -24,9 +24,12 @@ def _has(table):
 
 
 def train_diagnosis():
-    print("[train] 주간 진단 ×5 — mart_weekly_diagnosis 필요:", _has("mart_weekly_diagnosis"))
-    # TODO: from msr.models.diagnosis import run; run(DB_PATH) → out_diagnosis_alert
-    print("  (훅) msr/models/diagnosis.py 구현 후 여기서 호출. 결과 → out_diagnosis_alert")
+    print("[train] 진단 — mart_weekly_diagnosis 학습(교사신호/데이터 부족 시 자동 스킵)")
+    from msr.models import diagnosis
+    res = diagnosis.run(DB_PATH)
+    if res:
+        print("  ", "; ".join(f"{r['model']}:R2={r['R2']}" for r in res["results"]))
+    # 현재 마트는 raw→fact 미통합으로 교사신호(teacher_supply_demand)가 없어 통상 스킵된다.
 
 
 def train_forecast():
@@ -46,7 +49,7 @@ def main():
         train_diagnosis()
     if what in ("forecast", "all"):
         train_forecast()
-    print("[train] 완료. forecast=실구현(out_import_forecast), diagnosis=스캐폴드(가격·지정학·교사신호 입력 확보 후 구현).")
+    print("[train] 완료. forecast=실구현(out_import_forecast), diagnosis=구현(canonical 마트 확보 시 자동 학습; 현재 스키마 불일치로 스킵).")
 
 
 if __name__ == "__main__":
