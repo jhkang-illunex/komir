@@ -54,7 +54,10 @@ def run(provider_override: str = None):
         for i, e in enumerate(events):
             e = dict(e)
             if not e.get("obs_date"):
-                e["obs_date"] = rec.get("pub_date")
+                # 폴백 사슬: 문서 발행일 → 수집일(ingested_at). 둘 다 없으면 지수에서
+                # 조용히 탈락하므로 마지막 보루로 수집일을 쓴다(M4).
+                ing = str(rec.get("ingested_at") or "")[:10]
+                e["obs_date"] = rec.get("pub_date") or (ing or None)
             # LLM이 범위 밖 수치를 내도 이벤트 전체를 버리지 않도록 clamp
             if e.get("severity") is not None:
                 try: e["severity"] = min(3.0, max(0.0, float(e["severity"])))

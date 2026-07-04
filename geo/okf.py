@@ -38,9 +38,13 @@ def _write(path, content):
 
 
 def export(root=None):
-    """정본 → OKF 번들. 반환: 문서 종류별 개수."""
+    """정본 → OKF 번들. 반환: 문서 종류별 개수.
+    재생성 전 기존 서브트리를 비워 stale 문서(삭제/재계산된 이벤트·이슈) 잔존 방지."""
+    import shutil
     root = root or (C.GEO_DATA / "okf")
     root.mkdir(parents=True, exist_ok=True)
+    for sub in ("metrics", "sources", "events", "issues", "index"):
+        shutil.rmtree(root / sub, ignore_errors=True)
     ev = store.load_events()
     idx = store._read(C.INDEX)
     man = store.load_manifest()

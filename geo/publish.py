@@ -17,7 +17,18 @@ def _write(df, table, target):
     else:                                      # DuckDB
         import duckdb
         con = duckdb.connect(target); con.register("_d", df)
-        con.execute(f'CREATE OR REPLACE TABLE "{table}" AS SELECT * FROM _d')
+        exists = con.execute(
+            "SELECT count(*) FROM information_schema.tables WHERE table_name=?", [table]).fetchone()[0]
+        if exists:
+            # DDL 보존: CREATE OR REPLACE는 스키마 정의(PK·타입)를 추론 스키마로 덮어쓰므로
+            # DELETE+INSERT(명시 컬럼, 단일 트랜잭션)로 계약 유지.
+            cols = ",".join(f'"{c}"' for c in df.columns)
+            con.execute("BEGIN")
+            con.execute(f'DELETE FROM "{table}"')
+            con.execute(f'INSERT INTO "{table}" ({cols}) SELECT {cols} FROM _d')
+            con.execute("COMMIT")
+        else:
+            con.execute(f'CREATE TABLE "{table}" AS SELECT * FROM _d')
         con.unregister("_d"); con.close()
 
 

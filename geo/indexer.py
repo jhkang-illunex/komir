@@ -69,6 +69,9 @@ def compute() -> pd.DataFrame:
 
     ev = ev.copy()
     ev["date"] = pd.to_datetime(ev["obs_date"], errors="coerce")
+    n_drop = int(ev["date"].isna().sum())
+    if n_drop:
+        print(f"  [warn] 날짜 미상 이벤트 {n_drop}건 지수에서 제외(obs_date/pub_date 없음)")
     ev = ev.dropna(subset=["date"])
     if len(ev) == 0:
         print("[index] 날짜 있는 이벤트 없음(obs_date/pub_date 확인)"); return pd.DataFrame()

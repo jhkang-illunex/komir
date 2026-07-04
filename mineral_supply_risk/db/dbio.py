@@ -48,6 +48,8 @@ def write_df(df, table: str, target: str, if_exists: str = "append", pk: list = 
     """df를 table에 적재. if_exists: append|replace. pk 지정 시 중복 제거(append 전)."""
     if df is None or len(df) == 0:
         return 0
+    if pk:  # 문서화된 계약 실구현: pk 기준 dedup(뒤 행 우선)
+        df = df.drop_duplicates(subset=pk, keep="last")
     if is_url(target):
         import sqlalchemy as sa
         eng = sa.create_engine(target)

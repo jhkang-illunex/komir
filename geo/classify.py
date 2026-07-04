@@ -37,15 +37,29 @@ def commodity_of(path: str, text: str = "") -> str | None:
 
 _D1 = re.compile(r"(20\d{2})[._-]?(0[1-9]|1[0-2])[._-]?(0[1-9]|[12]\d|3[01])")
 _D2 = re.compile(r"(20\d{2})[._-](0[1-9]|1[0-2])")
-_D3 = re.compile(r"(\d{2})(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])")  # yymmdd
+# yymmdd: 앞뒤 숫자 경계 필수(6자리 문서번호 오인 방지)
+_D3 = re.compile(r"(?<!\d)(\d{2})(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])(?!\d)")
 _MON = {m: i for i, m in enumerate(
     ["jan","feb","mar","apr","may","jun","jul","aug","sep","oct","nov","dec"], 1)}
 
+
+def _valid(y, mo, d) -> str | None:
+    """달력 검증(2/30 같은 불가능 날짜 배제) 후 ISO 문자열."""
+    import datetime as _dt
+    try:
+        return _dt.date(int(y), int(mo), int(d)).isoformat()
+    except ValueError:
+        return None
+
+
 def date_of(name: str) -> str | None:
-    m = _D1.search(name)
-    if m: return f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
-    m = re.search(r"([A-Za-z]{3})[a-z]*[-_ ](20\d{2})", name)
-    if m and m.group(1).lower() in _MON: return f"{m.group(2)}-{_MON[m.group(1).lower()]:02d}-01"
+    for m in _D1.finditer(name):                     # 달력 유효한 첫 후보 채택
+        v = _valid(m.group(1), m.group(2), m.group(3))
+        if v: return v
+    # 월이름: 모든 후보 순회(앞선 비-월 3글자 토큰에 가로막히지 않게 finditer)
+    for m in re.finditer(r"([A-Za-z]{3})[a-z]*[-_ ](20\d{2})", name):
+        mon = _MON.get(m.group(1).lower())
+        if mon: return f"{m.group(2)}-{mon:02d}-01"
     m = _D2.search(name)
     if m: return f"{m.group(1)}-{m.group(2)}-01"
     # 구분자 없는 YYYYMM (예: _202403)
@@ -57,6 +71,7 @@ def date_of(name: str) -> str | None:
         g = m.groups()
         q, y = (g[0], g[1]) if g[0].isdigit() and len(g[0]) == 1 else (g[1], g[0])
         return f"{y}-{(int(q)-1)*3+1:02d}-01"
-    m = _D3.search(name)
-    if m: return f"20{m.group(1)}-{m.group(2)}-{m.group(3)}"
+    for m in _D3.finditer(name):
+        v = _valid("20" + m.group(1), m.group(2), m.group(3))
+        if v: return v
     return None

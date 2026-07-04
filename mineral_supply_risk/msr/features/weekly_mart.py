@@ -29,10 +29,12 @@ vol AS (
   FROM wk
 ),
 spread AS (
+  -- ASOF: 실제 LME는 CASH/3M 관측일이 어긋나는 경우가 흔함 → 정확일치 대신
+  -- 각 CASH 관측 이전의 가장 최근 3M 값과 매칭(동일 일자면 그 값).
   SELECT c.commodity_code, c.obs_date, (c.val - m.val)/NULLIF(m.val,0)*100 AS spread_pct
   FROM (SELECT commodity_code,obs_date,val FROM fact_price WHERE price_type='LME_CASH' AND freq='W') c
-  LEFT JOIN (SELECT commodity_code,obs_date,val FROM fact_price WHERE price_type='LME_3M' AND freq='W') m
-    USING(commodity_code, obs_date)
+  ASOF LEFT JOIN (SELECT commodity_code,obs_date,val FROM fact_price WHERE price_type='LME_3M' AND freq='W') m
+    ON c.commodity_code = m.commodity_code AND c.obs_date >= m.obs_date
 ),
 teacher AS (
   SELECT commodity_code, obs_date, val FROM fact_indicator WHERE indicator='SUPPLY_DEMAND'

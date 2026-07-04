@@ -9,22 +9,39 @@
 import duckdb
 from ..config import DB_PATH
 
-_MONTHLY_SQL = """
-INSERT INTO fact_trade_monthly (yr,mon,hs10,commodity_code,country,imp_usd,imp_wgt,exp_usd,exp_wgt,src,loaded_at)
-SELECT year, month, hscode, any_value(commodity_code), country,
-       SUM(imp_usd), SUM(imp_wgt), SUM(exp_usd), SUM(exp_wgt), 'CUSTOMS', now()
+# 스테이지(temp) → src 리프레시 삭제 + PK 그레인 삭제(타 src와의 PK 충돌 방지) → INSERT
+_MONTHLY_STAGE = """
+CREATE OR REPLACE TEMP TABLE _stg_m AS
+SELECT year AS yr, month AS mon, hscode AS hs10, any_value(commodity_code) AS commodity_code,
+       country, SUM(imp_usd) AS imp_usd, SUM(imp_wgt) AS imp_wgt,
+       SUM(exp_usd) AS exp_usd, SUM(exp_wgt) AS exp_wgt, 'CUSTOMS' AS src, now() AS loaded_at
 FROM raw_customs_monthly
 WHERE month IS NOT NULL AND hscode IS NOT NULL AND country IS NOT NULL
 GROUP BY year, month, hscode, country
 """
+_MONTHLY_MERGE = """
+DELETE FROM fact_trade_monthly WHERE src='CUSTOMS';
+DELETE FROM fact_trade_monthly t
+ WHERE EXISTS (SELECT 1 FROM _stg_m s
+               WHERE s.yr=t.yr AND s.mon=t.mon AND s.hs10=t.hs10 AND s.country=t.country);
+INSERT INTO fact_trade_monthly SELECT * FROM _stg_m;
+"""
 
-_ANNUAL_SQL = """
-INSERT INTO fact_trade_annual (yr,hs10,commodity_code,country,imp_usd,imp_wgt,exp_usd,exp_wgt,src,loaded_at)
-SELECT year, hscode, any_value(commodity_code), country,
-       SUM(imp_usd), SUM(imp_wgt), SUM(exp_usd), SUM(exp_wgt), 'CUSTOMS', now()
+_ANNUAL_STAGE = """
+CREATE OR REPLACE TEMP TABLE _stg_a AS
+SELECT year AS yr, hscode AS hs10, any_value(commodity_code) AS commodity_code,
+       country, SUM(imp_usd) AS imp_usd, SUM(imp_wgt) AS imp_wgt,
+       SUM(exp_usd) AS exp_usd, SUM(exp_wgt) AS exp_wgt, 'CUSTOMS' AS src, now() AS loaded_at
 FROM raw_customs_annual
 WHERE hscode IS NOT NULL AND country IS NOT NULL
 GROUP BY year, hscode, country
+"""
+_ANNUAL_MERGE = """
+DELETE FROM fact_trade_annual WHERE src='CUSTOMS';
+DELETE FROM fact_trade_annual t
+ WHERE EXISTS (SELECT 1 FROM _stg_a s
+               WHERE s.yr=t.yr AND s.hs10=t.hs10 AND s.country=t.country);
+INSERT INTO fact_trade_annual SELECT * FROM _stg_a;
 """
 
 _AGG_TRADE_ANNUAL_SQL = """
@@ -56,14 +73,16 @@ def run(db=None):
     db = db or DB_PATH
     con = duckdb.connect(db)
     try:
+        con.execute(_MONTHLY_STAGE)
+        con.execute(_ANNUAL_STAGE)
         con.execute("BEGIN")
-        con.execute("DELETE FROM fact_trade_monthly WHERE src='CUSTOMS'")
-        con.execute(_MONTHLY_SQL)
-        con.execute("DELETE FROM fact_trade_annual WHERE src='CUSTOMS'")
-        con.execute(_ANNUAL_SQL)
+        con.execute(_MONTHLY_MERGE)
+        con.execute(_ANNUAL_MERGE)
         con.execute("COMMIT")
     except Exception:
-        con.execute("ROLLBACK"); con.close(); raise
+        try: con.execute("ROLLBACK")
+        except Exception: pass
+        con.close(); raise
     con.execute(_AGG_TRADE_ANNUAL_SQL)   # 팩트 기반 재생성(멱등)
     n = {t: con.execute(f"SELECT count(*) FROM {t}").fetchone()[0]
          for t in ("fact_trade_monthly", "fact_trade_annual", "agg_trade_annual")}
