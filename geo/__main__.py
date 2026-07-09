@@ -30,6 +30,7 @@ def main(argv=None):
     pe.add_argument("--provider", default=None, help="rule|mock|openai_compat|anthropic")
     pi = sub.add_parser("index", help="[3] 지수 산출")
     pi.add_argument("--backtest", action="store_true")
+    sub.add_parser("prob", help="[3-부속] 지수 확률화 — NB2 강도모델(다음주 심각이벤트 발생확률)")
     pr = sub.add_parser("refdata", help="USGS 공급집중 HHI 수집(오픈망)")
     pr.add_argument("--from", dest="y_from", type=int, default=2016)
     pr.add_argument("--to", dest="y_to", type=int, default=2026)
@@ -62,6 +63,8 @@ def main(argv=None):
         from . import extract; extract.run(provider_override=args.provider)
     elif args.stage == "index":
         from . import index; index.run(backtest=args.backtest)
+    elif args.stage == "prob":
+        from . import prob_model; prob_model.run()
     elif args.stage == "refdata":
         from . import refdata; refdata.run(args.y_from, args.y_to)
     elif args.stage == "publish":

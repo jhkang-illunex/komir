@@ -110,6 +110,23 @@ def run(provider_override: str = None):
                 # 조용히 탈락하므로 마지막 보루로 수집일을 쓴다(M4).
                 ing = str(rec.get("ingested_at") or "")[:10]
                 e["obs_date"] = rec.get("pub_date") or (ing or None)
+            # 미래 obs_date 교정(실측 2026-07-09): LLM이 전망 문장("2028년부터 생산 확대")의
+            # 미래 시점을 사건 관측일로 뽑는 사례 확인 — 관측일은 문서 발행일로 되돌리고
+            # 시점 정보는 horizon_months(전망 지평)로 옮긴다. 미래 이벤트가 지수/확률모델의
+            # 미래 주차를 오염시키는 것 방지.
+            pub = rec.get("pub_date")
+            if e.get("obs_date") and pub and str(e["obs_date"]) > str(pub):
+                try:
+                    import datetime as _dt
+                    d_obs = _dt.date.fromisoformat(str(e["obs_date"])[:10])
+                    d_pub = _dt.date.fromisoformat(str(pub)[:10])
+                    gap_m = (d_obs.year - d_pub.year) * 12 + (d_obs.month - d_pub.month)
+                    if gap_m > 1:                     # 1개월 초과 미래 = 전망으로 간주
+                        if not e.get("horizon_months"):
+                            e["horizon_months"] = gap_m
+                        e["obs_date"] = pub
+                except ValueError:
+                    pass
             # LLM이 범위 밖 수치를 내도 이벤트 전체를 버리지 않도록 clamp
             if e.get("severity") is not None:
                 try: e["severity"] = min(3.0, max(0.0, float(e["severity"])))

@@ -97,6 +97,12 @@ def compute() -> pd.DataFrame:
     if n_drop:
         print(f"  [warn] 날짜 미상 이벤트 {n_drop}건 지수에서 제외(obs_date/pub_date 없음)")
     ev = ev.dropna(subset=["date"])
+    # 미래 날짜 이벤트 방어(실측 2026-07-09): LLM이 전망 시점을 obs_date로 뽑은 잔존분이
+    # 미래 주차 지수를 만들어내는 것 방지(extract.py에서 근본 교정, 여기는 최후 방어선).
+    n_fut = int((ev["date"] > pd.Timestamp.now()).sum())
+    if n_fut:
+        print(f"  [index] 미래 obs_date 이벤트 {n_fut}건 지수에서 제외")
+        ev = ev[ev["date"] <= pd.Timestamp.now()]
     if len(ev) == 0:
         print("[index] 날짜 있는 이벤트 없음(obs_date/pub_date 확인)"); return pd.DataFrame()
 

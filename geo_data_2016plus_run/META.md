@@ -3,6 +3,6 @@
 - 파이프라인: ingest(opendataloader 배치 → pypdf 폴백 → easyocr 캐시) → extract(vLLM gemma, 동시 8)
 - 결과: archived 2,796 / 이벤트 6,510건 / PDF 텍스트확보 100%(odl 97.9%+pypdf 2.1%+ocr 2건)
 - 주요 파일: store/manifest.parquet(전체 상태·pub_date_method), store/geo_events.parquet,
-  store/pdf_extract_method.parquet(방법별 로그), store/geo_index.parquet(2,087행),
+  store/pdf_extract_method.parquet(방법별 로그), store/geo_index.parquet(2,076행 — 미래날짜 7건 교정 후), store/geo_prob.parquet(NB2 확률모델 산출),
   _ocr_cache/(OCR 결과, 파일해시 키), run.log~run4.log(실행·버그수정 과정 전체)
 - 상세: 데이터수집현황 §9~§11, WORKLOG 2026-07-07~08
