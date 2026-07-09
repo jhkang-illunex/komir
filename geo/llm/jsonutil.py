@@ -53,6 +53,17 @@ def as_event_list(parsed):
         for k in ("events", "results", "data", "items"):
             if isinstance(parsed.get(k), list):
                 return parsed[k]
+        # 이중 인코딩 방어(실측 2026-07-07): 로컬 vLLM(gemma) json_object 강제모드에서
+        # {"type":"text","text":"[{...}, ...]"}처럼 실제 배열이 문자열 값 안에 한 번 더
+        # JSON으로 인코딩되어 오는 경우 확인. 이걸 못 풀면 이벤트 전체가 유실되고
+        # [parsed](쓰레기 단일 이벤트)로 빠져 commodity_hint만 채워진 빈 이벤트가 저장됨.
+        for v in parsed.values():
+            if isinstance(v, str):
+                inner = repair_json(v)
+                if inner is not None:
+                    result = as_event_list(inner)
+                    if result:
+                        return result
         return [parsed]
     if isinstance(parsed, list):
         return parsed

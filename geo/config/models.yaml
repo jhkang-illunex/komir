@@ -1,8 +1,11 @@
 # LLM provider 설정. env(LLM_*)가 우선. provider: rule|mock|openai_compat|anthropic
+# 2026-07-07: 사내 vLLM(gemma-4-26b-a4b)으로 전환 — 룰기반 vs LLM 실측 비교 결과 recall/방향성
+# 판별 모두 LLM이 우월함을 확인(데이터수집현황 문서 §8). 로컬망 밖에서 돌릴 땐 env로 재정의:
+#   LLM_PROVIDER=rule  (키/서버 없을 때 즉시 폴백)
 extractor:
-  provider: rule            # 키 없이 기본 동작(폴백). 실제는 env로 openai_compat/anthropic
-  base_url: http://host.docker.internal:11434/v1   # Ollama/vLLM 예시
-  model: qwen2.5:32b
+  provider: openai_compat
+  base_url: http://localhost:52302/v1   # 사내 vLLM(gemma-4-26b-a4b). 도커에서는 host.docker.internal로.
+  model: gemma-4-26b-a4b
   api_key_env: LLM_API_KEY
   temperature: 0
   concurrency: 8

@@ -21,6 +21,7 @@ class ManifestRecord(BaseModel):
     source: str                      # 발행처 (WoodMac/KOMIS/AsianMetal/Argus/IEA/ETC)
     category: str = "기타"
     pub_date: Optional[str] = None   # YYYY-MM-DD
+    pub_date_method: str = "filename"  # filename/pdf_metadata/content/source_default/unresolved
     commodity_hint: Optional[str] = None
     fmt: str = ""                    # pdf/hwp/xlsx
     n_chars: int = 0

@@ -6,7 +6,10 @@ reliability:
   AsianMetal: 1.1
   KOMIS: 1.0
   PPS: 0.9
+  EU_SCRREEN: 1.1   # EU 정책보고서 스냅샷(2020) — 구조적 배경자료, 시의성 낮아 IEA/WoodMac보다 소폭 낮게
+  GDELT: 0.7        # 구조화 이벤트DB이나 뉴스취합이라 큐레이션된 업계보고서보다 낮게
   ETC: 0.7
+  GoogleNews: 0.6   # 미검증 뉴스취합(중복 보도 다수) — 신뢰도 최하단
 
 supply_concentration:      # "광종:국가": 가중 (공급집중 높을수록 ↑)
   NI:Indonesia: 1.6

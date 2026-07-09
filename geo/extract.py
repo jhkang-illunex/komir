@@ -1,12 +1,23 @@
 # -*- coding: utf-8 -*-
-"""[2] 이벤트 추출 엔트리: manifest 미추출 문서 → provider 추출 → geo_events."""
+"""[2] 이벤트 추출 엔트리: manifest 미추출 문서 → provider 추출 → geo_events.
+LLM 호출은 I/O 바운드라 ThreadPoolExecutor로 동시 실행(cfg['concurrency'], 기본 8) —
+룰기반은 원래도 빨라 동시성 이득이 없으므로 provider=='rule'|'mock'일 때는 순차 실행 유지."""
 import hashlib
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from . import config as C, store
 from .schema import GeoEvent
 from . import SCHEMA_VERSION
 from .extract_lib import is_relevant, passages
 from .llm.base import get_extractor, PROMPT_VERSION
+
+
+def _extract_with_retry(ex, psg, hint):
+    """LLM 경로에서 간헐적 빈 응답 관측(2026-07-07, vLLM 연속배치 추정) — 1회 재시도."""
+    events = ex.extract(psg, hint)
+    if not events and ex.provider not in ("rule", "mock"):
+        events = ex.extract(psg, hint)
+    return events
 
 
 def _read_text(rec) -> str:
@@ -28,7 +39,8 @@ def run(provider_override: str = None):
     if provider_override:
         cfg["provider"] = provider_override
     ex = get_extractor(cfg)
-    print(f"[extract] provider={ex.provider} model={getattr(ex,'model','')}")
+    concurrency = max(1, int(cfg.get("concurrency", 8) or 8))
+    print(f"[extract] provider={ex.provider} model={getattr(ex,'model','')} concurrency={concurrency}")
 
     man = store.load_manifest()
     if len(man) == 0:
@@ -38,21 +50,61 @@ def run(provider_override: str = None):
     todo = man[~man["doc_id"].isin(done)]
     print(f"[extract] 대상 {len(todo)}건 (기추출 {len(done)})")
 
-    recs = []; n_rel = 0; done_log = []
+    # 1단계: 관련도 필터 + 발췌(경량, 순차) — LLM 호출 전 후보 확정
+    candidates = []   # (rec, passages_text)
+    done_log = []
     for _, rec in todo.iterrows():
         text = _read_text(rec)
         if not is_relevant(text):
             done_log.append((rec["doc_id"], 0))     # 비관련도 '시도 완료'로 기록(재스캔 방지)
             continue
+        candidates.append((rec, passages(text)))
+    print(f"[extract] 관련문서 {len(candidates)}건 → 추출 시작")
+
+    # 2단계: 추출(룰기반은 순차, LLM은 동시 요청)
+    extracted = []   # (rec, events|None, error|None)
+    use_pool = concurrency > 1 and ex.provider not in ("rule", "mock")
+    if use_pool:
+        with ThreadPoolExecutor(max_workers=concurrency) as pool:
+            futs = {pool.submit(_extract_with_retry, ex, psg, rec.get("commodity_hint")): rec
+                    for rec, psg in candidates}
+            n_done = 0
+            for fut in as_completed(futs):
+                rec = futs[fut]
+                try:
+                    events = fut.result()
+                except Exception as e:
+                    print(f"  [warn] {rec.get('orig_name','?')}: {e}")
+                    events = None
+                extracted.append((rec, events))
+                n_done += 1
+                if n_done % 50 == 0:
+                    print(f"  ... {n_done}/{len(candidates)}건")
+    else:
+        for rec, psg in candidates:
+            try:
+                events = _extract_with_retry(ex, psg, rec.get("commodity_hint"))
+            except Exception as e:
+                print(f"  [warn] {rec.get('orig_name','?')}: {e}")
+                events = None
+            extracted.append((rec, events))
+
+    # 3단계: 후처리(이벤트ID·검증·clamp) — 순차, 부작용 없음
+    recs = []; n_rel = 0
+    for rec, events in extracted:
+        if events is None:
+            continue   # 호출 실패(예외) — done_log에 안 남겨 다음 실행에서 재시도
         n_rel += 1
-        psg = passages(text)
-        try:
-            events = ex.extract(psg, rec.get("commodity_hint"))
-        except Exception as e:
-            print(f"  [warn] {rec.get('orig_name','?')}: {e}"); continue   # 실패는 미기록 → 다음 실행 재시도
         n_doc = 0
         for i, e in enumerate(events):
             e = dict(e)
+            # LLM이 준 obs_date도 검증(실측 2026-07-08: 연도 미상 시 "202X-09-01" 같은
+            # placeholder를 그대로 출력하는 사례 확인 — DB DATE 캐스팅에서 터짐).
+            # 형식·달력 불량이면 버리고 폴백 사슬을 태운다.
+            if e.get("obs_date"):
+                from .classify import _valid
+                parts = str(e["obs_date"])[:10].split("-")
+                e["obs_date"] = _valid(*parts) if len(parts) == 3 else None
             if not e.get("obs_date"):
                 # 폴백 사슬: 문서 발행일 → 수집일(ingested_at). 둘 다 없으면 지수에서
                 # 조용히 탈락하므로 마지막 보루로 수집일을 쓴다(M4).
