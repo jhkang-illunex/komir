@@ -7,6 +7,24 @@ import argparse, sys
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="geo", description="지정학 위기 지수 파이프라인")
     sub = ap.add_subparsers(dest="stage", required=True)
+    pcn = sub.add_parser("collect-news", help="[0] Google News RSS 수집 → inbox 투척(komis 이식)")
+    pcn.add_argument("--minerals", default=None, help="쉼표구분 CU,NI,CO,LI,REE(기본 전체)")
+    pcn.add_argument("--days", type=int, default=90)
+    pcg = sub.add_parser("collect-gdelt", help="[0] GDELT DOC API 수집 → inbox 투척(komis 이식)")
+    pcg.add_argument("--minerals", default=None, help="쉼표구분 CU,NI,CO,LI,REE(기본 전체)")
+    pcg.add_argument("--days", type=int, default=90)
+    pgp = sub.add_parser("gkg-parse", help="[0] GKG 벌크(gkg_bulk_download.py 산출) → geo_event 파싱·적재")
+    pgp.add_argument("--bulk-root", required=True, help="gkg_bulk_download.py --dest와 동일 경로")
+    pgp.add_argument("--year-from", type=int, default=2016)
+    pgp.add_argument("--year-to", type=int, default=None)
+    pgp.add_argument("--worker", type=int, default=0)
+    pgp.add_argument("--workers", type=int, default=1)
+    pgv = sub.add_parser("gkg-verify", help="[0] GKG 규칙기반 후보를 실제 LLM으로 재검증")
+    pgv.add_argument("--bulk-root", required=True)
+    pgv.add_argument("--provider", default=None, help="openai_compat|anthropic (rule/mock 불가)")
+    pgv.add_argument("--limit", type=int, default=500)
+    pgv.add_argument("--min-severity", type=float, default=0.0)
+    pgv.add_argument("--event-types", default=None, help="쉼표구분, 예: 정책,분쟁,제재")
     sub.add_parser("ingest", help="[1] inbox→archive 정리")
     pe = sub.add_parser("extract", help="[2] 이벤트 추출")
     pe.add_argument("--provider", default=None, help="rule|mock|openai_compat|anthropic")
@@ -25,7 +43,20 @@ def main(argv=None):
     pall.add_argument("--no-okf", action="store_true", help="OKF 번들 생성 생략")
     args = ap.parse_args(argv)
 
-    if args.stage == "ingest":
+    if args.stage == "collect-news":
+        from .collectors import gnews
+        gnews.run(args.minerals.split(",") if args.minerals else None, args.days)
+    elif args.stage == "collect-gdelt":
+        from .collectors import gdelt
+        gdelt.run(args.minerals.split(",") if args.minerals else None, args.days)
+    elif args.stage == "gkg-parse":
+        from . import gkg_parse
+        print(gkg_parse.run(args.bulk_root, args.year_from, args.year_to, args.worker, args.workers))
+    elif args.stage == "gkg-verify":
+        from . import gkg_verify
+        et = tuple(args.event_types.split(",")) if args.event_types else ()
+        print(gkg_verify.run(args.bulk_root, args.provider, args.limit, args.min_severity, et))
+    elif args.stage == "ingest":
         from . import ingest; ingest.run()
     elif args.stage == "extract":
         from . import extract; extract.run(provider_override=args.provider)

@@ -10,12 +10,36 @@ export GEO_DATA=./geo_data           # 상태 저장 루트(볼륨)
 mkdir -p $GEO_DATA/inbox             # 여기에 pdf/hwp/xlsx 투척
 
 python -m geo refdata --from 2016 --to 2026   # (선택) USGS 공급집중 HHI 자동수집(오픈망 필요)
+
+# (선택) [0] 자동 수집 → inbox 투척 (komis 이식, API키 불필요)
+python -m geo collect-news  --days 90         # Google News RSS
+python -m geo collect-gdelt --days 90         # GDELT DOC API(주 단위, rate-limit 15초/req)
+
 python -m geo ingest                 # [1] inbox→archive + manifest
 python -m geo extract --provider rule   # [2] 이벤트 추출(키 없이 rule/mock)
-python -m geo index                  # [3] 지수 + wiki 생성
+python -m geo index                  # [3] 지수 + wiki 생성 (freq=W/M 둘 다 산출)
 ```
 - 실제 LLM: `export LLM_PROVIDER=openai_compat LLM_BASE_URL=... LLM_MODEL=... LLM_API_KEY=...` 후 `python -m geo extract`
 - 키 없이 파이프라인 점검: `python -m geo extract --provider mock`
+
+### GKG 벌크(2016~) — 역사적 지수 구축 전용 경로
+`collect-gdelt`(DOC API)는 실측상 2016년 근처 결과가 희박해(과거 지원이 약함) 역사적 백필용으로는
+GDELT GKG 2.0 벌크 원본(2015-02~, 15분 단위)을 쓴다. `[1]ingest`를 거치지 않고 별도 3단계로 처리:
+```bash
+# (사전) 벌크 다운로드 — 별도 경로(대용량, NAS 등 권장). 5워커 연도단위 배정, 재개가능.
+python -m geo.collectors.gkg_bulk_download --worker 0 --workers 5 --dest /path/to/bulk/gdelt &
+...(worker 1~4 반복)
+
+python -m geo gkg-parse  --bulk-root /path/to/bulk/gdelt --year-from 2016   # 규칙기반 후보 추출
+python -m geo gkg-verify --bulk-root /path/to/bulk/gdelt --limit 500        # 실제 LLM 재검증(선택)
+python -m geo index                                                        # 위와 동일하게 지수 반영
+```
+- `gkg-parse`: `WB_2934_COPPER`/`WB_2935_NICKEL` 전용 테마코드(오프셋 근접성 검증) + 코발트·리튬·
+  희토류(Nd 우선)는 키워드+2차 신호어 동반출현 게이트. `extractor="rule", provider="gkg"`로 저장.
+- `gkg-verify`: GKG는 본문이 없어 규칙만으로는 정밀도 한계가 있음(실측: REE 표본 오탐률 100%) —
+  후보를 URL·국가·1차판정으로 구성한 passage로 실제 LLM에 재확인시켜, 확정되면 `extractor="llm"`로
+  교체하고 기각되면 store에서 제거한다. `LLM_PROVIDER=openai_compat`(Ollama 등) 또는 `anthropic` 필요
+  (rule/mock 지정 시 재검증 의미 없어 실행 거부).
 
 ## Docker
 ```bash

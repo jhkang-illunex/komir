@@ -3,6 +3,7 @@ pyarrow>=15
 pydantic>=2.5
 pyyaml>=6
 requests>=2.31
+feedparser>=6.0     # collectors/gnews.py (komis 이식)
 pypdf>=4.0
 olefile>=0.47
 duckdb>=1.0
