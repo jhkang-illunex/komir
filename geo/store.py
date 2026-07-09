@@ -37,7 +37,23 @@ def upsert_manifest(records: list[dict]):
 
 
 def load_events() -> pd.DataFrame:
-    return _read(C.EVENTS)
+    main = _read(C.EVENTS)
+    d = C.STORE / "events_shards"
+    shard_files = list(d.glob("*.parquet")) if d.exists() else []
+    if not shard_files:
+        return main
+    parts = [main] if len(main) else []
+    for f in shard_files:
+        try:
+            parts.append(pd.read_parquet(f))
+        except Exception:
+            pass
+    if not parts:
+        return main
+    df = pd.concat(parts, ignore_index=True)
+    if "event_id" in df.columns:
+        df = df.drop_duplicates("event_id", keep="last").reset_index(drop=True)
+    return df
 
 
 def extracted_doc_ids() -> set:
@@ -78,6 +94,66 @@ def append_events(records: list[dict]):
     if "event_id" in df:
         df = df.drop_duplicates("event_id", keep="last").reset_index(drop=True)
     _write(df, C.EVENTS)
+
+
+EVENTS_SHARD_DIR = None   # 지연 평가(C.STORE는 GEO_DATA env에 의존, 임포트 시점에 고정하면 안 됨)
+
+
+def _shard_dir():
+    d = C.STORE / "events_shards"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def append_events_sharded(records: list[dict]):
+    """대용량(GKG 등, 수십만 파일급) 전용 — append_events()는 매 호출마다 전체 events.parquet를
+    읽어 재작성해 누적량이 커질수록(O(n)) 갈수록 느려지고, 여러 워커가 동시에 호출하면 서로의
+    변경을 덮어써 유실된다(read-modify-write 경합). 이 함수는 배치를 독립 parquet 파일로만
+    저장(O(batch), 읽기 없음) — 파일명이 유니크해 멀티프로세스에서도 안전. `load_events()`는
+    조각들을 자동 병합해 반환하되, 조각이 쌓이면 `compact_event_shards()`로 메인 파일에 합쳐야
+    조회 성능이 유지된다."""
+    if not records:
+        return
+    import time, uuid
+    df = pd.DataFrame(records)
+    fname = f"{int(time.time()*1000)}_{uuid.uuid4().hex[:8]}.parquet"
+    df.to_parquet(_shard_dir() / fname, index=False)
+
+
+def compact_event_shards():
+    """events_shards/의 조각들을 메인 geo_events.parquet에 병합 후 조각 삭제.
+    단일 프로세스(오케스트레이터)에서만 호출할 것 — 컴팩션 자체는 동시성 안전하지 않음."""
+    d = _shard_dir()
+    shard_files = sorted(d.glob("*.parquet"))
+    if not shard_files:
+        return 0
+    parts = [_read(C.EVENTS)]
+    for f in shard_files:
+        try:
+            parts.append(pd.read_parquet(f))
+        except Exception:
+            pass
+    df = pd.concat([p for p in parts if len(p)], ignore_index=True)
+    if "event_id" in df:
+        df = df.drop_duplicates("event_id", keep="last").reset_index(drop=True)
+    _write(df, C.EVENTS)
+    for f in shard_files:
+        f.unlink()
+    return len(shard_files)
+
+
+def remove_events(event_ids: set):
+    """event_id 집합에 해당하는 행 제거(LLM 재검증에서 노이즈로 기각된 GKG 후보 삭제용).
+    append_events는 추가/덮어쓰기만 가능해 삭제 전용 함수가 별도로 필요하다."""
+    if not event_ids:
+        return
+    ev = load_events()
+    if len(ev) == 0 or "event_id" not in ev:
+        return
+    before = len(ev)
+    ev = ev[~ev["event_id"].isin(event_ids)].reset_index(drop=True)
+    _write(ev, C.EVENTS)
+    return before - len(ev)
 
 
 def write_index(df: pd.DataFrame):

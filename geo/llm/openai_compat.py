@@ -16,6 +16,14 @@ class OpenAICompatChat:
         self.timeout = int(cfg.get("timeout", 120))
         self.json_mode = bool(cfg.get("json_mode", True))
         self.retries = int(cfg.get("retries", 3))
+        # 실측(2026-07-08, gkg_verify 대량 재검증 중): 매 호출마다 requests.post()로 새 커넥션을
+        # 맺으면 동시성을 32~100으로 올려도 처리량이 오히려 떨어짐(TCP 연결 재수립 오버헤드가
+        # GPU 추론시간보다 훨씬 큼 — 재검증 중 GPU 사용률 0% 확인). 커넥션풀 재사용으로 해결.
+        pool_size = max(32, int(cfg.get("concurrency", 8) or 8) * 2)
+        self._session = requests.Session()
+        adapter = requests.adapters.HTTPAdapter(pool_connections=pool_size, pool_maxsize=pool_size)
+        self._session.mount("http://", adapter)
+        self._session.mount("https://", adapter)
 
     def complete(self, system: str, user: str, max_tokens: int = 2048) -> LLMResult:
         url = f"{self.base_url}/chat/completions"
@@ -33,7 +41,7 @@ class OpenAICompatChat:
             if use_rf:
                 b["response_format"] = {"type": "json_object"}
             try:
-                r = requests.post(url, headers=headers, json=b, timeout=self.timeout)
+                r = self._session.post(url, headers=headers, json=b, timeout=self.timeout)
                 if r.status_code == 400 and use_rf:
                     # 서버가 response_format 미지원(ollama/구버전 vLLM 등) → 제거 후 즉시 재시도
                     use_rf = False
