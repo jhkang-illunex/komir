@@ -16,10 +16,14 @@ __pycache__/
 # 공유 DuckDB 볼륨 / geo 런타임
 warehouse/
 geo_data/
+geo_data_2016plus_run/
+warehouse/*.duckdb
+warehouse/*.wal
 # 수집·가공 산출
 **/data/processed/
 **/data/interim/
 **/outputs/
+geo/collectors/_gkg_masterfilelist_cache.txt
 
 # 참조데이터(data/raw/hs_commodity_map.csv 등)는 위에서 무시하지 않으므로 기본 추적됨.
 
