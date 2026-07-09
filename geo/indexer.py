@@ -61,6 +61,30 @@ def compute() -> pd.DataFrame:
         print("[index] 이벤트 없음"); return pd.DataFrame()
     man = store.load_manifest()[["doc_id", "source"]].drop_duplicates("doc_id")
     ev = ev.merge(man, on="doc_id", how="left")
+    # GKG 이벤트는 ingest→manifest를 거치지 않아(gkg_parse.py가 store에 직접 append) source가
+    # 항상 NaN → 아래서 fillna(1.0)로 조용히 기본 신뢰도가 적용되어 sources.yaml의 GDELT 가중치가
+    # 무시되는 문제가 있었음(2026-07-06 발견). provider 기준으로 보정.
+    if "provider" in ev.columns:
+        ev["source"] = ev["source"].fillna(ev["provider"].map({"gkg": "GDELT"}))
+    # gkg_verify 재검증 통과분은 provider가 LLM provider(openai_compat 등)로 바뀌어 위 매핑을
+    # 빠져나감(2026-07-08 발견) — manifest 미매칭(=GKG 유래뿐: 문서·gnews·gdelt collector는 전부
+    # inbox→manifest 경유)인 잔여 NaN은 전부 GDELT로 귀속해 0.7 가중을 보존한다.
+    ev["source"] = ev["source"].fillna("GDELT")
+
+    # GKG "뉴스"(규칙기반 폴백 티어) 제외 — 실측(2026-07-06) 확인: 오프셋 근접성·2차 신호어 게이트를
+    # 거친 뒤에도 이 티어는 GDELT 자체의 테마 오귀속(예: "구리"가 맥주 브루잉 설비·동전 등과 혼동,
+    # 채굴 관련 테마가 동반돼도 실제로는 광산주 내부자거래 공시처럼 무관한 경우 다수)으로 정밀도가
+    # 낮게 남는다. 제재/분쟁/정책/재해로 분류된 건(오프셋 근접성 검증됨)과 gkg_verify.py로 LLM
+    # 재검증을 거쳐 extractor="llm"이 된 건만 지수에 반영한다.
+    if "provider" in ev.columns and "extractor" in ev.columns:
+        gkg_news_noise = (ev["provider"] == "gkg") & (ev["extractor"] == "rule") & (ev["event_type"] == "뉴스")
+        n_excl = int(gkg_news_noise.sum())
+        if n_excl:
+            print(f"  [index] GKG 규칙기반 '뉴스' 티어 {n_excl}건 지수 계산에서 제외"
+                  f"(LLM 재검증 전까지 신뢰도 부족 — gkg-verify로 승격 가능)")
+        ev = ev[~gkg_news_noise]
+    if len(ev) == 0:
+        print("[index] 지수 반영 가능한 이벤트 없음(GKG 뉴스 티어 전량 제외됨)"); return pd.DataFrame()
 
     cfg = IndexConfig(**(C.load_yaml("index.yaml") or {}))
     rel = _reliability_map(); conc_static = _concentration_map()
@@ -75,6 +99,21 @@ def compute() -> pd.DataFrame:
     ev = ev.dropna(subset=["date"])
     if len(ev) == 0:
         print("[index] 날짜 있는 이벤트 없음(obs_date/pub_date 확인)"); return pd.DataFrame()
+
+    # 동일 사건 반복보도 중복합산 방지(실측 2026-07-08): 진행형 위기(예: DRC 코발트 수출중단)는
+    # Argus 일일보고서 등에서 매일 거의 같은 근거문구로 재보도됨 — 이걸 그대로 합산하면 "같은 위기가
+    # 계속 진행 중"이 "매일 새 위기 발생"처럼 과대산정됨. 같은 광종·같은 달(month)·근거인용 앞 40자가
+    # 같으면 동일 사건의 반복보도로 간주해 최고 severity 1건만 남김(문서/이벤트 원본은 삭제하지 않음,
+    # 지수 산출에서만 dedup). 실측: 6,510건 중 53건(<1%)이 이 케이스, CO(코발트)에 집중.
+    ev["_quote_key"] = ev["evidence_quote"].fillna("").str.strip().str[:40]
+    ev["_month"] = ev["date"].dt.to_period("M")
+    before = len(ev)
+    ev = (ev.sort_values("severity", ascending=False)
+            .drop_duplicates(subset=["commodity", "_month", "_quote_key"], keep="first"))
+    n_dedup = before - len(ev)
+    if n_dedup:
+        print(f"  [index] 동일사건 반복보도 중복 {n_dedup}건 제외(월+광종+근거문구 동일, 최고심각도만 유지)")
+
     ev["yr"] = ev["date"].dt.year
     ev["rel"] = ev["source"].map(rel).fillna(1.0)
 

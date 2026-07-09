@@ -55,6 +55,15 @@ def run(target=None):
         src = man.set_index("doc_id")["source"].to_dict() if len(man) else {}
         e = ev.rename(columns={"commodity": "commodity_code"}).copy()
         e["source"] = e["doc_id"].map(src).fillna("")
+        # 방어: LLM 불량 날짜가 남아있으면 DATE 캐스팅에서 전체 publish가 죽음(실측 2026-07-08:
+        # "202X-09-01" placeholder, "2023-02-29" 달력상 불가능 날짜) — 형식+달력 검증을 한 번에
+        # (pd.to_datetime coerce), 불량은 NULL로 밀어내고 계속 진행.
+        parsed = pd.to_datetime(e["obs_date"], format="%Y-%m-%d", errors="coerce")
+        n_bad = int((parsed.isna() & e["obs_date"].notna()).sum())
+        if n_bad:
+            print(f"  [publish] obs_date 형식/달력 불량 {n_bad}건 → NULL 처리")
+        e["obs_date"] = parsed.dt.strftime("%Y-%m-%d")
+        e["obs_date"] = e["obs_date"].where(parsed.notna(), None)
         e["evidence_quote"] = e["evidence_quote"].astype(str).str.slice(0, 600)
         e["published_at"] = now
         e = e[["event_id", "doc_id", "commodity_code", "obs_date", "country", "event_type",
