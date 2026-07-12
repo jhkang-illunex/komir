@@ -31,7 +31,16 @@ OV_VOL_Q=0.90        # 가격변동성 급증 → 최소 관심
 def compute_alerts(df, geo_sev=None):
     """df: mart_weekly_diagnosis(2020+, 광종별). geo_sev: (commodity,week)->max severity dict"""
     df=df.sort_values(["commodity_code","obs_date"]).copy()
-    df["crisis_index"]=100-df["teacher_supply_demand"]   # 높을수록 위기
+    # 위기지수 원천(2026-07-12 배선): 최적모델 nowcast(mart_diagnosis_nowcast, diagnosis_opt
+    # 실측 1위 Ridge+AR — QWK 0.905>지속성 0.884, 전환월 적중 0.631) 우선, 없으면 교사 직접.
+    # 운영에선 교사(수급동향지표) 발표 지연 구간을 모델이 메꾼다. ALERT_CRISIS_SOURCE=teacher로
+    # 구버전 동작 강제 가능(감사·비교용).
+    if "ci_model" in df.columns and os.environ.get("ALERT_CRISIS_SOURCE","model")=="model":
+        df["crisis_index"]=df["ci_model"].fillna(100-df["teacher_supply_demand"])
+        df["ci_source"]=np.where(df["ci_model"].notna(),"model","teacher")
+    else:
+        df["crisis_index"]=100-df["teacher_supply_demand"]   # 높을수록 위기
+        df["ci_source"]="teacher"
     out=[]
     for cc,g in df.groupby("commodity_code"):
         g=g.copy()
@@ -104,9 +113,23 @@ def _build_reasons(res: pd.DataFrame, geo_df: pd.DataFrame) -> pd.Series:
         if any(_geo_category(e.event_type) == "c1" and (e.severity or 0) >= 2 for e in evs): crit.append(o["c1"])
         if any(_geo_category(e.event_type) == "c2" and (e.severity or 0) >= 2 for e in evs): crit.append(o["c2"])
         crit.append(o["c3"])                    # 가격변동성/조달(위기지수 기반)은 항상 관련
-        drv = [f"수급위기지수 {r.crisis_index:.0f}/100"]
+        drv = [f"수급위기지수 {r.crisis_index:.0f}/100"
+               + (f"({getattr(r,'ci_source','teacher')})" if hasattr(r, "ci_source") else "")]
         if isinstance(r.triggers, str) and r.triggers: drv.append(r.triggers)
         base = f"[{r.commodity_code} · {o['name']}] {' / '.join(crit[:2])}. (산출근거: {', '.join(drv)})"
+        # XAI 병기(착수보고 사양): 단계 확률(Confidence) + 기여도 상위(선형 정확 분해)
+        try:
+            import json as _json
+            if hasattr(r, "stage_probs") and isinstance(r.stage_probs, str) and r.stage_probs:
+                pr = _json.loads(r.stage_probs)
+                top_p = sorted(pr.items(), key=lambda kv: -kv[1])[:2]
+                base += " 확률: " + ", ".join(f"{k} {v*100:.0f}%" for k, v in top_p) + "."
+            if hasattr(r, "contrib") and isinstance(r.contrib, str) and r.contrib:
+                cd = _json.loads(r.contrib)
+                top_c = sorted(cd.items(), key=lambda kv: -abs(kv[1]))[:3]
+                base += " 기여: " + ", ".join(f"{k} {v:+.1f}" for k, v in top_c) + "."
+        except Exception:
+            pass
         if evs:
             e = evs[0]
             q = str(e.evidence_quote or "")[:90]
@@ -131,6 +154,15 @@ def run(db=None, model_version="alert_rule_v1"):
     df = con.execute("""SELECT commodity_code,obs_date,teacher_supply_demand,volatility_12w,import_hhi
         FROM mart_weekly_diagnosis
         WHERE obs_date>='2020-01-01' AND teacher_supply_demand IS NOT NULL""").df()
+    try:  # 최적모델 nowcast(월간) → 주간 결합: ci_pred + XAI(stage_probs·contrib)
+        nc = con.execute("""SELECT commodity_code, month, ci_pred AS ci_model,
+                                   stage_probs, contrib FROM mart_diagnosis_nowcast""").df()
+        nc["month"] = pd.to_datetime(nc["month"])
+        df["month"] = pd.to_datetime(df["obs_date"]).values.astype("datetime64[M]")
+        df = df.merge(nc, on=["commodity_code", "month"], how="left").drop(columns=["month"])
+        print(f"  [alert] nowcast 결합: {df['ci_model'].notna().sum()}/{len(df)}주 (모델 원천)")
+    except Exception:
+        print("  [alert] mart_diagnosis_nowcast 없음 — 교사 직접 사용(python -m msr.models.nowcast 먼저 실행 권장)")
     try:
         # 오버라이드 트리거는 고신뢰 소스(공시·큐레이션 보고서)의 공급위축 이벤트로 제한.
         # 실측(2026-07-12): GKG(182만건) 병합 후 무제한 조회 시 severity 3 뉴스가 거의 매주

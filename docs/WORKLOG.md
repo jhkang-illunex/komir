@@ -2,6 +2,20 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-07-12 — 최적모델 alert 배선 + XAI(설명가능성) 산출
+
+diagnosis_opt 1위 구성(Ridge 풀링+AR+분위매핑)을 운영 배선하고 착수보고의 XAI 약속 이행.
+- `msr/models/nowcast.py` 신설: 전 기간 재적합 → mart_diagnosis_nowcast(월×광종 390행 —
+  ci_pred·4단계·단계확률·기여도 json) + final_model.joblib + xai_latest.md.
+  · 기여도: Ridge 선형 정확 분해(계수×표준화값, SHAP 선형 특수해와 동일) — 위기지수 방향 부호.
+  · Confidence: 광종별 학습잔차 σ 정규근사로 단계별 확률(착수보고 "경계 55%, 심각 30%" 사양).
+- `alert.py` 배선: 위기지수 원천 = 모델 nowcast 우선(1,632/1,632주 결합), 교사 폴백,
+  ALERT_CRISIS_SOURCE=teacher로 구동작 강제 가능(감사용). 사유 문안에 원천표기(model)+
+  단계확률+기여도 상위3 병기 — 예: "[CU·심각(Red)] …(수급위기지수 99/100(model), 지정학1.00)
+  확률: 심각 55%, 주의 19%. 기여: y_lag1 +33.1, price_z52 +3.2, …. 관련 이벤트: 'First
+  Quantum…'(Panama, sev 3.0/3)".
+- 분포 영향 미미(모델이 교사와 고일치 — QWK 0.905), 최신 경보: CU 심각·CO/REE 주의·LI/NI 관심.
+
 ## 2026-07-12 — 진단모델 최적화 (`msr/models/diagnosis_opt.py`) — /goal 수행
 
 백데이터(실교사 2020~2026·지정학 2016~) 기반 체계 비교로 4단계 진단모델 최적화.
