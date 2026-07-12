@@ -12,15 +12,19 @@
 | us_trade | **미국 공시** — Federal Register 공식 API(BIS 수출통제·Entity List / USTR 관세·301조 / ITA 반덤핑) | `$COLLECT_OUT/inbox/us_trade/*.txt` |
 | cn_trade | **중국 공시** — 상무부 안전관제국(aqygzj.mofcom.gov.cn: 수출통제 공고·실체명단·대변인 문답) | `$COLLECT_OUT/inbox/cn_trade/*.txt` |
 
-## 실행
+## 실행 — 일일 운영(정본)
 ```bash
-docker compose up -d --build          # 데몬(기본 60분 주기)
-docker compose run --rm collector python -m collector run --only us_trade,cn_trade   # 1회
+docker compose up -d --build          # 24h 주기 수집 + 매 주기 zip 번들(compose 기본 CMD)
+python -m collector daily             # 동일 동작 1회(호스트 cron용): 전체 수집→collect_YYYYMMDD.zip
+docker compose run --rm collector python -m collector run --only us_trade,cn_trade   # 부분 1회
 ```
+- GKG는 상태(gkg_last) 기반 캐치업이라 일 1회 실행으로 그날 96개 배치가 전부 수집된다.
+- 뉴스류는 --days 2(이틀 소급)로 실행 경계 유실 방지 — URL seen 중복방지가 이중 수집을 막는다.
+- 중국 공시는 간헐 차단 특성 — 실패 주기는 다음 날 자연 재시도(seen 상태 유지).
 
 ## 분석 서버와의 연결 — 일자별 번들 (권장, 2026-07-12)
 수집 데몬이 날짜 전환 시(또는 cron `python -m collector bundle`) 하루치 inbox를
-`$COLLECT_OUT/bundles/collect_YYYYMMDD.tar.gz` 하나로 묶는다(멤버수 재검증 후 원자적 rename,
+`$COLLECT_OUT/bundles/collect_YYYYMMDD.zip` 하나로 묶는다(멤버수 재검증 후 원자적 rename,
 원본은 `_bundled/YYYYMMDD/`로 이동 — 삭제 안 함). 분석 서버는 볼륨에서 번들을 발견해 처리:
 번들에는 뉴스/공시 텍스트(`inbox/**/*.txt`)와 **GKG zip**(`gkg/YYYY/*.gkg.csv.zip`)이 함께
 들어간다 — **분석 서버는 외부 인터넷 불가**라 번들이 유일한 데이터 반입 경로다.

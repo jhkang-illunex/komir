@@ -10,5 +10,6 @@ services:
     environment:
       COLLECT_OUT: /data
       COLLECT_HTTP_TIMEOUT: "30"
-    # 주기·범위 조정: command로 재정의
-    # command: ["python", "-m", "collector", "daemon", "--interval-mins", "30", "--days", "3"]
+    # 일일 운영 정본(2026-07-12 확정): 24h 주기 수집 + 매 주기 직후 zip 번들
+    command: ["python", "-m", "collector", "daemon", "--interval-mins", "1440", "--bundle-each", "--days", "2"]
+    # (대안) cron 방식: 컨테이너 대신 호스트 cron에서 `docker compose run --rm collector python -m collector daily`

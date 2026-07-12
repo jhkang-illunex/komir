@@ -2,6 +2,18 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-07-12 — 일일 운영 모드 확정: `collector daily` + zip 번들
+
+수집기를 "매일 1회: GDELT 하루치 캐치업 + 뉴스/미·중 공시 수집 → collect_YYYYMMDD.zip" 모드로
+확정(사용자 지정 — 압축 포맷 zip).
+- bundler: tar.gz → zip(ZIP_DEFLATED) 전환, CRC 무결성(testzip)+멤버수 재검증 유지.
+- `collector daily` 서브커맨드(수집→즉시 번들, cron용) + daemon `--bundle-each`(compose 기본
+  CMD를 1440분+bundle-each로 — 컨테이너 단독으로 일일 운영). 뉴스 기본 소급 2일(경계 유실 방지,
+  seen 중복방지가 이중수집 차단).
+- geo ingest-bundles: zip/tar.gz 양쪽 수용(하위호환).
+- E2E: daily 1회 실행(gkg 4 + gnews 57 + us 886 + cn 16 → zip 9.2MB) → 분석기 발견·라우팅
+  (txt 959→inbox, gkg 4→gkg_bulk→파싱 3이벤트) → 멱등 재실행 0건.
+
 ## 2026-07-12 — 연간 발행물의 연 단위 적용: 지수 Y 시리즈 + 변수⑤ USGS 배선
 
 사용자 방침("연간 발행 보고서는 연 단위 적용") 구현.

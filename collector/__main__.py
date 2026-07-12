@@ -46,11 +46,22 @@ def main(argv=None):
     pd_.add_argument("--only", default=None)
     pd_.add_argument("--days", type=int, default=7)
     pd_.add_argument("--no-bundle", action="store_true", help="일자별 번들링 비활성(루즈 파일 유지)")
-    sub.add_parser("bundle", help="현재 inbox 루즈 파일을 collect_YYYYMMDD.tar.gz로 번들(cron용)")
+    pd_.add_argument("--bundle-each", action="store_true",
+                     help="매 주기 직후 번들(예: --interval-mins 1440과 조합해 일일 운영)")
+    sub.add_parser("bundle", help="현재 inbox·gkg 루즈 파일을 collect_YYYYMMDD.zip으로 번들(cron용)")
+    pdy = sub.add_parser("daily", help="일일 운영 정본: 전체 1회 수집(GKG는 그날치 캐치업) + 즉시 zip 번들")
+    pdy.add_argument("--only", default=None)
+    pdy.add_argument("--days", type=int, default=2, help="뉴스 소급 일수(기본 2 — 경계 유실 방지)")
     a = ap.parse_args(argv)
 
     if a.cmd == "bundle":
         from . import bundler
+        bundler.run()
+        return
+    if a.cmd == "daily":
+        from . import bundler
+        only = a.only.split(",") if a.only else None
+        run_once(only, a.days)
         bundler.run()
         return
     only = a.only.split(",") if a.only else None
@@ -64,8 +75,14 @@ def main(argv=None):
                 run_once(only, a.days)
             except Exception as e:          # 개별 주기 실패가 데몬을 죽이지 않게
                 logging.getLogger("collector").exception("주기 실행 실패: %s", e)
+            if getattr(a, "bundle_each", False):
+                try:
+                    from . import bundler
+                    bundler.run()
+                except Exception as e:
+                    logging.getLogger("collector").exception("번들링 실패: %s", e)
             # 날짜 전환 감지 → 어제까지 쌓인 루즈 파일을 번들로 인도
-            if not getattr(a, "no_bundle", False) and date.today() != cur_day:
+            elif not getattr(a, "no_bundle", False) and date.today() != cur_day:
                 try:
                     from . import bundler
                     bundler.run(cur_day.strftime("%Y%m%d"))

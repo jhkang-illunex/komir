@@ -17,7 +17,7 @@
 번들 원본은 삭제하지 않는다(보존 정책) — 보관기간 정리는 운영 결정.
 """
 from __future__ import annotations
-import argparse, os, tarfile
+import argparse, os, tarfile, zipfile
 from pathlib import Path
 
 from . import config as C
@@ -40,11 +40,13 @@ def _safe_extract(bundle: Path, inbox: Path, gkg_root: Path) -> tuple:
     """tar 멤버 라우팅 전개(경로 탈출 방어): inbox/*.txt → inbox, gkg/*.gkg.csv.zip → gkg_root.
     구버전 번들(멤버가 inbox/ 접두 없이 <subdir>/x.txt)도 하위호환. 반환 (n_txt, n_gkg)."""
     n_txt = n_gkg = 0
-    with tarfile.open(bundle, "r:gz") as tf:
-        for m in tf.getmembers():
-            if not m.isfile():
-                continue
-            name = m.name.lstrip("./")
+    if bundle.suffix == ".zip":
+        members = _zip_members(bundle)
+    else:
+        members = _tar_members(bundle)
+    for name, read in members:
+        if True:
+            name = name.lstrip("./")
             if name.endswith(".gkg.csv.zip") and name.startswith("gkg/"):
                 base, rel = gkg_root, name[len("gkg/"):]
             elif name.endswith(".txt"):
@@ -57,15 +59,30 @@ def _safe_extract(bundle: Path, inbox: Path, gkg_root: Path) -> tuple:
                 print(f"  [skip] 경로 탈출 의심 멤버: {m.name}")
                 continue
             dest.parent.mkdir(parents=True, exist_ok=True)
-            src = tf.extractfile(m)
-            if src is None:
+            data = read()
+            if data is None:
                 continue
-            dest.write_bytes(src.read())
+            dest.write_bytes(data)
             if base is inbox:
                 n_txt += 1
             else:
                 n_gkg += 1
     return n_txt, n_gkg
+
+
+def _tar_members(bundle: Path):
+    with tarfile.open(bundle, "r:gz") as tf:
+        for m in tf.getmembers():
+            if m.isfile():
+                data = tf.extractfile(m)
+                yield m.name, (lambda d=data.read() if data else None: d)
+
+
+def _zip_members(bundle: Path):
+    with zipfile.ZipFile(bundle) as zf:
+        for i in zf.infolist():
+            if not i.is_dir():
+                yield i.filename, (lambda n=i.filename, z=bundle: zipfile.ZipFile(z).read(n))
 
 
 def run(bundle_dir: str | None = None, do_ingest: bool = True,
@@ -77,7 +94,8 @@ def run(bundle_dir: str | None = None, do_ingest: bool = True,
         print(f"[ingest-bundles] 번들 디렉토리 없음: {bdir}")
         return {"bundles": 0, "txt": 0, "gkg": 0}
     done = _load_done()
-    bundles = sorted(p for p in bdir.glob("collect_*.tar.gz") if p.name not in done)
+    bundles = sorted(p for p in list(bdir.glob("collect_*.zip")) + list(bdir.glob("collect_*.tar.gz"))
+                     if p.name not in done)
     print(f"[ingest-bundles] 신규 번들 {len(bundles)}건 (디렉토리 {bdir}, 기처리 {len(done)})")
     n_txt = n_gkg = 0
     for b in bundles:
