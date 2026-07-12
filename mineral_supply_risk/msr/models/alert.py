@@ -132,8 +132,17 @@ def run(db=None, model_version="alert_rule_v1"):
         FROM mart_weekly_diagnosis
         WHERE obs_date>='2020-01-01' AND teacher_supply_demand IS NOT NULL""").df()
     try:
+        # 오버라이드 트리거는 고신뢰 소스(공시·큐레이션 보고서)의 공급위축 이벤트로 제한.
+        # 실측(2026-07-12): GKG(182만건) 병합 후 무제한 조회 시 severity 3 뉴스가 거의 매주
+        # 존재 → 경보가 상시 격상(심각 25~30%). 붙임2 계열1의 "수출제한 실시" 같은 트리거는
+        # 뉴스 보도가 아니라 확정력 있는 근거(관보·업계 큐레이션)로만 발동해야 한다.
+        # GDELT 뉴스 신호는 이미 지수(변수⑥)로 점수 단계에 반영되고 있으므로 이중계상도 방지.
         geo_df = con.execute("""SELECT commodity_code, obs_date, event_type, country,
-            severity, evidence_quote FROM geo_event WHERE commodity_code IS NOT NULL""").df()
+            severity, evidence_quote FROM geo_event
+            WHERE commodity_code IS NOT NULL
+              AND direction = 'supply_down'
+              AND source IN ('US_FederalRegister','CN_MOFCOM','WoodMac','IEA','KOMIS',
+                             'Argus','PPS','AsianMetal','EU_SCRREEN')""").df()
     except Exception:
         geo_df = pd.DataFrame()
         print("  [warn] geo_event 없음 — 지정학 오버라이드 없이 산출(geo-publish 먼저 권장)")
