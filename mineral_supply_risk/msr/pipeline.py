@@ -31,6 +31,30 @@ def collect_customs(strt="201301", end="202512", freq="A"):
     print(f"  적재 {state['n']} 행 → {table}")
     return state["n"]
 
+def collect_customs_incremental(strt: str, end: str, freq: str = "M"):
+    """최근 구간만 갱신하는 보존형 수집(월간 정기용, 2026-07-12).
+    collect_customs는 첫 배치에서 테이블 전삭제(clean recollect)라 2013~22 월간 백필이
+    유실됨 — 이 함수는 HS 단위로 [strt,end] 연도 구간만 삭제 후 삽입(멱등, 구간 밖 보존)."""
+    hs = hs_mapping.core_hs_list()
+    table = "raw_customs_monthly" if freq == "M" else "raw_customs_annual"
+    yr_lo, yr_hi = strt[:4], end[:4]
+    print(f"[collect-incr] 관세청 HS {len(hs)}개, {strt}~{end}, freq={freq} → {table}(구간 밖 보존)")
+    state = {"n": 0}
+
+    def _sink(df_hs):
+        df_hs = hs_mapping.attach_commodity(df_hs)
+        h = str(df_hs["hs_query"].iloc[0])
+        db.upsert_df(df_hs, table,
+                     del_where=f"hs_query='{h}' AND q_year>='{yr_lo}' AND q_year<='{yr_hi}'")
+        state["n"] += len(df_hs)
+
+    try:
+        customs_api.collect(hs, strt, end, freq=freq, sink=_sink)
+    except customs_api.QuotaExceeded as e:
+        print(f"  [중단] {e}  (그때까지 {state['n']}행은 {table}에 보존됨)")
+    print(f"  적재 {state['n']} 행 → {table}")
+    return state["n"]
+
 def collect_ecos():
     frames=[]
     for name, s0 in config.ECOS_SERIES.items():

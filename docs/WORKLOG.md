@@ -2,6 +2,29 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-07-12 — 아키텍처 정합: "전처리기→DB→추정기" 배선 + 주/월 실행 체인 완결
+
+5모듈 분리(수집기/전처리기/지정학 추정기/수급위기 진단기/수입 추정기) 점검 결과 갭 2건 해소.
+- **갭① 추정기의 DB 읽기 전환**: 기존엔 extract(→parquet)→index(parquet 읽기)→publish(사후
+  발행) 순서라 "전처리기가 DB에 넣고 추정기가 DB에서 읽는" 계약과 반대였음.
+  · `geo publish --what events|index|all` 단계 분리(publish.py) — events는 extract 직후,
+    index는 추정 직후 발행. geo_event에 **provider·extractor 컬럼 추가**(빠지면 DB 모드에서
+    GKG '뉴스' 티어 제외가 무력화되는 조용한 회귀 — 발견 즉시 방지). 신규 컬럼 출현 시
+    DELETE+INSERT가 죽으므로 컬럼 셋 비교 후 테이블 재생성 폴백.
+  · `store.load_events(source=)` + env `GEO_EVENT_SOURCE=db`(+`GEO_PUBLISH_DB`) — 추정기
+    (indexer·prob) 전용 모드. publish 계약(commodity_code, source '')→내부 계약 복원.
+  · indexer: source 컬럼 기존재 시 manifest 병합 스킵(충돌 방지).
+  · **동치성 실증**: DB 모드 compute() 3,439행 = 파일 모드 geo_index와 전 행 매칭,
+    지수 최대 차이 0.0. prob 주간 패널도 DB 모드 2,745행 정상.
+- **갭② 주/월 실행 체인 완결**(`scripts/schedule.py` 전면 재작성):
+  · weekly = ingest-bundles→extract→publish(events)→index(DB)→prob(DB)→publish(index)
+    →weekly_mart→nowcast→alert→publish_results. geo는 서브프로세스(단계 격리, cwd=komir).
+  · monthly = 관세청 최근 24개월 **증분**(신규 `pipeline.collect_customs_incremental` —
+    HS×연도구간만 삭제 후 삽입; 기존 collect_customs는 전삭제형이라 2013~22 백필 유실 위험)
+    →ECOS→normalize→features→forecast_unit→publish_results.
+  · cron 2줄(월 06:00 weekly / 매월 1일 07:00 monthly)로 운영 투입 가능 — 남은 과제 ⑥의
+    분석서버 반입·기동만 잔여.
+
 ## 2026-07-12 — 미/중 공시 10년 백필 테스트 (/goal) — 지수 반영 실증
 
 "최근 10년치 공시 수집→백데이터 채움→지정학지수 반영 가능?" 검증.

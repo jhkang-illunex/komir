@@ -36,7 +36,16 @@ def upsert_manifest(records: list[dict]):
     _write(df, C.MANIFEST)
 
 
-def load_events() -> pd.DataFrame:
+def load_events(source: str | None = None) -> pd.DataFrame:
+    """이벤트 로드. source: 'file'(정본 parquet) | 'db'(publish된 geo_event 테이블) |
+    None → env GEO_EVENT_SOURCE(기본 'file').
+
+    'db'는 추정기(indexer·prob) 실행 시에만 쓰는 모드 — "전처리기가 DB에 넣고 추정기는
+    DB에서 읽는" 배선(2026-07-12). 쓰기 함수들(append/remove/compact)은 파일 정본 전용이므로
+    전처리(extract)·검증(gkg-verify) 단계에서는 이 env를 켜면 안 된다."""
+    src = (source or os.environ.get("GEO_EVENT_SOURCE", "file")).lower()
+    if src == "db":
+        return _load_events_db()
     main = _read(C.EVENTS)
     d = C.STORE / "events_shards"
     shard_files = list(d.glob("*.parquet")) if d.exists() else []
@@ -53,6 +62,29 @@ def load_events() -> pd.DataFrame:
     df = pd.concat(parts, ignore_index=True)
     if "event_id" in df.columns:
         df = df.drop_duplicates("event_id", keep="last").reset_index(drop=True)
+    return df
+
+
+def _load_events_db() -> pd.DataFrame:
+    """publish된 geo_event 테이블에서 이벤트 로드(추정기의 DB 읽기 모드).
+    대상은 GEO_PUBLISH_DB(전처리기가 적재한 곳과 동일 계약) — 미설정이면 조용히 파일로
+    폴백하지 않고 명시적으로 실패한다(어느 원천을 읽었는지 모호해지는 것 방지)."""
+    target = os.environ.get("GEO_PUBLISH_DB")
+    if not target:
+        raise RuntimeError("GEO_EVENT_SOURCE=db인데 GEO_PUBLISH_DB 미설정 — 읽을 DB를 지정하세요")
+    if "://" in target:
+        import sqlalchemy as sa
+        df = pd.read_sql_table("geo_event", sa.create_engine(target))
+    else:
+        import duckdb
+        con = duckdb.connect(target, read_only=True)
+        df = con.execute("SELECT * FROM geo_event").df()
+        con.close()
+    # publish 계약(commodity_code, source '' 채움) → 내부 계약(commodity, source 결측=NaN)으로 복원
+    df = df.rename(columns={"commodity_code": "commodity"})
+    if "source" in df.columns:
+        df["source"] = df["source"].replace("", pd.NA)
+    print(f"[store] 이벤트 {len(df):,}건 로드 ← DB {target} (geo_event)")
     return df
 
 

@@ -38,8 +38,10 @@ def main(argv=None):
     pr = sub.add_parser("refdata", help="USGS 공급집중 HHI 수집(오픈망)")
     pr.add_argument("--from", dest="y_from", type=int, default=2016)
     pr.add_argument("--to", dest="y_to", type=int, default=2026)
-    pp = sub.add_parser("publish", help="지정학 지수(최종)만 공유/운영 DB에 적재")
+    pp = sub.add_parser("publish", help="geo 산출물 공유/운영 DB 적재(--what으로 단계 분리)")
     pp.add_argument("--db", default=None)
+    pp.add_argument("--what", default="all", choices=["events", "index", "all"],
+                    help="events=전처리 산출(extract 후) | index=추정 산출(index·prob 후) | all")
     px = sub.add_parser("okf-export", help="[비파괴] 정본 → OKF(마크다운+프론트매터) 번들 방출")
     px.add_argument("--root", default=None, help="출력 루트(기본 $GEO_DATA/okf)")
     pall = sub.add_parser("all", help="ingest→extract→index→OKF 연속 실행 (+선택 publish)")
@@ -75,7 +77,7 @@ def main(argv=None):
     elif args.stage == "refdata":
         from . import refdata; refdata.run(args.y_from, args.y_to)
     elif args.stage == "publish":
-        from . import publish; publish.run(args.db)
+        from . import publish; publish.run(args.db, args.what)
     elif args.stage == "okf-export":
         from . import okf
         okf.export(None if not args.root else __import__("pathlib").Path(args.root))

@@ -59,8 +59,11 @@ def compute() -> pd.DataFrame:
     ev = store.load_events()
     if len(ev) == 0:
         print("[index] 이벤트 없음"); return pd.DataFrame()
-    man = store.load_manifest()[["doc_id", "source"]].drop_duplicates("doc_id")
-    ev = ev.merge(man, on="doc_id", how="left")
+    # DB 모드(GEO_EVENT_SOURCE=db)에서는 publish가 이미 source를 실어 보냄 — 그때는 manifest
+    # 병합을 스킵(병합하면 source_x/source_y 충돌). 파일 모드에서만 manifest에서 붙인다.
+    if "source" not in ev.columns:
+        man = store.load_manifest()[["doc_id", "source"]].drop_duplicates("doc_id")
+        ev = ev.merge(man, on="doc_id", how="left")
     # GKG 이벤트는 ingest→manifest를 거치지 않아(gkg_parse.py가 store에 직접 append) source가
     # 항상 NaN → 아래서 fillna(1.0)로 조용히 기본 신뢰도가 적용되어 sources.yaml의 GDELT 가중치가
     # 무시되는 문제가 있었음(2026-07-06 발견). provider 기준으로 보정.

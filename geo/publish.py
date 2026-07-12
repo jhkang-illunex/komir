@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
-"""[3-후속] geo 최종 결과(지정학 지수)만 공유/운영 DB에 publish.
-   원문·manifest·이벤트는 geo_data 볼륨에만 남기고, geo_index만 DB로.
-  python -m geo publish [--db <target>]
+"""geo 산출물을 공유/운영 DB에 publish.
+  python -m geo publish [--db <target>] [--what events|index|all]
   target: env GEO_PUBLISH_DB 또는 --db. 파일경로=DuckDB, '://' 포함=SQLAlchemy URL.
+
+what으로 아키텍처 단계를 분리(2026-07-12, "전처리기→DB 적재→추정기가 DB에서 읽기" 배선):
+  events  전처리기(ingest·extract) 산출 geo_event만 적재 — index 산출 *전*에 실행
+  index   추정기(indexer·prob) 산출 geo_index·geo_prob만 적재
+  all     전부(기존 사후 발행과 호환)
 """
 import argparse, os
 from datetime import datetime, timezone
@@ -21,25 +25,61 @@ def _write(df, table, target):
             "SELECT count(*) FROM information_schema.tables WHERE table_name=?", [table]).fetchone()[0]
         if exists:
             # DDL 보존: CREATE OR REPLACE는 스키마 정의(PK·타입)를 추론 스키마로 덮어쓰므로
-            # DELETE+INSERT(명시 컬럼, 단일 트랜잭션)로 계약 유지.
-            cols = ",".join(f'"{c}"' for c in df.columns)
-            con.execute("BEGIN")
-            con.execute(f'DELETE FROM "{table}"')
-            con.execute(f'INSERT INTO "{table}" ({cols}) SELECT {cols} FROM _d')
-            con.execute("COMMIT")
+            # DELETE+INSERT(명시 컬럼, 단일 트랜잭션)로 계약 유지. 단, 신규 컬럼이 생기면
+            # (예: 2026-07-12 provider·extractor 추가) 기존 DDL에 없어 INSERT가 죽음 → 재생성.
+            have = {r[1] for r in con.execute(f'PRAGMA table_info("{table}")').fetchall()}
+            if set(df.columns) - have:
+                con.execute(f'CREATE OR REPLACE TABLE "{table}" AS SELECT * FROM _d')
+            else:
+                cols = ",".join(f'"{c}"' for c in df.columns)
+                con.execute("BEGIN")
+                con.execute(f'DELETE FROM "{table}"')
+                con.execute(f'INSERT INTO "{table}" ({cols}) SELECT {cols} FROM _d')
+                con.execute("COMMIT")
         else:
             con.execute(f'CREATE TABLE "{table}" AS SELECT * FROM _d')
         con.unregister("_d"); con.close()
 
 
-def run(target=None):
-    from .store import _read, load_events, load_manifest
-    idx = _read(C.INDEX)
+def publish_events(target: str, now: str) -> int:
+    """전처리기 산출(geo_event) → DB. 항상 파일 정본에서 읽는다(GEO_EVENT_SOURCE 무관 —
+    DB 모드로 읽어 되쓰면 순환이라 무의미)."""
+    ev = store.load_events(source="file")
+    if len(ev) == 0:
+        print("[publish] 이벤트 없음(먼저 extract)"); return 0
+    man = store.load_manifest()
+    src = man.set_index("doc_id")["source"].to_dict() if len(man) else {}
+    e = ev.rename(columns={"commodity": "commodity_code"}).copy()
+    e["source"] = e["doc_id"].map(src).fillna("")
+    # 방어: LLM 불량 날짜가 남아있으면 DATE 캐스팅에서 전체 publish가 죽음(실측 2026-07-08:
+    # "202X-09-01" placeholder, "2023-02-29" 달력상 불가능 날짜) — 형식+달력 검증을 한 번에
+    # (pd.to_datetime coerce), 불량은 NULL로 밀어내고 계속 진행.
+    parsed = pd.to_datetime(e["obs_date"], format="%Y-%m-%d", errors="coerce")
+    n_bad = int((parsed.isna() & e["obs_date"].notna()).sum())
+    if n_bad:
+        print(f"  [publish] obs_date 형식/달력 불량 {n_bad}건 → NULL 처리")
+    e["obs_date"] = parsed.dt.strftime("%Y-%m-%d")
+    e["obs_date"] = e["obs_date"].where(parsed.notna(), None)
+    e["evidence_quote"] = e["evidence_quote"].astype(str).str.slice(0, 600)
+    e["published_at"] = now
+    # provider·extractor는 indexer의 GKG '뉴스' 티어 제외에 필수 — 빠지면 DB 모드 추정기에서
+    # 규칙기반 노이즈가 지수에 섞이는 조용한 회귀가 생긴다(2026-07-12).
+    for c in ("provider", "extractor"):
+        if c not in e.columns:
+            e[c] = None
+    e = e[["event_id", "doc_id", "commodity_code", "obs_date", "country", "event_type",
+           "direction", "target", "severity", "confidence", "evidence_quote",
+           "source", "provider", "extractor", "published_at"]]
+    _write(e, "geo_event", target)
+    print(f"[publish] geo_event {len(e)}행 → {target} (테이블 geo_event)")
+    return len(e)
+
+
+def publish_index(target: str, now: str) -> int:
+    """추정기 산출(geo_index·geo_prob) → DB."""
+    idx = store._read(C.INDEX)
     if len(idx) == 0:
-        print("[publish] geo_index 없음(먼저 index)"); return
-    target = target or os.environ.get("GEO_PUBLISH_DB") or str(C.STORE / "geo_published.duckdb")
-    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    # 1) 지수 (geo_index 계약)
+        print("[publish] geo_index 없음(먼저 index)"); return 0
     out = idx.rename(columns={"commodity": "commodity_code", "index": "idx_value"}).copy()
     out["index_config_version"] = os.environ.get("GEO_INDEX_VERSION", "v1")
     out["generated_at"] = now
@@ -47,32 +87,6 @@ def run(target=None):
                "idx_value", "index_config_version", "generated_at"]]
     _write(out, "geo_index", target)
     print(f"[publish] geo_index {len(out)}행 → {target} (테이블 geo_index)")
-    # 2) 이벤트 상세 (geo_event 계약) — 경보 모델의 오버라이드·사유 인용 입력
-    ev = load_events()
-    n_ev = 0
-    if len(ev):
-        man = load_manifest()
-        src = man.set_index("doc_id")["source"].to_dict() if len(man) else {}
-        e = ev.rename(columns={"commodity": "commodity_code"}).copy()
-        e["source"] = e["doc_id"].map(src).fillna("")
-        # 방어: LLM 불량 날짜가 남아있으면 DATE 캐스팅에서 전체 publish가 죽음(실측 2026-07-08:
-        # "202X-09-01" placeholder, "2023-02-29" 달력상 불가능 날짜) — 형식+달력 검증을 한 번에
-        # (pd.to_datetime coerce), 불량은 NULL로 밀어내고 계속 진행.
-        parsed = pd.to_datetime(e["obs_date"], format="%Y-%m-%d", errors="coerce")
-        n_bad = int((parsed.isna() & e["obs_date"].notna()).sum())
-        if n_bad:
-            print(f"  [publish] obs_date 형식/달력 불량 {n_bad}건 → NULL 처리")
-        e["obs_date"] = parsed.dt.strftime("%Y-%m-%d")
-        e["obs_date"] = e["obs_date"].where(parsed.notna(), None)
-        e["evidence_quote"] = e["evidence_quote"].astype(str).str.slice(0, 600)
-        e["published_at"] = now
-        e = e[["event_id", "doc_id", "commodity_code", "obs_date", "country", "event_type",
-               "direction", "target", "severity", "confidence", "evidence_quote",
-               "source", "published_at"]]
-        _write(e, "geo_event", target)
-        n_ev = len(e)
-        print(f"[publish] geo_event {n_ev}행 → {target} (테이블 geo_event)")
-    # 3) 확률 레이어 (geo_prob — prob_model.py 산출, 있으면 발행)
     n_pr = 0
     prob_f = C.STORE / "geo_prob.parquet"
     if prob_f.exists():
@@ -82,9 +96,23 @@ def run(target=None):
         _write(pr, "geo_prob", target)
         n_pr = len(pr)
         print(f"[publish] geo_prob {n_pr}행 → {target} (테이블 geo_prob)")
-    return len(out) + n_ev + n_pr
+    return len(out) + n_pr
+
+
+def run(target=None, what: str = "all"):
+    target = target or os.environ.get("GEO_PUBLISH_DB") or str(C.STORE / "geo_published.duckdb")
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    n = 0
+    if what in ("events", "all"):
+        n += publish_events(target, now)
+    if what in ("index", "all"):
+        n += publish_index(target, now)
+    return n
 
 
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser(); ap.add_argument("--db", default=None)
-    run(ap.parse_args().db)
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--db", default=None)
+    ap.add_argument("--what", default="all", choices=["events", "index", "all"])
+    a = ap.parse_args()
+    run(a.db, a.what)
