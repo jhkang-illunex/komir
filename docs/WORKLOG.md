@@ -2,6 +2,23 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-07-12 — 실가격·교사신호 로딩 → 진단모델 첫 실데이터 가동
+
+`scripts/load_komis_xlsx.py` 신설 — KOMIS 제공 xlsx를 warehouse에 적재, SYNTH 완전 교체.
+- 가격(fact_price 6,839행): 「KOMIS 핵심광물 공급망 통계」 '주간 평균' 시트 단일 소스로 5광종
+  전부 확보 — CU/NI: LME CASH+3M(2001~), CO: LME CASH(2010~), LI: 탄산리튬 CIF China(2018~),
+  REE: 산화네오디뮴 FOB China(2010~). 전부 2026-06까지.
+- 교사(fact_indicator 385행): 수급동향지표.xlsx 월별 2020-01~2026-05, 5광종(REE=네오디뮴 컬럼).
+- SYNTH는 fact_*_synth_backup 테이블로 백업 후 제거(보존 정책). 재실행 멱등(키 삭제 후 삽입).
+- 마트 재빌드: 1,610(합성)→4,601행(실데이터), 교사 1,632·지정학 2,844·생산HHI 351·변동성 4,591.
+- 진단 첫 실데이터 결과(월간 패널 390행, train 300/test 90=2025~):
+  Ridge R² 0.701(MAE 10.87) vs Naive 0.263 — 실질 예측력. 위기 이진분류 AUC 0.988(위기율 23%).
+  피처 중요도: import_hhi 0.39 > ref_price 0.30 > spread 0.17 > … > geopolitical_risk 0.01.
+- 관찰: ⑥ 중요도가 아직 낮음 — (a) 교사가 시장결과형 지표라 가격·교역 구조에 1차 반응
+  (b) 지정학은 평시 평균이 아니라 꼬리/전환점에 기여(경보 계열1 오버라이드가 그 몫)
+  (c) 풀링 GBM 기준 — v1 §7의 광종별 가중(REE·CO 지정학 강조)·ordered logit에서 재평가 예정.
+  production_hhi는 가용 시점(2025-02+) 제약으로 이번 패널에선 자동 제외 — refdata 백필 후 복귀.
+
 ## 2026-07-12 — 일일 운영 모드 확정: `collector daily` + zip 번들
 
 수집기를 "매일 1회: GDELT 하루치 캐치업 + 뉴스/미·중 공시 수집 → collect_YYYYMMDD.zip" 모드로
