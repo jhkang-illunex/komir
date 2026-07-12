@@ -2,6 +2,17 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-07-12 — 일자별 번들 인도 프로토콜 (수집기→분석기)
+
+수집기가 매일 inbox를 collect_YYYYMMDD.tar.gz 하나로 묶고(데몬 날짜전환 자동 or `collector
+bundle` cron), 분석기가 볼륨에서 번들을 발견해 처리(`geo ingest-bundles` — 전개 후 ingest 자동
+연쇄). 기존 파일 계약 위의 전송 형식 변경이라 수정 범위 작음(양단 모듈 1개씩).
+- 원자성: .part→rename + 멤버수 재검증. 원본은 _bundled/로 이동(삭제 안 함 — 번들이 일자별
+  원시 아카이브 겸임, 보존 정책 정합).
+- 멱등: bundles_done.txt 상태 + ingest 파일해시 dedup 2중 방어(재실행 무해 실증).
+- 안전: tar 경로탈출 방어, .txt 멤버만 전개.
+- E2E 검증: 수집(3건)→번들→발견→전개→ingest(3 archived)→재실행 0건.
+
 ## 2026-07-12 — 미국/중국 수출입 공시 → 지정학 위기지수 배선 완성
 
 수집기(us_trade/cn_trade) 산출을 geo 파이프라인에 실배선 + 2016~ 백필 실투입(미국 886건·중국 16건).

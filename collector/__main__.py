@@ -41,21 +41,37 @@ def main(argv=None):
     pr = sub.add_parser("run", help="전체(또는 --only) 1회 수집")
     pr.add_argument("--only", default=None, help=f"쉼표구분 {','.join(ALL)}")
     pr.add_argument("--days", type=int, default=7, help="뉴스 수집 소급 일수(기본 7)")
-    pd_ = sub.add_parser("daemon", help="주기 실행(도커 기본)")
+    pd_ = sub.add_parser("daemon", help="주기 실행(도커 기본) — 날짜 전환 시 자동 번들링")
     pd_.add_argument("--interval-mins", type=int, default=60)
     pd_.add_argument("--only", default=None)
     pd_.add_argument("--days", type=int, default=7)
+    pd_.add_argument("--no-bundle", action="store_true", help="일자별 번들링 비활성(루즈 파일 유지)")
+    sub.add_parser("bundle", help="현재 inbox 루즈 파일을 collect_YYYYMMDD.tar.gz로 번들(cron용)")
     a = ap.parse_args(argv)
 
+    if a.cmd == "bundle":
+        from . import bundler
+        bundler.run()
+        return
     only = a.only.split(",") if a.only else None
     if a.cmd == "run":
         run_once(only, a.days)
     else:
+        from datetime import date
+        cur_day = date.today()
         while True:
             try:
                 run_once(only, a.days)
             except Exception as e:          # 개별 주기 실패가 데몬을 죽이지 않게
                 logging.getLogger("collector").exception("주기 실행 실패: %s", e)
+            # 날짜 전환 감지 → 어제까지 쌓인 루즈 파일을 번들로 인도
+            if not getattr(a, "no_bundle", False) and date.today() != cur_day:
+                try:
+                    from . import bundler
+                    bundler.run(cur_day.strftime("%Y%m%d"))
+                except Exception as e:
+                    logging.getLogger("collector").exception("번들링 실패: %s", e)
+                cur_day = date.today()
             time.sleep(a.interval_mins * 60)
 
 

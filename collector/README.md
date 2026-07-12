@@ -18,13 +18,23 @@ docker compose up -d --build          # 데몬(기본 60분 주기)
 docker compose run --rm collector python -m collector run --only us_trade,cn_trade   # 1회
 ```
 
-## 분석 서버와의 연결 (파일 계약)
-수집기는 공유 NAS에 쓰고, 분석 서버는 같은 경로를 읽는다:
+## 분석 서버와의 연결 — 일자별 번들 (권장, 2026-07-12)
+수집 데몬이 날짜 전환 시(또는 cron `python -m collector bundle`) 하루치 inbox를
+`$COLLECT_OUT/bundles/collect_YYYYMMDD.tar.gz` 하나로 묶는다(멤버수 재검증 후 원자적 rename,
+원본은 `_bundled/YYYYMMDD/`로 이동 — 삭제 안 함). 분석 서버는 볼륨에서 번들을 발견해 처리:
 ```bash
-# 분석 서버에서 —
+# 분석 서버 cron(예: 매일 새벽) —
+python -m geo ingest-bundles --dir $NAS/collect_out/bundles   # 발견→전개→ingest 자동 연쇄
+python -m geo extract && python -m geo index && python -m geo prob   && python -m geo publish --db $WAREHOUSE
+python -m geo gkg-parse --bulk-root $NAS/collect_out/gkg      # GKG 증분 파싱(재개형)
+```
+- 멱등: 번들 처리 상태($GEO_DATA/_logs/bundles_done.txt) + ingest 파일해시 dedup 2중 방어.
+- tar 경로탈출 방어·.txt만 전개. 번들 파일은 그대로 남아 일자별 원시 아카이브를 겸한다.
+
+### (대안) 루즈 파일 직결 — 번들 없이
+```bash
 rsync -a $NAS/collect_out/inbox/  $GEO_DATA/inbox/          # 또는 GEO_DATA inbox를 NAS로 지정
 python -m geo ingest && python -m geo extract && python -m geo index
-python -m geo gkg-parse --bulk-root $NAS/collect_out/gkg    # GKG 증분 파싱(재개형 — 새 파일만 처리)
 ```
 - inbox 텍스트 형식·GKG zip 형식은 분석기의 기존 입력 형식과 동일(코드 공유 없이 형식만 계약).
 - 상태/중복방지: `$COLLECT_OUT/_state/` (seen 해시·gkg 마지막 타임스탬프) — 볼륨에 있으므로
