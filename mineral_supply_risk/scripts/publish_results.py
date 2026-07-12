@@ -25,7 +25,7 @@ from db.dbio import write_df                     # noqa: E402
 from msr.config import DB_PATH                   # noqa: E402
 
 TABLES = ["out_diagnosis_alert", "mart_diagnosis_nowcast", "out_import_forecast",
-          "geo_index", "geo_prob"]
+          "out_import_forecast_unit", "geo_index", "geo_prob"]
 
 
 def run(target: str | None = None, schema: str | None = None, source: str | None = None) -> dict:
