@@ -61,7 +61,12 @@ class IndexConfig(BaseModel):
     #   0=강한 호재, 50=중립(이벤트 없음), 100=심각. 새 기간이 와도 과거 지수가 재척도되지 않음.
     # minmax0_100(구): 광종별 자기 히스토리 min-max — 매 실행 전체 재척도되는 결함으로 비권장.
     normalize: Literal["tanh0_100", "zscore", "minmax0_100"] = "tanh0_100"
-    scale_k: float = 10.0            # tanh 스케일(대략 '심각 수준' raw 크기)
+    scale_k: float = 10.0            # tanh 스케일(대략 '심각 수준' raw 크기) — 폴백/기본값
+    # 광종별 스케일(2026-07-12 도입): GKG는 CU/NI만 전용 테마코드가 있어 광종 간 raw_score
+    # 규모가 최대 70배 차이(실측 P50: CU 220 vs LI 3) — 단일 k로는 CU 포화·LI/CO/REE 무반응.
+    # 각 광종의 2016~2026 전체 주간 |raw_score| P90을 k로 앵커링(P90 주간=지수 88) 후 동결 —
+    # 동결이므로 절대 스케일(발행값 불변) 성질은 유지된다. 비어 있으면 scale_k 단일값 사용.
+    scale_k_by_commodity: dict = Field(default_factory=dict)
     direction_sign: dict = Field(default_factory=lambda: {
         "supply_down": 1.0, "price_up": 1.0, "supply_up": -0.5,
         "price_down": -0.5, "neutral": 0.2})

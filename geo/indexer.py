@@ -143,7 +143,8 @@ def compute() -> pd.DataFrame:
             g = g.rename(columns={"date": "period"})
             g["commodity"] = c
             g["freq"] = flabel
-            g["index"] = _normalize(g["raw_score"], cfg.normalize, cfg.scale_k)
+            k = float((cfg.scale_k_by_commodity or {}).get(c, cfg.scale_k))
+            g["index"] = _normalize(g["raw_score"], cfg.normalize, k)
             out.append(g)
     res = pd.concat(out, ignore_index=True)
     res["period"] = pd.to_datetime(res["period"]).dt.strftime("%Y-%m-%d")

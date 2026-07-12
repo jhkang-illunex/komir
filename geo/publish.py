@@ -72,7 +72,17 @@ def run(target=None):
         _write(e, "geo_event", target)
         n_ev = len(e)
         print(f"[publish] geo_event {n_ev}행 → {target} (테이블 geo_event)")
-    return len(out) + n_ev
+    # 3) 확률 레이어 (geo_prob — prob_model.py 산출, 있으면 발행)
+    n_pr = 0
+    prob_f = C.STORE / "geo_prob.parquet"
+    if prob_f.exists():
+        pr = pd.read_parquet(prob_f)
+        pr = pr.rename(columns={"commodity": "commodity_code", "week": "period"})
+        pr["generated_at"] = now
+        _write(pr, "geo_prob", target)
+        n_pr = len(pr)
+        print(f"[publish] geo_prob {n_pr}행 → {target} (테이블 geo_prob)")
+    return len(out) + n_ev + n_pr
 
 
 if __name__ == "__main__":

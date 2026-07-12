@@ -12,7 +12,7 @@
 | `warehouse/minerals.duckdb` | 공유 warehouse 정본(fact_*·mart_*·geo_index 2,087·geo_event 6,510 포함) | 2026-07-08 geo publish + weekly_mart 재빌드 | `GEO_DATA=./geo_data_2016plus_run python -m geo publish --db warehouse/minerals.duckdb` → `MSR_DB=... python -m msr.features.weekly_mart` |
 | `warehouse/minerals_test.duckdb` | 위 반영 전 검증 사본(2026-07-08). 정본이 root 소유였던 동안의 조인 검증에 사용 | 〃 | 폐기 가능(정본 검증 완료) — 단 사용자 확인 후 |
 | `geo_data_2016plus_run/` | 2016+ 전체 코퍼스(2,812건) ingest→extract 결과. manifest·이벤트 6,510건·pdf_extract_method·OCR캐시·실행로그(run*.log) | 2026-07-07~08, §9·§10 | META.md 참고 |
-| `geo_data/` | GKG 벌크 파싱 이벤트 저장소(약 2.0M건) + LLM 재검증 진행분 | 2026-07-08~ | META.md 참고 |
+| `geo_data/` | **프로덕션 단일 스토어**(2026-07-12 확정): 검증 GKG 180.9만+문서 6,510 = 1,815,034건 + 지수 3,382행 + 확률 2,745행 | 2026-07-08~12 | META.md 참고 |
 | NAS `광해공단/bulk/gdelt/` | GDELT GKG 원본 zip 361,407개(2016~2026) + 다운로드/파싱/검증 로그(_logs/) | 2026-07-06~08 | `python -m geo.collectors.gkg_bulk_download` (5워커, 총 ~26h) |
 | NAS `광해공단/collect_out/` (예정) | 독립 수집기(`collector/` 도커, 별도 서버) 산출 — inbox 텍스트(gnews/gdelt/us_trade/cn_trade)+GKG 증분 zip. 분석기와 파일 계약으로만 연결 | 2026-07-12 구축 | `docker compose up -d` (collector/README.md) |
 

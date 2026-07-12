@@ -87,7 +87,9 @@ def _features(panel: pd.DataFrame) -> pd.DataFrame:
 
 
 def _fit_one(train: pd.DataFrame):
-    """NB2 적합, 실패 시 포아송 폴백. 반환 (params, alpha, family)."""
+    """NB2 적합. MLE 실패/α 경계붕괴 시 Cameron-Trivedi 모멘트 α → GLM-NB 폴백, 그래도
+    안 되면 포아송. (실측 2026-07-12: REE에서 NB MLE α가 0으로 붕괴 → 포아송 꼬리 과신으로
+    burst 캘리브레이션 파탄 — 잔차가 실제로는 과산포라 모멘트 α 폴백이 필요.)"""
     import statsmodels.api as sm
     X = sm.add_constant(train[["x_ewma", "x_geo", "x_vol"]].astype(float))
     y = train["y_next"].astype(float)
@@ -98,8 +100,20 @@ def _fit_one(train: pd.DataFrame):
             raise RuntimeError("params non-finite")
         alpha = float(m.params.iloc[-1])
         if alpha <= 1e-6:
-            raise RuntimeError("alpha~0 — 포아송으로 충분")
+            raise RuntimeError("alpha~0 — 모멘트 폴백으로")
         return m.params.iloc[:-1], alpha, "nb2"
+    except Exception:
+        pass
+    # Cameron-Trivedi 보조회귀: ((y-mu)^2 - y)/mu = alpha*mu + e  →  alpha 모멘트 추정
+    try:
+        pois = sm.GLM(y, X, family=sm.families.Poisson()).fit()
+        mu = np.clip(pois.fittedvalues.values, 1e-9, None)
+        aux = ((y.values - mu) ** 2 - y.values) / mu
+        alpha = float(np.sum(aux * mu) / np.sum(mu ** 2))
+        if np.isfinite(alpha) and alpha > 1e-3:
+            m = sm.GLM(y, X, family=sm.families.NegativeBinomial(alpha=alpha)).fit()
+            return m.params, alpha, "nb2"
+        return pois.params, 0.0, "poisson"
     except Exception:
         m = sm.GLM(y, X, family=sm.families.Poisson()).fit()
         return m.params, 0.0, "poisson"
@@ -114,6 +128,20 @@ def _predict(params, alpha: float, family: str, df: pd.DataFrame) -> tuple:
     else:
         p0 = np.exp(-lam)
     return lam, 1.0 - p0
+
+
+def _p_ge(lam: np.ndarray, alpha: float, family: str, k: int) -> np.ndarray:
+    """P(y >= k) — NB2/포아송 생존함수. k<=1이면 1-P(0)과 동일."""
+    from scipy import stats
+    if k <= 1:
+        if family == "nb2":
+            return 1.0 - (1.0 + alpha * lam) ** (-1.0 / alpha)
+        return 1.0 - np.exp(-lam)
+    if family == "nb2":
+        n = 1.0 / alpha
+        p = 1.0 / (1.0 + alpha * lam)
+        return stats.nbinom.sf(k - 1, n, p)
+    return stats.poisson.sf(k - 1, lam)
 
 
 def _calibration_report(test: pd.DataFrame, p: np.ndarray, train_rate: float) -> str:
@@ -152,19 +180,30 @@ def run() -> pd.DataFrame:
         if len(train) < 52:
             print(f"  [prob] {c}: 학습표본 부족({len(train)}주) — 스킵"); continue
 
-        # 1) 검증 리포트(시계열 분할)
+        # 급증(burst) 임계: 학습기간 주간 심각수 P90(최소 2) — GKG 병합 후 "≥1건"은 기저율
+        # 0.83~1.0으로 포화되어 무정보(실측 2026-07-12). 조기경보로 유의미한 것은 "이례적으로
+        # 많은 주"의 확률이므로 광종별 분포 기준 임계를 동결해 사용한다.
+        burst_k = max(2, int(np.ceil(train["y_next"].quantile(0.90))))
+
+        # 1) 검증 리포트(시계열 분할) — burst 타깃 기준
         params, alpha, family = _fit_one(train)
-        _, p_test = _predict(params, alpha, family, test)
-        train_rate = float((train["y_next"] >= 1).mean())
-        reports.append(f"[{c}] {family} (α={alpha:.3f}) train {len(train)}주 / test {len(test)}주\n"
-                       f"  {_calibration_report(test, p_test, train_rate)}")
+        lam_t, _ = _predict(params, alpha, family, test)
+        p_burst_t = _p_ge(lam_t, alpha, family, burst_k)
+        test_b = test.copy(); test_b["y_next"] = (test_b["y_next"] >= burst_k).astype(float)
+        train_rate = float((train["y_next"] >= burst_k).mean())
+        # _calibration_report는 hit=(y_next>=1)로 계산하므로 이진화된 y_next를 그대로 전달
+        reports.append(f"[{c}] {family} (α={alpha:.3f}) burst_k={burst_k} "
+                       f"train {len(train)}주 / test {len(test)}주\n"
+                       f"  {_calibration_report(test_b, p_burst_t, train_rate)}")
 
         # 2) 발행 모델(전 기간 재적합) — 전 주차 확률 산출
         params_f, alpha_f, family_f = _fit_one(hist)
         lam, p1 = _predict(params_f, alpha_f, family_f, g)
         out = g[["commodity", "week"]].copy()
         out["lambda_next"] = lam
-        out["p_severe_next"] = p1
+        out["p_severe_next"] = p1                                  # P(>=1) — 하위호환
+        out["burst_threshold"] = burst_k
+        out["p_burst_next"] = _p_ge(lam, alpha_f, family_f, burst_k)  # P(>=P90 임계) — 주 신호
         out["family"] = family_f
         out["alpha_disp"] = alpha_f
         results.append(out)
@@ -178,8 +217,9 @@ def run() -> pd.DataFrame:
     store._write(res, GEO_PROB)
     print(f"\n[prob] {len(res)}행 → {GEO_PROB}")
     latest = res.sort_values("week").groupby("commodity").tail(1)
-    print("=== 최신 주 발행값: P(다음주 심각 이벤트 ≥1) ===")
-    print(latest[["commodity", "week", "lambda_next", "p_severe_next"]].to_string(index=False))
+    print("=== 최신 주 발행값 ===")
+    print(latest[["commodity", "week", "lambda_next", "p_severe_next",
+                  "burst_threshold", "p_burst_next"]].to_string(index=False))
     return res
 
 
