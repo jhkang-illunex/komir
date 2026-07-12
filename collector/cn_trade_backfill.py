@@ -11,7 +11,7 @@ zwgk/zcfb/*.shtml — 라이브 404 실측)는 아카이브 스냅샷(web.archiv
   COLLECT_OUT=... python -m collector.cn_trade_backfill
 """
 from __future__ import annotations
-import logging, re, time
+import hashlib, logging, re, time
 from datetime import date, datetime
 
 import requests
@@ -92,7 +92,6 @@ def run(year_from: int = 2016) -> int:
             continue
         print(f"[cn-backfill] {pattern}: 인벤토리 {len(inv)}건")
         for url, ts in inv:
-            import hashlib
             if hashlib.md5(url.encode()).hexdigest() in seen:
                 continue
             time.sleep(_RATE)

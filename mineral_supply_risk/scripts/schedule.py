@@ -28,10 +28,12 @@ def _geo(*args, db_events: bool = False):
     env = dict(os.environ)
     env.setdefault("GEO_DATA", os.path.join(KOMIR, "geo_data"))
     env.setdefault("GEO_PUBLISH_DB", DB_PATH)     # 전처리기 적재처 = 추정기 읽기처 = warehouse
-    if db_events:
-        env["GEO_EVENT_SOURCE"] = "db"
+    # 양방향 명시: 조상 셸에 GEO_EVENT_SOURCE=db가 남아 있어도 전처리 단계가 DB를 읽지 않게.
+    env["GEO_EVENT_SOURCE"] = "db" if db_events else "file"
     print(f"[schedule] geo {' '.join(args)}" + (" (이벤트 원천=DB)" if db_events else ""), flush=True)
-    subprocess.run([sys.executable, "-m", "geo", *args], cwd=KOMIR, env=env, check=True)
+    # timeout: LLM/DB 행이 걸리면 체인이 영원히 매달리는 것 방지(다음 주기 cron과 중첩 축적 방지)
+    subprocess.run([sys.executable, "-m", "geo", *args], cwd=KOMIR, env=env, check=True,
+                   timeout=int(os.environ.get("SCHEDULE_STAGE_TIMEOUT", 6 * 3600)))
 
 
 def _publish_results():
@@ -42,7 +44,8 @@ def _publish_results():
 
 def weekly():
     """주간: 번들 반입→전처리(DB 적재)→지정학 추정(DB 읽기)→수급위기 진단→경보→발행."""
-    print("[schedule] === weekly 시작 ===", flush=True)
+    print(f"[schedule] === weekly 시작 === (warehouse: {DB_PATH}"
+          f"{' — MSR_DB 미설정, 기본 경로 사용 중' if not os.environ.get('MSR_DB') else ''})", flush=True)
     # 전처리기 — 산출물을 DB에 넣는 데까지가 책임
     _geo("ingest-bundles")                        # 수집기 번들 전개(+ingest·gkg-parse 연쇄)
     _geo("extract")                               # LLM 이벤트 추출 → 파일 정본
@@ -63,7 +66,8 @@ def weekly():
 
 def monthly():
     """월간: 관세청 증분(백필 보존)·ECOS → 정규화·피처 → 12개월 수입량·금액 추정 → 발행."""
-    print("[schedule] === monthly 시작 ===", flush=True)
+    print(f"[schedule] === monthly 시작 === (warehouse: {DB_PATH}"
+          f"{' — MSR_DB 미설정, 기본 경로 사용 중' if not os.environ.get('MSR_DB') else ''})", flush=True)
     today = date.today()
     # 최근 24개월 재수집(관세청 소급 정정 반영) — collect_customs(전삭제형)를 쓰면
     # 2013~22 월간 백필이 유실되므로 반드시 보존형 증분을 쓴다.

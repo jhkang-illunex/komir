@@ -95,7 +95,7 @@ def extracted_doc_ids() -> set:
     log = _read(C.EXTRACT_LOG)
     if len(log):
         done |= set(log["doc_id"])
-    ev = load_events()
+    ev = load_events(source="file")   # 추출 부기는 파일 도메인 — DB(발행 스냅샷)는 지연될 수 있음
     if len(ev):
         done |= set(ev["doc_id"])
     return done
@@ -120,7 +120,9 @@ def append_events(records: list[dict]):
     if not records:
         return
     C.STORE.mkdir(parents=True, exist_ok=True)
-    cur = load_events()
+    # 쓰기 경로는 파일 정본 전용으로 고정 — env가 db인 채 여기로 오면 DB 스냅샷(publish 계약의
+    # 축소 스키마: horizon_months·analyzed_at 등 없음)에 병합해 정본을 덮어써 버린다(스키마 파괴).
+    cur = load_events(source="file")
     new = pd.DataFrame(records)
     df = pd.concat([cur, new], ignore_index=True) if len(cur) else new
     if "event_id" in df:
@@ -179,7 +181,7 @@ def remove_events(event_ids: set):
     append_events는 추가/덮어쓰기만 가능해 삭제 전용 함수가 별도로 필요하다."""
     if not event_ids:
         return
-    ev = load_events()
+    ev = load_events(source="file")   # 쓰기 경로 — DB 스냅샷으로 정본 덮어쓰기 방지(append_events 참조)
     if len(ev) == 0 or "event_id" not in ev:
         return
     before = len(ev)
