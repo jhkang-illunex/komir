@@ -2,6 +2,18 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-07-12 — 예측 결과 DB화 + 외부 DB 연동(env 주입)
+
+"DB 접속 URL·스키마를 외부 환경에서 주입, 예측 결과와 근거를 DB화" 요구 구현.
+- `db/dbio.py::write_df`에 schema 파라미터 추가 — SQLAlchemy to_sql(schema=)로 Oracle 스키마/
+  MariaDB DB 지정, DuckDB면 CREATE SCHEMA 후 사용.
+- `scripts/publish_results.py` 신설 — env 계약: MSR_PUBLISH_DB(:// 포함=서버DB URL, 아니면
+  DuckDB 경로)·MSR_PUBLISH_SCHEMA(선택)·MSR_DB(원천). 발행 테이블(근거 동봉): out_diagnosis_alert
+  (4단계+법정 사유·모델 원천·확률·기여·이벤트 인용), mart_diagnosis_nowcast(예측 지수+XAI json),
+  out_import_forecast, geo_index, geo_prob.
+- E2E 검증(SQLAlchemy 경로 — sqlite 대역, Oracle/MariaDB와 코드 경로 동일): 5테이블 8,326행
+  발행, 외부 DB에서 사유·stage_probs·contrib 필드 원문 조회 확인.
+
 ## 2026-07-12 — 수급위기 진단 대시보드 프로토타입 (`dashboards/`)
 
 주간 4단계 진단을 UI화(산출물 ③ 모니터링 대시보드의 선행 프로토타입) — 자체완결 단일 HTML

@@ -37,6 +37,9 @@ def apply_schema(sql_path: str, target: str, drop_if_not_exists_for_server=False
     else:
         import duckdb
         con = duckdb.connect(target)
+        if schema:
+            con.execute(f'CREATE SCHEMA IF NOT EXISTS "{schema}"')
+            table = f'{schema}"."{table}'   # 아래 f'"{table}"' 조합 시 "schema"."table"이 됨
         for st in stmts:
             con.execute(st)
         con.close()
@@ -44,8 +47,11 @@ def apply_schema(sql_path: str, target: str, drop_if_not_exists_for_server=False
 
 
 # ---------- DataFrame 적재 ----------
-def write_df(df, table: str, target: str, if_exists: str = "append", pk: list = None):
-    """df를 table에 적재. if_exists: append|replace. pk 지정 시 중복 제거(append 전)."""
+def write_df(df, table: str, target: str, if_exists: str = "append", pk: list = None,
+             schema: str = None):
+    """df를 table에 적재. if_exists: append|replace. pk 지정 시 중복 제거(append 전).
+    schema: 서버DB 스키마/데이터베이스명(예: Oracle 스키마, MariaDB DB) — env
+    MSR_PUBLISH_SCHEMA로 외부 주입(2026-07-12). DuckDB면 스키마 자동 생성 후 사용."""
     if df is None or len(df) == 0:
         return 0
     if pk:  # 문서화된 계약 실구현: pk 기준 dedup(뒤 행 우선)
@@ -54,10 +60,13 @@ def write_df(df, table: str, target: str, if_exists: str = "append", pk: list = 
         import sqlalchemy as sa
         eng = sa.create_engine(target)
         df.to_sql(table, eng, if_exists=("replace" if if_exists == "replace" else "append"),
-                  index=False, chunksize=1000)
+                  index=False, chunksize=1000, schema=schema)
     else:
         import duckdb
         con = duckdb.connect(target)
+        if schema:
+            con.execute(f'CREATE SCHEMA IF NOT EXISTS "{schema}"')
+            table = f'{schema}"."{table}'   # 아래 f'"{table}"' 조합 시 "schema"."table"이 됨
         exists = con.execute(
             "SELECT count(*) FROM information_schema.tables WHERE table_name=?", [table]).fetchone()[0]
         con.register("_df", df)
