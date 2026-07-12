@@ -50,7 +50,7 @@ SELECT
   v.ref_price, v.logret, v.volatility_12w,
   s.spread_pct,
   ta.import_hhi, ta.import_yoy, ta.import_cagr3,
-  CAST(NULL AS DOUBLE) AS production_hhi,       -- USGS 미보유
+  {PROD_COL},
   {GEO_COL},
   CAST(NULL AS DOUBLE) AS geo_macro,            -- 거시 지정학
   t.val AS teacher_supply_demand                -- 교사신호(수급동향지표)
@@ -61,16 +61,31 @@ ASOF LEFT JOIN agg_trade_annual ta
 ASOF LEFT JOIN teacher t
   ON v.commodity_code = t.commodity_code AND v.obs_date >= t.obs_date
 {GEO_JOIN}
+{PROD_JOIN}
 """
 
 # 주의: 이 치환 문자열 뒤에 템플릿의 쉼표가 바로 붙으므로 SQL 인라인 주석(--) 금지
 # (주석이 쉼표를 삼켜 ParserException — 실측 2026-07-08).
 _GEO_COL_NULL = "CAST(NULL AS DOUBLE) AS geopolitical_risk"
 _GEO_COL_JOIN = "CAST(g.idx_value AS DOUBLE) AS geopolitical_risk"
+# 변수⑤(2026-07-12): 연간 발행 USGS를 연 단위 적용 — scripts/load_usgs.py 산출 테이블을
+# ASOF로 당김(발행 가용일 이전 행은 NULL 유지 = 미래참조 없음. 2016~23 백필은 수집서버
+# geo refdata 실행 후 번들 반입).
+_PROD_COL_NULL = "CAST(NULL AS DOUBLE) AS production_hhi"
+_PROD_COL_JOIN = "CAST(ph.production_hhi AS DOUBLE) AS production_hhi"
+_PROD_JOIN = """ASOF LEFT JOIN (
+  SELECT commodity_code, production_hhi, CAST(avail_date AS DATE) AS avail_date
+  FROM agg_production_hhi
+) ph ON v.commodity_code = ph.commodity_code AND v.obs_date >= ph.avail_date"""
 _GEO_JOIN = """ASOF LEFT JOIN (
   SELECT commodity_code, CAST(period AS DATE) AS period, idx_value
   FROM geo_index WHERE freq='W'
 ) g ON v.commodity_code = g.commodity_code AND v.obs_date >= g.period"""
+
+
+def _has_table(con, name: str) -> bool:
+    return con.execute(
+        "SELECT count(*) FROM information_schema.tables WHERE table_name=?", [name]).fetchone()[0] > 0
 
 
 def _has_geo_index(con) -> bool:
@@ -87,18 +102,23 @@ def run(db=None):
     # 가격 데이터 유무 확인(없으면 빈 마트 생성)
     npx = con.execute("SELECT count(*) FROM fact_price WHERE freq='W'").fetchone()[0]
     use_geo = _has_geo_index(con)
+    use_prod = _has_table(con, "agg_production_hhi")
     ddl = _DDL_TMPL.format(
         GEO_COL=_GEO_COL_JOIN if use_geo else _GEO_COL_NULL,
         GEO_JOIN=_GEO_JOIN if use_geo else "",
+        PROD_COL=_PROD_COL_JOIN if use_prod else _PROD_COL_NULL,
+        PROD_JOIN=_PROD_JOIN if use_prod else "",
     )
     con.execute(ddl)
     n = con.execute("SELECT count(*) FROM mart_weekly_diagnosis").fetchone()[0]
     nt = con.execute("SELECT count(*) FROM mart_weekly_diagnosis WHERE teacher_supply_demand IS NOT NULL").fetchone()[0]
     ng = con.execute("SELECT count(*) FROM mart_weekly_diagnosis WHERE geopolitical_risk IS NOT NULL").fetchone()[0]
+    np_ = con.execute("SELECT count(*) FROM mart_weekly_diagnosis WHERE production_hhi IS NOT NULL").fetchone()[0]
     con.execute("CHECKPOINT"); con.close()
     print(f"[weekly-mart] fact_price(W)={npx} → mart_weekly_diagnosis={n}행 "
-          f"(교사신호 {nt}행, 지정학지수 {ng}행{'—geo_index 미발행' if not use_geo else ''})")
-    return {"rows": n, "with_teacher": nt, "with_geo": ng}
+          f"(교사신호 {nt}, 지정학지수 {ng}{'—geo_index 미발행' if not use_geo else ''}, "
+          f"생산HHI {np_}{'—usgs 미적재' if not use_prod else ''})")
+    return {"rows": n, "with_teacher": nt, "with_geo": ng, "with_prod_hhi": np_}
 
 
 if __name__ == "__main__":

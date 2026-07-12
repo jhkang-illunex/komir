@@ -135,7 +135,12 @@ def compute() -> pd.DataFrame:
     ev["score"] = ev["severity"].astype(float) * ev["rel"] * ev["conc"] * ev["hhi_mult"] * ev["sgn"]
 
     out = []
-    for freq, flabel in (("MS", "M"), ("W", "W")):
+    # Y(연간): 연간 발행 보고서(USGS·IEA·광업요람 등)의 이벤트가 자연스럽게 연 단위 배경
+    # 신호로 집계됨(2026-07-12, "연간 발행물은 연 단위 적용" 방침). 붙임1 다중 주기 요구 대응.
+    # scale_k는 "주간 P90=지수 88" 앵커(주간 기준) — 월/연은 raw가 기간 길이만큼 커지므로
+    # 동일 앵커 의미를 유지하려면 주기 배수를 곱한다(정상 주간율 가정 하 P90-상당 기간=88).
+    _FREQ_MULT = {"W": 1.0, "M": 52.0 / 12.0, "Y": 52.0}
+    for freq, flabel in (("MS", "M"), ("W", "W"), ("YS", "Y")):
         for c, sub in ev.groupby("commodity"):
             g = (sub.set_index("date").resample(freq)["score"]
                     .agg(raw_score="sum", n_events="count").reset_index())
@@ -143,7 +148,7 @@ def compute() -> pd.DataFrame:
             g = g.rename(columns={"date": "period"})
             g["commodity"] = c
             g["freq"] = flabel
-            k = float((cfg.scale_k_by_commodity or {}).get(c, cfg.scale_k))
+            k = float((cfg.scale_k_by_commodity or {}).get(c, cfg.scale_k)) * _FREQ_MULT[flabel]
             g["index"] = _normalize(g["raw_score"], cfg.normalize, k)
             out.append(g)
     res = pd.concat(out, ignore_index=True)
