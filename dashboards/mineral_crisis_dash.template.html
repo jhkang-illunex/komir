@@ -1,0 +1,237 @@
+<title>핵심광물 수급위기 진단</title>
+<style>
+:root{
+  --bg:#f5f6f4; --panel:#ffffff; --ink:#1e252d; --sub:#5c6975; --line:#dde2e0;
+  --accent:#3d6b8e; --accent-soft:#e8eff5;
+  --s0:#8a9199; --s1:#2f6fed; --s2:#d7a512; --s2f:#f5c518; --s3:#f28c1c; --s4:#d0342c;
+  --chip-text:#fff;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#12161b; --panel:#1a2027; --ink:#dce3e9; --sub:#8b98a5; --line:#2a323b;
+  --accent:#6fa3c9; --accent-soft:#22303c;
+}}
+:root[data-theme="dark"]{
+  --bg:#12161b; --panel:#1a2027; --ink:#dce3e9; --sub:#8b98a5; --line:#2a323b;
+  --accent:#6fa3c9; --accent-soft:#22303c;
+}
+:root[data-theme="light"]{
+  --bg:#f5f6f4; --panel:#ffffff; --ink:#1e252d; --sub:#5c6975; --line:#dde2e0;
+  --accent:#3d6b8e; --accent-soft:#e8eff5;
+}
+*{box-sizing:border-box}
+body{background:var(--bg); color:var(--ink);
+  font-family:'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',system-ui,sans-serif;
+  margin:0; padding:20px; line-height:1.5;}
+.wrap{max-width:1180px; margin:0 auto; display:flex; flex-direction:column; gap:16px;}
+header{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;}
+header h1{font-size:1.35rem; font-weight:800; letter-spacing:-.02em; margin:0;}
+header .meta{color:var(--sub); font-size:.82rem;}
+.cards{display:grid; grid-template-columns:repeat(5,1fr); gap:10px;}
+@media(max-width:860px){.cards{grid-template-columns:repeat(2,1fr)}}
+.card{background:var(--panel); border:1px solid var(--line); border-radius:6px;
+  padding:12px 14px; cursor:pointer; text-align:left; font:inherit; color:inherit;}
+.card:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+.card.sel{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent);}
+.card .cc{font-size:.78rem; font-weight:700; color:var(--sub); letter-spacing:.06em;}
+.card .idx{font-size:1.7rem; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.15;}
+.chip{display:inline-block; padding:1px 9px; border-radius:999px; font-size:.75rem;
+  font-weight:700; color:var(--chip-text);}
+.card .prob{font-size:.72rem; color:var(--sub); margin-top:4px;}
+.panel{background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:16px;}
+.panel h2{font-size:.92rem; font-weight:700; margin:0 0 10px; letter-spacing:-.01em;}
+.grid2{display:grid; grid-template-columns:1fr 340px; gap:16px; align-items:start;}
+@media(max-width:980px){.grid2{grid-template-columns:1fr}}
+.legend{display:flex; gap:12px; flex-wrap:wrap; font-size:.75rem; color:var(--sub); align-items:center;}
+.legend .sw{display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px;}
+canvas{width:100%; height:300px; display:block;}
+.toggle{font-size:.78rem; color:var(--sub); display:flex; align-items:center; gap:5px; cursor:pointer;}
+.reason{font-size:.85rem; white-space:pre-wrap; word-break:keep-all;}
+.reason .hd{display:flex; gap:8px; align-items:center; margin-bottom:8px; font-variant-numeric:tabular-nums;}
+.bars{display:flex; flex-direction:column; gap:6px; margin-top:8px;}
+.bar-row{display:grid; grid-template-columns:110px 1fr 48px; gap:8px; align-items:center; font-size:.76rem;}
+.bar-track{position:relative; height:12px; background:var(--accent-soft); border-radius:3px; overflow:hidden;}
+.bar-fill{position:absolute; top:0; bottom:0; border-radius:3px;}
+.bar-val{text-align:right; font-variant-numeric:tabular-nums; color:var(--sub);}
+.probbar{display:flex; height:18px; border-radius:4px; overflow:hidden; margin:6px 0 4px;}
+.probbar>div{height:100%;}
+.problabel{font-size:.72rem; color:var(--sub);}
+table{width:100%; border-collapse:collapse; font-size:.8rem;}
+th{color:var(--sub); font-weight:600; text-align:left; padding:5px 8px; border-bottom:1px solid var(--line); font-size:.73rem;}
+td{padding:5px 8px; border-bottom:1px solid var(--line); vertical-align:top; font-variant-numeric:tabular-nums;}
+tr.rowbtn{cursor:pointer;}
+tr.rowbtn:hover td{background:var(--accent-soft);}
+tr.rowsel td{background:var(--accent-soft);}
+td.rsn{color:var(--sub); max-width:520px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-variant-numeric:normal;}
+.footnote{color:var(--sub); font-size:.72rem;}
+</style>
+<div class="wrap">
+<header>
+  <h1>핵심광물 수급위기 진단</h1>
+  <span class="meta" id="meta"></span>
+</header>
+<div class="cards" id="cards"></div>
+<div class="grid2">
+  <section class="panel">
+    <h2 id="chartTitle"></h2>
+    <div class="legend" style="margin-bottom:8px">
+      <span><span class="sw" style="background:var(--accent)"></span>수급위기지수(모델)</span>
+      <label class="toggle"><input type="checkbox" id="geoToggle" checked> 지정학 지수 겹쳐보기</label>
+      <span style="margin-left:auto">
+        <span class="sw" style="background:var(--s1)"></span>관심
+        <span class="sw" style="background:var(--s2f); margin-left:8px"></span>주의
+        <span class="sw" style="background:var(--s3); margin-left:8px"></span>경계
+        <span class="sw" style="background:var(--s4); margin-left:8px"></span>심각
+      </span>
+    </div>
+    <canvas id="chart" role="img" aria-label="주간 수급위기지수 추이와 경보 단계"></canvas>
+    <div class="footnote">차트를 클릭하면 해당 주의 경보 사유가 오른쪽에 표시됩니다. 하단 리본 = 주간 경보 단계.</div>
+  </section>
+  <aside style="display:flex; flex-direction:column; gap:16px;">
+    <section class="panel">
+      <h2>선택 주 경보 사유</h2>
+      <div class="reason" id="reason"></div>
+    </section>
+    <section class="panel">
+      <h2>모델 판단 근거 (최신월 XAI)</h2>
+      <div id="xai"></div>
+    </section>
+  </aside>
+</div>
+<section class="panel">
+  <h2>최근 16주 경보 이력 <span style="color:var(--sub); font-weight:400" id="tblCc"></span></h2>
+  <div style="overflow-x:auto"><table id="hist"><thead>
+    <tr><th>주(월요일)</th><th>단계</th><th>위기지수</th><th>사유</th></tr>
+  </thead><tbody></tbody></table></div>
+</section>
+<p class="footnote">단계 기준: 「자원안보특별법 시행령」 4단계(관심·주의·경계·심각). 위기지수 = 최적 진단모델(Ridge+AR, 워크포워드 QWK 0.905) nowcast, 0~100(높을수록 위기). XAI 기여도는 선형 정확 분해(+ = 위기 방향), 단계 확률은 학습잔차 기반 신뢰도.</p>
+</div>
+<script>
+const DATA = __DATA__;
+const LV = {0:["정상","var(--s0)"],1:["관심","var(--s1)"],2:["주의","var(--s2)"],3:["경계","var(--s3)"],4:["심각","var(--s4)"]};
+const LVF = {0:"#8a9199",1:"#2f6fed",2:"#f5c518",3:"#f28c1c",4:"#d0342c"};
+const CCN = {CU:"동", NI:"니켈", LI:"리튬", CO:"코발트", REE:"희토류(Nd)"};
+const FEAT_KO = {y_lag1:"전월 지표(관성)", price_z52:"가격 이상도(52주)", geo_chg:"지정학 지수 변화",
+  p_burst:"지정학 급증확률", geopolitical_risk:"지정학 지수", volatility_12w:"가격 변동성",
+  import_hhi:"수입 편중도", import_yoy:"수입 증감(YoY)", import_cagr3:"수입 증가도(3y)",
+  spread_pct:"현물-선물 스프레드", ref_price:"가격 수준"};
+let cc = "CU", selIdx = null, showGeo = true;
+
+const cardsEl = document.getElementById("cards");
+Object.keys(DATA.alerts).sort((a,b)=>["CU","NI","LI","CO","REE"].indexOf(a)-["CU","NI","LI","CO","REE"].indexOf(b)).forEach(k=>{
+  const rows = DATA.alerts[k]; const last = rows[rows.length-1];
+  const x = DATA.xai[k]||{}; const probs = x.probs||{};
+  const topProb = Object.entries(probs).sort((a,b)=>b[1]-a[1])[0];
+  const b = document.createElement("button");
+  b.className = "card"; b.setAttribute("data-cc", k);
+  b.innerHTML = `<div class="cc">${k} · ${CCN[k]}</div>
+    <div class="idx">${last[1]}</div>
+    <div><span class="chip" style="background:${LVF[last[2]]}${last[2]===2?';color:#3a3000':''}">${LV[last[2]][0]}</span></div>
+    <div class="prob">${topProb?`신뢰도 ${topProb[0]} ${(topProb[1]*100).toFixed(0)}%`:""}</div>`;
+  b.addEventListener("click", ()=>{cc=k; selIdx=null; render();});
+  cardsEl.appendChild(b);
+});
+document.getElementById("meta").textContent =
+  `최신 주: ${DATA.alerts.CU[DATA.alerts.CU.length-1][0]} · 데이터 기준 ${DATA.generated} · 주 단위 산출`;
+
+const cv = document.getElementById("chart"); const ctx = cv.getContext("2d");
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+function draw(){
+  const rows = DATA.alerts[cc]; if(!rows.length) return;
+  const dpr = window.devicePixelRatio||1;
+  const W = cv.clientWidth, H = cv.clientHeight;
+  cv.width = W*dpr; cv.height = H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  const padL=34, padR=10, padT=10, ribbon=10, padB=34+ribbon;
+  const iw=W-padL-padR, ih=H-padT-padB;
+  const n=rows.length, xw=iw/Math.max(1,n-1);
+  const X=i=>padL+i*xw, Y=v=>padT+ih*(1-v/100);
+  // grid
+  ctx.strokeStyle=css("--line"); ctx.lineWidth=1; ctx.fillStyle=css("--sub");
+  ctx.font="10px system-ui"; ctx.textAlign="right";
+  [0,25,50,75,100].forEach(v=>{ctx.beginPath();ctx.moveTo(padL,Y(v));ctx.lineTo(W-padR,Y(v));ctx.stroke();ctx.fillText(v,padL-6,Y(v)+3);});
+  // 연도 눈금
+  ctx.textAlign="center"; let py="";
+  rows.forEach((r,i)=>{const y=r[0].slice(0,4); if(y!==py){py=y;
+    ctx.fillText(y, X(i), H-ribbon-8);
+    ctx.strokeStyle=css("--line"); ctx.beginPath();ctx.moveTo(X(i),padT);ctx.lineTo(X(i),padT+ih);ctx.stroke();}});
+  // 지정학 오버레이
+  if(showGeo && DATA.geo[cc]){
+    const gm = new Map(DATA.geo[cc]);
+    ctx.strokeStyle=css("--sub"); ctx.setLineDash([3,3]); ctx.lineWidth=1; ctx.beginPath();
+    let started=false;
+    rows.forEach((r,i)=>{const v=gm.get(r[0]); if(v==null)return;
+      if(!started){ctx.moveTo(X(i),Y(v));started=true;}else ctx.lineTo(X(i),Y(v));});
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+  // 지수 라인
+  ctx.strokeStyle=css("--accent"); ctx.lineWidth=1.8; ctx.beginPath();
+  rows.forEach((r,i)=>{i?ctx.lineTo(X(i),Y(r[1])):ctx.moveTo(X(i),Y(r[1]));});
+  ctx.stroke();
+  // 단계 리본
+  rows.forEach((r,i)=>{ctx.fillStyle=LVF[r[2]];
+    ctx.fillRect(X(i)-xw/2, H-ribbon, Math.max(1,xw+0.5), ribbon);});
+  // 끝점 강조
+  const lr=rows[n-1];
+  ctx.fillStyle=css("--accent"); ctx.beginPath(); ctx.arc(X(n-1),Y(lr[1]),3.5,0,7); ctx.fill();
+  // 선택 마커
+  if(selIdx!=null){ctx.strokeStyle=css("--ink"); ctx.lineWidth=1; ctx.setLineDash([2,3]);
+    ctx.beginPath();ctx.moveTo(X(selIdx),padT);ctx.lineTo(X(selIdx),H-ribbon);ctx.stroke();ctx.setLineDash([]);}
+}
+cv.addEventListener("click", e=>{
+  const rows=DATA.alerts[cc]; const rect=cv.getBoundingClientRect();
+  const padL=34,padR=10; const iw=rect.width-padL-padR;
+  const i=Math.round((e.clientX-rect.left-padL)/iw*(rows.length-1));
+  if(i>=0&&i<rows.length){selIdx=i; render();}
+});
+document.getElementById("geoToggle").addEventListener("change", e=>{showGeo=e.target.checked; draw();});
+
+function chip(lv){return `<span class="chip" style="background:${LVF[lv]}${lv===2?';color:#3a3000':''}">${LV[lv][0]}</span>`;}
+function renderReason(){
+  const rows=DATA.alerts[cc]; const i=selIdx==null?rows.length-1:selIdx; const r=rows[i];
+  document.getElementById("reason").innerHTML =
+    `<div class="hd">${chip(r[2])}<strong>${r[0]} 주</strong><span style="color:var(--sub)">지수 ${r[1]}</span></div>${r[3]||"—"}`;
+}
+function renderXai(){
+  const x=DATA.xai[cc]; const el=document.getElementById("xai");
+  if(!x){el.textContent="—"; return;}
+  const order=["정상","관심","주의","경계","심각"]; const pc={정상:LVF[0],관심:LVF[1],주의:LVF[2],경계:LVF[3],심각:LVF[4]};
+  let bar = `<div class="probbar">` + order.map(k=>{const v=x.probs[k]||0;
+    return v>0.005?`<div style="width:${v*100}%;background:${pc[k]}" title="${k} ${(v*100).toFixed(0)}%"></div>`:"";}).join("") + `</div>`;
+  let lbl = `<div class="problabel">${x.month} 기준 · ` +
+    order.filter(k=>(x.probs[k]||0)>=0.05).map(k=>`${k} ${(x.probs[k]*100).toFixed(0)}%`).join(" · ") + `</div>`;
+  const cts = Object.entries(x.contrib).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).slice(0,6);
+  const mx = Math.max(...cts.map(c=>Math.abs(c[1])), 1);
+  let bars = `<div class="bars">` + cts.map(([k,v])=>{
+    const w=Math.abs(v)/mx*50, pos=v>=0;
+    return `<div class="bar-row"><span title="${k}">${FEAT_KO[k]||k}</span>
+      <div class="bar-track"><div class="bar-fill" style="left:${pos?50:50-w}%;width:${w}%;background:${pos?"var(--s4)":"var(--s1)"}"></div>
+      <div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line)"></div></div>
+      <span class="bar-val">${v>0?"+":""}${v.toFixed(1)}</span></div>`;}).join("") + `</div>`;
+  el.innerHTML = `<div style="font-size:.85rem">예측 단계 <strong>${x.stage}</strong> (지수 ${x.ci})</div>`
+    + bar + lbl + bars
+    + `<div class="footnote" style="margin-top:6px">막대 오른쪽(적색)=위기 상승 기여, 왼쪽(청색)=완화 기여.</div>`;
+}
+function renderTable(){
+  const rows=DATA.alerts[cc].slice(-16).reverse();
+  document.getElementById("tblCc").textContent = `— ${cc} · ${CCN[cc]}`;
+  const tb=document.querySelector("#hist tbody"); tb.innerHTML="";
+  rows.forEach(r=>{
+    const tr=document.createElement("tr"); tr.className="rowbtn";
+    const gi=DATA.alerts[cc].findIndex(x=>x[0]===r[0]);
+    if(gi===selIdx) tr.classList.add("rowsel");
+    tr.innerHTML=`<td>${r[0]}</td><td>${chip(r[2])}</td><td>${r[1]}</td><td class="rsn" title="사유 보기">${(r[3]||"").slice(0,150)}</td>`;
+    tr.addEventListener("click",()=>{selIdx=gi; render();});
+    tb.appendChild(tr);
+  });
+}
+function render(){
+  document.querySelectorAll(".card").forEach(c=>c.classList.toggle("sel", c.getAttribute("data-cc")===cc));
+  document.getElementById("chartTitle").textContent =
+    `${cc} · ${CCN[cc]} — 주간 수급위기지수 & 경보 단계 (2020~)`;
+  draw(); renderReason(); renderXai(); renderTable();
+}
+window.addEventListener("resize", draw);
+if(window.matchMedia){window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);}
+new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+render();
+</script>
