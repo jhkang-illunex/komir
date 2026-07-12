@@ -2,6 +2,18 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-07-12 — 번들에 GKG 포함 + 분석서버 오프라인 대응
+
+분석 서버가 외부 인터넷 불가로 확정 — 일자별 번들이 유일한 데이터 반입 경로가 되도록 확장.
+- bundler: GKG zip을 번들에 포함(tar 내부 inbox/ + gkg/ 2계층). gkg 증분 상태는 타임스탬프
+  기반이라 원본 이동에 영향 없음.
+- ingest-bundles: 멤버 라우팅(txt→inbox→ingest / gkg zip→$GEO_DATA/gkg_bulk→gkg-parse 자동
+  연쇄, --no-gkg-parse 분리 옵션). 구버전 번들(inbox/ 접두 없음) 하위호환.
+- E2E: 기사 2건+실제 GKG zip 2개 → 번들 → 라우팅 전개 → ingest 2 archived(소스 정상 인식)
+  + gkg-parse 7이벤트 → 재실행 멱등 0건.
+- 오프라인 제약 문서화: LLM은 내부망 vLLM으로 충족, USGS refdata는 수집서버 실행 후 번들 반입,
+  도커 이미지는 외부 빌드 반입(collector/README).
+
 ## 2026-07-12 — 일자별 번들 인도 프로토콜 (수집기→분석기)
 
 수집기가 매일 inbox를 collect_YYYYMMDD.tar.gz 하나로 묶고(데몬 날짜전환 자동 or `collector

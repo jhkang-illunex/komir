@@ -22,14 +22,24 @@ docker compose run --rm collector python -m collector run --only us_trade,cn_tra
 수집 데몬이 날짜 전환 시(또는 cron `python -m collector bundle`) 하루치 inbox를
 `$COLLECT_OUT/bundles/collect_YYYYMMDD.tar.gz` 하나로 묶는다(멤버수 재검증 후 원자적 rename,
 원본은 `_bundled/YYYYMMDD/`로 이동 — 삭제 안 함). 분석 서버는 볼륨에서 번들을 발견해 처리:
+번들에는 뉴스/공시 텍스트(`inbox/**/*.txt`)와 **GKG zip**(`gkg/YYYY/*.gkg.csv.zip`)이 함께
+들어간다 — **분석 서버는 외부 인터넷 불가**라 번들이 유일한 데이터 반입 경로다.
 ```bash
-# 분석 서버 cron(예: 매일 새벽) —
-python -m geo ingest-bundles --dir $NAS/collect_out/bundles   # 발견→전개→ingest 자동 연쇄
-python -m geo extract && python -m geo index && python -m geo prob   && python -m geo publish --db $WAREHOUSE
-python -m geo gkg-parse --bulk-root $NAS/collect_out/gkg      # GKG 증분 파싱(재개형)
+# 분석 서버 cron(예: 매일 새벽) — 외부망 불필요, 내부 LLM 엔드포인트만 필요
+python -m geo ingest-bundles --dir <번들 볼륨>     # 발견→라우팅 전개→ingest+gkg-parse 자동 연쇄
+python -m geo gkg-verify --bulk-root $GEO_DATA/gkg_bulk    # GKG 후보 LLM 재검증(내부 vLLM)
+python -m geo extract && python -m geo index && python -m geo prob && python -m geo publish --db $WAREHOUSE
 ```
+- 라우팅: txt → $GEO_DATA/inbox → ingest / gkg zip → $GEO_DATA/gkg_bulk → gkg-parse(재개형).
 - 멱등: 번들 처리 상태($GEO_DATA/_logs/bundles_done.txt) + ingest 파일해시 dedup 2중 방어.
-- tar 경로탈출 방어·.txt만 전개. 번들 파일은 그대로 남아 일자별 원시 아카이브를 겸한다.
+- tar 경로탈출 방어·.txt/.gkg.csv.zip만 전개. 번들 파일은 일자별 원시 아카이브를 겸한다.
+
+### 분석 서버 오프라인 제약에서 외부 의존이 있는 것들
+| 항목 | 대응 |
+|---|---|
+| LLM 추출/재검증 | 내부망 vLLM 엔드포인트(LLM_BASE_URL) 필요 — 인터넷 아님 |
+| USGS refdata(공급집중 HHI, 연 1회) | 수집 서버에서 `geo refdata` 실행 후 산출물(config/refdata/*.parquet)을 번들 편에 반입 |
+| 도커 이미지·pip 의존성 | 외부망에서 빌드해 이미지로 반입 |
 
 ### (대안) 루즈 파일 직결 — 번들 없이
 ```bash

@@ -28,6 +28,7 @@ def main(argv=None):
     pib = sub.add_parser("ingest-bundles", help="[0.5] 수집기 일자별 번들 발견→inbox 전개→(기본) ingest 연쇄")
     pib.add_argument("--dir", default=None, help="번들 디렉토리(기본 $GEO_BUNDLE_DIR > $GEO_DATA/bundles_in)")
     pib.add_argument("--no-ingest", action="store_true")
+    pib.add_argument("--no-gkg-parse", action="store_true")
     sub.add_parser("ingest", help="[1] inbox→archive 정리")
     pe = sub.add_parser("extract", help="[2] 이벤트 추출")
     pe.add_argument("--provider", default=None, help="rule|mock|openai_compat|anthropic")
@@ -61,7 +62,8 @@ def main(argv=None):
         et = tuple(args.event_types.split(",")) if args.event_types else ()
         print(gkg_verify.run(args.bulk_root, args.provider, args.limit, args.min_severity, et))
     elif args.stage == "ingest-bundles":
-        from . import ingest_bundles; ingest_bundles.run(args.dir, not args.no_ingest)
+        from . import ingest_bundles
+        ingest_bundles.run(args.dir, not args.no_ingest, not args.no_gkg_parse)
     elif args.stage == "ingest":
         from . import ingest; ingest.run()
     elif args.stage == "extract":
