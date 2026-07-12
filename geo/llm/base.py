@@ -12,6 +12,9 @@ GEO_KEYWORDS = [
     "국유화","감산","폐쇄","공급차질","지정학","관세","허가제","쿼터",
     "sanction","export ban","export control","export restriction","strike","conflict",
     "embargo","nationaliz","disruption","shutdown","curtail","force majeure","tariff","quota",
+    # 중국어(2026-07-12, cn_trade 공시 수집 대응 — 없으면 is_relevant 프리필터가 중국
+    # 상무부 수출통제 공고를 통째로 걸러냄)
+    "出口管制","出口禁令","管控名单","关注名单","两用物项","关税","禁运","制裁","配额","许可",
 ]
 
 SYSTEM_PROMPT = (

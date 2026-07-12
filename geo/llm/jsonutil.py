@@ -50,6 +50,8 @@ def as_event_list(parsed):
     if parsed is None:
         return []
     if isinstance(parsed, dict):
+        if not parsed:
+            return []          # "{}" 응답(실측 2026-07-12) — 이벤트 없음
         for k in ("events", "results", "data", "items"):
             if isinstance(parsed.get(k), list):
                 return parsed[k]
@@ -66,5 +68,8 @@ def as_event_list(parsed):
                         return result
         return [parsed]
     if isinstance(parsed, list):
-        return parsed
+        # 빈 dict/비-dict 원소 제거 — LLM이 "{}"나 [{}]를 반환하는 사례 실측(2026-07-12,
+        # 중국어 공시에서 빈발). 걸러내지 않으면 하류에서 껍데기 이벤트가 만들어지고,
+        # truthy라 빈 응답 재시도(_extract_with_retry)까지 우회한다.
+        return [e for e in parsed if isinstance(e, dict) and e]
     return []

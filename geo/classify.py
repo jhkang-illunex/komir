@@ -6,6 +6,9 @@ def source_of(path: str) -> str:
     p = path.lower()
     if "gdelt" in p: return "GDELT"
     if "gnews" in p: return "GoogleNews"
+    # 수집기(collector/) 공시 소스 — inbox/us_trade/·inbox/cn_trade/ 경로로 투척됨(2026-07-12)
+    if "us_trade" in p or "federalregister" in p: return "US_FederalRegister"
+    if "cn_trade" in p or "mofcom" in p: return "CN_MOFCOM"
     if "우드맥킨지" in path or "woodmac" in p or "wood mac" in p or any(
         k in p for k in ["investment-horizon", "short-term-outlook", "long-term-outlook",
                           "strategic-planning", "sto-data", "market-balance", "sto_data"]):
@@ -35,11 +38,14 @@ def category_of(path: str, text: str = "") -> str:
     return "기타"
 
 COMMODITY_KEYWORDS = {
-    "REE": ("희토", "네오디", "neod", "rare earth", "ndfeb"),
-    "LI": ("리튬", "lithium"),
-    "NI": ("니켈", "nickel"),
-    "CO": ("코발트", "cobalt"),
-    "CU": ("동_", "동/", "_동", "구리", "copper"),
+    # 중국어 키워드(2026-07-12): cn_trade 공시(중국 상무부) 대응 — 稀土(희토)·钕(네오디뮴) 등.
+    # 钴(코발트)·锂(리튬)·镍(니켈)은 단독 한자라 오탐 여지가 있으나 중국어 문서에서만 등장하는
+    # 글자들이라(한/영 문서에 나타나지 않음) 실질 오탐 경로가 없음. 铜(동)도 동일.
+    "REE": ("희토", "네오디", "neod", "rare earth", "ndfeb", "稀土", "钕"),
+    "LI": ("리튬", "lithium", "锂"),
+    "NI": ("니켈", "nickel", "镍"),
+    "CO": ("코발트", "cobalt", "钴"),
+    "CU": ("동_", "동/", "_동", "구리", "copper", "铜"),
 }
 
 

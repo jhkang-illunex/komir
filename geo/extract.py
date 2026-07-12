@@ -12,11 +12,13 @@ from .extract_lib import is_relevant, passages
 from .llm.base import get_extractor, PROMPT_VERSION
 
 
-def _extract_with_retry(ex, psg, hint):
-    """LLM 경로에서 간헐적 빈 응답 관측(2026-07-07, vLLM 연속배치 추정) — 1회 재시도."""
+def _extract_with_retry(ex, psg, hint, ex_fb=None):
+    """LLM 경로 재시도: 빈 응답이면 json_mode=False 폴백 추출기로 1회 재시도.
+    실측(2026-07-12): vLLM json_object 강제모드가 "JSON 배열만 출력" 프롬프트와 충돌해
+    중국어 공시에서 "{}"로 도피(재시도해도 동일) — 강제모드 없이 물으면 정상 배열 반환(3/5)."""
     events = ex.extract(psg, hint)
     if not events and ex.provider not in ("rule", "mock"):
-        events = ex.extract(psg, hint)
+        events = (ex_fb or ex).extract(psg, hint)
     return events
 
 
@@ -39,6 +41,10 @@ def run(provider_override: str = None):
     if provider_override:
         cfg["provider"] = provider_override
     ex = get_extractor(cfg)
+    ex_fb = None
+    if (cfg.get("provider") or "rule").lower() not in ("rule", "mock"):
+        cfg_fb = dict(cfg); cfg_fb["json_mode"] = False
+        ex_fb = get_extractor(cfg_fb)      # 빈 응답 폴백용(json_object 강제 해제)
     concurrency = max(1, int(cfg.get("concurrency", 8) or 8))
     print(f"[extract] provider={ex.provider} model={getattr(ex,'model','')} concurrency={concurrency}")
 
@@ -62,40 +68,60 @@ def run(provider_override: str = None):
     print(f"[extract] 관련문서 {len(candidates)}건 → 추출 시작")
 
     # 2단계: 추출(룰기반은 순차, LLM은 동시 요청)
-    extracted = []   # (rec, events|None, error|None)
+    extracted = []   # (rec, events|None, psg)
     use_pool = concurrency > 1 and ex.provider not in ("rule", "mock")
     if use_pool:
         with ThreadPoolExecutor(max_workers=concurrency) as pool:
-            futs = {pool.submit(_extract_with_retry, ex, psg, rec.get("commodity_hint")): rec
+            futs = {pool.submit(_extract_with_retry, ex, psg, rec.get("commodity_hint"), ex_fb): (rec, psg)
                     for rec, psg in candidates}
             n_done = 0
             for fut in as_completed(futs):
-                rec = futs[fut]
+                rec, psg = futs[fut]
                 try:
                     events = fut.result()
                 except Exception as e:
                     print(f"  [warn] {rec.get('orig_name','?')}: {e}")
                     events = None
-                extracted.append((rec, events))
+                extracted.append((rec, events, psg))
                 n_done += 1
                 if n_done % 50 == 0:
                     print(f"  ... {n_done}/{len(candidates)}건")
     else:
         for rec, psg in candidates:
             try:
-                events = _extract_with_retry(ex, psg, rec.get("commodity_hint"))
+                events = _extract_with_retry(ex, psg, rec.get("commodity_hint"), ex_fb)
             except Exception as e:
                 print(f"  [warn] {rec.get('orig_name','?')}: {e}")
                 events = None
-            extracted.append((rec, events))
+            extracted.append((rec, events, psg))
 
     # 3단계: 후처리(이벤트ID·검증·clamp) — 순차, 부작용 없음
     recs = []; n_rel = 0
-    for rec, events in extracted:
+    VALID_CC = {"CU", "NI", "LI", "CO", "REE"}
+    from .classify import commodities_in
+    for rec, events, psg in extracted:
         if events is None:
             continue   # 호출 실패(예외) — done_log에 안 남겨 다음 실행에서 재시도
         n_rel += 1
         n_doc = 0
+        # LLM이 commodity를 'mixed'/'strategic minerals' 등 5광종 밖으로 반환하면 스키마
+        # 검증에서 조용히 탈락(실측 2026-07-12: 중국 "战略矿产" 공시 전량 유실). 본문에서
+        # 광종 키워드(중국어 포함)를 탐지해 각 광종별 이벤트로 확장, 미탐지면 스킵(정보 부족).
+        expanded = []
+        for e in events:
+            e = dict(e)
+            if not e.get("event_type"):
+                continue        # 껍데기 이벤트(빈 dict 등) — 확장 대상 아님
+            if e.get("commodity") not in VALID_CC:
+                found = commodities_in(psg)
+                if not found and rec.get("commodity_hint") in VALID_CC:
+                    found = [rec["commodity_hint"]]
+                for cc in found:
+                    e2 = dict(e); e2["commodity"] = cc
+                    expanded.append(e2)
+            else:
+                expanded.append(e)
+        events = expanded
         for i, e in enumerate(events):
             e = dict(e)
             # LLM이 준 obs_date도 검증(실측 2026-07-08: 연도 미상 시 "202X-09-01" 같은
