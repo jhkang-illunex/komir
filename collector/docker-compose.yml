@@ -1,0 +1,14 @@
+# 수집 서버 전용 compose — 분석 서버와 공유하는 것은 /data 볼륨(NAS)뿐.
+services:
+  collector:
+    build: .
+    image: komir-collector:0.1.0
+    restart: unless-stopped
+    volumes:
+      # 예: NAS 마운트 경로로 교체 — 분석 서버가 같은 경로를 읽는다
+      - /mnt/nas2_team_ai/jhkang/광해공단/collect_out:/data
+    environment:
+      COLLECT_OUT: /data
+      COLLECT_HTTP_TIMEOUT: "30"
+    # 주기·범위 조정: command로 재정의
+    # command: ["python", "-m", "collector", "daemon", "--interval-mins", "30", "--days", "3"]

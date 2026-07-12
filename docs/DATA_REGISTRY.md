@@ -14,6 +14,7 @@
 | `geo_data_2016plus_run/` | 2016+ 전체 코퍼스(2,812건) ingest→extract 결과. manifest·이벤트 6,510건·pdf_extract_method·OCR캐시·실행로그(run*.log) | 2026-07-07~08, §9·§10 | META.md 참고 |
 | `geo_data/` | GKG 벌크 파싱 이벤트 저장소(약 2.0M건) + LLM 재검증 진행분 | 2026-07-08~ | META.md 참고 |
 | NAS `광해공단/bulk/gdelt/` | GDELT GKG 원본 zip 361,407개(2016~2026) + 다운로드/파싱/검증 로그(_logs/) | 2026-07-06~08 | `python -m geo.collectors.gkg_bulk_download` (5워커, 총 ~26h) |
+| NAS `광해공단/collect_out/` (예정) | 독립 수집기(`collector/` 도커, 별도 서버) 산출 — inbox 텍스트(gnews/gdelt/us_trade/cn_trade)+GKG 증분 zip. 분석기와 파일 계약으로만 연결 | 2026-07-12 구축 | `docker compose up -d` (collector/README.md) |
 
 ## 검증·분석 아카이브 (`data_archive/`)
 

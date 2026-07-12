@@ -2,6 +2,20 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-07-12 — 독립 수집기 도커(`collector/`) 신설 + 미국/중국 수출입 공시 수집
+
+분석기(geo)와 **다른 서버**에서 단독 실행되는 수집 전용 패키지·도커. geo 코드 의존 없음 —
+접점은 $COLLECT_OUT 파일 계약뿐(inbox 텍스트=geo ingest 호환 / gkg zip=gkg-parse 호환).
+- 구성: gkg_incremental(15분 타임스탬프 직접 생성 — 마스터리스트 불필요, 상태 재개형),
+  gnews·gdelt_doc(기존 이식), **us_trade 신설**(Federal Register 공식 API — BIS 수출통제·
+  Entity List/USTR 301조/ITA, since 상태 기반 증분+2016 백필), **cn_trade 신설**(상무부
+  안전관제국 aqygzj.mofcom.gov.cn — 전략광물 이중용도 수출통제 공고·실체명단·대변인 문답).
+- 실측 이슈 2건: ① mofcom 하위 목록은 JS 렌더링(jpaas) — 메인 페이지만 서버 렌더링이라
+  주기 수집은 메인만 긁음(과거 백필 불가, GKG 보완). ② slim 컨테이너에서 apparent_encoding이
+  중국어를 오판해 키워드 필터 전멸 — UTF-8 명시로 해결.
+- 검증: 호스트+도커 양쪽 스모크(us_trade 1건/cn_trade 16건/gkg 증분 3파일/gnews 10건).
+- 운영: docker compose(60분 데몬), NAS 볼륨 공유 → 분석 서버가 rsync 또는 직접 마운트.
+
 ## 2026-07-09 — 지수 확률화: NB2 강도모델 (`geo/prob_model.py`, v1 문서 §6-3)
 
 geo_idx(점수)를 "다음주 심각(sev≥2) 이벤트 발생확률"로 번역하는 확률 레이어. 실측 과산포
