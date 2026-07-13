@@ -131,6 +131,79 @@ def _recursive_forecast(df: pd.DataFrame, target: str, base_month: pd.Timestamp,
     return pd.DataFrame(preds)
 
 
+# ─────────────────── Direct 다중기간 + 분위(구간) 예측 ───────────────────
+# 감사 B-3①③(2026-07-13): 재귀는 h가 깊어질수록 오차가 누적(특히 단가) — h별 독립 모델
+# (Direct)로 비교하고, 분위 모델(q10/q90)로 예측구간을 병행 산출한다. 물량×단가의 금액
+# 구간은 분위 곱이 아니라 몬테카를로 합성(각 마진을 lognormal 근사 후 곱 분포의 분위).
+QUANTS = (0.1, 0.9)
+_Z80 = 1.2816                     # 표준정규 90% 분위(lognormal σ 적합용)
+
+
+def _direct_matrix(feat: pd.DataFrame, h: int) -> pd.DataFrame:
+    """시점 t 피처 → t+h 타깃(직접). 계절항은 타깃 월(t+h) 기준으로 교체."""
+    out = []
+    for _, g in feat.groupby("commodity_code"):
+        g = g.sort_values("month").copy()
+        g["y_h"] = g["ly"].shift(-h)
+        tm = g["month"] + pd.DateOffset(months=h)
+        g["m_sin"] = np.sin(2 * np.pi * tm.dt.month / 12)
+        g["m_cos"] = np.cos(2 * np.pi * tm.dt.month / 12)
+        out.append(g)
+    return pd.concat(out, ignore_index=True)
+
+
+def _direct_forecast(df: pd.DataFrame, target: str, base_month: pd.Timestamp,
+                     horizon: int = H, with_quantiles: bool = False) -> pd.DataFrame:
+    """h별 독립 HistGBM(광종 풀링+더미). with_quantiles면 q10/q90 분위 모델 병행."""
+    hist = df[df["month"] <= base_month].copy()
+    feat = _features(hist, target)
+    rows = []
+    for h in range(1, horizon + 1):
+        d = _direct_matrix(feat, h)
+        d2 = pd.get_dummies(d, columns=["commodity_code"], prefix="cc")
+        cc_cols = sorted(c for c in d2.columns if c.startswith("cc_"))
+        cols = FEATS + cc_cols
+        tr = d2.dropna(subset=["lag1", "y_h"])
+        med = tr[cols].median(numeric_only=True)
+        Xtr, ytr = tr[cols].fillna(med), tr["y_h"].values
+        pr = d2[d2["month"] == base_month]           # 광종별 1행(예측 기점 피처)
+        Xpr = pr[cols].fillna(med)
+        mk = dict(max_depth=4, learning_rate=0.07, max_iter=300, random_state=0)
+        m = HistGradientBoostingRegressor(**mk).fit(Xtr, ytr)
+        yhat = np.exp(m.predict(Xpr))
+        qv = {}
+        if with_quantiles:
+            for q in QUANTS:
+                mq = HistGradientBoostingRegressor(loss="quantile", quantile=q, **mk) \
+                    .fit(Xtr, ytr)
+                qv[q] = np.exp(mq.predict(Xpr))      # log-공간 분위 → 지수(단조변환 보존)
+        cc_of = d.loc[pr.index, "commodity_code"] if "commodity_code" in d else None
+        for i, idx in enumerate(pr.index):
+            r = dict(commodity_code=d.loc[idx, "commodity_code"],
+                     month=base_month + pd.DateOffset(months=h), h=h, pred=float(yhat[i]))
+            if with_quantiles:
+                r["q10"], r["q90"] = float(qv[0.1][i]), float(qv[0.9][i])
+            rows.append(r)
+    return pd.DataFrame(rows)
+
+
+def _lognorm_params(q10, q50, q90):
+    """(q10,q50,q90) → lognormal(μ,σ) 근사. σ는 분위 간격, μ는 중앙값."""
+    mu = np.log(max(q50, 1e-9))
+    sigma = max((np.log(max(q90, 1e-9)) - np.log(max(q10, 1e-9))) / (2 * _Z80), 1e-6)
+    return mu, sigma
+
+
+def _mc_value_interval(ton_q: tuple, unit_q: tuple, n: int = 4000, seed: int = 0) -> tuple:
+    """금액 구간 = 물량·단가 마진(lognormal 근사)의 독립 표본 곱 분포 분위(MC 합성).
+    분위 직접 곱(q10×q10)은 결합 분위가 아니므로 금지(감사 B-3③ 주의사항)."""
+    rng = np.random.default_rng(seed)
+    mt, st = _lognorm_params(*ton_q)
+    mu_, su = _lognorm_params(*unit_q)
+    v = np.exp(rng.normal(mt, st, n)) * np.exp(rng.normal(mu_, su, n))
+    return tuple(float(np.quantile(v, q)) for q in (0.1, 0.5, 0.9))
+
+
 # ─────────────────────────── 검증·발행 ───────────────────────────
 # 지표 선택(2026-07-13 보강): SMAPE는 0 근처 값에서 분모 붕괴·비율 폭발, 광종 간 스케일
 # 300배 차(CU 20만톤 vs REE 700톤)에서 개별 비율 평균이 소광종에 왜곡됨. M4/M5 이후 표준을
@@ -181,6 +254,18 @@ def backtest(df: pd.DataFrame, origins=("2024-06-01", "2024-12-01")) -> pd.DataF
         f["sn_ton_f"] = f["sn_ton"].fillna(f["ton"].mean())
         f["sn_val_f"] = f["sn_val"].fillna(f["value_usd"].mean())
         train = df[df["month"] <= base]
+        # Direct 다중기간(+분위) — 재귀와 정면 비교(감사 B-3①), 구간 커버리지 검증(B-3③)
+        fd_t = _direct_forecast(df, "ton", base, with_quantiles=True) \
+            .rename(columns={"pred": "pd_ton", "q10": "t10", "q90": "t90"})
+        fd_u = _direct_forecast(df, "unit", base, with_quantiles=True) \
+            .rename(columns={"pred": "pd_unit", "q10": "u10", "q90": "u90"})
+        f = f.merge(fd_t, on=["commodity_code", "month", "h"], how="left") \
+             .merge(fd_u, on=["commodity_code", "month", "h"], how="left")
+        f["pd_value"] = f["pd_ton"] * f["pd_unit"]
+        vint = f.apply(lambda r: _mc_value_interval(
+            (r["t10"], r["pd_ton"], r["t90"]), (r["u10"], r["pd_unit"], r["u90"])), axis=1)
+        f[["v10", "v50", "v90"]] = pd.DataFrame(vint.tolist(), index=f.index)
+        cov80 = float(((f["value_usd"] >= f["v10"]) & (f["value_usd"] <= f["v90"])).mean())
         # 단가의 정직성 검사(감사 B-3②): 원자재 가격은 약형 효율 — 드리프트 없는 랜덤워크
         # (=원점 시점 단가 유지)를 못 이기면 "단가를 예측한다"고 주장할 수 없다. 항상 병기.
         rw = train.sort_values("month").groupby("commodity_code")["unit"].last().rename("rw_unit")
@@ -198,6 +283,12 @@ def backtest(df: pd.DataFrame, origins=("2024-06-01", "2024-12-01")) -> pd.DataF
             MASE_value_decomp=_mase(f, "value_usd", "p_value", train, "value_usd"),
             MASE_value_direct=_mase(f, "value_usd", "p_val_direct", train, "value_usd"),
             MASE_value_naive=_mase(f, "value_usd", "sn_val_f", train, "value_usd"),
+            # Direct 다중기간(h별 독립 모델) — 재귀 대비
+            WAPE_value_D=round(_wape(f["value_usd"], f["pd_value"]), 1),
+            MASE_value_D=_mase(f, "value_usd", "pd_value", train, "value_usd"),
+            MASE_ton_D=_mase(f, "ton", "pd_ton", train, "ton"),
+            MASE_unit_D=_mase(f, "unit", "pd_unit", train, "unit"),
+            cov80_value=round(cov80, 2),          # 80% 구간 실측 커버리지(목표 0.80)
             # 이력 비교용(과거 백테스트와의 연속성)
             SMAPE_ton=round(_smape(f["ton"], f["p_ton"]), 1),
             SMAPE_ton_naive=round(_smape(f["ton"], f["sn_ton_f"]), 1),
@@ -223,11 +314,33 @@ def run(db=None, out_dir=None):
     print(bt.to_string(index=False))
     bt.to_csv(f"{out_dir}/backtest.csv", index=False)
 
-    # 최종 발행: 최신월 기준 h=1~12
-    f_ton = _recursive_forecast(df, "ton", last_m).rename(columns={"pred": "pred_ton"})
-    f_unit = _recursive_forecast(df, "unit", last_m).rename(columns={"pred": "pred_unit_usd_per_ton"})
-    out = f_ton.merge(f_unit, on=["commodity_code", "month", "h"])
+    # 점추정 방식 선택: 백테스트 MASE(금액)로 재귀 vs Direct 자동 판정(env로 강제 가능)
+    m_rec = float(bt["MASE_value_decomp"].mean())
+    m_dir = float(bt["MASE_value_D"].mean())
+    method = os.environ.get("MSR_FORECAST_METHOD") or ("direct" if m_dir < m_rec else "recursive")
+    print(f"\n[method] 금액 MASE 재귀 {m_rec:.2f} vs Direct {m_dir:.2f} → 채택: {method}")
+
+    # 최종 발행: 최신월 기준 h=1~12. 구간(q10/q90)은 Direct 분위 모델에서, 점추정은 우승 방식.
+    fd_ton = _direct_forecast(df, "ton", last_m, with_quantiles=True) \
+        .rename(columns={"pred": "d_ton", "q10": "ton_lo", "q90": "ton_hi"})
+    fd_unit = _direct_forecast(df, "unit", last_m, with_quantiles=True) \
+        .rename(columns={"pred": "d_unit", "q10": "unit_lo", "q90": "unit_hi"})
+    out = fd_ton.merge(fd_unit, on=["commodity_code", "month", "h"])
+    if method == "direct":
+        out["pred_ton"], out["pred_unit_usd_per_ton"] = out["d_ton"], out["d_unit"]
+    else:
+        f_ton = _recursive_forecast(df, "ton", last_m).rename(columns={"pred": "pred_ton"})
+        f_unit = _recursive_forecast(df, "unit", last_m).rename(columns={"pred": "pred_unit_usd_per_ton"})
+        out = out.merge(f_ton, on=["commodity_code", "month", "h"]) \
+                 .merge(f_unit, on=["commodity_code", "month", "h"])
     out["pred_value_usd"] = out["pred_ton"] * out["pred_unit_usd_per_ton"]   # 실지출액
+    # 금액 80% 구간 — 물량×단가 몬테카를로 합성(분위 직접 곱 금지)
+    vint = out.apply(lambda r: _mc_value_interval(
+        (r["ton_lo"], r["d_ton"], r["ton_hi"]), (r["unit_lo"], r["d_unit"], r["unit_hi"])), axis=1)
+    out[["pred_value_lo", "_v50", "pred_value_hi"]] = pd.DataFrame(vint.tolist(), index=out.index)
+    out = out.drop(columns=["d_ton", "d_unit", "_v50"])
+    for c in ("ton_lo", "ton_hi", "unit_lo", "unit_hi", "pred_value_lo", "pred_value_hi"):
+        out[c] = out[c].round(1)
     out["pred_value_kusd"] = (out["pred_value_usd"] / 1000).round(1)         # 천달러(과업 단위)
     out["pred_ton"] = out["pred_ton"].round(1)
     out["pred_unit_usd_per_ton"] = out["pred_unit_usd_per_ton"].round(1)
@@ -235,12 +348,14 @@ def run(db=None, out_dir=None):
     out = out.rename(columns={"month": "target_month"})
     out["base_month"] = last_m.strftime("%Y-%m-%d")
     out["target_month"] = out["target_month"].dt.strftime("%Y-%m-%d")
-    out["model_version"] = "forecast_unit_v1(HistGBM×2 재귀, 단가분해)"
+    out["model_version"] = f"forecast_unit_v2(HistGBM×2 {method}, 단가분해, 80%구간 MC합성)"
     out["basis"] = json.dumps({"backtest": bt.to_dict("records"),
-                               "metrics": "주지표 WAPE(총합비율·0값 강건)·MASE(계절나이브 스케일, <1=우수), SMAPE는 이력 비교용",
+                               "method": f"{method}(백테스트 금액 MASE 재귀 {m_rec:.2f} vs Direct {m_dir:.2f})",
+                               "interval": "q10/q90 분위 HistGBM(log공간), 금액구간=물량×단가 lognormal 근사 MC 합성",
+                               "metrics": "주지표 WAPE·MASE, SMAPE는 이력 비교용",
                                "supervision": "관세청 월간(HS 161코드 바스켓→5광종)",
                                "identity": "value = unit(USD/ton) × ton"},
-                              ensure_ascii=False)[:3000]
+                              ensure_ascii=False)[:4000]
     out["generated_at"] = pd.Timestamp.utcnow().isoformat(timespec="seconds")
 
     con = duckdb.connect(db)
