@@ -29,6 +29,9 @@
 - 작업 이력: `docs/WORKLOG.md` (날짜별 변경·버그·결정)
 - 데이터 수집 현황·실측: `documents/claude_output/지정학위기지수_데이터수집현황_260707.md`
 - 모델 설계 정본: `documents/claude_output/mineral_risk_model_v1.md`
+- **광종별 HS코드 연계표(워드)**: `documents/claude_output/광종별_HS코드_연계표_260713.docx`
+  — core 161코드(CU 88/NI 36/CO 15/LI 13/REE 9)를 HS 호(4단위) 품명 그룹으로 정리.
+  정본은 `mineral_supply_risk/data/raw/hs_commodity_map.csv`(542행), 문서는 그 뷰.
 - **발주 보고용 요약본(워드, 구성도 포함)**: `documents/claude_output/핵심광물_시스템구성_요약본_260713.docx`
   — 5모듈·구성도(수집서버 외부망/분석서버 폐쇄망)·수집기 배치·반입 절차·운영 요약. 구성도 원본
   `documents/claude_output/시스템구성도_260713.png`(matplotlib 생성, 스크립트는 세션 스크래치)
