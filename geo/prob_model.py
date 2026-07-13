@@ -166,12 +166,43 @@ def _calibration_report(test: pd.DataFrame, p: np.ndarray, train_rate: float) ->
             f"{'✓개선' if brier < brier_base else '✗열세'}\n{cal_s}")
 
 
+def _fit_isotonic(oos: pd.DataFrame):
+    """사후 캘리브레이션(2026-07-13, 외부감사 A-2): NB2 p_burst는 단조성은 확보되나 체계적
+    과소예측(EWMA의 지연 추종 + 모멘트 α의 꼬리 과소) — isotonic 회귀로 OOS (예측,실현) 쌍을
+    보정한다. 광종 풀링(확률은 무단위라 비교 가능), 시간순 앞 60%로 적합/뒤 40%로 평가해
+    누수 없이 개선을 실증하고, 발행용은 전체 OOS로 재적합한다."""
+    from sklearn.isotonic import IsotonicRegression
+
+    def _ece(p, y, bins=10):
+        b = np.clip((p * bins).astype(int), 0, bins - 1)
+        e = 0.0
+        for k in range(bins):
+            m = b == k
+            if m.sum():
+                e += m.mean() * abs(p[m].mean() - y[m].mean())
+        return float(e)
+
+    oos = oos.sort_values("week").reset_index(drop=True)
+    n_cal = int(len(oos) * 0.6)
+    cal, ev = oos.iloc[:n_cal], oos.iloc[n_cal:]
+    iso_v = IsotonicRegression(y_min=0.0, y_max=1.0, out_of_bounds="clip") \
+        .fit(cal["p"].values, cal["hit"].values)
+    p_raw, p_cal = ev["p"].values, iso_v.predict(ev["p"].values)
+    y = ev["hit"].values
+    rep = (f"[isotonic] 적합 {len(cal)}쌍(~{cal['week'].max():%Y-%m}) / 평가 {len(ev)}쌍: "
+           f"Brier {np.mean((p_raw-y)**2):.4f}→{np.mean((p_cal-y)**2):.4f}, "
+           f"ECE {_ece(p_raw,y):.3f}→{_ece(p_cal,y):.3f}")
+    iso_pub = IsotonicRegression(y_min=0.0, y_max=1.0, out_of_bounds="clip") \
+        .fit(oos["p"].values, oos["hit"].values)
+    return iso_pub, rep
+
+
 def run() -> pd.DataFrame:
     C.ensure_dirs()
     panel = _attach_geo_idx(_weekly_panel())
     feat = _features(panel)
 
-    results, reports = [], []
+    results, reports, oos_pairs = [], [], []
     for c, g in feat.groupby("commodity"):
         g = g.sort_values("week")
         hist = g.dropna(subset=["y_next"])
@@ -195,6 +226,8 @@ def run() -> pd.DataFrame:
         reports.append(f"[{c}] {family} (α={alpha:.3f}) burst_k={burst_k} "
                        f"train {len(train)}주 / test {len(test)}주\n"
                        f"  {_calibration_report(test_b, p_burst_t, train_rate)}")
+        oos_pairs.append(pd.DataFrame({"week": test["week"].values, "p": p_burst_t,
+                                       "hit": (test["y_next"] >= burst_k).astype(float).values}))
 
         # 2) 발행 모델(전 기간 재적합) — 전 주차 확률 산출
         params_f, alpha_f, family_f = _fit_one(hist)
@@ -213,6 +246,11 @@ def run() -> pd.DataFrame:
         print(r)
 
     res = pd.concat(results, ignore_index=True)
+    # 사후 캘리브레이션: OOS 쌍으로 isotonic 적합 → 발행값에 보정 확률 병기(원값 보존)
+    if oos_pairs:
+        iso, iso_rep = _fit_isotonic(pd.concat(oos_pairs, ignore_index=True))
+        print(iso_rep)
+        res["p_burst_cal"] = iso.predict(res["p_burst_next"].values)
     res["week"] = res["week"].dt.strftime("%Y-%m-%d")
     store._write(res, GEO_PROB)
     print(f"\n[prob] {len(res)}행 → {GEO_PROB}")

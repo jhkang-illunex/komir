@@ -181,6 +181,10 @@ def backtest(df: pd.DataFrame, origins=("2024-06-01", "2024-12-01")) -> pd.DataF
         f["sn_ton_f"] = f["sn_ton"].fillna(f["ton"].mean())
         f["sn_val_f"] = f["sn_val"].fillna(f["value_usd"].mean())
         train = df[df["month"] <= base]
+        # 단가의 정직성 검사(감사 B-3②): 원자재 가격은 약형 효율 — 드리프트 없는 랜덤워크
+        # (=원점 시점 단가 유지)를 못 이기면 "단가를 예측한다"고 주장할 수 없다. 항상 병기.
+        rw = train.sort_values("month").groupby("commodity_code")["unit"].last().rename("rw_unit")
+        f = f.merge(rw, on="commodity_code", how="left")
         rows.append(dict(
             origin=o, n=len(f),
             # 주지표: WAPE(총합 비율·0값 강건) + MASE(계절나이브 스케일, <1=우수)
@@ -189,6 +193,8 @@ def backtest(df: pd.DataFrame, origins=("2024-06-01", "2024-12-01")) -> pd.DataF
             WAPE_value_direct=round(_wape(f["value_usd"], f["p_val_direct"]), 1),
             WAPE_value_naive=round(_wape(f["value_usd"], f["sn_val_f"]), 1),
             MASE_ton=_mase(f, "ton", "p_ton", train, "ton"),
+            MASE_unit=_mase(f, "unit", "p_unit", train, "unit"),
+            MASE_unit_rw=_mase(f, "unit", "rw_unit", train, "unit"),
             MASE_value_decomp=_mase(f, "value_usd", "p_value", train, "value_usd"),
             MASE_value_direct=_mase(f, "value_usd", "p_val_direct", train, "value_usd"),
             MASE_value_naive=_mase(f, "value_usd", "sn_val_f", train, "value_usd"),

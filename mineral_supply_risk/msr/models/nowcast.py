@@ -23,7 +23,7 @@ from scipy import stats
 from sklearn.linear_model import Ridge
 
 from ..config import DB_PATH, OUT
-from .diagnosis_opt import BASE_FEATS, GEO_DERIVED, Q_CUT, build_panel
+from .diagnosis_opt import BASE_FEATS, GEO_DERIVED, Q_CUT, anchored_cuts, build_panel
 
 warnings.filterwarnings("ignore")
 
@@ -47,8 +47,8 @@ def _fit_full(df: pd.DataFrame, feats: list):
     pred = m.predict(X)
     resid = pd.DataFrame({"cc": df["commodity_code"].values, "r": y - pred})
     sigma = resid.groupby("cc")["r"].std().to_dict()
-    cuts = {cc: {k: float(g["crisis_index"].quantile(q)) for k, q in Q_CUT.items()}
-            for cc, g in df.groupby("commodity_code")}
+    # 감사 A-1(c): 전체 분포 분위(상대 눈금) → 기준기간 동결 컷(절대 눈금)
+    cuts = anchored_cuts(df)
     return m, dict(median=med.to_dict(), mu=mu, sd=sd), cc_cols, sigma, cuts
 
 

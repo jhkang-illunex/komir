@@ -45,8 +45,12 @@ def compute_alerts(df, geo_sev=None):
     for cc,g in df.groupby("commodity_code"):
         g=g.copy()
         ci=g["crisis_index"]
-        # (A) 분위수 기반 기본단계
-        cuts={k:ci.quantile(v) for k,v in Q_CUT.items()}
+        # (A) 분위수 기반 기본단계 — 컷은 기준기간(ANCHOR_SPAN) 분포에서 동결(감사 A-1(c)):
+        # 전체 분포로 재계산하면 정의상 항상 ~5%가 '심각'이 되어 평시·위기 국면을 구분 못 함.
+        from .diagnosis_opt import ANCHOR_SPAN
+        anch=g[(g["obs_date"]>=pd.Timestamp(ANCHOR_SPAN[0]))&(g["obs_date"]<=pd.Timestamp(ANCHOR_SPAN[1]))]
+        ci_a=anch["crisis_index"] if len(anch)>=30 else ci
+        cuts={k:ci_a.quantile(v) for k,v in Q_CUT.items()}
         def base(x):
             if x>=cuts["심각"]:return 4
             if x>=cuts["경계"]:return 3

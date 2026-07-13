@@ -39,6 +39,22 @@ GEO_DERIVED = ["geo_chg", "p_burst", "price_z52", "y_lag1"]
 Q_CUT = {1: 0.50, 2: 0.70, 3: 0.85, 4: 0.95}     # alert.py와 동일 분위 컷(단계 0~4)
 FOLDS = [("2023-01-01", "2024-01-01"), ("2024-01-01", "2025-01-01"), ("2025-01-01", "2027-01-01")]
 
+# 단계 컷 앵커(2026-07-13, 외부감사 A-1(c)): 컷을 '가용 전체 분포'에서 재계산하면 단계가
+# 상대 눈금이 되어 정의상 항상 ~5%가 '심각'(평시·위기 국면 구분 불가, 지수의 P90 앵커
+# 동결과도 불일치). 기준기간(평시·코로나·2021-22 원자재 급등을 포함한 완전 사이클) 분포에서
+# 컷을 동결해 절대 눈금화 — 표본이 늘어도 컷 불변, 평온기엔 심각 빈도<5%, 위기기엔 >5% 가능.
+# 교사신호 자체는 KOMIS 제공 외생 지표(수급동향지표)라 라벨 순환은 아님.
+ANCHOR_SPAN = ("2020-01-01", "2023-12-31")
+
+
+def anchored_cuts(df: pd.DataFrame, date_col: str = "month") -> dict:
+    """광종별 단계 컷 — 기준기간(ANCHOR_SPAN) 분포에서 동결. {cc: {단계k: 컷값}}."""
+    a = df[(df[date_col] >= ANCHOR_SPAN[0]) & (df[date_col] <= ANCHOR_SPAN[1])]
+    if len(a) < 30:                      # 기준기간 자료 부족 시 가용 전체로 폴백(구동작)
+        a = df
+    return {cc: {k: float(g["crisis_index"].quantile(q)) for k, q in Q_CUT.items()}
+            for cc, g in a.groupby("commodity_code")}
+
 
 # ─────────────────────────────── 데이터 ───────────────────────────────
 def build_panel(db: str) -> pd.DataFrame:
