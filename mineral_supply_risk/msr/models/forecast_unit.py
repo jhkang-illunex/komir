@@ -132,9 +132,33 @@ def _recursive_forecast(df: pd.DataFrame, target: str, base_month: pd.Timestamp,
 
 
 # ─────────────────────────── 검증·발행 ───────────────────────────
+# 지표 선택(2026-07-13 보강): SMAPE는 0 근처 값에서 분모 붕괴·비율 폭발, 광종 간 스케일
+# 300배 차(CU 20만톤 vs REE 700톤)에서 개별 비율 평균이 소광종에 왜곡됨. M4/M5 이후 표준을
+# 따라 WAPE(Σ|F−A|/Σ|A| — 총합 비율이라 0값·저값에 강건, 총지출 관점)와 MASE(계절 m=12
+# 나이브 스케일링, Hyndman 정의 — 광종별 정규화 후 매크로 평균, <1이면 계절나이브보다 우수)를
+# 주지표로 병기한다. SMAPE는 기존 백테스트와의 이력 비교용으로 유지.
 def _smape(a, p):
     a, p = np.asarray(a, float), np.asarray(p, float)
     return float(100 * np.mean(2 * np.abs(p - a) / (np.abs(a) + np.abs(p) + 1e-9)))
+
+
+def _wape(a, p):
+    a, p = np.asarray(a, float), np.asarray(p, float)
+    return float(100 * np.sum(np.abs(p - a)) / max(np.sum(np.abs(a)), 1e-9))
+
+
+def _mase(f: pd.DataFrame, col_a: str, col_p: str, train: pd.DataFrame, target: str) -> float:
+    """광종별 스케일(학습구간 계절나이브 MAE, m=12) 정규화 후 매크로 평균."""
+    vals = []
+    for cc, g in f.groupby("commodity_code"):
+        tr = train[train["commodity_code"] == cc].sort_values("month")[target].astype(float).values
+        if len(tr) <= 12:
+            continue
+        scale = np.mean(np.abs(tr[12:] - tr[:-12]))
+        if not scale or np.isnan(scale):
+            continue
+        vals.append(float(np.mean(np.abs(g[col_p].astype(float) - g[col_a].astype(float))) / scale))
+    return round(float(np.mean(vals)), 2) if vals else np.nan
 
 
 def backtest(df: pd.DataFrame, origins=("2024-06-01", "2024-12-01")) -> pd.DataFrame:
@@ -154,14 +178,27 @@ def backtest(df: pd.DataFrame, origins=("2024-06-01", "2024-12-01")) -> pd.DataF
                     .rename(columns={"ton": "sn_ton", "value_usd": "sn_val"}),
                     on=["commodity_code", "month"], how="left")
         f["p_value"] = f["p_ton"] * f["p_unit"]           # 분해 재조립(실지출액)
+        f["sn_ton_f"] = f["sn_ton"].fillna(f["ton"].mean())
+        f["sn_val_f"] = f["sn_val"].fillna(f["value_usd"].mean())
+        train = df[df["month"] <= base]
         rows.append(dict(
             origin=o, n=len(f),
+            # 주지표: WAPE(총합 비율·0값 강건) + MASE(계절나이브 스케일, <1=우수)
+            WAPE_ton=round(_wape(f["ton"], f["p_ton"]), 1),
+            WAPE_value_decomp=round(_wape(f["value_usd"], f["p_value"]), 1),
+            WAPE_value_direct=round(_wape(f["value_usd"], f["p_val_direct"]), 1),
+            WAPE_value_naive=round(_wape(f["value_usd"], f["sn_val_f"]), 1),
+            MASE_ton=_mase(f, "ton", "p_ton", train, "ton"),
+            MASE_value_decomp=_mase(f, "value_usd", "p_value", train, "value_usd"),
+            MASE_value_direct=_mase(f, "value_usd", "p_val_direct", train, "value_usd"),
+            MASE_value_naive=_mase(f, "value_usd", "sn_val_f", train, "value_usd"),
+            # 이력 비교용(과거 백테스트와의 연속성)
             SMAPE_ton=round(_smape(f["ton"], f["p_ton"]), 1),
-            SMAPE_ton_naive=round(_smape(f["ton"], f["sn_ton"].fillna(f["ton"].mean())), 1),
+            SMAPE_ton_naive=round(_smape(f["ton"], f["sn_ton_f"]), 1),
             SMAPE_unit=round(_smape(f["unit"], f["p_unit"]), 1),
             SMAPE_value_decomp=round(_smape(f["value_usd"], f["p_value"]), 1),
             SMAPE_value_direct=round(_smape(f["value_usd"], f["p_val_direct"]), 1),
-            SMAPE_value_naive=round(_smape(f["value_usd"], f["sn_val"].fillna(f["value_usd"].mean())), 1),
+            SMAPE_value_naive=round(_smape(f["value_usd"], f["sn_val_f"]), 1),
         ))
     return pd.DataFrame(rows)
 
@@ -176,7 +213,7 @@ def run(db=None, out_dir=None):
           f"| 광종별 {df.groupby('commodity_code').size().to_dict()}")
 
     bt = backtest(df)
-    print("\n=== 워크포워드 백테스트(12개월, SMAPE%) ===")
+    print("\n=== 워크포워드 백테스트(12개월) — 주지표 WAPE%·MASE, 참고 SMAPE% ===")
     print(bt.to_string(index=False))
     bt.to_csv(f"{out_dir}/backtest.csv", index=False)
 
@@ -193,10 +230,11 @@ def run(db=None, out_dir=None):
     out["base_month"] = last_m.strftime("%Y-%m-%d")
     out["target_month"] = out["target_month"].dt.strftime("%Y-%m-%d")
     out["model_version"] = "forecast_unit_v1(HistGBM×2 재귀, 단가분해)"
-    out["basis"] = json.dumps({"backtest_SMAPE": bt.to_dict("records"),
+    out["basis"] = json.dumps({"backtest": bt.to_dict("records"),
+                               "metrics": "주지표 WAPE(총합비율·0값 강건)·MASE(계절나이브 스케일, <1=우수), SMAPE는 이력 비교용",
                                "supervision": "관세청 월간(HS 161코드 바스켓→5광종)",
                                "identity": "value = unit(USD/ton) × ton"},
-                              ensure_ascii=False)[:1500]
+                              ensure_ascii=False)[:3000]
     out["generated_at"] = pd.Timestamp.utcnow().isoformat(timespec="seconds")
 
     con = duckdb.connect(db)
