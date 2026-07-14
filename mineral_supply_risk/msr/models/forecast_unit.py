@@ -187,6 +187,29 @@ def _direct_forecast(df: pd.DataFrame, target: str, base_month: pd.Timestamp,
     return pd.DataFrame(rows)
 
 
+def _conformal_q(df: pd.DataFrame, target: str, origins: tuple, horizon: int = H,
+                 alpha: float = 0.2) -> float:
+    """CQR 보수화(감사 후속 2026-07-14): 분위 HistGBM 구간이 실측 과소커버(0.60~0.72)라
+    보정 원점들의 OOS conformity score E=max(q10−y, y−q90) (log공간)의 유한표본 보정
+    (1−α) 분위를 가산폭으로 반환 — 구간을 [q10·e^{−Q}, q90·e^{+Q}]로 넓힌다.
+    보정 원점은 반드시 평가/발행 기점보다 과거여야 누수가 없다."""
+    scores = []
+    act = df[["commodity_code", "month", target]]
+    for o in origins:
+        fd = _direct_forecast(df, target, pd.Timestamp(o), horizon, with_quantiles=True)
+        m = fd.merge(act, on=["commodity_code", "month"], how="inner")
+        ly = np.log(m[target].clip(lower=1e-9).astype(float))
+        l10 = np.log(m["q10"].clip(lower=1e-9))
+        l90 = np.log(m["q90"].clip(lower=1e-9))
+        scores.append(np.maximum(l10 - ly, ly - l90).values)
+    s = np.concatenate(scores)
+    s = s[np.isfinite(s)]
+    if len(s) == 0:
+        return 0.0
+    k = min(1.0, np.ceil((len(s) + 1) * (1 - alpha)) / len(s))   # 유한표본 conformal 분위
+    return max(0.0, float(np.quantile(s, k)))
+
+
 def _lognorm_params(q10, q50, q90):
     """(q10,q50,q90) → lognormal(μ,σ) 근사. σ는 분위 간격, μ는 중앙값."""
     mu = np.log(max(q50, 1e-9))
@@ -235,6 +258,12 @@ def _mase(f: pd.DataFrame, col_a: str, col_p: str, train: pd.DataFrame, target: 
 
 
 def backtest(df: pd.DataFrame, origins=("2024-06-01", "2024-12-01")) -> pd.DataFrame:
+    # conformal 가산폭 — 보정 원점(2022-06/12)은 두 평가 원점의 예측 대상기간보다 전부
+    # 과거(실측 ~2023-12)라 누수 없음. 평가에서 커버리지 개선을 실증한다.
+    cal = ("2022-06-01", "2022-12-01")
+    qt = _conformal_q(df, "ton", cal)
+    qu = _conformal_q(df, "unit", cal)
+    print(f"[conformal] 보정 원점 {cal} → 가산폭(log) ton {qt:.3f}, unit {qu:.3f}")
     rows = []
     for o in origins:
         base = pd.Timestamp(o)
@@ -266,6 +295,12 @@ def backtest(df: pd.DataFrame, origins=("2024-06-01", "2024-12-01")) -> pd.DataF
             (r["t10"], r["pd_ton"], r["t90"]), (r["u10"], r["pd_unit"], r["u90"])), axis=1)
         f[["v10", "v50", "v90"]] = pd.DataFrame(vint.tolist(), index=f.index)
         cov80 = float(((f["value_usd"] >= f["v10"]) & (f["value_usd"] <= f["v90"])).mean())
+        # conformal 보수화 구간 커버리지(같은 MC 합성, 넓힌 마진 사용)
+        vint_c = f.apply(lambda r: _mc_value_interval(
+            (r["t10"] * np.exp(-qt), r["pd_ton"], r["t90"] * np.exp(qt)),
+            (r["u10"] * np.exp(-qu), r["pd_unit"], r["u90"] * np.exp(qu))), axis=1)
+        f[["vc10", "_", "vc90"]] = pd.DataFrame(vint_c.tolist(), index=f.index)
+        cov80c = float(((f["value_usd"] >= f["vc10"]) & (f["value_usd"] <= f["vc90"])).mean())
         # 단가의 정직성 검사(감사 B-3②): 원자재 가격은 약형 효율 — 드리프트 없는 랜덤워크
         # (=원점 시점 단가 유지)를 못 이기면 "단가를 예측한다"고 주장할 수 없다. 항상 병기.
         rw = train.sort_values("month").groupby("commodity_code")["unit"].last().rename("rw_unit")
@@ -289,6 +324,7 @@ def backtest(df: pd.DataFrame, origins=("2024-06-01", "2024-12-01")) -> pd.DataF
             MASE_ton_D=_mase(f, "ton", "pd_ton", train, "ton"),
             MASE_unit_D=_mase(f, "unit", "pd_unit", train, "unit"),
             cov80_value=round(cov80, 2),          # 80% 구간 실측 커버리지(목표 0.80)
+            cov80_value_conf=round(cov80c, 2),    # conformal 보수화 후(목표 0.80)
             # 이력 비교용(과거 백테스트와의 연속성)
             SMAPE_ton=round(_smape(f["ton"], f["p_ton"]), 1),
             SMAPE_ton_naive=round(_smape(f["ton"], f["sn_ton_f"]), 1),
@@ -320,12 +356,20 @@ def run(db=None, out_dir=None):
     method = os.environ.get("MSR_FORECAST_METHOD") or ("direct" if m_dir < m_rec else "recursive")
     print(f"\n[method] 금액 MASE 재귀 {m_rec:.2f} vs Direct {m_dir:.2f} → 채택: {method}")
 
-    # 최종 발행: 최신월 기준 h=1~12. 구간(q10/q90)은 Direct 분위 모델에서, 점추정은 우승 방식.
+    # 최종 발행: 최신월 기준 h=1~12. 구간(q10/q90)은 Direct 분위 모델 + conformal 보수화,
+    # 점추정은 우승 방식. 발행용 가산폭은 최신 가용 원점 3개(실측 12개월 확보분)로 보정.
+    cal_pub = tuple(str((last_m - pd.DateOffset(months=m_)).date())
+                    for m_ in (24, 18, 12))
+    qt_pub = _conformal_q(df, "ton", cal_pub)
+    qu_pub = _conformal_q(df, "unit", cal_pub)
+    print(f"[conformal] 발행 가산폭(log, 보정 원점 {cal_pub}): ton {qt_pub:.3f}, unit {qu_pub:.3f}")
     fd_ton = _direct_forecast(df, "ton", last_m, with_quantiles=True) \
         .rename(columns={"pred": "d_ton", "q10": "ton_lo", "q90": "ton_hi"})
     fd_unit = _direct_forecast(df, "unit", last_m, with_quantiles=True) \
         .rename(columns={"pred": "d_unit", "q10": "unit_lo", "q90": "unit_hi"})
     out = fd_ton.merge(fd_unit, on=["commodity_code", "month", "h"])
+    out["ton_lo"] *= np.exp(-qt_pub); out["ton_hi"] *= np.exp(qt_pub)
+    out["unit_lo"] *= np.exp(-qu_pub); out["unit_hi"] *= np.exp(qu_pub)
     if method == "direct":
         out["pred_ton"], out["pred_unit_usd_per_ton"] = out["d_ton"], out["d_unit"]
     else:
@@ -351,7 +395,7 @@ def run(db=None, out_dir=None):
     out["model_version"] = f"forecast_unit_v2(HistGBM×2 {method}, 단가분해, 80%구간 MC합성)"
     out["basis"] = json.dumps({"backtest": bt.to_dict("records"),
                                "method": f"{method}(백테스트 금액 MASE 재귀 {m_rec:.2f} vs Direct {m_dir:.2f})",
-                               "interval": "q10/q90 분위 HistGBM(log공간), 금액구간=물량×단가 lognormal 근사 MC 합성",
+                               "interval": f"q10/q90 분위 HistGBM(log공간) + conformal 보수화(가산폭 ton {qt_pub:.3f}/unit {qu_pub:.3f}, 보정원점 {list(cal_pub)}), 금액구간=물량×단가 lognormal MC 합성",
                                "metrics": "주지표 WAPE·MASE, SMAPE는 이력 비교용",
                                "supervision": "관세청 월간(HS 161코드 바스켓→5광종)",
                                "identity": "value = unit(USD/ton) × ton"},
