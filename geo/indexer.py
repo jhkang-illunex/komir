@@ -2,6 +2,7 @@
 """[3] 지수 산출(순수 결정론): geo_events → 광종별 주/월 지정학 위기 지수.
 index = normalize( Σ severity × source_reliability × supply_concentration × sign(direction) )
 """
+import numpy as np
 import pandas as pd
 from . import config as C, store
 from .schema import IndexConfig
@@ -157,6 +158,22 @@ def compute() -> pd.DataFrame:
     n_dedup = before - len(ev)
     if n_dedup:
         print(f"  [index] 동일사건 반복보도 중복 {n_dedup}건 제외(월+광종+근거문구 동일, 최고심각도만 유지)")
+    # 근사 중복 강화(2026-07-15, 외부감사 B-1④ 1단계): 재보도는 문구가 '미묘하게' 달라
+    # 정확일치 키를 빠져나감 — ① 정규화 키(소문자·숫자/구두점/공백 제거 후 앞 80자: 날짜·
+    # 수치·표기 변형 흡수) ② 토큰 정렬 키(어순 변형 흡수)로 2차·3차 제거. 임베딩(BGE-M3)
+    # 클러스터링은 2단계(GPU 배치 필요) — 표본 검증으로 잔존율을 정량화해 필요성 판단.
+    q = ev["evidence_quote"].fillna("").astype(str).str.lower()
+    ev["_nkey"] = q.str.replace(r"[\d\W_]+", "", regex=True).str[:80]
+    ev["_tkey"] = q.str.replace(r"[^\w가-힣 ]+", " ", regex=True).str.split().map(
+        lambda t: " ".join(sorted(t)[:10]) if isinstance(t, list) else "")
+    b2 = len(ev)
+    ev = ev[~((ev["_nkey"].str.len() >= 20)
+              & ev.duplicated(subset=["commodity", "_month", "_nkey"], keep="first"))]
+    ev = ev[~((ev["_tkey"].str.len() >= 20)
+              & ev.duplicated(subset=["commodity", "_month", "_tkey"], keep="first"))]
+    n_near = b2 - len(ev)
+    if n_near:
+        print(f"  [index] 근사 중복(정규화·토큰 키) {n_near}건 추가 제외")
 
     ev["yr"] = ev["date"].dt.year
     ev["rel"] = ev["source"].map(rel).fillna(1.0)
@@ -174,18 +191,64 @@ def compute() -> pd.DataFrame:
     ev["score"] = (ev["severity"].astype(float) * ev["rel"] * ev["conc"]
                    * ev["hhi_mult"] * ev["sgn"] * ev["imp_mult"])
 
+    # ── 미디어 볼륨 드리프트 정규화(2026-07-15, 외부감사 B-1②) ──
+    # 코퍼스 총량이 시간에 따라 변해(실측: 2016년 29.2만/년 → 2020~22년 12.5만/년으로 감소
+    # 후 회복 — 증가 일변도라는 통념과 반대) 시간축 눈금이 왜곡됨. 주간 전체(광종 무관)
+    # 이벤트량의 장기 기저(EWMA 52주)로 나눠 세속적 변화만 제거한다 — 분모가 '느린' 기저라
+    # 주간 급증(실제 위기 신호)은 보존되고, 평균 1 정규화 + 0.5~2.0 클립으로 지수 앵커를
+    # 근사 보존하며 초기 저커버 구간의 과대 증폭을 방지한다.
+    wk_key = ev["date"].dt.to_period("W").dt.start_time
+    vol = wk_key.value_counts().sort_index()
+    drift = (vol.ewm(halflife=52).mean() / vol.ewm(halflife=52).mean().mean()).clip(0.5, 2.0)
+    ev["score"] = ev["score"] / wk_key.map(drift).fillna(1.0)
+    print(f"  [index] 볼륨 드리프트 정규화: 분모 {drift.min():.2f}~{drift.max():.2f} (EWMA 52주·평균1·클립 0.5~2)")
+
+    # ── 사건 지속성: stock/flow 감쇠 클래스(2026-07-15, 외부감사 B-1③) ──
+    # 수출통제(효력 지속)와 파업(단기 종료)이 같은 주에만 계상되던 것을, 사건유형별 반감기의
+    # 정규화 기하 커널(질량 1 — 총량 보존)로 후속 주간에 분산한다. event_type이 영/한/대소문자
+    # 혼재(정책/policy/Geopolitical...)라 패턴 매칭으로 분류.
+    et = ev["event_type"].fillna("").astype(str).str.lower()
+    is_stock = et.str.contains("policy|정책|제재|sanction|export|규제|geopolit", regex=True)
+    is_flow = et.str.contains("뉴스|news|파업|strike|재해|disaster|사고|accident|분쟁|conflict|시위|protest",
+                              regex=True)
+    ev["_decay"] = np.where(is_stock, "stock", np.where(is_flow & ~is_stock, "flow", "mid"))
+
     out = []
     # Y(연간): 연간 발행 보고서(USGS·IEA·광업요람 등)의 이벤트가 자연스럽게 연 단위 배경
     # 신호로 집계됨(2026-07-12, "연간 발행물은 연 단위 적용" 방침). 붙임1 다중 주기 요구 대응.
     # scale_k는 "주간 P90=지수 88" 앵커(주간 기준) — 월/연은 raw가 기간 길이만큼 커지므로
     # 동일 앵커 의미를 유지하려면 주기 배수를 곱한다(정상 주간율 가정 하 P90-상당 기간=88).
     _FREQ_MULT = {"W": 1.0, "M": 52.0 / 12.0, "Y": 52.0}
-    for freq, flabel in (("MS", "M"), ("W", "W"), ("YS", "Y")):
-        for c, sub in ev.groupby("commodity"):
-            g = (sub.set_index("date").resample(freq)["score"]
-                    .agg(raw_score="sum", n_events="count").reset_index())
-            g = g[g["n_events"] > 0]          # 근거(이벤트) 없는 중간 공백 기간은 발행하지 않음
-            g = g.rename(columns={"date": "period"})
+    # 감쇠 반감기(주): stock=수출통제·제재·정책(1분기), flow=보도·파업·재해(단기), mid=기타.
+    _HL = {"stock": 13, "flow": 2, "mid": 4}
+    grid_end = ev["date"].max()
+
+    def _decayed_weekly(sub: pd.DataFrame) -> tuple:
+        """이벤트 → 주간 그리드 점수(클래스별 커널 전방 분산 합) + 실이벤트 수."""
+        grid = pd.date_range(sub["date"].min(), grid_end, freq="W")
+        total = np.zeros(len(grid))
+        for cls, hl in _HL.items():
+            s = (sub[sub["_decay"] == cls].set_index("date")["score"]
+                 .resample("W").sum().reindex(grid, fill_value=0.0))
+            a = 0.5 ** (1.0 / hl)
+            w = (1 - a) * a ** np.arange(4 * hl + 1)
+            w = w / w.sum()                    # 질량 1 — 총량 보존(앵커 근사 유지)
+            total += np.convolve(s.values, w)[: len(grid)]
+        cnt = sub.set_index("date").resample("W").size().reindex(grid, fill_value=0)
+        return pd.Series(total, index=grid), cnt
+
+    for c, sub in ev.groupby("commodity"):
+        wk_score, wk_cnt = _decayed_weekly(sub)
+        for freq, flabel in (("W", "W"), ("MS", "M"), ("YS", "Y")):
+            if flabel == "W":
+                raw, cnt = wk_score, wk_cnt
+            else:                              # 감쇠 반영된 주간 시계열을 상위 주기로 합산
+                raw, cnt = wk_score.resample(freq).sum(), wk_cnt.resample(freq).sum()
+            g = pd.DataFrame({"period": raw.index, "raw_score": raw.values,
+                              "n_events": cnt.reindex(raw.index).fillna(0).astype(int).values})
+            # 실이벤트가 없어도 감쇠 잔존 신호가 있으면 발행(지속성 반영이 목적) —
+            # 둘 다 없는 공백 기간만 미발행.
+            g = g[(g["n_events"] > 0) | (g["raw_score"] > 1e-9)]
             g["commodity"] = c
             g["freq"] = flabel
             k = float((cfg.scale_k_by_commodity or {}).get(c, cfg.scale_k)) * _FREQ_MULT[flabel]

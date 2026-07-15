@@ -11,13 +11,16 @@ normalize: tanh0_100
 # 이 값들은 캘리브레이션 "상수"로 동결(매 발행 재추정 금지) — 그래야 tanh 절대 스케일의
 # 발행값 불변 성질이 유지된다. 코퍼스가 구조적으로 바뀔 때만 버전을 올려 재캘리브레이션하고,
 # 그 경우 GEO_INDEX_VERSION(publish의 index_config_version)을 함께 올린다.
-scale_k: 400.0                 # 폴백(scale_k_by_commodity에 없는 광종용)
-scale_k_by_commodity:          # P90(|raw_score|) 실측 2026-07-12
-  CU: 447.0
-  NI: 165.0
+scale_k: 300.0                 # 폴백(scale_k_by_commodity에 없는 광종용)
+scale_k_by_commodity:          # P90(|raw_score|) 실측 2026-07-15 — v2 재앵커
+  # v2(2026-07-15): 지수 정밀화 3종(볼륨 드리프트 정규화·stock/flow 감쇠·근사중복 제거)으로
+  # raw 분포가 구조적으로 바뀌어 1회 재캘리브레이션(P90→88 원칙 동일). 구 v1(07-12):
+  # CU 447/NI 165/CO 14/LI 12/REE 20.
+  CU: 297.0
+  NI: 125.0
   CO: 14.0
   LI: 12.0
-  REE: 20.0
+  REE: 34.0
 direction_sign:
   supply_down: 1.0
   price_up: 1.0

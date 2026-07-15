@@ -81,7 +81,7 @@ def publish_index(target: str, now: str) -> int:
     if len(idx) == 0:
         print("[publish] geo_index 없음(먼저 index)"); return 0
     out = idx.rename(columns={"commodity": "commodity_code", "index": "idx_value"}).copy()
-    out["index_config_version"] = os.environ.get("GEO_INDEX_VERSION", "v1")
+    out["index_config_version"] = os.environ.get("GEO_INDEX_VERSION", "v2")  # v2: 2026-07-15 정밀화 3종+재앵커
     out["generated_at"] = now
     out = out[["commodity_code", "freq", "period", "raw_score", "n_events",
                "idx_value", "index_config_version", "generated_at"]]
