@@ -64,13 +64,21 @@ def compute_alerts(df, geo_sev=None):
         lvl=[]; trig=[]
         for _,r in g.iterrows():
             L=r["base_level"]; t=[]
-            # 가격변동성 급증 → 최소 관심
+            # 가격변동성 급증 → 최소 관심 [백테스트 2026-07-16: 유지 — 격상주의 향후 3개월
+            # 가격급변 실현율이 대조군의 3.7배(0.264 vs 0.071)로 유일한 진짜 선행 신호]
             if pd.notna(r["volatility_12w"]) and r["volatility_12w"]>=vol_thr: L=max(L,1); t.append("변동성급증")
-            # 수입편중 極 → 최소 경계 (과업: 희토류 편중도 단독 트리거)
-            if pd.notna(r["import_hhi"]) and r["import_hhi"]>=hhi_thr: L=max(L,3); t.append("수입편중極")
-            # 지정학 severe 이벤트 → +1 격상, 최소 주의
-            sev=(geo_sev or {}).get((cc, r["obs_date"]))
-            if sev is not None and sev>=OV_GEO_SEV: L=min(4,max(L+1,2)); t.append(f"지정학{sev:.2f}")
+            # 수입편중 極 → 최소 '관심' [백테스트 2026-07-16: 목표단계 경계(3)→관심(1) 강등 —
+            # 종전 3단계 점프는 단독으로 FAR 0.04→0.20 악화, 결과 선행 lift ×1.4에 불과.
+            # 편중 수준 자체는 XAI 기여도·사유 문안으로 계속 노출됨]
+            if pd.notna(r["import_hhi"]) and r["import_hhi"]>=hhi_thr: L=max(L,1); t.append("수입편중극")
+            # 지정학 severe 이벤트 격상 [백테스트 2026-07-16: **폐지**] — 격상주 674주(사실상
+            # 상시), FAR 폭증의 주범(전체 On QWK 0.937→0.416), 격상주 가격급변 실현율이 기저
+            # 이하(lift ×0.9), 지정학 신호는 이미 지수(변수⑥)로 진단모델에 반영돼 이중계상.
+            # 이벤트는 격상 없이 '사유 인용'(_build_reasons)으로만 계속 표시. 복원 스위치:
+            # ALERT_OVERRIDE_GEO=on (감사·비교용)
+            if os.environ.get("ALERT_OVERRIDE_GEO","off")=="on":
+                sev=(geo_sev or {}).get((cc, r["obs_date"]))
+                if sev is not None and sev>=OV_GEO_SEV: L=min(4,max(L+1,2)); t.append(f"지정학{sev:.2f}")
             lvl.append(L); trig.append("+".join(t))
         g["rule_level"]=lvl; g["triggers"]=trig
         # (C) 히스테리시스: 하향은 2주 지속시만 반영(진동 방지)
