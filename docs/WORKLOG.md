@@ -13,7 +13,7 @@
 87.8~88.6 검증, publish 기본 버전 v2). 랜드마크(REE 수출통제 주간 97~100) 유지.
 - 임베딩 표본 검증(신규 validate_neardup_embedding.py): 키 dedup 후 **잔존 근사중복 12.0%**
   (30버킷·6,161건, cos≥0.9) → 2단계(BGE-M3 전량, 수집서버 GPU 배치) 도입 필요 판정.
-**에이전트 병렬 3건**: ④ 가중치 민감도(sensitivity_geo_weights.py) — ±30% 섭동 10시나리오:
+**에이전트 병렬 3건**: ④ 가중치 민감도(sensitivity_geo_weights.py) — 순수 곱 구조라 전역 스칼라 섭동은 퇴화(순위 불변, 부록 A 실증) → '성분평균 편차 ±30% 신축'(상대섭동)으로 검정:
 rel·conc·imp_mult 강건(P90 집합 Jaccard 0.92~0.96), **severity·sgn 취약(0.67~0.70) →
 정밀화 우선순위**. 복제검증 저상관은 v2 동시 개정 타이밍 탓(리포트에 원인 주석).
 ⑤ lead time(lead_time_eval.py) — **h=0~3개월 전 지평에서 Naive 대비 QWK 우위, 격차
