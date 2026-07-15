@@ -29,6 +29,8 @@
 - 작업 이력: `docs/WORKLOG.md` (날짜별 변경·버그·결정)
 - 데이터 수집 현황·실측: `documents/claude_output/지정학위기지수_데이터수집현황_260707.md`
 - 모델 설계 정본: `documents/claude_output/mineral_risk_model_v1.md`
+- **중간 진행 상황 보고(워드)**: `documents/claude_output/중간진행상황보고_260716.docx`
+  — 착수(07-02)~현재 6단계 타임라인·성능 스냅샷·주요 발견·산출물·잔여 작업(WORKLOG 35항 기반).
 - **발주처 협의 안건서(워드)**: `documents/claude_output/발주처협의안건_4건_260716.docx`
   — 에피소드 라벨 협조·미탐:오탐 비용비 합의·CU 해석 방침 승인·품목 예측 수요 확인.
   v1 §12 기존 8건과 별개 추가 안건임을 명시.
