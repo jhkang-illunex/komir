@@ -29,6 +29,9 @@
 - 작업 이력: `docs/WORKLOG.md` (날짜별 변경·버그·결정)
 - 데이터 수집 현황·실측: `documents/claude_output/지정학위기지수_데이터수집현황_260707.md`
 - 모델 설계 정본: `documents/claude_output/mineral_risk_model_v1.md`
+- **발주처 협의 안건서(워드)**: `documents/claude_output/발주처협의안건_4건_260716.docx`
+  — 에피소드 라벨 협조·미탐:오탐 비용비 합의·CU 해석 방침 승인·품목 예측 수요 확인.
+  v1 §12 기존 8건과 별개 추가 안건임을 명시.
 - **광종별 HS코드 연계표(워드)**: `documents/claude_output/광종별_HS코드_연계표_260713.docx`
   — core 161코드(CU 88/NI 36/CO 15/LI 13/REE 9)를 HS 호(4단위) 품명 그룹으로 정리.
   정본은 `mineral_supply_risk/data/raw/hs_commodity_map.csv`(542행), 문서는 그 뷰.
