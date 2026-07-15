@@ -28,6 +28,41 @@ def _load_refdata():
     return conc, hhi
 
 
+def _load_kr_share():
+    """한국 수입의존 비중(연도별, build_kr_import_share.py 산출) — 없으면 None(가중 생략)."""
+    import os
+    f = C.CONFIG / "refdata" / "kr_import_share.parquet"
+    return pd.read_parquet(f) if os.path.exists(f) else None
+
+
+def _apply_kr_exposure(ev: pd.DataFrame) -> pd.DataFrame:
+    """이중 노출 가중(2026-07-15, 외부감사 B-1① — '한국의' 지수화).
+    w = 공급충격 크기(conc, USGS 생산점유) × 한국 직접 노출(s_imp, 관세청 수입비중).
+    · s_imp는 (광종,국가,연도) 최근접 연도 매칭, 미매칭(비수입국·자유텍스트 지명)은 0.
+    · imp_mult = (1+s_imp)를 광종별 이벤트 모집단 mean-one으로 정규화 — 광종 지수의
+      스케일(P90 앵커 동결)을 보존하면서 국가 간 상대 가중만 바꾼다(순수 곱 w=s_prod×s_imp는
+      비수입 생산국 이벤트를 0으로 만들어 글로벌 가격 전달경로를 지움 — 채택하지 않음).
+    """
+    share = _load_kr_share()
+    if share is None or "country" not in ev.columns:
+        ev["imp_mult"] = 1.0
+        return ev
+    # 연도 그리드 전개(관측연도 밖은 최근접 연도값 유지) 후 벡터 병합 — 1.8M행에 apply 금지
+    yrs = range(int(share["year"].min()), int(ev["yr"].max()) + 1)
+    grid = (share.set_index("year").groupby(["commodity", "country"])["imp_share"]
+            .apply(lambda s: s.reindex(yrs).ffill().bfill()).reset_index())
+    ev = ev.merge(grid.rename(columns={"year": "yr", "imp_share": "s_imp"}),
+                  on=["commodity", "country", "yr"], how="left")
+    ev["s_imp"] = ev["s_imp"].fillna(0.0)
+    raw = 1.0 + ev["s_imp"]
+    ev["imp_mult"] = raw / raw.groupby(ev["commodity"]).transform("mean")
+    n_hit = int((ev["s_imp"] > 0).sum())
+    stat = ev[ev["s_imp"] > 0].groupby("commodity")["imp_mult"].max().round(2).to_dict()
+    print(f"  [index] 이중 노출 가중: 수입국 매칭 {n_hit:,}건({n_hit/len(ev):.1%}), "
+          f"광종별 최대 배수 {stat}")
+    return ev
+
+
 def _nearest_weight(df, com, country, yr, keycols, valcol, default=1.0):
     """(commodity[,country]) 매칭 중 event 연도에 가장 가까운 값."""
     if df is None or country is None:
@@ -135,7 +170,9 @@ def compute() -> pd.DataFrame:
         ev["conc"] = (ev["commodity"] + ":" + ev["country"].fillna("")).map(conc_static).fillna(1.0)
         ev["hhi_mult"] = 1.0
     ev["sgn"] = ev["direction"].map(sign).fillna(0.2)
-    ev["score"] = ev["severity"].astype(float) * ev["rel"] * ev["conc"] * ev["hhi_mult"] * ev["sgn"]
+    ev = _apply_kr_exposure(ev)     # 이중 노출: 글로벌 공급충격 × 한국 수입의존(B-1①)
+    ev["score"] = (ev["severity"].astype(float) * ev["rel"] * ev["conc"]
+                   * ev["hhi_mult"] * ev["sgn"] * ev["imp_mult"])
 
     out = []
     # Y(연간): 연간 발행 보고서(USGS·IEA·광업요람 등)의 이벤트가 자연스럽게 연 단위 배경

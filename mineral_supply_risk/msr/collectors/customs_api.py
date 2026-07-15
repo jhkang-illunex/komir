@@ -62,7 +62,12 @@ def _parse_xml(text):
         rows.append({
             "year": g("year"), "month": g("month"),
             "hscode": g("hsCd") or g("hscode"),
-            "country": g("statKor") or g("statCd"),
+            # 필드 교정(2026-07-15, 실API 검증): 국가는 statCdCntnKor1(국가명)/statCd(코드).
+            # statKor는 '품목명'이라 종전 매핑은 국가 차원을 잃었음(합계는 groupby-sum이라
+            # 정상이었으나 국가별 분해 불가 — 이중 노출 가중·수입국 HHI가 이 수정에 의존).
+            "country": g("statCdCntnKor1") or g("statCd") or g("statKor"),
+            "country_cd": g("statCd"),
+            "item_kor": g("statKor"),
             "exp_usd": g("expDlr"), "exp_wgt": g("expWgt"),
             "imp_usd": g("impDlr"), "imp_wgt": g("impWgt"),
             "balance": g("balPayments"),
@@ -141,8 +146,9 @@ def _clean_frame(rows, freq):
     # 연간 모드: 연 1년창이 (국가×월) 행을 반환하므로 (연도·HS·국가) 단위로 집계해
     #            진짜 '연간' 1행이 되도록 함(월행 중복 방지).
     keys = ["year", "hscode", "country", "hs_query", "q_year"]
+    keys += [c for c in ("country_cd", "item_kor") if c in df.columns]   # 국가코드·품목명 보존
     agg = {c: "sum" for c in ["exp_usd", "exp_wgt", "imp_usd", "imp_wgt"]}
-    return df.groupby(keys, as_index=False).agg(agg)
+    return df.groupby(keys, as_index=False, dropna=False).agg(agg)
 
 
 def collect(hs_list, strt_yymm, end_yymm, sleep=0.3, freq="A", sink=None):

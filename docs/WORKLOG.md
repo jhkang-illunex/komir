@@ -2,6 +2,24 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-07-15 — 국가×광종 이중 노출 가중 (감사 후속 4번 완료) + 관세청 국가차원 결함 교정
+
+**부수 발견(치명 등급)**: 관세청 수집기가 country←statKor(품목명) 오매핑 — 국가 차원 소실.
+실API 검증으로 확인(국가는 statCdCntnKor1/statCd). 합계는 groupby-sum이라 정상(예측 무영향)
+이나 **기존 import_hhi는 '품목 구성 HHI'였음(결함)**. 수집기 교정(country_cd·item_kor 보존).
+- 국가별 연간 재수집: 161 HS × 2013~2025 = 2,093콜 → raw_customs_annual_bycountry
+  39,962행·223개국(기존 테이블 보존). REE 중국 $3.0B 최상위 정합.
+- build_kr_import_share.py: 국가별 수입비중(한글→영문 별칭 확장, 수입액 가중 커버리지
+  93.5%) → geo refdata. **교정판 수입국 HHI: LI 0.59~0.67·REE 0.69~0.71 고집중 vs
+  CU 0.08·NI 0.09 분산** — 종전 품목 HHI 대비 정책적으로 유의미.
+- indexer._apply_kr_exposure(): imp_mult=(1+s_imp)를 광종별 이벤트 모집단 mean-one 정규화
+  (P90 앵커 보존; 순수 곱 s_prod×s_imp는 비수입 생산국 이벤트를 0으로 지워 기각·주석화).
+  실측: 이벤트 34.4% 매칭, 최대 배수 LI/REE 1.59·CO 1.48·CU 1.24·NI 1.19.
+- 지수 diff: **REE 평균 +3.4pt·최대 +14.6pt(중국 수출통제 주간들), LI +1.0(2021 급등기),
+  CU/NI 중립(+0.1~0.4)** — '한국의' 지수로 전환 의도대로. DB 재발행 완료.
+- 잔여(후속): weekly_mart의 import_hhi를 국가 기준(연간 ASOF)으로 교체 재배선 +
+  진단 재적합, 월간 국가별 재수집(19,320콜)은 월단위 국가 피처 필요 시.
+
 ## 2026-07-15 — 결과변수 proxy 라벨 구축·교차검증 (감사 후속 1(b), 1차 완료)
 
 scripts/build_proxy_label.py: "향후 3개월 내 (①vol90>기준기간 P95) OR (②수입량 동월기준
