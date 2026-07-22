@@ -34,6 +34,7 @@ import argparse, hashlib, os, zipfile
 from datetime import datetime
 
 from . import store
+from .gkg_relevance import is_relevant
 
 # ── GKG 2.1 컬럼 인덱스(0-based, 탭 구분 27필드) ──────────────────────────────
 C_ID, C_DATE, C_SRCID, C_SRCNAME, C_DOCID = 0, 1, 2, 3, 4
@@ -58,15 +59,11 @@ KEYWORD_COMMODITY = {
     "LI": ("lithium",),
     "REE": ("neodymium", "ndfeb", "nd magnet", "dysprosium", "rare earth"),
 }
-# 실측(2026-07-06) 확인: 광산기업 보도자료(임원임명·프로젝트진행 등)가 위 키워드만으로 대량 유입되어
-# REE 표본 오탐률이 가장 높았음. 아래 "정책/공급망 관련 신호어" 중 하나라도 같이 나와야
-# 폴백("뉴스") 티어에서 이벤트로 인정한다(THEME_RULES로 이미 제재/분쟁/정책/재해 매칭된 건은 그 자체로
-# 충분한 신호이므로 이 게이트를 적용하지 않음).
-SECONDARY_SIGNAL_KEYWORDS = (
-    "export", "import ban", "sanction", "embargo", "china", "beijing", "drc", "congo",
-    "child labor", "child labour", "conflict", "coup", "strike", "shutdown", "curtail",
-    "tariff", "quota", "nationaliz", "supply chain", "disruption", "shortage", "trade war",
-)
+# 2026-07-20 /goal 재설계: 기존엔 아래 SECONDARY_SIGNAL_KEYWORDS 게이트가 CO/LI/REE(키워드매칭
+# 광종)에만 걸리고 CU/NI(GDELT 전용 테마코드 매칭)는 관련성 검사를 아예 안 거치는 구조적 공백이
+# 있었다 — 단순임의표본(n=200) 재추정 결과 오염률 71.4%(정정후)의 근본원인으로 확정(WORKLOG
+# 2026-07-20). is_relevant()(geo/gkg_relevance.py, 상품별 이름·생산기업·노이즈어 인식,
+# 캘리브레이션 94.3%/독립검증셋도 동급)로 대체하고 CU/NI 포함 전 상품·전 티어에 동일하게 적용한다.
 
 # ── event_type/severity — llm/rule.py의 체계와 동일하게 맞춤(테마코드 기반) ───
 # (테마 부분문자열, event_type, direction, target, severity)
@@ -184,16 +181,15 @@ def parse_gkg_row(line: str) -> list[dict]:
 
     tone = _parse_tone(f[C_TONE])
     country = _first_country(f[C_V2LOC])
-    has_secondary_signal = any(kw in kw_haystack for kw in SECONDARY_SIGNAL_KEYWORDS)
 
     out = []
     for cc, offs in commodity_offs.items():
         is_theme_commodity = cc in THEME_COMMODITY.values()
-        # 키워드매칭 광종(CO/LI/REE)은 상품 자체에 오프셋이 없어 THEME_RULES 매칭 시에도 근접성
-        # 검증이 원천적으로 불가능하다 — 2차 신호어 게이트를 "뉴스" 폴백에만 걸었더니 "정책/분쟁"
-        # 티어로 완전 무관한 기사(예: 앨범 리뷰가 REE "정책", 휴대폰 스펙비교가 LI "정책")가 그대로
-        # 통과하는 걸 실측(2026-07-07, 2016년 전체 재처리)으로 확인 — 티어 무관하게 항상 게이트.
-        if not is_theme_commodity and not has_secondary_signal:
+        # is_relevant() 게이트 — CU/NI(전용테마 매칭)도 CO/LI/REE(키워드 매칭)와 동일하게 전 상품·
+        # 전 티어 적용(2026-07-20 /goal 재설계). CU/NI의 THEME_RULES 근접성 검증은 "상품 테마와
+        # 사건 테마가 같은 문단"만 보장할 뿐 그 문서 자체가 구리/니켈 산업 문서인지는 보장하지
+        # 않는다 — 실측(SRS n=200)상 오염 사례 다수가 CU/NI였던 점에서 이 게이트가 필요함.
+        if not is_relevant(kw_haystack, cc):
             continue
 
         # 노이즈(지역 절도·사건사고 등) 배제는 티어 판정 전에 최우선 적용한다.

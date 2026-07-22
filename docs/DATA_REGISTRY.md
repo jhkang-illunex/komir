@@ -15,6 +15,8 @@
 | `geo_data/` | **프로덕션 단일 스토어**(2026-07-12 확정): 검증 GKG 180.9만+문서 6,510 = 1,815,034건 + 지수 3,382행 + 확률 2,745행 | 2026-07-08~12 | META.md 참고 |
 | NAS `광해공단/bulk/gdelt/` | GDELT GKG 원본 zip 361,407개(2016~2026) + 다운로드/파싱/검증 로그(_logs/) | 2026-07-06~08 | `python -m geo.collectors.gkg_bulk_download` (5워커, 총 ~26h) |
 | NAS `광해공단/collect_out/` (예정) | 독립 수집기(`collector/` 도커, 별도 서버) 산출 — inbox 텍스트(gnews/gdelt/us_trade/cn_trade)+GKG 증분 zip. 분석기와 파일 계약으로만 연결 | 2026-07-12 구축 | `docker compose up -d` (collector/README.md) |
+| `warehouse/minerals.duckdb` → `fact_diagnosis_answer` | **수급위기 진단 정답셋(ground truth)**: KOMIS 가격기준 주간 이격률 등급(정상/관심/주의경계심각 3단계, 하방이탈 미포함) + 동일그리드 가격, 5광종×552주(LI는 289주), 2,497행 | 2026-07-16, 사용자 지정 | `MSR_DB=warehouse/minerals.duckdb python -m scripts.load_price_grade_answer`(원본: `documents/2차_데이타/3. 학습 및 검증용/1. 학습용 참고자료/1. 주간가격이격률모니터링_코미스가격기준 (1).xlsx`) |
+| `mineral_supply_risk/outputs/model_opt/a5_review_sample.csv` + `a5_labeling_guide.md` + `a5_review_sample_summary.md` | **A-5(라벨 품질 검증) 검토자용 패키지**: geo_event 계층표집 248건(광종×dimension×severity, 발행처 99.6% 공백이라 대체 계층 설계) + 라벨링 가이드(severity/direction/dimension 기준 명문화) + 표본구성 요약. 사람 판정 미기입 상태(대기) — 채점 스크립트(`scripts/a5_kappa_score.py`)는 합성 데이터로 코드 검증만 완료, 실행 대기 | 2026-07-18 | `MSR_DB=warehouse/minerals.duckdb python -m scripts.a5_label_review_sample` → 검토자 기입 후 `python -m scripts.a5_kappa_score --input <채운파일>` |
 
 ## 검증·분석 아카이브 (`data_archive/`)
 
@@ -24,25 +26,51 @@
 | `data_archive/validation_runs/geo_pipeline_v2_check/` | opendataloader+OCR+LLM 파이프라인 v2 검증(10샘플, 이벤트 29건) | 〃 §9 도입부 |
 | `data_archive/analysis/rule_vs_llm_260707/` | 룰기반 vs LLM(gemma) 추출 비교 원자료 pkl 2종 | 〃 §8 |
 | `data_archive/analysis/chaksu_ocr_260708/` | 착수보고 39p OCR 전문(원본 PDF는 폰트 매핑 파손으로 텍스트 추출 불가) | mineral_risk_model_v1.md |
+| `data_archive/backups/pre_gkg_relevance_cleanup*`, `pre_llm_relevance_apply_20260720/` | GKG 소급정제 각 라운드 전 geo_events.parquet+minerals.duckdb 백업 | WORKLOG 2026-07-20 |
+| `mineral_supply_risk/outputs/model_opt/_gkg_relevance_llm_state/` | GKG 관련성 LLM 1차 재검증 실행 로그(checked/rejected/corrected, META.md 참고) | WORKLOG 2026-07-20, "LLM 관련성 재검증 전량 실행 완료" |
+| `mineral_supply_risk/outputs/model_opt/_gkg_relevance_verify2_state/` | GKG 관련성 LLM 2차(적대적) 재검증 실행 로그(checked/problem/corrected, META.md 참고) — 최종 유효성 99.5% | WORKLOG 2026-07-21, "2차 적대적 재검증(합의투표 방식)" |
 
 ## 관련 문서
 - 작업 이력: `docs/WORKLOG.md` (날짜별 변경·버그·결정)
 - 데이터 수집 현황·실측: `documents/claude_output/지정학위기지수_데이터수집현황_260707.md`
 - 모델 설계 정본: `documents/claude_output/mineral_risk_model_v1.md`
-- **중간 진행 상황 보고(워드)**: `documents/claude_output/중간진행상황보고_260716.docx`
+- **중간 진행 상황 보고(워드)**: `documents/claude_output/중간진행상황보고_260722.docx`
+  (**정본**. 260716 원본 보존 — 260722는 GKG 이벤트 건수만 갱신(181만→29.5만, 관련성
+  99.5%), 보고일·타임라인 서술은 260716 스냅샷 그대로 유지)
   — 착수(07-02)~현재 6단계 타임라인·수집/가공 현황·5광종별 지수/진단/1년후 수입예측 표·
   성능 스냅샷·주요 발견·산출물·잔여 작업(WORKLOG 35항+DB 실측 기반).
-- **발주처 협의 안건서(워드)**: `documents/claude_output/발주처협의안건_4건_260716.docx`
+- **발주처 협의 안건서(워드)**: `documents/claude_output/발주처협의안건_4건_260722.docx`
+  (**정본**. 260716 원본 보존. 260722 = 안건1·2에 인용된 AUC·허위경보율 수치를 GKG
+  재정제 후 데이터로 재검증(`scripts/build_proxy_label.py`·`scripts/lead_time_eval.py`
+  재실행)해 갱신 — AUC(LI/NI/REE)는 재정제 전후 동일 수준(0.90/0.91/0.99) 확인, 허위경보율은
+  단일수치 "1.8% 이하" 표현이 지평별 실제론 0.6~3.6% 범위임을 확인해 더 정확한 표현으로
+  수정. 안건3·4·본문 서술은 변경 없음)
   — 에피소드 라벨 협조·미탐:오탐 비용비 합의·CU 해석 방침 승인·품목 예측 수요 확인.
   v1 §12 기존 8건과 별개 추가 안건임을 명시.
 - **광종별 HS코드 연계표(워드)**: `documents/claude_output/광종별_HS코드_연계표_260713.docx`
   — core 161코드(CU 88/NI 36/CO 15/LI 13/REE 9)를 HS 호(4단위) 품명 그룹으로 정리.
   정본은 `mineral_supply_risk/data/raw/hs_commodity_map.csv`(542행), 문서는 그 뷰.
-- **발주 보고용 요약본(워드, 구성도 포함)**: `documents/claude_output/핵심광물_시스템구성_요약본_260716.docx`
-  (260716 = 협의 안건 예정 추가·성능 최신화. 260713 파일은 갱신 과정에서 동일 내용으로
-  덮어써진 동일본 — 사용자 결정(2026-07-16)으로 히스토리 표기용 보존, 정본은 260716)
+- **발주 보고용 요약본(워드, 구성도 포함)**: `documents/claude_output/핵심광물_시스템구성_요약본_260722.docx`
+  (**정본**. 260716 = 협의 안건 예정 추가·성능 최신화. 260713 파일은 갱신 과정에서 동일
+  내용으로 덮어써진 동일본 — 사용자 결정(2026-07-16)으로 히스토리 표기용 보존. 260722 =
+  GKG 관련성 재정제 결과 반영(건수 약181만→29.5만, 관련성 71.4%→99.5%) — 260716은
+  히스토리 보존)
   — 5모듈·구성도(수집서버 외부망/분석서버 폐쇄망)·수집기 배치·반입 절차·운영 요약. 구성도 원본
   `documents/claude_output/시스템구성도_260713.png`(matplotlib 생성, 스크립트는 세션 스크래치)
-- **발주 보고용 확정본(워드)**: `documents/claude_output/핵심광물_시스템_확정아키텍처_모델링정리_v1_260713.docx`
+- **발주 보고용 확정본(워드)**: `documents/claude_output/핵심광물_시스템_확정아키텍처_모델링정리_v1_260722.docx`
+  (**정본**. 260713 = 최초 확정본, 히스토리 보존. 260722 = GKG 관련성 재정제 결과 반영,
+  "작성일" 줄에 갱신일 병기)
   — 5모듈 아키텍처·데이터 흐름·지표/모델링·전통 ML 채택 근거. 생성 스크립트는 세션 스크래치
-  (숫자 출처: outputs/model_opt/report.md, outputs/forecast_unit/forecast_latest.csv, WORKLOG 2026-07-12~13)
+  (숫자 출처: outputs/model_opt/report.md, outputs/forecast_unit/forecast_latest.csv,
+  WORKLOG 2026-07-12~13, 2026-07-20~21 GKG 재정제)
+- **프로세스 정리(외부 AI 검토용, 워드)**: `documents/claude_output/프로세스정리_외부AI검토용_260722.docx`
+  (**정본**. 260716 원본 보존. 260722 = geo_event 원장 건수만 GKG 재정제 후 수치로 갱신
+  (181만/134만→29.5만/21.3만) — 구조화문서 LLM 추출 성공률(90.4%)·GKG raw_score 스케일
+  상수·NB2 Brier score 등 설계검증 근거 수치는 GKG와 무관한 별도 검증이라 원본 그대로
+  유지, 사용자 확인(2026-07-22))
+  — 6단계 파이프라인 상세, 외부 AI 방법론 검토용.
+- ⚠ **의도적으로 갱신하지 않은 문서**: `documents/claude_output/피드백기반_수정플랜_260716.docx`
+  14~15번째 문단의 "1,815,194건"은 **2026-07-16 시점 실측 정정 기록**(WORKLOG의 "650만건"
+  오기재를 직접 쿼리로 정정한 감사 로그)이라 현재 수치로 바꾸면 오히려 그 날짜의 실측
+  사실을 왜곡함 — 향후 세션에서 "이것도 stale 아닌가" 재검토할 필요 없음(2026-07-22
+  사용자 확인 완료).

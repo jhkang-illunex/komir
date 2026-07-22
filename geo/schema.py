@@ -7,7 +7,11 @@ from pydantic import BaseModel, Field
 
 COMMODITIES = ("CU", "NI", "LI", "CO", "REE")
 Commodity = Literal["CU", "NI", "LI", "CO", "REE"]
-Direction = Literal["supply_down", "supply_up", "price_up", "price_down", "neutral"]
+Direction = Literal["supply_down", "supply_up", "price_up", "price_down", "neutral",
+                    "demand_up", "demand_down"]
+# demand_up/demand_down은 2026-07-18까지 이 Literal에 없었으나 실제 DB에는 이미 3,214건
+# (demand_up 2,019 · demand_down 1,195) 존재 — LLM이 유효하게 판단해 왔음에도 검증 계약에서
+# 빠져 있던 스키마 드리프트를 바로잡음(A-5 라벨 품질 검증 표본 구성 중 발견).
 Target = Literal["supply", "price", "production", "demand", "mixed"]
 Category = Literal["주간동향", "월간전망", "수급밸런스", "가격", "정책·규제", "지정학·뉴스", "기타"]
 
@@ -37,6 +41,10 @@ class GeoEvent(BaseModel):
     commodity: Commodity
     country: Optional[str] = None
     event_type: str                  # 수출규제/제재/파업/분쟁/재해/정책/증설/감산/가격전망 ...
+    dimension: Optional[str] = None  # 경보 계열2(시설·수송) 판별용, event_type 규칙매핑으로 후행
+                                      # 산출(추출 시점 미설정) — ops/corridor/trade/input/policy 중 하나.
+                                      # 값 정의·매핑 규칙: geo/dimension.py (피드백기반_수정플랜 A-2,
+                                      # 2026-07-16). 기존 event 백필은 update_geo_event_dimension.py.
     direction: Direction = "neutral"
     target: Target = "mixed"
     severity: float = Field(0, ge=0, le=3)      # 0=배경 1=경미 2=중대 3=심각

@@ -39,6 +39,8 @@ import pandas as pd
 
 from . import config as C, store
 from .llm.base import get_extractor
+from .schema import GeoEvent
+from .gkg_relevance import is_relevant, COMMODITY_NAMES
 
 
 def _build_passage(row: pd.Series) -> str:
@@ -72,6 +74,12 @@ def _load_state(bulk_root: str) -> set:
 
 
 def _verify_one(ex, event_id, commodity, country, event_type, severity, obs_date, doc_id, evidence_quote):
+    # 2026-07-20 /goal: is_relevant() 사전필터 — LLM 호출 전에 명백히 무관한 후보는 즉시 기각.
+    # 원 후보의 commodity 하나만이 아니라 "추적 5종 중 아무거나와도" 무관한지 확인한다(any) —
+    # 원 commodity 하나만 검사하면 진짜 오태깅(예: CU로 잘못 태깅된 리튬 기사)까지 LLM 호출 전에
+    # 걸러져 아래 LLM 정정 경로 자체가 무력화되기 때문(2026-07-20 첫 구현에서 유닛테스트로 발견).
+    if not any(is_relevant(evidence_quote, cc) for cc in COMMODITY_NAMES):
+        return event_id, [], None
     passage = "\n".join([
         f"문서 URL/제목 단서: {evidence_quote}",
         *([f"언급 지역/국가: {country}"] if country else []),
@@ -84,8 +92,13 @@ def _verify_one(ex, event_id, commodity, country, event_type, severity, obs_date
     if not events:
         return event_id, [], None
     e = events[0]
+    # 2026-07-20 /goal 수정: 기존엔 commodity=commodity로 하드코딩되어 있어 LLM이 오태깅을
+    # 발견해도 원 후보의 상품코드를 그대로 써버리는 구조적 버그였다(상품 오태깅 33건 조사,
+    # WORKLOG 2026-07-20의 근본원인 2/2). LLM이 실제로 판정한 commodity를 우선 채택하고,
+    # 미기재시에만 원 후보값으로 보정(fallback) — llm_extractor.py도 동일 규칙.
+    ev_commodity = e.get("commodity") or commodity
     row = dict(
-        event_id=event_id, doc_id=doc_id, commodity=commodity,
+        event_id=event_id, doc_id=doc_id, commodity=ev_commodity,
         country=e.get("country") or country, event_type=e.get("event_type", event_type),
         direction=e.get("direction", "neutral"), target=e.get("target", "mixed"),
         severity=float(e.get("severity", severity) or 0), horizon_months=e.get("horizon_months"),
@@ -94,6 +107,16 @@ def _verify_one(ex, event_id, commodity, country, event_type, severity, obs_date
         extractor="llm", provider=ex.provider, model=getattr(ex, "model", ""),
         prompt_version="geo-extract-v1", schema_version="1.0",
     )
+    # extract.py(문서 파이프라인)와 동일하게 pydantic 검증 — GKG는 본문 없이 메타데이터만
+    # 주므로 LLM이 간혹 프롬프트의 필드형식 설명을 그대로 echo하거나("[supply_down|...]")
+    # 플레이스홀더를 반환("[Quote from text]")하는 실패 모드가 있음(실측 9건, 2026-07-18
+    # A-5 라벨 검수 중 발견). 검증 실패는 "이벤트 없음"과 동일하게 기각(노이즈) 처리 —
+    # err 경로(재시도 대상)가 아니라 events가 빈 경우와 같은 분기로 보내 무한 재시도를 피한다.
+    try:
+        row = GeoEvent(**row).model_dump()
+    except Exception as ve:
+        print(f"  [gkg_verify skip invalid] event_id={event_id}: {ve}")
+        return event_id, [], None
     return event_id, [row], None
 
 
