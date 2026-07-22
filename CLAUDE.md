@@ -26,7 +26,7 @@ komir/
 ├─ warehouse/minerals.duckdb   # ★ canonical 운영 DB(gitignore, 로컬 전용 — geo_event·geo_index·
 │                                geo_prob·fact_*·mart_*·out_* 등 전 테이블)
 ├─ geo_data/              # geo 파이프라인 정본 store(parquet, gitignore) — inbox/archive/store
-├─ docs/{WORKLOG.md, DATA_REGISTRY.md}   # ★ 작업 이력·산출물 색인 정본(항상 먼저 확인)
+├─ docs/{WORKLOG.md, DATA_REGISTRY.md, DB_SCHEMA.md}  # ★ 작업이력·산출물색인·DB스키마 정본
 ├─ documents/              # 2026-07-22 mine_ws 최상위에서 이관
 │  ├─ 산출물/<주차>/        # 우리가 작성한 보고서·분석 산출물 — git 추적됨. 주차 폴더명은
 │  │                          ISO 주차 기준(예: 2026-W30_0720-0726). 구 claude_output/도
