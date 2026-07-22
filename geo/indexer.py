@@ -91,7 +91,11 @@ def _normalize(series: pd.Series, how: str, scale_k: float = 10.0) -> pd.Series:
     return (series - lo) / (hi - lo) * 100 if hi > lo else series * 0 + 50
 
 
-def compute() -> pd.DataFrame:
+def compute(volume_norm: bool = True, score_formula: str = "mult") -> pd.DataFrame:
+    """volume_norm=False는 B-5(피드백기반_수정플랜 P2) 검증 전용 — 미디어 볼륨 드리프트
+    정규화 단계를 건너뛴다. score_formula는 B-3 검증 전용 — 'mult'(기본, 현재 프로덕션과
+    동일)/'sum'(가중합)/'loggeo'(로그기하평균). 두 파라미터 모두 기본값은 프로덕션 동작과
+    완전히 동일(파라미터 추가 전과 바이트 단위로 동일한 출력)."""
     ev = store.load_events()
     if len(ev) == 0:
         print("[index] 이벤트 없음"); return pd.DataFrame()
@@ -149,7 +153,11 @@ def compute() -> pd.DataFrame:
     # Argus 일일보고서 등에서 매일 거의 같은 근거문구로 재보도됨 — 이걸 그대로 합산하면 "같은 위기가
     # 계속 진행 중"이 "매일 새 위기 발생"처럼 과대산정됨. 같은 광종·같은 달(month)·근거인용 앞 40자가
     # 같으면 동일 사건의 반복보도로 간주해 최고 severity 1건만 남김(문서/이벤트 원본은 삭제하지 않음,
-    # 지수 산출에서만 dedup). 실측: 6,510건 중 53건(<1%)이 이 케이스, CO(코발트)에 집중.
+    # 지수 산출에서만 dedup). 최초 실측(2026-07-08, 기관보고서 6,510건 소규모 코퍼스): 53건(<1%),
+    # CO(코발트)에 집중 — 이 수치는 GKG 병합 전 초기 예시일 뿐, 현재 프로덕션 규모(181만 건)에서는
+    # 훨씬 큰 비중을 차지한다. 실측 재확인(2026-07-16, DB 직접 재실행, GEO_EVENT_SOURCE=db 기준):
+    # 전체 1,815,193건(날짜있음) 중 이 단계에서 471,107건(약 26%) 제거 → 잔존 1,344,086건.
+    # (동일 재실행에서 후속 근사중복 단계가 추가로 112,167건 제거 → 최종 지수계산 대상 1,231,919건.)
     ev["_quote_key"] = ev["evidence_quote"].fillna("").str.strip().str[:40]
     ev["_month"] = ev["date"].dt.to_period("M")
     before = len(ev)
@@ -188,8 +196,24 @@ def compute() -> pd.DataFrame:
         ev["hhi_mult"] = 1.0
     ev["sgn"] = ev["direction"].map(sign).fillna(0.2)
     ev = _apply_kr_exposure(ev)     # 이중 노출: 글로벌 공급충격 × 한국 수입의존(B-1①)
-    ev["score"] = (ev["severity"].astype(float) * ev["rel"] * ev["conc"]
-                   * ev["hhi_mult"] * ev["sgn"] * ev["imp_mult"])
+    if score_formula == "sum":
+        # B-3(피드백기반_수정플랜 P2) 대안: 곱셈 성분(rel·conc·hhi_mult·imp_mult)을 "중립값
+        # 1.0 대비 조정폭"으로 재해석해 severity에 가산 — 한 성분이 극단값이어도 severity
+        # 기여분은 보존되어 곱셈식보다 단일성분 오류에 덜 민감.
+        ev["score"] = ev["sgn"] * (ev["severity"].astype(float) + (ev["rel"] - 1.0)
+                                    + (ev["conc"] - 1.0) + (ev["hhi_mult"] - 1.0)
+                                    + (ev["imp_mult"] - 1.0))
+    elif score_formula == "loggeo":
+        # 기하평균 스타일: 곱셈식(산술곱)은 한 성분이 10배면 점수도 10배지만, 5개 성분의
+        # 로그평균 후 지수화하면 10배 성분도 10^(1/5)≈1.58배로 완화됨 — "한 성분 오류에 민감"
+        # 문제를 정면으로 겨냥한 대안.
+        comps = np.log(np.clip(ev["severity"].astype(float), 1e-3, None) + 1.0), \
+            np.log(np.clip(ev["rel"], 1e-3, None)), np.log(np.clip(ev["conc"], 1e-3, None)), \
+            np.log(np.clip(ev["hhi_mult"], 1e-3, None)), np.log(np.clip(ev["imp_mult"], 1e-3, None))
+        ev["score"] = ev["sgn"] * (np.exp(sum(comps) / 5.0) - 1.0)
+    else:
+        ev["score"] = (ev["severity"].astype(float) * ev["rel"] * ev["conc"]
+                       * ev["hhi_mult"] * ev["sgn"] * ev["imp_mult"])
 
     # ── 미디어 볼륨 드리프트 정규화(2026-07-15, 외부감사 B-1②) ──
     # 코퍼스 총량이 시간에 따라 변해(실측: 2016년 29.2만/년 → 2020~22년 12.5만/년으로 감소
@@ -197,11 +221,14 @@ def compute() -> pd.DataFrame:
     # 이벤트량의 장기 기저(EWMA 52주)로 나눠 세속적 변화만 제거한다 — 분모가 '느린' 기저라
     # 주간 급증(실제 위기 신호)은 보존되고, 평균 1 정규화 + 0.5~2.0 클립으로 지수 앵커를
     # 근사 보존하며 초기 저커버 구간의 과대 증폭을 방지한다.
-    wk_key = ev["date"].dt.to_period("W").dt.start_time
-    vol = wk_key.value_counts().sort_index()
-    drift = (vol.ewm(halflife=52).mean() / vol.ewm(halflife=52).mean().mean()).clip(0.5, 2.0)
-    ev["score"] = ev["score"] / wk_key.map(drift).fillna(1.0)
-    print(f"  [index] 볼륨 드리프트 정규화: 분모 {drift.min():.2f}~{drift.max():.2f} (EWMA 52주·평균1·클립 0.5~2)")
+    if volume_norm:
+        wk_key = ev["date"].dt.to_period("W").dt.start_time
+        vol = wk_key.value_counts().sort_index()
+        drift = (vol.ewm(halflife=52).mean() / vol.ewm(halflife=52).mean().mean()).clip(0.5, 2.0)
+        ev["score"] = ev["score"] / wk_key.map(drift).fillna(1.0)
+        print(f"  [index] 볼륨 드리프트 정규화: 분모 {drift.min():.2f}~{drift.max():.2f} (EWMA 52주·평균1·클립 0.5~2)")
+    else:
+        print("  [index] 볼륨 드리프트 정규화 건너뜀(volume_norm=False, B-5 검증 전용)")
 
     # ── 사건 지속성: stock/flow 감쇠 클래스(2026-07-15, 외부감사 B-1③) ──
     # 수출통제(효력 지속)와 파업(단기 종료)이 같은 주에만 계상되던 것을, 사건유형별 반감기의
