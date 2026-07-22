@@ -2,6 +2,44 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-07-22 — mine_ws → komir 저장소 통합, 세션 실행 위치 전환
+
+사용자 지시: 향후 Claude Code 세션은 `mine_ws/`(상위 폴더)가 아니라 `komir/`에서 직접
+띄운다. 이에 맞춰 산출물·문서를 전부 komir git 저장소로 이관·정리:
+
+1. **`documents/` 이관**: `mine_ws/documents/`(35GB, 9,250개 파일 — 발주처 보고 문서
+   `claude_output/` + KOMIS·WoodMac·Argus·USGS·EU SCRREEN 등 제3자 원본자료)를
+   `komir/documents/`로 `mv`. git에는 `documents/claude_output/`(우리 산출물)만 추적하도록
+   `.gitignore`에 `documents/* / !documents/claude_output/` 패턴 추가 — 35GB 원본자료는
+   로컬 전용(대용량·저작권 있는 제3자 자료라 git 부적합). 절대경로로 옛 위치를 하드코딩했던
+   스크립트 5개(`load_komis_xlsx.py`·`load_price_grade_answer.py`·`investigate_cu_proxy.py`·
+   `load_usgs.py`·`msr/models/forecast_unit.py`) 경로 수정.
+2. **발주처 문서 최신화**: 요약본·확정본·중간진행상황보고·협의안건서·외부AI검토용 5종을
+   이번 GKG 재정제 결과(이벤트 건수 181만→29.5만, 관련성 71.4%→99.5%)로 갱신한 260722
+   버전 작성(원본은 히스토리 보존). 협의안건서는 단순 텍스트 치환이 아니라 인용된 AUC·
+   허위경보율을 정제 후 데이터로 **실제 재검증**(`build_proxy_label.py`·`lead_time_eval.py`
+   재실행)해 갱신 — AUC는 재정제 전후 동일 수준 확인, 허위경보율은 "1.8% 이하" 단일수치
+   표현이 지평별 실제론 0.6~3.6%임을 발견해 정정. `피드백기반_수정플랜_260716.docx`는
+   특정시점 실측 정정을 기록한 감사로그라 의도적으로 미수정(이유를 DATA_REGISTRY에 명시,
+   향후 세션이 재검토 안 하도록).
+3. **`CLAUDE.md` 신규 작성**(komir 루트): 기존 `documents/CLAUDE.md`(2026-07-02 작성,
+   진단모델이 "합성 데모"이던 초기 프로토타입 상태 스냅샷이라 현재와 크게 다름)는 애초
+   `documents/` 하위에 있어 자동 로드도 안 되고 있었음 — 현재 상태를 정확히 반영한 새
+   `komir/CLAUDE.md`로 교체(과거본은 `documents/CLAUDE.md`에 참고용으로 남겨둠, git
+   미추적).
+4. **메모리 이관**: Claude Code 메모리는 작업 디렉토리 경로 기반(`~/.claude/projects/
+   <mangled-path>/memory/`)이라 `mine_ws`에서 쌓인 메모리(`-home-nuri-dev-git-ws-mine-ws/
+   memory/`, 11개 파일)가 `komir/`에서 세션을 띄우면 자동으로는 안 보임 — 새 프로젝트
+   디렉토리(`-home-nuri-dev-git-ws-mine-ws-komir/memory/`)로 전체 복사. 추가로 더 예전
+   경로(`-home-nuri-dev-git-komir/memory/`, 2026-07-04~05, 프로젝트가 지금 위치로 옮겨지기
+   전 흔적)에서 여전히 유효한 메모리 2건(`env-inline-comment-gotcha`·`geo-okf-pilot`)만
+   골라 병합, 나머지 2건(관세청 월간 한도 계획·모델 구현 현황)은 이후 세션에서 이미
+   대체됐다고 판단해 병합하지 않음.
+
+**참고**: `mine_ws/komis/`(별도 프로젝트, komir와 무관 — 자체 git이나 커밋·원격 없음)와
+`documents/dev/`(komir와 origin은 같으나 2026-07-02 시점의 훨씬 오래된 폐기 스냅샷,
+파일 3,415개 vs 현재 13만+)는 이번 통합 범위에서 제외.
+
 ## 2026-07-20 — GKG 소급 정제 4라운드 실행 + 90% 목표의 구조적 한계 확정
 
 `geo/gkg_relevance.py` 필터를 4라운드에 걸쳐 반복 정제(각 라운드마다 신규 제거대상 표본을
