@@ -69,6 +69,13 @@
   상수·NB2 Brier score 등 설계검증 근거 수치는 GKG와 무관한 별도 검증이라 원본 그대로
   유지, 사용자 확인(2026-07-22))
   — 6단계 파이프라인 상세, 외부 AI 방법론 검토용.
+- **AI 모델 사용안(워드, 신규)**: `documents/claude_output/AI모델_사용안_260722.docx`
+  — 수급위기 진단모델(Ridge alpha=1.0, 풀링+광종더미)·수입수요 예측모델(HistGradientBoosting
+  Regressor, 물량·단가 분리+재귀/Direct 자동선택)·지정학 LLM(gemma-4-26b-a4b, 사내 vLLM)
+  각각의 특징·선정사유·장단점·제약사항 + 필요 인프라 자원 표. 모델 종류·피처·하이퍼파라미터는
+  `mineral_supply_risk/scripts/diagnosis_retrain_answer.py`·`msr/models/forecast_unit.py`·
+  `geo/config.py`·`.env`를 서브에이전트로 직접 확인해 작성(문서 재인용 아님). GPU VRAM 등
+  일부 인프라 수치는 미확정이라 문서에 명시적으로 "확인 필요"로 표시.
 - ⚠ **의도적으로 갱신하지 않은 문서**: `documents/claude_output/피드백기반_수정플랜_260716.docx`
   14~15번째 문단의 "1,815,194건"은 **2026-07-16 시점 실측 정정 기록**(WORKLOG의 "650만건"
   오기재를 직접 쿼리로 정정한 감사 로그)이라 현재 수치로 바꾸면 오히려 그 날짜의 실측
