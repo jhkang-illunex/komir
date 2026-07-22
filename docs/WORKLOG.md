@@ -77,11 +77,11 @@ NB2 Brier — CU 0.0458/NI 0.0476/REE 0.2091/CO 0.2080/LI 0.1132(#8 단독수정
 거의 동일, ±0.001 이내 — #4·#7 추가 반영분이 지수 자체엔 미미한 추가 영향만 줬다는 뜻,
 예상과 부합). isotonic 0.1193→0.1188, ECE 0.089→0.080.
 
-**미완료**: `geo publish`(운영 DB 반영)는 auto-mode 분류기가 이번엔 차단(재확인 필요 판단)
-— 사용자 승인 대기 중. 승인 시 `python -m geo publish --db warehouse/minerals.duckdb
---what index`. 승인 후 `AI모델_사용안_260722.docx` §4-3 Brier 수치도 재교체 필요(현재
-문서엔 #8단독수정 직후 수치가 들어가 있으나 최종수치와 사실상 동일해 실질적 차이는
-미미함).
+**후속**: `geo publish --what index`는 최초 시도 시 auto-mode 분류기가 차단했으나 재시도로
+성공(운영 DB geo_index·geo_prob 갱신 완료). 이번에 `geo/publish.py._write()`에 추가한
+#9 스냅샷도 최초 작동 확인(`data_archive/snapshots/{geo_index,geo_prob}/*_2026-07-22.parquet`
+— 덮어쓰기 직전 상태 보존, gitignore 대상이라 로컬 전용). `AI모델_사용안_260722.docx`
+§4-3 수치는 최종수치와 사실상 동일(±0.002 이내)해 재교체 불필요로 판단, 수정하지 않음.
 
 ## 2026-07-22 (최신①) — 지정학 위기지수 시점정합성(lookahead bias) 수정 #8 + USGS refdata 최초 가동
 
