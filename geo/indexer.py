@@ -64,17 +64,47 @@ def _apply_kr_exposure(ev: pd.DataFrame) -> pd.DataFrame:
     return ev
 
 
-def _nearest_weight(df, com, country, yr, keycols, valcol, default=1.0):
-    """(commodity[,country]) 매칭 중 event 연도에 가장 가까운 값."""
-    if df is None or country is None:
-        return default
-    q = df[df["commodity"] == com]
-    if "country" in keycols:
-        q = q[q["country"] == country]
+def _asof_weight(q, yr, valcol):
+    """이미 (commodity[,country])로 필터링된 q에서, 이벤트 시점(yr) '당시 이미 발표돼
+    있던' USGS 릴리스(release<=yr)만 사용해 as-of 조인(시점정합성 수정 #8, 2026-07-22).
+    기존에는 연도가 가장 가까운 값을 릴리스 구분 없이 가져왔는데, refdata.py가
+    (commodity,country,year)를 "최신 릴리스값 우선"으로 collapse하고 있어 훗날 개정된
+    생산치가 과거 이벤트 채점에 역주입되는 lookahead bias였음. 해당 광종의 최초 USGS
+    릴리스보다 이른 이벤트는 그 이상 과거로 갈 데이터가 없으므로 최초 릴리스로 폴백."""
     if len(q) == 0:
-        return default
-    q = q.assign(_d=(q["year"] - (yr or q["year"].max())).abs()).sort_values("_d")
-    return float(q.iloc[0][valcol])
+        return None
+    asof = q[q["release"] <= yr]
+    fallback = len(asof) == 0
+    if fallback:
+        asof = q                           # 해당 광종 첫 릴리스보다 이른 이벤트 — 불가피한 폴백
+    asof = asof.assign(_d=(asof["year"] - yr).abs())
+    # release<=yr 구간에서는 "이미 발표된 것 중 가장 최신"(release 큰 값 우선) —
+    # 폴백 구간에서는 반대로 "가장 이른 릴리스"(release 작은 값 우선)를 골라 lookahead를
+    # 최소화한다. 동률 tie-break 방향을 fallback 여부로 뒤집어야 함(2026-07-22 as-of 조인
+    # 검증 중 발견 — 처음엔 항상 release 큰 값을 우선해 폴백 시에도 개정치를 끌어오는
+    # 잔여 lookahead가 있었음).
+    asof = asof.sort_values(["_d", "release"], ascending=[True, fallback])
+    return float(asof.iloc[0][valcol])
+
+
+def _asof_grid(df, keycols, valcol, years):
+    """as-of 조인을 이벤트 단위(수십만~수백만 행)로 row-wise apply하면 프로덕션 규모에서
+    너무 느림(2026-07-22 실측: 120만 건에서 10분 넘게 미종료) — (commodity[,country]) ×
+    연도의 작은 조합(수백 행)에서만 미리 계산한 뒤 이벤트 쪽은 벡터화 merge로 붙인다.
+    반환: keycols + ["yr", valcol] 컬럼의 lookup 테이블."""
+    if df is None:
+        return None
+    keys = df[keycols].drop_duplicates()
+    rows = []
+    for _, k in keys.iterrows():
+        q = df
+        for c in keycols:
+            q = q[q[c] == k[c]]
+        for yr in years:
+            v = _asof_weight(q, yr, valcol)
+            if v is not None:
+                rows.append({**k.to_dict(), "yr": yr, valcol: v})
+    return pd.DataFrame(rows, columns=keycols + ["yr", valcol])
 
 
 def _normalize(series: pd.Series, how: str, scale_k: float = 10.0) -> pd.Series:
@@ -186,11 +216,21 @@ def compute(volume_norm: bool = True, score_formula: str = "mult") -> pd.DataFra
     ev["yr"] = ev["date"].dt.year
     ev["rel"] = ev["source"].map(rel).fillna(1.0)
 
-    if conc_df is not None:   # USGS refdata 우선(연도별 국가점유 + HHI배수)
-        ev["conc"] = ev.apply(lambda r: _nearest_weight(
-            conc_df, r["commodity"], r.get("country"), r["yr"], ["commodity","country"], "weight"), axis=1)
-        ev["hhi_mult"] = ev.apply(lambda r: _nearest_weight(
-            hhi_df, r["commodity"], "x", r["yr"], ["commodity"], "hhi_mult"), axis=1)
+    if conc_df is not None:   # USGS refdata 우선(연도별 국가점유 + HHI배수, as-of 조인)
+        first_rel = conc_df.groupby("commodity")["release"].min()
+        n_leak = int((ev["yr"] < ev["commodity"].map(first_rel)).sum())
+        if n_leak:
+            print(f"  [index] 시점정합성: {n_leak}건은 해당 광종 최초 USGS 릴리스 이전 이벤트 → "
+                  f"최초 릴리스로 폴백(그보다 과거 데이터 없음, 불가피)")
+        # 이벤트 단위 row-wise as-of 조인은 프로덕션 규모(수십만~수백만 건)에서 너무 느려
+        # (commodity[,country])×연도의 작은 그리드로 미리 계산해 벡터화 merge(2026-07-22).
+        years = range(int(ev["yr"].min()), int(ev["yr"].max()) + 1)
+        conc_grid = _asof_grid(conc_df, ["commodity", "country"], "weight", years)
+        hhi_grid = _asof_grid(hhi_df, ["commodity"], "hhi_mult", years)
+        ev = ev.merge(conc_grid, on=["commodity", "country", "yr"], how="left")
+        ev["conc"] = ev["weight"].fillna(1.0)
+        ev = ev.drop(columns="weight").merge(hhi_grid, on=["commodity", "yr"], how="left")
+        ev["hhi_mult"] = ev["hhi_mult"].fillna(1.0)
     else:                     # 폴백: sources.yaml 정적값
         ev["conc"] = (ev["commodity"] + ":" + ev["country"].fillna("")).map(conc_static).fillna(1.0)
         ev["hhi_mult"] = 1.0
