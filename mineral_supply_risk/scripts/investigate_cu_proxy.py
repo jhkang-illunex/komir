@@ -31,7 +31,7 @@ from sklearn.metrics import roc_auc_score
 # ── 경로/상수 ─────────────────────────────────────────────────────────────
 DB = os.environ.get("MSR_DB",
     "/home/nuri/dev/git/ws/mine_ws/komir/warehouse/minerals.duckdb")
-FX_CSV = ("/home/nuri/dev/git/ws/mine_ws/documents/"
+FX_CSV = ("/home/nuri/dev/git/ws/mine_ws/komir/documents/"
           "1. 광물가격, 재고량, 지수 등 (1)/3. 원달러 환율.csv")
 OUT_MD = ("/home/nuri/dev/git/ws/mine_ws/komir/mineral_supply_risk/"
           "outputs/proxy_label/cu_investigation.md")

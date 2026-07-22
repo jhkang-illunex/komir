@@ -21,7 +21,7 @@ from msr.config import DB_PATH
 
 warnings.filterwarnings("ignore")
 
-DOCS = "/home/nuri/dev/git/ws/mine_ws/documents"
+DOCS = "/home/nuri/dev/git/ws/mine_ws/komir/documents"
 PRICE_XLSX = f"{DOCS}/1. 광물가격, 재고량, 지수 등 (1)/0. KOMIS 핵심광물 공급망 통계(가격,수출입)_2026년 5월말 기준.xlsx"
 TEACHER_XLSX = f"{DOCS}/4. KOMIS지표(광물지수, 시장동향지표, 수급동향지표) (2)/수급동향지표.xlsx"
 

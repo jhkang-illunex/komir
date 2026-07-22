@@ -32,7 +32,7 @@ warnings.filterwarnings("ignore")
 
 H = 12
 LAGS = [1, 2, 3, 6, 12]
-FX_CSV = ("/home/nuri/dev/git/ws/mine_ws/documents/1. 광물가격, 재고량, 지수 등 (1)/"
+FX_CSV = ("/home/nuri/dev/git/ws/mine_ws/komir/documents/1. 광물가격, 재고량, 지수 등 (1)/"
           "3. 원달러 환율.csv")
 
 
@@ -353,8 +353,64 @@ def run(db=None, out_dir=None):
     # 점추정 방식 선택: 백테스트 MASE(금액)로 재귀 vs Direct 자동 판정(env로 강제 가능)
     m_rec = float(bt["MASE_value_decomp"].mean())
     m_dir = float(bt["MASE_value_D"].mean())
-    method = os.environ.get("MSR_FORECAST_METHOD") or ("direct" if m_dir < m_rec else "recursive")
-    print(f"\n[method] 금액 MASE 재귀 {m_rec:.2f} vs Direct {m_dir:.2f} → 채택: {method}")
+    method_naive = "direct" if m_dir < m_rec else "recursive"
+    env_forced = os.environ.get("MSR_FORECAST_METHOD")
+    if env_forced:
+        method = env_forced
+    else:
+        # E-1(피드백기반_수정플랜 P3): 재귀 근소 우위(격차 축소 추세, 원문 MASE 0.94 vs 1.02)가
+        # 노이즈로 뒤집히며 매달 방식이 진동하는 것을 막기 위한 마진 임계 — 직전 채택 방식보다
+        # 새 후보가 MARGIN 이상 우수해야만 전환. 로그가 없으면(최초 실행) 단순 최소값 채택.
+        MARGIN = 0.05
+        prev_method = None
+        _c = None
+        try:
+            _c = duckdb.connect(db, read_only=True)
+            _r = _c.execute("SELECT method_selected FROM mart_forecast_method_log "
+                             "ORDER BY base_month DESC LIMIT 1").fetchone()
+            prev_method = _r[0] if _r else None
+        except Exception:
+            prev_method = None
+        finally:
+            if _c is not None:
+                _c.close()
+        if prev_method is None:
+            method = method_naive
+        else:
+            cur_mase = m_rec if prev_method == "recursive" else m_dir
+            other_mase = m_dir if prev_method == "recursive" else m_rec
+            other_method = "direct" if prev_method == "recursive" else "recursive"
+            method = other_method if (cur_mase - other_mase) > MARGIN else prev_method
+    print(f"\n[method] 금액 MASE 재귀 {m_rec:.2f} vs Direct {m_dir:.2f} → 단순채택 {method_naive} "
+          f"/ 마진임계 적용 최종채택: {method}")
+
+    log_row = pd.DataFrame([{
+        "base_month": last_m.date(), "mase_recursive": round(m_rec, 4), "mase_direct": round(m_dir, 4),
+        "gap": round(m_rec - m_dir, 4), "method_selected": method, "method_naive": method_naive,
+        "margin_threshold": 0.05, "generated_at": pd.Timestamp.utcnow().floor("s"),
+    }])
+    _c = None
+    try:
+        _c = duckdb.connect(db)
+        _c.register("_lg", log_row)
+        _exists = _c.execute("SELECT count(*) FROM information_schema.tables "
+                              "WHERE table_name='mart_forecast_method_log'").fetchone()[0]
+        if not _exists:
+            _c.execute("CREATE TABLE mart_forecast_method_log AS SELECT * FROM _lg")
+        else:
+            _c.execute("DELETE FROM mart_forecast_method_log WHERE base_month = ?", [last_m.date()])
+            _c.execute("INSERT INTO mart_forecast_method_log SELECT * FROM _lg")
+        _c.execute("CHECKPOINT")
+        print(f"[method] mart_forecast_method_log 1행 기록(base_month={last_m:%Y-%m})")
+    except Exception as e:
+        print(f"  [warn] mart_forecast_method_log 기록 실패(무시하고 계속): {e}")
+    finally:
+        if _c is not None:
+            try:
+                _c.unregister("_lg")
+            except Exception:
+                pass
+            _c.close()
 
     # 최종 발행: 최신월 기준 h=1~12. 구간(q10/q90)은 Direct 분위 모델 + conformal 보수화,
     # 점추정은 우승 방식. 발행용 가산폭은 최신 가용 원점 3개(실측 12개월 확보분)로 보정.

@@ -1,0 +1,1646 @@
+commodity,sheet,line_item,n,y0,y1
+CU,Blister_RC,- China,4,2023,2026
+CU,ChinaAdjusted,Blister Exports,57,1984,2040
+CU,ChinaAdjusted,Blister Imports,57,1984,2040
+CU,ChinaAdjusted,Concentrate Production,57,1984,2040
+CU,ChinaAdjusted,Exports,57,1984,2040
+CU,ChinaAdjusted,Implied Stock Change,57,1984,2040
+CU,ChinaAdjusted,Imports,57,1984,2040
+CU,ChinaAdjusted,Less Smelting Losses,57,1984,2040
+CU,ChinaAdjusted,Note: Production forecasts based on the ability of the global market to supply China with raw materials,1,2019,2019
+CU,ChinaAdjusted,Primary Smelter Feed,57,1984,2040
+CU,ChinaAdjusted,Refined Consumption,57,1984,2040
+CU,ChinaAdjusted,Refined Production,57,1984,2040
+CU,ChinaAdjusted,Resmelted blister,57,1984,2040
+CU,ChinaAdjusted,Scrap,57,1984,2040
+CU,ChinaAdjusted,Smelter Production,57,1984,2040
+CU,ChinaAdjusted,Source Wood Mackenzie,1,2019,2019
+CU,ChinaAdjusted,Stock Change,57,1984,2040
+CU,ChinaAdjusted,SxEw,57,1984,2040
+CU,ChinaBalance,Blister Exports,57,1984,2040
+CU,ChinaBalance,Blister Imports,57,1984,2040
+CU,ChinaBalance,Bonded Stock change,19,2001,2019
+CU,ChinaBalance,Bonded Stocks,23,2000,2022
+CU,ChinaBalance,Check,23,1996,2018
+CU,ChinaBalance,Chinese Conc production growth,14,1987,2000
+CU,ChinaBalance,Conc imports growth,14,1987,2000
+CU,ChinaBalance,Concentrate Production,57,1984,2040
+CU,ChinaBalance,Copper Price (2022$),36,2005,2040
+CU,ChinaBalance,Days - Stocks to consumption,43,1998,2040
+CU,ChinaBalance,Exports,57,1984,2040
+CU,ChinaBalance,Imports,57,1984,2040
+CU,ChinaBalance,Less Smelting Losses,57,1984,2040
+CU,ChinaBalance,Link - Total stocks -  (linked to ChinaStockChange_qtly),57,1984,2040
+CU,ChinaBalance,Mine Production,57,1984,2040
+CU,ChinaBalance,Net cathode imports,57,1984,2040
+CU,ChinaBalance,Net conc imports,57,1984,2040
+CU,ChinaBalance,Other Stock Changes,23,1996,2018
+CU,ChinaBalance,Other Stock change,18,2002,2019
+CU,ChinaBalance,Other Stocks,21,2002,2022
+CU,ChinaBalance,Primary Smelter Feed,57,1984,2040
+CU,ChinaBalance,Refined Consumption,57,1984,2040
+CU,ChinaBalance,Refined Production,57,1984,2040
+CU,ChinaBalance,Refined consumption % change,43,1998,2040
+CU,ChinaBalance,Refined consumption growth,16,1985,2000
+CU,ChinaBalance,Resmelted Blister,57,1984,2040
+CU,ChinaBalance,SHFE Stock Change,22,1998,2019
+CU,ChinaBalance,SHFE Stocks,26,1997,2022
+CU,ChinaBalance,SRB (days of consumption),41,2000,2040
+CU,ChinaBalance,SRB Stock change (net) entered,56,1985,2040
+CU,ChinaBalance,SRB Stocks,44,1997,2040
+CU,ChinaBalance,SRB stock days vs Global consumption,41,2000,2040
+CU,ChinaBalance,Scrap,57,1984,2040
+CU,ChinaBalance,Secondary smelter production,9,1992,2000
+CU,ChinaBalance,Smelter Production,57,1984,2040
+CU,ChinaBalance,Smelter capacity,9,1992,2000
+CU,ChinaBalance,Stock Change,57,1984,2040
+CU,ChinaBalance,Stocks,57,1984,2040
+CU,ChinaBalance,SxEw,57,1984,2040
+CU,ChinaBalance,Total Stock change,56,1985,2040
+CU,ChinaBalance,Total Stocks,21,2002,2022
+CU,ConcentrateStockChange,Add Secondaries (incl re-smelted blister),8,2021,2028
+CU,ConcentrateStockChange,Add/(Less) market & other adjustments,8,2021,2028
+CU,ConcentrateStockChange,Conc. production/capability (incl Probables),8,2021,2028
+CU,ConcentrateStockChange,Concentrate available for world smelters,8,2021,2028
+CU,ConcentrateStockChange,Concentrate stock change,8,2021,2028
+CU,ConcentrateStockChange,Concentrate stock days,8,2021,2028
+CU,ConcentrateStockChange,Concentrates smelted,8,2021,2028
+CU,ConcentrateStockChange,Concs smelted as % of smelter capacity,8,2021,2028
+CU,ConcentrateStockChange,Less Direct use of concentrate,8,2021,2028
+CU,ConcentrateStockChange,Less processing losses,8,2021,2028
+CU,ConcentrateStockChange,Smelter concentrate usage capacity,8,2021,2028
+CU,ConcentrateStockChange,Smelter production from concentrates,8,2021,2028
+CU,ConcentrateStockChange,Smelter usage,8,2021,2028
+CU,ConcentrateStockChange,World smelter production,8,2021,2028
+CU,CuConsumption,% change,8,2021,2028
+CU,CuConsumption,Africa,8,2021,2028
+CU,CuConsumption,Argentina,8,2021,2028
+CU,CuConsumption,Asia,8,2021,2028
+CU,CuConsumption,Austria,8,2021,2028
+CU,CuConsumption,Belgium,8,2021,2028
+CU,CuConsumption,Brazil,8,2021,2028
+CU,CuConsumption,Canada,8,2021,2028
+CU,CuConsumption,Chile,8,2021,2028
+CU,CuConsumption,China,8,2021,2028
+CU,CuConsumption,Egypt,8,2021,2028
+CU,CuConsumption,Europe,8,2021,2028
+CU,CuConsumption,Finland,8,2021,2028
+CU,CuConsumption,France,8,2021,2028
+CU,CuConsumption,Germany,8,2021,2028
+CU,CuConsumption,Global Total,8,2021,2028
+CU,CuConsumption,Greece,8,2021,2028
+CU,CuConsumption,India,8,2021,2028
+CU,CuConsumption,Indonesia,8,2021,2028
+CU,CuConsumption,Iran,8,2021,2028
+CU,CuConsumption,Italy,8,2021,2028
+CU,CuConsumption,Japan,8,2021,2028
+CU,CuConsumption,Latin America and the Caribbean,8,2021,2028
+CU,CuConsumption,Malaysia,8,2021,2028
+CU,CuConsumption,Mexico,8,2021,2028
+CU,CuConsumption,Middle East,8,2021,2028
+CU,CuConsumption,Netherlands,8,2021,2028
+CU,CuConsumption,North America,8,2021,2028
+CU,CuConsumption,Oceania,8,2021,2028
+CU,CuConsumption,Other ASEAN,8,2021,2028
+CU,CuConsumption,Other Africa,8,2021,2028
+CU,CuConsumption,Other East Europe,8,2021,2028
+CU,CuConsumption,Other Eastern Asia,8,2021,2028
+CU,CuConsumption,Other Indian Sub,8,2021,2028
+CU,CuConsumption,Other Latin America,8,2021,2028
+CU,CuConsumption,Other Middle East,8,2021,2028
+CU,CuConsumption,Other Russia and the Caspian,8,2021,2028
+CU,CuConsumption,Other West Europe*,8,2021,2028
+CU,CuConsumption,Peru,8,2021,2028
+CU,CuConsumption,Poland,8,2021,2028
+CU,CuConsumption,Portugal,8,2021,2028
+CU,CuConsumption,Russia and the Caspian,8,2021,2028
+CU,CuConsumption,Russian Federation,8,2021,2028
+CU,CuConsumption,Saudi Arabia,8,2021,2028
+CU,CuConsumption,South Africa,8,2021,2028
+CU,CuConsumption,South Korea,8,2021,2028
+CU,CuConsumption,Spain,8,2021,2028
+CU,CuConsumption,Sweden,8,2021,2028
+CU,CuConsumption,Switzerland,8,2021,2028
+CU,CuConsumption,Taiwan,8,2021,2028
+CU,CuConsumption,Thailand,8,2021,2028
+CU,CuConsumption,Turkey,8,2021,2028
+CU,CuConsumption,United Arab Emirates,8,2021,2028
+CU,CuConsumption,United Kingdom,8,2021,2028
+CU,CuConsumption,United States,8,2021,2028
+CU,CuConsumption,Vietnam,8,2021,2028
+CU,CuMinesbyCountry,Additional adjustment,7,2022,2028
+CU,CuMinesbyCountry,Argentina,8,2021,2028
+CU,CuMinesbyCountry,Australia,8,2021,2028
+CU,CuMinesbyCountry,Brazil,8,2021,2028
+CU,CuMinesbyCountry,Bulgaria,8,2021,2028
+CU,CuMinesbyCountry,Canada,8,2021,2028
+CU,CuMinesbyCountry,Chile,8,2021,2028
+CU,CuMinesbyCountry,China,8,2021,2028
+CU,CuMinesbyCountry,Democratic Republic of Congo,8,2021,2028
+CU,CuMinesbyCountry,Eritrea,8,2021,2028
+CU,CuMinesbyCountry,Finland,8,2021,2028
+CU,CuMinesbyCountry,India,8,2021,2028
+CU,CuMinesbyCountry,Indonesia,8,2021,2028
+CU,CuMinesbyCountry,Iran,8,2021,2028
+CU,CuMinesbyCountry,Kazakhstan,8,2021,2028
+CU,CuMinesbyCountry,Laos,8,2021,2028
+CU,CuMinesbyCountry,Mauritania,8,2021,2028
+CU,CuMinesbyCountry,Mexico,8,2021,2028
+CU,CuMinesbyCountry,Mongolia,8,2021,2028
+CU,CuMinesbyCountry,Morocco,8,2021,2028
+CU,CuMinesbyCountry,Myanmar,8,2021,2028
+CU,CuMinesbyCountry,Oman,8,2021,2028
+CU,CuMinesbyCountry,Others,8,2021,2028
+CU,CuMinesbyCountry,Pakistan,8,2021,2028
+CU,CuMinesbyCountry,Panama,8,2021,2028
+CU,CuMinesbyCountry,Papua New Guinea,8,2021,2028
+CU,CuMinesbyCountry,Peru,8,2021,2028
+CU,CuMinesbyCountry,Philippines,8,2021,2028
+CU,CuMinesbyCountry,Poland,8,2021,2028
+CU,CuMinesbyCountry,Portugal,8,2021,2028
+CU,CuMinesbyCountry,Probable projects,7,2022,2028
+CU,CuMinesbyCountry,Russian Federation,8,2021,2028
+CU,CuMinesbyCountry,Saudi Arabia,8,2021,2028
+CU,CuMinesbyCountry,Serbia,8,2021,2028
+CU,CuMinesbyCountry,South Africa,8,2021,2028
+CU,CuMinesbyCountry,Spain,8,2021,2028
+CU,CuMinesbyCountry,Sweden,8,2021,2028
+CU,CuMinesbyCountry,TOTAL AFRICA,8,2021,2028
+CU,CuMinesbyCountry,TOTAL ASIA,8,2021,2028
+CU,CuMinesbyCountry,TOTAL EUROPE,8,2021,2028
+CU,CuMinesbyCountry,TOTAL LATIN AMERICA & CARIBBEAN,8,2021,2028
+CU,CuMinesbyCountry,TOTAL MIDDLE EAST,8,2021,2028
+CU,CuMinesbyCountry,TOTAL NORTH AMERICA,8,2021,2028
+CU,CuMinesbyCountry,TOTAL OCEANIA,8,2021,2028
+CU,CuMinesbyCountry,TOTAL RUSSIA AND THE CASPIAN,8,2021,2028
+CU,CuMinesbyCountry,TOTAL WORLD,8,2021,2028
+CU,CuMinesbyCountry,TOTAL WORLD PRODUCTION,8,2021,2028
+CU,CuMinesbyCountry,Turkey,8,2021,2028
+CU,CuMinesbyCountry,United States,8,2021,2028
+CU,CuMinesbyCountry,Zambia,8,2021,2028
+CU,CuMinesbyType,Add (Less) net adjustment,8,2021,2028
+CU,CuMinesbyType,Concentrate copper,8,2021,2028
+CU,CuMinesbyType,Precipitate copper,8,2021,2028
+CU,CuMinesbyType,Subtotal,8,2021,2028
+CU,CuMinesbyType,SxEw copper,8,2021,2028
+CU,CuMinesbyType,Total copper,8,2021,2028
+CU,CuRefineries,Australia,8,2021,2028
+CU,CuRefineries,Austria,8,2021,2028
+CU,CuRefineries,Belgium,8,2021,2028
+CU,CuRefineries,Brazil,8,2021,2028
+CU,CuRefineries,Bulgaria,8,2021,2028
+CU,CuRefineries,Canada,8,2021,2028
+CU,CuRefineries,Chile,8,2021,2028
+CU,CuRefineries,China,8,2021,2028
+CU,CuRefineries,Democratic Republic of Congo,8,2021,2028
+CU,CuRefineries,Egypt,8,2021,2028
+CU,CuRefineries,Finland,8,2021,2028
+CU,CuRefineries,Germany,8,2021,2028
+CU,CuRefineries,India,8,2021,2028
+CU,CuRefineries,Indonesia,8,2021,2028
+CU,CuRefineries,Iran,8,2021,2028
+CU,CuRefineries,Japan,8,2021,2028
+CU,CuRefineries,Kazakhstan,8,2021,2028
+CU,CuRefineries,Laos,8,2021,2028
+CU,CuRefineries,Mexico,8,2021,2028
+CU,CuRefineries,Namibia,8,2021,2028
+CU,CuRefineries,Net adjustment,5,2024,2028
+CU,CuRefineries,Norway,8,2021,2028
+CU,CuRefineries,Oman,8,2021,2028
+CU,CuRefineries,Others,8,2021,2028
+CU,CuRefineries,Peru,8,2021,2028
+CU,CuRefineries,Poland,8,2021,2028
+CU,CuRefineries,Russian Federation,8,2021,2028
+CU,CuRefineries,Serbia,8,2021,2028
+CU,CuRefineries,Singapore,8,2021,2028
+CU,CuRefineries,South Africa,8,2021,2028
+CU,CuRefineries,South Korea,8,2021,2028
+CU,CuRefineries,Spain,8,2021,2028
+CU,CuRefineries,Sweden,8,2021,2028
+CU,CuRefineries,TOTAL AFRICA,8,2021,2028
+CU,CuRefineries,TOTAL ASIA,8,2021,2028
+CU,CuRefineries,TOTAL EUROPE,8,2021,2028
+CU,CuRefineries,TOTAL LATIN AMERICA AND THE CARIBBEAN,8,2021,2028
+CU,CuRefineries,TOTAL MIDDLE EAST,8,2021,2028
+CU,CuRefineries,TOTAL NORTH AMERICA,8,2021,2028
+CU,CuRefineries,TOTAL OCEANIA,8,2021,2028
+CU,CuRefineries,TOTAL RUSSIA AND THE CASPIAN,8,2021,2028
+CU,CuRefineries,TOTAL WORLD,8,2021,2028
+CU,CuRefineries,TOTAL WORLD PRODUCTION,8,2021,2028
+CU,CuRefineries,Turkey,8,2021,2028
+CU,CuRefineries,United States,8,2021,2028
+CU,CuRefineries,Uzbekistan,8,2021,2028
+CU,CuRefineries,Zambia,8,2021,2028
+CU,CuSmelters,Armenia,8,2021,2028
+CU,CuSmelters,Australia,8,2021,2028
+CU,CuSmelters,Austria,8,2021,2028
+CU,CuSmelters,Belgium,8,2021,2028
+CU,CuSmelters,Brazil,8,2021,2028
+CU,CuSmelters,Bulgaria,8,2021,2028
+CU,CuSmelters,Canada,8,2021,2028
+CU,CuSmelters,Chile,8,2021,2028
+CU,CuSmelters,China,8,2021,2028
+CU,CuSmelters,Democratic Republic of Congo,8,2021,2028
+CU,CuSmelters,Finland,8,2021,2028
+CU,CuSmelters,Germany,8,2021,2028
+CU,CuSmelters,India,8,2021,2028
+CU,CuSmelters,Indonesia,8,2021,2028
+CU,CuSmelters,Iran,8,2021,2028
+CU,CuSmelters,Japan,8,2021,2028
+CU,CuSmelters,Kazakhstan,8,2021,2028
+CU,CuSmelters,Mexico,8,2021,2028
+CU,CuSmelters,Namibia,8,2021,2028
+CU,CuSmelters,Net adjustment,7,2022,2028
+CU,CuSmelters,Norway,8,2021,2028
+CU,CuSmelters,Oman,8,2021,2028
+CU,CuSmelters,Others,8,2021,2028
+CU,CuSmelters,Peru,8,2021,2028
+CU,CuSmelters,Philippines,8,2021,2028
+CU,CuSmelters,Poland,8,2021,2028
+CU,CuSmelters,Russian Federation,8,2021,2028
+CU,CuSmelters,Serbia,8,2021,2028
+CU,CuSmelters,Slovakia,8,2021,2028
+CU,CuSmelters,South Africa,8,2021,2028
+CU,CuSmelters,South Korea,8,2021,2028
+CU,CuSmelters,Spain,8,2021,2028
+CU,CuSmelters,Sweden,8,2021,2028
+CU,CuSmelters,TOTAL AFRICA,8,2021,2028
+CU,CuSmelters,TOTAL ASIA,8,2021,2028
+CU,CuSmelters,TOTAL EUROPE,8,2021,2028
+CU,CuSmelters,TOTAL LATIN AMERICA AND THE CARIBBEAN,8,2021,2028
+CU,CuSmelters,TOTAL MIDDLE EAST,8,2021,2028
+CU,CuSmelters,TOTAL NORTH AMERICA,8,2021,2028
+CU,CuSmelters,TOTAL OCEANIA,8,2021,2028
+CU,CuSmelters,TOTAL RUSSIA AND THE CASPIAN,8,2021,2028
+CU,CuSmelters,TOTAL WORLD,8,2021,2028
+CU,CuSmelters,TOTAL WORLD PRODUCTION,8,2021,2028
+CU,CuSmelters,Turkey,8,2021,2028
+CU,CuSmelters,United States,8,2021,2028
+CU,CuSmelters,Uzbekistan,8,2021,2028
+CU,CuSmelters,Zambia,8,2021,2028
+CU,Global,- Blister,57,1984,2040
+CU,Global,- Constant 2026$,61,1980,2040
+CU,Global,- Current Dollars,61,1980,2040
+CU,Global,- Exchange (Comex+LME+SHFE),42,1984,2025
+CU,Global,- Metal,57,1984,2040
+CU,Global,- Other,42,1984,2025
+CU,Global,- add direct use in chemicals,57,1984,2040
+CU,Global,- less SxEw Production,57,1984,2040
+CU,Global,- less refinery Scrap,57,1984,2040
+CU,Global,- less smelter Scrap/Residues,57,1984,2040
+CU,Global,-add direct use of blister,57,1984,2040
+CU,Global,-add resmelted blister/anode,57,1984,2040
+CU,Global,Add Scrap,57,1984,2040
+CU,Global,Add: Scrap/Resmelted blister,57,1984,2040
+CU,Global,Add: SxEw Production,57,1984,2040
+CU,Global,Annual Change (%),51,1990,2040
+CU,Global,Base Case,34,2007,2040
+CU,Global,Base Case & Highly Probable Mines,33,2008,2040
+CU,Global,Base Case Mine Production (less disruptions),34,2007,2040
+CU,Global,Blister Stock Change (- =drawdown),57,1984,2040
+CU,Global,Blister Stocks,57,1984,2040
+CU,Global,Blister Stocks (days),57,1984,2040
+CU,Global,Blister/Anode required by refineries,57,1984,2040
+CU,Global,CHANGE IN STOCKS,57,1984,2040
+CU,Global,CONSUMPTION :,57,1984,2040
+CU,Global,Change in Metal Stocks,57,1984,2040
+CU,Global,Conc Stock Change (- =drawdown),57,1984,2040
+CU,Global,Conc needed by Smelters,57,1984,2040
+CU,Global,Concs available for Smelting,57,1984,2040
+CU,Global,Concs/Precips Production Capability,57,1984,2040
+CU,Global,Demand For Mine Production,34,2007,2040
+CU,Global,Demand For Mine Production (net of scrap),34,2007,2040
+CU,Global,Demand for Conc (Contained),57,1984,2040
+CU,Global,Demand for Conc (Recoverable),57,1984,2040
+CU,Global,Demand for World Blister,57,1984,2040
+CU,Global,Demand for World Cu in Concs.,57,1984,2040
+CU,Global,Demand for World Er Cu,57,1984,2040
+CU,Global,Disruption Allowance (5% of Initial Forecast),18,2023,2040
+CU,Global,Disruption allowance,38,2003,2040
+CU,Global,Electro-refined Cu Production,57,1984,2040
+CU,Global,Er + Fr Refinery Production,57,1984,2040
+CU,Global,Estimated Total Stocks,57,1984,2040
+CU,Global,Greenfield and Other,34,2007,2040
+CU,Global,Hi Prob,30,2011,2040
+CU,Global,Hi-Probable Conc Producers (100%),21,2007,2040
+CU,Global,Hi-Probable SxEw Producers (100%),18,2023,2040
+CU,Global,Highly Probable Mines,34,2007,2040
+CU,Global,Highly Probable Projects,34,2007,2040
+CU,Global,Less Mine Life Extensions,30,2011,2040
+CU,Global,Less Scrap,57,1984,2040
+CU,Global,METAL STOCKS,57,1984,2040
+CU,Global,Market Adjustment,18,2023,2040
+CU,Global,Metal Stocks-days of Consumption,57,1984,2040
+CU,Global,Mine Prodn (Concs/Ppts),57,1984,2040
+CU,Global,Norilsk Conc Stocks,57,1984,2040
+CU,Global,Other World (days),57,1984,2040
+CU,Global,Other World Stocks,57,1984,2040
+CU,Global,Poss,34,2007,2040
+CU,Global,Price Related/Market Adjustment,18,2023,2040
+CU,Global,Primary Demand (demand for mine output + SxEw),57,1984,2040
+CU,Global,Primary Smelter recovery,57,1984,2040
+CU,Global,Prob,30,2011,2040
+CU,Global,Prob SxEw Producers,18,2023,2040
+CU,Global,Probable Brownfield,33,2008,2040
+CU,Global,Probable Brownfields,33,2008,2040
+CU,Global,Probable Conc Producers,18,2023,2040
+CU,Global,Probable Projects,34,2007,2040
+CU,Global,Probable Refinery Capacity,18,2023,2040
+CU,Global,Probable Smelter Capacity,18,2023,2040
+CU,Global,Refined Consumption,57,1984,2040
+CU,Global,Refinery Capacity,51,1990,2040
+CU,Global,Refinery Capacity Utilisation,51,1990,2040
+CU,Global,Smelter Capacity,51,1990,2040
+CU,Global,Smelter Capacity Utilisation,51,1990,2040
+CU,Global,Smelter Production,57,1984,2040
+CU,Global,Smelter scrap rate %,41,1990,2030
+CU,Global,Smelting losses,57,1984,2040
+CU,Global,SxEw/Hydromet Forecast Prodn Capability,57,1984,2040
+CU,Global,TOTAL COPPER SUPPLY :,57,1984,2040
+CU,Global,Total,57,1984,2040
+CU,Global,Total  World (days),57,1984,2040
+CU,Global,Total Concs/Precips Production,57,1984,2040
+CU,Global,Total Refined Cu Production,57,1984,2040
+CU,Global,Total Refined Production,57,1984,2040
+CU,Global,Total SxEw Production,57,1984,2040
+CU,Global,World Refined demand for Blister,57,1984,2040
+CU,Global,add Blister Adj,57,1984,2040
+CU,Global,add Direct use concs,57,1984,2040
+CU,Global,less direct use concs,57,1984,2040
+CU,Global,less direct use of blister,57,1984,2040
+CU,Global,less resmelted blister/anode,57,1984,2040
+CU,Global,refinery scrap rate %,41,1990,2030
+CU,GlobalSupplyDemand,- $/tonne (money-of-the-day),8,2021,2028
+CU,GlobalSupplyDemand,- 2026$,8,2021,2028
+CU,GlobalSupplyDemand,- Blister,8,2021,2028
+CU,GlobalSupplyDemand,- Concentrate,8,2021,2028
+CU,GlobalSupplyDemand,- Days of consumption,8,2021,2028
+CU,GlobalSupplyDemand,- Metal,8,2021,2028
+CU,GlobalSupplyDemand,- Total,8,2021,2028
+CU,GlobalSupplyDemand,- c/lb (money-of-the-day),8,2021,2028
+CU,GlobalSupplyDemand,Additional adjustment (non-plant specific),8,2021,2028
+CU,GlobalSupplyDemand,Concentrate/precipitate production capability,8,2021,2028
+CU,GlobalSupplyDemand,Consumption :,8,2021,2028
+CU,GlobalSupplyDemand,Disruption allowance (5% of initial forecast),4,2025,2028
+CU,GlobalSupplyDemand,Er and Fr Refinery Production,8,2021,2028
+CU,GlobalSupplyDemand,Price related/market adjustment,4,2025,2028
+CU,GlobalSupplyDemand,Probable SxEw producers,4,2025,2028
+CU,GlobalSupplyDemand,Probable concentrate producers,4,2025,2028
+CU,GlobalSupplyDemand,Refinery production capability (net of identified adjustment),8,2021,2028
+CU,GlobalSupplyDemand,Smelter production,8,2021,2028
+CU,GlobalSupplyDemand,Smelter production capability (net of identified adjustment),8,2021,2028
+CU,GlobalSupplyDemand,SxEw/Hydromet forecast production capability,8,2021,2028
+CU,GlobalSupplyDemand,Total SxEw production,8,2021,2028
+CU,GlobalSupplyDemand,Total concentrate/precipitate production,8,2021,2028
+CU,GlobalSupplyDemand,Total copper supply :,8,2021,2028
+CU,Prices and Premia,1st Position (c/lb),3,2024,2026
+CU,Prices and Premia,2nd Position (c/lb),3,2024,2026
+CU,Prices and Premia,3-month ($/t),3,2024,2026
+CU,Prices and Premia,3-month settlement $/t,3,2024,2026
+CU,Prices and Premia,3-month settlement RMB/t,3,2024,2026
+CU,Prices and Premia,Australian $,3,2024,2026
+CU,Prices and Premia,Canadian $,3,2024,2026
+CU,Prices and Premia,Cash ($/t),3,2024,2026
+CU,Prices and Premia,Codelco,3,2024,2026
+CU,Prices and Premia,Codelco to China,3,2024,2026
+CU,Prices and Premia,Euro,3,2024,2026
+CU,Prices and Premia,Front month settlement $/t,3,2024,2026
+CU,Prices and Premia,Front month settlement RMB/t,3,2024,2026
+CU,Prices and Premia,MJP,3,2024,2026
+CU,Prices and Premia,Shanghai Grade A ($/t),3,2024,2026
+CU,Prices and Premia,Spread  (3-month - cash),3,2024,2026
+CU,Prices and Premia,US (c/lb),3,2024,2026
+CU,Prices and Premia,W. Europe,3,2024,2026
+CU,Prices and Premia,W. Europe Chilean ($/t),3,2024,2026
+CU,Prices and Premia,W. Europe Grade A ($/t),3,2024,2026
+CU,Prices and Premia,W. Europe Standard ($/t),3,2024,2026
+CU,Prices and Premia,Yen,3,2024,2026
+CU,Prices and Premia,Yuan,3,2024,2026
+CU,QuartCons,Asia,6,2021,2026
+CU,QuartCons,Brazil,6,2021,2026
+CU,QuartCons,Canada,6,2021,2026
+CU,QuartCons,China,6,2021,2026
+CU,QuartCons,Europe,6,2021,2026
+CU,QuartCons,France,6,2021,2026
+CU,QuartCons,Germany,6,2021,2026
+CU,QuartCons,Global Total,6,2021,2026
+CU,QuartCons,India,6,2021,2026
+CU,QuartCons,Italy,6,2021,2026
+CU,QuartCons,Japan,6,2021,2026
+CU,QuartCons,Latin America,6,2021,2026
+CU,QuartCons,Mexico,6,2021,2026
+CU,QuartCons,North America,6,2021,2026
+CU,QuartCons,Other,6,2021,2026
+CU,QuartCons,Poland,6,2021,2026
+CU,QuartCons,Rest of World,6,2021,2026
+CU,QuartCons,Russia,6,2021,2026
+CU,QuartCons,South Korea,6,2021,2026
+CU,QuartCons,Spain,6,2021,2026
+CU,QuartCons,Taiwan,6,2021,2026
+CU,QuartCons,United States,6,2021,2026
+CU,Spot_TCRC,"Combined (c/lb) #",5,2022,2026
+CU,Spot_TCRC,Combined (c/lb) +,5,2022,2026
+CU,Spot_TCRC,R/C (c/lb Cu),5,2022,2026
+CU,Spot_TCRC,T/C ($/tonne Conc.),5,2022,2026
+CU,Stocks,Antwerp,3,2024,2026
+CU,Stocks,Asia,3,2024,2026
+CU,Stocks,Busan,3,2024,2026
+CU,Stocks,Cancelled warrants,3,2024,2026
+CU,Stocks,Comex,3,2024,2026
+CU,Stocks,Consumer stocks - kt,3,2024,2026
+CU,Stocks,Europe,3,2024,2026
+CU,Stocks,France,3,2024,2026
+CU,Stocks,Germany,3,2024,2026
+CU,Stocks,Japan,3,2024,2026
+CU,Stocks,Johor,3,2024,2026
+CU,Stocks,Merchant stocks - kt,3,2024,2026
+CU,Stocks,Middle East,3,2024,2026
+CU,Stocks,New Orleans,3,2024,2026
+CU,Stocks,North America,3,2024,2026
+CU,Stocks,Other,3,2024,2026
+CU,Stocks,Other Asia,3,2024,2026
+CU,Stocks,Other Europe,3,2024,2026
+CU,Stocks,Other North America,3,2024,2026
+CU,Stocks,Producer stocks - kt,3,2024,2026
+CU,Stocks,Rotterdam,3,2024,2026
+CU,Stocks,Shanghai Futures Exchange,3,2024,2026
+CU,Stocks,Singapore (City),3,2024,2026
+CU,Stocks,Stock Ratio (days of consumption),3,2024,2026
+CU,Stocks,Total LME Stocks,3,2024,2026
+CU,Stocks,Total commercial stocks* - kt,3,2024,2026
+CU,Stocks,USA,3,2024,2026
+NI,BalancesByClass,China Class I,9,2020,2028
+NI,BalancesByClass,China Class II,9,2020,2028
+NI,BalancesByClass,China sulphate,9,2020,2028
+NI,BalancesByClass,RoW Class I,9,2020,2028
+NI,BalancesByClass,RoW Class II,9,2020,2028
+NI,BalancesByClass,RoW sulphate,9,2020,2028
+NI,BalancesByClass,Total Class I,9,2020,2028
+NI,BalancesByClass,Total Class II,9,2020,2028
+NI,BalancesByClass,Total nickel,9,2020,2028
+NI,BalancesByClass,Total sulphate,9,2020,2028
+NI,ChemicalsbyPlant,Brixlegg,7,2022,2028
+NI,ChemicalsbyPlant,Brunp,7,2022,2028
+NI,ChemicalsbyPlant,CNGR Chemicals,7,2022,2028
+NI,ChemicalsbyPlant,Caofeidian,7,2022,2028
+NI,ChemicalsbyPlant,Caofeidian Expansion,3,2026,2028
+NI,ChemicalsbyPlant,Chengtun,5,2024,2028
+NI,ChemicalsbyPlant,China Dissolution,7,2022,2028
+NI,ChemicalsbyPlant,China Other,7,2022,2028
+NI,ChemicalsbyPlant,China Secondary,7,2022,2028
+NI,ChemicalsbyPlant,Chongqing Chemicals,7,2022,2028
+NI,ChemicalsbyPlant,Coremax,7,2022,2028
+NI,ChemicalsbyPlant,Enerchem,7,2022,2028
+NI,ChemicalsbyPlant,Excelsior Chemical,3,2026,2028
+NI,ChemicalsbyPlant,GEM,7,2022,2028
+NI,ChemicalsbyPlant,Germany Secondary,7,2022,2028
+NI,ChemicalsbyPlant,Greatpower,6,2023,2028
+NI,ChemicalsbyPlant,Guangxi Yinyi Chems,5,2022,2026
+NI,ChemicalsbyPlant,Harima,7,2022,2028
+NI,ChemicalsbyPlant,Harjavalta Chemicals,7,2022,2028
+NI,ChemicalsbyPlant,Huaxiang,4,2025,2028
+NI,ChemicalsbyPlant,India Dissolvers,7,2022,2028
+NI,ChemicalsbyPlant,Isoura,7,2022,2028
+NI,ChemicalsbyPlant,Japan Secondary,7,2022,2028
+NI,ChemicalsbyPlant,Jiangmen Chancsun,7,2022,2028
+NI,ChemicalsbyPlant,Jilin Chemicals,7,2022,2028
+NI,ChemicalsbyPlant,Jinchuan Chemicals,7,2022,2028
+NI,ChemicalsbyPlant,Kemco,7,2022,2028
+NI,ChemicalsbyPlant,Korea Other,7,2022,2028
+NI,ChemicalsbyPlant,Kwinana Sulphate,7,2022,2028
+NI,ChemicalsbyPlant,Maolian Chemicals,7,2022,2028
+NI,ChemicalsbyPlant,Mechema,7,2022,2028
+NI,ChemicalsbyPlant,Nickelhutte,7,2022,2028
+NI,ChemicalsbyPlant,Nicomet,7,2022,2028
+NI,ChemicalsbyPlant,Niihama Chemicals,7,2022,2028
+NI,ChemicalsbyPlant,Obi,7,2022,2028
+NI,ChemicalsbyPlant,Onsan,2,2027,2028
+NI,ChemicalsbyPlant,POSCO Chemicals,6,2023,2028
+NI,ChemicalsbyPlant,Palm,7,2022,2028
+NI,ChemicalsbyPlant,QMB,4,2025,2028
+NI,ChemicalsbyPlant,Quzhou Huayou Chems,7,2022,2028
+NI,ChemicalsbyPlant,Skouriotissa,7,2022,2028
+NI,ChemicalsbyPlant,Spain Other,7,2022,2028
+NI,ChemicalsbyPlant,TOTAL AFRICA,7,2022,2028
+NI,ChemicalsbyPlant,TOTAL ASIA,7,2022,2028
+NI,ChemicalsbyPlant,TOTAL EUROPE,7,2022,2028
+NI,ChemicalsbyPlant,TOTAL NORTH AMERICA,7,2022,2028
+NI,ChemicalsbyPlant,TOTAL OCEANIA,7,2022,2028
+NI,ChemicalsbyPlant,TOTAL WORLD,7,2022,2028
+NI,ChemicalsbyPlant,Tengyuan,4,2025,2028
+NI,ChemicalsbyPlant,Terrafame,7,2022,2028
+NI,ChemicalsbyPlant,Thakadu,7,2022,2028
+NI,ChemicalsbyPlant,Torecom,6,2023,2028
+NI,ChemicalsbyPlant,Total Australia,7,2022,2028
+NI,ChemicalsbyPlant,Total Austria,7,2022,2028
+NI,ChemicalsbyPlant,Total Belgium,7,2022,2028
+NI,ChemicalsbyPlant,Total China,7,2022,2028
+NI,ChemicalsbyPlant,Total Cyprus,7,2022,2028
+NI,ChemicalsbyPlant,Total Finland,7,2022,2028
+NI,ChemicalsbyPlant,Total Germany,7,2022,2028
+NI,ChemicalsbyPlant,Total India,7,2022,2028
+NI,ChemicalsbyPlant,Total Indonesia,7,2022,2028
+NI,ChemicalsbyPlant,Total Japan,7,2022,2028
+NI,ChemicalsbyPlant,Total South Africa,7,2022,2028
+NI,ChemicalsbyPlant,Total South Korea,7,2022,2028
+NI,ChemicalsbyPlant,Total Spain,7,2022,2028
+NI,ChemicalsbyPlant,Total Taiwan,7,2022,2028
+NI,ChemicalsbyPlant,Total United States,7,2022,2028
+NI,ChemicalsbyPlant,USA Other,7,2022,2028
+NI,ChemicalsbyPlant,Ulsan,3,2026,2028
+NI,ChemicalsbyPlant,Umicore,7,2022,2028
+NI,ChemicalsbyPlant,Univertical,7,2022,2028
+NI,ChemicalsbyPlant,Xinxiang Jien,7,2022,2028
+NI,ChemicalsbyPlant,Yantai Kaishi Chemical,3,2022,2024
+NI,ChemicalsbyPlant,Zenith,7,2022,2028
+NI,ChinaBalance,% change,56,1985,2040
+NI,ChinaBalance,Actual/forecast mine output,57,1984,2040
+NI,ChinaBalance,Actual/forecast primary refined output,57,1984,2040
+NI,ChinaBalance,Actual/forecast smelter output,45,1996,2040
+NI,ChinaBalance,Actual/forecast total refined output,57,1984,2040
+NI,ChinaBalance,Additional adjustment (D),20,2021,2040
+NI,ChinaBalance,Additional adjustment (F),9,2032,2040
+NI,ChinaBalance,Balance,57,1984,2040
+NI,ChinaBalance,Base case mine output,57,1984,2040
+NI,ChinaBalance,Base case refined output,57,1984,2040
+NI,ChinaBalance,Base case smelter output,45,1996,2040
+NI,ChinaBalance,Consumption,57,1984,2040
+NI,ChinaBalance,Exports to RoW,55,1986,2040
+NI,ChinaBalance,Exports to Russia,53,1988,2040
+NI,ChinaBalance,Forecast disruption allowance,31,2010,2040
+NI,ChinaBalance,Forecast mine supply adjustment (A+B),20,2021,2040
+NI,ChinaBalance,Forecast primary supply adjustment (E+F),20,2021,2040
+NI,ChinaBalance,Forecast smelter supply adjustment (C+D),20,2021,2040
+NI,ChinaBalance,Highly probable projects,31,2010,2040
+NI,ChinaBalance,Imports from Indonesia,28,2013,2040
+NI,ChinaBalance,Imports from RoW,53,1988,2040
+NI,ChinaBalance,Imports from Russia,45,1996,2040
+NI,ChinaBalance,Mine Production/Capability,57,1984,2040
+NI,ChinaBalance,Net Trade,55,1986,2040
+NI,ChinaBalance,Probable mine projects (A),20,2021,2040
+NI,ChinaBalance,Probable refinery projects (E),20,2021,2040
+NI,ChinaBalance,Probable smelter projects (C),20,2021,2040
+NI,ChinaBalance,Refined Production/Capability,57,1984,2040
+NI,ChinaBalance,Refined capacity,50,1991,2040
+NI,ChinaBalance,Refinery capacity utilisation,50,1991,2040
+NI,ChinaBalance,SHFE stock change,12,2015,2026
+NI,ChinaBalance,Secondary refined output from EV batteries,20,2021,2040
+NI,ChinaBalance,Smelter Production/Capability,45,1996,2040
+NI,ChinaBalance,Smelter capacity,45,1996,2040
+NI,ChinaBalance,Smelter capacity utilisation,45,1996,2040
+NI,ChinaBalance,Sulphide,57,1984,2040
+NI,ChinaBalance,Total Exports,55,1986,2040
+NI,ChinaBalance,Total Imports,53,1988,2040
+NI,ChinaBalance,Total Nickel Supply,57,1984,2040
+NI,ChinaBalance,of which:   Laterite,57,1984,2040
+NI,ChinaBalance,of which: FeNi / NPI,57,1984,2040
+NI,ChinaBalance,of which: from Secondary,20,2021,2040
+NI,Consumption,Africa:,7,2022,2028
+NI,Consumption,Asia:,7,2022,2028
+NI,Consumption,Australia,7,2022,2028
+NI,Consumption,Austria,7,2022,2028
+NI,Consumption,Belgium,7,2022,2028
+NI,Consumption,Brazil,7,2022,2028
+NI,Consumption,Canada,7,2022,2028
+NI,Consumption,Caribbean:,7,2022,2028
+NI,Consumption,China,7,2022,2028
+NI,Consumption,Cuba,7,2022,2028
+NI,Consumption,Czech Republic,7,2022,2028
+NI,Consumption,Europe:,7,2022,2028
+NI,Consumption,Finland,7,2022,2028
+NI,Consumption,France,7,2022,2028
+NI,Consumption,Germany,7,2022,2028
+NI,Consumption,Global:,7,2022,2028
+NI,Consumption,India,7,2022,2028
+NI,Consumption,Indonesia,7,2022,2028
+NI,Consumption,Italy,7,2022,2028
+NI,Consumption,Japan,7,2022,2028
+NI,Consumption,Mexico,7,2022,2028
+NI,Consumption,North America:,7,2022,2028
+NI,Consumption,Oceania:,7,2022,2028
+NI,Consumption,Other,7,2022,2028
+NI,Consumption,Poland,7,2022,2028
+NI,Consumption,Romania,7,2022,2028
+NI,Consumption,Russia & Caspian:,7,2022,2028
+NI,Consumption,Russian Federation,7,2022,2028
+NI,Consumption,Slovenia,7,2022,2028
+NI,Consumption,South Africa,7,2022,2028
+NI,Consumption,South Korea,7,2022,2028
+NI,Consumption,Spain,7,2022,2028
+NI,Consumption,Sweden,7,2022,2028
+NI,Consumption,Taiwan,7,2022,2028
+NI,Consumption,Ukraine,7,2022,2028
+NI,Consumption,United Kingdom,7,2022,2028
+NI,Consumption,United States,7,2022,2028
+NI,FeNibyPlant,Barro Alto,7,2022,2028
+NI,FeNibyPlant,Ceria Indotama,7,2022,2028
+NI,FeNibyPlant,Cerro Matoso,7,2022,2028
+NI,FeNibyPlant,Codemin,7,2022,2028
+NI,FeNibyPlant,Doniambo,7,2022,2028
+NI,FeNibyPlant,Falcondo,7,2022,2028
+NI,FeNibyPlant,FeNi Halmahera,2,2027,2028
+NI,FeNibyPlant,Feni,7,2022,2028
+NI,FeNibyPlant,Ferronikeli,7,2022,2028
+NI,FeNibyPlant,Gwangyang,7,2022,2028
+NI,FeNibyPlant,Hyuga,7,2022,2028
+NI,FeNibyPlant,Koniambo,7,2022,2028
+NI,FeNibyPlant,Larco,7,2022,2028
+NI,FeNibyPlant,Nippon Yakin,7,2022,2028
+NI,FeNibyPlant,Onca Puma,7,2022,2028
+NI,FeNibyPlant,Pamco,7,2022,2028
+NI,FeNibyPlant,Pobuzhsky,7,2022,2028
+NI,FeNibyPlant,Pomalaa,7,2022,2028
+NI,FeNibyPlant,Pronico,7,2022,2028
+NI,FeNibyPlant,TOTAL ASIA,7,2022,2028
+NI,FeNibyPlant,TOTAL EUROPE,7,2022,2028
+NI,FeNibyPlant,TOTAL LATIN AMERICA AND THE CARIBBEAN,7,2022,2028
+NI,FeNibyPlant,TOTAL OCEANIA,7,2022,2028
+NI,FeNibyPlant,TOTAL WORLD,7,2022,2028
+NI,FeNibyPlant,Tagaung Taung,4,2022,2025
+NI,FeNibyPlant,Total Austria,7,2022,2028
+NI,FeNibyPlant,Total Brazil,7,2022,2028
+NI,FeNibyPlant,Total Colombia,7,2022,2028
+NI,FeNibyPlant,Total Dominican Republic,7,2022,2028
+NI,FeNibyPlant,Total Greece,7,2022,2028
+NI,FeNibyPlant,Total Guatemala,7,2022,2028
+NI,FeNibyPlant,Total Indonesia,7,2022,2028
+NI,FeNibyPlant,Total Japan,7,2022,2028
+NI,FeNibyPlant,Total Kosovo,7,2022,2028
+NI,FeNibyPlant,Total Myanmar,7,2022,2028
+NI,FeNibyPlant,Total New Caledonia,7,2022,2028
+NI,FeNibyPlant,Total North Macedonia,7,2022,2028
+NI,FeNibyPlant,Total South Korea,7,2022,2028
+NI,FeNibyPlant,Total Ukraine,7,2022,2028
+NI,FeNibyPlant,Treibacher,7,2022,2028
+NI,GlobalBalance,% change,56,1985,2040
+NI,GlobalBalance,- in days of Consumption,55,1986,2040
+NI,GlobalBalance,- in days of consumption,7,2022,2028
+NI,GlobalBalance,2026 $,7,2022,2028
+NI,GlobalBalance,2026 US$/t,55,1986,2040
+NI,GlobalBalance,2026 c/lb,55,1986,2040
+NI,GlobalBalance,Actual/forecast mine output,64,1984,2040
+NI,GlobalBalance,Actual/forecast primary refined output,63,1985,2040
+NI,GlobalBalance,Actual/forecast smelter output,52,1996,2040
+NI,GlobalBalance,Actual/forecast total refined output,63,1985,2040
+NI,GlobalBalance,Additional adjustment,7,2022,2028
+NI,GlobalBalance,Additional adjustment (B),20,2021,2040
+NI,GlobalBalance,Additional adjustment (D),20,2021,2040
+NI,GlobalBalance,Additional adjustment (F),18,2023,2040
+NI,GlobalBalance,Balance,62,1986,2040
+NI,GlobalBalance,Base case mine output,64,1984,2040
+NI,GlobalBalance,Base case refined output,63,1985,2040
+NI,GlobalBalance,Base case smelter output,52,1996,2040
+NI,GlobalBalance,Consumption,62,1986,2040
+NI,GlobalBalance,Current,7,2022,2028
+NI,GlobalBalance,Current $/t,7,2022,2028
+NI,GlobalBalance,Current US$/t,55,1986,2040
+NI,GlobalBalance,DLA/ Jap. govt sales,7,2022,2028
+NI,GlobalBalance,DLA/ Japan government sales,26,1984,2009
+NI,GlobalBalance,Estimated Global stocks (implied),56,1985,2040
+NI,GlobalBalance,Estimated stocks,7,2022,2028
+NI,GlobalBalance,Forecast disruption allowance,27,2021,2040
+NI,GlobalBalance,Forecast market adjustment,7,2022,2028
+NI,GlobalBalance,Forecast mine supply adjustment (A+B),20,2021,2040
+NI,GlobalBalance,Forecast primary supply adjustment (E+F),18,2023,2040
+NI,GlobalBalance,Forecast smelter supply adjustment (C+D),20,2021,2040
+NI,GlobalBalance,Highly probable projects,31,2010,2040
+NI,GlobalBalance,LME Price     Current c/lb,55,1986,2040
+NI,GlobalBalance,Mine Production/Capability,57,1984,2040
+NI,GlobalBalance,Mine disruption allowance,57,1984,2040
+NI,GlobalBalance,Mine production/capability,7,2022,2028
+NI,GlobalBalance,Pricechart,55,1986,2040
+NI,GlobalBalance,Primary Nickel Supplies,7,2022,2028
+NI,GlobalBalance,Probable mine projects,7,2022,2028
+NI,GlobalBalance,Probable mine projects (A),20,2021,2040
+NI,GlobalBalance,Probable refinery projects,7,2022,2028
+NI,GlobalBalance,Probable refinery projects (E),18,2023,2040
+NI,GlobalBalance,Probable smelter projects,7,2022,2028
+NI,GlobalBalance,Probable smelter projects (C),20,2021,2040
+NI,GlobalBalance,Refined Production/Capability,56,1985,2040
+NI,GlobalBalance,Refined capacity,50,1991,2040
+NI,GlobalBalance,Refined production capability,7,2022,2028
+NI,GlobalBalance,Refinery capacity utilisation,50,1991,2040
+NI,GlobalBalance,Refinery disruption allowance,57,1984,2040
+NI,GlobalBalance,Reported stocks,41,1986,2026
+NI,GlobalBalance,Russian consignment stock,8,2002,2009
+NI,GlobalBalance,Secondary refined output,7,2022,2028
+NI,GlobalBalance,Secondary refined output from EV batteries,18,2023,2040
+NI,GlobalBalance,Smelter Production/Capability,45,1996,2040
+NI,GlobalBalance,Smelter capacity,45,1996,2040
+NI,GlobalBalance,Smelter capacity utilisation,45,1996,2040
+NI,GlobalBalance,Smelter disruption allowance,57,1984,2040
+NI,GlobalBalance,Smelter production capability,7,2022,2028
+NI,GlobalBalance,Sulphide,57,1984,2040
+NI,GlobalBalance,Total Nickel Supply,56,1985,2040
+NI,GlobalBalance,of which:   Laterite,57,1984,2040
+NI,GlobalBalance,of which: FeNi / NPI,45,1996,2040
+NI,GlobalBalance,of which: from Secondary,52,1996,2040
+NI,Imbalance,- Negative market adjustment (G) (-),31,2010,2040
+NI,Imbalance,- Unidentified new production (H) (+),31,2010,2040
+NI,Imbalance,1/.,55,1986,2040
+NI,Imbalance,2/.,31,2010,2040
+NI,Imbalance,3/.,30,2011,2040
+NI,Imbalance,4/.,55,1986,2040
+NI,Imbalance,5/.,31,2010,2040
+NI,Imbalance,6/.,18,2023,2040
+NI,Imbalance,7/.,56,1985,2040
+NI,Imbalance,8/.,56,1984,2040
+NI,Imbalance,9/.,31,2010,2040
+NI,Imbalance,Base case refined output (D=(A+B-C)),55,1986,2040
+NI,Imbalance,Consumption (N),55,1986,2040
+NI,Imbalance,DLA/ Japan government sales (L);,56,1984,2040
+NI,Imbalance,"F as a % of consumption, N",31,2010,2040
+NI,Imbalance,Implied Surplus/Deficit (O=M-N),55,1986,2040
+NI,Imbalance,Primary nickel supply (M=(J+K+L),55,1986,2040
+NI,Imbalance,Y-o-Y change,54,1987,2040
+NI,MineProduction,Albania,7,2022,2028
+NI,MineProduction,Australia,7,2022,2028
+NI,MineProduction,Botswana,7,2022,2028
+NI,MineProduction,Brazil,7,2022,2028
+NI,MineProduction,Canada,7,2022,2028
+NI,MineProduction,China,7,2022,2028
+NI,MineProduction,Colombia,7,2022,2028
+NI,MineProduction,Cote d`Ivoire,7,2022,2028
+NI,MineProduction,Cuba,7,2022,2028
+NI,MineProduction,Disruption allowance + probable projects,5,2024,2028
+NI,MineProduction,Dominican Republic,7,2022,2028
+NI,MineProduction,Finland,7,2022,2028
+NI,MineProduction,Forecast mine production,7,2022,2028
+NI,MineProduction,Greece,7,2022,2028
+NI,MineProduction,Guatemala,7,2022,2028
+NI,MineProduction,Indonesia,7,2022,2028
+NI,MineProduction,Kazakhstan,7,2022,2028
+NI,MineProduction,Kosovo,7,2022,2028
+NI,MineProduction,Madagascar,7,2022,2028
+NI,MineProduction,Myanmar,7,2022,2028
+NI,MineProduction,New Caledonia,7,2022,2028
+NI,MineProduction,North Macedonia,7,2022,2028
+NI,MineProduction,Norway,7,2022,2028
+NI,MineProduction,Papua New Guinea,7,2022,2028
+NI,MineProduction,Philippines,7,2022,2028
+NI,MineProduction,Russian Federation,7,2022,2028
+NI,MineProduction,Solomon Islands,7,2022,2028
+NI,MineProduction,South Africa,7,2022,2028
+NI,MineProduction,Spain,7,2022,2028
+NI,MineProduction,Total Africa,7,2022,2028
+NI,MineProduction,Total Asia,7,2022,2028
+NI,MineProduction,Total Europe,7,2022,2028
+NI,MineProduction,Total Latin America & Caribbean,7,2022,2028
+NI,MineProduction,Total North America,7,2022,2028
+NI,MineProduction,Total Oceania,7,2022,2028
+NI,MineProduction,Total Russia & Caspian,7,2022,2028
+NI,MineProduction,Total World,7,2022,2028
+NI,MineProduction,Turkey,7,2022,2028
+NI,MineProduction,Ukraine,7,2022,2028
+NI,MineProduction,United States,7,2022,2028
+NI,MineProduction,Venezuela,7,2022,2028
+NI,MineProduction,Vietnam,7,2022,2028
+NI,MineProduction,Zambia,7,2022,2028
+NI,MineProduction,Zimbabwe,7,2022,2028
+NI,MinesbyPlant,Ambatovy,7,2022,2028
+NI,MinesbyPlant,Amplats,7,2022,2028
+NI,MinesbyPlant,Antam High Grade Ore - Garnierite,7,2022,2028
+NI,MinesbyPlant,Antam Low Grade Ore,7,2022,2028
+NI,MinesbyPlant,Avebury Restart,3,2022,2024
+NI,MinesbyPlant,Bahodopi,3,2026,2028
+NI,MinesbyPlant,Baishiquan,3,2026,2028
+NI,MinesbyPlant,Baixintan,5,2024,2028
+NI,MinesbyPlant,Barro Alto,7,2022,2028
+NI,MinesbyPlant,Bonao,2,2022,2023
+NI,MinesbyPlant,Cao Bang,7,2022,2028
+NI,MinesbyPlant,Cerro Matoso - Montelibano,7,2022,2028
+NI,MinesbyPlant,Chibaisong,7,2022,2028
+NI,MinesbyPlant,Codemin (Niquelandia),1,2023,2023
+NI,MinesbyPlant,Coral Bay (Rio Tuba),7,2022,2028
+NI,MinesbyPlant,Daling,5,2022,2026
+NI,MinesbyPlant,Eagle,7,2022,2028
+NI,MinesbyPlant,Enterprise,6,2023,2028
+NI,MinesbyPlant,FeNi Halmahera,2,2027,2028
+NI,MinesbyPlant,Fenix,4,2022,2028
+NI,MinesbyPlant,Flying Fox,3,2022,2024
+NI,MinesbyPlant,Fraser Morgan,4,2022,2025
+NI,MinesbyPlant,Fujia,7,2022,2028
+NI,MinesbyPlant,Gordes,7,2022,2028
+NI,MinesbyPlant,Goro,7,2022,2028
+NI,MinesbyPlant,Guaxilan - Garnierite,4,2022,2025
+NI,MinesbyPlant,Huangshandong,7,2022,2028
+NI,MinesbyPlant,Huilong - Hami,7,2022,2028
+NI,MinesbyPlant,Impala,7,2022,2028
+NI,MinesbyPlant,Indept. & SLN Ore,7,2022,2028
+NI,MinesbyPlant,Indept. & SLN Ore - Garnierite,7,2022,2028
+NI,MinesbyPlant,Indonesian Ore,7,2022,2028
+NI,MinesbyPlant,Jianchaling,2,2022,2028
+NI,MinesbyPlant,Jinchuan,7,2022,2028
+NI,MinesbyPlant,Jinchuan WP,7,2022,2028
+NI,MinesbyPlant,Kalatongke,7,2022,2028
+NI,MinesbyPlant,Kambalda Nickel Ops (KNO),3,2022,2024
+NI,MinesbyPlant,Kavadarci,1,2022,2022
+NI,MinesbyPlant,Kevitsa,7,2022,2028
+NI,MinesbyPlant,Kolosori,2,2023,2024
+NI,MinesbyPlant,Koniambo,3,2022,2024
+NI,MinesbyPlant,Lapaopao - Garnierite,4,2025,2028
+NI,MinesbyPlant,Larymna,1,2022,2022
+NI,MinesbyPlant,Laterite,7,2022,2028
+NI,MinesbyPlant,Leinster,3,2022,2024
+NI,MinesbyPlant,Lengshuiqing,7,2022,2028
+NI,MinesbyPlant,Lonmin Mines,7,2022,2028
+NI,MinesbyPlant,Maxut,2,2022,2023
+NI,MinesbyPlant,Moa Nickel,7,2022,2028
+NI,MinesbyPlant,Mount Keith,3,2022,2024
+NI,MinesbyPlant,Munali - Enterprise Nickel,4,2022,2025
+NI,MinesbyPlant,Murrin Murrin,7,2022,2028
+NI,MinesbyPlant,Nickel Rim,2,2022,2023
+NI,MinesbyPlant,Norilsk,7,2022,2028
+NI,MinesbyPlant,Northam,7,2022,2028
+NI,MinesbyPlant,Nova Bollinger,5,2022,2026
+NI,MinesbyPlant,Nunavik,7,2022,2028
+NI,MinesbyPlant,Onaping Depth,4,2025,2028
+NI,MinesbyPlant,Onca Puma,7,2022,2028
+NI,MinesbyPlant,Pechenga,7,2022,2028
+NI,MinesbyPlant,Philippines Ore,7,2022,2028
+NI,MinesbyPlant,Piaui,3,2022,2024
+NI,MinesbyPlant,Platreef - Other,4,2025,2028
+NI,MinesbyPlant,Pomalaa Timur,3,2026,2028
+NI,MinesbyPlant,Punta Gorda,7,2022,2028
+NI,MinesbyPlant,Raglan,7,2022,2028
+NI,MinesbyPlant,Ramu,7,2022,2028
+NI,MinesbyPlant,Ravensthorpe (FQM),2,2022,2023
+NI,MinesbyPlant,Ruilun,7,2022,2028
+NI,MinesbyPlant,SLN - Doniambo - Garnierite,7,2022,2028
+NI,MinesbyPlant,Santa Rita,1,2028,2028
+NI,MinesbyPlant,Santa Rita - Other,7,2022,2028
+NI,MinesbyPlant,Savannah,2,2022,2023
+NI,MinesbyPlant,Shanuch,2,2022,2023
+NI,MinesbyPlant,Sipilou Nord,7,2022,2028
+NI,MinesbyPlant,Soroako,7,2022,2028
+NI,MinesbyPlant,Sorowako Limonite,2,2027,2028
+NI,MinesbyPlant,Sulphide,7,2022,2028
+NI,MinesbyPlant,TOTAL AFRICA,7,2022,2028
+NI,MinesbyPlant,TOTAL ASIA,7,2022,2028
+NI,MinesbyPlant,TOTAL EUROPE,7,2022,2028
+NI,MinesbyPlant,TOTAL LATIN AMERICA AND THE CARIBBEAN,7,2022,2028
+NI,MinesbyPlant,TOTAL NORTH AMERICA,7,2022,2028
+NI,MinesbyPlant,TOTAL OCEANIA,7,2022,2028
+NI,MinesbyPlant,TOTAL RUSSIA AND THE CASPIAN,7,2022,2028
+NI,MinesbyPlant,TOTAL WORLD,7,2022,2028
+NI,MinesbyPlant,Taganito,7,2022,2028
+NI,MinesbyPlant,Tagaung Taung,4,2022,2025
+NI,MinesbyPlant,Terrafame - Other,7,2022,2028
+NI,MinesbyPlant,Titania,7,2022,2028
+NI,MinesbyPlant,Total Australia,7,2022,2028
+NI,MinesbyPlant,Total Brazil,7,2022,2028
+NI,MinesbyPlant,Total Canada,7,2022,2028
+NI,MinesbyPlant,Total China,7,2022,2028
+NI,MinesbyPlant,Total Colombia,7,2022,2028
+NI,MinesbyPlant,Total Cote d`Ivoire,7,2022,2028
+NI,MinesbyPlant,Total Cuba,7,2022,2028
+NI,MinesbyPlant,Total Dominican Republic,7,2022,2028
+NI,MinesbyPlant,Total Finland,7,2022,2028
+NI,MinesbyPlant,Total Greece,7,2022,2028
+NI,MinesbyPlant,Total Guatemala,7,2022,2028
+NI,MinesbyPlant,Total Indonesia,7,2022,2028
+NI,MinesbyPlant,Total Kazakhstan,7,2022,2028
+NI,MinesbyPlant,Total Madagascar,7,2022,2028
+NI,MinesbyPlant,Total Myanmar,7,2022,2028
+NI,MinesbyPlant,Total New Caledonia,7,2022,2028
+NI,MinesbyPlant,Total North Macedonia,7,2022,2028
+NI,MinesbyPlant,Total Norway,7,2022,2028
+NI,MinesbyPlant,Total Papua New Guinea,7,2022,2028
+NI,MinesbyPlant,Total Philippines,7,2022,2028
+NI,MinesbyPlant,Total Russian Federation,7,2022,2028
+NI,MinesbyPlant,Total Solomon Islands,7,2022,2028
+NI,MinesbyPlant,Total South Africa,7,2022,2028
+NI,MinesbyPlant,Total Turkey,7,2022,2028
+NI,MinesbyPlant,Total United States,7,2022,2028
+NI,MinesbyPlant,Total Vietnam,7,2022,2028
+NI,MinesbyPlant,Total Zambia,7,2022,2028
+NI,MinesbyPlant,Total Zimbabwe,7,2022,2028
+NI,MinesbyPlant,Totten,7,2022,2028
+NI,MinesbyPlant,Trojan,2,2022,2023
+NI,MinesbyPlant,Tulaergan,7,2022,2028
+NI,MinesbyPlant,Turkey Other,1,2022,2022
+NI,MinesbyPlant,Vale Manitoba,7,2022,2028
+NI,MinesbyPlant,Vale Sudbury,7,2022,2028
+NI,MinesbyPlant,Voisey's Bay,2,2022,2023
+NI,MinesbyPlant,Voisey's Bay - Other,2,2022,2023
+NI,MinesbyPlant,Voiseys Bay UG,7,2022,2028
+NI,MinesbyPlant,Weda Bay,7,2022,2028
+NI,MinesbyPlant,Wulantaolegai,3,2026,2028
+NI,MinesbyPlant,Xiarihamu,7,2022,2028
+NI,MinesbyPlant,Yakesi,7,2022,2028
+NI,MinesbyPlant,Zimplats - Other,7,2022,2028
+NI,NPIbyPlant,Ansheng,6,2023,2028
+NI,NPIbyPlant,Beihai Chengde,7,2022,2028
+NI,NPIbyPlant,Bintang Timur Steel,4,2022,2025
+NI,NPIbyPlant,Bishi (Jingan),5,2022,2026
+NI,NPIbyPlant,CMMI Wonua Morone,7,2022,2028
+NI,NPIbyPlant,China Other NPI,7,2022,2028
+NI,NPIbyPlant,Delong,7,2022,2028
+NI,NPIbyPlant,Duta Huadi,5,2022,2026
+NI,NPIbyPlant,Fujian Desheng,7,2022,2028
+NI,NPIbyPlant,Halmahera Jaya,7,2022,2028
+NI,NPIbyPlant,Harita,7,2022,2028
+NI,NPIbyPlant,Henan Jinhui,7,2022,2028
+NI,NPIbyPlant,Huabao,5,2024,2028
+NI,NPIbyPlant,Jinchuan WP,7,2022,2028
+NI,NPIbyPlant,Jinyuan Nickel,7,2022,2028
+NI,NPIbyPlant,Metalindo,7,2022,2028
+NI,NPIbyPlant,PT Bumi,5,2024,2028
+NI,NPIbyPlant,PT Gunbuster,7,2022,2028
+NI,NPIbyPlant,PT Indoferro,5,2022,2026
+NI,NPIbyPlant,PT Kalimantan,6,2023,2028
+NI,NPIbyPlant,PT Sebuku,3,2026,2028
+NI,NPIbyPlant,Qingdao Zhongcheng,7,2022,2028
+NI,NPIbyPlant,Suqian Xiangxiang,7,2022,2028
+NI,NPIbyPlant,TOTAL ASIA,7,2022,2028
+NI,NPIbyPlant,TOTAL WORLD,7,2022,2028
+NI,NPIbyPlant,Total China,7,2022,2028
+NI,NPIbyPlant,Total Indonesia,7,2022,2028
+NI,NPIbyPlant,Tsingshan Dingxin,7,2022,2028
+NI,NPIbyPlant,Tsingshan Guangqing,7,2022,2028
+NI,NPIbyPlant,Tsingshan Morowali,7,2022,2028
+NI,NPIbyPlant,Virtue Dragon,7,2022,2028
+NI,NPIbyPlant,Wanxiang,4,2022,2025
+NI,NPIbyPlant,Weda Bay,7,2022,2028
+NI,NPIbyPlant,Xinhai,7,2022,2028
+NI,NPIbyPlant,Yangjiang Century,7,2022,2028
+NI,NiInPrecursors,Belgium,7,2022,2028
+NI,NiInPrecursors,Canada,7,2022,2028
+NI,NiInPrecursors,China,7,2022,2028
+NI,NiInPrecursors,Electric vehicles,1,2022,2022
+NI,NiInPrecursors,Energy storage systems,1,2022,2022
+NI,NiInPrecursors,Finland,7,2022,2028
+NI,NiInPrecursors,Global,7,2022,2028
+NI,NiInPrecursors,Indonesia,7,2022,2028
+NI,NiInPrecursors,Japan,7,2022,2028
+NI,NiInPrecursors,LMRO,1,2022,2022
+NI,NiInPrecursors,LNMO,1,2022,2022
+NI,NiInPrecursors,Motive products,1,2022,2022
+NI,NiInPrecursors,NCA,1,2022,2022
+NI,NiInPrecursors,NMC High-Ni,1,2022,2022
+NI,NiInPrecursors,NMC111,1,2022,2022
+NI,NiInPrecursors,NMC532,1,2022,2022
+NI,NiInPrecursors,NMC622,1,2022,2022
+NI,NiInPrecursors,NMC721,1,2022,2022
+NI,NiInPrecursors,NMC811,1,2022,2022
+NI,NiInPrecursors,NMCA,1,2022,2022
+NI,NiInPrecursors,NMX,1,2022,2022
+NI,NiInPrecursors,NiMH,1,2022,2022
+NI,NiInPrecursors,Non-Ni pCAMs,1,2022,2022
+NI,NiInPrecursors,Other Africa,7,2022,2028
+NI,NiInPrecursors,Other Asia,7,2022,2028
+NI,NiInPrecursors,Poland,7,2022,2028
+NI,NiInPrecursors,Portable electronics,1,2022,2022
+NI,NiInPrecursors,Power devices,1,2022,2022
+NI,NiInPrecursors,SSB-NMC811,1,2022,2022
+NI,NiInPrecursors,South Korea,7,2022,2028
+NI,NiInPrecursors,Sweden,7,2022,2028
+NI,NiInPrecursors,Total Africa,7,2022,2028
+NI,NiInPrecursors,Total Asia,7,2022,2028
+NI,NiInPrecursors,Total Europe,7,2022,2028
+NI,NiInPrecursors,Total Ni pCAMs,1,2022,2022
+NI,NiInPrecursors,Total North America,7,2022,2028
+NI,NiInPrecursors,USA,7,2022,2028
+NI,PriceChart,Pricechart,66,1975,2040
+NI,QuarterlyNiProductionByAsset,Ambatovy,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Ansheng,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Barro Alto,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Beihai Chengde,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Bintang Timur Steel,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Bishi (Jingan),4,2025,2028
+NI,QuarterlyNiProductionByAsset,Brixlegg,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Brunp,4,2025,2028
+NI,QuarterlyNiProductionByAsset,CMMI Wonua Morone,4,2025,2028
+NI,QuarterlyNiProductionByAsset,CNGR (Zhongwei),4,2025,2028
+NI,QuarterlyNiProductionByAsset,CNGR Chemicals,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Caofeidian,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Caofeidian Expansion,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Ceria Indotama,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Cerro Matoso,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Chengtun,4,2025,2028
+NI,QuarterlyNiProductionByAsset,China Other,4,2025,2028
+NI,QuarterlyNiProductionByAsset,China Other NPI,4,2025,2028
+NI,QuarterlyNiProductionByAsset,China Secondary,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Chongqing Chemicals,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Clydach,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Codemin,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Copper Cliff,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Delong,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Doniambo,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Duta Huadi,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Enerchem,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Excelsior,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Excelsior Chemical,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Falcondo,4,2025,2028
+NI,QuarterlyNiProductionByAsset,FeNi Halmahera,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Feni,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Ferro-Nickel,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Ferronikeli,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Fort Saskatchewan,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Fujian Desheng,4,2025,2028
+NI,QuarterlyNiProductionByAsset,GEM,4,2025,2028
+NI,QuarterlyNiProductionByAsset,GEM Hubei,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Germany Secondary,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Greatpower,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Guangxi Yinyi,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Guangxi Yinyi Chems,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Gwangyang,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Halmahera Jaya,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Harima,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Harita,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Harjavalta,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Harjavalta Chemicals,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Henan Jinhui,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Huabao,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Huaxiang,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Hyuga,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Japan Secondary,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Jiangmen Chancsun,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Jilin,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Jilin Chemicals,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Jinchuan,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Jinchuan Chemicals,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Jinchuan WP,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Jinyuan Nickel,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Koniambo,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Korea Other,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Kristiansand,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Kwinana Nickel,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Kwinana Sulphate,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Larco,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Long Harbour,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Lujia,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Maolian,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Maolian Chemicals,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Matsuzaka,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Metalindo,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Metallo,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Murrin Murrin,4,2025,2028
+NI,QuarterlyNiProductionByAsset,NPI,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Nickelhutte,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Nicomet,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Niihama,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Niihama Chemicals,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Nippon Yakin,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Obi,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Onca Puma,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Onsan,4,2025,2028
+NI,QuarterlyNiProductionByAsset,POSCO Chemicals,4,2025,2028
+NI,QuarterlyNiProductionByAsset,PT Bumi,4,2025,2028
+NI,QuarterlyNiProductionByAsset,PT Gunbuster,4,2025,2028
+NI,QuarterlyNiProductionByAsset,PT Indoferro,4,2025,2028
+NI,QuarterlyNiProductionByAsset,PT Kalimantan,4,2025,2028
+NI,QuarterlyNiProductionByAsset,PT Sebuku,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Pamco,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Pobuzhsky,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Pomalaa,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Pronico,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Punta Gorda,4,2025,2028
+NI,QuarterlyNiProductionByAsset,QMB,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Qingdao Zhongcheng,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Qingmeibang,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Quarter,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Quzhou Huayou,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Quzhou Huayou Chems,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Rustenburg,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Sandouville,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Severonickel,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Skouriotissa,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Spain Other,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Springs,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Suqian Xiangxiang,4,2025,2028
+NI,QuarterlyNiProductionByAsset,TOTAL AFRICA,4,2025,2028
+NI,QuarterlyNiProductionByAsset,TOTAL ASIA,4,2025,2028
+NI,QuarterlyNiProductionByAsset,TOTAL EUROPE,4,2025,2028
+NI,QuarterlyNiProductionByAsset,TOTAL LATIN AMERICA AND THE CARIBBEAN,4,2025,2028
+NI,QuarterlyNiProductionByAsset,TOTAL NORTH AMERICA,4,2025,2028
+NI,QuarterlyNiProductionByAsset,TOTAL OCEANIA,4,2025,2028
+NI,QuarterlyNiProductionByAsset,TOTAL RUSSIA AND THE CASPIAN,4,2025,2028
+NI,QuarterlyNiProductionByAsset,TOTAL WORLD,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Tagaung Taung,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Tengyuan,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Terrafame,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Thakadu,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Torecom,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total Australia,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total Austria,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total Belgium,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total Brazil,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total Canada,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total China,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total Colombia,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total Cuba,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total Cyprus,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total Dominican Republic,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total Finland,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total France,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total Germany,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total Greece,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total Guatemala,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total India,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total Indonesia,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total Japan,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total Kosovo,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total Madagascar,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total Myanmar,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total New Caledonia,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total North Macedonia,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total Norway,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total Russian Federation,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total South Africa,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total South Korea,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total Spain,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total Ukraine,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total United Kingdom,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Total United States,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Treibacher,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Tsingshan Cathode,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Tsingshan Dingxin,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Tsingshan Guangqing,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Tsingshan Morowali,4,2025,2028
+NI,QuarterlyNiProductionByAsset,USA Other,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Ulsan,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Umicore,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Virtue Dragon,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Wanxiang,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Weda Bay,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Weiming Shengqing,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Weiming Shengqing Chemicals,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Xinhai,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Xinjiang Fukang,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Xinxiang Jien,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Yangjiang Century,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Yantai Kaishi,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Yantai Kaishi Chemical,4,2025,2028
+NI,QuarterlyNiProductionByAsset,Yongheng,4,2025,2028
+NI,QuarterlyNiProductionByAsset,of which: NPI,4,2025,2028
+NI,RefineryProduction,Australia,7,2022,2028
+NI,RefineryProduction,Austria,7,2022,2028
+NI,RefineryProduction,Belgium,7,2022,2028
+NI,RefineryProduction,Brazil,7,2022,2028
+NI,RefineryProduction,Canada,7,2022,2028
+NI,RefineryProduction,China,7,2022,2028
+NI,RefineryProduction,Colombia,7,2022,2028
+NI,RefineryProduction,Cuba,7,2022,2028
+NI,RefineryProduction,Cyprus,7,2022,2028
+NI,RefineryProduction,Disruption allowance + probable projects,4,2025,2028
+NI,RefineryProduction,Dominican Republic,7,2022,2028
+NI,RefineryProduction,Finland,7,2022,2028
+NI,RefineryProduction,Forecast refinery production,7,2022,2028
+NI,RefineryProduction,France,7,2022,2028
+NI,RefineryProduction,Germany,7,2022,2028
+NI,RefineryProduction,Greece,7,2022,2028
+NI,RefineryProduction,Guatemala,7,2022,2028
+NI,RefineryProduction,India,7,2022,2028
+NI,RefineryProduction,Indonesia,7,2022,2028
+NI,RefineryProduction,Japan,7,2022,2028
+NI,RefineryProduction,Kosovo,7,2022,2028
+NI,RefineryProduction,Madagascar,7,2022,2028
+NI,RefineryProduction,Myanmar,7,2022,2028
+NI,RefineryProduction,New Caledonia,7,2022,2028
+NI,RefineryProduction,North Macedonia,7,2022,2028
+NI,RefineryProduction,Norway,7,2022,2028
+NI,RefineryProduction,Philippines,7,2022,2028
+NI,RefineryProduction,Russian Federation,7,2022,2028
+NI,RefineryProduction,South Africa,7,2022,2028
+NI,RefineryProduction,South Korea,7,2022,2028
+NI,RefineryProduction,Spain,7,2022,2028
+NI,RefineryProduction,Total Africa,7,2022,2028
+NI,RefineryProduction,Total Asia,7,2022,2028
+NI,RefineryProduction,Total Europe,7,2022,2028
+NI,RefineryProduction,Total Latin America & Caribbean,7,2022,2028
+NI,RefineryProduction,Total North America,7,2022,2028
+NI,RefineryProduction,Total Oceania,7,2022,2028
+NI,RefineryProduction,Total Russia and the Caspian,7,2022,2028
+NI,RefineryProduction,Total World,7,2022,2028
+NI,RefineryProduction,Ukraine,7,2022,2028
+NI,RefineryProduction,United Kingdom,7,2022,2028
+NI,RefineryProduction,United States,7,2022,2028
+NI,RefineryProduction,Venezuela,7,2022,2028
+NI,RefineryProduction,Zimbabwe,7,2022,2028
+NI,RefinerybyPlant,Ambatovy,7,2022,2028
+NI,RefinerybyPlant,Ansheng,6,2023,2028
+NI,RefinerybyPlant,Barro Alto,7,2022,2028
+NI,RefinerybyPlant,Beihai Chengde,7,2022,2028
+NI,RefinerybyPlant,Bintang Timur Steel,4,2022,2025
+NI,RefinerybyPlant,Bishi (Jingan),5,2022,2026
+NI,RefinerybyPlant,Brixlegg,7,2022,2028
+NI,RefinerybyPlant,Brunp,7,2022,2028
+NI,RefinerybyPlant,CMMI Wonua Morone,7,2022,2028
+NI,RefinerybyPlant,CNGR (Zhongwei),6,2023,2028
+NI,RefinerybyPlant,CNGR Chemicals,7,2022,2028
+NI,RefinerybyPlant,Caofeidian,7,2022,2028
+NI,RefinerybyPlant,Caofeidian Expansion,3,2026,2028
+NI,RefinerybyPlant,Ceria Indotama,7,2022,2028
+NI,RefinerybyPlant,Cerro Matoso,7,2022,2028
+NI,RefinerybyPlant,Chengtun,5,2024,2028
+NI,RefinerybyPlant,China Other,7,2022,2028
+NI,RefinerybyPlant,China Other NPI,7,2022,2028
+NI,RefinerybyPlant,China Secondary,7,2022,2028
+NI,RefinerybyPlant,Chongqing Chemicals,7,2022,2028
+NI,RefinerybyPlant,Clydach,7,2022,2028
+NI,RefinerybyPlant,Codemin,7,2022,2028
+NI,RefinerybyPlant,Copper Cliff,7,2022,2028
+NI,RefinerybyPlant,Delong,7,2022,2028
+NI,RefinerybyPlant,Doniambo,7,2022,2028
+NI,RefinerybyPlant,Duta Huadi,5,2022,2026
+NI,RefinerybyPlant,Enerchem,7,2022,2028
+NI,RefinerybyPlant,Excelsior,3,2026,2028
+NI,RefinerybyPlant,Excelsior Chemical,3,2026,2028
+NI,RefinerybyPlant,Falcondo,7,2022,2028
+NI,RefinerybyPlant,FeNi Halmahera,2,2027,2028
+NI,RefinerybyPlant,Feni,7,2022,2028
+NI,RefinerybyPlant,Ferro-Nickel,7,2022,2028
+NI,RefinerybyPlant,Ferronikeli,7,2022,2028
+NI,RefinerybyPlant,Fort Saskatchewan,5,2022,2026
+NI,RefinerybyPlant,Fujian Desheng,7,2022,2028
+NI,RefinerybyPlant,GEM,7,2022,2028
+NI,RefinerybyPlant,GEM Hubei,6,2023,2028
+NI,RefinerybyPlant,Germany Secondary,7,2022,2028
+NI,RefinerybyPlant,Greatpower,6,2023,2028
+NI,RefinerybyPlant,Guangxi Yinyi,2,2024,2025
+NI,RefinerybyPlant,Guangxi Yinyi Chems,5,2022,2026
+NI,RefinerybyPlant,Gwangyang,7,2022,2028
+NI,RefinerybyPlant,Halmahera Jaya,7,2022,2028
+NI,RefinerybyPlant,Harima,7,2022,2028
+NI,RefinerybyPlant,Harita,7,2022,2028
+NI,RefinerybyPlant,Harjavalta,7,2022,2028
+NI,RefinerybyPlant,Harjavalta Chemicals,7,2022,2028
+NI,RefinerybyPlant,Henan Jinhui,7,2022,2028
+NI,RefinerybyPlant,Huabao,5,2024,2028
+NI,RefinerybyPlant,Huaxiang,4,2025,2028
+NI,RefinerybyPlant,Hyuga,7,2022,2028
+NI,RefinerybyPlant,Japan Secondary,7,2022,2028
+NI,RefinerybyPlant,Jiangmen Chancsun,7,2022,2028
+NI,RefinerybyPlant,Jilin,7,2022,2028
+NI,RefinerybyPlant,Jilin Chemicals,7,2022,2028
+NI,RefinerybyPlant,Jinchuan,7,2022,2028
+NI,RefinerybyPlant,Jinchuan Chemicals,7,2022,2028
+NI,RefinerybyPlant,Jinchuan WP,7,2022,2028
+NI,RefinerybyPlant,Jinyuan Nickel,7,2022,2028
+NI,RefinerybyPlant,Koniambo,7,2022,2028
+NI,RefinerybyPlant,Korea Other,7,2022,2028
+NI,RefinerybyPlant,Kristiansand,7,2022,2028
+NI,RefinerybyPlant,Kwinana Nickel,7,2022,2028
+NI,RefinerybyPlant,Kwinana Sulphate,7,2022,2028
+NI,RefinerybyPlant,Larco,7,2022,2028
+NI,RefinerybyPlant,Long Harbour,7,2022,2028
+NI,RefinerybyPlant,Lujia,6,2023,2028
+NI,RefinerybyPlant,Maolian,3,2022,2024
+NI,RefinerybyPlant,Maolian Chemicals,7,2022,2028
+NI,RefinerybyPlant,Matsuzaka,7,2022,2028
+NI,RefinerybyPlant,Metalindo,7,2022,2028
+NI,RefinerybyPlant,Metallo,7,2022,2028
+NI,RefinerybyPlant,Murrin Murrin,7,2022,2028
+NI,RefinerybyPlant,NPI,7,2022,2028
+NI,RefinerybyPlant,Nickelhutte,7,2022,2028
+NI,RefinerybyPlant,Nicomet,7,2022,2028
+NI,RefinerybyPlant,Niihama,7,2022,2028
+NI,RefinerybyPlant,Niihama Chemicals,7,2022,2028
+NI,RefinerybyPlant,Nippon Yakin,7,2022,2028
+NI,RefinerybyPlant,Obi,7,2022,2028
+NI,RefinerybyPlant,Onca Puma,7,2022,2028
+NI,RefinerybyPlant,Onsan,2,2027,2028
+NI,RefinerybyPlant,POSCO Chemicals,6,2023,2028
+NI,RefinerybyPlant,PT Bumi,5,2024,2028
+NI,RefinerybyPlant,PT Gunbuster,7,2022,2028
+NI,RefinerybyPlant,PT Indoferro,5,2022,2026
+NI,RefinerybyPlant,PT Kalimantan,6,2023,2028
+NI,RefinerybyPlant,PT Sebuku,3,2026,2028
+NI,RefinerybyPlant,Pamco,7,2022,2028
+NI,RefinerybyPlant,Pobuzhsky,7,2022,2028
+NI,RefinerybyPlant,Pomalaa,7,2022,2028
+NI,RefinerybyPlant,Pronico,7,2022,2028
+NI,RefinerybyPlant,Punta Gorda,7,2022,2028
+NI,RefinerybyPlant,QMB,4,2025,2028
+NI,RefinerybyPlant,Qingdao Zhongcheng,7,2022,2028
+NI,RefinerybyPlant,Qingmeibang,4,2025,2028
+NI,RefinerybyPlant,Quzhou Huayou,7,2022,2028
+NI,RefinerybyPlant,Quzhou Huayou Chems,7,2022,2028
+NI,RefinerybyPlant,Rustenburg,7,2022,2028
+NI,RefinerybyPlant,Sandouville,7,2022,2028
+NI,RefinerybyPlant,Severonickel,7,2022,2028
+NI,RefinerybyPlant,Skouriotissa,7,2022,2028
+NI,RefinerybyPlant,Spain Other,7,2022,2028
+NI,RefinerybyPlant,Springs,7,2022,2028
+NI,RefinerybyPlant,Suqian Xiangxiang,7,2022,2028
+NI,RefinerybyPlant,TOTAL AFRICA,7,2022,2028
+NI,RefinerybyPlant,TOTAL ASIA,7,2022,2028
+NI,RefinerybyPlant,TOTAL EUROPE,7,2022,2028
+NI,RefinerybyPlant,TOTAL LATIN AMERICA AND THE CARIBBEAN,7,2022,2028
+NI,RefinerybyPlant,TOTAL NORTH AMERICA,7,2022,2028
+NI,RefinerybyPlant,TOTAL OCEANIA,7,2022,2028
+NI,RefinerybyPlant,TOTAL RUSSIA AND THE CASPIAN,7,2022,2028
+NI,RefinerybyPlant,TOTAL WORLD,7,2022,2028
+NI,RefinerybyPlant,Tagaung Taung,4,2022,2025
+NI,RefinerybyPlant,Tengyuan,4,2025,2028
+NI,RefinerybyPlant,Terrafame,7,2022,2028
+NI,RefinerybyPlant,Thakadu,7,2022,2028
+NI,RefinerybyPlant,Torecom,6,2023,2028
+NI,RefinerybyPlant,Total Australia,7,2022,2028
+NI,RefinerybyPlant,Total Austria,7,2022,2028
+NI,RefinerybyPlant,Total Belgium,7,2022,2028
+NI,RefinerybyPlant,Total Brazil,7,2022,2028
+NI,RefinerybyPlant,Total Canada,7,2022,2028
+NI,RefinerybyPlant,Total China,7,2022,2028
+NI,RefinerybyPlant,Total Colombia,7,2022,2028
+NI,RefinerybyPlant,Total Cuba,7,2022,2028
+NI,RefinerybyPlant,Total Cyprus,7,2022,2028
+NI,RefinerybyPlant,Total Dominican Republic,7,2022,2028
+NI,RefinerybyPlant,Total Finland,7,2022,2028
+NI,RefinerybyPlant,Total France,7,2022,2028
+NI,RefinerybyPlant,Total Germany,7,2022,2028
+NI,RefinerybyPlant,Total Greece,7,2022,2028
+NI,RefinerybyPlant,Total Guatemala,7,2022,2028
+NI,RefinerybyPlant,Total India,7,2022,2028
+NI,RefinerybyPlant,Total Indonesia,7,2022,2028
+NI,RefinerybyPlant,Total Japan,7,2022,2028
+NI,RefinerybyPlant,Total Kosovo,7,2022,2028
+NI,RefinerybyPlant,Total Madagascar,7,2022,2028
+NI,RefinerybyPlant,Total Myanmar,7,2022,2028
+NI,RefinerybyPlant,Total New Caledonia,7,2022,2028
+NI,RefinerybyPlant,Total North Macedonia,7,2022,2028
+NI,RefinerybyPlant,Total Norway,7,2022,2028
+NI,RefinerybyPlant,Total Russian Federation,7,2022,2028
+NI,RefinerybyPlant,Total South Africa,7,2022,2028
+NI,RefinerybyPlant,Total South Korea,7,2022,2028
+NI,RefinerybyPlant,Total Spain,7,2022,2028
+NI,RefinerybyPlant,Total Ukraine,7,2022,2028
+NI,RefinerybyPlant,Total United Kingdom,7,2022,2028
+NI,RefinerybyPlant,Total United States,7,2022,2028
+NI,RefinerybyPlant,Treibacher,7,2022,2028
+NI,RefinerybyPlant,Tsingshan Cathode,6,2023,2028
+NI,RefinerybyPlant,Tsingshan Dingxin,7,2022,2028
+NI,RefinerybyPlant,Tsingshan Guangqing,7,2022,2028
+NI,RefinerybyPlant,Tsingshan Morowali,7,2022,2028
+NI,RefinerybyPlant,USA Other,7,2022,2028
+NI,RefinerybyPlant,Ulsan,3,2026,2028
+NI,RefinerybyPlant,Umicore,7,2022,2028
+NI,RefinerybyPlant,Virtue Dragon,7,2022,2028
+NI,RefinerybyPlant,Wanxiang,4,2022,2025
+NI,RefinerybyPlant,Weda Bay,7,2022,2028
+NI,RefinerybyPlant,Weiming Shengqing,5,2024,2028
+NI,RefinerybyPlant,Weiming Shengqing Chemicals,4,2025,2028
+NI,RefinerybyPlant,Xinhai,7,2022,2028
+NI,RefinerybyPlant,Xinjiang Fukang,7,2022,2028
+NI,RefinerybyPlant,Xinxiang Jien,7,2022,2028
+NI,RefinerybyPlant,Yangjiang Century,7,2022,2028
+NI,RefinerybyPlant,Yantai Kaishi,3,2022,2024
+NI,RefinerybyPlant,Yantai Kaishi Chemical,3,2022,2024
+NI,RefinerybyPlant,Yongheng,5,2024,2028
+NI,RefinerybyPlant,of which: NPI,7,2022,2028
+NI,RoWBalance,% change,54,1987,2040
+NI,RoWBalance,Actual/forecast mine output,55,1986,2040
+NI,RoWBalance,Actual/forecast primary refined output,55,1986,2040
+NI,RoWBalance,Actual/forecast smelter output,45,1996,2040
+NI,RoWBalance,Actual/forecast total refined output,55,1986,2040
+NI,RoWBalance,Additional adjustment (B),20,2021,2040
+NI,RoWBalance,Additional adjustment (D),20,2021,2040
+NI,RoWBalance,Additional adjustment (F),20,2021,2040
+NI,RoWBalance,Balance,46,1995,2040
+NI,RoWBalance,Base case mine output,55,1986,2040
+NI,RoWBalance,Base case refined output,55,1986,2040
+NI,RoWBalance,Base case smelter output,45,1996,2040
+NI,RoWBalance,Consumption,46,1995,2040
+NI,RoWBalance,DLA/ Japan government sales,17,1993,2009
+NI,RoWBalance,Exports to China,55,1986,2040
+NI,RoWBalance,Forecast disruption allowance,20,2021,2040
+NI,RoWBalance,Forecast mine supply adjustment (A+B),20,2021,2040
+NI,RoWBalance,Forecast primary supply adjustment (E+F),20,2021,2040
+NI,RoWBalance,Forecast smelter supply adjustment (C+D),20,2021,2040
+NI,RoWBalance,Highly probable projects,20,2021,2040
+NI,RoWBalance,Imports from China,55,1986,2040
+NI,RoWBalance,Mine,57,1984,2040
+NI,RoWBalance,Mine Production/Capability,55,1986,2040
+NI,RoWBalance,Net Trade,55,1986,2040
+NI,RoWBalance,Probable mine projects (A),20,2021,2040
+NI,RoWBalance,Probable refinery projects (E),20,2021,2040
+NI,RoWBalance,Probable smelter projects (C),20,2021,2040
+NI,RoWBalance,Refined Production/Capability,55,1986,2040
+NI,RoWBalance,Refined capacity,50,1991,2040
+NI,RoWBalance,Refinery,57,1984,2040
+NI,RoWBalance,Refinery capacity utilisation,50,1991,2040
+NI,RoWBalance,Refinery secondary feed already included,45,1996,2040
+NI,RoWBalance,Secondary refined output from EV batteries,18,2023,2040
+NI,RoWBalance,Smelter,57,1984,2040
+NI,RoWBalance,Smelter Production/Capability,45,1996,2040
+NI,RoWBalance,Smelter capacity,45,1996,2040
+NI,RoWBalance,Smelter capacity utilisation,45,1996,2040
+NI,RoWBalance,Sulphide,55,1986,2040
+NI,RoWBalance,Total Nickel Supply,55,1986,2040
+NI,RoWBalance,of which:   Laterite,55,1986,2040
+NI,RoWBalance,of which: FeNi / NPI,55,1986,2040
+NI,RoWBalance,of which: from Secondary,26,2015,2040
+NI,SmelterProduction,% change,7,2022,2028
+NI,SmelterProduction,Australia,7,2022,2028
+NI,SmelterProduction,Austria,7,2022,2028
+NI,SmelterProduction,Botswana,7,2022,2028
+NI,SmelterProduction,Brazil,7,2022,2028
+NI,SmelterProduction,Canada,7,2022,2028
+NI,SmelterProduction,China,7,2022,2028
+NI,SmelterProduction,Colombia,7,2022,2028
+NI,SmelterProduction,Cuba,7,2022,2028
+NI,SmelterProduction,Cyprus,7,2022,2028
+NI,SmelterProduction,Dominican Republic,7,2022,2028
+NI,SmelterProduction,Finland,7,2022,2028
+NI,SmelterProduction,Germany,7,2022,2028
+NI,SmelterProduction,Greece,7,2022,2028
+NI,SmelterProduction,Guatemala,7,2022,2028
+NI,SmelterProduction,Indonesia,7,2022,2028
+NI,SmelterProduction,Japan,7,2022,2028
+NI,SmelterProduction,Kosovo,7,2022,2028
+NI,SmelterProduction,Madagascar,7,2022,2028
+NI,SmelterProduction,Myanmar,7,2022,2028
+NI,SmelterProduction,New Caledonia,7,2022,2028
+NI,SmelterProduction,North Macedonia,7,2022,2028
+NI,SmelterProduction,Papua New Guinea,7,2022,2028
+NI,SmelterProduction,Philippines,7,2022,2028
+NI,SmelterProduction,Russian Federation,7,2022,2028
+NI,SmelterProduction,South Africa,7,2022,2028
+NI,SmelterProduction,South Korea,7,2022,2028
+NI,SmelterProduction,Total Africa,7,2022,2028
+NI,SmelterProduction,Total Asia,7,2022,2028
+NI,SmelterProduction,Total Europe,7,2022,2028
+NI,SmelterProduction,Total Latin America & Caribbean,7,2022,2028
+NI,SmelterProduction,Total North America,7,2022,2028
+NI,SmelterProduction,Total Oceania,7,2022,2028
+NI,SmelterProduction,Total Russia & Caspian,7,2022,2028
+NI,SmelterProduction,Total World,7,2022,2028
+NI,SmelterProduction,Turkey,7,2022,2028
+NI,SmelterProduction,Ukraine,7,2022,2028
+NI,SmelterProduction,United States,7,2022,2028
+NI,SmelterProduction,Venezuela,7,2022,2028
+NI,SmelterProduction,Zimbabwe,7,2022,2028
+NI,SmelterbyPlant,Ambatovy,7,2022,2028
+NI,SmelterbyPlant,Ansheng,6,2023,2028
+NI,SmelterbyPlant,Barro Alto,7,2022,2028
+NI,SmelterbyPlant,Beihai Chengde,7,2022,2028
+NI,SmelterbyPlant,Bintang Timur Steel,4,2022,2025
+NI,SmelterbyPlant,Bishi (Jingan),5,2022,2026
+NI,SmelterbyPlant,Blue Sparking Energy,3,2026,2028
+NI,SmelterbyPlant,CMMI Wonua Morone,7,2022,2028
+NI,SmelterbyPlant,Ceria Indotama,7,2022,2028
+NI,SmelterbyPlant,Cerro Matoso,7,2022,2028
+NI,SmelterbyPlant,Chengdu,7,2022,2028
+NI,SmelterbyPlant,China Other NPI,7,2022,2028
+NI,SmelterbyPlant,Codemin,7,2022,2028
+NI,SmelterbyPlant,Coral Bay (Rio Tuba),7,2022,2028
+NI,SmelterbyPlant,Delong,7,2022,2028
+NI,SmelterbyPlant,Doniambo,7,2022,2028
+NI,SmelterbyPlant,Duta Huadi,5,2022,2026
+NI,SmelterbyPlant,Excelsior,3,2026,2028
+NI,SmelterbyPlant,Falconbridge,7,2022,2028
+NI,SmelterbyPlant,Falcondo,7,2022,2028
+NI,SmelterbyPlant,FeNi Halmahera,2,2027,2028
+NI,SmelterbyPlant,Feni,7,2022,2028
+NI,SmelterbyPlant,Ferro-Nickel,7,2022,2028
+NI,SmelterbyPlant,Fujian Desheng,7,2022,2028
+NI,SmelterbyPlant,Gordes,4,2022,2025
+NI,SmelterbyPlant,Goro,7,2022,2028
+NI,SmelterbyPlant,Guangqing,3,2026,2028
+NI,SmelterbyPlant,Gwangyang,7,2022,2028
+NI,SmelterbyPlant,Gwangyang Matte,6,2023,2028
+NI,SmelterbyPlant,Halmahera Jaya,7,2022,2028
+NI,SmelterbyPlant,Harita,7,2022,2028
+NI,SmelterbyPlant,Harjavalta,7,2022,2028
+NI,SmelterbyPlant,Henan Jinhui,7,2022,2028
+NI,SmelterbyPlant,Huabao,5,2024,2028
+NI,SmelterbyPlant,Huaqing,7,2022,2028
+NI,SmelterbyPlant,Hyuga,7,2022,2028
+NI,SmelterbyPlant,Indonesian Matte,7,2022,2028
+NI,SmelterbyPlant,Jilin,7,2022,2028
+NI,SmelterbyPlant,Jinchuan,7,2022,2028
+NI,SmelterbyPlant,Jinchuan WP,7,2022,2028
+NI,SmelterbyPlant,Jinyuan Nickel,7,2022,2028
+NI,SmelterbyPlant,Kalatongke,7,2022,2028
+NI,SmelterbyPlant,Kalgoorlie,7,2022,2028
+NI,SmelterbyPlant,Kolaka,4,2025,2028
+NI,SmelterbyPlant,Koniambo,7,2022,2028
+NI,SmelterbyPlant,Larco,7,2022,2028
+NI,SmelterbyPlant,Long Harbour,7,2022,2028
+NI,SmelterbyPlant,MHP,7,2022,2028
+NI,SmelterbyPlant,MSP,7,2022,2028
+NI,SmelterbyPlant,Marikana,7,2022,2028
+NI,SmelterbyPlant,Matte,7,2022,2028
+NI,SmelterbyPlant,Metalindo,7,2022,2028
+NI,SmelterbyPlant,Moa,7,2022,2028
+NI,SmelterbyPlant,Morowali HPAL,3,2026,2028
+NI,SmelterbyPlant,Murrin Murrin,7,2022,2028
+NI,SmelterbyPlant,NPI,7,2022,2028
+NI,SmelterbyPlant,Nickelhutte,7,2022,2028
+NI,SmelterbyPlant,Nippon Yakin - Oheyama,7,2022,2028
+NI,SmelterbyPlant,Norilsk,7,2022,2028
+NI,SmelterbyPlant,Obi,7,2022,2028
+NI,SmelterbyPlant,Onca Puma,7,2022,2028
+NI,SmelterbyPlant,Oxide,7,2022,2028
+NI,SmelterbyPlant,PT Aneka - Pomalaa,7,2022,2028
+NI,SmelterbyPlant,PT Bumi,5,2024,2028
+NI,SmelterbyPlant,PT Gunbuster,7,2022,2028
+NI,SmelterbyPlant,PT Huafei,6,2023,2028
+NI,SmelterbyPlant,PT Indoferro,5,2022,2026
+NI,SmelterbyPlant,PT Kalimantan,6,2023,2028
+NI,SmelterbyPlant,PT Sebuku,3,2026,2028
+NI,SmelterbyPlant,PT Vale - Soroako,7,2022,2028
+NI,SmelterbyPlant,Pamco - Hachinohe,7,2022,2028
+NI,SmelterbyPlant,Piaui,3,2022,2024
+NI,SmelterbyPlant,Pobuzhsky,7,2022,2028
+NI,SmelterbyPlant,Pronico,7,2022,2028
+NI,SmelterbyPlant,Punta Gorda,7,2022,2028
+NI,SmelterbyPlant,QMB,7,2022,2028
+NI,SmelterbyPlant,Qingdao Zhongcheng,7,2022,2028
+NI,SmelterbyPlant,Ramu,7,2022,2028
+NI,SmelterbyPlant,Ravensthorpe (FQM),7,2022,2028
+NI,SmelterbyPlant,Selous,7,2022,2028
+NI,SmelterbyPlant,Skouriotissa,7,2022,2028
+NI,SmelterbyPlant,Sorowako HPAL,2,2027,2028
+NI,SmelterbyPlant,Springs,7,2022,2028
+NI,SmelterbyPlant,Sulawesi Nickel Cobalt (SLNC),3,2026,2028
+NI,SmelterbyPlant,Sulphate,7,2022,2028
+NI,SmelterbyPlant,Suqian Xiangxiang,7,2022,2028
+NI,SmelterbyPlant,TGEM,6,2023,2028
+NI,SmelterbyPlant,TOTAL AFRICA,7,2022,2028
+NI,SmelterbyPlant,TOTAL ASIA,7,2022,2028
+NI,SmelterbyPlant,TOTAL EUROPE,7,2022,2028
+NI,SmelterbyPlant,TOTAL LATIN AMERICA AND THE CARIBBEAN,7,2022,2028
+NI,SmelterbyPlant,TOTAL NORTH AMERICA,7,2022,2028
+NI,SmelterbyPlant,TOTAL OCEANIA,7,2022,2028
+NI,SmelterbyPlant,TOTAL RUSSIA AND THE CASPIAN,7,2022,2028
+NI,SmelterbyPlant,TOTAL WORLD,7,2022,2028
+NI,SmelterbyPlant,Taganito,7,2022,2028
+NI,SmelterbyPlant,Tagaung Taung,4,2022,2025
+NI,SmelterbyPlant,Terrafame,7,2022,2028
+NI,SmelterbyPlant,Total Australia,7,2022,2028
+NI,SmelterbyPlant,Total Austria,7,2022,2028
+NI,SmelterbyPlant,Total Brazil,7,2022,2028
+NI,SmelterbyPlant,Total Canada,7,2022,2028
+NI,SmelterbyPlant,Total China,7,2022,2028
+NI,SmelterbyPlant,Total Colombia,7,2022,2028
+NI,SmelterbyPlant,Total Cuba,7,2022,2028
+NI,SmelterbyPlant,Total Cyprus,7,2022,2028
+NI,SmelterbyPlant,Total Dominican Republic,7,2022,2028
+NI,SmelterbyPlant,Total Finland,7,2022,2028
+NI,SmelterbyPlant,Total Germany,7,2022,2028
+NI,SmelterbyPlant,Total Greece,7,2022,2028
+NI,SmelterbyPlant,Total Guatemala,7,2022,2028
+NI,SmelterbyPlant,Total Indonesia,7,2022,2028
+NI,SmelterbyPlant,Total Japan,7,2022,2028
+NI,SmelterbyPlant,Total Madagascar,7,2022,2028
+NI,SmelterbyPlant,Total Myanmar,7,2022,2028
+NI,SmelterbyPlant,Total New Caledonia,7,2022,2028
+NI,SmelterbyPlant,Total North Macedonia,7,2022,2028
+NI,SmelterbyPlant,Total Papua New Guinea,7,2022,2028
+NI,SmelterbyPlant,Total Philippines,7,2022,2028
+NI,SmelterbyPlant,Total Russian Federation,7,2022,2028
+NI,SmelterbyPlant,Total South Africa,7,2022,2028
+NI,SmelterbyPlant,Total South Korea,7,2022,2028
+NI,SmelterbyPlant,Total Turkey,7,2022,2028
+NI,SmelterbyPlant,Total Ukraine,7,2022,2028
+NI,SmelterbyPlant,Total Zimbabwe,7,2022,2028
+NI,SmelterbyPlant,Treibacher,7,2022,2028
+NI,SmelterbyPlant,Tsingshan Dingxin,7,2022,2028
+NI,SmelterbyPlant,Tsingshan Guangqing,7,2022,2028
+NI,SmelterbyPlant,Tsingshan Morowali,7,2022,2028
+NI,SmelterbyPlant,Vale Sudbury,7,2022,2028
+NI,SmelterbyPlant,Virtue Dragon,7,2022,2028
+NI,SmelterbyPlant,Wanxiang,4,2022,2025
+NI,SmelterbyPlant,Waterval,7,2022,2028
+NI,SmelterbyPlant,Weda Bay,7,2022,2028
+NI,SmelterbyPlant,Xinhai,7,2022,2028
+NI,SmelterbyPlant,Xinjiang ZhongXin,7,2022,2028
+NI,SmelterbyPlant,Yangjiang Century,7,2022,2028
+NI,SmelterbyPlant,Zondereinde,7,2022,2028
+NI,SmelterbyPlant,of which: NPI,7,2022,2028
+NI,StainlessProduction,Africa:,7,2022,2028
+NI,StainlessProduction,Asia:,7,2022,2028
+NI,StainlessProduction,Austria,7,2022,2028
+NI,StainlessProduction,Belgium,7,2022,2028
+NI,StainlessProduction,Brazil,7,2022,2028
+NI,StainlessProduction,Canada,7,2022,2028
+NI,StainlessProduction,Caribbean,7,2022,2028
+NI,StainlessProduction,China,7,2022,2028
+NI,StainlessProduction,Cuba,7,2022,2028
+NI,StainlessProduction,Czech Republic,7,2022,2028
+NI,StainlessProduction,Europe:,7,2022,2028
+NI,StainlessProduction,Finland,7,2022,2028
+NI,StainlessProduction,France,7,2022,2028
+NI,StainlessProduction,Germany,7,2022,2028
+NI,StainlessProduction,Global:,7,2022,2028
+NI,StainlessProduction,India,7,2022,2028
+NI,StainlessProduction,Indonesia,7,2022,2028
+NI,StainlessProduction,Italy,7,2022,2028
+NI,StainlessProduction,Japan,7,2022,2028
+NI,StainlessProduction,North America:,7,2022,2028
+NI,StainlessProduction,Other,7,2022,2028
+NI,StainlessProduction,Poland,7,2022,2028
+NI,StainlessProduction,Romania,7,2022,2028
+NI,StainlessProduction,Russia & Caspian:,7,2022,2028
+NI,StainlessProduction,Russian Federation,7,2022,2028
+NI,StainlessProduction,Slovenia,7,2022,2028
+NI,StainlessProduction,South Africa,7,2022,2028
+NI,StainlessProduction,South Korea,7,2022,2028
+NI,StainlessProduction,Spain,7,2022,2028
+NI,StainlessProduction,Sweden,7,2022,2028
+NI,StainlessProduction,Taiwan,7,2022,2028
+NI,StainlessProduction,Ukraine,7,2022,2028
+NI,StainlessProduction,United Kingdom,7,2022,2028
+NI,StainlessProduction,United States,7,2022,2028

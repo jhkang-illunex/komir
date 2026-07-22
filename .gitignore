@@ -29,3 +29,10 @@ geo/collectors/_gkg_masterfilelist_cache.txt
 
 # 중첩 git (로컬에서 삭제했으면 무시됨)
 mineral_supply_risk/.git/
+
+# 2026-07-22: mine_ws 최상위(구 작업위치)에서 이관한 원본 참조자료(KOMIS·WoodMac·Argus·
+# USGS·EU SCRREEN 등 제3자 보고서, 35GB) — git에는 부적합(대용량·저작권), 로컬 보관만.
+# 우리가 작성한 산출물(claude_output/)만 추적한다.
+documents/*
+!documents/claude_output/
+documents/dev/.git/

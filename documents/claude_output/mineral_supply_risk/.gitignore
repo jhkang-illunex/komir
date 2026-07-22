@@ -1,0 +1,7 @@
+.env
+data/
+outputs/
+*.duckdb
+*.duckdb.wal
+__pycache__/
+*.pyc

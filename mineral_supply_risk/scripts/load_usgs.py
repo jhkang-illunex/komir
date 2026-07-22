@@ -19,7 +19,7 @@ import pandas as pd
 from msr.config import DB_PATH
 
 CC_MAP = {"Copper": "CU", "Nickel": "NI", "Cobalt": "CO", "Lithium": "LI", "Rare earths": "REE"}
-DEFAULT_GLOB = "/home/nuri/dev/git/ws/mine_ws/documents/3. 생산매장량(USGS)/0. USGS_엑셀정리본_*.xlsx"
+DEFAULT_GLOB = "/home/nuri/dev/git/ws/mine_ws/komir/documents/3. 생산매장량(USGS)/0. USGS_엑셀정리본_*.xlsx"
 
 
 def _hhi(shares: pd.Series) -> float:

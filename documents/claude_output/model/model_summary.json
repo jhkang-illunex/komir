@@ -1,0 +1,67 @@
+{
+  "results": [
+    {
+      "model": "Naive(광종평균)",
+      "MAE": 17.81,
+      "RMSE": 19.79,
+      "R2": 0.278
+    },
+    {
+      "model": "Ridge(+광종더미)",
+      "MAE": 16.43,
+      "RMSE": 19.04,
+      "R2": 0.331
+    },
+    {
+      "model": "HistGBM(+광종)",
+      "MAE": 14.28,
+      "RMSE": 19.43,
+      "R2": 0.303
+    }
+  ],
+  "auc_crisis": 0.977,
+  "n_train": 240,
+  "n_test": 72,
+  "importance": [
+    [
+      "import_hhi",
+      0.465
+    ],
+    [
+      "ref_price",
+      0.302
+    ],
+    [
+      "spread_pct",
+      0.221
+    ],
+    [
+      "commodity_code",
+      0.021
+    ],
+    [
+      "geo_macro",
+      0.012
+    ],
+    [
+      "geopolitical_risk",
+      0.004
+    ],
+    [
+      "import_cagr3",
+      0.0
+    ],
+    [
+      "production_hhi",
+      0.0
+    ],
+    [
+      "volatility_12w",
+      -0.004
+    ],
+    [
+      "import_yoy",
+      -0.041
+    ]
+  ]
+}
