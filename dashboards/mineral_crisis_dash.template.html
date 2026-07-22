@@ -103,7 +103,7 @@ td.rsn{color:var(--sub); max-width:520px; overflow:hidden; text-overflow:ellipsi
     <tr><th>주(월요일)</th><th>단계</th><th>위기지수</th><th>사유</th></tr>
   </thead><tbody></tbody></table></div>
 </section>
-<p class="footnote">단계 기준: 「자원안보특별법 시행령」 4단계(관심·주의·경계·심각). 위기지수 = 최적 진단모델(Ridge+AR, 워크포워드 QWK 0.905) nowcast, 0~100(높을수록 위기). XAI 기여도는 선형 정확 분해(+ = 위기 방향), 단계 확률은 학습잔차 기반 신뢰도.</p>
+<p class="footnote">단계 기준: 「자원안보특별법 시행령」 4단계(관심·주의·경계·심각). 위기지수 = 최적 진단모델(Ridge+AR, 워크포워드 QWK 0.905) nowcast, 0~100(높을수록 위기). XAI 기여도는 선형 정확 분해(+ = 위기 방향), 단계 확률은 학습잔차 기반 신뢰도. 차트의 점선 수직 마커는 지정학 지수 GEO_INDEX_VERSION 재앵커 시점(척도 변경) — 마커 전후 지정학 지수 오버레이 값의 급변은 실제 위기 변동이 아니라 척도 재조정일 수 있음(DATA.versionBoundary로 주입, 값 없으면 마커 미표시).</p>
 </div>
 <script>
 const DATA = __DATA__;
@@ -154,6 +154,17 @@ function draw(){
   rows.forEach((r,i)=>{const y=r[0].slice(0,4); if(y!==py){py=y;
     ctx.fillText(y, X(i), H-ribbon-8);
     ctx.strokeStyle=css("--line"); ctx.beginPath();ctx.moveTo(X(i),padT);ctx.lineTo(X(i),padT+ih);ctx.stroke();}});
+  // 버전 경계 마커(피드백기반_수정플랜 F-3, 2026-07-16): GEO_INDEX_VERSION 재앵커 시점을
+  // 척도변경으로 표시해 "실제 위기 급등"과 "scale_k 재캘리브레이션"을 시각적으로 구분한다.
+  if(DATA.versionBoundary){
+    const vi = rows.findIndex(r=>r[0]>=DATA.versionBoundary);
+    if(vi>0){
+      ctx.strokeStyle="#b36b00"; ctx.lineWidth=1.4; ctx.setLineDash([5,3]);
+      ctx.beginPath(); ctx.moveTo(X(vi),padT); ctx.lineTo(X(vi),H-ribbon); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle="#b36b00"; ctx.font="9px system-ui"; ctx.textAlign="left";
+      ctx.fillText(DATA.versionLabel||"지수 재앵커", X(vi)+3, padT+10);
+    }
+  }
   // 지정학 오버레이
   if(showGeo && DATA.geo[cc]){
     const gm = new Map(DATA.geo[cc]);
