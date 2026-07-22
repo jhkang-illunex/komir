@@ -2,6 +2,22 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-07-22 (후속) — `documents/claude_output/` → `documents/산출물/<주차>/` 주 단위 재편
+
+사용자 지시: 산출물을 documents 아래 "산출물" 디렉토리로, 그 안에 주 단위 디렉토리를 만들어
+재정리. 오늘 이른 시간에 `documents/`를 komir로 이관하며 만들었던 `claude_output/`(단일
+평면 디렉토리, 65개 항목)을 ISO 주차(월요일 시작) 기준 4개 디렉토리로 재편:
+`documents/산출물/{2026-W27_0629-0705(4건), 2026-W28_0706-0712(41건),
+2026-W29_0713-0719(14건), 2026-W30_0720-0726(6건)}/`. 날짜 판별은 파일명의 `_YYMMDD`
+패턴을 우선, 없으면 mtime(전부 07-06 정오 근처로 일관 — 초기 일괄 작성분으로 판단). 전부
+`git`이 100% 유사도 rename으로 인식(이력 보존, 139개 변경 전부 R). `.gitignore`의
+`!documents/claude_output/` 예외 패턴을 `!documents/산출물/`로 교체. `docs/DATA_REGISTRY.md`
+"관련 문서" 절의 구체 파일 경로 11건과 `CLAUDE.md`의 일반 참조 2건도 새 경로로 갱신.
+이 WORKLOG 상단의 2026-07-22 항목(오전, mine_ws→komir 이관)에 있는 `documents/claude_output/`
+서술은 **그 시점엔 사실이었으므로 수정하지 않음**(그 직후 이 재편이 있었다는 사실만 여기 기록).
+
+관련 커밋: 다음 `git log` 확인.
+
 ## 2026-07-22 — mine_ws → komir 저장소 통합, 세션 실행 위치 전환
 
 사용자 지시: 향후 Claude Code 세션은 `mine_ws/`(상위 폴더)가 아니라 `komir/`에서 직접

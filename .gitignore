@@ -32,7 +32,8 @@ mineral_supply_risk/.git/
 
 # 2026-07-22: mine_ws 최상위(구 작업위치)에서 이관한 원본 참조자료(KOMIS·WoodMac·Argus·
 # USGS·EU SCRREEN 등 제3자 보고서, 35GB) — git에는 부적합(대용량·저작권), 로컬 보관만.
-# 우리가 작성한 산출물(claude_output/)만 추적한다.
+# 우리가 작성한 산출물(산출물/, 주차별 디렉토리)만 추적한다.
+# (같은 날 후속 정리: claude_output/ → 산출물/<주차>/ 로 재편, 아래 패턴도 함께 갱신)
 documents/*
-!documents/claude_output/
+!documents/산출물/
 documents/dev/.git/

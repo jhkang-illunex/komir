@@ -28,7 +28,9 @@ komir/
 ├─ geo_data/              # geo 파이프라인 정본 store(parquet, gitignore) — inbox/archive/store
 ├─ docs/{WORKLOG.md, DATA_REGISTRY.md}   # ★ 작업 이력·산출물 색인 정본(항상 먼저 확인)
 ├─ documents/              # 2026-07-22 mine_ws 최상위에서 이관
-│  ├─ claude_output/       # 우리가 작성한 보고서·분석 산출물 — git 추적됨
+│  ├─ 산출물/<주차>/        # 우리가 작성한 보고서·분석 산출물 — git 추적됨. 주차 폴더명은
+│  │                          ISO 주차 기준(예: 2026-W30_0720-0726). 구 claude_output/도
+│  │                          같은 날 이 구조로 재편됨(git rename, 이력 보존)
 │  └─ (그 외)               # KOMIS·WoodMac·Argus·USGS·EU SCRREEN 등 제3자 원본자료(35GB) —
 │                             git 미추적(.gitignore), 로컬 전용
 ├─ data_archive/           # 검증 실행 로그·백업(삭제 금지 정책, artifact-provenance-policy 참고)
@@ -63,6 +65,7 @@ LLM: 로컬 vLLM(`LLM_PROVIDER=openai_compat`, `.env`에 `LLM_BASE_URL`·`LLM_MO
    (GKG 관련 작업 전 필수 확인, 재발명 방지)·`data-quantity-verification-rule`(수량은 항상 직접
    쿼리로 재확인, 문서값 재인용 금지).
 3. `docs/WORKLOG.md` 최상단 최근 항목 확인.
-4. 발주처 보고 문서는 `documents/claude_output/`의 최신 날짜 버전이 정본(예:
-   `핵심광물_시스템구성_요약본_260722.docx`) — DATA_REGISTRY.md "관련 문서" 절에 정본/구버전
+4. 발주처 보고 문서는 `documents/산출물/<주차>/`의 최신 날짜 버전이 정본(예:
+   `documents/산출물/2026-W30_0720-0726/핵심광물_시스템구성_요약본_260722.docx`) —
+   DATA_REGISTRY.md "관련 문서" 절에 정본/구버전
    구분이 명시되어 있음.
