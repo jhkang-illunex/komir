@@ -92,10 +92,20 @@ def publish_index(target: str, now: str) -> int:
     if prob_f.exists():
         pr = pd.read_parquet(prob_f)
         pr = pr.rename(columns={"commodity": "commodity_code", "week": "period"})
+        # 요일앵커 보정(2026-07-16, 외부감사/사용자 지시): prob_model.py._weekly_panel()의
+        # 주간 그리드는 pd.date_range(freq="W") 기본값(W-SUN, 일요일)으로 산출된다 — 이는
+        # indexer.py의 geo_index(마찬가지로 W-SUN)와 내부적으로 정확일치 조인해야 하는
+        # _attach_geo_idx()가 있어서 필요한 내부 정합이므로 prob_model.py 자체는 건드리지
+        # 않는다. 문제는 외부(mart_weekly_diagnosis 등, 월요일 앵커) 소비자가 geo_prob를
+        # 정확일치로 조인할 때만 발생(실측: diagnosis_retrain_answer.py에서 100% 미매칭
+        # 확인) — geo_index는 ASOF 조인으로 소비되어 무해함이 확인됐으므로 그대로 둔다.
+        # 따라서 geo_prob "만" DB 발행 경계에서 +1일(일요일→월요일) 보정한다 — 내부 계산
+        # (parquet 정본)은 원래 그대로 유지, DB로 나가는 값만 외부 규약에 맞춘다.
+        pr["period"] = (pd.to_datetime(pr["period"]) + pd.Timedelta(days=1)).dt.strftime("%Y-%m-%d")
         pr["generated_at"] = now
         _write(pr, "geo_prob", target)
         n_pr = len(pr)
-        print(f"[publish] geo_prob {n_pr}행 → {target} (테이블 geo_prob)")
+        print(f"[publish] geo_prob {n_pr}행 → {target} (테이블 geo_prob, period +1일 월요일 보정)")
     return len(out) + n_pr
 
 

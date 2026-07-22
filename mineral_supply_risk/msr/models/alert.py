@@ -151,6 +151,50 @@ def _build_reasons(res: pd.DataFrame, geo_df: pd.DataFrame) -> pd.Series:
     return res.apply(reason, axis=1)
 
 
+def _build_evidence_json(res: pd.DataFrame, geo_df: pd.DataFrame) -> pd.Series:
+    """운영판정 로그(D-6, 피드백기반_수정플랜 P3): 최종 경보가 왜 나왔는지를 사람이 읽는
+    `reason` 텍스트와 별개로 기계가 파싱 가능한 JSON으로 병기 — 기여 지수 breakdown(stage_probs
+    ·contrib), 근거 이벤트 top-3(발행처 정보 없이 국가·심각도·근거문구만), 오버라이드/히스테리
+    시스 발동 여부(base_level→rule_level→alert_level 3단계 비교로 판별)를 담는다. `_build_reasons`
+    의 gmap 구축 로직과 동일 방식으로 이벤트를 매칭(재구현 최소화)."""
+    import json as _json
+
+    gmap = {}
+    if geo_df is not None and len(geo_df):
+        g = geo_df.dropna(subset=["obs_date"]).copy()
+        g["m"] = pd.to_datetime(g["obs_date"]).values.astype("datetime64[M]")
+        for r in g.sort_values("severity", ascending=False).itertuples():
+            gmap.setdefault((r.commodity_code, pd.Timestamp(r.m)), []).append(r)
+
+    def evidence(r):
+        d = {
+            "base_level": int(r.base_level),
+            "rule_level": int(r.rule_level),
+            "alert_level": int(r.alert_level),
+            "override_applied": bool(r.rule_level != r.base_level),
+            "hysteresis_applied": bool(r.alert_level != r.rule_level),
+            "triggers": r.triggers if isinstance(r.triggers, str) and r.triggers else None,
+            "crisis_index": round(float(r.crisis_index), 2),
+            "ci_source": getattr(r, "ci_source", "teacher"),
+        }
+        try:
+            if hasattr(r, "stage_probs") and isinstance(r.stage_probs, str) and r.stage_probs:
+                d["stage_probs"] = _json.loads(r.stage_probs)
+            if hasattr(r, "contrib") and isinstance(r.contrib, str) and r.contrib:
+                d["contrib"] = _json.loads(r.contrib)
+        except Exception:
+            pass
+        evs = gmap.get((r.commodity_code, pd.Timestamp(r.obs_date).replace(day=1)), [])
+        d["evidence_events"] = [
+            {"country": e.country or None, "severity": float(e.severity) if e.severity is not None else None,
+             "event_type": e.event_type or None, "evidence_quote": str(e.evidence_quote or "")[:200]}
+            for e in evs[:3]
+        ]
+        return _json.dumps(d, ensure_ascii=False)
+
+    return res.apply(evidence, axis=1)
+
+
 def run(db=None, model_version="alert_rule_v1"):
     """mart_weekly_diagnosis(위기지수) + geo_event(지정학) → 경보 4단계 + 사유
     → out_diagnosis_alert 적재. 입력 부족 시 None(스킵)."""
@@ -208,6 +252,7 @@ def run(db=None, model_version="alert_rule_v1"):
 
     res = compute_alerts(df, sev)
     res["reason"] = _build_reasons(res, geo_df)
+    res["evidence_json"] = _build_evidence_json(res, geo_df)
     print("경보 분포(광종×단계):")
     print(res.groupby(["commodity_code", "alert_name"]).size().unstack(fill_value=0).to_string())
 
@@ -220,6 +265,7 @@ def run(db=None, model_version="alert_rule_v1"):
         "risk_proba": None,
         "alert_level": res["alert_name"],
         "reason": res["reason"],
+        "evidence_json": res["evidence_json"],
         "model_version": model_version,
         "generated_at": pd.Timestamp.now().floor("s"),
     })
@@ -227,7 +273,7 @@ def run(db=None, model_version="alert_rule_v1"):
     # CSV 부산물(감사용)
     out_dir = os.path.join(str(_OUT), "alert"); os.makedirs(out_dir, exist_ok=True)
     res[["commodity_code", "obs_date", "teacher_supply_demand", "crisis_index", "base_level",
-         "rule_level", "alert_level", "alert_name", "triggers", "reason"]].to_csv(
+         "rule_level", "alert_level", "alert_name", "triggers", "reason", "evidence_json"]].to_csv(
          os.path.join(out_dir, "alert_timeline.csv"), index=False)
     latest = res.sort_values("obs_date").groupby("commodity_code").tail(1)
     print(f"[alert] out_diagnosis_alert {len(out)}행 적재 · 최신 경보:",

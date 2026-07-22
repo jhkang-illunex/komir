@@ -113,7 +113,9 @@ CREATE TABLE IF NOT EXISTS out_diagnosis_alert (
   commodity_code VARCHAR(8) NOT NULL, obs_date DATE NOT NULL,
   risk_score DECIMAL(9,4), risk_proba DECIMAL(9,6),
   alert_level VARCHAR(8),             -- 관심/주의/경계/심각
-  reason VARCHAR(2000), model_version VARCHAR(30), generated_at TIMESTAMP,
+  reason VARCHAR(2000),
+  evidence_json VARCHAR(4000),        -- 운영판정 로그(D-6): 기여도breakdown·근거이벤트top3·오버라이드/히스테리시스 여부(JSON)
+  model_version VARCHAR(30), generated_at TIMESTAMP,
   PRIMARY KEY (commodity_code, obs_date)
 );
 -- ② 수입 예측(물량·가격, h=12)
@@ -123,6 +125,16 @@ CREATE TABLE IF NOT EXISTS out_import_forecast (
   yhat DECIMAL(20,4), yhat_lo DECIMAL(20,4), yhat_hi DECIMAL(20,4),
   model_version VARCHAR(30), generated_at TIMESTAMP,
   PRIMARY KEY (commodity_code, target, base_date, horizon)
+);
+-- E-1(피드백기반_수정플랜 P3): 재귀 vs Direct MASE 비교 이력(매 재학습마다 append) — 격차
+-- 추세 모니터링 + 자동전환 임계값 판단 근거. 삭제 없이 계속 쌓임(base_month가 자연 유일키).
+CREATE TABLE IF NOT EXISTS mart_forecast_method_log (
+  base_month DATE NOT NULL, mase_recursive DECIMAL(9,4), mase_direct DECIMAL(9,4),
+  gap DECIMAL(9,4),                  -- mase_recursive - mase_direct(양수=Direct가 더 우수)
+  method_selected VARCHAR(10),       -- 실제 채택된 방식(마진 임계 적용 후)
+  method_naive VARCHAR(10),          -- 마진 없이 단순 최소값 기준 방식(참고용)
+  margin_threshold DECIMAL(9,4), generated_at TIMESTAMP,
+  PRIMARY KEY (base_month)
 );
 -- ④ 자동 보고서 로그  ⑤ 시계열 요약
 CREATE TABLE IF NOT EXISTS out_report (

@@ -8,9 +8,21 @@
   발행: publish_results(외부 운영 DB, MSR_PUBLISH_DB 설정 시)
 
 cron 예)
-  0 6 * * 1   cd <komir>/mineral_supply_risk && python -m scripts.schedule weekly  >> /var/log/msr_weekly.log 2>&1
-  0 7 1 * *   cd <komir>/mineral_supply_risk && python -m scripts.schedule monthly >> /var/log/msr_monthly.log 2>&1
+  0 6 * * 1   cd <komir>/mineral_supply_risk && python -m scripts.schedule weekly   >> /var/log/msr_weekly.log 2>&1
+  0 7 1 * *   cd <komir>/mineral_supply_risk && python -m scripts.schedule monthly  >> /var/log/msr_monthly.log 2>&1
+  0 8 1 1,4,7,10 * cd <komir>/mineral_supply_risk && python -m scripts.schedule quarterly >> /var/log/msr_quarterly.log 2>&1
   (LLM_PROVIDER 등 LLM_* env는 cron 환경에 주입할 것 — extract 단계에 필요.)
+
+quarterly(D-5, 피드백기반_수정플랜 P3): 오버라이드 재검증 주기 — `scripts/override_backtest.py`
+를 분기별 재실행해 트리거별(변동성·수입편중·지정학) 유지/임계조정/폐지 권고를 갱신한다.
+현재 지정학 트리거는 2026-07-16 백테스트로 **폐지**(`ALERT_OVERRIDE_GEO=off`)됐지만, 데이터가
+누적되면 재유효화될 수 있어 이 주기적 재검증이 유일한 안전망이다. 재유효화 판단 기준
+(override_backtest.py의 `verdict()`에 이미 구현된 임계값, 이 함수는 그 결과만 파싱):
+  - **유지**: 정당화비율(just_rate) ≥ 0.45 그리고 결과선행 lift ≥ 1.5
+  - **임계 조정**: just_rate ≥ 0.3 또는 lift ≥ 1.3 (부분신호 — 임계 상향 검토)
+  - **폐지 유지**: 위 조건 모두 미충족 또는 발화/격상 자체가 없음
+자동으로 override_backtest.py의 판정을 재계산할 뿐, `alert.py`의 `ALERT_OVERRIDE_GEO` 스위치는
+**절대 자동 변경하지 않는다** — 사람 검토 후 수동 반영이 원칙(운영 정책 변경은 자동화 대상 아님).
 """
 import os, subprocess, sys
 from datetime import date
@@ -82,6 +94,37 @@ def monthly():
     print("[schedule] === monthly 완료 ===", flush=True)
 
 
+def quarterly():
+    """분기: 오버라이드 백테스트 재실행 → 지정학 트리거 재유효화 여부 사람이 확인할 수 있게
+    로그로 표시(D-5). `alert.py` 설정은 자동 변경하지 않음 — 검토용 신호만 남긴다."""
+    print(f"[schedule] === quarterly 시작 === (warehouse: {DB_PATH}"
+          f"{' — MSR_DB 미설정, 기본 경로 사용 중' if not os.environ.get('MSR_DB') else ''})", flush=True)
+    subprocess.run([sys.executable, "-m", "scripts.override_backtest"], cwd=_MSR,
+                   env=dict(os.environ), check=True,
+                   timeout=int(os.environ.get("SCHEDULE_STAGE_TIMEOUT", 3600)))
+    # 리포트에는 "③ 지정학 고신뢰"로 시작하는 표 행이 2곳(트리거별 개별 기여 표·판정·권고 표)
+    # 있다 — 판정 표만 "| ③ 지정학 고신뢰 | **판정어** |" 형태로 두 번째 칸이 굵게(**) 표시되니
+    # 그 패턴으로만 매칭해야 오탐(트리거 기여 표의 숫자 행 오매칭)을 피할 수 있다.
+    report_path = os.path.join(_MSR, "outputs", "model_opt", "override_backtest.md")
+    verdict_line = None
+    try:
+        with open(report_path) as f:
+            for line in f:
+                if line.startswith("| ③ 지정학") and "| **" in line:
+                    verdict_line = line.strip()
+                    break
+    except FileNotFoundError:
+        pass
+    if verdict_line is None:
+        print("[schedule] quarterly: 지정학 트리거 판정 라인을 찾지 못함 — 리포트 형식 변경 여부 확인 필요", flush=True)
+    elif "**폐지**" in verdict_line:
+        print(f"[schedule] quarterly: 지정학 오버라이드 여전히 폐지 권고(변경 없음) — {verdict_line}", flush=True)
+    else:
+        print(f"[schedule] quarterly: ⚠ 지정학 오버라이드 판정이 폐지 아님으로 변경됨 — "
+              f"사람 검토 필요! {verdict_line}", flush=True)
+    print("[schedule] === quarterly 완료 ===", flush=True)
+
+
 if __name__ == "__main__":
-    {"weekly": weekly, "monthly": monthly}.get(
+    {"weekly": weekly, "monthly": monthly, "quarterly": quarterly}.get(
         sys.argv[1] if len(sys.argv) > 1 else "monthly", monthly)()
