@@ -27,3 +27,11 @@ direction_sign:
   supply_up: -0.5
   price_down: -0.5
   neutral: 0.2
+  # 2026-07-22(#5 부속 발견): demand_up/demand_down(462/165건, 전체 0.21%)이 이 표에
+  # 없어 sign.map(...).fillna(0.2)로 neutral과 동일하게 처리되고 있었음(의도한 설계가
+  # 아니라 우연한 누락) — 수요증가는 공급감소·가격상승과 같은 방향(시장 타이트닝)으로,
+  # 수요감소는 반대 방향으로 명시. 값 자체는 이 표의 기존 값들과 정합적인 판단치일 뿐
+  # 전용 실증검증은 하지 않음(표본이 0.21%로 희소해 유의성 검정 불가, severity_sgn_
+  # significance_check.md 참고) — supply/price보다 약한 배수를 부여.
+  demand_up: 0.5
+  demand_down: -0.3

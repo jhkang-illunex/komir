@@ -14,6 +14,26 @@ import pandas as pd
 from . import config as C, store
 
 
+def _snapshot_before_overwrite(con, table: str):
+    """#9(이벤트스토어/발행 재현성, 2026-07-22): DELETE+INSERT·CREATE OR REPLACE는 이전
+    상태를 흔적 없이 지운다 — "이 지수가 왜 이 값이었는지" 사후 재현이 불가능했음. 덮어쓰기
+    *직전* 현재 테이블 내용을 날짜별 parquet로 스냅샷(하루 1회, 같은 날 재실행은 덮어쓰지
+    않음 — idempotent). 실패해도 발행 자체는 막지 않는다(스냅샷은 부가 안전망일 뿐)."""
+    try:
+        from pathlib import Path
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        snap_dir = Path(__file__).resolve().parent.parent / "data_archive" / "snapshots" / table
+        snap_dir.mkdir(parents=True, exist_ok=True)
+        snap_path = snap_dir / f"{table}_{today}.parquet"
+        if snap_path.exists():
+            return
+        cur_df = con.execute(f'SELECT * FROM "{table}"').df()
+        if len(cur_df):
+            cur_df.to_parquet(snap_path, index=False)
+    except Exception as e:
+        print(f"  [publish] 스냅샷 실패(발행은 계속 진행): {table}: {e}")
+
+
 def _write(df, table, target):
     if "://" in target:                       # 서버DB(SQLAlchemy)
         import sqlalchemy as sa
@@ -24,6 +44,7 @@ def _write(df, table, target):
         exists = con.execute(
             "SELECT count(*) FROM information_schema.tables WHERE table_name=?", [table]).fetchone()[0]
         if exists:
+            _snapshot_before_overwrite(con, table)
             # DDL 보존: CREATE OR REPLACE는 스키마 정의(PK·타입)를 추론 스키마로 덮어쓰므로
             # DELETE+INSERT(명시 컬럼, 단일 트랜잭션)로 계약 유지. 단, 신규 컬럼이 생기면
             # (예: 2026-07-12 provider·extractor 추가) 기존 DDL에 없어 INSERT가 죽음 → 재생성.

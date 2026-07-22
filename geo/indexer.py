@@ -36,14 +36,20 @@ def _load_kr_share():
     return pd.read_parquet(f) if os.path.exists(f) else None
 
 
-def _apply_kr_exposure(ev: pd.DataFrame) -> pd.DataFrame:
+def _apply_kr_exposure(ev: pd.DataFrame, mode: str = "mult") -> pd.DataFrame:
     """이중 노출 가중(2026-07-15, 외부감사 B-1① — '한국의' 지수화).
     w = 공급충격 크기(conc, USGS 생산점유) × 한국 직접 노출(s_imp, 관세청 수입비중).
     · s_imp는 (광종,국가,연도) 최근접 연도 매칭, 미매칭(비수입국·자유텍스트 지명)은 0.
     · imp_mult = (1+s_imp)를 광종별 이벤트 모집단 mean-one으로 정규화 — 광종 지수의
       스케일(P90 앵커 동결)을 보존하면서 국가 간 상대 가중만 바꾼다(순수 곱 w=s_prod×s_imp는
       비수입 생산국 이벤트를 0으로 만들어 글로벌 가격 전달경로를 지움 — 채택하지 않음).
-    """
+
+    mode="resid"(#4 이중노출 중복 검증 전용, 2026-07-22 조언자 자문): USGS refdata 실가동
+    후 실측(conc_impmult_corr_v2.md) conc×imp_mult 상관이 CU 0.78·LI 0.61·REE 0.97로
+    높게 나옴 — "중국이 생산·수입 양쪽의 공통원인"인 정당한 공행성일 수도, 곱셈 이중계상일
+    수도 있어 광종별로 imp_mult를 conc에 대해 잔차화(conc가 이미 설명하는 부분 제거)한
+    변형을 kr_exposure_ablation.py로 mult와 비교 검증한다. 기본값 mode="mult"는 기존과
+    완전 동일(회귀 없음)."""
     share = _load_kr_share()
     if share is None or "country" not in ev.columns:
         ev["imp_mult"] = 1.0
@@ -57,9 +63,17 @@ def _apply_kr_exposure(ev: pd.DataFrame) -> pd.DataFrame:
     ev["s_imp"] = ev["s_imp"].fillna(0.0)
     raw = 1.0 + ev["s_imp"]
     ev["imp_mult"] = raw / raw.groupby(ev["commodity"]).transform("mean")
+    if mode == "resid" and "conc" in ev.columns:
+        def _residualize(g):
+            cov = np.cov(g["imp_mult"], g["conc"])[0, 1]
+            var = g["conc"].var()
+            b = cov / var if var > 1e-9 else 0.0
+            res = g["imp_mult"] - b * (g["conc"] - g["conc"].mean())
+            return res / res.mean()
+        ev["imp_mult"] = ev.groupby("commodity", group_keys=False).apply(_residualize, include_groups=False)
     n_hit = int((ev["s_imp"] > 0).sum())
     stat = ev[ev["s_imp"] > 0].groupby("commodity")["imp_mult"].max().round(2).to_dict()
-    print(f"  [index] 이중 노출 가중: 수입국 매칭 {n_hit:,}건({n_hit/len(ev):.1%}), "
+    print(f"  [index] 이중 노출 가중({mode}): 수입국 매칭 {n_hit:,}건({n_hit/len(ev):.1%}), "
           f"광종별 최대 배수 {stat}")
     return ev
 
@@ -121,11 +135,20 @@ def _normalize(series: pd.Series, how: str, scale_k: float = 10.0) -> pd.Series:
     return (series - lo) / (hi - lo) * 100 if hi > lo else series * 0 + 50
 
 
-def compute(volume_norm: bool = True, score_formula: str = "mult") -> pd.DataFrame:
+def compute(volume_norm: bool = True, score_formula: str = "mult", conf_weight: bool = True,
+            kr_exposure_mode: str = "resid") -> pd.DataFrame:
     """volume_norm=False는 B-5(피드백기반_수정플랜 P2) 검증 전용 — 미디어 볼륨 드리프트
     정규화 단계를 건너뛴다. score_formula는 B-3 검증 전용 — 'mult'(기본, 현재 프로덕션과
-    동일)/'sum'(가중합)/'loggeo'(로그기하평균). 두 파라미터 모두 기본값은 프로덕션 동작과
-    완전히 동일(파라미터 추가 전과 바이트 단위로 동일한 출력)."""
+    동일)/'sum'(가중합)/'loggeo'(로그기하평균). conf_weight(#7, 2026-07-22)는
+    GeoEvent.confidence(LLM 자체보고 추출 확신도, 실측 295,157건 기준 0.1~1.0 분포·
+    평균0.70·표준편차0.11로 상수 아님)를 conf_mult=0.7+0.3·confidence로 완만하게 반영
+    (신뢰도 낮아도 최대 30%만 감쇠, 0으로 죽이지 않음) — 검증 완료(conf_weight_ablation.md,
+    상관 0.9996+·Jaccard 0.9+) 후 기본값 True로 활성화(과거 발행값과 소폭 달라짐, 회귀
+    아님). kr_exposure_mode(#4 이중노출 중복, 2026-07-22)는 conc×imp_mult 실측 상관이
+    높은 광종(CU 0.78·LI 0.61·REE 0.97, conc_impmult_corr_v2.md)에 대해 imp_mult를
+    conc에 대해 잔차화("resid")할지 기존 그대로("mult") 쓸지 — 조언자 자문의 사전 고정
+    채택기준(고상관군 중 상위20주 Jaccard<0.8)이 CU(0.739)에서 트리거돼 "resid"로
+    전환(kr_exposure_ablation.md), CO·NI처럼 저상관 광종은 수치상 무변화로 확인됨."""
     ev = store.load_events()
     if len(ev) == 0:
         print("[index] 이벤트 없음"); return pd.DataFrame()
@@ -215,6 +238,10 @@ def compute(volume_norm: bool = True, score_formula: str = "mult") -> pd.DataFra
 
     ev["yr"] = ev["date"].dt.year
     ev["rel"] = ev["source"].map(rel).fillna(1.0)
+    if conf_weight and "confidence" in ev.columns:
+        ev["conf_mult"] = 0.7 + 0.3 * ev["confidence"].fillna(0.5).astype(float)
+    else:
+        ev["conf_mult"] = 1.0
 
     if conc_df is not None:   # USGS refdata 우선(연도별 국가점유 + HHI배수, as-of 조인)
         first_rel = conc_df.groupby("commodity")["release"].min()
@@ -235,25 +262,26 @@ def compute(volume_norm: bool = True, score_formula: str = "mult") -> pd.DataFra
         ev["conc"] = (ev["commodity"] + ":" + ev["country"].fillna("")).map(conc_static).fillna(1.0)
         ev["hhi_mult"] = 1.0
     ev["sgn"] = ev["direction"].map(sign).fillna(0.2)
-    ev = _apply_kr_exposure(ev)     # 이중 노출: 글로벌 공급충격 × 한국 수입의존(B-1①)
+    ev = _apply_kr_exposure(ev, mode=kr_exposure_mode)     # 이중 노출: 글로벌 공급충격 × 한국 수입의존(B-1①)
     if score_formula == "sum":
         # B-3(피드백기반_수정플랜 P2) 대안: 곱셈 성분(rel·conc·hhi_mult·imp_mult)을 "중립값
         # 1.0 대비 조정폭"으로 재해석해 severity에 가산 — 한 성분이 극단값이어도 severity
         # 기여분은 보존되어 곱셈식보다 단일성분 오류에 덜 민감.
         ev["score"] = ev["sgn"] * (ev["severity"].astype(float) + (ev["rel"] - 1.0)
                                     + (ev["conc"] - 1.0) + (ev["hhi_mult"] - 1.0)
-                                    + (ev["imp_mult"] - 1.0))
+                                    + (ev["imp_mult"] - 1.0) + (ev["conf_mult"] - 1.0))
     elif score_formula == "loggeo":
         # 기하평균 스타일: 곱셈식(산술곱)은 한 성분이 10배면 점수도 10배지만, 5개 성분의
         # 로그평균 후 지수화하면 10배 성분도 10^(1/5)≈1.58배로 완화됨 — "한 성분 오류에 민감"
         # 문제를 정면으로 겨냥한 대안.
         comps = np.log(np.clip(ev["severity"].astype(float), 1e-3, None) + 1.0), \
             np.log(np.clip(ev["rel"], 1e-3, None)), np.log(np.clip(ev["conc"], 1e-3, None)), \
-            np.log(np.clip(ev["hhi_mult"], 1e-3, None)), np.log(np.clip(ev["imp_mult"], 1e-3, None))
-        ev["score"] = ev["sgn"] * (np.exp(sum(comps) / 5.0) - 1.0)
+            np.log(np.clip(ev["hhi_mult"], 1e-3, None)), np.log(np.clip(ev["imp_mult"], 1e-3, None)), \
+            np.log(np.clip(ev["conf_mult"], 1e-3, None))
+        ev["score"] = ev["sgn"] * (np.exp(sum(comps) / 6.0) - 1.0)
     else:
         ev["score"] = (ev["severity"].astype(float) * ev["rel"] * ev["conc"]
-                       * ev["hhi_mult"] * ev["sgn"] * ev["imp_mult"])
+                       * ev["hhi_mult"] * ev["sgn"] * ev["imp_mult"] * ev["conf_mult"])
 
     # ── 미디어 볼륨 드리프트 정규화(2026-07-15, 외부감사 B-1②) ──
     # 코퍼스 총량이 시간에 따라 변해(실측: 2016년 29.2만/년 → 2020~22년 12.5만/년으로 감소
@@ -323,6 +351,18 @@ def compute(volume_norm: bool = True, score_formula: str = "mult") -> pd.DataFra
             out.append(g)
     res = pd.concat(out, ignore_index=True)
     res["period"] = pd.to_datetime(res["period"]).dt.strftime("%Y-%m-%d")
+    # tanh0_100 포화 모니터(#2, 2026-07-22): 절대스케일 tanh는 이론상 원점수가 크면 극값
+    # 부근(0/100)에 눌러붙어 변별력을 잃을 수 있음(비판 접수, 2026-07-16 실측 시점엔
+    # idx≥90이 0.3% 수준이라 당장 문제 아니었음) — 캘리브레이션이 코퍼스 변화를 못 따라가면
+    # 조용히 재발할 수 있어 매 산출 시 비중을 로그로 남긴다(코드 변경 없이 조기 경보만).
+    wk = res[res["freq"] == "W"]
+    if len(wk):
+        sat = ((wk["index"] >= 95) | (wk["index"] <= 5)).mean()
+        if sat > 0.05:
+            print(f"  [index] ⚠ tanh 포화 경고: 주간 지수의 {sat:.1%}가 극값(≤5 또는 ≥95) "
+                  f"— scale_k_by_commodity 재캘리브레이션 검토 필요")
+        else:
+            print(f"  [index] tanh 포화 점검: 주간 지수 극값(≤5/≥95) 비중 {sat:.1%}(정상)")
     return res[["commodity", "freq", "period", "raw_score", "n_events", "index"]]
 
 
