@@ -151,6 +151,11 @@ def main():
     # 1. SHFE 구리
     try:
         cu = collect_shfe_cu()
+        # 2026-07-25 무결성 가드: 원천이 빈/부분 응답을 주면 DELETE가 기존 전량을
+        # 날린다(실제 발생 — CU 1,165행 소실 후 복구). 정상 히스토리(1,100행+)의
+        # 절반 미만이면 기존 데이터 보존이 우선.
+        if len(cu) < 500:
+            raise RuntimeError(f"수집 {len(cu)}행 — 비정상 축소, 기존 데이터 보존")
         con.execute("DELETE FROM fact_inventory_exch WHERE src='SHFE_99QH_W' AND commodity_code='CU'")
         con.register("_cu", cu)
         con.execute("INSERT OR REPLACE INTO fact_inventory_exch SELECT * FROM _cu")
