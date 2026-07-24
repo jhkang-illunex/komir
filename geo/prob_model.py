@@ -98,6 +98,12 @@ def _fit_one(train: pd.DataFrame):
         m = NegativeBinomialP(y, X, p=2).fit(disp=0, maxiter=200)
         if not np.isfinite(m.params).all():
             raise RuntimeError("params non-finite")
+        # 2026-07-24 적대적 감사 발견: isfinite·alpha>0만 검사하고 mle_retvals["converged"]를
+        # 확인하지 않아, 실제로는 MLE가 수렴 못 한 채(maxiter 소진) 그 시점의 파라미터를
+        # 그대로 채택하는 경우가 있었음(실측: CU 전기간 적합이 converged=False인데 그대로
+        # 채택돼 α=0.396으로 발행됨 — REE의 α 붕괴와 같은 근본원인의 다른 증상).
+        if not m.mle_retvals.get("converged", False):
+            raise RuntimeError("MLE 미수렴 — 모멘트 폴백으로")
         alpha = float(m.params.iloc[-1])
         if alpha <= 1e-6:
             raise RuntimeError("alpha~0 — 모멘트 폴백으로")

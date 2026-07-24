@@ -12,15 +12,23 @@ normalize: tanh0_100
 # 발행값 불변 성질이 유지된다. 코퍼스가 구조적으로 바뀔 때만 버전을 올려 재캘리브레이션하고,
 # 그 경우 GEO_INDEX_VERSION(publish의 index_config_version)을 함께 올린다.
 scale_k: 300.0                 # 폴백(scale_k_by_commodity에 없는 광종용)
-scale_k_by_commodity:          # P90(|raw_score|) 실측 2026-07-15 — v2 재앵커
-  # v2(2026-07-15): 지수 정밀화 3종(볼륨 드리프트 정규화·stock/flow 감쇠·근사중복 제거)으로
-  # raw 분포가 구조적으로 바뀌어 1회 재캘리브레이션(P90→88 원칙 동일). 구 v1(07-12):
-  # CU 447/NI 165/CO 14/LI 12/REE 20.
-  CU: 297.0
-  NI: 125.0
-  CO: 14.0
-  LI: 12.0
-  REE: 34.0
+scale_k_by_commodity:          # P90(|raw_score|) 실측 2026-07-24 — v3 재앵커
+  # v3(2026-07-24, 적대적 감사 발견 #2): v2(07-15) 이후 GKG 관련성 재정제(71.4%→99.5%,
+  # 07-20~21)·conf_mult 활성화(07-22)·hhi_mult 실가동(07-22)·국가명 정규화(같은 날,
+  # 아래 참고)로 raw 분포가 구조적으로 재차 바뀌어 "코퍼스가 구조적으로 바뀔 때만
+  # 재캘리브레이션"이라는 이 파일의 원칙이 충족됨 — 실측 CO는 v2 앵커로 idx P90=95.8까지
+  # 치솟아(목표 88 초과) 재앵커 없이는 광종 간 "0~100 절대비교" 약속이 깨진 상태였음.
+  # 국가명 정규화(geo/indexer.py, 같은 날): DRC 계열 표기("DRC"/"Congo"/"Democratic
+  # Republic Of/of The/the Congo"/"DR Congo", CO의 44.6%)가 USGS의 "Congo (Kinshasa)"와
+  # 정확일치 실패로 conc=1.0(중립) 폴백되던 버그를 수정 — CO의 P90이 이 수정만으로도
+  # 크게 상승, 재앵커를 더 시급하게 만든 직접 원인. REE도 "Myanmar"→"Burma" 별칭 추가.
+  # 구 v2(07-15): CU 297/NI 125/CO 14/LI 12/REE 34. 구 v1(07-12): CU 447/NI 165/CO 14/
+  # LI 12/REE 20.
+  CU: 78.7
+  NI: 38.9
+  CO: 21.9
+  LI: 9.4
+  REE: 13.4
 direction_sign:
   supply_down: 1.0
   price_up: 1.0

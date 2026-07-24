@@ -254,9 +254,30 @@ def compute(volume_norm: bool = True, score_formula: str = "mult", conf_weight: 
         years = range(int(ev["yr"].min()), int(ev["yr"].max()) + 1)
         conc_grid = _asof_grid(conc_df, ["commodity", "country"], "weight", years)
         hhi_grid = _asof_grid(hhi_df, ["commodity"], "hhi_mult", years)
-        ev = ev.merge(conc_grid, on=["commodity", "country", "yr"], how="left")
+        # 국가명 정규화(2026-07-24 적대적 감사 발견): conc 조인은 country 정확일치라
+        # USGS 표기와 다른 자유텍스트 변형이 전부 매칭 실패 → conc=1.0(중립) 폴백. 실측:
+        # CO의 DRC 계열 표기("DRC"/"Congo"/"Democratic Republic Of/of The/the Congo"/
+        # "DR Congo") 2,017건(전체 CO의 44.6%)이 USGS의 "Congo (Kinshasa)"(가중치
+        # 1.69, 세계 최대 코발트 생산국)와 매칭 안 되고 있었음 — 가장 집중된 광종의
+        # 가장 중요한 국가 리스크가 조용히 중립화된 상태였음. REE의 "Myanmar"(48건)도
+        # 마찬가지로 USGS 표기 "Burma"와 불일치. 실제 conc/hhi 조인에만 적용(원본
+        # ev["country"] 값·발행 데이터는 그대로 보존 — 표시용 국가명을 바꾸는 게 아님).
+        _COUNTRY_ALIAS_TO_USGS = {
+            "DRC": "Congo (Kinshasa)", "Congo": "Congo (Kinshasa)",
+            "DR Congo": "Congo (Kinshasa)",
+            "Democratic Republic Of The Congo": "Congo (Kinshasa)",
+            "Democratic Republic of The Congo": "Congo (Kinshasa)",
+            "Democratic Republic of the Congo": "Congo (Kinshasa)",
+            "Myanmar": "Burma",
+        }
+        ev["_conc_country"] = ev["country"].replace(_COUNTRY_ALIAS_TO_USGS)
+        ev = ev.merge(conc_grid, left_on=["commodity", "_conc_country", "yr"],
+                      right_on=["commodity", "country", "yr"], how="left",
+                      suffixes=("", "_usgs"))
         ev["conc"] = ev["weight"].fillna(1.0)
-        ev = ev.drop(columns="weight").merge(hhi_grid, on=["commodity", "yr"], how="left")
+        ev = ev.drop(columns=["weight", "_conc_country"] +
+                     (["country_usgs"] if "country_usgs" in ev.columns else [])) \
+               .merge(hhi_grid, on=["commodity", "yr"], how="left")
         ev["hhi_mult"] = ev["hhi_mult"].fillna(1.0)
     else:                     # 폴백: sources.yaml 정적값
         ev["conc"] = (ev["commodity"] + ":" + ev["country"].fillna("")).map(conc_static).fillna(1.0)

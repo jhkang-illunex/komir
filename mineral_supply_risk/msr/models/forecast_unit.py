@@ -56,13 +56,26 @@ def build_panel(db: str) -> pd.DataFrame:
     df = t.merge(px, on=["commodity_code", "month"], how="left") \
           .merge(gi, on=["commodity_code", "month"], how="left")
     # 환율(주간 CSV → 월평균), cp949
+    # 2026-07-24 적대적 감사에서 발견·직접 재현 확인: skiprows=2로는 3번째 실제 헤더행
+    # ("날짜,주간평균,기준")이 데이터 첫 행으로 들어와 %Y/%m/%d 파싱이 ValueError →
+    # 아래 except가 조용히 삼켜 fx 전체가 상수 NaN(실측 100% 결측, 도크스트링·FEAT_LABELS·
+    # basis JSON은 "원달러 환율" 반영을 계속 주장하고 있었음 — 사실과 다른 기재였음).
+    # skiprows=3 + errors="coerce"로 실제 헤더를 건너뛰고, 꼬리 Copyright 각주행(날짜
+    # 파싱 실패)은 dropna로 제거.
     try:
-        fx = pd.read_csv(FX_CSV, encoding="cp949", skiprows=2, names=["d", "v", "_"])
-        fx["month"] = pd.to_datetime(fx["d"], format="%Y/%m/%d").values.astype("datetime64[M]")
+        fx = pd.read_csv(FX_CSV, encoding="cp949", skiprows=3, names=["d", "v", "_"])
+        fx["d"] = pd.to_datetime(fx["d"], format="%Y/%m/%d", errors="coerce")
+        fx = fx.dropna(subset=["d"])
+        fx["month"] = fx["d"].values.astype("datetime64[M]")
         fx = fx.groupby("month", as_index=False)["v"].mean().rename(columns={"v": "fx"})
         fx["month"] = pd.to_datetime(fx["month"])
         df = df.merge(fx, on="month", how="left")
-    except Exception:
+        miss = df["fx"].isna().mean()
+        if miss > 0.5:
+            print(f"  [warn] 환율(fx) 결측률 {miss:.1%} — CSV 파싱 재확인 필요(2013~2021-05는 "
+                  f"CSV 자체가 없어 결측이 정상, 그 이후 구간 결측이면 파싱 버그 의심)")
+    except Exception as e:
+        print(f"  [warn] 환율(fx) CSV 파싱 실패, 전체 결측으로 진행: {e}")
         df["fx"] = np.nan
     df["unit"] = df["value_usd"] / df["ton"].replace(0, np.nan)   # USD/ton
     return df.sort_values(["commodity_code", "month"]).reset_index(drop=True)
