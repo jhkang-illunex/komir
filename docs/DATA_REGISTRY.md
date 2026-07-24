@@ -29,7 +29,7 @@
 | `data_archive/backups/pre_gkg_relevance_cleanup*`, `pre_llm_relevance_apply_20260720/` | GKG 소급정제 각 라운드 전 geo_events.parquet+minerals.duckdb 백업 | WORKLOG 2026-07-20 |
 | `mineral_supply_risk/outputs/model_opt/_gkg_relevance_llm_state/` | GKG 관련성 LLM 1차 재검증 실행 로그(checked/rejected/corrected, META.md 참고) | WORKLOG 2026-07-20, "LLM 관련성 재검증 전량 실행 완료" |
 | `mineral_supply_risk/outputs/model_opt/_gkg_relevance_verify2_state/` | GKG 관련성 LLM 2차(적대적) 재검증 실행 로그(checked/problem/corrected, META.md 참고) — 최종 유효성 99.5% | WORKLOG 2026-07-21, "2차 적대적 재검증(합의투표 방식)" |
-| `mineral_supply_risk/outputs/model_opt/{conc_impmult_corr_v2,kr_exposure_ablation,conf_weight_ablation,severity_sgn_significance_check,neardup_impact_sim_v2}.md` + `data_archive/analysis/neardup_embed_260722/report.md` | 지수화 비판 #1~7,9 잔여 8개 일괄 처리(#4 이중노출 resid 채택·#7 conf_weight 활성화·#6 재확인 등) — 07-16 B-1~B-6의 조건부("refdata 백필 후 재실행" 등) 후속작업 | WORKLOG 2026-07-22(최신②) 상세 |
+| `mineral_supply_risk/outputs/model_opt/{conc_impmult_corr_v2,kr_exposure_ablation,conf_weight_ablation,severity_sgn_significance_check,neardup_impact_sim_v2,rel_source_tier_check_v2}.md` + `data_archive/analysis/neardup_embed_260722/report.md` | 지수화 비판 #1~7,9 잔여 8개 일괄 처리(#4 이중노출 resid 채택·#7 conf_weight 활성화·#6 재확인 등) — 07-16 B-1~B-6의 조건부("refdata 백필 후 재실행" 등) 후속작업. #3(rel_source_tier_check_v2)만 07-22 당시 재검증 없이 보류됐던 걸 07-24 완결(결론 불변 재확인) | WORKLOG 2026-07-22(최신②)·2026-07-24(후속) 상세 |
 
 ## 관련 문서
 - 작업 이력: `docs/WORKLOG.md` (날짜별 변경·버그·결정)
