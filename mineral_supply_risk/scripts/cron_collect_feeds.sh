@@ -22,6 +22,11 @@ export MSR_DB="$ROOT/warehouse/minerals.duckdb"
     python3 -m scripts.collect_priority_feeds            # Comtrade+PMI(전량 멱등)
     python3 -m scripts.collect_demand_feeds              # ISM·유로·부동산
     python3 -m scripts.collect_tier1_feeds               # 공급국 흐름 포함 풀 수집(월간)
+    # Tier2(2026-07-25): 칠레 생산·CO LME재고(USGS)·WSTS 반도체·ECOS 세부업종 —
+    # 진단·예측 채택은 0건이나 축적 가치(KINV 방향긍정 등)로 수집 지속.
+    # ECOS 키만 루트 .env에서 추출(전체 source는 인라인주석 함정 회피)
+    ECOS_API_KEY="$(grep '^ECOS_API_KEY=' "$ROOT/.env" | cut -d= -f2-)" \
+      python3 -m scripts.collect_tier2_feeds
     # GFEX 레이트리밋으로 남은 LI 공백(2025-08~2026-04)을 매월 조금씩 자가 치유 —
     # skip_dates 멱등이라 이미 채워진 주는 재호출하지 않음(공백 소진 후엔 사실상 no-op)
     python3 -m scripts.collect_exchange_inventory --backfill
