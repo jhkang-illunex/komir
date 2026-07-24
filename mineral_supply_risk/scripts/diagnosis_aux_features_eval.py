@@ -75,7 +75,11 @@ def build_aux(db: str, panel: pd.DataFrame) -> pd.DataFrame:
     inv = con.execute("""SELECT commodity_code, CAST(obs_date AS DATE) AS obs_date, val
         FROM fact_inventory WHERE src='KOMIS_WEEKLY_LME' ORDER BY 1, 2""").df()
     ser = con.execute("""SELECT series_code, CAST(obs_date AS DATE) AS obs_date, val
-        FROM fact_series WHERE src='KOMIS_MARKET_AUX' ORDER BY 1, 2""").df()
+        FROM fact_series WHERE src IN ('KOMIS_MARKET_AUX','BACKFILL_PUBLIC')
+        ORDER BY 1, 2""").df()
+    # BACKFILL_PUBLIC(2026-07-24): 거시 6계열의 2006~2021-06 과거분(ECB·미재무부·
+    # 동방재부, 중복구간 교차검증 통과 — backfill_macro_history.py). CLN 그룹의
+    # 커버리지 교란(2021-06+만 존재) 해소용. KOMIS 구간과 중복 없음(이전 주만 삽입).
     con.close()
     inv["obs_date"] = pd.to_datetime(inv["obs_date"]).astype("datetime64[ns]")
     ser["obs_date"] = pd.to_datetime(ser["obs_date"]).astype("datetime64[ns]")
