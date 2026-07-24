@@ -41,7 +41,11 @@ def build_trd(db: str, panel: pd.DataFrame) -> pd.DataFrame:
     """Comtrade 월간 물량(톤) → yoy·3개월 변화·24개월 z. REE=중국 수출, CO=중국←DRC 수입."""
     con = duckdb.connect(db, read_only=True)
     t = con.execute("""SELECT commodity_code, CAST(obs_date AS DATE) AS obs_date, val
-        FROM fact_indicator WHERE src='UN_COMTRADE' AND indicator LIKE '%_WGT'
+        FROM fact_indicator WHERE src='UN_COMTRADE'
+          AND indicator IN ('CN_REE_EXPORT_WGT','CN_CO_IMPORT_COD_WGT')
+        -- ⚠명시 고정(2026-07-24): Tier1 확장으로 같은 src에 공급국 흐름 지표
+        -- (ID_NI/AU_LI/CL_CU/CN_REE_IMPORT_MMR_*_WGT)가 추가돼, LIKE '%_WGT'로 두면
+        -- 광종당 복수 시리즈가 섞여 롤링 피처가 오염됨 — 기존 TRD 그룹 정의 보존.
         ORDER BY commodity_code, obs_date""").df()
     con.close()
     t["obs_date"] = pd.to_datetime(t["obs_date"]).astype("datetime64[ns]")

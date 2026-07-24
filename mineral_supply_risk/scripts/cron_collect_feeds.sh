@@ -17,9 +17,11 @@ export MSR_DB="$ROOT/warehouse/minerals.duckdb"
   if [ "$MODE" = "weekly" ]; then
     python3 -m scripts.collect_exchange_inventory        # 증분(기본 8주)
     python3 -m scripts.collect_forecast_exog             # COT 전량 갱신(멱등)+WM
+    python3 -m scripts.collect_tier1_feeds --skip-comtrade  # CO/LI COT·IDR·중국 OI(주간)
   else
     python3 -m scripts.collect_priority_feeds            # Comtrade+PMI(전량 멱등)
     python3 -m scripts.collect_demand_feeds              # ISM·유로·부동산
+    python3 -m scripts.collect_tier1_feeds               # 공급국 흐름 포함 풀 수집(월간)
     # GFEX 레이트리밋으로 남은 LI 공백(2025-08~2026-04)을 매월 조금씩 자가 치유 —
     # skip_dates 멱등이라 이미 채워진 주는 재호출하지 않음(공백 소진 후엔 사실상 no-op)
     python3 -m scripts.collect_exchange_inventory --backfill
