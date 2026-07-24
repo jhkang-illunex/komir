@@ -35,9 +35,9 @@ for t in con.execute(\"select table_name from information_schema.tables where ta
 | fact | `fact_price_synth_backup` | 4,830 | 가격 결측 구간 합성 보간본(백업, 운영 미사용 추정) |
 | fact | `fact_indicator` | 385 | 기타 지표(관세청 외) |
 | fact | `fact_indicator_synth_backup` | 370 | 위 합성 보간 백업 |
-| fact | `fact_inventory` | 0 | **미사용**(스키마만 존재, 재고 데이터 미수집) |
+| fact | `fact_inventory` | 2,030 | CU·NI 주간 LME 재고(2026-07-24 적재) |
 | fact | `fact_production_reserve` | 207 | USGS 생산·매장량 |
-| fact | `fact_series` | 0 | **미사용**(범용 시계열 슬롯, 미적재) |
+| fact | `fact_series` | 3,373 | 거시·시장 시계열 14종(2026-07-24 적재) |
 | fact | `fact_diagnosis_answer` | 2,497 | 진단모델 정답 라벨(KOMIS 등급 기반) |
 | agg/feat | `agg_production_hhi` | 10 | 광종×연도 생산 HHI |
 | agg/feat | `agg_trade_annual` | 65 | 광종×연도 수입 HHI·YoY·CAGR3 |
@@ -58,7 +58,7 @@ for t in con.execute(\"select table_name from information_schema.tables where ta
 | out | `out_import_forecast_unit` | 60 | **발행: 수입 예측**(단가 분리·환산 상세) |
 | out | `out_report` | 0 | **미사용**(리포트 생성 슬롯, 미적재) |
 
-**미사용 테이블(5개, 0행)**: `fact_inventory`·`fact_series`·`dim_hs_commodity`·`doc_chunk`·
+**미사용 테이블(3개, 0행)**: `dim_hs_commodity`·`doc_chunk`·
 `out_report` — 전부 `mineral_supply_risk/db/schema_core.sql` 등 초기 설계 DDL에서 만들어진
 슬롯으로, 실제 파이프라인이 아직 채우지 않고 있다. 삭제하지 않고 남겨둔 이유는 확인 필요
 (향후 확장 예약일 수도, 단순 미정리일 수도 있음).
@@ -163,8 +163,21 @@ PK(fact_indicator): (commodity_code, indicator, obs_date)
 | val | DECIMAL(20,4) |
 | src | VARCHAR |
 
-### fact_inventory (미사용, 0행)
+### fact_inventory (거래소 재고 — 2026-07-24 최초 적재)
 PK: (commodity_code, obs_date) — 컬럼: val DECIMAL(20,3), unit, src.
+src='KOMIS_WEEKLY_LME': CU·NI 주간 LME 창고재고(발주처 원본 xlsx, 2007-01~), 각 1,015행.
+적재: `scripts/load_market_aux.py`. ⚠ PK에 src가 없어 광종·날짜당 1소스만 가능 —
+다소스 재고는 `fact_inventory_exch` 사용.
+
+### fact_inventory_exch (다소스 거래소 재고 — 2026-07-24 신설)
+PK: (commodity_code, obs_date, **src**) — 컬럼: val DECIMAL(20,3), unit.
+fact_inventory와 달리 같은 광종·날짜에 복수 소스 공존 가능(NI: LME vs SHFE는 서로 다른
+실물 재고). 적재: `scripts/collect_exchange_inventory.py`(akshare 경유 공개 API).
+| src | 광종 | 내용 | 기간 |
+|---|---|---|---|
+| SHFE_99QH_W | NI | 상하이선물거래소 니켈 창고재고 주간(99期货 집계) | 2015-04~ |
+| GFEX_OFFICIAL_W | LI | 광저우선물거래소 탄산리튬 창단(공식 API, 금요일) | 2023-12~2024-11(공백: 레이트리밋, 재수집 예정) |
+| GFEX_EM_MIRROR_W | LI | 동일 수치의 동방재부 미러(공식과 교차 일치 확인) | 2026-04~ |
 
 ### fact_production_reserve (USGS 생산·매장량)
 PK: 없음.
@@ -177,8 +190,12 @@ PK: 없음.
 | val | DOUBLE |
 | src | VARCHAR |
 
-### fact_series (미사용, 0행)
-PK: (series_code, obs_date) — 컬럼: val DECIMAL(24,6), unit, src.
+### fact_series (거시·시장 시계열 — 2026-07-24 최초 적재)
+PK: (series_code, obs_date) — 컬럼: val DECIMAL(24,6), unit, src. 총 3,373행.
+src='KOMIS_MARKET_AUX'(발주처 원본 CSV): BDI_W·DXY_W·USDKRW_W·USDEUR_W·CNYUSD_W·
+UST10Y_W·UST10Y2Y_W·FEDFUNDS_W·STLFSI_W(주간, 2021-06~), CN_LEADING_M·CN_INDPROD_M
+(월간, 2016~), PRICEIDX_{BBG,RTR,SP}_W(⚠가격지수 — 진단 라벨 오염 경계, 주모델 사용 금지).
+적재: `scripts/load_market_aux.py`.
 
 ### fact_diagnosis_answer (진단모델 정답 라벨)
 PK: (commodity_code, indicator, obs_date)

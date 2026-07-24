@@ -17,3 +17,4 @@ anthropic>=0.34   # (선택) LLM 지정학 추출용
 pypdf>=4.0
 pyarrow>=15
 shap>=0.45   # 2026-07-24: forecast_unit.py 설명가능성(SHAP TreeExplainer)
+akshare>=1.18  # 2026-07-24: collect_exchange_inventory.py (SHFE·GFEX 재고 공개 API)
