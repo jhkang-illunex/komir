@@ -2,6 +2,43 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-07-24 — GKG 관련성 필터: CO/LI/REE 동음이의어 노이즈 보강
+
+사용자 질의("정제 과정 표시해달라" → "Stage 0도 키워드 필터링인가" → "CO/LI/REE도 GDELT
+전용 테마코드 확장 가능한가" → "CO/LI/REE 키워드 매칭 정확도 개선 여지 확인")를 따라가며
+발견: `geo/gkg_relevance.py`의 `NOISE_PHRASES`/`NOISE_REGEX`(동음이의어 노이즈 제외
+목록)가 사실상 전부 CU/NI 전용이었음 — 4라운드 정제·SRS 재검증(n=200)이 전체 모집단
+기준이라 당시 CU+NI가 90%+를 차지, CO/LI/REE(현재 합쳐도 전체의 6.3%)는 표본에 거의
+안 걸려 동음이의어 사냥이 안 됐던 구조적 공백.
+
+**검증(원본 GDELT 재파싱, 가상 사례 아님)**: 4개 연도·160개 zip을 직접 재파싱해 실제
+`is_relevant()` 통과 사례를 확인, 다음이 규칙기반 필터를 그대로 통과함을 확인 —
+`darkreading.com/cobalt-strike-malware`(침투테스트 툴), `bankinfosecurity.com/
+cobalt-cybercriminal-group`(해킹조직), `theguardian.com/cobalt-winged-parakeets`
+(새 사진전). **단, 현재 운영 DB(295,157건)엔 전부 없음** — LLM 2단계(적대적) 재검증이
+이미 제거했음을 직접 확인. 즉 과거 데이터엔 문제 없으나, `is_relevant()`는 향후 신규
+GKG 파싱분에 상시 적용되는 필터라 이 구멍이 재발 위험으로 남아있었음.
+
+**수정**: `NOISE_REGEX`에 CO 3건(사이버보안 "cobalt strike"+맥락어 co-occurrence,
+"cobalt cybercriminal/hacker group", "cobalt-winged parakeet")·LI 3건(리튬탄산염
+조울증 치료·리튬독성·치과용 이규산리튬 — 원본·DB 둘 다 실사례는 없었으나 방어적 등재)
+추가. "cobalt blue"(실제 채굴기업 Cobalt Blue Holdings·ASX:COB와 색상 표현이 문자
+그대로 동음이의)는 문맥 없이 구분 불가능한 진짜 모호 사례라 손대지 않음(2026-07-20
+"시장맥락어 요구" 과잉수정 롤백 전례 참고, 재시도 안 함).
+
+**회귀 발견 및 즉시 수정**: 최초 패치("cobalt strike" 무조건 배제)를 실 DB 18,635건
+(CO/LI/REE) 전수 재검증한 결과 회귀 발견 — "cobalt strike"는 채굴업계에서 "코발트
+광맥 발견"이라는 뜻으로도 그대로 쓰여("White Cliff...cobalt strike") 사이버보안 툴명과
+문자 그대로 동음이의였음. 사이버보안 맥락어(malware/ransomware/threat actor/red team
+등) co-occurrence(60자 이내)로 좁혀 재등재 — 이후 전수 재검증 결과 신규거부/신규통과
+0건(완전 무회귀) 확인.
+
+**검증 방법론 교훈**: DB의 `evidence_quote`로 `is_relevant()`를 재실행해 "패치 후 거부
+건수"만 단순 카운트하면 오판 위험이 큼 — geo_event엔 GDELT 외 경로(문서/Argus 등,
+한국어 요약문 포함)로 들어온 행도 섞여 있어 애초에 `is_relevant()`가 게이트 역할을 안
+한 행까지 같이 잡힘. 반드시 **패치 전/후를 같은 방식으로 두 번 실행해 diff**를 봐야
+진짜 회귀와 무관한 차이를 구분할 수 있음(이번에 이 방법으로 위 회귀를 발견·확정).
+
 ## 2026-07-22 (최신②) — 잔여 8개 지수화 비판(#1~7,9) 일괄 처리
 
 `/goal`: "나머지 8개 이슈도 검토해서 데이터 재검출 혹은 코드 수정과 같은 작업을 처리". #8

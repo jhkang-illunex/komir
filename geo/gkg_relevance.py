@@ -177,6 +177,32 @@ NOISE_REGEX = (
     r"\bstores[-,\s]+her[-,\s]+copper[-,\s]+pans\b", r"\bcopper[-,\s]+pans\b",
     r"\blight[-,\s]+rail[-,\s]+copper[-,\s]+thefts?\b",
     r"\bmichael[-,\s]+copper\b",
+    # 2026-07-24: 위 CU/NI 노이즈 항목들은 4라운드 정제 때 SRS 표본(n=200, 전체 모집단 기준)이
+    # CU/NI에 압도적으로 쏠려 있어(당시 기준 CU+NI가 전체의 90%+) 발견된 것들 — CO/LI/REE는
+    # 표본에 거의 안 걸려 동음이의어 사냥이 안 됐던 구조적 공백. 원본 GDELT 재파싱으로 실제
+    # 확인된 사례만 등재(가상 사례 아님 — darkreading.com의 "cobalt-strike" 침투테스트 툴 기사,
+    # bankinfosecurity.com의 "cobalt-cybercriminal-group" 해킹조직 기사, theguardian.com의
+    # "cobalt-winged-parakeets" 새 사진전 기사가 규칙기반 필터를 통과했던 것을 확인 — 현재
+    # 운영 DB엔 LLM 2단계 재검증이 이미 제거해 잔존하지 않지만, is_relevant()는 향후 신규
+    # GKG 파싱분에 상시 적용되는 필터라 이 구멍을 메워야 재발을 막음). "cobalt blue"는 실제
+    # 채굴기업(Cobalt Blue Holdings, ASX:COB)과 색상 표현이 문자 그대로 동일해 문맥 없이는
+    # 구분 불가능한 진짜 모호 사례라 이번엔 손대지 않음(과잉수정 위험 — 2026-07-20 "시장맥락어
+    # 요구" 롤백 전례 참고). "cobalt strike"도 처음엔 무조건 노이즈로 등재했다가 실 DB 전수
+    # 재검증(2026-07-24)에서 회귀 발견 — "cobalt strike"는 채굴업계에서 "코발트 광맥 발견"
+    # 이라는 의미로도 그대로 쓰여("White Cliff...cobalt strike"), 사이버보안 툴과 문자 그대로
+    # 동음이의라 무조건 배제는 틀림. 사이버보안 맥락어 co-occurrence로 좁혀 재등재.
+    r"\bcobalt[-,\s]+strike\b.{0,60}\b(malware|ransomware|beacon|payload|threat[-,\s]+actor|"
+    r"red[-,\s]+team|exploit|backdoor|c2|penetration[-,\s]+test)\b",
+    r"\b(malware|ransomware|beacon|payload|threat[-,\s]+actor|red[-,\s]+team|exploit|backdoor|"
+    r"c2|penetration[-,\s]+test|cybercriminal)\b.{0,60}\bcobalt[-,\s]+strike\b",
+    r"\bcobalt[-,\s]+(cybercriminal|hacker|hacking)[-,\s]+group\b",
+    r"\bcobalt[-,\s]+winged[-,\s]+parakeets?\b",
+    # 리튬(정신과 약물 리튬탄산염·조울증 치료, 치과 이규산리튬 세라믹)·희토류(브랜드/카페명)는
+    # 원본·현재 DB 양쪽 다 실제 사례가 발견되지 않았으나(직접 확인, 2026-07-24) 동일 계열
+    # 위험이라 방어적으로 등재.
+    r"\blithium[-,\s]+(carbonate[-,\s]+)?(for|treats?|treating|treatment)[-,\s]+.{0,15}bipolar\b",
+    r"\bbipolar[-,\s]+disorder\b.{0,40}\blithium\b", r"\blithium[-,\s]+toxicity\b",
+    r"\blithium[-,\s]+disilicate\b",
 )
 
 
