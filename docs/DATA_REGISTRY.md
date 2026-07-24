@@ -30,6 +30,7 @@
 | `mineral_supply_risk/outputs/model_opt/_gkg_relevance_llm_state/` | GKG 관련성 LLM 1차 재검증 실행 로그(checked/rejected/corrected, META.md 참고) | WORKLOG 2026-07-20, "LLM 관련성 재검증 전량 실행 완료" |
 | `mineral_supply_risk/outputs/model_opt/_gkg_relevance_verify2_state/` | GKG 관련성 LLM 2차(적대적) 재검증 실행 로그(checked/problem/corrected, META.md 참고) — 최종 유효성 99.5% | WORKLOG 2026-07-21, "2차 적대적 재검증(합의투표 방식)" |
 | `mineral_supply_risk/outputs/model_opt/{conc_impmult_corr_v2,kr_exposure_ablation,conf_weight_ablation,severity_sgn_significance_check,neardup_impact_sim_v2,rel_source_tier_check_v2}.md` + `data_archive/analysis/neardup_embed_260722/report.md` | 지수화 비판 #1~7,9 잔여 8개 일괄 처리(#4 이중노출 resid 채택·#7 conf_weight 활성화·#6 재확인 등) — 07-16 B-1~B-6의 조건부("refdata 백필 후 재실행" 등) 후속작업. #3(rel_source_tier_check_v2)만 07-22 당시 재검증 없이 보류됐던 걸 07-24 완결(결론 불변 재확인) | WORKLOG 2026-07-22(최신②)·2026-07-24(후속) 상세 |
+| `mineral_supply_risk/outputs/model_opt/diagnosis_ylag_deep_review.md` (+ `scripts/diagnosis_ylag_deep_review.py`) | 진단모델 y_lag1 의존 심층검토 — 미착수 대안 6계열(비대칭게이트·Δ타깃·서수·전환가중·동역학피처·잔차회귀)+E7 방향별 이벤트 피처 일괄 백테스트, **전부 기각(7번째 동일 결론)**. E4 형식통과→강건성 기각, E7 개선분=가격뉴스 오염 판명. 이 방향 재시도 전 반드시 이 리포트 확인 | WORKLOG 2026-07-24(최신⑧), 스코어카드 v1.4 |
 
 ## 관련 문서
 - 작업 이력: `docs/WORKLOG.md` (날짜별 변경·버그·결정)
