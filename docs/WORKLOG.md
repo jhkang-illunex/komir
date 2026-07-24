@@ -2,6 +2,46 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-07-24 (최신⑤) — 4-4 예측기 설명가능성 구현(SHAP+permutation_importance)
+
+사용자 지시: "4-4 예측기 설명가능성 개발 진행". 스코어카드 v1에서 확인한 갭(같은 날
+최신④ 항목)을 실제로 해소.
+
+**구현**(`mineral_supply_risk/msr/models/forecast_unit.py`):
+- 전역 중요도: `HistGradientBoostingRegressor`는 `feature_importances_` 속성이
+  sklearn 공식 한계로 없어(RandomForest 등과 달리 히스토그램 기반 트리) 모델-불가지론적
+  표준 대안인 `sklearn.inspection.permutation_importance` 채택.
+- 개별 예측 로컬 설명: SHAP `TreeExplainer` — 신규 설치(`pip install shap`, 0.49.1),
+  `HistGradientBoostingRegressor` 지원 스모크테스트로 사전 검증(shap_values 합이
+  예측값-기준값과 정확히 일치 확인).
+- `_direct_forecast()`·`_recursive_forecast()`에 `return_models` 옵션 추가 — 발행에
+  **실제 쓰인** 모델·피처행을 그대로 반환(재적합 없음, 기존 호출부는 기본값 False로
+  전부 하위호환). `_build_explanations()`가 물량·단가 각각의 SHAP 상위 3개 기여요인을
+  결합해 `out_diagnosis_alert.reason`과 동일한 스타일의 자연어 문장(`reason`)과 구조화
+  근거(`explain_json`)를 생성, `out_import_forecast_unit`에 신규 컬럼으로 추가.
+
+**검증**: 실행 결과 60행 전체에 `reason`/`explain_json` 결측 없이 채워짐 확인. 실측
+예시(CU, 2026-01, h=1): "물량: 1개월 전 실적+2.0727, 광종 고정효과(LI)+0.3512, 3개월
+전 실적+0.1181 / 단가: 1개월 전 실적-0.5968, 최근 3개월 이동평균+0.3666, 광종
+고정효과(NI)+0.1141" — 라그 피처·LME가격·이동평균 등 도메인상 타당한 요인이 상위로
+잡힘. 기존 컬럼(model_version·basis 등) 전부 보존 확인, CSV 산출물도 정상 갱신.
+
+**부수 효과(예상 밖 성과)**: 같은 실행에서 07-22 지수 변경분이 자동으로 재학습에
+반영돼, 스코어카드 최신④ 항목에서 지적한 "2-4(예측기) 버전 정합성 갭"도 동시에
+해소됨 — 금액 WAPE 19.4~28.1%→18.3~18.5%(계절나이브 20.9~36.0% 대비 우위 유지, 우열
+판정 불변), MASE 재귀 0.88 vs Direct 1.04(재귀 채택 유지), conformal 80% 커버리지
+0.77/0.87. 진단기(4-3)만 아직 미해소로 남음.
+
+**잔여 개선점(문서에 정직하게 기록, 급하지 않음)**: ① 광종 풀링모델 특성상 "광종
+고정효과(LI)" 같은 더미변수가 다른 광종 예측에도 상위 기여로 잡히는 경우 있음(수치는
+정확하나 비전문가에겐 비직관적 — 문구 개선 검토). ② permutation_importance는
+학습데이터 기준(in-sample)이라 엄밀한 held-out 전역중요도는 아님(explain_json에
+명시).
+
+`docs/DB_SCHEMA.md`의 `out_import_forecast_unit` 항목에 신규 컬럼 반영,
+`requirements.txt`에 `shap>=0.45` 추가. 스코어카드는 v1→v1.1로 갱신(새 파일 만들지
+않고 같은 문서에 이어붙이는 기존 정책 그대로).
+
 ## 2026-07-24 (최신④) — 스코어카드에 "설명가능성" 항목 추가 (지수·진단·예측 3모듈)
 
 사용자 지시: 지정학위기지수·수급위기 진단·수요가격 예측 3개 모듈에 "설명가능성 및

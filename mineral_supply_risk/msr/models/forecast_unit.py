@@ -88,6 +88,141 @@ def _features(df: pd.DataFrame, target: str) -> pd.DataFrame:
 
 FEATS = [f"lag{L}" for L in LAGS] + ["roll3", "m_sin", "m_cos", "lme_l", "geo_f", "fx_l"]
 
+# ─────────────────────── 설명가능성(2026-07-24, 스코어카드 4-4 갭 해소) ───────────────────────
+# HistGradientBoostingRegressor는 sklearn 공식 한계로 feature_importances_ 속성이 없음
+# (RandomForest·GradientBoostingRegressor와 달리 히스토그램 기반 트리라 미지원) — 전역
+# 중요도는 permutation_importance(모델-불가지론적 표준 기법)로 대체. 개별 예측 설명은
+# SHAP TreeExplainer(트리 모델 전용, HistGradientBoostingRegressor 지원 확인됨,
+# shap_values 합이 예측값-기준값과 정확히 일치함을 스모크테스트로 검증 후 채택).
+FEAT_LABELS = {
+    "lag1": "1개월 전 실적", "lag2": "2개월 전 실적", "lag3": "3개월 전 실적",
+    "lag6": "6개월 전 실적", "lag12": "전년 동월 실적", "roll3": "최근 3개월 이동평균",
+    "m_sin": "계절성(월)", "m_cos": "계절성(월)", "lme_l": "LME 국제가격",
+    "geo_f": "지정학위기지수", "fx_l": "원달러 환율",
+}
+
+
+def _feat_label(name: str) -> str:
+    if name in FEAT_LABELS:
+        return FEAT_LABELS[name]
+    if name.startswith("cc_"):
+        return f"광종 고정효과({name[3:]})"
+    return name
+
+
+def _shap_top_contrib(model, X: pd.DataFrame, top_n: int = 3) -> list:
+    """SHAP TreeExplainer로 X의 각 행(예측)에 대해 상위 top_n 기여 피처(부호 포함,
+    log스케일 — 타깃 자체가 log(톤)/log(단가)라 SHAP값도 log기여분)를 반환."""
+    import shap
+    expl = shap.TreeExplainer(model)
+    sv = expl.shap_values(X)
+    sv = np.atleast_2d(sv)
+    out = []
+    for i in range(len(X)):
+        row = sv[i]
+        order = np.argsort(-np.abs(row))[:top_n]
+        out.append([
+            {"feature": str(X.columns[j]), "label": _feat_label(str(X.columns[j])),
+             "shap_log": round(float(row[j]), 4), "value": round(float(X.iloc[i, j]), 4)}
+            for j in order
+        ])
+    return out
+
+
+def _global_importance(model, X: pd.DataFrame, y: np.ndarray, top_n: int = 5,
+                       n_repeats: int = 8, seed: int = 0) -> list:
+    """permutation_importance(sklearn.inspection) — 학습에 쓰인 데이터 기준(엄밀한
+    held-out 검증 아님 — in-sample 전역 중요도임을 결과 JSON에 명시)."""
+    from sklearn.inspection import permutation_importance
+    r = permutation_importance(model, X, y, n_repeats=n_repeats, random_state=seed,
+                               scoring="neg_mean_squared_error")
+    order = np.argsort(-r.importances_mean)[:top_n]
+    return [
+        {"feature": str(X.columns[j]), "label": _feat_label(str(X.columns[j])),
+         "importance_mean": round(float(r.importances_mean[j]), 5),
+         "importance_std": round(float(r.importances_std[j]), 5)}
+        for j in order
+    ]
+
+
+def _reason_sentence(cc: str, target_month, h: int, target_label: str,
+                     contrib: list, direction_note: str = "") -> str:
+    """진단기(out_diagnosis_alert.reason)와 동일한 스타일의 한국어 자연어 설명문 생성."""
+    parts = []
+    for c in contrib:
+        sign = "+" if c["shap_log"] >= 0 else ""
+        parts.append(f"{c['label']} {sign}{c['shap_log']}")
+    contrib_str = ", ".join(parts)
+    return (f"[{cc} {target_month} h={h} {target_label} 예측] "
+            f"상위 기여 요인(로그스케일 기여분): {contrib_str}."
+            + (f" {direction_note}" if direction_note else ""))
+
+
+def _explain_local(expl_info, cc: str, h: int, top_n: int = 3):
+    """expl_info=("direct", models) 또는 ("recursive", model, xrows, Xtr, ytr)에서
+    (cc,h)에 해당하는 예측의 SHAP 상위기여를 뽑는다. 발행 시점에 실제 쓰인 모델·피처행을
+    그대로 재사용(재적합 아님)."""
+    if expl_info[0] == "direct":
+        _, models = expl_info
+        info = models.get(h)
+        if info is None:
+            return None
+        X = info["Xpr_by_cc"].get(cc)
+        if X is None:
+            return None
+        return _shap_top_contrib(info["model"], X, top_n=top_n)[0]
+    _, model, xrows, _, _ = expl_info
+    X = xrows.get((cc, h))
+    if X is None:
+        return None
+    return _shap_top_contrib(model, X, top_n=top_n)[0]
+
+
+def _explain_global(expl_info, top_n: int = 5):
+    """expl_info로부터 전역 중요도(permutation_importance) — direct는 h=1(없으면 임의
+    1개) 모델 기준, recursive는 전 h 공용 단일모델 기준."""
+    if expl_info[0] == "direct":
+        _, models = expl_info
+        info = models.get(1) or (next(iter(models.values())) if models else None)
+        if info is None:
+            return []
+        return _global_importance(info["model"], info["Xtr"], info["ytr"], top_n=top_n)
+    _, model, _, Xtr, ytr = expl_info
+    return _global_importance(model, Xtr, ytr, top_n=top_n)
+
+
+def _build_explanations(out: pd.DataFrame, expl_ton, expl_unit) -> tuple:
+    """out의 각 행(commodity_code,target_month,h)에 물량·단가 SHAP 상위기여를 결합한
+    자연어 reason과 구조화 explain_json을 붙인다(2026-07-24, 스코어카드 4-4 갭 해소 —
+    out_diagnosis_alert.reason/evidence_json과 동일한 설계 패턴)."""
+    global_ton = _explain_global(expl_ton)
+    global_unit = _explain_global(expl_unit)
+    reasons, explains = [], []
+    for _, r in out.iterrows():
+        cc, h = r["commodity_code"], int(r["h"])
+        loc_t = _explain_local(expl_ton, cc, h) or []
+        loc_u = _explain_local(expl_unit, cc, h) or []
+        parts = []
+        if loc_t:
+            s = ", ".join(f"{c['label']}{'+' if c['shap_log'] >= 0 else ''}{c['shap_log']}" for c in loc_t)
+            parts.append(f"물량: {s}")
+        if loc_u:
+            s = ", ".join(f"{c['label']}{'+' if c['shap_log'] >= 0 else ''}{c['shap_log']}" for c in loc_u)
+            parts.append(f"단가: {s}")
+        reason = (f"[{cc} {r['target_month']} h={h}개월] 예측 기여요인(SHAP, 로그스케일) — "
+                 + " / ".join(parts) + ".") if parts else \
+                 f"[{cc} {r['target_month']} h={h}개월] 설명 정보 없음(모델 매칭 실패)."
+        reasons.append(reason)
+        explains.append(json.dumps({
+            "local": {"ton": loc_t, "unit": loc_u},
+            "global_top5": {"ton": global_ton, "unit": global_unit},
+            "method": expl_ton[0],
+            "note": ("SHAP은 log(톤)/log(단가) 타깃 기준 로그스케일 기여분(부호=방향, 크기=영향력). "
+                    "전역중요도는 permutation_importance 기반, 학습데이터 기준(in-sample) — "
+                    "엄밀한 held-out 검증치 아님."),
+        }, ensure_ascii=False)[:4000])
+    return reasons, explains
+
 
 def _fit(df_feat: pd.DataFrame):
     d = pd.get_dummies(df_feat.dropna(subset=["lag1", "ly"]),
@@ -101,12 +236,16 @@ def _fit(df_feat: pd.DataFrame):
 
 
 def _recursive_forecast(df: pd.DataFrame, target: str, base_month: pd.Timestamp,
-                        horizon: int = H) -> pd.DataFrame:
-    """base_month까지 학습 → h=1..horizon 재귀 예측. 외생은 최종 관측값 고정."""
+                        horizon: int = H, return_models: bool = False):
+    """base_month까지 학습 → h=1..horizon 재귀 예측. 외생은 최종 관측값 고정.
+    return_models=True면 (예측df, model, {(cc,h): Xrow}, Xtr, ytr) 튜플 반환
+    (2026-07-24 설명가능성 — 재귀는 모델 1개를 전 h에 재사용하므로 model은 하나,
+    피처행만 (광종,h)별로 다름)."""
     hist = df[df["month"] <= base_month].copy()
     feat = _features(hist, target)
     model, cc_cols = _fit(feat)
     preds = []
+    xrows = {}
     state = {cc: g.sort_values("month").copy() for cc, g in hist.groupby("commodity_code")}
     for h in range(1, horizon + 1):
         tgt_m = base_month + pd.DateOffset(months=h)
@@ -126,8 +265,15 @@ def _recursive_forecast(df: pd.DataFrame, target: str, base_month: pd.Timestamp,
             Xrow = pd.DataFrame([row])[FEATS + cc_cols]
             yhat = float(np.exp(model.predict(Xrow)[0]))
             preds.append(dict(commodity_code=cc, month=tgt_m, h=h, pred=yhat))
+            if return_models:
+                xrows[(cc, h)] = Xrow
             new = last.copy(); new["month"] = tgt_m; new[target] = yhat
             state[cc] = pd.concat([g, new.to_frame().T], ignore_index=True)
+    if return_models:
+        d = pd.get_dummies(feat.dropna(subset=["lag1", "ly"]), columns=["commodity_code"], prefix="cc")
+        Xtr = d[FEATS + cc_cols].fillna(d[FEATS + cc_cols].median(numeric_only=True))
+        ytr = d["ly"].values
+        return pd.DataFrame(preds), model, xrows, Xtr, ytr
     return pd.DataFrame(preds)
 
 
@@ -153,11 +299,16 @@ def _direct_matrix(feat: pd.DataFrame, h: int) -> pd.DataFrame:
 
 
 def _direct_forecast(df: pd.DataFrame, target: str, base_month: pd.Timestamp,
-                     horizon: int = H, with_quantiles: bool = False) -> pd.DataFrame:
-    """h별 독립 HistGBM(광종 풀링+더미). with_quantiles면 q10/q90 분위 모델 병행."""
+                     horizon: int = H, with_quantiles: bool = False,
+                     return_models: bool = False):
+    """h별 독립 HistGBM(광종 풀링+더미). with_quantiles면 q10/q90 분위 모델 병행.
+    return_models=True면 (예측df, {h: {"model","Xpr_by_cc","Xtr","ytr"}}) 튜플 반환
+    (2026-07-24 설명가능성 — 발행 시점 예측에 실제 쓰인 모델·피처행을 그대로 재사용해
+    SHAP·permutation_importance를 계산하기 위함, 재적합 아님)."""
     hist = df[df["month"] <= base_month].copy()
     feat = _features(hist, target)
     rows = []
+    models = {}
     for h in range(1, horizon + 1):
         d = _direct_matrix(feat, h)
         d2 = pd.get_dummies(d, columns=["commodity_code"], prefix="cc")
@@ -184,7 +335,11 @@ def _direct_forecast(df: pd.DataFrame, target: str, base_month: pd.Timestamp,
             if with_quantiles:
                 r["q10"], r["q90"] = float(qv[0.1][i]), float(qv[0.9][i])
             rows.append(r)
-    return pd.DataFrame(rows)
+        if return_models:
+            Xpr_by_cc = {d.loc[idx, "commodity_code"]: Xpr.loc[[idx]] for idx in pr.index}
+            models[h] = {"model": m, "Xpr_by_cc": Xpr_by_cc, "Xtr": Xtr, "ytr": ytr}
+    out = pd.DataFrame(rows)
+    return (out, models) if return_models else out
 
 
 def _conformal_q(df: pd.DataFrame, target: str, origins: tuple, horizon: int = H,
@@ -419,20 +574,28 @@ def run(db=None, out_dir=None):
     qt_pub = _conformal_q(df, "ton", cal_pub)
     qu_pub = _conformal_q(df, "unit", cal_pub)
     print(f"[conformal] 발행 가산폭(log, 보정 원점 {cal_pub}): ton {qt_pub:.3f}, unit {qu_pub:.3f}")
-    fd_ton = _direct_forecast(df, "ton", last_m, with_quantiles=True) \
-        .rename(columns={"pred": "d_ton", "q10": "ton_lo", "q90": "ton_hi"})
-    fd_unit = _direct_forecast(df, "unit", last_m, with_quantiles=True) \
-        .rename(columns={"pred": "d_unit", "q10": "unit_lo", "q90": "unit_hi"})
+    fd_ton, models_ton_d = _direct_forecast(df, "ton", last_m, with_quantiles=True, return_models=True)
+    fd_ton = fd_ton.rename(columns={"pred": "d_ton", "q10": "ton_lo", "q90": "ton_hi"})
+    fd_unit, models_unit_d = _direct_forecast(df, "unit", last_m, with_quantiles=True, return_models=True)
+    fd_unit = fd_unit.rename(columns={"pred": "d_unit", "q10": "unit_lo", "q90": "unit_hi"})
     out = fd_ton.merge(fd_unit, on=["commodity_code", "month", "h"])
     out["ton_lo"] *= np.exp(-qt_pub); out["ton_hi"] *= np.exp(qt_pub)
     out["unit_lo"] *= np.exp(-qu_pub); out["unit_hi"] *= np.exp(qu_pub)
     if method == "direct":
         out["pred_ton"], out["pred_unit_usd_per_ton"] = out["d_ton"], out["d_unit"]
+        expl_ton = ("direct", models_ton_d)
+        expl_unit = ("direct", models_unit_d)
     else:
-        f_ton = _recursive_forecast(df, "ton", last_m).rename(columns={"pred": "pred_ton"})
-        f_unit = _recursive_forecast(df, "unit", last_m).rename(columns={"pred": "pred_unit_usd_per_ton"})
+        f_ton, model_ton_r, xrows_ton_r, Xtr_ton_r, ytr_ton_r = _recursive_forecast(
+            df, "ton", last_m, return_models=True)
+        f_ton = f_ton.rename(columns={"pred": "pred_ton"})
+        f_unit, model_unit_r, xrows_unit_r, Xtr_unit_r, ytr_unit_r = _recursive_forecast(
+            df, "unit", last_m, return_models=True)
+        f_unit = f_unit.rename(columns={"pred": "pred_unit_usd_per_ton"})
         out = out.merge(f_ton, on=["commodity_code", "month", "h"]) \
                  .merge(f_unit, on=["commodity_code", "month", "h"])
+        expl_ton = ("recursive", model_ton_r, xrows_ton_r, Xtr_ton_r, ytr_ton_r)
+        expl_unit = ("recursive", model_unit_r, xrows_unit_r, Xtr_unit_r, ytr_unit_r)
     out["pred_value_usd"] = out["pred_ton"] * out["pred_unit_usd_per_ton"]   # 실지출액
     # 금액 80% 구간 — 물량×단가 몬테카를로 합성(분위 직접 곱 금지)
     vint = out.apply(lambda r: _mc_value_interval(
@@ -457,6 +620,19 @@ def run(db=None, out_dir=None):
                                "identity": "value = unit(USD/ton) × ton"},
                               ensure_ascii=False)[:4000]
     out["generated_at"] = pd.Timestamp.utcnow().isoformat(timespec="seconds")
+
+    # 설명가능성(2026-07-24, 스코어카드 4-4 갭 해소): 발행에 실제 쓰인 모델·피처행 그대로
+    # SHAP·permutation_importance 계산(재적합 없음) — out_diagnosis_alert.reason/
+    # evidence_json과 동일한 패턴으로 reason(자연어)·explain_json(구조화) 컬럼 추가.
+    try:
+        reasons, explains = _build_explanations(out, expl_ton, expl_unit)
+        out["reason"] = reasons
+        out["explain_json"] = explains
+        print(f"[explain] {len(out)}행에 SHAP 기반 reason/explain_json 부여 완료(method={method})")
+    except Exception as e:
+        print(f"  [warn] 설명가능성 계산 실패(발행은 계속 진행): {e}")
+        out["reason"] = None
+        out["explain_json"] = None
 
     con = duckdb.connect(db)
     con.register("_f", out)

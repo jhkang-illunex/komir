@@ -359,7 +359,9 @@ PK(out_import_forecast): (commodity_code, target, base_date, horizon)
 
 `out_import_forecast_unit`(PK 없음): target_month·h·ton_lo/hi·unit_lo/hi·pred_ton·
 pred_unit_usd_per_ton·pred_value_usd·pred_value_lo/hi·pred_value_kusd·base_month·
-model_version·basis·generated_at — 물량/단가 분리 예측의 상세 분해판.
+model_version·basis·generated_at·**reason·explain_json**(2026-07-24 추가 — SHAP
+TreeExplainer 기반 자연어 설명문·구조화 근거, `msr/models/forecast_unit.py`
+`_build_explanations()`) — 물량/단가 분리 예측의 상세 분해판.
 
 ### out_report (미사용, 0행)
 PK: report_id(VARCHAR) — 컬럼: commodity_code, period, kind, title, body, generated_at.
