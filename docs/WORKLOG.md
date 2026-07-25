@@ -2,6 +2,32 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-07-25 (최신㉕) — 4개 신챔피언 운영 반영 완료(스코어카드 v1.19)
+
+사용자 지시("4개 챔피언 운영 반영도 진행"). 3개 운영 지점에 반영·실행·검증 완료:
+
+**① 예측(forecast_unit v2→v3)**: `msr/models/forecast_unit.py` — build_panel에
+MIDAS 피처 빌더(_add_midas_features: 주간 지수 λ사전·가격/환율 w0/slope, 검정
+구현과 동일 정의), _direct_forecast 점추정을 타깃별 신챔피언으로 교체(ton=XT+
+감쇠hl24+CO만 ElasticNet / unit=XT), 분위(HGB quantile)+conformal+재귀 경로는
+불변. CO 설명은 SHAP 대신 선형 정확 기여(_linear_top_contrib — 모델-설명 일치).
+운영 실행: method=direct 채택(MASE 0.755 vs 재귀 0.85), out_import_forecast_unit
+60행 재발행(base=2025-12), reason/explain 정상. midas_eval의 중복 병합 가드 추가.
+
+**② 진단 보조 조기경보 최초 운영화**: 지금까지 백테스트 문서상으로만 존재하던
+보조 조기경보를 `scripts/aux_early_warning.py`로 발행 — 소프트보팅 Bagging25×2
+(p_burst 원천+gsev_z13 원천), 전 기간 재적합, **out_aux_early_warning 테이블
+신설**(Δ방향·트리거·방향확률·basis). 최신 주(2026-06-08): CU·LI·NI·REE 상향
+트리거, CO 유지 — 현 경보 국면(CU 심각 등)과 정합. 운영 등급예측과 별개 병기
+(hard 결합 기각 이력 준수).
+
+**③ 지수 확률화 CO x_z13 병행**: `geo/prob_model.py`에 COLS_BY_COMMODITY
+도입(CO=base3+x_z13), CO Brier 0.2055→**0.1747 ✓개선**(상수기준 0.1919 열세
+해소). 함정 재확인: x_z13 워밍업 NaN을 fillna(0)로 채워 학습하면 계수 오염으로
+개선 소멸(0.175→0.206 실측) — 학습은 결측 제거·예측만 중립 대치로 수정. 정본
+재계산+DB 발행, CO p_burst 히스토리 변경(다운스트림 진단 피처 — 재발행 강건성
+축 기록 유지).
+
 ## 2026-07-25 (최신㉔) — REE burst_k 재정의 처리(§6 백로그 해소) — 적응형 임계 운영 반영
 
 사용자 지시("REE burst_k 재정의도 처리"). 문제: 고정 burst_k(학습기 P90 동결)가

@@ -118,6 +118,11 @@ def build_midas_panel(db: str, panel: pd.DataFrame) -> tuple[pd.DataFrame, dict]
     wk = load_weekly(db)
     panel = panel.copy()
     panel["month"] = pd.to_datetime(panel["month"])
+    # 2026-07-25 운영 반영 후 fu.build_panel이 wgeo_*·wpx_*·wfx_*를 이미 포함 —
+    # 중복 병합의 _x/_y 충돌 방지를 위해 기존 컬럼은 제거 후 재생성(정의 동일)
+    pre = [c for c in panel.columns if any(c.startswith(p + "_") for p in
+           ["wpx", "wgeo", "winv", "wcninv", "woi", "wcot", "wfx"])]
+    panel = panel.drop(columns=pre)
     groups = {}
     spec = [("wpx", True, True), ("wgeo", False, True), ("winv", True, True),
             ("wcninv", True, True), ("woi", True, True), ("wcot", False, True),

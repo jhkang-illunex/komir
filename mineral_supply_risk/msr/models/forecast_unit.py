@@ -24,7 +24,7 @@ import json, os, warnings
 import duckdb
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import HistGradientBoostingRegressor
+from sklearn.ensemble import ExtraTreesRegressor, HistGradientBoostingRegressor
 
 from ..config import DB_PATH, OUT
 
@@ -34,6 +34,77 @@ H = 12
 LAGS = [1, 2, 3, 6, 12]
 FX_CSV = ("/home/nuri/dev/git/ws/mine_ws/komir/documents/1. 광물가격, 재고량, 지수 등 (1)/"
           "3. 원달러 환율.csv")
+
+# ── 신챔피언 구성(2026-07-25, 스코어카드 v1.16~v1.17·챔피언_스코어보드 참조) ──
+# 점추정 모델: ton = ExtraTrees + 주간 지정학지수 MIDAS(지수감쇠 λ사전) + 시간감쇠
+#   표본가중(반감기 24개월, 단 CO는 ElasticNet — 소량·고변동에서 트리 과적합,
+#   18/18 오리진 전원 개선 P=1.000) / unit = ExtraTrees + U-MIDAS 가격·환율(월말
+#   레벨 w0 + 13주 기울기). 구간(분위 HistGBM+conformal)·재귀 경로는 기존 유지.
+MIDAS_LAMBDAS = {"l0": 0.0, "l02": 0.2, "l06": 0.6, "l15": 1.5}
+K_MIDAS = 13                 # 주간 lookback 창
+DECAY_HL_TON = 24            # ton 시간감쇠 반감기(개월)
+GEO_MIDAS_F = [f"wgeo_{t}" for t in MIDAS_LAMBDAS]
+PXFX_UMIDAS_F = ["wpx_w0", "wpx_slope", "wfx_w0", "wfx_slope"]
+TARGET_EXTRA = {"ton": GEO_MIDAS_F, "unit": PXFX_UMIDAS_F}
+
+
+def _midas_weekly_to_monthly(wdf: pd.DataFrame, name: str, lambdas: dict | None,
+                             umidas: bool, log: bool) -> pd.DataFrame:
+    """주간 시계열 → 월별 MIDAS 피처(각 월: 월말 이전 최근 K_MIDAS주).
+    scripts/midas_eval.py의 검정 구현과 동일 정의."""
+    rows = []
+    for cc, g in wdf.groupby("commodity_code", dropna=False):
+        g = g.sort_values("week").reset_index(drop=True)
+        v = np.log1p(g["val"].clip(lower=0)) if log else g["val"]
+        v = v.to_numpy(dtype=float)
+        wk = g["week"].to_numpy()
+        if len(wk) < 4:
+            continue
+        months = pd.period_range(pd.Timestamp(wk[0]).to_period("M"),
+                                 pd.Timestamp(wk[-1]).to_period("M"), freq="M")
+        for m in months:
+            end = m.to_timestamp(how="end")
+            i = np.searchsorted(wk, np.datetime64(end), side="right")
+            seg = v[max(0, i - K_MIDAS):i][::-1]      # seg[0]=가장 최근 주
+            if len(seg) < 4:
+                continue
+            r = {"commodity_code": cc, "month": m.to_timestamp()}
+            if lambdas:
+                for tag, lam in lambdas.items():
+                    w = np.exp(-lam * np.arange(len(seg)))
+                    r[f"{name}_{tag}"] = float(np.nansum(w / w.sum() * seg))
+            if umidas:
+                r[f"{name}_w0"] = float(seg[0])
+                r[f"{name}_slope"] = float(seg[0] - seg[-1])
+            rows.append(r)
+    return pd.DataFrame(rows)
+
+
+def _add_midas_features(df: pd.DataFrame, db: str) -> pd.DataFrame:
+    """주간 원천(지정학지수·LME가격·환율) → 신챔피언 MIDAS 피처를 패널에 병합."""
+    con = duckdb.connect(db, read_only=True)
+    wgeo = con.execute("""SELECT commodity_code, CAST(period AS DATE) AS week,
+        CAST(idx_value AS DOUBLE) val FROM geo_index WHERE freq='W'
+        ORDER BY 1,2""").df()
+    wpx = con.execute("""SELECT commodity_code, CAST(obs_date AS DATE) AS week,
+        CAST(val AS DOUBLE) val FROM fact_price
+        WHERE freq='W' AND price_type IN ('LME_CASH','REF') ORDER BY 1,2""").df()
+    wfx = con.execute("""SELECT CAST(obs_date AS DATE) AS week,
+        CAST(val AS DOUBLE) val FROM fact_series
+        WHERE series_code='USDKRW_W' ORDER BY 1""").df()
+    con.close()
+    wfx["commodity_code"] = None
+    for d in (wgeo, wpx, wfx):
+        d["week"] = pd.to_datetime(d["week"])
+    df = df.copy()
+    df["month"] = pd.to_datetime(df["month"])
+    m = _midas_weekly_to_monthly(wgeo, "wgeo", MIDAS_LAMBDAS, umidas=False, log=False)
+    df = df.merge(m, on=["commodity_code", "month"], how="left")
+    m = _midas_weekly_to_monthly(wpx, "wpx", None, umidas=True, log=True)
+    df = df.merge(m, on=["commodity_code", "month"], how="left")
+    m = _midas_weekly_to_monthly(wfx, "wfx", None, umidas=True, log=True)
+    df = df.merge(m.drop(columns=["commodity_code"]), on="month", how="left")
+    return df
 
 
 # ─────────────────────────── 패널 구축 ───────────────────────────
@@ -78,6 +149,7 @@ def build_panel(db: str) -> pd.DataFrame:
         print(f"  [warn] 환율(fx) CSV 파싱 실패, 전체 결측으로 진행: {e}")
         df["fx"] = np.nan
     df["unit"] = df["value_usd"] / df["ton"].replace(0, np.nan)   # USD/ton
+    df = _add_midas_features(df, db)          # 신챔피언 MIDAS 피처(2026-07-25)
     return df.sort_values(["commodity_code", "month"]).reset_index(drop=True)
 
 
@@ -112,6 +184,11 @@ FEAT_LABELS = {
     "lag6": "6개월 전 실적", "lag12": "전년 동월 실적", "roll3": "최근 3개월 이동평균",
     "m_sin": "계절성(월)", "m_cos": "계절성(월)", "lme_l": "LME 국제가격",
     "geo_f": "지정학위기지수", "fx_l": "원달러 환율",
+    # 신챔피언 MIDAS 피처(2026-07-25)
+    "wgeo_l0": "지정학지수(13주 균등가중)", "wgeo_l02": "지정학지수(완만감쇠 가중)",
+    "wgeo_l06": "지정학지수(중간감쇠 가중)", "wgeo_l15": "지정학지수(최근집중 가중)",
+    "wpx_w0": "LME 가격(월말 주간 레벨)", "wpx_slope": "LME 가격 13주 기울기",
+    "wfx_w0": "원달러 환율(월말 주간 레벨)", "wfx_slope": "원달러 환율 13주 기울기",
 }
 
 
@@ -137,6 +214,24 @@ def _shap_top_contrib(model, X: pd.DataFrame, top_n: int = 3) -> list:
         out.append([
             {"feature": str(X.columns[j]), "label": _feat_label(str(X.columns[j])),
              "shap_log": round(float(row[j]), 4), "value": round(float(X.iloc[i, j]), 4)}
+            for j in order
+        ])
+    return out
+
+
+def _linear_top_contrib(pipe, X: pd.DataFrame, top_n: int = 3) -> list:
+    """ElasticNet 파이프라인(imputer→scaler→EN)의 정확한 선형 log기여분 —
+    contribution_j = coef_j × z_j (표준화 공간). SHAP과 동일한 출력 형식."""
+    imp, sc, en = pipe.named_steps.values()
+    Z = sc.transform(imp.transform(X))
+    out = []
+    for i in range(len(X)):
+        contrib = en.coef_ * Z[i]
+        order = np.argsort(-np.abs(contrib))[:top_n]
+        out.append([
+            {"feature": str(X.columns[j]), "label": _feat_label(str(X.columns[j])),
+             "shap_log": round(float(contrib[j]), 4),
+             "value": round(float(X.iloc[i, j]), 4)}
             for j in order
         ])
     return out
@@ -183,6 +278,10 @@ def _explain_local(expl_info, cc: str, h: int, top_n: int = 3):
         X = info["Xpr_by_cc"].get(cc)
         if X is None:
             return None
+        # CO ton은 ElasticNet 점추정(2026-07-25 광종 특화) — 선형 모델은 SHAP 없이
+        # 표준화계수×표준화값 = 정확한 log기여분으로 설명(모델-설명 일치 보장)
+        if cc == "CO" and info.get("model_co") is not None:
+            return _linear_top_contrib(info["model_co"], X, top_n=top_n)[0]
         return _shap_top_contrib(info["model"], X, top_n=top_n)[0]
     _, model, xrows, _, _ = expl_info
     X = xrows.get((cc, h))
@@ -314,43 +413,71 @@ def _direct_matrix(feat: pd.DataFrame, h: int) -> pd.DataFrame:
 def _direct_forecast(df: pd.DataFrame, target: str, base_month: pd.Timestamp,
                      horizon: int = H, with_quantiles: bool = False,
                      return_models: bool = False):
-    """h별 독립 HistGBM(광종 풀링+더미). with_quantiles면 q10/q90 분위 모델 병행.
-    return_models=True면 (예측df, {h: {"model","Xpr_by_cc","Xtr","ytr"}}) 튜플 반환
-    (2026-07-24 설명가능성 — 발행 시점 예측에 실제 쓰인 모델·피처행을 그대로 재사용해
-    SHAP·permutation_importance를 계산하기 위함, 재적합 아님)."""
+    """h별 독립 모델(광종 풀링+더미). 점추정 = 신챔피언(2026-07-25):
+    ton = ExtraTrees + MIDAS지수 + 시간감쇠(hl=24개월, CO만 ElasticNet) /
+    unit = ExtraTrees + U-MIDAS 가격·환율 / 기타 타깃(value_usd 등) = 기존 HistGBM.
+    분위(q10/q90)는 기존 HistGBM quantile 유지(conformal 보수화가 후단 보정).
+    return_models=True면 (예측df, {h: {"model","model_co","Xpr_by_cc","Xtr","ytr"}})
+    — 발행 시점 예측에 실제 쓰인 모델·피처행 재사용(설명가능성, 재적합 아님)."""
     hist = df[df["month"] <= base_month].copy()
     feat = _features(hist, target)
+    extra = [c for c in TARGET_EXTRA.get(target, []) if c in feat.columns]
     rows = []
     models = {}
     for h in range(1, horizon + 1):
         d = _direct_matrix(feat, h)
         d2 = pd.get_dummies(d, columns=["commodity_code"], prefix="cc")
         cc_cols = sorted(c for c in d2.columns if c.startswith("cc_"))
-        cols = FEATS + cc_cols
-        tr = d2.dropna(subset=["lag1", "y_h"])
+        cols = FEATS + extra + cc_cols
+        tr = d2.dropna(subset=["lag1", "y_h"]).sort_values("month")
         med = tr[cols].median(numeric_only=True)
         Xtr, ytr = tr[cols].fillna(med), tr["y_h"].values
         pr = d2[d2["month"] == base_month]           # 광종별 1행(예측 기점 피처)
         Xpr = pr[cols].fillna(med)
         mk = dict(max_depth=4, learning_rate=0.07, max_iter=300, random_state=0)
-        m = HistGradientBoostingRegressor(**mk).fit(Xtr, ytr)
+        m_co = None
+        if target in ("ton", "unit"):
+            m = ExtraTreesRegressor(n_estimators=400, min_samples_leaf=3,
+                                    random_state=0, n_jobs=-1)
+            if target == "ton":
+                age = (base_month - tr["month"]).dt.days.values / 30.4
+                w = np.exp(-np.log(2) * age / DECAY_HL_TON)
+                m.fit(Xtr, ytr, sample_weight=w)
+                # CO 광종 특화(18/18 오리진 전원 개선): 강정칙화 선형
+                from sklearn.impute import SimpleImputer
+                from sklearn.linear_model import ElasticNetCV
+                from sklearn.pipeline import make_pipeline
+                from sklearn.preprocessing import StandardScaler
+                m_co = make_pipeline(
+                    SimpleImputer(strategy="median"), StandardScaler(),
+                    ElasticNetCV(l1_ratio=[0.1, 0.5, 0.9],
+                                 alphas=np.logspace(-4, 0, 8), cv=3,
+                                 max_iter=5000, random_state=0)).fit(Xtr, ytr)
+            else:
+                m.fit(Xtr, ytr)
+        else:
+            m = HistGradientBoostingRegressor(**mk).fit(Xtr, ytr)
         yhat = np.exp(m.predict(Xpr))
+        yhat_co = np.exp(m_co.predict(Xpr)) if m_co is not None else None
         qv = {}
         if with_quantiles:
             for q in QUANTS:
                 mq = HistGradientBoostingRegressor(loss="quantile", quantile=q, **mk) \
                     .fit(Xtr, ytr)
                 qv[q] = np.exp(mq.predict(Xpr))      # log-공간 분위 → 지수(단조변환 보존)
-        cc_of = d.loc[pr.index, "commodity_code"] if "commodity_code" in d else None
         for i, idx in enumerate(pr.index):
-            r = dict(commodity_code=d.loc[idx, "commodity_code"],
-                     month=base_month + pd.DateOffset(months=h), h=h, pred=float(yhat[i]))
+            cc = d.loc[idx, "commodity_code"]
+            pv = float(yhat_co[i]) if (yhat_co is not None and cc == "CO") \
+                else float(np.ravel(yhat)[i])
+            r = dict(commodity_code=cc,
+                     month=base_month + pd.DateOffset(months=h), h=h, pred=pv)
             if with_quantiles:
                 r["q10"], r["q90"] = float(qv[0.1][i]), float(qv[0.9][i])
             rows.append(r)
         if return_models:
             Xpr_by_cc = {d.loc[idx, "commodity_code"]: Xpr.loc[[idx]] for idx in pr.index}
-            models[h] = {"model": m, "Xpr_by_cc": Xpr_by_cc, "Xtr": Xtr, "ytr": ytr}
+            models[h] = {"model": m, "model_co": m_co, "Xpr_by_cc": Xpr_by_cc,
+                         "Xtr": Xtr, "ytr": ytr}
     out = pd.DataFrame(rows)
     return (out, models) if return_models else out
 
@@ -624,7 +751,9 @@ def run(db=None, out_dir=None):
     out = out.rename(columns={"month": "target_month"})
     out["base_month"] = last_m.strftime("%Y-%m-%d")
     out["target_month"] = out["target_month"].dt.strftime("%Y-%m-%d")
-    out["model_version"] = f"forecast_unit_v2(HistGBM×2 {method}, 단가분해, 80%구간 MC합성)"
+    out["model_version"] = (f"forecast_unit_v3(XT+MIDAS 혼성 {method} — ton: XT+지수MIDAS"
+                            f"+시간감쇠hl24(CO=ElasticNet)/unit: XT+U-MIDAS가격환율, "
+                            f"단가분해, 80%구간 MC합성)")
     out["basis"] = json.dumps({"backtest": bt.to_dict("records"),
                                "method": f"{method}(백테스트 금액 MASE 재귀 {m_rec:.2f} vs Direct {m_dir:.2f})",
                                "interval": f"q10/q90 분위 HistGBM(log공간) + conformal 보수화(가산폭 ton {qt_pub:.3f}/unit {qu_pub:.3f}, 보정원점 {list(cal_pub)}), 금액구간=물량×단가 lognormal MC 합성",

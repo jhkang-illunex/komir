@@ -278,6 +278,20 @@ PK: 없음(commodity_code, period가 사실상 유니크).
 | p_burst_cal | DOUBLE | isotonic 보정 후 급증확률 |
 | generated_at | VARCHAR | |
 
+### out_aux_early_warning (보조 조기경보, 2026-07-25 신설)
+PK: 없음(commodity_code, obs_date가 사실상 유니크).
+| 컬럼 | 타입 | 비고 |
+|---|---|---|
+| commodity_code | VARCHAR | |
+| obs_date | DATE | 발행 기준주(패널 종점) |
+| delta_pred | BIGINT | 등급변화 예측(-1/0/+1) |
+| direction | VARCHAR | 하향/유지/상향 |
+| trigger | BOOLEAN | 전환 주의 트리거(Δ≠0) |
+| p_down/p_stay/p_up | DOUBLE | 방향확률(소프트보팅) |
+| model_version / basis / generated_at | VARCHAR | 검증 근거 포함 |
+
+⚠운영 등급예측(out_diagnosis_alert)과 별개의 병기 보조신호 — 경보 등급 불변경.
+
 ### mart_weekly_diagnosis (진단모델 입력 마트, 주간)
 PK: 없음(commodity_code, obs_date가 사실상 유니크).
 | 컬럼 | 타입 | 비고 |

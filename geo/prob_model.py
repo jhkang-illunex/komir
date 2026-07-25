@@ -27,6 +27,11 @@ from . import config as C, store
 SEVERE_MIN = 2.0          # "심각" 임계(sev>=2 — 붙임2 계열 트리거와 동일 눈금)
 EWMA_HALFLIFE = 4         # v0 문서 §1.2의 EWMA 반감기(주)
 TRAIN_END = "2023-12-31"  # 시계열 분할(검증 리포트용) — 최종 발행 모델은 전 기간 재적합
+BASE_COLS = ["x_ewma", "x_geo", "x_vol"]
+# CO는 x_z13(심각 13주합의 52주 z) 병행(2026-07-25 신챔피언 반영): CO Brier
+# 0.2058→0.1747(CI [+0.005,+0.064] P=0.992), "상수기준 열세" 약점 해소. 타 광종은
+# 병행 이득 없음(REE는 x_geo 대체 시 붕괴)이라 기본 3피처 유지.
+COLS_BY_COMMODITY = {"CO": BASE_COLS + ["x_z13"]}
 
 GEO_PROB = C.STORE / "geo_prob.parquet"
 
@@ -81,6 +86,11 @@ def _features(panel: pd.DataFrame) -> pd.DataFrame:
         g["x_ewma"] = g["n_severe"].ewm(halflife=EWMA_HALFLIFE).mean()
         g["x_geo"] = g["geo_idx"]
         g["x_vol"] = np.log1p(g["n_total_week"])
+        s13 = g["n_severe"].rolling(13).sum()
+        g["x_z13"] = ((s13 - s13.rolling(52, min_periods=20).mean())
+                      / s13.rolling(52, min_periods=20).std().replace(0, np.nan))
+        # 주의: 워밍업 NaN을 0으로 채워 학습하면 z13 계수가 오염됨(실측 — Brier
+        # 0.175→0.206 퇴행). 학습은 결측 행 제외, 예측만 0(중립) 대치.
         # 적응형 급증 임계(2026-07-25, 스코어카드 §6 "REE burst_k 괴리" 해소):
         # 직전 52주(당주 포함) P90 — 임계가 체제를 따라가므로 "최근 기준의 이례성"
         # 의미가 유지된다(고정 k는 REE에서 test 실현율 0.64로 의미 붕괴 실측).
@@ -122,12 +132,14 @@ def _fit_adapt_logit(train: pd.DataFrame):
     return lambda df: m.predict_proba(df[cols].values)[:, 1]
 
 
-def _fit_one(train: pd.DataFrame):
+def _fit_one(train: pd.DataFrame, cols: list | None = None):
     """NB2 적합. MLE 실패/α 경계붕괴 시 Cameron-Trivedi 모멘트 α → GLM-NB 폴백, 그래도
     안 되면 포아송. (실측 2026-07-12: REE에서 NB MLE α가 0으로 붕괴 → 포아송 꼬리 과신으로
     burst 캘리브레이션 파탄 — 잔차가 실제로는 과산포라 모멘트 α 폴백이 필요.)"""
     import statsmodels.api as sm
-    X = sm.add_constant(train[["x_ewma", "x_geo", "x_vol"]].astype(float))
+    cols = cols or BASE_COLS
+    train = train.dropna(subset=cols)
+    X = sm.add_constant(train[cols].astype(float))
     y = train["y_next"].astype(float)
     try:
         from statsmodels.discrete.count_model import NegativeBinomialP
@@ -161,9 +173,11 @@ def _fit_one(train: pd.DataFrame):
         return m.params, 0.0, "poisson"
 
 
-def _predict(params, alpha: float, family: str, df: pd.DataFrame) -> tuple:
+def _predict(params, alpha: float, family: str, df: pd.DataFrame,
+             cols: list | None = None) -> tuple:
+    cols = cols or BASE_COLS
     X = np.column_stack([np.ones(len(df)),
-                         df[["x_ewma", "x_geo", "x_vol"]].astype(float).values])
+                         df[cols].astype(float).fillna(0.0).values])
     lam = np.exp(np.clip(X @ np.asarray(params, dtype=float), -20, 10))
     if family == "nb2":
         p0 = (1.0 + alpha * lam) ** (-1.0 / alpha)
@@ -259,8 +273,9 @@ def run() -> pd.DataFrame:
         burst_k = max(2, int(np.ceil(train["y_next"].quantile(0.90))))
 
         # 1) 검증 리포트(시계열 분할) — burst 타깃 기준
-        params, alpha, family = _fit_one(train)
-        lam_t, _ = _predict(params, alpha, family, test)
+        cc_cols = COLS_BY_COMMODITY.get(c, BASE_COLS)
+        params, alpha, family = _fit_one(train, cc_cols)
+        lam_t, _ = _predict(params, alpha, family, test, cc_cols)
         p_burst_t = _p_ge(lam_t, alpha, family, burst_k)
         test_b = test.copy(); test_b["y_next"] = (test_b["y_next"] >= burst_k).astype(float)
         train_rate = float((train["y_next"] >= burst_k).mean())
@@ -285,8 +300,8 @@ def run() -> pd.DataFrame:
                        f"{'✓개선' if b_ens < b_const else '✗열세'}")
 
         # 2) 발행 모델(전 기간 재적합) — 전 주차 확률 산출
-        params_f, alpha_f, family_f = _fit_one(hist)
-        lam, p1 = _predict(params_f, alpha_f, family_f, g)
+        params_f, alpha_f, family_f = _fit_one(hist, cc_cols)
+        lam, p1 = _predict(params_f, alpha_f, family_f, g, cc_cols)
         out = g[["commodity", "week"]].copy()
         out["lambda_next"] = lam
         out["p_severe_next"] = p1                                  # P(>=1) — 하위호환
