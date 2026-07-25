@@ -81,9 +81,45 @@ def _features(panel: pd.DataFrame) -> pd.DataFrame:
         g["x_ewma"] = g["n_severe"].ewm(halflife=EWMA_HALFLIFE).mean()
         g["x_geo"] = g["geo_idx"]
         g["x_vol"] = np.log1p(g["n_total_week"])
+        # 적응형 급증 임계(2026-07-25, 스코어카드 §6 "REE burst_k 괴리" 해소):
+        # 직전 52주(당주 포함) P90 — 임계가 체제를 따라가므로 "최근 기준의 이례성"
+        # 의미가 유지된다(고정 k는 REE에서 test 실현율 0.64로 의미 붕괴 실측).
+        # 당주까지의 정보만 사용(as-of 안전).
+        q = g["n_severe"].rolling(52, min_periods=26).quantile(0.90)
+        g["k_adapt"] = np.maximum(2, np.ceil(q)).fillna(2)
+        g["x_rel"] = g["x_ewma"] / g["k_adapt"]      # 임계 대비 현재 강도
         g["y_next"] = g["n_severe"].shift(-1)
         out.append(g)
     return pd.concat(out, ignore_index=True)
+
+
+def _p_ge_rowwise(lam: np.ndarray, alpha: float, family: str,
+                  ks: np.ndarray) -> np.ndarray:
+    """주별로 임계 k가 다른 P(y>=k) — 고유 k별로 묶어 계산."""
+    out = np.empty(len(lam), dtype=float)
+    ks = ks.astype(int)
+    for k in np.unique(ks):
+        m = ks == k
+        out[m] = _p_ge(lam[m], alpha, family, int(k))
+    return out
+
+
+def _fit_adapt_logit(train: pd.DataFrame):
+    """적응 타깃 직접 분류(상대강도 로지스틱) — NB2와 원천이 다른 앙상블 멤버.
+    (검증 2026-07-25: NB2 단독은 적응 타깃에서 3광종 상수기준 열세, 앙상블로
+    4/5 광종 상수기준 초과 — '보팅은 원천이 다를 때만' 규칙 적용 사례.)"""
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+    cols = ["x_rel", "x_geo", "x_vol"]
+    y = (train["y_next"].values >= train["k_adapt"].values).astype(int)
+    if len(np.unique(y)) < 2:
+        rate = float(y.mean())
+        return lambda df: np.full(len(df), rate)
+    m = make_pipeline(StandardScaler(),
+                      LogisticRegression(max_iter=2000, C=0.5))
+    m.fit(train[cols].values, y)
+    return lambda df: m.predict_proba(df[cols].values)[:, 1]
 
 
 def _fit_one(train: pd.DataFrame):
@@ -235,6 +271,19 @@ def run() -> pd.DataFrame:
         oos_pairs.append(pd.DataFrame({"week": test["week"].values, "p": p_burst_t,
                                        "hit": (test["y_next"] >= burst_k).astype(float).values}))
 
+        # 1-b) 적응형 임계 검증 리포트(비파괴 부가, 2026-07-25 §6 해소)
+        y_te_a = (test["y_next"].values >= test["k_adapt"].values).astype(float)
+        p_nb_a = _p_ge_rowwise(lam_t, alpha, family, test["k_adapt"].values)
+        logit = _fit_adapt_logit(train)
+        p_ens_a = 0.5 * p_nb_a + 0.5 * logit(test)
+        rate_a_tr = float((train["y_next"].values >= train["k_adapt"].values).mean())
+        b_ens = float(((p_ens_a - y_te_a) ** 2).mean())
+        b_const = float(((rate_a_tr - y_te_a) ** 2).mean())
+        reports.append(f"  [적응임계] test 실현율 {float(y_te_a.mean()):.2f}"
+                       f"(고정 {float(test_b['y_next'].mean()):.2f}) | 앙상블 Brier "
+                       f"{b_ens:.4f} vs 상수 {b_const:.4f} "
+                       f"{'✓개선' if b_ens < b_const else '✗열세'}")
+
         # 2) 발행 모델(전 기간 재적합) — 전 주차 확률 산출
         params_f, alpha_f, family_f = _fit_one(hist)
         lam, p1 = _predict(params_f, alpha_f, family_f, g)
@@ -245,6 +294,14 @@ def run() -> pd.DataFrame:
         out["p_burst_next"] = _p_ge(lam, alpha_f, family_f, burst_k)  # P(>=P90 임계) — 주 신호
         out["family"] = family_f
         out["alpha_disp"] = alpha_f
+        # 적응형 발행(부가 컬럼 — 기존 p_burst_next는 불변, 다운스트림 무영향):
+        # P(다음주 심각수 >= 최근 52주 P90) = 강도 NB2와 직접 분류(상대강도 로지스틱)의
+        # 평균 앙상블. 고정 임계와 달리 체제 전환기(REE 2024+)에도 "이례성" 의미 유지.
+        logit_f = _fit_adapt_logit(hist)
+        out["burst_k_adapt"] = g["k_adapt"].values
+        out["p_burst_adapt"] = 0.5 * _p_ge_rowwise(lam, alpha_f, family_f,
+                                                   g["k_adapt"].values) \
+            + 0.5 * logit_f(g)
         results.append(out)
 
     print("\n=== 캘리브레이션 검증(train ~2023 / test 2024+) ===")

@@ -273,6 +273,8 @@ PK: 없음(commodity_code, period가 사실상 유니크).
 | p_burst_next | DOUBLE | 다음 주 급증확률 |
 | family | VARCHAR | 확률모형군(nb2 등) |
 | alpha_disp | DOUBLE | NB2 산포모수 α |
+| burst_k_adapt | DOUBLE | 적응형 급증 임계(직전 52주 P90, 2026-07-25 §6 해소 — 부가 컬럼) |
+| p_burst_adapt | DOUBLE | 적응 임계 급증확률(NB2+상대강도 로지스틱 앙상블) — 체제전환기에도 "이례성" 의미 유지(REE 고정 0.52 vs 적응 0.12) |
 | p_burst_cal | DOUBLE | isotonic 보정 후 급증확률 |
 | generated_at | VARCHAR | |
 
