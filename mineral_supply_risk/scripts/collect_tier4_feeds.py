@@ -63,6 +63,12 @@ SUPPLY_FLOWS = [
 
 def collect_supply_flows(con) -> None:
     for cc, rep, flow, cmd, partner, prefix in SUPPLY_FLOWS:
+        done = con.execute(
+            "SELECT count(DISTINCT obs_date) FROM fact_indicator WHERE indicator=?",
+            [f"{prefix}_WGT"]).fetchone()[0]
+        if done >= 100:
+            print(f"  {prefix}: 기수집 {done}개월 — 스킵(이어받기)")
+            continue
         agg = {}
         for period in _month_batches(2016):
             rows = _comtrade_fetch(dict(reporterCode=rep, period=period,

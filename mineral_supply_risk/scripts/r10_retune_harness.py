@@ -220,11 +220,19 @@ def main():
     print(f"패널 종점: {df['obs_date'].max().date()}")
     df = add_dynamics(df); df = build_aux(db, df)
     df = exch.build_cninv(db, df); df = build_pmi(db, df); df = build_refined(db, df)
+    from scripts.diagnosis_tier1_eval import build_tier1
+    df = build_tier1(db, df)          # CU 채택 동작점(CNOI) 기준선용
     df, meta = build_new_features(db, df)
     df, meta2 = build_derived_features(db, df)
     meta.update(meta2)
     nolag = [f for f in GEO_ONLY_NO_LAG if df[f].notna().sum() > 50]
     CHAMP = nolag + INV_F + exch.CNINV_F + PMI_F
+    # 광종별 기준선 = 각 광종의 실제 채택 동작점(2026-07-25 정정 — 풀링 피처를
+    # 광종 단독에 쓰면 결측 탓에 약한 기준선이 되어 가짜 유의 발생, 실측 교훈)
+    from scripts.diagnosis_tier1_eval import CNOI_F
+    PER_CC_CHAMP = {"CU": nolag + CNOI_F,
+                    "NI": nolag + INV_F + exch.CNINV_F,
+                    "LI": nolag, "CO": nolag, "REE": nolag}
     champ = e2_delta_classifier(df, CHAMP, "Logistic")
     print(f"챔피언(스크리닝 프레임): QWK {champ['QWK']:.4f} chg "
           f"{champ['chg_acc']:.4f} FAR {champ['FAR']:.4f}\n")
@@ -251,8 +259,9 @@ def main():
         else:
             cc = m["ccs"][0]
             d1 = df[df["commodity_code"] == cc].reset_index(drop=True)
-            base = e2_delta_classifier(d1, CHAMP, "Logistic")
-            r = e2_delta_classifier(d1, CHAMP + m["feats"], "Logistic")
+            base_feats = PER_CC_CHAMP.get(cc, nolag)
+            base = e2_delta_classifier(d1, base_feats, "Logistic")
+            r = e2_delta_classifier(d1, base_feats + m["feats"], "Logistic")
             axis = cc
         better = (r["QWK"] >= base["QWK"] - 0.003 and
                   (r["chg_acc"] > base["chg_acc"] or r["FAR"] < base["FAR"] - 0.01)) \
@@ -270,7 +279,8 @@ def main():
         for name, m, axis in promising:
             dfx = df if axis == "풀링" else \
                 df[df["commodity_code"] == axis].reset_index(drop=True)
-            b = bootstrap_diff(dfx, CHAMP, CHAMP + m["feats"], nolag, rng)
+            bf = CHAMP if axis == "풀링" else PER_CC_CHAMP.get(axis, nolag)
+            b = bootstrap_diff(dfx, bf, bf + m["feats"], nolag, rng)
             line = (f"{name} [{axis}]: QWK CI [{b['qwk_ci'][0]:+.4f},"
                     f"{b['qwk_ci'][1]:+.4f}] P={b['qwk_p']:.3f} | chg CI "
                     f"[{b['chg_ci'][0]:+.3f},{b['chg_ci'][1]:+.3f}] P={b['chg_p']:.3f}")
@@ -329,7 +339,8 @@ def forecast_screen(db: str):
         if len(x) < 36:
             continue
         col = f"x_{name}"
-        x[col] = x["val"].pct_change(12).shift(shift)
+        x[col] = x["val"].pct_change(12).shift(shift).replace(
+            [np.inf, -np.inf], np.nan)
         x = x.rename(columns={"obs_date": "month"})[["month", col] +
                                                     (["commodity_code"] if cc != "*" else [])]
         if cc == "*":

@@ -51,15 +51,21 @@ def collect_shfe_cu() -> pd.DataFrame:
 
 # ─────────────────────── 3. UN Comtrade ───────────────────────
 def _comtrade_fetch(params: dict) -> list[dict]:
-    for attempt in range(4):
-        r = requests.get(COMTRADE_BASE, params=params,
-                         headers={"User-Agent": "Mozilla/5.0"}, timeout=60)
+    for attempt in range(5):
+        try:
+            r = requests.get(COMTRADE_BASE, params=params,
+                             headers={"User-Agent": "Mozilla/5.0"}, timeout=60)
+        except requests.exceptions.RequestException:
+            # 2026-07-25 실측: 장시간 수집 중 간헐 ReadTimeout으로 전체 중단 —
+            # 네트워크 예외도 백오프 재시도(429와 동일 취급)
+            time.sleep(5.0 + attempt * 5)
+            continue
         if r.status_code == 429:
             time.sleep(3.0 + attempt * 2)
             continue
         r.raise_for_status()
         return r.json().get("data") or []
-    raise RuntimeError("Comtrade 429 지속(레이트리밋)")
+    raise RuntimeError("Comtrade 재시도 소진(레이트리밋/네트워크)")
 
 
 def _month_batches(y0: int) -> list[str]:

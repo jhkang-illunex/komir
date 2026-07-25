@@ -30,6 +30,10 @@ export MSR_DB="$ROOT/warehouse/minerals.duckdb"
     # Tier3(2026-07-25): 칠레·아르헨 LI, 필리핀 NI, 말레이 REE, 일본 NI수입,
     # USGS 구리 MIS(광산생산·미국/COMEX 재고) — 축적 목적, 검정은 별도
     python3 -m scripts.collect_tier3_feeds
+    # Tier4(2026-07-25 최종 스윕): Comtrade 10흐름(이어받기 가드)·EIA·Eurostat·
+    # akshare 전력/탄소·ECOS 출하·ICSG(축적형)·OECD CLI
+    ECOS_API_KEY="$(grep '^ECOS_API_KEY=' "$ROOT/.env" | cut -d= -f2-)" \
+      python3 -m scripts.collect_tier4_feeds
     # GFEX 레이트리밋으로 남은 LI 공백(2025-08~2026-04)을 매월 조금씩 자가 치유 —
     # skip_dates 멱등이라 이미 채워진 주는 재호출하지 않음(공백 소진 후엔 사실상 no-op)
     python3 -m scripts.collect_exchange_inventory --backfill
