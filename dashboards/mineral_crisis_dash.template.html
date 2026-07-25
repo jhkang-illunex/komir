@@ -37,6 +37,14 @@ header .meta{color:var(--sub); font-size:.82rem;}
 .chip{display:inline-block; padding:1px 9px; border-radius:999px; font-size:.75rem;
   font-weight:700; color:var(--chip-text);}
 .card .prob{font-size:.72rem; color:var(--sub); margin-top:4px;}
+.card .aux{font-size:.72rem; color:var(--sub); margin-top:2px;}
+.card .aux.trig{color:var(--s4); font-weight:700;}
+.card .aux.trig.down{color:var(--s1);}
+.dirchip{display:inline-block; padding:0 7px; border-radius:999px; font-size:.73rem;
+  font-weight:700; color:#fff; background:var(--s0);}
+.dirchip.up{background:var(--s4);} .dirchip.down{background:var(--s1);}
+.minibar{display:flex; height:12px; border-radius:3px; overflow:hidden; min-width:120px;}
+.minibar>div{height:100%;}
 .panel{background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:16px;}
 .panel h2{font-size:.92rem; font-weight:700; margin:0 0 10px; letter-spacing:-.01em;}
 .grid2{display:grid; grid-template-columns:1fr 340px; gap:16px; align-items:start;}
@@ -70,6 +78,16 @@ td.rsn{color:var(--sub); max-width:520px; overflow:hidden; text-overflow:ellipsi
   <span class="meta" id="meta"></span>
 </header>
 <div class="cards" id="cards"></div>
+<section class="panel">
+  <h2>보조 신호 — 전환 조기경보(보팅 앙상블) · 지정학 급증확률(적응형 임계) <span style="color:var(--sub); font-weight:400" id="auxDate"></span></h2>
+  <div style="overflow-x:auto"><table id="auxTbl"><thead>
+    <tr><th>광종</th><th>전환 조기경보</th><th>방향확률 (하향·유지·상향)</th><th>급증확률(적응형)</th><th>급증확률(고정, 참고)</th><th>적응 임계</th></tr>
+  </thead><tbody></tbody></table></div>
+  <div class="footnote" style="margin-top:6px">
+    전환 조기경보 = 운영 경보와 <b>별개의 병기 보조신호</b>(주간 등급전환 방향의 소프트보팅 앙상블 — Bagging×2, 워크포워드 QWK 0.861·오경보율 0.16). 트리거는 "전환 가능성 주의"이며 경보 등급을 바꾸지 않음.
+    급증확률(적응형) = 다음 주 심각 지정학 이벤트 수가 <b>최근 52주 P90 임계</b>를 넘을 확률(NB2+로지스틱 앙상블) — 체제 전환기에도 "이례성" 의미 유지(고정 임계는 REE에서 상시 급증으로 포화되는 왜곡 실측).
+  </div>
+</section>
 <div class="grid2">
   <section class="panel">
     <h2 id="chartTitle"></h2>
@@ -123,10 +141,14 @@ Object.keys(DATA.alerts).sort((a,b)=>["CU","NI","LI","CO","REE"].indexOf(a)-["CU
   const topProb = Object.entries(probs).sort((a,b)=>b[1]-a[1])[0];
   const b = document.createElement("button");
   b.className = "card"; b.setAttribute("data-cc", k);
+  const ax = (DATA.aux||{})[k];
+  const axHtml = ax ? `<div class="aux ${ax.trigger?("trig"+(ax.delta<0?" down":"")):""}">`+
+    `${ax.trigger?(ax.delta>0?"▲ 상향 조기경보":"▼ 하향 조기경보"):"· 전환신호 없음"}`+
+    `${ax.trigger?` ${(Math.max(ax.p_up,ax.p_down)*100).toFixed(0)}%`:""}</div>` : "";
   b.innerHTML = `<div class="cc">${k} · ${CCN[k]}</div>
     <div class="idx">${last[1]}</div>
     <div><span class="chip" style="background:${LVF[last[2]]}${last[2]===2?';color:#3a3000':''}">${LV[last[2]][0]}</span></div>
-    <div class="prob">${topProb?`신뢰도 ${topProb[0]} ${(topProb[1]*100).toFixed(0)}%`:""}</div>`;
+    <div class="prob">${topProb?`신뢰도 ${topProb[0]} ${(topProb[1]*100).toFixed(0)}%`:""}</div>${axHtml}`;
   b.addEventListener("click", ()=>{cc=k; selIdx=null; render();});
   cardsEl.appendChild(b);
 });
@@ -235,12 +257,38 @@ function renderTable(){
     tb.appendChild(tr);
   });
 }
+function renderAux(){
+  const tb=document.querySelector("#auxTbl tbody"); if(!tb) return;
+  tb.innerHTML="";
+  const order=["CU","NI","LI","CO","REE"];
+  let auxDate="";
+  order.forEach(k=>{
+    const ax=(DATA.aux||{})[k], bu=(DATA.burst||{})[k];
+    if(!ax&&!bu) return;
+    if(ax) auxDate=ax.date;
+    const dir = ax ? (ax.trigger?(ax.delta>0?`<span class="dirchip up">▲ 상향주의</span>`:`<span class="dirchip down">▼ 하향주의</span>`):`<span class="dirchip">유지</span>`) : "—";
+    const bar = ax ? `<div style="display:flex;align-items:center;gap:8px"><div class="minibar">
+      <div style="width:${ax.p_down*100}%;background:var(--s1)" title="하향 ${(ax.p_down*100).toFixed(0)}%"></div>
+      <div style="width:${ax.p_stay*100}%;background:var(--s0)" title="유지 ${(ax.p_stay*100).toFixed(0)}%"></div>
+      <div style="width:${ax.p_up*100}%;background:var(--s4)" title="상향 ${(ax.p_up*100).toFixed(0)}%"></div></div>
+      <span style="color:var(--sub);font-size:.73rem">${(ax.p_down*100).toFixed(0)}·${(ax.p_stay*100).toFixed(0)}·${(ax.p_up*100).toFixed(0)}%</span></div>` : "—";
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td><b>${k}</b> ${CCN[k]}</td><td>${dir}</td><td>${bar}</td>
+      <td>${bu?`<b>${(bu.p_adapt*100).toFixed(1)}%</b>`:"—"}</td>
+      <td style="color:var(--sub)">${bu?`${(bu.p_fixed*100).toFixed(1)}%`:"—"}</td>
+      <td style="color:var(--sub)">${bu?`주 ${bu.k_adapt}건↑`:"—"}</td>`;
+    tb.appendChild(tr);
+  });
+  const el=document.getElementById("auxDate");
+  if(el&&auxDate) el.textContent=`— 기준주 ${auxDate}`;
+}
 function render(){
   document.querySelectorAll(".card").forEach(c=>c.classList.toggle("sel", c.getAttribute("data-cc")===cc));
   document.getElementById("chartTitle").textContent =
     `${cc} · ${CCN[cc]} — 주간 수급위기지수 & 경보 단계 (2020~)`;
   draw(); renderReason(); renderXai(); renderTable();
 }
+renderAux();
 window.addEventListener("resize", draw);
 if(window.matchMedia){window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);}
 new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
