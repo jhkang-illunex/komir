@@ -97,6 +97,17 @@ def _fetch_issue(ym: str) -> pd.ExcelFile | None:
     return None
 
 
+def _num(x) -> float | None:
+    """'92,900 r'·'40,000 e' 등 개정/추정 표기 제거 후 숫자화."""
+    s_ = str(x).replace(",", "").strip()
+    s_ = re.sub(r"\s*[re]\s*$", "", s_)
+    try:
+        v = float(s_)
+        return v if np.isfinite(v) else None
+    except ValueError:
+        return None
+
+
 def _parse_month_rows(t: pd.DataFrame, val_fn) -> list[tuple[dt.date, float]]:
     """연도 블록('2024'/'2024:'/'2021, December')×월 행 공통 파서.
     val_fn(row) → float|None. 누계('January–June')는 _MON 미매치로 자동 제외."""
@@ -125,11 +136,10 @@ def _issue_series(x: pd.ExcelFile) -> dict[str, list]:
     out = {}
     # T2 광산생산: 'Total' 컬럼 위치를 헤더에서 탐색
     t2 = x.parse("T2", header=None)
-    head = t2.head(6).astype(str)
+    head = t2.head(8).astype(str)
     tot_col = next((j for j in range(t2.shape[1])
-                    if any(head[j].str.strip() == "Total")), 3)
-    out["CU_US_MINE_PROD"] = _parse_month_rows(
-        t2, lambda r: pd.to_numeric(r[tot_col], errors="coerce"))
+                    if any(head[j].str.strip().str.match(r"^Total\d*$"))), 3)
+    out["CU_US_MINE_PROD"] = _parse_month_rows(t2, lambda r: _num(r[tot_col]))
     # T10 재고: 다중행 헤더 — COMEX 열 탐색, 전체=숫자열 합
     t10 = x.parse("T10", header=None)
     head = t10.head(6).astype(str)
@@ -138,20 +148,32 @@ def _issue_series(x: pd.ExcelFile) -> dict[str, list]:
     ncols = t10.shape[1]
 
     def total_fn(row):
-        vals = pd.to_numeric(row[1:ncols], errors="coerce")
-        return float(np.nansum(vals)) if vals.notna().sum() >= 3 else None
+        vals = [_num(row[j]) for j in range(1, ncols)]
+        ok = [v for v in vals if v is not None]
+        return float(sum(ok)) if len(ok) >= 3 else None
 
     out["CU_US_STOCK_T"] = _parse_month_rows(t10, total_fn)
     if comex_col is not None:
         out["CU_COMEX_STOCK_T"] = _parse_month_rows(
-            t10, lambda r: pd.to_numeric(r[comex_col], errors="coerce"))
+            t10, lambda r: _num(r[comex_col]))
     return out
 
 
 def collect_usgs_cu(con) -> None:
-    yms = [f"{y}12" for y in range(2019, 2026)]
+    yms = [f"{y}12" for y in range(2018, 2026)]  # 201812 atoms 존재 실측 — 2017-12부터 커버
+    # 최신 발행 호 역순 탐색(발행 지연이 유동적 — 202512 403·202506 존재 실측):
+    # 이번 달부터 24개월 역순으로 첫 응답 호 1개를 추가(연말호 체인과 병합)
     today = dt.date.today()
-    yms += [f"2026{m:02d}" for m in range(1, today.month + 1)]
+    for k in range(24):
+        y, m = (today.year * 12 + today.month - 1 - k) // 12, \
+               (today.year * 12 + today.month - 1 - k) % 12 + 1
+        ym = f"{y}{m:02d}"
+        if ym in yms:
+            continue
+        if _fetch_issue(ym) is not None:
+            yms.append(ym)
+            print(f"  최신호 탐지: {ym}")
+            break
     series: dict[str, dict] = {}
     for ym in yms:
         x = _fetch_issue(ym)
@@ -172,7 +194,9 @@ def collect_usgs_cu(con) -> None:
                 d[date] = v          # 나중 호가 과거 호를 덮어씀(개정 반영)
         print(f"  USGS coppe {ym}: {n}행")
     for ind, d in series.items():
-        if len(d) < 24:
+        # COMEX 열은 2023-12부터만 존재(실측) — 가드 완화(15), 짧음은 하네스가
+        # 커버리지 교란 플래그로 처리
+        if len(d) < 15:
             print(f"  [warn] {ind}: {len(d)}개월 — 비정상 축소, 기존 데이터 유지")
             continue
         df = pd.DataFrame({
