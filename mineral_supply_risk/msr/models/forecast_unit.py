@@ -35,14 +35,20 @@ LAGS = [1, 2, 3, 6, 12]
 FX_CSV = ("/home/nuri/dev/git/ws/mine_ws/komir/documents/1. 광물가격, 재고량, 지수 등 (1)/"
           "3. 원달러 환율.csv")
 
-# ── 신챔피언 구성(2026-07-25, 스코어카드 v1.16~v1.17·챔피언_스코어보드 참조) ──
+# ── 신챔피언 구성(2026-07-25 v3 → 07-26 v4, 챔피언_스코어보드 15셀 매트릭스 참조) ──
 # 점추정 모델: ton = ExtraTrees + 주간 지정학지수 MIDAS(지수감쇠 λ사전) + 시간감쇠
-#   표본가중(반감기 24개월, 단 CO는 ElasticNet — 소량·고변동에서 트리 과적합,
-#   18/18 오리진 전원 개선 P=1.000) / unit = ExtraTrees + U-MIDAS 가격·환율(월말
-#   레벨 w0 + 13주 기울기). 구간(분위 HistGBM+conformal)·재귀 경로는 기존 유지.
+#   표본가중(반감기 24개월, 단 CO는 ElasticNet+감쇠hl36 — 소량·고변동에서 트리
+#   과적합, EN 교체 18/18 오리진 P=1.000 + 감쇠 P=0.989) / unit = ExtraTrees +
+#   U-MIDAS 가격·환율(월말 레벨 w0 + 13주 기울기, 단 NI는 감쇠hl24 XT 오버라이드 —
+#   최약 셀 0.386→0.369 P=0.999, 모델 교체는 전부 역효과).
+#   구간(분위 HistGBM+conformal)·재귀 경로는 기존 유지.
 MIDAS_LAMBDAS = {"l0": 0.0, "l02": 0.2, "l06": 0.6, "l15": 1.5}
 K_MIDAS = 13                 # 주간 lookback 창
 DECAY_HL_TON = 24            # ton 시간감쇠 반감기(개월)
+DECAY_HL_CO_EN = 36          # CO ton EN 전용 반감기 — 선형은 트리보다 긴 hl 선호,
+                             #   hl30~72 연속 플래토 통과(co_ton_further.md, P=0.989)
+DECAY_HL_NI_UNIT = 24        # NI unit XT 셀 오버라이드 — 전역 unit 감쇠는 기각 이력,
+                             #   NI 단일 셀만 유효(ni_unit_specialization.md, P=0.999)
 GEO_MIDAS_F = [f"wgeo_{t}" for t in MIDAS_LAMBDAS]
 PXFX_UMIDAS_F = ["wpx_w0", "wpx_slope", "wfx_w0", "wfx_slope"]
 TARGET_EXTRA = {"ton": GEO_MIDAS_F, "unit": PXFX_UMIDAS_F}
@@ -282,6 +288,9 @@ def _explain_local(expl_info, cc: str, h: int, top_n: int = 3):
         # 표준화계수×표준화값 = 정확한 log기여분으로 설명(모델-설명 일치 보장)
         if cc == "CO" and info.get("model_co") is not None:
             return _linear_top_contrib(info["model_co"], X, top_n=top_n)[0]
+        # NI unit은 감쇠가중 XT 오버라이드(v4) — 실제 예측 모델로 설명 일치 보장
+        if cc == "NI" and info.get("model_ni") is not None:
+            return _shap_top_contrib(info["model_ni"], X, top_n=top_n)[0]
         return _shap_top_contrib(info["model"], X, top_n=top_n)[0]
     _, model, xrows, _, _ = expl_info
     X = xrows.get((cc, h))
@@ -435,30 +444,40 @@ def _direct_forecast(df: pd.DataFrame, target: str, base_month: pd.Timestamp,
         pr = d2[d2["month"] == base_month]           # 광종별 1행(예측 기점 피처)
         Xpr = pr[cols].fillna(med)
         mk = dict(max_depth=4, learning_rate=0.07, max_iter=300, random_state=0)
-        m_co = None
+        m_co = m_ni = None
         if target in ("ton", "unit"):
             m = ExtraTreesRegressor(n_estimators=400, min_samples_leaf=3,
                                     random_state=0, n_jobs=-1)
+            age = (base_month - tr["month"]).dt.days.values / 30.4
             if target == "ton":
-                age = (base_month - tr["month"]).dt.days.values / 30.4
                 w = np.exp(-np.log(2) * age / DECAY_HL_TON)
                 m.fit(Xtr, ytr, sample_weight=w)
                 # CO 광종 특화(18/18 오리진 전원 개선): 강정칙화 선형
+                # + 감쇠가중 hl36(v4 — EN은 무가중이던 비대칭 해소, CO -3.5%)
                 from sklearn.impute import SimpleImputer
                 from sklearn.linear_model import ElasticNetCV
                 from sklearn.pipeline import make_pipeline
                 from sklearn.preprocessing import StandardScaler
+                w_co = np.exp(-np.log(2) * age / DECAY_HL_CO_EN)
                 m_co = make_pipeline(
                     SimpleImputer(strategy="median"), StandardScaler(),
                     ElasticNetCV(l1_ratio=[0.1, 0.5, 0.9],
                                  alphas=np.logspace(-4, 0, 8), cv=3,
-                                 max_iter=5000, random_state=0)).fit(Xtr, ytr)
+                                 max_iter=5000, random_state=0)
+                ).fit(Xtr, ytr, elasticnetcv__sample_weight=w_co)
             else:
                 m.fit(Xtr, ytr)
+                # NI unit 셀 오버라이드(v4): 최약 셀에 시간감쇠 XT(-4.2%) —
+                # 모델 교체(EN·Ridge·HGB·RF)는 전부 유의 역효과로 기각됨
+                w_ni = np.exp(-np.log(2) * age / DECAY_HL_NI_UNIT)
+                m_ni = ExtraTreesRegressor(n_estimators=400, min_samples_leaf=3,
+                                           random_state=0, n_jobs=-1)
+                m_ni.fit(Xtr, ytr, sample_weight=w_ni)
         else:
             m = HistGradientBoostingRegressor(**mk).fit(Xtr, ytr)
         yhat = np.exp(m.predict(Xpr))
         yhat_co = np.exp(m_co.predict(Xpr)) if m_co is not None else None
+        yhat_ni = np.exp(m_ni.predict(Xpr)) if m_ni is not None else None
         qv = {}
         if with_quantiles:
             for q in QUANTS:
@@ -467,8 +486,12 @@ def _direct_forecast(df: pd.DataFrame, target: str, base_month: pd.Timestamp,
                 qv[q] = np.exp(mq.predict(Xpr))      # log-공간 분위 → 지수(단조변환 보존)
         for i, idx in enumerate(pr.index):
             cc = d.loc[idx, "commodity_code"]
-            pv = float(yhat_co[i]) if (yhat_co is not None and cc == "CO") \
-                else float(np.ravel(yhat)[i])
+            if yhat_co is not None and cc == "CO":
+                pv = float(yhat_co[i])
+            elif yhat_ni is not None and cc == "NI":
+                pv = float(yhat_ni[i])
+            else:
+                pv = float(np.ravel(yhat)[i])
             r = dict(commodity_code=cc,
                      month=base_month + pd.DateOffset(months=h), h=h, pred=pv)
             if with_quantiles:
@@ -476,8 +499,8 @@ def _direct_forecast(df: pd.DataFrame, target: str, base_month: pd.Timestamp,
             rows.append(r)
         if return_models:
             Xpr_by_cc = {d.loc[idx, "commodity_code"]: Xpr.loc[[idx]] for idx in pr.index}
-            models[h] = {"model": m, "model_co": m_co, "Xpr_by_cc": Xpr_by_cc,
-                         "Xtr": Xtr, "ytr": ytr}
+            models[h] = {"model": m, "model_co": m_co, "model_ni": m_ni,
+                         "Xpr_by_cc": Xpr_by_cc, "Xtr": Xtr, "ytr": ytr}
     out = pd.DataFrame(rows)
     return (out, models) if return_models else out
 
@@ -751,9 +774,9 @@ def run(db=None, out_dir=None):
     out = out.rename(columns={"month": "target_month"})
     out["base_month"] = last_m.strftime("%Y-%m-%d")
     out["target_month"] = out["target_month"].dt.strftime("%Y-%m-%d")
-    out["model_version"] = (f"forecast_unit_v3(XT+MIDAS 혼성 {method} — ton: XT+지수MIDAS"
-                            f"+시간감쇠hl24(CO=ElasticNet)/unit: XT+U-MIDAS가격환율, "
-                            f"단가분해, 80%구간 MC합성)")
+    out["model_version"] = (f"forecast_unit_v4(XT+MIDAS 혼성 {method} — ton: XT+지수MIDAS"
+                            f"+시간감쇠hl24(CO=ElasticNet+감쇠hl36)/unit: XT+U-MIDAS"
+                            f"가격환율(NI=XT+감쇠hl24), 단가분해, 80%구간 MC합성)")
     out["basis"] = json.dumps({"backtest": bt.to_dict("records"),
                                "method": f"{method}(백테스트 금액 MASE 재귀 {m_rec:.2f} vs Direct {m_dir:.2f})",
                                "interval": f"q10/q90 분위 HistGBM(log공간) + conformal 보수화(가산폭 ton {qt_pub:.3f}/unit {qu_pub:.3f}, 보정원점 {list(cal_pub)}), 금액구간=물량×단가 lognormal MC 합성",
