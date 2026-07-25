@@ -214,7 +214,9 @@ def collect_usgs_co(con) -> None:
 
 # ─────────────── 3. WSTS 반도체 월간 빌링 ───────────────
 WSTS_PAGE = "https://www.wsts.org/67/Historical-Billings-Report"
-_REGIONS = {"Worldwide": "WSTS_BILL_WW_M", "Asia Pacific": "WSTS_BILL_AP_M"}
+_REGIONS = {"Worldwide": "WSTS_BILL_WW_M", "Asia Pacific": "WSTS_BILL_AP_M",
+            "Americas": "WSTS_BILL_AM_M", "Europe": "WSTS_BILL_EU_M",
+            "Japan": "WSTS_BILL_JP_M"}   # 2026-07-25 최종 스윕: 전 지역 확장
 
 
 def collect_wsts(con) -> None:
