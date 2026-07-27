@@ -187,7 +187,12 @@ def main():
     # 4. PMI
     try:
         pmi = collect_pmi()
-        con.execute("DELETE FROM fact_series WHERE src='AKSHARE_MACRO'")
+        # src='AKSHARE_MACRO'는 tier4 소유의 CN_ELEC_CONS_M·CN_CARBON_W와 공유 —
+        # 여기서 수집하는 PMI 2계열만 삭제(월간 cron에서 tier4가 뒤에 돌아 가려져 있던 결함)
+        if len(pmi) < 200:
+            raise RuntimeError(f"PMI 수집 {len(pmi)}행 — 비정상 축소, 기존 데이터 보존")
+        con.execute("DELETE FROM fact_series WHERE src='AKSHARE_MACRO' "
+                    "AND series_code IN ('CN_PMI_OFF_M','CN_PMI_CX_M')")
         con.register("_pmi", pmi)
         con.execute("INSERT INTO fact_series SELECT * FROM _pmi")
         con.unregister("_pmi")

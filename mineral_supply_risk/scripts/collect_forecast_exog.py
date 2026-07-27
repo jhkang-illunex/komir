@@ -79,7 +79,12 @@ def main():
     db = os.environ.get("MSR_DB", DB_PATH)
     con = duckdb.connect(db)
     cot = collect_cot()
-    con.execute("DELETE FROM fact_series WHERE src='CFTC_SOCRATA'")
+    # src='CFTC_SOCRATA'는 tier1 소유의 COT_CO/COT_LI와 공유 — 여기서 수집하는
+    # COT_CU만 삭제해야 함(주간 cron에서 tier1이 뒤에 돌아 그간 가려져 있던 결함).
+    # 빈 응답 가드: 정상 1,800행+의 절반 미만이면 기존 보존
+    if len(cot) < 800:
+        raise RuntimeError(f"COT 수집 {len(cot)}행 — 비정상 축소, 기존 데이터 보존")
+    con.execute("DELETE FROM fact_series WHERE src='CFTC_SOCRATA' AND series_code='COT_CU_NETPCT_W'")
     con.register("_c", cot)
     con.execute("INSERT INTO fact_series SELECT * FROM _c")
     con.unregister("_c")

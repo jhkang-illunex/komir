@@ -51,10 +51,13 @@ DDL = (
     "unit VARCHAR, src VARCHAR NOT NULL, PRIMARY KEY (commodity_code, obs_date, src))")
 
 
-def _upsert(con, df: pd.DataFrame, src: str, replace_all: bool = True):
+def _upsert(con, df: pd.DataFrame, src: str, commodity: str, replace_all: bool = True):
     con.execute(DDL)
     if replace_all:
-        con.execute(f"DELETE FROM {TABLE} WHERE src = ?", [src])
+        # src는 여러 광종이 공유할 수 있어(SHFE_99QH_W: NI+CU) 반드시 광종까지 한정.
+        # src 단독 DELETE가 2026-07-25 CU 재고 재소실의 원인(NI 수집이 CU까지 삭제).
+        con.execute(f"DELETE FROM {TABLE} WHERE src = ? AND commodity_code = ?",
+                    [src, commodity])
     con.register("_inv_df", df)
     con.execute(f"INSERT OR REPLACE INTO {TABLE} SELECT * FROM _inv_df")
     con.unregister("_inv_df")
@@ -121,7 +124,11 @@ def main():
 
     try:
         ni = collect_shfe_ni()
-        _upsert(con, ni, "SHFE_99QH_W")
+        # 무결성 가드(collect_priority_feeds CU와 동일 규약): 원천 빈/부분 응답이
+        # DELETE로 기존 히스토리를 날리지 않도록 정상(640행+)의 절반 미만이면 보존
+        if len(ni) < 300:
+            raise RuntimeError(f"수집 {len(ni)}행 — 비정상 축소, 기존 데이터 보존")
+        _upsert(con, ni, "SHFE_99QH_W", "NI")
         print(f"NI(SHFE): {len(ni)}행 ({ni['obs_date'].min()}~{ni['obs_date'].max()})")
     except Exception as e:
         print(f"NI(SHFE) 수집 실패(건너뜀): {type(e).__name__}: {e}")
@@ -132,7 +139,7 @@ def main():
             "SELECT obs_date FROM fact_inventory_exch WHERE src='GFEX_OFFICIAL_W'").fetchall()}
         li = collect_gfex_li(a.backfill, skip_dates=have)
         if len(li):
-            _upsert(con, li, "GFEX_OFFICIAL_W", replace_all=False)
+            _upsert(con, li, "GFEX_OFFICIAL_W", "LI", replace_all=False)
         print(f"LI(GFEX): 신규 {len(li)}행 (기존 {len(have)}주 생략, backfill={a.backfill})")
     except Exception as e:
         print(f"LI(GFEX) 수집 실패(건너뜀): {type(e).__name__}: {e}")
