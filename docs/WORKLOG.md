@@ -2,6 +2,28 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-07-27 (최신㊴) — A-5 방식 변경: 순수 LLM 교차판정(Claude) 수행 — ⚠사람 검증 아님
+
+사용자가 사람 공수 부담("사람이 저거 언제 봐")을 이유로 방식 재검토 요청 →
+AskUserQuestion 4옵션(하이브리드 권장/순수 LLM judge/표본축소/B안 유지) 중
+**"순수 LLM judge"를 한계 인지 후 명시 선택**([[feedback-human-validation-proxy]]
+절차 준수). 수행: Claude가 LLM 값이 제거된 배포본(a5_review_A_260727.csv)의
+evidence_quote 250건을 전건 독립 판정(판단불가 10건 강제 채움 없음) —
+`scripts/a5_fill_llm_judge.py`(판정 원본 기록)·
+`a5_kappa_report_llmjudge_260727.md`(경고 헤더 필수 유지).
+
+**결과(vLLM 추출 vs Claude 판정)**: severity wk=0.4912(보통)·direction
+k=0.5046(보통)·event_type 적절성 Y 131/N 94/부분 25. **계통 발견 3건**:
+①severity 교차표 일방향 상향 편향 — vLLM=3 58건 중 Claude 동의 4건(vLLM이
+심각도 체계적 부풀림, 지수 severity 가중 상향 바이어스 후보) ②direction은
+중립 보도에 supply_down/up 남발 ③ET 적절성 N의 81%(76/94)가 '뉴스' 무정보
+라벨(GKG tone-only 행 구조 문제 — event_type 표준화 과제의 정량 근거).
+부산물: 오태깅·무관 의심 16건(6.4%) 비고 기재 — 정제 후 잔존 오염 상한 참고.
+
+**지위**: A-5(사람 검증)는 **여전히 미완** — 발주처 보고서에는 "교차 모델 일관성
+점검"으로만 기재 가능. 사람 판정이 필요해지면 a5_review_A/B_260727.csv 원본으로
+처음부터(0단계 패키지는 그대로 유효).
+
 ## 2026-07-27 (최신㊳) — A-5 0단계 완료: v2 재표집 250건 + 2인 교차(B안) 패키지
 
 사용자 승인("B안으로 0단계 착수"). 최신㊲ 방안의 0단계 실행 완료:
