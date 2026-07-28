@@ -29,6 +29,8 @@ for t in con.execute(\"select table_name from information_schema.tables where ta
 | raw | `raw_customs_annual_bycountry` | 39,962 | 관세청 연간, 국가 차원 보존판(2026-07-15 결함 교정 후) |
 | raw | `raw_customs_monthly` | 232,001 | 관세청 월간(HS10×국가) |
 | raw | `raw_ecos` | 257 | 한국은행 ECOS 거시지표 |
+| raw | `raw_policy_notice` | 1,381 | 해외 정책공고(MOFCOM 수출통제·미 연방관보 BIS/USTR) — 2026-07-28 신설, url upsert 축적형 |
+| raw | `raw_hts_rates` | 775 | 미 HTS 관세율 스냅샷(광물 HS4+챕터99) — 2026-07-28 신설, 릴리스 단위 보존 |
 | fact | `fact_trade_annual` | 1,946 | 관세청 연간 → 광종 매핑본 |
 | fact | `fact_trade_monthly` | 21,955 | 관세청 월간 → 광종 매핑본 |
 | fact | `fact_price` | 6,839 | LME 등 가격(주간/월간) |
@@ -291,6 +293,38 @@ PK: 없음(commodity_code, obs_date가 사실상 유니크).
 | model_version / basis / generated_at | VARCHAR | 검증 근거 포함 |
 
 ⚠운영 등급예측(out_diagnosis_alert)과 별개의 병기 보조신호 — 경보 등급 불변경.
+
+### raw_policy_notice (해외 정책공고, 2026-07-28 신설)
+PK: 없음(src+url이 사실상 유니크 — url 기준 upsert 축적형이라 목록이 최신 N건만
+반환해도 과거분 보존).
+| 컬럼 | 타입 | 비고 |
+|---|---|---|
+| src | VARCHAR | 'MOFCOM_ZCFB'(상무부 대외무역관리, 중문) / 'FEDREG_API'(미 연방관보) |
+| notice_date | DATE | 공고일 |
+| title | VARCHAR | 공고 제목(원어) |
+| url | VARCHAR | 정본 링크 |
+| agency | VARCHAR | 발행 기관(FedReg는 agency slug) |
+| doc_type | VARCHAR | notice / Rule / Proposed Rule 등 |
+| collected_at | TIMESTAMP | |
+
+적재: `scripts/collect_intl_agency_feeds.py policy`(주간 cron). FedReg는 2020-01~
+전량 재수집형, MOFCOM은 최신 ~15건 폴링 축적형(과거 백필 경로 없음 — 페이지네이션
+미제공 실측).
+
+### raw_hts_rates (미 HTS 관세율 스냅샷, 2026-07-28 신설)
+PK: 없음. 릴리스(release) 단위 보존 — 릴리스 변경 시 직전 스냅샷과 diff로 관세
+조치 변화 추적.
+| 컬럼 | 타입 | 비고 |
+|---|---|---|
+| release | VARCHAR | 예: '2026HTSRev12' |
+| htsno | VARCHAR | HTS 번호(8~10자리) |
+| description / units | VARCHAR | |
+| general / special / col2 | VARCHAR | 관세율(일반/특혜/컬럼2) |
+| chapter99 | VARCHAR | footnote(챕터99 추가관세 연결 — 'See 9903.91.01' 등) |
+| collected_at | TIMESTAMP | |
+
+범위: 5광종 HS4(2530·2603~2606·2805·2836~2846·7401~7403·7501~7502·8105)+챕터
+9903 전체. ⚠reststop exportList의 `to`는 상한 배타적(+1 지정 필요).
 
 ### mart_weekly_diagnosis (진단모델 입력 마트, 주간)
 PK: 없음(commodity_code, obs_date가 사실상 유니크).

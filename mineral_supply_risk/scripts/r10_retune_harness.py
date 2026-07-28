@@ -84,6 +84,19 @@ SERIES_SPEC = [
     ("bill_am", "ser", {"*": "WSTS_BILL_AM_M"}, 40, "WSTS Americas"),
     ("bill_eu", "ser", {"*": "WSTS_BILL_EU_M"}, 40, "WSTS Europe"),
     ("bill_jp", "ser", {"*": "WSTS_BILL_JP_M"}, 40, "WSTS Japan"),
+    # 해외기관 직접 수집 (2026-07-28, collect_intl_agency_feeds — 발주처 확장 요청)
+    ("pe_cu_x", "ind", {"CU": "PE_CU_EXPORT_WGT"}, 75, "페루 CU 수출물량(BCRP·SUNAT)"),
+    ("pe_cu_p", "ind", {"CU": "PE_CU_PROD_MINE"}, 75, "페루 CU 광산생산(BCRP·MINEM)"),
+    ("au_cu",  "ind", {"CU": "AU_CU_EXPORT_KAUD"}, 75, "호주 동광 수출액(ABS)"),
+    ("au_ni",  "ind", {"NI": "AU_NI_EXPORT_KAUD"}, 75, "호주 니켈광 수출액(ABS)"),
+    ("ph_psa", "ind", {"NI": "PH_NI_EXPORT_WGT_PSA"}, 75,
+     "필리핀 NI(PSA·BOC 직접 — ni_ph 원천중복, 대체 후보)"),
+    ("gacc_cu", "ind", {"CU": "CN_CU_ORE_IMPORT_QTY_GACC"}, 30,
+     "중국 동정광 수입(GACC 월보, 래그~3주 ⚠2018+)"),
+    ("gacc_cuw", "ind", {"CU": "CN_CU_UNWROUGHT_IMPORT_QTY_GACC"}, 30,
+     "중국 미가공동 수입(GACC ⚠2018+)"),
+    ("gacc_ree", "ind", {"REE": "CN_REE_EXPORT_QTY_GACC"}, 30,
+     "중국 REE 수출(GACC — 수출통제 직접축 ⚠2018+)"),
 ]
 STALE_DAYS = 200          # 꼬리 정지 경고 임계
 MIN_START = "2018-07-01"  # 이보다 늦게 시작하면 커버리지 교란 플래그

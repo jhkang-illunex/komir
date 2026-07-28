@@ -18,6 +18,9 @@ export MSR_DB="$ROOT/warehouse/minerals.duckdb"
     python3 -m scripts.collect_exchange_inventory        # 증분(기본 8주)
     python3 -m scripts.collect_forecast_exog             # COT 전량 갱신(멱등)+WM
     python3 -m scripts.collect_tier1_feeds --skip-comtrade  # CO/LI COT·IDR·중국 OI(주간)
+    # 해외기관 정책 공고(2026-07-28 발주처 확장 요청): MOFCOM 수출통제·FedReg·HTS.
+    # MOFCOM 목록은 최신 ~15건만 반환 → 주간 폴링으로 놓침 없이 축적(url upsert)
+    python3 -m scripts.collect_intl_agency_feeds policy
   else
     python3 -m scripts.collect_priority_feeds            # Comtrade+PMI(전량 멱등)
     python3 -m scripts.collect_demand_feeds              # ISM·유로·부동산
@@ -37,6 +40,9 @@ export MSR_DB="$ROOT/warehouse/minerals.duckdb"
     # GFEX 레이트리밋으로 남은 LI 공백(2025-08~2026-04)을 매월 조금씩 자가 치유 —
     # skip_dates 멱등이라 이미 채워진 주는 재호출하지 않음(공백 소진 후엔 사실상 no-op)
     python3 -m scripts.collect_exchange_inventory --backfill
+    # 해외기관 직접 무역통계(2026-07-28 발주처 확장 요청): 페루 BCRP·호주 ABS·
+    # 필리핀 PSA·중국 GACC 영문월보 — 전부 무키. 월간 전량 멱등(계열 한정 DELETE)
+    python3 -m scripts.collect_intl_agency_feeds trade
   fi
   echo "=== $(date '+%F %T') 종료(exit=$?) ==="
 } >> "$LOG" 2>&1

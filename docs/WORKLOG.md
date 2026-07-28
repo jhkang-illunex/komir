@@ -2,6 +2,39 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-07-28 (최신㊷) — 발주처 수집대상 확장(9개국×기관): 무키 7소스 당일 반영+R10 검정
+
+발주처가 해외 관세·정책 수집 확장 지정(tier1: 중국 MOFCOM/GACC·미국 DOC/CBP·
+인니 ESDM/관세청, tier2: 아르헨 LI·칠레 CU/LI·DRC CU/CO·페루 CU·필리핀 NI·호주
+LI/Nd). 병렬 조사 3건+서버 실호출 재검증으로 기관별 판정 후 당일 처리:
+
+- **수집기 신설 `collect_intl_agency_feeds.py`**(cron 편입: 주간 policy/월간
+  trade) — 무키·무인 7소스: ①페루 BCRP(CU 수출 금액·물량+광산생산, SUNAT/MINEM
+  원자료, 2000~) ②호주 ABS SDMX(SITC 283/284 동·니켈광 수출액, 1995~) ③필리핀
+  PSA OpenSTAT(NI 수출 HS 2604\*+7502\* USD/kg, 2007~ — MGB 전역 WAF 403 대체)
+  ④중국 GACC 영문 월보(동정광·미가공동·희토류 수출입 8계열, 2018~, 래그 ~3주 —
+  **Comtrade 중국 2024-12 정지의 CU·REE 부분 해소**, 1~2월 합산은 누계 차분 복원)
+  ⑤MOFCOM 정책공고(jpaas unit API — 수출통제·실체명단, 주간 폴링 축적)
+  ⑥미 연방관보 API(BIS·USTR 2020~ 1,366건) ⑦USITC HTS 관세율 스냅샷(광물
+  HS4+챕터99 775행, 릴리스 diff로 조치 추적). 신규 테이블 raw_policy_notice·
+  raw_hts_rates(DB_SCHEMA.md 갱신). fact_indicator 신규 15계열 2,436행 실측.
+- **버그 3건 실행 중 발견·수정**: PSA CSV latin-1 인코딩, GACC 과거연도 페이지
+  개행 정규식, HTS `to` 상한 배타(+1 필요)·footnotes null. **교훈(신규): 원천이
+  다른 동명 시리즈는 indicator 접미로 분리**(_PSA/_GACC) — Comtrade 계열과
+  fact_indicator PK(광종·indicator·obs_date) 충돌을 DB가 실제 차단해줬음.
+- **R10 하네스 검정**(SERIES_SPEC 8건 등록 → --quick+풀): 진단 스크리닝 유망
+  3건(ph_psa QWK 0.9286/FAR 0.0171·au_cu 0.9143·au_ni 0.8778)은 부트스트랩에서
+  전부 **방향긍정 보류**(CI 하한>0 미달, ph_psa P=0.965 — Comtrade ni_ph
+  P=0.687보다 강해 축적 후 대체 1순위), 페루 2·GACC 3은 스크리닝 기각. 예측
+  exog는 8건 전패(lag 지배 5번째). **채택 0건 = 챔피언 구성 불변.** 리포트
+  정본 갱신(직전판은 r10_retune_report_260725_weekend.md 보존).
+- **문서**: `documents/산출물/2026-W31_0727-0802/해외관세정책_데이터확장_260728.md`
+  — 기관별 판정 총괄, 키 필요 5건(BPS·Census·Comtrade 정식키·DataWeb·칠레
+  중앙은행), 불가·대안 4건(CBP 403→Census/관보, DRC 전멸→미러, MGB→PSA,
+  MODI→이관 중), 후속 구현 6건(ARCA NCM zip 1순위·칠레 세관 CKAN·인니 HMA
+  ⚠2026-04 산식 break·DISR REQ 반자동 등). 발주처 유료 요청(중국 세관)은
+  NI·CO·LI로 범위 축소 권고.
+
 ## 2026-07-27 (최신㊶) — 시스템 기술서(데이터·전처리·모델링)+스코어보드 통합 확정판
 
 사용자 요청("금일 날짜로 수집 데이터·전처리·모델링 상세 기술 문서와 스코어보드").
