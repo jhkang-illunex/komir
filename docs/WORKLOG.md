@@ -2,6 +2,42 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-07-29 (최신㊹) — ARCA 전체 백필+Census+BPS 키 반영 → R10 전면 재검정(채택 0건, 챔피언 불변)
+
+사용자 목표("arca, bps 데이터 싹 다 수집해서 가공해서 피처 엔지니어링과
+모델링을 거쳐서 최적 모델을 찾아내라") 수행.
+
+- **ARCA 전체 백필 실행**(2019-01~2026-06, 96개월 대상, 동시 6워커):
+  `AR_LI_EXPORT_WGT/VAL_ARCA` 각 41행 확보(5개월은 ChunkedEncodingError로
+  스킵 — 재시도 가능하나 표본에 큰 영향 없어 보류). **교차검증 발견**: UN
+  Comtrade(li_ar, 56개월 보고)와 ARCA(41개월) 양쪽 모두 **2019~2023년에
+  독립적으로 동일한 보고 공백**을 보임(2019년은 두 원천 다 0개월) —
+  파싱 버그 아니라 이 시기 아르헨티나 자체의 보고 불규칙성으로 실측 확인.
+  공통 26개월·Comtrade단독 30개월·ARCA단독 15개월로 상호 보완적.
+- **Census·BPS 키 실제 DB 반영**: Census 18계열 2,864행(2013~2026, 어제
+  구현). BPS는 사용자가 재발급한 키("Indonesia Critical Minerals Trade
+  Monitor")로 정상화 — 니켈(BPS 자체 챕터 75, 149개월, 2014~2026)·
+  코발트 3계열·리튬 2계열(BPS 8자리 코드북 실측으로 유효코드 확정) 총
+  12계열 484행.
+- **버그 2건 발견·수정**(반영 직후 실행 중 발견, `feedback-careful-code
+  -no-bugs` 적용): ①`ID_NI_EXPORT_VAL/WGT`가 기존 UN_COMTRADE(tier1)
+  계열과 이름 충돌(PK에 src 없어 INSERT 시 제약위반 실제 발생) — PSA·GACC와
+  동일하게 `_BPS` 접미로 전량 수정. ②R10 SERIES_SPEC의 신규 `us_ree`가
+  어제 등록된 기존 `us_ree`(REE 수출)와 name 충돌 — `us_ree_imp`로 개명.
+  둘 다 실행 후 결과가 이상해서(제약위반 예외·"데이터없음" 오표시) 즉시
+  발견·수정, 재실행으로 정상 확인.
+- **R10 전면 재검정**(신규 SERIES_SPEC 11건 추가, 스크리닝+부트스트랩+
+  예측exog 전체): ar_li_arca(LI, ARCA)·id_ni(NI, BPS)·id_co_um·id_li_carb
+  (CO/LI, BPS — 표본 19·17행<24 최소요건 미달로 자동 제외, 정상 동작)·
+  us_ni/us_co/us_co_dut/us_li/us_ree_imp/us_ree_dut/us_cu(Census). 결과:
+  **채택 0건.** id_ni(P=0.703)·us_ni(P=0.865)는 스크리닝 유망 → 부트스트랩
+  방향긍정 보류(기존 방향긍정 6~9건에 합류). 나머지는 스크리닝 기각. 예측
+  exog도 전패(lag 지배 확인, 이번이 몇 번째인지는 각 스크립트 참조). **결론:
+  챔피언 구성 전부 불변** — 리포트 `r10_retune_report.md`(직전판은
+  `r10_retune_report_260728.md`로 보존).
+- cron 반영: `cron_collect_feeds.sh` monthly `trade` 스텝에 CENSUS_API_KEY·
+  BPS_API_KEY export 추가(누락 시 매달 조용히 스킵되는 버그 사전 차단).
+
 ## 2026-07-29 (최신㊸) — 해외기관 수집리스트 항목별 점검 문서 작성
 
 사용자 요청("어제 요청 리스트에 대해 수집 가능 여부·가능한 시계열·불가 사유·

@@ -40,9 +40,12 @@ export MSR_DB="$ROOT/warehouse/minerals.duckdb"
     # GFEX 레이트리밋으로 남은 LI 공백(2025-08~2026-04)을 매월 조금씩 자가 치유 —
     # skip_dates 멱등이라 이미 채워진 주는 재호출하지 않음(공백 소진 후엔 사실상 no-op)
     python3 -m scripts.collect_exchange_inventory --backfill
-    # 해외기관 직접 무역통계(2026-07-28 발주처 확장 요청): 페루 BCRP·호주 ABS·
-    # 필리핀 PSA·중국 GACC 영문월보 — 전부 무키. 월간 전량 멱등(계열 한정 DELETE)
-    python3 -m scripts.collect_intl_agency_feeds trade
+    # 해외기관 직접 무역통계(2026-07-28~29 발주처 확장 요청): 페루 BCRP·호주 ABS·
+    # 필리핀 PSA·중국 GACC 영문월보(무키) + 미 Census·인니 BPS(키 필요, 07-29
+    # 사용자 발급) + 아르헨 ARCA(최근 4개월 증분). 월간 전량 멱등(계열 한정 DELETE)
+    CENSUS_API_KEY="$(grep '^CENSUS_API_KEY=' "$ROOT/.env" | cut -d= -f2-)" \
+    BPS_API_KEY="$(grep '^BPS_API_KEY=' "$ROOT/.env" | cut -d= -f2-)" \
+      python3 -m scripts.collect_intl_agency_feeds trade
   fi
   echo "=== $(date '+%F %T') 종료(exit=$?) ==="
 } >> "$LOG" 2>&1

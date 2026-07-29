@@ -97,6 +97,28 @@ SERIES_SPEC = [
      "중국 미가공동 수입(GACC ⚠2018+)"),
     ("gacc_ree", "ind", {"REE": "CN_REE_EXPORT_QTY_GACC"}, 30,
      "중국 REE 수출(GACC — 수출통제 직접축 ⚠2018+)"),
+    # 2026-07-29 신규(ARCA·BPS·Census — 발주처 확장 요청 키 발급분)
+    ("ar_li_arca", "ind", {"LI": "AR_LI_EXPORT_WGT_ARCA"}, 60,
+     "아르헨 LI(ARCA 관세청 직접 — li_ar 원천중복, 2019-01~ 대체후보)"),
+    ("id_ni",  "ind", {"NI": "ID_NI_EXPORT_BPS_WGT"}, 75,
+     "인니 NI 수출(BPS 관세청 직접, 니켈전용챕터 청정, 2014-01~ — 기존 ID_NI_EXPORT_WGT는 UN_COMTRADE라 이름충돌 방지로 _BPS 접미)"),
+    ("id_co_um", "ind", {"CO": "ID_CO_UNWROUGHT_EXPORT_BPS_WGT"}, 75,
+     "인니 CO 미가공수출(BPS ⚠2024-08~ 단표본)"),
+    ("id_li_carb", "ind", {"LI": "ID_LI_CARBONATE_EXPORT_BPS_WGT"}, 75,
+     "인니 LI 탄산리튬수출(BPS ⚠산발 17건)"),
+    ("us_ni",  "ind", {"NI": "US_NI_UNWROUGHT_IMPORT_VAL"}, 60,
+     "미 NI 수입액(Census, CBP대체, 2013-01~)"),
+    ("us_co",  "ind", {"CO": "US_CO_IMPORT_VAL"}, 60, "미 CO 수입액(Census)"),
+    ("us_co_dut", "ind", {"CO": "US_CO_IMPORT_DUT"}, 60,
+     "미 CO 관세부담액(Census, 정책리스크 신호)"),
+    ("us_li",  "ind", {"LI": "US_LI_CARBONATE_IMPORT_VAL"}, 60,
+     "미 LI 수입액(Census)"),
+    ("us_ree_imp", "ind", {"REE": "US_REE_COMPOUND_IMPORT_VAL"}, 60,
+     "미 REE화합물 수입액(Census) — ⚠기존 us_ree(REE 수출)와 name 구분"),
+    ("us_ree_dut", "ind", {"REE": "US_REE_COMPOUND_IMPORT_DUT"}, 60,
+     "미 REE 관세부담액(Census, 301조 신호 — 실효세율 60%대 실측)"),
+    ("us_cu",  "ind", {"CU": "US_CU_REFINED_IMPORT_VAL"}, 60,
+     "미 CU 정련동 수입액(Census)"),
 ]
 STALE_DAYS = 200          # 꼬리 정지 경고 임계
 MIN_START = "2018-07-01"  # 이보다 늦게 시작하면 커버리지 교란 플래그
