@@ -119,6 +119,14 @@ SERIES_SPEC = [
      "미 REE 관세부담액(Census, 301조 신호 — 실효세율 60%대 실측)"),
     ("us_cu",  "ind", {"CU": "US_CU_REFINED_IMPORT_VAL"}, 60,
      "미 CU 정련동 수입액(Census)"),
+    # 2026-07-30: tier2 검정 공백 발견 후 등록(칠레 CU·DRC CO — 07-25/07-28
+    # 부터 수집만 하고 SERIES_SPEC 미등록 상태였음)
+    ("cl_cu_mine", "ind", {"CU": "CL_CU_PROD_MINE"}, 90,
+     "칠레 CU 광산생산(COCHILCO, 세계 최대 생산국, 2015-01~)"),
+    ("cl_cu_ref", "ind", {"CU": "CL_CU_PROD_REF"}, 90,
+     "칠레 CU 정련생산(COCHILCO, 2015-01~)"),
+    ("cd_co", "ind", {"CO": "CN_CO_IMPORT_COD_WGT"}, 75,
+     "DRC CO(중국 수입 미러 — DRC 자체 미보고, 세계 최대 생산국, 2016-01~2024-12)"),
 ]
 STALE_DAYS = 200          # 꼬리 정지 경고 임계
 MIN_START = "2018-07-01"  # 이보다 늦게 시작하면 커버리지 교란 플래그
