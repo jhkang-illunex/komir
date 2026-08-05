@@ -2,7 +2,47 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-08-05 (최신) — `engine/` 통합 실행(geo·mineral_supply_risk·rag → engine/) — 원래 미룬 사이클을 위험 감수하고 당겨서 실행
+## 2026-08-05 (최신) — engine/ 통합 main 병합 + crontab 갱신 완료 — 병합 중 orphan 파일 발견·복구
+
+사용자 지시("병합과 crontab 갱신 같이 진행")로 본채(main checkout)에서 실행.
+
+- **`git merge --ff-only worktree-orktree`** 성공(main이 clean ancestor).
+- **병합 직후 발견**: `git mv`는 추적 파일만 옮기므로, 구경로에 gitignore 대상
+  미추적 파일이 남아있으면 디렉토리 자체가 안 사라짐 — 실제로 본채(main)에
+  구 `geo/`·`mineral_supply_risk/`가 병합 후에도 남아있었음(워크트리에선 애초에
+  없던 파일들이라 안 보였던 문제 — 워크트리·본채가 서로 다른 미추적 상태를
+  갖고 있었기 때문). 점검 결과:
+  - **`mineral_supply_risk/outputs/`(15MB, `**/outputs/` gitignore 대상) — 실행
+    결과물(a5_review 등 진단/예측 리포트 다수, DATA_REGISTRY.md가 다수 인용)이
+    새 경로(`engine/mineral_supply_risk/outputs/`)에 없는 채로 고립돼 있었음.
+    **artifact-provenance-policy(삭제 금지) 위반 직전** — `mv`로 즉시
+    `engine/mineral_supply_risk/outputs/`로 이전, 내용 5개 하위디렉토리·15MB
+    보존 확인.
+  - `geo/collectors/_gkg_masterfilelist_cache.txt`(126MB) — `cron_gkg_increment.sh`
+    자체가 매 실행 `rm -f` 후 재생성하는 캐시라 이전 불필요, 폐기.
+  - `mineral_supply_risk/data/processed/minerals.duckdb`(1MB, 07-17 구식) —
+    `warehouse/minerals.duckdb`(정본, 459MB, 상시 갱신) 확립 이전의 구식 fallback
+    DB로 확인(어떤 실행 경로도 MSR_DB 미설정 상태로 이 기본값에 의존하지 않음),
+    폐기.
+  - `__pycache__/` 전부 — 자동 재생성, 폐기.
+  - 위 확인 후 구 `geo/`·`mineral_supply_risk/` 디렉토리 자체 삭제(`rm -rf`) —
+    남은 게 캐시·구식 DB뿐임을 파일 단위로 먼저 확인한 뒤 실행(추측 삭제 아님).
+- **본채에서 재스모크**: `engine/geo`·`engine/`(python -m geo 방식)·
+  `engine/mineral_supply_risk`에서 임포트 재확인, 두 cron 스크립트 `bash -n`
+  재확인 — 워크트리에서 했던 것과 별개로 실제 병합된 본채에서 다시 실행.
+- **시스템 crontab 갱신**: `crontab -l` → 3건 중 komir 관련 3줄만 `engine/`
+  삽입해 치환(무관한 `stock_predictor_cron` 항목은 그대로), diff로 정확히
+  3줄만 바뀌는지 확인 후 적용. **적용 스크립트 실행 파일 존재+실행권한도
+  최종 확인**(`test -x`). `crontab <파일>`이 스크래치패드 긴 경로에서 원인
+  불명 오류(`No such file or directory`, 짧은 경로로는 성공 — sandbox/crontab
+  바이너리 쪽 경로 처리 이슈로 추정)를 내 `/tmp` 짧은 경로로 우회, 사용 후
+  즉시 삭제.
+- **결과**: 다음 cron 실행(가장 이른 건 토요일 06:30 GKG)부터 새 경로로
+  정상 동작할 준비 완료 — §2-1이 "가장 위험한 실패모드"로 지목했던 "조용히
+  멈춤"을 사전에 차단.
+- `origin` 푸시는 미실행(사용자 지시 범위는 병합+crontab까지).
+
+## 2026-08-05 — `engine/` 통합 실행(geo·mineral_supply_risk·rag → engine/) — 원래 미룬 사이클을 위험 감수하고 당겨서 실행
 
 §2-1에서 못박은 착수 트리거(서비스 3종 안정가동+Postgres 이관 완료)를 아직
 못 채운 상태에서, 사용자가 "지금 바로 진행(위험 감수)"으로 명시 재확정 —
