@@ -46,7 +46,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-MSR_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "mineral_supply_risk")
+MSR_ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "engine", "mineral_supply_risk")
 sys.path.insert(0, MSR_ROOT)
 
 DEFAULT_DB = "/home/nuri/dev/git/ws/mine_ws/komir/warehouse/minerals.duckdb"

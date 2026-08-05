@@ -12,7 +12,7 @@
 | 이번 세션 범위 | **설계안만**(디렉토리 구조+Containerfile/compose 스켈레톤). 구현은 다음 세션 |
 | "광종 리스트" 아웃풋 | 기존 진단·예측·지수 모델 결과를 서빙하는 **API** |
 | 챗봇 서버 | komir 레포지토리 내에 **새 FastAPI 챗봇 서비스**를 신규 구축 |
-| `geo/`·`mineral_supply_risk/`·`rag/` → `engine/` 통합 | **방향 확정(2단계 마이그레이션)** — 이번 설계는 현재 경로 유지, 실제 이동은 서비스 3종+Postgres 이관이 안정화된 뒤 별도 사이클로 실행(§2-1) |
+| `geo/`·`mineral_supply_risk/`·`rag/` → `engine/` 통합 | **실행 완료(2026-08-05, 같은 날 트리거 조건 미충족 상태에서 위험 감수하고 즉시 진행 재확정)** — §2-1. 시스템 crontab 갱신은 main 병합 시점에 별도 처리 필요(미완료) |
 | 벡터DB | **Qdrant로 확정**(2026-08-05 추기) — pgvector(Postgres 확장) 방식 폐기. 정형 RDB(Postgres)와 달리 Qdrant는 **komir이 직접 도커/podman으로 기동·소유**(LLM·정형DB처럼 외부서비스 아님) — §4·§5·§7 |
 
 및 사용자 원 요구사항 8개(요약): ①airgap+podman 배포 ②LLM/embedding·DB는 외부서비스,
@@ -110,66 +110,72 @@ komir/
 └── docs/CONTAINER_ARCHITECTURE.md  # 본 문서
 ```
 
-## 2-1. `engine/` 통합 마이그레이션 계획 (2단계 — 이번 설계 완료 후 별도 사이클)
+## 2-1. `engine/` 통합 마이그레이션 — **실행 완료(2026-08-05, 같은 날 후속)**
 
 `geo/`·`mineral_supply_risk/`·`rag/`를 `engine/` 아래로 묶어 서빙 레이어(`services/`)와
-물리적으로도 분리하자는 제안(사용자, 2026-08-05) — **방향에 동의**하나, 지금 당장
-옮기면 살아있는 cron 파이프라인이 즉시 깨질 위험이 있어 **별도 마이그레이션
-사이클로 분리**하기로 확정(§2에서 "기존 코드 이동은 하지 않는다"고 한 것의 근거를
-여기서 구체화). "언젠가"로 흘려보내지 않도록 트리거 조건과 체크리스트를 못박는다.
+물리적으로도 분리하는 안 — 원래는 "서비스 3종+Postgres 이관이 먼저 안정화된 뒤"로
+미루기로 합의했었으나(트리거 조건 미충족), **사용자가 위험을 인지한 상태에서 즉시
+진행을 명시적으로 재확정**해 같은 날 실행했다. 아래는 실행 기록이며, 아직 남은
+후속 조치(§ 끝 "남은 일")가 있다.
 
-### 목표 최종 구조 (Phase 2)
+### 실제 구조 (실행됨)
 
 ```
 komir/
 ├── engine/
-│   ├── geo/                      # git mv geo → engine/geo
-│   ├── mineral_supply_risk/      # git mv mineral_supply_risk → engine/mineral_supply_risk
-│   └── rag/                      # git mv rag → engine/rag
+│   ├── geo/                      # git mv geo → engine/geo (완료, rename 이력 보존)
+│   ├── mineral_supply_risk/      # git mv mineral_supply_risk → engine/mineral_supply_risk (완료)
+│   └── rag/                      # git mv rag → engine/rag (완료)
 ├── services/                     # (§2, 변경 없음)
 ├── db/
 ├── deploy/
 └── ...
 ```
 
-### 착수 트리거 조건 (전부 충족 시에만 시작)
+### 실행 기록 — 무엇을 확인·고쳤나
 
-1. §8의 3~5단계(commodity_api·rag_chat·report_gen)가 **현재 경로 기준으로 먼저
-   안정 가동**돼 있을 것 — 서비스 신설과 엔진 이동을 동시에 하면 장애 원인 특정이
-   불가능해진다(CLAUDE.md §4 "최소·외과적 변경" 원칙).
-2. Postgres 이관(§4)도 완료돼 있을 것 — DB 이관과 디렉토리 이동을 겹치면 같은
-   이유로 위험.
+1. **cron 인벤토리**(실제 `crontab -l` 확인): komir 관련 3건 전부 확인 —
+   `mineral_supply_risk/scripts/cron_collect_feeds.sh weekly`(토 09:10)·
+   `〃 monthly`(매월 6일 09:20)·`geo/cron_gkg_increment.sh`(토 06:30). 전부
+   **본채(main checkout)의 절대경로**를 참조 — git으로 추적되지 않으므로 `git mv`로는
+   안 바뀜, 별도 시스템 조치 필요(아래 "남은 일" 참고).
+2. **임포트 경로 grep**: `sys.path.insert` 84건 확인 — 전부 `os.path.dirname(__file__)`
+   기준 **상대경로**라 각 패키지를 통째로 옮기는 것만으로는 내부 임포트가 깨지지
+   않음(패키지 내부 상대 깊이가 그대로라서). 깨지는 건 **패키지 바깥에서 그 경로를
+   가리키던 곳**뿐 — 아래 3.
+3. **git mv** 세 패키지, 한 커밋(§8 착수 시 실행분과 동일 커밋에 포함).
+4. **바깥 참조 수정 완료**:
+   - `dashboards/streamlit_app.py`의 `MSR_ROOT` 상대경로에 `engine` 한 단 추가.
+   - `mineral_supply_risk/scripts/cron_collect_feeds.sh`·`geo/cron_gkg_increment.sh`의
+     `ROOT="$(cd "$(dirname "$0")/../.." && pwd)"` 류 계산에 `..` 한 단 추가(한 단
+     더 깊어졌으므로) — **수정 후 실제 bash로 재계산해 `komir/`로 정확히 resolve됨을
+     확인**(추측 아님).
+   - 루트 `docker-compose.yml`의 `build.context`(`./mineral_supply_risk`→
+     `./engine/mineral_supply_risk`, `./geo`→`./engine/geo`).
+   - `CLAUDE.md` §1 구조도·§2 실행 명령 전면 갱신(날짜도 2026-08-05로 갱신).
+   - `docs/DB_SCHEMA.md`의 `schema_core.sql` 등 라이브 경로 참조 2곳.
+   - `collector/README.md`·`collector/common.py`의 `geo/collectors/...` 주석 2곳.
+   - `services/rag_chat/Containerfile`의 실제 `COPY` 지시문(유일하게 기능적으로
+     깨졌을 지점 — 나머지 services/ 내 참조는 전부 `NotImplementedError` 스켈레톤
+     안의 설명용 주석/독스트링이라 실행에 영향 없어 이번엔 그대로 둠, 다음 구현
+     세션에서 실제 코드 작성 시 자연히 현재 경로 기준으로 쓰게 됨).
+5. **과거 문서는 갱신하지 않음**(원칙 유지): `docs/WORKLOG.md`·`docs/DATA_REGISTRY.md`의
+   기존 항목들은 그 시점 경로 그대로 — 특히 DATA_REGISTRY.md는 "재현 명령"까지 담고
+   있어 문자 그대로 복사하면 구 경로라 실패하지만, 이력 문서의 특성상 의도적으로
+   그대로 둠(과거 산출물이 그 경로에서 만들어졌다는 사실 자체가 기록 가치).
 
-두 조건 모두 "서비스 3종+DB가 새 구조 위에서 먼저 검증된 뒤에만 엔진을 옮긴다"는
-같은 원칙(변경 축을 한 번에 하나만)이다.
+### 남은 일(이 실행으로 아직 못 끝낸 것)
 
-### 마이그레이션 체크리스트 (착수 시 이 순서대로)
-
-1. **cron 인벤토리**: 현재 스케줄 정의 전수 확인 — `cd mineral_supply_risk && ...`,
-   `python -m geo ...` 형태로 이 경로를 참조하는 모든 줄 나열.
-2. **임포트 경로 전수 grep**: `sys.path.insert(0, ...)` 상대경로 패턴(각지에 흩어진
-   `os.path.join(os.path.dirname(__file__), "..")` 식) + `from msr...`/
-   `import scripts...` 전부 재확인.
-3. `git mv geo engine/geo && git mv mineral_supply_risk engine/mineral_supply_risk
-   && git mv rag engine/rag` — **한 커밋으로**(부분 이동 상태로 두지 않음, 되돌리기
-   쉽게 유지).
-4. 1·2에서 나열한 참조 전부를 새 경로로 일괄 치환 — cron 스케줄, 각 `Dockerfile`의
-   `COPY`/`WORKDIR`, `services/*/Containerfile`(현재 `COPY services/shared ./shared`
-   등 상대경로 가정), 그리고 **이 문서 자체**(§2 구조도).
-5. **회귀검정**: 이관 직후 최소 1회 전체 cron 체인(주간+월간)을 수동 트리거해
-   정상 완주 확인 — 특히 정본 DB 갱신이 조용히 끊기지 않는지가 최우선 확인 대상
-   (과거 실제 사고 유형, WORKLOG 다수 사례 — "조용히 멈춤"이 가장 위험한 실패 모드).
-6. 구 경로를 참조하는 **과거 문서**(WORKLOG 기존 항목·메모리 시스템 기록)는
-   갱신하지 않는다 — 그 시점엔 그 경로가 맞았던 역사 기록. 새로 쓰는 항목만 새
-   경로로.
-
-### 왜 지금 하지 않는가(재확인)
-
-이번 설계의 `services/shared/db.py`·각 `Containerfile`은 이미 **현재 경로**
-(`mineral_supply_risk/db/dbio.py` 등, §1)를 참조하도록 짜여 있다. 이관을 먼저
-하면 이 설계 문서 전체를 다시 써야 하는데, 정작 서비스 코드는 아직 한 줄도
-구현 전이라 지금 옮기는 실익이 없다 — "서비스 3종을 현재 경로 기준으로 먼저
-안정 가동 → 그다음 엔진 이동"이 손해가 가장 적은 순서다.
+- **실제 시스템 `crontab` 갱신 — main 병합 시점에 반드시 같이 처리**: git으로
+  추적되지 않는 시스템 crontab 3건이 여전히 구 절대경로를 가리킨다. main 병합
+  전까지는 본채 파일이 안 바뀌어 무해하지만, **병합하는 순간부터 다음 cron
+  실행(가장 이른 건 토요일 06:30 GKG)까지 사이에 crontab도 같이 고쳐야 한다** —
+  안 그러면 정확히 이 프로젝트가 "가장 위험한 실패 모드"라 불러온 "조용히 멈춤"이
+  실제로 발생한다.
+- **회귀검정(§ 원 체크리스트 5번)은 미실행** — 전체 주간/월간 cron 체인을 수동
+  트리거해 정상 완주를 확인하는 건 이번 세션 스코프에서 하지 않았다(운영 DB에
+  실제 영향을 주는 행위라 별도 확인 없이 실행하지 않음). 최소한 각 스크립트의
+  `--help`나 무해한 하위커맨드로 임포트·경로 해석만 스모크 테스트하는 것을 권장.
 
 ## 3. 통합 `.env` 계약 (기존 컨벤션 확장 — 새 접두사 만들지 않음)
 
@@ -334,8 +340,10 @@ CREATE INDEX IF NOT EXISTS idx_doc_chunk_tsv ON doc_chunk USING GIN (txt_tsv);
    템플릿 질의 방식으로 최소 구현.
 5. `services/report_gen` — commodity_api·rag_chat이 자리잡은 뒤 마지막(의존성 가장 큼).
 6. `deploy/` podman-compose 통합 기동 테스트(로컬 Postgres+로컬 LLM 서버로 airgap 시뮬레이션).
-7. **(Phase 2, §2-1 트리거 조건 충족 후)** `engine/` 통합 마이그레이션 — 1~6단계가
-   전부 안정 가동을 확인한 뒤에만 착수, §2-1 체크리스트 순서대로.
+7. ~~(Phase 2, §2-1 트리거 조건 충족 후) `engine/` 통합 마이그레이션~~ — **2026-08-05
+   같은 날 트리거 조건(1~6단계 완료) 미충족 상태에서 사용자 위험 감수 재확정으로
+   앞당겨 실행됨**(§2-1). 이 문서의 나머지 서비스 코드 경로 표기는 실행 전 기준으로
+   남아있는 곳이 있을 수 있음 — 실제 구현 착수 시 `engine/` 접두사 기준으로 확인할 것.
 
 각 단계는 CLAUDE.md §4 원칙대로 **검증 가능한 성공 기준**을 먼저 정의하고 착수한다
 (예: 3단계 성공 기준 = 기존 Streamlit 데모와 API 응답값이 동일 광종·동일 시점에서

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""수집기 공용: inbox 텍스트 투척 + URL 단위 중복수집 방지 (geo/collectors/_common.py에서 이식,
+"""수집기 공용: inbox 텍스트 투척 + URL 단위 중복수집 방지 (engine/geo/collectors/_common.py에서 이식,
 geo 패키지 의존 제거 — 이 패키지는 분석기와 다른 서버에서 단독 실행된다)."""
 from __future__ import annotations
 import hashlib, json

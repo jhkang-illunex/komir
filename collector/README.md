@@ -59,5 +59,5 @@ python -m geo ingest && python -m geo extract && python -m geo index
   순수 HTML이며 내용도 정확히 표적(战略矿产 两用物项 수출통제 공고 등). 간헐 접속차단 시 다음
   주기에 자연 재시도.
 - us_trade: Federal Register는 관보(법적 공시 원본) — 보도자료보다 확정력 높음. 키 불필요.
-- 역사 백필: gkg 벌크는 `geo/collectors/gkg_bulk_download.py`(분석 리포에 유지), us_trade는
+- 역사 백필: gkg 벌크는 `engine/geo/collectors/gkg_bulk_download.py`(분석 리포에 유지), us_trade는
   `python -m collector run --only us_trade` 최초 실행 시 2016-01-01부터 자동 백필.

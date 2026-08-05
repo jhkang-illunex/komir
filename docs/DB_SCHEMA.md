@@ -3,8 +3,8 @@
 > 정본 원칙: 이 문서는 `warehouse/minerals.duckdb`(로컬 전용, git 미추적 — `.gitignore`의
 > `warehouse/` 규칙)를 **직접 introspection**(`PRAGMA table_info` + `count(*)`)해서 작성했다.
 > 행수·컬럼·타입은 **2026-07-22 기준 실측값**이며, DB가 갱신되면 이 문서도 갱신이 필요하다
-> (재현: 아래 "갱신 방법" 참고). `mineral_supply_risk/db/schema_core.sql`·
-> `mineral_supply_risk/data/raw/{00_schema,geo_schema}.sql`은 **구현 이전 설계 초안**(DDL
+> (재현: 아래 "갱신 방법" 참고). `engine/mineral_supply_risk/db/schema_core.sql`·
+> `engine/mineral_supply_risk/data/raw/{00_schema,geo_schema}.sql`은 **구현 이전 설계 초안**(DDL
 > 드래프트)이라 실제 라이브 스키마와 컬럼명·존재 테이블이 다른 경우가 있음 — 실제 상태는
 > 이 문서를 신뢰할 것.
 
@@ -61,7 +61,7 @@ for t in con.execute(\"select table_name from information_schema.tables where ta
 | out | `out_report` | 0 | **미사용**(리포트 생성 슬롯, 미적재) |
 
 **미사용 테이블(3개, 0행)**: `dim_hs_commodity`·`doc_chunk`·
-`out_report` — 전부 `mineral_supply_risk/db/schema_core.sql` 등 초기 설계 DDL에서 만들어진
+`out_report` — 전부 `engine/mineral_supply_risk/db/schema_core.sql` 등 초기 설계 DDL에서 만들어진
 슬롯으로, 실제 파이프라인이 아직 채우지 않고 있다. 삭제하지 않고 남겨둔 이유는 확인 필요
 (향후 확장 예약일 수도, 단순 미정리일 수도 있음).
 

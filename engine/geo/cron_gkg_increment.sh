@@ -11,7 +11,7 @@
 #   - flock으로 중복 실행 방지
 # 로그: data_archive/cron_logs/gkg_weekly_<YYYYMMDD>.log (보존 정책 — 삭제 금지)
 set -uo pipefail
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"                 # → komir/
+ROOT="$(cd "$(dirname "$0")/../.." && pwd)"              # → komir/ (2026-08-05 engine/ 편입으로 한 단 깊어짐)
 BULK=/mnt/nas2_team_ai/jhkang/광해공단/bulk/gdelt
 LOGDIR="$ROOT/data_archive/cron_logs"
 mkdir -p "$LOGDIR"
@@ -29,7 +29,8 @@ fi
 
 {
   echo "=== $(date '+%F %T') GKG 증분 cron 시작 (year-from=$YEAR_FROM) ==="
-  cd "$ROOT"
+  cd "$ROOT/engine"   # 2026-08-05 engine/ 편입 반영 — `python -m geo`는 geo 패키지의
+                       # 부모 디렉토리에서 실행해야 함(komir/가 아니라 komir/engine/)
 
   echo "--- [1/7] 마스터리스트 갱신+증분 다운로드 ---"
   rm -f geo/collectors/_gkg_masterfilelist_cache.txt

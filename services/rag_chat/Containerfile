@@ -13,11 +13,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY services/rag_chat/app ./app
 COPY services/shared ./shared
-# 주의(2026-08-05): rag/ 전체를 COPY하지 말 것 — rag/index/rag.duckdb(벡터+BM25 인덱스,
-# Qdrant/Postgres 이관 후 더 이상 정본 아님)와 rag/docs/estimate_question(원본 문서·
-# 골든셋)이 함께 딸려와 §0 요구사항②("DB는 외부서비스")와 충돌한다. ragkit 코드 모듈만
-# 선택 COPY(예: COPY rag/ragkit ./rag/ragkit) — 정확한 서브셋은 구현 단계에서 확정.
-COPY rag/ragkit ./rag/ragkit
+# 주의(2026-08-05): engine/rag/ 전체를 COPY하지 말 것 — engine/rag/index/rag.duckdb(벡터+
+# BM25 인덱스, Qdrant/Postgres 이관 후 더 이상 정본 아님)와 engine/rag/docs/estimate_question
+# (원본 문서·골든셋)이 함께 딸려와 §0 요구사항②("DB는 외부서비스")와 충돌한다. ragkit 코드
+# 모듈만 선택 COPY — 정확한 서브셋은 구현 단계에서 확정.
+COPY engine/rag/ragkit ./rag/ragkit
 
 ENV PYTHONUNBUFFERED=1
 ENV HF_HUB_OFFLINE=1

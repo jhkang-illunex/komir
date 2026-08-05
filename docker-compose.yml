@@ -35,7 +35,7 @@ services:
   # ---- 정형 (mineral_supply_risk) ----
   schema:                       # DDL 적용(최초 1회)
     <<: *msr
-    build: { context: ./mineral_supply_risk }
+    build: { context: ./engine/mineral_supply_risk }
     command: ["-c", "from db import dbio; dbio.apply_schema('db/schema_core.sql','/warehouse/minerals.duckdb'); print('schema applied')"]
   collect:                      # 관세청(연간)+ECOS+피처
     <<: *msr
@@ -59,7 +59,7 @@ services:
   # ---- 비정형 지정학 (geo) ----
   geo:                          # ingest→extract→index
     <<: *geo
-    build: { context: ./geo }
+    build: { context: ./engine/geo }
     command: ["all"]
   geo-refdata:                  # USGS HHI 2016~최근
     <<: *geo

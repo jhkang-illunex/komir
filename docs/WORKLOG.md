@@ -2,7 +2,58 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-08-05 (최신) — `deploy/docker-compose.yml` 추가(로컬 개발용, podman-compose.yml과 병존)
+## 2026-08-05 (최신) — `engine/` 통합 실행(geo·mineral_supply_risk·rag → engine/) — 원래 미룬 사이클을 위험 감수하고 당겨서 실행
+
+§2-1에서 못박은 착수 트리거(서비스 3종 안정가동+Postgres 이관 완료)를 아직
+못 채운 상태에서, 사용자가 "지금 바로 진행(위험 감수)"으로 명시 재확정 —
+살아있는 cron이 깨질 수 있다고 재차 알린 뒤 받은 확답으로 진행.
+
+- **cron 인벤토리 실측**(`crontab -l`): komir 관련 3건 확인, 전부 본채 절대경로
+  참조 — `mineral_supply_risk/scripts/cron_collect_feeds.sh weekly/monthly`,
+  `geo/cron_gkg_increment.sh`. git 미추적이라 이번 커밋으로는 안 바뀜(아래 "남은 일").
+- **`git mv geo engine/geo && git mv mineral_supply_risk engine/mineral_supply_risk
+  && git mv rag engine/rag`** — rename 이력 보존 확인.
+- **참조 수정**(전부 grep+직접 재계산·재현으로 검증, 추측 아님):
+  `dashboards/streamlit_app.py` MSR_ROOT·루트 `docker-compose.yml` build context 2곳·
+  `CLAUDE.md` §1 구조도+§2 실행 명령 전면 갱신·`docs/DB_SCHEMA.md` 라이브 경로 2곳·
+  `collector/README.md`+`collector/common.py` 주석 2곳·`services/rag_chat/Containerfile`
+  의 실제 COPY 지시문.
+- **버그 2건 발견·수정**(단순 ROOT 변수 수정만으론 안 끝났음 — cron 스크립트 본문의
+  `cd` 대상도 별도로 깨져 있었음):
+  1. `cron_collect_feeds.sh`의 `cd "$ROOT/mineral_supply_risk"`가 `engine/` 누락 —
+     수정 후 `python3 -c` 임포트 테스트로 재검증.
+  2. `cron_gkg_increment.sh`의 `cd "$ROOT"`(→ komir/)가 `python -m geo ...`를
+     komir/ 기준으로 실행하려 해 **ModuleNotFoundError 필연**이었음 — `python -m geo`는
+     geo 패키지의 **부모**에서 실행해야 하므로(이관 전엔 komir/, 이관 후엔 engine/)
+     `cd "$ROOT/engine"`으로 수정. 실측(`python3 -c "import geo"`)으로 재검증.
+  이 두 버그는 §2-1 체크리스트의 "cron 인벤토리·임포트 경로 전수 grep"만으론 못
+  잡는 유형(스크립트 본문 로직까지 한 줄씩 읽어야 발견됨) — 기계적 치환만으로는
+  불충분하다는 실증 사례로 기록.
+- **CLAUDE.md 실행 명령 자체에도 같은 유형 버그 발견·수정**: `python -m geo`
+  명령 예시를 처음엔 `cd engine/geo`로 잘못 적었다가(직관적으로는 grep이 그렇게
+  치환하기 쉬움), 직접 임포트 재현으로 `cd engine`이 맞음을 확인해 정정.
+- **스모크 테스트**(전부 재적합 아닌 순수 임포트/경로 해석 확인, 운영 DB 미접촉):
+  `engine/geo`에서 `config` 임포트 OK·`engine/mineral_supply_risk`에서
+  `msr.config`+`scripts.diagnosis_retrain_answer` 임포트 OK(DB_PATH 정상 해석)·
+  `engine/`에서 `import geo` OK·양쪽 cron 스크립트 `bash -n` 문법 통과+ROOT 재계산
+  결과가 실제 존재하는 디렉토리로 resolve됨을 확인.
+- **과거 문서는 원칙대로 갱신 안 함**: WORKLOG 기존 항목·DATA_REGISTRY.md(재현
+  명령 포함)는 그 시점 경로 그대로 유지 — 지금부터 재현하려면 새 경로(`engine/`
+  접두사)를 쓸 것.
+
+**남은 일(이번 커밋으론 미완료, main 병합 시점에 반드시 처리)**:
+1. **실제 시스템 crontab 갱신** — git 밖의 시스템 상태라 `git mv`로 안 바뀜.
+   main 병합 직후 3개 항목의 절대경로에 `engine/` 삽입 필요, 늦어도 다음 cron
+   실행(가장 이른 건 토요일 06:30 GKG) 전까지.
+2. **전체 cron 체인 회귀검정 미실행** — 운영 DB에 실제 영향 주는 행위라 이번
+   세션에서 자동 실행하지 않음. 최소 `--help`류 무해 스모크만 했음(위 참고).
+3. `services/` 스켈레톤 내부의 설명용 주석(`mineral_supply_risk/db/dbio.py` 등,
+   전부 `NotImplementedError` 스텁이라 실행에 영향 없음)은 `engine/` 접두사로
+   일괄 정정하지 않음 — 다음 구현 세션에서 실제 코드 작성 시 자연히 현재
+   경로 기준으로 쓰게 됨.
+`docs/CONTAINER_ARCHITECTURE.md` §0·§2-1·§8 갱신(실행 완료 표기+남은 일 기록).
+
+## 2026-08-05 — `deploy/docker-compose.yml` 추가(로컬 개발용, podman-compose.yml과 병존)
 
 사용자 요청("docker-compose 파일도 같이 생성"). `deploy/podman-compose.yml`(airgap 운영
 정본)과 서비스 구성이 완전히 동일한 `deploy/docker-compose.yml` 신설 — 차이는

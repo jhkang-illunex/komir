@@ -6,11 +6,11 @@
 # 로그: komir/data_archive/cron_logs/feeds_<mode>_<YYYYMMDD>.log (보존 정책에 따라 삭제 금지)
 set -uo pipefail
 MODE="${1:?usage: cron_collect_feeds.sh weekly|monthly}"
-ROOT="$(cd "$(dirname "$0")/../.." && pwd)"          # → komir/
+ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"       # → komir/ (2026-08-05 engine/ 편입으로 한 단 깊어짐)
 LOGDIR="$ROOT/data_archive/cron_logs"
 mkdir -p "$LOGDIR"
 LOG="$LOGDIR/feeds_${MODE}_$(date +%Y%m%d).log"
-cd "$ROOT/mineral_supply_risk"
+cd "$ROOT/engine/mineral_supply_risk"   # 2026-08-05 engine/ 편입 반영
 export MSR_DB="$ROOT/warehouse/minerals.duckdb"
 {
   echo "=== $(date '+%F %T') cron feeds [$MODE] 시작 ==="
