@@ -2,7 +2,20 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-08-05 (최신) — engine/ 통합 main 병합 + crontab 갱신 완료 — 병합 중 orphan 파일 발견·복구
+## 2026-08-05 (최신) — `geo_data_2016plus_run/`을 `data_archive/`로 이관
+
+사용자 질의("루트의 geo_data·geo_data_2016plus_run은 뭔가")에 실측 답변(크기·
+최종수정일·DATA_REGISTRY.md 근거 직접 재확인) 후, 사용자 지시로 이관 진행.
+`geo_data_2016plus_run/`(8.0G, 2016+ 전체 코퍼스 1회성 재처리 결과 — 로그·OCR
+캐시 포함, 2026-07-08 이후 미변경)를 `data_archive/validation_runs/
+geo_data_2016plus_run_260708/`로 이동(같은 파일시스템이라 rename, 복사 아님 —
+`df` 확인 후 진행). `geo_data/`(75M, 2026-07-12 확정 프로덕션 정본, 지금도
+갱신 중)는 그대로 유지. artifact-provenance-policy(삭제 금지, 이관은 허용)
+준수 — META.md 함께 이동, `docs/DATA_REGISTRY.md` 위치 컬럼만 갱신(생성·재현
+컬럼은 그 시점 경로 그대로 보존, `warehouse/minerals.duckdb` 항목의 재현
+명령도 원 경로 그대로 — 이력이라 안 바꿈).
+
+## 2026-08-05 — engine/ 통합 main 병합 + crontab 갱신 완료 — 병합 중 orphan 파일 발견·복구
 
 사용자 지시("병합과 crontab 갱신 같이 진행")로 본채(main checkout)에서 실행.
 
