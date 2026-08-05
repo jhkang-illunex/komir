@@ -15,6 +15,18 @@ geo_data_2016plus_run_260708/`로 이동(같은 파일시스템이라 rename, �
 컬럼은 그 시점 경로 그대로 보존, `warehouse/minerals.duckdb` 항목의 재현
 명령도 원 경로 그대로 — 이력이라 안 바꿈).
 
+**추기(같은 작업 내 버그 발견·수정, 커밋 `ab34ccd`)**: 최초엔 일반 `mv`로만
+이관했는데, `geo_data_2016plus_run/META.md`가 artifact-provenance-policy상
+**예외적으로 git 추적 대상**이었다는 걸 놓쳐 본채 `git status`에 `D`(삭제됨)로
+표시됨을 병합 직전 재확인 중 발견 — 주변 대용량 데이터(archive/wiki/run*.log 등)는
+전부 gitignore라 무시했다가, 그 안의 META.md 한 파일만 예외라는 걸 놓친 전형적
+함정. 워크트리에서 정식 `git mv`로 정정(rename 이력 보존), 병합 시 본채의 미리
+옮겨둔 사본과 경로가 겹쳐 `git merge --ff-only`가 1차 거부(untracked 파일 충돌
+안전장치) → 내용 동일 확인(`diff`) 후 제거하고 재시도해 성공. **재확인
+결과(2026-08-05, push 직전)**: `git ls-files`로 새 경로에 META.md만 추적되고
+나머지는 여전히 untracked임을, 실제 디스크 `du -sh`로 8.0G 그대로임을 각각
+재검증 완료.
+
 ## 2026-08-05 — engine/ 통합 main 병합 + crontab 갱신 완료 — 병합 중 orphan 파일 발견·복구
 
 사용자 지시("병합과 crontab 갱신 같이 진행")로 본채(main checkout)에서 실행.
@@ -53,7 +65,10 @@ geo_data_2016plus_run_260708/`로 이동(같은 파일시스템이라 rename, �
 - **결과**: 다음 cron 실행(가장 이른 건 토요일 06:30 GKG)부터 새 경로로
   정상 동작할 준비 완료 — §2-1이 "가장 위험한 실패모드"로 지목했던 "조용히
   멈춤"을 사전에 차단.
-- `origin` 푸시는 미실행(사용자 지시 범위는 병합+crontab까지).
+- `origin` 푸시는 이 항목 작성 시점엔 미실행(사용자 지시 범위는 병합+crontab까지)
+  이었으나, **바로 다음 사용자 지시로 같은 세션 내 완료**(`d650396..0b105fa`,
+  아래 참고) — 이 줄은 작성 당시 상태 기록이라 원문 유지, 최신 push 상태는
+  git 이력을 신뢰할 것(WORKLOG는 각 시점 스냅샷이지 실시간 상태가 아님).
 
 ## 2026-08-05 — `engine/` 통합 실행(geo·mineral_supply_risk·rag → engine/) — 원래 미룬 사이클을 위험 감수하고 당겨서 실행
 
