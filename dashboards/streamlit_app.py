@@ -499,7 +499,7 @@ with tab_fc:
         st.caption("구간은 물량×단가 몬테카를로(로그정규) 합성 — 분위를 직접 곱하지 않음. "
                   "물량·단가 각 구간엔 conformal 보정이 이미 반영됨.")
 
-        st.markdown("#### 성능지표 — WAPE·MASE (18오리진 워크포워드 백테스트 스냅샷)")
+        st.markdown("#### 성능지표 — WAPE vs 계절나이브 (18오리진 워크포워드 백테스트 스냅샷)")
         snap = load_backtest_snapshot()
         if snap is None:
             st.info("백테스트 스냅샷 파일이 없습니다 — "
@@ -510,12 +510,18 @@ with tab_fc:
             mc1, mc2 = st.columns(2)
             for r in met:
                 col = mc1 if r["target"] == "ton" else mc2
-                mase_note = "우수(<1)" if r["MASE"] < 1 else "나이브 이하"
-                col.metric(f"{r['target']} WAPE / MASE", f"{r['WAPE']:.3f} / {r['MASE']:.3f}",
-                          help=f"MASE {mase_note} — 계절나이브(m=12) 대비. n={r['n']}")
-            st.caption(f"스냅샷 생성 {snap['meta']['generated_at']} · {snap['meta']['method']} "
-                      "— 라이브 재계산 아님(값 아래 표는 위 point 예측과 별개, 과거 오리진들의 "
-                      "실측 대비 정확도).")
+                verdict = "챔피언 우세" if r["beats_naive"] else "나이브 우세"
+                delta_pct = (r["snaive_oos_WAPE"] - r["WAPE"]) / r["snaive_oos_WAPE"] * 100
+                col.metric(f"{r['target']} WAPE (챔피언 / 계절나이브 OOS)",
+                          f"{r['WAPE']:.3f} / {r['snaive_oos_WAPE']:.3f}",
+                          delta=f"{delta_pct:+.1f}% ({verdict})",
+                          help=f"동일 18오리진×h1..12 그리드 out-of-sample 비교. "
+                               f"참고용 in-sample MASE={r['MASE_insample_refonly']:.3f}"
+                               f"(절대기준 아님, 스케일 안내에서 설명). n={r['n']}")
+            st.caption(f"스냅샷 생성 {snap['meta']['generated_at']}(정정 {snap['meta']['corrected_at']}) "
+                      f"· {snap['meta']['method']} — 라이브 재계산 아님.")
+            with st.expander("⚠ MASE 컬럼을 왜 참고용으로만 표시하나(리뷰어 지적으로 정정)"):
+                st.caption(snap["meta"]["note"])
             with st.expander("unit 풀링(5광종 동시학습) vs 비풀링(광종별 독립) 재검토 결과"):
                 st.caption("리뷰 피드백 대응(2026-08-05) — unit 모델을 풀링 구조로 유지할지 "
                           "재검정. 같은 ExtraTrees 구성으로 풀링/비풀링만 바꿔 18오리진 비교.")

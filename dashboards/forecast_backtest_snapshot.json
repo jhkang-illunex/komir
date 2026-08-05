@@ -1,21 +1,22 @@
 {
   "meta": {
     "generated_at": "2026-08-05",
+    "corrected_at": "2026-08-05",
     "method": "18개 연속 월별 워크포워드 오리진(2023-07~2024-12, h=1..12 직접예측), 챔피언(direct ExtraTrees+MIDAS/U-MIDAS, CO ton=EN+감쇠hl36, NI unit=XT+감쇠hl24) 그대로 재사용",
-    "script": "/tmp/claude-1002/-home-nuri-dev-git-ws-mine-ws-komir/8f532ef9-0f8e-4453-ad9a-69ca28ad23ba/scratchpad/mase_and_unit_pooling.py (2026-08-05 리뷰 대응 실행분)",
-    "note": "MASE<1이면 계절나이브(m=12)보다 우수. n=216은 5광종 풀링 시 대상 표본이 아니라 이 광종 단독 (18오리진x12h). unit 풀링 vs 비풀링 재검토 결과는 unit_pool_vs_depool 참고 — 페어드 부트스트랩 95% CI [-0.0062,+0.0073] P(비풀링우세)=0.554, 풀링 유지 판정(비풀링 유의 우세 아님, 특히 NI는 비풀링이 오히려 악화 0.382→0.396)."
+    "script": "scratchpad/mase_and_unit_pooling.py + mase_denominator_check.py (2026-08-05 리뷰 대응, 같은 날 후속 정정)",
+    "note": "정정(리뷰어 지적): MASE는 in-sample(학습구간) 계절나이브 스케일이라 다단계(h=1..12) 오차와 스케일이 안 맞음 — 절대기준(>1=열세) 해석 무효, 같은 스케일을 쓰는 방법 간 상대비교에만 신뢰. 실제 '나이브를 이기는가'는 snaive_oos_WAPE(동일 18오리진×h 그리드, out-of-sample)와 직접 비교할 것. 9/10 셀이 나이브 우위(유일한 열세는 ton/LI, 6.5% 근소). unit 풀링 vs 비풀링 재검토(WAPE 부트스트랩 기반이라 이 오류와 무관, 결론 불변): 95% CI [-0.0062,+0.0073] P(비풀링우세)=0.554, 풀링 유지(NI는 비풀링 시 오히려 악화 0.382→0.396)."
   },
   "champion_metrics": [
-    {"target": "ton", "commodity": "CO", "n": 216, "WAPE": 0.4864, "MASE": 0.845},
-    {"target": "ton", "commodity": "CU", "n": 216, "WAPE": 0.2306, "MASE": 1.165},
-    {"target": "ton", "commodity": "LI", "n": 216, "WAPE": 0.2381, "MASE": 2.144},
-    {"target": "ton", "commodity": "NI", "n": 216, "WAPE": 0.3036, "MASE": 0.926},
-    {"target": "ton", "commodity": "REE", "n": 216, "WAPE": 0.1904, "MASE": 1.194},
-    {"target": "unit", "commodity": "CO", "n": 216, "WAPE": 0.2371, "MASE": 0.335},
-    {"target": "unit", "commodity": "CU", "n": 216, "WAPE": 0.1485, "MASE": 1.294},
-    {"target": "unit", "commodity": "LI", "n": 216, "WAPE": 0.3471, "MASE": 1.308},
-    {"target": "unit", "commodity": "NI", "n": 216, "WAPE": 0.382, "MASE": 0.828},
-    {"target": "unit", "commodity": "REE", "n": 216, "WAPE": 0.146, "MASE": 0.761}
+    {"target": "ton", "commodity": "CO", "n": 216, "WAPE": 0.4864, "MASE_insample_refonly": 0.845, "snaive_oos_WAPE": 0.5248, "beats_naive": true},
+    {"target": "ton", "commodity": "CU", "n": 216, "WAPE": 0.2306, "MASE_insample_refonly": 1.165, "snaive_oos_WAPE": 0.2504, "beats_naive": true},
+    {"target": "ton", "commodity": "LI", "n": 216, "WAPE": 0.2381, "MASE_insample_refonly": 2.144, "snaive_oos_WAPE": 0.2235, "beats_naive": false},
+    {"target": "ton", "commodity": "NI", "n": 216, "WAPE": 0.3036, "MASE_insample_refonly": 0.926, "snaive_oos_WAPE": 0.3366, "beats_naive": true},
+    {"target": "ton", "commodity": "REE", "n": 216, "WAPE": 0.1904, "MASE_insample_refonly": 1.194, "snaive_oos_WAPE": 0.2068, "beats_naive": true},
+    {"target": "unit", "commodity": "CO", "n": 216, "WAPE": 0.2371, "MASE_insample_refonly": 0.335, "snaive_oos_WAPE": 0.2699, "beats_naive": true},
+    {"target": "unit", "commodity": "CU", "n": 216, "WAPE": 0.1485, "MASE_insample_refonly": 1.294, "snaive_oos_WAPE": 0.1513, "beats_naive": true},
+    {"target": "unit", "commodity": "LI", "n": 216, "WAPE": 0.3471, "MASE_insample_refonly": 1.308, "snaive_oos_WAPE": 0.7519, "beats_naive": true},
+    {"target": "unit", "commodity": "NI", "n": 216, "WAPE": 0.382, "MASE_insample_refonly": 0.828, "snaive_oos_WAPE": 0.3846, "beats_naive": true},
+    {"target": "unit", "commodity": "REE", "n": 216, "WAPE": 0.146, "MASE_insample_refonly": 0.761, "snaive_oos_WAPE": 0.2963, "beats_naive": true}
   ],
   "unit_pool_vs_depool": [
     {"commodity": "CO", "w_pool": 0.2371, "w_dep": 0.2368, "m_pool": 0.335, "m_dep": 0.335, "verdict": "비풀링 소폭우세(거의동률)"},
