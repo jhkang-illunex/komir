@@ -2,7 +2,107 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-08-05 (최신) — MASE 절대기준 오독 정정: "5/10 나이브 열세"→"9/10 나이브 우세"
+## 2026-08-05 (최신) — `deploy/docker-compose.yml` 추가(로컬 개발용, podman-compose.yml과 병존)
+
+사용자 요청("docker-compose 파일도 같이 생성"). `deploy/podman-compose.yml`(airgap 운영
+정본)과 서비스 구성이 완전히 동일한 `deploy/docker-compose.yml` 신설 — 차이는
+`build.dockerfile`(표준 Docker Compose 키) vs `build.containerfile`(podman 확장 키)
+표기뿐, 그 외(qdrant 서비스·볼륨·env_file·포트) 전부 동일. 두 파일 다 YAML 문법
+검증 통과. 로컬 개발·테스트는 docker-compose로, 실제 airgap 반입 배포는
+podman-compose(§7 build/save/load 흐름)로 — 용도 분리를 문서에 명시. 수동 동기화
+필요(자동 생성 아님, 설계 단계 스코프) — 향후 한쪽만 고치고 다른 쪽을 잊으면
+드리프트 위험이 있음을 §2·§7에 명시적으로 기록해둠. `docs/CONTAINER_ARCHITECTURE.md`
+§2·§7 갱신.
+
+## 2026-08-05 — 아키텍처 설계 적대적 검증 → 벡터DB=Qdrant 확정 반영
+
+사용자 요청("설계안에 대해서 적대적 검증을 진행해주세요") — 독립 에이전트 2개
+병렬(기술적 실현가능성 / 요구사항 커버리지·운영리스크) 후 핵심 주장 직접 재검증.
+**실행 불가 수준 결함 2건**(`db/schema_addendum_v2.sql`의 `VECTOR(384)`가 DuckDB엔
+타입 자체가 없고 Postgres도 `CREATE EXTENSION`이 주석으로만 남아 즉시 실패·~88곳
+`duckdb.connect()` 직접호출이 마이그레이션 계획에서 누락)과 착수 전 필수 확인
+8건(챗봇 스트리밍 미지원을 재사용 가능처럼 서술·`shared/db.py`가 3서비스 공용이라
+해놓고 2개 서비스 Containerfile은 `mineral_supply_risk` COPY 자체를 안 함·
+`rag/index/rag.duckdb`(5.8MB) 통째로 이미지에 구워짐·이미 있는 `geo/extractors.py`
+의 HWP 파서를 "전수 확인" 주장에도 불구하고 놓침 등) 확인 — 상세는 세션 로그 참고,
+전부 실제 파일 대조로 재확인 완료(에이전트 주장 맹신 안 함).
+
+이어 사용자 결정("벡터DB는 Qdrant로, 도커로 이 프로젝트에 직접 붙여줘") 반영 —
+pgvector(Postgres 확장) 방식 폐기. 적대적 검증이 지적한 위험(외부 DB 운영주체가
+확장 설치를 안 해줄 수 있음, §0 요구사항②)을 구조적으로 해소: Qdrant는 LLM·정형DB와
+달리 **komir이 직접 podman으로 소유·기동**. 이 결정에 직접 얽힌 항목들도 같은
+자리에서 정리:
+- `doc_chunk.embedding VECTOR` 컬럼 완전 삭제 → 벡터는 Qdrant, BM25는 Postgres
+  `txt_tsv`(tsvector+GIN, 한국어 토크나이저 부재는 구현단계 결정사항으로 명시).
+  **누락됐던 "BM25 절반은 이관 후 뭘 쓰나" 질문도 이 김에 해소**(적대적 검증 지적사항).
+- `deploy/podman-compose.yml`에 `qdrant` 서비스 추가(볼륨 영속화·`QDRANT__TELEMETRY_
+  DISABLED=true`), `deploy/airgap/{build,save,load}_images.sh`에 qdrant 이미지
+  pull/save/load 단계 추가.
+- **같은 자리에서 airgap 텔레메트리 함정 클래스 전체 대응**: Qdrant 텔레메트리뿐 아니라
+  임베딩 라이브러리의 `HF_HUB_OFFLINE`/`TRANSFORMERS_OFFLINE`(적대적 검증에서 별도로
+  지적됐던 항목)도 `.env.example`·Containerfile에 함께 명시.
+- **적대적 검증 지적사항 중 하나 추가 해소**: `rag_chat/Containerfile`이 `rag/` 전체를
+  COPY해 구버전 인덱스 DB까지 이미지에 굽던 문제 — Qdrant/Postgres 이관 후 그 인덱스가
+  통째로 무의미해지는 김에 `rag/ragkit`(코드)만 COPY하도록 함께 수정.
+- `docs/CONTAINER_ARCHITECTURE.md` §0·§1·§2·§3·§4·§5·§7·§8 전부 갱신.
+
+**이번엔 고치지 않은 것(스코프 밖, 다음 라운드)**: 챗봇 스트리밍 미지원·
+`shared/db.py` 3서비스 공용 주장과 Containerfile COPY 불일치·user_id 인증 방식
+미정·`report_gen`↔`rag_chat` 검색계층 공유 메커니즘 미정·HWP 파서 기존 자산
+오귀속·airgap 인증/반입심사 절차 미언급·리포트 템플릿 소유권·LLM 레이트리밋 —
+전부 적대적 검증에서 확인됐으나 이번 요청(벡터DB 결정)과 직접 얽힌 것만 처리.
+
+## 2026-08-05 — 설계 추기: `engine/` 통합(geo+mineral_supply_risk+rag)은 2단계 마이그레이션으로
+
+사용자 제안("geo·mineral_supply_risk·rag를 engine으로 묶고 services가 호출") —
+방향 동의하되 지금 물리적으로 옮기면 살아있는 cron 파이프라인이 즉시 깨질 위험이
+있어(임포트 경로+cron 스케줄이 현재 경로 전제) 즉답 대신 트레이드오프 제시,
+사용자가 "지금은 유지, 별도 사이클로"(2번 안) 확정. `docs/CONTAINER_ARCHITECTURE.md`
+§2-1 신설(목표 구조·착수 트리거 2가지·마이그레이션 체크리스트 6단계·"왜 지금
+안 하는가"), §0 결정표·§8 실행순서에도 반영(7단계로 추가, 1~6단계 서비스+DB
+이관이 먼저 안정화된 뒤에만 착수). 실제 디렉토리 이동은 **하지 않음**(이번도
+설계만).
+
+## 2026-08-05 — 컨테이너화·챗봇·리포트 아키텍처 설계안(`docs/CONTAINER_ARCHITECTURE.md`)
+
+사용자 요청("스트림릿 내리고 프로젝트 구조 변경 — airgap+podman 배포, LLM/embedding·
+DB는 외부서비스 .env 접속, 3대 아웃풋(광종 리스트·RAG·Report), 챗봇 user_id/session_id·
+히스토리·스트리밍, RAG·Report 둘 다 비정형(pdf/hwp/docx/doc/xlsx/xls/csv)+정형(RDB)
+활용, Report는 RDB 주기저장"). `/grill-me` 스킬은 이 환경에 미등록이라 실행 불가 확인
+후, 동일 목적으로 AskUserQuestion 4문항 직접 확인 — **결정: DB는 DuckDB→진짜
+클라이언트-서버 RDB(Postgres 등) 이관 / 이번 세션은 설계안만(구현은 다음) / "광종
+리스트"=기존 진단·예측·지수 모델 API / 챗봇은 komir 내 신규 FastAPI 서비스**.
+
+- Streamlit 데모 서버(8765) 종료.
+- **기존 자산 실사**(Explore 에이전트) — 재구현 방지가 핵심: `mineral_supply_risk/
+  db/dbio.py`(DuckDB↔SQLAlchemy URL 동일 API, Postgres 이관에 코드 변경 거의 불필요,
+  단 `apply_schema`의 DuckDB 분기에 미정의 변수 참조 버그 1건 발견)·`db/schema_core.sql`
+  (포터블 DDL, `out_report`·`doc_chunk`가 이미 "⑥챗봇 RAG" 용도로 예정돼 있었음, 0건
+  참조라 실질 신규 개발 대상)·`geo/llm/openai_compat.py`(LLM 어댑터, `rag/ragkit/
+  generate.py`가 이미 재사용 중)·`rag/ragkit/*`(하이브리드 BM25+dense RRF 검색, 오늘
+  사용자가 직접 커밋 — session/user/streaming 전무 확인, 구조화 데이터 검색은 README에
+  명시적으로 스코프 밖이었음)·`dashboards/streamlit_app.py`(진단·예측 재현+설명가능성
+  로직, "광종 리스트" API의 이식 원본)·기존 `docker-compose.yml`/`geo`·`mineral_supply
+  _risk`/`collector` Dockerfile(공상 문서 아니고 대체로 실코드 일치, 재사용 가능).
+- **설계 산출물**: `docs/CONTAINER_ARCHITECTURE.md`(전문) + 실제 디렉토리 스켈레톤
+  35개 파일 생성(`services/{shared,commodity_api,rag_chat,report_gen,ingestion}/`,
+  `db/schema_addendum_v2.sql`, `deploy/{podman-compose.yml,.env.example,airgap/*.sh}`)
+  — 전부 `NotImplementedError` 스켈레톤(설계만, 실제 로직 없음). 기존 `geo/`·
+  `mineral_supply_risk/`·`rag/` 엔진 패키지는 이동 없이 그대로 유지, 서빙 레이어만
+  신설(임포트 경로 회귀 위험 최소화).
+- 스키마 확장안(`db/schema_addendum_v2.sql`): `chat_session`·`chat_message`(세션
+  히스토리 신규) + `out_report.body` VARCHAR(8000)→TEXT + `doc_chunk`에 `embedding
+  VECTOR(384)`(pgvector, `rag/index/rag.duckdb` 인덱스 흡수 목적)+`source_type`/
+  `structured_query` 컬럼. `schema_core.sql` 원본은 불변(이어붙이는 방식).
+- 정형+비정형 동시활용 설계: 비정형은 파서(`services/ingestion/parsers/`, 포맷별
+  기존 라이브러리 재사용 — pymupdf/pdfplumber/openpyxl/xlrd 등 이미 mineral_supply_risk
+  에 있음, hwp만 신규)로 마크다운 정규화 후 기존 청킹에 태움. 정형은 **1차 템플릿
+  질의만**(LLM은 템플릿+파라미터 선택만, 자유형 NL→SQL은 화이트리스트 없이 보류 —
+  인젝션·환각 리스크).
+- 다음 세션 실행 순서 8단계 문서화(§8) — dbio 버그 수정→스키마 적용 스모크테스트→
+  commodity_api(가장 저위험, 신규 알고리즘 없음)→rag_chat→report_gen→통합 기동.
+
+## 2026-08-05 — MASE 절대기준 오독 정정: "5/10 나이브 열세"→"9/10 나이브 우세"
 
 직전 항목(바로 아래 "리뷰 피드백 대응")에서 낸 MASE 표를 리뷰어가 재질의
 ("같은 숫자 2.144가 in-sample 스케일이냐 out-of-sample 스케일이냐에 따라
