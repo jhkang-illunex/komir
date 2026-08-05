@@ -1,0 +1,32 @@
+{
+  "meta": {
+    "generated_at": "2026-08-05",
+    "method": "18개 연속 월별 워크포워드 오리진(2023-07~2024-12, h=1..12 직접예측), 챔피언(direct ExtraTrees+MIDAS/U-MIDAS, CO ton=EN+감쇠hl36, NI unit=XT+감쇠hl24) 그대로 재사용",
+    "script": "/tmp/claude-1002/-home-nuri-dev-git-ws-mine-ws-komir/8f532ef9-0f8e-4453-ad9a-69ca28ad23ba/scratchpad/mase_and_unit_pooling.py (2026-08-05 리뷰 대응 실행분)",
+    "note": "MASE<1이면 계절나이브(m=12)보다 우수. n=216은 5광종 풀링 시 대상 표본이 아니라 이 광종 단독 (18오리진x12h). unit 풀링 vs 비풀링 재검토 결과는 unit_pool_vs_depool 참고 — 페어드 부트스트랩 95% CI [-0.0062,+0.0073] P(비풀링우세)=0.554, 풀링 유지 판정(비풀링 유의 우세 아님, 특히 NI는 비풀링이 오히려 악화 0.382→0.396)."
+  },
+  "champion_metrics": [
+    {"target": "ton", "commodity": "CO", "n": 216, "WAPE": 0.4864, "MASE": 0.845},
+    {"target": "ton", "commodity": "CU", "n": 216, "WAPE": 0.2306, "MASE": 1.165},
+    {"target": "ton", "commodity": "LI", "n": 216, "WAPE": 0.2381, "MASE": 2.144},
+    {"target": "ton", "commodity": "NI", "n": 216, "WAPE": 0.3036, "MASE": 0.926},
+    {"target": "ton", "commodity": "REE", "n": 216, "WAPE": 0.1904, "MASE": 1.194},
+    {"target": "unit", "commodity": "CO", "n": 216, "WAPE": 0.2371, "MASE": 0.335},
+    {"target": "unit", "commodity": "CU", "n": 216, "WAPE": 0.1485, "MASE": 1.294},
+    {"target": "unit", "commodity": "LI", "n": 216, "WAPE": 0.3471, "MASE": 1.308},
+    {"target": "unit", "commodity": "NI", "n": 216, "WAPE": 0.382, "MASE": 0.828},
+    {"target": "unit", "commodity": "REE", "n": 216, "WAPE": 0.146, "MASE": 0.761}
+  ],
+  "unit_pool_vs_depool": [
+    {"commodity": "CO", "w_pool": 0.2371, "w_dep": 0.2368, "m_pool": 0.335, "m_dep": 0.335, "verdict": "비풀링 소폭우세(거의동률)"},
+    {"commodity": "CU", "w_pool": 0.1485, "w_dep": 0.1484, "m_pool": 1.294, "m_dep": 1.294, "verdict": "거의동률"},
+    {"commodity": "LI", "w_pool": 0.3471, "w_dep": 0.3407, "m_pool": 1.308, "m_dep": 1.284, "verdict": "비풀링 소폭우세"},
+    {"commodity": "NI", "w_pool": 0.3820, "w_dep": 0.3963, "m_pool": 0.828, "m_dep": 0.859, "verdict": "풀링 우세(비풀링이 악화)"},
+    {"commodity": "REE", "w_pool": 0.1460, "w_dep": 0.1475, "m_pool": 0.761, "m_dep": 0.768, "verdict": "풀링 우세"}
+  ],
+  "bootstrap": {
+    "ci95": [-0.006244980266717818, 0.007277284839392739],
+    "p_depool_better": 0.55425,
+    "verdict": "풀링 유지 — 비풀링 유의 우세 아님(CI가 0 포함)"
+  }
+}

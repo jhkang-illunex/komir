@@ -89,6 +89,22 @@ def _db_key() -> float:
         return 0.0
 
 
+BACKTEST_SNAPSHOT_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                      "forecast_backtest_snapshot.json")
+
+
+@st.cache_data
+def load_backtest_snapshot():
+    """예측(ton/unit) WAPE·MASE 18오리진 백테스트 스냅샷 — 정적 파일 조회(라이브
+    재계산 아님, 18오리진×풀링/비풀링 비교라 매번 돌리면 수 분~십수 분 걸림).
+    2026-08-05 리뷰 대응(MASE 컬럼 추가+unit 풀링 재검토)으로 생성, 필요시
+    scratchpad의 mase_and_unit_pooling.py 재실행 후 이 파일을 갱신한다."""
+    if not os.path.exists(BACKTEST_SNAPSHOT_PATH):
+        return None
+    with open(BACKTEST_SNAPSHOT_PATH, encoding="utf-8") as f:
+        return json.load(f)
+
+
 # ─────────────────────────── 데이터/모델 로더(캐시) ───────────────────────────
 @st.cache_data(show_spinner="지정학 위기지수 조회 중...")
 def load_geo(_key: float):
@@ -482,6 +498,41 @@ with tab_fc:
         st.plotly_chart(fig3, width='stretch')
         st.caption("구간은 물량×단가 몬테카를로(로그정규) 합성 — 분위를 직접 곱하지 않음. "
                   "물량·단가 각 구간엔 conformal 보정이 이미 반영됨.")
+
+        st.markdown("#### 성능지표 — WAPE·MASE (18오리진 워크포워드 백테스트 스냅샷)")
+        snap = load_backtest_snapshot()
+        if snap is None:
+            st.info("백테스트 스냅샷 파일이 없습니다 — "
+                   "`scratchpad/mase_and_unit_pooling.py` 실행 후 "
+                   "`dashboards/forecast_backtest_snapshot.json`으로 저장하세요.")
+        else:
+            met = [r for r in snap["champion_metrics"] if r["commodity"] == cc]
+            mc1, mc2 = st.columns(2)
+            for r in met:
+                col = mc1 if r["target"] == "ton" else mc2
+                mase_note = "우수(<1)" if r["MASE"] < 1 else "나이브 이하"
+                col.metric(f"{r['target']} WAPE / MASE", f"{r['WAPE']:.3f} / {r['MASE']:.3f}",
+                          help=f"MASE {mase_note} — 계절나이브(m=12) 대비. n={r['n']}")
+            st.caption(f"스냅샷 생성 {snap['meta']['generated_at']} · {snap['meta']['method']} "
+                      "— 라이브 재계산 아님(값 아래 표는 위 point 예측과 별개, 과거 오리진들의 "
+                      "실측 대비 정확도).")
+            with st.expander("unit 풀링(5광종 동시학습) vs 비풀링(광종별 독립) 재검토 결과"):
+                st.caption("리뷰 피드백 대응(2026-08-05) — unit 모델을 풀링 구조로 유지할지 "
+                          "재검정. 같은 ExtraTrees 구성으로 풀링/비풀링만 바꿔 18오리진 비교.")
+                dfc = pd.DataFrame(snap["unit_pool_vs_depool"])
+                st.dataframe(dfc.set_index("commodity")[["w_pool", "w_dep", "m_pool", "m_dep",
+                                                          "verdict"]],
+                            width='stretch')
+                bt = snap["bootstrap"]
+                st.markdown(f"**전체 페어드 부트스트랩**: 95% CI [{bt['ci95'][0]:+.4f},"
+                           f"{bt['ci95'][1]:+.4f}], P(비풀링 우세)={bt['p_depool_better']:.3f} "
+                           f"→ **{bt['verdict']}**")
+                st.caption("특히 NI(현 챔피언의 최약 셀)는 비풀링 시 오히려 악화(WAPE "
+                          "0.382→0.396) — 다른 광종의 가격·환율 동학 정보가 소량표본 NI에 "
+                          "실제로 도움이 된다는 뜻. 풀링 구조는 유지하고, CO ton·NI unit 두 "
+                          "약점 셀은 각각 개별 원인이 달라(CO=고변동 소량 원자재 → EN+긴 "
+                          "감쇠hl36 특화, NI=풀링 내 최약 셀 → XT+감쇠hl24 특화) 이미 "
+                          "2026-07-26에 개별 특화 반영됨(모델 교체 4종은 재시도 금지).")
 
         st.markdown("#### 설명 가능한 결과 — 호라이즌 선택 후 SHAP 기여도")
         h_sel = st.select_slider("호라이즌(h, 개월)", options=list(range(1, 13)), value=1)
