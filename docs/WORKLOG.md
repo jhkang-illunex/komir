@@ -2,7 +2,67 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-08-05 (최신) — 해외기관 데이터수집 현황+모델반영여부 이번주 산출물 정리
+## 2026-08-05 (최신) — 모델 체크 Streamlit 데모 신설(`dashboards/streamlit_app.py`)
+
+사용자 요청("각 모델별 동작을 체크할 수 있는 streamlit 예제 — 지정학위기지수·
+수급위기진단·12개월 수요량및단가예측, 설명가능한 결과 포함, 자체 테스트까지").
+
+- **설계**: `out_diagnosis_alert`/`out_import_forecast_unit` 등 발행 테이블을
+  읽는 대신, 확정 챔피언 3종의 학습·예측 로직을 DB에서 **그 자리에서 재실행**
+  하도록 구성(발행 테이블이 최대 한 달 이상 정체돼 있음을 확인 — 그 문제를
+  우회). 진단은 `msr.models.diagnosis_opt`/`nowcast`의 Ridge 챔피언(전 기간
+  재적합+정확한 선형 기여도 분해)과 `scripts.aux_early_warning`의 Δ 조기경보
+  앙상블(Bagging25×2+CLI, 전역 계수중요도로 설명)을 재사용. 예측은
+  `msr.models.forecast_unit`의 ExtraTrees(direct 다지평) + 기존 SHAP/permutation
+  설명 함수(`_build_explanations`)를 그대로 재사용 — 전부 기존 검증된 함수
+  임포트로 재사용(재구현 아님), **모든 DB 연결 read_only=True**(각 build_panel
+  내부에서 보장) — 발행 테이블·mart_diagnosis_nowcast 등 어떤 운영 테이블도
+  쓰지 않음.
+- **프로덕션과의 의도적 차이**(속도용, 문서화): conformal 구간보정 생략(원시
+  분위), 재귀/direct 자동선택 생략(현재 채택 방식인 direct로 고정), alert.py
+  규칙 오버라이드·히스테리시스 미적용(Ridge 원 모델 예측만).
+- **환경**: 워크트리엔 `warehouse/`가 없어(gitignore) `MSR_DB` 절대경로로
+  본채 DB 지정. `streamlit`·`plotly` 미설치 확인 후 설치(`pip3 install --user`).
+- **자체 테스트 3단계**:
+  1. 구문검사(`ast.parse`) 통과.
+  2. **순수 로직 스모크테스트**(streamlit 없이 4개 로더 함수 로직 직접 실행,
+     `/tmp/.../smoke_test_dashboard_logic.py`) — 5광종×3모델 전부 값 범위·
+     타입 검증 통과(80초). 예: CU 2026-07 "심각"(ci_pred 98.2), 예측 h=1
+     239,858톤 등 실측.
+  3. **Streamlit 서버 기동 확인**(headless, HTTP 200) + **`streamlit.testing.v1.
+     AppTest`로 UI 와이어링까지 헤드리스 검증** — 초기 로드+광종 5종 전환
+     전부 예외 없음, 메트릭 10개·마크다운 31개 정상 렌더 확인.
+  4. `use_container_width` deprecation 경고 발견해 `width='stretch'`로 수정,
+     도크스트링 날짜 오타(09-04→08-05) 수정.
+- 실행: `MSR_DB=<warehouse> streamlit run dashboards/streamlit_app.py`(로컬
+  8765 포트로 기동 확인해둔 상태).
+
+**추기(같은 날, 사용자 질의 "챔피언 모델이 다 적용된 건가요?" 후속)**: 위
+"프로덕션과의 의도적 차이" 2건(conformal 구간보정, alert.py 규칙엔진·
+히스테리시스)을 실제로 반영해달라는 요청으로 마저 구현:
+- `load_diagnosis_alert` 신설 — `msr.models.alert`의 `compute_alerts`/
+  `_build_reasons`/`_build_evidence_json`을 그대로 재사용(read-only, DB
+  미기록)해 챔피언 nowcast 위에 규칙 오버라이드(변동성·HHI 분위)+2주
+  히스테리시스까지 적용한 **실제 발행 로직과 동일한** 경보 단계를 표시.
+  진단 탭 배지를 원 Ridge 단계(`stage_name`)에서 규칙엔진 최종 단계
+  (`alert_name`)로 전환, 오버라이드/히스테리시스 발동 여부와 공식 사유문도
+  함께 표시.
+- `load_forecast`에 `_conformal_q` 보정(보정 원점 24/18/12개월 전, 프로덕션
+  `run()`과 동일 절차) 추가 — 구간이 이제 conformal 가산폭만큼 넓어짐(실측
+  ton 0.318·unit 0.173, 로그공간).
+- **재검증**: 순수 로직 스모크테스트 확장판(경보엔진+conformal assertion
+  포함) 통과(실측 201.6초, conformal 산출 자체가 119초로 대부분 차지 —
+  이전 대비 로딩이 느려짐을 확인, UI 스피너 문구에 반영). AppTest(초기 로드+
+  광종 전환)도 재검증 통과(초기 209.8초, 광종 전환은 캐시 히트로 0.1초).
+  **발견**: 진단 탭에서 Ridge 원모델 단계와 규칙엔진 최종 단계가 다를 수
+  있음을 실측 확인(예: REE — Ridge 월간 컷 기준 "관심" vs 경보엔진 주간
+  컷 기준 "주의") — 버그 아님, `nowcast.py`(월간 패널 컷)와 `alert.py`
+  (주간 패널 자체 컷)가 원래 서로 다른 분포에서 분위수를 계산하는 기존
+  프로덕션 구조 그대로 재현된 것(이번에 처음 나란히 노출됨).
+- 서버 재기동 완료(8765, HTTP 200) — 첫 로드는 예측 탭에서 conformal 때문에
+  약 3~4분 소요(캐시 후 광종 전환은 즉시).
+
+## 2026-08-05 — 해외기관 데이터수집 현황+모델반영여부 이번주 산출물 정리
 
 사용자 요청("지난주 여러 국가 기구 데이터 수집(API키 발급·접속가능여부)
 정리 + 모델 반영 여부 문서"). 신규 조사·재검정은 하지 않고 07-28~07-30

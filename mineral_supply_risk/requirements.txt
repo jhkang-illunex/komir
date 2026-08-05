@@ -18,3 +18,5 @@ pypdf>=4.0
 pyarrow>=15
 shap>=0.45   # 2026-07-24: forecast_unit.py 설명가능성(SHAP TreeExplainer)
 akshare>=1.18  # 2026-07-24: collect_exchange_inventory.py (SHFE·GFEX 재고 공개 API)
+streamlit>=1.61  # 2026-08-05: dashboards/streamlit_app.py 모델 체크 데모
+plotly>=6.0      # 2026-08-05: 〃 (차트)
