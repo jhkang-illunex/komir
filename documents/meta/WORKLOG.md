@@ -2,7 +2,69 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-08-06 (최신) — draw.io CLI를 Docker(xvfb 내장)로 확보, XML→SVG/PNG 로컬 export 가능해짐
+## 2026-08-06 (최신) — DMZ/inhouse 저장소 물리분리 + collectors 격리 리팩터 + skeptic-code 감사
+
+오전에 확정한 DMZ(수집, LLM 금지)/망연계/in-house(airgap) 목표 배포 아키텍처(같은 날
+앞선 항목 "DMZ/망연계/in-house 배포 아키텍처 재정의" 참고)를 실제 저장소 구조로
+실행했다. "루트에 디렉토리가 너무 많이 노출된다"는 사용자 지적에서 시작 — 처음엔
+단순 디렉토리 이동으로 끝날 줄 알았으나, 적대적 검증(시니컬한 에이전트 1개 호출)에서
+"collectors만 dmz/로 빼면 된다"는 전제 자체가 틀렸다는 게 드러나 실제 코드 리팩터로
+범위가 커졌다.
+
+**1) 디렉토리 재구성(`git mv`, 이력 보존)**:
+- `dmz/`: `collector/`(기존, 실전 배포 이력 없음 확인) · `geo_collectors/`(구
+  `engine/geo/collectors/`) · `msr_collectors/`(구
+  `engine/mineral_supply_risk/msr/collectors/`) · `upload_files/`
+- `inhouse/`: `geo/`·`mineral_supply_risk/`·`rag/`(구 `engine/*`, collectors 제외) ·
+  `services/`·`deploy/`·`dashboards/` · `data_lake/{db,semi_structure,vector_db}`
+  (구 루트 `db/`+`geo_data/`+`warehouse/`를 3파트 data-lake 모델로 재편 — db는 임시
+  duckdb라 향후 RDB 이관 시 디렉토리째 제거 예정, semi_structure는 OKF·PageIndex
+  포함 예정, vector_db는 Qdrant 마운트 빈 디렉토리)
+- `documents/meta/`(구 `docs/`) + `documents/산출물/`(불변)
+- 루트는 이제 `dmz/`·`inhouse/`·`documents/`·`data_archive/` 4개만 노출(요청사항 충족)
+
+**2) 라이브 job 사고 대응**: 디렉토리 이동 도중 `warehouse/minerals.duckdb`를 쓰기
+잠금 중인 라이브 프로세스(`collect_tier4_feeds`, 이날 09:20 monthly cron 발동분)를
+발견 — CPU 0%·TCP 연결 1개 유지·로그 6시간 넘게 무갱신으로 **hang 상태로 판정**,
+사용자 확인 후 SIGTERM 종료(부모 스크립트가 다음 단계로 자동 이어받아 파일을 다시
+잡길래 부모까지 완전 종료). DB 무결성 확인(232,001행, 기존값과 일치) 후
+`inhouse/data_lake/db/`로 물리 이동. 사고 원인은 후속 skeptic-code 감사에서
+`collect_akshare()`의 타임아웃 부재로 특정(같은 파일 다른 `requests.get` 호출엔
+전부 `timeout=60~120`이 있었는데 akshare 패키지 내부 호출만 없었음).
+
+**3) DMZ 격리 리팩터(병렬 에이전트 4개 + 직접 작업)**:
+- `msr.collectors`(customs_api·ecos_api) 직접 import 6곳 → 파일 계약(parquet)으로
+  전환. dmz 쪽 fetch 드라이버 신설(`collect_customs.py`·`collect_ecos.py`·
+  `collect_keyed_agency_feeds.py`, 후자는 Census/BPS 키필요분 — 사용자가 재차
+  지적해 추가 처리) + inhouse 쪽 로더(`msr/dmz_ingest.py`) 신설. del_where 등 기존
+  DB 적재 로직은 전부 원본과 동일하게 재현(재구현 아님).
+- geo의 `collect-news`/`collect-gdelt`를 `dmz/geo_collectors`로 이전,
+  `cron_gkg_increment.sh`를 다운로드(dmz, `cron_gkg_download.sh`)/처리(inhouse) 2개로
+  분할.
+- `dmz/.env`·`inhouse/.env` 신설(정형 수집 키 vs LLM/DB 키 분리, 두 msr `config.py`의
+  dotenv 로딩 경로도 배포단위 루트로 통일), crontab 6건으로 갱신(diff 확인 후 적용).
+
+**4) skeptic-code 적대적 감사(YAGNI/KISS/DRY)** — 오늘 신규/수정 코드 대상, 7건 발견
+후 전부 적용:
+- `[CLIFF]` `cron_gkg_increment.sh`가 방금 삭제한 `warehouse/` 경로를 여전히 참조 —
+  다음 토요일 cron 파손 직전 발견·수정(geo 에이전트 작업 시점엔 `warehouse/`가 아직
+  있었어서 놓친 것).
+- `[CLIFF]` `collect_akshare()`에 하드 타임아웃 추가(위 사고 재발 방지).
+- `[LIAR]` 죽은 레거시 파일 2개(`geo_pipeline.py`·`komis_files.py`, 전역 미참조 재확인
+  후) 완전 삭제.
+- `[GHOST]` `backfill_customs_monthly.py`의 죽은 `--from` 인자 제거.
+- `[TWIN]` `ECOS_ITEMS` 상수/`ecos_jobs_tier2.json` 이원화 위험 주석 강화.
+- 구 `warehouse/` 경로 하드코딩 11개 파일(대부분 ablation/검정용 수동 스크립트)
+  일괄 정리.
+
+**남은 것(다음 사이클)**: `dmz/collector/`와 `dmz/geo_collectors/`의 기능 중복(병합
+안 함, 의도적 보류) · `collect_tier2/4_feeds`의 나머지 무키 직접수집(Cochilco·USGS·
+EIA 등)은 여전히 in-house에 남아있어 DMZ 경계 원칙상 잔여 위반.
+
+커밋: `3c4c239`("feat: DMZ/inhouse 저장소 물리분리 + collectors 격리 리팩터 +
+skeptic-code 감사", 380개 파일).
+
+## 2026-08-06 — draw.io CLI를 Docker(xvfb 내장)로 확보, XML→SVG/PNG 로컬 export 가능해짐
 
 문서화 규칙상 다이어그램은 draw.io(.drawio XML) 형식이 강제인데, XML은 바로 시각화가
 안 돼 지금까지 `documents/산출물/.../drawio_열기_URL_*.txt`처럼 브라우저 URL로 열어
