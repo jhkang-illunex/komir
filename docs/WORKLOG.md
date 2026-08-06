@@ -2,7 +2,38 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-08-05 (최신) — `geo_data_2016plus_run/`을 `data_archive/`로 이관
+## 2026-08-06 (최신) — draw.io CLI를 Docker(xvfb 내장)로 확보, XML→SVG/PNG 로컬 export 가능해짐
+
+문서화 규칙상 다이어그램은 draw.io(.drawio XML) 형식이 강제인데, XML은 바로 시각화가
+안 돼 지금까지 `documents/산출물/.../drawio_열기_URL_*.txt`처럼 브라우저 URL로 열어
+보는 방식에 의존했음(예: 2026-W32 폴더). 사용자 지시로 CLI 확보 시도.
+
+- **호스트 네이티브 설치는 보류**: `apt`엔 draw.io 패키지가 없고, GitHub 릴리스 `.deb`
+  설치·`xvfb` 설치 모두 `sudo`(비밀번호) 필요해 이 세션에서 비대화식으로 완결 불가능.
+- **Docker로 대체 — 사용자 제안, 채택**: 이 서버에 Docker가 있고 사용자가 `docker`
+  그룹에 속해 있어 `sudo` 없이 실행 가능. 컨테이너 안에 xvfb+draw.io Desktop이 이미
+  패키징돼 있어 호스트에 아무것도 설치하지 않고 요건("draw.io 도구+xvfb 래핑")을
+  그대로 만족.
+- **이미지 선정**: `rlespinasse/drawio-desktop-headless`(draw.io Desktop 원본 CLI를
+  xvfb로만 감싼 순수 패스스루, 버전 31.1.5 = 최신 draw.io Desktop과 동일) — Claude
+  Code의 drawio 스킬이 기대하는 네이티브 `drawio -x -f svg -e ...` 플래그를 그대로
+  받는다. `rlespinasse/drawio-export`(같은 저자, 자체 CLI로 다중 페이지 파일을
+  페이지별로 자동 분리해 export)도 실측: 여러 페이지 문서 일괄 처리엔 더 편리.
+- **`~/.local/bin/drawio` wrapper 스크립트 작성**(저장소 밖, 사용자 홈 — 이미 PATH에
+  있는 디렉토리): `docker run --rm --user "$(id -u):$(id -g)" -e HOME=/tmp -v
+  "$(pwd):/data" -w /data rlespinasse/drawio-desktop-headless "$@"`. `--user`
+  없으면 출력 파일이 root 소유가 되고, `HOME=/tmp` 없이 비루트로 돌리면 Electron
+  `electron-store`가 `userData` 경로를 못 찾아 크래시함(둘 다 실측으로 발견한 함정).
+  이 wrapper 덕에 `which drawio`로 CLI를 찾는 drawio 스킬이 그대로 동작.
+- **실제 검증**: (1) Mermaid→`.drawio`→SVG/PNG 변환 전체 파이프라인 e2e 통과(한글
+  라벨 정상 렌더링), (2) `documents/산출물/2026-W32_0803-0809/
+  전체프로세스_시퀀스다이어그램_260806.drawio`(4페이지 시퀀스 다이어그램)를
+  `rlespinasse/drawio-export`로 페이지별 SVG 4개 생성·PNG로 렌더링 확인(alt 블록·
+  한글 라벨 모두 정상) — 같은 폴더에 SVG 4개 커밋 대상으로 남김.
+- **남은 선택**: 다중 페이지 문서를 낱장 SVG로 늘 남길지, 필요할 때만 뽑을지는
+  아직 정책 미정 — 일단 CLI 인프라 확보가 이번 요청의 본 목적.
+
+## 2026-08-05 — `geo_data_2016plus_run/`을 `data_archive/`로 이관
 
 사용자 질의("루트의 geo_data·geo_data_2016plus_run은 뭔가")에 실측 답변(크기·
 최종수정일·DATA_REGISTRY.md 근거 직접 재확인) 후, 사용자 지시로 이관 진행.
