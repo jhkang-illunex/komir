@@ -20,6 +20,10 @@ inhouse/data_lake/semi_structure/
 inhouse/data_lake/vector_db/
 # DMZ→inhouse 전달 스테이징(2026-08-06 신설, msr.collectors 파일 계약)
 msr_collect_out/
+# 제3자 원본자료 수동 투척함(2026-08-06 dmz/upload_files/로 이동 — 실수로 커밋했다가
+# GitHub 50MB 권장치 초과 경고로 발견, git rm --cached 후 추가) — documents/(그 외)와
+# 동일 정책: 대용량·저작권 자료는 로컬 보관만, git 미추적
+dmz/upload_files/
 # 수집·가공 산출
 **/data/processed/
 **/data/interim/
