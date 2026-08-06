@@ -1,0 +1,6 @@
+[
+  {"name": "KSH_ELEC_M", "stat": "901Y032", "cycle": "M", "start": "200601", "end": "today",
+   "item1": "I11ACQ", "item2": "3"},
+  {"name": "KSH_AUTO_M", "stat": "901Y032", "cycle": "M", "start": "200601", "end": "today",
+   "item1": "I11ACU", "item2": "3"}
+]

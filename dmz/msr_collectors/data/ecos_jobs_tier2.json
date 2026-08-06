@@ -1,0 +1,12 @@
+[
+  {"name": "KIP_ELEC_M", "stat": "901Y032", "cycle": "M", "start": "200601", "end": "today",
+   "item1": "I11ACQ", "item2": "1"},
+  {"name": "KIP_AUTO_M", "stat": "901Y032", "cycle": "M", "start": "200601", "end": "today",
+   "item1": "I11ACU", "item2": "1"},
+  {"name": "KIP_ELEQ_M", "stat": "901Y032", "cycle": "M", "start": "200601", "end": "today",
+   "item1": "I11ACS", "item2": "1"},
+  {"name": "KIP_METAL_M", "stat": "901Y032", "cycle": "M", "start": "200601", "end": "today",
+   "item1": "I11ACO", "item2": "1"},
+  {"name": "KINV_METAL_M", "stat": "901Y032", "cycle": "M", "start": "200601", "end": "today",
+   "item1": "I11ACO", "item2": "5"}
+]

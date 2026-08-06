@@ -1,0 +1,12 @@
+# TODO(구현 단계): 실제 버전 고정. dashboards/streamlit_app.py가 이미 쓰던 pandas/numpy/
+# scikit-learn/shap/duckdb(→sqlalchemy로 대체)/plotly(선택, API라 불필요할 수 있음)와
+# fastapi/uvicorn/pydantic-settings/sqlalchemy/psycopg2-binary 추가.
+fastapi
+uvicorn[standard]
+pydantic-settings
+sqlalchemy
+psycopg2-binary
+pandas
+numpy
+scikit-learn
+shap

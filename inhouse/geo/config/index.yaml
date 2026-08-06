@@ -1,0 +1,45 @@
+# 지수 공식 파라미터 ([3]의 심장 — 여기 값만 바꿔 재계산/튜닝)
+half_life_weeks: 4.0
+half_life_months: 3.0
+# tanh0_100: 절대 스케일 0~100(50=중립). 새 기간이 추가돼도 과거 지수가 재척도되지 않음(발행값 안정).
+#   (구 minmax0_100은 광종별 자기 히스토리 재척도 결함 — H1 — 으로 교체)
+normalize: tanh0_100
+# [2026-07-12 확정 캘리브레이션] GKG 10년 전체(LLM 재검증 통과 180.9만건)+문서(6,510건) 병합 분포.
+# GKG는 CU/NI만 전용 테마코드가 있어 광종 간 주간 |raw_score| 규모가 최대 70배 차이
+# (P50 실측: CU 220 / NI 81 / CO 4 / LI 3 / REE 4) — 단일 k로는 CU 포화·LI/CO/REE 무반응이라
+# 광종별 k 도입. 앵커: 각 광종의 2016~2026 전체 주간 |raw_score| P90 = 지수 88.
+# 이 값들은 캘리브레이션 "상수"로 동결(매 발행 재추정 금지) — 그래야 tanh 절대 스케일의
+# 발행값 불변 성질이 유지된다. 코퍼스가 구조적으로 바뀔 때만 버전을 올려 재캘리브레이션하고,
+# 그 경우 GEO_INDEX_VERSION(publish의 index_config_version)을 함께 올린다.
+scale_k: 300.0                 # 폴백(scale_k_by_commodity에 없는 광종용)
+scale_k_by_commodity:          # P90(|raw_score|) 실측 2026-07-24 — v3 재앵커
+  # v3(2026-07-24, 적대적 감사 발견 #2): v2(07-15) 이후 GKG 관련성 재정제(71.4%→99.5%,
+  # 07-20~21)·conf_mult 활성화(07-22)·hhi_mult 실가동(07-22)·국가명 정규화(같은 날,
+  # 아래 참고)로 raw 분포가 구조적으로 재차 바뀌어 "코퍼스가 구조적으로 바뀔 때만
+  # 재캘리브레이션"이라는 이 파일의 원칙이 충족됨 — 실측 CO는 v2 앵커로 idx P90=95.8까지
+  # 치솟아(목표 88 초과) 재앵커 없이는 광종 간 "0~100 절대비교" 약속이 깨진 상태였음.
+  # 국가명 정규화(geo/indexer.py, 같은 날): DRC 계열 표기("DRC"/"Congo"/"Democratic
+  # Republic Of/of The/the Congo"/"DR Congo", CO의 44.6%)가 USGS의 "Congo (Kinshasa)"와
+  # 정확일치 실패로 conc=1.0(중립) 폴백되던 버그를 수정 — CO의 P90이 이 수정만으로도
+  # 크게 상승, 재앵커를 더 시급하게 만든 직접 원인. REE도 "Myanmar"→"Burma" 별칭 추가.
+  # 구 v2(07-15): CU 297/NI 125/CO 14/LI 12/REE 34. 구 v1(07-12): CU 447/NI 165/CO 14/
+  # LI 12/REE 20.
+  CU: 78.7
+  NI: 38.9
+  CO: 21.9
+  LI: 9.4
+  REE: 13.4
+direction_sign:
+  supply_down: 1.0
+  price_up: 1.0
+  supply_up: -0.5
+  price_down: -0.5
+  neutral: 0.2
+  # 2026-07-22(#5 부속 발견): demand_up/demand_down(462/165건, 전체 0.21%)이 이 표에
+  # 없어 sign.map(...).fillna(0.2)로 neutral과 동일하게 처리되고 있었음(의도한 설계가
+  # 아니라 우연한 누락) — 수요증가는 공급감소·가격상승과 같은 방향(시장 타이트닝)으로,
+  # 수요감소는 반대 방향으로 명시. 값 자체는 이 표의 기존 값들과 정합적인 판단치일 뿐
+  # 전용 실증검증은 하지 않음(표본이 0.21%로 희소해 유의성 검정 불가, severity_sgn_
+  # significance_check.md 참고) — supply/price보다 약한 배수를 부여.
+  demand_up: 0.5
+  demand_down: -0.3

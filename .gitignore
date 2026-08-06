@@ -13,17 +13,18 @@ __pycache__/
 *.duckdb
 *.duckdb.wal
 *.parquet
-# 공유 DuckDB 볼륨 / geo 런타임
-warehouse/
-geo_data/
-geo_data_2016plus_run/
-warehouse/*.duckdb
-warehouse/*.wal
+# 공유 DuckDB 볼륨 / geo 런타임(2026-08-06 dmz/inhouse 물리분리로 경로 갱신 —
+# 구 warehouse/·geo_data/는 inhouse/data_lake/ 하위로 이동)
+inhouse/data_lake/db/
+inhouse/data_lake/semi_structure/
+inhouse/data_lake/vector_db/
+# DMZ→inhouse 전달 스테이징(2026-08-06 신설, msr.collectors 파일 계약)
+msr_collect_out/
 # 수집·가공 산출
 **/data/processed/
 **/data/interim/
 **/outputs/
-geo/collectors/_gkg_masterfilelist_cache.txt
+dmz/geo_collectors/_gkg_masterfilelist_cache.txt
 
 # 참조데이터(data/raw/hs_commodity_map.csv 등)는 위에서 무시하지 않으므로 기본 추적됨.
 

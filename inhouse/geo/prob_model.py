@@ -1,0 +1,343 @@
+# -*- coding: utf-8 -*-
+"""[3-부속] 지수 확률화 — 음이항(NB2) 강도 모델 (v1 문서 §6-3).
+
+geo_idx(점수)를 "다음 주 심각(sev≥2) 이벤트 발생확률"로 번역한다.
+  y[m,w+1] ~ NB2(λ[m,w], α)
+  λ[m,w]   = exp(β₀ + β₁·EWMA(심각수, hl=4주) + β₂·geo_idx + β₃·log1p(주간 전체 이벤트수))
+  발행값    = P(y≥1) = 1 − (1+α·λ)^(−1/α)
+
+왜 순수 포아송이 아닌가: 실측(2026-07-09, 2016~ 주간) 분산/평균이 전체 이벤트 4~7배·심각
+이벤트 3~4배 — 지정학 이벤트는 군집 발생(위기가 위기를, 보도가 보도를 부름)하므로 등산포
+가정이 크게 깨진다. 강도가 상태에 따라 변하는 Cox process의 정상형인 NB2(포아송-감마 혼합)
+를 쓰고, 그래도 α 추정이 실패하면 포아송으로 폴백한다.
+
+β₃는 코퍼스 구성 변화(예: Argus 일일보고서는 2023+에만 존재) 때문에 생기는 보도량 비정상성
+통제 — v1 문서 §5-2 media_base 정규화의 근사. GKG 재검증 병합처럼 코퍼스가 크게 바뀌면
+재적합해야 한다.
+
+CLI:  python -m geo prob            # 적합+검증+발행(store/geo_prob.parquet)
+"""
+from __future__ import annotations
+
+import numpy as np
+import pandas as pd
+
+from . import config as C, store
+
+SEVERE_MIN = 2.0          # "심각" 임계(sev>=2 — 붙임2 계열 트리거와 동일 눈금)
+EWMA_HALFLIFE = 4         # v0 문서 §1.2의 EWMA 반감기(주)
+TRAIN_END = "2023-12-31"  # 시계열 분할(검증 리포트용) — 최종 발행 모델은 전 기간 재적합
+BASE_COLS = ["x_ewma", "x_geo", "x_vol"]
+# CO는 x_z13(심각 13주합의 52주 z) 병행(2026-07-25 신챔피언 반영): CO Brier
+# 0.2058→0.1747(CI [+0.005,+0.064] P=0.992), "상수기준 열세" 약점 해소. 타 광종은
+# 병행 이득 없음(REE는 x_geo 대체 시 붕괴)이라 기본 3피처 유지.
+COLS_BY_COMMODITY = {"CO": BASE_COLS + ["x_z13"]}
+
+GEO_PROB = C.STORE / "geo_prob.parquet"
+
+
+def _weekly_panel() -> pd.DataFrame:
+    """이벤트 → 광종별 주간 패널(빈 주 0 채움). 컬럼: n_severe, n_all, n_total_week."""
+    ev = store.load_events()
+    ev = ev.copy()
+    ev["date"] = pd.to_datetime(ev["obs_date"], errors="coerce")
+    ev = ev.dropna(subset=["date"])
+    # 미래 obs_date 방어(extract.py에서 근본 교정 — 여기는 최후 방어선): 전망 시점이
+    # 사건일로 남아 있으면 패널 그리드가 미래로 늘어나 가짜 0 주가 검증을 오염시킨다.
+    ev = ev[(ev["date"] >= "2016-01-01") & (ev["date"] <= pd.Timestamp.now())]
+    if len(ev) == 0:
+        raise RuntimeError("이벤트 없음(2016+)")
+
+    grid = pd.date_range(ev["date"].min(), ev["date"].max(), freq="W")
+    total = ev.set_index("date").resample("W").size().reindex(grid, fill_value=0)
+
+    rows = []
+    for c, sub in ev.groupby("commodity"):
+        s = sub.set_index("date")
+        n_all = s.resample("W").size().reindex(grid, fill_value=0)
+        n_sev = (s[s["severity"] >= SEVERE_MIN].resample("W").size()
+                 .reindex(grid, fill_value=0))
+        df = pd.DataFrame({"commodity": c, "week": grid,
+                           "n_severe": n_sev.values, "n_all": n_all.values,
+                           "n_total_week": total.values})
+        rows.append(df)
+    return pd.concat(rows, ignore_index=True)
+
+
+def _attach_geo_idx(panel: pd.DataFrame) -> pd.DataFrame:
+    """store의 주간 geo_idx를 주 라벨 기준 결합. 미발행 주(이벤트 0)는 중립 50."""
+    idx = store._read(C.INDEX)
+    if len(idx) == 0:
+        panel["geo_idx"] = 50.0
+        return panel
+    w = idx[idx["freq"] == "W"].copy()
+    w["week"] = pd.to_datetime(w["period"])
+    panel = panel.merge(w[["commodity", "week", "index"]].rename(columns={"index": "geo_idx"}),
+                        on=["commodity", "week"], how="left")
+    panel["geo_idx"] = panel["geo_idx"].astype(float).fillna(50.0)
+    return panel
+
+
+def _features(panel: pd.DataFrame) -> pd.DataFrame:
+    """인과적 피처(주 w 정보만) + 타깃(주 w+1 심각수). 마지막 주는 타깃 없음(예측 전용)."""
+    out = []
+    for c, g in panel.groupby("commodity"):
+        g = g.sort_values("week").copy()
+        g["x_ewma"] = g["n_severe"].ewm(halflife=EWMA_HALFLIFE).mean()
+        g["x_geo"] = g["geo_idx"]
+        g["x_vol"] = np.log1p(g["n_total_week"])
+        s13 = g["n_severe"].rolling(13).sum()
+        g["x_z13"] = ((s13 - s13.rolling(52, min_periods=20).mean())
+                      / s13.rolling(52, min_periods=20).std().replace(0, np.nan))
+        # 주의: 워밍업 NaN을 0으로 채워 학습하면 z13 계수가 오염됨(실측 — Brier
+        # 0.175→0.206 퇴행). 학습은 결측 행 제외, 예측만 0(중립) 대치.
+        # 적응형 급증 임계(2026-07-25, 스코어카드 §6 "REE burst_k 괴리" 해소):
+        # 직전 52주(당주 포함) P90 — 임계가 체제를 따라가므로 "최근 기준의 이례성"
+        # 의미가 유지된다(고정 k는 REE에서 test 실현율 0.64로 의미 붕괴 실측).
+        # 당주까지의 정보만 사용(as-of 안전).
+        q = g["n_severe"].rolling(52, min_periods=26).quantile(0.90)
+        g["k_adapt"] = np.maximum(2, np.ceil(q)).fillna(2)
+        g["x_rel"] = g["x_ewma"] / g["k_adapt"]      # 임계 대비 현재 강도
+        g["y_next"] = g["n_severe"].shift(-1)
+        out.append(g)
+    return pd.concat(out, ignore_index=True)
+
+
+def _p_ge_rowwise(lam: np.ndarray, alpha: float, family: str,
+                  ks: np.ndarray) -> np.ndarray:
+    """주별로 임계 k가 다른 P(y>=k) — 고유 k별로 묶어 계산."""
+    out = np.empty(len(lam), dtype=float)
+    ks = ks.astype(int)
+    for k in np.unique(ks):
+        m = ks == k
+        out[m] = _p_ge(lam[m], alpha, family, int(k))
+    return out
+
+
+def _fit_adapt_logit(train: pd.DataFrame):
+    """적응 타깃 직접 분류(상대강도 로지스틱) — NB2와 원천이 다른 앙상블 멤버.
+    (검증 2026-07-25: NB2 단독은 적응 타깃에서 3광종 상수기준 열세, 앙상블로
+    4/5 광종 상수기준 초과 — '보팅은 원천이 다를 때만' 규칙 적용 사례.)"""
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import make_pipeline
+    from sklearn.preprocessing import StandardScaler
+    cols = ["x_rel", "x_geo", "x_vol"]
+    y = (train["y_next"].values >= train["k_adapt"].values).astype(int)
+    if len(np.unique(y)) < 2:
+        rate = float(y.mean())
+        return lambda df: np.full(len(df), rate)
+    m = make_pipeline(StandardScaler(),
+                      LogisticRegression(max_iter=2000, C=0.5))
+    m.fit(train[cols].values, y)
+    return lambda df: m.predict_proba(df[cols].values)[:, 1]
+
+
+def _fit_one(train: pd.DataFrame, cols: list | None = None):
+    """NB2 적합. MLE 실패/α 경계붕괴 시 Cameron-Trivedi 모멘트 α → GLM-NB 폴백, 그래도
+    안 되면 포아송. (실측 2026-07-12: REE에서 NB MLE α가 0으로 붕괴 → 포아송 꼬리 과신으로
+    burst 캘리브레이션 파탄 — 잔차가 실제로는 과산포라 모멘트 α 폴백이 필요.)"""
+    import statsmodels.api as sm
+    cols = cols or BASE_COLS
+    train = train.dropna(subset=cols)
+    X = sm.add_constant(train[cols].astype(float))
+    y = train["y_next"].astype(float)
+    try:
+        from statsmodels.discrete.count_model import NegativeBinomialP
+        m = NegativeBinomialP(y, X, p=2).fit(disp=0, maxiter=200)
+        if not np.isfinite(m.params).all():
+            raise RuntimeError("params non-finite")
+        # 2026-07-24 적대적 감사 발견: isfinite·alpha>0만 검사하고 mle_retvals["converged"]를
+        # 확인하지 않아, 실제로는 MLE가 수렴 못 한 채(maxiter 소진) 그 시점의 파라미터를
+        # 그대로 채택하는 경우가 있었음(실측: CU 전기간 적합이 converged=False인데 그대로
+        # 채택돼 α=0.396으로 발행됨 — REE의 α 붕괴와 같은 근본원인의 다른 증상).
+        if not m.mle_retvals.get("converged", False):
+            raise RuntimeError("MLE 미수렴 — 모멘트 폴백으로")
+        alpha = float(m.params.iloc[-1])
+        if alpha <= 1e-6:
+            raise RuntimeError("alpha~0 — 모멘트 폴백으로")
+        return m.params.iloc[:-1], alpha, "nb2"
+    except Exception:
+        pass
+    # Cameron-Trivedi 보조회귀: ((y-mu)^2 - y)/mu = alpha*mu + e  →  alpha 모멘트 추정
+    try:
+        pois = sm.GLM(y, X, family=sm.families.Poisson()).fit()
+        mu = np.clip(pois.fittedvalues.values, 1e-9, None)
+        aux = ((y.values - mu) ** 2 - y.values) / mu
+        alpha = float(np.sum(aux * mu) / np.sum(mu ** 2))
+        if np.isfinite(alpha) and alpha > 1e-3:
+            m = sm.GLM(y, X, family=sm.families.NegativeBinomial(alpha=alpha)).fit()
+            return m.params, alpha, "nb2"
+        return pois.params, 0.0, "poisson"
+    except Exception:
+        m = sm.GLM(y, X, family=sm.families.Poisson()).fit()
+        return m.params, 0.0, "poisson"
+
+
+def _predict(params, alpha: float, family: str, df: pd.DataFrame,
+             cols: list | None = None) -> tuple:
+    cols = cols or BASE_COLS
+    X = np.column_stack([np.ones(len(df)),
+                         df[cols].astype(float).fillna(0.0).values])
+    lam = np.exp(np.clip(X @ np.asarray(params, dtype=float), -20, 10))
+    if family == "nb2":
+        p0 = (1.0 + alpha * lam) ** (-1.0 / alpha)
+    else:
+        p0 = np.exp(-lam)
+    return lam, 1.0 - p0
+
+
+def _p_ge(lam: np.ndarray, alpha: float, family: str, k: int) -> np.ndarray:
+    """P(y >= k) — NB2/포아송 생존함수. k<=1이면 1-P(0)과 동일."""
+    from scipy import stats
+    if k <= 1:
+        if family == "nb2":
+            return 1.0 - (1.0 + alpha * lam) ** (-1.0 / alpha)
+        return 1.0 - np.exp(-lam)
+    if family == "nb2":
+        n = 1.0 / alpha
+        p = 1.0 / (1.0 + alpha * lam)
+        return stats.nbinom.sf(k - 1, n, p)
+    return stats.poisson.sf(k - 1, lam)
+
+
+def _calibration_report(test: pd.DataFrame, p: np.ndarray, train_rate: float) -> str:
+    """예측확률 분위(5구간)별 실현빈도 + Brier(vs 상수강도 기준선).
+    기준선은 '학습기간 기저율'을 상수로 예측하는 모델 — 테스트 실현율을 기준선으로 쓰면
+    미래를 훔쳐본 오라클이라 불공정(2026-07-09 수정)."""
+    t = test.copy()
+    t["p"] = p
+    t["hit"] = (t["y_next"] >= 1).astype(float)
+    brier = float(((t["p"] - t["hit"]) ** 2).mean())
+    base_rate = train_rate
+    brier_base = float(((base_rate - t["hit"]) ** 2).mean())
+    try:
+        t["bin"] = pd.qcut(t["p"], 5, duplicates="drop")
+        cal = t.groupby("bin", observed=True).agg(pred=("p", "mean"), real=("hit", "mean"),
+                                                   n=("hit", "size"))
+        cal_s = "\n".join(f"    예측 {r.pred:.2f} → 실현 {r.real:.2f} (n={r.n})"
+                          for r in cal.itertuples())
+    except ValueError:
+        cal_s = "    (분위 구성 불가 — 표본 부족)"
+    return (f"Brier {brier:.4f} vs 기준선(상수강도 {base_rate:.2f}) {brier_base:.4f} "
+            f"{'✓개선' if brier < brier_base else '✗열세'}\n{cal_s}")
+
+
+def _fit_isotonic(oos: pd.DataFrame):
+    """사후 캘리브레이션(2026-07-13, 외부감사 A-2): NB2 p_burst는 단조성은 확보되나 체계적
+    과소예측(EWMA의 지연 추종 + 모멘트 α의 꼬리 과소) — isotonic 회귀로 OOS (예측,실현) 쌍을
+    보정한다. 광종 풀링(확률은 무단위라 비교 가능), 시간순 앞 60%로 적합/뒤 40%로 평가해
+    누수 없이 개선을 실증하고, 발행용은 전체 OOS로 재적합한다."""
+    from sklearn.isotonic import IsotonicRegression
+
+    def _ece(p, y, bins=10):
+        b = np.clip((p * bins).astype(int), 0, bins - 1)
+        e = 0.0
+        for k in range(bins):
+            m = b == k
+            if m.sum():
+                e += m.mean() * abs(p[m].mean() - y[m].mean())
+        return float(e)
+
+    oos = oos.sort_values("week").reset_index(drop=True)
+    n_cal = int(len(oos) * 0.6)
+    cal, ev = oos.iloc[:n_cal], oos.iloc[n_cal:]
+    iso_v = IsotonicRegression(y_min=0.0, y_max=1.0, out_of_bounds="clip") \
+        .fit(cal["p"].values, cal["hit"].values)
+    p_raw, p_cal = ev["p"].values, iso_v.predict(ev["p"].values)
+    y = ev["hit"].values
+    rep = (f"[isotonic] 적합 {len(cal)}쌍(~{cal['week'].max():%Y-%m}) / 평가 {len(ev)}쌍: "
+           f"Brier {np.mean((p_raw-y)**2):.4f}→{np.mean((p_cal-y)**2):.4f}, "
+           f"ECE {_ece(p_raw,y):.3f}→{_ece(p_cal,y):.3f}")
+    iso_pub = IsotonicRegression(y_min=0.0, y_max=1.0, out_of_bounds="clip") \
+        .fit(oos["p"].values, oos["hit"].values)
+    return iso_pub, rep
+
+
+def run() -> pd.DataFrame:
+    C.ensure_dirs()
+    panel = _attach_geo_idx(_weekly_panel())
+    feat = _features(panel)
+
+    results, reports, oos_pairs = [], [], []
+    for c, g in feat.groupby("commodity"):
+        g = g.sort_values("week")
+        hist = g.dropna(subset=["y_next"])
+        train = hist[hist["week"] <= TRAIN_END]
+        test = hist[hist["week"] > TRAIN_END]
+        if len(train) < 52:
+            print(f"  [prob] {c}: 학습표본 부족({len(train)}주) — 스킵"); continue
+
+        # 급증(burst) 임계: 학습기간 주간 심각수 P90(최소 2) — GKG 병합 후 "≥1건"은 기저율
+        # 0.83~1.0으로 포화되어 무정보(실측 2026-07-12). 조기경보로 유의미한 것은 "이례적으로
+        # 많은 주"의 확률이므로 광종별 분포 기준 임계를 동결해 사용한다.
+        burst_k = max(2, int(np.ceil(train["y_next"].quantile(0.90))))
+
+        # 1) 검증 리포트(시계열 분할) — burst 타깃 기준
+        cc_cols = COLS_BY_COMMODITY.get(c, BASE_COLS)
+        params, alpha, family = _fit_one(train, cc_cols)
+        lam_t, _ = _predict(params, alpha, family, test, cc_cols)
+        p_burst_t = _p_ge(lam_t, alpha, family, burst_k)
+        test_b = test.copy(); test_b["y_next"] = (test_b["y_next"] >= burst_k).astype(float)
+        train_rate = float((train["y_next"] >= burst_k).mean())
+        # _calibration_report는 hit=(y_next>=1)로 계산하므로 이진화된 y_next를 그대로 전달
+        reports.append(f"[{c}] {family} (α={alpha:.3f}) burst_k={burst_k} "
+                       f"train {len(train)}주 / test {len(test)}주\n"
+                       f"  {_calibration_report(test_b, p_burst_t, train_rate)}")
+        oos_pairs.append(pd.DataFrame({"week": test["week"].values, "p": p_burst_t,
+                                       "hit": (test["y_next"] >= burst_k).astype(float).values}))
+
+        # 1-b) 적응형 임계 검증 리포트(비파괴 부가, 2026-07-25 §6 해소)
+        y_te_a = (test["y_next"].values >= test["k_adapt"].values).astype(float)
+        p_nb_a = _p_ge_rowwise(lam_t, alpha, family, test["k_adapt"].values)
+        logit = _fit_adapt_logit(train)
+        p_ens_a = 0.5 * p_nb_a + 0.5 * logit(test)
+        rate_a_tr = float((train["y_next"].values >= train["k_adapt"].values).mean())
+        b_ens = float(((p_ens_a - y_te_a) ** 2).mean())
+        b_const = float(((rate_a_tr - y_te_a) ** 2).mean())
+        reports.append(f"  [적응임계] test 실현율 {float(y_te_a.mean()):.2f}"
+                       f"(고정 {float(test_b['y_next'].mean()):.2f}) | 앙상블 Brier "
+                       f"{b_ens:.4f} vs 상수 {b_const:.4f} "
+                       f"{'✓개선' if b_ens < b_const else '✗열세'}")
+
+        # 2) 발행 모델(전 기간 재적합) — 전 주차 확률 산출
+        params_f, alpha_f, family_f = _fit_one(hist, cc_cols)
+        lam, p1 = _predict(params_f, alpha_f, family_f, g, cc_cols)
+        out = g[["commodity", "week"]].copy()
+        out["lambda_next"] = lam
+        out["p_severe_next"] = p1                                  # P(>=1) — 하위호환
+        out["burst_threshold"] = burst_k
+        out["p_burst_next"] = _p_ge(lam, alpha_f, family_f, burst_k)  # P(>=P90 임계) — 주 신호
+        out["family"] = family_f
+        out["alpha_disp"] = alpha_f
+        # 적응형 발행(부가 컬럼 — 기존 p_burst_next는 불변, 다운스트림 무영향):
+        # P(다음주 심각수 >= 최근 52주 P90) = 강도 NB2와 직접 분류(상대강도 로지스틱)의
+        # 평균 앙상블. 고정 임계와 달리 체제 전환기(REE 2024+)에도 "이례성" 의미 유지.
+        logit_f = _fit_adapt_logit(hist)
+        out["burst_k_adapt"] = g["k_adapt"].values
+        out["p_burst_adapt"] = 0.5 * _p_ge_rowwise(lam, alpha_f, family_f,
+                                                   g["k_adapt"].values) \
+            + 0.5 * logit_f(g)
+        results.append(out)
+
+    print("\n=== 캘리브레이션 검증(train ~2023 / test 2024+) ===")
+    for r in reports:
+        print(r)
+
+    res = pd.concat(results, ignore_index=True)
+    # 사후 캘리브레이션: OOS 쌍으로 isotonic 적합 → 발행값에 보정 확률 병기(원값 보존)
+    if oos_pairs:
+        iso, iso_rep = _fit_isotonic(pd.concat(oos_pairs, ignore_index=True))
+        print(iso_rep)
+        res["p_burst_cal"] = iso.predict(res["p_burst_next"].values)
+    res["week"] = res["week"].dt.strftime("%Y-%m-%d")
+    store._write(res, GEO_PROB)
+    print(f"\n[prob] {len(res)}행 → {GEO_PROB}")
+    latest = res.sort_values("week").groupby("commodity").tail(1)
+    print("=== 최신 주 발행값 ===")
+    print(latest[["commodity", "week", "lambda_next", "p_severe_next",
+                  "burst_threshold", "p_burst_next"]].to_string(index=False))
+    return res
+
+
+if __name__ == "__main__":
+    run()

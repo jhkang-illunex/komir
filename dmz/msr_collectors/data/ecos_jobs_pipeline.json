@@ -1,0 +1,6 @@
+[
+  {"name": "KR_industrial_production", "stat": "901Y033", "cycle": "M",
+   "start": "201001", "end": "202512", "item1": "A00", "item2": "1"},
+  {"name": "KR_gdp_real", "stat": "200Y102", "cycle": "Q",
+   "start": "2010Q1", "end": "2026Q1", "item1": "10211", "item2": ""}
+]

@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+geo_data/
+.env
+*.md

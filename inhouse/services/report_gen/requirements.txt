@@ -1,0 +1,7 @@
+# TODO(구현 단계): 실제 버전 고정.
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg2-binary
+jinja2
+apscheduler
