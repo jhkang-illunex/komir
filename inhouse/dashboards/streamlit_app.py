@@ -79,6 +79,49 @@ CC_KO = {cc: f"{CORE_COMMODITIES[cc]['ko']}({cc})" for cc in CCS}
 STAGE_COLOR = {"정상": "#2e7d32", "관심": "#9e9d24", "주의": "#f9a825",
                "경계": "#ef6c00", "심각": "#c62828"}
 
+# 화면에 코드명 그대로 노출되는 피처들의 한글 라벨+설명. (라벨, 설명) 튜플.
+# ②진단 Ridge 챔피언(BASE_FEATS+GEO_DERIVED)과 Δ조기경보 앙상블(GEO_ONLY_NO_LAG류+
+# INV_F/CNINV_F/PMI_F/CLI_F)이 공유해서 쓴다 — 정의는 각 모듈 docstring/주석 근거.
+FEAT_KO = {
+    "volatility_12w": ("가격 변동성(12주)", "최근 12주 가격 수익률의 표준편차. 클수록 시장이 불안정."),
+    "import_hhi": ("수입국 집중도(HHI)", "허핀달-허쉬만지수 — 수입국 점유율 제곱합. 높을수록 특정국 의존도가 크다."),
+    "import_yoy": ("수입물량 전년동월비", "이번달 수입물량이 작년 같은달 대비 몇 % 늘거나 줄었는지."),
+    "import_cagr3": ("수입물량 3년 연평균성장률", "최근 3년간 수입물량의 연평균 복리성장률(CAGR)."),
+    "spread_pct": ("LME 현물-3개월물 스프레드", "LME Cash와 3M 선물가의 괴리율(%). 백워데이션/콘탱고 신호."),
+    "geopolitical_risk": ("지정학 위기지수(월평균)", "①탭의 주간 위기지수를 월평균한 값."),
+    "ref_price": ("기준가격(월평균)", "해당 광종의 대표 국제가격(LME 등) 월평균."),
+    "geo_chg": ("지정학 위기지수 변화", "지정학 위기지수의 전월 대비 변화량."),
+    "geo_chg4": ("지정학 위기지수 4주변화", "지정학 위기지수의 4주 전 대비 변화량."),
+    "geo_z26": ("지정학 위기지수 26주 표준화", "최근 26주 분포 기준 z-score."),
+    "p_burst": ("위기 급증확률(NB2)", "①탭 p_burst_next와 동일 — NB2 카운트모델의 차기 급증확률."),
+    "p_burst_chg": ("위기 급증확률 변화", "p_burst의 전주 대비 변화량."),
+    "price_z52": ("가격 표준화(52주)", "기준가격의 최근 52주 분포 기준 z-score."),
+    "y_lag1": ("전월 위기지수(자기회귀항)", "한달 전 위기지수 실측값 — 지속성(관성) 정보."),
+    "dur": ("현 등급 지속주수", "현재 경보 등급이 유지된 기간(주)."),
+    "gsev_z13": ("심각 이벤트 밀도(13주합·52주표준화)", "geo_event의 고심각도 이벤트를 13주 합산 후 52주 분포로 표준화 — p_burst의 대체 피처."),
+    "inv_z52": ("LME 재고 표준화(52주)", "LME 거래소 재고량의 최근 52주 분포 기준 z-score. 재고 급감은 공급 타이트 신호."),
+    "inv_chg4": ("LME 재고 4주변화율", "LME 거래소 재고량의 4주 전 대비 변화율."),
+    "inv_chg13": ("LME 재고 13주변화율", "LME 거래소 재고량의 13주 전 대비 변화율."),
+    "cninv_z52": ("중국거래소 재고 표준화(52주)", "SHFE/GFEX 등 중국 거래소 재고량의 52주 z-score."),
+    "cninv_chg4": ("중국거래소 재고 4주변화율", "중국 거래소 재고량의 4주 전 대비 변화율."),
+    "cninv_chg13": ("중국거래소 재고 13주변화율", "중국 거래소 재고량의 13주 전 대비 변화율."),
+    "pmi_off": ("중국 제조업 PMI(공식)", "중국 국가통계국 공식 제조업 구매관리자지수. 50 기준 경기확장/위축."),
+    "pmi_off_chg3": ("중국 PMI 3개월변화", "중국 공식 제조업 PMI의 3개월 전 대비 변화."),
+    "pmi_cx": ("중국 차이신 제조업 PMI", "민간 집계 차이신 제조업 PMI(중소기업 비중↑, 공식 PMI 보완지표)."),
+    "cli_yoy": ("OECD 한국 CLI 전년동월비", "OECD 경기선행지수(한국)의 전년동월 대비 변화 — 국내 수요기반 경기 선행신호."),
+    "cli_chg3": ("OECD 한국 CLI 3개월변화", "OECD 경기선행지수(한국)의 3개월 전 대비 변화."),
+    "cli_z24": ("OECD 한국 CLI 표준화(24개월)", "OECD 경기선행지수(한국)의 최근 24개월 분포 기준 z-score."),
+}
+
+
+def _feat_ko(code: str) -> str:
+    """피처 코드를 화면표시용 한글 라벨로. 정의 없으면 코드 그대로(광종 더미는 별도표기)."""
+    if code in FEAT_KO:
+        return FEAT_KO[code][0]
+    if code.startswith("cc_"):
+        return f"광종 고정효과({code[3:]})"
+    return code
+
 st.set_page_config(page_title="핵심광물 모델 체크 데모", layout="wide")
 
 
@@ -331,7 +374,12 @@ with tab_geo:
             pl = p.iloc[-1]
             c2.metric("차주 급증확률(p_burst_next)", f"{pl['p_burst_next']*100:.1f}%",
                       help=f"기준 {pl['period']} · family={pl['family']}")
-            c3.metric("심각확률(p_severe_next)", f"{pl['p_severe_next']*100:.1f}%")
+            c3.metric("이벤트 발생확률(p_severe_next, 참고용)", f"{pl['p_severe_next']*100:.1f}%",
+                      help="차주 심각 이벤트가 '1건 이상' 발생할 확률 — p_burst_next(≥P90 "
+                           "이례치)보다 문턱이 훨씬 낮다. 뉴스가 잦은 CU·NI는 매주 1건 이상이 "
+                           "거의 확실해 100%에 가깝게 포화되는 게 정상(2026-07-12 실측으로 "
+                           "이 지표가 무정보임을 확인, 그래서 발행 신호는 p_burst_next로 "
+                           "교체됨 — 이 값은 하위호환용으로만 유지).")
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=g["week"], y=g["idx_value"], mode="lines",
                                  name="주간 위기지수", line=dict(color="#c62828")))
@@ -348,6 +396,10 @@ with tab_geo:
                 "이벤트 누적을 입력으로 산출한다."
             )
         if not p.empty:
+            st.caption("`p_burst_adapt`: 고정 임계(P90) 대신 최근 국면에 맞춰 문턱을 조정한 "
+                      "적응형 급증확률(참고용, 발행 신호는 p_burst_next). "
+                      "`family`: 이 광종에 적합된 카운트모델 종류(`nb2`=음이항, `poisson`=포아송 — "
+                      "이벤트 분산이 평균보다 크면 nb2가 선택됨).")
             st.dataframe(p.tail(8)[["period", "p_burst_next", "p_severe_next",
                                     "p_burst_adapt", "family"]],
                         width='stretch', hide_index=True)
@@ -382,6 +434,13 @@ with tab_diag:
                 st.caption(" · ".join(badges) if badges else
                           "오버라이드·히스테리시스 미발동(모델 단계 그대로 발행)")
                 st.caption(latest_a["reason"])
+                with st.expander("용어 — 오버라이드/히스테리시스란"):
+                    st.caption(
+                        "**규칙 오버라이드**: 변동성(12주)·수입국 집중도(HHI)가 사전 정의된 "
+                        "분위수 문턱을 넘으면, Ridge 모델의 위기지수 단계를 강제로 한 단계 "
+                        "이상 격상시키는 안전장치. **히스테리시스**: 경보 단계가 하향될 때 "
+                        "2주 연속 그 조건이 유지돼야 실제로 하향 발행 — 짧은 반등으로 단계가 "
+                        "깜빡이는 것(flicker)을 막는다.")
             else:
                 st.markdown(f"### {latest['month'].strftime('%Y-%m')} 판정(Ridge 원모델)")
                 color = STAGE_COLOR.get(latest["stage_name"], "#888")
@@ -391,7 +450,10 @@ with tab_diag:
                     f"{latest['stage_name']}</div>", unsafe_allow_html=True)
             st.metric("모델 예측 위기지수", f"{latest['ci_pred']:.1f}",
                       delta=(f"{latest['ci_pred']-latest['ci_teacher']:+.1f} vs 교사"
-                            if latest["ci_teacher"] is not None else None))
+                            if latest["ci_teacher"] is not None else None),
+                      help="0~100 절대스케일(높을수록 위기). 5단계(정상~심각) 컷은 광종별로 "
+                           "2020~2023 기준기간 분포에서 동결됨. '교사'는 KOMIS 수급동향지표 "
+                           "실측값 — 델타는 모델이 실측 대비 얼마나 높게/낮게 보는지.")
             probs = latest["probs"]
             pf = go.Figure(go.Bar(x=list(probs.values()), y=list(probs.keys()),
                                   orientation="h",
@@ -415,11 +477,17 @@ with tab_diag:
             cd = latest["contrib"]
             cd_sorted = dict(sorted(cd.items(), key=lambda kv: -abs(kv[1])))
             cf = go.Figure(go.Bar(
-                x=list(cd_sorted.values()), y=list(cd_sorted.keys()), orientation="h",
+                x=list(cd_sorted.values()), y=[_feat_ko(k) for k in cd_sorted],
+                orientation="h", customdata=list(cd_sorted.keys()),
+                hovertemplate="%{y} (%{customdata})<br>기여도=%{x:.3f}<extra></extra>",
                 marker_color=["#c62828" if v >= 0 else "#1565c0" for v in cd_sorted.values()]))
             cf.update_layout(height=280, margin=dict(t=10, b=10, l=10, r=10),
                              xaxis_title="위기지수 기여도(+가 위기↑)")
             st.plotly_chart(cf, width='stretch')
+            with st.expander("피처(변수) 설명"):
+                for k in cd_sorted:
+                    label, desc = FEAT_KO.get(k, (k, ""))
+                    st.caption(f"**{label}** (`{k}`) — {desc}" if desc else f"**{label}** (`{k}`)")
 
         st.divider()
         st.markdown("#### 보조 신호 — Δ 조기경보 앙상블(Bagging25×2 + OECD 한국 CLI)")
@@ -433,15 +501,23 @@ with tab_diag:
         else:
             r = e.iloc[0]
             c1, c2, c3 = st.columns(3)
-            c1.metric("하향 확률", f"{r['p_down']*100:.1f}%")
-            c2.metric("유지 확률", f"{r['p_stay']*100:.1f}%")
-            c3.metric("상향 확률", f"{r['p_up']*100:.1f}%")
+            c1.metric("하향 확률", f"{r['p_down']*100:.1f}%",
+                      help="다음 판정 시 경보 등급이 한 단계 이상 내려갈(개선될) 확률.")
+            c2.metric("유지 확률", f"{r['p_stay']*100:.1f}%",
+                      help="다음 판정 시 경보 등급이 그대로 유지될 확률.")
+            c3.metric("상향 확률", f"{r['p_up']*100:.1f}%",
+                      help="다음 판정 시 경보 등급이 한 단계 이상 올라갈(악화될) 확률.")
             st.markdown(f"**예측 방향: {r['direction']}** "
-                       f"({'트리거 작동' if r['trigger'] else '트리거 없음'})")
+                       f"({'트리거 작동' if r['trigger'] else '트리거 없음'})",
+                       help="'트리거 작동'은 세 방향 중 '유지'가 아닌 쪽이 최다득표라는 뜻 "
+                            "— 등급을 실제로 바꾸진 않는 참고 신호.")
             with st.expander("설명 — 이 앙상블이 전역적으로 어떤 피처에 민감한가"):
                 st.caption("개별 예측의 기여분해가 아니라, 25개 배깅 추정기 계수의 "
-                          "절댓값 평균(전역 중요도)이다.")
+                          "절댓값 평균(전역 중요도)이다. A/B 두 모델은 동일 구성에서 "
+                          "지정학 급증확률만 p_burst↔gsev_z13으로 바꿔 병행 투표한다 "
+                          "(2026-07-26 채택, 재현성 확인됨).")
                 for tag, rank in gimp.items():
+                    rank = [(_feat_ko(k), v) for k, v in rank]
                     st.markdown(f"**모델 {tag}** 상위 피처: " +
                               ", ".join(f"{k}({v:.2f})" for k, v in rank))
 
@@ -459,9 +535,12 @@ with tab_fc:
     else:
         h1, h6, h12 = g[g["h"] == 1].iloc[0], g[g["h"] == 6].iloc[0], g[g["h"] == 12].iloc[0]
         c1, c2, c3 = st.columns(3)
-        c1.metric(f"h=1 ({h1['target_month']}) 예측물량", f"{h1['pred_ton']:,.0f} 톤")
-        c2.metric(f"h=6 ({h6['target_month']}) 예측물량", f"{h6['pred_ton']:,.0f} 톤")
-        c3.metric(f"h=12 ({h12['target_month']}) 예측물량", f"{h12['pred_ton']:,.0f} 톤")
+        c1.metric(f"h=1 ({h1['target_month']}) 예측물량", f"{h1['pred_ton']:,.0f} 톤",
+                  help="h=예측 호라이즌(기준월로부터 몇 개월 뒤인지). h=1은 다음달 예측.")
+        c2.metric(f"h=6 ({h6['target_month']}) 예측물량", f"{h6['pred_ton']:,.0f} 톤",
+                  help="6개월 뒤 예측 — 호라이즌이 멀수록 불확실성 구간(q10~q90)이 넓어진다.")
+        c3.metric(f"h=12 ({h12['target_month']}) 예측물량", f"{h12['pred_ton']:,.0f} 톤",
+                  help="12개월 뒤(최장 호라이즌) 예측.")
 
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=g["target_month"], y=g["pred_ton"], name="예측 물량(톤)",
@@ -473,6 +552,8 @@ with tab_fc:
         fig.update_layout(height=300, margin=dict(t=20, b=20), title="물량(ton) 12개월 예측",
                           yaxis_title="톤")
         st.plotly_chart(fig, width='stretch')
+        st.caption("q10/q90 = 실제값이 그 구간 안에 들 것으로 보는 80% 예측구간의 하단/상단 "
+                  "분위수(conformal 보정 반영). 구간이 넓을수록 그 시점의 불확실성이 크다는 뜻.")
 
         fig2 = go.Figure()
         fig2.add_trace(go.Scatter(x=g["target_month"], y=g["pred_unit_usd_per_ton"],
