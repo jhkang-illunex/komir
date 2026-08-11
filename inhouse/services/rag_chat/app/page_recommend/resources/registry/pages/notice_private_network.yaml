@@ -1,0 +1,110 @@
+schema_version: 1
+page_id: notice_private_network
+aliases: [private_network]
+identity:
+  section: "알림마당"
+  name: "민간협력 네트워크"
+  page_kind: board
+  navigation: {method: GET, target: /Komis/Board/EVENTINFO, params: {}}
+  login_required: false
+  external: false
+screen:
+  controls:
+    - id: quick_period
+      label: "빠른 기간"
+      description: "전체·1개월·3개월·6개월·1년 버튼으로 조회 기간을 빠르게 설정할 수 있다."
+      widget: radio
+      role: shortcut
+      target_filters: [period]
+      transform: relative_date_range
+      options:
+        - {value: all, label: "전체", aliases: [전체]}
+        - {value: 1_month, label: "1개월", aliases: [한달, 최근한달]}
+        - {value: 3_months, label: "3개월", aliases: [최근3개월]}
+        - {value: 6_months, label: "6개월", aliases: [반년, 최근6개월]}
+        - {value: 1_year, label: "1년", aliases: [최근1년]}
+      observed_default: all
+routing:
+  summary: "광업행사, 세미나 발표자료와 해외 핵심광물 투자·프로젝트 자료를 조회하는 게시판"
+  use_when:
+    - "국내외 광업행사나 세미나 일정·발표자료를 찾을 때"
+    - "해외 핵심광물 투자안내서나 프로젝트 자료를 찾을 때"
+  do_not_use_when:
+    - "일반 광업요람·매뉴얼·인포그래픽을 찾을 때"
+    - "지역별 최신 해외 광업 뉴스를 찾을 때"
+  distinguish_from:
+    - {page_id: notice_self_info, reason: "민간협력 네트워크는 행사·세미나·해외 광업자료 중심이고 Self-Info는 일반 자료·매뉴얼 중심이다."}
+    - {page_id: resource_trend_overseas_network, reason: "민간협력 네트워크는 행사·발표·투자자료이고 해외네트워크뉴스는 해외 거점의 시사 뉴스다."}
+  example_queries:
+    - "오레온 정기총회 발표자료를 찾고 싶어"
+    - "호주 핵심광물 투자 안내서는 어디서 봐?"
+  keywords: [민간협력, 네트워크, 광업행사, 세미나, 발표자료, 투자안내서, 해외광업]
+filters:
+  - id: period
+    semantic_key: period
+    label: "기간"
+    type: date_range
+    required: false
+    default: all
+    default_label: "전체 기간"
+    options: []
+    values_ref: null
+    depends_on: []
+    temporal: {granularity: day}
+  - id: search_field
+    semantic_key: search_field
+    label: "검색 대상"
+    type: enum
+    required: false
+    default: all
+    default_label: "제목+내용"
+    options:
+      - {value: all, label: "제목+내용", aliases: [전체]}
+      - {value: title, label: "제목", aliases: [제목만]}
+      - {value: content, label: "내용", aliases: [본문]}
+    values_ref: null
+    depends_on: []
+  - id: query
+    semantic_key: query
+    label: "검색어"
+    type: text
+    required: false
+    default: null
+    default_label: null
+    options: []
+    values_ref: null
+    depends_on: []
+  - id: page_size
+    semantic_key: page_size
+    label: "페이지 크기"
+    type: integer
+    required: false
+    default: 15
+    default_label: "15개"
+    options:
+      - {value: 5, label: "5개", aliases: []}
+      - {value: 10, label: "10개", aliases: []}
+      - {value: 15, label: "15개", aliases: []}
+      - {value: 20, label: "20개", aliases: []}
+      - {value: 40, label: "40개", aliases: []}
+      - {value: 50, label: "50개", aliases: []}
+    values_ref: null
+    depends_on: []
+outputs:
+  available_data_labels: ["번호", "제목", "첨부파일 여부", "등록일", "조회수", "본문", "첨부파일", "이전 글", "다음 글"]
+presentation:
+  summary: "게시물 목록에서 첨부 여부를 보여주고 상세에서 행사 설명, 첨부파일과 이전·다음 글을 제공한다."
+  panels:
+    - {type: table, label: "민간협력 자료 목록", description: "제목, 첨부 여부, 등록일과 조회수를 확인한다."}
+    - {type: detail, label: "민간협력 자료 상세", description: "본문, 첨부파일과 이전·다음 글을 확인한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "목록은 비로그인 조회가 가능하며 실제 파일은 상세의 첨부파일에서 확인한다."
+    - '화면 필터는 period→srchStartDate/srchEndDate, search_field→srchField(전체="", 제목=ttl, 내용=cnts), query→srchValue, page_size→listCount로 전달된다.'
+    - "목록 조회는 boardType=D, boardCd=EVENTINFO, regDate 내림차순을 사용하고 상세 조회는 getViewBoardDetail에 SEQ와 boardCd=EVENTINFO를 전달한다."
+tool: {status: planned, planned_name: search_komis_board}
+provenance:
+  observed_at: "2026-07-27"
+  sources: [artifacts/browser/page-probe/notice-pages.json, artifacts/browser/notice-probe/details.json]

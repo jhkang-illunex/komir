@@ -11,13 +11,31 @@ RUN pip install --no-cache-dir -r requirements.txt
 # RUN python -c "from sentence_transformers import SentenceTransformer; \
 #     SentenceTransformer('intfloat/multilingual-e5-small')"
 
+# app/ 아래에 페이지추천 이식본(app/page_recommend/)과 그 리소스(43개 페이지 YAML +
+# KOMIS 메타데이터 스냅샷, 합계 400KB)가 함께 들어 있다 — 이 COPY 한 줄로 같이 실린다
+# (2026-08-11: 리소스를 패키지 안에 둔 이유는 registry.py/metadata.py가 패키지 상대경로로
+# 찾기 때문. 별도 COPY 라인 불필요).
 COPY services/rag_chat/app ./app
 COPY services/shared ./shared
-# 주의(2026-08-05): engine/rag/ 전체를 COPY하지 말 것 — engine/rag/index/rag.duckdb(벡터+
-# BM25 인덱스, Qdrant/Postgres 이관 후 더 이상 정본 아님)와 engine/rag/docs/estimate_question
+# 주의(2026-08-05): rag/ 전체를 COPY하지 말 것 — rag/index/rag.duckdb(벡터+
+# BM25 인덱스, Qdrant/Postgres 이관 후 더 이상 정본 아님)와 rag/docs/estimate_question
 # (원본 문서·골든셋)이 함께 딸려와 §0 요구사항②("DB는 외부서비스")와 충돌한다. ragkit 코드
 # 모듈만 선택 COPY — 정확한 서브셋은 구현 단계에서 확정.
-COPY engine/rag/ragkit ./rag/ragkit
+# (2026-08-11: 경로를 engine/rag/ragkit → rag/ragkit으로 정정 — 2026-08-06 DMZ/inhouse
+# 분리로 engine/이 없어지고 inhouse/rag가 됐음, 이 Containerfile 빌드 컨텍스트는 inhouse/)
+COPY rag/ragkit ./rag/ragkit
+
+# services/ingestion(2026-08-11 신설, 병합계획_komis-report-generator_260811.md) —
+# PDF 파서가 geo.extractors(opendataloader+OCR 폴백 체인)를 그대로 재사용하므로
+# geo 패키지 중 그 파일만 최소 COPY(geo/ 전체엔 collectors 등 이 서비스에 불필요한
+# 코드가 많음 — 이번 이식 범위에선 extractors.py가 유일한 in-package 의존성).
+COPY services/ingestion ./ingestion
+COPY geo/__init__.py ./geo/__init__.py
+COPY geo/extractors.py ./geo/extractors.py
+
+# services/shared/db.py가 mineral_supply_risk/db/dbio.py를 재노출(2026-08-11) —
+# 엔진 전체가 아니라 db/ 서브패키지만 COPY(수집기·모델 코드는 이 서비스에 불필요).
+COPY mineral_supply_risk/db ./mineral_supply_risk/db
 
 ENV PYTHONUNBUFFERED=1
 ENV HF_HUB_OFFLINE=1

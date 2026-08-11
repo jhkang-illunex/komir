@@ -1,6 +1,11 @@
 # Report 생성 — 템플릿×(비정형+정형) 조립, 주기 저장(out_report).
-# TODO(구현 단계): rag_chat과 검색 계층(retrieval/)을 공유할지, 이 서비스 안에 복제할지
-# 결정 필요(§6 — 중복 구현 금지 원칙상 공유 라이브러리화 권장, 예: services/shared/retrieval/).
+#
+# 2026-08-11 1차 구현: 정형(RDB) 섹션만 배선했다. app/generator.py가 komir 산출물
+# (out_diagnosis_alert·out_import_forecast·geo_index @ MSR_DB)과 KOMIS 공개 원천
+# (public.KO_* @ PG_DSN, 읽기 전용)을 읽어 app/templates/weekly_brief.md.j2로 조립한다.
+# 비정형(VectorDB/PageIndex) 섹션과 rag_chat retrieval/ 공유는 아직 미해결 —
+# §6 "중복 구현 금지"대로 services/shared/retrieval/로 올리는 게 후속 과제다
+# (지금은 rag_chat 코드를 import하지도, 복제하지도 않았다).
 FROM python:3.12-slim
 
 WORKDIR /app
@@ -9,6 +14,17 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY services/report_gen/app ./app
 COPY services/shared ./shared
+
+# services/ingestion(2026-08-11 신설, 병합계획_komis-report-generator_260811.md) —
+# RAG·Report 겸용 공통 모듈(§5-3). PDF 파서가 geo.extractors(opendataloader+OCR
+# 폴백 체인)를 재사용하므로 geo 패키지 중 그 파일만 최소 COPY.
+COPY services/ingestion ./ingestion
+COPY geo/__init__.py ./geo/__init__.py
+COPY geo/extractors.py ./geo/extractors.py
+
+# services/shared/db.py가 mineral_supply_risk/db/dbio.py를 재노출(2026-08-11) —
+# 엔진 전체가 아니라 db/ 서브패키지만 COPY(수집기·모델 코드는 이 서비스에 불필요).
+COPY mineral_supply_risk/db ./mineral_supply_risk/db
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8003

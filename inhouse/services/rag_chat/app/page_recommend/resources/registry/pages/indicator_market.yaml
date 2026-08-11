@@ -1,0 +1,66 @@
+schema_version: 1
+page_id: indicator_market
+aliases: [market_indicator]
+identity:
+  section: "광물전망지표"
+  name: "시장동향지표"
+  page_kind: data
+  navigation: {method: GET, target: /Komis/MnrlIndc/IndcMrkt, params: {}}
+  login_required: true
+  external: false
+routing:
+  summary: "광종별 중장기 가격리스크를 0~100 지표와 5단계 등급으로 보여주는 로그인 페이지"
+  use_when:
+    - "특정 광물의 가격리스크 상태나 등급을 확인할 때"
+    - "시장동향지표와 실제 가격의 월별 동행·괴리를 보고 싶을 때"
+  do_not_use_when:
+    - "국내 수급위험·수입의존도나 세계 수요·공급을 찾을 때"
+    - "개별 광물의 원가격만 조회하려 할 때"
+  distinguish_from:
+    - {page_id: indicator_supply, reason: "시장동향지표는 가격리스크이고 수급동향지표는 국내 수급리스크와 배경 지표다."}
+    - {page_id: price_minor_metals, reason: "시장동향지표는 표준화된 리스크 점수이고 가격 페이지는 실제 가격 시계열이다."}
+  example_queries:
+    - "리튬 가격리스크가 지금 어느 단계야?"
+    - "동 시장동향지표와 가격을 같이 볼 수 있어?"
+  keywords: [시장동향지표, 가격리스크, 신중, 주의, 중립, 관심, 기회, 등급, 월별]
+filters:
+  - id: mineral
+    semantic_key: mineral
+    label: "광종"
+    type: mineral
+    required: true
+    default: null
+    default_label: null
+    options: []
+    values_ref: metadata.indicators.market_minerals
+    depends_on: []
+  - id: period
+    semantic_key: period
+    label: "월 범위"
+    type: date_range
+    required: false
+    default: site_default
+    default_label: "화면 기본 월 범위"
+    options: []
+    values_ref: metadata.indicators.market_available_months
+    depends_on: []
+    temporal: {granularity: month}
+outputs:
+  available_data_labels: ["기준월", "시장동향지표", "전월 대비 등락가·등락률", "같은 기준월의 가격", "현재 등급", "지표·가격 월별 시계열"]
+presentation:
+  summary: "현재값 카드, 0~100 등급 밴드와 위치 마커, 월별 표, 지표와 가격의 이중축 선 그래프를 제공한다."
+  panels:
+    - {type: summary_card, label: "현재 시장동향지표", description: "현재 지표값과 전월 대비 변화를 보여준다."}
+    - {type: grade_band, label: "5단계 등급 밴드", description: "신중·주의·중립·관심·기회 중 현재 위치를 보여준다."}
+    - {type: dual_axis_line, label: "지표·가격 추이", description: "서로 다른 축의 시장동향지표와 가격을 비교한다."}
+    - {type: table, label: "월별 현황", description: "기준월별 지표, 등락과 가격의 정확한 값을 확인한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "로그인 후 접근할 수 있는 페이지다."
+    - "지표와 가격은 축과 단위가 달라 선의 절대 높이를 직접 비교하지 않는다."
+tool: {status: planned, planned_name: get_market_indicator}
+provenance:
+  observed_at: "2026-07-16"
+  sources: [docs/komis_service_catalog.md, docs/komis_tool_parameter_spec.md, docs/komis_visual_presentation_catalog.md, artifacts/browser/page-probe/pages.json]

@@ -1,0 +1,134 @@
+schema_version: 1
+page_id: price_iron_energy
+aliases: [iron_energy]
+identity:
+  section: "광물자원가격"
+  name: "철광석 및 에너지"
+  page_kind: data
+  navigation: {method: GET, target: /Komis/RsrcPrice/IronOre, params: {}}
+  login_required: false
+  external: false
+routing:
+  summary: "우라늄·유연탄·철광석의 품목별 가격을 조회하는 페이지"
+  use_when:
+    - "철광석, 우라늄 또는 유연탄의 과거 가격을 찾을 때"
+    - "Thermal Coal·Coking Coal 또는 Iron Ore Fines 기준을 선택해 조회할 때"
+  do_not_use_when:
+    - "비철금속 LME 가격이나 금·은 가격을 찾을 때"
+    - "광물의 미래 가격예측을 찾을 때"
+  distinguish_from:
+    - {page_id: price_base_metals, reason: "철광석·에너지 가격과 비철금속 LME 가격을 구분한다."}
+    - {page_id: forecast_price, reason: "이 페이지는 실제 가격 이력이며 가격예측은 미래 예측값을 제공한다."}
+  example_queries:
+    - "철광석 62% 가격 추이를 어디서 봐?"
+    - "유연탄 Thermal Coal 월평균 가격을 보고 싶어"
+  keywords: [철광석, 철, 우라늄, 유연탄, 석탄, 에너지, Thermal Coal, Coking Coal, 가격]
+filters:
+  - id: mineral
+    semantic_key: mineral
+    label: "광종"
+    type: mineral
+    required: true
+    default: null
+    default_label: null
+    options: []
+    values_ref: metadata.prices.iron_energy.minerals
+    depends_on: []
+  - id: price_criterion
+    semantic_key: price_criterion
+    label: "품목·가격기준"
+    type: enum
+    required: false
+    default: site_default
+    default_label: "선택 광종의 화면 기본 품목"
+    options: []
+    values_ref: metadata.prices.price_criteria
+    depends_on: [mineral]
+  - id: specification
+    semantic_key: specification
+    label: "규격"
+    type: enum
+    required: false
+    default: site_default
+    default_label: "선택 품목의 화면 기본 규격"
+    options: []
+    values_ref: metadata.prices.specifications
+    depends_on: [mineral, price_criterion]
+  - id: average_interval
+    semantic_key: granularity
+    label: "평균 단위"
+    type: enum
+    required: false
+    default: DAY
+    default_label: "일간"
+    options:
+      - {value: DAY, label: "일간", aliases: [일별]}
+      - {value: WEEK, label: "주간", aliases: [주별]}
+      - {value: MONTH, label: "월간", aliases: [월별]}
+      - {value: QUARTER, label: "분기", aliases: [분기별]}
+      - {value: YEAR, label: "연간", aliases: [연도별]}
+    values_ref: null
+    depends_on: []
+  - id: period_mode
+    semantic_key: period_mode
+    label: "기간 입력 방식"
+    type: enum
+    required: false
+    default: year
+    default_label: "연도별"
+    options:
+      - {value: year, label: "연도별", aliases: [연간]}
+      - {value: month, label: "월별", aliases: [월간]}
+    values_ref: null
+    depends_on: []
+  - id: period
+    semantic_key: period
+    label: "조회 기간"
+    type: date_range
+    required: false
+    default: site_default
+    default_label: "화면 기본 기간"
+    options: []
+    values_ref: metadata.prices.available_periods
+    depends_on: [period_mode]
+    temporal:
+      granularity: year
+      granularity_filter: period_mode
+      granularity_map: {year: year, month: month}
+  - id: compare_mineral
+    semantic_key: compare_mineral
+    label: "비교 광종"
+    type: mineral
+    required: false
+    default: null
+    default_label: "비교하지 않음"
+    options: []
+    values_ref: metadata.prices.iron_energy.minerals
+    depends_on: []
+  - id: compare_price_criterion
+    semantic_key: compare_price_criterion
+    label: "비교 가격기준"
+    type: enum
+    required: false
+    default: null
+    default_label: "비교하지 않음"
+    options: []
+    values_ref: metadata.prices.price_criteria
+    depends_on: [compare_mineral]
+outputs:
+  available_data_labels: ["기준일", "기준가격", "최저가", "최고가", "전일·전주·전월·전년 평균 대비 등락가와 등락률", "가격 시계열", "가격기준·규격·단위"]
+presentation:
+  summary: "선택 광종의 가격 선 그래프, 최신 비교표와 상세 원자료 표를 제공한다."
+  panels:
+    - {type: line, label: "가격 추이", description: "철광석·에너지 품목의 가격 방향과 변곡점을 본다."}
+    - {type: summary_table, label: "최신 가격 비교", description: "최근값을 여러 과거 평균과 비교한다."}
+    - {type: table, label: "상세 원자료", description: "기준일별 가격과 등락을 확인한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "유연탄은 Thermal Coal과 Coking Coal을 구분하고 철광석 규격도 함께 보존한다."
+tool: {status: planned, planned_name: get_resource_price}
+provenance:
+  observed_at: "2026-07-16"
+  sources: [docs/komis_service_catalog.md, docs/komis_tool_parameter_spec.md, docs/komis_visual_presentation_catalog.md, artifacts/browser/page-probe/pages.json]

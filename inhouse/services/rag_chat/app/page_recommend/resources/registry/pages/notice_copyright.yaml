@@ -1,0 +1,42 @@
+schema_version: 1
+page_id: notice_copyright
+aliases: [copyright_policy]
+identity:
+  section: "알림마당"
+  name: "KOMIS 저작권정책"
+  page_kind: info
+  navigation: {method: GET, target: /Komis/Policy, params: {}}
+  login_required: false
+  external: false
+routing:
+  summary: "한국광해광업공단 발간자료의 복제·배포·영리 이용·링크·인용 범위와 위반 책임을 안내하는 정적 정책"
+  use_when:
+    - "KOMIS 자료를 복제·배포·게재하거나 영리 목적으로 이용할 수 있는지 확인할 때"
+    - "KOMIS 자료의 출처 표시, 링크 또는 인용 범위 정책을 찾을 때"
+  do_not_use_when:
+    - "KOMIS 회원가입·서비스 이용계약 조건을 확인할 때"
+    - "고객정보 보호와 고객의 윤리적 의무를 확인할 때"
+  distinguish_from:
+    - {page_id: notice_terms, reason: "저작권정책은 공단 자료 이용 범위이고 이용약관은 서비스 이용계약 전반이다."}
+    - {page_id: notice_ethics, reason: "저작권정책은 저작물 복제·배포·인용 기준이고 윤리강령은 정보보호와 고객 행동 기준이다."}
+  example_queries:
+    - "KOMIS 자료를 회사 내부에서 복제해도 돼?"
+    - "KOMIS 보고서를 인용할 때 출처 표시는 어떻게 해야 해?"
+  keywords: [저작권정책, 저작권, 복제, 배포, 영리이용, 출처, 링크, 인용, 저작권침해]
+filters: []
+outputs:
+  available_data_labels: ["저작권 귀속", "복제·배포 기준", "영리 이용 조건", "링크 정책", "인용 범위", "위반 책임", "문의처"]
+presentation:
+  summary: "자료 이용 조건과 제한을 8개 번호 문단의 단일 정책 카드로 제공한다."
+  panels:
+    - {type: policy_text, label: "저작권정책", description: "복제·배포·영리 이용·링크·인용과 위반 책임을 순서대로 확인한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "조회 필터나 허가 신청 기능이 없는 정적 정책 안내이며 자료 이용 허가를 대신 부여하지 않는다."
+    - "구체적인 이용 허용 여부와 최신 법률 적용은 한국광해광업공단 문의처에 확인해야 한다."
+tool: {status: none, planned_name: null}
+provenance:
+  observed_at: "2026-07-27"
+  sources: [docs/komis_service_catalog.md, artifacts/browser/page-probe/notice-pages.json]

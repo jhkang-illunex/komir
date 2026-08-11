@@ -1,0 +1,38 @@
+schema_version: 1
+page_id: mypage_email
+aliases: [email_subscription, "MY060"]
+identity:
+  section: "마이페이지"
+  name: "이메일수신설정"
+  page_kind: account
+  navigation: {method: POST, target: /Komis/MyPage, params: {pageMode: MY060}}
+  login_required: true
+  external: false
+routing:
+  summary: "KOMIS 일일 자원뉴스 이메일 수신을 신청하거나 해제하는 로그인 페이지"
+  use_when:
+    - "일일 자원뉴스 이메일을 신청·해제하거나 현재 설정을 확인할 때"
+  do_not_use_when:
+    - "사이트에서 일일자원뉴스 게시물을 직접 검색할 때"
+  distinguish_from:
+    - {page_id: resource_trend_daily_news, reason: "이메일수신설정은 구독 변경이고 일일자원뉴스는 게시물 조회다."}
+  example_queries:
+    - "일일 자원뉴스 이메일을 신청하려면 어디로 가?"
+    - "뉴스 메일 수신을 해제하고 싶어"
+  keywords: [이메일, 메일, 수신설정, 구독, 신청, 신청해제, 일일자원뉴스]
+filters: []
+outputs:
+  available_data_labels: ["현재 이메일 수신 설정", "신청", "신청해제", "저장 동작"]
+presentation:
+  summary: "현재 설정을 확인하고 신청 또는 신청해제를 선택해 저장하는 폼이다."
+  panels:
+    - {type: form, label: "이메일 수신설정", description: "일일 자원뉴스 이메일의 신청·해제 상태를 선택한다."}
+policies:
+  recommendation_only: true
+  mutation: account_change
+  caveats:
+    - "로그인이 필요하며 구독 변경 저장은 명시적 사용자 확인 없이 수행하지 않는다."
+tool: {status: none, planned_name: null}
+provenance:
+  observed_at: "2026-07-16"
+  sources: [docs/komis_service_catalog.md, artifacts/browser/detail-probe/details.json]

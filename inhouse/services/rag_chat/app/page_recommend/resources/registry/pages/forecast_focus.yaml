@@ -1,0 +1,107 @@
+schema_version: 1
+page_id: forecast_focus
+aliases: [resource_focus]
+identity:
+  section: "광물전망지표"
+  name: "자원정보 FOCUS"
+  page_kind: board
+  navigation: {method: GET, target: /Komis/Board/RESORCFOCUS, params: {}}
+  login_required: false
+  external: false
+screen:
+  controls:
+    - id: quick_period
+      label: "빠른 기간"
+      description: "전체·1개월·3개월·6개월·1년 버튼으로 조회 기간을 빠르게 설정할 수 있다."
+      widget: radio
+      role: shortcut
+      target_filters: [period]
+      transform: relative_date_range
+      options:
+        - {value: all, label: "전체", aliases: [전체]}
+        - {value: 1_month, label: "1개월", aliases: [한달, 최근한달]}
+        - {value: 3_months, label: "3개월", aliases: [최근3개월]}
+        - {value: 6_months, label: "6개월", aliases: [반년, 최근6개월]}
+        - {value: 1_year, label: "1년", aliases: [최근1년]}
+      observed_default: all
+routing:
+  summary: "자원시장 주요 이슈를 심층 분석한 게시물과 첨부자료를 제공하는 게시판"
+  use_when:
+    - "특정 자원시장 이슈에 대한 분석 게시물을 찾을 때"
+    - "자원정보 FOCUS 발간자료를 내려받으려 할 때"
+  do_not_use_when:
+    - "오늘의 개별 뉴스나 정기 월간 보고서를 찾을 때"
+    - "가격·수급 수치 그래프를 직접 조회하려 할 때"
+  distinguish_from:
+    - {page_id: resource_trend_daily_news, reason: "FOCUS는 심층 이슈 분석이고 일일자원뉴스는 짧은 최신 기사다."}
+    - {page_id: forecast_price, reason: "FOCUS는 분석 게시물이고 가격예측은 구조화된 예측 수치다."}
+  example_queries:
+    - "자원정보 FOCUS 보고서는 어디서 찾아?"
+    - "핵심광물 공급망 심층 분석 자료를 보고 싶어"
+  keywords: [자원정보, FOCUS, 포커스, 이슈분석, 심층분석, 보고서]
+filters:
+  - id: period
+    semantic_key: period
+    label: "기간"
+    type: date_range
+    required: false
+    default: all
+    default_label: "전체 기간"
+    options: []
+    values_ref: null
+    depends_on: []
+    temporal: {granularity: day}
+  - id: search_field
+    semantic_key: search_field
+    label: "검색 대상"
+    type: enum
+    required: false
+    default: all
+    default_label: "제목+내용"
+    options:
+      - {value: all, label: "제목+내용", aliases: [전체]}
+      - {value: title, label: "제목", aliases: [제목만]}
+      - {value: content, label: "내용", aliases: [본문]}
+    values_ref: null
+    depends_on: []
+  - id: query
+    semantic_key: query
+    label: "검색어"
+    type: text
+    required: false
+    default: null
+    default_label: null
+    options: []
+    values_ref: null
+    depends_on: []
+  - id: page_size
+    semantic_key: page_size
+    label: "페이지 크기"
+    type: integer
+    required: false
+    default: 15
+    default_label: "15개"
+    options:
+      - {value: 5, label: "5개", aliases: []}
+      - {value: 10, label: "10개", aliases: []}
+      - {value: 15, label: "15개", aliases: []}
+      - {value: 20, label: "20개", aliases: []}
+      - {value: 40, label: "40개", aliases: []}
+      - {value: 50, label: "50개", aliases: []}
+    values_ref: null
+    depends_on: []
+outputs:
+  available_data_labels: ["게시물 번호", "제목", "첨부파일 여부", "등록일", "조회수"]
+presentation:
+  summary: "심층 분석 발간물을 표 목록과 첨부파일로 제공한다."
+  panels:
+    - {type: table, label: "FOCUS 목록", description: "제목, 등록일, 조회수와 첨부 여부를 확인한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "게시물 목록만으로는 상세 본문과 첨부문서 수치를 알 수 없다."
+tool: {status: planned, planned_name: search_komis_board}
+provenance:
+  observed_at: "2026-07-16"
+  sources: [docs/komis_service_catalog.md, docs/komis_tool_parameter_spec.md, artifacts/browser/page-probe/pages.json]

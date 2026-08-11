@@ -1,0 +1,42 @@
+schema_version: 1
+page_id: notice_sitemap
+aliases: [site_map]
+identity:
+  section: "알림마당"
+  name: "SiteMap"
+  page_kind: info
+  navigation: {method: GET, target: /Komis/Customer/SiteMap, params: {}}
+  login_required: false
+  external: false
+routing:
+  summary: "광물자원동향·가격·전망지표·광종/국가정보·핵심광물지도·알림마당·KOMIS소개·마이페이지의 전체 메뉴 구조와 이동 링크를 보여주는 사이트맵"
+  use_when:
+    - "KOMIS의 전체 메뉴와 하위 서비스 구조를 한눈에 확인할 때"
+    - "서비스 이름은 알지만 어느 상위 메뉴에 속하는지 찾을 때"
+  do_not_use_when:
+    - "찾으려는 구체적인 데이터·게시판·안내 페이지가 이미 정해져 있을 때"
+    - "사이트맵 자체에서 데이터를 검색하거나 분석 결과를 얻으려 할 때"
+  distinguish_from:
+    - {page_id: notice_usage_guide, reason: "SiteMap은 전체 메뉴 이동 경로이고 이용안내는 브라우저·공통 기능·파일 사용법이다."}
+  example_queries:
+    - "KOMIS 전체 메뉴 구성을 보여줘"
+    - "유관사이트와 이용정보는 어느 메뉴 아래에 있어?"
+  keywords: [SiteMap, 사이트맵, 전체메뉴, 메뉴구조, 서비스목록, 이동링크, 마이페이지]
+filters: []
+outputs:
+  available_data_labels: ["상위 메뉴", "하위 메뉴", "이동 링크", "로그인 전용 마이페이지 경로"]
+presentation:
+  summary: "8개 상위 메뉴와 하위 페이지를 다열 링크 목록으로 제공한다."
+  panels:
+    - {type: link_grid, label: "KOMIS 전체 메뉴", description: "상위 메뉴별 하위 서비스와 이동 링크를 한 화면에서 확인한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "사이트맵 자체에는 조회 필터가 없으며 구체적인 사용자 의도에는 해당 하위 페이지를 우선 추천한다."
+    - "사이트맵은 비로그인 접근 가능하지만 마이페이지 하위 링크는 로그인 상태에 따라 인증 동선으로 이동할 수 있다."
+    - "일부 항목은 부모 메뉴용 JavaScript 링크이므로 실제 이동은 구체적인 하위 링크를 사용한다."
+tool: {status: none, planned_name: null}
+provenance:
+  observed_at: "2026-07-27"
+  sources: [docs/komis_service_catalog.md, artifacts/browser/page-probe/notice-pages.json]

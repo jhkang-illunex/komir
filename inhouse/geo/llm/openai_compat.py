@@ -57,3 +57,38 @@ class OpenAICompatChat:
                 last = e
                 time.sleep(2 * (a + 1))
         raise last if last else RuntimeError("LLM 호출 실패(원인 미상)")
+
+    def complete_stream(self, system: str, user: str, max_tokens: int = 2048):
+        """토큰 델타를 순서대로 yield(SSE 스트리밍, `data: {...}` 라인 파싱).
+
+        2026-08-11 rag_chat 챗봇 스트리밍 요구사항(CLAUDE.md §0 산출물⑥) 때문에
+        추가 — complete()는 그대로 두고(이미 검증된 재시도/커넥션풀 경로, 다수
+        호출자가 씀) 이 메서드만 새로 얹었다. 재시도는 하지 않는다(스트림 시작
+        후 중간에 끊기면 부분 응답을 버리고 처음부터 다시 하기가 애매해, 상위
+        호출자가 필요시 전체를 재시도하는 편이 낫다)."""
+
+        url = f"{self.base_url}/chat/completions"
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        body = {
+            "model": self.model, "temperature": self.temperature,
+            "max_tokens": max_tokens, "stream": True,
+            "messages": [{"role": "system", "content": system},
+                         {"role": "user", "content": user}],
+        }
+        with self._session.post(url, headers=headers, json=body, timeout=self.timeout, stream=True) as r:
+            r.raise_for_status()
+            for line in r.iter_lines(decode_unicode=True):
+                if not line or not line.startswith("data:"):
+                    continue
+                data = line[len("data:"):].strip()
+                if data == "[DONE]":
+                    break
+                try:
+                    chunk = json.loads(data)
+                    delta = chunk["choices"][0].get("delta", {}).get("content")
+                except (ValueError, KeyError, IndexError):
+                    continue
+                if delta:
+                    yield delta

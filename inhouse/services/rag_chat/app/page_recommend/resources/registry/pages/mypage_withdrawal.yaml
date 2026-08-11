@@ -1,0 +1,40 @@
+schema_version: 1
+page_id: mypage_withdrawal
+aliases: [account_withdrawal, "MY070"]
+identity:
+  section: "마이페이지"
+  name: "회원탈퇴"
+  page_kind: account
+  navigation: {method: POST, target: /Komis/MyPage, params: {pageMode: MY070}}
+  login_required: true
+  external: false
+routing:
+  summary: "탈퇴 주의사항을 확인하고 KOMIS 회원탈퇴를 진행하는 로그인 계정관리 페이지"
+  use_when:
+    - "KOMIS 회원탈퇴 페이지의 위치와 절차를 안내받을 때"
+  do_not_use_when:
+    - "챗봇에게 계정을 직접 삭제해 달라고 할 때"
+  distinguish_from:
+    - {page_id: mypage_password, reason: "회원탈퇴는 계정 삭제이고 비밀번호변경은 인증정보 변경이다."}
+  example_queries:
+    - "KOMIS 회원탈퇴는 어디서 해?"
+    - "계정 삭제 안내를 보고 싶어"
+  keywords: [회원탈퇴, 계정삭제, 탈퇴, 마이페이지]
+filters: []
+outputs:
+  available_data_labels: ["탈퇴 주의사항", "회원탈퇴 실행 동작"]
+presentation:
+  summary: "탈퇴 주의사항과 계정 삭제 실행 동작을 제공하는 확인 페이지다."
+  panels:
+    - {type: warning, label: "탈퇴 주의사항", description: "계정 삭제 전 영향과 주의사항을 확인한다."}
+    - {type: destructive_action, label: "회원탈퇴", description: "사용자가 직접 탈퇴 실행 여부를 결정한다."}
+policies:
+  recommendation_only: true
+  mutation: account_change
+  caveats:
+    - "경로 안내만 허용하며 챗봇이나 자동화 도구가 회원탈퇴를 실행해서는 안 된다."
+    - "탈퇴는 되돌리기 어려운 파괴적 계정 변경이다."
+tool: {status: none, planned_name: null}
+provenance:
+  observed_at: "2026-07-16"
+  sources: [docs/komis_service_catalog.md, artifacts/browser/detail-probe/details.json]

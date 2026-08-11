@@ -1,0 +1,220 @@
+schema_version: 1
+page_id: map_global
+aliases: [global_trade, global_mineral_trade]
+identity:
+  section: "핵심광물지도"
+  name: "글로벌 수급지도"
+  page_kind: data
+  navigation: {method: GET, target: /Komis/MnrlMap/Nation, params: {}}
+  login_required: false
+  external: false
+screen:
+  controls:
+    - id: mineral_selector
+      label: "광종"
+      description: "광종 전체 또는 지원 광종을 선택할 수 있다."
+      widget: select
+      role: direct
+      native_name: srchMnrkndUnqCd
+      target_filters: [mineral]
+      options:
+        - {value: all, label: "광종 전체", aliases: [전체]}
+      values_ref: metadata.maps.trade_minerals
+    - id: hs_code_query
+      label: "HS Code 텍스트 검색"
+      description: "HS Code 검색어로 후보를 찾은 뒤 실제 HS Code 항목을 선택한다."
+      widget: text_search
+      role: lookup
+      native_name: srchTextHsCd
+      target_filters: [hs_code]
+      transform: lookup_selection
+routing:
+  summary: "국가 간 광종별 수출입 금액과 중량을 UN Comtrade HS 6자리 기준으로 보여주는 페이지"
+  use_when:
+    - "특정 광물의 세계 국가 간 교역 경로와 규모를 찾을 때"
+    - "수출국·수입국별 금액·중량·점유율·Top 경로를 보고 싶을 때"
+  do_not_use_when:
+    - "한국만을 기준으로 국가별 수출입을 찾을 때"
+    - "국가별 매장량이나 생산량을 찾을 때"
+  distinguish_from:
+    - {page_id: map_korea, reason: "글로벌 수급지도는 국가 간 HS 6자리 교역이고 대한민국 수급지도는 한국 기준 HS 10자리 교역이다."}
+    - {page_id: map_mineral, reason: "글로벌 수급지도는 교역 흐름이고 광물지도는 매장량·생산량 분포다."}
+  example_queries:
+    - "리튬이 어느 나라에서 어느 나라로 가장 많이 수출돼?"
+    - "중국에서 한국으로 들어오는 코발트 교역량을 보고 싶어"
+  keywords: [글로벌, 세계, 수급지도, 국가간교역, 수출국, 수입국, 교역경로, 금액, 중량, UN Comtrade, HS코드]
+filters:
+  - id: mineral
+    semantic_key: mineral
+    label: "광종"
+    type: mineral
+    required: true
+    default: null
+    default_label: null
+    options: []
+    values_ref: metadata.maps.trade_minerals
+    depends_on: []
+  - id: material_flow
+    semantic_key: material_flow
+    label: "생산품 유형"
+    type: enum
+    required: false
+    default: all
+    default_label: "생산품 유형 전체"
+    options:
+      - {value: all, label: "전체", aliases: [생산품전체]}
+      - {value: "001", label: "기초원료", aliases: []}
+      - {value: "002", label: "기초금속", aliases: []}
+      - {value: "003", label: "가공금속", aliases: []}
+      - {value: "004", label: "스크랩", aliases: [고철]}
+    values_ref: null
+    depends_on: [mineral]
+  - id: material_flow_detail
+    semantic_key: material_flow_detail
+    label: "물질흐름 세부"
+    type: enum
+    required: false
+    default: all
+    default_label: "세부 전체"
+    options: []
+    values_ref: metadata.maps.material_flow_details
+    depends_on: [mineral, material_flow]
+  - id: hs_code
+    semantic_key: hs_code
+    label: "HS Code"
+    type: enum
+    required: false
+    default: all
+    default_label: "HS Code 전체"
+    options: []
+    values_ref: metadata.maps.global_hs_codes
+    depends_on: [mineral, material_flow, material_flow_detail]
+  - id: export_country
+    semantic_key: export_country
+    label: "수출국가"
+    type: country
+    required: false
+    default: all
+    default_label: "수출국 전체"
+    options: []
+    values_ref: metadata.information.all_countries
+    depends_on: []
+  - id: import_country
+    semantic_key: import_country
+    label: "수입국가"
+    type: country
+    required: false
+    default: all
+    default_label: "수입국 전체"
+    options: []
+    values_ref: metadata.information.all_countries
+    depends_on: []
+  - id: period_granularity
+    semantic_key: granularity
+    label: "기간 단위"
+    type: enum
+    required: false
+    default: year
+    default_label: "연도별"
+    options:
+      - {value: year, label: "연도별", aliases: [연간]}
+      - {value: month, label: "월별", aliases: [월간]}
+    values_ref: null
+    depends_on: []
+  - id: period
+    semantic_key: period
+    label: "조회 시점"
+    type: date
+    required: false
+    default: latest
+    default_label: "최신 제공 시점"
+    options: []
+    values_ref: metadata.maps.global_available_periods
+    depends_on: [period_granularity]
+    temporal:
+      granularity: year
+      granularity_filter: period_granularity
+      granularity_map: {year: year, month: month}
+  - id: map_direction
+    semantic_key: map_direction
+    label: "지도 방향"
+    type: enum
+    required: false
+    default: import
+    default_label: "수입"
+    options:
+      - {value: import, label: "수입", aliases: [수입방향]}
+      - {value: export, label: "수출", aliases: [수출방향]}
+    values_ref: null
+    depends_on: []
+  - id: ranking_view
+    semantic_key: trade_direction
+    label: "표·차트 관점"
+    type: enum
+    required: false
+    default: import
+    default_label: "수입"
+    options:
+      - {value: import, label: "수입", aliases: [수입기준]}
+      - {value: export, label: "수출", aliases: [수출기준]}
+    values_ref: null
+    depends_on: []
+  - id: measure
+    semantic_key: measure
+    label: "정렬 관점"
+    type: enum
+    required: false
+    default: amount
+    default_label: "금액별"
+    options:
+      - {value: amount, label: "금액별", aliases: [금액, 달러]}
+      - {value: weight, label: "중량별", aliases: [중량, 무게, 톤]}
+    values_ref: null
+    depends_on: []
+  - id: amount_unit
+    semantic_key: amount_unit
+    label: "금액 표시 단위"
+    type: enum
+    required: false
+    default: thousand_usd
+    default_label: "천USD"
+    options:
+      - {value: thousand_usd, label: "천USD", aliases: [천달러]}
+      - {value: usd, label: "USD", aliases: [달러]}
+    values_ref: null
+    depends_on: [measure]
+    applies_when: {measure: [amount]}
+  - id: weight_unit
+    semantic_key: weight_unit
+    label: "중량 표시 단위"
+    type: enum
+    required: false
+    default: ton
+    default_label: "TON"
+    options:
+      - {value: ton, label: "TON", aliases: [톤, t]}
+      - {value: kg, label: "KG", aliases: [킬로그램]}
+    values_ref: null
+    depends_on: [measure]
+    applies_when: {measure: [weight]}
+outputs:
+  available_data_labels: ["수출국가", "수입국가", "조회시점", "교역 금액·점유율", "교역 중량·점유율", "HS Code", "교역경로 Top 5", "국가별 교역규모 Top 10 추이"]
+presentation:
+  summary: "국가 간 교역선 지도, 교역경로 Top 5 막대, 연도별 Top 10 누적 막대와 상세 표를 제공한다."
+  panels:
+    - {type: flow_map, label: "국가 간 교역지도", description: "수출국에서 수입국으로 향하는 교역 방향과 규모를 보여준다."}
+    - {type: ranked_bar, label: "교역경로 Top 5", description: "가장 큰 국가 간 경로를 순위로 비교한다."}
+    - {type: stacked_bar, label: "국가별 교역규모 Top 10", description: "연도별 전체 규모와 국가 구성을 누적 막대로 보여준다."}
+    - {type: table, label: "경로별 상세", description: "수출국·수입국, 금액·중량·점유율과 HS Code를 확인한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  filter_defaults:
+    mineral: {value: all, label: "광종 전체"}
+  caveats:
+    - "생산품 유형·물질흐름 세부·HS Code는 상위 필터에 종속되며 글로벌 교역은 HS 6자리 기준이다."
+    - "지도 방향과 표·차트 관점은 별도 화면 제어이므로 하나의 필터로 합치지 않는다."
+tool: {status: planned, planned_name: get_global_mineral_trade}
+provenance:
+  observed_at: "2026-07-16"
+  sources: [docs/komis_service_catalog.md, docs/komis_tool_parameter_spec.md, docs/komis_visual_presentation_catalog.md, artifacts/browser/page-probe/pages.json, artifacts/browser/detail-probe/details.json]

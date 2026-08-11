@@ -1,0 +1,121 @@
+schema_version: 1
+page_id: notice_related_global
+aliases: [overseas_related_sites]
+identity:
+  section: "알림마당"
+  name: "유관사이트 > 국외"
+  page_kind: info
+  navigation: {method: GET, target: /Komis/SiteCR/HvrlNation, params: {}}
+  login_required: false
+  external: false
+screen:
+  controls:
+    - id: institution_category_radio
+      label: "분류"
+      description: "전체 또는 대학·연구기관·정기간행물·정부기관 등·협회 및 단체·회사·기타를 단일선택한다."
+      widget: radio
+      role: direct
+      native_name: srchTypeCd
+      target_filters: [institution_category]
+      options:
+        - {value: all, label: "전체", aliases: [전체 분류]}
+        - {value: RS002002, label: "대학", aliases: [대학교]}
+        - {value: RS002003, label: "연구기관", aliases: [연구소]}
+        - {value: RS002004, label: "정기간행물", aliases: [간행물]}
+        - {value: RS002005, label: "정부기관 등", aliases: [정부기관]}
+        - {value: RS002006, label: "협회 및 단체", aliases: [협회, 단체]}
+        - {value: RS002007, label: "회사", aliases: [기업]}
+        - {value: RS002001, label: "기타", aliases: []}
+      observed_default: all
+    - id: search_field_selector
+      label: "검색 대상"
+      description: "기관·대학명 또는 요약정보 중 검색할 대상을 선택한다."
+      widget: select
+      role: direct
+      native_name: srchField
+      target_filters: [search_field]
+      options:
+        - {value: siteNm, label: "기관/대학명", aliases: [기관명, 대학명]}
+        - {value: siteInfo, label: "요약정보", aliases: [설명, 요약]}
+      observed_default: siteNm
+    - id: related_site_query
+      label: "검색어"
+      description: "선택한 검색 대상에서 해외 기관·대학 또는 요약정보를 찾는다."
+      widget: text_search
+      role: direct
+      native_name: srchValue
+      target_filters: [query]
+routing:
+  summary: "국외 자원 관련 대학·연구기관·간행물·정부기관·협회·회사의 설명과 외부 URL을 찾는 디렉터리"
+  use_when:
+    - "해외 지질조사소나 광물·에너지 연구기관 홈페이지를 찾을 때"
+    - "국외 광업 간행물·협회·단체·기업의 설명과 링크를 찾을 때"
+  do_not_use_when:
+    - "국내 대학·학회·정부기관 링크를 찾을 때"
+    - "주요 국가별 KOMIS 인적교류기관 목록을 찾을 때"
+  distinguish_from:
+    - {page_id: notice_related_korea, reason: "국외 페이지는 해외 기관·단체 중심이고 국내 페이지는 한국의 대학·기관 중심이다."}
+    - {page_id: notice_related_people, reason: "국외 페이지는 기관 유형 필터가 있고 인적교류기관은 필터 없이 국가별 교류기관을 보여준다."}
+  example_queries:
+    - "해외 지질조사기관 홈페이지를 찾고 싶어"
+    - "국외 광업 협회와 정기간행물 링크는 어디에 있어?"
+  keywords: [유관사이트, 국외, 해외, 대학, 연구기관, 정기간행물, 정부기관, 협회, 광업회사]
+filters:
+  - id: institution_category
+    semantic_key: institution_category
+    label: "분류"
+    type: enum
+    required: false
+    default: all
+    default_label: "전체"
+    options:
+      - {value: all, label: "전체", aliases: [전체 분류]}
+      - {value: RS002002, label: "대학", aliases: [대학교]}
+      - {value: RS002003, label: "연구기관", aliases: [연구소]}
+      - {value: RS002004, label: "정기간행물", aliases: [간행물]}
+      - {value: RS002005, label: "정부기관 등", aliases: [정부기관]}
+      - {value: RS002006, label: "협회 및 단체", aliases: [협회, 단체]}
+      - {value: RS002007, label: "회사", aliases: [기업]}
+      - {value: RS002001, label: "기타", aliases: []}
+    values_ref: null
+    depends_on: []
+  - id: search_field
+    semantic_key: search_field
+    label: "검색 대상"
+    type: enum
+    required: false
+    default: siteNm
+    default_label: "기관/대학명"
+    options:
+      - {value: siteNm, label: "기관/대학명", aliases: [기관명, 대학명]}
+      - {value: siteInfo, label: "요약정보", aliases: [설명, 요약]}
+    values_ref: null
+    depends_on: []
+  - id: query
+    semantic_key: query
+    label: "검색어"
+    type: text
+    required: false
+    default: null
+    default_label: null
+    options: []
+    values_ref: null
+    depends_on: []
+outputs:
+  available_data_labels: ["분류 코드", "분류", "기관·대학명", "요약정보", "외부 URL"]
+presentation:
+  summary: "분류별 제목 아래 기관·대학명, 요약정보와 새 창 외부 URL을 3열 표로 제공한다."
+  panels:
+    - {type: grouped_tables, label: "국외 유관기관 목록", description: "분류별 해외 기관·대학명, 설명과 외부 홈페이지 주소를 확인한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "분류 메타데이터는 POST /Komis/SiteCR/ajax/getSiteCrCdList에 pageCd=HvrlNation을 전달해 조회한다."
+    - '목록은 POST /Komis/SiteCR/ajax/getSiteCrDataList에 pageCd=HvrlNation, srchTypeCd(전체=""), srchField(siteNm|siteInfo), srchValue를 전달해 조회한다.'
+    - "2026-07-27 조사 시 대학 RS002002 1건, 연구기관 RS002003 23건, 정기간행물 RS002004 5건, 정부기관 등 RS002005 3건, 협회 및 단체 RS002006 14건, 회사 RS002007 2건, 기타 RS002001 1건으로 총 49건이었다."
+    - "KOMIS가 제공한 외부 URL의 현재 운영 여부나 연결 성공은 보장하지 않으며 조사된 49개 링크는 모두 HTTP 새 창 링크였다."
+tool: {status: none, planned_name: null}
+provenance:
+  observed_at: "2026-07-27"
+  sources: [docs/komis_service_catalog.md, docs/komis_tool_parameter_spec.md, artifacts/browser/page-probe/notice-pages.json, artifacts/browser/page-probe/notice-responses.json]

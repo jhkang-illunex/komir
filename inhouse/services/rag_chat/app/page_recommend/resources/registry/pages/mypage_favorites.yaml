@@ -1,0 +1,39 @@
+schema_version: 1
+page_id: mypage_favorites
+aliases: [favorites, bookmarks, "MY040"]
+identity:
+  section: "마이페이지"
+  name: "즐겨찾기"
+  page_kind: account
+  navigation: {method: POST, target: /Komis/MyPage, params: {pageMode: MY040}}
+  login_required: true
+  external: false
+routing:
+  summary: "서비스에서 즐겨찾기로 등록한 메뉴를 조회하고 삭제할 수 있는 로그인 페이지"
+  use_when:
+    - "내가 저장한 KOMIS 즐겨찾기 목록을 확인할 때"
+    - "즐겨찾기 관리 페이지의 위치를 찾을 때"
+  do_not_use_when:
+    - "개인화 마이메뉴 항목을 설정할 때"
+  distinguish_from:
+    - {page_id: mypage_menu, reason: "즐겨찾기는 저장한 페이지 목록이고 마이메뉴는 별도로 설정한 개인화 메뉴다."}
+  example_queries:
+    - "내 즐겨찾기는 어디서 봐?"
+    - "저장한 페이지 목록을 관리하고 싶어"
+  keywords: [즐겨찾기, 북마크, 저장한페이지, 즐겨찾기삭제]
+filters: []
+outputs:
+  available_data_labels: ["번호", "메뉴", "등록일", "삭제 동작"]
+presentation:
+  summary: "저장한 서비스 메뉴와 등록일을 표로 보여주고 개별 삭제 동작을 제공한다."
+  panels:
+    - {type: table, label: "즐겨찾기 목록", description: "저장한 메뉴, 등록일과 삭제 동작을 확인한다."}
+policies:
+  recommendation_only: true
+  mutation: account_change
+  caveats:
+    - "로그인이 필요하며 즐겨찾기 삭제는 명시적 사용자 확인 없이 수행하지 않는다."
+tool: {status: none, planned_name: null}
+provenance:
+  observed_at: "2026-07-16"
+  sources: [docs/komis_service_catalog.md, artifacts/browser/detail-probe/details.json]

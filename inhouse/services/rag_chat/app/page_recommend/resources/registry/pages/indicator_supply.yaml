@@ -1,0 +1,70 @@
+schema_version: 1
+page_id: indicator_supply
+aliases: [supply_indicator]
+identity:
+  section: "광물전망지표"
+  name: "수급동향지표"
+  page_kind: data
+  navigation: {method: GET, target: /Komis/MnrlIndc/IndxSply, params: {}}
+  login_required: true
+  external: false
+routing:
+  summary: "광종별 국내 수급리스크와 가격·세계수급·수입의존도·생산 및 매장 집중도를 보여주는 로그인 페이지"
+  use_when:
+    - "특정 광물의 국내 수급위험 상태나 수입의존도를 확인할 때"
+    - "세계 수요·공급, 국내 수입, 생산·매장 집중도를 한 화면에서 보고 싶을 때"
+  do_not_use_when:
+    - "국가별 실제 수입·수출 금액이나 중량 순위를 조회할 때"
+    - "가격리스크 등급만 찾을 때"
+  distinguish_from:
+    - {page_id: indicator_market, reason: "수급동향지표는 수급리스크이고 시장동향지표는 가격리스크다."}
+    - {page_id: map_korea, reason: "수급동향지표는 합성 위험지표와 배경 패널이고 대한민국 수급지도는 실제 국가별 교역량·금액이다."}
+  example_queries:
+    - "리튬 수급 위험과 수입의존도를 보고 싶어"
+    - "코발트 세계 수요공급과 국내 수입현황은 어디서 봐?"
+  keywords: [수급동향지표, 수급리스크, 수입의존도, 세계수요, 세계공급, 국내수입, 생산집중, 매장집중]
+filters:
+  - id: mineral
+    semantic_key: mineral
+    label: "광종"
+    type: mineral
+    required: true
+    default: null
+    default_label: null
+    options: []
+    values_ref: metadata.indicators.supply_minerals
+    depends_on: []
+  - id: period
+    semantic_key: period
+    label: "월 범위"
+    type: date_range
+    required: false
+    default: site_default
+    default_label: "화면 기본 월 범위"
+    options: []
+    values_ref: metadata.indicators.supply_available_months
+    depends_on: []
+    temporal: {granularity: month}
+outputs:
+  available_data_labels: ["기준월", "수급동향지표", "전월 대비 등락가·등락률", "가격", "위기 여부", "국제가격", "세계 수요·공급·과부족", "국내 수입량·수입액", "상위 3개국 수입의존도", "국가별 생산량·매장량과 점유율"]
+presentation:
+  summary: "상단 여섯 보조 패널과 하단 월별 수급지표·가격 추이를 함께 보여준다."
+  panels:
+    - {type: line, label: "국제가격추이", description: "월평균 가격의 방향과 변곡점을 본다."}
+    - {type: line_and_grouped_bar, label: "세계 수요-공급", description: "수요 선, 공급 막대와 과부족 막대를 함께 비교한다."}
+    - {type: dual_axis_line_and_bar, label: "국내 수입현황", description: "수입량 막대와 수입액 선을 서로 다른 축에서 비교한다."}
+    - {type: gauge, label: "상위 3개국 수입의존도", description: "주요 수입국 집중 비율을 도넛 게이지로 보여준다."}
+    - {type: ranked_bar, label: "국가별 생산량 비중", description: "주요 생산국의 값·점유율·순위를 보여준다."}
+    - {type: ranked_bar, label: "국가별 매장량 비중", description: "주요 보유국의 값·점유율·순위를 보여준다."}
+    - {type: dual_axis_line, label: "수급지표·가격 추이", description: "하단에서 월별 수급동향지표와 가격의 동행·괴리를 본다."}
+    - {type: table, label: "월별 수급지표", description: "기준월별 지표, 등락과 가격의 정확한 값을 확인한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "로그인 후 접근할 수 있는 페이지다."
+    - "광종에 따라 일부 패널만 NO DATA, 0 또는 부분 제공일 수 있어 페이지 전체 상태로 합치지 않는다."
+tool: {status: planned, planned_name: get_supply_indicator}
+provenance:
+  observed_at: "2026-07-16"
+  sources: [docs/komis_service_catalog.md, docs/komis_tool_parameter_spec.md, docs/komis_visual_presentation_catalog.md, artifacts/browser/page-probe/pages.json, artifacts/browser/visual-presentation/visuals.json]

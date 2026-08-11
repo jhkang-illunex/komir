@@ -1,0 +1,89 @@
+schema_version: 1
+page_id: indicator_composite
+aliases: [composite_index, mineral_composite_index]
+identity:
+  section: "광물전망지표"
+  name: "광물종합지수"
+  page_kind: data
+  navigation: {method: GET, target: /Komis/MnrlIndc/IndxMin, params: {}}
+  login_required: false
+  external: false
+screen:
+  controls:
+    - id: quick_period
+      label: "빠른 기간"
+      description: "1개월·3개월·6개월·1년 버튼으로 조회 기간을 빠르게 설정할 수 있다."
+      widget: radio
+      role: shortcut
+      native_name: radioMonth
+      target_filters: [period]
+      transform: relative_date_range
+      options:
+        - {value: 1_month, label: "1개월", aliases: [최근1개월]}
+        - {value: 3_months, label: "3개월", aliases: [최근3개월]}
+        - {value: 6_months, label: "6개월", aliases: [최근6개월, 반년]}
+        - {value: 1_year, label: "1년", aliases: [최근1년]}
+      observed_default: 1_year
+routing:
+  summary: "대표광물 15개의 가중 종합가격지수와 메이저·희소금속 하위 지수를 비교하는 페이지"
+  use_when:
+    - "개별 광물가격이 아니라 광물시장 전체의 가격지수 흐름을 보고 싶을 때"
+    - "메이저금속지수와 희소금속지수의 동행·괴리를 비교할 때"
+  do_not_use_when:
+    - "특정 광물의 실제 가격 시계열을 찾을 때"
+    - "광종별 시장·수급 리스크 등급을 찾을 때"
+  distinguish_from:
+    - {page_id: price_base_metals, reason: "광물종합지수는 여러 광물의 가중 지수이고 가격 페이지는 개별 광물 가격이다."}
+    - {page_id: indicator_market, reason: "종합가격지수와 광종별 가격리스크 지표를 구분한다."}
+  example_queries:
+    - "전체 광물시장 가격 흐름은 어디서 봐?"
+    - "메이저금속과 희소금속 지수를 비교하고 싶어"
+  keywords: [MinDex, 광물종합지수, 메이저금속지수, 희소금속지수, 종합가격지수, 가중치]
+filters:
+  - id: period
+    semantic_key: period
+    label: "조회 기간"
+    type: date_range
+    required: false
+    default: null
+    default_label: null
+    options: []
+    values_ref: metadata.indicators.composite_available_periods
+    depends_on: []
+    temporal: {granularity: day}
+  - id: index_type
+    semantic_key: index_type
+    label: "지수 보기"
+    type: enum
+    required: false
+    default: all
+    default_label: "전체 지수"
+    options:
+      - {value: all, label: "전체", aliases: [세지수, 모두]}
+      - {value: composite, label: "광물종합지수", aliases: [종합지수, MinDex]}
+      - {value: major_metals, label: "메이저금속지수", aliases: [메이저지수]}
+      - {value: minor_metals, label: "희소금속지수", aliases: [희소지수]}
+    values_ref: null
+    depends_on: []
+outputs:
+  available_data_labels: ["기준일", "세 지수값", "전일 대비 등락가·등락률", "지수별 시계열", "구성 광종", "구성 광종 가중치와 순위"]
+presentation:
+  summary: "세 지수를 같은 시간축의 다중 선 그래프로 비교하고 최신값 카드, 일별 표와 구성 광종 가중치 순위표를 함께 제공한다."
+  panels:
+    - {type: multi_line, label: "세 지수 추이", description: "종합·메이저·희소금속 지수의 동행과 괴리를 비교한다."}
+    - {type: summary_cards, label: "최신 지수", description: "현재값과 전일 대비 변화를 빠르게 확인한다."}
+    - {type: ranked_table, label: "구성 광종 가중치", description: "어떤 광종이 종합지수에 크게 반영되는지 본다."}
+    - {type: table, label: "지수 원자료", description: "기준일별 정확한 지수값과 등락을 확인한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  filter_defaults:
+    period:
+      value: {kind: trailing, count: 1, unit: year}
+      label: "최근 1년"
+  caveats:
+    - "구성 가중치는 영향 가능성을 보여줄 뿐 특정 지수 변동의 원인을 확정하지 않는다."
+tool: {status: planned, planned_name: get_mineral_composite_index}
+provenance:
+  observed_at: "2026-07-16"
+  sources: [docs/komis_service_catalog.md, docs/komis_tool_parameter_spec.md, docs/komis_visual_presentation_catalog.md, artifacts/browser/page-probe/pages.json]

@@ -1,0 +1,125 @@
+schema_version: 1
+page_id: price_base_metals
+aliases: [price_base, base_metals]
+identity:
+  section: "광물자원가격"
+  name: "비철금속"
+  page_kind: data
+  navigation: {method: GET, target: /Komis/RsrcPrice/BaseMetals, params: {}}
+  login_required: false
+  external: false
+routing:
+  summary: "니켈·동·아연·알루미늄·연·주석의 LME 가격과 일부 재고 추이를 조회하는 페이지"
+  use_when:
+    - "비철금속의 과거 가격 시계열을 찾을 때"
+    - "LME CASH·선물 가격이나 LME 재고를 비교하고 싶을 때"
+  do_not_use_when:
+    - "리튬·코발트 등 희소금속 가격을 찾을 때"
+    - "미래 가격예측이나 종합지수를 찾을 때"
+  distinguish_from:
+    - {page_id: price_minor_metals, reason: "비철금속 LME 가격과 희소금속 품목·규격별 가격을 구분한다."}
+    - {page_id: forecast_price, reason: "이 페이지는 실제 과거 가격이며 가격예측은 미래 예측값을 제공한다."}
+  example_queries:
+    - "최근 동 LME CASH 가격 추이를 보고 싶어"
+    - "니켈 가격과 LME 재고를 비교할 수 있어?"
+  keywords: [비철금속, LME, 니켈, 동, 구리, 아연, 알루미늄, 연, 납, 주석, 가격, 재고]
+filters:
+  - id: mineral
+    semantic_key: mineral
+    label: "광종"
+    type: mineral
+    required: true
+    default: null
+    default_label: null
+    options: []
+    values_ref: metadata.prices.base_metals.minerals
+    depends_on: []
+  - id: price_criterion
+    semantic_key: price_criterion
+    label: "가격기준"
+    type: enum
+    required: false
+    default: site_default
+    default_label: "선택 광종의 화면 기본 가격기준"
+    options: []
+    values_ref: metadata.prices.price_criteria
+    depends_on: [mineral]
+  - id: average_interval
+    semantic_key: granularity
+    label: "평균 단위"
+    type: enum
+    required: false
+    default: DAY
+    default_label: "일간"
+    options:
+      - {value: DAY, label: "일간", aliases: [일별, 하루]}
+      - {value: WEEK, label: "주간", aliases: [주별]}
+      - {value: MONTH, label: "월간", aliases: [월별]}
+      - {value: QUARTER, label: "분기", aliases: [분기별]}
+      - {value: YEAR, label: "연간", aliases: [년간, 연도별]}
+    values_ref: null
+    depends_on: []
+  - id: period_mode
+    semantic_key: period_mode
+    label: "기간 입력 방식"
+    type: enum
+    required: false
+    default: year
+    default_label: "연도별"
+    options:
+      - {value: year, label: "연도별", aliases: [연간]}
+      - {value: month, label: "월별", aliases: [월간]}
+    values_ref: null
+    depends_on: []
+  - id: period
+    semantic_key: period
+    label: "조회 기간"
+    type: date_range
+    required: false
+    default: site_default
+    default_label: "화면 기본 기간"
+    options: []
+    values_ref: metadata.prices.available_periods
+    depends_on: [period_mode]
+    temporal:
+      granularity: year
+      granularity_filter: period_mode
+      granularity_map: {year: year, month: month}
+  - id: compare_mineral
+    semantic_key: compare_mineral
+    label: "비교 광종"
+    type: mineral
+    required: false
+    default: null
+    default_label: "비교하지 않음"
+    options: []
+    values_ref: metadata.prices.base_metals.minerals
+    depends_on: []
+  - id: compare_price_criterion
+    semantic_key: compare_price_criterion
+    label: "비교 가격기준"
+    type: enum
+    required: false
+    default: null
+    default_label: "비교하지 않음"
+    options: []
+    values_ref: metadata.prices.price_criteria
+    depends_on: [compare_mineral]
+outputs:
+  available_data_labels: ["기준일", "기준가격", "최저가", "최고가", "전일·전주·전월·전년 평균 대비 등락가와 등락률", "LME 재고량과 재고 등락", "가격·재고 시계열"]
+presentation:
+  summary: "가격과 LME 재고를 같은 시간축의 이중축 선 그래프로 비교하고 최신 비교표와 상세 원자료 표를 함께 제공한다."
+  panels:
+    - {type: dual_axis_line, label: "가격·재고 추이", description: "가격과 LME 재고를 서로 다른 y축에서 비교한다."}
+    - {type: summary_table, label: "최신 가격 비교", description: "최근값을 전일·전주·전월·전년 평균과 비교한다."}
+    - {type: table, label: "상세 원자료", description: "기준일별 정확한 가격과 등락을 확인한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "가격기준은 광종에 종속되며 서로 다른 기준과 단위를 같은 시계열로 합치지 않는다."
+    - "이중축의 가격과 재고 높이를 같은 단위처럼 직접 비교하지 않는다."
+tool: {status: planned, planned_name: get_resource_price}
+provenance:
+  observed_at: "2026-07-16"
+  sources: [docs/komis_service_catalog.md, docs/komis_tool_parameter_spec.md, docs/komis_visual_presentation_catalog.md, artifacts/browser/page-probe/pages.json]

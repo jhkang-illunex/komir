@@ -1,0 +1,117 @@
+schema_version: 1
+page_id: resource_trend_daily_news
+aliases: [daily_news]
+identity:
+  section: "광물자원동향"
+  name: "일일자원뉴스"
+  page_kind: board
+  navigation: {method: GET, target: /Komis/Board/DAYNEWS, params: {}}
+  login_required: false
+  external: false
+screen:
+  controls:
+    - id: quick_period
+      label: "빠른 기간"
+      description: "전체·1개월·3개월·6개월·1년 버튼으로 조회 기간을 빠르게 설정할 수 있다."
+      widget: radio
+      role: shortcut
+      target_filters: [period]
+      transform: relative_date_range
+      options:
+        - {value: all, label: "전체", aliases: [전체]}
+        - {value: 1_month, label: "1개월", aliases: [한달, 최근한달]}
+        - {value: 3_months, label: "3개월", aliases: [최근3개월]}
+        - {value: 6_months, label: "6개월", aliases: [반년, 최근6개월]}
+        - {value: 1_year, label: "1년", aliases: [최근1년]}
+      observed_default: all
+routing:
+  summary: "광종별 최신 광물·산업 뉴스를 카드와 본문 요약으로 조회하는 페이지"
+  use_when:
+    - "오늘 또는 최근의 특정 광물 뉴스를 찾을 때"
+    - "광물시장 사건과 기업 동향의 짧은 본문을 바로 읽고 싶을 때"
+  do_not_use_when:
+    - "주간 가격 동향 보고서나 월간 분석 자료를 찾을 때"
+    - "가격 시계열이나 수급 수치를 직접 조회하려 할 때"
+  distinguish_from:
+    - {page_id: resource_trend_weekly_news, reason: "일일자원뉴스는 개별 최신 기사이며 주간자원뉴스는 주간 보고서형 자료다."}
+    - {page_id: forecast_focus, reason: "일일자원뉴스는 단기 뉴스이고 자원정보 FOCUS는 특정 이슈의 분석 게시물이다."}
+  example_queries:
+    - "오늘 리튬 뉴스는 어디서 봐?"
+    - "최근 희토류 공급망 뉴스를 찾고 싶어"
+  keywords: [일일, 오늘, 최신, 뉴스, 기사, 광물뉴스, ESG]
+filters:
+  - id: mineral_or_type
+    semantic_key: mineral_or_type
+    label: "광종·분류"
+    type: enum
+    required: false
+    default: all
+    default_label: "전체"
+    options: []
+    values_ref: metadata.boards.daily_news_categories
+    depends_on: []
+  - id: period
+    semantic_key: period
+    label: "기간"
+    type: date_range
+    required: false
+    default: all
+    default_label: "전체 기간"
+    options: []
+    values_ref: null
+    depends_on: []
+    temporal: {granularity: day}
+  - id: search_field
+    semantic_key: search_field
+    label: "검색 대상"
+    type: enum
+    required: false
+    default: all
+    default_label: "제목+내용"
+    options:
+      - {value: all, label: "제목+내용", aliases: [전체]}
+      - {value: title, label: "제목", aliases: [제목만]}
+      - {value: content, label: "내용", aliases: [본문]}
+    values_ref: null
+    depends_on: []
+  - id: query
+    semantic_key: query
+    label: "검색어"
+    type: text
+    required: false
+    default: null
+    default_label: null
+    options: []
+    values_ref: null
+    depends_on: []
+  - id: page_size
+    semantic_key: page_size
+    label: "페이지 크기"
+    type: integer
+    required: false
+    default: 15
+    default_label: "15개"
+    options:
+      - {value: 5, label: "5개", aliases: []}
+      - {value: 10, label: "10개", aliases: []}
+      - {value: 15, label: "15개", aliases: []}
+      - {value: 20, label: "20개", aliases: []}
+      - {value: 40, label: "40개", aliases: []}
+      - {value: 50, label: "50개", aliases: []}
+    values_ref: null
+    depends_on: []
+outputs:
+  available_data_labels: ["광종·분류", "제목", "내용·요약", "등록일", "관련 서비스 분류", "조회수", "첨부파일 여부"]
+presentation:
+  summary: "광종별 뉴스 카드에서 제목, 본문 요약과 관련 서비스 분류를 함께 보여준다."
+  panels:
+    - {type: cards, label: "뉴스 카드", description: "광종·제목·본문과 등록일을 카드 단위로 읽는다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "기타와 ESG는 정식 광종 코드가 아니라 게시물 분류값으로 취급한다."
+tool: {status: planned, planned_name: search_komis_board}
+provenance:
+  observed_at: "2026-07-16"
+  sources: [docs/komis_service_catalog.md, docs/komis_tool_parameter_spec.md, artifacts/browser/page-probe/pages.json]

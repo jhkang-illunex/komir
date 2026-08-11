@@ -1,0 +1,57 @@
+schema_version: 1
+page_id: external_investment_guide
+aliases: [investment_guide]
+identity:
+  section: "광종/국가정보"
+  name: "투자실무가이드"
+  page_kind: external
+  navigation: {method: GET, target: "https://web.e-factory.co.kr/KOMIR/202510/index.html", params: {}}
+  login_required: false
+  external: true
+routing:
+  summary: "칠레·캐나다·중국·몽골의 해외 광물투자 실무가이드를 디지털 책으로 제공하는 외부 페이지"
+  use_when:
+    - "국가별 해외 광물투자 절차와 실무 가이드북을 찾을 때"
+    - "2025 해외 광물투자 실무가이드 디지털 책을 열고 싶을 때"
+  do_not_use_when:
+    - "개별 법령 원문과 첨부파일을 찾을 때"
+    - "모든 국가의 광업 기초정보를 검색하려 할 때"
+  distinguish_from:
+    - {page_id: law_info, reason: "투자실무가이드는 국가별 실무 안내서이고 법령정보는 법령 문서 목록이다."}
+    - {page_id: country_info, reason: "투자실무가이드는 현재 4개국 책자이고 국가정보는 95개국 종합 참고자료다."}
+  example_queries:
+    - "칠레 광물투자 실무가이드 어디 있어?"
+    - "캐나다 해외 광물투자 가이드북을 보고 싶어"
+  keywords: [투자실무가이드, 해외투자, 광물투자, 가이드북, 디지털책, 칠레, 캐나다, 중국, 몽골]
+filters:
+  - id: country
+    semantic_key: country
+    label: "국가 책자"
+    type: enum
+    required: false
+    default: all
+    default_label: "전체 책자"
+    options:
+      - {value: all, label: "전체", aliases: []}
+      - {value: CL, label: "칠레", aliases: []}
+      - {value: CA, label: "캐나다", aliases: []}
+      - {value: CN, label: "중국", aliases: []}
+      - {value: MN, label: "몽골", aliases: []}
+    values_ref: null
+    depends_on: []
+outputs:
+  available_data_labels: ["국가별 책 표지", "디지털 가이드 본문"]
+presentation:
+  summary: "국가별 책 표지를 선택해 디지털 가이드를 여는 책장형 외부 서비스다."
+  panels:
+    - {type: bookshelf, label: "국가별 가이드", description: "칠레·캐나다·중국·몽골 책 표지에서 가이드를 연다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "현재 주소에 연도성 경로가 포함되어 향후 발간판에서 URL이 바뀔 수 있다."
+    - "검색 필터나 구조화된 표형 데이터는 제공하지 않는다."
+tool: {status: none, planned_name: null}
+provenance:
+  observed_at: "2026-07-16"
+  sources: [docs/komis_service_catalog.md, artifacts/browser/detail-probe/details.json]

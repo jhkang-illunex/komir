@@ -2,7 +2,384 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-08-06 (최신) — DMZ/inhouse 저장소 물리분리 + collectors 격리 리팩터 + skeptic-code 감사
+## 2026-08-11 (최신, 이어서) — 정형(RDB) 조회 3종을 `services/shared/retrieval/`로 통합(rag_chat×report_gen 중복 제거)
+
+같은 날 rag_chat과 report_gen이 각각 만든 정형 조회 코드 두 벌(서로의 영역을 침범하지
+않으려고 의도적으로 남긴 중복 — 양쪽 docstring에 "후속 정리 대상"이라 적혀 있었다)을
+`CONTAINER_ARCHITECTURE.md` §5-4·§6("동일한 3개 조회 도구를 shared에 한 번만 구현")대로
+합쳤다.
+
+**배치**
+- `services/shared/retrieval/structured.py`(신규, 정본) — `latest_diagnosis(cc)`·
+  `import_forecast(cc, target, horizon=None)`·`geo_index_trend(cc, freq, limit)` +
+  `VALID_COMMODITIES`/`check_commodity()`/`StructuredQueryError`. 화이트리스트·SQL이
+  이제 이 파일 한 곳에만 있다. `__init__.py`는 두지 않았다 — `services/shared` 자체가
+  namespace 패키지라 같은 규약을 따랐고, 내부에서 `from ..db import read_sql_msr`로
+  붙는다(별도 sys.path 부트스트랩 불필요).
+- `rag_chat/app/retrieval/structured.py` → 얇은 어댑터. LLM 도구호출 계약
+  (`TEMPLATES`/`run_template()`)과, 최신 1건이 필요한 `latest_geo_index()`
+  (= `geo_index_trend(..., limit=1)[-1]`)만 남았다. 103줄 → 51줄.
+- `report_gen/app/generator.py` — `_latest_diagnosis`/`_import_forecast`/
+  `_geo_index_trend` 삭제, 공용 구현 직접 호출. `_check_commodity`는 3줄 래퍼로 남겨
+  `StructuredQueryError`를 `ReportGenerationError`로 바꿔 던진다 — `main.py`가 그걸
+  잡아 HTTP 400을 내는 계약이라 예외형이 바뀌면 조용히 500으로 새어나간다.
+  `_komis_supply_indicator`(KOMIS 공개원천 전용)는 공유 대상이 아니라 그대로 뒀다.
+
+**시그니처 판단(두 호출자 반환형이 달랐다)** — 억지로 한 형태로 뭉개지 않고 "여러 행 +
+컬럼 합집합"을 정본으로 두고, 최신 1건이 필요한 쪽이 어댑터에서 뽑아 쓰게 했다.
+`import_forecast`는 rag_chat판 시그니처(horizon 옵션)에 report_gen판 SQL(max(base_date)
+서브쿼리)을 얹었다 — rag_chat판은 `ORDER BY base_date DESC, horizon ASC LIMIT 12`라
+**horizon을 지정하면 여러 기준월이 섞여 나오는 버그**가 있었다(자기 docstring "그 시점만"과
+불일치). 현재 데이터는 광종·target별 기준월이 2025-12-01 하나뿐이라 출력은 불변.
+
+**회귀 검증**(통합 전/후 같은 스크립트로 45개 항목 덤프 후 diff, `MSR_DB`=운영 duckdb)
+- **report_gen 리포트 본문 5광종 전부 바이트 단위 동일**(`render_report(cc)['body']`,
+  생성시각·주차 등 시변 필드만 마스킹). `rc.import_forecast` 12항목도 완전 동일.
+- 나머지 diff는 전부 **추가**(삭제·변경 0줄)였고 사전에 예측한 목록과 일치했다:
+  ①rag_chat `latest_diagnosis`에 `generated_at` ②rag_chat `latest_geo_index`에
+  `index_config_version` ③report_gen `geo_index` 행에 `commodity_code`·`freq`
+  ④freq 오류문구 `W|M`→`W|M|Y`(geo_index에 실제 존재하는 값 기준으로 통일).
+  ①~③은 컬럼 합집합의 결과라 Jinja(StrictUndefined는 없는 키에만 실패)·LLM 도구
+  출력 어느 쪽도 깨지 않는다. rag_chat `run_template`은 아직 호출자가 없다(chat.py는
+  `unstructured`만 import) — 런타임 영향 없음.
+- `python3 -m py_compile` services 전체 52파일 통과, 5개 모듈 실제 import 확인.
+- `out_report`는 건드리지 않았다 — 검증에 `render_report`/`build_context`만 써서 적재
+  경로를 아예 타지 않았고, 검증 후 조회에서도 0행(테이블 그대로)이었다.
+- Containerfile/requirements: 양쪽 다 `COPY services/shared ./shared` 한 줄이 새
+  서브패키지까지 이미 덮는다(확인만 하고 손대지 않음). Containerfile 주석의 "후속
+  과제" 문구는 그 시점 기록이라 그대로 뒀다.
+
+## 2026-08-11 (이어서) — report_gen에 외부repo `analysis/` 이식 + 리포트 실경로 1개 가동
+
+병합계획 결정②(코드 직접 이식) 실행. 외부repo `src/komis_report_generator/analysis/`를
+`inhouse/services/report_gen/`에 이식하고, "템플릿 × 정형데이터 → 본문 조립 →
+`out_report` 적재"까지 실제로 도는 경로 하나를 만들었다. 그동안 report_gen은
+3개 파일 전부 `raise NotImplementedError` 스켈레톤이었다.
+
+**먼저 정정 — "DB 조회 실물"은 `data_sources/database.py`가 아니라 `scaffold.py`에
+있었다.** 지시서·병합계획이 `database.py`를 실물 SQL로 봤는데, 실제로 읽어보니
+`database.py`는 *정규화기*(원천 행 → 계열 모델)이고 psycopg 커넥션과 테이블·컬럼
+스펙(`_DatasetSpec`/`_PAGE_DATASETS`)·SQL 조립은 전부 `scaffold.py`의
+`PostgresRawDataRepository`에 있었다. 그래서 이식 대상을 그쪽으로 잡았다.
+
+**배치**
+- `services/shared/komis_raw.py`(신규) — SQL 리포지토리(`KomisRawDataRepository`)
+  + 9개 테이블 스펙 + `AnalysisPreviewRequest`/`RawDataset`/`_coerce_period`.
+  rag_chat도 KOMIS 원천이 필요해질 수 있어 서비스 전용이 아니라 shared에 뒀다.
+- `services/report_gen/app/analysis/` — `models.py`(계열 타입만)·`indicators.py`
+  (무수정)·`data_sources/{_shared,database}.py`(정규화기)·`scaffold.py`(스텁 서비스)
+  + `resources/komis-metadata.subset.json`.
+- `services/report_gen/app/{_bootstrap,generator,scheduler,main}.py` +
+  `app/templates/weekly_brief.md.j2`.
+
+**이식하며 바꾼 것**
+- **접속**: `psycopg.connect(host=...)` 직결 → `services/shared/db.read_sql_pg()`
+  경유(서비스 코드가 psycopg2/sqlalchemy를 직접 import하지 않는다는 원칙).
+- **`%s` 바인딩 → 검증 후 리터럴 삽입**(가장 큰 재작성). `read_sql_pg`는
+  `pandas.read_sql(str, engine)` → `exec_driver_sql` 경로라 **바인딩 파라미터를
+  못 받고, 쿼리 문자열 안의 `%`를 플레이스홀더로 오인**한다 — 이번에 실측으로
+  걸렸다(`... ILIKE 'ko\_%'` → `TypeError: sqlalchemy...immutabledict is not a
+  sequence`). 그래서 (a) pydantic 패턴 1차 검증, (b) SQL 삽입 직전 화이트리스트
+  정규식(`^[A-Za-z0-9_]{1,32}$`) 2차 검증 후 리터럴, (c) `LIKE`/`%` 미사용으로
+  바꿨다. rag_chat `retrieval/structured.py`와 같은 "템플릿 질의 전용" 원칙.
+  ※ **이 제약은 `read_sql_pg`를 쓰는 모든 코드에 해당한다** — 앞으로 PG 쿼리에
+  `%`를 넣지 말 것.
+- **메타데이터 스냅샷**: 정규화기의 `MineralCatalog`가 원본에선 `search/`의 전체
+  스냅샷(26 refs, 140KB)을 import했다. 그쪽은 같은 날 rag_chat 이식 소관이라,
+  analysis가 실제로 쓰는 4개 ref만 추린 파생본(48KB)을 report_gen 안에 두고
+  `metadata_snapshot_path` 인자로 갈아끼울 수 있게 했다.
+- **`summary.py`·`additional_summary.py`·`policy.py`·`prompts.py`는 이식하지
+  않았다**(63KB 요약문 엔진 — 스텁이 아니라 실물이다). 사유 3가지를
+  `app/analysis/__init__.py`에 기록: ①대상 데이터가 없다(아래 실측), ②`search/`
+  패키지(JsonLLM·전체 스냅샷)에 물려 있어 같은 날 이식 중인 코드 위에 이식을
+  얹게 된다, ③이번 과업 범위 밖(CLAUDE.md §4). 위 ①②가 풀리면 별도 사이클로.
+- **`scaffold.AnalysisScaffoldService.analyze()`는 스텁 그대로** 뒀다(원본 TODO
+  주석 유지). 병합계획 §0이 이미 "리포트 생성은 스텁"이라고 정정한 부분이라
+  포장하지 않았다 — 실제 도는 리포트 경로는 `app/generator.py`다.
+
+**실측으로 드러난 것 (문서·원본코드 예시를 안 믿고 직접 조회)**
+- `information_schema.columns` 조회 결과 9개 `KO_*` 테이블의 컬럼명·개수가 원본
+  `_DatasetSpec`과 **전부 일치**(PG가 미인용 식별자를 소문자로 접어 원본의 대문자
+  SQL도 그대로 동작). `crtr_ymd` 정밀도도 스펙대로 — `ko_mrkt_prspect_idct`는
+  8자리(20250201), `ko_spdm_stbt_indx`만 6자리(202502).
+- ⚠ **`public.KO_*`에 적재된 광종은 텅스텐(MNRL0018) 하나뿐이다.** 실측 행수:
+  ko_mrkt_prspect_idct 170 / ko_spdm_stbt_indx 98 / ko_mnrl_prc_predc 76 /
+  ko_rsrc_burudg_quty 56 / ko_rsrc_prdctn_quty 63 — 전부 MNRL0018. 거래 테이블도
+  HS 8101*(텅스텐)·820900 계열뿐(ko_cstm_cmmrc 20,736 / ko_un_cmmrc 25,342).
+  **komir 5광종(CU/NI/CO/LI/REE)은 한 건도 없다** → 이 DB는 데모 슬라이스로 봐야
+  하고, KOMIS 공개지표를 발주 5광종 리포트에 실제로 쓰려면 발주처에 5광종 적재를
+  요청해야 한다. (지수 테이블 ko_mnrl_snths_indx만 광종 무관 — HI001/2/3 각
+  3,631/3,633/3,635행, 2011-01-04~2025-02-18.)
+- ⚠ **`ko_un_cmmrc.mnrknd_unq_cd`는 25,342행 전부 NULL** — 원본 코드의
+  `map_global` 광종 필터(`MNRKND_UNQ_CD = %s`)는 항상 0행을 돌려준다(원본 저장소의
+  실제 결함). 이식본은 동작을 원본과 같게 두고 스펙에 경고 주석만 달았다 —
+  조용히 hs_cd only로 바꾸면 호출자가 광종 필터가 먹은 줄 착각한다.
+
+**리포트 실경로**(`app/generator.py` + `app/templates/weekly_brief.md.j2`)
+- 섹션→도구 매핑은 CONTAINER_ARCHITECTURE.md §6대로 **정적**이다(RAG처럼 매 턴
+  LLM이 고르지 않음). 1~3절 = komir 산출물(`out_diagnosis_alert`·
+  `out_import_forecast`·`geo_index` @ MSR_DB), 4절 = KOMIS 공개지표
+  (`public.KO_SPDM_STBT_INDX`, 이식한 정규화기를 그대로 태움). 비정형
+  (VectorDB/PageIndex) 절은 미배선 — 없는 걸 있는 척 채우지 않고 템플릿 말미에
+  명시했다.
+- 정형 질의를 rag_chat `retrieval/structured.py`에서 가져오지 않고 generator.py에
+  따로 썼다(같은 시각 다른 작업이 그 파일을 수정 중이라 import도 편집도 안 함) —
+  **후속 정리 대상**: §6 "중복 구현 금지"대로 `services/shared/retrieval/`로 합칠 것.
+- `out_report` 적재는 멱등: `report_id = 'rpt_' + sha1(kind|광종|주차)[:24]`(28자,
+  컬럼은 VARCHAR(32))로 고정하고, `dbio.write_df(pk=)`가 **기존 행과는 대조하지
+  않는다**(df 내부 중복만 제거 → PK 제약 위반)는 점을 확인해 삽입 전에
+  `execute_msr("DELETE ... WHERE report_id = ?")`로 지운다.
+
+**검증(전부 실제 DB·실제 실행)**
+- `python3 -m py_compile` 전 파일 통과 + 실제 `import app.main`(라우트 4개 확인).
+  `zip(strict=)`는 3.10부터라 문제없고, 3.11+ 전용 `datetime.UTC`는 이식 파일에
+  없다(grep 확인, `timezone.utc` 사용).
+- 이식한 리포지토리 실조회: `indicator_market`(3행)·`map_mineral`(매장량 13행+
+  생산량 13행)·`indicator_supply` 완전조회(2024-01~2025-02 14행) 모두 정상.
+- 이식한 정규화기 실조회: 수급안정지수 계열(텅스텐, 2017-02~2025-02) 정규화 성공
+  — 경고문구 5건(가격단위 없음/내부누락 1개월/점수없는 행 2건/가격결측 1건/
+  crisis_flag 없음)이 실제 데이터에서 그대로 나옴. 광물지도 생산량 2023년 13개국
+  (세계합계 78,000톤·베트남 3,500톤), 광물종합지수 2025-01-01~02-18 35영업일
+  (종합 2525.23·메이저 2433.84·희소 1394.07).
+- 5광종 리포트 생성→적재 성공(본문 1,770~2,175자), `out_report` 0행 → 5행.
+  같은 주차 재실행해도 5행 유지(멱등성 확인). 4절은 5광종 모두 "데이터 없음"으로
+  나오는 게 정상(위 텅스텐-only 실측) — 정규화기가 실제로 도는지는 코드를 잠시
+  MNRL0018로 돌려 12개월 표가 렌더되는 것까지 확인했다.
+- FastAPI 라우트 실호출(TestClient, APScheduler lifespan 포함 기동/종료):
+  `/healthz` 200, `POST /reports/weekly_brief/generate?store=false` 200,
+  `store=true` 200(적재 1행), `GET /reports/{id}` 200, `GET /reports` 5건,
+  잘못된 광종코드 400.
+- 컨테이너 배치(Containerfile이 `services/shared`→`/app/shared`,
+  `services/report_gen/app`→`/app/app`으로 평평하게 COPY)를 임시 디렉토리로
+  재현해 임포트·스냅샷 경로·템플릿 경로 폴백까지 전부 동작 확인 —
+  `app/_bootstrap.py`가 고정 depth 대신 `shared/db.py`를 위로 훑는다.
+
+## 2026-08-11 (이어서) — rag_chat에 KOMIS 페이지추천(외부repo `search/`) 편입
+
+병합계획 결정①(페이지·필터 추천 챗봇을 RAG 챗봇 기능 일부로 편입) 실행. 외부repo
+`src/komis_report_generator/search/`(LangGraph 상태그래프, 43개 KOMIS 페이지·필터
+정의 YAML + 메타데이터 스냅샷)를 `inhouse/services/rag_chat/app/page_recommend/`로
+이식하고 `/chat`에 두 경로(문서Q&A | 페이지추천)로 배선했다.
+
+**이식하며 바꾼 것(그대로 복사한 게 아님)** — 각각 "프로젝트에 같은 역할의 물건이
+두 벌 생기는 것"을 막기 위한 변경이다.
+- **LLM 클라이언트**: 원본 `search/llm.py`(httpx 기반 `OpenAICompatibleJsonLLM`)는
+  아예 이식하지 않고, 같은 날 만든 `services/shared/llm_client.KomirJsonLLM`을
+  그 자리에 끼웠다(invoke 시그니처가 동일하게 맞춰져 있어 그래프 코드는 무수정).
+  부수효과로 원본의 `except LLMTransportError: raise` 분기가 불필요해져 제거 —
+  komir의 OpenAICompatChat은 전송실패 시 `requests.RequestException`/`RuntimeError`를
+  던지고 이들은 LLMError 계열이 아니라 어차피 전파되므로 동작 동일(graph.py
+  docstring에 "되돌리지 말 것"으로 근거 기록).
+- **설정**: `search/config.Settings.from_env()` 미이식 → `services/shared/config.py`
+  하나로. 새 env는 `KOMIS_TIMEZONE`(상대기간 해석 기준 지역) 하나만 추가했고,
+  `KOMIS_SEARCH_STATE_DB`는 아래 이유로 필요 없어 안 만들었다.
+- **대화상태 저장소**: 원본은 LangGraph SQLite 체크포인터(`.state/komis-search.sqlite3`)
+  에 스레드 상태를 뒀는데, komir엔 이미 chat_session/chat_message가 있어 그대로
+  들이면 대화 저장소가 2개가 된다. 체크포인터 없이 컴파일하고 직전 상태
+  (message_history·active_artifact)를 호출자가 주입·회수하는 계약으로 바꿨다
+  (`page_recommend/service.py`). 상태는 assistant 메시지의 `citations_json`에
+  `{"page_recommend": {...}}` JSON으로 싣는다 — 다음 턴에 그래프가 실제로 읽는
+  6개 키만 남겨서(`_persistable_artifact`) 넣는데, 그 컬럼이 VARCHAR(4000)이라
+  (DuckDB는 길이 미강제, Postgres cutover 후엔 잘림) 안 읽는 값까지 실을 이유가
+  없기 때문. 실측 605자.
+- **레지스트리 빌드 단계 제거**: 원본은 YAML을 `generated/{services,routing-index}.json`
+  으로 굽고 CI에서 최신인지 확인하는 CLI(`build_registry`/`check_registry`)를
+  갖고 있었는데, 같은 레지스트리를 두 벌 두고 동기화할 이유가 없어 YAML 직접
+  로드만 남겼다(실측 로드 0.37~0.40s, 프로세스당 1회 캐시).
+- **python3.10 호환**: `search/temporal.py`의 `datetime.UTC`(3.11+ 전용) →
+  `timezone.utc`. 그 외 3.11+ 전용 문법은 없었다(PEP695 제네릭은 미이식 파일인
+  `llm.py`에만 있었음).
+
+**의도분류(어느 경로로 보낼지)**: 요청 바디 `mode`(auto|document|page)를 우선하고
+auto일 때만 `app/intent.py`가 KomirJsonLLM 1회 호출로 분류한다. 실패하면 문서Q&A로
+폴백 — 먼저 돌던 기본 경로이고 근거 없으면 이미 기권하도록 돼 있어 오분류 비용이
+더 작다(완벽한 자동판별에 시간 쓰지 않고 두 경로가 다 도는 것을 우선).
+
+**검증**(vLLM은 이 환경에서 접속 불가 — `host.docker.internal:52302`는 컨테이너
+전용 호스트명, 실측 확인됨 → LLM은 결정론적 더블 `ScriptedJsonLLM`으로 대체. 원본
+테스트가 쓰던 그 더블만 테스트 파일 쪽으로 이식):
+- `python3 -m py_compile` 전 파일 통과 + `python3 -c "import app.main"` 실제 임포트
+  성공(라우트 `/chat`·`/healthz` 확인) — 컴파일과 임포트는 다르므로 둘 다 확인.
+- `services/rag_chat/tests/smoke_page_recommend.py`(신규): 레지스트리 43개 페이지
+  로드, 메타데이터 스냅샷(`snapshot_id=2026-07-16:bab90fd438c6`) 로드, 상대기간
+  해석(최근5년→`{start:2021,end:2026}`), 필터해석(`price_base_metals` "구리"→
+  canonical `동` + 기본값 4건 자동적용), 그래프 1턴(`map_korea` 추천), 2턴
+  same_task 상태이월(mineral 유지 + measure만 교체), 후보 2개 ambiguous,
+  LLM 출력오류 흡수(`relation_invalid_output` 경고) — 8건 전부 통과.
+- `services/rag_chat/tests/smoke_chat_routing.py`(신규): 임시 DuckDB(운영 DB 오염
+  방지)로 라우터 실경로 — mode=page 1·2턴이 DB를 왕복하며 상태가 이월되는지,
+  히스토리를 이번 질문 저장 "전"에 읽는지(저장 후면 그래프가 자기 질문을 직전
+  턴으로 오인·중복 저장), chat_message 4행(중복 없음), ambiguous(후보 2개)로 끝난
+  턴 뒤 후속 선택이 DB를 왕복한 상태로 이어지는지(저장 키가 same_task와 달라 별도
+  확인 — `original_question`이 살아남아 2턴 필터추출이 "원래 질문 …\n추가 선택 …"
+  합성 질문으로 도는 것까지 확인), mode=auto가 의도분류 1회 호출 후 각각
+  page/document 경로로 갈리는지 — 전부 통과.
+- FastAPI TestClient로 `POST /chat` 실제 호출: HTTP 200, SSE 3이벤트
+  (`session_id` → `delta`(렌더된 추천문) → `event: done`에 recommendations/
+  warnings) 확인.
+
+**의존성·배포**: `requirements.txt`에 `langgraph>=1.0`(외부repo uv.lock이 고정한
+1.2.9를 python3.10에 설치해 실행까지 확인)·`PyYAML>=6.0` 추가, `pydantic>=2.5`→
+`>=2.12`로 상향(이식한 `models.py`의 `Field(exclude_if=...)`가 2.12+ 전용, 실측
+2.12.3에서 동작). `langgraph-checkpoint-sqlite`는 위 결정대로 채택 안 함.
+Containerfile은 **COPY 라인 추가 없음** — 리소스(YAML 43건+스냅샷, 400KB)를
+패키지 안(`app/page_recommend/resources/`)에 두어 기존 `COPY services/rag_chat/app
+./app` 한 줄로 함께 실린다(주석만 보강). 다만 이 김에 `routers/chat.py`의
+sys.path 부트스트랩을 고정 depth(`parents[3]`)에서 "위로 훑어 찾기"로 바꿨다 —
+소스트리와 컨테이너 배포본(평평한 COPY)의 상대 깊이가 달라 고정 depth는 컨테이너에서
+틀린 경로를 가리킨다(`services/shared/db.py`·`ingestion/parsers/pdf.py`가 이미
+쓰던 패턴). `session_store.py`·`retrieval/*.py`에 같은 고정 depth가 남아 있으니
+컨테이너 첫 빌드 때 함께 확인 필요(이번 범위 밖).
+
+## 2026-08-11 (이어서) — services/shared 실구현 + rag_chat 문서Q&A 경로 완성
+
+같은 날 이어서: 사용자 질문("embedding, rag, report generator용 llm 설정은 연계
+되어 있나요?")에 답하며 실제로 연계 작업까지 진행. 확인 결과 **이식 전엔 연계돼
+있지 않았음** — LLM(채팅)은 komir 자체 클라이언트(`geo/llm/openai_compat.py`)
+하나뿐이었는데 외부repo `search/llm.py`가 env 이름은 우연히 같지만(`LLM_BASE_URL`
+등) httpx 기반 별개 클라이언트(`OpenAICompatibleJsonLLM`)를 갖고 있어 그대로
+들이면 클라이언트가 2벌 생길 뻔했음. 임베딩은 이름부터 전혀 다름(komir
+`EMBEDDING_BASE_URL`은 실은 `rag/ragkit/embed.py`가 참조조차 안 하고
+sentence-transformers를 코드에 하드코딩해 로컬 직접로드, 외부repo
+`KOMIS_EMBEDDING_*`는 HTTP `/embeddings` 서버 호출 전제 — 아키텍처 가정 자체가
+다름, 이번엔 komir 방식 유지).
+
+**`inhouse/services/shared/`(3개 스켈레톤 → 실구현)**:
+- `config.py` — pydantic-settings로 `.env` 전체(MSR_DB·PG_DSN/PG_SCHEMA·LLM_*·
+  EMBEDDING_*·QDRANT_*·CHAT_*·REPORT_*) 단일 로더. 외부repo의 `search/config.py`·
+  `vector_index/config.py`(각각 다른 이름 체계) 이식 안 함 — 이 파일 하나로 흡수.
+- `db.py` — `mineral_supply_risk/db/dbio.py` 재노출 + `read_sql_pg`(PG_SCHEMA로만
+  스키마 한정, public 하드코딩 금지 원칙 docstring 명시) + 신규 `execute_msr`
+  (dbio에 없던 point-CRUD 단일문 실행, chat_session/chat_message용 — postgres
+  paramstyle 미검증이라 그 경로는 NotImplementedError로 명시적으로 막아둠).
+  `dbio.apply_schema()`의 기지 버그(정의 안 된 schema 변수 참조, docs/
+  CONTAINER_ARCHITECTURE.md §1에 문서화돼 있던 것)도 이 김에 수정(죽은 코드
+  3줄 삭제).
+- `llm_client.py` — `KomirJsonLLM`: 외부repo `OpenAICompatibleJsonLLM`의 구조화
+  출력(JSON Schema+1회 복구재시도) 로직은 이식하되, 실제 HTTP는 새 클라이언트를
+  만들지 않고 `geo/llm/openai_compat.OpenAICompatChat.complete()`에 위임 —
+  클라이언트는 하나만 남김.
+- `geo/llm/openai_compat.py`에 `complete_stream()` 추가(SSE 델타 제너레이터,
+  기존 `complete()`는 무변경) — 챗봇 스트리밍 요구사항(CLAUDE.md §0 산출물⑥)
+  때문에 새로 필요해짐, 기존엔 스트리밍 자체가 아예 없었음(실측 확인).
+
+**`data_lake/db/schema_addendum_v2.sql`**(설계만·미적용 상태였음)의 `chat_session`/
+`chat_message` 두 테이블만 MSR_DB(DuckDB)에 직접 생성(라이브 운영 DB 변경이라
+전체 파일 대신 DuckDB 안전한 부분만 신중히 선택 — 나머지 `doc_chunk` tsvector/GIN
+확장분은 Postgres 전용 문법이라 DuckDB에서 실행하면 깨짐, cutover 이후로 보류).
+
+**`inhouse/services/rag_chat/`(문서Q&A 경로 실구현, 페이지추천은 별도 진행중)**:
+`session_store.py`(chat_session/chat_message CRUD, 위 신규 테이블 대상)·
+`streaming.py`(SSE 이벤트 변환 — 처음에 `sse_event()`가 이미 완성된 "data: ...\n\n"
+문자열을 만들어 sse_starlette가 또 감싸는 바람에 "data: data: {...}" 이중래핑
+버그가 실제로 났었음, TestClient로 실측 발견·수정: dict를 돌려주는 방식으로 교체)·
+`retrieval/structured.py`(템플릿 전용 정형조회 3종 — 여기서도 실측 버그 하나 발견:
+`out_import_forecast.target` 값이 설계문서 예시론 'ton'/'usd'였는데 실제 DB엔
+'volume'/'value'였음, DESCRIBE로 확인 후 수정)·`retrieval/unstructured.py`
+(rag/ragkit/retrieve.hybrid_search 그대로 호출 — Qdrant 이관은 rag.duckdb 색인
+자체가 아직 안 만들어져 있고 qdrant-client도 설치 안 돼 있어(둘 다 실측 확인)
+이번엔 보류, 그 이관 지점만 마련)·`routers/chat.py`+`main.py`(rag/ragkit/generate.py의
+인용강제 생성 로직 재사용, 스트리밍용으로 토큰 도착 즉시 전송+스트림 종료 후
+날조인용 검사). FastAPI TestClient로 `/chat` 엔드포인트 전 구간 실제 호출 검증
+(세션생성→기권응답 SSE 정상 — rag.duckdb 미구축 상태라 실제로는 항상 기권 경로를
+타지만, 그 경로 자체가 500 아닌 정상 200으로 우아하게 처리되는 것까지 확인·
+테스트로 넣은 행은 정리 완료).
+
+**남은 일(백그라운드 에이전트 2건 진행 중, 완료 시 검토 후 이 절에 추가 기록
+예정)**: ①`search/`(LangGraph 페이지추천 그래프)를 `rag_chat`에 편입 ②`analysis/`
+(정형DB 조회)를 `report_gen`에 이식.
+
+## 2026-08-11 — komis-report-generator-main 병합 착수: services/ingestion 실제 구현
+
+사용자(프로젝트 관리·개발 담당, 팀원 퇴사로 단독 핸들링 전환)가 별도 저장소
+`/home/nuri/dev/git/ws/mine_ws/komis-report-generator-main`(git 없는 스냅샷,
+2026-08-11 시점)의 RAG/리포트 생성 구현을 komir에 병합하라고 요청. 먼저 코드
+전수조사(백그라운드 Explore 에이전트) 후 병합계획을 문서화(`documents/산출물/
+2026-W33_0810-0816/병합계획_komis-report-generator_260811.md`) — 실제로 완성돼
+동작하는 건 페이지/필터 추천 챗봇(`search/`) 하나뿐이고, RAG(`vector_index`)는
+자기 repo에서도 미배선, 리포트 생성(`analysis/scaffold.py`)은 스텁이라는 점을
+먼저 정정. 사용자 결정 3건: ①`search/`(페이지추천)는 RAG 챗봇 기능 일부로 편입
+②komir `inhouse/services/*` 스텁에 코드 직접 이식(서비스 단위 아님) ③PDF 파싱은
+komir 자체 구현이 정본(외부 repo의 PyMuPDF 파서 채택 안 함).
+
+**1단계 완료 — `inhouse/services/ingestion/`**(`docs/CONTAINER_ARCHITECTURE.md`
+§5-3 "in-house ingestion" 스켈레톤을 실제 구현으로 교체): 외부 repo
+`document_ingestion/{models,pipeline,source_policy}.py`를 pydantic 계약·
+해시기반 중복제거·재사용(unchanged)·원자적 쓰기 로직 그대로 이식. `parsers/hwp.py`는
+외부 repo의 pyhwp(hwp5) 기반 섹션+표 구조 파서를 그대로 이식(komir에 HWP 구조
+파싱이 전무했던 진짜 신규 capability). `parsers/pdf.py`는 외부 repo 파서 대신
+`inhouse/geo/extractors.py`의 opendataloader-pdf→pypdf→OCR 폴백 체인
+(`extract_with_fallback`, 이미 검증됨)을 감싸는 새 래퍼로 구현(결정③) — 페이지별
+분할·표 bbox는 이 체인이 보존하지 않아 문서 전체를 ContentUnit 1개로 감싸는
+제약을 문서화. discover_source_files()는 외부 repo 고유의 "보고서_1/<그룹>"
+강제 경로를 제거해 komir 문서 루트에 맞게 일반화. opendataloader-pdf가
+"파일 단위 호출 시 JVM 재기동으로 느림"(extractors.py 기존 주석, OCR 212분 낭비
+사례와 같은 유형의 함정)이라는 점 때문에, 원본 파이프라인의 파일별 순회 구조를
+유지한 채 실제 파싱이 필요한 PDF만 골라 루프 진입 전에 한 번에 배치 변환하는
+`_preload_pdf_batch()`를 추가(`PdfParser.preload_batch()`).
+
+**검증**: `python3 -m py_compile` 전체 통과. `datetime.UTC`(3.11+ 전용, 원본이
+python≥3.13 선언이라 섞여 있었음)를 `timezone.utc`로 교체해 python3.10 런타임
+호환 확보(py_compile은 이 종류의 런타임 임포트 오류를 못 잡는다는 걸 실측
+확인). 실제 komir 문서(`documents/5. (비축사례)...hwp`, `documents/조달청보고서/
+비철금속 시장 동향(2019.7.23).pdf`)로 end-to-end 스모크 테스트 — HWP는
+섹션 구조 보존한 한글 본문 정상 추출, PDF는 opendataloader 경로로 정상 추출,
+재실행 시 unchanged(재사용) 경로도 정상 동작 확인. 신규 의존성 `pyhwp`(pip 설치
+확인) — `rag_chat`·`report_gen` requirements.txt(pydantic·pyhwp·PDF체인 5종)와
+Containerfile(services/ingestion·geo/extractors.py COPY 추가, geo import 경로는
+고정 깊이 대신 상위 탐색으로 구현해 소스트리/컨테이너 두 배포 형태 모두 대응)에
+반영. 겸사겸사 `rag_chat/Containerfile`의 stale 경로(`engine/rag/ragkit` — 8/6
+DMZ/inhouse 분리로 이미 없어진 경로)도 `rag/ragkit`으로 정정.
+
+docx/doc/xlsx/xls/csv 파서는 외부 repo에도 구현이 없어 이번 이식 범위 밖(여전히
+스켈레톤). 다음 단계(미착수): search/ LangGraph 챗봇→rag_chat 편입,
+analysis/→report_gen 이식, api/ 라우터 배선.
+
+## 2026-08-10 — PostgreSQL(komis_demo) 데이터 이관 1차 + 0807 PDF ETL(opendataloader-pdf, OCR 폴백)
+
+**PostgreSQL 이관**: 사용자가 postgres 접속정보(172.30.1.101, komis_demo) 제공,
+`.env`(`inhouse/.env`, 커밋 제외)에 `PG_*`(HOST/PORT/DATABASE/USER/PASSWORD/DSN/SCHEMA)
+신설 — **`MSR_DB`는 그대로 duckdb를 가리키게 유지**(라이브 cron·streamlit이 즉시
+참조하는 값이라 검증 전 전환 금지). 접속 시도 중 비밀번호 오타 2회 정정
+(`illunex1234`→`illunex123`). 처음 준 포트 **5433**으로 접속해보니 `public` 스키마에
+KOMIS 쪽이 이미 쓰는 `ko_*` 테이블 9개(ko_mnrl_prc 12,549행 등, 데이터 있음)가 존재 —
+사용자 확인 후 이 9개는 안 건드리고 `mineral_risk` 스키마에 36개 테이블 이관까지
+완료했으나, **사용자가 재확인 후 "같은 호스트에 postgres 인스턴스가 2개, 포트가
+다르다" — 실제로 맞는 포트는 5432**라고 정정. 5432엔 `komis_demo` DB 자체가 없어서
+(있던 DB 3개는 `nice_innovation`/`postgres`/`sensaqbit`, 전부 무관한 다른 프로젝트)
+`CREATE DATABASE`로 새로 만들고(duckdb postgres 확장은 이 DDL을 못 태워 `psycopg2`
+autocommit 연결로 별도 실행 — `psycopg2-binary` pip 설치) `inhouse/mineral_supply_risk/
+scripts/migrate_duckdb_to_postgres.py`(신규)로 **5432/komis_demo/`mineral_risk`
+스키마에 36개 테이블 전부를 이름·구조 그대로** 재이관(duckdb postgres 확장 ATTACH+
+CREATE TABLE AS SELECT, pandas 왕복 없이 직접 전송). 전 테이블 원본/대상 행수 일치
+확인(geo_event 296,679행 포함 0건 불일치). 5433 쪽 `mineral_risk`는 무관한 서버로
+결론났지만 삭제 요청은 없어 그대로 남겨둠(필요시 정리). **RAG(`rag/index/rag.duckdb`)는
+아직 파일 자체가 없어(빌드 미실행) 이관할 데이터가 없음** — 향후 별도 처리.
+남은 일: 실제 cutover(MSR_DB를 postgres URL로 전환, crontab·streamlit·geo publish
+타깃 재조정)는 이번엔 하지 않음 — 데이터 적재까지만.
+
+> ⚠ 같은 날 정정: 위 "5433은 무관한 서버" 판단이 **틀렸음이 재확인됨**. 사용자가
+> 외부주소(`220.118.147.58:55433`)로 재접속을 요청해 확인해보니 내부
+> `172.30.1.101:5433`과 완전히 동일한 DB였고, 그 사이 `public` 스키마에 **타 팀이
+> 애플리케이션 테이블 17개(`ai_*` — `ai_item_card`="AI 관리카드", `ai_ntn_mst`/
+> `ai_ntn_grp`=다자간협의체체결국 등 0807 메일 요구사항과 정확히 대응)를 추가**해둔
+> 걸 발견 — **5433이 최종 정본**. `public`(ko_*+ai_*)은 타 팀 소유라 절대 손대지
+>않기로 재확인(사용자 명시), 우리 `mineral_risk` 스키마는 이미 5433에 있었으므로
+> 추가 이관 불필요(재검증만 수행, 36/36 테이블 행수 일치 재확인). `.env`도 5433으로
+> 재수정. **5432/komis_demo(우리가 실수로 만든 scratch DB)는 정리 여부 미정** —
+> 다음에 확인 필요. 상세는 메모리 `postgres_migration_260810` 참고.
+
+**0807 제공자료 PDF ETL**: `opendataloader-pdf`(Java CLI, 오프라인) 채택해 비축월보
+55건(진단모델 전용, RAG 금지 — 물리적으로 분리된 `restricted_diagnosis_only/`+META.md)
+전량 마크다운 변환, 47/55건 연월 자동식별(본문에서). 해외투자가이드 4개국(RAG용)은
+처음엔 opendataloader 기본모드로 전부 텍스트 0자(완전 스캔본)였으나, **이미
+`inhouse/geo/extractors.py`에 2026-07-07부터 있던 pypdf→OCR(easyocr) 폴백 체인을
+뒤늦게 발견**(처음엔 몰라서 opendataloader 자체 hybrid AI 모드 도입을 검토했었음 —
+불필요했음, 기존 코드 재사용으로 해결) — `extract_with_fallback()`으로 떼어 재사용,
+4건 전부 OCR로 실제 텍스트 확보(3만~3.8만자). RAG `ingest.py`에 저품질(빈 표뼈대)
+게이트도 추가(`<br>` 태그가 실제내용으로 오판정되는 버그 자체발견·수정).
+
+## 2026-08-06 — DMZ/inhouse 저장소 물리분리 + collectors 격리 리팩터 + skeptic-code 감사
 
 오전에 확정한 DMZ(수집, LLM 금지)/망연계/in-house(airgap) 목표 배포 아키텍처(같은 날
 앞선 항목 "DMZ/망연계/in-house 배포 아키텍처 재정의" 참고)를 실제 저장소 구조로

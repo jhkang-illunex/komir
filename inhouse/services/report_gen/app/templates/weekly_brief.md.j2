@@ -1,0 +1,74 @@
+{# 광종별 수급위기 주간 브리프 — generator.build_context()가 채우는 섹션 구조.
+   CONTAINER_ARCHITECTURE.md §6대로 섹션→도구 매핑은 정적이다(전부 정형/RDB).
+   비정형(VectorDB/PageIndex) 섹션은 아직 배선 전 — 없는 걸 있는 척 채우지 않는다. #}
+# {{ commodity_name }}({{ commodity_code }}) 수급위기 주간 브리프
+
+- 대상 주차: **{{ period }}** (기준일 {{ as_of }})
+- 생성 시각(UTC): {{ generated_at }}
+- 출처: 핵심광물 수급위기 진단·수요예측 시스템(komir) 산출물 + KOMIS 공개지표
+
+## 1. 수급위기 진단 경보
+
+{% if diagnosis %}
+| 관측일 | 경보등급 | 위기지수 | 모델 |
+|---|---|---|---|
+| {{ diagnosis.obs_date|ymd }} | **{{ diagnosis.alert_level }}** | {{ '%.2f'|format(diagnosis.risk_score|float) }} | {{ diagnosis.model_version }} |
+
+{{ diagnosis.reason }}
+{% else %}
+> 진단 경보 데이터가 없습니다(`out_diagnosis_alert`에 {{ commodity_code }} 행 없음).
+{% endif %}
+
+## 2. 12개월 수입 예측
+
+{% if forecast_volume %}
+기준월 {{ forecast_volume[0].base_date|ymd }} · 모델 {{ forecast_volume[0].model_version }}
+
+| 시계(개월) | 물량 예측 | 물량 80% 구간 | 금액 예측 |
+|---|---|---|---|
+{% for row in forecast_volume %}
+| +{{ row.horizon }} | {{ '{:,.0f}'.format(row.yhat|float) }} | {{ '{:,.0f}'.format(row.yhat_lo|float) }} ~ {{ '{:,.0f}'.format(row.yhat_hi|float) }} | {% if forecast_value and loop.index0 < forecast_value|length %}{{ '{:,.0f}'.format(forecast_value[loop.index0].yhat|float) }}{% else %}—{% endif %} |
+{% endfor %}
+{% else %}
+> 수입 예측 데이터가 없습니다(`out_import_forecast`에 {{ commodity_code }} 행 없음).
+{% endif %}
+
+## 3. 지정학 위기지수 추이(주간)
+
+{% if geo_index %}
+| 주차 시작일 | 지수 | 원점수 | 이벤트 수 |
+|---|---|---|---|
+{% for row in geo_index %}
+| {{ row.period|ymd }} | {{ '%.1f'|format(row.idx_value|float) }} | {{ '%.2f'|format(row.raw_score|float) }} | {{ row.n_events }} |
+{% endfor %}
+
+지수 설정 버전: {{ geo_index[-1].index_config_version }}
+{% else %}
+> 지정학 위기지수 데이터가 없습니다(`geo_index`에 {{ commodity_code }} 주간 행 없음).
+{% endif %}
+
+## 4. KOMIS 공개 수급안정지수 (참고)
+
+{% if komis_supply.available %}
+{{ komis_supply.mineral.name }}({{ komis_supply.mineral.code }}) · 수록 기간
+{{ komis_supply.available_start_month }} ~ {{ komis_supply.available_end_month }}
+(data_version {{ komis_supply.data_version }})
+
+| 월 | 수급안정지수 | 가격 |
+|---|---|---|
+{% for row in komis_supply.observations %}
+| {{ row.month }} | {{ '%.2f'|format(row.score|float) }} | {% if row.price is not none %}{{ '%.2f'|format(row.price|float) }}{% else %}—{% endif %} |
+{% endfor %}
+
+{% for warning in komis_supply.warnings %}
+- {{ warning }}
+{% endfor %}
+{% else %}
+> {{ komis_supply.note }}
+{% endif %}
+
+---
+
+*본 브리프의 1~3절은 komir 자체 산출물(`out_diagnosis_alert`·`out_import_forecast`·
+`geo_index`)에서, 4절은 KOMIS 공개 원천(`public.KO_SPDM_STBT_INDX`, 읽기 전용)에서
+자동 생성됐습니다. 비정형 문서 검색 기반 "최근 동향" 절은 아직 배선 전입니다.*

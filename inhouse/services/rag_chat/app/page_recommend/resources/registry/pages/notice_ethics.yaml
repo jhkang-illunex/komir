@@ -1,0 +1,42 @@
+schema_version: 1
+page_id: notice_ethics
+aliases: [ethics_code]
+identity:
+  section: "알림마당"
+  name: "KOMIS윤리강령"
+  page_kind: info
+  navigation: {method: GET, target: /Komis/Platform, params: {}}
+  login_required: false
+  external: false
+routing:
+  summary: "KOMIS 운영의 공정성, 고객정보 보호와 고객의 정보이용 의무를 총칙·공단 윤리·고객 윤리로 안내하는 정적 강령"
+  use_when:
+    - "KOMIS의 고객정보 수집·이용·보호 원칙을 확인할 때"
+    - "KOMIS 고객의 ID 보호, 정보 누출·상업적 이용 관련 윤리 의무를 찾을 때"
+  do_not_use_when:
+    - "서비스 이용계약의 법적 조항이나 해지 조건을 확인할 때"
+    - "공단 자료의 구체적인 복제·인용 허용 범위를 확인할 때"
+  distinguish_from:
+    - {page_id: notice_terms, reason: "윤리강령은 공단과 고객의 행동 기준이고 이용약관은 서비스 계약 조항이다."}
+    - {page_id: notice_copyright, reason: "윤리강령은 정보보호와 고객 행동을 폭넓게 다루고 저작권정책은 자료 이용 범위를 구체적으로 안내한다."}
+  example_queries:
+    - "KOMIS는 고객정보를 어떤 원칙으로 보호해?"
+    - "KOMIS 고객이 지켜야 할 정보이용 윤리는 무엇이야?"
+  keywords: [KOMIS윤리강령, 윤리강령, 고객정보, 개인정보보호, 정보윤리, 고객의윤리, ID보호]
+filters: []
+outputs:
+  available_data_labels: ["강령 목적", "총칙", "고객에 대한 윤리", "고객의 윤리", "시행일"]
+presentation:
+  summary: "안내·총칙·고객에 대한 윤리·고객의 윤리·부칙을 제목과 글머리표 중심의 세로 문서로 제공한다."
+  panels:
+    - {type: ethics_sections, label: "KOMIS 윤리강령", description: "공단의 고객정보 보호 원칙과 고객의 정보이용 의무를 장별로 확인한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "조회 필터나 동의·신고 기능이 없는 정적 윤리강령이다."
+    - "부칙에는 2009-07-01 시행으로 표시되어 있으므로 최신 개정 여부는 운영기관에 확인해야 한다."
+tool: {status: none, planned_name: null}
+provenance:
+  observed_at: "2026-07-27"
+  sources: [docs/komis_service_catalog.md, artifacts/browser/page-probe/notice-pages.json]

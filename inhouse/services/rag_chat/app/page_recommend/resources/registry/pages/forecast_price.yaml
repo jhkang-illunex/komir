@@ -1,0 +1,65 @@
+schema_version: 1
+page_id: forecast_price
+aliases: [price_forecast]
+identity:
+  section: "광물전망지표"
+  name: "가격예측"
+  page_kind: data
+  navigation: {method: GET, target: /Komis/MnrlIndc/PricePred, params: {}}
+  login_required: false
+  external: false
+routing:
+  summary: "11개 광종의 중기 3년 분기예측 또는 장기 10년 연간예측을 실제가격과 함께 보여주는 페이지"
+  use_when:
+    - "특정 광물의 향후 가격 전망치나 예측 경로를 찾을 때"
+    - "3년 분기예측과 10년 연간예측 중 하나를 보고 싶을 때"
+  do_not_use_when:
+    - "과거 실제가격만 조회하려 할 때"
+    - "광물시장 전체 종합지수를 찾을 때"
+  distinguish_from:
+    - {page_id: price_base_metals, reason: "가격예측은 미래 예측값을 포함하고 가격 페이지는 실제 가격 이력이다."}
+    - {page_id: indicator_market, reason: "가격예측값과 표준화된 가격리스크 지표는 서로 다른 정보다."}
+  example_queries:
+    - "향후 3년 동 가격 전망은 어디서 봐?"
+    - "리튬 10년 장기 가격예측을 보고 싶어"
+  keywords: [가격예측, 가격전망, 미래가격, 중기, 장기, 3년, 10년, 분기예측, 연간예측]
+filters:
+  - id: mineral
+    semantic_key: mineral
+    label: "광종"
+    type: mineral
+    required: true
+    default: null
+    default_label: null
+    options: []
+    values_ref: metadata.indicators.forecast_minerals
+    depends_on: []
+  - id: horizon
+    semantic_key: forecast_horizon
+    label: "분석범위"
+    type: enum
+    required: false
+    default: medium
+    default_label: "중기 3년 분기예측"
+    options:
+      - {value: medium, label: "중기 3년 분기예측", aliases: [중기, 3년, 분기예측, S]}
+      - {value: long, label: "장기 10년 연간예측", aliases: [장기, 10년, 연간예측, L]}
+    values_ref: null
+    depends_on: []
+outputs:
+  available_data_labels: ["기간", "가격", "전기 대비 등락가·등락률", "실제값·예측값 구분", "실제가격", "예측가격", "가격기준과 단위", "실제·예측 전환시점"]
+presentation:
+  summary: "표에서 정확한 값을 제공하고 그래프에서는 실제가격을 실선, 예측가격을 점선으로 구분한다."
+  panels:
+    - {type: actual_forecast_line, label: "실제·예측 가격", description: "실선과 점선으로 실제값과 예측값의 경계와 방향을 보여준다."}
+    - {type: table, label: "기간별 가격", description: "기간별 가격, 등락과 실제·예측 상태를 확인한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "광종별 가격기준과 단위가 다르므로 화면의 실제 단위를 함께 확인한다."
+    - "실제값과 예측값을 같은 확정 데이터처럼 설명하지 않는다."
+tool: {status: planned, planned_name: get_price_forecast}
+provenance:
+  observed_at: "2026-07-16"
+  sources: [docs/komis_service_catalog.md, docs/komis_tool_parameter_spec.md, docs/komis_visual_presentation_catalog.md, artifacts/browser/page-probe/pages.json]

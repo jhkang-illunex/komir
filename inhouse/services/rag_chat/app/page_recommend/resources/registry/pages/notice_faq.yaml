@@ -1,0 +1,83 @@
+schema_version: 1
+page_id: notice_faq
+aliases: [faq]
+identity:
+  section: "알림마당"
+  name: "FAQ"
+  page_kind: board
+  navigation: {method: GET, target: /Komis/Board/FAQ, params: {}}
+  login_required: false
+  external: false
+routing:
+  summary: "광종·가격·국가정보와 Open API 등 KOMIS 이용 관련 공개 질문·답변을 조회하는 FAQ"
+  use_when:
+    - "KOMIS 이용과 광물정보 조회에 관한 자주 묻는 질문의 답을 찾을 때"
+    - "광물 가격·과거 시세·국가정보·Open API 이용 경로를 확인할 때"
+  do_not_use_when:
+    - "개별 문의를 등록하거나 기존 Q&A 문의 상태를 찾을 때"
+    - "시스템 점검이나 서비스 운영 공지를 찾을 때"
+  distinguish_from:
+    - {page_id: notice_qna, reason: "FAQ는 공개 질문·답변 9건이고 Q&A는 이용자 문의 목록과 본인인증 동선이다."}
+    - {page_id: notice_announcements, reason: "FAQ는 이용 질문의 답변이고 공지사항은 서비스 운영 안내다."}
+  example_queries:
+    - "KOMIS에서 광종별 정보는 어디서 봐?"
+    - "Open API 사용 가능 여부를 FAQ에서 확인하고 싶어"
+  keywords: [FAQ, 자주묻는질문, 질문, 답변, 이용안내, 광물가격, 과거시세, Open API]
+filters:
+  - id: search_field
+    semantic_key: search_field
+    label: "검색 대상"
+    type: enum
+    required: false
+    default: question
+    default_label: "질문"
+    options:
+      - {value: question, label: "질문", aliases: [제목]}
+      - {value: answer, label: "답변", aliases: [내용, 본문]}
+    values_ref: null
+    depends_on: []
+  - id: query
+    semantic_key: query
+    label: "검색어"
+    type: text
+    required: false
+    default: null
+    default_label: null
+    options: []
+    values_ref: null
+    depends_on: []
+  - id: page_size
+    semantic_key: page_size
+    label: "페이지 크기"
+    type: integer
+    required: false
+    default: 15
+    default_label: "15개"
+    options:
+      - {value: 5, label: "5개", aliases: []}
+      - {value: 10, label: "10개", aliases: []}
+      - {value: 15, label: "15개", aliases: []}
+      - {value: 20, label: "20개", aliases: []}
+      - {value: 40, label: "40개", aliases: []}
+      - {value: 50, label: "50개", aliases: []}
+    values_ref: null
+    depends_on: []
+outputs:
+  available_data_labels: ["질문", "답변"]
+presentation:
+  summary: "9개 FAQ 질문을 아코디언으로 제공하며 각 항목을 펼쳐 답변을 읽는다."
+  panels:
+    - {type: accordion, label: "FAQ 질문·답변", description: "질문을 선택해 해당 답변을 펼쳐 읽는다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "질문과 답변은 비로그인 조회가 가능하며 화면에서 9건을 아코디언으로 제공한다."
+    - "화면에는 기간 필터가 없고 질문 또는 답변을 선택해 검색한다."
+    - "조사 시점 FAQ는 제3자 제공 가격 데이터의 Open API 제공과 사전 동의 없는 사이트 구축용 재사용이 어렵다고 안내한다."
+    - "화면 필터는 search_field→srchField(질문=ttl, 답변=cnts), query→srchValue, page_size→listCount로 전달된다."
+    - "목록 조회는 boardType=F, boardCd=FAQ, regDate 내림차순을 사용하며 답변은 목록 응답에 포함된다."
+tool: {status: planned, planned_name: search_komis_board}
+provenance:
+  observed_at: "2026-07-27"
+  sources: [artifacts/browser/page-probe/notice-pages.json, artifacts/browser/notice-probe/details.json]

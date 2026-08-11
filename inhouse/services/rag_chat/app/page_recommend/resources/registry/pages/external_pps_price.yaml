@@ -1,0 +1,74 @@
+schema_version: 1
+page_id: external_pps_price
+aliases: [pps_price, domestic_raw_material_price]
+identity:
+  section: "광물자원가격"
+  name: "국내원자재가격(조달청)"
+  page_kind: external
+  navigation: {method: GET, target: "https://pps.go.kr/bichuk/bbs/list.do?key=00825", params: {}}
+  login_required: false
+  external: true
+routing:
+  summary: "조달청 원자재 판매가격 게시물을 검색하는 외부 게시판"
+  use_when:
+    - "조달청의 국내 원자재 판매가격 공지나 게시물을 찾을 때"
+    - "KOMIS가 연결하는 조달청 원자재가격 페이지로 이동하려 할 때"
+  do_not_use_when:
+    - "KOMIS 광종별 국제가격 시계열과 그래프를 찾을 때"
+    - "국내외 광물 교역량을 찾을 때"
+  distinguish_from:
+    - {page_id: price_other, reason: "조달청 외부 게시물과 KOMIS 내부의 광종별 가격 시계열을 구분한다."}
+  example_queries:
+    - "조달청 국내 원자재 판매가격은 어디서 봐?"
+    - "조달청원자재판매가격 게시물을 검색하고 싶어"
+  keywords: [조달청, 국내원자재, 원자재판매가격, 판매가격, 외부사이트]
+filters:
+  - id: search_field
+    semantic_key: search_field
+    label: "검색구분"
+    type: enum
+    required: false
+    default: all
+    default_label: "전체"
+    options:
+      - {value: all, label: "전체", aliases: []}
+      - {value: title, label: "제목", aliases: [제목만]}
+      - {value: author, label: "작성자", aliases: []}
+      - {value: content, label: "내용", aliases: [본문]}
+    values_ref: null
+    depends_on: []
+  - id: query
+    semantic_key: query
+    label: "검색어"
+    type: text
+    required: false
+    default: null
+    default_label: null
+    options: []
+    values_ref: null
+    depends_on: []
+  - id: page
+    semantic_key: page
+    label: "페이지 번호"
+    type: integer
+    required: false
+    default: 1
+    default_label: "1페이지"
+    options: []
+    values_ref: null
+    depends_on: []
+outputs:
+  available_data_labels: ["번호", "제목", "작성자", "조회수", "등록일"]
+presentation:
+  summary: "조달청 게시물 목록을 표로 보여주는 외부 서비스다."
+  panels:
+    - {type: table, label: "판매가격 게시물", description: "제목, 작성자, 조회수와 등록일을 확인한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "KOMIS 내부 수치 조회가 아니라 외부 조달청 게시판으로 이동한다."
+tool: {status: none, planned_name: null}
+provenance:
+  observed_at: "2026-07-16"
+  sources: [docs/komis_service_catalog.md, artifacts/browser/detail-probe/details.json]

@@ -1,0 +1,5740 @@
+{
+  "schema_version": 1,
+  "observed_at": "2026-07-16",
+  "source": "artifacts/browser/page-probe/metadata-catalog.json",
+  "source_sha256": "bab90fd438c63f51cdb16ba57d513ea1a9b6c04194a441b1037bd784ac7a64be",
+  "ref_count": 26,
+  "refs": {
+    "metadata.boards.daily_news_categories": {
+      "coverage": "complete",
+      "kind": "independent",
+      "options": [
+        {
+          "value": "니켈",
+          "label": "니켈",
+          "external_value": "MNRL0002",
+          "aliases": []
+        },
+        {
+          "value": "동",
+          "label": "동",
+          "external_value": "MNRL0008",
+          "aliases": [
+            "구리"
+          ]
+        },
+        {
+          "value": "리튬",
+          "label": "리튬",
+          "external_value": "MNRL0001",
+          "aliases": []
+        },
+        {
+          "value": "망간",
+          "label": "망간",
+          "external_value": "MNRL0004",
+          "aliases": []
+        },
+        {
+          "value": "아연",
+          "label": "아연",
+          "external_value": "MNRL0023",
+          "aliases": []
+        },
+        {
+          "value": "알루미늄",
+          "label": "알루미늄",
+          "external_value": "MNRL0009",
+          "aliases": []
+        },
+        {
+          "value": "연",
+          "label": "연",
+          "external_value": "MNRL0022",
+          "aliases": [
+            "납"
+          ]
+        },
+        {
+          "value": "우라늄",
+          "label": "우라늄",
+          "external_value": "MNRL0031",
+          "aliases": []
+        },
+        {
+          "value": "유연탄",
+          "label": "유연탄",
+          "external_value": "MNRL0032",
+          "aliases": []
+        },
+        {
+          "value": "주석",
+          "label": "주석",
+          "external_value": "MNRL0016",
+          "aliases": []
+        },
+        {
+          "value": "철",
+          "label": "철",
+          "external_value": "MNRL1011",
+          "aliases": [
+            "철광석"
+          ]
+        },
+        {
+          "value": "코발트",
+          "label": "코발트",
+          "external_value": "MNRL0003",
+          "aliases": []
+        },
+        {
+          "value": "흑연",
+          "label": "흑연",
+          "external_value": "MNRL0005",
+          "aliases": []
+        },
+        {
+          "value": "희토류",
+          "label": "희토류",
+          "external_value": "MNRL0006",
+          "aliases": []
+        }
+      ]
+    },
+    "metadata.indicators.composite_available_periods": {
+      "coverage": "absent",
+      "kind": "unavailable",
+      "note": "snapshot에 가용 일자 목록이 없다."
+    },
+    "metadata.indicators.forecast_minerals": {
+      "coverage": "complete",
+      "kind": "independent",
+      "options": [
+        {
+          "value": "니켈",
+          "label": "니켈",
+          "external_value": "MNRL0002",
+          "aliases": [
+            "Nickel"
+          ]
+        },
+        {
+          "value": "동",
+          "label": "동",
+          "external_value": "MNRL0008",
+          "aliases": [
+            "Copper",
+            "구리"
+          ]
+        },
+        {
+          "value": "리튬",
+          "label": "리튬",
+          "external_value": "MNRL0001",
+          "aliases": [
+            "Lithium"
+          ]
+        },
+        {
+          "value": "망간",
+          "label": "망간",
+          "external_value": "MNRL0004",
+          "aliases": [
+            "Manganese"
+          ]
+        },
+        {
+          "value": "몰리브덴",
+          "label": "몰리브덴",
+          "external_value": "MNRL0012",
+          "aliases": [
+            "Molybdenum"
+          ]
+        },
+        {
+          "value": "아연",
+          "label": "아연",
+          "external_value": "MNRL0023",
+          "aliases": [
+            "Zinc"
+          ]
+        },
+        {
+          "value": "우라늄",
+          "label": "우라늄",
+          "external_value": "MNRL0031",
+          "aliases": [
+            "Uranium"
+          ]
+        },
+        {
+          "value": "유연탄",
+          "label": "유연탄",
+          "external_value": "MNRL0032",
+          "aliases": [
+            "Coal"
+          ]
+        },
+        {
+          "value": "철",
+          "label": "철",
+          "external_value": "MNRL1011",
+          "aliases": [
+            "Iron",
+            "철광석"
+          ]
+        },
+        {
+          "value": "코발트",
+          "label": "코발트",
+          "external_value": "MNRL0003",
+          "aliases": [
+            "Cobalt"
+          ]
+        },
+        {
+          "value": "텅스텐",
+          "label": "텅스텐",
+          "external_value": "MNRL0018",
+          "aliases": [
+            "Tungsten"
+          ]
+        }
+      ]
+    },
+    "metadata.indicators.market_available_months": {
+      "coverage": "partial",
+      "kind": "year_range",
+      "options": [
+        {
+          "value": "2008",
+          "label": "2008",
+          "external_value": "2008",
+          "aliases": []
+        },
+        {
+          "value": "2009",
+          "label": "2009",
+          "external_value": "2009",
+          "aliases": []
+        },
+        {
+          "value": "2010",
+          "label": "2010",
+          "external_value": "2010",
+          "aliases": []
+        },
+        {
+          "value": "2011",
+          "label": "2011",
+          "external_value": "2011",
+          "aliases": []
+        },
+        {
+          "value": "2012",
+          "label": "2012",
+          "external_value": "2012",
+          "aliases": []
+        },
+        {
+          "value": "2013",
+          "label": "2013",
+          "external_value": "2013",
+          "aliases": []
+        },
+        {
+          "value": "2014",
+          "label": "2014",
+          "external_value": "2014",
+          "aliases": []
+        },
+        {
+          "value": "2015",
+          "label": "2015",
+          "external_value": "2015",
+          "aliases": []
+        },
+        {
+          "value": "2016",
+          "label": "2016",
+          "external_value": "2016",
+          "aliases": []
+        },
+        {
+          "value": "2017",
+          "label": "2017",
+          "external_value": "2017",
+          "aliases": []
+        },
+        {
+          "value": "2018",
+          "label": "2018",
+          "external_value": "2018",
+          "aliases": []
+        },
+        {
+          "value": "2019",
+          "label": "2019",
+          "external_value": "2019",
+          "aliases": []
+        },
+        {
+          "value": "2020",
+          "label": "2020",
+          "external_value": "2020",
+          "aliases": []
+        },
+        {
+          "value": "2021",
+          "label": "2021",
+          "external_value": "2021",
+          "aliases": []
+        },
+        {
+          "value": "2022",
+          "label": "2022",
+          "external_value": "2022",
+          "aliases": []
+        },
+        {
+          "value": "2023",
+          "label": "2023",
+          "external_value": "2023",
+          "aliases": []
+        },
+        {
+          "value": "2024",
+          "label": "2024",
+          "external_value": "2024",
+          "aliases": []
+        },
+        {
+          "value": "2025",
+          "label": "2025",
+          "external_value": "2025",
+          "aliases": []
+        },
+        {
+          "value": "2026",
+          "label": "2026",
+          "external_value": "2026",
+          "aliases": []
+        }
+      ],
+      "note": "연도 범위만 수집되어 실제 월별 존재 여부는 검증하지 못한다."
+    },
+    "metadata.indicators.market_minerals": {
+      "coverage": "complete",
+      "kind": "independent",
+      "options": [
+        {
+          "value": "갈륨",
+          "label": "갈륨",
+          "external_value": "MNRL0024",
+          "aliases": [
+            "Gallium"
+          ]
+        },
+        {
+          "value": "규소",
+          "label": "규소",
+          "external_value": "MNRL0010",
+          "aliases": [
+            "Silicon"
+          ]
+        },
+        {
+          "value": "네오디뮴",
+          "label": "네오디뮴",
+          "external_value": "MNRL1001",
+          "aliases": [
+            "Neodymium"
+          ]
+        },
+        {
+          "value": "니오븀",
+          "label": "니오븀",
+          "external_value": "MNRL0007",
+          "aliases": [
+            "Niobium"
+          ]
+        },
+        {
+          "value": "니켈",
+          "label": "니켈",
+          "external_value": "MNRL0002",
+          "aliases": [
+            "Nickel"
+          ]
+        },
+        {
+          "value": "동",
+          "label": "동",
+          "external_value": "MNRL0008",
+          "aliases": [
+            "Copper",
+            "구리"
+          ]
+        },
+        {
+          "value": "디스프로슘",
+          "label": "디스프로슘",
+          "external_value": "MNRL1004",
+          "aliases": [
+            "Dysprosium"
+          ]
+        },
+        {
+          "value": "란탄",
+          "label": "란탄",
+          "external_value": "MNRL1003",
+          "aliases": [
+            "Lanthanum"
+          ]
+        },
+        {
+          "value": "루테늄",
+          "label": "루테늄",
+          "external_value": "MNRL1070",
+          "aliases": [
+            "Ruthenium"
+          ]
+        },
+        {
+          "value": "리튬",
+          "label": "리튬",
+          "external_value": "MNRL0001",
+          "aliases": [
+            "Lithium"
+          ]
+        },
+        {
+          "value": "마그네슘",
+          "label": "마그네슘",
+          "external_value": "MNRL0011",
+          "aliases": [
+            "Magnesium"
+          ]
+        },
+        {
+          "value": "망간",
+          "label": "망간",
+          "external_value": "MNRL0004",
+          "aliases": [
+            "Manganese"
+          ]
+        },
+        {
+          "value": "몰리브덴",
+          "label": "몰리브덴",
+          "external_value": "MNRL0012",
+          "aliases": [
+            "Molybdenum"
+          ]
+        },
+        {
+          "value": "바나듐",
+          "label": "바나듐",
+          "external_value": "MNRL0013",
+          "aliases": [
+            "Vanadium"
+          ]
+        },
+        {
+          "value": "백금",
+          "label": "백금",
+          "external_value": "MNRL0014",
+          "aliases": [
+            "Platinum"
+          ]
+        },
+        {
+          "value": "세륨",
+          "label": "세륨",
+          "external_value": "MNRL1002",
+          "aliases": [
+            "Cerium"
+          ]
+        },
+        {
+          "value": "셀레늄",
+          "label": "셀레늄",
+          "external_value": "MNRL0029",
+          "aliases": [
+            "Selenium"
+          ]
+        },
+        {
+          "value": "스칸듐",
+          "label": "스칸듐",
+          "external_value": "MNRL1053",
+          "aliases": [
+            "Scandium"
+          ]
+        },
+        {
+          "value": "스트론튬",
+          "label": "스트론튬",
+          "external_value": "MNRL0028",
+          "aliases": [
+            "Strontium"
+          ]
+        },
+        {
+          "value": "아연",
+          "label": "아연",
+          "external_value": "MNRL0023",
+          "aliases": [
+            "Zinc"
+          ]
+        },
+        {
+          "value": "안티모니",
+          "label": "안티모니",
+          "external_value": "MNRL0019",
+          "aliases": [
+            "Antimony"
+          ]
+        },
+        {
+          "value": "알루미늄",
+          "label": "알루미늄",
+          "external_value": "MNRL0009",
+          "aliases": [
+            "Aluminum"
+          ]
+        },
+        {
+          "value": "연",
+          "label": "연",
+          "external_value": "MNRL0022",
+          "aliases": [
+            "Lead",
+            "납"
+          ]
+        },
+        {
+          "value": "우라늄",
+          "label": "우라늄",
+          "external_value": "MNRL0031",
+          "aliases": [
+            "Uranium"
+          ]
+        },
+        {
+          "value": "유연탄",
+          "label": "유연탄",
+          "external_value": "MNRL0032",
+          "aliases": [
+            "Coal"
+          ]
+        },
+        {
+          "value": "이트륨",
+          "label": "이트륨",
+          "external_value": "MNRL1054",
+          "aliases": [
+            "Yttrium"
+          ]
+        },
+        {
+          "value": "인듐",
+          "label": "인듐",
+          "external_value": "MNRL0025",
+          "aliases": [
+            "Indium"
+          ]
+        },
+        {
+          "value": "주석",
+          "label": "주석",
+          "external_value": "MNRL0016",
+          "aliases": [
+            "Tin"
+          ]
+        },
+        {
+          "value": "지르코늄",
+          "label": "지르코늄",
+          "external_value": "MNRL0027",
+          "aliases": [
+            "Zirconium"
+          ]
+        },
+        {
+          "value": "창연",
+          "label": "창연",
+          "external_value": "MNRL0020",
+          "aliases": [
+            "Bismuth"
+          ]
+        },
+        {
+          "value": "철",
+          "label": "철",
+          "external_value": "MNRL1011",
+          "aliases": [
+            "Iron",
+            "철광석"
+          ]
+        },
+        {
+          "value": "코발트",
+          "label": "코발트",
+          "external_value": "MNRL0003",
+          "aliases": [
+            "Cobalt"
+          ]
+        },
+        {
+          "value": "크롬",
+          "label": "크롬",
+          "external_value": "MNRL0021",
+          "aliases": [
+            "Chromium"
+          ]
+        },
+        {
+          "value": "탄탈륨",
+          "label": "탄탈륨",
+          "external_value": "MNRL0026",
+          "aliases": [
+            "Tantalum"
+          ]
+        },
+        {
+          "value": "터븀",
+          "label": "터븀",
+          "external_value": "MNRL1005",
+          "aliases": [
+            "Terbium"
+          ]
+        },
+        {
+          "value": "텅스텐",
+          "label": "텅스텐",
+          "external_value": "MNRL0018",
+          "aliases": [
+            "Tungsten"
+          ]
+        },
+        {
+          "value": "티타늄",
+          "label": "티타늄",
+          "external_value": "MNRL0017",
+          "aliases": [
+            "Titanium"
+          ]
+        },
+        {
+          "value": "팔라듐",
+          "label": "팔라듐",
+          "external_value": "MNRL0015",
+          "aliases": [
+            "Palladium"
+          ]
+        },
+        {
+          "value": "흑연",
+          "label": "흑연",
+          "external_value": "MNRL0005",
+          "aliases": [
+            "Graphite"
+          ]
+        }
+      ]
+    },
+    "metadata.indicators.supply_available_months": {
+      "coverage": "partial",
+      "kind": "year_range",
+      "options": [
+        {
+          "value": "2017",
+          "label": "2017",
+          "external_value": "2017",
+          "aliases": []
+        },
+        {
+          "value": "2018",
+          "label": "2018",
+          "external_value": "2018",
+          "aliases": []
+        },
+        {
+          "value": "2019",
+          "label": "2019",
+          "external_value": "2019",
+          "aliases": []
+        },
+        {
+          "value": "2020",
+          "label": "2020",
+          "external_value": "2020",
+          "aliases": []
+        },
+        {
+          "value": "2021",
+          "label": "2021",
+          "external_value": "2021",
+          "aliases": []
+        },
+        {
+          "value": "2022",
+          "label": "2022",
+          "external_value": "2022",
+          "aliases": []
+        },
+        {
+          "value": "2023",
+          "label": "2023",
+          "external_value": "2023",
+          "aliases": []
+        },
+        {
+          "value": "2024",
+          "label": "2024",
+          "external_value": "2024",
+          "aliases": []
+        },
+        {
+          "value": "2025",
+          "label": "2025",
+          "external_value": "2025",
+          "aliases": []
+        },
+        {
+          "value": "2026",
+          "label": "2026",
+          "external_value": "2026",
+          "aliases": []
+        }
+      ],
+      "note": "연도 범위만 수집되어 실제 월별 존재 여부는 검증하지 못한다."
+    },
+    "metadata.indicators.supply_minerals": {
+      "coverage": "complete",
+      "kind": "independent",
+      "options": [
+        {
+          "value": "갈륨",
+          "label": "갈륨",
+          "external_value": "MNRL0024",
+          "aliases": [
+            "Gallium"
+          ]
+        },
+        {
+          "value": "규소",
+          "label": "규소",
+          "external_value": "MNRL0010",
+          "aliases": [
+            "Silicon"
+          ]
+        },
+        {
+          "value": "네오디뮴",
+          "label": "네오디뮴",
+          "external_value": "MNRL1001",
+          "aliases": [
+            "Neodymium"
+          ]
+        },
+        {
+          "value": "니오븀",
+          "label": "니오븀",
+          "external_value": "MNRL0007",
+          "aliases": [
+            "Niobium"
+          ]
+        },
+        {
+          "value": "니켈",
+          "label": "니켈",
+          "external_value": "MNRL0002",
+          "aliases": [
+            "Nickel"
+          ]
+        },
+        {
+          "value": "동",
+          "label": "동",
+          "external_value": "MNRL0008",
+          "aliases": [
+            "Copper",
+            "구리"
+          ]
+        },
+        {
+          "value": "디스프로슘",
+          "label": "디스프로슘",
+          "external_value": "MNRL1004",
+          "aliases": [
+            "Dysprosium"
+          ]
+        },
+        {
+          "value": "란탄",
+          "label": "란탄",
+          "external_value": "MNRL1003",
+          "aliases": [
+            "Lanthanum"
+          ]
+        },
+        {
+          "value": "루테늄",
+          "label": "루테늄",
+          "external_value": "MNRL1070",
+          "aliases": [
+            "Ruthenium"
+          ]
+        },
+        {
+          "value": "리튬",
+          "label": "리튬",
+          "external_value": "MNRL0001",
+          "aliases": [
+            "Lithium"
+          ]
+        },
+        {
+          "value": "마그네슘",
+          "label": "마그네슘",
+          "external_value": "MNRL0011",
+          "aliases": [
+            "Magnesium"
+          ]
+        },
+        {
+          "value": "망간",
+          "label": "망간",
+          "external_value": "MNRL0004",
+          "aliases": [
+            "Manganese"
+          ]
+        },
+        {
+          "value": "몰리브덴",
+          "label": "몰리브덴",
+          "external_value": "MNRL0012",
+          "aliases": [
+            "Molybdenum"
+          ]
+        },
+        {
+          "value": "바나듐",
+          "label": "바나듐",
+          "external_value": "MNRL0013",
+          "aliases": [
+            "Vanadium"
+          ]
+        },
+        {
+          "value": "백금",
+          "label": "백금",
+          "external_value": "MNRL0014",
+          "aliases": [
+            "Platinum"
+          ]
+        },
+        {
+          "value": "세륨",
+          "label": "세륨",
+          "external_value": "MNRL1002",
+          "aliases": [
+            "Cerium"
+          ]
+        },
+        {
+          "value": "셀레늄",
+          "label": "셀레늄",
+          "external_value": "MNRL0029",
+          "aliases": [
+            "Selenium"
+          ]
+        },
+        {
+          "value": "스칸듐",
+          "label": "스칸듐",
+          "external_value": "MNRL1053",
+          "aliases": [
+            "Scandium"
+          ]
+        },
+        {
+          "value": "스트론튬",
+          "label": "스트론튬",
+          "external_value": "MNRL0028",
+          "aliases": [
+            "Strontium"
+          ]
+        },
+        {
+          "value": "아연",
+          "label": "아연",
+          "external_value": "MNRL0023",
+          "aliases": [
+            "Zinc"
+          ]
+        },
+        {
+          "value": "안티모니",
+          "label": "안티모니",
+          "external_value": "MNRL0019",
+          "aliases": [
+            "Antimony"
+          ]
+        },
+        {
+          "value": "알루미늄",
+          "label": "알루미늄",
+          "external_value": "MNRL0009",
+          "aliases": [
+            "Aluminum"
+          ]
+        },
+        {
+          "value": "연",
+          "label": "연",
+          "external_value": "MNRL0022",
+          "aliases": [
+            "Lead",
+            "납"
+          ]
+        },
+        {
+          "value": "이트륨",
+          "label": "이트륨",
+          "external_value": "MNRL1054",
+          "aliases": [
+            "Yttrium"
+          ]
+        },
+        {
+          "value": "인듐",
+          "label": "인듐",
+          "external_value": "MNRL0025",
+          "aliases": [
+            "Indium"
+          ]
+        },
+        {
+          "value": "주석",
+          "label": "주석",
+          "external_value": "MNRL0016",
+          "aliases": [
+            "Tin"
+          ]
+        },
+        {
+          "value": "지르코늄",
+          "label": "지르코늄",
+          "external_value": "MNRL0027",
+          "aliases": [
+            "Zirconium"
+          ]
+        },
+        {
+          "value": "창연",
+          "label": "창연",
+          "external_value": "MNRL0020",
+          "aliases": [
+            "Bismuth"
+          ]
+        },
+        {
+          "value": "코발트",
+          "label": "코발트",
+          "external_value": "MNRL0003",
+          "aliases": [
+            "Cobalt"
+          ]
+        },
+        {
+          "value": "크롬",
+          "label": "크롬",
+          "external_value": "MNRL0021",
+          "aliases": [
+            "Chromium"
+          ]
+        },
+        {
+          "value": "탄탈륨",
+          "label": "탄탈륨",
+          "external_value": "MNRL0026",
+          "aliases": [
+            "Tantalum"
+          ]
+        },
+        {
+          "value": "터븀",
+          "label": "터븀",
+          "external_value": "MNRL1005",
+          "aliases": [
+            "Terbium"
+          ]
+        },
+        {
+          "value": "텅스텐",
+          "label": "텅스텐",
+          "external_value": "MNRL0018",
+          "aliases": [
+            "Tungsten"
+          ]
+        },
+        {
+          "value": "티타늄",
+          "label": "티타늄",
+          "external_value": "MNRL0017",
+          "aliases": [
+            "Titanium"
+          ]
+        },
+        {
+          "value": "팔라듐",
+          "label": "팔라듐",
+          "external_value": "MNRL0015",
+          "aliases": [
+            "Palladium"
+          ]
+        },
+        {
+          "value": "흑연",
+          "label": "흑연",
+          "external_value": "MNRL0005",
+          "aliases": [
+            "Graphite"
+          ]
+        }
+      ]
+    },
+    "metadata.information.all_countries": {
+      "coverage": "complete",
+      "kind": "independent",
+      "options": [
+        {
+          "value": "가나",
+          "label": "가나",
+          "external_value": "GH",
+          "aliases": []
+        },
+        {
+          "value": "가봉",
+          "label": "가봉",
+          "external_value": "GA",
+          "aliases": []
+        },
+        {
+          "value": "가이아나",
+          "label": "가이아나",
+          "external_value": "GY",
+          "aliases": []
+        },
+        {
+          "value": "감비아",
+          "label": "감비아",
+          "external_value": "GM",
+          "aliases": []
+        },
+        {
+          "value": "건지",
+          "label": "건지",
+          "external_value": "GG",
+          "aliases": []
+        },
+        {
+          "value": "과들루프",
+          "label": "과들루프",
+          "external_value": "GP",
+          "aliases": []
+        },
+        {
+          "value": "과테말라",
+          "label": "과테말라",
+          "external_value": "GT",
+          "aliases": []
+        },
+        {
+          "value": "괌",
+          "label": "괌",
+          "external_value": "GU",
+          "aliases": []
+        },
+        {
+          "value": "교황청",
+          "label": "교황청",
+          "external_value": "VA",
+          "aliases": []
+        },
+        {
+          "value": "그레나다",
+          "label": "그레나다",
+          "external_value": "GD",
+          "aliases": []
+        },
+        {
+          "value": "그리스",
+          "label": "그리스",
+          "external_value": "GR",
+          "aliases": []
+        },
+        {
+          "value": "그린란드",
+          "label": "그린란드",
+          "external_value": "GL",
+          "aliases": []
+        },
+        {
+          "value": "기니",
+          "label": "기니",
+          "external_value": "GN",
+          "aliases": []
+        },
+        {
+          "value": "기니비사우",
+          "label": "기니비사우",
+          "external_value": "GW",
+          "aliases": []
+        },
+        {
+          "value": "나미비아",
+          "label": "나미비아",
+          "external_value": "NA",
+          "aliases": []
+        },
+        {
+          "value": "나우루",
+          "label": "나우루",
+          "external_value": "NR",
+          "aliases": []
+        },
+        {
+          "value": "나이지리아",
+          "label": "나이지리아",
+          "external_value": "NG",
+          "aliases": []
+        },
+        {
+          "value": "남수단",
+          "label": "남수단",
+          "external_value": "SS",
+          "aliases": []
+        },
+        {
+          "value": "남아프리카공화국",
+          "label": "남아프리카공화국",
+          "external_value": "ZA",
+          "aliases": []
+        },
+        {
+          "value": "네덜란드",
+          "label": "네덜란드",
+          "external_value": "NL",
+          "aliases": []
+        },
+        {
+          "value": "네덜란드령 안틸레스",
+          "label": "네덜란드령 안틸레스",
+          "external_value": "AN",
+          "aliases": []
+        },
+        {
+          "value": "네팔",
+          "label": "네팔",
+          "external_value": "NP",
+          "aliases": []
+        },
+        {
+          "value": "노르웨이",
+          "label": "노르웨이",
+          "external_value": "NO",
+          "aliases": []
+        },
+        {
+          "value": "뉴질랜드",
+          "label": "뉴질랜드",
+          "external_value": "NZ",
+          "aliases": []
+        },
+        {
+          "value": "뉴칼레도니아",
+          "label": "뉴칼레도니아",
+          "external_value": "NC",
+          "aliases": []
+        },
+        {
+          "value": "니우에",
+          "label": "니우에",
+          "external_value": "NU",
+          "aliases": []
+        },
+        {
+          "value": "니제르",
+          "label": "니제르",
+          "external_value": "NE",
+          "aliases": []
+        },
+        {
+          "value": "니카라과",
+          "label": "니카라과",
+          "external_value": "NI",
+          "aliases": []
+        },
+        {
+          "value": "대만",
+          "label": "대만",
+          "external_value": "TW",
+          "aliases": []
+        },
+        {
+          "value": "대한민국",
+          "label": "대한민국",
+          "external_value": "KR",
+          "aliases": [
+            "한국"
+          ]
+        },
+        {
+          "value": "덴마크",
+          "label": "덴마크",
+          "external_value": "DK",
+          "aliases": []
+        },
+        {
+          "value": "도미니카공화국",
+          "label": "도미니카공화국",
+          "external_value": "DO",
+          "aliases": []
+        },
+        {
+          "value": "도미니카연방",
+          "label": "도미니카연방",
+          "external_value": "DM",
+          "aliases": []
+        },
+        {
+          "value": "독일",
+          "label": "독일",
+          "external_value": "DE",
+          "aliases": []
+        },
+        {
+          "value": "동티모르",
+          "label": "동티모르",
+          "external_value": "TL",
+          "aliases": []
+        },
+        {
+          "value": "라오스",
+          "label": "라오스",
+          "external_value": "LA",
+          "aliases": []
+        },
+        {
+          "value": "라이베리아",
+          "label": "라이베리아",
+          "external_value": "LR",
+          "aliases": []
+        },
+        {
+          "value": "라트비아",
+          "label": "라트비아",
+          "external_value": "LV",
+          "aliases": []
+        },
+        {
+          "value": "러시아",
+          "label": "러시아",
+          "external_value": "RU",
+          "aliases": []
+        },
+        {
+          "value": "레바논",
+          "label": "레바논",
+          "external_value": "LB",
+          "aliases": []
+        },
+        {
+          "value": "레소토",
+          "label": "레소토",
+          "external_value": "LS",
+          "aliases": []
+        },
+        {
+          "value": "레위니옹",
+          "label": "레위니옹",
+          "external_value": "RE",
+          "aliases": []
+        },
+        {
+          "value": "루마니아",
+          "label": "루마니아",
+          "external_value": "RO",
+          "aliases": []
+        },
+        {
+          "value": "룩셈부르크",
+          "label": "룩셈부르크",
+          "external_value": "LU",
+          "aliases": []
+        },
+        {
+          "value": "르완다",
+          "label": "르완다",
+          "external_value": "RW",
+          "aliases": []
+        },
+        {
+          "value": "리비아",
+          "label": "리비아",
+          "external_value": "LY",
+          "aliases": []
+        },
+        {
+          "value": "리투아니아",
+          "label": "리투아니아",
+          "external_value": "LT",
+          "aliases": []
+        },
+        {
+          "value": "리히텐슈타인",
+          "label": "리히텐슈타인",
+          "external_value": "LI",
+          "aliases": []
+        },
+        {
+          "value": "마다가스카르",
+          "label": "마다가스카르",
+          "external_value": "MG",
+          "aliases": []
+        },
+        {
+          "value": "마르티니크",
+          "label": "마르티니크",
+          "external_value": "MQ",
+          "aliases": []
+        },
+        {
+          "value": "마셜제도",
+          "label": "마셜제도",
+          "external_value": "MH",
+          "aliases": []
+        },
+        {
+          "value": "마요트",
+          "label": "마요트",
+          "external_value": "YT",
+          "aliases": []
+        },
+        {
+          "value": "마이크로네시아연방",
+          "label": "마이크로네시아연방",
+          "external_value": "FM",
+          "aliases": []
+        },
+        {
+          "value": "마카오",
+          "label": "마카오",
+          "external_value": "MO",
+          "aliases": []
+        },
+        {
+          "value": "말라위",
+          "label": "말라위",
+          "external_value": "MW",
+          "aliases": []
+        },
+        {
+          "value": "말레이시아",
+          "label": "말레이시아",
+          "external_value": "MY",
+          "aliases": []
+        },
+        {
+          "value": "말리",
+          "label": "말리",
+          "external_value": "ML",
+          "aliases": []
+        },
+        {
+          "value": "맨 섬",
+          "label": "맨 섬",
+          "external_value": "IM",
+          "aliases": []
+        },
+        {
+          "value": "멕시코",
+          "label": "멕시코",
+          "external_value": "MX",
+          "aliases": []
+        },
+        {
+          "value": "모나코",
+          "label": "모나코",
+          "external_value": "MC",
+          "aliases": []
+        },
+        {
+          "value": "모로코",
+          "label": "모로코",
+          "external_value": "MA",
+          "aliases": []
+        },
+        {
+          "value": "모리셔스",
+          "label": "모리셔스",
+          "external_value": "MU",
+          "aliases": []
+        },
+        {
+          "value": "모리타니아",
+          "label": "모리타니아",
+          "external_value": "MR",
+          "aliases": []
+        },
+        {
+          "value": "모잠비크",
+          "label": "모잠비크",
+          "external_value": "MZ",
+          "aliases": []
+        },
+        {
+          "value": "몬테네그로",
+          "label": "몬테네그로",
+          "external_value": "ME",
+          "aliases": []
+        },
+        {
+          "value": "몬트세랫",
+          "label": "몬트세랫",
+          "external_value": "MS",
+          "aliases": []
+        },
+        {
+          "value": "몰도바",
+          "label": "몰도바",
+          "external_value": "MD",
+          "aliases": []
+        },
+        {
+          "value": "몰디브",
+          "label": "몰디브",
+          "external_value": "MV",
+          "aliases": []
+        },
+        {
+          "value": "몰타",
+          "label": "몰타",
+          "external_value": "MT",
+          "aliases": []
+        },
+        {
+          "value": "몽골",
+          "label": "몽골",
+          "external_value": "MN",
+          "aliases": []
+        },
+        {
+          "value": "미국",
+          "label": "미국",
+          "external_value": "US",
+          "aliases": []
+        },
+        {
+          "value": "미얀마",
+          "label": "미얀마",
+          "external_value": "MM",
+          "aliases": []
+        },
+        {
+          "value": "바누아투",
+          "label": "바누아투",
+          "external_value": "VU",
+          "aliases": []
+        },
+        {
+          "value": "바레인",
+          "label": "바레인",
+          "external_value": "BH",
+          "aliases": []
+        },
+        {
+          "value": "바베이도스",
+          "label": "바베이도스",
+          "external_value": "BB",
+          "aliases": []
+        },
+        {
+          "value": "바하마",
+          "label": "바하마",
+          "external_value": "BS",
+          "aliases": []
+        },
+        {
+          "value": "방글라데시",
+          "label": "방글라데시",
+          "external_value": "BD",
+          "aliases": []
+        },
+        {
+          "value": "버뮤다",
+          "label": "버뮤다",
+          "external_value": "BM",
+          "aliases": []
+        },
+        {
+          "value": "베냉",
+          "label": "베냉",
+          "external_value": "BJ",
+          "aliases": []
+        },
+        {
+          "value": "베네수엘라",
+          "label": "베네수엘라",
+          "external_value": "VE",
+          "aliases": []
+        },
+        {
+          "value": "베트남",
+          "label": "베트남",
+          "external_value": "VN",
+          "aliases": []
+        },
+        {
+          "value": "벨기에",
+          "label": "벨기에",
+          "external_value": "BE",
+          "aliases": []
+        },
+        {
+          "value": "벨라루스",
+          "label": "벨라루스",
+          "external_value": "BY",
+          "aliases": []
+        },
+        {
+          "value": "벨리즈",
+          "label": "벨리즈",
+          "external_value": "BZ",
+          "aliases": []
+        },
+        {
+          "value": "보스니아헤르체고비나",
+          "label": "보스니아헤르체고비나",
+          "external_value": "BA",
+          "aliases": []
+        },
+        {
+          "value": "보츠와나",
+          "label": "보츠와나",
+          "external_value": "BW",
+          "aliases": []
+        },
+        {
+          "value": "볼리비아",
+          "label": "볼리비아",
+          "external_value": "BO",
+          "aliases": []
+        },
+        {
+          "value": "부룬디",
+          "label": "부룬디",
+          "external_value": "BI",
+          "aliases": []
+        },
+        {
+          "value": "부르키나파소",
+          "label": "부르키나파소",
+          "external_value": "BF",
+          "aliases": []
+        },
+        {
+          "value": "부탄",
+          "label": "부탄",
+          "external_value": "BT",
+          "aliases": []
+        },
+        {
+          "value": "북마리아나 군도",
+          "label": "북마리아나 군도",
+          "external_value": "MP",
+          "aliases": []
+        },
+        {
+          "value": "북마케도니아",
+          "label": "북마케도니아",
+          "external_value": "MK",
+          "aliases": []
+        },
+        {
+          "value": "북한",
+          "label": "북한",
+          "external_value": "KP",
+          "aliases": []
+        },
+        {
+          "value": "불가리아",
+          "label": "불가리아",
+          "external_value": "BG",
+          "aliases": []
+        },
+        {
+          "value": "브라질",
+          "label": "브라질",
+          "external_value": "BR",
+          "aliases": []
+        },
+        {
+          "value": "브루나이",
+          "label": "브루나이",
+          "external_value": "BN",
+          "aliases": []
+        },
+        {
+          "value": "사모아",
+          "label": "사모아",
+          "external_value": "WS",
+          "aliases": []
+        },
+        {
+          "value": "사우디아라비아",
+          "label": "사우디아라비아",
+          "external_value": "SA",
+          "aliases": []
+        },
+        {
+          "value": "사이프러스",
+          "label": "사이프러스",
+          "external_value": "CY",
+          "aliases": []
+        },
+        {
+          "value": "사하라 아랍민주공화국(서부사하라)",
+          "label": "사하라 아랍민주공화국(서부사하라)",
+          "external_value": "EH",
+          "aliases": []
+        },
+        {
+          "value": "산마리노",
+          "label": "산마리노",
+          "external_value": "SM",
+          "aliases": []
+        },
+        {
+          "value": "상투메프린시페",
+          "label": "상투메프린시페",
+          "external_value": "ST",
+          "aliases": []
+        },
+        {
+          "value": "생피에르·미클롱",
+          "label": "생피에르·미클롱",
+          "external_value": "PM",
+          "aliases": []
+        },
+        {
+          "value": "세네갈",
+          "label": "세네갈",
+          "external_value": "SN",
+          "aliases": []
+        },
+        {
+          "value": "세이셸",
+          "label": "세이셸",
+          "external_value": "SC",
+          "aliases": []
+        },
+        {
+          "value": "세인트 헬레나 섬",
+          "label": "세인트 헬레나 섬",
+          "external_value": "SH",
+          "aliases": []
+        },
+        {
+          "value": "세인트루시아",
+          "label": "세인트루시아",
+          "external_value": "LC",
+          "aliases": []
+        },
+        {
+          "value": "세인트빈센트그레나딘",
+          "label": "세인트빈센트그레나딘",
+          "external_value": "VC",
+          "aliases": []
+        },
+        {
+          "value": "세인트키츠네비스",
+          "label": "세인트키츠네비스",
+          "external_value": "KN",
+          "aliases": []
+        },
+        {
+          "value": "소말리아",
+          "label": "소말리아",
+          "external_value": "SO",
+          "aliases": []
+        },
+        {
+          "value": "솔로몬제도",
+          "label": "솔로몬제도",
+          "external_value": "SB",
+          "aliases": []
+        },
+        {
+          "value": "수단",
+          "label": "수단",
+          "external_value": "SD",
+          "aliases": []
+        },
+        {
+          "value": "수리남",
+          "label": "수리남",
+          "external_value": "SR",
+          "aliases": []
+        },
+        {
+          "value": "스리랑카",
+          "label": "스리랑카",
+          "external_value": "LK",
+          "aliases": []
+        },
+        {
+          "value": "스웨덴",
+          "label": "스웨덴",
+          "external_value": "SE",
+          "aliases": []
+        },
+        {
+          "value": "스위스",
+          "label": "스위스",
+          "external_value": "CH",
+          "aliases": []
+        },
+        {
+          "value": "스페인",
+          "label": "스페인",
+          "external_value": "ES",
+          "aliases": []
+        },
+        {
+          "value": "슬로바키아",
+          "label": "슬로바키아",
+          "external_value": "SK",
+          "aliases": []
+        },
+        {
+          "value": "슬로베니아",
+          "label": "슬로베니아",
+          "external_value": "SI",
+          "aliases": []
+        },
+        {
+          "value": "시리아",
+          "label": "시리아",
+          "external_value": "SY",
+          "aliases": []
+        },
+        {
+          "value": "시에라리온",
+          "label": "시에라리온",
+          "external_value": "SL",
+          "aliases": []
+        },
+        {
+          "value": "싱가포르",
+          "label": "싱가포르",
+          "external_value": "SG",
+          "aliases": []
+        },
+        {
+          "value": "아랍에미리트",
+          "label": "아랍에미리트",
+          "external_value": "AE",
+          "aliases": []
+        },
+        {
+          "value": "아루바",
+          "label": "아루바",
+          "external_value": "AW",
+          "aliases": []
+        },
+        {
+          "value": "아르메니아",
+          "label": "아르메니아",
+          "external_value": "AM",
+          "aliases": []
+        },
+        {
+          "value": "아르헨티나",
+          "label": "아르헨티나",
+          "external_value": "AR",
+          "aliases": []
+        },
+        {
+          "value": "아이슬란드",
+          "label": "아이슬란드",
+          "external_value": "IS",
+          "aliases": []
+        },
+        {
+          "value": "아이티",
+          "label": "아이티",
+          "external_value": "HT",
+          "aliases": []
+        },
+        {
+          "value": "아일랜드",
+          "label": "아일랜드",
+          "external_value": "IE",
+          "aliases": []
+        },
+        {
+          "value": "아제르바이잔",
+          "label": "아제르바이잔",
+          "external_value": "AZ",
+          "aliases": []
+        },
+        {
+          "value": "아프가니스탄",
+          "label": "아프가니스탄",
+          "external_value": "AF",
+          "aliases": []
+        },
+        {
+          "value": "안도라",
+          "label": "안도라",
+          "external_value": "AD",
+          "aliases": []
+        },
+        {
+          "value": "알바니아",
+          "label": "알바니아",
+          "external_value": "AL",
+          "aliases": []
+        },
+        {
+          "value": "알제리",
+          "label": "알제리",
+          "external_value": "DZ",
+          "aliases": []
+        },
+        {
+          "value": "앙골라",
+          "label": "앙골라",
+          "external_value": "AO",
+          "aliases": []
+        },
+        {
+          "value": "앤티가바부다",
+          "label": "앤티가바부다",
+          "external_value": "AG",
+          "aliases": []
+        },
+        {
+          "value": "앵귈라",
+          "label": "앵귈라",
+          "external_value": "AI",
+          "aliases": []
+        },
+        {
+          "value": "에리트레아",
+          "label": "에리트레아",
+          "external_value": "ER",
+          "aliases": []
+        },
+        {
+          "value": "에스와티니",
+          "label": "에스와티니",
+          "external_value": "SZ",
+          "aliases": []
+        },
+        {
+          "value": "에스토니아",
+          "label": "에스토니아",
+          "external_value": "EE",
+          "aliases": []
+        },
+        {
+          "value": "에콰도르",
+          "label": "에콰도르",
+          "external_value": "EC",
+          "aliases": []
+        },
+        {
+          "value": "에티오피아",
+          "label": "에티오피아",
+          "external_value": "ET",
+          "aliases": []
+        },
+        {
+          "value": "엘살바도르",
+          "label": "엘살바도르",
+          "external_value": "SV",
+          "aliases": []
+        },
+        {
+          "value": "영국",
+          "label": "영국",
+          "external_value": "GB",
+          "aliases": []
+        },
+        {
+          "value": "영국령 버진 아일랜드",
+          "label": "영국령 버진 아일랜드",
+          "external_value": "VG",
+          "aliases": []
+        },
+        {
+          "value": "영국령 인도양 제도",
+          "label": "영국령 인도양 제도",
+          "external_value": "IO",
+          "aliases": []
+        },
+        {
+          "value": "예멘",
+          "label": "예멘",
+          "external_value": "YE",
+          "aliases": []
+        },
+        {
+          "value": "오만",
+          "label": "오만",
+          "external_value": "OM",
+          "aliases": []
+        },
+        {
+          "value": "오스트리아",
+          "label": "오스트리아",
+          "external_value": "AT",
+          "aliases": []
+        },
+        {
+          "value": "온두라스",
+          "label": "온두라스",
+          "external_value": "HN",
+          "aliases": []
+        },
+        {
+          "value": "왈리스·퓌튀나",
+          "label": "왈리스·퓌튀나",
+          "external_value": "WF",
+          "aliases": []
+        },
+        {
+          "value": "요르단",
+          "label": "요르단",
+          "external_value": "JO",
+          "aliases": []
+        },
+        {
+          "value": "우간다",
+          "label": "우간다",
+          "external_value": "UG",
+          "aliases": []
+        },
+        {
+          "value": "우루과이",
+          "label": "우루과이",
+          "external_value": "UY",
+          "aliases": []
+        },
+        {
+          "value": "우즈베키스탄",
+          "label": "우즈베키스탄",
+          "external_value": "UZ",
+          "aliases": []
+        },
+        {
+          "value": "우크라이나",
+          "label": "우크라이나",
+          "external_value": "UA",
+          "aliases": []
+        },
+        {
+          "value": "유럽연합",
+          "label": "유럽연합",
+          "external_value": "EU",
+          "aliases": []
+        },
+        {
+          "value": "이라크",
+          "label": "이라크",
+          "external_value": "IQ",
+          "aliases": []
+        },
+        {
+          "value": "이란",
+          "label": "이란",
+          "external_value": "IR",
+          "aliases": []
+        },
+        {
+          "value": "이스라엘",
+          "label": "이스라엘",
+          "external_value": "IL",
+          "aliases": []
+        },
+        {
+          "value": "이집트",
+          "label": "이집트",
+          "external_value": "EG",
+          "aliases": []
+        },
+        {
+          "value": "이탈리아",
+          "label": "이탈리아",
+          "external_value": "IT",
+          "aliases": []
+        },
+        {
+          "value": "인도",
+          "label": "인도",
+          "external_value": "IN",
+          "aliases": []
+        },
+        {
+          "value": "인도네시아",
+          "label": "인도네시아",
+          "external_value": "ID",
+          "aliases": []
+        },
+        {
+          "value": "일본",
+          "label": "일본",
+          "external_value": "JP",
+          "aliases": []
+        },
+        {
+          "value": "자메이카",
+          "label": "자메이카",
+          "external_value": "JM",
+          "aliases": []
+        },
+        {
+          "value": "잠비아",
+          "label": "잠비아",
+          "external_value": "ZM",
+          "aliases": []
+        },
+        {
+          "value": "저지",
+          "label": "저지",
+          "external_value": "JE",
+          "aliases": []
+        },
+        {
+          "value": "적도기니",
+          "label": "적도기니",
+          "external_value": "GQ",
+          "aliases": []
+        },
+        {
+          "value": "조지아",
+          "label": "조지아",
+          "external_value": "GE",
+          "aliases": []
+        },
+        {
+          "value": "중국",
+          "label": "중국",
+          "external_value": "CN",
+          "aliases": []
+        },
+        {
+          "value": "중앙아프리카",
+          "label": "중앙아프리카",
+          "external_value": "CF",
+          "aliases": []
+        },
+        {
+          "value": "지부티",
+          "label": "지부티",
+          "external_value": "DJ",
+          "aliases": []
+        },
+        {
+          "value": "지브롤터",
+          "label": "지브롤터",
+          "external_value": "GI",
+          "aliases": []
+        },
+        {
+          "value": "짐바브웨",
+          "label": "짐바브웨",
+          "external_value": "ZW",
+          "aliases": []
+        },
+        {
+          "value": "차드",
+          "label": "차드",
+          "external_value": "TD",
+          "aliases": []
+        },
+        {
+          "value": "체코",
+          "label": "체코",
+          "external_value": "CZ",
+          "aliases": []
+        },
+        {
+          "value": "칠레",
+          "label": "칠레",
+          "external_value": "CL",
+          "aliases": []
+        },
+        {
+          "value": "카메룬",
+          "label": "카메룬",
+          "external_value": "CM",
+          "aliases": []
+        },
+        {
+          "value": "카보베르데",
+          "label": "카보베르데",
+          "external_value": "CV",
+          "aliases": []
+        },
+        {
+          "value": "카자흐스탄",
+          "label": "카자흐스탄",
+          "external_value": "KZ",
+          "aliases": []
+        },
+        {
+          "value": "카타르",
+          "label": "카타르",
+          "external_value": "QA",
+          "aliases": []
+        },
+        {
+          "value": "캄보디아",
+          "label": "캄보디아",
+          "external_value": "KH",
+          "aliases": []
+        },
+        {
+          "value": "캐나다",
+          "label": "캐나다",
+          "external_value": "CA",
+          "aliases": []
+        },
+        {
+          "value": "케냐",
+          "label": "케냐",
+          "external_value": "KE",
+          "aliases": []
+        },
+        {
+          "value": "케이맨제도",
+          "label": "케이맨제도",
+          "external_value": "KY",
+          "aliases": []
+        },
+        {
+          "value": "코모로",
+          "label": "코모로",
+          "external_value": "KM",
+          "aliases": []
+        },
+        {
+          "value": "코소보",
+          "label": "코소보",
+          "external_value": "XK",
+          "aliases": []
+        },
+        {
+          "value": "코스타리카",
+          "label": "코스타리카",
+          "external_value": "CR",
+          "aliases": []
+        },
+        {
+          "value": "코트디부아르",
+          "label": "코트디부아르",
+          "external_value": "CI",
+          "aliases": []
+        },
+        {
+          "value": "콜롬비아",
+          "label": "콜롬비아",
+          "external_value": "CO",
+          "aliases": []
+        },
+        {
+          "value": "콩고",
+          "label": "콩고",
+          "external_value": "CG",
+          "aliases": []
+        },
+        {
+          "value": "콩고민주공화국",
+          "label": "콩고민주공화국",
+          "external_value": "CD",
+          "aliases": []
+        },
+        {
+          "value": "쿠바",
+          "label": "쿠바",
+          "external_value": "CU",
+          "aliases": []
+        },
+        {
+          "value": "쿠웨이트",
+          "label": "쿠웨이트",
+          "external_value": "KW",
+          "aliases": []
+        },
+        {
+          "value": "쿡제도",
+          "label": "쿡제도",
+          "external_value": "CK",
+          "aliases": []
+        },
+        {
+          "value": "크로아티아",
+          "label": "크로아티아",
+          "external_value": "HR",
+          "aliases": []
+        },
+        {
+          "value": "키르기스스탄",
+          "label": "키르기스스탄",
+          "external_value": "KG",
+          "aliases": []
+        },
+        {
+          "value": "키리바시",
+          "label": "키리바시",
+          "external_value": "KI",
+          "aliases": []
+        },
+        {
+          "value": "타지키스탄",
+          "label": "타지키스탄",
+          "external_value": "TJ",
+          "aliases": []
+        },
+        {
+          "value": "탄자니아",
+          "label": "탄자니아",
+          "external_value": "TZ",
+          "aliases": []
+        },
+        {
+          "value": "태국",
+          "label": "태국",
+          "external_value": "TH",
+          "aliases": []
+        },
+        {
+          "value": "터크스·케이커스 제도",
+          "label": "터크스·케이커스 제도",
+          "external_value": "TC",
+          "aliases": []
+        },
+        {
+          "value": "토고",
+          "label": "토고",
+          "external_value": "TG",
+          "aliases": []
+        },
+        {
+          "value": "통가",
+          "label": "통가",
+          "external_value": "TO",
+          "aliases": []
+        },
+        {
+          "value": "투르크메니스탄",
+          "label": "투르크메니스탄",
+          "external_value": "TM",
+          "aliases": []
+        },
+        {
+          "value": "투발루",
+          "label": "투발루",
+          "external_value": "TV",
+          "aliases": []
+        },
+        {
+          "value": "튀니지",
+          "label": "튀니지",
+          "external_value": "TN",
+          "aliases": []
+        },
+        {
+          "value": "튀르키예공화국",
+          "label": "튀르키예공화국",
+          "external_value": "TR",
+          "aliases": []
+        },
+        {
+          "value": "트리니다드토바고",
+          "label": "트리니다드토바고",
+          "external_value": "TT",
+          "aliases": []
+        },
+        {
+          "value": "파나마",
+          "label": "파나마",
+          "external_value": "PA",
+          "aliases": []
+        },
+        {
+          "value": "파라과이",
+          "label": "파라과이",
+          "external_value": "PY",
+          "aliases": []
+        },
+        {
+          "value": "파키스탄",
+          "label": "파키스탄",
+          "external_value": "PK",
+          "aliases": []
+        },
+        {
+          "value": "파푸아뉴기니",
+          "label": "파푸아뉴기니",
+          "external_value": "PG",
+          "aliases": []
+        },
+        {
+          "value": "팔라우",
+          "label": "팔라우",
+          "external_value": "PW",
+          "aliases": []
+        },
+        {
+          "value": "팔레스타인",
+          "label": "팔레스타인",
+          "external_value": "PS",
+          "aliases": []
+        },
+        {
+          "value": "페루",
+          "label": "페루",
+          "external_value": "PE",
+          "aliases": []
+        },
+        {
+          "value": "포르투갈",
+          "label": "포르투갈",
+          "external_value": "PT",
+          "aliases": []
+        },
+        {
+          "value": "포클랜드 제도",
+          "label": "포클랜드 제도",
+          "external_value": "FK",
+          "aliases": []
+        },
+        {
+          "value": "폴란드",
+          "label": "폴란드",
+          "external_value": "PL",
+          "aliases": []
+        },
+        {
+          "value": "푸에르토리코",
+          "label": "푸에르토리코",
+          "external_value": "PR",
+          "aliases": []
+        },
+        {
+          "value": "프랑스",
+          "label": "프랑스",
+          "external_value": "FR",
+          "aliases": []
+        },
+        {
+          "value": "프랑스 모나코",
+          "label": "프랑스 모나코",
+          "external_value": "OF",
+          "aliases": []
+        },
+        {
+          "value": "프랑스령 기아나",
+          "label": "프랑스령 기아나",
+          "external_value": "GF",
+          "aliases": []
+        },
+        {
+          "value": "프랑스령 폴리네시아",
+          "label": "프랑스령 폴리네시아",
+          "external_value": "PF",
+          "aliases": []
+        },
+        {
+          "value": "피지",
+          "label": "피지",
+          "external_value": "FJ",
+          "aliases": []
+        },
+        {
+          "value": "핀란드",
+          "label": "핀란드",
+          "external_value": "FI",
+          "aliases": []
+        },
+        {
+          "value": "필리핀",
+          "label": "필리핀",
+          "external_value": "PH",
+          "aliases": []
+        },
+        {
+          "value": "핏케언 섬",
+          "label": "핏케언 섬",
+          "external_value": "PN",
+          "aliases": []
+        },
+        {
+          "value": "헝가리",
+          "label": "헝가리",
+          "external_value": "HU",
+          "aliases": []
+        },
+        {
+          "value": "호주",
+          "label": "호주",
+          "external_value": "AU",
+          "aliases": []
+        },
+        {
+          "value": "홍콩",
+          "label": "홍콩",
+          "external_value": "HK",
+          "aliases": []
+        }
+      ]
+    },
+    "metadata.information.countries": {
+      "coverage": "complete",
+      "kind": "independent",
+      "options": [
+        {
+          "value": "가나",
+          "label": "가나",
+          "external_value": "GH",
+          "aliases": []
+        },
+        {
+          "value": "가봉",
+          "label": "가봉",
+          "external_value": "GA",
+          "aliases": []
+        },
+        {
+          "value": "가이아나",
+          "label": "가이아나",
+          "external_value": "GY",
+          "aliases": []
+        },
+        {
+          "value": "그리스",
+          "label": "그리스",
+          "external_value": "GR",
+          "aliases": []
+        },
+        {
+          "value": "기니",
+          "label": "기니",
+          "external_value": "GN",
+          "aliases": []
+        },
+        {
+          "value": "나미비아",
+          "label": "나미비아",
+          "external_value": "NA",
+          "aliases": []
+        },
+        {
+          "value": "나이지리아",
+          "label": "나이지리아",
+          "external_value": "NG",
+          "aliases": []
+        },
+        {
+          "value": "남아프리카공화국",
+          "label": "남아프리카공화국",
+          "external_value": "ZA",
+          "aliases": []
+        },
+        {
+          "value": "네덜란드",
+          "label": "네덜란드",
+          "external_value": "NL",
+          "aliases": []
+        },
+        {
+          "value": "노르웨이",
+          "label": "노르웨이",
+          "external_value": "NO",
+          "aliases": []
+        },
+        {
+          "value": "뉴질랜드",
+          "label": "뉴질랜드",
+          "external_value": "NZ",
+          "aliases": []
+        },
+        {
+          "value": "뉴칼레도니아",
+          "label": "뉴칼레도니아",
+          "external_value": "NC",
+          "aliases": []
+        },
+        {
+          "value": "니제르",
+          "label": "니제르",
+          "external_value": "NE",
+          "aliases": []
+        },
+        {
+          "value": "대만",
+          "label": "대만",
+          "external_value": "TW",
+          "aliases": []
+        },
+        {
+          "value": "도미니카공화국",
+          "label": "도미니카공화국",
+          "external_value": "DO",
+          "aliases": []
+        },
+        {
+          "value": "독일",
+          "label": "독일",
+          "external_value": "DE",
+          "aliases": []
+        },
+        {
+          "value": "라오스",
+          "label": "라오스",
+          "external_value": "LA",
+          "aliases": []
+        },
+        {
+          "value": "러시아",
+          "label": "러시아",
+          "external_value": "RU",
+          "aliases": []
+        },
+        {
+          "value": "루마니아",
+          "label": "루마니아",
+          "external_value": "RO",
+          "aliases": []
+        },
+        {
+          "value": "마다가스카르",
+          "label": "마다가스카르",
+          "external_value": "MG",
+          "aliases": []
+        },
+        {
+          "value": "말레이시아",
+          "label": "말레이시아",
+          "external_value": "MY",
+          "aliases": []
+        },
+        {
+          "value": "말리",
+          "label": "말리",
+          "external_value": "ML",
+          "aliases": []
+        },
+        {
+          "value": "멕시코",
+          "label": "멕시코",
+          "external_value": "MX",
+          "aliases": []
+        },
+        {
+          "value": "모로코",
+          "label": "모로코",
+          "external_value": "MA",
+          "aliases": []
+        },
+        {
+          "value": "모잠비크",
+          "label": "모잠비크",
+          "external_value": "MZ",
+          "aliases": []
+        },
+        {
+          "value": "몽골",
+          "label": "몽골",
+          "external_value": "MN",
+          "aliases": []
+        },
+        {
+          "value": "미국",
+          "label": "미국",
+          "external_value": "US",
+          "aliases": []
+        },
+        {
+          "value": "미얀마",
+          "label": "미얀마",
+          "external_value": "MM",
+          "aliases": []
+        },
+        {
+          "value": "베네수엘라",
+          "label": "베네수엘라",
+          "external_value": "VE",
+          "aliases": []
+        },
+        {
+          "value": "베트남",
+          "label": "베트남",
+          "external_value": "VN",
+          "aliases": []
+        },
+        {
+          "value": "벨기에",
+          "label": "벨기에",
+          "external_value": "BE",
+          "aliases": []
+        },
+        {
+          "value": "보츠와나",
+          "label": "보츠와나",
+          "external_value": "BW",
+          "aliases": []
+        },
+        {
+          "value": "볼리비아",
+          "label": "볼리비아",
+          "external_value": "BO",
+          "aliases": []
+        },
+        {
+          "value": "불가리아",
+          "label": "불가리아",
+          "external_value": "BG",
+          "aliases": []
+        },
+        {
+          "value": "브라질",
+          "label": "브라질",
+          "external_value": "BR",
+          "aliases": []
+        },
+        {
+          "value": "사우디아라비아",
+          "label": "사우디아라비아",
+          "external_value": "SA",
+          "aliases": []
+        },
+        {
+          "value": "세네갈",
+          "label": "세네갈",
+          "external_value": "SN",
+          "aliases": []
+        },
+        {
+          "value": "수단",
+          "label": "수단",
+          "external_value": "SD",
+          "aliases": []
+        },
+        {
+          "value": "수리남",
+          "label": "수리남",
+          "external_value": "SR",
+          "aliases": []
+        },
+        {
+          "value": "스리랑카",
+          "label": "스리랑카",
+          "external_value": "LK",
+          "aliases": []
+        },
+        {
+          "value": "스웨덴",
+          "label": "스웨덴",
+          "external_value": "SE",
+          "aliases": []
+        },
+        {
+          "value": "스페인",
+          "label": "스페인",
+          "external_value": "ES",
+          "aliases": []
+        },
+        {
+          "value": "슬로바키아",
+          "label": "슬로바키아",
+          "external_value": "SK",
+          "aliases": []
+        },
+        {
+          "value": "시에라리온",
+          "label": "시에라리온",
+          "external_value": "SL",
+          "aliases": []
+        },
+        {
+          "value": "싱가포르",
+          "label": "싱가포르",
+          "external_value": "SG",
+          "aliases": []
+        },
+        {
+          "value": "아르메니아",
+          "label": "아르메니아",
+          "external_value": "AM",
+          "aliases": []
+        },
+        {
+          "value": "아르헨티나",
+          "label": "아르헨티나",
+          "external_value": "AR",
+          "aliases": []
+        },
+        {
+          "value": "아제르바이잔",
+          "label": "아제르바이잔",
+          "external_value": "AZ",
+          "aliases": []
+        },
+        {
+          "value": "알제리",
+          "label": "알제리",
+          "external_value": "DZ",
+          "aliases": []
+        },
+        {
+          "value": "앙골라",
+          "label": "앙골라",
+          "external_value": "AO",
+          "aliases": []
+        },
+        {
+          "value": "에콰도르",
+          "label": "에콰도르",
+          "external_value": "EC",
+          "aliases": []
+        },
+        {
+          "value": "에티오피아",
+          "label": "에티오피아",
+          "external_value": "ET",
+          "aliases": []
+        },
+        {
+          "value": "영국",
+          "label": "영국",
+          "external_value": "GB",
+          "aliases": []
+        },
+        {
+          "value": "예멘",
+          "label": "예멘",
+          "external_value": "YE",
+          "aliases": []
+        },
+        {
+          "value": "오스트리아",
+          "label": "오스트리아",
+          "external_value": "AT",
+          "aliases": []
+        },
+        {
+          "value": "우즈베키스탄",
+          "label": "우즈베키스탄",
+          "external_value": "UZ",
+          "aliases": []
+        },
+        {
+          "value": "우크라이나",
+          "label": "우크라이나",
+          "external_value": "UA",
+          "aliases": []
+        },
+        {
+          "value": "이란",
+          "label": "이란",
+          "external_value": "IR",
+          "aliases": []
+        },
+        {
+          "value": "이스라엘",
+          "label": "이스라엘",
+          "external_value": "IL",
+          "aliases": []
+        },
+        {
+          "value": "이탈리아",
+          "label": "이탈리아",
+          "external_value": "IT",
+          "aliases": []
+        },
+        {
+          "value": "인도",
+          "label": "인도",
+          "external_value": "IN",
+          "aliases": []
+        },
+        {
+          "value": "인도네시아",
+          "label": "인도네시아",
+          "external_value": "ID",
+          "aliases": []
+        },
+        {
+          "value": "일본",
+          "label": "일본",
+          "external_value": "JP",
+          "aliases": []
+        },
+        {
+          "value": "자메이카",
+          "label": "자메이카",
+          "external_value": "JM",
+          "aliases": []
+        },
+        {
+          "value": "잠비아",
+          "label": "잠비아",
+          "external_value": "ZM",
+          "aliases": []
+        },
+        {
+          "value": "조지아",
+          "label": "조지아",
+          "external_value": "GE",
+          "aliases": []
+        },
+        {
+          "value": "중국",
+          "label": "중국",
+          "external_value": "CN",
+          "aliases": []
+        },
+        {
+          "value": "짐바브웨",
+          "label": "짐바브웨",
+          "external_value": "ZW",
+          "aliases": []
+        },
+        {
+          "value": "체코",
+          "label": "체코",
+          "external_value": "CZ",
+          "aliases": []
+        },
+        {
+          "value": "칠레",
+          "label": "칠레",
+          "external_value": "CL",
+          "aliases": []
+        },
+        {
+          "value": "카메룬",
+          "label": "카메룬",
+          "external_value": "CM",
+          "aliases": []
+        },
+        {
+          "value": "카자흐스탄",
+          "label": "카자흐스탄",
+          "external_value": "KZ",
+          "aliases": []
+        },
+        {
+          "value": "캄보디아",
+          "label": "캄보디아",
+          "external_value": "KH",
+          "aliases": []
+        },
+        {
+          "value": "캐나다",
+          "label": "캐나다",
+          "external_value": "CA",
+          "aliases": []
+        },
+        {
+          "value": "코트디부아르",
+          "label": "코트디부아르",
+          "external_value": "CI",
+          "aliases": []
+        },
+        {
+          "value": "콜롬비아",
+          "label": "콜롬비아",
+          "external_value": "CO",
+          "aliases": []
+        },
+        {
+          "value": "콩고민주공화국",
+          "label": "콩고민주공화국",
+          "external_value": "CD",
+          "aliases": []
+        },
+        {
+          "value": "쿠바",
+          "label": "쿠바",
+          "external_value": "CU",
+          "aliases": []
+        },
+        {
+          "value": "키르기스스탄",
+          "label": "키르기스스탄",
+          "external_value": "KG",
+          "aliases": []
+        },
+        {
+          "value": "타지키스탄",
+          "label": "타지키스탄",
+          "external_value": "TJ",
+          "aliases": []
+        },
+        {
+          "value": "탄자니아",
+          "label": "탄자니아",
+          "external_value": "TZ",
+          "aliases": []
+        },
+        {
+          "value": "태국",
+          "label": "태국",
+          "external_value": "TH",
+          "aliases": []
+        },
+        {
+          "value": "토고",
+          "label": "토고",
+          "external_value": "TG",
+          "aliases": []
+        },
+        {
+          "value": "튀르키예공화국",
+          "label": "튀르키예공화국",
+          "external_value": "TR",
+          "aliases": []
+        },
+        {
+          "value": "파키스탄",
+          "label": "파키스탄",
+          "external_value": "PK",
+          "aliases": []
+        },
+        {
+          "value": "파푸아뉴기니",
+          "label": "파푸아뉴기니",
+          "external_value": "PG",
+          "aliases": []
+        },
+        {
+          "value": "페루",
+          "label": "페루",
+          "external_value": "PE",
+          "aliases": []
+        },
+        {
+          "value": "폴란드",
+          "label": "폴란드",
+          "external_value": "PL",
+          "aliases": []
+        },
+        {
+          "value": "프랑스",
+          "label": "프랑스",
+          "external_value": "FR",
+          "aliases": []
+        },
+        {
+          "value": "피지",
+          "label": "피지",
+          "external_value": "FJ",
+          "aliases": []
+        },
+        {
+          "value": "핀란드",
+          "label": "핀란드",
+          "external_value": "FI",
+          "aliases": []
+        },
+        {
+          "value": "필리핀",
+          "label": "필리핀",
+          "external_value": "PH",
+          "aliases": []
+        },
+        {
+          "value": "헝가리",
+          "label": "헝가리",
+          "external_value": "HU",
+          "aliases": []
+        },
+        {
+          "value": "호주",
+          "label": "호주",
+          "external_value": "AU",
+          "aliases": []
+        },
+        {
+          "value": "홍콩",
+          "label": "홍콩",
+          "external_value": "HK",
+          "aliases": []
+        }
+      ]
+    },
+    "metadata.information.minerals": {
+      "coverage": "complete",
+      "kind": "independent",
+      "options": [
+        {
+          "value": "갈륨",
+          "label": "갈륨",
+          "external_value": "MNRL0024",
+          "aliases": [
+            "Ga",
+            "Gallium"
+          ]
+        },
+        {
+          "value": "감람석",
+          "label": "감람석",
+          "external_value": "MNRL0080",
+          "aliases": [
+            "Olivine"
+          ]
+        },
+        {
+          "value": "게르마늄",
+          "label": "게르마늄",
+          "external_value": "MNRL0035",
+          "aliases": [
+            "Ge",
+            "Germanium"
+          ]
+        },
+        {
+          "value": "고령토",
+          "label": "고령토",
+          "external_value": "MNRL0058",
+          "aliases": [
+            "Kaolin"
+          ]
+        },
+        {
+          "value": "규소",
+          "label": "규소",
+          "external_value": "MNRL0010",
+          "aliases": [
+            "Si",
+            "Silicon"
+          ]
+        },
+        {
+          "value": "규조토",
+          "label": "규조토",
+          "external_value": "MNRL0060",
+          "aliases": [
+            "Diatomite"
+          ]
+        },
+        {
+          "value": "규회석",
+          "label": "규회석",
+          "external_value": "MNRL1025",
+          "aliases": [
+            "Wollastonite"
+          ]
+        },
+        {
+          "value": "금",
+          "label": "금",
+          "external_value": "MNRL0046",
+          "aliases": [
+            "Au",
+            "Gold"
+          ]
+        },
+        {
+          "value": "남정석",
+          "label": "남정석",
+          "external_value": "MNRL1051",
+          "aliases": [
+            "Kyanite"
+          ]
+        },
+        {
+          "value": "납석",
+          "label": "납석",
+          "external_value": "MNRL0056",
+          "aliases": [
+            "Agalmatolite"
+          ]
+        },
+        {
+          "value": "니오븀",
+          "label": "니오븀",
+          "external_value": "MNRL0007",
+          "aliases": [
+            "Nb",
+            "Niobium"
+          ]
+        },
+        {
+          "value": "니켈",
+          "label": "니켈",
+          "external_value": "MNRL0002",
+          "aliases": [
+            "Ni",
+            "Nickel"
+          ]
+        },
+        {
+          "value": "다이아몬드",
+          "label": "다이아몬드",
+          "external_value": "MNRL0072",
+          "aliases": [
+            "C",
+            "Diamond"
+          ]
+        },
+        {
+          "value": "대리석",
+          "label": "대리석",
+          "external_value": "MNRL0081",
+          "aliases": [
+            "Marble"
+          ]
+        },
+        {
+          "value": "동",
+          "label": "동",
+          "external_value": "MNRL0008",
+          "aliases": [
+            "Copper",
+            "Cu",
+            "구리"
+          ]
+        },
+        {
+          "value": "레늄",
+          "label": "레늄",
+          "external_value": "MNRL0042",
+          "aliases": [
+            "Re",
+            "Rhenium"
+          ]
+        },
+        {
+          "value": "루비듐",
+          "label": "루비듐",
+          "external_value": "MNRL0082",
+          "aliases": [
+            "Rb",
+            "Rubidium"
+          ]
+        },
+        {
+          "value": "리튬",
+          "label": "리튬",
+          "external_value": "MNRL0001",
+          "aliases": [
+            "Li",
+            "Lithium"
+          ]
+        },
+        {
+          "value": "마그네슘",
+          "label": "마그네슘",
+          "external_value": "MNRL0011",
+          "aliases": [
+            "Magnesium",
+            "Mg"
+          ]
+        },
+        {
+          "value": "망간",
+          "label": "망간",
+          "external_value": "MNRL0004",
+          "aliases": [
+            "Manganese",
+            "Mn"
+          ]
+        },
+        {
+          "value": "명반석",
+          "label": "명반석",
+          "external_value": "MNRL0088",
+          "aliases": [
+            "Alunite"
+          ]
+        },
+        {
+          "value": "몰리브덴",
+          "label": "몰리브덴",
+          "external_value": "MNRL0012",
+          "aliases": [
+            "Mo",
+            "Molybdenum"
+          ]
+        },
+        {
+          "value": "무연탄",
+          "label": "무연탄",
+          "external_value": "MNRL0051",
+          "aliases": [
+            "Anthracite"
+          ]
+        },
+        {
+          "value": "바나듐",
+          "label": "바나듐",
+          "external_value": "MNRL0013",
+          "aliases": [
+            "V",
+            "Vanadium"
+          ]
+        },
+        {
+          "value": "백금",
+          "label": "백금",
+          "external_value": "MNRL0014",
+          "aliases": [
+            "Platinum",
+            "Pt"
+          ]
+        },
+        {
+          "value": "베릴륨",
+          "label": "베릴륨",
+          "external_value": "MNRL0038",
+          "aliases": [
+            "Be",
+            "Beryllium"
+          ]
+        },
+        {
+          "value": "벤토나이트",
+          "label": "벤토나이트",
+          "external_value": "MNRL0083",
+          "aliases": [
+            "Bentonite"
+          ]
+        },
+        {
+          "value": "불석",
+          "label": "불석",
+          "external_value": "MNRL1026",
+          "aliases": [
+            "Zeolite"
+          ]
+        },
+        {
+          "value": "붕소",
+          "label": "붕소",
+          "external_value": "MNRL0033",
+          "aliases": [
+            "B",
+            "Boron"
+          ]
+        },
+        {
+          "value": "비소",
+          "label": "비소",
+          "external_value": "MNRL0034",
+          "aliases": [
+            "Arsenic",
+            "As"
+          ]
+        },
+        {
+          "value": "사문석",
+          "label": "사문석",
+          "external_value": "MNRL0084",
+          "aliases": [
+            "Serpentine"
+          ]
+        },
+        {
+          "value": "석고",
+          "label": "석고",
+          "external_value": "MNRL0068",
+          "aliases": [
+            "Gypsum"
+          ]
+        },
+        {
+          "value": "석류석",
+          "label": "석류석",
+          "external_value": "MNRL1012",
+          "aliases": [
+            "Garnet"
+          ]
+        },
+        {
+          "value": "석면",
+          "label": "석면",
+          "external_value": "MNRL0064",
+          "aliases": [
+            "Asbestos"
+          ]
+        },
+        {
+          "value": "석영",
+          "label": "석영",
+          "external_value": "MNRL0070",
+          "aliases": [
+            "Quartz"
+          ]
+        },
+        {
+          "value": "석회석",
+          "label": "석회석",
+          "external_value": "MNRL0059",
+          "aliases": [
+            "Limestone"
+          ]
+        },
+        {
+          "value": "세슘",
+          "label": "세슘",
+          "external_value": "MNRL0085",
+          "aliases": [
+            "Cesium",
+            "Cs"
+          ]
+        },
+        {
+          "value": "셀레늄",
+          "label": "셀레늄",
+          "external_value": "MNRL0029",
+          "aliases": [
+            "Se",
+            "Selenium"
+          ]
+        },
+        {
+          "value": "수은",
+          "label": "수은",
+          "external_value": "MNRL0049",
+          "aliases": [
+            "Hg",
+            "Mercury"
+          ]
+        },
+        {
+          "value": "스트론튬",
+          "label": "스트론튬",
+          "external_value": "MNRL0028",
+          "aliases": [
+            "Sr",
+            "Strontium"
+          ]
+        },
+        {
+          "value": "아연",
+          "label": "아연",
+          "external_value": "MNRL0023",
+          "aliases": [
+            "Zinc",
+            "Zn"
+          ]
+        },
+        {
+          "value": "안티모니",
+          "label": "안티모니",
+          "external_value": "MNRL0019",
+          "aliases": [
+            "Antimony",
+            "Sb"
+          ]
+        },
+        {
+          "value": "알루미늄",
+          "label": "알루미늄",
+          "external_value": "MNRL0009",
+          "aliases": [
+            "Al",
+            "Aluminum"
+          ]
+        },
+        {
+          "value": "연",
+          "label": "연",
+          "external_value": "MNRL0022",
+          "aliases": [
+            "Lead",
+            "Pb",
+            "납"
+          ]
+        },
+        {
+          "value": "우라늄",
+          "label": "우라늄",
+          "external_value": "MNRL0031",
+          "aliases": [
+            "U",
+            "Uranium"
+          ]
+        },
+        {
+          "value": "운모",
+          "label": "운모",
+          "external_value": "MNRL0063",
+          "aliases": [
+            "Mica"
+          ]
+        },
+        {
+          "value": "유연탄",
+          "label": "유연탄",
+          "external_value": "MNRL0032",
+          "aliases": [
+            "Coal"
+          ]
+        },
+        {
+          "value": "유황",
+          "label": "유황",
+          "external_value": "MNRL0062",
+          "aliases": [
+            "S",
+            "Sulfur"
+          ]
+        },
+        {
+          "value": "은",
+          "label": "은",
+          "external_value": "MNRL0047",
+          "aliases": [
+            "Ag",
+            "Silver"
+          ]
+        },
+        {
+          "value": "인",
+          "label": "인",
+          "external_value": "MNRL0036",
+          "aliases": [
+            "P",
+            "Phosphorus"
+          ]
+        },
+        {
+          "value": "인듐",
+          "label": "인듐",
+          "external_value": "MNRL0025",
+          "aliases": [
+            "In",
+            "Indium"
+          ]
+        },
+        {
+          "value": "장석",
+          "label": "장석",
+          "external_value": "MNRL0057",
+          "aliases": [
+            "Feldspar"
+          ]
+        },
+        {
+          "value": "주석",
+          "label": "주석",
+          "external_value": "MNRL0016",
+          "aliases": [
+            "Sn",
+            "Tin"
+          ]
+        },
+        {
+          "value": "중정석",
+          "label": "중정석",
+          "external_value": "MNRL0067",
+          "aliases": [
+            "Barite"
+          ]
+        },
+        {
+          "value": "지르코늄",
+          "label": "지르코늄",
+          "external_value": "MNRL0027",
+          "aliases": [
+            "Zirconium",
+            "Zr"
+          ]
+        },
+        {
+          "value": "진주암",
+          "label": "진주암",
+          "external_value": "MNRL1017",
+          "aliases": [
+            "Perlite"
+          ]
+        },
+        {
+          "value": "질석",
+          "label": "질석",
+          "external_value": "MNRL1024",
+          "aliases": [
+            "Vermiculite"
+          ]
+        },
+        {
+          "value": "창연",
+          "label": "창연",
+          "external_value": "MNRL0020",
+          "aliases": [
+            "Bi",
+            "Bismuth"
+          ]
+        },
+        {
+          "value": "철",
+          "label": "철",
+          "external_value": "MNRL1011",
+          "aliases": [
+            "Fe",
+            "Iron",
+            "철광석"
+          ]
+        },
+        {
+          "value": "카드뮴",
+          "label": "카드뮴",
+          "external_value": "MNRL0039",
+          "aliases": [
+            "Cadmium",
+            "Cd"
+          ]
+        },
+        {
+          "value": "칼륨",
+          "label": "칼륨",
+          "external_value": "MNRL1018",
+          "aliases": [
+            "K",
+            "Potassium"
+          ]
+        },
+        {
+          "value": "코발트",
+          "label": "코발트",
+          "external_value": "MNRL0003",
+          "aliases": [
+            "Co",
+            "Cobalt"
+          ]
+        },
+        {
+          "value": "크롬",
+          "label": "크롬",
+          "external_value": "MNRL0021",
+          "aliases": [
+            "Chromium",
+            "Cr"
+          ]
+        },
+        {
+          "value": "탄탈륨",
+          "label": "탄탈륨",
+          "external_value": "MNRL0026",
+          "aliases": [
+            "Ta",
+            "Tantalum"
+          ]
+        },
+        {
+          "value": "텅스텐",
+          "label": "텅스텐",
+          "external_value": "MNRL0018",
+          "aliases": [
+            "Tungsten",
+            "W"
+          ]
+        },
+        {
+          "value": "토륨",
+          "label": "토륨",
+          "external_value": "MNRL0087",
+          "aliases": [
+            "Th",
+            "Thorium"
+          ]
+        },
+        {
+          "value": "티타늄",
+          "label": "티타늄",
+          "external_value": "MNRL0017",
+          "aliases": [
+            "Ti",
+            "Titanium"
+          ]
+        },
+        {
+          "value": "팔라듐",
+          "label": "팔라듐",
+          "external_value": "MNRL0015",
+          "aliases": [
+            "Palladium",
+            "Pd"
+          ]
+        },
+        {
+          "value": "하프늄",
+          "label": "하프늄",
+          "external_value": "MNRL0040",
+          "aliases": [
+            "Hafnium",
+            "Hf"
+          ]
+        },
+        {
+          "value": "형석",
+          "label": "형석",
+          "external_value": "MNRL0061",
+          "aliases": [
+            "Fluorite"
+          ]
+        },
+        {
+          "value": "홍주석",
+          "label": "홍주석",
+          "external_value": "MNRL0089",
+          "aliases": [
+            "Andalusite"
+          ]
+        },
+        {
+          "value": "활석",
+          "label": "활석",
+          "external_value": "MNRL0055",
+          "aliases": [
+            "Talc"
+          ]
+        },
+        {
+          "value": "흑연",
+          "label": "흑연",
+          "external_value": "MNRL0005",
+          "aliases": [
+            "C",
+            "Graphite"
+          ]
+        },
+        {
+          "value": "희토류",
+          "label": "희토류",
+          "external_value": "MNRL0006",
+          "aliases": [
+            "Rare Earths",
+            "REE"
+          ]
+        }
+      ]
+    },
+    "metadata.maps.global_available_periods": {
+      "coverage": "partial",
+      "kind": "year_range",
+      "options": [
+        {
+          "value": "2014",
+          "label": "2014",
+          "external_value": "2014",
+          "aliases": []
+        },
+        {
+          "value": "2015",
+          "label": "2015",
+          "external_value": "2015",
+          "aliases": []
+        },
+        {
+          "value": "2016",
+          "label": "2016",
+          "external_value": "2016",
+          "aliases": []
+        },
+        {
+          "value": "2017",
+          "label": "2017",
+          "external_value": "2017",
+          "aliases": []
+        },
+        {
+          "value": "2018",
+          "label": "2018",
+          "external_value": "2018",
+          "aliases": []
+        },
+        {
+          "value": "2019",
+          "label": "2019",
+          "external_value": "2019",
+          "aliases": []
+        },
+        {
+          "value": "2020",
+          "label": "2020",
+          "external_value": "2020",
+          "aliases": []
+        },
+        {
+          "value": "2021",
+          "label": "2021",
+          "external_value": "2021",
+          "aliases": []
+        },
+        {
+          "value": "2022",
+          "label": "2022",
+          "external_value": "2022",
+          "aliases": []
+        },
+        {
+          "value": "2023",
+          "label": "2023",
+          "external_value": "2023",
+          "aliases": []
+        },
+        {
+          "value": "2024",
+          "label": "2024",
+          "external_value": "2024",
+          "aliases": []
+        },
+        {
+          "value": "2025",
+          "label": "2025",
+          "external_value": "2025",
+          "aliases": []
+        }
+      ],
+      "note": "연도 범위만 수집되어 실제 월별 존재 여부는 검증하지 못한다."
+    },
+    "metadata.maps.global_hs_codes": {
+      "coverage": "partial",
+      "kind": "map_dependency",
+      "contexts": {
+        "MNRL0024|001": [],
+        "MNRL0024|002": [
+          {
+            "value": "Gallium, germanium, indium, niobium (columbium) and vanadium; articles thereof, unwrought, including waste and scrap, powders",
+            "label": "Gallium, germanium, indium, niobium (columbium) and vanadium; articles thereof, unwrought, including waste and scrap, powders",
+            "external_value": "811292",
+            "aliases": [
+              "8112923000"
+            ]
+          }
+        ],
+        "MNRL0024|003": [
+          {
+            "value": "Gallium, germanium, indium, niobium (columbium) and vanadium; articles thereof, unwrought, including waste and scrap, powders",
+            "label": "Gallium, germanium, indium, niobium (columbium) and vanadium; articles thereof, unwrought, including waste and scrap, powders",
+            "external_value": "811299",
+            "aliases": [
+              "8112993000"
+            ]
+          }
+        ],
+        "MNRL0024|004": []
+      },
+      "context_fields": [
+        "mineral",
+        "material_flow"
+      ],
+      "note": "갈륨 한 광종의 예시 조합만 수집됐으며 Tool 값은 HS 6자리다."
+    },
+    "metadata.maps.korea_available_periods": {
+      "coverage": "partial",
+      "kind": "year_and_latest_month",
+      "rows": [
+        {
+          "crtrMm": "05",
+          "crtrYr": "2026"
+        },
+        {
+          "crtrMm": "12",
+          "crtrYr": "2025"
+        },
+        {
+          "crtrMm": "12",
+          "crtrYr": "2024"
+        },
+        {
+          "crtrMm": "12",
+          "crtrYr": "2023"
+        },
+        {
+          "crtrMm": "12",
+          "crtrYr": "2022"
+        },
+        {
+          "crtrMm": "12",
+          "crtrYr": "2021"
+        },
+        {
+          "crtrMm": "12",
+          "crtrYr": "2020"
+        },
+        {
+          "crtrMm": "12",
+          "crtrYr": "2019"
+        },
+        {
+          "crtrMm": "12",
+          "crtrYr": "2018"
+        },
+        {
+          "crtrMm": "12",
+          "crtrYr": "2017"
+        },
+        {
+          "crtrMm": "12",
+          "crtrYr": "2016"
+        },
+        {
+          "crtrMm": "12",
+          "crtrYr": "2015"
+        },
+        {
+          "crtrMm": "12",
+          "crtrYr": "2014"
+        }
+      ],
+      "note": "연도와 연도별 최종 월만 있어 전체 월 목록은 검증하지 못한다."
+    },
+    "metadata.maps.korea_hs_codes": {
+      "coverage": "partial",
+      "kind": "map_dependency",
+      "contexts": {
+        "MNRL0024|001": [],
+        "MNRL0024|002": [
+          {
+            "value": "갈륨과 그 제품_괴,웨이스트와 스크랩, 가루",
+            "label": "갈륨과 그 제품_괴,웨이스트와 스크랩, 가루",
+            "external_value": "8112923000",
+            "aliases": []
+          }
+        ],
+        "MNRL0024|003": [
+          {
+            "value": "갈륨과 그 제품_기타",
+            "label": "갈륨과 그 제품_기타",
+            "external_value": "8112993000",
+            "aliases": []
+          }
+        ],
+        "MNRL0024|004": []
+      },
+      "context_fields": [
+        "mineral",
+        "material_flow"
+      ],
+      "note": "갈륨 한 광종의 예시 조합만 수집됐다."
+    },
+    "metadata.maps.material_flow_details": {
+      "coverage": "partial",
+      "kind": "map_dependency",
+      "contexts": {
+        "MNRL0024|001": [],
+        "MNRL0024|002": [
+          {
+            "value": "미가공 금속",
+            "label": "미가공 금속",
+            "external_value": "002002",
+            "aliases": []
+          }
+        ],
+        "MNRL0024|003": [
+          {
+            "value": "가공 금속",
+            "label": "가공 금속",
+            "external_value": "003001",
+            "aliases": []
+          }
+        ],
+        "MNRL0024|004": []
+      },
+      "context_fields": [
+        "mineral",
+        "material_flow"
+      ],
+      "note": "갈륨 한 광종의 예시 조합만 수집됐다."
+    },
+    "metadata.maps.mineral_map_countries": {
+      "coverage": "absent",
+      "kind": "unavailable",
+      "note": "국가명 정규화는 가능하지만 선택 광종·지표의 실제 데이터 보유국 목록이 없다."
+    },
+    "metadata.maps.mineral_map_minerals": {
+      "coverage": "complete",
+      "kind": "independent",
+      "options": [
+        {
+          "value": "갈륨",
+          "label": "갈륨",
+          "external_value": "MNRL0024",
+          "aliases": []
+        },
+        {
+          "value": "갈탄",
+          "label": "갈탄",
+          "external_value": "MNRL0053",
+          "aliases": []
+        },
+        {
+          "value": "게르마늄",
+          "label": "게르마늄",
+          "external_value": "MNRL0035",
+          "aliases": []
+        },
+        {
+          "value": "규소",
+          "label": "규소",
+          "external_value": "MNRL0010",
+          "aliases": []
+        },
+        {
+          "value": "규조토",
+          "label": "규조토",
+          "external_value": "MNRL0060",
+          "aliases": []
+        },
+        {
+          "value": "규회석",
+          "label": "규회석",
+          "external_value": "MNRL1025",
+          "aliases": []
+        },
+        {
+          "value": "금",
+          "label": "금",
+          "external_value": "MNRL0046",
+          "aliases": []
+        },
+        {
+          "value": "남정석",
+          "label": "남정석",
+          "external_value": "MNRL1051",
+          "aliases": []
+        },
+        {
+          "value": "니오븀",
+          "label": "니오븀",
+          "external_value": "MNRL0007",
+          "aliases": []
+        },
+        {
+          "value": "니켈",
+          "label": "니켈",
+          "external_value": "MNRL0002",
+          "aliases": []
+        },
+        {
+          "value": "동",
+          "label": "동",
+          "external_value": "MNRL0008",
+          "aliases": [
+            "구리"
+          ]
+        },
+        {
+          "value": "레늄",
+          "label": "레늄",
+          "external_value": "MNRL0042",
+          "aliases": []
+        },
+        {
+          "value": "루비듐",
+          "label": "루비듐",
+          "external_value": "MNRL0082",
+          "aliases": []
+        },
+        {
+          "value": "리튬",
+          "label": "리튬",
+          "external_value": "MNRL0001",
+          "aliases": []
+        },
+        {
+          "value": "마그네슘",
+          "label": "마그네슘",
+          "external_value": "MNRL0011",
+          "aliases": []
+        },
+        {
+          "value": "망간",
+          "label": "망간",
+          "external_value": "MNRL0004",
+          "aliases": []
+        },
+        {
+          "value": "몰리브덴",
+          "label": "몰리브덴",
+          "external_value": "MNRL0012",
+          "aliases": []
+        },
+        {
+          "value": "바나듐",
+          "label": "바나듐",
+          "external_value": "MNRL0013",
+          "aliases": []
+        },
+        {
+          "value": "백금",
+          "label": "백금",
+          "external_value": "MNRL0014",
+          "aliases": []
+        },
+        {
+          "value": "베릴륨",
+          "label": "베릴륨",
+          "external_value": "MNRL0038",
+          "aliases": []
+        },
+        {
+          "value": "불석",
+          "label": "불석",
+          "external_value": "MNRL1026",
+          "aliases": []
+        },
+        {
+          "value": "붕소",
+          "label": "붕소",
+          "external_value": "MNRL0033",
+          "aliases": []
+        },
+        {
+          "value": "브롬",
+          "label": "브롬",
+          "external_value": "MNRL1008",
+          "aliases": []
+        },
+        {
+          "value": "비소",
+          "label": "비소",
+          "external_value": "MNRL0034",
+          "aliases": []
+        },
+        {
+          "value": "석고",
+          "label": "석고",
+          "external_value": "MNRL0068",
+          "aliases": []
+        },
+        {
+          "value": "석류석",
+          "label": "석류석",
+          "external_value": "MNRL1012",
+          "aliases": []
+        },
+        {
+          "value": "석면",
+          "label": "석면",
+          "external_value": "MNRL0064",
+          "aliases": []
+        },
+        {
+          "value": "석회석",
+          "label": "석회석",
+          "external_value": "MNRL0059",
+          "aliases": []
+        },
+        {
+          "value": "세슘",
+          "label": "세슘",
+          "external_value": "MNRL0085",
+          "aliases": []
+        },
+        {
+          "value": "셀레늄",
+          "label": "셀레늄",
+          "external_value": "MNRL0029",
+          "aliases": []
+        },
+        {
+          "value": "소다회",
+          "label": "소다회",
+          "external_value": "MNRL0086",
+          "aliases": []
+        },
+        {
+          "value": "스트론튬",
+          "label": "스트론튬",
+          "external_value": "MNRL0028",
+          "aliases": []
+        },
+        {
+          "value": "아연",
+          "label": "아연",
+          "external_value": "MNRL0023",
+          "aliases": []
+        },
+        {
+          "value": "안티모니",
+          "label": "안티모니",
+          "external_value": "MNRL0019",
+          "aliases": []
+        },
+        {
+          "value": "알루미늄",
+          "label": "알루미늄",
+          "external_value": "MNRL0009",
+          "aliases": []
+        },
+        {
+          "value": "연",
+          "label": "연",
+          "external_value": "MNRL0022",
+          "aliases": [
+            "납"
+          ]
+        },
+        {
+          "value": "요오드",
+          "label": "요오드",
+          "external_value": "MNRL1015",
+          "aliases": []
+        },
+        {
+          "value": "운모",
+          "label": "운모",
+          "external_value": "MNRL0063",
+          "aliases": []
+        },
+        {
+          "value": "유황",
+          "label": "유황",
+          "external_value": "MNRL0062",
+          "aliases": []
+        },
+        {
+          "value": "은",
+          "label": "은",
+          "external_value": "MNRL0047",
+          "aliases": []
+        },
+        {
+          "value": "인",
+          "label": "인",
+          "external_value": "MNRL0036",
+          "aliases": []
+        },
+        {
+          "value": "인듐",
+          "label": "인듐",
+          "external_value": "MNRL0025",
+          "aliases": []
+        },
+        {
+          "value": "장석",
+          "label": "장석",
+          "external_value": "MNRL0057",
+          "aliases": []
+        },
+        {
+          "value": "주석",
+          "label": "주석",
+          "external_value": "MNRL0016",
+          "aliases": []
+        },
+        {
+          "value": "중정석",
+          "label": "중정석",
+          "external_value": "MNRL0067",
+          "aliases": []
+        },
+        {
+          "value": "지르코늄",
+          "label": "지르코늄",
+          "external_value": "MNRL0027",
+          "aliases": []
+        },
+        {
+          "value": "진주암",
+          "label": "진주암",
+          "external_value": "MNRL1017",
+          "aliases": []
+        },
+        {
+          "value": "질석",
+          "label": "질석",
+          "external_value": "MNRL1024",
+          "aliases": []
+        },
+        {
+          "value": "질소",
+          "label": "질소",
+          "external_value": "MNRL1052",
+          "aliases": []
+        },
+        {
+          "value": "창연",
+          "label": "창연",
+          "external_value": "MNRL0020",
+          "aliases": []
+        },
+        {
+          "value": "철",
+          "label": "철",
+          "external_value": "MNRL1011",
+          "aliases": [
+            "철광석"
+          ]
+        },
+        {
+          "value": "카드뮴",
+          "label": "카드뮴",
+          "external_value": "MNRL0039",
+          "aliases": []
+        },
+        {
+          "value": "칼륨",
+          "label": "칼륨",
+          "external_value": "MNRL1018",
+          "aliases": []
+        },
+        {
+          "value": "코발트",
+          "label": "코발트",
+          "external_value": "MNRL0003",
+          "aliases": []
+        },
+        {
+          "value": "크롬",
+          "label": "크롬",
+          "external_value": "MNRL0021",
+          "aliases": []
+        },
+        {
+          "value": "탄탈륨",
+          "label": "탄탈륨",
+          "external_value": "MNRL0026",
+          "aliases": []
+        },
+        {
+          "value": "텅스텐",
+          "label": "텅스텐",
+          "external_value": "MNRL0018",
+          "aliases": []
+        },
+        {
+          "value": "텔루륨",
+          "label": "텔루륨",
+          "external_value": "MNRL0044",
+          "aliases": []
+        },
+        {
+          "value": "티타늄",
+          "label": "티타늄",
+          "external_value": "MNRL0017",
+          "aliases": []
+        },
+        {
+          "value": "팔라듐",
+          "label": "팔라듐",
+          "external_value": "MNRL0015",
+          "aliases": []
+        },
+        {
+          "value": "형석",
+          "label": "형석",
+          "external_value": "MNRL0061",
+          "aliases": []
+        },
+        {
+          "value": "활석",
+          "label": "활석",
+          "external_value": "MNRL0055",
+          "aliases": []
+        },
+        {
+          "value": "흑연",
+          "label": "흑연",
+          "external_value": "MNRL0005",
+          "aliases": []
+        },
+        {
+          "value": "희토류",
+          "label": "희토류",
+          "external_value": "MNRL0006",
+          "aliases": []
+        }
+      ],
+      "note": "티타늄의 화면 복합값은 variants를 통해 광종과 세부광종으로 분리한다.",
+      "variants": [
+        {
+          "input_value": "MNRL0017-IM",
+          "label": "티타늄(Ilmenite)",
+          "aliases": [
+            "Ilmenite",
+            "일메나이트"
+          ],
+          "mineral": "티타늄",
+          "mineral_external_value": "MNRL0017",
+          "subtype": "ilmenite"
+        },
+        {
+          "input_value": "MNRL0017-RU",
+          "label": "티타늄(Rutile)",
+          "aliases": [
+            "Rutile",
+            "루타일"
+          ],
+          "mineral": "티타늄",
+          "mineral_external_value": "MNRL0017",
+          "subtype": "rutile"
+        }
+      ]
+    },
+    "metadata.maps.mineral_map_years": {
+      "coverage": "complete",
+      "kind": "independent",
+      "options": [
+        {
+          "value": "2019",
+          "label": "2019",
+          "external_value": "2019",
+          "aliases": []
+        },
+        {
+          "value": "2020",
+          "label": "2020",
+          "external_value": "2020",
+          "aliases": []
+        },
+        {
+          "value": "2021",
+          "label": "2021",
+          "external_value": "2021",
+          "aliases": []
+        },
+        {
+          "value": "2022",
+          "label": "2022",
+          "external_value": "2022",
+          "aliases": []
+        },
+        {
+          "value": "2023",
+          "label": "2023",
+          "external_value": "2023",
+          "aliases": []
+        },
+        {
+          "value": "2024",
+          "label": "2024",
+          "external_value": "2024",
+          "aliases": []
+        },
+        {
+          "value": "2025",
+          "label": "2025",
+          "external_value": "2025",
+          "aliases": []
+        }
+      ]
+    },
+    "metadata.maps.trade_minerals": {
+      "coverage": "complete",
+      "kind": "independent",
+      "options": [
+        {
+          "value": "갈륨",
+          "label": "갈륨",
+          "external_value": "MNRL0024",
+          "aliases": []
+        },
+        {
+          "value": "갈탄",
+          "label": "갈탄",
+          "external_value": "MNRL0053",
+          "aliases": []
+        },
+        {
+          "value": "게르마늄",
+          "label": "게르마늄",
+          "external_value": "MNRL0035",
+          "aliases": []
+        },
+        {
+          "value": "고령토",
+          "label": "고령토",
+          "external_value": "MNRL0058",
+          "aliases": []
+        },
+        {
+          "value": "규선석",
+          "label": "규선석",
+          "external_value": "MNRL0066",
+          "aliases": []
+        },
+        {
+          "value": "규소",
+          "label": "규소",
+          "external_value": "MNRL0010",
+          "aliases": []
+        },
+        {
+          "value": "규조토",
+          "label": "규조토",
+          "external_value": "MNRL0060",
+          "aliases": []
+        },
+        {
+          "value": "금",
+          "label": "금",
+          "external_value": "MNRL0046",
+          "aliases": []
+        },
+        {
+          "value": "금강석",
+          "label": "금강석",
+          "external_value": "MNRL1057",
+          "aliases": []
+        },
+        {
+          "value": "기타 석탄",
+          "label": "기타 석탄",
+          "external_value": "MNRL0052",
+          "aliases": []
+        },
+        {
+          "value": "남정석",
+          "label": "남정석",
+          "external_value": "MNRL1051",
+          "aliases": []
+        },
+        {
+          "value": "납석",
+          "label": "납석",
+          "external_value": "MNRL0056",
+          "aliases": []
+        },
+        {
+          "value": "니오븀",
+          "label": "니오븀",
+          "external_value": "MNRL0007",
+          "aliases": []
+        },
+        {
+          "value": "니켈",
+          "label": "니켈",
+          "external_value": "MNRL0002",
+          "aliases": []
+        },
+        {
+          "value": "동",
+          "label": "동",
+          "external_value": "MNRL0008",
+          "aliases": [
+            "구리"
+          ]
+        },
+        {
+          "value": "레늄",
+          "label": "레늄",
+          "external_value": "MNRL0042",
+          "aliases": []
+        },
+        {
+          "value": "로듐",
+          "label": "로듐",
+          "external_value": "MNRL0043",
+          "aliases": []
+        },
+        {
+          "value": "루테늄",
+          "label": "루테늄",
+          "external_value": "MNRL1070",
+          "aliases": []
+        },
+        {
+          "value": "리튬",
+          "label": "리튬",
+          "external_value": "MNRL0001",
+          "aliases": []
+        },
+        {
+          "value": "마그네슘",
+          "label": "마그네슘",
+          "external_value": "MNRL0011",
+          "aliases": []
+        },
+        {
+          "value": "망간",
+          "label": "망간",
+          "external_value": "MNRL0004",
+          "aliases": []
+        },
+        {
+          "value": "명반석",
+          "label": "명반석",
+          "external_value": "MNRL0088",
+          "aliases": []
+        },
+        {
+          "value": "몰리브덴",
+          "label": "몰리브덴",
+          "external_value": "MNRL0012",
+          "aliases": []
+        },
+        {
+          "value": "무연탄",
+          "label": "무연탄",
+          "external_value": "MNRL0051",
+          "aliases": []
+        },
+        {
+          "value": "바나듐",
+          "label": "바나듐",
+          "external_value": "MNRL0013",
+          "aliases": []
+        },
+        {
+          "value": "바륨",
+          "label": "바륨",
+          "external_value": "MNRL0037",
+          "aliases": []
+        },
+        {
+          "value": "백금",
+          "label": "백금",
+          "external_value": "MNRL0014",
+          "aliases": []
+        },
+        {
+          "value": "베릴륨",
+          "label": "베릴륨",
+          "external_value": "MNRL0038",
+          "aliases": []
+        },
+        {
+          "value": "불석",
+          "label": "불석",
+          "external_value": "MNRL1026",
+          "aliases": []
+        },
+        {
+          "value": "붕소",
+          "label": "붕소",
+          "external_value": "MNRL0033",
+          "aliases": []
+        },
+        {
+          "value": "비소",
+          "label": "비소",
+          "external_value": "MNRL0034",
+          "aliases": []
+        },
+        {
+          "value": "석고",
+          "label": "석고",
+          "external_value": "MNRL0068",
+          "aliases": []
+        },
+        {
+          "value": "석회석",
+          "label": "석회석",
+          "external_value": "MNRL0059",
+          "aliases": []
+        },
+        {
+          "value": "셀레늄",
+          "label": "셀레늄",
+          "external_value": "MNRL0029",
+          "aliases": []
+        },
+        {
+          "value": "수은",
+          "label": "수은",
+          "external_value": "MNRL0049",
+          "aliases": []
+        },
+        {
+          "value": "수정",
+          "label": "수정",
+          "external_value": "MNRL1059",
+          "aliases": []
+        },
+        {
+          "value": "스트론튬",
+          "label": "스트론튬",
+          "external_value": "MNRL0028",
+          "aliases": []
+        },
+        {
+          "value": "아연",
+          "label": "아연",
+          "external_value": "MNRL0023",
+          "aliases": []
+        },
+        {
+          "value": "안티모니",
+          "label": "안티모니",
+          "external_value": "MNRL0019",
+          "aliases": []
+        },
+        {
+          "value": "알루미늄",
+          "label": "알루미늄",
+          "external_value": "MNRL0009",
+          "aliases": []
+        },
+        {
+          "value": "연",
+          "label": "연",
+          "external_value": "MNRL0022",
+          "aliases": [
+            "납"
+          ]
+        },
+        {
+          "value": "우라늄",
+          "label": "우라늄",
+          "external_value": "MNRL0031",
+          "aliases": []
+        },
+        {
+          "value": "운모",
+          "label": "운모",
+          "external_value": "MNRL0063",
+          "aliases": []
+        },
+        {
+          "value": "유연탄",
+          "label": "유연탄",
+          "external_value": "MNRL0032",
+          "aliases": []
+        },
+        {
+          "value": "유황",
+          "label": "유황",
+          "external_value": "MNRL0062",
+          "aliases": []
+        },
+        {
+          "value": "은",
+          "label": "은",
+          "external_value": "MNRL0047",
+          "aliases": []
+        },
+        {
+          "value": "이리듐",
+          "label": "이리듐",
+          "external_value": "MNRL0041",
+          "aliases": []
+        },
+        {
+          "value": "인",
+          "label": "인",
+          "external_value": "MNRL0036",
+          "aliases": []
+        },
+        {
+          "value": "인듐",
+          "label": "인듐",
+          "external_value": "MNRL0025",
+          "aliases": []
+        },
+        {
+          "value": "장석",
+          "label": "장석",
+          "external_value": "MNRL0057",
+          "aliases": []
+        },
+        {
+          "value": "주석",
+          "label": "주석",
+          "external_value": "MNRL0016",
+          "aliases": []
+        },
+        {
+          "value": "지르코늄",
+          "label": "지르코늄",
+          "external_value": "MNRL0027",
+          "aliases": []
+        },
+        {
+          "value": "창연",
+          "label": "창연",
+          "external_value": "MNRL0020",
+          "aliases": []
+        },
+        {
+          "value": "철",
+          "label": "철",
+          "external_value": "MNRL1011",
+          "aliases": [
+            "철광석"
+          ]
+        },
+        {
+          "value": "카드뮴",
+          "label": "카드뮴",
+          "external_value": "MNRL0039",
+          "aliases": []
+        },
+        {
+          "value": "코발트",
+          "label": "코발트",
+          "external_value": "MNRL0003",
+          "aliases": []
+        },
+        {
+          "value": "크롬",
+          "label": "크롬",
+          "external_value": "MNRL0021",
+          "aliases": []
+        },
+        {
+          "value": "탄탈륨",
+          "label": "탄탈륨",
+          "external_value": "MNRL0026",
+          "aliases": []
+        },
+        {
+          "value": "탈륨",
+          "label": "탈륨",
+          "external_value": "MNRL0045",
+          "aliases": []
+        },
+        {
+          "value": "텅스텐",
+          "label": "텅스텐",
+          "external_value": "MNRL0018",
+          "aliases": []
+        },
+        {
+          "value": "텔루륨",
+          "label": "텔루륨",
+          "external_value": "MNRL0044",
+          "aliases": []
+        },
+        {
+          "value": "토륨",
+          "label": "토륨",
+          "external_value": "MNRL0087",
+          "aliases": []
+        },
+        {
+          "value": "토탄",
+          "label": "토탄",
+          "external_value": "MNRL0054",
+          "aliases": []
+        },
+        {
+          "value": "티타늄",
+          "label": "티타늄",
+          "external_value": "MNRL0017",
+          "aliases": []
+        },
+        {
+          "value": "팔라듐",
+          "label": "팔라듐",
+          "external_value": "MNRL0015",
+          "aliases": []
+        },
+        {
+          "value": "하석",
+          "label": "하석",
+          "external_value": "MNRL1061",
+          "aliases": []
+        },
+        {
+          "value": "하프늄",
+          "label": "하프늄",
+          "external_value": "MNRL0040",
+          "aliases": []
+        },
+        {
+          "value": "형석",
+          "label": "형석",
+          "external_value": "MNRL0061",
+          "aliases": []
+        },
+        {
+          "value": "홍주석",
+          "label": "홍주석",
+          "external_value": "MNRL0089",
+          "aliases": []
+        },
+        {
+          "value": "활석",
+          "label": "활석",
+          "external_value": "MNRL0055",
+          "aliases": []
+        },
+        {
+          "value": "황철석",
+          "label": "황철석",
+          "external_value": "MNRL0048",
+          "aliases": []
+        },
+        {
+          "value": "흑연",
+          "label": "흑연",
+          "external_value": "MNRL0005",
+          "aliases": []
+        },
+        {
+          "value": "희토류",
+          "label": "희토류",
+          "external_value": "MNRL0006",
+          "aliases": []
+        }
+      ]
+    },
+    "metadata.prices.available_periods": {
+      "coverage": "absent",
+      "kind": "unavailable",
+      "note": "snapshot에 가격 페이지 가용 기간이 없다."
+    },
+    "metadata.prices.base_metals.minerals": {
+      "coverage": "complete",
+      "kind": "independent",
+      "options": [
+        {
+          "value": "니켈",
+          "label": "니켈",
+          "external_value": "MNRL0002",
+          "aliases": [
+            "Nickel"
+          ]
+        },
+        {
+          "value": "동",
+          "label": "동",
+          "external_value": "MNRL0008",
+          "aliases": [
+            "Copper",
+            "구리"
+          ]
+        },
+        {
+          "value": "아연",
+          "label": "아연",
+          "external_value": "MNRL0023",
+          "aliases": [
+            "Zinc"
+          ]
+        },
+        {
+          "value": "알루미늄",
+          "label": "알루미늄",
+          "external_value": "MNRL0009",
+          "aliases": [
+            "Aluminum"
+          ]
+        },
+        {
+          "value": "연",
+          "label": "연",
+          "external_value": "MNRL0022",
+          "aliases": [
+            "Lead",
+            "납"
+          ]
+        },
+        {
+          "value": "주석",
+          "label": "주석",
+          "external_value": "MNRL0016",
+          "aliases": [
+            "Tin"
+          ]
+        }
+      ]
+    },
+    "metadata.prices.iron_energy.minerals": {
+      "coverage": "complete",
+      "kind": "independent",
+      "options": [
+        {
+          "value": "우라늄",
+          "label": "우라늄",
+          "external_value": "MNRL0031",
+          "aliases": [
+            "Uranium"
+          ]
+        },
+        {
+          "value": "유연탄",
+          "label": "유연탄",
+          "external_value": "MNRL0032",
+          "aliases": [
+            "Coal"
+          ]
+        },
+        {
+          "value": "철",
+          "label": "철",
+          "external_value": "MNRL1011",
+          "aliases": [
+            "Iron",
+            "철광석"
+          ]
+        }
+      ]
+    },
+    "metadata.prices.minor_metals.minerals": {
+      "coverage": "complete",
+      "kind": "independent",
+      "options": [
+        {
+          "value": "가돌리늄",
+          "label": "가돌리늄",
+          "external_value": "MNRL1064",
+          "aliases": [
+            "Gadolinium"
+          ]
+        },
+        {
+          "value": "갈륨",
+          "label": "갈륨",
+          "external_value": "MNRL0024",
+          "aliases": [
+            "Gallium"
+          ]
+        },
+        {
+          "value": "게르마늄",
+          "label": "게르마늄",
+          "external_value": "MNRL0035",
+          "aliases": [
+            "Germanium"
+          ]
+        },
+        {
+          "value": "규소",
+          "label": "규소",
+          "external_value": "MNRL0010",
+          "aliases": [
+            "Silicon"
+          ]
+        },
+        {
+          "value": "네오디뮴",
+          "label": "네오디뮴",
+          "external_value": "MNRL1001",
+          "aliases": [
+            "Neodymium"
+          ]
+        },
+        {
+          "value": "니오븀",
+          "label": "니오븀",
+          "external_value": "MNRL0007",
+          "aliases": [
+            "Niobium"
+          ]
+        },
+        {
+          "value": "디스프로슘",
+          "label": "디스프로슘",
+          "external_value": "MNRL1004",
+          "aliases": [
+            "Dysprosium"
+          ]
+        },
+        {
+          "value": "란탄",
+          "label": "란탄",
+          "external_value": "MNRL1003",
+          "aliases": [
+            "Lanthanum"
+          ]
+        },
+        {
+          "value": "루테튬",
+          "label": "루테튬",
+          "external_value": "MNRL1055",
+          "aliases": [
+            "Lutetium"
+          ]
+        },
+        {
+          "value": "리튬",
+          "label": "리튬",
+          "external_value": "MNRL0001",
+          "aliases": [
+            "Lithium"
+          ]
+        },
+        {
+          "value": "마그네슘",
+          "label": "마그네슘",
+          "external_value": "MNRL0011",
+          "aliases": [
+            "Magnesium"
+          ]
+        },
+        {
+          "value": "망간",
+          "label": "망간",
+          "external_value": "MNRL0004",
+          "aliases": [
+            "Manganese"
+          ]
+        },
+        {
+          "value": "몰리브덴",
+          "label": "몰리브덴",
+          "external_value": "MNRL0012",
+          "aliases": [
+            "Molybdenum"
+          ]
+        },
+        {
+          "value": "바나듐",
+          "label": "바나듐",
+          "external_value": "MNRL0013",
+          "aliases": [
+            "Vanadium"
+          ]
+        },
+        {
+          "value": "사마륨",
+          "label": "사마륨",
+          "external_value": "MNRL1062",
+          "aliases": [
+            "Samarium"
+          ]
+        },
+        {
+          "value": "세륨",
+          "label": "세륨",
+          "external_value": "MNRL1002",
+          "aliases": [
+            "Cerium"
+          ]
+        },
+        {
+          "value": "셀레늄",
+          "label": "셀레늄",
+          "external_value": "MNRL0029",
+          "aliases": [
+            "Selenium"
+          ]
+        },
+        {
+          "value": "스칸듐",
+          "label": "스칸듐",
+          "external_value": "MNRL1053",
+          "aliases": [
+            "Scandium"
+          ]
+        },
+        {
+          "value": "스트론튬",
+          "label": "스트론튬",
+          "external_value": "MNRL0028",
+          "aliases": [
+            "Strontium"
+          ]
+        },
+        {
+          "value": "안티모니",
+          "label": "안티모니",
+          "external_value": "MNRL0019",
+          "aliases": [
+            "Antimony"
+          ]
+        },
+        {
+          "value": "에르븀",
+          "label": "에르븀",
+          "external_value": "MNRL1067",
+          "aliases": [
+            "Erbium"
+          ]
+        },
+        {
+          "value": "유로퓸",
+          "label": "유로퓸",
+          "external_value": "MNRL1063",
+          "aliases": [
+            "Europium"
+          ]
+        },
+        {
+          "value": "이트륨",
+          "label": "이트륨",
+          "external_value": "MNRL1054",
+          "aliases": [
+            "Yttrium"
+          ]
+        },
+        {
+          "value": "인듐",
+          "label": "인듐",
+          "external_value": "MNRL0025",
+          "aliases": [
+            "Indium"
+          ]
+        },
+        {
+          "value": "지르코늄",
+          "label": "지르코늄",
+          "external_value": "MNRL0027",
+          "aliases": [
+            "Zirconium"
+          ]
+        },
+        {
+          "value": "창연",
+          "label": "창연",
+          "external_value": "MNRL0020",
+          "aliases": [
+            "Bismuth"
+          ]
+        },
+        {
+          "value": "코발트",
+          "label": "코발트",
+          "external_value": "MNRL0003",
+          "aliases": [
+            "Cobalt"
+          ]
+        },
+        {
+          "value": "크롬",
+          "label": "크롬",
+          "external_value": "MNRL0021",
+          "aliases": [
+            "Chromium"
+          ]
+        },
+        {
+          "value": "탄탈륨",
+          "label": "탄탈륨",
+          "external_value": "MNRL0026",
+          "aliases": [
+            "Tantalum"
+          ]
+        },
+        {
+          "value": "터븀",
+          "label": "터븀",
+          "external_value": "MNRL1005",
+          "aliases": [
+            "Terbium"
+          ]
+        },
+        {
+          "value": "텅스텐",
+          "label": "텅스텐",
+          "external_value": "MNRL0018",
+          "aliases": [
+            "Tungsten"
+          ]
+        },
+        {
+          "value": "티타늄",
+          "label": "티타늄",
+          "external_value": "MNRL0017",
+          "aliases": [
+            "Titanium"
+          ]
+        },
+        {
+          "value": "프라세오디뮴",
+          "label": "프라세오디뮴",
+          "external_value": "MNRL1056",
+          "aliases": [
+            "Praseodymium"
+          ]
+        },
+        {
+          "value": "홀뮴",
+          "label": "홀뮴",
+          "external_value": "MNRL1068",
+          "aliases": [
+            "Holmium"
+          ]
+        }
+      ]
+    },
+    "metadata.prices.other.minerals": {
+      "coverage": "complete",
+      "kind": "independent",
+      "options": [
+        {
+          "value": "금",
+          "label": "금",
+          "external_value": "MNRL0046",
+          "aliases": [
+            "Gold"
+          ]
+        },
+        {
+          "value": "루테늄",
+          "label": "루테늄",
+          "external_value": "MNRL1070",
+          "aliases": [
+            "Ruthenium"
+          ]
+        },
+        {
+          "value": "백금",
+          "label": "백금",
+          "external_value": "MNRL0014",
+          "aliases": [
+            "Platinum"
+          ]
+        },
+        {
+          "value": "은",
+          "label": "은",
+          "external_value": "MNRL0047",
+          "aliases": [
+            "Silver"
+          ]
+        },
+        {
+          "value": "팔라듐",
+          "label": "팔라듐",
+          "external_value": "MNRL0015",
+          "aliases": [
+            "Palladium"
+          ]
+        },
+        {
+          "value": "흑연",
+          "label": "흑연",
+          "external_value": "MNRL0005",
+          "aliases": [
+            "Graphite"
+          ]
+        }
+      ]
+    },
+    "metadata.prices.price_criteria": {
+      "coverage": "complete",
+      "kind": "price_criteria",
+      "pages": {
+        "price_base_metals": {
+          "by_mineral": {
+            "MNRL0002": [
+              {
+                "criterion": "LME 3개월",
+                "specification": null,
+                "external_value": 497
+              },
+              {
+                "criterion": "LME CASH",
+                "specification": null,
+                "external_value": 502
+              }
+            ],
+            "MNRL0008": [
+              {
+                "criterion": "LME 3개월",
+                "specification": null,
+                "external_value": 503
+              },
+              {
+                "criterion": "LME CASH",
+                "specification": null,
+                "external_value": 501
+              }
+            ],
+            "MNRL0023": [
+              {
+                "criterion": "LME 3개월",
+                "specification": null,
+                "external_value": 581
+              },
+              {
+                "criterion": "LME CASH",
+                "specification": null,
+                "external_value": 561
+              }
+            ],
+            "MNRL0009": [
+              {
+                "criterion": "LME 3개월",
+                "specification": null,
+                "external_value": 496
+              },
+              {
+                "criterion": "LME CASH",
+                "specification": null,
+                "external_value": 495
+              }
+            ],
+            "MNRL0022": [
+              {
+                "criterion": "LME 3개월",
+                "specification": null,
+                "external_value": 500
+              },
+              {
+                "criterion": "LME CASH",
+                "specification": null,
+                "external_value": 499
+              }
+            ],
+            "MNRL0016": [
+              {
+                "criterion": "LME 15개월",
+                "specification": null,
+                "external_value": 498
+              },
+              {
+                "criterion": "LME 3개월",
+                "specification": null,
+                "external_value": 494
+              },
+              {
+                "criterion": "LME CASH",
+                "specification": null,
+                "external_value": 493
+              }
+            ]
+          }
+        },
+        "price_minor_metals": {
+          "by_mineral": {
+            "MNRL1064": [
+              {
+                "criterion": "Gadolinium Oxide",
+                "specification": "99.5",
+                "external_value": 809
+              }
+            ],
+            "MNRL0024": [
+              {
+                "criterion": "Gallium Metal",
+                "specification": "99.99",
+                "external_value": 767
+              },
+              {
+                "criterion": "Gallium Metal",
+                "specification": "99.99",
+                "external_value": 768
+              },
+              {
+                "criterion": "Gallium Metal",
+                "specification": "99.99999",
+                "external_value": 769
+              }
+            ],
+            "MNRL0035": [
+              {
+                "criterion": "Germanium Dioxide",
+                "specification": "99.99",
+                "external_value": 759
+              },
+              {
+                "criterion": "Germanium Metal",
+                "specification": "99.99",
+                "external_value": 760
+              }
+            ],
+            "MNRL0010": [
+              {
+                "criterion": "Silicon Metal",
+                "specification": "5-5-3",
+                "external_value": 765
+              }
+            ],
+            "MNRL1001": [
+              {
+                "criterion": "Neodymium Oxide",
+                "specification": "99.5",
+                "external_value": 757
+              }
+            ],
+            "MNRL0007": [
+              {
+                "criterion": "Ferro-niobium",
+                "specification": "66",
+                "external_value": 770
+              }
+            ],
+            "MNRL1004": [
+              {
+                "criterion": "Dysprosium Oxide",
+                "specification": "99.5",
+                "external_value": 803
+              }
+            ],
+            "MNRL1003": [
+              {
+                "criterion": "Lanthanum Oxide",
+                "specification": "99.9",
+                "external_value": 813
+              }
+            ],
+            "MNRL1055": [
+              {
+                "criterion": "Lutetium Oxide",
+                "specification": "99.99",
+                "external_value": 807
+              }
+            ],
+            "MNRL0001": [
+              {
+                "criterion": "Lithium Carbonate",
+                "specification": "99.5",
+                "external_value": 773
+              },
+              {
+                "criterion": "Lithium Hydroxide Monohydrate",
+                "specification": "56.5",
+                "external_value": 772
+              },
+              {
+                "criterion": "Spodumene",
+                "specification": "6%",
+                "external_value": 771
+              }
+            ],
+            "MNRL0011": [
+              {
+                "criterion": "Magnesium Ingot",
+                "specification": "99.9",
+                "external_value": 766
+              }
+            ],
+            "MNRL0004": [
+              {
+                "criterion": "Ferro-manganese",
+                "specification": "75",
+                "external_value": 815
+              }
+            ],
+            "MNRL0012": [
+              {
+                "criterion": "Ferro-molybdenum",
+                "specification": "60",
+                "external_value": 763
+              },
+              {
+                "criterion": "Molybdenum Concentrate",
+                "specification": "45",
+                "external_value": 756
+              }
+            ],
+            "MNRL0013": [
+              {
+                "criterion": "Ferro-vanadium",
+                "specification": "50",
+                "external_value": 774
+              },
+              {
+                "criterion": "Vanadium Nitride",
+                "specification": "14",
+                "external_value": 776
+              },
+              {
+                "criterion": "Vanadium Pentoxide",
+                "specification": "98",
+                "external_value": 775
+              }
+            ],
+            "MNRL1062": [
+              {
+                "criterion": "Samarium Oxide",
+                "specification": "99.9",
+                "external_value": 804
+              }
+            ],
+            "MNRL1002": [
+              {
+                "criterion": "Cerium Oxide",
+                "specification": "99",
+                "external_value": 802
+              }
+            ],
+            "MNRL0029": [
+              {
+                "criterion": "Selenium Dioxide",
+                "specification": "98",
+                "external_value": 778
+              },
+              {
+                "criterion": "Selenium Powder",
+                "specification": "99.9",
+                "external_value": 777
+              }
+            ],
+            "MNRL1053": [
+              {
+                "criterion": "Scandium Oxide",
+                "specification": "99.99",
+                "external_value": 812
+              }
+            ],
+            "MNRL0028": [
+              {
+                "criterion": "Strontium Metal",
+                "specification": "99",
+                "external_value": 779
+              }
+            ],
+            "MNRL0019": [
+              {
+                "criterion": "Antimony Ingot",
+                "specification": "99.65",
+                "external_value": 780
+              },
+              {
+                "criterion": "Antimony Trioxide",
+                "specification": "99.5",
+                "external_value": 781
+              }
+            ],
+            "MNRL1067": [
+              {
+                "criterion": "Erbium Oxide",
+                "specification": "99.5",
+                "external_value": 810
+              }
+            ],
+            "MNRL1063": [
+              {
+                "criterion": "Europium Oxide",
+                "specification": "99.999",
+                "external_value": 808
+              }
+            ],
+            "MNRL1054": [
+              {
+                "criterion": "Yttrium Oxide",
+                "specification": "99.999",
+                "external_value": 805
+              }
+            ],
+            "MNRL0025": [
+              {
+                "criterion": "Indium Ingot",
+                "specification": "99.995",
+                "external_value": 784
+              },
+              {
+                "criterion": "Indium Ingot",
+                "specification": "99.995",
+                "external_value": 785
+              },
+              {
+                "criterion": "Indium Ingot",
+                "specification": "99.995",
+                "external_value": 786
+              },
+              {
+                "criterion": "Indium Ingot",
+                "specification": "99.995",
+                "external_value": 787
+              }
+            ],
+            "MNRL0027": [
+              {
+                "criterion": "Zirconium Sponge",
+                "specification": "99.4",
+                "external_value": 788
+              }
+            ],
+            "MNRL0020": [
+              {
+                "criterion": "Bismuth Ingot",
+                "specification": "99.99",
+                "external_value": 789
+              },
+              {
+                "criterion": "Bismuth Oxide",
+                "specification": "99.9",
+                "external_value": 790
+              }
+            ],
+            "MNRL0003": [
+              {
+                "criterion": "Cobalt Metal",
+                "specification": "99.8",
+                "external_value": 791
+              },
+              {
+                "criterion": "코발트메탈 LME CASH",
+                "specification": "99.8",
+                "external_value": 709
+              },
+              {
+                "criterion": "코발트메탈 LME(15개월)",
+                "specification": "99.8",
+                "external_value": 708
+              }
+            ],
+            "MNRL0021": [
+              {
+                "criterion": "Ferro-chrome(HC)",
+                "specification": "60",
+                "external_value": 794
+              },
+              {
+                "criterion": "Ferro-chrome(LC)",
+                "specification": "60",
+                "external_value": 795
+              }
+            ],
+            "MNRL0026": [
+              {
+                "criterion": "Tantalum Metal",
+                "specification": "99.95",
+                "external_value": 764
+              }
+            ],
+            "MNRL1005": [
+              {
+                "criterion": "Terbium Oxide",
+                "specification": "99.99",
+                "external_value": 806
+              }
+            ],
+            "MNRL0018": [
+              {
+                "criterion": "Ferro-tungsten",
+                "specification": "75",
+                "external_value": 796
+              },
+              {
+                "criterion": "Tungsten APT",
+                "specification": "88.5",
+                "external_value": 798
+              },
+              {
+                "criterion": "Tungsten Carbide",
+                "specification": "99.8",
+                "external_value": 800
+              },
+              {
+                "criterion": "Tungsten Ore",
+                "specification": "55",
+                "external_value": 816
+              },
+              {
+                "criterion": "Tungsten Oxide",
+                "specification": "99.95",
+                "external_value": 799
+              }
+            ],
+            "MNRL0017": [
+              {
+                "criterion": "Ferro-titanium",
+                "specification": "70",
+                "external_value": 761
+              },
+              {
+                "criterion": "Titanium Sponge",
+                "specification": "99.7",
+                "external_value": 762
+              }
+            ],
+            "MNRL1056": [
+              {
+                "criterion": "Praseodymium Oxide",
+                "specification": "99.5",
+                "external_value": 758
+              }
+            ],
+            "MNRL1068": [
+              {
+                "criterion": "Holmium Oxide",
+                "specification": "99.5",
+                "external_value": 811
+              }
+            ]
+          }
+        },
+        "price_iron_energy": {
+          "by_mineral": {
+            "MNRL0031": [
+              {
+                "criterion": "509",
+                "specification": null,
+                "external_value": 509
+              }
+            ],
+            "MNRL0032": [
+              {
+                "criterion": "Coking Coal",
+                "specification": null,
+                "external_value": 782
+              },
+              {
+                "criterion": "Thermal Coal",
+                "specification": null,
+                "external_value": 783
+              }
+            ],
+            "MNRL1011": [
+              {
+                "criterion": "Iron Ore Fines",
+                "specification": "62%",
+                "external_value": 793
+              }
+            ]
+          }
+        },
+        "price_other": {
+          "by_mineral": {
+            "MNRL0046": [
+              {
+                "criterion": "London Gold Market Fixing Ltd- LBMA PM Fixing Price/USD",
+                "specification": null,
+                "external_value": 701
+              }
+            ],
+            "MNRL1070": [
+              {
+                "criterion": "Ruthenium min 99.9% Johnson Matthey London",
+                "specification": null,
+                "external_value": 817
+              }
+            ],
+            "MNRL0014": [
+              {
+                "criterion": "Platinum min 99.95% Johnson Matthey London",
+                "specification": null,
+                "external_value": 748
+              }
+            ],
+            "MNRL0047": [
+              {
+                "criterion": "London Silver Market Fixing Ltd- LBMA Fixing Price/USD",
+                "specification": null,
+                "external_value": 555
+              }
+            ],
+            "MNRL0015": [
+              {
+                "criterion": "Palladium min 99.95% Johnson Matthey London",
+                "specification": null,
+                "external_value": 749
+              }
+            ],
+            "MNRL0005": [
+              {
+                "criterion": "-194 FOB China",
+                "specification": null,
+                "external_value": 801
+              }
+            ]
+          }
+        }
+      },
+      "excluded_external_values": [
+        746,
+        752,
+        753,
+        754,
+        755
+      ]
+    },
+    "metadata.prices.specifications": {
+      "coverage": "complete",
+      "kind": "price_specifications",
+      "source_ref": "metadata.prices.price_criteria"
+    }
+  }
+}

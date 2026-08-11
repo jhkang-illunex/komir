@@ -1,7 +1,24 @@
 # TODO(구현 단계): 실제 버전 고정.
 fastapi
 uvicorn[standard]
+# sqlalchemy+psycopg2는 services/shared/db.read_sql_pg → dbio.read_sql(URL 분기)가
+# 쓴다 — report_gen은 이걸로 public.KO_*(KOMIS 공개 원천, 타 팀 소유·읽기 전용)를
+# 조회한다(services/shared/komis_raw.py, 2026-08-11).
 sqlalchemy
 psycopg2-binary
-jinja2
-apscheduler
+jinja2>=3.1        # app/templates/*.j2 리포트 조립(app/generator.py)
+apscheduler>=3.10  # app/scheduler.py — REPORT_SCHEDULE_CRON 주기 실행
+duckdb>=1.1    # mineral_supply_risk/db/dbio.py(services/shared/db.py가 재노출)
+pandas>=2.0    # 〃
+
+# services/shared·services/ingestion 공용(2026-08-11, 병합계획 문서 참고:
+# 병합계획_komis-report-generator_260811.md)
+pydantic>=2.5
+pydantic-settings>=2.5  # services/shared/config.py
+requests>=2.31          # geo/llm/openai_compat.py(services/shared/llm_client.py가 재노출)
+pyhwp>=0.1b15         # HWP 구조 파서(services/ingestion/parsers/hwp.py)
+opendataloader-pdf>=2.4  # PDF 파서가 import하는 geo.extractors의 의존성(Java 11+ 필요)
+PyMuPDF>=1.24
+easyocr>=1.7
+pypdf>=4.0
+numpy>=1.24

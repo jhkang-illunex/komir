@@ -35,11 +35,12 @@ def apply_schema(sql_path: str, target: str, drop_if_not_exists_for_server=False
                     st = re.sub(r"IF NOT EXISTS", "", st, flags=re.I)
                 con.execute(sa.text(st))
     else:
+        # 2026-08-11 버그수정: 정의되지 않은 schema/table 변수를 참조해 DuckDB 대상
+        # 호출 시 무조건 NameError였음(docs/CONTAINER_ARCHITECTURE.md §1에 문서화된
+        # 기지 버그) — apply_schema는 DDL 파일 전체를 그대로 실행하는 함수라 테이블별
+        # schema 접두는 원래 의미가 없었음(그 값도 이후 아무데도 안 쓰임, 죽은 코드).
         import duckdb
         con = duckdb.connect(target)
-        if schema:
-            con.execute(f'CREATE SCHEMA IF NOT EXISTS "{schema}"')
-            table = f'{schema}"."{table}'   # 아래 f'"{table}"' 조합 시 "schema"."table"이 됨
         for st in stmts:
             con.execute(st)
         con.close()
