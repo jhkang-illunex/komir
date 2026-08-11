@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 from .ingest import DocRecord
 
-HEADING_RE = re.compile(r"^(#{1,4})\s+(.*)$")
+HEADING_RE = re.compile(r"^(#{1,6})\s+(.*)$")  # opendataloader-pdf 산출 md는 6단계까지 씀
 MAX_CHARS = 1400       # 이 이상이면 문단 경계에서 추가 분할(임베딩 모델 컨텍스트·검색 정밀도 고려)
 MIN_CHARS = 40          # 이보다 짧은 헤딩-only 청크는 다음 청크에 병합
 WINDOW = 1000

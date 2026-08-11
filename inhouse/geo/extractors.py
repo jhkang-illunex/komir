@@ -145,6 +145,42 @@ def ocr_pdf_text(path: str, max_pages: int = None) -> str:
         parts.append("\n".join(result))
     return "\n".join(parts)
 
+def extract_with_fallback(pdf_path: str, data: bytes, md_text: str, cache_dir: str) -> tuple[str, str]:
+    """opendataloader 산출(md_text)이 충분하면 그대로 쓰고, 부족하면 pypdf→OCR 순 폴백.
+    반환 (text, method) — method는 'opendataloader'|'pypdf_fallback'|'ocr'|'failed'|'partial'.
+    ingest.py의 precompute_pdf_texts()와 같은 3단계 체인을 파일 1개 단위로 쓰고 싶은
+    호출자(2026-08-10 msr/rag의 PDF ETL 등)를 위해 뗀 함수 — geo 자체 배치 파이프라인은
+    바꾸지 않음(이미 검증된 코드, 최소 변경 원칙)."""
+    import hashlib
+    plain = md_to_text(md_text)
+    if len(plain.strip()) >= OCR_MIN_CHARS:
+        return md_text, "opendataloader"
+    try:
+        py_text = pdf_text(data)
+    except Exception:
+        py_text = ""
+    if len(py_text.strip()) >= OCR_MIN_CHARS:
+        return py_text, "pypdf_fallback"
+    os.makedirs(cache_dir, exist_ok=True)
+    cache_path = os.path.join(cache_dir, f"{hashlib.md5(data).hexdigest()}.txt")
+    if os.path.exists(cache_path):
+        ocr_text = open(cache_path, encoding="utf-8", errors="ignore").read()
+    else:
+        try:
+            ocr_text = ocr_pdf_text(pdf_path)
+        except Exception:
+            ocr_text = ""
+        try:
+            with open(cache_path, "w", encoding="utf-8") as f:
+                f.write(ocr_text or "")
+        except Exception:
+            pass
+    if len(ocr_text.strip()) >= OCR_MIN_CHARS:
+        return ocr_text, "ocr"
+    best = md_text or py_text or ocr_text or ""
+    return best, ("failed" if not best.strip() else "partial")
+
+
 def xlsx_text(data: bytes) -> str:
     import pandas as pd
     xl = pd.ExcelFile(io.BytesIO(data))

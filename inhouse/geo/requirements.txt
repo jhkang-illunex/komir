@@ -7,4 +7,8 @@ feedparser>=6.0     # collectors/gnews.py (komis 이식)
 pypdf>=4.0
 olefile>=0.47
 duckdb>=1.0
+opendataloader-pdf>=2.4  # extractors.py PDF 1차 변환(Java 11+ 필요, 2026-07-07 도입) — 누락 발견·추가(2026-08-10)
+PyMuPDF>=1.24            # 〃 OCR 폴백용 페이지 래스터화(import명 fitz) — 〃
+easyocr>=1.7             # 〃 스캔본 OCR 폴백(ko/en, CPU) — 〃
+numpy>=1.24              # 〃 OCR 이미지 배열 처리 — 〃
 # 서버DB publish 시: pip install sqlalchemy + 드라이버(oracledb/pymysql/pyodbc)

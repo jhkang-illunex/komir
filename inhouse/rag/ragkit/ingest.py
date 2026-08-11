@@ -1,7 +1,14 @@
 # -*- coding: utf-8 -*-
-"""documents/산출물/ 아래 보고서(md·docx)를 읽어 문서 레코드로 변환.
-- pdf는 같은 파일명의 md를 렌더링한 산출물이라 항상 건너뜀(중복 콘텐츠).
+"""documents/산출물/ 아래 보고서(md·docx)와 외부공개 PDF ETL 산출물을 읽어 문서
+레코드로 변환.
+- pdf는 documents/산출물 트리에서는 같은 파일명의 md를 렌더링한 산출물이라 항상
+  건너뜀(중복 콘텐츠) — 원본 PDF가 아니라 pdf_extract.py가 만든 .md만 읽는다.
 - docx는 python-docx로 문단·표를 텍스트로 펼침(견출 스타일은 #/## 로 보존 → chunk.py가 재사용).
+
+**EXTRA_ROOTS는 "외부공개 가능"으로 확인된 소스만 추가할 것.** 진단모델 전용
+(RAG 금지) 자료는 data_lake/semi_structure/pdf_extract/restricted_diagnosis_only/에
+따로 있고, 그 경로는 여기서 절대 참조하지 않는다(사용범위 위반 방지 —
+documents/0807/메일내용_0807.txt 2번 항목 참고).
 """
 from __future__ import annotations
 
@@ -9,11 +16,37 @@ import hashlib
 import os
 import re
 from dataclasses import dataclass
+from pathlib import Path
 
 import docx
 
 ROOT = "documents/산출물"
 DATE_RE = re.compile(r"_(\d{6})(?=_|\.|$)")
+
+# (경로, week에 쓸 태그 접두사) — 각 하위 디렉토리명이 태그 뒤에 붙는다.
+# 예: pdf_extract/shareable/komis_해외투자가이드_4개국/ -> week="외부자료:komis_해외투자가이드_4개국"
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+EXTRA_ROOTS = [
+    (_REPO_ROOT / "inhouse/data_lake/semi_structure/pdf_extract/shareable", "외부자료"),
+]
+
+# opendataloader-pdf 기본(비-hybrid) 모드는 텍스트 레이어가 없는 스캔형 PDF에서
+# 거의 아무 것도 못 뽑는다(2026-08-10 실측: 해외투자가이드 4개국 전부 이 경우 —
+# 이미지 태그·표 뼈대만 남고 실제 문장은 0). 그런 파일을 그대로 청킹/임베딩하면
+# 빈 벡터만 늘리므로, EXTRA_ROOTS 문서는 최소 실제 텍스트 분량을 통과해야 한다.
+_MIN_REAL_CHARS = 300
+_IMAGE_TAG_RE = re.compile(r"!\[image \d+\]\([^)]*\)")
+_TABLE_NOISE_RE = re.compile(r"<br\s*/?>|\|")
+
+
+def _real_content_len(md_text: str) -> int:
+    """이미지 참조·표 뼈대(빈 셀+<br>+|)를 뺀 실제 문자(글자/숫자, 모든 문자권) 수.
+    스캔형 PDF는 표처럼 보이는 빈 칸만 잔뜩 남기고 셀 안이 비어있는 경우가 실제로
+    있어(2026-08-10 실측: 해외투자가이드 4개국 전부 이 패턴), 단순 줄길이 합산으론
+    안 걸러진다 — <br>/공백만 있는 셀이 라인당 문자수를 부풀림."""
+    stripped = _IMAGE_TAG_RE.sub("", md_text)
+    stripped = _TABLE_NOISE_RE.sub(" ", stripped)
+    return len(re.findall(r"\w", stripped, re.UNICODE))
 
 
 @dataclass
@@ -81,28 +114,40 @@ def _title_from_text(text: str, fallback: str) -> str:
 
 
 def load_documents(root: str = ROOT) -> list[DocRecord]:
-    """md는 그대로, docx는 md 짝이 없을 때만(중복 방지) 추출."""
+    """md는 그대로, docx는 md 짝이 없을 때만(중복 방지) 추출.
+    root(documents/산출물) + EXTRA_ROOTS(외부공개 PDF ETL 산출물)를 함께 읽는다."""
+    roots = [(root, None)] + [(str(p), tag) for p, tag in EXTRA_ROOTS]
+
     md_bases: set[str] = set()
-    all_files: list[str] = []
-    for dirpath, _dirnames, filenames in os.walk(root):
-        for fn in filenames:
-            full = os.path.join(dirpath, fn)
-            all_files.append(full)
-            if fn.lower().endswith(".md") and not fn.lower().endswith(".meta.md"):
-                md_bases.add(os.path.splitext(full)[0])
+    all_files: list[tuple[str, str | None]] = []  # (path, extra_tag)
+    for r, tag in roots:
+        if not os.path.isdir(r):
+            continue
+        for dirpath, _dirnames, filenames in os.walk(r):
+            for fn in filenames:
+                full = os.path.join(dirpath, fn)
+                all_files.append((full, tag))
+                if fn.lower().endswith(".md") and not fn.lower().endswith(".meta.md"):
+                    md_bases.add(os.path.splitext(full)[0])
 
     docs: list[DocRecord] = []
-    for full in sorted(all_files):
+    for full, tag in sorted(all_files, key=lambda x: x[0]):
         lower = full.lower()
         if lower.endswith(".pdf"):
             continue  # md 렌더링본, 콘텐츠 중복
         if lower.endswith(".meta.md"):
             continue  # 요약 메타는 본문과 별도 취급하지 않음(필요시 후속 확장)
         rel = os.path.relpath(full, ".")
-        parts = rel.split(os.sep)
-        week = parts[2] if len(parts) > 2 else ""
         base_noext, ext = os.path.splitext(full)
         basename = os.path.basename(base_noext)
+        if tag is not None:
+            # EXTRA_ROOTS: <extra_root>/<source_label>/file.md -> week="태그:source_label"
+            rel_to_extra = os.path.relpath(full, next(p for p, t in EXTRA_ROOTS if t == tag))
+            source_label = rel_to_extra.split(os.sep)[0]
+            week = f"{tag}:{source_label}"
+        else:
+            parts = rel.split(os.sep)
+            week = parts[2] if len(parts) > 2 else ""
 
         if lower.endswith(".md"):
             with open(full, encoding="utf-8") as f:
@@ -112,6 +157,11 @@ def load_documents(root: str = ROOT) -> list[DocRecord]:
                 continue  # 같은 이름의 md가 있으면 md만 사용(둘 다 있는 경우 W29 2건)
             raw = _extract_docx(full)
         else:
+            continue
+
+        if tag is not None and _real_content_len(raw) < _MIN_REAL_CHARS:
+            print(f"  [skip 저품질] {rel} — 실제 텍스트 {_real_content_len(raw)}자 미만"
+                  f"(OCR/hybrid 모드 필요, 스캔형 PDF로 추정)")
             continue
 
         series_key, doc_date = _series_and_date(basename)

@@ -386,6 +386,21 @@ komir 쪽에서 이 구간에 대해 아는 건 "인터페이스 지점"뿐 — 
 - **정형 결과**: 같은 ETL 패스에서 나온 정형 값(수치·표 데이터)은 RDB(§0-1, 개발단계
   Oracle)에 적재 — RAG 정형 피처, 진단/예측 모델 피처가 공용으로 여기서 로딩.
 
+> **실측 노트(2026-08-10)**: 위 "포맷 정규화" 단계의 PDF 처리 부분을 먼저
+> `opendataloader-pdf`(오프라인 동작, Markdown/JSON 출력)로 단독 검증했다(0807
+> 발주처 제공자료 반영 작업, `documents/산출물/2026-W33_0810-0816/
+> 발주처_0807_제공자료_반영계획_260810.md` §4 참고) — 아직 LLM 추출·geo-OKF/문서-OKF
+> 이원화까지 통합한 건 아니고, PDF→마크다운(표 구조 보존) 단계만 별도로 뗀
+> `inhouse/mineral_supply_risk/scripts/pdf_extract_restricted.py`·
+> `inhouse/rag/ragkit/pdf_extract.py`로 선행 적용. 문서 유형에 따라 텍스트 추출률
+> 편차가 크다는 게 확인됨(HWP발 정기간행물=양호, 차트·스캔 위주 디자인 보고서=거의
+> 0) — **처음엔 opendataloader-pdf 자체 hybrid AI 모드(SmolVLM 백엔드 서버 필요)가
+> 유일한 해법이라 오판했으나, `inhouse/geo/extractors.py`가 2026-07-07부터 이미
+> 같은 문제(GKG 스캔본 PDF)를 pypdf→OCR(easyocr, CPU, 디스크캐시) 폴백으로 풀어놓은
+> 걸 뒤늦게 발견** — 새 백엔드 없이 그 검증된 체인을 `extract_with_fallback()`으로
+> 떼어 재사용했다(§5-3의 "포맷 정규화"가 문서 유형과 무관하게 커버되는 셈 —
+> hybrid AI 모드는 여전히 안 씀, 아래 항목은 그 미채택 옵션 설명으로 유지).
+
 ### 5-4. in-house 검색 — 3개 도구, RAG·Report 공유
 
 RAG 챗봇과 Report 생성기가 **동일한 3개 조회 도구**를 쓴다(사용자 확인, 8/6) —
@@ -459,6 +474,13 @@ RAG 챗봇과 Report 생성기가 **동일한 3개 조회 도구**를 쓴다(사
   오프라인 모드 설정(`HF_HUB_OFFLINE=1`/`TRANSFORMERS_OFFLINE=1`, 이것도 이번에 함께
   명시)과 같은 종류의 "airgap이라고 믿었는데 실은 조용히 접속을 시도하는" 함정 — 두
   값 다 `inhouse/deploy/.env.example`·서비스 `Containerfile`에 명시할 것.
+- **opendataloader-pdf**(2026-08-10 추기, §5-3 문서-OKF 파서의 PDF 처리 후보):
+  Java 11+ 필요한 CLI(pip `opendataloader-pdf`가 JAR을 감싼 얇은 래퍼) — 기본 모드는
+  임베딩 모델과 같은 패턴으로 **오프라인·로컬 완결**(클라우드 전송 없음, airgap
+  적합, 2026-08-10 실측 확인). 이미지에 JRE 11+ 포함 필요. **주의**: hybrid AI
+  OCR 모드(스캔·차트 위주 PDF용)는 별도 로컬 백엔드 서버(SmolVLM 기반, GPU 불요)가
+  필요해 모델 가중치를 이미지 빌드 시점에 미리 받아둬야 함 — 기본 모드보다 무거운
+  선택지라 이번엔 채택하지 않음(§5-3 아래 실측 노트 참고).
 
 ## 8. 단계별 실행 순서 (다음 세션 제안)
 
