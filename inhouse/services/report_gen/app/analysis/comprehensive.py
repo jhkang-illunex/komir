@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import re
 from typing import Any
 
 from .._bootstrap import ensure_shared_on_path
@@ -56,15 +57,47 @@ COMMODITY_NAMES: dict[str, str] = {
     "REE": "희토류(네오디뮴)",
 }
 
-#: 리스크 태그 분류 키워드(1차 휴리스틱 — event_type·target 텍스트가 GKG/LLM
-#: 추출기마다 표기가 달라 완전한 분류는 못 한다, 확인·개선 필요).
+#: 리스크 태그 분류 키워드(2026-08-13 실측 재검토 후 개정 — 1차판은 "policy"/
+#: "protest"가 너무 광범위해 국내 광산 인허가·생산확대 정책(카자흐스탄 제련
+#: 확장, 캐나다 광산 승인)까지 지정학적으로 잘못 분류하고, 정작 소스가 이미
+#: "geopolitical"이라 명시한 이벤트(`geopolitical_competition` 등)는 키워드
+#: 목록에 그 단어 자체가 없어 공급망으로 샜다(실측 확인, `geo_event` 다건).
+#: 여전히 event_type 자유텍스트 휴리스틱이라 완전한 분류는 못 한다.
 _GEOPOLITICAL_KEYWORDS = (
-    "war", "conflict", "sanction", "export control", "export_control", "embargo",
-    "tariff", "unrest", "protest", "분쟁", "제재", "전쟁", "정책", "policy",
-    "regulation", "규제", "수출통제",
+    "geopolitical", "지정학", "war", "conflict", "분쟁", "전쟁",
+    "sanction", "제재", "embargo", "금수",
+    "export control", "export ban", "export restriction", "export_control",
+    "수출통제", "수출금지", "수출규제",
+    "trade restriction", "무역제재", "무역규제", "tariff", "관세",
+    "resource nationalism", "자원무기화", "자원민족주의",
+    # "ban"/"quota" 단독 키워드 — 이 데이터셋은 핵심광물 뉴스 코퍼스로 범위가
+    # 좁아 오탐 위험이 낮다고 보고 포함(예: "Zimbabwe's raw lithium ban").
+    "ban", "quota", "쿼터",
 )
+#: 국내 행정절차성 이벤트(광산 인허가·생산정책 등)는 "policy"/"protest"가
+#: 섞여 있어도 지정학적으로 보지 않는다 — 이런 이벤트는 대개 target이
+#: supply/production류라 아래 _SUPPLY_TARGETS로 정확히 걸린다. 시위·사회갈등
+#: (protest/unrest)은 화면기획 산업영향 정의("ESG 리스크")에 더 가까워
+#: 지정학적에서 뺐다(전쟁·수출통제처럼 국가간 갈등이 아니라 개별 프로젝트
+#: 단위 이슈이기 때문).
 _SUPPLY_TARGETS = {"supply", "production", "resource", "resource_base", "volume", "inventory"}
 _MARKET_TARGETS = {"price", "market", "market_value", "market_size"}
+_INDUSTRY_IMPACT_KEYWORDS = ("protest", "unrest", "환경", "시위", "사회", "esg")
+
+
+def _compile_keyword_pattern(keywords: tuple[str, ...]) -> re.Pattern[str]:
+    """단일 영단어(공백 없음)는 `\\bword\\b`로, 그 외(구·한글)는 그대로 substring
+    매칭한다 — 단일 영단어를 substring으로 찾으면 "ban"이 "Kabanga"(지명)
+    안에서 걸리는 식의 오탐이 생긴다(실측 확인, Tanzania Kabanga 니켈 사례)."""
+
+    parts = [
+        rf"\b{re.escape(kw)}\b" if kw.isascii() and " " not in kw else re.escape(kw)
+        for kw in keywords
+    ]
+    return re.compile("|".join(parts), flags=re.IGNORECASE)
+
+
+_GEOPOLITICAL_PATTERN = _compile_keyword_pattern(_GEOPOLITICAL_KEYWORDS)
 
 #: 리스크 카테고리 → 대응전략 후보(화면기획 13p 5개 문구, 카테고리 배정은 초안).
 RESPONSE_STRATEGY_CATALOG: dict[str, list[str]] = {
@@ -75,11 +108,25 @@ RESPONSE_STRATEGY_CATALOG: dict[str, list[str]] = {
 }
 
 
-def _classify_risk_category(event_type: str, target: str) -> str:
+def _classify_risk_category(event_type: str, target: str, evidence_quote: str = "") -> str:
     et = (event_type or "").lower()
     tg = (target or "").lower()
-    if any(k in et for k in _GEOPOLITICAL_KEYWORDS):
+    # event_type 라벨이 일반적(예: 'policy')이어도 evidence_quote 본문에 실제
+    # 수출통제·금수 신호가 있는 사례가 실측으로 확인됐다(예: "Zimbabwe's raw
+    # lithium ban" — event_type='policy'뿐이라 라벨만으론 안 잡힘, 과거 화면
+    # 기획서 예시의 "짐바브웨 리튬 정광 금수조치"와 같은 유형). 그래서 지정학적
+    # 키워드만 evidence_quote까지 함께 본다(다른 카테고리는 오탐 위험이 커서
+    # event_type만 본다).
+    # event_type이 'geopolitical_competition'처럼 언더스코어 복합어인 경우가
+    # 흔한데, "_"는 regex \b 기준으로 단어문자라 경계가 안 생겨 매칭이 깨진다
+    # (실측 확인) — 공백으로 치환해 \b가 정상적으로 단어를 나눠 인식하게 한다.
+    combined = f"{et} {(evidence_quote or '').lower()}".replace("_", " ")
+    if _GEOPOLITICAL_PATTERN.search(combined):
         return "지정학적"
+    # target만으로는 시위·환경이슈도 대개 supply/production으로 잡혀 공급망에
+    # 묻힌다 — event_type에 이런 신호가 있으면 target보다 먼저 산업영향으로 뺀다.
+    if any(k in et for k in _INDUSTRY_IMPACT_KEYWORDS):
+        return "산업영향"
     if tg in _SUPPLY_TARGETS:
         return "공급망"
     if tg in _MARKET_TARGETS:
@@ -173,7 +220,9 @@ class ComprehensiveAnalysisService:
         categories_seen: list[str] = []
         risk_tags: list[RiskTag] = []
         for event in all_events[:12]:
-            category = _classify_risk_category(event.get("event_type", ""), event.get("target", ""))
+            category = _classify_risk_category(
+                event.get("event_type", ""), event.get("target", ""), event.get("evidence_quote", "")
+            )
             if category in categories_seen:
                 continue
             categories_seen.append(category)

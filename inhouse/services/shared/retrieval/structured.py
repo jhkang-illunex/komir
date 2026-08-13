@@ -153,7 +153,14 @@ def weekly_geo_events(
     본문이 아니라 크롤러 메타데이터)가 섞여 있어 SQL이 아니라 여기서 걸러낸다
     — `read_sql_msr`가 pandas `read_sql`(PG 경로에서 `%` 리터럴을 파라미터로
     오인하는 기존 버그, `db.py` 참고)을 거치므로 `LIKE '%...%'` 자체를 SQL에
-    쓰지 않는다."""
+    쓰지 않는다.
+
+    같은 사건이 provider·extractor별로 중복 추출돼 `evidence_quote`가 대소문자
+    차이만 나는 행이 여러 개 나오는 경우가 실측으로 확인됐다(예: "Ottawa
+    approves Timmins..."가 8건 중 5건을 차지) — 소비자(리스크태그 분류, 뉴스
+    카드 LLM)가 사실상 같은 사건을 여러 번 보고 다양성을 잃으므로, 대소문자·
+    공백을 정규화한 텍스트 기준으로 중복을 제거하고 그중 severity·confidence가
+    가장 높은 1건만 남긴다(정렬이 이미 그 순서라 첫 등장분을 유지하면 된다)."""
 
     code = check_commodity(commodity_code)
     # geo_event.obs_date는 VARCHAR(ISO 'YYYY-MM-DD') 컬럼이라 DATE 리터럴과
@@ -180,4 +187,12 @@ def weekly_geo_events(
         and "GKG tone=" not in row["evidence_quote"]
         and not str(row["evidence_quote"]).strip().startswith("http")
     ]
-    return rows[: int(top_n)]
+    seen_text: set[str] = set()
+    deduped: list[dict[str, Any]] = []
+    for row in rows:
+        key = " ".join(str(row["evidence_quote"]).lower().split())
+        if key in seen_text:
+            continue
+        seen_text.add(key)
+        deduped.append(row)
+    return deduped[: int(top_n)]
