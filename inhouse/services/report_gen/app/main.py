@@ -8,6 +8,11 @@
   mineral-map,price-forecast}` — KOMIS 분석요약 5종(2026-08-13 추가,
   `routers/analysis.py`). 외부 저장소 komis-report-generator-main의 실물 엔진을
   `app/analysis/`로 이식해 배선한 것이다.
+- `GET /api/v1/dashboard/comprehensive` — AI 종합분석 및 관련뉴스(2026-08-13
+  신규, `routers/comprehensive.py`+`analysis/comprehensive.py`). 화면기획안
+  ver.1.3(11p) 대응 — 5광종 통합 위기지수·리스크태그·대응전략+광종별 주간
+  뉴스카드 5개를 komir 자체 산출물(geo_index·out_diagnosis_alert·geo_event)만으로
+  조립한다(위 5종과 달리 `public.KO_*` 의존 없음).
 - 앱 기동 시 `scheduler.create_scheduler()`(APScheduler, `REPORT_SCHEDULE_CRON`)를
   등록하고 종료 시 내린다.
 
@@ -31,6 +36,7 @@ from shared.db import read_sql_msr  # noqa: E402
 
 from .generator import DEFAULT_TEMPLATE, ReportGenerationError, generate_and_store, render_report  # noqa: E402
 from .routers.analysis import router as analysis_router  # noqa: E402
+from .routers.comprehensive import router as comprehensive_router  # noqa: E402
 from .scheduler import create_scheduler  # noqa: E402
 
 
@@ -77,6 +83,24 @@ def build_analysis_summary_service():
     )
 
 
+def build_comprehensive_service():
+    """"AI 종합분석 및 관련뉴스" 서비스를 조립한다(2026-08-13, `analysis/
+    comprehensive.py`). 분석요약 5종과 달리 komir 자체 산출물(MSR_DB=DuckDB)만
+    읽어 PG(`KomisRawDataRepository`)가 필요 없다 — LLM 실패 시에도 규칙기반
+    폴백이 있어 None을 돌려주지 않는다(LLM 없이도 서비스 자체는 항상 뜬다)."""
+
+    from .analysis.comprehensive import ComprehensiveAnalysisService
+
+    llm = None
+    try:
+        from shared.llm_client import KomirJsonLLM
+
+        llm = KomirJsonLLM()
+    except Exception:  # noqa: BLE001 — LLM 없이도 규칙기반 결과는 나와야 한다
+        llm = None
+    return ComprehensiveAnalysisService(llm=llm)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     scheduler = create_scheduler()
@@ -88,6 +112,11 @@ async def lifespan(app: FastAPI):
         # 로그를 남기지 않으면 설정 실수가 "그냥 503"으로만 보여 원인 추적이 안 된다.
         logging.getLogger(__name__).exception("분석요약 서비스 조립 실패 — 5종 API는 503으로 응답한다")
         app.state.analysis_summary_service = None
+    try:
+        app.state.comprehensive_service = build_comprehensive_service()
+    except Exception:  # noqa: BLE001 — 종합분석이 못 떠도 나머지 API는 살려둔다
+        logging.getLogger(__name__).exception("AI 종합분석 서비스 조립 실패 — /api/v1/dashboard/comprehensive는 503으로 응답한다")
+        app.state.comprehensive_service = None
     app.state.analysis_lock = Lock()
     try:
         yield
@@ -96,10 +125,14 @@ async def lifespan(app: FastAPI):
         service = getattr(app.state, "analysis_summary_service", None)
         if service is not None:
             service.close()
+        comprehensive_service = getattr(app.state, "comprehensive_service", None)
+        if comprehensive_service is not None:
+            comprehensive_service.close()
 
 
 app = FastAPI(title="komir report_gen", lifespan=lifespan)
 app.include_router(analysis_router)
+app.include_router(comprehensive_router)
 
 
 @app.get("/healthz")
