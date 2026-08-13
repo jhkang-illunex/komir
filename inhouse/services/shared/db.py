@@ -88,7 +88,59 @@ def read_sql_pg(query: str):
     안에서 스키마를 명시할 때 반드시 get_settings().PG_SCHEMA를 쓸 것, "public"을
     하드코딩하지 말 것."""
 
+    return read_sql(query, target=_pg_dsn())
+
+
+# ────────────────────────────────────────────────────────────────────
+# PostgreSQL 전용 헬퍼 (2026-08-11, pgvector 적재·조회용)
+#
+# dbio.py는 DataFrame 벌크 적재/DDL 파일 적용만 제공하고 파라미터 바인딩이
+# 있는 단문 실행이 없다(execute_msr가 DuckDB용으로 그 구멍을 메운 것과 같은
+# 이유). pgvector 적재는 384차원 벡터 리터럴을 %s::vector로 캐스팅해 넣어야
+# 해서 pandas to_sql 경로로는 안 되고, psycopg2 execute_values가 필요하다.
+# 벡터를 파이썬 객체로 넘기는 pgvector-python 패키지는 설치돼 있지 않다
+# (airgap이라 pip 설치도 전제 못 함) — 텍스트 리터럴 + 명시 캐스트로 간다.
+#
+# ⚠ paramstyle은 psycopg2 규약(%s) — execute_msr의 DuckDB `?`와 다르다.
+# ⚠ 대상 스키마는 항상 get_settings().PG_SCHEMA(mineral_risk). public에는
+#    어떤 DDL/DML도 보내지 않는다.
+# ────────────────────────────────────────────────────────────────────
+
+
+def _pg_dsn() -> str:
     settings = get_settings()
     if not settings.PG_DSN:
         raise RuntimeError("PG_DSN이 설정되지 않음(.env 확인)")
-    return read_sql(query, target=settings.PG_DSN)
+    return settings.PG_DSN
+
+
+def pg_connect():
+    """komis_demo에 대한 psycopg2 DBAPI 커넥션(SQLAlchemy 엔진 경유).
+
+    호출자가 close()할 것. 커밋은 호출자 책임(psycopg2 기본 = 트랜잭션 시작 후
+    수동 commit)."""
+
+    import sqlalchemy as sa
+
+    return sa.create_engine(_pg_dsn()).raw_connection()
+
+
+def execute_pg(sql: str, params: tuple | list | None = None) -> None:
+    """단일 DML/DDL 문 실행(psycopg2 paramstyle: %s)."""
+
+    con = pg_connect()
+    try:
+        with con.cursor() as cur:
+            cur.execute(sql, params)
+        con.commit()
+    finally:
+        con.close()
+
+
+def apply_schema_pg(sql_path: str) -> int:
+    """DDL 파일을 komis_demo에 적용하고 실행한 statement 수를 돌려준다.
+
+    dbio.apply_schema를 그대로 쓴다(재구현 금지). IF NOT EXISTS를 제거하지
+    않는다 — Postgres는 그 문법을 지원하고, 멱등성이 이 마이그레이션의 전제다."""
+
+    return apply_schema(sql_path, _pg_dsn())

@@ -6,6 +6,12 @@
 --
 -- 2026-08-05 정정: 벡터 컬럼(doc_chunk.embedding VECTOR)은 폐기 — 벡터DB는 Qdrant로
 -- 확정(docs/CONTAINER_ARCHITECTURE.md §4·§7). 이 파일엔 벡터를 두지 않는다.
+--
+-- ⚠ 2026-08-11 재정정: 위 8/5 결정이 뒤집혔다(pgvector로 복귀 — komis_demo에
+-- pgvector 0.8.2가 이미 설치돼 있음이 실측 확인). 벡터 컬럼과 doc_chunk 확장은
+-- **schema_pgvector.sql**(같은 디렉토리, 실제 적용됨)에 있다. 이 파일은 여전히
+-- 어떤 DB에도 적용되지 않은 설계 초안이며, doc_chunk 관련 부분은 schema_pgvector.sql이
+-- 사실상 대체한다(chat_session/chat_message/out_report 부분만 유효한 미적용 초안).
 -- =====================================================================
 
 -- 챗봇 세션·히스토리(신규 — user_id/session_id 요구사항)

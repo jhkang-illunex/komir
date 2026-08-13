@@ -53,7 +53,9 @@ class PdfParser:
     """opendataloader-pdf → pypdf → OCR 폴백 체인으로 PDF를 파싱한다."""
 
     name = "komir-opendataloader-ocr-fallback"
-    parser_version = "1"
+    # v2(2026-08-11): 산출 텍스트가 평문 → 마크다운 원형으로 바뀜(_raw_markdown 참고).
+    # 산출물이 달라졌으므로 버전을 올려 이전 매니페스트의 재사용(_can_reuse)을 무효화한다.
+    parser_version = "2"
     signature = f"{name}:{parser_version}:komis-pdf-v1"
 
     def __init__(self, cache_dir: str | None = None) -> None:
@@ -61,6 +63,37 @@ class PdfParser:
             "INGESTION_OCR_CACHE_DIR", _DEFAULT_OCR_CACHE_DIR
         )
         self._md_cache: dict[str, str] = {}
+
+    @property
+    def _md_out_dir(self) -> str:
+        return self.cache_dir + "_md"
+
+    def _raw_markdown(self, path: str) -> str:
+        """opendataloader가 써 둔 .md를 **마크다운 원형 그대로** 읽는다.
+
+        2026-08-11 수정: 예전엔 `opendataloader_batch_convert()`의 반환값을 그대로
+        썼는데, 그 함수는 `md_to_text()`를 거쳐 **헤딩(#)과 표 파이프(|)를 지운
+        평문**을 돌려준다(geo 파이프라인은 LLM 추출용 평문만 필요해서 그렇게 짜여
+        있음 — geo/extractors.py). 그 결과 이 파서를 통과한 PDF는 "텍스트+표를
+        마크다운으로 정규화"라는 이 패키지의 계약(parsers/__init__.py docstring)과
+        달리 구조가 전부 날아갔다(실측: USGS_2026 원본 md 헤딩 55개·표 파이프
+        187개 → 산출 텍스트 0개·0개). 문서-OKF(§5-3 "섹션/표 구조를 보존")와
+        PageIndex 트리(헤딩이 없으면 노드가 1개)가 둘 다 이 구조에 의존하므로,
+        변환 side effect는 검증된 batch_convert에 그대로 맡기고 **읽기만** 원본
+        .md에서 한다(geo/extractors.py 자체는 건드리지 않음 — 모듈 docstring의
+        "이 래퍼만 확장할 것" 지침).
+        """
+
+        md_path = os.path.join(
+            self._md_out_dir, os.path.splitext(os.path.basename(path))[0] + ".md"
+        )
+        if not os.path.exists(md_path):
+            return ""
+        try:
+            with open(md_path, encoding="utf-8", errors="ignore") as handle:
+                return handle.read()
+        except OSError:
+            return ""
 
     def preload_batch(self, paths: list[str]) -> None:
         """opendataloader-pdf를 배치 1회로 호출해 markdown 결과를 내부 캐시에 채운다.
@@ -72,9 +105,9 @@ class PdfParser:
 
         if not paths:
             return
-        batch_out = opendataloader_batch_convert(paths, out_dir=self.cache_dir + "_md")
-        for p, text in batch_out.items():
-            self._md_cache[p] = text or ""
+        opendataloader_batch_convert(paths, out_dir=self._md_out_dir)
+        for p in paths:
+            self._md_cache[p] = self._raw_markdown(p)
 
     def parse(self, path: Path) -> ParseResult:
         """PDF 한 건을 파싱한다 — 원천 고유 실패는 ParseResult로 흡수한다."""
@@ -84,10 +117,8 @@ class PdfParser:
             if str(path) in self._md_cache:
                 md_text = self._md_cache.pop(str(path))
             else:
-                batch_out = opendataloader_batch_convert(
-                    [str(path)], out_dir=self.cache_dir + "_md"
-                )
-                md_text = batch_out.get(str(path)) or ""
+                opendataloader_batch_convert([str(path)], out_dir=self._md_out_dir)
+                md_text = self._raw_markdown(str(path))
             text, method = extract_with_fallback(str(path), data, md_text, self.cache_dir)
         except Exception as exc:  # noqa: BLE001 - 한 파일의 실패가 배치 전체를 막지 않게
             return ParseResult(status="parse_failed", error=f"{type(exc).__name__}: {exc}")

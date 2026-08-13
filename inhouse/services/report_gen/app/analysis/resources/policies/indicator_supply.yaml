@@ -1,0 +1,19 @@
+schema_version: 1
+policy_version: "2026-07-16"
+page_id: indicator_supply
+name: "수급동향지표"
+definition: >-
+  4차산업 원료광물의 국내 수급리스크 표준척도다. 광종별 중장기 가격리스크,
+  세계 수급비율, 세계 공급·매장 편중도, 국내 수입증가율과 국내 수입국 편중도
+  등을 반영하며 0~100 값을 가진다.
+score_min: 0
+score_max: 100
+grade_rules:
+  - {label: "주의", min_score: 1, max_score: 5, include_min: false, include_max: true}
+  - {label: "관심", min_score: 5, max_score: 20, include_min: false, include_max: true}
+  - {label: "안정", min_score: 20, max_score: 80, include_min: false, include_max: true}
+  - {label: "원활", min_score: 80, max_score: 100, include_min: false, include_max: true}
+analysis_constraints:
+  - "0~1점 구간은 현재 다운로드·기준정보만으로 단계를 확정하지 않는다."
+  - "보조 패널별 기준시점이 다르면 동일 시점의 원인과 결과로 연결하지 않는다."
+source_note: "KOMIS 수급동향지표 화면 설명 및 등급 밴드 확인"

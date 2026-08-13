@@ -30,3 +30,13 @@ numpy>=1.24
 # python3.10에 설치해 그래프 실행까지 확인.
 langgraph>=1.0
 PyYAML>=6.0            # page_recommend/registry.py — 43개 페이지 정의 YAML 로드
+
+# PageIndex(vendored, services/shared/pageindex_vendor — 2026-08-11) 의존성.
+# services/shared/pageindex_client.py를 통해서만 쓴다(airgap 하드닝이 거기 있음,
+# pageindex_vendor/README.md 참고). 버전은 원본 저장소 requirements.txt 고정판 그대로.
+litellm==1.84.0         # 토큰 카운팅 — LITELLM_LOCAL_MODEL_COST_MAP=True 필수(원격fetch 차단)
+openai>=1.70.0           # pageindex_lib가 이걸로 LLM 호출 — OPENAI_BASE_URL로 로컬 vLLM 라우팅
+python-dotenv>=1.0       # pageindex_lib/utils.py가 import 시 load_dotenv() 호출
+PyPDF2==3.0.1
+pypdfium2==4.30.0
+sortedcontainers==2.4.0

@@ -13,7 +13,7 @@
 | "광종 리스트" 아웃풋 | 기존 진단·예측·지수 모델 결과를 서빙하는 **API** |
 | 챗봇 서버 | komir 레포지토리 내에 **새 FastAPI 챗봇 서비스**를 신규 구축 |
 | `geo/`·`mineral_supply_risk/`·`rag/` → `engine/` 통합 | **실행 완료(2026-08-05, 같은 날 트리거 조건 미충족 상태에서 위험 감수하고 즉시 진행 재확정)** — §2-1. 시스템 crontab 갱신은 main 병합 시점에 별도 처리 필요(미완료) |
-| 벡터DB | **Qdrant로 확정**(2026-08-05 추기) — pgvector(Postgres 확장) 방식 폐기. 정형 RDB(Postgres)와 달리 Qdrant는 **komir이 직접 도커/podman으로 기동·소유**(LLM·정형DB처럼 외부서비스 아님) — §4·§5·§7 |
+| 벡터DB | ~~Qdrant로 확정(2026-08-05 추기)~~ → **2026-08-11 재정정: pgvector로 결정 변경.** 8/5 폐기 사유는 "Postgres는 외부서비스라 확장 설치 권한 보장 없음"이었는데, 실측(`pg_available_extensions`·`pg_extension`) 결과 komis_demo DB에 **pgvector 0.8.2가 이미 설치돼 있고 접속 계정(`postgres`)도 슈퍼유저**임을 확인 — 우려했던 리스크 자체가 없었다. Qdrant를 별도로 기동·운영할 이유가 없어져 정형 RDB와 동일한 Postgres에 벡터까지 같이 둔다(신규 컨테이너·서비스 불필요, 사용자 결정) — §4·§5·§7 |
 
 및 사용자 원 요구사항 8개(요약): ①airgap+podman 배포 ②LLM/embedding·DB는 외부서비스,
 .env로 접속정보만 ③3대 아웃풋(광종 리스트·RAG·Report) ④RAG-챗봇 연동(user_id·
@@ -314,7 +314,18 @@ ALTER TABLE doc_chunk ADD COLUMN txt_tsv tsvector
 CREATE INDEX IF NOT EXISTS idx_doc_chunk_tsv ON doc_chunk USING GIN (txt_tsv);
 ```
 
-**벡터DB = Qdrant로 확정(2026-08-05, 사용자 결정)**: pgvector(Postgres 확장) 방식은
+> **2026-08-11 구현 반영(실행 완료)**: 아래 "벡터DB = Qdrant" 문단은 §0 표대로
+> 뒤집혔다 — 벡터는 **pgvector로 komis_demo의 `mineral_risk.doc_chunk`에 직접**
+> 들어간다(Qdrant 미기동). 실제 적용 DDL은 `inhouse/data_lake/db/schema_pgvector.sql`
+> (신규, 이 §4 블록을 대체하는 게 아니라 dense 절반만 적용 — `structured_query`·
+> `txt_tsv`(GIN)는 아직 미적용, BM25는 당분간 `rag/index/rag.duckdb`의 DuckDB FTS).
+> 적재는 `rag/ragkit/build_pgvector_index.py`, 조회는
+> `services/shared/retrieval/dense_pg.py::dense_search_pg()`.
+> 2026-08-11 실측: `mineral_risk.doc_chunk` 1,206행(문서 76건), `embedding vector(384)`
+> 전행 채움, HNSW(`vector_cosine_ops`) 인덱스 생성, public 스키마 쓰기 0건.
+> 상세는 WORKLOG 2026-08-11 "pgvector 벡터 저장소 구축·적재·검증 완료" 절.
+
+**벡터DB = Qdrant로 확정(2026-08-05, 사용자 결정)** ~~(2026-08-11 무효 — 위 상자 참고)~~: pgvector(Postgres 확장) 방식은
 폐기한다 — 정형 DB는 §0 요구사항②상 "외부 서비스"라 komir 팀이 확장 설치 권한을
 갖는다는 보장이 없다는 리스크가 있었다(적대적 검증에서 지적됨). Qdrant는 반대로
 **komir이 직접 podman으로 기동·소유**하는 구성요소로 만들어 이 리스크를 원천 제거한다

@@ -31,6 +31,8 @@ from shared.komis_raw import (  # noqa: E402
 from ..indicators import month_ordinal  # noqa: E402
 from ..models import (  # noqa: E402
     CompositeIndexSeries,
+    ForecastHorizon,
+    ForecastPeriod,
     IndicatorObservation,
     IndicatorSeries,
     MineralMapMeasure,
@@ -38,6 +40,8 @@ from ..models import (  # noqa: E402
     MineralMapSeries,
     Month,
     PageId,
+    PriceForecastObservation,
+    PriceForecastSeries,
 )
 from ._shared import (  # noqa: E402
     COMPOSITE_INDEX_CODES,
@@ -243,6 +247,127 @@ class DatabaseCompositeIndexDataSource:
             source_id="komis:indicator_composite",
             data_version=_version(version_payload),
         )
+
+
+class DatabasePriceForecastDataSource:
+    """`KO_MNRL_PRC_PREDC`의 연간/분기 예측가격 행을 정규화한다(2026-08-13 이식)."""
+
+    _QUARTERS = {
+        "PE201": "Q1",
+        "PE202": "Q2",
+        "PE203": "Q3",
+        "PE204": "Q4",
+    }
+    _PRICE_UNITS = {
+        "PR001": "USD",
+        "PR002": "천불",
+        "PR003": "백만불",
+        "PR004": "억불",
+    }
+
+    def __init__(
+        self,
+        repository: KomisRawDataRepository,
+        *,
+        metadata_snapshot_path: str | Path = SNAPSHOT_PATH,
+    ) -> None:
+        self._repository = repository
+        self._catalog = MineralCatalog(Path(metadata_snapshot_path))
+
+    def get_price_forecast_series(
+        self,
+        *,
+        mineral: str,
+        horizon: ForecastHorizon,
+        start_period: ForecastPeriod | None,
+        end_period: ForecastPeriod | None,
+    ) -> PriceForecastSeries:
+        """문서화된 기간코드로 선택한 예측가격 계열을 돌려준다."""
+
+        mineral_ref = self._catalog.resolve_price_forecast(mineral)
+        datasets = self._repository.fetch_complete(
+            AnalysisPreviewRequest(
+                page_id="forecast_price",
+                mineral_code=mineral_ref.code,
+            )
+        )
+        if len(datasets) != 1 or datasets[0].source_table != "KO_MNRL_PRC_PREDC":
+            raise DataSourceError("unexpected price forecast database response")
+
+        values: dict[str, float] = {}
+        unit_codes: set[str] = set()
+        for row in datasets[0].rows:
+            row_code = str(row.get("mnrknd_unq_cd", "")).strip()
+            if row_code != mineral_ref.code:
+                raise DataSourceError(
+                    f"unexpected mineral code {row_code!r} in KO_MNRL_PRC_PREDC"
+                )
+            period_code = str(row.get("prd_se_cd", "")).strip()
+            year = str(row.get("crtr_ymd", "")).strip()[:4]
+            if len(year) != 4 or not year.isdigit():
+                continue
+            if horizon == "medium":
+                quarter = self._QUARTERS.get(period_code)
+                if quarter is None:
+                    continue
+                period = f"{year}-{quarter}"
+            else:
+                if period_code != "PE001":
+                    continue
+                period = year
+            if (start_period is not None and period < start_period) or (
+                end_period is not None and period > end_period
+            ):
+                continue
+            price = _finite_float(row.get("predc_prc"))
+            if price is None or price <= 0:
+                continue
+            previous = values.get(period)
+            if previous is not None and previous != price:
+                raise DataSourceError(f"conflicting price forecasts for {period}")
+            values[period] = price
+            unit_code = str(row.get("prc_unit_cd") or "").strip()
+            if unit_code:
+                unit_codes.add(unit_code)
+
+        if not values:
+            horizon_name = "중기 분기" if horizon == "medium" else "장기 연간"
+            raise DataSourceError(
+                f"선택한 광종·기간의 {horizon_name} 가격예측 데이터가 현재 DB에 없습니다."
+            )
+        if len(values) < 2:
+            raise DataSourceError("가격예측 분석에는 서로 다른 예측시점이 2개 이상 필요합니다.")
+        if len(unit_codes) > 1:
+            raise DataSourceError("price forecast rows contain multiple price units")
+        periods = sorted(values)
+        observations = [
+            PriceForecastObservation(period=period, price=values[period])
+            for period in periods
+        ]
+        price_unit = self._PRICE_UNITS.get(next(iter(unit_codes))) if unit_codes else None
+        warnings = []
+        if price_unit is None:
+            warnings.append("가격 단위가 없어 예측가격의 절대 단위는 표시하지 않는다.")
+        return PriceForecastSeries(
+            mineral=mineral_ref,
+            horizon=horizon,
+            available_start_period=periods[0],
+            available_end_period=periods[-1],
+            price_unit=price_unit,
+            source_type="database",
+            source_id="komis:forecast_price",
+            data_version=_version([item.model_dump(mode="json") for item in observations]),
+            data_as_of=periods[-1],
+            observations=observations,
+            warnings=warnings,
+        )
+
+    def close(self) -> None:
+        """백엔드 리포지토리에 close가 있으면 호출한다."""
+
+        close = getattr(self._repository, "close", None)
+        if callable(close):
+            close()
 
 
 class DatabaseMineralMapDataSource:

@@ -20,12 +20,21 @@ from pathlib import Path
 
 import docx
 
-ROOT = "documents/산출물"
 DATE_RE = re.compile(r"_(\d{6})(?=_|\.|$)")
+
+# 2026-08-11 버그수정: ROOT가 상대경로("documents/산출물")였는데, 표준 실행
+# 관례(CLAUDE.md §2: `cd inhouse && python -m rag ...`)로 돌리면 cwd=inhouse/라
+# `inhouse/documents/산출물`(존재하지 않음)을 찾게 되고, load_documents()의
+# `if not os.path.isdir(r): continue`에 걸려 조용히 스킵됐다 — 이 인덱스가
+# 오늘(2026-08-11) 처음 빌드되기 전까지 아무도 눈치채지 못한 채로 있었다(실측
+# 확인: 고치기 전엔 문서 4건만 로드됨 — 전부 EXTRA_ROOTS, 본체 61개 md/15개 docx는
+# 전부 스킵됐었음). EXTRA_ROOTS는 처음부터 _REPO_ROOT 기준 절대경로였으니 ROOT도
+# 같은 패턴으로 맞춘다.
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+ROOT = str(_REPO_ROOT / "documents/산출물")
 
 # (경로, week에 쓸 태그 접두사) — 각 하위 디렉토리명이 태그 뒤에 붙는다.
 # 예: pdf_extract/shareable/komis_해외투자가이드_4개국/ -> week="외부자료:komis_해외투자가이드_4개국"
-_REPO_ROOT = Path(__file__).resolve().parents[3]
 EXTRA_ROOTS = [
     (_REPO_ROOT / "inhouse/data_lake/semi_structure/pdf_extract/shareable", "외부자료"),
 ]

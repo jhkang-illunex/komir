@@ -7,6 +7,7 @@ uvicorn[standard]
 sqlalchemy
 psycopg2-binary
 jinja2>=3.1        # app/templates/*.j2 리포트 조립(app/generator.py)
+PyYAML>=6.0        # app/analysis/policy.py — resources/policies/*.yaml 등급 밴드 로딩
 apscheduler>=3.10  # app/scheduler.py — REPORT_SCHEDULE_CRON 주기 실행
 duckdb>=1.1    # mineral_supply_risk/db/dbio.py(services/shared/db.py가 재노출)
 pandas>=2.0    # 〃

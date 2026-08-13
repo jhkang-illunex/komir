@@ -2,7 +2,245 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-08-11 (최신, 이어서) — 정형(RDB) 조회 3종을 `services/shared/retrieval/`로 통합(rag_chat×report_gen 중복 제거)
+## 2026-08-13 (최신) — report_gen에 외부repo "분석요약 5종" 엔진 이식·API 배선(8/11 오판 정정)
+
+8/11 병합 때 `analysis/summary.py`(1,084줄)·`additional_summary.py`(1,082줄)와
+5개 API 엔드포인트를 **"리포트 생성은 스텁"이라고 오판해 안 가져왔던 것**을 오늘
+전부 이식했다. 계기는 외부repo(`komis-report-generator-main`)의 **진짜 git 이력을
+처음 확보**한 것 — `main` HEAD(`2f7d269`, 2026-08-12T01:54)에 8/11 스냅샷엔 없던
+커밋 2개(`b6c17ca` 가격예측, `7c26629` 페이지별 분석 API)가 있었고, 5개
+엔드포인트가 전부 실동작 코드였다. (작업 시작 시 `git fetch`로 재확인 — 새 커밋
+없음, 로컬 HEAD == `origin/main`.)
+
+**이식한 것**(`inhouse/services/report_gen/app/analysis/`)
+- `summary.py`·`additional_summary.py`·`policy.py`·`prompts.py` 신규 이식.
+- `models.py` 보강 — 요약문 모델(`GradeResult`/`Metric`/`DataQuality`/`Summary*`/
+  `AnalysisSummaryRequest|Response`)·가격예측 계열·수급 보조패널(`Supply*`) 추가,
+  `SummaryPageId`에 `forecast_price` 편입.
+- `data_sources/` 보강 — 1차 때 뺐던 `DatabasePriceForecastDataSource`와 3개
+  Protocol(`CompositeIndex`/`MineralMap`/`PriceForecast`)·`resolve_price_forecast`
+  복원. `resources/policies/{indicator_market,indicator_supply}.yaml` 반입,
+  메타데이터 subset에 `metadata.indicators.forecast_minerals` ref 추가(4→5개,
+  원본 스냅샷 sha256이 8/11과 동일함을 확인하고 파생).
+- `routers/analysis.py` 신규 + `main.py` 배선 — `POST /api/v1/analysis/
+  {market-indicator,supply-indicator,composite-index,mineral-map,price-forecast}`
+  (외부repo 경로 그대로). 서비스 조립은 `main.build_analysis_summary_service()`가
+  komir `KomisRawDataRepository`(→`shared/db.read_sql_pg`)+`KomirJsonLLM`으로 한다
+  — 외부repo의 자체 psycopg 커넥션 팩토리·자체 LLM 클라이언트는 안 들여왔다.
+- `search.llm.JsonLLM` → `services/shared/llm_client.KomirJsonLLM` 교체(8/11
+  `page_recommend/graph.py`와 같은 방식, LLM 클라이언트 2벌 방지).
+
+**이식하면서 고친 진짜 결함 1건(원본엔 있는 버그)**: 원본 `_refine_with_llm`은
+`except LLMError`만 잡는다. 그런데 `KomirJsonLLM`은 JSON/스키마 실패만
+`LLMOutputError(LLMError)`로 감싸고 **전송 계층 오류는 그대로 올린다** — 실측으로
+vLLM 미도달 시 `requests.ConnectionError`가 나며 이건 `LLMError`가 **아니다**
+(`isinstance(e, LLMError) == False` 확인). 그대로 뒀으면 vLLM 장애 시 규칙기반
+폴백 대신 API가 500을 냈다. `except (LLMError, RuntimeError, OSError)`로 넓혀
+원본이 의도한 폴백을 유지했고, 가짜 `LLM_BASE_URL`로 띄운 서버에서 **HTTP 200 +
+규칙기반 요약 + 경고문** 반환을 실측 확인했다.
+
+**실측 검증(컴파일만이 아니라 실제 PostgreSQL·실제 vLLM로 HTTP 호출)**
+- `py_compile` 전체 통과 + `import app.main` + 라우트 5개 등록 확인.
+- **5개 엔드포인트 전부 실데이터로 200 + LLM 분석문 생성(`llm_refined=true`)**:
+  시장동향(텅스텐, 신중 단계)·수급동향(텅스텐, 관심)·광물지도 매장량/생산량
+  (텅스텐)·가격예측 중기(텅스텐)·광물종합지수(HI001/2/3, 557관측).
+- ⚠ **인수인계 대조문서(8/13)의 "광물종합지수만 데이터가 있다"는 부정확**했다 —
+  `public.KO_*`의 텅스텐(MNRL0018)은 KOMIS 화면 광종 목록에 있는 정식 선택지라
+  **5종 전부 지금 실데이터로 분석문이 나온다**. 없는 건 komir 5광종(CU/NI/CO/LI/
+  REE)이고, 그건 422 + 한국어 사유로 우아하게 응답한다(500 아님) — 동·니켈·리튬·
+  코발트·1990년 종합지수 5케이스로 확인.
+- 광물종합지수만 `llm_refined`가 간헐적(약 1/10)이다. 버그가 아니라 출력계약이
+  가장 빡빡한 페이지이기 때문 — 근거 7개를 섹션당 1/2/1 = **4문장 안에 각각 정확히
+  한 번씩** 넣어야 하는데 로컬 gemma-4-26b가 `overall_pattern`을 자주 누락한다
+  (payload·검증 로직이 원본과 동일함을 계측으로 확인). 실패해도 검증된 규칙기반
+  요약으로 폴백하므로 응답 품질은 보장된다. 나머지 4종은 안정적으로 통과.
+- **공유 DB 무오염 확인**: 이식 코드에 INSERT/UPDATE/CREATE/write 경로가 하나도
+  없고(전 경로 `read_sql_pg` SELECT 전용), 검증 후 `KO_MNRL_SNTHS_INDX` 10,899행·
+  `mineral_risk` 36테이블·`public` 26테이블이 검증 전과 동일함을 재조회로 확인.
+  테스트 서버 2대도 종료 완료.
+
+**안 가져온 것(의도적)**: 미구현 3종(`/prices`·`/domestic-trade`·`/global-trade`,
+외부repo도 501 예약 라우트일 뿐)·과도기 shim `POST /summary`·profile_id 경로 전용
+코드(`AnalysisRequest`/`NarrativeOutput`/`build_narrative_payload` — 외부repo에서도
+`experiments/`만 씀). `scaffold.py`는 원본 구조 그대로 별도 경로로 공존시켰다
+(외부repo `main`에서도 `analyze()`는 여전히 `analysis=None` 스텁) — 임의 통합 안 함.
+
+**지시서 정정 2건**: ①"정책 YAML 5종을 가져오라" → 외부repo엔 YAML이 2종뿐이다.
+나머지 3종(종합지수·광물지도·가격예측)은 등급 개념이 없어 YAML이 아니라
+`additional_summary.ADDITIONAL_PAGE_CONTEXTS` dataclass로 정의된다. ②"indicator_
+market/supply YAML은 이미 komir에 있다" → 없었다(8/11엔 metadata subset JSON뿐).
+
+## 2026-08-12 — 문서-OKF 생성 + PageIndex 트리 빌드 완료(위임①, 중단분 이어받아 마무리)
+
+전날(2026-08-11) 병렬 위임한 작업 중 ①(문서-OKF+PageIndex)을 맡은 에이전트가
+세션 한도 초과로 도중에 끊겼다("session limit" — 로직 실패 아님). 실제로는
+구현·1차 실행까지 거의 다 끝나 있었고(WORKLOG 기록만 못 함), 남은 건 USGS
+PageIndex 트리 8건뿐이었다 — 그 부분만 이어서 완료하고 전체를 검증했다.
+
+**만든 것(끊긴 에이전트 작업, 검증 후 그대로 인정)**
+- `services/ingestion/build_okf_documents.py` — 문서-OKF 생성기. 입력 두 갈래:
+  ①`rag.ragkit.ingest.load_documents()`(documents/산출물 72건+외부자료 4건,
+  이미 텍스트로 펼쳐진 것 재사용) ②`services.ingestion.pipeline.run_extraction()`
+  (USGS PDF 8건, opendataloader+OCR 폴백). geo-OKF와 같은 컨벤션(YAML
+  프론트매터+개념ID=파일경로)이되 포인터가 아니라 본문 전체 — `data_lake/
+  semi_structure/okf_documents/`(신규 계열, 기존 `okf/`는 무오염)에 84건 생성.
+  **실행 중 진짜 버그 하나 발견·수정**: `geo/extractors.py`의 `PDF_MAXPAGES`
+  기본값(40, GKG 짧은 뉴스 PDF 기준)을 그대로 물려받으면 226쪽짜리 USGS_2026이
+  40쪽까지만 추출돼 본문 82%가 잘렸다 — `os.environ.setdefault("PDF_MAXPAGES",
+  "500")`로 문서-OKF 생성기 쪽에서만 상향(geo 자체 배치 파이프라인은 무변경).
+- `services/ingestion/parsers/pdf.py`(v2) — 기존 PdfParser가 `opendataloader_
+  batch_convert()`의 반환값(**평문, `md_to_text()`로 헤딩·표파이프가 이미
+  지워진 것** — geo 파이프라인이 LLM 추출용으로 그렇게 설계했기 때문)을 그대로
+  썼는데, 문서-OKF·PageIndex는 구조 보존이 핵심이라 이러면 헤딩 55개·표파이프
+  187개가 있는 원본이 산출 텍스트 0개·0개로 나갔다(USGS_2026 실측). geo/
+  extractors.py 자체는 안 건드리고(이미 검증된 코드), 이 파서가 opendataloader가
+  디스크에 써둔 원본 `.md`를 직접 다시 읽도록 수정(`_raw_markdown()`) — 매니페스트
+  캐시 무효화를 위해 `parser_version`도 1→2로 올림.
+- `services/ingestion/build_pageindex_trees.py` — 문서-OKF → PageIndex 트리(전날
+  vendoring한 `services/shared/pageindex_client.build_tree_from_markdown()` 사용).
+  멱등(이미 있는 트리는 `--force` 없인 재생성 안 함), `--pattern` 부분경로 필터.
+- `services/shared/retrieval/pageindex.py` — §5-4 "③ PageIndex 조회" 도구.
+  범위를 의도적으로 결정적(deterministic) 기본 조회로 한정: `find_documents`
+  (제목/소스그룹 매칭) → `search_nodes`(문서 내 노드 검색, `rag/ragkit/
+  tokenize_ko.py` 재사용) → `read_node_text`(원문에서 해당 섹션만 절취). 완전
+  에이전틱 traversal은 후속 과제로 명시(이 3개 함수가 그 도구가 될 구조로 설계).
+
+**오늘 이어받아 한 것**
+- USGS PageIndex 트리 8건 생성(`--pattern USGS`, 총 850.8초, 실패 0건, 노드
+  81~201개/문서 — LLM 노드요약 포함, `LITELLM_LOCAL_MODEL_COST_MAP=True`+로컬
+  vLLM 하드닝 그대로 적용). 최종 84건(72+4+8) 전부 유효성 재검사 통과.
+- **`search_nodes()` 실제 버그 발견·수정**: 노드 본문이 짧으면 pageindex_lib가
+  그 노드의 `summary`를 비우고 대신 `prefix_summary`(상위 문맥을 물려받은 요약)만
+  채우는데, haystack 조립이 `summary`만 보고 `prefix_summary`를 안 봐서 실제로
+  있는 내용도 검색에서 빠졌다(실측: "4. 검증 훅" 노드의 QWK 언급이
+  prefix_summary에만 있어 `search_nodes('QWK', doc=...)`가 0건 → 수정 후
+  score=1.0으로 정상 검출). `find_documents`는 원래도 title/doc_name/
+  source_group만 보는 게 의도된 설계(문서명 검색)라 그대로 둠.
+- `find_documents`→`search_nodes`→`read_node_text` 전체 체인을 실제 문서
+  (USGS_2026 lithium reserves, mineral_risk_model_v0의 QWK 절)로 end-to-end
+  검증 — 원문과 대조해 섹션 절취가 정확함을 확인.
+
+**보류(사용자 승인 대기, 조용히 건너뛰지 않고 명시)**: Argus 일일보고서
+690개 PDF(`documents/보고서_2/Argus Metal_...`)·조달청보고서 887개 파일은
+이번 문서-OKF 대상에서 뺐다 — 파일 수가 많아 LLM 추출(각 파일마다 opendataloader
++선택적 OCR) 비용·시간이 크다(USGS 8건도 노드요약만 850초). 전량 처리는
+사용자 승인 후 별도 사이클로.
+
+**검증**: `python3 -m py_compile` 전체 통과, `okf_documents/**/*.md` 84건 +
+`pageindex_trees/**/*.tree.json` 84건 전부 실측 확인(개수·유효 JSON·표 구조
+보존 여부 원문 대조). 커밋은 하지 않음.
+
+## 2026-08-11 (최신, 이어서) — 벡터DB 결정 변경(Qdrant→pgvector) + PageIndex vendoring·airgap 실측검증
+
+사용자가 "RAG용 임베딩 산출·저장, 문서-OKF, PageIndex 산출"을 다음 작업으로 지시,
+airgap(런타임 외부 인터넷 전면 차단) 재확인. 착수 전 두 가지 조사·검증:
+
+**벡터DB 결정 변경**: 2026-08-05 "Qdrant 확정, pgvector 폐기"(사유: Postgres는
+외부서비스라 확장 설치 권한 보장 없음)였는데, 사용자가 "pgvector 있다"고 정정 —
+실측(`pg_available_extensions`·`pg_extension`·`pg_user`) 결과 komis_demo DB에
+**pgvector 0.8.2가 이미 설치돼 있고 접속계정(postgres)도 슈퍼유저**임을 확인,
+우려했던 리스크 자체가 없었다. `CONTAINER_ARCHITECTURE.md` 결정 뒤집어 정정
+(취소선+재정정 기록). Qdrant 신규 기동 불필요.
+
+**PageIndex 조사·vendoring**: 설계문서가 "채택 확정, 백킹스토어 미정"으로 남겨둔
+부분. `pip install pageindex`(PyPI 0.2.8)를 실제로 설치해 소스를 열어보니
+**로컬 트리생성 코드가 아니라 `https://api.pageindex.ai`(유료 클라우드)에 PDF를
+업로드하는 REST 클라이언트 하나만 노출**하는 걸 발견 — airgap 프로젝트엔 못 씀.
+GitHub 저장소(`VectifyAI/PageIndex`, MIT, 커밋 `b723c9f`)를 직접 clone해 "Self-host"
+경로(로컬 실행 가능한 `pageindex/` 패키지)를 확인, `client.py`(클라우드 클라이언트)만
+제거하고 `inhouse/services/shared/pageindex_vendor/pageindex_lib/`에 vendoring.
+**airgap 안전성 실측 검증**: `OPENAI_BASE_URL`→로컬 vLLM, `LITELLM_LOCAL_MODEL_
+COST_MAP=True`(litellm의 원격 모델가격표 fetch 차단, HF_HUB_OFFLINE과 같은
+종류의 함정) 설정 후, 실제 문서로 LLM 노드요약까지 켜서 end-to-end 실행하며 그
+프로세스의 모든 TCP 연결을 `ss -tnp`로 PID 단위 추적 — **로컬 vLLM(127.0.0.1:
+52302) 외 연결 0건** 확인(상세 근거는 `pageindex_vendor/README.md`). 이 하드닝을
+강제하는 komir 래퍼 `services/shared/pageindex_client.py`(`build_tree_from_
+markdown()`) 작성 — 이 래퍼를 거치지 않고 vendored 코드를 직접 import하면
+하드닝이 안 걸리므로, 사용 규칙으로 강제.
+
+**병렬 위임(백그라운드 에이전트 2건, airgap 제약 명시적으로 반복 전달)**:
+①문서-OKF 생성(documents/산출물 76건 전량 + USGS 대용량보고서, Argus 690건·
+조달청보고서 887건은 규모상 이번엔 보류하고 사용자 승인 대기) + PageIndex 트리
+빌드 ②pgvector 임베딩 저장소(mineral_risk 스키마, doc_chunk에 vector 컬럼 추가,
+rag/ragkit/embed.py 재사용) — 완료 시 검증 후 이 절 아래 추가 기록 예정.
+
+## 2026-08-11 (위임②의 결과) — pgvector 벡터 저장소 구축·적재·검증 완료
+
+위 절의 병렬 위임 ② 완료. **Qdrant 없이 komis_demo Postgres(pgvector 0.8.2)에
+dense 벡터 저장소를 실제로 가동**시켰다. 외부 임베딩 API·신규 컨테이너 0건
+(임베딩은 로컬 `intfloat/multilingual-e5-small`, DB는 이미 붙어 있는 komis_demo).
+
+**추가/변경 파일 4개**
+- `inhouse/data_lake/db/schema_pgvector.sql`(신규) — `mineral_risk.doc_chunk`에
+  `embedding vector(384)` + 인용메타(source_path·week·title·section_heading·
+  char_len·source_type·indexed_at) 컬럼 추가, `chunk_id` UNIQUE 인덱스,
+  HNSW(`vector_cosine_ops`) 인덱스. `schema_core.sql`은 **불변**(vector는 PG 전용
+  방언이라 포터블 DDL에 안 섞음). 모든 문장을 `mineral_risk.`로 명시 한정 —
+  PG_DSN 기본 search_path가 `"$user",public`이라 미한정 DDL은 public(타 팀 소유)에
+  떨어진다. search_path 자체는 안 건드림(vector 타입이 public에 있어 빼면 깨짐).
+  `ADD PRIMARY KEY`는 PG에 `ADD CONSTRAINT IF NOT EXISTS`가 없어 재실행 시 실패 →
+  `CREATE UNIQUE INDEX IF NOT EXISTS`로 대체(멱등). IVFFlat이 아니라 HNSW인 이유:
+  IVFFlat은 리스트 학습에 사전 데이터가 필요해 빈 테이블에 못 검.
+  **범위 주의**: §4 addendum 중 dense 절반만 적용했다 — `structured_query`·
+  `txt_tsv`(GIN, BM25 절반)는 미적용(BM25는 당분간 DuckDB FTS 유지).
+- `inhouse/rag/ragkit/build_pgvector_index.py`(신규) — `build_index.py`와 병렬
+  구조. ingest/chunk/embed는 **같은 코드 재사용**, 저장소만 교체. 전량 재적재
+  (DELETE→INSERT, `CREATE OR REPLACE`와 동치). pgvector-python 패키지가 없고
+  airgap이라 pip 전제도 못 하므로 벡터는 `'[v1,...]'` 텍스트 리터럴 + `%s::vector`
+  캐스트로 psycopg2 `execute_values` 벌크 삽입.
+- `inhouse/services/shared/db.py` — pg 전용 헬퍼 3종 추가(`pg_connect`·
+  `execute_pg`·`apply_schema_pg`). dbio는 DataFrame 벌크/DDL파일만 지원해
+  파라미터 바인딩 단문이 없었음(execute_msr가 DuckDB용으로 같은 구멍을 메운 것과
+  같은 이유). ⚠ paramstyle은 psycopg2 `%s` — execute_msr의 DuckDB `?`와 다름.
+- `inhouse/services/shared/retrieval/dense_pg.py`(신규) — `dense_search_pg(q,k)`
+  (+ `retrieve.dense_search()` 드롭인용 `dense_search_pg_ids`). RRF 융합 로직은
+  재구현하지 않음. 스키마는 `get_settings().PG_SCHEMA`로만 참조(하드코딩 금지).
+
+**실측 결과**(직접 쿼리, data-quantity-verification-rule 준수)
+- `select count(*), count(embedding), count(distinct doc_id) from mineral_risk.doc_chunk`
+  → **1206 / 1206 / 76**(DuckDB 인덱스와 동일 수량), 테이블 크기 6072 kB,
+  week 분포: `산출물` 1030 + `외부자료:komis_해외투자가이드_4개국` 176.
+- 회귀 비교(질의 3건: "핵심광물 진단모델 QWK 성능은 얼마인가"/"지정학 위기지수
+  산출 방법"/"니켈 수입 예측 WAPE") — pgvector top-5 vs DuckDB `dense_search`
+  top-5가 **3건 모두 5/5 완전일치(순위까지 동일)**. 상위 결과도 상식적으로 관련
+  문서(예: 1번 질의 → `방향긍정보류_결합검정_260731.md`§결과, cos 0.8827).
+- 완전일치한 이유: 1206행이라 플래너가 HNSW 대신 Seq Scan을 골라 **근사가 아닌
+  정확 top-k**가 나온다. `enable_seqscan=off`로 확인하면
+  `Index Scan using idx_doc_chunk_embedding_hnsw`로 정상 전환 — 인덱스는 살아있고
+  코퍼스가 커지면 자연히 그 경로를 탄다.
+- **public 스키마 쓰기 0건**: 코드·DDL 전부 `mineral_risk.` 한정, public의
+  vector 컬럼 수 0, public 테이블 26개 그대로.
+
+**후속 과제(이번 범위 밖, 의도적)**: ①`services/rag_chat/app/retrieval/
+unstructured.py`의 pgvector 전환(지금은 여전히 DuckDB `hybrid_search()` 호출 —
+BM25 절반의 이관 방침이 함께 정해져야 하는 구조 변경이라 분리) ②BM25의
+Postgres tsvector 이관(§4 addendum 나머지) ③`rag/index/rag.duckdb`는 그대로 유지
+(이번 적재는 대체가 아니라 추가).
+
+## 2026-08-11 (최신, 이어서) — rag/ragkit 인덱스 최초 빌드 + ROOT 상대경로 버그 수정
+
+오늘 커밋 5건 푸시 완료 후, 사용자가 "RAG용 임베딩 산출·저장, OKF, PageIndex"를
+다음 작업으로 지시. 착수 전 `rag/ragkit/build_index.py`를 실제로 처음 실행해보니
+(이제껏 한 번도 안 돌려봄, `rag/index/rag.duckdb` 자체가 오늘 새벽까지 존재하지
+않았음) **문서 4건만 로드되는 버그를 발견** — `ingest.py`의 `ROOT = "documents/
+산출물"`가 상대경로였는데, 표준 실행 관례(`cd inhouse && python -m ...`)로 돌리면
+cwd=inhouse/라 `inhouse/documents/산출물`(존재하지 않음)을 찾고 `load_documents()`의
+`if not os.path.isdir(r): continue`에 걸려 **조용히 스킵**되고 있었다 — 실제로
+로드된 4건은 전부 EXTRA_ROOTS(0807 해외투자가이드)뿐, 본체 61개 md+15개 docx
+보고서는 전부 빠져 있었다. `EXTRA_ROOTS`가 이미 쓰던 `_REPO_ROOT`(파일 위치 기준
+절대경로) 패턴을 `ROOT`에도 그대로 적용해 수정.
+
+수정 후 재실행: **문서 76건, 청크 1206개**로 정상 인덱싱(임베딩 계산 ~22초,
+e5-small 로컬). `rag/ragkit/retrieve.hybrid_search()`로 실제 질의 확인 —
+관련 문서가 정상적으로 상위에 옴. 이어서 **오늘 처음으로 실제 vLLM 서버(로컬
+`localhost:52302` — `host.docker.internal`은 컨테이너 안에서만 resolve되는
+호스트명이라 이 세션 내내 접속 불가였는데, docker가 실제로 설치돼 있고 vLLM
+컨테이너가 이미 떠 있다는 걸 발견해 우회 확인)를 통해 `/chat`(mode=document)를
+end-to-end로 호출** — 실제 토큰 스트리밍(delta 단위 SSE) 확인, 검색된 6개 청크에
+정확한 QWK 수치가 없어 모델이 환각 없이 정상적으로 기권(ABSTAIN_TEXT) — 인용강제
+설계(가이드 §4)가 실제 LLM 앞에서 의도대로 동작함을 처음 확인.
+
+## 2026-08-11 (이어서) — 정형(RDB) 조회 3종을 `services/shared/retrieval/`로 통합(rag_chat×report_gen 중복 제거)
 
 같은 날 rag_chat과 report_gen이 각각 만든 정형 조회 코드 두 벌(서로의 영역을 침범하지
 않으려고 의도적으로 남긴 중복 — 양쪽 docstring에 "후속 정리 대상"이라 적혀 있었다)을

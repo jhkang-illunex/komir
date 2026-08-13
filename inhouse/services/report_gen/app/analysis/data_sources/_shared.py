@@ -5,7 +5,8 @@
 **원본에서 바뀐 것**
 - `SNAPSHOT_PATH`가 원본에서는 `komis_report_generator.search.metadata`(43개 KOMIS
   페이지 챗봇 패키지)에서 왔다. report_gen이 챗봇 패키지를 통째로 끌고 오는 건
-  과하므로, analysis 정규화기가 실제로 쓰는 4개 ref만 추린 파생 스냅샷
+  과하므로, analysis 정규화기가 실제로 쓰는 5개 ref만 추린 파생 스냅샷
+  (2026-08-11 4개 → 08-13 가격예측 이식으로 forecast_minerals 추가)
   (`../resources/komis-metadata.subset.json`)을 기본값으로 둔다. 두 클래스 모두
   `metadata_snapshot_path` 인자를 그대로 받으므로, 나중에 search/ 이식(작업#2)이
   전체 스냅샷을 들여오면 호출부에서 그 경로만 넘기면 된다.
@@ -36,7 +37,7 @@ from ..models import (
 
 _APP_ROOT = Path(__file__).resolve().parents[2]  # .../report_gen/app
 
-#: analysis 정규화기가 쓰는 4개 ref만 담은 파생 스냅샷(파일 안 `_komir_note` 참고).
+#: analysis 정규화기가 쓰는 5개 ref만 담은 파생 스냅샷(파일 안 `_komir_note` 참고).
 SNAPSHOT_PATH = _APP_ROOT / "analysis" / "resources" / "komis-metadata.subset.json"
 
 SUPPLY_UNAVAILABLE_PAGE_DATA = [
@@ -68,6 +69,24 @@ class IndicatorDataSource(Protocol):
     """정규화된 시장전망/수급안정 지표 계열을 제공한다."""
 
     def get_series(self, *, page_id, mineral, start_month, end_month): ...
+
+
+class CompositeIndexDataSource(Protocol):
+    """정규화된 광물종합지수 계열을 제공한다."""
+
+    def get_composite_series(self, *, start_date, end_date): ...
+
+
+class MineralMapDataSource(Protocol):
+    """정규화된 국가별 매장량/생산량 계열을 제공한다."""
+
+    def get_mineral_map_series(self, *, mineral, measure, start_year, end_year): ...
+
+
+class PriceForecastDataSource(Protocol):
+    """정규화된 중기/장기 가격예측 계열을 제공한다."""
+
+    def get_price_forecast_series(self, *, mineral, horizon, start_period, end_period): ...
 
 
 def _normalized(value: object) -> str:
@@ -162,6 +181,11 @@ class MineralCatalog:
         """광물지도의 광종 토큰을 해석한다."""
 
         return self._resolve_ref("metadata.maps.mineral_map_minerals", token)
+
+    def resolve_price_forecast(self, token: str) -> MineralRef:
+        """가격예측의 광종 토큰을 해석한다."""
+
+        return self._resolve_ref("metadata.indicators.forecast_minerals", token)
 
     def _resolve_ref(self, ref_name: str, token: str) -> MineralRef:
         ref = self._refs.get(ref_name)

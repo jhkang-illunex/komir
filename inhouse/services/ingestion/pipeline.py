@@ -81,14 +81,23 @@ def discover_source_files(
     data_root: Path,
     *,
     source_groups: tuple[str, ...],
+    allow_paid_sources: bool = False,
 ) -> list[Path]:
-    """승인된 PDF/HWP 소스를 찾는다(경로 정책 강제 포함)."""
+    """승인된 PDF/HWP 소스를 찾는다(경로 정책 강제 포함).
+
+    allow_paid_sources=True는 source_policy.py의 유료출처 차단을 이 호출
+    한정으로 건너뛴다 — 기본값 False로 기존 모든 호출자(공개 RAG 코퍼스 등)의
+    동작은 그대로다. 명시적 opt-in 없이는 절대 우회되지 않는다. 실사용례:
+    2026-08-12 Argus(유료 구독 원문) 내부 전용 문서-OKF·PageIndex·pgvector
+    인덱스 구축 — 사용자가 라이선스상 "내부 파생 DB 구축"이 허용됨을 직접
+    확인한 뒤 이 플래그로만 켰다(services/ingestion/build_okf_documents.py
+    참고, RAG 챗봇 등 외부 노출 경로에는 여전히 정책이 걸려 있음)."""
 
     data_root = data_root.expanduser().resolve()
     group_roots: list[Path] = []
     missing: list[str] = []
     for group in source_groups:
-        _validate_source_group(group)
+        _validate_source_group(group, allow_paid_sources=allow_paid_sources)
         group_root = (data_root / group).resolve()
         if not group_root.is_relative_to(data_root):
             raise ExtractionConfigurationError(f"source group escapes data root: {group!r}")
@@ -109,7 +118,7 @@ def discover_source_files(
             if not resolved.is_relative_to(group_root):
                 raise ExtractionConfigurationError(f"source file escapes its source group: {path}")
             relative_path = path.relative_to(data_root).as_posix()
-            if is_excluded_paid_source(relative_path):
+            if not allow_paid_sources and is_excluded_paid_source(relative_path):
                 raise ExtractionConfigurationError(
                     f"excluded paid source was found under an approved group: {relative_path}"
                 )
@@ -119,7 +128,7 @@ def discover_source_files(
     return sorted(paths, key=lambda path: path.relative_to(data_root).as_posix())
 
 
-def _validate_source_group(group: str) -> None:
+def _validate_source_group(group: str, *, allow_paid_sources: bool = False) -> None:
     raw = group.strip()
     candidate = Path(raw)
     if (
@@ -131,7 +140,7 @@ def _validate_source_group(group: str) -> None:
         or len(candidate.parts) != 1
     ):
         raise ExtractionConfigurationError(f"unsafe source group: {group!r}")
-    if is_excluded_paid_source(raw):
+    if not allow_paid_sources and is_excluded_paid_source(raw):
         raise ExtractionConfigurationError("excluded paid source group was requested")
 
 
@@ -143,13 +152,18 @@ def run_extraction(
     parsers: Mapping[str, DocumentParser] | None = None,
     force: bool = False,
     progress: Callable[[int, int, Path], None] | None = None,
+    allow_paid_sources: bool = False,
 ) -> ExtractionSummary:
-    """승인된 문서를 추출하고 산출물·매니페스트를 원자적으로 갱신한다."""
+    """승인된 문서를 추출하고 산출물·매니페스트를 원자적으로 갱신한다.
+
+    allow_paid_sources: discover_source_files() 참고 — 기본 False."""
 
     data_root = data_root.expanduser().resolve()
     output_dir = output_dir.expanduser().resolve()
     parser_registry = dict(parsers or DEFAULT_PARSERS)
-    source_paths = discover_source_files(data_root, source_groups=source_groups)
+    source_paths = discover_source_files(
+        data_root, source_groups=source_groups, allow_paid_sources=allow_paid_sources
+    )
     _validate_parser_registry(parser_registry)
 
     previous_manifest = _load_previous_manifest(output_dir / "manifest.json")

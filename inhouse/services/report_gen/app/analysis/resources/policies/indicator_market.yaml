@@ -1,0 +1,19 @@
+schema_version: 1
+policy_version: "2026-07-16"
+page_id: indicator_market
+name: "시장동향지표"
+definition: >-
+  국내 고수요 광종에 대한 중장기 가격리스크 표준척도로서 0~100 값을 가지며
+  신중·주의·중립·관심·기회의 5개 등급으로 분류한다.
+score_min: 0
+score_max: 100
+grade_rules:
+  - {label: "신중", min_score: 0, max_score: 20, include_min: true, include_max: true}
+  - {label: "주의", min_score: 20, max_score: 40, include_min: false, include_max: true}
+  - {label: "중립", min_score: 40, max_score: 60, include_min: false, include_max: true}
+  - {label: "관심", min_score: 60, max_score: 80, include_min: false, include_max: true}
+  - {label: "기회", min_score: 80, max_score: 100, include_min: false, include_max: true}
+analysis_constraints:
+  - "시장동향지표와 가격의 관계는 움직임의 비교이며 원인과 결과를 의미하지 않는다."
+  - "가격의 단위와 기준이 없으면 절대 가격의 의미를 추정하지 않는다."
+source_note: "KOMIS 시장동향지표 화면 설명 및 등급 밴드 확인"
