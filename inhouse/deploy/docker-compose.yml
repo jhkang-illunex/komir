@@ -10,6 +10,13 @@
 #
 # TODO(구현 단계): geo/docker-compose.yml의 host.docker.internal:host-gateway 패턴
 # (호스트측 로컬 LLM 접속)을 필요 서비스에 이식.
+#
+# rag-chat·report-gen의 `environment: LLM_BASE_URL=...` — 지금은 두 서비스가 같은
+# LLM_BASE_URL(단일 모델 인스턴스)을 공유한다(2026-08-13 논의, 발주처 배포 디바이스
+# 미확정이라 분리 여부 보류). RAG_CHAT_LLM_BASE_URL·REPORT_GEN_LLM_BASE_URL(.env,
+# 기본 공백)이 채워지면 그 값으로, 비어 있으면 공용 LLM_BASE_URL로 자동 폴백한다
+# (`${VAR:-$LLM_BASE_URL}`) — 물리 분리를 결정하면 .env 두 줄만 채우면 되고 compose
+# 파일·코드는 그대로 둔다.
 
 version: "3.9"
 
@@ -38,6 +45,8 @@ services:
       context: ..
       dockerfile: services/rag_chat/Containerfile
     env_file: [.env]
+    environment:
+      - LLM_BASE_URL=${RAG_CHAT_LLM_BASE_URL:-$LLM_BASE_URL}
     depends_on: [qdrant]
     ports:
       - "8002:8002"
@@ -48,6 +57,8 @@ services:
       context: ..
       dockerfile: services/report_gen/Containerfile
     env_file: [.env]
+    environment:
+      - LLM_BASE_URL=${REPORT_GEN_LLM_BASE_URL:-$LLM_BASE_URL}
     depends_on: [qdrant]
     ports:
       - "8003:8003"
