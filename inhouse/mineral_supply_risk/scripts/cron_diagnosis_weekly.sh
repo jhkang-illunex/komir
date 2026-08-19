@@ -12,6 +12,8 @@
 # 진단 부분만 분리해 현재 코드와 시그니처 일치시킨 것):
 #   normalize(raw_customs_* → fact_trade_*, 멱등) → weekly_mart(마트 재생성)
 #   → nowcast(Ridge 재적합 → mart_diagnosis_nowcast) → alert(경보 4단계 → out_diagnosis_alert)
+#   → dashboard_summary(2026-08-19 추가 — out_diagnosis_alert가 이번 주 최신값으로
+#     막 갱신된 직후에만 돌아야 "텍스트 보고서" 화면 데이터가 최신 경보를 반영함)
 #
 # 로그: data_archive/cron_logs/diagnosis_weekly_<YYYYMMDD>.log (삭제 금지 정책)
 set -uo pipefail
@@ -34,8 +36,11 @@ export MSR_DB="${MSR_DB:-$ROOT/inhouse/data_lake/db/minerals.duckdb}"
   echo "--- [3/4] 진단 nowcast(Ridge 재적합 → mart_diagnosis_nowcast) ---"
   python3 -m msr.models.nowcast 2>&1 | tail -5
 
-  echo "--- [4/4] 경보 발행(규칙엔진+히스테리시스 → out_diagnosis_alert) ---"
+  echo "--- [4/5] 경보 발행(규칙엔진+히스테리시스 → out_diagnosis_alert) ---"
   python3 -m msr.models.alert 2>&1 | tail -10
+
+  echo "--- [5/5] 텍스트 보고서 화면 데이터 생성(out_ai_dashboard_summary, LLM 서술) ---"
+  ( cd "$ROOT/inhouse/services/report_gen" && python3 -m app.dashboard_summary 2>&1 | tail -5 )
 
   echo "=== $(date '+%F %T') 종료(exit=$?) ==="
 } >> "$LOG" 2>&1
