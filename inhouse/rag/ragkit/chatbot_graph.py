@@ -84,7 +84,13 @@ if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
 from shared.llm_client import LLM_TRANSIENT_ERRORS, KomirJsonLLM  # noqa: E402
-from shared.retrieval import dense_pg, pageindex, pageindex_agent, structured  # noqa: E402
+from shared.retrieval import hybrid_pg, pageindex, pageindex_agent, structured  # noqa: E402
+# 2026-08-19: dense 단독(dense_pg.dense_search_pg) → dense+BM25 RRF 하이브리드로
+# 교체(hybrid_pg.hybrid_search_pg) — "2026년 상반기 니켈..." 류 날짜 질의가 순수
+# 코사인 top-k에선 실제로 코퍼스에 있는 문서를 놓치고 기권한 사례 조사 후 도입
+# (dense_pg.py 상단 주석·hybrid_pg.py 모듈독스트링 참고). Evidence.from_dense_chunk는
+# source_path/section_heading/text/week만 읽어 PgHybridChunk와 필드 호환 — 그
+# 쪽은 변경 불필요.
 from shared.retrieval.evidence import Evidence, from_dense_chunk, from_pageindex_hit, from_structured  # noqa: E402
 
 ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗봇의 검색 라우터다.
@@ -294,7 +300,7 @@ def _retrieve_node(
             )
         query = route.resolved_query or state["question"]
         if route.use_dense:
-            jobs["dense"] = pool.submit(dense_pg.dense_search_pg, query, dense_k)
+            jobs["dense"] = pool.submit(hybrid_pg.hybrid_search_pg, query, dense_k)
         if route.use_pageindex:
             if route.pageindex_mode == "agentic":
                 jobs["pageindex"] = pool.submit(

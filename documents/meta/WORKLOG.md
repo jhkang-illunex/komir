@@ -2,7 +2,69 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-08-18 (최신) — 국가명 화이트리스트 커버리지 실측 검증(지난 herd 리뷰 후속과제 ③, 종결)
+## 2026-08-19 (최신)② — dense 검색 날짜인식 부스트(A) + BM25 하이브리드 재도입(D)
+
+사용자가 실사용 테스트("최근 구리 LME 시황"/"2026년 상반기 니켈"/"코발트 DRC 수출")로
+챗봇 응답 품질을 확인시켜본 결과, "2026년 상반기 니켈 LME 가격 동향"이 **실제로 코퍼스에
+있는 문서(Argus 2026년 1~6월판 113건, 전부 니켈 언급)를 두고도 기권**하는 걸 발견 —
+`dense_pg.dense_search_pg()`가 순수 코사인 top-5라 날짜 개념이 전혀 없던 게 원인. 사용자
+승인 하 두 방향(A: 날짜 인식 부스트, D: BM25 하이브리드 재도입) 구현.
+
+**전제조사(중요 발견)**: `doc_chunk.pub_date` 컬럼이 있길래 쓰려 했더니 140,031행 중
+**783행(0.6%)만 채워져 있고 Argus는 0건**이었다 — `build_okf_documents.py`가 title에
+날짜를 담아뒀을 뿐 pub_date로 넘기는 코드가 없었음. `services/ingestion/
+backfill_doc_chunk_pub_date.py` 신설(Argus "(YYYY-MM-DD)"·조달청 "(YYYY.M.D)"·USGS
+"USGS_YYYY"(연도만) 패턴 파싱, doc_id 단위 매핑 후 벌크 UPDATE) — 96,780행(69%)까지
+채움. Argus는 690/690 전부 매칭, 미매칭 376건(조달청 대체표기 348건 등)은 정직한 결측
+유지.
+
+**A(날짜인식 부스트)**: `dense_pg.py`에 `extract_date_range()`(연도+상반기/하반기/분기/
+월 파싱) 신설. **실측으로 실제 버그 하나 더 발견**: 정규식에 `\b`(word boundary)를 썼는데
+Python `re`가 한글을 `\w`로 취급해 "2026년"처럼 숫자 바로 뒤에 한글이 붙으면 경계가 전혀
+안 잡혀 **모든 "YYYY년" 질의에서 None을 반환**하는 버그였음 — `(?<!\d)`/`(?!\d)` lookaround로
+교체해 해결. `dense_search_pg()`는 날짜매칭 청크의 코사인 거리를 소폭(`_DATE_BOOST=0.08`)
+깎아 우선순위만 올린다 — **하드 필터 아님**(pub_date 44%가 여전히 NULL이라 하드필터는
+위험, 매칭 0건이어도 결과가 비지 않게 설계).
+
+**D(BM25 하이브리드)**: 기존 `rag/ragkit/retrieve.py::hybrid_search()`는 구 코퍼스
+(<100건) 전용 DuckDB FTS라 재사용 불가 — 같은 RRF 공식·상수(`RRF_K=60`)를 새 데이터소스
+(pgvector `doc_chunk`)에 재적용. `idx_doc_chunk_txt_fts` GIN 인덱스 신설(순수 추가 DDL)
++ `bm25_pg.py`(Postgres `ts_rank_cd`, `'simple'` config — 한국어 형태소분석 없이 공백
+토큰화만, 이번 동기인 "2026"·"DRC"·"LME" 같은 정확토큰 매칭엔 충분) + `hybrid_pg.py`
+(dense+bm25 RRF 융합). `chatbot_graph.py`의 dense 단독 호출을 hybrid로 교체 —
+`Evidence.from_dense_chunk()`는 필드명이 같아 무변경.
+
+**회귀검증**: 3개 질문 재실행 — "2026년 상반기 니켈"이 기권 없이 정상 응답으로 전환
+(ING 2026 가격전망 $15,250/t·인도네시아 RKAB 등 실제 최신 근거로 답변), "코발트 DRC
+수출"은 기존 응답 유지+10월 쿼터제 도입 등 정보 추가(BM25가 놓쳤던 청크 보강), "구리
+LME 시황"도 회귀 없음. 전부 `MSR_DB`를 실 프로덕션 DB로 지정해 `rag.ragkit.chatbot` CLI
+데모로 직접 실행 확인.
+
+## 2026-08-19 — PDF 추출기 대안(firecrawl/pdf-inspector) 검토 → 현행(opendataloader-pdf) 유지 결정
+
+pageindex_agent.py 작업 중 발견한 "USGS 일부 연도판 헤딩 유실"(위 절들 참고)
+결함의 근본 원인이 PDF→MD 1단계 추출기(opendataloader-pdf)에 있다는 점에서,
+대안으로 제안받은 `firecrawl/pdf-inspector`(Rust, MIT, 폰트크기 기반 헤딩
+검출)를 조사·비교했다. 결론: **현행 opendataloader-pdf 그대로 유지**(사용자
+결정).
+
+**비교 근거**: 공개 벤치마크(opendataloader-bench, 200p 코퍼스, 2026-07-31)
+기준 현재 프로젝트가 실제 쓰는 opendataloader "plain" 모드(Overall 0.831)는
+pdf-inspector(0.875)에 정확도·속도 모두 뒤지지만, **opendataloader "hybrid"
+모드(Overall 0.907)는 pdf-inspector보다 오히려 앞선다** — 즉 새 의존성을
+도입하지 않고 기존 라이브러리의 실행 모드만 바꿔도 pdf-inspector 이상의
+개선 여지가 있다는 뜻. 또한 pdf-inspector는 1단계(PDF→MD) 추출기일 뿐
+2단계(마크다운→목차 트리, `page_index_md.py`의 정규식 기반 헤딩 파싱)는
+대체하지 못해 완전한 대체재가 아니다. "폰트크기 기반 헤딩 검출이 이번
+헤딩유실 결함을 실제로 피해가는지"는 USGS 원본 PDF로 파일럿을 안 돌려봐서
+미검증 상태로 남겨뒀다.
+
+**재시도 금지 아님(향후 재검토 여지)**: opendataloader hybrid 모드 전환은
+아직 안 해봤고, "airgap 실측 검증까지 마친 채택된 대안"이 아니라 "검토했으나
+당장 안 바꾸기로 한 것"이다 — GACC headless류(§재시도 금지 목록)와는 성격이
+다르다. 필요하면 나중에 hybrid 모드 파일럿부터 시도할 것.
+
+## 2026-08-18 — 국가명 화이트리스트 커버리지 실측 검증(지난 herd 리뷰 후속과제 ③, 종결)
 
 바로 아래 절(②) 직후 마지막 남은 과제(국가명 화이트리스트가 유한 목록이라
 완전한 커버리지는 아님 — 권고안은 "표에서 대문자시작 토큰+숫자열 패턴으로
