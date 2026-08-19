@@ -14,6 +14,23 @@ def is_url(target: str) -> bool:
     return "://" in target
 
 
+def _coerce_decimal_cols(df):
+    """postgres NUMERIC 컬럼이 psycopg2를 거치면 `decimal.Decimal` object 열로 온다
+    (duckdb DECIMAL(20,4) 등은 자체 Python 드라이버가 fetch 시 float64로 자동 변환하는
+    것과 대조적 — 2026-08-19 postgres cutover 실측으로 발견: nowcast.py의 표준편차 계산이
+    "unsupported operand type(s) for -: 'float' and 'decimal.Decimal'"로 크래시). 이
+    읽기 경계 한 곳에서 duckdb와 동일한 float64로 맞춰, 스키마가 DECIMAL/NUMERIC인 컬럼을
+    쓰는 나머지 코드 전체(수십 개 SQL 조회 지점)를 손대지 않아도 되게 한다."""
+    import decimal
+    for col in df.columns:
+        if df[col].dtype != object:
+            continue
+        vals = df[col].dropna()
+        if len(vals) and all(isinstance(v, decimal.Decimal) for v in vals.head(20)):
+            df[col] = df[col].astype(float)
+    return df
+
+
 # ---------- 스키마 적용 ----------
 def _split_sql(sql_text: str):
     # 주석 제거 후 ; 기준 분할
@@ -81,14 +98,118 @@ def write_df(df, table: str, target: str, if_exists: str = "append", pk: list = 
     return len(df)
 
 
+# ---------- 멱등 upsert(delete-then-insert) ----------
+def upsert_df(df, table: str, target: str, del_where: str = None):
+    """멱등 적재: del_where로 기존행 삭제 후 append(테이블 없으면 생성).
+
+    2026-08-19: `msr/storage/db.py`의 duckdb 전용 upsert_df를 이 모듈로 옮기고
+    postgres(서버DB) 분기를 추가했다(postgres cutover 착수, WORKLOG 2026-08-19).
+    duckdb 분기는 원본 로직 그대로(BEGIN/DELETE/INSERT/COMMIT 한 트랜잭션, 실패 시 롤백).
+
+    ⚠ `del_where`는 호출자가 값을 이미 안전하게 SQL 문자열에 인라인한 WHERE절이어야
+    한다(예: `"1=1"`, `f"base_month = '{d}'"`) — 내부에서 생성한 신뢰 가능한 값만 넣을 것,
+    사용자 입력을 직접 넣지 말 것(파라미터 바인딩이 아니라 문자열 결합이라 SQL 인젝션
+    위험이 있음)."""
+    if df is None or len(df) == 0:
+        return 0
+    if is_url(target):
+        import sqlalchemy as sa
+        eng = sa.create_engine(target)
+        exists = sa.inspect(eng).has_table(table)
+        if not exists:
+            df.to_sql(table, eng, index=False)
+        else:
+            with eng.begin() as conn:
+                if del_where:
+                    conn.execute(sa.text(f'DELETE FROM "{table}" WHERE {del_where}'))
+                df.to_sql(table, conn, if_exists="append", index=False)
+        return len(df)
+    else:
+        import duckdb
+        con = duckdb.connect(target)
+        con.register("_t", df)
+        try:
+            exists = con.execute(
+                "SELECT count(*) FROM information_schema.tables WHERE table_name=?", [table]).fetchone()[0]
+            if not exists:
+                con.execute(f'CREATE TABLE "{table}" AS SELECT * FROM _t')
+            else:
+                cols = ",".join(f'"{c}"' for c in df.columns)
+                con.execute("BEGIN")
+                if del_where:
+                    con.execute(f'DELETE FROM "{table}" WHERE {del_where}')
+                con.execute(f'INSERT INTO "{table}" ({cols}) SELECT {cols} FROM _t')
+                con.execute("COMMIT")
+        except Exception:
+            try:
+                con.execute("ROLLBACK")
+            except Exception:
+                pass
+            con.unregister("_t"); con.close()
+            raise
+        con.unregister("_t")
+        con.execute("CHECKPOINT"); con.close()
+        return len(df)
+
+
 def read_sql(query: str, target: str):
     import pandas as pd
     if is_url(target):
         import sqlalchemy as sa
-        return pd.read_sql(query, sa.create_engine(target))
+        return _coerce_decimal_cols(pd.read_sql(query, sa.create_engine(target)))
     import duckdb
     con = duckdb.connect(target, read_only=True)
     try:
         return con.execute(query).df()
     finally:
         con.close()
+
+
+# ---------- 읽기 전용 커넥션 어댑터(postgres cutover, 2026-08-19) ----------
+class _PgReadResult:
+    """duckdb 커서 결과의 `.df()`/`.fetchone()` 서브셋만 흉내낸다."""
+
+    def __init__(self, result):
+        self._result = result
+
+    def df(self):
+        import pandas as pd
+        rows = self._result.fetchall()
+        return _coerce_decimal_cols(pd.DataFrame(rows, columns=list(self._result.keys())))
+
+    def fetchone(self):
+        return self._result.fetchone()
+
+    def fetchall(self):
+        return self._result.fetchall()
+
+
+class _PgReadConn:
+    """postgres(URL) 대상에서 duckdb Connection의 `.execute(sql).df()/.fetchone()/.close()`
+    서브셋만 흉내내는 얇은 어댑터. `msr/models/*.py`·`scripts/diagnosis_*.py`의
+    build_panel류 함수들이 커넥션 하나를 열어 SELECT 여러 개를 순차 실행하던 duckdb 전용
+    코드를, 파일별 쿼리 리라이트 없이 `connect_ro()` 호출 한 줄만 바꿔 재사용하려고
+    만들었다. 파라미터 바인딩(`?`)이 필요한 쓰기 경로는 대상이 아니다(`upsert_df()`를
+    쓸 것) — 이 셸은 파라미터 없는 읽기 전용 SELECT만 지원한다."""
+
+    def __init__(self, engine):
+        self._conn = engine.connect()
+
+    def execute(self, sql):
+        import sqlalchemy as sa
+        return _PgReadResult(self._conn.execute(sa.text(sql)))
+
+    def close(self):
+        self._conn.close()
+
+
+def connect_ro(target: str):
+    """읽기 전용 커넥션 — duckdb 파일이면 진짜 `duckdb.connect(read_only=True)`,
+    URL(postgres 등)이면 `_PgReadConn` 어댑터. 반환값은 `.execute(sql).df()`/
+    `.execute(sql).fetchone()`/`.close()`만 보장한다(그 이상은 duckdb 전용이라 여기서
+    호환 안 됨)."""
+    if is_url(target):
+        import sqlalchemy as sa
+        return _PgReadConn(sa.create_engine(target))
+    import duckdb
+    return duckdb.connect(target, read_only=True)

@@ -17,7 +17,6 @@ PMI 월간 +35일(익월 초 발표).
 from __future__ import annotations
 import os, sys
 
-import duckdb
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
@@ -39,7 +38,8 @@ CNINV_F = exch.CNINV_F
 
 def build_trd(db: str, panel: pd.DataFrame) -> pd.DataFrame:
     """Comtrade 월간 물량(톤) → yoy·3개월 변화·24개월 z. REE=중국 수출, CO=중국←DRC 수입."""
-    con = duckdb.connect(db, read_only=True)
+    from db.dbio import connect_ro
+    con = connect_ro(db)
     t = con.execute("""SELECT commodity_code, CAST(obs_date AS DATE) AS obs_date, val
         FROM fact_indicator WHERE src='UN_COMTRADE'
           AND indicator IN ('CN_REE_EXPORT_WGT','CN_CO_IMPORT_COD_WGT')
@@ -64,7 +64,8 @@ def build_trd(db: str, panel: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_pmi(db: str, panel: pd.DataFrame) -> pd.DataFrame:
-    con = duckdb.connect(db, read_only=True)
+    from db.dbio import connect_ro
+    con = connect_ro(db)
     s = con.execute("""SELECT series_code, CAST(obs_date AS DATE) AS obs_date, val
         FROM fact_series WHERE src='AKSHARE_MACRO' ORDER BY series_code, obs_date""").df()
     con.close()

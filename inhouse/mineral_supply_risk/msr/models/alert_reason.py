@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """경보 사유(근거텍스트) 생성 — 자원안보특별법 붙임2 공식문안 + 데이터근거 + 지정학 이벤트 인용"""
-import duckdb, pandas as pd, numpy as np, csv, re
+import pandas as pd, numpy as np, csv, re
 import os as _os
 from ..config import DB_PATH as _DB_DEFAULT, OUT as _OUT
 _ALERT_DIR = _os.path.join(str(_OUT), "alert")   # alert.run()이 쓰는 산출 위치(cwd 의존 제거)
@@ -27,11 +27,12 @@ GEO_C2={"supply_disruption"}
 def build(db=_DB_DEFAULT, alert_csv=None):
     alert_csv = alert_csv or _os.path.join(_ALERT_DIR, "alert_timeline.csv")
     df=pd.read_csv(alert_csv, parse_dates=["obs_date"])
-    con=duckdb.connect(db, read_only=True)
+    from db.dbio import connect_ro
+    con=connect_ro(db)
     # 광종×월 대표 지정학 이벤트(최고 severity + 유형 + 근거인용)
     ge=con.execute("""
-      SELECT commodity_code, date_trunc('month',obs_date) m, event_type, country, severity, evidence_quote,
-             row_number() OVER (PARTITION BY commodity_code,date_trunc('month',obs_date) ORDER BY severity DESC) rn
+      SELECT commodity_code, date_trunc('month',CAST(obs_date AS TIMESTAMP)) m, event_type, country, severity, evidence_quote,
+             row_number() OVER (PARTITION BY commodity_code,date_trunc('month',CAST(obs_date AS TIMESTAMP)) ORDER BY severity DESC) rn
       FROM geo_event WHERE commodity_code IS NOT NULL AND severity IS NOT NULL""").df()
     con.close()
     ge=ge[ge.rn<=2]

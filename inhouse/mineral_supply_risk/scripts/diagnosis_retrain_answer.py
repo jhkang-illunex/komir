@@ -24,7 +24,6 @@
 from __future__ import annotations
 import os, sys
 
-import duckdb
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import Ridge, LogisticRegression
@@ -52,7 +51,8 @@ COMMODITY_START = {"CU": "2016-01-01", "NI": "2016-01-01", "CO": "2016-01-01",
 
 # ─────────────────────────── 패널 구성 ───────────────────────────
 def build_panel(db: str) -> pd.DataFrame:
-    con = duckdb.connect(db, read_only=True)
+    from db.dbio import connect_ro
+    con = connect_ro(db)
     w = con.execute("""
         SELECT commodity_code, obs_date, geopolitical_risk, import_hhi, import_yoy,
                import_cagr3, ref_price, volatility_12w, spread_pct

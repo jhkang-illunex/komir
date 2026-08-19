@@ -23,7 +23,6 @@ collect_exchange_inventory.py 적재분을 diagnosis_aux_features_eval과 동일
 from __future__ import annotations
 import os, sys
 
-import duckdb
 import numpy as np
 import pandas as pd
 
@@ -40,7 +39,8 @@ SRC_MAP = {"NI": {"SHFE_99QH_W"}, "LI": {"GFEX_OFFICIAL_W", "GFEX_EM_MIRROR_W"}}
 
 
 def build_cninv(db: str, panel: pd.DataFrame) -> pd.DataFrame:
-    con = duckdb.connect(db, read_only=True)
+    from db.dbio import connect_ro
+    con = connect_ro(db)
     inv = con.execute("""SELECT commodity_code, CAST(obs_date AS DATE) AS obs_date, val, src
         FROM fact_inventory_exch
         WHERE src IN ('SHFE_99QH_W','GFEX_OFFICIAL_W','GFEX_EM_MIRROR_W')

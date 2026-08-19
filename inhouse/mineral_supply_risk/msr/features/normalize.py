@@ -8,6 +8,7 @@
 """
 import duckdb
 from ..config import DB_PATH
+from db.dbio import _split_sql, is_url
 
 # 스테이지(temp) → src 리프레시 삭제 + PK 그레인 삭제(타 src와의 PK 충돌 방지) → INSERT
 _MONTHLY_STAGE = """
@@ -82,6 +83,12 @@ FROM tot t LEFT JOIN hhi h USING(commodity_code, year)
 def run(db=None):
     """raw_customs_* → fact_trade_* + agg_trade_annual. 반환: 적재 행수 요약."""
     db = db or DB_PATH
+    if is_url(db):
+        return _run_pg(db)
+    return _run_duckdb(db)
+
+
+def _run_duckdb(db):
     con = duckdb.connect(db)
     try:
         con.execute(_MONTHLY_STAGE)
@@ -106,6 +113,45 @@ def run(db=None):
     n = {t: con.execute(f"SELECT count(*) FROM {t}").fetchone()[0]
          for t in ("fact_trade_monthly", "fact_trade_annual", "agg_trade_annual")}
     con.execute("CHECKPOINT"); con.close()
+    print(f"[normalize] fact_trade_monthly={n['fact_trade_monthly']} · "
+          f"fact_trade_annual={n['fact_trade_annual']} · agg_trade_annual={n['agg_trade_annual']}")
+    return n
+
+
+def _run_pg(db):
+    """postgres(URL) 대상 — duckdb 전용 `CREATE OR REPLACE TEMP/TABLE` 구문만 표준
+    `DROP IF EXISTS + CREATE`로 바꾸고, 나머지 SQL 본문(DELETE/INSERT/윈도우함수/
+    make_date/POWER/NULLIF)은 duckdb·postgres 양쪽 호환이라 그대로 재사용한다
+    (2026-08-19 postgres cutover). 임시테이블이 한 세션에서 살아있어야 하므로 트랜잭션
+    하나(`eng.begin()`)로 전 구간을 묶는다."""
+    import sqlalchemy as sa
+    eng = sa.create_engine(db)
+    with eng.begin() as conn:
+        conn.execute(sa.text("DROP TABLE IF EXISTS _stg_m"))
+        conn.execute(sa.text(_MONTHLY_STAGE.replace(
+            "CREATE OR REPLACE TEMP TABLE _stg_m AS", "CREATE TEMP TABLE _stg_m AS")))
+        conn.execute(sa.text("DROP TABLE IF EXISTS _stg_a"))
+        conn.execute(sa.text(_ANNUAL_STAGE.replace(
+            "CREATE OR REPLACE TEMP TABLE _stg_a AS", "CREATE TEMP TABLE _stg_a AS")))
+        for stmt in _split_sql(_MONTHLY_MERGE):
+            conn.execute(sa.text(stmt))
+        for stmt in _split_sql(_ANNUAL_MERGE):
+            conn.execute(sa.text(stmt))
+        has_bc = bool(conn.execute(
+            sa.text("SELECT to_regclass('raw_customs_annual_bycountry') IS NOT NULL")).scalar())
+        hhi_src = ("(SELECT commodity_code, CAST(year AS INT) AS year, country, "
+                   "CAST(imp_usd AS DOUBLE PRECISION) AS imp_usd FROM raw_customs_annual_bycountry)"
+                   if has_bc else
+                   "(SELECT commodity_code, yr AS year, country, imp_usd FROM fact_trade_annual)")
+        if not has_bc:
+            print("  [warn] raw_customs_annual_bycountry 없음 — import_hhi가 구식(품목 HHI)으로 폴백")
+        conn.execute(sa.text("DROP TABLE IF EXISTS agg_trade_annual"))
+        agg_sql = _AGG_TRADE_ANNUAL_SQL.replace(
+            "CREATE OR REPLACE TABLE agg_trade_annual AS", "CREATE TABLE agg_trade_annual AS"
+        ).replace("{HHI_SRC}", hhi_src)
+        conn.execute(sa.text(agg_sql))
+        n = {t: conn.execute(sa.text(f"SELECT count(*) FROM {t}")).scalar()
+             for t in ("fact_trade_monthly", "fact_trade_annual", "agg_trade_annual")}
     print(f"[normalize] fact_trade_monthly={n['fact_trade_monthly']} · "
           f"fact_trade_annual={n['fact_trade_annual']} · agg_trade_annual={n['agg_trade_annual']}")
     return n
