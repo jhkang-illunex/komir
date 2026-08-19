@@ -34,7 +34,7 @@ _MSR_DB_PKG_ROOT = _MSR_PARENT / "mineral_supply_risk"
 if str(_MSR_DB_PKG_ROOT) not in sys.path:
     sys.path.insert(0, str(_MSR_DB_PKG_ROOT))
 
-from db.dbio import apply_schema, is_url, read_sql, write_df  # noqa: E402,F401
+from db.dbio import apply_schema, connect_ro, is_url, read_sql, upsert_df, write_df  # noqa: E402,F401
 
 from .config import get_settings
 
@@ -53,6 +53,15 @@ def write_df_msr(df, table: str, if_exists: str = "append", pk: list | None = No
         df, table, settings.MSR_DB, if_exists=if_exists, pk=pk,
         schema=settings.MSR_PUBLISH_SCHEMA or None,
     )
+
+
+def upsert_df_msr(df, table: str, del_where: str | None = None):
+    """MSR_DB에 멱등 적재(delete-then-insert, 2026-08-19 upsert_df 추가에 맞춰
+    write_df_msr 옆에 대칭으로 노출). schema 인자는 dbio.upsert_df가 아직 지원하지
+    않음(MSR_PUBLISH_SCHEMA 쓰는 서비스가 아직 없어 write_df_msr처럼 미리 배선하지
+    않았다 — 필요해지면 db.dbio.upsert_df에 schema 인자부터 추가할 것)."""
+
+    return upsert_df(df, table, get_settings().MSR_DB, del_where=del_where)
 
 
 def execute_msr(sql: str, params: list | None = None) -> None:

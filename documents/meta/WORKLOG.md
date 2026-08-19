@@ -2,6 +2,68 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-08-19 (최신) — 진단·예측 cron 자동화 + "텍스트 보고서" 화면 스키마·데이터 신설
+
+사용자 지시 2건 연속 처리: ①"지정학위기지수·수급위기진단·수요예측이 크론으로 주기적으로
+동작하고 결과가 DB에 갱신되게" ②"기획안 보고 텍스트 보고서 화면에 필요한 스키마를
+확정하고 그 데이터도 작성".
+
+**① cron 자동화 — 실측으로 확인된 격차**: 시스템 crontab 6건은 전부 수집기(raw_* 적재)만
+돌고, 정규화(raw→fact)·마트·진단모델·경보·예측(forecast_unit) 등 파생 파이프라인은
+cron에 전혀 없었다(`inhouse/mineral_supply_risk/scripts/schedule.py`가 2026-07-12에
+이미 이 오케스트레이션을 만들어뒀지만 **crontab에 등록된 적이 없고**, 그 안의 geo 호출
+부분(`ingest-bundles`/`extract`)은 2026-08-06 DMZ/inhouse 분리 이후 실제 운영 중인
+`cron_gkg_increment.sh`의 파이프라인과 달라져 stale — msr 쪽 함수 호출부만 시그니처가
+현재 코드와 일치해 재사용 가능했음).
+
+- **신설**: `inhouse/mineral_supply_risk/scripts/cron_diagnosis_weekly.sh`(정규화→
+  주간마트→nowcast→경보 4단계), `cron_forecast_monthly.sh`(ExtraTrees+conformal+SHAP,
+  flock 락 적용). 둘 다 `schedule.py`의 msr 호출 시퀀스를 그대로 재사용(재구현 아님).
+- **배선**: 진단은 `.env`의 `DIAGNOSIS_TRIGGER=after_geo_index` 설계값 그대로 —
+  독립 cron이 아니라 `inhouse/geo/cron_gkg_increment.sh`의 지정학지수 publish
+  직후([6/6] 단계로) 같은 프로세스에서 직접 호출(별도 cron이면 순서 보장이 깨짐).
+  예측은 `.env`의 `FORECAST_SCHEDULE_CRON="0 1 1-7 * SUN"`(매월 첫째주 일요일) 값대로
+  독립 crontab 항목으로 등록할 스크립트만 준비(시스템 crontab 자체는 main 체크아웃에서
+  병합 후 등록 필요 — 아래 "남은 일" 참고).
+- **실측 검증**: 두 스크립트 모두 실제 duckdb로 완주 확인 — `cron_diagnosis_weekly.sh`
+  (fact_trade_monthly 21955·mart_weekly_diagnosis 4621·CU ci_pred 97.99, 오늘 계속
+  검증해온 값과 일치) / `cron_forecast_monthly.sh`(out_import_forecast_unit 60행,
+  h=1 CU pred_ton 238685.6 — commodity_api 첫 테스트값과 완전 일치).
+- **사고 기록**: 테스트 중 워크트리 루트에 `data_archive/`가 실제로는 git 추적 대상
+  (삭제 금지 정책 걸린 진짜 이력)인 걸 모르고 `rm -rf`로 통째로 지웠다가 `git restore`로
+  즉시 복구함 — 앞으로 "테스트 산출물이니 지워도 됨"이라고 판단하기 전에 반드시
+  `git status`로 추적 여부 확인할 것(재발 방지 메모).
+
+**② 텍스트 보고서 화면 스키마·데이터**: 원본 PDF(`documents/기획문서/260731 핵심광물
+수급위기 진단 화면 기획안 ver.1.3.pdf`) p.4·p.11·p.18·p.24를 PyMuPDF로 직접 재확인해
+슬라이드 문구 그대로 스키마화(추측 없음) — A화면(종합 모니터링) §6 "AI 보고서 다운로드"
++§13 "AI 종합분석 및 관련뉴스"(현황→원인→대응, 리스크태그, 광종별 주간뉴스 4필드)와
+B화면(광종별) Step6 §21 "AI 종합판단"(종합경보·핵심변수기여도·공급망요약·이벤트뉴스요약)
+2종을 하나의 테이블로 묶었다.
+
+- **신설 테이블** `out_ai_dashboard_summary`(`mineral_supply_risk/db/schema_core.sql`에
+  추가, portable DDL): `scope`('overall'|'commodity')로 두 화면 구분, 숫자 필드
+  (crisis_index·wow_delta·key_factor_contrib_json)는 전부 `out_diagnosis_alert`·
+  `geo_index`·`out_import_forecast_unit`·`geo_event`에서 그대로 가져오고(LLM이 숫자를
+  안 지어냄), 서술 필드(diagnosis_text·ai_comment·risk_tags_json·weekly_news_json·
+  supply_chain_summary·event_news_summary)만 LLM이 그 숫자를 근거로 작성 —
+  `report_gen/app/analysis/summary.py`의 "LLM 정제+규칙기반 폴백" 원칙 그대로 재사용.
+- **신설 생성기** `services/report_gen/app/dashboard_summary.py` — `shared.llm_client.
+  KomirJsonLLM`(pydantic 구조화 출력, 기존 클라이언트 재사용)로 overall 1행+commodity
+  5행 생성, `shared.db.upsert_df_msr`(오늘 postgres cutover 작업에서 만든 `dbio.upsert_df`
+  를 `write_df_msr` 옆에 대칭으로 처음 재노출)로 멱등 적재.
+- **실LLM 실행 검증**(로컬 vLLM `gemma-4-26b-a4b`, `localhost:52302`): 6행 전부
+  LLM 서술 성공(폴백 0건) — CU "심각·98.0·전주대비-0.21·y_lag1 33.0" 등 실제
+  `out_diagnosis_alert`/`geo_event` 수치·근거문구를 정확히 인용한 자연어 생성 확인,
+  환각 수치 없음(전부 payload에 있던 값만 재인용).
+
+**남은 일(다음 세션 또는 병합 후)**: 이 워크트리(`worktree-mineral_risk`)도 아직 main
+미병합 상태 — 이전 postgres cutover 작업과 동일하게, 병합 후 `cron_forecast_monthly.sh`를
+시스템 crontab에 실제 등록해야 함(`0 1 1-7 * SUN`). `dashboard_summary.py`는 아직
+API로 노출되지 않음(schema+생성기+실데이터까지만 이번 스코프) — commodity_api류
+엔드포인트로 서빙하려면 후속 라우터 필요.
+
+
 ## 2026-08-19 (최신) — MSR 데이터 저장소 duckdb → postgres cutover(코드 이식 완료, 실postgres 검증 완료)
 
 사용자 지시("지금 데이터는 postgresql에 덤프하고 그 db 활용하기로 하지 않았나? duckdb에서

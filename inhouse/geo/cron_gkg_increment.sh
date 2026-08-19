@@ -59,10 +59,17 @@ PY
   echo "--- [4/5] 기각분 실삭제 ---"
   python3 -m geo.gkg_verify --bulk-root "$BULK" --compact-rejections 2>&1 | tail -1
 
-  echo "--- [5/5] 지수·확률 재산출 + publish ---"
+  echo "--- [5/6] 지수·확률 재산출 + publish ---"
   python3 -m geo index 2>&1 | tail -1
   python3 -m geo prob 2>&1 | tail -1
   python3 -m geo publish --db "$ROOT/inhouse/data_lake/db/minerals.duckdb" --what all 2>&1 | tail -3
+
+  echo "--- [6/6] 수급위기 진단 체인 호출(이벤트 체이닝, .env DIAGNOSIS_TRIGGER=after_geo_index — 별도 cron 아니라 여기서 직접 호출) ---"
+  # 2026-08-19 신설. 지정학위기지수가 이번 주 최신값으로 publish된 직후에만 돌아야
+  # mart_weekly_diagnosis.geopolitical_risk가 최신 지수를 반영하므로, 위 [5/6]
+  # 직후 같은 프로세스 트리에서 호출한다(별도 cron으로 분리하면 순서 보장이 깨짐).
+  # 위에서 LLM 미응답으로 조기 `exit 0`한 경우 이 줄 자체가 실행되지 않아 안전.
+  "$ROOT/inhouse/mineral_supply_risk/scripts/cron_diagnosis_weekly.sh"
 
   echo "=== $(date '+%F %T') 종료 ==="
 } >> "$LOG" 2>&1
