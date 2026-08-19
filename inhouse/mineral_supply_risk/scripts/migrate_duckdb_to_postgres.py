@@ -22,6 +22,16 @@ from msr.config import DB_PATH  # noqa: E402 (.env 로딩 부작용)
 
 PG_SCHEMA = os.environ.get("PG_SCHEMA", "mineral_risk")
 
+# 2026-08-19 사고 후 추가: 이 테이블들은 Postgres가 정본이고 duckdb 쪽은 비어있거나
+# (doc_chunk — build_pgvector_okf.py/build_pgvector_index.py가 postgres에 직접
+# 적재, duckdb엔 애초에 채워진 적 없음) 스키마가 다른 옛 흔적이다(chat_session/
+# chat_message — rag/ragkit/chatbot_store.py가 이제 URL 타깃이면 postgres에 직접
+# 쓴다, 08-19 전환). 이걸 제외 없이 돌렸다가 실제로 mineral_risk.doc_chunk
+# 140,031행(pgvector 임베딩 전체)이 duckdb의 빈 0행짜리 테이블로 덮어써져 날아간
+# 사고가 있었다(같은 날 발견·복구) — 재발 방지로 화이트리스트가 아니라
+# 블랙리스트로 명시 제외한다(새 테이블이 생겨도 기본은 이관 대상이어야 하므로).
+_SKIP_TABLES = {"doc_chunk", "chat_session", "chat_message"}
+
 
 def _pg_conn_str() -> str:
     return "host={} port={} dbname={} user={} password={}".format(
@@ -40,9 +50,13 @@ def main():
     con.execute(f"ATTACH '{_pg_conn_str()}' AS pg (TYPE postgres, READ_ONLY false)")
     con.execute(f'CREATE SCHEMA IF NOT EXISTS pg."{PG_SCHEMA}"')
 
-    tables = [r[0] for r in con.execute(
+    all_tables = [r[0] for r in con.execute(
         "SELECT table_name FROM information_schema.tables "
         "WHERE table_schema='main' ORDER BY 1").fetchall()]
+    tables = [t for t in all_tables if t not in _SKIP_TABLES]
+    skipped = [t for t in all_tables if t in _SKIP_TABLES]
+    if skipped:
+        print(f"제외(postgres 정본, duckdb 쪽 데이터로 덮어쓰지 않음): {skipped}")
     print(f"이관 대상 {len(tables)}개 테이블 -> postgres:{PG_SCHEMA}")
 
     results = []
