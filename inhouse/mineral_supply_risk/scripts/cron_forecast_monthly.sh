@@ -19,7 +19,10 @@ mkdir -p "$LOGDIR"
 LOG="$LOGDIR/forecast_monthly_$(date +%Y%m%d).log"
 LOCK=/tmp/komir_forecast_monthly.lock
 cd "$ROOT/inhouse/mineral_supply_risk"
-export MSR_DB="${MSR_DB:-$ROOT/inhouse/data_lake/db/minerals.duckdb}"
+# MSR_DB는 inhouse/.env(postgres DSN)에서 주입 — 여기서 파일 DB로 폴백하지 않는다
+# (2026-08-19, postgres 단일 정본 원칙). .env가 로드되지 않는 실행환경이면 아래에서
+# 명시적으로 실패한다(조용한 폴백 금지).
+: "${MSR_DB:?MSR_DB가 설정되지 않음 — inhouse/.env의 postgres DSN을 주입할 것}"
 
 exec 9>"$LOCK"
 if ! flock -n 9; then

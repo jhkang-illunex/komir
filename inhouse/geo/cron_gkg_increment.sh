@@ -34,6 +34,9 @@ fi
   echo "=== $(date '+%F %T') GKG 증분 cron 시작 (year-from=$YEAR_FROM) ==="
   cd "$ROOT/inhouse"   # 2026-08-06 DMZ/in-house 분리 반영 — `python -m geo`는 geo 패키지의
                        # 부모 디렉토리에서 실행해야 함(komir/inhouse/geo가 아니라 komir/inhouse/)
+  # GEO_PUBLISH_DB는 inhouse/.env(postgres DSN)에서 주입 — 여기서 파일 DB로 폴백하지
+  # 않는다(2026-08-19, postgres 단일 정본 원칙).
+  : "${GEO_PUBLISH_DB:?GEO_PUBLISH_DB가 설정되지 않음 — inhouse/.env의 postgres DSN을 주입할 것}"
 
   echo "--- [1/5] 파싱(state 증분) ---"
   python3 -m geo gkg-parse --bulk-root "$BULK" --year-from "$YEAR_FROM" 2>&1 | tail -3
@@ -62,7 +65,7 @@ PY
   echo "--- [5/6] 지수·확률 재산출 + publish ---"
   python3 -m geo index 2>&1 | tail -1
   python3 -m geo prob 2>&1 | tail -1
-  python3 -m geo publish --db "$ROOT/inhouse/data_lake/db/minerals.duckdb" --what all 2>&1 | tail -3
+  python3 -m geo publish --what all 2>&1 | tail -3   # --db 생략 시 GEO_PUBLISH_DB(env) 사용
 
   echo "--- [6/6] 수급위기 진단 체인 호출(이벤트 체이닝, .env DIAGNOSIS_TRIGGER=after_geo_index — 별도 cron 아니라 여기서 직접 호출) ---"
   # 2026-08-19 신설. 지정학위기지수가 이번 주 최신값으로 publish된 직후에만 돌아야
