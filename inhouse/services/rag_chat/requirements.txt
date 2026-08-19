@@ -8,6 +8,9 @@ psycopg2-binary
 qdrant-client
 sentence-transformers
 sse-starlette
+python-docx  # rag/ragkit/ingest.py가 모듈최상단에서 import(2026-08-19 컨테이너 실빌드로
+             # 발견 — generate.py→build_index.py→chunk.py→ingest.py 임포트체인에 걸림,
+             # 소스트리 실행에선 다른 곳에서 먼저 깔려 있어 안 드러났던 누락)
 duckdb>=1.1    # mineral_supply_risk/db/dbio.py(services/shared/db.py가 재노출)
 pandas>=2.0    # 〃
 matplotlib>=3.7  # rag/ragkit/chatbot_events.py — 인용된 표에서 즉석 차트(PNG) 렌더링,

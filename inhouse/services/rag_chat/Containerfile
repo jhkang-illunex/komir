@@ -5,17 +5,18 @@
 # PAGEINDEX_TREES_DIR·OKF_DOCUMENTS_DIR가 가리키는 data_lake/semi_structure/
 # {pageindex_trees,okf_documents}는 이미지에 안 굽고 볼륨 마운트로 붙일 것
 # (§0 "DB는 외부서비스" 원칙과 같은 이유 — 대용량 산출물을 이미지에 넣지 않는다).
-# TODO(구현 단계): geo/Dockerfile 패턴 재사용. e5-small 임베딩 가중치는 airgap 전제상
-# 빌드 시점에 이미지에 미리 다운로드해 포함(런타임 인터넷 접근 불가).
+# e5-small 임베딩 가중치는 airgap 전제상 빌드 시점(망 연결 가능)에 이미지에 미리
+# 다운로드해 포함한다 — 런타임엔 인터넷 접근이 없다는 전제라 HF_HUB_OFFLINE=1로
+# 캐시 재다운로드를 막는다(2026-08-19 실제 구현·빌드 검증, 모델명은
+# rag/ragkit/embed.py의 MODEL_NAME과 반드시 일치시킬 것).
 FROM python:3.12-slim
 
 WORKDIR /app
 COPY services/rag_chat/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# TODO: 임베딩 모델 사전 다운로드 RUN 스텝(연결망 빌드 시점 1회)
-# RUN python -c "from sentence_transformers import SentenceTransformer; \
-#     SentenceTransformer('intfloat/multilingual-e5-small')"
+RUN python -c "from sentence_transformers import SentenceTransformer; \
+    SentenceTransformer('intfloat/multilingual-e5-small')"
 
 # app/ 아래에 페이지추천 이식본(app/page_recommend/)과 그 리소스(43개 페이지 YAML +
 # KOMIS 메타데이터 스냅샷, 합계 400KB)가 함께 들어 있다 — 이 COPY 한 줄로 같이 실린다

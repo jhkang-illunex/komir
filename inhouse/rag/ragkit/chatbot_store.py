@@ -13,14 +13,23 @@ config.py의 Settings를 거치지 않고 MSR_DB 환경변수 또는 명시적 d
 받는다(mineral_supply_risk/scripts/*가 MSR_DB로 대상을 고르는 것과 같은 컨벤션,
 CLAUDE.md §2 `MSR_DB=../data_lake/db/minerals.duckdb python -m scripts.xxx`).
 
-⚠ Postgres cutover 이후: services/shared/db.py execute_msr과 동일하게 URL 타깃은
-아직 미구현(psycopg2 paramstyle 미검증) — is_url이면 명시적으로 실패시킨다."""
+2026-08-19 postgres 지원 추가: 컨테이너화(§0 "DB는 외부서비스" 원칙 — 이미지에 로컬
+DuckDB 파일을 마운트하는 건 그 원칙에 어긋난다) 준비로 URL 타깃(postgres) 분기를
+구현했다. `services/shared/db.py`엔 의존하지 않는다(모듈 상단 설명대로 rag 패키지
+단독 동작 유지) — 대신 이 파일 안에서 psycopg2를 직접 쓰고, DuckDB의 `?` 자리표시자를
+psycopg2 paramstyle(`%s`)로 그때그때 변환한다(쿼리 문자열에 리터럴 `?`가 없는 이
+모듈의 쿼리들에선 안전한 치환). 스키마는 `PG_SCHEMA` 환경변수(기본 `mineral_risk`)로
+지정 — "public" 하드코딩 금지 규약은 services/shared/db.py와 동일하게 따른다."""
 from __future__ import annotations
 
 import os
+import re
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+
+_PG_SCHEMA = os.environ.get("PG_SCHEMA", "mineral_risk")
+_QMARK_RE = re.compile(r"\?")
 
 # rag/ragkit이 표준 실행 관례(CLAUDE.md §2: `cd inhouse && python -m rag ...`)로
 # cwd=inhouse/일 때 맞는 상대경로 — build_index.py의 DB_PATH="rag/index/rag.duckdb"와
@@ -49,27 +58,50 @@ def _is_url(target: str) -> bool:
 
 def _connect(db_path: str):
     if _is_url(db_path):
-        raise NotImplementedError(
-            "chatbot_store의 서버DB(URL) 경로는 아직 미구현 — MSR_DB cutover 시 "
-            "services/shared/db.py execute_msr 주석의 안내(psycopg2 paramstyle이 "
-            "DuckDB의 `?`와 다름)부터 맞춰 여기도 함께 고칠 것"
-        )
+        import psycopg2
+
+        # PG_DSN은 SQLAlchemy 관례(services/shared/db.py와 동일 값 공유)로
+        # "postgresql+psycopg2://..."인데, psycopg2.connect()는 순수
+        # "postgresql://..."만 이해한다(+드라이버명은 SQLAlchemy 전용 문법) —
+        # 여기서 벗겨낸다(services/shared는 SQLAlchemy 엔진을 쓰므로 이 문제가
+        # 없었음, chatbot_store는 그 의존을 안 지므로 직접 처리).
+        dsn = db_path.replace("postgresql+psycopg2://", "postgresql://", 1)
+        return psycopg2.connect(dsn)
     import duckdb
 
     return duckdb.connect(db_path)
 
 
+def _tbl(db_path: str, name: str) -> str:
+    """테이블명 앞에 스키마를 붙일지 여부 — URL(postgres) 타깃일 때만
+    `PG_SCHEMA`로 한정한다("public" 하드코딩 금지 규약, 그 외 DuckDB는 그대로)."""
+
+    return f"{_PG_SCHEMA}.{name}" if _is_url(db_path) else name
+
+
 def _execute(db_path: str, sql: str, params: list | None = None) -> None:
     con = _connect(db_path)
     try:
-        con.execute(sql, params or [])
+        if _is_url(db_path):
+            with con.cursor() as cur:
+                cur.execute(_QMARK_RE.sub("%s", sql), params or [])
+            con.commit()
+        else:
+            con.execute(sql, params or [])
     finally:
         con.close()
 
 
 def _read(db_path: str, sql: str):
+    import pandas as pd
+
     con = _connect(db_path)
     try:
+        if _is_url(db_path):
+            with con.cursor() as cur:
+                cur.execute(sql)
+                cols = [d[0] for d in cur.description]
+                return pd.DataFrame(cur.fetchall(), columns=cols)
         return con.execute(sql).fetchdf()
     finally:
         con.close()
@@ -85,7 +117,9 @@ def get_or_create_session(
 
     if session_id:
         existing = _read(
-            db_path, f"SELECT session_id FROM chat_session WHERE session_id = '{_escape(session_id)}'"
+            db_path,
+            f"SELECT session_id FROM {_tbl(db_path, 'chat_session')} "
+            f"WHERE session_id = '{_escape(session_id)}'",
         )
         if len(existing):
             return session_id
@@ -94,8 +128,8 @@ def get_or_create_session(
     now = _now()
     _execute(
         db_path,
-        "INSERT INTO chat_session (session_id, user_id, title, created_at, updated_at) "
-        "VALUES (?, ?, ?, ?, ?)",
+        f"INSERT INTO {_tbl(db_path, 'chat_session')} "
+        "(session_id, user_id, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
         [new_id, user_id, title, now, now],
     )
     return new_id
@@ -104,7 +138,11 @@ def get_or_create_session(
 def touch_session(session_id: str, db_path: str = DEFAULT_DB_PATH) -> None:
     """세션의 updated_at을 현재 시각으로 갱신(새 메시지 저장 시 호출)."""
 
-    _execute(db_path, "UPDATE chat_session SET updated_at = ? WHERE session_id = ?", [_now(), session_id])
+    _execute(
+        db_path,
+        f"UPDATE {_tbl(db_path, 'chat_session')} SET updated_at = ? WHERE session_id = ?",
+        [_now(), session_id],
+    )
 
 
 def append_message(
@@ -122,7 +160,8 @@ def append_message(
     )
     _execute(
         db_path,
-        "INSERT INTO chat_message (message_id, session_id, role, content, citations_json, created_at) "
+        f"INSERT INTO {_tbl(db_path, 'chat_message')} "
+        "(message_id, session_id, role, content, citations_json, created_at) "
         "VALUES (?, ?, ?, ?, ?, ?)",
         [message.message_id, message.session_id, message.role, message.content,
          message.citations_json, message.created_at],
@@ -137,7 +176,7 @@ def list_messages(session_id: str, limit: int = 50, db_path: str = DEFAULT_DB_PA
     df = _read(
         db_path,
         f"SELECT message_id, session_id, role, content, citations_json, created_at "
-        f"FROM chat_message WHERE session_id = '{_escape(session_id)}' "
+        f"FROM {_tbl(db_path, 'chat_message')} WHERE session_id = '{_escape(session_id)}' "
         f"ORDER BY created_at DESC LIMIT {int(limit)}",
     )
     return df.iloc[::-1].to_dict("records")

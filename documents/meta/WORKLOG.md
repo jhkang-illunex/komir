@@ -2,6 +2,43 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-08-19 (최신)⑤ — rag_chat API 컨테이너화 완료 + 실제 통합검증(사용자 지시:
+"rag는 api를 만들어야 하고... 전체 파이프라인이 돌게")
+
+CONTAINER_ARCHITECTURE.md §8 4단계("rag_chat — 세션/히스토리+스트리밍, 정형 리트리버
+최소구현")의 마지막 남은 조각 — 코드는 이미 완성돼 있었지만 **실제로 컨테이너 빌드·기동한
+적이 한 번도 없었다.** docker build/run으로 처음 실증했고, 그 과정에서 실제 버그 2건을
+발견·수정했다(소스트리 실행에서는 상위 sys.path로 가려져 있던 것들):
+
+1. **Containerfile 임베딩 모델 사전다운로드 TODO 실제 구현** — 주석처리돼 있던
+   `SentenceTransformer('intfloat/multilingual-e5-small')` RUN 스텝을 활성화, 빌드
+   성공 확인(airgap 런타임 전제상 빌드타임에만 가능).
+2. **`python-docx` 의존성 누락 발견** — `generate.py→build_index.py→chunk.py→
+   ingest.py` 임포트체인에 `import docx`가 있는데 requirements.txt에 없어 컨테이너가
+   기동 직후 즉시 크래시했다. requirements.txt에 추가.
+3. **chatbot_store.py에 PostgreSQL 지원 추가** — structured.py에 이어 세션/히스토리
+   저장소도 URL 타깃(postgres) 분기를 실제 구현(이전엔 `NotImplementedError`로
+   명시 미구현 상태였음). DuckDB `?` 자리표시자를 `%s`로 치환, 스키마는 `PG_SCHEMA`
+   환경변수로 한정. 이걸로 "DB는 외부서비스" 원칙(로컬 DuckDB 파일 마운트 불필요)이
+   rag_chat 전체(정형조회+세션이력)에 완성됐다.
+
+**실제 검증**: `docker build` 성공 → `docker run`(PAGEINDEX_TREES_DIR·
+OKF_DOCUMENTS_DIR 볼륨마운트, PG_DSN·MSR_DB(=PG_DSN)·LLM_BASE_URL=host.docker.internal
+env 주입) → `/healthz` 200 확인 → `POST /chat` SSE로 "니켈 현재 수급위기 등급"
+(structured 라우팅)·"코발트 DRC 수출"(dense+verify재질의) 둘 다 컨테이너 환경에서
+end-to-end 정상 확인 — CLI로 검증했던 것과 동일 품질이 실제 배포형태(HTTP API)에서도
+재현됨.
+
+**전제 조건(사용자 지시대로 가정)**: `분석요약`(report_gen)·`mineral_risk`(commodity_api)
+쪽은 "주기적으로 DB에 결과를 덤프한다"고 가정 — 이 서비스들 자체를 새로 건드리지 않았다.
+mineral_risk는 실제로 이미 그 가정이 성립함을 오늘 확인(postgres 정기동기화 cron, 별도
+사고 있었음 — `documents/meta/WORKLOG.md`(메인 브랜치) 같은 날짜 항목 참고, 이 브랜치와
+무관한 별도 이슈였고 이미 복구·재발방지 완료).
+
+**남은 것**(다음 단계, 이번엔 미착수): `services/deploy/`(설계 단계뿐) 실제
+podman-compose 통합 기동(commodity_api+rag_chat+report_gen 세 컨테이너를 한 번에) —
+지금은 rag_chat 단독 컨테이너만 검증됨.
+
 ## 2026-08-19 (최신)④ — structured.py 데이터소스를 PostgreSQL로 전환(사용자 지시)
 
 "정형 데이터 조회가 PostgreSQL에서 읽어오게 돼 있는지 확인, 아니면 바꿔달라"는 지시로
