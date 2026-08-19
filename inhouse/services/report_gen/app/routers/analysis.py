@@ -18,6 +18,11 @@
 3. **`POST /summary`(page_id를 본문으로 받는 통합 라우트)도 만들지 않았다.**
    원본이 "엔드포인트 이관 중 유지"라고 명시한 과도기 shim이라, 신규 이식본이
    물려받을 이유가 없다(5개 전용 경로가 정본 계약).
+4. **결과 저장 추가(원본엔 없음, 2026-08-19)**: 원본 5개 엔드포인트는 응답만
+   돌려주고 아무것도 저장하지 않는다. `analysis/store.py`의
+   `analyze_and_store()`로 교체해 `service.analyze()` 결과를 `out_report`에
+   적재까지 한다(`kind='summary'`, 주간 리포트와 같은 테이블·같은 멱등 방식).
+   응답 모델(`AnalysisSummaryResponse`)은 그대로라 API 계약엔 영향 없다.
 
 에러 매핑은 원본 그대로다 — `RawDataAccessError`(원천 조회 실패) → 503,
 `DataSourceError`(요청 조건에 맞는 데이터 없음/모순) → 422 + 한국어 사유.
@@ -43,6 +48,7 @@ from ..analysis.models import (
     Month,
 )
 from ..analysis.scaffold import RawDataAccessError
+from ..analysis.store import analyze_and_store
 
 router = APIRouter(prefix="/api/v1/analysis", tags=["analysis"])
 
@@ -144,7 +150,7 @@ def _run_summary(
         # 동기 엔드포인트는 스레드풀에서 돌아 동시 진입이 가능하다 — 원본
         # ApiRuntime.analysis_lock과 같은 이유로 직렬화한다.
         with request.app.state.analysis_lock:
-            return service.analyze(summary_request)
+            return analyze_and_store(service, summary_request)
     except RawDataAccessError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

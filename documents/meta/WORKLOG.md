@@ -2,7 +2,44 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-08-13 (최신) — report_gen에 외부repo "분석요약 5종" 엔진 이식·API 배선(8/11 오판 정정)
+## 2026-08-19 (최신) — 분석요약 5종에 `out_report` 적재 배선(결과 저장 프로세스 완성)
+
+2026-08-13에 이식한 분석요약 5종(`app/analysis/summary.py` 등)은 `service.analyze()`
+결과를 HTTP 응답으로 돌려주기만 하고 아무것도 저장하지 않았다 — 주간 리포트
+(`generator.py`)와 달리 "생성→저장" 중 저장 단계가 없었다. `CONTAINER_ARCHITECTURE.md`
+§4가 이미 "Report 생성기 ... `out_report` 스키마만 존재 — 이걸 확장해서 쓴다"고
+정해둔 대로, **새 테이블을 만들지 않고 `out_report`를 그대로 확장**해 저장까지
+연결했다(`kind='summary'`로 주간 리포트 `kind='report'`와 같은 테이블에 공존).
+
+**추가한 것**
+- `inhouse/services/report_gen/app/analysis/store.py`(신규) — `to_report_row()`
+  (`AnalysisSummaryResponse` → `out_report` 행 변환, 본문은 응답 전체를 JSON
+  직렬화해 담는다 — `out_diagnosis_alert.evidence_json`과 같은 관례) ·
+  `store_summary()`(삽입 전 같은 report_id 삭제 후 재삽입 — `generator.store_report()`
+  와 동일한 멱등 패턴) · `analyze_and_store()`(analyze+저장 공통 진입점).
+- **report_id**: 별도 해시를 새로 만들지 않고 엔진이 이미 계산해 응답에 담아
+  돌려주는 `filter_hash`(page_id+applied_filters의 sha256)를 그대로 재사용 —
+  `"ans_" + filter_hash[:24]`(28자, `report_id VARCHAR(32)` PK 이내). 같은
+  (페이지·광종·필터)로 다시 부르면 같은 id로 덮어써 멱등하다.
+- `routers/analysis.py`: `_run_summary()`가 `service.analyze()` 대신
+  `analyze_and_store(service, summary_request)`를 호출하도록 1줄 교체. 응답
+  모델(`AnalysisSummaryResponse`)은 외부repo 계약 그대로라 API 스키마 변화 없음
+  (저장은 부수효과).
+
+**실측 검증**(TestClient로 실제 앱 lifespan·실제 PostgreSQL(`komis_demo`)·실제
+MSR_DB(duckdb) 경유)
+- 5종 중 4종(시장동향·광물종합지수·광물지도·가격예측)을 실제 HTTP POST로 호출해
+  전부 200 + `out_report`에 `kind='summary'`로 정상 적재 확인(수급동향은 시장동향과
+  완전히 같은 코드 경로라 별도 실행 생략). LLM 정제까지 성공(`llm_refined=true`).
+- **멱등성 실측**: 같은 요청을 2번 호출해도 `report_id`(=filter_hash 기반) 동일,
+  `out_report`에 중복 행 없음(`GROUP BY report_id` 전부 n=1) 확인.
+- **왕복 검증**: 저장된 `body`를 다시 JSON 파싱해 `page_id`·`grade` 등 원본 응답
+  구조가 손실 없이 보존됨을 확인(예: 텅스텐 시장동향 `grade.label='신중'`).
+- 기존 `GET /reports/{report_id}`·`GET /reports`(수정 없이 그대로)로 저장된
+  분석요약을 정상 조회 — 새 엔드포인트를 추가하지 않고 기존 것을 재사용했다.
+- `python3 -m py_compile` 통과.
+
+## 2026-08-13 — report_gen에 외부repo "분석요약 5종" 엔진 이식·API 배선(8/11 오판 정정)
 
 8/11 병합 때 `analysis/summary.py`(1,084줄)·`additional_summary.py`(1,082줄)와
 5개 API 엔드포인트를 **"리포트 생성은 스텁"이라고 오판해 안 가져왔던 것**을 오늘
