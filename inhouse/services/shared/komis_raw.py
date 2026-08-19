@@ -432,6 +432,52 @@ class KomisRawDataRepository:
     def close(self) -> None:
         """no-op — 커넥션은 read_sql_pg가 호출 단위로 관리한다."""
 
+    # ────────────────────────────────────────────────────────────────
+    # 아래 3개 메서드는 외부repo 이식이 아니다(komir 자체 추가, 2026-08-19) —
+    # `/prices`·`/domestic-trade`·`/global-trade`는 원본도 501 스텁이라 참고할
+    # 원본 구현이 없다. `ai_mnrl_mst`(광종 마스터)·`ai_prc_mnrl_map`(광종→가격
+    # 기준일련번호)·`ai_hs_mnrl_map`(광종→HS코드)은 KOMIS가 이 3개 신규 엔드포인트를
+    # 위해 최근 채운 매핑 테이블이라 `_PAGE_DATASETS`(고정 스펙 1건당 필터 1종)
+    # 방식으로는 못 담는다 — 광종 하나가 가격기준·HS코드 여러 건에 매핑되기 때문에
+    # 별도 조회로 분리했다. 위 SELECT 조립부와 동일하게 `_literal()` 화이트리스트를
+    # 거친다(자유형 SQL 생성 금지 원칙은 그대로).
+    # ────────────────────────────────────────────────────────────────
+
+    def resolve_mineral(self, mineral_code: str) -> tuple[str, str] | None:
+        """`ai_mnrl_mst`에서 (코드, 한글명)을 찾는다. 없으면 None."""
+
+        code = _literal(mineral_code)
+        frame = read_sql_pg(
+            f"SELECT mnrknd_unq_cd, mnrl_nm_ko FROM {KOMIS_SCHEMA}.ai_mnrl_mst"
+            f" WHERE mnrknd_unq_cd = {code}"
+        )
+        if frame.empty:
+            return None
+        row = frame.iloc[0]
+        return str(row["mnrknd_unq_cd"]), str(row["mnrl_nm_ko"])
+
+    def resolve_price_criterion_serials(self, mineral_code: str) -> list[int]:
+        """`ai_prc_mnrl_map`에서 광종의 가격기준일련번호(들)를 찾는다(오름차순)."""
+
+        code = _literal(mineral_code)
+        frame = read_sql_pg(
+            f"SELECT mnrl_prc_crtr_sn FROM {KOMIS_SCHEMA}.ai_prc_mnrl_map"
+            f" WHERE mnrknd_unq_cd = {code} AND use_yn = 'Y'"
+            f" ORDER BY mnrl_prc_crtr_sn"
+        )
+        return [int(value) for value in frame["mnrl_prc_crtr_sn"]]
+
+    def resolve_hs_codes(self, mineral_code: str) -> list[str]:
+        """`ai_hs_mnrl_map`에서 광종의 HS코드(들)를 찾는다(오름차순)."""
+
+        code = _literal(mineral_code)
+        frame = read_sql_pg(
+            f"SELECT hs_cd FROM {KOMIS_SCHEMA}.ai_hs_mnrl_map"
+            f" WHERE mnrknd_unq_cd = {code} AND use_yn = 'Y'"
+            f" ORDER BY hs_cd"
+        )
+        return [str(value) for value in frame["hs_cd"]]
+
 
 def _json_value(value: Any) -> Any:
     """DB 값을 JSON 직렬화 가능한 스칼라로 정규화(원본 `_json_value` 이식).

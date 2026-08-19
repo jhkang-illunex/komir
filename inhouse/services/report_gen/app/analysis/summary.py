@@ -21,8 +21,17 @@
    두면 vLLM이 죽었을 때 규칙기반 요약으로 우아하게 물러나지 않고 API가 500을
    낸다 — 그래서 `RuntimeError`/`OSError`까지 잡아 원본이 의도한 폴백 동작을
    유지한다(`LLMError`·`requests.RequestException`이 각각 그 하위형이다).
+4. **komir 자체 3종 추가(2026-08-19, 이식 아님)**: `price`·`map_korea`·
+   `map_global`(광물자원가격·국내/글로벌 수급지도) 디스패치를 추가했다. 원본은
+   이 3종을 501 스텁으로만 뒀지 `analyze()`에 분기가 없다 — `_analyze_price`/
+   `_analyze_domestic_trade`/`_analyze_global_trade`는 komir가 새로 짠 것이고,
+   계산은 `komir_summary.py`(별도 파일, `additional_summary.py`와 안 섞음)를 쓴다.
+   `_deterministic_narrative`는 그대로 재사용하지만 `_refine_with_llm`은 안
+   태운다 — `prompts.py`(이식본)에 이 3종용 프롬프트·검증계약이 없어(원본 자체가
+   없던 기능이라) 새로 지어내면 원본과 대조검증할 근거가 없다. 규칙기반 응답만
+   돌려준다(이식 5종도 LLM 실패 시 이 수준으로 폴백하므로 품질 보장은 동일하다).
 
-계산 로직·검증 규칙(`_validate_llm_summary`)·문구는 원본 그대로다.
+계산 로직·검증 규칙(`_validate_llm_summary`)·문구는 원본 그대로다(포터 5종 한정).
 """
 
 from __future__ import annotations
@@ -43,6 +52,7 @@ from shared.llm_client import KomirJsonLLM, LLMError  # noqa: E402
 
 from .additional_summary import (  # noqa: E402
     ADDITIONAL_PAGE_CONTEXTS,
+    AdditionalCalculatedSummary,
     EvidenceClaim,
     SummaryPageContext,
     calculate_composite_summary,
@@ -51,11 +61,20 @@ from .additional_summary import (  # noqa: E402
 )
 from .data_sources import (  # noqa: E402
     CompositeIndexDataSource,
+    DomesticTradeDataSource,
+    GlobalTradeDataSource,
     IndicatorDataSource,
     MineralMapDataSource,
+    PriceDataSource,
     PriceForecastDataSource,
 )
 from .indicators import months_are_contiguous, percent_change  # noqa: E402
+from .komir_summary import (  # noqa: E402
+    KOMIR_PAGE_CONTEXTS,
+    calculate_domestic_trade_summary,
+    calculate_global_trade_summary,
+    calculate_price_summary,
+)
 from .models import (  # noqa: E402
     AnalysisSummaryRequest,
     AnalysisSummaryResponse,
@@ -71,6 +90,7 @@ from .models import (  # noqa: E402
     SummaryNarrative,
     SummaryPageId,
     SummarySentence,
+    TradeMapSeries,
 )
 from .policy import PagePolicy, load_page_policy  # noqa: E402
 from .prompts import build_summary_payload, summary_instructions  # noqa: E402
@@ -705,12 +725,19 @@ class AnalysisSummaryService:
         composite_source: CompositeIndexDataSource | None = None,
         mineral_map_source: MineralMapDataSource | None = None,
         price_forecast_source: PriceForecastDataSource | None = None,
+        price_source: PriceDataSource | None = None,
+        domestic_trade_source: DomesticTradeDataSource | None = None,
+        global_trade_source: GlobalTradeDataSource | None = None,
         llm: KomirJsonLLM | None = None,
     ) -> None:
         self._data_source = data_source
         self._composite_source = composite_source
         self._mineral_map_source = mineral_map_source
         self._price_forecast_source = price_forecast_source
+        # 아래 3개는 komir 자체 추가(2026-08-19) — §모듈 docstring 4번 참고.
+        self._price_source = price_source
+        self._domestic_trade_source = domestic_trade_source
+        self._global_trade_source = global_trade_source
         self._llm = llm
 
     def analyze(self, request: AnalysisSummaryRequest) -> AnalysisSummaryResponse:
@@ -722,6 +749,12 @@ class AnalysisSummaryService:
             return self._analyze_mineral_map(request)
         if request.page_id == "forecast_price":
             return self._analyze_price_forecast(request)
+        if request.page_id == "price":
+            return self._analyze_price(request)
+        if request.page_id == "map_korea":
+            return self._analyze_domestic_trade(request)
+        if request.page_id == "map_global":
+            return self._analyze_global_trade(request)
         return self._analyze_indicator(request)
 
     def _analyze_indicator(
@@ -1033,6 +1066,179 @@ class AnalysisSummaryService:
         if self._llm is None:
             return response
         return self._refine_with_llm(response, context, calculated.claims)
+
+    # ────────────────────────────────────────────────────────────────
+    # 아래 3개 메서드는 komir 자체 추가(2026-08-19, 이식 아님) — §모듈 docstring
+    # 4번 참고. `_analyze_composite`와 같은 모양(grade 없는 페이지)을 따른다.
+    # ────────────────────────────────────────────────────────────────
+
+    def _analyze_price(self, request: AnalysisSummaryRequest) -> AnalysisSummaryResponse:
+        """Load a price series and build its validated summary response."""
+
+        if self._price_source is None or request.mineral is None:
+            raise ValueError("price analysis data source is not configured")
+        series = self._price_source.get_price_series(
+            mineral=request.mineral,
+            start_date=request.start_date,
+            end_date=request.end_date,
+        )
+        calculated = calculate_price_summary(series)
+        context = KOMIR_PAGE_CONTEXTS["price"]
+        applied_filters = {
+            "mineral": series.mineral.name,
+            "mineral_code": series.mineral.code,
+            "start_date": request.start_date or series.observations[0].date,
+            "end_date": request.end_date or series.observations[-1].date,
+        }
+        defaulted_filters = [
+            name
+            for name, value in (
+                ("start_date", request.start_date),
+                ("end_date", request.end_date),
+            )
+            if value is None
+        ]
+        effective_warnings = [*series.warnings, *calculated.warnings]
+        quality_status: Literal["available", "partial", "insufficient"] = (
+            "available" if len(series.observations) >= 2 else "insufficient"
+        )
+        if effective_warnings and quality_status == "available":
+            quality_status = "partial"
+        response = AnalysisSummaryResponse(
+            request_id=request.request_id,
+            page_id=request.page_id,
+            analysis_scope=request.analysis_scope,
+            mineral=series.mineral,
+            applied_filters=applied_filters,
+            defaulted_filters=defaulted_filters,
+            filter_hash=_filter_hash(request.page_id, applied_filters),
+            source=SourceInfo(
+                type=series.source_type,
+                id=series.source_id,
+                data_version=series.data_version,
+                as_of=series.data_as_of,
+                file=series.source_file,
+                sheets=series.source_sheets,
+            ),
+            policy_version=context.policy_version,
+            page_definition=context.definition,
+            grade=None,
+            data_quality=DataQuality(
+                status=quality_status,
+                observation_count=len(series.observations),
+                available_start_date=series.available_start_date,
+                available_end_date=series.available_end_date,
+                effective_start_date=series.observations[0].date,
+                effective_end_date=series.observations[-1].date,
+                warnings=effective_warnings,
+            ),
+            summary=_deterministic_narrative(calculated.claims),
+            key_metrics=calculated.key_metrics,
+            detailed_metrics=calculated.detailed_metrics,
+            detected_patterns=calculated.patterns,
+            omitted_indicators=calculated.omitted,
+            notices=context.analysis_constraints,
+        )
+        # LLM 정제는 안 태운다 — `prompts.py`(이식본)의 `page_instructions`에
+        # 이 3종 항목이 없다(원본에 이 3종의 프롬프트·검증계약 자체가 없어서
+        # 새로 지어내야 하는데, 그러면 이식 5종처럼 원본과 대조검증할 근거가
+        # 없다). 규칙기반 요약만으로도 완결된 응답이다 — 이식 5종도 LLM 실패 시
+        # 이 규칙기반 응답으로 폴백하는 것과 같은 품질 보장 수준이다.
+        return response
+
+    def _analyze_domestic_trade(self, request: AnalysisSummaryRequest) -> AnalysisSummaryResponse:
+        """Load a domestic (KO_CSTM_CMMRC) trade-map series and build its response."""
+
+        if self._domestic_trade_source is None or request.mineral is None:
+            raise ValueError("domestic trade analysis data source is not configured")
+        series = self._domestic_trade_source.get_domestic_trade_series(
+            mineral=request.mineral,
+            start_date=request.start_date,
+            end_date=request.end_date,
+        )
+        calculated = calculate_domestic_trade_summary(series)
+        return self._respond_trade_map(request, series, calculated, KOMIR_PAGE_CONTEXTS["map_korea"])
+
+    def _analyze_global_trade(self, request: AnalysisSummaryRequest) -> AnalysisSummaryResponse:
+        """Load a global (KO_UN_CMMRC) trade-map series and build its response."""
+
+        if self._global_trade_source is None or request.mineral is None:
+            raise ValueError("global trade analysis data source is not configured")
+        series = self._global_trade_source.get_global_trade_series(
+            mineral=request.mineral,
+            start_date=request.start_date,
+            end_date=request.end_date,
+        )
+        calculated = calculate_global_trade_summary(series)
+        return self._respond_trade_map(request, series, calculated, KOMIR_PAGE_CONTEXTS["map_global"])
+
+    def _respond_trade_map(
+        self,
+        request: AnalysisSummaryRequest,
+        series: TradeMapSeries,
+        calculated: AdditionalCalculatedSummary,
+        context: SummaryPageContext,
+    ) -> AnalysisSummaryResponse:
+        """`_analyze_domestic_trade`/`_analyze_global_trade` 공통 응답 조립부."""
+
+        dates = sorted({item.date for item in series.observations})
+        applied_filters = {
+            "mineral": series.mineral.name,
+            "mineral_code": series.mineral.code,
+            "start_date": request.start_date or dates[0],
+            "end_date": request.end_date or dates[-1],
+        }
+        defaulted_filters = [
+            name
+            for name, value in (
+                ("start_date", request.start_date),
+                ("end_date", request.end_date),
+            )
+            if value is None
+        ]
+        effective_warnings = [*series.warnings, *calculated.warnings]
+        quality_status: Literal["available", "partial", "insufficient"] = (
+            "available" if len(dates) >= 1 else "insufficient"
+        )
+        if effective_warnings and quality_status == "available":
+            quality_status = "partial"
+        response = AnalysisSummaryResponse(
+            request_id=request.request_id,
+            page_id=request.page_id,
+            analysis_scope=request.analysis_scope,
+            mineral=series.mineral,
+            applied_filters=applied_filters,
+            defaulted_filters=defaulted_filters,
+            filter_hash=_filter_hash(request.page_id, applied_filters),
+            source=SourceInfo(
+                type=series.source_type,
+                id=series.source_id,
+                data_version=series.data_version,
+                as_of=series.data_as_of,
+                file=series.source_file,
+                sheets=series.source_sheets,
+            ),
+            policy_version=context.policy_version,
+            page_definition=context.definition,
+            grade=None,
+            data_quality=DataQuality(
+                status=quality_status,
+                observation_count=len(series.observations),
+                available_start_date=series.available_start_date,
+                available_end_date=series.available_end_date,
+                effective_start_date=dates[0],
+                effective_end_date=dates[-1],
+                warnings=effective_warnings,
+            ),
+            summary=_deterministic_narrative(calculated.claims),
+            key_metrics=calculated.key_metrics,
+            detailed_metrics=calculated.detailed_metrics,
+            detected_patterns=calculated.patterns,
+            omitted_indicators=calculated.omitted,
+            notices=context.analysis_constraints,
+        )
+        # `_analyze_price`와 같은 이유로 LLM 정제는 안 태운다(§주석 참고).
+        return response
 
     def _refine_with_llm(
         self,

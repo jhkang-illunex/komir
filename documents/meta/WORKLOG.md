@@ -2,7 +2,72 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-08-19 (최신) — 분석요약 5종에 `out_report` 적재 배선(결과 저장 프로세스 완성)
+## 2026-08-19 (최신, 이어서) — 분석요약 미구현 3종(`/prices`·`/domestic-trade`·`/global-trade`) 신규 구현
+
+앞 절(`out_report` 적재)에 이어, 발주처 화면기획안 대조에서 "API 자체가 없다"고
+확인됐던 3종을 새로 만들었다. 외부repo(`komis-report-generator-main`)도 이 3종은
+501 스텁뿐이라 참고할 원본 구현이 없다 — 5종처럼 "이식"이 아니라 komir가 처음부터
+설계·작성했다.
+
+**계기**: 사용자가 "API가 없는 부분도 구현"을 지시. 착수 전 실측으로 KOMIS가
+2026-08-19 오전 이 3종을 위한 광종 매핑 테이블(`public.ai_prc_mnrl_map`(광종→
+가격기준일련번호)·`ai_hs_mnrl_map`(광종→HS코드))과 CU/NI/CO/LI용 DEV_DUMMY 데이터
+(`ai_mnrl_mst`에 `[DEV_DUMMY] ... load=DEV_DUMMY_20260819` 표기)를 새로 채워둔 것을
+발견 — 이 매핑 없이는 이 3종을 만들 수 없었다(원본에도 없던 기능이라).
+
+**만든 것(전부 이식 아님, komir 자체 작성)**
+- `services/shared/komis_raw.py` — `KomisRawDataRepository`에 3개 메서드 추가:
+  `resolve_mineral`(광종코드→한글명, `ai_mnrl_mst`)·`resolve_price_criterion_
+  serials`(→`ai_prc_mnrl_map`)·`resolve_hs_codes`(→`ai_hs_mnrl_map`). 기존
+  `_literal()` 화이트리스트 검증을 그대로 재사용(자유형 SQL 금지 원칙 유지).
+- `services/report_gen/app/analysis/models.py` — `SummaryPageId`에 `price`·
+  `map_korea`·`map_global` 3개 추가, `PriceSeries`/`PriceObservation`·
+  `TradeMapSeries`/`TradeCountryObservation` 신규 모델, `AnalysisSummaryRequest.
+  validate_period`에 3종 분기 추가(광종 필수+일자 필터만 허용).
+- `services/report_gen/app/analysis/data_sources/extra.py`(신규) —
+  `DatabasePriceDataSource`/`DatabaseDomesticTradeDataSource`/
+  `DatabaseGlobalTradeDataSource`. 이식본(`database.py`)과 안 섞음(그 파일의
+  "원본에서 바뀐 것은 import 뿐" 주장을 안 깨려고).
+- `services/report_gen/app/analysis/komir_summary.py`(신규) — 3종의 결정론적
+  요약 계산(`calculate_price_summary`/`calculate_domestic_trade_summary`/
+  `calculate_global_trade_summary`). `additional_summary.py`(이식본)의 재사용
+  가능한 헬퍼(`EvidenceClaim`·`_number`·`_quantity`)만 가져다 쓰고 계산 로직
+  자체는 새로 짰다 — pptx `260713 AI 분석요약 및 대화형 검색시스템 검토
+  요청사항_일루넥스.pptx`의 예시 문구(최신가격/전일·전주·전월·전년대비, 1위국
+  비중, 상위3국 집중도)를 근거로 설계.
+- `analysis/summary.py`·`routers/analysis.py`·`main.py` — 디스패치·엔드포인트·
+  서비스 조립 배선. **LLM 정제는 이 3종에 안 태운다** — `prompts.py`(이식본)에
+  이 3종용 프롬프트·엄격한 근거인용 검증계약이 없어(원본 자체가 없던 기능),
+  새로 지어내면 원본과 대조검증할 근거가 없다. 규칙기반 요약만 반환(이식 5종도
+  LLM 실패 시 이 수준으로 폴백하므로 품질 보장은 동일).
+
+**실측으로 드러난 함정 1건**: `KO_UN_CMMRC`(글로벌, UN Comtrade)는 HS코드가
+국제표준 **6자리**(예 `810110`)인데, `ai_hs_mnrl_map`은 관세청 HSK **10자리**
+(예 `8101100000`)다 — 10자리 그대로 필터하면 실데이터 있는 텅스텐도 0행이 나옴.
+`KO_CSTM_CMMRC`(국내, 관세청)는 10자리 그대로 맞는다(자릿수가 다른 원천이 섞여
+있다는 걸 실측 전엔 몰랐음). 글로벌만 앞 6자리로 잘라 중복제거 후 조회하도록
+수정.
+
+**실측 검증**(TestClient, 실제 PostgreSQL 경유)
+- `/prices`: 리튬(CU계열 더미, MNRL0001) 200 + 텅스텐(실데이터) 200, 전일·전주·
+  전월·전년대비 등락률 정상 계산.
+- `/domestic-trade`: 동(더미, MNRL0008) 200 + 텅스텐(실데이터) 200, 1위국/상위3국
+  비중 정상 계산.
+- `/global-trade`: 텅스텐(실데이터) 200(공급국 순위 계산 확인) / 니켈(더미조차
+  없음) 422 "데이터 없음"(500 아님, 정상).
+- REE(Nd, `ai_prc_mnrl_map`/`ai_hs_mnrl_map` 둘 다 매핑 없음) → 422 "매핑된
+  가격기준이 없다"(우아한 실패, 정상).
+- 8종 전부(기존 5+신규 3) `out_report`에 `kind='summary'`로 저장, 멱등성(중복
+  report_id 0건) 재확인. 기존 5종 회귀 없음(재실행해 동일 결과 확인).
+- `python3 -m py_compile` 전체 통과, `import app.main` 라우트 8개+기존 4개 정상.
+
+**알려진 한계(의도적으로 남겨둠)**: `/global-trade`의 "상대국(공급국) 기준 랭킹"
+해석은 pptx에 정확한 스펙이 없어 komir가 합리적으로 설계한 것 — 발주처 확인
+필요. 광종 1건에 가격기준이 여럿이면(텅스텐 7건) 가장 이른 번호만 쓴다(발주
+5광종은 전부 1건뿐이라 실무 영향 없음). CU/NI/CO/LI의 DEV_DUMMY 데이터는 실샘플이
+아니라는 점은 여전히 유효 — 코드 경로만 실증됐을 뿐 산출물로는 못 씀.
+
+## 2026-08-19 — 분석요약 5종에 `out_report` 적재 배선(결과 저장 프로세스 완성)
 
 2026-08-13에 이식한 분석요약 5종(`app/analysis/summary.py` 등)은 `service.analyze()`
 결과를 HTTP 응답으로 돌려주기만 하고 아무것도 저장하지 않았다 — 주간 리포트

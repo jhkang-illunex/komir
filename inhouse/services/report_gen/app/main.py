@@ -8,6 +8,9 @@
   mineral-map,price-forecast}` — KOMIS 분석요약 5종(2026-08-13 추가,
   `routers/analysis.py`). 외부 저장소 komis-report-generator-main의 실물 엔진을
   `app/analysis/`로 이식해 배선한 것이다.
+- `POST /api/v1/analysis/{prices,domestic-trade,global-trade}` — 나머지 3종
+  (2026-08-19 추가). 외부repo도 501 스텁이라 참고할 구현이 없어 komir가 자체로
+  짰다(`analysis/data_sources/extra.py`+`analysis/komir_summary.py`).
 - 앱 기동 시 `scheduler.create_scheduler()`(APScheduler, `REPORT_SCHEDULE_CRON`)를
   등록하고 종료 시 내린다.
 
@@ -51,8 +54,11 @@ def build_analysis_summary_service():
 
     from .analysis.data_sources import (
         DatabaseCompositeIndexDataSource,
+        DatabaseDomesticTradeDataSource,
+        DatabaseGlobalTradeDataSource,
         DatabaseIndicatorDataSource,
         DatabaseMineralMapDataSource,
+        DatabasePriceDataSource,
         DatabasePriceForecastDataSource,
     )
     from .analysis.scaffold import KomisRawDataRepository
@@ -73,6 +79,11 @@ def build_analysis_summary_service():
         composite_source=DatabaseCompositeIndexDataSource(repository),
         mineral_map_source=DatabaseMineralMapDataSource(repository),
         price_forecast_source=DatabasePriceForecastDataSource(repository),
+        # 아래 3개는 komir 자체 추가(2026-08-19) — `/prices`·`/domestic-trade`·
+        # `/global-trade`, §routers/analysis.py 모듈 docstring 참고.
+        price_source=DatabasePriceDataSource(repository),
+        domestic_trade_source=DatabaseDomesticTradeDataSource(repository),
+        global_trade_source=DatabaseGlobalTradeDataSource(repository),
         llm=llm,
     )
 

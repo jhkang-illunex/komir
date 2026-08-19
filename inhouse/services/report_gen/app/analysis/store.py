@@ -31,6 +31,9 @@ _PAGE_TITLES = {
     "indicator_composite": "광물종합지수 분석요약",
     "map_mineral": "광물지도 분석요약",
     "forecast_price": "가격예측 분석요약",
+    "price": "광물자원가격 분석요약",
+    "map_korea": "국내 수급지도 분석요약",
+    "map_global": "글로벌 수급지도 분석요약",
 }
 
 
