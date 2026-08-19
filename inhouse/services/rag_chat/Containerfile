@@ -1,4 +1,10 @@
-# RAG 챗봇 — user_id/session_id 히스토리 + 스트리밍. rag/ragkit(기존 하이브리드 검색)를 임포트.
+# RAG 챗봇 — user_id/session_id 히스토리 + 스트리밍. 정형(Postgres out_*)·
+# dense(pgvector doc_chunk)·PageIndex(OKF 트리) 3도구를 LangGraph로 조합한다
+# (rag/ragkit/chatbot_graph.py, 2026-08-13). dense용 임베딩 모델(e5-small)만
+# 이 컨테이너 안에서 직접 로드하고, PageIndex는 트리 JSON을 파일로 읽는다 —
+# PAGEINDEX_TREES_DIR·OKF_DOCUMENTS_DIR가 가리키는 data_lake/semi_structure/
+# {pageindex_trees,okf_documents}는 이미지에 안 굽고 볼륨 마운트로 붙일 것
+# (§0 "DB는 외부서비스" 원칙과 같은 이유 — 대용량 산출물을 이미지에 넣지 않는다).
 # TODO(구현 단계): geo/Dockerfile 패턴 재사용. e5-small 임베딩 가중치는 airgap 전제상
 # 빌드 시점에 이미지에 미리 다운로드해 포함(런타임 인터넷 접근 불가).
 FROM python:3.12-slim
@@ -24,6 +30,13 @@ COPY services/shared ./shared
 # (2026-08-11: 경로를 engine/rag/ragkit → rag/ragkit으로 정정 — 2026-08-06 DMZ/inhouse
 # 분리로 engine/이 없어지고 inhouse/rag가 됐음, 이 Containerfile 빌드 컨텍스트는 inhouse/)
 COPY rag/ragkit ./rag/ragkit
+
+# rag/ragkit/generate.py·chatbot.py·services/shared/llm_client.py가 공통으로 쓰는
+# geo/llm/openai_compat.OpenAICompatChat — geo/ 전체가 아니라 llm/ 서브패키지만
+# (geo/__init__.py·geo/extractors.py 최소 COPY와 같은 이유, 수집기·추출기는 불필요).
+# 2026-08-13 실측: 이전엔 이 COPY가 빠져 있어 컨테이너가 뜨면 import 단계에서
+# 바로 깨졌을 지점(소스트리 실행에서는 상위 sys.path 삽입으로 가려져 안 드러났음).
+COPY geo/llm ./geo/llm
 
 # services/ingestion(2026-08-11 신설, 병합계획_komis-report-generator_260811.md) —
 # PDF 파서가 geo.extractors(opendataloader+OCR 폴백 체인)를 그대로 재사용하므로
