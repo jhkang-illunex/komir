@@ -63,6 +63,20 @@ class LLMOutputError(LLMError):
     """모델이 유효한 구조화 응답을 끝내 만들지 못했을 때."""
 
 
+#: `KomirJsonLLM.invoke()` 호출부가 "LLM 호출 실패 시 부분 결과라도 살린다"는
+#: 부분열화 계약을 지키려면 `except LLMError`만으로는 부족하다 — 실제 HTTP는
+#: `geo/llm/openai_compat.py`의 `OpenAICompatChat.complete()`가 수행하는데,
+#: 재시도 소진 후 HTTP 429/5xx는 평범한 `RuntimeError`로, 타임아웃·커넥션
+#: 오류는 `requests.RequestException`(OSError의 서브클래스)으로 던진다 — 둘 다
+#: `LLMError`의 서브클래스가 아니다(정의가 서로 다른 파일에 독립적으로 있음).
+#: 2026-08-13 herd 코드리뷰에서 `pageindex_agent.agentic_lookup()`이 딱 이
+#: 간극 때문에 이미 모은 근거를 유실하는 걸 실측으로 발견했다 — 그 수정을
+#: 여기로 승격해 LLM 호출부 전체(route/reformulate/verify/pageindex_agent)가
+#: 공유한다. `requests`를 이 파일이 직접 import 안 해도 되게, 그 부모 클래스인
+#: OSError로 넓게 잡는다(HTTP 클라이언트 구현 세부사항에 결합되지 않기 위함).
+LLM_TRANSIENT_ERRORS = (LLMError, RuntimeError, OSError)
+
+
 @dataclass(frozen=True, slots=True)
 class LLMInvocation:
     """검증된 모델 출력과 감사용 호출 기록."""

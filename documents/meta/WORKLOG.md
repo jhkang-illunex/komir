@@ -475,6 +475,627 @@ scikit-learn/shap/python-dotenv를 반영(plotly/streamlit은 API 서빙에 불�
 되는 것"으로 분류해뒀다 — diagnosis/forecast 응답에 원자료(contrib·probs·SHAP
 local/global)는 이미 포함돼 있어 후속 화면 어댑터가 이 위에서 조립하면 된다.
 podman-compose 통합 기동(§8 6단계)·rag_chat/report_gen과의 공존 스모크는 미실행.
+## 2026-08-19 (최신)⑤ — rag_chat API 컨테이너화 완료 + 실제 통합검증(사용자 지시:
+"rag는 api를 만들어야 하고... 전체 파이프라인이 돌게")
+
+CONTAINER_ARCHITECTURE.md §8 4단계("rag_chat — 세션/히스토리+스트리밍, 정형 리트리버
+최소구현")의 마지막 남은 조각 — 코드는 이미 완성돼 있었지만 **실제로 컨테이너 빌드·기동한
+적이 한 번도 없었다.** docker build/run으로 처음 실증했고, 그 과정에서 실제 버그 2건을
+발견·수정했다(소스트리 실행에서는 상위 sys.path로 가려져 있던 것들):
+
+1. **Containerfile 임베딩 모델 사전다운로드 TODO 실제 구현** — 주석처리돼 있던
+   `SentenceTransformer('intfloat/multilingual-e5-small')` RUN 스텝을 활성화, 빌드
+   성공 확인(airgap 런타임 전제상 빌드타임에만 가능).
+2. **`python-docx` 의존성 누락 발견** — `generate.py→build_index.py→chunk.py→
+   ingest.py` 임포트체인에 `import docx`가 있는데 requirements.txt에 없어 컨테이너가
+   기동 직후 즉시 크래시했다. requirements.txt에 추가.
+3. **chatbot_store.py에 PostgreSQL 지원 추가** — structured.py에 이어 세션/히스토리
+   저장소도 URL 타깃(postgres) 분기를 실제 구현(이전엔 `NotImplementedError`로
+   명시 미구현 상태였음). DuckDB `?` 자리표시자를 `%s`로 치환, 스키마는 `PG_SCHEMA`
+   환경변수로 한정. 이걸로 "DB는 외부서비스" 원칙(로컬 DuckDB 파일 마운트 불필요)이
+   rag_chat 전체(정형조회+세션이력)에 완성됐다.
+
+**실제 검증**: `docker build` 성공 → `docker run`(PAGEINDEX_TREES_DIR·
+OKF_DOCUMENTS_DIR 볼륨마운트, PG_DSN·MSR_DB(=PG_DSN)·LLM_BASE_URL=host.docker.internal
+env 주입) → `/healthz` 200 확인 → `POST /chat` SSE로 "니켈 현재 수급위기 등급"
+(structured 라우팅)·"코발트 DRC 수출"(dense+verify재질의) 둘 다 컨테이너 환경에서
+end-to-end 정상 확인 — CLI로 검증했던 것과 동일 품질이 실제 배포형태(HTTP API)에서도
+재현됨.
+
+**전제 조건(사용자 지시대로 가정)**: `분석요약`(report_gen)·`mineral_risk`(commodity_api)
+쪽은 "주기적으로 DB에 결과를 덤프한다"고 가정 — 이 서비스들 자체를 새로 건드리지 않았다.
+mineral_risk는 실제로 이미 그 가정이 성립함을 오늘 확인(postgres 정기동기화 cron, 별도
+사고 있었음 — `documents/meta/WORKLOG.md`(메인 브랜치) 같은 날짜 항목 참고, 이 브랜치와
+무관한 별도 이슈였고 이미 복구·재발방지 완료).
+
+**남은 것**(다음 단계, 이번엔 미착수): `services/deploy/`(설계 단계뿐) 실제
+podman-compose 통합 기동(commodity_api+rag_chat+report_gen 세 컨테이너를 한 번에) —
+지금은 rag_chat 단독 컨테이너만 검증됨.
+
+## 2026-08-19 (최신)④ — structured.py 데이터소스를 PostgreSQL로 전환(사용자 지시)
+
+"정형 데이터 조회가 PostgreSQL에서 읽어오게 돼 있는지 확인, 아니면 바꿔달라"는 지시로
+`services/shared/retrieval/structured.py` 점검 — **PostgreSQL이 아니었을 뿐 아니라 실제로는
+빈 결과만 내고 있던 숨은 버그**를 발견했다. `read_sql_msr()`(MSR_DB) 경유였는데, 이
+워크트리 `.env`엔 MSR_DB가 아예 설정 안 돼 있어 `config.py` 기본값(워크트리 로컬의
+**빈** stub duckdb)으로 조용히 폴백 중이었다 — `.env` 자체에 "structured 도구는 이번
+검증 범위 밖"이라는 주석까지 있어(직전 세션이 의도적으로 미배선), 지금까지 시나리오
+2-1(통계조회)이 코드는 있어도 실제로 트리거된 적이 없었다(직전 갭목록 문서의 "2-1
+구현됨" 판정은 코드존재 확인일 뿐 end-to-end 미검증이었음 — 이번에 처음 실측 확인).
+
+**변경**: `read_sql_msr` → `read_sql_pg()`(PG_DSN, `mineral_risk` 스키마 — dense_pg.py·
+bm25_pg.py와 동일 접속) 전환. 스키마는 `get_settings().PG_SCHEMA`로 동적 지정(하드코딩
+금지 규약 준수). 컬럼명 전부 실측 대조 확인(`out_diagnosis_alert`/`out_import_forecast`/
+`geo_index`) 후 3개 함수 전부 실행 성공 + 챗봇 전체 파이프라인으로 "니켈 현재 수급위기
+등급 알려줘" 질의 시 `structured=True(latest_diagnosis/NI)` 라우팅→정상 답변까지 최초로
+end-to-end 확인.
+
+**발견(별도 이슈, 이번엔 미수정)**: PG `mineral_risk` 스키마는 실시간 동기화가 아님 —
+`out_diagnosis_alert`·`out_import_forecast`는 우연히 라이브 duckdb와 일치(그 파이프라인이
+08-10 이관 이후 재실행 안 됨)했지만, `geo_index`는 **PG가 라이브보다 약 1주 뒤처짐**(PG
+최신주 08-02 vs 라이브 08-09, 오늘 진행한 expanding-window 리팩터 반영분도 PG엔 없음).
+정기 동기화 도입 여부는 운영 전 별도 결정 필요 — `structured.py` 상단에 경고 주석으로
+남겨둠. `RAG챗봇_기능요구서_구현현황_갭목록_260819.md`에도 반영 필요(다음 갱신 때).
+
+## 2026-08-19 (최신)③ — RAG 챗봇 기능요구서 대조·구현현황·갭 목록 정리(사용자 지시)
+
+`documents/인수인계/핵심광물 수급위기 진단 챗봇 기획안.pdf`(사용자시나리오 6종+세부옵션
+A/B/C안)와 `...결정(협의내용).txt`(발주처 확정안)를 원문 직접 확인 후, 현재 `rag` 브랜치
+코드(`chatbot_graph.py`·`intent.py`·`page_recommend/`·`structured.py`·`generate.py` 등)와
+1:1 대조. 결과물: `documents/산출물/2026-W34_0817-0823/RAG챗봇_기능요구서_구현현황_갭목록_260819.md`.
+
+**핵심 발견**:
+- 시나리오 2-5(메뉴안내)는 `chatbot_graph.py`가 아니라 **별도 서브시스템**
+  (`page_recommend/`, 43페이지 레지스트리, `intent.py`가 document/page 2경로로 자동분류)이
+  담당한다는 걸 코드로 확인 — 처음엔 "미구현"으로 오판할 뻔했다가 라우팅 구조를 끝까지
+  추적해 정정.
+- 시나리오 2-6(범위밖질문) B안 요구사항(답변불가+제공가능범위 안내) **미달**: `generate.py`의
+  `ABSTAIN_TEXT`가 "근거를 찾지 못했습니다" 하나뿐이라, 투자조언 같은 범위외 질문도 그냥
+  근거없음과 똑같이 처리됨 — 도메인 경계 인식 프롬프트 보강 필요.
+- 시나리오 2-4(비교질문) 구조적 공백: `RetrievalRoute.commodity_code`가 단일값
+  (`Literal[...] | None`)이라 정형 도구가 한 턴에 광종 1개만 조회 가능 — "리튬 vs 니켈"류
+  비교는 구조적 지원 없이 dense 검색이 우연히 두 광종 다 언급한 문서를 찾아야만 됨.
+- 대화 어투(A안, 격식체) 미강제: `SYSTEM_PROMPT`에 어투 지시문 자체가 없어 LLM 기본값에
+  의존 — 지금까지 응답이 격식체였던 건 우연.
+- 12개 추가작업/확인필요 항목을 우선순위와 함께 목록화(문서 §3 참고) — 1순위 범위밖질문,
+  2순위 비교질문 구조보강.
+
+코드 변경 없음(순수 조사·문서화).
+
+## 2026-08-19 (최신)② — dense 검색 날짜인식 부스트(A) + BM25 하이브리드 재도입(D)
+
+사용자가 실사용 테스트("최근 구리 LME 시황"/"2026년 상반기 니켈"/"코발트 DRC 수출")로
+챗봇 응답 품질을 확인시켜본 결과, "2026년 상반기 니켈 LME 가격 동향"이 **실제로 코퍼스에
+있는 문서(Argus 2026년 1~6월판 113건, 전부 니켈 언급)를 두고도 기권**하는 걸 발견 —
+`dense_pg.dense_search_pg()`가 순수 코사인 top-5라 날짜 개념이 전혀 없던 게 원인. 사용자
+승인 하 두 방향(A: 날짜 인식 부스트, D: BM25 하이브리드 재도입) 구현.
+
+**전제조사(중요 발견)**: `doc_chunk.pub_date` 컬럼이 있길래 쓰려 했더니 140,031행 중
+**783행(0.6%)만 채워져 있고 Argus는 0건**이었다 — `build_okf_documents.py`가 title에
+날짜를 담아뒀을 뿐 pub_date로 넘기는 코드가 없었음. `services/ingestion/
+backfill_doc_chunk_pub_date.py` 신설(Argus "(YYYY-MM-DD)"·조달청 "(YYYY.M.D)"·USGS
+"USGS_YYYY"(연도만) 패턴 파싱, doc_id 단위 매핑 후 벌크 UPDATE) — 96,780행(69%)까지
+채움. Argus는 690/690 전부 매칭, 미매칭 376건(조달청 대체표기 348건 등)은 정직한 결측
+유지.
+
+**A(날짜인식 부스트)**: `dense_pg.py`에 `extract_date_range()`(연도+상반기/하반기/분기/
+월 파싱) 신설. **실측으로 실제 버그 하나 더 발견**: 정규식에 `\b`(word boundary)를 썼는데
+Python `re`가 한글을 `\w`로 취급해 "2026년"처럼 숫자 바로 뒤에 한글이 붙으면 경계가 전혀
+안 잡혀 **모든 "YYYY년" 질의에서 None을 반환**하는 버그였음 — `(?<!\d)`/`(?!\d)` lookaround로
+교체해 해결. `dense_search_pg()`는 날짜매칭 청크의 코사인 거리를 소폭(`_DATE_BOOST=0.08`)
+깎아 우선순위만 올린다 — **하드 필터 아님**(pub_date 44%가 여전히 NULL이라 하드필터는
+위험, 매칭 0건이어도 결과가 비지 않게 설계).
+
+**D(BM25 하이브리드)**: 기존 `rag/ragkit/retrieve.py::hybrid_search()`는 구 코퍼스
+(<100건) 전용 DuckDB FTS라 재사용 불가 — 같은 RRF 공식·상수(`RRF_K=60`)를 새 데이터소스
+(pgvector `doc_chunk`)에 재적용. `idx_doc_chunk_txt_fts` GIN 인덱스 신설(순수 추가 DDL)
++ `bm25_pg.py`(Postgres `ts_rank_cd`, `'simple'` config — 한국어 형태소분석 없이 공백
+토큰화만, 이번 동기인 "2026"·"DRC"·"LME" 같은 정확토큰 매칭엔 충분) + `hybrid_pg.py`
+(dense+bm25 RRF 융합). `chatbot_graph.py`의 dense 단독 호출을 hybrid로 교체 —
+`Evidence.from_dense_chunk()`는 필드명이 같아 무변경.
+
+**회귀검증**: 3개 질문 재실행 — "2026년 상반기 니켈"이 기권 없이 정상 응답으로 전환
+(ING 2026 가격전망 $15,250/t·인도네시아 RKAB 등 실제 최신 근거로 답변), "코발트 DRC
+수출"은 기존 응답 유지+10월 쿼터제 도입 등 정보 추가(BM25가 놓쳤던 청크 보강), "구리
+LME 시황"도 회귀 없음. 전부 `MSR_DB`를 실 프로덕션 DB로 지정해 `rag.ragkit.chatbot` CLI
+데모로 직접 실행 확인.
+
+## 2026-08-19 — PDF 추출기 대안(firecrawl/pdf-inspector) 검토 → 현행(opendataloader-pdf) 유지 결정
+
+pageindex_agent.py 작업 중 발견한 "USGS 일부 연도판 헤딩 유실"(위 절들 참고)
+결함의 근본 원인이 PDF→MD 1단계 추출기(opendataloader-pdf)에 있다는 점에서,
+대안으로 제안받은 `firecrawl/pdf-inspector`(Rust, MIT, 폰트크기 기반 헤딩
+검출)를 조사·비교했다. 결론: **현행 opendataloader-pdf 그대로 유지**(사용자
+결정).
+
+**비교 근거**: 공개 벤치마크(opendataloader-bench, 200p 코퍼스, 2026-07-31)
+기준 현재 프로젝트가 실제 쓰는 opendataloader "plain" 모드(Overall 0.831)는
+pdf-inspector(0.875)에 정확도·속도 모두 뒤지지만, **opendataloader "hybrid"
+모드(Overall 0.907)는 pdf-inspector보다 오히려 앞선다** — 즉 새 의존성을
+도입하지 않고 기존 라이브러리의 실행 모드만 바꿔도 pdf-inspector 이상의
+개선 여지가 있다는 뜻. 또한 pdf-inspector는 1단계(PDF→MD) 추출기일 뿐
+2단계(마크다운→목차 트리, `page_index_md.py`의 정규식 기반 헤딩 파싱)는
+대체하지 못해 완전한 대체재가 아니다. "폰트크기 기반 헤딩 검출이 이번
+헤딩유실 결함을 실제로 피해가는지"는 USGS 원본 PDF로 파일럿을 안 돌려봐서
+미검증 상태로 남겨뒀다.
+
+**재시도 금지 아님(향후 재검토 여지)**: opendataloader hybrid 모드 전환은
+아직 안 해봤고, "airgap 실측 검증까지 마친 채택된 대안"이 아니라 "검토했으나
+당장 안 바꾸기로 한 것"이다 — GACC headless류(§재시도 금지 목록)와는 성격이
+다르다. 필요하면 나중에 hybrid 모드 파일럿부터 시도할 것.
+
+## 2026-08-18 — 국가명 화이트리스트 커버리지 실측 검증(지난 herd 리뷰 후속과제 ③, 종결)
+
+바로 아래 절(②) 직후 마지막 남은 과제(국가명 화이트리스트가 유한 목록이라
+완전한 커버리지는 아님 — 권고안은 "표에서 대문자시작 토큰+숫자열 패턴으로
+국가를 동적 추출하는 근본해법")를 검토했다. 구현에 들어가기 전에 "정말 지금
+누락이 있는가"부터 실측했다.
+
+**점검 도구 신설(`pageindex_agent.find_uncovered_country_candidates()`)**:
+코퍼스의 광종 91개(list_known_commodities 기준) 전체를 최신 연도판 1개씩
+훑어, `_COUNTRY_RE`가 모르는 "대문자로 시작하는 단어 바로 뒤에 정상 서식
+숫자가 오는" 후보를 찾는다. `__main__`에 `--check-coverage` 플래그로 노출
+(`python3 -m shared.retrieval.pageindex_agent --check-coverage`).
+
+**실측 결과: 진짜 누락 0건**. 초기엔 다단어 조합(최대 4단어)으로 더 넓게
+스캔했는데 "Large Japan"("...are large. Japan produced..." 문장 경계를
+가로지른 오탐)·"Wyoming. About"(미국 국내 통계 문장의 잔재) 등 전부 문장
+경계 오탐이었고, "NA China"·"W W W Belgium" 류는 결측 마커(NA/W)가 그 다음
+진짜 국가명 앞에 붙어 한 덩어리로 잘못 묶인 스캐너 자체의 결함이었다(정작
+"China"·"Belgium"은 이미 화이트리스트에 있고 `_rank_countries()`의 실제
+파싱 로직에서는 전혀 문제되지 않음 — 스캐너가 너무 욕심을 낸 것). 단어
+하나짜리 후보로 좁히고 이런 불용어(About/Large/NA/W 등)를 걸러내자 91개
+광종 전수 스캔에서 후보가 0건으로 떨어졌다.
+
+**결론 — 동적 추출은 지금 구현하지 않는다**: 실측으로 "지금 이 코퍼스에
+증명된 누락이 없다"가 확인된 상태에서 동적 추출(정규식만으로 "이게 국가인지"
+판정)을 새로 넣으면, 오히려 위에서 실측한 것과 같은 종류의 새 오탐 위험
+(도메스틱 지명·문장 조각을 국가로 오인)을 자초할 뿐 지금 안 풀리는 문제를
+풀어주지 않는다 — CLAUDE.md §4 "구조가 모델을 앞선다"·과설계 금지 원칙에
+따라 미룬다. 대신 `find_uncovered_country_candidates()`를 유지보수 도구로
+남겨서, 향후 새 USGS 연도판이 추가되거나 코퍼스가 바뀌면 재실행해서 실측
+재확인할 수 있게 했다(런타임 경로에서는 안 부름, 회귀 위험 없음).
+
+**검증**: mock 단위테스트 5건·기존 회귀 2건 재통과, `--check-coverage` 실행
+결과 재확인.
+
+herd 리뷰(2026-08-13)가 남긴 "남은 과제" 3개(①LLM 예외처리 확장 ②3/4턴
+결정적 완화 ③국가명 커버리지) 전부 이걸로 종결됐다.
+
+## 2026-08-18 — 3턴 대명사 해소·4턴 논리비약 결정적 완화(지난 herd 리뷰 후속과제 ②)
+
+바로 아래 절(①, LLM 예외처리 확장) 직후 "남은 과제 ②"(3턴 route 대명사 해소
+실패·4턴 top5 필터 무시 논리비약)를 이어서 처리했다. 지난번엔 "생성 단계
+소형 LLM 추론 한계라 검색 계층 범위 밖"이라고 적었는데, 다시 파보니 검색
+계층에서 결정적으로 막을 수 있는 부분이 실제로 있었다 — 두 실패 모두 "소형
+LLM이 원문 표 여러 개를 눈으로 대조해 계산해야 하는" 지점에서 났고, 그 계산
+자체는 `pageindex_agent.py`가 이미 갖고 있는 `_rank_countries()`로 결정적으로
+할 수 있는 것이었다.
+
+**3턴(route 대명사 오해소)**: `_route_node`가 history 배열 안에 파묻힌 "직전
+어시스턴트 답변"을 놓치고 더 이전 턴의 개체명으로 되짚는 사례가 실측 재현됐다
+(2턴이 "그 나라의 2위 광종은 구리"라고 확정했는데 3턴 "그 광종"을 코발트로
+오인). 대응: `_last_assistant_answer()`(history에서 마지막 assistant 턴만
+뽑는 헬퍼) 신설, route 호출 payload에 `last_answer`라는 별도 필드로
+중복 노출(같은 정보가 history 배열 끝에 묻혀 있는 것보다 이름 붙은 필드로
+도드라지게) + ROUTE_PROMPT에 "대용어는 last_answer(가장 최근 확정 사실)을
+최우선으로 쓴다"는 규칙과 구체 예시 추가.
+
+**4턴(top5 필터 무시)**: 근거에 니켈 원문표가 있으면(인도네시아 세계 1위,
+230만톤) 소형 LLM이 "구리 상위5개국 중에서"라는 질문 조건을 확인하지 않고
+그냥 가장 큰 숫자를 답으로 냈다(인도네시아는 구리 상위5개국이 아닌데도).
+`pageindex_agent.py`에 두 가지를 신설:
+- `_detect_focus_country()`: 질문(보통 route가 대용어를 이미 국가명으로
+  풀어준 resolved_query)에 등장하는 국가명을 코퍼스가 아는 국가 목록 기준
+  정규식으로 찾는다.
+- **감시목록(focus_countries) 자동 확장**: 질문에 국가명이 없어도(예: "구리
+  상위 5개국 중에서...") 첫 번째로 여는 광종의 상위 5개국을 자동으로
+  감시목록에 편입한다. 이후 여는 모든 광종 표에 "[지정 국가 순위(자동계산,
+  확정값)] Chile=이 표에 없음, Congo=이 표에 없음, ..., China=7위(115,000)"
+  같은 결정적 주석을 붙여, "이 5개국 중 이 광종에 실제로 있는 나라가
+  누구인지"를 생성 LLM이 원문표를 눈으로 다시 셀 필요 없이 그대로 인용만
+  하면 되게 만들었다. `_annotate_with_ranking()`을 단일 focus_country에서
+  focus_countries 목록으로 일반화.
+- `chatbot.py`의 `_build_evidence_prompt()`에도 보조 안전망 추가: pageindex
+  근거에 서로 다른 광종 섹션이 2개 이상 섞이면(=여러 표를 대조해야 하는
+  질문일 개연성) "질문이 특정 집합으로 제한하면 그 집합에 실제로 속하는지
+  확인한 뒤 답하라"는 유의사항 한 줄을 [질문] 뒤에 조건부로 붙인다(generate.py
+  의 공용 SYSTEM_PROMPT는 안 건드림 — chatbot.py 전용 사용자 프롬프트에만
+  추가해 blast radius를 이 기능으로 한정).
+
+**검증**: mock 단위테스트 5건·기존 회귀 2건 재통과. 동일한 4턴 체인을 실인프라
+대상으로 재실행(2회) — 수정 전 실패했던 3턴("콩고가 니켈 2위"라는 원문에
+없는 오답)·4턴("인도네시아"가 구리 상위5개국 아닌데 답으로 나옴)이 두 재실행
+모두 정답으로 바뀌었다(1턴 코발트=콩고, 2턴 콩고의 2·3위 광종=구리(칠레
+다음), 3턴 구리 1위=칠레+콩고와 격차 2,520(2024년), 4턴 구리 상위5개국
+{칠레·콩고·기타·페루·중국} 중 다른 광종 최다생산국=중국(보크사이트/니켈/
+리튬 실제 수치 정확히 인용) — 전부 실데이터와 대조 확인). 재실행 1회에서는
+스텝 도중 LLM이 유효하지 않은 JSON을 낸(`pageindex_agent_llm_error`) 일회성
+장애로 2턴이 기권했지만, 그다음 3턴이 2턴 몫까지 스스로 만회해 정답을
+냈다(설계대로의 안전한 열화 — 오답 대신 기권, 그리고 다음 턴에서 회복).
+
+**정직한 한계**: 이건 "버그 수정"이 아니라 "결정적 보조선"이다 — route의
+대명사 해소도, 최종 답변 합성도 여전히 확률적 LLM 호출이라 100% 보장은 아니다
+(이번 재실행에서도 route가 한 번은 last_answer가 실패로 비어있으니 더 앞
+턴으로 폴백한 사례가 있었다 — 그 자체는 합리적 동작). 다만 두 실패 모두
+"근거에 필요한 계산 결과가 이미 결정적으로 준비돼 있는데 LLM이 다시
+계산하다 틀리는" 패턴이었고, 그 계산을 대신 해서 안겨주는 접근이 실측상
+효과가 있었다.
+
+## 2026-08-18 — chatbot_graph route/reformulate/verify의 LLM 예외처리 범위 확장(지난 herd 리뷰 후속과제 ①)
+
+바로 아래 절("pageindex_agent 신설") herd 코드리뷰가 남긴 "남은 과제" 3개 중
+1번을 처리했다. `pageindex_agent.py`에서 고쳤던 것과 같은 버그(`except LLMError`
+만 잡아 `OpenAICompatChat.complete()`가 재시도 소진 후 실제로 던지는
+`RuntimeError`(HTTP 429/5xx)·`requests.RequestException`(OSError 서브클래스,
+타임아웃/커넥션오류)을 못 잡고 그대로 턴이 죽는 문제)가 `chatbot_graph.py`의
+route/reformulate/verify 세 노드에도 있었다.
+
+**중복 정의 대신 공용 상수로 승격**: `services/shared/llm_client.py`에
+`LLM_TRANSIENT_ERRORS = (LLMError, RuntimeError, OSError)`를 신설(사유는
+docstring에 그대로 기록) — `pageindex_agent.py`가 갖고 있던 로컬 정의
+(`_LLM_TRANSIENT_ERRORS`)를 이 공용 상수를 가져다 쓰는 걸로 교체하고,
+`chatbot_graph.py`의 세 `except LLMError`를 전부 `except LLM_TRANSIENT_ERRORS`
+로 바꿨다. 두 파일이 각자 따로 정의해 나중에 하나만 고치고 잊는 걸 막으려는
+목적(gkg 시리즈 이름충돌류 교훈과 같은 패턴 — 공유 지점은 하나로).
+
+**검증**: 신규 mock 단위테스트 5건(smoke_pageindex_agent.py)·기존 회귀테스트
+2건(smoke_page_recommend.py·smoke_chat_routing.py, 실인프라 LLM까지 실제로
+태움) 전부 재통과. 코드 3개 파일 문법·import 확인.
+
+**남은 과제(갱신)**: (2) 3턴 실패 원인(route의 다단 대명사 해소)·4턴 논리비약
+(top5 필터를 안 지키고 다른 근거로 건너뜀) — 생성 단계 소형 LLM 추론 한계로
+검색 계층 수정 범위 밖. (3) 국가명 화이트리스트(pageindex_agent.py)도 여전히
+유한 목록(약 190개)이라 완전한 커버리지는 아님(권고: 표에서 "대문자시작
+토큰+숫자열" 패턴으로 국가를 동적 추출하는 근본해법은 더 큰 리팩터).
+
+## 2026-08-13 — pageindex.py의 "에이전틱 traversal" 후속과제 착수: 국가별 생산량 순위·집계 질문용 pageindex_agent 신설
+
+바로 위 절("verify(정확성 검증) 노드 추가")이 3차 실측에서 남긴 결론 — "인도네시아가
+니켈 다음으로 몇 번째로 많이 캐나" 같은 질문은 검색어를 아무리 잘 바꿔도 단발
+검색으로 못 풀고, "USGS는 광종별로 조직돼 있어 국가별 순위를 답하려면 광종 수십
+페이지를 훑어 집계해야 한다"는 게 그 이유였다 — 를 사용자가 "그 부분을 구현하고
+꼬리질문 체인으로 될 때까지 검증하라"고 요청했다. `pageindex.py` 모듈독스트링이
+이미 "완전한 에이전틱 traversal은 후속 과제로 남긴다"고 명시해둔 바로 그 경계다.
+
+**신설(`services/shared/retrieval/pageindex_agent.py`)**: LLM이 매 스텝
+open_commodity(광종 하나 조회)/list_commodities(전체 광종 목록 열람)/finish 중
+하나를 고르고, 그 행동을 결정적 함수로 실행해 결과를 scratchpad에 되먹이는
+ReAct 루프(최대 MAX_AGENT_STEPS=5회, chatbot_graph의 MAX_ATTEMPTS와 별개 예산).
+`pageindex.py`의 기존 트리 기반 도구(find_documents/search_nodes/read_node_text)는
+전혀 안 건드리고 재사용도 안 한다 — 이유는 착수 전 실측으로 드러난 데이터 결함
+때문이다(아래).
+
+**실측으로 발견한 데이터 함정 3가지(전부 코드로 우회, 데이터·트리 파일 자체는
+안 건드림)**:
+1. **광종 헤딩 유실**: `data_lake/semi_structure/pageindex_trees/생산매장량_USGS/`
+   8개 연도판(USGS_2019~2026) 중 CU/NI/CO/LI(구리·니켈·코발트·리튬) 4개 광종의
+   "######" 마크다운 헤딩이 PDF→MD 변환에서 통째로 유실된 연도판이 6개(2019~2021,
+   2023~2024, 2026)이고, 4개 광종 헤딩이 전부 온전한 연도판은 `USGS_2022` 하나뿐
+   이었다(`grep -c "^#+\s*COPPER$"` 등으로 재현 확인). `pageindex.search_nodes()`는
+   트리 노드 기반이라 이 4개 광종을 나머지 연도판에서 절대 못 찾는다 — 이게 하필
+   프로젝트 발주 5광종 중 4개(CU/NI/CO/LI, REE만 예외)와 겹친다.
+2. **그런데 본문은 살아있다**: 헤딩만 유실됐을 뿐 국가별 세계생산 표를 포함한
+   본문은 원문 마크다운에 그대로 남아 있었다(실측 — `USGS_2024.md` 3385행 부근에
+   COPPER의 "World Mine and Refinery Production and Reserves" 표가 국가별 수치와
+   함께 온전히 존재하지만, 헤딩이 없어 앞 문단(비스무트 등)의 본문으로 잘못
+   병합돼 있었다). 그래서 `pageindex_agent.py`는 트리 노드를 아예 안 보고, OKF
+   원문 텍스트를 광종명 밀도(앞 1800자 안에 광종명이 몇 번 나오는지)로 직접
+   스캔해 "World ... Production:" 단락을 찾는다(`_find_world_production_block`)
+   — 헤딩 유무와 무관하게 동작하고, 여러 연도판(판마다 최근 2개년 수치)을 모아
+   "최근 N년 생산량" 질문 근거도 만든다. 연도를 하드코딩하지 않는다(파일명
+   내림차순=연도 내림차순 정렬로 최신판부터 스캔) — 향후 재적재로 헤딩 결함이
+   고쳐지면 트리 기반 탐색도 자연히 같이 맞아떨어진다.
+3. **밀도 스캔의 오탐 + PDF 각주 오염(전부 실측 재현 후 방어코드로 해결)**:
+   - 희토류 계열 원소(이트륨·스칸듐 등) 섹션이 "rare earth"를 서술문에서 자주
+     언급해 정작 RARE EARTHS 자신의 표보다 밀도가 높게 나올 수 있었다(실측 —
+     "See the Rare Earths chapter." 상호참조 스텁이 밀도 1위로 오탐). 상호참조
+     문구 패턴 기각(`_STUB_PREFIX_RE`) + 숫자밀도 최소치(`_looks_like_data_table`)
+     2단 방어로 해결, 진짜 표(density 낮음)가 스텁(density 높음)을 이겼다.
+   - 로컬 소형 LLM(gemma-4-26b-a4b)이 표를 직접 읽고 국가별 순위를 잘못
+     계산하는 걸 실측으로 확인했다("콩고민주공화국이 주석 세계 2위"라고 답했지만
+     실제로는(2025e 기준) 중국 71,000 > 인도네시아 61,000 > 페루 33,000 > 브라질
+     28,000 > 콩고 27,000 순으로 콩고는 5위) — 표에서 콩고가 China보다 먼저 나온
+     건 그저 알파벳순(C-o가 C-h보다 뒤)일 뿐인데 등장 순서를 순위로 착각한 것으로
+     보인다. `_rank_countries()`가 국가명 바로 다음 토큰을 파싱해 내림차순
+     순위 주석을 근거 앞머리에 계산해 붙이는 걸로 대응했는데, 이 파싱 자체에서
+     2차 함정을 실측으로 또 발견했다 — PDF→텍스트 변환 시 각주 숫자가 콤마 없이
+     실제 수치 앞에 들러붙는다("China 14270,000" = 각주 "14" + 실제값 "270,000",
+     리튬 표의 "United States 4,400,000"은 사실 생산량 W(비공개)를 건너뛰고
+     매장량 열을 잘못 집은 것). 대응: (a) 국가명 바로 다음 토큰만 보고 정상
+     서식(쉼표 앞 1~3자리)이 아니면 그 광종 표 전체를 기각(`None` 반환, 국가 하나만
+     빼는 절충은 안 함 — 하필 오염된 게 세계 1위 국가면 "1위가 빠진 순위"를
+     그럴듯하게 내놓는 게 가장 위험한 실패모드라서), (b) 채택값이 "World total"
+     이상이면 오염 확정으로 표 전체 기각, (c) world total 줄 자체도 같은 서식
+     검사를 통과 못 하면 애초에 순위 계산을 시도하지 않음. 결과: COPPER/NICKEL/
+     COBALT/TIN은 정상 순위 계산됨, LITHIUM/RARE EARTHS는 오염 탐지로 순위 없이
+     원문 표+"알파벳순이지 순위 아님" 주석만 남기는 안전한 정도(degrade)로 낙착
+     (advisor 자문 결과 — "부분 절충보다 조용히 물러나는 쪽이 안전").
+
+**단위 정보 보강**: 국가별 표 블록은 "World...Production:"부터 시작해 광종
+챕터 서두의 "(Data in metric tons, copper content...)" 단위선언 줄을 담지
+못한다 — "생산량 차이는 얼마나 나?" 질문에 단위 없이 숫자만 나오면 안 되므로,
+World-Production 매칭 지점에서 뒤로(~6000자) 훑어 가장 가까운 단위선언을 찾아
+`Evidence.unit`으로 따로 싣는다(원문 표 자체는 안 건드림, 실측: 광종별 단위선언~
+World Production 거리가 3,700~5,500자대라 3000자로는 놓치는 경우가 실제 있었음).
+
+**chatbot_graph.py 배선**: `RetrievalRoute`에 `pageindex_mode: "simple"|"agentic"`
+필드 추가(기본값 simple, 하위호환) — ROUTE_PROMPT에 "국가별 생산량 순위·비교·
+집계 질문일 때만 agentic을 고르라"는 기준 추가. `_retrieve_node`가 `pageindex_mode`
+에 따라 기존 `pageindex.lookup()`(단발) 또는 `pageindex_agent.agentic_lookup()`
+(다단계)으로 분기 — agentic 경로는 스텝마다 LLM 왕복이 들어(최악 5회) 느리므로
+정말 필요한 질문에만 켜지게 라우터가 판단한다(advisor 지적 — 무조건 agentic로
+바꾸면 매 턴 최대 16회 LLM 왕복까지 갈 수 있어 "빠른 시간내" 요구사항 위반).
+
+**검증**: 신규 mock 단위테스트 5건(`services/rag_chat/tests/smoke_pageindex_agent.py`
+— 성공/미발견/스텝예산소진/반복가드/LLM장애 부분열화) 전부 통과, 기존
+`smoke_chat_routing.py`·`smoke_page_recommend.py` 회귀 없음(실인프라 LLM까지
+실제로 태워 재확인). 실인프라(Postgres+pgvector+PageIndex+vLLM) 대상으로 직접
+설계한 4턴 연쇄 질문("코발트 1위 생산국은? → 그 나라가 2위/3위인 다른 광종은?
+→ 그 광종 1위국과의 생산량 차이는? → 그 광종 상위 5개국 중 다른 광종 최다생산국과
+최근생산량은?")을 반복 실행하며 코드를 그때그때 고쳤다 — 최종 라운드에서 1·2·4턴은
+실제로 정확하고 근거 있는 답을 냈다(코발트 1위=콩고, 콩고의 2위 광종=구리(칠레
+다음), 구리 상위5개국 정확히 나열). **3턴은 여전히 실패**(abstain)한다 — 원인은
+새 코드가 아니라 route 노드(기존 코드, 이번에 손 안 댐)가 히스토리 안에서 "그
+광종"을 코발트로 잘못 되짚은 소형 LLM 대명사 해소 실패였다(정보는 4턴 전부 히스토리
+창 안에 있었음에도). 4턴도 "구리 상위 5개국 중 다른 광종 최다생산국" 질문에서
+생성 LLM이 상위5개국 목록에 없는 인도네시아를 답으로 내놓는 논리 비약이 한 번
+있었다(니켈 근거 자체는 실재/정확). 둘 다 **근거 조회(이번 작업 범위)는 정확했고,
+근거를 종합하는 최종 답변 합성(로컬 소형 LLM의 다단 추론·대명사 해소 능력)이
+한계**라는 같은 패턴 — 검색 계층을 더 고친다고 풀리는 문제가 아니라 별도 과제로
+남긴다(생성 단계에 자기검증/재확인 패스를 추가하는 방향이 유력해 보이나 이번
+범위 밖).
+
+**herd 검증**: Agent 도구로 두 비판자를 병렬 스폰했다(feedback-herd-multi-agent-sessions
+메모리대로 raw 백그라운드가 아니라 Agent 도구로 — 진행상황이 별도 탭에 보이게).
+
+- **비판자①(사실검증)**: 실제 USGS 원문(USGS_2025.md/2026.md)을 직접 열어 6개
+  순위 주장(코발트 1위=콩고·구리 2위=콩고·니켈 1위=인니·주석 1위=중국+콩고
+  5위 밖·구리 상위5개국 구성)을 대조했고, 미끼로 섞어둔 틀린 주장("코발트
+  1위=호주")을 정확히 잡아냈다(호주 3,600톤 vs 콩고 220,000톤, 약 1/60).
+  5/6 TRUE·1/6(미끼) FALSE로 전부 정확 판정 — 원문·자동계산 순위 모두 실제
+  일치 확인.
+- **비판자②(적대적 코드리뷰)**: 코드만 읽지 않고 60여 개 광종에 대해 실제로
+  함수를 실행해 대조하는 방식으로 리뷰했고, **치명적 버그 1건을 실측으로
+  발견**했다 — `_KNOWN_COUNTRIES` 화이트리스트 누락으로 Turkmenistan(IODINE
+  3위)·Bahrain(ALUMINUM 6위)·Algeria/Syria/Qatar/Kuwait/Mauritania/Belarus/
+  Burundi 등 실제 상위권 생산국이 순위에서 조용히 빠지고 등수가 한 칸씩
+  밀려 올라가는 문제("6위 UAE, 7위 Australia, 8위 Norway"처럼 실제론 Bahrain이
+  6위인데 밀림) — "오탐보다 누락이 안전"이라는 방어선이 각주오염엔 지켜졌지만
+  국가명 커버리지 공백엔 안 지켜진 사례였다. 즉시 반영: 국가 목록을 UN
+  회원국 기준으로 대폭 확충(24개→약 190개) + "Côte d'Ivoire" 원문 특수문자
+  (ô/’, U+00F4·U+2019) 불일치로 매칭 자체가 안 되던 인코딩 버그 동시 수정.
+  둘째로 발견한 버그(치명적) — `agentic_lookup`이 docstring상 "LLM 장애 시
+  부분 근거 반환"을 약속하지만 `except LLMError`만 잡아 `OpenAICompatChat.
+  complete()`가 실제로 던지는 `RuntimeError`(HTTP 429/5xx)·`requests.
+  RequestException`(타임아웃/커넥션오류, OSError의 서브클래스)은 못 잡고
+  그대로 전파 — 가장 흔한 실제 장애모드에서 이미 모은 근거까지 유실. 즉시
+  반영: `except (LLMError, RuntimeError, OSError)`로 확장(`requests`를 이
+  파일이 직접 import 안 해도 되게 OSError로 넓게 잡음). 두 수정 다 재검증
+  완료(IODINE에 Turkmenistan 정상 등장, ALUMINUM에 Bahrain 정상 등장, 기존
+  5건 mock 단위테스트·smoke_chat_routing·smoke_page_recommend 전부 재통과).
+  같은 버그 패턴(`except LLMError`만 잡는 것)이 chatbot_graph.py의 route/
+  reformulate/verify 노드(오늘 작업 이전부터 있던 기존 코드)에도 있다는 것도
+  비판자가 지적했으나, 이번 파일 밖의 기존 검증된 코드라 이번 사이클에서는
+  안 건드리고 별도 과제로 남긴다(가이드 §4 "이미 검증된 공유 코드는 회귀
+  재검정 계획 없이 건드리지 않는다").
+- 문제없음으로 확인된 부분(비판자②가 코드+실측으로 검증): 각주오염 탐지
+  (LITHIUM/RARE EARTHS 정확히 기각), 밀도스캔 오탐 방지(RARE EARTHS↔YTTRIUM
+  상호참조 스텁 정확히 회피), ReAct 루프 무한루프 불가능(range 기반이라
+  구조적으로 종료 보장).
+
+**남은 과제**: (1) chatbot_graph.py route/reformulate/verify의 LLM 예외처리
+범위 확장(비판자②ii와 같은 패턴, 별도 사이클), (2) 3턴 실패 원인(route의
+다단 대명사 해소)·4턴 논리비약(top5 필터를 안 지키고 다른 근거로 건너뜀) —
+둘 다 생성 단계 소형 LLM 추론 한계로 검색 계층 수정 범위 밖, (3) 국가명
+화이트리스트도 여전히 유한 목록이라 완전한 커버리지는 아님(권고: 표에서
+"대문자시작 토큰+숫자열" 패턴으로 국가를 동적 추출하는 근본해법은 더 큰
+리팩터라 이번엔 목록 확충으로 절충).
+
+## 2026-08-13 — chatbot_graph에 reformulate 재시도 + verify(정확성 검증) 노드 추가, session_id/history 창 정리
+
+바로 위 절 작업 직후, 사용자가 5턴 연쇄 대명사 대화("구리 많이 나는 나라는? →
+그 나라 2번째 광종은? → 그 광종 세계 1위 생산국은? → 세계 생산량은? → 최근
+가격은?")를 실제로 돌려보라고 요청했다. 실행 결과 두 단계 문제를 실측으로
+발견·해결했다.
+
+**1차 실측(구리 원본 질문)**: 1턴부터 기권. 원인 진단 — USGS Copper 페이지가
+PDF→마크다운 변환에서 유실됐고(제목 "Copper"만 차트 범례에 남음, 본문
+"World Mine Production" 테이블 없음), 조달청보고서(전체 코퍼스의 대부분)는
+가격/재고 위주라 "국가별 생산량 순위" 질문과 결이 다름 — 코드 버그 아님.
+
+**2차 실측(니켈로 재현, 메커니즘 검증용)**: 1턴 성공(인도네시아, 실인용
+8건). 2턴("그 나라에서 니켈 다음으로 많이 나는 광종은?")에서 대명사
+해소(`resolved_query`)는 "그 나라"→"인도네시아"로 정확했지만 검색 결과가
+0건 → 재시도 없이 바로 기권. **사용자 지적: "기권이 아니라 실제로 찾아서
+답해야 한다."**
+
+**대응 — chatbot_graph.py에 3가지 확장**:
+1. **reformulate 재시도**: retrieve가 0건이면 검색어를 재구성해 최대 1회
+   재시도(`REFORMULATE_PROMPT`+`ReformulatedQuery`). 진단 근거: 한국어
+   "인도네시아 2위 광종"으로는 0건이지만 영어("Indonesia bauxite mine
+   production")로는 USGS/Argus 코퍼스에 실제 관련 문서가 걸림(실측 확인,
+   `dense_pg.dense_search_pg`/`pageindex.find_documents` 직접 호출로 검증) —
+   코퍼스가 한국어(조달청)·영어(USGS/Argus) 이중언어라 검색어 언어가
+   결과를 크게 좌우한다.
+2. **verify(정확성 검증, 사용자 요청 "correct 체크")**: retrieve 직후 근거가
+   질문에 실제로 답하는지 LLM으로 확인(`VERIFY_PROMPT`+`GroundingCheck`).
+   evidence가 있어도 "주제만 겹치고 답은 없는" 경우(구리 사례가 정확히 이거였다
+   — 8건 다 가격차트인데 "생산국" 질문엔 무응답)를 reformulate 재시도로
+   흡수한다. 재시도 후에도 불충분하면 `evidence=[]`로 정리해 기존 "근거 0건
+   -> 기권" 경로를 그대로 재사용(chat_turn()·citations 계약 무변경).
+3. **session_id 로그 추적 + history 창 통일**: `RetrievalState`에 session_id
+   추가(그래프 판단엔 관여 안 함, 로그에만 실어 어느 세션·턴에서 재시도/검증이
+   났는지 추적 가능하게). route/reformulate/verify 세 LLM 호출이 각자
+   `[-4:]`를 하드코딩하던 걸 `HISTORY_WINDOW` 상수+`_recent_history()`
+   헬퍼로 통일.
+
+그래프는 이제 route -> retrieve -> verify -> (불충분·attempt<2면)
+reformulate -> retrieve -> verify -> finalize -> END(최대 2회 검색, "빠른
+시간내에" 요구사항상 무한 재시도는 안 함).
+
+**3차 실측(같은 니켈 5턴 체인, verify 붙인 뒤 재실행)**: 2턴이 이제 진짜로
+재시도한다 — verify가 "인도네시아 니켈 생산목표·가격동향·HS코드는 있지만
+다음 순위 광종 정보는 없다"고 구체적으로 불충분 판정 → reformulate가 영어로
+재질의("Indonesia mineral production ranking after nickel") → 2차 검색도
+같은 이유로 재불충분 → 재시도 소진, 기권. **결론: 이 특정 질문("한 나라의
+N번째 광종")은 검색어를 아무리 잘 바꿔도 이 코퍼스로는 못 푼다** — USGS는
+광종별로 조직돼 있어(국가별 아님) "인도네시아가 뭘 몇 번째로 많이 캐나"를
+답하려면 광종 수십 페이지를 전부 훑어 국가별 순위를 집계해야 하는데, 이건
+한 번의 검색으로 되는 질문이 아니라 다중 문서 집계(에이전틱 순회)가 필요한
+질문이다 — pageindex.py가 "완전한 에이전틱 traversal은 후속 과제로 남긴다"고
+이미 밝힌 바로 그 경계. verify를 붙이기 전엔 이 한계가 "그냥 기권"으로만
+보였는데, 이제는 로그에 **왜** 불충분한지 구체적 이유가 남아 진단 가능하다
+(이번 라운드의 실질적 개선점 — 문제를 없앤 게 아니라 보이게 만듦).
+
+**검증**: 기존 스모크 테스트 2건 통과(smoke_chat_routing.py가 이번엔 우연히
+워크트리에 남겨둔 실인프라 .env를 타서 실제 LLM으로 verify/reformulate
+로그까지 찍혔다 — 의도한 건 아니지만 회귀 없음 재확인). mock 기반 신규
+테스트 4건(evidence 0건→재시도, 재시도도 실패→정확히 1회만, evidence
+있어도 verify 불충분→재시도, 재시도 후도 불충분→evidence 비우고 기권)
+전부 통과. 실인프라(pgvector+PageIndex+vLLM) 대상 5턴 재실행으로 verify
+판정 근거·reformulate 검색어 변화까지 실측 확인.
+
+## 2026-08-13 — chatbot 검색계층을 정형·dense·PageIndex 3도구 LangGraph 오케스트레이션으로 재작업(DuckDB 인덱스 폐기)
+
+바로 위 절("rag 패키지에 chatbot 엔트리포인트 신설")을 쓴 직후, 사용자가 "rag는
+자체 서버로 fastapi로 동작하고, postgresql 정형데이터·OKF/PageIndex 비정형·
+pgvector 유사도조회를 조합해 langgraph 기반으로, 멀티도메인+비동기스트림으로
+응답해야 한다"고 요구사항을 명확히 하면서, 직전 구현이 그날 같은 시각(b5c2583,
+14:52) 이미 커밋돼 있던 pgvector+OKF+PageIndex 코퍼스 확장(140,031청크)을 놓치고
+구식 `rag/index/rag.duckdb`(문서<100건, 실제로 빌드된 적도 없음)를 계속 쓰고
+있었다는 게 드러났다. 인수인계서 TODO 대조(`documents/산출물/2026-W33_0810-0816/
+인수인계서_TODO_대조_260813.md` §1-2/§3-3) "챗봇 조정 서비스(정형·비정형 도구
+선택+혼합 조회)"·"DB/VDB 공통 근거 계약" 항목의 구현이기도 하다 — 세 도구
+(`services/shared/retrieval/{structured,dense_pg,pageindex}.py`)는 이미 완성돼
+있었고 호출자가 없었을 뿐이었다.
+
+**신설(`services/shared/retrieval/evidence.py`)**: `Evidence` dataclass(kind·
+source·section·text·as_of·unit) — 세 도구의 서로 다른 반환 모양을 하나의 인용
+프롬프트로 합치는 공통 계약. 구조화 결과(다건)는 마크다운 표로 렌더링해 text에
+넣어서, 표·차트 추출(chatbot_events.extract_markdown_tables/render_chart_png)이
+kind와 무관하게 동일 경로로 동작하게 했다(오히려 구조화 데이터가 마크다운
+스크래핑보다 완전한 숫자열이라 차트 재료로 더 낫다는 게 실측으로 확인됨).
+
+**신설(`rag/ragkit/chatbot_graph.py`)**: LangGraph 2노드(route→retrieve).
+route는 `KomirJsonLLM` 1회 호출로 (1) 대용어 해소한 `resolved_query`
+(2) 정형/dense/PageIndex 중 무엇을 켤지 (3) structured면 어떤 템플릿+광종을
+정한다(자유형 NL→SQL 없음, structured.py 규약 그대로). retrieve는
+ThreadPoolExecutor(3)로 켜진 도구를 병렬조회하고 Evidence로 합친다 — 도구
+하나가 죽어도(DB 미접속 등) 나머지로 부분 열화(전체 기권 아님). page_recommend/
+graph.py의 LangGraph 관례(StateGraph+TypedDict+동기 노드)를 그대로 따랐다.
+
+**rag/ragkit/chatbot.py 재배선**: `hybrid_search`(DuckDB) 호출을 걷어내고
+`chatbot_graph.retrieve_evidence()`로 교체. `build_user_prompt`(RetrievedChunk
+전용)는 안 쓰고 Evidence 기반 `_build_evidence_prompt`를 새로 둠(출처에
+기준시점·단위까지 표시). 나머지(세션/히스토리·스트리밍 브리지·인용검증·표/차트
+이벤트)는 그대로 재사용.
+
+**services/rag_chat 정리**: 아무도 안 부르던 사산(死産) 어댑터
+`app/retrieval/{structured,unstructured}.py` 삭제(구 DuckDB 경로 문서화+정형
+템플릿 계약 초안이었는데 실제 호출자는 결국 chatbot_graph.py로 감). Containerfile에
+`geo/llm` COPY 누락 수정 + PAGEINDEX_TREES_DIR/OKF_DOCUMENTS_DIR 볼륨마운트 주석
+추가.
+
+**한글 차트 폰트**: `koreanize_matplotlib`(NanumGothic 번들, MIT, 순수파이썬)를
+발견해 requirements.txt에 추가 — matplotlib 기본폰트(DejaVu Sans)의 한글 tofu
+문제를 방어코드가 아니라 실제로 해결(이 dev 환경에서 -W error::UserWarning으로
+경고 0건 확인).
+
+**검증 — 이번엔 실인프라까지 확인함(직전 절의 한계를 메움)**: 본채(`../../../
+inhouse/.env`)를 워크트리에 복사(LLM_BASE_URL만 host.docker.internal→127.0.0.1
+오버라이드, MSR_DB는 라이브 minerals.duckdb를 직접 안 가리키게 의도적으로 뺌 —
+structured 도구는 이번 실인프라 검증 범위 밖, 다른 세션이 쓰고 있을 수 있는
+파일을 안 건드리기 위함)해 실제 Postgres(pgvector 140K청크)+PageIndex 트리+
+vLLM 서버 대상으로 2턴 대화를 실행했다. 그 과정에서 실제 버그 2건 발견·수정:
+- **대용어 미해소로 무근거 기권**: route 노드가 `state["question"]`만 보고
+  history를 안 봐서 "그 나라 생산량은?" 같은 후속질문에서 무엇을 찾을지
+  못 정해 도구를 하나도 못 켜고 그대로 기권했다(1.4초만에 끝남 — 재현·확인).
+  ROUTE_PROMPT에 history(최근 4턴) + `resolved_query` 필드를 추가해 라우터가
+  먼저 "그 나라"→"인도네시아"로 풀고 그 문장으로 검색하게 고침.
+- **history의 pandas Timestamp가 JSON 직렬화를 깸**: chatbot_store.list_messages()가
+  DB 원본 행(created_at이 Timestamp)을 그대로 돌려주는데, 그걸 그대로
+  retrieve_evidence에 실어 KomirJsonLLM.invoke()의 json.dumps가 터졌다.
+  chat_turn()에서 role/content 두 필드만 남긴 순수 dict로 정리해서 넘기도록 수정.
+둘 다 고친 뒤 재실행해 2턴 다 정상 응답(1턴 8건 인용/14.4초, 2턴 대용어 정확히
+"인도네시아"로 풀어 4건 인용/3.5초) 확인. 세션 저장은 시종일관 워크트리 임시
+DB만 사용 — 본채 DB에는 어떤 쓰기도 없었음(읽기전용 SELECT/파일읽기/LLM 호출뿐).
+그 밖에 mock 기반 단위테스트(3도구 병합·부분열화·라우팅에 따른 선택적 호출·
+멀티턴 유지)와 기존 스모크 테스트 2건(smoke_chat_routing.py·
+smoke_page_recommend.py) 전부 통과 확인.
+
+## 2026-08-13 — rag 패키지에 chatbot 엔트리포인트 신설(멀티턴+다중매체 비동기 이벤트) + services/rag_chat 문서Q&A 경로 이관
+
+`services/rag_chat/app/routers/chat.py`에 있던 문서 Q&A 경로(2026-08-11 최초
+구현)를 점검해보니 (1) 대화를 저장만 하고 실제 LLM 프롬프트에는 안 넣고 있었다
+(페이지추천 그래프 경로만 히스토리를 씀 — "멀티턴"이 이름만 있었다), (2) 텍스트
+delta/done 이벤트뿐이라 표·그림 같은 다중매체 이벤트가 아예 없었다. 사용자 요청
+("rag 패키지에 chatbot 엔트리포인트")에 맞춰 이 경로의 코어 로직 전체를
+`rag/ragkit/chatbot.py`로 이관하면서 두 가지를 실제로 새로 구현했다.
+
+**신설 파일(`inhouse/rag/ragkit/`)**
+- `chatbot.py` — `chat_turn(session_id, user_id, message, ...)`: FastAPI/
+  sse_starlette 의존 없는 **진짜 async generator** 엔트리포인트. 인용강제
+  생성(SYSTEM_PROMPT/ABSTAIN_TEXT/build_user_prompt/_strip_uncited_sentences)은
+  `generate.py`를 그대로 재사용(재구현 금지). `OpenAICompatChat.complete_stream()`
+  (동기, requests 기반)은 별도 스레드+asyncio.Queue로 브리지해 이벤트루프를 막지
+  않는다(`_iter_async`). 멀티턴: 세션의 최근 히스토리(최대 12메시지)를
+  `[이전 대화](참고용, 인용 대상 아님)` 블록으로 프롬프트에 포함 — [근거] 밖은
+  인용하면 안 된다는 SYSTEM_PROMPT 규칙과 충돌 안 하게 명시적으로 구분.
+- `chatbot_events.py` — `ChatEvent`(type: session/delta/table/image/done) +
+  `extract_markdown_tables`(GFM 표 정규식 파싱, ingest.py가 문서를 마크다운으로
+  펼쳐두므로 청크 본문에 그대로 남아있음) + `render_chart_png`(표에서 완전
+  숫자열을 찾으면 matplotlib으로 즉석 차트 PNG, 숫자열 없으면 표만 내고 차트는
+  안 만듦). 인용된(=날조 아닌) 청크에서만 표/차트를 뽑는다.
+- `chatbot_store.py` — chat_session/chat_message CRUD(스키마는 기존
+  `schema_addendum_v2.sql` §4 그대로, 신규 테이블 아님). services/shared에
+  의존하지 않는 순수 duckdb 직결(재사용성 위해 — rag 패키지가 서빙 레이어 없이도
+  단독 동작해야 함), MSR_DB env var 또는 명시적 db_path 인자로 대상을 고른다.
+  Postgres cutover 전까지 URL 타깃은 services/shared/db.py execute_msr과 동일하게
+  NotImplementedError로 명시 실패.
+
+**services/rag_chat 쪽 변경(얇은 어댑터로 전환)**
+- `routers/chat.py`의 `_run_document_qa`가 이제 `chat_turn()`을 호출만 하고 SSE로
+  감싼다. `chat_turn()`은 async generator지만 라우터 함수·
+  `smoke_chat_routing.py`의 동기 호출 계약(`for event in generator`)을 깨면 안
+  돼서 `_drain_sync()`(전용 이벤트루프 재사용 브리지)로 감쌌다 — async def로
+  바꾸는 대신 경계에서만 동기화.
+- `session_store.py`는 `rag.ragkit.chatbot_store`를 감싸는 얇은 어댑터로 교체
+  (실제 CRUD 로직 중복 제거) — `get_settings().MSR_DB`(Postgres cutover 인지)를
+  ragkit의 범용 CRUD에 주입. 함수 시그니처는 그대로라 페이지추천 경로 호출부는
+  무변경.
+- `streaming.py`의 `stream_answer()`는 `chat_turn()`이 대체해 제거, `sse_event()`
+  프레이밍 함수만 남김.
+- **부수 발견·수정**: 문서 경로가 `citations_json`을 `str(list)`(파이썬 repr, 유효
+  JSON 아님)로 저장하던 걸 `json.dumps()`로 고쳤다 — `_load_page_state()`가
+  "document 턴은 json.loads가 실패해야 페이지상태로 안 읽힌다"는 동작에 의존하고
+  있어서, 고치기 전엔 실수로 유효 dict가 나왔으면 오염될 뻔했다(실제로는
+  citation_sources가 최상위 list라 `isinstance(dict)` 체크에서 여전히 걸러져
+  안전 — 주석에 이유를 남겨둠).
+- **Containerfile 실측 수정**: `geo/llm/` 서브패키지가 COPY 안 되고 있었다
+  (`geo/__init__.py`·`geo/extractors.py`만 최소 COPY) — `generate.py`·
+  `chatbot.py`·`shared/llm_client.py`가 다 `geo.llm.openai_compat`을 쓰는데,
+  소스트리 실행(상위 sys.path 삽입)에서는 안 드러나고 컨테이너에서만 깨질
+  지점이었다. `COPY geo/llm ./geo/llm` 추가. `requirements.txt`에
+  `matplotlib>=3.7` 추가(차트 렌더링, 신규 의존성).
+
+**SSE 이벤트 계약 확장(프론트 연동 기준, 하위호환 유지)**: 기존
+session_id/delta/done(citations/bogus_citations)에 `event: table`·`event: image`
+추가, `done`에 `abstained` 필드 추가. routers/chat.py 모듈 docstring에 전체
+스키마 명시.
+
+**검증**: `smoke_page_recommend.py`·`smoke_chat_routing.py`(기존, 전부 통과 —
+document 경로는 여전히 `rag/index/rag.duckdb` 미구축이라 기권 응답으로 끝나는
+회귀 확인만) + 신규 임시 스크립트(`hybrid_search`/LLM을 모의로 대체해
+`chat_turn()` 전체 경로를 검증: 멀티턴 프롬프트 주입, 표/차트 이벤트 생성,
+세션 4행 왕복 적재, 검색결과 0건 시 LLM 미호출 확인 — 전부 통과).
+**미검증(이 워크트리엔 없음, gitignore)**: 실제 `rag/index/rag.duckdb`(색인
+미구축)·`.env`(LLM_*)·`data_lake/db/minerals.duckdb` — 실제 검색/LLM 스트리밍
+경로는 본채에서 별도 확인 필요. **알려진 인프라 한계**: 이 dev 환경엔 한글
+폰트가 하나도 없어(fc-list 22개, CJK 없음) 차트 라벨이 tofu로 나온다
+(`chatbot_events.py`가 설치된 CJK 폰트를 자동 탐지하도록 방어 코드는 넣었지만
+폰트 자체는 배포 이미지에 번들해야 함 — e5-small 임베딩 가중치와 같은 종류의
+빌드 시점 준비물).
 
 ## 2026-08-13 — report_gen에 외부repo "분석요약 5종" 엔진 이식·API 배선(8/11 오판 정정)
 

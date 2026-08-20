@@ -1,6 +1,16 @@
 # -*- coding: utf-8 -*-
 """비정형 dense 검색 — pgvector(komis_demo `mineral_risk.doc_chunk`) 버전.
 
+**날짜인식 부스트(2026-08-19, A안)**: "2026년 상반기 니켈..." 같은 질문이 실제로
+코퍼스에 있는 문서(Argus 2026년 1~6월판 113건)를 못 찾고 기권한 사례를 조사하다가,
+순수 코사인 top-k엔 날짜 개념이 전혀 없다는 걸 확인했다(`pub_date` 컬럼은 있었지만
+백필 전엔 140,031행 중 783행뿐이라 애초에 못 씀 — `backfill_doc_chunk_pub_date.py`로
+96,780행까지 채운 뒤 이 부스트를 넣는다). `extract_date_range()`가 질의에서 연도(+
+상반기/하반기/분기)를 뽑아 그 범위에 `pub_date`가 든 청크의 코사인 거리를 소폭
+깎아(=유사도 상향) 우선순위를 올린다 — **하드 필터가 아니다**(`pub_date`가 여전히
+44%는 NULL이라 하드 필터는 관련 청크를 대량으로 잘라낼 위험, 2026-08-19 조사에서
+직접 확인). 날짜 언급이 없거나 매칭되는 청크가 없으면 기존 동작과 동일하게 전락한다.
+
 `rag/ragkit/retrieve.py`의 `dense_search()`(DuckDB `list_cosine_similarity`)와
 **같은 역할·같은 반환 계약**을 갖는 교체 가능한 구현이다. RRF 융합 로직은
 여기 재구현하지 않는다(재구현 금지) — 이 모듈은 하이브리드의 dense 절반만
@@ -17,12 +27,68 @@
 """
 from __future__ import annotations
 
+import re
 import sys
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 from ..config import get_settings
 from ..db import pg_connect
+
+# 코사인 거리(0~2 범위, 정규화 벡터라 사실상 0~2이나 실전은 대개 0.1~0.6대)에서
+# 날짜매칭 청크에 빼주는 보너스. 전체 랭킹을 뒤엎을 만큼 크진 않게(순수 의미
+# 매칭이 압도적으로 좋은 청크를 날짜만으로 밀어내지 않는다), 그러나 top-5 경계의
+# 근소한 차이는 뒤집을 만큼(2026-08-19 도입 — 경험적 상수, 실사용 중 재조정 가능).
+_DATE_BOOST = 0.08
+
+# \b(word boundary)는 안 쓴다 — Python re가 한글을 \w로 취급해 "2026년"처럼
+# 숫자 바로 뒤에 한글이 붙으면 \b가 안 걸린다(실측 발견: 최초 버전은 모든
+# "YYYY년" 질의에서 None을 반환하는 버그였음). 대신 숫자 앞뒤로 다른 숫자만
+# 안 오면 되므로 (?<!\d)/(?!\d) lookaround로 대체.
+_YEAR_RE = re.compile(r"(?<!\d)(20[01][0-9]|202[0-9])(?!\d)")
+_HALF_RE = re.compile(r"(상반기|하반기)")
+_QUARTER_RE = re.compile(r"([1-4])\s*분기")
+_MONTH_RE = re.compile(r"(?<!\d)([1-9]|1[0-2])\s*월(?!\d)")
+
+
+def extract_date_range(query: str) -> tuple[str, str] | None:
+    """질의에서 "2026년 상반기"/"2025년 3분기"/"2024년 7월" 류 표현을 뽑아
+    (시작일, 종료일) ISO 문자열로 돌려준다. 연도가 아예 없으면 None(날짜 무관
+    질의 — 부스트 생략). 월/분기/반기가 없으면 그 해 전체로 넓힌다."""
+
+    m = _YEAR_RE.search(query)
+    if not m:
+        return None
+    year = int(m.group(1))
+
+    month_m = _MONTH_RE.search(query)
+    if month_m:
+        mo = int(month_m.group(1))
+        start = date(year, mo, 1)
+        end_month = mo + 1
+        end_year = year
+        if end_month > 12:
+            end_month, end_year = 1, year + 1
+        end = date(end_year, end_month, 1)
+        return start.isoformat(), end.isoformat()
+
+    q_m = _QUARTER_RE.search(query)
+    if q_m:
+        q = int(q_m.group(1))
+        start = date(year, (q - 1) * 3 + 1, 1)
+        end_month, end_year = start.month + 3, year
+        if end_month > 12:
+            end_month, end_year = end_month - 12, year + 1
+        return start.isoformat(), date(end_year, end_month, 1).isoformat()
+
+    half_m = _HALF_RE.search(query)
+    if half_m:
+        if half_m.group(1) == "상반기":
+            return date(year, 1, 1).isoformat(), date(year, 7, 1).isoformat()
+        return date(year, 7, 1).isoformat(), date(year + 1, 1, 1).isoformat()
+
+    return date(year, 1, 1).isoformat(), date(year + 1, 1, 1).isoformat()
 
 
 def _find_rag_parent(start: Path) -> Path:
@@ -83,32 +149,54 @@ def dense_search_pg(query: str, k: int = 8) -> list[PgRetrievedChunk]:
 
     schema = get_settings().PG_SCHEMA
     qvec = _vector_literal(encode_query(query))
+    date_range = extract_date_range(query)
 
     con = pg_connect()
     try:
         with con.cursor() as cur:
             # HNSW 탐색 폭 — 기본 40. k가 크면 재현율 확보를 위해 넉넉히 잡는다.
             cur.execute("SET hnsw.ef_search = %s", (max(40, k * 4),))
-            cur.execute(
-                f"""
-                SELECT chunk_id, doc_id, source_path, week, title, section_heading, txt,
-                       embedding <=> %s::vector AS dist
-                FROM {schema}.doc_chunk
-                WHERE embedding IS NOT NULL
-                ORDER BY embedding <=> %s::vector
-                LIMIT %s
-                """,
-                (qvec, qvec, k),
-            )
+            if date_range:
+                # 날짜매칭 청크만 거리 보너스(=순위 상향), 나머지는 순수 코사인
+                # 그대로 — 하드 필터가 아니므로 매칭 0건이어도 결과가 비지 않는다.
+                cur.execute(
+                    f"""
+                    SELECT chunk_id, doc_id, source_path, week, title, section_heading, txt,
+                           (embedding <=> %s::vector)
+                           - CASE WHEN pub_date >= %s::date AND pub_date < %s::date
+                                  THEN %s ELSE 0 END AS ranking_dist,
+                           embedding <=> %s::vector AS raw_dist
+                    FROM {schema}.doc_chunk
+                    WHERE embedding IS NOT NULL
+                    ORDER BY ranking_dist
+                    LIMIT %s
+                    """,
+                    (qvec, date_range[0], date_range[1], _DATE_BOOST, qvec, k),
+                )
+            else:
+                cur.execute(
+                    f"""
+                    SELECT chunk_id, doc_id, source_path, week, title, section_heading, txt,
+                           embedding <=> %s::vector AS raw_dist
+                    FROM {schema}.doc_chunk
+                    WHERE embedding IS NOT NULL
+                    ORDER BY raw_dist
+                    LIMIT %s
+                    """,
+                    (qvec, k),
+                )
             rows = cur.fetchall()
     finally:
         con.close()
 
+    # 두 분기(날짜부스트 유무) 모두 raw_dist(진짜 코사인 거리, score 표시용)가
+    # 마지막 컬럼이라 음수 인덱스로 통일해 받는다 — ranking_dist(부스트 반영,
+    # 정렬 전용)는 score에 안 쓴다(사용자에게 보여줄 유사도는 왜곡 없는 값이어야 함).
     return [
         PgRetrievedChunk(
             chunk_id=r[0], doc_id=r[1], source_path=r[2] or "", week=r[3] or "",
             title=r[4] or "", section_heading=r[5] or "", text=r[6] or "",
-            dense_rank=i + 1, score=1.0 - float(r[7]),
+            dense_rank=i + 1, score=1.0 - float(r[-1]),
         )
         for i, r in enumerate(rows)
     ]

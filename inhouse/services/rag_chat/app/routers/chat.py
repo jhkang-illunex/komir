@@ -1,25 +1,42 @@
 # -*- coding: utf-8 -*-
 """POST /chat — 요청 바디: {user_id, session_id(선택, 없으면 신규 발급), message, mode}.
 응답: SSE 스트림(streaming.py) — 최종 청크에 citations_json 또는 페이지추천 결과 포함.
+이 엔드포인트가 프론트가 직접 붙는 실제 API 표면이다.
 
 두 경로가 있다(2026-08-11 페이지추천 편입):
-- document: 비정형 문서검색 + 인용강제 생성. 인용 강제 로직(SYSTEM_PROMPT·프롬프트
-  조립·날조인용 제거)은 rag/ragkit/generate.py에서 그대로 재사용한다(재구현 금지 —
-  가이드 §4 "증명 가능한 것만 말하고 나머지는 기권" 원칙이 이미 거기 구현돼 있음).
-  차이는 하나: generate.answer()는 동기 완성 응답이라 스트리밍 UX(요구사항⑤)에 못
-  쓰므로, 여기서는 같은 프롬프트를 OpenAICompatChat.complete_stream()으로 흘려보낸다 —
-  문장 단위 날조인용 제거는 전체 텍스트가 다 와야 계산 가능해(부분 문장 상태로는 [n]
-  태그가 아직 안 붙었을 수 있음) 스트리밍 도중엔 원문 그대로 보여주고, 최종 done
-  이벤트에 bogus_citations 목록만 정보로 첨부한다(이미 화면에 나간 토큰을 되돌릴 순
-  없음 — 알려진 단순화).
+- document: 정형(Postgres out_*)·dense(pgvector doc_chunk)·PageIndex(OKF 트리) 세
+  근거 도구를 LangGraph로 조합(rag.ragkit.chatbot_graph, "어떤 도구를 쓸지" LLM
+  1회 판단 후 병렬조회) + 인용강제 생성 + 멀티턴 + 다중매체(표/차트) 이벤트.
+  2026-08-13부터 이 경로의 코어 로직 전체(도구 선택·조회·프롬프트 조립·
+  스트리밍·인용검증·세션/히스토리 적재·표·차트 이벤트 생성)는 rag.ragkit.
+  chatbot.chat_turn()으로 이관됐다(재구현 금지 — rag 패키지 chatbot
+  엔트리포인트, chatbot.py·chatbot_graph.py 참고). 여기서는 그 async
+  generator를 SSE 프레이밍으로 감싸기만 한다. chat_turn()은 진짜 async
+  generator지만, 이 함수(그리고 smoke_chat_routing.py의 동기 호출 계약)는
+  그대로 동기 제너레이터로 유지해야 해서 _drain_sync()로 브리지한다.
 - page: KOMIS 43개 페이지·필터 추천(app/page_recommend, LangGraph 그래프). 답변이
   LLM 토큰 스트림이 아니라 그래프가 렌더한 완성 텍스트라 delta 한 번으로 내보낸다
   (스트림 계약은 동일하게 유지 — 클라이언트가 경로를 구분하지 않아도 되게).
 
 경로 선택은 요청 바디의 `mode`(auto|document|page)를 따르고, auto면 app/intent.py가
-LLM 1회로 분류한다."""
+LLM 1회로 분류한다.
+
+SSE 이벤트 계약(프론트 연동 기준, 2026-08-13 table·image 추가):
+  event: (무명)  data: {"session_id": "..."}                              — 매 턴 최초
+  event: (무명)  data: {"delta": "..."}                                    — 텍스트 조각
+  event: table   data: {"columns": [...], "rows": [[...]], "source_index": n}
+  event: image   data: {"mime": "image/png", "data_base64": "...",
+                         "caption": "...", "source_index": n}
+  event: done    data: {"done": true, "abstained": bool, "bogus_citations": [...],
+                         "citations": [{"index": n, "kind": "structured|dense|
+                         pageindex", "source": "...", "section": "...",
+                         "as_of": "..."|null, "unit": "..."|null}, ...]}    — 문서 경로
+  event: done    data: {"done": true, "mode": "page", "status": ..., "relation": ...,
+                         "recommendations": [...], "warnings": [...]}      — 페이지 경로
+"""
 from __future__ import annotations
 
+import asyncio
 import json
 import sys
 from pathlib import Path
@@ -52,15 +69,15 @@ from fastapi import APIRouter  # noqa: E402
 from pydantic import BaseModel  # noqa: E402
 from sse_starlette.sse import EventSourceResponse  # noqa: E402
 
-from rag.ragkit.generate import ABSTAIN_TEXT, SYSTEM_PROMPT, _strip_uncited_sentences, build_user_prompt  # noqa: E402
+from rag.ragkit.chatbot import chat_turn  # noqa: E402
 
+from shared.config import get_settings  # noqa: E402
 from shared.llm_client import get_chat_client  # noqa: E402
 
 from .. import session_store  # noqa: E402
 from ..intent import classify_intent  # noqa: E402
 from ..page_recommend.service import get_service as get_page_recommend_service  # noqa: E402
-from ..retrieval.unstructured import search_documents  # noqa: E402
-from ..streaming import sse_event, stream_answer  # noqa: E402
+from ..streaming import sse_event  # noqa: E402
 
 router = APIRouter()
 
@@ -90,9 +107,12 @@ def _history_for_graph(session_id: str) -> list[dict]:
 def _load_page_state(session_id: str) -> dict | None:
     """마지막 assistant 메시지에 실린 페이지추천 상태(active_artifact)를 복원한다.
 
-    마지막 턴이 문서 Q&A였다면 None을 돌려준다 — 그쪽 경로는 citations_json에
-    파이썬 repr 문자열을 넣으므로 json.loads가 실패한다(의도한 동작: 무관한 문서
-    질문 뒤에 페이지 상태를 물려주면 relation 분류가 오히려 헷갈린다)."""
+    마지막 턴이 문서 Q&A였다면 None을 돌려준다 — 그쪽 경로(rag.ragkit.chatbot.
+    chat_turn())는 citations_json에 인용 청크 배열(JSON list)을 넣으므로
+    json.loads는 성공하지만 isinstance(payload, dict) 체크에서 걸러진다(2026-08-13
+    이관 전엔 파이썬 repr 문자열이라 json.loads 자체가 실패했음 — 지금은 유효한
+    JSON이라도 최상위가 dict가 아니라 결과는 같다). 의도한 동작: 무관한 문서
+    질문 뒤에 페이지 상태를 물려주면 relation 분류가 오히려 헷갈린다."""
 
     messages = session_store.list_messages(session_id, limit=1)
     if not messages or messages[-1]["role"] != "assistant":
@@ -109,53 +129,45 @@ def _load_page_state(session_id: str) -> dict | None:
     return payload[_PAGE_STATE_KEY].get("active_artifact")
 
 
-def _run_document_qa(request: ChatRequest, session_id: str):
-    """비정형 문서검색 경로(기존 동작 그대로)."""
+def _drain_sync(async_gen):
+    """async generator를 동기 이터레이터로 브리지한다 — 전용 이벤트루프 하나를
+    계속 재사용하며 항목 하나당 run_until_complete 한 번씩(매 항목마다 새 루프를
+    만들지 않는다). chat_turn() 자체는 진짜 비동기(스레드로 LLM HTTP 스트림을
+    소비)라 이 브리지가 필요한 건 라우터·smoke_chat_routing.py가 동기 제너레이터
+    계약을 요구하기 때문일 뿐(async def로 바꾸면 두 곳 다 깨진다)."""
 
-    session_store.append_message(session_id, "user", request.message)
-
+    loop = asyncio.new_event_loop()
     try:
-        chunks = search_documents(request.message, k=request.top_k)
-    except Exception as exc:
-        # rag/index/rag.duckdb 미구축(build_index.py 실행 전) 등 검색 계층 자체가
-        # 아직 준비 안 된 상태 — 500으로 스트림을 깨는 대신 기권 응답으로 처리.
-        # 조용히 삼키지 않고 서버 로그엔 남긴다(원인 파악용).
-        print(f"[rag_chat] search_documents 실패, 기권 응답으로 대체: {type(exc).__name__}: {exc}")
-        chunks = []
-    if not chunks:
-        session_store.append_message(session_id, "assistant", ABSTAIN_TEXT)
-        yield sse_event({"session_id": session_id})
-        yield from stream_answer(iter([ABSTAIN_TEXT]), citations=[])
-        return
+        while True:
+            try:
+                yield loop.run_until_complete(async_gen.__anext__())
+            except StopAsyncIteration:
+                return
+    finally:
+        loop.close()
 
-    yield sse_event({"session_id": session_id})
 
-    system = SYSTEM_PROMPT
-    user = build_user_prompt(request.message, chunks)
-    chat = get_chat_client()
+def _run_document_qa(request: ChatRequest, session_id: str):
+    """비정형+정형 혼합 문서 Q&A 경로 — 코어 로직(정형·dense·PageIndex 도구 선택+
+    병렬조회를 위한 LangGraph 오케스트레이션·멀티턴 프롬프트·인용강제·표/차트
+    다중매체 이벤트·세션저장)은 rag.ragkit.chatbot.chat_turn()에 있다(2026-08-13
+    이관, 같은 날 재작업 — 최초엔 DuckDB 인덱스 하나만 썼다가 pgvector+정형+
+    PageIndex 3도구 조합으로 교체했다). session_id는 이미 _run_chat이
+    session_store로 확정해둔 값을 그대로 넘긴다 — chat_turn()이 내부에서 다시
+    get_or_create_session을 부르지만 기존 session_id를 그대로 확인만 하므로 새
+    세션이 만들어지진 않는다."""
 
-    citation_sources = [
-        {"index": i, "source_path": c.source_path, "section_heading": c.section_heading}
-        for i, c in enumerate(chunks, 1)
-    ]
-
-    # 토큰이 도착하는 대로 즉시 내보낸다(진짜 스트리밍) — full_text_parts는 각
-    # delta가 소비되는 시점에 side effect로 채워지므로, 아래 for 루프가 끝난
-    # 뒤(=스트림이 끝난 뒤)에만 전체 텍스트를 대상으로 날조인용 검사를 한다.
-    full_text_parts: list[str] = []
-    for delta in chat.complete_stream(system, user, max_tokens=800):
-        full_text_parts.append(delta)
-        yield sse_event({"delta": delta})
-
-    full_text = "".join(full_text_parts)
-    _cleaned, bogus = _strip_uncited_sentences(full_text, len(chunks)) if full_text.strip() else ("", [])
-
-    session_store.append_message(
-        session_id, "assistant", full_text or ABSTAIN_TEXT,
-        citations_json=str(citation_sources),
+    settings = get_settings()
+    events = chat_turn(
+        session_id=session_id,
+        user_id=request.user_id,
+        message=request.message,
+        dense_k=request.top_k,
+        store_db_path=settings.MSR_DB,
+        chat=get_chat_client(),
     )
-
-    yield sse_event({"done": True, "citations": citation_sources, "bogus_citations": bogus}, event="done")
+    for event in _drain_sync(events):
+        yield sse_event(event.data, event=event.sse_name)
 
 
 def _persistable_artifact(artifact: dict | None) -> dict | None:
