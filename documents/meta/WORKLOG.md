@@ -2,7 +2,258 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-08-13 (최신) — report_gen에 외부repo "분석요약 5종" 엔진 이식·API 배선(8/11 오판 정정)
+## 2026-08-19 (최신)⑤ — ⚠사고: 정기동기화 cron이 doc_chunk(pgvector 140,031행) 삭제·복구
+
+**사고 경위**: 직전 항목(정기 동기화 cron 신설)의 `migrate_duckdb_to_postgres.py`가
+duckdb `main` 스키마의 **모든** 테이블을 postgres로 DROP+CREATE TABLE AS SELECT로
+미러링하는데, `doc_chunk`(RAG dense/BM25 검색이 쓰는 pgvector 임베딩 테이블,
+140,031행)는 **postgres가 정본**이고(`build_pgvector_okf.py`/`build_pgvector_index.py`가
+postgres에 직접 적재, duckdb 쪽엔 애초에 채워진 적 없는 옛 빈 테이블 흔적만 있음)
+이 사실을 스크립트가 몰라 duckdb의 빈(0행) 테이블로 postgres의 140,031행을
+덮어썼다 — 오늘 수동으로 이 스크립트를 2회 실행(즉시갱신 1회+wrapper 테스트 1회)
+하며 **두 번 다 실제로 지웠다**. rag 브랜치 컨테이너를 실제 API로 첫 통합테스트하는
+과정에서 dense 검색이 `UndefinedColumn: source_path` 에러를 내는 걸 보고 발견 —
+직접 쿼리로 0행·컬럼 7개(정상 15개)까지 줄어든 걸 확인해 사고 확정.
+
+**즉시 조치**:
+1. crontab에서 `auto:komir_pg_sync_daily` 제거(재발 방지, 원인수정 전까지).
+2. `scripts/migrate_duckdb_to_postgres.py`에 `_SKIP_TABLES = {"doc_chunk",
+   "chat_session", "chat_message"}` 추가 — postgres가 정본인 테이블은 블랙리스트로
+   명시 제외(chat_session/chat_message도 08-19 chatbot_store.py의 postgres 직접쓰기
+   전환으로 같은 위험군이 돼 함께 포함, 아직 사고는 없었음).
+3. 복구: `data_pgvector.sql` 스키마 재적용(source_path·embedding 컬럼 + HNSW/unique
+   인덱스, 컬럼 손실분도 같이 날아갔었음) → `rag.ragkit.build_pgvector_index`(산출물
+   76건, 1,260청크, 선행 — 이쪽이 매번 테이블 전체 DELETE라 순서 중요) →
+   `services.ingestion.build_pgvector_okf`(USGS·조달청·Argus, 138,825청크, 후행 —
+   자기 src만 지우고 재적재라 순서 안 지키면 선행분을 날림, 실측으로 이 순서
+   의존성 확인) → BM25 GIN 인덱스(`idx_doc_chunk_txt_fts`, schema_pgvector.sql
+   비대상이라 별도 재생성 필요) → `pub_date` 백필 재실행(08-19 앞선 항목 작업분도
+   테이블과 함께 날아갔었음).
+4. 재발방지 스크립트 수정 커밋 예정, crontab은 전 과정 검증 완료 후 재등록.
+
+**교훈**: "duckdb 전체를 postgres로 미러링"이라는 전제 자체가 이미 깨져 있었다 —
+같은 postgres 스키마 안에 "duckdb가 정본인 테이블"과 "postgres 자체가 정본인
+테이블"이 섞이기 시작한 시점(2026-08-11 pgvector 직접적재 도입)부터 전체 미러
+스크립트는 위험했는데, 그 사실을 모른 채 새 자동화(cron)를 얹었다. 정기 동기화·
+자동화를 새로 넣기 전엔 "이 테이블들이 정말 한 방향으로만 흐르는가"를 먼저
+확인할 것.
+
+## 2026-08-19 (최신)④ — 비교 PPT에 모델링 상세·요구사항 부합도·GPU자원 슬라이드 3매 추가(사용자 요청)
+
+바로 아래 항목(비교 PPT 초안, 13슬라이드)에 이어 사용자가 "① 모델링 차이 ② 발주처가
+원하는 것이 어느 쪽에 더 가까운가 ③ GPU 자원 소요"를 추가로 요청 — 기존 스타일(색상·
+폰트·표 서식)을 그대로 유지하며 3개 슬라이드를 삽입해 16슬라이드로 확장했다.
+
+**근거 확보**: `documents/산출물/2026-W30_0720-0726/AI모델_사용안_260722.docx`(정본,
+코드 직접 확인 기반)의 §5 "필요 인프라 자원" 표를 읽어 komir 쪽 실제 문서화된 GPU
+스펙(LLM 추론 서버 1대, `gemma-4-26b-a4b` MoE fp8 서빙 — 정확 VRAM은 "인프라팀 확인
+필요"로 명시된 미확정 상태, 전통ML은 GPU 불요)을 확보. `documents/산출물/
+2026-W28_0706-0712/시스템_결정필요사항.md`에서 "GPU 자원 제공 주체·사양"이 발주처
+결정 대기 항목(1-2)임도 확인 — 0818 쪽 PPT에는 GPU 스펙 자체가 없어(방법론 보고서
+범위 밖) 0818의 `gemma4:31b`(슬라이드41 명시, dense) 기준 통상적 양자화별 VRAM 어림
+계산(fp16≈62GB/fp8≈31GB/4bit≈16~18GB)을 "추정치, 실측 아님"으로 명확히 라벨링해
+병기했다 — 두 접근 모두 GPU 사양은 공식 미확정임을 강조.
+
+**추가한 3슬라이드**(모두 "5. 종합 평가" 섹션에 배치, 결론 슬라이드는 맨 뒤로 재배치):
+① 모델링 상세 비교 — 패러다임(파운데이션모델+LLM직접판정 vs 전통ML+통계) 차이를
+7개 항목(진단모델·후보비교검증·예측모델·소표본전략·XAI·라벨오염방지 등)으로 대조.
+② 과업지시서 요구사항 부합도 — 9개 항목 판정표(5광종검증·4단계매핑·"미래예측아님"
+조항·다각적모델링비교·필수변수·신규지표·12개월예측·검증엄밀성·서술형판단), **9개 중
+7개 komir 우위·1개 양쪽공백·1개(설명가능한 서술형 판단) 0818 우위**로 정리 — "검증된
+산출물 요건은 komir, 발주처가 화면으로 보게 될 설명 방식은 0818 아이디어가 참고"로
+결론. ③ GPU·인프라 자원 소요 비교 — 위 근거 기반, "0818은 모델크기(31B dense)는
+크지만 처리물량(니켈 월간 단일보고서)은 적고, komir(26B-A4B MoE)는 활성연산량은
+작지만 자동화 처리물량(GDELT 대량이벤트)이 훨씬 크다"는 핵심 관찰 병기.
+
+**검증**: `gotenberg/gotenberg:8` 도커 이미지로 pptx→PDF 변환 후 PyMuPDF로 신규
+3슬라이드+재배치된 결론 슬라이드를 렌더링해 육안 확인 — 표 겹침·잘림 없음, 페이지
+번호(12·13·14·15) 정상 재부여 확인. 변환용 컨테이너는 검증 후 정리(stop+rm).
+
+산출물: `documents/산출물/한양대/0818발표자료_komir구현_비교분석_260819.pptx`(16슬라이드,
+동일 파일 갱신). DATA_REGISTRY 갱신 완료.
+
+## 2026-08-19 (최신)③ — "0818 발표자료 vs komir 구현" 비교 PPT 작성(사용자 요청)
+
+`documents/산출물/한양대/0818_일루넥스_발표자료(최종).pptx`(과업1 위기진단·과업2
+수요예측 주간보고, 2026-08-18, 46슬라이드 — Chronos-2 시계열예측+Gemma4 LLM 기반
+접근)를 komir 저장소 실제 구현(`inhouse/geo`·`inhouse/mineral_supply_risk`)과
+비교해 광해공단 과업지시서 요구사항 대비 강점·부족한 부분·참고할 부분을 정리한
+13슬라이드 PPT를 작성했다(`python-pptx`로 직접 생성).
+
+**근거 확보**: 과업지시서 원문(`documents/260625 ..._일루넥스.pdf`) 붙임1·붙임2를
+새로 읽어 4단계 경보(관심·주의·경계·심각, 「자원안보특별법 시행령」 기준)·필수변수
+6개·"진단(diagnosis), 미래예측 아님" 명시 조항·신규지표(공급망압력지수·원자재지수·
+ESG지수) 요구를 1차 판단기준으로 확보. 챔피언_스코어보드_260727.md·
+`outputs/model_opt/report.md`(08-18)·화면기획안_v1.3_기능단위_AI작업_구현현황_
+260813.md·인수인계서_TODO_대조_260813.md를 정량·정성 근거로 사용.
+
+**핵심 발견**: ① 0818 발표자료는 니켈 1개 광종·약 6개월만 검증(정답라벨 부재로
+정량지표 미제시), komir는 5광종 전체·워크포워드 3폴드·수년치 백테스트로 과업지시서
+"5종 모두" 요구를 더 충실히 충족. ② 0818은 슬라이드상 "5단계" 경보로 표기 —
+과업지시서·화면기획 모두 4단계 명시라 표기 정렬 확인 필요(우열 판단 아님). ③ 0818의
+Chronos-2 미래가격예측을 진단 입력에 쓰는 구조는 과업지시서 "미래예측 아님" 조항과
+정합성 확인이 필요. ④ komir 필수변수 6개 중 ④세계공급부족(소비/공급) 대응 피처가
+코드에서 확인 안 됨, 신규지표 3종(공급망압력·원자재·ESG지수)도 원자재지수만 시도 후
+라벨오염 우려로 미채택 — 과업지시서 명시요구 대비 양쪽 다 공백. ⑤ 0818의 LLM
+서술형 종합판단·낙관/중립/비관 시나리오 내러티브는 화면기획 #13·#20·#21의 실제
+공백을 정확히 겨냥 — r10_retune_harness 채택기준 통과를 전제로 참고 가치 있음(임의
+채택 금지 원칙 준수).
+
+**수치 비교 원칙**: 두 자료의 성능수치(QWK/MAPE/WAPE 등)는 광종범위·예측지평·
+검증구조가 서로 달라 액면비교가 불가능하다는 점을 슬라이드마다 명시하고, "잠재적
+성능"(0818의 best-of-3 오라클 수치 등)과 "실측 검증 성능"을 구분 표기했다.
+
+산출물: `documents/산출물/한양대/0818발표자료_komir구현_비교분석_260819.pptx`
+(13슬라이드). DATA_REGISTRY 등재 완료.
+
+## 2026-08-19 (최신)② — minerals.duckdb→postgres(mineral_risk) 정기 동기화 cron 신설
+
+`rag` 브랜치에서 `structured.py`를 PostgreSQL로 전환하며 발견한 문제(geo_index가 PG에서
+라이브 대비 약 1주 stale — 2026-08-10 1회성 이관 이후 정기 동기화가 없었음) 후속 조치.
+
+- 기존 `scripts/migrate_duckdb_to_postgres.py`(2026-08-10 1회성 이관 스크립트, DROP+CREATE
+  TABLE AS SELECT 전체 재적재라 멱등 — 재구현 없이 그대로 재사용)를 즉시 재실행해 즉각
+  갱신: 38개 테이블 전부 불일치 0건(geo_index 3556행, 08-10 이후 늘어난
+  chat_session/chat_message 2종 포함 — rag 브랜치 작업 중 신설된 테이블).
+- `scripts/cron_sync_postgres_mirror.sh` 신설(위 스크립트를 감싼 cron 래퍼, flock 중복실행
+  방지, 로그 `data_archive/cron_logs/pg_sync_*.log`) — 매일 05:00 등록(crontab
+  `auto:komir_pg_sync_daily`, 토요일 geo cron 07:00·feeds cron 09:10/09:20보다 앞선 시간대,
+  겹침 없음). 실측 소요시간 11초(38개 테이블, geo_event 297,003행 포함)라 매일 갱신 비용
+  경미.
+- out_diagnosis_alert/out_import_forecast는 수동 재학습이라 cron 주기와 무관하게 갱신될 수
+  있음 — 재학습 직후 사람이 이 스크립트를 수동 재실행해도 안전(멱등)하다는 점을 스크립트
+  주석에 명시.
+- (사소) crontab 파일 경로에 세션 스크래치패드의 긴 절대경로를 쓰면 `crontab <file>`이 조용히
+  "No such file or directory"로 실패하는 걸 실측 확인(경로 길이 제한으로 추정) — `/tmp` 최상위
+  짧은 경로로 옮기니 정상 동작. crontab 파일 갱신 시 참고.
+
+## 2026-08-19 — Argus 690건 문서화 공백 발견·소급 기록(완료 사실은 08-12~13, 기록만 오늘)
+
+사용자가 "Argus 690건 처리 승인, 진행해달라"고 지시(직전 대화에서 필자가 "08-11/08-12
+보류 기록"만 보고 "아직 미착수"라고 잘못 안내한 데 대한 후속) — 실제로 배치를 돌리기
+직전 최종 확인 차 직접 실측했더니 **이미 완료돼 있었다**. `build_okf_documents.py`의
+`build_from_argus()`(`allow_paid_sources=True`로 source_policy.py 우회 — 2026-08-12
+사용자가 라이선스상 내부 파생 DB 구축 허용을 확인하고 명시적으로 지시한 그 경로)와
+`build_pageindex_trees.py`가 이미 실행돼 있었는데, **완료를 알리는 WORKLOG 항목이 하나도
+없어** 08-11/08-12의 "이번엔 보류" 기록만 보고 최신 상태로 오판하는 문서화 공백이 있었다.
+
+**실측 재확인**(직접 쿼리, data-quantity-verification-rule 준수):
+- 문서-OKF 690/690건 존재(`data_lake/semi_structure/okf_documents/Argus_비철금속_일일/`).
+- PageIndex 트리 690/690건 존재, LLM 요약 포함(샘플 검증: 빈 구조 아님) — 생성시각
+  2026-08-12 13:50~18:25(`*.tree.json` mtime).
+- pgvector(`komis_demo.mineral_risk.doc_chunk`)에도 **Argus 청크 77,648개**(전체
+  140,031개 중 55%) 임베딩 완료 — 인덱싱시각 2026-08-13.
+- 방금 재실행한 배치(`build_okf_documents --what argus` + `build_pageindex_trees
+  --pattern Argus`)는 "이미 있음"을 정확히 감지해 즉시 종료(캐시/스킵 로직 정상 동작
+  확인 — 중복 생성·중복 임베딩 없음).
+
+**조치**: 새 작업 없음(순수 문서화 공백 보정). 이 항목 + DATA_REGISTRY 등재로 향후
+"Argus 아직 안 함"으로 재오판하는 일 방지. 조달청보고서 887건도 같은 08-11/08-12
+"보류" 기록과 나란히 있었던 항목이라 — 다음에 확인할 때는 완료 여부부터 직접 실측할 것
+(문서화 안 됐다고 미완료가 아닐 수 있음 확인됨).
+
+## 2026-08-18 — geo_prob·geo_index를 expanding-window로 리팩터(사용자 지시, 미래시 감사 §2·§4 실수정)
+
+08-13 감사·08-14 재검증에서 "구조는 확정, 영향 무해"로 남겨뒀던 두 안티패턴(전체이력 재적합)을
+실제로 고쳤다. 상세: `outputs/model_opt/lookahead_bias_audit_260813.md` "2026-08-18" 절.
+
+- `inhouse/geo/prob_model.py::run()` "2) 발행 모델" — hist 전체 단일적합 → 연도별 1/1
+  컷오프 expanding 재적합(NB2·적응형 로짓·isotonic 보정 전부). 웜업(52주) 미달 연도는
+  발행 스킵(leak값 대신 정직한 결측). `MIN_TRAIN_WEEKS`/`MIN_CALIB_PAIRS` 상수 신설.
+- `inhouse/geo/indexer.py::_apply_kr_exposure()` — imp_mult 정규화·resid 회귀계수 b가
+  광종 전체이력으로 계산되던 것을 광종×연도 소표 기반 벡터화 expanding으로 교체
+  (`_expanding_normalize`/`_expanding_residualize` 신설, `_asof_grid`와 동일하게 이벤트
+  단위 row-wise apply 없음).
+- 검증(1) 섹션(TRAIN_END 단일분할)은 이미 정상이라 미변경 — 최소·외과적 변경 원칙.
+- **로컬 검증**: geo_prob 2,770→2,510행(2016년 웜업미달 260행=52주×5광종 결측 전환,
+  2017-01-01부터 시작 — mart_weekly_diagnosis는 2020+만 써서 진단모델 무영향 확인).
+  geo_index는 행수 불변(kr_exposure 폴백 설계), 연도별 평균 절대변화 2016년 0.8점(최대
+  4.2)→2017+ 0.2~0.3점으로 수렴(0~100 스케일) — 리키지 구간만 정확히 움직임.
+- **프로덕션 반영**: `data_archive/backups/pre_geo_expanding_window_refactor_20260818/
+  minerals.duckdb` 사전백업 → `geo publish --what index`(geo_index 3,556행·geo_prob
+  2,510행) → `msr.features.weekly_mart` 재빌드(mart_weekly_diagnosis 4,621행) 완료.
+- **진단모델 최종 재검증**: 챔피언 Ridge(풀링)+매핑 QWK **0.921→0.934**(악화 아닌 소폭
+  개선). `p_burst` dQWK 최종폴드 -0.005(여전히 무기여), 폴드별로는 2023 dQWK 0→**0.036**
+  (리키지 제거 후 근소한 실신호 발견, 평균 0.010)·`geopolitical_risk` dQWK 0.006→**0.000**
+  — y_lag1(0.808) 대비 전부 미미, 구조수정이 성능을 해치지 않음을 확인.
+- DATA_REGISTRY 등재 완료. 남은 항목: ①KOMIS 발행지연 확인(§1, 유일한 미해결) ④
+  `geo_event.published_at` 컬럼 정리(§3, 경미) — 둘 다 변경 없음.
+
+## 2026-08-14 — geo_prob(p_burst) 피처민감도 최신코드 재실행(사용자 지시, 08-13 감사 후속)
+
+전날 감사(§2, 아래 항목)에서 적대적 검증자가 "dQWK=0=무해" 판정이 07-16 stale 스냅샷+마지막
+폴드만 측정이라 근거 부족이라 지적한 것에 대한 후속 재검증.
+- `geo_prob` DB 실측 확인: 이미 2026-08-08에 07-24(NB2 수렴버그 수정)·07-25(CO x_z13 반영)
+  이후 코드로 재계산돼 있었음(max period 2026-08-03, parquet↔DB 행수 2,765 완전 일치) —
+  geo 파이프라인 자체는 재실행 불필요, `report.md`만 07-16 스냅샷으로 낡아있던 것.
+- `python -m msr.models.diagnosis_opt` 재실행 → `p_burst` dQWK=**-0.003**(최종폴드, 이전
+  0.000과 사실상 동일 재확인).
+- 신규 스크립트(`scripts/geo_prob_perfold_sensitivity.py`)로 "마지막 폴드만 측정" 약점 해소
+  — 3폴드 전부 개별 계산: 2023 dQWK=0.0000·2024 dQWK=0.0000·2025 dQWK=-0.0035.
+  **"초기 폴드일수록 lookahead 오염이 클 것"이라는 우려는 실측으로 기각** — 전 폴드 일관되게
+  무기여 확정.
+- `outputs/model_opt/lookahead_bias_audit_260813.md` §2 갱신(REVISED→**CONFIRMED**: 구조적
+  lookahead 자체는 여전히 존재·수정 대상이나, 현재 챔피언 QWK엔 영향 없음이 재확인 완료).
+  DATA_REGISTRY 등재 완료. 코드/geo_prob 데이터 변경 없음(순수 재검증).
+- 남은 항목(변경 없음): ①KOMIS 발행지연 확인 ③geo_prob·kr_exposure resid를
+  expanding-window로 리팩터 ④published_at 컬럼 정리.
+
+## 2026-08-13 (최신)② — 미래시 오염 5개 서브모듈 감사 + 적대적 검증(사용자 지시)
+
+바로 아래 항목(y_lag1 발행지연)에 이어, 사용자가 "서브모듈별로 정리해서 하나하나 체크하고,
+그 결론을 적대적 검증자로 다시 검증"하라고 명시 지시. 5개 모듈 병렬 조사(1개 신규+4개 기존
+결론 재확인용) → 각 결론을 독립 에이전트 5개가 반박 시도(CONFIRMED/REFUTED/REVISED 판정).
+전체 보고서: `outputs/model_opt/lookahead_bias_audit_260813.md`(DATA_REGISTRY 등재).
+
+**신규 발견(적대적 검증 과정에서 발굴, 이전엔 몰랐음)**:
+- `inhouse/geo/indexer.py:39-78`의 `_apply_kr_exposure(mode="resid")` — 잔차화 계수
+  `b=cov/var`를 **2016~2026 전체 이벤트 이력**으로 추정해 2016년 이벤트에도 소급 적용(CU가
+  이 모드로 운영중) — `geo_prob`(p_burst)의 "전체이력 재적합" 안티패턴이 지수(`geo_index`)
+  자체에도 동일하게 존재한다는 뜻. `geo_index`는 `avail_date`/`generated_at` 추적이 없고
+  매주 전체 재계산이라, "과거 지수값은 표본이 늘어도 불변"이라는 기존 결론(07-05·07-22)과
+  실측상 배치 — 재검증 필요.
+- `geo_event.published_at`이 완전히 무의미한 값임을 발견 — `publish.py:85`가 실행 1회당
+  단일 타임스탬프를 전체 이벤트에 일괄대입, DB 296,679행 전부 동일값(distinct=1). 이벤트
+  발생일-보도일 지연 자체는 GKG 경로(97.7%)가 obs_date≈보도일이라 구조적으로 무관, 비GKG
+  경로(2.3%, 6,680건)만 manifest.pub_date로 재측정해 중앙값 0일·평균+4일·P90 92일 —
+  영향은 경미하나 published_at 컬럼은 용도폐기 수준.
+
+**기존 결론 재확인 결과**: y_lag1(§1, 이전 항목) CONFIRMED — 오히려 이미 실측(민감도 실험)
+으로 입증된 사실임이 재확인됨. `geo_prob`의 "dQWK=0=무해" 판정은 REVISED — 측정이 2026-07
+스냅샷(이후 NB2수렴버그수정 07-24·CO x_z13추가 07-25 미반영)+마지막 폴드만이라 재실행
+필요(VIF는 확인해봤자 다중공선성 없어 "정보흡수" 반론은 기각, 구조문제 자체는 여전히 유효).
+BASE_FEATS 5종 중 4종(volatility_12w·spread_pct·import_hhi/yoy/cagr3·ref_price)과 최근
+파생피처군(INV/CNINV/PMI/CLI/GSEV) 6종은 코드로직 정상 재확인(단 avail_date 오프셋
++3~+45일 자체는 실측 아닌 가정치라는 공통 약점).
+- 다음 우선순위: ①KOMIS 발행지연 확인 ②diagnosis_opt 피처민감도 최신코드 3폴드 재실행
+  ③geo_prob·kr_exposure resid를 expanding-window로 리팩터 ④published_at 컬럼 정리.
+  코드 변경은 없음(순수 진단), 5개 조사+5개 검증 총 10개 에이전트 병렬 실행.
+
+## 2026-08-13 (최신) — 진단모델 미래시(look-ahead) 오염 점검 + y_lag 발행지연 민감도
+
+사용자 지적("수급위기진단·지정학 위기값이 너무 잘 맞아서 미래시가 걱정")으로 출발한
+피처 전수 점검. 병렬 감사(geo_prob 파이프라인 / 진단 파생피처군)와 직접 코드 확인으로:
+- **핵심 발견**: `mart_weekly_diagnosis`의 교사(수급동향지표) 조인이 다른 모든 외부데이터
+  (관세청 `avail_date`, PMI +35일, CLI +45일 등)와 달리 자기 참조월로만 조인돼 발행지연이
+  전혀 반영 안 됨(`msr/features/weekly_mart.py:61-62`). `y_lag1`(전월 교사값)은 챔피언
+  QWK 기여도 dQWK 0.765로 압도적(`outputs/model_opt/report.md`) — 실제 KOMIS 발행지연이
+  1개월보다 길면 백테스트가 낙관적으로 부풀려질 위험.
+- `geo_prob`(p_burst) 발행값도 전체이력 재적합이라 구조적 lookahead 있음(2016년 값이
+  2026년 이벤트분포로 추정된 계수 사용) — 단 dQWK=0 실측이라 현재 챔피언 성능엔 영향 미미.
+  이벤트 "발생일 vs 보도일" 미방어(뒤늦은 보도 방어로직 부재)는 미해결로 남김.
+- INV/CNINV/PMI/CLI/GSEV(gsev_z13)·동역학피처(`add_dynamics`)·train/test 스케일러 분리는
+  전부 `avail_date` as-of 조인+causal rolling 정상 확인, 문제없음.
+- KOMIS 실제 발행지연 확인 시도: 로컬 문서(`데이터 제공현황 및 사이트목록.xlsx`,
+  `착수보고_과업관련 논의 사항.xlsx`)로 "갱신주기=월간"까지는 확인(공식 문서 원문),
+  정확한 지연 일수는 미기재 — **발주처 확인 필요, 미해결**.
+- 민감도 실험(`scripts/ylag_publication_delay_sensitivity.py`, 신규): y_lag1→y_lag2→
+  y_lag3 교체 시 챔피언 QWK 0.921→0.825→0.759, 단 동일지연 Naive 대비 우위는
+  0.035→0.083→0.144로 오히려 확대 — 모델 자체 가치는 어떤 지연가정에서도 유지되고,
+  헤드라인 절대 QWK 숫자만 "지연=1개월" 가정에 낙관적으로 의존함을 확인.
+- 산출물: `outputs/model_opt/ylag_publication_delay_sensitivity.md`(+folds.csv), DATA_REGISTRY
+  등재 완료. 코드 변경 없음(순수 진단) — y_lag/조인 로직 실수정은 KOMIS 확인 후 별도 착수.
+
+## 2026-08-13 — report_gen에 외부repo "분석요약 5종" 엔진 이식·API 배선(8/11 오판 정정)
 
 8/11 병합 때 `analysis/summary.py`(1,084줄)·`additional_summary.py`(1,082줄)와
 5개 API 엔드포인트를 **"리포트 생성은 스텁"이라고 오판해 안 가져왔던 것**을 오늘
