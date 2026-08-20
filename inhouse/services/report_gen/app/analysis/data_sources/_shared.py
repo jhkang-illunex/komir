@@ -89,6 +89,28 @@ class PriceForecastDataSource(Protocol):
     def get_price_forecast_series(self, *, mineral, horizon, start_period, end_period): ...
 
 
+# 아래 3개는 komir 자체 추가(2026-08-19) — `/prices`·`/domestic-trade`·
+# `/global-trade`용, 외부repo에 대응하는 Protocol이 없다.
+
+
+class PriceDataSource(Protocol):
+    """정규화된 광물자원가격 계열을 제공한다."""
+
+    def get_price_series(self, *, mineral, start_date, end_date): ...
+
+
+class DomesticTradeDataSource(Protocol):
+    """정규화된 국내 수급지도(관세청) 계열을 제공한다."""
+
+    def get_domestic_trade_series(self, *, mineral, start_date, end_date): ...
+
+
+class GlobalTradeDataSource(Protocol):
+    """정규화된 글로벌 수급지도(UN Comtrade) 계열을 제공한다."""
+
+    def get_global_trade_series(self, *, mineral, start_date, end_date): ...
+
+
 def _normalized(value: object) -> str:
     text = unicodedata.normalize("NFKC", str(value))
     return " ".join(text.strip().split()).casefold()

@@ -4,9 +4,12 @@
 from ._shared import (
     CompositeIndexDataSource,
     DataSourceError,
+    DomesticTradeDataSource,
+    GlobalTradeDataSource,
     IndicatorDataSource,
     MineralCatalog,
     MineralMapDataSource,
+    PriceDataSource,
     PriceForecastDataSource,
 )
 from .database import (
@@ -15,16 +18,27 @@ from .database import (
     DatabaseMineralMapDataSource,
     DatabasePriceForecastDataSource,
 )
+from .extra import (
+    DatabaseDomesticTradeDataSource,
+    DatabaseGlobalTradeDataSource,
+    DatabasePriceDataSource,
+)
 
 __all__ = [
     "CompositeIndexDataSource",
     "DataSourceError",
     "DatabaseCompositeIndexDataSource",
+    "DatabaseDomesticTradeDataSource",
+    "DatabaseGlobalTradeDataSource",
     "DatabaseIndicatorDataSource",
     "DatabaseMineralMapDataSource",
+    "DatabasePriceDataSource",
     "DatabasePriceForecastDataSource",
+    "DomesticTradeDataSource",
+    "GlobalTradeDataSource",
     "IndicatorDataSource",
     "MineralCatalog",
     "MineralMapDataSource",
+    "PriceDataSource",
     "PriceForecastDataSource",
 ]

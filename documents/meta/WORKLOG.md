@@ -1096,6 +1096,151 @@ document 경로는 여전히 `rag/index/rag.duckdb` 미구축이라 기권 응�
 (`chatbot_events.py`가 설치된 CJK 폰트를 자동 탐지하도록 방어 코드는 넣었지만
 폰트 자체는 배포 이미지에 번들해야 함 — e5-small 임베딩 가중치와 같은 종류의
 빌드 시점 준비물).
+## 2026-08-20 (최신) — MSR_DB DuckDB→PostgreSQL cutover로 out_report 저장 경로 파손(기록만, 미수정)
+
+다른 세션(`msr-duckdb-postgres-migration`, 별도 워크트리)이 `inhouse/.env`의
+`MSR_DB`를 DuckDB 경로에서 PostgreSQL(`mineral_risk` 스키마)로 바꿨다. 이
+세션에서 어제(8/19) 만든 `analysis/store.py`(분석요약 8종 저장)·
+`generator.py`(주간 리포트 저장)가 영향받는지 실측 확인했다 — **사용자 지시로
+지금 고치지 않고 기록만 남긴다**(워크트리 통합 후 재작업 예정).
+
+**실측으로 확인한 파손 지점**
+- `shared/db.py`의 `execute_msr()`는 자체 주석에 이미 "MSR_DB의 PG_DSN cutover
+  시점에 반드시 먼저 고칠 것"이라 적어뒀던 자리 그대로 — `is_url(MSR_DB)`가
+  `True`가 되면 `NotImplementedError`를 던진다(DuckDB `?` 자리표시자 전용이라
+  psycopg2 paramstyle `%s` 미대응). 실제로 `execute_msr("DELETE FROM out_report
+  WHERE report_id = ?", [...])`를 호출해 즉시 `NotImplementedError` 재현
+  확인함(`read_sql_msr`는 URL 분기가 있어 정상 동작, `execute_msr`만 없음).
+- `store_summary()`(분석요약)·`store_report()`(주간 리포트) 둘 다 삽입 전
+  `execute_msr(DELETE ...)`로 멱등성을 보장하는 구조라, 이 한 줄에서 예외가 나
+  **적재 자체가 전혀 안 된다**(INSERT까지 가지도 못함) — API 응답은 200이 나올
+  수 있어도(분석요약은 응답 조립이 저장보다 먼저) 저장 단계에서 500 에러가 남.
+- 우회 확인: `write_df_msr`(→`dbio.write_df`)는 URL 분기가 있어 `df.to_sql
+  (if_exists='append')`로 정상 동작한다 — 문제는 `execute_msr` 하나뿐.
+- **추가 발견(설계 함정)**: postgres로 이관된 `mineral_risk.out_report`
+  테이블엔 **PRIMARY KEY/UNIQUE 제약이 전혀 없다**(`pg_constraint` 조회로
+  확인, DuckDB판 `schema_core.sql`은 `PRIMARY KEY (report_id)`인데 이관 시
+  제약이 안 옮겨짐). 즉 `execute_msr`만 고쳐서 DELETE를 postgres 문법으로
+  바꾸더라도, PK가 없으면 재실행 시 같은 report_id로 중복 행이 쌓이는 걸
+  DB 차원에서 막아주지 않는다 — 애플리케이션 레벨(현재 DELETE-then-INSERT
+  패턴) 또는 DDL(PK 추가) 둘 중 하나로 무결성을 다시 보장해야 함.
+- 실측 시점 `mineral_risk.out_report`엔 이미 9행이 있음(어제 이 세션이 DuckDB에
+  저장한 것과 report_id가 동일 — 마이그레이션이 데이터는 옮겼다는 뜻, 다만 PK는
+  안 옮김).
+
+**재작업 시 고칠 것(우선순위순)**
+1. `shared/db.py`의 `execute_msr()` — postgres 분기 추가(psycopg2 `%s`
+   paramstyle로 재작성). DuckDB 분기는 그대로 둔다(다른 타깃에서 쓰는 코드 없는지
+   확인 후 제거 여부 판단).
+2. `mineral_risk.out_report`에 `report_id` PK(또는 UNIQUE 인덱스) 추가 —
+   `schema_pgvector.sql`이 이미 쓴 패턴(`CREATE UNIQUE INDEX IF NOT EXISTS`,
+   `ADD CONSTRAINT IF NOT EXISTS`가 PG에 없어서 이 형태를 씀)을 그대로 재사용.
+3. 위 두 가지 없이 이미 실행된 적이 있다면(재작업 전 누군가 급하게 우회 코드를
+   넣었다면) `out_report`에 중복 `report_id` 행이 있는지 먼저 조회해 정리할 것.
+4. `rag_chat`의 `chat_session`/`chat_message` 저장도 같은 `execute_msr` 경로를
+   쓰는지 이번 세션 범위 밖이라 미확인 — 재작업 시 함께 점검 권장.
+
+## 2026-08-19 (이어서) — 분석요약 미구현 3종(`/prices`·`/domestic-trade`·`/global-trade`) 신규 구현
+
+앞 절(`out_report` 적재)에 이어, 발주처 화면기획안 대조에서 "API 자체가 없다"고
+확인됐던 3종을 새로 만들었다. 외부repo(`komis-report-generator-main`)도 이 3종은
+501 스텁뿐이라 참고할 원본 구현이 없다 — 5종처럼 "이식"이 아니라 komir가 처음부터
+설계·작성했다.
+
+**계기**: 사용자가 "API가 없는 부분도 구현"을 지시. 착수 전 실측으로 KOMIS가
+2026-08-19 오전 이 3종을 위한 광종 매핑 테이블(`public.ai_prc_mnrl_map`(광종→
+가격기준일련번호)·`ai_hs_mnrl_map`(광종→HS코드))과 CU/NI/CO/LI용 DEV_DUMMY 데이터
+(`ai_mnrl_mst`에 `[DEV_DUMMY] ... load=DEV_DUMMY_20260819` 표기)를 새로 채워둔 것을
+발견 — 이 매핑 없이는 이 3종을 만들 수 없었다(원본에도 없던 기능이라).
+
+**만든 것(전부 이식 아님, komir 자체 작성)**
+- `services/shared/komis_raw.py` — `KomisRawDataRepository`에 3개 메서드 추가:
+  `resolve_mineral`(광종코드→한글명, `ai_mnrl_mst`)·`resolve_price_criterion_
+  serials`(→`ai_prc_mnrl_map`)·`resolve_hs_codes`(→`ai_hs_mnrl_map`). 기존
+  `_literal()` 화이트리스트 검증을 그대로 재사용(자유형 SQL 금지 원칙 유지).
+- `services/report_gen/app/analysis/models.py` — `SummaryPageId`에 `price`·
+  `map_korea`·`map_global` 3개 추가, `PriceSeries`/`PriceObservation`·
+  `TradeMapSeries`/`TradeCountryObservation` 신규 모델, `AnalysisSummaryRequest.
+  validate_period`에 3종 분기 추가(광종 필수+일자 필터만 허용).
+- `services/report_gen/app/analysis/data_sources/extra.py`(신규) —
+  `DatabasePriceDataSource`/`DatabaseDomesticTradeDataSource`/
+  `DatabaseGlobalTradeDataSource`. 이식본(`database.py`)과 안 섞음(그 파일의
+  "원본에서 바뀐 것은 import 뿐" 주장을 안 깨려고).
+- `services/report_gen/app/analysis/komir_summary.py`(신규) — 3종의 결정론적
+  요약 계산(`calculate_price_summary`/`calculate_domestic_trade_summary`/
+  `calculate_global_trade_summary`). `additional_summary.py`(이식본)의 재사용
+  가능한 헬퍼(`EvidenceClaim`·`_number`·`_quantity`)만 가져다 쓰고 계산 로직
+  자체는 새로 짰다 — pptx `260713 AI 분석요약 및 대화형 검색시스템 검토
+  요청사항_일루넥스.pptx`의 예시 문구(최신가격/전일·전주·전월·전년대비, 1위국
+  비중, 상위3국 집중도)를 근거로 설계.
+- `analysis/summary.py`·`routers/analysis.py`·`main.py` — 디스패치·엔드포인트·
+  서비스 조립 배선. **LLM 정제는 이 3종에 안 태운다** — `prompts.py`(이식본)에
+  이 3종용 프롬프트·엄격한 근거인용 검증계약이 없어(원본 자체가 없던 기능),
+  새로 지어내면 원본과 대조검증할 근거가 없다. 규칙기반 요약만 반환(이식 5종도
+  LLM 실패 시 이 수준으로 폴백하므로 품질 보장은 동일).
+
+**실측으로 드러난 함정 1건**: `KO_UN_CMMRC`(글로벌, UN Comtrade)는 HS코드가
+국제표준 **6자리**(예 `810110`)인데, `ai_hs_mnrl_map`은 관세청 HSK **10자리**
+(예 `8101100000`)다 — 10자리 그대로 필터하면 실데이터 있는 텅스텐도 0행이 나옴.
+`KO_CSTM_CMMRC`(국내, 관세청)는 10자리 그대로 맞는다(자릿수가 다른 원천이 섞여
+있다는 걸 실측 전엔 몰랐음). 글로벌만 앞 6자리로 잘라 중복제거 후 조회하도록
+수정.
+
+**실측 검증**(TestClient, 실제 PostgreSQL 경유)
+- `/prices`: 리튬(CU계열 더미, MNRL0001) 200 + 텅스텐(실데이터) 200, 전일·전주·
+  전월·전년대비 등락률 정상 계산.
+- `/domestic-trade`: 동(더미, MNRL0008) 200 + 텅스텐(실데이터) 200, 1위국/상위3국
+  비중 정상 계산.
+- `/global-trade`: 텅스텐(실데이터) 200(공급국 순위 계산 확인) / 니켈(더미조차
+  없음) 422 "데이터 없음"(500 아님, 정상).
+- REE(Nd, `ai_prc_mnrl_map`/`ai_hs_mnrl_map` 둘 다 매핑 없음) → 422 "매핑된
+  가격기준이 없다"(우아한 실패, 정상).
+- 8종 전부(기존 5+신규 3) `out_report`에 `kind='summary'`로 저장, 멱등성(중복
+  report_id 0건) 재확인. 기존 5종 회귀 없음(재실행해 동일 결과 확인).
+- `python3 -m py_compile` 전체 통과, `import app.main` 라우트 8개+기존 4개 정상.
+
+**알려진 한계(의도적으로 남겨둠)**: `/global-trade`의 "상대국(공급국) 기준 랭킹"
+해석은 pptx에 정확한 스펙이 없어 komir가 합리적으로 설계한 것 — 발주처 확인
+필요. 광종 1건에 가격기준이 여럿이면(텅스텐 7건) 가장 이른 번호만 쓴다(발주
+5광종은 전부 1건뿐이라 실무 영향 없음). CU/NI/CO/LI의 DEV_DUMMY 데이터는 실샘플이
+아니라는 점은 여전히 유효 — 코드 경로만 실증됐을 뿐 산출물로는 못 씀.
+
+## 2026-08-19 — 분석요약 5종에 `out_report` 적재 배선(결과 저장 프로세스 완성)
+
+2026-08-13에 이식한 분석요약 5종(`app/analysis/summary.py` 등)은 `service.analyze()`
+결과를 HTTP 응답으로 돌려주기만 하고 아무것도 저장하지 않았다 — 주간 리포트
+(`generator.py`)와 달리 "생성→저장" 중 저장 단계가 없었다. `CONTAINER_ARCHITECTURE.md`
+§4가 이미 "Report 생성기 ... `out_report` 스키마만 존재 — 이걸 확장해서 쓴다"고
+정해둔 대로, **새 테이블을 만들지 않고 `out_report`를 그대로 확장**해 저장까지
+연결했다(`kind='summary'`로 주간 리포트 `kind='report'`와 같은 테이블에 공존).
+
+**추가한 것**
+- `inhouse/services/report_gen/app/analysis/store.py`(신규) — `to_report_row()`
+  (`AnalysisSummaryResponse` → `out_report` 행 변환, 본문은 응답 전체를 JSON
+  직렬화해 담는다 — `out_diagnosis_alert.evidence_json`과 같은 관례) ·
+  `store_summary()`(삽입 전 같은 report_id 삭제 후 재삽입 — `generator.store_report()`
+  와 동일한 멱등 패턴) · `analyze_and_store()`(analyze+저장 공통 진입점).
+- **report_id**: 별도 해시를 새로 만들지 않고 엔진이 이미 계산해 응답에 담아
+  돌려주는 `filter_hash`(page_id+applied_filters의 sha256)를 그대로 재사용 —
+  `"ans_" + filter_hash[:24]`(28자, `report_id VARCHAR(32)` PK 이내). 같은
+  (페이지·광종·필터)로 다시 부르면 같은 id로 덮어써 멱등하다.
+- `routers/analysis.py`: `_run_summary()`가 `service.analyze()` 대신
+  `analyze_and_store(service, summary_request)`를 호출하도록 1줄 교체. 응답
+  모델(`AnalysisSummaryResponse`)은 외부repo 계약 그대로라 API 스키마 변화 없음
+  (저장은 부수효과).
+
+**실측 검증**(TestClient로 실제 앱 lifespan·실제 PostgreSQL(`komis_demo`)·실제
+MSR_DB(duckdb) 경유)
+- 5종 중 4종(시장동향·광물종합지수·광물지도·가격예측)을 실제 HTTP POST로 호출해
+  전부 200 + `out_report`에 `kind='summary'`로 정상 적재 확인(수급동향은 시장동향과
+  완전히 같은 코드 경로라 별도 실행 생략). LLM 정제까지 성공(`llm_refined=true`).
+- **멱등성 실측**: 같은 요청을 2번 호출해도 `report_id`(=filter_hash 기반) 동일,
+  `out_report`에 중복 행 없음(`GROUP BY report_id` 전부 n=1) 확인.
+- **왕복 검증**: 저장된 `body`를 다시 JSON 파싱해 `page_id`·`grade` 등 원본 응답
+  구조가 손실 없이 보존됨을 확인(예: 텅스텐 시장동향 `grade.label='신중'`).
+- 기존 `GET /reports/{report_id}`·`GET /reports`(수정 없이 그대로)로 저장된
+  분석요약을 정상 조회 — 새 엔드포인트를 추가하지 않고 기존 것을 재사용했다.
+- `python3 -m py_compile` 통과.
 
 ## 2026-08-13 — report_gen에 외부repo "분석요약 5종" 엔진 이식·API 배선(8/11 오판 정정)
 

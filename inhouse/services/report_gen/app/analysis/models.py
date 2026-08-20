@@ -34,6 +34,11 @@ SummaryPageId = Literal[
     "indicator_composite",
     "forecast_price",
     "map_mineral",
+    # 아래 3개는 외부repo에도 없던 komir 자체 추가(2026-08-19) — §"가격·수급지도
+    # 요약문 전용 모델" 참고.
+    "price",
+    "map_korea",
+    "map_global",
 ]
 Month = Annotated[str, Field(pattern=r"^\d{4}-(?:0[1-9]|1[0-2])$")]
 Day = Annotated[str, Field(pattern=r"^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])$")]
@@ -160,7 +165,7 @@ class AnalysisSummaryRequest(StrictModel):
                 raise ValueError("medium forecasts require YYYY-Q1..Q4 periods")
             if self.forecast_horizon == "long" and any("-Q" in value for value in periods):
                 raise ValueError("long forecasts require YYYY periods")
-        else:
+        elif self.page_id == "map_mineral":
             if self.mineral is None:
                 raise ValueError("mineral is required for mineral map summaries")
             if self.measure is None:
@@ -178,6 +183,25 @@ class AnalysisSummaryRequest(StrictModel):
                 )
             ):
                 raise ValueError("mineral map summaries only accept year filters")
+        else:
+            # "price"·"map_korea"·"map_global" — komir 자체 추가 3종(§ SummaryPageId
+            # 주석 참고), 셋 다 광종 필수 + 일자(day) 필터만 받는 동일한 모양이다.
+            if self.mineral is None:
+                raise ValueError("mineral is required for price/trade map summaries")
+            if any(
+                value is not None
+                for value in (
+                    self.start_month,
+                    self.end_month,
+                    self.start_year,
+                    self.end_year,
+                    self.measure,
+                    self.forecast_horizon,
+                    self.start_period,
+                    self.end_period,
+                )
+            ):
+                raise ValueError("price/trade map summaries only accept date filters")
         return self
 
 
@@ -353,6 +377,71 @@ class MineralMapSeries(StrictModel):
     source_file: str | None = None
     source_sheets: list[str] = Field(default_factory=list)
     observations: list[MineralMapObservation] = Field(min_length=1)
+    warnings: list[str] = Field(default_factory=list)
+
+
+# ────────────────────────────────────────────────────────────────────
+# 가격·수급지도 요약문 전용 모델 — komir 자체 추가(2026-08-19, 이식 아님).
+# 외부repo는 `/prices`·`/domestic-trade`·`/global-trade` 3종을 501 스텁으로만
+# 남겨뒀다(원본에 참고할 모델이 없다). `KO_MNRL_PRC`(가격)·`KO_CSTM_CMMRC`(국내
+# 수급지도)·`KO_UN_CMMRC`(글로벌 수급지도) 원천 컬럼에 맞춰 새로 정의했다.
+# ────────────────────────────────────────────────────────────────────
+
+
+class PriceObservation(StrictModel):
+    """특정 일자의 실거래가·최저가·최고가·재고(있으면)."""
+
+    date: Day
+    commerce_price: float | None = None
+    lowest_price: float | None = None
+    highest_price: float | None = None
+    inventory: float | None = None
+
+
+class PriceSeries(StrictModel):
+    """출처 메타를 포함한 광물자원가격(KO_MNRL_PRC) 계열."""
+
+    page_id: Literal["price"] = "price"
+    mineral: MineralRef
+    price_criterion_serial: int
+    available_start_date: Day
+    available_end_date: Day
+    source_type: Literal["file", "database", "api", "snapshot"]
+    source_id: str
+    data_version: str
+    data_as_of: str
+    source_file: str | None = None
+    source_sheets: list[str] = Field(default_factory=list)
+    observations: list[PriceObservation] = Field(min_length=1)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class TradeCountryObservation(StrictModel):
+    """특정 일자·상대국의 수입(있으면 수출) 중량·금액."""
+
+    date: Day
+    country_code: str
+    country_name: str
+    import_weight: float | None = None
+    import_amount: float | None = None
+    export_weight: float | None = None
+    export_amount: float | None = None
+
+
+class TradeMapSeries(StrictModel):
+    """출처 메타를 포함한 국내(KO_CSTM_CMMRC)/글로벌(KO_UN_CMMRC) 수급지도 계열."""
+
+    page_id: Literal["map_korea", "map_global"]
+    mineral: MineralRef
+    available_start_date: Day
+    available_end_date: Day
+    source_type: Literal["file", "database", "api", "snapshot"]
+    source_id: str
+    data_version: str
+    data_as_of: str
+    source_file: str | None = None
+    source_sheets: list[str] = Field(default_factory=list)
+    observations: list[TradeCountryObservation] = Field(min_length=1)
     warnings: list[str] = Field(default_factory=list)
 
 
