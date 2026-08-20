@@ -26,7 +26,6 @@
 from __future__ import annotations
 import os, sys
 
-import duckdb
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
@@ -71,7 +70,8 @@ def _asof_join(panel: pd.DataFrame, feat: pd.DataFrame, cols: list[str],
 
 
 def build_aux(db: str, panel: pd.DataFrame) -> pd.DataFrame:
-    con = duckdb.connect(db, read_only=True)
+    from db.dbio import connect_ro
+    con = connect_ro(db)
     inv = con.execute("""SELECT commodity_code, CAST(obs_date AS DATE) AS obs_date, val
         FROM fact_inventory WHERE src='KOMIS_WEEKLY_LME' ORDER BY 1, 2""").df()
     ser = con.execute("""SELECT series_code, CAST(obs_date AS DATE) AS obs_date, val

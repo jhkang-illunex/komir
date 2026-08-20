@@ -150,3 +150,39 @@ CREATE TABLE IF NOT EXISTS doc_chunk (
   PRIMARY KEY (chunk_id)
 );
 -- ③ 모니터링 대시보드는 위 결과 테이블 위의 뷰로 구성(별도 테이블 불필요).
+
+-- ⑦ 화면기획안 ver.1.3 "텍스트 보고서" 화면 2종 공용(2026-08-19 신설) —
+-- A화면(종합 모니터링) §13 "AI 종합분석 및 관련뉴스"·§6 "AI 보고서 다운로드"와
+-- B화면(광종별 모니터링) Step6 §21 "AI 종합판단"이 요구하는 필드를 원본 PDF
+-- 슬라이드(p.11·p.24) 문구 그대로 스키마화했다 — out_report(범용 렌더 문서,
+-- body 단일 블롭)와 별도로 둔 이유는 프런트가 태그 칩·뉴스 카드처럼 구조를
+-- 유지한 채 렌더링해야 해서(사전 렌더링된 텍스트 블롭 하나로는 부족).
+-- crisis_index/alert_level/key_factor_contrib_json 등 수치성 필드는 반드시
+-- out_diagnosis_alert·geo_index·out_import_forecast_unit 등 이미 검증된 원천에서
+-- 그대로 가져오고(LLM이 숫자를 지어내지 않음), diagnosis_text/ai_comment/
+-- weekly_news_json/supply_chain_summary/event_news_summary만 그 숫자를 근거로
+-- LLM이 서술한다(report_gen/app/analysis/summary.py의 "LLM 정제+규칙기반 폴백"
+-- 패턴과 동일 원칙).
+CREATE TABLE IF NOT EXISTS out_ai_dashboard_summary (
+  summary_id VARCHAR(32) NOT NULL,
+  scope VARCHAR(12) NOT NULL,                -- 'overall'(A화면 종합) | 'commodity'(B화면 Step6)
+  commodity_code VARCHAR(8),                 -- scope='commodity'일 때만 값, overall은 NULL
+  period_week DATE NOT NULL,                 -- 기준 주(원천 out_diagnosis_alert.obs_date와 매칭)
+  alert_level VARCHAR(8),                    -- 정상/관심/주의/경계/심각 — out_diagnosis_alert 스냅샷
+  crisis_index DECIMAL(6,2),                 -- overall=5광종 평균, commodity=해당 광종 값
+  wow_delta DECIMAL(6,2),                    -- 전주 대비 변화량(crisis_index 기준)
+  diagnosis_text VARCHAR(2000),              -- 종합진단(현황) 서술 — overall 전용(p.11 "①종합 진단")
+  ai_comment VARCHAR(2000),                  -- AI 종합분석 코멘트(자유서술) — commodity 전용(p.24 "①종합 분석")
+  risk_tags_json VARCHAR(2000),              -- [{"tag":"지정학적","evidence":"..."}] 양쪽 공용
+  response_strategies_json VARCHAR(1000),    -- ["해외수입선의 다변화", ...] — overall 전용(p.11 "대응전략")
+  key_factor_contrib_json VARCHAR(1000),      -- commodity 전용: out_diagnosis_alert.evidence_json의
+                                              -- contrib를 6개 변수 %분해로 재표기(p.18 "③핵심 변수 기여도")
+  weekly_news_json VARCHAR(4000),            -- overall 전용: [{"commodity_code","headline","driver_up",
+                                              -- "driver_down"}] 5건(p.11 "②주간별 뉴스")
+  supply_chain_summary VARCHAR(1500),        -- commodity 전용: 공급망 분석 결과 서술(p.24 "제공 데이터")
+  event_news_summary VARCHAR(1500),          -- commodity 전용: 이벤트·뉴스 분석 결과 서술(p.24 상동)
+  llm_refined BOOLEAN,                       -- true=LLM 서술 성공, false=규칙기반 폴백만 사용
+  model_version VARCHAR(60),
+  generated_at TIMESTAMP,
+  PRIMARY KEY (summary_id)
+);

@@ -16,7 +16,6 @@ XAI(설명가능성) — 착수보고 약속 이행:
 from __future__ import annotations
 import json, os, warnings
 
-import duckdb
 import numpy as np
 import pandas as pd
 from scipy import stats
@@ -116,10 +115,10 @@ def run(db=None, out_dir=None) -> pd.DataFrame:
     out = pd.DataFrame(rows)
     out["generated_at"] = pd.Timestamp.utcnow().isoformat(timespec="seconds")
 
-    con = duckdb.connect(db)
-    con.register("_n", out)
-    con.execute("CREATE OR REPLACE TABLE mart_diagnosis_nowcast AS SELECT * FROM _n")
-    con.execute("CHECKPOINT"); con.close()
+    # 2026-08-19(postgres cutover): duckdb 전용 register/CHECKPOINT 대신 dbio.write_df
+    # (duckdb/postgres 자동 분기, is_url(db) 판정)로 전체교체 적재.
+    from db.dbio import write_df
+    write_df(out, "mart_diagnosis_nowcast", db, if_exists="replace")
 
     import joblib
     joblib.dump(dict(model=m, feats=feats, prep=prep, cc_cols=cc_cols,

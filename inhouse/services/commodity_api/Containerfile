@@ -1,6 +1,6 @@
-# 광종 리스트 API — 기존 진단·예측·지수 모델 결과 서빙(dashboards/streamlit_app.py 로직 이식)
-# TODO(구현 단계): geo/Dockerfile·mineral_supply_risk/Dockerfile 패턴 재사용(python:3.12-slim,
-# host.docker.internal:host-gateway로 외부 LLM/DB 접속). 이 파일은 설계 단계 스켈레톤.
+# 광종 리스트 API — 기존 진단·예측·지수 모델 결과 서빙(dashboards/streamlit_app.py 로직 이식,
+# CONTAINER_ARCHITECTURE.md §8 3단계 구현). host.docker.internal:host-gateway 패턴은
+# 이 서비스가 외부 LLM을 호출하지 않아(읽기 전용 모델 재적합·DB 조회만) 불필요.
 FROM python:3.12-slim
 
 WORKDIR /app
@@ -9,8 +9,18 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY services/commodity_api/app ./app
 COPY services/shared ./shared
-# TODO: mineral_supply_risk 엔진 모듈 임포트 필요분만 선택적으로 COPY(전체 복사 금지 —
-# 이미지 크기·airgap 반입 규정 고려)
+
+# mineral_supply_risk 엔진 중 이 서비스가 실제 import하는 서브패키지만 선택 COPY
+# (app/model_loaders.py 참고 — msr.models.*·scripts.diagnosis_*·scripts.aux_early_warning·
+# scripts.diag_refine1, 그리고 db/dbio.py). data/outputs 등 로컬 산출물 디렉토리는 제외
+# (이미지 크기·airgap 반입 규정 고려, .env는 볼륨/env_file로 별도 주입).
+COPY mineral_supply_risk/msr ./mineral_supply_risk/msr
+COPY mineral_supply_risk/scripts ./mineral_supply_risk/scripts
+COPY mineral_supply_risk/db ./mineral_supply_risk/db
+
+# ExtraTrees 12개월 예측(conformal 보정 포함)·SHAP 설명 재적합 백테스트 스냅샷 —
+# model_loaders.load_backtest_snapshot()이 참조(정적 파일, 라이브 재계산 아님).
+COPY dashboards/forecast_backtest_snapshot.json ./dashboards/forecast_backtest_snapshot.json
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8001

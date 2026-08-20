@@ -19,7 +19,6 @@ QWK 0.8392 · 전환적중 0.1923 · FAR 0.1846 (CU SHFE 복구 상태).
 from __future__ import annotations
 import os, sys
 
-import duckdb
 import numpy as np
 import pandas as pd
 
@@ -47,11 +46,12 @@ def _z(s, w, mp):
 
 
 def build_refined(db: str, panel: pd.DataFrame) -> pd.DataFrame:
-    con = duckdb.connect(db, read_only=True)
+    from db.dbio import connect_ro
+    con = connect_ro(db)
     inv1 = con.execute("""SELECT commodity_code cc, CAST(obs_date AS DATE) AS d,
-        CAST(val AS DOUBLE) v FROM fact_inventory ORDER BY 1,2""").df()
+        CAST(val AS DOUBLE PRECISION) v FROM fact_inventory ORDER BY 1,2""").df()
     inv2 = con.execute("""SELECT commodity_code cc, CAST(obs_date AS DATE) AS d,
-        CAST(val AS DOUBLE) v FROM fact_inventory_exch
+        CAST(val AS DOUBLE PRECISION) v FROM fact_inventory_exch
         WHERE src IN ('SHFE_99QH_W','GFEX_OFFICIAL_W') ORDER BY 1,2""").df()
     sev = con.execute("""SELECT commodity_code cc, CAST(obs_date AS DATE) AS d
         FROM geo_event WHERE severity >= 2 AND obs_date >= '2015-01-01'""").df()

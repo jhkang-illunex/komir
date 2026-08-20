@@ -11,6 +11,7 @@ geopolitical_risk 배선(2026-07-08, v1 문서 §11-3): geo_index(freq='W', 주�
 """
 import duckdb
 from ..config import DB_PATH
+from db.dbio import is_url
 
 # price_type 우선순위(대표가격): LME_3M > LME_CASH > REF > 기타
 # {GEO_JOIN}/{GEO_COL}은 run()에서 geo_index 존재 여부에 따라 치환된다.
@@ -82,6 +83,89 @@ _GEO_JOIN = """ASOF LEFT JOIN (
   FROM geo_index WHERE freq='W'
 ) g ON v.commodity_code = g.commodity_code AND v.obs_date >= g.period"""
 
+# ── postgres(URL) 대상 — 2026-08-19 postgres cutover ──────────────────────
+# ASOF JOIN은 duckdb 전용(표준 SQL도 postgres도 지원 안 함) — LEFT JOIN LATERAL
+# (파티션키 일치 + 날짜 이하 중 최신 1행)로 치환. 라이브 duckdb 데이터로 원본
+# ASOF 쿼리와 결과가 완전히 일치함을 4621행 전 컬럼 실측 검증했다(스칼라·NULL
+# 위치까지 동일) — 이하 템플릿은 그 검증을 통과한 형태 그대로.
+_DDL_TMPL_PG = """
+CREATE TABLE mart_weekly_diagnosis AS
+WITH refp AS (
+  SELECT commodity_code, obs_date, val AS ref_price,
+         ROW_NUMBER() OVER (PARTITION BY commodity_code, obs_date ORDER BY
+           CASE price_type WHEN 'LME_3M' THEN 1 WHEN 'LME_CASH' THEN 2 WHEN 'REF' THEN 3 ELSE 9 END) rn
+  FROM fact_price WHERE freq='W' AND val IS NOT NULL
+),
+rp AS (SELECT commodity_code, obs_date, ref_price FROM refp WHERE rn=1),
+wk AS (
+  SELECT commodity_code, obs_date, ref_price,
+         LN(ref_price / NULLIF(LAG(ref_price) OVER (PARTITION BY commodity_code ORDER BY obs_date),0)) AS logret
+  FROM rp
+),
+vol AS (
+  SELECT *, STDDEV_SAMP(logret) OVER (
+             PARTITION BY commodity_code ORDER BY obs_date ROWS BETWEEN 11 PRECEDING AND CURRENT ROW
+           ) AS volatility_12w
+  FROM wk
+),
+cash AS (SELECT commodity_code,obs_date,val FROM fact_price WHERE price_type='LME_CASH' AND freq='W'),
+m3 AS (SELECT commodity_code,obs_date,val FROM fact_price WHERE price_type='LME_3M' AND freq='W'),
+spread AS (
+  SELECT c.commodity_code, c.obs_date, (c.val - m.val)/NULLIF(m.val,0)*100 AS spread_pct
+  FROM cash c
+  LEFT JOIN LATERAL (
+    SELECT val FROM m3
+    WHERE m3.commodity_code = c.commodity_code AND m3.obs_date <= c.obs_date
+    ORDER BY m3.obs_date DESC LIMIT 1
+  ) m ON true
+),
+teacher AS (
+  SELECT commodity_code, obs_date, val FROM fact_indicator WHERE indicator='SUPPLY_DEMAND'
+)
+SELECT
+  v.commodity_code, v.obs_date, EXTRACT(YEAR FROM v.obs_date)::int AS yr,
+  v.ref_price, v.logret, v.volatility_12w,
+  s.spread_pct,
+  ta.import_hhi, ta.import_yoy, ta.import_cagr3,
+  {PROD_COL},
+  {GEO_COL},
+  CAST(NULL AS DOUBLE PRECISION) AS geo_macro,
+  t.val AS teacher_supply_demand
+FROM vol v
+LEFT JOIN spread s USING(commodity_code, obs_date)
+LEFT JOIN LATERAL (
+  SELECT import_hhi, import_yoy, import_cagr3
+  FROM agg_trade_annual ta2
+  WHERE ta2.commodity_code = v.commodity_code AND ta2.avail_date <= v.obs_date
+  ORDER BY ta2.avail_date DESC LIMIT 1
+) ta ON true
+LEFT JOIN LATERAL (
+  SELECT val FROM teacher t2
+  WHERE t2.commodity_code = v.commodity_code AND t2.obs_date <= v.obs_date
+  ORDER BY t2.obs_date DESC LIMIT 1
+) t ON true
+{GEO_JOIN}
+{PROD_JOIN}
+"""
+_GEO_COL_JOIN_PG = "CAST(g.idx_value AS DOUBLE PRECISION) AS geopolitical_risk"
+_PROD_COL_JOIN_PG = "CAST(ph.production_hhi AS DOUBLE PRECISION) AS production_hhi"
+_GEO_JOIN_PG = """LEFT JOIN LATERAL (
+  SELECT idx_value FROM (
+    SELECT commodity_code, CAST(period AS DATE) AS period, idx_value
+    FROM geo_index WHERE freq='W'
+  ) gg
+  WHERE gg.commodity_code = v.commodity_code AND gg.period <= v.obs_date
+  ORDER BY gg.period DESC LIMIT 1
+) g ON true"""
+_PROD_JOIN_PG = """LEFT JOIN LATERAL (
+  SELECT production_hhi FROM (
+    SELECT commodity_code, production_hhi, CAST(avail_date AS DATE) AS avail_date
+    FROM agg_production_hhi
+  ) ph2
+  WHERE ph2.commodity_code = v.commodity_code AND ph2.avail_date <= v.obs_date
+  ORDER BY ph2.avail_date DESC LIMIT 1
+) ph ON true"""
+
 
 def _has_table(con, name: str) -> bool:
     return con.execute(
@@ -98,6 +182,8 @@ def _has_geo_index(con) -> bool:
 
 def run(db=None):
     db = db or DB_PATH
+    if is_url(db):
+        return _run_pg(db)
     con = duckdb.connect(db)
     # 가격 데이터 유무 확인(없으면 빈 마트 생성)
     npx = con.execute("SELECT count(*) FROM fact_price WHERE freq='W'").fetchone()[0]
@@ -115,6 +201,40 @@ def run(db=None):
     ng = con.execute("SELECT count(*) FROM mart_weekly_diagnosis WHERE geopolitical_risk IS NOT NULL").fetchone()[0]
     np_ = con.execute("SELECT count(*) FROM mart_weekly_diagnosis WHERE production_hhi IS NOT NULL").fetchone()[0]
     con.execute("CHECKPOINT"); con.close()
+    print(f"[weekly-mart] fact_price(W)={npx} → mart_weekly_diagnosis={n}행 "
+          f"(교사신호 {nt}, 지정학지수 {ng}{'—geo_index 미발행' if not use_geo else ''}, "
+          f"생산HHI {np_}{'—usgs 미적재' if not use_prod else ''})")
+    return {"rows": n, "with_teacher": nt, "with_geo": ng, "with_prod_hhi": np_}
+
+
+def _run_pg(db):
+    """postgres(URL) 대상 — LATERAL 치환판 DDL(_DDL_TMPL_PG) 사용. duckdb 분기와 동일한
+    use_geo/use_prod 존재확인 로직이되, `information_schema.tables WHERE table_name=X`가
+    스키마 무관 매칭이라(postgres는 여러 스키마가 보일 수 있음) `to_regclass()`(search_path
+    인지)로 바꿨다."""
+    import sqlalchemy as sa
+    eng = sa.create_engine(db)
+    with eng.begin() as conn:
+        npx = conn.execute(sa.text("SELECT count(*) FROM fact_price WHERE freq='W'")).scalar()
+        has_geo_idx = bool(conn.execute(sa.text("SELECT to_regclass('geo_index') IS NOT NULL")).scalar())
+        use_geo = has_geo_idx and bool(conn.execute(
+            sa.text("SELECT count(*) FROM geo_index WHERE freq='W'")).scalar())
+        use_prod = bool(conn.execute(sa.text("SELECT to_regclass('agg_production_hhi') IS NOT NULL")).scalar())
+        ddl = _DDL_TMPL_PG.format(
+            GEO_COL=_GEO_COL_JOIN_PG if use_geo else _GEO_COL_NULL,
+            GEO_JOIN=_GEO_JOIN_PG if use_geo else "",
+            PROD_COL=_PROD_COL_JOIN_PG if use_prod else _PROD_COL_NULL,
+            PROD_JOIN=_PROD_JOIN_PG if use_prod else "",
+        )
+        conn.execute(sa.text("DROP TABLE IF EXISTS mart_weekly_diagnosis"))
+        conn.execute(sa.text(ddl))
+        n = conn.execute(sa.text("SELECT count(*) FROM mart_weekly_diagnosis")).scalar()
+        nt = conn.execute(sa.text(
+            "SELECT count(*) FROM mart_weekly_diagnosis WHERE teacher_supply_demand IS NOT NULL")).scalar()
+        ng = conn.execute(sa.text(
+            "SELECT count(*) FROM mart_weekly_diagnosis WHERE geopolitical_risk IS NOT NULL")).scalar()
+        np_ = conn.execute(sa.text(
+            "SELECT count(*) FROM mart_weekly_diagnosis WHERE production_hhi IS NOT NULL")).scalar()
     print(f"[weekly-mart] fact_price(W)={npx} → mart_weekly_diagnosis={n}행 "
           f"(교사신호 {nt}, 지정학지수 {ng}{'—geo_index 미발행' if not use_geo else ''}, "
           f"생산HHI {np_}{'—usgs 미적재' if not use_prod else ''})")

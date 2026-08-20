@@ -252,6 +252,229 @@ BASE_FEATS 5종 중 4종(volatility_12w·spread_pct·import_hhi/yoy/cagr3·ref_p
   헤드라인 절대 QWK 숫자만 "지연=1개월" 가정에 낙관적으로 의존함을 확인.
 - 산출물: `outputs/model_opt/ylag_publication_delay_sensitivity.md`(+folds.csv), DATA_REGISTRY
   등재 완료. 코드 변경 없음(순수 진단) — y_lag/조인 로직 실수정은 KOMIS 확인 후 별도 착수.
+## 2026-08-19 (최신) — 진단·예측 cron 자동화 + "텍스트 보고서" 화면 스키마·데이터 신설
+
+사용자 지시 2건 연속 처리: ①"지정학위기지수·수급위기진단·수요예측이 크론으로 주기적으로
+동작하고 결과가 DB에 갱신되게" ②"기획안 보고 텍스트 보고서 화면에 필요한 스키마를
+확정하고 그 데이터도 작성".
+
+**① cron 자동화 — 실측으로 확인된 격차**: 시스템 crontab 6건은 전부 수집기(raw_* 적재)만
+돌고, 정규화(raw→fact)·마트·진단모델·경보·예측(forecast_unit) 등 파생 파이프라인은
+cron에 전혀 없었다(`inhouse/mineral_supply_risk/scripts/schedule.py`가 2026-07-12에
+이미 이 오케스트레이션을 만들어뒀지만 **crontab에 등록된 적이 없고**, 그 안의 geo 호출
+부분(`ingest-bundles`/`extract`)은 2026-08-06 DMZ/inhouse 분리 이후 실제 운영 중인
+`cron_gkg_increment.sh`의 파이프라인과 달라져 stale — msr 쪽 함수 호출부만 시그니처가
+현재 코드와 일치해 재사용 가능했음).
+
+- **신설**: `inhouse/mineral_supply_risk/scripts/cron_diagnosis_weekly.sh`(정규화→
+  주간마트→nowcast→경보 4단계), `cron_forecast_monthly.sh`(ExtraTrees+conformal+SHAP,
+  flock 락 적용). 둘 다 `schedule.py`의 msr 호출 시퀀스를 그대로 재사용(재구현 아님).
+- **배선**: 진단은 `.env`의 `DIAGNOSIS_TRIGGER=after_geo_index` 설계값 그대로 —
+  독립 cron이 아니라 `inhouse/geo/cron_gkg_increment.sh`의 지정학지수 publish
+  직후([6/6] 단계로) 같은 프로세스에서 직접 호출(별도 cron이면 순서 보장이 깨짐).
+  예측은 `.env`의 `FORECAST_SCHEDULE_CRON="0 1 1-7 * SUN"`(매월 첫째주 일요일) 값대로
+  독립 crontab 항목으로 등록할 스크립트만 준비(시스템 crontab 자체는 main 체크아웃에서
+  병합 후 등록 필요 — 아래 "남은 일" 참고).
+- **실측 검증**: 두 스크립트 모두 실제 duckdb로 완주 확인 — `cron_diagnosis_weekly.sh`
+  (fact_trade_monthly 21955·mart_weekly_diagnosis 4621·CU ci_pred 97.99, 오늘 계속
+  검증해온 값과 일치) / `cron_forecast_monthly.sh`(out_import_forecast_unit 60행,
+  h=1 CU pred_ton 238685.6 — commodity_api 첫 테스트값과 완전 일치).
+- **사고 기록**: 테스트 중 워크트리 루트에 `data_archive/`가 실제로는 git 추적 대상
+  (삭제 금지 정책 걸린 진짜 이력)인 걸 모르고 `rm -rf`로 통째로 지웠다가 `git restore`로
+  즉시 복구함 — 앞으로 "테스트 산출물이니 지워도 됨"이라고 판단하기 전에 반드시
+  `git status`로 추적 여부 확인할 것(재발 방지 메모).
+
+**② 텍스트 보고서 화면 스키마·데이터**: 원본 PDF(`documents/기획문서/260731 핵심광물
+수급위기 진단 화면 기획안 ver.1.3.pdf`) p.4·p.11·p.18·p.24를 PyMuPDF로 직접 재확인해
+슬라이드 문구 그대로 스키마화(추측 없음) — A화면(종합 모니터링) §6 "AI 보고서 다운로드"
++§13 "AI 종합분석 및 관련뉴스"(현황→원인→대응, 리스크태그, 광종별 주간뉴스 4필드)와
+B화면(광종별) Step6 §21 "AI 종합판단"(종합경보·핵심변수기여도·공급망요약·이벤트뉴스요약)
+2종을 하나의 테이블로 묶었다.
+
+- **신설 테이블** `out_ai_dashboard_summary`(`mineral_supply_risk/db/schema_core.sql`에
+  추가, portable DDL): `scope`('overall'|'commodity')로 두 화면 구분, 숫자 필드
+  (crisis_index·wow_delta·key_factor_contrib_json)는 전부 `out_diagnosis_alert`·
+  `geo_index`·`out_import_forecast_unit`·`geo_event`에서 그대로 가져오고(LLM이 숫자를
+  안 지어냄), 서술 필드(diagnosis_text·ai_comment·risk_tags_json·weekly_news_json·
+  supply_chain_summary·event_news_summary)만 LLM이 그 숫자를 근거로 작성 —
+  `report_gen/app/analysis/summary.py`의 "LLM 정제+규칙기반 폴백" 원칙 그대로 재사용.
+- **신설 생성기** `services/report_gen/app/dashboard_summary.py` — `shared.llm_client.
+  KomirJsonLLM`(pydantic 구조화 출력, 기존 클라이언트 재사용)로 overall 1행+commodity
+  5행 생성, `shared.db.upsert_df_msr`(오늘 postgres cutover 작업에서 만든 `dbio.upsert_df`
+  를 `write_df_msr` 옆에 대칭으로 처음 재노출)로 멱등 적재.
+- **실LLM 실행 검증**(로컬 vLLM `gemma-4-26b-a4b`, `localhost:52302`): 6행 전부
+  LLM 서술 성공(폴백 0건) — CU "심각·98.0·전주대비-0.21·y_lag1 33.0" 등 실제
+  `out_diagnosis_alert`/`geo_event` 수치·근거문구를 정확히 인용한 자연어 생성 확인,
+  환각 수치 없음(전부 payload에 있던 값만 재인용).
+
+**남은 일(다음 세션 또는 병합 후)**: 이 워크트리(`worktree-mineral_risk`)도 아직 main
+미병합 상태 — 이전 postgres cutover 작업과 동일하게, 병합 후 `cron_forecast_monthly.sh`를
+시스템 crontab에 실제 등록해야 함(`0 1 1-7 * SUN`). `dashboard_summary.py`는 아직
+API로 노출되지 않음(schema+생성기+실데이터까지만 이번 스코프) — commodity_api류
+엔드포인트로 서빙하려면 후속 라우터 필요.
+
+
+## 2026-08-19 (최신) — MSR 데이터 저장소 duckdb → postgres cutover(코드 이식 완료, 실postgres 검증 완료)
+
+사용자 지시("지금 데이터는 postgresql에 덤프하고 그 db 활용하기로 하지 않았나? duckdb에서
+postgresql로 옮겨주세요, 향후 생성되는 모든 데이터도 postgresql로")에 따라 진행. 조사
+결과 2026-08-10 postgres 이관은 1회성 스냅샷 사본일 뿐 cutover는 보류 상태였고(WORKLOG
+해당 일자·메모리 `postgres_migration_260810` 확인), duckdb가 여전히 정본이었다(실측:
+postgres가 geo_index 1주·geo_event 1주 stale). 상세 계획은
+`/home/nuri/.claude/plans/rosy-rolling-wren.md`(승인됨) 참고 — 이 절은 실행 기록.
+
+**핵심 발견(계획 수립 시엔 몰랐던 것, 실행 중 실postgres 접속으로 드러남)**: `MSR_DB`를
+postgres URL로만 바꾸면 최소 6종의 서로 다른 실패 유형이 발생했다 — 계획에서 예상한
+"duckdb 전용 쓰기 API(register/CHECKPOINT)" 외에, **읽기 경로**에도 동일한 문제가 있었고
+(모델 로더 다수가 `duckdb.connect()`를 직접 열었음 — commodity_api가 바로 이 함수들에
+의존), SQL 방언 차이도 3종 발견됐다: ① `last(x ORDER BY y)`(duckdb 전용 집계함수, 표준
+`array_agg(...)[1]`로 교체) ② `date_trunc('month', date_컬럼)`이 postgres에서 암묵적으로
+`timestamptz` 오버로드를 타 세션/시스템 타임존이 섞여 들어옴(`CAST(... AS TIMESTAMP)`
+명시 캐스트로 교정 — 실측: 병합 시 tz-aware/naive 충돌로 크래시) ③ `CAST(x AS DOUBLE)`
+(duckdb 전용 타입명, `DOUBLE PRECISION`이 표준) ④ duckdb `DECIMAL(20,4)` 컬럼이 duckdb
+Python 드라이버에선 fetch 시 float64로 자동변환되지만 psycopg2는 `decimal.Decimal`
+object로 반환 — numpy/pandas 연산이 `TypeError`로 크래시(스키마 문제가 아니라 드라이버
+차이임을 실측으로 확인). 이 각각을 실제 postgres 접속으로 재현·수정·재검증했다(가정이나
+문서 검토가 아니라 실행 기반).
+
+**변경 파일(24개, `git diff --stat` 기준)**:
+- `mineral_supply_risk/db/dbio.py`(핵심 신규): `upsert_df()`(duckdb/postgres 자동분기 —
+  postgres는 SQLAlchemy 트랜잭션, duckdb는 `msr/storage/db.py`의 기존 로직 그대로 이관),
+  `connect_ro()`+`_PgReadConn`/`_PgReadResult`(postgres에서 duckdb Connection의
+  `.execute(sql).df()/.fetchone()/.fetchall()/.close()` 서브셋만 흉내내는 어댑터 — 15곳의
+  build_panel류 함수가 쿼리 리라이트 없이 connect 호출 한 줄만 바꿔 재사용하게 함),
+  `_coerce_decimal_cols()`(위 ④ 흡수, 읽기 경계 한 곳에서 전역 해결).
+- `msr/storage/db.py`: `upsert_df()`를 `dbio.upsert_df()` 위임으로 축소(6개 호출부
+  — `msr/pipeline.py`·`msr/models/alert.py`·`scripts/backfill_customs_monthly.py` 등
+  — 무변경으로 자동 해결).
+- `msr/models/{nowcast,forecast_unit,alert}.py`: duckdb 전용 쓰기(register/CHECKPOINT)를
+  `dbio.write_df`(전체교체)/`dbio.upsert_df`(부분갱신)로 교체. `alert.py::run()`은
+  추가로 `DESCRIBE`(duckdb 전용, postgres에서 실패 시 "마트 없음"과 똑같이 조용히
+  스킵돼버림 — 실측으로 발견)를 `information_schema.columns` 조회로 교정.
+- `msr/models/{diagnosis_opt,forecast_unit,alert_reason}.py`,
+  `scripts/{diagnosis_retrain_answer,diagnosis_aux_features_eval,
+  diagnosis_exch_inventory_eval,diagnosis_priority_feeds_eval,diag_refine1,
+  aux_early_warning}.py`: `duckdb.connect(db, read_only=True)` → `connect_ro(db)`
+  (기계적 1줄 교체, 15곳). 위 SQL 방언 차이 3종도 해당 파일들에서 실측 발견돼 함께 수정.
+- `msr/features/normalize.py`·`weekly_mart.py`: DDL 포함이라 `is_url(db)` 분기로
+  postgres 전용 경로(`_run_pg`) 신규 추가(duckdb 경로는 무변경, 회귀 위험 없음).
+  `weekly_mart.py`는 duckdb `ASOF LEFT JOIN`(postgres 미지원, 표준 SQL도 아님)을
+  `LEFT JOIN LATERAL`로 재작성 — **실 duckdb 데이터로 원본 ASOF 쿼리와 결과 완전 일치를
+  4621행 전 컬럼(NULL 위치까지) 검증 후 채택**(추측 아님, `array_agg` 트릭 포함 2건 모두
+  `np.allclose(..., equal_nan=True)`로 확인).
+- `msr/models/{diagnosis,forecast}.py`: 참고용/baseline 모듈(model_loaders.py·CLAUDE.md
+  §2 실행경로 어디서도 안 씀, `msr/features/marts.py`도 grep으로 참조자 0건 재확인) —
+  `connect_ro`만 기계적으로 맞추고 `DESCRIBE`류 방언 문제는 일부러 안 고쳤다(비활성
+  경로, try/except가 이미 "마트 없음"과 동일하게 안전히 스킵함).
+- `services/commodity_api/app/model_loaders.py`: `CAST(x AS DOUBLE)`→`DOUBLE PRECISION`
+  (앞서 만든 이 서비스도 실postgres 테스트에서 걸림 — duckdb로만 검증했을 때는 안
+  드러났던 문제).
+
+**실postgres 검증(추측 없이 전부 실행)**: `172.30.1.101:5433/komis_demo`의 `mineral_risk`
+스키마(2026-08-10 이관 스냅샷)를 대상으로 —
+1. 읽기 경로 개별 함수 7개(diagnosis_opt/forecast_unit build_panel, load_delta_ew의
+   7단계 체인 전체 — retrain_answer→add_dynamics→build_aux→build_cninv→build_pmi→
+   build_refined→build_cli) 전부 정상 실행 확인.
+2. 쓰기 경로 5개 스크립트 전부 실제 postgres에 실제로 적재 성공 확인: `nowcast.py`
+   (mart_diagnosis_nowcast 395행) · `alert.py`(out_diagnosis_alert 1652행, storage.db
+   위임 경로) · `forecast_unit.py`(out_import_forecast_unit 60행+mart_forecast_method_log
+   1행 upsert, ExtraTrees+conformal 전체 파이프라인 3분 소요) · `weekly_mart.py`
+   (mart_weekly_diagnosis 4621행, LATERAL) · `normalize.py`(fact_trade_monthly 21955행
+   — duckdb와 행수 정확히 일치) · `aux_early_warning.py`(out_aux_early_warning 5행).
+3. `commodity_api`를 `MSR_DB=<postgres DSN>`으로 기동해 3개 엔드포인트(geo-index·
+   diagnosis·forecast) 전부 200 확인, forecast는 ExtraTrees 재적합 포함 199초(duckdb
+   테스트와 동급 소요).
+4. **최종 재동기화**(`scripts.migrate_duckdb_to_postgres` 재실행, 38개 테이블 0건
+   불일치) **후 commodity_api 재호출 결과가 이 세션 최초 duckdb 테스트 결과와 완전히
+   일치**함을 확인(idx_value 64.919·ci_pred 97.99 등 소수점까지 동일) — 회귀 없음의
+   가장 강한 증거.
+
+**postgres 접속 문자열의 핵심 설계**: `?options=-csearch_path%3Dmineral_risk`를 DSN에
+추가하면 세션 기본 스키마가 고정돼, 코드베이스 전역의 **비한정 SQL 문자열(`FROM
+geo_index` 등)을 단 하나도 안 고쳐도 됨**을 실측 확인(`SHOW search_path` → `mineral_risk`,
+`SELECT count(*) FROM geo_index` 스키마 접두 없이 정상). 스코프가 "duckdb 전용 API를
+쓰는 지점"으로만 좁혀진 결정적 이유.
+
+**스코프 밖(의도적, 문서화)**: `mineral_supply_risk/scripts/`의 나머지 ~40여개
+백테스트·검정 스크립트(`diagnosis_*_eval.py`류 중 이번에 안 건드린 것들, `r10_*.py`,
+`geo_prob_alt_refit.py`, `midas_eval.py`, `build_kr_import_share.py` 등)는 CLAUDE.md
+§2·cron 어디에도 없는 연구용 도구라 이번 cutover에서 안 건드렸다 — 같은 패턴(`connect_ro`
++ `CAST(...AS DOUBLE)`→`DOUBLE PRECISION`)으로 필요할 때 고치면 됨. `msr/features/
+marts.py`는 참조자 0건이라 죽은 코드로 판단, 미착수. 시스템 crontab(6건)은 스크립트
+경로만 참조해 DB 대상과 무관하므로 변경 불필요(스크립트 내부 `MSR_DB`/`--db`만 전환
+대상).
+
+**다음 세션 또는 후속 작업(이 세션에서 미실행, 의도적으로 사용자 확인 후 진행)**: 이
+워크트리(`worktree-mineral_risk` 브랜치)의 변경사항을 main으로 병합한 뒤에야 실제
+운영 전환(`inhouse/.env`의 `MSR_DB`, `mineral_supply_risk/scripts/
+cron_collect_feeds_inhouse.sh`의 `MSR_DB` export, `geo/cron_gkg_increment.sh`의 `--db`,
+`CLAUDE.md` §2 실행 예시)을 진행한다 — 메인 체크아웃은 이번 수정사항이 전혀 없는
+상태라 먼저 전환하면 방금 고친 것과 동일한 실패가 그대로 재현되기 때문(사용자 확인
+완료, "커밋 후 병합까지 진행" 선택).
+
+## 2026-08-19 — commodity_api 3개 라우터(geo-index·diagnosis·forecast) 구현·실데이터 검증
+
+`services/commodity_api`가 "설계 단계 스켈레톤"(`NotImplementedError`)이던 것을
+CONTAINER_ARCHITECTURE.md §8 3단계대로 구현했다. 이식 원본은
+`dashboards/streamlit_app.py`의 `load_geo`/`load_diagnosis_level`/
+`load_diagnosis_alert`/`load_delta_ew`/`load_forecast` — Streamlit 전용 부분
+(캐시 데코레이터·plotly 차트)만 걷어내고 `app/model_loaders.py`로 그대로 옮겼다
+(재구현 아님, 함수 바디 동일).
+
+**신규 파일**(`inhouse/services/commodity_api/app/`):
+- `_bootstrap.py` — `shared/db.py`(기존 패턴 재사용)에 더해 `mineral_supply_risk/
+  msr/config.py`를 위로 훑어 찾아 sys.path에 넣는 `ensure_msr_engine_on_path()`
+  신규 추가(msr.*/scripts.* 최상위 import를 위해 필요, dbio.py만 필요했던 기존
+  `_find_msr_root`와는 목적이 다름).
+- `deps.py` — 광종 코드(cc) 검증(5종 아니면 404) + DB mtime 키 in-memory 캐시
+  (`st.cache_data`의 서버 재현, 락으로 중복 재적합 방지, `POST /admin/cache/clear`로
+  수동 무효화).
+- `model_loaders.py` — 5개 로더 함수 이식. DB 조회는 원본의 raw `duckdb.connect`
+  대신 `shared.db.read_sql_msr()`(dbio 경유, 향후 Postgres cutover 시 코드 변경
+  불필요)로 바꿨다 — 유일한 의도적 변경점.
+- `serialize.py` — numpy.int64/bool_/Timestamp 등을 JSON 안전 타입으로 정규화
+  (FastAPI 기본 인코더가 numpy 스칼라를 자동 변환하지 않아 500의 원인이 될 수
+  있었음, 라우터 응답 경계에서 일괄 처리).
+- `routers/{geo_index,diagnosis,forecast}.py` — 각각
+  `GET /commodities/{cc}/geo-index`(주간 위기지수+p_burst_next 등 확률, 연산
+  없음)·`GET /commodities/{cc}/diagnosis`(Ridge 챔피언 재적합+alert.py 규칙엔진/
+  히스테리시스+선형 기여도 분해+보조 Δ조기경보 앙상블)·
+  `GET /commodities/{cc}/forecast`(ExtraTrees direct 12개월 물량·단가+conformal
+  구간보정+SHAP 로컬/전역 설명+18오리진 백테스트 스냅샷 병기)로 구현. `main.py`에
+  `GET /commodities`(5광종 목록)·`GET /healthz`·`POST /admin/cache/clear` 추가.
+
+**검증(실데이터, 메인 체크아웃 `minerals.duckdb` 대상 — 읽기 전용이라 이 워크트리에서도
+안전하게 실행 가능했음)**: `uvicorn app.main:app`으로 로컬 기동 후 curl 실호출.
+- `GET /commodities` — 5광종 정상.
+- `GET /commodities/CU/geo-index` — 200, `idx_value`/`p_burst_next` 등 실측값 확인.
+- `GET /commodities/CU/diagnosis` — 200(2.9초, 최초 Ridge 재적합), 경보 "심각" +
+  기여도 분해(`y_lag1 +33.0` 등) + Δ조기경보(하향 45%) 정상.
+- `GET /commodities/CU/forecast` — 200(수 분, ExtraTrees+conformal 3원점 재적합 —
+  원본 docstring이 경고한 그대로), h=1..12 물량·단가·수입액 구간+SHAP 사유문 정상.
+  **캐시 재사용 확인**: 동일 광종 재조회(다른 h) 9ms, 심지어 다른 광종(LI)
+  diagnosis 조회도 7ms — `load_diagnosis_level`/`load_forecast`가 전 광종을 한
+  번에 계산해 캐시에 얹기 때문(원본 구조 그대로).
+- 존재하지 않는 광종(`XX`) → 404 + 한국어 사유 확인.
+- `POST /admin/cache/clear` → 5개 엔트리(geo/diagnosis_level/diagnosis_alert/
+  delta_ew/forecast) 초기화 확인 후 재조회로 정상 재계산 확인.
+- 전 구간 `read_sql`이 `read_only=True`만 사용 — 운영 DB에 쓰기 경로 없음(원본
+  "읽기 전용" 보장 그대로 승계).
+
+**Containerfile·requirements.txt 갱신**: 기존 TODO("mineral_supply_risk 엔진 모듈
+임포트 필요분만 선택적으로 COPY")를 실제로 채웠다 — `mineral_supply_risk/{msr,
+scripts,db}`(데이터/산출물 디렉토리 제외)와 `dashboards/forecast_backtest_snapshot.json`만
+선택 COPY. requirements는 streamlit_app.py가 이미 쓰던 duckdb/pandas/numpy/
+scikit-learn/shap/python-dotenv를 반영(plotly/streamlit은 API 서빙에 불필요해 제외).
+
+**범위 밖(의도적으로 안 함)**: 화면기획안 ver.1.3(`documents/산출물/2026-W33_0810-0816/
+화면기획안_v1.3_...md`)의 #18(5+1 위기유형 판별)·#20(비관/중립/낙관 3분류
+시나리오 라벨링)·#21(자유서술 AI종합판단) 같은 화면 전용 프레이밍은 포함하지
+않았다 — 이번 작업은 CONTAINER_ARCHITECTURE.md §8 3단계(기존 진단·예측·지수
+모델 결과를 "서빙 가능하게")로 스코프를 좁혔고, 그 문서가 이미 이 3개 화면
+기능을 "구현진행중, 이미 있는 구성요소(SHAP·확률구간·기여도)를 재조립하면
+되는 것"으로 분류해뒀다 — diagnosis/forecast 응답에 원자료(contrib·probs·SHAP
+local/global)는 이미 포함돼 있어 후속 화면 어댑터가 이 위에서 조립하면 된다.
+podman-compose 통합 기동(§8 6단계)·rag_chat/report_gen과의 공존 스모크는 미실행.
 
 ## 2026-08-13 — report_gen에 외부repo "분석요약 5종" 엔진 이식·API 배선(8/11 오판 정정)
 

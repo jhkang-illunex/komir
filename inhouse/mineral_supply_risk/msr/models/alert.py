@@ -9,7 +9,7 @@
   - 광종별 임계값 차등(과업: 희토류 편중도 단독 트리거 등)
 """
 import os
-import duckdb, numpy as np, pandas as pd
+import numpy as np, pandas as pd
 from ..config import DB_PATH as _DB_DEFAULT, OUT as _OUT
 
 LEVELS={0:"정상",1:"관심",2:"주의",3:"경계",4:"심각"}
@@ -199,9 +199,18 @@ def run(db=None, model_version="alert_rule_v1"):
     """mart_weekly_diagnosis(위기지수) + geo_event(지정학) → 경보 4단계 + 사유
     → out_diagnosis_alert 적재. 입력 부족 시 None(스킵)."""
     db = db or _DB_DEFAULT
-    con = duckdb.connect(db, read_only=True)
+    # 2026-08-19(postgres cutover): connect_ro(duckdb/postgres 자동 분기) + DESCRIBE
+    # 대신 information_schema.columns(양쪽 다 지원되는 표준 카탈로그 조회)로 교체.
+    # DESCRIBE는 duckdb 전용 구문이라 postgres에서 그대로 두면 이 except가 "마트 없음"과
+    # 똑같이 스킵돼 out_diagnosis_alert가 조용히 안 나오는 상태가 될 뻔했다(실측으로 발견).
+    from db.dbio import connect_ro
+    con = connect_ro(db)
     try:
-        have = {c[0] for c in con.execute("DESCRIBE mart_weekly_diagnosis").fetchall()}
+        have = {c[0] for c in con.execute(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name='mart_weekly_diagnosis'").fetchall()}
+        if not have:
+            raise RuntimeError("mart_weekly_diagnosis 컬럼 없음")
     except Exception:
         con.close(); print("[alert] mart_weekly_diagnosis 없음 → 스킵."); return None
     need = {"commodity_code", "obs_date", "teacher_supply_demand", "volatility_12w", "import_hhi"}

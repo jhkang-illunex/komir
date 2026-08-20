@@ -27,7 +27,6 @@ import json
 import os
 import sys
 
-import duckdb
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import BaggingClassifier
@@ -50,9 +49,10 @@ CLI_F = ["cli_yoy", "cli_chg3", "cli_z24"]
 def build_cli(db: str, panel) -> "pd.DataFrame":
     """OECD 한국 CLI(월간, avail=+45일) — R10 채택 피처."""
     from scripts.diagnosis_aux_features_eval import _asof_join
-    con = duckdb.connect(db, read_only=True)
+    from db.dbio import connect_ro
+    con = connect_ro(db)
     x = con.execute("""SELECT CAST(obs_date AS DATE) obs_date,
-        CAST(val AS DOUBLE) val FROM fact_series
+        CAST(val AS DOUBLE PRECISION) val FROM fact_series
         WHERE series_code='OECD_CLI_KR_M' ORDER BY 1""").df()
     con.close()
     x["obs_date"] = pd.to_datetime(x["obs_date"])
@@ -125,19 +125,11 @@ def main() -> None:
             ensure_ascii=False),
         "generated_at": pd.Timestamp.utcnow().isoformat(timespec="seconds"),
     })
-    con = duckdb.connect(db)
-    con.register("_a", out)
-    exists = con.execute("SELECT count(*) FROM information_schema.tables "
-                         "WHERE table_name='out_aux_early_warning'").fetchone()[0]
-    if not exists:
-        con.execute("CREATE TABLE out_aux_early_warning AS SELECT * FROM _a")
-    else:
-        con.execute("DELETE FROM out_aux_early_warning WHERE obs_date = ?",
-                    [out["obs_date"].iloc[0]])
-        con.execute("INSERT INTO out_aux_early_warning SELECT * FROM _a")
-    con.execute("CHECKPOINT")
-    con.unregister("_a")
-    con.close()
+    # 2026-08-19(postgres cutover): duckdb 전용 register/CHECKPOINT 대신 dbio.upsert_df
+    # (duckdb/postgres 자동 분기)로 obs_date 1일치 upsert.
+    from db.dbio import upsert_df
+    upsert_df(out, "out_aux_early_warning", db,
+              del_where=f"obs_date = '{out['obs_date'].iloc[0]}'")
     print(out[["commodity_code", "obs_date", "direction", "trigger",
                "p_down", "p_stay", "p_up"]].to_string(index=False))
     print(f"[aux-ew] out_aux_early_warning {len(out)}행 발행 완료")

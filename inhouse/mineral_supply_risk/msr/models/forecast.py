@@ -5,7 +5,7 @@ raw_customs_monthly(월간 수입) → 광종·월 패널 → 지연/계절 피�
 산출: mart_monthly_forecast_input(입력 패널), out_import_forecast(예측).
 타깃: volume(imp_wgt, kg) · value(imp_usd, $).
 """
-import numpy as np, pandas as pd, duckdb
+import numpy as np, pandas as pd
 from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
 from ..config import DB_PATH
@@ -32,7 +32,8 @@ def _monthly_panel(db):
     """광종·월 수입 합계. 정본 팩트(fact_trade_monthly)에서 읽음(단일 소스).
     광종별 월간 그리드로 reindex(결측월=0) — 수입 없는 달이 행에서 빠지면
     행 기반 lag가 달력과 어긋나므로(builders DR3와 동일 원리) 그리드를 보장한다."""
-    con = duckdb.connect(db, read_only=True)
+    from db.dbio import connect_ro
+    con = connect_ro(db)
     df = con.execute("""
         SELECT commodity_code,
                make_date(yr, mon, 1) AS date,

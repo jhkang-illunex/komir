@@ -2,7 +2,7 @@
 """진단모델 베이스라인 학습 (월간 패널, 시간순 홀드아웃).
 run(db, out_dir)로 호출. import만으로는 아무것도 실행하지 않는다(부작용 없음)."""
 import os, json
-import duckdb, numpy as np, pandas as pd
+import numpy as np, pandas as pd
 from sklearn.linear_model import Ridge
 from sklearn.ensemble import HistGradientBoostingRegressor, HistGradientBoostingClassifier
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
@@ -30,9 +30,13 @@ def run(db=None, out_dir=None, min_rows=20):
     out_dir = out_dir or os.path.join(str(OUT), "model")
     os.makedirs(out_dir, exist_ok=True)
 
-    con = duckdb.connect(db, read_only=True)
+    from db.dbio import connect_ro
+    con = connect_ro(db)
     # 마트 스키마 방어: canonical 마트(marts.py) 컬럼이 없으면(현 warehouse는 schema_core.sql
     # 버전이라 target_label/feat_json) 크래시 대신 스킵. raw→fact 통합 후 활성화된다.
+    # ⚠ DESCRIBE는 duckdb 전용 구문 — postgres cutover 후에도 여기선 일부러 안 고쳤다
+    # (이 baseline 모듈은 model_loaders.py/CLAUDE.md §2 어디서도 안 쓰는 비활성 경로라
+    # try/except가 "마트 없음"과 동일하게 스킵 처리해도 무해함, 2026-08-19).
     try:
         have = {c[0] for c in con.execute("DESCRIBE mart_weekly_diagnosis").fetchall()}
     except Exception:

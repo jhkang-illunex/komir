@@ -21,7 +21,6 @@ h=1~12 재귀 예측(단일스텝 HistGBM ×2: log(톤)·log(단가), 광종 풀
 from __future__ import annotations
 import json, os, warnings
 
-import duckdb
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import ExtraTreesRegressor, HistGradientBoostingRegressor
@@ -88,15 +87,16 @@ def _midas_weekly_to_monthly(wdf: pd.DataFrame, name: str, lambdas: dict | None,
 
 def _add_midas_features(df: pd.DataFrame, db: str) -> pd.DataFrame:
     """주간 원천(지정학지수·LME가격·환율) → 신챔피언 MIDAS 피처를 패널에 병합."""
-    con = duckdb.connect(db, read_only=True)
+    from db.dbio import connect_ro
+    con = connect_ro(db)
     wgeo = con.execute("""SELECT commodity_code, CAST(period AS DATE) AS week,
-        CAST(idx_value AS DOUBLE) val FROM geo_index WHERE freq='W'
+        CAST(idx_value AS DOUBLE PRECISION) val FROM geo_index WHERE freq='W'
         ORDER BY 1,2""").df()
     wpx = con.execute("""SELECT commodity_code, CAST(obs_date AS DATE) AS week,
-        CAST(val AS DOUBLE) val FROM fact_price
+        CAST(val AS DOUBLE PRECISION) val FROM fact_price
         WHERE freq='W' AND price_type IN ('LME_CASH','REF') ORDER BY 1,2""").df()
     wfx = con.execute("""SELECT CAST(obs_date AS DATE) AS week,
-        CAST(val AS DOUBLE) val FROM fact_series
+        CAST(val AS DOUBLE PRECISION) val FROM fact_series
         WHERE series_code='USDKRW_W' ORDER BY 1""").df()
     con.close()
     wfx["commodity_code"] = None
@@ -115,13 +115,14 @@ def _add_midas_features(df: pd.DataFrame, db: str) -> pd.DataFrame:
 
 # ─────────────────────────── 패널 구축 ───────────────────────────
 def build_panel(db: str) -> pd.DataFrame:
-    con = duckdb.connect(db, read_only=True)
+    from db.dbio import connect_ro
+    con = connect_ro(db)
     t = con.execute("""
         SELECT commodity_code, make_date(yr, mon, 1) AS month,
                sum(imp_wgt)/1000.0 AS ton, sum(imp_usd) AS value_usd
         FROM fact_trade_monthly GROUP BY 1,2 ORDER BY 1,2""").df()
     px = con.execute("""
-        SELECT commodity_code, date_trunc('month', obs_date) AS month, avg(val) AS lme
+        SELECT commodity_code, date_trunc('month', CAST(obs_date AS TIMESTAMP)) AS month, avg(val) AS lme
         FROM fact_price WHERE freq='W' AND price_type IN ('LME_CASH','REF')
         GROUP BY 1,2""").df()
     gi = con.execute("""
@@ -683,7 +684,8 @@ def run(db=None, out_dir=None):
         prev_method = None
         _c = None
         try:
-            _c = duckdb.connect(db, read_only=True)
+            from db.dbio import connect_ro
+            _c = connect_ro(db)
             _r = _c.execute("SELECT method_selected FROM mart_forecast_method_log "
                              "ORDER BY base_month DESC LIMIT 1").fetchone()
             prev_method = _r[0] if _r else None
@@ -707,28 +709,16 @@ def run(db=None, out_dir=None):
         "gap": round(m_rec - m_dir, 4), "method_selected": method, "method_naive": method_naive,
         "margin_threshold": 0.05, "generated_at": pd.Timestamp.utcnow().floor("s"),
     }])
-    _c = None
+    # 2026-08-19(postgres cutover): duckdb 전용 register/CHECKPOINT 대신 dbio.upsert_df
+    # (duckdb/postgres 자동 분기)로 base_month 1행 upsert. 날짜값은 내부에서 계산한
+    # last_m이라 안전하게 인라인(사용자 입력 아님).
     try:
-        _c = duckdb.connect(db)
-        _c.register("_lg", log_row)
-        _exists = _c.execute("SELECT count(*) FROM information_schema.tables "
-                              "WHERE table_name='mart_forecast_method_log'").fetchone()[0]
-        if not _exists:
-            _c.execute("CREATE TABLE mart_forecast_method_log AS SELECT * FROM _lg")
-        else:
-            _c.execute("DELETE FROM mart_forecast_method_log WHERE base_month = ?", [last_m.date()])
-            _c.execute("INSERT INTO mart_forecast_method_log SELECT * FROM _lg")
-        _c.execute("CHECKPOINT")
+        from db.dbio import upsert_df
+        upsert_df(log_row, "mart_forecast_method_log", db,
+                  del_where=f"base_month = '{last_m.date()}'")
         print(f"[method] mart_forecast_method_log 1행 기록(base_month={last_m:%Y-%m})")
     except Exception as e:
         print(f"  [warn] mart_forecast_method_log 기록 실패(무시하고 계속): {e}")
-    finally:
-        if _c is not None:
-            try:
-                _c.unregister("_lg")
-            except Exception:
-                pass
-            _c.close()
 
     # 최종 발행: 최신월 기준 h=1~12. 구간(q10/q90)은 Direct 분위 모델 + conformal 보수화,
     # 점추정은 우승 방식. 발행용 가산폭은 최신 가용 원점 3개(실측 12개월 확보분)로 보정.
@@ -799,10 +789,9 @@ def run(db=None, out_dir=None):
         out["reason"] = None
         out["explain_json"] = None
 
-    con = duckdb.connect(db)
-    con.register("_f", out)
-    con.execute("CREATE OR REPLACE TABLE out_import_forecast_unit AS SELECT * FROM _f")
-    con.execute("CHECKPOINT"); con.close()
+    # 2026-08-19(postgres cutover): 3번과 동일 — dbio.write_df(전체교체)로 교체.
+    from db.dbio import write_df
+    write_df(out, "out_import_forecast_unit", db, if_exists="replace")
     out.to_csv(f"{out_dir}/forecast_latest.csv", index=False)
     print(f"\n[forecast-unit] out_import_forecast_unit {len(out)}행 (base={last_m:%Y-%m}, h=1~12)")
     print(out[out["h"].isin([1, 6, 12])][["commodity_code", "target_month", "pred_ton",

@@ -32,6 +32,18 @@ dmz/geo_collectors/_gkg_masterfilelist_cache.txt
 
 # 참조데이터(data/raw/hs_commodity_map.csv 등)는 위에서 무시하지 않으므로 기본 추적됨.
 
+# 2026-08-20(사용자 결정): data_archive/는 검증 실행 로그·백업 — 개념적으로 data-lake에
+# 속하는 산출물(코드가 아니라 실행 결과)이라 git 추적 대상에서 뺀다. 초기 배포 시점엔
+# 이미 커밋된 이력을 그대로 같이 배포하되(과거분 git rm --cached는 하지 않음 — 아래로
+# 계속 추적됨), 앞으로 새로 생기는 검증 실행 산출물(OCR 캐시·중복본·run 로그 등)은
+# 여기서부터 커밋 대상이 아니다 — 나중엔 별도 주기 실행(백업/정리 파이프라인)으로
+# 관리한다. 기존 "삭제 금지 정책"(artifact-provenance-policy)은 파일시스템상 보존
+# 의무일 뿐 git 추적 의무는 아니었음 — 이번에 명확히 분리.
+data_archive/
+
+# 에디터 개인설정
+.vscode/
+
 # 중첩 git (로컬에서 삭제했으면 무시됨)
 mineral_supply_risk/.git/
 

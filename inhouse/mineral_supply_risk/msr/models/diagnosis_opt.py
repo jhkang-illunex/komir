@@ -15,7 +15,6 @@ diagnosis.py(베이스라인, 단일 홀드아웃)의 최적화판. 차이:
 from __future__ import annotations
 import os, json, warnings
 
-import duckdb
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import Ridge, LogisticRegression
@@ -58,22 +57,23 @@ def anchored_cuts(df: pd.DataFrame, date_col: str = "month") -> dict:
 
 # ─────────────────────────────── 데이터 ───────────────────────────────
 def build_panel(db: str) -> pd.DataFrame:
-    con = duckdb.connect(db, read_only=True)
+    from db.dbio import connect_ro
+    con = connect_ro(db)
     df = con.execute(f"""
         WITH w AS (
-          SELECT commodity_code, date_trunc('month',obs_date) AS month, obs_date,
+          SELECT commodity_code, date_trunc('month',CAST(obs_date AS TIMESTAMP)) AS month, obs_date,
                  {','.join(BASE_FEATS)}, teacher_supply_demand AS y
           FROM mart_weekly_diagnosis
           WHERE obs_date>='2020-01-01' AND teacher_supply_demand IS NOT NULL
         )
         SELECT commodity_code, month,
                {','.join(f'avg({c}) AS {c}' for c in BASE_FEATS)},
-               last(y ORDER BY obs_date) AS y
+               (array_agg(y ORDER BY obs_date DESC))[1] AS y
         FROM w GROUP BY 1,2 ORDER BY commodity_code, month""").df()
     # 확률 레이어(geo_prob, 주간) → 월 최대 p_burst
     try:
         pb = con.execute("""
-            SELECT commodity_code, date_trunc('month', CAST(period AS DATE)) AS month,
+            SELECT commodity_code, date_trunc('month', CAST(period AS TIMESTAMP)) AS month,
                    max(p_burst_next) AS p_burst
             FROM geo_prob GROUP BY 1,2""").df()
         df = df.merge(pb, on=["commodity_code", "month"], how="left")
@@ -89,8 +89,8 @@ def build_panel(db: str) -> pd.DataFrame:
               WINDOW w AS (PARTITION BY commodity_code ORDER BY obs_date
                            ROWS BETWEEN 51 PRECEDING AND CURRENT ROW)
             )
-            SELECT commodity_code, date_trunc('month',obs_date) AS month,
-                   last((ref_price-m52)/NULLIF(s52,0) ORDER BY obs_date) AS price_z52
+            SELECT commodity_code, date_trunc('month',CAST(obs_date AS TIMESTAMP)) AS month,
+                   (array_agg((ref_price-m52)/NULLIF(s52,0) ORDER BY obs_date DESC))[1] AS price_z52
             FROM p GROUP BY 1,2""").df()
         df = df.merge(pz, on=["commodity_code", "month"], how="left")
     except Exception:
