@@ -34,9 +34,12 @@ fi
   echo "=== $(date '+%F %T') GKG 증분 cron 시작 (year-from=$YEAR_FROM) ==="
   cd "$ROOT/inhouse"   # 2026-08-06 DMZ/in-house 분리 반영 — `python -m geo`는 geo 패키지의
                        # 부모 디렉토리에서 실행해야 함(komir/inhouse/geo가 아니라 komir/inhouse/)
-  # GEO_PUBLISH_DB는 inhouse/.env(postgres DSN)에서 주입 — 여기서 파일 DB로 폴백하지
-  # 않는다(2026-08-19, postgres 단일 정본 원칙).
-  : "${GEO_PUBLISH_DB:?GEO_PUBLISH_DB가 설정되지 않음 — inhouse/.env의 postgres DSN을 주입할 것}"
+  # cron은 .env를 자동으로 읽지 않는다 — 여기서 명시적으로 source. duckdb 파일경로로
+  # 폴백하지 않고(postgres 단일 정본), .env에 값이 없으면 명시적으로 실패한다.
+  set -a
+  source "$ROOT/inhouse/.env"
+  set +a
+  : "${GEO_PUBLISH_DB:?GEO_PUBLISH_DB가 설정되지 않음 — inhouse/.env의 postgres DSN을 확인할 것}"
 
   echo "--- [1/5] 파싱(state 증분) ---"
   python3 -m geo gkg-parse --bulk-root "$BULK" --year-from "$YEAR_FROM" 2>&1 | tail -3

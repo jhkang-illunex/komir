@@ -19,10 +19,13 @@ mkdir -p "$LOGDIR"
 LOG="$LOGDIR/forecast_monthly_$(date +%Y%m%d).log"
 LOCK=/tmp/komir_forecast_monthly.lock
 cd "$ROOT/inhouse/mineral_supply_risk"
-# MSR_DB는 inhouse/.env(postgres DSN)에서 주입 — 여기서 파일 DB로 폴백하지 않는다
-# (2026-08-19, postgres 단일 정본 원칙). .env가 로드되지 않는 실행환경이면 아래에서
-# 명시적으로 실패한다(조용한 폴백 금지).
-: "${MSR_DB:?MSR_DB가 설정되지 않음 — inhouse/.env의 postgres DSN을 주입할 것}"
+# cron은 .env를 자동으로 읽지 않는다 — 여기서 명시적으로 source(python-dotenv의
+# load_dotenv()는 파이썬 프로세스 내부에서만 유효, 이 셸엔 안 보임). duckdb 파일경로로
+# 폴백하지 않고(postgres 단일 정본), .env에 값이 없으면 명시적으로 실패한다.
+set -a
+source "$ROOT/inhouse/.env"
+set +a
+: "${MSR_DB:?MSR_DB가 설정되지 않음 — inhouse/.env의 postgres DSN을 확인할 것}"
 
 exec 9>"$LOCK"
 if ! flock -n 9; then
