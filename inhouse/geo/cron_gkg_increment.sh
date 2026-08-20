@@ -20,7 +20,6 @@ LOGDIR="$ROOT/data_archive/cron_logs"
 mkdir -p "$LOGDIR"
 LOG="$LOGDIR/gkg_weekly_$(date +%Y%m%d).log"
 LOCK=/tmp/komir_gkg_increment.lock
-LLM_URL="http://localhost:52302/v1/models"
 # 연말 경계 대비: 30일 전이 속한 연도부터 스캔
 YEAR_FROM=$(date -d '30 days ago' +%Y)
 
@@ -40,6 +39,12 @@ fi
   source "$ROOT/inhouse/.env"
   set +a
   : "${GEO_PUBLISH_DB:?GEO_PUBLISH_DB가 설정되지 않음 — inhouse/.env의 postgres DSN을 확인할 것}"
+  : "${LLM_BASE_URL:?LLM_BASE_URL이 설정되지 않음 — inhouse/.env를 확인할 것}"
+  # 2026-08-20: 헬스체크 URL을 하드코딩하지 않고 LLM_BASE_URL(.env, /v1로 끝남)에서
+  # 파생 — 배포 환경이 바뀌어도(베어메탈 localhost ↔ 컨테이너 host.docker.internal
+  # ↔ 발주처 실제 서버 IP) .env의 LLM_BASE_URL 한 줄만 바꾸면 이 스크립트는 그대로
+  # 따라간다(별도 값 수정 불필요).
+  LLM_URL="${LLM_BASE_URL}/models"
 
   echo "--- [1/5] 파싱(state 증분) ---"
   python3 -m geo gkg-parse --bulk-root "$BULK" --year-from "$YEAR_FROM" 2>&1 | tail -3
