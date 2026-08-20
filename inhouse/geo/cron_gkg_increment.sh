@@ -20,7 +20,6 @@ LOGDIR="$ROOT/data_archive/cron_logs"
 mkdir -p "$LOGDIR"
 LOG="$LOGDIR/gkg_weekly_$(date +%Y%m%d).log"
 LOCK=/tmp/komir_gkg_increment.lock
-LLM_URL="http://localhost:52302/v1/models"
 # 연말 경계 대비: 30일 전이 속한 연도부터 스캔
 YEAR_FROM=$(date -d '30 days ago' +%Y)
 
@@ -34,9 +33,18 @@ fi
   echo "=== $(date '+%F %T') GKG 증분 cron 시작 (year-from=$YEAR_FROM) ==="
   cd "$ROOT/inhouse"   # 2026-08-06 DMZ/in-house 분리 반영 — `python -m geo`는 geo 패키지의
                        # 부모 디렉토리에서 실행해야 함(komir/inhouse/geo가 아니라 komir/inhouse/)
-  # GEO_PUBLISH_DB는 inhouse/.env(postgres DSN)에서 주입 — 여기서 파일 DB로 폴백하지
-  # 않는다(2026-08-19, postgres 단일 정본 원칙).
-  : "${GEO_PUBLISH_DB:?GEO_PUBLISH_DB가 설정되지 않음 — inhouse/.env의 postgres DSN을 주입할 것}"
+  # cron은 .env를 자동으로 읽지 않는다 — 여기서 명시적으로 source. duckdb 파일경로로
+  # 폴백하지 않고(postgres 단일 정본), .env에 값이 없으면 명시적으로 실패한다.
+  set -a
+  source "$ROOT/inhouse/.env"
+  set +a
+  : "${GEO_PUBLISH_DB:?GEO_PUBLISH_DB가 설정되지 않음 — inhouse/.env의 postgres DSN을 확인할 것}"
+  : "${LLM_BASE_URL:?LLM_BASE_URL이 설정되지 않음 — inhouse/.env를 확인할 것}"
+  # 2026-08-20: 헬스체크 URL을 하드코딩하지 않고 LLM_BASE_URL(.env, /v1로 끝남)에서
+  # 파생 — 배포 환경이 바뀌어도(베어메탈 localhost ↔ 컨테이너 host.docker.internal
+  # ↔ 발주처 실제 서버 IP) .env의 LLM_BASE_URL 한 줄만 바꾸면 이 스크립트는 그대로
+  # 따라간다(별도 값 수정 불필요).
+  LLM_URL="${LLM_BASE_URL}/models"
 
   echo "--- [1/5] 파싱(state 증분) ---"
   python3 -m geo gkg-parse --bulk-root "$BULK" --year-from "$YEAR_FROM" 2>&1 | tail -3

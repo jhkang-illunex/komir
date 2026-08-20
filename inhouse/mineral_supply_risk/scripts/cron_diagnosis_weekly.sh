@@ -22,10 +22,14 @@ LOGDIR="$ROOT/data_archive/cron_logs"
 mkdir -p "$LOGDIR"
 LOG="$LOGDIR/diagnosis_weekly_$(date +%Y%m%d).log"
 cd "$ROOT/inhouse/mineral_supply_risk"
-# MSR_DB는 inhouse/.env(postgres DSN)에서 주입 — 여기서 파일 DB로 폴백하지 않는다
-# (2026-08-19, postgres 단일 정본 원칙). .env가 로드되지 않는 실행환경이면 아래에서
-# 명시적으로 실패한다(조용한 폴백 금지).
-: "${MSR_DB:?MSR_DB가 설정되지 않음 — inhouse/.env의 postgres DSN을 주입할 것}"
+# cron은 .env를 자동으로 읽지 않는다(python-dotenv의 load_dotenv()는 파이썬 프로세스
+# 내부에서만 유효 — 이 셸이나 셸이 띄우는 서브프로세스엔 안 보임) — 여기서 명시적으로
+# source해 MSR_DB 등을 이 셸의 환경변수로도 만든다. duckdb 파일경로로 폴백하지 않고
+# (postgres 단일 정본), .env에 값이 없으면 아래에서 명시적으로 실패한다(조용한 폴백 금지).
+set -a
+source "$ROOT/inhouse/.env"
+set +a
+: "${MSR_DB:?MSR_DB가 설정되지 않음 — inhouse/.env의 postgres DSN을 확인할 것}"
 
 {
   echo "=== $(date '+%F %T') 수급위기 진단 파이프라인 시작 (MSR_DB=$MSR_DB) ==="

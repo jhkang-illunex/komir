@@ -17,7 +17,14 @@ LOGDIR="$ROOT/data_archive/cron_logs"
 mkdir -p "$LOGDIR"
 LOG="$LOGDIR/feeds_${MODE}_$(date +%Y%m%d).log"
 cd "$ROOT/inhouse/mineral_supply_risk"   # 2026-08-06 dmz/inhouse 물리분리 반영
-export MSR_DB="$ROOT/inhouse/data_lake/db/minerals.duckdb"   # 2026-08-06 신 경로(별도 이관중)
+# cron은 .env를 자동으로 읽지 않는다 — 여기서 명시적으로 source(2026-08-20 postgres
+# cutover — 이전엔 여기서 duckdb 경로를 직접 export했으나, 그대로 두면 원천 수집
+# 데이터가 고아 duckdb 파일로 계속 흘러들어가고 postgres는 갱신되지 않는 조용한 정체가
+# 생긴다. MSR_DB는 이제 inhouse/.env의 postgres DSN을 그대로 쓴다).
+set -a
+source "$ROOT/inhouse/.env"
+set +a
+: "${MSR_DB:?MSR_DB가 설정되지 않음 — inhouse/.env의 postgres DSN을 확인할 것}"
 # DMZ가 만든 parquet 산출물 위치 — dmz측 cron과 같은 경로를 가리켜야 함(현재 단일 저장소
 # 개발환경 전제, 실운영에서는 rsync/NAS로 이 경로에 사본을 채워둘 것)
 export MSR_COLLECT_OUT="${MSR_COLLECT_OUT:-$ROOT/msr_collect_out}"
