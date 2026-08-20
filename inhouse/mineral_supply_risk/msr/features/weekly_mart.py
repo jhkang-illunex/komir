@@ -149,6 +149,10 @@ LEFT JOIN LATERAL (
 """
 _GEO_COL_JOIN_PG = "CAST(g.idx_value AS DOUBLE PRECISION) AS geopolitical_risk"
 _PROD_COL_JOIN_PG = "CAST(ph.production_hhi AS DOUBLE PRECISION) AS production_hhi"
+# postgres는 duckdb의 CAST(... AS DOUBLE)을 모른다("type "double" does not exist") — 위
+# _GEO_COL_NULL/_PROD_COL_NULL(duckdb용)과 별도로 PG 폴백 상수를 둔다.
+_GEO_COL_NULL_PG = "CAST(NULL AS DOUBLE PRECISION) AS geopolitical_risk"
+_PROD_COL_NULL_PG = "CAST(NULL AS DOUBLE PRECISION) AS production_hhi"
 _GEO_JOIN_PG = """LEFT JOIN LATERAL (
   SELECT idx_value FROM (
     SELECT commodity_code, CAST(period AS DATE) AS period, idx_value
@@ -221,9 +225,9 @@ def _run_pg(db):
             sa.text("SELECT count(*) FROM geo_index WHERE freq='W'")).scalar())
         use_prod = bool(conn.execute(sa.text("SELECT to_regclass('agg_production_hhi') IS NOT NULL")).scalar())
         ddl = _DDL_TMPL_PG.format(
-            GEO_COL=_GEO_COL_JOIN_PG if use_geo else _GEO_COL_NULL,
+            GEO_COL=_GEO_COL_JOIN_PG if use_geo else _GEO_COL_NULL_PG,
             GEO_JOIN=_GEO_JOIN_PG if use_geo else "",
-            PROD_COL=_PROD_COL_JOIN_PG if use_prod else _PROD_COL_NULL,
+            PROD_COL=_PROD_COL_JOIN_PG if use_prod else _PROD_COL_NULL_PG,
             PROD_JOIN=_PROD_JOIN_PG if use_prod else "",
         )
         conn.execute(sa.text("DROP TABLE IF EXISTS mart_weekly_diagnosis"))

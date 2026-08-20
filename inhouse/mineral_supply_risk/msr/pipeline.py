@@ -95,7 +95,8 @@ def normalize():
 
 # ---- 3) 피처(정본 팩트 기반) ----
 def build_features():
-    con=db.connect(read_only=True)
+    from db.dbio import connect_ro  # msr/storage/db.py::connect()는 duckdb 전용이라 postgres cutover 후 크래시(msr/storage/db.py 상단 docstring 참고) — connect_ro로 우회
+    con=connect_ro(config.DB_PATH)
     # raw가 아닌 정본 팩트에서 읽음(단일 소스). 없으면 먼저 normalize.
     try: trade=con.execute("SELECT commodity_code, yr AS year, country, imp_usd FROM fact_trade_monthly").df()
     except Exception: trade=pd.DataFrame()

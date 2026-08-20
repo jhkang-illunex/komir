@@ -10,11 +10,14 @@ template의 __DATA__를 warehouse 스냅샷(JSON)으로 치환해 자체완결 H
 from __future__ import annotations
 import json
 import os
+import sys
 
-import duckdb
 import pandas as pd
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(HERE, "..", "mineral_supply_risk"))
+from db.dbio import connect_ro  # noqa: E402
+
 DB = os.environ.get("MSR_DB",
                     "/home/nuri/dev/git/ws/mine_ws/komir/inhouse/data_lake/db/minerals.duckdb")
 LVL = {"정상": 0, "관심": 1, "주의": 2, "경계": 3, "심각": 4}
@@ -22,7 +25,7 @@ CCS = ["CU", "NI", "LI", "CO", "REE"]
 
 
 def build_data() -> dict:
-    con = duckdb.connect(DB, read_only=True)
+    con = connect_ro(DB)
     alerts = {}
     al = con.execute("""SELECT commodity_code cc, CAST(obs_date AS DATE) d,
             risk_score, alert_level, reason FROM out_diagnosis_alert
@@ -41,7 +44,7 @@ def build_data() -> dict:
                      "contrib": json.loads(r.contrib)}
     geo = {}
     gi = con.execute("""SELECT commodity_code cc, CAST(period AS DATE) d,
-            CAST(idx_value AS DOUBLE) v FROM geo_index
+            CAST(idx_value AS DOUBLE PRECISION) v FROM geo_index
         WHERE freq='W' AND period >= '2020-01-01' ORDER BY 1, 2""").df()
     # 주간 지수는 일요일 앵커 — 경보(월요일 앵커)와 정확일치 조인되도록 +1일 보정
     # (geo_prob DB 발행과 동일 규약; 미보정 시 차트 오버레이가 전부 미매칭)

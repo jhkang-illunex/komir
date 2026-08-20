@@ -40,7 +40,6 @@ import json
 import os
 import sys
 
-import duckdb
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -52,6 +51,7 @@ sys.path.insert(0, MSR_ROOT)
 DEFAULT_DB = "/home/nuri/dev/git/ws/mine_ws/komir/inhouse/data_lake/db/minerals.duckdb"
 os.environ.setdefault("MSR_DB", DEFAULT_DB)
 
+from db.dbio import connect_ro                                            # noqa: E402
 from msr.config import DB_PATH, CORE_COMMODITIES                          # noqa: E402
 from msr.models.diagnosis_opt import (                                    # noqa: E402
     build_panel as build_panel_level, BASE_FEATS, GEO_DERIVED,
@@ -151,9 +151,9 @@ def load_backtest_snapshot():
 # ─────────────────────────── 데이터/모델 로더(캐시) ───────────────────────────
 @st.cache_data(show_spinner="지정학 위기지수 조회 중...")
 def load_geo(_key: float):
-    con = duckdb.connect(DB_PATH, read_only=True)
+    con = connect_ro(DB_PATH)
     idx_w = con.execute("""SELECT commodity_code, CAST(period AS DATE) AS week,
-        CAST(idx_value AS DOUBLE) idx_value, n_events
+        CAST(idx_value AS DOUBLE PRECISION) idx_value, n_events
         FROM geo_index WHERE freq='W' ORDER BY 1,2""").df()
     prob = con.execute("""SELECT commodity_code, period, p_burst_next,
         p_severe_next, p_burst_adapt, lambda_next, family
@@ -209,7 +209,7 @@ def load_diagnosis_alert(_key: float):
     nc["contrib_json"] = nc["contrib"].apply(lambda d: json.dumps(d, ensure_ascii=False))
     nc = nc.drop(columns=["probs", "contrib"]).rename(columns={"contrib_json": "contrib"})
 
-    con = duckdb.connect(DB_PATH, read_only=True)
+    con = connect_ro(DB_PATH)
     df = con.execute("""SELECT commodity_code, obs_date, teacher_supply_demand,
         volatility_12w, import_hhi FROM mart_weekly_diagnosis
         WHERE obs_date >= '2020-01-01' AND teacher_supply_demand IS NOT NULL""").df()
