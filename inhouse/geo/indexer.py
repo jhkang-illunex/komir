@@ -36,6 +36,49 @@ def _load_kr_share():
     return pd.read_parquet(f) if os.path.exists(f) else None
 
 
+def _expanding_normalize(ev: pd.DataFrame, col: str) -> np.ndarray:
+    """col을 광종×연도 "그 해 이전" 누적평균으로 나눠 평균≈1로 정규화(causal). 광종×연도
+    소표(수백 행)에서 계산 후 벡터화 merge — 이벤트 단위 apply는 안 함(수백만행에 너무
+    느림, _asof_grid와 동일 이유). 선례 없는 첫 해만 그 해 자기평균 폴백(불가피)."""
+    t = (ev.groupby(["commodity", "yr"]).agg(n=(col, "size"), s=(col, "sum"))
+           .reset_index().sort_values(["commodity", "yr"]))
+    t["cum_n"] = t.groupby("commodity")["n"].cumsum()
+    t["cum_s"] = t.groupby("commodity")["s"].cumsum()
+    t["prior_n"] = t.groupby("commodity")["cum_n"].shift(1)
+    t["prior_s"] = t.groupby("commodity")["cum_s"].shift(1)
+    t["mean_prior"] = np.where(t["prior_n"].fillna(0) > 0,
+                               t["prior_s"] / t["prior_n"], t["s"] / t["n"])
+    m = ev.merge(t[["commodity", "yr", "mean_prior"]], on=["commodity", "yr"], how="left")
+    return ev[col].values / m["mean_prior"].values
+
+
+def _expanding_residualize(ev: pd.DataFrame, xcol: str, ycol: str) -> np.ndarray:
+    """xcol을 ycol에 대해 광종×연도 "그 해 이전" 데이터만으로 잔차화(x - b·(y-mean_y)),
+    b=cov(x,y)/var(y)를 합 형태로 벡터화 계산(이벤트 단위 apply 없음). 선례가 20건 미만인
+    해는 b=0(잔차화 생략, 원값 그대로 통과) — 코드베이스 다른 곳의 min_periods 웜업 관례와
+    동일 성격."""
+    x, y = ev[xcol].values, ev[ycol].values
+    t = pd.DataFrame({"commodity": ev["commodity"].values, "yr": ev["yr"].values,
+                      "x": x, "y": y, "xy": x * y, "yy": y * y})
+    t = (t.groupby(["commodity", "yr"])
+          .agg(n=("x", "size"), sx=("x", "sum"), sy=("y", "sum"),
+               sxy=("xy", "sum"), syy=("yy", "sum"))
+          .reset_index().sort_values(["commodity", "yr"]))
+    for c in ["n", "sx", "sy", "sxy", "syy"]:
+        t[f"cum_{c}"] = t.groupby("commodity")[c].cumsum()
+        t[f"prior_{c}"] = t.groupby("commodity")[f"cum_{c}"].shift(1)
+    pn = t["prior_n"]
+    has_prior = pn.fillna(0) >= 20
+    mean_x = t["prior_sx"] / pn
+    mean_y = t["prior_sy"] / pn
+    cov = t["prior_sxy"] / pn - mean_x * mean_y
+    var = t["prior_syy"] / pn - mean_y ** 2
+    t["b"] = np.where(has_prior & (var > 1e-9), cov / var, 0.0)
+    t["mean_y_ref"] = np.where(has_prior, mean_y, t["sy"] / t["n"])
+    m = ev.merge(t[["commodity", "yr", "b", "mean_y_ref"]], on=["commodity", "yr"], how="left")
+    return x - m["b"].values * (y - m["mean_y_ref"].values)
+
+
 def _apply_kr_exposure(ev: pd.DataFrame, mode: str = "mult") -> pd.DataFrame:
     """이중 노출 가중(2026-07-15, 외부감사 B-1① — '한국의' 지수화).
     w = 공급충격 크기(conc, USGS 생산점유) × 한국 직접 노출(s_imp, 관세청 수입비중).
@@ -44,12 +87,19 @@ def _apply_kr_exposure(ev: pd.DataFrame, mode: str = "mult") -> pd.DataFrame:
       스케일(P90 앵커 동결)을 보존하면서 국가 간 상대 가중만 바꾼다(순수 곱 w=s_prod×s_imp는
       비수입 생산국 이벤트를 0으로 만들어 글로벌 가격 전달경로를 지움 — 채택하지 않음).
 
-    mode="resid"(#4 이중노출 중복 검증 전용, 2026-07-22 조언자 자문): USGS refdata 실가동
-    후 실측(conc_impmult_corr_v2.md) conc×imp_mult 상관이 CU 0.78·LI 0.61·REE 0.97로
+    mode="resid"(#4 이중노출 중복, 2026-07-22 조언자 자문 채택 → 현재 기본값): USGS refdata
+    실가동 후 실측(conc_impmult_corr_v2.md) conc×imp_mult 상관이 CU 0.78·LI 0.61·REE 0.97로
     높게 나옴 — "중국이 생산·수입 양쪽의 공통원인"인 정당한 공행성일 수도, 곱셈 이중계상일
-    수도 있어 광종별로 imp_mult를 conc에 대해 잔차화(conc가 이미 설명하는 부분 제거)한
-    변형을 kr_exposure_ablation.py로 mult와 비교 검증한다. 기본값 mode="mult"는 기존과
-    완전 동일(회귀 없음)."""
+    수도 있어 광종별로 imp_mult를 conc에 대해 잔차화(conc가 이미 설명하는 부분 제거)한다.
+
+    2026-08-18 expanding-window 리팩터(lookahead_bias_audit_260813 §4 대응): 이 함수는
+    원래 imp_mult의 평균-1 정규화도, resid의 회귀계수 b=cov/var도 광종별 **전체 이력**
+    (2016~현재)으로 한 번 계산해 2016년 이벤트에도 그대로 적용했다 — geo_prob(p_burst)의
+    "전체기간재적합"과 동일한 미래시 안티패턴. 아래는 광종×연도 소표에서 "그 해 이전"
+    누적합만으로 정규화상수·b를 구해(선형이라 합 형태로 벡터화 가능, _asof_grid와 동일하게
+    이벤트 단위 row-wise apply는 하지 않음) 매년 causal하게 적용한다. 선례가 아예 없는
+    광종의 첫 해만 그 해 자기 자신으로 폴백(그 이상 과거 데이터가 없어 불가피 — burst_k 등
+    다른 곳의 첫 구간 폴백과 같은 성격)."""
     share = _load_kr_share()
     if share is None or "country" not in ev.columns:
         ev["imp_mult"] = 1.0
@@ -61,16 +111,12 @@ def _apply_kr_exposure(ev: pd.DataFrame, mode: str = "mult") -> pd.DataFrame:
     ev = ev.merge(grid.rename(columns={"year": "yr", "imp_share": "s_imp"}),
                   on=["commodity", "country", "yr"], how="left")
     ev["s_imp"] = ev["s_imp"].fillna(0.0)
-    raw = 1.0 + ev["s_imp"]
-    ev["imp_mult"] = raw / raw.groupby(ev["commodity"]).transform("mean")
+    ev["_raw"] = 1.0 + ev["s_imp"]
+    ev["imp_mult"] = _expanding_normalize(ev, "_raw")
     if mode == "resid" and "conc" in ev.columns:
-        def _residualize(g):
-            cov = np.cov(g["imp_mult"], g["conc"])[0, 1]
-            var = g["conc"].var()
-            b = cov / var if var > 1e-9 else 0.0
-            res = g["imp_mult"] - b * (g["conc"] - g["conc"].mean())
-            return res / res.mean()
-        ev["imp_mult"] = ev.groupby("commodity", group_keys=False).apply(_residualize, include_groups=False)
+        ev["imp_mult"] = _expanding_residualize(ev, "imp_mult", "conc")
+        ev["imp_mult"] = _expanding_normalize(ev, "imp_mult")
+    ev = ev.drop(columns=["_raw"])
     n_hit = int((ev["s_imp"] > 0).sum())
     stat = ev[ev["s_imp"] > 0].groupby("commodity")["imp_mult"].max().round(2).to_dict()
     print(f"  [index] 이중 노출 가중({mode}): 수입국 매칭 {n_hit:,}건({n_hit/len(ev):.1%}), "

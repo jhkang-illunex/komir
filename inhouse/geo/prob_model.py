@@ -21,12 +21,15 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+from sklearn.isotonic import IsotonicRegression
 
 from . import config as C, store
 
 SEVERE_MIN = 2.0          # "심각" 임계(sev>=2 — 붙임2 계열 트리거와 동일 눈금)
 EWMA_HALFLIFE = 4         # v0 문서 §1.2의 EWMA 반감기(주)
-TRAIN_END = "2023-12-31"  # 시계열 분할(검증 리포트용) — 최종 발행 모델은 전 기간 재적합
+TRAIN_END = "2023-12-31"  # 시계열 분할(검증 리포트 전용, run()의 "1)" 섹션에서만 사용)
+MIN_TRAIN_WEEKS = 52      # 발행값 최소 학습표본(연 단위 expanding 웜업 기준과 동일)
+MIN_CALIB_PAIRS = 20      # isotonic 보정 시작 최소 누적 OOS쌍(그 전엔 원값 그대로 발행)
 BASE_COLS = ["x_ewma", "x_geo", "x_vol"]
 # CO는 x_z13(심각 13주합의 52주 z) 병행(2026-07-25 신챔피언 반영): CO Brier
 # 0.2058→0.1747(CI [+0.005,+0.064] P=0.992), "상수기준 열세" 약점 해소. 타 광종은
@@ -299,36 +302,76 @@ def run() -> pd.DataFrame:
                        f"{b_ens:.4f} vs 상수 {b_const:.4f} "
                        f"{'✓개선' if b_ens < b_const else '✗열세'}")
 
-        # 2) 발행 모델(전 기간 재적합) — 전 주차 확률 산출
-        params_f, alpha_f, family_f = _fit_one(hist, cc_cols)
-        lam, p1 = _predict(params_f, alpha_f, family_f, g, cc_cols)
-        out = g[["commodity", "week"]].copy()
-        out["lambda_next"] = lam
-        out["p_severe_next"] = p1                                  # P(>=1) — 하위호환
-        out["burst_threshold"] = burst_k
-        out["p_burst_next"] = _p_ge(lam, alpha_f, family_f, burst_k)  # P(>=P90 임계) — 주 신호
-        out["family"] = family_f
-        out["alpha_disp"] = alpha_f
-        # 적응형 발행(부가 컬럼 — 기존 p_burst_next는 불변, 다운스트림 무영향):
-        # P(다음주 심각수 >= 최근 52주 P90) = 강도 NB2와 직접 분류(상대강도 로지스틱)의
-        # 평균 앙상블. 고정 임계와 달리 체제 전환기(REE 2024+)에도 "이례성" 의미 유지.
-        logit_f = _fit_adapt_logit(hist)
-        out["burst_k_adapt"] = g["k_adapt"].values
-        out["p_burst_adapt"] = 0.5 * _p_ge_rowwise(lam, alpha_f, family_f,
-                                                   g["k_adapt"].values) \
-            + 0.5 * logit_f(g)
-        results.append(out)
+        # 2) 발행값 — 연 단위 expanding-window(2026-08-18 리팩터, lookahead_bias_audit_260813
+        # §2 대응). 예전엔 hist 전체(2016~현재)에 파라미터를 한 번 적합해 과거 전체(g)에
+        # 역산했다 — 2016년 발행값도 2024~26년 이벤트 분포로 추정된 계수를 쓰는 구조적
+        # 미래시였음(실측: 진단모델 p_burst dQWK엔 영향 없었으나 구조 자체가 잘못됨).
+        # 여기서는 매년 1/1을 컷오프로 그 이전 데이터로만 적합해 그 해를 발행 — "이번 해
+        # 발행값은 이번 해 이전 정보로만 계산됨" 불변식을 보장한다. 웜업 미달 연도는 발행
+        # 자체를 스킵(과거처럼 leak된 값으로 채우지 않음 — 정직한 결측).
+        # isotonic 보정도 같은 원칙: "지금까지 실현된 결과"만 누적해 보정기를 적합하고
+        # 그 해 발행에 적용(옛 코드는 2024+ 전체 OOS로 적합한 보정기를 2016년 값에도
+        # 소급 적용했음).
+        out_rows = []
+        calib_pool: list[pd.DataFrame] = []
+        for yr in sorted(g["week"].dt.year.unique()):
+            cutoff = pd.Timestamp(f"{yr}-01-01")
+            train_y = hist[hist["week"] < cutoff]
+            if len(train_y) < MIN_TRAIN_WEEKS:
+                continue                                    # 이 해는 발행 보류(웜업 미달)
+            params_y, alpha_y, family_y = _fit_one(train_y, cc_cols)
+            logit_y = _fit_adapt_logit(train_y)
+            rows_y = g[g["week"].dt.year == yr].copy()
+            lam_y, p1_y = _predict(params_y, alpha_y, family_y, rows_y, cc_cols)
+            pbn_y = _p_ge(lam_y, alpha_y, family_y, burst_k)
+            pba_y = 0.5 * _p_ge_rowwise(lam_y, alpha_y, family_y, rows_y["k_adapt"].values) \
+                + 0.5 * logit_y(rows_y)
+
+            if calib_pool:
+                pool = pd.concat(calib_pool, ignore_index=True)
+                if len(pool) >= MIN_CALIB_PAIRS:
+                    iso_y = IsotonicRegression(y_min=0.0, y_max=1.0, out_of_bounds="clip") \
+                        .fit(pool["p"].values, pool["hit"].values)
+                    pbc_y = iso_y.predict(pbn_y)
+                else:
+                    pbc_y = pbn_y.copy()
+            else:
+                pbc_y = pbn_y.copy()
+
+            oy = rows_y[["commodity", "week"]].copy()
+            oy["lambda_next"] = lam_y
+            oy["p_severe_next"] = p1_y                              # P(>=1) — 하위호환
+            oy["burst_threshold"] = burst_k
+            oy["p_burst_next"] = pbn_y                              # P(>=P90 임계) — 주 신호
+            oy["family"] = family_y
+            oy["alpha_disp"] = alpha_y
+            oy["burst_k_adapt"] = rows_y["k_adapt"].values
+            oy["p_burst_adapt"] = pba_y
+            oy["p_burst_cal"] = pbc_y
+            out_rows.append(oy)
+
+            # 이 해에 결과(y_next)가 이미 확정된 행만 다음 해 보정기의 학습쌍으로 누적
+            known = rows_y["y_next"].notna()
+            if known.any():
+                calib_pool.append(pd.DataFrame({
+                    "p": pbn_y[known.values],
+                    "hit": (rows_y.loc[known, "y_next"].values >= burst_k).astype(float),
+                }))
+        if out_rows:
+            results.append(pd.concat(out_rows, ignore_index=True))
+        else:
+            print(f"  [prob] {c}: 발행 가능한 해가 없음(전 구간 웜업 미달) — 스킵")
 
     print("\n=== 캘리브레이션 검증(train ~2023 / test 2024+) ===")
     for r in reports:
         print(r)
+    # 참고용 리포트만(발행엔 미사용 — 발행은 위 루프의 연도별 expanding 보정기를 씀):
+    # 2024+ 전체 OOS 한 번에 적합했을 때의 개선폭 참고치.
+    if oos_pairs:
+        _, iso_rep = _fit_isotonic(pd.concat(oos_pairs, ignore_index=True))
+        print(iso_rep + " (참고용 — 실제 발행은 연도별 expanding 보정)")
 
     res = pd.concat(results, ignore_index=True)
-    # 사후 캘리브레이션: OOS 쌍으로 isotonic 적합 → 발행값에 보정 확률 병기(원값 보존)
-    if oos_pairs:
-        iso, iso_rep = _fit_isotonic(pd.concat(oos_pairs, ignore_index=True))
-        print(iso_rep)
-        res["p_burst_cal"] = iso.predict(res["p_burst_next"].values)
     res["week"] = res["week"].dt.strftime("%Y-%m-%d")
     store._write(res, GEO_PROB)
     print(f"\n[prob] {len(res)}행 → {GEO_PROB}")
