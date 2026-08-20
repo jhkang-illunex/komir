@@ -2,6 +2,40 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-08-20 (최신) — execute_msr() postgres 미지원 수정(out_report 저장 파손 해소)
+
+2026-08-20 앞선 항목("MSR_DB DuckDB→PostgreSQL cutover로 out_report 저장 경로
+파손, 기록만·미수정")이 "워크트리 통합 후 재작업 예정"이라 명시해뒀던 바로 그
+재작업 — 4개 워크트리 병합 완료 직후 사용자 지시로 착수.
+
+**수정 1: `services/shared/db.py::execute_msr()`** — `is_url(MSR_DB)`일 때
+`NotImplementedError`를 던지던 자리에 postgres 분기 추가. `execute_pg()`와 같은
+패턴(SQLAlchemy 엔진→raw psycopg2 커넥션, 수동 commit)을 재사용하되, 호출부
+(`generator.py`·`analysis/store.py`, 둘 다 `DELETE ... WHERE report_id = ?`
+단일 파라미터 DELETE)를 postgres 전용으로 고쳐 쓰지 않아도 되게 `sql.replace("?",
+"%s")`로 내부 치환한다 — 실제 호출부 2곳 전수 확인 결과 SQL 문자열 리터럴 안에
+`?`가 섞인 경우 없어 이 단순 치환이 안전함을 확인했다.
+
+**수정 2: `mineral_risk.out_report`에 `report_id` UNIQUE 인덱스 추가** —
+이관 시 DuckDB판의 `PRIMARY KEY(report_id)` 제약이 안 옮겨진 걸 실측 확인한
+문제(앞선 항목 기록). `CREATE UNIQUE INDEX IF NOT EXISTS idx_out_report_report_id
+ON out_report (report_id)` 직접 적용 전 기존 9행에 중복 `report_id`가 있는지
+먼저 조회해 0건 확인(안전하게 추가 가능함을 확인 후 적용) — schema_pgvector.sql은
+doc_chunk 전용으로 범위가 명확히 다른 파일이라 이번엔 섞지 않고 DB에 직접
+적용만 했다(재현용 DDL 파일화는 후속 과제로 남김).
+
+**부수 확인**: WORKLOG가 "미확인"으로 남겨뒀던 4번 항목(`rag_chat`의
+`chat_session`/`chat_message`가 같은 `execute_msr` 경로를 쓰는지) — 실제로는
+`rag/ragkit/chatbot_store.py`가 `execute_msr`에 의존하지 않고 **독자적으로**
+동일한 `?`→`%s` 치환 로직을 이미 갖추고 있었다(모듈 docstring에 2026-08-19
+postgres 지원 추가 기록 있음, rag 패키지가 services/shared에 의존하지 않는다는
+설계 원칙 때문에 중복 구현된 것 — TWIN이지만 각자 독립 동작하므로 지금은 안 건드림).
+즉 이 경로는 애초에 이번 파손과 무관했다.
+
+**검증**: 실 postgres(komis_demo/mineral_risk)로 `execute_msr("DELETE FROM
+out_report WHERE report_id = ?", [...])` 직접 호출해 예외 없이 성공 확인.
+UNIQUE 인덱스도 `pg_indexes` 조회로 생성 확인.
+
 ## 2026-08-19 (최신)⑤ — ⚠사고: 정기동기화 cron이 doc_chunk(pgvector 140,031행) 삭제·복구
 
 **사고 경위**: 직전 항목(정기 동기화 cron 신설)의 `migrate_duckdb_to_postgres.py`가

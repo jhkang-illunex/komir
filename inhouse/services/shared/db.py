@@ -66,20 +66,28 @@ def upsert_df_msr(df, table: str, del_where: str | None = None):
 
 def execute_msr(sql: str, params: list | None = None) -> None:
     """MSR_DB에 파라미터화된 단일 DML 문 하나를 실행한다(dbio.py엔 없는 기능 —
-    dbio는 DataFrame 벌크 적재/스키마 파일 적용만 지원해 chat_session/chat_message
-    같은 point CRUD(rag_chat 세션 저장, 2026-08-11)엔 안 맞는다).
+    dbio는 DataFrame 벌크 적재/스키마 파일 적용만 지원해 out_report 저장 같은
+    point CRUD(delete-then-insert 멱등성 보장용 DELETE)엔 안 맞는다).
 
-    ⚠ sql은 DuckDB의 `?`(qmark) 자리표시자로 작성한다 — 현재 MSR_DB는 항상 DuckDB라
-    이 경로만 실사용·검증됨. is_url(target) 분기(서버DB)는 postgres의 실제
-    paramstyle(psycopg2는 %s/pyformat, `?` 아님)에 맞춰 재작성이 필요해 아직 안 맞다
-    — MSR_DB의 PG_DSN cutover 시점에 반드시 먼저 고칠 것(그 전엔 이 분기를 타지 않음)."""
+    sql은 항상 DuckDB의 `?`(qmark) 자리표시자로 작성한다 — 호출부(report_gen의
+    generator.py·analysis/store.py)를 postgres 전용으로 고치지 않아도 되게,
+    postgres(URL) 분기에서 내부적으로 `?`→`%s`(psycopg2 paramstyle)로 치환한다
+    (2026-08-20 postgres cutover 후속 수정 — WORKLOG 2026-08-20 "out_report 저장
+    경로 파손" 기록 참고. 현재 실제 호출부 2곳 모두 `?` 1개짜리 단순 DELETE라
+    문자열 리터럴 안에 `?`가 섞일 위험은 없음, 확인됨)."""
 
     target = get_settings().MSR_DB
     if is_url(target):
-        raise NotImplementedError(
-            "execute_msr의 서버DB(URL) 경로는 아직 paramstyle 미검증 — "
-            "MSR_DB cutover 시 db.py 참고 주석대로 먼저 수정할 것"
-        )
+        import sqlalchemy as sa
+
+        pg_sql = sql.replace("?", "%s")
+        con = sa.create_engine(target).raw_connection()
+        try:
+            with con.cursor() as cur:
+                cur.execute(pg_sql, params)
+            con.commit()
+        finally:
+            con.close()
     else:
         import duckdb
 
