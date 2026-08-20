@@ -1,0 +1,24 @@
+=== 2026-07-25 06:30:01 GKG 증분 cron 시작 (year-from=2026) ===
+--- [1/7] 마스터리스트 갱신+증분 다운로드 ---
+--- [2/7] 파싱(state 증분) ---
+[gkg_parse] worker=0/1 담당 19669건 중 미처리 26건
+  진행 26/26 (누적 이벤트 48건)
+{'files': 26, 'events': 48, 'worker': 0}
+--- LLM 헬스체크 ---
+--- [3/7] LLM 재검증 전량 ---
+[gkg_verify] 검증 루프 완료: 48건 중 확정 6건, 기각표시 42건 — 기각분은 아직 store에서 실제 삭제 안 됨, compact_rejections() 별도 호출 필요
+{'verified': 48, 'confirmed': 6, 'rejected': 42}
+--- [4/7] 샤드 병합(기각 제거보다 먼저!) ---
+/home/nuri/dev/git/ws/mine_ws/komir/geo/store.py:170: FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
+  df = pd.concat([p for p in parts if len(p)], ignore_index=True)
+샤드 2개 병합
+--- [5/7] 기각분 실삭제 ---
+[gkg_verify] 기각분 42건 store에서 제거 완료
+--- [6/7] 지수·확률 재산출 ---
+REE      2826
+      REE 2026-07-19     6.426599       0.819512                4      0.519376
+--- [7/7] publish ---
+[publish] geo_event 296046행 → /home/nuri/dev/git/ws/mine_ws/komir/warehouse/minerals.duckdb (테이블 geo_event)
+[publish] geo_index 3536행 → /home/nuri/dev/git/ws/mine_ws/komir/warehouse/minerals.duckdb (테이블 geo_index)
+[publish] geo_prob 2755행 → /home/nuri/dev/git/ws/mine_ws/komir/warehouse/minerals.duckdb (테이블 geo_prob, period +1일 월요일 보정)
+=== 2026-07-25 06:40:18 종료 ===

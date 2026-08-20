@@ -1,0 +1,49 @@
+=== 2026-08-08 09:10:01 cron feeds [weekly] 시작 ===
+NI(SHFE): 646행 (2015-04-17~2026-08-07)
+LI(GFEX): 신규 1행 (기존 133주 생략, backfill=False)
+             src commodity_code  count_star() min(obs_date) max(obs_date)
+GFEX_EM_MIRROR_W             LI            13    2026-04-17    2026-07-24
+ GFEX_OFFICIAL_W             LI           134    2023-12-08    2026-08-07
+     SHFE_99QH_W             CU          1167    2005-01-14    2026-07-31
+     SHFE_99QH_W             NI           646    2015-04-17    2026-08-07
+Traceback (most recent call last):
+  File "/usr/lib/python3.10/runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/usr/lib/python3.10/runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "/home/nuri/dev/git/ws/mine_ws/komir/inhouse/mineral_supply_risk/scripts/collect_forecast_exog.py", line 105, in <module>
+    main()
+  File "/home/nuri/dev/git/ws/mine_ws/komir/inhouse/mineral_supply_risk/scripts/collect_forecast_exog.py", line 93, in main
+    wm = collect_wm()
+  File "/home/nuri/dev/git/ws/mine_ws/komir/inhouse/mineral_supply_risk/scripts/collect_forecast_exog.py", line 64, in collect_wm
+    w = pd.read_parquet(WM_PARQUET)
+  File "/home/nuri/.local/lib/python3.10/site-packages/pandas/io/parquet.py", line 669, in read_parquet
+    return impl.read(
+  File "/home/nuri/.local/lib/python3.10/site-packages/pandas/io/parquet.py", line 258, in read
+    path_or_handle, handles, filesystem = _get_path_or_handle(
+  File "/home/nuri/.local/lib/python3.10/site-packages/pandas/io/parquet.py", line 141, in _get_path_or_handle
+    handles = get_handle(
+  File "/home/nuri/.local/lib/python3.10/site-packages/pandas/io/common.py", line 882, in get_handle
+    handle = open(handle, ioargs.mode)
+FileNotFoundError: [Errno 2] No such file or directory: '/home/nuri/dev/git/ws/mine_ws/komir/inhouse/documents/산출물/2026-W28_0706-0712/reports/woodmac_series.parquet'
+COT: 1843행 (1989-07-31~2026-08-04)
+[1/4] Comtrade 생략(--skip-comtrade)
+[2/4] CFTC 코발트·리튬 COT
+  COT_CO_NETPCT_W: 193주 (2022-11-22~2026-08-04)
+  COT_LI_NETPCT_W: 156주 (2023-08-15~2026-08-04)
+[3/4] ECB 인니 루피아
+  IDRUSD_W: 1075주 (2006-01-02~2026-08-03)
+[4/4] 중국 선물 OI(NI·CU·LC)
+  SHFE_NI_OI_W: 582주 (2015-03-23~2026-08-03)
+  SHFE_CU_OI_W: 1100주 (2005-01-03~2026-08-03)
+  GFEX_LC_OI_W: 157주 (2023-07-17~2026-08-03)
+완료
+[collect_intl_agency_feeds] DB=/home/nuri/dev/git/ws/mine_ws/komir/inhouse/data_lake/db/minerals.duckdb what=policy
+8) 중국 MOFCOM 정책공고
+  MOFCOM_ZCFB: 이번 15건 upsert → 누적 18건(최신 2026-08-05)
+9) 미국 Federal Register(BIS·USTR)
+  FEDREG_API: 이번 1369건 upsert → 누적 1369건(최신 2026-08-06)
+10) 미국 HTS 관세율 스냅샷
+  HTS 2026HTSRev15: 886행(광물 HS4 + 챕터99)
+완료
+=== 2026-08-08 09:10:40 종료(exit=0) ===

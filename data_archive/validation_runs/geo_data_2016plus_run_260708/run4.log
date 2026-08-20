@@ -1,0 +1,426 @@
+[ingest] inbox 427건 처리 시작 (기존 2372건, pdf 418 / 기타 9)
+[ingest] PDF 418건 → opendataloader 배치 3청크
+Using CPU. Note: This module is much faster with a GPU.
+/home/nuri/.local/lib/python3.10/site-packages/torch/cuda/__init__.py:187: UserWarning: CUDA initialization: The NVIDIA driver on your system is too old (found version 12020). Please update your GPU driver by downloading and installing a new version from the URL: http://www.nvidia.com/Download/index.aspx Alternatively, go to: https://pytorch.org to install a PyTorch version that has been compiled with your version of the CUDA driver. (Triggered internally at /pytorch/c10/cuda/CUDAFunctions.cpp:119.)
+  return torch._C._cuda_getDeviceCount() > 0
+/home/nuri/.local/lib/python3.10/site-packages/torch/utils/data/dataloader.py:752: UserWarning: 'pin_memory' argument is set as true but no accelerator is found, then device pinned memory won't be used.
+  super().__init__(loader)
+  ... 150/418건 (이번 청크 폴백대상 2건)
+  ... 300/418건 (이번 청크 폴백대상 0건)
+  ... 418/418건 (이번 청크 폴백대상 0건)
+  ... 50건
+  ... 100건
+  ... 150건
+  ... 200건
+  ... 250건
+  ... 300건
+  ... 350건
+  ... 400건
+[ingest] 완료: {'archived': 427, 'failed': 0, 'unclassified': 0, 'duplicate': 0}
+[ingest] PDF 텍스트추출 방법 분포: {'opendataloader': 416, 'ocr': 2}
+===INGEST_DONE===
+[extract] provider=openai_compat model=gemma-4-26b-a4b concurrency=8
+[extract] 대상 427건 (기추출 2355)
+[extract] 관련문서 205건 → 추출 시작
+  ... 50/205건
+  ... 100/205건
+  ... 150/205건
+  ... 200/205건
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'obs_date': '2023-07-20'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'obs_date': '2023-07-20'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'obs_date': '2023-12-15'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'obs_date': '2023-12-15'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'obs_date': '2023-09-03'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'obs_date': '2023-09-03'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'obs_date': '2023-12-15'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'obs_date': '2023-12-15'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'obs_date': '2023-12-15'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'obs_date': '2023-12-15'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'obs_date': '2023-08-16'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'obs_date': '2023-08-16'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'obs_date': '2023-03-13'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'obs_date': '2023-03-13'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'obs_date': '2023-03-13'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'obs_date': '2023-03-13'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'obs_date': '2023-07-17'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'obs_date': '2023-07-17'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'error': "The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'error': "The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'error': "The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'error': "The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'obs_date': '2023-08-17'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'obs_date': '2023-08-17'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'error': "The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'error': "The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'obs_date': '2023-03-13'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'obs_date': '2023-03-13'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'obs_date': '2024-01-31'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'obs_date': '2024-01-31'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'obs_date': '2023-08-18'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'obs_date': '2023-08-18'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'obs_date': '2023-08-21'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'obs_date': '2023-08-21'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'obs_date': '2023-07-20'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'obs_date': '2023-07-20'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'obs_date': '2024-01-31'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'obs_date': '2024-01-31'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'obs_date': '2024-01-31'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'obs_date': '2024-01-31'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'error': "The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'error': "The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'obs_date': '2023-07-27'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'obs_date': '2023-07-27'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'obs_date': '2023-12-15'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'obs_date': '2023-12-15'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'obs_date': '2023-08-17'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'obs_date': '2023-08-17'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'obs_date': '2023-08-16'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'obs_date': '2023-08-16'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'obs_date': '2023-05-23'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'obs_date': '2023-05-23'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'obs_date': '2024-01-31'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'obs_date': '2024-01-31'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'error': "The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'error': "The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'obs_date': '2023-07-27'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'obs_date': '2023-07-27'...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 1 validation error for GeoEvent
+direction
+  Input should be 'supply_down', 'supply_up', 'price_up', 'price_down' or 'neutral' [type=literal_error, input_value='demand_down', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/literal_error
+  [skip invalid] 1 validation error for GeoEvent
+direction
+  Input should be 'supply_down', 'supply_up', 'price_up', 'price_down' or 'neutral' [type=literal_error, input_value='production_down', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/literal_error
+  [skip invalid] 1 validation error for GeoEvent
+direction
+  Input should be 'supply_down', 'supply_up', 'price_up', 'price_down' or 'neutral' [type=literal_error, input_value='demand_down', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/literal_error
+  [skip invalid] 1 validation error for GeoEvent
+direction
+  Input should be 'supply_down', 'supply_up', 'price_up', 'price_down' or 'neutral' [type=literal_error, input_value='demand_down', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/literal_error
+  [skip invalid] 1 validation error for GeoEvent
+direction
+  Input should be 'supply_down', 'supply_up', 'price_up', 'price_down' or 'neutral' [type=literal_error, input_value='demand_up', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/literal_error
+  [skip invalid] 1 validation error for GeoEvent
+evidence_quote
+  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]
+    For further information visit https://errors.pydantic.dev/2.12/v/string_type
+  [skip invalid] 1 validation error for GeoEvent
+direction
+  Input should be 'supply_down', 'supply_up', 'price_up', 'price_down' or 'neutral' [type=literal_error, input_value='demand_up', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/literal_error
+  [skip invalid] 2 validation errors for GeoEvent
+commodity
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+event_type
+  Field required [type=missing, input_value={'error': 'The provided t...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 1 validation error for GeoEvent
+direction
+  Input should be 'supply_down', 'supply_up', 'price_up', 'price_down' or 'neutral' [type=literal_error, input_value='demand_up', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/literal_error
+  [skip invalid] 1 validation error for GeoEvent
+direction
+  Input should be 'supply_down', 'supply_up', 'price_up', 'price_down' or 'neutral' [type=literal_error, input_value='demand_up', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/literal_error
+  [skip invalid] 1 validation error for GeoEvent
+event_type
+  Field required [type=missing, input_value={'commodity': 'REE', 'obs...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 1 validation error for GeoEvent
+direction
+  Input should be 'supply_down', 'supply_up', 'price_up', 'price_down' or 'neutral' [type=literal_error, input_value='demand_down', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/literal_error
+  [skip invalid] 1 validation error for GeoEvent
+event_type
+  Field required [type=missing, input_value={'commodity': 'LI', 'obs_...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 1 validation error for GeoEvent
+direction
+  Input should be 'supply_down', 'supply_up', 'price_up', 'price_down' or 'neutral' [type=literal_error, input_value='demand_down', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/literal_error
+  [skip invalid] 1 validation error for GeoEvent
+direction
+  Input should be 'supply_down', 'supply_up', 'price_up', 'price_down' or 'neutral' [type=literal_error, input_value='demand_up', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/literal_error
+  [skip invalid] 1 validation error for GeoEvent
+direction
+  Input should be 'supply_down', 'supply_up', 'price_up', 'price_down' or 'neutral' [type=literal_error, input_value='demand_down', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/literal_error
+  [skip invalid] 1 validation error for GeoEvent
+direction
+  Input should be 'supply_down', 'supply_up', 'price_up', 'price_down' or 'neutral' [type=literal_error, input_value='price_neutral', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/literal_error
+  [skip invalid] 1 validation error for GeoEvent
+direction
+  Input should be 'supply_down', 'supply_up', 'price_up', 'price_down' or 'neutral' [type=literal_error, input_value='demand_up', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/literal_error
+  [skip invalid] 1 validation error for GeoEvent
+event_type
+  Field required [type=missing, input_value={'commodity': 'LI', 'obs_...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 1 validation error for GeoEvent
+event_type
+  Field required [type=missing, input_value={'commodity': 'LI', 'obs_...'schema_version': '1.0'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.12/v/missing
+  [skip invalid] 1 validation error for GeoEvent
+direction
+  Input should be 'supply_down', 'supply_up', 'price_up', 'price_down' or 'neutral' [type=literal_error, input_value='demand_up', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/literal_error
+  [skip invalid] 1 validation error for GeoEvent
+direction
+  Input should be 'supply_down', 'supply_up', 'price_up', 'price_down' or 'neutral' [type=literal_error, input_value='demand_up', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/literal_error
+  [skip invalid] 1 validation error for GeoEvent
+direction
+  Input should be 'supply_down', 'supply_up', 'price_up', 'price_down' or 'neutral' [type=literal_error, input_value='demand_up', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.12/v/literal_error
+[extract] 완료: 관련문서 205건 → 이벤트 471건 적재 (시도기록 427건)
+===EXTRACT_DONE===

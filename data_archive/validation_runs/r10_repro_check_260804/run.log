@@ -1,0 +1,30 @@
+패널 종점: 2026-07-06
+챔피언(스크리닝): QWK 0.8452 chg 0.1852 FAR 0.2137
+유망 19건: ['li_ar', 'ni_ph', 'jp_ni', 'cn_cu', 'cn_ni', 'no_ni', 'de_li', 'cli_kr', 'bill_jp', 'au_cu', 'au_ni', 'ph_psa', 'id_ni', 'us_ni', 'cd_co', 'supdiv_li', 'supdiv_ni', 'fgap_ni', 'fgap_li']
+replay li_ar [LI]: QWK CI [+0.0206,+0.1016] P=1.000 | chg CI [+0.000,+0.000] P=0.000
+replay ni_ph [NI]: QWK CI [-0.0116,+0.0627] P=0.917 | chg CI [-0.500,+0.000] P=0.000
+replay jp_ni [NI]: QWK CI [-0.0037,+0.1013] P=0.963 | chg CI [-0.500,+0.000] P=0.000
+replay cn_cu [CU]: QWK CI [-0.0188,+0.0349] P=0.685 | chg CI [-0.385,+0.000] P=0.000
+replay cn_ni [NI]: QWK CI [-0.0011,+0.0874] P=0.972 | chg CI [-0.500,+0.000] P=0.000
+replay no_ni [NI]: QWK CI [-0.0320,+0.0581] P=0.757 | chg CI [+0.000,+0.500] P=0.670
+replay de_li [LI]: QWK CI [-0.1157,+0.1623] P=0.746 | chg CI [-1.000,-1.000] P=0.000
+replay cli_kr [풀링]: QWK CI [+0.0068,+0.0472] P=0.997 | chg CI [-0.037,+0.259] P=0.886
+replay bill_jp [풀링]: QWK CI [-0.0146,+0.0312] P=0.774 | chg CI [-0.185,+0.111] P=0.244
+replay au_cu [CU]: QWK CI [-0.0214,+0.0287] P=0.563 | chg CI [-0.385,+0.000] P=0.000
+replay au_ni [NI]: QWK CI [-0.0108,+0.0623] P=0.924 | chg CI [-0.500,+0.000] P=0.000
+replay ph_psa [NI]: QWK CI [+0.0153,+0.1306] P=0.995 | chg CI [-0.500,+0.000] P=0.000
+replay id_ni [NI]: QWK CI [-0.0239,+0.0348] P=0.699 | chg CI [-0.500,+0.000] P=0.000
+replay us_ni [NI]: QWK CI [-0.0071,+0.0451] P=0.855 | chg CI [+0.000,+0.500] P=0.664
+replay cd_co [CO]: QWK CI [+0.0000,+0.0164] P=0.642 | chg CI [+0.000,+0.000] P=0.000
+replay supdiv_li [LI]: QWK CI [-0.0697,+0.0730] P=0.525 | chg CI [+0.000,+0.000] P=0.000
+replay supdiv_ni [NI]: QWK CI [-0.0094,+0.0461] P=0.830 | chg CI [+0.000,+0.500] P=0.659
+replay fgap_ni [NI]: QWK CI [+0.0045,+0.0489] P=0.984 | chg CI [+0.000,+0.000] P=0.000
+replay fgap_li [LI]: QWK CI [-0.0728,+0.0990] P=0.695 | chg CI [+0.000,+0.000] P=0.000
+ph_psa 갱신 후(전체): 채택 10/10, CI하한 [+0.0140,+0.0183], 정밀 QWK CI [+0.0153,+0.1335] P=0.995 | chg CI [-0.500,+0.000] P=0.000
+ph_psa 절단(≤2026-06-08): 채택 10/10, CI하한 [+0.0030,+0.0074], 정밀 QWK CI [+0.0046,+0.1374] P=0.982 | chg CI [-0.600,+0.000] P=0.000
+ph_psa 우세 분해: 기존 net +5, 신규 net +2
+fgap_ni 갱신 후(전체): 채택 10/10, CI하한 [+0.0039,+0.0048], 정밀 QWK CI [+0.0046,+0.0493] P=0.984 | chg CI [+0.000,+0.000] P=0.000
+fgap_ni 절단(≤2026-06-08): 채택 10/10, CI하한 [+0.0042,+0.0051], 정밀 QWK CI [+0.0049,+0.0598] P=0.983 | chg CI [+0.000,+0.000] P=0.000
+fgap_ni 우세 분해: 기존 net +4, 신규 net +0
+
+[repro] 리포트 → /home/nuri/dev/git/ws/mine_ws/komir/.claude/worktrees/orktree/mineral_supply_risk/outputs/model_opt/r10_repro_check_260804.md

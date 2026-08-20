@@ -1,0 +1,19 @@
+{
+    "workbench.editorAssociations": {
+        "*.copilotmd": "vscode.markdown.preview.editor",
+        "*.parquet": "duckdb.dataFileViewer",
+        "*.csv": "duckdb.dataFileViewer",
+        "*.tsv": "duckdb.dataFileViewer",
+        "*.xlsx": "duckdb.dataFileViewer"
+    },
+    "duckdb.databases": [
+        {
+            "alias": "minerals",
+            "type": "file",
+            "path": "/home/nuri/dev/git/ws/mine_ws/komir/warehouse/minerals.duckdb",
+            "readOnly": true,
+            "attached": false
+        }
+    ],
+    "duckdb.defaultDatabase": "minerals"
+}

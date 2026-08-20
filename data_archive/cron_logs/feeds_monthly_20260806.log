@@ -1,0 +1,122 @@
+=== 2026-08-06 09:20:01 cron feeds [monthly] 시작 ===
+1. SHFE CU 재고: 1167행 (2005-01-14~2026-07-31)
+3a. REE 중국 수출(2846): 월 108개 → fact_indicator 216행
+3b. CO 중국←DRC 수입(2605+2822+810520): 월 108개 → fact_indicator 216행
+4. CN_PMI_CX_M: 148행 (2014-04-01~2026-07-01)
+4. CN_PMI_OFF_M: 223행 (2008-01-01~2026-07-01)
+                  t              src            commodity_code    n
+     fact_indicator      UN_COMTRADE       CO/CA_CO_EXPORT_VAL  125
+     fact_indicator      UN_COMTRADE       CO/CA_CO_EXPORT_WGT  125
+     fact_indicator      UN_COMTRADE   CO/CN_CO_IMPORT_COD_VAL  108
+     fact_indicator      UN_COMTRADE   CO/CN_CO_IMPORT_COD_WGT  108
+     fact_indicator      UN_COMTRADE       CO/JP_CO_IMPORT_VAL  125
+     fact_indicator      UN_COMTRADE       CO/JP_CO_IMPORT_WGT  125
+     fact_indicator      UN_COMTRADE       CU/CL_CU_EXPORT_VAL  124
+     fact_indicator      UN_COMTRADE       CU/CL_CU_EXPORT_WGT  124
+     fact_indicator      UN_COMTRADE       CU/CN_CU_IMPORT_VAL  108
+     fact_indicator      UN_COMTRADE       CU/CN_CU_IMPORT_WGT  108
+     fact_indicator      UN_COMTRADE       CU/IN_CU_IMPORT_VAL  123
+     fact_indicator      UN_COMTRADE       CU/IN_CU_IMPORT_WGT  123
+     fact_indicator      UN_COMTRADE       CU/JP_CU_IMPORT_VAL  125
+     fact_indicator      UN_COMTRADE       CU/JP_CU_IMPORT_WGT  125
+     fact_indicator      UN_COMTRADE       LI/AR_LI_EXPORT_VAL   56
+     fact_indicator      UN_COMTRADE       LI/AR_LI_EXPORT_WGT   56
+     fact_indicator      UN_COMTRADE       LI/AU_LI_EXPORT_VAL  125
+     fact_indicator      UN_COMTRADE       LI/AU_LI_EXPORT_WGT  125
+     fact_indicator      UN_COMTRADE       LI/BR_LI_EXPORT_VAL  126
+     fact_indicator      UN_COMTRADE       LI/BR_LI_EXPORT_WGT  126
+     fact_indicator      UN_COMTRADE       LI/CL_LI_EXPORT_VAL  124
+     fact_indicator      UN_COMTRADE       LI/CL_LI_EXPORT_WGT  124
+     fact_indicator      UN_COMTRADE       LI/CN_LI_IMPORT_VAL  108
+     fact_indicator      UN_COMTRADE       LI/CN_LI_IMPORT_WGT  108
+     fact_indicator      UN_COMTRADE       NI/CN_NI_IMPORT_VAL  108
+     fact_indicator      UN_COMTRADE       NI/CN_NI_IMPORT_WGT  108
+     fact_indicator      UN_COMTRADE       NI/ID_NI_EXPORT_VAL  125
+     fact_indicator      UN_COMTRADE       NI/ID_NI_EXPORT_WGT  125
+     fact_indicator      UN_COMTRADE       NI/JP_NI_IMPORT_VAL  125
+     fact_indicator      UN_COMTRADE       NI/JP_NI_IMPORT_WGT  125
+     fact_indicator      UN_COMTRADE       NI/NO_NI_EXPORT_VAL  125
+     fact_indicator      UN_COMTRADE       NI/NO_NI_EXPORT_WGT  125
+     fact_indicator      UN_COMTRADE       NI/PH_NI_EXPORT_VAL  122
+     fact_indicator      UN_COMTRADE       NI/PH_NI_EXPORT_WGT  122
+     fact_indicator      UN_COMTRADE     REE/CN_REE_EXPORT_VAL  108
+     fact_indicator      UN_COMTRADE     REE/CN_REE_EXPORT_WGT  108
+     fact_indicator      UN_COMTRADE REE/CN_REE_IMPORT_MMR_VAL  108
+     fact_indicator      UN_COMTRADE REE/CN_REE_IMPORT_MMR_WGT  108
+     fact_indicator      UN_COMTRADE     REE/MY_REE_EXPORT_VAL  124
+     fact_indicator      UN_COMTRADE     REE/MY_REE_EXPORT_WGT  124
+     fact_indicator      UN_COMTRADE     REE/US_REE_EXPORT_VAL  125
+     fact_indicator      UN_COMTRADE     REE/US_REE_EXPORT_WGT  125
+fact_inventory_exch GFEX_EM_MIRROR_W                        LI   13
+fact_inventory_exch  GFEX_OFFICIAL_W                        LI  133
+fact_inventory_exch      SHFE_99QH_W                        CU 1167
+fact_inventory_exch      SHFE_99QH_W                        NI  644
+  0%|          | 0/22 [00:00<?, ?it/s]  5%|▍         | 1/22 [00:00<00:05,  3.74it/s]  9%|▉         | 2/22 [00:00<00:04,  4.70it/s] 14%|█▎        | 3/22 [00:00<00:03,  5.07it/s] 18%|█▊        | 4/22 [00:00<00:03,  4.69it/s] 23%|██▎       | 5/22 [00:01<00:03,  5.00it/s] 27%|██▋       | 6/22 [00:01<00:03,  4.32it/s] 32%|███▏      | 7/22 [00:01<00:03,  4.24it/s] 36%|███▋      | 8/22 [00:01<00:03,  4.11it/s] 41%|████      | 9/22 [00:02<00:02,  4.50it/s] 45%|████▌     | 10/22 [00:02<00:02,  4.44it/s] 50%|█████     | 11/22 [00:02<00:02,  4.48it/s] 55%|█████▍    | 12/22 [00:02<00:02,  4.30it/s] 59%|█████▉    | 13/22 [00:02<00:02,  4.13it/s] 64%|██████▎   | 14/22 [00:03<00:01,  4.42it/s] 68%|██████▊   | 15/22 [00:03<00:01,  4.37it/s] 73%|███████▎  | 16/22 [00:03<00:01,  4.37it/s] 77%|███████▋  | 17/22 [00:03<00:01,  4.34it/s] 82%|████████▏ | 18/22 [00:04<00:00,  4.19it/s] 86%|████████▋ | 19/22 [00:04<00:00,  4.14it/s] 91%|█████████ | 20/22 [00:04<00:00,  4.48it/s] 95%|█████████▌| 21/22 [00:04<00:00,  3.46it/s]100%|██████████| 22/22 [00:05<00:00,  3.69it/s]                                                 0%|          | 0/2 [00:00<?, ?it/s] 50%|█████     | 1/2 [00:00<00:00,  1.46it/s]100%|██████████| 2/2 [00:01<00:00,  1.81it/s]                                             CN_REALEST_M: 326행 (1998-01-01~2025-12-01)
+EU_PMI_M: 422행 (2008-02-22~2025-09-01)
+US_ISM_PMI_M: 669행 (1970-01-01~2025-09-02)
+[1/4] Comtrade 공급국 흐름 4종(504콜, ~15분)
+  ID_NI_EXPORT(NI): 월 125개(201601~202605) → 250행
+  AU_LI_EXPORT(LI): 월 125개(201601~202605) → 250행
+  CL_CU_EXPORT(CU): 월 126개(201601~202606) → 252행
+  CN_REE_IMPORT_MMR(REE): 월 108개(201601~202412) → 216행
+[2/4] CFTC 코발트·리튬 COT
+  COT_CO_NETPCT_W: 192주 (2022-11-22~2026-07-28)
+  COT_LI_NETPCT_W: 155주 (2023-08-15~2026-07-28)
+[3/4] ECB 인니 루피아
+  IDRUSD_W: 1075주 (2006-01-02~2026-08-03)
+[4/4] 중국 선물 OI(NI·CU·LC)
+  SHFE_NI_OI_W: 582주 (2015-03-23~2026-08-03)
+  SHFE_CU_OI_W: 1100주 (2005-01-03~2026-08-03)
+  GFEX_LC_OI_W: 157주 (2023-07-17~2026-08-03)
+완료
+[collect_tier2_feeds] DB=/home/nuri/dev/git/ws/mine_ws/komir/warehouse/minerals.duckdb
+1) Cochilco 칠레 구리 생산
+  Cochilco 2018-12호: 47개월 (2015-01-01~2018-11-01)
+  Cochilco 2021-12호: 47개월 (2018-01-01~2021-11-01)
+  Cochilco 2024-12호: 47개월 (2021-01-01~2024-11-01)
+  Cochilco 최신호 2026-08: 41개월 (~2026-05-01)
+  CL_CU_PROD_*: 274행 (2015-01-01~2026-05-01)
+2) USGS MIS 코발트 LME 재고
+  USGS MIS 201912: 13개월
+  USGS MIS 202012: 13개월
+  USGS MIS 202112: 13개월
+  USGS MIS 202212: 13개월
+  USGS MIS 202312: 13개월
+  USGS MIS 202412: 13개월
+  USGS MIS 202512: 13개월
+  CO_LME_STOCK_T: 85행 (2018-12-01~2025-12-01)
+3) WSTS 반도체 월간 빌링
+  WSTS_BILL_AM_M: 485개월 (1986-01-01~2026-05-01)
+  WSTS_BILL_AP_M: 485개월 (1986-01-01~2026-05-01)
+  WSTS_BILL_EU_M: 485개월 (1986-01-01~2026-05-01)
+  WSTS_BILL_JP_M: 485개월 (1986-01-01~2026-05-01)
+  WSTS_BILL_WW_M: 485개월 (1986-01-01~2026-05-01)
+4) ECOS 산업별 생산/재고 지수
+  KIP_ELEC_M: 246개월 (2006-01-01~2026-06-01)
+  KIP_AUTO_M: 246개월 (2006-01-01~2026-06-01)
+  KIP_ELEQ_M: 246개월 (2006-01-01~2026-06-01)
+  KIP_METAL_M: 246개월 (2006-01-01~2026-06-01)
+  KINV_METAL_M: 246개월 (2006-01-01~2026-06-01)
+완료
+[collect_tier3_feeds] DB=/home/nuri/dev/git/ws/mine_ws/komir/warehouse/minerals.duckdb
+1) Comtrade 흐름 5종(칠레·아르헨 LI, 필리핀 NI, 말레이 REE, 일본 NI수입)
+  CL_LI_EXPORT(LI): 월 126개(201601~202606) → 252행
+  AR_LI_EXPORT(LI): 월 56개(201601~202603) → 112행
+  PH_NI_EXPORT(NI): 월 123개(201601~202605) → 246행
+  MY_REE_EXPORT(REE): 월 124개(201601~202604) → 248행
+  JP_NI_IMPORT(NI): 월 125개(201601~202605) → 250행
+2) USGS 구리 MIS(광산생산·미국 재고·COMEX 재고)
+  최신호 탐지: 202506
+  USGS coppe 201812: 26행
+  USGS coppe 201912: 26행
+  USGS coppe 202012: 26행
+  USGS coppe 202112: 26행
+  USGS coppe 202212: 26행
+  USGS coppe 202312: 26행
+  USGS coppe 202412: 39행
+  USGS coppe 202506: 39행
+  CU_US_MINE_PROD: 91행 (2017-12-01~2025-06-01)
+  CU_US_STOCK_T: 91행 (2017-12-01~2025-06-01)
+  CU_COMEX_STOCK_T: 19행 (2023-12-01~2025-06-01)
+완료
+Terminated

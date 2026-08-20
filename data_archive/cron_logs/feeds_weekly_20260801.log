@@ -1,0 +1,35 @@
+=== 2026-08-01 09:10:01 cron feeds [weekly] 시작 ===
+NI(SHFE) 수집 실패(건너뜀): ConnectionError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+LI(GFEX): 신규 1행 (기존 132주 생략, backfill=False)
+             src commodity_code  count_star() min(obs_date) max(obs_date)
+GFEX_EM_MIRROR_W             LI            13    2026-04-17    2026-07-24
+ GFEX_OFFICIAL_W             LI           133    2023-12-08    2026-07-31
+     SHFE_99QH_W             CU          1166    2005-01-14    2026-07-24
+     SHFE_99QH_W             NI           644    2015-04-17    2026-07-24
+COT: 1842행 (1989-07-31~2026-07-28)
+                                n          y0          y1
+commodity_code indicator                                 
+CU             WM_BALANCE_A    51  1990-01-01  2040-01-01
+               WM_STOCKDAYS_A  51  1990-01-01  2040-01-01
+NI             WM_BALANCE_A    51  1990-01-01  2040-01-01
+               WM_STOCKDAYS_A  51  1990-01-01  2040-01-01
+[1/4] Comtrade 생략(--skip-comtrade)
+[2/4] CFTC 코발트·리튬 COT
+  COT_CO_NETPCT_W: 192주 (2022-11-22~2026-07-28)
+  COT_LI_NETPCT_W: 155주 (2023-08-15~2026-07-28)
+[3/4] ECB 인니 루피아
+  IDRUSD_W: 1074주 (2006-01-02~2026-07-27)
+[4/4] 중국 선물 OI(NI·CU·LC)
+  SHFE_NI_OI_W: 581주 (2015-03-23~2026-07-27)
+  SHFE_CU_OI_W: 1099주 (2005-01-03~2026-07-27)
+  GFEX_LC_OI_W: 156주 (2023-07-17~2026-07-27)
+완료
+[collect_intl_agency_feeds] DB=/home/nuri/dev/git/ws/mine_ws/komir/warehouse/minerals.duckdb what=policy
+8) 중국 MOFCOM 정책공고
+  MOFCOM_ZCFB: 이번 15건 upsert → 누적 15건(최신 2026-07-27)
+9) 미국 Federal Register(BIS·USTR)
+  FEDREG_API: 이번 1366건 upsert → 누적 1366건(최신 2026-07-28)
+10) 미국 HTS 관세율 스냅샷
+  HTS 2026HTSRev14: 886행(광물 HS4 + 챕터99)
+완료
+=== 2026-08-01 09:10:45 종료(exit=0) ===

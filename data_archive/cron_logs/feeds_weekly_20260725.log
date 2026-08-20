@@ -1,0 +1,26 @@
+=== 2026-07-25 09:10:01 cron feeds [weekly] 시작 ===
+NI(SHFE): 644행 (2015-04-17~2026-07-24)
+LI(GFEX): 신규 0행 (기존 132주 생략, backfill=False)
+             src commodity_code  count_star() min(obs_date) max(obs_date)
+GFEX_EM_MIRROR_W             LI            13    2026-04-17    2026-07-24
+ GFEX_OFFICIAL_W             LI           132    2023-12-08    2026-07-24
+     SHFE_99QH_W             NI           644    2015-04-17    2026-07-24
+COT: 1841행 (1989-07-31~2026-07-21)
+                                n          y0          y1
+commodity_code indicator                                 
+CU             WM_BALANCE_A    51  1990-01-01  2040-01-01
+               WM_STOCKDAYS_A  51  1990-01-01  2040-01-01
+NI             WM_BALANCE_A    51  1990-01-01  2040-01-01
+               WM_STOCKDAYS_A  51  1990-01-01  2040-01-01
+[1/4] Comtrade 생략(--skip-comtrade)
+[2/4] CFTC 코발트·리튬 COT
+  COT_CO_NETPCT_W: 191주 (2022-11-22~2026-07-21)
+  COT_LI_NETPCT_W: 154주 (2023-08-15~2026-07-21)
+[3/4] ECB 인니 루피아
+  IDRUSD_W: 1073주 (2006-01-02~2026-07-20)
+[4/4] 중국 선물 OI(NI·CU·LC)
+  SHFE_NI_OI_W: 580주 (2015-03-23~2026-07-20)
+  SHFE_CU_OI_W: 1098주 (2005-01-03~2026-07-20)
+  GFEX_LC_OI_W: 155주 (2023-07-17~2026-07-20)
+완료
+=== 2026-07-25 09:10:18 종료(exit=0) ===
