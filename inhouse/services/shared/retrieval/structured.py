@@ -41,6 +41,7 @@ vs 라이브 2026-08-09, 오늘 진행한 geo_prob/geo_index expanding-window
 """
 from __future__ import annotations
 
+import datetime as _dt
 from typing import Any
 
 from ..config import get_settings
@@ -155,3 +156,68 @@ def geo_index_trend(
         """
     )
     return list(reversed(frame.to_dict("records")))
+
+
+def weekly_geo_events(
+    commodity_code: str,
+    week_end: str,
+    top_n: int = 8,
+) -> list[dict[str, Any]]:
+    """"{cc} 이번 주 관련 뉴스/이벤트?" — `week_end`(포함) 기준 직전 7일 구간을
+    severity·confidence 내림차순으로 최대 `top_n`건.
+
+    `week_end`는 반드시 `geo_index`(freq='W')의 `period` 값을 그대로 넘길 것 —
+    이 함수가 주 경계를 독자적으로 계산하지 않는 이유는, geo 파이프라인이 이미
+    pandas `to_period("W")`(주 종료일=일요일) 관례로 주를 나누고 있어(`geo/
+    indexer.py`), 여기서 다른 앵커(예: 월요일 시작)로 재계산하면 `geo_index`가
+    말하는 "이번 주"와 이 함수가 돌려주는 뉴스의 "이번 주"가 어긋난다
+    (`geo_prob` 발행 때 실제로 겪은 요일앵커 버그와 같은 종류의 함정, WORKLOG
+    참고) — 항상 같은 값을 공유해 정의 불일치를 원천 차단한다.
+
+    `evidence_quote`에 GKG 원시 신호(`[GKG tone=...] https://...` 형태, 기사
+    본문이 아니라 크롤러 메타데이터)가 섞여 있어 SQL이 아니라 여기서 걸러낸다
+    — `read_sql_msr`가 pandas `read_sql`(PG 경로에서 `%` 리터럴을 파라미터로
+    오인하는 기존 버그, `db.py` 참고)을 거치므로 `LIKE '%...%'` 자체를 SQL에
+    쓰지 않는다.
+
+    같은 사건이 provider·extractor별로 중복 추출돼 `evidence_quote`가 대소문자
+    차이만 나는 행이 여러 개 나오는 경우가 실측으로 확인됐다(예: "Ottawa
+    approves Timmins..."가 8건 중 5건을 차지) — 소비자(리스크태그 분류, 뉴스
+    카드 LLM)가 사실상 같은 사건을 여러 번 보고 다양성을 잃으므로, 대소문자·
+    공백을 정규화한 텍스트 기준으로 중복을 제거하고 그중 severity·confidence가
+    가장 높은 1건만 남긴다(정렬이 이미 그 순서라 첫 등장분을 유지하면 된다)."""
+
+    code = check_commodity(commodity_code)
+    # geo_event.obs_date는 VARCHAR(ISO 'YYYY-MM-DD') 컬럼이라 DATE 리터럴과
+    # 직접 비교하면 duckdb가 타입 바인딩 오류를 낸다(실측 확인) — 경계를
+    # 파이썬에서 미리 문자열로 계산해 같은 VARCHAR끼리 비교한다.
+    end_date = _dt.date.fromisoformat(str(week_end)[:10])
+    start_date = end_date - _dt.timedelta(days=6)
+    frame = read_sql_msr(
+        f"""
+        SELECT commodity_code, obs_date, event_type, direction, target,
+               severity, confidence, evidence_quote, source, published_at
+        FROM geo_event
+        WHERE commodity_code = '{code}'
+          AND obs_date > '{start_date.isoformat()}'
+          AND obs_date <= '{end_date.isoformat()}'
+        ORDER BY severity DESC, confidence DESC
+        """
+    )
+    rows = frame.to_dict("records")
+    rows = [
+        row
+        for row in rows
+        if row.get("evidence_quote")
+        and "GKG tone=" not in row["evidence_quote"]
+        and not str(row["evidence_quote"]).strip().startswith("http")
+    ]
+    seen_text: set[str] = set()
+    deduped: list[dict[str, Any]] = []
+    for row in rows:
+        key = " ".join(str(row["evidence_quote"]).lower().split())
+        if key in seen_text:
+            continue
+        seen_text.add(key)
+        deduped.append(row)
+    return deduped[: int(top_n)]
