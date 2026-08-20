@@ -2,7 +2,51 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-08-19 (최신, 이어서) — 분석요약 미구현 3종(`/prices`·`/domestic-trade`·`/global-trade`) 신규 구현
+## 2026-08-20 (최신) — MSR_DB DuckDB→PostgreSQL cutover로 out_report 저장 경로 파손(기록만, 미수정)
+
+다른 세션(`msr-duckdb-postgres-migration`, 별도 워크트리)이 `inhouse/.env`의
+`MSR_DB`를 DuckDB 경로에서 PostgreSQL(`mineral_risk` 스키마)로 바꿨다. 이
+세션에서 어제(8/19) 만든 `analysis/store.py`(분석요약 8종 저장)·
+`generator.py`(주간 리포트 저장)가 영향받는지 실측 확인했다 — **사용자 지시로
+지금 고치지 않고 기록만 남긴다**(워크트리 통합 후 재작업 예정).
+
+**실측으로 확인한 파손 지점**
+- `shared/db.py`의 `execute_msr()`는 자체 주석에 이미 "MSR_DB의 PG_DSN cutover
+  시점에 반드시 먼저 고칠 것"이라 적어뒀던 자리 그대로 — `is_url(MSR_DB)`가
+  `True`가 되면 `NotImplementedError`를 던진다(DuckDB `?` 자리표시자 전용이라
+  psycopg2 paramstyle `%s` 미대응). 실제로 `execute_msr("DELETE FROM out_report
+  WHERE report_id = ?", [...])`를 호출해 즉시 `NotImplementedError` 재현
+  확인함(`read_sql_msr`는 URL 분기가 있어 정상 동작, `execute_msr`만 없음).
+- `store_summary()`(분석요약)·`store_report()`(주간 리포트) 둘 다 삽입 전
+  `execute_msr(DELETE ...)`로 멱등성을 보장하는 구조라, 이 한 줄에서 예외가 나
+  **적재 자체가 전혀 안 된다**(INSERT까지 가지도 못함) — API 응답은 200이 나올
+  수 있어도(분석요약은 응답 조립이 저장보다 먼저) 저장 단계에서 500 에러가 남.
+- 우회 확인: `write_df_msr`(→`dbio.write_df`)는 URL 분기가 있어 `df.to_sql
+  (if_exists='append')`로 정상 동작한다 — 문제는 `execute_msr` 하나뿐.
+- **추가 발견(설계 함정)**: postgres로 이관된 `mineral_risk.out_report`
+  테이블엔 **PRIMARY KEY/UNIQUE 제약이 전혀 없다**(`pg_constraint` 조회로
+  확인, DuckDB판 `schema_core.sql`은 `PRIMARY KEY (report_id)`인데 이관 시
+  제약이 안 옮겨짐). 즉 `execute_msr`만 고쳐서 DELETE를 postgres 문법으로
+  바꾸더라도, PK가 없으면 재실행 시 같은 report_id로 중복 행이 쌓이는 걸
+  DB 차원에서 막아주지 않는다 — 애플리케이션 레벨(현재 DELETE-then-INSERT
+  패턴) 또는 DDL(PK 추가) 둘 중 하나로 무결성을 다시 보장해야 함.
+- 실측 시점 `mineral_risk.out_report`엔 이미 9행이 있음(어제 이 세션이 DuckDB에
+  저장한 것과 report_id가 동일 — 마이그레이션이 데이터는 옮겼다는 뜻, 다만 PK는
+  안 옮김).
+
+**재작업 시 고칠 것(우선순위순)**
+1. `shared/db.py`의 `execute_msr()` — postgres 분기 추가(psycopg2 `%s`
+   paramstyle로 재작성). DuckDB 분기는 그대로 둔다(다른 타깃에서 쓰는 코드 없는지
+   확인 후 제거 여부 판단).
+2. `mineral_risk.out_report`에 `report_id` PK(또는 UNIQUE 인덱스) 추가 —
+   `schema_pgvector.sql`이 이미 쓴 패턴(`CREATE UNIQUE INDEX IF NOT EXISTS`,
+   `ADD CONSTRAINT IF NOT EXISTS`가 PG에 없어서 이 형태를 씀)을 그대로 재사용.
+3. 위 두 가지 없이 이미 실행된 적이 있다면(재작업 전 누군가 급하게 우회 코드를
+   넣었다면) `out_report`에 중복 `report_id` 행이 있는지 먼저 조회해 정리할 것.
+4. `rag_chat`의 `chat_session`/`chat_message` 저장도 같은 `execute_msr` 경로를
+   쓰는지 이번 세션 범위 밖이라 미확인 — 재작업 시 함께 점검 권장.
+
+## 2026-08-19 (이어서) — 분석요약 미구현 3종(`/prices`·`/domestic-trade`·`/global-trade`) 신규 구현
 
 앞 절(`out_report` 적재)에 이어, 발주처 화면기획안 대조에서 "API 자체가 없다"고
 확인됐던 3종을 새로 만들었다. 외부repo(`komis-report-generator-main`)도 이 3종은
