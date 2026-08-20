@@ -46,3 +46,7 @@ documents/*
 !documents/산출물/
 !documents/meta/
 documents/dev/.git/
+
+data_archive/
+.vscode/
+
