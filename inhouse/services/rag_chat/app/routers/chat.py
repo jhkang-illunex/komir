@@ -36,8 +36,14 @@ pageindex_lookup 두 도구는 이제 `rag.ragkit.mcp_client`의 public/private 
 경로 선택은 요청 바디의 `mode`(auto|document|page)를 따르고, auto면 app/intent.py가
 LLM 1회로 분류한다.
 
-SSE 이벤트 계약(프론트 연동 기준, 2026-08-13 table·image 추가):
+SSE 이벤트 계약(프론트 연동 기준, 2026-08-13 table·image 추가, 2026-08-27 status 추가):
   event: (무명)  data: {"session_id": "..."}                              — 매 턴 최초
+  event: status  data: {"stage": "routing"|"retrieving"|"verifying"|
+                         "reformulating"|"generating", ...}              — 문서 경로,
+                         근거 조회~답변 생성 사이 진행상황(route/retrieve/verify/
+                         reformulate 각 단계 진입 시점 + 생성 시작 직전). "retrieving"엔
+                         `tools`(켜진 도구 목록)도 실림. 페이지 경로엔 없음(이 세 도구를
+                         안 씀).
   event: (무명)  data: {"delta": "..."}                                    — 텍스트 조각
   event: table   data: {"columns": [...], "rows": [[...]], "source_index": n}
   event: image   data: {"mime": "image/png", "data_base64": "...",

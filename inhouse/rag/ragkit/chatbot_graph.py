@@ -49,6 +49,7 @@ asyncio.to_thread로 감싼다. MCP/tool로 향후 노출할 걸 염두에 두�
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 from typing import Literal, TypedDict
@@ -444,6 +445,7 @@ def retrieve_evidence(
     dense_k: int = 5,
     pageindex_k: int = 3,
     profile: Literal["public", "private"] = "public",
+    on_status: Callable[..., None] | None = None,
 ) -> tuple[list[Evidence], list[str]]:
     """`chat_turn()`이 부르는 단일 진입점 — question(+history) -> (근거 리스트,
     경고 리스트). history는 대용어("그 나라" 등) 해소용으로만 라우팅 노드에
@@ -456,19 +458,63 @@ def retrieve_evidence(
     `_retrieve_node`가 mcp_client.public/private 중 어느 세션으로 hybrid_search·
     pageindex_lookup을 호출할지만 정한다(2026-08-26, pubchat/prichat 분리).
 
-    동기 함수다(psycopg2/파일 I/O가 전부 블로킹) — 호출자가 asyncio.to_thread로
-    감쌀 것. llm을 주입하지 않으면 프로세스 기본 설정(get_settings().llm_cfg())의
-    KomirJsonLLM을 새로 만든다."""
+    `on_status(stage: str, **extra)`(2026-08-27)는 route/retrieve/verify/
+    reformulate 각 단계 진입 시점에 호출된다 — `chat_turn()`이 이걸로 SSE
+    `status` 이벤트를 낸다(`chatbot.py::_run_with_status` 참고). 이 함수는
+    여전히 동기라 `on_status`도 동기 콜백이어야 한다(스레드 안전한 브리징은
+    호출자 책임).
+
+    구현은 `graph.invoke()` 대신 `graph.stream(stream_mode=["updates",
+    "values"])`를 쓴다 — LangGraph가 "updates" 모드로 매 노드 **완료** 직후
+    그 노드명+반환 delta를, "values" 모드로 그 시점까지 누적된 전체 state를
+    내주므로(실측 확인, 2026-08-27), on_status를 노드 함수 4개+build_graph에
+    일일이 관통시키지 않고 여기 한 곳에서만 처리할 수 있다(skeptic-code
+    SC-001, 최초 구현은 노드마다 손으로 콜백을 심었었음). 그래프를 두 번
+    돌리는 게 아니다 — 같은 스트림의 "values" 마지막 항목이 `graph.invoke()`
+    반환값과 동일한 최종 state다.
+
+    ⚠ "updates"는 진입이 아니라 **완료** 시점이다(2차 감사 실측 — 첫 구현은
+    완료 시점에 그 노드 이름을 그대로 내서 모든 status가 한 단계씩 늦었고,
+    가장 긴 대기인 첫 route LLM 호출 동안엔 아무것도 안 나갔다). 그래서
+    "완료된 노드 → 다음에 실행될 노드"로 매핑한다: 시작 전 routing,
+    route/reformulate 완료 → retrieving, retrieve 완료 → verifying, verify
+    완료 → 재시도면 reformulating(재시도 판단은 엣지 함수 `_route_after_verify`
+    를 그대로 재사용). 이 매핑은 build_graph()의 엣지 구성과 짝이다 — 엣지를
+    바꾸면 여기도 같이 볼 것."""
 
     llm = llm or KomirJsonLLM()
     graph = build_graph(llm, dense_k=dense_k, pageindex_k=pageindex_k)
-    result = graph.invoke(
-        {
-            "question": question, "history": history or [], "session_id": session_id,
-            "profile": profile, "attempt": 1,
-        }
-    )
-    return result.get("evidence", []), result.get("warnings", [])
+    state: dict = {
+        "question": question, "history": history or [], "session_id": session_id,
+        "profile": profile, "attempt": 1,
+    }
+    if on_status:
+        on_status("routing")  # 첫 노드(route)는 완료 이벤트가 오기 전에 알려야 한다
+    for mode, chunk in graph.stream(state, stream_mode=["updates", "values"]):
+        if mode == "values":
+            state = chunk
+            continue
+        if not on_status:
+            continue
+        node_name, delta = next(iter(chunk.items()))
+        if node_name in ("route", "reformulate"):
+            # 두 노드 다 다음 엣지가 retrieve. 켜진 도구 목록은 이 노드가 방금
+            # 돌려준 delta의 route에서 읽는다 — 폴백 경로도 route를 항상 반환하고,
+            # values 청크와의 인터리빙 순서에 기대지 않아도 된다.
+            route = delta["route"]
+            tools = [
+                name for name, flag in (
+                    ("structured", route.use_structured), ("dense", route.use_dense),
+                    ("pageindex", route.use_pageindex),
+                ) if flag
+            ]
+            on_status("retrieving", tools=tools)
+        elif node_name == "retrieve":
+            on_status("verifying")
+        elif node_name == "verify" and _route_after_verify({**state, **delta}) == "retry":
+            # state는 아직 verify 반영 전(values 청크가 updates 뒤에 온다)이라 delta를 덧씌운다.
+            on_status("reformulating")
+    return state.get("evidence", []), state.get("warnings", [])
 
 
 if __name__ == "__main__":  # 수동 점검용

@@ -87,6 +87,42 @@ async def _iter_async(sync_iter: Iterator[str]) -> AsyncIterator[str]:
         yield item
 
 
+async def _run_with_status(fn, *args, **kwargs) -> AsyncIterator[tuple[str, object, dict]]:
+    """`_iter_async`와 같은 Queue+스레드 브리지(2026-08-27, SSE `status` 이벤트용)
+    — 다만 `fn`은 스트리밍 제너레이터가 아니라 **단일 반환값 함수**다. `fn`을
+    별도 스레드에서 `fn(*args, on_status=콜백, **kwargs)`로 실행하면서, 그
+    콜백이 `on_status(stage, **extra)`로 불릴 때마다 `("status", stage, extra)`를,
+    `fn`이 끝나면 `("result", 반환값, {})`를 순서대로 낸다. `retrieve_evidence()`
+    (route/retrieve/verify/reformulate 각 단계 진입 시점에 이 콜백을 부름,
+    `chatbot_graph.py` 참고)가 이 실행 도중 SSE로 진행상황을 흘려보낼 유일한
+    소비처다."""
+
+    loop = asyncio.get_running_loop()
+    queue: asyncio.Queue = asyncio.Queue()
+    _DONE = object()
+
+    def _on_status(stage: str, **extra) -> None:
+        loop.call_soon_threadsafe(queue.put_nowait, ("status", stage, extra))
+
+    def _run() -> None:
+        try:
+            result = fn(*args, on_status=_on_status, **kwargs)
+            loop.call_soon_threadsafe(queue.put_nowait, ("result", result, {}))
+        except Exception as exc:  # noqa: BLE001 — 소비측(chat_turn)에서 그대로 재발생
+            loop.call_soon_threadsafe(queue.put_nowait, ("error", exc, {}))
+        finally:
+            loop.call_soon_threadsafe(queue.put_nowait, (_DONE, None, {}))
+
+    threading.Thread(target=_run, daemon=True).start()
+    while True:
+        kind, payload, extra = await queue.get()
+        if kind is _DONE:
+            return
+        if kind == "error":
+            raise payload
+        yield kind, payload, extra
+
+
 def _history_block(history: list[dict]) -> str:
     """[근거] 밖의 참고용 문맥 — 모델에게 여긴 인용 대상이 아니라고 명시한다."""
 
@@ -217,12 +253,17 @@ async def chat_turn(
     history = [{"role": row["role"], "content": row["content"]} for row in history_rows]
     await asyncio.to_thread(append_message, resolved_session_id, "user", message, None, store_db_path)
 
+    evidence, route_warnings = [], []
     try:
-        evidence, route_warnings = await asyncio.to_thread(
+        async for kind, payload, extra in _run_with_status(
             retrieve_evidence, message,
             session_id=resolved_session_id, history=history, llm=router_llm,
             dense_k=dense_k, pageindex_k=pageindex_k, profile=profile,
-        )
+        ):
+            if kind == "status":
+                yield ChatEvent(type="status", data={"stage": payload, **extra})
+            elif kind == "result":
+                evidence, route_warnings = payload
     except Exception:
         # 정형/dense/PageIndex 셋 다 접속 자체가 안 되는 등 오케스트레이션 계층
         # 전체가 죽은 경우 — 조용히 삼키지 않고 로그는 남기되, 500으로 스트림을
@@ -247,6 +288,7 @@ async def chat_turn(
     user_prompt = _history_block(history) + _build_evidence_prompt(message, evidence)
     chat = chat or OpenAICompatChat(_cfg_from_env())
 
+    yield ChatEvent(type="status", data={"stage": "generating"})
     full_text_parts: list[str] = []
     async for delta in _iter_async(chat.complete_stream(SYSTEM_PROMPT, user_prompt, max_tokens=max_tokens)):
         full_text_parts.append(delta)
