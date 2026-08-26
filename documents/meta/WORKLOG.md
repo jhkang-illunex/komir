@@ -2,7 +2,126 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-08-20 (최신) — execute_msr() postgres 미지원 수정(out_report 저장 파손 해소)
+## 2026-08-26 (최신) — 챗봇 검색도구 MCP public/private 물리분리 + pubchat/prichat 신설 + PageIndex 헤딩결함 수정
+
+챗봇(`rag/ragkit/chatbot.py`·`chatbot_graph.py`)이 지금까지 정형(structured)·
+hybrid_search·pageindex 세 검색도구를 인프로세스로 직접 호출하던 걸, MCP
+프로토콜 경유 호출로 바꾸고 public/private 두 프로필로 물리 분리했다. 계기는
+발주처 요구사항(공단담당자 vs 일반국민 접근범위 차등, `RAG챗봇_기능요구서_
+구현현황_갭목록_260819.md` 항목8)과 실제 라이선스 제한 제3자 문서(Argus
+비철금속 일일동향) 접근 통제 필요성.
+
+### 1차: MCP 서버 신설(단일 파일 + `MCP_PROFILE` env var 분기)
+
+`rag/ragkit/mcp_server.py`(FastMCP) 하나를 `MCP_PROFILE=public|private` 환경변수로
+분기해 hybrid_search·pageindex_lookup 두 도구에서만 라이선스 제한 소스(`shared.
+retrieval.access.PRIVATE_ONLY_SOURCE_GROUPS` — Argus_비철금속_일일)를 걸러내게
+구현. `rag/ragkit/mcp_client.py`가 이 서버를 stdio 서브프로세스로 띄워 public/
+private 세션 2개를 lazy singleton으로 유지(백그라운드 이벤트루프 스레드 +
+`asyncio.run_coroutine_threadsafe`로 sync↔async 브리지, 턴마다 재시작 안 함).
+`chatbot_graph.py::_retrieve_node`가 `RetrievalState.profile`로 어느 세션을 쓸지만
+고르도록 재배선(route/verify/reformulate는 그대로 인프로세스, CONTAINER_ARCHITECTURE.md
+§5-4 "도구 구현은 공유하되 언제 무엇을 부를지는 공유 안 함" 원칙 유지).
+
+**MCP SDK 실측 함정**: FastMCP tool 반환값은 `CallToolResult.content`가 아니라
+`.structuredContent`로 받아야 한다(list 반환 도구는 content가 원소별 TextContent로
+쪼개져 첫 블록만 읽으면 첫 원소만 보임). 반환 타입이 이미 object(`dict[str, Any]`,
+Optional/list 아님)면 structuredContent에 그대로 실리지만 그 외엔 `{"result": ...}`로
+감싸져서, 6개 tool 전부 "evidence 키를 가진 순수 dict"로 통일해 언랩 로직을
+하나로 뒀다. `mcp` 2.x는 `FastMCP`→`MCPServer` 이름이 바뀌고 API가 갈라져
+`requirements.txt`에 `mcp>=1.18.0,<2` 상한을 반드시 걸어야 함(로컬엔 1.18.0이 이미
+깔려있어 코드 실행으로는 안 드러나고, 컨테이너를 새로 빌드해서야 재현됨 — 로컬
+검증 통과가 컨테이너 빌드 통과를 보장하지 않는 사례).
+
+### 2차: 물리적으로 분리된 두 모듈로 재구성(사용자 요청)
+
+"env var 하나로 분기하는 구조는 env 전달이 깨지면 public이 조용히 private처럼
+동작할 여지가 있다"는 지적에 따라 재설계. `mcp_server.py`(단일 파일) 삭제하고:
+- `mcp_server_public.py` — hybrid_search/pageindex_lookup이 `PRIVATE_ONLY_SOURCE_GROUPS`를
+  **하드코딩**으로 하위함수에 넘김(조건문·env var 없음, 이 파일 안에 Argus를 포함시키는
+  코드 경로 자체가 없음).
+- `mcp_server_private.py` — 같은 두 tool이 exclude 인자를 아예 안 넘김(기본값=무제한),
+  `PRIVATE_ONLY_SOURCE_GROUPS` import조차 안 함.
+- `_mcp_tools_common.py` — 라이선스 무관 4개 tool(정형 3종+pageindex_agentic, 둘의
+  결과가 완전히 같아야 정상)만 한 번 구현해 두 서버가 `register_common_tools(mcp)`로
+  등록만 함(이 넷은 Argus 분기가 없어 중복시켜도 보안 이득이 없어 공유 유지 — TWIN
+  방지 원칙과 물리분리 요구의 절충).
+- `mcp_client.py`가 이제 `MCP_PROFILE` env var 대신 `_MODULE_BY_PROFILE`로 **어느
+  모듈을 실행할지**만 결정 — 신뢰경계가 "런타임 플래그가 항상 올바름"에서 "어느
+  파일을 실행했는가"로 이동.
+
+**신설 서비스 엔드포인트**: `services/rag_chat/app/routers/chat.py`에 `POST /pubchat`
+(profile=public)·`POST /prichat`(profile=private) 신설. 페이지추천(`page`) 경로는
+이 세 도구를 안 써서 profile 무관, 두 엔드포인트가 `_run_page_recommend()`를
+그대로 공유(실측 확인: 동일 질의 결과 완전히 같음). 기존 `/chat`은 사용자 요청으로
+**구현(`chat()` 함수)은 남기고 `@router.post` 등록만 제거** — HTTP로는 404, 필요시
+데코레이터만 다시 붙이면 재도입 가능.
+
+**컨테이너 재배포**: `komir-rag-chat-test`(호스트 172.30.1.29:18002, 08-19 빌드본,
+`/chat`만 있고 오늘 작업 전혀 미반영 상태였음을 실측 확인)를 오늘 이미지로
+재빌드·교체. 재배포 중 컨테이너 전용 env override(`LLM_BASE_URL=http://
+host.docker.internal:52302/v1`, `PAGEINDEX_TREES_DIR`/`OKF_DOCUMENTS_DIR`)를
+`--env-file`만으로 재현하다가 한 번 빠뜨려 컨테이너가 일시적으로 응답 못 하는
+실수가 있었음(원인 확인 후 즉시 정정).
+
+### skeptic-code 감사 → CLIFF 2건 수정 + logging 전환
+
+`mcp_client.py`·`mcp_server_public/private.py`·`chatbot.py`·`chatbot_graph.py`
+대상 skeptic-code 감사에서 `[CLIFF]` 2건 확정 적용:
+- **SC-001**: `ensure_started()`/`_call()`이 `.result(timeout=...)`로 기다리다
+  타임아웃나도 루프 위 코루틴은 취소 안 됨(asyncio 표준 동작) — 서브프로세스가
+  백그라운드에서 계속 기동을 시도하다 뒤늦게 세션을 채우면, 다음 `ensure_started()`가
+  "아직 None"으로 보고 서브프로세스를 중복 기동하는 경합 가능. `fut.cancel()`로
+  취소 신호를 명시적으로 보내게 수정.
+- **SC-002**: MCP 서브프로세스가 죽어도 `self._session`이 non-None으로 남아있어
+  `ensure_started()`가 재기동을 영영 안 시도 — 그 프로필(public/private)이 프로세스
+  재시작 전까지 영구 복구불가였음. 호출 실패 시 세션 참조를 비워 다음 요청이
+  재기동하도록 수정.
+- SC-003(종료 경로 `except Exception: pass` 완전 무음)을 로그로 바꾸자, 그동안
+  조용히 삼켜지던 **실제 버그가 드러남**: `stop()`이 `_start_async()`와 다른 asyncio
+  Task로 `stack.aclose()`를 스케줄해 anyio cancel scope의 "연 Task=닫는 Task" 제약을
+  위반, 매 종료마다 `RuntimeError: Attempted to exit cancel scope in a different
+  task than it was entered in`이 나고 있었음(실 서빙엔 영향 없음, 서브프로세스가
+  안 깔끔하게 닫힐 뿐). `_ProfileSession`을 별도 포크 세션에 맡겨 재설계 —
+  `_run_session()` 코루틴 하나가 열기→`close_event.wait()`→닫기를 전부 같은 Task
+  안에서 담당하도록 바꿔 해소, SC-001/002 동작은 새 구조 위에서도 유지.
+- `chatbot.py`·`chatbot_graph.py`·`mcp_client.py`의 진단용 `print()`를 `logging`
+  모듈(`logging.getLogger(__name__)`)로 전환(사용자 지적 — "그걸 왜 프린터로
+  하는지"). CLI `__main__` 데모 블록의 사용자 출력용 `print()`는 유지하되, 그
+  경로에서 진행 로그(INFO)가 안 보이지 않게 `logging.basicConfig()`를 그 블록
+  안에서만 켬(서비스 컨텍스트는 uvicorn이 이미 루트 로거를 구성하므로 라이브러리
+  코드 자체는 basicConfig를 안 부르는 기존 report_gen 관례를 그대로 따름).
+
+### PageIndex — 조달청보고서 4건 빈 제목 헤딩 결함(신규 발견·수정)
+
+"USGS 헤딩 유실 결함(2026-08-13 pageindex_agent.py 신설 절 참고)이 다른
+문서군에도 재발하는가"를 전수 스캔(1,642개 트리, md 헤딩 수 vs 트리 노드 수 대조,
+코드펜스 오탐 제외 후)으로 확인 — **정확히 같은 결함은 재발 안 함**(Argus·USGS·
+외부자료·산출물 전부 0건). 대신 **다른 결함**을 새로 발견: 조달청보고서 868건
+중 4건(`Weekly_0217`·`Weekly_0224`·`Weekly_0303`·`니켈_이재호_조달청_연구원`)에서
+헤딩 마커(`####`)는 살아있는데 제목 텍스트가 통째로 공백이라 트리 빌더가 그
+헤딩을 노드로 안 만들고 건너뛰던 것(diff 건수와 공백헤딩 개수가 정확히 일치함을
+확인해 원인 확정). `services/ingestion/build_pageindex_trees.py`에
+`fix_blank_heading_titles()` 추가 — 본문 첫 줄 기반 폴백 제목을 채워 넣되 줄 수는
+절대 안 바꿔(`line_num`/`body_line_offset` 무결성 유지) 트리 빌드 전에 보정.
+원본 OKF 마크다운 자체는 안 건드림(pageindex_agent.py의 "데이터는 그대로, 코드로
+우회" 원칙과 동일). 4개 문서 재생성 후 전수 재스캔으로 불일치 0건 확인.
+
+### 산출물
+
+- `documents/산출물/2026-W35_0824-0830/OKF_PageIndex_색인구조_저장소사용량_설명_260826.md`
+  (+ draw.io 다이어그램) — 3층 구조(OKF/doc_chunk/PageIndex) 실측 저장소 용량
+  ~1GB(OKF 139MB + PageIndex 트리 60MB + doc_chunk 829MB) 정리.
+- `documents/산출물/2026-W35_0824-0830/RAG문서코퍼스_데이터유형_수량_public_private할당_260826.md`
+  — 문서군별 파일유형(PDF 1,565·MD 62·DOCX 14·HWP 1건, Excel 없음)·public/private
+  할당·doc_chunk 청크수(140,085건 중 public 조회가능 62,437건=44.6%) 실측 정리.
+
+**검증**: `services/rag_chat/tests/smoke_mcp_access.py`(신설, public/private 경계
+6종)·`smoke_chat_routing.py`·`smoke_pageindex_agent.py` 전부 재검증 통과. 실제
+FastAPI 앱을 띄워 `/pubchat`·`/prichat`·`/chat`(404 확인) 세 엔드포인트 SSE 응답
+확인, 컨테이너 재배포 후 재검증까지 완료.
+
+## 2026-08-20 — execute_msr() postgres 미지원 수정(out_report 저장 파손 해소)
 
 2026-08-20 앞선 항목("MSR_DB DuckDB→PostgreSQL cutover로 out_report 저장 경로
 파손, 기록만·미수정")이 "워크트리 통합 후 재작업 예정"이라 명시해뒀던 바로 그
