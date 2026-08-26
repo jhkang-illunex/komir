@@ -163,6 +163,7 @@ class _ProfileSession:
         )
         close_event = asyncio.Event()
         self._close_event = close_event
+        session: ClientSession | None = None
         try:
             async with AsyncExitStack() as stack:
                 read, write = await stack.enter_async_context(stdio_client(params))
@@ -178,8 +179,17 @@ class _ProfileSession:
             else:
                 _logger.warning("%s 세션 실행 중 오류(무시)", self.profile, exc_info=True)
         finally:
-            self._session = None
-            self._close_event = None
+            # 내가 만든 객체일 때만 지운다(2026-08-27 skeptic-code 2차 SC-002, 실측
+            # 재현): _call_async가 실패 복구(SC-002 1차)로 self._session을 비우고
+            # close_event를 set한 뒤, 이 Task가 subprocess 종료를 await하는 동안
+            # 새 요청이 후임 _run_session을 띄워 self._session/_close_event를 새
+            # 값으로 채울 수 있다 — 여기서 무조건 None으로 덮으면 후임 세션의
+            # close_event가 사라져 stop()이 조기 반환하고 새 서브프로세스가
+            # 영원히 안 닫힌다(좀비). identity 비교로 후임 것은 건드리지 않는다.
+            if self._session is session:
+                self._session = None
+            if self._close_event is close_event:
+                self._close_event = None
 
     def stop(self, *, timeout: float = 10.0) -> None:
         run_fut = self._run_future
