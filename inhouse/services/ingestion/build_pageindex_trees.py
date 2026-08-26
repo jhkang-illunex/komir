@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import tempfile
 import time
@@ -68,6 +69,41 @@ def split_frontmatter(text: str) -> tuple[dict, str, int]:
     return front, stripped, offset
 
 
+_HEADING_RE = re.compile(r"^#{1,6}\s")
+_BLANK_TITLE_HEADING_RE = re.compile(r"^#{1,6}\s*$")
+
+
+def fix_blank_heading_titles(text: str, *, max_title_len: int = 60) -> str:
+    """헤딩 마커(`#`~`######`)는 살아있는데 제목 텍스트가 통째로 공백인 줄에
+    본문 첫 줄 기반 폴백 제목을 채운다.
+
+    실측 확인(2026-08-26): PDF→MD 변환 결함으로 `조달청보고서` 868건 중 4건
+    (Weekly_0217/0224/0303, 니켈_이재호_조달청_연구원)에서 이 패턴이 나왔다 —
+    `services/shared/pageindex_client.build_tree_from_markdown()`(md_to_tree)는
+    제목이 빈 헤딩을 노드로 만들지 않고 건너뛰어, 그 아래 본문이 상위 섹션에
+    통째로 합쳐진다(개별 광종·주제 단위로는 pageindex 검색이 안 됨 — diff
+    건수가 이 패턴 개수와 정확히 일치함을 실측으로 확인). USGS의 "헤딩 자체가
+    사라진" 결함(`pageindex_agent.py` 참고)과는 증상이 달라 같은 방식으로
+    우회하지 않고, 원본 마크다운을 트리 빌더에 넣기 전에 여기서 보정한다."""
+
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        if not _BLANK_TITLE_HEADING_RE.match(line):
+            continue
+        hashes = line.strip()
+        fallback = None
+        for candidate in lines[i + 1:]:
+            stripped_candidate = candidate.strip()
+            if not stripped_candidate:
+                continue
+            if _HEADING_RE.match(candidate):
+                break
+            fallback = stripped_candidate[:max_title_len]
+            break
+        lines[i] = f"{hashes} {fallback or '(제목 없음)'}"
+    return "\n".join(lines) + ("\n" if text.endswith("\n") else "")
+
+
 def build_tree_for_okf(
     okf_path: Path,
     *,
@@ -81,6 +117,9 @@ def build_tree_for_okf(
 
     text = okf_path.read_text(encoding="utf-8")
     front, body, offset = split_frontmatter(text)
+    # 줄 수를 절대 안 바꾼다(헤딩 줄 하나를 그대로 교체만 함) — body_line_offset과
+    # 트리 line_num이 그대로 OKF 파일 실제 줄 번호를 가리키게 유지하기 위해서다.
+    body = fix_blank_heading_titles(body)
 
     # doc_name은 md 파일 basename에서 나오므로(page_index_md.md_to_tree) 임시
     # 파일도 원본과 같은 이름으로 만든다.
