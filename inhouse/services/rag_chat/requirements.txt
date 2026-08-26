@@ -47,3 +47,16 @@ python-dotenv>=1.0       # pageindex_lib/utils.py가 import 시 load_dotenv() �
 PyPDF2==3.0.1
 pypdfium2==4.30.0
 sortedcontainers==2.4.0
+
+# MCP(rag/ragkit/mcp_server_public.py·mcp_server_private.py·mcp_client.py,
+# 2026-08-26 public/private 물리적으로 분리된 모듈). 공식 SDK, 프로토콜
+# 구현체라 자체 외부망 호출 없음(pageindex_vendor와 달리 vendoring 불필요)
+# — 일반 pip 의존성으로 취급. **`<2` 고정 필수**(실측 확인, 2026-08-26 컨테이너
+# 빌드에서 재현): mcp 2.x는 `FastMCP`를 `MCPServer`로 이름 바꾸고
+# `mcp.server.fastmcp` 자체를 없애 mcp_server_public.py/private.py의
+# `from mcp.server.fastmcp import FastMCP`가 ImportError로 죽는다(개발 로컬엔
+# 이 세션 이전부터 1.18.0이 이미 깔려 있어 코드 실행 시엔 안 드러났다가,
+# 컨테이너를 새로 빌드하면서 상한 없는 `mcp>=1.18.0`이 2.1.1을 끌어와 처음
+# 재현됨 — 로컬에서 실측 통과했다고 컨테이너도 통과한다고 가정하면 안 되는
+# 사례이기도 함).
+mcp>=1.18.0,<2

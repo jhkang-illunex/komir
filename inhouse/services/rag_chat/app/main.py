@@ -17,14 +17,51 @@ routers/chat.py에 배선했다 — 이제 두 경로(document|page)가 동작�
 2026-08-19: structured.py·chatbot_store.py 둘 다 데이터소스를 PostgreSQL(mineral_risk
 스키마)로 전환 — 컨테이너에 로컬 DuckDB 파일을 마운트하지 않고도(§0 "DB는 외부서비스"
 원칙) 정형조회·세션히스토리 전부 동작한다. `MSR_DB` 환경변수에 `PG_DSN`과 같은 값을
-주면 된다(두 모듈 다 URL 타깃이면 자동으로 postgres 분기)."""
+주면 된다(두 모듈 다 URL 타깃이면 자동으로 postgres 분기).
+
+2026-08-26: startup에서 `rag.ragkit.mcp_client.start_all()`로 public/private MCP
+서브프로세스 둘 다 미리 띄운다(요청마다 새로 띄우면 매 턴 수백ms~수초의 프로세스
+기동 비용이 붙는다 — mcp_client.py 모듈독스트링의 "턴마다 재시작 안 함" 설계와
+짝). shutdown에서 `stop_all()`로 정리. `chatbot_graph.py __main__`·smoke 테스트처럼
+FastAPI 바깥에서 도는 경로는 `mcp_client`의 lazy-start(`ensure_started()`)로
+이 lifespan 없이도 그대로 동작한다."""
 from __future__ import annotations
+
+import asyncio
+import sys
+from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 
-from .routers.chat import router as chat_router
 
-app = FastAPI(title="komir rag_chat")
+def _find_root(start: Path, marker: str) -> Path:
+    for candidate in (start, *start.parents):
+        if (candidate / marker).is_file():
+            return candidate
+    raise ImportError(f"{marker}를 {start} 상위에서 찾지 못함")
+
+
+_HERE = Path(__file__).resolve()
+_RAG_ROOT = _find_root(_HERE, "rag/ragkit/mcp_client.py")
+if str(_RAG_ROOT) not in sys.path:
+    sys.path.insert(0, str(_RAG_ROOT))
+
+from rag.ragkit import mcp_client  # noqa: E402
+
+from .routers.chat import router as chat_router  # noqa: E402
+
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    await asyncio.to_thread(mcp_client.start_all)
+    try:
+        yield
+    finally:
+        await asyncio.to_thread(mcp_client.stop_all)
+
+
+app = FastAPI(title="komir rag_chat", lifespan=_lifespan)
 app.include_router(chat_router)
 
 

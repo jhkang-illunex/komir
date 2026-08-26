@@ -31,9 +31,15 @@ class PgHybridChunk:
     rrf_score: float
 
 
-def hybrid_search_pg(query: str, k: int = 8, fanout: int = 30) -> list[PgHybridChunk]:
-    dense_chunks = dense_search_pg(query, fanout)
-    bm25_chunks = bm25_search_pg(query, fanout)
+def hybrid_search_pg(
+    query: str, k: int = 8, fanout: int = 30, *, exclude_src: frozenset[str] = frozenset()
+) -> list[PgHybridChunk]:
+    """`exclude_src`는 dense/bm25 양쪽에 그대로 전달한다(둘 다 같은 `doc_chunk.src`
+    규약, `dense_search_pg`/`bm25_search_pg` docstring 참고) — MCP public 프로필이
+    라이선스 제한 소스를 걸러내는 지점."""
+
+    dense_chunks = dense_search_pg(query, fanout, exclude_src=exclude_src)
+    bm25_chunks = bm25_search_pg(query, fanout, exclude_src=exclude_src)
 
     dense_rank = {c.chunk_id: c.dense_rank for c in dense_chunks}
     bm25_rank = {c.chunk_id: c.bm25_rank for c in bm25_chunks}

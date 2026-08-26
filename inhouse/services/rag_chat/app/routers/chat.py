@@ -1,7 +1,22 @@
 # -*- coding: utf-8 -*-
-"""POST /chat — 요청 바디: {user_id, session_id(선택, 없으면 신규 발급), message, mode}.
-응답: SSE 스트림(streaming.py) — 최종 청크에 citations_json 또는 페이지추천 결과 포함.
-이 엔드포인트가 프론트가 직접 붙는 실제 API 표면이다.
+"""POST /pubchat, /prichat — 요청 바디: {user_id, session_id(선택, 없으면
+신규 발급), message, mode}. 응답: SSE 스트림(streaming.py) — 최종 청크에
+citations_json 또는 페이지추천 결과 포함. 이 두 엔드포인트가 프론트가 직접
+붙는 실제 API 표면이다.
+
+**2026-08-26 public/private MCP 분리**: 문서 Q&A 경로가 참조하는 hybrid_search·
+pageindex_lookup 두 도구는 이제 `rag.ragkit.mcp_client`의 public/private 세션
+중 하나를 거친다(라이선스 제한 제3자 문서 접근 여부가 갈림 — 두 프로필은
+`rag/ragkit/mcp_server_public.py`·`mcp_server_private.py` 물리적으로 분리된
+별도 모듈, 모듈독스트링 참고). `/pubchat`은 `profile="public"`,
+`/prichat`은 `profile="private"`로 `chat_turn()`을 부른다. 페이지추천
+(`page`) 경로는 이 세 도구를 안 써서 profile 무관, 두 엔드포인트 전부 같은
+`_run_page_recommend()`를 공유한다.
+
+**같은 날 후속(사용자 요청)**: 하위호환 별칭이던 `/chat`(profile="public")은
+**구현(`chat()` 함수)은 남기되 `@router.post` 등록을 빼서 외부 HTTP 인터페이스
+에서는 제거**했다 — POST /chat은 이제 404. 재도입하려면 함수 정의 위에
+`@router.post("/chat")`만 다시 붙이면 된다(로직 변경 불필요).
 
 두 경로가 있다(2026-08-11 페이지추천 편입):
 - document: 정형(Postgres out_*)·dense(pgvector doc_chunk)·PageIndex(OKF 트리) 세
@@ -40,6 +55,7 @@ import asyncio
 import json
 import sys
 from pathlib import Path
+from typing import Literal
 
 
 def _find_root(start: Path, marker: str) -> Path:
@@ -147,7 +163,7 @@ def _drain_sync(async_gen):
         loop.close()
 
 
-def _run_document_qa(request: ChatRequest, session_id: str):
+def _run_document_qa(request: ChatRequest, session_id: str, profile: Literal["public", "private"]):
     """비정형+정형 혼합 문서 Q&A 경로 — 코어 로직(정형·dense·PageIndex 도구 선택+
     병렬조회를 위한 LangGraph 오케스트레이션·멀티턴 프롬프트·인용강제·표/차트
     다중매체 이벤트·세션저장)은 rag.ragkit.chatbot.chat_turn()에 있다(2026-08-13
@@ -155,7 +171,10 @@ def _run_document_qa(request: ChatRequest, session_id: str):
     PageIndex 3도구 조합으로 교체했다). session_id는 이미 _run_chat이
     session_store로 확정해둔 값을 그대로 넘긴다 — chat_turn()이 내부에서 다시
     get_or_create_session을 부르지만 기존 session_id를 그대로 확인만 하므로 새
-    세션이 만들어지진 않는다."""
+    세션이 만들어지진 않는다.
+
+    `profile`은 어느 엔드포인트(/pubchat|/prichat|/chat)로 들어왔는지에 따라
+    호출자(_run_chat)가 정해 그대로 chat_turn()에 넘긴다."""
 
     settings = get_settings()
     events = chat_turn(
@@ -165,6 +184,7 @@ def _run_document_qa(request: ChatRequest, session_id: str):
         dense_k=request.top_k,
         store_db_path=settings.MSR_DB,
         chat=get_chat_client(),
+        profile=profile,
     )
     for event in _drain_sync(events):
         yield sse_event(event.data, event=event.sse_name)
@@ -246,19 +266,39 @@ def _run_page_recommend(request: ChatRequest, session_id: str):
     )
 
 
-def _run_chat(request: ChatRequest):
-    """제너레이터 — SSE로 그대로 넘긴다(테스트에서 list()로 직접 소비 가능)."""
+def _run_chat(request: ChatRequest, profile: Literal["public", "private"]):
+    """제너레이터 — SSE로 그대로 넘긴다(테스트에서 list()로 직접 소비 가능).
+
+    `profile`은 page 경로엔 영향 없다(그 경로는 hybrid_search/pageindex_lookup을
+    안 씀) — document 경로에만 전달."""
 
     session_id = session_store.get_or_create_session(request.session_id, request.user_id)
     mode = request.mode if request.mode in {"document", "page"} else classify_intent(request.message)
     if mode == "page":
         yield from _run_page_recommend(request, session_id)
         return
-    yield from _run_document_qa(request, session_id)
+    yield from _run_document_qa(request, session_id, profile)
 
 
-@router.post("/chat")
+@router.post("/pubchat")
+def pubchat(request: ChatRequest) -> EventSourceResponse:
+    """SSE 스트림 응답 — public MCP 프로필(라이선스 제한 제3자 문서 제외)."""
+
+    return EventSourceResponse(_run_chat(request, "public"))
+
+
+@router.post("/prichat")
+def prichat(request: ChatRequest) -> EventSourceResponse:
+    """SSE 스트림 응답 — private MCP 프로필(라이선스 제한 제3자 문서 포함)."""
+
+    return EventSourceResponse(_run_chat(request, "private"))
+
+
 def chat(request: ChatRequest) -> EventSourceResponse:
-    """SSE 스트림 응답."""
+    """`/pubchat`과 동일(profile="public") — 구현은 남겨두되(재도입·내부 호출
+    대비) **의도적으로 `@router.post` 미등록**이라 HTTP로는 노출되지 않는다
+    (2026-08-26 사용자 요청: "chat 엔드포인트는 구현은 두고, 외부 인터페이스
+    노출은 막아달라" — `/chat` 하위호환 별칭을 외부 API 표면에서 제거).
+    필요해지면 `@router.post("/chat")`만 다시 붙이면 된다."""
 
-    return EventSourceResponse(_run_chat(request))
+    return EventSourceResponse(_run_chat(request, "public"))

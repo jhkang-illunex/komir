@@ -42,7 +42,9 @@ class PgBm25Chunk:
     score: float
 
 
-def bm25_search_pg(query: str, k: int = 8) -> list[PgBm25Chunk]:
+def bm25_search_pg(
+    query: str, k: int = 8, *, exclude_src: frozenset[str] = frozenset()
+) -> list[PgBm25Chunk]:
     """Postgres 전문검색 상위 k개 청크(`ts_rank_cd` 내림차순).
 
     `plainto_tsquery`는 질의를 AND로 묶는다(OR 아님) — 짧은 키워드 질의엔 맞지만
@@ -50,7 +52,10 @@ def bm25_search_pg(query: str, k: int = 8) -> list[PgBm25Chunk]:
     수 있다. 그래서 질의를 공백 기준으로 토큰화해 `to_tsquery`에 `|`(OR)로
     묶는다 — dense(의미)가 이미 전체 문장 관련성을 보므로, sparse 쪽은 "이
     토큰들 중 뭐라도 정확히 들어있는 문서"를 넓게 잡아오는 역할로 충분하다
-    (RRF 융합이 순위로 재조정하지, 여기서 정밀도를 낼 필요 없음)."""
+    (RRF 융합이 순위로 재조정하지, 여기서 정밀도를 낼 필요 없음).
+
+    `exclude_src`: `dense_search_pg`와 동일 규약 — `doc_chunk.src`가 이 집합에
+    있으면 SQL 단에서 제외(기본값 빈 집합이면 기존 동작과 동일)."""
 
     schema = get_settings().PG_SCHEMA
     # to_tsquery는 &/|/!/():()가 연산자라 원문 토큰에 구두점("LME," "(2026)")이
@@ -62,6 +67,8 @@ def bm25_search_pg(query: str, k: int = 8) -> list[PgBm25Chunk]:
     if not tokens:
         return []
     tsquery = " | ".join(tokens)
+    exclude_clause = " AND src <> ALL(%s)" if exclude_src else ""
+    exclude_param = (list(exclude_src),) if exclude_src else ()
 
     con = pg_connect()
     try:
@@ -71,11 +78,11 @@ def bm25_search_pg(query: str, k: int = 8) -> list[PgBm25Chunk]:
                 SELECT chunk_id, doc_id, source_path, week, title, section_heading, txt,
                        ts_rank_cd(to_tsvector('simple', txt), query) AS rank
                 FROM {schema}.doc_chunk, to_tsquery('simple', %s) query
-                WHERE to_tsvector('simple', txt) @@ query
+                WHERE to_tsvector('simple', txt) @@ query{exclude_clause}
                 ORDER BY rank DESC
                 LIMIT %s
                 """,
-                (tsquery, k),
+                (tsquery, *exclude_param, k),
             )
             rows = cur.fetchall()
     finally:

@@ -38,9 +38,11 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import re
 import threading
 from collections.abc import AsyncIterator, Iterator
+from typing import Literal
 
 from geo.llm.openai_compat import OpenAICompatChat
 
@@ -49,6 +51,8 @@ from .chatbot_graph import retrieve_evidence
 from .chatbot_store import DEFAULT_DB_PATH as DEFAULT_STORE_DB_PATH
 from .chatbot_store import append_message, get_or_create_session, list_messages
 from .generate import ABSTAIN_TEXT, SYSTEM_PROMPT, _cfg_from_env, _strip_uncited_sentences
+
+_logger = logging.getLogger(__name__)
 
 MAX_HISTORY_MESSAGES = 12  # 최근 6턴(user+assistant) — 프롬프트 길이 통제
 _CITE_NUM_RE = re.compile(r"\[(\d+)\]")
@@ -180,6 +184,7 @@ async def chat_turn(
     store_db_path: str = DEFAULT_STORE_DB_PATH,
     chat: OpenAICompatChat | None = None,
     router_llm=None,
+    profile: Literal["public", "private"] = "public",
 ) -> AsyncIterator[ChatEvent]:
     """한 턴을 실행하고 이벤트를 순서대로 낸다: session -> delta* -> table*/image*
     -> done. session_id가 없으면 새로 발급하고, 있으면 그 세션의 최근 히스토리를
@@ -189,7 +194,11 @@ async def chat_turn(
     이벤트루프를 막지 않는다.
 
     router_llm은 chatbot_graph의 도구 선택 LLM(KomirJsonLLM) 주입점 — 테스트에서
-    모의로 갈아끼울 때 쓴다(None이면 chatbot_graph가 기본 설정으로 새로 만든다)."""
+    모의로 갈아끼울 때 쓴다(None이면 chatbot_graph가 기본 설정으로 새로 만든다).
+
+    profile("public"|"private")은 routers/pubchat.py·prichat.py가 넘기는
+    MCP 프로필 선택 — retrieve_evidence()에 그대로 패스스루한다(2026-08-26,
+    pubchat/prichat 분리)."""
 
     resolved_session_id: str = await asyncio.to_thread(
         get_or_create_session, session_id, user_id, None, store_db_path
@@ -212,17 +221,17 @@ async def chat_turn(
         evidence, route_warnings = await asyncio.to_thread(
             retrieve_evidence, message,
             session_id=resolved_session_id, history=history, llm=router_llm,
-            dense_k=dense_k, pageindex_k=pageindex_k,
+            dense_k=dense_k, pageindex_k=pageindex_k, profile=profile,
         )
-    except Exception as exc:
+    except Exception:
         # 정형/dense/PageIndex 셋 다 접속 자체가 안 되는 등 오케스트레이션 계층
         # 전체가 죽은 경우 — 조용히 삼키지 않고 로그는 남기되, 500으로 스트림을
         # 깨는 대신 기권 응답으로 처리한다(개별 도구 실패는 chatbot_graph 안에서
         # 이미 부분 열화로 흡수됨 — 여기 걸리는 건 그보다 더 심각한 경우다).
-        print(f"[rag/ragkit/chatbot] retrieve_evidence 실패, 기권 응답으로 대체: {type(exc).__name__}: {exc}")
+        _logger.exception("retrieve_evidence 실패, 기권 응답으로 대체")
         evidence, route_warnings = [], []
     if route_warnings:
-        print(f"[rag/ragkit/chatbot] 근거 조회 경고: {route_warnings}")
+        _logger.warning("근거 조회 경고: %s", route_warnings)
 
     if not evidence:
         await asyncio.to_thread(
@@ -284,6 +293,12 @@ async def chat_turn(
 
 if __name__ == "__main__":
     import sys
+
+    # 라이브러리 코드는 basicConfig를 부르지 않는다(서비스 컨텍스트에선 uvicorn이
+    # 이미 루트 로거를 구성함) — 이 CLI 데모 경로만 예외로, 수동 점검 시
+    # route/retrieve/reformulate/verify 진행 로그(logging.INFO)가 안 보이면
+    # 디버깅이 안 되므로 여기서만 켠다.
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
 
     async def _demo() -> None:
         q = sys.argv[1] if len(sys.argv) > 1 else "니켈 수급위기 진단등급이 어떻게 되나"

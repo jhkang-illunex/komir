@@ -117,13 +117,21 @@ def find_documents(
     *,
     limit: int = 5,
     trees_root: Path | str = TREES_ROOT,
+    exclude_source_groups: frozenset[str] = frozenset(),
 ) -> list[dict[str, Any]]:
     """문서명/제목/소스그룹으로 문서 트리를 찾는다(점수 내림차순).
 
     `doc_id`나 파일경로를 그대로 넣으면 해당 문서가 정확매칭으로 1등이 된다.
-    """
+
+    `exclude_source_groups`: 트리의 `source_group` 필드가 이 집합에 있으면
+    후보에서 제외한다 — MCP public 프로필이 라이선스 제한 소스(예: Argus)를
+    걸러내는 지점(`shared.retrieval.access.PRIVATE_ONLY_SOURCE_GROUPS`). 기본값
+    (빈 집합)이면 기존 동작과 동일. 트리 로딩·캐시(`load_trees`)는 그대로 두고
+    호출마다 후보만 거른다."""
 
     trees = load_trees(trees_root)
+    if exclude_source_groups:
+        trees = [t for t in trees if t.get("source_group") not in exclude_source_groups]
     needle = (query or "").strip()
     query_tokens = _tokens(needle)
     scored: list[tuple[float, dict[str, Any]]] = []
@@ -199,19 +207,32 @@ def search_nodes(
     doc_limit: int = 3,
     node_limit: int = 8,
     trees_root: Path | str = TREES_ROOT,
+    exclude_source_groups: frozenset[str] = frozenset(),
 ) -> list[dict[str, Any]]:
     """질의 → (관련 문서 선택 →) 트리 내 관련 노드 목록.
 
     `doc`을 주면 그 문서 안에서만, 없으면 `find_documents()` 상위 `doc_limit`건
     안에서 노드를 찾는다. 노드 점수는 제목·요약·상위제목 경로 기준.
-    """
+
+    `exclude_source_groups`: `find_documents()`와 동일 규약(빈 집합이면 기존
+    동작과 동일). `doc`을 명시해도 그 문서의 `source_group`이 이 집합에 있으면
+    제외한다 — 문서 id를 직접 지정하는 우회로 라이선스 경계를 넘지 못하게
+    막는다."""
 
     trees = load_trees(trees_root)
     if doc:
         target = get_tree(doc, trees_root=trees_root)
+        if target is not None and target.get("source_group") in exclude_source_groups:
+            target = None
         candidates = [target] if target else []
     else:
-        wanted = {meta["okf_path"] for meta in find_documents(query, limit=doc_limit, trees_root=trees_root)}
+        wanted = {
+            meta["okf_path"]
+            for meta in find_documents(
+                query, limit=doc_limit, trees_root=trees_root,
+                exclude_source_groups=exclude_source_groups,
+            )
+        }
         candidates = [tree for tree in trees if tree.get("okf_path") in wanted]
 
     query_tokens = _tokens(query)
@@ -291,19 +312,27 @@ def lookup(
     node_limit: int = 5,
     with_text: bool = True,
     trees_root: Path | str = TREES_ROOT,
+    exclude_source_groups: frozenset[str] = frozenset(),
 ) -> dict[str, Any]:
     """도구 단일 진입점 — 질의 → {문서 후보, 관련 노드(+원문)}.
 
-    rag_chat/report_gen이 부를 때는 이 함수 하나만 쓰면 된다(배선은 이번 범위 밖).
-    """
+    rag_chat/report_gen이 부를 때는 이 함수 하나만 쓰면 된다. `exclude_source_groups`는
+    `find_documents()`/`search_nodes()`와 동일 규약 — MCP public 프로필이 라이선스
+    제한 소스를 걸러내는 지점(`shared.retrieval.access.PRIVATE_ONLY_SOURCE_GROUPS`)."""
 
     if doc:
         target = get_tree(doc, trees_root=trees_root)
+        if target is not None and target.get("source_group") in exclude_source_groups:
+            target = None
         documents = [dict(_doc_meta(target), score=1.0)] if target else []
     else:
-        documents = find_documents(query, limit=doc_limit, trees_root=trees_root)
+        documents = find_documents(
+            query, limit=doc_limit, trees_root=trees_root,
+            exclude_source_groups=exclude_source_groups,
+        )
     nodes = search_nodes(
-        query, doc=doc, doc_limit=doc_limit, node_limit=node_limit, trees_root=trees_root
+        query, doc=doc, doc_limit=doc_limit, node_limit=node_limit, trees_root=trees_root,
+        exclude_source_groups=exclude_source_groups,
     )
     if with_text:
         for hit in nodes:

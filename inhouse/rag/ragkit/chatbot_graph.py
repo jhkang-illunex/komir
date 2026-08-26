@@ -48,7 +48,7 @@ asyncio.to_thread로 감싼다. MCP/tool로 향후 노출할 걸 염두에 두�
 함수를 얇게 호출만 한다(로직을 노드 안에 박아넣지 않음 — 사용자 요청 메모)."""
 from __future__ import annotations
 
-import sys
+import logging
 from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 from typing import Literal, TypedDict
@@ -56,42 +56,24 @@ from typing import Literal, TypedDict
 from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel
 
+from ._shared_root import ensure_shared_on_path
 
-def _find_shared_root(start: Path) -> Path:
-    """`shared.llm_client`/`shared.retrieval.*`를 최상위 패키지로 import할 수
-    있는 sys.path 루트를 찾는다.
-
-    services/rag_chat/app/routers/chat.py의 `_find_root`(조상 방향 탐색)와
-    달리 이 파일(rag/ragkit/chatbot_graph.py)에선 그 패턴이 안 통한다 —
-    `rag/ragkit`과 `services/shared`는 **형제** 디렉토리라, `rag/ragkit`에서
-    조상 쪽으로 아무리 올라가도 `services/shared`를 절대 지나치지 않는다
-    (dense_pg.py의 `_find_rag_parent`가 반대 방향으로 이 문제를 풀 때는 컨테이너가
-    `rag/ragkit` 상대경로를 그대로 보존해줘서 마커 하나로 됐지만, 이쪽 방향은
-    소스트리(`services/shared/llm_client.py`)와 컨테이너(services→./shared로
-    평평화된 `shared/llm_client.py`)의 마커 경로 자체가 다르다 — 마커 하나로는
-    못 풀어 두 경우를 각각 확인한다)."""
-
-    for candidate in (start, *start.parents):
-        if (candidate / "shared" / "llm_client.py").is_file():
-            return candidate  # 컨테이너 배포본: services/shared→./shared로 평평화됨
-        if (candidate / "services" / "shared" / "llm_client.py").is_file():
-            return candidate / "services"  # 소스트리: inhouse/services/shared/...
-    raise ImportError(f"shared/llm_client.py를 {start} 상위에서 찾지 못함(소스트리·컨테이너 배포본 둘 다 확인함)")
-
-
-_ROOT = _find_shared_root(Path(__file__).resolve())
-if str(_ROOT) not in sys.path:
-    sys.path.insert(0, str(_ROOT))
+ensure_shared_on_path(Path(__file__).resolve())
 
 from shared.llm_client import LLM_TRANSIENT_ERRORS, KomirJsonLLM  # noqa: E402
-from shared.retrieval import hybrid_pg, pageindex, pageindex_agent, structured  # noqa: E402
-# 2026-08-19: dense 단독(dense_pg.dense_search_pg) → dense+BM25 RRF 하이브리드로
-# 교체(hybrid_pg.hybrid_search_pg) — "2026년 상반기 니켈..." 류 날짜 질의가 순수
-# 코사인 top-k에선 실제로 코퍼스에 있는 문서를 놓치고 기권한 사례 조사 후 도입
-# (dense_pg.py 상단 주석·hybrid_pg.py 모듈독스트링 참고). Evidence.from_dense_chunk는
-# source_path/section_heading/text/week만 읽어 PgHybridChunk와 필드 호환 — 그
-# 쪽은 변경 불필요.
-from shared.retrieval.evidence import Evidence, from_dense_chunk, from_pageindex_hit, from_structured  # noqa: E402
+from shared.retrieval.evidence import Evidence  # noqa: E402
+
+_logger = logging.getLogger(__name__)
+
+from . import mcp_client  # noqa: E402
+
+# 2026-08-26: 정형(structured)/hybrid(dense+BM25)/PageIndex 세 도구 직접호출을
+# MCP client 호출로 교체(public/private 두 프로필 — mcp_server_public.py·
+# mcp_server_private.py 물리적으로 분리된 별도 모듈, mcp_client.py 신설) —
+# 도구 구현(services/shared/retrieval/*)과 Evidence 변환은 이제 서버
+# 프로세스 쪽에서 실행되고, 이 그래프는 어느 프로필 세션을 쓸지(RetrievalState.
+# profile)만 고른다. Evidence 타입 자체는 여전히 공유 정의를 그대로 쓴다
+# (mcp_client가 서버 응답 dict를 이 타입으로 복원).
 
 ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗봇의 검색 라우터다.
 직전 대화(history, 있으면)와 이번 질문(question)을 보고 정확히 하나의 JSON
@@ -178,13 +160,15 @@ class RetrievalRoute(BaseModel):
     target: Literal["volume", "value"] | None = None
 
 
-#: structured_template 이름 -> (commodity_code, target) 받는 호출부.
+#: structured_template 이름 -> (session, commodity_code, target) 받는 호출부.
 #: structured.py의 "화이트리스트 템플릿만, 자유형 NL→SQL 금지" 규약을 그대로
-#: 따른다 — 여기서 하는 일은 템플릿 이름을 함수로 매핑하는 것뿐이다.
-_STRUCTURED_CALLS = {
-    "latest_diagnosis": lambda cc, target: structured.latest_diagnosis(cc),
-    "import_forecast": lambda cc, target: structured.import_forecast(cc, target or "volume"),
-    "geo_index_trend": lambda cc, target: structured.geo_index_trend(cc, limit=8),
+#: 따른다 — 여기서 하는 일은 템플릿 이름을 mcp_client 세션 메서드로 매핑하는
+#: 것뿐이다. session이 profile(public/private)에 따라 달라지므로 모듈 전역이
+#: 아니라 `_retrieve_node` 안에서 그때그때 만든다(아래).
+_STRUCTURED_CALL_NAMES = {
+    "latest_diagnosis": "call_latest_diagnosis",
+    "import_forecast": "call_import_forecast",
+    "geo_index_trend": "call_geo_index_trend",
 }
 
 
@@ -196,6 +180,9 @@ class RetrievalState(TypedDict, total=False):
     question: str
     history: list[dict[str, str]]
     session_id: str | None  # 그래프 로직엔 관여 안 함 — 로그·경고 추적용(아래 모듈 docstring)
+    profile: Literal["public", "private"]  # 그래프 판단엔 관여 안 함 — _retrieve_node가
+    # mcp_client.public/private 중 어느 세션을 쓸지 고르는 데만 쓴다(session_id와
+    # 같은 패스스루 필드, 2026-08-26 public/private MCP 분리)
     route: RetrievalRoute
     evidence: list[Evidence]
     sufficient: bool
@@ -262,10 +249,10 @@ def _route_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
         if not route.resolved_query.strip():
             route.resolved_query = state["question"]
         warnings: list[str] = []
-        print(
-            f"{_log_prefix(state)} route: resolved_query={route.resolved_query!r} "
-            f"structured={route.use_structured}({route.structured_template}/{route.commodity_code}) "
-            f"dense={route.use_dense} pageindex={route.use_pageindex}({route.pageindex_mode})"
+        _logger.info(
+            "%s route: resolved_query=%r structured=%s(%s/%s) dense=%s pageindex=%s(%s)",
+            _log_prefix(state), route.resolved_query, route.use_structured, route.structured_template,
+            route.commodity_code, route.use_dense, route.use_pageindex, route.pageindex_mode,
         )
     except LLM_TRANSIENT_ERRORS as exc:
         route = RetrievalRoute(
@@ -275,9 +262,7 @@ def _route_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
     return {"route": route, "warnings": warnings}
 
 
-def _retrieve_node(
-    state: RetrievalState, llm: KomirJsonLLM, *, dense_k: int, pageindex_k: int
-) -> RetrievalState:
+def _retrieve_node(state: RetrievalState, *, dense_k: int, pageindex_k: int) -> RetrievalState:
     """route가 켠 도구들을 스레드풀로 병렬 조회 — 도구 하나가 실패해도(DB
     미접속·PageIndex 트리 미구축 등) 나머지는 계속 진행한다(부분 열화, 전체
     실패가 아님). 모든 도구가 비거나 실패하면 evidence=[]로 돌아가고,
@@ -287,51 +272,55 @@ def _retrieve_node(
     결정적 단발조회(pageindex.lookup), "agentic"이면 pageindex_agent.
     agentic_lookup()(다수 스텝 LLM 왕복으로 광종 여러 개를 훑어 국가별 순위·
     집계 근거를 모음, 모듈독스트링 참고) — 후자는 이미 (evidence, warnings)
-    튜플을 직접 반환하므로 병합 방식이 simple과 다르다(아래 분기)."""
+    튜플을 직접 반환하므로 병합 방식이 simple과 다르다(아래 분기).
+
+    2026-08-26: 세 도구 모두 mcp_client 세션(state["profile"]로 고른 public/
+    private — 각각 mcp_server_public.py/mcp_server_private.py 물리적으로 분리된
+    서버 프로세스) 경유 호출로 바뀌었다 — 서버가 이미 Evidence 모양을 돌려주므로
+    여기선 더 이상 from_structured/from_dense_chunk/from_pageindex_hit 변환이
+    필요 없다(그 변환은 서버 쪽으로 옮겨감)."""
 
     route = state["route"]
     warnings = list(state.get("warnings", []))
+    session = mcp_client.private if state.get("profile") == "private" else mcp_client.public
     jobs: dict[str, Future] = {}
 
     with ThreadPoolExecutor(max_workers=3) as pool:
         if route.use_structured and route.structured_template and route.commodity_code:
-            jobs["structured"] = pool.submit(
-                _STRUCTURED_CALLS[route.structured_template], route.commodity_code, route.target
-            )
+            call = getattr(session, _STRUCTURED_CALL_NAMES[route.structured_template])
+            jobs["structured"] = pool.submit(call, route.commodity_code, route.target)
         query = route.resolved_query or state["question"]
         if route.use_dense:
-            jobs["dense"] = pool.submit(hybrid_pg.hybrid_search_pg, query, dense_k)
+            jobs["dense"] = pool.submit(session.call_hybrid_search, query, dense_k)
         if route.use_pageindex:
             if route.pageindex_mode == "agentic":
                 jobs["pageindex"] = pool.submit(
-                    pageindex_agent.agentic_lookup, query, history=_recent_history(state), llm=llm,
+                    session.call_pageindex_agentic, query, history=_recent_history(state),
                 )
             else:
-                jobs["pageindex"] = pool.submit(pageindex.lookup, query, node_limit=pageindex_k, with_text=True)
+                jobs["pageindex"] = pool.submit(
+                    session.call_pageindex_lookup, query, node_limit=pageindex_k, with_text=True,
+                )
 
         results: dict[str, object] = {}
         for name, future in jobs.items():
             try:
                 results[name] = future.result()
             except Exception as exc:  # noqa: BLE001 — 도구 하나 실패는 부분 열화로 흡수
-                print(f"{_log_prefix(state)} {name} 조회 실패: {type(exc).__name__}: {exc}")
+                _logger.warning("%s %s 조회 실패: %s: %s", _log_prefix(state), name, type(exc).__name__, exc)
                 warnings.append(f"{name}_failed")
 
     evidence: list[Evidence] = []
-    if "structured" in results:
-        ev = from_structured(route.structured_template, route.commodity_code, results["structured"])
-        if ev:
-            evidence.append(ev)
-    for chunk in results.get("dense", []):
-        evidence.append(from_dense_chunk(chunk))
+    if "structured" in results and results["structured"] is not None:
+        evidence.append(results["structured"])
+    evidence.extend(results.get("dense", []))
     if "pageindex" in results:
         if route.pageindex_mode == "agentic":
             pi_evidence, pi_warnings = results["pageindex"]
             evidence.extend(pi_evidence)
             warnings.extend(pi_warnings)
         else:
-            for hit in results["pageindex"].get("nodes", []):
-                evidence.append(from_pageindex_hit(hit))
+            evidence.extend(results["pageindex"])
 
     return {"evidence": evidence, "warnings": warnings}
 
@@ -359,7 +348,7 @@ def _reformulate_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalStat
         new_query = route.resolved_query  # 재구성 실패 — 원 질의 그대로 재시도(그래도 attempt는 소진)
         warning = f"retrieval_reformulate_invalid_output:{type(exc).__name__}"
 
-    print(f"{_log_prefix(state)} reformulate: {route.resolved_query!r} -> {new_query!r}")
+    _logger.info("%s reformulate: %r -> %r", _log_prefix(state), route.resolved_query, new_query)
     return {
         "route": route.model_copy(update={"resolved_query": new_query}),
         "attempt": state.get("attempt", 1) + 1,
@@ -404,7 +393,7 @@ def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
     warnings = list(state.get("warnings", []))
     if warning:
         warnings.append(warning)
-        print(f"{_log_prefix(state)} verify: sufficient={sufficient} ({warning})")
+        _logger.warning("%s verify: sufficient=%s (%s)", _log_prefix(state), sufficient, warning)
     return {"sufficient": sufficient, "warnings": warnings}
 
 
@@ -434,7 +423,7 @@ def build_graph(llm: KomirJsonLLM, *, dense_k: int = 5, pageindex_k: int = 3):
 
     builder = StateGraph(RetrievalState)
     builder.add_node("route", lambda s: _route_node(s, llm))
-    builder.add_node("retrieve", lambda s: _retrieve_node(s, llm, dense_k=dense_k, pageindex_k=pageindex_k))
+    builder.add_node("retrieve", lambda s: _retrieve_node(s, dense_k=dense_k, pageindex_k=pageindex_k))
     builder.add_node("verify", lambda s: _verify_node(s, llm))
     builder.add_node("reformulate", lambda s: _reformulate_node(s, llm))
     builder.add_node("finalize", _finalize_node)
@@ -454,6 +443,7 @@ def retrieve_evidence(
     llm: KomirJsonLLM | None = None,
     dense_k: int = 5,
     pageindex_k: int = 3,
+    profile: Literal["public", "private"] = "public",
 ) -> tuple[list[Evidence], list[str]]:
     """`chat_turn()`이 부르는 단일 진입점 — question(+history) -> (근거 리스트,
     경고 리스트). history는 대용어("그 나라" 등) 해소용으로만 라우팅 노드에
@@ -462,6 +452,10 @@ def retrieve_evidence(
     검색이 0건이거나 verify가 "질문에 안 답한다"고 판정하면 검색어를 재구성해
     1회 재시도한다(_reformulate_node).
 
+    `profile`도 session_id와 같은 패스스루 필드다(그래프 판단엔 관여 안 함) —
+    `_retrieve_node`가 mcp_client.public/private 중 어느 세션으로 hybrid_search·
+    pageindex_lookup을 호출할지만 정한다(2026-08-26, pubchat/prichat 분리).
+
     동기 함수다(psycopg2/파일 I/O가 전부 블로킹) — 호출자가 asyncio.to_thread로
     감쌀 것. llm을 주입하지 않으면 프로세스 기본 설정(get_settings().llm_cfg())의
     KomirJsonLLM을 새로 만든다."""
@@ -469,7 +463,10 @@ def retrieve_evidence(
     llm = llm or KomirJsonLLM()
     graph = build_graph(llm, dense_k=dense_k, pageindex_k=pageindex_k)
     result = graph.invoke(
-        {"question": question, "history": history or [], "session_id": session_id, "attempt": 1}
+        {
+            "question": question, "history": history or [], "session_id": session_id,
+            "profile": profile, "attempt": 1,
+        }
     )
     return result.get("evidence", []), result.get("warnings", [])
 
@@ -477,6 +474,11 @@ def retrieve_evidence(
 if __name__ == "__main__":  # 수동 점검용
     import json
     import sys as _sys
+
+    # 라이브러리 코드는 basicConfig를 안 부른다(서비스 컨텍스트는 uvicorn이
+    # 루트 로거를 이미 구성함) — 이 CLI 경로만 예외로, route/retrieve/
+    # reformulate/verify 진행 로그(logging.INFO)가 수동 점검 때도 보이게 켠다.
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
 
     q = _sys.argv[1] if len(_sys.argv) > 1 else "니켈 수급위기 진단등급이 어떻게 되나"
     ev, warn = retrieve_evidence(q)

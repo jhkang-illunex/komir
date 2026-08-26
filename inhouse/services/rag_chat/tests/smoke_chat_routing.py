@@ -75,7 +75,7 @@ def main() -> int:
     request = chat_router.ChatRequest(
         user_id="smoke", message="한국 리튬 수입 현황은 어디서 봐?", mode="page"
     )
-    events = _events(chat_router._run_chat(request))
+    events = _events(chat_router._run_chat(request, "public"))
     session_id = events[0]["session_id"]
     done = events[-1]
     assert done["done"] and done["mode"] == "page", done
@@ -94,7 +94,7 @@ def main() -> int:
     followup = chat_router.ChatRequest(
         user_id="smoke", session_id=session_id, message="톤 단위로 보고 싶어", mode="page"
     )
-    events2 = _events(chat_router._run_chat(followup))
+    events2 = _events(chat_router._run_chat(followup, "public"))
     done2 = events2[-1]
     filters = done2["recommendations"][0]["suggested_filters"]
     assert done2["relation"] == "same_task", done2["relation"]
@@ -132,7 +132,8 @@ def main() -> int:
         chat_router._run_chat(
             chat_router.ChatRequest(
                 user_id="smoke2", message="리튬 거래량을 국가별로 보고 싶어", mode="page"
-            )
+            ),
+            "public",
         )
     )
     amb_session = amb_events[0]["session_id"]
@@ -152,7 +153,8 @@ def main() -> int:
                 session_id=amb_session,
                 message="세계 수급지도로 볼게",
                 mode="page",
-            )
+            ),
+            "public",
         )
     )
     pick_done = pick_events[-1]
@@ -196,7 +198,7 @@ def main() -> int:
         auto_request = chat_router.ChatRequest(
             user_id="smoke", session_id=session_id, message="구리 가격 화면 알려줘"
         )
-        events3 = _events(chat_router._run_chat(auto_request))
+        events3 = _events(chat_router._run_chat(auto_request, "public"))
         done3 = events3[-1]
         assert fake.calls == 1, fake.calls
         assert done3["recommendations"][0]["page_id"] == "price_base_metals", done3
@@ -209,7 +211,7 @@ def main() -> int:
         doc_request = chat_router.ChatRequest(
             user_id="smoke", message="코발트 공급위기 원인이 뭐야?"
         )
-        events4 = _events(chat_router._run_chat(doc_request))
+        events4 = _events(chat_router._run_chat(doc_request, "public"))
         assert events4[-1]["done"] is True, events4[-1]
         print(f"[OK] mode=auto → document 경로: 마지막 이벤트 keys={sorted(events4[-1])} "
               f"(검색계층 미구축이라 기권 응답)")

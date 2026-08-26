@@ -133,7 +133,9 @@ def _vector_literal(vec) -> str:
     return "[" + ",".join(repr(float(x)) for x in vec) + "]"
 
 
-def dense_search_pg(query: str, k: int = 8) -> list[PgRetrievedChunk]:
+def dense_search_pg(
+    query: str, k: int = 8, *, exclude_src: frozenset[str] = frozenset()
+) -> list[PgRetrievedChunk]:
     """pgvector 코사인 유사도 상위 k개 청크.
 
     `<=>`(vector_cosine_ops)는 코사인 **거리**라 오름차순 정렬이고, 적재 벡터가
@@ -145,11 +147,18 @@ def dense_search_pg(query: str, k: int = 8) -> list[PgRetrievedChunk]:
     근사(ANN)가 아니라 **정확한** top-k가 나온다(그래서 DuckDB dense와 결과가
     완전히 일치했다). enable_seqscan=off로 확인한 결과 인덱스 자체는 정상
     동작한다(Index Scan using idx_doc_chunk_embedding_hnsw). 코퍼스가 커지면
-    자연히 인덱스 경로로 전환된다."""
+    자연히 인덱스 경로로 전환된다.
+
+    `exclude_src`: `doc_chunk.src`(=OKF source_group, `build_pgvector_okf.py`가
+    적재) 값이 이 집합에 있는 청크를 SQL 단에서 제외한다 — MCP public 프로필이
+    라이선스 제한 소스(`shared.retrieval.access.PRIVATE_ONLY_SOURCE_GROUPS`)를
+    걸러내는 유일한 지점. 기본값(빈 집합)이면 기존 동작과 완전히 동일하다."""
 
     schema = get_settings().PG_SCHEMA
     qvec = _vector_literal(encode_query(query))
     date_range = extract_date_range(query)
+    exclude_clause = " AND src <> ALL(%s)" if exclude_src else ""
+    exclude_param = (list(exclude_src),) if exclude_src else ()
 
     con = pg_connect()
     try:
@@ -167,11 +176,11 @@ def dense_search_pg(query: str, k: int = 8) -> list[PgRetrievedChunk]:
                                   THEN %s ELSE 0 END AS ranking_dist,
                            embedding <=> %s::vector AS raw_dist
                     FROM {schema}.doc_chunk
-                    WHERE embedding IS NOT NULL
+                    WHERE embedding IS NOT NULL{exclude_clause}
                     ORDER BY ranking_dist
                     LIMIT %s
                     """,
-                    (qvec, date_range[0], date_range[1], _DATE_BOOST, qvec, k),
+                    (qvec, date_range[0], date_range[1], _DATE_BOOST, qvec, *exclude_param, k),
                 )
             else:
                 cur.execute(
@@ -179,11 +188,11 @@ def dense_search_pg(query: str, k: int = 8) -> list[PgRetrievedChunk]:
                     SELECT chunk_id, doc_id, source_path, week, title, section_heading, txt,
                            embedding <=> %s::vector AS raw_dist
                     FROM {schema}.doc_chunk
-                    WHERE embedding IS NOT NULL
+                    WHERE embedding IS NOT NULL{exclude_clause}
                     ORDER BY raw_dist
                     LIMIT %s
                     """,
-                    (qvec, k),
+                    (qvec, *exclude_param, k),
                 )
             rows = cur.fetchall()
     finally:
