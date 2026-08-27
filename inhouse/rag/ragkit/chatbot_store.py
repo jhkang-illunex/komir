@@ -92,17 +92,26 @@ def _execute(db_path: str, sql: str, params: list | None = None) -> None:
         con.close()
 
 
-def _read(db_path: str, sql: str):
+def _read(db_path: str, sql: str, params: list | None = None):
+    """skeptic-code 감사(2026-08-28) 반영 — 이전엔 params가 없어 get_or_create_session·
+    list_messages 두 호출부가 `_escape()`로 문자열을 직접 SQL에 이어붙였다.
+    session_id는 ChatRequest.session_id로 사용자가 자유롭게 넣는 값이라
+    `_escape()`의 "자유입력 문자열엔 쓰지 말 것" 경고 대상 그 자체였다(당장
+    익스플로잇 가능한 인젝션은 아니었지만 — 단순 quote-doubling이 DuckDB·
+    기본설정 Postgres 양쪽에서 작은따옴표 breakout을 막는 것까지 실측 확인함).
+    `_execute()`가 이미 하던 대로 `?`→`%s`(postgres) 변환+params 바인딩으로
+    통일한다."""
+
     import pandas as pd
 
     con = _connect(db_path)
     try:
         if _is_url(db_path):
             with con.cursor() as cur:
-                cur.execute(sql)
+                cur.execute(_QMARK_RE.sub("%s", sql), params or [])
                 cols = [d[0] for d in cur.description]
                 return pd.DataFrame(cur.fetchall(), columns=cols)
-        return con.execute(sql).fetchdf()
+        return con.execute(sql, params or []).fetchdf()
     finally:
         con.close()
 
@@ -118,8 +127,8 @@ def get_or_create_session(
     if session_id:
         existing = _read(
             db_path,
-            f"SELECT session_id FROM {_tbl(db_path, 'chat_session')} "
-            f"WHERE session_id = '{_escape(session_id)}'",
+            f"SELECT session_id FROM {_tbl(db_path, 'chat_session')} WHERE session_id = ?",
+            [session_id],
         )
         if len(existing):
             return session_id
@@ -176,13 +185,8 @@ def list_messages(session_id: str, limit: int = 50, db_path: str = DEFAULT_DB_PA
     df = _read(
         db_path,
         f"SELECT message_id, session_id, role, content, citations_json, created_at "
-        f"FROM {_tbl(db_path, 'chat_message')} WHERE session_id = '{_escape(session_id)}' "
+        f"FROM {_tbl(db_path, 'chat_message')} WHERE session_id = ? "
         f"ORDER BY created_at DESC LIMIT {int(limit)}",
+        [session_id],
     )
     return df.iloc[::-1].to_dict("records")
-
-
-def _escape(value: str) -> str:
-    """단순 식별자(uuid)용 최소 이스케이프 — 자유입력 문자열엔 쓰지 말 것."""
-
-    return value.replace("'", "''")

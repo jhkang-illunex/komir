@@ -24,7 +24,13 @@ routers/chat.py에 배선했다 — 이제 두 경로(document|page)가 동작�
 기동 비용이 붙는다 — mcp_client.py 모듈독스트링의 "턴마다 재시작 안 함" 설계와
 짝). shutdown에서 `stop_all()`로 정리. `chatbot_graph.py __main__`·smoke 테스트처럼
 FastAPI 바깥에서 도는 경로는 `mcp_client`의 lazy-start(`ensure_started()`)로
-이 lifespan 없이도 그대로 동작한다."""
+이 lifespan 없이도 그대로 동작한다.
+
+2026-08-28: `configure_logging()`(services/shared/logging_config.py)을 다른 모든
+임포트보다 먼저 호출한다 — 지금까지 이 main.py가 `logging.basicConfig()`를 안
+불러서 chatbot.py·chatbot_graph.py 전역의 `_logger.warning/.exception`(근거
+조회 경고·LLM 폴백 등)이 파이썬 로깅 lastResort 핸들러(WARNING 이상만, 포맷
+없음)로 떨어져 컨테이너 로그에 사실상 안 남고 있었을 가능성 — 사용자 지적."""
 from __future__ import annotations
 
 import asyncio
@@ -43,6 +49,18 @@ def _find_root(start: Path, marker: str) -> Path:
 
 
 _HERE = Path(__file__).resolve()
+
+# 다른 로깅 호출(mcp_client·chat_router 임포트가 끌어오는 chatbot.py·
+# chatbot_graph.py의 모듈 로거 포함)보다 먼저 루트 로거를 설정한다 — 순서가
+# 바뀌면 그 전에 찍히는 로그가 여전히 lastResort 핸들러로 떨어질 수 있다.
+_SHARED_ROOT = _find_root(_HERE, "shared/llm_client.py")
+if str(_SHARED_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SHARED_ROOT))
+
+from shared.logging_config import configure_logging  # noqa: E402
+
+configure_logging()
+
 _RAG_ROOT = _find_root(_HERE, "rag/ragkit/mcp_client.py")
 if str(_RAG_ROOT) not in sys.path:
     sys.path.insert(0, str(_RAG_ROOT))
