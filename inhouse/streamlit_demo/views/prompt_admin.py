@@ -239,7 +239,7 @@ if prompt_key in PAGE_SPECS:
     test_page_id = prompt_key
 else:
     st.info(
-        "이 프롬프트(summary_common)는 9개 리포트 화면 전체의 공통 서두에 적용됩니다 — "
+        f"이 프롬프트(summary_common)는 {len(PAGE_SPECS)}개 리포트 화면 전체의 공통 서두에 적용됩니다 — "
         "아래에서 대표로 확인할 화면을 1개 고르세요.",
         icon=":material/info:",
     )
