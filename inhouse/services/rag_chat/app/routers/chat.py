@@ -36,22 +36,31 @@ pageindex_lookup 두 도구는 이제 `rag.ragkit.mcp_client`의 public/private 
 경로 선택은 요청 바디의 `mode`(auto|document|page)를 따르고, auto면 app/intent.py가
 LLM 1회로 분류한다.
 
-SSE 이벤트 계약(프론트 연동 기준, 2026-08-13 table·image 추가, 2026-08-27 status 추가):
+SSE 이벤트 계약(프론트 연동 기준, 2026-08-13 table·image 추가, 2026-08-27 status
+신설(문자열 stage) → 2026-08-28 정수 stage 1-4 계약으로 확정 —
+documents/order/chatbot_rule.txt "기타. 질문 입력 후 상태 값 표출"·유형8 반영,
+main-agent가 streamlit-agent와 이 정수 계약으로 조율 완료):
   event: (무명)  data: {"session_id": "..."}                              — 매 턴 최초
-  event: status  data: {"stage": "routing"|"retrieving"|"verifying"|
-                         "reformulating"|"generating", ...}              — 문서 경로,
-                         근거 조회~답변 생성 사이 진행상황(route/retrieve/verify/
-                         reformulate 각 단계 진입 시점 + 생성 시작 직전). "retrieving"엔
-                         `tools`(켜진 도구 목록)도 실림. 페이지 경로엔 없음(이 세 도구를
-                         안 씀).
+  event: status  data: {"stage": 1|2|3|4, "label": "질문 조건 확인|답변 준비중|
+                         데이터 분석 중|답변 생성 중"}                      — 처리 진행 표시.
+                         문서 경로: retrieve_evidence 내부(route/retrieve/verify/
+                         reformulate) 진행상황이 실시간 콜백으로 stage 1-3에 매핑돼
+                         나오고(재시도 시 3이 여러 번 올 수 있음), stage 4는 생성 시작
+                         직전 1회. 근거 0건/조회 실패 시엔 status 없이 곧장 delta+done.
+                         페이지 경로: 1·4만(중간 단계를 안 쪼갬, rag.ragkit.chatbot의
+                         _GRAPH_STAGE_TO_STATUS·STATUS_STAGES가 정본).
   event: (무명)  data: {"delta": "..."}                                    — 텍스트 조각
+                         (출처 footer·원인해석 주의문구도 델타로 추가 전송될 수 있음)
   event: table   data: {"columns": [...], "rows": [[...]], "source_index": n}
   event: image   data: {"mime": "image/png", "data_base64": "...",
                          "caption": "...", "source_index": n}
   event: done    data: {"done": true, "abstained": bool, "bogus_citations": [...],
+                         "abstain_reason": "off_topic|unsupported_commodity|
+                         no_data_for_period|ambiguous|unknown"|null,
                          "citations": [{"index": n, "kind": "structured|dense|
                          pageindex", "source": "...", "section": "...",
                          "as_of": "..."|null, "unit": "..."|null}, ...]}    — 문서 경로
+                         (abstain_reason은 abstained=false면 없음/null)
   event: done    data: {"done": true, "mode": "page", "status": ..., "relation": ...,
                          "recommendations": [...], "warnings": [...]}      — 페이지 경로
 """
@@ -88,10 +97,10 @@ for _root in (
         sys.path.insert(0, str(_root))
 
 from fastapi import APIRouter  # noqa: E402
-from pydantic import BaseModel  # noqa: E402
+from pydantic import BaseModel, Field  # noqa: E402
 from sse_starlette.sse import EventSourceResponse  # noqa: E402
 
-from rag.ragkit.chatbot import chat_turn  # noqa: E402
+from rag.ragkit.chatbot import STATUS_STAGES, chat_turn  # noqa: E402
 
 from shared.config import get_settings  # noqa: E402
 from shared.llm_client import get_chat_client  # noqa: E402
@@ -103,6 +112,13 @@ from ..streaming import sse_event  # noqa: E402
 
 router = APIRouter()
 
+def _status_event(stage: int) -> dict:
+    """document 경로(chat_turn)의 STATUS_STAGES를 page 경로에서도 재사용 —
+    라벨 문구가 두 경로에서 갈라지지 않게 한 곳(chatbot.py)만 정본으로 둔다."""
+
+    return sse_event({"stage": stage, "label": STATUS_STAGES[stage]}, event="status")
+
+
 # chat_message.citations_json에 페이지추천 대화상태를 실어 나를 때 쓰는 키.
 # 원본(komis-report-generator-main)은 이 상태를 LangGraph SqliteSaver에 뒀지만 komir는
 # 대화 저장소를 chat_session/chat_message 하나로 유지한다(page_recommend/service.py 주석).
@@ -112,8 +128,12 @@ _PAGE_STATE_KEY = "page_recommend"
 class ChatRequest(BaseModel):
     user_id: str
     session_id: str | None = None
-    message: str
-    top_k: int = 6
+    # skeptic-code 감사(2026-08-28) — 빈 문자열이 그대로 통과해 근거 없는 턴을
+    # 만들고, top_k는 상한이 없어 임의로 큰 값이 dense_k로 그대로 SQL LIMIT에
+    # 실렸다(크래시는 아니지만 자원낭비). 상한은 top_k=6 기본값보다 넉넉히 잡아
+    # 실사용 조정 여지는 남긴다.
+    message: str = Field(min_length=1, max_length=4000)
+    top_k: int = Field(default=6, ge=1, le=50)
     mode: str = "auto"  # auto | document | page
 
 
@@ -229,6 +249,7 @@ def _run_page_recommend(request: ChatRequest, session_id: str):
     session_store.append_message(session_id, "user", request.message)
 
     yield sse_event({"session_id": session_id})
+    yield _status_event(1)  # 질문 조건 확인
 
     turn = get_page_recommend_service().recommend(
         request.message,
@@ -238,6 +259,9 @@ def _run_page_recommend(request: ChatRequest, session_id: str):
     )
     response = turn.response
     recommendations = [item.model_dump(mode="json") for item in response.recommendations]
+
+    yield _status_event(4)  # 답변 생성 중 — 그래프 호출 자체가 blocking 단일 호출이라
+    # 2(답변 준비중)·3(데이터 분석 중)은 이 경로에선 안 쪼갠다(모듈독스트링 SSE 계약 참고).
 
     session_store.append_message(
         session_id,

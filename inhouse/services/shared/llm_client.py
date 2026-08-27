@@ -29,6 +29,7 @@ geo/llm/openai_compat.py(provider 무관 어댑터, rag/ragkit/generate.py가 �
 from __future__ import annotations
 
 import json
+import logging
 import re
 import sys
 from collections.abc import Mapping
@@ -37,6 +38,8 @@ from pathlib import Path
 from typing import Any, TypeVar
 
 from pydantic import BaseModel, ValidationError
+
+_logger = logging.getLogger(__name__)
 
 _INHOUSE_ROOT = Path(__file__).resolve().parents[2]
 if str(_INHOUSE_ROOT) not in sys.path:
@@ -182,8 +185,20 @@ class KomirJsonLLM:
                 attempt_record.setdefault("raw_content", previous_content)
                 attempt_record["error"] = previous_error
                 call_record["attempts"].append(attempt_record)
+                # "LLM 경과" 로깅(사용자 요청, 2026-08-28) — 이 복구 재시도는
+                # 지금까지 call_record에만 남고 로거로는 안 나갔다. 모든
+                # KomirJsonLLM 호출자(route/reformulate/verify·intent·
+                # page_recommend·_classify_abstain 등)가 공유하는 지점이라
+                # 여기 한 곳에서만 로깅해도 전부 커버된다.
+                _logger.warning(
+                    "%s: 1차 출력 검증 실패, 복구 재시도(%s)", task, previous_error
+                )
                 continue
         call_record["outcome"] = "invalid_output"
+        _logger.error(
+            "%s: 복구 재시도 후에도 유효한 JSON 출력 실패(%s) — 호출부 폴백으로 처리됨",
+            task, previous_error,
+        )
         raise LLMOutputError(
             f"{task} returned invalid JSON after one repair attempt: {previous_error}",
             record=call_record,

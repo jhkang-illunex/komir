@@ -1,7 +1,12 @@
 """그래프 결과 → 사용자용 한국어 추천문 렌더링.
 
 이식 출처: komis-report-generator-main `search/renderer.py`(2026-08-11 스냅샷) —
-임포트 경로만 바꿨고 로직 무수정."""
+임포트 경로만 바꿨고 로직 무수정.
+
+2026-08-28(documents/order/chatbot_rule.txt 유형7 "메뉴 안내" 반영): 경로 표기에
+"KOMIS > " 루트 접두를 붙이고(계층형 경로 요구사항), 페이지 확정 시 이동 안내
+문구 1줄을 추가했다 — 그 외 그래프·라우팅 구조와 나머지 문구는 그대로 둔다
+(사용자 지시: 기존 페이지 안내 경로 유지)."""
 
 from __future__ import annotations
 
@@ -85,7 +90,7 @@ def render_selected(item: RecommendationItem) -> str:
     """Render a single selected page with filters and usage guidance."""
 
     lines = [
-        f"추천 페이지는 `{item.section} > {item.page_name}`입니다.",
+        f"추천 페이지는 `KOMIS > {item.section} > {item.page_name}`입니다.",
         item.reason,
         f"페이지 주소: {item.url}",
     ]
@@ -129,6 +134,7 @@ def render_selected(item: RecommendationItem) -> str:
         lines.append(
             "현재는 페이지 안내 단계이므로 실제 수치나 게시물 내용은 원 화면에서 확인해야 합니다."
         )
+    lines.append("바로 이동하시겠어요? 위 페이지 주소를 눌러 이동하실 수 있습니다.")
     return "\n".join(lines)
 
 
@@ -138,7 +144,7 @@ def render_ambiguous(items: list[RecommendationItem]) -> str:
     lines = ["질문만으로는 페이지를 하나로 확정하기 어려워 관련 페이지를 함께 안내합니다."]
     for item in items:
         login = " 로그인 필요." if item.login_required else ""
-        lines.append(f"- `{item.section} > {item.page_name}`: {item.reason}{login}")
+        lines.append(f"- `KOMIS > {item.section} > {item.page_name}`: {item.reason}{login}")
         lines.append(f"  주소: {item.url}")
         if item.navigation_method == "POST" and item.navigation_params:
             params = " · ".join(f"{key}={value}" for key, value in item.navigation_params.items())
@@ -152,7 +158,7 @@ def render_relation_ambiguous(item: RecommendationItem) -> str:
 
     return (
         "이번 질문이 이전 검색을 이어가는 것인지 새로운 페이지를 찾는 것인지 확정하기 "
-        f"어렵습니다. 이전에 선택한 페이지는 `{item.section} > {item.page_name}`이며, "
+        f"어렵습니다. 이전에 선택한 페이지는 `KOMIS > {item.section} > {item.page_name}`이며, "
         f"{item.reason} 이어서 확인하려는 조건이나 새로 찾으려는 정보 종류를 알려주세요."
     )
 
