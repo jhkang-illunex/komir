@@ -21,10 +21,22 @@ COPY services/shared ./shared
 COPY services/ingestion ./ingestion
 COPY geo/__init__.py ./geo/__init__.py
 COPY geo/extractors.py ./geo/extractors.py
+# geo/llm(2026-08-27) — shared/llm_client.py가 provider 무관 LLM 어댑터로
+# geo.llm.openai_compat을 재노출한다(분석요약 LLM 정제 경로, 2026-08-26 배선).
+# 이 COPY가 빠져 있으면 기동 시 ModuleNotFoundError로 죽는다(실측 확인,
+# 2026-08-27 — rag_chat/Containerfile은 처음부터 COPY하고 있었는데 report_gen
+# 쪽은 LLM 배선 추가 때 이 줄을 안 딸려 보냈다).
+COPY geo/llm ./geo/llm
 
 # services/shared/db.py가 mineral_supply_risk/db/dbio.py를 재노출(2026-08-11) —
 # 엔진 전체가 아니라 db/ 서브패키지만 COPY(수집기·모델 코드는 이 서비스에 불필요).
 COPY mineral_supply_risk/db ./mineral_supply_risk/db
+
+# analysis/prompt_store.py가 ai_cfg.cfg_prompt 컬럼 자동 추가에 쓰는 DDL(2026-08-27
+# 신설). 컬럼 자동 추가 경로가 실제로 타지 않는 한(운영 DB에 이미 최신 컬럼이
+# 있으면) 안 쓰이지만, prompt_store 모듈 import 시점에 경로를 계산하므로 파일
+# 자체는 항상 있어야 한다(없으면 아래 prompt_store.py의 탐색이 예외를 던짐).
+COPY data_lake/db/schema_ai_cfg.sql ./data_lake/db/schema_ai_cfg.sql
 
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8003

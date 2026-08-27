@@ -47,8 +47,26 @@ from shared.db import apply_schema_pg, read_sql_pg  # noqa: E402
 
 _log = logging.getLogger(__name__)
 
+
+def _find_data_lake_root(start: Path) -> Path:
+    """`data_lake/db/schema_ai_cfg.sql`를 담은 디렉토리를 위로 훑어 찾는다.
+
+    소스트리(`inhouse/services/report_gen/app/analysis/prompt_store.py`, 4단
+    위가 `inhouse/`)와 컨테이너 배포본(Containerfile이 평평하게 COPY, 3단
+    위가 `/app`)의 상대 깊이가 달라 고정 depth 대신 탐색한다 — `_bootstrap.py::
+    ensure_shared_on_path()`·`shared/db.py::_find_msr_root()`와 같은 패턴
+    (2026-08-27, 이전엔 `parents[4]` 고정이라 컨테이너에서 IndexError로 기동
+    자체가 실패했다, 실측 확인 — Containerfile에 이 파일 COPY도 함께 빠져
+    있어 두 가지를 같이 고쳤다)."""
+
+    for candidate in (start, *start.parents):
+        if (candidate / "data_lake" / "db" / "schema_ai_cfg.sql").is_file():
+            return candidate
+    raise ImportError(f"data_lake/db/schema_ai_cfg.sql을 {start} 상위에서 찾지 못함")
+
+
 #: `seed_prompts.py`와 같은 파일 — 컬럼 자동 추가에 쓴다.
-SCHEMA_SQL = Path(__file__).resolve().parents[4] / "data_lake" / "db" / "schema_ai_cfg.sql"
+SCHEMA_SQL = _find_data_lake_root(Path(__file__).resolve()) / "data_lake" / "db" / "schema_ai_cfg.sql"
 
 #: 이 모듈이 읽는 컬럼 전부 — 하나라도 없으면 스키마를 다시 적용한다.
 REQUIRED_COLUMNS = (
