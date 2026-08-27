@@ -8,7 +8,11 @@ report_gen은 DB를 읽지 않고(prompt만 DB) 요청 바디의 `observations`�
 
 report_gen 코드는 다른 세션이 `.claude/worktrees/report_summary`에서 계속
 바꾸는 중이다 — `report_gen_client.PAGE_SPECS`가 그 세션의 최신
-`routers/analysis.py`와 어긋나면 422가 난다(하단에 원문 노출하므로 바로 보임)."""
+`routers/analysis.py`와 어긋나면 422가 난다(하단에 원문 노출하므로 바로 보임).
+
+2026-08-27: 페이지 선택 표시를 prompt_admin.py와 통일 — `PAGE_SPECS[p].section`
+(KOMIS 실제 주메뉴, page_recommend registry 실측값)을 붙여 "주메뉴 > 서브메뉴
+(page_id)" 형식으로 보여준다."""
 from __future__ import annotations
 
 import json
@@ -30,7 +34,8 @@ with st.sidebar:
         st.error(f"report_gen 연결 안 됨 · {client.base_url}", icon=":material/error:")
 
 page_id = st.selectbox(
-    "페이지", list(PAGE_SPECS), format_func=lambda p: f"{PAGE_SPECS[p].label} ({p})",
+    "페이지", list(PAGE_SPECS),
+    format_func=lambda p: f"{PAGE_SPECS[p].section} > {PAGE_SPECS[p].label} ({p})",
 )
 spec = PAGE_SPECS[page_id]
 
