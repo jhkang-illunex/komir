@@ -47,6 +47,8 @@ _REPO_ROOT = _INHOUSE_ROOT.parent
 if str(_INHOUSE_ROOT) not in sys.path:
     sys.path.insert(0, str(_INHOUSE_ROOT))
 
+from services.shared.logging_config import configure_logging  # noqa: E402
+
 from ingest import status as ingest_status  # noqa: E402
 
 # geo/extractors.py는 import 시점에 PDF_MAXPAGES(기본 40)를 읽어 opendataloader
@@ -431,6 +433,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--force", action="store_true", help="PDF 갈래: 캐시 무시 재추출")
     args = parser.parse_args(argv)
 
+    configure_logging()
     with ingest_status.pipeline_run("okf.build_okf_documents", args=vars(args)) as run:
         out_root = Path(args.out).expanduser().resolve()
         total = 0

@@ -29,11 +29,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import re
 import sys
 import tempfile
 import time
-import traceback
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -44,9 +44,12 @@ if str(_INHOUSE_ROOT) not in sys.path:
     sys.path.insert(0, str(_INHOUSE_ROOT))
 
 from ingest import status as ingest_status  # noqa: E402
+from services.shared.logging_config import configure_logging  # noqa: E402
 
 OKF_DOCUMENTS_ROOT = _INHOUSE_ROOT / "data_lake/semi_structure/okf_documents"
 PAGEINDEX_TREES_ROOT = _INHOUSE_ROOT / "data_lake/semi_structure/pageindex_trees"
+
+logger = logging.getLogger(__name__)
 
 
 def split_frontmatter(text: str) -> tuple[dict, str, int]:
@@ -192,8 +195,7 @@ def build_all(
                 )
             except Exception as e:  # noqa: BLE001 - 한 문서 실패가 배치 전체를 막지 않게
                 failed += 1
-                print(f"  [{index}/{len(paths)}] FAIL {rel}", flush=True)
-                traceback.print_exc()
+                logger.error("[%d/%d] FAIL %s: %s", index, len(paths), rel, e, exc_info=True)
                 try:
                     front, _, _ = split_frontmatter(okf_path.read_text(encoding="utf-8"))
                     fid = ingest_status.normalize_file_id(front.get("doc_id", ""))
@@ -207,7 +209,7 @@ def build_all(
             fid = ingest_status.normalize_file_id(tree["doc_id"])
             if not tree["structure"]:
                 skipped += 1
-                print(f"  [{index}/{len(paths)}] 노드 0개(헤딩 없음) — 건너뜀: {rel}", flush=True)
+                logger.warning("[%d/%d] 노드 0개(헤딩 없음) — 건너뜀: %s", index, len(paths), rel)
                 if fid:
                     ingest_status.upsert_file_stage_status(fid, "pageindex", "skipped", con=status_con)
                 continue
@@ -221,10 +223,9 @@ def build_all(
             done += 1
             if fid:
                 ingest_status.upsert_file_stage_status(fid, "pageindex", "success", con=status_con)
-            print(
-                f"  [{index}/{len(paths)}] {rel} — 노드 {count_nodes(tree['structure'])}개, "
-                f"{took:.1f}초",
-                flush=True,
+            logger.info(
+                "[%d/%d] %s — 노드 %d개, %.1f초",
+                index, len(paths), rel, count_nodes(tree["structure"]), took,
             )
     finally:
         ingest_status.commit_close_safe(status_con)
@@ -249,6 +250,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--model", default=None)
     args = parser.parse_args(argv)
 
+    configure_logging()
     with ingest_status.pipeline_run("pageindex.build_pageindex_trees", args=vars(args)) as run:
         summary = build_all(
             okf_root=Path(args.okf_root).expanduser().resolve(),

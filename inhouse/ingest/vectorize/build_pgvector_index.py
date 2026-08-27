@@ -37,6 +37,7 @@ from rag.ragkit.embed import DIM, encode_passages  # noqa: E402
 from rag.ragkit.ingest import load_documents  # noqa: E402
 from services.shared.config import get_settings  # noqa: E402
 from services.shared.db import apply_schema_pg, pg_connect  # noqa: E402
+from services.shared.logging_config import configure_logging  # noqa: E402
 
 SCHEMA_SQL = _INHOUSE_ROOT / "data_lake/db/schema_pgvector.sql"
 
@@ -181,5 +182,6 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--schema-only", action="store_true", help="DDL만 적용하고 적재는 건너뜀")
     args = ap.parse_args()
+    configure_logging()
     with ingest_status.pipeline_run("vectorize.build_pgvector_index", args=vars(args)) as run:
         build(schema_only=args.schema_only, run=run)
