@@ -35,12 +35,12 @@ komis_site_map:
         url: /Komis/RsrcPrice/BaseMetals
         login_required: false
         external: false
-      - key: price_minor
+      - key: price_minor_metals
         name: 희소금속
         url: /Komis/RsrcPrice/MinorMetals
         login_required: false
         external: false
-        note: "documents/order/Monosnap희소금속_...png 스샷으로 브레드크럼 직접 확인"
+        note: "documents/order/Monosnap희소금속_...png 스샷으로 브레드크럼 직접 확인. registry 파일명은 price_minor.yaml이지만 내부 page_id 필드는 price_minor_metals(price_minor는 alias) — report-summary-agent가 직접 확인해 정정(2026-08-27)"
       - key: price_iron_energy
         name: 철광석 및 에너지
         url: /Komis/RsrcPrice/IronOre
@@ -171,7 +171,7 @@ report_gen_page_mapping:
     menu: "광물자원가격 > {비철금속 | 희소금속}"
     match: merged
     note: "report_gen은 이 2개 실제 서브메뉴만 하나의 page_id(price)로 합쳐 price_criterion/price_unit 요청 파라미터로 구분한다(routers/analysis.py 주석에 명시: page_id=\"price\"는 비철금속/희소금속 전용). 철광석 및 에너지·기타는 대상이 아니다 — gaps_not_covered_by_report_gen 참고.
-      2026-08-27 사용자 결정: 이 2개를 report_gen 자체 page_id로 쪼개는 작업을 report-summary-agent에게 지시함(진행 중 — 완료되면 이 항목은 price_base_metals/price_minor 2개로 나뉠 예정)."
+      2026-08-27 사용자 결정: 이 2개를 report_gen 자체 page_id로 쪼개는 작업을 report-summary-agent에게 지시함(진행 중 — page_id 확정: price_base_metals/price_minor_metals, 엔드포인트 /api/v1/analysis/prices/base-metals·/api/v1/analysis/prices/minor-metals, 기존 /api/v1/analysis/prices 제거 예정. 완료되면 이 항목을 2개로 나눌 것)."
   price_group:
     menu: 광물자원가격 (비철금속·희소금속 통합 요약)
     match: synthetic
