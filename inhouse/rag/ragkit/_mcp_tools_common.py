@@ -53,8 +53,8 @@ def register_common_tools(mcp: FastMCP) -> None:
     def import_forecast(
         commodity_code: str, target: str = "volume", horizon: int | None = None
     ) -> dict[str, Any]:
-        """{commodity_code} 12개월 수입물량/금액 예측(target: volume|value) —
-        {"evidence": {...}|null}."""
+        """{commodity_code} 수입물량/금액 예측(target: volume|value) — horizon을
+        지정하면 1~horizon개월치만, 생략하면 12개월 전체. {"evidence": {...}|null}."""
 
         result = structured.import_forecast(commodity_code, target, horizon)
         return {"evidence": _evidence_dict(from_structured("import_forecast", commodity_code, result))}

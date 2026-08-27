@@ -41,7 +41,12 @@ ensure_shared_on_path()
 
 from shared.db import read_sql_msr  # noqa: E402
 
-from .generator import DEFAULT_TEMPLATE, ReportGenerationError, generate_and_store, render_report  # noqa: E402
+from .generator import (  # noqa: E402
+    DEFAULT_TEMPLATE,
+    ReportGenerationError,
+    generate_and_store,
+    render_report,
+)
 from .routers.analysis import router as analysis_router  # noqa: E402
 from .routers.comprehensive import router as comprehensive_router  # noqa: E402
 from .scheduler import create_scheduler  # noqa: E402

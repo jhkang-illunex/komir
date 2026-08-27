@@ -247,17 +247,18 @@ class _ProfileSession:
 
     # ---- chatbot_graph._retrieve_node가 쓰는 타입 있는 래퍼 6종 ----
 
-    def call_latest_diagnosis(self, commodity_code: str, target: str | None = None) -> Evidence | None:
+    def call_latest_diagnosis(self, commodity_code: str, target: str | None = None, months: int | None = None) -> Evidence | None:
         data = self._call("latest_diagnosis", {"commodity_code": commodity_code})["evidence"]
         return Evidence(**data) if data else None
 
-    def call_import_forecast(self, commodity_code: str, target: str | None = None) -> Evidence | None:
+    def call_import_forecast(self, commodity_code: str, target: str | None = None, months: int | None = None) -> Evidence | None:
         data = self._call(
-            "import_forecast", {"commodity_code": commodity_code, "target": target or "volume"}
+            "import_forecast",
+            {"commodity_code": commodity_code, "target": target or "volume", "horizon": months},
         )["evidence"]
         return Evidence(**data) if data else None
 
-    def call_geo_index_trend(self, commodity_code: str, target: str | None = None, limit: int = 8) -> Evidence | None:
+    def call_geo_index_trend(self, commodity_code: str, target: str | None = None, months: int | None = None, limit: int = 8) -> Evidence | None:
         data = self._call("geo_index_trend", {"commodity_code": commodity_code, "limit": limit})["evidence"]
         return Evidence(**data) if data else None
 

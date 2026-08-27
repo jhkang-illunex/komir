@@ -90,7 +90,12 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
    이 "그 나라의 2위 광종은 구리"라고 확정했다면, 3턴 "그 광종의 1위 생산국은?"
    의 "그 광종"은 코발트가 아니라 구리다(직전 답변이 방금 확정한 대상이
    최우선). history가 없거나 이번 질문이 이미 완전한 문장이면 question을
-   그대로 쓴다.
+   그대로 쓴다. **resolved_query는 대용어 해소(대명사→실제 개체명)만 한다 —
+   아래 2번에서 고른 도구·지표에 맞춰 질문의 용어 자체를 바꿔쓰지 않는다.**
+   예: 질문이 "가격"을 물었다면 골라야 할 도구가 가격을 못 다루더라도
+   resolved_query는 "가격"을 그대로 유지한다("수입금액"·"수입물량" 등 available한
+   지표 이름으로 슬쩍 바꿔쓰면 안 됨 — 뒤 단계가 질문이 실제로 바뀐 것으로
+   착각해 오답을 정답처럼 통과시킨다).
 2. 아래 세 근거 도구 중 무엇을 쓸지 정한다(resolved_query 기준으로 판단):
    - structured: komir 자체 산출물(수급위기 진단 등급, 12개월 수입물량/금액
      예측, 지정학 위기지수 추이)을 특정 광종 기준으로 조회한다. "{광종}
@@ -98,8 +103,16 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
      광종(CU=동, NI=니켈, CO=코발트, LI=리튬, REE=네오디뮴 또는 그 별칭)을
      특정할 수 없으면 절대 켜지 않는다. 켤 때는 structured_template을 정확히
      하나 고른다: latest_diagnosis(최근 진단등급 1건) | import_forecast
-     (12개월 수입 예측, target=volume(물량)|value(금액)) | geo_index_trend
-     (위기지수 추이).
+     (수입 예측, target=volume(수입"물량")|value(수입"금액", 가격이 아니다))
+     | geo_index_trend(위기지수 추이). import_forecast를 고르고 질문이 특정
+     개월수를 요구하면(예: "3개월치", "6개월 예측") forecast_months에 그
+     숫자를 넣는다 — 지정이 없으면 forecast_months=null(=12개월 전체).
+     **이 세 가지에 없는 지표는 structured가 정확히 답하지 못한다** — 특히
+     "가격"·"시세"(단가)는 세계 생산량·매장량과 마찬가지로 structured에 없다
+     (있는 건 한국의 수입 물량/금액이지 가격이 아니다). 완전히 무관하진
+     않으니(예: "가격"↔"수입금액") 참고삼아 structured도 같이 켜되, 이런
+     경우엔 반드시 dense·pageindex도 함께 켠다(use_dense=use_pageindex=true)
+     — 정확히 그 지표인지 판단은 이 단계가 아니라 뒤(검증) 단계가 맡는다.
    - dense: 보고서·기사·백서 등 비정형 문서를 의미 기반으로 검색한다. 애매하면
      켜는 게 안전하다(기본값에 가깝게 취급).
    - pageindex: USGS·조달청·Argus 같은 대형 구조화 보고서를 목차/섹션 단위로
@@ -138,7 +151,14 @@ VERIFY_PROMPT = """직전 검색으로 근거 후보를 찾았다. 이 근거들
 예: 질문이 "구리가 많이 나는 나라는 어디야?"인데 근거가 전부 구리 가격 차트·
 재고 동향·시장뉴스뿐이고 국가별 생산량·순위를 언급한 문장이 하나도 없다면
 sufficient=false다. 근거 중 일부라도 질문에 실제로 답하는 문장이 있으면
-sufficient=true다(모든 근거가 완벽할 필요는 없다)."""
+sufficient=true다(모든 근거가 완벽할 필요는 없다).
+
+**주제만 같고 지표가 다른 경우도 불충분이다** — 특히 정형(structured) 근거는
+"12개월 수입물량 예측"·"12개월 수입금액 예측"·"수급위기 진단 등급"·"지정학
+위기지수" 중 정확히 하나의 지표만 담고 있다. 질문이 "가격"을 물었는데 근거가
+"수입금액"(수입 총액, 가격이 아니다)이거나, "생산량"을 물었는데 근거가
+"수입물량"(한국의 수입량, 세계 생산량이 아니다)이면 — 같은 광종·비슷한 숫자
+단위로 보여도 다른 지표이므로 sufficient=false다."""
 
 
 class GroundingCheck(BaseModel):
@@ -159,6 +179,7 @@ class RetrievalRoute(BaseModel):
     structured_template: Literal["latest_diagnosis", "import_forecast", "geo_index_trend"] | None = None
     commodity_code: Literal["CU", "NI", "CO", "LI", "REE"] | None = None
     target: Literal["volume", "value"] | None = None
+    forecast_months: int | None = None  # import_forecast 전용 — "N개월치만" 요청 시 1~N만 반환
 
 
 #: structured_template 이름 -> (session, commodity_code, target) 받는 호출부.
@@ -289,7 +310,7 @@ def _retrieve_node(state: RetrievalState, *, dense_k: int, pageindex_k: int) -> 
     with ThreadPoolExecutor(max_workers=3) as pool:
         if route.use_structured and route.structured_template and route.commodity_code:
             call = getattr(session, _STRUCTURED_CALL_NAMES[route.structured_template])
-            jobs["structured"] = pool.submit(call, route.commodity_code, route.target)
+            jobs["structured"] = pool.submit(call, route.commodity_code, route.target, route.forecast_months)
         query = route.resolved_query or state["question"]
         if route.use_dense:
             jobs["dense"] = pool.submit(session.call_hybrid_search, query, dense_k)
@@ -331,10 +352,17 @@ def _reformulate_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalStat
     _route_after_verify) — evidence가 0건인 경우와 "근거는 있는데 질문에
     답이 안 되는" 경우 둘 다 여기로 온다(verify가 이미 둘을 통합했다).
     resolved_query를 검색 성공률이 높은 형태로 다시 쓰고 attempt를 늘려서
-    retrieve로 돌려보낸다 — route/도구선택 자체(structured 여부·commodity_code
-    등)는 이미 1차에서 정한 걸 그대로 쓰고 검색어만 바꾼다(도구 선택이 틀렸을
-    가능성보다 검색어가 그 도구에 안 맞았을 가능성이 훨씬 커서 — 1차에서 이미
-    실측으로 확인된 실패모드)."""
+    retrieve로 돌려보낸다.
+
+    도구 선택은 1차에서 정한 것에 dense+pageindex를 **더한다**(끄지는 않는다,
+    합집합) — 원래는 "검색어가 안 맞았을 가능성이 도구 선택 실패보다 훨씬
+    크다"는 전제로 도구를 그대로 뒀지만, 실측(2026-08-27, "구리 12개월 가격")
+    으로 그 전제가 깨지는 사례가 나왔다: structured만 켠 1차 조회가
+    import_forecast(수입금액)를 "가격"의 대용으로 잘못 골라 verify를 통과시켜
+    버렸다(같은 턴에서 재현·확인). structured에는 애초에 가격 시리즈가 없고
+    실제 가격은 dense/pageindex(조달청·Argus 보고서)에만 있을 수 있으므로,
+    1차가 불충분으로 판정된 재시도에서는 두 비정형 도구를 추가로 열어 놓쳤을
+    수 있는 실제 문서 근거를 찾을 기회를 준다."""
 
     route = state["route"]
     try:
@@ -351,7 +379,9 @@ def _reformulate_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalStat
 
     _logger.info("%s reformulate: %r -> %r", _log_prefix(state), route.resolved_query, new_query)
     return {
-        "route": route.model_copy(update={"resolved_query": new_query}),
+        "route": route.model_copy(update={
+            "resolved_query": new_query, "use_dense": True, "use_pageindex": True,
+        }),
         "attempt": state.get("attempt", 1) + 1,
         "warnings": [*state.get("warnings", []), warning],
     }
@@ -399,14 +429,23 @@ def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
 
 
 def _finalize_node(state: RetrievalState) -> RetrievalState:
-    """verify가 재시도 소진 후에도 "불충분"이면 evidence를 비워서 반환한다 —
-    chat_turn()이 evidence 비어있음만 보고 그대로 기권 처리하도록(citations_json
-    구조·done 이벤트 계약이 바뀌지 않게, retrieve_evidence()의 반환 계약도
-    그대로 (evidence, warnings) 2-tuple 유지)."""
+    """verify가 재시도 소진 후에도 "불충분"이면 어떻게 할지 결정한다.
 
-    if not state.get("sufficient", True):
-        return {"evidence": []}
-    return {}
+    2026-08-27까지는 무조건 evidence를 비워 기권시켰다 — "사용자가 항상 정확한
+    지표명으로 묻는 건 아니다"(예: "가격"이라 묻지만 실제로는 수입금액 자료가
+    있는 경우)는 사용자 지적으로, **불충분해도 근거를 뭔가 찾긴 했다면** 버리지
+    않고 남겨서 chat_turn()이 "정확히 원하는 자료는 아니지만 이런 관련 자료가
+    있다, 이거라도 보여줄까?"라는 제안형 답변(NEAR_MISS 프롬프트)의 재료로 쓸
+    수 있게 한다 — retrieval_near_miss 경고로 표시. **evidence가 애초에 0건**
+    (조회 자체가 아무것도 못 찾음)이면 제안할 게 없으므로 그대로 기권 경로
+    (chat_turn의 "evidence 없음" 분기)로 보낸다(retrieve_evidence()의 반환
+    계약은 그대로 (evidence, warnings) 2-tuple 유지)."""
+
+    if state.get("sufficient", True):
+        return {}
+    if state.get("evidence"):
+        return {"warnings": [*state.get("warnings", []), "retrieval_near_miss"]}
+    return {"evidence": []}
 
 
 def _route_after_verify(state: RetrievalState) -> str:

@@ -30,7 +30,7 @@ from __future__ import annotations
 import re
 import sys
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 from ..config import get_settings
@@ -50,15 +50,27 @@ _YEAR_RE = re.compile(r"(?<!\d)(20[01][0-9]|202[0-9])(?!\d)")
 _HALF_RE = re.compile(r"(상반기|하반기)")
 _QUARTER_RE = re.compile(r"([1-4])\s*분기")
 _MONTH_RE = re.compile(r"(?<!\d)([1-9]|1[0-2])\s*월(?!\d)")
+# "최근"류는 연도가 없어 위 정규식엔 안 걸린다 — 2026-08-27, 실사용자 피드백:
+# "12개월 가격"·"수요 및 전망" 같은 절대연도 없는 질의가 2018년·2026년 문서를
+# 구분 없이 섞어 근거로 냈다(오래된 자료가 최신인 것처럼 보임). 상대적 최근
+# 표현도 같은 부스트로 처리 — 하드 필터가 아니므로 정말 그 기간 자료뿐이면
+# 여전히 그걸 쓴다(질의 의도를 존중하되 억지로 비우지 않음, 위 date_range와
+# 동일 원칙).
+_RECENT_RE = re.compile(r"(최근|요즘|요\s*근래|최신)")
+_RECENT_WINDOW_DAYS = 365
 
 
 def extract_date_range(query: str) -> tuple[str, str] | None:
-    """질의에서 "2026년 상반기"/"2025년 3분기"/"2024년 7월" 류 표현을 뽑아
-    (시작일, 종료일) ISO 문자열로 돌려준다. 연도가 아예 없으면 None(날짜 무관
-    질의 — 부스트 생략). 월/분기/반기가 없으면 그 해 전체로 넓힌다."""
+    """질의에서 "2026년 상반기"/"2025년 3분기"/"2024년 7월" 류 절대연도 표현,
+    또는 "최근"/"요즘" 류 상대 표현을 뽑아 (시작일, 종료일) ISO 문자열로
+    돌려준다. 어느 쪽도 없으면 None(날짜 무관 질의 — 부스트 생략). 월/분기/
+    반기가 없으면 그 해 전체로 넓힌다."""
 
     m = _YEAR_RE.search(query)
     if not m:
+        if _RECENT_RE.search(query):
+            today = date.today()
+            return (today - timedelta(days=_RECENT_WINDOW_DAYS)).isoformat(), today.isoformat()
         return None
     year = int(m.group(1))
 

@@ -52,6 +52,29 @@ from .chatbot_store import DEFAULT_DB_PATH as DEFAULT_STORE_DB_PATH
 from .chatbot_store import append_message, get_or_create_session, list_messages
 from .generate import ABSTAIN_TEXT, SYSTEM_PROMPT, _cfg_from_env, _strip_uncited_sentences
 
+#: chatbot_graph._finalize_node가 "근거는 찾았지만 질문이 요구한 지표와는 다르다"고
+#: 표시(retrieval_near_miss 경고)했을 때만 쓰는 대체 프롬프트(2026-08-27, 사용자
+#: 요청: "사용자가 항상 바른 요청을 하는 건 아니니 유사 데이터가 있으면 제시하고
+#: 제공할지 물어봐라"). 기존 SYSTEM_PROMPT(generate.py, 비-챗봇 RAG 경로와 공유)는
+#: 안 건드리고 이 경로 전용으로 별도 정의 — 인용 규율(오직 [근거]만, 숫자 날조
+#: 금지, 무인용 문장 금지)은 그대로 이어받되 4번 규칙만 "기권" 대신 "제안"으로
+#: 바꾼다. 마지막 확인 질문에 인용 [n]을 반드시 함께 붙이라고 명시한 이유:
+#: `generate._strip_uncited_sentences`의 CLAUSE_RE가 "[n] 태그로 끝나는 구간"만
+#: 잘라내므로, 인용 없이 끝나는 마지막 문장은 화면에 아예 안 나온다(기존
+#: 코드의 원래 동작 — 이 프롬프트가 그 제약에 맞춰 쓴 것뿐, 새 함정 아님).
+NEAR_MISS_SYSTEM_PROMPT = (
+    "당신은 '핵심광물 수급위기 진단·수요예측' 프로젝트의 내부 문서 기반 Q&A 어시스턴트입니다.\n"
+    "질문이 정확히 원하는 자료는 찾지 못했지만, [근거] 섹션에 주제가 비슷한 자료가 있습니다.\n"
+    "반드시 지킬 규칙:\n"
+    "1. 오직 [근거] 섹션의 발췌문에만 근거해 답하세요. 외부지식·추정·일반상식 사용 금지, 숫자·이름을 지어내지 마세요.\n"
+    "2. 먼저 질문이 요구한 자료 자체는 없다고 분명히 밝히세요(있는 척하지 마세요).\n"
+    "3. 이어서 [근거]에 있는 자료가 무엇인지 한 문장으로 소개하고, 그 자료를 보여줄지 사용자에게 물어보세요"
+    "(자료를 요청과 동일한 것처럼 단정하지 마세요).\n"
+    "4. 전체 답변을 하나로 이어 쓰고, 인용 번호 [n]은 마지막 문장(사용자에게 묻는 문장) 끝에 딱 한 번만 붙이세요"
+    "(예: ...수입금액 예측 자료는 있습니다. 이 자료라도 보여드릴까요? [1]).\n"
+    "5. 인용 번호가 전혀 없는 답변은 존재해서는 안 됩니다."
+)
+
 _logger = logging.getLogger(__name__)
 
 MAX_HISTORY_MESSAGES = 12  # 최근 6턴(user+assistant) — 프롬프트 길이 통제
@@ -285,12 +308,14 @@ async def chat_turn(
         )
         return
 
+    near_miss = "retrieval_near_miss" in route_warnings
+    system_prompt = NEAR_MISS_SYSTEM_PROMPT if near_miss else SYSTEM_PROMPT
     user_prompt = _history_block(history) + _build_evidence_prompt(message, evidence)
     chat = chat or OpenAICompatChat(_cfg_from_env())
 
     yield ChatEvent(type="status", data={"stage": "generating"})
     full_text_parts: list[str] = []
-    async for delta in _iter_async(chat.complete_stream(SYSTEM_PROMPT, user_prompt, max_tokens=max_tokens)):
+    async for delta in _iter_async(chat.complete_stream(system_prompt, user_prompt, max_tokens=max_tokens)):
         full_text_parts.append(delta)
         yield ChatEvent(type="delta", data={"delta": delta})
 
