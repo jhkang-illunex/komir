@@ -24,12 +24,14 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import sys
+from collections import Counter
 from pathlib import Path
 
 _INHOUSE_ROOT = Path(__file__).resolve().parents[2]
 if str(_INHOUSE_ROOT) not in sys.path:
     sys.path.insert(0, str(_INHOUSE_ROOT))
 
+from ingest import status as ingest_status  # noqa: E402
 from rag.ragkit.chunk import chunk_document  # noqa: E402
 from rag.ragkit.embed import DIM, encode_passages  # noqa: E402
 from rag.ragkit.ingest import load_documents  # noqa: E402
@@ -74,7 +76,7 @@ def _src(week: str) -> str:
     return week.split(":", 1)[0] if ":" in week else "documents/산출물"
 
 
-def build(schema_only: bool = False) -> int:
+def build(schema_only: bool = False, run: "ingest_status.RunHandle | None" = None) -> int:
     settings = get_settings()
     schema = settings.PG_SCHEMA  # 항상 mineral_risk — public에는 절대 쓰지 않는다
     n_stmt = apply_schema_pg(str(SCHEMA_SQL))
@@ -99,6 +101,21 @@ def build(schema_only: bool = False) -> int:
             SOURCE_TYPE, now, _vector_literal(vec),
         ))
 
+    # 재발 방지 가드(2026-08-27 실사고): documents/산출물 로딩이 어떤 이유로든
+    # 0건이면(예: cwd가 잘못돼 ROOT를 못 찾음 — rag/ragkit/ingest.py의 2026-08-11
+    # 버그수정 이력과 같은 종류의 실패) 아래 DELETE가 그대로 실행되고 재적재는
+    # 0행이라 결과적으로 전체 코퍼스가 삭제된다(실측: 이 경로로 mineral_risk.
+    # doc_chunk 138,825행이 통째로 날아간 사고 발생, 원본 OKF 마크다운이 살아있어
+    # 재생성으로 복구). 빈 결과로 기존 데이터를 지우지 않는다 — 명시적으로
+    # 비우고 싶으면 이 가드를 우회하지 말고 직접 SQL을 실행할 것.
+    if not rows:
+        print(f"⚠ 청크 0개 — DELETE/재적재를 건너뜁니다(빈 코퍼스로 기존 "
+              f"{schema}.doc_chunk를 지우는 사고 방지). documents/산출물 로딩 경로를 "
+              f"먼저 확인할 것(cwd=inhouse/ 인지 등).", flush=True)
+        if run is not None:
+            run.metrics.update({"docs": len(docs), "chunks": 0, "aborted_empty": True})
+        return 0
+
     from psycopg2.extras import execute_values
 
     collist = ",".join(_COLUMNS)
@@ -122,6 +139,34 @@ def build(schema_only: bool = False) -> int:
         con.close()
 
     print(f"적재 완료: {schema}.doc_chunk — 기존 {deleted}행 삭제, {len(rows)}행 삽입, 현재 {total}행")
+    if run is not None:
+        run.metrics.update({"docs": len(docs), "chunks": len(rows), "deleted": deleted, "total": total})
+
+    # 파일별 청크 수·글자 수 집계 → ingest.source_file/file_stage_status
+    chunk_counts: Counter = Counter()
+    char_counts: Counter = Counter()
+    doc_by_id = {}
+    for d, c in all_chunks:
+        chunk_counts[d.doc_id] += 1
+        char_counts[d.doc_id] += len(c.text)
+        doc_by_id[d.doc_id] = d
+
+    status_con = ingest_status.pg_connect_safe()
+    try:
+        for doc_id, d in doc_by_id.items():
+            ingest_status.upsert_source_file(
+                doc_id, file_name=Path(d.source_path).name, file_ext=d.ext,
+                source_path=d.source_path, source_group=_src(d.week),
+                doc_date=_pub_date(d.doc_date), con=status_con,
+            )
+        ingest_status.bulk_file_stage_status(
+            [(doc_id, "success", char_counts[doc_id], chunk_counts[doc_id], None)
+             for doc_id in doc_by_id],
+            stage="vectorize", con=status_con,
+        )
+    finally:
+        ingest_status.commit_close_safe(status_con)
+
     return total
 
 
@@ -129,4 +174,5 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--schema-only", action="store_true", help="DDL만 적용하고 적재는 건너뜀")
     args = ap.parse_args()
-    build(schema_only=args.schema_only)
+    with ingest_status.pipeline_run("vectorize.build_pgvector_index", args=vars(args)) as run:
+        build(schema_only=args.schema_only, run=run)

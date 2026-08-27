@@ -47,6 +47,7 @@ INHOUSE_ROOT = REPO_ROOT / "inhouse"
 if str(INHOUSE_ROOT) not in sys.path:
     sys.path.insert(0, str(INHOUSE_ROOT))
 from geo.extractors import extract_with_fallback, md_to_text  # noqa: E402
+from ingest import status as ingest_status  # noqa: E402
 
 SOURCES = [
     {"zip": REPO_ROOT / "documents/0807/2. 비축월보_시장동향보고서.zip",
@@ -92,62 +93,84 @@ def _iter_pdfs(zip_path: Path):
             yield name, z.read(info)
 
 
+_STATUS_MAP = {"analyzed": "success", "hold_low_text": "skipped"}
+
+
 def main():
-    OUT_ROOT.mkdir(parents=True, exist_ok=True)
-    meta_path = OUT_ROOT / "META.md"
-    if not meta_path.exists():
-        meta_path.write_text(META_TEXT, encoding="utf-8")
+    with ingest_status.pipeline_run("extract.pdf_extract_restricted") as run:
+        OUT_ROOT.mkdir(parents=True, exist_ok=True)
+        meta_path = OUT_ROOT / "META.md"
+        if not meta_path.exists():
+            meta_path.write_text(META_TEXT, encoding="utf-8")
 
-    prev = pd.read_parquet(MANIFEST) if MANIFEST.exists() else None
-    done_hash = set(prev["file_hash"]) if prev is not None else set()
-    rows = []
-    for src in SOURCES:
-        if not src["zip"].exists():
-            print(f"[skip] {src['zip']} 없음")
-            continue
-        label = src["label"]
-        out_dir = OUT_ROOT / label
-        out_dir.mkdir(parents=True, exist_ok=True)
-        for name, data in _iter_pdfs(src["zip"]):
-            h = hashlib.md5(data).hexdigest()
-            if h in done_hash:
-                continue
-            done_hash.add(h)
-            with tempfile.TemporaryDirectory() as td:
-                # 파일명 앞에 해시를 붙여 동명이인(zip 안에 같은 이름 다른 내용) 충돌 방지
-                tmp_pdf = Path(td) / f"{h[:10]}_{name}"
-                tmp_pdf.write_bytes(data)
-                text, method, err = "", "error", ""
-                try:
-                    opendataloader_pdf.convert(
-                        input_path=[str(tmp_pdf)], output_dir=str(out_dir),
-                        format=["markdown", "json"], quiet=True,
+        prev = pd.read_parquet(MANIFEST) if MANIFEST.exists() else None
+        done_hash = set(prev["file_hash"]) if prev is not None else set()
+        rows = []
+        status_con = ingest_status.pg_connect_safe()
+        try:
+            for src in SOURCES:
+                if not src["zip"].exists():
+                    print(f"[skip] {src['zip']} 없음")
+                    continue
+                label = src["label"]
+                out_dir = OUT_ROOT / label
+                out_dir.mkdir(parents=True, exist_ok=True)
+                for name, data in _iter_pdfs(src["zip"]):
+                    h = hashlib.md5(data).hexdigest()
+                    if h in done_hash:
+                        continue
+                    done_hash.add(h)
+                    with tempfile.TemporaryDirectory() as td:
+                        # 파일명 앞에 해시를 붙여 동명이인(zip 안에 같은 이름 다른 내용) 충돌 방지
+                        tmp_pdf = Path(td) / f"{h[:10]}_{name}"
+                        tmp_pdf.write_bytes(data)
+                        text, method, err = "", "error", ""
+                        try:
+                            opendataloader_pdf.convert(
+                                input_path=[str(tmp_pdf)], output_dir=str(out_dir),
+                                format=["markdown", "json"], quiet=True,
+                            )
+                            md_path = out_dir / (tmp_pdf.stem + ".md")
+                            md_text = md_path.read_text(encoding="utf-8") if md_path.exists() else ""
+                            text, method = extract_with_fallback(str(tmp_pdf), data, md_text, OCR_CACHE_DIR)
+                            if method != "opendataloader":
+                                md_path.write_text(text, encoding="utf-8")  # 폴백 승리 시 산출물도 교체
+                        except Exception as e:
+                            err = str(e)[:200]
+                    real_chars = len(md_to_text(text).strip())
+                    status = "analyzed" if real_chars >= 50 else "hold_low_text"
+                    doc_id = h[:16]
+                    year_month = _year_month(text)
+                    rows.append(dict(
+                        doc_id=doc_id, file_hash=h, file_name=name, source=label,
+                        year_month=year_month, n_chars=real_chars,
+                        status=status, method=method, error_msg=err,
+                    ))
+                    ingest_status.upsert_source_file(
+                        doc_id, file_name=name, file_ext="pdf", source_path=f"{label}/{name}",
+                        source_group=label, doc_date=ingest_status.parse_iso_date(year_month),
+                        con=status_con,
                     )
-                    md_path = out_dir / (tmp_pdf.stem + ".md")
-                    md_text = md_path.read_text(encoding="utf-8") if md_path.exists() else ""
-                    text, method = extract_with_fallback(str(tmp_pdf), data, md_text, OCR_CACHE_DIR)
-                    if method != "opendataloader":
-                        md_path.write_text(text, encoding="utf-8")  # 폴백 승리 시 산출물도 교체
-                except Exception as e:
-                    err = str(e)[:200]
-            real_chars = len(md_to_text(text).strip())
-            status = "analyzed" if real_chars >= 50 else "hold_low_text"
-            rows.append(dict(
-                doc_id=h[:16], file_hash=h, file_name=name, source=label,
-                year_month=_year_month(text), n_chars=real_chars,
-                status=status, method=method, error_msg=err,
-            ))
-            if len(rows) % 10 == 0:
-                print(f"  +{len(rows)}건 처리", flush=True)
+                    ingest_status.upsert_file_stage_status(
+                        doc_id, "extract",
+                        "failed" if err else _STATUS_MAP.get(status, "skipped"),
+                        n_chars=real_chars, error_message=err or None, con=status_con,
+                    )
+                    if len(rows) % 10 == 0:
+                        print(f"  +{len(rows)}건 처리", flush=True)
+        finally:
+            ingest_status.commit_close_safe(status_con)
 
-    if rows:
-        df = (pd.concat([prev, pd.DataFrame(rows)], ignore_index=True)
-              if prev is not None else pd.DataFrame(rows))
-        df.to_parquet(MANIFEST, index=False)
-        print(f"완료: 신규 {len(rows)}건, 누적 {len(df)}건")
-        print("status:", df["status"].value_counts().to_dict())
-    else:
-        print("신규 없음(이미 전부 처리됨)")
+        if rows:
+            df = (pd.concat([prev, pd.DataFrame(rows)], ignore_index=True)
+                  if prev is not None else pd.DataFrame(rows))
+            df.to_parquet(MANIFEST, index=False)
+            print(f"완료: 신규 {len(rows)}건, 누적 {len(df)}건")
+            print("status:", df["status"].value_counts().to_dict())
+            run.metrics.update({"new": len(rows), "cumulative": len(df)})
+        else:
+            print("신규 없음(이미 전부 처리됨)")
+            run.metrics["new"] = 0
 
 
 if __name__ == "__main__":

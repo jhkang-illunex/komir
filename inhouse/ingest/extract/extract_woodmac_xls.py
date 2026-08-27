@@ -7,6 +7,7 @@
 """
 import sys, os, glob, re
 import pandas as pd, numpy as np
+from ingest import status as ingest_status
 
 def commodity_of(path):
     p=path.lower()
@@ -51,26 +52,33 @@ def extract_sheet(df, commodity, src, sheet):
 
 def main():
     root=sys.argv[1]; out=sys.argv[2]
-    files=sorted(glob.glob(root, recursive=True))
-    rows=[]
-    for f in files:
-        c=commodity_of(f); src=os.path.basename(f)
-        try: xl=pd.ExcelFile(f)
-        except Exception as e: print("  [skip]",src,e); continue
-        for sh in xl.sheet_names:
-            if sh.lower() in ("guidelines","guide","notes","cover"): continue
-            try: d=xl.parse(sh, header=None)
-            except Exception: continue
-            got=extract_sheet(d, c, src, sh)
-            if got: rows+=got; print(f"  {src} :: {sh} → {len(got)}행", flush=True)
-    df=pd.DataFrame(rows)
-    if len(df):
-        df=df.drop_duplicates(["commodity","src_file","sheet","line_item","year"])
-        df.to_parquet(out, index=False)
-    print("\n=== 완료 총", len(df), "행 →", out)
-    if len(df):
-        print(df.groupby(["commodity","src_file"]).size().to_string())
-        print("연도범위:", int(df.year.min()), "~", int(df.year.max()),
-              "| 고유 line_item:", df.line_item.nunique())
+    # 파일 단위 기록(source_file/file_stage_status)은 생략한다 — xls 워크북 자체는
+    # doc_id/md5 해시 컨벤션 밖(다른 8개 모듈과 달리 콘텐츠 해시를 안 씀, src_file은
+    # 그냥 basename)이라 file_id로 쓸 안정된 값이 없다. run 단위 기록만 한다.
+    with ingest_status.pipeline_run("extract.extract_woodmac_xls", args={"root": root, "out": out}) as run:
+        files=sorted(glob.glob(root, recursive=True))
+        rows=[]
+        for f in files:
+            c=commodity_of(f); src=os.path.basename(f)
+            try: xl=pd.ExcelFile(f)
+            except Exception as e: print("  [skip]",src,e); continue
+            for sh in xl.sheet_names:
+                if sh.lower() in ("guidelines","guide","notes","cover"): continue
+                try: d=xl.parse(sh, header=None)
+                except Exception: continue
+                got=extract_sheet(d, c, src, sh)
+                if got: rows+=got; print(f"  {src} :: {sh} → {len(got)}행", flush=True)
+        df=pd.DataFrame(rows)
+        if len(df):
+            df=df.drop_duplicates(["commodity","src_file","sheet","line_item","year"])
+            df.to_parquet(out, index=False)
+        print("\n=== 완료 총", len(df), "행 →", out)
+        run.metrics.update({"files": len(files), "rows": len(df)})
+        if len(df):
+            print(df.groupby(["commodity","src_file"]).size().to_string())
+            print("연도범위:", int(df.year.min()), "~", int(df.year.max()),
+                  "| 고유 line_item:", df.line_item.nunique())
+            run.metrics["year_min"] = int(df.year.min())
+            run.metrics["year_max"] = int(df.year.max())
 
 if __name__=="__main__": main()

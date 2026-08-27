@@ -30,6 +30,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]  # ingest/extract/x.py → inhou
 if str(REPO_ROOT / "inhouse") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "inhouse"))
 from geo.extractors import extract_with_fallback  # noqa: E402
+from ingest import status as ingest_status  # noqa: E402
 from rag.ragkit.ingest import _real_content_len  # noqa: E402
 
 SHAREABLE_ROOT = REPO_ROOT / "inhouse/data_lake/semi_structure/pdf_extract/shareable"
@@ -50,38 +51,56 @@ def _iter_pdfs(zip_path: Path):
 
 
 def main():
-    for src in SOURCES:
-        if not src["zip"].exists():
-            print(f"[skip] {src['zip']} 없음")
-            continue
-        out_dir = SHAREABLE_ROOT / src["label"]
-        out_dir.mkdir(parents=True, exist_ok=True)
-        for name, data in _iter_pdfs(src["zip"]):
-            md_path = out_dir / (Path(name).stem + ".md")
-            h = hashlib.md5(data).hexdigest()[:10]
-            with tempfile.TemporaryDirectory() as td:
-                tmp_pdf = Path(td) / name
-                tmp_pdf.write_bytes(data)
-                print(f"  변환 중: {name} ({len(data)/1e6:.0f}MB, hash={h})", flush=True)
-                opendataloader_pdf.convert(
-                    input_path=[str(tmp_pdf)], output_dir=str(out_dir),
-                    format=["markdown", "json"], quiet=True,
-                )
-                md_text = md_path.read_text(encoding="utf-8") if md_path.exists() else ""
-                # geo.extractors.md_to_text()는 <br> 태그를 안 걷어내 "빈 표 뼈대만
-                # 있는" 스캔 PDF를 실제 텍스트로 오판정할 수 있다(2026-08-10 실측:
-                # CANADA/CHINA/Mongolia 전부 opendataloader "충분함" 오판정으로 폴백을
-                # 건너뜀). geo의 공유 코드는 안 건드리고, 여기서 더 엄격한
-                # _real_content_len()으로 먼저 판정해 부족하면 빈 문자열을 넘겨
-                # extract_with_fallback이 무조건 pypdf/OCR로 넘어가게 강제한다.
-                effective_md = md_text if _real_content_len(md_text) >= 300 else ""
-                text, method = extract_with_fallback(str(tmp_pdf), data, effective_md, OCR_CACHE_DIR)
-                if method != "opendataloader":
-                    # OCR/pypdf 폴백이 이겼으면 md 파일 자체를 평문으로 교체
-                    # (ingest.py는 .md 파일만 읽으므로, 폴백 결과를 여기 반영해야 RAG에 들어감)
-                    md_path.write_text(text, encoding="utf-8")
-            print(f"    -> {md_path.name} ({len(text)}자, method={method})")
-    print("완료")
+    with ingest_status.pipeline_run("extract.pdf_extract_shareable") as run:
+        status_con = ingest_status.pg_connect_safe()
+        n_ok = n_skip = 0
+        try:
+            for src in SOURCES:
+                if not src["zip"].exists():
+                    print(f"[skip] {src['zip']} 없음")
+                    n_skip += 1
+                    continue
+                out_dir = SHAREABLE_ROOT / src["label"]
+                out_dir.mkdir(parents=True, exist_ok=True)
+                for name, data in _iter_pdfs(src["zip"]):
+                    md_path = out_dir / (Path(name).stem + ".md")
+                    h = hashlib.md5(data).hexdigest()[:10]
+                    fid = hashlib.md5(data).hexdigest()[:16]
+                    with tempfile.TemporaryDirectory() as td:
+                        tmp_pdf = Path(td) / name
+                        tmp_pdf.write_bytes(data)
+                        print(f"  변환 중: {name} ({len(data)/1e6:.0f}MB, hash={h})", flush=True)
+                        opendataloader_pdf.convert(
+                            input_path=[str(tmp_pdf)], output_dir=str(out_dir),
+                            format=["markdown", "json"], quiet=True,
+                        )
+                        md_text = md_path.read_text(encoding="utf-8") if md_path.exists() else ""
+                        # geo.extractors.md_to_text()는 <br> 태그를 안 걷어내 "빈 표 뼈대만
+                        # 있는" 스캔 PDF를 실제 텍스트로 오판정할 수 있다(2026-08-10 실측:
+                        # CANADA/CHINA/Mongolia 전부 opendataloader "충분함" 오판정으로 폴백을
+                        # 건너뜀). geo의 공유 코드는 안 건드리고, 여기서 더 엄격한
+                        # _real_content_len()으로 먼저 판정해 부족하면 빈 문자열을 넘겨
+                        # extract_with_fallback이 무조건 pypdf/OCR로 넘어가게 강제한다.
+                        effective_md = md_text if _real_content_len(md_text) >= 300 else ""
+                        text, method = extract_with_fallback(str(tmp_pdf), data, effective_md, OCR_CACHE_DIR)
+                        if method != "opendataloader":
+                            # OCR/pypdf 폴백이 이겼으면 md 파일 자체를 평문으로 교체
+                            # (ingest.py는 .md 파일만 읽으므로, 폴백 결과를 여기 반영해야 RAG에 들어감)
+                            md_path.write_text(text, encoding="utf-8")
+                    print(f"    -> {md_path.name} ({len(text)}자, method={method})")
+                    rel = str(md_path.relative_to(REPO_ROOT)) if md_path.is_relative_to(REPO_ROOT) else str(md_path)
+                    n_ok += 1
+                    ingest_status.upsert_source_file(
+                        fid, file_name=md_path.name, file_ext="md", source_path=rel,
+                        source_group=src["label"], con=status_con,
+                    )
+                    ingest_status.upsert_file_stage_status(
+                        fid, "extract", "success", n_chars=len(text), con=status_con,
+                    )
+        finally:
+            ingest_status.commit_close_safe(status_con)
+        run.metrics.update({"processed": n_ok, "skipped_groups": n_skip})
+        print("완료")
 
 
 if __name__ == "__main__":

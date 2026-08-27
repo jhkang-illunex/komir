@@ -35,6 +35,7 @@ _INHOUSE_ROOT = Path(__file__).resolve().parents[2]
 if str(_INHOUSE_ROOT) not in sys.path:
     sys.path.insert(0, str(_INHOUSE_ROOT))
 
+from ingest import status as ingest_status  # noqa: E402
 from services.shared.config import get_settings  # noqa: E402
 from services.shared.db import pg_connect  # noqa: E402
 
@@ -122,4 +123,10 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
-    run(dry_run=args.dry_run)
+    # 변수명 rh(RunHandle) — 지역함수 run()과 이름이 겹치지 않게(`as run`으로 받으면
+    # run() 호출이 깨진다).
+    with ingest_status.pipeline_run(
+        "vectorize.backfill_doc_chunk_pub_date", args=vars(args)
+    ) as rh:
+        result = run(dry_run=args.dry_run)
+        rh.metrics.update(result)
