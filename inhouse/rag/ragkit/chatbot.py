@@ -44,9 +44,20 @@ blocking으로 돌려주는 동기 함수라 스트리밍 UX에는 못 쓰므로
 파일에 별도로 둔다(최소 변경 — 검증된 경로 보존). _strip_uncited_sentences가
 인용 없는 문장을 전부 지우므로, 출처 footer·주의 문구처럼 모델에게 시키면 잘릴
 고정 문구는 strip 이후 코드로 덧붙인다(_source_footer·_caution_notice). 범위 밖
-질문(유형8) 사유 분류는 근거가 아예 0건일 때만 LLM 1회 추가 호출한다
-(_classify_abstain) — 답은 찾았는데 인용이 전부 날조/공백인 나머지 두 기권
-분기는 검색 자체는 성공한 경우라 사유 분류 대상이 아니다(과잉 분류 금지).
+질문(유형8) 사유 분류(_classify_abstain)는 애초엔 근거가 아예 0건일 때만
+호출했다(답은 찾았는데 인용이 전부 날조/공백인 기권 분기는 검색 자체는
+성공한 경우라 대상이 아니라고 판단 — 과잉 분류 금지).
+
+2026-08-28 실사용 감사(챗봇_룰준수_감사_260828.md §5)로 이 스코프가 실제
+사용 빈도를 과소평가했다는 게 반증됐다 — "니켈 관련주 사도 될까?"(유형8
+원문 예시) 같은 질문도 dense 검색이 "니켈" 키워드로 뭔가는 찾아오므로
+evidence≠0이고, 생성 LLM이 스스로 규칙4(근거 없으면 ABSTAIN_TEXT)로 기권하는
+경로(full_text == ABSTAIN_TEXT)를 타 abstain_reason이 항상 "unknown"으로
+고정됐다 — 오히려 이 경로가 evidence=0보다 훨씬 흔한 유형8 발생 경로였다.
+그래서 이 경로도 사유 분류 대상으로 넓혔다(의도적 스코프 확장, 위 "과잉
+분류 금지" 결정의 재검토 — 인용이 날조/공백이라 기권하는 나머지 한 분기는
+"검색은 됐지만 생성이 인용 규율을 어겼다"는 별종 실패라 유형8 사유와는
+성격이 달라 그대로 대상 밖으로 남겨둔다).
 
 병합 통합(같은 날, main 브랜치가 이 작업과 병행해 근거조회 진행상태 콜백
 (`_run_with_status`·`retrieve_evidence(on_status=...)`, 문자열 stage: routing/
@@ -176,6 +187,11 @@ CHATBOT_SYSTEM_PROMPT = (
     "\"~와 비슷한 시기에/동시에 ~가 있었습니다\"처럼 동시 발생 흐름으로 서술하세요.\n"
     "10. 시계열·추이 질문은 질문이 명시한 기간을 그대로 따르고, 기간을 특정하지 "
     "않았다면 최근 1개월을 기본으로 하되 근거상 필요하면 최대 3개월까지 확장해 "
+    "답하세요.\n"
+    "11. 이 챗봇은 동(CU)·니켈(NI)·코발트(CO)·리튬(LI)·희토류(REE) 5개 광종만 "
+    "다룹니다. [근거]에 이 5개 광종이 아닌 다른 광종(금·은·주석·알루미늄 등)의 "
+    "자료만 있거나, 질문이 어떤 광종을 묻는지 특정할 수 없다면(예: 광종 언급 "
+    "없이 \"가격 알려줘\") 그 근거로 답변을 만들지 말고 규칙 4의 문구로만 "
     "답하세요."
 )
 
@@ -299,11 +315,18 @@ def _build_evidence_prompt(question: str, evidence: list) -> str:
     return "\n".join(lines)
 
 
-def _citation_sources(evidence: list) -> list[dict]:
+def _citation_sources(cited_indices: set[int], evidence: list) -> list[dict]:
+    """done.citations(=streamlit_demo 등 프런트의 "[근거 데이터 보기]" 패널이
+    그대로 렌더링하는 필드) — 검색된 evidence 전체가 아니라 답변 본문에 실제로
+    인용된 것만 담는다. _source_footer와 동일하게 cited_indices로 필터링(2026-08-28
+    실사용 감사 챗봇_룰준수_감사_260828.md §2 — 예전엔 필터링이 없어 답변에
+    안 쓰인 근거까지 "근거 N건"으로 노출됐다)."""
+
     return [
         {"index": i, "kind": ev.kind, "source": ev.source, "section": ev.section,
          "as_of": ev.as_of, "unit": ev.unit}
         for i, ev in enumerate(evidence, 1)
+        if i in cited_indices
     ]
 
 
@@ -338,10 +361,21 @@ def _caution_notice(cited_indices: set[int], evidence: list) -> str:
     인용된 답변은 "지표가 왜 바뀌었는지"류 원인 해석형일 가능성이 커 주의 문구를
     붙인다. CHATBOT_SYSTEM_PROMPT 규칙 9로도 유도하지만 모델이 빠뜨릴 수 있어
     코드로 한 번 더 못박는다 — 이 문구도 인용 스트리퍼 대상이 아니므로 strip
-    이후에 붙인다(_source_footer와 동일 원칙)."""
+    이후에 붙인다(_source_footer와 동일 원칙).
 
-    cited_kinds = {evidence[i - 1].kind for i in cited_indices if 1 <= i <= len(evidence)}
-    if "structured" in cited_kinds and cited_kinds - {"structured"}:
+    2026-08-28 실사용 감사(챗봇_룰준수_감사_260828.md §3)로 트리거 조건을
+    넓혔다 — 원래는 "structured + 다른 kind가 함께 인용"일 때만 붙었는데,
+    룰 원문이 유형5 대표 예시로 든 질문("코발트 수급동향지표 등급이 왜
+    '주의'로 바뀌었어?")조차 latest_diagnosis 하나만 인용되고 문서 근거는
+    검색됐어도 실제 인용까진 안 되는 경우가 흔해 문구가 안 붙었다.
+    latest_diagnosis 근거 자체가 "사유:" 라벨(evidence.py::from_structured)을
+    담고 있어 단독 인용이라도 인과 단정으로 읽힐 소지가 있으므로, 이 템플릿이
+    인용됐으면 다른 근거 유무와 무관하게 문구를 붙인다."""
+
+    cited = [evidence[i - 1] for i in cited_indices if 1 <= i <= len(evidence)]
+    cited_kinds = {ev.kind for ev in cited}
+    has_diagnosis = any(ev.kind == "structured" and "latest_diagnosis(" in ev.source for ev in cited)
+    if has_diagnosis or ("structured" in cited_kinds and cited_kinds - {"structured"}):
         return (
             "\n\n※ 위 설명은 지표 변동과 동시에 나타난 문서상 흐름을 정리한 것으로, "
             "직접적인 인과관계를 단정하는 내용이 아닙니다."
@@ -393,11 +427,14 @@ def _abstain_reason_text(decision: "_AbstainReason") -> str:
 
 
 def _classify_abstain(message: str, warnings: list[str], llm: "KomirJsonLLM | None") -> tuple[str, str]:
-    """근거가 0건이라 기권을 확정할 때만 호출 — chatbot_rule.txt 유형8(범위 밖
-    질문) 사유별 안내문. LLM 호출 자체가 실패하면 현행 ABSTAIN_TEXT로 폴백한다
-    (분류를 억지로 밀어붙이지 않음 — 안전 우선). 근거는 찾았는데 인용이 전부
-    날조/공백이라 기권하는 나머지 두 분기는 이 분류 대상이 아니다(검색은 이미
-    성공한 경우라 유형8 사유와 무관 — chat_turn() 호출부 주석 참고)."""
+    """근거 0건 기권과, 근거는 찾았지만 생성 LLM이 스스로 ABSTAIN_TEXT로 기권한
+    경우(2026-08-28부터, 아래 chat_turn() 참고) 둘 다에서 호출 — chatbot_rule.txt
+    유형8(범위 밖 질문) 사유별 안내문. LLM 호출 자체가 실패하면 현행 ABSTAIN_TEXT로
+    폴백한다(분류를 억지로 밀어붙이지 않음 — 안전 우선). 근거는 찾았는데 인용이
+    전부 날조/공백이라 기권하는 나머지 한 분기(_strip_uncited_sentences 이후
+    cleaned가 빈 문자열)는 이 분류 대상이 아니다(검색·생성 모두 일단 성공했다가
+    인용 규율에서 걸린 별종 실패라 유형8 사유와 성격이 다름 — chat_turn() 호출부
+    주석 참고)."""
 
     client = llm or KomirJsonLLM()
     try:
@@ -557,17 +594,41 @@ async def chat_turn(
         yield ChatEvent(type="delta", data={"delta": delta})
 
     full_text = "".join(full_text_parts).strip()
-    citation_sources = _citation_sources(evidence)
 
     if not full_text or full_text == ABSTAIN_TEXT:
+        # 2026-08-28(챗봇_룰준수_감사_260828.md §5) — 예전엔 이 경로가 무조건
+        # abstain_reason="unknown"이었다. 실사용 감사로 이 경로가 evidence=0
+        # 경로보다 훨씬 흔한 유형8(범위 밖 질문) 발생 지점이라는 게 드러나
+        # (예: "니켈 관련주 사도 될까?"도 dense 검색이 "니켈"로 뭔가는 찾아와
+        # evidence≠0이라 여기로 옴), 같은 분류기를 재사용해 사유를 채운다
+        # (chatbot.py 모듈 docstring "어투·유형별 대응" 절·_classify_abstain
+        # 독스트링에 스코프 확장 배경 기록).
+        #
+        # abstain_reason뿐 아니라 abstain_text(유형8 사유별 안내문, 예:
+        # "유사한 광종으로 니켈(NI) 관련 정보는 조회하실 수 있습니다")도 화면에
+        # 실려야 룰이 요구하는 문구가 실제로 사용자에게 도달한다 — done 이벤트의
+        # abstain_reason 코드값만으론 프런트가 이 문장을 재구성할 수 없다
+        # (_abstain_reason_text의 similar_commodity 힌트 등은 서버에만 있음).
+        # abstain_text가 폴백값(그냥 ABSTAIN_TEXT, 분류 실패 시)이면 이미 스트림된
+        # 내용과 같으므로 중복 delta를 보내지 않는다(evidence=0 분기와 달리 이
+        # 분기는 full_text가 이미 한 번 스트림됐을 수 있어 무조건 델타를 더 보내면
+        # 같은 문장이 두 번 노출된다).
+        abstain_reason, abstain_text = await asyncio.to_thread(
+            _classify_abstain, message, route_warnings, router_llm
+        )
+        stored_text = full_text or ABSTAIN_TEXT
+        if abstain_text != ABSTAIN_TEXT:
+            delta_text = ("\n\n" + abstain_text) if full_text else abstain_text
+            yield ChatEvent(type="delta", data={"delta": delta_text})
+            stored_text = f"{stored_text}\n\n{abstain_text}" if full_text else abstain_text
         await asyncio.to_thread(
-            append_message, resolved_session_id, "assistant", ABSTAIN_TEXT, None, store_db_path
+            append_message, resolved_session_id, "assistant", stored_text, None, store_db_path
         )
         yield ChatEvent(
             type="done",
             data={
                 "done": True, "citations": [], "bogus_citations": [], "abstained": True,
-                "abstain_reason": "unknown",
+                "abstain_reason": abstain_reason,
             },
         )
         return
@@ -587,6 +648,7 @@ async def chat_turn(
         return
 
     cited_indices = {int(n) for n in _CITE_NUM_RE.findall(cleaned)}
+    citation_sources = _citation_sources(cited_indices, evidence)
 
     # chatbot_rule.txt 공통 규칙(출처 표기)·유형5(주의 문구) — 인용 스트리퍼를
     # 통과한 뒤에만 코드로 덧붙인다(모델에게 시키면 인용 없는 문장으로 잘림,

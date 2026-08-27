@@ -72,9 +72,20 @@ def from_structured(template: str, commodity_code: str, result: Any) -> Evidence
         if not result:
             return None
         row = result
+        # 2026-08-28(챗봇_룰준수_감사_260828.md §7) — 원래 라벨이 "사유:"였다.
+        # 챗봇(rag/ragkit/chatbot.py)은 [근거] 발췌문을 그대로 인용하도록
+        # 강제되어 있어("오직 [근거] 섹션에만 근거", CHATBOT_SYSTEM_PROMPT
+        # 규칙1) 이 라벨을 그대로 옮겨 답하는데, chatbot_rule.txt 유형5
+        # 유의사항("인과 단정 금지, 동시 발생 흐름으로 서술")과 충돌한다 —
+        # "사유"는 단정적 인과 표현이라, 실측(위 감사 §7)에서 "사유:
+        # 국제 핵심광물 시장의 가격 변동성 급증"처럼 인과관계를 확정하는
+        # 문장으로 그대로 노출됐다. 실제로는 진단모델의 risk_score 기여
+        # 요인 중 상위 항목일 뿐이므로 라벨을 순화한다(수치·의미는 그대로,
+        # 표현만 변경 — row.get('reason')이 담는 값 자체는 msr 진단 모델
+        # 소관이라 건드리지 않음).
         text = (
             f"{commodity_code} 최근 수급위기 진단 등급: {row.get('alert_level')} "
-            f"(위험점수 {row.get('risk_score')}, 사유: {row.get('reason')})"
+            f"(위험점수 {row.get('risk_score')}, 주요 변동 요인: {row.get('reason')})"
         )
         return Evidence(
             kind="structured", source=source, section="수급위기 진단 경보", text=text,
