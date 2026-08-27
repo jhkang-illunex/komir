@@ -124,21 +124,28 @@ def build(schema_only: bool = False, run: "ingest_status.RunHandle | None" = Non
     con = pg_connect()
     try:
         with con.cursor() as cur:
-            # 전량 재적재(build_index.py의 CREATE OR REPLACE와 동일 의미) — 이
-            # 파이프라인이 이 테이블의 유일한 writer라 upsert 기계장치가 불필요하다.
-            cur.execute(f"DELETE FROM {schema}.doc_chunk")
+            # 자기 갈래(source_type=SOURCE_TYPE)만 DELETE 후 재적재한다 — 예전엔
+            # "이 테이블의 유일한 writer"를 전제로 WHERE 없이 전체 DELETE했으나,
+            # build_pgvector_okf.py가 나중에 같은 테이블에 별도 갈래(source_type=
+            # "okf_report")를 적재하게 되면서 그 전제가 깨졌다(2026-08-27 실사고·
+            # main-agent 코드리뷰로 발견: cron 체인 순서(index→okf)로 정합성을
+            # 맞추는 방식은 index.py 단독 수동 실행이나 체인 도중 실패 시 OKF
+            # 138,825행이 즉시 전부 삭제되고 다음 okf 실행 전까지 복구 안 되는
+            # 구멍이 있었다). build_pgvector_okf.py와 동일한 "자기 갈래만" 패턴으로
+            # 통일 — 실행 순서·부분실패와 무관하게 항상 안전하다.
+            cur.execute(f"DELETE FROM {schema}.doc_chunk WHERE source_type = %s", (SOURCE_TYPE,))
             deleted = cur.rowcount
             execute_values(
                 cur, f"INSERT INTO {schema}.doc_chunk ({collist}) VALUES %s",
                 rows, template=template, page_size=200,
             )
-            cur.execute(f"SELECT count(*) FROM {schema}.doc_chunk")
+            cur.execute(f"SELECT count(*) FROM {schema}.doc_chunk WHERE source_type = %s", (SOURCE_TYPE,))
             total = cur.fetchone()[0]
         con.commit()
     finally:
         con.close()
 
-    print(f"적재 완료: {schema}.doc_chunk — 기존 {deleted}행 삭제, {len(rows)}행 삽입, 현재 {total}행")
+    print(f"적재 완료: {schema}.doc_chunk — 기존 {deleted}행 삭제, {len(rows)}행 삽입, 대상갈래 현재 {total}행")
     if run is not None:
         run.metrics.update({"docs": len(docs), "chunks": len(rows), "deleted": deleted, "total": total})
 
