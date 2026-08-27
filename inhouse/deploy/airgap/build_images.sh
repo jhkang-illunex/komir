@@ -12,5 +12,11 @@ for svc in commodity_api rag_chat report_gen; do
   podman build -f "services/${svc}/Containerfile" -t "komir/${svc}:latest" .
 done
 
+# ingestion(2026-08-27, ingest/ 독립 패키지) — 다른 3개와 달리 services/ 아래가
+# 아니라 ingest/ 자체에 Containerfile이 있어(ingest/README.md "왜 ingest/ 안에
+# 두는가") 위 루프 패턴에 안 맞아 별도로 빌드한다.
+echo "[build] ingestion"
+podman build -f "ingest/Containerfile" -t "komir/ingestion:latest" .
+
 echo "TODO: rag_chat 이미지에 임베딩 모델 가중치 사전 다운로드 단계가 포함됐는지 확인"
 echo "TODO: HF_HUB_OFFLINE/TRANSFORMERS_OFFLINE, QDRANT__TELEMETRY_DISABLED 설정 확인(airgap 필수, §7)"

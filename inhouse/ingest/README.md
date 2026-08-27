@@ -70,10 +70,37 @@ python -m ingest.vectorize.backfill_doc_chunk_pub_date --dry-run
 
 ## 컨테이너
 `services/rag_chat/Containerfile`·`services/report_gen/Containerfile`이 `COPY ingest ./ingest`로
-이 패키지를 통째로 싣는다(런타임 import는 현재 없고 공통 모듈 동봉 목적). 독립 ingestion
-컨테이너(§5-3 주간 스케줄 트리거)는 아직 미구현 — 그 컨테이너의 빌드 컨텍스트는 `inhouse/`,
-필요한 COPY는 `ingest/`·`geo/{__init__,extractors}.py`·`rag/ragkit/{__init__,ingest,chunk,embed,
-tokenize_ko}.py`·`services/shared/`·`mineral_supply_risk/db/`다(`requirements.txt` 참고).
+이 패키지를 통째로 싣는다(런타임 import는 현재 없고 공통 모듈 동봉 목적).
+
+독립 ingestion 컨테이너(§5-3 주간 스케줄 트리거)는 2026-08-27 구현 완료 —
+`ingest/Containerfile`(빌드 컨텍스트 `inhouse/`)·`ingest/entrypoint.sh`·
+`ingest/cron_ingest_weekly.sh`, `deploy/{docker,podman}-compose.yml`의 `ingestion` 서비스.
+
+- **WORKDIR가 `/app`이 아니라 `/komir/inhouse`**: `okf/pageindex/vectorize` 모듈은
+  `parents[2]`로, `extract` 모듈·`rag/ragkit/ingest.py`는 `parents[3]`+`"inhouse"`로
+  경로를 찾는데, 소스트리에서만 둘이 우연히 일치한다. `/app` 평면 배치로 COPY하면
+  후자가 존재하지 않는 `/inhouse`를 가리켜 `load_documents()`가 조용히 빈 결과를
+  내고, `build_pgvector_index`의 전량 재적재가 코퍼스를 지워버린다(2026-08-27 실제
+  사고 — `vectorize/build_pgvector_{index,okf}.py`의 "재발 방지 가드" 참고). 소스트리
+  상대구조를 그대로 미러링해 해결.
+- **cron 데몬은 supercronic**(Debian cron 아님) — 전통 cron은 자식 잡에 `env_file`
+  주입 환경(`PG_DSN`·`INGEST_TRIGGERED_BY` 등)을 전달하지 않는다.
+- **⚠ supercronic PID 1 함정(2026-08-27 실측)**: supercronic이 컨테이너 PID 1로
+  직접 실행되면(entrypoint.sh가 `exec`로 자리를 넘김) 볼륨 마운트가 있는 조건에서
+  내장 프로세스 reaping이 `Failed to fork exec: no such file or directory`로 즉시
+  죽는다. `deploy/{docker,podman}-compose.yml`의 `init: true`(컨테이너 내장 tini를
+  PID 1로 둠)로 우회 — 이 옵션을 빼면 컨테이너가 재시작 루프에 빠진다.
+- 필요한 COPY는 `ingest/`·`geo/{__init__,extractors}.py`·`rag/ragkit/`·
+  `services/shared/`(평탄화 안 함, `services.shared.*` 완전경로 import 그대로 보존)·
+  `mineral_supply_risk/db/`·`data_lake/db/schema_pgvector.sql`(`requirements.txt` 참고,
+  `sqlalchemy`가 한때 빠져 있던 실측 함정도 그 파일에 기록됨).
+- 볼륨 마운트(다른 3개 서비스엔 없음): `documents/`(원본, ro)·
+  `data_lake/semi_structure/`(산출물, rw).
+- 스케줄은 `.env`의 `INGESTION_SCHEDULE_CRON`(기존 예약 변수, 새 변수 안 만듦).
+  주간 체인 순서: `pdf_extract_shareable → pdf_extract_restricted → build_okf_documents
+  --what all → (LLM 응답 시)build_pageindex_trees → build_pgvector_index →
+  build_pgvector_okf → backfill_doc_chunk_pub_date`(`cron_ingest_weekly.sh` 참고).
+  `ingest_reports`·`extract_woodmac_xls`는 위치인자 필요·ad-hoc 소스라 체인 밖(수동 실행).
 
 ## 출처(2026-08-27 이동 전 위치, `git log --follow`로 이력 추적 가능)
 | 지금 | 이전 |

@@ -24,6 +24,11 @@ xlrd>=2.0                # 〃 .xls
 # okf/ · vectorize/ — rag.ragkit.{ingest,chunk,embed} 재사용
 python-docx>=1.1         # rag/ragkit/ingest.py(documents/산출물 docx 로드)
 sentence-transformers    # rag/ragkit/embed.py (intfloat/multilingual-e5-small, 로컬)
+sqlalchemy               # services/shared/db.py pg_connect(sa.create_engine 경유) — 2026-08-27
+                          # 컨테이너 실측으로 발견한 누락(services/{rag_chat,report_gen,commodity_api}
+                          # requirements.txt엔 이미 있었음, 소스트리 실행에선 다른 곳에서 먼저
+                          # 깔려 있어 안 드러났던 함정 — rag_chat 컨테이너 최초 빌드 때의
+                          # python-docx 누락 사례와 같은 종류)
 psycopg2-binary          # services/shared/db.py pg_connect
 pydantic-settings>=2.5   # services/shared/config.py
 duckdb>=1.1              # mineral_supply_risk/db/dbio.py(services/shared/db.py가 재노출)
