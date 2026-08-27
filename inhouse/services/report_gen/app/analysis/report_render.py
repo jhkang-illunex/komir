@@ -101,22 +101,39 @@ def render_markdown_report(response: AnalysisSummaryResponse) -> str:
     # 2026-08-27 skeptic 감사 SC-016: `notices`(= 페이지 정책의 analysis_constraints,
     # "제공된 가격 계열과 선택 기간만 사용한다." 같은 LLM 작성 제약)와 LLM 정제
     # 실패 경고("… 검증 사유: 존재하지 않는 evidence_id …")는 독자용이 아니라
-    # 내부용이라 최종 보고서에서 뺀다. 데이터 결측 경고(비교값 없음·비교연도
-    # 없음 등)는 독자에게 필요한 정보라 그대로 둔다.
-    # 2026-08-28: 걸러내기 전까지는 이 경고가 서버 로그에도 전혀 안 남아, LLM
-    # 정제 실패로 규칙기반 폴백이 실제로 발생했는지 서버 쪽에서 확인할 방법이
-    # 없었다(사용자 지적) — `configure_logging()` 전제(§main.py)로 지금부터
-    # WARNING 레벨로 남긴다. 응답 본문에서 숨기는 결정 자체는 그대로 유지.
-    llm_warnings = [warning for warning in response.data_quality.warnings if warning.startswith("LLM ")]
-    for warning in llm_warnings:
-        _log.warning("%s(page_id=%s, mineral=%s): %s", response.request_id, response.page_id, response.mineral.code, warning)
-    notes = [warning for warning in response.data_quality.warnings if not warning.startswith("LLM ")]
-    if notes:
-        lines.append("## 참고")
-        lines.append("")
-        for note in notes:
-            lines.append(f"- {note}")
-        lines.append("")
+    # 내부용이라 최종 보고서에서 뺀다.
+    # 2026-08-28 감사(P2, 라운드1 후속): 데이터 결측 경고(비교값 없음·비교연도
+    # 없음 등)도 "조회기간에 한 달 또는 1년 비교값이 없어 중장기 비교를
+    # 제외했다"처럼 계산기/검증기가 쓰는 그대로의 문구라 "## 참고" 절에 그대로
+    # 노출하면 발주처 PDF 템플릿(§1-1~2-3, §1~4) 어디에도 없는 메타 각주 톤이
+    # 되어 최종 문서 톤과 어긋난다(2026-08-28 report_gen_출력품질감사 SC-016
+    # 재확인). 정보 자체는 서버 로그로는 여전히 남기되(운영 관측성 유지),
+    # 독자용 렌더링에서는 전부 뺀다 — 관측 부족은 이미 본문 문장 개수·내용
+    # 자체가 조용히 반영한다(예: price 페이지는 비교 불가 시 major_changes에
+    # "비교 가능한 이전 가격이 없어 등락률은 계산하지 않았다"를 본문 문장으로
+    # 자연스럽게 포함, 별도 각주가 필요 없다).
+    for warning in response.data_quality.warnings:
+        kind = "LLM" if warning.startswith("LLM ") else "데이터 결측"
+        _log.warning(
+            "%s 경고(독자 응답에는 미노출) %s(page_id=%s, mineral=%s): %s",
+            kind, response.request_id, response.page_id, response.mineral.code, warning,
+        )
+
+    # 2026-08-28 감사(P1, SC-018 — 공개 계약은 절대 안 건드리는 범위로 한정된
+    # 내부 전용 개선): 공개 `{status, report}` 응답은 `llm_refined`를 아예 안
+    # 실어 클라이언트가 이번 응답이 LLM 정제인지 규칙기반 폴백인지 구분할
+    # 수 없다(price_group처럼 근거 4개 이상일 때 검증 실패로 조용히 폴백되는
+    # 사례 실측 — 프롬프트를 아무리 튜닝해도 반영 안 되는 것처럼 보이는 원인).
+    # 계약 자체를 바꿔 `llm_refined` 필드를 추가하는 게 근본 해결이지만 그건
+    # 프론트 계약을 건드리므로 이 세션에서 임의로 결정하지 않는다("다음 주
+    # 논의 필요" 목록에 기록) — 대신 실패 시에만이 아니라 매 요청마다 구조화
+    # 로그 1줄을 남겨, 폴백 문구가 없는 성공 케이스와 실제로 구분되도록 하고
+    # (기존엔 폴백 시에만 로그가 남아 "로그 없음=성공"을 신뢰할 수 없었다),
+    # page_id별 LLM 정제율을 로그 집계만으로 산출할 수 있게 한다.
+    _log.info(
+        "분석요약 완료 request_id=%s page_id=%s mineral=%s llm_refined=%s",
+        response.request_id, response.page_id, response.mineral.code, response.llm_refined,
+    )
 
     return "\n".join(lines).strip() + "\n"
 

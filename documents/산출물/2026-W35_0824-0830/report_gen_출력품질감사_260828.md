@@ -124,3 +124,53 @@ content로는 절대 못 바꾼다 — "스타일 튜닝은 content로, 구조 �
 (`.claude/worktrees/report_gen/`)에만 존재하며 **아직 커밋되지 않았다** — main-agent가
 공유 체크아웃(`komir/documents/...`)에서 찾으면 안 보인다. 커밋/병합은 이 세션이
 독단으로 하지 않았다(요청받지 않음) — 필요하면 지시할 것.
+
+## 라운드1 수정 (2026-08-28, main-agent 지시)
+main-agent가 감사 후 지시한 `inhouse/services/report_gen/**` 백엔드 4건 수정. 컨테이너
+재기동 없이(main-agent 전담) git HEAD(수정 전) vs 워킹트리(수정 후) 코드를 **동일
+payload로 직접 비교**해 각 수정의 실제 전후 응답 차이를 확인했다(요청 반영).
+
+1. **[P1] `additional_summary.py:511,560,602` 대조 접속사 오용 — 수정 완료.**
+   `_same_direction()`으로 두 change 값의 부호를 비교해 같으면 순접(`_change_verb_
+   conjunctive`/`_change_before_conjunctive`, "-며"/"-고"), 다르면 기존 역접("-지만"/
+   "반면")을 쓰도록 분기. Phase1 샘플 payload 그대로 재현:
+   - base(메이저·희소 둘 다 하락): BEFORE `"...0.81% 내린 반면 희소금속지수는 0.80%
+     내렸다"` → AFTER `"...0.81% 내리고 희소금속지수는 0.80% 내렸다"`.
+   - variant(전주=전월 동일값 1.96%): BEFORE `"...전주보다 1.96% 내렸지만 한 달
+     전보다 1.96% 내렸다"` → AFTER `"...전주보다 1.96% 내리며 한 달 전보다 1.96%
+     내렸다"`.
+   - 회귀 확인(방향이 실제로 다른 경우, 메이저 상승/희소 하락): BEFORE·AFTER 동일하게
+     `"...5.00% 오른 반면 희소금속지수는 5.00% 내렸다"` — 정상 대조는 그대로 유지됨.
+2. **[P1, 범위 한정] SC-018 — 내부 전용 개선만(공개 계약 불변).** `report_render.py`에
+   매 요청마다 `llm_refined` 값을 구조화 INFO 로그로 남기도록 추가(기존엔 폴백
+   경고가 있을 때만 로그가 남아 "로그 없음=성공"을 신뢰할 수 없었음). price_group
+   재현 payload(5광종, 검증 실패 폴백)로 확인: AFTER는
+   `"분석요약 완료 ... llm_refined=False"` INFO 라인이 항상 남고, 공개 `report`
+   텍스트에는 BEFORE·AFTER 모두 `llm_refined` 단서 없음(계약 불변 확인). **근본
+   해결(공개 계약에 `llm_refined` 필드 추가)은 이 세션이 임의 결정하지 않음 — 다음
+   주 논의 필요 항목으로 남김.**
+3. **[P2] SC-016 — `## 참고` 절 완화, 완료(제거 선택).** PDF 템플릿 어디에도 이런
+   메타 각주가 없어 톤이 어긋난다는 지적에 따라 데이터 결측 경고를 독자용
+   렌더링에서 전부 제거(서버 WARNING 로그로는 유지, 운영 관측성 보존).
+   indicator_composite 재현: BEFORE는 본문 끝에 `"## 참고\n\n- 조회기간에 한 달
+   또는 1년 비교값이 없어 중장기 비교를 제외했다."`가 남았고, AFTER는 이 절 자체가
+   사라짐(다른 절 내용은 완전히 동일).
+4. **[P2] `komir_summary.py` `_avg_before` 중복 라벨링 — 수정 완료.** `_avg_before`가
+   평균값과 함께 그 계산에 쓰인 관측일 집합을 돌려주도록 바꾸고, 이미 같은
+   관측일 집합으로 인용한 기간이 있으면 건너뛰도록(가장 짧은 기간만 남김) 수정.
+   재현(관측치 2건, 이전 관측치가 전주·전월·전년 창 전부에 포함): BEFORE는
+   `week_avg`·`month_avg`·`year_avg` 3개 클레임이 전부 `"...(10.00) 대비
+   +98,900.00% 수준이다"`로 동일 문구 반복 → AFTER는 `week_avg` 1개만 남음
+   (key_metrics도 3행→1행).
+
+**검증**: 4개 파일 전부 `py_compile` 통과. `scripts/komis_dump_smoke_test.py`(실
+KOMIS 덤프 384콤보, `AnalysisSummaryService(llm=None)` 결정론적 경로) 로컬 재실행 —
+수정과 무관한 6개 page_id(indicator_composite/market/supply, map_korea/global/mineral,
+합 326콤보) 전부 `ok`·`internal_error 0`·`mismatches 0`(회귀 없음 확인). `price`
+그룹(58콤보)은 스크립트가 2026-08-27 이전 폐기된 단일 `page_id="price"`를 아직
+써서 전부 `INTERNAL_ERROR`(pydantic 리터럴 검증 실패)였는데, **이 세션의 수정과
+무관한 기존 스크립트 노후화**임을 직접 확인(`AnalysisSummaryRequest(page_id="price",
+...)`가 워킹트리 코드에서도 즉시 같은 `ValidationError`를 던짐, 즉 내 수정 이전
+부터 있던 문제) — 코드 수정은 지시받은 4건 범위 밖이라 손대지 않고 기록만 남김.
+
+**커밋**: 이 라운드1 수정은 워크트리에 별도 커밋으로 남긴다(감사 문서 커밋과 분리).

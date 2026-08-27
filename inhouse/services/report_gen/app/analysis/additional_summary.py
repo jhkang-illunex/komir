@@ -370,6 +370,39 @@ def _change_before_contrast(change: float) -> str:
     return "변동이 없는"
 
 
+def _same_direction(a: float, b: float) -> bool:
+    """두 change 값의 부호(상승/하락/보합)가 같은지 — 2026-08-28 감사(P1-3)에서
+    발견된 버그 수정용: 두 값이 같은 방향인데도 항상 "반면"/"-지만"(역접)을 붙이면
+    관측치가 희소해 두 구간이 겹칠 때(예: 전주·전월 등락률이 같은 값) 뜻이 어긋난다."""
+
+    def _sign(value: float) -> int:
+        return 0 if value == 0 else (1 if value > 0 else -1)
+
+    return _sign(a) == _sign(b)
+
+
+def _change_verb_conjunctive(change: float) -> str:
+    """`_change_verb`와 같은 동사(올랐다/내렸다)의 순접 연결어미판 — 두 값이 같은
+    방향일 때 대조 접속사(-지만) 대신 쓴다."""
+
+    if change > 0:
+        return f"{_number(abs(change) * 100)}% 오르며"
+    if change < 0:
+        return f"{_number(abs(change) * 100)}% 내리며"
+    return "변동이 없으며"
+
+
+def _change_before_conjunctive(change: float) -> str:
+    """`_change_before_contrast`와 같은 위치(조사 앞)의 순접 연결어미판 — 두 값이
+    같은 방향일 때 "반면" 대신 쓴다."""
+
+    if change > 0:
+        return f"{_number(abs(change) * 100)}% 오르고"
+    if change < 0:
+        return f"{_number(abs(change) * 100)}% 내리고"
+    return "변동이 없고"
+
+
 def _relative_level(change: float) -> str:
     if change > 0:
         return f"{_number(abs(change) * 100)}% 높은 수준이다"
@@ -506,11 +539,16 @@ def calculate_composite_summary(
         warnings.append(warning)
 
     if week_change is not None and month_change is not None:
+        week_month_connective = (
+            _change_verb_conjunctive(week_change)
+            if _same_direction(week_change, month_change)
+            else _change_with_contrast(week_change)
+        )
         claims.append(
             EvidenceClaim(
                 "composite_recent_changes",
                 "major_changes",
-                f"광물종합지수는 전주보다 {_change_with_contrast(week_change)} "
+                f"광물종합지수는 전주보다 {week_month_connective} "
                 f"한 달 전보다 {_change_verb(month_change)}.",
             )
         )
@@ -552,12 +590,17 @@ def calculate_composite_summary(
         else None
     )
     if weekly_major is not None and weekly_minor is not None:
+        weekly_connective = (
+            f"{_change_before_conjunctive(weekly_major)}"
+            if _same_direction(weekly_major, weekly_minor)
+            else f"{_change_before_contrast(weekly_major)} 반면"
+        )
         claims.append(
             EvidenceClaim(
                 "weekly_subindex_comparison",
                 "major_changes",
                 "최근 한 주 동안 메이저금속지수는 "
-                f"{_change_before_contrast(weekly_major)} 반면 희소금속지수는 "
+                f"{weekly_connective} 희소금속지수는 "
                 f"{_change_verb(weekly_minor)}.",
             )
         )
@@ -594,12 +637,17 @@ def calculate_composite_summary(
         else None
     )
     if monthly_major is not None and monthly_minor is not None:
+        monthly_connective = (
+            f"{_change_before_conjunctive(monthly_major)}"
+            if _same_direction(monthly_major, monthly_minor)
+            else f"{_change_before_contrast(monthly_major)} 반면"
+        )
         claims.append(
             EvidenceClaim(
                 "monthly_subindex_comparison",
                 "major_changes",
                 "최근 한 달 동안 메이저금속지수는 "
-                f"{_change_before_contrast(monthly_major)} 반면 희소금속지수는 "
+                f"{monthly_connective} 희소금속지수는 "
                 f"{_change_verb(monthly_minor)}.",
             )
         )
