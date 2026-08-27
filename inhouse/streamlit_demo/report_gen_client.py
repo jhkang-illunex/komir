@@ -6,8 +6,10 @@
   `unit`·`price_unit` 등 부속 필드)로 받는다.
 - 응답은 항상 HTTP 200 + `{"status": "ok"|"NO_DATA"|"TIMEOUT"|"INTERNAL_ERROR",
   "report": "<Markdown 또는 null>"}` — 성공/실패를 status 한 필드로 겸한다.
-- 9개 페이지 전부 `POST /api/v1/analysis/<path>`, 요청 바디 필드는 page_id별로
-  달라(PAGE_SPECS가 그 차이를 담는다).
+- 10개 페이지 전부 `POST /api/v1/analysis/<path>`, 요청 바디 필드는 page_id별로
+  달라(PAGE_SPECS가 그 차이를 담는다). 2026-08-27 `price`(광물자원가격)가 KOMIS
+  실제 구조대로 `price_base_metals`(비철금속)·`price_minor_metals`(희소금속)
+  2개 page_id로 분리됐다(옛 `POST /prices` 단일 경로는 제거, 404) — 9→10종.
 
 ⚠ 다른 세션이 이 계약을 계속 바꾸는 중이다(committed 6038fead0 이후로도 uncommitted
 변경 있음) — 필드가 하나라도 안 맞으면 pydantic이 `extra="forbid"`라 422로
@@ -79,9 +81,19 @@ PAGE_SPECS: dict[str, PageSpec] = {
         ("forecast_horizon", "price_unit"),
         '[{"period": "2026-Q1", "price": 9700.0}, {"period": "2026-Q2", "price": 9850.0}]',
     ),
-    "price": PageSpec(
-        "광물자원가격", "광물자원가격", "prices", True, ("start_date", "end_date"), "date",
+    "price_base_metals": PageSpec(
+        "비철금속", "광물자원가격", "prices/base-metals", True, ("start_date", "end_date"), "date",
         ("price_unit", "price_criterion", "price_criterion_serial"),
+        '[{"date": "2025-08-25", "commerce_price": 9720.0, "lowest_price": 9680.0, '
+        '"highest_price": 9760.0}]',
+    ),
+    "price_minor_metals": PageSpec(
+        # compare_mineral/compare_price_criterion: KOMIS "비교광종" 기능 대응,
+        # 이 page_id 전용(다른 page_id로 보내면 서버가 거부). compare_observations
+        # (비교 계열 원자료 JSON)는 이 데모의 observations 텍스트영역과 별개라
+        # 1차 범위에서 뺐다 — 필요해지면 별도 textarea로 추가.
+        "희소금속", "광물자원가격", "prices/minor-metals", True, ("start_date", "end_date"), "date",
+        ("price_unit", "price_criterion", "price_criterion_serial", "compare_mineral", "compare_price_criterion"),
         '[{"date": "2025-08-25", "commerce_price": 9720.0, "lowest_price": 9680.0, '
         '"highest_price": 9760.0}]',
     ),
