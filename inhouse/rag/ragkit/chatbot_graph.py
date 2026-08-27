@@ -392,7 +392,23 @@ def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
     되는지 확인한다. evidence가 애초에 비어있으면 LLM을 부를 필요도 없이
     바로 불충분(비용 절감) — 계기가 된 구리 사례처럼 evidence는 8건 있는데
     전부 주제만 겹치고 질문엔 안 답하는 경우를 잡아내는 게 이 노드의 핵심
-    역할이다."""
+    역할이다.
+
+    2026-08-28(챗봇_룰준수_감사_260828.md §P0-1, 라운드2) — `max_tokens`가
+    150이던 시절엔 "코발트 광물종합지표의 최근 12개월 변화를 보여줘"류
+    질문(reformulate 이후 evidence가 9건까지 늘어 근거별로 왜 불충분한지
+    나열하는 응답)에서 반복 재현됐다: `finish_reason="length"`로 `reason`
+    문자열이 중간에 잘려(`JSONDecodeError: Unterminated string`) 복구
+    재시도까지 같은 길이 상한에 걸려 또 잘리고, 결국 `LLMOutputError` →
+    안전 폴백 `sufficient=True`인데 evidence는 이미 비어 하류(chat_turn)가
+    완전 기권으로 끝나던 버그. 실측(docker exec 트레이스, 6회 반복 중 4회
+    재현): 성공한 호출은 `completion_tokens` 최대 144, 실패한 호출은 전부
+    정확히 150에서 `finish_reason="length"`로 잘림 — 모델이 근거 여러 건을
+    "1) ... 2) ... 3) ..."처럼 항목별로 설명하는 습성이 있어 150으로는
+    구조적으로 부족했다(JSON 포맷 문제가 아니라 순수 토큰 상한 부족).
+    300으로 올려 여유를 둔다(관찰된 성공 케이스의 약 2배 — route(160)·
+    reformulate(80)보다 verify의 reason이 원래 더 길 수밖에 없다: 근거
+    여러 건 각각을 왜 불충분한지 설명해야 하는 유일한 노드)."""
 
     evidence = state.get("evidence", [])
     if not evidence:
@@ -409,7 +425,7 @@ def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
                     for i, ev in enumerate(evidence, 1)
                 ],
             },
-            output_model=GroundingCheck, max_tokens=150,
+            output_model=GroundingCheck, max_tokens=300,
         )
         sufficient = invocation.output.sufficient
         warning = None if sufficient else f"retrieval_insufficient:{invocation.output.reason[:80]}"
