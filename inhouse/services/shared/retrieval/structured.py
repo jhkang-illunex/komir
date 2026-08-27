@@ -178,7 +178,7 @@ def weekly_geo_events(
 
     `evidence_quote`에 GKG 원시 신호(`[GKG tone=...] https://...` 형태, 기사
     본문이 아니라 크롤러 메타데이터)가 섞여 있어 SQL이 아니라 여기서 걸러낸다
-    — `read_sql_msr`가 pandas `read_sql`(PG 경로에서 `%` 리터럴을 파라미터로
+    — `read_sql_pg`가 pandas `read_sql`(PG 경로에서 `%` 리터럴을 파라미터로
     오인하는 기존 버그, `db.py` 참고)을 거치므로 `LIKE '%...%'` 자체를 SQL에
     쓰지 않는다.
 
@@ -195,11 +195,11 @@ def weekly_geo_events(
     # 파이썬에서 미리 문자열로 계산해 같은 VARCHAR끼리 비교한다.
     end_date = _dt.date.fromisoformat(str(week_end)[:10])
     start_date = end_date - _dt.timedelta(days=6)
-    frame = read_sql_msr(
+    frame = read_sql_pg(
         f"""
         SELECT commodity_code, obs_date, event_type, direction, target,
                severity, confidence, evidence_quote, source, published_at
-        FROM geo_event
+        FROM {_schema()}.geo_event
         WHERE commodity_code = '{code}'
           AND obs_date > '{start_date.isoformat()}'
           AND obs_date <= '{end_date.isoformat()}'
