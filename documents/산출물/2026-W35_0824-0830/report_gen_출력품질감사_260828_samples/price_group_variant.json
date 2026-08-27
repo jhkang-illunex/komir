@@ -1,0 +1,32 @@
+{
+  "request": {
+    "price_group": "minor_metals",
+    "observations": [
+      {
+        "mineral_name": "리튬",
+        "week_change_pct": 4.2,
+        "month_change_pct": 12.5
+      },
+      {
+        "mineral_name": "코발트",
+        "week_change_pct": -3.1,
+        "month_change_pct": -8.4
+      },
+      {
+        "mineral_name": "텅스텐",
+        "week_change_pct": 0.5,
+        "month_change_pct": 1.1
+      },
+      {
+        "mineral_name": "망간",
+        "week_change_pct": -0.2,
+        "month_change_pct": -0.6
+      }
+    ]
+  },
+  "http_status": 200,
+  "response": {
+    "status": "ok",
+    "report": "# 희소금속 분석 요약 — 비철금속 또는 희소금속 그룹 전체 광종의 전주·전월 가격 등락을 모아 보여주는 자료다.\n\n**그룹**: minor_metals\n\n## 핵심 진단\n\n희소금속 가격은 전주 대비 평균 0.35% 상승, 전월 대비 평균 1.15% 상승했다.\n\n## 주요 변화\n\n광종별로는 리튬·텅스텐이 강세를 보인 반면, 코발트·망간은 하락세를 기록했다. 리튬이 전주 대비 4.20%로 가장 높은 상승 폭을 나타냈고, 코발트가 3.10% 내리며 가장 큰 낙폭을 보였다.\n\n## 현재 위치\n\n조회된 4개 광종 중 상승 2개, 하락 2개, 보합 0개다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 전주 대비 평균 등락률 | 0.35 | % |\n| 전월 대비 평균 등락률 | 1.15 | % |\n| 상승 광종 수 | 2 |  |\n| 하락 광종 수 | 2 |  |\n"
+  }
+}

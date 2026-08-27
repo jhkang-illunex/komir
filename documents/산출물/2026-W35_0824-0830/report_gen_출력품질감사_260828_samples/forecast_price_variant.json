@@ -1,0 +1,49 @@
+{
+  "request": {
+    "mineral": "MNRL0018",
+    "mineral_name": "니켈",
+    "start_period": "2026-Q1",
+    "end_period": "2027-Q4",
+    "forecast_horizon": "long",
+    "price_unit": "USD/MT",
+    "observations": [
+      {
+        "period": "2026-Q1",
+        "price": 9700.0
+      },
+      {
+        "period": "2026-Q2",
+        "price": 9850.0
+      },
+      {
+        "period": "2026-Q3",
+        "price": 10100.0
+      },
+      {
+        "period": "2026-Q4",
+        "price": 9950.0
+      },
+      {
+        "period": "2027-Q1",
+        "price": 9600.0
+      },
+      {
+        "period": "2027-Q2",
+        "price": 9400.0
+      },
+      {
+        "period": "2027-Q3",
+        "price": 9550.0
+      },
+      {
+        "period": "2027-Q4",
+        "price": 9700.0
+      }
+    ]
+  },
+  "http_status": 200,
+  "response": {
+    "status": "NO_DATA",
+    "report": null
+  }
+}

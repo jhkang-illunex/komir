@@ -1,0 +1,41 @@
+{
+  "request": {
+    "mineral": "MNRL0099",
+    "mineral_name": "철광석",
+    "start_date": "2024-08-25",
+    "end_date": "2025-08-25",
+    "price_unit": "USD/MT",
+    "price_criterion": "CFR_CHINA",
+    "observations": [
+      {
+        "date": "2024-08-25",
+        "commerce_price": 102.0,
+        "lowest_price": 100.0,
+        "highest_price": 104.0
+      },
+      {
+        "date": "2025-07-25",
+        "commerce_price": 115.0,
+        "lowest_price": 113.0,
+        "highest_price": 117.0
+      },
+      {
+        "date": "2025-08-18",
+        "commerce_price": 118.0,
+        "lowest_price": 116.0,
+        "highest_price": 120.0
+      },
+      {
+        "date": "2025-08-25",
+        "commerce_price": 120.0,
+        "lowest_price": 118.0,
+        "highest_price": 122.0
+      }
+    ]
+  },
+  "http_status": 200,
+  "response": {
+    "status": "ok",
+    "report": "# 철광석 분석 요약 — 선택한 철광석·유연탄·우라늄(품목 기준)의 일별 실거래가·최저가·최고가 추이를 보여주는 자료다.\n\n**가격기준**: CFR_CHINA\n\n## 핵심 진단\n\n2025년 8월 25일 기준 철광석 실거래가는 120.00입니다.\n\n## 주요 변화\n\n직전 관측치 대비 +1.69% 변동했으며, 전주평균 대비 +1.69% 수준이고, 전월평균 대비 +1.69% 수준인 반면, 전년평균 대비 +7.46% 수준으로 나타났습니다. 3개월 연속 상승세를 보이고 있습니다.\n\n## 현재 위치\n\n조회기간 중 최고 122.00, 최저 100.00였습니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 최신 가격 | 120.00 |  |\n| 직전관측치대비 | 1.69 | % |\n| 전주평균대비 | 1.69 | % |\n| 전월평균대비 | 1.69 | % |\n| 전년평균대비 | 7.46 | % |\n| 연속 추세 기간 | 3 | 개월 |\n"
+  }
+}

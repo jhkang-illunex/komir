@@ -1,0 +1,210 @@
+[
+  {
+    "page_id": "indicator_market",
+    "variant": "base",
+    "http_status": 200,
+    "resp_status": "ok",
+    "has_ref_section": false,
+    "file": "/home/nuri/dev/git/ws/mine_ws/komir/.claude/worktrees/report_gen/documents/산출물/2026-W35_0824-0830/report_gen_출력품질감사_260828_samples/indicator_market_base.json"
+  },
+  {
+    "page_id": "indicator_market",
+    "variant": "variant",
+    "http_status": 200,
+    "resp_status": "ok",
+    "has_ref_section": false,
+    "file": "/home/nuri/dev/git/ws/mine_ws/komir/.claude/worktrees/report_gen/documents/산출물/2026-W35_0824-0830/report_gen_출력품질감사_260828_samples/indicator_market_variant.json"
+  },
+  {
+    "page_id": "indicator_supply",
+    "variant": "base",
+    "http_status": 200,
+    "resp_status": "ok",
+    "has_ref_section": false,
+    "file": "/home/nuri/dev/git/ws/mine_ws/komir/.claude/worktrees/report_gen/documents/산출물/2026-W35_0824-0830/report_gen_출력품질감사_260828_samples/indicator_supply_base.json"
+  },
+  {
+    "page_id": "indicator_supply",
+    "variant": "variant",
+    "http_status": 200,
+    "resp_status": "ok",
+    "has_ref_section": false,
+    "file": "/home/nuri/dev/git/ws/mine_ws/komir/.claude/worktrees/report_gen/documents/산출물/2026-W35_0824-0830/report_gen_출력품질감사_260828_samples/indicator_supply_variant.json"
+  },
+  {
+    "page_id": "indicator_composite",
+    "variant": "base",
+    "http_status": 200,
+    "resp_status": "ok",
+    "has_ref_section": true,
+    "file": "/home/nuri/dev/git/ws/mine_ws/komir/.claude/worktrees/report_gen/documents/산출물/2026-W35_0824-0830/report_gen_출력품질감사_260828_samples/indicator_composite_base.json"
+  },
+  {
+    "page_id": "indicator_composite",
+    "variant": "variant",
+    "http_status": 200,
+    "resp_status": "ok",
+    "has_ref_section": false,
+    "file": "/home/nuri/dev/git/ws/mine_ws/komir/.claude/worktrees/report_gen/documents/산출물/2026-W35_0824-0830/report_gen_출력품질감사_260828_samples/indicator_composite_variant.json"
+  },
+  {
+    "page_id": "map_mineral",
+    "variant": "base",
+    "http_status": 200,
+    "resp_status": "NO_DATA",
+    "has_ref_section": false,
+    "file": "/home/nuri/dev/git/ws/mine_ws/komir/.claude/worktrees/report_gen/documents/산출물/2026-W35_0824-0830/report_gen_출력품질감사_260828_samples/map_mineral_base.json"
+  },
+  {
+    "page_id": "map_mineral",
+    "variant": "variant_reserves",
+    "http_status": 200,
+    "resp_status": "ok",
+    "has_ref_section": false,
+    "file": "/home/nuri/dev/git/ws/mine_ws/komir/.claude/worktrees/report_gen/documents/산출물/2026-W35_0824-0830/report_gen_출력품질감사_260828_samples/map_mineral_variant_reserves.json"
+  },
+  {
+    "page_id": "map_mineral",
+    "variant": "variant_production",
+    "http_status": 200,
+    "resp_status": "ok",
+    "has_ref_section": true,
+    "file": "/home/nuri/dev/git/ws/mine_ws/komir/.claude/worktrees/report_gen/documents/산출물/2026-W35_0824-0830/report_gen_출력품질감사_260828_samples/map_mineral_variant_production.json"
+  },
+  {
+    "page_id": "forecast_price",
+    "variant": "base",
+    "http_status": 200,
+    "resp_status": "ok",
+    "has_ref_section": false,
+    "file": "/home/nuri/dev/git/ws/mine_ws/komir/.claude/worktrees/report_gen/documents/산출물/2026-W35_0824-0830/report_gen_출력품질감사_260828_samples/forecast_price_base.json"
+  },
+  {
+    "page_id": "forecast_price",
+    "variant": "variant",
+    "http_status": 200,
+    "resp_status": "NO_DATA",
+    "has_ref_section": false,
+    "file": "/home/nuri/dev/git/ws/mine_ws/komir/.claude/worktrees/report_gen/documents/산출물/2026-W35_0824-0830/report_gen_출력품질감사_260828_samples/forecast_price_variant.json"
+  },
+  {
+    "page_id": "price_base_metals",
+    "variant": "base",
+    "http_status": 200,
+    "resp_status": "ok",
+    "has_ref_section": false,
+    "file": "/home/nuri/dev/git/ws/mine_ws/komir/.claude/worktrees/report_gen/documents/산출물/2026-W35_0824-0830/report_gen_출력품질감사_260828_samples/price_base_metals_base.json"
+  },
+  {
+    "page_id": "price_base_metals",
+    "variant": "variant",
+    "http_status": 200,
+    "resp_status": "ok",
+    "has_ref_section": false,
+    "file": "/home/nuri/dev/git/ws/mine_ws/komir/.claude/worktrees/report_gen/documents/산출물/2026-W35_0824-0830/report_gen_출력품질감사_260828_samples/price_base_metals_variant.json"
+  },
+  {
+    "page_id": "price_minor_metals",
+    "variant": "base",
+    "http_status": 200,
+    "resp_status": "ok",
+    "has_ref_section": false,
+    "file": "/home/nuri/dev/git/ws/mine_ws/komir/.claude/worktrees/report_gen/documents/산출물/2026-W35_0824-0830/report_gen_출력품질감사_260828_samples/price_minor_metals_base.json"
+  },
+  {
+    "page_id": "price_minor_metals",
+    "variant": "variant",
+    "http_status": 200,
+    "resp_status": "ok",
+    "has_ref_section": false,
+    "file": "/home/nuri/dev/git/ws/mine_ws/komir/.claude/worktrees/report_gen/documents/산출물/2026-W35_0824-0830/report_gen_출력품질감사_260828_samples/price_minor_metals_variant.json"
+  },
+  {
+    "page_id": "price_minor_metals",
+    "variant": "compare",
+    "http_status": 200,
+    "resp_status": "ok",
+    "has_ref_section": false,
+    "file": "/home/nuri/dev/git/ws/mine_ws/komir/.claude/worktrees/report_gen/documents/산출물/2026-W35_0824-0830/report_gen_출력품질감사_260828_samples/price_minor_metals_compare.json"
+  },
+  {
+    "page_id": "price_iron_energy",
+    "variant": "base",
+    "http_status": 200,
+    "resp_status": "ok",
+    "has_ref_section": false,
+    "file": "/home/nuri/dev/git/ws/mine_ws/komir/.claude/worktrees/report_gen/documents/산출물/2026-W35_0824-0830/report_gen_출력품질감사_260828_samples/price_iron_energy_base.json"
+  },
+  {
+    "page_id": "price_iron_energy",
+    "variant": "variant",
+    "http_status": 200,
+    "resp_status": "ok",
+    "has_ref_section": false,
+    "file": "/home/nuri/dev/git/ws/mine_ws/komir/.claude/worktrees/report_gen/documents/산출물/2026-W35_0824-0830/report_gen_출력품질감사_260828_samples/price_iron_energy_variant.json"
+  },
+  {
+    "page_id": "price_other",
+    "variant": "base",
+    "http_status": 200,
+    "resp_status": "ok",
+    "has_ref_section": false,
+    "file": "/home/nuri/dev/git/ws/mine_ws/komir/.claude/worktrees/report_gen/documents/산출물/2026-W35_0824-0830/report_gen_출력품질감사_260828_samples/price_other_base.json"
+  },
+  {
+    "page_id": "price_other",
+    "variant": "variant",
+    "http_status": 200,
+    "resp_status": "ok",
+    "has_ref_section": false,
+    "file": "/home/nuri/dev/git/ws/mine_ws/komir/.claude/worktrees/report_gen/documents/산출물/2026-W35_0824-0830/report_gen_출력품질감사_260828_samples/price_other_variant.json"
+  },
+  {
+    "page_id": "map_korea",
+    "variant": "base",
+    "http_status": 200,
+    "resp_status": "ok",
+    "has_ref_section": false,
+    "file": "/home/nuri/dev/git/ws/mine_ws/komir/.claude/worktrees/report_gen/documents/산출물/2026-W35_0824-0830/report_gen_출력품질감사_260828_samples/map_korea_base.json"
+  },
+  {
+    "page_id": "map_korea",
+    "variant": "variant",
+    "http_status": 200,
+    "resp_status": "ok",
+    "has_ref_section": false,
+    "file": "/home/nuri/dev/git/ws/mine_ws/komir/.claude/worktrees/report_gen/documents/산출물/2026-W35_0824-0830/report_gen_출력품질감사_260828_samples/map_korea_variant.json"
+  },
+  {
+    "page_id": "map_global",
+    "variant": "base",
+    "http_status": 200,
+    "resp_status": "ok",
+    "has_ref_section": false,
+    "file": "/home/nuri/dev/git/ws/mine_ws/komir/.claude/worktrees/report_gen/documents/산출물/2026-W35_0824-0830/report_gen_출력품질감사_260828_samples/map_global_base.json"
+  },
+  {
+    "page_id": "map_global",
+    "variant": "variant_korea_route",
+    "http_status": 200,
+    "resp_status": "ok",
+    "has_ref_section": false,
+    "file": "/home/nuri/dev/git/ws/mine_ws/komir/.claude/worktrees/report_gen/documents/산출물/2026-W35_0824-0830/report_gen_출력품질감사_260828_samples/map_global_variant_korea_route.json"
+  },
+  {
+    "page_id": "price_group",
+    "variant": "base",
+    "http_status": 200,
+    "resp_status": "ok",
+    "has_ref_section": false,
+    "file": "/home/nuri/dev/git/ws/mine_ws/komir/.claude/worktrees/report_gen/documents/산출물/2026-W35_0824-0830/report_gen_출력품질감사_260828_samples/price_group_base.json"
+  },
+  {
+    "page_id": "price_group",
+    "variant": "variant",
+    "http_status": 200,
+    "resp_status": "ok",
+    "has_ref_section": false,
+    "file": "/home/nuri/dev/git/ws/mine_ws/komir/.claude/worktrees/report_gen/documents/산출물/2026-W35_0824-0830/report_gen_출력품질감사_260828_samples/price_group_variant.json"
+  }
+]

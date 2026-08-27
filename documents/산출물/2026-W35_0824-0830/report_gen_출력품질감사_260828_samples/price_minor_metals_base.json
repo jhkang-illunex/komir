@@ -1,0 +1,23 @@
+{
+  "request": {
+    "mineral": "MNRL0031",
+    "mineral_name": "리튬",
+    "start_date": "2025-08-25",
+    "end_date": "2025-08-25",
+    "price_unit": "USD/kg",
+    "price_criterion": "ASIA_METAL",
+    "observations": [
+      {
+        "date": "2025-08-25",
+        "commerce_price": 12.4,
+        "lowest_price": 12.1,
+        "highest_price": 12.7
+      }
+    ]
+  },
+  "http_status": 200,
+  "response": {
+    "status": "ok",
+    "report": "# 리튬 분석 요약 — 선택한 희소금속(품목·규격 기준)의 일별 실거래가·최저가·최고가 추이를 보여주는 자료다.\n\n**가격기준**: ASIA_METAL\n\n## 핵심 진단\n\n2025년 8월 25일 기준 리튬 실거래가는 12.40이다.\n\n## 주요 변화\n\n비교 가능한 이전 가격이 없어 등락률은 계산하지 않았다.\n\n## 현재 위치\n\n조회기간 중 최고 12.70, 최저 12.10였다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 최신 가격 | 12.40 |  |\n"
+  }
+}

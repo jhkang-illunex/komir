@@ -1,0 +1,23 @@
+{
+  "request": {
+    "mineral": "MNRL0001",
+    "mineral_name": "구리",
+    "start_date": "2025-08-25",
+    "end_date": "2025-08-25",
+    "price_unit": "USD/MT",
+    "price_criterion": "LME_CASH",
+    "observations": [
+      {
+        "date": "2025-08-25",
+        "commerce_price": 9720.0,
+        "lowest_price": 9680.0,
+        "highest_price": 9760.0
+      }
+    ]
+  },
+  "http_status": 200,
+  "response": {
+    "status": "ok",
+    "report": "# 구리 분석 요약 — 선택한 비철금속(LME 기준)의 일별 실거래가·최저가·최고가 추이를 보여주는 자료다.\n\n**가격기준**: LME_CASH\n\n## 핵심 진단\n\n2025년 8월 25일 기준 구리 실거래가는 9,720.00이다.\n\n## 주요 변화\n\n비교 가능한 이전 가격이 없어 등락률은 계산하지 않았다.\n\n## 현재 위치\n\n조회기간 중 최고 9,760.00, 최저 9,680.00였다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 최신 가격 | 9,720.00 |  |\n"
+  }
+}

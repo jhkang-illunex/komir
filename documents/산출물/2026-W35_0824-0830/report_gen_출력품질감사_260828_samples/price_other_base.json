@@ -1,0 +1,23 @@
+{
+  "request": {
+    "mineral": "MNRL0080",
+    "mineral_name": "금",
+    "start_date": "2025-08-25",
+    "end_date": "2025-08-25",
+    "price_unit": "USD/oz",
+    "price_criterion": "LBMA",
+    "observations": [
+      {
+        "date": "2025-08-25",
+        "commerce_price": 2450.0,
+        "lowest_price": 2430.0,
+        "highest_price": 2470.0
+      }
+    ]
+  },
+  "http_status": 200,
+  "response": {
+    "status": "ok",
+    "report": "# 금 분석 요약 — 선택한 금·은·백금족·흑연(기준시장 기준)의 일별 실거래가·최저가·최고가 추이를 보여주는 자료다.\n\n**가격기준**: LBMA\n\n## 핵심 진단\n\n2025년 8월 25일 기준 금 실거래가는 2,450.00이다.\n\n## 주요 변화\n\n비교 가능한 이전 가격이 없어 등락률은 계산하지 않았다.\n\n## 현재 위치\n\n조회기간 중 최고 2,470.00, 최저 2,430.00였다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 최신 가격 | 2,450.00 |  |\n"
+  }
+}

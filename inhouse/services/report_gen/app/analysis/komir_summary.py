@@ -272,14 +272,21 @@ def calculate_price_summary(
     if latest.commerce_price is None:
         raise ValueError("price summary requires the latest observation to have commerce_price")
 
-    def _avg_before(days: int) -> float | None:
+    def _avg_before(days: int) -> tuple[float, tuple[str, ...]] | None:
+        """`days`일 이내 이전 관측치의 평균과, 그 계산에 실제로 쓰인 관측일
+        목록을 함께 돌려준다 — 목록은 관측치가 희소해 여러 기간(전주·전월·전년)이
+        같은 관측치로 수렴하는지 판별하는 데 쓴다(2026-08-28 감사 P2)."""
+
         cutoff = _shift_date(latest.date, -days)
         window = [
-            item.commerce_price
+            item
             for item in observations[:-1]
             if item.commerce_price is not None and item.date >= cutoff
         ]
-        return sum(window) / len(window) if window else None
+        if not window:
+            return None
+        avg = sum(item.commerce_price for item in window) / len(window)
+        return avg, tuple(item.date for item in window)
 
     claims = [
         EvidenceClaim(
@@ -328,10 +335,20 @@ def calculate_price_summary(
             metric_label = "전일대비" if is_truly_next_day else "직전관측치대비"
             key_metrics.append(_price_metric("day_over_day_change_pct", metric_label, change * 100, unit="%"))
 
+    # 2026-08-28 감사(P2)에서 발견: 관측치가 희소하면 전주·전월·전년 창이 전부
+    # 같은 단일 이전 관측치로 수렴하는데, 이를 별개로 계산된 통계인 것처럼
+    # 문장·지표를 반복 인용하면 부자연스럽다 — 이미 같은 관측일 집합으로 인용한
+    # 기간이 있으면 건너뛴다(가장 짧은 기간의 라벨만 남긴다, "week_avg/month_avg/
+    # year_avg 중 evidence에 있는 항목만 골라 쓴다"는 prompts.py 지시와 호환).
+    _avg_windows_seen: set[tuple[str, ...]] = set()
     for days, label, metric_id in ((7, "전주평균", "week_avg"), (30, "전월평균", "month_avg"), (365, "전년평균", "year_avg")):
-        avg = _avg_before(days)
-        if avg is None:
+        result = _avg_before(days)
+        if result is None:
             continue
+        avg, window_dates = result
+        if window_dates in _avg_windows_seen:
+            continue
+        _avg_windows_seen.add(window_dates)
         change = _pct(latest.commerce_price, avg)
         if change is None:
             continue
