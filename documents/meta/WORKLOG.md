@@ -2,7 +2,41 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-08-27 (최신) — ingest 파이프라인 상태추적(Postgres)+주간 cron 컨테이너 구현, 도중 doc_chunk 138,825행 삭제 사고·복구
+## 2026-08-28 (최신) — 광물자원가격 나머지 서브메뉴 2종 추가: price_iron_energy/price_other
+
+2026-08-27 `price` → `price_base_metals`/`price_minor_metals` 분리 작업의 후속.
+`komis_menu_map.yaml`의 `gaps_not_covered_by_report_gen`에 미커버로 남아 있던
+"광물자원가격" 대메뉴의 나머지 실제 서브메뉴 2개 — 철광석 및 에너지
+(`page_id="price_iron_energy"`, 철광석·유연탄·우라늄)·기타
+(`page_id="price_other"`, 금·은·백금족·흑연) — 를 같은 패턴으로 추가했다.
+이름은 page_recommend registry `price_iron_energy.yaml`/`price_other.yaml`의
+`page_id:` 필드(이번엔 파일명과 동일해 alias 문제 없음, 사용자 사전 확인 완료)
+그대로.
+
+**변경 범위(백엔드만, 지난번과 동일 경계)**: `models.py`(SummaryPageId 2개
+추가 — compare_* 거부 규칙은 `page_id != "price_minor_metals"` 조건이라 자동
+적용됨, 추가 코드 불필요) · `summary.py`(`_dispatch` 분기에 2개 추가, `_analyze_
+price`는 이미 `request.page_id`를 그대로 쓰도록 지난번에 일반화돼 있어 무수정)
+· `komir_summary.py`(KOMIR_PAGE_CONTEXTS 2개 신설, policy_version
+`price-iron-energy-summary-v1`/`price-other-summary-v1`) · `prompts.py`
+(PROMPTS·SECTION_SENTENCE_RANGES·MAX_EVIDENCE_IDS_PER_SENTENCE_BY_PAGE에 반영
+— 지시문은 4개 그룹 전부 동일해 상수 공유) · `routers/analysis.py`(신규
+엔드포인트 `/prices/iron-energy`·`/prices/other` 추가). `routers/report_data.py`
+는 이번 지시 범위에 없어 손대지 않았다(REST 별칭 라우터는 여전히 base-metals/
+minor-metals 2개만). `seed_prompts.py`는 PROMPTS 순회라 무수정으로 자동 반영.
+
+**검증**: `verify_prompt_db.py` 전체 PASS(`VERIFY_PROMPT_DB_OK`, 11→13키) +
+ad-hoc 스모크(두 page_id 모두 dispatch·context 정상, compare_mineral 거부
+확인, `app.main` 라우트에 `/api/v1/analysis/prices/{iron-energy,other}` 정상
+등록).
+
+`komis_menu_map.yaml`(streamlit_demo)의 `report_gen_page_mapping`도 함께
+갱신 — 지난번 미완이던 `price` 단일 항목의 2분리 표기까지 이번에 마저 정리하고
+(옛 "진행 중" 메모 제거), `gaps_not_covered_by_report_gen`에서 두 항목 제거.
+main-agent가 감사 후 merge+컨테이너 재빌드, streamlit-agent에게 PAGE_SPECS·화면
+반영 요청 예정(WORKLOG 이 항목 작성 시점 기준 아직 진행 전).
+
+## 2026-08-27 — ingest 파이프라인 상태추적(Postgres)+주간 cron 컨테이너 구현, 도중 doc_chunk 138,825행 삭제 사고·복구
 
 `inhouse/ingest/` 독립 패키지 분리(같은 날, 아래 항목) 직후 이어진 작업 — "언제 뭐가
 얼마나 처리됐는지"를 streamlit_demo "ETL 과정" 탭에서 보고 싶다는 요청으로,

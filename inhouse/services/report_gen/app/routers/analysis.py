@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """분석요약 API — 외부 저장소 `komis_report_generator/api/routers/analysis.py`
-+ `api/schemas.py`(요청 스키마) 이식 5종(2026-08-13) + komir 자체 추가 4종
-(2026-08-19 3종, 2026-08-27 `/prices` 분리로 4종).
++ `api/schemas.py`(요청 스키마) 이식 5종(2026-08-13) + komir 자체 추가 6종
+(2026-08-19 3종, 2026-08-27 `/prices` 분리로 4종, 2026-08-28 광물자원가격
+나머지 서브메뉴 2종 추가로 6종).
 
 원본 경로(`/api/v1/analysis/...`)와 메서드(POST)·이식 5종의 요청 본문·응답 모델은
 그대로 유지한다 — 발주처 프론트가 외부repo API 계약에 맞춰 개발 중일 수 있어
@@ -47,6 +48,15 @@ alias 없이 제거했다(유일 소비자였던 streamlit_demo도 같은 날 �
 AnalysisSummaryRequest.validate_period`가 `page_id="price_minor_metals"`가
 아니면 이제 명시적으로 거부한다(이전엔 "price" 단일 키라 문서화만 되고
 강제되지 않았다).
+
+**2026-08-28 광물자원가격 나머지 서브메뉴 2종 추가(`/prices/iron-energy`·
+`/prices/other`)**: 사용자가 실제 KOMIS 사이트맵에서 확인한 "철광석 및 에너지"
+(`page_id="price_iron_energy"`, 철광석·유연탄·우라늄)·"기타"
+(`page_id="price_other"`, 금·은·백금족·흑연) — `komis_menu_map.yaml`의
+`gaps_not_covered_by_report_gen`에 미커버로 남아 있던 항목이다. 계산·검증
+로직은 위 2026-08-27 분리 때와 완전히 동일한 패턴(같은 `MineralDateRangeSummary
+Request`·`calculate_price_summary` 재사용, `compare_*`는 여전히
+`price_minor_metals` 전용이라 이 2종엔 없음).
 
 **2026-08-26 DB 조회 → 요청 바디 입력으로 전환**: "이 서버는 prompt/template를
 제외하고는 DB에서 값을 로딩하지 않는다"는 원칙에 따라, 전부 `public.KO_*`
@@ -310,8 +320,8 @@ def summarize_price_forecast(
     return run_summary("forecast_price", payload, request)
 
 
-# ── komir 자체 추가 4종(2026-08-19 최초 3종, 2026-08-27 /prices 분리로 4종,
-# 이식 아님) ────────────────────────────────────────────────────────
+# ── komir 자체 추가 6종(2026-08-19 최초 3종, 2026-08-27 /prices 분리로 4종,
+# 2026-08-28 광물자원가격 나머지 서브메뉴 2종 추가로 6종, 이식 아님) ──────
 
 
 @router.post("/prices/base-metals", response_model=AnalysisReportResponse)
@@ -335,6 +345,28 @@ def summarize_price_minor_metals(
     (비교광종)는 이 페이지에서만 허용된다."""
 
     return run_summary("price_minor_metals", payload, request)
+
+
+@router.post("/prices/iron-energy", response_model=AnalysisReportResponse)
+def summarize_price_iron_energy(
+    payload: MineralDateRangeSummaryRequest,
+    request: Request,
+) -> AnalysisReportResponse:
+    """철광석·유연탄·우라늄 가격 분석요약(KO_MNRL_PRC) — 2026-08-28 신설
+    (§모듈 docstring "광물자원가격 나머지 서브메뉴")."""
+
+    return run_summary("price_iron_energy", payload, request)
+
+
+@router.post("/prices/other", response_model=AnalysisReportResponse)
+def summarize_price_other(
+    payload: MineralDateRangeSummaryRequest,
+    request: Request,
+) -> AnalysisReportResponse:
+    """금·은·백금족·흑연 가격 분석요약(KO_MNRL_PRC) — 2026-08-28 신설
+    (§모듈 docstring "광물자원가격 나머지 서브메뉴")."""
+
+    return run_summary("price_other", payload, request)
 
 
 @router.post("/domestic-trade", response_model=AnalysisReportResponse)

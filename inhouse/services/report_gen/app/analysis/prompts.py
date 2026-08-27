@@ -293,6 +293,9 @@ PROMPTS = {
     # validate_period가 이제 요청 단계에서 강제) — 그래서 같은 상수를 공유한다.
     "price_base_metals": PRICE_SUMMARY_INSTRUCTIONS,
     "price_minor_metals": PRICE_SUMMARY_INSTRUCTIONS,
+    # 2026-08-28 — 같은 이유로 공유(§komir_summary.py::KOMIR_PAGE_CONTEXTS 주석).
+    "price_iron_energy": PRICE_SUMMARY_INSTRUCTIONS,
+    "price_other": PRICE_SUMMARY_INSTRUCTIONS,
     "map_korea": MAP_KOREA_SUMMARY_INSTRUCTIONS,
     "map_global": MAP_GLOBAL_SUMMARY_INSTRUCTIONS,
     "price_group": PRICE_GROUP_SUMMARY_INSTRUCTIONS,
@@ -318,6 +321,8 @@ SECTION_SENTENCE_RANGES: dict[str, dict[str, tuple[int, int]]] = {
     # compare_overall_change가 애초에 안 생기므로 (1,2) 상한을 그냥 안 쓸 뿐).
     "price_base_metals": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 2)},
     "price_minor_metals": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 2)},
+    "price_iron_energy": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 2)},
+    "price_other": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 2)},
     "map_korea": {"core_diagnosis": (1, 1), "major_changes": (1, 2), "current_position": (1, 1)},
     # map_global major_changes는 근거 4개(1~3위 루트·CR3·CR5·한국 순위)라 (1,3).
     "map_global": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 1)},
@@ -334,7 +339,12 @@ MAX_EVIDENCE_IDS_PER_SENTENCE = 3
 #: 페이지별 예외 — price는 PDF 1-1 템플릿이 전일·전주·전월·전년(·연속) 비교를 한
 #: 문장에 담으므로 5(2026-08-27 반복 루프 4회차). `SummarySentence.evidence_ids`
 #: pydantic 상한(5)이 절대 상한이다.
-MAX_EVIDENCE_IDS_PER_SENTENCE_BY_PAGE: dict[str, int] = {"price_base_metals": 5, "price_minor_metals": 5}
+MAX_EVIDENCE_IDS_PER_SENTENCE_BY_PAGE: dict[str, int] = {
+    "price_base_metals": 5,
+    "price_minor_metals": 5,
+    "price_iron_energy": 5,
+    "price_other": 5,
+}
 _EVIDENCE_IDS_HARD_CAP = 5
 
 _SECTIONS = ("core_diagnosis", "major_changes", "current_position")

@@ -882,7 +882,7 @@ class AnalysisSummaryService:
             return self._analyze_mineral_map(request)
         if request.page_id == "forecast_price":
             return self._analyze_price_forecast(request)
-        if request.page_id in ("price_base_metals", "price_minor_metals"):
+        if request.page_id in ("price_base_metals", "price_minor_metals", "price_iron_energy", "price_other"):
             return self._analyze_price(request)
         if request.page_id == "map_korea":
             return self._analyze_domestic_trade(request)
