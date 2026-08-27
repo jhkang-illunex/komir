@@ -1,0 +1,191 @@
+# KOMIS 실제 메뉴 구조 ↔ report_gen(요약보고서 9종) 매핑 — 2026-08-27
+#
+# 출처: 사용자가 documents/order/에 올린 실제 KOMIS(komis.or.kr) 화면 캡처 8장
+#   - 광해사이트맵.png (대메뉴 4개 × 서브메뉴 목록, 홈 사이트맵 페이지)
+#   - Monosnap 희소금속_광물자원가격_...png (광물자원가격 > 희소금속 필터화면)
+#   - Monosnap e8c0...21-13-18/13-44/14-05/14-20/15-02/15-17.png
+#     (광물종합지수, 대한민국 수급지도, 글로벌 수급지도, 광물지도,
+#      시장동향지표, 수급동향지표 — 각 화면 브레드크럼+주소창 URL 포함)
+# 교차검증: inhouse/services/rag_chat/app/page_recommend/resources/registry/pages/*.yaml
+#   (2026-07-16 실제 KOMIS 사이트를 브라우저로 프로브해 관측한 값,
+#   identity.section/identity.name/navigation.target/login_required) — 스샷 7장의
+#   브레드크럼·URL과 전부 일치 확인됨. 이 파일은 그 registry에서 이번 스코프
+#   (사용자가 캡처한 4개 대메뉴)에 해당하는 항목만 추려 report_gen 관점으로
+#   재정리한 것 — 원본 43페이지 전체 registry는 rag_chat 챗봇 페이지추천 전용이라
+#   건드리지 않았다.
+#
+# 목적: prompt_admin.py·report_demo.py 두 화면이 report_gen의 9개 page_id를
+#   서로 다른 방식(하나는 "주메뉴 > 서브메뉴" 레이블, 하나는 플랫 label만)으로
+#   보여줘 "너무 다르다"는 지적을 받음 — 두 화면이 공통으로 참조할 단일
+#   소스오브트루스를 이 파일로 우선 정리한다(이번 커밋은 정리만, 코드 배선은
+#   후속 작업).
+#
+# 범위 밖(스코프 아님): 사이트맵 캡처가 4개 대메뉴(광물자원가격/광물전망지표/
+#   광종·국가정보/핵심광물지도)만 담고 있어, 상단 GNB에 더 있는 "광물자원동향"·
+#   "알림마당" 2개 대메뉴는 하위구조를 확인하지 못해 이 파일에 넣지 않았다
+#   (임의 추정 금지 원칙 — 실제 캡처된 것만 기록).
+
+schema_version: 1
+
+komis_site_map:
+  광물자원가격:
+    items:
+      - key: price_base_metals
+        name: 비철금속
+        url: /Komis/RsrcPrice/BaseMetals
+        login_required: false
+        external: false
+      - key: price_minor
+        name: 희소금속
+        url: /Komis/RsrcPrice/MinorMetals
+        login_required: false
+        external: false
+        note: "documents/order/Monosnap희소금속_...png 스샷으로 브레드크럼 직접 확인"
+      - key: price_iron_energy
+        name: 철광석 및 에너지
+        url: /Komis/RsrcPrice/IronOre
+        login_required: false
+        external: false
+      - key: price_other
+        name: 기타
+        url: /Komis/RsrcPrice/EtcMnrl
+        login_required: false
+        external: false
+      - key: external_pps_price
+        name: 국내원자재가격(조달청)
+        url: "https://pps.go.kr/bichuk/bbs/list.do?key=00825"
+        login_required: false
+        external: true
+
+  광물전망지표:
+    items:
+      - key: indicator_composite
+        name: 광물종합지수
+        url: /Komis/MnrlIndc/IndxMin
+        login_required: false
+        external: false
+        note: "Monosnap ...21-13-18.png 스샷으로 브레드크럼+URL 직접 확인"
+      - key: indicator_market
+        name: 시장동향지표
+        url: /Komis/MnrlIndc/IndcMrkt
+        login_required: true
+        external: false
+        note: "Monosnap ...21-15-02.png 스샷으로 브레드크럼+URL 직접 확인"
+      - key: indicator_supply
+        name: 수급동향지표
+        url: /Komis/MnrlIndc/IndxSply
+        login_required: true
+        external: false
+        note: "Monosnap ...21-15-17.png 스샷으로 브레드크럼+URL 직접 확인"
+      - key: 광물가격예측
+        name: 광물가격예측
+        note: "사이트맵상 그룹 라벨(하위 2개를 감싸는 회색 박스) — 수급지도와 같은 패턴, 자체 URL 없음(registry에도 이 이름 단독 페이지 없음)"
+        children:
+          - key: forecast_price
+            name: 가격예측
+            url: /Komis/MnrlIndc/PricePred
+            login_required: false
+            external: false
+          - key: forecast_focus
+            name: 자원정보 FOCUS
+            url: /Komis/Board/RESORCFOCUS
+            login_required: false
+            external: false
+
+  광종_국가정보:
+    display_name: 광종/국가정보
+    items:
+      - key: mineral_info
+        name: 광종정보
+        url: /Komis/MnrlInfo/MnrlInfo
+        login_required: false
+        external: false
+      - key: country_info
+        name: 국가정보
+        url: /Komis/MnrlInfo/NationInfo
+        login_required: false
+        external: false
+      - key: law_info
+        name: 법령정보
+        url: /Komis/Board/LAWINFO
+        login_required: false
+        external: false
+      - key: external_investment_guide
+        name: 투자실무가이드
+        url: "https://web.e-factory.co.kr/KOMIR/202510/index.html"
+        login_required: false
+        external: true
+
+  핵심광물지도:
+    items:
+      - key: 수급지도
+        name: 수급지도
+        note: "그룹 라벨(하위 2개를 감싸는 회색 박스) — 자체 URL 없음"
+        children:
+          - key: map_korea
+            name: 대한민국
+            url: /Komis/MnrlMap/Korea
+            login_required: false
+            external: false
+            note: "Monosnap ...21-13-44.png 스샷으로 브레드크럼(핵심광물지도>수급지도>대한민국)+URL 직접 확인"
+          - key: map_global
+            name: 글로벌
+            url: /Komis/MnrlMap/Nation
+            login_required: false
+            external: false
+            note: "Monosnap ...21-14-05.png 스샷으로 브레드크럼(핵심광물지도>수급지도>글로벌)+URL 직접 확인"
+      - key: map_mineral
+        name: 광물지도
+        url: /Komis/MnrlMap/MnrlMap
+        login_required: false
+        external: false
+        note: "Monosnap ...21-14-20.png 스샷으로 브레드크럼+URL 직접 확인"
+
+# report_gen(services/report_gen, streamlit_demo/report_gen_client.py::PAGE_SPECS)의
+# 9개 page_id + summary_common이 위 site_map의 어느 노드에 해당하는지.
+# match 값: exact(1:1) | merged(실제 여러 서브메뉴를 파라미터로 합침) |
+#   synthetic(report_gen이 만든 합성뷰, KOMIS에 동명 서브메뉴 없음) | n/a(특정 메뉴 없음)
+report_gen_page_mapping:
+  indicator_market:
+    menu: 광물전망지표 > 시장동향지표
+    match: exact
+  indicator_supply:
+    menu: 광물전망지표 > 수급동향지표
+    match: exact
+  indicator_composite:
+    menu: 광물전망지표 > 광물종합지수
+    match: exact
+  forecast_price:
+    menu: 광물전망지표 > 광물가격예측 > 가격예측
+    match: exact
+  map_mineral:
+    menu: 핵심광물지도 > 광물지도
+    match: exact
+  map_korea:
+    menu: 핵심광물지도 > 수급지도 > 대한민국
+    match: exact
+  map_global:
+    menu: 핵심광물지도 > 수급지도 > 글로벌
+    match: exact
+  price:
+    menu: "광물자원가격 > {비철금속 | 희소금속 | 철광석 및 에너지 | 기타}"
+    match: merged
+    note: "report_gen은 이 4개 실제 서브메뉴를 하나의 page_id(price)로 합쳐 price_criterion/price_unit 요청 파라미터로 구분한다."
+  price_group:
+    menu: 광물자원가격 (비철금속·희소금속 통합 요약)
+    match: synthetic
+    note: "KOMIS에 이 이름의 서브메뉴는 없다 — report_gen이 비철금속+희소금속을 묶어 만든 그룹 요약 뷰."
+  summary_common:
+    menu: null
+    match: n/a
+    note: "특정 메뉴 없음 — 9개 페이지 전체에 붙는 공통 서두 프롬프트."
+
+# 실제 KOMIS 사이트맵엔 있지만 report_gen 9종 어디에도 대응하는 page_id가 없는
+# 항목(요약보고서 후속 확장 후보 — 채택 여부는 별도 결정 필요).
+gaps_not_covered_by_report_gen:
+  - 광물자원가격 > 국내원자재가격(조달청) [외부링크, 조달청 사이트]
+  - 광물전망지표 > 광물가격예측 > 자원정보 FOCUS
+  - 광종/국가정보 > 광종정보
+  - 광종/국가정보 > 국가정보
+  - 광종/국가정보 > 법령정보
+  - 광종/국가정보 > 투자실무가이드 [외부링크]
