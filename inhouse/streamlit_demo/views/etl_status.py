@@ -44,8 +44,6 @@ _INHOUSE_ROOT = Path(__file__).resolve().parents[2]
 if str(_INHOUSE_ROOT / "services") not in sys.path:
     sys.path.insert(0, str(_INHOUSE_ROOT / "services"))
 
-from shared.retrieval.access import PRIVATE_ONLY_SOURCE_GROUPS  # noqa: E402,F401  (미사용, 접근범위 참고용으로 남김)
-
 st.title("ETL 처리 현황")
 st.caption("수집 → OKF 정제 → PageIndex 색인 → 벡터화 파이프라인의 실행 이력과 파일별 단계 진행 상태입니다.")
 
