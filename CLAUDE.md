@@ -48,7 +48,11 @@ komir/
 │  │       # documents/meta/CONTAINER_ARCHITECTURE.md
 │  ├─ deploy/               # 컨테이너화·airgap 배포(설계 단계)
 │  │       # documents/meta/CONTAINER_ARCHITECTURE.md
-│  ├─ dashboards/           # 웹 대시보드(streamlit_app.py — 모델 재현·설명가능성 데모)
+│  ├─ dashboard_expire/     # 구 dashboards/(2026-08-27 개명) — streamlit_app.py 모델 재현 데모,
+│  │                          정적 HTML 대시보드(build_dash.py). commodity_api 가 스냅샷 JSON 참조
+│  ├─ streamlit_demo/       # 개발 데모 멀티페이지(komis-report-generator-main/streamlit_demo
+│  │                          이식, 2026-08-27) — 챗봇(rag_chat SSE, 동작)·요약보고서(report_gen
+│  │                          9종, 동작)·데이터관리(동작) + 진단예측·프롬프트관리(stub)
 │  └─ data_lake/
 │     ├─ db/                # 정형 파트 — minerals.duckdb(★ canonical 운영 DB, gitignore,
 │     │                       geo_event·geo_index·geo_prob·fact_*·mart_*·out_* 등 전 테이블)
