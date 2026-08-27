@@ -55,20 +55,17 @@ from concurrent.futures import TimeoutError as FutureTimeoutError
 from fastapi import Request
 from pydantic import BaseModel, ValidationError
 
+from ..analysis.budget import ANALYSIS_LLM_RETRIES, ANALYSIS_LLM_TIMEOUT_SECONDS, REQUEST_BUDGET_SECONDS
 from ..analysis.data_sources import DataSourceError
 from ..analysis.models import AnalysisReportResponse, AnalysisSummaryRequest, SummaryPageId
 from ..analysis.report_render import render_markdown_report
 
 _LOG = logging.getLogger(__name__)
-_TIMEOUT_SECONDS = 20
-#: 분석요약 8종 전용 LLM 호출 한도(초·회) — `main.py::build_analysis_summary_service`가
-#: `KomirJsonLLM` cfg에 넣는다. 요청당 20초 예산 안에서 lock 점유가 끝나도록
-#: 잡는다(2026-08-27 skeptic 감사 SC-002). 실 vLLM(gemma-4-26b-a4b) 정제 1회
-#: 지연 실측 3.6~6.5s, 콜드 호출 12.6s — 8s는 콜드 호출에 빠듯해 12s로 상향
-#: (2026-08-27 DB화 라운드). `_common.py`에 두는 이유: 아래 lock 인수 판단이
-#: 같은 값을 써야 하는데 main.py를 import하면 순환이 된다.
-ANALYSIS_LLM_TIMEOUT_SECONDS = 12
-ANALYSIS_LLM_RETRIES = 1
+_TIMEOUT_SECONDS = REQUEST_BUDGET_SECONDS
+# ANALYSIS_LLM_TIMEOUT_SECONDS/RETRIES는 `analysis/budget.py`가 소유한다(요청 예산과
+# LLM 호출 상한을 `_refine_with_llm`도 같이 봐야 해서 — Pass 3 R3-F1). main.py 호환을
+# 위해 여기서 재노출한다. 12s는 "호출 1회 상한"이고, 요청 전체(20s)는 `_refine_
+# with_llm`이 호출 전마다 남은 예산을 확인해 지킨다.
 # 8종 엔드포인트가 공유하는 실행 풀 — 요청마다 새 스레드를 만들지 않는다.
 _EXECUTOR = ThreadPoolExecutor(max_workers=8, thread_name_prefix="analysis-summary")
 
@@ -120,7 +117,7 @@ def run_summary(
             # LLM이 배선된 서비스면 여기서 포기한다(규칙기반만이면 ms라 계속).
             if getattr(service, "uses_llm", False) and (deadline - time.monotonic()) < ANALYSIS_LLM_TIMEOUT_SECONDS:
                 raise _LockTimeout()
-            return service.analyze(summary_request)
+            return service.analyze(summary_request, deadline=deadline)
         finally:
             lock.release()
 

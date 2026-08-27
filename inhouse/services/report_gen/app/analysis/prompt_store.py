@@ -112,7 +112,8 @@ def ensure_schema() -> list[str]:
     """필요한 컬럼이 빠져 있으면 `schema_ai_cfg.sql`을 적용한다. 반환값은 적용
     전 누락돼 있던 컬럼 목록(없으면 빈 리스트 = no-op)."""
 
-    missing = [name for name in REQUIRED_COLUMNS if name not in _existing_columns()]
+    existing = _existing_columns()
+    missing = [name for name in REQUIRED_COLUMNS if name not in existing]
     if missing:
         _log.info("cfg_prompt 컬럼 누락 %s — %s 적용", missing, SCHEMA_SQL.name)
         apply_schema_pg(str(SCHEMA_SQL))
@@ -135,11 +136,23 @@ def _fetch_all() -> dict[str, PromptRow]:
             content=str(row["content"]),
             page_name=_as_text(row.get("page_name")),
             page_definition=_as_text(row.get("page_definition")),
-            analysis_constraints=_as_json(row.get("analysis_constraints")),
+            analysis_constraints=_json_column(key, "analysis_constraints", row.get("analysis_constraints")),
             policy_version=_as_text(row.get("policy_version")),
-            output_contract=_as_json(row.get("output_contract")),
+            output_contract=_json_column(key, "output_contract", row.get("output_contract")),
         )
     return rows
+
+
+def _json_column(key: str, column: str, value: Any) -> Any:
+    """JSON 컬럼 1개를 해석한다 — 깨진 값은 그 컬럼만 None(코드 기본값)으로 두고
+    경고한다(Pass 3 R3-L2: 이전엔 행 하나의 컬럼 하나가 깨지면 reload 전체가
+    실패해 모든 프롬프트 갱신이 막혔다)."""
+
+    try:
+        return _as_json(value)
+    except (ValueError, TypeError):
+        _log.warning("cfg_prompt[%s].%s JSON 해석 실패 — 이 컬럼만 코드 기본값 사용: %r", key, column, value)
+        return None
 
 
 def reload() -> int:

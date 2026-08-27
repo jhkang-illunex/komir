@@ -619,7 +619,11 @@ class SummarySentence(StrictModel):
     """근거(evidence_id)에 묶인 분석문 1문장."""
 
     text: str = Field(min_length=1, max_length=300)
-    evidence_ids: list[str] = Field(min_length=1, max_length=3)
+    # 상한 3→5(2026-08-27 반복 루프 4회차): price 페이지는 PDF 1-1 템플릿대로 전일·전주·
+    # 전월·전년(·연속) 비교를 한 문장에 담아야 하는데 3개 상한 때문에 4번째 사실의
+    # id를 못 달아 "근거에 없는 숫자"로 폴백됐다. 페이지별 실제 허용치는
+    # `prompts.py`의 output_contract(max_evidence_ids_per_sentence)가 정한다.
+    evidence_ids: list[str] = Field(min_length=1, max_length=5)
 
 
 class SummaryNarrative(StrictModel):

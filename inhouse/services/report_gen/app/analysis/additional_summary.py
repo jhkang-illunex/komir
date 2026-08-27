@@ -946,7 +946,10 @@ def calculate_mineral_map_summary(
             EvidenceClaim(
                 "current_leaders",
                 "major_changes",
-                f"{_topic(top1.country_name)} {_quantity(top1.value)}{series.unit}으로 "
+                # 연도를 근거문에 포함(2026-08-27 반복 루프 2회차: LLM이 PDF 템플릿대로
+                # "2025년 기준 …1위"라고 쓰면 이 절 근거에 연도가 없어 숫자 검증에
+                # 걸려 폴백된 사례 4건 — 연도는 core의 current_state에만 있었다).
+                f"{current_year}년 기준 {_topic(top1.country_name)} {_quantity(top1.value)}{series.unit}으로 "
                 f"세계 전체의 {_number(top1_share * 100)}%를 차지해 1위다. "
                 f"{_topic(top2.country_name)} {_quantity(top2.value)}{series.unit}, "
                 f"{_number(top2_share * 100)}%로 2위이며 두 국가의 비중 차이는 "

@@ -274,24 +274,26 @@ def adapt_map_global(dump: dict) -> list[tuple[str, dict]]:
         rows = r["response"].get("list") or []
         as_of = params.get("srchDateE")
         as_of_date = f"{as_of[0:4]}-{as_of[4:6]}-{as_of[6:8]}" if as_of else "2026-12-31"
-        agg: dict[str, dict] = {}
+        # 2026-08-27 반복 루프 1회차: 08-27 루트 재설계(원산국→도착국) 이후 계산기는
+        # `origin_country_*`를 요구하는데 이 어댑터는 원산국별 합산(도착국 버림) 그대로라
+        # 보고서에 "출처미상→미국"이 찍혔다. KOMIS list 행이 도착국(incmNtn*)·원산국
+        # (expNtn*) 쌍을 이미 주므로 행 1개 = 루트 관측 1건으로 넘긴다.
+        observations = []
         for row in rows:
-            code = row.get("expNtnCd")
-            if not code:
+            dest_code, origin_code = row.get("incmNtnCd"), row.get("expNtnCd")
+            if not dest_code or not origin_code:
                 continue
-            entry = agg.setdefault(
-                code,
+            observations.append(
                 {
                     "date": as_of_date,
-                    "country_code": code,
-                    "country_name": row.get("expNtnNm") or code,
-                    "import_weight": 0.0,
-                    "import_amount": 0.0,
-                },
+                    "country_code": dest_code,
+                    "country_name": row.get("incmNtnNm") or dest_code,
+                    "origin_country_code": origin_code,
+                    "origin_country_name": row.get("expNtnNm") or origin_code,
+                    "import_weight": _num(row.get("weig")) or 0.0,
+                    "import_amount": _num(row.get("amt")) or 0.0,
+                }
             )
-            entry["import_weight"] += _num(row.get("weig")) or 0.0
-            entry["import_amount"] += _num(row.get("amt")) or 0.0
-        observations = list(agg.values())
         if not observations or sum(o["import_amount"] for o in observations) <= 0:
             continue
         mineral_code = params["srchMnrkndUnqCd"]

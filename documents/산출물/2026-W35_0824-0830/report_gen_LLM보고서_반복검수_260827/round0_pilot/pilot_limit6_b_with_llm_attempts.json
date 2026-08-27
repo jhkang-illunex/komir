@@ -1,0 +1,5196 @@
+{
+ "elapsed_s": 72,
+ "by_page": {
+  "price": {
+   "count": 6,
+   "ok": 6,
+   "llm_refined": 4,
+   "violating": 0
+  },
+  "indicator_composite": {
+   "count": 1,
+   "ok": 1,
+   "llm_refined": 0,
+   "violating": 0
+  },
+  "indicator_market": {
+   "count": 6,
+   "ok": 6,
+   "llm_refined": 4,
+   "violating": 0
+  },
+  "indicator_supply": {
+   "count": 6,
+   "ok": 6,
+   "llm_refined": 6,
+   "violating": 0
+  },
+  "map_korea": {
+   "count": 6,
+   "ok": 6,
+   "llm_refined": 6,
+   "violating": 0
+  },
+  "map_global": {
+   "count": 6,
+   "ok": 6,
+   "llm_refined": 1,
+   "violating": 0
+  },
+  "map_mineral": {
+   "count": 6,
+   "ok": 6,
+   "llm_refined": 6,
+   "violating": 0
+  }
+ },
+ "rule_counter": {},
+ "fallback_reasons": {
+  "LLM 분석요약이 근거 검증을 통과하지 못해 규칙 기반 요약을 반환했다. 검증 사유: 섹션별 분석문 수가 출력 계약과 일치하지 않는다.": 1,
+  "LLM 분석요약이 근거 검증을 통과하지 못해 규칙 기반 요약을 반환했다. 검증 사유: 근거에 없는 숫자나 날짜를 사용했다.": 1,
+  "LLM 분석요약이 근거 검증을 통과하지 못해 규칙 기반 요약을 반환했다. 검증 사유: evidence_id를 다른 출력 섹션에 사용했다.": 2,
+  "LLM 분석요약이 근거 검증을 통과하지 못해 규칙 기반 요약을 반환했다. 검증 사유: 모든 evidence_id를 정확히 한 번씩 사용하지 않았": 6
+ },
+ "entries": [
+  {
+   "combo_key": "base_metals:니켈|LME CASH|DAY",
+   "page_id": "price",
+   "llm_attempts": [
+    {
+     "elapsed": 10.3,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 8월 25일 기준 니켈 실거래가는 16,780.00입니다.",
+        "evidence_ids": [
+         "current_state"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "전일 대비 -0.94% 변동했습니다.",
+        "evidence_ids": [
+         "day_over_day"
+        ]
+       },
+       {
+        "text": "전주평균 대비 +0.01%, 전월평균 대비 -0.23%, 전년평균 대비 +1.17% 변동했습니다.",
+        "evidence_ids": [
+         "week_avg",
+         "month_avg",
+         "year_avg"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "조회기간 중 최고가는 54,200.00, 최저가는 5,625.00였습니다.",
+        "evidence_ids": [
+         "period_range"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "day_over_day",
+       "major_changes"
+      ],
+      [
+       "week_avg",
+       "major_changes"
+      ],
+      [
+       "month_avg",
+       "major_changes"
+      ],
+      [
+       "year_avg",
+       "major_changes"
+      ],
+      [
+       "period_range",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": true,
+   "warnings": [],
+   "markdown": "# 니켈 분석 요약 — 선택한 광종의 일별 실거래가·최저가·최고가 추이를 보여주는 자료다.\n\n**가격기준**: LME CASH\n\n## 핵심 진단\n\n2026년 8월 25일 기준 니켈 실거래가는 16,780.00입니다.\n\n## 주요 변화\n\n전일 대비 -0.94% 변동했습니다. 전주평균 대비 +0.01%, 전월평균 대비 -0.23%, 전년평균 대비 +1.17% 변동했습니다.\n\n## 현재 위치\n\n조회기간 중 최고가는 54,200.00, 최저가는 5,625.00였습니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 최신 가격 | 16,780.00 |  |\n| 전일대비 | -0.94 | % |\n| 전주평균대비 | 0.01 | % |\n| 전월평균대비 | -0.23 | % |\n| 전년평균대비 | 1.17 | % |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026년 8월 25일 기준 니켈 실거래가는 16,780.00입니다.",
+      "evidence_ids": [
+       "current_state"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "전일 대비 -0.94% 변동했습니다.",
+      "evidence_ids": [
+       "day_over_day"
+      ]
+     },
+     {
+      "text": "전주평균 대비 +0.01%, 전월평균 대비 -0.23%, 전년평균 대비 +1.17% 변동했습니다.",
+      "evidence_ids": [
+       "week_avg",
+       "month_avg",
+       "year_avg"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "조회기간 중 최고가는 54,200.00, 최저가는 5,625.00였습니다.",
+      "evidence_ids": [
+       "period_range"
+      ]
+     }
+    ]
+   },
+   "elapsed": 10.6
+  },
+  {
+   "combo_key": "base_metals:니켈|LME 3개월|DAY",
+   "page_id": "price",
+   "llm_attempts": [
+    {
+     "elapsed": 10.5,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 8월 25일 기준 니켈 실거래가는 16,940.00입니다.",
+        "evidence_ids": [
+         "current_state"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "전일 대비 -0.94% 변동했으며, 전주평균 대비 -0.11%, 전월평균 대비 -0.46% 하락했습니다.",
+        "evidence_ids": [
+         "day_over_day",
+         "week_avg",
+         "month_avg"
+        ]
+       },
+       {
+        "text": "전년평균 대비 +0.94% 상승했습니다.",
+        "evidence_ids": [
+         "year_avg"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "조회기간 중 최고가는 51,000.00, 최저가는 7,750.00였습니다.",
+        "evidence_ids": [
+         "period_range"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "day_over_day",
+       "major_changes"
+      ],
+      [
+       "week_avg",
+       "major_changes"
+      ],
+      [
+       "month_avg",
+       "major_changes"
+      ],
+      [
+       "year_avg",
+       "major_changes"
+      ],
+      [
+       "period_range",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": true,
+   "warnings": [],
+   "markdown": "# 니켈 분석 요약 — 선택한 광종의 일별 실거래가·최저가·최고가 추이를 보여주는 자료다.\n\n**가격기준**: LME 3개월\n\n## 핵심 진단\n\n2026년 8월 25일 기준 니켈 실거래가는 16,940.00입니다.\n\n## 주요 변화\n\n전일 대비 -0.94% 변동했으며, 전주평균 대비 -0.11%, 전월평균 대비 -0.46% 하락했습니다. 전년평균 대비 +0.94% 상승했습니다.\n\n## 현재 위치\n\n조회기간 중 최고가는 51,000.00, 최저가는 7,750.00였습니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 최신 가격 | 16,940.00 |  |\n| 전일대비 | -0.94 | % |\n| 전주평균대비 | -0.11 | % |\n| 전월평균대비 | -0.46 | % |\n| 전년평균대비 | 0.94 | % |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026년 8월 25일 기준 니켈 실거래가는 16,940.00입니다.",
+      "evidence_ids": [
+       "current_state"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "전일 대비 -0.94% 변동했으며, 전주평균 대비 -0.11%, 전월평균 대비 -0.46% 하락했습니다.",
+      "evidence_ids": [
+       "day_over_day",
+       "week_avg",
+       "month_avg"
+      ]
+     },
+     {
+      "text": "전년평균 대비 +0.94% 상승했습니다.",
+      "evidence_ids": [
+       "year_avg"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "조회기간 중 최고가는 51,000.00, 최저가는 7,750.00였습니다.",
+      "evidence_ids": [
+       "period_range"
+      ]
+     }
+    ]
+   },
+   "elapsed": 10.7
+  },
+  {
+   "combo_key": "minor_metals:가돌리늄|Gadolinium Oxide|99.5|DAY",
+   "page_id": "price",
+   "llm_attempts": [
+    {
+     "elapsed": 11.3,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 8월 25일 기준 가돌리늄 실거래가는 28.81입니다.",
+        "evidence_ids": [
+         "current_state"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "전일 대비 -0.03% 변동했으며, 전주평균 대비 -0.02%, 전월평균 대비 -5.11% 하락했습니다.",
+        "evidence_ids": [
+         "day_over_day",
+         "week_avg",
+         "month_avg"
+        ]
+       },
+       {
+        "text": "전년평균 대비 +0.76% 상승했으며, 2일 연속 하락세를 보이고 있습니다.",
+        "evidence_ids": [
+         "year_avg",
+         "price_streak"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "조회기간 중 최고가는 37.78, 최저가는 22.10였습니다.",
+        "evidence_ids": [
+         "period_range"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "day_over_day",
+       "major_changes"
+      ],
+      [
+       "week_avg",
+       "major_changes"
+      ],
+      [
+       "month_avg",
+       "major_changes"
+      ],
+      [
+       "year_avg",
+       "major_changes"
+      ],
+      [
+       "price_streak",
+       "major_changes"
+      ],
+      [
+       "period_range",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": true,
+   "warnings": [],
+   "markdown": "# 가돌리늄 분석 요약 — 선택한 광종의 일별 실거래가·최저가·최고가 추이를 보여주는 자료다.\n\n**가격기준**: 99.5%min EXW China\n\n## 핵심 진단\n\n2026년 8월 25일 기준 가돌리늄 실거래가는 28.81입니다.\n\n## 주요 변화\n\n전일 대비 -0.03% 변동했으며, 전주평균 대비 -0.02%, 전월평균 대비 -5.11% 하락했습니다. 전년평균 대비 +0.76% 상승했으며, 2일 연속 하락세를 보이고 있습니다.\n\n## 현재 위치\n\n조회기간 중 최고가는 37.78, 최저가는 22.10였습니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 최신 가격 | 28.81 |  |\n| 전일대비 | -0.03 | % |\n| 전주평균대비 | -0.02 | % |\n| 전월평균대비 | -5.11 | % |\n| 전년평균대비 | 0.76 | % |\n| 연속 추세 기간 | 2 | 일 |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026년 8월 25일 기준 가돌리늄 실거래가는 28.81입니다.",
+      "evidence_ids": [
+       "current_state"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "전일 대비 -0.03% 변동했으며, 전주평균 대비 -0.02%, 전월평균 대비 -5.11% 하락했습니다.",
+      "evidence_ids": [
+       "day_over_day",
+       "week_avg",
+       "month_avg"
+      ]
+     },
+     {
+      "text": "전년평균 대비 +0.76% 상승했으며, 2일 연속 하락세를 보이고 있습니다.",
+      "evidence_ids": [
+       "year_avg",
+       "price_streak"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "조회기간 중 최고가는 37.78, 최저가는 22.10였습니다.",
+      "evidence_ids": [
+       "period_range"
+      ]
+     }
+    ]
+   },
+   "elapsed": 11.4
+  },
+  {
+   "combo_key": "minor_metals:갈륨|Gallium Metal|99.99|DAY",
+   "page_id": "price",
+   "llm_attempts": [
+    {
+     "elapsed": 11.8,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 8월 25일 기준 갈륨 실거래가는 440.00입니다.",
+        "evidence_ids": [
+         "current_state"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "전일 대비 0.00% 변동했으며, 전주평균 대비 0.00%, 전월평균 대비 1.82%, 전년평균 대비 9.52% 상승했습니다.",
+        "evidence_ids": [
+         "day_over_day",
+         "week_avg",
+         "month_avg"
+        ]
+       },
+       {
+        "text": "전년평균 대비 9.52% 상승했습니다.",
+        "evidence_ids": [
+         "year_avg"
+        ]
+       },
+       {
+        "text": "5일 연속 보합세를 보이고 있습니다.",
+        "evidence_ids": [
+         "price_streak"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "조회기간 중 최고 956.97, 최저 106.12였습니다.",
+        "evidence_ids": [
+         "period_range"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "day_over_day",
+       "major_changes"
+      ],
+      [
+       "week_avg",
+       "major_changes"
+      ],
+      [
+       "month_avg",
+       "major_changes"
+      ],
+      [
+       "year_avg",
+       "major_changes"
+      ],
+      [
+       "price_streak",
+       "major_changes"
+      ],
+      [
+       "period_range",
+       "current_position"
+      ]
+     ]
+    },
+    {
+     "elapsed": 12.7,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 8월 25일 기준 갈륨 실거래가는 440.00입니다.",
+        "evidence_ids": [
+         "current_state"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "전일 대비 0.00%, 전주평균 대비 0.00%, 전월평균 대비 1.82%, 전년평균 대비 9.52% 상승했습니다.",
+        "evidence_ids": [
+         "day_over_day",
+         "week_avg",
+         "month_avg"
+        ]
+       },
+       {
+        "text": "전년평균 대비 9.52% 상승했습니다.",
+        "evidence_ids": [
+         "year_avg"
+        ]
+       },
+       {
+        "text": "5일 연속 보합세를 보이고 있습니다.",
+        "evidence_ids": [
+         "price_streak"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "조회기간 중 최고가는 956.97, 최저가는 106.12였습니다.",
+        "evidence_ids": [
+         "period_range"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "day_over_day",
+       "major_changes"
+      ],
+      [
+       "week_avg",
+       "major_changes"
+      ],
+      [
+       "month_avg",
+       "major_changes"
+      ],
+      [
+       "year_avg",
+       "major_changes"
+      ],
+      [
+       "price_streak",
+       "major_changes"
+      ],
+      [
+       "period_range",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": false,
+   "warnings": [
+    "LLM 분석요약이 근거 검증을 통과하지 못해 규칙 기반 요약을 반환했다. 검증 사유: 섹션별 분석문 수가 출력 계약과 일치하지 않는다."
+   ],
+   "markdown": "# 갈륨 분석 요약 — 선택한 광종의 일별 실거래가·최저가·최고가 추이를 보여주는 자료다.\n\n**가격기준**: 99.99%min FOB China\n\n## 핵심 진단\n\n2026-08-25 기준 갈륨 실거래가는 440.00이다.\n\n## 주요 변화\n\n전일(2026-08-24) 대비 +0.00% 변동했다. 전주평균(440.00) 대비 +0.00% 수준이다. 전월평균(432.12) 대비 +1.82% 수준이다. 전년평균(401.76) 대비 +9.52% 수준이다. 5일 연속 보합세를 보이고 있다.\n\n## 현재 위치\n\n조회기간 중 최고 956.97, 최저 106.12였다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 최신 가격 | 440.00 |  |\n| 전일대비 | 0.00 | % |\n| 전주평균대비 | 0.00 | % |\n| 전월평균대비 | 1.82 | % |\n| 전년평균대비 | 9.52 | % |\n| 연속 추세 기간 | 5 | 일 |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026-08-25 기준 갈륨 실거래가는 440.00이다.",
+      "evidence_ids": [
+       "current_state"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "전일(2026-08-24) 대비 +0.00% 변동했다.",
+      "evidence_ids": [
+       "day_over_day"
+      ]
+     },
+     {
+      "text": "전주평균(440.00) 대비 +0.00% 수준이다.",
+      "evidence_ids": [
+       "week_avg"
+      ]
+     },
+     {
+      "text": "전월평균(432.12) 대비 +1.82% 수준이다.",
+      "evidence_ids": [
+       "month_avg"
+      ]
+     },
+     {
+      "text": "전년평균(401.76) 대비 +9.52% 수준이다.",
+      "evidence_ids": [
+       "year_avg"
+      ]
+     },
+     {
+      "text": "5일 연속 보합세를 보이고 있다.",
+      "evidence_ids": [
+       "price_streak"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "조회기간 중 최고 956.97, 최저 106.12였다.",
+      "evidence_ids": [
+       "period_range"
+      ]
+     }
+    ]
+   },
+   "elapsed": 24.7
+  },
+  {
+   "combo_key": "minor_metals:갈륨|Gallium Metal|99.99999|DAY",
+   "page_id": "price",
+   "llm_attempts": [
+    {
+     "elapsed": 12.6,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 8월 25일 기준 갈륨 실거래가는 298.44입니다.",
+        "evidence_ids": [
+         "current_state"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "전일 대비 -0.02% 변동했으며, 전주평균 대비 -0.01%, 전월평균 대비 -1.54%, 전년평균 대비 +4.15% 하락 또는 상승했습니다.",
+        "evidence_ids": [
+         "day_over_day",
+         "week_avg",
+         "month_avg"
+        ]
+       },
+       {
+        "text": "전년평균 대비 +4.15% 수준입니다.",
+        "evidence_ids": [
+         "year_avg"
+        ]
+       },
+       {
+        "text": "3일 연속 하락세를 보이고 있습니다.",
+        "evidence_ids": [
+         "price_streak"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "조회기간 중 최고가는 587.60, 최저가는 221.77였습니다.",
+        "evidence_ids": [
+         "period_range"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "day_over_day",
+       "major_changes"
+      ],
+      [
+       "week_avg",
+       "major_changes"
+      ],
+      [
+       "month_avg",
+       "major_changes"
+      ],
+      [
+       "year_avg",
+       "major_changes"
+      ],
+      [
+       "price_streak",
+       "major_changes"
+      ],
+      [
+       "period_range",
+       "current_position"
+      ]
+     ]
+    },
+    {
+     "elapsed": 12.6,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 8월 25일 기준 갈륨 실거래가는 298.44입니다.",
+        "evidence_ids": [
+         "current_state"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "전일 대비 -0.02% 변동했으며, 전주평균 대비 -0.01%, 전월평균 대비 -1.54%, 전년평균 대비 +4.15% 변동했습니다.",
+        "evidence_ids": [
+         "day_over_day",
+         "week_avg",
+         "month_avg"
+        ]
+       },
+       {
+        "text": "전년평균 대비 +4.15% 변동하였으며, 3일 연속 하락세를 보이고 있습니다.",
+        "evidence_ids": [
+         "year_avg",
+         "price_streak"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "조회기간 중 최고가는 587.60, 최저가는 221.77이었습니다.",
+        "evidence_ids": [
+         "period_range"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "day_over_day",
+       "major_changes"
+      ],
+      [
+       "week_avg",
+       "major_changes"
+      ],
+      [
+       "month_avg",
+       "major_changes"
+      ],
+      [
+       "year_avg",
+       "major_changes"
+      ],
+      [
+       "price_streak",
+       "major_changes"
+      ],
+      [
+       "period_range",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": false,
+   "warnings": [
+    "LLM 분석요약이 근거 검증을 통과하지 못해 규칙 기반 요약을 반환했다. 검증 사유: 근거에 없는 숫자나 날짜를 사용했다."
+   ],
+   "markdown": "# 갈륨 분석 요약 — 선택한 광종의 일별 실거래가·최저가·최고가 추이를 보여주는 자료다.\n\n**가격기준**: 99.99999%min EXW China\n\n## 핵심 진단\n\n2026-08-25 기준 갈륨 실거래가는 298.44이다.\n\n## 주요 변화\n\n전일(2026-08-24) 대비 -0.02% 변동했다. 전주평균(298.47) 대비 -0.01% 수준이다. 전월평균(303.12) 대비 -1.54% 수준이다. 전년평균(286.55) 대비 +4.15% 수준이다. 3일 연속 하락세를 보이고 있다.\n\n## 현재 위치\n\n조회기간 중 최고 587.60, 최저 221.77였다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 최신 가격 | 298.44 |  |\n| 전일대비 | -0.02 | % |\n| 전주평균대비 | -0.01 | % |\n| 전월평균대비 | -1.54 | % |\n| 전년평균대비 | 4.15 | % |\n| 연속 추세 기간 | 3 | 일 |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026-08-25 기준 갈륨 실거래가는 298.44이다.",
+      "evidence_ids": [
+       "current_state"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "전일(2026-08-24) 대비 -0.02% 변동했다.",
+      "evidence_ids": [
+       "day_over_day"
+      ]
+     },
+     {
+      "text": "전주평균(298.47) 대비 -0.01% 수준이다.",
+      "evidence_ids": [
+       "week_avg"
+      ]
+     },
+     {
+      "text": "전월평균(303.12) 대비 -1.54% 수준이다.",
+      "evidence_ids": [
+       "month_avg"
+      ]
+     },
+     {
+      "text": "전년평균(286.55) 대비 +4.15% 수준이다.",
+      "evidence_ids": [
+       "year_avg"
+      ]
+     },
+     {
+      "text": "3일 연속 하락세를 보이고 있다.",
+      "evidence_ids": [
+       "price_streak"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "조회기간 중 최고 587.60, 최저 221.77였다.",
+      "evidence_ids": [
+       "period_range"
+      ]
+     }
+    ]
+   },
+   "elapsed": 25.2
+  },
+  {
+   "combo_key": "minor_metals:갈륨|Gallium Metal|99.99|DAY",
+   "page_id": "price",
+   "llm_attempts": [
+    {
+     "elapsed": 12.0,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 8월 25일 기준 갈륨 실거래가는 267.49입니다.",
+        "evidence_ids": [
+         "current_state"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "전일 대비 -0.02% 변동했으며, 전주평균 대비 -0.45%, 전월평균 대비 -1.84%, 전년평균 대비 -0.14% 하락했습니다.",
+        "evidence_ids": [
+         "day_over_day",
+         "week_avg",
+         "month_avg"
+        ]
+       },
+       {
+        "text": "전년평균 대비 -0.14% 하락했습니다.",
+        "evidence_ids": [
+         "year_avg"
+        ]
+       },
+       {
+        "text": "3일 연속 하락세를 보이고 있습니다.",
+        "evidence_ids": [
+         "price_streak"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "조회기간 중 최고 542.40, 최저 102.01였습니다.",
+        "evidence_ids": [
+         "period_range"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "day_over_day",
+       "major_changes"
+      ],
+      [
+       "week_avg",
+       "major_changes"
+      ],
+      [
+       "month_avg",
+       "major_changes"
+      ],
+      [
+       "year_avg",
+       "major_changes"
+      ],
+      [
+       "price_streak",
+       "major_changes"
+      ],
+      [
+       "period_range",
+       "current_position"
+      ]
+     ]
+    },
+    {
+     "elapsed": 12.1,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 8월 25일 기준 갈륨 실거래가는 267.49입니다.",
+        "evidence_ids": [
+         "current_state"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "전일 대비 -0.02% 변동했으며, 전주평균 대비 -0.45%, 전월평균 대비 -1.84% 하락했습니다.",
+        "evidence_ids": [
+         "day_over_day",
+         "week_avg",
+         "month_avg"
+        ]
+       },
+       {
+        "text": "전년평균 대비 -0.14% 하락했으며, 3일 연속 하락세를 보이고 있습니다.",
+        "evidence_ids": [
+         "year_avg",
+         "price_streak"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "조회기간 중 최고가는 542.40, 최저가는 102.01이었습니다.",
+        "evidence_ids": [
+         "period_range"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "day_over_day",
+       "major_changes"
+      ],
+      [
+       "week_avg",
+       "major_changes"
+      ],
+      [
+       "month_avg",
+       "major_changes"
+      ],
+      [
+       "year_avg",
+       "major_changes"
+      ],
+      [
+       "price_streak",
+       "major_changes"
+      ],
+      [
+       "period_range",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": true,
+   "warnings": [],
+   "markdown": "# 갈륨 분석 요약 — 선택한 광종의 일별 실거래가·최저가·최고가 추이를 보여주는 자료다.\n\n**가격기준**: 99.99%min EXW China\n\n## 핵심 진단\n\n2026년 8월 25일 기준 갈륨 실거래가는 267.49입니다.\n\n## 주요 변화\n\n전일 대비 -0.02% 변동했으며, 전주평균 대비 -0.45%, 전월평균 대비 -1.84% 하락했습니다. 전년평균 대비 -0.14% 하락했으며, 3일 연속 하락세를 보이고 있습니다.\n\n## 현재 위치\n\n조회기간 중 최고가는 542.40, 최저가는 102.01이었습니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 최신 가격 | 267.49 |  |\n| 전일대비 | -0.02 | % |\n| 전주평균대비 | -0.45 | % |\n| 전월평균대비 | -1.84 | % |\n| 전년평균대비 | -0.14 | % |\n| 연속 추세 기간 | 3 | 일 |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026년 8월 25일 기준 갈륨 실거래가는 267.49입니다.",
+      "evidence_ids": [
+       "current_state"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "전일 대비 -0.02% 변동했으며, 전주평균 대비 -0.45%, 전월평균 대비 -1.84% 하락했습니다.",
+      "evidence_ids": [
+       "day_over_day",
+       "week_avg",
+       "month_avg"
+      ]
+     },
+     {
+      "text": "전년평균 대비 -0.14% 하락했으며, 3일 연속 하락세를 보이고 있습니다.",
+      "evidence_ids": [
+       "year_avg",
+       "price_streak"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "조회기간 중 최고가는 542.40, 최저가는 102.01이었습니다.",
+      "evidence_ids": [
+       "period_range"
+      ]
+     }
+    ]
+   },
+   "elapsed": 24.2
+  },
+  {
+   "combo_key": "mineral_index:composite_1y",
+   "page_id": "indicator_composite",
+   "llm_attempts": [
+    {
+     "elapsed": 8.6,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 8월 24일 기준 광물종합지수는 3,539.45포인트로, 전주 및 한 달 전 대비 모두 상승세를 나타냈습니다.",
+        "evidence_ids": [
+         "current_state",
+         "composite_recent_changes"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "광물종합지수는 전주 대비 2.01% 상승하고 한 달 전과 비교하면 2.93% 상승하며 전반적인 증가 흐름을 보였습니다.",
+        "evidence_ids": [
+         "composite_recent_changes"
+        ]
+       },
+       {
+        "text": "하위지수별로는 최근 한 주 동안 메이저금속지수가 0.46% 하락한 반면 희소금속지수는 0.19% 상승하며 서로 다른 방향성을 보였으나, 최근 한 달 기준으로는 메이저금속지수가 0.67% 오른 것에 비해 희소금속지수는 1.09% 하락했습니다.",
+        "evidence_ids": [
+         "weekly_subindex_comparison",
+         "monthly_subindex_comparison"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "현재 지수는 조회기간 내 최저치인 2,616.06포인트보다 35.30% 높은 수준이지만, 최고치인 3,682.58포인트보다는 3.89% 낮은 위치에 있습니다.",
+        "evidence_ids": [
+         "period_range_position"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "composite_recent_changes",
+       "major_changes"
+      ],
+      [
+       "weekly_subindex_comparison",
+       "major_changes"
+      ],
+      [
+       "monthly_subindex_comparison",
+       "major_changes"
+      ],
+      [
+       "period_range_position",
+       "current_position"
+      ]
+     ]
+    },
+    {
+     "elapsed": 8.5,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 8월 24일 기준 광물종합지수는 3,539.45포인트로, 전주 및 한 달 전과 비교하여 모두 상승했습니다.",
+        "evidence_ids": [
+         "current_state",
+         "composite_recent_changes"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "광물종합지수는 전주 대비 2.01% 상승하고 한 달 전 대비 2.93% 상승하며 전반적인 오름세를 보였습니다.",
+        "evidence_ids": [
+         "composite_recent_changes"
+        ]
+       },
+       {
+        "text": "하위지수별로는 최근 한 주 동안 메이저금속지수는 0.46% 하락한 반면 희소금속지수는 0.19% 상승했으며, 최근 한 달간은 메이저금속지수가 0.67% 오른 것에 비해 희소금속지수는 1.09% 하락하며 서로 상반된 흐름을 나타냈습니다.",
+        "evidence_ids": [
+         "weekly_subindex_comparison",
+         "monthly_subindex_comparison"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "현재 지수는 조회기간 내 최저치인 2,616.06포인트보다 35.30% 높은 수준이지만, 최고치인 3,682.58포인트보다는 3.89% 낮은 위치에 있습니다.",
+        "evidence_ids": [
+         "period_range_position"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "composite_recent_changes",
+       "major_changes"
+      ],
+      [
+       "weekly_subindex_comparison",
+       "major_changes"
+      ],
+      [
+       "monthly_subindex_comparison",
+       "major_changes"
+      ],
+      [
+       "period_range_position",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": false,
+   "warnings": [
+    "조회기간에 한 달 또는 1년 비교값이 없어 중장기 비교를 제외했다.",
+    "LLM 분석요약이 근거 검증을 통과하지 못해 규칙 기반 요약을 반환했다. 검증 사유: evidence_id를 다른 출력 섹션에 사용했다."
+   ],
+   "markdown": "# 광물종합지수 분석 요약 — 광물종합지수와 메이저금속·희소금속 하위지수의 현재 수준과 조회기간 변화를 함께 보여주는 일간 지수다.\n\n## 핵심 진단\n\n2026년 8월 24일 광물종합지수는 3,539.45포인트다.\n\n## 주요 변화\n\n광물종합지수는 전주보다 2.01% 올랐지만 한 달 전보다 2.93% 올랐다. 최근 한 주 동안 메이저금속지수는 0.46% 내린 반면 희소금속지수는 0.19% 올랐다. 최근 한 달 동안 메이저금속지수는 0.67% 오른 반면 희소금속지수는 1.09% 내렸다.\n\n## 현재 위치\n\n현재 광물종합지수는 조회기간 최고치인 3,682.58포인트보다 3.89% 낮고, 최저치인 2,616.06포인트보다 35.30% 높다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 현재 광물종합지수 | 3,539.45 | 포인트 |\n| 현재 메이저금속지수 | 2,968.06 | 포인트 |\n| 현재 희소금속지수 | 2,911.80 | 포인트 |\n| 전주 대비 | 2.01 | % |\n| 전월 대비 | 2.93 | % |\n\n## 참고\n\n- 조회기간에 한 달 또는 1년 비교값이 없어 중장기 비교를 제외했다.\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026년 8월 24일 광물종합지수는 3,539.45포인트다.",
+      "evidence_ids": [
+       "current_state"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "광물종합지수는 전주보다 2.01% 올랐지만 한 달 전보다 2.93% 올랐다.",
+      "evidence_ids": [
+       "composite_recent_changes"
+      ]
+     },
+     {
+      "text": "최근 한 주 동안 메이저금속지수는 0.46% 내린 반면 희소금속지수는 0.19% 올랐다.",
+      "evidence_ids": [
+       "weekly_subindex_comparison"
+      ]
+     },
+     {
+      "text": "최근 한 달 동안 메이저금속지수는 0.67% 오른 반면 희소금속지수는 1.09% 내렸다.",
+      "evidence_ids": [
+       "monthly_subindex_comparison"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "현재 광물종합지수는 조회기간 최고치인 3,682.58포인트보다 3.89% 낮고, 최저치인 2,616.06포인트보다 35.30% 높다.",
+      "evidence_ids": [
+       "period_range_position"
+      ]
+     }
+    ]
+   },
+   "elapsed": 17.1
+  },
+  {
+   "combo_key": "market_trend:갈륨",
+   "page_id": "indicator_market",
+   "llm_attempts": [
+    {
+     "elapsed": 6.3,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 7월 기준 갈륨의 시장동향지표는 30.38점으로 주의 단계이며, 최근 한 달간 점수가 3.66점 하락하며 중장기 가격위험이 높아지는 방향으로 나타났습니다.",
+        "evidence_ids": [
+         "current_state",
+         "latest_score_change"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "주의 단계는 19개월째 유지 중이며, 가장 최근에는 2025년 1월에 신중 단계에서 주의 단계로 전환되었습니다.",
+        "evidence_ids": [
+         "grade_streak",
+         "grade_transition"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "최근 한 달 가격이 4.42% 상승하며 점수가 하락한 가운데, 현재 점수 30.38점은 조회기간 평균인 45.99점보다 15.61점 낮아 평균 대비 중장기 가격위험이 높은 수준입니다.",
+        "evidence_ids": [
+         "latest_price_change",
+         "period_average_position"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "latest_score_change",
+       "core_diagnosis"
+      ],
+      [
+       "grade_streak",
+       "major_changes"
+      ],
+      [
+       "grade_transition",
+       "major_changes"
+      ],
+      [
+       "largest_monthly_score_change",
+       "major_changes"
+      ],
+      [
+       "latest_price_change",
+       "current_position"
+      ],
+      [
+       "period_average_position",
+       "current_position"
+      ]
+     ]
+    },
+    {
+     "elapsed": 7.7,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 7월 기준 갈륨의 시장동향지표는 30.38점으로 주의 단계이며, 최근 한 달간 점수가 3.66점 하락하며 중장기 가격위험이 높아지는 방향으로 나타났습니다.",
+        "evidence_ids": [
+         "current_state",
+         "latest_score_change"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "가장 최근인 2025년 1월에 신중에서 주의 단계로 전환된 이후, 주의 단계를 19개월째 유지 중이며 조회기간 중 점수 변화 폭이 가장 컸던 시점은 21.69점이 상승했던 2023년 3월이었습니다.",
+        "evidence_ids": [
+         "grade_transition",
+         "grade_streak",
+         "largest_monthly_score_change"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "최근 한 달간 가격이 4.42% 상승하고 점수가 하락함에 따라 중장기 가격위험이 높아졌으나, 현재 점수 30.38점은 조회기간 평균인 45.99점보다 15.61점 낮아 평균 대비 높은 위험 수준을 보이고 있습니다.",
+        "evidence_ids": [
+         "latest_price_change",
+         "period_average_position"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "latest_score_change",
+       "core_diagnosis"
+      ],
+      [
+       "grade_streak",
+       "major_changes"
+      ],
+      [
+       "grade_transition",
+       "major_changes"
+      ],
+      [
+       "largest_monthly_score_change",
+       "major_changes"
+      ],
+      [
+       "latest_price_change",
+       "current_position"
+      ],
+      [
+       "period_average_position",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": true,
+   "warnings": [],
+   "markdown": "# 갈륨 분석 요약 — 국내 고수요 광종에 대한 중장기 가격리스크 표준척도로서 0~100 값을 가지며 신중·주의·중립·관심·기회의 5개 등급으로 분류한다.\n\n**현재 단계**: 주의 (30.38점)\n\n## 핵심 진단\n\n2026년 7월 기준 갈륨의 시장동향지표는 30.38점으로 주의 단계이며, 최근 한 달간 점수가 3.66점 하락하며 중장기 가격위험이 높아지는 방향으로 나타났습니다.\n\n## 주요 변화\n\n가장 최근인 2025년 1월에 신중에서 주의 단계로 전환된 이후, 주의 단계를 19개월째 유지 중이며 조회기간 중 점수 변화 폭이 가장 컸던 시점은 21.69점이 상승했던 2023년 3월이었습니다.\n\n## 현재 위치\n\n최근 한 달간 가격이 4.42% 상승하고 점수가 하락함에 따라 중장기 가격위험이 높아졌으나, 현재 점수 30.38점은 조회기간 평균인 45.99점보다 15.61점 낮아 평균 대비 높은 위험 수준을 보이고 있습니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 현재 점수 | 30.38 | 점 |\n| 현재 단계 | 주의 |  |\n| 최근 점수 변화 | -3.66 | 점 |\n| 현재 단계 연속기간 | 19 | 개월 |\n| 단계 전환 횟수 | 27 | 회 |\n| 최대 월간 점수 변화 | 21.69 | 점 |\n| 최근 가격 변화율 | 4.42 | % |\n| 조회기간 평균 점수 | 45.99 | 점 |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026년 7월 기준 갈륨의 시장동향지표는 30.38점으로 주의 단계이며, 최근 한 달간 점수가 3.66점 하락하며 중장기 가격위험이 높아지는 방향으로 나타났습니다.",
+      "evidence_ids": [
+       "current_state",
+       "latest_score_change"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "가장 최근인 2025년 1월에 신중에서 주의 단계로 전환된 이후, 주의 단계를 19개월째 유지 중이며 조회기간 중 점수 변화 폭이 가장 컸던 시점은 21.69점이 상승했던 2023년 3월이었습니다.",
+      "evidence_ids": [
+       "grade_transition",
+       "grade_streak",
+       "largest_monthly_score_change"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "최근 한 달간 가격이 4.42% 상승하고 점수가 하락함에 따라 중장기 가격위험이 높아졌으나, 현재 점수 30.38점은 조회기간 평균인 45.99점보다 15.61점 낮아 평균 대비 높은 위험 수준을 보이고 있습니다.",
+      "evidence_ids": [
+       "latest_price_change",
+       "period_average_position"
+      ]
+     }
+    ]
+   },
+   "elapsed": 14.0
+  },
+  {
+   "combo_key": "market_trend:규소",
+   "page_id": "indicator_market",
+   "llm_attempts": [
+    {
+     "elapsed": 6.8,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 7월 기준 규소의 시장동향지표는 73.19점으로 관심 단계이며, 최근 한 달간 점수가 0.40점 하락하며 중장기 가격위험이 높아지는 방향으로 움직였습니다.",
+        "evidence_ids": [
+         "current_state",
+         "latest_score_change"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "가장 최근인 2026년 1월에 기회 단계에서 관심 단계로 하락했으며, 이후 관심 단계를 7개월째 유지 중입니다.",
+        "evidence_ids": [
+         "grade_transition",
+         "grade_streak"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "최근 한 달간 가격은 변동이 없었으나, 점수는 0.40점 하락하여 중장기 가격위험이 높아진 반면 현재 점수 73.19점은 조회기간 평균인 58.17점보다 15.02점 높아 평균 대비 위험은 낮은 수준입니다.",
+        "evidence_ids": [
+         "latest_price_change",
+         "latest_score_change",
+         "period_average_position"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "latest_score_change",
+       "core_diagnosis"
+      ],
+      [
+       "grade_streak",
+       "major_changes"
+      ],
+      [
+       "grade_transition",
+       "major_changes"
+      ],
+      [
+       "largest_monthly_score_change",
+       "major_changes"
+      ],
+      [
+       "latest_price_change",
+       "current_position"
+      ],
+      [
+       "period_average_position",
+       "current_position"
+      ]
+     ]
+    },
+    {
+     "elapsed": 7.0,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 7월 기준 규소의 시장동향지표는 73.19점으로 관심 단계이며, 최근 한 달간 점수가 0.40점 하락하며 중장기 가격위험이 높아지는 방향으로 움직였습니다.",
+        "evidence_ids": [
+         "current_state",
+         "latest_score_change"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "가장 최근인 2026년 1월에 기회 단계에서 관심 단계로 하락했으며, 이후 관심 단계를 7개월째 유지 중입니다.",
+        "evidence_ids": [
+         "grade_transition",
+         "grade_streak"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "최근 한 달간 가격 변동은 없었으나, 점수가 0.40점 하락하며 단기적인 위험은 높아진 반면 현재 점수는 조회기간 평균인 58.17점보다 15.02점 높은 73.19점으로 나타나 평균 대비 중장기 가격위험은 낮은 수준입니다.",
+        "evidence_ids": [
+         "latest_price_change",
+         "latest_score_change",
+         "period_average_position"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "latest_score_change",
+       "core_diagnosis"
+      ],
+      [
+       "grade_streak",
+       "major_changes"
+      ],
+      [
+       "grade_transition",
+       "major_changes"
+      ],
+      [
+       "largest_monthly_score_change",
+       "major_changes"
+      ],
+      [
+       "latest_price_change",
+       "current_position"
+      ],
+      [
+       "period_average_position",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": false,
+   "warnings": [
+    "LLM 분석요약이 근거 검증을 통과하지 못해 규칙 기반 요약을 반환했다. 검증 사유: evidence_id를 다른 출력 섹션에 사용했다."
+   ],
+   "markdown": "# 규소 분석 요약 — 국내 고수요 광종에 대한 중장기 가격리스크 표준척도로서 0~100 값을 가지며 신중·주의·중립·관심·기회의 5개 등급으로 분류한다.\n\n**현재 단계**: 관심 (73.19점)\n\n## 핵심 진단\n\n2026-07 규소 시장동향지표는 73.19점으로 관심 단계다. 최근 한 달에는 점수가 0.40점 내려 중장기 가격위험이 높아지는 방향으로 움직였다.\n\n## 주요 변화\n\n관심 단계는 7개월 연속 유지됐다. 가장 최근에는 2026-01에 기회에서 관심 단계로 전환됐다. 조회기간 중 월간 점수 변화 폭이 가장 컸던 때는 2017-08로, 직전월보다 20.71점 내려 움직였다.\n\n## 현재 위치\n\n같은 최근 한 달 동안 가격은 0.00% 같았다. 최근 한 달 중장기 가격위험은 높아졌지만, 현재 점수 73.19점은 조회기간 평균 58.17점보다 15.02점 높아, 중장기 가격위험이 조회기간 평균보다 낮은 수준이다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 현재 점수 | 73.19 | 점 |\n| 현재 단계 | 관심 |  |\n| 최근 점수 변화 | -0.40 | 점 |\n| 현재 단계 연속기간 | 7 | 개월 |\n| 단계 전환 횟수 | 17 | 회 |\n| 최대 월간 점수 변화 | -20.71 | 점 |\n| 최근 가격 변화율 | 0.00 | % |\n| 조회기간 평균 점수 | 58.17 | 점 |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026-07 규소 시장동향지표는 73.19점으로 관심 단계다.",
+      "evidence_ids": [
+       "current_state"
+      ]
+     },
+     {
+      "text": "최근 한 달에는 점수가 0.40점 내려 중장기 가격위험이 높아지는 방향으로 움직였다.",
+      "evidence_ids": [
+       "latest_score_change"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "관심 단계는 7개월 연속 유지됐다.",
+      "evidence_ids": [
+       "grade_streak"
+      ]
+     },
+     {
+      "text": "가장 최근에는 2026-01에 기회에서 관심 단계로 전환됐다.",
+      "evidence_ids": [
+       "grade_transition"
+      ]
+     },
+     {
+      "text": "조회기간 중 월간 점수 변화 폭이 가장 컸던 때는 2017-08로, 직전월보다 20.71점 내려 움직였다.",
+      "evidence_ids": [
+       "largest_monthly_score_change"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "같은 최근 한 달 동안 가격은 0.00% 같았다.",
+      "evidence_ids": [
+       "latest_price_change"
+      ]
+     },
+     {
+      "text": "최근 한 달 중장기 가격위험은 높아졌지만, 현재 점수 73.19점은 조회기간 평균 58.17점보다 15.02점 높아, 중장기 가격위험이 조회기간 평균보다 낮은 수준이다.",
+      "evidence_ids": [
+       "period_average_position"
+      ]
+     }
+    ]
+   },
+   "elapsed": 13.8
+  },
+  {
+   "combo_key": "market_trend:네오디뮴",
+   "page_id": "indicator_market",
+   "llm_attempts": [
+    {
+     "elapsed": 6.6,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 7월 기준 네오디뮴의 시장동향지표는 9.21점으로 신중 단계이며, 최근 한 달간 점수가 2.26점 하락하며 중장기 가격위험이 높아지는 흐름을 보였습니다.",
+        "evidence_ids": [
+         "current_state",
+         "latest_score_change"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "가장 최근인 2026년 2월에 주의 단계에서 신중 단계로 전환된 이후, 해당 단계가 6개월째 유지되고 있습니다.",
+        "evidence_ids": [
+         "grade_transition",
+         "grade_streak"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "최근 한 달간 가격이 4.70% 상승하며 점수가 하락한 가운데, 현재 점수 9.21점은 조회기간 평균인 46.90점보다 37.69점 낮아 평균 대비 중장기 가격위험이 높은 수준입니다.",
+        "evidence_ids": [
+         "latest_price_change",
+         "period_average_position"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "latest_score_change",
+       "core_diagnosis"
+      ],
+      [
+       "grade_streak",
+       "major_changes"
+      ],
+      [
+       "grade_transition",
+       "major_changes"
+      ],
+      [
+       "largest_monthly_score_change",
+       "major_changes"
+      ],
+      [
+       "latest_price_change",
+       "current_position"
+      ],
+      [
+       "period_average_position",
+       "current_position"
+      ]
+     ]
+    },
+    {
+     "elapsed": 7.6,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 7월 기준 네오디뮴의 시장동향지표는 9.21점으로 신중 단계이며, 최근 한 달간 점수가 2.26점 하락하며 중장기 가격위험이 높아지는 방향으로 나타났습니다.",
+        "evidence_ids": [
+         "current_state",
+         "latest_score_change"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "가장 최근인 2026년 2월에 주의에서 신중 단계로 전환된 이후 신중 단계를 6개월째 유지 중이며, 조회기간 중 점수 변화 폭이 가장 컸던 시점은 2020년 12월로 직전월 대비 25.69점이 하락했습니다.",
+        "evidence_ids": [
+         "grade_transition",
+         "grade_streak",
+         "largest_monthly_score_change"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "최근 한 달간 가격이 4.70% 상승하며 중장기 가격위험이 높아진 가운데, 현재 점수 9.21점은 조회기간 평균인 46.90점보다 37.69점 낮아 평균 대비 높은 위험 수준을 보이고 있습니다.",
+        "evidence_ids": [
+         "latest_price_change",
+         "period_average_position"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "latest_score_change",
+       "core_diagnosis"
+      ],
+      [
+       "grade_streak",
+       "major_changes"
+      ],
+      [
+       "grade_transition",
+       "major_changes"
+      ],
+      [
+       "largest_monthly_score_change",
+       "major_changes"
+      ],
+      [
+       "latest_price_change",
+       "current_position"
+      ],
+      [
+       "period_average_position",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": true,
+   "warnings": [],
+   "markdown": "# 네오디뮴 분석 요약 — 국내 고수요 광종에 대한 중장기 가격리스크 표준척도로서 0~100 값을 가지며 신중·주의·중립·관심·기회의 5개 등급으로 분류한다.\n\n**현재 단계**: 신중 (9.21점)\n\n## 핵심 진단\n\n2026년 7월 기준 네오디뮴의 시장동향지표는 9.21점으로 신중 단계이며, 최근 한 달간 점수가 2.26점 하락하며 중장기 가격위험이 높아지는 방향으로 나타났습니다.\n\n## 주요 변화\n\n가장 최근인 2026년 2월에 주의에서 신중 단계로 전환된 이후 신중 단계를 6개월째 유지 중이며, 조회기간 중 점수 변화 폭이 가장 컸던 시점은 2020년 12월로 직전월 대비 25.69점이 하락했습니다.\n\n## 현재 위치\n\n최근 한 달간 가격이 4.70% 상승하며 중장기 가격위험이 높아진 가운데, 현재 점수 9.21점은 조회기간 평균인 46.90점보다 37.69점 낮아 평균 대비 높은 위험 수준을 보이고 있습니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 현재 점수 | 9.21 | 점 |\n| 현재 단계 | 신중 |  |\n| 최근 점수 변화 | -2.26 | 점 |\n| 현재 단계 연속기간 | 6 | 개월 |\n| 단계 전환 횟수 | 31 | 회 |\n| 최대 월간 점수 변화 | -25.69 | 점 |\n| 최근 가격 변화율 | 4.70 | % |\n| 조회기간 평균 점수 | 46.90 | 점 |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026년 7월 기준 네오디뮴의 시장동향지표는 9.21점으로 신중 단계이며, 최근 한 달간 점수가 2.26점 하락하며 중장기 가격위험이 높아지는 방향으로 나타났습니다.",
+      "evidence_ids": [
+       "current_state",
+       "latest_score_change"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "가장 최근인 2026년 2월에 주의에서 신중 단계로 전환된 이후 신중 단계를 6개월째 유지 중이며, 조회기간 중 점수 변화 폭이 가장 컸던 시점은 2020년 12월로 직전월 대비 25.69점이 하락했습니다.",
+      "evidence_ids": [
+       "grade_transition",
+       "grade_streak",
+       "largest_monthly_score_change"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "최근 한 달간 가격이 4.70% 상승하며 중장기 가격위험이 높아진 가운데, 현재 점수 9.21점은 조회기간 평균인 46.90점보다 37.69점 낮아 평균 대비 높은 위험 수준을 보이고 있습니다.",
+      "evidence_ids": [
+       "latest_price_change",
+       "period_average_position"
+      ]
+     }
+    ]
+   },
+   "elapsed": 14.2
+  },
+  {
+   "combo_key": "market_trend:니오븀",
+   "page_id": "indicator_market",
+   "llm_attempts": [
+    {
+     "elapsed": 7.6,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 7월 기준 니오븀의 시장동향지표는 10.65점으로 신중 단계이며, 최근 한 달간 점수가 4.57점 상승하며 중장기 가격위험이 낮아지는 흐름을 보였습니다.",
+        "evidence_ids": [
+         "current_state",
+         "latest_score_change"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "가장 최근인 2026년 1월에 주의 단계에서 신중 단계로 전환된 이후, 신중 단계를 7개월째 유지 중이며 조회기간 중 가장 큰 점수 변동은 2015년 1월에 39.40점 하락하며 나타났습니다.",
+        "evidence_ids": [
+         "grade_transition",
+         "grade_streak",
+         "largest_monthly_score_change"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "최근 한 달간 가격이 2.46% 하락하며 단기적인 지표 개선이 나타났지만, 현재 점수는 10.65점으로 조회기간 평균인 60.27점보다 49.62점 낮아 평균 대비 중장기 가격위험이 높은 수준입니다.",
+        "evidence_ids": [
+         "latest_price_change",
+         "period_average_position"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "latest_score_change",
+       "core_diagnosis"
+      ],
+      [
+       "grade_streak",
+       "major_changes"
+      ],
+      [
+       "grade_transition",
+       "major_changes"
+      ],
+      [
+       "largest_monthly_score_change",
+       "major_changes"
+      ],
+      [
+       "latest_price_change",
+       "current_position"
+      ],
+      [
+       "period_average_position",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": true,
+   "warnings": [],
+   "markdown": "# 니오븀 분석 요약 — 국내 고수요 광종에 대한 중장기 가격리스크 표준척도로서 0~100 값을 가지며 신중·주의·중립·관심·기회의 5개 등급으로 분류한다.\n\n**현재 단계**: 신중 (10.65점)\n\n## 핵심 진단\n\n2026년 7월 기준 니오븀의 시장동향지표는 10.65점으로 신중 단계이며, 최근 한 달간 점수가 4.57점 상승하며 중장기 가격위험이 낮아지는 흐름을 보였습니다.\n\n## 주요 변화\n\n가장 최근인 2026년 1월에 주의 단계에서 신중 단계로 전환된 이후, 신중 단계를 7개월째 유지 중이며 조회기간 중 가장 큰 점수 변동은 2015년 1월에 39.40점 하락하며 나타났습니다.\n\n## 현재 위치\n\n최근 한 달간 가격이 2.46% 하락하며 단기적인 지표 개선이 나타났지만, 현재 점수는 10.65점으로 조회기간 평균인 60.27점보다 49.62점 낮아 평균 대비 중장기 가격위험이 높은 수준입니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 현재 점수 | 10.65 | 점 |\n| 현재 단계 | 신중 |  |\n| 최근 점수 변화 | 4.57 | 점 |\n| 현재 단계 연속기간 | 7 | 개월 |\n| 단계 전환 횟수 | 37 | 회 |\n| 최대 월간 점수 변화 | -39.40 | 점 |\n| 최근 가격 변화율 | -2.46 | % |\n| 조회기간 평균 점수 | 60.27 | 점 |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026년 7월 기준 니오븀의 시장동향지표는 10.65점으로 신중 단계이며, 최근 한 달간 점수가 4.57점 상승하며 중장기 가격위험이 낮아지는 흐름을 보였습니다.",
+      "evidence_ids": [
+       "current_state",
+       "latest_score_change"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "가장 최근인 2026년 1월에 주의 단계에서 신중 단계로 전환된 이후, 신중 단계를 7개월째 유지 중이며 조회기간 중 가장 큰 점수 변동은 2015년 1월에 39.40점 하락하며 나타났습니다.",
+      "evidence_ids": [
+       "grade_transition",
+       "grade_streak",
+       "largest_monthly_score_change"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "최근 한 달간 가격이 2.46% 하락하며 단기적인 지표 개선이 나타났지만, 현재 점수는 10.65점으로 조회기간 평균인 60.27점보다 49.62점 낮아 평균 대비 중장기 가격위험이 높은 수준입니다.",
+      "evidence_ids": [
+       "latest_price_change",
+       "period_average_position"
+      ]
+     }
+    ]
+   },
+   "elapsed": 7.6
+  },
+  {
+   "combo_key": "market_trend:니켈",
+   "page_id": "indicator_market",
+   "llm_attempts": [
+    {
+     "elapsed": 6.8,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 7월 기준 니켈의 시장동향지표는 60.03점으로 관심 단계이며, 최근 한 달간 점수가 7.65점 상승하며 중장기 가격위험이 낮아지는 흐름을 보였습니다.",
+        "evidence_ids": [
+         "current_state",
+         "latest_score_change"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "2026년 7월에 중립에서 관심 단계로 전환되었으며, 조회기간 중 점수 변화 폭이 가장 컸던 시점은 46.87점이 상승했던 2008년 11월입니다.",
+        "evidence_ids": [
+         "grade_transition",
+         "largest_monthly_score_change"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "최근 한 달간 가격이 5.70% 하락한 가운데, 현재 점수는 60.03점으로 조회기간 평균인 46.91점보다 13.12점 높아 중장기 가격위험이 평균 대비 낮은 수준입니다.",
+        "evidence_ids": [
+         "latest_price_change",
+         "period_average_position"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "latest_score_change",
+       "core_diagnosis"
+      ],
+      [
+       "grade_streak",
+       "major_changes"
+      ],
+      [
+       "grade_transition",
+       "major_changes"
+      ],
+      [
+       "largest_monthly_score_change",
+       "major_changes"
+      ],
+      [
+       "latest_price_change",
+       "current_position"
+      ],
+      [
+       "period_average_position",
+       "current_position"
+      ]
+     ]
+    },
+    {
+     "elapsed": 6.8,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 7월 기준 니켈의 시장동향지표는 60.03점으로 관심 단계이며, 최근 한 달간 점수가 7.65점 상승하며 중장기 가격위험이 낮아지는 흐름을 보였습니다.",
+        "evidence_ids": [
+         "current_state",
+         "latest_score_change"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "2026년 7월에 중립에서 관심 단계로 전환되었으며, 조회기간 중 점수 변화 폭이 가장 컸던 시점은 2008년 11월로 직전월 대비 46.87점이 상승했습니다.",
+        "evidence_ids": [
+         "grade_transition",
+         "largest_monthly_score_change"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "최근 한 달간 가격이 5.70% 하락한 가운데, 현재 점수는 60.03점으로 조회기간 평균인 46.91점보다 13.12점 높아 중장기 가격위험이 평균 대비 낮은 수준입니다.",
+        "evidence_ids": [
+         "latest_price_change",
+         "period_average_position"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "latest_score_change",
+       "core_diagnosis"
+      ],
+      [
+       "grade_streak",
+       "major_changes"
+      ],
+      [
+       "grade_transition",
+       "major_changes"
+      ],
+      [
+       "largest_monthly_score_change",
+       "major_changes"
+      ],
+      [
+       "latest_price_change",
+       "current_position"
+      ],
+      [
+       "period_average_position",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": false,
+   "warnings": [
+    "LLM 분석요약이 근거 검증을 통과하지 못해 규칙 기반 요약을 반환했다. 검증 사유: 모든 evidence_id를 정확히 한 번씩 사용하지 않았다."
+   ],
+   "markdown": "# 니켈 분석 요약 — 국내 고수요 광종에 대한 중장기 가격리스크 표준척도로서 0~100 값을 가지며 신중·주의·중립·관심·기회의 5개 등급으로 분류한다.\n\n**현재 단계**: 관심 (60.03점)\n\n## 핵심 진단\n\n2026-07 니켈 시장동향지표는 60.03점으로 관심 단계다. 최근 한 달에는 점수가 7.65점 올라 중장기 가격위험이 낮아지는 방향으로 움직였다.\n\n## 주요 변화\n\n관심 단계는 1개월 연속 유지됐다. 가장 최근에는 2026-07에 중립에서 관심 단계로 전환됐다. 조회기간 중 월간 점수 변화 폭이 가장 컸던 때는 2008-11로, 직전월보다 46.87점 올라 움직였다.\n\n## 현재 위치\n\n같은 최근 한 달 동안 가격은 5.70% 내렸다. 최근 한 달 중장기 가격위험은 낮아졌고, 현재 점수 60.03점은 조회기간 평균 46.91점보다 13.12점 높아, 중장기 가격위험이 조회기간 평균보다 낮은 수준이다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 현재 점수 | 60.03 | 점 |\n| 현재 단계 | 관심 |  |\n| 최근 점수 변화 | 7.65 | 점 |\n| 현재 단계 연속기간 | 1 | 개월 |\n| 단계 전환 횟수 | 50 | 회 |\n| 최대 월간 점수 변화 | 46.87 | 점 |\n| 최근 가격 변화율 | -5.70 | % |\n| 조회기간 평균 점수 | 46.91 | 점 |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026-07 니켈 시장동향지표는 60.03점으로 관심 단계다.",
+      "evidence_ids": [
+       "current_state"
+      ]
+     },
+     {
+      "text": "최근 한 달에는 점수가 7.65점 올라 중장기 가격위험이 낮아지는 방향으로 움직였다.",
+      "evidence_ids": [
+       "latest_score_change"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "관심 단계는 1개월 연속 유지됐다.",
+      "evidence_ids": [
+       "grade_streak"
+      ]
+     },
+     {
+      "text": "가장 최근에는 2026-07에 중립에서 관심 단계로 전환됐다.",
+      "evidence_ids": [
+       "grade_transition"
+      ]
+     },
+     {
+      "text": "조회기간 중 월간 점수 변화 폭이 가장 컸던 때는 2008-11로, 직전월보다 46.87점 올라 움직였다.",
+      "evidence_ids": [
+       "largest_monthly_score_change"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "같은 최근 한 달 동안 가격은 5.70% 내렸다.",
+      "evidence_ids": [
+       "latest_price_change"
+      ]
+     },
+     {
+      "text": "최근 한 달 중장기 가격위험은 낮아졌고, 현재 점수 60.03점은 조회기간 평균 46.91점보다 13.12점 높아, 중장기 가격위험이 조회기간 평균보다 낮은 수준이다.",
+      "evidence_ids": [
+       "period_average_position"
+      ]
+     }
+    ]
+   },
+   "elapsed": 13.6
+  },
+  {
+   "combo_key": "market_trend:동",
+   "page_id": "indicator_market",
+   "llm_attempts": [
+    {
+     "elapsed": 6.4,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 7월 기준 동의 시장동향지표는 1.73점으로 신중 단계이며, 최근 한 달간 점수가 0.01점 상승하며 중장기 가격위험이 낮아지는 방향으로 움직였습니다.",
+        "evidence_ids": [
+         "current_state",
+         "latest_score_change"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "신중 단계가 15개월째 유지되고 있으며, 가장 최근에는 2025년 5월에 주의 단계에서 신중 단계로 전환되었습니다.",
+        "evidence_ids": [
+         "grade_streak",
+         "grade_transition"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "최근 한 달간 가격이 0.36% 하락하며 단기적인 점수 개선이 나타났지만, 현재 점수 1.73점은 조회기간 평균인 40.23점보다 38.50점 낮아 중장기 가격위험은 평균보다 높은 수준입니다.",
+        "evidence_ids": [
+         "latest_price_change",
+         "period_average_position"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "latest_score_change",
+       "core_diagnosis"
+      ],
+      [
+       "grade_streak",
+       "major_changes"
+      ],
+      [
+       "grade_transition",
+       "major_changes"
+      ],
+      [
+       "largest_monthly_score_change",
+       "major_changes"
+      ],
+      [
+       "latest_price_change",
+       "current_position"
+      ],
+      [
+       "period_average_position",
+       "current_position"
+      ]
+     ]
+    },
+    {
+     "elapsed": 7.5,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 7월 기준 동의 시장동향지표는 1.73점으로 신중 단계이며, 최근 한 달간 점수가 0.01점 상승하며 중장기 가격위험이 낮아지는 방향으로 움직였습니다.",
+        "evidence_ids": [
+         "current_state",
+         "latest_score_change"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "신중 단계가 15개월 연속 유지되는 가운데, 가장 최근에는 2025년 5월에 주의에서 신중 단계로 전환되었으며 조회기간 중 점수 변화 폭이 가장 컸던 시점은 2008년 11월로 직전월 대비 52.32점이 상승했습니다.",
+        "evidence_ids": [
+         "grade_streak",
+         "grade_transition",
+         "largest_monthly_score_change"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "최근 한 달간 가격이 0.36% 하락하며 단기적인 점수 개선이 나타났지만, 현재 점수 1.73점은 조회기간 평균인 40.23점보다 38.50점 낮은 수준으로 중장기 가격위험은 평균보다 높은 상태입니다.",
+        "evidence_ids": [
+         "latest_price_change",
+         "period_average_position"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "latest_score_change",
+       "core_diagnosis"
+      ],
+      [
+       "grade_streak",
+       "major_changes"
+      ],
+      [
+       "grade_transition",
+       "major_changes"
+      ],
+      [
+       "largest_monthly_score_change",
+       "major_changes"
+      ],
+      [
+       "latest_price_change",
+       "current_position"
+      ],
+      [
+       "period_average_position",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": true,
+   "warnings": [],
+   "markdown": "# 동 분석 요약 — 국내 고수요 광종에 대한 중장기 가격리스크 표준척도로서 0~100 값을 가지며 신중·주의·중립·관심·기회의 5개 등급으로 분류한다.\n\n**현재 단계**: 신중 (1.73점)\n\n## 핵심 진단\n\n2026년 7월 기준 동의 시장동향지표는 1.73점으로 신중 단계이며, 최근 한 달간 점수가 0.01점 상승하며 중장기 가격위험이 낮아지는 방향으로 움직였습니다.\n\n## 주요 변화\n\n신중 단계가 15개월 연속 유지되는 가운데, 가장 최근에는 2025년 5월에 주의에서 신중 단계로 전환되었으며 조회기간 중 점수 변화 폭이 가장 컸던 시점은 2008년 11월로 직전월 대비 52.32점이 상승했습니다.\n\n## 현재 위치\n\n최근 한 달간 가격이 0.36% 하락하며 단기적인 점수 개선이 나타났지만, 현재 점수 1.73점은 조회기간 평균인 40.23점보다 38.50점 낮은 수준으로 중장기 가격위험은 평균보다 높은 상태입니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 현재 점수 | 1.73 | 점 |\n| 현재 단계 | 신중 |  |\n| 최근 점수 변화 | 0.01 | 점 |\n| 현재 단계 연속기간 | 15 | 개월 |\n| 단계 전환 횟수 | 54 | 회 |\n| 최대 월간 점수 변화 | 52.32 | 점 |\n| 최근 가격 변화율 | -0.36 | % |\n| 조회기간 평균 점수 | 40.23 | 점 |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026년 7월 기준 동의 시장동향지표는 1.73점으로 신중 단계이며, 최근 한 달간 점수가 0.01점 상승하며 중장기 가격위험이 낮아지는 방향으로 움직였습니다.",
+      "evidence_ids": [
+       "current_state",
+       "latest_score_change"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "신중 단계가 15개월 연속 유지되는 가운데, 가장 최근에는 2025년 5월에 주의에서 신중 단계로 전환되었으며 조회기간 중 점수 변화 폭이 가장 컸던 시점은 2008년 11월로 직전월 대비 52.32점이 상승했습니다.",
+      "evidence_ids": [
+       "grade_streak",
+       "grade_transition",
+       "largest_monthly_score_change"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "최근 한 달간 가격이 0.36% 하락하며 단기적인 점수 개선이 나타났지만, 현재 점수 1.73점은 조회기간 평균인 40.23점보다 38.50점 낮은 수준으로 중장기 가격위험은 평균보다 높은 상태입니다.",
+      "evidence_ids": [
+       "latest_price_change",
+       "period_average_position"
+      ]
+     }
+    ]
+   },
+   "elapsed": 14.0
+  },
+  {
+   "combo_key": "supply_trend:갈륨|월별지표",
+   "page_id": "indicator_supply",
+   "llm_attempts": [
+    {
+     "elapsed": 7.2,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 7월 갈륨 수급동향지표는 29.50점으로 안정 단계이지만, 최근 한 달간 점수가 3.55점 하락하며 수급 안정성이 약해지는 방향으로 나타났습니다.",
+        "evidence_ids": [
+         "current_state",
+         "latest_score_change"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "안정 단계는 2025년 7월 관심 단계에서 전환된 이후 13개월째 유지 중이며, 조회기간 중 점수 변화 폭이 가장 컸던 시점은 2023년 3월로 직전월 대비 20.86점 상승했습니다.",
+        "evidence_ids": [
+         "grade_transition",
+         "grade_streak",
+         "largest_monthly_score_change"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "최근 한 달간 가격이 4.42% 상승하며 수급 안정성은 약해졌으나, 현재 점수 29.50점은 조회기간 평균인 24.50점보다 5.00점 높아 평균 대비 안정적인 수준을 보이고 있습니다.",
+        "evidence_ids": [
+         "latest_price_change",
+         "period_average_position"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "latest_score_change",
+       "core_diagnosis"
+      ],
+      [
+       "grade_streak",
+       "major_changes"
+      ],
+      [
+       "grade_transition",
+       "major_changes"
+      ],
+      [
+       "largest_monthly_score_change",
+       "major_changes"
+      ],
+      [
+       "latest_price_change",
+       "current_position"
+      ],
+      [
+       "period_average_position",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": true,
+   "warnings": [],
+   "markdown": "# 갈륨 분석 요약 — 4차산업 원료광물의 국내 수급리스크 표준척도다. 광종별 중장기 가격리스크, 세계 수급비율, 세계 공급·매장 편중도, 국내 수입증가율과 국내 수입국 편중도 등을 반영하며 0~100 값을 가진다.\n\n**현재 단계**: 안정 (29.50점)\n\n## 핵심 진단\n\n2026년 7월 갈륨 수급동향지표는 29.50점으로 안정 단계이지만, 최근 한 달간 점수가 3.55점 하락하며 수급 안정성이 약해지는 방향으로 나타났습니다.\n\n## 주요 변화\n\n안정 단계는 2025년 7월 관심 단계에서 전환된 이후 13개월째 유지 중이며, 조회기간 중 점수 변화 폭이 가장 컸던 시점은 2023년 3월로 직전월 대비 20.86점 상승했습니다.\n\n## 현재 위치\n\n최근 한 달간 가격이 4.42% 상승하며 수급 안정성은 약해졌으나, 현재 점수 29.50점은 조회기간 평균인 24.50점보다 5.00점 높아 평균 대비 안정적인 수준을 보이고 있습니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 현재 점수 | 29.50 | 점 |\n| 현재 단계 | 안정 |  |\n| 최근 점수 변화 | -3.55 | 점 |\n| 현재 단계 연속기간 | 13 | 개월 |\n| 단계 전환 횟수 | 14 | 회 |\n| 최대 월간 점수 변화 | 20.86 | 점 |\n| 최근 가격 변화율 | 4.42 | % |\n| 조회기간 평균 점수 | 24.50 | 점 |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026년 7월 갈륨 수급동향지표는 29.50점으로 안정 단계이지만, 최근 한 달간 점수가 3.55점 하락하며 수급 안정성이 약해지는 방향으로 나타났습니다.",
+      "evidence_ids": [
+       "current_state",
+       "latest_score_change"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "안정 단계는 2025년 7월 관심 단계에서 전환된 이후 13개월째 유지 중이며, 조회기간 중 점수 변화 폭이 가장 컸던 시점은 2023년 3월로 직전월 대비 20.86점 상승했습니다.",
+      "evidence_ids": [
+       "grade_transition",
+       "grade_streak",
+       "largest_monthly_score_change"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "최근 한 달간 가격이 4.42% 상승하며 수급 안정성은 약해졌으나, 현재 점수 29.50점은 조회기간 평균인 24.50점보다 5.00점 높아 평균 대비 안정적인 수준을 보이고 있습니다.",
+      "evidence_ids": [
+       "latest_price_change",
+       "period_average_position"
+      ]
+     }
+    ]
+   },
+   "elapsed": 7.2
+  },
+  {
+   "combo_key": "supply_trend:규소|월별지표",
+   "page_id": "indicator_supply",
+   "llm_attempts": [
+    {
+     "elapsed": 7.1,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 7월 규소 수급동향지표는 71.06점으로 안정 단계이나, 최근 한 달간 점수가 0.38점 하락하며 수급 안정성이 약해지는 방향으로 나타났습니다.",
+        "evidence_ids": [
+         "current_state",
+         "latest_score_change"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "안정 단계는 2022년 8월 관심 단계에서 전환된 이후 48개월째 유지 중이며, 조회기간 중 점수 변화 폭이 가장 컸던 시점은 19.70점이 하락했던 2017년 8월입니다.",
+        "evidence_ids": [
+         "grade_transition",
+         "grade_streak",
+         "largest_monthly_score_change"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "최근 한 달간 가격 변동은 없었으며, 수급 안정성은 최근 소폭 약해졌음에도 불구하고 현재 점수 71.06점은 조회기간 평균인 55.25점보다 15.81점 높은 수준을 기록하고 있습니다.",
+        "evidence_ids": [
+         "latest_price_change",
+         "period_average_position"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "latest_score_change",
+       "core_diagnosis"
+      ],
+      [
+       "grade_streak",
+       "major_changes"
+      ],
+      [
+       "grade_transition",
+       "major_changes"
+      ],
+      [
+       "largest_monthly_score_change",
+       "major_changes"
+      ],
+      [
+       "latest_price_change",
+       "current_position"
+      ],
+      [
+       "period_average_position",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": true,
+   "warnings": [],
+   "markdown": "# 규소 분석 요약 — 4차산업 원료광물의 국내 수급리스크 표준척도다. 광종별 중장기 가격리스크, 세계 수급비율, 세계 공급·매장 편중도, 국내 수입증가율과 국내 수입국 편중도 등을 반영하며 0~100 값을 가진다.\n\n**현재 단계**: 안정 (71.06점)\n\n## 핵심 진단\n\n2026년 7월 규소 수급동향지표는 71.06점으로 안정 단계이나, 최근 한 달간 점수가 0.38점 하락하며 수급 안정성이 약해지는 방향으로 나타났습니다.\n\n## 주요 변화\n\n안정 단계는 2022년 8월 관심 단계에서 전환된 이후 48개월째 유지 중이며, 조회기간 중 점수 변화 폭이 가장 컸던 시점은 19.70점이 하락했던 2017년 8월입니다.\n\n## 현재 위치\n\n최근 한 달간 가격 변동은 없었으며, 수급 안정성은 최근 소폭 약해졌음에도 불구하고 현재 점수 71.06점은 조회기간 평균인 55.25점보다 15.81점 높은 수준을 기록하고 있습니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 현재 점수 | 71.06 | 점 |\n| 현재 단계 | 안정 |  |\n| 최근 점수 변화 | -0.38 | 점 |\n| 현재 단계 연속기간 | 48 | 개월 |\n| 단계 전환 횟수 | 8 | 회 |\n| 최대 월간 점수 변화 | -19.70 | 점 |\n| 최근 가격 변화율 | 0.00 | % |\n| 조회기간 평균 점수 | 55.25 | 점 |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026년 7월 규소 수급동향지표는 71.06점으로 안정 단계이나, 최근 한 달간 점수가 0.38점 하락하며 수급 안정성이 약해지는 방향으로 나타났습니다.",
+      "evidence_ids": [
+       "current_state",
+       "latest_score_change"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "안정 단계는 2022년 8월 관심 단계에서 전환된 이후 48개월째 유지 중이며, 조회기간 중 점수 변화 폭이 가장 컸던 시점은 19.70점이 하락했던 2017년 8월입니다.",
+      "evidence_ids": [
+       "grade_transition",
+       "grade_streak",
+       "largest_monthly_score_change"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "최근 한 달간 가격 변동은 없었으며, 수급 안정성은 최근 소폭 약해졌음에도 불구하고 현재 점수 71.06점은 조회기간 평균인 55.25점보다 15.81점 높은 수준을 기록하고 있습니다.",
+      "evidence_ids": [
+       "latest_price_change",
+       "period_average_position"
+      ]
+     }
+    ]
+   },
+   "elapsed": 7.1
+  },
+  {
+   "combo_key": "supply_trend:네오디뮴|월별지표",
+   "page_id": "indicator_supply",
+   "llm_attempts": [
+    {
+     "elapsed": 7.4,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 7월 네오디뮴 수급동향지표는 8.77점으로 관심 단계이며, 최근 한 달간 점수가 2.15점 하락하며 수급 안정성이 약화되었습니다.",
+        "evidence_ids": [
+         "current_state",
+         "latest_score_change"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "관심 단계가 6개월째 유지되고 있는 가운데, 가장 최근에는 2026년 2월에 안정 단계에서 관심 단계로 전환되었으며, 조회기간 중 점수 변화 폭이 가장 컸던 시점은 2020년 12월로 직전월 대비 24.47점이 하락했습니다.",
+        "evidence_ids": [
+         "grade_streak",
+         "grade_transition",
+         "largest_monthly_score_change"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "최근 한 달간 가격이 4.70% 상승하고 수급 안정성이 약해진 가운데, 현재 점수 8.77점은 조회기간 평균인 43.85점보다 35.08점 낮아 평균 대비 수급 안정성이 낮은 수준입니다.",
+        "evidence_ids": [
+         "latest_price_change",
+         "period_average_position"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "latest_score_change",
+       "core_diagnosis"
+      ],
+      [
+       "grade_streak",
+       "major_changes"
+      ],
+      [
+       "grade_transition",
+       "major_changes"
+      ],
+      [
+       "largest_monthly_score_change",
+       "major_changes"
+      ],
+      [
+       "latest_price_change",
+       "current_position"
+      ],
+      [
+       "period_average_position",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": true,
+   "warnings": [],
+   "markdown": "# 네오디뮴 분석 요약 — 4차산업 원료광물의 국내 수급리스크 표준척도다. 광종별 중장기 가격리스크, 세계 수급비율, 세계 공급·매장 편중도, 국내 수입증가율과 국내 수입국 편중도 등을 반영하며 0~100 값을 가진다.\n\n**현재 단계**: 관심 (8.77점)\n\n## 핵심 진단\n\n2026년 7월 네오디뮴 수급동향지표는 8.77점으로 관심 단계이며, 최근 한 달간 점수가 2.15점 하락하며 수급 안정성이 약화되었습니다.\n\n## 주요 변화\n\n관심 단계가 6개월째 유지되고 있는 가운데, 가장 최근에는 2026년 2월에 안정 단계에서 관심 단계로 전환되었으며, 조회기간 중 점수 변화 폭이 가장 컸던 시점은 2020년 12월로 직전월 대비 24.47점이 하락했습니다.\n\n## 현재 위치\n\n최근 한 달간 가격이 4.70% 상승하고 수급 안정성이 약해진 가운데, 현재 점수 8.77점은 조회기간 평균인 43.85점보다 35.08점 낮아 평균 대비 수급 안정성이 낮은 수준입니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 현재 점수 | 8.77 | 점 |\n| 현재 단계 | 관심 |  |\n| 최근 점수 변화 | -2.15 | 점 |\n| 현재 단계 연속기간 | 6 | 개월 |\n| 단계 전환 횟수 | 9 | 회 |\n| 최대 월간 점수 변화 | -24.47 | 점 |\n| 최근 가격 변화율 | 4.70 | % |\n| 조회기간 평균 점수 | 43.85 | 점 |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026년 7월 네오디뮴 수급동향지표는 8.77점으로 관심 단계이며, 최근 한 달간 점수가 2.15점 하락하며 수급 안정성이 약화되었습니다.",
+      "evidence_ids": [
+       "current_state",
+       "latest_score_change"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "관심 단계가 6개월째 유지되고 있는 가운데, 가장 최근에는 2026년 2월에 안정 단계에서 관심 단계로 전환되었으며, 조회기간 중 점수 변화 폭이 가장 컸던 시점은 2020년 12월로 직전월 대비 24.47점이 하락했습니다.",
+      "evidence_ids": [
+       "grade_streak",
+       "grade_transition",
+       "largest_monthly_score_change"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "최근 한 달간 가격이 4.70% 상승하고 수급 안정성이 약해진 가운데, 현재 점수 8.77점은 조회기간 평균인 43.85점보다 35.08점 낮아 평균 대비 수급 안정성이 낮은 수준입니다.",
+      "evidence_ids": [
+       "latest_price_change",
+       "period_average_position"
+      ]
+     }
+    ]
+   },
+   "elapsed": 7.4
+  },
+  {
+   "combo_key": "supply_trend:니오븀|월별지표",
+   "page_id": "indicator_supply",
+   "llm_attempts": [
+    {
+     "elapsed": 7.2,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 7월 니오븀 수급동향지표는 10.05점으로 관심 단계이며, 최근 한 달간 점수가 4.31점 상승하며 수급 안정성이 강화되는 방향으로 나타났습니다.",
+        "evidence_ids": [
+         "current_state",
+         "latest_score_change"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "2026년 6월에 주의 단계에서 관심 단계로 전환된 이후 관심 단계를 2개월째 유지 중이며, 조회기간 중 점수 변화 폭이 가장 컸던 시점은 32.73점이 상승했던 2019년 10월입니다.",
+        "evidence_ids": [
+         "grade_transition",
+         "grade_streak",
+         "largest_monthly_score_change"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "최근 한 달간 가격이 2.46% 하락하며 수급 안정성이 강화되었으나, 현재 점수 10.05점은 조회기간 평균인 53.59점보다 43.54점 낮아 평균 대비 수급 안정성이 낮은 수준입니다.",
+        "evidence_ids": [
+         "latest_price_change",
+         "period_average_position"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "latest_score_change",
+       "core_diagnosis"
+      ],
+      [
+       "grade_streak",
+       "major_changes"
+      ],
+      [
+       "grade_transition",
+       "major_changes"
+      ],
+      [
+       "largest_monthly_score_change",
+       "major_changes"
+      ],
+      [
+       "latest_price_change",
+       "current_position"
+      ],
+      [
+       "period_average_position",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": true,
+   "warnings": [],
+   "markdown": "# 니오븀 분석 요약 — 4차산업 원료광물의 국내 수급리스크 표준척도다. 광종별 중장기 가격리스크, 세계 수급비율, 세계 공급·매장 편중도, 국내 수입증가율과 국내 수입국 편중도 등을 반영하며 0~100 값을 가진다.\n\n**현재 단계**: 관심 (10.05점)\n\n## 핵심 진단\n\n2026년 7월 니오븀 수급동향지표는 10.05점으로 관심 단계이며, 최근 한 달간 점수가 4.31점 상승하며 수급 안정성이 강화되는 방향으로 나타났습니다.\n\n## 주요 변화\n\n2026년 6월에 주의 단계에서 관심 단계로 전환된 이후 관심 단계를 2개월째 유지 중이며, 조회기간 중 점수 변화 폭이 가장 컸던 시점은 32.73점이 상승했던 2019년 10월입니다.\n\n## 현재 위치\n\n최근 한 달간 가격이 2.46% 하락하며 수급 안정성이 강화되었으나, 현재 점수 10.05점은 조회기간 평균인 53.59점보다 43.54점 낮아 평균 대비 수급 안정성이 낮은 수준입니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 현재 점수 | 10.05 | 점 |\n| 현재 단계 | 관심 |  |\n| 최근 점수 변화 | 4.31 | 점 |\n| 현재 단계 연속기간 | 2 | 개월 |\n| 단계 전환 횟수 | 16 | 회 |\n| 최대 월간 점수 변화 | 32.73 | 점 |\n| 최근 가격 변화율 | -2.46 | % |\n| 조회기간 평균 점수 | 53.59 | 점 |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026년 7월 니오븀 수급동향지표는 10.05점으로 관심 단계이며, 최근 한 달간 점수가 4.31점 상승하며 수급 안정성이 강화되는 방향으로 나타났습니다.",
+      "evidence_ids": [
+       "current_state",
+       "latest_score_change"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "2026년 6월에 주의 단계에서 관심 단계로 전환된 이후 관심 단계를 2개월째 유지 중이며, 조회기간 중 점수 변화 폭이 가장 컸던 시점은 32.73점이 상승했던 2019년 10월입니다.",
+      "evidence_ids": [
+       "grade_transition",
+       "grade_streak",
+       "largest_monthly_score_change"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "최근 한 달간 가격이 2.46% 하락하며 수급 안정성이 강화되었으나, 현재 점수 10.05점은 조회기간 평균인 53.59점보다 43.54점 낮아 평균 대비 수급 안정성이 낮은 수준입니다.",
+      "evidence_ids": [
+       "latest_price_change",
+       "period_average_position"
+      ]
+     }
+    ]
+   },
+   "elapsed": 7.2
+  },
+  {
+   "combo_key": "supply_trend:니켈|월별지표",
+   "page_id": "indicator_supply",
+   "llm_attempts": [
+    {
+     "elapsed": 7.1,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 7월 니켈 수급동향지표는 58.85점으로 안정 단계이며, 최근 한 달간 점수가 7.49점 상승하며 수급 안정성이 강화되는 방향으로 나타났습니다.",
+        "evidence_ids": [
+         "current_state",
+         "latest_score_change"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "안정 단계는 36개월째 유지 중이며, 가장 최근에는 2023년 8월에 관심 단계에서 안정 단계로 전환된 이후 2026년 1월에 월간 점수가 20.31점 하락하며 가장 큰 변화를 보였습니다.",
+        "evidence_ids": [
+         "grade_streak",
+         "grade_transition",
+         "largest_monthly_score_change"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "최근 한 달간 가격이 5.70% 하락한 가운데, 현재 점수 58.85점은 조회기간 평균인 44.71점보다 14.14점 높아 수급 안정성이 평균 대비 높은 수준을 유지하고 있습니다.",
+        "evidence_ids": [
+         "latest_price_change",
+         "period_average_position"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "latest_score_change",
+       "core_diagnosis"
+      ],
+      [
+       "grade_streak",
+       "major_changes"
+      ],
+      [
+       "grade_transition",
+       "major_changes"
+      ],
+      [
+       "largest_monthly_score_change",
+       "major_changes"
+      ],
+      [
+       "latest_price_change",
+       "current_position"
+      ],
+      [
+       "period_average_position",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": true,
+   "warnings": [],
+   "markdown": "# 니켈 분석 요약 — 4차산업 원료광물의 국내 수급리스크 표준척도다. 광종별 중장기 가격리스크, 세계 수급비율, 세계 공급·매장 편중도, 국내 수입증가율과 국내 수입국 편중도 등을 반영하며 0~100 값을 가진다.\n\n**현재 단계**: 안정 (58.85점)\n\n## 핵심 진단\n\n2026년 7월 니켈 수급동향지표는 58.85점으로 안정 단계이며, 최근 한 달간 점수가 7.49점 상승하며 수급 안정성이 강화되는 방향으로 나타났습니다.\n\n## 주요 변화\n\n안정 단계는 36개월째 유지 중이며, 가장 최근에는 2023년 8월에 관심 단계에서 안정 단계로 전환된 이후 2026년 1월에 월간 점수가 20.31점 하락하며 가장 큰 변화를 보였습니다.\n\n## 현재 위치\n\n최근 한 달간 가격이 5.70% 하락한 가운데, 현재 점수 58.85점은 조회기간 평균인 44.71점보다 14.14점 높아 수급 안정성이 평균 대비 높은 수준을 유지하고 있습니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 현재 점수 | 58.85 | 점 |\n| 현재 단계 | 안정 |  |\n| 최근 점수 변화 | 7.49 | 점 |\n| 현재 단계 연속기간 | 36 | 개월 |\n| 단계 전환 횟수 | 8 | 회 |\n| 최대 월간 점수 변화 | -20.31 | 점 |\n| 최근 가격 변화율 | -5.70 | % |\n| 조회기간 평균 점수 | 44.71 | 점 |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026년 7월 니켈 수급동향지표는 58.85점으로 안정 단계이며, 최근 한 달간 점수가 7.49점 상승하며 수급 안정성이 강화되는 방향으로 나타났습니다.",
+      "evidence_ids": [
+       "current_state",
+       "latest_score_change"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "안정 단계는 36개월째 유지 중이며, 가장 최근에는 2023년 8월에 관심 단계에서 안정 단계로 전환된 이후 2026년 1월에 월간 점수가 20.31점 하락하며 가장 큰 변화를 보였습니다.",
+      "evidence_ids": [
+       "grade_streak",
+       "grade_transition",
+       "largest_monthly_score_change"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "최근 한 달간 가격이 5.70% 하락한 가운데, 현재 점수 58.85점은 조회기간 평균인 44.71점보다 14.14점 높아 수급 안정성이 평균 대비 높은 수준을 유지하고 있습니다.",
+      "evidence_ids": [
+       "latest_price_change",
+       "period_average_position"
+      ]
+     }
+    ]
+   },
+   "elapsed": 7.1
+  },
+  {
+   "combo_key": "supply_trend:동|월별지표",
+   "page_id": "indicator_supply",
+   "llm_attempts": [
+    {
+     "elapsed": 7.0,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 7월 동 수급동향지표는 1.73점의 주의 단계를 나타냈으며, 최근 한 달간 점수가 0.01점 상승하며 수급 안정성이 강화되는 방향으로 움직였습니다.",
+        "evidence_ids": [
+         "current_state",
+         "latest_score_change"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "주의 단계는 2025년 12월 관심 단계에서 전환된 이후 6개월째 유지 중이며, 조회기간 중 점수 변화 폭이 가장 컸던 시점은 32.79점이 상승했던 2022년 7월입니다.",
+        "evidence_ids": [
+         "grade_transition",
+         "grade_streak",
+         "largest_monthly_score_change"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "최근 한 달간 가격이 0.36% 하락하며 수급 안정성이 소폭 개선되었으나, 현재 점수 1.73점은 조회기간 평균인 34.14점보다 32.41점 낮은 수준입니다.",
+        "evidence_ids": [
+         "latest_price_change",
+         "period_average_position"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "latest_score_change",
+       "core_diagnosis"
+      ],
+      [
+       "grade_streak",
+       "major_changes"
+      ],
+      [
+       "grade_transition",
+       "major_changes"
+      ],
+      [
+       "largest_monthly_score_change",
+       "major_changes"
+      ],
+      [
+       "latest_price_change",
+       "current_position"
+      ],
+      [
+       "period_average_position",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": true,
+   "warnings": [],
+   "markdown": "# 동 분석 요약 — 4차산업 원료광물의 국내 수급리스크 표준척도다. 광종별 중장기 가격리스크, 세계 수급비율, 세계 공급·매장 편중도, 국내 수입증가율과 국내 수입국 편중도 등을 반영하며 0~100 값을 가진다.\n\n**현재 단계**: 주의 (1.73점)\n\n## 핵심 진단\n\n2026년 7월 동 수급동향지표는 1.73점의 주의 단계를 나타냈으며, 최근 한 달간 점수가 0.01점 상승하며 수급 안정성이 강화되는 방향으로 움직였습니다.\n\n## 주요 변화\n\n주의 단계는 2025년 12월 관심 단계에서 전환된 이후 6개월째 유지 중이며, 조회기간 중 점수 변화 폭이 가장 컸던 시점은 32.79점이 상승했던 2022년 7월입니다.\n\n## 현재 위치\n\n최근 한 달간 가격이 0.36% 하락하며 수급 안정성이 소폭 개선되었으나, 현재 점수 1.73점은 조회기간 평균인 34.14점보다 32.41점 낮은 수준입니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 현재 점수 | 1.73 | 점 |\n| 현재 단계 | 주의 |  |\n| 최근 점수 변화 | 0.01 | 점 |\n| 현재 단계 연속기간 | 6 | 개월 |\n| 단계 전환 횟수 | 20 | 회 |\n| 최대 월간 점수 변화 | 32.79 | 점 |\n| 최근 가격 변화율 | -0.36 | % |\n| 조회기간 평균 점수 | 34.14 | 점 |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026년 7월 동 수급동향지표는 1.73점의 주의 단계를 나타냈으며, 최근 한 달간 점수가 0.01점 상승하며 수급 안정성이 강화되는 방향으로 움직였습니다.",
+      "evidence_ids": [
+       "current_state",
+       "latest_score_change"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "주의 단계는 2025년 12월 관심 단계에서 전환된 이후 6개월째 유지 중이며, 조회기간 중 점수 변화 폭이 가장 컸던 시점은 32.79점이 상승했던 2022년 7월입니다.",
+      "evidence_ids": [
+       "grade_transition",
+       "grade_streak",
+       "largest_monthly_score_change"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "최근 한 달간 가격이 0.36% 하락하며 수급 안정성이 소폭 개선되었으나, 현재 점수 1.73점은 조회기간 평균인 34.14점보다 32.41점 낮은 수준입니다.",
+      "evidence_ids": [
+       "latest_price_change",
+       "period_average_position"
+      ]
+     }
+    ]
+   },
+   "elapsed": 7.0
+  },
+  {
+   "combo_key": "supply_map_korea:갈륨|수입|전체기간|list",
+   "page_id": "map_korea",
+   "llm_attempts": [
+    {
+     "elapsed": 6.3,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 12월 31일 기준 갈륨 수입총액은 75,818,972입니다.",
+        "evidence_ids": [
+         "current_state"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "중국이 35,931,712(47.39%)로 1위 수입국이며, 상위 3개국(중국·일본·미국)의 합산 비중은 80.44%로 나타났습니다.",
+        "evidence_ids": [
+         "top1_country",
+         "top3_concentration"
+        ]
+       },
+       {
+        "text": "상위 5개국까지 합산할 경우 전체의 90.84%를 차지합니다.",
+        "evidence_ids": [
+         "top5_concentration"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "조회기간 관측이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
+        "evidence_ids": [
+         "single_snapshot"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "top1_country",
+       "major_changes"
+      ],
+      [
+       "top3_concentration",
+       "major_changes"
+      ],
+      [
+       "top5_concentration",
+       "major_changes"
+      ],
+      [
+       "single_snapshot",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": true,
+   "warnings": [],
+   "markdown": "# 갈륨 분석 요약 — 선택한 광종을 한국이 어느 나라와 수입 또는 수출 거래를 하는지(조회 방향 기준) 국가별 금액·중량으로 보여주는 자료다.\n\n**조회방향**: 수입\n\n## 핵심 진단\n\n2026년 12월 31일 기준 갈륨 수입총액은 75,818,972입니다.\n\n## 주요 변화\n\n중국이 35,931,712(47.39%)로 1위 수입국이며, 상위 3개국(중국·일본·미국)의 합산 비중은 80.44%로 나타났습니다. 상위 5개국까지 합산할 경우 전체의 90.84%를 차지합니다.\n\n## 현재 위치\n\n조회기간 관측이 1건뿐이라 기간별 변화는 계산하지 않았습니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 수입총액 | 75,818,972.00 |  |\n| 1위국 수입비중 | 47.39 | % |\n| 상위3국 수입비중 | 80.44 | % |\n| 상위5국 수입비중 | 90.84 | % |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026년 12월 31일 기준 갈륨 수입총액은 75,818,972입니다.",
+      "evidence_ids": [
+       "current_state"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "중국이 35,931,712(47.39%)로 1위 수입국이며, 상위 3개국(중국·일본·미국)의 합산 비중은 80.44%로 나타났습니다.",
+      "evidence_ids": [
+       "top1_country",
+       "top3_concentration"
+      ]
+     },
+     {
+      "text": "상위 5개국까지 합산할 경우 전체의 90.84%를 차지합니다.",
+      "evidence_ids": [
+       "top5_concentration"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "조회기간 관측이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
+      "evidence_ids": [
+       "single_snapshot"
+      ]
+     }
+    ]
+   },
+   "elapsed": 6.3
+  },
+  {
+   "combo_key": "supply_map_korea:갈탄|수입|전체기간|list",
+   "page_id": "map_korea",
+   "llm_attempts": [
+    {
+     "elapsed": 6.3,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 12월 31일 기준 갈탄 수입총액은 3,165,895입니다.",
+        "evidence_ids": [
+         "current_state"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "중국이 1,952,344(61.67%)로 1위 수입국이며, 상위 3개국(중국·호주·캐나다)의 비중은 87.35%를 차지합니다.",
+        "evidence_ids": [
+         "top1_country",
+         "top3_concentration"
+        ]
+       },
+       {
+        "text": "상위 5개국까지 합산할 경우 전체의 99.23%를 차지하는 것으로 나타났습니다.",
+        "evidence_ids": [
+         "top5_concentration"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "조회기간 관측이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
+        "evidence_ids": [
+         "single_snapshot"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "top1_country",
+       "major_changes"
+      ],
+      [
+       "top3_concentration",
+       "major_changes"
+      ],
+      [
+       "top5_concentration",
+       "major_changes"
+      ],
+      [
+       "single_snapshot",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": true,
+   "warnings": [],
+   "markdown": "# 갈탄 분석 요약 — 선택한 광종을 한국이 어느 나라와 수입 또는 수출 거래를 하는지(조회 방향 기준) 국가별 금액·중량으로 보여주는 자료다.\n\n**조회방향**: 수입\n\n## 핵심 진단\n\n2026년 12월 31일 기준 갈탄 수입총액은 3,165,895입니다.\n\n## 주요 변화\n\n중국이 1,952,344(61.67%)로 1위 수입국이며, 상위 3개국(중국·호주·캐나다)의 비중은 87.35%를 차지합니다. 상위 5개국까지 합산할 경우 전체의 99.23%를 차지하는 것으로 나타났습니다.\n\n## 현재 위치\n\n조회기간 관측이 1건뿐이라 기간별 변화는 계산하지 않았습니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 수입총액 | 3,165,895.00 |  |\n| 1위국 수입비중 | 61.67 | % |\n| 상위3국 수입비중 | 87.35 | % |\n| 상위5국 수입비중 | 99.23 | % |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026년 12월 31일 기준 갈탄 수입총액은 3,165,895입니다.",
+      "evidence_ids": [
+       "current_state"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "중국이 1,952,344(61.67%)로 1위 수입국이며, 상위 3개국(중국·호주·캐나다)의 비중은 87.35%를 차지합니다.",
+      "evidence_ids": [
+       "top1_country",
+       "top3_concentration"
+      ]
+     },
+     {
+      "text": "상위 5개국까지 합산할 경우 전체의 99.23%를 차지하는 것으로 나타났습니다.",
+      "evidence_ids": [
+       "top5_concentration"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "조회기간 관측이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
+      "evidence_ids": [
+       "single_snapshot"
+      ]
+     }
+    ]
+   },
+   "elapsed": 6.3
+  },
+  {
+   "combo_key": "supply_map_korea:게르마늄|수입|전체기간|list",
+   "page_id": "map_korea",
+   "llm_attempts": [
+    {
+     "elapsed": 6.4,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 12월 31일 기준 게르마늄 수입총액은 158,990,977입니다.",
+        "evidence_ids": [
+         "current_state"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "캐나다가 71,322,227(44.86%)로 1위 수입국이며, 상위 3개국(캐나다·중국·러시아)의 비중은 90.17%를 차지합니다.",
+        "evidence_ids": [
+         "top1_country",
+         "top3_concentration"
+        ]
+       },
+       {
+        "text": "상위 5개국까지 합산할 경우 전체의 95.72%를 차지하는 것으로 나타났습니다.",
+        "evidence_ids": [
+         "top5_concentration"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "조회기간 관측이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
+        "evidence_ids": [
+         "single_snapshot"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "top1_country",
+       "major_changes"
+      ],
+      [
+       "top3_concentration",
+       "major_changes"
+      ],
+      [
+       "top5_concentration",
+       "major_changes"
+      ],
+      [
+       "single_snapshot",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": true,
+   "warnings": [],
+   "markdown": "# 게르마늄 분석 요약 — 선택한 광종을 한국이 어느 나라와 수입 또는 수출 거래를 하는지(조회 방향 기준) 국가별 금액·중량으로 보여주는 자료다.\n\n**조회방향**: 수입\n\n## 핵심 진단\n\n2026년 12월 31일 기준 게르마늄 수입총액은 158,990,977입니다.\n\n## 주요 변화\n\n캐나다가 71,322,227(44.86%)로 1위 수입국이며, 상위 3개국(캐나다·중국·러시아)의 비중은 90.17%를 차지합니다. 상위 5개국까지 합산할 경우 전체의 95.72%를 차지하는 것으로 나타났습니다.\n\n## 현재 위치\n\n조회기간 관측이 1건뿐이라 기간별 변화는 계산하지 않았습니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 수입총액 | 158,990,977.00 |  |\n| 1위국 수입비중 | 44.86 | % |\n| 상위3국 수입비중 | 90.17 | % |\n| 상위5국 수입비중 | 95.72 | % |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026년 12월 31일 기준 게르마늄 수입총액은 158,990,977입니다.",
+      "evidence_ids": [
+       "current_state"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "캐나다가 71,322,227(44.86%)로 1위 수입국이며, 상위 3개국(캐나다·중국·러시아)의 비중은 90.17%를 차지합니다.",
+      "evidence_ids": [
+       "top1_country",
+       "top3_concentration"
+      ]
+     },
+     {
+      "text": "상위 5개국까지 합산할 경우 전체의 95.72%를 차지하는 것으로 나타났습니다.",
+      "evidence_ids": [
+       "top5_concentration"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "조회기간 관측이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
+      "evidence_ids": [
+       "single_snapshot"
+      ]
+     }
+    ]
+   },
+   "elapsed": 6.4
+  },
+  {
+   "combo_key": "supply_map_korea:고령토|수입|전체기간|list",
+   "page_id": "map_korea",
+   "llm_attempts": [
+    {
+     "elapsed": 6.5,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 12월 31일 기준 고령토 수입총액은 940,635,553입니다.",
+        "evidence_ids": [
+         "current_state"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "미국이 456,715,497(48.55%)로 1위 수입국이며, 상위 3개국(미국·중국·인도)의 합산 비중은 86.90%를 차지합니다.",
+        "evidence_ids": [
+         "top1_country",
+         "top3_concentration"
+        ]
+       },
+       {
+        "text": "상위 5개국까지 합산할 경우 전체의 91.09%를 차지하는 것으로 나타났습니다.",
+        "evidence_ids": [
+         "top5_concentration"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "조회기간 관측이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
+        "evidence_ids": [
+         "single_snapshot"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "top1_country",
+       "major_changes"
+      ],
+      [
+       "top3_concentration",
+       "major_changes"
+      ],
+      [
+       "top5_concentration",
+       "major_changes"
+      ],
+      [
+       "single_snapshot",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": true,
+   "warnings": [],
+   "markdown": "# 고령토 분석 요약 — 선택한 광종을 한국이 어느 나라와 수입 또는 수출 거래를 하는지(조회 방향 기준) 국가별 금액·중량으로 보여주는 자료다.\n\n**조회방향**: 수입\n\n## 핵심 진단\n\n2026년 12월 31일 기준 고령토 수입총액은 940,635,553입니다.\n\n## 주요 변화\n\n미국이 456,715,497(48.55%)로 1위 수입국이며, 상위 3개국(미국·중국·인도)의 합산 비중은 86.90%를 차지합니다. 상위 5개국까지 합산할 경우 전체의 91.09%를 차지하는 것으로 나타났습니다.\n\n## 현재 위치\n\n조회기간 관측이 1건뿐이라 기간별 변화는 계산하지 않았습니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 수입총액 | 940,635,553.00 |  |\n| 1위국 수입비중 | 48.55 | % |\n| 상위3국 수입비중 | 86.90 | % |\n| 상위5국 수입비중 | 91.09 | % |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026년 12월 31일 기준 고령토 수입총액은 940,635,553입니다.",
+      "evidence_ids": [
+       "current_state"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "미국이 456,715,497(48.55%)로 1위 수입국이며, 상위 3개국(미국·중국·인도)의 합산 비중은 86.90%를 차지합니다.",
+      "evidence_ids": [
+       "top1_country",
+       "top3_concentration"
+      ]
+     },
+     {
+      "text": "상위 5개국까지 합산할 경우 전체의 91.09%를 차지하는 것으로 나타났습니다.",
+      "evidence_ids": [
+       "top5_concentration"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "조회기간 관측이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
+      "evidence_ids": [
+       "single_snapshot"
+      ]
+     }
+    ]
+   },
+   "elapsed": 6.5
+  },
+  {
+   "combo_key": "supply_map_korea:규선석|수입|전체기간|list",
+   "page_id": "map_korea",
+   "llm_attempts": [
+    {
+     "elapsed": 6.1,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 12월 31일 기준 규선석 수입총액은 22,441입니다.",
+        "evidence_ids": [
+         "current_state"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "독일이 11,255(50.15%)로 1위 수입국이며, 상위 3개국(독일·프랑스·인도)의 비중은 79.44%입니다.",
+        "evidence_ids": [
+         "top1_country",
+         "top3_concentration"
+        ]
+       },
+       {
+        "text": "상위 5개국까지 합산하면 전체의 99.12%를 차지합니다.",
+        "evidence_ids": [
+         "top5_concentration"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "조회기간 관측이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
+        "evidence_ids": [
+         "single_snapshot"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "top1_country",
+       "major_changes"
+      ],
+      [
+       "top3_concentration",
+       "major_changes"
+      ],
+      [
+       "top5_concentration",
+       "major_changes"
+      ],
+      [
+       "single_snapshot",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": true,
+   "warnings": [],
+   "markdown": "# 규선석 분석 요약 — 선택한 광종을 한국이 어느 나라와 수입 또는 수출 거래를 하는지(조회 방향 기준) 국가별 금액·중량으로 보여주는 자료다.\n\n**조회방향**: 수입\n\n## 핵심 진단\n\n2026년 12월 31일 기준 규선석 수입총액은 22,441입니다.\n\n## 주요 변화\n\n독일이 11,255(50.15%)로 1위 수입국이며, 상위 3개국(독일·프랑스·인도)의 비중은 79.44%입니다. 상위 5개국까지 합산하면 전체의 99.12%를 차지합니다.\n\n## 현재 위치\n\n조회기간 관측이 1건뿐이라 기간별 변화는 계산하지 않았습니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 수입총액 | 22,441.00 |  |\n| 1위국 수입비중 | 50.15 | % |\n| 상위3국 수입비중 | 79.44 | % |\n| 상위5국 수입비중 | 99.12 | % |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026년 12월 31일 기준 규선석 수입총액은 22,441입니다.",
+      "evidence_ids": [
+       "current_state"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "독일이 11,255(50.15%)로 1위 수입국이며, 상위 3개국(독일·프랑스·인도)의 비중은 79.44%입니다.",
+      "evidence_ids": [
+       "top1_country",
+       "top3_concentration"
+      ]
+     },
+     {
+      "text": "상위 5개국까지 합산하면 전체의 99.12%를 차지합니다.",
+      "evidence_ids": [
+       "top5_concentration"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "조회기간 관측이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
+      "evidence_ids": [
+       "single_snapshot"
+      ]
+     }
+    ]
+   },
+   "elapsed": 6.1
+  },
+  {
+   "combo_key": "supply_map_korea:규소|수입|전체기간|list",
+   "page_id": "map_korea",
+   "llm_attempts": [
+    {
+     "elapsed": 6.4,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 12월 31일 기준 규소 수입총액은 13,957,121,406입니다.",
+        "evidence_ids": [
+         "current_state"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "중국이 7,572,649,512(54.26%)로 1위 수입국이며, 상위 3개국(중국·미국·일본)의 비중은 70.14%입니다.",
+        "evidence_ids": [
+         "top1_country",
+         "top3_concentration"
+        ]
+       },
+       {
+        "text": "상위 5개국까지 합산하면 전체의 80.97%를 차지합니다.",
+        "evidence_ids": [
+         "top5_concentration"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "조회기간 관측이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
+        "evidence_ids": [
+         "single_snapshot"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "top1_country",
+       "major_changes"
+      ],
+      [
+       "top3_concentration",
+       "major_changes"
+      ],
+      [
+       "top5_concentration",
+       "major_changes"
+      ],
+      [
+       "single_snapshot",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": true,
+   "warnings": [],
+   "markdown": "# 규소 분석 요약 — 선택한 광종을 한국이 어느 나라와 수입 또는 수출 거래를 하는지(조회 방향 기준) 국가별 금액·중량으로 보여주는 자료다.\n\n**조회방향**: 수입\n\n## 핵심 진단\n\n2026년 12월 31일 기준 규소 수입총액은 13,957,121,406입니다.\n\n## 주요 변화\n\n중국이 7,572,649,512(54.26%)로 1위 수입국이며, 상위 3개국(중국·미국·일본)의 비중은 70.14%입니다. 상위 5개국까지 합산하면 전체의 80.97%를 차지합니다.\n\n## 현재 위치\n\n조회기간 관측이 1건뿐이라 기간별 변화는 계산하지 않았습니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 수입총액 | 13,957,121,406.00 |  |\n| 1위국 수입비중 | 54.26 | % |\n| 상위3국 수입비중 | 70.14 | % |\n| 상위5국 수입비중 | 80.97 | % |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026년 12월 31일 기준 규소 수입총액은 13,957,121,406입니다.",
+      "evidence_ids": [
+       "current_state"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "중국이 7,572,649,512(54.26%)로 1위 수입국이며, 상위 3개국(중국·미국·일본)의 비중은 70.14%입니다.",
+      "evidence_ids": [
+       "top1_country",
+       "top3_concentration"
+      ]
+     },
+     {
+      "text": "상위 5개국까지 합산하면 전체의 80.97%를 차지합니다.",
+      "evidence_ids": [
+       "top5_concentration"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "조회기간 관측이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
+      "evidence_ids": [
+       "single_snapshot"
+      ]
+     }
+    ]
+   },
+   "elapsed": 6.4
+  },
+  {
+   "combo_key": "supply_map_global:갈륨|수입|전체기간|list",
+   "page_id": "map_global",
+   "llm_attempts": [
+    {
+     "elapsed": 7.4,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 12월 31일 기준 갈륨 세계 교역 총액은 7,634,804,628.83입니다.",
+        "evidence_ids": [
+         "current_state"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "글로벌 교역은 출처미상→중국(26.51%), 출처미상→미국(20.93%), 출처미상→브라질(19.90%) 순으로 규모가 크며, 상위 3개 루트의 합산 점유율은 67.35%를 기록했습니다.",
+        "evidence_ids": [
+         "top1_country",
+         "top3_concentration"
+        ]
+       },
+       {
+        "text": "대한민국은 출처미상발 567,034,005.46(7.43%)을 기록하며 세부현황 기준 4위의 루트로 나타났습니다.",
+        "evidence_ids": [
+         "korea_route_rank"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "조회기간 내 관측일이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
+        "evidence_ids": [
+         "single_snapshot"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "top1_country",
+       "major_changes"
+      ],
+      [
+       "top3_concentration",
+       "major_changes"
+      ],
+      [
+       "top5_concentration",
+       "major_changes"
+      ],
+      [
+       "korea_route_rank",
+       "major_changes"
+      ],
+      [
+       "single_snapshot",
+       "current_position"
+      ]
+     ]
+    },
+    {
+     "elapsed": 7.3,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 12월 31일 기준 갈륨 세계 교역 총액은 7,634,804,628.83입니다.",
+        "evidence_ids": [
+         "current_state"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "글로벌 교역은 출처미상→중국(26.51%), 출처미상→미국(20.93%), 출처미상→브라질(19.90%) 순으로 규모가 크며, 상위 3개 루트의 합산 점유율은 67.35%를 기록했습니다.",
+        "evidence_ids": [
+         "top1_country",
+         "top3_concentration"
+        ]
+       },
+       {
+        "text": "대한민국은 세부현황 기준 4위(출처미상발 567,034,005.46, 7.43%)로 나타났습니다.",
+        "evidence_ids": [
+         "korea_route_rank"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "조회기간 내 관측일이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
+        "evidence_ids": [
+         "single_snapshot"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "top1_country",
+       "major_changes"
+      ],
+      [
+       "top3_concentration",
+       "major_changes"
+      ],
+      [
+       "top5_concentration",
+       "major_changes"
+      ],
+      [
+       "korea_route_rank",
+       "major_changes"
+      ],
+      [
+       "single_snapshot",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": false,
+   "warnings": [
+    "LLM 분석요약이 근거 검증을 통과하지 못해 규칙 기반 요약을 반환했다. 검증 사유: 모든 evidence_id를 정확히 한 번씩 사용하지 않았다."
+   ],
+   "markdown": "# 갈륨 분석 요약 — 선택한 광종의 전세계 UN Comtrade 양자무역 기록에서 원산지→도착지 루트별 규모를 보여주고, 그중 대한민국이 관련된 루트의 순위를 별도로 표시하는 자료다.\n\n## 핵심 진단\n\n2026-12-31 기준 갈륨 세계 교역 총액은 7,634,804,628.83(단위 미상)이다.\n\n## 주요 변화\n\n글로벌 교역 규모 1위는 출처미상→중국로 2,023,937,903.10(26.51%), 2위는 출처미상→미국로 1,598,254,291.47(20.93%), 3위는 출처미상→브라질로 1,519,604,568.82(19.90%)를 기록했다. 상위 3개 루트의 합산 점유율은 67.35%다. 상위 5개 루트의 합산 점유율은 81.56%다. 대한민국은 세부현황 기준 4위(출처미상발 567,034,005.46, 7.43%)로 나타났다.\n\n## 현재 위치\n\n조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 세계 교역 총액 | 7,634,804,628.83 |  |\n| 1위 루트 비중 | 26.51 | % |\n| 상위3루트 비중 | 67.35 | % |\n| 상위5루트 비중 | 81.56 | % |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026-12-31 기준 갈륨 세계 교역 총액은 7,634,804,628.83(단위 미상)이다.",
+      "evidence_ids": [
+       "current_state"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "글로벌 교역 규모 1위는 출처미상→중국로 2,023,937,903.10(26.51%), 2위는 출처미상→미국로 1,598,254,291.47(20.93%), 3위는 출처미상→브라질로 1,519,604,568.82(19.90%)를 기록했다.",
+      "evidence_ids": [
+       "top1_country"
+      ]
+     },
+     {
+      "text": "상위 3개 루트의 합산 점유율은 67.35%다.",
+      "evidence_ids": [
+       "top3_concentration"
+      ]
+     },
+     {
+      "text": "상위 5개 루트의 합산 점유율은 81.56%다.",
+      "evidence_ids": [
+       "top5_concentration"
+      ]
+     },
+     {
+      "text": "대한민국은 세부현황 기준 4위(출처미상발 567,034,005.46, 7.43%)로 나타났다.",
+      "evidence_ids": [
+       "korea_route_rank"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았다.",
+      "evidence_ids": [
+       "single_snapshot"
+      ]
+     }
+    ]
+   },
+   "elapsed": 14.7
+  },
+  {
+   "combo_key": "supply_map_global:갈탄|수입|전체기간|list",
+   "page_id": "map_global",
+   "llm_attempts": [
+    {
+     "elapsed": 7.3,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 12월 31일 기준 갈탄 세계 교역 총액은 72,098,693,527.03입니다.",
+        "evidence_ids": [
+         "current_state"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "글로벌 교역은 출처미상→인도네시아 루트가 60,705,090,749.03(84.20%)로 1위를 차지한 가운데, 상위 3개 루트의 합산 점유율은 91.87%에 달하며 상위 5개 루트까지는 95.46%의 비중을 보였습니다.",
+        "evidence_ids": [
+         "top1_country",
+         "top3_concentration",
+         "top5_concentration"
+        ]
+       },
+       {
+        "text": "대한민국이 포함된 개별 루트는 상위 데이터에 나타나지 않았습니다.",
+        "evidence_ids": [
+         "korea_route_absent"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "조회 기간 내 관측일이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
+        "evidence_ids": [
+         "single_snapshot"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "top1_country",
+       "major_changes"
+      ],
+      [
+       "top3_concentration",
+       "major_changes"
+      ],
+      [
+       "top5_concentration",
+       "major_changes"
+      ],
+      [
+       "korea_route_absent",
+       "major_changes"
+      ],
+      [
+       "single_snapshot",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": true,
+   "warnings": [],
+   "markdown": "# 갈탄 분석 요약 — 선택한 광종의 전세계 UN Comtrade 양자무역 기록에서 원산지→도착지 루트별 규모를 보여주고, 그중 대한민국이 관련된 루트의 순위를 별도로 표시하는 자료다.\n\n## 핵심 진단\n\n2026년 12월 31일 기준 갈탄 세계 교역 총액은 72,098,693,527.03입니다.\n\n## 주요 변화\n\n글로벌 교역은 출처미상→인도네시아 루트가 60,705,090,749.03(84.20%)로 1위를 차지한 가운데, 상위 3개 루트의 합산 점유율은 91.87%에 달하며 상위 5개 루트까지는 95.46%의 비중을 보였습니다. 대한민국이 포함된 개별 루트는 상위 데이터에 나타나지 않았습니다.\n\n## 현재 위치\n\n조회 기간 내 관측일이 1건뿐이라 기간별 변화는 계산하지 않았습니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 세계 교역 총액 | 72,098,693,527.03 |  |\n| 1위 루트 비중 | 84.20 | % |\n| 상위3루트 비중 | 91.87 | % |\n| 상위5루트 비중 | 95.46 | % |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026년 12월 31일 기준 갈탄 세계 교역 총액은 72,098,693,527.03입니다.",
+      "evidence_ids": [
+       "current_state"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "글로벌 교역은 출처미상→인도네시아 루트가 60,705,090,749.03(84.20%)로 1위를 차지한 가운데, 상위 3개 루트의 합산 점유율은 91.87%에 달하며 상위 5개 루트까지는 95.46%의 비중을 보였습니다.",
+      "evidence_ids": [
+       "top1_country",
+       "top3_concentration",
+       "top5_concentration"
+      ]
+     },
+     {
+      "text": "대한민국이 포함된 개별 루트는 상위 데이터에 나타나지 않았습니다.",
+      "evidence_ids": [
+       "korea_route_absent"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "조회 기간 내 관측일이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
+      "evidence_ids": [
+       "single_snapshot"
+      ]
+     }
+    ]
+   },
+   "elapsed": 7.3
+  },
+  {
+   "combo_key": "supply_map_global:게르마늄|수입|전체기간|list",
+   "page_id": "map_global",
+   "llm_attempts": [
+    {
+     "elapsed": 7.3,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 12월 31일 기준 게르마늄 세계 교역 총액은 10,002,467,122.67입니다.",
+        "evidence_ids": [
+         "current_state"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "글로벌 교역은 출처미상→중국(32.24%), 출처미상→미국(17.41%), 출처미상→브라질(13.13%) 순으로 규모가 크며, 상위 3개 루트의 합산 점유율은 62.78%를 기록했습니다.",
+        "evidence_ids": [
+         "top1_country",
+         "top3_concentration"
+        ]
+       },
+       {
+        "text": "대한민국은 세부현황 기준 4위(출처미상발 570,215,062.51, 5.70%)로 나타났습니다.",
+        "evidence_ids": [
+         "korea_route_rank"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
+        "evidence_ids": [
+         "single_snapshot"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "top1_country",
+       "major_changes"
+      ],
+      [
+       "top3_concentration",
+       "major_changes"
+      ],
+      [
+       "top5_concentration",
+       "major_changes"
+      ],
+      [
+       "korea_route_rank",
+       "major_changes"
+      ],
+      [
+       "single_snapshot",
+       "current_position"
+      ]
+     ]
+    },
+    {
+     "elapsed": 7.4,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 12월 31일 기준 게르마늄 세계 교역 총액은 10,002,467,122.67입니다.",
+        "evidence_ids": [
+         "current_state"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "글로벌 교역은 출처미상→중국(32.24%), 출처미상→미국(17.41%), 출처미상→브라질(13.13%) 순으로 규모가 컸으며, 상위 3개 루트의 합산 점유율은 62.78%를 기록했습니다.",
+        "evidence_ids": [
+         "top1_country",
+         "top3_concentration"
+        ]
+       },
+       {
+        "text": "대한민국은 세부현황 기준 4위(출처미상발 570,215,062.51, 5.70%)로 나타났습니다.",
+        "evidence_ids": [
+         "korea_route_rank"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
+        "evidence_ids": [
+         "single_snapshot"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "top1_country",
+       "major_changes"
+      ],
+      [
+       "top3_concentration",
+       "major_changes"
+      ],
+      [
+       "top5_concentration",
+       "major_changes"
+      ],
+      [
+       "korea_route_rank",
+       "major_changes"
+      ],
+      [
+       "single_snapshot",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": false,
+   "warnings": [
+    "LLM 분석요약이 근거 검증을 통과하지 못해 규칙 기반 요약을 반환했다. 검증 사유: 모든 evidence_id를 정확히 한 번씩 사용하지 않았다."
+   ],
+   "markdown": "# 게르마늄 분석 요약 — 선택한 광종의 전세계 UN Comtrade 양자무역 기록에서 원산지→도착지 루트별 규모를 보여주고, 그중 대한민국이 관련된 루트의 순위를 별도로 표시하는 자료다.\n\n## 핵심 진단\n\n2026-12-31 기준 게르마늄 세계 교역 총액은 10,002,467,122.67(단위 미상)이다.\n\n## 주요 변화\n\n글로벌 교역 규모 1위는 출처미상→중국로 3,225,119,762.23(32.24%), 2위는 출처미상→미국로 1,741,553,915.91(17.41%), 3위는 출처미상→브라질로 1,312,826,013.77(13.13%)를 기록했다. 상위 3개 루트의 합산 점유율은 62.78%다. 상위 5개 루트의 합산 점유율은 73.81%다. 대한민국은 세부현황 기준 4위(출처미상발 570,215,062.51, 5.70%)로 나타났다.\n\n## 현재 위치\n\n조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 세계 교역 총액 | 10,002,467,122.67 |  |\n| 1위 루트 비중 | 32.24 | % |\n| 상위3루트 비중 | 62.78 | % |\n| 상위5루트 비중 | 73.81 | % |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026-12-31 기준 게르마늄 세계 교역 총액은 10,002,467,122.67(단위 미상)이다.",
+      "evidence_ids": [
+       "current_state"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "글로벌 교역 규모 1위는 출처미상→중국로 3,225,119,762.23(32.24%), 2위는 출처미상→미국로 1,741,553,915.91(17.41%), 3위는 출처미상→브라질로 1,312,826,013.77(13.13%)를 기록했다.",
+      "evidence_ids": [
+       "top1_country"
+      ]
+     },
+     {
+      "text": "상위 3개 루트의 합산 점유율은 62.78%다.",
+      "evidence_ids": [
+       "top3_concentration"
+      ]
+     },
+     {
+      "text": "상위 5개 루트의 합산 점유율은 73.81%다.",
+      "evidence_ids": [
+       "top5_concentration"
+      ]
+     },
+     {
+      "text": "대한민국은 세부현황 기준 4위(출처미상발 570,215,062.51, 5.70%)로 나타났다.",
+      "evidence_ids": [
+       "korea_route_rank"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았다.",
+      "evidence_ids": [
+       "single_snapshot"
+      ]
+     }
+    ]
+   },
+   "elapsed": 14.8
+  },
+  {
+   "combo_key": "supply_map_global:고령토|수입|전체기간|list",
+   "page_id": "map_global",
+   "llm_attempts": [
+    {
+     "elapsed": 6.8,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 12월 31일 기준 고령토 세계 교역 총액은 57,906,148,412.67입니다.",
+        "evidence_ids": [
+         "current_state"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "글로벌 교역은 출처미상→호주(51.25%), 출처미상→미국(21.15%), 출처미상→브라질(6.29%) 순으로 규모가 나타났으며, 상위 3개 루트의 합산 점유율은 78.70%를 기록했습니다.",
+        "evidence_ids": [
+         "top1_country",
+         "top3_concentration"
+        ]
+       },
+       {
+        "text": "대한민국이 포함된 개별 루트는 상위 데이터에 나타나지 않았습니다.",
+        "evidence_ids": [
+         "korea_route_absent"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
+        "evidence_ids": [
+         "single_snapshot"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "top1_country",
+       "major_changes"
+      ],
+      [
+       "top3_concentration",
+       "major_changes"
+      ],
+      [
+       "top5_concentration",
+       "major_changes"
+      ],
+      [
+       "korea_route_absent",
+       "major_changes"
+      ],
+      [
+       "single_snapshot",
+       "current_position"
+      ]
+     ]
+    },
+    {
+     "elapsed": 6.8,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 12월 31일 기준 고령토 세계 교역 총액은 57,906,148,412.67입니다.",
+        "evidence_ids": [
+         "current_state"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "글로벌 교역은 출처미상→호주(51.25%), 출처미상→미국(21.15%), 출처미상→브라질(6.29%) 순으로 규모가 나타났으며, 상위 3개 루트의 합산 점유율은 78.70%를 기록했습니다.",
+        "evidence_ids": [
+         "top1_country",
+         "top3_concentration"
+        ]
+       },
+       {
+        "text": "대한민국이 포함된 개별 루트는 상위 데이터에 나타나지 않았습니다.",
+        "evidence_ids": [
+         "korea_route_absent"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
+        "evidence_ids": [
+         "single_snapshot"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "top1_country",
+       "major_changes"
+      ],
+      [
+       "top3_concentration",
+       "major_changes"
+      ],
+      [
+       "top5_concentration",
+       "major_changes"
+      ],
+      [
+       "korea_route_absent",
+       "major_changes"
+      ],
+      [
+       "single_snapshot",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": false,
+   "warnings": [
+    "LLM 분석요약이 근거 검증을 통과하지 못해 규칙 기반 요약을 반환했다. 검증 사유: 모든 evidence_id를 정확히 한 번씩 사용하지 않았다."
+   ],
+   "markdown": "# 고령토 분석 요약 — 선택한 광종의 전세계 UN Comtrade 양자무역 기록에서 원산지→도착지 루트별 규모를 보여주고, 그중 대한민국이 관련된 루트의 순위를 별도로 표시하는 자료다.\n\n## 핵심 진단\n\n2026-12-31 기준 고령토 세계 교역 총액은 57,906,148,412.67(단위 미상)이다.\n\n## 주요 변화\n\n글로벌 교역 규모 1위는 출처미상→호주로 29,679,587,138(51.25%), 2위는 출처미상→미국로 12,245,886,803.82(21.15%), 3위는 출처미상→브라질로 3,643,934,617.23(6.29%)를 기록했다. 상위 3개 루트의 합산 점유율은 78.70%다. 상위 5개 루트의 합산 점유율은 86.05%다. 대한민국이 포함된 개별 루트는 조회된 상위 데이터에 나타나지 않았다.\n\n## 현재 위치\n\n조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 세계 교역 총액 | 57,906,148,412.67 |  |\n| 1위 루트 비중 | 51.25 | % |\n| 상위3루트 비중 | 78.70 | % |\n| 상위5루트 비중 | 86.05 | % |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026-12-31 기준 고령토 세계 교역 총액은 57,906,148,412.67(단위 미상)이다.",
+      "evidence_ids": [
+       "current_state"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "글로벌 교역 규모 1위는 출처미상→호주로 29,679,587,138(51.25%), 2위는 출처미상→미국로 12,245,886,803.82(21.15%), 3위는 출처미상→브라질로 3,643,934,617.23(6.29%)를 기록했다.",
+      "evidence_ids": [
+       "top1_country"
+      ]
+     },
+     {
+      "text": "상위 3개 루트의 합산 점유율은 78.70%다.",
+      "evidence_ids": [
+       "top3_concentration"
+      ]
+     },
+     {
+      "text": "상위 5개 루트의 합산 점유율은 86.05%다.",
+      "evidence_ids": [
+       "top5_concentration"
+      ]
+     },
+     {
+      "text": "대한민국이 포함된 개별 루트는 조회된 상위 데이터에 나타나지 않았다.",
+      "evidence_ids": [
+       "korea_route_absent"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았다.",
+      "evidence_ids": [
+       "single_snapshot"
+      ]
+     }
+    ]
+   },
+   "elapsed": 13.6
+  },
+  {
+   "combo_key": "supply_map_global:규선석|수입|전체기간|list",
+   "page_id": "map_global",
+   "llm_attempts": [
+    {
+     "elapsed": 6.8,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 12월 기준 규선석 세계 교역 총액은 1,528,506,140.90입니다.",
+        "evidence_ids": [
+         "current_state"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "글로벌 교역은 출처미상→남아프리카공화국(50.68%), 출처미상→프랑스(25.84%), 출처미상→페루(12.68%) 순으로 규모가 크며, 상위 3개 루트의 합산 점유율은 89.20%에 달합니다.",
+        "evidence_ids": [
+         "top1_country",
+         "top3_concentration"
+        ]
+       },
+       {
+        "text": "대한민국이 포함된 개별 루트는 조회된 상위 데이터에 나타나지 않았습니다.",
+        "evidence_ids": [
+         "korea_route_absent"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
+        "evidence_ids": [
+         "single_snapshot"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "top1_country",
+       "major_changes"
+      ],
+      [
+       "top3_concentration",
+       "major_changes"
+      ],
+      [
+       "top5_concentration",
+       "major_changes"
+      ],
+      [
+       "korea_route_absent",
+       "major_changes"
+      ],
+      [
+       "single_snapshot",
+       "current_position"
+      ]
+     ]
+    },
+    {
+     "elapsed": 7.3,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 12월 기준 규선석 세계 교역 총액은 1,528,506,140.90입니다.",
+        "evidence_ids": [
+         "current_state"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "출처미상에서 남아프리카공화국으로 향하는 루트가 774,588,991.92(50.68%)로 1위를 차지한 가운데, 프랑스(25.84%)와 페루(12.68%)로 향하는 경로가 각각 2, 3위를 기록하며 상위 3개 루트의 합산 점유율은 89.20%에 달했습니다.",
+        "evidence_ids": [
+         "top1_country",
+         "top3_concentration"
+        ]
+       },
+       {
+        "text": "대한민국이 포함된 개별 루트는 상위 데이터에 나타나지 않았습니다.",
+        "evidence_ids": [
+         "korea_route_absent"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "조회 기간 내 관측일이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
+        "evidence_ids": [
+         "single_snapshot"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "top1_country",
+       "major_changes"
+      ],
+      [
+       "top3_concentration",
+       "major_changes"
+      ],
+      [
+       "top5_concentration",
+       "major_changes"
+      ],
+      [
+       "korea_route_absent",
+       "major_changes"
+      ],
+      [
+       "single_snapshot",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": false,
+   "warnings": [
+    "LLM 분석요약이 근거 검증을 통과하지 못해 규칙 기반 요약을 반환했다. 검증 사유: 모든 evidence_id를 정확히 한 번씩 사용하지 않았다."
+   ],
+   "markdown": "# 규선석 분석 요약 — 선택한 광종의 전세계 UN Comtrade 양자무역 기록에서 원산지→도착지 루트별 규모를 보여주고, 그중 대한민국이 관련된 루트의 순위를 별도로 표시하는 자료다.\n\n## 핵심 진단\n\n2026-12-31 기준 규선석 세계 교역 총액은 1,528,506,140.90(단위 미상)이다.\n\n## 주요 변화\n\n글로벌 교역 규모 1위는 출처미상→남아프리카공화국로 774,588,991.92(50.68%), 2위는 출처미상→프랑스로 395,027,255.72(25.84%), 3위는 출처미상→페루로 193,759,039.27(12.68%)를 기록했다. 상위 3개 루트의 합산 점유율은 89.20%다. 상위 5개 루트의 합산 점유율은 100.00%다. 대한민국이 포함된 개별 루트는 조회된 상위 데이터에 나타나지 않았다.\n\n## 현재 위치\n\n조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 세계 교역 총액 | 1,528,506,140.90 |  |\n| 1위 루트 비중 | 50.68 | % |\n| 상위3루트 비중 | 89.20 | % |\n| 상위5루트 비중 | 100.00 | % |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026-12-31 기준 규선석 세계 교역 총액은 1,528,506,140.90(단위 미상)이다.",
+      "evidence_ids": [
+       "current_state"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "글로벌 교역 규모 1위는 출처미상→남아프리카공화국로 774,588,991.92(50.68%), 2위는 출처미상→프랑스로 395,027,255.72(25.84%), 3위는 출처미상→페루로 193,759,039.27(12.68%)를 기록했다.",
+      "evidence_ids": [
+       "top1_country"
+      ]
+     },
+     {
+      "text": "상위 3개 루트의 합산 점유율은 89.20%다.",
+      "evidence_ids": [
+       "top3_concentration"
+      ]
+     },
+     {
+      "text": "상위 5개 루트의 합산 점유율은 100.00%다.",
+      "evidence_ids": [
+       "top5_concentration"
+      ]
+     },
+     {
+      "text": "대한민국이 포함된 개별 루트는 조회된 상위 데이터에 나타나지 않았다.",
+      "evidence_ids": [
+       "korea_route_absent"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았다.",
+      "evidence_ids": [
+       "single_snapshot"
+      ]
+     }
+    ]
+   },
+   "elapsed": 14.2
+  },
+  {
+   "combo_key": "supply_map_global:규소|수입|전체기간|list",
+   "page_id": "map_global",
+   "llm_attempts": [
+    {
+     "elapsed": 7.5,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 12월 31일 기준 규소 세계 교역 총액은 250,273,400,969.87(단위 미상)입니다.",
+        "evidence_ids": [
+         "current_state"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "글로벌 교역은 출처미상→미국(22.78%), 출처미상→중국(18.64%), 출처미상→일본(13.58%) 순으로 규모가 컸으며, 상위 3개 루트의 합산 점유율은 54.99%를 기록했습니다.",
+        "evidence_ids": [
+         "top1_country",
+         "top3_concentration"
+        ]
+       },
+       {
+        "text": "대한민국이 관련된 루트는 세부현황 기준 5위(출처미상발 28,348,020,369.68, 11.33%)로 나타났습니다.",
+        "evidence_ids": [
+         "korea_route_rank"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
+        "evidence_ids": [
+         "single_snapshot"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "top1_country",
+       "major_changes"
+      ],
+      [
+       "top3_concentration",
+       "major_changes"
+      ],
+      [
+       "top5_concentration",
+       "major_changes"
+      ],
+      [
+       "korea_route_rank",
+       "major_changes"
+      ],
+      [
+       "single_snapshot",
+       "current_position"
+      ]
+     ]
+    },
+    {
+     "elapsed": 7.6,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2026년 12월 31일 기준 규소 세계 교역 총액은 250,273,400,969.87입니다.",
+        "evidence_ids": [
+         "current_state"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "글로벌 교역은 출처미상→미국(22.78%), 출처미상→중국(18.64%), 출처미상→일본(13.58%) 순으로 규모가 컸으며, 상위 3개 루트의 합산 점유율은 54.99%를 기록했습니다.",
+        "evidence_ids": [
+         "top1_country",
+         "top3_concentration"
+        ]
+       },
+       {
+        "text": "대한민국은 출처미상발 28,348,020,369.68(11.33%) 규모로 세부현황 기준 5위에 위치했습니다.",
+        "evidence_ids": [
+         "korea_route_rank"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
+        "evidence_ids": [
+         "single_snapshot"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "top1_country",
+       "major_changes"
+      ],
+      [
+       "top3_concentration",
+       "major_changes"
+      ],
+      [
+       "top5_concentration",
+       "major_changes"
+      ],
+      [
+       "korea_route_rank",
+       "major_changes"
+      ],
+      [
+       "single_snapshot",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": false,
+   "warnings": [
+    "LLM 분석요약이 근거 검증을 통과하지 못해 규칙 기반 요약을 반환했다. 검증 사유: 모든 evidence_id를 정확히 한 번씩 사용하지 않았다."
+   ],
+   "markdown": "# 규소 분석 요약 — 선택한 광종의 전세계 UN Comtrade 양자무역 기록에서 원산지→도착지 루트별 규모를 보여주고, 그중 대한민국이 관련된 루트의 순위를 별도로 표시하는 자료다.\n\n## 핵심 진단\n\n2026-12-31 기준 규소 세계 교역 총액은 250,273,400,969.87(단위 미상)이다.\n\n## 주요 변화\n\n글로벌 교역 규모 1위는 출처미상→미국로 57,001,292,259.58(22.78%), 2위는 출처미상→중국로 46,655,724,623.52(18.64%), 3위는 출처미상→일본로 33,979,120,303(13.58%)를 기록했다. 상위 3개 루트의 합산 점유율은 54.99%다. 상위 5개 루트의 합산 점유율은 79.04%다. 대한민국은 세부현황 기준 5위(출처미상발 28,348,020,369.68, 11.33%)로 나타났다.\n\n## 현재 위치\n\n조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 세계 교역 총액 | 250,273,400,969.87 |  |\n| 1위 루트 비중 | 22.78 | % |\n| 상위3루트 비중 | 54.99 | % |\n| 상위5루트 비중 | 79.04 | % |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2026-12-31 기준 규소 세계 교역 총액은 250,273,400,969.87(단위 미상)이다.",
+      "evidence_ids": [
+       "current_state"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "글로벌 교역 규모 1위는 출처미상→미국로 57,001,292,259.58(22.78%), 2위는 출처미상→중국로 46,655,724,623.52(18.64%), 3위는 출처미상→일본로 33,979,120,303(13.58%)를 기록했다.",
+      "evidence_ids": [
+       "top1_country"
+      ]
+     },
+     {
+      "text": "상위 3개 루트의 합산 점유율은 54.99%다.",
+      "evidence_ids": [
+       "top3_concentration"
+      ]
+     },
+     {
+      "text": "상위 5개 루트의 합산 점유율은 79.04%다.",
+      "evidence_ids": [
+       "top5_concentration"
+      ]
+     },
+     {
+      "text": "대한민국은 세부현황 기준 5위(출처미상발 28,348,020,369.68, 11.33%)로 나타났다.",
+      "evidence_ids": [
+       "korea_route_rank"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았다.",
+      "evidence_ids": [
+       "single_snapshot"
+      ]
+     }
+    ]
+   },
+   "elapsed": 15.1
+  },
+  {
+   "combo_key": "mineral_map:갈륨|생산량|chart",
+   "page_id": "map_mineral",
+   "llm_attempts": [
+    {
+     "elapsed": 10.8,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2025년 세계 갈륨 생산량은 4,089kg으로, 2019년부터 6년간 0.00%의 변동 없이 유지되었습니다.",
+        "evidence_ids": [
+         "current_state",
+         "period_total_change"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "중국은 900kg을 생산하며 세계 비중의 22.01%를 차지해 1위를 기록했습니다.",
+        "evidence_ids": [
+         "current_leaders"
+        ]
+       },
+       {
+        "text": "러시아는 6kg(0.15%)으로 2위, 일본은 3kg(0.07%)으로 3위를 차지하고 있으며, 1위인 중국과 2위 러시아의 비중 차이는 21.86%포인트에 달합니다.",
+        "evidence_ids": [
+         "current_leaders",
+         "third_country"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "중국과 러시아는 2019년 대비 생산량과 비중이 모두 증가하며 각각 1위와 2위 순위를 유지했습니다.",
+        "evidence_ids": [
+         "leading_country_changes"
+        ]
+       },
+       {
+        "text": "상위 3개국 비중이 2019년 7.78%에서 2025년 22.23%로 14.45%포인트 높아지며 상위 국가로의 집중도가 강화되었습니다.",
+        "evidence_ids": [
+         "concentration_change"
+        ]
+       },
+       {
+        "text": "다만 1위 중국의 비중이 22.01%이며 상위 5개국 외 국가들이 77.77%를 차지하고 있어, 특정 한 국가가 시장을 압도하는 구조는 아닙니다.",
+        "evidence_ids": [
+         "current_concentration_structure"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "period_total_change",
+       "core_diagnosis"
+      ],
+      [
+       "current_leaders",
+       "major_changes"
+      ],
+      [
+       "third_country",
+       "major_changes"
+      ],
+      [
+       "leading_country_changes",
+       "current_position"
+      ],
+      [
+       "concentration_change",
+       "current_position"
+      ],
+      [
+       "current_concentration_structure",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": true,
+   "warnings": [],
+   "markdown": "# 갈륨 분석 요약 — 선택한 광종의 국가별 매장량 또는 생산량과 세계 전체 규모를 연도별로 보여주는 자료다.\n\n**측정항목**: production\n\n## 핵심 진단\n\n2025년 세계 갈륨 생산량은 4,089kg으로, 2019년부터 6년간 0.00%의 변동 없이 유지되었습니다.\n\n## 주요 변화\n\n중국은 900kg을 생산하며 세계 비중의 22.01%를 차지해 1위를 기록했습니다. 러시아는 6kg(0.15%)으로 2위, 일본은 3kg(0.07%)으로 3위를 차지하고 있으며, 1위인 중국과 2위 러시아의 비중 차이는 21.86%포인트에 달합니다.\n\n## 현재 위치\n\n중국과 러시아는 2019년 대비 생산량과 비중이 모두 증가하며 각각 1위와 2위 순위를 유지했습니다. 상위 3개국 비중이 2019년 7.78%에서 2025년 22.23%로 14.45%포인트 높아지며 상위 국가로의 집중도가 강화되었습니다. 다만 1위 중국의 비중이 22.01%이며 상위 5개국 외 국가들이 77.77%를 차지하고 있어, 특정 한 국가가 시장을 압도하는 구조는 아닙니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 현재 세계 생산량 | 4,089.00 | kg |\n| 조회기간 세계합계 변화율 | 0.00 | % |\n| 1위 국가 | 중국 |  |\n| 1위 국가 비중 | 22.01 | % |\n| 상위 3개국 비중 | 22.23 | % |\n| 상위 5개국 비중 | 22.23 | % |\n| 1·2위 비중 차이 | 21.86 | % |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2025년 세계 갈륨 생산량은 4,089kg으로, 2019년부터 6년간 0.00%의 변동 없이 유지되었습니다.",
+      "evidence_ids": [
+       "current_state",
+       "period_total_change"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "중국은 900kg을 생산하며 세계 비중의 22.01%를 차지해 1위를 기록했습니다.",
+      "evidence_ids": [
+       "current_leaders"
+      ]
+     },
+     {
+      "text": "러시아는 6kg(0.15%)으로 2위, 일본은 3kg(0.07%)으로 3위를 차지하고 있으며, 1위인 중국과 2위 러시아의 비중 차이는 21.86%포인트에 달합니다.",
+      "evidence_ids": [
+       "current_leaders",
+       "third_country"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "중국과 러시아는 2019년 대비 생산량과 비중이 모두 증가하며 각각 1위와 2위 순위를 유지했습니다.",
+      "evidence_ids": [
+       "leading_country_changes"
+      ]
+     },
+     {
+      "text": "상위 3개국 비중이 2019년 7.78%에서 2025년 22.23%로 14.45%포인트 높아지며 상위 국가로의 집중도가 강화되었습니다.",
+      "evidence_ids": [
+       "concentration_change"
+      ]
+     },
+     {
+      "text": "다만 1위 중국의 비중이 22.01%이며 상위 5개국 외 국가들이 77.77%를 차지하고 있어, 특정 한 국가가 시장을 압도하는 구조는 아닙니다.",
+      "evidence_ids": [
+       "current_concentration_structure"
+      ]
+     }
+    ]
+   },
+   "elapsed": 10.8
+  },
+  {
+   "combo_key": "mineral_map:규소|생산량|chart",
+   "page_id": "map_mineral",
+   "llm_attempts": [
+    {
+     "elapsed": 11.0,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2025년 세계 규소 생산량은 61,318,000k ton으로, 2019년부터 6년간 변동 없이 유지되었습니다.",
+        "evidence_ids": [
+         "current_state",
+         "period_total_change"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "중국은 7,500,000k ton을 생산하며 세계 비중의 12.23%를 차지해 1위를 기록했습니다.",
+        "evidence_ids": [
+         "current_leaders"
+        ]
+       },
+       {
+        "text": "러시아는 455,000k ton(0.74%)으로 2위이며, 브라질이 350,000k ton(0.57%)으로 3위를 차지했습니다.",
+        "evidence_ids": [
+         "current_leaders",
+         "third_country"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "중국은 2019년 대비 생산량이 3,000,000k ton 증가하며 비중이 4.89%포인트 높아진 반면, 러시아는 생산량이 145,000k ton 감소하며 비중이 0.24%포인트 낮아졌습니다.",
+        "evidence_ids": [
+         "leading_country_changes"
+        ]
+       },
+       {
+        "text": "상위 3개국 비중이 2019년 8.92%에서 2025년 13.54%로 4.62%포인트 높아지는 등 상위 국가로의 집중도가 다소 강화되었습니다.",
+        "evidence_ids": [
+         "concentration_change"
+        ]
+       },
+       {
+        "text": "다만 1위 중국의 비중이 12.23%에 머물고 상위 5개국 외 국가들이 85.79%를 차지하고 있어, 특정 한 국가가 압도하지 않는 구조를 보입니다.",
+        "evidence_ids": [
+         "current_concentration_structure"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "period_total_change",
+       "core_diagnosis"
+      ],
+      [
+       "current_leaders",
+       "major_changes"
+      ],
+      [
+       "third_country",
+       "major_changes"
+      ],
+      [
+       "leading_country_changes",
+       "current_position"
+      ],
+      [
+       "concentration_change",
+       "current_position"
+      ],
+      [
+       "current_concentration_structure",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": true,
+   "warnings": [],
+   "markdown": "# 규소 분석 요약 — 선택한 광종의 국가별 매장량 또는 생산량과 세계 전체 규모를 연도별로 보여주는 자료다.\n\n**측정항목**: production\n\n## 핵심 진단\n\n2025년 세계 규소 생산량은 61,318,000k ton으로, 2019년부터 6년간 변동 없이 유지되었습니다.\n\n## 주요 변화\n\n중국은 7,500,000k ton을 생산하며 세계 비중의 12.23%를 차지해 1위를 기록했습니다. 러시아는 455,000k ton(0.74%)으로 2위이며, 브라질이 350,000k ton(0.57%)으로 3위를 차지했습니다.\n\n## 현재 위치\n\n중국은 2019년 대비 생산량이 3,000,000k ton 증가하며 비중이 4.89%포인트 높아진 반면, 러시아는 생산량이 145,000k ton 감소하며 비중이 0.24%포인트 낮아졌습니다. 상위 3개국 비중이 2019년 8.92%에서 2025년 13.54%로 4.62%포인트 높아지는 등 상위 국가로의 집중도가 다소 강화되었습니다. 다만 1위 중국의 비중이 12.23%에 머물고 상위 5개국 외 국가들이 85.79%를 차지하고 있어, 특정 한 국가가 압도하지 않는 구조를 보입니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 현재 세계 생산량 | 61,318,000.00 | k ton |\n| 조회기간 세계합계 변화율 | 0.00 | % |\n| 1위 국가 | 중국 |  |\n| 1위 국가 비중 | 12.23 | % |\n| 상위 3개국 비중 | 13.54 | % |\n| 상위 5개국 비중 | 14.21 | % |\n| 1·2위 비중 차이 | 11.49 | % |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2025년 세계 규소 생산량은 61,318,000k ton으로, 2019년부터 6년간 변동 없이 유지되었습니다.",
+      "evidence_ids": [
+       "current_state",
+       "period_total_change"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "중국은 7,500,000k ton을 생산하며 세계 비중의 12.23%를 차지해 1위를 기록했습니다.",
+      "evidence_ids": [
+       "current_leaders"
+      ]
+     },
+     {
+      "text": "러시아는 455,000k ton(0.74%)으로 2위이며, 브라질이 350,000k ton(0.57%)으로 3위를 차지했습니다.",
+      "evidence_ids": [
+       "current_leaders",
+       "third_country"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "중국은 2019년 대비 생산량이 3,000,000k ton 증가하며 비중이 4.89%포인트 높아진 반면, 러시아는 생산량이 145,000k ton 감소하며 비중이 0.24%포인트 낮아졌습니다.",
+      "evidence_ids": [
+       "leading_country_changes"
+      ]
+     },
+     {
+      "text": "상위 3개국 비중이 2019년 8.92%에서 2025년 13.54%로 4.62%포인트 높아지는 등 상위 국가로의 집중도가 다소 강화되었습니다.",
+      "evidence_ids": [
+       "concentration_change"
+      ]
+     },
+     {
+      "text": "다만 1위 중국의 비중이 12.23%에 머물고 상위 5개국 외 국가들이 85.79%를 차지하고 있어, 특정 한 국가가 압도하지 않는 구조를 보입니다.",
+      "evidence_ids": [
+       "current_concentration_structure"
+      ]
+     }
+    ]
+   },
+   "elapsed": 11.0
+  },
+  {
+   "combo_key": "mineral_map:규조토|매장량|chart",
+   "page_id": "map_mineral",
+   "llm_attempts": [
+    {
+     "elapsed": 11.2,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2025년 세계 규조토 매장량은 3,126,700,000k ton으로, 2019년부터 2025년까지 6년간 변동 없이 유지되었습니다.",
+        "evidence_ids": [
+         "current_state",
+         "period_total_change"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "미국은 250,000,000k ton의 매장량으로 세계 비중 8.00%를 기록하며 1위를 차지했습니다.",
+        "evidence_ids": [
+         "current_leaders"
+        ]
+       },
+       {
+        "text": "중국은 120,000,000k ton(3.84%)으로 2위이며, 스페인은 57,000,000k ton(1.82%)으로 3위에 올랐습니다.",
+        "evidence_ids": [
+         "current_leaders",
+         "third_country"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "미국은 2019년 대비 매장량과 비중 모두 변동 없이 1위를 유지한 반면, 중국은 매장량이 10,000,000k ton 증가하며 비중이 0.32%포인트 높아진 2위를 기록했습니다.",
+        "evidence_ids": [
+         "leading_country_changes"
+        ]
+       },
+       {
+        "text": "상위 3개국 비중은 2019년 12.92%에서 2025년 13.66%로 0.74%포인트 상승하며 상위 국가로의 집중도가 다소 높아졌습니다.",
+        "evidence_ids": [
+         "concentration_change"
+        ]
+       },
+       {
+        "text": "다만 상위 5개국 비중이 15.13%에 머물고 그 외 국가가 84.87%를 차지하고 있어, 특정 한 국가가 압도하지 않는 분산된 구조를 보입니다.",
+        "evidence_ids": [
+         "current_concentration_structure"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "period_total_change",
+       "core_diagnosis"
+      ],
+      [
+       "current_leaders",
+       "major_changes"
+      ],
+      [
+       "third_country",
+       "major_changes"
+      ],
+      [
+       "leading_country_changes",
+       "current_position"
+      ],
+      [
+       "concentration_change",
+       "current_position"
+      ],
+      [
+       "current_concentration_structure",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": true,
+   "warnings": [
+    "2025년 상위 3개국 중 스페인의 2019년 비교값이 없어 해당 국가의 기간 변화율과 순위 변화는 계산하지 않았다."
+   ],
+   "markdown": "# 규조토 분석 요약 — 선택한 광종의 국가별 매장량 또는 생산량과 세계 전체 규모를 연도별로 보여주는 자료다.\n\n**측정항목**: reserves\n\n## 핵심 진단\n\n2025년 세계 규조토 매장량은 3,126,700,000k ton으로, 2019년부터 2025년까지 6년간 변동 없이 유지되었습니다.\n\n## 주요 변화\n\n미국은 250,000,000k ton의 매장량으로 세계 비중 8.00%를 기록하며 1위를 차지했습니다. 중국은 120,000,000k ton(3.84%)으로 2위이며, 스페인은 57,000,000k ton(1.82%)으로 3위에 올랐습니다.\n\n## 현재 위치\n\n미국은 2019년 대비 매장량과 비중 모두 변동 없이 1위를 유지한 반면, 중국은 매장량이 10,000,000k ton 증가하며 비중이 0.32%포인트 높아진 2위를 기록했습니다. 상위 3개국 비중은 2019년 12.92%에서 2025년 13.66%로 0.74%포인트 상승하며 상위 국가로의 집중도가 다소 높아졌습니다. 다만 상위 5개국 비중이 15.13%에 머물고 그 외 국가가 84.87%를 차지하고 있어, 특정 한 국가가 압도하지 않는 분산된 구조를 보입니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 현재 세계 매장량 | 3,126,700,000.00 | k ton |\n| 조회기간 세계합계 변화율 | 0.00 | % |\n| 1위 국가 | 미국 |  |\n| 1위 국가 비중 | 8.00 | % |\n| 상위 3개국 비중 | 13.66 | % |\n| 상위 5개국 비중 | 15.13 | % |\n| 1·2위 비중 차이 | 4.16 | % |\n\n## 참고\n\n- 2025년 상위 3개국 중 스페인의 2019년 비교값이 없어 해당 국가의 기간 변화율과 순위 변화는 계산하지 않았다.\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2025년 세계 규조토 매장량은 3,126,700,000k ton으로, 2019년부터 2025년까지 6년간 변동 없이 유지되었습니다.",
+      "evidence_ids": [
+       "current_state",
+       "period_total_change"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "미국은 250,000,000k ton의 매장량으로 세계 비중 8.00%를 기록하며 1위를 차지했습니다.",
+      "evidence_ids": [
+       "current_leaders"
+      ]
+     },
+     {
+      "text": "중국은 120,000,000k ton(3.84%)으로 2위이며, 스페인은 57,000,000k ton(1.82%)으로 3위에 올랐습니다.",
+      "evidence_ids": [
+       "current_leaders",
+       "third_country"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "미국은 2019년 대비 매장량과 비중 모두 변동 없이 1위를 유지한 반면, 중국은 매장량이 10,000,000k ton 증가하며 비중이 0.32%포인트 높아진 2위를 기록했습니다.",
+      "evidence_ids": [
+       "leading_country_changes"
+      ]
+     },
+     {
+      "text": "상위 3개국 비중은 2019년 12.92%에서 2025년 13.66%로 0.74%포인트 상승하며 상위 국가로의 집중도가 다소 높아졌습니다.",
+      "evidence_ids": [
+       "concentration_change"
+      ]
+     },
+     {
+      "text": "다만 상위 5개국 비중이 15.13%에 머물고 그 외 국가가 84.87%를 차지하고 있어, 특정 한 국가가 압도하지 않는 분산된 구조를 보입니다.",
+      "evidence_ids": [
+       "current_concentration_structure"
+      ]
+     }
+    ]
+   },
+   "elapsed": 11.2
+  },
+  {
+   "combo_key": "mineral_map:규조토|생산량|chart",
+   "page_id": "map_mineral",
+   "llm_attempts": [
+    {
+     "elapsed": 9.3,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2025년 세계 규조토 생산량은 17,427,000k ton으로, 2019년부터 2025년까지 6년간 변동 없이 유지되었습니다.",
+        "evidence_ids": [
+         "current_state",
+         "period_total_change"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "미국은 720,000k ton을 생산하며 세계 비중의 4.13%로 1위를 차지하고 있으며, 덴마크는 380,000k ton(2.18%)으로 2위를 기록했습니다.",
+        "evidence_ids": [
+         "current_leaders"
+        ]
+       },
+       {
+        "text": "프랑스는 250,000k ton을 생산하며 세계 비중의 1.43%로 3위에 위치했습니다.",
+        "evidence_ids": [
+         "third_country"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "상위 3개국 비중은 2019년 10.56%에서 2025년 7.75%로 2.81%포인트 낮아졌으며, 상위 5개국 비중 또한 12.28%에서 9.70%로 감소했습니다.",
+        "evidence_ids": [
+         "concentration_change"
+        ]
+       },
+       {
+        "text": "상위 5개국 비중이 9.70%에 불과하고 그 외 국가들이 90.30%를 차지하고 있어, 특정 국가가 압도하지 않고 생산량이 넓게 분포된 구조입니다.",
+        "evidence_ids": [
+         "current_concentration_structure"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "period_total_change",
+       "core_diagnosis"
+      ],
+      [
+       "current_leaders",
+       "major_changes"
+      ],
+      [
+       "third_country",
+       "major_changes"
+      ],
+      [
+       "leading_country_changes",
+       "current_position"
+      ],
+      [
+       "concentration_change",
+       "current_position"
+      ],
+      [
+       "current_concentration_structure",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": true,
+   "warnings": [],
+   "markdown": "# 규조토 분석 요약 — 선택한 광종의 국가별 매장량 또는 생산량과 세계 전체 규모를 연도별로 보여주는 자료다.\n\n**측정항목**: production\n\n## 핵심 진단\n\n2025년 세계 규조토 생산량은 17,427,000k ton으로, 2019년부터 2025년까지 6년간 변동 없이 유지되었습니다.\n\n## 주요 변화\n\n미국은 720,000k ton을 생산하며 세계 비중의 4.13%로 1위를 차지하고 있으며, 덴마크는 380,000k ton(2.18%)으로 2위를 기록했습니다. 프랑스는 250,000k ton을 생산하며 세계 비중의 1.43%로 3위에 위치했습니다.\n\n## 현재 위치\n\n상위 3개국 비중은 2019년 10.56%에서 2025년 7.75%로 2.81%포인트 낮아졌으며, 상위 5개국 비중 또한 12.28%에서 9.70%로 감소했습니다. 상위 5개국 비중이 9.70%에 불과하고 그 외 국가들이 90.30%를 차지하고 있어, 특정 국가가 압도하지 않고 생산량이 넓게 분포된 구조입니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 현재 세계 생산량 | 17,427,000.00 | k ton |\n| 조회기간 세계합계 변화율 | 0.00 | % |\n| 1위 국가 | 미국 |  |\n| 1위 국가 비중 | 4.13 | % |\n| 상위 3개국 비중 | 7.75 | % |\n| 상위 5개국 비중 | 9.70 | % |\n| 1·2위 비중 차이 | 1.95 | % |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2025년 세계 규조토 생산량은 17,427,000k ton으로, 2019년부터 2025년까지 6년간 변동 없이 유지되었습니다.",
+      "evidence_ids": [
+       "current_state",
+       "period_total_change"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "미국은 720,000k ton을 생산하며 세계 비중의 4.13%로 1위를 차지하고 있으며, 덴마크는 380,000k ton(2.18%)으로 2위를 기록했습니다.",
+      "evidence_ids": [
+       "current_leaders"
+      ]
+     },
+     {
+      "text": "프랑스는 250,000k ton을 생산하며 세계 비중의 1.43%로 3위에 위치했습니다.",
+      "evidence_ids": [
+       "third_country"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "상위 3개국 비중은 2019년 10.56%에서 2025년 7.75%로 2.81%포인트 낮아졌으며, 상위 5개국 비중 또한 12.28%에서 9.70%로 감소했습니다.",
+      "evidence_ids": [
+       "concentration_change"
+      ]
+     },
+     {
+      "text": "상위 5개국 비중이 9.70%에 불과하고 그 외 국가들이 90.30%를 차지하고 있어, 특정 국가가 압도하지 않고 생산량이 넓게 분포된 구조입니다.",
+      "evidence_ids": [
+       "current_concentration_structure"
+      ]
+     }
+    ]
+   },
+   "elapsed": 9.3
+  },
+  {
+   "combo_key": "mineral_map:규회석|생산량|chart",
+   "page_id": "map_mineral",
+   "llm_attempts": [
+    {
+     "elapsed": 9.1,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2025년 세계 규회석 생산량은 7,260,900ton으로, 2019년부터 2025년까지 6년간 변동 없이 동일한 수준을 유지했습니다.",
+        "evidence_ids": [
+         "current_state",
+         "period_total_change"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "중국이 600,000ton(8.26%)으로 세계 1위를 차지하고 있으며, 인도는 120,000ton(1.65%)으로 2위를 기록해 두 국가 간 비중 차이는 6.61%포인트입니다.",
+        "evidence_ids": [
+         "current_leaders"
+        ]
+       },
+       {
+        "text": "멕시코는 100,000ton(1.38%)의 생산량으로 3위에 위치해 있습니다.",
+        "evidence_ids": [
+         "third_country"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "상위 3개국 비중이 2019년 15.60%에서 2025년 11.29%로 4.31%포인트 낮아지는 등 상위 국가에 대한 집중도가 완화되었습니다.",
+        "evidence_ids": [
+         "concentration_change"
+        ]
+       },
+       {
+        "text": "1위 중국의 비중이 8.26%에 불과하고 상위 5개국 비중이 11.71%인 반면, 그 밖의 국가들이 88.29%를 차지하고 있어 특정 국가가 압도하지 않는 분산된 구조를 나타냈습니다.",
+        "evidence_ids": [
+         "current_concentration_structure"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "period_total_change",
+       "core_diagnosis"
+      ],
+      [
+       "current_leaders",
+       "major_changes"
+      ],
+      [
+       "third_country",
+       "major_changes"
+      ],
+      [
+       "leading_country_changes",
+       "current_position"
+      ],
+      [
+       "concentration_change",
+       "current_position"
+      ],
+      [
+       "current_concentration_structure",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": true,
+   "warnings": [],
+   "markdown": "# 규회석 분석 요약 — 선택한 광종의 국가별 매장량 또는 생산량과 세계 전체 규모를 연도별로 보여주는 자료다.\n\n**측정항목**: production\n\n## 핵심 진단\n\n2025년 세계 규회석 생산량은 7,260,900ton으로, 2019년부터 2025년까지 6년간 변동 없이 동일한 수준을 유지했습니다.\n\n## 주요 변화\n\n중국이 600,000ton(8.26%)으로 세계 1위를 차지하고 있으며, 인도는 120,000ton(1.65%)으로 2위를 기록해 두 국가 간 비중 차이는 6.61%포인트입니다. 멕시코는 100,000ton(1.38%)의 생산량으로 3위에 위치해 있습니다.\n\n## 현재 위치\n\n상위 3개국 비중이 2019년 15.60%에서 2025년 11.29%로 4.31%포인트 낮아지는 등 상위 국가에 대한 집중도가 완화되었습니다. 1위 중국의 비중이 8.26%에 불과하고 상위 5개국 비중이 11.71%인 반면, 그 밖의 국가들이 88.29%를 차지하고 있어 특정 국가가 압도하지 않는 분산된 구조를 나타냈습니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 현재 세계 생산량 | 7,260,900.00 | ton |\n| 조회기간 세계합계 변화율 | 0.00 | % |\n| 1위 국가 | 중국 |  |\n| 1위 국가 비중 | 8.26 | % |\n| 상위 3개국 비중 | 11.29 | % |\n| 상위 5개국 비중 | 11.71 | % |\n| 1·2위 비중 차이 | 6.61 | % |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2025년 세계 규회석 생산량은 7,260,900ton으로, 2019년부터 2025년까지 6년간 변동 없이 동일한 수준을 유지했습니다.",
+      "evidence_ids": [
+       "current_state",
+       "period_total_change"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "중국이 600,000ton(8.26%)으로 세계 1위를 차지하고 있으며, 인도는 120,000ton(1.65%)으로 2위를 기록해 두 국가 간 비중 차이는 6.61%포인트입니다.",
+      "evidence_ids": [
+       "current_leaders"
+      ]
+     },
+     {
+      "text": "멕시코는 100,000ton(1.38%)의 생산량으로 3위에 위치해 있습니다.",
+      "evidence_ids": [
+       "third_country"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "상위 3개국 비중이 2019년 15.60%에서 2025년 11.29%로 4.31%포인트 낮아지는 등 상위 국가에 대한 집중도가 완화되었습니다.",
+      "evidence_ids": [
+       "concentration_change"
+      ]
+     },
+     {
+      "text": "1위 중국의 비중이 8.26%에 불과하고 상위 5개국 비중이 11.71%인 반면, 그 밖의 국가들이 88.29%를 차지하고 있어 특정 국가가 압도하지 않는 분산된 구조를 나타냈습니다.",
+      "evidence_ids": [
+       "current_concentration_structure"
+      ]
+     }
+    ]
+   },
+   "elapsed": 9.1
+  },
+  {
+   "combo_key": "mineral_map:금|매장량|chart",
+   "page_id": "map_mineral",
+   "llm_attempts": [
+    {
+     "elapsed": 8.1,
+     "output": {
+      "core_diagnosis": [
+       {
+        "text": "2025년 세계 금 매장량은 750,820ton으로, 2019년부터 6년간 0.00%의 변동 없이 유지되었습니다.",
+        "evidence_ids": [
+         "current_state",
+         "period_total_change"
+        ]
+       }
+      ],
+      "major_changes": [
+       {
+        "text": "호주가 13,000ton(1.73%)으로 세계 1위를 차지하고 있으며, 러시아는 12,000ton(1.60%)으로 2위를 기록했습니다.",
+        "evidence_ids": [
+         "current_leaders"
+        ]
+       },
+       {
+        "text": "남아프리카공화국은 5,000ton(0.67%)의 매장량으로 3위에 위치해 있습니다.",
+        "evidence_ids": [
+         "third_country"
+        ]
+       }
+      ],
+      "current_position": [
+       {
+        "text": "상위 3개국 비중이 2019년 2.46%에서 2025년 4.00%로 1.53%포인트 높아지는 등 상위 국가로의 집중도가 심화되었습니다.",
+        "evidence_ids": [
+         "concentration_change"
+        ]
+       },
+       {
+        "text": "1위 호주의 비중이 1.73%에 불과하고 상위 5개국 비중이 4.90%인 점을 고려하면, 상위 5개국 밖의 국가들이 95.10%를 차지하여 특정 한 국가가 압도하지 않는 구조를 보입니다.",
+        "evidence_ids": [
+         "current_concentration_structure"
+        ]
+       }
+      ]
+     },
+     "allowed": [
+      [
+       "current_state",
+       "core_diagnosis"
+      ],
+      [
+       "period_total_change",
+       "core_diagnosis"
+      ],
+      [
+       "current_leaders",
+       "major_changes"
+      ],
+      [
+       "third_country",
+       "major_changes"
+      ],
+      [
+       "leading_country_changes",
+       "current_position"
+      ],
+      [
+       "concentration_change",
+       "current_position"
+      ],
+      [
+       "current_concentration_structure",
+       "current_position"
+      ]
+     ]
+    }
+   ],
+   "status": "ok",
+   "llm_refined": true,
+   "warnings": [],
+   "markdown": "# 금 분석 요약 — 선택한 광종의 국가별 매장량 또는 생산량과 세계 전체 규모를 연도별로 보여주는 자료다.\n\n**측정항목**: reserves\n\n## 핵심 진단\n\n2025년 세계 금 매장량은 750,820ton으로, 2019년부터 6년간 0.00%의 변동 없이 유지되었습니다.\n\n## 주요 변화\n\n호주가 13,000ton(1.73%)으로 세계 1위를 차지하고 있으며, 러시아는 12,000ton(1.60%)으로 2위를 기록했습니다. 남아프리카공화국은 5,000ton(0.67%)의 매장량으로 3위에 위치해 있습니다.\n\n## 현재 위치\n\n상위 3개국 비중이 2019년 2.46%에서 2025년 4.00%로 1.53%포인트 높아지는 등 상위 국가로의 집중도가 심화되었습니다. 1위 호주의 비중이 1.73%에 불과하고 상위 5개국 비중이 4.90%인 점을 고려하면, 상위 5개국 밖의 국가들이 95.10%를 차지하여 특정 한 국가가 압도하지 않는 구조를 보입니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 현재 세계 매장량 | 750,820.00 | ton |\n| 조회기간 세계합계 변화율 | 0.00 | % |\n| 1위 국가 | 호주 |  |\n| 1위 국가 비중 | 1.73 | % |\n| 상위 3개국 비중 | 4.00 | % |\n| 상위 5개국 비중 | 4.90 | % |\n| 1·2위 비중 차이 | 0.13 | % |\n",
+   "violations": [],
+   "summary": {
+    "core_diagnosis": [
+     {
+      "text": "2025년 세계 금 매장량은 750,820ton으로, 2019년부터 6년간 0.00%의 변동 없이 유지되었습니다.",
+      "evidence_ids": [
+       "current_state",
+       "period_total_change"
+      ]
+     }
+    ],
+    "major_changes": [
+     {
+      "text": "호주가 13,000ton(1.73%)으로 세계 1위를 차지하고 있으며, 러시아는 12,000ton(1.60%)으로 2위를 기록했습니다.",
+      "evidence_ids": [
+       "current_leaders"
+      ]
+     },
+     {
+      "text": "남아프리카공화국은 5,000ton(0.67%)의 매장량으로 3위에 위치해 있습니다.",
+      "evidence_ids": [
+       "third_country"
+      ]
+     }
+    ],
+    "current_position": [
+     {
+      "text": "상위 3개국 비중이 2019년 2.46%에서 2025년 4.00%로 1.53%포인트 높아지는 등 상위 국가로의 집중도가 심화되었습니다.",
+      "evidence_ids": [
+       "concentration_change"
+      ]
+     },
+     {
+      "text": "1위 호주의 비중이 1.73%에 불과하고 상위 5개국 비중이 4.90%인 점을 고려하면, 상위 5개국 밖의 국가들이 95.10%를 차지하여 특정 한 국가가 압도하지 않는 구조를 보입니다.",
+      "evidence_ids": [
+       "current_concentration_structure"
+      ]
+     }
+    ]
+   },
+   "elapsed": 8.1
+  }
+ ]
+}

@@ -18,6 +18,7 @@ from .additional_summary import (
     AdditionalCalculatedSummary,
     EvidenceClaim,
     SummaryPageContext,
+    _korean_date,
     _number,
     _quantity,
     _topic,
@@ -249,7 +250,9 @@ def calculate_price_summary(
             # 별개 네임스페이스라 그대로 둔다).
             "current_state",
             "core_diagnosis",
-            f"{latest.date} 기준 {series.mineral.name} 실거래가는 {_number(latest.commerce_price)}이다.",
+            # 일자는 한글 표기(2026-08-27 반복 루프 1회차: LLM이 근거의 "2026-08-24"
+            # 원형을 그대로 베껴 지침 "YYYY년 M월 D일" 위반 8건 — 근거부터 한글로).
+            f"{_korean_date(latest.date)} 기준 {series.mineral.name} 실거래가는 {_number(latest.commerce_price)}이다.",
             required=True,
         )
     ]
@@ -269,7 +272,9 @@ def calculate_price_summary(
             # 차이일 때만 "전일"이라 하고, 아니면 지표 페이지(_calculate_
             # summary)와 같은 관용구인 "직전 관측치 대비"로 표현한다.
             is_truly_next_day = prior_date == _shift_date(latest.date, -1)
-            comparison_label = f"전일({prior_date})" if is_truly_next_day else f"직전 관측치({prior_date})"
+            comparison_label = (
+                f"전일({_korean_date(prior_date)})" if is_truly_next_day else f"직전 관측치({_korean_date(prior_date)})"
+            )
             claims.append(
                 EvidenceClaim(
                     "day_over_day",
@@ -462,7 +467,7 @@ def calculate_domestic_trade_summary(
         EvidenceClaim(
             "current_state",
             "core_diagnosis",
-            f"{latest_date} 기준 {series.mineral.name} {direction_label}총액은 {_quantity(total)}(단위 미상)이다.",
+            f"{_korean_date(latest_date)} 기준 {series.mineral.name} {direction_label}총액은 {_quantity(total)}(단위 미상)이다.",
             required=True,
         )
     ]
@@ -527,7 +532,7 @@ def calculate_domestic_trade_summary(
                 EvidenceClaim(
                     "period_total_change",
                     "current_position",
-                    f"직전 관측일({previous_date}) 대비 {direction_label}총액이 {_signed_pct(change)} 변동했다.",
+                    f"직전 관측일({_korean_date(previous_date)}) 대비 {direction_label}총액이 {_signed_pct(change)} 변동했다.",
                 )
             )
             key_metrics.append(
@@ -593,7 +598,7 @@ def calculate_global_trade_summary(series: TradeMapSeries) -> AdditionalCalculat
         EvidenceClaim(
             "current_state",
             "core_diagnosis",
-            f"{latest_date} 기준 {series.mineral.name} 세계 교역 총액은 {_quantity(total)}(단위 미상)이다.",
+            f"{_korean_date(latest_date)} 기준 {series.mineral.name} 세계 교역 총액은 {_quantity(total)}(단위 미상)이다.",
             required=True,
         )
     ]
@@ -604,7 +609,9 @@ def calculate_global_trade_summary(series: TradeMapSeries) -> AdditionalCalculat
         parts = []
         for rank, item in enumerate(top_n, start=1):
             share = (item.import_amount or 0.0) / total * 100
-            parts.append(f"{rank}위는 {_route_label(item)}로 {_quantity(item.import_amount or 0.0)}({_number(share)}%)")
+            # 화살표 표기 뒤엔 '루트'를 붙이고 조사를 쓴다("중국→대한민국로" 같은 조사 오류
+            # 방지 — 2026-08-27 반복 루프 3회차, LLM 프롬프트와 같은 규칙).
+            parts.append(f"{rank}위는 {_route_label(item)} 루트로 {_quantity(item.import_amount or 0.0)}({_number(share)}%)")
         claims.append(
             EvidenceClaim(
                 "top1_country",
@@ -651,7 +658,14 @@ def calculate_global_trade_summary(series: TradeMapSeries) -> AdditionalCalculat
             is_origin = _is_korea(item.origin_country_code, item.origin_country_name)
             counterpart = item.country_name if is_origin else (item.origin_country_name or "출처미상")
             suffix = "行" if is_origin else "발"
-            pieces.append(f"{rank}위({counterpart}{suffix} {_quantity(item.import_amount or 0.0)}, {_number(share)}%)")
+            if rank <= len(top_n):
+                # 이미 top1_country 근거(1~3위 랭킹)에 금액·비중이 있는 루트는 순위·상대국만
+                # 적어 같은 숫자를 한 절에서 두 번 쓰지 않는다(2026-08-27 반복 루프 3회차:
+                # LLM이 두 근거를 그대로 옮겨 "중국→대한민국 루트가 24,056,…(27.45%)"가
+                # 한 절에 두 번 나온 사례 — PDF 예시는 한국이 6·9위라 이 케이스가 없다).
+                pieces.append(f"{rank}위({counterpart}{suffix}, 위 랭킹 참조)")
+            else:
+                pieces.append(f"{rank}위({counterpart}{suffix} {_quantity(item.import_amount or 0.0)}, {_number(share)}%)")
         if len(top_hits) >= 2:
             hits_sum = sum(item.import_amount or 0.0 for _, item in top_hits)
             hits_share = hits_sum / total * 100
@@ -692,7 +706,7 @@ def calculate_global_trade_summary(series: TradeMapSeries) -> AdditionalCalculat
                 EvidenceClaim(
                     "period_total_change",
                     "current_position",
-                    f"직전 관측일({previous_date}) 대비 세계 교역 총액이 {_signed_pct(change)} 변동했다.",
+                    f"직전 관측일({_korean_date(previous_date)}) 대비 세계 교역 총액이 {_signed_pct(change)} 변동했다.",
                 )
             )
             key_metrics.append(

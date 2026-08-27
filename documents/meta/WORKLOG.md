@@ -2,7 +2,71 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-08-27 (최신) — 프롬프트 DB화 2단계: 페이지 정책·출력 계약 컬럼 자동 추가 + 자동 검증
+## 2026-08-27 (최신) — 반복 루프(/loop): DB 프롬프트 기반 실 LLM 보고서 384건 전체 재작성 → 오류·지침 점검 → 수정
+
+사용자 지시: "DB기반 프롬프트 생성 로직을 통해 기존에 작성한 보고서를 전체적으로
+싹다 작성 → 오류 점검 → 지침 준수 체크 → 미준수분 프롬프트·코드 수정, 오류 0·
+미준수 0까지 반복". 커밋 `de3637b1f` 위. 산출물(콤보별 최종 MD·LLM 원출력·위반
+목록)은 `documents/산출물/2026-W35_0824-0830/report_gen_LLM보고서_반복검수_260827/`
+(회차별 `roundN_full/`, 하네스·판독 스크립트·규칙 id 정의는 그 폴더 META.md).
+같은 폴더에 요약 보고서 작성 **시퀀스 다이어그램**(모듈 단위, 11개 참여자)
+`report_gen_분석요약_시퀀스_260827.drawio`(+ `.drawio.svg`, XML 내장) — 사용자가
+"코드와 예상 흐름이 다른 것 같다"고 해 작성.
+
+**LLM 경로**: `.env`의 LLM_BASE_URL 호스트명은 compose 서비스명이라 해석 불가 →
+이 호스트의 vLLM `127.0.0.1:52302`(gemma-4-26b-a4b)를 세션 환경변수로만 주입.
+하네스 = 덤프 어댑터(`komis_dump_smoke_test.py`) 재사용 + `KomirJsonLLM` +
+`prompt_store.reload()`(DB 프롬프트) + PDF 템플릿 기반 규칙 체커(G01~G08 공통,
+P-<page>-0x 페이지별) + LLM 시도별 원출력 캡처. 8워커, 384건 ≈ 450s.
+
+**0회차(파일럿 13→37건)**: 폴백 16%(맵글로벌 `top5_concentration` 누락, price 근거
+5개 vs 2문장, indicator 절당 1문장에 근거 3개, composite 1년 비교값 없을 때 다른 절
+근거 차용). → **1회차 수정**: 공통 프롬프트에 "모든 evidence_id 정확히 1회·지정
+section에서만", composite 프롬프트 보강, price/map_global "(있는 경우)" 제거, 출력
+계약 완화(price·map_global major (1,3), indicator_market/supply major (1,2)) + Pass 3
+R3-F1(정제 루프 안 deadline 검사, `analysis/budget.py` 신설·`analyze(deadline=)`),
+R3-F2(근거 수 > 계약 수용량이면 LLM 생략), R3-L2~L5.
+**1회차 결과(384건)**: INTERNAL_ERROR 0 · NO_DATA 0 · 폴백 2(0.5%) · 위반 35.
+판독: G02/G04/P-map-01 49건 = LLM이 본문에 `(current_state)` id를 괄호로 적음(체커의
+문장 분리까지 연쇄 오탐), G05 8건 = 계산기 근거문의 `전일(2026-08-24)` 원형 날짜를
+그대로 베낌, P-global-02 9건 = 덤프 어댑터가 08-27 루트 재설계 이전 형식이라
+원산국이 "출처미상"+LLM이 `→`를 풀어 쓰며 조사 오류("미국로"), 폴백 중 1건 =
+map_mineral "안정된 수준"을 검증기가 등급명으로 오인(PDF 템플릿 문구 자체).
+→ **2회차 수정**: 공통 프롬프트(id는 evidence_ids 필드에만·일자 `YYYY년 M월 D일`),
+map_global 프롬프트(`→` 표기 유지), 검증기(`_validate_llm_summary` 본문 id 금지 규칙
+추가·등급명 검사는 indicator 페이지만), `komir_summary.py` 근거문 날짜 한글화(price·
+map_korea·map_global), 덤프 어댑터 `adapt_map_global` 루트 관측(도착국+원산국)으로
+갱신, 하네스 체커(문장 분리기·로/으로 조사 규칙 G08·P-global-02 완화).
+**2회차 결과(384건, 472s)**: INTERNAL_ERROR 0 · 폴백 4 · 위반 1. 폴백 4건은 전부
+map_mineral "근거에 없는 숫자" — LLM이 PDF 템플릿대로 "2025년 기준 …1위"라고 썼는데
+`current_leaders` 근거문에 연도가 없어(연도는 core `current_state`에만) 문장 단위 숫자
+검증에 탈락. 위반 1 = "페루→미국로"(화살표 표기에 조사 직접 결합). → **3회차 수정**:
+`additional_summary.py` current_leaders 근거문에 `{연도}년 기준` 포함(PDF 문구와도
+일치), map_global 프롬프트 "화살표 뒤엔 '루트'를 붙이고 조사". 3회차 결과는 아래.
+**3회차 결과(384건, 473s)**: INTERNAL_ERROR 0 · **폴백 0** · 위반 1(G06 — 대한민국
+루트가 상위 3위 안이면 `korea_route_rank` 근거문이 같은 루트 금액·비중을 반복, PDF
+예시는 한국이 6·9위라 없던 케이스). → **4회차 수정**: `komir_summary.py`
+`calculate_global_trade_summary` 상위 3위 안 한국 루트는 "N위(상대국, 위 랭킹 참조)"로
+금액 생략, 1~3위 랭킹 근거문 "중국→대한민국로"→"중국→대한민국 루트로"(규칙기반
+문장에도 같은 조사 규칙). 4회차 결과는 아래.
+**4회차 결과(384건, 551s)**: INTERNAL_ERROR 0 · **위반 0** · 폴백 1(price 니오븀 —
+전일·전주·전월·전년 4개 비교를 PDF 1-1 템플릿처럼 한 문장에 썼는데 문장당 근거 id
+상한 3에 걸려 전년평균 id를 못 달아 "근거에 없는 숫자"). 콤보당 p50 11.3s/p95 16.6s
+(8동시, 운영 단건은 3.6~6.5s). → **5회차 수정**: `models.py` `SummarySentence.
+evidence_ids` max_length 3→5, `prompts.py` `MAX_EVIDENCE_IDS_PER_SENTENCE_BY_PAGE`
+={"price": 5}(DB output_contract 재시드), `_parse_output_contract` 허용 1~5, 공통·price
+프롬프트에 "문장에 쓴 사실의 근거 id는 전부 evidence_ids에". 5회차 결과는 아래.
+**5회차 결과(384건, 488s): LOOP_CLEAN — 384/384 ok · LLM 정제 채택 384(폴백 0) ·
+INTERNAL_ERROR 0 · 지침 위반 0.** 루프 종료 조건 달성(회차별 산출물은 위 폴더
+`round1_full/`~`round5_full/`). 누적 변화: 폴백 16%(파일럿)→0.5%→1.0%→0→0.3%→0,
+위반 35→1→1→0→0. LLM 출력은 비결정적이라 재실행 시 0.3% 안팎의 산발 폴백
+(규칙기반 문장으로 자동 대체, 클라이언트엔 정상 응답)은 재발할 수 있다.
+**남긴 것**: forecast_price는 덤프 원천이 없어 루프 범위 밖(가짜 LLM 계약 테스트로만
+검증), 지침 체커는 PDF 구조 규칙 기반(의미 판정 아님). 시퀀스 다이어그램은 2회차
+이전 코드 기준 — 이후 세부(정제 루프 deadline·근거 수용량 검사·본문 id 금지 검증)는
+미반영.
+
+## 2026-08-27 — 프롬프트 DB화 2단계: 페이지 정책·출력 계약 컬럼 자동 추가 + 자동 검증
 
 사용자 지시 "프롬프트 DB를 진행하고, DB에 컬럼을 자동으로 추가하고, 로딩하는
 로딩을 작성 자동으로 검증". 08-26 1단계(지시문 `content`만 DB, 전체 지침의

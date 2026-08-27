@@ -54,7 +54,11 @@ from .policy import PagePolicy, load_page_policy
 SUMMARY_COMMON_INSTRUCTIONS = """\
 당신은 KOMIS 수치를 단순히 읽어 주는 사람이 아니라,
 확인된 근거 사이의 관계를 설명하는 분석 편집기다.
-- allowed_evidence에 있는 사실만 사용하고 각 문장에 사용한 evidence_id를 표시한다.
+- allowed_evidence에 있는 사실만 사용하고, 각 문장에 사용한 evidence_id는 JSON의
+  `evidence_ids` 필드에만 적는다 — 본문 `text` 안에 `(current_state)`처럼 id를 괄호로
+  덧붙이지 않는다(id가 본문에 있으면 검증에서 거부된다).
+- 일자는 `2026년 8월 25일`처럼 `YYYY년 M월 D일`로, 월은 `YYYY년 M월`로 쓴다 —
+  `2026-08-25`·`2026-08` 같은 원형 표기를 본문에 남기지 않는다(숫자는 그대로).
 - 관련 근거 2~3개를 한 문장에 연결해 대비, 지속 여부, 현재 위치 또는 구조적 의미를 설명한다.
 - 모든 근거를 항목별로 다시 나열하지 말고, 수치가 보여 주는 핵심 판단을 먼저 쓴다.
 - 숫자, 기간, 단계, 순위, 변화 방향을 바꾸거나 새로 만들지 않는다.
@@ -66,6 +70,15 @@ SUMMARY_COMMON_INSTRUCTIONS = """\
 - 최근 한 달 변화만으로 장기 `추세`라고 표현하지 않는다.
 - 발주처 보고서 문체를 따라 문장은 `~했습니다`, `~입니다`, `~로 나타났습니다`처럼
   격식체로 끝맺는다(예시 문구의 `~다` 종결은 evidence 원문일 뿐 그대로 베끼지 않는다).
+- allowed_evidence의 evidence_id는 **빠짐없이 정확히 한 번씩** 사용한다 — "(있는
+  경우)"라고 적힌 근거도 allowed_evidence에 실려 왔으면 반드시 쓴다(생략·중복 금지).
+  한 문장에 묶는 근거 수는 output_contract.max_evidence_ids_per_sentence(보통 3)를
+  넘기지 않고, 그래도 남으면 그 절의 문장수 상한(output_contract.section_sentence_
+  ranges) 안에서 문장을 늘린다. 한 문장에 적은 사실·숫자의 근거 id는 **전부** 그
+  문장의 evidence_ids에 넣는다(넣지 않은 근거의 숫자를 쓰면 검증에서 거부된다).
+- 각 근거는 allowed_evidence의 section 값에 지정된 절(core_diagnosis/major_changes/
+  current_position)에서만 쓴다 — 다른 절로 옮기거나 두 절에서 겹쳐 쓰지 않는다.
+  어떤 절에 지정된 근거가 1개뿐이면 그 절은 그 근거 하나로만 쓴다.
 """
 
 MARKET_SUMMARY_INSTRUCTIONS = """\
@@ -119,6 +132,9 @@ COMPOSITE_SUMMARY_INSTRUCTIONS = """\
 - core_diagnosis는 current_state·medium_long_term_contrast를 연결해
   "종합지수는 [포인트]로, 전월 대비 [상승/하락/보합]했지만 1년 전보다
   [고/저] 수준이다"처럼 현재 지수와 단기·1년 방향을 한 문장으로 판단한다.
+  medium_long_term_contrast 근거가 없으면(조회기간에 1년 비교값 없음)
+  core_diagnosis는 current_state 하나로만 쓰고, major_changes 근거
+  (composite_recent_changes 등)를 core_diagnosis로 끌어오지 않는다.
 - major_changes는 composite_recent_changes(전주·전월 비교)와
   weekly_subindex_comparison/monthly_subindex_comparison/yearly_subindex_comparison
   (메이저·희소 하위지수의 전주·전월·전년 비교)을 연결해 어느 하위지수의
@@ -183,7 +199,10 @@ PRICE_SUMMARY_INSTRUCTIONS = """\
   있는 항목만 골라 "[전일 또는 직전 관측치] 대비 [등락률]%, 전주평균 대비
   [등락률]%, 전월평균 대비 [등락률]%, 전년평균 대비 [등락률]% [상승/하락]
   했습니다"처럼 있는 비교만 이어 쓴다 — 없는 비교기간을 만들어 채우지
-  않는다. day_over_day 근거 문장이 "전일(...)"로 시작하면 그대로 "전일"을
+  않는다. evidence의 등락률 숫자를 그대로 옮기고 평균값·차이를 새로 계산해
+  적지 않는다. 이 페이지는 한 문장에 근거 5개까지 묶을 수 있으므로(output_
+  contract.max_evidence_ids_per_sentence=5) 전일·전주·전월·전년 비교를 한 문장에
+  이어 써도 되지만, 그 문장의 evidence_ids에 쓴 근거 id를 전부 넣는다. day_over_day 근거 문장이 "전일(...)"로 시작하면 그대로 "전일"을
   쓰고, "직전 관측치(...)"로 시작하면 관측 간격이 하루가 아니라는 뜻이니
   "전일"로 바꿔 쓰지 말고 "직전 관측치"를 그대로 유지한다.
 - current_position은 period_range 근거로 조회기간 최고·최저가 대비 현재
@@ -229,10 +248,16 @@ MAP_GLOBAL_SUMMARY_INSTRUCTIONS = """\
 - core_diagnosis는 current_state 근거로 "[기준일] 기준 [광종] 세계 교역
   총액은 [금액]이다"를 한 문장으로 쓴다.
 - major_changes는 top1_country(1~3위 루트 랭킹)와 top3_concentration·
-  top5_concentration(있는 경우)을 연결해 상위 루트들의 금액·비중과 상위
-  3/5개 루트 합산 비중을 설명한다. 이어서 korea_route_rank 또는
-  korea_route_absent 근거를 그대로 옮겨 대한민국이 관련된 루트의 순위(있는
-  경우)를 별도 문장으로 설명한다 — 순위·비중 숫자를 새로 계산하지 않는다.
+  top5_concentration을 연결해 상위 루트들의 금액·비중과 상위 3개·5개 루트
+  합산 비중을 설명한다 — top5_concentration이 allowed_evidence에 있으면
+  CR5 문장을 생략하지 말고 반드시 포함한다. 이어서 korea_route_rank 또는
+  korea_route_absent 근거를 그대로 옮겨 대한민국이 관련된 루트의 순위를
+  별도 문장으로 설명한다 — 순위·비중 숫자를 새로 계산하지 않는다. 근거가
+  4개면 2~3문장으로 나눠 전부 쓴다.
+- 루트는 근거의 `원산국→도착국` 화살표 표기를 그대로 쓰고, 화살표 표기 바로 뒤에는
+  항상 `루트`를 붙인 뒤 조사를 쓴다("미국→독일 루트로 …", "페루→미국 루트가 …").
+  "미국→독일로"처럼 화살표 표기에 조사를 직접 붙이거나 "미국에서 독일로 향하는"처럼
+  풀어 쓰지 않는다 — 국가명 뒤 조사 오류(예: "미국로")를 피하기 위해서다.
 - current_position은 period_total_change(있는 경우)로 직전 관측 대비
   총액 변동을 쓴다. single_snapshot 근거만 있으면 map_korea와 같은 방식으로
   관측이 1건뿐이라는 결측 사실을 그대로 옮겨 쓴다(공통 지침의 예외는
@@ -275,15 +300,20 @@ PROMPTS = {
 #: 감사 SC-005: 이전엔 두 파일에 복제돼 "글자 그대로 일치해야 한다"는 주석으로만
 #: 묶여 있었다). map_mineral은 select_and_synthesize 모드라 별도 상수.
 SECTION_SENTENCE_RANGES: dict[str, dict[str, tuple[int, int]]] = {
-    "indicator_market": {"core_diagnosis": (1, 1), "major_changes": (1, 1), "current_position": (1, 1)},
-    "indicator_supply": {"core_diagnosis": (1, 1), "major_changes": (1, 1), "current_position": (1, 1)},
+    # 2026-08-27 반복 루프 1회차: 실 vLLM 384건 파일럿에서 major_changes 근거
+    # 3개(grade_streak·grade_transition·largest_monthly_score_change)를 1문장에
+    # 넣지 못해 근거 누락/절 이동으로 폴백하는 사례 → (1,2)로 완화.
+    "indicator_market": {"core_diagnosis": (1, 1), "major_changes": (1, 2), "current_position": (1, 1)},
+    "indicator_supply": {"core_diagnosis": (1, 1), "major_changes": (1, 2), "current_position": (1, 1)},
     "indicator_composite": {"core_diagnosis": (1, 1), "major_changes": (1, 2), "current_position": (1, 1)},
     "forecast_price": {"core_diagnosis": (1, 1), "major_changes": (1, 1), "current_position": (1, 1)},
     # price의 current_position은 (1,2) — 비교광종(compare_observations)이 있으면
-    # compare_overall_change 근거 1문장이 더 붙는다(2026-08-26).
-    "price": {"core_diagnosis": (1, 1), "major_changes": (1, 2), "current_position": (1, 2)},
+    # compare_overall_change 근거 1문장이 더 붙는다(2026-08-26). major_changes는
+    # 근거가 최대 5개(전일·전주·전월·전년·연속)라 (1,3)(루프 1회차 완화).
+    "price": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 2)},
     "map_korea": {"core_diagnosis": (1, 1), "major_changes": (1, 2), "current_position": (1, 1)},
-    "map_global": {"core_diagnosis": (1, 1), "major_changes": (1, 2), "current_position": (1, 1)},
+    # map_global major_changes는 근거 4개(1~3위 루트·CR3·CR5·한국 순위)라 (1,3).
+    "map_global": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 1)},
     # 2026-08-27 신설 — group_movers·extreme_movers 2건까지 major_changes에.
     "price_group": {"core_diagnosis": (1, 1), "major_changes": (1, 2), "current_position": (1, 1)},
 }
@@ -294,6 +324,11 @@ MINERAL_MAP_SECTION_SENTENCE_RANGES: dict[str, tuple[int, int]] = {
 }
 MINERAL_MAP_TOTAL_SENTENCE_RANGE: tuple[int, int] = (5, 8)
 MAX_EVIDENCE_IDS_PER_SENTENCE = 3
+#: 페이지별 예외 — price는 PDF 1-1 템플릿이 전일·전주·전월·전년(·연속) 비교를 한
+#: 문장에 담으므로 5(2026-08-27 반복 루프 4회차). `SummarySentence.evidence_ids`
+#: pydantic 상한(5)이 절대 상한이다.
+MAX_EVIDENCE_IDS_PER_SENTENCE_BY_PAGE: dict[str, int] = {"price": 5}
+_EVIDENCE_IDS_HARD_CAP = 5
 
 _SECTIONS = ("core_diagnosis", "major_changes", "current_position")
 
@@ -371,7 +406,7 @@ def code_page_config(page_id: str) -> PageConfig:
         policy_version=version,
         section_sentence_ranges=ranges,
         total_sentence_range=total,
-        max_evidence_ids_per_sentence=MAX_EVIDENCE_IDS_PER_SENTENCE,
+        max_evidence_ids_per_sentence=MAX_EVIDENCE_IDS_PER_SENTENCE_BY_PAGE.get(page_id, MAX_EVIDENCE_IDS_PER_SENTENCE),
         source={k: "code" for k in ("name", "definition", "analysis_constraints", "policy_version", "section_sentence_ranges", "total_sentence_range", "max_evidence_ids_per_sentence")},
     )
 
@@ -412,10 +447,10 @@ def _parse_output_contract(page_id: str, raw: Any, base: PageConfig) -> tuple[di
     max_ids: int | None = None
     raw_max = raw.get("max_evidence_ids_per_sentence")
     if raw_max is not None:
-        if isinstance(raw_max, int) and not isinstance(raw_max, bool) and 1 <= raw_max <= 3:
-            max_ids = raw_max  # `SummarySentence.evidence_ids` max_length=3이 상한
+        if isinstance(raw_max, int) and not isinstance(raw_max, bool) and 1 <= raw_max <= _EVIDENCE_IDS_HARD_CAP:
+            max_ids = raw_max  # `SummarySentence.evidence_ids` max_length(5)가 절대 상한
         else:
-            log.warning("%s: output_contract.max_evidence_ids_per_sentence는 1~3이어야 한다 — 코드 기본값 사용", page_id)
+            log.warning("%s: output_contract.max_evidence_ids_per_sentence는 1~%d이어야 한다 — 코드 기본값 사용", page_id, _EVIDENCE_IDS_HARD_CAP)
     return ranges, total, max_ids
 
 
@@ -428,17 +463,18 @@ def resolve_page_config(page_id: str) -> PageConfig:
         return base
     source = dict(base.source)
     name, definition, constraints, version = base.name, base.definition, base.analysis_constraints, base.policy_version
-    if row.page_name:
-        name, source["name"] = row.page_name, "db"
-    if row.page_definition:
-        definition, source["definition"] = row.page_definition, "db"
+    # 공백만 있는 값은 "없음"으로(Pass 3 R3-L3: ' '가 그대로 서술문에 들어가 "니켈  는"이 됐다).
+    if row.page_name and row.page_name.strip():
+        name, source["name"] = row.page_name.strip(), "db"
+    if row.page_definition and row.page_definition.strip():
+        definition, source["definition"] = row.page_definition.strip(), "db"
     if row.analysis_constraints is not None:
         if isinstance(row.analysis_constraints, list) and all(isinstance(item, str) for item in row.analysis_constraints):
             constraints, source["analysis_constraints"] = tuple(row.analysis_constraints), "db"
         else:
             logging.getLogger(__name__).warning("%s: analysis_constraints는 문자열 배열이어야 한다 — 코드 기본값 사용", page_id)
-    if row.policy_version:
-        version, source["policy_version"] = row.policy_version, "db"
+    if row.policy_version and row.policy_version.strip():
+        version, source["policy_version"] = row.policy_version.strip(), "db"
     ranges, total, max_ids = base.section_sentence_ranges, base.total_sentence_range, base.max_evidence_ids_per_sentence
     if row.output_contract is not None:
         db_ranges, db_total, db_max = _parse_output_contract(page_id, row.output_contract, base)

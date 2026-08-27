@@ -89,7 +89,10 @@ def v2_roundtrip() -> None:
         check(row["page_name"] == cfg.name and row["page_definition"] == cfg.definition and row["policy_version"] == cfg.policy_version, f"{key}: name/definition/version 동일")
         check(list(ac) == list(cfg.analysis_constraints), f"{key}: analysis_constraints 동일")
         check(oc == cfg.output_contract_json(), f"{key}: output_contract 동일")
-        check(all(v == "db" for v in eff.source.values() if True) or eff.source["name"] == "db", f"{key}: resolve 출처 db ({sorted(set(eff.source.values()))})")
+        expected_source = {k: "db" for k in eff.source}
+        if key != "map_mineral":
+            expected_source["total_sentence_range"] = "code"  # 시드가 total을 안 쓰는 페이지는 코드값
+        check(eff.source == expected_source, f"{key}: resolve 출처 정확히 일치 ({eff.source})")
         check(eff.section_sentence_ranges == cfg.section_sentence_ranges, f"{key}: 유효 문장수 범위 == 코드 기본값")
 
 
@@ -138,7 +141,8 @@ def v3_db_change_propagates() -> None:
         seed_prompts.main()
         prompt_store.reload()
         eff = resolve_page_config("price")
-        check(eff.definition == code_page_config("price").definition and eff.section_sentence_ranges["major_changes"] == (1, 2), "재시드 원복 확인")
+        base = code_page_config("price")
+        check(eff.definition == base.definition and eff.section_sentence_ranges == base.section_sentence_ranges, "재시드 원복 확인")
 
 
 def v4_null_fallback() -> None:

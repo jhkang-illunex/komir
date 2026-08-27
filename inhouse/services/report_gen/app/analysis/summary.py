@@ -45,6 +45,8 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import threading
+import time
 from collections import Counter
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
@@ -58,6 +60,7 @@ ensure_shared_on_path()
 
 from shared.llm_client import KomirJsonLLM, LLMError  # noqa: E402
 
+from .budget import ANALYSIS_LLM_TIMEOUT_SECONDS  # noqa: E402
 from .additional_summary import (  # noqa: E402
     AdditionalCalculatedSummary,
     EvidenceClaim,
@@ -772,10 +775,17 @@ def _validate_llm_summary(
             if not minimum <= len(values) <= maximum:
                 return "섹션별 분석문 수가 출력 계약과 일치하지 않는다."
     used_ids: list[str] = []
+    # 등급명 검사는 등급이 있는 지표 페이지에만 — map_mineral 등에서 "안정된 수준"의
+    # "안정"이 등급명으로 오인돼 폴백되는 사례가 실 LLM 384건 회귀에서 나왔다(2026-08-27
+    # 반복 루프 1회차; PDF 템플릿 자체가 매장량 서술에 "안정된 수준"을 쓴다).
+    check_grade_labels = page_id in ("indicator_market", "indicator_supply")
     for section, values in sections:
         for sentence in values:
             if any(term in sentence.text for term in _FORBIDDEN_SUMMARY_TERMS):
                 return "본문에서 제외한 지표를 언급했다."
+            if any(re.search(rf"\b{re.escape(claim_id)}\b", sentence.text) for claim_id in claim_map):
+                # 2026-08-27 반복 루프 1회차: "(current_state)"처럼 id를 본문에 적는 사례 17건.
+                return "본문(text)에 evidence_id를 적었다 — evidence_ids 필드에만 적어야 한다."
             referenced = [claim_map.get(evidence_id) for evidence_id in sentence.evidence_ids]
             if any(claim is None for claim in referenced):
                 return "존재하지 않는 evidence_id를 사용했다."
@@ -785,10 +795,11 @@ def _validate_llm_summary(
             evidence_text = " ".join(claim.fact for claim in typed_references)
             if not _number_tokens(sentence.text) <= _number_tokens(evidence_text):
                 return "근거에 없는 숫자나 날짜를 사용했다."
-            mentioned_grades = {label for label in _GRADE_LABELS if label in sentence.text}
-            allowed_grades = {label for label in _GRADE_LABELS if label in evidence_text}
-            if not mentioned_grades <= allowed_grades:
-                return "근거에 없는 단계명을 사용했다."
+            if check_grade_labels:
+                mentioned_grades = {label for label in _GRADE_LABELS if label in sentence.text}
+                allowed_grades = {label for label in _GRADE_LABELS if label in evidence_text}
+                if not mentioned_grades <= allowed_grades:
+                    return "근거에 없는 단계명을 사용했다."
             used_ids.extend(sentence.evidence_ids)
     if page_id == "map_mineral":
         required_ids = {
@@ -835,6 +846,7 @@ class AnalysisSummaryService:
         self._domestic_trade_source = domestic_trade_source
         self._global_trade_source = global_trade_source
         self._llm = llm
+        self._deadlines = threading.local()
 
     @property
     def uses_llm(self) -> bool:
@@ -843,9 +855,27 @@ class AnalysisSummaryService:
 
         return self._llm is not None
 
-    def analyze(self, request: AnalysisSummaryRequest) -> AnalysisSummaryResponse:
-        """Calculate the summary appropriate for the requested page."""
+    def analyze(
+        self,
+        request: AnalysisSummaryRequest,
+        *,
+        deadline: float | None = None,
+    ) -> AnalysisSummaryResponse:
+        """Calculate the summary appropriate for the requested page.
 
+        `deadline`(`time.monotonic()` 기준, 선택) — `routers/_common.py`가 요청당
+        예산을 넘긴다. `_refine_with_llm`이 LLM 호출 전마다 남은 예산이 호출 1회
+        상한보다 짧으면 호출을 건너뛰고 규칙기반으로 돌아간다(Pass 3 R3-F1: 이전엔
+        정제 2루프 × repair 2회가 예산 밖까지 lock을 쥘 수 있었다). 스레드별로
+        보관한다 — 서비스 객체는 공유되고 하네스는 동시 호출한다."""
+
+        self._deadlines.value = deadline
+        try:
+            return self._dispatch(request)
+        finally:
+            self._deadlines.value = None
+
+    def _dispatch(self, request: AnalysisSummaryRequest) -> AnalysisSummaryResponse:
         if request.page_id == "indicator_composite":
             return self._analyze_composite(request)
         if request.page_id == "map_mineral":
@@ -1656,7 +1686,31 @@ class AnalysisSummaryService:
             }
             for claim in claims
         ]
+        # Pass 3 R3-F2: 출력 계약(DB에서 바꿀 수 있음)으로 모든 근거를 정확히 1회씩
+        # 담는 게 산술적으로 불가능하면(근거 수 > Σ절 문장 상한 × 문장당 근거 상한)
+        # LLM은 어떤 답을 써도 검증에 떨어진다 — 호출 없이 바로 규칙기반으로.
+        cfg = resolve_page_config(response.page_id)
+        if response.page_id == "map_mineral":
+            capacity = (cfg.total_sentence_range or (5, 8))[1] * cfg.max_evidence_ids_per_sentence
+            demand = sum(1 for claim in claims if getattr(claim, "required", False))
+        else:
+            capacity = sum(hi for _, hi in cfg.section_sentence_ranges.values()) * cfg.max_evidence_ids_per_sentence
+            demand = len(claims)
+        if demand > capacity:
+            return self._with_warning(
+                response,
+                f"LLM 분석요약을 건너뛰었다 — 근거 {demand}개를 출력 계약(문장 상한 합 × 문장당 근거 "
+                f"{cfg.max_evidence_ids_per_sentence}개 = {capacity})에 담을 수 없다. DB output_contract를 확인할 것.",
+            )
+        deadline = getattr(self._deadlines, "value", None)
         for _ in range(2):
+            if deadline is not None and (deadline - time.monotonic()) < ANALYSIS_LLM_TIMEOUT_SECONDS:
+                # R3-F1: 남은 예산이 LLM 호출 1회 상한보다 짧으면 호출하지 않는다 —
+                # 클라이언트는 어차피 TIMEOUT을 받고 lock만 예산 너머까지 쥐게 된다.
+                return self._with_warning(
+                    response,
+                    "LLM 분석요약을 건너뛰었다 — 요청 예산 안에 LLM 호출을 마칠 수 없어 규칙 기반 요약을 반환했다.",
+                )
             try:
                 invocation = self._llm.invoke(
                     task="analysis_summary",
