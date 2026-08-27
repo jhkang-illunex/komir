@@ -1,0 +1,54 @@
+DB prompts loaded: 10 | combos: 384 | workers: 8 | model: gemma-4-26b-a4b
+{
+ "elapsed_s": 551,
+ "by_page": {
+  "price": {
+   "count": 58,
+   "ok": 58,
+   "llm_refined": 57,
+   "violating": 0
+  },
+  "indicator_composite": {
+   "count": 1,
+   "ok": 1,
+   "llm_refined": 1,
+   "violating": 0
+  },
+  "indicator_market": {
+   "count": 39,
+   "ok": 39,
+   "llm_refined": 39,
+   "violating": 0
+  },
+  "indicator_supply": {
+   "count": 36,
+   "ok": 36,
+   "llm_refined": 36,
+   "violating": 0
+  },
+  "map_korea": {
+   "count": 73,
+   "ok": 73,
+   "llm_refined": 73,
+   "violating": 0
+  },
+  "map_global": {
+   "count": 73,
+   "ok": 73,
+   "llm_refined": 73,
+   "violating": 0
+  },
+  "map_mineral": {
+   "count": 104,
+   "ok": 104,
+   "llm_refined": 104,
+   "violating": 0
+  }
+ },
+ "rule_counter": {},
+ "fallback_reasons": {
+  "LLM 분석요약이 근거 검증을 통과하지 못해 규칙 기반 요약을 반환했다. 검증 사유: 근거에 없는 숫자나 날짜를 사용했다.": 1
+ }
+}
+TOTAL=384 INTERNAL_ERROR=0 NO_DATA=0 LLM_FALLBACK=1 VIOLATING=0 elapsed=551s
+LOOP_DIRTY
