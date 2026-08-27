@@ -2,7 +2,824 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-08-20 (최신) — execute_msr() postgres 미지원 수정(out_report 저장 파손 해소)
+## 2026-08-27 (최신) — 분석요약 루틴 skeptic-code DEEP 감사: 8건 적용, Pass 3 APPROVE
+
+사용자 요청 "/skeptic-code 요약 보고서 작성 루틴을 검증해주세요 적대적 검증
+및 과한 부분 등등에 대해서 점검". 범위 `inhouse/services/report_gen/app/
+{routers,analysis}`+`main.py`+`scripts/`(~6,300줄). 테스트 스위트가 없어 판정은
+전부 스크래치패드 재현(TestClient+가짜 LLM 주입)으로 냈고, 적용분은 이 변경을
+쓰지 않은 독립 체커(correctness 레인, 읽기 전용)가 **APPROVE**했다 —
+`change_ref c40fe7187+85d3d00c2705`, HIGH 0. 이 WORKLOG 항목 한 줄이 그 라벨
+이후 유일한 변경이다(산문이라 Pass 3 면제).
+
+**적용 8건**(코드에 "2026-08-27 skeptic 감사 SC-00x" 주석으로 표시)
+- SC-001(HIGH·LIAR) 라우터가 `AnalysisSummaryRequest(page_id=..., **dump)`를 라우트
+  본문에서 만들다 pydantic ValidationError가 새어 **HTTP 500 평문**이 나갔다(예:
+  `/prices`에 `trade_direction:"export"`) — "항상 200+status" 계약 위반. `routers/
+  _common.py::run_summary(page_id, payload, request)`로 조립을 옮기고
+  ValidationError→`NO_DATA`. 17개 라우트(analysis 9+report_data 8) 전환.
+- SC-002(HIGH·CLIFF) 느린 LLM 1건이 `analysis_lock`을 최대 ≈372s(120s×3회+백오프)
+  쥐고 뒤이은 규칙기반(ms) 요청까지 전부 TIMEOUT, 대기 워커 적체(재현: 3/3
+  TIMEOUT, `_call` 안 워커 3). `main.py`가 report_gen용 `KomirJsonLLM`에
+  timeout 8s·retries 1을 주고, `_common.py`가 `lock.acquire(timeout=20)`로 예산 내
+  못 잡으면 포기. 적용 후 대기 워커 1. lock 자체 제거는 사용자가 거부(유지).
+- SC-003(MEDIUM·LIAR) 계산기 ValueError(export 방향인데 export_amount 없음·국가
+  3개 미만·forecast 1건·최신가 null)가 스택트레이스+`INTERNAL_ERROR`로 보고돼 G2
+  게이트 의미가 오염 — `summary.py::_calculate_or_no_data`로 7개 `calculate_*`
+  호출만 감싸 `NO_DATA`. pydantic ValidationError는 그대로(진짜 버그 신호 보존).
+- SC-004(MEDIUM·TWIN) `prompts.py` 폴백 상수가 `seed_prompts.py` 시드와 10키 중
+  9키 드리프트 — price 폴백은 "연속기간 언급 금지"였는데 계산기는 `price_streak`
+  근거를 만들고 검증기는 전 id 사용을 요구해 DB 미접속 모드에서 price LLM 출력이
+  항상 폴백. `prompts.py::PROMPTS` 단일 소스, `seed_prompts.py`는 import만(300→82줄).
+  DB `ai_cfg.cfg_prompt` 10키는 이미 PROMPTS와 byte-identical(체커 실측)이라 시드
+  재실행 불필요.
+- SC-005(MEDIUM·TWIN) 섹션 문장수 계약이 `summary.py`/`prompts.py` 두 곳에 복제 →
+  `prompts.py::SECTION_SENTENCE_RANGES`·`MINERAL_MAP_*` 단일 상수.
+- SC-006(MEDIUM·ORACLE) price 프롬프트가 `near_period_high/low` 패턴을 참조하는데
+  `build_summary_payload`가 `detected_patterns`를 실은 적이 없어 영구 사문 →
+  payload에 code·label만 추가(evidence 문자열은 숫자 검증 때문에 제외).
+- SC-009(MEDIUM·ORACLE) `scripts/` 13파일이 타 세션 스크래치패드 절대경로
+  하드코딩 → `KOMIS_HARNESS_SCRATCH` env(현재값 기본).
+- SC-011(LOW) price_group 조사 하드코딩("구리이") → `_subject`/`_topic`.
+
+**검증**: py_compile, 재현 R1~R8 전환 확인, G1 덤프 스모크 384콤보+G2/G3/불일치
+게이트 전부 통과, 가짜 LLM 계약 테스트 9페이지 채택 9/9·위반 거부 9/9, 체커가
+17개 라우트 전수·lock 12동시요청·DB 프롬프트 대조 등 독립 재현. vLLM은 샌드박스
+에서 gaierror라 실 LLM 경로는 미검증.
+
+**사용자 결정(유지)**: SC-007 죽은 DB 경로(`data_sources/extra.py` 309줄·`store.py`
+85줄·summary.py 주석 블록 7개·None 소스 파라미터 7개) 주석 보존, SC-008 `main.py`
+PG_DSN 가드(없으면 8종 INTERNAL_ERROR) 유지.
+
+**라운드 2 — 사용자 지시 "수정 사항을 전부다 수정하고 커밋"으로 잔여 6건 추가
+적용**(같은 날, 라운드 1 APPROVE 직후): NEW-1 `calculate_mineral_map_summary`
+연도 1개면 ValueError→NO_DATA(이전엔 `years[-2]` IndexError→INTERNAL_ERROR,
+start_year==end_year 필터로 정당하게 도달 가능), NEW-2 `calculate_composite_
+summary` 전주·전월 비교 관측이 없으면(1건·하루치) ValueError→NO_DATA(이전엔
+major_changes 0건→`SummaryNarrative` ValidationError→INTERNAL_ERROR), SC-002
+zombie `_common.py` deadline 공유+`future.cancel()`(풀 2워커·6동시요청 재현에서
+무관측 LLM 호출 1→0), 라우터 스키마 422 → `main.py` `RequestValidationError`
+핸들러가 `/api/v1/{analysis,prices,indicators,maps}/` 경로만 200+`NO_DATA`로
+(`/reports/*`는 422 유지), SC-016 `report_render.py` "## 참고"에서 `notices`(LLM
+작성 제약)와 "LLM " 접두 경고 제외(데이터 결측 경고는 유지), SC-017
+`secondary_measure_observations: []`를 `compare_observations`와 같이 "없음"으로.
+검증: py_compile·G1 384콤보+G2/G3/불일치·가짜 LLM 9/9·라운드2 재현 전부 통과.
+**적용 안 한 것**: `openai_compat.py` 마지막 시도 후 2s 슬립(공유 geo 코드 —
+회귀 사이클 없이 불변경, CLAUDE.md §4), SC-018(vLLM 미도달로 판정 불가), SC-010
+`scripts/` 위치 이동(배포 단위 결정 사항 — 2,871줄이 airgap inhouse 안에서
+playwright 외부접속, requirements 미선언). 실서버 반영 시 재기동 필요.
+
+## 2026-08-27 — PDF 보고서 지침 6건 코드 반영 + 전체 회귀 재검증(/unlazy)
+
+직전 세션(같은 스레드, /unlazy)에서 발주처 PDF 템플릿(`AI 통계분석 요약
+답변_광물가격전망지표.pdf`, `AI 통계분석 요약답변_수급지도광물지도.pdf`) 대비
+실제 생성 보고서 내용을 점검해 확정 버그 1건 + 기능 간극 5건을 발견했고,
+사용자가 "6건 전부" 반영을 지시(/unlazy): "pdf 기반 보고서 생성 규칙을
+코드에 반영하고, 비철금속/희소금속/광물맵-대한민국/광물맵-글로벌 등 지금까지
+보고서 작성을 한 모든 테스크를 다 다시 돌려서 전부 검수 하세요."
+
+**①map_korea 수입/수출 라벨 고정 버그 수정(확정 버그)**: `komir_summary.py::
+_calculate_trade_map_summary`가 `direction_label="수입"` 하드코딩 + 항상
+`import_amount` 필드만 읽던 걸 `calculate_domestic_trade_summary(series,
+direction="import"|"export")`로 바꿔 요청의 `trade_direction` 값에 따라
+필드·라벨이 동적으로 바뀌게 했다. `AnalysisSummaryRequest`·라우터 요청
+스키마(`MineralDateRangeSummaryRequest`)에 `trade_direction` 필드 신설,
+보고서 상단에 조회방향도 표시. 실측 검증: G11 재실행(73건) 결과 수출
+33건 중 24건이 정확히 "수출총액", 수입 40건 중 32건이 "수입총액"으로
+렌더링(나머지는 SKIPPED) — 이전엔 수출 방향이어도 100% "수입총액"이었다.
+PDF가 요구하는 상위 5개국 합산 비중(CR5)도 함께 추가.
+
+**②map_global 원산지→도착지 루트 랭킹 + 대한민국 순위 하이라이트**: 이전엔
+원산국(수출국)별로 도착지를 뭉개 집계해 "국가별 총 공급액" 랭킹만
+만들었다 — Playwright로 KOMIS `getListDataNation` 원본 응답을 직접
+조회해 각 행에 도착국(`incmNtnNm`/`incmNtnCd`)·원산국(`expNtnNm`/
+`expNtnCd`)이 이미 쌍으로 옴을 실측 확인하고, `calculate_global_trade_
+summary`를 완전히 새로 짜서 루트 단위 랭킹(1~3위, CR3/CR5) + 대한민국이
+관련된 루트 하이라이트(있으면 순위·상대국·금액·비중, 없으면 결측 문구)를
+계산하도록 바꿨다. `TradeCountryObservation`에 `origin_country_code`/
+`origin_country_name` 필드 신설. 실측 검증: G12 재실행(73건 중 71 ok)
+결과 46건에서 한국 루트 하이라이트가 PDF 예시와 같은 형식("대한민국은
+세부현황 기준 5위(일본行 3,224,422.21, 5.27%)와 16위(미국行 ...)...")으로
+정확히 렌더링됨을 확인.
+
+**③price 연속 상승세/하락세(streak) 계산 추가**: PDF가 요구하는 "[N]일/주/
+개월 연속 [상승세/하락세/보합세]"가 이전엔 아예 계산 안 됐다(원인 추정과
+달리 시계열만으로 계산 가능한 통계라 "주요 요인 미구현"과는 다른 성격의
+간극이었음). `calculate_price_summary`에 관측치 방향(오름/내림/보합) 연속
+카운트 + 관측 간격으로 단위(일/주/개월) 추정하는 로직 추가.
+
+**④indicator_composite 하위지수(메이저·희소) 전월 대비 추가**: PDF는 두
+하위지수 각각 전주·전월·전년 3종 비교를 요구하는데 전주·전년만 있고
+전월이 없었다 — `calculate_composite_summary`에 `monthly_subindex_
+comparison` 근거 추가(기존 weekly/yearly 블록과 같은 패턴).
+
+**⑤map_mineral 매장량 vs 생산량 교차 비교**: PDF §4("매장량 2위 호주는
+생산량 8위") 같은 교차 비교가 불가능했다(매장량/생산량 중 하나만 다루는
+설계) — `calculate_mineral_map_summary(series, secondary_series=None)`로
+확장해 반대 measure 계열을 선택적으로 받으면 상위 3개국의 반대 measure
+순위를 비교하는 근거 1건을 major_changes에 추가(2026-08-27 스모크
+테스트에서 처음엔 current_position에 넣었다가 `SummaryNarrative.
+current_position` max_length=3 초과로 실패 → major_changes로 이동해 해결).
+요청에 `secondary_measure_observations`/`secondary_unit` 필드 신설.
+
+**⑥전체광종(비철금속/희소금속 그룹) 요약 신규 page_id 신설**: PDF §1-2
+"전체광종(필요시)"에 대응하는 API가 아예 없던 걸(기존에 "별도 기능 논의
+필요"로 기록된 갭) 새 page_id `price_group`으로 신설 — 광종별 이미 계산된
+전주·전월 등락률(`PriceGroupMineralObservation`)을 받아 그룹 평균, 강세/
+약세 광종군, 최대 상승·최대 하락 광종을 계산(`calculate_price_group_
+summary`). 신규 라우트 `POST /api/v1/analysis/price-group` 추가.
+
+**전체 회귀 재검증(같은 날, "지금까지 보고서 작성을 한 모든 테스크를 다
+다시 돌려서 전부 검수" 지시 이행)**: 6건 반영 후 합성데이터 스모크
+테스트(7케이스) 전부 통과 확인 → G1(384콤보 덤프 기반, map_korea/global이
+새 로직을 크래시 없이 통과)·G2~G4(내부오류/조사오류/불일치 0건)·G5~G6(라이브
+69콤보)·G7(무작위 8회)·G8(비철 6광종)·G9(희소 56콤보)·G10(비철 13콤보)·
+G11(map_korea 73광종, 방향 라벨 실측 정정 확인)·G12(map_global 73광종,
+한국 하이라이트 실측 확인)·G13(map_mineral 65광종) 전부 재실행 — 신규
+회귀 0건, unlazy `--reverify`로 13개 게이트 전부 공식 재승인.
+
+## 2026-08-26 — 핵심광물지도 3메뉴(대한민국·글로벌·광물지도) 전종목 커버리지 회귀 테스트(/unlazy G11~G13)
+
+사용자 요청(/unlazy): "핵심광물지도/대한민국/글로벌/광물지도 메뉴... 모든 광물에
+대해서 모든 옵션을 싹다 하나 이상 선택하고 랜덤으로 값을 바꾸고, 비교 광종에
+대해서도 나올 수 있는 모든 케이스를 다 적용해서 탐색." G8~G10(광물자원가격
+페이지)까지 마친 뒤 같은 강도로 핵심광물지도 메뉴 3개(대한민국=map_korea,
+글로벌=map_global, 광물지도=map_mineral)를 요청받음.
+
+**사전 확인(실측)**: 세 메뉴 모두 DOM에 "비교광종"(`srchCompareMnrkndUnqCd`
+등) 컨트롤 자체가 없다 — 그 기능은 광물자원가격(price) 페이지 전용이었다.
+지어내지 않고 실제 존재하는 옵션만 대상으로 스코프를 좁혔다: map_korea(광종
+73종 전부·수입/수출 방향·기준연월타입 Y/M·기준연도), map_global(광종 73종
+전부·기준연월타입 Y/M·기준연도, 국가방향 select는 있으나 비교 개념 아님),
+map_mineral(광종 65종 전부·매장량/생산량 탭·시작~끝연도).
+
+**신설**: `scripts/komis_map_korea_full_coverage_test.py`,
+`komis_map_global_full_coverage_test.py`, `komis_map_mineral_full_coverage_test.py`
+— 광종별 1회씩 전수 순회, 나머지 차원은 트라이얼별 무작위 배정. map_mineral은
+검색 버튼에 `id`가 없고 `onclick="onSearchMapMnrl(1)"`만 있어 셀렉터가
+다른 두 페이지와 다름(실측 확인).
+
+**버그 발견·수정**: 최초 드라이런에서 map_mineral 65종 중 8종(규회석·금·
+남정석·니오븀·니켈·동·레늄·루비듐, 연속된 6~13번째)이 `TimeoutError`로
+`TRIAL_FAILED` — 원인은 상단 네비게이션 서브메뉴(`header.open-submenu` >
+`ul.depth2-menu`)가 이전 페이지에서 남은 마우스 좌표 위에서 자동으로
+펼쳐져 광종 라디오 레이블 클릭을 가로챈 것(하네스 자체의 버그, report_gen
+코드 버그 아님). `_select_mineral()`에 `page.mouse.move()`로 중립 위치 이동
+후 클릭, 실패 시 force 클릭 재시도 로직을 추가해 해결. 정식 게이트 실행
+중 map_global에서도 같은 패턴(알루미늄 1건)이 재현돼 동일 수정을 map_korea·
+map_global에도 적용.
+
+**결과(최종 게이트 실행, 수정 반영 후)**: map_korea 73/73 광종 커버(63 ok·10
+정상 SKIPPED, 관측치 0인 진짜 무역없음 케이스로 확인), map_global 73/73
+커버(71 ok·2 SKIPPED: 레늄·토륨), map_mineral 65/65 커버(28 ok·37 SKIPPED,
+연도<2건 또는 최신연도 국가<3개인 경우), 3개 페이지 합계 INTERNAL_ERROR·
+TRIAL_FAILED·데이터 불일치 전부 0건. ok 케이스 표본(map_korea 리튬, map_global
+리튬, map_mineral 니켈) 수동 대조 — 핵심 진단·주요 지표 수치 전부 원본 데이터와
+일치, 이상 없음. GATES.md에 G11~G13 추가, 13개 게이트 전부 최종 PASS.
+
+## 2026-08-26 — 비철금속 품목 단위 전수 커버리지 회귀 테스트(/unlazy G10)
+
+사용자가 G9(희소금속)와 완전히 동일한 문구로 비철금속을 재요청(/unlazy):
+"모든 광물의 모든 옵션을 싹 다 하나 이상 선택+랜덤 값 변경, 비교광종도
+나올 수 있는 모든 케이스 다 적용." G8(비철 6광종×1콤보, 가벼운 스코프)과
+구분해 이번엔 **G9와 같은 깊이**로 재해석 — "모든 옵션을 하나 이상"은
+광종 단위가 아니라 **광종×가격기준 콤보 단위**(비철금속 실측 13개: 니켈·
+동·아연·알루미늄·연 각 2개, 주석 3개)까지 내려가야 한다고 판단.
+
+**신설**: `scripts/komis_base_metals_exhaustive_coverage_test.py` — G9
+(`komis_minor_metals_full_coverage_test.py`)와 동일 구조(품목 콤보 전수
+발견 → 평균옵션 5종 순환+비교광종 라운드로빈+기간 무작위 배정)를 비철금속
+규모(13콤보, 비교광종 풀 5종)에 맞춰 재구현. 별개 스크립트로 둔 이유: 이미
+통과한 G8/G9 게이트의 CHECK 커맨드를 안 건드리기 위함(리팩터링해서 공용
+모듈로 합칠 수도 있었지만, 이미 승인된 게이트의 동작을 바꿀 위험을 지지
+않는 쪽을 택함).
+
+**결과**: 13/13 콤보 실행, 6/6광종 커버, **비교광종 6/6종(자기자신 제외
+풀 기준 전부) 커버**, 4건 `ok`, 9건 정상 `SKIPPED_INSUFFICIENT_DATA`(원인
+확인: G9와 같은 패턴 — 무작위로 뽑힌 기간이 해당 품목의 실제 KOMIS 데이터
+시작 이전, 예: 아연 LME CASH DAY에 1989년 단일연도 요청 → 0행), INTERNAL_
+ERROR·TRIAL_FAILED·데이터 불일치 전부 0건. 4건 성공 케이스 전부 수동
+대조(핵심 진단·비교광종 변화율차 산술·전일/직전관측치 라벨) 완료, 이상
+없음. 신규 버그 없이 종결. GATES.md G10 추가, 10개 게이트 전부 최종 PASS.
+
+## 2026-08-26 — 희소금속 34광종 전종목+비교광종 34종 전종목 커버리지 회귀 테스트(/unlazy G9)
+
+사용자 요청(/unlazy): "희소금속 메뉴 테스트 — 모든 광물에 대해 모든 옵션을
+싹 다 하나 이상 선택+랜덤으로 값 변경, 비교광종도 나올 수 있는 모든 케이스를
+다 적용." 바로 위 항목(G8, 비철금속 6광종×1콤보)보다 훨씬 큰 스코프 — 희소
+금속은 광종당 품목(가격기준)이 여러 개(1~3개, 실측 총 56개 콤보)라 "모든
+옵션을 하나 이상"은 광종 단위가 아니라 **품목 콤보 단위 전수**를 뜻한다고
+해석했고, "비교광종도 모든 케이스"는 34종 비교광종 옵션 전체가 최소 1회는
+쓰이도록 **라운드로빈으로 결정론적 보장**(순수 무작위로는 운에 좌우돼
+누락 가능성이 있어서 의도적으로 순환 배정).
+
+**신설**: `scripts/komis_minor_metals_full_coverage_test.py` — 2단계 실행.
+①34광종을 순회해 품목 드롭다운을 읽어 (광종,품목) 평평한 목록 작성(56개
+콤보 확인, 이전 G5의 56과 일치). ②그 56개 콤보 각각에 평균옵션(5종 순환)·
+기간(trial별 고정시드 무작위)·비교광종(34종 라운드로빈, 자기자신이면 다음
+칸)·비교광종가격기준(그 비교광종의 옵션 중 무작위)을 배정해 실제 검색+
+price API 호출까지 수행.
+
+**결과**: 56/56 콤보 실행, 34/34광종 커버, **비교광종 34/34종 전부 최소
+1회 사용**(`compare_minerals_missing: []`), 13건 `ok`, 43건
+`SKIPPED_INSUFFICIENT_DATA`, INTERNAL_ERROR·TRIAL_FAILED·데이터 불일치
+전부 0건. SKIPPED 43건 중 다수(DAY/WEEK인데도 스킵된 10건 포함)를 개별
+확인한 결과 **원인은 버그가 아니라 무작위로 뽑힌 기간이 해당 희소금속
+품목의 실제 KOMIS 데이터 시작 시점보다 앞선 경우**였다(예: 가돌리늄
+Gadolinium Oxide에 1996~2007년을 요청 → 그 품목은 최근에야 KOMIS가
+자료원을 확보한 항목이라 원본 응답 자체가 0행 — 하네스가 이를 정상
+감지해 깔끔하게 SKIPPED 처리, 크래시 없음). 13건 `ok` 전부 샘플 대조에서
+핵심 수치·비교광종 문장·전일/직전관측치 표기가 원본과 일치함을 확인,
+추가 버그 없이 종결. GATES.md G9 추가, 9개 게이트 전부 최종 PASS.
+
+## 2026-08-26 — 비철금속 6광종 전종목 강제 커버리지 회귀 테스트(/unlazy G8)
+
+사용자 요청(/unlazy): "비철금속 메뉴의 모든 옵션에 대해 랜덤 선택 후 검색·
+보고서 생성 → 생성 실패 체크 → 결과 점검(실데이터 요약 정확성) → 비교광종·
+비교광종가격기준 등 최소 2개 이상 옵션을 동시 사용 + 기간도 랜덤 → 검증.
+현재 세션은 herd이므로 여러 세션이면 tab/pane으로 진행상황 노출."
+
+**병렬화 판단**: 이번 작업(6회 시행, 수십 초 규모)은 병렬화해도 이득이
+작고 버그 수정은 원래 순차적(발견→수정→재검증)이라 **단일 스레드로
+진행**했다 — herd tab/pane 요구는 "여러 세션일 경우"에만 해당하는 조건부
+지시였고, 이번엔 다중 세션을 안 씀.
+
+**신설**: `scripts/komis_base_metals_full_coverage_test.py` —
+`komis_random_trial_test.py`의 `run_trial()`에 `forced_mineral` 인자를
+추가(하위호환, 기존 호출부 영향 없음)해 재사용, 비철금속 6광종(니켈·동·
+아연·알루미늄·연·주석) **전부를 1회씩 강제 커버**하면서 나머지 5개
+차원(품목·평균옵션·기간·비교광종·비교광종가격기준)은 trial별 고정시드로
+무작위 조합(사용자 요구 "최소 2개 이상 동시 사용"을 5차원 동시 사용으로
+충족). 평균옵션은 DAY·WEEK(정상)+QUARTER·MONTH(의도된 거부)를 섞어 비철
+금속 자체에서도 그 경계를 직접 재확인.
+
+**결과**: 6광종 전부 커버, 4건 `ok`(DAY×2·WEEK×2), 2건 정상
+`SKIPPED_INSUFFICIENT_DATA`(QUARTER·MONTH), INTERNAL_ERROR·TRIAL_FAILED·
+데이터 불일치 전부 0건. 4건 전부 "하나하나" 수동 대조: KOMIS 원본이 각
+행에 함께 주는 자체 등락률(`flctnPrcnt`)이 우리 계산값과 정확히 일치(니켈
++0.61%·아연 -0.83% 등), WEEK 구간(동·알루미늄)은 "직전 관측치"로, DAY
+구간(니켈·아연)은 "전일"로 올바르게 구분되는 것까지 확인(직전 라운드의
+전일/직전관측치 수정이 정상 작동함을 재확인, 회귀 없음). 이번 라운드는
+추가 버그 없이 종결 — GATES.md G8 추가, unlazy 게이트 체커로 8개 전부
+최종 PASS.
+
+## 2026-08-26 — price 페이지 7차원 무작위 조합 실측 + 실버그 2건 추가 발견·수정(/unlazy G7)
+
+사용자 요청: "광종·품목·규격·평균옵션·기간·비교광종·비교광종가격기준을 각각
+무작위로 선택해 검색 → 그 데이터로 price API 호출 → 보고서 작성 중 오류
+확인 → 보고서 완성 후 실데이터가 제대로 요약됐는지 하나하나 다 체크 →
+테스트 케이스와 보고서 결과 기록." 바로 위 항목(G5/G6, 광종×가격기준
+전수)이 다루지 않았던 3개 차원(평균옵션·기간·비교광종)을 처음으로
+실데이터로 태웠다.
+
+**신설**: `scripts/komis_random_trial_test.py` — 8회 시행, 평균옵션
+5종(DAY/WEEK/MONTH/QUARTER/YEAR)을 최소 1회씩 강제 배정하고 나머지
+차원(페이지·광종·품목·규격·기간·비교광종·비교광종가격기준)은 trial별 고정
+시드로 무작위 선택(재현 가능). 사전 조사로 확인한 것: 평균옵션별 `crtrYmd`
+포맷이 다름(DAY/WEEK=8자리 YYYYMMDD, MONTH=6자리, QUARTER="YYYY.NQ",
+YEAR=4자리) — MONTH/QUARTER/YEAR는 report_gen의 `Day` 패턴 검증에 안 맞아
+**의도된 대로 거부됨**(price 페이지 정의 자체가 "일별" 데이터라 옳은 동작,
+report_gen을 고치지 않음). 비교광종은 `srchCompareMnrkndUnqCd`+
+`srchComparePrcCrtr` 둘 다 선택해야 응답의 `data.compareMnrl`이 채워짐을
+실측(671건, defaultMnrl과 동일 shape).
+
+**최종 결과**: 8회 중 5회 `ok`(DAY×2, WEEK×3), 3회 `SKIPPED_INSUFFICIENT_
+DATA`(MONTH/QUARTER/YEAR — 예상된 거부), INTERNAL_ERROR·TRIAL_FAILED·
+데이터 불일치 전부 0건. 5건 전부 "하나하나" 수동 대조(KOMIS 원본이 각 행에
+같이 주는 `flctnPrcnt`(전일대비)를 우리 계산값과 직접 비교하는 외부
+검증까지 포함)로 핵심 진단·주요 변화·현재 위치 문장의 숫자가 원본과
+정확히 일치함을 확인. 전체 시행 파라미터+원본데이터 요약+생성보고서는
+`komis_random_trial_results.json`에 기록.
+
+**"하나하나 체크" 중 실버그 2건 발견·수정**:
+1. **검증 공백**: 자동 미스매치 체크(`_check_mismatch`)가 price 페이지의
+   `latest_price`/`mineral_name`만 검증하고 **비교광종 문장("같은 조회기간
+   동안 OO은 X% 변동...")의 숫자는 한 번도 자동 대조된 적이 없었다** —
+   `komis_dump_smoke_test.py`에 `compare_overall_change_pct` 독립 재계산+
+   대조를 추가(이후 재실행한 384+69+8건 전부 여전히 불일치 0건, 계산
+   자체는 원래도 맞았음을 확인).
+2. **"전일" 오표기**: `komir_summary.py`의 day_over_day 근거가 관측 간격을
+   확인하지 않고 무조건 "전일(날짜) 대비"라고 썼다 — 평균옵션=WEEK로 받은
+   데이터를 그대로 넣으면 실제로는 7일 전인데 "전일"이라 표기됨(실측
+   재현: "전일(2012-12-24) 대비"인데 기준일은 2012-12-31). 직전 관측치와
+   정확히 하루 차이일 때만 "전일", 아니면 지표 페이지와 같은 관용구
+   "직전 관측치 대비"로 쓰도록 수정(근거 문장·지표 표 라벨·LLM 프롬프트
+   지시문 3곳 전부). 근본적으로는 price 페이지가 "일별 전용"이라는 계약을
+   요청 바디가 지킨다는 보장이 report_gen 안에 없다는 구조적 한계의 증상 —
+   날짜 포맷 검증(8자리)만으로는 "진짜 일별 간격"을 보장 못 한다(WEEK도
+   8자리라 통과함). 이번엔 문구만 방어적으로 고쳤고, 더 근본적인 해법(예:
+   observations 자체에 실제 일별 간격인지 검증하는 로직 추가)은 범위 밖으로
+   남겨둠.
+
+## 2026-08-26 — Playwright로 komis.or.kr 라이브 조회+report_gen 전수 검증(/unlazy G5/G6)
+
+사용자 요청: "playwright로 komis.or.kr 접속해서 비철금속·희소금속 데이터
+가져와 API로 던져 보고서 확인" → 뒤이어 "가능한 모든 검색조건 다 테스트,
+테스트 항목 다 기록해줘(/unlazy)"로 범위 확장. 바로 위 항목(정적 덤프 기반
+회귀 테스트)의 라이브판.
+
+**전제 확인**: 이 세션(개발 샌드박스)의 `curl`은 `komis.or.kr`에 연결이 안
+됐지만(WebFetch 도구/직전 세션에서 확인), **Playwright가 띄우는 실제
+Chromium 프로세스는 연결됨**을 실측 확인(이유 불명, `curl`과 다른 경로로
+나가는 듯) — 그래서 이 작업이 가능했다.
+
+**신설**: `scripts/komis_live_playwright_test.py` — komis.or.kr 광물자원가격
+> 비철금속/희소금속 페이지에서 **전 광종 × 광종별 전 가격기준 조합**을
+Playwright로 실시간 조회(비철 6광종×가격기준=13콤보, 희소 34광종×광종별
+기준=56콤보, 합계 **69콤보**)해 report_gen(`AnalysisSummaryService(llm=None)`)
+에 던지고 검증. `scripts/check_live_mismatch_and_typos.py`(덤프판 G3/G4
+검사를 라이브 결과에 재적용)도 신설. GATES.md에 G5(라이브 조회+저장)·
+G6(불일치·오타 0건) 추가, unlazy 게이트 체커로 실행·승인·PASS 기록
+(`--approve --timeout 300`, evidence 6건 전부 exit=0+EXPECT matched).
+
+**최종 결과**: 69/69 콤보 전부 `ok`, INTERNAL_ERROR 0·FETCH_FAILED 0·
+데이터 불일치 0·조사/어미 오타 0. 전체 테스트 항목은 `komis_live_results.json`
+의 `log`(69줄, 광종|가격기준→상태) + `results`(콤보별 요청/응답/렌더링된
+MD/불일치 목록)에 전부 기록됨.
+
+**하네스 자체 버그 1건 발견·수정**(report_gen 버그 아님): 처음엔 비철금속
+가격기준 코드(502=LME CASH/497=LME 3개월)를 광종 공통값으로 하드코딩했는데,
+**실측 결과 이 내부 serial이 광종마다 다름**(니켈 LME CASH=502, 동 LME
+CASH=501, 아연=561, 알루미늄=495, 연=499, 주석=493 — 전부 다른 값,
+주석은 LME 15개월까지 있어 3종). 그래서 두 번째 광종부터 전부
+`select_option` 실패(FETCH_FAILED 10건) → 희소금속과 동일하게 광종 선택
+직후 그 시점의 실제 드롭다운 옵션을 다시 읽어오도록 수정, 재실행해 0건
+확인. 콤보키에도 옵션 value를 포함시켜 갈륨/인듐처럼 드롭다운 표시텍스트가
+같아도 실제로는 다른 원산지/스펙 계열인 콤보를 구분되게 함.
+
+**KOMIS 페이지 조작 방법(재현용 기록)**: 광종 라디오는 `#srchMnrkndUnqCdRadio`
+컨테이너 안 `<label>` 클릭(라디오 input 자체는 숨김 스타일이라 직접
+`.check()`하면 타임아웃), 가격기준은 `#srchPrcCrtr` select(광종 선택 직후
+그 광종 전용 옵션으로 리렌더링됨 — 하드코딩 금지), 실제 AJAX
+(`getMnrlPrcByMnrkndUnqCd`)는 **`#btnSearch`("검색") 버튼을 눌러야만
+발화**한다(라디오/select의 change 이벤트 자체는 AJAX를 안 태움 — 실측
+확인, 처음 이걸 몰라서 base_metals 전량 FETCH_FAILED가 났던 원인).
+
+## 2026-08-26 — KOMIS 실데이터 기반 8종 회귀 테스트 하네스 + 실버그 3건 수정(/unlazy)
+
+사용자 요청(4개 항목, `/unlazy` 실행) — "① 실데이터로 API별 세션을 만들어 호출,
+결과를 페이지·아규먼트 조합 JSON으로 저장 ② 오류난 API 수정/확장 ③ 보고서
+공통 오타 수정 ④ 보고서-데이터 미스매칭 퀄리티 체크". GATES.md 4개(G1~G4)
+전부 unlazy 게이트 체커로 실행·승인·PASS 기록 완료(`node gate-check.mjs
+--approve`, evidence 4건 모두 exit=0+EXPECT matched).
+
+**신설**: `report_gen/scripts/komis_dump_smoke_test.py` — `income_data/komis/`
+의 실 KOMIS 덤프를 데이터 원천이 있는 7개 page_id(indicator_market·
+indicator_supply·indicator_composite·map_mineral·price·map_korea·map_global,
+`forecast_price`는 대응 원천 없어 제외)의 요청 바디로 변환해 `Analysis
+SummaryService(llm=None)`를 직접 호출하는 회귀 하네스. LLM 정제 경로는
+범위 밖(이전 턴들에서 이미 폴백 동작 검증 완료, vLLM 미접속 환경에서 384건
+반복은 정보 없이 시간만 씀). 결과는 `scratchpad/komis_harness_results.json`
+에 페이지·콤보키·요청·응답·렌더링된 MD·독립 재계산 정답값·불일치 목록까지
+저장(384 combos, 7 페이지, 0 INTERNAL_ERROR, 0 불일치 — 최종 상태).
+`check_no_internal_errors.py`(G2)·`check_particle_typos.py`(G3, 은/는·이/가
+받침 규칙 독립 재구현+긍정/부정 대조군으로 탐지기 자체 검증)·`check_report_
+data_mismatch.py`(G4)도 함께 신설.
+
+**실버그 3건 발견·수정**(전부 실데이터 실행 중 발견, 사전에 몰랐던 버그):
+1. `additional_summary.py::calculate_mineral_map_summary` — 직전연도 대비
+   증감이 0일 때 "변동이 없었"+"했다"가 이어져 "변동이 없었했다"(문법 오류).
+   세 갈래(증가했다/감소했다/변동이 없었다) 모두 완결형으로 통일. 이 파일은
+   "무수정 이식" 원칙이지만 사용자의 명시적 오타수정 요청으로 예외 적용.
+   (수정 중 트레일링 마침표를 빠뜨렸다가 즉시 재발견·재수정 — 이력 참고용
+   으로 기록.)
+2. `komir_summary.py::_calculate_trade_map_summary`(map_korea/map_global
+   공용) — 1위국 문장에 받침 규칙 무시한 "이"를 하드코딩해 "캐나다이"·
+   "호주이"·"칠레이" 등 49건 오류(전부 받침 없는 국가명). `_topic()`(은/는)과
+   같은 규칙의 `_subject()`(이/가) 헬퍼를 신설해 교체.
+3. `report_render.py` — `unit="ratio"` 지표(0.0356 같은 소수)가 지표 표에
+   그대로 찍혀 "0.04"로 보임 — 본문 문장은 "3.56%"인데 표만 다른 단위로
+   보여 불일치처럼 읽혔다. 표 렌더링에서 ratio를 %로 환산하도록 수정
+   (`_format_metric_row`).
+
+**하네스 자체 버그 1건**(report_gen 버그 아님, 자체 수정): indicator_market/
+supply·map_korea/global 어댑터가 `mineral_name`에 KOMIS 코드(예:
+"MNRL1054")를 그대로 채워 보고서 제목이 "MNRL1054 분석 요약"처럼 나온 걸
+발견 — 덤프 `key`의 한글 광종명을 쓰도록 수정.
+
+**커버리지 근사(정확성보다 파이프라인 전수실행이 목적, 스크립트 상단
+docstring에 상세 기록)**: price류는 `srchAvgOpt=DAY` 콤보만, composite는
+"1년" 프리셋만, map_korea/global은 "전체기간·수입" 콤보만(그래서
+`single_snapshot` 분기 위주로 검증됨 — `period_total_change` 분기는 이번엔
+안 탐), map_global은 KOMIS list 엔드포인트의 상위 N개 조합을 수출국 기준
+합산한 근사치, mineral_map은 각 행에 반복되는 `totalBurudgQuty`/
+`TOTALPRDCTNQUTY`(대소문자 다름, 실측 확인)로 세계총량 합성 행 추가. 비교
+광종(compareMnrl)은 덤프 자체에 값이 없어(미수집 축) 이번 하네스로는
+재현 못 함 — 이전 턴에 합성 데이터로 이미 별도 검증됨.
+
+## 2026-08-26 — 광물자원가격(price)에 비교광종(compareMnrl) 지원 추가
+
+바로 위 항목(`price_criterion` 추가)에서 열려 있던 질문에 대한 사용자 답:
+"희소금속의 경우는 비교 광종과 비교광종 가격 기준이란 아규먼트도 입력이
+되는데 그게 대응 가능한가요?" → "가격 비교에서 희소금속에서 가격 비교시
+기존 데이터는 defaultMnrl 키 아래 들어오고, 비교데이터는 compareMnrl 키
+아래 들어 온다"는 KOMIS 원본 응답 구조 확인 후 구현.
+
+**변경 내용**:
+- `MineralDateRangeSummaryRequest`(`routers/analysis.py`, price/map_korea/
+  map_global 공용)와 `AnalysisSummaryRequest`(`models.py`)에 `compare_mineral`·
+  `compare_mineral_name`·`compare_price_criterion`·`compare_observations`
+  4개 필드 추가(`page_id="price"` 전용, KOMIS `compareMnrl`에 대응 — `defaultMnrl`
+  은 기존 `observations` 필드가 이미 담당).
+- `komir_summary.py::calculate_price_summary(series, compare_series=None)`에
+  선택 인자 추가 — `compare_series`가 있으면 두 계열의 "첫 관측→마지막 관측"
+  조회기간 전체 변화율을 나란히 비교하는 근거(`compare_overall_change`)를
+  `current_position`에 추가한다(일별 대비 대신 전체 변화율을 쓴 이유: 두
+  계열의 관측일이 정확히 일치한다는 보장이 없어서). `_topic()`(은/는 조사
+  헬퍼)을 재사용해 "코발트는", "리튬은"처럼 받침 유무에 맞게 조사를 붙였다
+  (처음엔 안 써서 "코발트은"으로 나온 걸 스모크 테스트로 발견·수정).
+- `summary.py::_analyze_price`가 `compare_observations`로 두 번째
+  `PriceSeries`를 조립해 `calculate_price_summary`에 넘기고, `applied_filters`
+  에 `compare_mineral`/`compare_price_criterion`도 실어 보고서 상단에
+  표시(`report_render.py`의 `_FILTER_LABELS`에 라벨 추가).
+- `price` 페이지의 `current_position` 문장 수 상한을 1→2로 완화
+  (`prompts.py::build_summary_payload`·`summary.py::_validate_llm_summary`
+  둘 다, 글자 그대로 일치해야 하는 계약이라 함께 수정) — 비교광종 없을 땐
+  기존과 동일하게 1문장.
+- `PRICE_SUMMARY_INSTRUCTIONS`(`prompts.py` 폴백 + `seed_prompts.py` DB
+  시드 양쪽)에 compare_overall_change 사용 지침 추가, 시더 재실행으로
+  `ai_cfg.cfg_prompt` 갱신.
+
+**검증(실측)**: 리튬(기본)·코발트(비교) 예시 요청으로 `applied_filters`에
+비교 필드 반영, 보고서 본문에 "같은 조회기간 동안 코발트는 -1.92% 변동한
+반면, 리튬은 +2.78% 변동했다" 문장과 주요지표 표에 "코발트 대비 조회기간
+변화율차" 행이 정상 렌더링되는 것까지 확인.
+
+## 2026-08-26 — 광물자원가격(price) 요청에 price_criterion(자유텍스트) 추가
+
+사용자 질문: "광물 자원가격 보고서에서, 비철금속과 희소금속이 조회하는
+조건값이 다른데 처리 가능한가?" — KOMIS 원본 기준 비철금속(6종, 가격기준
+LME CASH/LME 3개월 단일 선택)과 희소금속(34종×최대 60개 품목/스펙 조합,
+예: 리튬→Lithium Carbonate/Hydroxide Monohydrate/Spodumene)은 "같은 광종도
+조회조건이 다를 수 있다"는 구조다. 답: 이미 처리 가능하다 — report_gen은
+바로 위 항목들에서 순수 요청기반 포매터로 전환됐기 때문에, 어떤 조건으로
+값을 뽑았는지는 전적으로 호출자(캐치올 상위 서비스) 책임이고 report_gen은
+`observations` 배열을 받은 그대로 정리할 뿐 조회조건 분기 로직 자체가 없다.
+다만 "어떤 조건으로 조회한 값인지"가 보고서 텍스트에 드러나지 않던 갭은
+있어서, `MineralDateRangeSummaryRequest`(`price`/`map_korea`/`map_global`
+공용, `routers/analysis.py`)에 자유텍스트 `price_criterion`(예: "LME CASH"·
+"Lithium Carbonate") 필드를 추가하고, `summary.py::_analyze_price`가
+`applied_filters`에 실어 `AnalysisSummaryResponse`로 전달, `report_render.py`
+가 보고서 상단에 `**가격기준**: ...`로 표시하도록 연결했다(`_FILTER_LABELS`
+매핑, 신규 필드 추가 시 매핑 안 해도 원래 키 이름으로 표시돼 죽지 않음).
+실측 검증: 리튬(Lithium Carbonate) 예시 요청으로 `applied_filters`·렌더링된
+MD 양쪽에 정상 반영 확인.
+
+## 2026-08-26 — 분석요약 8종 응답 계약 교체: 구조화 JSON → status/report(MD) + 20초 타임아웃 + out_report 저장 제거
+
+사용자 지시: "해당 보고서는 아웃풋이 DB에 저장되지 않고 MD파일 형태로 풍부한
+표현력을 가진 텍스트로 바로 response에 작성하면 됩니다. response 객체에
+status에 정상 동작여부/오류 발생시 오류 코드. report ← 요약 보고서. 각 보고서
+요청 마다 소요 시간이 20초를 넘어가면 안 됩니다." 바로 위 항목(DB 조회→요청
+바디 전환)에서 열어뒀던 "`out_report` 저장 유지할지"를 이 지시로 확정.
+
+**변경 내용**:
+- `analysis/models.py`에 `AnalysisReportResponse(status, report)` 신설 —
+  `status`는 성공 시 `"ok"`, 실패 시 오류 코드 하나로 성공/실패를 겸함
+  (`NO_DATA`·`TIMEOUT`·`INTERNAL_ERROR` 3종, 옛 `DataSourceError`/422→
+  `NO_DATA`로 흡수). `report`는 성공 시에만 채워지는 Markdown 문자열.
+- `analysis/report_render.py` 신설 — `AnalysisSummaryResponse`(구조화 JSON,
+  계산·검증 레이어의 결과, 무수정)를 헤더+문단+표로 된 Markdown으로 렌더링.
+  LLM에게 MD를 직접 쓰게 하지 않음(`_validate_llm_summary` 근거검증 계약을
+  벗어나므로) — 검증된 `SummaryNarrative` 문장을 그대로 옮겨 담을 뿐.
+- `routers/_common.py::run_summary` 전면 재작성: `analyze_and_store()`(→
+  `out_report`/MSR_DB 적재) 호출을 `service.analyze()` 직접 호출로 교체해
+  DB 저장을 없앰(`store.py` 파일은 삭제하지 않음, 호출부만 뗌 — 이전 두 턴과
+  같은 "코드 보존" 원칙). `ThreadPoolExecutor.submit(...).result(timeout=20)`로
+  20초 하드캡을 걸고, 더 이상 HTTPException을 던지지 않음 — **HTTP 상태
+  코드는 8종 전부 항상 200**, 성공/실패 구분은 바디의 `status`로만 함(기존
+  422/503 매핑 제거, 해석 지점으로 명시).
+- `routers/analysis.py`·`routers/report_data.py`: `response_model`을
+  `AnalysisSummaryResponse` → `AnalysisReportResponse`로 교체(8개 라우트
+  전부), 모듈 docstring 갱신.
+
+**알려진 제약**: `analysis_lock`을 쥔 채 실행되는 백그라운드 스레드는
+타임아웃 후에도 인터럽트되지 않고 LLM 응답을 계속 기다린다 — 그동안 lock을
+기다리는 다음 요청들이 연쇄로 타임아웃을 맞을 수 있음(LLM 클라이언트가 요청
+중간 취소를 지원하지 않아 완전히 막지는 못함, vLLM 자체가 죽어있을 때만
+발생하는 드문 경로).
+
+**검증(실측, 2026-08-26)**: TestClient로 8종 전부 실제 관측치(니켈·텅스텐
+실측 + 나머지 5종은 스키마 부합 예시치)를 요청 바디로 태워 `{status:"ok"}`+
+Markdown 본문(헤더·핵심진단/주요변화/현재위치 문단·지표표) 확인. observations
+누락 → `{status:"NO_DATA"}` 확인. `_refine_with_llm`을 25초 sleep으로
+monkeypatch해 정확히 20.00초에 `{status:"TIMEOUT"}`로 끊기는 것까지 확인.
+이 세션은 vLLM 미접속이라 정상 경로도 매 요청 LLM 연결실패 처리에 ~12초가
+걸려(host.docker.internal DNS 미해결) 규칙기반으로 폴백함 — vLLM 정상 접속
+시의 실제 응답시간(20초 캡 안에서 여유가 있는지)은 이 세션에서 검증 불가.
+
+**중첩된 계약 변경 정리(발주처 프론트 조율 필요, 누적)**: 오늘 하루에만
+①요청 바디에 `observations` 등 필드 추가(DB조회 제거) ②응답 계약을
+구조화 JSON에서 `status`/`report`(MD)로 교체 — 이식 5종은 애초
+"발주처 프론트 계약이라 경로·요청·응답 모두 유지"라고 못박아뒀던 부분이라,
+이 두 변경을 프론트와 맞춰야 함.
+
+## 2026-08-26 — 분석요약 8종, DB 직접조회 → 요청 바디 입력으로 전환
+
+사용자 지시: "이 서버는 prompt를 제외하고는 db에서 아무런값을 로딩 안해야
+하는데 계속 DB에서 값을 가져오고 있네요. api콜시 입력된 값과 db에 있는
+template만 이용해야 합니다." — 바로 아래 항목("LLM 정제 배선")에서 확인한
+대로, 이식 5종(indicator_market/supply/composite·map_mineral·forecast_price)과
+komir 자체 3종(price·map_korea·map_global) **8종 전부**가
+`DataSourceError`/`KomisRawDataRepository`(`data_sources/database.py`·
+`extra.py`·`shared/komis_raw.py`)로 `public.KO_MNRL_PRC`·`KO_CSTM_CMMRC`·
+`KO_UN_CMMRC`·`KO_SPDM_STBT_INDX` 등을 직접 SELECT하고 있었다 — 요청은
+`mineral` 코드+기간만 받고 실제 숫자 배열은 서버가 자체 DB 조회로 채우는
+구조. 사용자 확답(적용범위=8종 전체, 기존 DB코드는 주석처리로 보존, 요청
+바디 형태=내부 정규화 모델의 Observation 리스트를 그대로 재사용)에 따라
+전환했다.
+
+**변경 내용**:
+- `analysis/models.py::AnalysisSummaryRequest`에 `observations: list[dict]`·
+  `mineral_name`·`price_unit`·`price_criterion`·`price_criterion_serial`·
+  `unavailable_page_data`·`supply_auxiliary`·`unit` 필드 추가 — 값은 페이지별
+  기존 `XxxObservation`(`IndicatorObservation`·`CompositeIndexObservation`·
+  `MineralMapObservation`·`PriceForecastObservation`·`PriceObservation`·
+  `TradeCountryObservation`) Pydantic 모델로 재검증한다(새 스키마를 짓지 않고
+  기존 모델을 그대로 재사용 — 필드명 추측 없음).
+- `routers/analysis.py`의 5개 요청 스키마(`IndicatorSummaryRequest`·
+  `CompositeIndexSummaryRequest`·`MineralMapSummaryRequest`·
+  `PriceForecastSummaryRequest`·`MineralDateRangeSummaryRequest`)에 같은
+  필드를 추가 — `routers/report_data.py`는 이 스키마들을 그대로 재사용하므로
+  자동으로 같이 적용됨.
+- `analysis/summary.py`: 8개 `_analyze_*` 메서드 전부에서 `self.
+  {_data_source,_composite_source,_mineral_map_source,_price_forecast_source,
+  _price_source,_domestic_trade_source,_global_trade_source}.get_*_series(...)`
+  호출 블록을 주석 처리하고(마커: "2026-08-26 DB 조회 경로 비활성화... 복원
+  시 이 블록 해제"), 그 자리에 `request.observations`로 Series를 직접 조립하는
+  코드로 교체(`_observations_from_request()` 신설 헬퍼 + 신규 `_data_version()`
+  해시 헬퍼 — DB판 `data_sources/_shared._version`과 같은 목적). `available_
+  start/end`·`data_as_of`는 observations에서 파생, `source_type="api"`·
+  `source_id="api:request"` 고정.
+- `main.py::build_analysis_summary_service()`: `KomisRawDataRepository()`·
+  7개 `Database*DataSource(...)` 생성 호출을 주석 처리하고 전부 `None` 전달
+  (`AnalysisSummaryService.__init__`의 해당 파라미터가 이미 `X | None = None`
+  이라 시그니처 변경 없음). DataSource 클래스 정의 자체(`data_sources/*.py`)는
+  삭제하지 않음 — 복원 가능.
+- 각 `_analyze_*`가 이제 `ValueError` 대신 `DataSourceError`를 던진다
+  (observations 누락·형식오류 등) — 기존 에러 매핑 계약(`_common.py::
+  run_summary`가 `DataSourceError`→422)과 일치시킴.
+
+**검증(실측, 2026-08-26)**: `shared.db.read_sql_pg`/`execute_pg`/
+`read_sql_msr`/`execute_msr`를 전부 예외를 던지도록 monkeypatch한 뒤(DB
+접근 시도 시 즉시 실패하도록 "오염") `AnalysisSummaryService`를 조립 →
+`_data_source` 등 7개 슬롯이 전부 `None`임을 확인 → 8개 page_id 전부에
+`service.analyze()`를 직접 호출 — **전부 예외 없이 완주**(DB 접근이 있었다면
+AssertionError로 즉시 실패했을 것). price·map_korea·map_global은 실제
+`public.KO_MNRL_PRC`(니켈)·`KO_CSTM_CMMRC`/`KO_UN_CMMRC`(텅스텐)에서 미리
+뽑아둔 실측 관측치를 요청 바디로 재사용했고, 나머지 5종(indicator_market/
+supply/composite·map_mineral·forecast_price)은 각 Observation 스키마에 맞는
+소규모 예시 관측치(스키마는 실제와 동일, 수치는 예시)로 검증했다 — 이 5종의
+실데이터 기반 재현은 하지 않았다(범위: "DB 안 거치고 도는지" 구조 검증).
+LLM 호출은 이 세션에서 vLLM 미접속으로 전부 규칙기반 폴백(바로 아래 항목과
+같은 제약).
+
+**열린 항목(이번엔 손대지 않음)**: `routers/analysis.py`가 `analyze_and_store()`
+로 `out_report`(MSR_DB)에 결과를 적재하는 쓰기 경로는 그대로 뒀다 — 사용자
+원칙이 조회(값 로딩) 금지인지 쓰기(결과 저장)까지 포함하는지 미확정이라
+임의로 끊지 않았다. 또한 이번 전환으로 `routers/analysis.py`의 "발주처
+프론트가 외부repo API 계약에 맞춰 개발 중일 수 있어 경로를 바꿀 이유가
+없다"던 이식 5종 요청 스키마가 실질적으로 바뀌었다(옵서베이션 필드 추가·
+DB조회 제거) — 발주처 프론트와 계약 조율이 필요할 수 있음.
+
+## 2026-08-26 — price/map_korea/map_global LLM 정제 배선 + claim id 버그 수정
+
+바로 아래 항목("ai_cfg.cfg_prompt 실프롬프트 교체")에서 `[스테이징-미배선]`으로
+남겨 뒀던 3종을 실제로 배선했다. `AnalysisSummaryService._analyze_price`/
+`_respond_trade_map`(`summary.py`)에 `_refine_with_llm` 호출을 추가하고,
+`prompts.py`에 이 3종의 폴백 상수·`page_defaults`·`build_summary_payload`
+section_ranges를, `summary.py::_validate_llm_summary`에도 동일한 section_ranges를
+추가했다(두 dict은 글자 그대로 일치해야 검증이 통과한다).
+
+**버그 발견·수정**: 배선 과정에서 `komir_summary.py::calculate_price_summary`의
+core_diagnosis 근거 id가 `"latest_price"`였던 걸 발견했다 — 다른 7종 페이지는
+전부 `"current_state"`를 쓰고 `_validate_llm_summary`가 "core_diagnosis에
+current_state가 있어야 한다"를 페이지 무관 공통 규칙으로 검사하는데, 이 페이지만
+이름이 달라 LLM 출력이 항상 검증에 실패했을 것이다(2026-08-19 최초 추가 때는
+LLM을 안 태워서 이 불일치가 드러나지 않았다). `"current_state"`로 rename —
+`DetectedPattern.evidence`의 참조 문자열 2곳도 함께 맞췄다(Metric id
+`"latest_price"`는 별개 네임스페이스라 그대로 둠).
+
+**게이트 설계**: 이 3종은 `indicator_*`/`indicator_composite`가 쓰는
+`len(claims) < 5` 최소근거수 게이트를 넣지 않았다 — 실측해 보니 trade map은
+claim이 보통 3~4개뿐이라 그 게이트를 그대로 쓰면 영구히 LLM을 못 탄다.
+`forecast_price`와 같은 패턴으로 `quality_status == "insufficient"`만 차단
+기준으로 삼았다.
+
+**검증(실측, 2026-08-26)**: `AnalysisSummaryService.analyze()`를 직접 호출해
+니켈(price, MNRL0002)·텅스텐(map_korea/map_global, MNRL0018 — 실데이터가
+가장 깊은 광종이라 선택)로 확인 — 셋 다 `_refine_with_llm`까지 도달해 LLM
+호출을 시도했고, evidence_ids가 새 `"current_state"`로 정상 표기됐다. 이
+세션에서는 vLLM(`host.docker.internal:11434`)에 연결이 안 돼(`ConnectionError`,
+DNS 미해결) LLM 호출 자체는 실패 → 설계대로 규칙기반 요약 폴백. **즉 "배선이
+`_refine_with_llm`까지 도달하고 실패 시 안전하게 폴백하는지"는 실측 확인했지만,
+"LLM이 실제로 검증을 통과한 문장을 만들어내는지"는 이 세션에서 vLLM 접속이 안 돼
+검증하지 못했다** — vLLM이 닿는 환경에서 한 번 더 확인 필요.
+
+**부수 발견(수정 안 함, 별도 이슈로 기록)**: 니켈 price 스모크테스트에서
+"전년평균 대비" 근거가 나왔는데, 실측해 보니 `KO_MNRL_PRC`의 니켈(MNRL0002,
+serial 900002) 데이터가 실제로는 2026-06-21~08-25(66일)뿐이었다.
+`komir_summary.py::_avg_before(days)`는 "최근 N일 이내 관측치 평균"을 구할 뿐,
+전체 보유 기간이 N일보다 짧을 때 이를 구분·경고하지 않는다 — 그 결과
+"전주평균"·"전월평균"·"전년평균"이 사실상 같은 65일치 데이터 풀에서 계산되면서도
+문구는 "전년평균"이라 값이 있는 것처럼 보인다. 검증기가 이 시맨틱 문제를
+잡아내지 못한다(가짜 근거가 아니라 코드가 실제로 계산한 값이라 숫자·검증
+자체는 정상 통과). 이번 턴은 wiring/prompt 범위만 다뤄 손대지 않았다 — 데이터
+보유기간이 짧은 광종에서 "전년 대비" 표현이 오해를 부를 수 있다는 점을
+사용자에게 별도 보고, 고칠지는 결정 필요(전체보유기간 검사 후 짧으면
+omitted_indicators로 빼는 정도의 수정).
+
+**실데이터 원천 재확인(질문에 답하며 실측)**: `public.KO_MNRL_PRC`(13,731행)·
+`KO_CSTM_CMMRC`(22,486행)·`KO_UN_CMMRC`(25,342행)는 텅스텐만 깊은 역사
+(1997~2025-02, 12,549행)가 있고, 발주 5광종(CU·NI·CO·LI·REE=Nd) 포함 나머지는
+대부분 2026-06-21~08-25 66일치뿐이다. `income_data/komis/`의 8개 페이지
+덤프(6,737행, 1987~2026 등 훨씬 깊음)는 아직 이 `public` 테이블에 반영되지
+않았다 — `public`은 타 팀 소유라 komir가 임의로 백필하면 안 된다(기존 정책,
+[[postgres_migration_260810]]). 계산/전처리 레이어(`komir_summary.py`·
+`additional_summary.py`·`summary.py::_calculate_summary`) 자체는 이미 완성돼
+있어 신규 모듈이 필요한 게 아니라, 이 원천 테이블의 데이터 깊이를 늘리는 결정이
+별도로 필요하다는 게 이번에 다시 확인된 결론.
+
+## 2026-08-26 — ai_cfg.cfg_prompt 임시 프롬프트를 발주처 KOMIS 템플릿 기반 실프롬프트로 교체
+
+바로 아래 항목(같은 날, "DB화 + 런타임 리로드")에서 `ai_cfg.cfg_prompt`에 심은
+값은 `prompts.py` 하드코드 문구를 그대로 옮긴 "임시 프롬프트"였다. 발주처가
+`income_data/komis/`에 (1) KOMIS 8개 페이지 실데이터 덤프(JSON, 6,737행,
+`MANIFEST.json`+`KOMIS_페이지별_옵션_API_명세.md`)와 (2) 요약보고서 템플릿
+PDF 2종(`AI 통계분석 요약 답변_광물가격전망지표.pdf`, `AI 통계분석
+요약답변_수급지도광물지도.pdf`)을 올려, 이를 근거로 `seed_prompts.py`의
+`PROMPTS` 문구를 실제 지시문으로 다시 썼다(`python -m
+app.analysis.seed_prompts` 재실행 → `ai_cfg.cfg_prompt` 9행 upsert, 실측
+확인 완료 — `prompt_store.reload()` → `summary_instructions()` 재조회로
+새 문구 로딩 검증).
+
+**반영 범위(중요, 구조적 제약 — 사전에 advisor 자문으로 확정)**:
+- `AnalysisSummaryService.analyze()`(`summary.py`)가 실제로 LLM 정제
+  (`_refine_with_llm`)를 태우는 건 `indicator_market`·`indicator_supply`·
+  `indicator_composite`·`map_mineral`·`forecast_price` 5종뿐이다. 이 중
+  `forecast_price`는 참고자료(PDF)가 없어 문구를 그대로 뒀고, 나머지 4종은
+  PDF 템플릿 표현(예: 시장/수급동향지표의 "[단계]로 상승/하락했습니다" vs
+  "[단계]를 [N]개월째 유지중입니다" 분기, 종합지수의 전주/전월/전년 비교+
+  하위지수 대비, 광물지도의 CR3/CR5 집중도)에 맞춰 다시 썼다 — 단, 계산
+  레이어(`additional_summary.py`/`summary.py`)가 실제로 만드는 EvidenceClaim
+  범위를 벗어나는 지시는 넣지 않았다. 특히 시장/수급동향지표 템플릿이 요구하는
+  "주요 요인"(가격변동 원인, 투자환경지수 요인) 절은 현재 계산 레이어가 원인을
+  분해해 근거로 만들지 않으므로 **의도적으로 비웠다** — 지어내면
+  `_validate_llm_summary`의 근거·숫자 검증에 걸려 규칙기반으로 폴백하기 때문에
+  실효가 없다.
+- `price`(광물자원가격)·`map_korea`(수급지도-관세청)·`map_global`(수급지도-
+  Comtrade) 3종은 `_analyze_price`/`_respond_trade_map`이 `_refine_with_llm`을
+  호출하지 않아 **프롬프트를 심어도 런타임이 전혀 소비하지 않는다**(규칙기반
+  서술만 응답, `summary.py` 모듈 docstring 4번 참고). PDF 템플릿이 이 3종도
+  다루고 있어 `komir_summary.py`의 실제 EvidenceClaim id(latest_price·
+  day_over_day·week_avg 등, current_state·top1_country·top3_concentration 등)에
+  맞춰 스테이징으로 심어 뒀다 — description에 `[스테이징-미배선]`을 표시. LLM
+  배선을 추가할지는 이번 세션 범위 밖(별도 결정 필요).
+- 전체광종(비철금속/희소금속 그룹 단위 집계) 요약은 PDF §1-2에 있지만 대응하는
+  `page_id`/엔드포인트 자체가 없어(현재 계약은 광종 1개 단위) 이번 반영에서
+  빠졌다 — 필요 시 별도 기능으로 논의해야 한다.
+
+**변경 파일**: `report_gen/app/analysis/seed_prompts.py`(문구 전면 교체 +
+스테이징 3키 추가, `PROMPTS` 9개로 확장, description을 키별로 분리) —
+`prompts.py`의 하드코드 상수(폴백 기본값)는 이번엔 손대지 않았다(DB 우선,
+DB 접속 불가 시 폴백은 여전히 구버전 문구 — 필요하면 후속으로 동기화).
+
+## 2026-08-26 — 분석요약 LLM 프롬프트를 ai_cfg.cfg_prompt(PostgreSQL)로 DB화 + 런타임 리로드
+
+`report_gen/app/analysis/prompts.py`(`AnalysisSummaryService._refine_with_llm`이
+쓰는 LLM 지시문 — 공통 서두 1개 + 페이지별 5종)가 지금까지 파이썬 상수로만
+있어 문구를 바꾸려면 배포가 필요했다. DB화 + 무재시동 리로드 요청으로 아래를
+구현.
+
+**스키마/테이블 결정 경위**: 처음 요청은 "postgresql `public` 밑에
+`ai_cfg_prompt`"였다. 그런데 이 저장소엔 이미 두 곳(`data_lake/db/
+schema_pgvector.sql`, `services/shared/komis_raw.py`)에 "`public`(ko_*·ai_*)은
+타 팀 소유라 절대 건드리지 않는다"가 명시돼 있어(`ai_mnrl_mst` 등 기존
+`ai_*` 테이블도 KOMIS가 채운 것이지 komir가 만든 적 없음 — 레포에 그 DDL
+자체가 없음), 그대로 진행하기 전에 사용자에게 확인했다. 사용자가 "`ai_cfg`
+스키마를 새로 만들고 그 안에 `cfg_prompt`를 쓰자"로 정정 — `public`도
+`mineral_risk`(MSR_DB의 fact_*/out_*/mart_*, PG_DSN의 doc_chunk/pgvector로
+이미 두 용도)도 안 쓰고 전용 스키마 `ai_cfg`를 새로 판다. 또한 "duckdb는
+더 이상 안 쓴다"는 지시에 따라 MSR_DB(duckdb/postgres 겸용 범용 대상) 대신
+PG_DSN(PostgreSQL 전용, `services/shared/db.read_sql_pg`/`execute_pg`/
+`apply_schema_pg`)으로 전량 교체했다 — 최초 구현(MSR_DB의 `cfg_prompt`,
+`mineral_supply_risk/db/schema_core.sql` §⑧에 추가했었음)은 전부 원복.
+
+**스키마/테이블**: `data_lake/db/schema_ai_cfg.sql`(신규, `public`·
+`mineral_risk`와 별개인 `data_lake/db/`가 관행상 gitignore 대상이라
+`schema_addendum_v2.sql`·`schema_pgvector.sql`처럼 `git add -f`로 강제
+추적) — `CREATE SCHEMA IF NOT EXISTS ai_cfg` + `ai_cfg.cfg_prompt(prompt_key
+VARCHAR(40) PK, content TEXT, description, updated_at)`. `prompt_key`는
+`summary_common` + `indicator_market`/`indicator_supply`/`indicator_composite`/
+`map_mineral`/`forecast_price`(LLM 정제를 안 쓰는 `price`/`map_korea`/
+`map_global`은 대상 아님) 6개.
+
+**런타임 캐시**: `app/analysis/prompt_store.py`(신규) — 모듈 전역 dict 캐시.
+`reload()`가 `ai_cfg.cfg_prompt`를 `read_sql_pg`로 통째로 다시 읽어 캐시를
+원자적으로 교체(실패해도 예외를 던지지 않고 기존 캐시 유지 + 로그만 남김 —
+PG_DSN 미설정도 이 경로로 흡수됨). `get_prompt(key, default=)`는 DB를
+조회하지 않고 캐시만 읽는다 — 요구사항이 "재시동 또는 리로드 콜 시에만"
+다시 읽는 것이라, 매 호출마다 DB를 때리지 않는다. `prompts.py::summary_
+instructions()`가 이걸 거치도록 바꾸고, 기존 하드코드 상수는 "DB에 없을 때
+기본값"으로 남겼다(캐시가 비어 있거나 해당 key가 없으면 폴백).
+
+**리로드 트리거 2가지**: (1) `main.py` lifespan이 기동 시 1회 자동
+`prompt_store.reload()` 호출. (2) `POST /admin/prompts/reload`(신규,
+`commodity_api`의 `/admin/cache/clear`와 같은 스타일) — 운영자가 DB 행을
+갱신한 뒤 호출하면 서버 재시동 없이 다음 보고서 생성부터 새 프롬프트 반영.
+
+**시드 스크립트**: `app/analysis/seed_prompts.py`(신규,
+`cd inhouse/services/report_gen && python -m app.analysis.seed_prompts`,
+PG_DSN은 `inhouse/.env`에서 읽음) — `apply_schema_pg(schema_ai_cfg.sql)`
+적용(멱등) + "임시 프롬프트"로 `prompts.py`의 기존 검증된 문구 6개를 그대로
+`INSERT ... ON CONFLICT (prompt_key) DO UPDATE`(네이티브 postgres upsert,
+duckdb 호환을 더 신경 쓸 필요가 없어져 기존 delete-then-insert 관행 대신
+채택)로 심는다. DB 경로 자체의 정상동작을 먼저 확인하는 게 목적이라 문구를
+새로 짓지 않았다 — 실제 문구 교체는 이후 DB `UPDATE` + `/admin/prompts/
+reload` 호출로 한다(스크립트 재실행 불필요).
+
+**검증**: 캐시 교체 메커니즘(reload 전/후 문구가 실제로 바뀌는지, 앱 기동
+시 자동 로드되는지, 관리 엔드포인트 실호출, 테이블/스키마·PG_DSN이 없어도
+크래시 없이 하드코드 기본값 폴백)은 최초 구현(MSR_DB 경로) 때 scratchpad
+임시 duckdb로 전 구간 실측 완료 — 그 메커니즘 자체(`prompt_store.reload()`/
+`get_prompt()`)는 PG_DSN 전환에도 안 바뀌었다. `schema_ai_cfg.sql`은
+`db.dbio._split_sql`로 정확히 2개 statement(스키마 생성·테이블 생성)로
+쪼개짐도 별도 확인. `python3 -m py_compile` 전 파일 통과.
+
+**실제 PG_DSN(komis_demo, `220.118.147.58:55433`) 접속 후 최종 검증
+완료**(같은 날 이어서, 사용자가 이 worktree에 `inhouse/.env`를 채워줌):
+`python -m app.analysis.seed_prompts` 실행 → `ai_cfg` 스키마·`ai_cfg.
+cfg_prompt` 테이블 생성 + 6행 upsert 콘솔 로그 확인 → `read_sql_pg`로
+직접 재조회해 6개 prompt_key·content 길이·description·updated_at 전부
+정상 확인 → report_gen `TestClient` 기동 시 로그에 "cfg_prompt에서 프롬프트
+6건 로드" 확인 + `summary_instructions('indicator_market')`가 DB값을
+정상 반환 → `POST /admin/prompts/reload` 실호출 200, `reloaded_prompt_count:
+6` 확인. 이걸로 DB화+런타임 리로드 요구사항 전체가 실환경에서 종결됐다.
+
+⚠ **사고 기록**: 접속 디버깅 중 `.env`의 `PG_DSN` 줄을 실수로 터미널에 그대로
+출력해 postgres 비밀번호가 대화 로그에 노출됐다(2026-08-26) — 사용자에게
+즉시 고지, 비밀번호 교체 권고함. 이후로는 DSN 파싱 결과(호스트·포트·유저명
+등 민감하지 않은 필드)만 개별 출력하고 원문 라인은 절대 출력하지 않는 방식으로
+전환. 비슷한 DB 접속 디버깅 시 반드시 이 방식을 따를 것 — `.env`/DSN 원문을
+`cat`·`repr`·`print`하지 않는다.
+
+## 2026-08-26 — report_gen에 price/idx/map REST 엔드포인트 신규(보고서 요약 템플릿용)
+
+다른 세션이 분석요약 보고서 템플릿을 작업 중인 상황에서, 그 템플릿이 데이터를
+가져올 엔드포인트를 만드는 작업. 사용자가 가칭으로 적은 8개
+(`price/baseMetal`·`price/minorMetal`·`idx/general`·`idx/market`·`idx/sply`·
+`map/korea`·`map/global`·`map/mineral`)를 REST 명명규칙(kebab-case·복수
+컬렉션명)으로 정리해 `inhouse/services/report_gen`(기존 report_gen FastAPI
+서버 — 이미 `/api/v1/analysis/*` 8종·`/api/v1/dashboard/comprehensive`·
+`/reports/*`가 떠 있음, 새 서버를 만들지 않음)에 새 라우터 3개로 추가했다.
+
+**경로**: `POST /api/v1/prices/{base-metals,minor-metals}` ·
+`/api/v1/indicators/{market,supply,composite}` ·
+`/api/v1/maps/{korea,global,mineral}`(`routers/report_data.py`, 신규).
+`idx/general`은 KOMIS 내부 용어(`indicator_composite`, "광물종합지수")에 맞춰
+`composite`로 정했다. `/api/v1/analysis/*`(발주처 프론트 계약이라 경로 고정)는
+그대로 두고, 8종 전부 같은 page_id로 같은 서비스 호출을 위임하는 얇은
+별칭이다 — 계산 로직 복제 없음.
+
+**신규 2종(`/prices/base-metals`·`/prices/minor-metals`) — 1차 구현 후 되돌림**:
+처음엔 `SummaryPageId`에 `price_base_metals`/`price_minor_metals`를 새로
+추가하고, 요청 광종이 실제로 그 그룹(KOMIS 메타데이터 기준 LME 6종/희소금속
+34종 — komir 5광종을 정확히 CU/NI=비철·CO/LI/REE(Nd)=희소로 가른다)에
+속하는지 `require_price_group_mineral()`로 검증(아니면 422)하는 코드를 짰다.
+그런데 사용자가 "기존 `/api/v1/analysis/prices`가 이미 `mineral`을 입력받아
+광종별로 개별 계산하는데, 이 그룹 가드가 실제로 새 능력이냐"고 확인 —
+맞는 지적이었다. `_analyze_price`/`calculate_price_summary`는 광종이 비철이든
+희소든 완전히 동일하게 동작해서, 가드는 "이 URL은 이 그룹만 받는다"는
+제약만 추가할 뿐 계산 능력은 전혀 새롭지 않았다. 보고서 템플릿은 입력을 그대로
+꽂아 넣을 뿐 그런 화면 단위 제약이 필요 없다고 사용자가 판단해 **가드를
+제거**했다 — `price_base_metals`/`price_minor_metals`(SummaryPageId·
+KOMIR_PAGE_CONTEXTS·`_PAGE_TITLES`)·`require_price_group_mineral()`(및 이를
+지원하려고 `komis-metadata.subset.json`에 추가했던 `metadata.prices.
+{base_metals,minor_metals}.minerals` ref 2개)를 전부 원복했다. 최종적으로
+`/prices/base-metals`·`/prices/minor-metals` 둘 다 기존 `page_id="price"`로
+위임하는 순수 별칭이다 — URL만 나뉘어 있을 뿐 어느 쪽으로 불러도 결과는 같다.
+
+**리팩터(유지)**: `routers/analysis.py`의 `_run_summary`(서비스 호출+에러→HTTP
+status 매핑)를 새 라우터도 같이 써야 해서 `routers/_common.py::run_summary`로
+추출(두 라우터가 각자 복제하면 503/422 매핑이 어긋날 위험) — 이건 가드
+제거와 무관하게 그대로 남겼다.
+
+**검증**: `python3 -m py_compile` 전 파일 통과, `python3 -c "import app.main"`
+실제 임포트로 8개 새 라우트 등록 확인(`/openapi.json` 라우트 목록), FastAPI
+TestClient로 새 엔드포인트 실호출(PG_DSN 미설정 환경이라 503 "Analysis
+database is not configured." — `/api/v1/analysis/*`와 동일한 폴백이 그대로
+동작함을 확인). 가드 제거 후 `git diff --stat`로 순변경분이 `routers/analysis.py`
+(리팩터)·`routers/report_data.py`+`_common.py`(신규 별칭 라우터)·`main.py`
+(include_router) 4개 파일뿐임을 재확인 — 1차 구현분(analysis/*)은 전부
+원복돼 diff에 남지 않았다.
+
+⚠ **알려진 한계(이번 범위 밖, 기존에 이미 기록됨)**: `/api/v1/analysis/*`와
+동일하게 이 API가 읽는 `public.KO_*`는 텅스텐(MNRL0018) 데모 데이터 1종만
+적재돼 있다(`services/shared/komis_raw.py` 2026-08-11 실측 노트) — komir 5광종
+(CU/NI/CO/LI/REE)으로 실호출하면 대부분 422(데이터 없음)가 난다. 이번 작업은
+엔드포인트 배선까지이고, 실데이터 적재는 별개 이슈.
+
+## 2026-08-20 — execute_msr() postgres 미지원 수정(out_report 저장 파손 해소)
 
 2026-08-20 앞선 항목("MSR_DB DuckDB→PostgreSQL cutover로 out_report 저장 경로
 파손, 기록만·미수정")이 "워크트리 통합 후 재작업 예정"이라 명시해뒀던 바로 그
