@@ -47,6 +47,13 @@ SummaryPageId = Literal[
     # alias)와 맞춰 다른 서브시스템과 이름을 통일했다.
     "price_base_metals",
     "price_minor_metals",
+    # 2026-08-28: "광물자원가격" 대메뉴의 나머지 실제 서브메뉴 2개(철광석 및
+    # 에너지/기타)도 같은 이유로 추가 — 이전엔 komis_menu_map.yaml의
+    # gaps_not_covered_by_report_gen에 미커버로 기록돼 있었다. 이름은
+    # price_base_metals/price_minor_metals와 같은 근거(registry `page_id:`
+    # 필드 — 이번엔 파일명과 동일해 alias 문제 없음, 사용자 사전 확인).
+    "price_iron_energy",
+    "price_other",
     "map_korea",
     "map_global",
     # 2026-08-27 신설 — PDF §1-2 "전체광종(필요시)" 대응(비철금속/희소금속
@@ -285,9 +292,10 @@ class AnalysisSummaryRequest(StrictModel):
             ):
                 raise ValueError("price_group summaries do not accept period filters")
         else:
-            # "price_base_metals"·"price_minor_metals"·"map_korea"·"map_global" —
-            # komir 자체 추가 4종(§ SummaryPageId 주석 참고), 전부 광종 필수 +
-            # 일자(day) 필터만 받는 동일한 모양이다.
+            # "price_base_metals"·"price_minor_metals"·"price_iron_energy"·
+            # "price_other"·"map_korea"·"map_global" — komir 자체 추가 6종
+            # (§ SummaryPageId 주석 참고), 전부 광종 필수 + 일자(day) 필터만
+            # 받는 동일한 모양이다.
             if self.mineral is None:
                 raise ValueError("mineral is required for price/trade map summaries")
             if any(
@@ -519,7 +527,7 @@ class PriceSeries(StrictModel):
     # summary`는 참조하지 않는다) — 그래도 실제 호출부(`_analyze_price`)가
     # `request.page_id`를 명시적으로 넘긴다. 기본값은 임의(비철금속) — dead code인
     # `data_sources/extra.py`의 미사용 호출부만 이 기본값에 의존한다.
-    page_id: Literal["price_base_metals", "price_minor_metals"] = "price_base_metals"
+    page_id: Literal["price_base_metals", "price_minor_metals", "price_iron_energy", "price_other"] = "price_base_metals"
     mineral: MineralRef
     price_criterion_serial: int
     available_start_date: Day

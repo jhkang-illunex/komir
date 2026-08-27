@@ -5,9 +5,10 @@
   V1  컬럼 자동 추가: `prompt_store.ensure_schema()` 후 information_schema에
       REQUIRED_COLUMNS 전부 존재.
   V2  시드 라운드트립: `seed_prompts.main()` 실행 → `prompt_store.reload()` →
-      11키 전부 DB 값 == 코드 기본값(content·name·definition·constraints·
+      13키 전부 DB 값 == 코드 기본값(content·name·definition·constraints·
       version·output_contract), `resolve_page_config().source`가 전부 "db"
-      (2026-08-27 price page_id 분리로 10→11키, §RETIRED_KEYS 정리도 같이 확인).
+      (2026-08-27 price page_id 분리로 10→11키, 2026-08-28 price_iron_energy/
+      price_other 추가로 11→13키, §RETIRED_KEYS 정리도 같이 확인).
   V3  DB 변경 반영: `price_minor_metals`(2026-08-27 이전엔 `price`) 행의
       page_definition·analysis_constraints·output_contract(major_changes
       [1,3])를 UPDATE → reload → 규칙기반

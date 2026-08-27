@@ -64,6 +64,32 @@ KOMIR_PAGE_CONTEXTS = {
         ],
         policy_version="price-minor-metals-summary-v1",
     ),
+    # 2026-08-28: "광물자원가격" 대메뉴의 나머지 실제 서브메뉴 2개 — 이전엔
+    # gaps_not_covered_by_report_gen에 미커버로 기록돼 있었다. name/definition은
+    # page_recommend registry(price_iron_energy.yaml·price_other.yaml)의
+    # routing.summary·keywords를 근거로 썼다(임의 추정 금지).
+    "price_iron_energy": SummaryPageContext(
+        page_id="price_iron_energy",
+        name="광물자원가격(철광석 및 에너지)",
+        definition="선택한 철광석·유연탄·우라늄(품목 기준)의 일별 실거래가·최저가·최고가 추이를 보여주는 자료다.",
+        analysis_constraints=[
+            "제공된 가격 계열과 선택 기간만 사용한다.",
+            "외부 사건을 가격 변화의 원인으로 추정하지 않는다.",
+            "가격 단위·기준이 없으면 절대 수준을 해석하지 않는다.",
+        ],
+        policy_version="price-iron-energy-summary-v1",
+    ),
+    "price_other": SummaryPageContext(
+        page_id="price_other",
+        name="광물자원가격(기타)",
+        definition="선택한 금·은·백금족·흑연(기준시장 기준)의 일별 실거래가·최저가·최고가 추이를 보여주는 자료다.",
+        analysis_constraints=[
+            "제공된 가격 계열과 선택 기간만 사용한다.",
+            "외부 사건을 가격 변화의 원인으로 추정하지 않는다.",
+            "가격 단위·기준이 없으면 절대 수준을 해석하지 않는다.",
+        ],
+        policy_version="price-other-summary-v1",
+    ),
     "map_korea": SummaryPageContext(
         page_id="map_korea",
         name="국내 수급지도",

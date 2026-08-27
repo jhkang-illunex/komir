@@ -1,4 +1,6 @@
-# KOMIS 실제 메뉴 구조 ↔ report_gen(요약보고서 9종) 매핑 — 2026-08-27
+# KOMIS 실제 메뉴 구조 ↔ report_gen(요약보고서, 최초 작성 시 9종 — 2026-08-27
+# price 분리로 10종, 2026-08-28 price_iron_energy/price_other 추가로 11종) 매핑
+# — 최초 작성 2026-08-27
 #
 # 출처: 사용자가 documents/order/에 올린 실제 KOMIS(komis.or.kr) 화면 캡처 8장
 #   - 광해사이트맵.png (대메뉴 4개 × 서브메뉴 목록, 홈 사이트맵 페이지)
@@ -142,7 +144,7 @@ komis_site_map:
         note: "Monosnap ...21-14-20.png 스샷으로 브레드크럼+URL 직접 확인"
 
 # report_gen(services/report_gen, streamlit_demo/report_gen_client.py::PAGE_SPECS)의
-# 9개 page_id + summary_common이 위 site_map의 어느 노드에 해당하는지.
+# 11개 page_id + summary_common이 위 site_map의 어느 노드에 해당하는지.
 # match 값: exact(1:1) | merged(실제 여러 서브메뉴를 파라미터로 합침) |
 #   synthetic(report_gen이 만든 합성뷰, KOMIS에 동명 서브메뉴 없음) | n/a(특정 메뉴 없음)
 report_gen_page_mapping:
@@ -167,11 +169,22 @@ report_gen_page_mapping:
   map_global:
     menu: 핵심광물지도 > 수급지도 > 글로벌
     match: exact
-  price:
-    menu: "광물자원가격 > {비철금속 | 희소금속}"
-    match: merged
-    note: "report_gen은 이 2개 실제 서브메뉴만 하나의 page_id(price)로 합쳐 price_criterion/price_unit 요청 파라미터로 구분한다(routers/analysis.py 주석에 명시: page_id=\"price\"는 비철금속/희소금속 전용). 철광석 및 에너지·기타는 대상이 아니다 — gaps_not_covered_by_report_gen 참고.
-      2026-08-27 사용자 결정: 이 2개를 report_gen 자체 page_id로 쪼개는 작업을 report-summary-agent에게 지시함(진행 중 — page_id 확정: price_base_metals/price_minor_metals, 엔드포인트 /api/v1/analysis/prices/base-metals·/api/v1/analysis/prices/minor-metals, 기존 /api/v1/analysis/prices 제거 예정. 완료되면 이 항목을 2개로 나눌 것)."
+  price_base_metals:
+    menu: 광물자원가격 > 비철금속
+    match: exact
+    note: "2026-08-27 report-summary-agent가 옛 단일 page_id(price, merged 매핑)를 실제 메뉴 구조에 맞춰 분리 완료. 엔드포인트 /api/v1/analysis/prices/base-metals."
+  price_minor_metals:
+    menu: 광물자원가격 > 희소금속
+    match: exact
+    note: "2026-08-27 분리 완료(§price_base_metals 참고). 엔드포인트 /api/v1/analysis/prices/minor-metals. compare_*(비교광종) 4개 필드는 이 page_id 전용."
+  price_iron_energy:
+    menu: 광물자원가격 > 철광석 및 에너지
+    match: exact
+    note: "2026-08-28 신설(이전엔 gaps_not_covered_by_report_gen에 미커버로 기록). 엔드포인트 /api/v1/analysis/prices/iron-energy — 철광석·유연탄·우라늄."
+  price_other:
+    menu: 광물자원가격 > 기타
+    match: exact
+    note: "2026-08-28 신설(이전엔 gaps_not_covered_by_report_gen에 미커버로 기록). 엔드포인트 /api/v1/analysis/prices/other — 금·은·백금족·흑연."
   price_group:
     menu: 광물자원가격 (비철금속·희소금속 통합 요약)
     match: synthetic
@@ -179,13 +192,11 @@ report_gen_page_mapping:
   summary_common:
     menu: null
     match: n/a
-    note: "특정 메뉴 없음 — 9개 페이지 전체에 붙는 공통 서두 프롬프트."
+    note: "특정 메뉴 없음 — 11개 페이지 전체에 붙는 공통 서두 프롬프트."
 
-# 실제 KOMIS 사이트맵엔 있지만 report_gen 9종 어디에도 대응하는 page_id가 없는
+# 실제 KOMIS 사이트맵엔 있지만 report_gen 11종 어디에도 대응하는 page_id가 없는
 # 항목(요약보고서 후속 확장 후보 — 채택 여부는 별도 결정 필요).
 gaps_not_covered_by_report_gen:
-  - 광물자원가격 > 철광석 및 에너지
-  - 광물자원가격 > 기타
   - 광물자원가격 > 국내원자재가격(조달청) [외부링크, 조달청 사이트]
   - 광물전망지표 > 광물가격예측 > 자원정보 FOCUS
   - 광종/국가정보 > 광종정보
