@@ -15,6 +15,14 @@
 - 기능 테스트는 `report_gen_client.PAGE_SPECS`를 그대로 재사용(복제 금지 —
   다른 세션이 계약을 계속 바꾸는 중이라 드리프트 방지). `summary_common`은
   전용 page_id가 없어 테스트할 페이지를 별도로 고르게 한다.
+
+2026-08-27 UX 보완(main-agent 사용자 피드백 경유): `description` 컬럼은
+`prompt_store.py::PromptRow`·`REQUIRED_COLUMNS`에 없고 `prompts.py`도 읽지
+않는 참고용 메모일 뿐이라 편집창에 그 사실을 명시했다(입력창은 유지 — 메모
+용도 자체는 유효). 기능 테스트가 지금 어느 리포트 화면(9개 중 어느 것)을
+호출하는지 안 보이던 문제도 연결 화면 캡션·상단 전체목록으로 보완했다 —
+`PageSpec`엔 카테고리/그룹 필드가 없어(플랫 리스트) 실제 KOMIS 내비 계층
+구조는 확인 없이 임의로 만들지 않았다.
 """
 from __future__ import annotations
 
@@ -23,6 +31,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pandas as pd
 import streamlit as st
 
 from streamlit_demo.mineral_master import mineral_label, mineral_options
@@ -88,12 +97,29 @@ if prompts.empty:
     st.info("ai_cfg.cfg_prompt에 행이 없습니다.", icon=":material/info:")
     st.stop()
 
+with st.expander(f"등록된 프롬프트 {len(prompts)}개 목록 — 공통 1 + 페이지별 {len(PAGE_SPECS)}개", expanded=False):
+    overview = pd.DataFrame(
+        {
+            "prompt_key": pk,
+            "연결된 화면": (
+                f"{PAGE_SPECS[pk].label} ({pk})" if pk in PAGE_SPECS
+                else "공통 서두 — 아래 9개 화면 전체에 적용"
+            ),
+        }
+        for pk in prompts["prompt_key"]
+    )
+    st.dataframe(overview, use_container_width=True, hide_index=True)
+
 prompt_key = st.selectbox("prompt_key", prompts["prompt_key"].tolist())
 row = prompts[prompts["prompt_key"] == prompt_key].iloc[0]
 st.caption(f"마지막 수정: {row['updated_at'] or '(기록 없음)'}")
 
 content = st.text_area("content(지시문 본문)", value=row["content"] or "", height=220)
-description = st.text_input("description", value=row["description"] or "")
+description = st.text_input(
+    "description",
+    value=row["description"] or "",
+    help="⚠ 참고용 메모입니다 — report_gen(prompt_store.py::PromptRow)이 이 컬럼을 읽지 않아 실제 분석요약 결과엔 영향이 없습니다.",
+)
 
 with st.expander("페이지 정책 · 출력 계약(고급 — 비우면 NULL로 저장, 코드 기본값 사용)"):
     page_name = st.text_input("page_name", value=row["page_name"] or "")
@@ -174,6 +200,11 @@ if not client.health():
 if prompt_key in PAGE_SPECS:
     test_page_id = prompt_key
 else:
+    st.info(
+        "이 프롬프트(summary_common)는 9개 리포트 화면 전체의 공통 서두에 적용됩니다 — "
+        "아래에서 대표로 확인할 화면을 1개 고르세요.",
+        icon=":material/info:",
+    )
     test_page_id = st.selectbox(
         "테스트할 페이지 선택(공통 프롬프트라 페이지를 골라야 합니다)",
         list(PAGE_SPECS),
@@ -181,6 +212,7 @@ else:
     )
 
 spec = PAGE_SPECS[test_page_id]
+st.caption(f"🔗 연결된 화면: {spec.label} ({test_page_id}) · POST /api/v1/analysis/{spec.path}")
 test_payload: dict = {}
 
 if spec.has_mineral:
