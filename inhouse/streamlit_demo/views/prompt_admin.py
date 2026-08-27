@@ -34,6 +34,10 @@ PageSpec docstring 참고)이 생겨서 prompt_key 선택창·전체목록·기�
 "[공통]" 항목을 추가해 수용 — 그걸 고르면 서브메뉴엔 `summary_common` 하나만
 뜬다. 전체목록 expander·기능테스트 페이지선택은 이번 요청 범위 밖이라 기존
 문자열 조합 형식 그대로 뒀다.
+
+2026-08-27: 주메뉴 순서를 `report_gen_client.SECTION_ORDER`(komis_menu_map.yaml
+`komis_site_map`의 실제 사이트맵 순서)로 고정했다. `summary_common`용
+"[공통]" 항목은 YAML에 없는 항목이라 맨 앞에 둔다.
 """
 from __future__ import annotations
 
@@ -46,7 +50,7 @@ import pandas as pd
 import streamlit as st
 
 from streamlit_demo.mineral_master import mineral_label, mineral_options
-from streamlit_demo.report_gen_client import PAGE_SPECS, ReportGenError, client_from_env
+from streamlit_demo.report_gen_client import PAGE_SPECS, SECTION_ORDER, ReportGenError, client_from_env
 
 _INHOUSE_ROOT = Path(__file__).resolve().parents[2]
 if str(_INHOUSE_ROOT / "services") not in sys.path:
@@ -122,10 +126,15 @@ with st.expander(f"등록된 프롬프트 {len(prompts)}개 목록 — 공통 1 
     st.dataframe(overview, use_container_width=True, hide_index=True)
 
 _COMMON_SECTION = "[공통]"
-_prompt_key_sections = list(dict.fromkeys(
-    PAGE_SPECS[pk].section if pk in PAGE_SPECS else _COMMON_SECTION
-    for pk in prompts["prompt_key"]
-))
+_present_prompt_sections = {
+    PAGE_SPECS[pk].section if pk in PAGE_SPECS else _COMMON_SECTION for pk in prompts["prompt_key"]
+}
+_prompt_key_sections = [_COMMON_SECTION] + [s for s in SECTION_ORDER if s in _present_prompt_sections]
+if len(_prompt_key_sections) <= 1:  # SECTION_ORDER 로딩 실패 시 폴백(화면이 죽지 않게)
+    _prompt_key_sections = list(dict.fromkeys(
+        PAGE_SPECS[pk].section if pk in PAGE_SPECS else _COMMON_SECTION
+        for pk in prompts["prompt_key"]
+    ))
 
 pk_col1, pk_col2 = st.columns(2)
 prompt_section = pk_col1.selectbox("주메뉴", _prompt_key_sections, key="pa_prompt_section")
