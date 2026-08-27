@@ -580,6 +580,48 @@ def calculate_composite_summary(
             ]
         )
 
+    # 2026-08-27: PDF 지침 점검(/unlazy)에서 발견한 gap 수정 — PDF는 메이저·
+    # 희소 두 하위지수 각각에 전주·전월·전년 3종 비교를 요구하는데, 이전에는
+    # 전주·전년만 있고 전월 비교가 없었다(주간·연간 블록과 같은 패턴으로 추가).
+    monthly_major = (
+        _percent_change(current.major_metals_index, month.major_metals_index)
+        if month
+        else None
+    )
+    monthly_minor = (
+        _percent_change(current.minor_metals_index, month.minor_metals_index)
+        if month
+        else None
+    )
+    if monthly_major is not None and monthly_minor is not None:
+        claims.append(
+            EvidenceClaim(
+                "monthly_subindex_comparison",
+                "major_changes",
+                "최근 한 달 동안 메이저금속지수는 "
+                f"{_change_before_contrast(monthly_major)} 반면 희소금속지수는 "
+                f"{_change_verb(monthly_minor)}.",
+            )
+        )
+        detailed_metrics.extend(
+            [
+                _metric(
+                    "monthly_major_metals_change",
+                    "메이저금속 전월 대비",
+                    monthly_major,
+                    unit="ratio",
+                    basis=f"{month.date} 대비 {current.date}",
+                ),
+                _metric(
+                    "monthly_minor_metals_change",
+                    "희소금속 전월 대비",
+                    monthly_minor,
+                    unit="ratio",
+                    basis=f"{month.date} 대비 {current.date}",
+                ),
+            ]
+        )
+
     yearly_major = (
         _percent_change(current.major_metals_index, year.major_metals_index)
         if year
@@ -695,6 +737,15 @@ def calculate_composite_summary(
             )
         )
 
+    if not any(claim.section == "major_changes" for claim in claims):
+        # 2026-08-27 skeptic 감사 Pass 3 NEW-2: 전주·전월 비교 관측이 하나도 없으면
+        # (관측 1건, 하루치, 같은 날짜 2행 등) major_changes 근거가 0건이라
+        # `SummaryNarrative`(min_length=1) 조립에서 ValidationError → INTERNAL_ERROR가
+        # 났다. 데이터 조건이므로 ValueError → `_calculate_or_no_data`가 NO_DATA로.
+        raise ValueError(
+            "composite index summary requires observations spanning at least one week for a change comparison"
+        )
+
     return AdditionalCalculatedSummary(
         claims=claims,
         key_metrics=key_metrics[:8],
@@ -789,11 +840,28 @@ def _country_change_fact(
 
 def calculate_mineral_map_summary(
     series: MineralMapSeries,
+    *,
+    secondary_series: MineralMapSeries | None = None,
 ) -> AdditionalCalculatedSummary:
-    """Calculate deterministic evidence and metrics for a mineral-map series."""
+    """Calculate deterministic evidence and metrics for a mineral-map series.
+
+    `secondary_series`(2026-08-27 신설, PDF 지침 점검(/unlazy)에서 발견한 gap
+    수정) — PDF §4는 "매장량 2위 호주는 생산량 8위"처럼 매장량·생산량을
+    한 답변에서 교차 비교하는데, 이 함수는 원래 `measure` 하나만 다뤄서
+    그 비교를 만들 수 없었다. `secondary_series`는 같은 광종의 반대
+    measure(예: `series.measure="reserves"`면 이건 production) 계열이다 —
+    있으면 함수 끝부분에서만 교차 비교 근거 1건을 추가하고, 기존 로직(위
+    본문)은 그대로 둔다(이 파일은 "무수정 이식" 원칙이라 신규 기능은 기존
+    코드를 건드리지 않는 방식으로 덧붙인다)."""
 
     grouped = _by_year(series.observations)
     years = sorted(grouped)
+    if len(years) < 2:
+        # 2026-08-27 skeptic 감사 Pass 3 NEW-1: 연도가 1개뿐이면 아래 `years[-2]`가
+        # IndexError로 죽어 INTERNAL_ERROR가 났다(정당한 요청 — start_year==end_year
+        # 필터가 허용됨). 기간 변화를 계산할 수 없는 데이터 조건이므로 ValueError
+        # → `summary.py::_calculate_or_no_data`가 NO_DATA로 바꾼다.
+        raise ValueError("mineral map summary requires at least two distinct years")
     start_year = years[0]
     current_year = years[-1]
     start_rows = grouped[start_year]
@@ -845,17 +913,24 @@ def calculate_mineral_map_summary(
             latest_absolute = current_total - previous_total
             latest_change = _percent_change(current_total, previous_total)
             if latest_change is not None:
+                # 2026-08-26 KOMIS 실데이터 회귀 테스트(/unlazy)에서 발견·수정:
+                # 증감폭이 0일 때 "변동이 없었"에 뒤 템플릿이 "했다"를 또
+                # 붙여 "변동이 없었했다"(문법 오류)가 나왔다 — 이 파일은
+                # "무수정 이식"이 원칙이지만(모듈 docstring 참고), 사용자가
+                # 명시적으로 실보고서 오타 수정을 요청해 예외적으로 고쳤다.
+                # 세 갈래 모두 "~다"로 끝나는 완결형으로 통일해 뒤에서
+                # "했다"를 다시 붙이지 않는다(바로 위 `rate_word`와 같은 패턴).
                 latest_word = (
-                    "증가"
+                    "증가했다"
                     if latest_absolute > 0
-                    else "감소"
+                    else "감소했다"
                     if latest_absolute < 0
-                    else "변동이 없었"
+                    else "변동이 없었다"
                 )
                 period_fact += (
                     f" 직전 관측연도인 {previous_year}년과 비교하면 "
                     f"{_quantity(abs(latest_absolute))}{series.unit}, "
-                    f"{_number(abs(latest_change) * 100)}% {latest_word}했다."
+                    f"{_number(abs(latest_change) * 100)}% {latest_word}."
                 )
         claims.append(
             EvidenceClaim(
@@ -871,7 +946,10 @@ def calculate_mineral_map_summary(
             EvidenceClaim(
                 "current_leaders",
                 "major_changes",
-                f"{_topic(top1.country_name)} {_quantity(top1.value)}{series.unit}으로 "
+                # 연도를 근거문에 포함(2026-08-27 반복 루프 2회차: LLM이 PDF 템플릿대로
+                # "2025년 기준 …1위"라고 쓰면 이 절 근거에 연도가 없어 숫자 검증에
+                # 걸려 폴백된 사례 4건 — 연도는 core의 current_state에만 있었다).
+                f"{current_year}년 기준 {_topic(top1.country_name)} {_quantity(top1.value)}{series.unit}으로 "
                 f"세계 전체의 {_number(top1_share * 100)}%를 차지해 1위다. "
                 f"{_topic(top2.country_name)} {_quantity(top2.value)}{series.unit}, "
                 f"{_number(top2_share * 100)}%로 2위이며 두 국가의 비중 차이는 "
@@ -1085,6 +1163,71 @@ def calculate_mineral_map_summary(
             ],
         )
     ]
+
+    if secondary_series is not None:
+        secondary_measure_name = _measure_name(secondary_series)
+        secondary_grouped = _by_year(secondary_series.observations)
+        secondary_rows = secondary_grouped.get(current_year)
+        if not secondary_rows:
+            omitted.append(
+                OmittedIndicator(
+                    id="cross_measure_comparison",
+                    reason=f"{secondary_measure_name} 계열에 {current_year}년 데이터가 없다.",
+                )
+            )
+        else:
+            secondary_total = _world_total(secondary_rows)
+            secondary_ranking = _country_ranking(secondary_rows)
+            secondary_rank_by_code = {
+                item.country_code: (rank, item) for rank, item in enumerate(secondary_ranking, start=1)
+            }
+            cross_facts = []
+            for rank, item in enumerate(ranking[:3], start=1):
+                hit = secondary_rank_by_code.get(item.country_code)
+                if hit is None or secondary_total <= 0:
+                    continue
+                secondary_rank, secondary_item = hit
+                secondary_share = secondary_item.value / secondary_total
+                primary_share = item.value / current_total
+                if secondary_rank >= rank + 3:
+                    cross_facts.append(
+                        f"{measure_name} {rank}위인 {_topic(item.country_name)} "
+                        f"{secondary_measure_name} 기준 {secondary_rank}위"
+                        f"({_quantity(secondary_item.value)}{secondary_series.unit}, "
+                        f"{_number(secondary_share * 100)}%)에 그치고 있어, "
+                        f"{measure_name} 대비 {secondary_measure_name} 비율이 낮은 국가로 분류된다."
+                    )
+                elif secondary_rank <= rank - 2:
+                    cross_facts.append(
+                        f"{measure_name} {rank}위({_number(primary_share * 100)}%)인 "
+                        f"{_topic(item.country_name)} {secondary_measure_name}은 "
+                        f"{secondary_rank}위({_number(secondary_share * 100)}%)로, "
+                        f"{measure_name} 대비 {secondary_measure_name} 집중도가 높은 국가다."
+                    )
+            if cross_facts:
+                # major_changes에 붙인다 — current_position은 이미 최대 3개
+                # (leading_country_changes·concentration_change·
+                # current_concentration_structure)까지 찰 수 있어
+                # `SummaryNarrative.current_position`의 max_length=3을 넘긴다
+                # (2026-08-27 스모크 테스트에서 실측 확인).
+                claims.append(
+                    EvidenceClaim(
+                        "cross_measure_comparison",
+                        "major_changes",
+                        " ".join(cross_facts),
+                    )
+                )
+            else:
+                omitted.append(
+                    OmittedIndicator(
+                        id="cross_measure_comparison",
+                        reason=(
+                            f"{measure_name} 상위 3개국의 {secondary_measure_name} 순위가 "
+                            "뚜렷하게 다르지 않다."
+                        ),
+                    )
+                )
+
     return AdditionalCalculatedSummary(
         claims=claims,
         key_metrics=key_metrics,

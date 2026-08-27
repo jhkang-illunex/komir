@@ -99,7 +99,9 @@ def import_forecast(
     """"{cc} 12개월 물량/금액 예측?" — 항상 **최신 기준월(base_date)** 한 벌만 돌려준다.
 
     - `target`: 'volume'(물량) | 'value'(금액)
-    - `horizon`: None이면 그 기준월의 전 시계(1~12개월, 오름차순), 정수면 그 시점 1건.
+    - `horizon`: None이면 그 기준월의 전 시계(1~12개월, 오름차순), 정수 N이면
+      1~N개월치만("3개월만 예측해줘" 같은 질문 대응, 2026-08-27 — 이 매개변수는
+      그 전까지 끝까지 호출부가 없어 항상 None으로만 쓰였다, 아래 실측 확인).
 
     (통합 전 rag_chat판은 `ORDER BY base_date DESC, horizon ASC LIMIT 12`라
     horizon을 지정하면 여러 기준월이 섞여 나왔다 — 자기 docstring의 "그 시점만"과
@@ -111,7 +113,7 @@ def import_forecast(
     code = check_commodity(commodity_code)
     if target not in VALID_TARGETS:
         raise StructuredQueryError(f"target은 volume|value만 지원: {target!r}")
-    where_horizon = f"AND horizon = {int(horizon)}" if horizon is not None else ""
+    where_horizon = f"AND horizon <= {int(horizon)}" if horizon is not None else ""
     schema = _schema()
     frame = read_sql_pg(
         f"""
@@ -176,7 +178,7 @@ def weekly_geo_events(
 
     `evidence_quote`에 GKG 원시 신호(`[GKG tone=...] https://...` 형태, 기사
     본문이 아니라 크롤러 메타데이터)가 섞여 있어 SQL이 아니라 여기서 걸러낸다
-    — `read_sql_msr`가 pandas `read_sql`(PG 경로에서 `%` 리터럴을 파라미터로
+    — `read_sql_pg`가 pandas `read_sql`(PG 경로에서 `%` 리터럴을 파라미터로
     오인하는 기존 버그, `db.py` 참고)을 거치므로 `LIKE '%...%'` 자체를 SQL에
     쓰지 않는다.
 
@@ -193,11 +195,11 @@ def weekly_geo_events(
     # 파이썬에서 미리 문자열로 계산해 같은 VARCHAR끼리 비교한다.
     end_date = _dt.date.fromisoformat(str(week_end)[:10])
     start_date = end_date - _dt.timedelta(days=6)
-    frame = read_sql_msr(
+    frame = read_sql_pg(
         f"""
         SELECT commodity_code, obs_date, event_type, direction, target,
                severity, confidence, evidence_quote, source, published_at
-        FROM geo_event
+        FROM {_schema()}.geo_event
         WHERE commodity_code = '{code}'
           AND obs_date > '{start_date.isoformat()}'
           AND obs_date <= '{end_date.isoformat()}'

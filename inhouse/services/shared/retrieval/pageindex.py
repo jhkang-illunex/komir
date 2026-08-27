@@ -12,7 +12,7 @@ LLM 없이도 (1) 문서 찾기 (2) 노드(섹션) 찾기 (3) 노드 원문 읽�
 (`search_nodes()`가 돌려주는 노드의 `okf_path`+`line_num`으로 `read_node_text()`를
 부르는 게 그 "타고 들어가는" 한 스텝에 해당한다.)
 
-데이터 소스: `services/ingestion/build_pageindex_trees.py`가 만든
+데이터 소스: `ingest/pageindex/build_pageindex_trees.py`(구 services/ingestion/)가 만든
 `data_lake/semi_structure/pageindex_trees/**/*.tree.json`
 (원문은 `data_lake/semi_structure/okf_documents/**/*.md`).
 
@@ -69,7 +69,7 @@ def _load_trees(trees_root_str: str) -> list[dict[str, Any]]:
     if not trees_root.is_dir():
         raise PageIndexError(
             f"PageIndex 트리 디렉토리가 없다: {trees_root} — "
-            "services/ingestion/build_pageindex_trees.py를 먼저 실행할 것"
+            "ingest/pageindex/build_pageindex_trees.py를 먼저 실행할 것"
         )
     trees: list[dict[str, Any]] = []
     for path in sorted(trees_root.rglob("*.tree.json")):

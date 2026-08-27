@@ -43,12 +43,23 @@ blocking으로 돌려주는 동기 함수라 스트리밍 UX에는 못 쓰므로
 도 같이 쓰므로 그대로 두고, 어투·유형 지시를 얹은 CHATBOT_SYSTEM_PROMPT를 이
 파일에 별도로 둔다(최소 변경 — 검증된 경로 보존). _strip_uncited_sentences가
 인용 없는 문장을 전부 지우므로, 출처 footer·주의 문구처럼 모델에게 시키면 잘릴
-고정 문구는 strip 이후 코드로 덧붙인다(_source_footer·_caution_notice). 상태값
-4단계(질문 조건 확인/답변 준비중/데이터 분석 중/답변 생성 중)는 retrieve_evidence
-가 blocking 단일 호출이라 내부를 더 쪼개지 않고 chat_turn 단계 경계에서만 낸다.
-범위 밖 질문(유형8) 사유 분류는 근거가 아예 0건일 때만 LLM 1회 추가 호출한다
+고정 문구는 strip 이후 코드로 덧붙인다(_source_footer·_caution_notice). 범위 밖
+질문(유형8) 사유 분류는 근거가 아예 0건일 때만 LLM 1회 추가 호출한다
 (_classify_abstain) — 답은 찾았는데 인용이 전부 날조/공백인 나머지 두 기권
-분기는 검색 자체는 성공한 경우라 사유 분류 대상이 아니다(과잉 분류 금지)."""
+분기는 검색 자체는 성공한 경우라 사유 분류 대상이 아니다(과잉 분류 금지).
+
+병합 통합(같은 날, main 브랜치가 이 작업과 병행해 근거조회 진행상태 콜백
+(`_run_with_status`·`retrieve_evidence(on_status=...)`, 문자열 stage: routing/
+retrieving/verifying/reformulating/generating)과 근거 근접(near-miss) 재제안
+기능(NEAR_MISS_SYSTEM_PROMPT)을 이미 추가해뒀다 — 이 작업의 status 4단계와
+동시에 개발돼 서로 몰랐던 병렬 기능이다. 병합 시 main의 콜백 메커니즘(더
+정교함, retrieve_evidence 내부 단계 진입 시점을 실시간으로 앎)은 그대로 살리고,
+그 문자열 stage를 `_GRAPH_STAGE_TO_STATUS`로 이 파일의 정수 1-4 계약에 매핑해
+emit한다(프론트와는 main-agent가 정수 계약으로 조율 완료) — chat_turn이 직접
+내던 stage 1/2/3 단독 yield는 전부 이 콜백 기반으로 대체했고, stage 4(답변
+생성 중)만 main의 "generating" 문자열 대신 그대로 유지한다(콜백 경유가 아니라
+chat_turn 자신이 내는 지점이라 매핑이 필요 없음). NEAR_MISS_SYSTEM_PROMPT에도
+격식체 지시를 추가해 어투 규칙이 근접매칭 응답에도 적용되게 했다."""
 from __future__ import annotations
 
 import asyncio
@@ -75,18 +86,65 @@ from .chatbot_store import DEFAULT_DB_PATH as DEFAULT_STORE_DB_PATH
 from .chatbot_store import append_message, get_or_create_session, list_messages
 from .generate import ABSTAIN_TEXT, _cfg_from_env, _strip_uncited_sentences
 
+#: chatbot_graph._finalize_node가 "근거는 찾았지만 질문이 요구한 지표와는 다르다"고
+#: 표시(retrieval_near_miss 경고)했을 때만 쓰는 대체 프롬프트(2026-08-27, 사용자
+#: 요청: "사용자가 항상 바른 요청을 하는 건 아니니 유사 데이터가 있으면 제시하고
+#: 제공할지 물어봐라"). 기존 SYSTEM_PROMPT(generate.py, 비-챗봇 RAG 경로와 공유)는
+#: 안 건드리고 이 경로 전용으로 별도 정의 — 인용 규율(오직 [근거]만, 숫자 날조
+#: 금지, 무인용 문장 금지)은 그대로 이어받되 4번 규칙만 "기권" 대신 "제안"으로
+#: 바꾼다. 마지막 확인 질문에 인용 [n]을 반드시 함께 붙이라고 명시한 이유:
+#: `generate._strip_uncited_sentences`의 CLAUSE_RE가 "[n] 태그로 끝나는 구간"만
+#: 잘라내므로, 인용 없이 끝나는 마지막 문장은 화면에 아예 안 나온다(기존
+#: 코드의 원래 동작 — 이 프롬프트가 그 제약에 맞춰 쓴 것뿐, 새 함정 아님).
+#:
+#: 2026-08-28(chatbot_rule.txt 병합 통합): 어투 규칙(격식체)만 추가했다 —
+#: near-miss는 CHATBOT_SYSTEM_PROMPT가 아니라 이 프롬프트를 쓰므로, 격식체
+#: 통일은 여기도 별도로 명시해야 적용된다(그 외 인용·제안형 규칙은 무수정).
+NEAR_MISS_SYSTEM_PROMPT = (
+    "당신은 '핵심광물 수급위기 진단·수요예측' 프로젝트의 내부 문서 기반 Q&A 어시스턴트입니다.\n"
+    "어투: 모든 문장을 격식체(~습니다/~합니다)로 씁니다. 반말·해요체는 쓰지 않습니다.\n"
+    "질문이 정확히 원하는 자료는 찾지 못했지만, [근거] 섹션에 주제가 비슷한 자료가 있습니다.\n"
+    "반드시 지킬 규칙:\n"
+    "1. 오직 [근거] 섹션의 발췌문에만 근거해 답하세요. 외부지식·추정·일반상식 사용 금지, 숫자·이름을 지어내지 마세요.\n"
+    "2. 먼저 질문이 요구한 자료 자체는 없다고 분명히 밝히세요(있는 척하지 마세요).\n"
+    "3. 이어서 [근거]에 있는 자료가 무엇인지 한 문장으로 소개하고, 그 자료를 보여줄지 사용자에게 물어보세요"
+    "(자료를 요청과 동일한 것처럼 단정하지 마세요).\n"
+    "4. 전체 답변을 하나로 이어 쓰고, 인용 번호 [n]은 마지막 문장(사용자에게 묻는 문장) 끝에 딱 한 번만 붙이세요"
+    "(예: ...수입금액 예측 자료는 있습니다. 이 자료라도 보여드릴까요? [1]).\n"
+    "5. 인용 번호가 전혀 없는 답변은 존재해서는 안 됩니다."
+)
+
 _logger = logging.getLogger(__name__)
 
 MAX_HISTORY_MESSAGES = 12  # 최근 6턴(user+assistant) — 프롬프트 길이 통제
 _CITE_NUM_RE = re.compile(r"\[(\d+)\]")
 
 #: chatbot_rule.txt "기타. 질문 입력 후 상태 값 표출" — 처리 단계 4개를 그대로
-#: label로 쓴다. chat_turn()의 단계 경계에서만 발행(내부는 안 쪼갬, 위 모듈독스트링).
+#: label로 쓴다. main-agent가 streamlit-agent와 조율한 프론트 계약(정수 stage
+#: 1-4 + 서버가 포맷한 label, tools 필드 없음)이 정본 — 아래 _GRAPH_STAGE_TO_STATUS
+#: 매핑을 바꿀 땐 그쪽에도 영향이 감을 염두에 둘 것.
 STATUS_STAGES = {
     1: "질문 조건 확인",
     2: "답변 준비중",
     3: "데이터 분석 중",
     4: "답변 생성 중",
+}
+
+#: retrieve_evidence(on_status=...)가 넘기는 문자열 stage(2026-08-27, main
+#: 병합분 — route/retrieve/verify/reformulate 각 노드 진입 시점)를 위 정수
+#: 계약으로 매핑한다. "routing"(도구 선택 시작)은 아직 답이 뭘 찾는지 정하는
+#: 단계라 1(질문 조건 확인)에, "retrieving"(실제 조회 시작)은 2(답변 준비중)에,
+#: "verifying"·"reformulating"(찾은 근거가 맞는지 확인·재시도)은 둘 다 3(데이터
+#: 분석 중)에 묶는다 — reformulating이 한 번 더 3을 내보내는 건 재시도로 아직
+#: 분석 단계가 끝나지 않았다는 뜻이라 문제 없다(중복 emit 허용). "generating"은
+#: chat_turn 자신이 이 콜백 경유가 아니라 직접 _status_event(4)를 내므로 여기
+#: 매핑 대상이 아니다(아래 chat_turn 본문 참고). 모르는 문자열이 오면 3으로
+#: 안전하게 떨어진다(무단계보다 "분석 중"이 사용자에게 덜 혼란스럽다).
+_GRAPH_STAGE_TO_STATUS = {
+    "routing": 1,
+    "retrieving": 2,
+    "verifying": 3,
+    "reformulating": 3,
 }
 
 
@@ -149,6 +207,42 @@ async def _iter_async(sync_iter: Iterator[str]) -> AsyncIterator[str]:
         if isinstance(item, Exception):
             raise item
         yield item
+
+
+async def _run_with_status(fn, *args, **kwargs) -> AsyncIterator[tuple[str, object, dict]]:
+    """`_iter_async`와 같은 Queue+스레드 브리지(2026-08-27, SSE `status` 이벤트용)
+    — 다만 `fn`은 스트리밍 제너레이터가 아니라 **단일 반환값 함수**다. `fn`을
+    별도 스레드에서 `fn(*args, on_status=콜백, **kwargs)`로 실행하면서, 그
+    콜백이 `on_status(stage, **extra)`로 불릴 때마다 `("status", stage, extra)`를,
+    `fn`이 끝나면 `("result", 반환값, {})`를 순서대로 낸다. `retrieve_evidence()`
+    (route/retrieve/verify/reformulate 각 단계 진입 시점에 이 콜백을 부름,
+    `chatbot_graph.py` 참고)가 이 실행 도중 SSE로 진행상황을 흘려보낼 유일한
+    소비처다."""
+
+    loop = asyncio.get_running_loop()
+    queue: asyncio.Queue = asyncio.Queue()
+    _DONE = object()
+
+    def _on_status(stage: str, **extra) -> None:
+        loop.call_soon_threadsafe(queue.put_nowait, ("status", stage, extra))
+
+    def _run() -> None:
+        try:
+            result = fn(*args, on_status=_on_status, **kwargs)
+            loop.call_soon_threadsafe(queue.put_nowait, ("result", result, {}))
+        except Exception as exc:  # noqa: BLE001 — 소비측(chat_turn)에서 그대로 재발생
+            loop.call_soon_threadsafe(queue.put_nowait, ("error", exc, {}))
+        finally:
+            loop.call_soon_threadsafe(queue.put_nowait, (_DONE, None, {}))
+
+    threading.Thread(target=_run, daemon=True).start()
+    while True:
+        kind, payload, extra = await queue.get()
+        if kind is _DONE:
+            return
+        if kind == "error":
+            raise payload
+        yield kind, payload, extra
 
 
 def _history_block(history: list[dict]) -> str:
@@ -364,10 +458,11 @@ async def chat_turn(
     router_llm=None,
     profile: Literal["public", "private"] = "public",
 ) -> AsyncIterator[ChatEvent]:
-    """한 턴을 실행하고 이벤트를 순서대로 낸다: session -> status(1) -> status(2)
-    -> status(3) -> [status(4) -> ]delta* -> table*/image* -> done(근거 0건이면
-    status(3) 다음 곧장 delta 1회+done, status(4) 없음). session_id가 없으면
-    새로 발급하고, 있으면 그 세션의 최근 히스토리를
+    """한 턴을 실행하고 이벤트를 순서대로 낸다: session -> status(1..3, retrieve_
+    evidence의 on_status 콜백이 실시간으로 냄, 재시도 시 3이 여러 번 올 수 있음)
+    -> status(4) -> delta* -> table*/image* -> done(근거 0건/조회 실패면 status
+    없이 곧장 delta 1회+done). session_id가 없으면 새로 발급하고, 있으면 그 세션의
+    최근 히스토리를
     프롬프트에 실어 멀티턴을 지원한다. 근거 조회(정형·dense·PageIndex 도구 선택+
     병렬 실행)는 chatbot_graph.retrieve_evidence()에 위임한다. 모든 블로킹
     I/O(Postgres·PageIndex 파일·LLM HTTP)는 asyncio.to_thread/스레드 브리지로
@@ -384,7 +479,6 @@ async def chat_turn(
         get_or_create_session, session_id, user_id, None, store_db_path
     )
     yield ChatEvent(type="session", data={"session_id": resolved_session_id})
-    yield _status_event(1)  # 질문 조건 확인
 
     history_rows = await asyncio.to_thread(
         list_messages, resolved_session_id, MAX_HISTORY_MESSAGES, store_db_path
@@ -398,13 +492,17 @@ async def chat_turn(
     history = [{"role": row["role"], "content": row["content"]} for row in history_rows]
     await asyncio.to_thread(append_message, resolved_session_id, "user", message, None, store_db_path)
 
-    yield _status_event(2)  # 답변 준비중
+    evidence, route_warnings = [], []
     try:
-        evidence, route_warnings = await asyncio.to_thread(
+        async for kind, payload, extra in _run_with_status(
             retrieve_evidence, message,
             session_id=resolved_session_id, history=history, llm=router_llm,
             dense_k=dense_k, pageindex_k=pageindex_k, profile=profile,
-        )
+        ):
+            if kind == "status":
+                yield _status_event(_GRAPH_STAGE_TO_STATUS.get(payload, 3))
+            elif kind == "result":
+                evidence, route_warnings = payload
     except Exception:
         # 정형/dense/PageIndex 셋 다 접속 자체가 안 되는 등 오케스트레이션 계층
         # 전체가 죽은 경우 — 조용히 삼키지 않고 로그는 남기되, 500으로 스트림을
@@ -414,7 +512,6 @@ async def chat_turn(
         evidence, route_warnings = [], ["retrieve_evidence_crashed"]
     if route_warnings:
         _logger.warning("근거 조회 경고: %s", route_warnings)
-    yield _status_event(3)  # 데이터 분석 중
 
     if not evidence:
         # chatbot_rule.txt 유형8(범위 밖 질문) — 근거 0건일 때만 사유 분류 1회
@@ -448,14 +545,14 @@ async def chat_turn(
         )
         return
 
+    near_miss = "retrieval_near_miss" in route_warnings
+    system_prompt = NEAR_MISS_SYSTEM_PROMPT if near_miss else CHATBOT_SYSTEM_PROMPT
     user_prompt = _history_block(history) + _build_evidence_prompt(message, evidence)
     chat = chat or OpenAICompatChat(_cfg_from_env())
 
     yield _status_event(4)  # 답변 생성 중
     full_text_parts: list[str] = []
-    async for delta in _iter_async(
-        chat.complete_stream(CHATBOT_SYSTEM_PROMPT, user_prompt, max_tokens=max_tokens)
-    ):
+    async for delta in _iter_async(chat.complete_stream(system_prompt, user_prompt, max_tokens=max_tokens)):
         full_text_parts.append(delta)
         yield ChatEvent(type="delta", data={"delta": delta})
 

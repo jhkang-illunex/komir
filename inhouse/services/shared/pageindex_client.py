@@ -13,8 +13,10 @@ komir 설정값으로 강제 세팅한다(실측 검증: pageindex_vendor/README
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import sys
+import time
 from pathlib import Path
 
 _INHOUSE_ROOT = Path(__file__).resolve().parents[2]
@@ -22,6 +24,18 @@ if str(_INHOUSE_ROOT) not in sys.path:
     sys.path.insert(0, str(_INHOUSE_ROOT))
 
 from services.shared.config import get_settings  # noqa: E402
+from services.shared.logging_config import configure_logging  # noqa: E402
+
+# 이 모듈이 komir 전체에서 PageIndex LLM 호출의 유일한 진입점이다(모듈 docstring
+# "이 모듈을 통해서만" 참고) — 호출자(ingest/pageindex/build_pageindex_trees.py,
+# pageindex_agent.py 등)가 configure_logging()을 안 불렀어도 여기서 한 번은
+# 걸리게 한다(멱등이라 중복 호출 무해). vendored pageindex_lib/utils.py는 이미
+# `logging.error(...)`로 연결오류·재시도 실패를 찍고 있었는데(실측: USGS 트리
+# 생성 중 "ERROR:root:Error: Connection error" 다수 관측, 2026-08-11) 루트
+# 로거에 핸들러가 없어 포맷 없는 lastResort로만 찍혔다 — configure_logging()
+# 하나로 그 기존 로그도 같이 정상 포맷을 받는다.
+configure_logging()
+logger = logging.getLogger(__name__)
 
 
 def _harden_env() -> None:
@@ -55,15 +69,45 @@ def build_tree_from_markdown(
 
     _harden_env()  # 프로세스 수명 중 설정이 바뀌었을 가능성 대비 매 호출 재확인
     resolved_model = model or get_settings().LLM_MODEL
-    return asyncio.run(
-        md_to_tree(
-            md_path,
-            if_add_node_summary="yes" if with_summary else "no",
-            # md_to_tree()의 summary_token_threshold 기본값(None)을 그대로 두면
-            # get_node_summary() 내부에서 `num_tokens < None` 비교로 TypeError가
-            # 난다(실측 확인, 2026-08-11) — run_pageindex.py CLI가 쓰는 기본값
-            # (200)을 명시적으로 넘겨 원본 CLI와 동일하게 동작하게 한다.
-            summary_token_threshold=200,
-            model=resolved_model,
-        )
+    logger.info(
+        "PageIndex 트리 생성 시작: %s (model=%s, summary=%s)", md_path, resolved_model, with_summary,
     )
+    started = time.monotonic()
+    try:
+        tree = asyncio.run(
+            asyncio.wait_for(
+                md_to_tree(
+                    md_path,
+                    if_add_node_summary="yes" if with_summary else "no",
+                    # md_to_tree()의 summary_token_threshold 기본값(None)을 그대로 두면
+                    # get_node_summary() 내부에서 `num_tokens < None` 비교로 TypeError가
+                    # 난다(실측 확인, 2026-08-11) — run_pageindex.py CLI가 쓰는 기본값
+                    # (200)을 명시적으로 넘겨 원본 CLI와 동일하게 동작하게 한다.
+                    summary_token_threshold=200,
+                    model=resolved_model,
+                ),
+                # 2026-08-28 skeptic-code 감사 발견(HIGH): vendored pageindex_lib
+                # 어디에도 timeout=이 없다 — openai SDK 기본 read timeout(600초)에
+                # call_llm의 max_retries=10이 겹치면 vLLM이 예외 없이 그냥 멈출 때
+                # (hang, 재시도 루프가 아예 안 도는 케이스) 문서 1건이 최대 6000초까지
+                # 막힐 수 있고, build_pageindex_trees.py가 최대 887건(조달청)을
+                # 순차 루프로 도는 구조라 첫 문서에서 걸리면 배치 전체가 멈춘다.
+                # vendored 코드는 안 건드리는 원칙(README.md)이라 이 래퍼에서 상한을
+                # 건다 — 180초는 실측(USGS_2026 201노드 105.8초, 최대 관측치)에
+                # 70% 여유를 둔 값. 타임아웃 시 asyncio.TimeoutError를 던져 이
+                # 문서만 실패 처리되고(build_pageindex_trees.py의 문서별 try/except가
+                # 이미 일반 Exception을 잡아 다음 문서로 넘어감) 배치는 계속된다.
+                timeout=180,
+            )
+        )
+    except Exception:
+        logger.error(
+            "PageIndex 트리 생성 실패: %s (%.1f초 경과)", md_path, time.monotonic() - started,
+            exc_info=True,
+        )
+        raise
+    logger.info(
+        "PageIndex 트리 생성 완료: %s (%.1f초, %d줄)",
+        md_path, time.monotonic() - started, tree.get("line_count", 0),
+    )
+    return tree

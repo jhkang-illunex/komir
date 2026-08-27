@@ -1,10 +1,25 @@
 # -*- coding: utf-8 -*-
 """엔트리 디스패처: python -m geo <ingest|extract|index> [opts]
 Docker ENTRYPOINT 도 이걸 사용."""
-import argparse, sys
+import argparse, logging, os, sys
+
+# 2026-08-28(사용자 요청 — 전 파트 로깅 루틴 점검): report_gen·rag_chat과 달리
+# geo/ 전체(gkg_relevance_llm.py·gkg_verify.py·geo/llm/* 포함)는 실측 확인 결과
+# logging 모듈 자체를 안 쓰고 전부 print()로 출력한다 — 그래서 저 두 서비스와
+# 같은 "logger 호출이 조용히 사라지는" 버그는 여기 없다(print는 basicConfig
+# 유무와 무관하게 항상 stdout에 찍힘). 다만 앞으로 이 패키지에 logging.getLogger
+# 호출이 생겨도 처음부터 같은 함정에 빠지지 않도록 예방적으로 다른 서비스와
+# 동일한 루틴(같은 포맷)을 미리 갖춰 둔다. geo는 Dockerfile이 자기 디렉토리만
+# COPY하는 독립 이미지라 services/shared/logging_config.py를 그대로 재사용할
+# 수 없어(그쪽으로의 의존을 새로 만들지 않는다), 같은 포맷으로 이 파일에 직접
+# 최소 구현한다 — CLI 진입점(python -m geo <subcommand>)이라 main() 최상단
+# 1회 호출이 맞는 자리(services 쪽 3개 서비스는 main.py 모듈 최상단인 것과 대응).
+_LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
 
 
 def main(argv=None):
+    level = getattr(logging, os.environ.get("LOG_LEVEL", "INFO").upper(), logging.INFO)
+    logging.basicConfig(level=level, format=_LOG_FORMAT)
     ap = argparse.ArgumentParser(prog="geo", description="지정학 위기 지수 파이프라인")
     sub = ap.add_subparsers(dest="stage", required=True)
     pgp = sub.add_parser("gkg-parse", help="[0] GKG 벌크(gkg_bulk_download.py 산출) → geo_event 파싱·적재")

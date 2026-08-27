@@ -33,6 +33,24 @@ class Evidence:
     unit: str | None = None  # 단위(있으면)
 
 
+def _forecast_month_label(base_date: Any, horizon: Any) -> str:
+    """base_date(예: 2025-12-01) + horizon개월 → "2026-01" 같은 연월 라벨.
+
+    base_date나 horizon이 없으면(방어적) horizon 원값을 그대로 문자열화 —
+    표가 비거나 깨지는 것보다는 옛 동작(숫자만 표시)으로 물러나는 쪽이 낫다."""
+
+    if base_date is None or horizon is None:
+        return str(horizon)
+    try:
+        offset = int(horizon)
+        zero_based_month = base_date.month - 1 + offset
+        year = base_date.year + zero_based_month // 12
+        month = zero_based_month % 12 + 1
+        return f"{year:04d}-{month:02d}"
+    except (TypeError, ValueError, AttributeError):
+        return str(horizon)
+
+
 def _markdown_table(columns: list[str], rows: list[list[str]]) -> str:
     header = "| " + " | ".join(columns) + " |"
     sep = "| " + " | ".join("---" for _ in columns) + " |"
@@ -68,13 +86,22 @@ def from_structured(template: str, commodity_code: str, result: Any) -> Evidence
         if not rows:
             return None
         is_volume = rows[0].get("target") == "volume"
-        columns = ["horizon", "yhat", "yhat_lo", "yhat_hi"]
+        base_date = rows[0].get("base_date")
+        # 2026-08-27: 기존엔 horizon(1~12, "개월 후")만 행 라벨이었다 — 몇 년 몇 월을
+        # 가리키는지가 표·차트(첫 컬럼을 그대로 x축 라벨로 쓴다, chatbot_events.py::
+        # render_chart_png)에 안 보여 사용자가 "날짜가 애매하다"고 지적했다. base_date
+        # 기준월 자체는 Evidence.as_of 에만 있어 표만 봐서는 알 수 없었던 것 — 실제
+        # 예측 대상월(base_date + horizon개월)을 행 라벨로 계산해 넣는다.
+        columns = ["예측월", "yhat", "yhat_lo", "yhat_hi"]
         table_rows = [
-            [str(r.get("horizon")), str(r.get("yhat")), str(r.get("yhat_lo")), str(r.get("yhat_hi"))]
+            [
+                _forecast_month_label(base_date, r.get("horizon")),
+                str(r.get("yhat")), str(r.get("yhat_lo")), str(r.get("yhat_hi")),
+            ]
             for r in rows
         ]
-        section = f"12개월 수입{'물량' if is_volume else '금액'} 예측"
-        text = f"{section}(horizon=예측 시점, 개월 후)\n\n{_markdown_table(columns, table_rows)}"
+        section = f"{len(rows)}개월 수입{'물량' if is_volume else '금액'} 예측"
+        text = f"{section}(기준월 {base_date} 기준 향후 예측)\n\n{_markdown_table(columns, table_rows)}"
         return Evidence(
             kind="structured", source=source, section=section, text=text,
             as_of=str(rows[0].get("base_date") or "") or None,

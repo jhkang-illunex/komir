@@ -1,5 +1,7 @@
 # CLAUDE.md — 핵심광물 수급위기 진단·수요예측 시스템
 
+> **Always respond in Korean (한국어로 답변할 것, 코드나 입력된 텍스트가 아닌한).**
+
 > Claude Code가 이 파일을 세션 시작 시 자동 로드합니다. 2026-07-22부터 세션은 이 저장소
 > (`komir/`)에서 직접 띄웁니다 — 상위 `mine_ws/`가 아닙니다.
 > 상세 이력은 이 파일이 아니라 `documents/meta/WORKLOG.md`(날짜별 변경·버그·결정, 최신이 위)와
@@ -43,12 +45,25 @@ komir/
 │  │  └─ scripts/          # 백필·백테스트·검증·A-5·GKG정제 등 실행 스크립트 다수
 │  ├─ rag/                 # 문서 기반 RAG(하이브리드 BM25+dense)
 │  │  └─ ragkit/{ingest,chunk,tokenize_ko,embed,retrieve,generate,build_index,eval_retrieval}.py
-│  ├─ services/            # 서빙 레이어(설계 단계, 스켈레톤뿐 — 구현 전)
-│  │  └─ {shared,commodity_api,rag_chat,report_gen,ingestion}/
+│  ├─ ingest/              # ★2026-08-27 신설 — 파일 기반 보고서 정제·색인 독립 패키지
+│  │  │                      (구 services/ingestion + rag/ragkit ETL 2종 + mineral_supply_risk
+│  │  │                       파일 추출기 4종을 한곳으로). 실행은 cwd=inhouse에서
+│  │  │                       python -m ingest.<sub>.<module> — inhouse/ingest/README.md 정본
+│  │  ├─ pipeline.py models.py source_policy.py parsers/   # 추출 파이프라인 코어
+│  │  ├─ extract/          # pdf_extract_{shareable,restricted}·ingest_reports·woodmac_xls·hwp_extract
+│  │  ├─ okf/              # build_okf_documents.py (문서-OKF)
+│  │  ├─ pageindex/        # build_pageindex_trees.py
+│  │  └─ vectorize/        # build_pgvector_{index,okf}.py·backfill_doc_chunk_pub_date.py
+│  ├─ services/            # 서빙 레이어(commodity_api·rag_chat·report_gen 컨테이너 가동 중)
+│  │  └─ {shared,commodity_api,rag_chat,report_gen}/   # ingestion/은 2026-08-27 ingest/로 이동
 │  │       # documents/meta/CONTAINER_ARCHITECTURE.md
 │  ├─ deploy/               # 컨테이너화·airgap 배포(설계 단계)
 │  │       # documents/meta/CONTAINER_ARCHITECTURE.md
-│  ├─ dashboards/           # 웹 대시보드(streamlit_app.py — 모델 재현·설명가능성 데모)
+│  ├─ dashboard_expire/     # 구 dashboards/(2026-08-27 개명) — streamlit_app.py 모델 재현 데모,
+│  │                          정적 HTML 대시보드(build_dash.py). commodity_api 가 스냅샷 JSON 참조
+│  ├─ streamlit_demo/       # 개발 데모 멀티페이지(komis-report-generator-main/streamlit_demo
+│  │                          이식, 2026-08-27) — 챗봇(rag_chat SSE, 동작)·요약보고서(report_gen
+│  │                          9종, 동작)·데이터관리(동작) + 진단예측·프롬프트관리(stub)
 │  └─ data_lake/
 │     ├─ db/                # 정형 파트 — minerals.duckdb(★ canonical 운영 DB, gitignore,
 │     │                       geo_event·geo_index·geo_prob·fact_*·mart_*·out_* 등 전 테이블)
@@ -105,6 +120,12 @@ python -m geo publish --db data_lake/db/minerals.duckdb --what all
 cd komir/inhouse/mineral_supply_risk
 MSR_DB=../data_lake/db/minerals.duckdb python -m scripts.diagnosis_retrain_answer
 MSR_DB=../data_lake/db/minerals.duckdb python -m scripts.<기타 스크립트>
+
+# 파일 기반 보고서 정제·색인(inhouse/ingest/, 2026-08-27 독립) — geo와 같이 cwd=inhouse/
+cd komir/inhouse
+python -m ingest.okf.build_okf_documents --what all         # 문서-OKF
+python -m ingest.pageindex.build_pageindex_trees --no-summary
+python -m ingest.vectorize.build_pgvector_index && python -m ingest.vectorize.build_pgvector_okf
 ```
 수집기(DMZ)는 airgap과 분리 실행: `dmz/geo_collectors/`·`dmz/msr_collectors/`는 outbound
 네트워크가 필요한 별도 프로세스/컨테이너로 돌리고, 수집 결과만 `inhouse/data_lake/`로

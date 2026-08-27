@@ -11,7 +11,7 @@ bm25_pg.py·pageindex.py)이 같은 문자열을 하드코딩하면 나중에 �
 바뀔 때 한 곳을 빠뜨리는 위험이 있어 이 모듈 하나로 모은다.
 
 `data_lake/semi_structure/{okf_documents,pageindex_trees}/Argus_비철금속_일일/`
-가 원천이고, `services/ingestion/build_pgvector_okf.py`가 pgvector `doc_chunk.src`
+가 원천이고, `ingest/vectorize/build_pgvector_okf.py`가 pgvector `doc_chunk.src`
 컬럼에, PageIndex 트리 JSON이 `source_group` 필드에 이 값을 그대로 싣는다."""
 from __future__ import annotations
 

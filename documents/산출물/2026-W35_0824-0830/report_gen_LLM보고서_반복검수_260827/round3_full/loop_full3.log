@@ -1,0 +1,54 @@
+DB prompts loaded: 10 | combos: 384 | workers: 8 | model: gemma-4-26b-a4b
+{
+ "elapsed_s": 473,
+ "by_page": {
+  "price": {
+   "count": 58,
+   "ok": 58,
+   "llm_refined": 58,
+   "violating": 0
+  },
+  "indicator_composite": {
+   "count": 1,
+   "ok": 1,
+   "llm_refined": 1,
+   "violating": 0
+  },
+  "indicator_market": {
+   "count": 39,
+   "ok": 39,
+   "llm_refined": 39,
+   "violating": 0
+  },
+  "indicator_supply": {
+   "count": 36,
+   "ok": 36,
+   "llm_refined": 36,
+   "violating": 0
+  },
+  "map_korea": {
+   "count": 73,
+   "ok": 73,
+   "llm_refined": 73,
+   "violating": 0
+  },
+  "map_global": {
+   "count": 73,
+   "ok": 73,
+   "llm_refined": 73,
+   "violating": 1
+  },
+  "map_mineral": {
+   "count": 104,
+   "ok": 104,
+   "llm_refined": 104,
+   "violating": 0
+  }
+ },
+ "rule_counter": {
+  "G06": 1
+ },
+ "fallback_reasons": {}
+}
+TOTAL=384 INTERNAL_ERROR=0 NO_DATA=0 LLM_FALLBACK=0 VIOLATING=1 elapsed=473s
+LOOP_DIRTY

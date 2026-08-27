@@ -1,0 +1,66 @@
+# ingest 주간 스케줄 컨테이너 — §5-3 "미구현" 항목의 구현(2026-08-27 ingest/ 독립 후속).
+#
+# ⚠ WORKDIR가 다른 서비스 3종(commodity_api/rag_chat/report_gen, /app 평면 배치)과
+# 달리 /app이 아니라 /komir/inhouse인 이유: 이 패키지 안의 두 관례가 소스트리에서만
+# 우연히 맞물린다 — okf/pageindex/vectorize 쪽(예: build_okf_documents.py)은
+# `parents[2]`로 inhouse를 찾고, extract 쪽(pdf_extract_shareable.py·
+# pdf_extract_restricted.py)과 rag/ragkit/ingest.py는 `parents[3]` 뒤 "inhouse"를
+# 붙여 찾는다. /app으로 평평하게 COPY하면 전자는 우연히 맞지만(parents[2]=/app을
+# inhouse로 취급) 후자는 존재하지 않는 "/inhouse"를 가리키게 돼 `load_documents()`의
+# EXTRA_ROOTS가 조용히 빈 결과를 내고, build_pgvector_index의 전량 재적재가 매주
+# 일요일 외부자료 코퍼스를 지워버린다(이 파이프라인이 실제로 겪은 "빈 결과로 기존
+# 데이터를 지우는" 사고 계열과 같은 근본원인 — vectorize/build_pgvector_{index,okf}.py의
+# "재발 방지 가드" 주석 참고). 소스트리 상대구조를 그대로 미러링하면 두 관례가
+# 소스트리와 동일하게 다 맞는다 — 코드 무변경으로 해결.
+FROM python:3.12-slim
+WORKDIR /komir/inhouse
+
+# opendataloader-pdf는 Java CLI(ingest/requirements.txt) — 추출을 실제로 실행하는
+# 이 컨테이너만 JRE가 필요하다(서빙 3종은 ingest를 싣기만 하고 실행하지 않아 불필요).
+RUN apt-get update && apt-get install -y --no-install-recommends default-jre-headless \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY ingest/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# airgap: 모델 가중치는 빌드 시점(연결망)에 이미지에 포함(rag_chat Containerfile 선례,
+# HF_HUB_OFFLINE=1로 런타임 재다운로드 차단)
+RUN python -c "from sentence_transformers import SentenceTransformer; \
+    SentenceTransformer('intfloat/multilingual-e5-small')"
+# easyocr OCR 폴백(geo/extractors.py의 Reader(['ko','en']))도 첫 사용 시 다운로드 —
+# airgap에서 스캔 PDF 첫 건에 크래시하므로 빌드 시점에 미리 받아둔다
+RUN python -c "import easyocr; easyocr.Reader(['ko','en'], gpu=False)"
+
+# supercronic(컨테이너 전용 cron, 2026-08-27 결정) — Debian cron이 아닌 이유: 이
+# 컨테이너도 다른 서비스와 동일하게 env_file로 PG_DSN·LLM_BASE_URL을 주입받는데,
+# 전통 cron은 자식 잡에 그 환경을 전달하지 않는다(전달되면 cron_ingest_weekly.sh가
+# export하는 INGEST_TRIGGERED_BY도 함께 사라진다). 버전 고정 + sha256 검증(2026-08-27
+# GitHub Releases API digest 필드로 확인 + 실제 다운로드 sha256sum 교차검증 완료).
+ADD https://github.com/aptible/supercronic/releases/download/v0.2.34/supercronic-linux-amd64 \
+    /usr/local/bin/supercronic
+RUN echo "a51b340a83c5bd035742f0d7191555f9663876405e494dbf824537d64f3e39c6  /usr/local/bin/supercronic" \
+    | sha256sum -c && chmod +x /usr/local/bin/supercronic
+
+COPY ingest ./ingest
+# rag_chat 컨테이너 런타임 의존 라이브러리(ingest/README.md "남긴 것")를 이쪽도
+# import한다 — chunk/embed/ingest만, tokenize_ko·generate·chatbot 등은 불필요
+# (geo.llm을 쓰는 건 그쪽뿐이라 이 컨테이너엔 안 실음).
+COPY rag/ragkit ./rag/ragkit
+COPY geo/__init__.py ./geo/__init__.py
+COPY geo/extractors.py ./geo/extractors.py
+# services/shared는 평탄화하지 않고 경로 그대로 보존한다(다른 서비스는 ./shared로
+# 평탄화하지만, ingest 모듈들은 `from services.shared.db import ...` 완전경로
+# import를 쓴다). services/·services/shared/엔 __init__.py가 없지만 Python 3
+# namespace package로 소스트리에서 이미 정상 동작 확인됨.
+COPY services/shared ./services/shared
+# services/shared/db.py가 mineral_supply_risk/db/dbio.py를 재노출 — db/ 서브패키지만.
+COPY mineral_supply_risk/db ./mineral_supply_risk/db
+# build_pgvector_index.py가 적용하는 DDL(dense 벡터 컬럼·HNSW 인덱스).
+COPY data_lake/db/schema_pgvector.sql ./data_lake/db/schema_pgvector.sql
+
+RUN chmod +x ingest/entrypoint.sh ingest/cron_ingest_weekly.sh
+
+ENV PYTHONUNBUFFERED=1
+ENV HF_HUB_OFFLINE=1
+ENV TRANSFORMERS_OFFLINE=1
+CMD ["/komir/inhouse/ingest/entrypoint.sh"]

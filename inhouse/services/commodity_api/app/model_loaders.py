@@ -66,7 +66,9 @@ from sklearn.ensemble import BaggingClassifier  # noqa: E402
 from sklearn.linear_model import LogisticRegression  # noqa: E402
 
 BACKTEST_SNAPSHOT_PATH = str(
-    _bootstrap.MSR_ENGINE_ROOT.parent / "dashboards" / "forecast_backtest_snapshot.json"
+    # 2026-08-27: dashboards/ → dashboard_expire/ 이름 변경(구 Streamlit 데모 보관용,
+    # inhouse/streamlit_demo 가 새 개발 데모). 스냅샷 JSON 은 그 폴더에 그대로 있다.
+    _bootstrap.MSR_ENGINE_ROOT.parent / "dashboard_expire" / "forecast_backtest_snapshot.json"
 )
 
 

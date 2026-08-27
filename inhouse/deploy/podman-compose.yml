@@ -65,5 +65,33 @@ services:
       - "8003:8003"
     restart: unless-stopped
 
+  # 파일 기반 보고서 정제·색인 주간 배치(2026-08-27, §5-3 "미구현" 항목의 구현) —
+  # 다른 3개 서비스와 달리 documents/·data_lake/semi_structure/를 직접 읽고 써야 해서
+  # 볼륨 마운트가 필요하다. 스케줄은 .env의 INGESTION_SCHEDULE_CRON.
+  ingestion:
+    build:
+      context: ..
+      containerfile: ingest/Containerfile
+    # supercronic이 PID 1로 직접 실행되면(entrypoint.sh가 exec로 자리를 넘김) 이
+    # 환경(볼륨 마운트가 있는 조건, 2026-08-27 실측 재현, docker-compose.yml에서
+    # 검증)에서 내장 프로세스 reaping이 "Failed to fork exec: no such file or
+    # directory"로 즉시 죽는 버그가 있다 — init: true(컨테이너 내장 tini를 PID 1로
+    # 둠)로 우회한다. podman-compose(python 구현)가 이 키를 무시하면 `podman run
+    # --init` 동등 옵션을 배포 스크립트에서 직접 줄 것.
+    init: true
+    env_file: [.env]
+    environment:
+      # .env의 PDF_MAXPAGES=40(geo GKG용)이 env_file로 주입되면 build_okf_documents.py의
+      # setdefault(500)를 무력화한다 — 이 서비스에서만 상향(다른 서비스의 LLM_BASE_URL
+      # 서비스별 오버라이드와 같은 패턴).
+      - PDF_MAXPAGES=500
+      - OCR_MAXPAGES=60
+    volumes:
+      - ../../documents:/komir/documents:ro
+      - ../data_lake/semi_structure:/komir/inhouse/data_lake/semi_structure
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # 호스트 LLM(.env LLM_BASE_URL) — geo compose 선례
+    restart: unless-stopped
+
 volumes:
   qdrant_data:

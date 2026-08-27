@@ -163,6 +163,7 @@ class _ProfileSession:
         )
         close_event = asyncio.Event()
         self._close_event = close_event
+        session: ClientSession | None = None
         try:
             async with AsyncExitStack() as stack:
                 read, write = await stack.enter_async_context(stdio_client(params))
@@ -178,8 +179,17 @@ class _ProfileSession:
             else:
                 _logger.warning("%s 세션 실행 중 오류(무시)", self.profile, exc_info=True)
         finally:
-            self._session = None
-            self._close_event = None
+            # 내가 만든 객체일 때만 지운다(2026-08-27 skeptic-code 2차 SC-002, 실측
+            # 재현): _call_async가 실패 복구(SC-002 1차)로 self._session을 비우고
+            # close_event를 set한 뒤, 이 Task가 subprocess 종료를 await하는 동안
+            # 새 요청이 후임 _run_session을 띄워 self._session/_close_event를 새
+            # 값으로 채울 수 있다 — 여기서 무조건 None으로 덮으면 후임 세션의
+            # close_event가 사라져 stop()이 조기 반환하고 새 서브프로세스가
+            # 영원히 안 닫힌다(좀비). identity 비교로 후임 것은 건드리지 않는다.
+            if self._session is session:
+                self._session = None
+            if self._close_event is close_event:
+                self._close_event = None
 
     def stop(self, *, timeout: float = 10.0) -> None:
         run_fut = self._run_future
@@ -237,17 +247,18 @@ class _ProfileSession:
 
     # ---- chatbot_graph._retrieve_node가 쓰는 타입 있는 래퍼 6종 ----
 
-    def call_latest_diagnosis(self, commodity_code: str, target: str | None = None) -> Evidence | None:
+    def call_latest_diagnosis(self, commodity_code: str, target: str | None = None, months: int | None = None) -> Evidence | None:
         data = self._call("latest_diagnosis", {"commodity_code": commodity_code})["evidence"]
         return Evidence(**data) if data else None
 
-    def call_import_forecast(self, commodity_code: str, target: str | None = None) -> Evidence | None:
+    def call_import_forecast(self, commodity_code: str, target: str | None = None, months: int | None = None) -> Evidence | None:
         data = self._call(
-            "import_forecast", {"commodity_code": commodity_code, "target": target or "volume"}
+            "import_forecast",
+            {"commodity_code": commodity_code, "target": target or "volume", "horizon": months},
         )["evidence"]
         return Evidence(**data) if data else None
 
-    def call_geo_index_trend(self, commodity_code: str, target: str | None = None, limit: int = 8) -> Evidence | None:
+    def call_geo_index_trend(self, commodity_code: str, target: str | None = None, months: int | None = None, limit: int = 8) -> Evidence | None:
         data = self._call("geo_index_trend", {"commodity_code": commodity_code, "limit": limit})["evidence"]
         return Evidence(**data) if data else None
 

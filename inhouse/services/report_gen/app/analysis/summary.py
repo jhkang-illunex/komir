@@ -21,17 +21,23 @@
    두면 vLLM이 죽었을 때 규칙기반 요약으로 우아하게 물러나지 않고 API가 500을
    낸다 — 그래서 `RuntimeError`/`OSError`까지 잡아 원본이 의도한 폴백 동작을
    유지한다(`LLMError`·`requests.RequestException`이 각각 그 하위형이다).
-4. **komir 자체 3종 추가(2026-08-19, 이식 아님)**: `price`·`map_korea`·
-   `map_global`(광물자원가격·국내/글로벌 수급지도) 디스패치를 추가했다. 원본은
-   이 3종을 501 스텁으로만 뒀지 `analyze()`에 분기가 없다 — `_analyze_price`/
-   `_analyze_domestic_trade`/`_analyze_global_trade`는 komir가 새로 짠 것이고,
-   계산은 `komir_summary.py`(별도 파일, `additional_summary.py`와 안 섞음)를 쓴다.
-   `_deterministic_narrative`는 그대로 재사용하지만 `_refine_with_llm`은 안
-   태운다 — `prompts.py`(이식본)에 이 3종용 프롬프트·검증계약이 없어(원본 자체가
-   없던 기능이라) 새로 지어내면 원본과 대조검증할 근거가 없다. 규칙기반 응답만
-   돌려준다(이식 5종도 LLM 실패 시 이 수준으로 폴백하므로 품질 보장은 동일하다).
+4. **komir 자체 3종 추가(2026-08-19, 이식 아님 — 2026-08-26 LLM 배선 추가)**:
+   `price`·`map_korea`·`map_global`(광물자원가격·국내/글로벌 수급지도) 디스패치를
+   추가했다. 원본은 이 3종을 501 스텁으로만 뒀지 `analyze()`에 분기가 없다 —
+   `_analyze_price`/`_analyze_domestic_trade`/`_analyze_global_trade`는 komir가
+   새로 짠 것이고, 계산은 `komir_summary.py`(별도 파일, `additional_summary.py`와
+   안 섞음)를 쓴다. 2026-08-19 최초 추가 때는 `prompts.py`(이식본)에 이 3종용
+   프롬프트·검증계약이 없어 `_refine_with_llm`을 안 태우고 규칙기반 응답만
+   돌려줬다. **2026-08-26 발주처 KOMIS 템플릿 PDF(`income_data/komis/`)를
+   근거로 이 3종 전용 지시문·output_contract를 `prompts.py`에 마련하고
+   `_refine_with_llm`을 태우도록 배선했다** — 이 과정에서 `komir_summary.py::
+   calculate_price_summary`의 core_diagnosis 근거 id가 다른 7종과 다르게
+   `"latest_price"`였던 걸 `"current_state"`로 맞췄다(`_validate_llm_summary`가
+   "core_diagnosis에 current_state가 있어야 한다"를 페이지 무관 공통 규칙으로
+   검사하는데, 예전엔 이 3종이 LLM을 안 태워 이 불일치가 드러나지 않았다).
 
-계산 로직·검증 규칙(`_validate_llm_summary`)·문구는 원본 그대로다(포터 5종 한정).
+계산 로직·검증 규칙(`_validate_llm_summary`)·문구는 원본 그대로다(포터 5종 한정 —
+komir 자체 3종은 위 4번대로 komir가 새로 마련했다).
 """
 
 from __future__ import annotations
@@ -39,10 +45,14 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import threading
+import time
 from collections import Counter
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Literal
+
+from pydantic import ValidationError
 
 from .._bootstrap import ensure_shared_on_path
 
@@ -50,8 +60,8 @@ ensure_shared_on_path()
 
 from shared.llm_client import KomirJsonLLM, LLMError  # noqa: E402
 
+from .budget import ANALYSIS_LLM_TIMEOUT_SECONDS  # noqa: E402
 from .additional_summary import (  # noqa: E402
-    ADDITIONAL_PAGE_CONTEXTS,
     AdditionalCalculatedSummary,
     EvidenceClaim,
     SummaryPageContext,
@@ -61,6 +71,7 @@ from .additional_summary import (  # noqa: E402
 )
 from .data_sources import (  # noqa: E402
     CompositeIndexDataSource,
+    DataSourceError,
     DomesticTradeDataSource,
     GlobalTradeDataSource,
     IndicatorDataSource,
@@ -70,32 +81,122 @@ from .data_sources import (  # noqa: E402
 )
 from .indicators import months_are_contiguous, percent_change  # noqa: E402
 from .komir_summary import (  # noqa: E402
-    KOMIR_PAGE_CONTEXTS,
     calculate_domestic_trade_summary,
     calculate_global_trade_summary,
+    calculate_price_group_summary,
     calculate_price_summary,
 )
 from .models import (  # noqa: E402
     AnalysisSummaryRequest,
     AnalysisSummaryResponse,
+    CompositeIndexObservation,
+    CompositeIndexSeries,
     DataQuality,
     DetectedPattern,
     GradeResult,
     IndicatorObservation,
     IndicatorSeries,
     Metric,
+    MineralMapObservation,
+    MineralMapSeries,
     MineralRef,
     OmittedIndicator,
+    PriceForecastObservation,
+    PriceForecastSeries,
+    PriceGroupMineralObservation,
+    PriceObservation,
+    PriceSeries,
     SourceInfo,
     SummaryNarrative,
     SummaryPageId,
     SummarySentence,
+    SupplyAuxiliaryData,
+    TradeCountryObservation,
     TradeMapSeries,
 )
 from .policy import PagePolicy, load_page_policy  # noqa: E402
-from .prompts import build_summary_payload, summary_instructions  # noqa: E402
+from .prompts import (  # noqa: E402
+    apply_page_config,
+    build_summary_payload,
+    effective_page_context,
+    resolve_page_config,
+    summary_instructions,
+)
 
 SectionId = Literal["core_diagnosis", "major_changes", "current_position"]
+
+
+def _calculate_or_no_data(page_id: str, calculate, /, *args, **kwargs):
+    """`calculate_*`가 데이터 조건 미충족(관측 1건뿐·국가 3개 미만·총액 0 등)으로
+    던지는 `ValueError`를 `DataSourceError`(→ 응답 `NO_DATA`)로 바꾼다.
+
+    2026-08-27 skeptic 감사(SC-003)에서 실측: 이 ValueError들이 그대로 새어
+    `routers/_common.py`에서 스택트레이스+`INTERNAL_ERROR`로 보고돼, "코드가
+    죽었다"는 신호(G2 게이트)와 정당한 데이터 부족이 구분되지 않았다. pydantic
+    `ValidationError`도 ValueError 하위형이지만 그건 응답 모델 조립 실패 = 진짜
+    코드 버그이므로 그대로 통과시킨다(INTERNAL_ERROR로 남아야 게이트가 잡는다)."""
+
+    try:
+        return calculate(*args, **kwargs)
+    except ValidationError:
+        raise
+    except ValueError as exc:
+        raise DataSourceError(f"{page_id}: 요청 데이터로는 요약을 계산할 수 없다 — {exc}") from exc
+
+
+def _data_version(payload: object) -> str:
+    """요청 바디 observations의 내용 해시 — DB판 `data_sources/_shared._version`과
+    같은 목적(캐시/변경감지용 지문)이지만, 이제 DB를 안 거치니 여기서 자체 계산한다."""
+
+    canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
+
+
+def _observations_from_request(
+    observation_cls,
+    request: AnalysisSummaryRequest,
+    *,
+    raw: list[dict] | None = None,
+    field_name: str = "observations",
+):
+    """요청 바디의 observations(dict 리스트)를 페이지별 Observation 모델로 검증한다.
+
+    2026-08-26: "DB에서 값을 로딩하지 않는다"는 원칙 전환 이후, 계산에 쓰는
+    원자료는 전부 이 경로로 들어온다 — DB DataSource가 하던 일(원천 조회)을
+    호출자가 요청 바디에 실어 보내는 것으로 대체했다(옛 DB 조회 경로는
+    `data_sources/`에 그대로 남겨 뒀고, 이 서비스에서 호출부만 주석 처리했다 —
+    WORKLOG 2026-08-26 참고). `raw`/`field_name`은 `price` 페이지의
+    `compare_observations`(비교광종, KOMIS 원본의 `compareMnrl`에 대응)처럼
+    `observations` 외 다른 필드도 같은 방식으로 검증할 때 쓴다."""
+
+    payload = raw if raw is not None else request.observations
+    if not payload:
+        raise DataSourceError(
+            f"{request.page_id}: 요청 바디에 {field_name}가 없다 — "
+            "DB 조회 대신 요청에 원자료를 실어 보내야 한다(2026-08-26 이후 계약)."
+        )
+    try:
+        return [observation_cls.model_validate(item) for item in payload]
+    except Exception as exc:  # noqa: BLE001 — pydantic ValidationError 등을 422로 통일
+        raise DataSourceError(
+            f"{request.page_id}: {field_name} 형식이 {observation_cls.__name__}과 맞지 않는다: {exc}"
+        ) from exc
+
+
+def _supply_auxiliary_from_request(request: AnalysisSummaryRequest) -> SupplyAuxiliaryData | None:
+    """`supply_auxiliary`(수급 보조패널, 선택)를 검증한다 — 형식이 틀리면
+    `DataSourceError`(→ NO_DATA). Pass 3 라운드 2 R2-F1: 이전엔 검증 예외가 그대로
+    새어 4개 지표 라우트에서 `{"bogus": 1}` 같은 바디가 INTERNAL_ERROR가 됐다
+    (`_observations_from_request`와 같은 규칙으로 맞춤)."""
+
+    if request.supply_auxiliary is None:
+        return None
+    try:
+        return SupplyAuxiliaryData.model_validate(request.supply_auxiliary)
+    except Exception as exc:  # noqa: BLE001 — pydantic ValidationError 등
+        raise DataSourceError(
+            f"{request.page_id}: supply_auxiliary 형식이 SupplyAuxiliaryData와 맞지 않는다: {exc}"
+        ) from exc
 
 
 @dataclass(frozen=True, slots=True)
@@ -654,32 +755,37 @@ def _validate_llm_summary(
         ("current_position", candidate.current_position),
     ]
     sentences = [sentence for _, values in sections for sentence in values]
+    # 섹션별 문장수 계약은 `prompts.py::resolve_page_config`(코드 기본값 + DB
+    # 오버레이) 한 곳에서 온다 — LLM에 보내는 output_contract와 이 검증기가 같은
+    # 값을 보게 하기 위해서다(2026-08-27 skeptic 감사 SC-005 → 같은 날 DB화 2단계).
+    cfg = resolve_page_config(page_id)
     if page_id == "map_mineral":
-        if not 5 <= len(sentences) <= 8:
-            return "광물지도 출력은 전체 5~8문장이어야 한다."
-        if not 2 <= len(candidate.major_changes) <= 3:
-            return "광물지도 주요 변화는 2~3문장이어야 한다."
-        if not 2 <= len(candidate.current_position) <= 3:
-            return "광물지도 현재 위치·의미는 2~3문장이어야 한다."
+        total_min, total_max = cfg.total_sentence_range or (5, 8)
+        if not total_min <= len(sentences) <= total_max:
+            return f"광물지도 출력은 전체 {total_min}~{total_max}문장이어야 한다."
+        major_min, major_max = cfg.section_sentence_ranges["major_changes"]
+        if not major_min <= len(candidate.major_changes) <= major_max:
+            return f"광물지도 주요 변화는 {major_min}~{major_max}문장이어야 한다."
+        position_min, position_max = cfg.section_sentence_ranges["current_position"]
+        if not position_min <= len(candidate.current_position) <= position_max:
+            return f"광물지도 현재 위치·의미는 {position_min}~{position_max}문장이어야 한다."
     else:
-        section_ranges = {
-            "indicator_market": ((1, 1), (1, 1), (1, 1)),
-            "indicator_supply": ((1, 1), (1, 1), (1, 1)),
-            "indicator_composite": ((1, 1), (1, 2), (1, 1)),
-            "forecast_price": ((1, 1), (1, 1), (1, 1)),
-        }[page_id]
-        for (_, values), (minimum, maximum) in zip(
-            sections,
-            section_ranges,
-            strict=True,
-        ):
+        for section, values in sections:
+            minimum, maximum = cfg.section_sentence_ranges[section]
             if not minimum <= len(values) <= maximum:
                 return "섹션별 분석문 수가 출력 계약과 일치하지 않는다."
     used_ids: list[str] = []
+    # 등급명 검사는 등급이 있는 지표 페이지에만 — map_mineral 등에서 "안정된 수준"의
+    # "안정"이 등급명으로 오인돼 폴백되는 사례가 실 LLM 384건 회귀에서 나왔다(2026-08-27
+    # 반복 루프 1회차; PDF 템플릿 자체가 매장량 서술에 "안정된 수준"을 쓴다).
+    check_grade_labels = page_id in ("indicator_market", "indicator_supply")
     for section, values in sections:
         for sentence in values:
             if any(term in sentence.text for term in _FORBIDDEN_SUMMARY_TERMS):
                 return "본문에서 제외한 지표를 언급했다."
+            if any(re.search(rf"\b{re.escape(claim_id)}\b", sentence.text) for claim_id in claim_map):
+                # 2026-08-27 반복 루프 1회차: "(current_state)"처럼 id를 본문에 적는 사례 17건.
+                return "본문(text)에 evidence_id를 적었다 — evidence_ids 필드에만 적어야 한다."
             referenced = [claim_map.get(evidence_id) for evidence_id in sentence.evidence_ids]
             if any(claim is None for claim in referenced):
                 return "존재하지 않는 evidence_id를 사용했다."
@@ -689,10 +795,11 @@ def _validate_llm_summary(
             evidence_text = " ".join(claim.fact for claim in typed_references)
             if not _number_tokens(sentence.text) <= _number_tokens(evidence_text):
                 return "근거에 없는 숫자나 날짜를 사용했다."
-            mentioned_grades = {label for label in _GRADE_LABELS if label in sentence.text}
-            allowed_grades = {label for label in _GRADE_LABELS if label in evidence_text}
-            if not mentioned_grades <= allowed_grades:
-                return "근거에 없는 단계명을 사용했다."
+            if check_grade_labels:
+                mentioned_grades = {label for label in _GRADE_LABELS if label in sentence.text}
+                allowed_grades = {label for label in _GRADE_LABELS if label in evidence_text}
+                if not mentioned_grades <= allowed_grades:
+                    return "근거에 없는 단계명을 사용했다."
             used_ids.extend(sentence.evidence_ids)
     if page_id == "map_mineral":
         required_ids = {
@@ -739,22 +846,50 @@ class AnalysisSummaryService:
         self._domestic_trade_source = domestic_trade_source
         self._global_trade_source = global_trade_source
         self._llm = llm
+        self._deadlines = threading.local()
 
-    def analyze(self, request: AnalysisSummaryRequest) -> AnalysisSummaryResponse:
-        """Calculate the summary appropriate for the requested page."""
+    @property
+    def uses_llm(self) -> bool:
+        """LLM 정제가 배선돼 있는지 — `routers/_common.py`가 lock 인수 뒤 남은
+        예산이 LLM 1회분보다 짧을 때 포기할지 결정하는 데 쓴다(R2-F2)."""
 
+        return self._llm is not None
+
+    def analyze(
+        self,
+        request: AnalysisSummaryRequest,
+        *,
+        deadline: float | None = None,
+    ) -> AnalysisSummaryResponse:
+        """Calculate the summary appropriate for the requested page.
+
+        `deadline`(`time.monotonic()` 기준, 선택) — `routers/_common.py`가 요청당
+        예산을 넘긴다. `_refine_with_llm`이 LLM 호출 전마다 남은 예산이 호출 1회
+        상한보다 짧으면 호출을 건너뛰고 규칙기반으로 돌아간다(Pass 3 R3-F1: 이전엔
+        정제 2루프 × repair 2회가 예산 밖까지 lock을 쥘 수 있었다). 스레드별로
+        보관한다 — 서비스 객체는 공유되고 하네스는 동시 호출한다."""
+
+        self._deadlines.value = deadline
+        try:
+            return self._dispatch(request)
+        finally:
+            self._deadlines.value = None
+
+    def _dispatch(self, request: AnalysisSummaryRequest) -> AnalysisSummaryResponse:
         if request.page_id == "indicator_composite":
             return self._analyze_composite(request)
         if request.page_id == "map_mineral":
             return self._analyze_mineral_map(request)
         if request.page_id == "forecast_price":
             return self._analyze_price_forecast(request)
-        if request.page_id == "price":
+        if request.page_id in ("price_base_metals", "price_minor_metals", "price_iron_energy", "price_other"):
             return self._analyze_price(request)
         if request.page_id == "map_korea":
             return self._analyze_domestic_trade(request)
         if request.page_id == "map_global":
             return self._analyze_global_trade(request)
+        if request.page_id == "price_group":
+            return self._analyze_price_group(request)
         return self._analyze_indicator(request)
 
     def _analyze_indicator(
@@ -763,15 +898,47 @@ class AnalysisSummaryService:
     ) -> AnalysisSummaryResponse:
         """Load an indicator series and build its validated summary response."""
 
-        if self._data_source is None or request.mineral is None:
-            raise ValueError("indicator analysis data source is not configured")
-        series = self._data_source.get_series(
+        if request.mineral is None:
+            raise DataSourceError("indicator analysis requires mineral in the request body")
+        # 2026-08-26 DB 조회 경로 비활성화(요청 바디 입력으로 전환, WORKLOG 참고) —
+        # 복원 시 아래 두 줄 주석을 해제하고 그 아래 request 기반 조립 블록을 지운다.
+        # if self._data_source is None:
+        #     raise ValueError("indicator analysis data source is not configured")
+        # series = self._data_source.get_series(
+        #     page_id=request.page_id,
+        #     mineral=request.mineral,
+        #     start_month=request.start_month,
+        #     end_month=request.end_month,
+        # )
+        observations = _observations_from_request(IndicatorObservation, request)
+        if request.start_month:
+            observations = [o for o in observations if o.month >= request.start_month]
+        if request.end_month:
+            observations = [o for o in observations if o.month <= request.end_month]
+        if not observations:
+            raise DataSourceError("indicator analysis: 필터 적용 후 observations가 비었다")
+        months = sorted(o.month for o in observations)
+        series = IndicatorSeries(
             page_id=request.page_id,
-            mineral=request.mineral,
-            start_month=request.start_month,
-            end_month=request.end_month,
+            mineral=MineralRef(code=request.mineral, name=request.mineral_name or request.mineral),
+            requested_start_month=request.start_month,
+            requested_end_month=request.end_month,
+            available_start_month=months[0],
+            available_end_month=months[-1],
+            source_type="api",
+            source_id="api:request",
+            data_version=_data_version([o.model_dump(mode="json") for o in observations]),
+            data_as_of=months[-1],
+            observations=observations,
+            supply_auxiliary=_supply_auxiliary_from_request(request),
+            price_unit=request.price_unit,
+            price_criterion=request.price_criterion,
+            unavailable_page_data=request.unavailable_page_data or [],
+            warnings=[],
         )
-        policy = load_page_policy(request.page_id)
+        # YAML 등급 정책에 DB 오버레이(이름·정의·제약·버전)를 입힌다 — 등급 밴드는
+        # 판정 로직이라 YAML 그대로(2026-08-27 프롬프트 DB화 2단계).
+        policy = apply_page_config(load_page_policy(request.page_id))
         calculated = _calculate_summary(series, policy)
         applied_filters = {
             "mineral": series.mineral.name,
@@ -843,14 +1010,34 @@ class AnalysisSummaryService:
     ) -> AnalysisSummaryResponse:
         """Load a composite-index series and build its validated summary response."""
 
-        if self._composite_source is None:
-            raise ValueError("composite index analysis data source is not configured")
-        series = self._composite_source.get_composite_series(
-            start_date=request.start_date,
-            end_date=request.end_date,
+        # 2026-08-26 DB 조회 경로 비활성화(요청 바디 입력으로 전환, WORKLOG 참고) —
+        # 복원 시 아래 두 줄 주석을 해제하고 그 아래 request 기반 조립 블록을 지운다.
+        # if self._composite_source is None:
+        #     raise ValueError("composite index analysis data source is not configured")
+        # series = self._composite_source.get_composite_series(
+        #     start_date=request.start_date,
+        #     end_date=request.end_date,
+        # )
+        observations = _observations_from_request(CompositeIndexObservation, request)
+        if request.start_date:
+            observations = [o for o in observations if o.date >= request.start_date]
+        if request.end_date:
+            observations = [o for o in observations if o.date <= request.end_date]
+        if not observations:
+            raise DataSourceError("composite index analysis: 필터 적용 후 observations가 비었다")
+        dates = sorted(o.date for o in observations)
+        series = CompositeIndexSeries(
+            available_start_date=dates[0],
+            available_end_date=dates[-1],
+            source_type="api",
+            source_id="api:request",
+            data_version=_data_version([o.model_dump(mode="json") for o in observations]),
+            data_as_of=dates[-1],
+            observations=observations,
+            warnings=[],
         )
-        calculated = calculate_composite_summary(series)
-        context = ADDITIONAL_PAGE_CONTEXTS["indicator_composite"]
+        calculated = _calculate_or_no_data(request.page_id, calculate_composite_summary, series)
+        context = effective_page_context("indicator_composite")
         applied_filters = {
             "start_date": request.start_date or series.observations[0].date,
             "end_date": request.end_date or series.observations[-1].date,
@@ -914,20 +1101,72 @@ class AnalysisSummaryService:
     ) -> AnalysisSummaryResponse:
         """Load a mineral-map series and build its validated summary response."""
 
-        if (
-            self._mineral_map_source is None
-            or request.mineral is None
-            or request.measure is None
-        ):
-            raise ValueError("mineral map analysis data source is not configured")
-        series = self._mineral_map_source.get_mineral_map_series(
-            mineral=request.mineral,
+        if request.mineral is None or request.measure is None:
+            raise DataSourceError("mineral map analysis requires mineral and measure in the request body")
+        if not request.unit:
+            raise DataSourceError("mineral map analysis requires unit in the request body")
+        # 2026-08-26 DB 조회 경로 비활성화(요청 바디 입력으로 전환, WORKLOG 참고) —
+        # 복원 시 아래 두 줄 주석을 해제하고 그 아래 request 기반 조립 블록을 지운다.
+        # if self._mineral_map_source is None:
+        #     raise ValueError("mineral map analysis data source is not configured")
+        # series = self._mineral_map_source.get_mineral_map_series(
+        #     mineral=request.mineral,
+        #     measure=request.measure,
+        #     start_year=request.start_year,
+        #     end_year=request.end_year,
+        # )
+        observations = _observations_from_request(MineralMapObservation, request)
+        if request.start_year:
+            observations = [o for o in observations if o.year >= request.start_year]
+        if request.end_year:
+            observations = [o for o in observations if o.year <= request.end_year]
+        if not observations:
+            raise DataSourceError("mineral map analysis: 필터 적용 후 observations가 비었다")
+        years = sorted({o.year for o in observations})
+        series = MineralMapSeries(
+            mineral=MineralRef(code=request.mineral, name=request.mineral_name or request.mineral),
             measure=request.measure,
-            start_year=request.start_year,
-            end_year=request.end_year,
+            unit=request.unit,
+            available_start_year=years[0],
+            available_end_year=years[-1],
+            source_type="api",
+            source_id="api:request",
+            data_version=_data_version([o.model_dump(mode="json") for o in observations]),
+            data_as_of=str(years[-1]),
+            observations=observations,
+            warnings=[],
         )
-        calculated = calculate_mineral_map_summary(series)
-        context = ADDITIONAL_PAGE_CONTEXTS["map_mineral"]
+        secondary_series = None
+        # 빈 리스트는 "없음"으로 본다 — `compare_observations`와 같은 규칙(2026-08-27
+        # skeptic 감사 SC-017: 이전엔 `is not None`이라 `[]`를 보내면 요청 전체가
+        # NO_DATA로 떨어져 두 필드의 동작이 달랐다).
+        if request.secondary_measure_observations:
+            # 2026-08-27 신설 — map_mineral 매장량/생산량 교차 비교(PDF §4).
+            secondary_measure = "production" if request.measure == "reserves" else "reserves"
+            secondary_observations = _observations_from_request(
+                MineralMapObservation,
+                request,
+                raw=request.secondary_measure_observations,
+                field_name="secondary_measure_observations",
+            )
+            secondary_years = sorted({o.year for o in secondary_observations})
+            secondary_series = MineralMapSeries(
+                mineral=series.mineral,
+                measure=secondary_measure,
+                unit=request.secondary_unit or request.unit,
+                available_start_year=secondary_years[0],
+                available_end_year=secondary_years[-1],
+                source_type="api",
+                source_id="api:request",
+                data_version=_data_version([o.model_dump(mode="json") for o in secondary_observations]),
+                data_as_of=str(secondary_years[-1]),
+                observations=secondary_observations,
+                warnings=[],
+            )
+        calculated = _calculate_or_no_data(
+            request.page_id, calculate_mineral_map_summary, series, secondary_series=secondary_series
+        )
+        context = effective_page_context("map_mineral")
         years = sorted({item.year for item in series.observations})
         applied_filters = {
             "mineral": series.mineral.name,
@@ -994,20 +1233,41 @@ class AnalysisSummaryService:
         request: AnalysisSummaryRequest,
     ) -> AnalysisSummaryResponse:
         """Load forecast prices and build a validated forecast summary."""
-        if (
-            self._price_forecast_source is None
-            or request.mineral is None
-            or request.forecast_horizon is None
-        ):
-            raise ValueError("price forecast analysis data source is not configured")
-        series = self._price_forecast_source.get_price_forecast_series(
-            mineral=request.mineral,
+        if request.mineral is None or request.forecast_horizon is None:
+            raise DataSourceError("price forecast analysis requires mineral and forecast_horizon in the request body")
+        # 2026-08-26 DB 조회 경로 비활성화(요청 바디 입력으로 전환, WORKLOG 참고) —
+        # 복원 시 아래 두 줄 주석을 해제하고 그 아래 request 기반 조립 블록을 지운다.
+        # if self._price_forecast_source is None:
+        #     raise ValueError("price forecast analysis data source is not configured")
+        # series = self._price_forecast_source.get_price_forecast_series(
+        #     mineral=request.mineral,
+        #     horizon=request.forecast_horizon,
+        #     start_period=request.start_period,
+        #     end_period=request.end_period,
+        # )
+        observations = _observations_from_request(PriceForecastObservation, request)
+        if request.start_period:
+            observations = [o for o in observations if o.period >= request.start_period]
+        if request.end_period:
+            observations = [o for o in observations if o.period <= request.end_period]
+        if not observations:
+            raise DataSourceError("price forecast analysis: 필터 적용 후 observations가 비었다")
+        periods = sorted(o.period for o in observations)
+        series = PriceForecastSeries(
+            mineral=MineralRef(code=request.mineral, name=request.mineral_name or request.mineral),
             horizon=request.forecast_horizon,
-            start_period=request.start_period,
-            end_period=request.end_period,
+            available_start_period=periods[0],
+            available_end_period=periods[-1],
+            price_unit=request.price_unit,
+            source_type="api",
+            source_id="api:request",
+            data_version=_data_version([o.model_dump(mode="json") for o in observations]),
+            data_as_of=periods[-1],
+            observations=observations,
+            warnings=[],
         )
-        calculated = calculate_price_forecast_summary(series)
-        context = ADDITIONAL_PAGE_CONTEXTS["forecast_price"]
+        calculated = _calculate_or_no_data(request.page_id, calculate_price_forecast_summary, series)
+        context = effective_page_context("forecast_price")
         applied_filters = {
             "mineral": series.mineral.name,
             "mineral_code": series.mineral.code,
@@ -1075,21 +1335,88 @@ class AnalysisSummaryService:
     def _analyze_price(self, request: AnalysisSummaryRequest) -> AnalysisSummaryResponse:
         """Load a price series and build its validated summary response."""
 
-        if self._price_source is None or request.mineral is None:
-            raise ValueError("price analysis data source is not configured")
-        series = self._price_source.get_price_series(
-            mineral=request.mineral,
-            start_date=request.start_date,
-            end_date=request.end_date,
+        if request.mineral is None:
+            raise DataSourceError("price analysis requires mineral in the request body")
+        # 2026-08-26 DB 조회 경로 비활성화(요청 바디 입력으로 전환, WORKLOG 참고) —
+        # 복원 시 아래 두 줄 주석을 해제하고 그 아래 request 기반 조립 블록을 지운다.
+        # if self._price_source is None:
+        #     raise ValueError("price analysis data source is not configured")
+        # series = self._price_source.get_price_series(
+        #     mineral=request.mineral,
+        #     start_date=request.start_date,
+        #     end_date=request.end_date,
+        # )
+        observations = _observations_from_request(PriceObservation, request)
+        if request.start_date:
+            observations = [o for o in observations if o.date >= request.start_date]
+        if request.end_date:
+            observations = [o for o in observations if o.date <= request.end_date]
+        if not observations:
+            raise DataSourceError("price analysis: 필터 적용 후 observations가 비었다")
+        dates = sorted(o.date for o in observations)
+        series = PriceSeries(
+            page_id=request.page_id,
+            mineral=MineralRef(code=request.mineral, name=request.mineral_name or request.mineral),
+            price_criterion_serial=request.price_criterion_serial or 0,
+            available_start_date=dates[0],
+            available_end_date=dates[-1],
+            source_type="api",
+            source_id="api:request",
+            data_version=_data_version([o.model_dump(mode="json") for o in observations]),
+            data_as_of=dates[-1],
+            observations=observations,
+            warnings=[],
         )
-        calculated = calculate_price_summary(series)
-        context = KOMIR_PAGE_CONTEXTS["price"]
+        # 2026-08-26: KOMIS 희소금속 "비교광종" 대응 — 원본 응답의 `compareMnrl`에
+        # 해당하는 `compare_observations`가 있을 때만 두 번째 PriceSeries를
+        # 조립해 비교 근거를 계산한다(§`komir_summary.py::calculate_price_summary`).
+        compare_series = None
+        if request.compare_observations:
+            if request.compare_mineral is None:
+                raise DataSourceError("price analysis: compare_observations가 있으면 compare_mineral도 필요하다")
+            compare_obs = _observations_from_request(
+                PriceObservation,
+                request,
+                raw=request.compare_observations,
+                field_name="compare_observations",
+            )
+            compare_dates = sorted(o.date for o in compare_obs)
+            compare_series = PriceSeries(
+                page_id=request.page_id,
+                mineral=MineralRef(
+                    code=request.compare_mineral,
+                    name=request.compare_mineral_name or request.compare_mineral,
+                ),
+                price_criterion_serial=0,
+                available_start_date=compare_dates[0],
+                available_end_date=compare_dates[-1],
+                source_type="api",
+                source_id="api:request",
+                data_version=_data_version([o.model_dump(mode="json") for o in compare_obs]),
+                data_as_of=compare_dates[-1],
+                observations=compare_obs,
+                warnings=[],
+            )
+        calculated = _calculate_or_no_data(
+            request.page_id, calculate_price_summary, series, compare_series=compare_series
+        )
+        context = effective_page_context(request.page_id)
         applied_filters = {
             "mineral": series.mineral.name,
             "mineral_code": series.mineral.code,
             "start_date": request.start_date or series.observations[0].date,
             "end_date": request.end_date or series.observations[-1].date,
         }
+        # 비철금속(예: "LME CASH")·희소금속(예: "Lithium Carbonate")은 같은
+        # 광종이라도 조회조건(가격기준·품목/스펙)이 서로 다를 수 있다 —
+        # 요청 바디의 자유 텍스트를 그대로 표시 필터에 실어 보고서에 남긴다
+        # (report_render.py가 applied_filters를 보고서 상단에 렌더링한다).
+        if request.price_criterion:
+            applied_filters["price_criterion"] = request.price_criterion
+        if compare_series is not None:
+            applied_filters["compare_mineral"] = compare_series.mineral.name
+            if request.compare_price_criterion:
+                applied_filters["compare_price_criterion"] = request.compare_price_criterion
         defaulted_filters = [
             name
             for name, value in (
@@ -1139,38 +1466,132 @@ class AnalysisSummaryService:
             omitted_indicators=calculated.omitted,
             notices=context.analysis_constraints,
         )
-        # LLM 정제는 안 태운다 — `prompts.py`(이식본)의 `page_instructions`에
-        # 이 3종 항목이 없다(원본에 이 3종의 프롬프트·검증계약 자체가 없어서
-        # 새로 지어내야 하는데, 그러면 이식 5종처럼 원본과 대조검증할 근거가
-        # 없다). 규칙기반 요약만으로도 완결된 응답이다 — 이식 5종도 LLM 실패 시
-        # 이 규칙기반 응답으로 폴백하는 것과 같은 품질 보장 수준이다.
-        return response
+        # 2026-08-26부터 LLM 정제를 태운다(§모듈 docstring 4번) — 발주처 KOMIS
+        # 템플릿 PDF를 근거로 `prompts.py`에 이 3종 전용 지시문·출력계약을
+        # 마련했다. forecast_price와 같은 패턴으로 `len(claims) < 5` 같은 최소
+        # 근거수 게이트는 두지 않는다 — 이 페이지들의 claim 수는 원래 3~6개뿐이라
+        # 그 게이트를 그대로 쓰면 사실상 영구히 규칙기반에 머문다. quality_status
+        # 가 "insufficient"(관측치 부족)일 때만 건너뛴다.
+        if self._llm is None or quality_status == "insufficient":
+            return response
+        return self._refine_with_llm(response, context, calculated.claims)
+
+    @staticmethod
+    def _trade_series_from_request(
+        request: AnalysisSummaryRequest,
+        page_id: Literal["map_korea", "map_global"],
+    ) -> TradeMapSeries:
+        """`_analyze_domestic_trade`/`_analyze_global_trade` 공통 request→Series 조립.
+
+        2026-08-26: DB(`KO_CSTM_CMMRC`/`KO_UN_CMMRC`) 조회 대신 요청 바디의
+        `observations`(TradeCountryObservation 리스트)로 직접 조립한다."""
+
+        if request.mineral is None:
+            raise DataSourceError(f"{page_id} analysis requires mineral in the request body")
+        observations = _observations_from_request(TradeCountryObservation, request)
+        if request.start_date:
+            observations = [o for o in observations if o.date >= request.start_date]
+        if request.end_date:
+            observations = [o for o in observations if o.date <= request.end_date]
+        if not observations:
+            raise DataSourceError(f"{page_id} analysis: 필터 적용 후 observations가 비었다")
+        dates = sorted(o.date for o in observations)
+        return TradeMapSeries(
+            page_id=page_id,
+            mineral=MineralRef(code=request.mineral, name=request.mineral_name or request.mineral),
+            available_start_date=dates[0],
+            available_end_date=dates[-1],
+            source_type="api",
+            source_id="api:request",
+            data_version=_data_version([o.model_dump(mode="json") for o in observations]),
+            data_as_of=dates[-1],
+            observations=observations,
+            warnings=[],
+        )
 
     def _analyze_domestic_trade(self, request: AnalysisSummaryRequest) -> AnalysisSummaryResponse:
         """Load a domestic (KO_CSTM_CMMRC) trade-map series and build its response."""
 
-        if self._domestic_trade_source is None or request.mineral is None:
-            raise ValueError("domestic trade analysis data source is not configured")
-        series = self._domestic_trade_source.get_domestic_trade_series(
-            mineral=request.mineral,
-            start_date=request.start_date,
-            end_date=request.end_date,
+        # 2026-08-26 DB 조회 경로 비활성화(요청 바디 입력으로 전환, WORKLOG 참고) —
+        # 복원 시 아래 두 줄 주석을 해제하고 그 아래 request 기반 조립 호출을 지운다.
+        # if self._domestic_trade_source is None:
+        #     raise ValueError("domestic trade analysis data source is not configured")
+        # series = self._domestic_trade_source.get_domestic_trade_series(
+        #     mineral=request.mineral,
+        #     start_date=request.start_date,
+        #     end_date=request.end_date,
+        # )
+        series = self._trade_series_from_request(request, "map_korea")
+        calculated = _calculate_or_no_data(
+            request.page_id,
+            calculate_domestic_trade_summary,
+            series,
+            direction=request.trade_direction or "import",
         )
-        calculated = calculate_domestic_trade_summary(series)
-        return self._respond_trade_map(request, series, calculated, KOMIR_PAGE_CONTEXTS["map_korea"])
+        return self._respond_trade_map(request, series, calculated, effective_page_context("map_korea"))
 
     def _analyze_global_trade(self, request: AnalysisSummaryRequest) -> AnalysisSummaryResponse:
         """Load a global (KO_UN_CMMRC) trade-map series and build its response."""
 
-        if self._global_trade_source is None or request.mineral is None:
-            raise ValueError("global trade analysis data source is not configured")
-        series = self._global_trade_source.get_global_trade_series(
-            mineral=request.mineral,
-            start_date=request.start_date,
-            end_date=request.end_date,
+        # 2026-08-26 DB 조회 경로 비활성화(요청 바디 입력으로 전환, WORKLOG 참고) —
+        # 복원 시 아래 두 줄 주석을 해제하고 그 아래 request 기반 조립 호출을 지운다.
+        # if self._global_trade_source is None:
+        #     raise ValueError("global trade analysis data source is not configured")
+        # series = self._global_trade_source.get_global_trade_series(
+        #     mineral=request.mineral,
+        #     start_date=request.start_date,
+        #     end_date=request.end_date,
+        # )
+        series = self._trade_series_from_request(request, "map_global")
+        calculated = _calculate_or_no_data(request.page_id, calculate_global_trade_summary, series)
+        return self._respond_trade_map(request, series, calculated, effective_page_context("map_global"))
+
+    def _analyze_price_group(self, request: AnalysisSummaryRequest) -> AnalysisSummaryResponse:
+        """`page_id="price_group"` — PDF §1-2 그룹(비철금속/희소금속) 요약(2026-08-27 신설)."""
+
+        if request.price_group is None:
+            raise DataSourceError("price_group analysis requires price_group in the request body")
+        observations = _observations_from_request(PriceGroupMineralObservation, request)
+        calculated = _calculate_or_no_data(
+            request.page_id, calculate_price_group_summary, request.price_group, observations
         )
-        calculated = calculate_global_trade_summary(series)
-        return self._respond_trade_map(request, series, calculated, KOMIR_PAGE_CONTEXTS["map_global"])
+        context = effective_page_context("price_group")
+        group_label = {"base_metals": "비철금속", "minor_metals": "희소금속"}[request.price_group]
+        applied_filters = {"price_group": request.price_group}
+        data_version = _data_version([o.model_dump(mode="json") for o in observations])
+        response = AnalysisSummaryResponse(
+            request_id=request.request_id,
+            page_id=request.page_id,
+            analysis_scope=request.analysis_scope,
+            mineral=MineralRef(code=request.price_group, name=group_label),
+            applied_filters=applied_filters,
+            defaulted_filters=[],
+            filter_hash=_filter_hash(request.page_id, applied_filters),
+            source=SourceInfo(
+                type="api",
+                id="api:request",
+                data_version=data_version,
+                as_of="latest",
+                file=None,
+                sheets=[],
+            ),
+            policy_version=context.policy_version,
+            page_definition=context.definition,
+            grade=None,
+            data_quality=DataQuality(
+                status="available",
+                observation_count=len(observations),
+            ),
+            summary=_deterministic_narrative(calculated.claims),
+            key_metrics=calculated.key_metrics,
+            detailed_metrics=calculated.detailed_metrics,
+            detected_patterns=calculated.patterns,
+            omitted_indicators=calculated.omitted,
+            notices=context.analysis_constraints,
+        )
+        if self._llm is None:
+            return response
+        return self._refine_with_llm(response, context, calculated.claims)
 
     def _respond_trade_map(
         self,
@@ -1188,6 +1609,11 @@ class AnalysisSummaryService:
             "start_date": request.start_date or dates[0],
             "end_date": request.end_date or dates[-1],
         }
+        if request.page_id == "map_korea":
+            # 2026-08-27 신설 — 보고서 상단에 조회 방향(수입/수출)을 표시해
+            # PDF 지침 점검(/unlazy)에서 고친 방향 라벨 버그를 화면에서도
+            # 바로 확인할 수 있게 한다.
+            applied_filters["trade_direction"] = "수출" if request.trade_direction == "export" else "수입"
         defaulted_filters = [
             name
             for name, value in (
@@ -1237,8 +1663,12 @@ class AnalysisSummaryService:
             omitted_indicators=calculated.omitted,
             notices=context.analysis_constraints,
         )
-        # `_analyze_price`와 같은 이유로 LLM 정제는 안 태운다(§주석 참고).
-        return response
+        # `_analyze_price`와 같은 패턴으로 LLM 정제를 태운다(§주석 참고,
+        # 2026-08-26). single_snapshot(관측 1건뿐) claim만 있어도 claim 수 자체는
+        # 항상 3개 이상 확보되므로 별도 최소 근거수 게이트는 두지 않는다.
+        if self._llm is None or quality_status == "insufficient":
+            return response
+        return self._refine_with_llm(response, context, calculated.claims)
 
     def _refine_with_llm(
         self,
@@ -1258,7 +1688,31 @@ class AnalysisSummaryService:
             }
             for claim in claims
         ]
+        # Pass 3 R3-F2: 출력 계약(DB에서 바꿀 수 있음)으로 모든 근거를 정확히 1회씩
+        # 담는 게 산술적으로 불가능하면(근거 수 > Σ절 문장 상한 × 문장당 근거 상한)
+        # LLM은 어떤 답을 써도 검증에 떨어진다 — 호출 없이 바로 규칙기반으로.
+        cfg = resolve_page_config(response.page_id)
+        if response.page_id == "map_mineral":
+            capacity = (cfg.total_sentence_range or (5, 8))[1] * cfg.max_evidence_ids_per_sentence
+            demand = sum(1 for claim in claims if getattr(claim, "required", False))
+        else:
+            capacity = sum(hi for _, hi in cfg.section_sentence_ranges.values()) * cfg.max_evidence_ids_per_sentence
+            demand = len(claims)
+        if demand > capacity:
+            return self._with_warning(
+                response,
+                f"LLM 분석요약을 건너뛰었다 — 근거 {demand}개를 출력 계약(문장 상한 합 × 문장당 근거 "
+                f"{cfg.max_evidence_ids_per_sentence}개 = {capacity})에 담을 수 없다. DB output_contract를 확인할 것.",
+            )
+        deadline = getattr(self._deadlines, "value", None)
         for _ in range(2):
+            if deadline is not None and (deadline - time.monotonic()) < ANALYSIS_LLM_TIMEOUT_SECONDS:
+                # R3-F1: 남은 예산이 LLM 호출 1회 상한보다 짧으면 호출하지 않는다 —
+                # 클라이언트는 어차피 TIMEOUT을 받고 lock만 예산 너머까지 쥐게 된다.
+                return self._with_warning(
+                    response,
+                    "LLM 분석요약을 건너뛰었다 — 요청 예산 안에 LLM 호출을 마칠 수 없어 규칙 기반 요약을 반환했다.",
+                )
             try:
                 invocation = self._llm.invoke(
                     task="analysis_summary",

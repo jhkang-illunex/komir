@@ -62,3 +62,8 @@ documents/dev/.git/
 data_archive/
 .vscode/
 
+# 2026-08-27: report_gen 관측치 회귀테스트용 KOMIS 실데이터 덤프 + PDF 템플릿
+# (report_gen_prompt_content_260826 메모리 참고) — 위 documents/* 규칙과 같은 이유로
+# 제3자 원본자료는 git 미추적, 로컬 전용.
+income_data/
+
