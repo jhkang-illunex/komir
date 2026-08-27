@@ -197,3 +197,12 @@
   스크립트·규칙 id 정의는 폴더 `META.md`. 서비스가 보고서를 DB에 저장하지 않으므로(08-26
   계약) 이 폴더가 LLM 보고서의 유일한 보존본. 회차별 수정 내역은 WORKLOG 2026-08-27
   "반복 루프" 항목.
+- **report_gen 출력 품질 감사(프롬프트 관리·요약보고서 데모, 2026-08-28)**:
+  `documents/산출물/2026-W35_0824-0830/report_gen_출력품질감사_260828.md` + 같은 이름
+  `_samples/`(라이브 응답 26건, META.md 동봉). 12개 page_id를 PDF 템플릿 2종 기준
+  사람이 읽듯 판정(위 round5 이후 신설 4종 page_id 포함), skeptic 감사(260827) 잔여
+  6항목 재확인(4건 해소·1건 부분해소·1건 재확인), 프롬프트 관리 화면의 실효 표면
+  실측(어투·어휘는 바뀜, 문장수/구조는 `output_contract`가 하드캡). 신규 발견: map_mineral·
+  forecast_price 데모 placeholder가 서버 최소요건 미달, indicator_composite 대조접속사
+  하드코딩 버그(`additional_summary.py`, LLM 아닌 규칙기반 경로로 확인). ⚠ 워크트리
+  `worktree-report_gen`에서 작성, 감사 시점 기준 미커밋.

@@ -1,0 +1,60 @@
+{
+  "request": {
+    "mineral": "MNRL0040",
+    "mineral_name": "갈륨",
+    "start_date": "2025-01-01",
+    "end_date": "2025-12-31",
+    "observations": [
+      {
+        "date": "2025-06-01",
+        "country_code": "DE",
+        "country_name": "독일",
+        "import_weight": 1200.0,
+        "import_amount": 60306000.0,
+        "origin_country_code": "US",
+        "origin_country_name": "미국"
+      },
+      {
+        "date": "2025-06-01",
+        "country_code": "US",
+        "country_name": "미국",
+        "import_weight": 1100.0,
+        "import_amount": 57728000.0,
+        "origin_country_code": "BR",
+        "origin_country_name": "브라질"
+      },
+      {
+        "date": "2025-06-01",
+        "country_code": "JP",
+        "country_name": "일본",
+        "import_weight": 1000.0,
+        "import_amount": 51236000.0,
+        "origin_country_code": "CN",
+        "origin_country_name": "중국"
+      },
+      {
+        "date": "2025-06-01",
+        "country_code": "MY",
+        "country_name": "말레이시아",
+        "import_weight": 500.0,
+        "import_amount": 25450000.0,
+        "origin_country_code": "KR",
+        "origin_country_name": "대한민국"
+      },
+      {
+        "date": "2025-06-01",
+        "country_code": "JP",
+        "country_name": "일본",
+        "import_weight": 380.0,
+        "import_amount": 18935000.0,
+        "origin_country_code": "KR",
+        "origin_country_name": "대한민국"
+      }
+    ]
+  },
+  "http_status": 200,
+  "response": {
+    "status": "ok",
+    "report": "# 갈륨 분석 요약 — 선택한 광종의 전세계 UN Comtrade 양자무역 기록에서 원산지→도착지 루트별 규모를 보여주고, 그중 대한민국이 관련된 루트의 순위를 별도로 표시하는 자료다.\n\n## 핵심 진단\n\n2025년 6월 1일 기준 갈륨 세계 교역 총액은 213,655,000입니다.\n\n## 주요 변화\n\n글로벌 교역 규모는 미국→독일 루트가 60,306,000(28.23%)으로 1위, 브라질→미국 루트가 57,728,000(27.02%)으로 2위, 중국→일본 루트가 51,236,000(23.98%)으로 3위를 기록했습니다. 상위 3개 루트의 합산 점유율은 79.23%이며, 상위 5개 루트의 합산 점유율은 100.00%로 나타났습니다. 대한민국은 말레이시아→대한민국 루트가 25,450,000(11.91%)으로 4위, 일본→대한민국 루트가 18,935,000(8.86%)으로 5위에 각각 등장하여 두 루트의 합산 규모는 44,385,000(20.77%)입니다.\n\n## 현재 위치\n\n조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았습니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 세계 교역 총액 | 213,655,000.00 |  |\n| 1위 루트 비중 | 28.23 | % |\n| 상위3루트 비중 | 79.23 | % |\n| 상위5루트 비중 | 100.00 | % |\n"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "request": {
+    "mineral": "MNRL0040",
+    "mineral_name": "갈륨",
+    "start_date": "2026-01-01",
+    "end_date": "2026-12-31",
+    "trade_direction": "import",
+    "observations": [
+      {
+        "date": "2026-06-01",
+        "country_code": "DE",
+        "country_name": "독일",
+        "import_weight": 900.0,
+        "import_amount": 2107000.0
+      },
+      {
+        "date": "2026-06-01",
+        "country_code": "TW",
+        "country_name": "대만",
+        "import_weight": 420.0,
+        "import_amount": 1032000.0
+      },
+      {
+        "date": "2026-06-01",
+        "country_code": "JP",
+        "country_name": "일본",
+        "import_weight": 300.0,
+        "import_amount": 659000.0
+      },
+      {
+        "date": "2026-06-01",
+        "country_code": "US",
+        "country_name": "미국",
+        "import_weight": 150.0,
+        "import_amount": 300000.0
+      },
+      {
+        "date": "2026-06-01",
+        "country_code": "CN",
+        "country_name": "중국",
+        "import_weight": 90.0,
+        "import_amount": 129000.0
+      }
+    ]
+  },
+  "http_status": 200,
+  "response": {
+    "status": "ok",
+    "report": "# 갈륨 분석 요약 — 선택한 광종을 한국이 어느 나라와 수입 또는 수출 거래를 하는지(조회 방향 기준) 국가별 금액·중량으로 보여주는 자료다.\n\n**조회방향**: 수입\n\n## 핵심 진단\n\n2026년 6월 1일 기준 갈륨 수입총액은 4,227,000입니다.\n\n## 주요 변화\n\n독일이 2,107,000(49.85%)으로 1위 수입국이며, 상위 3개국(독일·대만·일본)의 비중은 89.85%를 차지합니다. 상위 5개국까지 합산하면 전체의 100.00%를 차지합니다.\n\n## 현재 위치\n\n조회기간 관측이 1건뿐이라 기간별 변화는 계산하지 않았습니다.\n\n## 주요 지표\n\n| 지표 | 값 | 단위 |\n|---|---|---|\n| 수입총액 | 4,227,000.00 |  |\n| 1위국 수입비중 | 49.85 | % |\n| 상위3국 수입비중 | 89.85 | % |\n| 상위5국 수입비중 | 100.00 | % |\n"
+  }
+}

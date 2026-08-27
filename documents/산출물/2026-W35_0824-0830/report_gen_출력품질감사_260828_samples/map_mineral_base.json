@@ -1,0 +1,29 @@
+{
+  "request": {
+    "mineral": "MNRL0001",
+    "mineral_name": "동",
+    "start_year": 2023,
+    "end_year": 2023,
+    "measure": "reserves",
+    "unit": "천톤",
+    "observations": [
+      {
+        "year": 2023,
+        "country_code": "CL",
+        "country_name": "칠레",
+        "value": 5600.0
+      },
+      {
+        "year": 2023,
+        "country_code": "PE",
+        "country_name": "페루",
+        "value": 2200.0
+      }
+    ]
+  },
+  "http_status": 200,
+  "response": {
+    "status": "NO_DATA",
+    "report": null
+  }
+}
