@@ -11,7 +11,11 @@ llm_summary`의 근거 검증 계약을 벗어나므로 하지 않는다(검증�
 `SummaryNarrative` 문장을 그대로 옮겨 담을 뿐, 새 문장을 짓지 않는다)."""
 from __future__ import annotations
 
+import logging
+
 from .models import AnalysisSummaryResponse
+
+_log = logging.getLogger(__name__)
 
 _SECTION_TITLES = {
     "core_diagnosis": "핵심 진단",
@@ -99,6 +103,13 @@ def render_markdown_report(response: AnalysisSummaryResponse) -> str:
     # 실패 경고("… 검증 사유: 존재하지 않는 evidence_id …")는 독자용이 아니라
     # 내부용이라 최종 보고서에서 뺀다. 데이터 결측 경고(비교값 없음·비교연도
     # 없음 등)는 독자에게 필요한 정보라 그대로 둔다.
+    # 2026-08-28: 걸러내기 전까지는 이 경고가 서버 로그에도 전혀 안 남아, LLM
+    # 정제 실패로 규칙기반 폴백이 실제로 발생했는지 서버 쪽에서 확인할 방법이
+    # 없었다(사용자 지적) — `configure_logging()` 전제(§main.py)로 지금부터
+    # WARNING 레벨로 남긴다. 응답 본문에서 숨기는 결정 자체는 그대로 유지.
+    llm_warnings = [warning for warning in response.data_quality.warnings if warning.startswith("LLM ")]
+    for warning in llm_warnings:
+        _log.warning("%s(page_id=%s, mineral=%s): %s", response.request_id, response.page_id, response.mineral.code, warning)
     notes = [warning for warning in response.data_quality.warnings if not warning.startswith("LLM ")]
     if notes:
         lines.append("## 참고")

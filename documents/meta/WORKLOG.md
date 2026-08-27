@@ -2,7 +2,35 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-08-28 (최신) — 광물자원가격 나머지 서브메뉴 2종 추가: price_iron_energy/price_other
+## 2026-08-28 (최신) — report_gen 로깅 인프라 적용 + LLM 폴백 경고 서버 로그 기록
+
+배경: streamlit-agent가 제보한 "prompt 편집이 반영 안 되는 것 같다"는 이슈를
+docker exec으로 직접 조사하며 버그 아님(evidence-bounded 설계)으로 결론냈는데
+([[report_gen_llm_required_evidence_priority_260828]]), 그 조사 과정에서
+`report_render.py:102`가 LLM 정제 실패 경고를 응답에서 숨기기만 하고 서버 로그
+에도 안 남긴다는 관측성 gap을 발견해 보고했었다. 사용자가 "LLM 경과 같은 부분은
+로깅으로 기록, 모든 에이전트가 맡은 파트에 로깅 체크"를 지시 → main-agent가
+`services/shared/logging_config.py`(`configure_logging()`, `LOG_LEVEL` env 기반)를
+신설(`eb2fd5c84`) — report_gen을 포함한 모든 서비스가 지금까지 `logging.
+basicConfig()`를 한 번도 안 불러서 `logger.info`/`.exception` 호출이 루트 로거의
+lastResort 핸들러(WARNING 이상만, 포맷 없음)로 떨어져 컨테이너 로그에 실제로는
+안 찍히고 있었다는 걸 확인한 결과.
+
+**변경**: `app/main.py` 최상단(`ensure_shared_on_path()` 직후, 다른 로깅 호출보다
+먼저)에서 `configure_logging()` 1회 호출 추가. `app/analysis/report_render.py`에
+모듈 로거 신설 — `warning.startswith("LLM ")`로 응답 본문에서 걸러내기 직전에
+`_log.warning(request_id, page_id, mineral 포함)`으로 서버 로그에 남기도록 수정
+(응답에서 숨기는 결정 자체는 유지, 서버 쪽 관측성만 보강).
+
+**검증**: 직접 `render_markdown_report()`를 호출해 LLM 경고가 로그엔 찍히고
+(`WARNING app.analysis.report_render: ...`) 반환 Markdown엔 안 남는지 확인,
+`verify_prompt_db.py` 전체 재실행으로 회귀 없음 확인(`VERIFY_PROMPT_DB_OK`),
+`app.main` import 정상(라우트 30개).
+
+rag_chat·commodity_api 등 다른 서비스의 `configure_logging()` 적용은 각 담당
+세션 몫이라 이번 범위에 포함하지 않았다.
+
+## 2026-08-28 — 광물자원가격 나머지 서브메뉴 2종 추가: price_iron_energy/price_other
 
 2026-08-27 `price` → `price_base_metals`/`price_minor_metals` 분리 작업의 후속.
 `komis_menu_map.yaml`의 `gaps_not_covered_by_report_gen`에 미커버로 남아 있던

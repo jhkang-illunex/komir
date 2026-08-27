@@ -70,6 +70,17 @@ from ._bootstrap import ensure_shared_on_path
 
 ensure_shared_on_path()
 
+from shared.logging_config import configure_logging  # noqa: E402
+
+# 2026-08-28: 이 서비스는 지금까지 `logging.basicConfig()`를 한 번도 안 불러서
+# 곳곳의 `logger.info`/`.exception` 호출이 루트 로거의 lastResort 핸들러
+# (WARNING 이상만, 포맷 없음)로 떨어져 컨테이너 로그에 실제로는 안 찍히고
+# 있었다(§shared/logging_config.py 모듈 docstring, 사용자 지적으로 발견). 이
+# 모듈 안 다른 로깅 호출(lifespan의 `logging.getLogger(__name__).info(...)` 등,
+# 전부 함수 안이라 임포트 시점엔 아직 실행 안 됨)보다 먼저, 모듈 최상단에서
+# 1회 호출한다.
+configure_logging()
+
 from shared.db import read_sql_msr  # noqa: E402
 
 from .analysis import prompt_store  # noqa: E402
