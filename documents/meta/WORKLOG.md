@@ -2,7 +2,33 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-08-28 (최신) — report_gen 로깅 인프라 적용 + LLM 폴백 경고 서버 로그 기록
+## 2026-08-28 (최신) — comprehensive.py analysis_lock 무제한 대기 수정(skeptic 감사 HIGH)
+
+사용자 요청으로 main-agent가 report_gen 전체(`app/`)에 skeptic-code 감사를
+돌려 HIGH 1건 발견: `routers/comprehensive.py:29`(`GET /api/v1/dashboard/
+comprehensive`)가 `with request.app.state.analysis_lock:`으로 무제한
+대기한다 — 같은 lock을 `/api/v1/analysis/*` 11종(`routers/_common.py::
+run_summary`)과 공유하는데, 그쪽은 2026-08-27 SC-002 감사로 이미
+`lock.acquire(timeout=)`로 예산 안 대기하도록 고쳤었다. 느린 LLM 응답 1건이
+이 엔드포인트로 lock을 수 분 점유하면 SC-002가 막으려던 캐스케이드(다른
+11종 전부 TIMEOUT)가 이 경로로는 여전히 뚫려 있었다.
+
+**변경**: `comprehensive.py` — `with lock:` → `lock.acquire(timeout=
+REQUEST_BUDGET_SECONDS)`(20초, `analysis/budget.py` 기존 상수 재사용) +
+`try/finally: lock.release()`, 실패 시 503(예산 내 락 획득 실패 사유 포함).
+`main.py::build_comprehensive_service()` — 부수 발견(기본 cfg로
+`KomirJsonLLM()` 생성, timeout 120s·retries 3 그대로라 lock을 최대 수백초
+쥘 수 있었음)도 같이 고쳐 `build_analysis_summary_service()`와 동일한 축소
+설정(`ANALYSIS_LLM_TIMEOUT_SECONDS`·`ANALYSIS_LLM_RETRIES`)으로 맞췄다.
+
+**검증**: 실제 라우터 함수를 fake request/lock으로 직접 호출해 (1) lock이
+비어있을 때 정상 동작, (2) lock이 예산(테스트용 1초로 축소)보다 오래 점유돼
+있을 때 그 예산 안에서 503을 반환하고 무한 대기하지 않는지, (3) 타임아웃
+경로에서 lock을 실제로 점유한 적이 없어 leak이 없는지 확인 — 3건 전부
+PASS. `verify_prompt_db.py` 전체 재실행으로 회귀 없음 확인(`VERIFY_PROMPT_DB_OK`),
+`app.main` import 정상(라우트 30개).
+
+## 2026-08-28 — report_gen 로깅 인프라 적용 + LLM 폴백 경고 서버 로그 기록
 
 배경: streamlit-agent가 제보한 "prompt 편집이 반영 안 되는 것 같다"는 이슈를
 docker exec으로 직접 조사하며 버그 아님(evidence-bounded 설계)으로 결론냈는데

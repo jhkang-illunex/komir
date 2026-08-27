@@ -175,13 +175,28 @@ def build_comprehensive_service():
     읽어 PG(`KomisRawDataRepository`)가 필요 없다 — LLM 실패 시에도 규칙기반
     폴백이 있어 None을 돌려주지 않는다(LLM 없이도 서비스 자체는 항상 뜬다)."""
 
+    from shared.config import get_settings
+
     from .analysis.comprehensive import ComprehensiveAnalysisService
 
     llm = None
     try:
         from shared.llm_client import KomirJsonLLM
 
-        llm = KomirJsonLLM()
+        # 2026-08-28 skeptic 감사(HIGH 부수 발견): 이 서비스도 `build_analysis_
+        # summary_service()`와 같은 `analysis_lock`을 `routers/comprehensive.py`에서
+        # 쥔 채로 `build_dashboard()`가 `.invoke()`를 2회 호출한다 — 기본 cfg
+        # (timeout 120s·retries 3)를 그대로 쓰면 SC-002가 막으려던 것과 똑같이
+        # 느린 LLM 응답 1건이 lock을 수 분 쥐고 다른 11개 분석요약 엔드포인트를
+        # 전부 TIMEOUT시킬 수 있다. 같은 축소 설정으로 맞춘다(§위 build_
+        # analysis_summary_service()와 동일 값).
+        llm = KomirJsonLLM(
+            {
+                **get_settings().llm_cfg(),
+                "timeout": ANALYSIS_LLM_TIMEOUT_SECONDS,
+                "retries": ANALYSIS_LLM_RETRIES,
+            }
+        )
     except Exception:  # noqa: BLE001 — LLM 없이도 규칙기반 결과는 나와야 한다
         llm = None
     return ComprehensiveAnalysisService(llm=llm)
