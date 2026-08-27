@@ -17,12 +17,13 @@ build_tree_from_markdown()`만 통해 호출한다(vendored `pageindex_lib` 직�
 (OKF 파일 줄번호 = line_num + body_line_offset).
 
 실행(주의: `.env`의 LLM_BASE_URL이 컨테이너 기준 host.docker.internal이라 호스트
-셸에서 돌릴 땐 환경변수로 덮어써야 한다 — 환경변수가 env_file보다 우선):
+셸에서 돌릴 땐 환경변수로 덮어써야 한다 — 환경변수가 env_file보다 우선;
+2026-08-27 services/ingestion/ → ingest/pageindex/ 이동):
     cd inhouse
     LLM_BASE_URL=http://localhost:52302/v1 \
-      python3 -m services.ingestion.build_pageindex_trees --limit 10
+      python3 -m ingest.pageindex.build_pageindex_trees --limit 10
     LLM_BASE_URL=http://localhost:52302/v1 \
-      python3 -m services.ingestion.build_pageindex_trees --no-summary   # LLM 없이 구조만
+      python3 -m ingest.pageindex.build_pageindex_trees --no-summary   # LLM 없이 구조만
 """
 from __future__ import annotations
 

@@ -18,8 +18,9 @@ document_ingestion/pipeline.py를 이식(해시 기반 중복제거·재사용(u
    opendataloader에 태우는 사전 패스를 추가해 해결했다(파서 자체나 원본 루프
    구조는 그대로 둠, CLAUDE.md §4 "최소·외과적 변경").
 
-실행 예: python -m services.ingestion.pipeline 대신, 서비스 코드에서 run_extraction()을
+실행 예: 단독 CLI가 아니라 `ingest.okf.build_okf_documents` 등이 run_extraction()을
 직접 호출하는 라이브러리 모듈로 쓴다(§5-3 in-house ingestion 설계 참고).
+2026-08-27 services/ingestion/ → inhouse/ingest/로 이동(패키지 내부 상대 import는 불변).
 """
 from __future__ import annotations
 
@@ -90,7 +91,7 @@ def discover_source_files(
     동작은 그대로다. 명시적 opt-in 없이는 절대 우회되지 않는다. 실사용례:
     2026-08-12 Argus(유료 구독 원문) 내부 전용 문서-OKF·PageIndex·pgvector
     인덱스 구축 — 사용자가 라이선스상 "내부 파생 DB 구축"이 허용됨을 직접
-    확인한 뒤 이 플래그로만 켰다(services/ingestion/build_okf_documents.py
+    확인한 뒤 이 플래그로만 켰다(ingest/okf/build_okf_documents.py
     참고, RAG 챗봇 등 외부 노출 경로에는 여전히 정책이 걸려 있음)."""
 
     data_root = data_root.expanduser().resolve()

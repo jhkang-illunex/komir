@@ -10,9 +10,14 @@ build_index.py(DuckDB)와 **병렬 구조**다 — 로딩(ingest.load_documents)
 설치돼 있어(실측) Qdrant 컨테이너를 새로 띄울 이유가 없어졌다. 상세는
 data_lake/db/schema_pgvector.sql 헤더와 CONTAINER_ARCHITECTURE.md §0·§4.
 
+2026-08-27: rag/ragkit/build_pgvector_index.py에서 inhouse/ingest/vectorize/로 이동
+(ETL 전용 스크립트라 서빙 패키지 rag/ragkit에서 분리 — ingest/README.md 참고).
+로딩·청킹·임베딩 라이브러리(rag.ragkit.{ingest,chunk,embed})는 rag_chat 컨테이너의
+런타임 의존이라 그대로 rag/ragkit에 남겨 두고 여기서 import만 한다.
+
 실행(cwd=inhouse/ — CLAUDE.md §2 표준 실행 관례):
-    cd inhouse && python -m rag.ragkit.build_pgvector_index
-    cd inhouse && python -m rag.ragkit.build_pgvector_index --schema-only
+    cd inhouse && python -m ingest.vectorize.build_pgvector_index
+    cd inhouse && python -m ingest.vectorize.build_pgvector_index --schema-only
 """
 from __future__ import annotations
 
@@ -21,17 +26,15 @@ import datetime as dt
 import sys
 from pathlib import Path
 
-from .chunk import chunk_document
-from .embed import DIM, encode_passages
-from .ingest import load_documents
-
 _INHOUSE_ROOT = Path(__file__).resolve().parents[2]
-_SERVICES = _INHOUSE_ROOT / "services"
-if str(_SERVICES) not in sys.path:
-    sys.path.insert(0, str(_SERVICES))
+if str(_INHOUSE_ROOT) not in sys.path:
+    sys.path.insert(0, str(_INHOUSE_ROOT))
 
-from shared.config import get_settings  # noqa: E402
-from shared.db import apply_schema_pg, pg_connect  # noqa: E402
+from rag.ragkit.chunk import chunk_document  # noqa: E402
+from rag.ragkit.embed import DIM, encode_passages  # noqa: E402
+from rag.ragkit.ingest import load_documents  # noqa: E402
+from services.shared.config import get_settings  # noqa: E402
+from services.shared.db import apply_schema_pg, pg_connect  # noqa: E402
 
 SCHEMA_SQL = _INHOUSE_ROOT / "data_lake/db/schema_pgvector.sql"
 

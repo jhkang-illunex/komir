@@ -10,24 +10,25 @@
 이 문서-OKF가 §5-4의 두 검색 도구(② Qdrant 청킹, ③ PageIndex 트리)의 공통
 소스가 된다.
 
-**왜 services/ingestion/에 두는가**: §5-3이 문서-OKF를 in-house ingestion(공용
+**왜 ingest/ 패키지에 두는가**: §5-3이 문서-OKF를 in-house ingestion(공용
 LLM ETL 엔진)의 산출물로 정의하고, 대용량 원본(PDF/HWP) 경로가 이미 여기
-`pipeline.run_extraction()`이라 입력 두 갈래 중 하나가 이 패키지 안에 있다.
+`ingest.pipeline.run_extraction()`이라 입력 두 갈래 중 하나가 이 패키지 안에 있다.
 (rag/ragkit/ 쪽은 "RAG 인덱스 전용" 경로라 Report 생성기도 쓰는 산출물의
-생산자로는 맞지 않다.)
+생산자로는 맞지 않다.) 2026-08-27 services/ingestion/ → inhouse/ingest/okf/로
+이동(파일 기반 문서 ETL을 서빙 레이어에서 떼어 독립 패키지화, ingest/README.md).
 
 입력 두 갈래:
   1. `rag.ragkit.ingest.load_documents()` — documents/산출물(md·docx) + 외부공개
      PDF ETL 산출물. 이미 텍스트로 펼쳐져 있으므로 재파싱하지 않는다.
-  2. `services.ingestion.pipeline.run_extraction()` — 대용량 PDF 원본
+  2. `ingest.pipeline.run_extraction()` — 대용량 PDF 원본
      (현재는 USGS 8건). opendataloader-pdf→pypdf→OCR 폴백 체인으로 마크다운
      (표 포함) 추출.
 
 실행:
     cd inhouse
-    python -m services.ingestion.build_okf_documents --what all
-    python -m services.ingestion.build_okf_documents --what artifacts   # 산출물만
-    python -m services.ingestion.build_okf_documents --what usgs        # USGS만
+    python -m ingest.okf.build_okf_documents --what all
+    python -m ingest.okf.build_okf_documents --what artifacts   # 산출물만
+    python -m ingest.okf.build_okf_documents --what usgs        # USGS만
 """
 from __future__ import annotations
 
@@ -246,10 +247,10 @@ def _extract_pdf_group(
 ) -> Path:
     """대용량 PDF 원본 그룹 1개를 기존 ingestion 파이프라인으로 추출(documents.jsonl 반환).
 
-    USGS·조달청보고서·Argus가 전부 같은 경로(services.ingestion.pipeline.
-    run_extraction)를 탄다 — 그룹별 위치·정책만 다르다."""
+    USGS·조달청보고서·Argus가 전부 같은 경로(ingest.pipeline.run_extraction)를
+    탄다 — 그룹별 위치·정책만 다르다."""
 
-    from services.ingestion.pipeline import run_extraction
+    from ingest.pipeline import run_extraction
 
     def _progress(index: int, total: int, path: Path) -> None:
         print(f"  [{index}/{total}] {path.name}", flush=True)

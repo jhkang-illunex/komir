@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """우드맥킨지 수급/가격 모델 워크북(xls) → long 시계열 추출.
-  python -m scripts.extract_woodmac_xls <glob_root> <out_parquet>
+  cd inhouse && python -m ingest.extract.extract_woodmac_xls <glob_root> <out_parquet>
+  (2026-08-27 mineral_supply_risk/scripts/ → ingest/extract/ 이동, 로직 불변)
 연도 헤더행을 자동탐지하고, 각 데이터행(품목 라벨)을 연도별로 melt.
 출력: commodity, src_file, sheet, line_item, year, value
 """
 import sys, os, glob, re
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pandas as pd, numpy as np
 
 def commodity_of(path):

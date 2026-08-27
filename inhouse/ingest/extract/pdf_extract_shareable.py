@@ -9,12 +9,14 @@ opendataloader-pdf(Java CLI, Apache 2.0, 오프라인 동작)로 1차 변환하�
 ingest.py의 load_documents()가 documents/산출물과 함께 자동으로 읽어들인다.
 
 **여기서 다루는 소스는 발주처가 "외부공개 가능"이라 명시한 것만.** 진단모델 전용
-(RAG 금지) 자료는 이 파일이 아니라
-inhouse/mineral_supply_risk/scripts/pdf_extract_restricted.py가 별도 물리 경로
-(pdf_extract/restricted_diagnosis_only/)로 처리한다 — 이 파일은 그 경로를
-참조하지 않는다.
+(RAG 금지) 자료는 이 파일이 아니라 같은 디렉토리의 pdf_extract_restricted.py가
+별도 물리 경로(pdf_extract/restricted_diagnosis_only/)로 처리한다 — 이 파일은 그
+경로를 참조하지 않는다(두 파일이 한 패키지에 있어도 출력 트리는 계속 분리).
 
-실행: cd inhouse/rag && python -m ragkit.pdf_extract
+2026-08-27 rag/ragkit/pdf_extract.py → inhouse/ingest/extract/pdf_extract_shareable.py로
+이동(ETL 전용이라 서빙 패키지에서 분리, ingest/README.md).
+
+실행: cd inhouse && python -m ingest.extract.pdf_extract_shareable
 """
 import hashlib
 import sys
@@ -24,10 +26,11 @@ from pathlib import Path
 
 import opendataloader_pdf
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-sys.path.insert(0, str(REPO_ROOT / "inhouse"))
+REPO_ROOT = Path(__file__).resolve().parents[3]  # ingest/extract/x.py → inhouse/ingest → inhouse → komir
+if str(REPO_ROOT / "inhouse") not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT / "inhouse"))
 from geo.extractors import extract_with_fallback  # noqa: E402
-from .ingest import _real_content_len  # noqa: E402
+from rag.ragkit.ingest import _real_content_len  # noqa: E402
 
 SHAREABLE_ROOT = REPO_ROOT / "inhouse/data_lake/semi_structure/pdf_extract/shareable"
 OCR_CACHE_DIR = str(SHAREABLE_ROOT / "_ocr_cache")

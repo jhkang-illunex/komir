@@ -1,0 +1,39 @@
+# inhouse/ingest — 파일 기반 보고서 정제·색인 패키지 의존성(2026-08-27 독립 시점 정리).
+# 버전 하한은 이 패키지가 흡수한 모듈들이 이전 위치에서 쓰던 requirements
+# (geo/requirements.txt, services/rag_chat/requirements.txt, mineral_supply_risk/requirements.txt)
+# 값을 그대로 가져왔다 — 이동으로 새로 생긴 의존성은 없다.
+
+# 추출 파이프라인(pipeline.py·models.py·parsers/)
+pydantic>=2.5
+PyYAML>=6.0
+pyhwp>=0.1b15            # parsers/hwp.py (hwp5 패키지)
+# parsers/pdf.py → geo.extractors(opendataloader-pdf → pypdf → easyocr 3단 폴백, Java 11+ 필요)
+opendataloader-pdf>=2.4
+pypdf>=4.0
+PyMuPDF>=1.24            # OCR 폴백 페이지 래스터화(import명 fitz)
+easyocr>=1.7
+numpy>=1.24
+
+# extract/
+pandas>=2.0
+pyarrow>=15              # parquet 매니페스트·산출물
+olefile>=0.47            # extract/hwp_extract.py
+openpyxl>=3.1            # extract/extract_woodmac_xls.py (pandas.ExcelFile)
+xlrd>=2.0                # 〃 .xls
+
+# okf/ · vectorize/ — rag.ragkit.{ingest,chunk,embed} 재사용
+python-docx>=1.1         # rag/ragkit/ingest.py(documents/산출물 docx 로드)
+sentence-transformers    # rag/ragkit/embed.py (intfloat/multilingual-e5-small, 로컬)
+psycopg2-binary          # services/shared/db.py pg_connect
+pydantic-settings>=2.5   # services/shared/config.py
+duckdb>=1.1              # mineral_supply_risk/db/dbio.py(services/shared/db.py가 재노출)
+
+# pageindex/ — services/shared/pageindex_client.py(vendored pageindex_lib) 의존성,
+# 버전은 services/rag_chat/requirements.txt와 동일하게 고정
+litellm==1.84.0
+openai>=1.70.0
+python-dotenv>=1.0
+PyPDF2==3.0.1
+pypdfium2==4.30.0
+sortedcontainers==2.4.0
+requests>=2.31           # geo/llm/openai_compat.py

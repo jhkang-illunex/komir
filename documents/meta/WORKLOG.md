@@ -2,7 +2,60 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-08-26 (최신) — 챗봇 검색도구 MCP public/private 물리분리 + pubchat/prichat 신설 + PageIndex 헤딩결함 수정
+## 2026-08-27 (최신) — 파일 기반 보고서 정제·색인 모듈을 `inhouse/ingest/` 독립 패키지로 분리
+
+사용자 요청: "mineral_supply_risk 안의 파일 기반 문서 정리·OKF·PageIndex·Vectorize 모듈을
+모아서 Ingest 디렉토리로 독립시켜 달라 — msr은 더 이상 안 쓸 예정이고, 파일 기반 보고서를
+가져와 정제·색인하는 모듈이 필요하다". 실측해 보니 OKF·PageIndex·벡터화 빌더는 msr이
+아니라 `services/ingestion/`(08-11 komis-report-generator 이식본)에 있었고, msr 안에는
+파일 추출기 4종(`scripts/pdf_extract_restricted.py`·`scripts/ingest_reports.py`·
+`scripts/extract_woodmac_xls.py`·`msr/utils/hwp_extract.py`)만 흩어져 있었다. 여기에
+`rag/ragkit`의 ETL 전용 2종(`pdf_extract.py`·`build_pgvector_index.py`)까지 합쳐
+`inhouse/ingest/`로 모았다(전부 `git mv`, `--follow`로 이력 추적 가능).
+
+### 새 레이아웃(정본: `inhouse/ingest/README.md`)
+- `ingest/{pipeline,models,source_policy}.py`·`parsers/` — 추출 파이프라인 코어(무변경)
+- `ingest/extract/` — `pdf_extract_shareable.py`(←ragkit/pdf_extract), `pdf_extract_restricted.py`,
+  `ingest_reports.py`, `extract_woodmac_xls.py`, `hwp_extract.py`
+- `ingest/okf/build_okf_documents.py` · `ingest/pageindex/build_pageindex_trees.py`
+- `ingest/vectorize/{build_pgvector_index,build_pgvector_okf,backfill_doc_chunk_pub_date}.py`
+- 실행은 geo와 같이 **cwd=inhouse/에서 `python -m ingest.<sub>.<module>`**. 산출물 경로
+  (`data_lake/semi_structure/{pdf_extract,okf_documents,pageindex_trees}`)·`doc_chunk` 테이블은
+  이동 전과 동일 — 코드 위치만 바뀌었다.
+
+### 코드 변경(이동 외)
+- 숨은 import 순서 의존 제거: `build_pgvector_okf.py`의 `from shared.db`는 그 위
+  `rag.ragkit.build_pgvector_index` import가 `services/`를 sys.path에 넣는 부수효과로만
+  동작하던 것 → `from services.shared.db`로 정규화(build_pgvector_index도 동일).
+- `pdf_extract_restricted.py`: `msr.config.ROOT` 의존 제거, 파일 위치 기준 절대경로
+  (`parents[3]`=komir)로 계산 — OUT_ROOT(`restricted_diagnosis_only/`)는 불변.
+- `ingest_reports.py`: `msr.utils.hwp_extract` → 같은 패키지 상대 import. 빈 `msr/utils/` 삭제.
+- 런타임 문자열: `services/shared/retrieval/pageindex.py`의 "먼저 실행할 것" 에러 메시지 경로 갱신.
+- Containerfile(rag_chat·report_gen): `COPY services/ingestion ./ingestion` → `COPY ingest ./ingest`.
+  두 서비스 모두 이 패키지를 런타임 import하진 않아 기존 이미지엔 영향 없음 — **컨테이너
+  재빌드는 이번에 안 했다**(다음 재배포 때 빌드 확인).
+- 문서: CLAUDE.md §1 트리·§2 실행법, CONTAINER_ARCHITECTURE.md §5-3 이관 주석, msr/rag README,
+  requirements 주석. `ingest/README.md`·`ingest/requirements.txt` 신설(의존성은 이전 위치의
+  requirements에서 그대로 가져옴, 신규 의존성 없음).
+
+### 남긴 것(의도적)
+`rag/ragkit/{ingest,chunk,embed,tokenize_ko}.py`(rag_chat 컨테이너 런타임 의존 —
+dense_pg→embed, pageindex/bm25→tokenize_ko), `rag/ragkit/build_index.py`(레거시 DuckDB),
+`geo/okf.py`(geo-OKF는 `python -m geo all`의 한 단계, 문서-OKF와 다른 계열),
+`services/shared/pageindex_client.py`+vendor(검색 쪽과 공유). msr 본체(진단·예측 cron 가동 중)도
+그대로 — "더 이상 안 쓸 예정"이라도 폐기는 별도 사이클.
+
+### 검증(worktree엔 data_lake 실데이터가 없어 정적·합성 위주)
+- cwd=inhouse import 스모크 18모듈 전부 OK, CLI 5종 `--help` exit 0.
+- 합성 PDF 1건(PyMuPDF 생성) → `ingest.pipeline.run_extraction()` → `parsers/pdf.py` →
+  `geo.extractors` 체인: status=extracted, 마크다운 헤딩·본문 정상(SMOKE PASS).
+- `build_okf_documents` 단독 import 시 `geo.extractors.PDF_MAXPAGES=500`(setdefault→import 순서 보존).
+- grep 불변식: 코드·셸·Containerfile에 `services.ingestion`/`./ingestion` 실참조 0(주석의
+  이력 표기만 남김), `restricted_diagnosis_only`를 소스로 참조하는 rag/ingest 코드 0
+  (restricted 스크립트 자신뿐), 남긴 ragkit 라이브러리·retrieval 모듈은 diff 무변경, crontab
+  에 옛 경로 호출 0.
+
+## 2026-08-26 — 챗봇 검색도구 MCP public/private 물리분리 + pubchat/prichat 신설 + PageIndex 헤딩결함 수정
 
 챗봇(`rag/ragkit/chatbot.py`·`chatbot_graph.py`)이 지금까지 정형(structured)·
 hybrid_search·pageindex 세 검색도구를 인프로세스로 직접 호출하던 걸, MCP

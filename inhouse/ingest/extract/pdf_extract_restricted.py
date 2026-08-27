@@ -20,37 +20,39 @@ opendataloader 기본 모드에서 실제 텍스트가 거의 안 나옴 — pyp
 진단지수 모델개발에만 사용 가능. RAG 코퍼스·대시보드·외부공개 절대 금지 — 그래서
 출력 경로를 RAG가 읽는 트리(data_lake/semi_structure/pdf_extract/shareable/)와
 물리적으로 분리했다(pdf_extract/restricted_diagnosis_only/). rag 쪽 코드는 이
-경로를 참조하지 않는다(inhouse/rag/ragkit/ingest.py, inhouse/rag/ragkit/pdf_extract.py
-어디에도 restricted_diagnosis_only 문자열이 없어야 함).
+경로를 참조하지 않는다(inhouse/rag/ragkit/ingest.py, 같은 디렉토리의
+pdf_extract_shareable.py 어디에도 restricted_diagnosis_only 문자열이 없어야 함).
 
 이 스크립트는 ETL(변환+저장+매니페스트)까지만 한다. 마크다운 텍스트를 진단모델
 피처로 바꾸는 작업은 별도 모델링 사이클에서 CLAUDE.md §4 원칙대로
 r10_retune_harness.py SERIES_SPEC 스크리닝을 거쳐야 한다(여기서 임의 채택 금지).
 
-실행: cd inhouse/mineral_supply_risk && python -m scripts.pdf_extract_restricted
+2026-08-27 inhouse/mineral_supply_risk/scripts/ → inhouse/ingest/extract/로 이동
+(msr 패키지 의존 제거, 경로는 이 파일 위치 기준 절대경로로 계산 — 출력 위치는 불변).
+
+실행: cd inhouse && python -m ingest.extract.pdf_extract_restricted
 """
 import hashlib
-import os
 import re
 import sys
 import tempfile
 import zipfile
 from pathlib import Path
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import pandas as pd
 import opendataloader_pdf
-from msr.config import ROOT as MSR_ROOT
 
-REPO_ROOT = MSR_ROOT.parent.parent
-sys.path.insert(0, str(REPO_ROOT / "inhouse"))
+REPO_ROOT = Path(__file__).resolve().parents[3]  # ingest/extract/x.py → inhouse/ingest → inhouse → komir
+INHOUSE_ROOT = REPO_ROOT / "inhouse"
+if str(INHOUSE_ROOT) not in sys.path:
+    sys.path.insert(0, str(INHOUSE_ROOT))
 from geo.extractors import extract_with_fallback, md_to_text  # noqa: E402
 
 SOURCES = [
     {"zip": REPO_ROOT / "documents/0807/2. 비축월보_시장동향보고서.zip",
      "label": "비축월보_시장동향보고서_0807"},
 ]
-OUT_ROOT = MSR_ROOT.parent / "data_lake/semi_structure/pdf_extract/restricted_diagnosis_only"
+OUT_ROOT = INHOUSE_ROOT / "data_lake/semi_structure/pdf_extract/restricted_diagnosis_only"
 MANIFEST = OUT_ROOT / "_manifest.parquet"
 OCR_CACHE_DIR = str(OUT_ROOT / "_ocr_cache")
 

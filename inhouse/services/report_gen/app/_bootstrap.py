@@ -5,7 +5,7 @@
 `services/shared`)와 컨테이너 배포본(Containerfile이 `services/shared`→`/app/shared`,
 `services/report_gen/app`→`/app/app`으로 평평하게 COPY — shared는 2단 위)의 상대
 깊이가 달라 고정 depth 대신 위로 훑어 찾는다(`services/shared/db.py`의
-`_find_msr_root`, `services/ingestion/parsers/pdf.py`의 geo 탐색과 같은 패턴).
+`_find_msr_root`, `ingest/parsers/pdf.py`의 geo 탐색과 같은 패턴).
 """
 from __future__ import annotations
 

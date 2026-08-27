@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """문서-OKF(대용량 보고서 갈래: USGS·조달청보고서·Argus) → pgvector 청킹·임베딩.
 
-`rag/ragkit/build_pgvector_index.py`(documents/산출물 76건, `rag.ragkit.ingest.
+`build_pgvector_index.py`(같은 디렉토리, documents/산출물 76건, `rag.ragkit.ingest.
 load_documents()` 직접 소스)와 나란한 두 번째 적재 경로다 — 합치지 않은 이유:
 그 스크립트는 "이 테이블의 유일한 writer"를 전제로 매번 `DELETE FROM doc_chunk`
 전체를 지우고 재적재한다(주석에 명시). 이 스크립트가 같은 방식으로 돌면 서로
@@ -12,9 +12,9 @@ load_documents()` 직접 소스)와 나란한 두 번째 적재 경로다 — �
 encode_passages`)은 그대로 재사용 — DocRecord를 OKF 파일의 YAML 프론트매터에서
 구성해 넘긴다(본문만 청킹 대상, 프론트매터는 제외).
 
-실행(cwd=inhouse/):
-    python -m services.ingestion.build_pgvector_okf
-    python -m services.ingestion.build_pgvector_okf --source-group 조달청보고서
+실행(cwd=inhouse/; 2026-08-27 services/ingestion/ → ingest/vectorize/ 이동):
+    python -m ingest.vectorize.build_pgvector_okf
+    python -m ingest.vectorize.build_pgvector_okf --source-group 조달청보고서
 """
 from __future__ import annotations
 
@@ -32,10 +32,10 @@ if str(_INHOUSE_ROOT) not in sys.path:
 from rag.ragkit.chunk import chunk_document  # noqa: E402
 from rag.ragkit.embed import DIM, encode_passages  # noqa: E402
 from rag.ragkit.ingest import DocRecord  # noqa: E402
-from rag.ragkit.build_pgvector_index import _COLUMNS, _vector_literal  # noqa: E402
+from services.shared.db import pg_connect  # noqa: E402
+from services.shared.config import get_settings  # noqa: E402
 
-from shared.db import pg_connect  # noqa: E402
-from shared.config import get_settings  # noqa: E402
+from .build_pgvector_index import _COLUMNS, _vector_literal  # noqa: E402
 
 OKF_DOCUMENTS_ROOT = _INHOUSE_ROOT / "data_lake/semi_structure/okf_documents"
 

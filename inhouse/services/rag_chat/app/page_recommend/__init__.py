@@ -6,7 +6,7 @@
 (rag_chat Containerfile이 services/shared→./shared로 평평하게 COPY하는 기존 관례,
 session_store.py 주석 참고), 소스트리와 컨테이너 배포본의 상대 깊이가 달라 고정
 depth로는 두 경우를 다 맞출 수 없다. 패키지 임포트 시점에 한 번 위로 훑어 찾는다
-(services/shared/db.py·services/ingestion/parsers/pdf.py가 쓰는 것과 같은 패턴)."""
+(services/shared/db.py·ingest/parsers/pdf.py가 쓰는 것과 같은 패턴)."""
 from __future__ import annotations
 
 import sys

@@ -43,8 +43,17 @@ komir/
 │  │  └─ scripts/          # 백필·백테스트·검증·A-5·GKG정제 등 실행 스크립트 다수
 │  ├─ rag/                 # 문서 기반 RAG(하이브리드 BM25+dense)
 │  │  └─ ragkit/{ingest,chunk,tokenize_ko,embed,retrieve,generate,build_index,eval_retrieval}.py
-│  ├─ services/            # 서빙 레이어(설계 단계, 스켈레톤뿐 — 구현 전)
-│  │  └─ {shared,commodity_api,rag_chat,report_gen,ingestion}/
+│  ├─ ingest/              # ★2026-08-27 신설 — 파일 기반 보고서 정제·색인 독립 패키지
+│  │  │                      (구 services/ingestion + rag/ragkit ETL 2종 + mineral_supply_risk
+│  │  │                       파일 추출기 4종을 한곳으로). 실행은 cwd=inhouse에서
+│  │  │                       python -m ingest.<sub>.<module> — inhouse/ingest/README.md 정본
+│  │  ├─ pipeline.py models.py source_policy.py parsers/   # 추출 파이프라인 코어
+│  │  ├─ extract/          # pdf_extract_{shareable,restricted}·ingest_reports·woodmac_xls·hwp_extract
+│  │  ├─ okf/              # build_okf_documents.py (문서-OKF)
+│  │  ├─ pageindex/        # build_pageindex_trees.py
+│  │  └─ vectorize/        # build_pgvector_{index,okf}.py·backfill_doc_chunk_pub_date.py
+│  ├─ services/            # 서빙 레이어(commodity_api·rag_chat·report_gen 컨테이너 가동 중)
+│  │  └─ {shared,commodity_api,rag_chat,report_gen}/   # ingestion/은 2026-08-27 ingest/로 이동
 │  │       # documents/meta/CONTAINER_ARCHITECTURE.md
 │  ├─ deploy/               # 컨테이너화·airgap 배포(설계 단계)
 │  │       # documents/meta/CONTAINER_ARCHITECTURE.md
@@ -105,6 +114,12 @@ python -m geo publish --db data_lake/db/minerals.duckdb --what all
 cd komir/inhouse/mineral_supply_risk
 MSR_DB=../data_lake/db/minerals.duckdb python -m scripts.diagnosis_retrain_answer
 MSR_DB=../data_lake/db/minerals.duckdb python -m scripts.<기타 스크립트>
+
+# 파일 기반 보고서 정제·색인(inhouse/ingest/, 2026-08-27 독립) — geo와 같이 cwd=inhouse/
+cd komir/inhouse
+python -m ingest.okf.build_okf_documents --what all         # 문서-OKF
+python -m ingest.pageindex.build_pageindex_trees --no-summary
+python -m ingest.vectorize.build_pgvector_index && python -m ingest.vectorize.build_pgvector_okf
 ```
 수집기(DMZ)는 airgap과 분리 실행: `dmz/geo_collectors/`·`dmz/msr_collectors/`는 outbound
 네트워크가 필요한 별도 프로세스/컨테이너로 돌리고, 수집 결과만 `inhouse/data_lake/`로

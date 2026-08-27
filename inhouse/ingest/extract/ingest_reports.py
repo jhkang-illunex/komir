@@ -1,15 +1,16 @@
 # -*- coding: utf-8 -*-
-"""보고서 폴더 텍스트 정형화 인제스터.
-  python -m scripts.ingest_reports <root> <out_parquet> [--zips]
+"""보고서 폴더 텍스트 정형화 인제스터(초기 pypdf 기반 — 표 구조 미보존, 레거시).
+  cd inhouse && python -m ingest.extract.ingest_reports <root> <out_parquet> [--zips]
+  (2026-08-27 mineral_supply_risk/scripts/ → ingest/extract/ 이동. 표 보존이 필요한
+   신규 작업은 같은 디렉토리의 pdf_extract_*.py / ingest.pipeline을 쓸 것.)
   - <root> 아래 .hwp/.pdf 텍스트 추출 → doc_raw 호환 스키마 parquet.
   - --zips: root 아래 .zip 내부의 .pdf 도 (해제 없이) 읽음.
   - 해시(md5) dedup, 폴더/파일명으로 source·commodity_hint·pub_date 추론.
 재사용: 로컬에서도 동일 실행. 대용량은 시간 소요 → nohup 백그라운드 권장.
 """
 import sys, os, io, re, hashlib, zipfile, time
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pandas as pd, pypdf
-from msr.utils import hwp_extract as hx
+from . import hwp_extract as hx
 
 BUDGET = float(os.environ.get("INGEST_BUDGET", "38"))   # 초; 이 시간 지나면 flush 후 종료(exit 3)
 PDF_MAXPAGES = int(os.environ.get("PDF_MAXPAGES", "60"))
