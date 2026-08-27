@@ -9,6 +9,7 @@ public/private 판정은 `services/shared/retrieval/access.py::PRIVATE_ONLY_SOUR
 """
 from __future__ import annotations
 
+import logging
 import subprocess
 import sys
 import time
@@ -25,6 +26,10 @@ if str(_INHOUSE_ROOT / "services") not in sys.path:
     sys.path.insert(0, str(_INHOUSE_ROOT / "services"))
 
 from shared.retrieval.access import PRIVATE_ONLY_SOURCE_GROUPS  # noqa: E402
+
+# Streamlit이 view 파일을 __main__으로 실행해(exec) __name__ 기반 로거명이
+# 전부 "__main__"으로 뭉개진다(실측 확인) — 이 파일에서만은 경로를 그대로 쓴다.
+_log = logging.getLogger("streamlit_demo.views.data_admin")
 
 st.title("데이터 관리")
 st.caption("RAG 코퍼스의 입력 → 정제(OKF) → 색인(PageIndex·벡터) 단계별 문서 수량과 저장소 사용량입니다.")
@@ -70,6 +75,7 @@ def _doc_chunk_counts() -> pd.DataFrame | None:
             "GROUP BY src ORDER BY chunks DESC"
         )
     except Exception as exc:  # noqa: BLE001 — Postgres 미접속 환경에서도 화면은 떠야 한다
+        _log.exception("mineral_risk.doc_chunk 조회 실패")
         st.session_state["_doc_chunk_error"] = str(exc)
         return None
 

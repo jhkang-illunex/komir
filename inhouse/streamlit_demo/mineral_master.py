@@ -12,6 +12,7 @@ report_gen API 자체엔 광종 목록 엔드포인트가 없어(라우트 전�
 역산한 것이라, `ai_mnrl_mst`의 `prc_cat_cd` 체계가 바뀌면 같이 갱신해야 한다."""
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
 from typing import Literal
@@ -21,6 +22,8 @@ import streamlit as st
 _INHOUSE_ROOT = Path(__file__).resolve().parents[1]
 if str(_INHOUSE_ROOT / "services") not in sys.path:
     sys.path.insert(0, str(_INHOUSE_ROOT / "services"))
+
+_log = logging.getLogger(__name__)
 
 MineralGroup = Literal["base_metals", "minor_metals"]
 _BASE_METALS_PRC_CAT = "HP001"
@@ -34,6 +37,7 @@ def load_minerals() -> list[dict]:
     try:
         from shared.db import read_sql_pg
     except Exception:
+        _log.exception("shared.db import 실패 — 광종 목록 없이 코드 직접입력으로 폴백")
         return []
     try:
         df = read_sql_pg(
@@ -41,6 +45,7 @@ def load_minerals() -> list[dict]:
             "prc_cat_cd FROM public.ai_mnrl_mst WHERE use_yn = 'Y' ORDER BY sort_ordr"
         )
     except Exception:
+        _log.exception("public.ai_mnrl_mst 조회 실패 — 광종 목록 없이 코드 직접입력으로 폴백")
         return []
     return [
         {

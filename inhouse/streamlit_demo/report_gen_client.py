@@ -19,11 +19,14 @@
 `routers/analysis.py`와 여전히 일치하는지부터 확인할 것."""
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import httpx
+
+_log = logging.getLogger(__name__)
 
 
 class ReportGenError(RuntimeError):
@@ -178,6 +181,7 @@ class ReportGenClient:
                 response.raise_for_status()
             return response.status_code == 200
         except httpx.HTTPError:
+            _log.debug("report_gen health check 실패(base_url=%s)", self.base_url, exc_info=True)
             return False
 
     def summarize(self, page_id: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -189,9 +193,18 @@ class ReportGenClient:
             with httpx.Client(base_url=self.base_url, timeout=self.timeout_seconds) as client:
                 response = client.post(f"/api/v1/analysis/{spec.path}", json=payload)
         except httpx.RequestError as exc:
+            _log.warning("report_gen 연결 실패(page_id=%s, base_url=%s): %s", page_id, self.base_url, exc)
             raise ReportGenError(f"report_gen 서버({self.base_url})에 연결할 수 없습니다.") from exc
         if response.status_code == 422:
+            _log.warning("report_gen 요청 검증 실패(page_id=%s, 422): %s", page_id, response.text[:500])
             raise ReportGenError(f"요청 검증 실패(422): {response.text[:500]}")
         if response.status_code != 200:
+            _log.warning(
+                "report_gen 예상치 못한 응답(page_id=%s, status=%s): %s",
+                page_id, response.status_code, response.text[:500],
+            )
             raise ReportGenError(f"예상치 못한 응답({response.status_code}): {response.text[:500]}")
-        return response.json()
+        result = response.json()
+        if result.get("status") != "ok":
+            _log.info("report_gen 분석요약 status!=ok(page_id=%s): %s", page_id, result.get("status"))
+        return result

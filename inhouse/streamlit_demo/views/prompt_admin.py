@@ -42,6 +42,7 @@ PageSpec docstring 참고)이 생겨서 prompt_key 선택창·전체목록·기�
 from __future__ import annotations
 
 import json
+import logging
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -55,6 +56,10 @@ from streamlit_demo.report_gen_client import PAGE_SPECS, SECTION_ORDER, ReportGe
 _INHOUSE_ROOT = Path(__file__).resolve().parents[2]
 if str(_INHOUSE_ROOT / "services") not in sys.path:
     sys.path.insert(0, str(_INHOUSE_ROOT / "services"))
+
+# Streamlit이 view 파일을 __main__으로 실행해(exec) __name__ 기반 로거명이
+# 전부 "__main__"으로 뭉개진다(실측 확인, data_admin.py와 동일) — 경로를 그대로 쓴다.
+_log = logging.getLogger("streamlit_demo.views.prompt_admin")
 
 st.title("프롬프트 관리")
 st.caption("분석요약 LLM 프롬프트(ai_cfg.cfg_prompt)를 조회·편집·저장하고, 저장한 내용이 report_gen에서 실제로 반영됐는지 즉석 호출로 확인합니다.")
@@ -105,6 +110,7 @@ def _jsonb_to_text(value) -> str:
 try:
     prompts = _fetch_prompts()
 except Exception as exc:  # noqa: BLE001 — Postgres 미접속 환경에서도 화면은 떠야 한다
+    _log.exception("ai_cfg.cfg_prompt 조회 실패")
     st.warning(f"ai_cfg.cfg_prompt 조회 실패 — Postgres(komis_demo) 접속을 확인하세요. ({str(exc)[:200]})")
     st.stop()
 
@@ -215,8 +221,10 @@ if st.button("저장 + report_gen 캐시 reload", type="primary"):
         try:
             execute_pg(_UPDATE_SQL, params)
         except Exception as exc:  # noqa: BLE001
+            _log.exception("ai_cfg.cfg_prompt UPDATE 실패(prompt_key=%s)", prompt_key)
             st.error(f"DB 저장 실패: {exc}")
         else:
+            _log.info("ai_cfg.cfg_prompt UPDATE 완료(prompt_key=%s)", prompt_key)
             st.success("DB 저장 완료")
             _fetch_prompts.clear()
             try:
@@ -226,6 +234,7 @@ if st.button("저장 + report_gen 캐시 reload", type="primary"):
                 response.raise_for_status()
                 st.success(f"report_gen 캐시 reload 완료 — {response.json()}")
             except Exception as exc:  # noqa: BLE001
+                _log.exception("report_gen 캐시 reload 실패(prompt_key=%s)", prompt_key)
                 st.warning(f"DB는 반영됐지만 report_gen 캐시 reload 실패 — 수동으로 재시도하세요. ({exc})")
 
 st.divider()

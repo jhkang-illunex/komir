@@ -29,11 +29,16 @@ ingest-agent가 오늘 이어서 배선 중이므로 화면은 빈 상태를 정
 위젯만으로 구현했다(pandas는 이미 의존성)."""
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+
+# Streamlit이 view 파일을 __main__으로 실행해(exec) __name__ 기반 로거명이
+# 전부 "__main__"으로 뭉개진다(실측 확인, data_admin.py와 동일) — 경로를 그대로 쓴다.
+_log = logging.getLogger("streamlit_demo.views.etl_status")
 
 _INHOUSE_ROOT = Path(__file__).resolve().parents[2]
 if str(_INHOUSE_ROOT / "services") not in sys.path:
@@ -128,6 +133,7 @@ def _query(fn):
     try:
         return fn(), None
     except Exception as exc:  # noqa: BLE001 — Postgres 미접속 환경에서도 화면은 떠야 한다
+        _log.exception("ingest 스키마 조회 실패(%s)", getattr(fn, "__name__", fn))
         return None, str(exc)
 
 
