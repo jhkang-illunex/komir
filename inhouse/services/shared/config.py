@@ -17,9 +17,27 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _INHOUSE_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _strip_quotes(value: str) -> str:
+    """양끝을 감싼 큰따옴표 한 겹을 벗긴다.
+
+    python-dotenv(로컬 실행, `Settings.model_config.env_file`)는 `KEY="a b"`의
+    따옴표를 알아서 벗기지만, `docker run --env-file`은 벗기지 않고 값 그대로
+    프로세스 환경변수에 넣는다(공식 문서에 명시된 동작) — pydantic-settings는
+    이미 설정된 환경변수를 있는 그대로 읽으므로 이 경우 따옴표가 값에 남는다.
+    cron 표현식처럼 공백을 포함해 따옴표로 감싸고 싶어지는 값에서 실제로
+    터진 문제(2026-08-27, REPORT_SCHEDULE_CRON="0 6 * * MON"이 컨테이너에서
+    문자 그대로 `"0 6 * * MON"`으로 들어가 크론 파싱이 깨짐) — 소스가 어느
+    쪽이든 안전하도록 값 쪽에서 방어한다."""
+
+    if len(value) >= 2 and value[0] == value[-1] == '"':
+        return value[1:-1]
+    return value
 
 
 class Settings(BaseSettings):
@@ -72,6 +90,16 @@ class Settings(BaseSettings):
     # ── 리포트 스케줄러 ──
     REPORT_SCHEDULE_CRON: str = "0 6 * * MON"
     REPORT_TEMPLATE_DIR: str = str(_INHOUSE_ROOT / "services/report_gen/app/templates")
+
+    # INGESTION_SCHEDULE_CRON·FORECAST_SCHEDULE_CRON(.env에 있음)은 이 Settings의
+    # 소비자가 아직 없다 — 실제 crontab이 직접 참조하는 목표값(§.env 주석,
+    # "전환 시점에 crontab도 이 값으로 다시 짜야 함")이라 여기 필드를 만들지 않는다
+    # (쓰는 곳 없는 필드 금지, CLAUDE.md §4).
+
+    @field_validator("REPORT_SCHEDULE_CRON", mode="after")
+    @classmethod
+    def _unquote_cron(cls, value: str) -> str:
+        return _strip_quotes(value)
 
     def llm_cfg(self) -> dict:
         """geo/llm/openai_compat.OpenAICompatChat이 받는 cfg dict로 변환."""
