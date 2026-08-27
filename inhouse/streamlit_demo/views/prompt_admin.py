@@ -19,13 +19,21 @@
 2026-08-27 UX 보완(main-agent 사용자 피드백 경유): `description` 컬럼은
 `prompt_store.py::PromptRow`·`REQUIRED_COLUMNS`에 없고 `prompts.py`도 읽지
 않는 참고용 메모일 뿐이라 편집창에 그 사실을 명시했다(입력창은 유지 — 메모
-용도 자체는 유효). 기능 테스트가 지금 어느 리포트 화면(9개 중 어느 것)을
-호출하는지 안 보이던 문제도 연결 화면 캡션·상단 전체목록으로 보완했다.
+용도 자체는 유효). 기능 테스트가 지금 어느 리포트 화면(페이지별 프롬프트 중
+어느 것)을 호출하는지 안 보이던 문제도 연결 화면 캡션·상단 전체목록으로
+보완했다.
 
 2026-08-27 추가 보완: `PageSpec.section`(주메뉴, page_recommend registry
 `identity.section`의 2026-07-16 실측값 — 상세는 report_gen_client.py의
 PageSpec docstring 참고)이 생겨서 prompt_key 선택창·전체목록·기능테스트
 페이지선택 3곳 모두 "주메뉴 > 서브메뉴 (page_id)" 형식으로 통일했다.
+
+2026-08-27 재변경(사용자가 report_demo.py 스타일로 재통일 요청): 상단
+`prompt_key` 선택창을 report_demo.py와 같은 주메뉴/서브메뉴 콤보박스 2단
+으로 바꿨다. `summary_common`(특정 메뉴 없는 공통 프롬프트)은 주메뉴 목록에
+"[공통]" 항목을 추가해 수용 — 그걸 고르면 서브메뉴엔 `summary_common` 하나만
+뜬다. 전체목록 expander·기능테스트 페이지선택은 이번 요청 범위 밖이라 기존
+문자열 조합 형식 그대로 뒀다.
 """
 from __future__ import annotations
 
@@ -100,27 +108,38 @@ if prompts.empty:
     st.info("ai_cfg.cfg_prompt에 행이 없습니다.", icon=":material/info:")
     st.stop()
 
-def _prompt_key_label(pk: str) -> str:
-    if pk in PAGE_SPECS:
-        spec = PAGE_SPECS[pk]
-        return f"{spec.section} > {spec.label} — {pk}"
-    return f"[공통] {pk}"
-
-
 with st.expander(f"등록된 프롬프트 {len(prompts)}개 목록 — 공통 1 + 페이지별 {len(PAGE_SPECS)}개", expanded=False):
     overview = pd.DataFrame(
         {
             "prompt_key": pk,
             "연결된 화면": (
                 f"{PAGE_SPECS[pk].section} > {PAGE_SPECS[pk].label} ({pk})" if pk in PAGE_SPECS
-                else "[공통] 아래 9개 화면 전체에 적용"
+                else f"[공통] 아래 {len(PAGE_SPECS)}개 화면 전체에 적용"
             ),
         }
         for pk in prompts["prompt_key"]
     )
     st.dataframe(overview, use_container_width=True, hide_index=True)
 
-prompt_key = st.selectbox("prompt_key", prompts["prompt_key"].tolist(), format_func=_prompt_key_label)
+_COMMON_SECTION = "[공통]"
+_prompt_key_sections = list(dict.fromkeys(
+    PAGE_SPECS[pk].section if pk in PAGE_SPECS else _COMMON_SECTION
+    for pk in prompts["prompt_key"]
+))
+
+pk_col1, pk_col2 = st.columns(2)
+prompt_section = pk_col1.selectbox("주메뉴", _prompt_key_sections, key="pa_prompt_section")
+if prompt_section == _COMMON_SECTION:
+    section_prompt_keys = [pk for pk in prompts["prompt_key"] if pk not in PAGE_SPECS]
+else:
+    section_prompt_keys = [
+        pk for pk in prompts["prompt_key"] if pk in PAGE_SPECS and PAGE_SPECS[pk].section == prompt_section
+    ]
+prompt_key = pk_col2.selectbox(
+    "서브메뉴", section_prompt_keys,
+    format_func=lambda pk: f"{PAGE_SPECS[pk].label} ({pk})" if pk in PAGE_SPECS else pk,
+    key="pa_prompt_key",
+)
 row = prompts[prompts["prompt_key"] == prompt_key].iloc[0]
 st.caption(f"마지막 수정: {row['updated_at'] or '(기록 없음)'}")
 
