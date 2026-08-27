@@ -5,7 +5,7 @@ template의 __DATA__를 warehouse 스냅샷(JSON)으로 치환해 자체완결 H
 2026-07-25 추가 노출: 보조 조기경보(out_aux_early_warning)·지정학 급증확률
 적응형(geo_prob.p_burst_adapt) — 신챔피언 운영 반영(v1.19) 소비자측 마감.
 
-실행: MSR_DB=<warehouse> python3 dashboards/build_dash.py
+실행: MSR_DB=<warehouse> python3 dashboard_expire/build_dash.py
 """
 from __future__ import annotations
 import json

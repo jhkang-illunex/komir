@@ -32,7 +32,7 @@
   그 외(conformal 구간보정, 규칙 오버라이드, 히스테리시스, 경보 사유문)는
   프로덕션 run()과 동일한 함수를 그대로 호출해 재현한다.
 
-실행: MSR_DB=<warehouse> streamlit run inhouse/dashboards/streamlit_app.py
+실행: MSR_DB=<warehouse> streamlit run inhouse/dashboard_expire/streamlit_app.py
 """
 from __future__ import annotations
 
@@ -585,7 +585,7 @@ with tab_fc:
         if snap is None:
             st.info("백테스트 스냅샷 파일이 없습니다 — "
                    "`scratchpad/mase_and_unit_pooling.py` 실행 후 "
-                   "`dashboards/forecast_backtest_snapshot.json`으로 저장하세요.")
+                   "`dashboard_expire/forecast_backtest_snapshot.json`으로 저장하세요.")
         else:
             met = [r for r in snap["champion_metrics"] if r["commodity"] == cc]
             mc1, mc2 = st.columns(2)
