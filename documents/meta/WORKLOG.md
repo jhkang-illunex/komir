@@ -2,7 +2,137 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-08-27 (최신) — 광물자원가격 page_id 분리: "price" → price_base_metals/price_minor_metals
+## 2026-08-27 (최신) — ingest 파이프라인 상태추적(Postgres)+주간 cron 컨테이너 구현, 도중 doc_chunk 138,825행 삭제 사고·복구
+
+`inhouse/ingest/` 독립 패키지 분리(같은 날, 아래 항목) 직후 이어진 작업 — "언제 뭐가
+얼마나 처리됐는지"를 streamlit_demo "ETL 과정" 탭에서 보고 싶다는 요청으로,
+①실행상태·파일별 처리현황을 Postgres에 기록하고 ②지금까지 수동 실행뿐이던
+파이프라인을 컨테이너 안 cron으로 주간 자동화했다.
+
+### 1. `ingest` 스키마(신규 4번째 스키마, public/mineral_risk/ai_cfg와 별개)
+`ingest/db/schema_ingest.sql`: `pipeline_run`(잡 실행 1건)·`source_file`(원본 파일)·
+`file_stage_status`(파일×단계 처리현황, vectorize는 chunk_count 포함) 3테이블 +
+`pipeline_run_latest` 뷰. `data_lake/db/`는 `.gitignore`로 디렉토리째 무시 대상이라
+(기존 `schema_pgvector.sql`은 `git add -f`로 예외 추가된 상태) 새 DDL은 gitignore
+밖인 `ingest/db/`에 자기완결로 뒀다. `ingest/status.py`의 `ensure_schema()`가
+`apply_schema_pg`로 프로세스당 1회 멱등 적용 — 별도 마이그레이션 스텝 불필요.
+`ingest/status.py`: `pipeline_run()` 컨텍스트매니저(run/success/failed·heartbeat·고아
+running 자가치유) + `upsert_source_file`/`upsert_file_stage_status`/
+`bulk_file_stage_status`. 상태기록 실패가 파이프라인 자체를 막지 않도록 전부
+degrade-gracefully(경고만 출력, run_id=None로 계속 진행).
+
+### 2. 9개 ingest CLI 모듈 배선
+extract 4종(`pdf_extract_shareable`·`pdf_extract_restricted`·`ingest_reports`·
+`extract_woodmac_xls`)·`okf`·`pageindex`·vectorize 3종(`build_pgvector_index`·
+`build_pgvector_okf`·`backfill_doc_chunk_pub_date`) 전부 배선, 실제 실행으로 DB
+기록 검증. `INGEST_TRIGGERED_BY` env var 하나로 trigger='cron'|'manual' 구분(모듈
+코드는 무관, cron 래퍼가 export) — 실제 컨테이너 exec로 trigger='cron' 기록까지 확인.
+
+### ⚠ 사고: `build_pgvector_okf.py` 검증 중 프로덕션 `doc_chunk` 138,825행 삭제
+
+배선 검증차 이 워크트리(로컬 `data_lake/semi_structure/okf_documents/`는 gitignore라
+비어있음)에서 실행했는데, `.env`(메인 체크아웃에서 복사해 옴)가 실제 프로덕션
+`komis_demo`를 가리키고 있어 "자기 src만 DELETE 후 재삽입" 패턴에서 DELETE만
+실행되고 재삽입은 0행 — `mineral_risk.doc_chunk`에서 USGS·조달청보고서·Argus
+갈래 138,825행이 삭제됨(140,085→1,260행). 즉시 중단·main-agent/streamlit-agent에
+공유·사용자 보고. 메인 체크아웃에 원본 OKF 마크다운(1,642건)이 살아있는 걸 확인해
+사용자 승인 후 복구: 재청킹 예상 청크 수를 먼저 계산해 삭제 전 행수와 정확히
+일치함을 확인(138,825=138,825, 갈래별로도 일치) → 재실행으로 140,085행 전량
+원복 → `hybrid_search_pg()`로 3개 갈래 실제 검색까지 스모크 테스트 통과.
+재발 방지: `build_pgvector_index.py`·`build_pgvector_okf.py`에 "재청킹 결과 0건이면
+DELETE/재적재를 건너뛴다" 가드 추가(이번 사고의 정확한 경로 차단).
+
+**후속 감사 발견·수정(같은 날)**: main-agent 코드리뷰에서 `build_pgvector_index.py`가
+여전히 무조건 전체 `DELETE FROM doc_chunk`라 index.py 단독 수동 실행이나 cron 체인
+도중 실패 시 OKF 138,825행이 재차 삭제될 수 있는 구조적 위험을 지적받음 —
+`WHERE source_type = 'unstructured'`로 스코프해 `build_pgvector_okf.py`와 동일한
+"자기 갈래만" 패턴으로 통일(커밋 fb2f1cc33). 수정 전후 source_type별 행수 대조로
+검증(okf_report 138,825행 무변화, unstructured 갈래만 재적재됨 확인).
+
+### 3. 컨테이너(`ingest/Containerfile`·`entrypoint.sh`·`cron_ingest_weekly.sh`)
+`services/` 아래가 아니라 `ingest/` 자체에 배치(`geo/cron_gkg_increment.sh` 선례).
+cron 데몬은 supercronic(Debian cron은 자식 잡에 `env_file` 환경을 전달 안 함).
+WORKDIR은 다른 3개 서비스(`/app` 평면 배치)와 달리 `/komir/inhouse`로 소스트리
+상대구조를 그대로 미러링 — `okf/pageindex/vectorize`(`parents[2]`)와
+`extract`+`rag/ragkit/ingest.py`(`parents[3]`+`"inhouse"`)의 경로 탐색 관례가 `/app`
+평면 배치에선 어긋나 `load_documents()`가 조용히 빈 결과를 내는 함정을 코드
+무변경으로 회피(위 사고와 같은 근본원인 계열).
+
+**⚠ supercronic PID 1 실측 함정**: entrypoint.sh가 `exec`로 supercronic에 PID 1을
+넘기면, 볼륨 마운트가 있는 조건에서 내장 프로세스 reaping이 `Failed to fork exec:
+no such file or directory`로 즉시 죽는 재현 확인(echo 잡·`docker run` 볼륨 없이는
+정상, `documents/` 볼륨 하나만 추가해도 재현). `deploy/{docker,podman}-compose.yml`에
+`init: true`(컨테이너 내장 tini를 PID 1로) 추가로 우회 — 이 옵션을 빼면 컨테이너가
+재시작 루프에 빠진다. 원인 자체는 supercronic 쪽 이슈로 보이나 상위 원인 규명은
+범위 밖, 우회로 충분함을 실측 확인.
+
+**⚠ `sqlalchemy` requirements 누락 실측**: `ingest/requirements.txt` 최초 작성 시
+빠뜨림(`services/{rag_chat,report_gen,commodity_api}/requirements.txt`엔 이미 있었음) —
+컨테이너 안에서 `pg_connect()` 첫 실호출 시 `ModuleNotFoundError`로 발견, 소스트리
+실행에선 다른 곳에서 먼저 깔려 있어 안 드러났던 함정(rag_chat 컨테이너 최초 빌드 때
+python-docx 누락 사례와 동일 종류). requirements.txt에 추가·재빌드로 해결.
+
+**검증**: `deploy/docker-compose.yml`로 실제 이미지 빌드·기동, `ingest.*` 13모듈
+컨테이너 내부 import 전부 OK, `PDF_MAXPAGES=500`/`OCR_MAXPAGES=60` 서비스단
+오버라이드 확인, `INGESTION_SCHEDULE_CRON` 렌더링(기본값·오버라이드값 둘 다) 확인,
+`INGEST_TRIGGERED_BY=cron` exec 실행 → `pipeline_run.trigger='cron'` 실제 기록 확인.
+검증용 이미지·컨테이너는 정리 완료. `deploy/airgap/build_images.sh`에도 `ingestion`
+빌드 스텝 추가.
+
+## 2026-08-27 — 파일 기반 보고서 정제·색인 모듈을 `inhouse/ingest/` 독립 패키지로 분리
+
+사용자 요청: "mineral_supply_risk 안의 파일 기반 문서 정리·OKF·PageIndex·Vectorize 모듈을
+모아서 Ingest 디렉토리로 독립시켜 달라 — msr은 더 이상 안 쓸 예정이고, 파일 기반 보고서를
+가져와 정제·색인하는 모듈이 필요하다". 실측해 보니 OKF·PageIndex·벡터화 빌더는 msr이
+아니라 `services/ingestion/`(08-11 komis-report-generator 이식본)에 있었고, msr 안에는
+파일 추출기 4종(`scripts/pdf_extract_restricted.py`·`scripts/ingest_reports.py`·
+`scripts/extract_woodmac_xls.py`·`msr/utils/hwp_extract.py`)만 흩어져 있었다. 여기에
+`rag/ragkit`의 ETL 전용 2종(`pdf_extract.py`·`build_pgvector_index.py`)까지 합쳐
+`inhouse/ingest/`로 모았다(전부 `git mv`, `--follow`로 이력 추적 가능).
+
+### 새 레이아웃(정본: `inhouse/ingest/README.md`)
+- `ingest/{pipeline,models,source_policy}.py`·`parsers/` — 추출 파이프라인 코어(무변경)
+- `ingest/extract/` — `pdf_extract_shareable.py`(←ragkit/pdf_extract), `pdf_extract_restricted.py`,
+  `ingest_reports.py`, `extract_woodmac_xls.py`, `hwp_extract.py`
+- `ingest/okf/build_okf_documents.py` · `ingest/pageindex/build_pageindex_trees.py`
+- `ingest/vectorize/{build_pgvector_index,build_pgvector_okf,backfill_doc_chunk_pub_date}.py`
+- 실행은 geo와 같이 **cwd=inhouse/에서 `python -m ingest.<sub>.<module>`**. 산출물 경로
+  (`data_lake/semi_structure/{pdf_extract,okf_documents,pageindex_trees}`)·`doc_chunk` 테이블은
+  이동 전과 동일 — 코드 위치만 바뀌었다.
+
+### 코드 변경(이동 외)
+- 숨은 import 순서 의존 제거: `build_pgvector_okf.py`의 `from shared.db`는 그 위
+  `rag.ragkit.build_pgvector_index` import가 `services/`를 sys.path에 넣는 부수효과로만
+  동작하던 것 → `from services.shared.db`로 정규화(build_pgvector_index도 동일).
+- `pdf_extract_restricted.py`: `msr.config.ROOT` 의존 제거, 파일 위치 기준 절대경로
+  (`parents[3]`=komir)로 계산 — OUT_ROOT(`restricted_diagnosis_only/`)는 불변.
+- `ingest_reports.py`: `msr.utils.hwp_extract` → 같은 패키지 상대 import. 빈 `msr/utils/` 삭제.
+- 런타임 문자열: `services/shared/retrieval/pageindex.py`의 "먼저 실행할 것" 에러 메시지 경로 갱신.
+- Containerfile(rag_chat·report_gen): `COPY services/ingestion ./ingestion` → `COPY ingest ./ingest`.
+  두 서비스 모두 이 패키지를 런타임 import하진 않아 기존 이미지엔 영향 없음 — **컨테이너
+  재빌드는 이번에 안 했다**(다음 재배포 때 빌드 확인).
+- 문서: CLAUDE.md §1 트리·§2 실행법, CONTAINER_ARCHITECTURE.md §5-3 이관 주석, msr/rag README,
+  requirements 주석. `ingest/README.md`·`ingest/requirements.txt` 신설(의존성은 이전 위치의
+  requirements에서 그대로 가져옴, 신규 의존성 없음).
+
+### 남긴 것(의도적)
+`rag/ragkit/{ingest,chunk,embed,tokenize_ko}.py`(rag_chat 컨테이너 런타임 의존 —
+dense_pg→embed, pageindex/bm25→tokenize_ko), `rag/ragkit/build_index.py`(레거시 DuckDB),
+`geo/okf.py`(geo-OKF는 `python -m geo all`의 한 단계, 문서-OKF와 다른 계열),
+`services/shared/pageindex_client.py`+vendor(검색 쪽과 공유). msr 본체(진단·예측 cron 가동 중)도
+그대로 — "더 이상 안 쓸 예정"이라도 폐기는 별도 사이클.
+
+### 검증(worktree엔 data_lake 실데이터가 없어 정적·합성 위주)
+- cwd=inhouse import 스모크 18모듈 전부 OK, CLI 5종 `--help` exit 0.
+- 합성 PDF 1건(PyMuPDF 생성) → `ingest.pipeline.run_extraction()` → `parsers/pdf.py` →
+  `geo.extractors` 체인: status=extracted, 마크다운 헤딩·본문 정상(SMOKE PASS).
+- `build_okf_documents` 단독 import 시 `geo.extractors.PDF_MAXPAGES=500`(setdefault→import 순서 보존).
+- grep 불변식: 코드·셸·Containerfile에 `services.ingestion`/`./ingestion` 실참조 0(주석의
+  이력 표기만 남김), `restricted_diagnosis_only`를 소스로 참조하는 rag/ingest 코드 0
+  (restricted 스크립트 자신뿐), 남긴 ragkit 라이브러리·retrieval 모듈은 diff 무변경, crontab
+  에 옛 경로 호출 0.
+
+## 2026-08-27 — 광물자원가격 page_id 분리: "price" → price_base_metals/price_minor_metals
 
 사용자가 실제 KOMIS 사이트맵(캡처 근거, `streamlit_demo/komis_menu_map.yaml`)을
 확인해 report_gen의 `page_id="price"` 1개가 실제로는 서로 다른 서브메뉴 2개

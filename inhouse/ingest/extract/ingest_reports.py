@@ -1,15 +1,17 @@
 # -*- coding: utf-8 -*-
-"""보고서 폴더 텍스트 정형화 인제스터.
-  python -m scripts.ingest_reports <root> <out_parquet> [--zips]
+"""보고서 폴더 텍스트 정형화 인제스터(초기 pypdf 기반 — 표 구조 미보존, 레거시).
+  cd inhouse && python -m ingest.extract.ingest_reports <root> <out_parquet> [--zips]
+  (2026-08-27 mineral_supply_risk/scripts/ → ingest/extract/ 이동. 표 보존이 필요한
+   신규 작업은 같은 디렉토리의 pdf_extract_*.py / ingest.pipeline을 쓸 것.)
   - <root> 아래 .hwp/.pdf 텍스트 추출 → doc_raw 호환 스키마 parquet.
   - --zips: root 아래 .zip 내부의 .pdf 도 (해제 없이) 읽음.
   - 해시(md5) dedup, 폴더/파일명으로 source·commodity_hint·pub_date 추론.
 재사용: 로컬에서도 동일 실행. 대용량은 시간 소요 → nohup 백그라운드 권장.
 """
 import sys, os, io, re, hashlib, zipfile, time
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pandas as pd, pypdf
-from msr.utils import hwp_extract as hx
+from . import hwp_extract as hx
+from ingest import status as ingest_status
 
 BUDGET = float(os.environ.get("INGEST_BUDGET", "38"))   # 초; 이 시간 지나면 flush 후 종료(exit 3)
 PDF_MAXPAGES = int(os.environ.get("PDF_MAXPAGES", "60"))
@@ -93,33 +95,56 @@ def walk(root, do_zips):
                 except Exception as e:
                     print("  [zip err]", fp, e, flush=True)
 
+_STATUS_MAP = {"analyzed": "success", "hold": "skipped", "error": "failed"}
+
 def main():
     root=sys.argv[1]; out=sys.argv[2]; do_zips="--zips" in sys.argv[3:]
-    t0=time.time()
-    # 재개: 기존 parquet의 file_path/hash 로드
-    done_paths=set(); done_hash=set(); prev=None
-    if os.path.exists(out):
-        prev=pd.read_parquet(out)
-        done_paths=set(prev["file_path"]); done_hash=set(prev["file_hash"])
-    rows=[]; n=0; timed_out=False
-    for name, path, fmt, data in walk(root, do_zips):
-        if path in done_paths: continue
-        if data is None:
-            with open(path,"rb") as f: data=f.read()
-        h=hashlib.md5(data).hexdigest()
-        if h in done_hash:
-            done_paths.add(path); continue
-        done_hash.add(h); done_paths.add(path)
-        rows.append(make_row(name, path, fmt, data)); n+=1
-        if n%25==0: print(f"  +{n} (last: {name[:45]}) {time.time()-t0:.0f}s", flush=True)
-        if time.time()-t0 > BUDGET:
-            timed_out=True; break
-    # flush
-    df = pd.concat([prev, pd.DataFrame(rows)], ignore_index=True) if prev is not None else pd.DataFrame(rows)
-    if len(df.columns): df.to_parquet(out, index=False)
-    print(f"\n이번 실행 +{n}건 | 누적 {len(df)}건 | {'PARTIAL(더 있음)' if timed_out else 'DONE(폴더 완료)'}", flush=True)
-    if len(df):
-        print("status:", df["status"].value_counts().to_dict())
+    with ingest_status.pipeline_run(
+        "extract.ingest_reports", args={"root": root, "out": out, "zips": do_zips}
+    ) as run:
+        t0=time.time()
+        # 재개: 기존 parquet의 file_path/hash 로드
+        done_paths=set(); done_hash=set(); prev=None
+        if os.path.exists(out):
+            prev=pd.read_parquet(out)
+            done_paths=set(prev["file_path"]); done_hash=set(prev["file_hash"])
+        rows=[]; n=0; timed_out=False
+        for name, path, fmt, data in walk(root, do_zips):
+            if path in done_paths: continue
+            if data is None:
+                with open(path,"rb") as f: data=f.read()
+            h=hashlib.md5(data).hexdigest()
+            if h in done_hash:
+                done_paths.add(path); continue
+            done_hash.add(h); done_paths.add(path)
+            rows.append(make_row(name, path, fmt, data)); n+=1
+            if n%25==0: print(f"  +{n} (last: {name[:45]}) {time.time()-t0:.0f}s", flush=True)
+            if time.time()-t0 > BUDGET:
+                timed_out=True; break
+        # flush
+        df = pd.concat([prev, pd.DataFrame(rows)], ignore_index=True) if prev is not None else pd.DataFrame(rows)
+        if len(df.columns): df.to_parquet(out, index=False)
+        print(f"\n이번 실행 +{n}건 | 누적 {len(df)}건 | {'PARTIAL(더 있음)' if timed_out else 'DONE(폴더 완료)'}", flush=True)
+        if len(df):
+            print("status:", df["status"].value_counts().to_dict())
+        run.metrics.update({"new_rows": n, "cumulative": len(df), "timed_out": timed_out})
+
+        # 파일 단위 기록 — 이번 실행에서 실제로 flush된 rows만(부분 실행이면 그만큼만 정직하게)
+        status_con = ingest_status.pg_connect_safe()
+        try:
+            for r in rows:
+                ingest_status.upsert_source_file(
+                    r["doc_id"], file_name=r["file_name"], file_ext=r["fmt"],
+                    source_path=r["file_path"], source_group=r["source"],
+                    commodity_hint=r["commodity_hint"],
+                    doc_date=ingest_status.parse_iso_date(r["pub_date"]), con=status_con,
+                )
+                ingest_status.upsert_file_stage_status(
+                    r["doc_id"], "extract", _STATUS_MAP.get(r["status"], "skipped"),
+                    n_chars=r["n_chars"], error_message=r["error_msg"] or None, con=status_con,
+                )
+        finally:
+            ingest_status.commit_close_safe(status_con)
     sys.exit(3 if timed_out else 0)
 
 if __name__=="__main__": main()

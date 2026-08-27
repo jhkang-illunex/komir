@@ -367,6 +367,21 @@ komir 쪽에서 이 구간에 대해 아는 건 "인터페이스 지점"뿐 — 
 
 ### 5-3. in-house ingestion — 공용 LLM ETL 엔진 (신규 통합 설계)
 
+> **경로 이관(2026-08-27)**: 이 절에서 `inhouse/services/ingestion/…`으로 적힌 코드는 전부
+> `inhouse/ingest/`로 옮겨 독립 패키지가 됐다(`parsers/`·`pipeline.py`는 그대로,
+> 빌더는 `ingest/okf/`·`ingest/pageindex/`·`ingest/vectorize/` 하위). 같은 날
+> `rag/ragkit/{pdf_extract,build_pgvector_index}.py`와 `mineral_supply_risk`의 파일 추출기
+> 4종(`pdf_extract_restricted`·`ingest_reports`·`extract_woodmac_xls`·`hwp_extract`)도
+> `ingest/extract/`·`ingest/vectorize/`로 합류. 아래 본문의 옛 경로 표기는 그 시점 기록이라
+> 갱신하지 않았다 — 현재 구조·실행법은 `inhouse/ingest/README.md`가 정본.
+>
+> **구현 완료(2026-08-27, 같은 날)**: 이 절이 예고한 "매주 일요일 트리거"는
+> `ingest/Containerfile`(supercronic, `deploy/{docker,podman}-compose.yml`의
+> `ingestion` 서비스)로 구현됐다. Postgres에 파이프라인 실행상태·파일별 처리현황을
+> 기록하는 `ingest` 스키마(`pipeline_run`·`source_file`·`file_stage_status`)와
+> `ingest/status.py`도 함께 도입 — streamlit_demo의 "ETL 과정" 탭이 이 스키마를
+> 직접 읽는다. 상세는 `inhouse/ingest/README.md` "컨테이너" 절.
+
 기존 8/5안은 `inhouse/services/ingestion/parsers/*`(포맷별 파서)가 텍스트+표를 마크다운으로
 정규화한 뒤 `inhouse/rag/ragkit`의 `chunk.py`에 태우는 **RAG 전용** 경로였다. 8/6 대화에서
 이걸 **진단/예측 모델의 비정형 피처 파이프라인(`inhouse/geo`의 LLM 추출 엔진)과

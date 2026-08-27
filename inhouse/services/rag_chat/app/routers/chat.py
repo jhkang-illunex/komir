@@ -70,7 +70,7 @@ def _find_root(start: Path, marker: str) -> Path:
     소스트리(inhouse/services/rag_chat/app/routers/chat.py)와 컨테이너 배포본
     (Containerfile이 services/rag_chat/app→./app, services/shared→./shared,
     rag/ragkit→./rag/ragkit로 평평하게 COPY)의 상대 깊이가 다르다 — 고정 depth
-    대신 탐색으로 두 경우를 다 맞춘다(services/shared/db.py·services/ingestion/
+    대신 탐색으로 두 경우를 다 맞춘다(services/shared/db.py·ingest/
     parsers/pdf.py와 같은 패턴)."""
 
     for candidate in (start, *start.parents):

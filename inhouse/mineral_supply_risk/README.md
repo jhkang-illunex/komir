@@ -51,7 +51,6 @@ mineral_supply_risk/
 │  │  ├─ alert.py               #   경보 4단계(자원안보특별법)
 │  │  └─ alert_reason.py        #   경보 사유 생성
 │  ├─ storage/db.py             #   DuckDB 적재·Parquet 내보내기(운영DB 이관)
-│  ├─ utils/hwp_extract.py      #   HWP 텍스트 추출(한컴 불필요)
 │  └─ pipeline.py               #   오케스트레이션(collect→features→train)
 ├─ scripts/
 │  ├─ run.py                    #   CLI 진입점

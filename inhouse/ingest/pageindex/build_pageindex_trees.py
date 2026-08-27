@@ -17,12 +17,13 @@ build_tree_from_markdown()`만 통해 호출한다(vendored `pageindex_lib` 직�
 (OKF 파일 줄번호 = line_num + body_line_offset).
 
 실행(주의: `.env`의 LLM_BASE_URL이 컨테이너 기준 host.docker.internal이라 호스트
-셸에서 돌릴 땐 환경변수로 덮어써야 한다 — 환경변수가 env_file보다 우선):
+셸에서 돌릴 땐 환경변수로 덮어써야 한다 — 환경변수가 env_file보다 우선;
+2026-08-27 services/ingestion/ → ingest/pageindex/ 이동):
     cd inhouse
     LLM_BASE_URL=http://localhost:52302/v1 \
-      python3 -m services.ingestion.build_pageindex_trees --limit 10
+      python3 -m ingest.pageindex.build_pageindex_trees --limit 10
     LLM_BASE_URL=http://localhost:52302/v1 \
-      python3 -m services.ingestion.build_pageindex_trees --no-summary   # LLM 없이 구조만
+      python3 -m ingest.pageindex.build_pageindex_trees --no-summary   # LLM 없이 구조만
 """
 from __future__ import annotations
 
@@ -41,6 +42,8 @@ import yaml
 _INHOUSE_ROOT = Path(__file__).resolve().parents[2]
 if str(_INHOUSE_ROOT) not in sys.path:
     sys.path.insert(0, str(_INHOUSE_ROOT))
+
+from ingest import status as ingest_status  # noqa: E402
 
 OKF_DOCUMENTS_ROOT = _INHOUSE_ROOT / "data_lake/semi_structure/okf_documents"
 PAGEINDEX_TREES_ROOT = _INHOUSE_ROOT / "data_lake/semi_structure/pageindex_trees"
@@ -178,35 +181,53 @@ def build_all(
 
     done, failed, skipped = 0, 0, 0
     elapsed_total = 0.0
-    for index, okf_path in enumerate(paths, start=1):
-        rel = okf_path.relative_to(okf_root).as_posix()
-        started = time.monotonic()
-        try:
-            tree = build_tree_for_okf(
-                okf_path, with_summary=with_summary, model=model, okf_root=okf_root
+    status_con = ingest_status.pg_connect_safe()
+    try:
+        for index, okf_path in enumerate(paths, start=1):
+            rel = okf_path.relative_to(okf_root).as_posix()
+            started = time.monotonic()
+            try:
+                tree = build_tree_for_okf(
+                    okf_path, with_summary=with_summary, model=model, okf_root=okf_root
+                )
+            except Exception as e:  # noqa: BLE001 - 한 문서 실패가 배치 전체를 막지 않게
+                failed += 1
+                print(f"  [{index}/{len(paths)}] FAIL {rel}", flush=True)
+                traceback.print_exc()
+                try:
+                    front, _, _ = split_frontmatter(okf_path.read_text(encoding="utf-8"))
+                    fid = ingest_status.normalize_file_id(front.get("doc_id", ""))
+                    if fid:
+                        ingest_status.upsert_file_stage_status(
+                            fid, "pageindex", "failed", error_message=str(e)[:2000], con=status_con,
+                        )
+                except Exception:  # noqa: BLE001 - 상태기록 실패는 무시(원본 실패만 카운트)
+                    pass
+                continue
+            fid = ingest_status.normalize_file_id(tree["doc_id"])
+            if not tree["structure"]:
+                skipped += 1
+                print(f"  [{index}/{len(paths)}] 노드 0개(헤딩 없음) — 건너뜀: {rel}", flush=True)
+                if fid:
+                    ingest_status.upsert_file_stage_status(fid, "pageindex", "skipped", con=status_con)
+                continue
+            out_path = _tree_path(okf_path, trees_root, okf_root)
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            out_path.write_text(
+                json.dumps(tree, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
             )
-        except Exception:  # noqa: BLE001 - 한 문서 실패가 배치 전체를 막지 않게
-            failed += 1
-            print(f"  [{index}/{len(paths)}] FAIL {rel}", flush=True)
-            traceback.print_exc()
-            continue
-        if not tree["structure"]:
-            skipped += 1
-            print(f"  [{index}/{len(paths)}] 노드 0개(헤딩 없음) — 건너뜀: {rel}", flush=True)
-            continue
-        out_path = _tree_path(okf_path, trees_root, okf_root)
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(
-            json.dumps(tree, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-        )
-        took = time.monotonic() - started
-        elapsed_total += took
-        done += 1
-        print(
-            f"  [{index}/{len(paths)}] {rel} — 노드 {count_nodes(tree['structure'])}개, "
-            f"{took:.1f}초",
-            flush=True,
-        )
+            took = time.monotonic() - started
+            elapsed_total += took
+            done += 1
+            if fid:
+                ingest_status.upsert_file_stage_status(fid, "pageindex", "success", con=status_con)
+            print(
+                f"  [{index}/{len(paths)}] {rel} — 노드 {count_nodes(tree['structure'])}개, "
+                f"{took:.1f}초",
+                flush=True,
+            )
+    finally:
+        ingest_status.commit_close_safe(status_con)
     return {
         "target_count": len(paths),
         "done": done,
@@ -228,16 +249,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--model", default=None)
     args = parser.parse_args(argv)
 
-    summary = build_all(
-        okf_root=Path(args.okf_root).expanduser().resolve(),
-        trees_root=Path(args.trees_root).expanduser().resolve(),
-        with_summary=not args.no_summary,
-        limit=args.limit,
-        pattern=args.pattern,
-        force=args.force,
-        model=args.model,
-    )
-    print(json.dumps(summary, ensure_ascii=False))
+    with ingest_status.pipeline_run("pageindex.build_pageindex_trees", args=vars(args)) as run:
+        summary = build_all(
+            okf_root=Path(args.okf_root).expanduser().resolve(),
+            trees_root=Path(args.trees_root).expanduser().resolve(),
+            with_summary=not args.no_summary,
+            limit=args.limit,
+            pattern=args.pattern,
+            force=args.force,
+            model=args.model,
+        )
+        run.metrics.update(summary)
+        print(json.dumps(summary, ensure_ascii=False))
     return 0
 
 

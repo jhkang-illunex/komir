@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """문서-OKF(대용량 보고서 갈래: USGS·조달청보고서·Argus) → pgvector 청킹·임베딩.
 
-`rag/ragkit/build_pgvector_index.py`(documents/산출물 76건, `rag.ragkit.ingest.
+`build_pgvector_index.py`(같은 디렉토리, documents/산출물 76건, `rag.ragkit.ingest.
 load_documents()` 직접 소스)와 나란한 두 번째 적재 경로다 — 합치지 않은 이유:
 그 스크립트는 "이 테이블의 유일한 writer"를 전제로 매번 `DELETE FROM doc_chunk`
 전체를 지우고 재적재한다(주석에 명시). 이 스크립트가 같은 방식으로 돌면 서로
@@ -12,15 +12,16 @@ load_documents()` 직접 소스)와 나란한 두 번째 적재 경로다 — �
 encode_passages`)은 그대로 재사용 — DocRecord를 OKF 파일의 YAML 프론트매터에서
 구성해 넘긴다(본문만 청킹 대상, 프론트매터는 제외).
 
-실행(cwd=inhouse/):
-    python -m services.ingestion.build_pgvector_okf
-    python -m services.ingestion.build_pgvector_okf --source-group 조달청보고서
+실행(cwd=inhouse/; 2026-08-27 services/ingestion/ → ingest/vectorize/ 이동):
+    python -m ingest.vectorize.build_pgvector_okf
+    python -m ingest.vectorize.build_pgvector_okf --source-group 조달청보고서
 """
 from __future__ import annotations
 
 import argparse
 import datetime as dt
 import sys
+from collections import Counter
 from pathlib import Path
 
 import yaml
@@ -29,13 +30,14 @@ _INHOUSE_ROOT = Path(__file__).resolve().parents[2]
 if str(_INHOUSE_ROOT) not in sys.path:
     sys.path.insert(0, str(_INHOUSE_ROOT))
 
+from ingest import status as ingest_status  # noqa: E402
 from rag.ragkit.chunk import chunk_document  # noqa: E402
 from rag.ragkit.embed import DIM, encode_passages  # noqa: E402
 from rag.ragkit.ingest import DocRecord  # noqa: E402
-from rag.ragkit.build_pgvector_index import _COLUMNS, _vector_literal  # noqa: E402
+from services.shared.db import pg_connect  # noqa: E402
+from services.shared.config import get_settings  # noqa: E402
 
-from shared.db import pg_connect  # noqa: E402
-from shared.config import get_settings  # noqa: E402
+from .build_pgvector_index import _COLUMNS, _vector_literal  # noqa: E402
 
 OKF_DOCUMENTS_ROOT = _INHOUSE_ROOT / "data_lake/semi_structure/okf_documents"
 
@@ -68,7 +70,10 @@ def _load_okf_record(path: Path) -> DocRecord:
     )
 
 
-def build(source_groups: tuple[str, ...] = SOURCE_GROUPS) -> int:
+def build(
+    source_groups: tuple[str, ...] = SOURCE_GROUPS,
+    run: "ingest_status.RunHandle | None" = None,
+) -> int:
     settings = get_settings()
     schema = settings.PG_SCHEMA  # mineral_risk — public엔 절대 안 씀
 
@@ -93,6 +98,20 @@ def build(source_groups: tuple[str, ...] = SOURCE_GROUPS) -> int:
             c.text, d.source_path, d.week, d.title, c.section_heading, len(c.text),
             SOURCE_TYPE, now, _vector_literal(vec),
         ))
+
+    # 재발 방지 가드(2026-08-27 실사고): OKF 마크다운 로딩이 0건이면(예: cwd가
+    # 잘못됐거나 data_lake/semi_structure/okf_documents/가 아직 비어있는 워크트리)
+    # 아래 DELETE(자기 src만 지우는 방식이라도)가 그대로 실행되고 재적재는 0행이라
+    # 그 갈래(USGS/조달청보고서/Argus)가 통째로 삭제된다(실측: 이 경로로
+    # mineral_risk.doc_chunk 138,825행 삭제 사고 발생, 원본이 살아있어 재생성으로
+    # 복구). 빈 결과로 기존 데이터를 지우지 않는다.
+    if not rows:
+        print(f"⚠ 청크 0개 — DELETE/재적재를 건너뜁니다(빈 코퍼스로 기존 "
+              f"{schema}.doc_chunk 갈래를 지우는 사고 방지). {OKF_DOCUMENTS_ROOT}/"
+              f"{{{','.join(source_groups)}}} 경로부터 확인할 것.", flush=True)
+        if run is not None:
+            run.metrics.update({"docs": len(paths), "chunks": 0, "aborted_empty": True})
+        return 0
 
     from psycopg2.extras import execute_values
 
@@ -123,6 +142,33 @@ def build(source_groups: tuple[str, ...] = SOURCE_GROUPS) -> int:
         con.close()
 
     print(f"적재 완료: {schema}.doc_chunk — 기존 {deleted}행 삭제, {len(rows)}행 삽입, 대상갈래 현재 {total}행")
+    if run is not None:
+        run.metrics.update({"docs": len(paths), "chunks": len(rows), "deleted": deleted, "total": total})
+
+    # 파일별 청크 수·글자 수 집계 → ingest.source_file/file_stage_status
+    chunk_counts: Counter = Counter()
+    char_counts: Counter = Counter()
+    doc_by_id = {}
+    for d, c in all_chunks:
+        chunk_counts[d.doc_id] += 1
+        char_counts[d.doc_id] += len(c.text)
+        doc_by_id[d.doc_id] = d
+
+    status_con = ingest_status.pg_connect_safe()
+    try:
+        for doc_id, d in doc_by_id.items():
+            ingest_status.upsert_source_file(
+                doc_id, file_name=Path(d.source_path).name if d.source_path else doc_id,
+                file_ext=d.ext, source_path=d.source_path, source_group=d.week, con=status_con,
+            )
+        ingest_status.bulk_file_stage_status(
+            [(doc_id, "success", char_counts[doc_id], chunk_counts[doc_id], None)
+             for doc_id in doc_by_id],
+            stage="vectorize", con=status_con,
+        )
+    finally:
+        ingest_status.commit_close_safe(status_con)
+
     return total
 
 
@@ -130,4 +176,5 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--source-group", action="append", dest="groups", choices=SOURCE_GROUPS)
     args = ap.parse_args()
-    build(tuple(args.groups) if args.groups else SOURCE_GROUPS)
+    with ingest_status.pipeline_run("vectorize.build_pgvector_okf", args=vars(args)) as run:
+        build(tuple(args.groups) if args.groups else SOURCE_GROUPS, run=run)

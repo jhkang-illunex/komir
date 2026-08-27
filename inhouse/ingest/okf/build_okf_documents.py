@@ -10,24 +10,25 @@
 이 문서-OKF가 §5-4의 두 검색 도구(② Qdrant 청킹, ③ PageIndex 트리)의 공통
 소스가 된다.
 
-**왜 services/ingestion/에 두는가**: §5-3이 문서-OKF를 in-house ingestion(공용
+**왜 ingest/ 패키지에 두는가**: §5-3이 문서-OKF를 in-house ingestion(공용
 LLM ETL 엔진)의 산출물로 정의하고, 대용량 원본(PDF/HWP) 경로가 이미 여기
-`pipeline.run_extraction()`이라 입력 두 갈래 중 하나가 이 패키지 안에 있다.
+`ingest.pipeline.run_extraction()`이라 입력 두 갈래 중 하나가 이 패키지 안에 있다.
 (rag/ragkit/ 쪽은 "RAG 인덱스 전용" 경로라 Report 생성기도 쓰는 산출물의
-생산자로는 맞지 않다.)
+생산자로는 맞지 않다.) 2026-08-27 services/ingestion/ → inhouse/ingest/okf/로
+이동(파일 기반 문서 ETL을 서빙 레이어에서 떼어 독립 패키지화, ingest/README.md).
 
 입력 두 갈래:
   1. `rag.ragkit.ingest.load_documents()` — documents/산출물(md·docx) + 외부공개
      PDF ETL 산출물. 이미 텍스트로 펼쳐져 있으므로 재파싱하지 않는다.
-  2. `services.ingestion.pipeline.run_extraction()` — 대용량 PDF 원본
+  2. `ingest.pipeline.run_extraction()` — 대용량 PDF 원본
      (현재는 USGS 8건). opendataloader-pdf→pypdf→OCR 폴백 체인으로 마크다운
      (표 포함) 추출.
 
 실행:
     cd inhouse
-    python -m services.ingestion.build_okf_documents --what all
-    python -m services.ingestion.build_okf_documents --what artifacts   # 산출물만
-    python -m services.ingestion.build_okf_documents --what usgs        # USGS만
+    python -m ingest.okf.build_okf_documents --what all
+    python -m ingest.okf.build_okf_documents --what artifacts   # 산출물만
+    python -m ingest.okf.build_okf_documents --what usgs        # USGS만
 """
 from __future__ import annotations
 
@@ -45,6 +46,8 @@ _INHOUSE_ROOT = Path(__file__).resolve().parents[2]
 _REPO_ROOT = _INHOUSE_ROOT.parent
 if str(_INHOUSE_ROOT) not in sys.path:
     sys.path.insert(0, str(_INHOUSE_ROOT))
+
+from ingest import status as ingest_status  # noqa: E402
 
 # geo/extractors.py는 import 시점에 PDF_MAXPAGES(기본 40)를 읽어 opendataloader
 # 변환 범위를 `1-40`으로 고정한다 — GKG 뉴스 PDF(수 페이지)엔 맞지만 연간 보고서엔
@@ -211,25 +214,37 @@ def build_from_artifacts(out_root: Path = OKF_DOCUMENTS_ROOT, limit: int | None 
         docs = docs[:limit]
     used: set[Path] = set()
     written: list[Path] = []
-    for rec in docs:
-        rel = _rel_to_repo(rec.source_path)
-        source_group, subdirs = _classify(rel, rec.week)
-        description = f"{source_group} · {rec.series_key}" if rec.series_key else source_group
-        text = render_okf(
-            title=rec.title,
-            description=description,
-            resource=rel,
-            doc_id=rec.doc_id,
-            source_group=source_group,
-            fmt=rec.ext,
-            body=rec.raw_text,
-            tags=["document-source", "산출물" if source_group.startswith("산출물") else "외부자료"],
-            extra={"series_key": rec.series_key, "doc_date": rec.doc_date},
-        )
-        stem = _safe_name(Path(rel).stem)
-        path = _unique_path(out_root.joinpath(*subdirs) / f"{stem}.md", used)
-        _write(path, text)
-        written.append(path)
+    status_con = ingest_status.pg_connect_safe()
+    try:
+        for rec in docs:
+            rel = _rel_to_repo(rec.source_path)
+            source_group, subdirs = _classify(rel, rec.week)
+            description = f"{source_group} · {rec.series_key}" if rec.series_key else source_group
+            text = render_okf(
+                title=rec.title,
+                description=description,
+                resource=rel,
+                doc_id=rec.doc_id,
+                source_group=source_group,
+                fmt=rec.ext,
+                body=rec.raw_text,
+                tags=["document-source", "산출물" if source_group.startswith("산출물") else "외부자료"],
+                extra={"series_key": rec.series_key, "doc_date": rec.doc_date},
+            )
+            stem = _safe_name(Path(rel).stem)
+            path = _unique_path(out_root.joinpath(*subdirs) / f"{stem}.md", used)
+            _write(path, text)
+            written.append(path)
+            ingest_status.upsert_source_file(
+                rec.doc_id, file_name=Path(rec.source_path).name, file_ext=rec.ext,
+                source_path=rel, source_group=source_group,
+                doc_date=ingest_status.parse_yymmdd_date(rec.doc_date), con=status_con,
+            )
+            ingest_status.upsert_file_stage_status(
+                rec.doc_id, "okf", "success", n_chars=len(text), con=status_con,
+            )
+    finally:
+        ingest_status.commit_close_safe(status_con)
     return written
 
 
@@ -246,10 +261,10 @@ def _extract_pdf_group(
 ) -> Path:
     """대용량 PDF 원본 그룹 1개를 기존 ingestion 파이프라인으로 추출(documents.jsonl 반환).
 
-    USGS·조달청보고서·Argus가 전부 같은 경로(services.ingestion.pipeline.
-    run_extraction)를 탄다 — 그룹별 위치·정책만 다르다."""
+    USGS·조달청보고서·Argus가 전부 같은 경로(ingest.pipeline.run_extraction)를
+    탄다 — 그룹별 위치·정책만 다르다."""
 
-    from services.ingestion.pipeline import run_extraction
+    from ingest.pipeline import run_extraction
 
     def _progress(index: int, total: int, path: Path) -> None:
         print(f"  [{index}/{total}] {path.name}", flush=True)
@@ -288,34 +303,56 @@ def _build_from_pdf_group(
 
     used: set[Path] = set()
     written: list[Path] = []
-    with jsonl_path.open(encoding="utf-8") as handle:
-        for line in handle:
-            if not line.strip():
-                continue
-            record = json.loads(line)
-            if record.get("status") != "extracted" or not (record.get("text") or "").strip():
-                print(f"  [skip] {record.get('source_relative_path')} — status={record.get('status')}")
-                continue
-            rel = (data_root / record["source_relative_path"]).resolve().relative_to(_REPO_ROOT).as_posix()
-            text = render_okf(
-                title=record["title"],
-                description=f"{out_dirname} · {description_suffix}",
-                resource=rel,
-                doc_id=record["document_id"],
-                source_group=out_dirname,
-                fmt=record["extension"].lstrip("."),
-                body=record["text"],
-                tags=tags,
-                extra={
-                    "content_sha256": record.get("content_sha256"),
-                    "parser": record.get("parser_name"),
-                    "table_count": record.get("table_count"),
-                },
-            )
-            stem = _safe_name(Path(rel).stem)
-            path = _unique_path(out_root / out_dirname / f"{stem}.md", used)
-            _write(path, text)
-            written.append(path)
+    status_con = ingest_status.pg_connect_safe()
+    try:
+        with jsonl_path.open(encoding="utf-8") as handle:
+            for line in handle:
+                if not line.strip():
+                    continue
+                record = json.loads(line)
+                fid = ingest_status.normalize_file_id(record["document_id"])
+                rel = (data_root / record["source_relative_path"]).resolve().relative_to(_REPO_ROOT).as_posix()
+                if record.get("status") != "extracted" or not (record.get("text") or "").strip():
+                    print(f"  [skip] {record.get('source_relative_path')} — status={record.get('status')}")
+                    ingest_status.upsert_source_file(
+                        fid, file_name=Path(rel).name, file_ext=record.get("extension", "").lstrip("."),
+                        source_path=rel, source_group=out_dirname, con=status_con,
+                    )
+                    ingest_status.upsert_file_stage_status(
+                        fid, "extract",
+                        "failed" if record.get("status") == "parse_failed" else "skipped",
+                        error_message=f"extract status={record.get('status')}", con=status_con,
+                    )
+                    continue
+                text = render_okf(
+                    title=record["title"],
+                    description=f"{out_dirname} · {description_suffix}",
+                    resource=rel,
+                    doc_id=record["document_id"],
+                    source_group=out_dirname,
+                    fmt=record["extension"].lstrip("."),
+                    body=record["text"],
+                    tags=tags,
+                    extra={
+                        "content_sha256": record.get("content_sha256"),
+                        "parser": record.get("parser_name"),
+                        "table_count": record.get("table_count"),
+                    },
+                )
+                stem = _safe_name(Path(rel).stem)
+                path = _unique_path(out_root / out_dirname / f"{stem}.md", used)
+                _write(path, text)
+                written.append(path)
+                ingest_status.upsert_source_file(
+                    fid, file_name=Path(rel).name, file_ext=record["extension"].lstrip("."),
+                    source_path=rel, source_group=out_dirname, con=status_con,
+                )
+                ingest_status.upsert_file_stage_status(fid, "extract", "success", con=status_con)
+                ingest_status.upsert_file_stage_status(
+                    fid, "okf", "success", n_chars=len(record["text"]), con=status_con,
+                )
+    finally:
+        ingest_status.commit_close_safe(status_con)
     return written
 
 
@@ -394,29 +431,35 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--force", action="store_true", help="PDF 갈래: 캐시 무시 재추출")
     args = parser.parse_args(argv)
 
-    out_root = Path(args.out).expanduser().resolve()
-    total = 0
-    if args.what in ("artifacts", "all"):
-        print("documents/산출물 → 문서-OKF", flush=True)
-        written = build_from_artifacts(out_root, limit=args.limit)
-        print(f"  {len(written)}건 생성 → {out_root}", flush=True)
-        total += len(written)
-    if args.what in ("usgs", "all"):
-        print(f"{USGS_SOURCE_GROUP} → 문서-OKF", flush=True)
-        written = build_from_usgs(out_root, force=args.force)
-        print(f"  {len(written)}건 생성 → {out_root / USGS_OUT_DIRNAME}", flush=True)
-        total += len(written)
-    if args.what in ("jodalcheong", "all"):
-        print(f"{JODALCHEONG_SOURCE_GROUP} → 문서-OKF", flush=True)
-        written = build_from_jodalcheong(out_root, force=args.force)
-        print(f"  {len(written)}건 생성 → {out_root / JODALCHEONG_OUT_DIRNAME}", flush=True)
-        total += len(written)
-    if args.what in ("argus", "all"):
-        print(f"{ARGUS_SOURCE_GROUP}(유료구독, 내부전용) → 문서-OKF", flush=True)
-        written = build_from_argus(out_root, force=args.force)
-        print(f"  {len(written)}건 생성 → {out_root / ARGUS_OUT_DIRNAME}", flush=True)
-        total += len(written)
-    print(f"완료: 문서-OKF {total}건")
+    with ingest_status.pipeline_run("okf.build_okf_documents", args=vars(args)) as run:
+        out_root = Path(args.out).expanduser().resolve()
+        total = 0
+        if args.what in ("artifacts", "all"):
+            print("documents/산출물 → 문서-OKF", flush=True)
+            written = build_from_artifacts(out_root, limit=args.limit)
+            print(f"  {len(written)}건 생성 → {out_root}", flush=True)
+            total += len(written)
+            run.metrics["artifacts"] = len(written)
+        if args.what in ("usgs", "all"):
+            print(f"{USGS_SOURCE_GROUP} → 문서-OKF", flush=True)
+            written = build_from_usgs(out_root, force=args.force)
+            print(f"  {len(written)}건 생성 → {out_root / USGS_OUT_DIRNAME}", flush=True)
+            total += len(written)
+            run.metrics["usgs"] = len(written)
+        if args.what in ("jodalcheong", "all"):
+            print(f"{JODALCHEONG_SOURCE_GROUP} → 문서-OKF", flush=True)
+            written = build_from_jodalcheong(out_root, force=args.force)
+            print(f"  {len(written)}건 생성 → {out_root / JODALCHEONG_OUT_DIRNAME}", flush=True)
+            total += len(written)
+            run.metrics["jodalcheong"] = len(written)
+        if args.what in ("argus", "all"):
+            print(f"{ARGUS_SOURCE_GROUP}(유료구독, 내부전용) → 문서-OKF", flush=True)
+            written = build_from_argus(out_root, force=args.force)
+            print(f"  {len(written)}건 생성 → {out_root / ARGUS_OUT_DIRNAME}", flush=True)
+            total += len(written)
+            run.metrics["argus"] = len(written)
+        run.metrics["total"] = total
+        print(f"완료: 문서-OKF {total}건")
     return 0
 
 

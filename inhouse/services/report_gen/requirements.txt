@@ -12,12 +12,12 @@ apscheduler>=3.10  # app/scheduler.py — REPORT_SCHEDULE_CRON 주기 실행
 duckdb>=1.1    # mineral_supply_risk/db/dbio.py(services/shared/db.py가 재노출)
 pandas>=2.0    # 〃
 
-# services/shared·services/ingestion 공용(2026-08-11, 병합계획 문서 참고:
+# services/shared·ingest(구 services/ingestion, 2026-08-27 이동) 공용(2026-08-11, 병합계획 문서 참고:
 # 병합계획_komis-report-generator_260811.md)
 pydantic>=2.5
 pydantic-settings>=2.5  # services/shared/config.py
 requests>=2.31          # geo/llm/openai_compat.py(services/shared/llm_client.py가 재노출)
-pyhwp>=0.1b15         # HWP 구조 파서(services/ingestion/parsers/hwp.py)
+pyhwp>=0.1b15         # HWP 구조 파서(ingest/parsers/hwp.py)
 opendataloader-pdf>=2.4  # PDF 파서가 import하는 geo.extractors의 의존성(Java 11+ 필요)
 PyMuPDF>=1.24
 easyocr>=1.7

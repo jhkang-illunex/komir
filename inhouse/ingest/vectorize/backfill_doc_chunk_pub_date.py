@@ -6,7 +6,7 @@
 있는데도 못 찾은 걸 확인 — dense 검색이 순수 코사인 유사도 top-k라 날짜를 전혀 못 씀.
 `mineral_risk.doc_chunk.pub_date` 컬럼이 이미 있길래 쓰려고 봤더니 **140,031행 중
 783행(0.6%)만 채워져 있고 Argus는 0건**이었다(직접 쿼리 확인) — 큰 배치 3종(Argus·
-USGS·조달청보고서)은 `services/ingestion/build_okf_documents.py`가 title에 날짜를
+USGS·조달청보고서)은 `ingest/okf/build_okf_documents.py`(구 services/ingestion/)가 title에 날짜를
 담아뒀을 뿐 pub_date 컬럼으로 넘기는 코드가 없었다.
 
 파싱 대상 title 패턴(실측 확인, 광종/화폐 등은 안 건드림 — title만 정규식 매칭):
@@ -22,7 +22,7 @@ doc_id 단위로 한 번만 파싱해 (doc_id → date) 매핑을 만든 뒤 단
 반영한다(청크당 개별 UPDATE 140,031번 대신 doc 단위 ~수천 번짜리 VALUES 조인 — 채팅
 연결 왕복 비용 절감).
 
-실행: python3 -m services.ingestion.backfill_doc_chunk_pub_date [--dry-run]
+실행(cwd=inhouse/): python3 -m ingest.vectorize.backfill_doc_chunk_pub_date [--dry-run]
 """
 from __future__ import annotations
 
@@ -35,6 +35,7 @@ _INHOUSE_ROOT = Path(__file__).resolve().parents[2]
 if str(_INHOUSE_ROOT) not in sys.path:
     sys.path.insert(0, str(_INHOUSE_ROOT))
 
+from ingest import status as ingest_status  # noqa: E402
 from services.shared.config import get_settings  # noqa: E402
 from services.shared.db import pg_connect  # noqa: E402
 
@@ -122,4 +123,10 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
-    run(dry_run=args.dry_run)
+    # 변수명 rh(RunHandle) — 지역함수 run()과 이름이 겹치지 않게(`as run`으로 받으면
+    # run() 호출이 깨진다).
+    with ingest_status.pipeline_run(
+        "vectorize.backfill_doc_chunk_pub_date", args=vars(args)
+    ) as rh:
+        result = run(dry_run=args.dry_run)
+        rh.metrics.update(result)

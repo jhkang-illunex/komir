@@ -13,7 +13,9 @@ rag/
     chunk.py                 # 마크다운 헤딩 기준 청킹 + 긴 섹션 문단분할
     tokenize_ko.py            # 한글 BM25용 글자 바이그램+ASCII토큰 전처리
     embed.py                  # dense 임베딩(intfloat/multilingual-e5-small, 로컬)
-    build_index.py            # 위 전부 -> rag/index/rag.duckdb 적재 + FTS 인덱스
+    build_index.py            # 위 전부 -> rag/index/rag.duckdb 적재 + FTS 인덱스(레거시 DuckDB 경로)
+    # pgvector 적재(build_pgvector_index.py)·외부공개 PDF ETL(pdf_extract.py)은 2026-08-27
+    # inhouse/ingest/{vectorize,extract}/로 이동 — ingest/README.md 참고
     retrieve.py                # 하이브리드 검색(BM25+dense, RRF 융합)
     generate.py                 # 인용강제 답변 생성 + 날조인용 제거 + 기권
     eval_retrieval.py            # 골든셋(estimate_question) 기반 recall@k/MRR 평가

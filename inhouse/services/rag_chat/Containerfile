@@ -39,11 +39,13 @@ COPY rag/ragkit ./rag/ragkit
 # 바로 깨졌을 지점(소스트리 실행에서는 상위 sys.path 삽입으로 가려져 안 드러났음).
 COPY geo/llm ./geo/llm
 
-# services/ingestion(2026-08-11 신설, 병합계획_komis-report-generator_260811.md) —
-# PDF 파서가 geo.extractors(opendataloader+OCR 폴백 체인)를 그대로 재사용하므로
-# geo 패키지 중 그 파일만 최소 COPY(geo/ 전체엔 collectors 등 이 서비스에 불필요한
-# 코드가 많음 — 이번 이식 범위에선 extractors.py가 유일한 in-package 의존성).
-COPY services/ingestion ./ingestion
+# ingest/(2026-08-11 services/ingestion으로 신설 → 2026-08-27 inhouse/ingest/로
+# 독립 패키지화, 병합계획_komis-report-generator_260811.md) — PDF 파서가
+# geo.extractors(opendataloader+OCR 폴백 체인)를 그대로 재사용하므로 geo 패키지 중
+# 그 파일만 최소 COPY(geo/ 전체엔 collectors 등 이 서비스에 불필요한 코드가 많음 —
+# extractors.py가 유일한 in-package 의존성). 패키지명이 ingest로 바뀌었으니
+# 컨테이너 안 경로도 ./ingest(소스트리와 동일 상대경로).
+COPY ingest ./ingest
 COPY geo/__init__.py ./geo/__init__.py
 COPY geo/extractors.py ./geo/extractors.py
 

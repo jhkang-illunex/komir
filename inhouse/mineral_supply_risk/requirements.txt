@@ -21,6 +21,6 @@ akshare>=1.18  # 2026-07-24: collect_exchange_inventory.py (SHFE·GFEX 재고 �
 streamlit>=1.61  # 2026-08-05: dashboard_expire/streamlit_app.py(구 dashboards/) 모델 체크 데모
 plotly>=6.0      # 2026-08-05: 〃 (차트)
 opendataloader-pdf>=2.4  # 2026-08-10: 0807 비축월보 등 표 포함 PDF ETL(Java 11+ 필요, 로컬/오프라인 동작)
-PyMuPDF>=1.24     # 〃 pdf_extract_restricted.py OCR 폴백용(geo.extractors.extract_with_fallback 재사용, import명 fitz)
+PyMuPDF>=1.24     # 〃 (구 scripts/pdf_extract_restricted.py OCR 폴백용 — 2026-08-27 inhouse/ingest/extract/로 이동, ingest/requirements.txt 참고)
 easyocr>=1.7      # 〃 〃 스캔본 OCR 폴백(ko/en, CPU)
 psycopg2-binary>=2.9  # 2026-08-10: migrate_duckdb_to_postgres.py의 CREATE DATABASE(duckdb postgres 확장이 못 태우는 서버 DDL)

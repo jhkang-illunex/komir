@@ -15,10 +15,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY services/report_gen/app ./app
 COPY services/shared ./shared
 
-# services/ingestion(2026-08-11 신설, 병합계획_komis-report-generator_260811.md) —
-# RAG·Report 겸용 공통 모듈(§5-3). PDF 파서가 geo.extractors(opendataloader+OCR
-# 폴백 체인)를 재사용하므로 geo 패키지 중 그 파일만 최소 COPY.
-COPY services/ingestion ./ingestion
+# ingest/(2026-08-11 services/ingestion으로 신설 → 2026-08-27 inhouse/ingest/로
+# 독립 패키지화, 병합계획_komis-report-generator_260811.md) — RAG·Report 겸용 공통
+# 모듈(§5-3). PDF 파서가 geo.extractors(opendataloader+OCR 폴백 체인)를 재사용하므로
+# geo 패키지 중 그 파일만 최소 COPY.
+COPY ingest ./ingest
 COPY geo/__init__.py ./geo/__init__.py
 COPY geo/extractors.py ./geo/extractors.py
 # geo/llm(2026-08-27) — shared/llm_client.py가 provider 무관 LLM 어댑터로

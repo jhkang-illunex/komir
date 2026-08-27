@@ -23,10 +23,10 @@ from pathlib import Path
 def _find_geo_root(start: Path) -> Path:
     """`geo/extractors.py`를 담은 디렉토리를 위로 훑어 찾는다.
 
-    소스 트리(inhouse/services/ingestion/parsers/pdf.py, 3단 위가 inhouse/)와
-    컨테이너 배포본(Containerfile이 services/ingestion→./ingestion, geo/→./geo로
-    한 단씩 평평하게 COPY, 2단 위가 /app)의 상대 깊이가 다르다 — 고정 깊이 대신
-    탐색으로 두 경우 다 맞춘다."""
+    소스 트리(inhouse/ingest/parsers/pdf.py, 3단 위가 inhouse/)와 컨테이너
+    배포본(Containerfile이 ingest→./ingest, geo/→./geo로 COPY, 3단 위가 /app)은
+    2026-08-27 이동 후 깊이가 같아졌지만, 과거(services/ingestion 시절)엔 달랐고
+    앞으로도 배포 레이아웃이 바뀔 수 있어 고정 깊이 대신 탐색으로 맞춘다."""
 
     for candidate in (start, *start.parents):
         if (candidate / "geo" / "extractors.py").is_file():
