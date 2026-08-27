@@ -59,6 +59,7 @@ pages = st.navigation(
         "관리": [
             st.Page(str(_VIEWS / "prompt_admin.py"), title="프롬프트 관리", icon=":material/tune:"),
             st.Page(str(_VIEWS / "data_admin.py"), title="데이터 관리", icon=":material/database:"),
+            st.Page(str(_VIEWS / "etl_status.py"), title="ETL 처리 현황", icon=":material/sync_alt:"),
         ],
     }
 )
