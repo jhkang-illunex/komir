@@ -20,9 +20,12 @@
 `prompt_store.py::PromptRow`·`REQUIRED_COLUMNS`에 없고 `prompts.py`도 읽지
 않는 참고용 메모일 뿐이라 편집창에 그 사실을 명시했다(입력창은 유지 — 메모
 용도 자체는 유효). 기능 테스트가 지금 어느 리포트 화면(9개 중 어느 것)을
-호출하는지 안 보이던 문제도 연결 화면 캡션·상단 전체목록으로 보완했다 —
-`PageSpec`엔 카테고리/그룹 필드가 없어(플랫 리스트) 실제 KOMIS 내비 계층
-구조는 확인 없이 임의로 만들지 않았다.
+호출하는지 안 보이던 문제도 연결 화면 캡션·상단 전체목록으로 보완했다.
+
+2026-08-27 추가 보완: `PageSpec.section`(주메뉴, page_recommend registry
+`identity.section`의 2026-07-16 실측값 — 상세는 report_gen_client.py의
+PageSpec docstring 참고)이 생겨서 prompt_key 선택창·전체목록·기능테스트
+페이지선택 3곳 모두 "주메뉴 > 서브메뉴 (page_id)" 형식으로 통일했다.
 """
 from __future__ import annotations
 
@@ -97,20 +100,27 @@ if prompts.empty:
     st.info("ai_cfg.cfg_prompt에 행이 없습니다.", icon=":material/info:")
     st.stop()
 
+def _prompt_key_label(pk: str) -> str:
+    if pk in PAGE_SPECS:
+        spec = PAGE_SPECS[pk]
+        return f"{spec.section} > {spec.label} — {pk}"
+    return f"[공통] {pk}"
+
+
 with st.expander(f"등록된 프롬프트 {len(prompts)}개 목록 — 공통 1 + 페이지별 {len(PAGE_SPECS)}개", expanded=False):
     overview = pd.DataFrame(
         {
             "prompt_key": pk,
             "연결된 화면": (
-                f"{PAGE_SPECS[pk].label} ({pk})" if pk in PAGE_SPECS
-                else "공통 서두 — 아래 9개 화면 전체에 적용"
+                f"{PAGE_SPECS[pk].section} > {PAGE_SPECS[pk].label} ({pk})" if pk in PAGE_SPECS
+                else "[공통] 아래 9개 화면 전체에 적용"
             ),
         }
         for pk in prompts["prompt_key"]
     )
     st.dataframe(overview, use_container_width=True, hide_index=True)
 
-prompt_key = st.selectbox("prompt_key", prompts["prompt_key"].tolist())
+prompt_key = st.selectbox("prompt_key", prompts["prompt_key"].tolist(), format_func=_prompt_key_label)
 row = prompts[prompts["prompt_key"] == prompt_key].iloc[0]
 st.caption(f"마지막 수정: {row['updated_at'] or '(기록 없음)'}")
 
@@ -208,11 +218,11 @@ else:
     test_page_id = st.selectbox(
         "테스트할 페이지 선택(공통 프롬프트라 페이지를 골라야 합니다)",
         list(PAGE_SPECS),
-        format_func=lambda p: f"{PAGE_SPECS[p].label} ({p})",
+        format_func=lambda p: f"{PAGE_SPECS[p].section} > {PAGE_SPECS[p].label} ({p})",
     )
 
 spec = PAGE_SPECS[test_page_id]
-st.caption(f"🔗 연결된 화면: {spec.label} ({test_page_id}) · POST /api/v1/analysis/{spec.path}")
+st.caption(f"🔗 연결된 화면: {spec.section} > {spec.label} ({test_page_id}) · POST /api/v1/analysis/{spec.path}")
 test_payload: dict = {}
 
 if spec.has_mineral:

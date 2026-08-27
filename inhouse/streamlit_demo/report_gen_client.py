@@ -29,9 +29,19 @@ class ReportGenError(RuntimeError):
 class PageSpec:
     """페이지 1개의 데모 폼 스펙 — 실제 검증은 서버 pydantic 모델이 하고,
     여기서는 입력 UI만 안내한다(필드 목록이 어긋나도 서버가 422로 거부할 뿐,
-    이 파일이 진실 원천은 아니다)."""
+    이 파일이 진실 원천은 아니다).
+
+    `section`(주메뉴)은 2026-08-27 추가 — 임의 추정이 아니라
+    `services/rag_chat/app/page_recommend/resources/registry/pages/*.yaml`의
+    `identity.section`(주메뉴)/`identity.name`(서브메뉴)을 그대로 옮겼다. 이
+    registry는 2026-07-16 KOMIS 사이트를 브라우저로 실제 프로브해 관측한 값
+    (각 yaml의 `provenance.sources`에 `artifacts/browser/page-probe/pages.json`
+    명시)이라 추정이 아니라 확인된 데이터다. `price`(report_gen 쪽 1개 page_id)는
+    registry에서 `price_base_metals`/`price_minor_metals` 2개로 더 세분화돼
+    있지만 둘 다 section="광물자원가격"로 같아 그대로 옮겼다."""
 
     label: str
+    section: str  # 주메뉴(KOMIS 실제 내비게이션 — registry identity.section 그대로)
     path: str  # /api/v1/analysis/<path>
     has_mineral: bool  # False면 mineral 필드 자체가 없는 페이지(indicator_composite·price_group)
     period_fields: tuple[str, str]  # (시작 필드명, 종료 필드명) — 없으면 ("", "")
@@ -42,54 +52,54 @@ class PageSpec:
 
 PAGE_SPECS: dict[str, PageSpec] = {
     "indicator_market": PageSpec(
-        "시장동향지표", "market-indicator", True, ("start_month", "end_month"), "month",
+        "시장동향지표", "광물전망지표", "market-indicator", True, ("start_month", "end_month"), "month",
         ("price_unit", "price_criterion"),
         '[{"month": "2025-08", "score": 62.5, "price": 9800.0, "crisis_flag": false}, '
         '{"month": "2025-09", "score": 58.1, "price": 9650.0, "crisis_flag": false}]',
     ),
     "indicator_supply": PageSpec(
-        "수급동향지표", "supply-indicator", True, ("start_month", "end_month"), "month",
+        "수급동향지표", "광물전망지표", "supply-indicator", True, ("start_month", "end_month"), "month",
         ("price_unit", "price_criterion"),
         '[{"month": "2025-08", "score": 71.0}, {"month": "2025-09", "score": 68.4}]',
     ),
     "indicator_composite": PageSpec(
-        "광물종합지수", "composite-index", False, ("start_date", "end_date"), "date",
+        "광물종합지수", "광물전망지표", "composite-index", False, ("start_date", "end_date"), "date",
         (),
         '[{"date": "2025-08-01", "composite_index": 105.2, "major_metals_index": 110.1, '
         '"minor_metals_index": 98.7}]',
     ),
     "map_mineral": PageSpec(
-        "광물지도(매장량/생산량)", "mineral-map", True, ("start_year", "end_year"), "year",
+        "광물지도(매장량/생산량)", "핵심광물지도", "mineral-map", True, ("start_year", "end_year"), "year",
         ("measure", "unit"),
         '[{"year": 2023, "country_code": "CL", "country_name": "칠레", "value": 5600.0}, '
         '{"year": 2023, "country_code": "PE", "country_name": "페루", "value": 2200.0}]',
     ),
     "forecast_price": PageSpec(
-        "가격예측(중기/장기)", "price-forecast", True, ("start_period", "end_period"), "period",
+        "가격예측(중기/장기)", "광물전망지표", "price-forecast", True, ("start_period", "end_period"), "period",
         ("forecast_horizon", "price_unit"),
         '[{"period": "2026-Q1", "price": 9700.0}, {"period": "2026-Q2", "price": 9850.0}]',
     ),
     "price": PageSpec(
-        "광물자원가격", "prices", True, ("start_date", "end_date"), "date",
+        "광물자원가격", "광물자원가격", "prices", True, ("start_date", "end_date"), "date",
         ("price_unit", "price_criterion", "price_criterion_serial"),
         '[{"date": "2025-08-25", "commerce_price": 9720.0, "lowest_price": 9680.0, '
         '"highest_price": 9760.0}]',
     ),
     "map_korea": PageSpec(
-        "국내 수급지도(수출입)", "domestic-trade", True, ("start_date", "end_date"), "date",
+        "국내 수급지도(수출입)", "핵심광물지도", "domestic-trade", True, ("start_date", "end_date"), "date",
         ("trade_direction",),
         '[{"date": "2025-08-01", "country_code": "AU", "country_name": "호주", '
         '"import_weight": 1200.0, "import_amount": 850000.0}]',
     ),
     "map_global": PageSpec(
-        "글로벌 수급지도(원산지→도착지)", "global-trade", True, ("start_date", "end_date"), "date",
+        "글로벌 수급지도(원산지→도착지)", "핵심광물지도", "global-trade", True, ("start_date", "end_date"), "date",
         (),
         '[{"date": "2025-08-01", "country_code": "DE", "country_name": "독일", '
         '"import_weight": 300.0, "import_amount": 210000.0, '
         '"origin_country_code": "US", "origin_country_name": "미국"}]',
     ),
     "price_group": PageSpec(
-        "그룹 요약(비철금속/희소금속)", "price-group", False, ("", ""), "",
+        "그룹 요약(비철금속/희소금속)", "광물자원가격", "price-group", False, ("", ""), "",
         ("price_group",),
         '[{"mineral_name": "니켈", "week_change_pct": 1.8, "month_change_pct": -2.3}, '
         '{"mineral_name": "구리", "week_change_pct": -0.4, "month_change_pct": 3.1}]',

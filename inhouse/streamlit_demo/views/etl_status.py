@@ -20,7 +20,13 @@
 
 2026-08-27 시점: 스키마는 적용됐지만 파이프라인 배선 전이라 테이블은 0행 —
 ingest-agent가 오늘 이어서 배선 중이므로 화면은 빈 상태를 정상 케이스로 다룬다.
-"""
+
+2026-08-27 시각화 보완(main-agent 사용자 피드백 경유): 표만 나열돼 있어
+한눈에 안 들어온다는 지적에 상단 KPI 카드(st.metric)·단계별 진행바
+(st.progress)·상태 아이콘화(이모지 매핑)·hung 임계치 근접 시 색상 강조
+(pandas Styler)를 추가했다. requirements.txt에 plotly/altair 등 시각화
+라이브러리가 없고 다른 화면도 안 쓰길래 신규 의존성 없이 스트림릿 내장
+위젯만으로 구현했다(pandas는 이미 의존성)."""
 from __future__ import annotations
 
 import sys
@@ -44,6 +50,29 @@ _STAGE_LABELS = {
     "pageindex": "PageIndex 색인",
     "vectorize": "벡터화",
 }
+_STAGE_STATUS_COLUMNS = ["extract_status", "okf_status", "pageindex_status", "vectorize_status"]
+
+_STATUS_BADGES = {
+    "success": "✅ 성공",
+    "failed": "❌ 실패",
+    "running": "🔄 실행중",
+}
+
+
+def _status_badge(value) -> str:
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return "⏳ 대기"
+    return _STATUS_BADGES.get(str(value), str(value))
+
+
+def _heartbeat_style(seconds) -> str:
+    if seconds is None or (isinstance(seconds, float) and pd.isna(seconds)):
+        return ""
+    if seconds >= 600:  # hung 판정 임계치(10분)와 동일
+        return "background-color: #ffcdd2; color: #b71c1c; font-weight: 600"
+    if seconds >= 300:  # 절반 근접 — 주의
+        return "background-color: #ffe0b2; color: #e65100; font-weight: 600"
+    return "background-color: #c8e6c9; color: #1b5e20"
 
 
 @st.cache_data(ttl=30, show_spinner="파이프라인 실행 현황을 조회하는 중…")
@@ -111,6 +140,36 @@ _db_error = latest_err or running_err or recent_err or matrix_err
 if _db_error:
     st.warning(f"ingest 스키마 조회 실패 — Postgres(komis_demo) 접속을 확인하세요. ({_db_error[:200]})")
 
+# ── 상단 KPI 카드 ─────────────────────────────────────────────────────────
+running_count = 0 if running is None else len(running)
+failed_count = 0 if latest is None or latest.empty else int((latest["status"] == "failed").sum())
+total_files = 0 if matrix is None else len(matrix)
+if matrix is not None and not matrix.empty:
+    vectorized_count = int((matrix["vectorize_status"] == "success").sum())
+    vectorized_pct = round(100 * vectorized_count / len(matrix), 1)
+else:
+    vectorized_count = 0
+    vectorized_pct = None
+
+kpi_cols = st.columns(4)
+kpi_cols[0].metric("실행 중인 잡", f"{running_count}건")
+kpi_cols[1].metric("실패한 잡", f"{failed_count}건")
+kpi_cols[2].metric("전체 파일 수", f"{total_files:,}건")
+kpi_cols[3].metric(
+    "벡터화 완료율",
+    f"{vectorized_pct}%" if vectorized_pct is not None else "—",
+    help=f"{vectorized_count}/{total_files}건" if matrix is not None else None,
+)
+
+# ── 단계별 진행 바 ────────────────────────────────────────────────────────
+if matrix is not None and not matrix.empty:
+    st.caption("파이프라인 단계별 진행률 — 전체 파일 대비 그 단계까지 성공 처리된 비율")
+    stage_cols = st.columns(len(_STAGE_STATUS_COLUMNS))
+    total = len(matrix)
+    for col, status_col, label in zip(stage_cols, _STAGE_STATUS_COLUMNS, _STAGE_LABELS.values(), strict=True):
+        done = int((matrix[status_col] == "success").sum())
+        col.progress(done / total if total else 0.0, text=f"{label}: {done}/{total}")
+
 # ── 실행 중 + hung 의심 ──────────────────────────────────────────────────
 if running is not None and not running.empty:
     st.subheader("지금 실행 중인 잡")
@@ -121,11 +180,9 @@ if running is not None and not running.empty:
     hung = display[display["heartbeat_age_sec"].fillna(0) > 600]
     if not hung.empty:
         st.error(f"응답없음 의심 {len(hung)}건 — heartbeat_at 이 10분 이상 갱신되지 않았습니다.", icon=":material/warning:")
-    st.dataframe(
-        display[["job_name", "stage", "trigger", "started_at", "heartbeat_age_sec"]],
-        use_container_width=True,
-        hide_index=True,
-    )
+    table = display[["job_name", "stage", "trigger", "started_at", "heartbeat_age_sec"]]
+    styled = table.style.map(_heartbeat_style, subset=["heartbeat_age_sec"])
+    st.dataframe(styled, use_container_width=True, hide_index=True)
 
 # ── 잡별 현재 상태 ────────────────────────────────────────────────────────
 st.subheader("잡별 현재 상태")
@@ -135,13 +192,14 @@ elif latest.empty:
     st.info("아직 실행 이력이 없습니다 — 파이프라인 배선 전(2026-08-27 기준 ingest-agent 작업 중)이라 정상입니다.", icon=":material/info:")
 else:
     display = latest.copy()
+    failed = display[display["status"] == "failed"]
     display["stage"] = display["stage"].map(_STAGE_LABELS).fillna(display["stage"])
+    display["status"] = display["status"].apply(_status_badge)
     st.dataframe(
         display[["job_name", "stage", "trigger", "status", "started_at", "finished_at", "error_message"]],
         use_container_width=True,
         hide_index=True,
     )
-    failed = display[display["status"] == "failed"]
     if not failed.empty:
         st.error(f"실패 상태인 잡 {len(failed)}건이 있습니다.", icon=":material/error:")
 
@@ -155,6 +213,9 @@ else:
     source_groups = ["(전체)"] + sorted(matrix["source_group"].dropna().unique().tolist())
     picked = st.selectbox("문서군 필터", source_groups)
     filtered = matrix if picked == "(전체)" else matrix[matrix["source_group"] == picked]
+    filtered = filtered.copy()
+    for status_col in _STAGE_STATUS_COLUMNS:
+        filtered[status_col] = filtered[status_col].apply(_status_badge)
     st.dataframe(
         filtered.rename(
             columns={
@@ -181,6 +242,7 @@ elif recent.empty:
 else:
     display = recent.copy()
     display["stage"] = display["stage"].map(_STAGE_LABELS).fillna(display["stage"])
+    display["status"] = display["status"].apply(_status_badge)
     st.dataframe(
         display[["run_id", "job_name", "stage", "trigger", "status", "started_at", "duration_sec", "error_message"]],
         use_container_width=True,
