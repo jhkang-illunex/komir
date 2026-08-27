@@ -36,7 +36,17 @@ import json
 import streamlit as st
 
 from streamlit_demo.mineral_master import mineral_label, mineral_options
-from streamlit_demo.report_gen_client import PAGE_SPECS, SECTION_ORDER, ReportGenError, client_from_env
+from streamlit_demo.report_gen_client import (
+    EXTRA_FIELD_LABELS,
+    EXTRA_FIELD_VALUE_LABELS,
+    PAGE_SPECS,
+    SECTION_ORDER,
+    ReportGenError,
+    client_from_env,
+    prioritize_core_minerals,
+    render_json_error,
+    render_report_markdown,
+)
 
 st.title("요약보고서 작성 데모")
 st.caption("report_gen 분석요약 API(12종)를 관측치(observations) 바디로 직접 호출해보는 개발 데모입니다 — 운영 화면이 아닙니다.")
@@ -81,6 +91,22 @@ def _mineral_picker(options: list, *, key: str) -> None:
     payload["mineral_name"] = picked["name_ko"]
 
 
+def _compare_mineral_picker(col, page_id: str) -> None:
+    """희소금속(price_minor_metals) 전용 compare_mineral 필드 — 2026-08-28 UI/UX
+    감사에서 지적된 "안내 없는 순수 텍스트 입력" 문제 대응. 이미 로드된 광종
+    마스터를 그대로 재사용해 드롭다운으로 바꾼다."""
+    options = prioritize_core_minerals(mineral_options())
+    label = EXTRA_FIELD_LABELS.get("compare_mineral", "compare_mineral")
+    if not options:
+        payload["compare_mineral"] = col.text_input(
+            f"{label} 코드", value="", key=f"compare_mineral_code_{page_id}",
+            help="DB 접속 실패 — 광종 목록을 못 불러와 직접 입력으로 대체합니다.",
+        )
+        return
+    picked = col.selectbox(label, options, format_func=mineral_label, key=f"compare_mineral_{page_id}")
+    payload["compare_mineral"] = picked["code"]
+
+
 if spec.has_mineral and page_id == "indicator_market":
     # 사용자 요청(2026-08-27): 시장동향지표는 KOMIS 화면처럼 비철금속/희소금속을
     # 나눠서 보여준다. st.tabs 는 활성 탭을 코드에서 읽을 방법이 없어(둘 다 매
@@ -88,9 +114,9 @@ if spec.has_mineral and page_id == "indicator_market":
     # st.segmented_control(선택값을 실제로 돌려주는 위젯)을 쓴다.
     group = st.segmented_control("광종군", ["비철금속", "희소금속"], default="비철금속")
     group_key = "base_metals" if group == "비철금속" else "minor_metals"
-    _mineral_picker(mineral_options(group_key), key=f"mineral_{page_id}_{group_key}")
+    _mineral_picker(prioritize_core_minerals(mineral_options(group_key)), key=f"mineral_{page_id}_{group_key}")
 elif spec.has_mineral:
-    _mineral_picker(mineral_options(), key=f"mineral_{page_id}")
+    _mineral_picker(prioritize_core_minerals(mineral_options()), key=f"mineral_{page_id}")
 
 start_key, end_key = spec.period_fields
 if start_key:
@@ -109,22 +135,38 @@ if start_key:
 
 if spec.extra_fields:
     st.caption("페이지 고유 필드")
+    if "forecast_horizon" in spec.extra_fields:
+        # 2026-08-28 UI/UX 감사: forecast_horizon=long이면 기간 형식이 연도(YYYY)로
+        # 바뀌는데 위 period 플레이스홀더는 항상 분기(YYYY-Qn) 예시라 혼동을 준다 —
+        # 필드 순서상 여기서 뒤늦게 알 수 있어 레이아웃 재배치 대신 캡션으로 안내.
+        st.caption("forecast_horizon이 long(장기)이면 기간은 분기(YYYY-Qn)가 아닌 연도(YYYY) 형식입니다.")
     cols = st.columns(len(spec.extra_fields))
     for col, field in zip(cols, spec.extra_fields, strict=True):
+        label = EXTRA_FIELD_LABELS.get(field, field)
         if field == "measure":
-            payload["measure"] = col.selectbox("measure", ("reserves", "production"))
+            payload["measure"] = col.selectbox(
+                label, ("reserves", "production"), format_func=lambda v: EXTRA_FIELD_VALUE_LABELS["measure"][v]
+            )
         elif field == "forecast_horizon":
-            payload["forecast_horizon"] = col.selectbox("forecast_horizon", ("medium", "long"))
+            payload["forecast_horizon"] = col.selectbox(
+                label, ("medium", "long"), format_func=lambda v: EXTRA_FIELD_VALUE_LABELS["forecast_horizon"][v]
+            )
         elif field == "trade_direction":
-            payload["trade_direction"] = col.selectbox("trade_direction", ("import", "export"))
+            payload["trade_direction"] = col.selectbox(
+                label, ("import", "export"), format_func=lambda v: EXTRA_FIELD_VALUE_LABELS["trade_direction"][v]
+            )
         elif field == "price_group":
-            payload["price_group"] = col.selectbox("price_group", ("base_metals", "minor_metals"))
+            payload["price_group"] = col.selectbox(
+                label, ("base_metals", "minor_metals"), format_func=lambda v: EXTRA_FIELD_VALUE_LABELS["price_group"][v]
+            )
         elif field == "price_criterion_serial":
-            value = col.text_input(field, value="")
+            value = col.text_input(label, value="")
             if value:
                 payload[field] = int(value)
+        elif field == "compare_mineral":
+            _compare_mineral_picker(col, page_id)
         else:
-            value = col.text_input(field, value="")
+            value = col.text_input(label, value="")
             if value:
                 payload[field] = value
 
@@ -135,7 +177,11 @@ if st.button("분석요약 생성", type="primary"):
     try:
         payload["observations"] = json.loads(observations_text) if observations_text.strip() else None
     except json.JSONDecodeError as exc:
-        st.error(f"observations JSON 파싱 실패: {exc}")
+        # 2026-08-28 UI/UX 감사(P0): 파싱 실패 시 이전 성공 결과를 지우지 않으면
+        # 에러 배너 아래에 직전 리포트가 그대로 남아 "에러인데 결과가 나온 것"처럼
+        # 보인다 — ReportGenError 분기와 동일하게 초기화.
+        st.session_state["report_demo_result"] = None
+        render_json_error(exc, field_label="observations")
     else:
         try:
             with st.spinner("report_gen 호출 중…"):
@@ -149,11 +195,11 @@ if result:
     status = result.get("status")
     if status == "ok":
         st.success("status: ok")
-        st.markdown(result.get("report") or "_(빈 보고서)_")
+        render_report_markdown(result.get("report"))
     else:
         st.warning(f"status: {status}")
         if result.get("report"):
-            st.markdown(result["report"])
+            render_report_markdown(result["report"])
 
 with st.expander("요청 바디 미리보기"):
     st.json({**payload, "observations": "(위 텍스트 영역 값)"})

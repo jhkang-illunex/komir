@@ -77,9 +77,13 @@ PAGE_SPECS: dict[str, PageSpec] = {
         '"minor_metals_index": 98.7}]',
     ),
     "map_mineral": PageSpec(
+        # 2026-08-28 UI/UX 감사(report-summary-agent 검증분 이관)에서 발견: 두 관측치가
+        # 모두 year=2023이라 서버 최소요건(연도 2개 이상)을 못 채워 항상 NO_DATA로
+        # 응답했다 — 연도를 2022/2023으로 분리.
         "광물지도(매장량/생산량)", "핵심광물지도", "mineral-map", True, ("start_year", "end_year"), "year",
         ("measure", "unit"),
-        '[{"year": 2023, "country_code": "CL", "country_name": "칠레", "value": 5600.0}, '
+        '[{"year": 2022, "country_code": "CL", "country_name": "칠레", "value": 5400.0}, '
+        '{"year": 2023, "country_code": "CL", "country_name": "칠레", "value": 5600.0}, '
         '{"year": 2023, "country_code": "PE", "country_name": "페루", "value": 2200.0}]',
     ),
     "forecast_price": PageSpec(
@@ -134,6 +138,29 @@ PAGE_SPECS: dict[str, PageSpec] = {
         '[{"mineral_name": "니켈", "week_change_pct": 1.8, "month_change_pct": -2.3}, '
         '{"mineral_name": "구리", "week_change_pct": -0.4, "month_change_pct": 3.1}]',
     ),
+}
+
+
+EXTRA_FIELD_LABELS: dict[str, str] = {
+    # 2026-08-28 UI/UX 감사에서 발견: "페이지 고유 필드"가 API 필드명 그대로 라벨로
+    # 노출돼(measure, trade_direction 등) 나머지 한국어 UI와 어긋났다 — 한글 라벨 매핑.
+    "price_unit": "가격 단위(price_unit)",
+    "price_criterion": "가격 기준(price_criterion)",
+    "price_criterion_serial": "가격 기준 일련번호(price_criterion_serial)",
+    "measure": "측정지표(measure)",
+    "unit": "단위(unit)",
+    "forecast_horizon": "예측기간(forecast_horizon)",
+    "trade_direction": "수출입방향(trade_direction)",
+    "price_group": "가격 그룹(price_group)",
+    "compare_mineral": "비교광종(compare_mineral)",
+    "compare_price_criterion": "비교 가격기준(compare_price_criterion)",
+}
+
+EXTRA_FIELD_VALUE_LABELS: dict[str, dict[str, str]] = {
+    "measure": {"reserves": "매장량(reserves)", "production": "생산량(production)"},
+    "forecast_horizon": {"medium": "중기(medium)", "long": "장기(long)"},
+    "trade_direction": {"import": "수입(import)", "export": "수출(export)"},
+    "price_group": {"base_metals": "비철금속(base_metals)", "minor_metals": "희소금속(minor_metals)"},
 }
 
 
@@ -208,3 +235,42 @@ class ReportGenClient:
         if result.get("status") != "ok":
             _log.info("report_gen 분석요약 status!=ok(page_id=%s): %s", page_id, result.get("status"))
         return result
+
+
+CORE_MINERAL_CODES: tuple[str, ...] = ("MNRL0008", "MNRL0002", "MNRL0003", "MNRL0001", "MNRL1001")
+"""프로젝트 5대 핵심광물(구리·니켈·코발트·리튬·네오디뮴=REE 대표원소) 코드
+(public.ai_mnrl_mst 2026-08-28 실측 확인) — 광종 드롭다운 기본 정렬용."""
+
+
+def prioritize_core_minerals(options: list[dict]) -> list[dict]:
+    """드롭다운을 열자마자 5대 핵심광물이 먼저 보이도록 앞으로 끌어올린다(2026-08-28
+    UI/UX 감사 — 기본 선택값이 "텅스텐"처럼 프로젝트와 무관한 광종으로 뜨는 문제).
+    나머지 광종은 기존 sort_ordr 순서를 그대로 유지한다."""
+    core = [m for code in CORE_MINERAL_CODES for m in options if m["code"] == code]
+    rest = [m for m in options if m["code"] not in CORE_MINERAL_CODES]
+    return core + rest
+
+
+def render_json_error(exc: Exception, *, field_label: str = "observations") -> None:
+    """JSON 파싱 실패를 report_demo.py·prompt_admin.py 양쪽에서 같은 톤으로 보여준다
+    (2026-08-28 UI/UX 감사 — Python 예외 원문이 그대로 노출돼 비개발자 데모 관객에게
+    불친절하다는 지적 반영). 원문은 접어서 필요할 때만 보이게 한다."""
+    import streamlit as st
+
+    st.error(f"{field_label} JSON 형식이 올바르지 않습니다 — 쉼표·따옴표 등을 확인하세요.")
+    with st.expander("원본 오류 메시지(디버깅용)"):
+        st.code(str(exc), language=None)
+
+
+def render_report_markdown(report: str | None) -> None:
+    """report_gen이 돌려준 마크다운을 페이지 제목보다 크게 보이지 않도록 감싸서
+    렌더링한다(2026-08-28 UI/UX 감사 — 응답 본문이 `# 제목`으로 시작해 h1이 페이지
+    타이틀보다 커 보이는 문제). 헤딩 레벨을 한 단계씩 낮춘 뒤 테두리 컨테이너에 담는다."""
+    import re
+
+    import streamlit as st
+
+    text = report or "_(빈 보고서)_"
+    demoted = re.sub(r"(?m)^(#{1,5})(\s)", r"#\1\2", text)
+    with st.container(border=True):
+        st.markdown(demoted)

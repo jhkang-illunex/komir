@@ -51,7 +51,17 @@ import pandas as pd
 import streamlit as st
 
 from streamlit_demo.mineral_master import mineral_label, mineral_options
-from streamlit_demo.report_gen_client import PAGE_SPECS, SECTION_ORDER, ReportGenError, client_from_env
+from streamlit_demo.report_gen_client import (
+    EXTRA_FIELD_LABELS,
+    EXTRA_FIELD_VALUE_LABELS,
+    PAGE_SPECS,
+    SECTION_ORDER,
+    ReportGenError,
+    client_from_env,
+    prioritize_core_minerals,
+    render_json_error,
+    render_report_markdown,
+)
 
 _INHOUSE_ROOT = Path(__file__).resolve().parents[2]
 if str(_INHOUSE_ROOT / "services") not in sys.path:
@@ -159,6 +169,10 @@ row = prompts[prompts["prompt_key"] == prompt_key].iloc[0]
 st.caption(f"마지막 수정: {row['updated_at'] or '(기록 없음)'}")
 
 content = st.text_area("content(지시문 본문)", value=row["content"] or "", height=220)
+st.caption(
+    "⚠ 근거·수치 구조(allowed_evidence 인용, 표 등)는 output_contract·공통 프롬프트가 "
+    "함께 강제합니다 — content를 간단히 써도 상세 수치·표는 유지됩니다."
+)
 description = st.text_input(
     "description",
     value=row["description"] or "",
@@ -195,15 +209,18 @@ if st.button("저장 + report_gen 캐시 reload", type="primary"):
     analysis_constraints_json = json.dumps(constraints_lines, ensure_ascii=False) if constraints_lines else None
 
     output_contract_json = None
+    output_contract_error: json.JSONDecodeError | None = None
     if output_contract_text.strip():
         try:
             output_contract_json = json.dumps(json.loads(output_contract_text), ensure_ascii=False)
         except json.JSONDecodeError as exc:
-            errors.append(f"output_contract JSON 파싱 실패: {exc}")
+            output_contract_error = exc
 
-    if errors:
+    if errors or output_contract_error:
         for message in errors:
             st.error(message)
+        if output_contract_error:
+            render_json_error(output_contract_error, field_label="output_contract")
     else:
         from shared.db import execute_pg
 
@@ -232,7 +249,12 @@ if st.button("저장 + report_gen 캐시 reload", type="primary"):
 
                 response = httpx.post(f"{client.base_url}/admin/prompts/reload", timeout=10.0)
                 response.raise_for_status()
-                st.success(f"report_gen 캐시 reload 완료 — {response.json()}")
+                reload_body = response.json()
+                reloaded_count = reload_body.get("reloaded_prompt_count")
+                if reloaded_count is not None:
+                    st.success(f"report_gen 캐시 reload 완료 — 프롬프트 {reloaded_count}개 갱신")
+                else:
+                    st.success(f"report_gen 캐시 reload 완료 — {reload_body}")
             except Exception as exc:  # noqa: BLE001
                 _log.exception("report_gen 캐시 reload 실패(prompt_key=%s)", prompt_key)
                 st.warning(f"DB는 반영됐지만 report_gen 캐시 reload 실패 — 수동으로 재시도하세요. ({exc})")
@@ -263,7 +285,7 @@ st.caption(f"🔗 연결된 화면: {spec.section} > {spec.label} ({test_page_id
 test_payload: dict = {}
 
 if spec.has_mineral:
-    options = mineral_options()
+    options = prioritize_core_minerals(mineral_options())
     if options:
         picked = st.selectbox("광종", options, format_func=mineral_label, key=f"pa_mineral_{test_page_id}")
         test_payload["mineral"] = picked["code"]
@@ -287,23 +309,41 @@ if start_key:
 
 if spec.extra_fields:
     st.caption("페이지 고유 필드")
+    if "forecast_horizon" in spec.extra_fields:
+        st.caption("forecast_horizon이 long(장기)이면 기간은 분기(YYYY-Qn)가 아닌 연도(YYYY) 형식입니다.")
     cols = st.columns(len(spec.extra_fields))
     for col, field in zip(cols, spec.extra_fields, strict=True):
         key = f"pa_extra_{test_page_id}_{field}"
+        label = EXTRA_FIELD_LABELS.get(field, field)
         if field == "measure":
-            test_payload["measure"] = col.selectbox("measure", ("reserves", "production"), key=key)
+            test_payload["measure"] = col.selectbox(
+                label, ("reserves", "production"), format_func=lambda v: EXTRA_FIELD_VALUE_LABELS["measure"][v], key=key
+            )
         elif field == "forecast_horizon":
-            test_payload["forecast_horizon"] = col.selectbox("forecast_horizon", ("medium", "long"), key=key)
+            test_payload["forecast_horizon"] = col.selectbox(
+                label, ("medium", "long"), format_func=lambda v: EXTRA_FIELD_VALUE_LABELS["forecast_horizon"][v], key=key
+            )
         elif field == "trade_direction":
-            test_payload["trade_direction"] = col.selectbox("trade_direction", ("import", "export"), key=key)
+            test_payload["trade_direction"] = col.selectbox(
+                label, ("import", "export"), format_func=lambda v: EXTRA_FIELD_VALUE_LABELS["trade_direction"][v], key=key
+            )
         elif field == "price_group":
-            test_payload["price_group"] = col.selectbox("price_group", ("base_metals", "minor_metals"), key=key)
+            test_payload["price_group"] = col.selectbox(
+                label, ("base_metals", "minor_metals"), format_func=lambda v: EXTRA_FIELD_VALUE_LABELS["price_group"][v], key=key
+            )
         elif field == "price_criterion_serial":
-            value = col.text_input(field, value="", key=key)
+            value = col.text_input(label, value="", key=key)
             if value:
                 test_payload[field] = int(value)
+        elif field == "compare_mineral":
+            compare_options = prioritize_core_minerals(mineral_options())
+            if compare_options:
+                compare_picked = col.selectbox(label, compare_options, format_func=mineral_label, key=key)
+                test_payload["compare_mineral"] = compare_picked["code"]
+            else:
+                test_payload["compare_mineral"] = col.text_input(f"{label} 코드", value="", key=key)
         else:
-            value = col.text_input(field, value="", key=key)
+            value = col.text_input(label, value="", key=key)
             if value:
                 test_payload[field] = value
 
@@ -316,7 +356,7 @@ if st.button("이 프롬프트로 분석요약 호출", key=f"pa_test_btn_{test_
     try:
         test_payload["observations"] = json.loads(observations_text) if observations_text.strip() else None
     except json.JSONDecodeError as exc:
-        st.error(f"observations JSON 파싱 실패: {exc}")
+        render_json_error(exc, field_label="observations")
     else:
         try:
             with st.spinner("report_gen 호출 중…"):
@@ -327,7 +367,7 @@ if st.button("이 프롬프트로 분석요약 호출", key=f"pa_test_btn_{test_
             status = result.get("status")
             if status == "ok":
                 st.success("status: ok")
-                st.markdown(result.get("report") or "_(빈 보고서)_")
+                render_report_markdown(result.get("report"))
             else:
                 st.warning(f"status: {status} — 원문 응답(디버깅용)")
                 st.json(result)
