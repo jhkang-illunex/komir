@@ -2,7 +2,45 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-08-27 (최신) — 분석요약 루틴 skeptic-code DEEP 감사: 8건 적용, Pass 3 APPROVE
+## 2026-08-27 (최신) — 프롬프트 DB화 2단계: 페이지 정책·출력 계약 컬럼 자동 추가 + 자동 검증
+
+사용자 지시 "프롬프트 DB를 진행하고, DB에 컬럼을 자동으로 추가하고, 로딩하는
+로딩을 작성 자동으로 검증". 08-26 1단계(지시문 `content`만 DB, 전체 지침의
+~85%)에 이어 남은 ~15% — 페이지 이름·정의·작성 제약·정책버전(YAML 2종 +
+dataclass 7종)과 섹션별 문장수 범위(prompts.py 상수) — 를 `ai_cfg.cfg_prompt`로
+옮겼다. 앞선 skeptic 감사 커밋 `6038fead0` 위에 얹은 변경.
+
+- **스키마**: `schema_ai_cfg.sql`에 `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`
+  5개(`page_name`·`page_definition`·`analysis_constraints` JSONB·`policy_version`·
+  `output_contract` JSONB). `summary_common` 행은 전부 NULL, NULL = 코드 기본값.
+- **로딩**: `prompt_store.reload()`가 조회 전 `information_schema`로 누락 컬럼을
+  감지하면 스키마를 자동 적용(멱등) → 행 전체를 `PromptRow`로 캐시.
+  `get_page_row(page_id)` 신설. 기동·`POST /admin/prompts/reload` 시점에 동작.
+- **해석**: `prompts.py::code_page_config()`(코드 기본값) + `resolve_page_config()`
+  (DB 컬럼을 값 단위로 오버레이, 형식 오류는 경고 후 코드값) → `effective_page_
+  context()`/`apply_page_config()`로 `summary.py`의 응답 `policy_version/page_
+  definition/notices`, `build_summary_payload`의 `page_policy`·`output_contract`,
+  `_validate_llm_summary`의 문장수 범위가 전부 DB 우선. 등급 밴드(`grade_rules`
+  YAML)는 판정 로직이라 DB화 제외.
+- **시드**: `seed_prompts.py`가 `code_page_config()`로 9개 페이지의 새 컬럼까지
+  upsert(재시드 = 손으로 고친 DB 값이 코드 기본값으로 되돌아감을 문서화).
+- **자동 검증** `scripts/verify_prompt_db.py`(실 DB): V1 컬럼 존재, V2 시드
+  라운드트립 10키, V3 `price` 행 UPDATE→reload→응답·payload·검증기(major_changes
+  1~3) 반영→재시드 원복, V4 `page_name` NULL 값 단위 폴백, V5 역전 범위 무시 —
+  `VERIFY_PROMPT_DB_OK`. 회귀: G1 384콤보+G2/G3/불일치, 가짜 LLM 9/9, 실 vLLM
+  정제 3페이지.
+- **같이 반영**: Pass 3 라운드 2 잔여 R2-F1(`supply_auxiliary` 형식 오류→
+  NO_DATA, `_supply_auxiliary_from_request`), R2-F2(lock 인수 후 남은 예산이 LLM
+  1회분 미만이면 포기, `AnalysisSummaryService.uses_llm`), LLM timeout 8→12s
+  (`routers/_common.py::ANALYSIS_LLM_TIMEOUT_SECONDS`, 실측 콜드 호출 12.6s).
+- **LLM 접속 경로 발견**: `.env`의 `LLM_BASE_URL` 호스트명은 docker-compose
+  서비스명이라 호스트/샌드박스 어디서도 DNS 해석이 안 됐다(08-27 회귀가 전부
+  llm=None이었던 이유). 실제 vLLM은 이 호스트에 `127.0.0.1:52302`(gemma-4-26b-a4b)·
+  `52301`(Qwen3-30B)로 published — 세션 환경변수 `LLM_BASE_URL=http://127.0.0.1:
+  52302/v1`, `LLM_MODEL=gemma-4-26b-a4b`로만 주입(.env 무수정). `.env`의
+  `LLM_MODEL=qwen2.5:32b`는 실제 컨테이너와 다름 — 확인 필요.
+
+## 2026-08-27 — 분석요약 루틴 skeptic-code DEEP 감사: 8건 적용, Pass 3 APPROVE
 
 사용자 요청 "/skeptic-code 요약 보고서 작성 루틴을 검증해주세요 적대적 검증
 및 과한 부분 등등에 대해서 점검". 범위 `inhouse/services/report_gen/app/

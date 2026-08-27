@@ -29,12 +29,15 @@ prompts/reload`를 호출하면 되고, DB를 아직 안 채웠거나 접속이 
 """
 from __future__ import annotations
 
+import logging
+from dataclasses import dataclass
 from typing import Any
 
 from . import prompt_store
-from .additional_summary import SummaryPageContext
+from .additional_summary import ADDITIONAL_PAGE_CONTEXTS, SummaryPageContext
+from .komir_summary import KOMIR_PAGE_CONTEXTS
 from .models import AnalysisSummaryResponse
-from .policy import PagePolicy
+from .policy import PagePolicy, load_page_policy
 
 # 아래 10개 상수 + `PROMPTS`가 분석요약 프롬프트의 **단일 소스**다(2026-08-27,
 # skeptic 감사 SC-004). 이전에는 `seed_prompts.py`(DB 시드)와 이 파일(DB 미접속
@@ -290,6 +293,193 @@ MINERAL_MAP_SECTION_SENTENCE_RANGES: dict[str, tuple[int, int]] = {
     "current_position": (2, 3),
 }
 MINERAL_MAP_TOTAL_SENTENCE_RANGE: tuple[int, int] = (5, 8)
+MAX_EVIDENCE_IDS_PER_SENTENCE = 3
+
+_SECTIONS = ("core_diagnosis", "major_changes", "current_position")
+
+
+# ────────────────────────────────────────────────────────────────────
+# 페이지 정책·출력 계약의 "코드 기본값 + DB 오버레이" — 프롬프트 DB화 2단계
+# (2026-08-27). 이전엔 지시문(content)만 DB였고 페이지 이름·정의·작성 제약·
+# 정책버전은 YAML(indicator_market/supply)·dataclass(나머지 7종)에, 섹션 문장수
+# 범위는 위 상수에 있었다. 이제 `ai_cfg.cfg_prompt`의 page_name/page_definition/
+# analysis_constraints/policy_version/output_contract 컬럼이 값 단위로 이를
+# 덮어쓴다(NULL = 코드 기본값). 코드 기본값은 그대로 남아 DB 없이도 동작한다.
+# ────────────────────────────────────────────────────────────────────
+
+
+@dataclass(frozen=True, slots=True)
+class PageConfig:
+    """한 페이지의 유효 정책·출력 계약(코드 기본값에 DB 컬럼을 덮은 결과)."""
+
+    page_id: str
+    name: str
+    definition: str
+    analysis_constraints: tuple[str, ...]
+    policy_version: str
+    section_sentence_ranges: dict[str, tuple[int, int]]
+    total_sentence_range: tuple[int, int] | None
+    max_evidence_ids_per_sentence: int
+    #: 필드별 출처("db"|"code") — 검증 스크립트·디버깅용.
+    source: dict[str, str]
+
+    def as_context(self) -> SummaryPageContext:
+        return SummaryPageContext(
+            page_id=self.page_id,  # type: ignore[arg-type]
+            name=self.name,
+            definition=self.definition,
+            analysis_constraints=list(self.analysis_constraints),
+            policy_version=self.policy_version,
+        )
+
+    def output_contract_json(self) -> dict[str, Any]:
+        """DB `output_contract` 컬럼(JSONB)에 그대로 저장되는 모양."""
+
+        payload: dict[str, Any] = {
+            "section_sentence_ranges": {k: list(v) for k, v in self.section_sentence_ranges.items()},
+            "max_evidence_ids_per_sentence": self.max_evidence_ids_per_sentence,
+        }
+        if self.total_sentence_range is not None:
+            payload["total_sentence_range"] = list(self.total_sentence_range)
+        return payload
+
+
+def code_page_config(page_id: str) -> PageConfig:
+    """DB를 보지 않은 코드 기본값 — YAML 정책(2종)·dataclass 컨텍스트(7종)·위 상수."""
+
+    if page_id in ("indicator_market", "indicator_supply"):
+        policy = load_page_policy(page_id)  # type: ignore[arg-type]
+        name, definition = policy.name, policy.definition
+        constraints, version = policy.analysis_constraints, policy.policy_version
+    elif page_id in ADDITIONAL_PAGE_CONTEXTS:
+        ctx = ADDITIONAL_PAGE_CONTEXTS[page_id]
+        name, definition, constraints, version = ctx.name, ctx.definition, ctx.analysis_constraints, ctx.policy_version
+    elif page_id in KOMIR_PAGE_CONTEXTS:
+        ctx = KOMIR_PAGE_CONTEXTS[page_id]
+        name, definition, constraints, version = ctx.name, ctx.definition, ctx.analysis_constraints, ctx.policy_version
+    else:
+        raise KeyError(f"unknown summary page_id: {page_id}")
+    if page_id == "map_mineral":
+        ranges, total = dict(MINERAL_MAP_SECTION_SENTENCE_RANGES), MINERAL_MAP_TOTAL_SENTENCE_RANGE
+    else:
+        ranges, total = dict(SECTION_SENTENCE_RANGES[page_id]), None
+    return PageConfig(
+        page_id=page_id,
+        name=name,
+        definition=definition,
+        analysis_constraints=tuple(constraints),
+        policy_version=version,
+        section_sentence_ranges=ranges,
+        total_sentence_range=total,
+        max_evidence_ids_per_sentence=MAX_EVIDENCE_IDS_PER_SENTENCE,
+        source={k: "code" for k in ("name", "definition", "analysis_constraints", "policy_version", "section_sentence_ranges", "total_sentence_range", "max_evidence_ids_per_sentence")},
+    )
+
+
+def _parse_range(value: Any) -> tuple[int, int] | None:
+    if not isinstance(value, (list, tuple)) or len(value) != 2:
+        return None
+    lo, hi = value
+    if isinstance(lo, bool) or isinstance(hi, bool) or not isinstance(lo, int) or not isinstance(hi, int):
+        return None
+    if lo < 1 or hi < lo:
+        return None
+    return (lo, hi)
+
+
+def _parse_output_contract(page_id: str, raw: Any, base: PageConfig) -> tuple[dict[str, tuple[int, int]] | None, tuple[int, int] | None, int | None]:
+    """DB `output_contract` JSON을 검증해 (섹션범위, 총범위, 문장당 근거수)로.
+    형식이 틀린 항목은 None(=코드 기본값)으로 두고 경고만 남긴다 — 운영 중
+    DB 값 하나가 틀렸다고 보고서 생성이 멈추면 안 된다."""
+
+    log = logging.getLogger(__name__)
+    if not isinstance(raw, dict):
+        log.warning("%s: output_contract가 객체가 아니라 무시한다: %r", page_id, raw)
+        return None, None, None
+    ranges: dict[str, tuple[int, int]] | None = None
+    raw_ranges = raw.get("section_sentence_ranges")
+    if raw_ranges is not None:
+        parsed = {section: _parse_range(raw_ranges.get(section)) for section in _SECTIONS} if isinstance(raw_ranges, dict) else {}
+        if all(parsed.get(section) is not None for section in _SECTIONS):
+            ranges = {section: parsed[section] for section in _SECTIONS}  # type: ignore[misc]
+        else:
+            log.warning("%s: output_contract.section_sentence_ranges 형식 오류 — 코드 기본값 사용: %r", page_id, raw_ranges)
+    total: tuple[int, int] | None = None
+    if raw.get("total_sentence_range") is not None:
+        total = _parse_range(raw.get("total_sentence_range"))
+        if total is None:
+            log.warning("%s: output_contract.total_sentence_range 형식 오류 — 코드 기본값 사용", page_id)
+    max_ids: int | None = None
+    raw_max = raw.get("max_evidence_ids_per_sentence")
+    if raw_max is not None:
+        if isinstance(raw_max, int) and not isinstance(raw_max, bool) and 1 <= raw_max <= 3:
+            max_ids = raw_max  # `SummarySentence.evidence_ids` max_length=3이 상한
+        else:
+            log.warning("%s: output_contract.max_evidence_ids_per_sentence는 1~3이어야 한다 — 코드 기본값 사용", page_id)
+    return ranges, total, max_ids
+
+
+def resolve_page_config(page_id: str) -> PageConfig:
+    """코드 기본값 위에 DB 행(`prompt_store.get_page_row`)의 NULL 아닌 컬럼을 덮는다."""
+
+    base = code_page_config(page_id)
+    row = prompt_store.get_page_row(page_id)
+    if row is None:
+        return base
+    source = dict(base.source)
+    name, definition, constraints, version = base.name, base.definition, base.analysis_constraints, base.policy_version
+    if row.page_name:
+        name, source["name"] = row.page_name, "db"
+    if row.page_definition:
+        definition, source["definition"] = row.page_definition, "db"
+    if row.analysis_constraints is not None:
+        if isinstance(row.analysis_constraints, list) and all(isinstance(item, str) for item in row.analysis_constraints):
+            constraints, source["analysis_constraints"] = tuple(row.analysis_constraints), "db"
+        else:
+            logging.getLogger(__name__).warning("%s: analysis_constraints는 문자열 배열이어야 한다 — 코드 기본값 사용", page_id)
+    if row.policy_version:
+        version, source["policy_version"] = row.policy_version, "db"
+    ranges, total, max_ids = base.section_sentence_ranges, base.total_sentence_range, base.max_evidence_ids_per_sentence
+    if row.output_contract is not None:
+        db_ranges, db_total, db_max = _parse_output_contract(page_id, row.output_contract, base)
+        if db_ranges is not None:
+            ranges, source["section_sentence_ranges"] = db_ranges, "db"
+        if db_total is not None:
+            total, source["total_sentence_range"] = db_total, "db"
+        if db_max is not None:
+            max_ids, source["max_evidence_ids_per_sentence"] = db_max, "db"
+    return PageConfig(
+        page_id=page_id,
+        name=name,
+        definition=definition,
+        analysis_constraints=constraints,
+        policy_version=version,
+        section_sentence_ranges=ranges,
+        total_sentence_range=total,
+        max_evidence_ids_per_sentence=max_ids,
+        source=source,
+    )
+
+
+def effective_page_context(page_id: str) -> SummaryPageContext:
+    """`summary.py`가 응답의 policy_version/page_definition/notices에 쓰는 컨텍스트."""
+
+    return resolve_page_config(page_id).as_context()
+
+
+def apply_page_config(policy: PagePolicy) -> PagePolicy:
+    """YAML 등급 정책(indicator_market/supply)에 DB 오버레이를 입힌다 — 등급 밴드
+    (grade_rules)는 판정 로직이라 DB화 대상이 아니고, 이름·정의·제약·버전만 덮는다."""
+
+    cfg = resolve_page_config(policy.page_id)
+    return policy.model_copy(
+        update={
+            "name": cfg.name,
+            "definition": cfg.definition,
+            "analysis_constraints": list(cfg.analysis_constraints),
+            "policy_version": cfg.policy_version,
+        }
+    )
 
 
 def summary_instructions(page_id: str) -> str:
@@ -311,8 +501,12 @@ def build_summary_payload(
     allowed_evidence: list[dict[str, str]],
     previous_validation_error: str | None = None,
 ) -> dict[str, Any]:
-    """Build an evidence-bounded payload for summary refinement."""
+    """Build an evidence-bounded payload for summary refinement.
 
+    `policy` 인자는 호출부 호환용으로 남겼다 — 페이지 정책·출력 계약은 2026-08-27
+    부터 `resolve_page_config()`(코드 기본값 + DB 오버레이)에서 가져온다."""
+
+    cfg = resolve_page_config(response.page_id)
     if response.page_id == "map_mineral":
         required_ids = [
             item["evidence_id"]
@@ -327,11 +521,11 @@ def build_summary_payload(
                 for item in allowed_evidence
                 if item.get("required") is not True
             ],
-            "max_evidence_ids_per_sentence": 3,
+            "max_evidence_ids_per_sentence": cfg.max_evidence_ids_per_sentence,
             "section_sentence_ranges": {
-                section: list(bounds) for section, bounds in MINERAL_MAP_SECTION_SENTENCE_RANGES.items()
+                section: list(bounds) for section, bounds in cfg.section_sentence_ranges.items()
             },
-            "total_sentence_range": list(MINERAL_MAP_TOTAL_SENTENCE_RANGE),
+            "total_sentence_range": list(cfg.total_sentence_range or MINERAL_MAP_TOTAL_SENTENCE_RANGE),
         }
     else:
         output_contract = {
@@ -339,20 +533,19 @@ def build_summary_payload(
             "required_evidence_ids": [
                 item["evidence_id"] for item in allowed_evidence
             ],
-            "max_evidence_ids_per_sentence": 3,
+            "max_evidence_ids_per_sentence": cfg.max_evidence_ids_per_sentence,
             "section_sentence_ranges": {
-                section: list(bounds)
-                for section, bounds in SECTION_SENTENCE_RANGES[response.page_id].items()
+                section: list(bounds) for section, bounds in cfg.section_sentence_ranges.items()
             },
             "require_combined_evidence_sentence": True,
         }
     payload: dict[str, Any] = {
         "page_policy": {
-            "page_id": policy.page_id,
-            "name": policy.name,
-            "definition": policy.definition,
-            "analysis_constraints": policy.analysis_constraints,
-            "policy_version": policy.policy_version,
+            "page_id": cfg.page_id,
+            "name": cfg.name,
+            "definition": cfg.definition,
+            "analysis_constraints": list(cfg.analysis_constraints),
+            "policy_version": cfg.policy_version,
         },
         "analysis_scope": response.analysis_scope,
         "mineral": response.mineral.model_dump(mode="json"),

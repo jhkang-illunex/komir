@@ -61,6 +61,14 @@ from ..analysis.report_render import render_markdown_report
 
 _LOG = logging.getLogger(__name__)
 _TIMEOUT_SECONDS = 20
+#: 분석요약 8종 전용 LLM 호출 한도(초·회) — `main.py::build_analysis_summary_service`가
+#: `KomirJsonLLM` cfg에 넣는다. 요청당 20초 예산 안에서 lock 점유가 끝나도록
+#: 잡는다(2026-08-27 skeptic 감사 SC-002). 실 vLLM(gemma-4-26b-a4b) 정제 1회
+#: 지연 실측 3.6~6.5s, 콜드 호출 12.6s — 8s는 콜드 호출에 빠듯해 12s로 상향
+#: (2026-08-27 DB화 라운드). `_common.py`에 두는 이유: 아래 lock 인수 판단이
+#: 같은 값을 써야 하는데 main.py를 import하면 순환이 된다.
+ANALYSIS_LLM_TIMEOUT_SECONDS = 12
+ANALYSIS_LLM_RETRIES = 1
 # 8종 엔드포인트가 공유하는 실행 풀 — 요청마다 새 스레드를 만들지 않는다.
 _EXECUTOR = ThreadPoolExecutor(max_workers=8, thread_name_prefix="analysis-summary")
 
@@ -106,6 +114,12 @@ def run_summary(
         if not lock.acquire(timeout=remaining):
             raise _LockTimeout()
         try:
+            # Pass 3 라운드 2 R2-F2: 예산 안에 lock을 잡았어도 남은 시간이 LLM
+            # 호출 1회분보다 짧으면 어차피 클라이언트는 TIMEOUT을 받고, 이 스레드는
+            # 아무도 안 읽는 LLM 호출로 lock을 자기 deadline 너머까지 쥔다 —
+            # LLM이 배선된 서비스면 여기서 포기한다(규칙기반만이면 ms라 계속).
+            if getattr(service, "uses_llm", False) and (deadline - time.monotonic()) < ANALYSIS_LLM_TIMEOUT_SECONDS:
+                raise _LockTimeout()
             return service.analyze(summary_request)
         finally:
             lock.release()
@@ -127,4 +141,4 @@ def run_summary(
     return AnalysisReportResponse(status="ok", report=render_markdown_report(response))
 
 
-__all__ = ["run_summary"]
+__all__ = ["ANALYSIS_LLM_RETRIES", "ANALYSIS_LLM_TIMEOUT_SECONDS", "run_summary"]

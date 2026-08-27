@@ -72,12 +72,8 @@ from .routers.report_data import (  # noqa: E402
     maps_router,
     prices_router,
 )
+from .routers._common import ANALYSIS_LLM_RETRIES, ANALYSIS_LLM_TIMEOUT_SECONDS  # noqa: E402
 from .scheduler import create_scheduler  # noqa: E402
-
-#: 분석요약 8종 전용 LLM 호출 한도(초·회) — `routers/_common.py`의 요청당 20초
-#: 예산 안에서 lock 점유가 끝나도록 잡는다(§build_analysis_summary_service).
-_ANALYSIS_LLM_TIMEOUT_SECONDS = 8
-_ANALYSIS_LLM_RETRIES = 1
 
 
 def build_analysis_summary_service():
@@ -132,8 +128,8 @@ def build_analysis_summary_service():
         llm = KomirJsonLLM(
             {
                 **get_settings().llm_cfg(),
-                "timeout": _ANALYSIS_LLM_TIMEOUT_SECONDS,
-                "retries": _ANALYSIS_LLM_RETRIES,
+                "timeout": ANALYSIS_LLM_TIMEOUT_SECONDS,
+                "retries": ANALYSIS_LLM_RETRIES,
             }
         )
     except Exception:  # noqa: BLE001 — LLM 없이도 규칙기반 요약은 나와야 한다

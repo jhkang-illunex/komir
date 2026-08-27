@@ -30,3 +30,17 @@ CREATE TABLE IF NOT EXISTS ai_cfg.cfg_prompt (
   updated_at  TIMESTAMP,
   PRIMARY KEY (prompt_key)
 );
+
+-- 2026-08-27 프롬프트 DB화 2단계: 지시문 본문(content) 외에 페이지 정책
+-- (이름·정의·작성 제약·정책버전)과 출력 계약(섹션별 문장수 범위)도 DB에서
+-- 통제한다 — 이전엔 YAML(indicator_market/supply)·Python dataclass(나머지 7종)·
+-- prompts.py 상수(문장수 범위)에 흩어져 있던 ~15%. 컬럼은 ADD COLUMN IF NOT
+-- EXISTS라 재실행 안전하고, report_gen의 prompt_store.reload()가 기동·리로드
+-- 시 information_schema로 누락 컬럼을 감지하면 이 파일을 자동 적용한다.
+-- summary_common 행(공통 서두)은 페이지가 아니라 아래 컬럼이 전부 NULL이다.
+-- NULL인 컬럼은 "코드 기본값을 쓴다"는 뜻이다(값 단위 폴백).
+ALTER TABLE ai_cfg.cfg_prompt ADD COLUMN IF NOT EXISTS page_name            VARCHAR(80);
+ALTER TABLE ai_cfg.cfg_prompt ADD COLUMN IF NOT EXISTS page_definition      TEXT;
+ALTER TABLE ai_cfg.cfg_prompt ADD COLUMN IF NOT EXISTS analysis_constraints JSONB;
+ALTER TABLE ai_cfg.cfg_prompt ADD COLUMN IF NOT EXISTS policy_version       VARCHAR(60);
+ALTER TABLE ai_cfg.cfg_prompt ADD COLUMN IF NOT EXISTS output_contract      JSONB;

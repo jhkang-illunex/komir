@@ -59,7 +59,6 @@ ensure_shared_on_path()
 from shared.llm_client import KomirJsonLLM, LLMError  # noqa: E402
 
 from .additional_summary import (  # noqa: E402
-    ADDITIONAL_PAGE_CONTEXTS,
     AdditionalCalculatedSummary,
     EvidenceClaim,
     SummaryPageContext,
@@ -79,7 +78,6 @@ from .data_sources import (  # noqa: E402
 )
 from .indicators import months_are_contiguous, percent_change  # noqa: E402
 from .komir_summary import (  # noqa: E402
-    KOMIR_PAGE_CONTEXTS,
     calculate_domestic_trade_summary,
     calculate_global_trade_summary,
     calculate_price_group_summary,
@@ -115,10 +113,10 @@ from .models import (  # noqa: E402
 )
 from .policy import PagePolicy, load_page_policy  # noqa: E402
 from .prompts import (  # noqa: E402
-    MINERAL_MAP_SECTION_SENTENCE_RANGES,
-    MINERAL_MAP_TOTAL_SENTENCE_RANGE,
-    SECTION_SENTENCE_RANGES,
+    apply_page_config,
     build_summary_payload,
+    effective_page_context,
+    resolve_page_config,
     summary_instructions,
 )
 
@@ -179,6 +177,22 @@ def _observations_from_request(
     except Exception as exc:  # noqa: BLE001 — pydantic ValidationError 등을 422로 통일
         raise DataSourceError(
             f"{request.page_id}: {field_name} 형식이 {observation_cls.__name__}과 맞지 않는다: {exc}"
+        ) from exc
+
+
+def _supply_auxiliary_from_request(request: AnalysisSummaryRequest) -> SupplyAuxiliaryData | None:
+    """`supply_auxiliary`(수급 보조패널, 선택)를 검증한다 — 형식이 틀리면
+    `DataSourceError`(→ NO_DATA). Pass 3 라운드 2 R2-F1: 이전엔 검증 예외가 그대로
+    새어 4개 지표 라우트에서 `{"bogus": 1}` 같은 바디가 INTERNAL_ERROR가 됐다
+    (`_observations_from_request`와 같은 규칙으로 맞춤)."""
+
+    if request.supply_auxiliary is None:
+        return None
+    try:
+        return SupplyAuxiliaryData.model_validate(request.supply_auxiliary)
+    except Exception as exc:  # noqa: BLE001 — pydantic ValidationError 등
+        raise DataSourceError(
+            f"{request.page_id}: supply_auxiliary 형식이 SupplyAuxiliaryData와 맞지 않는다: {exc}"
         ) from exc
 
 
@@ -738,24 +752,23 @@ def _validate_llm_summary(
         ("current_position", candidate.current_position),
     ]
     sentences = [sentence for _, values in sections for sentence in values]
-    # 섹션별 문장수 계약은 `prompts.py`의 단일 상수를 쓴다 — LLM에 보내는
-    # output_contract와 이 검증기가 같은 값을 보게 하기 위해서다(2026-08-27
-    # skeptic 감사 SC-005: 이전엔 두 파일에 복제돼 "글자 그대로 일치해야 한다"는
-    # 주석으로만 묶여 있었다).
+    # 섹션별 문장수 계약은 `prompts.py::resolve_page_config`(코드 기본값 + DB
+    # 오버레이) 한 곳에서 온다 — LLM에 보내는 output_contract와 이 검증기가 같은
+    # 값을 보게 하기 위해서다(2026-08-27 skeptic 감사 SC-005 → 같은 날 DB화 2단계).
+    cfg = resolve_page_config(page_id)
     if page_id == "map_mineral":
-        total_min, total_max = MINERAL_MAP_TOTAL_SENTENCE_RANGE
+        total_min, total_max = cfg.total_sentence_range or (5, 8)
         if not total_min <= len(sentences) <= total_max:
             return f"광물지도 출력은 전체 {total_min}~{total_max}문장이어야 한다."
-        major_min, major_max = MINERAL_MAP_SECTION_SENTENCE_RANGES["major_changes"]
+        major_min, major_max = cfg.section_sentence_ranges["major_changes"]
         if not major_min <= len(candidate.major_changes) <= major_max:
             return f"광물지도 주요 변화는 {major_min}~{major_max}문장이어야 한다."
-        position_min, position_max = MINERAL_MAP_SECTION_SENTENCE_RANGES["current_position"]
+        position_min, position_max = cfg.section_sentence_ranges["current_position"]
         if not position_min <= len(candidate.current_position) <= position_max:
             return f"광물지도 현재 위치·의미는 {position_min}~{position_max}문장이어야 한다."
     else:
-        section_ranges = SECTION_SENTENCE_RANGES[page_id]
         for section, values in sections:
-            minimum, maximum = section_ranges[section]
+            minimum, maximum = cfg.section_sentence_ranges[section]
             if not minimum <= len(values) <= maximum:
                 return "섹션별 분석문 수가 출력 계약과 일치하지 않는다."
     used_ids: list[str] = []
@@ -823,6 +836,13 @@ class AnalysisSummaryService:
         self._global_trade_source = global_trade_source
         self._llm = llm
 
+    @property
+    def uses_llm(self) -> bool:
+        """LLM 정제가 배선돼 있는지 — `routers/_common.py`가 lock 인수 뒤 남은
+        예산이 LLM 1회분보다 짧을 때 포기할지 결정하는 데 쓴다(R2-F2)."""
+
+        return self._llm is not None
+
     def analyze(self, request: AnalysisSummaryRequest) -> AnalysisSummaryResponse:
         """Calculate the summary appropriate for the requested page."""
 
@@ -880,17 +900,15 @@ class AnalysisSummaryService:
             data_version=_data_version([o.model_dump(mode="json") for o in observations]),
             data_as_of=months[-1],
             observations=observations,
-            supply_auxiliary=(
-                SupplyAuxiliaryData.model_validate(request.supply_auxiliary)
-                if request.supply_auxiliary is not None
-                else None
-            ),
+            supply_auxiliary=_supply_auxiliary_from_request(request),
             price_unit=request.price_unit,
             price_criterion=request.price_criterion,
             unavailable_page_data=request.unavailable_page_data or [],
             warnings=[],
         )
-        policy = load_page_policy(request.page_id)
+        # YAML 등급 정책에 DB 오버레이(이름·정의·제약·버전)를 입힌다 — 등급 밴드는
+        # 판정 로직이라 YAML 그대로(2026-08-27 프롬프트 DB화 2단계).
+        policy = apply_page_config(load_page_policy(request.page_id))
         calculated = _calculate_summary(series, policy)
         applied_filters = {
             "mineral": series.mineral.name,
@@ -989,7 +1007,7 @@ class AnalysisSummaryService:
             warnings=[],
         )
         calculated = _calculate_or_no_data(request.page_id, calculate_composite_summary, series)
-        context = ADDITIONAL_PAGE_CONTEXTS["indicator_composite"]
+        context = effective_page_context("indicator_composite")
         applied_filters = {
             "start_date": request.start_date or series.observations[0].date,
             "end_date": request.end_date or series.observations[-1].date,
@@ -1118,7 +1136,7 @@ class AnalysisSummaryService:
         calculated = _calculate_or_no_data(
             request.page_id, calculate_mineral_map_summary, series, secondary_series=secondary_series
         )
-        context = ADDITIONAL_PAGE_CONTEXTS["map_mineral"]
+        context = effective_page_context("map_mineral")
         years = sorted({item.year for item in series.observations})
         applied_filters = {
             "mineral": series.mineral.name,
@@ -1219,7 +1237,7 @@ class AnalysisSummaryService:
             warnings=[],
         )
         calculated = _calculate_or_no_data(request.page_id, calculate_price_forecast_summary, series)
-        context = ADDITIONAL_PAGE_CONTEXTS["forecast_price"]
+        context = effective_page_context("forecast_price")
         applied_filters = {
             "mineral": series.mineral.name,
             "mineral_code": series.mineral.code,
@@ -1350,7 +1368,7 @@ class AnalysisSummaryService:
         calculated = _calculate_or_no_data(
             request.page_id, calculate_price_summary, series, compare_series=compare_series
         )
-        context = KOMIR_PAGE_CONTEXTS["price"]
+        context = effective_page_context("price")
         applied_filters = {
             "mineral": series.mineral.name,
             "mineral_code": series.mineral.code,
@@ -1478,7 +1496,7 @@ class AnalysisSummaryService:
             series,
             direction=request.trade_direction or "import",
         )
-        return self._respond_trade_map(request, series, calculated, KOMIR_PAGE_CONTEXTS["map_korea"])
+        return self._respond_trade_map(request, series, calculated, effective_page_context("map_korea"))
 
     def _analyze_global_trade(self, request: AnalysisSummaryRequest) -> AnalysisSummaryResponse:
         """Load a global (KO_UN_CMMRC) trade-map series and build its response."""
@@ -1494,7 +1512,7 @@ class AnalysisSummaryService:
         # )
         series = self._trade_series_from_request(request, "map_global")
         calculated = _calculate_or_no_data(request.page_id, calculate_global_trade_summary, series)
-        return self._respond_trade_map(request, series, calculated, KOMIR_PAGE_CONTEXTS["map_global"])
+        return self._respond_trade_map(request, series, calculated, effective_page_context("map_global"))
 
     def _analyze_price_group(self, request: AnalysisSummaryRequest) -> AnalysisSummaryResponse:
         """`page_id="price_group"` — PDF §1-2 그룹(비철금속/희소금속) 요약(2026-08-27 신설)."""
@@ -1505,7 +1523,7 @@ class AnalysisSummaryService:
         calculated = _calculate_or_no_data(
             request.page_id, calculate_price_group_summary, request.price_group, observations
         )
-        context = KOMIR_PAGE_CONTEXTS["price_group"]
+        context = effective_page_context("price_group")
         group_label = {"base_metals": "비철금속", "minor_metals": "희소금속"}[request.price_group]
         applied_filters = {"price_group": request.price_group}
         data_version = _data_version([o.model_dump(mode="json") for o in observations])
