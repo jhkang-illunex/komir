@@ -24,6 +24,18 @@ from pathlib import Path
 _INHOUSE_ROOT = Path(__file__).resolve().parents[1]
 if str(_INHOUSE_ROOT) not in sys.path:
     sys.path.insert(0, str(_INHOUSE_ROOT))
+if str(_INHOUSE_ROOT / "services") not in sys.path:
+    sys.path.insert(0, str(_INHOUSE_ROOT / "services"))
+
+from shared.logging_config import configure_logging  # noqa: E402
+
+# 2026-08-28 사용자 지적("LLM 경과 같은 부분은 로깅으로 기록") 대응 — 지금까지
+# streamlit_demo 는 오류를 st.error/st.warning으로 화면에만 보여주고 서버 콘솔
+# 로그가 전혀 없었다(report_gen·rag_chat과 같은 공통 모듈 재사용, 중복 설정 방지
+# 위해 프로세스당 1회만 적용되도록 이미 멱등 처리돼 있음). 엔트리포인트에서 한 번
+# 부르면 이후 실행되는 모든 view 의 `logging.getLogger(__name__)` 가 이 설정을
+# 물려받는다.
+configure_logging()
 
 import streamlit as st  # noqa: E402
 

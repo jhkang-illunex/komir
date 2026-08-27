@@ -9,12 +9,15 @@
 from __future__ import annotations
 
 import base64
+import logging
 from typing import Any
 
 import pandas as pd
 import streamlit as st
 
 from streamlit_demo.api_client import ChatEvent, Profile, RagChatClient, RagChatError
+
+_log = logging.getLogger(__name__)
 
 EXAMPLE_QUESTIONS = (
     "니켈 수급위기 진단등급이 어떻게 되나?",
@@ -101,6 +104,7 @@ def _submit_question(client: RagChatClient, question: str, *, profile: Profile, 
             ):
                 _apply_event(event, record, status_box=status_box, text_box=text_box, media_area=media_area)
         except RagChatError as exc:
+            _log.exception("rag_chat 호출 실패(profile=%s, mode=%s)", profile, mode)
             status_box.empty()
             record["content"] = f"요청을 처리하지 못했습니다. {exc}"
             text_box.error(record["content"])

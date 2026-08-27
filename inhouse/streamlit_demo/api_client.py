@@ -9,11 +9,14 @@
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from typing import Any, Literal
 
 import httpx
+
+_log = logging.getLogger(__name__)
 
 Profile = Literal["public", "private"]
 
@@ -66,6 +69,7 @@ class RagChatClient:
                 response.raise_for_status()
             return response.json() == {"status": "ok"}
         except (httpx.HTTPError, ValueError):
+            _log.debug("rag_chat health check 실패(base_url=%s)", self.base_url, exc_info=True)
             return False
 
     def chat_stream(
@@ -93,9 +97,11 @@ class RagChatClient:
                 with client.stream("POST", path, json=payload) as response:
                     if response.status_code != 200:
                         body = response.read().decode("utf-8", "replace")
+                        _log.warning("rag_chat %s 요청 실패(status=%s): %s", path, response.status_code, body[:200])
                         raise RagChatError(f"{path} 요청이 실패했습니다. ({response.status_code}: {body[:200]})")
                     yield from self._parse_sse(response.iter_lines())
         except httpx.RequestError as exc:
+            _log.warning("rag_chat 연결 실패(profile=%s, base_url=%s): %s", profile, self.base_url, exc)
             raise RagChatError(f"rag_chat 서버({self.base_url})에 연결할 수 없습니다.") from exc
 
     @staticmethod
