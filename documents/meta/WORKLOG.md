@@ -2,7 +2,48 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-08-27 (최신) — 반복 루프(/loop): DB 프롬프트 기반 실 LLM 보고서 384건 전체 재작성 → 오류·지침 점검 → 수정
+## 2026-08-27 (최신) — 광물자원가격 page_id 분리: "price" → price_base_metals/price_minor_metals
+
+사용자가 실제 KOMIS 사이트맵(캡처 근거, `streamlit_demo/komis_menu_map.yaml`)을
+확인해 report_gen의 `page_id="price"` 1개가 실제로는 서로 다른 서브메뉴 2개
+(광물자원가격 > 비철금속/희소금속)를 합쳐 다루고 있었다는 걸 발견 — main-agent
+경유로 report-summary-agent에게 분리 지시. 이름은 rag_chat page_recommend
+registry(`services/rag_chat/app/page_recommend/resources/registry/pages/
+price_base_metals.yaml`·`price_minor.yaml`)의 정본 `page_id:` 필드값과 맞춰
+`price_base_metals`/`price_minor_metals`로 통일(레지스트리 파일명 `price_minor.yaml`
+안의 정본은 `price_minor_metals`이고 `price_minor`는 alias — 직접 확인 필요했음).
+
+**변경 범위(백엔드만 — streamlit_demo는 streamlit-agent가 별도 처리)**:
+`models.py`(SummaryPageId·PriceSeries.page_id·compare_* 필드를 이제
+`page_id="price_minor_metals"`가 아니면 명시적으로 거부하도록 신규 검증 추가,
+이전엔 문서화만 되고 강제되지 않았다) · `summary.py`(dispatch·`_analyze_price`)
+· `komir_summary.py`(KOMIR_PAGE_CONTEXTS 2개로 분리, policy_version도
+`price-base-metals-summary-v1`/`price-minor-metals-summary-v1`로 각각 발급) ·
+`prompts.py`(PROMPTS·SECTION_SENTENCE_RANGES·MAX_EVIDENCE_IDS_PER_SENTENCE_BY_PAGE
+— 지시문 내용은 두 그룹이 동일해 상수를 공유) · `routers/analysis.py`
+(`/api/v1/analysis/prices`를 `/prices/base-metals`·`/prices/minor-metals` 2개로
+분리, deprecated alias 없음 — 다른 소비자 없음을 grep으로 확인) ·
+`routers/report_data.py`(기존 `/api/v1/prices/{base-metals,minor-metals}` URL은
+그대로 두고 위임 page_id만 교체) · `seed_prompts.py`(RETIRED_KEYS로 옛 `"price"`
+DB 행 자동 정리) · `scripts/verify_prompt_db.py`(하드코드된 `'price'`를
+`'price_minor_metals'`로 교체).
+
+**검증**: `python3 scripts/verify_prompt_db.py` 전체 PASS(V1~V5,
+`VERIFY_PROMPT_DB_OK`) — 11키 라운드트립(구 10키에서 +1), 옛 `price` DB 행 삭제
+확인. 추가 ad-hoc 스모크 2건 — ① `price_base_metals` 규칙기반 analyze()
+dispatch/context 배선 확인(V3는 minor만 태움), ② `compare_mineral`을
+`price_base_metals` 요청에 실으면 `ValidationError`로 거부되는지. `app.main`
+import 후 등록된 라우트 목록으로 신규 경로 4개(`/api/v1/analysis/prices/
+{base-metals,minor-metals}`, `/api/v1/prices/{base-metals,minor-metals}`)와 구
+`/api/v1/analysis/prices` 부재를 확인.
+
+**알려진 잔여**: `analysis/store.py`(2026-08-26부터 호출부 없는 dead code)의
+`_PAGE_TITLES` 딕셔너리는 그대로 뒀다(이미 `price_group`도 안 들어있던 낡은
+상태) — 되살릴 일 있으면 그때 같이 고칠 것. `scripts/komis_*_coverage_test.py`
+등 260827 LOOP_CLEAN 1회성 검증 스크립트들도 옛 `"price"`/`/prices` 참조가
+남아있을 수 있으나 상시 재실행 대상이 아니라 손대지 않았다. `report_gen` 컨테이너
+(komir-report-gen-test)는 이 변경 반영을 위해 재빌드가 필요하다(main-agent의
+기존 "재기동 불필요" 판단은 이 커밋으로 무효).
 
 사용자 지시: "DB기반 프롬프트 생성 로직을 통해 기존에 작성한 보고서를 전체적으로
 싹다 작성 → 오류 점검 → 지침 준수 체크 → 미준수분 프롬프트·코드 수정, 오류 0·

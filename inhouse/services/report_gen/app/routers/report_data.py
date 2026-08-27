@@ -15,9 +15,15 @@ REST 명명규칙(kebab-case·복수 컬렉션명·자원 세그먼트, `/api/v1
 base_metals`/`price_minor_metals`)로 "요청 광종이 그 그룹에 속하는지" 검증까지
 넣었었는데(2026-08-26 1차), 사용자 확인 결과 이 보고서 메뉴는 입력을 그대로
 템플릿에 꽂아 넣을 뿐 복잡한 처리가 없어 그 가드가 불필요하다고 판단해
-제거했다(같은 날 2차) — 둘 다 기존 `/api/v1/analysis/prices`와 완전히 같은
-`page_id="price"`로 위임한다. URL만 base-metals/minor-metals로 나뉘어 있을 뿐,
-어느 쪽으로 호출해도 같은 결과다(광종만 바꿔가며 호출하면 됨).
+제거했다(같은 날 2차) — 그 뒤로는 둘 다 `page_id="price"` 하나로 위임했다.
+
+**2026-08-27**: 사용자가 실제 KOMIS 사이트맵을 확인해 "광물자원가격"이 진짜로
+서브메뉴 2개(비철금속/희소금속)라는 걸 확인 → `page_id`를 다시 쪼갰다(이번엔
+그룹 검증 가드 없이, 이름만 원래 1차 시도와 같은 `price_base_metals`/
+`price_minor_metals`로 되돌림 — `routers/analysis.py`의 `/api/v1/analysis/
+prices/{base-metals,minor-metals}`도 같은 날 같은 2개 page_id로 분리했다). URL은
+그대로라 이 라우터의 두 엔드포인트 경로 자체는 바뀌지 않았고, 내부적으로 어느
+page_id로 위임하는지만 바뀌었다.
 
 가격예측(`forecast_price`)은 사용자가 1차 범위에서 의도적으로 제외했다
 ("우선 price/idx/map 세 개로 분리") — 필요해지면 `/api/v1/prices/forecast`로
@@ -51,9 +57,10 @@ def summarize_base_metal_price(
     request: Request,
 ) -> AnalysisReportResponse:
     """비철금속(LME, 니켈·동·아연·알루미늄·연·주석) 가격 분석요약
-    (`/api/v1/analysis/prices`와 동일 위임 — 그룹 검증 없음, §모듈 docstring)."""
+    (`/api/v1/analysis/prices/base-metals`와 동일 위임 — 그룹 검증 없음, §모듈
+    docstring)."""
 
-    return run_summary("price", payload, request)
+    return run_summary("price_base_metals", payload, request)
 
 
 @prices_router.post("/minor-metals", response_model=AnalysisReportResponse)
@@ -62,9 +69,10 @@ def summarize_minor_metal_price(
     request: Request,
 ) -> AnalysisReportResponse:
     """희소금속(리튬·코발트·희토류 등) 가격 분석요약
-    (`/api/v1/analysis/prices`와 동일 위임 — 그룹 검증 없음, §모듈 docstring)."""
+    (`/api/v1/analysis/prices/minor-metals`와 동일 위임 — 그룹 검증 없음, §모듈
+    docstring)."""
 
-    return run_summary("price", payload, request)
+    return run_summary("price_minor_metals", payload, request)
 
 
 @indicators_router.post("/market", response_model=AnalysisReportResponse)

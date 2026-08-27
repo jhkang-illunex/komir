@@ -34,9 +34,19 @@ SummaryPageId = Literal[
     "indicator_composite",
     "forecast_price",
     "map_mineral",
-    # 아래 3개는 외부repo에도 없던 komir 자체 추가(2026-08-19) — §"가격·수급지도
+    # 아래 4개는 외부repo에도 없던 komir 자체 추가(2026-08-19) — §"가격·수급지도
     # 요약문 전용 모델" 참고.
-    "price",
+    # 2026-08-27: 사용자가 실제 KOMIS 사이트맵(스샷 근거)을 확인해 "price" 1개가
+    # 실제로는 서로 다른 서브메뉴 2개(광물자원가격 > 비철금속/희소금속)를 합쳐
+    # 다루고 있었다는 걸 발견 — page_id를 실제 메뉴 구조에 맞춰 2개로 쪼갰다
+    # (이전 "price" 단일 키는 완전히 제거, deprecated alias 없음 — 유일 소비자였던
+    # streamlit_demo도 같은 날 맞춰 갱신). 이름은 rag_chat page_recommend registry
+    # (services/rag_chat/app/page_recommend/resources/registry/pages/
+    # price_base_metals.yaml·price_minor.yaml의 `page_id:` 필드값, 파일명과
+    # 다르다 — price_minor.yaml 안엔 `price_minor_metals`가 정본이고 `price_minor`는
+    # alias)와 맞춰 다른 서브시스템과 이름을 통일했다.
+    "price_base_metals",
+    "price_minor_metals",
     "map_korea",
     "map_global",
     # 2026-08-27 신설 — PDF §1-2 "전체광종(필요시)" 대응(비철금속/희소금속
@@ -107,9 +117,13 @@ class AnalysisSummaryRequest(StrictModel):
     unavailable_page_data: list[str] | None = None
     supply_auxiliary: dict | None = None
     unit: str | None = None
-    # 2026-08-26: `page_id="price"` 전용 — KOMIS 희소금속 페이지의 "비교광종"
-    # 대응(원본 응답의 `compareMnrl` 키). `compare_observations`는
-    # `observations`와 같은 shape(PriceObservation dict 리스트)이다.
+    # 2026-08-26: `page_id="price_minor_metals"` 전용 — KOMIS 희소금속 페이지의
+    # "비교광종" 대응(원본 응답의 `compareMnrl` 키). `compare_observations`는
+    # `observations`와 같은 shape(PriceObservation dict 리스트)이다. 2026-08-27
+    # price page_id 분리 후 `validate_period`가 이 4개 필드를
+    # page_id != "price_minor_metals"이면 명시적으로 거부한다(이전엔 문서화만
+    # 되고 강제되지 않았다 — map_korea/map_global도 같은 요청 모델을 공유해
+    # 필드 자체는 존재했다).
     compare_mineral: str | None = Field(default=None, min_length=1)
     compare_mineral_name: str | None = Field(default=None, min_length=1)
     compare_price_criterion: str | None = None
@@ -157,6 +171,22 @@ class AnalysisSummaryRequest(StrictModel):
             raise ValueError("secondary_measure_observations is only accepted for page_id=map_mineral")
         if self.secondary_unit is not None and self.page_id != "map_mineral":
             raise ValueError("secondary_unit is only accepted for page_id=map_mineral")
+        # 2026-08-27 price page_id 분리 — 비교광종은 희소금속 전용 KOMIS 기능이라
+        # price_base_metals/map_korea/map_global로는 못 보내게 새로 강제한다(이전엔
+        # 문서화만 되고 pydantic이 걸러내지 않았다).
+        if (
+            any(
+                value is not None
+                for value in (
+                    self.compare_mineral,
+                    self.compare_mineral_name,
+                    self.compare_price_criterion,
+                    self.compare_observations,
+                )
+            )
+            and self.page_id != "price_minor_metals"
+        ):
+            raise ValueError("compare_* fields are only accepted for page_id=price_minor_metals")
 
         if self.page_id in PAGE_PROFILES:
             if self.mineral is None:
@@ -255,8 +285,9 @@ class AnalysisSummaryRequest(StrictModel):
             ):
                 raise ValueError("price_group summaries do not accept period filters")
         else:
-            # "price"·"map_korea"·"map_global" — komir 자체 추가 3종(§ SummaryPageId
-            # 주석 참고), 셋 다 광종 필수 + 일자(day) 필터만 받는 동일한 모양이다.
+            # "price_base_metals"·"price_minor_metals"·"map_korea"·"map_global" —
+            # komir 자체 추가 4종(§ SummaryPageId 주석 참고), 전부 광종 필수 +
+            # 일자(day) 필터만 받는 동일한 모양이다.
             if self.mineral is None:
                 raise ValueError("mineral is required for price/trade map summaries")
             if any(
@@ -484,7 +515,11 @@ class PriceGroupMineralObservation(StrictModel):
 class PriceSeries(StrictModel):
     """출처 메타를 포함한 광물자원가격(KO_MNRL_PRC) 계열."""
 
-    page_id: Literal["price"] = "price"
+    # 2026-08-27: 값 자체는 어디서도 읽지 않는 메타 필드다(계산기 `calculate_price_
+    # summary`는 참조하지 않는다) — 그래도 실제 호출부(`_analyze_price`)가
+    # `request.page_id`를 명시적으로 넘긴다. 기본값은 임의(비철금속) — dead code인
+    # `data_sources/extra.py`의 미사용 호출부만 이 기본값에 의존한다.
+    page_id: Literal["price_base_metals", "price_minor_metals"] = "price_base_metals"
     mineral: MineralRef
     price_criterion_serial: int
     available_start_date: Day
