@@ -20,6 +20,13 @@ from .routers.forecast import router as forecast_router
 from .routers.geo_index import router as geo_index_router
 
 from msr.config import CORE_COMMODITIES  # noqa: E402
+from shared.logging_config import configure_logging  # noqa: E402
+
+# 2026-08-28: report_gen·rag_chat과 같은 gap(logging.basicConfig() 호출이
+# 아무 데도 없어 logger.info/.warning이 실제로는 컨테이너 로그에 안 찍히던 문제,
+# 사용자 지적으로 발견) — 이 서비스는 지금 LLM을 안 쓰지만(§모듈 docstring) 다른
+# 2개 서비스와 로깅 루틴을 동일하게 맞춘다.
+configure_logging()
 
 app = FastAPI(title="komir commodity_api")
 app.include_router(geo_index_router)
