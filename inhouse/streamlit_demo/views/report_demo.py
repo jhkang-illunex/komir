@@ -20,7 +20,11 @@ report_gen 코드는 다른 세션이 `.claude/worktrees/report_summary`에서 �
 `PAGE_SPECS[p].section`(KOMIS 실제 주메뉴, page_recommend registry 실측값)
 으로 1단(주메뉴)을 채우고, 그 주메뉴에 속한 page_id만 걸러 2단(서브메뉴,
 label)에 보여준다 — price 분리 후 "광물자원가격" 주메뉴 아래 "비철금속"·
-"희소금속" 2개가 자연스럽게 묶여 보인다."""
+"희소금속" 2개가 자연스럽게 묶여 보인다.
+
+2026-08-27: 주메뉴 순서를 `report_gen_client.SECTION_ORDER`(komis_menu_map.yaml
+`komis_site_map`의 실제 사이트맵 순서)로 고정했다 — 이전엔 PAGE_SPECS dict
+등록 순서를 그대로 따라가 실제 KOMIS 내비게이션 순서와 어긋날 수 있었다."""
 from __future__ import annotations
 
 import json
@@ -28,7 +32,7 @@ import json
 import streamlit as st
 
 from streamlit_demo.mineral_master import mineral_label, mineral_options
-from streamlit_demo.report_gen_client import PAGE_SPECS, ReportGenError, client_from_env
+from streamlit_demo.report_gen_client import PAGE_SPECS, SECTION_ORDER, ReportGenError, client_from_env
 
 st.title("요약보고서 작성 데모")
 st.caption("report_gen 분석요약 API(10종)를 관측치(observations) 바디로 직접 호출해보는 개발 데모입니다 — 운영 화면이 아닙니다.")
@@ -41,7 +45,10 @@ with st.sidebar:
     else:
         st.error(f"report_gen 연결 안 됨 · {client.base_url}", icon=":material/error:")
 
-_sections = list(dict.fromkeys(s.section for s in PAGE_SPECS.values()))
+_present_sections = set(s.section for s in PAGE_SPECS.values())
+_sections = [s for s in SECTION_ORDER if s in _present_sections] or list(dict.fromkeys(
+    s.section for s in PAGE_SPECS.values()
+))
 col1, col2 = st.columns(2)
 section = col1.selectbox("주메뉴", _sections)
 section_page_ids = [p for p in PAGE_SPECS if PAGE_SPECS[p].section == section]

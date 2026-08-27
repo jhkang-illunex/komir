@@ -18,6 +18,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -117,6 +118,27 @@ PAGE_SPECS: dict[str, PageSpec] = {
         '{"mineral_name": "구리", "week_change_pct": -0.4, "month_change_pct": 3.1}]',
     ),
 }
+
+
+def _load_section_order() -> list[str]:
+    """`komis_menu_map.yaml`(같은 디렉토리, KOMIS 실제 사이트맵 캡처 기반 —
+    파일 상단 주석 참고)의 `komis_site_map` top-level 키 순서를 그대로 돌려준다.
+    prompt_admin.py·report_demo.py의 주메뉴 콤보박스 정렬 기준(2026-08-27,
+    사용자 요청 — 두 화면이 PAGE_SPECS dict 등록 순서로 제각각 보이던 문제).
+    파일이 없거나 파싱 실패하면 빈 리스트를 돌려주고, 호출부가 PAGE_SPECS 발견
+    순서로 폴백한다(화면이 죽지 않게)."""
+
+    import yaml
+
+    path = Path(__file__).resolve().parent / "komis_menu_map.yaml"
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8"))
+        return list(data["komis_site_map"])
+    except (OSError, yaml.YAMLError, KeyError, TypeError):
+        return []
+
+
+SECTION_ORDER: list[str] = _load_section_order()
 
 
 def client_from_env() -> "ReportGenClient":
