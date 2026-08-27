@@ -38,6 +38,7 @@ if str(_INHOUSE_ROOT) not in sys.path:
 from ingest import status as ingest_status  # noqa: E402
 from services.shared.config import get_settings  # noqa: E402
 from services.shared.db import pg_connect  # noqa: E402
+from services.shared.logging_config import configure_logging  # noqa: E402
 
 _ARGUS_RE = re.compile(r"\((\d{4})-(\d{2})-(\d{2})\)")
 _JODAL_RE = re.compile(r"\((\d{4})\.(\d{1,2})\.(\d{1,2})\)")
@@ -123,6 +124,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
+    configure_logging()
     # 변수명 rh(RunHandle) — 지역함수 run()과 이름이 겹치지 않게(`as run`으로 받으면
     # run() 호출이 깨진다).
     with ingest_status.pipeline_run(
