@@ -21,7 +21,7 @@
    실패 시 오류 코드 문자열 하나로 성공/실패를 겸한다 — 코드 3종:
    `NO_DATA`(옛 `DataSourceError`/422에 대응, 대개 observations 누락)·
    `TIMEOUT`(20초 초과)·`INTERNAL_ERROR`(그 밖의 예외, 서버 로그에 상세 기록).
-3. **HTTP 상태 코드는 8종 전부 항상 200**이다 — 성공/실패 구분은 바디의
+3. **HTTP 상태 코드는 9종 전부 항상 200**이다 — 성공/실패 구분은 바디의
    `status`로만 한다(더 이상 HTTPException을 던지지 않는다). 이건 기존
    422/503 HTTPException 매핑을 없애는 변경이라 해석 지점으로 남긴다.
 4. **20초 타임아웃**: `ThreadPoolExecutor.submit(...).result(timeout=20)`으로
@@ -66,7 +66,7 @@ _TIMEOUT_SECONDS = REQUEST_BUDGET_SECONDS
 # LLM 호출 상한을 `_refine_with_llm`도 같이 봐야 해서 — Pass 3 R3-F1). main.py 호환을
 # 위해 여기서 재노출한다. 12s는 "호출 1회 상한"이고, 요청 전체(20s)는 `_refine_
 # with_llm`이 호출 전마다 남은 예산을 확인해 지킨다.
-# 8종 엔드포인트가 공유하는 실행 풀 — 요청마다 새 스레드를 만들지 않는다.
+# 9종 엔드포인트가 공유하는 실행 풀 — 요청마다 새 스레드를 만들지 않는다.
 _EXECUTOR = ThreadPoolExecutor(max_workers=8, thread_name_prefix="analysis-summary")
 
 

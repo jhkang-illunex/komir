@@ -882,7 +882,7 @@ class AnalysisSummaryService:
             return self._analyze_mineral_map(request)
         if request.page_id == "forecast_price":
             return self._analyze_price_forecast(request)
-        if request.page_id == "price":
+        if request.page_id in ("price_base_metals", "price_minor_metals"):
             return self._analyze_price(request)
         if request.page_id == "map_korea":
             return self._analyze_domestic_trade(request)
@@ -1355,6 +1355,7 @@ class AnalysisSummaryService:
             raise DataSourceError("price analysis: 필터 적용 후 observations가 비었다")
         dates = sorted(o.date for o in observations)
         series = PriceSeries(
+            page_id=request.page_id,
             mineral=MineralRef(code=request.mineral, name=request.mineral_name or request.mineral),
             price_criterion_serial=request.price_criterion_serial or 0,
             available_start_date=dates[0],
@@ -1381,6 +1382,7 @@ class AnalysisSummaryService:
             )
             compare_dates = sorted(o.date for o in compare_obs)
             compare_series = PriceSeries(
+                page_id=request.page_id,
                 mineral=MineralRef(
                     code=request.compare_mineral,
                     name=request.compare_mineral_name or request.compare_mineral,
@@ -1398,7 +1400,7 @@ class AnalysisSummaryService:
         calculated = _calculate_or_no_data(
             request.page_id, calculate_price_summary, series, compare_series=compare_series
         )
-        context = effective_page_context("price")
+        context = effective_page_context(request.page_id)
         applied_filters = {
             "mineral": series.mineral.name,
             "mineral_code": series.mineral.code,

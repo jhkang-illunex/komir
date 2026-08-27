@@ -8,15 +8,21 @@
   mineral-map,price-forecast}` — KOMIS 분석요약 5종(2026-08-13 추가,
   `routers/analysis.py`). 외부 저장소 komis-report-generator-main의 실물 엔진을
   `app/analysis/`로 이식해 배선한 것이다.
-- `POST /api/v1/analysis/{prices,domestic-trade,global-trade}` — 나머지 3종
-  (2026-08-19 추가). 외부repo도 501 스텁이라 참고할 구현이 없어 komir가 자체로
-  짰다(`analysis/data_sources/extra.py`+`analysis/komir_summary.py`).
+- `POST /api/v1/analysis/{prices/base-metals,prices/minor-metals,
+  domestic-trade,global-trade}` — 나머지 4종(2026-08-19 최초 3종, 2026-08-27
+  `/prices` 분리로 4종). 외부repo도 501 스텁이라 참고할 구현이 없어 komir가
+  자체로 짰다(`analysis/data_sources/extra.py`+`analysis/komir_summary.py`).
+  `prices`는 사용자가 실제 KOMIS 사이트맵을 확인해 "비철금속"·"희소금속" 서브
+  메뉴 2개를 합쳐 다루고 있었다는 걸 발견하고 `page_id="price_base_metals"`/
+  `"price_minor_metals"` 2개로 쪼갰다(옛 단일 `page_id="price"`·`/prices` 경로는
+  alias 없이 제거).
 - `POST /api/v1/{prices,indicators,maps}/...` — 보고서 요약 템플릿용 REST
   엔드포인트(2026-08-26 신규, `routers/report_data.py`). 위 `/api/v1/analysis/*`
-  8종과 같은 서비스를 재사용하되 price/idx/map 3계열로 재배치했다. `/prices/
-  {base-metals,minor-metals}`도 나머지와 동일하게 `page_id="price"`로 위임한다
-  (그룹 검증 없는 단순 별칭 — 상세는 그 라우터 모듈 docstring 참고).
-- **2026-08-26 DB 조회 → 요청 바디 입력 전환**: 위 분석요약 8종은 이제
+  9종과 같은 서비스를 재사용하되 price/idx/map 3계열로 재배치했다. `/prices/
+  {base-metals,minor-metals}`도 나머지와 동일하게(2026-08-27부터) 각각
+  `page_id="price_base_metals"`/`"price_minor_metals"`로 위임한다(그룹 검증
+  없는 단순 별칭 — 상세는 그 라우터 모듈 docstring 참고).
+- **2026-08-26 DB 조회 → 요청 바디 입력 전환**: 위 분석요약 9종은 이제
   `public.KO_*`를 직접 조회하지 않는다 — "이 서버는 prompt/template를 제외하고는
   DB에서 값을 로딩하지 않는다"는 원칙에 따라, 계산에 쓰는 원자료(observations)를
   각 요청 바디로 받는다(`analysis/models.py::AnalysisSummaryRequest`의
@@ -77,14 +83,14 @@ from .scheduler import create_scheduler  # noqa: E402
 
 
 def build_analysis_summary_service():
-    """분석요약 8종 서비스를 조립한다(외부repo `api/app.py`의 동명 함수 대응).
+    """분석요약 9종 서비스를 조립한다(외부repo `api/app.py`의 동명 함수 대응).
 
     원본은 자체 psycopg 커넥션 팩토리(`PostgresRawDataRepository(PostgresSettings)`)와
     자체 LLM 클라이언트(`OpenAICompatibleJsonLLM`)를 썼다. 여기서는 komir의
     `services/shared/llm_client.KomirJsonLLM`을 쓴다.
 
     **2026-08-26: DB 조회 경로 비활성화** — "이 서버는 prompt/template를 제외하고는
-    DB에서 값을 로딩하지 않는다"는 원칙에 따라, 8종 전부 `public.KO_*` 직접
+    DB에서 값을 로딩하지 않는다"는 원칙에 따라, 9종 전부 `public.KO_*` 직접
     조회(`KomisRawDataRepository`+`Database*DataSource`)를 멈췄다. 이제
     `AnalysisSummaryService`의 각 `_analyze_*`가 요청 바디의 `observations`로
     Series를 직접 조립한다(`analysis/summary.py` 참고) — 그래서 DataSource
@@ -110,7 +116,7 @@ def build_analysis_summary_service():
     # PG_DSN 가드는 예전엔 "DataSource가 DB에 붙을 수 있는지"의 대리 지표였다.
     # 이제 analyze() 자체는 DB가 필요 없지만, 프롬프트 캐시(ai_cfg.cfg_prompt)는
     # 여전히 PG_DSN이 필요해(§lifespan의 prompt_store.reload()) 이 가드를
-    # 일단 유지한다 — PG_DSN 없이도 분석요약 8종을 규칙기반으로라도 띄우고
+    # 일단 유지한다 — PG_DSN 없이도 분석요약 9종을 규칙기반으로라도 띄우고
     # 싶다면 이 줄을 지우면 된다(열린 결정, WORKLOG 참고).
     if not get_settings().PG_DSN:
         return None

@@ -37,16 +37,32 @@ def _subject(name: str) -> str:
 from .models import DetectedPattern, Metric, PriceGroupMineralObservation, PriceSeries, TradeMapSeries
 
 KOMIR_PAGE_CONTEXTS = {
-    "price": SummaryPageContext(
-        page_id="price",
-        name="광물자원가격",
-        definition="선택한 광종의 일별 실거래가·최저가·최고가 추이를 보여주는 자료다.",
+    # 2026-08-27: 실제 KOMIS 사이트맵 확인 결과 "price" 1개가 서로 다른 서브메뉴
+    # 2개(광물자원가격 > 비철금속/희소금속)를 합쳐 다루고 있어 분리했다 — 계산
+    # 로직(`calculate_price_summary`)은 두 그룹이 동일해 그대로 공유하고, 페이지
+    # 정책(이름·정의·정책버전)만 KOMIS 실제 구분(LME 기준 vs 품목·규격 기준)에
+    # 맞춰 따로 둔다.
+    "price_base_metals": SummaryPageContext(
+        page_id="price_base_metals",
+        name="광물자원가격(비철금속)",
+        definition="선택한 비철금속(LME 기준)의 일별 실거래가·최저가·최고가 추이를 보여주는 자료다.",
         analysis_constraints=[
             "제공된 가격 계열과 선택 기간만 사용한다.",
             "외부 사건을 가격 변화의 원인으로 추정하지 않는다.",
             "가격 단위·기준이 없으면 절대 수준을 해석하지 않는다.",
         ],
-        policy_version="price-summary-v1",
+        policy_version="price-base-metals-summary-v1",
+    ),
+    "price_minor_metals": SummaryPageContext(
+        page_id="price_minor_metals",
+        name="광물자원가격(희소금속)",
+        definition="선택한 희소금속(품목·규격 기준)의 일별 실거래가·최저가·최고가 추이를 보여주는 자료다.",
+        analysis_constraints=[
+            "제공된 가격 계열과 선택 기간만 사용한다.",
+            "외부 사건을 가격 변화의 원인으로 추정하지 않는다.",
+            "가격 단위·기준이 없으면 절대 수준을 해석하지 않는다.",
+        ],
+        policy_version="price-minor-metals-summary-v1",
     ),
     "map_korea": SummaryPageContext(
         page_id="map_korea",

@@ -5,10 +5,12 @@
   V1  컬럼 자동 추가: `prompt_store.ensure_schema()` 후 information_schema에
       REQUIRED_COLUMNS 전부 존재.
   V2  시드 라운드트립: `seed_prompts.main()` 실행 → `prompt_store.reload()` →
-      10키 전부 DB 값 == 코드 기본값(content·name·definition·constraints·
-      version·output_contract), `resolve_page_config().source`가 전부 "db".
-  V3  DB 변경 반영: `price` 행의 page_definition·analysis_constraints·
-      output_contract(major_changes [1,3])를 UPDATE → reload → 규칙기반
+      11키 전부 DB 값 == 코드 기본값(content·name·definition·constraints·
+      version·output_contract), `resolve_page_config().source`가 전부 "db"
+      (2026-08-27 price page_id 분리로 10→11키, §RETIRED_KEYS 정리도 같이 확인).
+  V3  DB 변경 반영: `price_minor_metals`(2026-08-27 이전엔 `price`) 행의
+      page_definition·analysis_constraints·output_contract(major_changes
+      [1,3])를 UPDATE → reload → 규칙기반
       `analyze()` 응답의 page_definition/notices, `build_summary_payload()`의
       page_policy·output_contract, `_validate_llm_summary`의 문장수 한도가
       전부 바뀐 값을 따르는지. 끝나면 재시드로 원복하고 원복도 확인(finally).
@@ -103,24 +105,24 @@ def v3_db_change_propagates() -> None:
     new_contract = {"section_sentence_ranges": {"core_diagnosis": [1, 1], "major_changes": [1, 3], "current_position": [1, 2]}, "max_evidence_ids_per_sentence": 3}
     try:
         execute_pg(
-            "UPDATE ai_cfg.cfg_prompt SET page_definition = %s, analysis_constraints = %s::jsonb, output_contract = %s::jsonb WHERE prompt_key = 'price'",
+            "UPDATE ai_cfg.cfg_prompt SET page_definition = %s, analysis_constraints = %s::jsonb, output_contract = %s::jsonb WHERE prompt_key = 'price_minor_metals'",
             (marker_def, json.dumps([marker_constraint], ensure_ascii=False), json.dumps(new_contract)),
         )
         prompt_store.reload()
-        eff = resolve_page_config("price")
-        check(eff.definition == marker_def and eff.analysis_constraints == (marker_constraint,), "resolve_page_config('price')가 DB 값 반영")
+        eff = resolve_page_config("price_minor_metals")
+        check(eff.definition == marker_def and eff.analysis_constraints == (marker_constraint,), "resolve_page_config('price_minor_metals')가 DB 값 반영")
         check(eff.section_sentence_ranges["major_changes"] == (1, 3), "output_contract major_changes (1,3) 반영")
         svc = AnalysisSummaryService(None, llm=None)
-        resp = svc.analyze(AnalysisSummaryRequest(page_id="price", **PRICE_BODY))
+        resp = svc.analyze(AnalysisSummaryRequest(page_id="price_minor_metals", **PRICE_BODY))
         check(resp.page_definition == marker_def and resp.notices == [marker_constraint], "analyze() 응답 page_definition/notices 반영")
         payload = build_summary_payload(response=resp, policy=None, allowed_evidence=[])  # type: ignore[arg-type]
         check(payload["page_policy"]["definition"] == marker_def and payload["output_contract"]["section_sentence_ranges"]["major_changes"] == [1, 3], "build_summary_payload page_policy/output_contract 반영")
         # 검증기: major_changes 3문장 — 코드 기본값(1,2)이면 거부, DB(1,3)면 문장수 통과
-        claims = [c for c in svc.analyze(AnalysisSummaryRequest(page_id="price", **PRICE_BODY)).summary.major_changes]
+        claims = [c for c in svc.analyze(AnalysisSummaryRequest(page_id="price_minor_metals", **PRICE_BODY)).summary.major_changes]
         _ = claims
         from app.analysis.komir_summary import calculate_price_summary
         from app.analysis.models import MineralRef, PriceObservation, PriceSeries
-        series = PriceSeries(mineral=MineralRef(code="LI", name="리튬"), price_criterion_serial=0, available_start_date="2026-08-01", available_end_date="2026-08-20", source_type="api", source_id="x", data_version="v", data_as_of="2026-08-20", observations=[PriceObservation(**o) for o in PRICE_BODY["observations"]])
+        series = PriceSeries(page_id="price_minor_metals", mineral=MineralRef(code="LI", name="리튬"), price_criterion_serial=0, available_start_date="2026-08-01", available_end_date="2026-08-20", source_type="api", source_id="x", data_version="v", data_as_of="2026-08-20", observations=[PriceObservation(**o) for o in PRICE_BODY["observations"]])
         calc = calculate_price_summary(series)
         by_sec = {"core_diagnosis": [], "major_changes": [], "current_position": []}
         for c in calc.claims:
@@ -135,13 +137,13 @@ def v3_db_change_propagates() -> None:
             major_changes=three,
             current_position=[SummarySentence(text=" ".join(c.fact for c in by_sec["current_position"]), evidence_ids=[c.id for c in by_sec["current_position"]][:3])],
         )
-        err = _validate_llm_summary(narrative, calc.claims, page_id="price")
+        err = _validate_llm_summary(narrative, calc.claims, page_id="price_minor_metals")
         check(err != "섹션별 분석문 수가 출력 계약과 일치하지 않는다.", f"검증기가 DB 범위(1,3)로 3문장 허용 (err={err!r})")
     finally:
         seed_prompts.main()
         prompt_store.reload()
-        eff = resolve_page_config("price")
-        base = code_page_config("price")
+        eff = resolve_page_config("price_minor_metals")
+        base = code_page_config("price_minor_metals")
         check(eff.definition == base.definition and eff.section_sentence_ranges == base.section_sentence_ranges, "재시드 원복 확인")
 
 

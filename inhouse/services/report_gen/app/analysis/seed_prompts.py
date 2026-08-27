@@ -85,6 +85,13 @@ def seed_rows() -> list[tuple]:
     return rows
 
 
+#: 2026-08-27 price page_id 분리로 더 이상 `PROMPTS`에 없는 옛 prompt_key —
+#: upsert는 `PROMPTS`에 있는 키만 건드리므로 재시드해도 저절로 없어지지 않는다.
+#: 여기서 명시적으로 지운다(DELETE는 없는 행에 실행해도 안전, 몇 번을 다시
+#: 돌려도 no-op).
+RETIRED_KEYS = ("price",)
+
+
 def main() -> None:
     n_stmt = apply_schema_pg(str(SCHEMA_SQL))
     print(f"{SCHEMA_SQL.name} 적용: {n_stmt}개 statement (ai_cfg 스키마·cfg_prompt 테이블·컬럼 포함, 이미 있으면 no-op)")
@@ -92,6 +99,9 @@ def main() -> None:
     for row in rows:
         execute_pg(_UPSERT_SQL, row)
     print(f"ai_cfg.cfg_prompt에 {len(rows)}행 upsert 완료: {sorted(PROMPTS)}")
+    for key in RETIRED_KEYS:
+        execute_pg("DELETE FROM ai_cfg.cfg_prompt WHERE prompt_key = %s", (key,))
+    print(f"퇴역 prompt_key 정리: {list(RETIRED_KEYS)}")
 
 
 if __name__ == "__main__":
