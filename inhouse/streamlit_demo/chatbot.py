@@ -5,6 +5,14 @@
 차트)와 페이지추천(`done{mode:page, recommendations}`) 두 경로가 같은 SSE 계약으로
 오므로, 이벤트 종류별로 렌더러를 두고 히스토리에도 같은 조각(텍스트·표·이미지·
 인용·추천)을 저장해 rerun 때 동일하게 다시 그린다.
+
+2026-08-28: SSE status 계약이 문자열 stage(routing/retrieving/verifying/
+reformulating/generating, `tools` 필드 있음)에서 정수 4단계로 바뀌었다
+(`services/rag_chat/app/routers/chat.py`::`_status_event`, `rag/ragkit/
+chatbot.py`::`STATUS_STAGES`가 정본) — `{"stage": 1|2|3|4, "label": "질문
+조건 확인"|"답변 준비중"|"데이터 분석 중"|"답변 생성 중"}`, `label`은 서버가
+이미 한글로 포맷해서 보내므로 클라이언트 쪽 매핑 테이블(STAGE_LABELS)이
+필요 없어졌다. `tools` 필드도 사라졌다.
 """
 from __future__ import annotations
 
@@ -26,13 +34,14 @@ EXAMPLE_QUESTIONS = (
     "한국 리튬 수입 현황은 어디서 봐?",
 )
 
-#: SSE status.stage → 사용자에게 보여줄 문구(rag/ragkit/chatbot_graph.py 단계와 1:1).
-STAGE_LABELS = {
-    "routing": "질문을 분석하고 검색 도구를 고르는 중…",
-    "retrieving": "데이터를 조회하는 중…",
-    "verifying": "근거가 질문에 맞는지 검증하는 중…",
-    "reformulating": "검색어를 다시 구성해 재조회하는 중…",
-    "generating": "답변을 생성하는 중…",
+#: SSE done.abstain_reason → 사용자에게 보여줄 문구(서버는 이 필드를 포맷하지
+#: 않고 코드값 그대로 보낸다 — status.label과 달리 클라이언트에서 매핑 필요).
+ABSTAIN_REASON_LABELS = {
+    "off_topic": "질문이 핵심광물 수급 범위를 벗어남",
+    "unsupported_commodity": "지원하지 않는 광종",
+    "no_data_for_period": "해당 기간 데이터 없음",
+    "ambiguous": "질문이 모호함",
+    "unknown": "원인 미상",
 }
 
 
@@ -117,12 +126,8 @@ def _apply_event(event: ChatEvent, record: dict[str, Any], *, status_box, text_b
     if event.event == "session":
         st.session_state.session_id = data.get("session_id")
     elif event.event == "status":
-        stage = data.get("stage", "")
-        record["stages"].append(stage)
-        label = STAGE_LABELS.get(stage, stage)
-        tools = data.get("tools")
-        if tools:
-            label += f" ({', '.join(tools)})"
+        label = data.get("label") or str(data.get("stage", ""))
+        record["stages"].append(label)
         status_box.caption(f"⏳ {label}")
     elif event.event == "delta":
         record["content"] += data.get("delta", "")
@@ -142,6 +147,7 @@ def _apply_event(event: ChatEvent, record: dict[str, Any], *, status_box, text_b
         record["recommendations"] = data.get("recommendations", [])
         record["warnings"] = data.get("warnings", [])
         record["abstained"] = bool(data.get("abstained"))
+        record["abstain_reason"] = data.get("abstain_reason")
         record["mode"] = data.get("mode", "document")
         with media_area:
             _render_details(record)
@@ -179,7 +185,12 @@ def _render_image(image: dict[str, Any]) -> None:
 
 def _render_details(record: dict[str, Any]) -> None:
     if record.get("abstained"):
-        st.info("근거를 찾지 못해 기권한 응답입니다.")
+        reason = record.get("abstain_reason")
+        reason_label = ABSTAIN_REASON_LABELS.get(reason, reason)
+        message = "근거를 찾지 못해 기권한 응답입니다."
+        if reason_label:
+            message += f" (사유: {reason_label})"
+        st.info(message)
     citations = record.get("citations") or []
     if citations:
         with st.expander(f"인용 근거 {len(citations)}건", expanded=False):
