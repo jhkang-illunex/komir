@@ -168,9 +168,10 @@ report_gen_page_mapping:
     menu: 핵심광물지도 > 수급지도 > 글로벌
     match: exact
   price:
-    menu: "광물자원가격 > {비철금속 | 희소금속 | 철광석 및 에너지 | 기타}"
+    menu: "광물자원가격 > {비철금속 | 희소금속}"
     match: merged
-    note: "report_gen은 이 4개 실제 서브메뉴를 하나의 page_id(price)로 합쳐 price_criterion/price_unit 요청 파라미터로 구분한다."
+    note: "report_gen은 이 2개 실제 서브메뉴만 하나의 page_id(price)로 합쳐 price_criterion/price_unit 요청 파라미터로 구분한다(routers/analysis.py 주석에 명시: page_id=\"price\"는 비철금속/희소금속 전용). 철광석 및 에너지·기타는 대상이 아니다 — gaps_not_covered_by_report_gen 참고.
+      2026-08-27 사용자 결정: 이 2개를 report_gen 자체 page_id로 쪼개는 작업을 report-summary-agent에게 지시함(진행 중 — 완료되면 이 항목은 price_base_metals/price_minor 2개로 나뉠 예정)."
   price_group:
     menu: 광물자원가격 (비철금속·희소금속 통합 요약)
     match: synthetic
@@ -183,6 +184,8 @@ report_gen_page_mapping:
 # 실제 KOMIS 사이트맵엔 있지만 report_gen 9종 어디에도 대응하는 page_id가 없는
 # 항목(요약보고서 후속 확장 후보 — 채택 여부는 별도 결정 필요).
 gaps_not_covered_by_report_gen:
+  - 광물자원가격 > 철광석 및 에너지
+  - 광물자원가격 > 기타
   - 광물자원가격 > 국내원자재가격(조달청) [외부링크, 조달청 사이트]
   - 광물전망지표 > 광물가격예측 > 자원정보 FOCUS
   - 광종/국가정보 > 광종정보
