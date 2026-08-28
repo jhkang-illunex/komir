@@ -229,6 +229,11 @@ PRICE_SUMMARY_INSTRUCTIONS = """\
   채우지 않는다.
 - price_driver_event_* 근거가 없을 때는 가격 변동의 원인(수급 이슈, 환율,
   지정학 이벤트 등)을 evidence 없이 절대 추정하지 않는다.
+- inventory_level 근거가 있으면 current_position에 재고량 수준과(있으면) 전일
+  또는 직전 관측치 대비 등락을 그대로 옮겨 쓴다 — 근거 문장이 이미 완성된
+  문장이니 새 단위·거래소명(예: "LME"·"톤")을 지어 붙이지 않는다. 근거가
+  없으면(inventory_level이 없는 요청) 재고량을 언급하지 않는다 — 다른 절의
+  수치로 재고 수준을 추정해서 채우지 않는다.
 """
 
 MAP_KOREA_SUMMARY_INSTRUCTIONS = """\

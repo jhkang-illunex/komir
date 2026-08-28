@@ -35,7 +35,15 @@ def _subject(name: str) -> str:
     codepoint = ord(final)
     has_batchim = 0xAC00 <= codepoint <= 0xD7A3 and (codepoint - 0xAC00) % 28 != 0
     return f"{name}{'이' if has_batchim else '가'}"
-from .models import DetectedPattern, GeoEventObservation, Metric, PriceGroupMineralObservation, PriceSeries, TradeMapSeries
+from .models import (
+    DetectedPattern,
+    GeoEventObservation,
+    Metric,
+    PriceGroupMineralObservation,
+    PriceKomisPeriodComparisons,
+    PriceSeries,
+    TradeMapSeries,
+)
 
 # 2026-08-28: `direction`은 실제 `geo_event` 데이터 확인 결과 7개 값의 깨끗한
 # 통제 어휘라(`GeoEventObservation` docstring 참고) 라벨링이 안전하다.
@@ -311,6 +319,7 @@ def calculate_price_summary(
     *,
     compare_series: PriceSeries | None = None,
     geo_events: list[GeoEventObservation] | None = None,
+    komis_period_comparisons: PriceKomisPeriodComparisons | None = None,
 ) -> AdditionalCalculatedSummary:
     """Calculate deterministic evidence and metrics for a price series.
 
@@ -332,7 +341,13 @@ def calculate_price_summary(
     있는 결정론적 한국어 템플릿이 기본이고, `evidence_quote`는 `_quote_passes_
     quality()`를 통과할 때만 보강 문구로 덧붙인다(원 데이터의 84%가 URL
     슬러그라 그대로 인용하면 안 됨 — `report_gen_구조개선_작업기록_260828_
-    보강.md` 참고)."""
+    보강.md` 참고).
+
+    `komis_period_comparisons`(2026-08-28 추가조사 확정) — 있으면 전주/전월/
+    전년평균 대비 근거를 이 계산기의 롤링창 재계산 대신 KOMIS 제공값으로
+    만든다(라이브 재현으로 산식이 다름을 확정, `report_gen_price_base_metals_
+    부실요약_원인조사_260828.md` 참고). 문장 템플릿은 자체 계산 경로와
+    완전히 동일해 prompts.py 지침은 그대로 쓴다."""
 
     observations = sorted(series.observations, key=lambda item: item.date)
     latest = observations[-1]
@@ -407,8 +422,25 @@ def calculate_price_summary(
     # 문장·지표를 반복 인용하면 부자연스럽다 — 이미 같은 관측일 집합으로 인용한
     # 기간이 있으면 건너뛴다(가장 짧은 기간의 라벨만 남긴다, "week_avg/month_avg/
     # year_avg 중 evidence에 있는 항목만 골라 쓴다"는 prompts.py 지시와 호환).
+    # 2026-08-28 추가조사 확정 — `komis_period_comparisons`에 해당 기간이 있으면
+    # 그 값을 그대로 쓰고 롤링창 재계산(`_avg_before`)·희소관측 dedup은 건너뛴다
+    # (KOMIS 제공값은 매번 독립적으로 서버가 계산한 값이라 우리 관측 윈도우가
+    # 겹치는지 여부와 무관하다 — dedup은 자체 계산 폴백 경로에만 의미가 있다).
+    _KOMIS_PERIOD_FIELD = {"week_avg": "week", "month_avg": "month", "year_avg": "year"}
     _avg_windows_seen: set[tuple[str, ...]] = set()
     for days, label, metric_id in ((7, "전주평균", "week_avg"), (30, "전월평균", "month_avg"), (365, "전년평균", "year_avg")):
+        komis_avg = getattr(komis_period_comparisons, _KOMIS_PERIOD_FIELD[metric_id], None) if komis_period_comparisons else None
+        if komis_avg is not None:
+            change = komis_avg.change_pct / 100
+            claims.append(
+                EvidenceClaim(
+                    metric_id,
+                    "major_changes",
+                    f"{label}({_number(komis_avg.average_price)}) 대비 {_signed_pct(change)} 수준이다.",
+                )
+            )
+            key_metrics.append(_price_metric(f"{metric_id}_change_pct", f"{label}대비", change * 100, unit="%"))
+            continue
         result = _avg_before(days)
         if result is None:
             continue
@@ -554,6 +586,39 @@ def calculate_price_summary(
                 "최고가·최저가 정보가 없어 조회기간 범위는 계산하지 않았다.",
             )
         )
+
+    # 2026-08-28 추가조사(`report_gen_price_base_metals_부실요약_원인조사_260828.md`)
+    # 확정 — LME 재고량(`PriceObservation.inventory`)이 관측치에 담겨 있어도
+    # 계산기가 전혀 안 읽던 구조적 공백을 메운다. 직전 관측치(`observations[-2]`)가
+    # 아니라 "latest 이전 중 inventory가 있는 가장 최근 관측"을 찾는다 — 재고량은
+    # 가격과 달리 결측일 수 있어 바로 앞 관측치에 없을 수 있다(라이브 재현으로
+    # invtPrcnt 산식이 이 방식의 일별 등락률과 소수점까지 정확히 일치함을 확인,
+    # 672/672 표본). "LME"·"톤" 같은 단위·거래소를 문장에 하드코딩하지 않는다 —
+    # 이 계산기는 다른 가격 지표(day_over_day 등)에서도 단위를 안 쓴다(prompts.py
+    # 지침·PDF 원문 어디에도 단위 표기가 없는 것과 같은 관행).
+    if latest.inventory is not None:
+        current_position_count = sum(1 for claim in claims if claim.section == "current_position")
+        if current_position_count < 3:  # SummaryNarrative.current_position 하드 제약(models.py)
+            prior_inventory_obs = next(
+                (item for item in reversed(observations[:-1]) if item.inventory is not None), None
+            )
+            inventory_fact = f"{_korean_date(latest.date)} 기준 재고량은 {_number(latest.inventory)}이다."
+            inventory_change_pct = None
+            if prior_inventory_obs is not None:
+                inv_change = _pct(latest.inventory, prior_inventory_obs.inventory)
+                if inv_change is not None:
+                    is_truly_next_day = prior_inventory_obs.date == _shift_date(latest.date, -1)
+                    inv_comparison_label = (
+                        f"전일({_korean_date(prior_inventory_obs.date)})"
+                        if is_truly_next_day
+                        else f"직전 관측치({_korean_date(prior_inventory_obs.date)})"
+                    )
+                    inventory_fact = f"{inventory_fact} {inv_comparison_label} 대비 {_signed_pct(inv_change)} 변동했다."
+                    inventory_change_pct = inv_change * 100
+            claims.append(EvidenceClaim("inventory_level", "current_position", inventory_fact))
+            key_metrics.append(_price_metric("inventory_level", "재고량", latest.inventory))
+            if inventory_change_pct is not None:
+                key_metrics.append(_price_metric("inventory_change_pct", "재고량 등락률", inventory_change_pct, unit="%"))
 
     if compare_series is not None:
         compare_observations = sorted(compare_series.observations, key=lambda item: item.date)

@@ -1,0 +1,58 @@
+{
+  "price_base_metals": {
+    "count": 13,
+    "ok": 13,
+    "no_data": 0,
+    "internal_error": 0,
+    "mismatches": 0
+  },
+  "price_minor_metals": {
+    "count": 56,
+    "ok": 56,
+    "no_data": 0,
+    "internal_error": 0,
+    "mismatches": 0
+  },
+  "indicator_composite": {
+    "count": 1,
+    "ok": 1,
+    "no_data": 0,
+    "internal_error": 0,
+    "mismatches": 0
+  },
+  "indicator_market": {
+    "count": 39,
+    "ok": 39,
+    "no_data": 0,
+    "internal_error": 0,
+    "mismatches": 0
+  },
+  "indicator_supply": {
+    "count": 36,
+    "ok": 36,
+    "no_data": 0,
+    "internal_error": 0,
+    "mismatches": 0
+  },
+  "map_korea": {
+    "count": 73,
+    "ok": 73,
+    "no_data": 0,
+    "internal_error": 0,
+    "mismatches": 0
+  },
+  "map_global": {
+    "count": 73,
+    "ok": 73,
+    "no_data": 0,
+    "internal_error": 0,
+    "mismatches": 0
+  },
+  "map_mineral": {
+    "count": 104,
+    "ok": 104,
+    "no_data": 0,
+    "internal_error": 0,
+    "mismatches": 0
+  }
+}
