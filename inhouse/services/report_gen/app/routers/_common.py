@@ -35,7 +35,11 @@
    연쇄 반경을 묶었다 — (a) `main.py`가 report_gen용 LLM 클라이언트의
    timeout·retries를 요청 예산 규모로 줄여 lock 점유 시간 자체를 바운드하고,
    (b) 여기서 `analysis_lock.acquire(timeout=)`로 예산 안에 lock을 못 잡은
-   워커는 즉시 포기해 스레드풀에 쌓이지 않게 한다.
+   워커는 즉시 포기해 스레드풀에 쌓이지 않게 한다. **2026-08-28 구조개선
+   (작업A)**: `analysis_lock`은 이제 `Lock()`이 아니라 `Semaphore(8)`(`main.py`
+   참고, 부하테스트로 실측한 안정적 최대 동시성)이라 이 zombie 억제 로직은
+   "동시 1건" 대신 "동시 최대 8건" 기준으로 그대로 적용된다 — `acquire`/
+   `release` 시그니처가 같아 아래 로직 자체는 무수정.
 
 5. **요청 조립도 이 안에서**(2026-08-27, skeptic 감사 SC-001): 라우터가
    `AnalysisSummaryRequest(page_id=..., **payload.model_dump())`를 라우트 본문에서
@@ -101,9 +105,11 @@ def run_summary(
     deadline = time.monotonic() + _TIMEOUT_SECONDS
 
     def _call():
-        # 동기 엔드포인트는 스레드풀에서 돌아 동시 진입이 가능하다 — 원본
-        # ApiRuntime.analysis_lock과 같은 이유로 직렬화한다. 예산 안에 lock을
-        # 못 잡으면 포기한다(모듈 docstring 4-(b)).
+        # 동기 엔드포인트는 스레드풀에서 돌아 동시 진입이 가능하다 — 2026-08-28
+        # 구조개선(작업A) 전엔 원본 ApiRuntime.analysis_lock과 같은 이유로 완전
+        # 직렬화했지만, 부하테스트로 그 필요성이 근거 없음을 확인해 Semaphore(8)로
+        # 바꿨다(모듈 docstring 4번 참고) — 최대 8건까지는 동시 진입, 그 이상은
+        # 예산 안에서 대기하다 lock을 못 잡으면 포기한다(모듈 docstring 4-(b)).
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             raise _LockTimeout()

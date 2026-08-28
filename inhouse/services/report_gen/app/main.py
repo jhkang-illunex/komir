@@ -59,7 +59,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
-from threading import Lock
+from threading import Semaphore
 
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.exception_handlers import request_validation_exception_handler
@@ -95,6 +95,22 @@ from .routers.report_data import (  # noqa: E402
 )
 from .routers._common import ANALYSIS_LLM_RETRIES, ANALYSIS_LLM_TIMEOUT_SECONDS  # noqa: E402
 from .scheduler import create_scheduler  # noqa: E402
+
+# 2026-08-28 구조개선(작업A): `analysis_lock`은 원래 `threading.Lock()`(동시 1건
+# 강제 직렬화)였다 — 그런데 `_common.py::_EXECUTOR`가 이미 max_workers=8로
+# 캡을 걸어놨고, 실제 LLM 클라이언트(`OpenAICompatChat`)도 커넥션풀
+# (`pool_size=max(32, concurrency*2)`)로 동시 호출을 지원하도록 튜닝돼 있어
+# Lock()의 완전 직렬화는 기술적 근거 없는 과잉방어였다(원본 ApiRuntime 이식
+# 잔재로 추정). 로컬 vLLM(gemma-4-26b-a4b)에 실제 `price_base_metals` 요약
+# 프롬프트로 동시 1/2/4/8/10/12/16/24/32건 부하테스트(각 수준 반복 측정) —
+# 1~8은 p50/p95가 전부 2.5~3.5초로 평탄(큐잉 지연 거의 없음), 10~12부터
+# p95가 6.5~8초로 튀며 변동성이 커지고, 32에서 ReadTimeout 실패가 발생했다.
+# ANALYSIS_LLM_TIMEOUT_SECONDS(12s)·REQUEST_BUDGET_SECONDS(20s) 예산 안에서
+# "안정적으로" 끝나는 최대치는 8 — `_EXECUTOR`의 기존 max_workers=8과도
+# 정확히 일치해 스레드풀 슬롯을 받은 요청이 세마포어에서 추가로 대기하는
+# 일이 없다(이중 큐잉 방지). 부하테스트 원자료(실측표):
+# `documents/산출물/2026-W35_0824-0830/report_gen_구조개선_작업기록_260828_보강.md`.
+ANALYSIS_LLM_CONCURRENCY = 8
 
 
 def build_analysis_summary_service():
@@ -220,7 +236,11 @@ async def lifespan(app: FastAPI):
     except Exception:  # noqa: BLE001 — 종합분석이 못 떠도 나머지 API는 살려둔다
         logging.getLogger(__name__).exception("AI 종합분석 서비스 조립 실패 — /api/v1/dashboard/comprehensive는 503으로 응답한다")
         app.state.comprehensive_service = None
-    app.state.analysis_lock = Lock()
+    # Lock() -> Semaphore(ANALYSIS_LLM_CONCURRENCY)(2026-08-28 구조개선 작업A,
+    # 위 상수 정의부 주석 참고) — `Semaphore`는 `Lock`과 동일한
+    # `acquire(timeout=)`/`release()` 시그니처라 `routers/_common.py`·
+    # `routers/comprehensive.py`의 호출부는 수정 없이 그대로 동작한다.
+    app.state.analysis_lock = Semaphore(ANALYSIS_LLM_CONCURRENCY)
     try:
         yield
     finally:
