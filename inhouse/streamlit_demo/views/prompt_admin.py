@@ -52,13 +52,16 @@ import streamlit as st
 
 from streamlit_demo.mineral_master import mineral_label, mineral_options
 from streamlit_demo.report_gen_client import (
+    ADVANCED_JSON_FIELDS,
     EXTRA_FIELD_DEFAULTS,
     EXTRA_FIELD_LABELS,
     EXTRA_FIELD_VALUE_LABELS,
+    MAP_KOREA_OBSERVATIONS_BY_DIRECTION,
     PAGE_SPECS,
     SECTION_ORDER,
     ReportGenError,
     client_from_env,
+    parse_advanced_json_fields,
     prioritize_core_minerals,
     render_json_error,
     render_report_markdown,
@@ -348,10 +351,24 @@ if spec.extra_fields:
             if value:
                 test_payload[field] = value
 
+_observations_default = spec.observations_example
+if test_page_id == "map_korea":
+    _observations_default = MAP_KOREA_OBSERVATIONS_BY_DIRECTION.get(
+        test_payload.get("trade_direction", "import"), spec.observations_example
+    )
 observations_text = st.text_area(
     "observations(JSON) — 방금 저장한 content/제약 조건이 이 데이터를 어떻게 요약하는지 확인합니다",
-    value=spec.observations_example, height=140, key=f"pa_obs_{test_page_id}",
+    value=_observations_default, height=140, key=f"pa_obs_{test_page_id}",
 )
+
+advanced_texts: dict[str, str] = {}
+if test_page_id in ADVANCED_JSON_FIELDS:
+    with st.expander("고급: KOMIS 원본값 직접 입력(선택)"):
+        for adv in ADVANCED_JSON_FIELDS[test_page_id]:
+            advanced_texts[adv.field] = st.text_area(
+                adv.label, value="", placeholder=adv.placeholder, height=100,
+                key=f"pa_adv_{test_page_id}_{adv.field}",
+            )
 
 if st.button("이 프롬프트로 분석요약 호출", key=f"pa_test_btn_{test_page_id}"):
     try:
@@ -359,16 +376,19 @@ if st.button("이 프롬프트로 분석요약 호출", key=f"pa_test_btn_{test_
     except json.JSONDecodeError as exc:
         render_json_error(exc, field_label="observations")
     else:
-        try:
-            with st.spinner("report_gen 호출 중…"):
-                result = client.summarize(test_page_id, test_payload)
-        except ReportGenError as exc:
-            st.error(str(exc))
-        else:
-            status = result.get("status")
-            if status == "ok":
-                st.success("status: ok")
-                render_report_markdown(result.get("report"))
+        advanced_values, advanced_ok = parse_advanced_json_fields(test_page_id, advanced_texts)
+        if advanced_ok:
+            test_payload.update(advanced_values)
+            try:
+                with st.spinner("report_gen 호출 중…"):
+                    result = client.summarize(test_page_id, test_payload)
+            except ReportGenError as exc:
+                st.error(str(exc))
             else:
-                st.warning(f"status: {status} — 원문 응답(디버깅용)")
-                st.json(result)
+                status = result.get("status")
+                if status == "ok":
+                    st.success("status: ok")
+                    render_report_markdown(result.get("report"))
+                else:
+                    st.warning(f"status: {status} — 원문 응답(디버깅용)")
+                    st.json(result)

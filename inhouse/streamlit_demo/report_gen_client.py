@@ -19,6 +19,7 @@
 `routers/analysis.py`와 여전히 일치하는지부터 확인할 것."""
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
@@ -89,37 +90,48 @@ PAGE_SPECS: dict[str, PageSpec] = {
         '{"year": 2023, "country_code": "CD", "country_name": "콩고민주공화국", "value": 1800.0}]',
     ),
     "forecast_price": PageSpec(
+        # 2026-08-29: is_actual(KOMIS realYn 대응, True=확정 실적/False=예측치)이
+        # 신설됐는데 예시가 안 보여줘서 하나씩 섞어 필터링 동작을 데모에서도
+        # 보여준다(main-agent 요청). 계산기가 is_actual=true 관측치를 예측
+        # 요약에서 제외하므로(models.py PriceForecastObservation 주석) 2개만
+        # 섞으면 예측치가 1개만 남아 NO_DATA — 실측 1 + 예측 2로 확장(실측 확인).
         "가격예측(중기/장기)", "광물전망지표", "price-forecast", True, ("start_period", "end_period"), "period",
         ("forecast_horizon", "price_unit"),
-        '[{"period": "2026-Q1", "price": 9700.0}, {"period": "2026-Q2", "price": 9850.0}]',
+        '[{"period": "2026-Q1", "price": 9700.0, "is_actual": true}, '
+        '{"period": "2026-Q2", "price": 9850.0, "is_actual": false}, '
+        '{"period": "2026-Q3", "price": 9920.0, "is_actual": false}]',
     ),
     "price_base_metals": PageSpec(
+        # 2026-08-29: inventory(재고량, 선택) 신설 — 예시에 반영.
         "비철금속", "광물자원가격", "prices/base-metals", True, ("start_date", "end_date"), "date",
         ("price_unit", "price_criterion", "price_criterion_serial"),
         '[{"date": "2025-08-25", "commerce_price": 9720.0, "lowest_price": 9680.0, '
-        '"highest_price": 9760.0}]',
+        '"highest_price": 9760.0, "inventory": 15000.0}]',
     ),
     "price_minor_metals": PageSpec(
         # compare_mineral/compare_price_criterion: KOMIS "비교광종" 기능 대응,
         # 이 page_id 전용(다른 page_id로 보내면 서버가 거부). compare_observations
         # (비교 계열 원자료 JSON)는 이 데모의 observations 텍스트영역과 별개라
         # 1차 범위에서 뺐다 — 필요해지면 별도 textarea로 추가.
+        # 2026-08-29: inventory(재고량, 선택) 신설 — 예시에 반영.
         "희소금속", "광물자원가격", "prices/minor-metals", True, ("start_date", "end_date"), "date",
         ("price_unit", "price_criterion", "price_criterion_serial", "compare_mineral", "compare_price_criterion"),
         '[{"date": "2025-08-25", "commerce_price": 9720.0, "lowest_price": 9680.0, '
-        '"highest_price": 9760.0}]',
+        '"highest_price": 9760.0, "inventory": 15000.0}]',
     ),
     "price_iron_energy": PageSpec(
+        # 2026-08-29: inventory(재고량, 선택) 신설 — 예시에 반영.
         "철광석 및 에너지", "광물자원가격", "prices/iron-energy", True, ("start_date", "end_date"), "date",
         ("price_unit", "price_criterion", "price_criterion_serial"),
         '[{"date": "2025-08-25", "commerce_price": 9720.0, "lowest_price": 9680.0, '
-        '"highest_price": 9760.0}]',
+        '"highest_price": 9760.0, "inventory": 15000.0}]',
     ),
     "price_other": PageSpec(
+        # 2026-08-29: inventory(재고량, 선택) 신설 — 예시에 반영.
         "기타", "광물자원가격", "prices/other", True, ("start_date", "end_date"), "date",
         ("price_unit", "price_criterion", "price_criterion_serial"),
         '[{"date": "2025-08-25", "commerce_price": 9720.0, "lowest_price": 9680.0, '
-        '"highest_price": 9760.0}]',
+        '"highest_price": 9760.0, "inventory": 15000.0}]',
     ),
     "map_korea": PageSpec(
         "국내 수급지도(수출입)", "핵심광물지도", "domestic-trade", True, ("start_date", "end_date"), "date",
@@ -170,6 +182,58 @@ EXTRA_FIELD_VALUE_LABELS: dict[str, dict[str, str]] = {
     "forecast_horizon": {"medium": "중기(medium)", "long": "장기(long)"},
     "trade_direction": {"import": "수입(import)", "export": "수출(export)"},
     "price_group": {"base_metals": "비철금속(base_metals)", "minor_metals": "희소금속(minor_metals)"},
+}
+
+MAP_KOREA_OBSERVATIONS_BY_DIRECTION: dict[str, str] = {
+    # 2026-08-29 main-agent 요청: trade_direction=수출 선택 시 observations 예시가
+    # 수입 필드(import_*) 그대로 고정돼 사용자가 직접 고쳐야 했다 — 방향에 맞는
+    # 예시로 동적 전환.
+    "import": '[{"date": "2025-08-01", "country_code": "AU", "country_name": "호주", '
+    '"import_weight": 1200.0, "import_amount": 850000.0}]',
+    "export": '[{"date": "2025-08-01", "country_code": "AU", "country_name": "호주", '
+    '"export_weight": 800.0, "export_amount": 620000.0}]',
+}
+
+
+@dataclass(frozen=True)
+class AdvancedJsonField:
+    """"고급: KOMIS 원본값 직접 입력(선택)" expander 안 JSON 입력란 1개 스펙 —
+    2026-08-29 main-agent 요청(geo_events·komis_period_comparisons·
+    komis_trade_totals). 값을 지어내지 않고 사용자가 입력한 값을 그대로
+    report_gen에 전달하는 통로만 만든다 — 비어있으면 payload에 안 넣는다."""
+
+    field: str
+    label: str
+    placeholder: str
+
+
+_GEO_EVENTS_FIELD = AdvancedJsonField(
+    "geo_events",
+    "가격변동 주요요인(geo_events, 리스트)",
+    '[{"obs_date": "2025-08-20", "country": "칠레", "direction": "supply_down", '
+    '"severity": 0.6, "evidence_quote": "칠레 대형 광산 파업으로 공급 차질"}]',
+)
+_KOMIS_PERIOD_COMPARISONS_FIELD = AdvancedJsonField(
+    "komis_period_comparisons",
+    "KOMIS 기간평균(komis_period_comparisons, 객체)",
+    '{"week": {"average_price": 9700.0, "change_pct": 0.98}, '
+    '"month": {"average_price": 9550.0, "change_pct": 1.75}, '
+    '"year": {"average_price": 9200.0, "change_pct": 4.5}}',
+)
+_KOMIS_TRADE_TOTALS_FIELD = AdvancedJsonField(
+    "komis_trade_totals",
+    "KOMIS 실제 총액(komis_trade_totals, 객체)",
+    '{"import_amount": 1250000.0, "import_weight": 1800.0, '
+    '"export_amount": 300000.0, "export_weight": 450.0}',
+)
+
+ADVANCED_JSON_FIELDS: dict[str, tuple[AdvancedJsonField, ...]] = {
+    "price_base_metals": (_GEO_EVENTS_FIELD, _KOMIS_PERIOD_COMPARISONS_FIELD),
+    "price_minor_metals": (_GEO_EVENTS_FIELD, _KOMIS_PERIOD_COMPARISONS_FIELD),
+    "price_iron_energy": (_GEO_EVENTS_FIELD, _KOMIS_PERIOD_COMPARISONS_FIELD),
+    "price_other": (_GEO_EVENTS_FIELD, _KOMIS_PERIOD_COMPARISONS_FIELD),
+    "map_korea": (_KOMIS_TRADE_TOTALS_FIELD,),
+    "map_global": (_KOMIS_TRADE_TOTALS_FIELD,),
 }
 
 
@@ -258,6 +322,24 @@ def prioritize_core_minerals(options: list[dict]) -> list[dict]:
     core = [m for code in CORE_MINERAL_CODES for m in options if m["code"] == code]
     rest = [m for m in options if m["code"] not in CORE_MINERAL_CODES]
     return core + rest
+
+
+def parse_advanced_json_fields(page_id: str, texts: dict[str, str]) -> tuple[dict[str, Any], bool]:
+    """`ADVANCED_JSON_FIELDS[page_id]`의 각 입력란 원문(texts)을 파싱한다 — 빈
+    입력은 건너뛰고(안 보냄), 파싱 실패는 그 자리에 `render_json_error`로
+    바로 그려서 호출부는 `ok`만 보고 제출 여부를 결정하면 된다."""
+    result: dict[str, Any] = {}
+    ok = True
+    for spec in ADVANCED_JSON_FIELDS.get(page_id, ()):
+        text = texts.get(spec.field, "")
+        if not text.strip():
+            continue
+        try:
+            result[spec.field] = json.loads(text)
+        except json.JSONDecodeError as exc:
+            render_json_error(exc, field_label=spec.label)
+            ok = False
+    return result, ok
 
 
 def render_json_error(exc: Exception, *, field_label: str = "observations") -> None:
