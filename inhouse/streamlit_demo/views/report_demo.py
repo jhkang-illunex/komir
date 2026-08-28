@@ -37,12 +37,16 @@ import streamlit as st
 
 from streamlit_demo.mineral_master import mineral_label, mineral_options
 from streamlit_demo.report_gen_client import (
+    ADVANCED_JSON_FIELDS,
+    EXTRA_FIELD_DEFAULTS,
     EXTRA_FIELD_LABELS,
     EXTRA_FIELD_VALUE_LABELS,
+    MAP_KOREA_OBSERVATIONS_BY_DIRECTION,
     PAGE_SPECS,
     SECTION_ORDER,
     ReportGenError,
     client_from_env,
+    parse_advanced_json_fields,
     prioritize_core_minerals,
     render_json_error,
     render_report_markdown,
@@ -166,12 +170,31 @@ if spec.extra_fields:
         elif field == "compare_mineral":
             _compare_mineral_picker(col, page_id)
         else:
-            value = col.text_input(label, value="")
+            value = col.text_input(label, value=EXTRA_FIELD_DEFAULTS.get(field, ""))
             if value:
                 payload[field] = value
 
 st.caption("observations(JSON 배열) — 계산에 쓰는 원자료. DB를 안 읽으므로 비우면 대부분 NO_DATA로 응답합니다.")
-observations_text = st.text_area("observations", value=spec.observations_example, height=140)
+# 2026-08-29: map_korea는 trade_direction=수출을 골라도 예시 JSON이 수입 필드
+# 그대로 고정돼 있었다 — 방향에 맞는 예시로 동적 전환(main-agent 요청).
+_observations_default = spec.observations_example
+if page_id == "map_korea":
+    _observations_default = MAP_KOREA_OBSERVATIONS_BY_DIRECTION.get(
+        payload.get("trade_direction", "import"), spec.observations_example
+    )
+observations_text = st.text_area("observations", value=_observations_default, height=140)
+
+# 2026-08-29 main-agent 요청 — geo_events·komis_period_comparisons·
+# komis_trade_totals: 값을 지어내지 않고 사용자가 입력한 값을 그대로
+# report_gen에 전달하는 통로만 만든다(선택 입력, 비우면 안 보냄).
+advanced_texts: dict[str, str] = {}
+if page_id in ADVANCED_JSON_FIELDS:
+    with st.expander("고급: KOMIS 원본값 직접 입력(선택)"):
+        for adv in ADVANCED_JSON_FIELDS[page_id]:
+            advanced_texts[adv.field] = st.text_area(
+                adv.label, value="", placeholder=adv.placeholder, height=100,
+                key=f"adv_{page_id}_{adv.field}",
+            )
 
 if st.button("분석요약 생성", type="primary"):
     try:
@@ -183,12 +206,17 @@ if st.button("분석요약 생성", type="primary"):
         st.session_state["report_demo_result"] = None
         render_json_error(exc, field_label="observations")
     else:
-        try:
-            with st.spinner("report_gen 호출 중…"):
-                st.session_state["report_demo_result"] = client.summarize(page_id, payload)
-        except ReportGenError as exc:
+        advanced_values, advanced_ok = parse_advanced_json_fields(page_id, advanced_texts)
+        if not advanced_ok:
             st.session_state["report_demo_result"] = None
-            st.error(str(exc))
+        else:
+            payload.update(advanced_values)
+            try:
+                with st.spinner("report_gen 호출 중…"):
+                    st.session_state["report_demo_result"] = client.summarize(page_id, payload)
+            except ReportGenError as exc:
+                st.session_state["report_demo_result"] = None
+                st.error(str(exc))
 
 result = st.session_state.get("report_demo_result")
 if result:
