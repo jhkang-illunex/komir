@@ -468,6 +468,12 @@ class PriceForecastObservation(StrictModel):
 
     period: ForecastPeriod
     price: float = Field(gt=0)
+    is_actual: bool | None = None
+    # 2026-08-29 Phase4 라이브재검증 확정(`report_gen_KOMIS라이브재검증_
+    # Phase4_260829.md`) — KOMIS 원본 `realYn` 대응. True=확정 실적,
+    # False=예측치, None=정보 없음(하위호환, 필드 자체를 안 보내면 계산
+    # 영향 없음). `getListPricePredc`가 실측·예측 분기를 한 응답에 섞어
+    # 주므로 계산기가 True(확정 실적)인 관측치는 예측 요약에서 제외한다.
 
 
 class PriceForecastSeries(StrictModel):
