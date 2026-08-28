@@ -52,6 +52,7 @@ import streamlit as st
 
 from streamlit_demo.mineral_master import mineral_label, mineral_options
 from streamlit_demo.report_gen_client import (
+    EXTRA_FIELD_DEFAULTS,
     EXTRA_FIELD_LABELS,
     EXTRA_FIELD_VALUE_LABELS,
     PAGE_SPECS,
@@ -343,7 +344,7 @@ if spec.extra_fields:
             else:
                 test_payload["compare_mineral"] = col.text_input(f"{label} 코드", value="", key=key)
         else:
-            value = col.text_input(label, value="", key=key)
+            value = col.text_input(label, value=EXTRA_FIELD_DEFAULTS.get(field, ""), key=key)
             if value:
                 test_payload[field] = value
 

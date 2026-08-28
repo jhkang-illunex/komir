@@ -37,6 +37,7 @@ import streamlit as st
 
 from streamlit_demo.mineral_master import mineral_label, mineral_options
 from streamlit_demo.report_gen_client import (
+    EXTRA_FIELD_DEFAULTS,
     EXTRA_FIELD_LABELS,
     EXTRA_FIELD_VALUE_LABELS,
     PAGE_SPECS,
@@ -166,7 +167,7 @@ if spec.extra_fields:
         elif field == "compare_mineral":
             _compare_mineral_picker(col, page_id)
         else:
-            value = col.text_input(label, value="")
+            value = col.text_input(label, value=EXTRA_FIELD_DEFAULTS.get(field, ""))
             if value:
                 payload[field] = value
 

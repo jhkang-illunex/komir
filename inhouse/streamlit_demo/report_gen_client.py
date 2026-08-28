@@ -77,14 +77,16 @@ PAGE_SPECS: dict[str, PageSpec] = {
         '"minor_metals_index": 98.7}]',
     ),
     "map_mineral": PageSpec(
-        # 2026-08-28 UI/UX 감사(report-summary-agent 검증분 이관)에서 발견: 두 관측치가
-        # 모두 year=2023이라 서버 최소요건(연도 2개 이상)을 못 채워 항상 NO_DATA로
-        # 응답했다 — 연도를 2022/2023으로 분리.
+        # 2026-08-28 UI/UX 감사에서 1차로 연도를 2022/2023 두 개로 분리했지만(연도
+        # 개수≥2 요건), 2026-08-29 report-summary-agent가 재확인한 서버 요건
+        # "최신연도(2023) 기준 국가 수≥3"까지는 못 채워 여전히 NO_DATA였다 —
+        # 2023년을 칠레·페루·콩고민주공화국 3개국으로 확장.
         "광물지도(매장량/생산량)", "핵심광물지도", "mineral-map", True, ("start_year", "end_year"), "year",
         ("measure", "unit"),
         '[{"year": 2022, "country_code": "CL", "country_name": "칠레", "value": 5400.0}, '
         '{"year": 2023, "country_code": "CL", "country_name": "칠레", "value": 5600.0}, '
-        '{"year": 2023, "country_code": "PE", "country_name": "페루", "value": 2200.0}]',
+        '{"year": 2023, "country_code": "PE", "country_name": "페루", "value": 2200.0}, '
+        '{"year": 2023, "country_code": "CD", "country_name": "콩고민주공화국", "value": 1800.0}]',
     ),
     "forecast_price": PageSpec(
         "가격예측(중기/장기)", "광물전망지표", "price-forecast", True, ("start_period", "end_period"), "period",
@@ -154,6 +156,13 @@ EXTRA_FIELD_LABELS: dict[str, str] = {
     "price_group": "가격 그룹(price_group)",
     "compare_mineral": "비교광종(compare_mineral)",
     "compare_price_criterion": "비교 가격기준(compare_price_criterion)",
+}
+
+EXTRA_FIELD_DEFAULTS: dict[str, str] = {
+    # 2026-08-29 report-summary-agent 확정: map_mineral의 unit이 빈 text_input이라
+    # 버튼만 누르면 payload에 키 자체가 안 들어가 서버가 "unit in the request body"
+    # NO_DATA를 던졌다 — 기본값을 채워 즉시 status:ok 재현되게 한다.
+    "unit": "천톤",
 }
 
 EXTRA_FIELD_VALUE_LABELS: dict[str, dict[str, str]] = {
