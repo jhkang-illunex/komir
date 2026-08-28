@@ -548,16 +548,37 @@ def calculate_price_summary(
             )
         )
 
-    highs = [item.highest_price for item in observations if item.highest_price is not None]
-    lows = [item.lowest_price for item in observations if item.lowest_price is not None]
+    # 2026-08-29 main-agent 처방(라이브 재검증 260828에서 발견한 period_range
+    # 버그) — KOMIS는 최근 구간의 hghstPrc/lowstPrc를 0.00(미제공)으로 보낼 때가
+    # 있는데, 예전엔 그 관측치들을 그냥 걸러내고 남은(대개 옛 구간) highest_price/
+    # lowest_price만으로 범위를 계산해 "최고가가 현재가보다 낮다" 같은 모순이
+    # 나왔다. 이제 관측치 전체(실거래가가 있는 것 기준)에 최고·최저가가 빠짐없이
+    # 있을 때만 그 값을 쓰고, 하나라도 빠지면(커버리지 불완전) 요청받은
+    # commerce_price 전체 범위로 폴백한다 — 일부 날짜만 반영한 왜곡된 범위 대신
+    # 항상 우리가 가진 데이터 전체 기준의 정직한 답을 낸다.
+    observations_with_price = [item for item in observations if item.commerce_price is not None]
+    has_full_hilo_coverage = bool(observations_with_price) and all(
+        item.highest_price is not None and item.lowest_price is not None for item in observations_with_price
+    )
     patterns: list[DetectedPattern] = []
-    if highs and lows:
-        period_high, period_low = max(highs), min(lows)
+    period_high = period_low = None
+    if has_full_hilo_coverage:
+        period_high = max(item.highest_price for item in observations_with_price)
+        period_low = min(item.lowest_price for item in observations_with_price)
+        range_fact = f"조회기간 중 최고 {_number(period_high)}, 최저 {_number(period_low)}였다."
+    elif observations_with_price:
+        period_high = max(item.commerce_price for item in observations_with_price)
+        period_low = min(item.commerce_price for item in observations_with_price)
+        # 최고가·최저가(hghst/lowst) 원천이 불완전해 실거래가 기준으로 대신
+        # 계산했음을 문구로 구분한다 — "KOMIS 공식 최고/최저"인 것처럼 단정하지
+        # 않는다(main-agent 지시).
+        range_fact = f"조회기간 관측치(실거래가) 기준 최고 {_number(period_high)}, 최저 {_number(period_low)}였다."
+    if period_high is not None and period_low is not None:
         claims.append(
             EvidenceClaim(
                 "period_range",
                 "current_position",
-                f"조회기간 중 최고 {_number(period_high)}, 최저 {_number(period_low)}였다.",
+                range_fact,
             )
         )
         if period_high > period_low and latest.commerce_price is not None:
