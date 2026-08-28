@@ -219,3 +219,47 @@ claim 수`)를 계산해 그 이하로만 추가(`min(_PRICE_DRIVER_MAX_EVENTS, 
 ### 회귀
 `komis_dump_smoke_test.py`(326콤보, price 계열 제외 — 사유는 위 라운드1
 절 참고) 재실행 — 전부 `ok`·`internal_error 0`·`mismatches 0`, 회귀 없음.
+
+## 작업C — LLM 정제 실사용률 실측 후속(2026-08-28)
+
+### price_group — 수정 완료
+`summary.py::_validate_llm_summary`의 "근거 4개 이상이면 결합 문장 필요"
+규칙(SC-018)에서 `_COMBINED_SENTENCE_EXEMPT_PAGES = {"price_group"}`로 예외
+처리("모든 evidence_id 정확히 1회 사용" 체크는 그대로 유지). git HEAD(수정
+전) vs 워킹트리(수정 후)를 `documents/.../samples/price_group_base.json`·
+`_variant.json`의 **실제 request 그대로** 재현(로컬 vLLM, 운영과 동일
+클라이언트):
+
+| 표본 | BEFORE | AFTER |
+|---|---|---|
+| price_group_base | `llm_refined=False`, warnings=["...검증 사유: 관련 근거를 결합한 분석 문장이 없다."] | `llm_refined=True`, warnings=[] |
+| price_group_variant | 〃 | 〃 |
+
+두 표본 모두 진단대로 재현되고 수정으로 해소됨을 확인. `komis_dump_smoke_
+test.py` 326콤보(price 계열 제외) 회귀 없음.
+
+### indicator_composite — 원인 확정(main-agent 지시대로 수정 안 함, 조사만)
+`indicator_composite_base.json`/`_variant.json`을 `AnalysisSummaryService`에
+3회씩 재현(로컬 vLLM) — **둘 다 `_validate_llm_summary`(SC-018 규칙 포함)에
+전혀 도달하지 않는다.** 원인은 `summary.py::_analyze_composite` 마지막의
+게이트 1줄: `if self._llm is None or len(calculated.claims) < 5 or
+quality_status == "insufficient": return response`(LLM 호출 자체를 안 함,
+`_refine_with_llm` 진입조차 안 해 관련 경고도 전혀 안 남는다 — 이 점이
+price_group과 결정적으로 다르다, price_group은 LLM을 "시도했다가" 검증에서
+떨어진 것이고 indicator_composite는 애초에 "시도 자체를 안 한" 것).
+
+- `base.json`(관측치 2건): `calculate_composite_summary`가 만드는 claims가
+  3개뿐(`current_state`·`weekly_subindex_comparison`·`period_range_position`)
+  — `< 5` 조건에 걸림.
+- `variant.json`(관측치 3건): claims는 8개(`>= 5` 통과)지만, `quality_status`가
+  `available`(관측치 4건 이상 조건, `len(series.observations) >= 4`)이 아니라
+  `insufficient`(관측치 3건이라)라서 이 조건에 걸림.
+
+**대조 확인**: 관측치를 4건으로 늘리고(창마다 다른 값이 나오도록 구성해
+claims도 자연히 늘어나는 데이터) 재현하니 `llm_refined=True`(정상 동작) —
+게이트 자체는 의도대로 작동하지만, 실제 KOMIS 표본(2~3개 데이터 포인트로
+조회하는 경우가 드물지 않음)이 이 문턱(claims≥5 AND observations≥4)에
+자주 못 미쳐 결과적으로 규칙기반 폴백률이 높아지는 구조. price_group과
+같은 "지시-검증기 상충" 버그가 아니라, **의도된(설계된) 최소 데이터 요건이
+현실 데이터 분포와 안 맞는 문제**로 성격이 다르다 — 지시대로 수정하지
+않고 보고만.

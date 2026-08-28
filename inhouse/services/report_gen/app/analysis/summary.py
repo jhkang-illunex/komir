@@ -743,6 +743,16 @@ _FORBIDDEN_SUMMARY_TERMS = (
     "추세",
 )
 _GRADE_LABELS = {"신중", "주의", "중립", "관심", "기회", "긴장", "안정", "원활"}
+# 2026-08-28 작업C(main-agent 조사) — "근거 4개 이상이면 최소 1문장은 근거
+# 2개를 결합해야 한다"(SC-018) 규칙이 모든 page_id에 무차별 적용됐는데,
+# price_group은 `PRICE_GROUP_SUMMARY_INSTRUCTIONS`(prompts.py)가 "group_movers·
+# extreme_movers를 근거에 있는 그대로 옮겨 쓴다"(근거 1개=문장 1개, 결합 금지
+# 취지)를 지시하고 `major_changes` 절 자체가 최대 2문장이라, 근거 4개 이상일
+# 때 "각자 따로 쓰기"와 "누군가는 합쳐 쓰기"를 동시에 만족하는 게 구조적으로
+# 불가능하다 — 실측(26건 표본 재전송) 결과 price_group은 매번 100% 폴백,
+# 우연이 아니라 예정된 실패였다. 이 규칙에서만 예외 처리한다("모든 evidence_id
+# 정확히 1회 사용" 체크는 여전히 걸린다 — 안전장치로 유효해 유지).
+_COMBINED_SENTENCE_EXEMPT_PAGES = {"price_group"}
 
 
 def _number_tokens(text: str) -> set[str]:
@@ -825,8 +835,10 @@ def _validate_llm_summary(
             return "필수 evidence_id를 모두 사용하지 않았다."
     elif Counter(used_ids) != Counter(claim_map.keys()):
         return "모든 evidence_id를 정확히 한 번씩 사용하지 않았다."
-    elif len(claims) >= 4 and not any(
-        len(sentence.evidence_ids) >= 2 for sentence in sentences
+    elif (
+        page_id not in _COMBINED_SENTENCE_EXEMPT_PAGES
+        and len(claims) >= 4
+        and not any(len(sentence.evidence_ids) >= 2 for sentence in sentences)
     ):
         return "관련 근거를 결합한 분석 문장이 없다."
     if "current_state" not in {
