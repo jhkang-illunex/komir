@@ -163,6 +163,13 @@ class AnalysisSummaryRequest(StrictModel):
     # 평균)이 롤링 N일창과 다름을 확정했기 때문(하위호환: 없으면 기존대로
     # 롤링창 계산).
     komis_period_comparisons: dict | None = None
+    # 2026-08-29 Phase3 라이브 재검증 확정(`report_gen_KOMIS라이브재검증_
+    # Phase3_260829.md`) — page_id="map_korea"/"map_global" 전용.
+    # `TradeKomisTotals` 참고. KOMIS list 응답이 최대 30행까지만 국가/루트를
+    # 줘서(map_global 정적덤프 73콤보 중 72건 영향, 최악 69.4% 과소) 관측치
+    # 합산이 진짜 총액보다 작을 수 있는데, 있으면 계산기가 이 값을 우선
+    # 쓴다(하위호환: 없으면 기존대로 관측치 합산).
+    komis_trade_totals: dict | None = None
 
     @field_validator("request_id")
     @classmethod
@@ -214,6 +221,8 @@ class AnalysisSummaryRequest(StrictModel):
             "price_base_metals", "price_minor_metals", "price_iron_energy", "price_other",
         ):
             raise ValueError("komis_period_comparisons is only accepted for price_* pages")
+        if self.komis_trade_totals is not None and self.page_id not in ("map_korea", "map_global"):
+            raise ValueError("komis_trade_totals is only accepted for page_id=map_korea/map_global")
 
         if self.page_id in PAGE_PROFILES:
             if self.mineral is None:
@@ -629,6 +638,23 @@ class TradeCountryObservation(StrictModel):
     export_amount: float | None = None
     origin_country_code: str | None = None
     origin_country_name: str | None = None
+
+
+class TradeKomisTotals(StrictModel):
+    """`page_id="map_korea"/"map_global"` 전용(2026-08-29 신설,
+    `report_gen_KOMIS라이브재검증_Phase3_260829.md` 참고) — KOMIS 응답의
+    `sumIncmAmt`/`sumExpAmt`/`sumIncmWeig`/`sumExpWeig`(map_korea)·`sumAmt`/
+    `sumWeig`(map_global) 패스스루. `list` 엔드포인트가 최대 30행까지만
+    국가/루트를 주는데(관측상 한계, map_global은 정적 덤프 73콤보 중 72건이
+    영향받음, 최악 69.4% 과소) 같은 응답에 KOMIS가 이미 계산한 진짜 총액이
+    함께 온다 — 있으면 계산기가 관측치 합산 대신 이 값을 총액으로 쓴다.
+    필드명은 `TradeCountryObservation`과 맞춰 direction별로 나눴다(map_global은
+    사실상 `import_*`만 채워진다 — KOMIS map_global이 수입 방향만 제공)."""
+
+    import_amount: float | None = None
+    import_weight: float | None = None
+    export_amount: float | None = None
+    export_weight: float | None = None
 
 
 class TradeMapSeries(StrictModel):

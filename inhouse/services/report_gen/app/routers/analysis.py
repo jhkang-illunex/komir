@@ -257,6 +257,9 @@ class MineralDateRangeSummaryRequest(AnalysisEndpointRequest):
     # 4종 전용. `models.py::PriceKomisPeriodComparisons` 참고(geo_events와 같은
     # 패턴 — 선택 필드, 없으면 하위호환 그대로).
     komis_period_comparisons: dict | None = None
+    # 2026-08-29 Phase3 라이브 재검증 확정 — `page_id="map_korea"/"map_global"`
+    # 전용. `models.py::TradeKomisTotals` 참고(같은 선택 필드 패턴).
+    komis_trade_totals: dict | None = None
 
     @model_validator(mode="after")
     def validate_period(self) -> MineralDateRangeSummaryRequest:

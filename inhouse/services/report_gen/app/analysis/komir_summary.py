@@ -42,6 +42,7 @@ from .models import (
     PriceGroupMineralObservation,
     PriceKomisPeriodComparisons,
     PriceSeries,
+    TradeKomisTotals,
     TradeMapSeries,
 )
 
@@ -703,7 +704,7 @@ def calculate_price_summary(
 
 
 def calculate_domestic_trade_summary(
-    series: TradeMapSeries, *, direction: str = "import"
+    series: TradeMapSeries, *, direction: str = "import", komis_totals: TradeKomisTotals | None = None
 ) -> AdditionalCalculatedSummary:
     """국내(관세청) 수급지도 계열 계산 — `direction`으로 수입/수출을 고른다.
 
@@ -712,7 +713,15 @@ def calculate_domestic_trade_summary(
     조회해도 보고서는 항상 "수입총액"으로 렌더링됐다(실측: 수출 73건 중
     "수출총액" 문구 0건). 이제 `direction`에 따라 읽는 금액 필드
     (`import_amount`/`export_amount`)와 라벨("수입"/"수출") 둘 다 바뀐다.
-    """
+
+    `komis_totals`(2026-08-29 Phase3 라이브 재검증 확정) — KOMIS `list`
+    응답이 최대 30행까지만 국가를 주는데(정적덤프 145콤보 전수 재검증
+    결과 9건이 영향, 최악 5.8% 과소) 같은 응답에 진짜 총액(`sumIncmAmt`/
+    `sumExpAmt`)이 함께 온다. 있으면 관측치 합산 대신 이 값을 최신 관측일의
+    총액으로 쓴다 — top1/3/5 비중의 분모가 정확해진다. `previous_total`
+    (기간변화율 비교 대상)은 과거 시점 KOMIS 총액을 받을 방법이 없어
+    여전히 관측치 합산이다(하위호환, `report_gen_KOMIS라이브재검증_
+    Phase3_260829.md` §1 참고)."""
 
     direction_label = "수입" if direction == "import" else "수출"
     amount_field = "import_amount" if direction == "import" else "export_amount"
@@ -724,7 +733,8 @@ def calculate_domestic_trade_summary(
     latest_date = dates[-1]
     latest_rows = [item for item in series.observations if item.date == latest_date]
     ranking = sorted(latest_rows, key=_amount, reverse=True)
-    total = sum(_amount(item) for item in ranking)
+    komis_total = getattr(komis_totals, amount_field, None) if komis_totals else None
+    total = komis_total if komis_total not in (None, 0, 0.0) else sum(_amount(item) for item in ranking)
     if total <= 0 or len(ranking) < 1:
         raise ValueError("trade map summary requires a positive total amount")
 
@@ -830,7 +840,9 @@ def _is_korea(code: str | None, name: str | None) -> bool:
     return (code is not None and code.upper() in _KOREA_CODES) or (name in _KOREA_NAMES)
 
 
-def calculate_global_trade_summary(series: TradeMapSeries) -> AdditionalCalculatedSummary:
+def calculate_global_trade_summary(
+    series: TradeMapSeries, *, komis_totals: TradeKomisTotals | None = None
+) -> AdditionalCalculatedSummary:
     """글로벌(UN Comtrade) 수급지도 계열 계산 — 원산지→도착지 양자무역 "루트"
     랭킹 + 대한민국 자체 순위 하이라이트.
 
@@ -844,13 +856,21 @@ def calculate_global_trade_summary(series: TradeMapSeries) -> AdditionalCalculat
     확인했다(2026-08-27). `TradeCountryObservation.origin_country_*`가 그
     원산국을 담는다 — 이 필드가 없는 관측치(과거 map_korea 스타일 단일축
     데이터)는 이 함수에 넣지 않는다(map_global 전용 어댑터가 채워야 한다).
-    """
+
+    `komis_totals`(2026-08-29 Phase3 라이브 재검증 확정) — `getListDataNation`
+    응답이 최대 30개 루트까지만 주는데, 정적덤프 73콤보 중 **72건(99%)**이
+    영향받고 중앙값 30.6%·최악 69.4% 과소였다(map_korea보다 훨씬 심각 —
+    `report_gen_KOMIS라이브재검증_Phase3_260829.md` §1 참고). 같은 응답의
+    `sumAmt`가 KOMIS 진짜 총액이다 — 있으면 관측치 합산 대신 이 값을 쓴다.
+    `import_amount` 필드를 재사용한다(map_global은 KOMIS가 사실상 수입
+    방향만 제공 — 기존 코드도 `item.import_amount`만 읽는다)."""
 
     dates = sorted({item.date for item in series.observations})
     latest_date = dates[-1]
     latest_rows = [item for item in series.observations if item.date == latest_date]
     ranking = sorted(latest_rows, key=lambda item: item.import_amount or 0.0, reverse=True)
-    total = sum(item.import_amount or 0.0 for item in ranking)
+    komis_total = komis_totals.import_amount if komis_totals else None
+    total = komis_total if komis_total not in (None, 0, 0.0) else sum(item.import_amount or 0.0 for item in ranking)
     if total <= 0 or len(ranking) < 1:
         raise ValueError("global trade map summary requires a positive total amount")
 
