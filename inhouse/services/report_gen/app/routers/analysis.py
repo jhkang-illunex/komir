@@ -248,6 +248,11 @@ class MineralDateRangeSummaryRequest(AnalysisEndpointRequest):
     # 수입/수출 방향 라디오 대응. PDF 지침 점검(/unlazy)에서 발견한 버그
     # 수정 — 이 신호가 없어 계산 레이어가 항상 "수입"으로 라벨링했었다.
     trade_direction: Literal["import", "export"] | None = None
+    # 2026-08-28 신설 — price_base_metals/minor_metals/iron_energy/other 4종
+    # 전용(PDF §1-1 "가격 변동의 주요 요인" 대응, `models.py::GeoEventObservation`
+    # 참고). 이 모델을 공유하는 map_korea/map_global로 보내면 `AnalysisSummary
+    # Request.validate_period`가 거부한다(compare_*와 같은 패턴).
+    geo_events: list[dict] | None = None
 
     @model_validator(mode="after")
     def validate_period(self) -> MineralDateRangeSummaryRequest:

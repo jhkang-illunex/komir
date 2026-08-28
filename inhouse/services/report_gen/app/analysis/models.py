@@ -151,6 +151,10 @@ class AnalysisSummaryRequest(StrictModel):
     # (비철금속/희소금속). `observations`는 이 페이지에서 PriceGroupMineral
     # Observation dict 리스트(광종별 전주·전월 등락률)를 담는다.
     price_group: PriceGroup | None = None
+    # 2026-08-28: price_base_metals/minor_metals/iron_energy/other 4종 전용 —
+    # PDF §1-1 "가격 변동의 주요 요인" 대응(GeoEventObservation dict 리스트).
+    # 선택 필드라 없으면 지금처럼 이 절이 빈다(하위호환).
+    geo_events: list[dict] | None = None
 
     @field_validator("request_id")
     @classmethod
@@ -194,6 +198,10 @@ class AnalysisSummaryRequest(StrictModel):
             and self.page_id != "price_minor_metals"
         ):
             raise ValueError("compare_* fields are only accepted for page_id=price_minor_metals")
+        if self.geo_events is not None and self.page_id not in (
+            "price_base_metals", "price_minor_metals", "price_iron_energy", "price_other",
+        ):
+            raise ValueError("geo_events is only accepted for price_* pages")
 
         if self.page_id in PAGE_PROFILES:
             if self.mineral is None:
@@ -508,6 +516,28 @@ class PriceObservation(StrictModel):
     inventory: float | None = None
 
 
+class GeoEventObservation(StrictModel):
+    """`page_id="price_base_metals"/"price_minor_metals"/"price_iron_energy"/
+    "price_other"` 전용(2026-08-28 신설, PDF §1-1 "가격 변동의 주요 요인" 대응) —
+    지정학 위기지수 파이프라인의 `geo_event`(postgres `mineral_risk.geo_event`)에서
+    가격 조회기간과 겹치는 행을 호출자가 그대로 실어 보낸다(report_gen은 DB를
+    안 읽으므로 이 서버가 직접 조회하지 않는다).
+
+    `direction`은 `geo_event` 실제 데이터 확인 결과 7개 값의 깨끗한 통제 어휘라
+    (`komir_summary.py::_DIRECTION_LABELS` 참고) 안전하게 라벨링할 수 있지만,
+    `event_type`은 같은 확인에서 268종+ 자유서술(영어/한국어 혼재, 대소문자·
+    구두점 불일치)로 나와 이번 필드에는 포함하지 않았다(2026-08-28 데이터 품질
+    확인, `report_gen_구조개선_작업기록_260828_보강.md` 참고)."""
+
+    obs_date: Day
+    country: str = Field(min_length=1)
+    direction: Literal[
+        "supply_down", "supply_up", "price_down", "price_up", "demand_down", "demand_up", "neutral",
+    ]
+    severity: float
+    evidence_quote: str | None = None
+
+
 class PriceGroupMineralObservation(StrictModel):
     """`page_id="price_group"` 전용(2026-08-27 신설) — 그룹 내 광종 1개의
     전주·전월 등락률(%, signed). 원시 일별 가격 계열이 아니라 이미 계산된
@@ -673,6 +703,11 @@ class SummaryNarrative(StrictModel):
     """3개 섹션으로 묶인 근거 연결 분석문."""
 
     core_diagnosis: list[SummarySentence] = Field(min_length=1, max_length=2)
+    # major_changes의 max_length=5를 바꾸면 `komir_summary.py::calculate_price_
+    # summary`의 `_MAJOR_CHANGES_HARD_CAP`(규칙기반 폴백 경로가 근거 1개=문장
+    # 1개로 그대로 매핑해 이 상한을 직접 참조·복제한다, 2026-08-28)도 같이
+    # 바꿔야 한다 — 한쪽만 바뀌면 관측치가 조밀한 요청에서 `ValidationError`로
+    # 죽는다(실측 재현됨).
     major_changes: list[SummarySentence] = Field(min_length=1, max_length=5)
     current_position: list[SummarySentence] = Field(min_length=1, max_length=3)
 

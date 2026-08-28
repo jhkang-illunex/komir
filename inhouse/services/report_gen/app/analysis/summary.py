@@ -93,6 +93,7 @@ from .models import (  # noqa: E402
     CompositeIndexSeries,
     DataQuality,
     DetectedPattern,
+    GeoEventObservation,
     GradeResult,
     IndicatorObservation,
     IndicatorSeries,
@@ -180,6 +181,21 @@ def _observations_from_request(
     except Exception as exc:  # noqa: BLE001 — pydantic ValidationError 등을 422로 통일
         raise DataSourceError(
             f"{request.page_id}: {field_name} 형식이 {observation_cls.__name__}과 맞지 않는다: {exc}"
+        ) from exc
+
+
+def _geo_events_from_request(request: AnalysisSummaryRequest) -> list[GeoEventObservation] | None:
+    """`request.geo_events`(선택 필드, PDF §1-1 "가격 변동의 주요 요인" 대응)를
+    검증한다. `_observations_from_request`와 달리 **없으면 에러가 아니라 그냥
+    None**이다 — 하위호환 필드라 안 보내는 요청이 정상이다(2026-08-28 신설)."""
+
+    if not request.geo_events:
+        return None
+    try:
+        return [GeoEventObservation.model_validate(item) for item in request.geo_events]
+    except Exception as exc:  # noqa: BLE001 — pydantic ValidationError 등을 NO_DATA로 통일
+        raise DataSourceError(
+            f"{request.page_id}: geo_events 형식이 GeoEventObservation과 맞지 않는다: {exc}"
         ) from exc
 
 
@@ -1397,8 +1413,13 @@ class AnalysisSummaryService:
                 observations=compare_obs,
                 warnings=[],
             )
+        geo_events = _geo_events_from_request(request)
         calculated = _calculate_or_no_data(
-            request.page_id, calculate_price_summary, series, compare_series=compare_series
+            request.page_id,
+            calculate_price_summary,
+            series,
+            compare_series=compare_series,
+            geo_events=geo_events,
         )
         context = effective_page_context(request.page_id)
         applied_filters = {

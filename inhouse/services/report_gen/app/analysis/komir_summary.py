@@ -12,6 +12,7 @@ summary` 등을 따른다 — 재사용 가능한 헬퍼(`EvidenceClaim`·`Summa
 """
 from __future__ import annotations
 
+import re as _re
 from datetime import date as _date, timedelta as _timedelta
 
 from .additional_summary import (
@@ -34,7 +35,62 @@ def _subject(name: str) -> str:
     codepoint = ord(final)
     has_batchim = 0xAC00 <= codepoint <= 0xD7A3 and (codepoint - 0xAC00) % 28 != 0
     return f"{name}{'이' if has_batchim else '가'}"
-from .models import DetectedPattern, Metric, PriceGroupMineralObservation, PriceSeries, TradeMapSeries
+from .models import DetectedPattern, GeoEventObservation, Metric, PriceGroupMineralObservation, PriceSeries, TradeMapSeries
+
+# 2026-08-28: `direction`은 실제 `geo_event` 데이터 확인 결과 7개 값의 깨끗한
+# 통제 어휘라(`GeoEventObservation` docstring 참고) 라벨링이 안전하다.
+_DIRECTION_LABELS = {
+    "supply_down": "공급 감소",
+    "supply_up": "공급 증가",
+    "price_down": "가격 하락",
+    "price_up": "가격 상승",
+    "demand_down": "수요 감소",
+    "demand_up": "수요 증가",
+    "neutral": "동향 변화",
+}
+
+# 2026-08-28 데이터 품질 확인(`report_gen_구조개선_작업기록_260828_보강.md`
+# 참고) — severity>=2.0 표본 7,917건 실측: source가 비어있는(GDELT 원천) 행의
+# `evidence_quote`는 84.3%가 실제로는 문장이 아니라 URL 슬러그
+# ("trump-says-50-per-cent-tariff-..." 류)였고, 한국어 비율은 KOMIS(3.3%)·
+# PPS(0.3%) 두 출처만 예외적으로 높았다(평균 0.895, 나머지는 전부 0.0에
+# 수렴). 반대로 이 두 출처 안에서는 한국어 비율이 0.3 밑으로 떨어지는
+# 예외가 0건이었다 — source 이름을 하드코딩하는 대신 텍스트 자체의 한글
+# 비율로 판별하면 같은 효과를 소스 이름과 무관하게 얻는다(새 한국어 출처가
+# 추가돼도 재사용 가능).
+_QUOTE_KOREAN_RATIO_THRESHOLD = 0.3
+# 슬러그(하이픈으로 이어붙인 영소문자/숫자 토큰 4개 이상, 공백 없음) 방어용
+# 2차 체크 — 한글 비율 체크만으로도 실측 표본에서는 전부 걸러졌지만, 어쩌다
+# 한글 단어가 슬러그에 섞여 들어오는 경우까지 방어한다.
+_SLUG_RE = _re.compile(r"^[a-z0-9]+(-[a-z0-9]+){3,}$")
+
+
+def _korean_ratio(text: str) -> float:
+    letters = [c for c in text if c.isalpha() or ("가" <= c <= "힣")]
+    if not letters:
+        return 0.0
+    korean = sum(1 for c in letters if "가" <= c <= "힣")
+    return korean / len(letters)
+
+
+def _quote_passes_quality(quote: str | None) -> bool:
+    """`evidence_quote`를 "주요 요인" 절에 보강 문구로 붙여도 되는 품질인지 —
+    한글 비율 임계치를 넘고 슬러그 패턴이 아니어야 한다(실측 근거는 위 상수
+    주석·`report_gen_구조개선_작업기록_260828_보강.md` 참고)."""
+
+    if not quote or not quote.strip():
+        return False
+    stripped = quote.strip()
+    if _SLUG_RE.match(stripped.lower()):
+        return False
+    return _korean_ratio(stripped) >= _QUOTE_KOREAN_RATIO_THRESHOLD
+
+
+# "주요 요인" 절에 인용할 최소 심각도 — 이 밑이면 "주요"라 부르기엔 미미하다고
+# 판단해 claim 자체를 만들지 않는다(2026-08-28, 품질 확인에 쓴 표본 임계치와
+# 동일하게 맞춤).
+_PRICE_DRIVER_MIN_SEVERITY = 2.0
+_PRICE_DRIVER_MAX_EVENTS = 2
 
 KOMIR_PAGE_CONTEXTS = {
     # 2026-08-27: 실제 KOMIS 사이트맵 확인 결과 "price" 1개가 서로 다른 서브메뉴
@@ -254,6 +310,7 @@ def calculate_price_summary(
     series: PriceSeries,
     *,
     compare_series: PriceSeries | None = None,
+    geo_events: list[GeoEventObservation] | None = None,
 ) -> AdditionalCalculatedSummary:
     """Calculate deterministic evidence and metrics for a price series.
 
@@ -265,7 +322,17 @@ def calculate_price_summary(
     상당)로 그대로 받는다. 비교광종이 있을 때만 `current_position`에 두
     계열의 조회기간 전체 변화율을 나란히 비교하는 근거 1건을 추가한다 —
     날짜가 정확히 일치하지 않을 수 있어 일별 대비가 아니라 "첫 관측 대비
-    마지막 관측" 전체 변화율로 비교한다(둘 다 항상 계산 가능)."""
+    마지막 관측" 전체 변화율로 비교한다(둘 다 항상 계산 가능).
+
+    `geo_events`(2026-08-28 신설) — PDF §1-1 "가격 변동의 주요 요인" 대응.
+    `_PRICE_DRIVER_MIN_SEVERITY` 이상인 이벤트 중 severity 상위
+    `_PRICE_DRIVER_MAX_EVENTS`건(main-agent 결정: 품질이 아니라 severity만으로
+    선택 — "가장 심각한 이벤트"라는 의미를 지키기 위해)을 골라 `major_changes`에
+    근거를 추가한다. 문장은 `direction`(클린 통제 어휘)만으로 항상 만들 수
+    있는 결정론적 한국어 템플릿이 기본이고, `evidence_quote`는 `_quote_passes_
+    quality()`를 통과할 때만 보강 문구로 덧붙인다(원 데이터의 84%가 URL
+    슬러그라 그대로 인용하면 안 됨 — `report_gen_구조개선_작업기록_260828_
+    보강.md` 참고)."""
 
     observations = sorted(series.observations, key=lambda item: item.date)
     latest = observations[-1]
@@ -401,6 +468,42 @@ def calculate_price_summary(
                 )
             )
             key_metrics.append(_price_metric("price_streak_length", "연속 추세 기간", streak, unit=unit))
+
+    if geo_events:
+        # `SummaryNarrative.major_changes`는 절 전체(모델 하드 제약, models.py)가
+        # 최대 5문장이고, 규칙기반 폴백 경로(`_deterministic_narrative`)는 근거
+        # 1개=문장 1개로 그대로 옮기므로 이미 day_over_day·week/month/year평균·
+        # price_streak만으로 5개에 닿을 수 있다(관측치가 창마다 달라지는
+        # 경우) — 새 근거를 무조건 추가하면 그 경로가 `ValidationError`로
+        # 죽는다(2026-08-28 실측 재현). 남은 자리만큼만 추가해 절대 넘지 않는다.
+        _MAJOR_CHANGES_HARD_CAP = 5
+        room = _MAJOR_CHANGES_HARD_CAP - sum(1 for claim in claims if claim.section == "major_changes")
+        selected = sorted(
+            (event for event in geo_events if event.severity >= _PRICE_DRIVER_MIN_SEVERITY),
+            key=lambda event: event.severity,
+            reverse=True,
+        )[: max(0, min(_PRICE_DRIVER_MAX_EVENTS, room))]
+        for index, event in enumerate(selected, start=1):
+            direction_label = _DIRECTION_LABELS.get(event.direction, "동향 변화")
+            fact = (
+                f"조회기간 중 {event.country}에서 {direction_label} 흐름과 맞물린 "
+                f"사안이 있었다({_korean_date(event.obs_date)} 기준)."
+            )
+            if _quote_passes_quality(event.evidence_quote):
+                quote = event.evidence_quote.strip()
+                # SummarySentence.text 상한(300자) 안에 안전하게 들어가도록
+                # 보강 문구 길이를 제한한다(템플릿 문장 자체가 이미 40~60자).
+                if len(quote) > 200:
+                    quote = quote[:200].rstrip() + "…"
+                fact = f"{fact} 관련 보도: {quote}"
+            claims.append(
+                EvidenceClaim(
+                    f"price_driver_event_{index}",
+                    "major_changes",
+                    fact,
+                    required=True,
+                )
+            )
 
     if not any(claim.section == "major_changes" for claim in claims):
         # `SummaryNarrative`는 3개 절 전부 최소 1개 근거를 요구한다(models.py) —

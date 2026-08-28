@@ -141,3 +141,81 @@ KOMIS-source(23건, 3.3%)만 정상 한국어 정문: `"이트륨은 중국의 �
 이 설계로 진행해도 될지 확인 필요 — 대안(예: KOMIS-source만 필터링해
 매칭 안 되면 그냥 빈 채로 두는 보수적 버전, 또는 아예 이번 라운드는
 `direction`만 쓰는 버전으로 축소)도 가능하니 지시 바람.
+
+## 작업B — main-agent 결정(2026-08-28) 및 구현
+
+### 결정 요약
+main-agent가 선택 로직은 **severity 단독**(compound sort 기각, "가장 심각한
+이벤트" 의미 보존)으로 단순화하되, 텍스트는 제안한 2단 구성(① direction
+기반 결정론적 한글 템플릿 ② 품질 휴리스틱 통과 시만 evidence_quote 보강)을
+그대로 채택 — 통과 못 하면 템플릿만 사용(빈 채로 안 둠, severity 선택은
+안 바뀜). 품질 휴리스틱 구체 기준은 위임받아 아래처럼 튜닝·검증했다.
+
+### 구현
+- `models.py`: `GeoEventObservation`(obs_date/country/direction/severity/
+  evidence_quote) 신설 + `AnalysisSummaryRequest.geo_events: list[dict] |
+  None` 필드 + `validate_period`에 page_id 제한(price 4종 외 거부, compare_*와
+  같은 패턴).
+- `routers/analysis.py`: `MineralDateRangeSummaryRequest`에도 동일
+  `geo_events` 필드 추가(2026-08-26 메모리의 "두 곳 다 안 고치면 필드가 안
+  먹힌다" 재발 방지 포인트 그대로 반영).
+- `komir_summary.py`: `_DIRECTION_LABELS`(7값 매핑) + `_quote_passes_quality()`
+  (한글비율≥0.3 AND 슬러그 정규식 불일치) + `calculate_price_summary(...,
+  geo_events=)`가 severity≥2.0 상위 최대 2건으로 `price_driver_event_1`/`_2`
+  claim 생성.
+- `summary.py`: `_geo_events_from_request()`(없으면 None, 있는데 형식이
+  틀리면 `DataSourceError`→NO_DATA) + `_analyze_price`에 배선.
+- `prompts.py`: `PRICE_SUMMARY_INSTRUCTIONS`에 새 근거 id 사용법 추가 —
+  "가격 변동의 주요 요인으로는 [근거 그대로]"로 옮겨쓰되 인과 단정 표현
+  ("때문에"·"영향으로")으로 바꾸지 말 것, 근거 없으면 이 문장 자체를 안
+  만들 것을 명시.
+
+### 품질 휴리스틱 튜닝(위임받은 구체 기준)
+severity≥2.0 표본 7,917건 전체(중복 포함 원자료, `/tmp/report_gen_fix_evidence/
+geo_event_sample.csv`)로 `_quote_passes_quality()`(한글 비율≥0.3 + 슬러그
+정규식 `^[a-z0-9]+(-[a-z0-9]+){3,}$` 불일치) 검증 — "좋은 출처"(KOMIS+PPS,
+게이트 조사에서 확인한 한국어 완결문 소스) 177건 기준:
+
+| 지표 | 값 |
+|---|---|
+| True Positive(좋은 출처·통과) | 177 |
+| False Positive(나쁜 출처인데 통과) | 0 |
+| False Negative(좋은 출처인데 놓침) | 0 |
+| Precision | 1.0000 |
+| Recall | 1.0000 |
+
+**출처 이름을 하드코딩하지 않고 텍스트 자체의 한글 비율만으로 이 표본에서
+완벽히 재현됨** — 새 한국어 출처가 추가돼도 소스명 화이트리스트 갱신 없이
+동작한다.
+
+### 종단 검증(로컬 vLLM, 실제 LLM 정제 경로 — 컨테이너 재빌드 전이라 docker
+exec 대신 `AnalysisSummaryService`를 로컬 import해 운영과 동일 클라이언트로 확인)
+1. **geo_events 없음(회귀)**: 기존과 동일 출력, `llm_refined=True`, 경고 없음.
+2. **고품질(KOMIS류) 이벤트 1건**: `llm_refined=True`, "가격 변동의 주요
+   요인으로는 조회기간 중 인도네시아에서 공급 감소 흐름과 맞물린 사안이
+   있었습니다(2025년 9월 1일 기준). 관련 보도: 인도네시아 에너지
+   광물자원부는 '25년 니켈 원광 생산쿼터를 2억톤으로 전년 대비 26%
+   감축함." — PDF §1-1 문형과 근접, 인과 단정 없이 "맞물린" 톤 유지 확인.
+3. **저품질(슬러그) 이벤트만**: 템플릿 문장만 생성되고 `evidence_quote`
+   (`"indonesia-merdeka-triples-nickel-ore-output-in-2q25"` 등)는 최종
+   응답 어디에도 노출 안 됨 확인.
+4. **severity 임계치(2.0) 미달**: claim 자체가 생성 안 됨(빈 채로, 회귀 없음).
+5. **3건 이상 제공**: severity 상위 2건만 선택됨(3위는 제외) 확인.
+
+### 실측으로 발견·수정한 버그 1건 — major_changes 5문장 하드캡 초과
+`SummaryNarrative.major_changes`(models.py, `max_length=5`)는 페이지 무관
+고정 상한인데, 관측치가 창(전주/전월/전년)마다 달라지는 경우 `day_over_day`+
+`week_avg`+`month_avg`+`year_avg`+`price_streak`만으로 이미 5개에 닿을 수
+있다(기존 코드에도 잠재하던 경계 케이스, 이번 작업으로 처음 실측 재현) —
+여기에 `geo_events` claim을 무조건 추가하면 규칙기반 폴백 경로
+(`_deterministic_narrative`, 근거 1개=문장 1개 그대로 매핑)가 6개째에서
+`pydantic.ValidationError`로 죽는다(실측: `List should have at most 5 items`).
+**수정**: `geo_events` claim 추가 직전에 남은 자리(`5 - 기존 major_changes
+claim 수`)를 계산해 그 이하로만 추가(`min(_PRICE_DRIVER_MAX_EVENTS, room)`,
+0이면 아예 안 추가) — 크래시 없이 우선순위 높은 기존 근거를 보존하고 여유가
+있을 때만 새 근거를 얹는다. 수정 후 동일 케이스 재현·정상 확인(크래시 없음,
+5개 이하 유지).
+
+### 회귀
+`komis_dump_smoke_test.py`(326콤보, price 계열 제외 — 사유는 위 라운드1
+절 참고) 재실행 — 전부 `ok`·`internal_error 0`·`mismatches 0`, 회귀 없음.
