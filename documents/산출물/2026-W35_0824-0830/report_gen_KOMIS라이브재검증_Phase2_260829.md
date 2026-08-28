@@ -106,6 +106,30 @@ harness_sample_entries_260828.json`, 가돌리늄 표본):
 
 **코드는 아직 안 건드렸다** — 승인 후 진행하겠습니다.
 
+## 4) 처방 적용 완료(main-agent 승인, 2026-08-29)
+`latest.inventory`·`prior_inventory_obs` 탐색 둘 다에 `not in (None, 0, 0.0)`
+게이트를 적용했다(값 기반, page_id 하드코딩 없음 — 승인받은 설계 그대로).
+
+**before/after(가돌리늄, minor_metals:가돌리늄|Gadolinium Oxide|99.5|DAY)**:
+```diff
+ ## 현재 위치
+
+-조회기간 중 최고 37.78, 최저 22.10였다. 2026년 8월 25일 기준 재고량은 0.00이다.
++조회기간 관측치(실거래가) 기준 최고 107.93, 최저 9.51였다.
+```
+(최고·최저 수치 자체도 바뀐 건 이 커밋과 무관 — 같은 날 먼저 적용한
+period_range 폴백 수정(2f13eef23)이 이번 재실행에 함께 반영된 것뿐, hghst/
+lowst 커버리지가 불완전해 commerce_price 기준으로 재계산된 결과다.)
+`inventory_level`/`inventory_change_pct` key_metrics도 더 이상 안 나온다
+(수정 전: `inventory_level=0.0`, 수정 후: 아예 없음).
+
+**회귀 확인**: 실측 재고량이 있는 base_metals(동·니켈 등, 13콤보)는 영향
+없음 — 예: 동|LME 3개월 표본은 수정 후에도 `inventory_level=235575.0`·
+`inventory_change_pct=-0.80`(스크린샷과 일치하던 그 값) 그대로 유지.
+`komis_dump_smoke_test.py` 전체 재실행 결과 8페이지 395콤보 internal_error
+0·mismatches 0(변화 없음 — 이 체크는 week/month/year만 대조해 inventory
+회귀는 직접 잡지 않지만, 크래시·다른 지표 영향 없음은 확인된다).
+
 ## Phase 3 진행 가능 여부
 위 inventory 처방 결정과 무관하게 Phase 3(map_korea/global/mineral)는
 독립적으로 진행 가능합니다 — 병행 지시하셔도 되고, 순서대로 하셔도

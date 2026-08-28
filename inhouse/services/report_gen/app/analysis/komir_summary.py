@@ -617,16 +617,33 @@ def calculate_price_summary(
     # 672/672 표본). "LME"·"톤" 같은 단위·거래소를 문장에 하드코딩하지 않는다 —
     # 이 계산기는 다른 가격 지표(day_over_day 등)에서도 단위를 안 쓴다(prompts.py
     # 지침·PDF 원문 어디에도 단위 표기가 없는 것과 같은 관행).
-    if latest.inventory is not None:
+    #
+    # 2026-08-29 Phase2 라이브 재검증에서 발견·main-agent 승인 — KOMIS는 전통 LME
+    # 6대 비철금속(니켈·동·아연·알루미늄·연·주석) 외 광종은 `invt`(재고량)를 매
+    # 관측일 "0.00"으로 채워 보낸다(값이 없을 때 0.00을 채우는 KOMIS 전역 관행,
+    # `lowest_price`/`highest_price`가 이미 같은 방식으로 게이트하는 것과 동일
+    # 패턴 — 16개 광종/가격기준 콤보 전수로 확인). 0을 실측값으로 취급하면
+    # "재고량은 0.00이다"라는 사실상 거짓 문장이 나가므로(가돌리늄 표본에서
+    # 실제 발생 확인) `inventory`가 0이면 latest든 prior 탐색이든 결측(None)과
+    # 동일하게 취급한다. 페이지 하드코딩(`page_id == "price_base_metals"`) 대신
+    # 값 기반 게이트를 쓴다 — 지금은 관측 사실이지 코드 계약이 아니라, KOMIS가
+    # 다른 광종에도 재고량을 채우기 시작하면 코드 수정 없이 자동 반영된다.
+    latest_inventory = latest.inventory if latest.inventory not in (None, 0, 0.0) else None
+    if latest_inventory is not None:
         current_position_count = sum(1 for claim in claims if claim.section == "current_position")
         if current_position_count < 3:  # SummaryNarrative.current_position 하드 제약(models.py)
             prior_inventory_obs = next(
-                (item for item in reversed(observations[:-1]) if item.inventory is not None), None
+                (
+                    item
+                    for item in reversed(observations[:-1])
+                    if item.inventory not in (None, 0, 0.0)
+                ),
+                None,
             )
-            inventory_fact = f"{_korean_date(latest.date)} 기준 재고량은 {_number(latest.inventory)}이다."
+            inventory_fact = f"{_korean_date(latest.date)} 기준 재고량은 {_number(latest_inventory)}이다."
             inventory_change_pct = None
             if prior_inventory_obs is not None:
-                inv_change = _pct(latest.inventory, prior_inventory_obs.inventory)
+                inv_change = _pct(latest_inventory, prior_inventory_obs.inventory)
                 if inv_change is not None:
                     is_truly_next_day = prior_inventory_obs.date == _shift_date(latest.date, -1)
                     inv_comparison_label = (
@@ -637,7 +654,7 @@ def calculate_price_summary(
                     inventory_fact = f"{inventory_fact} {inv_comparison_label} 대비 {_signed_pct(inv_change)} 변동했다."
                     inventory_change_pct = inv_change * 100
             claims.append(EvidenceClaim("inventory_level", "current_position", inventory_fact))
-            key_metrics.append(_price_metric("inventory_level", "재고량", latest.inventory))
+            key_metrics.append(_price_metric("inventory_level", "재고량", latest_inventory))
             if inventory_change_pct is not None:
                 key_metrics.append(_price_metric("inventory_change_pct", "재고량 등락률", inventory_change_pct, unit="%"))
 
