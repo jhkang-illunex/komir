@@ -196,7 +196,10 @@ def calculate_price_forecast_summary(
     series: PriceForecastSeries,
 ) -> AdditionalCalculatedSummary:
     """Calculate evidence-backed direction, extrema, and turning points."""
-    observations = sorted(series.observations, key=lambda item: item.period)
+    observations = sorted(
+        (item for item in series.observations if item.is_actual is not True),
+        key=lambda item: item.period,
+    )
     if len(observations) < 2:
         raise ValueError("price forecast summary requires at least two periods")
     first = observations[0]
