@@ -1,0 +1,2180 @@
+[
+  {
+    "url": "https://www.komis.or.kr/Komis/ajax/common/getFrontMenu",
+    "status": 200,
+    "body": {
+      "data": [
+        {
+          "menuNm2": "일일자원뉴스",
+          "menuCd": "010016000",
+          "menuSrt": "110",
+          "menuPath": "/Komis/Board/DAYNEWS",
+          "menuNm1": "광물자원동향",
+          "menuType": "B",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm2": "주간자원뉴스",
+          "menuCd": "010017000",
+          "menuSrt": "120",
+          "menuPath": "/Komis/Board/WEEKNEWS",
+          "menuNm1": "광물자원동향",
+          "menuType": "B",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm2": "전략광종 월간동향",
+          "menuCd": "010018000",
+          "menuSrt": "130",
+          "menuPath": "/Komis/Board/STRGMONTH",
+          "menuNm1": "광물자원동향",
+          "menuType": "B",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm2": "희소금속 월간동향",
+          "menuCd": "010019000",
+          "menuSrt": "140",
+          "menuPath": "/Komis/Board/RAREMONTH",
+          "menuNm1": "광물자원동향",
+          "menuType": "B",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm2": "해외네트워크뉴스",
+          "menuCd": "010021000",
+          "menuSrt": "150",
+          "menuPath": "/Komis/Board/FRNNETNEWS",
+          "menuNm1": "광물자원동향",
+          "menuType": "B",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm2": "비철금속",
+          "menuCd": "013010000",
+          "menuSrt": "210",
+          "menuPath": "/Komis/RsrcPrice/BaseMetals",
+          "menuNm1": "광물자원가격",
+          "menuType": "F",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm2": "희소금속",
+          "menuCd": "013011000",
+          "menuSrt": "220",
+          "menuPath": "/Komis/RsrcPrice/MinorMetals",
+          "menuNm1": "광물자원가격",
+          "menuType": "F",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm2": "철광석 및 에너지",
+          "menuCd": "013012000",
+          "menuSrt": "230",
+          "menuPath": "/Komis/RsrcPrice/IronOre",
+          "menuNm1": "광물자원가격",
+          "menuType": "F",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm2": "기타",
+          "menuCd": "013013000",
+          "menuSrt": "240",
+          "menuPath": "/Komis/RsrcPrice/EtcMnrl",
+          "menuNm1": "광물자원가격",
+          "menuType": "F",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm2": "국내원자재가격(조달청)",
+          "menuCd": "013014000",
+          "menuSrt": "250",
+          "menuPath": "pps.go.kr/bichuk/bbs/list.do?key=00825",
+          "menuNm1": "광물자원가격",
+          "menuType": "L",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm2": "광물종합지수",
+          "menuCd": "014010000",
+          "menuSrt": "310",
+          "menuPath": "/Komis/MnrlIndc/IndxMin",
+          "menuNm1": "광물전망지표",
+          "menuType": "F",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm2": "시장동향지표",
+          "menuCd": "014011000",
+          "menuSrt": "320",
+          "menuPath": "/Komis/MnrlIndc/IndcMrkt",
+          "menuNm1": "광물전망지표",
+          "menuType": "F",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm2": "수급동향지표",
+          "menuCd": "014012000",
+          "menuSrt": "330",
+          "menuPath": "/Komis/MnrlIndc/IndxSply",
+          "menuNm1": "광물전망지표",
+          "menuType": "F",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm3": "가격예측",
+          "menuNm2": "광물가격예측",
+          "menuCd": "014014010",
+          "menuSrt": "341",
+          "menuPath": "/Komis/MnrlIndc/PricePred",
+          "menuNm1": "광물전망지표",
+          "menuType": "F",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm3": "자원정보 FOCUS",
+          "menuNm2": "광물가격예측",
+          "menuCd": "014014011",
+          "menuSrt": "342",
+          "menuPath": "/Komis/Board/RESORCFOCUS",
+          "menuNm1": "광물전망지표",
+          "menuType": "B",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm2": "광종정보",
+          "menuCd": "011010000",
+          "menuSrt": "410",
+          "menuPath": "/Komis/MnrlInfo/MnrlInfo",
+          "menuNm1": "광종/국가정보",
+          "menuType": "F",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm2": "국가정보",
+          "menuCd": "011011000",
+          "menuSrt": "420",
+          "menuPath": "/Komis/MnrlInfo/NationInfo",
+          "menuNm1": "광종/국가정보",
+          "menuType": "F",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm2": "법령정보",
+          "menuCd": "011012000",
+          "menuSrt": "430",
+          "menuPath": "/Komis/Board/LAWINFO",
+          "menuNm1": "광종/국가정보",
+          "menuType": "B",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm2": "투자실무가이드",
+          "menuCd": "011013000",
+          "menuSrt": "440",
+          "menuPath": "web.e-factory.co.kr/KOMIR/202510/index.html",
+          "menuNm1": "광종/국가정보",
+          "menuType": "L",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm3": "대한민국",
+          "menuNm2": "수급지도",
+          "menuCd": "015014010",
+          "menuSrt": "511",
+          "menuPath": "/Komis/MnrlMap/Korea",
+          "menuNm1": "핵심광물지도",
+          "menuType": "F",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm3": "글로벌",
+          "menuNm2": "수급지도",
+          "menuCd": "015014011",
+          "menuSrt": "512",
+          "menuPath": "/Komis/MnrlMap/Nation",
+          "menuNm1": "핵심광물지도",
+          "menuType": "F",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm2": "광물지도",
+          "menuCd": "015012000",
+          "menuSrt": "530",
+          "menuPath": "/Komis/MnrlMap/MnrlMap",
+          "menuNm1": "핵심광물지도",
+          "menuType": "F",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm2": "Self-Info",
+          "menuCd": "019010000",
+          "menuSrt": "610",
+          "menuPath": "/Komis/Board/SELFINFO",
+          "menuNm1": "알림마당",
+          "menuType": "B",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm2": "민간협력 네트워크",
+          "menuCd": "019011000",
+          "menuSrt": "620",
+          "menuPath": "/Komis/Board/EVENTINFO",
+          "menuNm1": "알림마당",
+          "menuType": "B",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm3": "국내",
+          "menuNm2": "유관사이트",
+          "menuCd": "019012010",
+          "menuSrt": "631",
+          "menuPath": "/Komis/SiteCR/HvrlKorea",
+          "menuNm1": "알림마당",
+          "menuType": "F",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm3": "국외",
+          "menuNm2": "유관사이트",
+          "menuCd": "019012011",
+          "menuSrt": "632",
+          "menuPath": "/Komis/SiteCR/HvrlNation",
+          "menuNm1": "알림마당",
+          "menuType": "F",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm3": "인적교류기관",
+          "menuNm2": "유관사이트",
+          "menuCd": "019012012",
+          "menuSrt": "633",
+          "menuPath": "/Komis/SiteCR/HvrlOrg",
+          "menuNm1": "알림마당",
+          "menuType": "F",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm2": "공지사항",
+          "menuCd": "019014000",
+          "menuSrt": "640",
+          "menuPath": "/Komis/Board/NOTICE",
+          "menuNm1": "알림마당",
+          "menuType": "B",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm2": "Q&A",
+          "menuCd": "019015000",
+          "menuSrt": "650",
+          "menuPath": "/Komis/Board/QnA",
+          "menuNm1": "알림마당",
+          "menuType": "B",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm2": "FAQ",
+          "menuCd": "019016000",
+          "menuSrt": "660",
+          "menuPath": "/Komis/Board/FAQ",
+          "menuNm1": "알림마당",
+          "menuType": "B",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm3": "이용안내",
+          "menuNm2": "이용정보",
+          "menuCd": "019013010",
+          "menuSrt": "671",
+          "menuPath": "/Komis/UseInfo",
+          "menuNm1": "알림마당",
+          "menuType": "C",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm3": "이용약관",
+          "menuNm2": "이용정보",
+          "menuCd": "019013011",
+          "menuSrt": "672",
+          "menuPath": "/Komis/UseProvision",
+          "menuNm1": "알림마당",
+          "menuType": "C",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm3": "KOMIS 저작권정책",
+          "menuNm2": "이용정보",
+          "menuCd": "019013012",
+          "menuSrt": "673",
+          "menuPath": "/Komis/Policy",
+          "menuNm1": "알림마당",
+          "menuType": "C",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm3": "KOMIS윤리강령",
+          "menuNm2": "이용정보",
+          "menuCd": "019013013",
+          "menuSrt": "674",
+          "menuPath": "/Komis/Platform",
+          "menuNm1": "알림마당",
+          "menuType": "C",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm3": "공공데이터 오류신고",
+          "menuNm2": "이용정보",
+          "menuCd": "019013014",
+          "menuSrt": "675",
+          "menuPath": "/Komis/ErrNotice",
+          "menuNm1": "알림마당",
+          "menuType": "C",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm2": "SiteMap",
+          "menuCd": "019017000",
+          "menuSrt": "680",
+          "menuPath": "/Komis/Customer/SiteMap",
+          "menuNm1": "알림마당",
+          "menuType": "F",
+          "mainMenuExpstYn": "Y"
+        },
+        {
+          "menuNm2": "KOMIS안내",
+          "menuCd": "018010000",
+          "menuSrt": "910",
+          "menuPath": "/Komis/Information",
+          "menuNm1": "KOMIS소개",
+          "menuType": "C",
+          "mainMenuExpstYn": "T"
+        },
+        {
+          "menuNm2": "연혁",
+          "menuCd": "018011000",
+          "menuSrt": "920",
+          "menuPath": "/Komis/History",
+          "menuNm1": "KOMIS소개",
+          "menuType": "F",
+          "mainMenuExpstYn": "T"
+        }
+      ]
+    }
+  },
+  {
+    "url": "https://www.komis.or.kr/Komis/MnrlMap/MapMnrl/ajax/getMapMnrlCrtrYr",
+    "status": 200,
+    "body": {
+      "data": [
+        {
+          "crtrYr": "2025"
+        },
+        {
+          "crtrYr": "2024"
+        },
+        {
+          "crtrYr": "2023"
+        },
+        {
+          "crtrYr": "2022"
+        },
+        {
+          "crtrYr": "2021"
+        },
+        {
+          "crtrYr": "2020"
+        },
+        {
+          "crtrYr": "2019"
+        }
+      ]
+    }
+  },
+  {
+    "url": "https://www.komis.or.kr/ajax/komiscommon/getListSearchMnrl",
+    "status": 200,
+    "body": {
+      "data": [
+        {
+          "mnrkndUnqCd": "MNRL0024",
+          "clsfCd": "HW003",
+          "mnrkndKornNm": "갈륨",
+          "clsfNm": "핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0053",
+          "clsfCd": "HW004",
+          "mnrkndKornNm": "갈탄",
+          "clsfNm": "기타"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0035",
+          "clsfCd": "HW004",
+          "mnrkndKornNm": "게르마늄",
+          "clsfNm": "기타"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0010",
+          "clsfCd": "HW003",
+          "mnrkndKornNm": "규소",
+          "clsfNm": "핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0060",
+          "clsfCd": "HW004",
+          "mnrkndKornNm": "규조토",
+          "clsfNm": "기타"
+        },
+        {
+          "mnrkndUnqCd": "MNRL1025",
+          "mnrkndKornNm": "규회석"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0046",
+          "clsfCd": "HW004",
+          "mnrkndKornNm": "금",
+          "clsfNm": "기타"
+        },
+        {
+          "mnrkndUnqCd": "MNRL1051",
+          "clsfCd": "HW004",
+          "mnrkndKornNm": "남정석",
+          "clsfNm": "기타"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0007",
+          "clsfCd": "HW003",
+          "mnrkndKornNm": "니오븀",
+          "clsfNm": "핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0002",
+          "clsfCd": "HW001,HW003",
+          "mnrkndKornNm": "니켈",
+          "clsfNm": "전략광물,핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0008",
+          "clsfCd": "HW001,HW003",
+          "mnrkndKornNm": "동",
+          "clsfNm": "전략광물,핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0042",
+          "clsfCd": "HW004",
+          "mnrkndKornNm": "레늄",
+          "clsfNm": "기타"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0082",
+          "mnrkndKornNm": "루비듐"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0001",
+          "clsfCd": "HW003",
+          "mnrkndKornNm": "리튬",
+          "clsfNm": "핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0011",
+          "clsfCd": "HW003",
+          "mnrkndKornNm": "마그네슘",
+          "clsfNm": "핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0004",
+          "clsfCd": "HW003",
+          "mnrkndKornNm": "망간",
+          "clsfNm": "핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0012",
+          "clsfCd": "HW003",
+          "mnrkndKornNm": "몰리브덴",
+          "clsfNm": "핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0013",
+          "clsfCd": "HW003",
+          "mnrkndKornNm": "바나듐",
+          "clsfNm": "핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0014",
+          "clsfCd": "HW003",
+          "mnrkndKornNm": "백금",
+          "clsfNm": "핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0038",
+          "clsfCd": "HW004",
+          "mnrkndKornNm": "베릴륨",
+          "clsfNm": "기타"
+        },
+        {
+          "mnrkndUnqCd": "MNRL1026",
+          "clsfCd": "HW004",
+          "mnrkndKornNm": "불석",
+          "clsfNm": "기타"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0033",
+          "clsfCd": "HW004",
+          "mnrkndKornNm": "붕소",
+          "clsfNm": "기타"
+        },
+        {
+          "mnrkndUnqCd": "MNRL1008",
+          "mnrkndKornNm": "브롬"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0034",
+          "clsfCd": "HW004",
+          "mnrkndKornNm": "비소",
+          "clsfNm": "기타"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0068",
+          "clsfCd": "HW004",
+          "mnrkndKornNm": "석고",
+          "clsfNm": "기타"
+        },
+        {
+          "mnrkndUnqCd": "MNRL1012",
+          "mnrkndKornNm": "석류석"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0064",
+          "mnrkndKornNm": "석면"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0059",
+          "clsfCd": "HW004",
+          "mnrkndKornNm": "석회석",
+          "clsfNm": "기타"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0085",
+          "mnrkndKornNm": "세슘"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0029",
+          "clsfCd": "HW003",
+          "mnrkndKornNm": "셀레늄",
+          "clsfNm": "핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0086",
+          "mnrkndKornNm": "소다회"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0028",
+          "clsfCd": "HW003",
+          "mnrkndKornNm": "스트론튬",
+          "clsfNm": "핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0023",
+          "clsfCd": "HW001,HW003",
+          "mnrkndKornNm": "아연",
+          "clsfNm": "전략광물,핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0019",
+          "clsfCd": "HW003",
+          "mnrkndKornNm": "안티모니",
+          "clsfNm": "핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0009",
+          "clsfCd": "HW003",
+          "mnrkndKornNm": "알루미늄",
+          "clsfNm": "핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0022",
+          "clsfCd": "HW003",
+          "mnrkndKornNm": "연",
+          "clsfNm": "핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL1015",
+          "mnrkndKornNm": "요오드"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0063",
+          "clsfCd": "HW004",
+          "mnrkndKornNm": "운모",
+          "clsfNm": "기타"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0062",
+          "clsfCd": "HW004",
+          "mnrkndKornNm": "유황",
+          "clsfNm": "기타"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0047",
+          "clsfCd": "HW004",
+          "mnrkndKornNm": "은",
+          "clsfNm": "기타"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0036",
+          "clsfCd": "HW004",
+          "mnrkndKornNm": "인광석",
+          "clsfNm": "기타"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0025",
+          "clsfCd": "HW003",
+          "mnrkndKornNm": "인듐",
+          "clsfNm": "핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0057",
+          "clsfCd": "HW004",
+          "mnrkndKornNm": "장석",
+          "clsfNm": "기타"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0016",
+          "clsfCd": "HW003",
+          "mnrkndKornNm": "주석",
+          "clsfNm": "핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0067",
+          "mnrkndKornNm": "중정석"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0027",
+          "clsfCd": "HW003",
+          "mnrkndKornNm": "지르코늄",
+          "clsfNm": "핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL1017",
+          "mnrkndKornNm": "진주암"
+        },
+        {
+          "mnrkndUnqCd": "MNRL1024",
+          "mnrkndKornNm": "질석"
+        },
+        {
+          "mnrkndUnqCd": "MNRL1052",
+          "mnrkndKornNm": "질소"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0020",
+          "clsfCd": "HW003",
+          "mnrkndKornNm": "창연",
+          "clsfNm": "핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL1011",
+          "clsfCd": "HW001",
+          "mnrkndKornNm": "철",
+          "clsfNm": "전략광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0039",
+          "clsfCd": "HW004",
+          "mnrkndKornNm": "카드뮴",
+          "clsfNm": "기타"
+        },
+        {
+          "mnrkndUnqCd": "MNRL1018",
+          "mnrkndKornNm": "칼륨"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0003",
+          "clsfCd": "HW003",
+          "mnrkndKornNm": "코발트",
+          "clsfNm": "핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0021",
+          "clsfCd": "HW003",
+          "mnrkndKornNm": "크롬",
+          "clsfNm": "핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0026",
+          "clsfCd": "HW003",
+          "mnrkndKornNm": "탄탈륨",
+          "clsfNm": "핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0018",
+          "clsfCd": "HW003",
+          "mnrkndKornNm": "텅스텐",
+          "clsfNm": "핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0044",
+          "clsfCd": "HW004",
+          "mnrkndKornNm": "텔루륨",
+          "clsfNm": "기타"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0017",
+          "clsfCd": "HW003",
+          "mnrkndKornNm": "티타늄",
+          "clsfNm": "핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0015",
+          "clsfCd": "HW003",
+          "mnrkndKornNm": "팔라듐",
+          "clsfNm": "핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0061",
+          "clsfCd": "HW004",
+          "mnrkndKornNm": "형석",
+          "clsfNm": "기타"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0055",
+          "clsfCd": "HW004",
+          "mnrkndKornNm": "활석",
+          "clsfNm": "기타"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0005",
+          "clsfCd": "HW003",
+          "mnrkndKornNm": "흑연",
+          "clsfNm": "핵심광물"
+        },
+        {
+          "mnrkndUnqCd": "MNRL0006",
+          "clsfCd": "HW003",
+          "mnrkndKornNm": "희토류",
+          "clsfNm": "핵심광물"
+        }
+      ]
+    }
+  },
+  {
+    "url": "https://www.komis.or.kr/Komis/MnrlMap/MapMnrl/ajax/getListMnrlTablePrdctnBurgudg",
+    "status": 200,
+    "body": {
+      "data": [
+        {
+          "ntnKornNm": "중국",
+          "ntnEngCd": "CN",
+          "before5": "0",
+          "before4": "0",
+          "before3": "0",
+          "before2": "0",
+          "before1": "0",
+          "rate": "0.00"
+        },
+        {
+          "ntnKornNm": "일본",
+          "ntnEngCd": "JP",
+          "before5": "0",
+          "before4": "0",
+          "before3": "0",
+          "before2": "0",
+          "before1": "0",
+          "rate": "0.00"
+        },
+        {
+          "ntnKornNm": "대한민국",
+          "ntnEngCd": "KR",
+          "before5": "0",
+          "before4": "0",
+          "before3": "0",
+          "before2": "0",
+          "before1": "0",
+          "rate": "0.00"
+        },
+        {
+          "ntnKornNm": "러시아",
+          "ntnEngCd": "RU",
+          "before5": "0",
+          "before4": "0",
+          "before3": "0",
+          "before2": "0",
+          "before1": "0",
+          "rate": "0.00"
+        },
+        {
+          "ntnKornNm": "우크라이나",
+          "ntnEngCd": "UA",
+          "before5": "0",
+          "before4": "0",
+          "before3": "0",
+          "before2": "0",
+          "before1": "0",
+          "rate": "0.00"
+        },
+        {
+          "ntnKornNm": "미국",
+          "ntnEngCd": "US",
+          "before5": "0",
+          "before4": "0",
+          "before3": "0",
+          "before2": "0",
+          "before1": "0",
+          "rate": "0.00"
+        },
+        {
+          "ntnKornNm": "_ETC_",
+          "ntnEngCd": "OT",
+          "before5": "0",
+          "before4": "0",
+          "before3": "0",
+          "before2": "0",
+          "before1": "0",
+          "rate": "0.00"
+        },
+        {
+          "ntnKornNm": "_TOTAL_",
+          "ntnEngCd": "SU",
+          "before5": "0",
+          "before4": "0",
+          "before3": "0",
+          "before2": "0",
+          "before1": "0",
+          "rate": "0.00"
+        }
+      ]
+    }
+  },
+  {
+    "url": "https://www.komis.or.kr/Komis/MnrlMap/MapMnrl/ajax/getListMapMnrlChartData",
+    "status": 200,
+    "body": {
+      "data": []
+    }
+  },
+  {
+    "url": "https://www.komis.or.kr/Komis/Search/ajax/getSearchedWordList",
+    "status": 200,
+    "body": {
+      "searchedWordList": []
+    }
+  },
+  {
+    "url": "https://www.komis.or.kr/Komis/MnrlMap/MapMnrl/ajax/getListMapMnrlData?srchMnrkndUnqCd=MNRL0024&srchMnrkndSeCd=&srchNtnCd=&srchDateS=2025&srchDateE=2025&selectedTab=burudg",
+    "status": 200,
+    "body": {
+      "data": []
+    }
+  },
+  {
+    "url": "https://www.komis.or.kr/ajax/common/getMenuUpperCn",
+    "status": 200,
+    "body": {
+      "upperCn": "USGS(미국지질조사국)에서 발간한 자료 기준이며, 본 서비스는 대국민 서비스 목적으로 명시적 또는 묵시적인 어떠한 형태의 보증도 하지 않으므로 법적 책임의 증빙자료로 사용될 수 없음을 알려드립니다.\n* 제련과정에서 부산물로 생산되는 일부 광종의 경우 매장량 자료가 존재하지 않으며, 합계의 경우 국가별 수치와는 별개로 불일치 또는 0으로 표기될 수 있으나, 세계 총계 수치는 원자료와 일치함(원자료에서 Round 처리 또는 미기재).",
+      "uprowClas": "U"
+    }
+  },
+  {
+    "url": "https://www.komis.or.kr/Komis/MnrlMap/MapMnrl/ajax/getListMnrlTablePrdctnBurgudg",
+    "status": 200,
+    "body": {
+      "data": [
+        {
+          "ntnKornNm": "칠레",
+          "ntnEngCd": "CL",
+          "before5": "200,000,000",
+          "before4": "190,000,000",
+          "before3": "190,000,000",
+          "before2": "190,000,000",
+          "before1": "180,000,000",
+          "rate": "18.37"
+        },
+        {
+          "ntnKornNm": "호주",
+          "ntnEngCd": "AU",
+          "before5": "93,000,000",
+          "before4": "97,000,000",
+          "before3": "100,000,000",
+          "before2": "100,000,000",
+          "before1": "100,000,000",
+          "rate": "10.20"
+        },
+        {
+          "ntnKornNm": "페루",
+          "ntnEngCd": "PE",
+          "before5": "77,000,000",
+          "before4": "81,000,000",
+          "before3": "120,000,000",
+          "before2": "100,000,000",
+          "before1": "85,000,000",
+          "rate": "8.67"
+        },
+        {
+          "ntnKornNm": "콩고민주공화국",
+          "ntnEngCd": "CD",
+          "before5": "0",
+          "before4": "31,000,000",
+          "before3": "80,000,000",
+          "before2": "80,000,000",
+          "before1": "80,000,000",
+          "rate": "8.16"
+        },
+        {
+          "ntnKornNm": "러시아",
+          "ntnEngCd": "RU",
+          "before5": "62,000,000",
+          "before4": "62,000,000",
+          "before3": "80,000,000",
+          "before2": "80,000,000",
+          "before1": "80,000,000",
+          "rate": "8.16"
+        },
+        {
+          "ntnKornNm": "멕시코",
+          "ntnEngCd": "MX",
+          "before5": "53,000,000",
+          "before4": "53,000,000",
+          "before3": "53,000,000",
+          "before2": "53,000,000",
+          "before1": "53,000,000",
+          "rate": "5.41"
+        },
+        {
+          "ntnKornNm": "미국",
+          "ntnEngCd": "US",
+          "before5": "48,000,000",
+          "before4": "44,000,000",
+          "before3": "50,000,000",
+          "before2": "47,000,000",
+          "before1": "47,000,000",
+          "rate": "4.80"
+        },
+        {
+          "ntnKornNm": "중국",
+          "ntnEngCd": "CN",
+          "before5": "26,000,000",
+          "before4": "27,000,000",
+          "before3": "41,000,000",
+          "before2": "41,000,000",
+          "before1": "41,000,000",
+          "rate": "4.18"
+        },
+        {
+          "ntnKornNm": "폴란드",
+          "ntnEngCd": "PL",
+          "before5": "31,000,000",
+          "before4": "30,000,000",
+          "before3": "34,000,000",
+          "before2": "34,000,000",
+          "before1": "33,000,000",
+          "rate": "3.37"
+        },
+        {
+          "ntnKornNm": "잠비아",
+          "ntnEngCd": "ZM",
+          "before5": "21,000,000",
+          "before4": "19,000,000",
+          "before3": "21,000,000",
+          "before2": "21,000,000",
+          "before1": "21,000,000",
+          "rate": "2.14"
+        },
+        {
+          "ntnKornNm": "인도네시아",
+          "ntnEngCd": "ID",
+          "before5": "24,000,000",
+          "before4": "24,000,000",
+          "before3": "24,000,000",
+          "before2": "21,000,000",
+          "before1": "21,000,000",
+          "rate": "2.14"
+        },
+        {
+          "ntnKornNm": "카자흐스탄",
+          "ntnEngCd": "KZ",
+          "before5": "20,000,000",
+          "before4": "20,000,000",
+          "before3": "20,000,000",
+          "before2": "20,000,000",
+          "before1": "20,000,000",
+          "rate": "2.04"
+        },
+        {
+          "ntnKornNm": "캐나다",
+          "ntnEngCd": "CA",
+          "before5": "9,800,000",
+          "before4": "7,600,000",
+          "before3": "7,600,000",
+          "before2": "8,300,000",
+          "before1": "7,000,000",
+          "rate": "0.71"
+        },
+        {
+          "ntnKornNm": "인도",
+          "ntnEngCd": "IN",
+          "before5": "0",
+          "before4": "0",
+          "before3": "0",
+          "before2": "2,200,000",
+          "before1": "2,200,000",
+          "rate": "0.22"
+        },
+        {
+          "ntnKornNm": "일본",
+          "ntnEngCd": "JP",
+          "before5": "0",
+          "before4": "0",
+          "before3": "0",
+          "before2": "0",
+          "before1": "0",
+          "rate": "0.00"
+        },
+        {
+          "ntnKornNm": "독일",
+          "ntnEngCd": "DE",
+          "before5": "0",
+          "before4": "0",
+          "before3": "0",
+          "before2": "0",
+          "before1": "0",
+          "rate": "0.00"
+        },
+        {
+          "ntnKornNm": "대한민국",
+          "ntnEngCd": "KR",
+          "before5": "0",
+          "before4": "0",
+          "before3": "0",
+          "before2": "0",
+          "before1": "0",
+          "rate": "0.00"
+        },
+        {
+          "ntnKornNm": "_ETC_",
+          "ntnEngCd": "OT",
+          "before5": "0",
+          "before4": "200,000,000",
+          "before3": "180,000,000",
+          "before2": "180,000,000",
+          "before1": "210,000,000",
+          "rate": "21.43"
+        },
+        {
+          "ntnKornNm": "_TOTAL_",
+          "ntnEngCd": "SU",
+          "before5": "880,000,000",
+          "before4": "890,000,000",
+          "before3": "1,000,000,000",
+          "before2": "980,000,000",
+          "before1": "980,000,000",
+          "rate": "100.00"
+        }
+      ]
+    }
+  },
+  {
+    "url": "https://www.komis.or.kr/Komis/MnrlMap/MapMnrl/ajax/getListMapMnrlChartData",
+    "status": 200,
+    "body": {
+      "data": [
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 5620000,
+          "crtrYr": "2021",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 200000000,
+          "ntnEngNm": "Chile",
+          "ntnKornNm": "칠레",
+          "ntnEngCd": "CL"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 813000,
+          "crtrYr": "2021",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 93000000,
+          "ntnEngNm": "Australia",
+          "ntnKornNm": "호주",
+          "ntnEngCd": "AU"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 2300000,
+          "crtrYr": "2021",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 77000000,
+          "ntnEngNm": "Peru",
+          "ntnKornNm": "페루",
+          "ntnEngCd": "PE"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 940000,
+          "crtrYr": "2021",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 62000000,
+          "ntnEngNm": "Russia",
+          "ntnKornNm": "러시아",
+          "ntnEngCd": "RU"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 734000,
+          "crtrYr": "2021",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 53000000,
+          "ntnEngNm": "Mexico",
+          "ntnKornNm": "멕시코",
+          "ntnEngCd": "MX"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 1230000,
+          "crtrYr": "2021",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 48000000,
+          "ntnEngNm": "United States of America",
+          "ntnKornNm": "미국",
+          "ntnEngCd": "US"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 391000,
+          "crtrYr": "2021",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 31000000,
+          "ntnEngNm": "Poland",
+          "ntnKornNm": "폴란드",
+          "ntnEngCd": "PL"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 1910000,
+          "crtrYr": "2021",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 26000000,
+          "ntnEngNm": "China",
+          "ntnKornNm": "중국",
+          "ntnEngCd": "CN"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 731000,
+          "crtrYr": "2021",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 24000000,
+          "ntnEngNm": "Indonesia",
+          "ntnKornNm": "인도네시아",
+          "ntnEngCd": "ID"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 842000,
+          "crtrYr": "2021",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 21000000,
+          "ntnEngNm": "Zambia",
+          "ntnKornNm": "잠비아",
+          "ntnEngCd": "ZM"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 510000,
+          "crtrYr": "2021",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 20000000,
+          "ntnEngNm": "Kazakhstan",
+          "ntnKornNm": "카자흐스탄",
+          "ntnEngCd": "KZ"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 550000,
+          "crtrYr": "2021",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 9800000,
+          "ntnEngNm": "Canada",
+          "ntnKornNm": "캐나다",
+          "ntnEngCd": "CA"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 5330000,
+          "crtrYr": "2022",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 190000000,
+          "ntnEngNm": "Chile",
+          "ntnKornNm": "칠레",
+          "ntnEngCd": "CL"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 819000,
+          "crtrYr": "2022",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 97000000,
+          "ntnEngNm": "Australia",
+          "ntnKornNm": "호주",
+          "ntnEngCd": "AU"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 2450000,
+          "crtrYr": "2022",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 81000000,
+          "ntnEngNm": "Peru",
+          "ntnKornNm": "페루",
+          "ntnEngCd": "PE"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 936000,
+          "crtrYr": "2022",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 62000000,
+          "ntnEngNm": "Russia",
+          "ntnKornNm": "러시아",
+          "ntnEngCd": "RU"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 754000,
+          "crtrYr": "2022",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 53000000,
+          "ntnEngNm": "Mexico",
+          "ntnKornNm": "멕시코",
+          "ntnEngCd": "MX"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 1230000,
+          "crtrYr": "2022",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 44000000,
+          "ntnEngNm": "United States of America",
+          "ntnKornNm": "미국",
+          "ntnEngCd": "US"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 2350000,
+          "crtrYr": "2022",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 31000000,
+          "ntnEngNm": "Democratic Republic of Congo",
+          "ntnKornNm": "콩고민주공화국",
+          "ntnEngCd": "CD"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 393000,
+          "crtrYr": "2022",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 30000000,
+          "ntnEngNm": "Poland",
+          "ntnKornNm": "폴란드",
+          "ntnEngCd": "PL"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 1940000,
+          "crtrYr": "2022",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 27000000,
+          "ntnEngNm": "China",
+          "ntnKornNm": "중국",
+          "ntnEngCd": "CN"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 941000,
+          "crtrYr": "2022",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 24000000,
+          "ntnEngNm": "Indonesia",
+          "ntnKornNm": "인도네시아",
+          "ntnEngCd": "ID"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 593000,
+          "crtrYr": "2022",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 20000000,
+          "ntnEngNm": "Kazakhstan",
+          "ntnKornNm": "카자흐스탄",
+          "ntnEngCd": "KZ"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 797000,
+          "crtrYr": "2022",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 19000000,
+          "ntnEngNm": "Zambia",
+          "ntnKornNm": "잠비아",
+          "ntnEngCd": "ZM"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 520000,
+          "crtrYr": "2022",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 7600000,
+          "ntnEngNm": "Canada",
+          "ntnKornNm": "캐나다",
+          "ntnEngCd": "CA"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 5250000,
+          "crtrYr": "2023",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 190000000,
+          "ntnEngNm": "Chile",
+          "ntnKornNm": "칠레",
+          "ntnEngCd": "CL"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 2760000,
+          "crtrYr": "2023",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 120000000,
+          "ntnEngNm": "Peru",
+          "ntnKornNm": "페루",
+          "ntnEngCd": "PE"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 778000,
+          "crtrYr": "2023",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 100000000,
+          "ntnEngNm": "Australia",
+          "ntnKornNm": "호주",
+          "ntnEngCd": "AU"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 890000,
+          "crtrYr": "2023",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 80000000,
+          "ntnEngNm": "Russia",
+          "ntnKornNm": "러시아",
+          "ntnEngCd": "RU"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 2930000,
+          "crtrYr": "2023",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 80000000,
+          "ntnEngNm": "Democratic Republic of Congo",
+          "ntnKornNm": "콩고민주공화국",
+          "ntnEngCd": "CD"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 699000,
+          "crtrYr": "2023",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 53000000,
+          "ntnEngNm": "Mexico",
+          "ntnKornNm": "멕시코",
+          "ntnEngCd": "MX"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 1130000,
+          "crtrYr": "2023",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 50000000,
+          "ntnEngNm": "United States of America",
+          "ntnKornNm": "미국",
+          "ntnEngCd": "US"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 1820000,
+          "crtrYr": "2023",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 41000000,
+          "ntnEngNm": "China",
+          "ntnKornNm": "중국",
+          "ntnEngCd": "CN"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 395000,
+          "crtrYr": "2023",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 34000000,
+          "ntnEngNm": "Poland",
+          "ntnKornNm": "폴란드",
+          "ntnEngCd": "PL"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 907000,
+          "crtrYr": "2023",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 24000000,
+          "ntnEngNm": "Indonesia",
+          "ntnKornNm": "인도네시아",
+          "ntnEngCd": "ID"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 712000,
+          "crtrYr": "2023",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 21000000,
+          "ntnEngNm": "Zambia",
+          "ntnKornNm": "잠비아",
+          "ntnEngCd": "ZM"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 740000,
+          "crtrYr": "2023",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 20000000,
+          "ntnEngNm": "Kazakhstan",
+          "ntnKornNm": "카자흐스탄",
+          "ntnEngCd": "KZ"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 500000,
+          "crtrYr": "2023",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 7600000,
+          "ntnEngNm": "Canada",
+          "ntnKornNm": "캐나다",
+          "ntnEngCd": "CA"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 5510000,
+          "crtrYr": "2024",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 190000000,
+          "ntnEngNm": "Chile",
+          "ntnKornNm": "칠레",
+          "ntnEngCd": "CL"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 765000,
+          "crtrYr": "2024",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 100000000,
+          "ntnEngNm": "Australia",
+          "ntnKornNm": "호주",
+          "ntnEngCd": "AU"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 2740000,
+          "crtrYr": "2024",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 100000000,
+          "ntnEngNm": "Peru",
+          "ntnKornNm": "페루",
+          "ntnEngCd": "PE"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 2990000,
+          "crtrYr": "2024",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 80000000,
+          "ntnEngNm": "Democratic Republic of Congo",
+          "ntnKornNm": "콩고민주공화국",
+          "ntnEngCd": "CD"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 1020000,
+          "crtrYr": "2024",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 80000000,
+          "ntnEngNm": "Russia",
+          "ntnKornNm": "러시아",
+          "ntnEngCd": "RU"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 717000,
+          "crtrYr": "2024",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 53000000,
+          "ntnEngNm": "Mexico",
+          "ntnKornNm": "멕시코",
+          "ntnEngCd": "MX"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 1050000,
+          "crtrYr": "2024",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 47000000,
+          "ntnEngNm": "United States of America",
+          "ntnKornNm": "미국",
+          "ntnEngCd": "US"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 1840000,
+          "crtrYr": "2024",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 41000000,
+          "ntnEngNm": "China",
+          "ntnKornNm": "중국",
+          "ntnEngCd": "CN"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 400000,
+          "crtrYr": "2024",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 34000000,
+          "ntnEngNm": "Poland",
+          "ntnKornNm": "폴란드",
+          "ntnEngCd": "PL"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 1010000,
+          "crtrYr": "2024",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 21000000,
+          "ntnEngNm": "Indonesia",
+          "ntnKornNm": "인도네시아",
+          "ntnEngCd": "ID"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 823000,
+          "crtrYr": "2024",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 21000000,
+          "ntnEngNm": "Zambia",
+          "ntnKornNm": "잠비아",
+          "ntnEngCd": "ZM"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 724000,
+          "crtrYr": "2024",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 20000000,
+          "ntnEngNm": "Kazakhstan",
+          "ntnKornNm": "카자흐스탄",
+          "ntnEngCd": "KZ"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 515000,
+          "crtrYr": "2024",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 8300000,
+          "ntnEngNm": "Canada",
+          "ntnKornNm": "캐나다",
+          "ntnEngCd": "CA"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 27000,
+          "crtrYr": "2024",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 2200000,
+          "ntnEngNm": "India",
+          "ntnKornNm": "인도",
+          "ntnEngCd": "IN"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 5300000,
+          "crtrYr": "2025",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 180000000,
+          "ntnEngNm": "Chile",
+          "ntnKornNm": "칠레",
+          "ntnEngCd": "CL"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 730000,
+          "crtrYr": "2025",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 100000000,
+          "ntnEngNm": "Australia",
+          "ntnKornNm": "호주",
+          "ntnEngCd": "AU"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 2700000,
+          "crtrYr": "2025",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 85000000,
+          "ntnEngNm": "Peru",
+          "ntnKornNm": "페루",
+          "ntnEngCd": "PE"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 3200000,
+          "crtrYr": "2025",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 80000000,
+          "ntnEngNm": "Democratic Republic of Congo",
+          "ntnKornNm": "콩고민주공화국",
+          "ntnEngCd": "CD"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 1300000,
+          "crtrYr": "2025",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 80000000,
+          "ntnEngNm": "Russia",
+          "ntnKornNm": "러시아",
+          "ntnEngCd": "RU"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 690000,
+          "crtrYr": "2025",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 53000000,
+          "ntnEngNm": "Mexico",
+          "ntnKornNm": "멕시코",
+          "ntnEngCd": "MX"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 1000000,
+          "crtrYr": "2025",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 47000000,
+          "ntnEngNm": "United States of America",
+          "ntnKornNm": "미국",
+          "ntnEngCd": "US"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 1800000,
+          "crtrYr": "2025",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 41000000,
+          "ntnEngNm": "China",
+          "ntnKornNm": "중국",
+          "ntnEngCd": "CN"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 410000,
+          "crtrYr": "2025",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 33000000,
+          "ntnEngNm": "Poland",
+          "ntnKornNm": "폴란드",
+          "ntnEngCd": "PL"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 710000,
+          "crtrYr": "2025",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 21000000,
+          "ntnEngNm": "Indonesia",
+          "ntnKornNm": "인도네시아",
+          "ntnEngCd": "ID"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 940000,
+          "crtrYr": "2025",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 21000000,
+          "ntnEngNm": "Zambia",
+          "ntnKornNm": "잠비아",
+          "ntnEngCd": "ZM"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 710000,
+          "crtrYr": "2025",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 20000000,
+          "ntnEngNm": "Kazakhstan",
+          "ntnKornNm": "카자흐스탄",
+          "ntnEngCd": "KZ"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 500000,
+          "crtrYr": "2025",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 7000000,
+          "ntnEngNm": "Canada",
+          "ntnKornNm": "캐나다",
+          "ntnEngCd": "CA"
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 23000,
+          "crtrYr": "2025",
+          "totalBurudgQuty": 3738700000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 2200000,
+          "ntnEngNm": "India",
+          "ntnKornNm": "인도",
+          "ntnEngCd": "IN"
+        }
+      ]
+    }
+  },
+  {
+    "url": "https://www.komis.or.kr/Komis/MnrlMap/MapMnrl/ajax/getListMapMnrlData?srchMnrkndUnqCd=MNRL0008&srchMnrkndSeCd=&srchNtnCd=&srchDateS=2025&srchDateE=2025&selectedTab=burudg",
+    "status": 200,
+    "body": {
+      "data": [
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 730000,
+          "totalBurudgQuty": 770200000,
+          "totalPrdctnQuty": 20013000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 100000000,
+          "ntnEngNm": "Australia",
+          "ntnKornNm": "호주",
+          "ntnEngCd": "AU",
+          "mnrkndData": [
+            {
+              "mnrkndUnqCd": "MNRL0008",
+              "cdVal": "k ton",
+              "prdctnQuty": 730000,
+              "totalBurudgQuty": 770200000,
+              "totalPrdctnQuty": 20013000,
+              "mnrkndKornNm": "동",
+              "massUnitCd": "WT003",
+              "burudgQuty": 100000000,
+              "ntnEngNm": "Australia",
+              "ntnKornNm": "호주",
+              "ntnEngCd": "AU"
+            }
+          ]
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 500000,
+          "totalBurudgQuty": 770200000,
+          "totalPrdctnQuty": 20013000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 7000000,
+          "ntnEngNm": "Canada",
+          "ntnKornNm": "캐나다",
+          "ntnEngCd": "CA",
+          "mnrkndData": [
+            {
+              "mnrkndUnqCd": "MNRL0008",
+              "cdVal": "k ton",
+              "prdctnQuty": 500000,
+              "totalBurudgQuty": 770200000,
+              "totalPrdctnQuty": 20013000,
+              "mnrkndKornNm": "동",
+              "massUnitCd": "WT003",
+              "burudgQuty": 7000000,
+              "ntnEngNm": "Canada",
+              "ntnKornNm": "캐나다",
+              "ntnEngCd": "CA"
+            }
+          ]
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 3200000,
+          "totalBurudgQuty": 770200000,
+          "totalPrdctnQuty": 20013000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 80000000,
+          "ntnEngNm": "Democratic Republic of Congo",
+          "ntnKornNm": "콩고민주공화국",
+          "ntnEngCd": "CD",
+          "mnrkndData": [
+            {
+              "mnrkndUnqCd": "MNRL0008",
+              "cdVal": "k ton",
+              "prdctnQuty": 3200000,
+              "totalBurudgQuty": 770200000,
+              "totalPrdctnQuty": 20013000,
+              "mnrkndKornNm": "동",
+              "massUnitCd": "WT003",
+              "burudgQuty": 80000000,
+              "ntnEngNm": "Democratic Republic of Congo",
+              "ntnKornNm": "콩고민주공화국",
+              "ntnEngCd": "CD"
+            }
+          ]
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 5300000,
+          "totalBurudgQuty": 770200000,
+          "totalPrdctnQuty": 20013000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 180000000,
+          "ntnEngNm": "Chile",
+          "ntnKornNm": "칠레",
+          "ntnEngCd": "CL",
+          "mnrkndData": [
+            {
+              "mnrkndUnqCd": "MNRL0008",
+              "cdVal": "k ton",
+              "prdctnQuty": 5300000,
+              "totalBurudgQuty": 770200000,
+              "totalPrdctnQuty": 20013000,
+              "mnrkndKornNm": "동",
+              "massUnitCd": "WT003",
+              "burudgQuty": 180000000,
+              "ntnEngNm": "Chile",
+              "ntnKornNm": "칠레",
+              "ntnEngCd": "CL"
+            }
+          ]
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 1800000,
+          "totalBurudgQuty": 770200000,
+          "totalPrdctnQuty": 20013000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 41000000,
+          "ntnEngNm": "China",
+          "ntnKornNm": "중국",
+          "ntnEngCd": "CN",
+          "mnrkndData": [
+            {
+              "mnrkndUnqCd": "MNRL0008",
+              "cdVal": "k ton",
+              "prdctnQuty": 1800000,
+              "totalBurudgQuty": 770200000,
+              "totalPrdctnQuty": 20013000,
+              "mnrkndKornNm": "동",
+              "massUnitCd": "WT003",
+              "burudgQuty": 41000000,
+              "ntnEngNm": "China",
+              "ntnKornNm": "중국",
+              "ntnEngCd": "CN"
+            }
+          ]
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 710000,
+          "totalBurudgQuty": 770200000,
+          "totalPrdctnQuty": 20013000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 21000000,
+          "ntnEngNm": "Indonesia",
+          "ntnKornNm": "인도네시아",
+          "ntnEngCd": "ID",
+          "mnrkndData": [
+            {
+              "mnrkndUnqCd": "MNRL0008",
+              "cdVal": "k ton",
+              "prdctnQuty": 710000,
+              "totalBurudgQuty": 770200000,
+              "totalPrdctnQuty": 20013000,
+              "mnrkndKornNm": "동",
+              "massUnitCd": "WT003",
+              "burudgQuty": 21000000,
+              "ntnEngNm": "Indonesia",
+              "ntnKornNm": "인도네시아",
+              "ntnEngCd": "ID"
+            }
+          ]
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 23000,
+          "totalBurudgQuty": 770200000,
+          "totalPrdctnQuty": 20013000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 2200000,
+          "ntnEngNm": "India",
+          "ntnKornNm": "인도",
+          "ntnEngCd": "IN",
+          "mnrkndData": [
+            {
+              "mnrkndUnqCd": "MNRL0008",
+              "cdVal": "k ton",
+              "prdctnQuty": 23000,
+              "totalBurudgQuty": 770200000,
+              "totalPrdctnQuty": 20013000,
+              "mnrkndKornNm": "동",
+              "massUnitCd": "WT003",
+              "burudgQuty": 2200000,
+              "ntnEngNm": "India",
+              "ntnKornNm": "인도",
+              "ntnEngCd": "IN"
+            }
+          ]
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 710000,
+          "totalBurudgQuty": 770200000,
+          "totalPrdctnQuty": 20013000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 20000000,
+          "ntnEngNm": "Kazakhstan",
+          "ntnKornNm": "카자흐스탄",
+          "ntnEngCd": "KZ",
+          "mnrkndData": [
+            {
+              "mnrkndUnqCd": "MNRL0008",
+              "cdVal": "k ton",
+              "prdctnQuty": 710000,
+              "totalBurudgQuty": 770200000,
+              "totalPrdctnQuty": 20013000,
+              "mnrkndKornNm": "동",
+              "massUnitCd": "WT003",
+              "burudgQuty": 20000000,
+              "ntnEngNm": "Kazakhstan",
+              "ntnKornNm": "카자흐스탄",
+              "ntnEngCd": "KZ"
+            }
+          ]
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 690000,
+          "totalBurudgQuty": 770200000,
+          "totalPrdctnQuty": 20013000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 53000000,
+          "ntnEngNm": "Mexico",
+          "ntnKornNm": "멕시코",
+          "ntnEngCd": "MX",
+          "mnrkndData": [
+            {
+              "mnrkndUnqCd": "MNRL0008",
+              "cdVal": "k ton",
+              "prdctnQuty": 690000,
+              "totalBurudgQuty": 770200000,
+              "totalPrdctnQuty": 20013000,
+              "mnrkndKornNm": "동",
+              "massUnitCd": "WT003",
+              "burudgQuty": 53000000,
+              "ntnEngNm": "Mexico",
+              "ntnKornNm": "멕시코",
+              "ntnEngCd": "MX"
+            }
+          ]
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 2700000,
+          "totalBurudgQuty": 770200000,
+          "totalPrdctnQuty": 20013000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 85000000,
+          "ntnEngNm": "Peru",
+          "ntnKornNm": "페루",
+          "ntnEngCd": "PE",
+          "mnrkndData": [
+            {
+              "mnrkndUnqCd": "MNRL0008",
+              "cdVal": "k ton",
+              "prdctnQuty": 2700000,
+              "totalBurudgQuty": 770200000,
+              "totalPrdctnQuty": 20013000,
+              "mnrkndKornNm": "동",
+              "massUnitCd": "WT003",
+              "burudgQuty": 85000000,
+              "ntnEngNm": "Peru",
+              "ntnKornNm": "페루",
+              "ntnEngCd": "PE"
+            }
+          ]
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 410000,
+          "totalBurudgQuty": 770200000,
+          "totalPrdctnQuty": 20013000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 33000000,
+          "ntnEngNm": "Poland",
+          "ntnKornNm": "폴란드",
+          "ntnEngCd": "PL",
+          "mnrkndData": [
+            {
+              "mnrkndUnqCd": "MNRL0008",
+              "cdVal": "k ton",
+              "prdctnQuty": 410000,
+              "totalBurudgQuty": 770200000,
+              "totalPrdctnQuty": 20013000,
+              "mnrkndKornNm": "동",
+              "massUnitCd": "WT003",
+              "burudgQuty": 33000000,
+              "ntnEngNm": "Poland",
+              "ntnKornNm": "폴란드",
+              "ntnEngCd": "PL"
+            }
+          ]
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 1300000,
+          "totalBurudgQuty": 770200000,
+          "totalPrdctnQuty": 20013000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 80000000,
+          "ntnEngNm": "Russia",
+          "ntnKornNm": "러시아",
+          "ntnEngCd": "RU",
+          "mnrkndData": [
+            {
+              "mnrkndUnqCd": "MNRL0008",
+              "cdVal": "k ton",
+              "prdctnQuty": 1300000,
+              "totalBurudgQuty": 770200000,
+              "totalPrdctnQuty": 20013000,
+              "mnrkndKornNm": "동",
+              "massUnitCd": "WT003",
+              "burudgQuty": 80000000,
+              "ntnEngNm": "Russia",
+              "ntnKornNm": "러시아",
+              "ntnEngCd": "RU"
+            }
+          ]
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 1000000,
+          "totalBurudgQuty": 770200000,
+          "totalPrdctnQuty": 20013000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 47000000,
+          "ntnEngNm": "United States of America",
+          "ntnKornNm": "미국",
+          "ntnEngCd": "US",
+          "mnrkndData": [
+            {
+              "mnrkndUnqCd": "MNRL0008",
+              "cdVal": "k ton",
+              "prdctnQuty": 1000000,
+              "totalBurudgQuty": 770200000,
+              "totalPrdctnQuty": 20013000,
+              "mnrkndKornNm": "동",
+              "massUnitCd": "WT003",
+              "burudgQuty": 47000000,
+              "ntnEngNm": "United States of America",
+              "ntnKornNm": "미국",
+              "ntnEngCd": "US"
+            }
+          ]
+        },
+        {
+          "cdVal": "k ton",
+          "prdctnQuty": 940000,
+          "totalBurudgQuty": 770200000,
+          "totalPrdctnQuty": 20013000,
+          "massUnitCd": "WT003",
+          "burudgQuty": 21000000,
+          "ntnEngNm": "Zambia",
+          "ntnKornNm": "잠비아",
+          "ntnEngCd": "ZM",
+          "mnrkndData": [
+            {
+              "mnrkndUnqCd": "MNRL0008",
+              "cdVal": "k ton",
+              "prdctnQuty": 940000,
+              "totalBurudgQuty": 770200000,
+              "totalPrdctnQuty": 20013000,
+              "mnrkndKornNm": "동",
+              "massUnitCd": "WT003",
+              "burudgQuty": 21000000,
+              "ntnEngNm": "Zambia",
+              "ntnKornNm": "잠비아",
+              "ntnEngCd": "ZM"
+            }
+          ]
+        }
+      ]
+    }
+  }
+]
