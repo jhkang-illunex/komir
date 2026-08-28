@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""documents/산출물/ 아래 보고서(md·docx)와 외부공개 PDF ETL 산출물을 읽어 문서
+"""inhouse/incoming/ 아래 보고서(md·docx)와 외부공개 PDF ETL 산출물을 읽어 문서
 레코드로 변환.
-- pdf는 documents/산출물 트리에서는 같은 파일명의 md를 렌더링한 산출물이라 항상
+- pdf는 이 트리에서는 같은 파일명의 md를 렌더링한 산출물이라 항상
   건너뜀(중복 콘텐츠) — 원본 PDF가 아니라 pdf_extract.py가 만든 .md만 읽는다.
 - docx는 python-docx로 문단·표를 텍스트로 펼침(견출 스타일은 #/## 로 보존 → chunk.py가 재사용).
 
@@ -30,8 +30,18 @@ DATE_RE = re.compile(r"_(\d{6})(?=_|\.|$)")
 # 확인: 고치기 전엔 문서 4건만 로드됨 — 전부 EXTRA_ROOTS, 본체 61개 md/15개 docx는
 # 전부 스킵됐었음). EXTRA_ROOTS는 처음부터 _REPO_ROOT 기준 절대경로였으니 ROOT도
 # 같은 패턴으로 맞춘다.
+#
+# 2026-08-28(챗봇_룰준수_감사_260828.md 부가 발견 후속) — ROOT가 `documents/산출물`
+# 전체를 자동스캔해, 우리 팀 내부 진행상황·감사·협의 문서(오늘 감사에서 지적된
+# 바로 그 문제)까지 공개 챗봇(/pubchat) 근거로 노출되고 있었다. `documents/산출물`은
+# git 이력·정본 위치로는 그대로 두고(이관이 아니라 복사), RAG 색인 입력만
+# `inhouse/incoming/`(신설)으로 좁힌다 — 발주처 제출용 "최종 산출물" 성격의 문서만
+# 사람이 선별해 이 폴더에 복사해 넣는다(선별 기준·목록은 챗봇_룰준수_감사_260828.md
+# 후속 조치 문서 참고). 이 라운드는 코드 변경 + 파일 복사까지만 하고 실제 재색인
+# (build_pgvector_index 등)은 별도 승인 후 진행한다 — 그 전까지 mineral_risk.doc_chunk
+# 등 운영 DB는 그대로다.
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-ROOT = str(_REPO_ROOT / "documents/산출물")
+ROOT = str(_REPO_ROOT / "inhouse/incoming")
 
 # (경로, week에 쓸 태그 접두사) — 각 하위 디렉토리명이 태그 뒤에 붙는다.
 # 예: pdf_extract/shareable/komis_해외투자가이드_4개국/ -> week="외부자료:komis_해외투자가이드_4개국"
