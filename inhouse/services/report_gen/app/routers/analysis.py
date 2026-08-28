@@ -253,6 +253,10 @@ class MineralDateRangeSummaryRequest(AnalysisEndpointRequest):
     # 참고). 이 모델을 공유하는 map_korea/map_global로 보내면 `AnalysisSummary
     # Request.validate_period`가 거부한다(compare_*와 같은 패턴).
     geo_events: list[dict] | None = None
+    # 2026-08-28 추가조사 확정 — price_base_metals/minor_metals/iron_energy/other
+    # 4종 전용. `models.py::PriceKomisPeriodComparisons` 참고(geo_events와 같은
+    # 패턴 — 선택 필드, 없으면 하위호환 그대로).
+    komis_period_comparisons: dict | None = None
 
     @model_validator(mode="after")
     def validate_period(self) -> MineralDateRangeSummaryRequest:

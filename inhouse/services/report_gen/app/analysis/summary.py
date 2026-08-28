@@ -105,6 +105,7 @@ from .models import (  # noqa: E402
     PriceForecastObservation,
     PriceForecastSeries,
     PriceGroupMineralObservation,
+    PriceKomisPeriodComparisons,
     PriceObservation,
     PriceSeries,
     SourceInfo,
@@ -196,6 +197,23 @@ def _geo_events_from_request(request: AnalysisSummaryRequest) -> list[GeoEventOb
     except Exception as exc:  # noqa: BLE001 — pydantic ValidationError 등을 NO_DATA로 통일
         raise DataSourceError(
             f"{request.page_id}: geo_events 형식이 GeoEventObservation과 맞지 않는다: {exc}"
+        ) from exc
+
+
+def _komis_period_comparisons_from_request(
+    request: AnalysisSummaryRequest,
+) -> PriceKomisPeriodComparisons | None:
+    """`request.komis_period_comparisons`(선택 필드, 2026-08-28 추가조사 확정 —
+    `report_gen_price_base_metals_부실요약_원인조사_260828.md`)를 검증한다.
+    `_geo_events_from_request`와 같은 패턴: 없으면 에러가 아니라 None(하위호환)."""
+
+    if not request.komis_period_comparisons:
+        return None
+    try:
+        return PriceKomisPeriodComparisons.model_validate(request.komis_period_comparisons)
+    except Exception as exc:  # noqa: BLE001 — pydantic ValidationError 등을 NO_DATA로 통일
+        raise DataSourceError(
+            f"{request.page_id}: komis_period_comparisons 형식이 PriceKomisPeriodComparisons와 맞지 않는다: {exc}"
         ) from exc
 
 
@@ -1426,12 +1444,14 @@ class AnalysisSummaryService:
                 warnings=[],
             )
         geo_events = _geo_events_from_request(request)
+        komis_period_comparisons = _komis_period_comparisons_from_request(request)
         calculated = _calculate_or_no_data(
             request.page_id,
             calculate_price_summary,
             series,
             compare_series=compare_series,
             geo_events=geo_events,
+            komis_period_comparisons=komis_period_comparisons,
         )
         context = effective_page_context(request.page_id)
         applied_filters = {

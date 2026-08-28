@@ -111,7 +111,27 @@ def _load(name: str) -> dict:
 # ─────────────────────────────────────────────────────────────────
 
 
-def adapt_price_pages(dump: dict, source_label: str) -> list[tuple[str, dict]]:
+def _komis_period_comparisons(resp: dict, latest_price: float | None) -> dict | None:
+    """`dataAvg.stdMap.{WEEK,MONTH,YEAR}`를 `PriceKomisPeriodComparisons` shape으로
+    변환한다(2026-08-28 Phase1-1, `report_gen_price_base_metals_부실요약_원인조사_
+    260828.md`에서 확정한 산식 — 라이브 재현으로 KOMIS 자체 계산값임을 확인).
+    `average_price`는 응답에 직접 없고 `flctnPrc`(등락액)만 있어
+    `latest_price - flctnPrc`로 역산한다(라이브 검증 스크립트와 동일 방식)."""
+
+    std = (resp.get("dataAvg") or {}).get("stdMap") or {}
+    out: dict[str, dict] = {}
+    for key, field in (("week", "WEEK"), ("month", "MONTH"), ("year", "YEAR")):
+        entry = std.get(field)
+        if not entry:
+            continue
+        delta, pct = _num(entry.get("flctnPrc")), _num(entry.get("flctnPrcnt"))
+        if delta is None or pct is None or latest_price is None:
+            continue
+        out[key] = {"average_price": latest_price - delta, "change_pct": pct}
+    return out or None
+
+
+def adapt_price_pages(dump: dict, source_label: str, page_id: str) -> list[tuple[str, dict]]:
     out = []
     for r in dump["results"]:
         if not r["endpoint"].endswith("getMnrlPrcByMnrkndUnqCd"):
@@ -139,12 +159,15 @@ def adapt_price_pages(dump: dict, source_label: str) -> list[tuple[str, dict]]:
             continue
         mineral_code = params["srchMnrkndUnqCd"]
         request = {
-            "page_id": "price",
+            "page_id": page_id,
             "mineral": mineral_code,
             "mineral_name": info.get("mnrkndKornNm") or mineral_code,
             "price_criterion": info.get("prcCrtr"),
             "observations": observations,
         }
+        komis_period_comparisons = _komis_period_comparisons(resp, observations[-1]["commerce_price"])
+        if komis_period_comparisons:
+            request["komis_period_comparisons"] = komis_period_comparisons
         out.append((f"{source_label}:{r['key']}", request))
     return out
 
@@ -394,7 +417,7 @@ def _expected_facts(page_id: str, request: dict) -> dict:
     검증해서 "같은 조회기간 동안 OO은 X% 변동한 반면..." 문장의 숫자는 실제로
     한 번도 자동 대조되지 않았다(사용자의 "하나하나 체크" 요청으로 발견·보강)."""
 
-    if page_id == "price":
+    if page_id in ("price_base_metals", "price_minor_metals"):
         obs = sorted(request["observations"], key=lambda o: o["date"])
         facts = {"latest_price": obs[-1]["commerce_price"], "mineral_name": request["mineral_name"]}
         compare_obs = request.get("compare_observations")
@@ -404,6 +427,13 @@ def _expected_facts(page_id: str, request: dict) -> dict:
             compare_overall = _pct(c_obs[-1]["commerce_price"], c_obs[0]["commerce_price"])
             if primary_overall is not None and compare_overall is not None:
                 facts["compare_overall_change_pct"] = (primary_overall - compare_overall) * 100
+        # 2026-08-28 Phase1-1: komis_period_comparisons가 있으면 계산기가 그 값을
+        # 그대로 냈는지(자체 롤링창으로 다시 계산해버리지 않았는지) 대조한다.
+        komis_cmp = request.get("komis_period_comparisons")
+        if komis_cmp:
+            for key, metric_id in (("week", "week_avg_change_pct"), ("month", "month_avg_change_pct"), ("year", "year_avg_change_pct")):
+                if key in komis_cmp:
+                    facts[metric_id] = komis_cmp[key]["change_pct"]
         return facts
     if page_id in ("indicator_market", "indicator_supply"):
         obs = sorted(request["observations"], key=lambda o: o["month"])
@@ -446,7 +476,7 @@ def _check_mismatch(page_id: str, expected: dict, response: dict) -> list[str]:
             return a == b
         return abs(a - b) <= tol
 
-    if page_id == "price":
+    if page_id in ("price_base_metals", "price_minor_metals"):
         if not _close(expected["latest_price"], metrics.get("latest_price")):
             problems.append(f"latest_price 불일치: expected={expected['latest_price']} actual={metrics.get('latest_price')}")
         if response["mineral"]["name"] != expected["mineral_name"]:
@@ -458,6 +488,13 @@ def _check_mismatch(page_id: str, expected: dict, response: dict) -> list[str]:
                     "compare_overall_change_pct 불일치: "
                     f"expected={expected['compare_overall_change_pct']:.4f} actual={actual_cmp}"
                 )
+        # 2026-08-28 Phase1-1: KOMIS 제공 stdMap을 계산기가 그대로 냈는지 대조
+        # (자체 롤링창으로 재계산했다면 여기서 불일치가 잡힌다).
+        for metric_id in ("week_avg_change_pct", "month_avg_change_pct", "year_avg_change_pct"):
+            if metric_id in expected:
+                actual = metrics.get(metric_id)
+                if not _close(expected[metric_id], actual, tol=0.02):
+                    problems.append(f"{metric_id} 불일치(KOMIS stdMap 패스스루 실패 의심): expected={expected[metric_id]} actual={actual}")
     elif page_id in ("indicator_market", "indicator_supply"):
         if not _close(expected["latest_score"], metrics.get("current_score")):
             problems.append(f"current_score 불일치: expected={expected['latest_score']} actual={metrics.get('current_score')}")
@@ -488,8 +525,14 @@ def run_all(out_path: Path, summary_only: bool) -> dict:
     service = AnalysisSummaryService(None, llm=None)
 
     combos: list[tuple[str, str, dict]] = []  # (page_id, combo_key, request)
-    combos += [("price", key, req) for key, req in adapt_price_pages(_load("komis_01_base_metals.json"), "base_metals")]
-    combos += [("price", key, req) for key, req in adapt_price_pages(_load("komis_02_minor_metals.json"), "minor_metals")]
+    combos += [
+        ("price_base_metals", key, req)
+        for key, req in adapt_price_pages(_load("komis_01_base_metals.json"), "base_metals", "price_base_metals")
+    ]
+    combos += [
+        ("price_minor_metals", key, req)
+        for key, req in adapt_price_pages(_load("komis_02_minor_metals.json"), "minor_metals", "price_minor_metals")
+    ]
     combos += [("indicator_composite", key, req) for key, req in adapt_mineral_index(_load("komis_03_mineral_index.json"))]
     combos += [
         ("indicator_market", key, req)

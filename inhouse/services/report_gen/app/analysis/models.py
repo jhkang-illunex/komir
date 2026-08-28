@@ -155,6 +155,14 @@ class AnalysisSummaryRequest(StrictModel):
     # PDF §1-1 "가격 변동의 주요 요인" 대응(GeoEventObservation dict 리스트).
     # 선택 필드라 없으면 지금처럼 이 절이 빈다(하위호환).
     geo_events: list[dict] | None = None
+    # 2026-08-28 추가조사(`report_gen_price_base_metals_부실요약_원인조사_260828.md`)
+    # 확정 — price_base_metals/minor_metals/iron_energy/other 4종 전용. KOMIS
+    # 응답의 `dataAvg.stdMap.{WEEK,MONTH,YEAR}`를 그대로 실어 보내면(선택,
+    # `PriceKomisPeriodComparisons` dict) 이 계산기가 자체 롤링창 재계산 대신
+    # 그 값을 우선 쓴다 — 라이브 재현으로 KOMIS 산식(직전 완결 역주/역월/역년
+    # 평균)이 롤링 N일창과 다름을 확정했기 때문(하위호환: 없으면 기존대로
+    # 롤링창 계산).
+    komis_period_comparisons: dict | None = None
 
     @field_validator("request_id")
     @classmethod
@@ -202,6 +210,10 @@ class AnalysisSummaryRequest(StrictModel):
             "price_base_metals", "price_minor_metals", "price_iron_energy", "price_other",
         ):
             raise ValueError("geo_events is only accepted for price_* pages")
+        if self.komis_period_comparisons is not None and self.page_id not in (
+            "price_base_metals", "price_minor_metals", "price_iron_energy", "price_other",
+        ):
+            raise ValueError("komis_period_comparisons is only accepted for price_* pages")
 
         if self.page_id in PAGE_PROFILES:
             if self.mineral is None:
@@ -536,6 +548,31 @@ class GeoEventObservation(StrictModel):
     ]
     severity: float
     evidence_quote: str | None = None
+
+
+class PriceKomisPeriodAverage(StrictModel):
+    """`dataAvg.stdMap.{WEEK,MONTH,YEAR}` 1개 항목 패스스루(2026-08-28 신설,
+    `report_gen_price_base_metals_부실요약_원인조사_260828.md` 참고) — KOMIS가
+    서버에서 미리 계산한 기간평균과 그 대비 등락률. `change_pct`는 KOMIS
+    원본 `flctnPrcnt`와 같은 스케일(예: 0.98은 +0.98%, 퍼센트 값 그대로이지
+    분수가 아니다)로 호출자가 그대로 옮겨 보낸다."""
+
+    average_price: float
+    change_pct: float
+
+
+class PriceKomisPeriodComparisons(StrictModel):
+    """`page_id="price_base_metals"/"price_minor_metals"/"price_iron_energy"/
+    "price_other"` 전용(2026-08-28 신설) — 라이브 재현으로 KOMIS의 전주/전월/
+    전년평균이 이 계산기의 롤링 N일창(`komir_summary.py::_avg_before`)과 다른
+    산식(직전 완결 역주/역월/역년 전체 평균)임을 확정한 뒤 도입했다. `DAY`는
+    패스스루 대상에서 뺐다 — 이 계산기가 인접 관측치로 직접 계산한 day_over_day
+    값이 이미 KOMIS와 일치함을 라이브 재현으로 확인했기 때문이다(재계산할
+    필요 없는 값은 옮기지 않는다)."""
+
+    week: PriceKomisPeriodAverage | None = None
+    month: PriceKomisPeriodAverage | None = None
+    year: PriceKomisPeriodAverage | None = None
 
 
 class PriceGroupMineralObservation(StrictModel):
