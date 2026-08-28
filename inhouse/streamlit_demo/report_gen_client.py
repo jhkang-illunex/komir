@@ -210,8 +210,12 @@ class AdvancedJsonField:
 _GEO_EVENTS_FIELD = AdvancedJsonField(
     "geo_events",
     "가격변동 주요요인(geo_events, 리스트)",
+    # 2026-08-29 main-agent 확정: komir_summary.py::_PRICE_DRIVER_MIN_SEVERITY=2.0
+    # 미만은 "주요" 요인으로 안 보고 걸러진다 — 처음 넣은 0.6은 문턱 미달이라
+    # 리포트에 전혀 반영되지 않았다(서버 버그 아님). 실제 검증에 쓴 값과 동일하게
+    # 2.8로 맞춤(재현성).
     '[{"obs_date": "2025-08-20", "country": "칠레", "direction": "supply_down", '
-    '"severity": 0.6, "evidence_quote": "칠레 대형 광산 파업으로 공급 차질"}]',
+    '"severity": 2.8, "evidence_quote": "칠레 대형 광산 파업으로 공급 차질"}]',
 )
 _KOMIS_PERIOD_COMPARISONS_FIELD = AdvancedJsonField(
     "komis_period_comparisons",
