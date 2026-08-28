@@ -114,6 +114,7 @@ from .models import (  # noqa: E402
     SummarySentence,
     SupplyAuxiliaryData,
     TradeCountryObservation,
+    TradeKomisTotals,
     TradeMapSeries,
 )
 from .policy import PagePolicy, load_page_policy  # noqa: E402
@@ -214,6 +215,21 @@ def _komis_period_comparisons_from_request(
     except Exception as exc:  # noqa: BLE001 — pydantic ValidationError 등을 NO_DATA로 통일
         raise DataSourceError(
             f"{request.page_id}: komis_period_comparisons 형식이 PriceKomisPeriodComparisons와 맞지 않는다: {exc}"
+        ) from exc
+
+
+def _komis_trade_totals_from_request(request: AnalysisSummaryRequest) -> TradeKomisTotals | None:
+    """`request.komis_trade_totals`(선택 필드, 2026-08-29 Phase3 라이브 재검증
+    확정 — `report_gen_KOMIS라이브재검증_Phase3_260829.md`)를 검증한다.
+    `_geo_events_from_request`와 같은 패턴: 없으면 에러가 아니라 None(하위호환)."""
+
+    if not request.komis_trade_totals:
+        return None
+    try:
+        return TradeKomisTotals.model_validate(request.komis_trade_totals)
+    except Exception as exc:  # noqa: BLE001 — pydantic ValidationError 등을 NO_DATA로 통일
+        raise DataSourceError(
+            f"{request.page_id}: komis_trade_totals 형식이 TradeKomisTotals와 맞지 않는다: {exc}"
         ) from exc
 
 
@@ -1575,11 +1591,13 @@ class AnalysisSummaryService:
         #     end_date=request.end_date,
         # )
         series = self._trade_series_from_request(request, "map_korea")
+        komis_trade_totals = _komis_trade_totals_from_request(request)
         calculated = _calculate_or_no_data(
             request.page_id,
             calculate_domestic_trade_summary,
             series,
             direction=request.trade_direction or "import",
+            komis_totals=komis_trade_totals,
         )
         return self._respond_trade_map(request, series, calculated, effective_page_context("map_korea"))
 
@@ -1596,7 +1614,10 @@ class AnalysisSummaryService:
         #     end_date=request.end_date,
         # )
         series = self._trade_series_from_request(request, "map_global")
-        calculated = _calculate_or_no_data(request.page_id, calculate_global_trade_summary, series)
+        komis_trade_totals = _komis_trade_totals_from_request(request)
+        calculated = _calculate_or_no_data(
+            request.page_id, calculate_global_trade_summary, series, komis_totals=komis_trade_totals
+        )
         return self._respond_trade_map(request, series, calculated, effective_page_context("map_global"))
 
     def _analyze_price_group(self, request: AnalysisSummaryRequest) -> AnalysisSummaryResponse:

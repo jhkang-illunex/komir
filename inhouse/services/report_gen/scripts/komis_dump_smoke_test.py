@@ -284,6 +284,13 @@ def adapt_map_korea(dump: dict) -> list[tuple[str, dict]]:
             "mineral_name": r["key"].split("|")[0],
             "observations": observations,
         }
+        # 2026-08-29 Phase3 라이브 재검증 확정 — 같은 응답에 KOMIS 진짜 총액
+        # (sumIncmAmt)이 반복 필드로 온다(list가 최대 30행까지만 줘서 관측치
+        # 합산이 과소될 수 있음, report_gen_KOMIS라이브재검증_Phase3_260829.md
+        # 참고).
+        sum_incm = _num(rows[0].get("sumIncmAmt")) if rows else None
+        if sum_incm:
+            request["komis_trade_totals"] = {"import_amount": sum_incm}
         out.append((f"supply_map_korea:{r['key']}", request))
     return out
 
@@ -326,6 +333,12 @@ def adapt_map_global(dump: dict) -> list[tuple[str, dict]]:
             "mineral_name": r["key"].split("|")[0],
             "observations": observations,
         }
+        # 2026-08-29 Phase3 라이브 재검증 확정 — 같은 응답에 KOMIS 진짜 총액
+        # (sumAmt)이 반복 필드로 온다(정적덤프 73콤보 중 72건이 영향받는
+        # 심각한 절단, report_gen_KOMIS라이브재검증_Phase3_260829.md 참고).
+        sum_amt = _num(rows[0].get("sumAmt")) if rows else None
+        if sum_amt:
+            request["komis_trade_totals"] = {"import_amount": sum_amt}
         out.append((f"supply_map_global:{r['key']}", request))
     return out
 
@@ -455,7 +468,14 @@ def _expected_facts(page_id: str, request: dict) -> dict:
         }
     if page_id in ("map_korea", "map_global"):
         obs = request["observations"]
-        total = sum(o["import_amount"] or 0.0 for o in obs)
+        # 2026-08-29 Phase3 확정 — komis_trade_totals가 있으면 그게 정답이다
+        # (list 관측치 합산은 최대 30행까지만 반영해 과소될 수 있음).
+        komis_totals = request.get("komis_trade_totals")
+        total = (
+            komis_totals["import_amount"]
+            if komis_totals and komis_totals.get("import_amount")
+            else sum(o["import_amount"] or 0.0 for o in obs)
+        )
         top1 = max(obs, key=lambda o: o["import_amount"] or 0.0)
         return {
             "total_amount": total,
