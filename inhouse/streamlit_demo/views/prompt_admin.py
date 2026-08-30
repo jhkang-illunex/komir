@@ -51,18 +51,17 @@ import pandas as pd
 import streamlit as st
 
 from streamlit_demo.mineral_master import mineral_label, mineral_options
+from streamlit_demo.komis_raw import KOMIS_RAW_PAGES, KomisRawConversionError
 from streamlit_demo.report_gen_client import (
+    ADVANCED_JSON_FIELDS,
     EXTRA_FIELD_DEFAULTS,
     EXTRA_FIELD_LABELS,
     EXTRA_FIELD_VALUE_LABELS,
-    MAP_KOREA_OBSERVATIONS_BY_DIRECTION,
     PAGE_SPECS,
     PRICE_GROUP_OBSERVATIONS_BY_GROUP,
     SECTION_ORDER,
     ReportGenError,
     client_from_env,
-    geo_event_fields,
-    komis_advanced_fields,
     parse_advanced_json_fields,
     prioritize_core_minerals,
     render_json_error,
@@ -353,65 +352,93 @@ if spec.extra_fields:
             if value:
                 test_payload[field] = value
 
-_observations_default = spec.observations_example
-_obs_key_suffix = ""
-if test_page_id == "map_korea":
-    _direction = test_payload.get("trade_direction", "import")
-    _observations_default = MAP_KOREA_OBSERVATIONS_BY_DIRECTION.get(_direction, spec.observations_example)
-    _obs_key_suffix = f"_{_direction}"
-elif test_page_id == "price_group":
-    _group = test_payload.get("price_group", "base_metals")
-    _observations_default = PRICE_GROUP_OBSERVATIONS_BY_GROUP.get(_group, spec.observations_example)
-    _obs_key_suffix = f"_{_group}"
-observations_text = st.text_area(
-    "observations(JSON) — 방금 저장한 content/제약 조건이 이 데이터를 어떻게 요약하는지 확인합니다",
-    # 2026-08-30: key가 test_page_id만 반영하면 trade_direction/price_group을
-    # 바꿔도(같은 페이지 안) Streamlit이 기존 위젯 값을 그대로 유지해 새 기본값이
-    # 안 먹힌다(실측 확인) — 방향/그룹도 key에 포함해 그때만 새로 렌더링되게 한다.
-    value=_observations_default, height=140, key=f"pa_obs_{test_page_id}{_obs_key_suffix}",
-)
-
-# 2026-08-30: "버튼만 눌러도 풍부한 리포트"가 나오도록 실측(또는 형태만 맞춘)
-# 기본값을 미리 채워 둔다 — 지우면 그때만 안 보내진다.
-# 2026-08-30 추가 지적: geo_events는 KOMIS 응답이 아니라 komir 자체 지정학
-# 위기지수 파이프라인 산출물이라 별도 expander로 분리(report_demo.py와 동일).
+# 2026-08-30 재지시(사용자): streamlit이 komis.or.kr을 직접 호출하지 않는다 —
+# 사람이 외부에서 KOMIS를 조회해 얻은 원본 JSON을 붙여넣으면 이 화면이
+# report_gen 스키마로 변환한다(report_demo.py와 동일 방식).
 advanced_texts: dict[str, str] = {}
-_komis_fields = komis_advanced_fields(test_page_id)
-_geo_fields = geo_event_fields(test_page_id)
-if _komis_fields:
-    with st.expander("고급: KOMIS 원본값 직접 입력(선택)", expanded=True):
-        for adv in _komis_fields:
-            advanced_texts[adv.field] = st.text_area(
-                adv.label, value=adv.placeholder, height=100,
-                key=f"pa_adv_{test_page_id}_{adv.field}",
-            )
-if _geo_fields:
-    with st.expander("가격변동 주요요인(지정학 위기지수 — KOMIS 아닌 별도 소스, 선택)", expanded=True):
-        for adv in _geo_fields:
-            advanced_texts[adv.field] = st.text_area(
-                adv.label, value=adv.placeholder, height=100,
-                key=f"pa_adv_{test_page_id}_{adv.field}",
-            )
+observations_text = ""
+komis_raw_text = ""
+if test_page_id in KOMIS_RAW_PAGES:
+    raw_spec = KOMIS_RAW_PAGES[test_page_id]
+    st.caption(
+        f"KOMIS 데이터 조회 결과(외부에서 조회한 원본 JSON을 붙여넣으세요) — "
+        f"komis.or.kr {raw_spec.label}을 그대로 붙여넣으면 이 화면이 report_gen이 원하는 형태로 변환합니다."
+    )
+    komis_raw_text = st.text_area(
+        "KOMIS 데이터 조회 결과", value=raw_spec.example_raw_json, height=160,
+        key=f"pa_komis_raw_{test_page_id}",
+    )
+else:
+    _observations_default = spec.observations_example
+    _obs_key_suffix = ""
+    if test_page_id == "price_group":
+        _group = test_payload.get("price_group", "base_metals")
+        _observations_default = PRICE_GROUP_OBSERVATIONS_BY_GROUP.get(_group, spec.observations_example)
+        _obs_key_suffix = f"_{_group}"
+    observations_text = st.text_area(
+        "observations(JSON) — 방금 저장한 content/제약 조건이 이 데이터를 어떻게 요약하는지 확인합니다",
+        value=_observations_default, height=140, key=f"pa_obs_{test_page_id}{_obs_key_suffix}",
+    )
+
+    # 2026-08-29 main-agent 요청 — komis_period_comparisons: 값을 지어내지
+    # 않고 사용자가 입력한 값을 그대로 report_gen에 전달하는 통로만 만든다.
+    _advanced_fields = ADVANCED_JSON_FIELDS.get(test_page_id, ())
+    if _advanced_fields:
+        with st.expander("고급: KOMIS 원본값 직접 입력(선택)", expanded=True):
+            for adv in _advanced_fields:
+                advanced_texts[adv.field] = st.text_area(
+                    adv.label, value=adv.placeholder, height=100,
+                    key=f"pa_adv_{test_page_id}_{adv.field}",
+                )
 
 if st.button("이 프롬프트로 분석요약 호출", key=f"pa_test_btn_{test_page_id}"):
-    try:
-        test_payload["observations"] = json.loads(observations_text) if observations_text.strip() else None
-    except json.JSONDecodeError as exc:
-        render_json_error(exc, field_label="observations")
-    else:
-        advanced_values, advanced_ok = parse_advanced_json_fields(test_page_id, advanced_texts)
-        if advanced_ok:
-            test_payload.update(advanced_values)
-            try:
-                with st.spinner("report_gen 호출 중…"):
-                    result = client.summarize(test_page_id, test_payload)
-            except ReportGenError as exc:
-                st.error(str(exc))
+    if test_page_id in KOMIS_RAW_PAGES:
+        try:
+            raw = json.loads(komis_raw_text) if komis_raw_text.strip() else None
+        except json.JSONDecodeError as exc:
+            render_json_error(exc, field_label="KOMIS 데이터 조회 결과")
+        else:
+            if raw is None:
+                st.error("KOMIS 데이터 조회 결과가 비어 있습니다 — 원본 JSON을 붙여넣으세요.")
             else:
-                status = result.get("status")
-                if status == "ok":
-                    st.success("status: ok")
-                    render_report_markdown(result.get("report"))
+                try:
+                    converted = KOMIS_RAW_PAGES[test_page_id].convert(raw, test_payload)
+                except KomisRawConversionError as exc:
+                    st.error(f"KOMIS 원본 JSON 변환 실패: {exc}")
                 else:
-                    st.warning(f"status: {status} — 원문 응답(디버깅용)")
-                    st.json(result)
+                    test_payload.update(converted)
+                    try:
+                        with st.spinner("report_gen 호출 중…"):
+                            result = client.summarize(test_page_id, test_payload)
+                    except ReportGenError as exc:
+                        st.error(str(exc))
+                    else:
+                        status = result.get("status")
+                        if status == "ok":
+                            st.success("status: ok")
+                            render_report_markdown(result.get("report"))
+                        else:
+                            st.warning(f"status: {status} — 원문 응답(디버깅용)")
+                            st.json(result)
+    else:
+        try:
+            test_payload["observations"] = json.loads(observations_text) if observations_text.strip() else None
+        except json.JSONDecodeError as exc:
+            render_json_error(exc, field_label="observations")
+        else:
+            advanced_values, advanced_ok = parse_advanced_json_fields(test_page_id, advanced_texts)
+            if advanced_ok:
+                test_payload.update(advanced_values)
+                try:
+                    with st.spinner("report_gen 호출 중…"):
+                        result = client.summarize(test_page_id, test_payload)
+                except ReportGenError as exc:
+                    st.error(str(exc))
+                else:
+                    status = result.get("status")
+                    if status == "ok":
+                        st.success("status: ok")
+                        render_report_markdown(result.get("report"))
+                    else:
+                        st.warning(f"status: {status} — 원문 응답(디버깅용)")
+                        st.json(result)
