@@ -296,12 +296,15 @@ def _komis_rows_to_observations(rows: list[dict]) -> list[dict]:
 
 def _parse_komis_price_response(
     raw: dict,
-) -> tuple[list[dict], list[dict] | None, dict | None, str | None, str | None, str | None]:
-    """`request.komis_response`(2026-08-30 신설)를 report_gen 내부 shape 6종
+) -> tuple[
+    list[dict], list[dict] | None, dict | None, str | None, str | None, str | None, str | None
+]:
+    """`request.komis_response`(2026-08-30 신설)를 report_gen 내부 shape 7종
     (observations, compare_observations, komis_period_comparisons, mineral_name,
-    price_criterion, compare_mineral_name)으로 변환한다 — KOMIS
-    `getMnrlPrcByMnrkndUnqCd` 원본 응답을 그대로 받아 호출자가 필드명을
-    손으로 옮겨 담을 필요를 없앤다(발주처 납품 최적화 요청, 2026-08-30).
+    price_criterion, compare_mineral_name, compare_price_criterion)으로
+    변환한다 — KOMIS `getMnrlPrcByMnrkndUnqCd` 원본 응답을 그대로 받아
+    호출자가 필드명을 손으로 옮겨 담을 필요를 없앤다(발주처 납품 최적화
+    요청, 2026-08-30).
 
     - `data.defaultMnrl[]` → observations(기본 계열)
     - `data.compareMnrl[]` → compare_observations(비교광종 계열, 있을 때만)
@@ -322,6 +325,16 @@ def _parse_komis_price_response(
       조회)으로 확인. `cmpMap`은 `stdMap`(기본 광종)과 완전히 같은
       모양으로 비교 광종 몫이 따로 온다 — `mineral_name`과 같은 자리에
       있는데도 그동안 안 읽고 있었다).
+    - `dataAvg.cmpMap.INFO.prcCrtr` → compare_price_criterion(2026-08-30
+      3차 발견 — `compare_mineral_name`과 같은 `cmpMap.INFO` 블록 안에
+      비교광종 자신의 가격기준도 같이 온다는 걸 그때 같이 확인해놓고
+      실제 배선은 놓쳤다. `routers/analysis.py::PriceSummaryRequest`가
+      `c76466a47`(2026-08-30 Swagger 트리밍)에서 이 필드를 "komis_
+      response로 대체돼 불필요"로 잘못 판단해 라우터에서 지운 적이 있다
+      — 그런데 `_analyze_price`(아래)는 계속 `request.compare_price_
+      criterion`을 읽고 있었으니, 그 트리밍 이후로는 호출자가 값을
+      보낼 방법 자체가 없어 이 표시가 조용히 죽어 있었다(회귀). 이번에
+      필드를 라우터에 복원하면서 auto-fill까지 같이 넣는다).
 
     `mineral`/`compare_mineral`(코드)은 KOMIS 응답 본문 어디에도 없는
     조회 파라미터라(`cmpMap.INFO`도 이름만 있고 코드가 없음, 실측
@@ -346,6 +359,7 @@ def _parse_komis_price_response(
     price_criterion = komis_info.get("prcCrtr") or None
     compare_info = (dataAvg.get("cmpMap") or {}).get("INFO") or {}
     compare_mineral_name = compare_info.get("mnrkndKornNm") or None
+    compare_price_criterion = compare_info.get("prcCrtr") or None
 
     std_map = ((raw.get("dataAvg") or {}).get("stdMap")) or {}
     latest_price = _komis_num((std_map.get("CRTRYMD") or {}).get("cmercPrc"))
@@ -371,6 +385,7 @@ def _parse_komis_price_response(
         mineral_name,
         price_criterion,
         compare_mineral_name,
+        compare_price_criterion,
     )
 
 
@@ -1826,6 +1841,7 @@ class AnalysisSummaryService:
         komis_mineral_name = None
         komis_price_criterion = None
         komis_compare_mineral_name = None
+        komis_compare_price_criterion = None
         if request.komis_response is not None:
             (
                 parsed_observations,
@@ -1834,6 +1850,7 @@ class AnalysisSummaryService:
                 komis_mineral_name,
                 komis_price_criterion,
                 komis_compare_mineral_name,
+                komis_compare_price_criterion,
             ) = _parse_komis_price_response(request.komis_response)
             raw_observations = parsed_observations
             if parsed_compare is not None:
@@ -1932,8 +1949,9 @@ class AnalysisSummaryService:
             applied_filters["price_criterion"] = price_criterion
         if compare_series is not None:
             applied_filters["compare_mineral"] = compare_series.mineral.name
-            if request.compare_price_criterion:
-                applied_filters["compare_price_criterion"] = request.compare_price_criterion
+            compare_price_criterion = request.compare_price_criterion or komis_compare_price_criterion
+            if compare_price_criterion:
+                applied_filters["compare_price_criterion"] = compare_price_criterion
         defaulted_filters = [
             name
             for name, value in (
