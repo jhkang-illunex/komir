@@ -504,6 +504,29 @@ def calculate_price_summary(
             )
             key_metrics.append(_price_metric("price_streak_length", "연속 추세 기간", streak, unit=unit))
 
+    # 2026-08-31 사용자 지시("입력된 komis json에 있는 데이터만을 이용하고
+    # 연속적인 숫자열을 분석해서 llm에 던지는식으로 보정 — 입력 json 외
+    # 다른 데이터는 안 씀") — 지금까지 major_changes는 KOMIS 롤링윈도우
+    # 통계(전주/전월/전년)만 다뤘고, "이번에 받은 조회기간 전체가 어떻게
+    # 움직였는지"는 어느 근거에도 없었다. 새 데이터소스 없이 이미 받은
+    # observations의 첫 관측치(조회기간 시작)와 최신 관측치를 직접
+    # 비교해서 만든다. major_changes 5-cap(day_over_day+week+month+year+
+    # price_streak만으로 이미 5개까지 찰 수 있음)을 넘지 않도록 남은
+    # 자리가 있을 때만 추가한다(geo_events 블록과 같은 방어 패턴).
+    if sum(1 for claim in claims if claim.section == "major_changes") < 5:
+        first = observations[0]
+        if first is not latest and first.commerce_price is not None:
+            overall_change = _pct(latest.commerce_price, first.commerce_price)
+            if overall_change is not None:
+                claims.append(
+                    EvidenceClaim(
+                        "period_overall_change",
+                        "major_changes",
+                        f"조회기간 시작({_korean_date(first.date)}, {_number(first.commerce_price)}) 대비 "
+                        f"{_signed_pct(overall_change)} 변동했다.",
+                    )
+                )
+
     if geo_events:
         # `SummaryNarrative.major_changes`는 절 전체(모델 하드 제약, models.py)가
         # 최대 5문장이고, 규칙기반 폴백 경로(`_deterministic_narrative`)는 근거
@@ -575,17 +598,28 @@ def calculate_price_summary(
     )
     patterns: list[DetectedPattern] = []
     period_high = period_low = None
+    # 2026-08-31 사용자 지시로 시점(날짜) 정보를 추가한다 — 새 데이터소스
+    # 없이 이미 있는 observations의 날짜 필드만 더 읽는다(값은 그대로,
+    # "언제" 정보만 문장에 보탠다).
     if has_full_hilo_coverage:
-        period_high = max(item.highest_price for item in observations_with_price)
-        period_low = min(item.lowest_price for item in observations_with_price)
-        range_fact = f"조회기간 중 최고 {_number(period_high)}, 최저 {_number(period_low)}였다."
+        high_obs = max(observations_with_price, key=lambda item: item.highest_price)
+        low_obs = min(observations_with_price, key=lambda item: item.lowest_price)
+        period_high, period_low = high_obs.highest_price, low_obs.lowest_price
+        range_fact = (
+            f"조회기간 중 최고 {_number(period_high)}({_korean_date(high_obs.date)}), "
+            f"최저 {_number(period_low)}({_korean_date(low_obs.date)})였다."
+        )
     elif observations_with_price:
-        period_high = max(item.commerce_price for item in observations_with_price)
-        period_low = min(item.commerce_price for item in observations_with_price)
+        high_obs = max(observations_with_price, key=lambda item: item.commerce_price)
+        low_obs = min(observations_with_price, key=lambda item: item.commerce_price)
+        period_high, period_low = high_obs.commerce_price, low_obs.commerce_price
         # 최고가·최저가(hghst/lowst) 원천이 불완전해 실거래가 기준으로 대신
         # 계산했음을 문구로 구분한다 — "KOMIS 공식 최고/최저"인 것처럼 단정하지
         # 않는다(main-agent 지시).
-        range_fact = f"조회기간 관측치(실거래가) 기준 최고 {_number(period_high)}, 최저 {_number(period_low)}였다."
+        range_fact = (
+            f"조회기간 관측치(실거래가) 기준 최고 {_number(period_high)}({_korean_date(high_obs.date)}), "
+            f"최저 {_number(period_low)}({_korean_date(low_obs.date)})였다."
+        )
     if period_high is not None and period_low is not None:
         claims.append(
             EvidenceClaim(
