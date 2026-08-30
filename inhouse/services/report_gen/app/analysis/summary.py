@@ -1429,7 +1429,8 @@ class AnalysisSummaryService:
             observations=observations,
             warnings=[],
         )
-        # 2026-08-26: KOMIS 희소금속 "비교광종" 대응 — 원본 응답의 `compareMnrl`에
+        # 2026-08-26: KOMIS 광물자원가격 "비교광종" 대응(price_* 4종 공통,
+        # 2026-08-30 확인) — 원본 응답의 `compareMnrl`에
         # 해당하는 `compare_observations`가 있을 때만 두 번째 PriceSeries를
         # 조립해 비교 근거를 계산한다(§`komir_summary.py::calculate_price_summary`).
         compare_series = None

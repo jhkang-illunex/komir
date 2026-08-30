@@ -197,9 +197,13 @@ class AnalysisSummaryRequest(StrictModel):
             raise ValueError("secondary_measure_observations is only accepted for page_id=map_mineral")
         if self.secondary_unit is not None and self.page_id != "map_mineral":
             raise ValueError("secondary_unit is only accepted for page_id=map_mineral")
-        # 2026-08-27 price page_id 분리 — 비교광종은 희소금속 전용 KOMIS 기능이라
-        # price_base_metals/map_korea/map_global로는 못 보내게 새로 강제한다(이전엔
-        # 문서화만 되고 pydantic이 걸러내지 않았다).
+        # 2026-08-27 price page_id 분리 당시엔 비교광종이 희소금속 전용 KOMIS
+        # 기능이라고 보고 price_minor_metals로만 제한했다 — 2026-08-30 사용자
+        # 정정 + 라이브 재확인(Playwright로 4개 가격 서브메뉴 전부 접속):
+        # `srchCompareMnrkndUnqCd`/`srchComparePrcCrtr` 비교광종 select가
+        # base_metals/minor_metals/iron_energy/other 4개 페이지 전부 동일하게
+        # 존재한다 — KOMIS 광물자원가격 메뉴 공통 기능이었다. map_korea/
+        # map_global(수급지도)엔 이 기능이 없어 그대로 제외한다.
         if (
             any(
                 value is not None
@@ -210,9 +214,13 @@ class AnalysisSummaryRequest(StrictModel):
                     self.compare_observations,
                 )
             )
-            and self.page_id != "price_minor_metals"
+            and self.page_id
+            not in ("price_base_metals", "price_minor_metals", "price_iron_energy", "price_other")
         ):
-            raise ValueError("compare_* fields are only accepted for page_id=price_minor_metals")
+            raise ValueError(
+                "compare_* fields are only accepted for price_* pages "
+                "(base_metals/minor_metals/iron_energy/other)"
+            )
         if self.geo_events is not None and self.page_id not in (
             "price_base_metals", "price_minor_metals", "price_iron_energy", "price_other",
         ):

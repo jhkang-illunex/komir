@@ -330,11 +330,19 @@ SECTION_SENTENCE_RANGES: dict[str, dict[str, tuple[int, int]]] = {
     "indicator_supply": {"core_diagnosis": (1, 1), "major_changes": (1, 2), "current_position": (1, 1)},
     "indicator_composite": {"core_diagnosis": (1, 1), "major_changes": (1, 2), "current_position": (1, 1)},
     "forecast_price": {"core_diagnosis": (1, 1), "major_changes": (1, 1), "current_position": (1, 1)},
-    # price의 current_position은 (1,2) — 비교광종(compare_observations, 희소금속
-    # 전용)이 있으면 compare_overall_change 근거 1문장이 더 붙는다(2026-08-26).
-    # major_changes는 근거가 최대 5개(전일·전주·전월·전년·연속)라 (1,3)(루프
-    # 1회차 완화). 2026-08-27 page_id 분리 — 두 그룹 다 같은 범위(비철금속은
-    # compare_overall_change가 애초에 안 생기므로 (1,2) 상한을 그냥 안 쓸 뿐).
+    # price의 current_position은 (1,2) — 비교광종(compare_observations)이 있으면
+    # compare_overall_change 근거 1문장이 더 붙는다(2026-08-26. 2026-08-30 확인:
+    # 비교광종은 price_* 4종 공통 기능이라 base_metals/iron_energy/other도
+    # 동일하게 해당). major_changes는 근거가 최대 5개(전일·전주·전월·전년·
+    # 연속)라 (1,3)(루프 1회차 완화).
+    # ⚠ 미해결 — inventory_level(재고량)까지 동시에 붙으면(period_range +
+    # compare_overall_change + inventory_level) current_position이 3문장이
+    # 될 수 있는데(models.py 하드 제약은 max_length=3이라 허용) 이 (1,2) 상한을
+    # 넘는다. 규칙기반(`_deterministic_narrative`)은 이 검증을 안 타서 안전하고
+    # (Phase1에서 3-claim 케이스 무사 확인됨), LLM 정제 경로(`_validate_llm_summary`)
+    # 만 영향받는다 — 2026-08-26부터 minor_metals에 이미 있던 잠재 이슈이고 이번
+    # 비교광종 4종 확장으로 base_metals 등에도 같은 범위로 노출됐다. 실측(LLM
+    # 온) 재현 전까지는 범위를 임의로 안 바꾼다.
     "price_base_metals": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 2)},
     "price_minor_metals": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 2)},
     "price_iron_energy": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 2)},

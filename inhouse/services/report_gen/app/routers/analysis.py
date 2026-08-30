@@ -238,8 +238,9 @@ class MineralDateRangeSummaryRequest(AnalysisEndpointRequest):
     price_unit: str | None = None
     price_criterion: str | None = None
     price_criterion_serial: int | None = None
-    # `page_id="price_minor_metals"`(희소금속) 전용 — KOMIS "비교광종" 기능 대응,
-    # 클래스 docstring 참고.
+    # price_* 4종(base_metals/minor_metals/iron_energy/other) 전용 — KOMIS
+    # "비교광종" 기능 대응(4개 페이지 전부 동일 UI, 2026-08-30 확인). 클래스
+    # docstring 참고.
     compare_mineral: str | None = Field(default=None, min_length=1)
     compare_mineral_name: str | None = Field(default=None, min_length=1)
     compare_price_criterion: str | None = None
