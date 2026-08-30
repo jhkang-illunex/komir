@@ -342,22 +342,31 @@ PRICE_GROUP_OBSERVATIONS_BY_GROUP: dict[str, str] = {
 
 @dataclass(frozen=True)
 class AdvancedJsonField:
-    """"고급: KOMIS 원본값 직접 입력(선택)" expander 안 JSON 입력란 1개 스펙 —
-    2026-08-29 main-agent 요청(geo_events·komis_period_comparisons·
-    komis_trade_totals), 2026-08-30 재지시로 `placeholder`가 빈 칸 안내가 아니라
-    화면에 미리 채워지는 실제 기본값이 됐다(사용자가 지우면 그때만 안 보내짐).
-    값을 지어내지 않고 실측 데이터를 그대로 옮기거나(가능한 경우), 실측이 없으면
-    빈 문자열로 둔다(§아래 komis_period_comparisons 참고) — "나오는 값만 제대로
-    전달" 원칙 유지."""
+    """고급 JSON 입력란 1개 스펙 — 2026-08-29 main-agent 요청(geo_events·
+    komis_period_comparisons·komis_trade_totals), 2026-08-30 재지시로
+    `placeholder`가 빈 칸 안내가 아니라 화면에 미리 채워지는 실제 기본값이 됐다
+    (사용자가 지우면 그때만 안 보내짐). 값을 지어내지 않고 실측 데이터를 그대로
+    옮기거나(가능한 경우), 실측이 없으면 빈 문자열로 둔다(§아래
+    komis_period_comparisons 참고) — "나오는 값만 제대로 전달" 원칙 유지.
+
+    `source`: 2026-08-30 사용자 지적 — geo_events는 KOMIS 응답이 아니라 komir
+    자체 지정학 위기지수 파이프라인(GDELT 뉴스 기반 `mineral_risk.geo_event`)
+    산출물이다. "고급: KOMIS 원본값 직접 입력" expander에 섞여 있으면 출처가
+    헷갈리므로, UI가 이 값으로 KOMIS 계열(komis_period_comparisons·
+    komis_trade_totals)과 지정학 계열(geo_events)을 별도 expander로 나눈다.
+    "KOMIS에서 실시간으로 가져오기" 라이브 연동(2026-08-30)도 source="komis"인
+    필드만 채운다 — geo_events는 KOMIS 응답에 없으므로 라이브 연동 대상이
+    아니다."""
 
     field: str
     label: str
     placeholder: str
+    source: str = "komis"  # "komis" | "geo"
 
 
 _GEO_EVENTS_BASE_METALS = AdvancedJsonField(
     "geo_events",
-    "가격변동 주요요인(geo_events, 리스트)",
+    "가격변동 주요요인(geo_events, 지정학 위기지수 — KOMIS 아님)",
     # geo_event 원자료(mineral_risk.geo_event)는 KOMIS 라이브 재검증 evidence
     # 대상이 아니라 실측 캡처가 없다 — 형태·문턱값(severity≥2.0, komir_summary.py
     # ::_PRICE_DRIVER_MIN_SEVERITY 2026-08-29 main-agent 확정)만 실제 제약을
@@ -365,24 +374,28 @@ _GEO_EVENTS_BASE_METALS = AdvancedJsonField(
     # 반영 안 됐던 걸 실측 확인 후 2.8로 수정(재현성 위해 검증값과 동일하게).
     '[{"obs_date": "2025-08-20", "country": "칠레", "direction": "supply_down", '
     '"severity": 2.8, "evidence_quote": "칠레 대형 광산 파업으로 공급 차질"}]',
+    source="geo",
 )
 _GEO_EVENTS_MINOR_METALS = AdvancedJsonField(
     "geo_events",
-    "가격변동 주요요인(geo_events, 리스트)",
+    "가격변동 주요요인(geo_events, 지정학 위기지수 — KOMIS 아님)",
     '[{"obs_date": "2025-08-18", "country": "콩고민주공화국", "direction": "supply_down", '
     '"severity": 2.6, "evidence_quote": "콩고민주공화국 코발트 광산 수출 규제 강화"}]',
+    source="geo",
 )
 _GEO_EVENTS_IRON_ENERGY = AdvancedJsonField(
     "geo_events",
-    "가격변동 주요요인(geo_events, 리스트)",
+    "가격변동 주요요인(geo_events, 지정학 위기지수 — KOMIS 아님)",
     '[{"obs_date": "2025-08-19", "country": "호주", "direction": "supply_down", '
     '"severity": 2.4, "evidence_quote": "호주 서부 항만 파업으로 철광석 선적 지연"}]',
+    source="geo",
 )
 _GEO_EVENTS_OTHER = AdvancedJsonField(
     "geo_events",
-    "가격변동 주요요인(geo_events, 리스트)",
+    "가격변동 주요요인(geo_events, 지정학 위기지수 — KOMIS 아님)",
     '[{"obs_date": "2025-08-21", "country": "남아프리카공화국", "direction": "supply_down", '
     '"severity": 2.5, "evidence_quote": "남아프리카공화국 정제소 가동 중단으로 백금족 공급 차질"}]',
+    source="geo",
 )
 _KOMIS_PERIOD_COMPARISONS_BASE_METALS = AdvancedJsonField(
     "komis_period_comparisons",
@@ -431,6 +444,19 @@ ADVANCED_JSON_FIELDS: dict[str, tuple[AdvancedJsonField, ...]] = {
     "map_korea": (_KOMIS_TRADE_TOTALS_MAP_KOREA,),
     "map_global": (_KOMIS_TRADE_TOTALS_MAP_GLOBAL,),
 }
+
+
+def komis_advanced_fields(page_id: str) -> tuple[AdvancedJsonField, ...]:
+    """"고급: KOMIS 원본값 직접 입력" expander에 넣을 필드만 — komis_period_
+    comparisons·komis_trade_totals(2026-08-30 geo_events 분리)."""
+    return tuple(f for f in ADVANCED_JSON_FIELDS.get(page_id, ()) if f.source == "komis")
+
+
+def geo_event_fields(page_id: str) -> tuple[AdvancedJsonField, ...]:
+    """"가격변동 주요요인(지정학 위기지수)" 별도 expander에 넣을 필드 —
+    geo_events는 KOMIS 응답이 아니라 komir 자체 파이프라인 산출물이라
+    "KOMIS에서 실시간으로 가져오기" 연동 대상에서도 제외한다(2026-08-30)."""
+    return tuple(f for f in ADVANCED_JSON_FIELDS.get(page_id, ()) if f.source == "geo")
 
 
 def _load_section_order() -> list[str]:

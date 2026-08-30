@@ -37,7 +37,6 @@ import streamlit as st
 
 from streamlit_demo.mineral_master import mineral_label, mineral_options
 from streamlit_demo.report_gen_client import (
-    ADVANCED_JSON_FIELDS,
     EXTRA_FIELD_DEFAULTS,
     EXTRA_FIELD_LABELS,
     EXTRA_FIELD_VALUE_LABELS,
@@ -47,6 +46,8 @@ from streamlit_demo.report_gen_client import (
     SECTION_ORDER,
     ReportGenError,
     client_from_env,
+    geo_event_fields,
+    komis_advanced_fields,
     parse_advanced_json_fields,
     prioritize_core_minerals,
     render_json_error,
@@ -195,10 +196,22 @@ observations_text = st.text_area("observations", value=_observations_default, he
 # report_gen에 전달하는 통로만 만든다(선택 입력, 비우면 안 보냄).
 # 2026-08-30 재지시: "버튼만 눌러도 풍부한 리포트"가 나오도록 빈 칸이 아니라
 # 실측(또는 형태만 맞춘) 기본값을 미리 채워 둔다 — 지우면 그때만 안 보내진다.
+# 2026-08-30 추가 지적: geo_events는 KOMIS 응답이 아니라 komir 자체 지정학
+# 위기지수 파이프라인 산출물이라 "고급: KOMIS 원본값" expander와 섞이면
+# 출처가 헷갈린다 — 별도 expander로 분리.
 advanced_texts: dict[str, str] = {}
-if page_id in ADVANCED_JSON_FIELDS:
+_komis_fields = komis_advanced_fields(page_id)
+_geo_fields = geo_event_fields(page_id)
+if _komis_fields:
     with st.expander("고급: KOMIS 원본값 직접 입력(선택)", expanded=True):
-        for adv in ADVANCED_JSON_FIELDS[page_id]:
+        for adv in _komis_fields:
+            advanced_texts[adv.field] = st.text_area(
+                adv.label, value=adv.placeholder, height=100,
+                key=f"adv_{page_id}_{adv.field}",
+            )
+if _geo_fields:
+    with st.expander("가격변동 주요요인(지정학 위기지수 — KOMIS 아닌 별도 소스, 선택)", expanded=True):
+        for adv in _geo_fields:
             advanced_texts[adv.field] = st.text_area(
                 adv.label, value=adv.placeholder, height=100,
                 key=f"adv_{page_id}_{adv.field}",
