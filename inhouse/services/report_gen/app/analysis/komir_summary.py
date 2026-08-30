@@ -557,9 +557,19 @@ def calculate_price_summary(
     # 있을 때만 그 값을 쓰고, 하나라도 빠지면(커버리지 불완전) 요청받은
     # commerce_price 전체 범위로 폴백한다 — 일부 날짜만 반영한 왜곡된 범위 대신
     # 항상 우리가 가진 데이터 전체 기준의 정직한 답을 낸다.
+    #
+    # 2026-08-30 후속 버그 수정 — 위 처방은 `is not None`만 확인해 KOMIS가
+    # "미제공"을 채우는 문자열 "0.00"(파싱하면 float 0.0, None이 아님)을 정상
+    # 데이터로 오인했다. 실거래로 KOMIS 원본을 그대로(값 변환만 하고 0.00은
+    # 안 거르고) 보내면 "최고 0.00, 최저 0.00"이 나오거나(전부 0.00일 때),
+    # 조회기간 일부만 0.00이어도 그 관측치가 `min()`을 오염시켜 최저가만
+    # 조용히 0.00으로 깨졌다(최고가는 0.00이 max를 못 이기니 안 깨져서 더
+    # 눈치채기 어려움) — `inventory`가 이미 쓰는 값 기반 게이트(0/0.0도
+    # 결측 취급)를 여기도 동일 적용한다.
     observations_with_price = [item for item in observations if item.commerce_price is not None]
     has_full_hilo_coverage = bool(observations_with_price) and all(
-        item.highest_price is not None and item.lowest_price is not None for item in observations_with_price
+        item.highest_price not in (None, 0, 0.0) and item.lowest_price not in (None, 0, 0.0)
+        for item in observations_with_price
     )
     patterns: list[DetectedPattern] = []
     period_high = period_low = None
@@ -621,9 +631,11 @@ def calculate_price_summary(
     #
     # 2026-08-29 Phase2 라이브 재검증에서 발견·main-agent 승인 — KOMIS는 전통 LME
     # 6대 비철금속(니켈·동·아연·알루미늄·연·주석) 외 광종은 `invt`(재고량)를 매
-    # 관측일 "0.00"으로 채워 보낸다(값이 없을 때 0.00을 채우는 KOMIS 전역 관행,
-    # `lowest_price`/`highest_price`가 이미 같은 방식으로 게이트하는 것과 동일
-    # 패턴 — 16개 광종/가격기준 콤보 전수로 확인). 0을 실측값으로 취급하면
+    # 관측일 "0.00"으로 채워 보낸다(값이 없을 때 0.00을 채우는 KOMIS 전역 관행 —
+    # 16개 광종/가격기준 콤보 전수로 확인. `lowest_price`/`highest_price`는 이
+    # 커밋 당시 같은 패턴이라고 여기 적었지만 실제로는 안 그랬다 — 2026-08-30
+    # 사용자 실측 재현으로 발견해 위 `has_full_hilo_coverage` 쪽에도 동일하게
+    # 값 기반 게이트를 뒤늦게 적용했다). 0을 실측값으로 취급하면
     # "재고량은 0.00이다"라는 사실상 거짓 문장이 나가므로(가돌리늄 표본에서
     # 실제 발생 확인) `inventory`가 0이면 latest든 prior 탐색이든 결측(None)과
     # 동일하게 취급한다. 페이지 하드코딩(`page_id == "price_base_metals"`) 대신
