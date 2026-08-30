@@ -220,71 +220,74 @@ class PriceForecastSummaryRequest(AnalysisEndpointRequest):
         return self
 
 
-class MineralDateRangeSummaryRequest(AnalysisEndpointRequest):
-    """광물자원가격(비철금속/희소금속)·국내/글로벌 수급지도 4종이 공통으로 쓰는
-    요청(광종+일자범위).
+class _DateRangeMineralRequest(AnalysisEndpointRequest):
+    """광물자원가격·국내/글로벌 수급지도가 공통으로 쓰는 최소 필드(광종+
+    일자범위+komis_response) — Swagger에 직접 노출되지 않는 내부 베이스
+    클래스, `PriceSummaryRequest`/`DomesticTradeSummaryRequest`/
+    `GlobalTradeSummaryRequest`가 상속한다.
 
-    komir 자체 추가(2026-08-19) — 외부repo에 대응하는 스키마가 없다.
-    2026-08-26: `observations`(PriceObservation 또는 TradeCountryObservation
-    리스트, page_id에 따라 다르다) — DB 대신 요청 바디로 원자료를 받는다.
-    `page_id="price_base_metals"`/`"price_minor_metals"` 전용: `price_criterion`
-    (자유 텍스트, 예: "LME CASH"·"Lithium Carbonate") — 두 그룹은 같은 광종이어도
-    조회조건(가격기준/품목·스펙)이 다를 수 있어, 어떤 조건으로 조회한 값인지
-    문자열로 실어 보내면 보고서 상단에 그대로 표시된다(report_render.py).
-
-    2026-08-26: `page_id="price_minor_metals"`(희소금속, 2026-08-27 이전엔
-    `"price"`) 전용으로 `compare_*` 4종 필드도 추가 — KOMIS 원본 API는 비교광종
-    지정 시 응답이 `data.defaultMnrl`(기본 계열)·`data.compareMnrl`(비교 계열)
-    두 키로 온다(사용자 확인). 이 서버는 `observations`=defaultMnrl 상당,
-    `compare_observations`=compareMnrl 상당으로 그대로 받는다 — 둘 다 있으면
-    보고서에 두 광종의 조회기간 변화율 비교 문장이 추가된다(`komir_summary.py::
-    calculate_price_summary`). `page_id="price_base_metals"`로 이 필드들을
-    보내면 `models.py::AnalysisSummaryRequest.validate_period`가 거부한다
-    (2026-08-27부터 강제, 이전엔 문서화만 됨)."""
+    2026-08-31 정리 — 2026-08-19 최초 도입 때는 이 3종 페이지가 한
+    클래스(`MineralDateRangeSummaryRequest`)를 공유해서, price_* 전용
+    필드(price_unit·price_criterion 등)가 map_korea/global Swagger에도,
+    trade_direction이 price_* Swagger에도 그대로 노출됐다(사용자 지적 —
+    실제로 안 쓰는 필드가 뒤섞여 보임). `komis_response`(2026-08-30 신설)가
+    각 페이지의 원자료 입력을 대체하면서 손 매핑 전용 필드
+    (observations·price_unit·price_criterion·price_criterion_serial·
+    compare_price_criterion·compare_observations·geo_events·
+    komis_period_comparisons·komis_trade_totals)가 전부 불필요해져 이
+    기회에 페이지별로 진짜 필요한 필드만 남기고 쪼갰다. 내부
+    `AnalysisSummaryRequest`(models.py)는 그대로 둔다 — 회귀 하네스
+    (`komis_dump_smoke_test.py`)가 옛 손 매핑 필드로 계속 검증하고,
+    이 라우터 모델은 `.model_dump()`로 그 상위집합의 부분집합만 채워
+    넘기는 관계라 내부 스키마를 넓게 유지해도 API 계약엔 안 드러난다."""
 
     mineral: str = Field(min_length=1)
     mineral_name: str | None = Field(default=None, min_length=1)
     start_date: Day | None = None
     end_date: Day | None = None
-    observations: list[dict] | None = None
-    price_unit: str | None = None
-    price_criterion: str | None = None
-    price_criterion_serial: int | None = None
-    # price_* 4종(base_metals/minor_metals/iron_energy/other) 전용 — KOMIS
-    # "비교광종" 기능 대응(4개 페이지 전부 동일 UI, 2026-08-30 확인). 클래스
-    # docstring 참고.
-    compare_mineral: str | None = Field(default=None, min_length=1)
-    compare_mineral_name: str | None = Field(default=None, min_length=1)
-    compare_price_criterion: str | None = None
-    compare_observations: list[dict] | None = None
-    # 2026-08-27 신설 — `page_id="map_korea"`(국내 수급지도) 전용, KOMIS 화면의
-    # 수입/수출 방향 라디오 대응. PDF 지침 점검(/unlazy)에서 발견한 버그
-    # 수정 — 이 신호가 없어 계산 레이어가 항상 "수입"으로 라벨링했었다.
-    trade_direction: Literal["import", "export"] | None = None
-    # 2026-08-28 신설 — price_base_metals/minor_metals/iron_energy/other 4종
-    # 전용(PDF §1-1 "가격 변동의 주요 요인" 대응, `models.py::GeoEventObservation`
-    # 참고). 이 모델을 공유하는 map_korea/map_global로 보내면 `AnalysisSummary
-    # Request.validate_period`가 거부한다(compare_*와 같은 패턴).
-    geo_events: list[dict] | None = None
-    # 2026-08-28 추가조사 확정 — price_base_metals/minor_metals/iron_energy/other
-    # 4종 전용. `models.py::PriceKomisPeriodComparisons` 참고(geo_events와 같은
-    # 패턴 — 선택 필드, 없으면 하위호환 그대로).
-    komis_period_comparisons: dict | None = None
-    # 2026-08-29 Phase3 라이브 재검증 확정 — `page_id="map_korea"/"map_global"`
-    # 전용. `models.py::TradeKomisTotals` 참고(같은 선택 필드 패턴).
-    komis_trade_totals: dict | None = None
-    # 2026-08-30 신설 — price_* 4종 전용. KOMIS `getMnrlPrcByMnrkndUnqCd`
-    # 응답을 그대로 담으면 report_gen이 observations/komis_period_
-    # comparisons/compare_observations로 직접 변환한다(`models.py`의
-    # `komis_response` 필드 docstring 참고) — 호출자가 필드명을 손으로
-    # 옮겨 담을 필요가 없어진다.
     komis_response: dict | None = None
 
     @model_validator(mode="after")
-    def validate_period(self) -> MineralDateRangeSummaryRequest:
+    def validate_period(self) -> _DateRangeMineralRequest:
         if self.start_date and self.end_date and self.start_date > self.end_date:
             raise ValueError("start_date must not be after end_date")
         return self
+
+
+class PriceSummaryRequest(_DateRangeMineralRequest):
+    """광물자원가격(비철금속/희소금속/철광석·에너지/기타) 4종 공통 요청.
+
+    `komis_response`에 KOMIS `getMnrlPrcByMnrkndUnqCd` 원본 응답을 그대로
+    담으면 report_gen이 일별 시세·재고·전주/전월/전년 비교·가격기준
+    ("LME CASH" 등)까지 전부 직접 뽑아 쓴다(`models.py`의 `komis_response`
+    필드 docstring 참고) — 그 밖엔 `mineral`(코드, KOMIS 응답 본문에 없는
+    조회 파라미터)만 있으면 된다.
+
+    `compare_mineral`(코드)은 비교광종 조회 시에만 채운다 — KOMIS
+    응답에 `data.compareMnrl`(비교 계열 가격)은 있어도 그 광종의
+    내부 코드는 없어서 여전히 호출자가 명시해야 한다. 비교광종은
+    price_* 4종 전부 동일 지원(2026-08-30 확인, 희소금속 전용 아님)."""
+
+    compare_mineral: str | None = Field(default=None, min_length=1)
+    compare_mineral_name: str | None = Field(default=None, min_length=1)
+
+
+class DomesticTradeSummaryRequest(_DateRangeMineralRequest):
+    """국내 수급지도(map_korea, KO_CSTM_CMMRC) 요청.
+
+    `komis_response`에 KOMIS `getListKoreaData` 원본 응답을 그대로 담으면
+    국가별 수입/수출·총액까지 전부 직접 뽑아 쓴다."""
+
+    # 2026-08-27 신설 — KOMIS 화면의 수입/수출 방향 라디오 대응(map_korea
+    # 전용, map_global엔 이 선택지 자체가 없다).
+    trade_direction: Literal["import", "export"] | None = None
+
+
+class GlobalTradeSummaryRequest(_DateRangeMineralRequest):
+    """글로벌 수급지도(map_global, KO_UN_CMMRC) 요청.
+
+    `komis_response`에 KOMIS `getListDataNation` 원본 응답을 그대로 담으면
+    도착국·원산국 루트별 교역량·총액까지 전부 직접 뽑아 쓴다."""
 
 
 class PriceGroupSummaryRequest(AnalysisEndpointRequest):
@@ -357,7 +360,7 @@ def summarize_price_forecast(
 
 @router.post("/prices/base-metals", response_model=AnalysisReportResponse)
 def summarize_price_base_metals(
-    payload: MineralDateRangeSummaryRequest,
+    payload: PriceSummaryRequest,
     request: Request,
 ) -> AnalysisReportResponse:
     """비철금속 가격 분석요약(KO_MNRL_PRC) — 2026-08-27 이전엔 `/prices`
@@ -368,19 +371,18 @@ def summarize_price_base_metals(
 
 @router.post("/prices/minor-metals", response_model=AnalysisReportResponse)
 def summarize_price_minor_metals(
-    payload: MineralDateRangeSummaryRequest,
+    payload: PriceSummaryRequest,
     request: Request,
 ) -> AnalysisReportResponse:
     """희소금속 가격 분석요약(KO_MNRL_PRC) — 2026-08-27 이전엔 `/prices`
-    (`page_id="price"`)로 비철금속과 합쳐 다뤘다(§모듈 docstring). `compare_*`
-    (비교광종)는 이 페이지에서만 허용된다."""
+    (`page_id="price"`)로 비철금속과 합쳐 다뤘다(§모듈 docstring)."""
 
     return run_summary("price_minor_metals", payload, request)
 
 
 @router.post("/prices/iron-energy", response_model=AnalysisReportResponse)
 def summarize_price_iron_energy(
-    payload: MineralDateRangeSummaryRequest,
+    payload: PriceSummaryRequest,
     request: Request,
 ) -> AnalysisReportResponse:
     """철광석·유연탄·우라늄 가격 분석요약(KO_MNRL_PRC) — 2026-08-28 신설
@@ -391,7 +393,7 @@ def summarize_price_iron_energy(
 
 @router.post("/prices/other", response_model=AnalysisReportResponse)
 def summarize_price_other(
-    payload: MineralDateRangeSummaryRequest,
+    payload: PriceSummaryRequest,
     request: Request,
 ) -> AnalysisReportResponse:
     """금·은·백금족·흑연 가격 분석요약(KO_MNRL_PRC) — 2026-08-28 신설
@@ -402,7 +404,7 @@ def summarize_price_other(
 
 @router.post("/domestic-trade", response_model=AnalysisReportResponse)
 def summarize_domestic_trade(
-    payload: MineralDateRangeSummaryRequest,
+    payload: DomesticTradeSummaryRequest,
     request: Request,
 ) -> AnalysisReportResponse:
     """국내 수급지도 분석요약(KO_CSTM_CMMRC, 관세청)."""
@@ -412,7 +414,7 @@ def summarize_domestic_trade(
 
 @router.post("/global-trade", response_model=AnalysisReportResponse)
 def summarize_global_trade(
-    payload: MineralDateRangeSummaryRequest,
+    payload: GlobalTradeSummaryRequest,
     request: Request,
 ) -> AnalysisReportResponse:
     """글로벌 수급지도 분석요약(KO_UN_CMMRC, UN Comtrade)."""
