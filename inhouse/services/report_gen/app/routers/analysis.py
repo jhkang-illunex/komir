@@ -261,6 +261,12 @@ class MineralDateRangeSummaryRequest(AnalysisEndpointRequest):
     # 2026-08-29 Phase3 라이브 재검증 확정 — `page_id="map_korea"/"map_global"`
     # 전용. `models.py::TradeKomisTotals` 참고(같은 선택 필드 패턴).
     komis_trade_totals: dict | None = None
+    # 2026-08-30 신설 — price_* 4종 전용. KOMIS `getMnrlPrcByMnrkndUnqCd`
+    # 응답을 그대로 담으면 report_gen이 observations/komis_period_
+    # comparisons/compare_observations로 직접 변환한다(`models.py`의
+    # `komis_response` 필드 docstring 참고) — 호출자가 필드명을 손으로
+    # 옮겨 담을 필요가 없어진다.
+    komis_response: dict | None = None
 
     @model_validator(mode="after")
     def validate_period(self) -> MineralDateRangeSummaryRequest:

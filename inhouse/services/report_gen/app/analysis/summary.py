@@ -203,15 +203,22 @@ def _geo_events_from_request(request: AnalysisSummaryRequest) -> list[GeoEventOb
 
 def _komis_period_comparisons_from_request(
     request: AnalysisSummaryRequest,
+    *,
+    raw: dict | None = None,
 ) -> PriceKomisPeriodComparisons | None:
     """`request.komis_period_comparisons`(선택 필드, 2026-08-28 추가조사 확정 —
     `report_gen_price_base_metals_부실요약_원인조사_260828.md`)를 검증한다.
-    `_geo_events_from_request`와 같은 패턴: 없으면 에러가 아니라 None(하위호환)."""
+    `_geo_events_from_request`와 같은 패턴: 없으면 에러가 아니라 None(하위호환).
 
-    if not request.komis_period_comparisons:
+    `raw`(2026-08-30 신설) — `_parse_komis_price_response`가 `komis_response`
+    에서 뽑아낸 값을 여기 override로 넘긴다(`_observations_from_request`의
+    `raw` 파라미터와 같은 패턴)."""
+
+    payload = raw if raw is not None else request.komis_period_comparisons
+    if not payload:
         return None
     try:
-        return PriceKomisPeriodComparisons.model_validate(request.komis_period_comparisons)
+        return PriceKomisPeriodComparisons.model_validate(payload)
     except Exception as exc:  # noqa: BLE001 — pydantic ValidationError 등을 NO_DATA로 통일
         raise DataSourceError(
             f"{request.page_id}: komis_period_comparisons 형식이 PriceKomisPeriodComparisons와 맞지 않는다: {exc}"
@@ -231,6 +238,93 @@ def _komis_trade_totals_from_request(request: AnalysisSummaryRequest) -> TradeKo
         raise DataSourceError(
             f"{request.page_id}: komis_trade_totals 형식이 TradeKomisTotals와 맞지 않는다: {exc}"
         ) from exc
+
+
+def _komis_num(value) -> float | None:
+    """KOMIS 응답 값(문자열 또는 숫자, 종종 `null`)을 float으로. 파싱 실패 시 None."""
+
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _komis_zero_to_none(value) -> float | None:
+    """KOMIS는 결측을 `null`이 아니라 문자열 "0.00"으로 채우는 관행이 있다
+    (이 세션에서 `inventory`·`lowest_price`/`highest_price` 둘 다 실측
+    확인) — 0(.0)은 항상 결측으로 정규화한다."""
+
+    n = _komis_num(value)
+    return None if n in (None, 0, 0.0) else n
+
+
+def _komis_crtr_ymd_to_date(crtr_ymd) -> str:
+    """KOMIS `crtrYmd`(YYYYMMDD 문자열)를 report_gen `Day`(YYYY-MM-DD)로."""
+
+    s = str(crtr_ymd)
+    return f"{s[0:4]}-{s[4:6]}-{s[6:8]}"
+
+
+def _komis_rows_to_observations(rows: list[dict]) -> list[dict]:
+    out = []
+    for row in rows:
+        price = _komis_num(row.get("cmercPrc"))
+        if price is None or not row.get("crtrYmd"):
+            continue
+        out.append(
+            {
+                "date": _komis_crtr_ymd_to_date(row["crtrYmd"]),
+                "commerce_price": price,
+                "lowest_price": _komis_zero_to_none(row.get("lowstPrc")),
+                "highest_price": _komis_zero_to_none(row.get("hghstPrc")),
+                "inventory": _komis_zero_to_none(row.get("invt")),
+            }
+        )
+    return out
+
+
+def _parse_komis_price_response(
+    raw: dict,
+) -> tuple[list[dict], list[dict] | None, dict | None, str | None]:
+    """`request.komis_response`(2026-08-30 신설)를 report_gen 내부 shape 4종
+    (observations, compare_observations, komis_period_comparisons, mineral_name)
+    으로 변환한다 — KOMIS `getMnrlPrcByMnrkndUnqCd` 원본 응답을 그대로 받아
+    호출자가 필드명을 손으로 옮겨 담을 필요를 없앤다(발주처 납품 최적화 요청,
+    2026-08-30).
+
+    - `data.defaultMnrl[]` → observations(기본 계열)
+    - `data.compareMnrl[]` → compare_observations(비교광종 계열, 있을 때만)
+    - `dataAvg.stdMap.{WEEK,MONTH,YEAR}` → komis_period_comparisons.
+      `average_price`는 응답에 직접 없고 `flctnPrc`(등락액)만 있어
+      `latest_price - flctnPrc`로 역산한다(`komis_dump_smoke_test.py`의
+      하네스 산식과 동일 — 라이브 재현으로 확정된 공식).
+    - `dataAvg.INFO.mnrkndKornNm` → mineral_name(있으면, 호출자가 명시한
+      `mineral_name`이 있으면 그쪽이 항상 우선 — 호출부에서 처리).
+
+    `mineral`(코드)은 KOMIS 응답 본문에 없는 조회 파라미터라 이 함수가
+    채우지 않는다 — 호출자가 그대로 명시해야 한다."""
+
+    data = raw.get("data") or {}
+    observations = _komis_rows_to_observations(data.get("defaultMnrl") or [])
+    compare_observations = _komis_rows_to_observations(data.get("compareMnrl") or []) or None
+    mineral_name = ((raw.get("dataAvg") or {}).get("INFO") or {}).get("mnrkndKornNm") or None
+
+    std_map = ((raw.get("dataAvg") or {}).get("stdMap")) or {}
+    latest_price = observations[-1]["commerce_price"] if observations else None
+    komis_period_comparisons: dict = {}
+    for key, field in (("week", "WEEK"), ("month", "MONTH"), ("year", "YEAR")):
+        entry = std_map.get(field)
+        if not entry or latest_price is None:
+            continue
+        delta = _komis_num(entry.get("flctnPrc"))
+        pct = _komis_num(entry.get("flctnPrcnt"))
+        if delta is None or pct is None:
+            continue
+        komis_period_comparisons[key] = {"average_price": latest_price - delta, "change_pct": pct}
+
+    return observations, compare_observations, (komis_period_comparisons or None), mineral_name
 
 
 def _supply_auxiliary_from_request(request: AnalysisSummaryRequest) -> SupplyAuxiliaryData | None:
@@ -1408,7 +1502,24 @@ class AnalysisSummaryService:
         #     start_date=request.start_date,
         #     end_date=request.end_date,
         # )
-        observations = _observations_from_request(PriceObservation, request)
+        # 2026-08-30 신설 — `komis_response`(KOMIS 원본 응답 통째)가 있으면
+        # 그걸 파싱해서 observations/compare_observations/
+        # komis_period_comparisons를 직접 만든다. 있으면 이걸 우선 쓰고,
+        # 없으면(하위호환) 기존처럼 손으로 매핑된 필드들을 그대로 쓴다.
+        raw_observations = request.observations
+        raw_compare_observations = request.compare_observations
+        raw_komis_period_comparisons = None
+        komis_mineral_name = None
+        if request.komis_response is not None:
+            parsed_observations, parsed_compare, parsed_period_comparisons, komis_mineral_name = (
+                _parse_komis_price_response(request.komis_response)
+            )
+            raw_observations = parsed_observations
+            if parsed_compare is not None:
+                raw_compare_observations = parsed_compare
+            raw_komis_period_comparisons = parsed_period_comparisons
+
+        observations = _observations_from_request(PriceObservation, request, raw=raw_observations)
         if request.start_date:
             observations = [o for o in observations if o.date >= request.start_date]
         if request.end_date:
@@ -1418,7 +1529,10 @@ class AnalysisSummaryService:
         dates = sorted(o.date for o in observations)
         series = PriceSeries(
             page_id=request.page_id,
-            mineral=MineralRef(code=request.mineral, name=request.mineral_name or request.mineral),
+            mineral=MineralRef(
+                code=request.mineral,
+                name=request.mineral_name or komis_mineral_name or request.mineral,
+            ),
             price_criterion_serial=request.price_criterion_serial or 0,
             available_start_date=dates[0],
             available_end_date=dates[-1],
@@ -1434,13 +1548,13 @@ class AnalysisSummaryService:
         # 해당하는 `compare_observations`가 있을 때만 두 번째 PriceSeries를
         # 조립해 비교 근거를 계산한다(§`komir_summary.py::calculate_price_summary`).
         compare_series = None
-        if request.compare_observations:
+        if raw_compare_observations:
             if request.compare_mineral is None:
                 raise DataSourceError("price analysis: compare_observations가 있으면 compare_mineral도 필요하다")
             compare_obs = _observations_from_request(
                 PriceObservation,
                 request,
-                raw=request.compare_observations,
+                raw=raw_compare_observations,
                 field_name="compare_observations",
             )
             compare_dates = sorted(o.date for o in compare_obs)
@@ -1461,7 +1575,9 @@ class AnalysisSummaryService:
                 warnings=[],
             )
         geo_events = _geo_events_from_request(request)
-        komis_period_comparisons = _komis_period_comparisons_from_request(request)
+        komis_period_comparisons = _komis_period_comparisons_from_request(
+            request, raw=raw_komis_period_comparisons
+        )
         calculated = _calculate_or_no_data(
             request.page_id,
             calculate_price_summary,
