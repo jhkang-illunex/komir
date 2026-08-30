@@ -309,11 +309,21 @@ class PriceSummaryRequest(_DateRangeMineralRequest):
     사용자가 "compare_mineral_name도 komis_response 안에 있지 않냐"고
     지적, Playwright 라이브 재현으로 확정) — `mineral_name`과 동일한
     자동채움+오버라이드 패턴이라 required로 바꾸지 않고 optional로
-    남긴다."""
+    남긴다.
+
+    `compare_price_criterion`(비교광종 자신의 가격기준, 예: "99.99%min
+    FOB China")도 같은 자리(`dataAvg.cmpMap.INFO.prcCrtr`)에서 자동
+    채움된다(2026-08-30 3차 확인) — 이 필드는 한 차례 회귀가 있었다:
+    `c76466a47`(2026-08-30 Swagger 트리밍)에서 "komis_response로
+    대체돼 불필요"라고 잘못 판단해 여기서 지웠는데, 실제로는 auto-fill
+    경로가 없어서 그 이후로는 `_analyze_price`가 계속 읽던 이 값을
+    캐스터가 채울 방법 자체가 없었다(표시가 조용히 죽어 있었다) —
+    이번에 필드를 복원하면서 auto-fill까지 같이 넣어 재발을 막는다."""
 
     mineral: str = Field(min_length=1)
     compare_mineral: str | None = Field(default=None, min_length=1)
     compare_mineral_name: str | None = Field(default=None, min_length=1)
+    compare_price_criterion: str | None = None
 
 
 class DomesticTradeSummaryRequest(_DateRangeMineralRequest):
