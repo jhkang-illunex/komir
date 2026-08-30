@@ -1654,8 +1654,8 @@ class AnalysisSummaryService:
         request: AnalysisSummaryRequest,
     ) -> AnalysisSummaryResponse:
         """Load forecast prices and build a validated forecast summary."""
-        if request.mineral is None or request.forecast_horizon is None:
-            raise DataSourceError("price forecast analysis requires mineral and forecast_horizon in the request body")
+        if request.mineral is None:
+            raise DataSourceError("price forecast analysis requires mineral in the request body")
         # 2026-08-26 DB 조회 경로 비활성화(요청 바디 입력으로 전환, WORKLOG 참고) —
         # 복원 시 아래 두 줄 주석을 해제하고 그 아래 request 기반 조립 블록을 지운다.
         # if self._price_forecast_source is None:
@@ -1681,6 +1681,19 @@ class AnalysisSummaryService:
             observations = [o for o in observations if o.period <= request.end_period]
         if not observations:
             raise DataSourceError("price forecast analysis: 필터 적용 후 observations가 비었다")
+        # 2026-08-31 예외 — `crtrPrd`가 분기("28년 4Q")/연("2028년") 형식
+        # 자체로 medium/long을 이미 구분해서 담고 있어(§models.py
+        # validate_period의 "-Q" 검사가 이 사실에 의존), komis_response로
+        # 받은 관측치의 period 형식에서 forecast_horizon을 자동 판별한다
+        # (호출자 명시값이 있으면 그쪽 우선). 손 매핑 경로(komis_response
+        # 없음)만 이 형식을 알 방법이 없어 여전히 필수다.
+        forecast_horizon = request.forecast_horizon or (
+            ("medium" if any("-Q" in o.period for o in observations) else "long")
+            if request.komis_response is not None
+            else None
+        )
+        if forecast_horizon is None:
+            raise DataSourceError("price forecast analysis requires forecast_horizon in the request body")
         # 2026-08-31 실측 발견·수정: KOMIS는 getListPricePredc를 최신순
         # (내림차순)으로 주는데(가격 파서의 latest_price 버그와 같은
         # 원인), 여기서 observations를 정렬 안 하고 그대로 series에
@@ -1695,7 +1708,7 @@ class AnalysisSummaryService:
                 code=request.mineral,
                 name=request.mineral_name or komis_mineral_name or request.mineral,
             ),
-            horizon=request.forecast_horizon,
+            horizon=forecast_horizon,
             available_start_period=periods[0],
             available_end_period=periods[-1],
             price_unit=request.price_unit,
