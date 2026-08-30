@@ -161,8 +161,12 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # 실측: Phase1 `harness_sample_entries_260828.json`(동|LME 3개월, 최근
         # 14영업일 + inventory) — 이 샘플은 report-summary-agent가 실제 스크린샷
         # (-0.70%/+0.98%/+5.11%/+42.84%)과 일치까지 확인한 값이다.
+        # 2026-08-30 사용자 지시: 데모 화면은 komis.or.kr 해당 페이지가 실제로
+        # 제공하는 선택 UI만 노출한다 — price_unit·price_criterion_serial은
+        # 실제 KOMIS 조회 파라미터(mnrkndUnqRadioCd/srchPrcCrtr/srchAvgOpt 등,
+        # Phase1 evidence params 확인)에 없는 report_gen 전용 옵션 필드라 제거.
         "비철금속", "광물자원가격", "prices/base-metals", True, ("start_date", "end_date"), "date",
-        ("price_unit", "price_criterion", "price_criterion_serial"),
+        ("price_criterion",),
         '[{"date": "2026-08-10", "commerce_price": 14152.0, "lowest_price": null, "highest_price": null, "inventory": 218300.0}, '
         '{"date": "2026-08-11", "commerce_price": 14217.0, "lowest_price": null, "highest_price": null, "inventory": 214550.0}, '
         '{"date": "2026-08-12", "commerce_price": 14201.0, "lowest_price": null, "highest_price": null, "inventory": 212125.0}, '
@@ -186,8 +190,11 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # 실측: Phase2 `collected_minor_spotcheck_raw_260829.json`(코발트 LME
         # CASH, 최근 14영업일). Phase2 META 확인상 minor_metals는 inventory가
         # 항상 "0.00"이라(실측 없음) base_metals와 달리 예시에 넣지 않았다.
+        # 2026-08-30: price_unit·price_criterion_serial 제거(§price_base_metals
+        # 주석 참고) — compare_mineral/compare_price_criterion(비교광종)은 실제
+        # KOMIS 파라미터(srchCompareMnrkndUnqCd/srchComparePrcCrtr)라 유지.
         "희소금속", "광물자원가격", "prices/minor-metals", True, ("start_date", "end_date"), "date",
-        ("price_unit", "price_criterion", "price_criterion_serial", "compare_mineral", "compare_price_criterion"),
+        ("price_criterion", "compare_mineral", "compare_price_criterion"),
         '[{"date": "2026-08-10", "commerce_price": 55850.0}, {"date": "2026-08-11", "commerce_price": 55845.0}, '
         '{"date": "2026-08-12", "commerce_price": 55850.0}, {"date": "2026-08-13", "commerce_price": 55855.0}, '
         '{"date": "2026-08-14", "commerce_price": 55860.0}, {"date": "2026-08-17", "commerce_price": 55845.0}, '
@@ -200,7 +207,7 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # 실측: Phase2 `collected_iron_other_day_raw_260829.json`(철,
         # Australian 62%min CNF China, 최근 14영업일) — inventory 없음(§위 참고).
         "철광석 및 에너지", "광물자원가격", "prices/iron-energy", True, ("start_date", "end_date"), "date",
-        ("price_unit", "price_criterion", "price_criterion_serial"),
+        ("price_criterion",),
         '[{"date": "2026-08-10", "commerce_price": 97.5, "lowest_price": 97.0, "highest_price": 98.0}, '
         '{"date": "2026-08-11", "commerce_price": 97.5, "lowest_price": 97.0, "highest_price": 98.0}, '
         '{"date": "2026-08-12", "commerce_price": 98.5, "lowest_price": 98.0, "highest_price": 99.0}, '
@@ -220,7 +227,7 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # 실측: Phase2 `collected_iron_other_day_raw_260829.json`(금, London
         # Gold Market LBMA PM Fixing, 최근 14영업일) — inventory 없음(§위 참고).
         "기타", "광물자원가격", "prices/other", True, ("start_date", "end_date"), "date",
-        ("price_unit", "price_criterion", "price_criterion_serial"),
+        ("price_criterion",),
         '[{"date": "2026-08-10", "commerce_price": 4324.45}, {"date": "2026-08-11", "commerce_price": 4383.35}, '
         '{"date": "2026-08-12", "commerce_price": 4426.65}, {"date": "2026-08-13", "commerce_price": 4373.0}, '
         '{"date": "2026-08-14", "commerce_price": 4390.7}, {"date": "2026-08-17", "commerce_price": 4405.8}, '
@@ -329,46 +336,6 @@ PRICE_GROUP_OBSERVATIONS_BY_GROUP: dict[str, str] = {
 }
 
 
-@dataclass(frozen=True)
-class AdvancedJsonField:
-    """"고급: KOMIS 원본값 직접 입력" expander 안 JSON 입력란 1개 스펙 —
-    2026-08-29 main-agent 요청(komis_period_comparisons·komis_trade_totals),
-    2026-08-30 재지시로 `placeholder`가 빈 칸 안내가 아니라 화면에 미리 채워지는
-    실제 기본값이 됐다(사용자가 지우면 그때만 안 보내짐). 값을 지어내지 않고
-    실측 데이터를 그대로 옮기거나(가능한 경우), 실측이 없으면 빈 문자열로 둔다
-    (§아래 komis_period_comparisons 참고) — "나오는 값만 제대로 전달" 원칙 유지.
-
-    2026-08-30: geo_events는 KOMIS 응답이 아니라 komir 자체 지정학 위기지수
-    파이프라인 산출물이라는 사용자 지적으로 **이 목록에서 완전히 제거**했다
-    (한 차례 별도 expander로 분리했다가, 아예 이 UI 자체에서 빼는 걸로 재지시
-    받음). price_base_metals/map_korea/map_global도 `komis_raw.py`의 원본
-    JSON 붙여넣기 방식으로 대체돼 이 목록에서 빠졌다 — 아직 그 방식으로
-    전환 안 된 price_minor_metals/iron_energy/other만 남아 있다."""
-
-    field: str
-    label: str
-    placeholder: str
-
-
-_KOMIS_PERIOD_COMPARISONS_UNAVAILABLE = AdvancedJsonField(
-    "komis_period_comparisons",
-    "KOMIS 기간평균(komis_period_comparisons, 객체)",
-    # 2026-08-30: 희소금속/철광석·에너지/기타는 Phase1처럼 harness가 미리
-    # 계산해둔 "직전완결 역주/역월/역년 평균" 실측값이 없다 — KOMIS stdMap의
-    # flctnPrc(기준일 대비 변동폭)는 산식이 달라(§PriceKomisPeriodComparisons
-    # 문서) 대충 변환하면 실측이 아닌 값을 실측처럼 보이게 만드는 위험이 있어,
-    # "나오는 값만 전달" 원칙에 따라 기본값은 비워 둔다(사용자가 직접 채우면
-    # 그 값 그대로 전달됨 — 통로 자체는 동일).
-    "",
-)
-
-ADVANCED_JSON_FIELDS: dict[str, tuple[AdvancedJsonField, ...]] = {
-    "price_minor_metals": (_KOMIS_PERIOD_COMPARISONS_UNAVAILABLE,),
-    "price_iron_energy": (_KOMIS_PERIOD_COMPARISONS_UNAVAILABLE,),
-    "price_other": (_KOMIS_PERIOD_COMPARISONS_UNAVAILABLE,),
-}
-
-
 def _load_section_order() -> list[str]:
     """`komis_menu_map.yaml`(같은 디렉토리, KOMIS 실제 사이트맵 캡처 기반 —
     파일 상단 주석 참고)의 `komis_site_map` top-level 키 순서를 그대로 돌려준다.
@@ -454,24 +421,6 @@ def prioritize_core_minerals(options: list[dict]) -> list[dict]:
     core = [m for code in CORE_MINERAL_CODES for m in options if m["code"] == code]
     rest = [m for m in options if m["code"] not in CORE_MINERAL_CODES]
     return core + rest
-
-
-def parse_advanced_json_fields(page_id: str, texts: dict[str, str]) -> tuple[dict[str, Any], bool]:
-    """`ADVANCED_JSON_FIELDS[page_id]`의 각 입력란 원문(texts)을 파싱한다 — 빈
-    입력은 건너뛰고(안 보냄), 파싱 실패는 그 자리에 `render_json_error`로
-    바로 그려서 호출부는 `ok`만 보고 제출 여부를 결정하면 된다."""
-    result: dict[str, Any] = {}
-    ok = True
-    for spec in ADVANCED_JSON_FIELDS.get(page_id, ()):
-        text = texts.get(spec.field, "")
-        if not text.strip():
-            continue
-        try:
-            result[spec.field] = json.loads(text)
-        except json.JSONDecodeError as exc:
-            render_json_error(exc, field_label=spec.label)
-            ok = False
-    return result, ok
 
 
 def render_json_error(exc: Exception, *, field_label: str = "observations") -> None:

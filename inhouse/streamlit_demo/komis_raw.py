@@ -12,10 +12,13 @@ report_gen이 원하는 `observations`(+`komis_period_comparisons`/
 report_gen_KOMIS라이브재검증_Phase{1,2,3,4}_260829_evidence/`의 실측 JSON을
 근거로 했다(값을 지어내지 않는다는 원칙) — 각 함수 docstring에 출처 명시.
 
-⚠ price_minor_metals/iron_energy/other·price_group·indicator_market/supply는
-원본 캡처가 없거나(후자 2개는 로그인 필요 페이지) 엔드포인트가 확정되지
-않아 이 변환기 목록에 없다 — 그 페이지들은 기존 방식(observations 수동 JSON
-입력)을 그대로 쓴다."""
+2026-08-30 추가: price_minor_metals/iron_energy/other도 base_metals와 같은
+엔드포인트(getMnrlPrcByMnrkndUnqCd, 광종코드만 다름)라는 가설을 Phase2 evidence
+(코발트·철·금 raw 캡처)로 확인해 `convert_price_snapshot`을 그대로 재사용한다.
+
+⚠ price_group·indicator_market/supply는 원본 캡처가 없거나(후자 2개는 로그인
+필요 페이지) 엔드포인트가 확정되지 않아 이 변환기 목록에 없다 — 그 페이지들은
+기존 방식(observations 수동 JSON 입력)을 그대로 쓴다."""
 from __future__ import annotations
 
 import re
@@ -307,6 +310,55 @@ KOMIS_RAW_PAGES: dict[str, KomisRawPage] = {
         '"data": {"compareMnrl": [], "defaultMnrl": [{"lowstPrc": "0.00", "invt": "235575.00", "flctnPrc": "-35.00", '
         '"invtPrcnt": "-0.80", "invtPrc": "-1900.00", "hghstPrc": "0.00", "crtrYmd": "20260827", '
         '"flctnPrcnt": "-0.24", "cmercPrc": "14490.00"}]}}',
+    ),
+    "price_minor_metals": KomisRawPage(
+        # 실측: Phase2 collected_minor_spotcheck_raw_260829.json(코발트|LME
+        # CASH) — base_metals와 동일 엔드포인트·구조(광종코드만 다름) 가설을
+        # 이 실측 캡처로 확인했다.
+        "가격 조회 결과(getMnrlPrcByMnrkndUnqCd)",
+        convert_price_snapshot,
+        '{"dataAvg": {"stdMap": {"MONTH": {"flctnPrc": "-13.04", "crtrYmd": "202608", "flctnPrcnt": "-0.02"}, '
+        '"YEAR": {"flctnPrc": "21039.47", "crtrYmd": "2026", "flctnPrcnt": "60.42"}, '
+        '"CRTRYMD": {"crtrYmd": "20260827", "cmercPrc": "55860.00"}, '
+        '"INFO": {"mnrkndKornNm": "코발트", "prcCrtr": "LME CASH", "isISE": "N", "weigUnitCd": "ton", "prcUnitCdNm": "USD"}, '
+        '"WEEK": {"flctnPrc": "10.00", "crtrYmd": "20260824", "flctnPrcnt": "0.02"}, '
+        '"DAY": {"flctnPrc": "20.00", "crtrYmd": "20260827", "flctnPrcnt": "0.04", "cmercPrc": 55860}}, '
+        '"INFO": {"mnrkndKornNm": "코발트", "prcCrtr": "LME CASH", "isISE": "N", "weigUnitCd": "ton", "prcUnitCdNm": "USD"}}, '
+        '"data": {"compareMnrl": [], "defaultMnrl": [{"lowstPrc": "0.00", "invt": "0.00", "flctnPrc": "20.00", '
+        '"invtPrcnt": "0.00", "invtPrc": "0.00", "hghstPrc": "0.00", "crtrYmd": "20260827", '
+        '"flctnPrcnt": "0.04", "cmercPrc": "55860.00"}]}}',
+    ),
+    "price_iron_energy": KomisRawPage(
+        # 실측: Phase2 collected_iron_other_day_raw_260829.json(철|Australian
+        # 62%min CNF China).
+        "가격 조회 결과(getMnrlPrcByMnrkndUnqCd)",
+        convert_price_snapshot,
+        '{"dataAvg": {"stdMap": {"MONTH": {"flctnPrc": "1.91", "crtrYmd": "202608", "flctnPrcnt": "1.94"}, '
+        '"YEAR": {"flctnPrc": "-1.71", "crtrYmd": "2026", "flctnPrcnt": "-1.67"}, '
+        '"CRTRYMD": {"crtrYmd": "20260827", "cmercPrc": "100.50"}, '
+        '"INFO": {"mnrkndKornNm": "철", "prcCrtr": "Australian 62%min CNF China", "isISE": "Y", "weigUnitCd": "mt", "prcUnitCdNm": "USD"}, '
+        '"WEEK": {"flctnPrc": "1.40", "crtrYmd": "20260824", "flctnPrcnt": "1.41"}, '
+        '"DAY": {"flctnPrc": "0.00", "crtrYmd": "20260827", "flctnPrcnt": "0.00", "cmercPrc": 100.5}}, '
+        '"INFO": {"mnrkndKornNm": "철", "prcCrtr": "Australian 62%min CNF China", "isISE": "Y", "weigUnitCd": "mt", "prcUnitCdNm": "USD"}}, '
+        '"data": {"compareMnrl": [], "defaultMnrl": [{"lowstPrc": "100.00", "invt": "0.00", "flctnPrc": "0.00", '
+        '"invtPrcnt": "0.00", "invtPrc": "0.00", "hghstPrc": "101.00", "crtrYmd": "20260827", '
+        '"flctnPrcnt": "0.00", "cmercPrc": "100.50"}]}}',
+    ),
+    "price_other": KomisRawPage(
+        # 실측: Phase2 collected_iron_other_day_raw_260829.json(금|London Gold
+        # Market Fixing Ltd- LBMA PM Fixing Price/USD).
+        "가격 조회 결과(getMnrlPrcByMnrkndUnqCd)",
+        convert_price_snapshot,
+        '{"dataAvg": {"stdMap": {"MONTH": {"flctnPrc": "495.03", "crtrYmd": "202608", "flctnPrcnt": "12.15"}, '
+        '"YEAR": {"flctnPrc": "1137.41", "crtrYmd": "2026", "flctnPrcnt": "33.15"}, '
+        '"CRTRYMD": {"crtrYmd": "20260827", "cmercPrc": "4568.95"}, '
+        '"INFO": {"mnrkndKornNm": "금", "prcCrtr": "London Gold Market Fixing Ltd- LBMA PM Fixing Price/USD", "isISE": "N", "weigUnitCd": "troz", "prcUnitCdNm": "USD"}, '
+        '"WEEK": {"flctnPrc": "101.94", "crtrYmd": "20260824", "flctnPrcnt": "2.28"}, '
+        '"DAY": {"flctnPrc": "-62.55", "crtrYmd": "20260827", "flctnPrcnt": "-1.35", "cmercPrc": 4568.95}}, '
+        '"INFO": {"mnrkndKornNm": "금", "prcCrtr": "London Gold Market Fixing Ltd- LBMA PM Fixing Price/USD", "isISE": "N", "weigUnitCd": "troz", "prcUnitCdNm": "USD"}}, '
+        '"data": {"compareMnrl": [], "defaultMnrl": [{"lowstPrc": "0.00", "invt": "0.00", "flctnPrc": "-62.55", '
+        '"invtPrcnt": "0.00", "invtPrc": "0.00", "hghstPrc": "0.00", "crtrYmd": "20260827", '
+        '"flctnPrcnt": "-1.35", "cmercPrc": "4568.95"}]}}',
     ),
     "map_korea": KomisRawPage(
         "국가별 목록 조회 결과(getListKoreaData)",
