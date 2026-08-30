@@ -313,7 +313,17 @@ def _parse_komis_price_response(
       `mineral_name`이 있으면 그쪽이 항상 우선 — 호출부에서 처리).
 
     `mineral`(코드)은 KOMIS 응답 본문에 없는 조회 파라미터라 이 함수가
-    채우지 않는다 — 호출자가 그대로 명시해야 한다."""
+    채우지 않는다 — 호출자가 그대로 명시해야 한다.
+
+    2026-08-30 실사용 재현으로 발견·수정한 버그: `latest_price`를
+    `observations[-1]`(defaultMnrl의 배열상 마지막 행)로 뽑았었는데, 실제
+    KOMIS 응답은 `defaultMnrl`을 최신일이 먼저 오는 내림차순으로 준다 —
+    `[-1]`은 오히려 조회기간 중 가장 오래된 행이라 전주/전월/전년 평균이
+    엉뚱한 값으로 역산됐다(예: 니켈 8/27 기준 16,660에서 -64 등락액으로
+    16,724가 나와야 하는데, 60일 조회에서 [-1]이 6/1 데이터라 19,050
+    기준으로 19,114가 나온 사례 실측). 배열 순서에 의존하지 않는
+    `dataAvg.stdMap.CRTRYMD.cmercPrc`(당일 실거래가, 순서 무관 고정
+    필드)를 우선 쓰고, 없으면 관측치를 날짜로 정렬해 최신값을 쓴다."""
 
     data = raw.get("data") or {}
     observations = _komis_rows_to_observations(data.get("defaultMnrl") or [])
@@ -321,7 +331,11 @@ def _parse_komis_price_response(
     mineral_name = ((raw.get("dataAvg") or {}).get("INFO") or {}).get("mnrkndKornNm") or None
 
     std_map = ((raw.get("dataAvg") or {}).get("stdMap")) or {}
-    latest_price = observations[-1]["commerce_price"] if observations else None
+    latest_price = _komis_num((std_map.get("CRTRYMD") or {}).get("cmercPrc"))
+    if latest_price is None:
+        latest_price = _komis_num((std_map.get("DAY") or {}).get("cmercPrc"))
+    if latest_price is None and observations:
+        latest_price = max(observations, key=lambda item: item["date"])["commerce_price"]
     komis_period_comparisons: dict = {}
     for key, field in (("week", "WEEK"), ("month", "MONTH"), ("year", "YEAR")):
         entry = std_map.get(field)
