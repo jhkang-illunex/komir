@@ -170,6 +170,19 @@ class AnalysisSummaryRequest(StrictModel):
     # 합산이 진짜 총액보다 작을 수 있는데, 있으면 계산기가 이 값을 우선
     # 쓴다(하위호환: 없으면 기존대로 관측치 합산).
     komis_trade_totals: dict | None = None
+    # 2026-08-30 신설 — 발주처(KOMIS) 납품 최적화. 호출자가 KOMIS
+    # `getMnrlPrcByMnrkndUnqCd` 응답을 손으로 `observations`/
+    # `komis_period_comparisons`/`compare_observations` shape으로 매번
+    # 옮겨 담아야 했던 부담(그 과정에서 실제로 두 차례 실수 발생 — 0.00
+    # 결측값을 그대로 실어보내 최고/최저가가 깨진 사례, 비교광종 페이지
+    # 제한을 잘못 안 사례)을 없앤다. price_* 4종 전용. 있으면
+    # `data.defaultMnrl`→observations, `data.compareMnrl`→
+    # compare_observations, `dataAvg.stdMap`→komis_period_comparisons를
+    # report_gen이 직접 변환해 쓴다(§`summary.py::_parse_komis_price_response`)
+    # — 값이 있으면 위 필드들 대신 이걸 우선 쓴다. mineral(코드)·
+    # compare_mineral(코드)은 KOMIS 응답 본문에 없어(조회 파라미터일 뿐)
+    # 여전히 호출자가 명시해야 한다.
+    komis_response: dict | None = None
 
     @field_validator("request_id")
     @classmethod
@@ -231,6 +244,10 @@ class AnalysisSummaryRequest(StrictModel):
             raise ValueError("komis_period_comparisons is only accepted for price_* pages")
         if self.komis_trade_totals is not None and self.page_id not in ("map_korea", "map_global"):
             raise ValueError("komis_trade_totals is only accepted for page_id=map_korea/map_global")
+        if self.komis_response is not None and self.page_id not in (
+            "price_base_metals", "price_minor_metals", "price_iron_energy", "price_other",
+        ):
+            raise ValueError("komis_response is only accepted for price_* pages")
 
         if self.page_id in PAGE_PROFILES:
             if self.mineral is None:
