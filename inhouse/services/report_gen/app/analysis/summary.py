@@ -296,12 +296,12 @@ def _komis_rows_to_observations(rows: list[dict]) -> list[dict]:
 
 def _parse_komis_price_response(
     raw: dict,
-) -> tuple[list[dict], list[dict] | None, dict | None, str | None, str | None]:
-    """`request.komis_response`(2026-08-30 신설)를 report_gen 내부 shape 5종
+) -> tuple[list[dict], list[dict] | None, dict | None, str | None, str | None, str | None]:
+    """`request.komis_response`(2026-08-30 신설)를 report_gen 내부 shape 6종
     (observations, compare_observations, komis_period_comparisons, mineral_name,
-    price_criterion)으로 변환한다 — KOMIS `getMnrlPrcByMnrkndUnqCd` 원본
-    응답을 그대로 받아 호출자가 필드명을 손으로 옮겨 담을 필요를 없앤다
-    (발주처 납품 최적화 요청, 2026-08-30).
+    price_criterion, compare_mineral_name)으로 변환한다 — KOMIS
+    `getMnrlPrcByMnrkndUnqCd` 원본 응답을 그대로 받아 호출자가 필드명을
+    손으로 옮겨 담을 필요를 없앤다(발주처 납품 최적화 요청, 2026-08-30).
 
     - `data.defaultMnrl[]` → observations(기본 계열)
     - `data.compareMnrl[]` → compare_observations(비교광종 계열, 있을 때만)
@@ -316,9 +316,16 @@ def _parse_komis_price_response(
       은 이미 있는데 komis_response 경로가 안 채워서 보고서 상단
       "**가격기준**: ..." 줄이 항상 비어 있었다. mineral_name과 같은 규칙 —
       호출자가 명시한 `price_criterion`이 있으면 그쪽이 우선).
+    - `dataAvg.cmpMap.INFO.mnrkndKornNm` → compare_mineral_name(2026-08-30
+      2차 발견 — 사용자가 "compare_mineral_name도 komis_response 안에
+      있지 않냐"고 지적해 Playwright 라이브 재현(네오디뮴 대비 갈륨
+      조회)으로 확인. `cmpMap`은 `stdMap`(기본 광종)과 완전히 같은
+      모양으로 비교 광종 몫이 따로 온다 — `mineral_name`과 같은 자리에
+      있는데도 그동안 안 읽고 있었다).
 
-    `mineral`(코드)은 KOMIS 응답 본문에 없는 조회 파라미터라 이 함수가
-    채우지 않는다 — 호출자가 그대로 명시해야 한다.
+    `mineral`/`compare_mineral`(코드)은 KOMIS 응답 본문 어디에도 없는
+    조회 파라미터라(`cmpMap.INFO`도 이름만 있고 코드가 없음, 실측
+    확인) 이 함수가 채우지 않는다 — 호출자가 그대로 명시해야 한다.
 
     2026-08-30 실사용 재현으로 발견·수정한 버그: `latest_price`를
     `observations[-1]`(defaultMnrl의 배열상 마지막 행)로 뽑았었는데, 실제
@@ -333,9 +340,12 @@ def _parse_komis_price_response(
     data = raw.get("data") or {}
     observations = _komis_rows_to_observations(data.get("defaultMnrl") or [])
     compare_observations = _komis_rows_to_observations(data.get("compareMnrl") or []) or None
-    komis_info = (raw.get("dataAvg") or {}).get("INFO") or {}
+    dataAvg = raw.get("dataAvg") or {}
+    komis_info = dataAvg.get("INFO") or {}
     mineral_name = komis_info.get("mnrkndKornNm") or None
     price_criterion = komis_info.get("prcCrtr") or None
+    compare_info = (dataAvg.get("cmpMap") or {}).get("INFO") or {}
+    compare_mineral_name = compare_info.get("mnrkndKornNm") or None
 
     std_map = ((raw.get("dataAvg") or {}).get("stdMap")) or {}
     latest_price = _komis_num((std_map.get("CRTRYMD") or {}).get("cmercPrc"))
@@ -354,7 +364,14 @@ def _parse_komis_price_response(
             continue
         komis_period_comparisons[key] = {"average_price": latest_price - delta, "change_pct": pct}
 
-    return observations, compare_observations, (komis_period_comparisons or None), mineral_name, price_criterion
+    return (
+        observations,
+        compare_observations,
+        (komis_period_comparisons or None),
+        mineral_name,
+        price_criterion,
+        compare_mineral_name,
+    )
 
 
 def _komis_ci_get(row: dict, *names: str):
@@ -1808,6 +1825,7 @@ class AnalysisSummaryService:
         raw_komis_period_comparisons = None
         komis_mineral_name = None
         komis_price_criterion = None
+        komis_compare_mineral_name = None
         if request.komis_response is not None:
             (
                 parsed_observations,
@@ -1815,6 +1833,7 @@ class AnalysisSummaryService:
                 parsed_period_comparisons,
                 komis_mineral_name,
                 komis_price_criterion,
+                komis_compare_mineral_name,
             ) = _parse_komis_price_response(request.komis_response)
             raw_observations = parsed_observations
             if parsed_compare is not None:
@@ -1871,7 +1890,7 @@ class AnalysisSummaryService:
                 page_id=request.page_id,
                 mineral=MineralRef(
                     code=request.compare_mineral,
-                    name=request.compare_mineral_name or request.compare_mineral,
+                    name=request.compare_mineral_name or komis_compare_mineral_name or request.compare_mineral,
                 ),
                 price_criterion_serial=0,
                 available_start_date=compare_dates[0],
