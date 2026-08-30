@@ -364,7 +364,18 @@ class AnalysisSummaryRequest(StrictModel):
             # "price_other"·"map_korea"·"map_global" — komir 자체 추가 6종
             # (§ SummaryPageId 주석 참고), 전부 광종 필수 + 일자(day) 필터만
             # 받는 동일한 모양이다.
-            if self.mineral is None:
+            #
+            # 2026-08-31 예외 — map_korea/map_global은 komis_response
+            # (`getListKoreaData`/`getListDataNation` 원본)가 조회 파라미터
+            # `srchMnrkndUnqCd`를 그대로 되돌려줘서 mineral을 거기서 자동
+            # 채울 수 있다(`summary.py::_trade_series_from_request`).
+            # price_* 4종은 KOMIS 응답 본문에 광종 코드가 없어(한글명만
+            # 있음) 이 예외를 안 받는다 — mineral 없이 komis_response만
+            # 오면 여전히 거부한다.
+            mineral_derivable_from_response = (
+                self.page_id in ("map_korea", "map_global") and self.komis_response is not None
+            )
+            if self.mineral is None and not mineral_derivable_from_response:
                 raise ValueError("mineral is required for price/trade map summaries")
             if any(
                 value is not None
