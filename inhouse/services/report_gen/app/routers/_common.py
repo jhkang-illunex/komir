@@ -2,11 +2,12 @@
 """분석요약 라우터 공용 실행부.
 
 `routers/analysis.py`(`/api/v1/analysis/*`, page_id 기반, 발주처 프론트 계약이라
-경로 고정)와 `routers/report_data.py`(`/api/v1/prices`·`/indicators`·`/maps`,
-2026-08-26 신규 — REST 명명규칙으로 재배치한 price/idx/map 3계열)가 같은
-`AnalysisSummaryService.analyze()` 호출·응답 조립을 쓴다. 원래 `analysis.py`
-안에 `_run_summary`로 있던 것을 여기로 옮겼다 — 두 라우터가 각자 복제하면
-응답 계약이 어긋날 수 있어서다.
+경로 고정)가 이 `AnalysisSummaryService.analyze()` 호출·응답 조립을 쓴다.
+원래 `analysis.py` 안에 `_run_summary`로 있던 것을 여기로 옮겼다 — 2026-08-26
+신설 당시엔 `routers/report_data.py`(`/api/v1/prices`·`/indicators`·`/maps`,
+REST 명명규칙 별칭 3계열)도 이 공용 실행부를 같이 썼으나, 2026-08-31 그
+별칭 라우터가 실제 호출자 없이 죽은 코드였음을 확인해 제거했다(사용자
+지시). 지금은 `analysis.py` 하나만 쓴다.
 
 **2026-08-26 응답 계약 전면 교체**(사용자 지시): "보고서는 DB에 저장하지
 않고 MD 형태로 풍부한 표현력을 가진 텍스트로 바로 response에 작성",
