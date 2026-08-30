@@ -88,11 +88,6 @@ from .analysis.models import AnalysisReportResponse  # noqa: E402
 from .generator import DEFAULT_TEMPLATE, ReportGenerationError, generate_and_store, render_report  # noqa: E402
 from .routers.analysis import router as analysis_router  # noqa: E402
 from .routers.comprehensive import router as comprehensive_router  # noqa: E402
-from .routers.report_data import (  # noqa: E402
-    indicators_router,
-    maps_router,
-    prices_router,
-)
 from .routers._common import ANALYSIS_LLM_RETRIES, ANALYSIS_LLM_TIMEOUT_SECONDS  # noqa: E402
 from .scheduler import create_scheduler  # noqa: E402
 
@@ -256,12 +251,16 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="komir report_gen", lifespan=lifespan)
 app.include_router(analysis_router)
 app.include_router(comprehensive_router)
-app.include_router(prices_router)
-app.include_router(indicators_router)
-app.include_router(maps_router)
 
 #: 분석요약 API 프리픽스 — 이 아래 경로만 "HTTP 항상 200 + 바디 status" 계약이다.
-_ANALYSIS_API_PREFIXES = ("/api/v1/analysis/", "/api/v1/prices/", "/api/v1/indicators/", "/api/v1/maps/")
+# 2026-08-31 정리 — `/api/v1/prices`·`/indicators`·`/maps`(구
+# `routers/report_data.py`, `/api/v1/analysis/*`와 동일 page_id로 위임하던
+# REST 명명규칙 별칭)를 제거했다. streamlit_demo(유일한 실제 호출자,
+# `report_gen_client.py`)를 포함해 코드베이스 전체에서 이 별칭을 호출하는
+# 곳이 하나도 없음을 grep으로 확인 — "발주처 프론트를 위해" 미리 만들어둔
+# 추측성 레이어였는데 실제로 쓰인 적이 없었다(사용자 지시 "사용하지 않는
+# api는 제거"로 정리).
+_ANALYSIS_API_PREFIXES = ("/api/v1/analysis/",)
 
 
 @app.exception_handler(RequestValidationError)
