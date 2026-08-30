@@ -92,7 +92,10 @@ PAGE_SPECS: dict[str, PageSpec] = {
     "indicator_composite": PageSpec(
         # 실측: Phase4 `composite_forecast_live_capture_260829.json`
         # (getLineChartIndx, 2026-08-14~27 10영업일) 그대로.
-        "광물종합지수", "광물전망지표", "composite-index", False, ("start_date", "end_date"), "date",
+        # 2026-08-30 report-summary-agent 제보(커밋 0d0568a50) — start_date/
+        # end_date가 요청 모델에서 삭제됐다(komis_response가 이미 KOMIS 조회
+        # 범위 그대로의 시계열이라 서버 재필터가 중복) — period_fields 제거.
+        "광물종합지수", "광물전망지표", "composite-index", False, ("", ""), "",
         (),
         '[{"date": "2026-08-14", "composite_index": 3454.93, "major_metals_index": 2969.95, "minor_metals_index": 2905.63}, '
         '{"date": "2026-08-17", "composite_index": 3469.62, "major_metals_index": 2981.77, "minor_metals_index": 2906.34}, '
@@ -111,7 +114,9 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # 라이브 재캡처를 못 받아(2차 연도 미보유) 서버 최소요건(연도≥2) 충족용으로
         # 2025년 값을 그대로 복제했다 — 국가별 실측값 자체는 100% 라이브, 연도 간
         # 변화율만 0%로 나온다(지어낸 델타 없음, 정직한 한계).
-        "광물지도(매장량/생산량)", "핵심광물지도", "mineral-map", True, ("start_year", "end_year"), "year",
+        # 2026-08-30 report-summary-agent 제보(커밋 0d0568a50) — start_year/
+        # end_year가 요청 모델에서 삭제됐다(§indicator_composite 주석 참고).
+        "광물지도(매장량/생산량)", "핵심광물지도", "mineral-map", True, ("", ""), "",
         ("measure", "unit"),
         '[{"year": 2024, "country_code": "AU", "country_name": "호주", "value": 100000.0}, '
         '{"year": 2024, "country_code": "CA", "country_name": "캐나다", "value": 7000.0}, '
@@ -148,7 +153,9 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # 25년4Q~26년2Q(is_actual=true) + 예측 26년3Q~27년1Q(is_actual=false) 6개 —
         # 2개(실측1+예측1)로는 계산기가 실측을 제외해 예측치 1개만 남아 NO_DATA로
         # 회귀했던 걸 12개 페이지 재검사에서 발견해 6개로 확장(실측 확인).
-        "가격예측(중기/장기)", "광물전망지표", "price-forecast", True, ("start_period", "end_period"), "period",
+        # 2026-08-30 report-summary-agent 제보(커밋 0d0568a50) — start_period/
+        # end_period가 요청 모델에서 삭제됐다(§indicator_composite 주석 참고).
+        "가격예측(중기/장기)", "광물전망지표", "price-forecast", True, ("", ""), "",
         ("forecast_horizon", "price_unit"),
         '[{"period": "2025-Q4", "price": 14891.8, "is_actual": true}, '
         '{"period": "2026-Q1", "price": 17356.03, "is_actual": true}, '
@@ -168,7 +175,9 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # 2026-08-30 재수정(report-summary-agent 스키마 트리밍, 커밋 c76466a47):
         # price_criterion 자체가 요청 모델에서 삭제됐다(extra="forbid"라 보내면
         # 조용히 NO_DATA) — extra_fields에서도 제거.
-        "비철금속", "광물자원가격", "prices/base-metals", True, ("start_date", "end_date"), "date",
+        # 2026-08-30 3차 수정(report-summary-agent 제보, 커밋 0d0568a50):
+        # start_date/end_date도 삭제됐다(§indicator_composite 주석 참고).
+        "비철금속", "광물자원가격", "prices/base-metals", True, ("", ""), "",
         (),
         '[{"date": "2026-08-10", "commerce_price": 14152.0, "lowest_price": null, "highest_price": null, "inventory": 218300.0}, '
         '{"date": "2026-08-11", "commerce_price": 14217.0, "lowest_price": null, "highest_price": null, "inventory": 214550.0}, '
@@ -199,7 +208,9 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # 2026-08-30 재수정(report-summary-agent 스키마 트리밍, 커밋 c76466a47):
         # price_criterion·compare_price_criterion 둘 다 요청 모델에서 삭제됐다
         # (extra="forbid") — compare_mineral만 남긴다(스키마에 그대로 있음).
-        "희소금속", "광물자원가격", "prices/minor-metals", True, ("start_date", "end_date"), "date",
+        # 2026-08-30 3차 수정(report-summary-agent 제보, 커밋 0d0568a50):
+        # start_date/end_date도 삭제됐다(§indicator_composite 주석 참고).
+        "희소금속", "광물자원가격", "prices/minor-metals", True, ("", ""), "",
         ("compare_mineral",),
         '[{"date": "2026-08-10", "commerce_price": 55850.0}, {"date": "2026-08-11", "commerce_price": 55845.0}, '
         '{"date": "2026-08-12", "commerce_price": 55850.0}, {"date": "2026-08-13", "commerce_price": 55855.0}, '
@@ -214,7 +225,9 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # Australian 62%min CNF China, 최근 14영업일) — inventory 없음(§위 참고).
         # 2026-08-30 재수정(report-summary-agent 스키마 트리밍, 커밋 c76466a47):
         # price_criterion이 요청 모델에서 삭제됐다(extra="forbid") — 제거.
-        "철광석 및 에너지", "광물자원가격", "prices/iron-energy", True, ("start_date", "end_date"), "date",
+        # 2026-08-30 3차 수정(report-summary-agent 제보, 커밋 0d0568a50):
+        # start_date/end_date도 삭제됐다(§indicator_composite 주석 참고).
+        "철광석 및 에너지", "광물자원가격", "prices/iron-energy", True, ("", ""), "",
         (),
         '[{"date": "2026-08-10", "commerce_price": 97.5, "lowest_price": 97.0, "highest_price": 98.0}, '
         '{"date": "2026-08-11", "commerce_price": 97.5, "lowest_price": 97.0, "highest_price": 98.0}, '
@@ -236,7 +249,9 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # Gold Market LBMA PM Fixing, 최근 14영업일) — inventory 없음(§위 참고).
         # 2026-08-30 재수정(report-summary-agent 스키마 트리밍, 커밋 c76466a47):
         # price_criterion이 요청 모델에서 삭제됐다(extra="forbid") — 제거.
-        "기타", "광물자원가격", "prices/other", True, ("start_date", "end_date"), "date",
+        # 2026-08-30 3차 수정(report-summary-agent 제보, 커밋 0d0568a50):
+        # start_date/end_date도 삭제됐다(§indicator_composite 주석 참고).
+        "기타", "광물자원가격", "prices/other", True, ("", ""), "",
         (),
         '[{"date": "2026-08-10", "commerce_price": 4324.45}, {"date": "2026-08-11", "commerce_price": 4383.35}, '
         '{"date": "2026-08-12", "commerce_price": 4426.65}, {"date": "2026-08-13", "commerce_price": 4373.0}, '
@@ -250,7 +265,9 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # 실측: Phase3 `map_korea_live_capture_260829.json`(getListKoreaData,
         # MNRL0008=동·수입, 상위 14개국 — 원본은 30개국까지 있음). 총액(고급
         # expander 기본값)도 같은 캡처의 sumIncmAmt/sumIncmWeig 그대로.
-        "국내 수급지도(수출입)", "핵심광물지도", "domestic-trade", True, ("start_date", "end_date"), "date",
+        # 2026-08-30 report-summary-agent 제보(커밋 0d0568a50) — start_date/
+        # end_date가 요청 모델에서 삭제됐다(§indicator_composite 주석 참고).
+        "국내 수급지도(수출입)", "핵심광물지도", "domestic-trade", True, ("", ""), "",
         ("trade_direction",),
         '[{"date": "2025-08-01", "country_code": "CL", "country_name": "칠레", "import_weight": 458239149, "import_amount": 2546230722}, '
         '{"date": "2025-08-01", "country_code": "US", "country_name": "미국", "import_weight": 138542249, "import_amount": 1200849392}, '
@@ -274,7 +291,9 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # 기본값(komis_trade_totals)도 같은 캡처의 sumAmt/sumWeig 그대로 —
         # 관측치 14건 합산(≈72억)보다 진짜 총액(≈264억)이 훨씬 커서 이 필드가
         # "30행 절단으로 인한 과소총액" 문제를 실측으로 보여준다.
-        "글로벌 수급지도(원산지→도착지)", "핵심광물지도", "global-trade", True, ("start_date", "end_date"), "date",
+        # 2026-08-30 report-summary-agent 제보(커밋 0d0568a50) — start_date/
+        # end_date가 요청 모델에서 삭제됐다(§indicator_composite 주석 참고).
+        "글로벌 수급지도(원산지→도착지)", "핵심광물지도", "global-trade", True, ("", ""), "",
         (),
         '[{"date": "2025-08-01", "country_code": "JP", "country_name": "일본", "import_weight": 339553072, "import_amount": 912677544.84, "origin_country_code": "CL", "origin_country_name": "칠레"}, '
         '{"date": "2025-08-01", "country_code": "US", "country_name": "미국", "import_weight": 70155941, "import_amount": 855452708, "origin_country_code": "CL", "origin_country_name": "칠레"}, '
