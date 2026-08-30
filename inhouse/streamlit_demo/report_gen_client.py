@@ -165,8 +165,11 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # 제공하는 선택 UI만 노출한다 — price_unit·price_criterion_serial은
         # 실제 KOMIS 조회 파라미터(mnrkndUnqRadioCd/srchPrcCrtr/srchAvgOpt 등,
         # Phase1 evidence params 확인)에 없는 report_gen 전용 옵션 필드라 제거.
+        # 2026-08-30 재수정(report-summary-agent 스키마 트리밍, 커밋 c76466a47):
+        # price_criterion 자체가 요청 모델에서 삭제됐다(extra="forbid"라 보내면
+        # 조용히 NO_DATA) — extra_fields에서도 제거.
         "비철금속", "광물자원가격", "prices/base-metals", True, ("start_date", "end_date"), "date",
-        ("price_criterion",),
+        (),
         '[{"date": "2026-08-10", "commerce_price": 14152.0, "lowest_price": null, "highest_price": null, "inventory": 218300.0}, '
         '{"date": "2026-08-11", "commerce_price": 14217.0, "lowest_price": null, "highest_price": null, "inventory": 214550.0}, '
         '{"date": "2026-08-12", "commerce_price": 14201.0, "lowest_price": null, "highest_price": null, "inventory": 212125.0}, '
@@ -193,8 +196,11 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # 2026-08-30: price_unit·price_criterion_serial 제거(§price_base_metals
         # 주석 참고) — compare_mineral/compare_price_criterion(비교광종)은 실제
         # KOMIS 파라미터(srchCompareMnrkndUnqCd/srchComparePrcCrtr)라 유지.
+        # 2026-08-30 재수정(report-summary-agent 스키마 트리밍, 커밋 c76466a47):
+        # price_criterion·compare_price_criterion 둘 다 요청 모델에서 삭제됐다
+        # (extra="forbid") — compare_mineral만 남긴다(스키마에 그대로 있음).
         "희소금속", "광물자원가격", "prices/minor-metals", True, ("start_date", "end_date"), "date",
-        ("price_criterion", "compare_mineral", "compare_price_criterion"),
+        ("compare_mineral",),
         '[{"date": "2026-08-10", "commerce_price": 55850.0}, {"date": "2026-08-11", "commerce_price": 55845.0}, '
         '{"date": "2026-08-12", "commerce_price": 55850.0}, {"date": "2026-08-13", "commerce_price": 55855.0}, '
         '{"date": "2026-08-14", "commerce_price": 55860.0}, {"date": "2026-08-17", "commerce_price": 55845.0}, '
@@ -206,8 +212,10 @@ PAGE_SPECS: dict[str, PageSpec] = {
     "price_iron_energy": PageSpec(
         # 실측: Phase2 `collected_iron_other_day_raw_260829.json`(철,
         # Australian 62%min CNF China, 최근 14영업일) — inventory 없음(§위 참고).
+        # 2026-08-30 재수정(report-summary-agent 스키마 트리밍, 커밋 c76466a47):
+        # price_criterion이 요청 모델에서 삭제됐다(extra="forbid") — 제거.
         "철광석 및 에너지", "광물자원가격", "prices/iron-energy", True, ("start_date", "end_date"), "date",
-        ("price_criterion",),
+        (),
         '[{"date": "2026-08-10", "commerce_price": 97.5, "lowest_price": 97.0, "highest_price": 98.0}, '
         '{"date": "2026-08-11", "commerce_price": 97.5, "lowest_price": 97.0, "highest_price": 98.0}, '
         '{"date": "2026-08-12", "commerce_price": 98.5, "lowest_price": 98.0, "highest_price": 99.0}, '
@@ -226,8 +234,10 @@ PAGE_SPECS: dict[str, PageSpec] = {
     "price_other": PageSpec(
         # 실측: Phase2 `collected_iron_other_day_raw_260829.json`(금, London
         # Gold Market LBMA PM Fixing, 최근 14영업일) — inventory 없음(§위 참고).
+        # 2026-08-30 재수정(report-summary-agent 스키마 트리밍, 커밋 c76466a47):
+        # price_criterion이 요청 모델에서 삭제됐다(extra="forbid") — 제거.
         "기타", "광물자원가격", "prices/other", True, ("start_date", "end_date"), "date",
-        ("price_criterion",),
+        (),
         '[{"date": "2026-08-10", "commerce_price": 4324.45}, {"date": "2026-08-11", "commerce_price": 4383.35}, '
         '{"date": "2026-08-12", "commerce_price": 4426.65}, {"date": "2026-08-13", "commerce_price": 4373.0}, '
         '{"date": "2026-08-14", "commerce_price": 4390.7}, {"date": "2026-08-17", "commerce_price": 4405.8}, '
@@ -309,7 +319,6 @@ EXTRA_FIELD_LABELS: dict[str, str] = {
     "trade_direction": "수출입방향(trade_direction)",
     "price_group": "가격 그룹(price_group)",
     "compare_mineral": "비교광종(compare_mineral)",
-    "compare_price_criterion": "비교 가격기준(compare_price_criterion)",
 }
 
 EXTRA_FIELD_DEFAULTS: dict[str, str] = {
