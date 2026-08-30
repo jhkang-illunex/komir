@@ -38,7 +38,6 @@ import streamlit as st
 from streamlit_demo.mineral_master import mineral_label, mineral_options
 from streamlit_demo.komis_raw import KOMIS_RAW_PAGES, KomisRawConversionError
 from streamlit_demo.report_gen_client import (
-    ADVANCED_JSON_FIELDS,
     EXTRA_FIELD_DEFAULTS,
     EXTRA_FIELD_LABELS,
     EXTRA_FIELD_VALUE_LABELS,
@@ -47,7 +46,6 @@ from streamlit_demo.report_gen_client import (
     SECTION_ORDER,
     ReportGenError,
     client_from_env,
-    parse_advanced_json_fields,
     prioritize_core_minerals,
     render_json_error,
     render_report_markdown,
@@ -179,10 +177,14 @@ if spec.extra_fields:
 # (오전 "실시간 가져오기" 시도는 이 세션에서 komis.or.kr 자체가 네트워크
 # 레벨로 막혀 있어 취소됨). 대신 사람이 외부에서 KOMIS를 조회해 얻은 원본
 # JSON을 붙여넣으면 이 화면이 report_gen 스키마로 변환한다(report_gen
-# 원칙 "prompt 제외 DB/외부호출 없음"과 일치). 원본 구조를 아는 6개 페이지
-# (KOMIS_RAW_PAGES)만 이 방식이고, 나머지는 기존 observations 수동 입력을
+# 원칙 "prompt 제외 DB/외부호출 없음"과 일치). 원본 구조를 아는 9개 페이지
+# (KOMIS_RAW_PAGES)만 이 방식이고, 나머지(price_group·indicator_market/
+# supply — 원본 캡처 없음/로그인 필요 페이지)는 기존 observations 수동 입력을
 # 그대로 쓴다.
-advanced_texts: dict[str, str] = {}
+# 2026-08-30 추가 지시(사용자): 화면은 (1) komis.or.kr 해당 페이지가 실제로
+# 제공하는 선택 UI, (2) KOMIS 원본 JSON 입력란, (3) 분석요약 결과 — 이 세
+# 요소만 남긴다. geo_events 별도 expander·"고급: KOMIS 원본값 직접 입력"
+# expander·"요청 바디 미리보기" 등 부가 UI는 전부 제거.
 observations_text = ""
 komis_raw_text = ""
 if page_id in KOMIS_RAW_PAGES:
@@ -204,18 +206,6 @@ else:
             payload.get("price_group", "base_metals"), spec.observations_example
         )
     observations_text = st.text_area("observations", value=_observations_default, height=140)
-
-    # 2026-08-29 main-agent 요청 — komis_period_comparisons: 값을 지어내지
-    # 않고 사용자가 입력한 값을 그대로 report_gen에 전달하는 통로만 만든다
-    # (선택 입력, 비우면 안 보냄).
-    _advanced_fields = ADVANCED_JSON_FIELDS.get(page_id, ())
-    if _advanced_fields:
-        with st.expander("고급: KOMIS 원본값 직접 입력(선택)", expanded=True):
-            for adv in _advanced_fields:
-                advanced_texts[adv.field] = st.text_area(
-                    adv.label, value=adv.placeholder, height=100,
-                    key=f"adv_{page_id}_{adv.field}",
-                )
 
 if st.button("분석요약 생성", type="primary"):
     if page_id in KOMIS_RAW_PAGES:
@@ -252,17 +242,12 @@ if st.button("분석요약 생성", type="primary"):
             st.session_state["report_demo_result"] = None
             render_json_error(exc, field_label="observations")
         else:
-            advanced_values, advanced_ok = parse_advanced_json_fields(page_id, advanced_texts)
-            if not advanced_ok:
+            try:
+                with st.spinner("report_gen 호출 중…"):
+                    st.session_state["report_demo_result"] = client.summarize(page_id, payload)
+            except ReportGenError as exc:
                 st.session_state["report_demo_result"] = None
-            else:
-                payload.update(advanced_values)
-                try:
-                    with st.spinner("report_gen 호출 중…"):
-                        st.session_state["report_demo_result"] = client.summarize(page_id, payload)
-                except ReportGenError as exc:
-                    st.session_state["report_demo_result"] = None
-                    st.error(str(exc))
+                st.error(str(exc))
 
 result = st.session_state.get("report_demo_result")
 if result:
@@ -274,10 +259,3 @@ if result:
         st.warning(f"status: {status}")
         if result.get("report"):
             render_report_markdown(result["report"])
-
-with st.expander("요청 바디 미리보기"):
-    preview = dict(payload)
-    preview["observations"] = (
-        "(KOMIS 원본 JSON 변환 결과 — 버튼 클릭 후 반영)" if page_id in KOMIS_RAW_PAGES else "(위 텍스트 영역 값)"
-    )
-    st.json(preview)

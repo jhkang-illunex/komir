@@ -53,7 +53,6 @@ import streamlit as st
 from streamlit_demo.mineral_master import mineral_label, mineral_options
 from streamlit_demo.komis_raw import KOMIS_RAW_PAGES, KomisRawConversionError
 from streamlit_demo.report_gen_client import (
-    ADVANCED_JSON_FIELDS,
     EXTRA_FIELD_DEFAULTS,
     EXTRA_FIELD_LABELS,
     EXTRA_FIELD_VALUE_LABELS,
@@ -62,7 +61,6 @@ from streamlit_demo.report_gen_client import (
     SECTION_ORDER,
     ReportGenError,
     client_from_env,
-    parse_advanced_json_fields,
     prioritize_core_minerals,
     render_json_error,
     render_report_markdown,
@@ -355,7 +353,6 @@ if spec.extra_fields:
 # 2026-08-30 재지시(사용자): streamlit이 komis.or.kr을 직접 호출하지 않는다 —
 # 사람이 외부에서 KOMIS를 조회해 얻은 원본 JSON을 붙여넣으면 이 화면이
 # report_gen 스키마로 변환한다(report_demo.py와 동일 방식).
-advanced_texts: dict[str, str] = {}
 observations_text = ""
 komis_raw_text = ""
 if test_page_id in KOMIS_RAW_PAGES:
@@ -379,17 +376,6 @@ else:
         "observations(JSON) — 방금 저장한 content/제약 조건이 이 데이터를 어떻게 요약하는지 확인합니다",
         value=_observations_default, height=140, key=f"pa_obs_{test_page_id}{_obs_key_suffix}",
     )
-
-    # 2026-08-29 main-agent 요청 — komis_period_comparisons: 값을 지어내지
-    # 않고 사용자가 입력한 값을 그대로 report_gen에 전달하는 통로만 만든다.
-    _advanced_fields = ADVANCED_JSON_FIELDS.get(test_page_id, ())
-    if _advanced_fields:
-        with st.expander("고급: KOMIS 원본값 직접 입력(선택)", expanded=True):
-            for adv in _advanced_fields:
-                advanced_texts[adv.field] = st.text_area(
-                    adv.label, value=adv.placeholder, height=100,
-                    key=f"pa_adv_{test_page_id}_{adv.field}",
-                )
 
 if st.button("이 프롬프트로 분석요약 호출", key=f"pa_test_btn_{test_page_id}"):
     if test_page_id in KOMIS_RAW_PAGES:
@@ -426,19 +412,16 @@ if st.button("이 프롬프트로 분석요약 호출", key=f"pa_test_btn_{test_
         except json.JSONDecodeError as exc:
             render_json_error(exc, field_label="observations")
         else:
-            advanced_values, advanced_ok = parse_advanced_json_fields(test_page_id, advanced_texts)
-            if advanced_ok:
-                test_payload.update(advanced_values)
-                try:
-                    with st.spinner("report_gen 호출 중…"):
-                        result = client.summarize(test_page_id, test_payload)
-                except ReportGenError as exc:
-                    st.error(str(exc))
+            try:
+                with st.spinner("report_gen 호출 중…"):
+                    result = client.summarize(test_page_id, test_payload)
+            except ReportGenError as exc:
+                st.error(str(exc))
+            else:
+                status = result.get("status")
+                if status == "ok":
+                    st.success("status: ok")
+                    render_report_markdown(result.get("report"))
                 else:
-                    status = result.get("status")
-                    if status == "ok":
-                        st.success("status: ok")
-                        render_report_markdown(result.get("report"))
-                    else:
-                        st.warning(f"status: {status} — 원문 응답(디버깅용)")
-                        st.json(result)
+                    st.warning(f"status: {status} — 원문 응답(디버깅용)")
+                    st.json(result)

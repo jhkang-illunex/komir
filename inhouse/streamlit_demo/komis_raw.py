@@ -5,17 +5,31 @@ report_gen 원칙("prompt 제외 DB/외부호출 없음, 외부에서 입력된 
 "실시간 가져오기" 시도는 이 세션에서 komis.or.kr 자체가 네트워크 레벨로 막혀
 있어 취소됨). 대신 **사람이 외부에서(브라우저 개발자도구·curl 등) KOMIS를
 직접 조회해 얻은 원본 JSON을 화면에 그대로 붙여넣으면**, 이 모듈이 그걸
-report_gen이 원하는 `observations`(+`komis_period_comparisons`/
-`komis_trade_totals`) 형태로 변환한다.
+report_gen이 원하는 형태로 넘긴다 — price_* 4종은 report_gen이 직접 파싱하는
+`komis_response` 필드로 원본을 그대로 전달하고(passthrough), 나머지(map_*·
+indicator_composite·forecast_price)는 아직 report_gen이 원본을 못 받아
+`observations`(+`komis_trade_totals`)로 이 모듈이 손 변환한다.
 
 원본 캡처 구조는 전부 `documents/산출물/2026-W35_0824-0830/
 report_gen_KOMIS라이브재검증_Phase{1,2,3,4}_260829_evidence/`의 실측 JSON을
 근거로 했다(값을 지어내지 않는다는 원칙) — 각 함수 docstring에 출처 명시.
 
-⚠ price_minor_metals/iron_energy/other·price_group·indicator_market/supply는
-원본 캡처가 없거나(후자 2개는 로그인 필요 페이지) 엔드포인트가 확정되지
-않아 이 변환기 목록에 없다 — 그 페이지들은 기존 방식(observations 수동 JSON
-입력)을 그대로 쓴다."""
+2026-08-30 추가: price_minor_metals/iron_energy/other도 base_metals와 같은
+엔드포인트(getMnrlPrcByMnrkndUnqCd, 광종코드만 다름)라는 가설을 Phase2 evidence
+(코발트·철·금 raw 캡처)로 확인해 `convert_price_snapshot`을 그대로 재사용한다.
+
+2026-08-30 재변경(report_gen 구조변경 반영): report_gen이 price_* 4종 전용
+`komis_response: dict` 필드를 신설해 KOMIS 원본 응답을 그대로 받아 내부에서
+직접 파싱하도록 바뀌었다(`observations`/`komis_period_comparisons` 손 매핑
+과정에서 실제 버그가 두 번 났던 바로 그 계층 — 문서
+`documents/산출물/2026-W35_0824-0830/report_gen_komis_response_직접수용_260830.md`
+참고). 이에 맞춰 `convert_price_snapshot`(손 매핑)을 제거하고 원본을 그대로
+전달하는 `passthrough_price_response`로 교체했다 — 4종 모두 이제 report_gen이
+직접 파싱한다.
+
+⚠ price_group·indicator_market/supply는 원본 캡처가 없거나(후자 2개는 로그인
+필요 페이지) 엔드포인트가 확정되지 않아 이 변환기 목록에 없다 — 그 페이지들은
+기존 방식(observations 수동 JSON 입력)을 그대로 쓴다."""
 from __future__ import annotations
 
 import re
@@ -33,75 +47,21 @@ def _ymd_to_iso(raw: str | None, *, fallback: str = "2025-01-01") -> str:
     return fallback
 
 
-def _num_or_none(value: Any) -> float | None:
-    try:
-        f = float(value)
-    except (TypeError, ValueError):
-        return None
-    return f if f != 0 else None
+def passthrough_price_response(raw: dict, ctx: dict) -> dict:
+    """price_base_metals/price_minor_metals/price_iron_energy/price_other —
+    2026-08-30 report_gen이 이 4종 전용 `komis_response: dict` 필드를 신설해
+    KOMIS 원본 응답(`{"dataAvg":..., "data":...}`)을 그대로 받아 내부에서
+    직접 파싱하도록 바뀌었다(`observations`/`komis_period_comparisons` 손
+    매핑 과정에서 실제 버그가 두 번 났던 바로 그 계층을 없앤 것 —
+    `report_gen_komis_response_직접수용_260830.md` 참고). 클라이언트는 더 이상
+    날짜 변환·0.00 결측 정규화·기간평균 역산을 하지 않고 원본을 그대로
+    전달한다."""
 
-
-def convert_price_snapshot(raw: dict, ctx: dict) -> dict:
-    """price_base_metals — 실측: Phase1 `recollected_base_metals_day_raw_260828
-    .json`(동|LME CASH). `dataAvg.stdMap.CRTRYMD`가 최신 관측치, `.WEEK/MONTH/
-    YEAR`가 komis_period_comparisons, `data.defaultMnrl[0]`(있으면)이 최저/
-    최고/재고 보강.
-
-    ⚠ `average_price`는 KOMIS의 진짜 "직전완결 기간평균"이 아니라
-    `commerce_price - flctnPrc`(기준시점 대비 변동액의 역산)이다 —
-    `report_gen_price_base_metals_부실요약_원인조사_260828.md`에서 확인한 대로
-    KOMIS stdMap의 flctnPrc는 "기준일 대비 변동폭"(점대점 비교)이지 기간
-    평균이 아니라서, 근사치임을 감안해야 한다(수치 자체는 실측 응답에서 그대로
-    역산한 것이라 지어낸 값은 아니다)."""
-
-    data_avg = raw.get("dataAvg", raw)
-    std = data_avg.get("stdMap") if isinstance(data_avg, dict) else None
-    if not isinstance(std, dict):
-        raise KomisRawConversionError("dataAvg.stdMap을 찾을 수 없습니다 — 가격 조회 결과(getMnrlPrcByMnrkndUnqCd) JSON이 맞는지 확인하세요.")
-
-    crtrymd = std.get("CRTRYMD") or {}
-    date_raw = crtrymd.get("crtrYmd") or (std.get("DAY") or {}).get("crtrYmd")
-    if not date_raw:
-        raise KomisRawConversionError("stdMap.CRTRYMD.crtrYmd(기준일)를 찾을 수 없습니다.")
-    commerce_price = crtrymd.get("cmercPrc")
-    if commerce_price is None:
-        commerce_price = (std.get("DAY") or {}).get("cmercPrc")
-    if commerce_price is None:
-        raise KomisRawConversionError("stdMap.CRTRYMD.cmercPrc(실거래가)를 찾을 수 없습니다.")
-    commerce_price = float(commerce_price)
-
-    observation: dict[str, Any] = {"date": _ymd_to_iso(date_raw), "commerce_price": commerce_price}
-
-    default_rows = ((raw.get("data") or {}).get("defaultMnrl")) or []
-    if default_rows and default_rows[0].get("crtrYmd") == date_raw:
-        row0 = default_rows[0]
-        lowest = _num_or_none(row0.get("lowstPrc"))
-        highest = _num_or_none(row0.get("hghstPrc"))
-        inventory = _num_or_none(row0.get("invt"))
-        if lowest is not None:
-            observation["lowest_price"] = lowest
-        if highest is not None:
-            observation["highest_price"] = highest
-        if inventory is not None:
-            observation["inventory"] = inventory
-
-    result: dict[str, Any] = {"observations": [observation]}
-
-    period: dict[str, Any] = {}
-    for key, label in (("WEEK", "week"), ("MONTH", "month"), ("YEAR", "year")):
-        node = std.get(key)
-        if not isinstance(node, dict):
-            continue
-        try:
-            change_pct = float(node["flctnPrcnt"])
-            flct_prc = float(node["flctnPrc"])
-        except (KeyError, TypeError, ValueError):
-            continue
-        period[label] = {"average_price": round(commerce_price - flct_prc, 2), "change_pct": change_pct}
-    if period:
-        result["komis_period_comparisons"] = period
-
-    return result
+    if not isinstance(raw, dict) or "dataAvg" not in raw:
+        raise KomisRawConversionError(
+            "dataAvg를 찾을 수 없습니다 — 가격 조회 결과(getMnrlPrcByMnrkndUnqCd) JSON이 맞는지 확인하세요."
+        )
+    return {"komis_response": raw}
 
 
 def convert_map_korea(raw: dict, ctx: dict) -> dict:
@@ -296,7 +256,7 @@ class KomisRawPage:
 KOMIS_RAW_PAGES: dict[str, KomisRawPage] = {
     "price_base_metals": KomisRawPage(
         "가격 조회 결과(getMnrlPrcByMnrkndUnqCd)",
-        convert_price_snapshot,
+        passthrough_price_response,
         '{"dataAvg": {"stdMap": {"MONTH": {"flctnPrc": "964.83", "crtrYmd": "202608", "flctnPrcnt": "7.13"}, '
         '"YEAR": {"flctnPrc": "4545.06", "crtrYmd": "2026", "flctnPrcnt": "45.70"}, '
         '"CRTRYMD": {"crtrYmd": "20260827", "cmercPrc": "14490.00"}, '
@@ -307,6 +267,55 @@ KOMIS_RAW_PAGES: dict[str, KomisRawPage] = {
         '"data": {"compareMnrl": [], "defaultMnrl": [{"lowstPrc": "0.00", "invt": "235575.00", "flctnPrc": "-35.00", '
         '"invtPrcnt": "-0.80", "invtPrc": "-1900.00", "hghstPrc": "0.00", "crtrYmd": "20260827", '
         '"flctnPrcnt": "-0.24", "cmercPrc": "14490.00"}]}}',
+    ),
+    "price_minor_metals": KomisRawPage(
+        # 실측: Phase2 collected_minor_spotcheck_raw_260829.json(코발트|LME
+        # CASH) — base_metals와 동일 엔드포인트·구조(광종코드만 다름) 가설을
+        # 이 실측 캡처로 확인했다.
+        "가격 조회 결과(getMnrlPrcByMnrkndUnqCd)",
+        passthrough_price_response,
+        '{"dataAvg": {"stdMap": {"MONTH": {"flctnPrc": "-13.04", "crtrYmd": "202608", "flctnPrcnt": "-0.02"}, '
+        '"YEAR": {"flctnPrc": "21039.47", "crtrYmd": "2026", "flctnPrcnt": "60.42"}, '
+        '"CRTRYMD": {"crtrYmd": "20260827", "cmercPrc": "55860.00"}, '
+        '"INFO": {"mnrkndKornNm": "코발트", "prcCrtr": "LME CASH", "isISE": "N", "weigUnitCd": "ton", "prcUnitCdNm": "USD"}, '
+        '"WEEK": {"flctnPrc": "10.00", "crtrYmd": "20260824", "flctnPrcnt": "0.02"}, '
+        '"DAY": {"flctnPrc": "20.00", "crtrYmd": "20260827", "flctnPrcnt": "0.04", "cmercPrc": 55860}}, '
+        '"INFO": {"mnrkndKornNm": "코발트", "prcCrtr": "LME CASH", "isISE": "N", "weigUnitCd": "ton", "prcUnitCdNm": "USD"}}, '
+        '"data": {"compareMnrl": [], "defaultMnrl": [{"lowstPrc": "0.00", "invt": "0.00", "flctnPrc": "20.00", '
+        '"invtPrcnt": "0.00", "invtPrc": "0.00", "hghstPrc": "0.00", "crtrYmd": "20260827", '
+        '"flctnPrcnt": "0.04", "cmercPrc": "55860.00"}]}}',
+    ),
+    "price_iron_energy": KomisRawPage(
+        # 실측: Phase2 collected_iron_other_day_raw_260829.json(철|Australian
+        # 62%min CNF China).
+        "가격 조회 결과(getMnrlPrcByMnrkndUnqCd)",
+        passthrough_price_response,
+        '{"dataAvg": {"stdMap": {"MONTH": {"flctnPrc": "1.91", "crtrYmd": "202608", "flctnPrcnt": "1.94"}, '
+        '"YEAR": {"flctnPrc": "-1.71", "crtrYmd": "2026", "flctnPrcnt": "-1.67"}, '
+        '"CRTRYMD": {"crtrYmd": "20260827", "cmercPrc": "100.50"}, '
+        '"INFO": {"mnrkndKornNm": "철", "prcCrtr": "Australian 62%min CNF China", "isISE": "Y", "weigUnitCd": "mt", "prcUnitCdNm": "USD"}, '
+        '"WEEK": {"flctnPrc": "1.40", "crtrYmd": "20260824", "flctnPrcnt": "1.41"}, '
+        '"DAY": {"flctnPrc": "0.00", "crtrYmd": "20260827", "flctnPrcnt": "0.00", "cmercPrc": 100.5}}, '
+        '"INFO": {"mnrkndKornNm": "철", "prcCrtr": "Australian 62%min CNF China", "isISE": "Y", "weigUnitCd": "mt", "prcUnitCdNm": "USD"}}, '
+        '"data": {"compareMnrl": [], "defaultMnrl": [{"lowstPrc": "100.00", "invt": "0.00", "flctnPrc": "0.00", '
+        '"invtPrcnt": "0.00", "invtPrc": "0.00", "hghstPrc": "101.00", "crtrYmd": "20260827", '
+        '"flctnPrcnt": "0.00", "cmercPrc": "100.50"}]}}',
+    ),
+    "price_other": KomisRawPage(
+        # 실측: Phase2 collected_iron_other_day_raw_260829.json(금|London Gold
+        # Market Fixing Ltd- LBMA PM Fixing Price/USD).
+        "가격 조회 결과(getMnrlPrcByMnrkndUnqCd)",
+        passthrough_price_response,
+        '{"dataAvg": {"stdMap": {"MONTH": {"flctnPrc": "495.03", "crtrYmd": "202608", "flctnPrcnt": "12.15"}, '
+        '"YEAR": {"flctnPrc": "1137.41", "crtrYmd": "2026", "flctnPrcnt": "33.15"}, '
+        '"CRTRYMD": {"crtrYmd": "20260827", "cmercPrc": "4568.95"}, '
+        '"INFO": {"mnrkndKornNm": "금", "prcCrtr": "London Gold Market Fixing Ltd- LBMA PM Fixing Price/USD", "isISE": "N", "weigUnitCd": "troz", "prcUnitCdNm": "USD"}, '
+        '"WEEK": {"flctnPrc": "101.94", "crtrYmd": "20260824", "flctnPrcnt": "2.28"}, '
+        '"DAY": {"flctnPrc": "-62.55", "crtrYmd": "20260827", "flctnPrcnt": "-1.35", "cmercPrc": 4568.95}}, '
+        '"INFO": {"mnrkndKornNm": "금", "prcCrtr": "London Gold Market Fixing Ltd- LBMA PM Fixing Price/USD", "isISE": "N", "weigUnitCd": "troz", "prcUnitCdNm": "USD"}}, '
+        '"data": {"compareMnrl": [], "defaultMnrl": [{"lowstPrc": "0.00", "invt": "0.00", "flctnPrc": "-62.55", '
+        '"invtPrcnt": "0.00", "invtPrc": "0.00", "hghstPrc": "0.00", "crtrYmd": "20260827", '
+        '"flctnPrcnt": "-1.35", "cmercPrc": "4568.95"}]}}',
     ),
     "map_korea": KomisRawPage(
         "국가별 목록 조회 결과(getListKoreaData)",
