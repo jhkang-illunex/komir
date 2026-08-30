@@ -41,9 +41,11 @@ from ..analysis.models import AnalysisReportResponse
 from ._common import run_summary
 from .analysis import (
     CompositeIndexSummaryRequest,
+    DomesticTradeSummaryRequest,
+    GlobalTradeSummaryRequest,
     IndicatorSummaryRequest,
-    MineralDateRangeSummaryRequest,
     MineralMapSummaryRequest,
+    PriceSummaryRequest,
 )
 
 prices_router = APIRouter(prefix="/api/v1/prices", tags=["prices"])
@@ -53,7 +55,7 @@ maps_router = APIRouter(prefix="/api/v1/maps", tags=["maps"])
 
 @prices_router.post("/base-metals", response_model=AnalysisReportResponse)
 def summarize_base_metal_price(
-    payload: MineralDateRangeSummaryRequest,
+    payload: PriceSummaryRequest,
     request: Request,
 ) -> AnalysisReportResponse:
     """비철금속(LME, 니켈·동·아연·알루미늄·연·주석) 가격 분석요약
@@ -65,7 +67,7 @@ def summarize_base_metal_price(
 
 @prices_router.post("/minor-metals", response_model=AnalysisReportResponse)
 def summarize_minor_metal_price(
-    payload: MineralDateRangeSummaryRequest,
+    payload: PriceSummaryRequest,
     request: Request,
 ) -> AnalysisReportResponse:
     """희소금속(리튬·코발트·희토류 등) 가격 분석요약
@@ -107,7 +109,7 @@ def summarize_composite_indicator(
 
 @maps_router.post("/korea", response_model=AnalysisReportResponse)
 def summarize_korea_map(
-    payload: MineralDateRangeSummaryRequest,
+    payload: DomesticTradeSummaryRequest,
     request: Request,
 ) -> AnalysisReportResponse:
     """국내 수급지도 분석요약(`/api/v1/analysis/domestic-trade`와 동일 위임)."""
@@ -117,7 +119,7 @@ def summarize_korea_map(
 
 @maps_router.post("/global", response_model=AnalysisReportResponse)
 def summarize_global_map(
-    payload: MineralDateRangeSummaryRequest,
+    payload: GlobalTradeSummaryRequest,
     request: Request,
 ) -> AnalysisReportResponse:
     """글로벌 수급지도 분석요약(`/api/v1/analysis/global-trade`와 동일 위임)."""
