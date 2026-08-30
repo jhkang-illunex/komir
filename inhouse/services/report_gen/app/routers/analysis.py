@@ -79,7 +79,6 @@ build_analysis_summary_service()`·`analysis/summary.py`에서 호출부만 주�
 from __future__ import annotations
 
 from typing import Literal
-from uuid import uuid4
 
 from fastapi import APIRouter, Request
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -108,10 +107,19 @@ class ApiModel(BaseModel):
 
 
 class AnalysisEndpointRequest(ApiModel):
-    """페이지별 분석요약 요청이 공통으로 갖는 필드."""
+    """페이지별 분석요약 요청이 공통으로 갖는 필드.
 
-    request_id: str = Field(default_factory=lambda: str(uuid4()), min_length=1)
-    analysis_scope: Literal["page_only"] = "page_only"
+    2026-08-31 정리(사용자 지시 — Swagger에 여전히 필요없어 보이는
+    필드가 남아있다는 지적) — `request_id`·`analysis_scope`를 여기서
+    제거했다. 둘 다 캐스터가 채워도 아무 효과가 없었다:
+    `AnalysisReportResponse`(실제 HTTP 응답, `{status, report}` 2개
+    필드뿐)는 `request_id`를 아예 안 돌려줘서 캐스터가 자기가 보낸
+    값을 응답에서 확인할 방법이 없었고(서버 로그에만 남는데 캐스터가
+    모르는 채로), `analysis_scope`는 타입이 `Literal["page_only"]`라
+    처음부터 다른 값을 보낼 수조차 없는 상수였다. 내부
+    `AnalysisSummaryRequest`(models.py)는 그대로 둔다 — 자체 기본값
+    (`request_id` 자동 uuid4, `analysis_scope="page_only"`)이 있어서
+    라우터가 이 두 키를 안 실어 보내도 그대로 정상 동작한다."""
 
 
 class IndicatorSummaryRequest(AnalysisEndpointRequest):
