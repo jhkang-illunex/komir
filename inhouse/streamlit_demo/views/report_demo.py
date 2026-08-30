@@ -36,18 +36,17 @@ import json
 import streamlit as st
 
 from streamlit_demo.mineral_master import mineral_label, mineral_options
+from streamlit_demo.komis_raw import KOMIS_RAW_PAGES, KomisRawConversionError
 from streamlit_demo.report_gen_client import (
+    ADVANCED_JSON_FIELDS,
     EXTRA_FIELD_DEFAULTS,
     EXTRA_FIELD_LABELS,
     EXTRA_FIELD_VALUE_LABELS,
-    MAP_KOREA_OBSERVATIONS_BY_DIRECTION,
     PAGE_SPECS,
     PRICE_GROUP_OBSERVATIONS_BY_GROUP,
     SECTION_ORDER,
     ReportGenError,
     client_from_env,
-    geo_event_fields,
-    komis_advanced_fields,
     parse_advanced_json_fields,
     prioritize_core_minerals,
     render_json_error,
@@ -176,68 +175,94 @@ if spec.extra_fields:
             if value:
                 payload[field] = value
 
-st.caption("observations(JSON 배열) — 계산에 쓰는 원자료. DB를 안 읽으므로 비우면 대부분 NO_DATA로 응답합니다.")
-# 2026-08-29: map_korea는 trade_direction=수출을 골라도 예시 JSON이 수입 필드
-# 그대로 고정돼 있었다 — 방향에 맞는 예시로 동적 전환(main-agent 요청).
-# 2026-08-30: price_group(비철금속/희소금속)도 같은 문제라 동일 패턴 적용.
-_observations_default = spec.observations_example
-if page_id == "map_korea":
-    _observations_default = MAP_KOREA_OBSERVATIONS_BY_DIRECTION.get(
-        payload.get("trade_direction", "import"), spec.observations_example
-    )
-elif page_id == "price_group":
-    _observations_default = PRICE_GROUP_OBSERVATIONS_BY_GROUP.get(
-        payload.get("price_group", "base_metals"), spec.observations_example
-    )
-observations_text = st.text_area("observations", value=_observations_default, height=140)
-
-# 2026-08-29 main-agent 요청 — geo_events·komis_period_comparisons·
-# komis_trade_totals: 값을 지어내지 않고 사용자가 입력한 값을 그대로
-# report_gen에 전달하는 통로만 만든다(선택 입력, 비우면 안 보냄).
-# 2026-08-30 재지시: "버튼만 눌러도 풍부한 리포트"가 나오도록 빈 칸이 아니라
-# 실측(또는 형태만 맞춘) 기본값을 미리 채워 둔다 — 지우면 그때만 안 보내진다.
-# 2026-08-30 추가 지적: geo_events는 KOMIS 응답이 아니라 komir 자체 지정학
-# 위기지수 파이프라인 산출물이라 "고급: KOMIS 원본값" expander와 섞이면
-# 출처가 헷갈린다 — 별도 expander로 분리.
+# 2026-08-30 재지시(사용자): streamlit이 komis.or.kr을 직접 호출하지 않는다
+# (오전 "실시간 가져오기" 시도는 이 세션에서 komis.or.kr 자체가 네트워크
+# 레벨로 막혀 있어 취소됨). 대신 사람이 외부에서 KOMIS를 조회해 얻은 원본
+# JSON을 붙여넣으면 이 화면이 report_gen 스키마로 변환한다(report_gen
+# 원칙 "prompt 제외 DB/외부호출 없음"과 일치). 원본 구조를 아는 6개 페이지
+# (KOMIS_RAW_PAGES)만 이 방식이고, 나머지는 기존 observations 수동 입력을
+# 그대로 쓴다.
 advanced_texts: dict[str, str] = {}
-_komis_fields = komis_advanced_fields(page_id)
-_geo_fields = geo_event_fields(page_id)
-if _komis_fields:
-    with st.expander("고급: KOMIS 원본값 직접 입력(선택)", expanded=True):
-        for adv in _komis_fields:
-            advanced_texts[adv.field] = st.text_area(
-                adv.label, value=adv.placeholder, height=100,
-                key=f"adv_{page_id}_{adv.field}",
-            )
-if _geo_fields:
-    with st.expander("가격변동 주요요인(지정학 위기지수 — KOMIS 아닌 별도 소스, 선택)", expanded=True):
-        for adv in _geo_fields:
-            advanced_texts[adv.field] = st.text_area(
-                adv.label, value=adv.placeholder, height=100,
-                key=f"adv_{page_id}_{adv.field}",
-            )
+observations_text = ""
+komis_raw_text = ""
+if page_id in KOMIS_RAW_PAGES:
+    raw_spec = KOMIS_RAW_PAGES[page_id]
+    st.caption(
+        f"KOMIS 데이터 조회 결과(외부에서 조회한 원본 JSON을 붙여넣으세요) — "
+        f"komis.or.kr {raw_spec.label}을 그대로 붙여넣으면 이 화면이 report_gen이 원하는 형태로 변환합니다."
+    )
+    komis_raw_text = st.text_area(
+        "KOMIS 데이터 조회 결과", value=raw_spec.example_raw_json, height=160,
+        key=f"komis_raw_{page_id}",
+    )
+else:
+    st.caption("observations(JSON 배열) — 계산에 쓰는 원자료. DB를 안 읽으므로 비우면 대부분 NO_DATA로 응답합니다.")
+    # 2026-08-30: price_group(비철금속/희소금속) 선택에 따라 예시 동적 전환.
+    _observations_default = spec.observations_example
+    if page_id == "price_group":
+        _observations_default = PRICE_GROUP_OBSERVATIONS_BY_GROUP.get(
+            payload.get("price_group", "base_metals"), spec.observations_example
+        )
+    observations_text = st.text_area("observations", value=_observations_default, height=140)
+
+    # 2026-08-29 main-agent 요청 — komis_period_comparisons: 값을 지어내지
+    # 않고 사용자가 입력한 값을 그대로 report_gen에 전달하는 통로만 만든다
+    # (선택 입력, 비우면 안 보냄).
+    _advanced_fields = ADVANCED_JSON_FIELDS.get(page_id, ())
+    if _advanced_fields:
+        with st.expander("고급: KOMIS 원본값 직접 입력(선택)", expanded=True):
+            for adv in _advanced_fields:
+                advanced_texts[adv.field] = st.text_area(
+                    adv.label, value=adv.placeholder, height=100,
+                    key=f"adv_{page_id}_{adv.field}",
+                )
 
 if st.button("분석요약 생성", type="primary"):
-    try:
-        payload["observations"] = json.loads(observations_text) if observations_text.strip() else None
-    except json.JSONDecodeError as exc:
-        # 2026-08-28 UI/UX 감사(P0): 파싱 실패 시 이전 성공 결과를 지우지 않으면
-        # 에러 배너 아래에 직전 리포트가 그대로 남아 "에러인데 결과가 나온 것"처럼
-        # 보인다 — ReportGenError 분기와 동일하게 초기화.
-        st.session_state["report_demo_result"] = None
-        render_json_error(exc, field_label="observations")
-    else:
-        advanced_values, advanced_ok = parse_advanced_json_fields(page_id, advanced_texts)
-        if not advanced_ok:
+    if page_id in KOMIS_RAW_PAGES:
+        try:
+            raw = json.loads(komis_raw_text) if komis_raw_text.strip() else None
+        except json.JSONDecodeError as exc:
             st.session_state["report_demo_result"] = None
+            render_json_error(exc, field_label="KOMIS 데이터 조회 결과")
         else:
-            payload.update(advanced_values)
-            try:
-                with st.spinner("report_gen 호출 중…"):
-                    st.session_state["report_demo_result"] = client.summarize(page_id, payload)
-            except ReportGenError as exc:
+            if raw is None:
                 st.session_state["report_demo_result"] = None
-                st.error(str(exc))
+                st.error("KOMIS 데이터 조회 결과가 비어 있습니다 — 원본 JSON을 붙여넣으세요.")
+            else:
+                try:
+                    converted = KOMIS_RAW_PAGES[page_id].convert(raw, payload)
+                except KomisRawConversionError as exc:
+                    st.session_state["report_demo_result"] = None
+                    st.error(f"KOMIS 원본 JSON 변환 실패: {exc}")
+                else:
+                    payload.update(converted)
+                    try:
+                        with st.spinner("report_gen 호출 중…"):
+                            st.session_state["report_demo_result"] = client.summarize(page_id, payload)
+                    except ReportGenError as exc:
+                        st.session_state["report_demo_result"] = None
+                        st.error(str(exc))
+    else:
+        try:
+            payload["observations"] = json.loads(observations_text) if observations_text.strip() else None
+        except json.JSONDecodeError as exc:
+            # 2026-08-28 UI/UX 감사(P0): 파싱 실패 시 이전 성공 결과를 지우지 않으면
+            # 에러 배너 아래에 직전 리포트가 그대로 남아 "에러인데 결과가 나온 것"처럼
+            # 보인다 — ReportGenError 분기와 동일하게 초기화.
+            st.session_state["report_demo_result"] = None
+            render_json_error(exc, field_label="observations")
+        else:
+            advanced_values, advanced_ok = parse_advanced_json_fields(page_id, advanced_texts)
+            if not advanced_ok:
+                st.session_state["report_demo_result"] = None
+            else:
+                payload.update(advanced_values)
+                try:
+                    with st.spinner("report_gen 호출 중…"):
+                        st.session_state["report_demo_result"] = client.summarize(page_id, payload)
+                except ReportGenError as exc:
+                    st.session_state["report_demo_result"] = None
+                    st.error(str(exc))
 
 result = st.session_state.get("report_demo_result")
 if result:
@@ -251,4 +276,8 @@ if result:
             render_report_markdown(result["report"])
 
 with st.expander("요청 바디 미리보기"):
-    st.json({**payload, "observations": "(위 텍스트 영역 값)"})
+    preview = dict(payload)
+    preview["observations"] = (
+        "(KOMIS 원본 JSON 변환 결과 — 버튼 클릭 후 반영)" if page_id in KOMIS_RAW_PAGES else "(위 텍스트 영역 값)"
+    )
+    st.json(preview)
