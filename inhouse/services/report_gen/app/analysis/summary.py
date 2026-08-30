@@ -372,16 +372,20 @@ def _komis_ci_get(row: dict, *names: str):
     return None
 
 
-def _parse_komis_map_korea_response(raw: dict) -> tuple[list[dict], dict | None]:
+def _parse_komis_map_korea_response(raw: dict) -> tuple[list[dict], dict | None, str | None]:
     """`getListKoreaData` 원본 응답(2026-08-30, 사용자 지시로 price와 같은 패턴을
-    나머지 페이지로 확장) → observations + komis_trade_totals. 응답 자체가
-    조회 파라미터(`srchDateE`)를 그대로 되돌려주므로 그걸 관측일로 쓴다(행
-    자체엔 날짜가 없는 스냅샷 응답 — `komis_dump_smoke_test.py::
-    adapt_map_korea`와 같은 근거)."""
+    나머지 페이지로 확장) → observations + komis_trade_totals + mineral(코드).
+    응답 자체가 조회 파라미터(`srchDateE`·`srchMnrkndUnqCd`)를 그대로
+    되돌려주므로 그걸 관측일·광종코드로 쓴다(행 자체엔 날짜가 없는 스냅샷
+    응답 — `komis_dump_smoke_test.py::adapt_map_korea`와 같은 근거).
+    2026-08-31 확인: `srchMnrkndUnqCd`가 있어 `mineral`도 자동 채움
+    가능(price_*는 응답 본문에 코드가 없어 이 자동채움이 불가능한 것과
+    대비된다)."""
 
     rows = raw.get("list") or []
     as_of = raw.get("srchDateE")
     as_of_date = f"{as_of[0:4]}-{as_of[4:6]}-{as_of[6:8]}" if as_of else None
+    mineral_code = raw.get("srchMnrkndUnqCd") or None
     observations: list[dict] = []
     if as_of_date:
         for row in rows:
@@ -407,18 +411,21 @@ def _parse_komis_map_korea_response(raw: dict) -> tuple[list[dict], dict | None]
             komis_trade_totals["import_amount"] = sum_incm
         if sum_exp:
             komis_trade_totals["export_amount"] = sum_exp
-    return observations, (komis_trade_totals or None)
+    return observations, (komis_trade_totals or None), mineral_code
 
 
-def _parse_komis_map_global_response(raw: dict) -> tuple[list[dict], dict | None]:
-    """`getListDataNation` 원본 응답 → observations + komis_trade_totals.
-    map_korea와 달리 행마다 도착국(`incmNtn*`)·원산국(`expNtn*`) 쌍이 이미
-    있어 행 1개 = 루트 관측 1건(`komis_dump_smoke_test.py::adapt_map_global`
-    과 동일 근거)."""
+def _parse_komis_map_global_response(raw: dict) -> tuple[list[dict], dict | None, str | None]:
+    """`getListDataNation` 원본 응답 → observations + komis_trade_totals +
+    mineral(코드). map_korea와 달리 행마다 도착국(`incmNtn*`)·원산국
+    (`expNtn*`) 쌍이 이미 있어 행 1개 = 루트 관측 1건(`komis_dump_smoke_
+    test.py::adapt_map_global`과 동일 근거). map_korea와 마찬가지로
+    `srchMnrkndUnqCd`가 응답에 echo되어 `mineral` 자동 채움 가능
+    (2026-08-31 확인)."""
 
     rows = raw.get("list") or []
     as_of = raw.get("srchDateE")
     as_of_date = f"{as_of[0:4]}-{as_of[4:6]}-{as_of[6:8]}" if as_of else None
+    mineral_code = raw.get("srchMnrkndUnqCd") or None
     observations: list[dict] = []
     if as_of_date:
         for row in rows:
@@ -441,7 +448,7 @@ def _parse_komis_map_global_response(raw: dict) -> tuple[list[dict], dict | None
         sum_amt = _komis_num(rows[0].get("sumAmt"))
         if sum_amt:
             komis_trade_totals = {"import_amount": sum_amt}
-    return observations, komis_trade_totals
+    return observations, komis_trade_totals, mineral_code
 
 
 def _parse_komis_mineral_map_response(raw: dict, measure: str) -> tuple[list[dict], str | None]:
@@ -1938,15 +1945,23 @@ class AnalysisSummaryService:
         observations와 komis_trade_totals(총액 절단 처방, Phase3)를 둘 다
         직접 파싱한다. 반환값에 raw komis_trade_totals dict를 같이 얹어
         호출부가 `_komis_trade_totals_from_request(request, raw=...)`로
-        넘길 수 있게 한다."""
+        넘길 수 있게 한다.
 
-        if request.mineral is None:
-            raise DataSourceError(f"{page_id} analysis requires mineral in the request body")
+        2026-08-31 — `mineral`도 이 응답이 조회 파라미터
+        (`srchMnrkndUnqCd`)를 그대로 되돌려주므로 komis_response가 있으면
+        자동 채운다(호출자 명시값이 있으면 그쪽 우선, price_*는 응답
+        본문에 코드가 없어 이 자동채움이 불가능한 것과 대비된다 —
+        `PriceSummaryRequest`는 여전히 `mineral` 필수)."""
+
         raw_observations = request.observations
         raw_komis_trade_totals = None
+        komis_mineral = None
         if request.komis_response is not None:
             parser = _parse_komis_map_korea_response if page_id == "map_korea" else _parse_komis_map_global_response
-            raw_observations, raw_komis_trade_totals = parser(request.komis_response)
+            raw_observations, raw_komis_trade_totals, komis_mineral = parser(request.komis_response)
+        mineral = request.mineral or komis_mineral
+        if mineral is None:
+            raise DataSourceError(f"{page_id} analysis requires mineral in the request body")
         observations = _observations_from_request(TradeCountryObservation, request, raw=raw_observations)
         if request.start_date:
             observations = [o for o in observations if o.date >= request.start_date]
@@ -1957,7 +1972,7 @@ class AnalysisSummaryService:
         dates = sorted(o.date for o in observations)
         series = TradeMapSeries(
             page_id=page_id,
-            mineral=MineralRef(code=request.mineral, name=request.mineral_name or request.mineral),
+            mineral=MineralRef(code=mineral, name=request.mineral_name or mineral),
             available_start_date=dates[0],
             available_end_date=dates[-1],
             source_type="api",

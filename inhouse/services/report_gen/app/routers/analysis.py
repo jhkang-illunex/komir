@@ -241,7 +241,11 @@ class _DateRangeMineralRequest(AnalysisEndpointRequest):
     이 라우터 모델은 `.model_dump()`로 그 상위집합의 부분집합만 채워
     넘기는 관계라 내부 스키마를 넓게 유지해도 API 계약엔 안 드러난다."""
 
-    mineral: str = Field(min_length=1)
+    # 기본값은 선택(map_korea/global은 komis_response 응답 자체가
+    # `srchMnrkndUnqCd`로 조회한 광종 코드를 그대로 돌려줘서 자동 채움
+    # 가능 — 2026-08-31 확인. price_*는 KOMIS 응답 본문에 광종 코드가
+    # 없어 필수로 재선언한다(`PriceSummaryRequest` 참고).
+    mineral: str | None = Field(default=None, min_length=1)
     mineral_name: str | None = Field(default=None, min_length=1)
     start_date: Day | None = None
     end_date: Day | None = None
@@ -260,14 +264,16 @@ class PriceSummaryRequest(_DateRangeMineralRequest):
     `komis_response`에 KOMIS `getMnrlPrcByMnrkndUnqCd` 원본 응답을 그대로
     담으면 report_gen이 일별 시세·재고·전주/전월/전년 비교·가격기준
     ("LME CASH" 등)까지 전부 직접 뽑아 쓴다(`models.py`의 `komis_response`
-    필드 docstring 참고) — 그 밖엔 `mineral`(코드, KOMIS 응답 본문에 없는
-    조회 파라미터)만 있으면 된다.
+    필드 docstring 참고). `mineral`(코드)은 여기서만 필수로 재선언한다 —
+    이 응답 본문엔 `mnrkndKornNm`(한글명)만 있고 내부 코드가 없어서
+    (map_korea/global과 달리) 자동으로 못 채운다.
 
     `compare_mineral`(코드)은 비교광종 조회 시에만 채운다 — KOMIS
     응답에 `data.compareMnrl`(비교 계열 가격)은 있어도 그 광종의
     내부 코드는 없어서 여전히 호출자가 명시해야 한다. 비교광종은
     price_* 4종 전부 동일 지원(2026-08-30 확인, 희소금속 전용 아님)."""
 
+    mineral: str = Field(min_length=1)
     compare_mineral: str | None = Field(default=None, min_length=1)
     compare_mineral_name: str | None = Field(default=None, min_length=1)
 
@@ -276,10 +282,15 @@ class DomesticTradeSummaryRequest(_DateRangeMineralRequest):
     """국내 수급지도(map_korea, KO_CSTM_CMMRC) 요청.
 
     `komis_response`에 KOMIS `getListKoreaData` 원본 응답을 그대로 담으면
-    국가별 수입/수출·총액까지 전부 직접 뽑아 쓴다."""
+    국가별 수입/수출·총액까지 전부 직접 뽑아 쓴다. `mineral`(코드)도 이
+    응답이 조회 파라미터(`srchMnrkndUnqCd`)를 그대로 돌려주므로 안 보내면
+    거기서 자동으로 채운다(2026-08-31 확인) — 사실상 `komis_response`
+    하나만 보내도 된다."""
 
     # 2026-08-27 신설 — KOMIS 화면의 수입/수출 방향 라디오 대응(map_korea
-    # 전용, map_global엔 이 선택지 자체가 없다).
+    # 전용, map_global엔 이 선택지 자체가 없다). 응답 자체엔 이 선택이
+    # 안 드러나(양방향 금액이 한 행에 같이 옴) 자동 채움 불가 — 호출자가
+    # "어느 방향을 서술할지" 의도를 명시해야 한다.
     trade_direction: Literal["import", "export"] | None = None
 
 
@@ -287,7 +298,10 @@ class GlobalTradeSummaryRequest(_DateRangeMineralRequest):
     """글로벌 수급지도(map_global, KO_UN_CMMRC) 요청.
 
     `komis_response`에 KOMIS `getListDataNation` 원본 응답을 그대로 담으면
-    도착국·원산국 루트별 교역량·총액까지 전부 직접 뽑아 쓴다."""
+    도착국·원산국 루트별 교역량·총액까지 전부 직접 뽑아 쓴다. `mineral`
+    (코드)도 이 응답이 조회 파라미터(`srchMnrkndUnqCd`)를 그대로 돌려
+    주므로 안 보내면 거기서 자동으로 채운다(2026-08-31 확인) — 사실상
+    `komis_response` 하나만 보내도 된다."""
 
 
 class PriceGroupSummaryRequest(AnalysisEndpointRequest):
