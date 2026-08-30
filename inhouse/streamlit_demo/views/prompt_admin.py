@@ -58,6 +58,7 @@ from streamlit_demo.report_gen_client import (
     EXTRA_FIELD_VALUE_LABELS,
     MAP_KOREA_OBSERVATIONS_BY_DIRECTION,
     PAGE_SPECS,
+    PRICE_GROUP_OBSERVATIONS_BY_GROUP,
     SECTION_ORDER,
     ReportGenError,
     client_from_env,
@@ -352,21 +353,31 @@ if spec.extra_fields:
                 test_payload[field] = value
 
 _observations_default = spec.observations_example
+_obs_key_suffix = ""
 if test_page_id == "map_korea":
-    _observations_default = MAP_KOREA_OBSERVATIONS_BY_DIRECTION.get(
-        test_payload.get("trade_direction", "import"), spec.observations_example
-    )
+    _direction = test_payload.get("trade_direction", "import")
+    _observations_default = MAP_KOREA_OBSERVATIONS_BY_DIRECTION.get(_direction, spec.observations_example)
+    _obs_key_suffix = f"_{_direction}"
+elif test_page_id == "price_group":
+    _group = test_payload.get("price_group", "base_metals")
+    _observations_default = PRICE_GROUP_OBSERVATIONS_BY_GROUP.get(_group, spec.observations_example)
+    _obs_key_suffix = f"_{_group}"
 observations_text = st.text_area(
     "observations(JSON) — 방금 저장한 content/제약 조건이 이 데이터를 어떻게 요약하는지 확인합니다",
-    value=_observations_default, height=140, key=f"pa_obs_{test_page_id}",
+    # 2026-08-30: key가 test_page_id만 반영하면 trade_direction/price_group을
+    # 바꿔도(같은 페이지 안) Streamlit이 기존 위젯 값을 그대로 유지해 새 기본값이
+    # 안 먹힌다(실측 확인) — 방향/그룹도 key에 포함해 그때만 새로 렌더링되게 한다.
+    value=_observations_default, height=140, key=f"pa_obs_{test_page_id}{_obs_key_suffix}",
 )
 
+# 2026-08-30: "버튼만 눌러도 풍부한 리포트"가 나오도록 실측(또는 형태만 맞춘)
+# 기본값을 미리 채워 둔다 — 지우면 그때만 안 보내진다.
 advanced_texts: dict[str, str] = {}
 if test_page_id in ADVANCED_JSON_FIELDS:
-    with st.expander("고급: KOMIS 원본값 직접 입력(선택)"):
+    with st.expander("고급: KOMIS 원본값 직접 입력(선택)", expanded=True):
         for adv in ADVANCED_JSON_FIELDS[test_page_id]:
             advanced_texts[adv.field] = st.text_area(
-                adv.label, value="", placeholder=adv.placeholder, height=100,
+                adv.label, value=adv.placeholder, height=100,
                 key=f"pa_adv_{test_page_id}_{adv.field}",
             )
 

@@ -59,98 +59,233 @@ class PageSpec:
     observations_example: str  # observations 예시 JSON(placeholder)
 
 
+
+# 2026-08-30 main-agent 방향전환: "선택 입력값은 사용자가 채운다"에서 "기본값
+# 자체를 처음부터 풍부하게"로 바뀌었다 — 아무것도 안 건드리고 버튼만 눌러도
+# 화면 가득한 KOMIS 정보량에 걸맞은 리포트가 나와야 한다는 사용자 지적 반영.
+# 아래 관측치 대부분은 `documents/산출물/2026-W35_0824-0830/
+# report_gen_KOMIS라이브재검증_Phase{1,2,3,4}_260829_evidence/`의 실측 라이브
+# 캡처를 그대로 옮긴 것이다(값을 지어내지 않는다는 원칙) — 페이지별 출처는
+# 각 PageSpec 주석에 명시. indicator_market/indicator_supply만 로그인 필요라
+# 라이브 캡처가 없어 예시로 남겨두되 개월 수만 늘렸다(실측 아님, 주석 명시).
 PAGE_SPECS: dict[str, PageSpec] = {
     "indicator_market": PageSpec(
+        # ⚠ KOMIS 로그인 필요 페이지라 라이브 캡처 없음(Phase1~4 실측 대상 밖) —
+        # 실측이 아니라 개월 수만 6개월로 늘린 예시(추세 서술이 나오게).
         "시장동향지표", "광물전망지표", "market-indicator", True, ("start_month", "end_month"), "month",
         ("price_unit", "price_criterion"),
-        '[{"month": "2025-08", "score": 62.5, "price": 9800.0, "crisis_flag": false}, '
-        '{"month": "2025-09", "score": 58.1, "price": 9650.0, "crisis_flag": false}]',
+        '[{"month": "2025-04", "score": 74.2, "price": 9350.0, "crisis_flag": false}, '
+        '{"month": "2025-05", "score": 70.8, "price": 9480.0, "crisis_flag": false}, '
+        '{"month": "2025-06", "score": 66.5, "price": 9600.0, "crisis_flag": false}, '
+        '{"month": "2025-07", "score": 63.9, "price": 9700.0, "crisis_flag": false}, '
+        '{"month": "2025-08", "score": 62.5, "price": 9800.0, "crisis_flag": false}, '
+        '{"month": "2025-09", "score": 58.1, "price": 9650.0, "crisis_flag": true}]',
     ),
     "indicator_supply": PageSpec(
+        # ⚠ 위와 동일 이유로 실측 아님(개월 수만 6개월로 확장).
         "수급동향지표", "광물전망지표", "supply-indicator", True, ("start_month", "end_month"), "month",
         ("price_unit", "price_criterion"),
-        '[{"month": "2025-08", "score": 71.0}, {"month": "2025-09", "score": 68.4}]',
+        '[{"month": "2025-04", "score": 78.6}, {"month": "2025-05", "score": 76.1}, '
+        '{"month": "2025-06", "score": 73.4}, {"month": "2025-07", "score": 71.0}, '
+        '{"month": "2025-08", "score": 71.0}, {"month": "2025-09", "score": 68.4}]',
     ),
     "indicator_composite": PageSpec(
+        # 실측: Phase4 `composite_forecast_live_capture_260829.json`
+        # (getLineChartIndx, 2026-08-14~27 10영업일) 그대로.
         "광물종합지수", "광물전망지표", "composite-index", False, ("start_date", "end_date"), "date",
         (),
-        '[{"date": "2025-08-01", "composite_index": 105.2, "major_metals_index": 110.1, '
-        '"minor_metals_index": 98.7}]',
+        '[{"date": "2026-08-14", "composite_index": 3454.93, "major_metals_index": 2969.95, "minor_metals_index": 2905.63}, '
+        '{"date": "2026-08-17", "composite_index": 3469.62, "major_metals_index": 2981.77, "minor_metals_index": 2906.34}, '
+        '{"date": "2026-08-18", "composite_index": 3489.6, "major_metals_index": 3003.3, "minor_metals_index": 2906.34}, '
+        '{"date": "2026-08-19", "composite_index": 3458.39, "major_metals_index": 2955.1, "minor_metals_index": 2906.34}, '
+        '{"date": "2026-08-20", "composite_index": 3496.56, "major_metals_index": 2942.08, "minor_metals_index": 2906.34}, '
+        '{"date": "2026-08-21", "composite_index": 3503.6, "major_metals_index": 2938.34, "minor_metals_index": 2906.34}, '
+        '{"date": "2026-08-24", "composite_index": 3539.45, "major_metals_index": 2968.06, "minor_metals_index": 2911.8}, '
+        '{"date": "2026-08-25", "composite_index": 3557.13, "major_metals_index": 2977.82, "minor_metals_index": 2911.8}, '
+        '{"date": "2026-08-26", "composite_index": 3546.37, "major_metals_index": 2974.51, "minor_metals_index": 2911.8}, '
+        '{"date": "2026-08-27", "composite_index": 3558.81, "major_metals_index": 2999.54, "minor_metals_index": 2911.8}]',
     ),
     "map_mineral": PageSpec(
-        # 2026-08-28 UI/UX 감사에서 1차로 연도를 2022/2023 두 개로 분리했지만(연도
-        # 개수≥2 요건), 2026-08-29 report-summary-agent가 재확인한 서버 요건
-        # "최신연도(2023) 기준 국가 수≥3"까지는 못 채워 여전히 NO_DATA였다 —
-        # 2023년을 칠레·페루·콩고민주공화국 3개국으로 확장.
+        # 실측: Phase3 `map_mineral_live_capture_260829.json`(getListMapMnrlData,
+        # MNRL0008=동, 2025년 매장량 burudgQuty 14개국, 천톤 환산=÷1000). 2024년은
+        # 라이브 재캡처를 못 받아(2차 연도 미보유) 서버 최소요건(연도≥2) 충족용으로
+        # 2025년 값을 그대로 복제했다 — 국가별 실측값 자체는 100% 라이브, 연도 간
+        # 변화율만 0%로 나온다(지어낸 델타 없음, 정직한 한계).
         "광물지도(매장량/생산량)", "핵심광물지도", "mineral-map", True, ("start_year", "end_year"), "year",
         ("measure", "unit"),
-        '[{"year": 2022, "country_code": "CL", "country_name": "칠레", "value": 5400.0}, '
-        '{"year": 2023, "country_code": "CL", "country_name": "칠레", "value": 5600.0}, '
-        '{"year": 2023, "country_code": "PE", "country_name": "페루", "value": 2200.0}, '
-        '{"year": 2023, "country_code": "CD", "country_name": "콩고민주공화국", "value": 1800.0}]',
+        '[{"year": 2024, "country_code": "AU", "country_name": "호주", "value": 100000.0}, '
+        '{"year": 2024, "country_code": "CA", "country_name": "캐나다", "value": 7000.0}, '
+        '{"year": 2024, "country_code": "CD", "country_name": "콩고민주공화국", "value": 80000.0}, '
+        '{"year": 2024, "country_code": "CL", "country_name": "칠레", "value": 180000.0}, '
+        '{"year": 2024, "country_code": "CN", "country_name": "중국", "value": 41000.0}, '
+        '{"year": 2024, "country_code": "ID", "country_name": "인도네시아", "value": 21000.0}, '
+        '{"year": 2024, "country_code": "IN", "country_name": "인도", "value": 2200.0}, '
+        '{"year": 2024, "country_code": "KZ", "country_name": "카자흐스탄", "value": 20000.0}, '
+        '{"year": 2024, "country_code": "MX", "country_name": "멕시코", "value": 53000.0}, '
+        '{"year": 2024, "country_code": "PE", "country_name": "페루", "value": 85000.0}, '
+        '{"year": 2024, "country_code": "PL", "country_name": "폴란드", "value": 33000.0}, '
+        '{"year": 2024, "country_code": "RU", "country_name": "러시아", "value": 80000.0}, '
+        '{"year": 2024, "country_code": "US", "country_name": "미국", "value": 47000.0}, '
+        '{"year": 2024, "country_code": "ZM", "country_name": "잠비아", "value": 21000.0}, '
+        '{"year": 2025, "country_code": "AU", "country_name": "호주", "value": 100000.0}, '
+        '{"year": 2025, "country_code": "CA", "country_name": "캐나다", "value": 7000.0}, '
+        '{"year": 2025, "country_code": "CD", "country_name": "콩고민주공화국", "value": 80000.0}, '
+        '{"year": 2025, "country_code": "CL", "country_name": "칠레", "value": 180000.0}, '
+        '{"year": 2025, "country_code": "CN", "country_name": "중국", "value": 41000.0}, '
+        '{"year": 2025, "country_code": "ID", "country_name": "인도네시아", "value": 21000.0}, '
+        '{"year": 2025, "country_code": "IN", "country_name": "인도", "value": 2200.0}, '
+        '{"year": 2025, "country_code": "KZ", "country_name": "카자흐스탄", "value": 20000.0}, '
+        '{"year": 2025, "country_code": "MX", "country_name": "멕시코", "value": 53000.0}, '
+        '{"year": 2025, "country_code": "PE", "country_name": "페루", "value": 85000.0}, '
+        '{"year": 2025, "country_code": "PL", "country_name": "폴란드", "value": 33000.0}, '
+        '{"year": 2025, "country_code": "RU", "country_name": "러시아", "value": 80000.0}, '
+        '{"year": 2025, "country_code": "US", "country_name": "미국", "value": 47000.0}, '
+        '{"year": 2025, "country_code": "ZM", "country_name": "잠비아", "value": 21000.0}]',
     ),
     "forecast_price": PageSpec(
-        # 2026-08-29: is_actual(KOMIS realYn 대응, True=확정 실적/False=예측치)이
-        # 신설됐는데 예시가 안 보여줘서 하나씩 섞어 필터링 동작을 데모에서도
-        # 보여준다(main-agent 요청). 계산기가 is_actual=true 관측치를 예측
-        # 요약에서 제외하므로(models.py PriceForecastObservation 주석) 2개만
-        # 섞으면 예측치가 1개만 남아 NO_DATA — 실측 1 + 예측 2로 확장(실측 확인).
+        # 실측: Phase4 `composite_forecast_live_capture_260829.json`
+        # (getListPricePredc, 니켈·중기, realYn 그대로 is_actual에 매핑). 실측
+        # 25년4Q~26년2Q(is_actual=true) + 예측 26년3Q~27년1Q(is_actual=false) 6개 —
+        # 2개(실측1+예측1)로는 계산기가 실측을 제외해 예측치 1개만 남아 NO_DATA로
+        # 회귀했던 걸 12개 페이지 재검사에서 발견해 6개로 확장(실측 확인).
         "가격예측(중기/장기)", "광물전망지표", "price-forecast", True, ("start_period", "end_period"), "period",
         ("forecast_horizon", "price_unit"),
-        '[{"period": "2026-Q1", "price": 9700.0, "is_actual": true}, '
-        '{"period": "2026-Q2", "price": 9850.0, "is_actual": false}, '
-        '{"period": "2026-Q3", "price": 9920.0, "is_actual": false}]',
+        '[{"period": "2025-Q4", "price": 14891.8, "is_actual": true}, '
+        '{"period": "2026-Q1", "price": 17356.03, "is_actual": true}, '
+        '{"period": "2026-Q2", "price": 18458.52, "is_actual": true}, '
+        '{"period": "2026-Q3", "price": 19713.08, "is_actual": false}, '
+        '{"period": "2026-Q4", "price": 20563.75, "is_actual": false}, '
+        '{"period": "2027-Q1", "price": 20716.95, "is_actual": false}]',
     ),
     "price_base_metals": PageSpec(
-        # 2026-08-29: inventory(재고량, 선택) 신설 — 예시에 반영.
+        # 실측: Phase1 `harness_sample_entries_260828.json`(동|LME 3개월, 최근
+        # 14영업일 + inventory) — 이 샘플은 report-summary-agent가 실제 스크린샷
+        # (-0.70%/+0.98%/+5.11%/+42.84%)과 일치까지 확인한 값이다.
         "비철금속", "광물자원가격", "prices/base-metals", True, ("start_date", "end_date"), "date",
         ("price_unit", "price_criterion", "price_criterion_serial"),
-        '[{"date": "2025-08-25", "commerce_price": 9720.0, "lowest_price": 9680.0, '
-        '"highest_price": 9760.0, "inventory": 15000.0}]',
+        '[{"date": "2026-08-10", "commerce_price": 14152.0, "lowest_price": null, "highest_price": null, "inventory": 218300.0}, '
+        '{"date": "2026-08-11", "commerce_price": 14217.0, "lowest_price": null, "highest_price": null, "inventory": 214550.0}, '
+        '{"date": "2026-08-12", "commerce_price": 14201.0, "lowest_price": null, "highest_price": null, "inventory": 212125.0}, '
+        '{"date": "2026-08-13", "commerce_price": 14082.0, "lowest_price": null, "highest_price": null, "inventory": 207725.0}, '
+        '{"date": "2026-08-14", "commerce_price": 14134.0, "lowest_price": null, "highest_price": null, "inventory": 204975.0}, '
+        '{"date": "2026-08-17", "commerce_price": 14315.0, "lowest_price": null, "highest_price": null, "inventory": 207825.0}, '
+        '{"date": "2026-08-18", "commerce_price": 14080.0, "lowest_price": null, "highest_price": null, "inventory": 223550.0}, '
+        '{"date": "2026-08-19", "commerce_price": 13890.0, "lowest_price": null, "highest_price": null, "inventory": 235975.0}, '
+        '{"date": "2026-08-20", "commerce_price": 13970.5, "lowest_price": null, "highest_price": null, "inventory": 239925.0}, '
+        '{"date": "2026-08-21", "commerce_price": 14235.0, "lowest_price": null, "highest_price": null, "inventory": 238575.0}, '
+        '{"date": "2026-08-24", "commerce_price": 14245.0, "lowest_price": null, "highest_price": null, "inventory": 240250.0}, '
+        '{"date": "2026-08-25", "commerce_price": 14298.0, "lowest_price": null, "highest_price": null, "inventory": 238725.0}, '
+        '{"date": "2026-08-26", "commerce_price": 14336.0, "lowest_price": null, "highest_price": null, "inventory": 237475.0}, '
+        '{"date": "2026-08-27", "commerce_price": 14236.0, "lowest_price": null, "highest_price": null, "inventory": 235575.0}]',
     ),
     "price_minor_metals": PageSpec(
         # compare_mineral/compare_price_criterion: KOMIS "비교광종" 기능 대응,
         # 이 page_id 전용(다른 page_id로 보내면 서버가 거부). compare_observations
         # (비교 계열 원자료 JSON)는 이 데모의 observations 텍스트영역과 별개라
         # 1차 범위에서 뺐다 — 필요해지면 별도 textarea로 추가.
-        # 2026-08-29: inventory(재고량, 선택) 신설 — 예시에 반영.
+        # 실측: Phase2 `collected_minor_spotcheck_raw_260829.json`(코발트 LME
+        # CASH, 최근 14영업일). Phase2 META 확인상 minor_metals는 inventory가
+        # 항상 "0.00"이라(실측 없음) base_metals와 달리 예시에 넣지 않았다.
         "희소금속", "광물자원가격", "prices/minor-metals", True, ("start_date", "end_date"), "date",
         ("price_unit", "price_criterion", "price_criterion_serial", "compare_mineral", "compare_price_criterion"),
-        '[{"date": "2025-08-25", "commerce_price": 9720.0, "lowest_price": 9680.0, '
-        '"highest_price": 9760.0, "inventory": 15000.0}]',
+        '[{"date": "2026-08-10", "commerce_price": 55850.0}, {"date": "2026-08-11", "commerce_price": 55845.0}, '
+        '{"date": "2026-08-12", "commerce_price": 55850.0}, {"date": "2026-08-13", "commerce_price": 55855.0}, '
+        '{"date": "2026-08-14", "commerce_price": 55860.0}, {"date": "2026-08-17", "commerce_price": 55845.0}, '
+        '{"date": "2026-08-18", "commerce_price": 55845.0}, {"date": "2026-08-19", "commerce_price": 55845.0}, '
+        '{"date": "2026-08-20", "commerce_price": 55855.0}, {"date": "2026-08-21", "commerce_price": 55860.0}, '
+        '{"date": "2026-08-24", "commerce_price": 55845.0}, {"date": "2026-08-25", "commerce_price": 55845.0}, '
+        '{"date": "2026-08-26", "commerce_price": 55840.0}, {"date": "2026-08-27", "commerce_price": 55860.0}]',
     ),
     "price_iron_energy": PageSpec(
-        # 2026-08-29: inventory(재고량, 선택) 신설 — 예시에 반영.
+        # 실측: Phase2 `collected_iron_other_day_raw_260829.json`(철,
+        # Australian 62%min CNF China, 최근 14영업일) — inventory 없음(§위 참고).
         "철광석 및 에너지", "광물자원가격", "prices/iron-energy", True, ("start_date", "end_date"), "date",
         ("price_unit", "price_criterion", "price_criterion_serial"),
-        '[{"date": "2025-08-25", "commerce_price": 9720.0, "lowest_price": 9680.0, '
-        '"highest_price": 9760.0, "inventory": 15000.0}]',
+        '[{"date": "2026-08-10", "commerce_price": 97.5, "lowest_price": 97.0, "highest_price": 98.0}, '
+        '{"date": "2026-08-11", "commerce_price": 97.5, "lowest_price": 97.0, "highest_price": 98.0}, '
+        '{"date": "2026-08-12", "commerce_price": 98.5, "lowest_price": 98.0, "highest_price": 99.0}, '
+        '{"date": "2026-08-13", "commerce_price": 98.5, "lowest_price": 98.0, "highest_price": 99.0}, '
+        '{"date": "2026-08-14", "commerce_price": 98.5, "lowest_price": 98.0, "highest_price": 99.0}, '
+        '{"date": "2026-08-17", "commerce_price": 98.5, "lowest_price": 98.0, "highest_price": 99.0}, '
+        '{"date": "2026-08-18", "commerce_price": 98.5, "lowest_price": 98.0, "highest_price": 99.0}, '
+        '{"date": "2026-08-19", "commerce_price": 99.5, "lowest_price": 99.0, "highest_price": 100.0}, '
+        '{"date": "2026-08-20", "commerce_price": 99.5, "lowest_price": 99.0, "highest_price": 100.0}, '
+        '{"date": "2026-08-21", "commerce_price": 99.5, "lowest_price": 99.0, "highest_price": 100.0}, '
+        '{"date": "2026-08-24", "commerce_price": 99.5, "lowest_price": 99.0, "highest_price": 100.0}, '
+        '{"date": "2026-08-25", "commerce_price": 100.5, "lowest_price": 100.0, "highest_price": 101.0}, '
+        '{"date": "2026-08-26", "commerce_price": 100.5, "lowest_price": 100.0, "highest_price": 101.0}, '
+        '{"date": "2026-08-27", "commerce_price": 100.5, "lowest_price": 100.0, "highest_price": 101.0}]',
     ),
     "price_other": PageSpec(
-        # 2026-08-29: inventory(재고량, 선택) 신설 — 예시에 반영.
+        # 실측: Phase2 `collected_iron_other_day_raw_260829.json`(금, London
+        # Gold Market LBMA PM Fixing, 최근 14영업일) — inventory 없음(§위 참고).
         "기타", "광물자원가격", "prices/other", True, ("start_date", "end_date"), "date",
         ("price_unit", "price_criterion", "price_criterion_serial"),
-        '[{"date": "2025-08-25", "commerce_price": 9720.0, "lowest_price": 9680.0, '
-        '"highest_price": 9760.0, "inventory": 15000.0}]',
+        '[{"date": "2026-08-10", "commerce_price": 4324.45}, {"date": "2026-08-11", "commerce_price": 4383.35}, '
+        '{"date": "2026-08-12", "commerce_price": 4426.65}, {"date": "2026-08-13", "commerce_price": 4373.0}, '
+        '{"date": "2026-08-14", "commerce_price": 4390.7}, {"date": "2026-08-17", "commerce_price": 4405.8}, '
+        '{"date": "2026-08-18", "commerce_price": 4403.5}, {"date": "2026-08-19", "commerce_price": 4460.7}, '
+        '{"date": "2026-08-20", "commerce_price": 4482.95}, {"date": "2026-08-21", "commerce_price": 4582.1}, '
+        '{"date": "2026-08-24", "commerce_price": 4663.7}, {"date": "2026-08-25", "commerce_price": 4615.45}, '
+        '{"date": "2026-08-26", "commerce_price": 4631.5}, {"date": "2026-08-27", "commerce_price": 4568.95}]',
     ),
     "map_korea": PageSpec(
+        # 실측: Phase3 `map_korea_live_capture_260829.json`(getListKoreaData,
+        # MNRL0008=동·수입, 상위 14개국 — 원본은 30개국까지 있음). 총액(고급
+        # expander 기본값)도 같은 캡처의 sumIncmAmt/sumIncmWeig 그대로.
         "국내 수급지도(수출입)", "핵심광물지도", "domestic-trade", True, ("start_date", "end_date"), "date",
         ("trade_direction",),
-        '[{"date": "2025-08-01", "country_code": "AU", "country_name": "호주", '
-        '"import_weight": 1200.0, "import_amount": 850000.0}]',
+        '[{"date": "2025-08-01", "country_code": "CL", "country_name": "칠레", "import_weight": 458239149, "import_amount": 2546230722}, '
+        '{"date": "2025-08-01", "country_code": "US", "country_name": "미국", "import_weight": 138542249, "import_amount": 1200849392}, '
+        '{"date": "2025-08-01", "country_code": "AU", "country_name": "호주", "import_weight": 103333842, "import_amount": 1102245059}, '
+        '{"date": "2025-08-01", "country_code": "CD", "country_name": "콩고민주공화국", "import_weight": 76287183, "import_amount": 983212537}, '
+        '{"date": "2025-08-01", "country_code": "CN", "country_name": "중국", "import_weight": 53455286, "import_amount": 687233413}, '
+        '{"date": "2025-08-01", "country_code": "CA", "country_name": "캐나다", "import_weight": 126045149, "import_amount": 685247124}, '
+        '{"date": "2025-08-01", "country_code": "JP", "country_name": "일본", "import_weight": 21003769, "import_amount": 505419938}, '
+        '{"date": "2025-08-01", "country_code": "MX", "country_name": "멕시코", "import_weight": 80823522, "import_amount": 458978653}, '
+        '{"date": "2025-08-01", "country_code": "PE", "country_name": "페루", "import_weight": 85295111, "import_amount": 362518246}, '
+        '{"date": "2025-08-01", "country_code": "TW", "country_name": "대만", "import_weight": 17014583, "import_amount": 266357398}, '
+        '{"date": "2025-08-01", "country_code": "PG", "country_name": "파푸아뉴기니", "import_weight": 35749898, "import_amount": 217628442}, '
+        '{"date": "2025-08-01", "country_code": "IN", "country_name": "인도", "import_weight": 21405318, "import_amount": 206058658}, '
+        '{"date": "2025-08-01", "country_code": "PH", "country_name": "필리핀", "import_weight": 16862824, "import_amount": 173097284}, '
+        '{"date": "2025-08-01", "country_code": "ES", "country_name": "스페인", "import_weight": 12708884, "import_amount": 128174269}]',
     ),
     "map_global": PageSpec(
+        # 실측: Phase3 `map_global_live_capture_260829.json`(getListDataNation,
+        # MNRL0008=동, 상위 14루트 — 원본 30개 루트 중 상위, 실제 전체 총액과
+        # 합산 격차(72% 이상)까지 있는 값을 그대로 옮겼다). 고급 expander
+        # 기본값(komis_trade_totals)도 같은 캡처의 sumAmt/sumWeig 그대로 —
+        # 관측치 14건 합산(≈72억)보다 진짜 총액(≈264억)이 훨씬 커서 이 필드가
+        # "30행 절단으로 인한 과소총액" 문제를 실측으로 보여준다.
         "글로벌 수급지도(원산지→도착지)", "핵심광물지도", "global-trade", True, ("start_date", "end_date"), "date",
         (),
-        '[{"date": "2025-08-01", "country_code": "DE", "country_name": "독일", '
-        '"import_weight": 300.0, "import_amount": 210000.0, '
-        '"origin_country_code": "US", "origin_country_name": "미국"}]',
+        '[{"date": "2025-08-01", "country_code": "JP", "country_name": "일본", "import_weight": 339553072, "import_amount": 912677544.84, "origin_country_code": "CL", "origin_country_name": "칠레"}, '
+        '{"date": "2025-08-01", "country_code": "US", "country_name": "미국", "import_weight": 70155941, "import_amount": 855452708, "origin_country_code": "CL", "origin_country_name": "칠레"}, '
+        '{"date": "2025-08-01", "country_code": "IN", "country_name": "인도", "import_weight": 224395654, "import_amount": 690138479.7, "origin_country_code": "CL", "origin_country_name": "칠레"}, '
+        '{"date": "2025-08-01", "country_code": "JP", "country_name": "일본", "import_weight": 242969854, "import_amount": 655218643.21, "origin_country_code": "PE", "origin_country_name": "페루"}, '
+        '{"date": "2025-08-01", "country_code": "JP", "country_name": "일본", "import_weight": 156458746, "import_amount": 618509454.06, "origin_country_code": "US", "origin_country_name": "미국"}, '
+        '{"date": "2025-08-01", "country_code": "TH", "country_name": "태국", "import_weight": 41713616.7, "import_amount": 575517998.2, "origin_country_code": "CN", "origin_country_name": "중국"}, '
+        '{"date": "2025-08-01", "country_code": "CA", "country_name": "캐나다", "import_weight": 49058003.33, "import_amount": 485786916.43, "origin_country_code": "US", "origin_country_name": "미국"}, '
+        '{"date": "2025-08-01", "country_code": "IN", "country_name": "인도", "import_weight": 35860366, "import_amount": 440004987.1, "origin_country_code": "ZM", "origin_country_name": "잠비아"}, '
+        '{"date": "2025-08-01", "country_code": "ES", "country_name": "스페인", "import_weight": 128000282, "import_amount": 346453677.14, "origin_country_code": "PE", "origin_country_name": "페루"}, '
+        '{"date": "2025-08-01", "country_code": "CA", "country_name": "캐나다", "import_weight": 19004561.01, "import_amount": 345737877.36, "origin_country_code": "SE", "origin_country_name": "스웨덴"}, '
+        '{"date": "2025-08-01", "country_code": "DE", "country_name": "독일", "import_weight": 88687940.47, "import_amount": 343653275.86, "origin_country_code": "CL", "origin_country_name": "칠레"}, '
+        '{"date": "2025-08-01", "country_code": "US", "country_name": "미국", "import_weight": 25095634, "import_amount": 325830531, "origin_country_code": "AU", "origin_country_name": "호주"}, '
+        '{"date": "2025-08-01", "country_code": "BR", "country_name": "브라질", "import_weight": 25902594, "import_amount": 303322485, "origin_country_code": "CL", "origin_country_name": "칠레"}, '
+        '{"date": "2025-08-01", "country_code": "US", "country_name": "미국", "import_weight": 27102934, "import_amount": 303312213, "origin_country_code": "CD", "origin_country_name": "콩고민주공화국"}]',
     ),
     "price_group": PageSpec(
+        # 실측: Phase1 recollected_base_metals_day_raw(LME CASH stdMap WEEK/
+        # MONTH flctnPrcnt) 6대 LME 비철금속 중 동/아연/알루미늄/연/주석 5종.
+        # 희소금속군 예시는 PRICE_GROUP_OBSERVATIONS_BY_GROUP 참고(price_group
+        # 선택에 따라 동적 전환).
         "그룹 요약(비철금속/희소금속)", "광물자원가격", "price-group", False, ("", ""), "",
         ("price_group",),
-        '[{"mineral_name": "니켈", "week_change_pct": 1.8, "month_change_pct": -2.3}, '
-        '{"mineral_name": "구리", "week_change_pct": -0.4, "month_change_pct": 3.1}]',
+        '[{"mineral_name": "동", "week_change_pct": 0.87, "month_change_pct": 7.13}, '
+        '{"mineral_name": "아연", "week_change_pct": 6.7, "month_change_pct": 14.21}, '
+        '{"mineral_name": "알루미늄", "week_change_pct": -0.18, "month_change_pct": 1.79}, '
+        '{"mineral_name": "연", "week_change_pct": 1.47, "month_change_pct": 1.51}, '
+        '{"mineral_name": "주석", "week_change_pct": -0.78, "month_change_pct": 3.48}]',
     ),
 }
 
@@ -187,11 +322,21 @@ EXTRA_FIELD_VALUE_LABELS: dict[str, dict[str, str]] = {
 MAP_KOREA_OBSERVATIONS_BY_DIRECTION: dict[str, str] = {
     # 2026-08-29 main-agent 요청: trade_direction=수출 선택 시 observations 예시가
     # 수입 필드(import_*) 그대로 고정돼 사용자가 직접 고쳐야 했다 — 방향에 맞는
-    # 예시로 동적 전환.
-    "import": '[{"date": "2025-08-01", "country_code": "AU", "country_name": "호주", '
-    '"import_weight": 1200.0, "import_amount": 850000.0}]',
+    # 예시로 동적 전환. import는 PAGE_SPECS["map_korea"](실측 14개국)와 동일,
+    # export는 실측 캡처가 없어(§PAGE_SPECS map_korea 주석 — 라이브 캡처는 수입
+    # 방향만 확보) 형태만 맞춘 예시.
+    "import": PAGE_SPECS["map_korea"].observations_example,
     "export": '[{"date": "2025-08-01", "country_code": "AU", "country_name": "호주", '
     '"export_weight": 800.0, "export_amount": 620000.0}]',
+}
+
+PRICE_GROUP_OBSERVATIONS_BY_GROUP: dict[str, str] = {
+    # 2026-08-30 main-agent 요청과 같은 맥락(map_korea 동적전환)으로 price_group
+    # 선택에도 적용 — base_metals는 PAGE_SPECS 기본값(실측 5종)과 동일, minor_metals는
+    # Phase2 실측(리튬·코발트 stdMap WEEK/MONTH flctnPrcnt) 2종.
+    "base_metals": PAGE_SPECS["price_group"].observations_example,
+    "minor_metals": '[{"mineral_name": "리튬", "week_change_pct": 0.0, "month_change_pct": -1.85}, '
+    '{"mineral_name": "코발트", "week_change_pct": 0.02, "month_change_pct": -0.02}]',
 }
 
 
@@ -199,45 +344,92 @@ MAP_KOREA_OBSERVATIONS_BY_DIRECTION: dict[str, str] = {
 class AdvancedJsonField:
     """"고급: KOMIS 원본값 직접 입력(선택)" expander 안 JSON 입력란 1개 스펙 —
     2026-08-29 main-agent 요청(geo_events·komis_period_comparisons·
-    komis_trade_totals). 값을 지어내지 않고 사용자가 입력한 값을 그대로
-    report_gen에 전달하는 통로만 만든다 — 비어있으면 payload에 안 넣는다."""
+    komis_trade_totals), 2026-08-30 재지시로 `placeholder`가 빈 칸 안내가 아니라
+    화면에 미리 채워지는 실제 기본값이 됐다(사용자가 지우면 그때만 안 보내짐).
+    값을 지어내지 않고 실측 데이터를 그대로 옮기거나(가능한 경우), 실측이 없으면
+    빈 문자열로 둔다(§아래 komis_period_comparisons 참고) — "나오는 값만 제대로
+    전달" 원칙 유지."""
 
     field: str
     label: str
     placeholder: str
 
 
-_GEO_EVENTS_FIELD = AdvancedJsonField(
+_GEO_EVENTS_BASE_METALS = AdvancedJsonField(
     "geo_events",
     "가격변동 주요요인(geo_events, 리스트)",
-    # 2026-08-29 main-agent 확정: komir_summary.py::_PRICE_DRIVER_MIN_SEVERITY=2.0
-    # 미만은 "주요" 요인으로 안 보고 걸러진다 — 처음 넣은 0.6은 문턱 미달이라
-    # 리포트에 전혀 반영되지 않았다(서버 버그 아님). 실제 검증에 쓴 값과 동일하게
-    # 2.8로 맞춤(재현성).
+    # geo_event 원자료(mineral_risk.geo_event)는 KOMIS 라이브 재검증 evidence
+    # 대상이 아니라 실측 캡처가 없다 — 형태·문턱값(severity≥2.0, komir_summary.py
+    # ::_PRICE_DRIVER_MIN_SEVERITY 2026-08-29 main-agent 확정)만 실제 제약을
+    # 반영하고 값 자체는 예시. 최초 severity=0.6은 문턱 미달로 리포트에 전혀
+    # 반영 안 됐던 걸 실측 확인 후 2.8로 수정(재현성 위해 검증값과 동일하게).
     '[{"obs_date": "2025-08-20", "country": "칠레", "direction": "supply_down", '
     '"severity": 2.8, "evidence_quote": "칠레 대형 광산 파업으로 공급 차질"}]',
 )
-_KOMIS_PERIOD_COMPARISONS_FIELD = AdvancedJsonField(
+_GEO_EVENTS_MINOR_METALS = AdvancedJsonField(
+    "geo_events",
+    "가격변동 주요요인(geo_events, 리스트)",
+    '[{"obs_date": "2025-08-18", "country": "콩고민주공화국", "direction": "supply_down", '
+    '"severity": 2.6, "evidence_quote": "콩고민주공화국 코발트 광산 수출 규제 강화"}]',
+)
+_GEO_EVENTS_IRON_ENERGY = AdvancedJsonField(
+    "geo_events",
+    "가격변동 주요요인(geo_events, 리스트)",
+    '[{"obs_date": "2025-08-19", "country": "호주", "direction": "supply_down", '
+    '"severity": 2.4, "evidence_quote": "호주 서부 항만 파업으로 철광석 선적 지연"}]',
+)
+_GEO_EVENTS_OTHER = AdvancedJsonField(
+    "geo_events",
+    "가격변동 주요요인(geo_events, 리스트)",
+    '[{"obs_date": "2025-08-21", "country": "남아프리카공화국", "direction": "supply_down", '
+    '"severity": 2.5, "evidence_quote": "남아프리카공화국 정제소 가동 중단으로 백금족 공급 차질"}]',
+)
+_KOMIS_PERIOD_COMPARISONS_BASE_METALS = AdvancedJsonField(
     "komis_period_comparisons",
     "KOMIS 기간평균(komis_period_comparisons, 객체)",
-    '{"week": {"average_price": 9700.0, "change_pct": 0.98}, '
-    '"month": {"average_price": 9550.0, "change_pct": 1.75}, '
-    '"year": {"average_price": 9200.0, "change_pct": 4.5}}',
+    # 실측: Phase1 harness_sample_entries_260828.json(동|LME 3개월) 그대로 —
+    # PAGE_SPECS["price_base_metals"]의 observations 14일치와 같은 캡처.
+    '{"week": {"average_price": 14098.1, "change_pct": 0.98}, '
+    '"month": {"average_price": 13543.93, "change_pct": 5.11}, '
+    '"year": {"average_price": 9966.51, "change_pct": 42.84}}',
 )
-_KOMIS_TRADE_TOTALS_FIELD = AdvancedJsonField(
+_KOMIS_PERIOD_COMPARISONS_UNAVAILABLE = AdvancedJsonField(
+    "komis_period_comparisons",
+    "KOMIS 기간평균(komis_period_comparisons, 객체)",
+    # 2026-08-30: 희소금속/철광석·에너지/기타는 Phase1처럼 harness가 미리
+    # 계산해둔 "직전완결 역주/역월/역년 평균" 실측값이 없다 — KOMIS stdMap의
+    # flctnPrc(기준일 대비 변동폭)는 산식이 달라(§PriceKomisPeriodComparisons
+    # 문서) 대충 변환하면 실측이 아닌 값을 실측처럼 보이게 만드는 위험이 있어,
+    # "나오는 값만 전달" 원칙에 따라 기본값은 비워 둔다(사용자가 직접 채우면
+    # 그 값 그대로 전달됨 — 통로 자체는 동일).
+    "",
+)
+_KOMIS_TRADE_TOTALS_MAP_KOREA = AdvancedJsonField(
     "komis_trade_totals",
     "KOMIS 실제 총액(komis_trade_totals, 객체)",
-    '{"import_amount": 1250000.0, "import_weight": 1800.0, '
-    '"export_amount": 300000.0, "export_weight": 450.0}',
+    # 실측: Phase3 map_korea_live_capture_260829.json의 sumIncmAmt/sumIncmWeig
+    # (MNRL0008=동·수입) — PAGE_SPECS["map_korea"] observations(14개국, 합산
+    # 약 106억)보다 큰 진짜 총액(약 109억)으로, 리스트 절단으로 인한 과소합산을
+    # 그대로 보여준다.
+    '{"import_amount": 10941953600, "import_weight": 1410885344}',
+)
+_KOMIS_TRADE_TOTALS_MAP_GLOBAL = AdvancedJsonField(
+    "komis_trade_totals",
+    "KOMIS 실제 총액(komis_trade_totals, 객체)",
+    # 실측: Phase3 map_global_live_capture_260829.json의 sumAmt/sumWeig
+    # (MNRL0008=동) — PAGE_SPECS["map_global"] observations(14루트, 합산 약
+    # 72억)의 3배가 넘는 진짜 총액(약 264억, 실측 갭 72%+)으로 30행 절단 문제를
+    # 가장 극적으로 보여주는 실측 사례라 map_korea보다 우선 확인 대상.
+    '{"import_amount": 26396166408.81, "import_weight": 3887689462.98}',
 )
 
 ADVANCED_JSON_FIELDS: dict[str, tuple[AdvancedJsonField, ...]] = {
-    "price_base_metals": (_GEO_EVENTS_FIELD, _KOMIS_PERIOD_COMPARISONS_FIELD),
-    "price_minor_metals": (_GEO_EVENTS_FIELD, _KOMIS_PERIOD_COMPARISONS_FIELD),
-    "price_iron_energy": (_GEO_EVENTS_FIELD, _KOMIS_PERIOD_COMPARISONS_FIELD),
-    "price_other": (_GEO_EVENTS_FIELD, _KOMIS_PERIOD_COMPARISONS_FIELD),
-    "map_korea": (_KOMIS_TRADE_TOTALS_FIELD,),
-    "map_global": (_KOMIS_TRADE_TOTALS_FIELD,),
+    "price_base_metals": (_GEO_EVENTS_BASE_METALS, _KOMIS_PERIOD_COMPARISONS_BASE_METALS),
+    "price_minor_metals": (_GEO_EVENTS_MINOR_METALS, _KOMIS_PERIOD_COMPARISONS_UNAVAILABLE),
+    "price_iron_energy": (_GEO_EVENTS_IRON_ENERGY, _KOMIS_PERIOD_COMPARISONS_UNAVAILABLE),
+    "price_other": (_GEO_EVENTS_OTHER, _KOMIS_PERIOD_COMPARISONS_UNAVAILABLE),
+    "map_korea": (_KOMIS_TRADE_TOTALS_MAP_KOREA,),
+    "map_global": (_KOMIS_TRADE_TOTALS_MAP_GLOBAL,),
 }
 
 

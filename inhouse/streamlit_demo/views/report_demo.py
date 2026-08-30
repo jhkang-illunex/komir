@@ -43,6 +43,7 @@ from streamlit_demo.report_gen_client import (
     EXTRA_FIELD_VALUE_LABELS,
     MAP_KOREA_OBSERVATIONS_BY_DIRECTION,
     PAGE_SPECS,
+    PRICE_GROUP_OBSERVATIONS_BY_GROUP,
     SECTION_ORDER,
     ReportGenError,
     client_from_env,
@@ -177,22 +178,29 @@ if spec.extra_fields:
 st.caption("observations(JSON 배열) — 계산에 쓰는 원자료. DB를 안 읽으므로 비우면 대부분 NO_DATA로 응답합니다.")
 # 2026-08-29: map_korea는 trade_direction=수출을 골라도 예시 JSON이 수입 필드
 # 그대로 고정돼 있었다 — 방향에 맞는 예시로 동적 전환(main-agent 요청).
+# 2026-08-30: price_group(비철금속/희소금속)도 같은 문제라 동일 패턴 적용.
 _observations_default = spec.observations_example
 if page_id == "map_korea":
     _observations_default = MAP_KOREA_OBSERVATIONS_BY_DIRECTION.get(
         payload.get("trade_direction", "import"), spec.observations_example
+    )
+elif page_id == "price_group":
+    _observations_default = PRICE_GROUP_OBSERVATIONS_BY_GROUP.get(
+        payload.get("price_group", "base_metals"), spec.observations_example
     )
 observations_text = st.text_area("observations", value=_observations_default, height=140)
 
 # 2026-08-29 main-agent 요청 — geo_events·komis_period_comparisons·
 # komis_trade_totals: 값을 지어내지 않고 사용자가 입력한 값을 그대로
 # report_gen에 전달하는 통로만 만든다(선택 입력, 비우면 안 보냄).
+# 2026-08-30 재지시: "버튼만 눌러도 풍부한 리포트"가 나오도록 빈 칸이 아니라
+# 실측(또는 형태만 맞춘) 기본값을 미리 채워 둔다 — 지우면 그때만 안 보내진다.
 advanced_texts: dict[str, str] = {}
 if page_id in ADVANCED_JSON_FIELDS:
-    with st.expander("고급: KOMIS 원본값 직접 입력(선택)"):
+    with st.expander("고급: KOMIS 원본값 직접 입력(선택)", expanded=True):
         for adv in ADVANCED_JSON_FIELDS[page_id]:
             advanced_texts[adv.field] = st.text_area(
-                adv.label, value="", placeholder=adv.placeholder, height=100,
+                adv.label, value=adv.placeholder, height=100,
                 key=f"adv_{page_id}_{adv.field}",
             )
 
