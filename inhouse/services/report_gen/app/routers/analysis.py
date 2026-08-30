@@ -302,7 +302,14 @@ class PriceSummaryRequest(_DateRangeMineralRequest):
     `compare_mineral`(코드)은 비교광종 조회 시에만 채운다 — KOMIS
     응답에 `data.compareMnrl`(비교 계열 가격)은 있어도 그 광종의
     내부 코드는 없어서 여전히 호출자가 명시해야 한다. 비교광종은
-    price_* 4종 전부 동일 지원(2026-08-30 확인, 희소금속 전용 아님)."""
+    price_* 4종 전부 동일 지원(2026-08-30 확인, 희소금속 전용 아님).
+
+    `compare_mineral_name`(한글명)은 komis_response가 있으면 자동
+    채움이다(`dataAvg.cmpMap.INFO.mnrkndKornNm`, 2026-08-30 2차 확인 —
+    사용자가 "compare_mineral_name도 komis_response 안에 있지 않냐"고
+    지적, Playwright 라이브 재현으로 확정) — `mineral_name`과 동일한
+    자동채움+오버라이드 패턴이라 required로 바꾸지 않고 optional로
+    남긴다."""
 
     mineral: str = Field(min_length=1)
     compare_mineral: str | None = Field(default=None, min_length=1)
