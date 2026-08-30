@@ -318,12 +318,24 @@ class PriceSummaryRequest(_DateRangeMineralRequest):
     대체돼 불필요"라고 잘못 판단해 여기서 지웠는데, 실제로는 auto-fill
     경로가 없어서 그 이후로는 `_analyze_price`가 계속 읽던 이 값을
     캐스터가 채울 방법 자체가 없었다(표시가 조용히 죽어 있었다) —
-    이번에 필드를 복원하면서 auto-fill까지 같이 넣어 재발을 막는다."""
+    이번에 필드를 복원하면서 auto-fill까지 같이 넣어 재발을 막는다.
+
+    `price_criterion`(기본 광종 자신의 가격기준)도 같은 이유로 4차
+    확인 후 복원한다(2026-08-30) — `compare_price_criterion`과 정확히
+    같은 커밋(`c76466a47`)에서 같은 근거("komis_response로 대체돼
+    불필요")로 같이 지워졌다. 다만 이쪽은 auto-fill(`dataAvg.INFO.
+    prcCrtr`)이 그 트리밍보다 먼저(`ecc4cb8a7`) 이미 들어가 있어서
+    표시 자체는 안 깨졌었다 — 그래도 `mineral_name`·
+    `compare_mineral_name`·`compare_price_criterion`이 전부 "자동채움
+    +오버라이드 가능"인데 이것만 "자동채움뿐, 오버라이드 불가"인 건
+    비일관적이라 나머지와 맞춘다(호출자가 KOMIS 원문과 다른 값을
+    표시하고 싶을 수 있는 경우 대비)."""
 
     mineral: str = Field(min_length=1)
     compare_mineral: str | None = Field(default=None, min_length=1)
     compare_mineral_name: str | None = Field(default=None, min_length=1)
     compare_price_criterion: str | None = None
+    price_criterion: str | None = None
 
 
 class DomesticTradeSummaryRequest(_DateRangeMineralRequest):
