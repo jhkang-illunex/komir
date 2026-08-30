@@ -170,18 +170,25 @@ class AnalysisSummaryRequest(StrictModel):
     # 합산이 진짜 총액보다 작을 수 있는데, 있으면 계산기가 이 값을 우선
     # 쓴다(하위호환: 없으면 기존대로 관측치 합산).
     komis_trade_totals: dict | None = None
-    # 2026-08-30 신설 — 발주처(KOMIS) 납품 최적화. 호출자가 KOMIS
-    # `getMnrlPrcByMnrkndUnqCd` 응답을 손으로 `observations`/
-    # `komis_period_comparisons`/`compare_observations` shape으로 매번
-    # 옮겨 담아야 했던 부담(그 과정에서 실제로 두 차례 실수 발생 — 0.00
-    # 결측값을 그대로 실어보내 최고/최저가가 깨진 사례, 비교광종 페이지
-    # 제한을 잘못 안 사례)을 없앤다. price_* 4종 전용. 있으면
-    # `data.defaultMnrl`→observations, `data.compareMnrl`→
-    # compare_observations, `dataAvg.stdMap`→komis_period_comparisons를
-    # report_gen이 직접 변환해 쓴다(§`summary.py::_parse_komis_price_response`)
-    # — 값이 있으면 위 필드들 대신 이걸 우선 쓴다. mineral(코드)·
-    # compare_mineral(코드)은 KOMIS 응답 본문에 없어(조회 파라미터일 뿐)
-    # 여전히 호출자가 명시해야 한다.
+    # 2026-08-30 신설 — 발주처(KOMIS) 납품 최적화. 호출자가 KOMIS API 응답을
+    # 손으로 report_gen 자체 shape(observations 등)으로 매번 옮겨 담아야
+    # 했던 부담(그 과정에서 실제로 두 차례 실수 발생 — 0.00 결측값을 그대로
+    # 실어보내 최고/최저가가 깨진 사례, 비교광종 페이지 제한을 잘못 안
+    # 사례)을 없앤다. 사용자 지시("하위호환 무관 싹다 교체")로 같은 날
+    # price_* 4종에서 로그인 불필요한 나머지 5종까지 확장했다 — page_id별로
+    # 원본 엔드포인트가 다르니 파서도 page_id별로 다르다
+    # (§`summary.py::_parse_komis_*_response`):
+    # - price_base_metals/minor_metals/iron_energy/other: `getMnrlPrcByMnrkndUnqCd`
+    #   → observations·compare_observations·komis_period_comparisons
+    # - map_korea: `getListKoreaData` → observations·komis_trade_totals
+    # - map_global: `getListDataNation` → observations·komis_trade_totals
+    # - map_mineral: `getListMapMnrlChartData` → observations·unit
+    # - indicator_composite: `getLineChartIndx` → observations(시계열 전체,
+    #   스냅샷 아님 — Phase4에서 확정)
+    # - forecast_price: `getListPricePredc` → observations(realYn→is_actual)
+    # 값이 있으면 각 페이지의 기존 손 매핑 필드 대신 이걸 우선 쓴다.
+    # mineral(코드)·compare_mineral(코드)·measure·forecast_horizon은 KOMIS
+    # 응답 본문에 없는 조회 파라미터라 여전히 호출자가 명시해야 한다.
     komis_response: dict | None = None
 
     @field_validator("request_id")
@@ -246,8 +253,15 @@ class AnalysisSummaryRequest(StrictModel):
             raise ValueError("komis_trade_totals is only accepted for page_id=map_korea/map_global")
         if self.komis_response is not None and self.page_id not in (
             "price_base_metals", "price_minor_metals", "price_iron_energy", "price_other",
+            "map_korea", "map_global", "map_mineral", "indicator_composite", "forecast_price",
         ):
-            raise ValueError("komis_response is only accepted for price_* pages")
+            # 2026-08-30 price_* 4종에서 신설, 같은 날 main-agent 지시로
+            # 로그인 불필요한 나머지 5종(map_korea/global/mineral,
+            # indicator_composite, forecast_price)까지 확장 — indicator_market/
+            # indicator_supply는 로그인 필요라 이번 재검증 범위 밖(세션 시작
+            # 스코핑 그대로), price_group은 KOMIS 직접 대응 엔드포인트가
+            # 없는 report_gen 자체 집계 페이지라 제외.
+            raise ValueError("komis_response is not accepted for this page_id")
 
         if self.page_id in PAGE_PROFILES:
             if self.mineral is None:

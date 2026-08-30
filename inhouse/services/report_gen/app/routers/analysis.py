@@ -148,6 +148,10 @@ class CompositeIndexSummaryRequest(AnalysisEndpointRequest):
     start_date: Day | None = None
     end_date: Day | None = None
     observations: list[dict] | None = None
+    # 2026-08-30 신설 — `getLineChartIndx` 원본 응답을 그대로 담으면
+    # report_gen이 시계열 전체를 직접 파싱한다(`models.py`의 `komis_response`
+    # 필드 docstring 참고).
+    komis_response: dict | None = None
 
     @model_validator(mode="after")
     def validate_period(self) -> CompositeIndexSummaryRequest:
@@ -174,6 +178,10 @@ class MineralMapSummaryRequest(AnalysisEndpointRequest):
     # measure 관측치를 같은 shape(dict 리스트)으로 선택적으로 함께 보낸다.
     secondary_measure_observations: list[dict] | None = None
     secondary_unit: str | None = None
+    # 2026-08-30 신설 — `getListMapMnrlChartData` 원본 응답을 그대로 담으면
+    # report_gen이 observations·unit을 직접 파싱한다(`models.py`의
+    # `komis_response` 필드 docstring 참고).
+    komis_response: dict | None = None
 
     @model_validator(mode="after")
     def validate_period(self) -> MineralMapSummaryRequest:
@@ -195,6 +203,10 @@ class PriceForecastSummaryRequest(AnalysisEndpointRequest):
     end_period: ForecastPeriod | None = None
     observations: list[dict] | None = None
     price_unit: str | None = None
+    # 2026-08-30 신설 — `getListPricePredc` 원본 응답을 그대로 담으면
+    # report_gen이 realYn→is_actual 변환까지 포함해 직접 파싱한다
+    # (`models.py`의 `komis_response` 필드 docstring 참고).
+    komis_response: dict | None = None
 
     @model_validator(mode="after")
     def validate_period(self) -> PriceForecastSummaryRequest:
