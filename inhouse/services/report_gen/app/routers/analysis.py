@@ -85,9 +85,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from ..analysis.models import (
     AnalysisReportResponse,
-    Day,
     ForecastHorizon,
-    ForecastPeriod,
     MineralMapMeasure,
     Month,
     PriceGroup,
@@ -153,21 +151,17 @@ class CompositeIndexSummaryRequest(AnalysisEndpointRequest):
     `komis_response`에 KOMIS `getLineChartIndx` 원본 응답을 그대로 담으면
     시계열 전체(광물종합·메이저금속·희소금속 3개 지수)를 직접 파싱한다
     (`models.py`의 `komis_response` 필드 docstring 참고) — mineral 개념
-    자체가 없는 페이지라 그 외엔 선택 필터(`start_date`/`end_date`)뿐이다.
+    자체가 없는 페이지라 이제 komis_response 하나만 보내면 된다.
 
     2026-08-31 정리 — 손 매핑 전용이던 `observations`는 komis_response로
     완전히 대체돼 제거했다(2026-08-26 도입, 2026-08-30 komis_response
-    신설로 불필요)."""
+    신설로 불필요).
 
-    start_date: Day | None = None
-    end_date: Day | None = None
+    2026-08-30 추가 정리 — 사용자가 "start_date/end_date가 필요하냐"고
+    지적, `_DateRangeMineralRequest` 쪽 근거와 동일해 여기도 함께
+    제거했다(§`_DateRangeMineralRequest` docstring 참고)."""
+
     komis_response: dict | None = None
-
-    @model_validator(mode="after")
-    def validate_period(self) -> CompositeIndexSummaryRequest:
-        if self.start_date and self.end_date and self.start_date > self.end_date:
-            raise ValueError("start_date must not be after end_date")
-        return self
 
 
 class MineralMapSummaryRequest(AnalysisEndpointRequest):
@@ -187,23 +181,26 @@ class MineralMapSummaryRequest(AnalysisEndpointRequest):
 
     2026-08-31 정리 — 손 매핑 전용이던 `observations`는 komis_response로
     완전히 대체돼 제거(2026-08-26 도입, 2026-08-30 komis_response 신설로
-    불필요). `unit`은 자동채움의 폴백/오버라이드로 여전히 유효해 남겼다."""
+    불필요). `unit`은 자동채움의 폴백/오버라이드로 여전히 유효해 남겼다.
+
+    2026-08-30 추가 정리 — `start_year`/`end_year`도 제거했다. streamlit_demo
+    가 실제로 이 필드를 선택 입력란(연도)으로 렌더링해 보내고 있었지만
+    (report_gen_client.py PAGE_SPECS의 `("start_year", "end_year")`),
+    komis_response 자체가 이미 "그 조회 범위의" 시계열이라 이 필드는
+    받은 응답을 사후에 다시 좁히는 중복 레이어일 뿐이었다 — 범위를
+    좁히고 싶으면 KOMIS 조회 자체를 그 연도로 다시 하면 된다는 게
+    `_DateRangeMineralRequest` docstring과 같은 결론. **UI가 실제로
+    이 필드를 채워 보내는 유일한 경로라 streamlit_demo 쪽도 같이
+    갱신해야 한다**(요청 시 extra="forbid"로 조용히 NO_DATA 처리됨) —
+    streamlit-agent에 통지."""
 
     mineral: str = Field(min_length=1)
     mineral_name: str | None = Field(default=None, min_length=1)
     measure: MineralMapMeasure
-    start_year: int | None = Field(default=None, ge=1900, le=2100)
-    end_year: int | None = Field(default=None, ge=1900, le=2100)
     unit: str | None = None
     secondary_measure_observations: list[dict] | None = None
     secondary_unit: str | None = None
     komis_response: dict | None = None
-
-    @model_validator(mode="after")
-    def validate_period(self) -> MineralMapSummaryRequest:
-        if self.start_year and self.end_year and self.start_year > self.end_year:
-            raise ValueError("start_year must not be after end_year")
-        return self
 
 
 class PriceForecastSummaryRequest(AnalysisEndpointRequest):
@@ -225,26 +222,26 @@ class PriceForecastSummaryRequest(AnalysisEndpointRequest):
 
     2026-08-31 정리 — 손 매핑 전용이던 `observations`는 komis_response로
     완전히 대체돼 제거(2026-08-26 도입, 2026-08-30 komis_response 신설로
-    불필요)."""
+    불필요).
+
+    2026-08-30 추가 정리 — `start_period`/`end_period`도 제거했다.
+    streamlit_demo가 실제로 이 필드를 선택 입력란(분기/연도)으로
+    렌더링해 보내고 있었지만(`report_gen_client.py` PAGE_SPECS의
+    `("start_period", "end_period")`), komis_response 자체가 이미 그
+    조회 범위의 예측 시계열이라 사후 재필터링은 `_DateRangeMineralRequest`
+    /`MineralMapSummaryRequest`와 동일한 순수 중복이었다. 이 필드에
+    딸려 있던 medium/long 기간형식 교차검증(`-Q` 유무)도 필드와 함께
+    제거한다 — 그 검증은 애초에 komis_response 자동판별 로직
+    (`forecast_horizon` docstring 참고)이 이미 하는 일과 같은 것을
+    호출자 입력에 대해서만 별도로 하던 것이라 필드가 없으면 대상이
+    없다. **streamlit_demo 쪽도 이 필드 전송을 멈춰야 한다**(안 그러면
+    extra="forbid"로 조용히 NO_DATA) — streamlit-agent에 통지."""
 
     mineral: str = Field(min_length=1)
     mineral_name: str | None = Field(default=None, min_length=1)
     forecast_horizon: ForecastHorizon | None = None
-    start_period: ForecastPeriod | None = None
-    end_period: ForecastPeriod | None = None
     price_unit: str | None = None
     komis_response: dict | None = None
-
-    @model_validator(mode="after")
-    def validate_period(self) -> PriceForecastSummaryRequest:
-        if self.start_period and self.end_period and self.start_period > self.end_period:
-            raise ValueError("start_period must not be after end_period")
-        periods = [value for value in (self.start_period, self.end_period) if value]
-        if self.forecast_horizon == "medium" and any("-Q" not in value for value in periods):
-            raise ValueError("medium forecasts require YYYY-Q1..Q4 periods")
-        if self.forecast_horizon == "long" and any("-Q" in value for value in periods):
-            raise ValueError("long forecasts require YYYY periods")
-        return self
 
 
 class _DateRangeMineralRequest(AnalysisEndpointRequest):
@@ -266,23 +263,30 @@ class _DateRangeMineralRequest(AnalysisEndpointRequest):
     `AnalysisSummaryRequest`(models.py)는 그대로 둔다 — 회귀 하네스
     (`komis_dump_smoke_test.py`)가 옛 손 매핑 필드로 계속 검증하고,
     이 라우터 모델은 `.model_dump()`로 그 상위집합의 부분집합만 채워
-    넘기는 관계라 내부 스키마를 넓게 유지해도 API 계약엔 안 드러난다."""
+    넘기는 관계라 내부 스키마를 넓게 유지해도 API 계약엔 안 드러난다.
 
-    # 기본값은 선택(map_korea/global은 komis_response 응답 자체가
+    2026-08-30 추가 정리 — `start_date`/`end_date`도 제거했다. 사용자가
+    price-forecast Swagger를 다시 지적("start_date, end_date가
+    필요하냐고?")한 김에 재감사한 결과: 이 필드들은 komis_response로
+    이미 받은 시계열을 사후에 다시 좁히는 순수 중복 레이어였다 —
+    "어느 기간을 보고 싶은지"는 애초에 KOMIS 조회 자체(호출자 쪽에서
+    KOMIS에 던지는 파라미터)로 결정되고, komis_response는 그 결과를
+    그대로 담는다. report_gen이 받은 뒤 또 한 번 잘라내는 두 번째
+    필터 지점을 둘 이유가 없다(request_id/analysis_scope처럼 "완전히
+    무효과"는 아니지만, "이미 통제된 범위를 또 통제"하는 입증된
+    중복). streamlit_demo가 이 필드를 실제 선택 입력란으로 렌더링해
+    보내는 유일한 경로라(`report_gen_client.py` PAGE_SPECS의
+    `period_fields`) **streamlit_demo 쪽도 이 필드 전송을 멈춰야
+    한다** — 안 그러면 캐스터가 값을 채워 보낼 때 extra="forbid"로
+    조용히 NO_DATA가 난다. streamlit-agent에 통지."""
+
+    # mineral 기본값은 선택(map_korea/global은 komis_response 응답 자체가
     # `srchMnrkndUnqCd`로 조회한 광종 코드를 그대로 돌려줘서 자동 채움
     # 가능 — 2026-08-31 확인. price_*는 KOMIS 응답 본문에 광종 코드가
     # 없어 필수로 재선언한다(`PriceSummaryRequest` 참고).
     mineral: str | None = Field(default=None, min_length=1)
     mineral_name: str | None = Field(default=None, min_length=1)
-    start_date: Day | None = None
-    end_date: Day | None = None
     komis_response: dict | None = None
-
-    @model_validator(mode="after")
-    def validate_period(self) -> _DateRangeMineralRequest:
-        if self.start_date and self.end_date and self.start_date > self.end_date:
-            raise ValueError("start_date must not be after end_date")
-        return self
 
 
 class PriceSummaryRequest(_DateRangeMineralRequest):
