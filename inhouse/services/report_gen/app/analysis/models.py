@@ -298,7 +298,15 @@ class AnalysisSummaryRequest(StrictModel):
         elif self.page_id == "forecast_price":
             if self.mineral is None:
                 raise ValueError("mineral is required for price forecast summaries")
-            if self.forecast_horizon is None:
+            # 2026-08-31 예외 — `getListPricePredc` 응답의 `crtrPrd`
+            # 자체가 분기("28년 4Q")·연("2028년") 형식으로 medium/long을
+            # 이미 구분해 담고 있어(§`validate_period`의 아래 "-Q" 검사가
+            # 바로 그 사실에 의존한다), komis_response가 있으면
+            # forecast_horizon을 안 받아도 `summary.py::
+            # _analyze_price_forecast`가 파싱된 기간 형식에서 자동
+            # 판별한다. komis_response도 없으면(손 매핑 경로) 형식을 알
+            # 방법이 없어 그대로 필수다.
+            if self.forecast_horizon is None and self.komis_response is None:
                 raise ValueError("forecast_horizon is required for price forecasts")
             if any(
                 value is not None

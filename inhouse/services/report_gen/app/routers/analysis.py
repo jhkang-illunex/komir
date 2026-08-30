@@ -204,12 +204,16 @@ class PriceForecastSummaryRequest(AnalysisEndpointRequest):
     `komis_response`에 KOMIS `getListPricePredc` 원본 응답을 그대로 담으면
     realYn→is_actual 변환까지 포함해 직접 파싱한다(`models.py`의
     `komis_response` 필드 docstring 참고). `mineral`(코드, 응답 본문엔
-    `mnrkndKornNm` 한글명만 있고 코드가 없음)·`forecast_horizon`(응답
-    본문에서 안정적으로 구분 불가한 조회 파라미터)은 여전히 필수다.
-    `price_unit`은 응답에 없는 값이라 자동 채움은 안 되지만, 있으면
-    가격 문장에 단위를 붙여주는 순수 선택 필드라 그대로 남겼다
-    (`additional_summary.py::_forecast_price_text` 참고 — price_*
-    페이지의 `price_criterion_serial`처럼 죽은 필드는 아니다).
+    `mnrkndKornNm` 한글명만 있고 코드가 없음)은 여전히 필수다.
+    `forecast_horizon`은 komis_response가 있으면 선택이다 — 응답의
+    `crtrPrd` 형식(분기 "28년 4Q" 대 연 "2028년") 자체가 medium/long을
+    이미 구분해서 담고 있어 `summary.py::_analyze_price_forecast`가
+    자동 판별한다(komis_response 없이 손 매핑 경로만 쓸 땐 형식을 알
+    방법이 없어 여전히 필수). `price_unit`은 응답에 없는 값이라 자동
+    채움은 안 되지만, 있으면 가격 문장에 단위를 붙여주는 순수 선택
+    필드라 그대로 남겼다(`additional_summary.py::_forecast_price_text`
+    참고 — price_* 페이지의 `price_criterion_serial`처럼 죽은 필드는
+    아니다).
 
     2026-08-31 정리 — 손 매핑 전용이던 `observations`는 komis_response로
     완전히 대체돼 제거(2026-08-26 도입, 2026-08-30 komis_response 신설로
@@ -217,7 +221,7 @@ class PriceForecastSummaryRequest(AnalysisEndpointRequest):
 
     mineral: str = Field(min_length=1)
     mineral_name: str | None = Field(default=None, min_length=1)
-    forecast_horizon: ForecastHorizon
+    forecast_horizon: ForecastHorizon | None = None
     start_period: ForecastPeriod | None = None
     end_period: ForecastPeriod | None = None
     price_unit: str | None = None
