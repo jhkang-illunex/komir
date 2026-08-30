@@ -296,12 +296,12 @@ def _komis_rows_to_observations(rows: list[dict]) -> list[dict]:
 
 def _parse_komis_price_response(
     raw: dict,
-) -> tuple[list[dict], list[dict] | None, dict | None, str | None]:
-    """`request.komis_response`(2026-08-30 신설)를 report_gen 내부 shape 4종
-    (observations, compare_observations, komis_period_comparisons, mineral_name)
-    으로 변환한다 — KOMIS `getMnrlPrcByMnrkndUnqCd` 원본 응답을 그대로 받아
-    호출자가 필드명을 손으로 옮겨 담을 필요를 없앤다(발주처 납품 최적화 요청,
-    2026-08-30).
+) -> tuple[list[dict], list[dict] | None, dict | None, str | None, str | None]:
+    """`request.komis_response`(2026-08-30 신설)를 report_gen 내부 shape 5종
+    (observations, compare_observations, komis_period_comparisons, mineral_name,
+    price_criterion)으로 변환한다 — KOMIS `getMnrlPrcByMnrkndUnqCd` 원본
+    응답을 그대로 받아 호출자가 필드명을 손으로 옮겨 담을 필요를 없앤다
+    (발주처 납품 최적화 요청, 2026-08-30).
 
     - `data.defaultMnrl[]` → observations(기본 계열)
     - `data.compareMnrl[]` → compare_observations(비교광종 계열, 있을 때만)
@@ -311,6 +311,11 @@ def _parse_komis_price_response(
       하네스 산식과 동일 — 라이브 재현으로 확정된 공식).
     - `dataAvg.INFO.mnrkndKornNm` → mineral_name(있으면, 호출자가 명시한
       `mineral_name`이 있으면 그쪽이 항상 우선 — 호출부에서 처리).
+    - `dataAvg.INFO.prcCrtr`(예: "LME CASH") → price_criterion(2026-08-30
+      사용자 지적 — "LME쪽이 안 보인다": `applied_filters["price_criterion"]`
+      은 이미 있는데 komis_response 경로가 안 채워서 보고서 상단
+      "**가격기준**: ..." 줄이 항상 비어 있었다. mineral_name과 같은 규칙 —
+      호출자가 명시한 `price_criterion`이 있으면 그쪽이 우선).
 
     `mineral`(코드)은 KOMIS 응답 본문에 없는 조회 파라미터라 이 함수가
     채우지 않는다 — 호출자가 그대로 명시해야 한다.
@@ -328,7 +333,9 @@ def _parse_komis_price_response(
     data = raw.get("data") or {}
     observations = _komis_rows_to_observations(data.get("defaultMnrl") or [])
     compare_observations = _komis_rows_to_observations(data.get("compareMnrl") or []) or None
-    mineral_name = ((raw.get("dataAvg") or {}).get("INFO") or {}).get("mnrkndKornNm") or None
+    komis_info = (raw.get("dataAvg") or {}).get("INFO") or {}
+    mineral_name = komis_info.get("mnrkndKornNm") or None
+    price_criterion = komis_info.get("prcCrtr") or None
 
     std_map = ((raw.get("dataAvg") or {}).get("stdMap")) or {}
     latest_price = _komis_num((std_map.get("CRTRYMD") or {}).get("cmercPrc"))
@@ -347,7 +354,7 @@ def _parse_komis_price_response(
             continue
         komis_period_comparisons[key] = {"average_price": latest_price - delta, "change_pct": pct}
 
-    return observations, compare_observations, (komis_period_comparisons or None), mineral_name
+    return observations, compare_observations, (komis_period_comparisons or None), mineral_name, price_criterion
 
 
 def _komis_ci_get(row: dict, *names: str):
@@ -1756,10 +1763,15 @@ class AnalysisSummaryService:
         raw_compare_observations = request.compare_observations
         raw_komis_period_comparisons = None
         komis_mineral_name = None
+        komis_price_criterion = None
         if request.komis_response is not None:
-            parsed_observations, parsed_compare, parsed_period_comparisons, komis_mineral_name = (
-                _parse_komis_price_response(request.komis_response)
-            )
+            (
+                parsed_observations,
+                parsed_compare,
+                parsed_period_comparisons,
+                komis_mineral_name,
+                komis_price_criterion,
+            ) = _parse_komis_price_response(request.komis_response)
             raw_observations = parsed_observations
             if parsed_compare is not None:
                 raw_compare_observations = parsed_compare
@@ -1843,8 +1855,11 @@ class AnalysisSummaryService:
         # 광종이라도 조회조건(가격기준·품목/스펙)이 서로 다를 수 있다 —
         # 요청 바디의 자유 텍스트를 그대로 표시 필터에 실어 보고서에 남긴다
         # (report_render.py가 applied_filters를 보고서 상단에 렌더링한다).
-        if request.price_criterion:
-            applied_filters["price_criterion"] = request.price_criterion
+        # 2026-08-30 사용자 지적("LME쪽이 안 보인다") — komis_response 경로가
+        # dataAvg.INFO.prcCrtr를 안 채워서 이 줄이 항상 비어 있었다.
+        price_criterion = request.price_criterion or komis_price_criterion
+        if price_criterion:
+            applied_filters["price_criterion"] = price_criterion
         if compare_series is not None:
             applied_filters["compare_mineral"] = compare_series.mineral.name
             if request.compare_price_criterion:
