@@ -142,15 +142,17 @@ class IndicatorSummaryRequest(AnalysisEndpointRequest):
 class CompositeIndexSummaryRequest(AnalysisEndpointRequest):
     """광물종합지수 요약 요청.
 
-    2026-08-26: `observations`(CompositeIndexObservation 리스트) — DB 대신
-    요청 바디로 원자료를 받는다."""
+    `komis_response`에 KOMIS `getLineChartIndx` 원본 응답을 그대로 담으면
+    시계열 전체(광물종합·메이저금속·희소금속 3개 지수)를 직접 파싱한다
+    (`models.py`의 `komis_response` 필드 docstring 참고) — mineral 개념
+    자체가 없는 페이지라 그 외엔 선택 필터(`start_date`/`end_date`)뿐이다.
+
+    2026-08-31 정리 — 손 매핑 전용이던 `observations`는 komis_response로
+    완전히 대체돼 제거했다(2026-08-26 도입, 2026-08-30 komis_response
+    신설로 불필요)."""
 
     start_date: Day | None = None
     end_date: Day | None = None
-    observations: list[dict] | None = None
-    # 2026-08-30 신설 — `getLineChartIndx` 원본 응답을 그대로 담으면
-    # report_gen이 시계열 전체를 직접 파싱한다(`models.py`의 `komis_response`
-    # 필드 docstring 참고).
     komis_response: dict | None = None
 
     @model_validator(mode="after")
@@ -163,24 +165,30 @@ class CompositeIndexSummaryRequest(AnalysisEndpointRequest):
 class MineralMapSummaryRequest(AnalysisEndpointRequest):
     """광물지도(매장량/생산량) 요약 요청.
 
-    2026-08-26: `observations`(MineralMapObservation 리스트) — DB 대신 요청
-    바디로 원자료를 받는다. `unit`(예: "천톤")도 요청에서 받는다(DB의
-    `MineralMapSeries.unit`을 대체)."""
+    `komis_response`에 KOMIS `getListMapMnrlChartData` 원본 응답을 그대로
+    담으면 observations·unit(`cdVal`, 예: "천톤")을 직접 파싱한다
+    (`models.py`의 `komis_response` 필드 docstring 참고). `mineral`(코드)·
+    `measure`(매장량/생산량)는 응답 본문에 없는 조회 파라미터라 여전히
+    필수다 — 응답엔 국가별 매장량·생산량 값이 둘 다 항상 같이 오지만,
+    지금 조회가 어느 쪽을 의도한 건지는 그 값만으로 구분이 안 된다.
+
+    2026-08-27 신설 매장량/생산량 교차 비교(PDF §4)용
+    `secondary_measure_observations`/`secondary_unit`은 komis_response가
+    아직 커버 못 하는 유일한 기능이라 그대로 남겨뒀다 — 반대 measure의
+    두 번째 KOMIS 응답을 받는 경로는 미구현.
+
+    2026-08-31 정리 — 손 매핑 전용이던 `observations`는 komis_response로
+    완전히 대체돼 제거(2026-08-26 도입, 2026-08-30 komis_response 신설로
+    불필요). `unit`은 자동채움의 폴백/오버라이드로 여전히 유효해 남겼다."""
 
     mineral: str = Field(min_length=1)
     mineral_name: str | None = Field(default=None, min_length=1)
     measure: MineralMapMeasure
     start_year: int | None = Field(default=None, ge=1900, le=2100)
     end_year: int | None = Field(default=None, ge=1900, le=2100)
-    observations: list[dict] | None = None
     unit: str | None = None
-    # 2026-08-27 신설 — 매장량/생산량 교차 비교(PDF §4). `measure`의 반대
-    # measure 관측치를 같은 shape(dict 리스트)으로 선택적으로 함께 보낸다.
     secondary_measure_observations: list[dict] | None = None
     secondary_unit: str | None = None
-    # 2026-08-30 신설 — `getListMapMnrlChartData` 원본 응답을 그대로 담으면
-    # report_gen이 observations·unit을 직접 파싱한다(`models.py`의
-    # `komis_response` 필드 docstring 참고).
     komis_response: dict | None = None
 
     @model_validator(mode="after")
@@ -193,19 +201,26 @@ class MineralMapSummaryRequest(AnalysisEndpointRequest):
 class PriceForecastSummaryRequest(AnalysisEndpointRequest):
     """중기(분기)·장기(연간) 가격예측 요약 요청.
 
-    2026-08-26: `observations`(PriceForecastObservation 리스트) — DB 대신
-    요청 바디로 원자료를 받는다."""
+    `komis_response`에 KOMIS `getListPricePredc` 원본 응답을 그대로 담으면
+    realYn→is_actual 변환까지 포함해 직접 파싱한다(`models.py`의
+    `komis_response` 필드 docstring 참고). `mineral`(코드, 응답 본문엔
+    `mnrkndKornNm` 한글명만 있고 코드가 없음)·`forecast_horizon`(응답
+    본문에서 안정적으로 구분 불가한 조회 파라미터)은 여전히 필수다.
+    `price_unit`은 응답에 없는 값이라 자동 채움은 안 되지만, 있으면
+    가격 문장에 단위를 붙여주는 순수 선택 필드라 그대로 남겼다
+    (`additional_summary.py::_forecast_price_text` 참고 — price_*
+    페이지의 `price_criterion_serial`처럼 죽은 필드는 아니다).
+
+    2026-08-31 정리 — 손 매핑 전용이던 `observations`는 komis_response로
+    완전히 대체돼 제거(2026-08-26 도입, 2026-08-30 komis_response 신설로
+    불필요)."""
 
     mineral: str = Field(min_length=1)
     mineral_name: str | None = Field(default=None, min_length=1)
     forecast_horizon: ForecastHorizon
     start_period: ForecastPeriod | None = None
     end_period: ForecastPeriod | None = None
-    observations: list[dict] | None = None
     price_unit: str | None = None
-    # 2026-08-30 신설 — `getListPricePredc` 원본 응답을 그대로 담으면
-    # report_gen이 realYn→is_actual 변환까지 포함해 직접 파싱한다
-    # (`models.py`의 `komis_response` 필드 docstring 참고).
     komis_response: dict | None = None
 
     @model_validator(mode="after")

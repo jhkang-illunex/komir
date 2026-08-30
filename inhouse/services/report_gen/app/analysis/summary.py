@@ -539,15 +539,21 @@ def _parse_komis_composite_response(raw: dict) -> list[dict]:
 _KOMIS_FORECAST_PERIOD_RE = re.compile(r"^(\d{2})년\s*(?:(\d)Q)?")
 
 
-def _parse_komis_price_forecast_response(raw: dict) -> list[dict]:
+def _parse_komis_price_forecast_response(raw: dict) -> tuple[list[dict], str | None]:
     """`getListPricePredc` 원본 응답(2026-08-29 Phase4 라이브재검증) →
-    observations. `data[]`의 `crtrPrd`("28년 4Q"/"01년 1Q" 형식, 2000년대만
-    관측됨)를 `YYYY-QN`/`YYYY`로, `realYn`(Y=확정 실적/N=예측)을 `is_actual`로
-    변환한다(§models.py `PriceForecastObservation.is_actual` 참고)."""
+    observations + mineral_name. `data[]`의 `crtrPrd`("28년 4Q"/"01년 1Q"
+    형식, 2000년대만 관측됨)를 `YYYY-QN`/`YYYY`로, `realYn`(Y=확정 실적/
+    N=예측)을 `is_actual`로 변환한다(§models.py
+    `PriceForecastObservation.is_actual` 참고). 각 행의 `mnrkndKornNm`
+    (예: "니켈")도 mineral_name으로 뽑는다(2026-08-31 추가 — price
+    파서와 같은 패턴, 호출자가 명시한 mineral_name이 있으면 그쪽 우선)."""
 
     rows = raw.get("data") or []
     observations: list[dict] = []
+    mineral_name = None
     for row in rows:
+        if mineral_name is None:
+            mineral_name = row.get("mnrkndKornNm") or None
         prd = row.get("crtrPrd")
         price = _komis_num(row.get("prc"))
         if not prd or price is None:
@@ -560,7 +566,7 @@ def _parse_komis_price_forecast_response(raw: dict) -> list[dict]:
         real_yn = row.get("realYn")
         is_actual = True if real_yn == "Y" else False if real_yn == "N" else None
         observations.append({"period": period, "price": price, "is_actual": is_actual})
-    return observations
+    return observations, mineral_name
 
 
 def _supply_auxiliary_from_request(request: AnalysisSummaryRequest) -> SupplyAuxiliaryData | None:
@@ -1424,7 +1430,12 @@ class AnalysisSummaryService:
             observations = [o for o in observations if o.date <= request.end_date]
         if not observations:
             raise DataSourceError("composite index analysis: 필터 적용 후 observations가 비었다")
-        dates = sorted(o.date for o in observations)
+        # 2026-08-31 forecast_price와 같은 원인으로 발견·수정 — KOMIS
+        # tableData/defaultMnrl류 응답은 정렬 순서를 보장 안 해서, series에
+        # 넣기 전에 직접 날짜순 정렬해야 아래 applied_filters의
+        # series.observations[0]/[-1]이 실제 시작/끝과 맞는다.
+        observations = sorted(observations, key=lambda item: item.date)
+        dates = [item.date for item in observations]
         series = CompositeIndexSeries(
             available_start_date=dates[0],
             available_end_date=dates[-1],
@@ -1657,10 +1668,12 @@ class AnalysisSummaryService:
         # )
         # 2026-08-30 신설(사용자 지시로 price의 komis_response 패턴 확장) —
         # `getListPricePredc` 원본 응답이 있으면 realYn→is_actual 변환까지
-        # 포함해 직접 파싱한다.
+        # 포함해 직접 파싱한다. 2026-08-31: mineral_name도 같이 뽑는다
+        # (price 파서와 같은 패턴).
         raw_observations = request.observations
+        komis_mineral_name = None
         if request.komis_response is not None:
-            raw_observations = _parse_komis_price_forecast_response(request.komis_response)
+            raw_observations, komis_mineral_name = _parse_komis_price_forecast_response(request.komis_response)
         observations = _observations_from_request(PriceForecastObservation, request, raw=raw_observations)
         if request.start_period:
             observations = [o for o in observations if o.period >= request.start_period]
@@ -1668,9 +1681,20 @@ class AnalysisSummaryService:
             observations = [o for o in observations if o.period <= request.end_period]
         if not observations:
             raise DataSourceError("price forecast analysis: 필터 적용 후 observations가 비었다")
-        periods = sorted(o.period for o in observations)
+        # 2026-08-31 실측 발견·수정: KOMIS는 getListPricePredc를 최신순
+        # (내림차순)으로 주는데(가격 파서의 latest_price 버그와 같은
+        # 원인), 여기서 observations를 정렬 안 하고 그대로 series에
+        # 넣어서 아래 applied_filters의 "start_period"/"end_period"가
+        # 뒤바뀌어 나왔다(2028-Q4가 시작, 2001-Q1이 끝으로 표시). 계산기
+        # (calculate_price_forecast_summary)는 내부에서 이미 정렬해 써서
+        # 무관했지만, 이 표시용 값은 직접 정렬해야 한다.
+        observations = sorted(observations, key=lambda item: item.period)
+        periods = [item.period for item in observations]
         series = PriceForecastSeries(
-            mineral=MineralRef(code=request.mineral, name=request.mineral_name or request.mineral),
+            mineral=MineralRef(
+                code=request.mineral,
+                name=request.mineral_name or komis_mineral_name or request.mineral,
+            ),
             horizon=request.forecast_horizon,
             available_start_period=periods[0],
             available_end_period=periods[-1],
@@ -1791,7 +1815,14 @@ class AnalysisSummaryService:
             observations = [o for o in observations if o.date <= request.end_date]
         if not observations:
             raise DataSourceError("price analysis: 필터 적용 후 observations가 비었다")
-        dates = sorted(o.date for o in observations)
+        # 2026-08-31 forecast_price와 같은 원인으로 발견·수정 — KOMIS
+        # defaultMnrl은 최신순(내림차순)이라, series에 넣기 전에 직접
+        # 날짜순 정렬해야 아래 applied_filters/DataQuality의
+        # series.observations[0]/[-1]이 실제 시작/끝과 맞는다
+        # (calculate_price_summary 내부는 이미 정렬해 써서 계산 자체는
+        # 이 버그와 무관했다).
+        observations = sorted(observations, key=lambda item: item.date)
+        dates = [item.date for item in observations]
         series = PriceSeries(
             page_id=request.page_id,
             mineral=MineralRef(
