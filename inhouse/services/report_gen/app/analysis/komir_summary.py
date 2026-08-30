@@ -324,8 +324,10 @@ def calculate_price_summary(
 ) -> AdditionalCalculatedSummary:
     """Calculate deterministic evidence and metrics for a price series.
 
-    `compare_series`(2026-08-26 신설) — KOMIS 희소금속 페이지의 "비교광종"
-    기능 대응. 원본 KOMIS 응답은 기본 계열이 `data.defaultMnrl`, 비교 계열이
+    `compare_series`(2026-08-26 신설) — KOMIS 광물자원가격 메뉴의 "비교광종"
+    기능 대응(당초 희소금속 전용으로 알았으나 2026-08-30 확인 결과 4개
+    가격 서브메뉴 전부 동일 기능 제공). 원본 KOMIS 응답은 기본 계열이
+    `data.defaultMnrl`, 비교 계열이
     `data.compareMnrl` 키 아래 같은 레코드 shape으로 온다(사용자 확인,
     2026-08-26) — 이 서버는 DB를 거치지 않으므로 그 두 계열을 요청 바디의
     `observations`(=defaultMnrl 상당)·`compare_observations`(=compareMnrl
