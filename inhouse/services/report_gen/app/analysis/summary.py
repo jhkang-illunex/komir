@@ -225,15 +225,24 @@ def _komis_period_comparisons_from_request(
         ) from exc
 
 
-def _komis_trade_totals_from_request(request: AnalysisSummaryRequest) -> TradeKomisTotals | None:
+def _komis_trade_totals_from_request(
+    request: AnalysisSummaryRequest,
+    *,
+    raw: dict | None = None,
+) -> TradeKomisTotals | None:
     """`request.komis_trade_totals`(선택 필드, 2026-08-29 Phase3 라이브 재검증
     확정 — `report_gen_KOMIS라이브재검증_Phase3_260829.md`)를 검증한다.
-    `_geo_events_from_request`와 같은 패턴: 없으면 에러가 아니라 None(하위호환)."""
+    `_geo_events_from_request`와 같은 패턴: 없으면 에러가 아니라 None(하위호환).
 
-    if not request.komis_trade_totals:
+    `raw`(2026-08-30 신설) — `_trade_series_from_request`가 `komis_response`
+    에서 뽑아낸 값을 여기 override로 넘긴다(`_komis_period_comparisons_
+    from_request`의 `raw` 파라미터와 같은 패턴)."""
+
+    payload = raw if raw is not None else request.komis_trade_totals
+    if not payload:
         return None
     try:
-        return TradeKomisTotals.model_validate(request.komis_trade_totals)
+        return TradeKomisTotals.model_validate(payload)
     except Exception as exc:  # noqa: BLE001 — pydantic ValidationError 등을 NO_DATA로 통일
         raise DataSourceError(
             f"{request.page_id}: komis_trade_totals 형식이 TradeKomisTotals와 맞지 않는다: {exc}"
@@ -325,6 +334,205 @@ def _parse_komis_price_response(
         komis_period_comparisons[key] = {"average_price": latest_price - delta, "change_pct": pct}
 
     return observations, compare_observations, (komis_period_comparisons or None), mineral_name
+
+
+def _komis_ci_get(row: dict, *names: str):
+    """`_komis_num`류 헬퍼와 짝 — 대소문자가 다른 동의 키(예: totalBurudgQuty
+    vs TOTALPRDCTNQUTY)를 순서대로 찾는다(map_mineral 응답에서 관측된 표기
+    불일치)."""
+
+    for name in names:
+        if name in row:
+            return row[name]
+    lowered = {key.lower(): value for key, value in row.items()}
+    for name in names:
+        if name.lower() in lowered:
+            return lowered[name.lower()]
+    return None
+
+
+def _parse_komis_map_korea_response(raw: dict) -> tuple[list[dict], dict | None]:
+    """`getListKoreaData` 원본 응답(2026-08-30, 사용자 지시로 price와 같은 패턴을
+    나머지 페이지로 확장) → observations + komis_trade_totals. 응답 자체가
+    조회 파라미터(`srchDateE`)를 그대로 되돌려주므로 그걸 관측일로 쓴다(행
+    자체엔 날짜가 없는 스냅샷 응답 — `komis_dump_smoke_test.py::
+    adapt_map_korea`와 같은 근거)."""
+
+    rows = raw.get("list") or []
+    as_of = raw.get("srchDateE")
+    as_of_date = f"{as_of[0:4]}-{as_of[4:6]}-{as_of[6:8]}" if as_of else None
+    observations: list[dict] = []
+    if as_of_date:
+        for row in rows:
+            code = row.get("ntnCd")
+            if not code:
+                continue
+            observations.append(
+                {
+                    "date": as_of_date,
+                    "country_code": code,
+                    "country_name": row.get("ntnKornNm") or code,
+                    "import_weight": _komis_num(row.get("incmWeig")),
+                    "import_amount": _komis_num(row.get("incmAmt")),
+                    "export_weight": _komis_num(row.get("expWeig")),
+                    "export_amount": _komis_num(row.get("expAmt")),
+                }
+            )
+    komis_trade_totals: dict = {}
+    if rows:
+        sum_incm = _komis_num(rows[0].get("sumIncmAmt"))
+        sum_exp = _komis_num(rows[0].get("sumExpAmt"))
+        if sum_incm:
+            komis_trade_totals["import_amount"] = sum_incm
+        if sum_exp:
+            komis_trade_totals["export_amount"] = sum_exp
+    return observations, (komis_trade_totals or None)
+
+
+def _parse_komis_map_global_response(raw: dict) -> tuple[list[dict], dict | None]:
+    """`getListDataNation` 원본 응답 → observations + komis_trade_totals.
+    map_korea와 달리 행마다 도착국(`incmNtn*`)·원산국(`expNtn*`) 쌍이 이미
+    있어 행 1개 = 루트 관측 1건(`komis_dump_smoke_test.py::adapt_map_global`
+    과 동일 근거)."""
+
+    rows = raw.get("list") or []
+    as_of = raw.get("srchDateE")
+    as_of_date = f"{as_of[0:4]}-{as_of[4:6]}-{as_of[6:8]}" if as_of else None
+    observations: list[dict] = []
+    if as_of_date:
+        for row in rows:
+            dest_code, origin_code = row.get("incmNtnCd"), row.get("expNtnCd")
+            if not dest_code or not origin_code:
+                continue
+            observations.append(
+                {
+                    "date": as_of_date,
+                    "country_code": dest_code,
+                    "country_name": row.get("incmNtnNm") or dest_code,
+                    "origin_country_code": origin_code,
+                    "origin_country_name": row.get("expNtnNm") or origin_code,
+                    "import_weight": _komis_num(row.get("weig")) or 0.0,
+                    "import_amount": _komis_num(row.get("amt")) or 0.0,
+                }
+            )
+    komis_trade_totals = None
+    if rows:
+        sum_amt = _komis_num(rows[0].get("sumAmt"))
+        if sum_amt:
+            komis_trade_totals = {"import_amount": sum_amt}
+    return observations, komis_trade_totals
+
+
+def _parse_komis_mineral_map_response(raw: dict, measure: str) -> tuple[list[dict], str | None]:
+    """`getListMapMnrlChartData` 원본 응답 → observations + unit.
+    `measure`("reserves"/"production")는 응답 본문에 없는 조회 파라미터라
+    호출자가 그대로 명시해야 한다(`komis_dump_smoke_test.py::
+    adapt_mineral_map`과 동일 근거 — 매장량/생산량 총계 키가 대소문자
+    표기까지 다를 수 있어 `_komis_ci_get`으로 찾는다)."""
+
+    rows = raw.get("data") or []
+    value_key = "burudgQuty" if measure == "reserves" else "prdctnQuty"
+    total_key_candidates = (
+        ("totalBurudgQuty",) if measure == "reserves" else ("TOTALPRDCTNQUTY", "totalPrdctnQuty")
+    )
+    unit = (str(rows[0].get("cdVal") or "").strip() or None) if rows else None
+    by_year: dict[int, list[dict]] = {}
+    totals: dict[int, float] = {}
+    for row in rows:
+        year_raw = row.get("crtrYr")
+        if year_raw is None:
+            continue
+        year = int(year_raw)
+        value = _komis_num(row.get(value_key))
+        if value is None or value <= 0:
+            continue
+        by_year.setdefault(year, []).append(
+            {
+                "year": year,
+                "country_code": row.get("ntnEngCd") or row.get("ntnKornNm"),
+                "country_name": row.get("ntnKornNm") or row.get("ntnEngNm"),
+                "value": value,
+                "is_total": False,
+                "is_other": False,
+            }
+        )
+        total_val = _komis_num(_komis_ci_get(row, *total_key_candidates))
+        if total_val is not None:
+            totals[year] = total_val
+    observations: list[dict] = []
+    for year in sorted(by_year):
+        observations.extend(by_year[year])
+        if year in totals:
+            observations.append(
+                {
+                    "year": year,
+                    "country_code": "WORLD",
+                    "country_name": "세계",
+                    "value": totals[year],
+                    "is_total": True,
+                    "is_other": False,
+                }
+            )
+    return observations, unit
+
+
+def _parse_komis_composite_response(raw: dict) -> list[dict]:
+    """`getLineChartIndx` 원본 응답(2026-08-29 Phase4 라이브재검증) →
+    observations. `data.tableData`가 날짜별로 지수유형(indxTp: MNRL=광물
+    종합지수/MAJOR=메이저금속지수/RARE=희소금속지수) 3종을 행 3개로 나눠서
+    준다 — 같은 crtrYmd(YYYY.MM.DD 점 구분)끼리 묶어 CompositeIndexObservation
+    1건(세 지수값 전부)으로 합친다. 세 지수 중 하나라도 없는 날짜는 모델
+    요구사항(gt=0 필수 3종)을 못 채워 건너뛴다."""
+
+    table = (raw.get("data") or {}).get("tableData") or []
+    by_date: dict[str, dict[str, float]] = {}
+    for row in table:
+        crtr = row.get("crtrYmd")
+        indx_tp = row.get("indxTp")
+        value = _komis_num(row.get("indx"))
+        if not crtr or not indx_tp or value is None:
+            continue
+        by_date.setdefault(crtr, {})[indx_tp] = value
+    observations: list[dict] = []
+    for crtr, values in by_date.items():
+        if not all(key in values for key in ("MNRL", "MAJOR", "RARE")):
+            continue
+        observations.append(
+            {
+                "date": crtr.replace(".", "-"),
+                "composite_index": values["MNRL"],
+                "major_metals_index": values["MAJOR"],
+                "minor_metals_index": values["RARE"],
+            }
+        )
+    return observations
+
+
+_KOMIS_FORECAST_PERIOD_RE = re.compile(r"^(\d{2})년\s*(?:(\d)Q)?")
+
+
+def _parse_komis_price_forecast_response(raw: dict) -> list[dict]:
+    """`getListPricePredc` 원본 응답(2026-08-29 Phase4 라이브재검증) →
+    observations. `data[]`의 `crtrPrd`("28년 4Q"/"01년 1Q" 형식, 2000년대만
+    관측됨)를 `YYYY-QN`/`YYYY`로, `realYn`(Y=확정 실적/N=예측)을 `is_actual`로
+    변환한다(§models.py `PriceForecastObservation.is_actual` 참고)."""
+
+    rows = raw.get("data") or []
+    observations: list[dict] = []
+    for row in rows:
+        prd = row.get("crtrPrd")
+        price = _komis_num(row.get("prc"))
+        if not prd or price is None:
+            continue
+        match = _KOMIS_FORECAST_PERIOD_RE.match(str(prd))
+        if not match:
+            continue
+        year = 2000 + int(match.group(1))
+        period = f"{year}-Q{match.group(2)}" if match.group(2) else str(year)
+        real_yn = row.get("realYn")
+        is_actual = True if real_yn == "Y" else False if real_yn == "N" else None
+        observations.append({"period": period, "price": price, "is_actual": is_actual})
+    return observations
 
 
 def _supply_auxiliary_from_request(request: AnalysisSummaryRequest) -> SupplyAuxiliaryData | None:
@@ -1174,7 +1382,14 @@ class AnalysisSummaryService:
         #     start_date=request.start_date,
         #     end_date=request.end_date,
         # )
-        observations = _observations_from_request(CompositeIndexObservation, request)
+        # 2026-08-30 신설(사용자 지시로 price의 komis_response 패턴 확장) —
+        # `getLineChartIndx` 원본 응답이 있으면 시계열 전체를 직접 파싱한다
+        # (Phase4 라이브재검증에서 확인한 대로 스냅샷이 아니라 tableData
+        # 전체를 읽어야 한다).
+        raw_observations = request.observations
+        if request.komis_response is not None:
+            raw_observations = _parse_komis_composite_response(request.komis_response)
+        observations = _observations_from_request(CompositeIndexObservation, request, raw=raw_observations)
         if request.start_date:
             observations = [o for o in observations if o.date >= request.start_date]
         if request.end_date:
@@ -1259,7 +1474,18 @@ class AnalysisSummaryService:
 
         if request.mineral is None or request.measure is None:
             raise DataSourceError("mineral map analysis requires mineral and measure in the request body")
-        if not request.unit:
+        # 2026-08-30 신설(사용자 지시로 price의 komis_response 패턴을 나머지
+        # 페이지로 확장) — `getListMapMnrlChartData` 원본 응답을 그대로 받으면
+        # observations·unit을 직접 만든다. 없으면(하위호환) 기존처럼 손으로
+        # 채운 필드를 그대로 쓴다.
+        raw_observations = request.observations
+        komis_unit = None
+        if request.komis_response is not None:
+            raw_observations, komis_unit = _parse_komis_mineral_map_response(
+                request.komis_response, request.measure
+            )
+        unit = request.unit or komis_unit
+        if not unit:
             raise DataSourceError("mineral map analysis requires unit in the request body")
         # 2026-08-26 DB 조회 경로 비활성화(요청 바디 입력으로 전환, WORKLOG 참고) —
         # 복원 시 아래 두 줄 주석을 해제하고 그 아래 request 기반 조립 블록을 지운다.
@@ -1271,7 +1497,7 @@ class AnalysisSummaryService:
         #     start_year=request.start_year,
         #     end_year=request.end_year,
         # )
-        observations = _observations_from_request(MineralMapObservation, request)
+        observations = _observations_from_request(MineralMapObservation, request, raw=raw_observations)
         if request.start_year:
             observations = [o for o in observations if o.year >= request.start_year]
         if request.end_year:
@@ -1282,7 +1508,7 @@ class AnalysisSummaryService:
         series = MineralMapSeries(
             mineral=MineralRef(code=request.mineral, name=request.mineral_name or request.mineral),
             measure=request.measure,
-            unit=request.unit,
+            unit=unit,
             available_start_year=years[0],
             available_end_year=years[-1],
             source_type="api",
@@ -1401,7 +1627,13 @@ class AnalysisSummaryService:
         #     start_period=request.start_period,
         #     end_period=request.end_period,
         # )
-        observations = _observations_from_request(PriceForecastObservation, request)
+        # 2026-08-30 신설(사용자 지시로 price의 komis_response 패턴 확장) —
+        # `getListPricePredc` 원본 응답이 있으면 realYn→is_actual 변환까지
+        # 포함해 직접 파싱한다.
+        raw_observations = request.observations
+        if request.komis_response is not None:
+            raw_observations = _parse_komis_price_forecast_response(request.komis_response)
+        observations = _observations_from_request(PriceForecastObservation, request, raw=raw_observations)
         if request.start_period:
             observations = [o for o in observations if o.period >= request.start_period]
         if request.end_period:
@@ -1666,15 +1898,27 @@ class AnalysisSummaryService:
     def _trade_series_from_request(
         request: AnalysisSummaryRequest,
         page_id: Literal["map_korea", "map_global"],
-    ) -> TradeMapSeries:
+    ) -> tuple[TradeMapSeries, dict | None]:
         """`_analyze_domestic_trade`/`_analyze_global_trade` 공통 request→Series 조립.
 
         2026-08-26: DB(`KO_CSTM_CMMRC`/`KO_UN_CMMRC`) 조회 대신 요청 바디의
-        `observations`(TradeCountryObservation 리스트)로 직접 조립한다."""
+        `observations`(TradeCountryObservation 리스트)로 직접 조립한다.
+
+        2026-08-30 신설(사용자 지시로 price의 komis_response 패턴 확장) —
+        `getListKoreaData`/`getListDataNation` 원본 응답이 있으면
+        observations와 komis_trade_totals(총액 절단 처방, Phase3)를 둘 다
+        직접 파싱한다. 반환값에 raw komis_trade_totals dict를 같이 얹어
+        호출부가 `_komis_trade_totals_from_request(request, raw=...)`로
+        넘길 수 있게 한다."""
 
         if request.mineral is None:
             raise DataSourceError(f"{page_id} analysis requires mineral in the request body")
-        observations = _observations_from_request(TradeCountryObservation, request)
+        raw_observations = request.observations
+        raw_komis_trade_totals = None
+        if request.komis_response is not None:
+            parser = _parse_komis_map_korea_response if page_id == "map_korea" else _parse_komis_map_global_response
+            raw_observations, raw_komis_trade_totals = parser(request.komis_response)
+        observations = _observations_from_request(TradeCountryObservation, request, raw=raw_observations)
         if request.start_date:
             observations = [o for o in observations if o.date >= request.start_date]
         if request.end_date:
@@ -1682,7 +1926,7 @@ class AnalysisSummaryService:
         if not observations:
             raise DataSourceError(f"{page_id} analysis: 필터 적용 후 observations가 비었다")
         dates = sorted(o.date for o in observations)
-        return TradeMapSeries(
+        series = TradeMapSeries(
             page_id=page_id,
             mineral=MineralRef(code=request.mineral, name=request.mineral_name or request.mineral),
             available_start_date=dates[0],
@@ -1694,6 +1938,7 @@ class AnalysisSummaryService:
             observations=observations,
             warnings=[],
         )
+        return series, raw_komis_trade_totals
 
     def _analyze_domestic_trade(self, request: AnalysisSummaryRequest) -> AnalysisSummaryResponse:
         """Load a domestic (KO_CSTM_CMMRC) trade-map series and build its response."""
@@ -1707,8 +1952,8 @@ class AnalysisSummaryService:
         #     start_date=request.start_date,
         #     end_date=request.end_date,
         # )
-        series = self._trade_series_from_request(request, "map_korea")
-        komis_trade_totals = _komis_trade_totals_from_request(request)
+        series, raw_komis_trade_totals = self._trade_series_from_request(request, "map_korea")
+        komis_trade_totals = _komis_trade_totals_from_request(request, raw=raw_komis_trade_totals)
         calculated = _calculate_or_no_data(
             request.page_id,
             calculate_domestic_trade_summary,
@@ -1730,8 +1975,8 @@ class AnalysisSummaryService:
         #     start_date=request.start_date,
         #     end_date=request.end_date,
         # )
-        series = self._trade_series_from_request(request, "map_global")
-        komis_trade_totals = _komis_trade_totals_from_request(request)
+        series, raw_komis_trade_totals = self._trade_series_from_request(request, "map_global")
+        komis_trade_totals = _komis_trade_totals_from_request(request, raw=raw_komis_trade_totals)
         calculated = _calculate_or_no_data(
             request.page_id, calculate_global_trade_summary, series, komis_totals=komis_trade_totals
         )
