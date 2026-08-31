@@ -80,13 +80,17 @@ def passthrough_map_global(raw: dict, ctx: dict) -> dict:
 
     2026-08-31 사용자 지시로 komis_fetch.py의 fetch_map_global이 나머지 2개
     엔드포인트(getBarChartDataNation·getListMapNationData)도 같이 조회해
-    {"list_data","bar_chart","nation_map"} envelope으로 묶는다 — 이 함수는
-    그중 list_data(기존 계약과 100% 동일한 getListDataNation raw shape)만
-    komis_response로 보낸다. bar_chart/nation_map은 report_gen이 아직 받을
-    필드가 없어(2026-08-31 기준 report-summary-agent에 통지·응답 대기 중)
-    이 데모의 "KOMIS 데이터 조회 결과"엔 그대로 보존되지만 report_gen
-    요청 바디엔 안 싣는다 — 필드 계약이 정해지면 여기서 갈라 보낼 것
-    (§map_mineral의 chart/snapshot/share 패턴과 동일하게 확장 예정)."""
+    {"list_data","bar_chart","nation_map"} envelope으로 묶는다.
+
+    2026-08-31 report-summary-agent 계약 확정(커밋 67452b73a) —
+    `komis_bar_chart_response`(envelope의 bar_chart 그대로)·
+    `komis_route_share_response`(envelope의 nation_map 그대로) 2개 필드
+    신설, 셋 다 선택·독립(하나만 보내도 동작). ⚠ report-summary-agent 실측
+    경고: 바차트 국가합계가 list_data의 sumAmt와 30%대 차이(집계범위가
+    다름) — report_gen은 바차트를 "세계 총액"으로 안 쓰고 1위국 연도별
+    수치만 쓴다, 이 데모는 원본을 그대로 붙여넣기/표시만 하므로 별도
+    집계를 안 해 이 문제와 무관하다. bar_chart의 마지막 연도(xaxis 끝)는
+    연중 진행분이라 report_gen이 제외한다는 점도 참고."""
 
     if not isinstance(raw, dict):
         raise KomisRawConversionError(
@@ -99,7 +103,12 @@ def passthrough_map_global(raw: dict, ctx: dict) -> dict:
         raise KomisRawConversionError(
             "list_data.list(루트별 목록)를 찾을 수 없습니다 — 글로벌 수급지도 조회 결과(getListDataNation) JSON이 맞는지 확인하세요."
         )
-    return {"komis_response": list_data}
+    converted: dict = {"komis_response": list_data}
+    if isinstance(raw.get("bar_chart"), dict):
+        converted["komis_bar_chart_response"] = raw["bar_chart"]
+    if isinstance(raw.get("nation_map"), dict):
+        converted["komis_route_share_response"] = raw["nation_map"]
+    return converted
 
 
 def passthrough_map_mineral(raw: dict, ctx: dict) -> dict:
