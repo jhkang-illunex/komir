@@ -33,10 +33,11 @@ komis.or.kr이 200 OK에 데이터는 전부 null인 응답을 줬다 — 원인
 34개 희소금속 하드코딩 표도 이 과정에서 통째로 제거했다(코드가 며칠 만에
 드리프트하는 게 실측으로 확인됐으므로 정적 표는 곧 썩는다).
 
-⚠ price_iron_energy·price_other(철·금 등)는 `getMnrlPriceCrtr`를 태울
-`mnrkndUnqCd`가 base/minor metals 페이지 소속인지조차 이 원본자료로는 확인이
-안 된다(희소금속 34종 목록 밖) — 이 두 페이지는 fetch를 구현하지 않고
-기존 수동 붙여넣기만 유지한다.
+price_iron_energy(`/Komis/RsrcPrice/IronOre`)·price_other(`/Komis/RsrcPrice/EtcMnrl`)도
+2026-08-31 실측(철=MNRL1011, 금=MNRL0046)으로 base/minor metals와 동일한
+`getMnrlPriceCrtr`→`getMnrlPrcByMnrkndUnqCd` 2단계 흐름이 그대로 통함을
+확인했다 — 이전 기록("확인 안 됨, fetch 미구현")은 낡은 우려였고 현재는
+4개 가격 페이지 전부 fetch를 지원한다.
 
 **실측 검증(2026-08-31)**: 동(MNRL0008)·map_korea·map_mineral 실호출로
 실제 가격·거래·매장량 데이터가 돌아오는 것까지 확인했다(단순 200 응답이
@@ -160,7 +161,31 @@ def _require_data(result: dict, mineral_code: str) -> dict:
 BASE_METALS_CODES = {"MNRL0002", "MNRL0008", "MNRL0023", "MNRL0009", "MNRL0022", "MNRL0016"}
 
 
-def fetch_price_base_metals(mineral_code: str, *, start_year: str = "2016", end_year: str = "2026") -> dict:
+def _resolve_compare_criterion(
+    client: httpx.Client, hp000: str, compare_mineral_code: str | None, *, category_label: str
+) -> tuple[str, str]:
+    """비교 광종의 가격기준(cdKey)을 조회한다 — §fetch_price_minor_metals
+    2026-08-31 버그수정과 동일 패턴(주 광종처럼 비교 광종도 getMnrlPriceCrtr로
+    매번 조회해야 한다, 하드코딩 불가). 없으면 ("", "[선택]")로 "비교 안 함"."""
+    if not compare_mineral_code:
+        return "", "[선택]"
+    compare_crtr_data = _ajax_post(
+        client, "/Komis/RsrcPrice/ajax/getMnrlPriceCrtr", {"HP000": hp000, "mnrkndUnqCd": compare_mineral_code}
+    )
+    compare_candidates = compare_crtr_data.get("data") or []
+    if not compare_candidates:
+        raise KomisFetchError(
+            f"비교 광종 '{compare_mineral_code}'는 komis.or.kr {category_label} 가격기준 목록에 없습니다 — "
+            "비교 광종을 다시 선택하거나 비워두세요."
+        )
+    compare_crtr = _pick_price_criterion(compare_candidates, compare_mineral_code)
+    return compare_mineral_code, str(compare_crtr["cdKey"])
+
+
+def fetch_price_base_metals(
+    mineral_code: str, *, start_year: str = "2016", end_year: str = "2026",
+    compare_mineral_code: str | None = None,
+) -> dict:
     if mineral_code not in BASE_METALS_CODES:
         raise KomisFetchError(
             f"'{mineral_code}'는 비철금속 6종(니켈/동/아연/알루미늄/연/주석)이 아닙니다 — 광종을 다시 선택하세요."
@@ -171,11 +196,14 @@ def fetch_price_base_metals(mineral_code: str, *, start_year: str = "2016", end_
             client, "/Komis/RsrcPrice/ajax/getMnrlPriceCrtr", {"HP000": "HP001", "mnrkndUnqCd": mineral_code}
         )
         crtr = _pick_price_criterion(crtr_data.get("data") or [], mineral_code)
+        compare_mnrknd_cd, compare_prc_crtr = _resolve_compare_criterion(
+            client, "HP001", compare_mineral_code, category_label="비철금속"
+        )
         params = {
             "mnrkndUnqRadioCd": mineral_code, "srchMnrkndUnqCd": mineral_code,
             "srchPrcCrtr": str(crtr["cdKey"]), "srchAvgOpt": "DAY", "srchField": "year",
             "srchStartDate": start_year, "srchEndDate": end_year,
-            "srchCompareMnrkndUnqCd": "", "srchComparePrcCrtr": "[선택]", "lmeInvt": "Y",
+            "srchCompareMnrkndUnqCd": compare_mnrknd_cd, "srchComparePrcCrtr": compare_prc_crtr, "lmeInvt": "Y",
         }
         result = _ajax_post(client, "/Komis/RsrcPrice/ajax/getMnrlPrcByMnrkndUnqCd", params)
     finally:
@@ -184,7 +212,24 @@ def fetch_price_base_metals(mineral_code: str, *, start_year: str = "2016", end_
 
 
 # ── price_minor_metals ───────────────────────────────────────────────
-def fetch_price_minor_metals(mineral_code: str, *, start_year: str = "2016", end_year: str = "2026") -> dict:
+# 2026-08-31 버그수정(사용자 지적 — "비교 광종 있는/없는 보고서가 전혀
+# 다르지 않다"): 이 함수가 `compare_mineral_code`를 아예 안 받아서
+# `srchCompareMnrkndUnqCd`/`srchComparePrcCrtr`가 항상 빈 값("[선택]")으로
+# 나갔다 — UI에서 비교 광종을 뭘 골라도 komis.or.kr 응답의 `compareMnrl`이
+# 항상 빈 배열이라, report_gen이 받는 `komis_response`엔 비교 데이터
+# 자체가 없었다(report_gen 쪽 compare_series 파싱·근거생성·검증 로직은
+# 정상이었음 — 문제는 순수히 이 fetch 함수가 비교 광종의 가격기준을
+# 조회해 요청에 실어 보내지 않은 것). 주 광종과 동일하게
+# `getMnrlPriceCrtr`로 비교 광종의 "현재" 가격기준도 따로 조회해야 한다
+# (§모듈 docstring — 가격기준은 날짜별로 드리프트하는 서로게이트 키라
+# 하드코딩 불가, 비교 광종도 예외 아님).
+def fetch_price_minor_metals(
+    mineral_code: str,
+    *,
+    start_year: str = "2016",
+    end_year: str = "2026",
+    compare_mineral_code: str | None = None,
+) -> dict:
     client = _open_session("/Komis/RsrcPrice/MinorMetals")
     try:
         crtr_data = _ajax_post(
@@ -196,11 +241,92 @@ def fetch_price_minor_metals(mineral_code: str, *, start_year: str = "2016", end
                 f"'{mineral_code}'는 komis.or.kr 희소금속 가격기준 목록에 없습니다 — 수동 붙여넣기를 이용하세요."
             )
         crtr = _pick_price_criterion(candidates, mineral_code)
+        compare_mnrknd_cd = ""
+        compare_prc_crtr = "[선택]"
+        if compare_mineral_code:
+            compare_crtr_data = _ajax_post(
+                client, "/Komis/RsrcPrice/ajax/getMnrlPriceCrtr",
+                {"HP000": "HP002", "mnrkndUnqCd": compare_mineral_code},
+            )
+            compare_candidates = compare_crtr_data.get("data") or []
+            if not compare_candidates:
+                raise KomisFetchError(
+                    f"비교 광종 '{compare_mineral_code}'는 komis.or.kr 희소금속 가격기준 목록에 없습니다 — "
+                    "비교 광종을 다시 선택하거나 비워두세요."
+                )
+            compare_crtr = _pick_price_criterion(compare_candidates, compare_mineral_code)
+            compare_mnrknd_cd = compare_mineral_code
+            compare_prc_crtr = str(compare_crtr["cdKey"])
         params = {
             "srchMnrkndUnqCd": mineral_code, "srchPrcCrtr": str(crtr["cdKey"]), "spcfct": crtr.get("spcfct", ""),
             "srchAvgOpt": "DAY", "srchField": "year",
             "srchStartDate": start_year, "srchEndDate": end_year,
-            "srchCompareMnrkndUnqCd": "", "srchComparePrcCrtr": "[선택]",
+            "srchCompareMnrkndUnqCd": compare_mnrknd_cd, "srchComparePrcCrtr": compare_prc_crtr,
+        }
+        result = _ajax_post(client, "/Komis/RsrcPrice/ajax/getMnrlPrcByMnrkndUnqCd", params)
+    finally:
+        client.close()
+    return _require_defaultMnrl(result, mineral_code)
+
+
+# ── price_iron_energy / price_other ──────────────────────────────────
+# 2026-08-31 실측(사용자 지시로 §모듈 docstring 36번줄의 "확인 안 됨" 우려
+# 재검증): IronOre(철/MNRL1011)·EtcMnrl(금/MNRL0046) 세션으로
+# getMnrlPriceCrtr→getMnrlPrcByMnrkndUnqCd 2단계를 직접 호출해 실 데이터
+# 응답까지 확인 — base/minor metals와 동일한 흐름이 그대로 통한다.
+def fetch_price_iron_energy(
+    mineral_code: str, *, start_year: str = "2016", end_year: str = "2026",
+    compare_mineral_code: str | None = None,
+) -> dict:
+    client = _open_session("/Komis/RsrcPrice/IronOre")
+    try:
+        crtr_data = _ajax_post(
+            client, "/Komis/RsrcPrice/ajax/getMnrlPriceCrtr", {"HP000": "HP003", "mnrkndUnqCd": mineral_code}
+        )
+        candidates = crtr_data.get("data") or []
+        if not candidates:
+            raise KomisFetchError(
+                f"'{mineral_code}'는 komis.or.kr 철광석·에너지 가격기준 목록에 없습니다 — 수동 붙여넣기를 이용하세요."
+            )
+        crtr = _pick_price_criterion(candidates, mineral_code)
+        compare_mnrknd_cd, compare_prc_crtr = _resolve_compare_criterion(
+            client, "HP003", compare_mineral_code, category_label="철광석·에너지"
+        )
+        params = {
+            "mnrkndUnqRadioCd": mineral_code, "srchMnrkndUnqCd": mineral_code,
+            "srchPrcCrtr": str(crtr["cdKey"]), "srchAvgOpt": "DAY", "srchField": "year",
+            "srchStartDate": start_year, "srchEndDate": end_year,
+            "srchCompareMnrkndUnqCd": compare_mnrknd_cd, "srchComparePrcCrtr": compare_prc_crtr,
+        }
+        result = _ajax_post(client, "/Komis/RsrcPrice/ajax/getMnrlPrcByMnrkndUnqCd", params)
+    finally:
+        client.close()
+    return _require_defaultMnrl(result, mineral_code)
+
+
+def fetch_price_other(
+    mineral_code: str, *, start_year: str = "2016", end_year: str = "2026",
+    compare_mineral_code: str | None = None,
+) -> dict:
+    client = _open_session("/Komis/RsrcPrice/EtcMnrl")
+    try:
+        crtr_data = _ajax_post(
+            client, "/Komis/RsrcPrice/ajax/getMnrlPriceCrtr", {"HP000": "HP004", "mnrkndUnqCd": mineral_code}
+        )
+        candidates = crtr_data.get("data") or []
+        if not candidates:
+            raise KomisFetchError(
+                f"'{mineral_code}'는 komis.or.kr 기타 광종 가격기준 목록에 없습니다 — 수동 붙여넣기를 이용하세요."
+            )
+        crtr = _pick_price_criterion(candidates, mineral_code)
+        compare_mnrknd_cd, compare_prc_crtr = _resolve_compare_criterion(
+            client, "HP004", compare_mineral_code, category_label="기타"
+        )
+        params = {
+            "mnrkndUnqRadioCd": mineral_code, "srchMnrkndUnqCd": mineral_code,
+            "srchPrcCrtr": str(crtr["cdKey"]), "srchAvgOpt": "DAY", "srchField": "year",
+            "srchStartDate": start_year, "srchEndDate": end_year,
+            "srchCompareMnrkndUnqCd": compare_mnrknd_cd, "srchComparePrcCrtr": compare_prc_crtr,
         }
         result = _ajax_post(client, "/Komis/RsrcPrice/ajax/getMnrlPrcByMnrkndUnqCd", params)
     finally:
@@ -264,11 +390,29 @@ def fetch_map_mineral(
 
 
 def _dispatch_price_base_metals(payload: dict) -> dict:
-    return fetch_price_base_metals(payload["mineral"])
+    return fetch_price_base_metals(
+        payload["mineral"], compare_mineral_code=payload.get("compare_mineral") or None
+    )
 
 
 def _dispatch_price_minor_metals(payload: dict) -> dict:
-    return fetch_price_minor_metals(payload["mineral"])
+    # 2026-08-31: compare_mineral을 fetch 함수까지 관통시킨다(위 버그수정 참고) —
+    # 이게 없으면 UI에서 비교 광종을 골라도 komis.or.kr 요청에 실리지 않는다.
+    return fetch_price_minor_metals(
+        payload["mineral"], compare_mineral_code=payload.get("compare_mineral") or None
+    )
+
+
+def _dispatch_price_iron_energy(payload: dict) -> dict:
+    return fetch_price_iron_energy(
+        payload["mineral"], compare_mineral_code=payload.get("compare_mineral") or None
+    )
+
+
+def _dispatch_price_other(payload: dict) -> dict:
+    return fetch_price_other(
+        payload["mineral"], compare_mineral_code=payload.get("compare_mineral") or None
+    )
 
 
 def _dispatch_map_korea(payload: dict) -> dict:
@@ -284,10 +428,11 @@ def _dispatch_map_mineral(payload: dict) -> dict:
 
 
 # report_demo.py가 page_id만으로 알맞은 fetch 함수를 고를 수 있게 하는 진입점.
-# price_iron_energy/price_other는 §모듈 docstring의 이유로 의도적으로 없다.
 KOMIS_FETCH_DISPATCH = {
     "price_base_metals": _dispatch_price_base_metals,
     "price_minor_metals": _dispatch_price_minor_metals,
+    "price_iron_energy": _dispatch_price_iron_energy,
+    "price_other": _dispatch_price_other,
     "map_korea": _dispatch_map_korea,
     "map_global": _dispatch_map_global,
     "map_mineral": _dispatch_map_mineral,

@@ -35,7 +35,7 @@ import json
 
 import streamlit as st
 
-from streamlit_demo.mineral_master import mineral_label, mineral_options
+from streamlit_demo.mineral_master import mineral_label, mineral_options_for_page
 from streamlit_demo.komis_fetch import KOMIS_FETCH_DISPATCH, KomisFetchError
 from streamlit_demo.komis_raw import KOMIS_RAW_PAGES, KomisRawConversionError
 from streamlit_demo.report_gen_client import (
@@ -95,19 +95,30 @@ def _mineral_picker(options: list, *, key: str) -> None:
 
 
 def _compare_mineral_picker(col, page_id: str) -> None:
-    """희소금속(price_minor_metals) 전용 compare_mineral 필드 — 2026-08-28 UI/UX
+    """광물자원가격 서브메뉴(price_*) 전용 compare_mineral 필드 — 2026-08-28 UI/UX
     감사에서 지적된 "안내 없는 순수 텍스트 입력" 문제 대응. 이미 로드된 광종
-    마스터를 그대로 재사용해 드롭다운으로 바꾼다."""
-    options = prioritize_core_minerals(mineral_options())
+    마스터를 그대로 재사용해 드롭다운으로 바꾼다. 2026-08-31: 서브메뉴가 바뀌면
+    비교 대상도 그 서브메뉴 소속 광종만 보이게 mineral_options_for_page로 필터.
+    2026-08-31 재수정(사용자 지적): compare_mineral은 KOMIS에서도 선택 필드라
+    "비교 안 함"이 기본이어야 하는데 selectbox가 항상 첫 옵션을 자동 선택해
+    원치 않아도 비교가 걸렸다 — index=None으로 기본 미선택, 값을 고를 때만
+    payload에 채운다."""
+    options = prioritize_core_minerals(mineral_options_for_page(page_id))
     label = EXTRA_FIELD_LABELS.get("compare_mineral", "compare_mineral")
     if not options:
-        payload["compare_mineral"] = col.text_input(
+        code = col.text_input(
             f"{label} 코드", value="", key=f"compare_mineral_code_{page_id}",
-            help="DB 접속 실패 — 광종 목록을 못 불러와 직접 입력으로 대체합니다.",
+            help="DB 접속 실패 — 광종 목록을 못 불러와 직접 입력으로 대체합니다. 비워두면 비교하지 않습니다.",
         )
+        if code:
+            payload["compare_mineral"] = code
         return
-    picked = col.selectbox(label, options, format_func=mineral_label, key=f"compare_mineral_{page_id}")
-    payload["compare_mineral"] = picked["code"]
+    picked = col.selectbox(
+        label, options, format_func=mineral_label, key=f"compare_mineral_{page_id}",
+        index=None, placeholder="비교하지 않음",
+    )
+    if picked is not None:
+        payload["compare_mineral"] = picked["code"]
 
 
 # 2026-08-31 삭제(사용자 직접 확인): 시장동향지표(indicator_market)의
@@ -117,7 +128,7 @@ def _compare_mineral_picker(col, page_id: str) -> None:
 # indicator_supply를 로그인해 확인하고 분리를 안 했던 것과 같은 결론) 걷어냈다.
 # 이제 나머지 has_mineral 페이지와 동일하게 전체 광종 드롭다운 하나만 쓴다.
 if spec.has_mineral:
-    _mineral_picker(prioritize_core_minerals(mineral_options()), key=f"mineral_{page_id}")
+    _mineral_picker(prioritize_core_minerals(mineral_options_for_page(page_id)), key=f"mineral_{page_id}")
 
 start_key, end_key = spec.period_fields
 if start_key:
@@ -183,9 +194,10 @@ if spec.extra_fields:
 # inhouse/airgap 원칙과 달리 komis.or.kr을 직접 호출하는 것에 대해 사용자가
 # "이 데모는 납품처 설명용, DMZ존과 같음, 납품 후 미사용"이라고 DMZ/inhouse
 # 원칙 예외를 직접 승인해 구현한다(§komis_fetch.py docstring — 실제로
-# komis.or.kr 실호출·실데이터까지 검증 완료). 가격기준 코드가 실측 확보된
-# 5개 페이지(KOMIS_FETCH_DISPATCH)만 버튼이 뜨고, price_iron_energy/
-# price_other는 그 코드를 못 구해 수동 붙여넣기만 유지.
+# komis.or.kr 실호출·실데이터까지 검증 완료). 2026-08-31 재확인(사용자 지시):
+# price_iron_energy/price_other도 같은 2단계 흐름으로 실데이터가 확인돼
+# KOMIS_FETCH_DISPATCH에 추가 — 이제 광물자원가격 4종+핵심광물지도 3종,
+# 총 7개 페이지 전부 버튼이 뜬다.
 observations_text = ""
 komis_raw_text = ""
 if page_id in KOMIS_RAW_PAGES:

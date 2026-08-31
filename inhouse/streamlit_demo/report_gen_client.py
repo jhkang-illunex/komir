@@ -185,7 +185,7 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # 덮어쓰기용 별도 입력란은 사용자의 "3요소만" 지시(§파일 상단)와
         # 상충해 추가하지 않았다.
         "비철금속", "광물자원가격", "prices/base-metals", True, ("", ""), "",
-        (),
+        ("compare_mineral",),
         '[{"date": "2026-08-10", "commerce_price": 14152.0, "lowest_price": null, "highest_price": null, "inventory": 218300.0}, '
         '{"date": "2026-08-11", "commerce_price": 14217.0, "lowest_price": null, "highest_price": null, "inventory": 214550.0}, '
         '{"date": "2026-08-12", "commerce_price": 14201.0, "lowest_price": null, "highest_price": null, "inventory": 212125.0}, '
@@ -240,7 +240,7 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # 2026-08-30 4차(§price_base_metals 주석 참고, 급하지 않음·회귀 아님):
         # price_criterion이 optional로 복원돼 komis_response로 자동채움된다.
         "철광석 및 에너지", "광물자원가격", "prices/iron-energy", True, ("", ""), "",
-        (),
+        ("compare_mineral",),
         '[{"date": "2026-08-10", "commerce_price": 97.5, "lowest_price": 97.0, "highest_price": 98.0}, '
         '{"date": "2026-08-11", "commerce_price": 97.5, "lowest_price": 97.0, "highest_price": 98.0}, '
         '{"date": "2026-08-12", "commerce_price": 98.5, "lowest_price": 98.0, "highest_price": 99.0}, '
@@ -266,7 +266,7 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # 2026-08-30 4차(§price_base_metals 주석 참고, 급하지 않음·회귀 아님):
         # price_criterion이 optional로 복원돼 komis_response로 자동채움된다.
         "기타", "광물자원가격", "prices/other", True, ("", ""), "",
-        (),
+        ("compare_mineral",),
         '[{"date": "2026-08-10", "commerce_price": 4324.45}, {"date": "2026-08-11", "commerce_price": 4383.35}, '
         '{"date": "2026-08-12", "commerce_price": 4426.65}, {"date": "2026-08-13", "commerce_price": 4373.0}, '
         '{"date": "2026-08-14", "commerce_price": 4390.7}, {"date": "2026-08-17", "commerce_price": 4405.8}, '
