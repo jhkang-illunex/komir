@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-"""public/private MCP 서버 두 파일이 공유하는 **라이선스 무관** tool 5개 —
-정형 3종(structured 산출물, 라이선스 이슈 없음)·komis_raw_lookup(KOMIS
-공개원천 public.KO_*, 2026-08-31 추가 — 타 팀 소유일 뿐 라이선스 제한 콘텐츠
-(Argus)는 아니라 여기 둠)·pageindex_agentic(USGS 코퍼스만 스캔, Argus를
-애초에 안 건드림). 이 다섯은 public/private가 결과가 완전히 같아야 정상이므로
-(2026-08-26 smoke_mcp_access.py로 실측 확인, komis_raw_lookup은 그 이후
-추가라 별도 재검증 필요) 여기 한 번만 구현하고 두 서버 파일이 그대로
-등록만 한다.
+"""public/private MCP 서버 두 파일이 공유하는 **라이선스 무관** tool 6개 —
+정형 3종(structured 산출물, 라이선스 이슈 없음)·komis_raw_lookup·
+komis_resolve_mineral(KOMIS 공개원천 public.KO_*, 2026-08-31/09-01 추가 —
+타 팀 소유일 뿐 라이선스 제한 콘텐츠(Argus)는 아니라 여기 둠)·
+pageindex_agentic(USGS 코퍼스만 스캔, Argus를 애초에 안 건드림). 이 여섯은
+public/private가 결과가 완전히 같아야 정상이므로(2026-08-26
+smoke_mcp_access.py로 실측 확인, komis_* 2종은 그 이후 추가라 별도 재검증
+필요) 여기 한 번만 구현하고 두 서버 파일이 그대로 등록만 한다.
 
 **라이선스 제한 소스(Argus)가 갈리는 hybrid_search·pageindex_lookup 두
 도구는 여기 없다** — 그 둘은 `mcp_server_public.py`/`mcp_server_private.py`
@@ -101,6 +101,30 @@ def register_common_tools(mcp: FastMCP) -> None:
 
         evidence, warnings = pageindex_agent.agentic_lookup(query, history=history or [], llm=KomirJsonLLM())
         return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}
+
+    @mcp.tool()
+    def komis_resolve_mineral(korean_name: str) -> dict[str, Any]:
+        """한글 광종명(질문에 쓰인 표현 그대로, 예: "텅스텐")을 `ai_mnrl_mst`에서
+        조회해 KOMIS 광종코드(`mineral_code`, komis_raw_lookup에 그대로 넘기면
+        됨)와 가격 서브메뉴 분류(`price_category`, HP001~004)를 돌려준다.
+        2026-09-01 신설 — 발주 5광종으로 하드코딩하지 않고 `ai_mnrl_mst`를
+        직접 조회해서, KOMIS가 광종을 추가로 등록해도 코드 수정 없이 그대로
+        반영된다. 못 찾으면 `mineral_code: null`(아직 KOMIS에 등록 안 됐거나
+        철자가 다른 경우 — warnings에 안내). {"mineral_code": str|null,
+        "price_category": str|null, "warnings": [...]}."""
+
+        repo = KomisRawDataRepository()
+        try:
+            resolved = repo.resolve_mineral_full(korean_name)
+        except RawDataAccessError as exc:
+            return {"mineral_code": None, "price_category": None, "warnings": [str(exc)]}
+        if resolved is None:
+            return {
+                "mineral_code": None, "price_category": None,
+                "warnings": [f"'{korean_name}'을(를) KOMIS 광종 목록(ai_mnrl_mst)에서 찾지 못했습니다."],
+            }
+        mineral_code, price_category = resolved
+        return {"mineral_code": mineral_code, "price_category": price_category, "warnings": []}
 
     @mcp.tool()
     def komis_raw_lookup(

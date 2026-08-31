@@ -301,6 +301,13 @@ class _ProfileSession:
         )
         return [Evidence(**d) for d in data["evidence"]], data["warnings"]
 
+    def call_komis_resolve_mineral(self, korean_name: str) -> dict[str, Any]:
+        """한글 광종명 -> {mineral_code, price_category, warnings} — 2026-09-01
+        추가. `call_komis_raw_lookup`에 넘길 `mineral_code`를 구하는 선행 호출로
+        쓴다(chatbot_graph.py 참고, 하드코딩 딕셔너리 대신 ai_mnrl_mst 실조회)."""
+
+        return self._call("komis_resolve_mineral", {"korean_name": korean_name})
+
 
 public = _ProfileSession("public")
 private = _ProfileSession("private")

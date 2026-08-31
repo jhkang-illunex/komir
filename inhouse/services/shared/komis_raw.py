@@ -299,8 +299,22 @@ _PAGE_DATASETS: dict[str, tuple[_DatasetSpec, ...]] = {
     ),
 }
 
+#: 흔한 광종 동의어 -> `ai_mnrl_mst.mnrl_nm_ko`에 실제로 저장된 정본 명칭.
+#: 그 컬럼엔 동의어 컬럼이 따로 없어(정본 하나만) `resolve_mineral_full()`이
+#: 이 목록으로 원래 표현이 안 잡히면 정본으로도 같이 시도한다(2026-09-01,
+#: main-agent가 "구리"/"납"/"희토류"가 안 잡히는 회귀를 실측으로 발견해
+#: 추가). "동/연/네오디뮴"은 이미 DB 실조회로 잡히므로 넣지 않는다 — 여긴
+#: "DB에 없는 다른 이름"만 다룬다.
+_MINERAL_SYNONYMS = {"구리": "동", "납": "연", "희토류": "네오디뮴"}
+
 #: `_literal()`이 허용하는 값 모양 — 이 밖의 문자는 SQL에 못 들어간다.
-_SAFE_VALUE = re.compile(r"^[A-Za-z0-9_]{1,32}$")
+#: 2026-09-01: 한글 음절(가~힣, U+AC00~U+D7A3) 범위를 추가했다 —
+#: `resolve_mineral_full()`이 `ai_mnrl_mst.mnrl_nm_ko`(한글 광종명)를 그대로
+#: 조회 조건으로 써야 해서다. 화이트리스트 성격은 그대로다: 여전히 따옴표·
+#: 세미콜론·백슬래시·공백 등 SQL 메타문자는 전부 제외되고, 순수 한글
+#: 음절+영숫자+밑줄만 허용한다 — 인젝션 방어력이 약해지는 게 아니라 허용
+#: 문자 "집합"만 넓어진 것이다.
+_SAFE_VALUE = re.compile(r"^[A-Za-z0-9_가-힣]{1,32}$")
 
 
 def _literal(value: str | int) -> str:
@@ -477,6 +491,41 @@ class KomisRawDataRepository:
             f" ORDER BY hs_cd"
         )
         return [str(value) for value in frame["hs_cd"]]
+
+    def resolve_mineral_full(self, korean_name: str) -> tuple[str, str | None] | None:
+        """한글 광종명(질문에 쓰인 표현 그대로, 예: "텅스텐")으로 `ai_mnrl_mst`
+        에서 (mnrknd_unq_cd, prc_cat_cd)를 찾는다 — `resolve_mineral()`(코드→
+        이름)의 반대 방향. `use_yn='Y'`인 것만(알파코드 CU/NI 등은 use_yn='N'
+        이라 애초에 안 걸림, §모듈 docstring 2026-08-11 실측 참고). 못 찾으면
+        None. `prc_cat_cd`는 가격 조회 시 어느 서브메뉴(price_base_metals 등
+        4종)로 가야 하는지 고르는 데 쓰인다 — 없으면 None.
+
+        2026-09-01: `komis_raw_lookup`을 발주 5광종 밖으로 열면서 필요해졌다
+        (사용자 지시 — "5광종 제한은 이 프로젝트 일부 기능용이지 챗봇
+        전체는 아니다"). 하드코딩된 광종명→코드 딕셔너리 대신 이 조회를
+        쓰면 `ai_mnrl_mst`에 새 광종이 추가돼도 코드를 안 고쳐도 된다.
+
+        같은 날 후속(main-agent 발견) — `ai_mnrl_mst.mnrl_nm_ko`는 정본
+        명칭 하나만 담고 동의어 컬럼이 없어서(예: "동"만 있고 "구리"는
+        없음), `_MINERAL_SYNONYMS`로 흔한 다른 표현 몇 개만 같이 시도한다.
+        이건 "광종 자체를 하드코딩"하는 게 아니라 "같은 광종을 부르는
+        다른 말"만 다루는 것이라, 새 광종 추가는 여전히 DB만 갱신하면
+        된다(이 목록에 넣을 필요 없음)."""
+
+        candidates = [korean_name]
+        canonical = _MINERAL_SYNONYMS.get(korean_name)
+        if canonical:
+            candidates.append(canonical)
+        literals = ", ".join(_literal(c) for c in candidates)
+        frame = read_sql_pg(
+            f"SELECT mnrknd_unq_cd, prc_cat_cd FROM {KOMIS_SCHEMA}.ai_mnrl_mst"
+            f" WHERE mnrl_nm_ko IN ({literals}) AND use_yn = 'Y'"
+        )
+        if frame.empty:
+            return None
+        row = frame.iloc[0]
+        prc_cat_cd = row["prc_cat_cd"]
+        return str(row["mnrknd_unq_cd"]), (None if prc_cat_cd is None else str(prc_cat_cd))
 
     def resolve_data_source(self, mineral_code: str) -> str | None:
         """`ai_mnrl_mst`에서 광종의 `ko_data_src_cd`(예: `KOMIS_SAMPLE`·

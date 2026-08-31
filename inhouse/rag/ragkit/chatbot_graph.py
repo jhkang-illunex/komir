@@ -238,25 +238,9 @@ _STRUCTURED_CALL_NAMES = {
     "geo_index_trend": "call_geo_index_trend",
 }
 
-#: 광종 한글명(질문에 나온 그대로, LLM이 komis_mineral_name에 채움) -> KOMIS
-#: 광종코드(ai_mnrl_mst.mnrknd_unq_cd, use_yn='Y'인 실사용 코드만). 2026-09-01
-#: KOMIS_public_ko테이블_스키마매핑_260831.md 실측(ai_mnrl_mst 28행 전수 조회)
-#: 으로 확정한 고정 매핑 — DB를 매 요청 왕복 조회하지 않고 여기 하드코딩한다.
-#: 흔한 동의어(구리/동, 납/연, 희토류/네오디뮴)도 같이 매핑했다. 알파코드
-#: (CU/NI 등, ai_mnrl_mst의 다른 코드체계)는 여기 대상이 아니다 — use_yn='N'
-#: 이라 ko_* 테이블이 실제로 안 쓴다(스키마매핑 문서 §2 참고).
-_KOMIS_MINERAL_NAME_TO_MNRL = {
-    "리튬": "MNRL0001", "니켈": "MNRL0002", "코발트": "MNRL0003", "망간": "MNRL0004",
-    "흑연": "MNRL0005", "동": "MNRL0008", "구리": "MNRL0008", "알루미늄": "MNRL0009",
-    "백금": "MNRL0014", "팔라듐": "MNRL0015", "주석": "MNRL0016", "텅스텐": "MNRL0018",
-    "연": "MNRL0022", "납": "MNRL0022", "아연": "MNRL0023", "우라늄": "MNRL0031",
-    "금": "MNRL0046", "은": "MNRL0047", "네오디뮴": "MNRL1001", "희토류": "MNRL1001",
-    "철광석": "MNRL1011", "루테늄": "MNRL1070",
-}
-
-#: komis_topic -> komis_raw_lookup page_id. "price"만 광종군(HP001~004, KOMIS
-#: 가격 서브메뉴 4종)에 따라 페이지가 갈려(ai_mnrl_mst.prc_cat_cd 실측 확인)
-#: MNRL코드 기준 별도 상수로 뺐다 — 18개 광종 전체 커버.
+#: komis_topic -> komis_raw_lookup page_id(price 제외 — 광종과 무관하게
+#: 페이지가 고정된 5개 topic만). 이건 KOMIS 사이트의 고정 페이지 구조라
+#: 하드코딩해도 안전하다(광종이 새로 추가돼도 안 바뀜).
 _KOMIS_TOPIC_TO_PAGE = {
     "domestic_trade": "map_korea",
     "global_trade": "map_global",
@@ -265,24 +249,22 @@ _KOMIS_TOPIC_TO_PAGE = {
     "supply_stability": "indicator_supply",
     "price_forecast": "forecast_price",
 }
-_MNRL_TO_PRICE_PAGE = {
-    # HP001(비철금속) -> price_base_metals
-    "MNRL0002": "price_base_metals", "MNRL0008": "price_base_metals", "MNRL0009": "price_base_metals",
-    "MNRL0016": "price_base_metals", "MNRL0022": "price_base_metals", "MNRL0023": "price_base_metals",
-    # HP002(희소금속) -> price_minor_metals
-    "MNRL0001": "price_minor_metals", "MNRL0003": "price_minor_metals", "MNRL0004": "price_minor_metals",
-    "MNRL0018": "price_minor_metals", "MNRL1001": "price_minor_metals",
-    # HP003(철광석 및 에너지) -> price_iron_energy
-    "MNRL0031": "price_iron_energy", "MNRL1011": "price_iron_energy",
-    # HP004(기타) -> price_other
-    "MNRL0005": "price_other", "MNRL0014": "price_other", "MNRL0015": "price_other",
-    "MNRL0046": "price_other", "MNRL0047": "price_other", "MNRL1070": "price_other",
+#: price_category(ai_mnrl_mst.prc_cat_cd, HP001~004 — 광종이 아니라 KOMIS
+#: 가격 서브메뉴 4종의 고정 분류코드) -> komis_raw_lookup page_id. 이것도
+#: 페이지 구조라 하드코딩 — 광종명→코드 매핑만 2026-09-01부터 ai_mnrl_mst
+#: 실조회(komis_resolve_mineral MCP tool)로 바꿨다(사용자 지시: "5광종
+#: 화이트리스트는 이 프로젝트 일부 기능용, 챗봇 전체는 아니다" — 하드코딩
+#: 딕셔너리는 KOMIS가 광종을 추가로 등록할 때마다 코드를 고쳐야 해서
+#: 유지보수 부담이 컸다).
+_PRICE_CATEGORY_TO_PAGE = {
+    "HP001": "price_base_metals", "HP002": "price_minor_metals",
+    "HP003": "price_iron_energy", "HP004": "price_other",
 }
 
 
-def _komis_raw_page_id(topic: str, mineral_code: str) -> str | None:
+def _komis_raw_page_id(topic: str, price_category: str | None) -> str | None:
     if topic == "price":
-        return _MNRL_TO_PRICE_PAGE.get(mineral_code)
+        return _PRICE_CATEGORY_TO_PAGE.get(price_category or "")
     return _KOMIS_TOPIC_TO_PAGE.get(topic)
 
 
@@ -390,10 +372,12 @@ def _retrieve_node(state: RetrievalState, *, dense_k: int, pageindex_k: int) -> 
     튜플을 직접 반환하므로 병합 방식이 simple과 다르다(아래 분기). komis_raw도
     같은 (evidence, warnings) 튜플 계약이다(2026-08-31 신설 — mcp_client.
     call_komis_raw_lookup, KOMIS 공개원천 public.KO_* 조회. page_id는 LLM이
-    직접 고르지 않는다 — komis_topic(사람이 이해하는 주제)만 고르게 하고,
-    실제 page_id·광종코드(MNRL0xxx) 번역은 이 노드가 결정적으로 한다
-    (_komis_raw_page_id/_COMMODITY_TO_MNRL) — structured.py의 "자유형 NL→SQL
-    금지, 화이트리스트 템플릿만" 원칙과 같다).
+    직접 고르지 않는다 — komis_topic(사람이 이해하는 주제)·komis_mineral_name
+    (자유형 한글 광종명)만 고르게 하고, 실제 page_id·광종코드(MNRL0xxx) 번역은
+    이 노드가 komis_resolve_mineral(2026-09-01 신설, ai_mnrl_mst 실조회 —
+    하드코딩 딕셔너리였던 걸 사용자 지시로 바꿈)을 먼저 부른 뒤 결정적으로
+    한다(_komis_raw_page_id) — structured.py의 "자유형 NL→SQL 금지, 화이트
+    리스트 템플릿만" 원칙과 같다).
 
     2026-08-26: 세 도구 모두 mcp_client 세션(state["profile"]로 고른 public/
     private — 각각 mcp_server_public.py/mcp_server_private.py 물리적으로 분리된
@@ -406,27 +390,31 @@ def _retrieve_node(state: RetrievalState, *, dense_k: int, pageindex_k: int) -> 
     session = mcp_client.private if state.get("profile") == "private" else mcp_client.public
     jobs: dict[str, Future] = {}
 
+    # 2026-09-01: komis_raw는 page_id를 미리 알아야 풀에 넣을 수 있는데, price
+    # 여부에 따른 page_id가 광종의 price_category(ai_mnrl_mst.prc_cat_cd)에
+    # 달려 있어 하드코딩 딕셔너리 대신 komis_resolve_mineral을 먼저(동기)
+    # 호출해 알아낸다 — 그 뒤 dense/pageindex와 나란히 병렬 조회한다(아래 풀).
+    komis_raw_page_id: str | None = None
+    komis_raw_mineral_code: str | None = None
+    if route.use_komis_raw and route.komis_topic and route.komis_mineral_name:
+        resolved = session.call_komis_resolve_mineral(route.komis_mineral_name)
+        warnings.extend(resolved.get("warnings", []))
+        komis_raw_mineral_code = resolved.get("mineral_code")
+        if komis_raw_mineral_code:
+            komis_raw_page_id = _komis_raw_page_id(route.komis_topic, resolved.get("price_category"))
+            if not komis_raw_page_id:
+                warnings.append(
+                    f"komis_raw_unmapped_topic:{route.komis_topic}(mineral={route.komis_mineral_name})"
+                )
+
     with ThreadPoolExecutor(max_workers=4) as pool:
         if route.use_structured and route.structured_template and route.commodity_code:
             call = getattr(session, _STRUCTURED_CALL_NAMES[route.structured_template])
             jobs["structured"] = pool.submit(call, route.commodity_code, route.target, route.forecast_months)
-        if route.use_komis_raw and route.komis_topic and route.komis_mineral_name:
-            # 2026-09-01: commodity_code(5광종 Literal) 대신 komis_mineral_name
-            # (자유형 광종명, 18개 KOMIS 광종 전체 커버)으로 조회한다 — 위
-            # RetrievalRoute 필드 설명 참고.
-            mineral_code = _KOMIS_MINERAL_NAME_TO_MNRL.get(route.komis_mineral_name)
-            page_id = _komis_raw_page_id(route.komis_topic, mineral_code) if mineral_code else None
-            if page_id and mineral_code:
-                jobs["komis_raw"] = pool.submit(
-                    session.call_komis_raw_lookup, page_id, mineral_code=mineral_code,
-                )
-            else:
-                # LLM이 komis_mineral_name에 매핑 테이블 밖의 광종명(오탈자·별칭
-                # 등)을 채웠거나, price인데 그 광종의 가격그룹이 없는 등 실제로
-                # 일어날 수 있는 경우다 — 조용히 넘어가지 않고 경고를 남긴다.
-                warnings.append(
-                    f"komis_raw_unmapped_mineral:{route.komis_mineral_name}(topic={route.komis_topic})"
-                )
+        if komis_raw_page_id and komis_raw_mineral_code:
+            jobs["komis_raw"] = pool.submit(
+                session.call_komis_raw_lookup, komis_raw_page_id, mineral_code=komis_raw_mineral_code,
+            )
         query = route.resolved_query or state["question"]
         if route.use_dense:
             jobs["dense"] = pool.submit(session.call_hybrid_search, query, dense_k)
