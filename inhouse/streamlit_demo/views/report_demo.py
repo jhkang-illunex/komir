@@ -32,10 +32,11 @@ label)에 보여준다 — price 분리 후 "광물자원가격" 주메뉴 아�
 from __future__ import annotations
 
 import json
+from datetime import date
 
 import streamlit as st
 
-from streamlit_demo.mineral_master import mineral_label, mineral_options_for_page
+from streamlit_demo.mineral_master import PRICE_CATEGORY_BY_PAGE, mineral_label, mineral_options_for_page
 from streamlit_demo.komis_fetch import KOMIS_FETCH_DISPATCH, KomisFetchError
 from streamlit_demo.komis_raw import KOMIS_RAW_PAGES, KomisRawConversionError
 from streamlit_demo.report_gen_client import (
@@ -50,6 +51,13 @@ from streamlit_demo.report_gen_client import (
     render_json_error,
     render_report_markdown,
 )
+
+# 2026-08-31 사용자 지시: 광물자원가격 4종(price_*) 공통으로 평균 옵션·기간
+# 구분자·기간(2000-01~현재) 실시간 조회 옵션 추가 — 값은 komis_fetch.py에서
+# 라이브 실측한 것과 정확히 맞춘다(사용자가 부른 "QUATER"는 실제 KOMIS 값이
+# 아니라 QUARTER가 맞음, §komis_fetch.py 주석 참고).
+AVG_OPT_LABELS = {"일간": "DAY", "주간": "WEEK", "월간": "MONTH", "분기간": "QUARTER", "년간": "YEAR"}
+PERIOD_FIELD_LABELS = {"년간": "year", "월간": "month"}
 
 st.title("요약보고서 작성 데모")
 st.caption("report_gen 분석요약 API(12종)를 관측치(observations) 바디로 직접 호출해보는 개발 데모입니다 — 운영 화면이 아닙니다.")
@@ -213,11 +221,41 @@ if page_id in KOMIS_RAW_PAGES:
     # 광종·비교광종까지 넣어 셋 중 하나라도 바뀌면 새 위젯으로 취급되게 한다
     # (주메뉴 변경은 서브메뉴=page_id가 같이 바뀌므로 이미 커버됨).
     raw_state_key = f"komis_raw_{page_id}_{payload.get('mineral', '')}_{payload.get('compare_mineral', '')}"
+    # 2026-08-31 사용자 지시: 광물자원가격 4종 공통 평균 옵션/기간 구분자/기간
+    # UI — komis_fetch.py의 fetch_price_* 4종이 실제로 받는 avg_opt/period_field/
+    # start_period/end_period로 그대로 넘어간다(§komis_fetch.py 라이브 실측).
+    period_fetch_opts: dict = {}
+    if page_id in PRICE_CATEGORY_BY_PAGE:
+        opt_cols = st.columns(4)
+        avg_opt_label = opt_cols[0].selectbox(
+            "평균 옵션", list(AVG_OPT_LABELS), key=f"komis_avg_opt_{page_id}",
+        )
+        period_field_label = opt_cols[1].selectbox(
+            "기간 구분자", list(PERIOD_FIELD_LABELS), key=f"komis_period_field_{page_id}",
+        )
+        period_field = PERIOD_FIELD_LABELS[period_field_label]
+        _today = date.today()
+        if period_field == "year":
+            start_period = opt_cols[2].text_input("기간 시작(YYYY)", value="2000", key=f"komis_start_{page_id}")
+            end_period = opt_cols[3].text_input(
+                "기간 종료(YYYY)", value=str(_today.year), key=f"komis_end_{page_id}"
+            )
+        else:
+            start_period = opt_cols[2].text_input(
+                "기간 시작(YYYY-MM)", value="2000-01", key=f"komis_start_{page_id}"
+            )
+            end_period = opt_cols[3].text_input(
+                "기간 종료(YYYY-MM)", value=_today.strftime("%Y-%m"), key=f"komis_end_{page_id}"
+            )
+        period_fetch_opts = {
+            "avg_opt": AVG_OPT_LABELS[avg_opt_label], "period_field": period_field,
+            "start_period": start_period, "end_period": end_period,
+        }
     if page_id in KOMIS_FETCH_DISPATCH:
         if st.button("komis.or.kr에서 실시간 조회", key=f"komis_fetch_btn_{page_id}"):
             try:
                 with st.spinner("komis.or.kr 조회 중…"):
-                    fetched = KOMIS_FETCH_DISPATCH[page_id](payload)
+                    fetched = KOMIS_FETCH_DISPATCH[page_id](payload, **period_fetch_opts)
             except KomisFetchError as exc:
                 st.error(str(exc))
             else:

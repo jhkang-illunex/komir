@@ -161,6 +161,22 @@ def _require_data(result: dict, mineral_code: str) -> dict:
 BASE_METALS_CODES = {"MNRL0002", "MNRL0008", "MNRL0023", "MNRL0009", "MNRL0022", "MNRL0016"}
 
 
+# 2026-08-31 사용자 지시(평균옵션·기간구분자 UI 추가): 라이브 실측으로 확인한
+# 값들 — srchAvgOpt는 DAY/WEEK/MONTH/QUARTER/YEAR(사용자가 부른 "QUATER"는
+# 실제 KOMIS 값이 아니다, QUARTER가 맞다 — QUATER로 보내면 0건). srchField=
+# "month"는 yyyy-mm이 아니라 하이픈 뺀 yyyymm이어야 데이터가 나온다(yyyy-mm은
+# 0건 실측 확인) — 그래서 UI 입력(yyyy-mm)과 실제 전송 형식을 분리한다.
+VALID_AVG_OPTS = {"DAY", "WEEK", "MONTH", "QUARTER", "YEAR"}
+VALID_PERIOD_FIELDS = {"year", "month"}
+
+
+def _period_arg(period_field: str, value: str) -> str:
+    """UI 입력(년간=yyyy, 월간=yyyy-mm)을 KOMIS 실제 전송 형식으로 변환."""
+    if period_field == "month":
+        return value.replace("-", "")
+    return value
+
+
 def _resolve_compare_criterion(
     client: httpx.Client, hp000: str, compare_mineral_code: str | None, *, category_label: str
 ) -> tuple[str, str]:
@@ -183,13 +199,17 @@ def _resolve_compare_criterion(
 
 
 def fetch_price_base_metals(
-    mineral_code: str, *, start_year: str = "2016", end_year: str = "2026",
+    mineral_code: str, *,
+    avg_opt: str = "DAY", period_field: str = "year",
+    start_period: str = "2000", end_period: str = "2026",
     compare_mineral_code: str | None = None,
 ) -> dict:
     if mineral_code not in BASE_METALS_CODES:
         raise KomisFetchError(
             f"'{mineral_code}'는 비철금속 6종(니켈/동/아연/알루미늄/연/주석)이 아닙니다 — 광종을 다시 선택하세요."
         )
+    if avg_opt not in VALID_AVG_OPTS or period_field not in VALID_PERIOD_FIELDS:
+        raise KomisFetchError(f"평균 옵션('{avg_opt}') 또는 기간 구분자('{period_field}') 값이 올바르지 않습니다.")
     client = _open_session("/Komis/RsrcPrice/BaseMetals")
     try:
         crtr_data = _ajax_post(
@@ -201,8 +221,9 @@ def fetch_price_base_metals(
         )
         params = {
             "mnrkndUnqRadioCd": mineral_code, "srchMnrkndUnqCd": mineral_code,
-            "srchPrcCrtr": str(crtr["cdKey"]), "srchAvgOpt": "DAY", "srchField": "year",
-            "srchStartDate": start_year, "srchEndDate": end_year,
+            "srchPrcCrtr": str(crtr["cdKey"]), "srchAvgOpt": avg_opt, "srchField": period_field,
+            "srchStartDate": _period_arg(period_field, start_period),
+            "srchEndDate": _period_arg(period_field, end_period),
             "srchCompareMnrkndUnqCd": compare_mnrknd_cd, "srchComparePrcCrtr": compare_prc_crtr, "lmeInvt": "Y",
         }
         result = _ajax_post(client, "/Komis/RsrcPrice/ajax/getMnrlPrcByMnrkndUnqCd", params)
@@ -226,10 +247,14 @@ def fetch_price_base_metals(
 def fetch_price_minor_metals(
     mineral_code: str,
     *,
-    start_year: str = "2016",
-    end_year: str = "2026",
+    avg_opt: str = "DAY",
+    period_field: str = "year",
+    start_period: str = "2000",
+    end_period: str = "2026",
     compare_mineral_code: str | None = None,
 ) -> dict:
+    if avg_opt not in VALID_AVG_OPTS or period_field not in VALID_PERIOD_FIELDS:
+        raise KomisFetchError(f"평균 옵션('{avg_opt}') 또는 기간 구분자('{period_field}') 값이 올바르지 않습니다.")
     client = _open_session("/Komis/RsrcPrice/MinorMetals")
     try:
         crtr_data = _ajax_post(
@@ -259,8 +284,9 @@ def fetch_price_minor_metals(
             compare_prc_crtr = str(compare_crtr["cdKey"])
         params = {
             "srchMnrkndUnqCd": mineral_code, "srchPrcCrtr": str(crtr["cdKey"]), "spcfct": crtr.get("spcfct", ""),
-            "srchAvgOpt": "DAY", "srchField": "year",
-            "srchStartDate": start_year, "srchEndDate": end_year,
+            "srchAvgOpt": avg_opt, "srchField": period_field,
+            "srchStartDate": _period_arg(period_field, start_period),
+            "srchEndDate": _period_arg(period_field, end_period),
             "srchCompareMnrkndUnqCd": compare_mnrknd_cd, "srchComparePrcCrtr": compare_prc_crtr,
         }
         result = _ajax_post(client, "/Komis/RsrcPrice/ajax/getMnrlPrcByMnrkndUnqCd", params)
@@ -275,9 +301,13 @@ def fetch_price_minor_metals(
 # getMnrlPriceCrtr→getMnrlPrcByMnrkndUnqCd 2단계를 직접 호출해 실 데이터
 # 응답까지 확인 — base/minor metals와 동일한 흐름이 그대로 통한다.
 def fetch_price_iron_energy(
-    mineral_code: str, *, start_year: str = "2016", end_year: str = "2026",
+    mineral_code: str, *,
+    avg_opt: str = "DAY", period_field: str = "year",
+    start_period: str = "2000", end_period: str = "2026",
     compare_mineral_code: str | None = None,
 ) -> dict:
+    if avg_opt not in VALID_AVG_OPTS or period_field not in VALID_PERIOD_FIELDS:
+        raise KomisFetchError(f"평균 옵션('{avg_opt}') 또는 기간 구분자('{period_field}') 값이 올바르지 않습니다.")
     client = _open_session("/Komis/RsrcPrice/IronOre")
     try:
         crtr_data = _ajax_post(
@@ -294,8 +324,9 @@ def fetch_price_iron_energy(
         )
         params = {
             "mnrkndUnqRadioCd": mineral_code, "srchMnrkndUnqCd": mineral_code,
-            "srchPrcCrtr": str(crtr["cdKey"]), "srchAvgOpt": "DAY", "srchField": "year",
-            "srchStartDate": start_year, "srchEndDate": end_year,
+            "srchPrcCrtr": str(crtr["cdKey"]), "srchAvgOpt": avg_opt, "srchField": period_field,
+            "srchStartDate": _period_arg(period_field, start_period),
+            "srchEndDate": _period_arg(period_field, end_period),
             "srchCompareMnrkndUnqCd": compare_mnrknd_cd, "srchComparePrcCrtr": compare_prc_crtr,
         }
         result = _ajax_post(client, "/Komis/RsrcPrice/ajax/getMnrlPrcByMnrkndUnqCd", params)
@@ -305,9 +336,13 @@ def fetch_price_iron_energy(
 
 
 def fetch_price_other(
-    mineral_code: str, *, start_year: str = "2016", end_year: str = "2026",
+    mineral_code: str, *,
+    avg_opt: str = "DAY", period_field: str = "year",
+    start_period: str = "2000", end_period: str = "2026",
     compare_mineral_code: str | None = None,
 ) -> dict:
+    if avg_opt not in VALID_AVG_OPTS or period_field not in VALID_PERIOD_FIELDS:
+        raise KomisFetchError(f"평균 옵션('{avg_opt}') 또는 기간 구분자('{period_field}') 값이 올바르지 않습니다.")
     client = _open_session("/Komis/RsrcPrice/EtcMnrl")
     try:
         crtr_data = _ajax_post(
@@ -324,8 +359,9 @@ def fetch_price_other(
         )
         params = {
             "mnrkndUnqRadioCd": mineral_code, "srchMnrkndUnqCd": mineral_code,
-            "srchPrcCrtr": str(crtr["cdKey"]), "srchAvgOpt": "DAY", "srchField": "year",
-            "srchStartDate": start_year, "srchEndDate": end_year,
+            "srchPrcCrtr": str(crtr["cdKey"]), "srchAvgOpt": avg_opt, "srchField": period_field,
+            "srchStartDate": _period_arg(period_field, start_period),
+            "srchEndDate": _period_arg(period_field, end_period),
             "srchCompareMnrkndUnqCd": compare_mnrknd_cd, "srchComparePrcCrtr": compare_prc_crtr,
         }
         result = _ajax_post(client, "/Komis/RsrcPrice/ajax/getMnrlPrcByMnrkndUnqCd", params)
@@ -389,29 +425,33 @@ def fetch_map_mineral(
     return _require_data(result, mineral_code)
 
 
-def _dispatch_price_base_metals(payload: dict) -> dict:
+# 2026-08-31: 평균옵션/기간구분자/기간(**period_kwargs)을 report_demo.py의
+# 실시간 조회 옵션 UI에서 넘겨받아 그대로 관통시킨다 — avg_opt/period_field/
+# start_period/end_period가 이 kwargs로 들어온다. map_* dispatch는 이 옵션이
+# 없어(KOMIS 화면 자체에 없음) 건드리지 않는다.
+def _dispatch_price_base_metals(payload: dict, **period_kwargs) -> dict:
     return fetch_price_base_metals(
-        payload["mineral"], compare_mineral_code=payload.get("compare_mineral") or None
+        payload["mineral"], compare_mineral_code=payload.get("compare_mineral") or None, **period_kwargs
     )
 
 
-def _dispatch_price_minor_metals(payload: dict) -> dict:
+def _dispatch_price_minor_metals(payload: dict, **period_kwargs) -> dict:
     # 2026-08-31: compare_mineral을 fetch 함수까지 관통시킨다(위 버그수정 참고) —
     # 이게 없으면 UI에서 비교 광종을 골라도 komis.or.kr 요청에 실리지 않는다.
     return fetch_price_minor_metals(
-        payload["mineral"], compare_mineral_code=payload.get("compare_mineral") or None
+        payload["mineral"], compare_mineral_code=payload.get("compare_mineral") or None, **period_kwargs
     )
 
 
-def _dispatch_price_iron_energy(payload: dict) -> dict:
+def _dispatch_price_iron_energy(payload: dict, **period_kwargs) -> dict:
     return fetch_price_iron_energy(
-        payload["mineral"], compare_mineral_code=payload.get("compare_mineral") or None
+        payload["mineral"], compare_mineral_code=payload.get("compare_mineral") or None, **period_kwargs
     )
 
 
-def _dispatch_price_other(payload: dict) -> dict:
+def _dispatch_price_other(payload: dict, **period_kwargs) -> dict:
     return fetch_price_other(
-        payload["mineral"], compare_mineral_code=payload.get("compare_mineral") or None
+        payload["mineral"], compare_mineral_code=payload.get("compare_mineral") or None, **period_kwargs
     )
 
 
