@@ -1,10 +1,11 @@
 # RAG 코퍼스 입력 제한 — `inhouse/incoming/` 신설 + 분류 (2026-08-28)
 
 `챗봇_룰준수_감사_260828.md` "(부가 발견) 내부 산출물 문서가 공개 챗봇(/pubchat)
-근거로 노출됨"의 실제 조치. **이 문서는 1~3단계(현황 파악·분류·코드 변경)까지의
-결과 보고이며, 실제 재색인(4단계)은 main-agent 승인 후 별도로 진행한다 — 이
-작업으로 production Postgres(`mineral_risk.doc_chunk`)에 어떤 DELETE/INSERT도
-실행하지 않았다.**
+근거로 노출됨"의 실제 조치. 1~3단계(현황 파악·분류·코드 변경)에 이어 main-agent
+승인 후 4단계(백업·재색인·스모크테스트)까지 **완료했다** — §6에 실행 결과
+기록. 재색인은 `d9d25daad` 머지 이후 **메인 체크아웃**
+(`/home/nuri/dev/git/ws/mine_ws/komir`)에서 진행했다(이 워크트리가 아님 —
+프로덕션 데이터·컨테이너가 메인 체크아웃 경로를 바인드마운트하기 때문).
 
 ## 0. 안전 확인(작업 전 필수 체크리스트)
 
@@ -271,3 +272,77 @@ build_pageindex_trees → build_pgvector_okf, 각 단계 전/후 행수·파일�
 결과에 없는 파일만 선별 삭제하는 스크립트를 짜서 실행하는 방식 중 하나를
 정하고 진행 지시를 주면 좋겠다 — 이번 라운드에선 코드/파일 변경만 하고 실행은
 하지 않았다.
+
+**(2026-08-28 추가) → main-agent 승인 완료, 아래 §6에 실행 결과 기록.**
+
+## 6. 실행 결과(완료, main-agent 승인 후 진행)
+
+모든 단계는 **메인 체크아웃**(`/home/nuri/dev/git/ws/mine_ws/komir`, `cwd=inhouse`)
+에서 실행했다 — `d9d25daad`가 머지돼 그쪽 `ingest.py::ROOT`가
+`inhouse/incoming`으로, `inhouse/incoming/`에 7건이 반영된 걸 read-only로 먼저
+확인한 뒤 시작했다.
+
+### 6-1. 백업(rm 대신 mv, 승인받은 방식)
+
+`okf_documents/산출물/`·`pageindex_trees/산출물/`(각 72건)을
+`data_archive/backups/rag_incoming_restriction_260828/{okf_documents_산출물,
+pageindex_trees_산출물}/`로 이동(두 루트 바깥 — rglob 재색인 방지). 이동 후
+원래 자리엔 `외부자료`·`조달청보고서`·`Argus_비철금속_일일`·`생산매장량_USGS`
+만 남았음을 확인. 이동 사유·복구 방법을 적은 `META.md` 동봉(artifact-provenance-
+policy 준수).
+
+### 6-2. `build_okf_documents.py --what artifacts` 재실행
+
+`11건 생성`(A 7건 + EXTRA_ROOTS `komis_해외투자가이드_4개국` 4건 — 이 워크트리
+로컬 확인 땐 EXTRA_ROOTS 소스가 없어 7건만 나왔었는데, 프로덕션엔 실제로
+존재해 함께 재생성됨, advisor가 미리 지적한 그대로). **부수 관찰(정보 공유,
+이번엔 문제 아님)**: `_classify()`가 `documents/산출물/<week>` 경로 패턴에
+더 이상 안 맞아 A 7건이 `산출물/` 대신 `기타/`라는 새 source_group 폴더에
+생성됐다 — 동작엔 문제없지만(파일은 다 있음) 그룹 라벨이 바뀐 것이라 참고로
+남긴다.
+
+### 6-3. `build_pageindex_trees.py` 재실행 — 1차 시도 정정
+
+1차로 `--no-summary`로 돌렸다가, 기존(백업한) 트리들을 확인해보니 전부
+`with_summary: true`로 만들어져 있었다는 걸 뒤늦게 확인해 **`--force`로
+summary 포함 재실행**했다(1차 산출물은 2차 실행이 덮어써 남지 않음). 최종
+`{"target_count": 7, "done": 7, "failed": 0}`, 7건 전부
+`with_summary: true`로 기존 관례와 일치함을 재확인.
+
+### 6-4. `build_pgvector_index.py` 재실행 — 사전/사후 행수
+
+| 구분 | 이전 | 이후 |
+|---|---|---|
+| `doc_chunk` `source_type='unstructured'` 행수 | 1,142 | 284 |
+| distinct 문서 수 | 79 | 11(A 7 + EXTRA_ROOTS 4) |
+
+스크립트 출력: `기존 1142행 삭제, 284행 삽입, 대상갈래 현재 284행`. 안전가드
+(0건 skip) 미해당(284>0).
+
+### 6-5. `build_pgvector_okf.py` — 스킵(승인받은 대로)
+
+`SOURCE_GROUPS`가 "산출물"을 처음부터 제외하므로 이번 변경과 무관 — 사고
+이력 테이블에 불필요한 DELETE+재적재를 한 번 더 일으키지 않기 위해 건너뜀.
+
+### 6-6. pubchat 스모크 테스트(`komir-rag-chat-test`, 실제 서빙 프로세스에
+in-process로 직접 `_run_chat(req, "public")` 호출 — 서버 재기동 없음)
+
+| 케이스 | 질문 | 결과 |
+|---|---|---|
+| 네거티브(main-agent 지정 예시) | "진단예측모델 요구사항 대조 코드감사 결과가 어떻게 나왔어?" | **PASS** — "자료에서 찾을 수 없습니다"로 정직하게 답변 거부, 무관한 공개 근거[8]만 대안 제시. 내부 감사문서 콘텐츠 인용 없음 |
+| 네거티브(추가) | "챔피언 스코어보드 최신 버전 내용 알려줘" | **PASS(단서 있음)** — 실제 스코어보드 내용은 안 나오고, A문서(#7) 자체의 "7. 참고 문서" 목록에 있는 파일명 한 줄만 인용됨(`incoming/확정모델_광종별구성표_260727.md · 7. 참고 문서`) — A문서 저자가 스스로 "수행사 보관 기술 문서"로 명시해둔 서지 정보 노출이라 판단 기준상 문제 아님(내부 문서의 실제 검증 수치·내용은 노출 안 됨), 참고로 보고 |
+| 포지티브(A문서) | "핵심광물 시스템의 광종별 확정 운영 모델 구성표를 알려줘" | **PASS** — 새로 재생성된 A문서(#7)의 표·본문이 정확히 인용(`kind: pageindex`), 15셀 표까지 정상 렌더 |
+| 포지티브(외부자료) | "칠레 해외투자가이드 내용을 알려줘" | **PASS** — 이번 변경과 무관한 EXTRA_ROOTS 문서(`CHILE25.md`, `kind: dense`)가 그대로 정상 인용, 회귀 없음 |
+
+`abstained: false`·`bogus_citations: []`는 4건 전부 동일(허위 인용 없음).
+
+### 6-7. 결론
+
+- doc_chunk(unstructured): 71개 내부문서 제거, 실측 확인(1,142→284행, 79→11
+  distinct 문서).
+- OKF/PageIndex(§1-1 gap): 72+72건 이동으로 제거, 재생성분 7건(+EXTRA_ROOTS
+  4건)만 남음 — pubchat 스모크로 실제 조회 경로까지 검증.
+- `build_pgvector_okf`(okf_report): 애초 무관해 스킵, 데이터 변화 없음(사고
+  테이블에 불필요한 접촉 회피).
+- 부수 발견 2건(week 필드, `_src()` 라벨)은 지시대로 수정하지 않고 기록만
+  유지.
