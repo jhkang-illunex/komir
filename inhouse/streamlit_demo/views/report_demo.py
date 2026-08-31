@@ -351,6 +351,14 @@ if page_id in KOMIS_RAW_PAGES:
             format_func=lambda o: o["mttrFlowNm"], key=f"komis_product_type_{page_id}_{mineral_code}",
         )
         product_type_code = product_type_choice["mttrFlowCd"] if product_type_choice else ""
+        # 2026-08-31 report-summary-agent 계약 확정(커밋 6cdd18250): 생산품
+        # 유형은 komis_response에 한글 라벨이 없어(코드만 echo) report_gen이
+        # 선택 필드 mttr_flow_name을 신설 — 보내면 보고서 문장에 라벨을 쓰고
+        # (예: "기초원료"), 안 보내면 코드로 폴백한다. period_fetch_opts와
+        # 달리 이건 komis.or.kr 조회용이 아니라 report_gen 요청 바디에
+        # 직접 실리는 필드라 payload에 넣는다.
+        if product_type_choice:
+            payload["mttr_flow_name"] = product_type_choice["mttrFlowNm"]
 
         hs_code_options = _cached_hs_code_options(mineral_code, product_type_code) if mineral_code else []
         hs_code_choice = row3[1].selectbox(
