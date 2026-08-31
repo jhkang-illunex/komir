@@ -481,36 +481,18 @@ def _classify_abstain(message: str, warnings: list[str], llm: "KomirJsonLLM | No
     return decision.reason, _abstain_reason_text(decision)
 
 
-#: 2026-08-31(사용자 요청 — 표/차트 표시 규칙 세분화) — "최저/최고 조회는
-#: 표로 표시"만 기존 기본동작(표 모양이 숫자열 2행 이상이면 자동으로 차트도
-#: 같이 냄, chatbot_events.render_chart_png)과 다르다. "추이"·"기간" 질문은
-#: 이미 결과 표가 보통 여러 행이라 기존 동작 그대로 표+차트가 나온다 — 이
-#: 둘은 새로 만들 게 없다. 반대로 "최저가 얼마였어?" 같은 단일 극값 질문은
-#: 근거 자체(komis_raw_lookup 등)가 최근 N행짜리 일별 표를 그대로 담고 있어,
-#: LLM이 그 표를 그대로 인용하면 극값 질문인데도 표 모양만으로는 차트가
-#: 같이 나가버린다 — 그래서 질문 문구로 "순수 최저/최고 질문"(추이·기간을
-#: 같이 묻지 않는 경우만)을 가려 차트만 억제한다(표 이벤트는 그대로 낸다).
-_TREND_OR_PERIOD_WORDS = ("추이", "기간", "동향", "변화", "추세")
-_MINMAX_ONLY_WORDS = ("최저", "최고", "최소", "최대")
-
-
-def _wants_chart(question: str) -> bool:
-    if any(w in question for w in _MINMAX_ONLY_WORDS) and not any(
-        w in question for w in _TREND_OR_PERIOD_WORDS
-    ):
-        return False
-    return True
-
-
-def _multimodal_events(cited_indices: set[int], evidence: list, *, question: str = "") -> list[ChatEvent]:
+def _multimodal_events(cited_indices: set[int], evidence: list) -> list[ChatEvent]:
     """인용된 근거에서 표를 뽑아 table 이벤트로, 숫자열이 있으면 차트를 렌더링해
-    image 이벤트로도 낸다(단, `_wants_chart(question)`가 False면 표만 내고
-    차트는 만들지 않는다 — 위 함수 설명 참고). 인용 안 된 근거(조회는 됐지만
-    답변 근거로 안 쓰인 것)는 건너뛴다 — 표시되는 표/그림도 텍스트 답변과
-    같은 인용 규율을 따라야 하므로."""
+    image 이벤트로도 낸다. 인용 안 된 근거(조회는 됐지만 답변 근거로 안 쓰인
+    것)는 건너뛴다 — 표시되는 표/그림도 텍스트 답변과 같은 인용 규율을 따라야
+    하므로.
+
+    2026-08-31: "최저/최고 조회는 표만" 하는 질문 문구 기반 조건부 억제를
+    시도했다가 사용자가 "표가 제공되면 차트도 같이 제공해야 한다"고 정정 —
+    표가 나가는 모든 경우에 차트도 함께 낸다. 차트 생성 여부는 순수하게 표
+    모양(숫자열 존재 여부, chatbot_events.render_chart_png)만으로 정해진다."""
 
     events: list[ChatEvent] = []
-    want_chart = _wants_chart(question)
     for i, ev in enumerate(evidence, 1):
         if i not in cited_indices:
             continue
@@ -519,7 +501,7 @@ def _multimodal_events(cited_indices: set[int], evidence: list, *, question: str
                 type="table",
                 data={"columns": table["columns"], "rows": table["rows"], "source_index": i},
             ))
-            chart = render_chart_png(table) if want_chart else None
+            chart = render_chart_png(table)
             if chart is not None:
                 png_bytes, caption = chart
                 events.append(ChatEvent(
@@ -708,7 +690,7 @@ async def chat_turn(
         yield ChatEvent(type="delta", data={"delta": extra})
     final_text = cleaned + extra
 
-    for event in _multimodal_events(cited_indices, evidence, question=message):
+    for event in _multimodal_events(cited_indices, evidence):
         yield event
 
     await asyncio.to_thread(
