@@ -110,27 +110,36 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
      **이 세 가지에 없는 지표(가격·교역·매장량·생산량·시장전망·수급안정 등)는
      structured가 아니라 아래 komis_raw가 담당한다** — 그런 질문에 structured를
      같이 켤 필요는 없다(commodity_code가 있으면 komis_raw만으로 충분).
-   - komis_raw(2026-08-31 신설): KOMIS가 자체 웹사이트에서 공개하는 원천
-     데이터(광종별 실거래가·최저/최고가, 국내(관세청)·세계(UN Comtrade)
-     교역량, 국가별 매장량·생산량, 시장전망지표, 수급안정지수, 가격예측)를
-     조회한다. "{광종} 가격/시세 알려줘", "{광종} 수입/수출 현황", "{광종}
-     매장량/생산량", "{광종} 가격 전망" 류의 **구체적 수치를 원하는 질문**일 때
-     켠다(화면·메뉴 위치 자체를 묻는 질문이 아니라 수치 자체를 원할 때 —
-     화면 위치 질문은 이 그래프가 아니라 별도의 page 안내 경로로 이미
-     분류되어 여기로 오지 않는다). 켤 땐 komis_topic을 정확히 하나 고른다:
-     - price: 실거래가·최저가·최고가·시세(단가) — "가격"·"시세" 질문은
-       거의 항상 이거다.
-     - domestic_trade: 한국 관세청 기준 수입/수출 물량·금액(국가별).
-     - global_trade: UN Comtrade 기준 세계 교역(국가 간 수출입).
-     - reserves_production: 국가별 매장량·생산량(세계 공급 구조).
-     - market_outlook: 시장전망지표.
-     - supply_stability: 수급안정지수.
-     - price_forecast: KOMIS 자체 가격예측(위 structured의 import_forecast와
-       다르다 — 이건 komir가 만든 예측이 아니라 KOMIS가 게시하는 예측이다).
-     "종합지수"·"위기지수"·"수급동향지표"·"시장동향지표"처럼 여러 지표를
-     합성한 지수는 komis_topic 어디에도 없다 — 그런 질문은 komis_raw를 켜지
-     않는다(이 그래프로 오기 전 단계에서 이미 걸러졌어야 정상이지만, 혹시
-     오더라도 이 도구로는 못 답한다는 뜻).
+   - komis_raw(2026-08-31 신설, 2026-09-01 전 광종으로 확대): KOMIS가 자체
+     웹사이트에서 공개하는 원천 데이터(광종별 실거래가·최저/최고가,
+     국내(관세청)·세계(UN Comtrade) 교역량, 국가별 매장량·생산량, 시장전망
+     지표, 수급안정지수, 가격예측)를 조회한다. "{광종} 가격/시세 알려줘",
+     "{광종} 수입/수출 현황", "{광종} 매장량/생산량", "{광종} 가격 전망" 류의
+     **구체적 수치를 원하는 질문**일 때 켠다(화면·메뉴 위치 자체를 묻는
+     질문이 아니라 수치 자체를 원할 때 — 화면 위치 질문은 이 그래프가 아니라
+     별도의 page 안내 경로로 이미 분류되어 여기로 오지 않는다). **발주
+     5광종(CU/NI/CO/LI/REE)에 한정하지 않는다** — KOMIS가 다루는 광종이면
+     무엇이든(예: 텅스텐·금·은·주석·알루미늄·우라늄 등) 이 도구로 조회를
+     시도한다. 켤 땐 두 가지를 정한다:
+     1) komis_topic — 정확히 하나:
+        - price: 실거래가·최저가·최고가·시세(단가) — "가격"·"시세" 질문은
+          거의 항상 이거다.
+        - domestic_trade: 한국 관세청 기준 수입/수출 물량·금액(국가별).
+        - global_trade: UN Comtrade 기준 세계 교역(국가 간 수출입).
+        - reserves_production: 국가별 매장량·생산량(세계 공급 구조).
+        - market_outlook: 시장전망지표.
+        - supply_stability: 수급안정지수.
+        - price_forecast: KOMIS 자체 가격예측(위 structured의 import_forecast
+          와 다르다 — 이건 komir가 만든 예측이 아니라 KOMIS가 게시하는
+          예측이다).
+        "종합지수"·"위기지수"·"수급동향지표"·"시장동향지표"처럼 여러 지표를
+        합성한 지수는 komis_topic 어디에도 없다 — 그런 질문은 komis_raw를
+        켜지 않는다(이 그래프로 오기 전 단계에서 이미 걸러졌어야 정상이지만,
+        혹시 오더라도 이 도구로는 못 답한다는 뜻).
+     2) komis_mineral_name — 질문이 가리키는 광종의 한글명을 질문에 쓰인
+        표현 그대로 채운다(예: "텅스텐", "금", "구리". commodity_code처럼
+        CU/NI 같은 영문 약어로 바꿔쓰지 않는다 — 이 필드는 5광종 제한이
+        없는 별도 필드다). 광종을 특정할 수 없으면 komis_raw를 켜지 않는다.
    - dense: 보고서·기사·백서 등 비정형 문서를 의미 기반으로 검색한다. 애매하면
      켜는 게 안전하다(기본값에 가깝게 취급). komis_raw를 켤 때도, 그 데이터가
      실제로는 없거나(발주 5광종 상당수가 아직 개발용 더미다) 부족할 수 있어
@@ -145,9 +154,11 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
        광종은?"). 여러 광종 섹션을 훑어 국가별 표를 대조해야 답이 나오는
        질문이라 simple보다 느리다 — 필요할 때만 켤 것.
 
-structured 또는 komis_raw를 켤 땐 commodity_code(CU|NI|CO|LI|REE)를 반드시
-함께 지정한다 — 광종을 모르면 둘 다 켜지 않는다(use_structured=
-use_komis_raw=false)."""
+structured를 켤 땐 commodity_code(CU|NI|CO|LI|REE)를 반드시 함께 지정한다 —
+광종을 모르거나 이 5개 밖이면 켜지 않는다(use_structured=false, komir 자체
+산출물은 이 5광종만 계산되어 있다). komis_raw를 켤 땐 komis_mineral_name을
+반드시 함께 지정한다 — 광종을 모르면 켜지 않는다(use_komis_raw=false, 다만
+5광종 제한은 없다)."""
 
 
 REFORMULATE_PROMPT = """직전 검색이 근거를 하나도 찾지 못했다. 같은 의도를
@@ -203,6 +214,14 @@ class RetrievalRoute(BaseModel):
         "price", "domestic_trade", "global_trade", "reserves_production",
         "market_outlook", "supply_stability", "price_forecast",
     ] | None = None
+    # 2026-09-01: komis_raw 전용 광종명 필드 신설(자유형, 5광종 제한 없음) —
+    # commodity_code(바로 아래)는 structured(komir 자체 산출물, latest_diagnosis
+    # 등)가 실제로 5광종만 계산하기 때문에 그대로 5개로 제한한다. komis_raw는
+    # KOMIS가 다루는 18개 광종 전체를 조회할 수 있어(ai_mnrl_mst 실측) 별도
+    # 필드로 뒀다 — 사용자 지시("5대 광종 제한은 이 프로젝트 일부(진단·예측)
+    # 에서만 쓰는 것, 챗봇 전체는 아니다")로 CHATBOT_SYSTEM_PROMPT 규칙11도
+    # 같이 제거했다(chatbot.py 참고).
+    komis_mineral_name: str | None = None
     commodity_code: Literal["CU", "NI", "CO", "LI", "REE"] | None = None
     target: Literal["volume", "value"] | None = None
     forecast_months: int | None = None  # import_forecast 전용 — "N개월치만" 요청 시 1~N만 반환
@@ -219,15 +238,25 @@ _STRUCTURED_CALL_NAMES = {
     "geo_index_trend": "call_geo_index_trend",
 }
 
-#: commodity_code(CU|NI|CO|LI|REE) -> KOMIS 광종코드(ai_mnrl_mst.mnrknd_unq_cd).
-#: 2026-08-31 KOMIS_public_ko테이블_스키마매핑_260831.md 실측으로 확정한 고정
-#: 매핑 — DB를 매번 왕복 조회하지 않고 여기 하드코딩한다(발주 5광종은 코드가
-#: 안 바뀐다, CHATBOT_SYSTEM_PROMPT 규칙11의 5광종 화이트리스트와 같은 전제).
-_COMMODITY_TO_MNRL = {"CU": "MNRL0008", "NI": "MNRL0002", "CO": "MNRL0003", "LI": "MNRL0001", "REE": "MNRL1001"}
+#: 광종 한글명(질문에 나온 그대로, LLM이 komis_mineral_name에 채움) -> KOMIS
+#: 광종코드(ai_mnrl_mst.mnrknd_unq_cd, use_yn='Y'인 실사용 코드만). 2026-09-01
+#: KOMIS_public_ko테이블_스키마매핑_260831.md 실측(ai_mnrl_mst 28행 전수 조회)
+#: 으로 확정한 고정 매핑 — DB를 매 요청 왕복 조회하지 않고 여기 하드코딩한다.
+#: 흔한 동의어(구리/동, 납/연, 희토류/네오디뮴)도 같이 매핑했다. 알파코드
+#: (CU/NI 등, ai_mnrl_mst의 다른 코드체계)는 여기 대상이 아니다 — use_yn='N'
+#: 이라 ko_* 테이블이 실제로 안 쓴다(스키마매핑 문서 §2 참고).
+_KOMIS_MINERAL_NAME_TO_MNRL = {
+    "리튬": "MNRL0001", "니켈": "MNRL0002", "코발트": "MNRL0003", "망간": "MNRL0004",
+    "흑연": "MNRL0005", "동": "MNRL0008", "구리": "MNRL0008", "알루미늄": "MNRL0009",
+    "백금": "MNRL0014", "팔라듐": "MNRL0015", "주석": "MNRL0016", "텅스텐": "MNRL0018",
+    "연": "MNRL0022", "납": "MNRL0022", "아연": "MNRL0023", "우라늄": "MNRL0031",
+    "금": "MNRL0046", "은": "MNRL0047", "네오디뮴": "MNRL1001", "희토류": "MNRL1001",
+    "철광석": "MNRL1011", "루테늄": "MNRL1070",
+}
 
-#: komis_topic -> komis_raw_lookup page_id. "price"만 광종군(HP001/HP002)에
-#: 따라 페이지가 갈려(ai_mnrl_mst.prc_cat_cd 실측 확인 — CU·NI=HP001(비철금속),
-#: CO·LI·REE=HP002(희소금속)) 별도 상수로 뺐다.
+#: komis_topic -> komis_raw_lookup page_id. "price"만 광종군(HP001~004, KOMIS
+#: 가격 서브메뉴 4종)에 따라 페이지가 갈려(ai_mnrl_mst.prc_cat_cd 실측 확인)
+#: MNRL코드 기준 별도 상수로 뺐다 — 18개 광종 전체 커버.
 _KOMIS_TOPIC_TO_PAGE = {
     "domestic_trade": "map_korea",
     "global_trade": "map_global",
@@ -236,15 +265,24 @@ _KOMIS_TOPIC_TO_PAGE = {
     "supply_stability": "indicator_supply",
     "price_forecast": "forecast_price",
 }
-_COMMODITY_TO_PRICE_PAGE = {
-    "CU": "price_base_metals", "NI": "price_base_metals",
-    "CO": "price_minor_metals", "LI": "price_minor_metals", "REE": "price_minor_metals",
+_MNRL_TO_PRICE_PAGE = {
+    # HP001(비철금속) -> price_base_metals
+    "MNRL0002": "price_base_metals", "MNRL0008": "price_base_metals", "MNRL0009": "price_base_metals",
+    "MNRL0016": "price_base_metals", "MNRL0022": "price_base_metals", "MNRL0023": "price_base_metals",
+    # HP002(희소금속) -> price_minor_metals
+    "MNRL0001": "price_minor_metals", "MNRL0003": "price_minor_metals", "MNRL0004": "price_minor_metals",
+    "MNRL0018": "price_minor_metals", "MNRL1001": "price_minor_metals",
+    # HP003(철광석 및 에너지) -> price_iron_energy
+    "MNRL0031": "price_iron_energy", "MNRL1011": "price_iron_energy",
+    # HP004(기타) -> price_other
+    "MNRL0005": "price_other", "MNRL0014": "price_other", "MNRL0015": "price_other",
+    "MNRL0046": "price_other", "MNRL0047": "price_other", "MNRL1070": "price_other",
 }
 
 
-def _komis_raw_page_id(topic: str, commodity_code: str) -> str | None:
+def _komis_raw_page_id(topic: str, mineral_code: str) -> str | None:
     if topic == "price":
-        return _COMMODITY_TO_PRICE_PAGE.get(commodity_code)
+        return _MNRL_TO_PRICE_PAGE.get(mineral_code)
     return _KOMIS_TOPIC_TO_PAGE.get(topic)
 
 
@@ -328,7 +366,7 @@ def _route_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
         _logger.info(
             "%s route: resolved_query=%r structured=%s(%s/%s) komis_raw=%s(%s/%s) dense=%s pageindex=%s(%s)",
             _log_prefix(state), route.resolved_query, route.use_structured, route.structured_template,
-            route.commodity_code, route.use_komis_raw, route.komis_topic, route.commodity_code,
+            route.commodity_code, route.use_komis_raw, route.komis_topic, route.komis_mineral_name,
             route.use_dense, route.use_pageindex, route.pageindex_mode,
         )
     except LLM_TRANSIENT_ERRORS as exc:
@@ -372,18 +410,23 @@ def _retrieve_node(state: RetrievalState, *, dense_k: int, pageindex_k: int) -> 
         if route.use_structured and route.structured_template and route.commodity_code:
             call = getattr(session, _STRUCTURED_CALL_NAMES[route.structured_template])
             jobs["structured"] = pool.submit(call, route.commodity_code, route.target, route.forecast_months)
-        if route.use_komis_raw and route.komis_topic and route.commodity_code:
-            page_id = _komis_raw_page_id(route.komis_topic, route.commodity_code)
-            mineral_code = _COMMODITY_TO_MNRL.get(route.commodity_code)
+        if route.use_komis_raw and route.komis_topic and route.komis_mineral_name:
+            # 2026-09-01: commodity_code(5광종 Literal) 대신 komis_mineral_name
+            # (자유형 광종명, 18개 KOMIS 광종 전체 커버)으로 조회한다 — 위
+            # RetrievalRoute 필드 설명 참고.
+            mineral_code = _KOMIS_MINERAL_NAME_TO_MNRL.get(route.komis_mineral_name)
+            page_id = _komis_raw_page_id(route.komis_topic, mineral_code) if mineral_code else None
             if page_id and mineral_code:
                 jobs["komis_raw"] = pool.submit(
                     session.call_komis_raw_lookup, page_id, mineral_code=mineral_code,
                 )
             else:
-                # 이론상 도달 안 함(komis_topic·commodity_code 둘 다 Literal로
-                # 제한돼 있고 매핑 테이블이 그 전 조합을 다 커버) — 그래도 조용히
-                # 아무 근거 없이 넘어가는 대신 경고를 남긴다(방어적).
-                warnings.append(f"komis_raw_unmapped_topic:{route.komis_topic}")
+                # LLM이 komis_mineral_name에 매핑 테이블 밖의 광종명(오탈자·별칭
+                # 등)을 채웠거나, price인데 그 광종의 가격그룹이 없는 등 실제로
+                # 일어날 수 있는 경우다 — 조용히 넘어가지 않고 경고를 남긴다.
+                warnings.append(
+                    f"komis_raw_unmapped_mineral:{route.komis_mineral_name}(topic={route.komis_topic})"
+                )
         query = route.resolved_query or state["question"]
         if route.use_dense:
             jobs["dense"] = pool.submit(session.call_hybrid_search, query, dense_k)

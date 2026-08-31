@@ -188,6 +188,18 @@ def _status_event(stage: int) -> ChatEvent:
 #: 기준일자·원인 해석) 지시를 얹었다. 고정 문구(주의 문구·출처 footer)는 여기
 #: 프롬프트로 시키지 않는다 — 인용 스트리퍼가 인용 없는 문장을 지우므로 코드에서
 #: strip 이후 덧붙인다(_caution_notice·_source_footer).
+#:
+#: 2026-09-01(사용자 지시로 제거) — 예전엔 규칙11로 "동(CU)·니켈(NI)·코발트
+#: (CO)·리튬(LI)·희토류(REE) 5개 광종만 다룬다"는 화이트리스트 가드가 있었다
+#: (2026-08-28 챗봇_룰준수_감사_260828.md 라운드1 도입). 사용자가 "5대 광종은
+#: 이 프로젝트에서 일부분(진단·예측 등 komir 자체 산출물)에서 쓰는 제한이고
+#: 챗봇 전체는 아니다"라고 명시적으로 정정해 규칙 자체를 없앴다 — 이제 [근거]
+#: 에 있으면 5광종 밖이라도 그대로 답한다(komis_raw_lookup이 KOMIS가 다루는
+#: 18개 광종 전체를 조회할 수 있게 됐고, dense·pageindex도 애초에 광종
+#: 제한이 없었다). `structured`(latest_diagnosis 등, komir 자체 산출물)만은
+#: 여전히 5광종으로 실제 데이터가 한정돼 있다 — 이건 인위적 화이트리스트가
+#: 아니라 그 갈래가 애초에 5광종만 계산되기 때문이라 그대로 둔다
+#: (chatbot_graph.py의 commodity_code Literal 참고).
 CHATBOT_SYSTEM_PROMPT = (
     "당신은 '핵심광물 수급위기 진단·수요예측' 프로젝트의 대국민 챗봇입니다.\n"
     "어투: 모든 문장을 격식체(~습니다/~합니다)로 씁니다. 반말·해요체는 쓰지 않습니다.\n"
@@ -206,11 +218,6 @@ CHATBOT_SYSTEM_PROMPT = (
     "\"~와 비슷한 시기에/동시에 ~가 있었습니다\"처럼 동시 발생 흐름으로 서술하세요.\n"
     "10. 시계열·추이 질문은 질문이 명시한 기간을 그대로 따르고, 기간을 특정하지 "
     "않았다면 최근 1개월을 기본으로 하되 근거상 필요하면 최대 3개월까지 확장해 "
-    "답하세요.\n"
-    "11. 이 챗봇은 동(CU)·니켈(NI)·코발트(CO)·리튬(LI)·희토류(REE) 5개 광종만 "
-    "다룹니다. [근거]에 이 5개 광종이 아닌 다른 광종(금·은·주석·알루미늄 등)의 "
-    "자료만 있거나, 질문이 어떤 광종을 묻는지 특정할 수 없다면(예: 광종 언급 "
-    "없이 \"가격 알려줘\") 그 근거로 답변을 만들지 말고 규칙 4의 문구로만 "
     "답하세요."
 )
 
@@ -425,9 +432,6 @@ _ABSTAIN_REASON_PROMPT = """핵심광물 챗봇이 이번 질문에 답할 근�
 출력한다(설명·코드펜스 금지).
 
 - off_topic: 광물·핵심광물 수급과 무관한 질문(투자 판단, 종목 추천, 일반 잡담 등).
-- unsupported_commodity: 광물 질문이지만 이 챗봇이 다루는 5개 광종(CU=동, NI=니켈,
-  CO=코발트, LI=리튬, REE=희토류/네오디뮴) 밖의 광종을 묻는다. 이때
-  similar_commodity에 5개 광종 중 가장 관련 있는 것 하나를 채운다.
 - no_data_for_period: 광종·주제는 맞지만 질문이 가리키는 기간(연도 등)에 조회
   가능한 데이터가 없다고 판단된다.
 - ambiguous: 광종/기간/수입·수출/생산량·매장량 등 조회에 필요한 조건이 무엇인지
@@ -435,29 +439,21 @@ _ABSTAIN_REASON_PROMPT = """핵심광물 챗봇이 이번 질문에 답할 근�
 
 검색 경고(retrieval_warnings, 있으면)도 참고한다 — "retrieval_insufficient"가
 있으면 근거는 찾았지만 질문에 정확히 답하지 못했다는 뜻이라 ambiguous나
-no_data_for_period에 가깝다. 넷 중 어디에도 뚜렷이 안 맞으면 ambiguous로 분류한다."""
+no_data_for_period에 가깝다. 셋 중 어디에도 뚜렷이 안 맞으면 ambiguous로 분류한다."""
 
 
 class _AbstainReason(BaseModel):
-    reason: Literal["off_topic", "unsupported_commodity", "no_data_for_period", "ambiguous"]
-    similar_commodity: Literal["CU", "NI", "CO", "LI", "REE"] | None = None
+    """2026-09-01: `unsupported_commodity`(5광종 밖이면 거절)·`similar_commodity`
+    필드를 없앴다 — CHATBOT_SYSTEM_PROMPT 규칙11 제거(위 docstring 참고)와
+    짝인 변경. 이제 광종이 뭐든 [근거]에 답이 있으면 답한다 — "지원 안 하는
+    광종"이라는 개념 자체가 사라졌다."""
 
-
-_COMMODITY_LABELS = {
-    "CU": "동(CU)", "NI": "니켈(NI)", "CO": "코발트(CO)", "LI": "리튬(LI)", "REE": "희토류(REE)",
-}
+    reason: Literal["off_topic", "no_data_for_period", "ambiguous"]
 
 
 def _abstain_reason_text(decision: "_AbstainReason") -> str:
     if decision.reason == "off_topic":
         return "광물 관련 정보만 조회할 수 있습니다. 투자 판단, 종목 추천 등은 답변드릴 수 없습니다."
-    if decision.reason == "unsupported_commodity":
-        hint = _COMMODITY_LABELS.get(decision.similar_commodity or "", "")
-        suffix = f" 유사한 광종으로 {hint} 관련 정보는 조회하실 수 있습니다." if hint else ""
-        return (
-            "현재 동(CU)·니켈(NI)·코발트(CO)·리튬(LI)·희토류(REE) 5개 광종만 지원합니다."
-            f"{suffix}"
-        )
     if decision.reason == "no_data_for_period":
         return "질문하신 기간에는 조회 가능한 데이터가 없습니다. 다른 기간으로 다시 질문해 주세요."
     return "질문의 광종·기간·수입/수출·생산량/매장량 등 조건을 조금 더 구체적으로 말씀해 주시면 답변드릴 수 있습니다."
@@ -668,10 +664,10 @@ async def chat_turn(
         # 독스트링에 스코프 확장 배경 기록).
         #
         # abstain_reason뿐 아니라 abstain_text(유형8 사유별 안내문, 예:
-        # "유사한 광종으로 니켈(NI) 관련 정보는 조회하실 수 있습니다")도 화면에
-        # 실려야 룰이 요구하는 문구가 실제로 사용자에게 도달한다 — done 이벤트의
+        # "질문하신 기간에는 조회 가능한 데이터가 없습니다")도 화면에 실려야
+        # 룰이 요구하는 문구가 실제로 사용자에게 도달한다 — done 이벤트의
         # abstain_reason 코드값만으론 프런트가 이 문장을 재구성할 수 없다
-        # (_abstain_reason_text의 similar_commodity 힌트 등은 서버에만 있음).
+        # (_abstain_reason_text가 채우는 실제 안내문은 서버에만 있음).
         # abstain_text가 폴백값(그냥 ABSTAIN_TEXT, 분류 실패 시)이면 이미 스트림된
         # 내용과 같으므로 중복 delta를 보내지 않는다(evidence=0 분기와 달리 이
         # 분기는 full_text가 이미 한 번 스트림됐을 수 있어 무조건 델타를 더 보내면
