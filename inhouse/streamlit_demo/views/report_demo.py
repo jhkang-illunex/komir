@@ -206,6 +206,13 @@ if page_id in KOMIS_RAW_PAGES:
         f"KOMIS 데이터 조회 결과(외부에서 조회한 원본 JSON을 붙여넣으세요) — "
         f"komis.or.kr {raw_spec.label}을 그대로 붙여넣으면 이 화면이 report_gen이 원하는 형태로 변환합니다."
     )
+    # 2026-08-31 사용자 지시: 주메뉴/서브메뉴/광종/비교광종 중 하나라도 바뀌면
+    # "KOMIS 데이터 조회 결과"도 그 선택에 맞게 바뀌어야 한다 — 이전엔 위젯
+    # key가 page_id에만 묶여 있어(서브메뉴는 반영됐지만) 광종·비교광종만 바꾸면
+    # 예전 광종으로 실시간 조회한 결과가 그대로 남아 있었다(오해 소지). 키에
+    # 광종·비교광종까지 넣어 셋 중 하나라도 바뀌면 새 위젯으로 취급되게 한다
+    # (주메뉴 변경은 서브메뉴=page_id가 같이 바뀌므로 이미 커버됨).
+    raw_state_key = f"komis_raw_{page_id}_{payload.get('mineral', '')}_{payload.get('compare_mineral', '')}"
     if page_id in KOMIS_FETCH_DISPATCH:
         if st.button("komis.or.kr에서 실시간 조회", key=f"komis_fetch_btn_{page_id}"):
             try:
@@ -214,11 +221,26 @@ if page_id in KOMIS_RAW_PAGES:
             except KomisFetchError as exc:
                 st.error(str(exc))
             else:
-                st.session_state[f"komis_raw_{page_id}"] = json.dumps(fetched, ensure_ascii=False, indent=2)
+                st.session_state[raw_state_key] = json.dumps(fetched, ensure_ascii=False, indent=2)
                 st.success("조회 완료 — 아래 KOMIS 데이터 조회 결과에 반영했습니다.")
+    # 2026-08-31 사용자 지시: "JSON으로 표시" — 정적 예시 JSON이 들여쓰기 없는
+    # 한 줄짜리 문자열이라 읽기 어려웠다(실시간 조회 결과는 이미 §위 indent=2로
+    # 저장돼 문제 없었음). 기본값도 같은 형식으로 맞춘다.
+    # 2026-08-31 경고 수정("created with a default value but also had its value
+    # set via the Session State API"): 위 fetch 성공 분기가 이 key에 session_state
+    # 를 직접 써놓고 나서 아래서 또 value= 를 넘기면 Streamlit이 충돌로 본다 —
+    # value= 를 없애고, session_state에 아직 값이 없을 때만(최초 렌더) 기본값을
+    # 미리 채워 넣는 표준 패턴으로 바꾼다.
+    if raw_state_key not in st.session_state:
+        try:
+            st.session_state[raw_state_key] = json.dumps(
+                json.loads(raw_spec.example_raw_json), ensure_ascii=False, indent=2
+            )
+        except json.JSONDecodeError:
+            st.session_state[raw_state_key] = raw_spec.example_raw_json
     komis_raw_text = st.text_area(
-        "KOMIS 데이터 조회 결과", value=raw_spec.example_raw_json, height=160,
-        key=f"komis_raw_{page_id}",
+        "KOMIS 데이터 조회 결과", height=160,
+        key=raw_state_key,
     )
 else:
     st.caption("observations(JSON 배열) — 계산에 쓰는 원자료. DB를 안 읽으므로 비우면 대부분 NO_DATA로 응답합니다.")
