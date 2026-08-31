@@ -4,7 +4,7 @@
 
 `mcp_server_public.py`·`mcp_server_private.py`(2026-08-26 신설, 물리적으로
 분리된 별도 모듈)를 실제 stdio 서브프로세스로 각각 띄워 실제 Postgres
-(`mineral_risk.doc_chunk`)·PageIndex 트리 데이터에 대고 6개 도구를 호출한다
+(`mineral_risk.doc_chunk`)·PageIndex 트리·public.KO_* 데이터에 대고 7개 도구를 호출한다
 (더블·모의 없음 — 이 테스트의 핵심은 "SQL/트리 필터가 실제로 걸리는가"라서
 진짜 데이터가 필요하다, `smoke_pageindex_agent.py`처럼 LLM만 스크립트로
 대체하는 걸로는 검증이 안 됨).
@@ -12,9 +12,9 @@
 검증 대상:
 - hybrid_search·pageindex_lookup: public은 라이선스 제한 소스(Argus 비철금속
   일일동향)를 절대 안 돌려주고, private는 돌려준다.
-- latest_diagnosis·import_forecast·geo_index_trend·pageindex_agentic: 프로필
-  무관 — 둘이 완전히 같은 결과를 낸다(정형 산출물·USGS는 라이선스 이슈가 없어
-  구분이 없어야 정상).
+- latest_diagnosis·import_forecast·geo_index_trend·komis_raw_lookup·
+  pageindex_agentic: 프로필 무관 — 둘이 완전히 같은 결과를 낸다(정형 산출물·
+  KOMIS 공개원천(public.KO_*)·USGS는 라이선스 이슈가 없어 구분이 없어야 정상).
 """
 from __future__ import annotations
 
@@ -66,6 +66,32 @@ def main() -> int:
         pri_ev = call(mcp_client.private)
         assert pub_ev == pri_ev, (name, pub_ev, pri_ev)
         print(f"[OK] {name}: public/private 완전 동일(프로필 무관 확인) — as_of={getattr(pub_ev, 'as_of', None)}")
+
+    # komis_raw_lookup(2026-08-31 추가) — 프로필 무관. 텅스텐(MNRL0018)은 실샘플이라
+    # 더미 "경고"는 없어야 하고(가격기준이 여러 개라 "첫 번째만 조회했다"는
+    # 안내 warning은 정상 — 더미 여부와 무관), warnings까지 포함해 public/private가
+    # 완전히 같아야 한다. mineral_code -> price_criterion_serial 자동 번역
+    # 경로까지 타는지 확인하는 게 목적이라(2026-08-31 skeptic 발견 회귀 방지 —
+    # 예전엔 이 번역이 없어 mineral_code가 조용히 무시되고 최신 더미행이
+    # "텅스텐"이라고 나온 적이 있었다) 관측일자 컷오프까지 확인한다.
+    pub_kr, pub_kr_warn = mcp_client.public.call_komis_raw_lookup(
+        "price_base_metals", mineral_code="MNRL0018", limit=3
+    )
+    pri_kr, pri_kr_warn = mcp_client.private.call_komis_raw_lookup(
+        "price_base_metals", mineral_code="MNRL0018", limit=3
+    )
+    assert pub_kr == pri_kr and pub_kr_warn == pri_kr_warn, ("komis_raw_lookup", pub_kr, pri_kr)
+    assert not any("더미" in w for w in pub_kr_warn), f"실샘플(텅스텐)인데 더미 경고가 붙음: {pub_kr_warn}"
+    assert len(pub_kr) > 0, "텅스텐 가격 조회가 0건 — 실데이터 확인 필요"
+    _kr_data_rows = [
+        line for line in pub_kr[0].text.splitlines()
+        if line.startswith("|") and "crtr_ymd" not in line and "---" not in line
+    ]
+    assert _kr_data_rows and all(row.split("|")[2].strip() <= "20250217" for row in _kr_data_rows), (
+        f"관측일자가 실샘플 컷오프(2025-02-17)를 넘음 — mineral_code 번역이 깨져 더미가 샜을 수 있음: {pub_kr[0].text}"
+    )
+    print(f"[OK] komis_raw_lookup: public/private 완전 동일(프로필 무관 확인), "
+          f"텅스텐 실샘플 {len(pub_kr)}건 더미경고 없음 + 관측일자 컷오프 확인")
 
     # pageindex_agentic — USGS 코퍼스만 스캔(Argus를 애초에 안 건드림). 실제 LLM이
     # 매 스텝 판단하므로(temp=0이어도 두 프로필 프로세스가 완전히 독립적으로

@@ -10,8 +10,9 @@
 `shared.retrieval.access.PRIVATE_ONLY_SOURCE_GROUPS`를 이 파일이 import조차
 안 한다 — public 쪽 제한 로직을 우회할 조건문이 구조적으로 없다.
 
-정형 3종·pageindex_agentic(라이선스 무관, public/private 결과 동일)은
-`_mcp_tools_common.py`에 한 번만 구현돼 있고 여기서는 등록만 한다(재구현 금지).
+정형 3종·komis_raw_lookup·pageindex_agentic(라이선스 무관, public/private
+결과 동일)은 `_mcp_tools_common.py`에 한 번만 구현돼 있고 여기서는 등록만
+한다(재구현 금지).
 
 실행(직접 점검용, 실제로는 mcp_client.py가 서브프로세스로 띄운다):
     cd inhouse && python -m rag.ragkit.mcp_server_private

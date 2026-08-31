@@ -478,6 +478,24 @@ class KomisRawDataRepository:
         )
         return [str(value) for value in frame["hs_cd"]]
 
+    def resolve_data_source(self, mineral_code: str) -> str | None:
+        """`ai_mnrl_mst`에서 광종의 `ko_data_src_cd`(예: `KOMIS_SAMPLE`·
+        `DEV_DUMMY`)를 찾는다 — 2026-08-31 스키마매핑 조사에서 발주 5광종
+        (CU/NI/CO/LI/REE)의 `ko_*` 데이터가 대부분 개발용 더미로 확인되어
+        (`documents/산출물/2026-W36_0831-0906/KOMIS_public_ko테이블_
+        스키마매핑_260831.md` 참고), MCP 도구가 조회 결과에 더미 경고를
+        동봉할 수 있게 추가했다. 값이 없거나 광종이 없으면 None."""
+
+        code = _literal(mineral_code)
+        frame = read_sql_pg(
+            f"SELECT ko_data_src_cd FROM {KOMIS_SCHEMA}.ai_mnrl_mst"
+            f" WHERE mnrknd_unq_cd = {code}"
+        )
+        if frame.empty:
+            return None
+        value = frame.iloc[0]["ko_data_src_cd"]
+        return None if value is None else str(value)
+
 
 def _json_value(value: Any) -> Any:
     """DB 값을 JSON 직렬화 가능한 스칼라로 정규화(원본 `_json_value` 이식).

@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
-"""public/private MCP 서버 두 파일이 공유하는 **라이선스 무관** tool 4개 —
-정형 3종(structured 산출물, 라이선스 이슈 없음)과 pageindex_agentic(USGS
-코퍼스만 스캔, Argus를 애초에 안 건드림). 이 넷은 public/private가 결과가
-완전히 같아야 정상이므로(2026-08-26 smoke_mcp_access.py로 실측 확인) 여기
-한 번만 구현하고 두 서버 파일이 그대로 등록만 한다.
+"""public/private MCP 서버 두 파일이 공유하는 **라이선스 무관** tool 5개 —
+정형 3종(structured 산출물, 라이선스 이슈 없음)·komis_raw_lookup(KOMIS
+공개원천 public.KO_*, 2026-08-31 추가 — 타 팀 소유일 뿐 라이선스 제한 콘텐츠
+(Argus)는 아니라 여기 둠)·pageindex_agentic(USGS 코퍼스만 스캔, Argus를
+애초에 안 건드림). 이 다섯은 public/private가 결과가 완전히 같아야 정상이므로
+(2026-08-26 smoke_mcp_access.py로 실측 확인, komis_raw_lookup은 그 이후
+추가라 별도 재검증 필요) 여기 한 번만 구현하고 두 서버 파일이 그대로
+등록만 한다.
 
 **라이선스 제한 소스(Argus)가 갈리는 hybrid_search·pageindex_lookup 두
 도구는 여기 없다** — 그 둘은 `mcp_server_public.py`/`mcp_server_private.py`
@@ -24,13 +27,35 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
+from pydantic import ValidationError
+
+from shared.komis_raw import (
+    AnalysisPreviewPageId,
+    AnalysisPreviewRequest,
+    KomisRawDataRepository,
+    RawDataAccessError,
+)
 from shared.llm_client import KomirJsonLLM
 from shared.retrieval import pageindex_agent, structured
-from shared.retrieval.evidence import Evidence, from_structured
+from shared.retrieval.evidence import Evidence, from_komis_raw, from_structured
 
 
 def _evidence_dict(ev: Evidence | None) -> dict[str, Any] | None:
     return dataclasses.asdict(ev) if ev is not None else None
+
+
+# 2026-08-31 skeptic 발견(advisor) — komis_raw._PAGE_DATASETS의 price_* 4종은
+# filter_columns에 mineral_code가 없다(price_criterion_serial만 있음). map_korea도
+# hs_code만 있고, map_global의 mineral_code 컬럼(MNRKND_UNQ_CD)은 실측상 전 행
+# NULL이라 사실상 죽은 필터다(komis_raw.py 자체 주석 참고). 그냥 mineral_code를
+# AnalysisPreviewRequest에 실어 보내면 이 6개 page_id에선 **조용히 무시**되고
+# WHERE 절 없이(또는 hs_code 없이) 최신 N행이 그대로 나온다 — 그 최신 N행이
+# 지금은 전부 5광종 개발용 더미라, "텅스텐을 요청했는데 더미가 텅스텐인 것처럼
+# 나오고 더미 경고도 안 붙는" 최악의 조합이 실제로 재현됐다(실측 확인). 그래서
+# komis_raw_lookup은 이 페이지들에 한해 mineral_code를 매핑 테이블
+# (ai_prc_mnrl_map/ai_hs_mnrl_map)로 먼저 실제 필터값으로 번역한 뒤 조회한다.
+_PRICE_PAGES = frozenset({"price_base_metals", "price_minor_metals", "price_iron_energy", "price_other"})
+_HS_TRANSLATE_PAGES = frozenset({"map_korea", "map_global"})
 
 
 def register_common_tools(mcp: FastMCP) -> None:
@@ -75,4 +100,103 @@ def register_common_tools(mcp: FastMCP) -> None:
         새로 만든다."""
 
         evidence, warnings = pageindex_agent.agentic_lookup(query, history=history or [], llm=KomirJsonLLM())
+        return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}
+
+    @mcp.tool()
+    def komis_raw_lookup(
+        page_id: AnalysisPreviewPageId,
+        mineral_code: str | None = None,
+        hs_code: str | None = None,
+        index_type_code: str | None = None,
+        price_criterion_serial: int | None = None,
+        start_period: str | None = None,
+        end_period: str | None = None,
+        limit: int = 5,
+    ) -> dict[str, Any]:
+        """KOMIS 공개원천(public.KO_*, 타 팀 소유·읽기전용) 정형 데이터 조회 —
+        가격(price_*)·교역(map_korea/map_global)·매장량·생산량(map_mineral)·
+        종합지수/시장전망/수급안정(indicator_*)·가격예측(forecast_price) 11개
+        page_id별로 정해진 테이블만 조회한다. 자유형 SQL을 생성하지 않는다 —
+        page_id가 고르는 건 코드에 고정된 정적 스펙(테이블·컬럼)뿐이고, 필터
+        값은 화이트리스트 정규식(영문자·숫자·`_`만)을 통과해야 SQL에 들어간다
+        (komis_raw.py 참고). `mineral_code`는 `MNRL0008`처럼 `ai_mnrl_mst`의
+        숫자코드를 써야 한다(`CU`/`NI` 같은 약어 코드는 아직 미사용).
+
+        ⚠ 2026-08-31 실측(스키마매핑 문서 참고): 발주 5광종(CU/NI/CO/LI/REE)의
+        `ko_*` 데이터는 절반 가까이 아예 0건이고, 나머지도 대부분 개발용
+        더미(DEV_DUMMY)다 — 실제 KOMIS 표본은 텅스텐(MNRL0018) 하나뿐이다.
+        `mineral_code`를 주면 `ai_mnrl_mst.ko_data_src_cd`를 확인해 `KOMIS_SAMPLE`이
+        아니면 `warnings`에 명시한다 — 호출자(챗봇)는 이 경고가 있으면 반드시
+        "개발용 더미 데이터"임을 밝히고 실제 수치인 것처럼 답하면 안 된다.
+
+        `page_id`가 price_*·map_korea·map_global 중 하나면 `mineral_code`는
+        테이블에 직접 없어(가격기준일련번호·HS코드로만 연결) `ai_prc_mnrl_map`/
+        `ai_hs_mnrl_map`으로 먼저 번역해서 조회한다 — 한 광종이 여러 값에
+        매핑되면 그중 첫 번째(오름차순)만 미리보기로 쓰고 `warnings`에 명시한다
+        (전부 합쳐 보려면 `price_criterion_serial`/`hs_code`를 직접 지정할 것).
+        {"evidence": [...], "warnings": [...]}."""
+
+        try:
+            request = AnalysisPreviewRequest(
+                page_id=page_id, mineral_code=mineral_code, hs_code=hs_code,
+                index_type_code=index_type_code, price_criterion_serial=price_criterion_serial,
+                start_period=start_period, end_period=end_period, limit=limit,
+            )
+        except ValidationError as exc:
+            return {"evidence": [], "warnings": [f"요청 조건이 올바르지 않습니다: {exc}"]}
+
+        repo = KomisRawDataRepository()
+        warnings: list[str] = []
+
+        if mineral_code and page_id in _PRICE_PAGES and price_criterion_serial is None:
+            try:
+                serials = repo.resolve_price_criterion_serials(mineral_code)
+            except RawDataAccessError as exc:
+                return {"evidence": [], "warnings": [str(exc)]}
+            if not serials:
+                return {
+                    "evidence": [],
+                    "warnings": [f"'{mineral_code}'에 대응하는 가격기준을 ai_prc_mnrl_map에서 찾지 못했습니다."],
+                }
+            request = request.model_copy(update={"price_criterion_serial": serials[0]})
+            if len(serials) > 1:
+                warnings.append(
+                    f"'{mineral_code}'는 가격기준이 {len(serials)}개{serials}라 "
+                    f"그중 첫 번째({serials[0]})만 미리보기로 조회했습니다."
+                )
+        elif mineral_code and page_id in _HS_TRANSLATE_PAGES and hs_code is None:
+            try:
+                hs_codes = repo.resolve_hs_codes(mineral_code)
+            except RawDataAccessError as exc:
+                return {"evidence": [], "warnings": [str(exc)]}
+            if not hs_codes:
+                return {
+                    "evidence": [],
+                    "warnings": [f"'{mineral_code}'에 대응하는 HS코드를 ai_hs_mnrl_map에서 찾지 못했습니다."],
+                }
+            request = request.model_copy(update={"hs_code": hs_codes[0]})
+            if len(hs_codes) > 1:
+                warnings.append(
+                    f"'{mineral_code}'는 HS코드가 {len(hs_codes)}개{hs_codes}라 "
+                    f"그중 첫 번째({hs_codes[0]})만 미리보기로 조회했습니다."
+                )
+
+        try:
+            datasets = repo.fetch(request)
+        except RawDataAccessError as exc:
+            return {"evidence": [], "warnings": [*warnings, str(exc)]}
+
+        if mineral_code:
+            try:
+                data_source = repo.resolve_data_source(mineral_code)
+            except RawDataAccessError:
+                data_source = None
+            if data_source != "KOMIS_SAMPLE":
+                warnings.append(
+                    f"⚠ '{mineral_code}' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미"
+                    f"(ko_data_src_cd={data_source or '확인불가'})일 수 있습니다 — "
+                    "실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요."
+                )
+
+        evidence = from_komis_raw(page_id, datasets, mineral_code=mineral_code)
         return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}

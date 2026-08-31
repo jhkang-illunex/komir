@@ -153,3 +153,33 @@ def from_pageindex_hit(hit: dict[str, Any]) -> Evidence:
         section=hit.get("node_path") or hit.get("title", ""),
         text=hit.get("text", ""),
     )
+
+
+def from_komis_raw(page_id: str, datasets: list[Any], *, mineral_code: str | None = None) -> list[Evidence]:
+    """`komis_raw.KomisRawDataRepository.fetch()`가 돌려준 RawDataset 목록
+    (page_id당 원천 테이블 1~2개, 예: map_mineral은 매장량+생산량 2개) ->
+    Evidence 목록(테이블당 1건). 다른 from_* 어댑터와 달리 이건 komir가 계산한
+    결과가 아니라 KOMIS 원천(public.KO_*) 원자료를 그대로 표로 옮기는
+    패스스루다 — 해석·가공 없음.
+
+    2026-08-31: 발주 5광종의 `ko_*` 데이터가 대부분 개발용 더미(DEV_DUMMY)로
+    확인되어(스키마매핑 문서 참고), 더미 여부 자체는 이 함수가 아니라 호출측
+    (MCP tool)이 `komis_raw.resolve_data_source()`로 확인해 별도 warnings로
+    얹는다 — Evidence는 있는 그대로의 원자료만 담고, 신뢰도 판단은 근거와
+    분리해 얹는 게 기존 계약(kind/source/section/text)에 더 맞는다."""
+
+    evidence: list[Evidence] = []
+    for ds in datasets:
+        if not ds.rows:
+            continue
+        columns = ds.columns
+        table_rows = [[str(row.get(c, "")) for c in columns] for row in ds.rows]
+        suffix = f"({mineral_code})" if mineral_code else ""
+        section = f"KOMIS 원천 · {ds.source_table}{suffix}"
+        evidence.append(
+            Evidence(
+                kind="structured", source=f"public.{ds.source_table}", section=section,
+                text=_markdown_table(columns, table_rows),
+            )
+        )
+    return evidence

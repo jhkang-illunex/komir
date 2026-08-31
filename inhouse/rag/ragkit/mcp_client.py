@@ -245,7 +245,7 @@ class _ProfileSession:
             raise McpToolError(f"mcp tool {tool!r}({self.profile}) failed: {detail}")
         return result.structuredContent  # 서버가 이미 순수 object로 반환 — 언랩 불필요
 
-    # ---- chatbot_graph._retrieve_node가 쓰는 타입 있는 래퍼 6종 ----
+    # ---- chatbot_graph._retrieve_node가 쓰는 타입 있는 래퍼 6종 + komis_raw_lookup 1종(2026-08-31 추가, 그래프 자동 라우팅은 아직 미배선 — 호출 자체는 이 래퍼로 가능) ----
 
     def call_latest_diagnosis(self, commodity_code: str, target: str | None = None, months: int | None = None) -> Evidence | None:
         data = self._call("latest_diagnosis", {"commodity_code": commodity_code})["evidence"]
@@ -274,6 +274,31 @@ class _ProfileSession:
         self, query: str, *, history: list[dict[str, str]] | None = None
     ) -> tuple[list[Evidence], list[str]]:
         data = self._call("pageindex_agentic", {"query": query, "history": history or []})
+        return [Evidence(**d) for d in data["evidence"]], data["warnings"]
+
+    def call_komis_raw_lookup(
+        self,
+        page_id: str,
+        *,
+        mineral_code: str | None = None,
+        hs_code: str | None = None,
+        index_type_code: str | None = None,
+        price_criterion_serial: int | None = None,
+        start_period: str | None = None,
+        end_period: str | None = None,
+        limit: int = 5,
+    ) -> tuple[list[Evidence], list[str]]:
+        """KOMIS 공개원천(public.KO_*) 원자료 조회 — 2026-08-31 추가. warnings에
+        더미데이터 경고(§_mcp_tools_common.py::komis_raw_lookup)가 실릴 수 있다."""
+
+        data = self._call(
+            "komis_raw_lookup",
+            {
+                "page_id": page_id, "mineral_code": mineral_code, "hs_code": hs_code,
+                "index_type_code": index_type_code, "price_criterion_serial": price_criterion_serial,
+                "start_period": start_period, "end_period": end_period, "limit": limit,
+            },
+        )
         return [Evidence(**d) for d in data["evidence"]], data["warnings"]
 
 
