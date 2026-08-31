@@ -481,6 +481,18 @@ def _classify_abstain(message: str, warnings: list[str], llm: "KomirJsonLLM | No
     return decision.reason, _abstain_reason_text(decision)
 
 
+def _evidence_source_label(ev) -> str:
+    """`_source_footer`와 같은 표기 규칙("source · section (기준시점 as_of)")을
+    table/image 이벤트에도 그대로 쓴다 — 텍스트 답변 끝의 출처 목록과 표·차트가
+    같은 문구를 쓰면 사용자가 번호(source_index)만 보고 아래로 스크롤해
+    대조하지 않아도 표·차트 옆에서 바로 근거를 확인할 수 있다."""
+
+    label = f"{ev.source} · {ev.section}"
+    if ev.as_of:
+        label += f" (기준시점 {ev.as_of})"
+    return label
+
+
 def _multimodal_events(cited_indices: set[int], evidence: list) -> list[ChatEvent]:
     """인용된 근거에서 표를 뽑아 table 이벤트로, 숫자열이 있으면 차트를 렌더링해
     image 이벤트로도 낸다. 인용 안 된 근거(조회는 됐지만 답변 근거로 안 쓰인
@@ -490,23 +502,32 @@ def _multimodal_events(cited_indices: set[int], evidence: list) -> list[ChatEven
     2026-08-31: "최저/최고 조회는 표만" 하는 질문 문구 기반 조건부 억제를
     시도했다가 사용자가 "표가 제공되면 차트도 같이 제공해야 한다"고 정정 —
     표가 나가는 모든 경우에 차트도 함께 낸다. 차트 생성 여부는 순수하게 표
-    모양(숫자열 존재 여부, chatbot_events.render_chart_png)만으로 정해진다."""
+    모양(숫자열 존재 여부, chatbot_events.render_chart_png)만으로 정해진다.
+
+    같은 날 후속(사용자 요청) — table·image 이벤트에 `source_index`(번호)뿐
+    아니라 사람이 바로 읽을 수 있는 `source` 문구도 같이 싣는다. 예전엔
+    번호만 있어서 답변 끝의 "출처:" 목록까지 따로 봐야 어느 근거에서 나온
+    표·차트인지 알 수 있었다."""
 
     events: list[ChatEvent] = []
     for i, ev in enumerate(evidence, 1):
         if i not in cited_indices:
             continue
+        source_label = _evidence_source_label(ev)
         for table in extract_markdown_tables(ev.text):
             events.append(ChatEvent(
                 type="table",
-                data={"columns": table["columns"], "rows": table["rows"], "source_index": i},
+                data={
+                    "columns": table["columns"], "rows": table["rows"],
+                    "source_index": i, "source": source_label,
+                },
             ))
             chart = render_chart_png(table)
             if chart is not None:
                 png_bytes, caption = chart
-                events.append(ChatEvent(
-                    type="image", data=png_to_data_uri_payload(png_bytes, caption, source_index=i),
-                ))
+                image_data = png_to_data_uri_payload(png_bytes, caption, source_index=i)
+                image_data["source"] = source_label
+                events.append(ChatEvent(type="image", data=image_data))
     return events
 
 
