@@ -36,6 +36,7 @@ import json
 import streamlit as st
 
 from streamlit_demo.mineral_master import mineral_label, mineral_options
+from streamlit_demo.komis_fetch import KOMIS_FETCH_DISPATCH, KomisFetchError
 from streamlit_demo.komis_raw import KOMIS_RAW_PAGES, KomisRawConversionError
 from streamlit_demo.report_gen_client import (
     EXTRA_FIELD_DEFAULTS,
@@ -177,6 +178,14 @@ if spec.extra_fields:
 # 제공하는 선택 UI, (2) KOMIS 원본 JSON 입력란, (3) 분석요약 결과 — 이 세
 # 요소만 남긴다. geo_events 별도 expander·"고급: KOMIS 원본값 직접 입력"
 # expander·"요청 바디 미리보기" 등 부가 UI는 전부 제거.
+# 2026-08-31 재지시(사용자): "광물자원가격·핵심광물지도는 fetch 버튼을
+# 추가해서 komis.or.kr에서 데이터를 가져와 표시"를 요청 — 이 데모가
+# inhouse/airgap 원칙과 달리 komis.or.kr을 직접 호출하는 것에 대해 사용자가
+# "이 데모는 납품처 설명용, DMZ존과 같음, 납품 후 미사용"이라고 DMZ/inhouse
+# 원칙 예외를 직접 승인해 구현한다(§komis_fetch.py docstring — 실제로
+# komis.or.kr 실호출·실데이터까지 검증 완료). 가격기준 코드가 실측 확보된
+# 5개 페이지(KOMIS_FETCH_DISPATCH)만 버튼이 뜨고, price_iron_energy/
+# price_other는 그 코드를 못 구해 수동 붙여넣기만 유지.
 observations_text = ""
 komis_raw_text = ""
 if page_id in KOMIS_RAW_PAGES:
@@ -185,6 +194,16 @@ if page_id in KOMIS_RAW_PAGES:
         f"KOMIS 데이터 조회 결과(외부에서 조회한 원본 JSON을 붙여넣으세요) — "
         f"komis.or.kr {raw_spec.label}을 그대로 붙여넣으면 이 화면이 report_gen이 원하는 형태로 변환합니다."
     )
+    if page_id in KOMIS_FETCH_DISPATCH:
+        if st.button("komis.or.kr에서 실시간 조회", key=f"komis_fetch_btn_{page_id}"):
+            try:
+                with st.spinner("komis.or.kr 조회 중…"):
+                    fetched = KOMIS_FETCH_DISPATCH[page_id](payload)
+            except KomisFetchError as exc:
+                st.error(str(exc))
+            else:
+                st.session_state[f"komis_raw_{page_id}"] = json.dumps(fetched, ensure_ascii=False, indent=2)
+                st.success("조회 완료 — 아래 KOMIS 데이터 조회 결과에 반영했습니다.")
     komis_raw_text = st.text_area(
         "KOMIS 데이터 조회 결과", value=raw_spec.example_raw_json, height=160,
         key=f"komis_raw_{page_id}",
