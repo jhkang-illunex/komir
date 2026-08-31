@@ -452,9 +452,34 @@ def calculate_price_summary(
     # 그 값을 그대로 쓰고 롤링창 재계산(`_avg_before`)·희소관측 dedup은 건너뛴다
     # (KOMIS 제공값은 매번 독립적으로 서버가 계산한 값이라 우리 관측 윈도우가
     # 겹치는지 여부와 무관하다 — dedup은 자체 계산 폴백 경로에만 의미가 있다).
+    # 2026-08-31 사용자 지적 — "데이터가 1달짜리인데도 전년대비 이런게
+    # 나오면 안 되거든요. 평균 옵션(KOMIS srchAvgOpt)에 따라 데이터가
+    # 일/주/월/분기/년 단위로 나오니 이걸 기반으로 기간 및 변화량 분석에
+    # 영향을 줘야 한다." 확인해보니 report_gen이 받는 `komis_response`
+    # 안에는 `srchAvgOpt`(KOMIS 요청 파라미터)가 없다 — `dataAvg.stdMap`은
+    # 조회 평균옵션과 무관하게 KOMIS가 항상 day/week/month/year 4종을
+    # 나란히 채워 보낸다(실측 확인, income_data 덤프). 즉 "1개월치만
+    # 조회했다"는 사실은 KOMIS 응답 안 어디에도 명시적으로 없고, 우리가
+    # 실제로 받은 `observations`의 날짜 폭(첫 관측일~최신 관측일)이 유일한
+    # 신뢰 가능한 신호다 — 그래서 평균옵션을 별도 입력으로 새로 받기보다
+    # (캐치, 캐치의 값이 데이터와 어긋날 위험) 관측치 자체의 실제 폭으로
+    # 판단한다(`_volatility_fact`의 60%-커버리지 게이트와 같은 원리를
+    # KOMIS 제공값 경로에도 동일 적용 — 이전엔 fallback 계산 경로만
+    # 관측치를 봤고 KOMIS 제공값 경로는 무조건 신뢰했었다). 조회기간
+    # 폭이 그 기간의 60% 미만이면 KOMIS 제공값이든 자체 계산이든 그 기간
+    # 비교 자체를 만들지 않는다.
+    _PERIOD_COVERAGE_RATIO = 0.6
+    first_price_obs = next((item for item in observations if item.commerce_price is not None), latest)
+    total_span_days = (_date.fromisoformat(latest.date) - _date.fromisoformat(first_price_obs.date)).days
     _KOMIS_PERIOD_FIELD = {"week_avg": "week", "month_avg": "month", "year_avg": "year"}
     _avg_windows_seen: set[tuple[str, ...]] = set()
     for days, label, metric_id in ((7, "전주평균", "week_avg"), (30, "전월평균", "month_avg"), (365, "전년평균", "year_avg")):
+        if total_span_days < days * _PERIOD_COVERAGE_RATIO:
+            warnings.append(
+                f"{label} 대비 비교는 조회기간이 {days}일의 {_PERIOD_COVERAGE_RATIO:.0%} 미만이라 계산하지 않았다"
+                f"(조회기간 폭 {total_span_days}일)."
+            )
+            continue
         komis_avg = getattr(komis_period_comparisons, _KOMIS_PERIOD_FIELD[metric_id], None) if komis_period_comparisons else None
         if komis_avg is not None:
             change = komis_avg.change_pct / 100
