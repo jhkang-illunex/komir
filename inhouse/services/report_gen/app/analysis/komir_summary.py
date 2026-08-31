@@ -13,6 +13,7 @@ summary` 등을 따른다 — 재사용 가능한 헬퍼(`EvidenceClaim`·`Summa
 from __future__ import annotations
 
 import re as _re
+import statistics as _statistics
 from datetime import date as _date, timedelta as _timedelta
 
 from .additional_summary import (
@@ -407,6 +408,12 @@ def calculate_price_summary(
         )
     ]
     key_metrics = [_price_metric("latest_price", "최신 가격", latest.commerce_price)]
+    # 2026-08-31 사용자 통계확장 피드백 — 아래 신규 6개 층(변동성·이동평균+RSI·
+    # 백분위·낙폭국면·재고해석·상대가치) 중 관측치 부족으로 건너뛴 항목을
+    # 여기 모은다. `warnings`는 `data_quality.warnings`로 노출돼(summary.py)
+    # "계산 안 함"을 문장이 아니라 이 채널로 명시적으로 알린다(claim 예산
+    # 압박 없이 사용자가 선택한 "명시적 안내" 방식).
+    warnings: list[str] = []
 
     if len(observations) >= 2 and observations[-2].commerce_price is not None:
         prior = observations[-2].commerce_price
@@ -696,7 +703,7 @@ def calculate_price_summary(
     latest_inventory = latest.inventory if latest.inventory not in (None, 0, 0.0) else None
     if latest_inventory is not None:
         current_position_count = sum(1 for claim in claims if claim.section == "current_position")
-        if current_position_count < 3:  # SummaryNarrative.current_position 하드 제약(models.py)
+        if current_position_count < _CURRENT_POSITION_HARD_CAP:  # SummaryNarrative.current_position 하드 제약(models.py)
             prior_inventory_obs = next(
                 (
                     item
@@ -722,6 +729,58 @@ def calculate_price_summary(
             key_metrics.append(_price_metric("inventory_level", "재고량", latest_inventory))
             if inventory_change_pct is not None:
                 key_metrics.append(_price_metric("inventory_change_pct", "재고량 등락률", inventory_change_pct, unit="%"))
+
+    # 2026-08-31 사용자 통계확장 피드백 — "지금 파일만으로 뽑히는" 5개 층
+    # (변동성·이동평균+RSI·백분위 위치·낙폭 국면·재고 해석). 새 데이터소스
+    # 없이 이미 받은 observations만 쓴다(사용자 명시 제약). 매 추가 전
+    # `_CURRENT_POSITION_HARD_CAP` 여유를 확인하는 이유는 위 inventory_level과
+    # 동일 — 규칙기반 폴백 경로가 근거를 그대로 문장에 매핑해 상한을 넘기면
+    # `ValidationError`로 죽는다.
+    volatility_fact, volatility_skipped = _volatility_fact(observations_with_price, latest.date)
+    if volatility_fact is not None and sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP:
+        claims.append(EvidenceClaim("volatility", "current_position", volatility_fact))
+    if volatility_skipped:
+        warnings.append(
+            f"변동성 중 {'·'.join(volatility_skipped)}은 조회기간이 해당 창(30/90/365일)의 60% "
+            "이상을 덮지 않거나 관측치가 5건 미만이라 계산하지 않았다."
+        )
+
+    ma_rsi_fact, ma_rsi_computed = _ma_rsi_fact(observations_with_price, latest.commerce_price)
+    if ma_rsi_fact is not None and sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP:
+        claims.append(EvidenceClaim("ma_rsi", "current_position", ma_rsi_fact))
+    if not ma_rsi_computed:
+        warnings.append("이동평균·RSI는 관측치가 부족해 계산하지 않았다(이동평균 최소 20건, RSI 최소 15건 필요).")
+
+    percentile = _percentile_rank(observations_with_price, latest.commerce_price)
+    if percentile is not None and sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP:
+        claims.append(
+            EvidenceClaim(
+                "percentile_position",
+                "current_position",
+                f"조회기간 관측치 {len(observations_with_price)}건 기준 현재 가격의 분포상 백분위는 "
+                f"{_number(percentile)}%다(높을수록 조회기간 중 고가권).",
+            )
+        )
+    elif percentile is None:
+        warnings.append("가격 분포상 백분위는 관측치가 20건 미만이라 계산하지 않았다.")
+
+    drawdown_fact = _drawdown_fact(observations_with_price)
+    if drawdown_fact is not None and sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP:
+        claims.append(EvidenceClaim("drawdown", "current_position", drawdown_fact))
+    elif drawdown_fact is None:
+        warnings.append("낙폭 국면은 관측치가 2건 미만이라 계산하지 않았다.")
+
+    observations_with_price_and_inventory = [
+        item for item in observations_with_price if item.inventory not in (None, 0, 0.0)
+    ]
+    inventory_context_fact = _inventory_context_fact(observations_with_price_and_inventory)
+    if (
+        inventory_context_fact is not None
+        and sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP
+    ):
+        claims.append(EvidenceClaim("inventory_context", "current_position", inventory_context_fact))
+    elif latest_inventory is not None and inventory_context_fact is None:
+        warnings.append("재고량 백분위·가격 동행 비율은 재고량이 있는 관측치가 10건 미만이라 계산하지 않았다.")
 
     if compare_series is not None:
         compare_observations = sorted(compare_series.observations, key=lambda item: item.date)
@@ -757,13 +816,40 @@ def calculate_price_summary(
                 )
             )
 
+        # 2026-08-31 사용자 통계확장 피드백 — "비교 광종 입력시" 조건부 3층 중
+        # 상대가치(Cu/Al류 가격비율). 나머지 2층(연도별 수익률표·계절성)은
+        # 비교광종 유무와 무관하게 아래에서 항상 계산한다(사용자 원문의 "/"가
+        # 세 항목을 나열한 것이지 전부 조건부라는 뜻은 아니다 — 표·계절성은
+        # 광종 1개만으로도 의미 있는 통계다).
+        relative_value_fact = _relative_value_fact(
+            series.mineral.name, observations, compare_series.mineral.name, compare_observations
+        )
+        if (
+            relative_value_fact is not None
+            and sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP
+        ):
+            claims.append(EvidenceClaim("relative_value", "current_position", relative_value_fact))
+        elif relative_value_fact is None:
+            warnings.append(
+                f"{compare_series.mineral.name} 대비 상대가치는 같은 날짜에 두 계열 관측치가 "
+                "20건 미만이라 계산하지 않았다."
+            )
+
+    # 2026-08-31 사용자 통계확장 피드백 — 표 형태 2층(연도별 수익률·계절성)은
+    # 문장(claim)이 아니라 `detailed_metrics`에 싣는다(이미 상한 없는
+    # 리스트라 섹션 문장수 계약과 충돌하지 않는다 — advisor 권고).
+    table_metrics = _annual_return_metrics(observations_with_price) + _seasonality_metrics(observations_with_price)
+    year_span = len({item.date[:4] for item in observations_with_price})
+    if 0 < year_span < 2:
+        warnings.append("계절성(월별 평균 수익률)은 관측 연도가 1개뿐이라 그 해 값과 사실상 같다 — 참고용으로만 볼 것.")
+
     return AdditionalCalculatedSummary(
         claims=claims,
         key_metrics=key_metrics[:8],
-        detailed_metrics=key_metrics,
+        detailed_metrics=key_metrics + table_metrics,
         patterns=patterns,
         omitted=[],
-        warnings=[],
+        warnings=warnings,
     )
 
 
@@ -1104,3 +1190,292 @@ def _signed_pct(value: float) -> str:
 def _shift_date(date_text: str, days: int) -> str:
     year, month, day = (int(part) for part in date_text.split("-"))
     return (_date(year, month, day) + _timedelta(days=days)).isoformat()
+
+
+# 2026-08-31 사용자 지시 — "요약 보고서에 있는 광물 자원 자격 분석요약"
+# 피드백 반영. 사용자가 직접 요청한 8개 층 중 6개(변동성·이동평균+RSI·백분위
+# 위치·낙폭 국면·재고 해석·상대가치)를 아래 헬퍼로, 나머지 2개(연도별
+# 수익률표·계절성)는 `_annual_return_metrics`/`_seasonality_metrics`로
+# 구현한다. 전부 이미 요청 바디에 있는 observations/compare_observations만
+# 쓰고 새 데이터소스는 추가하지 않는다(사용자 명시 제약).
+#
+# 산식은 표준 관행을 따르되(연율화=일별 수익률 표준편차×sqrt(252), RSI는
+# Wilder 방식 14일 스무딩, MDD는 조회기간 내 러닝피크 대비 최대 낙폭) 사용자가
+# 참고한 별도 산출 스크립트와 계수 선택이 다를 수 있다 — 숫자가 어긋나면
+# 산식 정의부터 맞춰야 한다(경위는 report_gen_price_통계확장_260831.md 참고).
+#
+# `summary.py::_FORBIDDEN_SUMMARY_TERMS`에 "추세"·"상관계수"가 이미 있어(다른
+# 페이지 전용 용어가 LLM 출력에 새는 걸 막는 공통 가드) 이 문구들을 이 파일의
+# fact 텍스트에도, `prompts.py::PRICE_SUMMARY_INSTRUCTIONS`에도 절대 쓰지
+# 않는다 — "이동평균 배열"·"가격강도지수(RSI)"·"동행 비율"처럼 우회 표현을
+# 쓴다(추세=trend·상관계수=correlation coefficient의 통상 번역어를 그대로
+# 쓰면 LLM 정제 경로가 매번 검증 실패로 규칙기반 폴백에 떨어진다).
+
+_VOLATILITY_WINDOWS: tuple[tuple[str, int], ...] = (("1개월", 30), ("3개월", 90), ("1년", 365))
+_MA_WINDOWS: tuple[int, ...] = (20, 60, 120, 250)
+# current_position 절 근거 상한 — `SummaryNarrative.current_position`
+# (models.py) 및 `prompts.py::SECTION_SENTENCE_RANGES`의 price_* 4종
+# "current_position" 최댓값과 반드시 같이 바꾼다(안 맞추면 `_MAJOR_CHANGES_
+# HARD_CAP`과 같은 이유로 ValidationError로 죽는다 — 위 두 상수 옆에 각각
+# 동일한 경고 주석을 남겨뒀다). 근거 최대 9개 = period_range/no_price_range(1)
+# + compare_overall_change/no(1) + inventory_level(1) + 신규 6종(변동성·
+# 이동평균+RSI·백분위·낙폭국면·재고해석·상대가치).
+_CURRENT_POSITION_HARD_CAP = 9
+
+
+def _returns_with_dates(observations_with_price: list) -> list[tuple[str, str, float]]:
+    """관측치가 있는 계열의 인접 쌍 일별 수익률 — (시작일, 종료일, 수익률) 튜플."""
+
+    result: list[tuple[str, str, float]] = []
+    for prev, cur in zip(observations_with_price, observations_with_price[1:]):
+        if prev.commerce_price:
+            result.append((prev.date, cur.date, (cur.commerce_price - prev.commerce_price) / prev.commerce_price))
+    return result
+
+
+def _volatility_fact(observations_with_price: list, latest_date: str) -> tuple[str | None, list[str]]:
+    """1개월/3개월/1년 연율화 변동성(일별 수익률 표준편차×sqrt(252)). 창별로
+    실제 관측 기간이 그 창의 60% 이상을 덮을 때만 포함한다(관측치가 60일뿐인데
+    "1년 변동성"이라 표기하는 오해를 막기 위해서 — 2026-08-31 사용자 지적의
+    hi/lo 문제와 같은 성격의 함정)."""
+
+    returns = _returns_with_dates(observations_with_price)
+    if not returns:
+        return None, [label for label, _ in _VOLATILITY_WINDOWS]
+    parts: list[str] = []
+    skipped: list[str] = []
+    for label, days in _VOLATILITY_WINDOWS:
+        cutoff = _shift_date(latest_date, -days)
+        window = [(d1, r) for d1, d2, r in returns if d2 >= cutoff]
+        if len(window) < 5:
+            skipped.append(label)
+            continue
+        span_days = (_date.fromisoformat(latest_date) - _date.fromisoformat(window[0][0])).days
+        if span_days < days * 0.6:
+            skipped.append(label)
+            continue
+        stdev = _statistics.stdev(r for _, r in window)
+        annualized = stdev * (252 ** 0.5) * 100
+        parts.append(f"{label} {_number(annualized)}%")
+    if not parts:
+        return None, skipped
+    return f"최근 {'·'.join(parts)} 연율화 변동성을 보였다.", skipped
+
+
+def _moving_averages(observations_with_price: list) -> dict[int, float]:
+    prices = [item.commerce_price for item in observations_with_price]
+    return {window: sum(prices[-window:]) / window for window in _MA_WINDOWS if len(prices) >= window}
+
+
+def _ma_alignment_label(mas: dict[int, float], latest_price: float) -> str | None:
+    """단기→장기 이동평균이 순서대로 내림차순(정배열)·오름차순(역배열)인지 —
+    2개 미만이면 배열을 판단할 수 없어 None."""
+
+    ordered = [value for _, value in sorted(mas.items())]
+    if len(ordered) < 2:
+        return None
+    if all(a > b for a, b in zip(ordered, ordered[1:])) and latest_price >= ordered[0]:
+        return "정배열"
+    if all(a < b for a, b in zip(ordered, ordered[1:])) and latest_price <= ordered[0]:
+        return "역배열"
+    return "혼조"
+
+
+def _rsi14(observations_with_price: list) -> float | None:
+    """Wilder 14일 스무딩 RSI — 최소 15개 관측치(수익률 14개) 필요."""
+
+    prices = [item.commerce_price for item in observations_with_price]
+    if len(prices) < 15:
+        return None
+    deltas = [prices[i] - prices[i - 1] for i in range(1, len(prices))]
+    gains = [max(d, 0.0) for d in deltas]
+    losses = [max(-d, 0.0) for d in deltas]
+    avg_gain = sum(gains[:14]) / 14
+    avg_loss = sum(losses[:14]) / 14
+    for gain, loss in zip(gains[14:], losses[14:]):
+        avg_gain = (avg_gain * 13 + gain) / 14
+        avg_loss = (avg_loss * 13 + loss) / 14
+    if avg_loss == 0:
+        return 100.0
+    rs = avg_gain / avg_loss
+    return 100 - (100 / (1 + rs))
+
+
+def _ma_rsi_fact(observations_with_price: list, latest_price: float) -> tuple[str | None, bool]:
+    """이동평균 배열·RSI를 한 문장으로 묶는다(추세=forbidden term 회피). 반환
+    2번째 값은 "무언가 계산됐는지"(경고 문구 생략 판단용)."""
+
+    mas = _moving_averages(observations_with_price)
+    alignment = _ma_alignment_label(mas, latest_price)
+    rsi = _rsi14(observations_with_price)
+    if alignment is None and rsi is None:
+        return None, False
+    parts = []
+    if alignment is not None:
+        ma_desc = "·".join(f"{window}일선 {_number(value)}" for window, value in sorted(mas.items()))
+        parts.append(f"{ma_desc}로 이동평균이 {alignment} 상태다")
+    if rsi is not None:
+        zone = "과매수" if rsi >= 70 else "과매도" if rsi <= 30 else "중립"
+        parts.append(f"14일 기준 가격강도지수(RSI)는 {_number(rsi)}로 {zone} 구간이다")
+    return ". ".join(parts) + ".", True
+
+
+def _percentile_rank(observations_with_price: list, latest_price: float) -> float | None:
+    if len(observations_with_price) < 20:
+        return None
+    prices = [item.commerce_price for item in observations_with_price]
+    rank = sum(1 for price in prices if price <= latest_price)
+    return rank / len(prices) * 100
+
+
+def _drawdown_stats(observations_with_price: list) -> dict | None:
+    """조회기간 내 러닝피크 대비 최대 낙폭(MDD 국면)과, 조회기간 전체 최고가
+    대비 현재가의 낙폭. 둘 다 "조회기간 중"으로 범위를 명시한다 — 이 계산기는
+    요청받은 구간 밖 데이터를 모르므로 절대적 전고점이라 단정하지 않는다."""
+
+    if len(observations_with_price) < 2:
+        return None
+    running_peak_price = observations_with_price[0].commerce_price
+    running_peak_date = observations_with_price[0].date
+    max_dd = 0.0
+    max_dd_peak_date = running_peak_date
+    max_dd_trough_date = running_peak_date
+    for item in observations_with_price[1:]:
+        if item.commerce_price > running_peak_price:
+            running_peak_price = item.commerce_price
+            running_peak_date = item.date
+        drawdown = (item.commerce_price - running_peak_price) / running_peak_price
+        if drawdown < max_dd:
+            max_dd = drawdown
+            max_dd_peak_date = running_peak_date
+            max_dd_trough_date = item.date
+    overall_peak_price = max(item.commerce_price for item in observations_with_price)
+    overall_peak_date = next(item.date for item in observations_with_price if item.commerce_price == overall_peak_price)
+    latest = observations_with_price[-1]
+    current_dd = (latest.commerce_price - overall_peak_price) / overall_peak_price
+    return {
+        "overall_peak_price": overall_peak_price,
+        "overall_peak_date": overall_peak_date,
+        "current_dd_pct": current_dd * 100,
+        "max_dd_pct": max_dd * 100,
+        "max_dd_peak_date": max_dd_peak_date,
+        "max_dd_trough_date": max_dd_trough_date,
+    }
+
+
+def _drawdown_fact(observations_with_price: list) -> str | None:
+    stats = _drawdown_stats(observations_with_price)
+    if stats is None:
+        return None
+    if stats["current_dd_pct"] >= -0.005:  # 반올림상 0%대(현재가=조회기간 최고가)
+        fact = f"현재가는 조회기간 중 최고가({_korean_date(stats['overall_peak_date'])}, {_number(stats['overall_peak_price'])})와 같은 수준이다."
+    else:
+        fact = (
+            f"현재가는 조회기간 중 최고가({_korean_date(stats['overall_peak_date'])}, "
+            f"{_number(stats['overall_peak_price'])}) 대비 {_number(abs(stats['current_dd_pct']))}% 낮다."
+        )
+    if stats["max_dd_pct"] <= -0.5 and (
+        stats["max_dd_peak_date"] != stats["overall_peak_date"] or abs(stats["max_dd_pct"] - stats["current_dd_pct"]) >= 0.5
+    ):
+        fact += (
+            f" 조회기간 내 최대 하락폭은 {_korean_date(stats['max_dd_peak_date'])} 고점 대비 "
+            f"{_korean_date(stats['max_dd_trough_date'])}까지 {_number(abs(stats['max_dd_pct']))}%였다."
+        )
+    return fact
+
+
+def _inventory_context_fact(observations_with_price_and_inventory: list) -> str | None:
+    """재고량 백분위 + 가격·재고 동행 비율(부호 일치 일수 비율) — "상관계수"는
+    forbidden term이라 %(동행 비율)로 대신 서술한다."""
+
+    if len(observations_with_price_and_inventory) < 10:
+        return None
+    latest = observations_with_price_and_inventory[-1]
+    values = [item.inventory for item in observations_with_price_and_inventory]
+    inv_rank = sum(1 for value in values if value <= latest.inventory) / len(values) * 100
+    parts = [f"재고량은 최근 관측치 분포상 백분위 {_number(inv_rank)}%"]
+    signed_pairs = []
+    for prev, cur in zip(observations_with_price_and_inventory, observations_with_price_and_inventory[1:]):
+        price_delta = cur.commerce_price - prev.commerce_price
+        inventory_delta = cur.inventory - prev.inventory
+        if price_delta == 0 or inventory_delta == 0:
+            continue
+        signed_pairs.append((price_delta > 0) == (inventory_delta > 0))
+    recent = signed_pairs[-60:]
+    if len(recent) >= 10:
+        comovement = sum(1 for same in recent if same) / len(recent) * 100
+        parts.append(f"최근 {len(recent)}거래일 중 가격·재고량이 같은 방향으로 움직인 날은 {_number(comovement)}%")
+    return "이고 ".join(parts) + "다."
+
+
+def _relative_value_fact(
+    primary_name: str,
+    primary_observations: list,
+    compare_name: str,
+    compare_observations: list,
+) -> str | None:
+    """두 광종의 같은 날짜 가격비율(예: Cu/Al)이 조회기간 평균 대비 고평가·
+    저평가 수준인지 — 비교광종이 있을 때만 계산되고(compare_series 필수),
+    조회기간 안에서만 판단한다(장기 역사적 평균이 아니다)."""
+
+    primary_by_date = {item.date: item.commerce_price for item in primary_observations if item.commerce_price}
+    compare_by_date = {item.date: item.commerce_price for item in compare_observations if item.commerce_price}
+    common_dates = sorted(set(primary_by_date) & set(compare_by_date))
+    ratios = [
+        (date, primary_by_date[date] / compare_by_date[date])
+        for date in common_dates
+        if compare_by_date[date] != 0
+    ]
+    if len(ratios) < 20:
+        return None
+    latest_ratio = ratios[-1][1]
+    avg_ratio = sum(r for _, r in ratios) / len(ratios)
+    if avg_ratio == 0:
+        return None
+    diff_pct = (latest_ratio - avg_ratio) / avg_ratio * 100
+    level = "높은" if diff_pct > 0.5 else "낮은" if diff_pct < -0.5 else "비슷한"
+    return (
+        f"{primary_name}/{compare_name} 가격비율은 현재 {_number(latest_ratio, 4)}로, "
+        f"조회기간 평균({_number(avg_ratio, 4)}) 대비 {_number(abs(diff_pct))}% {level} 수준이다."
+    )
+
+
+def _annual_return_metrics(observations_with_price: list) -> list[Metric]:
+    """연도별 수익률표(그 해 첫 관측가→마지막 관측가) — `detailed_metrics`에만
+    싣는다(key_metrics는 8개 상한이라 연도가 늘면 다른 핵심 지표를 밀어낸다)."""
+
+    by_year: dict[str, list] = {}
+    for item in observations_with_price:
+        by_year.setdefault(item.date[:4], []).append(item)
+    metrics = []
+    for year in sorted(by_year):
+        rows = by_year[year]
+        change = _pct(rows[-1].commerce_price, rows[0].commerce_price)
+        if change is not None:
+            metrics.append(_price_metric(f"annual_return_{year}", f"{year}년 수익률", change * 100, unit="%"))
+    return metrics
+
+
+def _seasonality_metrics(observations_with_price: list) -> list[Metric]:
+    """월별 평균 수익률(그 달 첫 관측가→마지막 관측가를 연도별로 구해 평균) —
+    연도 수가 적으면(1년 미만) 사실상 그 해 하나의 값이라 통계적 의미가
+    옅다는 점을 `warnings`로 별도 안내한다(이 함수 자체는 계산만 한다)."""
+
+    by_year_month: dict[str, list] = {}
+    for item in observations_with_price:
+        by_year_month.setdefault(item.date[:7], []).append(item)
+    month_returns: dict[int, list[float]] = {month: [] for month in range(1, 13)}
+    for year_month, rows in by_year_month.items():
+        month = int(year_month[5:7])
+        change = _pct(rows[-1].commerce_price, rows[0].commerce_price)
+        if change is not None:
+            month_returns[month].append(change)
+    metrics = []
+    for month in range(1, 13):
+        values = month_returns[month]
+        if values:
+            avg = sum(values) / len(values)
+            metrics.append(
+                _price_metric(f"seasonality_month_{month:02d}", f"{month}월 평균 수익률", avg * 100, unit="%")
+            )
+    return metrics
