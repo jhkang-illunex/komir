@@ -330,13 +330,28 @@ class PriceSummaryRequest(_DateRangeMineralRequest):
     `compare_mineral_name`·`compare_price_criterion`이 전부 "자동채움
     +오버라이드 가능"인데 이것만 "자동채움뿐, 오버라이드 불가"인 건
     비일관적이라 나머지와 맞춘다(호출자가 KOMIS 원문과 다른 값을
-    표시하고 싶을 수 있는 경우 대비)."""
+    표시하고 싶을 수 있는 경우 대비).
+
+    `srch_avg_opt`/`srch_field`/`srch_start_date`/`srch_end_date`(2026-08-31
+    신설)는 호출자가 KOMIS에 실제로 던진 조회 파라미터(`srchAvgOpt`/
+    `srchField`/`srchStartDate`/`srchEndDate`)를 그대로 옮겨 보내는
+    필드다 — `komis_response`(응답 본문)엔 이 정보가 없어서(KOMIS는
+    조회 평균옵션과 무관하게 `dataAvg.stdMap`에 day/week/month/year를
+    항상 다 채운다) 지금까지는 `observations`의 실제 날짜 간격·폭으로
+    평균옵션과 조회기간을 추론했다 — 명시적으로 보내면 그 추론보다
+    우선한다. `srch_avg_opt`는 DAY/WEEK/MONTH/QUARTER/YEAR, `srch_field`는
+    `srch_start_date`/`srch_end_date`의 형식을 정한다(`year`→"YYYY",
+    `month`→"YYYY-MM", KOMIS 화면의 실제 두 형식 그대로)."""
 
     mineral: str = Field(min_length=1)
     compare_mineral: str | None = Field(default=None, min_length=1)
     compare_mineral_name: str | None = Field(default=None, min_length=1)
     compare_price_criterion: str | None = None
     price_criterion: str | None = None
+    srch_avg_opt: Literal["DAY", "WEEK", "MONTH", "QUARTER", "YEAR"] | None = None
+    srch_field: Literal["year", "month"] | None = None
+    srch_start_date: str | None = None
+    srch_end_date: str | None = None
 
 
 class DomesticTradeSummaryRequest(_DateRangeMineralRequest):

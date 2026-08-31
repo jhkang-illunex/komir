@@ -17,6 +17,7 @@
 """
 from __future__ import annotations
 
+import re
 from typing import Literal
 from uuid import uuid4
 
@@ -163,6 +164,24 @@ class AnalysisSummaryRequest(StrictModel):
     # 평균)이 롤링 N일창과 다름을 확정했기 때문(하위호환: 없으면 기존대로
     # 롤링창 계산).
     komis_period_comparisons: dict | None = None
+    # 2026-08-31 사용자 지시 — KOMIS 요청 파라미터(srchAvgOpt/srchField/
+    # srchStartDate/srchEndDate)를 그대로 받는다. `komis_response`(응답
+    # 본문)엔 이 정보가 없다(dataAvg.stdMap이 조회 평균옵션과 무관하게
+    # 항상 day/week/month/year를 다 채워 보낸다 — 실측 확인,
+    # `report_gen_기간커버리지_게이트_260831.md` 참고) — 그래서 지금까지는
+    # observations 자체의 날짜 간격·폭으로 평균옵션·조회기간을
+    # 추론했었다(`komir_summary.py::_detect_granularity`, 전주/전월/전년
+    # 비교의 60%-커버리지 게이트). 명시적으로 주어지면 그 추론보다
+    # 우선한다(다른 자동채움+오버라이드 필드들과 같은 패턴 — 캐치 값이
+    # 실제 데이터와 어긋나는 건 호출자 책임). ⚠ 이건 `start_date`/`end_date`
+    # (2026-08-30 제거)와는 다르다 — 그 필드들은 이미 받은 observations를
+    # 사후에 다시 잘라내는 "두 번째 필터"였고, 이 필드들은 observations를
+    # 안 건드리고 계산 로직(기간 커버리지 판단·단위 라벨)에만 쓰이는
+    # "메타데이터"다. price_* 4종 전용.
+    srch_avg_opt: Literal["DAY", "WEEK", "MONTH", "QUARTER", "YEAR"] | None = None
+    srch_field: Literal["year", "month"] | None = None
+    srch_start_date: str | None = None
+    srch_end_date: str | None = None
     # 2026-08-29 Phase3 라이브 재검증 확정(`report_gen_KOMIS라이브재검증_
     # Phase3_260829.md`) — page_id="map_korea"/"map_global" 전용.
     # `TradeKomisTotals` 참고. KOMIS list 응답이 최대 30행까지만 국가/루트를
@@ -251,6 +270,31 @@ class AnalysisSummaryRequest(StrictModel):
             raise ValueError("komis_period_comparisons is only accepted for price_* pages")
         if self.komis_trade_totals is not None and self.page_id not in ("map_korea", "map_global"):
             raise ValueError("komis_trade_totals is only accepted for page_id=map_korea/map_global")
+        if any(
+            value is not None
+            for value in (self.srch_avg_opt, self.srch_field, self.srch_start_date, self.srch_end_date)
+        ) and self.page_id not in (
+            "price_base_metals", "price_minor_metals", "price_iron_energy", "price_other",
+        ):
+            raise ValueError(
+                "srch_avg_opt/srch_field/srch_start_date/srch_end_date are only accepted for price_* pages"
+            )
+        if self.srch_field is None and (self.srch_start_date is not None or self.srch_end_date is not None):
+            raise ValueError("srch_start_date/srch_end_date require srch_field to be set")
+        elif self.srch_field == "year":
+            for value in (self.srch_start_date, self.srch_end_date):
+                if value is not None and not re.fullmatch(r"\d{4}", value):
+                    raise ValueError("srch_start_date/srch_end_date must be YYYY when srch_field='year'")
+        elif self.srch_field == "month":
+            for value in (self.srch_start_date, self.srch_end_date):
+                if value is not None and not re.fullmatch(r"\d{4}-(?:0[1-9]|1[0-2])", value):
+                    raise ValueError("srch_start_date/srch_end_date must be YYYY-MM when srch_field='month'")
+        if (
+            self.srch_start_date is not None
+            and self.srch_end_date is not None
+            and self.srch_start_date > self.srch_end_date
+        ):
+            raise ValueError("srch_start_date must not be after srch_end_date")
         if self.komis_response is not None and self.page_id not in (
             "price_base_metals", "price_minor_metals", "price_iron_energy", "price_other",
             "map_korea", "map_global", "map_mineral", "indicator_composite", "forecast_price",
