@@ -32,9 +32,10 @@ report_gen_KOMIS라이브재검증_Phase{1,2,3,4}_260829_evidence/`의 실측 JS
    indicator_composite는 `data.tableData`가 새 파서 입력임에 주의)해, 이
    5종의 손 매핑도 전부 passthrough로 교체.
 
-⚠ price_group·indicator_market/supply는 원본 캡처가 없거나(후자 2개는 로그인
-필요 페이지) 엔드포인트가 확정되지 않아 이 목록에 없다 — 그 페이지들은
-기존 방식(observations 수동 JSON 입력)을 그대로 쓴다."""
+⚠ indicator_market/supply는 로그인 필요 페이지라 원본 캡처가 없어 이 목록에
+없다 — 그 페이지들은 기존 방식(observations 수동 JSON 입력)을 그대로 쓴다.
+(price_group은 2026-08-31 report_gen 외부 인터페이스 자체가 삭제돼 이 데모의
+PAGE_SPECS에서도 제거됐다 — §report_gen_client.py 주석 참고.)"""
 from __future__ import annotations
 
 from dataclasses import dataclass
