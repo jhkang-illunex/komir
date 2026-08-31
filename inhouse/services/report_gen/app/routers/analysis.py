@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """분석요약 API — 외부 저장소 `komis_report_generator/api/routers/analysis.py`
-+ `api/schemas.py`(요청 스키마) 이식 5종(2026-08-13) + komir 자체 추가 6종
++ `api/schemas.py`(요청 스키마) 이식 5종(2026-08-13) + komir 자체 추가 5종
 (2026-08-19 3종, 2026-08-27 `/prices` 분리로 4종, 2026-08-28 광물자원가격
-나머지 서브메뉴 2종 추가로 6종).
+나머지 서브메뉴 2종 추가로 6종 → 2026-08-31 price_group 외부 인터페이스
+제거로 5종. 내부 계산 로직·컨텍스트는 그대로 남겨 언제든 복원 가능 —
+아래 `price_group` 관련 주석 참고).
 
 원본 경로(`/api/v1/analysis/...`)와 메서드(POST)·이식 5종의 요청 본문·응답 모델은
 그대로 유지한다 — 발주처 프론트가 외부repo API 계약에 맞춰 개발 중일 수 있어
@@ -88,7 +90,6 @@ from ..analysis.models import (
     ForecastHorizon,
     MineralMapMeasure,
     Month,
-    PriceGroup,
 )
 from ._common import run_summary
 
@@ -364,15 +365,16 @@ class GlobalTradeSummaryRequest(_DateRangeMineralRequest):
     `komis_response` 하나만 보내도 된다."""
 
 
-class PriceGroupSummaryRequest(AnalysisEndpointRequest):
-    """비철금속/희소금속 그룹 전체 가격 요약 요청 — 2026-08-27 신설(PDF §1-2
-    "전체광종(필요시)" 대응, PDF 지침 점검(/unlazy)에서 발견한 gap).
-
-    광종 1개가 아니라 그룹 전체를 다루므로 `mineral`이 없다. `observations`는
-    `PriceGroupMineralObservation`(광종명 + 전주·전월 등락률) 리스트다."""
-
-    price_group: PriceGroup
-    observations: list[dict] | None = None
+# 2026-08-31 사용자 결정 — price_group(전체광종 그룹요약, PDF §1-2 "전체광종
+# (필요시)" 대응)은 발주처 템플릿 자체가 "필요시"라 명시한 선택 기능인데,
+# 메뉴별 템플릿 현황 문서 피드백에서 "필요 없어 보임"으로 확정됐다. 결정:
+# **외부 인터페이스(HTTP 엔드포인트+요청 스키마)만 제거하고 내부 코드는
+# 남긴다**(복원 필요 시 이 라우터에 `PriceGroupSummaryRequest` 클래스와
+# `@router.post("/price-group", ...)` 엔드포인트만 다시 추가하면 된다 —
+# `komir_summary.py::calculate_price_group_summary`·`KOMIR_PAGE_CONTEXTS
+# ["price_group"]`·`prompts.py::PRICE_GROUP_SUMMARY_INSTRUCTIONS`·
+# `SummaryPageId`의 `"price_group"` 리터럴은 전부 그대로 있다). streamlit_demo
+# 9번째 탭(price_group)도 같은 결정으로 같이 제거 — streamlit-agent에 통지.
 
 
 # ── 공용 실행부 ───────────────────────────────────────────────────────
@@ -428,8 +430,9 @@ def summarize_price_forecast(
     return run_summary("forecast_price", payload, request)
 
 
-# ── komir 자체 추가 6종(2026-08-19 최초 3종, 2026-08-27 /prices 분리로 4종,
-# 2026-08-28 광물자원가격 나머지 서브메뉴 2종 추가로 6종, 이식 아님) ──────
+# ── komir 자체 추가 5종(2026-08-19 최초 3종, 2026-08-27 /prices 분리로 4종,
+# 2026-08-28 광물자원가격 나머지 서브메뉴 2종 추가로 6종, 2026-08-31
+# price_group 외부 인터페이스 제거로 5종, 이식 아님) ──────────────────
 
 
 @router.post("/prices/base-metals", response_model=AnalysisReportResponse)
@@ -494,13 +497,3 @@ def summarize_global_trade(
     """글로벌 수급지도 분석요약(KO_UN_CMMRC, UN Comtrade)."""
 
     return run_summary("map_global", payload, request)
-
-
-@router.post("/price-group", response_model=AnalysisReportResponse)
-def summarize_price_group(
-    payload: PriceGroupSummaryRequest,
-    request: Request,
-) -> AnalysisReportResponse:
-    """비철금속/희소금속 그룹 전체 가격요약(PDF §1-2, 2026-08-27 신설)."""
-
-    return run_summary("price_group", payload, request)
