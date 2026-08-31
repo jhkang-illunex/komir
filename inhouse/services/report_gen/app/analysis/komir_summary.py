@@ -1485,7 +1485,12 @@ def _inventory_context_fact(observations_with_price_and_inventory: list) -> str 
     recent = signed_pairs[-60:]
     if len(recent) >= 10:
         comovement = sum(1 for same in recent if same) / len(recent) * 100
-        parts.append(f"최근 {len(recent)}거래일 중 가격·재고량이 같은 방향으로 움직인 날은 {_number(comovement)}%")
+        # 2026-08-31 main-agent 지적(1a81ff771 스팟체크 중 발견) — "거래일"은
+        # 일간 전용 어휘라 월간·분기 데이터에서도 "60거래일"이라 나오면
+        # 어색하다(예: 월간 60건=5년인데 "거래일"이라 표기). 단위별 복합어
+        # ("거래주"/"거래개월" 등)를 새로 만드는 대신, 어느 조회단위에도
+        # 자연스러운 "관측치"로 통일해 단위 의존성 자체를 없앤다.
+        parts.append(f"최근 관측치 {len(recent)}건 중 가격·재고량이 같은 방향으로 움직인 관측치는 {_number(comovement)}%")
     return "이고 ".join(parts) + "다."
 
 
