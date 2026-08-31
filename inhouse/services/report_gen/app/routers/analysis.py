@@ -186,8 +186,10 @@ class MineralMapSummaryRequest(AnalysisEndpointRequest):
     한 응답에 동시에 주는 걸 실측 확인(사용자 확인, "대체(권장)"). ⚠단일
     연도 조회(srchDateS==srchDateE) 전제, 다년 범위는 KOMIS가 합산한 값을
     준다(`models.py`의 필드 docstring에 실측 근거 상세). `komis_share_response`
-    (`getListMnrlTablePrdctnBurgudg`)는 국가별 최근 5개년 값 + KOMIS 공식
-    세계비중(`rate`, "전년대비 증감률" 아님 — 실측 대조로 정정)을 준다.
+    (`getListMnrlTablePrdctnBurgudg`)는 국가별 최근 5개년 값 + `rate`(국가목록
+    내 비중, "전년대비 증감률"도 "세계비중"도 아님 — 이 표에 나열된 국가들의
+    소계 대비 비중, 실측 대조로 정정. `additional_summary.py`의 `market_share`
+    docstring 참고)를 준다.
 
     2026-08-30 추가 정리 — `start_year`/`end_year`도 제거했다. streamlit_demo
     가 실제로 이 필드를 선택 입력란(연도)으로 렌더링해 보내고 있었지만
