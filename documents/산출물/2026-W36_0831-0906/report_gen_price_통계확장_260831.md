@@ -101,15 +101,26 @@ komir_summary.py 주석 참고).
   올바르게 번들링)을 넣어 검증 통과(`None`) 확인 — 새 current_position
   9문장 자체는 계약 위반 없음. 60건 시나리오도 재확인(`insufficient_
   history` claim 포함 8문장, 검증 통과).
-- **아직 못 한 것 — 실제 LLM 호출 경로는 0회 검증이다.** 위 검증은
-  전부 `llm=None`(규칙기반) 경로 또는 사람이 직접 만든 합성 LLM
-  출력이다. `_validate_llm_summary`는 "근거 4개 이상이면 최소 1문장은
-  근거 2개를 결합해야 한다"(SC-018)는 전역 규칙이 있는데, 관측치가
-  아주 적어 major_changes·current_position 둘 다 근거가 희소해지는
-  요청(예: 5~10건)에서는 이 규칙을 만족할 문장이 아예 없어 매번
-  폴백할 수 있다 — `price_group`이 정확히 이 패턴으로 "예정된 실패"였던
-  전례가 있다. 재배포 후 (1) 긴 계열, (2) 관측치가 아주 적은 계열 두
-  경우를 실제 LLM으로 호출해 폴백률·검증 실패 사유를 확인해야 한다.
+- **실제 LLM 호출 경로 최종 검증(2026-08-31, main-agent 배포 후 완료)**:
+  main-agent가 병합·재빌드·배포 직후 1차 검증에서 긴 계열(니켈
+  6,227건)이 3회 재시도 전부 `llm_refined=False`로 나오는 걸 발견했다.
+  report-summary-agent가 실제 vLLM(localhost:52302, temperature=0)으로
+  직접 재현한 결과 코드 자체는 정상(major_changes 4~5개 근거를 1문장
+  으로 정확히 번들링, current_position 7~9문장 전부 계약 범위 내)이었고,
+  대신 `komir-report-gen-test` 컨테이너가 서빙하는 `page_definition`
+  문구가 옛 hi/lo 표현("실거래가·최저가·최고가")인 걸 근거로 배포가
+  최신 코드를 못 반영한 것 아니냐고 되물었다. main-agent가 재조사한
+  진짜 원인: **컨테이너 이미지는 최신이었지만, `ai_cfg.cfg_prompt`
+  (PostgreSQL)의 `output_contract`가 구버전(`current_position` 상한
+  (1,2))으로 남아 있었다** — `prompt_store.py`가 기동 시 DB 값으로 코드
+  상수를 덮어쓰는데 `python -m app.analysis.seed_prompts`를 재실행하지
+  않아서다(2026-08-26~27에도 같은 클래스 버그가 있었다 — `report_gen_
+  prompt_content_260826.md` 참고, 반복되는 배포 함정). main-agent가
+  `seed_prompts` 재실행 후 컨테이너 재기동 → 긴 계열 3회 재시도 전부
+  `llm_refined=True`로 정상화 확인, 정의문 문구도 새 버전으로 확인.
+  즉 SC-018 우려는 기우였고 코드 버그가 아니라 **배포 절차 누락**이
+  원인이었다 — main-agent가 앞으로 prompts.py/output_contract 변경
+  커밋 배포 시 `seed_prompts` 재실행을 표준 단계로 넣기로 함.
 
 ## 산식 정의 — 확인 필요
 사용자가 참고한 원본 계산 스크립트의 정확한 계수를 이 세션은 갖고
