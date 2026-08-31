@@ -234,18 +234,33 @@ if page_id in KOMIS_RAW_PAGES:
             "기간 구분자", list(PERIOD_FIELD_LABELS), key=f"komis_period_field_{page_id}",
         )
         period_field = PERIOD_FIELD_LABELS[period_field_label]
+        # 2026-08-31 사용자 지시: 자유입력 대신 콤보박스로, 2000년 이후만 —
+        # 기간 구분자(년간/월간)에 따라 옵션 자체가 달라지므로 key에도
+        # period_field를 넣어 년간↔월간 전환 시 이전 선택값이 안 맞는 목록에
+        # 그대로 남는 걸 방지한다(선택 안 한 목록으로 넘어가면 리셋).
         _today = date.today()
         if period_field == "year":
-            start_period = opt_cols[2].text_input("기간 시작(YYYY)", value="2000", key=f"komis_start_{page_id}")
-            end_period = opt_cols[3].text_input(
-                "기간 종료(YYYY)", value=str(_today.year), key=f"komis_end_{page_id}"
+            year_options = [str(y) for y in range(2000, _today.year + 1)]
+            start_period = opt_cols[2].selectbox(
+                "기간 시작(YYYY)", year_options, index=0, key=f"komis_start_{page_id}_year",
+            )
+            end_period = opt_cols[3].selectbox(
+                "기간 종료(YYYY)", year_options, index=len(year_options) - 1, key=f"komis_end_{page_id}_year",
             )
         else:
-            start_period = opt_cols[2].text_input(
-                "기간 시작(YYYY-MM)", value="2000-01", key=f"komis_start_{page_id}"
+            month_options = []
+            y, m = 2000, 1
+            while (y, m) <= (_today.year, _today.month):
+                month_options.append(f"{y:04d}-{m:02d}")
+                m += 1
+                if m > 12:
+                    m = 1
+                    y += 1
+            start_period = opt_cols[2].selectbox(
+                "기간 시작(YYYY-MM)", month_options, index=0, key=f"komis_start_{page_id}_month",
             )
-            end_period = opt_cols[3].text_input(
-                "기간 종료(YYYY-MM)", value=_today.strftime("%Y-%m"), key=f"komis_end_{page_id}"
+            end_period = opt_cols[3].selectbox(
+                "기간 종료(YYYY-MM)", month_options, index=len(month_options) - 1, key=f"komis_end_{page_id}_month",
             )
         period_fetch_opts = {
             "avg_opt": AVG_OPT_LABELS[avg_opt_label], "period_field": period_field,
