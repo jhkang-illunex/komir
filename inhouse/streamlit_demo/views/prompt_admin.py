@@ -327,10 +327,29 @@ if test_page_id is not None:
         col1, col2 = st.columns(2)
         start_val = col1.text_input(f"{start_key}(선택)", value="", placeholder=ph_start, key=f"pa_start_{test_page_id}")
         end_val = col2.text_input(f"{end_key}(선택)", value="", placeholder=ph_end, key=f"pa_end_{test_page_id}")
+        # 2026-09-01(SC-105, §report_demo.py _period_int_or_none과 동일 이유):
+        # period_kind="year"는 현재 PAGE_SPECS에 없어 도달하지 않을 수 있지만,
+        # 도달하더라도 비정수 입력에 트레이스백이 그대로 노출되지 않게 가드한다.
         if start_val:
-            test_payload[start_key] = int(start_val) if spec.period_kind == "year" else start_val
+            if spec.period_kind == "year":
+                try:
+                    test_payload[start_key] = int(start_val)
+                except ValueError:
+                    st.error(f"{start_key}은(는) 정수(연도) 형식이어야 합니다 — 입력값을 확인하세요.")
+                    with st.expander("원본 오류 메시지(디버깅용)"):
+                        st.code(f"int({start_val!r}) 변환 실패", language=None)
+            else:
+                test_payload[start_key] = start_val
         if end_val:
-            test_payload[end_key] = int(end_val) if spec.period_kind == "year" else end_val
+            if spec.period_kind == "year":
+                try:
+                    test_payload[end_key] = int(end_val)
+                except ValueError:
+                    st.error(f"{end_key}은(는) 정수(연도) 형식이어야 합니다 — 입력값을 확인하세요.")
+                    with st.expander("원본 오류 메시지(디버깅용)"):
+                        st.code(f"int({end_val!r}) 변환 실패", language=None)
+            else:
+                test_payload[end_key] = end_val
 
     if spec.extra_fields:
         st.caption("페이지 고유 필드")
@@ -359,10 +378,16 @@ if test_page_id is not None:
             elif field == "compare_mineral":
                 compare_options = prioritize_core_minerals(mineral_options())
                 if compare_options:
-                    compare_picked = col.selectbox(label, compare_options, format_func=mineral_label, key=key)
-                    test_payload["compare_mineral"] = compare_picked["code"]
+                    compare_picked = col.selectbox(
+                        label, compare_options, format_func=mineral_label, key=key,
+                        index=None, placeholder="비교하지 않음",
+                    )
+                    if compare_picked is not None:
+                        test_payload["compare_mineral"] = compare_picked["code"]
                 else:
-                    test_payload["compare_mineral"] = col.text_input(f"{label} 코드", value="", key=key)
+                    code = col.text_input(f"{label} 코드", value="", key=key)
+                    if code:
+                        test_payload["compare_mineral"] = code
             else:
                 value = col.text_input(label, value=EXTRA_FIELD_DEFAULTS.get(field, ""), key=key)
                 if value:

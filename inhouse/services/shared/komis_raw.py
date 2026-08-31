@@ -545,6 +545,33 @@ class KomisRawDataRepository:
         value = frame.iloc[0]["ko_data_src_cd"]
         return None if value is None else str(value)
 
+    def resolve_mineral_meta(self, mineral_code: str) -> tuple[str, str | None] | None:
+        """`ai_mnrl_mst`에서 (한글명, `ko_data_src_cd`)를 한 번의 조회로 찾는다.
+
+        `resolve_mineral()`(코드→한글명)과 `resolve_data_source()`(코드→
+        데이터출처코드)가 완전히 같은 테이블·같은 WHERE 조건(`mnrknd_unq_cd`
+        = code)을 각각 별도 `read_sql_pg()` 왕복으로 조회하던 걸 하나로
+        합친다 — `komis_raw_lookup`(rag/ragkit/_mcp_tools_common.py)이 근거
+        라벨(한글명)과 더미데이터 경고(데이터출처코드)를 매 호출마다 함께
+        필요로 하면서 mineral_code 하나당 DB 왕복이 최대 3~4회까지 쌓이던
+        것의 일부를 줄인다(skeptic-code DEEP 감사 SC-001, 2026-09-01, 사용자
+        승인). `resolve_mineral()`은 `report_gen/app/analysis/data_sources/
+        extra.py`에서 별도로 쓰이고 있어 그대로 남겨뒀다(이 메서드가 그걸
+        대체하지 않는다) — `resolve_data_source()`는 이 변경 이후 호출부가
+        없어졌지만, 리포지토리의 공개 API로 남겨두는 것 자체는 이번 지시
+        범위 밖이라 함께 손대지 않았다."""
+
+        code = _literal(mineral_code)
+        frame = read_sql_pg(
+            f"SELECT mnrl_nm_ko, ko_data_src_cd FROM {KOMIS_SCHEMA}.ai_mnrl_mst"
+            f" WHERE mnrknd_unq_cd = {code}"
+        )
+        if frame.empty:
+            return None
+        row = frame.iloc[0]
+        data_source = row["ko_data_src_cd"]
+        return str(row["mnrl_nm_ko"]), (None if data_source is None else str(data_source))
+
 
 def _json_value(value: Any) -> Any:
     """DB 값을 JSON 직렬화 가능한 스칼라로 정규화(원본 `_json_value` 이식).

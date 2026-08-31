@@ -224,12 +224,25 @@ def register_common_tools(mcp: FastMCP) -> None:
         except RawDataAccessError as exc:
             return {"evidence": [], "warnings": [*warnings, str(exc)]}
 
+        # 근거 라벨용 한글명 + 더미데이터 판정 — ai_mnrl_mst 한 번의 조회로
+        # 함께 얻는다(resolve_mineral_meta). 예전엔 resolve_data_source()·
+        # resolve_mineral()을 각각 불러 같은 WHERE 조건(mnrknd_unq_cd = code)
+        # 으로 두 번 왕복했다(skeptic-code DEEP 감사 SC-001, 2026-09-01, 사용자
+        # 승인 — resolve_mineral()은 report_gen 등 다른 호출부가 있어 그대로
+        # 남겨두고 이 호출부만 새 메서드로 교체). 못 찾으면(예: mineral_code가
+        # 애초에 코드 형식이 아니거나 ai_mnrl_mst에 없음) 코드 그대로 라벨에
+        # 쓰고 더미로 간주한다(원래 동작 그대로 — 확인 안 되면 안전한 쪽으로
+        # 열화, is_dummy는 KOMIS_SAMPLE로 확인됐을 때만 False).
         is_dummy = None
+        mineral_label = mineral_code
         if mineral_code:
             try:
-                data_source = repo.resolve_data_source(mineral_code)
+                resolved_meta = repo.resolve_mineral_meta(mineral_code)
             except RawDataAccessError:
-                data_source = None
+                resolved_meta = None
+            if resolved_meta:
+                mineral_label = resolved_meta[0]
+            data_source = resolved_meta[1] if resolved_meta else None
             is_dummy = data_source != "KOMIS_SAMPLE"
             if is_dummy:
                 warnings.append(
@@ -237,20 +250,6 @@ def register_common_tools(mcp: FastMCP) -> None:
                     f"(ko_data_src_cd={data_source or '확인불가'})일 수 있습니다 — "
                     "실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요."
                 )
-
-        # 근거 라벨용 한글명 — ai_mnrl_mst에서 직접 끌어온다(위 독스트링
-        # 참고, resolve_data_source와 마찬가지로 mineral_code 기준 조회).
-        # 못 찾으면(예: mineral_code가 애초에 코드 형식이 아님) 코드 그대로
-        # 라벨에 쓴다 — 사람이 못 알아보는 최악의 경우라도 조회 자체는 막지
-        # 않는다(안전한 열화).
-        mineral_label = mineral_code
-        if mineral_code:
-            try:
-                resolved_name = repo.resolve_mineral(mineral_code)
-            except RawDataAccessError:
-                resolved_name = None
-            if resolved_name:
-                mineral_label = resolved_name[1]
 
         # is_dummy를 Evidence.caveat에도 심는다(위 warnings는 도구 호출 로그·
         # 기권사유 분류용, caveat는 이 근거가 실제로 인용됐을 때 사용자 화면에

@@ -157,6 +157,22 @@ def _compare_mineral_picker(col, page_id: str) -> None:
 if spec.has_mineral:
     _mineral_picker(prioritize_core_minerals(mineral_options_for_page(page_id)), key=f"mineral_{page_id}")
 
+# 2026-09-01(SC-105): period_kind="year"는 현재 PAGE_SPECS 12개 항목 어디에도
+# 없다(전수 확인 — indicator_market/supply만 "month", 나머지는 ""). 그래서 아래
+# int(...) 변환 분기는 지금은 도달하지 않는 죽은 분기일 수 있다 — 다만 향후
+# 연 단위 페이지가 추가돼 도달하게 되더라도 비정수 입력에 Python 트레이스백이
+# 그대로 노출되지 않도록(observations/JSON 입력과 동일한 톤으로) 가드한다.
+# period_kind="year" 자체가 정말 안 쓰이는 잔재인지는 다음 감사에서 재확인할 것.
+def _period_int_or_none(value: str, field_label: str) -> int | None:
+    try:
+        return int(value)
+    except ValueError:
+        st.error(f"{field_label}은(는) 정수(연도) 형식이어야 합니다 — 입력값을 확인하세요.")
+        with st.expander("원본 오류 메시지(디버깅용)"):
+            st.code(f"int({value!r}) 변환 실패", language=None)
+        return None
+
+
 start_key, end_key = spec.period_fields
 if start_key:
     col1, col2 = st.columns(2)
@@ -168,9 +184,19 @@ if start_key:
     start_val = col1.text_input(f"{start_key}(선택)", value="", placeholder=ph_start)
     end_val = col2.text_input(f"{end_key}(선택)", value="", placeholder=ph_end)
     if start_val:
-        payload[start_key] = int(start_val) if spec.period_kind == "year" else start_val
+        if spec.period_kind == "year":
+            parsed = _period_int_or_none(start_val, start_key)
+            if parsed is not None:
+                payload[start_key] = parsed
+        else:
+            payload[start_key] = start_val
     if end_val:
-        payload[end_key] = int(end_val) if spec.period_kind == "year" else end_val
+        if spec.period_kind == "year":
+            parsed = _period_int_or_none(end_val, end_key)
+            if parsed is not None:
+                payload[end_key] = parsed
+        else:
+            payload[end_key] = end_val
 
 if spec.extra_fields:
     st.caption("페이지 고유 필드")

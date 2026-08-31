@@ -306,8 +306,9 @@ def generate(
         return render_report(commodity_code, template=name)
     except ReportGenerationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:  # noqa: BLE001
-        raise HTTPException(status_code=500, detail=f"리포트 생성 실패: {exc}") from exc
+    except Exception as exc:  # noqa: BLE001 — 클라이언트에는 코드만, 상세는 서버 로그에
+        logging.getLogger(__name__).exception("%s: 리포트 생성 중 예외 발생 — INTERNAL_ERROR로 응답", commodity_code)
+        raise HTTPException(status_code=500, detail="INTERNAL_ERROR") from exc
 
 
 @app.get("/reports/{report_id}")

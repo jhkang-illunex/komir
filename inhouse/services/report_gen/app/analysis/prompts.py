@@ -375,7 +375,10 @@ SECTION_SENTENCE_RANGES: dict[str, dict[str, tuple[int, int]]] = {
     "price_minor_metals": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 9)},
     "price_iron_energy": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 9)},
     "price_other": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 9)},
-    "map_korea": {"core_diagnosis": (1, 1), "major_changes": (1, 2), "current_position": (1, 1)},
+    # 2026-09-01 skeptic 감사 SC-RG-001: komir_summary.py::calculate_domestic_trade_summary
+    # 기본 경로(국가필터 없음)가 top1_country/top3_concentration/top5_concentration
+    # 최대 3개 근거를 만드는데 상한이 2였다 — 3번째 근거 누락/폴백 위험 → (1,3)로 확대.
+    "map_korea": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 1)},
     # map_global major_changes는 근거 4개(1~3위 루트·CR3·CR5·한국 순위)라 (1,3).
     "map_global": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 1)},
     # 2026-08-27 신설 — group_movers·extreme_movers 2건까지 major_changes에.

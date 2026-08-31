@@ -128,10 +128,24 @@ def _pick_price_criterion(candidates: list[dict], mineral_code: str) -> dict:
         raise KomisFetchError(
             f"komis.or.kr에서 '{mineral_code}'의 가격기준 목록을 받아오지 못했습니다(빈 응답)."
         )
+    picked = None
     for candidate in candidates:
         if "LME CASH" in str(candidate.get("cdVal", "")).upper():
-            return candidate
-    return candidates[0]
+            picked = candidate
+            break
+    if picked is None:
+        picked = candidates[0]
+    # 2026-09-01(SC-104): cdKey는 이 함수의 모든 호출부(4개 fetch_price_* 함수의
+    # 주 광종·비교 광종 양쪽)가 str(picked["cdKey"])로 바로 인덱싱한다 — 응답
+    # 구조가 드리프트해(§모듈 docstring 25-34행 실측 이력) cdKey가 없으면 여기서
+    # KeyError 대신 KomisFetchError로 바꿔, 호출부의 `except KomisFetchError`가
+    # 그대로 잡을 수 있게 한다.
+    if "cdKey" not in picked:
+        raise KomisFetchError(
+            f"komis.or.kr '{mineral_code}' 가격기준 응답에 cdKey가 없습니다"
+            "(komis.or.kr 응답 구조가 바뀌었을 수 있습니다)."
+        )
+    return picked
 
 
 def _require_defaultMnrl(result: dict, mineral_code: str) -> dict:
@@ -267,22 +281,9 @@ def fetch_price_minor_metals(
                 f"'{mineral_code}'는 komis.or.kr 희소금속 가격기준 목록에 없습니다 — 수동 붙여넣기를 이용하세요."
             )
         crtr = _pick_price_criterion(candidates, mineral_code)
-        compare_mnrknd_cd = ""
-        compare_prc_crtr = "[선택]"
-        if compare_mineral_code:
-            compare_crtr_data = _ajax_post(
-                client, "/Komis/RsrcPrice/ajax/getMnrlPriceCrtr",
-                {"HP000": "HP002", "mnrkndUnqCd": compare_mineral_code},
-            )
-            compare_candidates = compare_crtr_data.get("data") or []
-            if not compare_candidates:
-                raise KomisFetchError(
-                    f"비교 광종 '{compare_mineral_code}'는 komis.or.kr 희소금속 가격기준 목록에 없습니다 — "
-                    "비교 광종을 다시 선택하거나 비워두세요."
-                )
-            compare_crtr = _pick_price_criterion(compare_candidates, compare_mineral_code)
-            compare_mnrknd_cd = compare_mineral_code
-            compare_prc_crtr = str(compare_crtr["cdKey"])
+        compare_mnrknd_cd, compare_prc_crtr = _resolve_compare_criterion(
+            client, "HP002", compare_mineral_code, category_label="희소금속"
+        )
         params = {
             "srchMnrkndUnqCd": mineral_code, "srchPrcCrtr": str(crtr["cdKey"]), "spcfct": crtr.get("spcfct", ""),
             "srchAvgOpt": avg_opt, "srchField": period_field,
@@ -461,22 +462,23 @@ def _period_date_bounds(period_field: str, start_period: str, end_period: str) -
     return f"{start_period}0101", f"{end_period}1231"
 
 
+def _prev_period_bounds(period_field: str, start_period: str, end_period: str) -> tuple[str, str]:
+    """직전 연도(전년 동기) 구간의 (시작일, 종료일) — fetch_map_korea/fetch_map_global이
+    공통으로 쓰는 전년대비 조회 구간 계산(§SC-103 중복 제거)."""
+    if period_field == "month":
+        sy, sm = start_period.split("-")
+        ey, em = end_period.split("-")
+        return _period_date_bounds(period_field, f"{int(sy) - 1}-{sm}", f"{int(ey) - 1}-{em}")
+    return _period_date_bounds(period_field, str(int(start_period) - 1), str(int(end_period) - 1))
+
+
 def fetch_map_korea(
     mineral_code: str, *, trade_direction: str = "import",
     period_field: str = "year", start_period: str = "2025", end_period: str = "2025",
     country_name: str = "", product_type_code: str = "", hs_code: str = "",
 ) -> dict:
     start_date, end_date = _period_date_bounds(period_field, start_period, end_period)
-    if period_field == "month":
-        sy, sm = start_period.split("-")
-        ey, em = end_period.split("-")
-        prev_start_date, prev_end_date = _period_date_bounds(
-            period_field, f"{int(sy) - 1}-{sm}", f"{int(ey) - 1}-{em}"
-        )
-    else:
-        prev_start_date, prev_end_date = _period_date_bounds(
-            period_field, str(int(start_period) - 1), str(int(end_period) - 1)
-        )
+    prev_start_date, prev_end_date = _prev_period_bounds(period_field, start_period, end_period)
     client = _open_session("/Komis/MnrlMap/Korea")
     try:
         country_code = _resolve_country_code(client, country_name)
@@ -510,16 +512,7 @@ def fetch_map_global(
     chart_start_date: str = "20220101", chart_end_date: str = "20261231",
 ) -> dict:
     start_date, end_date = _period_date_bounds(period_field, start_period, end_period)
-    if period_field == "month":
-        sy, sm = start_period.split("-")
-        ey, em = end_period.split("-")
-        prev_start_date, prev_end_date = _period_date_bounds(
-            period_field, f"{int(sy) - 1}-{sm}", f"{int(ey) - 1}-{em}"
-        )
-    else:
-        prev_start_date, prev_end_date = _period_date_bounds(
-            period_field, str(int(start_period) - 1), str(int(end_period) - 1)
-        )
+    prev_start_date, prev_end_date = _prev_period_bounds(period_field, start_period, end_period)
     client = _open_session("/Komis/MnrlMap/Nation")
     try:
         # 국가 목록은 한 번만 받아 수출/수입 둘 다 찾는다(§_resolve_country_code
