@@ -52,11 +52,26 @@ def _format_metric_row(value: float | int | str | None, unit: str | None) -> tup
     return str(value), unit or ""
 
 
+def _to_polite_copula(text: str) -> str:
+    """정의문 끝의 평서형 계사("...자료다.")를 존댓말("...자료입니다.")로
+    바꾼다(2026-08-31 사용자 지시 — 제목 줄 어투가 본문 LLM 정제 문장의
+    "-습니다"체와 안 맞는다는 지적). `KOMIR_PAGE_CONTEXTS`(komir_summary.py)·
+    `ADDITIONAL_PAGE_CONTEXTS`(additional_summary.py, 외부repo "무수정 이식"이라
+    원문을 못 고침)의 정의문이 전부 이 "...(명사)다." 계사 종결형이라 —
+    범용 한국어 활용 변환이 아니라 이 특정 종결형(계사 "이다"의 "-다"체)에만
+    적용되는 정확한 규칙이다. 이 형태가 아니면(예: 동사 활용형) 원문 그대로
+    둔다 — 잘못된 변환보다 무변환이 안전하다."""
+
+    if text.endswith("다."):
+        return text[:-2] + "입니다."
+    return text
+
+
 def render_markdown_report(response: AnalysisSummaryResponse) -> str:
     """검증된 `AnalysisSummaryResponse` 1건을 사람이 읽는 Markdown 보고서로 렌더링한다."""
 
     lines: list[str] = []
-    lines.append(f"# {response.mineral.name} 분석 요약 — {response.page_definition}")
+    lines.append(f"# {response.mineral.name} 분석 요약 — {_to_polite_copula(response.page_definition)}")
     lines.append("")
     # 비철금속/희소금속처럼 같은 광종이라도 조회조건(가격기준·품목/스펙 등)이
     # 그룹별로 다를 수 있다 — 요청 바디에 실려 온 값이 있으면 상단에 표시한다
@@ -85,7 +100,19 @@ def render_markdown_report(response: AnalysisSummaryResponse) -> str:
             continue
         lines.append(f"## {title}")
         lines.append("")
-        lines.append(" ".join(sentence.text for sentence in sentences))
+        if key == "current_position" and len(sentences) > 3:
+            # 2026-08-31 사용자 지시 — "현재 위치"는 통계 확장(변동성·이동평균·
+            # RSI·백분위·낙폭국면·재고해석 등)으로 최대 9문장까지 늘었는데,
+            # 기존처럼 공백으로 이어붙여 한 문단으로 렌더링하면 읽기 힘들다.
+            # 이 절의 문장들은 major_changes(의도적으로 한 문장에 여러 근거를
+            # 잇는 서술형)와 달리 원래부터 각 문장이 서로 다른 독립 주제(범위·
+            # 재고·변동성·추세 등)라 문단보다 목록이 자연스럽다. core_diagnosis·
+            # major_changes는 문장 수가 적고(최대 1~3개) 서술 흐름을 의도한
+            # 절이라 문단 형태를 그대로 둔다(3문장 이하면 이 절도 문단 유지).
+            for sentence in sentences:
+                lines.append(f"- {sentence.text}")
+        else:
+            lines.append(" ".join(sentence.text for sentence in sentences))
         lines.append("")
 
     if response.key_metrics:
