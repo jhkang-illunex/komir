@@ -76,11 +76,30 @@ def passthrough_map_korea(raw: dict, ctx: dict) -> dict:
 
 def passthrough_map_global(raw: dict, ctx: dict) -> dict:
     """map_global — 2026-08-30 report_gen이 `getListDataNation` 원본 응답을
-    그대로 받아 내부에서 파싱한다(`_parse_komis_map_global_response`)."""
+    그대로 받아 내부에서 파싱한다(`_parse_komis_map_global_response`).
 
-    if not isinstance(raw, dict) or not isinstance(raw.get("list"), list):
-        raise KomisRawConversionError("list(루트별 목록)를 찾을 수 없습니다 — 글로벌 수급지도 조회 결과(getListDataNation) JSON이 맞는지 확인하세요.")
-    return {"komis_response": raw}
+    2026-08-31 사용자 지시로 komis_fetch.py의 fetch_map_global이 나머지 2개
+    엔드포인트(getBarChartDataNation·getListMapNationData)도 같이 조회해
+    {"list_data","bar_chart","nation_map"} envelope으로 묶는다 — 이 함수는
+    그중 list_data(기존 계약과 100% 동일한 getListDataNation raw shape)만
+    komis_response로 보낸다. bar_chart/nation_map은 report_gen이 아직 받을
+    필드가 없어(2026-08-31 기준 report-summary-agent에 통지·응답 대기 중)
+    이 데모의 "KOMIS 데이터 조회 결과"엔 그대로 보존되지만 report_gen
+    요청 바디엔 안 싣는다 — 필드 계약이 정해지면 여기서 갈라 보낼 것
+    (§map_mineral의 chart/snapshot/share 패턴과 동일하게 확장 예정)."""
+
+    if not isinstance(raw, dict):
+        raise KomisRawConversionError(
+            "글로벌 수급지도 조회 결과 JSON이 아닙니다 — "
+            '{"list_data": <getListDataNation 응답>, "bar_chart": <getBarChartDataNation 응답, 선택>, '
+            '"nation_map": <getListMapNationData 응답, 선택>} 형태로 붙여넣었는지 확인하세요.'
+        )
+    list_data = raw.get("list_data", raw)  # 구버전 예시(레거시, envelope 없이 그대로)와 호환
+    if not isinstance(list_data, dict) or not isinstance(list_data.get("list"), list):
+        raise KomisRawConversionError(
+            "list_data.list(루트별 목록)를 찾을 수 없습니다 — 글로벌 수급지도 조회 결과(getListDataNation) JSON이 맞는지 확인하세요."
+        )
+    return {"komis_response": list_data}
 
 
 def passthrough_map_mineral(raw: dict, ctx: dict) -> dict:
@@ -240,10 +259,15 @@ KOMIS_RAW_PAGES: dict[str, KomisRawPage] = {
         '"sumExpAmt": 4246583}], "listCount": "10"}',
     ),
     "map_global": KomisRawPage(
-        "루트별 목록 조회 결과(getListDataNation)",
+        "글로벌 수급지도 조회 결과(getListDataNation+getBarChartDataNation+getListMapNationData)",
         passthrough_map_global,
-        # 실측: Phase3 map_global_live_capture_260829.json(MNRL0024, 상위 5루트).
-        '{"srchMnrkndUnqCd": "MNRL0024", "srchDateS": "20260101", "srchDateE": "20261231", '
+        # list_data 실측: Phase3 map_global_live_capture_260829.json(MNRL0024,
+        # 상위 5루트). bar_chart·nation_map은 2026-08-31 이 세션이 같은
+        # 광종(MNRL0024, 갈륨)으로 komis.or.kr 직접 재검증 — §komis_fetch.py
+        # fetch_map_global과 같은 {"list_data","bar_chart","nation_map"}
+        # envelope(passthrough_map_global은 구버전 unwrap 예시도 하위호환으로
+        # 받는다).
+        '{"list_data": {"srchMnrkndUnqCd": "MNRL0024", "srchDateS": "20260101", "srchDateE": "20261231", '
         '"list": [{"RNUM": 1, "incmNtnNm": "독일", "incmNtnCd": "DE", "expNtnNm": "미국", "amt": 10855175.06, '
         '"weig": 29409.43, "sumWeig": 1704156.52, "weigRate": "1.73", "sumAmt": 76968241.63, '
         '"expNtnCd": "US", "amtRate": "14.10"}, '
@@ -258,7 +282,20 @@ KOMIS_RAW_PAGES: dict[str, KomisRawPage] = {
         '"expNtnCd": "BR", "amtRate": "4.55"}, '
         '{"RNUM": 5, "incmNtnNm": "미국", "incmNtnCd": "US", "expNtnNm": "브라질", "amt": 3183660, '
         '"weig": 72000, "sumWeig": 1704156.52, "weigRate": "4.22", "sumAmt": 76968241.63, '
-        '"expNtnCd": "BR", "amtRate": "4.14"}], "listCount": "15"}',
+        '"expNtnCd": "BR", "amtRate": "4.14"}], "listCount": "15"}, '
+        '"bar_chart": {"data": {"barChart": {"xaxis": ["2022", "2023", "2024", "2025", "2026"], '
+        '"minValue": 0.0, "maxValue": 0.0, "series": [ '
+        '{"seriesCd": "CN", "name": "중국", "data": [510406544.62, 644474354.26, 760854691.43, 188233346.71, 17831773.47]}, '
+        '{"seriesCd": "US", "name": "미국", "data": [333967253.35, 343817977.07, 447042680.43, 272917053.71, 28333942.74]}'
+        ']}}}, '
+        '"nation_map": {"data": {"mapData": [ '
+        '{"crtrNtnCd": "KR", "crtrNtnKornNm": "대한민국", "trgtNtnCd": "JP", "trgtNtnKornNm": "일본", '
+        '"mnrkndUnqCd": "MNRL0024", "mnrkndKornNm": "갈륨", "typeIE": "I", "typeAW": "A", '
+        '"crtrTotalAmt": 10020621.78, "trgtTotalAmt": 4117833.61, "crtrNtnAmtRt": "21.0817", "trgtNtnAmtRt": "51.3018"}, '
+        '{"crtrNtnCd": "CA", "crtrNtnKornNm": "캐나다", "trgtNtnCd": "US", "trgtNtnKornNm": "미국", '
+        '"mnrkndUnqCd": "MNRL0024", "mnrkndKornNm": "갈륨", "typeIE": "I", "typeAW": "A", '
+        '"crtrTotalAmt": 32581402.04, "trgtTotalAmt": 11626193.4, "crtrNtnAmtRt": "7.8838", "trgtNtnAmtRt": "22.0936"}'
+        ']}}}',
     ),
     "map_mineral": KomisRawPage(
         "광물지도 조회 결과(getListMapMnrlChartData+getListMapMnrlData+getListMnrlTablePrdctnBurgudg)",

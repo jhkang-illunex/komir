@@ -372,6 +372,81 @@ if page_id in KOMIS_RAW_PAGES:
             "period_field": period_field, "start_period": start_period, "end_period": end_period,
             "country_name": country_name, "product_type_code": product_type_code, "hs_code": hs_code,
         }
+    elif page_id == "map_global":
+        # 2026-08-31 사용자 지시: 글로벌 수급지도(map_global)에 map_korea와
+        # 같은 기간 구분자·생산품 유형·HS코드 구분자 + 수출국가/수입국가
+        # 직접입력(각각) 추가 — komis_fetch.py fetch_map_global이 실제로
+        # 받는 인자로 그대로 넘어간다. UI 구조는 map_korea 블록과 동일한
+        # 패턴(중복이지만 페이지별 위젯 key가 달라야 해서 그대로 반복).
+        row1 = st.columns(2)
+        period_field_label = row1[0].selectbox(
+            "기간 구분자", list(PERIOD_FIELD_LABELS), key=f"komis_period_field_{page_id}",
+        )
+        period_field = PERIOD_FIELD_LABELS[period_field_label]
+        mg_year_options = [str(y) for y in range(2021, 2027)]
+        if period_field == "year":
+            row2 = st.columns(2)
+            start_period = row2[0].selectbox(
+                "기간 시작(YYYY)", mg_year_options, index=0, key=f"komis_start_{page_id}_year",
+            )
+            end_period = row2[1].selectbox(
+                "기간 종료(YYYY)", mg_year_options, index=len(mg_year_options) - 1, key=f"komis_end_{page_id}_year",
+            )
+        else:
+            month_options = [f"{m:02d}" for m in range(1, 13)]
+            row2 = st.columns(4)
+            start_year_opt = row2[0].selectbox(
+                "시작 연도(YYYY)", mg_year_options, index=0, key=f"komis_start_year_{page_id}",
+            )
+            start_month_opt = row2[1].selectbox(
+                "시작 월(MM)", month_options, index=0, key=f"komis_start_month_{page_id}",
+            )
+            end_year_opt = row2[2].selectbox(
+                "종료 연도(YYYY)", mg_year_options, index=len(mg_year_options) - 1, key=f"komis_end_year_{page_id}",
+            )
+            end_month_opt = row2[3].selectbox(
+                "종료 월(MM)", month_options, index=len(month_options) - 1, key=f"komis_end_month_{page_id}",
+            )
+            start_period = f"{start_year_opt}-{start_month_opt}"
+            end_period = f"{end_year_opt}-{end_month_opt}"
+
+        row3 = st.columns(2)
+        export_country_name = row3[0].text_input(
+            "수출국가(선택, 기본 전체)", value="", key=f"komis_export_country_{page_id}",
+            placeholder="예: 칠레 (비워두면 전체)",
+        )
+        import_country_name = row3[1].text_input(
+            "수입국가(선택, 기본 전체)", value="", key=f"komis_import_country_{page_id}",
+            placeholder="예: 중국 (비워두면 전체)",
+        )
+
+        row4 = st.columns(2)
+        mineral_code = payload.get("mineral", "")
+        product_type_options = _cached_product_type_options(mineral_code) if mineral_code else []
+        product_type_choice = row4[0].selectbox(
+            "생산품 유형(선택, 기본 전체)", product_type_options, index=None, placeholder="전체",
+            format_func=lambda o: o["mttrFlowNm"], key=f"komis_product_type_{page_id}_{mineral_code}",
+        )
+        product_type_code = product_type_choice["mttrFlowCd"] if product_type_choice else ""
+        # ⚠ mttr_flow_name(라벨 필드)은 report-summary-agent 계약상 아직
+        # page_id=map_korea 전용이다(2026-08-31, 커밋 6cdd18250) — map_global에
+        # 그대로 보내면 report_gen이 거부한다. map_global도 필요하면 아래
+        # report-summary-agent 통지 후 별도로 추가할 것, 지금은 payload에
+        # 안 싣는다(생산품유형 자체 필터링은 komis.or.kr 조회에는 이미 반영됨).
+
+        hs_code_options = _cached_hs_code_options(mineral_code, product_type_code) if mineral_code else []
+        hs_code_choice = row4[1].selectbox(
+            "HS코드(선택, 기본 전체)", hs_code_options, index=None, placeholder="전체",
+            format_func=lambda o: f"{o['itemNm']} ({o['hsCd']})",
+            key=f"komis_hs_code_{page_id}_{mineral_code}_{product_type_code}",
+        )
+        hs_code = hs_code_choice["hsCd"] if hs_code_choice else ""
+
+        period_fetch_opts = {
+            "period_field": period_field, "start_period": start_period, "end_period": end_period,
+            "export_country_name": export_country_name, "import_country_name": import_country_name,
+            "product_type_code": product_type_code, "hs_code": hs_code,
+        }
     if page_id in KOMIS_FETCH_DISPATCH:
         if st.button("komis.or.kr에서 실시간 조회", key=f"komis_fetch_btn_{page_id}"):
             try:

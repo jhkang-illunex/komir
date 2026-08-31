@@ -424,11 +424,15 @@ def fetch_hs_code_options(mineral_code: str, product_type_code: str = "") -> lis
     return data.get("data") or []
 
 
-def _resolve_country_code(client: httpx.Client, country_name: str) -> str:
+def _fetch_country_list(client: httpx.Client) -> list[dict]:
+    data = _ajax_post(client, "/ajax/common/getNatInfoCodeList", {"cdType": "koNtnCd"})
+    return data.get("data") or []
+
+
+def _lookup_country_code(country_list: list[dict], country_name: str) -> str:
     if not country_name.strip():
         return ""
-    data = _ajax_post(client, "/ajax/common/getNatInfoCodeList", {"cdType": "koNtnCd"})
-    for row in data.get("data") or []:
+    for row in country_list:
         if row.get("cdVal") == country_name.strip():
             return row.get("cdKey", "")
     raise KomisFetchError(
@@ -437,7 +441,16 @@ def _resolve_country_code(client: httpx.Client, country_name: str) -> str:
     )
 
 
-def _map_korea_date_bounds(period_field: str, start_period: str, end_period: str) -> tuple[str, str]:
+def _resolve_country_code(client: httpx.Client, country_name: str) -> str:
+    """국가명 하나만 조회할 때(예: fetch_map_korea)의 편의 함수 — 국가 목록을
+    매번 새로 받는다. map_global처럼 국가를 2개(수출/수입) 조회할 때는
+    `_fetch_country_list`로 한 번만 받아 `_lookup_country_code`로 두 번
+    찾는 쪽이 komis.or.kr 왕복이 하나 줄어든다(2026-08-31 라이브 검증 중
+    5회 연속 호출에서 타임아웃이 잦아 발견 — map_global에 적용)."""
+    return _lookup_country_code(_fetch_country_list(client), country_name)
+
+
+def _period_date_bounds(period_field: str, start_period: str, end_period: str) -> tuple[str, str]:
     """UI 입력(년간=yyyy, 월간=yyyy-mm)을 KOMIS가 받는 yyyymmdd로 변환 —
     시작은 그 기간의 1일, 종료는 그 기간의 마지막 날."""
     if period_field == "month":
@@ -453,15 +466,15 @@ def fetch_map_korea(
     period_field: str = "year", start_period: str = "2025", end_period: str = "2025",
     country_name: str = "", product_type_code: str = "", hs_code: str = "",
 ) -> dict:
-    start_date, end_date = _map_korea_date_bounds(period_field, start_period, end_period)
+    start_date, end_date = _period_date_bounds(period_field, start_period, end_period)
     if period_field == "month":
         sy, sm = start_period.split("-")
         ey, em = end_period.split("-")
-        prev_start_date, prev_end_date = _map_korea_date_bounds(
+        prev_start_date, prev_end_date = _period_date_bounds(
             period_field, f"{int(sy) - 1}-{sm}", f"{int(ey) - 1}-{em}"
         )
     else:
-        prev_start_date, prev_end_date = _map_korea_date_bounds(
+        prev_start_date, prev_end_date = _period_date_bounds(
             period_field, str(int(start_period) - 1), str(int(end_period) - 1)
         )
     client = _open_session("/Komis/MnrlMap/Korea")
@@ -482,22 +495,54 @@ def fetch_map_korea(
     return _require_list(result, mineral_code)
 
 
+# 2026-08-31 사용자 지시: 글로벌 수급지도(map_global)에 기간 구분자(년/월)·
+# 수출국가/수입국가 직접입력·생산품 유형·HS코드 구분자 추가 + 나머지 2개
+# 엔드포인트(getBarChartDataNation·getListMapNationData) 추가 수집 —
+# `/Komis/MnrlMap/Nation` 페이지 HTML을 직접 읽어 실측 확인(§map_korea와
+# 같은 조사 방식): 3개 엔드포인트가 전부 같은 파라미터 shape를 쓰고
+# (`$("#commonForm").serialize()`로 폼 전체를 그대로 보냄), `srchImxprtSeCd`
+# ("I"가 기본값, 수입/수출 탭)가 map_korea에는 없던 필드로 새로 확인됐다.
 def fetch_map_global(
     mineral_code: str, *,
-    start_date: str = "20260101", end_date: str = "20261231",
-    prev_start_date: str = "20250101", prev_end_date: str = "20251231",
+    period_field: str = "year", start_period: str = "2025", end_period: str = "2025",
+    export_country_name: str = "", import_country_name: str = "",
+    product_type_code: str = "", hs_code: str = "",
     chart_start_date: str = "20220101", chart_end_date: str = "20261231",
 ) -> dict:
-    params = {
-        "srchDateE": end_date, "orderSort": "DESC", "srchMttrFlowDtlCd": "",
-        "srchExpNtnCd": "", "srchDateChartE": chart_end_date, "srchHsCd": "",
-        "orderBy": "", "srchMnrkndUnqCd": mineral_code, "listCount": "15",
-        "srchDatePE": prev_end_date, "srchMttrFlowCd": "", "srchDateS": start_date,
-        "srchIncmNtnCd": "", "srchDateChartS": chart_start_date, "page": "1",
-        "srchTypeAW": "A", "srchCrtrYmd": "Y", "srchDatePS": prev_start_date,
-    }
-    result = _post("/Komis/MnrlMap/Nation", "/Komis/MnrlMap/MapNation/ajax/getListDataNation", params)
-    return _require_list(result, mineral_code)
+    start_date, end_date = _period_date_bounds(period_field, start_period, end_period)
+    if period_field == "month":
+        sy, sm = start_period.split("-")
+        ey, em = end_period.split("-")
+        prev_start_date, prev_end_date = _period_date_bounds(
+            period_field, f"{int(sy) - 1}-{sm}", f"{int(ey) - 1}-{em}"
+        )
+    else:
+        prev_start_date, prev_end_date = _period_date_bounds(
+            period_field, str(int(start_period) - 1), str(int(end_period) - 1)
+        )
+    client = _open_session("/Komis/MnrlMap/Nation")
+    try:
+        # 국가 목록은 한 번만 받아 수출/수입 둘 다 찾는다(§_resolve_country_code
+        # 주석 — 왕복 횟수를 줄여 타임아웃 여지를 낮춘다).
+        country_list = _fetch_country_list(client) if (export_country_name or import_country_name) else []
+        export_country_code = _lookup_country_code(country_list, export_country_name)
+        import_country_code = _lookup_country_code(country_list, import_country_name)
+        params = {
+            "srchDateE": end_date, "orderSort": "DESC", "srchMttrFlowDtlCd": "",
+            "srchExpNtnCd": export_country_code, "srchDateChartE": chart_end_date, "srchHsCd": hs_code,
+            "orderBy": "", "srchMnrkndUnqCd": mineral_code, "listCount": "15",
+            "srchDatePE": prev_end_date, "srchMttrFlowCd": product_type_code, "srchDateS": start_date,
+            "srchIncmNtnCd": import_country_code, "srchDateChartS": chart_start_date, "page": "1",
+            "srchTypeAW": "A", "srchCrtrYmd": "Y" if period_field == "year" else "M",
+            "srchDatePS": prev_start_date, "srchImxprtSeCd": "I",
+        }
+        list_data = _ajax_post(client, "/Komis/MnrlMap/MapNation/ajax/getListDataNation", params)
+        bar_chart = _ajax_post(client, "/Komis/MnrlMap/MapNation/ajax/getBarChartDataNation", params)
+        nation_map = _ajax_post(client, "/Komis/MnrlMap/MapNation/ajax/getListMapNationData", params)
+    finally:
+        client.close()
+    _require_list(list_data, mineral_code)
+    return {"list_data": list_data, "bar_chart": bar_chart, "nation_map": nation_map}
 
 
 # ── map_mineral ───────────────────────────────────────────────────────
@@ -570,8 +615,8 @@ def _dispatch_map_korea(payload: dict, **period_kwargs) -> dict:
     )
 
 
-def _dispatch_map_global(payload: dict) -> dict:
-    return fetch_map_global(payload["mineral"])
+def _dispatch_map_global(payload: dict, **period_kwargs) -> dict:
+    return fetch_map_global(payload["mineral"], **period_kwargs)
 
 
 def _dispatch_map_mineral(payload: dict, **period_kwargs) -> dict:
