@@ -736,6 +736,20 @@ def calculate_price_summary(
     # `_CURRENT_POSITION_HARD_CAP` 여유를 확인하는 이유는 위 inventory_level과
     # 동일 — 규칙기반 폴백 경로가 근거를 그대로 문장에 매핑해 상한을 넘기면
     # `ValidationError`로 죽는다.
+    #
+    # `skipped_layer_notes` — advisor 지적으로 수정(2026-08-31): 데이터 부족
+    # 시 처리를 AskUserQuestion으로 물었을 때 사용자는 "조용히 생략(권장)"이
+    # 아니라 "명시적 문장으로 안내"를 골랐는데, 최초 구현은 `warnings`(→
+    # `data_quality.warnings`)로만 넣었다 — 이 채널은 `report_render.py`
+    # SC-016 결정(2026-08-28)에 따라 **독자 응답에서 항상 제외**되고 서버
+    # 로그로만 남는다("경고(독자 응답에는 미노출)"). 즉 사용자가 고른 선택지가
+    # 조용히 반대로 구현됐던 것 — `warnings`는 운영 로그용으로 그대로 두고,
+    # 추가로 생략된 층 이름만 모아 current_position에 문장 1개로 합쳐 넣는다
+    # (층마다 별도 문장을 만들면 claim 예산을 그만큼 잠식하지만, 합쳐 넣으면
+    # 생략된 층 수와 무관하게 예산 소모가 항상 정확히 1이라 상한 9를 절대
+    # 넘지 않는다 — 계산된 층 개수 + (생략 있으면 1) ≤ 6신규층 자체 상한).
+    skipped_layer_notes: list[str] = []
+
     volatility_fact, volatility_skipped = _volatility_fact(observations_with_price, latest.date)
     if volatility_fact is not None and sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP:
         claims.append(EvidenceClaim("volatility", "current_position", volatility_fact))
@@ -744,12 +758,14 @@ def calculate_price_summary(
             f"변동성 중 {'·'.join(volatility_skipped)}은 조회기간이 해당 창(30/90/365일)의 60% "
             "이상을 덮지 않거나 관측치가 5건 미만이라 계산하지 않았다."
         )
+        skipped_layer_notes.append(f"변동성({'·'.join(volatility_skipped)})")
 
     ma_rsi_fact, ma_rsi_computed = _ma_rsi_fact(observations_with_price, latest.commerce_price)
     if ma_rsi_fact is not None and sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP:
         claims.append(EvidenceClaim("ma_rsi", "current_position", ma_rsi_fact))
     if not ma_rsi_computed:
         warnings.append("이동평균·RSI는 관측치가 부족해 계산하지 않았다(이동평균 최소 20건, RSI 최소 15건 필요).")
+        skipped_layer_notes.append("이동평균·RSI")
 
     percentile = _percentile_rank(observations_with_price, latest.commerce_price)
     if percentile is not None and sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP:
@@ -763,12 +779,14 @@ def calculate_price_summary(
         )
     elif percentile is None:
         warnings.append("가격 분포상 백분위는 관측치가 20건 미만이라 계산하지 않았다.")
+        skipped_layer_notes.append("백분위 위치")
 
     drawdown_fact = _drawdown_fact(observations_with_price)
     if drawdown_fact is not None and sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP:
         claims.append(EvidenceClaim("drawdown", "current_position", drawdown_fact))
     elif drawdown_fact is None:
         warnings.append("낙폭 국면은 관측치가 2건 미만이라 계산하지 않았다.")
+        skipped_layer_notes.append("낙폭 국면")
 
     observations_with_price_and_inventory = [
         item for item in observations_with_price if item.inventory not in (None, 0, 0.0)
@@ -781,6 +799,7 @@ def calculate_price_summary(
         claims.append(EvidenceClaim("inventory_context", "current_position", inventory_context_fact))
     elif latest_inventory is not None and inventory_context_fact is None:
         warnings.append("재고량 백분위·가격 동행 비율은 재고량이 있는 관측치가 10건 미만이라 계산하지 않았다.")
+        skipped_layer_notes.append("재고 해석")
 
     if compare_series is not None:
         compare_observations = sorted(compare_series.observations, key=lambda item: item.date)
@@ -834,14 +853,29 @@ def calculate_price_summary(
                 f"{compare_series.mineral.name} 대비 상대가치는 같은 날짜에 두 계열 관측치가 "
                 "20건 미만이라 계산하지 않았다."
             )
+            skipped_layer_notes.append("상대가치")
 
     # 2026-08-31 사용자 통계확장 피드백 — 표 형태 2층(연도별 수익률·계절성)은
     # 문장(claim)이 아니라 `detailed_metrics`에 싣는다(이미 상한 없는
     # 리스트라 섹션 문장수 계약과 충돌하지 않는다 — advisor 권고).
-    table_metrics = _annual_return_metrics(observations_with_price) + _seasonality_metrics(observations_with_price)
-    year_span = len({item.date[:4] for item in observations_with_price})
-    if 0 < year_span < 2:
-        warnings.append("계절성(월별 평균 수익률)은 관측 연도가 1개뿐이라 그 해 값과 사실상 같다 — 참고용으로만 볼 것.")
+    seasonality_metrics, seasonality_max_samples = _seasonality_metrics(observations_with_price)
+    table_metrics = _annual_return_metrics(observations_with_price) + seasonality_metrics
+    if seasonality_metrics and seasonality_max_samples < 2:
+        warnings.append("계절성(월별 평균 수익률)은 어느 달도 2개 연도 이상의 표본이 없어 그 해 값과 사실상 같다 — 참고용으로만 볼 것.")
+        skipped_layer_notes.append("계절성(참고용, 표본 부족)")
+
+    # 위 6개 층 중 관측치 부족으로 생략된 게 있으면(있을 때만) current_position에
+    # 문장 1개로 합쳐 넣는다 — AskUserQuestion에서 사용자가 고른 "명시적 문장
+    # 안내"를 실제로 독자가 보는 채널(claim)에 반영한다(`warnings`만으로는
+    # report_render.py가 항상 걸러내 독자에게 전혀 노출되지 않는다).
+    if skipped_layer_notes and sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP:
+        claims.append(
+            EvidenceClaim(
+                "insufficient_history",
+                "current_position",
+                f"관측치가 부족해 {'·'.join(skipped_layer_notes)}은 계산하지 않았다(또는 참고용에 그친다).",
+            )
+        )
 
     return AdditionalCalculatedSummary(
         claims=claims,
@@ -1442,7 +1476,12 @@ def _relative_value_fact(
 
 def _annual_return_metrics(observations_with_price: list) -> list[Metric]:
     """연도별 수익률표(그 해 첫 관측가→마지막 관측가) — `detailed_metrics`에만
-    싣는다(key_metrics는 8개 상한이라 연도가 늘면 다른 핵심 지표를 밀어낸다)."""
+    싣는다(key_metrics는 8개 상한이라 연도가 늘면 다른 핵심 지표를 밀어낸다).
+
+    2026-08-31 advisor 지적 반영 — 조회기간이 그 해 중간에 시작·끝나면(예:
+    2026년 8월까지만 있는데 "2026년 수익률"이라 표기) hi/lo 문제와 같은
+    "기간 라벨이 실제 커버리지를 과장" 함정이 그대로 재현된다. 그 해
+    관측치의 실제 날짜 폭이 340일 미만이면 라벨에 "(연중)"을 붙인다."""
 
     by_year: dict[str, list] = {}
     for item in observations_with_price:
@@ -1451,15 +1490,23 @@ def _annual_return_metrics(observations_with_price: list) -> list[Metric]:
     for year in sorted(by_year):
         rows = by_year[year]
         change = _pct(rows[-1].commerce_price, rows[0].commerce_price)
-        if change is not None:
-            metrics.append(_price_metric(f"annual_return_{year}", f"{year}년 수익률", change * 100, unit="%"))
+        if change is None:
+            continue
+        span_days = (_date.fromisoformat(rows[-1].date) - _date.fromisoformat(rows[0].date)).days
+        label = f"{year}년 수익률" if span_days >= 340 else f"{year}년(연중) 수익률"
+        metrics.append(_price_metric(f"annual_return_{year}", label, change * 100, unit="%"))
     return metrics
 
 
-def _seasonality_metrics(observations_with_price: list) -> list[Metric]:
-    """월별 평균 수익률(그 달 첫 관측가→마지막 관측가를 연도별로 구해 평균) —
-    연도 수가 적으면(1년 미만) 사실상 그 해 하나의 값이라 통계적 의미가
-    옅다는 점을 `warnings`로 별도 안내한다(이 함수 자체는 계산만 한다)."""
+def _seasonality_metrics(observations_with_price: list) -> tuple[list[Metric], int]:
+    """월별 평균 수익률(그 달 첫 관측가→마지막 관측가를 연도별로 구해 평균).
+
+    2번째 반환값은 "월별 표본 수(그 달이 몇 개 연도에 걸쳐 있는지)의 최댓값" —
+    이게 1이면(=관측기간이 어느 달도 2개 연도로 못 채움) "평균"이라는 이름이
+    무색하게 사실상 그 해 하나의 값이라 호출부가 참고용 안내를 붙일 때 쓴다
+    (2026-08-31 advisor 지적: 이전엔 "관측 연도 수 < 2"로 게이트했는데, 12~1월을
+    걸치는 60일 조회처럼 연도는 2개여도 각 달의 표본은 여전히 1개뿐인 경우를
+    놓쳤다 — 진짜 조건은 달 단위 표본 수다)."""
 
     by_year_month: dict[str, list] = {}
     for item in observations_with_price:
@@ -1471,11 +1518,13 @@ def _seasonality_metrics(observations_with_price: list) -> list[Metric]:
         if change is not None:
             month_returns[month].append(change)
     metrics = []
+    max_samples = 0
     for month in range(1, 13):
         values = month_returns[month]
         if values:
+            max_samples = max(max_samples, len(values))
             avg = sum(values) / len(values)
             metrics.append(
                 _price_metric(f"seasonality_month_{month:02d}", f"{month}월 평균 수익률", avg * 100, unit="%")
             )
-    return metrics
+    return metrics, max_samples
