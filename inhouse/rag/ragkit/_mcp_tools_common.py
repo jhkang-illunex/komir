@@ -130,7 +130,6 @@ def register_common_tools(mcp: FastMCP) -> None:
     def komis_raw_lookup(
         page_id: AnalysisPreviewPageId,
         mineral_code: str | None = None,
-        mineral_label: str | None = None,
         hs_code: str | None = None,
         index_type_code: str | None = None,
         price_criterion_serial: int | None = None,
@@ -160,16 +159,19 @@ def register_common_tools(mcp: FastMCP) -> None:
         매핑되면 그중 첫 번째(오름차순)만 미리보기로 쓰고 `warnings`에 명시한다
         (전부 합쳐 보려면 `price_criterion_serial`/`hs_code`를 직접 지정할 것).
 
-        `mineral_label`(2026-09-01 추가, 실사용 버그 발견·수정): 근거(Evidence)
-        의 `section`에 광종을 사람이 읽을 수 있게 표시할 한글명 — 안 주면
-        `mineral_code`(예: "MNRL0018")가 그대로 라벨에 박힌다. 실측으로
+        2026-09-01 실사용 버그 발견·수정 — 근거(Evidence)의 `section`에
+        `mineral_code`(예: "MNRL0018")가 그대로 노출돼 있었다. 실측으로
         재현된 실패: "텅스텐 가격 조회"가 komis_raw로 정상 라우팅·조회까지
         됐는데, 근거 section이 "KOMIS 원천 · KO_MNRL_PRC(MNRL0018)"였던 탓에
         검증(verify) LLM이 "이 근거가 텅스텐인지 알 수 없다"고 오판해 근거를
         버리고 무관한 문서로 대체했다 — 표(text) 안에는 광종명 컬럼이 아예
         없어(가격·날짜·수치뿐) MNRL 코드가 곧 "텅스텐"이라는 걸 LLM이 몰랐던
-        것. 호출자(chatbot_graph.py)는 komis_resolve_mineral에 넘겼던 원래
-        한글 광종명을 그대로 여기 넘긴다.
+        것. 처음엔 호출자가 한글명을 별도 파라미터(`mineral_label`)로 넘기게
+        고쳤는데, 그 정보가 이미 `ai_mnrl_mst`(코드↔한글명 테이블)에 있고
+        `resolve_mineral()`이 그 조회를 이미 구현하고 있어 중복이었다(사용자
+        지적) — 그 파라미터는 없애고, `mineral_code`가 있으면 이 tool이
+        `resolve_mineral()`로 직접 한글명을 끌어와 라벨을 채운다(호출자는
+        여전히 `mineral_code`만 넘기면 된다, API 단순화).
         {"evidence": [...], "warnings": [...]}."""
 
         try:
@@ -236,8 +238,22 @@ def register_common_tools(mcp: FastMCP) -> None:
                     "실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요."
                 )
 
+        # 근거 라벨용 한글명 — ai_mnrl_mst에서 직접 끌어온다(위 독스트링
+        # 참고, resolve_data_source와 마찬가지로 mineral_code 기준 조회).
+        # 못 찾으면(예: mineral_code가 애초에 코드 형식이 아님) 코드 그대로
+        # 라벨에 쓴다 — 사람이 못 알아보는 최악의 경우라도 조회 자체는 막지
+        # 않는다(안전한 열화).
+        mineral_label = mineral_code
+        if mineral_code:
+            try:
+                resolved_name = repo.resolve_mineral(mineral_code)
+            except RawDataAccessError:
+                resolved_name = None
+            if resolved_name:
+                mineral_label = resolved_name[1]
+
         # is_dummy를 Evidence.caveat에도 심는다(위 warnings는 도구 호출 로그·
         # 기권사유 분류용, caveat는 이 근거가 실제로 인용됐을 때 사용자 화면에
         # 강제로 뜨는 경고용 — 둘은 소비처가 달라 둘 다 채운다).
-        evidence = from_komis_raw(page_id, datasets, mineral_code=mineral_label or mineral_code, is_dummy=is_dummy)
+        evidence = from_komis_raw(page_id, datasets, mineral_code=mineral_label, is_dummy=is_dummy)
         return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}

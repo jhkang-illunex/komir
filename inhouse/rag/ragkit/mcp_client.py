@@ -281,7 +281,6 @@ class _ProfileSession:
         page_id: str,
         *,
         mineral_code: str | None = None,
-        mineral_label: str | None = None,
         hs_code: str | None = None,
         index_type_code: str | None = None,
         price_criterion_serial: int | None = None,
@@ -291,16 +290,15 @@ class _ProfileSession:
     ) -> tuple[list[Evidence], list[str]]:
         """KOMIS 공개원천(public.KO_*) 원자료 조회 — 2026-08-31 추가. warnings에
         더미데이터 경고(§_mcp_tools_common.py::komis_raw_lookup)가 실릴 수 있다.
-        `mineral_label`(2026-09-01 추가)은 근거 표시용 한글 광종명 — 안 주면
-        근거 section에 `mineral_code`(MNRL0018 등)가 그대로 노출돼 verify/생성
-        LLM이 광종을 못 알아볼 수 있다(실측 버그, 위 tool 독스트링 참고)."""
+        근거 section의 광종 표시는 서버가 `mineral_code`로 `ai_mnrl_mst`를
+        직접 조회해 한글명으로 채운다(2026-09-01, 한때 별도 `mineral_label`
+        파라미터가 있었으나 이미 있는 코드↔한글명 테이블과 중복이라 없앴다)."""
 
         data = self._call(
             "komis_raw_lookup",
             {
-                "page_id": page_id, "mineral_code": mineral_code, "mineral_label": mineral_label,
-                "hs_code": hs_code, "index_type_code": index_type_code,
-                "price_criterion_serial": price_criterion_serial,
+                "page_id": page_id, "mineral_code": mineral_code, "hs_code": hs_code,
+                "index_type_code": index_type_code, "price_criterion_serial": price_criterion_serial,
                 "start_period": start_period, "end_period": end_period, "limit": limit,
             },
         )

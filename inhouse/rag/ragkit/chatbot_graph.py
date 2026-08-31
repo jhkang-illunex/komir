@@ -413,8 +413,7 @@ def _retrieve_node(state: RetrievalState, *, dense_k: int, pageindex_k: int) -> 
             jobs["structured"] = pool.submit(call, route.commodity_code, route.target, route.forecast_months)
         if komis_raw_page_id and komis_raw_mineral_code:
             jobs["komis_raw"] = pool.submit(
-                session.call_komis_raw_lookup, komis_raw_page_id,
-                mineral_code=komis_raw_mineral_code, mineral_label=route.komis_mineral_name,
+                session.call_komis_raw_lookup, komis_raw_page_id, mineral_code=komis_raw_mineral_code,
             )
         query = route.resolved_query or state["question"]
         if route.use_dense:
