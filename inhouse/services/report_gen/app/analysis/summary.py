@@ -81,6 +81,7 @@ from .data_sources import (  # noqa: E402
 )
 from .indicators import months_are_contiguous, percent_change  # noqa: E402
 from .komir_summary import (  # noqa: E402
+    _detect_granularity,
     calculate_domestic_trade_summary,
     calculate_global_trade_summary,
     calculate_price_group_summary,
@@ -1998,6 +1999,15 @@ class AnalysisSummaryService:
         )
         if effective_warnings and quality_status == "available":
             quality_status = "partial"
+        # 2026-08-31 사용자 지적 — "평균옵션이 입력으로 들어오는데 타이틀엔
+        # '일별'이 하드코딩돼 있다." `KOMIR_PAGE_CONTEXTS`의 정의문 4종은
+        # 전부 "...일별 실거래가..." 정적 문자열이라, 실제 조회 단위가
+        # 주/월/분기/년이어도 "일별"로 고정 표시되고 있었다. `srch_avg_opt`
+        # (명시 입력, 없으면 관측치 날짜 간격 추론)로 판별한 실제 단위로
+        # "일별"을 치환한다 — 4개 정의문 전부 "일별"이 "실거래가" 바로
+        # 앞에 정확히 1번만 있어 안전하게 치환된다.
+        granularity_unit, _ = _detect_granularity(series.observations, srch_avg_opt=request.srch_avg_opt)
+        page_definition = context.definition.replace("일별", f"{granularity_unit}별")
         response = AnalysisSummaryResponse(
             request_id=request.request_id,
             page_id=request.page_id,
@@ -2015,7 +2025,7 @@ class AnalysisSummaryService:
                 sheets=series.source_sheets,
             ),
             policy_version=context.policy_version,
-            page_definition=context.definition,
+            page_definition=page_definition,
             grade=None,
             data_quality=DataQuality(
                 status=quality_status,
