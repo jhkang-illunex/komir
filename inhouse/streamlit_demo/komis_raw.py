@@ -84,16 +84,30 @@ def passthrough_map_global(raw: dict, ctx: dict) -> dict:
 
 
 def passthrough_map_mineral(raw: dict, ctx: dict) -> dict:
-    """map_mineral — 2026-08-30 report_gen이 `getListMapMnrlChartData`(주의:
-    예전 `getListMapMnrlData`가 아니다 — 연도별 시계열 차트 엔드포인트) 원본
-    응답을 그대로 받아 내부에서 파싱한다(`_parse_komis_mineral_map_response` —
-    행마다 있는 `crtrYr`로 연도를 묶고, `cdVal`에서 unit을 자동 채운다).
-    `measure`(매장량/생산량)는 응답 본문에 없는 조회 파라미터라 여전히
-    호출자가 명시해야 한다."""
+    """map_mineral — 2026-08-31 report_gen이 이 페이지의 KOMIS 엔드포인트
+    3개를 각각 다른 요청 필드로 받도록 확장됐다(계약: documents/산출물/
+    2026-W36_0831-0906/report_gen_광물지도_2개엔드포인트_추가_260831.md) —
+    `chart`(getListMapMnrlChartData, 연도별 시계열, 필수)·`snapshot`
+    (getListMapMnrlData, 단일연도 국가별 스냅샷, 선택)·`share`
+    (getListMnrlTablePrdctnBurgudg, 국가별 최근5개년+비중표, 선택)를 한
+    JSON 객체로 묶어 붙여넣으면(§komis_fetch.py fetch_map_mineral과 같은
+    envelope) 이 함수가 3개 요청 필드로 각각 갈라 보낸다. snapshot·share는
+    없어도(하나만 있어도) 그대로 동작(report_gen 쪽 "독립적으로 동작"
+    확인됨) — `measure`(매장량/생산량)는 응답 본문에 없는 조회 파라미터라
+    여전히 호출자가 명시해야 한다."""
 
-    if not isinstance(raw, dict) or not isinstance(raw.get("data"), list):
-        raise KomisRawConversionError("data(국가별 매장량/생산량 목록)를 찾을 수 없습니다 — 광물지도 조회 결과(getListMapMnrlChartData) JSON이 맞는지 확인하세요.")
-    return {"komis_response": raw}
+    if not isinstance(raw, dict) or not isinstance((raw.get("chart") or {}).get("data"), list):
+        raise KomisRawConversionError(
+            "chart.data(국가별 매장량/생산량 시계열)를 찾을 수 없습니다 — "
+            '{"chart": <getListMapMnrlChartData 응답>, "snapshot": <getListMapMnrlData 응답, 선택>, '
+            '"share": <getListMnrlTablePrdctnBurgudg 응답, 선택>} 형태로 붙여넣었는지 확인하세요.'
+        )
+    converted: dict = {"komis_response": raw["chart"]}
+    if isinstance(raw.get("snapshot"), dict):
+        converted["komis_snapshot_response"] = raw["snapshot"]
+    if isinstance(raw.get("share"), dict):
+        converted["komis_share_response"] = raw["share"]
+    return converted
 
 
 def passthrough_indicator_composite(raw: dict, ctx: dict) -> dict:
@@ -239,12 +253,19 @@ KOMIS_RAW_PAGES: dict[str, KomisRawPage] = {
         '"expNtnCd": "BR", "amtRate": "4.14"}], "listCount": "15"}',
     ),
     "map_mineral": KomisRawPage(
-        "국가별 매장량/생산량 조회 결과(getListMapMnrlChartData)",
+        "광물지도 조회 결과(getListMapMnrlChartData+getListMapMnrlData+getListMnrlTablePrdctnBurgudg)",
         passthrough_map_mineral,
-        # 실측: Phase3 map_mineral_live_capture_260829.json(MNRL0008=동,
-        # getListMapMnrlChartData — 예전 getListMapMnrlData와 달리 crtrYr별
-        # 시계열이 전부 온다. 2024·2025년 상위 5개국).
-        '{"data": ['
+        # chart 실측: Phase3 map_mineral_live_capture_260829.json(MNRL0008=동,
+        # getListMapMnrlChartData, 2024·2025년 상위 5개국). snapshot·share는
+        # 2026-08-31 이 세션이 komis.or.kr 직접 호출로 재검증(MNRL0008=동,
+        # 2025년 단일연도 snapshot 상위 3개국, 2021~2025 share 상위 3개국) —
+        # §komis_fetch.py fetch_map_mineral과 같은 {"chart","snapshot","share"}
+        # envelope.
+        # 2026-08-31 재수정(main-agent 통합검증 제보): chart를 5개국→2개국으로
+        # 줄였다가 report_gen "3개국 이상 필요" 검증에 걸려 NO_DATA가 났다 —
+        # 원래 5개국(칠레/호주/페루/DRC/러시아)으로 복원, snapshot도 3개국으로
+        # 맞춤(둘 다 최소 표본 3개국 이상 유지).
+        '{"chart": {"data": ['
         '{"cdVal": "k ton", "prdctnQuty": 5510000, "crtrYr": "2024", "totalBurudgQuty": 3738700000, '
         '"massUnitCd": "WT003", "burudgQuty": 190000000, "ntnEngNm": "Chile", "ntnKornNm": "칠레", "ntnEngCd": "CL"}, '
         '{"cdVal": "k ton", "prdctnQuty": 765000, "crtrYr": "2024", "totalBurudgQuty": 3738700000, '
@@ -266,7 +287,21 @@ KOMIS_RAW_PAGES: dict[str, KomisRawPage] = {
         '"massUnitCd": "WT003", "burudgQuty": 80000000, "ntnEngNm": "Democratic Republic of Congo", '
         '"ntnKornNm": "콩고민주공화국", "ntnEngCd": "CD"}, '
         '{"cdVal": "k ton", "prdctnQuty": 1300000, "crtrYr": "2025", "totalBurudgQuty": 3738700000, '
-        '"massUnitCd": "WT003", "burudgQuty": 80000000, "ntnEngNm": "Russia", "ntnKornNm": "러시아", "ntnEngCd": "RU"}]}',
+        '"massUnitCd": "WT003", "burudgQuty": 80000000, "ntnEngNm": "Russia", "ntnKornNm": "러시아", "ntnEngCd": "RU"}]}, '
+        '"snapshot": {"data": ['
+        '{"cdVal": "k ton", "prdctnQuty": 730000, "totalBurudgQuty": 770200000, "totalPrdctnQuty": 20013000, '
+        '"massUnitCd": "WT003", "burudgQuty": 100000000, "ntnEngNm": "Australia", "ntnKornNm": "호주", "ntnEngCd": "AU"}, '
+        '{"cdVal": "k ton", "prdctnQuty": 500000, "totalBurudgQuty": 770200000, "totalPrdctnQuty": 20013000, '
+        '"massUnitCd": "WT003", "burudgQuty": 7000000, "ntnEngNm": "Canada", "ntnKornNm": "캐나다", "ntnEngCd": "CA"}, '
+        '{"cdVal": "k ton", "prdctnQuty": 200000, "totalBurudgQuty": 770200000, "totalPrdctnQuty": 20013000, '
+        '"massUnitCd": "WT003", "burudgQuty": 35000000, "ntnEngNm": "Chile", "ntnKornNm": "칠레", "ntnEngCd": "CL"}]}, '
+        '"share": {"data": ['
+        '{"ntnKornNm": "칠레", "ntnEngCd": "CL", "before5": "200,000,000", "before4": "190,000,000", '
+        '"before3": "190,000,000", "before2": "190,000,000", "before1": "180,000,000", "rate": "18.37"}, '
+        '{"ntnKornNm": "호주", "ntnEngCd": "AU", "before5": "93,000,000", "before4": "97,000,000", '
+        '"before3": "100,000,000", "before2": "100,000,000", "before1": "100,000,000", "rate": "10.20"}, '
+        '{"ntnKornNm": "_TOTAL_", "ntnEngCd": "SU", "before5": "980,000,000", "before4": "990,000,000", '
+        '"before3": "1,000,000,000", "before2": "1,000,000,000", "before1": "980,000,000", "rate": "100.00"}]}}',
     ),
     "indicator_composite": KomisRawPage(
         "광물종합지수 조회 결과(getLineChartIndx)",

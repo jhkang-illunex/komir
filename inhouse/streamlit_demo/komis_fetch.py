@@ -411,18 +411,36 @@ def fetch_map_global(
 
 # ── map_mineral ───────────────────────────────────────────────────────
 # 실측: report-summary-agent가 income_data/komis/komis_08_mineral_map.json
-# results[].params에서 확인해 전달(2026-08-31, getListMapMnrlChartData).
+# results[].params에서 확인해 전달(2026-08-31) — 이 페이지는 KOMIS가 동시에
+# 3개 엔드포인트를 쏜다(전부 같은 파라미터 shape): getListMapMnrlChartData
+# (연도별 시계열)·getListMapMnrlData(단일연도 국가별 스냅샷)·
+# getListMnrlTablePrdctnBurgudg(국가별 최근5개년+비중표). report_gen이
+# 각각 komis_response/komis_snapshot_response/komis_share_response 3개
+# 필드로 따로 받는다(계약: documents/산출물/2026-W36_0831-0906/
+# report_gen_광물지도_2개엔드포인트_추가_260831.md).
+# ⚠ snapshot(getListMapMnrlData)은 단일 연도 전제 — 다년 범위로 조회하면
+# KOMIS가 그 범위 전체를 합산한 값을 준다(report-summary-agent 실측
+# 확인). report_gen이 라벨링에 쓰는 "최신연도"와 맞추기 위해 항상
+# end_year 하나만으로(srchDateS=srchDateE=end_year) 조회한다.
 def fetch_map_mineral(
-    mineral_code: str, *, measure: str = "reserves", start_year: str = "2019", end_year: str = "2025"
+    mineral_code: str, *, measure: str = "reserves", start_year: str = "2021", end_year: str = "2025"
 ) -> dict:
-    params = {
+    selected_tab = "burudg" if measure == "reserves" else "prdctn"
+    range_params = {
         "srchMnrkndUnqCd": mineral_code, "srchMnrkndSeCd": "", "srchNtnCd": "",
         "srchDateS": start_year, "srchDateE": end_year,
-        "selectedTab": "burudg" if measure == "reserves" else "prdctn",
-        "srchNtnEngCd": "",
+        "selectedTab": selected_tab, "srchNtnEngCd": "",
     }
-    result = _post("/Komis/MnrlMap/MnrlMap", "/Komis/MnrlMap/MapMnrl/ajax/getListMapMnrlChartData", params)
-    return _require_data(result, mineral_code)
+    snapshot_params = {**range_params, "srchDateS": end_year, "srchDateE": end_year}
+    client = _open_session("/Komis/MnrlMap/MnrlMap")
+    try:
+        chart = _ajax_post(client, "/Komis/MnrlMap/MapMnrl/ajax/getListMapMnrlChartData", range_params)
+        snapshot = _ajax_post(client, "/Komis/MnrlMap/MapMnrl/ajax/getListMapMnrlData", snapshot_params)
+        share = _ajax_post(client, "/Komis/MnrlMap/MapMnrl/ajax/getListMnrlTablePrdctnBurgudg", range_params)
+    finally:
+        client.close()
+    _require_data(chart, mineral_code)
+    return {"chart": chart, "snapshot": snapshot, "share": share}
 
 
 # 2026-08-31: 평균옵션/기간구분자/기간(**period_kwargs)을 report_demo.py의
