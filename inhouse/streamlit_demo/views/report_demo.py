@@ -37,7 +37,12 @@ from datetime import date
 import streamlit as st
 
 from streamlit_demo.mineral_master import PRICE_CATEGORY_BY_PAGE, mineral_label, mineral_options_for_page
-from streamlit_demo.komis_fetch import KOMIS_FETCH_DISPATCH, KomisFetchError
+from streamlit_demo.komis_fetch import (
+    KOMIS_FETCH_DISPATCH,
+    KomisFetchError,
+    fetch_hs_code_options,
+    fetch_product_type_options,
+)
 from streamlit_demo.komis_raw import KOMIS_RAW_PAGES, KomisRawConversionError
 from streamlit_demo.report_gen_client import (
     EXTRA_FIELD_DEFAULTS,
@@ -58,6 +63,20 @@ from streamlit_demo.report_gen_client import (
 # 아니라 QUARTER가 맞음, §komis_fetch.py 주석 참고).
 AVG_OPT_LABELS = {"일간": "DAY", "주간": "WEEK", "월간": "MONTH", "분기간": "QUARTER", "년간": "YEAR"}
 PERIOD_FIELD_LABELS = {"년간": "year", "월간": "month"}
+
+
+# 2026-08-31 사용자 지시: 대한민국 수급지도(map_korea) 생산품 유형(Lv3)·
+# HS코드(Lv5) 드롭다운은 광종이 바뀔 때만 새로 조회하면 되므로(다른 위젯
+# 조작마다 매번 komis.or.kr을 다시 부르면 느려진다) 캐시로 감싼다 — 광종
+# 드롭다운(mineral_master.load_minerals)과 같은 패턴(ttl=300).
+@st.cache_data(ttl=300, show_spinner="생산품 유형 목록을 불러오는 중…")
+def _cached_product_type_options(mineral_code: str) -> list[dict]:
+    return fetch_product_type_options(mineral_code)
+
+
+@st.cache_data(ttl=300, show_spinner="HS코드 목록을 불러오는 중…")
+def _cached_hs_code_options(mineral_code: str, product_type_code: str) -> list[dict]:
+    return fetch_hs_code_options(mineral_code, product_type_code)
 
 st.title("요약보고서 작성 데모")
 st.caption("report_gen 분석요약 API(12종)를 관측치(observations) 바디로 직접 호출해보는 개발 데모입니다 — 운영 화면이 아닙니다.")
@@ -279,6 +298,72 @@ if page_id in KOMIS_RAW_PAGES:
             "기간 종료(YYYY)", map_year_options, index=len(map_year_options) - 1, key=f"komis_end_{page_id}",
         )
         period_fetch_opts = {"start_year": start_year_opt, "end_year": end_year_opt}
+    elif page_id == "map_korea":
+        # 2026-08-31 사용자 지시: 대한민국 수급지도(map_korea)에 기간 구분자
+        # (년/월)·국가명 직접입력(기본 전체)·생산품 유형·HS코드 구분자 추가 —
+        # komis_fetch.py의 fetch_map_korea가 실제로 받는 인자로 그대로
+        # 넘어간다(§komis_fetch.py 라이브 실측: getListMttrFlow·
+        # getListOnlyHsCode·getNatInfoCodeList 3개 엔드포인트 기반).
+        row1 = st.columns(2)
+        period_field_label = row1[0].selectbox(
+            "기간 구분자", list(PERIOD_FIELD_LABELS), key=f"komis_period_field_{page_id}",
+        )
+        period_field = PERIOD_FIELD_LABELS[period_field_label]
+        country_name = row1[1].text_input(
+            "국가명(선택, 기본 전체)", value="", key=f"komis_country_{page_id}",
+            placeholder="예: 중국 (비워두면 전체)",
+        )
+        mk_year_options = [str(y) for y in range(2021, 2027)]
+        if period_field == "year":
+            row2 = st.columns(2)
+            start_period = row2[0].selectbox(
+                "기간 시작(YYYY)", mk_year_options, index=0, key=f"komis_start_{page_id}_year",
+            )
+            end_period = row2[1].selectbox(
+                "기간 종료(YYYY)", mk_year_options, index=len(mk_year_options) - 1, key=f"komis_end_{page_id}_year",
+            )
+        else:
+            # 사용자 지시: "월은 년도 선택후 월 선택 가능하게" — 연도·월을
+            # 각각 별도 콤보박스로 뒀다(광물자원가격의 "YYYY-MM" 단일 목록과
+            # 다른 UX, 사용자가 명시적으로 요청한 2단계 흐름).
+            month_options = [f"{m:02d}" for m in range(1, 13)]
+            row2 = st.columns(4)
+            start_year_opt = row2[0].selectbox(
+                "시작 연도(YYYY)", mk_year_options, index=0, key=f"komis_start_year_{page_id}",
+            )
+            start_month_opt = row2[1].selectbox(
+                "시작 월(MM)", month_options, index=0, key=f"komis_start_month_{page_id}",
+            )
+            end_year_opt = row2[2].selectbox(
+                "종료 연도(YYYY)", mk_year_options, index=len(mk_year_options) - 1, key=f"komis_end_year_{page_id}",
+            )
+            end_month_opt = row2[3].selectbox(
+                "종료 월(MM)", month_options, index=len(month_options) - 1, key=f"komis_end_month_{page_id}",
+            )
+            start_period = f"{start_year_opt}-{start_month_opt}"
+            end_period = f"{end_year_opt}-{end_month_opt}"
+
+        row3 = st.columns(2)
+        mineral_code = payload.get("mineral", "")
+        product_type_options = _cached_product_type_options(mineral_code) if mineral_code else []
+        product_type_choice = row3[0].selectbox(
+            "생산품 유형(선택, 기본 전체)", product_type_options, index=None, placeholder="전체",
+            format_func=lambda o: o["mttrFlowNm"], key=f"komis_product_type_{page_id}_{mineral_code}",
+        )
+        product_type_code = product_type_choice["mttrFlowCd"] if product_type_choice else ""
+
+        hs_code_options = _cached_hs_code_options(mineral_code, product_type_code) if mineral_code else []
+        hs_code_choice = row3[1].selectbox(
+            "HS코드(선택, 기본 전체)", hs_code_options, index=None, placeholder="전체",
+            format_func=lambda o: f"{o['itemNm']} ({o['hsCd']})",
+            key=f"komis_hs_code_{page_id}_{mineral_code}_{product_type_code}",
+        )
+        hs_code = hs_code_choice["hsCd"] if hs_code_choice else ""
+
+        period_fetch_opts = {
+            "period_field": period_field, "start_period": start_period, "end_period": end_period,
+            "country_name": country_name, "product_type_code": product_type_code, "hs_code": hs_code,
+        }
     if page_id in KOMIS_FETCH_DISPATCH:
         if st.button("komis.or.kr에서 실시간 조회", key=f"komis_fetch_btn_{page_id}"):
             try:

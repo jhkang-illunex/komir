@@ -56,6 +56,7 @@ price_iron_energy(`/Komis/RsrcPrice/IronOre`)·price_other(`/Komis/RsrcPrice/Etc
 AJAX POST를 보낸다."""
 from __future__ import annotations
 
+import calendar
 import logging
 import os
 
@@ -374,20 +375,110 @@ def fetch_price_other(
 # 실측: 이 세션이 Phase3에서 캡처해둔 실제 응답(요청 파라미터가 그대로
 # echo돼 있음) — komis_raw.py의 map_korea/map_global example_raw_json과
 # 같은 원천(MNRL0024=갈륨, 2026-01-01~12-31 조회).
+# 2026-08-31 사용자 지시: 대한민국 수급지도(map_korea)에 기간 구분자(년/월)·
+# 국가명 직접입력·생산품 유형(Lv3)·HS코드(Lv5) 구분자 추가 — komis.or.kr
+# 페이지 JS(`_komis_common.js`)를 직접 읽어 실측 확인한 4단계 계층
+# (광종→생산품유형(Lv3)→물질흐름세부(Lv4)→HSCode(Lv5))와 국가 목록 엔드포인트:
+# - `/ajax/komiscommon/getListMttrFlow`(POST srchMnrkndUnqCd·srchMttrFlowCd·
+#   openYn) — srchMttrFlowCd가 비면 Lv3(생산품 유형), 있으면 그 하위 Lv4
+#   (물질흐름세부) 목록을 준다. 사용자가 이름 붙인 "생산품 유형 구분자"가
+#   바로 이 Lv3(`[생산품 유형 전체]` 라벨을 JS에서 직접 확인).
+# - `/ajax/komiscommon/getListOnlyHsCode`(POST srchMnrkndUnqCd·srchMttrFlowCd·
+#   srchMttrFlowDtlCd·isFront) — HSCode(Lv5) 목록. 실측 확인: Lv3/Lv4가
+#   비어 있어도 서버는 그 광종의 전체 HS코드 목록을 그대로 준다(KOMIS
+#   자체 화면은 Lv3 미선택이면 UI만 숨기는 것뿐, 서버 제약이 아니다) — 이
+#   데모는 사용자가 명시한 2단계(생산품유형·HS코드)만 노출하고 Lv4는 항상
+#   비워 보낸다.
+# - `/ajax/common/getNatInfoCodeList`(POST cdType=koNtnCd) — 국가 232종
+#   {cdVal:한글명, cdKey:코드}. 사용자가 "국가명 입력"이라고 해서 코드가
+#   아니라 한글명을 직접 입력받고, fetch_map_korea가 이 목록에서 매칭되는
+#   코드를 찾아 srchNtnCd로 변환한다(가격기준 코드 리졸브와 같은 패턴).
+def fetch_product_type_options(mineral_code: str, parent_code: str = "") -> list[dict]:
+    """생산품 유형(Lv3, parent_code="")·물질흐름세부(Lv4, parent_code=Lv3코드)
+    목록 — [{mttrFlowCd, mttrFlowNm}, ...]."""
+    client = _open_session("/Komis/MnrlMap/Korea")
+    try:
+        data = _ajax_post(
+            client, "/ajax/komiscommon/getListMttrFlow",
+            {"srchMnrkndUnqCd": mineral_code, "srchMttrFlowCd": parent_code, "openYn": "Y"},
+        )
+    finally:
+        client.close()
+    return data.get("data") or []
+
+
+def fetch_hs_code_options(mineral_code: str, product_type_code: str = "") -> list[dict]:
+    """HSCode(Lv5) 목록 — [{hsCd, itemNm}, ...]. Lv4는 항상 비워 보낸다(§위
+    모듈 주석 — 서버는 Lv3만으로도 전체 하위 HS코드를 돌려준다)."""
+    client = _open_session("/Komis/MnrlMap/Korea")
+    try:
+        data = _ajax_post(
+            client, "/ajax/komiscommon/getListOnlyHsCode",
+            {
+                "srchMnrkndUnqCd": mineral_code, "srchMttrFlowCd": product_type_code,
+                "srchMttrFlowDtlCd": "", "isFront": "Y",
+            },
+        )
+    finally:
+        client.close()
+    return data.get("data") or []
+
+
+def _resolve_country_code(client: httpx.Client, country_name: str) -> str:
+    if not country_name.strip():
+        return ""
+    data = _ajax_post(client, "/ajax/common/getNatInfoCodeList", {"cdType": "koNtnCd"})
+    for row in data.get("data") or []:
+        if row.get("cdVal") == country_name.strip():
+            return row.get("cdKey", "")
+    raise KomisFetchError(
+        f"'{country_name}'에 해당하는 국가를 komis.or.kr 국가 목록에서 찾지 못했습니다 — "
+        "정확한 한글 국가명을 입력하세요(예: 중국)."
+    )
+
+
+def _map_korea_date_bounds(period_field: str, start_period: str, end_period: str) -> tuple[str, str]:
+    """UI 입력(년간=yyyy, 월간=yyyy-mm)을 KOMIS가 받는 yyyymmdd로 변환 —
+    시작은 그 기간의 1일, 종료는 그 기간의 마지막 날."""
+    if period_field == "month":
+        start_y, start_m = start_period.split("-")
+        end_y, end_m = end_period.split("-")
+        last_day = calendar.monthrange(int(end_y), int(end_m))[1]
+        return f"{start_y}{start_m}01", f"{end_y}{end_m}{last_day:02d}"
+    return f"{start_period}0101", f"{end_period}1231"
+
+
 def fetch_map_korea(
     mineral_code: str, *, trade_direction: str = "import",
-    start_date: str = "20260101", end_date: str = "20261231",
-    prev_start_date: str = "20250101", prev_end_date: str = "20251231",
+    period_field: str = "year", start_period: str = "2025", end_period: str = "2025",
+    country_name: str = "", product_type_code: str = "", hs_code: str = "",
 ) -> dict:
-    params = {
-        "srchNtnCd": "", "srchDateE": end_date, "orderSort": "DESC",
-        "srchMttrFlowDtlCd": "", "srchIncmExp": "I" if trade_direction == "import" else "E",
-        "srchHsCd": "", "orderBy": "realPrdctnQuty1", "srchMnrkndUnqCd": mineral_code,
-        "listCount": "10", "srchDatePE": prev_end_date, "srchMttrFlowCd": "",
-        "srchDateS": start_date, "page": "1", "srchTypeAW": "A", "srchCrtrYmd": "Y",
-        "srchDatePS": prev_start_date,
-    }
-    result = _post("/Komis/MnrlMap/Korea", "/Komis/MnrlMap/MapKorea/ajax/getListKoreaData", params)
+    start_date, end_date = _map_korea_date_bounds(period_field, start_period, end_period)
+    if period_field == "month":
+        sy, sm = start_period.split("-")
+        ey, em = end_period.split("-")
+        prev_start_date, prev_end_date = _map_korea_date_bounds(
+            period_field, f"{int(sy) - 1}-{sm}", f"{int(ey) - 1}-{em}"
+        )
+    else:
+        prev_start_date, prev_end_date = _map_korea_date_bounds(
+            period_field, str(int(start_period) - 1), str(int(end_period) - 1)
+        )
+    client = _open_session("/Komis/MnrlMap/Korea")
+    try:
+        country_code = _resolve_country_code(client, country_name)
+        params = {
+            "srchNtnCd": country_code, "srchDateE": end_date, "orderSort": "DESC",
+            "srchMttrFlowDtlCd": "", "srchIncmExp": "I" if trade_direction == "import" else "E",
+            "srchHsCd": hs_code, "orderBy": "realPrdctnQuty1", "srchMnrkndUnqCd": mineral_code,
+            "listCount": "10", "srchDatePE": prev_end_date, "srchMttrFlowCd": product_type_code,
+            "srchDateS": start_date, "page": "1", "srchTypeAW": "A",
+            "srchCrtrYmd": "Y" if period_field == "year" else "M",
+            "srchDatePS": prev_start_date,
+        }
+        result = _ajax_post(client, "/Komis/MnrlMap/MapKorea/ajax/getListKoreaData", params)
+    finally:
+        client.close()
     return _require_list(result, mineral_code)
 
 
@@ -473,8 +564,10 @@ def _dispatch_price_other(payload: dict, **period_kwargs) -> dict:
     )
 
 
-def _dispatch_map_korea(payload: dict) -> dict:
-    return fetch_map_korea(payload["mineral"], trade_direction=payload.get("trade_direction", "import"))
+def _dispatch_map_korea(payload: dict, **period_kwargs) -> dict:
+    return fetch_map_korea(
+        payload["mineral"], trade_direction=payload.get("trade_direction", "import"), **period_kwargs
+    )
 
 
 def _dispatch_map_global(payload: dict) -> dict:
