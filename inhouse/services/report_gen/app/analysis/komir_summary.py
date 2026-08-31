@@ -926,7 +926,12 @@ def calculate_price_summary(
 
 
 def calculate_domestic_trade_summary(
-    series: TradeMapSeries, *, direction: str = "import", komis_totals: TradeKomisTotals | None = None
+    series: TradeMapSeries,
+    *,
+    direction: str = "import",
+    komis_totals: TradeKomisTotals | None = None,
+    country_filter_name: str | None = None,
+    scope_label: str | None = None,
 ) -> AdditionalCalculatedSummary:
     """국내(관세청) 수급지도 계열 계산 — `direction`으로 수입/수출을 고른다.
 
@@ -943,7 +948,24 @@ def calculate_domestic_trade_summary(
     총액으로 쓴다 — top1/3/5 비중의 분모가 정확해진다. `previous_total`
     (기간변화율 비교 대상)은 과거 시점 KOMIS 총액을 받을 방법이 없어
     여전히 관측치 합산이다(하위호환, `report_gen_KOMIS라이브재검증_
-    Phase3_260829.md` §1 참고)."""
+    Phase3_260829.md` §1 참고).
+
+    `country_filter_name`/`scope_label`(2026-08-31 신설, 사용자 지시로
+    map_korea 조회필터 4종 추가) — KOMIS가 `sumIncmAmt`/`sumExpAmt`를
+    "전체 총액"이 아니라 **현재 조회 필터가 적용된 소계**로 준다는 걸
+    실측 확인(국가필터 CN 걸면 sum이 중국 자체 금액과 정확히 일치,
+    생산품유형/HS필터를 걸면 그 범위만의 소계로 줄어듦). 그래서:
+    - `country_filter_name`이 있으면(단일 국가로 조회 한정) `total`이 그
+      국가 자체 값이라 top1/3/5 비중이 항상 100%로 공허해진다 — 랭킹
+      claim(top1_country/top3/top5_concentration)을 만들지 않고, 대신
+      "{국가} 대상 {수입|수출}총액은 X다"라는 단문 하나로 대체한다(claim
+      id는 그대로 `top1_country`를 재사용 — `major_changes` 절이 비면
+      안 되고(SECTION_SENTENCE_RANGES 최소 1문장), MAP_KOREA_SUMMARY_
+      INSTRUCTIONS가 이미 이 id를 "있는 경우"로 다루고 있어 prompt 수정
+      없이도 안전하다).
+    - `scope_label`이 있으면(생산품유형/HS코드로 범위만 좁힘, 국가는 여러
+      개 그대로) 랭킹 claim은 그대로 만들되 "전체의"를 "이 범위 내"로
+      바꿔, 광종 전체가 아니라 좁혀진 범위 안에서의 비중임을 명시한다."""
 
     direction_label = "수입" if direction == "import" else "수출"
     amount_field = "import_amount" if direction == "import" else "export_amount"
@@ -960,53 +982,71 @@ def calculate_domestic_trade_summary(
     if total <= 0 or len(ranking) < 1:
         raise ValueError("trade map summary requires a positive total amount")
 
+    scope_prefix = f"{country_filter_name} 대상 " if country_filter_name else f"{scope_label} " if scope_label else ""
     claims = [
         EvidenceClaim(
             "current_state",
             "core_diagnosis",
-            f"{_korean_date(latest_date)} 기준 {series.mineral.name} {direction_label}총액은 {_quantity(total)}(단위 미상)이다.",
+            f"{_korean_date(latest_date)} 기준 {series.mineral.name} {scope_prefix}{direction_label}총액은 "
+            f"{_quantity(total)}(단위 미상)이다.",
             required=True,
         )
     ]
     key_metrics = [_price_metric("total_amount", f"{direction_label}총액", total)]
 
-    top_n = ranking[: min(3, len(ranking))]
-    if top_n:
-        top1 = top_n[0]
-        top1_share = _amount(top1) / total
+    if country_filter_name:
         claims.append(
             EvidenceClaim(
                 "top1_country",
                 "major_changes",
-                f"{_subject(top1.country_name)} {_quantity(_amount(top1))}({_number(top1_share * 100)}%)로 "
-                f"1위 {direction_label}국이다.",
+                f"조회가 {country_filter_name} 한 국가로 한정돼 있어, {country_filter_name}의 "
+                f"{direction_label}액 {_quantity(total)}가 그대로 이번 조회의 전체 금액이다.",
                 required=True,
             )
         )
-        key_metrics.append(_price_metric("top1_share_pct", f"1위국 {direction_label}비중", top1_share * 100, unit="%"))
-    if len(top_n) >= 3:
-        cr3 = sum(_amount(item) for item in top_n) / total
-        names = "·".join(item.country_name for item in top_n)
-        claims.append(
-            EvidenceClaim(
-                "top3_concentration",
-                "major_changes",
-                f"상위 3개국({names})이 전체의 {_number(cr3 * 100)}%를 차지한다.",
-                required=True,
+        top_n: list = []
+        top5_n: list = []
+    else:
+        share_scope = "이 범위 내" if scope_label else "전체의"
+        top_n = ranking[: min(3, len(ranking))]
+        if top_n:
+            top1 = top_n[0]
+            top1_share = _amount(top1) / total
+            claims.append(
+                EvidenceClaim(
+                    "top1_country",
+                    "major_changes",
+                    f"{_subject(top1.country_name)} {_quantity(_amount(top1))}({_number(top1_share * 100)}%)로 "
+                    f"1위 {direction_label}국이다.",
+                    required=True,
+                )
             )
-        )
-        key_metrics.append(_price_metric("top3_share_pct", f"상위3국 {direction_label}비중", cr3 * 100, unit="%"))
-    top5_n = ranking[: min(5, len(ranking))]
-    if len(top5_n) >= 5:
-        cr5 = sum(_amount(item) for item in top5_n) / total
-        claims.append(
-            EvidenceClaim(
-                "top5_concentration",
-                "major_changes",
-                f"상위 5개국까지 합산하면 전체의 {_number(cr5 * 100)}%를 차지한다.",
+            key_metrics.append(
+                _price_metric("top1_share_pct", f"1위국 {direction_label}비중", top1_share * 100, unit="%")
             )
-        )
-        key_metrics.append(_price_metric("top5_share_pct", f"상위5국 {direction_label}비중", cr5 * 100, unit="%"))
+        if len(top_n) >= 3:
+            cr3 = sum(_amount(item) for item in top_n) / total
+            names = "·".join(item.country_name for item in top_n)
+            claims.append(
+                EvidenceClaim(
+                    "top3_concentration",
+                    "major_changes",
+                    f"상위 3개국({names})이 {share_scope} {_number(cr3 * 100)}%를 차지한다.",
+                    required=True,
+                )
+            )
+            key_metrics.append(_price_metric("top3_share_pct", f"상위3국 {direction_label}비중", cr3 * 100, unit="%"))
+        top5_n = ranking[: min(5, len(ranking))]
+        if len(top5_n) >= 5:
+            cr5 = sum(_amount(item) for item in top5_n) / total
+            claims.append(
+                EvidenceClaim(
+                    "top5_concentration",
+                    "major_changes",
+                    f"상위 5개국까지 합산하면 {share_scope} {_number(cr5 * 100)}%를 차지한다.",
+                )
+            )
+            key_metrics.append(_price_metric("top5_share_pct", f"상위5국 {direction_label}비중", cr5 * 100, unit="%"))
 
     patterns: list[DetectedPattern] = []
     if top_n and _amount(top_n[0]) / total >= 0.5:

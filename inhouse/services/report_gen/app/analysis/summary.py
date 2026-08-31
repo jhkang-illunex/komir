@@ -489,6 +489,48 @@ def _parse_komis_map_korea_response(raw: dict) -> tuple[list[dict], dict | None,
     return observations, (komis_trade_totals or None), mineral_code
 
 
+def _map_korea_query_filters(
+    komis_response: dict | None, observations: list, mttr_flow_name: str | None
+) -> tuple[str | None, str | None, str | None]:
+    """`request.komis_response`(`getListKoreaData`)의 echo에서 조회필터
+    3종(기간구분·국가·생산품유형/HS)을 뽑는다 — `komis_snapshot_response`
+    류와 달리 새 요청 필드가 필요 없다(2026-08-31, streamlit-agent 실측
+    확인: 이 응답은 `srchCrtrYmd`/`srchNtnCd`/`srchMttrFlowCd`/`srchHsCd`
+    요청 파라미터 전부를 최상위에 그대로 echo한다).
+
+    반환: (period_unit_label, country_filter_name, scope_label).
+    `country_filter_name`과 `scope_label`은 상호배타(국가필터가 있으면
+    scope_label은 만들지 않는다 — `calculate_domestic_trade_summary`
+    docstring 참고, 국가필터가 랭킹 claim 자체를 억제하므로 범위라벨은
+    의미가 없다)."""
+
+    if not komis_response:
+        return None, None, None
+    period_unit_label = "월별" if komis_response.get("srchCrtrYmd") == "M" else "년별"
+
+    ntn_cd = (komis_response.get("srchNtnCd") or "").strip()
+    country_filter_name = None
+    if ntn_cd:
+        hit = next((o for o in observations if o.country_code == ntn_cd), None)
+        country_filter_name = hit.country_name if hit is not None else ntn_cd
+
+    scope_label = None
+    if not country_filter_name:
+        hs_cd = (komis_response.get("srchHsCd") or "").strip()
+        mttr_flow_cd = (komis_response.get("srchMttrFlowCd") or "").strip()
+        if hs_cd:
+            item_name = None
+            for row in komis_response.get("list") or []:
+                if row.get("hsCd") == hs_cd and row.get("itemNm"):
+                    item_name = row["itemNm"]
+                    break
+            scope_label = f"HS {hs_cd}({item_name})" if item_name else f"HS {hs_cd}"
+        elif mttr_flow_cd:
+            scope_label = mttr_flow_name or f"생산품유형코드 {mttr_flow_cd}"
+
+    return period_unit_label, country_filter_name, scope_label
+
+
 def _parse_komis_map_global_response(raw: dict) -> tuple[list[dict], dict | None, str | None]:
     """`getListDataNation` 원본 응답 → observations + komis_trade_totals +
     mineral(코드). map_korea와 달리 행마다 도착국(`incmNtn*`)·원산국
@@ -2240,12 +2282,17 @@ class AnalysisSummaryService:
         # )
         series, raw_komis_trade_totals = self._trade_series_from_request(request, "map_korea")
         komis_trade_totals = _komis_trade_totals_from_request(request, raw=raw_komis_trade_totals)
+        _period_unit, country_filter_name, scope_label = _map_korea_query_filters(
+            request.komis_response, series.observations, request.mttr_flow_name
+        )
         calculated = _calculate_or_no_data(
             request.page_id,
             calculate_domestic_trade_summary,
             series,
             direction=request.trade_direction or "import",
             komis_totals=komis_trade_totals,
+            country_filter_name=country_filter_name,
+            scope_label=scope_label,
         )
         return self._respond_trade_map(request, series, calculated, effective_page_context("map_korea"))
 
@@ -2336,6 +2383,18 @@ class AnalysisSummaryService:
             # PDF 지침 점검(/unlazy)에서 고친 방향 라벨 버그를 화면에서도
             # 바로 확인할 수 있게 한다.
             applied_filters["trade_direction"] = "수출" if request.trade_direction == "export" else "수입"
+            # 2026-08-31 신설 — 조회필터 4종(기간구분·국가·생산품유형/HS)을
+            # 보고서 상단 표에도 노출한다(서사 반영은 calculate_domestic_
+            # trade_summary가 이미 처리 — 여기는 메타데이터 표시용).
+            period_unit, country_filter_name, scope_label = _map_korea_query_filters(
+                request.komis_response, series.observations, request.mttr_flow_name
+            )
+            if period_unit:
+                applied_filters["period_unit"] = period_unit
+            if country_filter_name:
+                applied_filters["country_filter"] = country_filter_name
+            if scope_label:
+                applied_filters["scope_filter"] = scope_label
         defaulted_filters = [
             name
             for name, value in (
