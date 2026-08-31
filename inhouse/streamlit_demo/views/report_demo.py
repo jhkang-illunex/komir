@@ -42,7 +42,6 @@ from streamlit_demo.report_gen_client import (
     EXTRA_FIELD_LABELS,
     EXTRA_FIELD_VALUE_LABELS,
     PAGE_SPECS,
-    PRICE_GROUP_OBSERVATIONS_BY_GROUP,
     SECTION_ORDER,
     ReportGenError,
     client_from_env,
@@ -158,10 +157,6 @@ if spec.extra_fields:
             payload["trade_direction"] = col.selectbox(
                 label, ("import", "export"), format_func=lambda v: EXTRA_FIELD_VALUE_LABELS["trade_direction"][v]
             )
-        elif field == "price_group":
-            payload["price_group"] = col.selectbox(
-                label, ("base_metals", "minor_metals"), format_func=lambda v: EXTRA_FIELD_VALUE_LABELS["price_group"][v]
-            )
         elif field == "price_criterion_serial":
             value = col.text_input(label, value="")
             if value:
@@ -178,9 +173,8 @@ if spec.extra_fields:
 # 레벨로 막혀 있어 취소됨). 대신 사람이 외부에서 KOMIS를 조회해 얻은 원본
 # JSON을 붙여넣으면 이 화면이 report_gen 스키마로 변환한다(report_gen
 # 원칙 "prompt 제외 DB/외부호출 없음"과 일치). 원본 구조를 아는 9개 페이지
-# (KOMIS_RAW_PAGES)만 이 방식이고, 나머지(price_group·indicator_market/
-# supply — 원본 캡처 없음/로그인 필요 페이지)는 기존 observations 수동 입력을
-# 그대로 쓴다.
+# (KOMIS_RAW_PAGES)만 이 방식이고, 나머지(indicator_market/supply — 로그인
+# 필요 페이지라 원본 캡처 없음)는 기존 observations 수동 입력을 그대로 쓴다.
 # 2026-08-30 추가 지시(사용자): 화면은 (1) komis.or.kr 해당 페이지가 실제로
 # 제공하는 선택 UI, (2) KOMIS 원본 JSON 입력란, (3) 분석요약 결과 — 이 세
 # 요소만 남긴다. geo_events 별도 expander·"고급: KOMIS 원본값 직접 입력"
@@ -199,13 +193,7 @@ if page_id in KOMIS_RAW_PAGES:
     )
 else:
     st.caption("observations(JSON 배열) — 계산에 쓰는 원자료. DB를 안 읽으므로 비우면 대부분 NO_DATA로 응답합니다.")
-    # 2026-08-30: price_group(비철금속/희소금속) 선택에 따라 예시 동적 전환.
-    _observations_default = spec.observations_example
-    if page_id == "price_group":
-        _observations_default = PRICE_GROUP_OBSERVATIONS_BY_GROUP.get(
-            payload.get("price_group", "base_metals"), spec.observations_example
-        )
-    observations_text = st.text_area("observations", value=_observations_default, height=140)
+    observations_text = st.text_area("observations", value=spec.observations_example, height=140)
 
 if st.button("분석요약 생성", type="primary"):
     if page_id in KOMIS_RAW_PAGES:

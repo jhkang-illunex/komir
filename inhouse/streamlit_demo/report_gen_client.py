@@ -52,7 +52,7 @@ class PageSpec:
     label: str
     section: str  # 주메뉴(KOMIS 실제 내비게이션 — registry identity.section 그대로)
     path: str  # /api/v1/analysis/<path>
-    has_mineral: bool  # False면 mineral 필드 자체가 없는 페이지(indicator_composite·price_group)
+    has_mineral: bool  # False면 mineral 필드 자체가 없는 페이지(indicator_composite)
     period_fields: tuple[str, str]  # (시작 필드명, 종료 필드명) — 없으면 ("", "")
     period_kind: str  # "month" | "date" | "year" | "period" | ""
     extra_fields: tuple[str, ...]  # 페이지 고유 부속 필드(문자열 입력으로 노출)
@@ -324,19 +324,13 @@ PAGE_SPECS: dict[str, PageSpec] = {
         '{"date": "2025-08-01", "country_code": "BR", "country_name": "브라질", "import_weight": 25902594, "import_amount": 303322485, "origin_country_code": "CL", "origin_country_name": "칠레"}, '
         '{"date": "2025-08-01", "country_code": "US", "country_name": "미국", "import_weight": 27102934, "import_amount": 303312213, "origin_country_code": "CD", "origin_country_name": "콩고민주공화국"}]',
     ),
-    "price_group": PageSpec(
-        # 실측: Phase1 recollected_base_metals_day_raw(LME CASH stdMap WEEK/
-        # MONTH flctnPrcnt) 6대 LME 비철금속 중 동/아연/알루미늄/연/주석 5종.
-        # 희소금속군 예시는 PRICE_GROUP_OBSERVATIONS_BY_GROUP 참고(price_group
-        # 선택에 따라 동적 전환).
-        "그룹 요약(비철금속/희소금속)", "광물자원가격", "price-group", False, ("", ""), "",
-        ("price_group",),
-        '[{"mineral_name": "동", "week_change_pct": 0.87, "month_change_pct": 7.13}, '
-        '{"mineral_name": "아연", "week_change_pct": 6.7, "month_change_pct": 14.21}, '
-        '{"mineral_name": "알루미늄", "week_change_pct": -0.18, "month_change_pct": 1.79}, '
-        '{"mineral_name": "연", "week_change_pct": 1.47, "month_change_pct": 1.51}, '
-        '{"mineral_name": "주석", "week_change_pct": -0.78, "month_change_pct": 3.48}]',
-    ),
+    # 2026-08-31 삭제(report-summary-agent 알림, 커밋 de2bd6336): 사용자가
+    # 메뉴별 템플릿 현황 문서를 보고 "전체 광종은 필요 없어 보임"이라 피드백,
+    # 확인 결과 "코드는 남기고 외부 인터페이스만 제거"로 확정 — report_gen도
+    # POST /api/v1/analysis/price-group를 404로 막았다(완전 삭제 아니라 필요
+    # 시 API만 복원 가능한 상태). 이 데모도 같은 결정을 따라 page_id
+    # "price_group"(구 "그룹 요약(비철금속/희소금속)")을 PAGE_SPECS에서
+    # 제거했다 — 과거엔 있었다는 사실만 기록.
 }
 
 
@@ -350,7 +344,6 @@ EXTRA_FIELD_LABELS: dict[str, str] = {
     "unit": "단위(unit)",
     "forecast_horizon": "예측기간(forecast_horizon)",
     "trade_direction": "수출입방향(trade_direction)",
-    "price_group": "가격 그룹(price_group)",
     "compare_mineral": "비교광종(compare_mineral)",
 }
 
@@ -365,16 +358,6 @@ EXTRA_FIELD_VALUE_LABELS: dict[str, dict[str, str]] = {
     "measure": {"reserves": "매장량(reserves)", "production": "생산량(production)"},
     "forecast_horizon": {"medium": "중기(medium)", "long": "장기(long)"},
     "trade_direction": {"import": "수입(import)", "export": "수출(export)"},
-    "price_group": {"base_metals": "비철금속(base_metals)", "minor_metals": "희소금속(minor_metals)"},
-}
-
-PRICE_GROUP_OBSERVATIONS_BY_GROUP: dict[str, str] = {
-    # 2026-08-30 main-agent 요청과 같은 맥락(map_korea 동적전환)으로 price_group
-    # 선택에도 적용 — base_metals는 PAGE_SPECS 기본값(실측 5종)과 동일, minor_metals는
-    # Phase2 실측(리튬·코발트 stdMap WEEK/MONTH flctnPrcnt) 2종.
-    "base_metals": PAGE_SPECS["price_group"].observations_example,
-    "minor_metals": '[{"mineral_name": "리튬", "week_change_pct": 0.0, "month_change_pct": -1.85}, '
-    '{"mineral_name": "코발트", "week_change_pct": 0.02, "month_change_pct": -0.02}]',
 }
 
 
