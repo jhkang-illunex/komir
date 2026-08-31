@@ -234,6 +234,20 @@ PRICE_SUMMARY_INSTRUCTIONS = """\
   문장이니 새 단위·거래소명(예: "LME"·"톤")을 지어 붙이지 않는다. 근거가
   없으면(inventory_level이 없는 요청) 재고량을 언급하지 않는다 — 다른 절의
   수치로 재고 수준을 추정해서 채우지 않는다.
+- volatility·ma_rsi·percentile_position·drawdown·inventory_context·
+  relative_value 근거는(2026-08-31 신설) 각각 current_position에 별도
+  문장으로 그대로 옮겨 쓴다 — 이질적인 주제라 major_changes의 등락률
+  묶어쓰기와 달리 한 문장에 합치지 않는다. 근거가 없으면(관측치 부족으로
+  계산되지 않음) 그 문장 자체를 만들지 않는다 — "데이터가 부족하다"는
+  문장을 지어내지 않는다.
+- insufficient_history 근거가 있으면(신규 6개 층 중 일부가 관측치 부족으로
+  생략됨) current_position 마지막 문장으로 그 근거를 그대로 옮겨 쓴다 —
+  어떤 층이 왜 빠졌는지 새로 설명을 덧붙이지 않는다. 근거가 없으면 이
+  문장 자체를 만들지 않는다.
+- "추세"·"상관계수"라는 단어는 이 페이지를 포함해 어디에도 쓰지 않는다 —
+  이동평균 관련 근거는 "이동평균"·"배열"로, 재고-가격 연동 근거는 "동행
+  비율"로 이미 표현돼 있으니 그 어휘를 그대로 옮긴다(다른 표현으로
+  바꿔 쓰지 않는다).
 """
 
 MAP_KOREA_SUMMARY_INSTRUCTIONS = """\
@@ -335,18 +349,18 @@ SECTION_SENTENCE_RANGES: dict[str, dict[str, tuple[int, int]]] = {
     # 비교광종은 price_* 4종 공통 기능이라 base_metals/iron_energy/other도
     # 동일하게 해당). major_changes는 근거가 최대 5개(전일·전주·전월·전년·
     # 연속)라 (1,3)(루프 1회차 완화).
-    # ⚠ 미해결 — inventory_level(재고량)까지 동시에 붙으면(period_range +
-    # compare_overall_change + inventory_level) current_position이 3문장이
-    # 될 수 있는데(models.py 하드 제약은 max_length=3이라 허용) 이 (1,2) 상한을
-    # 넘는다. 규칙기반(`_deterministic_narrative`)은 이 검증을 안 타서 안전하고
-    # (Phase1에서 3-claim 케이스 무사 확인됨), LLM 정제 경로(`_validate_llm_summary`)
-    # 만 영향받는다 — 2026-08-26부터 minor_metals에 이미 있던 잠재 이슈이고 이번
-    # 비교광종 4종 확장으로 base_metals 등에도 같은 범위로 노출됐다. 실측(LLM
-    # 온) 재현 전까지는 범위를 임의로 안 바꾼다.
-    "price_base_metals": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 2)},
-    "price_minor_metals": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 2)},
-    "price_iron_energy": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 2)},
-    "price_other": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 2)},
+    # 2026-08-31 사용자 통계확장 피드백으로 current_position이 (1,2)→(1,9)로
+    # 커졌다 — 신규 6개 층(변동성·이동평균+RSI·백분위·낙폭국면·재고해석·
+    # 상대가치)은 각각 이질적인 주제라 major_changes(동질적 등락률 반복)와
+    # 달리 1근거=1문장으로 쓰는 게 자연스럽다(PRICE_SUMMARY_INSTRUCTIONS의
+    # 해당 지시 참고). `models.py::SummaryNarrative.current_position`
+    # max_length=9와 `komir_summary.py::_CURRENT_POSITION_HARD_CAP=9`를 반드시
+    # 같이 맞춘다 — 위 ⚠ 미해결이던 (1,2) vs 하드제약 3의 불일치는 이번에
+    # 상한을 정확히 맞춰 해소했다(9=9).
+    "price_base_metals": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 9)},
+    "price_minor_metals": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 9)},
+    "price_iron_energy": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 9)},
+    "price_other": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 9)},
     "map_korea": {"core_diagnosis": (1, 1), "major_changes": (1, 2), "current_position": (1, 1)},
     # map_global major_changes는 근거 4개(1~3위 루트·CR3·CR5·한국 순위)라 (1,3).
     "map_global": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 1)},

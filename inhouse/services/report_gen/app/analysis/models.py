@@ -851,7 +851,13 @@ class SummaryNarrative(StrictModel):
     # 바꿔야 한다 — 한쪽만 바뀌면 관측치가 조밀한 요청에서 `ValidationError`로
     # 죽는다(실측 재현됨).
     major_changes: list[SummarySentence] = Field(min_length=1, max_length=5)
-    current_position: list[SummarySentence] = Field(min_length=1, max_length=3)
+    # 2026-08-31 사용자 통계확장 피드백(변동성·이동평균+RSI·백분위·낙폭국면·
+    # 재고해석·상대가치 6개 신규 층) 반영으로 3→9 확대 — `komir_summary.py::
+    # _CURRENT_POSITION_HARD_CAP`(정확히 9, 계산 근거 주석 참고)과
+    # `prompts.py::SECTION_SENTENCE_RANGES`의 price_* 4종 "current_position"을
+    # 반드시 같이 바꾼다. 셋 중 하나만 바뀌면 major_changes의 5-cap과 같은
+    # 이유로 관측치가 조밀한 요청에서 `ValidationError`로 죽는다.
+    current_position: list[SummarySentence] = Field(min_length=1, max_length=9)
 
 
 class AnalysisSummaryResponse(StrictModel):
