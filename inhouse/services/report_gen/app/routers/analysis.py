@@ -368,13 +368,24 @@ class DomesticTradeSummaryRequest(_DateRangeMineralRequest):
     국가별 수입/수출·총액까지 전부 직접 뽑아 쓴다. `mineral`(코드)도 이
     응답이 조회 파라미터(`srchMnrkndUnqCd`)를 그대로 돌려주므로 안 보내면
     거기서 자동으로 채운다(2026-08-31 확인) — 사실상 `komis_response`
-    하나만 보내도 된다."""
+    하나만 보내도 된다.
+
+    2026-08-31 신설 — 사용자 지시로 KOMIS 화면의 조회필터 4종(기간구분·
+    국가·생산품유형·HS코드)을 추가. 응답이 이 4개 요청 파라미터
+    (`srchCrtrYmd`/`srchNtnCd`/`srchMttrFlowCd`/`srchHsCd`)를 전부 최상위에
+    echo하는 걸 실측 확인해 새 요청 필드 없이 `komis_response` 안에서 다
+    읽는다 — 유일한 예외인 `mttr_flow_name`은 아래 참고."""
 
     # 2026-08-27 신설 — KOMIS 화면의 수입/수출 방향 라디오 대응(map_korea
     # 전용, map_global엔 이 선택지 자체가 없다). 응답 자체엔 이 선택이
     # 안 드러나(양방향 금액이 한 행에 같이 옴) 자동 채움 불가 — 호출자가
     # "어느 방향을 서술할지" 의도를 명시해야 한다.
     trade_direction: Literal["import", "export"] | None = None
+    # 2026-08-31 신설 — 생산품유형(`srchMttrFlowCd`)은 코드만 echo되고
+    # 한글 라벨이 응답 어디에도 없다(국가명·HS품목명은 행 데이터에 이미
+    # 있음). `mineral_name`과 같은 선택 라벨 passthrough — 없으면 코드로
+    # 폴백.
+    mttr_flow_name: str | None = Field(default=None, min_length=1)
 
 
 class GlobalTradeSummaryRequest(_DateRangeMineralRequest):
