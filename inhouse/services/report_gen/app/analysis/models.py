@@ -165,6 +165,23 @@ class AnalysisSummaryRequest(StrictModel):
     # `country_filter_name`이 있으면 랭킹 claim을 만들지 않고 단문으로
     # 대체한다(상세는 그 함수 docstring 참고).
     mttr_flow_name: str | None = Field(default=None, min_length=1)
+    # 2026-08-31 신설 — `page_id="map_global"` 전용, 사용자 지시로 KOMIS
+    # 글로벌 수급지도 엔드포인트 2개를 추가. `getListDataNation`은 스냅샷
+    # 1건뿐이라 기간변화(period_total_change)가 실전에서 거의 항상 비는데,
+    # `getBarChartDataNation`(다년 국가별 시계열)으로 이걸 보완한다.
+    # `komis_bar_chart_response`가 그 원본 응답 — 실측 대조로 바차트
+    # 국가합계가 `getListDataNation`의 `sumAmt`와 다르다는 걸 확인해(같은
+    # 조회에서 30%대 차이) "세계 교역 총액"으로 합산하지 않고, 1위국
+    # 자신의 연도별 원값만 쓴다(`summary.py::
+    # _parse_komis_map_global_bar_chart_top_country`, 상세 근거는 그
+    # 함수·`komir_summary.py::calculate_global_trade_summary` docstring).
+    komis_bar_chart_response: dict | None = None
+    # `komis_route_share_response` — `getListMapNationData`(원산국↔도착국
+    # 페어별 각자 집계총액 대비 비중) 원본 응답. 실측 교차곱 검증으로
+    # 비중의 의미(각국 자신의 집계총액 대비)는 확정했지만 방향(수출/수입)
+    # 까지는 검증 못 해 서사 claim이 아니라 detailed_metrics 표로만
+    # 반영한다(map_mineral의 market_share 선례와 동일 원칙).
+    komis_route_share_response: dict | None = None
     # 2026-08-31 정리 — 손입력 전용이던 `secondary_measure_observations`/
     # `secondary_unit`(2026-08-27 신설, 매장량/생산량 교차 비교용)을
     # 제거했다. `getListMapMnrlData`가 국가별로 매장량·생산량을 한
@@ -291,6 +308,10 @@ class AnalysisSummaryRequest(StrictModel):
             raise ValueError("trade_direction is only accepted for page_id=map_korea")
         if self.mttr_flow_name is not None and self.page_id != "map_korea":
             raise ValueError("mttr_flow_name is only accepted for page_id=map_korea")
+        if self.komis_bar_chart_response is not None and self.page_id != "map_global":
+            raise ValueError("komis_bar_chart_response is only accepted for page_id=map_global")
+        if self.komis_route_share_response is not None and self.page_id != "map_global":
+            raise ValueError("komis_route_share_response is only accepted for page_id=map_global")
         if self.komis_snapshot_response is not None and self.page_id != "map_mineral":
             raise ValueError("komis_snapshot_response is only accepted for page_id=map_mineral")
         if self.komis_share_response is not None and self.page_id != "map_mineral":
