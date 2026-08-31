@@ -67,6 +67,11 @@ komis_site_map:
         login_required: false
         external: false
         note: "Monosnap ...21-13-18.png 스샷으로 브레드크럼+URL 직접 확인"
+        ajax_endpoint: "/Komis/MnrlIndc/IndxMinDex/ajax/getLineChartIndx"
+        ajax_note: "2026-08-31 사용자 제공+이 세션 라이브 재검증(200, srchDateS/
+          srchDateE=yyyymmdd → data.xaxis+data.min/max+data.series[].{indxTp,name,data}).
+          페이지 URL(/Komis/MnrlIndc/IndxMin)과 AJAX 세션 경로(/Komis/MnrlIndc/IndxMinDex)가
+          다르다 — 페이지 GET으로 세션 쿠키를 먼저 받은 뒤 이 ajax_endpoint로 POST."
       - key: indicator_market
         name: 시장동향지표
         url: /Komis/MnrlIndc/IndcMrkt

@@ -115,6 +115,14 @@ def passthrough_indicator_composite(raw: dict, ctx: dict) -> dict:
     응답을 그대로 받아 내부에서 파싱한다(`_parse_komis_composite_response` —
     `data.tableData`의 날짜×지수유형(MNRL/MAJOR/RARE) 행을 crtrYmd로 묶는다).
 
+    엔드포인트 전체 경로(2026-08-31 사용자 제공+라이브 재검증, 200 확인):
+    `https://www.komis.or.kr/Komis/MnrlIndc/IndxMinDex/ajax/getLineChartIndx`
+    (POST, srchDateS/srchDateE=yyyymmdd) — 페이지 URL(`/Komis/MnrlIndc/IndxMin`,
+    §komis_menu_map.yaml)과 AJAX 세션 경로(`IndxMinDex`)가 다르므로 페이지를
+    먼저 GET해 세션 쿠키를 받은 뒤 이 경로로 POST해야 한다(§모듈 docstring
+    "KOMIS AJAX는 쿠키 동일출처 세션 필요" 원칙과 동일 — komis_fetch.py에 이
+    페이지의 실시간 조회는 아직 없다, 있다면 이 패턴을 그대로 따를 것).
+
     ⚠ `data.xaxis`+`data.series`(예전 클라이언트 손 변환이 쓰던 필드)가 아니라
     `data.tableData`가 새 파서의 입력이다 — KOMIS 원본 응답엔 둘 다 있지만
     report_gen은 tableData만 읽는다."""
