@@ -177,6 +177,13 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # 조용히 NO_DATA) — extra_fields에서도 제거.
         # 2026-08-30 3차 수정(report-summary-agent 제보, 커밋 0d0568a50):
         # start_date/end_date도 삭제됐다(§indicator_composite 주석 참고).
+        # 2026-08-30 4차(report-summary-agent 알림, 급하지 않음·회귀 아님):
+        # price_criterion·compare_price_criterion이 optional로 복원됐고
+        # komis_response가 있으면 mineral_name과 마찬가지로 자동채움된다
+        # (report_gen_price_criterion_복원_4차재감사_260830.md 등 참고) — 이
+        # 화면은 komis_response 통짜 붙여넣기 방식이라 자동채움만으로 충분,
+        # 덮어쓰기용 별도 입력란은 사용자의 "3요소만" 지시(§파일 상단)와
+        # 상충해 추가하지 않았다.
         "비철금속", "광물자원가격", "prices/base-metals", True, ("", ""), "",
         (),
         '[{"date": "2026-08-10", "commerce_price": 14152.0, "lowest_price": null, "highest_price": null, "inventory": 218300.0}, '
@@ -210,6 +217,9 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # (extra="forbid") — compare_mineral만 남긴다(스키마에 그대로 있음).
         # 2026-08-30 3차 수정(report-summary-agent 제보, 커밋 0d0568a50):
         # start_date/end_date도 삭제됐다(§indicator_composite 주석 참고).
+        # 2026-08-30 4차(§price_base_metals 주석 참고, 급하지 않음·회귀 아님):
+        # price_criterion·compare_price_criterion이 optional로 복원돼
+        # komis_response로 자동채움된다 — 덮어쓰기 입력란은 추가하지 않음.
         "희소금속", "광물자원가격", "prices/minor-metals", True, ("", ""), "",
         ("compare_mineral",),
         '[{"date": "2026-08-10", "commerce_price": 55850.0}, {"date": "2026-08-11", "commerce_price": 55845.0}, '
@@ -227,6 +237,8 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # price_criterion이 요청 모델에서 삭제됐다(extra="forbid") — 제거.
         # 2026-08-30 3차 수정(report-summary-agent 제보, 커밋 0d0568a50):
         # start_date/end_date도 삭제됐다(§indicator_composite 주석 참고).
+        # 2026-08-30 4차(§price_base_metals 주석 참고, 급하지 않음·회귀 아님):
+        # price_criterion이 optional로 복원돼 komis_response로 자동채움된다.
         "철광석 및 에너지", "광물자원가격", "prices/iron-energy", True, ("", ""), "",
         (),
         '[{"date": "2026-08-10", "commerce_price": 97.5, "lowest_price": 97.0, "highest_price": 98.0}, '
@@ -251,6 +263,8 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # price_criterion이 요청 모델에서 삭제됐다(extra="forbid") — 제거.
         # 2026-08-30 3차 수정(report-summary-agent 제보, 커밋 0d0568a50):
         # start_date/end_date도 삭제됐다(§indicator_composite 주석 참고).
+        # 2026-08-30 4차(§price_base_metals 주석 참고, 급하지 않음·회귀 아님):
+        # price_criterion이 optional로 복원돼 komis_response로 자동채움된다.
         "기타", "광물자원가격", "prices/other", True, ("", ""), "",
         (),
         '[{"date": "2026-08-10", "commerce_price": 4324.45}, {"date": "2026-08-11", "commerce_price": 4383.35}, '
