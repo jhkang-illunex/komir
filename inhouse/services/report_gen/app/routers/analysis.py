@@ -395,7 +395,19 @@ class GlobalTradeSummaryRequest(_DateRangeMineralRequest):
     도착국·원산국 루트별 교역량·총액까지 전부 직접 뽑아 쓴다. `mineral`
     (코드)도 이 응답이 조회 파라미터(`srchMnrkndUnqCd`)를 그대로 돌려
     주므로 안 보내면 거기서 자동으로 채운다(2026-08-31 확인) — 사실상
-    `komis_response` 하나만 보내도 된다."""
+    `komis_response` 하나만 보내도 된다.
+
+    2026-08-31 신설 — 사용자 지시로 KOMIS 글로벌 수급지도 엔드포인트
+    2개를 추가. `komis_bar_chart_response`(`getBarChartDataNation`,
+    국가별 다년 시계열)는 `getListDataNation`이 스냅샷 1건뿐이라 실전에서
+    거의 항상 비어 있던 기간변화(period_total_change)를 보완한다 —
+    "세계 총액"이 아니라 1위국 자체 수치로만 쓴다(실측으로 두 엔드포인트의
+    총액 집계범위가 다름을 확인, `models.py` 필드 docstring 참고).
+    `komis_route_share_response`(`getListMapNationData`, 루트별 각국
+    집계총액 대비 비중)는 detailed_metrics로만 반영한다."""
+
+    komis_bar_chart_response: dict | None = None
+    komis_route_share_response: dict | None = None
 
 
 # 2026-08-31 사용자 결정 — price_group(전체광종 그룹요약, PDF §1-2 "전체광종

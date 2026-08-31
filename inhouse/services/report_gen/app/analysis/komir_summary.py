@@ -1103,7 +1103,11 @@ def _is_korea(code: str | None, name: str | None) -> bool:
 
 
 def calculate_global_trade_summary(
-    series: TradeMapSeries, *, komis_totals: TradeKomisTotals | None = None
+    series: TradeMapSeries,
+    *,
+    komis_totals: TradeKomisTotals | None = None,
+    top_country_yearly_trend: tuple[str, dict[str, float]] | None = None,
+    route_shares: list[dict] | None = None,
 ) -> AdditionalCalculatedSummary:
     """글로벌(UN Comtrade) 수급지도 계열 계산 — 원산지→도착지 양자무역 "루트"
     랭킹 + 대한민국 자체 순위 하이라이트.
@@ -1125,7 +1129,31 @@ def calculate_global_trade_summary(
     `report_gen_KOMIS라이브재검증_Phase3_260829.md` §1 참고). 같은 응답의
     `sumAmt`가 KOMIS 진짜 총액이다 — 있으면 관측치 합산 대신 이 값을 쓴다.
     `import_amount` 필드를 재사용한다(map_global은 KOMIS가 사실상 수입
-    방향만 제공 — 기존 코드도 `item.import_amount`만 읽는다)."""
+    방향만 제공 — 기존 코드도 `item.import_amount`만 읽는다).
+
+    `top_country_yearly_trend`(2026-08-31 신설, `getBarChartDataNation`
+    기반) — 원래 `getListDataNation`은 단일 스냅샷이라(`dates`가 사실상
+    항상 1개) `period_total_change`가 실전에서 거의 발동하지 않았다.
+    바차트가 다년 시계열을 주지만 실측 대조 결과 **바차트 국가합계와
+    list_data의 `sumAmt`가 같은 조회에서 서로 다르다**(예: 2017년 갈륨
+    수입, list sumAmt 886M 대 bar 합계 1,391M — 30% 이상 차이, 두
+    엔드포인트의 "총액" 집계 범위가 다른 것으로 보인다). 그래서 "세계
+    교역 총액 변동"이라 부르는 대신, **바차트 1위국 자신의 연도별
+    수치만** 쓴다(합산이 아니라 KOMIS가 이미 준 국가별 원값이라 집계
+    범위 논쟁이 없다) — `(국가명, {연도: 값})` 튜플. 바차트의 마지막
+    연도는 항상 진행중(실측: 최신 연도 값이 직전 연도의 1/9~1/15로 급감
+    — 연중 미완결 패턴)으로 보고 호출부(`summary.py::
+    _parse_komis_map_global_bar_chart_top_country`)가 이미 제외했다.
+
+    `route_shares`(2026-08-31 신설, `getListMapNationData` 기반) —
+    실측 대조로 `crtrNtnAmtRt`/`trgtNtnAmtRt`가 "이 루트가 각국 자신의
+    집계총액에서 차지하는 비중"임을 확정했다(교차곱 검증: crtrTotalAmt×
+    crtrNtnAmtRt ≈ trgtTotalAmt×trgtNtnAmtRt, 동일 루트금액으로 수렴).
+    다만 그 집계총액이 수출인지 수입인지까지는 검증하지 못해 라벨은
+    방향중립("{국가}측 집계총액 대비")으로 둔다. 서사 claim이 아니라
+    detailed_metrics로만 추가한다(map_mineral의 `market_share` 선례와
+    동일 — 숫자 자체의 의미는 확정됐지만 서사 문장으로 엮기엔 아직
+    이르다고 판단, 한국 루트 하이라이트 연동은 별도 사이클)."""
 
     dates = sorted({item.date for item in series.observations})
     latest_date = dates[-1]
@@ -1259,6 +1287,45 @@ def calculate_global_trade_summary(
             key_metrics.append(
                 _price_metric("period_total_change_pct", "직전 대비 세계 교역 총액 변동", change * 100, unit="%")
             )
+        else:
+            claims.append(
+                EvidenceClaim(
+                    "single_snapshot",
+                    "current_position",
+                    "조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았다.",
+                )
+            )
+    elif top_country_yearly_trend and len(top_country_yearly_trend[1]) >= 2:
+        # 2026-08-31 신설 — list_data가 스냅샷 1건뿐이라 위 분기가 거의 항상
+        # 빈다(docstring 참고). 바차트 1위국 자체 시계열로 대체한다("세계
+        # 교역 총액"이 아니라 그 국가 자신의 값이라는 걸 문장에 명시).
+        country_name, yearly = top_country_yearly_trend
+        years_sorted = sorted(yearly, key=lambda y: int(y))
+        latest_year, previous_year = years_sorted[-1], years_sorted[-2]
+        latest_val, previous_val = yearly[latest_year], yearly[previous_year]
+        change = _pct(latest_val, previous_val)
+        if change is not None:
+            claims.append(
+                EvidenceClaim(
+                    "country_yearly_trend",
+                    "current_position",
+                    f"KOMIS 차트 기준 {country_name}의 {latest_year}년 교역액은 {previous_year}년 대비 "
+                    f"{_signed_pct(change)} 변동했다.",
+                )
+            )
+            key_metrics.append(
+                _price_metric(
+                    "country_yearly_trend_pct", f"{country_name} 연도별 교역액 변동", change * 100, unit="%"
+                )
+            )
+        else:
+            claims.append(
+                EvidenceClaim(
+                    "single_snapshot",
+                    "current_position",
+                    "조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았다.",
+                )
+            )
     else:
         claims.append(
             EvidenceClaim(
@@ -1268,10 +1335,39 @@ def calculate_global_trade_summary(
             )
         )
 
+    detailed_metrics = list(key_metrics)
+    if route_shares:
+        # 2026-08-31 신설 — `getListMapNationData`의 국가별 집계총액 대비
+        # 비중(실측 교차곱 검증으로 의미 확정, docstring 참고). 서사가
+        # 아니라 표로만 노출한다(map_mineral의 market_share 선례와 동일
+        # 원칙 — 방향(수출/수입)까지는 검증하지 못해 라벨을 중립으로 둠).
+        for item in route_shares[:5]:
+            origin, dest = item.get("origin_name"), item.get("dest_name")
+            if not origin or not dest:
+                continue
+            if item.get("origin_share_percent") is not None:
+                detailed_metrics.append(
+                    _price_metric(
+                        f"route_share_origin_{origin}_{dest}",
+                        f"{origin}→{dest} 경로 비중({origin}측 집계총액 대비)",
+                        item["origin_share_percent"],
+                        unit="%",
+                    )
+                )
+            if item.get("dest_share_percent") is not None:
+                detailed_metrics.append(
+                    _price_metric(
+                        f"route_share_dest_{origin}_{dest}",
+                        f"{origin}→{dest} 경로 비중({dest}측 집계총액 대비)",
+                        item["dest_share_percent"],
+                        unit="%",
+                    )
+                )
+
     return AdditionalCalculatedSummary(
         claims=claims,
         key_metrics=key_metrics[:8],
-        detailed_metrics=key_metrics,
+        detailed_metrics=detailed_metrics,
         patterns=patterns,
         omitted=[],
         warnings=[],

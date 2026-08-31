@@ -568,6 +568,79 @@ def _parse_komis_map_global_response(raw: dict) -> tuple[list[dict], dict | None
     return observations, komis_trade_totals, mineral_code
 
 
+def _parse_komis_map_global_bar_chart_top_country(raw: dict) -> tuple[str, dict[str, float]] | None:
+    """`getBarChartDataNation` 원본 응답 → `(1위국명, {연도: 값})`.
+
+    2026-08-31 신설 — `getListDataNation`이 스냅샷 1건뿐이라 실전에서
+    기간변화(`period_total_change`)가 거의 항상 비어 있던 문제(map_global
+    `dates`가 사실상 항상 1개)를 완화한다. 실측 대조 결과 바차트 국가별
+    합계가 `getListDataNation`의 `sumAmt`와 다르다(예: 2017년 갈륨 수입,
+    list sumAmt 886M 대 bar 국가합계 1,391M — 30%대 차이) — 두 엔드포인트의
+    "총액" 집계 범위가 다른 것으로 보여 합산값을 "세계 교역 총액"이라
+    부르지 않는다. 대신 **1위국 자신의 연도별 원값**만 쓴다(집계가 아니라
+    KOMIS가 이미 국가 단위로 준 값 그대로라 범위 논쟁이 없다).
+
+    ⚠바차트의 마지막 연도(`xaxis[-1]`)는 항상 연중 진행분으로 취급해
+    제외한다 — 실측 확인(최신 연도 값이 직전 연도의 1/9~1/15로 급감,
+    가격페이지 "{year}년(연중)" 문제와 같은 패턴). `srchDateChartS`/
+    `srchDateChartE`가 조회 대상 연도와 무관하게 항상 "최근 ~13개년~현재"
+    고정 폭이라(실측 확인 — list_data가 2017년을 조회해도 바차트는
+    2014~2026을 그대로 준다), 이 규칙은 조회 연도와 무관하게 항상
+    적용해도 안전하다."""
+
+    bar = ((raw.get("data") or {}).get("barChart")) or {}
+    xaxis = bar.get("xaxis") or []
+    series = bar.get("series") or []
+    if len(xaxis) < 3 or not series:
+        return None
+    complete_years = xaxis[:-1]
+    latest_idx = len(complete_years) - 1
+
+    def _value_at(entry: dict, idx: int) -> float:
+        values = entry.get("data") or []
+        return float(values[idx]) if idx < len(values) and values[idx] is not None else 0.0
+
+    ranked = sorted(series, key=lambda entry: _value_at(entry, latest_idx), reverse=True)
+    top = ranked[0]
+    yearly = {
+        str(complete_years[i]): _value_at(top, i)
+        for i in range(len(complete_years))
+        if (top.get("data") or [None] * len(complete_years))[i] is not None
+    }
+    if len(yearly) < 2:
+        return None
+    return (top.get("name") or top.get("seriesCd") or "1위국"), yearly
+
+
+def _parse_komis_map_global_route_shares(raw: dict) -> list[dict]:
+    """`getListMapNationData` 원본 응답 → 루트별
+    `[{origin_name, dest_name, origin_share_percent, dest_share_percent}]`.
+
+    2026-08-31 신설. `crtrNtnAmtRt`/`trgtNtnAmtRt`의 의미를 실측 교차곱
+    검증으로 확정했다 — 같은 루트에서 `crtrTotalAmt × crtrNtnAmtRt`와
+    `trgtTotalAmt × trgtNtnAmtRt`가 (반올림 오차 내로) 같은 값에 수렴한다,
+    즉 **"이 루트가 각국 자신의 집계총액에서 차지하는 비중"**이다. 다만
+    그 집계총액이 수출·수입 중 어느 방향인지까지는 검증하지 못해 호출부가
+    라벨을 방향중립("{국가}측 집계총액 대비")으로 둔다."""
+
+    rows = (raw.get("data") or {}).get("mapData") or []
+    result: list[dict] = []
+    for row in rows:
+        origin_name = row.get("crtrNtnKornNm")
+        dest_name = row.get("trgtNtnKornNm")
+        if not origin_name or not dest_name:
+            continue
+        result.append(
+            {
+                "origin_name": origin_name,
+                "dest_name": dest_name,
+                "origin_share_percent": _komis_num(row.get("crtrNtnAmtRt")),
+                "dest_share_percent": _komis_num(row.get("trgtNtnAmtRt")),
+            }
+        )
+    return result
+
+
 def _parse_komis_mineral_map_response(raw: dict, measure: str) -> tuple[list[dict], str | None]:
     """`getListMapMnrlChartData` 원본 응답 → observations + unit.
     `measure`("reserves"/"production")는 응답 본문에 없는 조회 파라미터라
@@ -2310,8 +2383,21 @@ class AnalysisSummaryService:
         # )
         series, raw_komis_trade_totals = self._trade_series_from_request(request, "map_global")
         komis_trade_totals = _komis_trade_totals_from_request(request, raw=raw_komis_trade_totals)
+        top_country_yearly_trend = None
+        if request.komis_bar_chart_response is not None:
+            top_country_yearly_trend = _parse_komis_map_global_bar_chart_top_country(
+                request.komis_bar_chart_response
+            )
+        route_shares = None
+        if request.komis_route_share_response is not None:
+            route_shares = _parse_komis_map_global_route_shares(request.komis_route_share_response) or None
         calculated = _calculate_or_no_data(
-            request.page_id, calculate_global_trade_summary, series, komis_totals=komis_trade_totals
+            request.page_id,
+            calculate_global_trade_summary,
+            series,
+            komis_totals=komis_trade_totals,
+            top_country_yearly_trend=top_country_yearly_trend,
+            route_shares=route_shares,
         )
         return self._respond_trade_map(request, series, calculated, effective_page_context("map_global"))
 
