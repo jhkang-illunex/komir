@@ -130,6 +130,7 @@ def register_common_tools(mcp: FastMCP) -> None:
     def komis_raw_lookup(
         page_id: AnalysisPreviewPageId,
         mineral_code: str | None = None,
+        mineral_label: str | None = None,
         hs_code: str | None = None,
         index_type_code: str | None = None,
         price_criterion_serial: int | None = None,
@@ -158,6 +159,17 @@ def register_common_tools(mcp: FastMCP) -> None:
         `ai_hs_mnrl_map`으로 먼저 번역해서 조회한다 — 한 광종이 여러 값에
         매핑되면 그중 첫 번째(오름차순)만 미리보기로 쓰고 `warnings`에 명시한다
         (전부 합쳐 보려면 `price_criterion_serial`/`hs_code`를 직접 지정할 것).
+
+        `mineral_label`(2026-09-01 추가, 실사용 버그 발견·수정): 근거(Evidence)
+        의 `section`에 광종을 사람이 읽을 수 있게 표시할 한글명 — 안 주면
+        `mineral_code`(예: "MNRL0018")가 그대로 라벨에 박힌다. 실측으로
+        재현된 실패: "텅스텐 가격 조회"가 komis_raw로 정상 라우팅·조회까지
+        됐는데, 근거 section이 "KOMIS 원천 · KO_MNRL_PRC(MNRL0018)"였던 탓에
+        검증(verify) LLM이 "이 근거가 텅스텐인지 알 수 없다"고 오판해 근거를
+        버리고 무관한 문서로 대체했다 — 표(text) 안에는 광종명 컬럼이 아예
+        없어(가격·날짜·수치뿐) MNRL 코드가 곧 "텅스텐"이라는 걸 LLM이 몰랐던
+        것. 호출자(chatbot_graph.py)는 komis_resolve_mineral에 넘겼던 원래
+        한글 광종명을 그대로 여기 넘긴다.
         {"evidence": [...], "warnings": [...]}."""
 
         try:
@@ -227,5 +239,5 @@ def register_common_tools(mcp: FastMCP) -> None:
         # is_dummy를 Evidence.caveat에도 심는다(위 warnings는 도구 호출 로그·
         # 기권사유 분류용, caveat는 이 근거가 실제로 인용됐을 때 사용자 화면에
         # 강제로 뜨는 경고용 — 둘은 소비처가 달라 둘 다 채운다).
-        evidence = from_komis_raw(page_id, datasets, mineral_code=mineral_code, is_dummy=is_dummy)
+        evidence = from_komis_raw(page_id, datasets, mineral_code=mineral_label or mineral_code, is_dummy=is_dummy)
         return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}
