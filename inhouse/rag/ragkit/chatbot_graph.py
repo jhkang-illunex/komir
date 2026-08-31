@@ -96,7 +96,7 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
    resolved_query는 "가격"을 그대로 유지한다("수입금액"·"수입물량" 등 available한
    지표 이름으로 슬쩍 바꿔쓰면 안 됨 — 뒤 단계가 질문이 실제로 바뀐 것으로
    착각해 오답을 정답처럼 통과시킨다).
-2. 아래 세 근거 도구 중 무엇을 쓸지 정한다(resolved_query 기준으로 판단):
+2. 아래 네 근거 도구 중 무엇을 쓸지 정한다(resolved_query 기준으로 판단):
    - structured: komir 자체 산출물(수급위기 진단 등급, 12개월 수입물량/금액
      예측, 지정학 위기지수 추이)을 특정 광종 기준으로 조회한다. "{광종}
      진단등급이/예측이/위기지수가 어떻게 되나" 류의 수치 질문일 때만 켠다.
@@ -107,14 +107,34 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
      | geo_index_trend(위기지수 추이). import_forecast를 고르고 질문이 특정
      개월수를 요구하면(예: "3개월치", "6개월 예측") forecast_months에 그
      숫자를 넣는다 — 지정이 없으면 forecast_months=null(=12개월 전체).
-     **이 세 가지에 없는 지표는 structured가 정확히 답하지 못한다** — 특히
-     "가격"·"시세"(단가)는 세계 생산량·매장량과 마찬가지로 structured에 없다
-     (있는 건 한국의 수입 물량/금액이지 가격이 아니다). 완전히 무관하진
-     않으니(예: "가격"↔"수입금액") 참고삼아 structured도 같이 켜되, 이런
-     경우엔 반드시 dense·pageindex도 함께 켠다(use_dense=use_pageindex=true)
-     — 정확히 그 지표인지 판단은 이 단계가 아니라 뒤(검증) 단계가 맡는다.
+     **이 세 가지에 없는 지표(가격·교역·매장량·생산량·시장전망·수급안정 등)는
+     structured가 아니라 아래 komis_raw가 담당한다** — 그런 질문에 structured를
+     같이 켤 필요는 없다(commodity_code가 있으면 komis_raw만으로 충분).
+   - komis_raw(2026-08-31 신설): KOMIS가 자체 웹사이트에서 공개하는 원천
+     데이터(광종별 실거래가·최저/최고가, 국내(관세청)·세계(UN Comtrade)
+     교역량, 국가별 매장량·생산량, 시장전망지표, 수급안정지수, 가격예측)를
+     조회한다. "{광종} 가격/시세 알려줘", "{광종} 수입/수출 현황", "{광종}
+     매장량/생산량", "{광종} 가격 전망" 류의 **구체적 수치를 원하는 질문**일 때
+     켠다(화면·메뉴 위치 자체를 묻는 질문이 아니라 수치 자체를 원할 때 —
+     화면 위치 질문은 이 그래프가 아니라 별도의 page 안내 경로로 이미
+     분류되어 여기로 오지 않는다). 켤 땐 komis_topic을 정확히 하나 고른다:
+     - price: 실거래가·최저가·최고가·시세(단가) — "가격"·"시세" 질문은
+       거의 항상 이거다.
+     - domestic_trade: 한국 관세청 기준 수입/수출 물량·금액(국가별).
+     - global_trade: UN Comtrade 기준 세계 교역(국가 간 수출입).
+     - reserves_production: 국가별 매장량·생산량(세계 공급 구조).
+     - market_outlook: 시장전망지표.
+     - supply_stability: 수급안정지수.
+     - price_forecast: KOMIS 자체 가격예측(위 structured의 import_forecast와
+       다르다 — 이건 komir가 만든 예측이 아니라 KOMIS가 게시하는 예측이다).
+     "종합지수"·"위기지수"·"수급동향지표"·"시장동향지표"처럼 여러 지표를
+     합성한 지수는 komis_topic 어디에도 없다 — 그런 질문은 komis_raw를 켜지
+     않는다(이 그래프로 오기 전 단계에서 이미 걸러졌어야 정상이지만, 혹시
+     오더라도 이 도구로는 못 답한다는 뜻).
    - dense: 보고서·기사·백서 등 비정형 문서를 의미 기반으로 검색한다. 애매하면
-     켜는 게 안전하다(기본값에 가깝게 취급).
+     켜는 게 안전하다(기본값에 가깝게 취급). komis_raw를 켤 때도, 그 데이터가
+     실제로는 없거나(발주 5광종 상당수가 아직 개발용 더미다) 부족할 수 있어
+     안전망으로 함께 켜두는 걸 권장한다.
    - pageindex: USGS·조달청·Argus 같은 대형 구조화 보고서를 목차/섹션 단위로
      찾는다. dense만으로는 놓치기 쉬운 대량 통계표·국가별 수치 질문일 때 같이
      켠다. pageindex를 켤 땐 pageindex_mode도 정한다:
@@ -125,8 +145,9 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
        광종은?"). 여러 광종 섹션을 훑어 국가별 표를 대조해야 답이 나오는
        질문이라 simple보다 느리다 — 필요할 때만 켤 것.
 
-structured를 켤 땐 commodity_code(CU|NI|CO|LI|REE)를 반드시 함께 지정한다 —
-광종을 모르면 structured는 켜지 않는다(use_structured=false)."""
+structured 또는 komis_raw를 켤 땐 commodity_code(CU|NI|CO|LI|REE)를 반드시
+함께 지정한다 — 광종을 모르면 둘 다 켜지 않는다(use_structured=
+use_komis_raw=false)."""
 
 
 REFORMULATE_PROMPT = """직전 검색이 근거를 하나도 찾지 못했다. 같은 의도를
@@ -173,10 +194,15 @@ class ReformulatedQuery(BaseModel):
 class RetrievalRoute(BaseModel):
     resolved_query: str = ""
     use_structured: bool
+    use_komis_raw: bool = False  # 2026-08-31 신설(komis_raw_lookup MCP tool)
     use_dense: bool
     use_pageindex: bool
     pageindex_mode: Literal["simple", "agentic"] = "simple"
     structured_template: Literal["latest_diagnosis", "import_forecast", "geo_index_trend"] | None = None
+    komis_topic: Literal[
+        "price", "domestic_trade", "global_trade", "reserves_production",
+        "market_outlook", "supply_stability", "price_forecast",
+    ] | None = None
     commodity_code: Literal["CU", "NI", "CO", "LI", "REE"] | None = None
     target: Literal["volume", "value"] | None = None
     forecast_months: int | None = None  # import_forecast 전용 — "N개월치만" 요청 시 1~N만 반환
@@ -192,6 +218,34 @@ _STRUCTURED_CALL_NAMES = {
     "import_forecast": "call_import_forecast",
     "geo_index_trend": "call_geo_index_trend",
 }
+
+#: commodity_code(CU|NI|CO|LI|REE) -> KOMIS 광종코드(ai_mnrl_mst.mnrknd_unq_cd).
+#: 2026-08-31 KOMIS_public_ko테이블_스키마매핑_260831.md 실측으로 확정한 고정
+#: 매핑 — DB를 매번 왕복 조회하지 않고 여기 하드코딩한다(발주 5광종은 코드가
+#: 안 바뀐다, CHATBOT_SYSTEM_PROMPT 규칙11의 5광종 화이트리스트와 같은 전제).
+_COMMODITY_TO_MNRL = {"CU": "MNRL0008", "NI": "MNRL0002", "CO": "MNRL0003", "LI": "MNRL0001", "REE": "MNRL1001"}
+
+#: komis_topic -> komis_raw_lookup page_id. "price"만 광종군(HP001/HP002)에
+#: 따라 페이지가 갈려(ai_mnrl_mst.prc_cat_cd 실측 확인 — CU·NI=HP001(비철금속),
+#: CO·LI·REE=HP002(희소금속)) 별도 상수로 뺐다.
+_KOMIS_TOPIC_TO_PAGE = {
+    "domestic_trade": "map_korea",
+    "global_trade": "map_global",
+    "reserves_production": "map_mineral",
+    "market_outlook": "indicator_market",
+    "supply_stability": "indicator_supply",
+    "price_forecast": "forecast_price",
+}
+_COMMODITY_TO_PRICE_PAGE = {
+    "CU": "price_base_metals", "NI": "price_base_metals",
+    "CO": "price_minor_metals", "LI": "price_minor_metals", "REE": "price_minor_metals",
+}
+
+
+def _komis_raw_page_id(topic: str, commodity_code: str) -> str | None:
+    if topic == "price":
+        return _COMMODITY_TO_PRICE_PAGE.get(commodity_code)
+    return _KOMIS_TOPIC_TO_PAGE.get(topic)
 
 
 MAX_ATTEMPTS = 2  # 최초 1회 + 재시도 1회 — "빠른시간내에" 요구사항상 무한 재시도는 안 함
@@ -272,9 +326,10 @@ def _route_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
             route.resolved_query = state["question"]
         warnings: list[str] = []
         _logger.info(
-            "%s route: resolved_query=%r structured=%s(%s/%s) dense=%s pageindex=%s(%s)",
+            "%s route: resolved_query=%r structured=%s(%s/%s) komis_raw=%s(%s/%s) dense=%s pageindex=%s(%s)",
             _log_prefix(state), route.resolved_query, route.use_structured, route.structured_template,
-            route.commodity_code, route.use_dense, route.use_pageindex, route.pageindex_mode,
+            route.commodity_code, route.use_komis_raw, route.komis_topic, route.commodity_code,
+            route.use_dense, route.use_pageindex, route.pageindex_mode,
         )
     except LLM_TRANSIENT_ERRORS as exc:
         route = RetrievalRoute(
@@ -294,7 +349,13 @@ def _retrieve_node(state: RetrievalState, *, dense_k: int, pageindex_k: int) -> 
     결정적 단발조회(pageindex.lookup), "agentic"이면 pageindex_agent.
     agentic_lookup()(다수 스텝 LLM 왕복으로 광종 여러 개를 훑어 국가별 순위·
     집계 근거를 모음, 모듈독스트링 참고) — 후자는 이미 (evidence, warnings)
-    튜플을 직접 반환하므로 병합 방식이 simple과 다르다(아래 분기).
+    튜플을 직접 반환하므로 병합 방식이 simple과 다르다(아래 분기). komis_raw도
+    같은 (evidence, warnings) 튜플 계약이다(2026-08-31 신설 — mcp_client.
+    call_komis_raw_lookup, KOMIS 공개원천 public.KO_* 조회. page_id는 LLM이
+    직접 고르지 않는다 — komis_topic(사람이 이해하는 주제)만 고르게 하고,
+    실제 page_id·광종코드(MNRL0xxx) 번역은 이 노드가 결정적으로 한다
+    (_komis_raw_page_id/_COMMODITY_TO_MNRL) — structured.py의 "자유형 NL→SQL
+    금지, 화이트리스트 템플릿만" 원칙과 같다).
 
     2026-08-26: 세 도구 모두 mcp_client 세션(state["profile"]로 고른 public/
     private — 각각 mcp_server_public.py/mcp_server_private.py 물리적으로 분리된
@@ -307,10 +368,22 @@ def _retrieve_node(state: RetrievalState, *, dense_k: int, pageindex_k: int) -> 
     session = mcp_client.private if state.get("profile") == "private" else mcp_client.public
     jobs: dict[str, Future] = {}
 
-    with ThreadPoolExecutor(max_workers=3) as pool:
+    with ThreadPoolExecutor(max_workers=4) as pool:
         if route.use_structured and route.structured_template and route.commodity_code:
             call = getattr(session, _STRUCTURED_CALL_NAMES[route.structured_template])
             jobs["structured"] = pool.submit(call, route.commodity_code, route.target, route.forecast_months)
+        if route.use_komis_raw and route.komis_topic and route.commodity_code:
+            page_id = _komis_raw_page_id(route.komis_topic, route.commodity_code)
+            mineral_code = _COMMODITY_TO_MNRL.get(route.commodity_code)
+            if page_id and mineral_code:
+                jobs["komis_raw"] = pool.submit(
+                    session.call_komis_raw_lookup, page_id, mineral_code=mineral_code,
+                )
+            else:
+                # 이론상 도달 안 함(komis_topic·commodity_code 둘 다 Literal로
+                # 제한돼 있고 매핑 테이블이 그 전 조합을 다 커버) — 그래도 조용히
+                # 아무 근거 없이 넘어가는 대신 경고를 남긴다(방어적).
+                warnings.append(f"komis_raw_unmapped_topic:{route.komis_topic}")
         query = route.resolved_query or state["question"]
         if route.use_dense:
             jobs["dense"] = pool.submit(session.call_hybrid_search, query, dense_k)
@@ -335,6 +408,10 @@ def _retrieve_node(state: RetrievalState, *, dense_k: int, pageindex_k: int) -> 
     evidence: list[Evidence] = []
     if "structured" in results and results["structured"] is not None:
         evidence.append(results["structured"])
+    if "komis_raw" in results:
+        kr_evidence, kr_warnings = results["komis_raw"]
+        evidence.extend(kr_evidence)
+        warnings.extend(kr_warnings)
     evidence.extend(results.get("dense", []))
     if "pageindex" in results:
         if route.pageindex_mode == "agentic":
@@ -559,8 +636,8 @@ def retrieve_evidence(
             route = delta["route"]
             tools = [
                 name for name, flag in (
-                    ("structured", route.use_structured), ("dense", route.use_dense),
-                    ("pageindex", route.use_pageindex),
+                    ("structured", route.use_structured), ("komis_raw", route.use_komis_raw),
+                    ("dense", route.use_dense), ("pageindex", route.use_pageindex),
                 ) if flag
             ]
             on_status("retrieving", tools=tools)

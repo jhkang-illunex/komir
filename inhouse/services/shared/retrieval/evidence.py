@@ -31,6 +31,13 @@ class Evidence:
     text: str  # 근거 발췌문(구조화 결과는 마크다운 표로 렌더링됨)
     as_of: str | None = None  # 기준시점(있으면)
     unit: str | None = None  # 단위(있으면)
+    # 2026-08-31(komis_raw_lookup 신설) — 이 근거가 실제로 인용됐을 때 생성
+    # 텍스트와 무관하게 코드가 강제로 덧붙여야 하는 경고(예: "개발용 더미
+    # 데이터"). LLM이 [근거] 텍스트를 읽고 스스로 이 사실을 문장으로 옮겨
+    # 적는다는 보장이 없고(_strip_uncited_sentences가 인용 없는 문장은
+    # 지워버림), 안전에 직결되는 경고라 chatbot.py가 인용 스트리퍼 통과
+    # 이후 코드로 무조건 붙인다(_caution_notice·_source_footer와 같은 원칙).
+    caveat: str | None = None
 
 
 def _forecast_month_label(base_date: Any, horizon: Any) -> str:
@@ -155,7 +162,14 @@ def from_pageindex_hit(hit: dict[str, Any]) -> Evidence:
     )
 
 
-def from_komis_raw(page_id: str, datasets: list[Any], *, mineral_code: str | None = None) -> list[Evidence]:
+#: komis_raw_lookup이 실제 KOMIS 표본이 아닐 때 인용 근거에 강제로 붙이는
+#: 경고 문구(Evidence.caveat) — chatbot.py가 코드로 이 문구를 답변에 덧붙인다.
+KOMIS_RAW_DUMMY_CAVEAT = "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+
+
+def from_komis_raw(
+    page_id: str, datasets: list[Any], *, mineral_code: str | None = None, is_dummy: bool | None = None,
+) -> list[Evidence]:
     """`komis_raw.KomisRawDataRepository.fetch()`가 돌려준 RawDataset 목록
     (page_id당 원천 테이블 1~2개, 예: map_mineral은 매장량+생산량 2개) ->
     Evidence 목록(테이블당 1건). 다른 from_* 어댑터와 달리 이건 komir가 계산한
@@ -163,10 +177,12 @@ def from_komis_raw(page_id: str, datasets: list[Any], *, mineral_code: str | Non
     패스스루다 — 해석·가공 없음.
 
     2026-08-31: 발주 5광종의 `ko_*` 데이터가 대부분 개발용 더미(DEV_DUMMY)로
-    확인되어(스키마매핑 문서 참고), 더미 여부 자체는 이 함수가 아니라 호출측
-    (MCP tool)이 `komis_raw.resolve_data_source()`로 확인해 별도 warnings로
-    얹는다 — Evidence는 있는 그대로의 원자료만 담고, 신뢰도 판단은 근거와
-    분리해 얹는 게 기존 계약(kind/source/section/text)에 더 맞는다."""
+    확인되어(스키마매핑 문서 참고), 더미 여부는 호출측(MCP tool)이
+    `komis_raw.resolve_data_source()`로 미리 확인해 `is_dummy`로 넘긴다 —
+    True면 모든 Evidence에 `caveat`(KOMIS_RAW_DUMMY_CAVEAT)을 심어서, 이
+    근거가 실제로 인용되면 chatbot.py가 그 사실을 코드로 강제 경고하게 한다
+    (LLM이 [근거] 텍스트만 보고 알아서 옮겨 적을 거라 기대하지 않는다 —
+    인용 스트리퍼가 근거 없는 문장은 지운다)."""
 
     evidence: list[Evidence] = []
     for ds in datasets:
@@ -180,6 +196,7 @@ def from_komis_raw(page_id: str, datasets: list[Any], *, mineral_code: str | Non
             Evidence(
                 kind="structured", source=f"public.{ds.source_table}", section=section,
                 text=_markdown_table(columns, table_rows),
+                caveat=KOMIS_RAW_DUMMY_CAVEAT if is_dummy else None,
             )
         )
     return evidence

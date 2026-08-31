@@ -70,7 +70,12 @@ emit한다(프론트와는 main-agent가 정수 계약으로 조율 완료) — 
 내던 stage 1/2/3 단독 yield는 전부 이 콜백 기반으로 대체했고, stage 4(답변
 생성 중)만 main의 "generating" 문자열 대신 그대로 유지한다(콜백 경유가 아니라
 chat_turn 자신이 내는 지점이라 매핑이 필요 없음). NEAR_MISS_SYSTEM_PROMPT에도
-격식체 지시를 추가해 어투 규칙이 근접매칭 응답에도 적용되게 했다."""
+격식체 지시를 추가해 어투 규칙이 근접매칭 응답에도 적용되게 했다.
+
+2026-08-31(komis_raw_lookup 그래프 라우팅 배선) — KOMIS 공개원천(public.KO_*)
+조회 결과 중 개발용 더미 데이터(발주 5광종 상당수가 아직 이 상태다)가
+인용되면 `_dummy_data_notice`가 강제 경고를 붙인다 — `_caution_notice`·
+`_source_footer`와 같은 원칙(인용 스트리퍼 통과 후 코드로 덧붙임)."""
 from __future__ import annotations
 
 import asyncio
@@ -383,6 +388,24 @@ def _caution_notice(cited_indices: set[int], evidence: list) -> str:
     return ""
 
 
+def _dummy_data_notice(cited_indices: set[int], evidence: list) -> str:
+    """2026-08-31(komis_raw_lookup 신설) — 인용된 근거 중 `Evidence.caveat`가
+    채워진 게 있으면(현재는 komis_raw_lookup의 "KOMIS 실제 표본이 아니라
+    개발용 더미" 경고뿐) 강제로 붙인다. `_caution_notice`·`_source_footer`와
+    같은 이유로 코드에서 붙인다 — LLM이 [근거] 텍스트를 읽고 스스로 이 사실을
+    문장으로 옮겨 적을 거라 기대하면 인용 스트리퍼가 그 문장을 지워버릴 수
+    있다(그 문장에 [n] 인용이 없으면). 발주 5광종 데이터가 대부분 더미인
+    현재 상태에서 이 경고를 놓치면 "가짜 수치를 실제 값처럼 안내"하는,
+    이 기능 전체가 막으려던 바로 그 사고가 난다 — 안전에 직결되므로
+    캐시(같은 문구 중복 방지) 없이 인용될 때마다 매번 명시한다."""
+
+    cited = [evidence[i - 1] for i in cited_indices if 1 <= i <= len(evidence)]
+    caveats = {ev.caveat for ev in cited if ev.caveat}
+    if not caveats:
+        return ""
+    return "\n\n" + "\n".join(f"⚠ {c}" for c in sorted(caveats))
+
+
 _ABSTAIN_REASON_PROMPT = """핵심광물 챗봇이 이번 질문에 답할 근거를 하나도 찾지
 못했다. 사유를 아래 네 가지 중 하나로 분류한다. 정확히 하나의 JSON 객체만
 출력한다(설명·코드펜스 금지).
@@ -458,13 +481,36 @@ def _classify_abstain(message: str, warnings: list[str], llm: "KomirJsonLLM | No
     return decision.reason, _abstain_reason_text(decision)
 
 
-def _multimodal_events(cited_indices: set[int], evidence: list) -> list[ChatEvent]:
+#: 2026-08-31(사용자 요청 — 표/차트 표시 규칙 세분화) — "최저/최고 조회는
+#: 표로 표시"만 기존 기본동작(표 모양이 숫자열 2행 이상이면 자동으로 차트도
+#: 같이 냄, chatbot_events.render_chart_png)과 다르다. "추이"·"기간" 질문은
+#: 이미 결과 표가 보통 여러 행이라 기존 동작 그대로 표+차트가 나온다 — 이
+#: 둘은 새로 만들 게 없다. 반대로 "최저가 얼마였어?" 같은 단일 극값 질문은
+#: 근거 자체(komis_raw_lookup 등)가 최근 N행짜리 일별 표를 그대로 담고 있어,
+#: LLM이 그 표를 그대로 인용하면 극값 질문인데도 표 모양만으로는 차트가
+#: 같이 나가버린다 — 그래서 질문 문구로 "순수 최저/최고 질문"(추이·기간을
+#: 같이 묻지 않는 경우만)을 가려 차트만 억제한다(표 이벤트는 그대로 낸다).
+_TREND_OR_PERIOD_WORDS = ("추이", "기간", "동향", "변화", "추세")
+_MINMAX_ONLY_WORDS = ("최저", "최고", "최소", "최대")
+
+
+def _wants_chart(question: str) -> bool:
+    if any(w in question for w in _MINMAX_ONLY_WORDS) and not any(
+        w in question for w in _TREND_OR_PERIOD_WORDS
+    ):
+        return False
+    return True
+
+
+def _multimodal_events(cited_indices: set[int], evidence: list, *, question: str = "") -> list[ChatEvent]:
     """인용된 근거에서 표를 뽑아 table 이벤트로, 숫자열이 있으면 차트를 렌더링해
-    image 이벤트로도 낸다. 인용 안 된 근거(조회는 됐지만 답변 근거로 안 쓰인
-    것)는 건너뛴다 — 표시되는 표/그림도 텍스트 답변과 같은 인용 규율을 따라야
-    하므로."""
+    image 이벤트로도 낸다(단, `_wants_chart(question)`가 False면 표만 내고
+    차트는 만들지 않는다 — 위 함수 설명 참고). 인용 안 된 근거(조회는 됐지만
+    답변 근거로 안 쓰인 것)는 건너뛴다 — 표시되는 표/그림도 텍스트 답변과
+    같은 인용 규율을 따라야 하므로."""
 
     events: list[ChatEvent] = []
+    want_chart = _wants_chart(question)
     for i, ev in enumerate(evidence, 1):
         if i not in cited_indices:
             continue
@@ -473,7 +519,7 @@ def _multimodal_events(cited_indices: set[int], evidence: list) -> list[ChatEven
                 type="table",
                 data={"columns": table["columns"], "rows": table["rows"], "source_index": i},
             ))
-            chart = render_chart_png(table)
+            chart = render_chart_png(table) if want_chart else None
             if chart is not None:
                 png_bytes, caption = chart
                 events.append(ChatEvent(
@@ -653,12 +699,16 @@ async def chat_turn(
     # chatbot_rule.txt 공통 규칙(출처 표기)·유형5(주의 문구) — 인용 스트리퍼를
     # 통과한 뒤에만 코드로 덧붙인다(모델에게 시키면 인용 없는 문장으로 잘림,
     # 위 CHATBOT_SYSTEM_PROMPT·_source_footer·_caution_notice 독스트링 참고).
-    extra = _caution_notice(cited_indices, evidence) + _source_footer(cited_indices, evidence)
+    extra = (
+        _dummy_data_notice(cited_indices, evidence)
+        + _caution_notice(cited_indices, evidence)
+        + _source_footer(cited_indices, evidence)
+    )
     if extra:
         yield ChatEvent(type="delta", data={"delta": extra})
     final_text = cleaned + extra
 
-    for event in _multimodal_events(cited_indices, evidence):
+    for event in _multimodal_events(cited_indices, evidence, question=message):
         yield event
 
     await asyncio.to_thread(

@@ -186,17 +186,22 @@ def register_common_tools(mcp: FastMCP) -> None:
         except RawDataAccessError as exc:
             return {"evidence": [], "warnings": [*warnings, str(exc)]}
 
+        is_dummy = None
         if mineral_code:
             try:
                 data_source = repo.resolve_data_source(mineral_code)
             except RawDataAccessError:
                 data_source = None
-            if data_source != "KOMIS_SAMPLE":
+            is_dummy = data_source != "KOMIS_SAMPLE"
+            if is_dummy:
                 warnings.append(
                     f"⚠ '{mineral_code}' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미"
                     f"(ko_data_src_cd={data_source or '확인불가'})일 수 있습니다 — "
                     "실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요."
                 )
 
-        evidence = from_komis_raw(page_id, datasets, mineral_code=mineral_code)
+        # is_dummy를 Evidence.caveat에도 심는다(위 warnings는 도구 호출 로그·
+        # 기권사유 분류용, caveat는 이 근거가 실제로 인용됐을 때 사용자 화면에
+        # 강제로 뜨는 경고용 — 둘은 소비처가 달라 둘 다 채운다).
+        evidence = from_komis_raw(page_id, datasets, mineral_code=mineral_code, is_dummy=is_dummy)
         return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}
