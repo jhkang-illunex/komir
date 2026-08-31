@@ -261,6 +261,20 @@ def _komis_num(value) -> float | None:
         return None
 
 
+def _komis_num_comma(value) -> float | None:
+    """콤마 천단위 구분자가 섞인 KOMIS 문자열 숫자(예: "110,000,000")를
+    float로. `getListMnrlTablePrdctnBurgudg`(2026-08-31 신설) 전용 —
+    다른 KOMIS 엔드포인트는 콤마 없는 숫자 문자열만 써서 `_komis_num`을
+    그대로 쓴다(실측 확인)."""
+
+    if value is None:
+        return None
+    try:
+        return float(str(value).replace(",", ""))
+    except (TypeError, ValueError):
+        return None
+
+
 def _komis_zero_to_none(value) -> float | None:
     """KOMIS는 결측을 `null`이 아니라 문자열 "0.00"으로 채우는 관행이 있다
     (이 세션에서 `inventory`·`lowest_price`/`highest_price` 둘 다 실측
@@ -563,6 +577,95 @@ def _parse_komis_mineral_map_response(raw: dict, measure: str) -> tuple[list[dic
                 }
             )
     return observations, unit
+
+
+def _parse_komis_map_mineral_snapshot_response(
+    raw: dict, measure: str, year: int
+) -> tuple[list[dict], str | None]:
+    """`getListMapMnrlData` 원본 응답 → observations(단일 연도) + unit.
+
+    2026-08-31 신설 — 옛 `secondary_measure_observations`(손입력)를
+    대체한다. `measure`는 뽑아낼 항목("reserves"/"production", 보통
+    primary measure의 반대)이고, `year`는 응답 본문에 없는 연도라
+    호출자가 명시해야 한다(`_analyze_mineral_map`이 primary 계열의
+    `available_end_year`를 넘긴다 — `models.py`의 `komis_snapshot_response`
+    필드 docstring 참고). ⚠단일 연도 조회(srchDateS==srchDateE) 전제 —
+    다년 범위로 조회하면 KOMIS가 그 범위를 합산한 값을 준다(실측 확인,
+    같은 문서 참고), 이 함수는 그 구분을 응답만으로 할 수 없다."""
+
+    rows = raw.get("data") or []
+    value_key = "burudgQuty" if measure == "reserves" else "prdctnQuty"
+    total_key_candidates = (
+        ("totalBurudgQuty",) if measure == "reserves" else ("TOTALPRDCTNQUTY", "totalPrdctnQuty")
+    )
+    unit = (str(rows[0].get("cdVal") or "").strip() or None) if rows else None
+    observations: list[dict] = []
+    total_val: float | None = None
+    for row in rows:
+        value = _komis_num(row.get(value_key))
+        if value is None or value <= 0:
+            continue
+        observations.append(
+            {
+                "year": year,
+                "country_code": row.get("ntnEngCd") or row.get("ntnKornNm"),
+                "country_name": row.get("ntnKornNm") or row.get("ntnEngNm"),
+                "value": value,
+                "is_total": False,
+                "is_other": False,
+            }
+        )
+        if total_val is None:
+            total_val = _komis_num(_komis_ci_get(row, *total_key_candidates))
+    if total_val is not None:
+        observations.append(
+            {
+                "year": year,
+                "country_code": "WORLD",
+                "country_name": "세계",
+                "value": total_val,
+                "is_total": True,
+                "is_other": False,
+            }
+        )
+    return observations, unit
+
+
+def _parse_komis_map_mineral_share_response(raw: dict) -> list[dict]:
+    """`getListMnrlTablePrdctnBurgudg` 원본 응답 → 국가별
+    `[{country_code, country_name, value, share_percent}]`.
+
+    2026-08-31 신설. 응답은 국가별 최근 5개년(`before1`=최신연도~
+    `before5`) 값을 주지만, 사용자 지시로 가장 최근 연도(`before1`)만
+    쓴다("매장량 현황은 가장 마지막 년도 값만 사용해요"). `rate`는 실측
+    대조(2개 표본 정확히 일치)로 확정 — "전년대비 증감률"이 아니라
+    **해당 국가가 이 표의 `_TOTAL_`(before1 연도, 표에 나열된 국가들의
+    소계)에서 차지하는 비중(%)**이다. ⚠이 `_TOTAL_`은 `getListMapMnrlChartData`
+    기반 세계합계보다 체계적으로 작다(실측 4개 광종에서 4~11배 — 표에
+    나열된 국가 수만큼만 합산된 소계라 그렇다, `additional_summary.py::
+    calculate_mineral_map_summary`의 `market_share` 파라미터 docstring
+    참고) — "세계비중"이라고 부르지 않는다. `_TOTAL_`(코드 SU)·`_ETC_`
+    (코드 OT)는 국가 목록이 아니라 국가 랭킹에서 제외한다. 값이 콤마
+    천단위 구분자 문자열이라 `_komis_num_comma`로 파싱한다."""
+
+    rows = raw.get("data") or []
+    result: list[dict] = []
+    for row in rows:
+        code = row.get("ntnEngCd")
+        if not code or code in ("SU", "OT"):
+            continue
+        value = _komis_num_comma(row.get("before1"))
+        if value is None or value <= 0:
+            continue
+        result.append(
+            {
+                "country_code": code,
+                "country_name": row.get("ntnKornNm") or code,
+                "value": value,
+                "share_percent": _komis_num_comma(row.get("rate")),
+            }
+        )
+    return result
 
 
 def _parse_komis_composite_response(raw: dict) -> list[dict]:
@@ -1619,34 +1722,50 @@ class AnalysisSummaryService:
             warnings=[],
         )
         secondary_series = None
-        # 빈 리스트는 "없음"으로 본다 — `compare_observations`와 같은 규칙(2026-08-27
-        # skeptic 감사 SC-017: 이전엔 `is not None`이라 `[]`를 보내면 요청 전체가
-        # NO_DATA로 떨어져 두 필드의 동작이 달랐다).
-        if request.secondary_measure_observations:
-            # 2026-08-27 신설 — map_mineral 매장량/생산량 교차 비교(PDF §4).
+        # 2026-08-31 — 옛 `secondary_measure_observations`(손입력)를
+        # `komis_snapshot_response`(`getListMapMnrlData`)로 대체(사용자
+        # 확인, "대체(권장)"). 연도는 primary 계열의 최신연도로 붙인다 —
+        # 아래 `calculate_mineral_map_summary`의 교차비교 게이트가 그
+        # 연도(`current_year`) 데이터를 찾으므로 구조적으로 맞다
+        # (`models.py`의 `komis_snapshot_response` 필드 docstring 참고).
+        if request.komis_snapshot_response is not None:
             secondary_measure = "production" if request.measure == "reserves" else "reserves"
-            secondary_observations = _observations_from_request(
-                MineralMapObservation,
-                request,
-                raw=request.secondary_measure_observations,
-                field_name="secondary_measure_observations",
+            snapshot_year = series.available_end_year
+            secondary_raw, secondary_unit = _parse_komis_map_mineral_snapshot_response(
+                request.komis_snapshot_response, secondary_measure, snapshot_year
             )
-            secondary_years = sorted({o.year for o in secondary_observations})
-            secondary_series = MineralMapSeries(
-                mineral=series.mineral,
-                measure=secondary_measure,
-                unit=request.secondary_unit or request.unit,
-                available_start_year=secondary_years[0],
-                available_end_year=secondary_years[-1],
-                source_type="api",
-                source_id="api:request",
-                data_version=_data_version([o.model_dump(mode="json") for o in secondary_observations]),
-                data_as_of=str(secondary_years[-1]),
-                observations=secondary_observations,
-                warnings=[],
-            )
+            if secondary_raw:
+                secondary_observations = _observations_from_request(
+                    MineralMapObservation,
+                    request,
+                    raw=secondary_raw,
+                    field_name="komis_snapshot_response",
+                )
+                secondary_years = sorted({o.year for o in secondary_observations})
+                secondary_series = MineralMapSeries(
+                    mineral=series.mineral,
+                    measure=secondary_measure,
+                    unit=secondary_unit or request.unit or unit,
+                    available_start_year=secondary_years[0],
+                    available_end_year=secondary_years[-1],
+                    source_type="api",
+                    source_id="api:request",
+                    data_version=_data_version(
+                        [o.model_dump(mode="json") for o in secondary_observations]
+                    ),
+                    data_as_of=str(secondary_years[-1]),
+                    observations=secondary_observations,
+                    warnings=[],
+                )
+        market_share = None
+        if request.komis_share_response is not None:
+            market_share = _parse_komis_map_mineral_share_response(request.komis_share_response) or None
         calculated = _calculate_or_no_data(
-            request.page_id, calculate_mineral_map_summary, series, secondary_series=secondary_series
+            request.page_id,
+            calculate_mineral_map_summary,
+            series,
+            secondary_series=secondary_series,
+            market_share=market_share,
         )
         context = effective_page_context("map_mineral")
         years = sorted({item.year for item in series.observations})

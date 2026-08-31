@@ -893,6 +893,7 @@ def calculate_mineral_map_summary(
     series: MineralMapSeries,
     *,
     secondary_series: MineralMapSeries | None = None,
+    market_share: list[dict] | None = None,
 ) -> AdditionalCalculatedSummary:
     """Calculate deterministic evidence and metrics for a mineral-map series.
 
@@ -903,7 +904,23 @@ def calculate_mineral_map_summary(
     measure(예: `series.measure="reserves"`면 이건 production) 계열이다 —
     있으면 함수 끝부분에서만 교차 비교 근거 1건을 추가하고, 기존 로직(위
     본문)은 그대로 둔다(이 파일은 "무수정 이식" 원칙이라 신규 기능은 기존
-    코드를 건드리지 않는 방식으로 덧붙인다)."""
+    코드를 건드리지 않는 방식으로 덧붙인다).
+
+    `market_share`(2026-08-31 신설) — `getListMnrlTablePrdctnBurgudg`에서
+    뽑은 `[{country_code, country_name, value, share_percent}]`(가장 최근
+    연도만, 사용자 지시: "매장량 현황은 가장 마지막 년도 값만 사용해요").
+    `share_percent`는 실측 대조로 "해당 국가가 이 표의 `_TOTAL_`(표에
+    나열된 국가들의 소계)에서 차지하는 비중(%, KOMIS 공식 발표치)"임을
+    확정했다. ⚠이 `_TOTAL_`은 `series`(ChartData 기반) 세계합계보다
+    체계적으로 작다(실측 4개 광종에서 4~11배 — 표에 나열된 국가 수만큼만
+    합산된 소계라 그렇다) — 그래서 `top_country_share`(자체계산, ChartData
+    세계합계 기준) 옆에 같은 이름("세계비중")으로 나란히 두면 같은 국가에
+    다른 숫자 두 개가 보여 오해를 준다. 라벨을 "국가목록 내 비중(KOMIS
+    매장량표 기준)"으로 명시해 다른 기준값임을 드러낸다. 1위국 비중은
+    아래 본문의 `current_leaders` claim이 이미 자체 계산값으로 말하고
+    있어 같은 숫자를 claim으로 중복 서술하지 않고, 상위 국가들의 KOMIS
+    공식 비중을 detailed_metrics 표로만 덧붙인다(최소수정 — 기존
+    claim·랭킹 로직은 건드리지 않는다)."""
 
     grouped = _by_year(series.observations)
     years = sorted(grouped)
@@ -1278,6 +1295,24 @@ def calculate_mineral_map_summary(
                         ),
                     )
                 )
+
+    if market_share:
+        share_by_code = {
+            item["country_code"]: item for item in market_share if item.get("share_percent") is not None
+        }
+        for item in ranking[:5]:
+            hit = share_by_code.get(item.country_code)
+            if hit is None:
+                continue
+            detailed_metrics.append(
+                _metric(
+                    f"komis_market_share_{item.country_code}",
+                    f"{item.country_name} 국가목록 내 비중(KOMIS 매장량표 기준)",
+                    hit["share_percent"] / 100.0,
+                    unit="ratio",
+                    basis=str(current_year),
+                )
+            )
 
     return AdditionalCalculatedSummary(
         claims=claims,

@@ -142,12 +142,11 @@ class AnalysisSummaryRequest(StrictModel):
     # 수출 방향으로 조회한 73건 중 "수출총액" 문구 0건). 기본값은 KOMIS 화면
     # 기본 선택과 같은 "import".
     trade_direction: Literal["import", "export"] | None = None
-    # 2026-08-27: `page_id="map_mineral"` 전용 — 매장량/생산량 교차 비교(PDF
-    # §4 "매장량 2위 호주는 생산량 8위" 패턴) 대응. `measure`로 지정한 주
-    # 항목과 같은 shape(MineralMapObservation dict 리스트)의 반대 항목
-    # 관측치를 선택적으로 함께 보낸다.
-    secondary_measure_observations: list[dict] | None = None
-    secondary_unit: str | None = None
+    # 2026-08-31 정리 — 손입력 전용이던 `secondary_measure_observations`/
+    # `secondary_unit`(2026-08-27 신설, 매장량/생산량 교차 비교용)을
+    # 제거했다. `getListMapMnrlData`가 국가별로 매장량·생산량을 한
+    # 응답에 동시에 주는 걸 확인해 `komis_snapshot_response`로 완전히
+    # 대체(사용자 확인, "대체(권장)") — 아래 필드 참고.
     # 2026-08-27: `page_id="price_group"` 전용 — PDF §1-2 그룹 요약 대상
     # (비철금속/희소금속). `observations`는 이 페이지에서 PriceGroupMineral
     # Observation dict 리스트(광종별 전주·전월 등락률)를 담는다.
@@ -209,6 +208,41 @@ class AnalysisSummaryRequest(StrictModel):
     # mineral(코드)·compare_mineral(코드)·measure·forecast_horizon은 KOMIS
     # 응답 본문에 없는 조회 파라미터라 여전히 호출자가 명시해야 한다.
     komis_response: dict | None = None
+    # 2026-08-31 신설 — `page_id="map_mineral"` 전용, 사용자 요청으로 KOMIS
+    # 광물지도 페이지의 나머지 2개 엔드포인트를 추가한다(기존엔
+    # `getListMapMnrlChartData` 1개만 파싱했다).
+    #
+    # `komis_snapshot_response` — `getListMapMnrlData` 원본 응답. 국가별로
+    # 매장량(burudgQuty)·생산량(prdctnQuty)을 한 응답에 동시에 준다는 걸
+    # 실측 확인해, `measure`의 반대 항목을 여기서 뽑아 옛
+    # `secondary_measure_observations`(위에서 제거)를 대체한다(PDF §4
+    # 매장량/생산량 교차 비교). ⚠ **단일 연도 조회(srchDateS==srchDateE)
+    # 전제** — 응답 자체엔 연도 필드가 없고, 실측 결과 다년 범위로 조회하면
+    # KOMIS가 그 범위 전체를 합산한 값을 준다(2019~2025로 조회한 중국
+    # 규조토 매장량이 890,000,000 — 같은 소스 `getListMapMnrlChartData`의
+    # 2019~2025 개별연도 합계와 정확히 일치, 단일연도(2025)값 120,000,000과는
+    # 다름 — 사용자 원 설명 "마지막 연도만 온다"는 본인이 실제로 쓰는
+    # 단일연도 조회에서만 참이었다). 연도 라벨은 별도 필드로 안 받고 primary
+    # 계열의 최신연도(`available_end_year`)로 붙인다 — 교차비교 게이트가
+    # secondary에 그 연도 데이터가 있는지를 요구하므로 구조적으로 맞고,
+    # 어긋난 연도의 snapshot을 보내는 건 다른 자동채움 필드들과 같이
+    # 호출자 책임이다.
+    #
+    # `komis_share_response` — `getListMnrlTablePrdctnBurgudg` 원본 응답.
+    # 국가별 최근 5개년(before1=최신연도~before5) 값 + `rate`를 주지만,
+    # 사용자 지시로 before1(가장 최근 연도)만 쓴다("매장량 현황은 가장
+    # 마지막 년도 값만 사용해요"). `rate`는 실측 대조 결과(여러 표본
+    # 정확히 일치) "전년대비 증감률"이 아니라 **해당 국가가 이 표의
+    # `_TOTAL_`행(표에 나열된 국가들의 소계)에서 차지하는 비중(%)**이다.
+    # ⚠이 `_TOTAL_`은 `getListMapMnrlChartData` 기반 세계합계보다 체계적으로
+    # 작다(실측 4개 광종 4~11배 차이 — 표에 나열된 국가 수만큼만 합산된
+    # 소계라 그렇다) — "세계비중"으로 부르지 않고 별도 라벨을 쓴다
+    # (`additional_summary.py::calculate_mineral_map_summary`). 기존에 자체
+    # 계산하던 1위국 비중(`current_leaders` claim)을 이 값으로 갈아끼우지
+    # 않는다(검증 끝난 기존 claim은 최소수정 원칙상 유지, 필요하면 별도
+    # 사이클).
+    komis_snapshot_response: dict | None = None
+    komis_share_response: dict | None = None
 
     @field_validator("request_id")
     @classmethod
@@ -232,10 +266,10 @@ class AnalysisSummaryRequest(StrictModel):
             raise ValueError("start_period must not be after end_period")
         if self.trade_direction is not None and self.page_id != "map_korea":
             raise ValueError("trade_direction is only accepted for page_id=map_korea")
-        if self.secondary_measure_observations is not None and self.page_id != "map_mineral":
-            raise ValueError("secondary_measure_observations is only accepted for page_id=map_mineral")
-        if self.secondary_unit is not None and self.page_id != "map_mineral":
-            raise ValueError("secondary_unit is only accepted for page_id=map_mineral")
+        if self.komis_snapshot_response is not None and self.page_id != "map_mineral":
+            raise ValueError("komis_snapshot_response is only accepted for page_id=map_mineral")
+        if self.komis_share_response is not None and self.page_id != "map_mineral":
+            raise ValueError("komis_share_response is only accepted for page_id=map_mineral")
         # 2026-08-27 price page_id 분리 당시엔 비교광종이 희소금속 전용 KOMIS
         # 기능이라고 보고 price_minor_metals로만 제한했다 — 2026-08-30 사용자
         # 정정 + 라이브 재확인(Playwright로 4개 가격 서브메뉴 전부 접속):
