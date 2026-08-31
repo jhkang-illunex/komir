@@ -109,15 +109,13 @@ def _compare_mineral_picker(col, page_id: str) -> None:
     payload["compare_mineral"] = picked["code"]
 
 
-if spec.has_mineral and page_id == "indicator_market":
-    # 사용자 요청(2026-08-27): 시장동향지표는 KOMIS 화면처럼 비철금속/희소금속을
-    # 나눠서 보여준다. st.tabs 는 활성 탭을 코드에서 읽을 방법이 없어(둘 다 매
-    # 재실행마다 렌더돼 어느 쪽이 화면에 보이는지 구분 불가) 대신 탭처럼 보이는
-    # st.segmented_control(선택값을 실제로 돌려주는 위젯)을 쓴다.
-    group = st.segmented_control("광종군", ["비철금속", "희소금속"], default="비철금속")
-    group_key = "base_metals" if group == "비철금속" else "minor_metals"
-    _mineral_picker(prioritize_core_minerals(mineral_options(group_key)), key=f"mineral_{page_id}_{group_key}")
-elif spec.has_mineral:
+# 2026-08-31 삭제(사용자 직접 확인): 시장동향지표(indicator_market)의
+# "광종군(비철금속/희소금속)" 분리는 2026-08-27 당시 실제 KOMIS 화면을
+# 캡처/확인하지 않고 그 자리의 인상만으로 추가했던 것 — 사용자가 지금 실제
+# KOMIS 시장동향지표 화면엔 이런 구분이 없다고 확인해줘서(같은 날
+# indicator_supply를 로그인해 확인하고 분리를 안 했던 것과 같은 결론) 걷어냈다.
+# 이제 나머지 has_mineral 페이지와 동일하게 전체 광종 드롭다운 하나만 쓴다.
+if spec.has_mineral:
     _mineral_picker(prioritize_core_minerals(mineral_options()), key=f"mineral_{page_id}")
 
 start_key, end_key = spec.period_fields
