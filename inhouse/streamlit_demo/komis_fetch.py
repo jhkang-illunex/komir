@@ -463,8 +463,10 @@ def _dispatch_map_global(payload: dict) -> dict:
     return fetch_map_global(payload["mineral"])
 
 
-def _dispatch_map_mineral(payload: dict) -> dict:
-    return fetch_map_mineral(payload["mineral"], measure=payload.get("measure", "reserves"))
+def _dispatch_map_mineral(payload: dict, **period_kwargs) -> dict:
+    # 2026-08-31 사용자 지시: 광물지도(매장량/생산량) 기간조회(연간, 2021~2025)
+    # 추가 — report_demo.py가 start_year/end_year를 넘겨준다.
+    return fetch_map_mineral(payload["mineral"], measure=payload.get("measure", "reserves"), **period_kwargs)
 
 
 # report_demo.py가 page_id만으로 알맞은 fetch 함수를 고를 수 있게 하는 진입점.

@@ -266,6 +266,19 @@ if page_id in KOMIS_RAW_PAGES:
             "avg_opt": AVG_OPT_LABELS[avg_opt_label], "period_field": period_field,
             "start_period": start_period, "end_period": end_period,
         }
+    elif page_id == "map_mineral":
+        # 2026-08-31 사용자 지시: 광물지도(매장량/생산량) 기간조회 추가 — 연간,
+        # 2021~2025만(komis_fetch.py fetch_map_mineral의 start_year/end_year로
+        # 그대로 전달, getListMapMnrlChartData의 srchDateS/srchDateE).
+        map_year_options = [str(y) for y in range(2021, 2026)]
+        opt_cols = st.columns(2)
+        start_year_opt = opt_cols[0].selectbox(
+            "기간 시작(YYYY)", map_year_options, index=0, key=f"komis_start_{page_id}",
+        )
+        end_year_opt = opt_cols[1].selectbox(
+            "기간 종료(YYYY)", map_year_options, index=len(map_year_options) - 1, key=f"komis_end_{page_id}",
+        )
+        period_fetch_opts = {"start_year": start_year_opt, "end_year": end_year_opt}
     if page_id in KOMIS_FETCH_DISPATCH:
         if st.button("komis.or.kr에서 실시간 조회", key=f"komis_fetch_btn_{page_id}"):
             try:
