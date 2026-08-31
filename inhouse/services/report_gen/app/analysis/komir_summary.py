@@ -338,8 +338,20 @@ def calculate_price_summary(
     compare_series: PriceSeries | None = None,
     geo_events: list[GeoEventObservation] | None = None,
     komis_period_comparisons: PriceKomisPeriodComparisons | None = None,
+    srch_avg_opt: str | None = None,
+    srch_field: str | None = None,
+    srch_start_date: str | None = None,
+    srch_end_date: str | None = None,
 ) -> AdditionalCalculatedSummary:
     """Calculate deterministic evidence and metrics for a price series.
+
+    `srch_avg_opt`/`srch_field`/`srch_start_date`/`srch_end_date`(2026-08-31
+    신설) — 호출자가 KOMIS에 실제로 던진 조회 파라미터(`models.py::
+    AnalysisSummaryRequest` docstring 참고). 있으면 관측치 날짜 간격·폭으로
+    하던 추론(`_detect_granularity`, 기간 커버리지 게이트의 `total_span_days`)
+    보다 우선한다 — `komis_response` 응답 본문엔 이 정보가 아예 없어서
+    (KOMIS는 조회 평균옵션과 무관하게 `dataAvg.stdMap`에 day/week/month/year를
+    항상 다 채운다, 실측 확인) 지금까지는 추론에만 의존했다.
 
     `compare_series`(2026-08-26 신설) — KOMIS 광물자원가격 메뉴의 "비교광종"
     기능 대응(당초 희소금속 전용으로 알았으나 2026-08-30 확인 결과 4개
@@ -453,24 +465,25 @@ def calculate_price_summary(
     # (KOMIS 제공값은 매번 독립적으로 서버가 계산한 값이라 우리 관측 윈도우가
     # 겹치는지 여부와 무관하다 — dedup은 자체 계산 폴백 경로에만 의미가 있다).
     # 2026-08-31 사용자 지적 — "데이터가 1달짜리인데도 전년대비 이런게
-    # 나오면 안 되거든요. 평균 옵션(KOMIS srchAvgOpt)에 따라 데이터가
-    # 일/주/월/분기/년 단위로 나오니 이걸 기반으로 기간 및 변화량 분석에
-    # 영향을 줘야 한다." 확인해보니 report_gen이 받는 `komis_response`
-    # 안에는 `srchAvgOpt`(KOMIS 요청 파라미터)가 없다 — `dataAvg.stdMap`은
-    # 조회 평균옵션과 무관하게 KOMIS가 항상 day/week/month/year 4종을
-    # 나란히 채워 보낸다(실측 확인, income_data 덤프). 즉 "1개월치만
-    # 조회했다"는 사실은 KOMIS 응답 안 어디에도 명시적으로 없고, 우리가
-    # 실제로 받은 `observations`의 날짜 폭(첫 관측일~최신 관측일)이 유일한
-    # 신뢰 가능한 신호다 — 그래서 평균옵션을 별도 입력으로 새로 받기보다
-    # (캐치, 캐치의 값이 데이터와 어긋날 위험) 관측치 자체의 실제 폭으로
-    # 판단한다(`_volatility_fact`의 60%-커버리지 게이트와 같은 원리를
-    # KOMIS 제공값 경로에도 동일 적용 — 이전엔 fallback 계산 경로만
-    # 관측치를 봤고 KOMIS 제공값 경로는 무조건 신뢰했었다). 조회기간
-    # 폭이 그 기간의 60% 미만이면 KOMIS 제공값이든 자체 계산이든 그 기간
-    # 비교 자체를 만들지 않는다.
+    # 나오면 안 되거든요." 조회기간 폭이 그 기간의 60% 미만이면 KOMIS
+    # 제공값이든 자체 계산이든 그 기간 비교 자체를 만들지 않는다
+    # (`_volatility_fact`의 60%-커버리지 게이트와 같은 원리를 KOMIS
+    # 제공값 경로에도 동일 적용 — 이전엔 fallback 계산 경로만 관측치를
+    # 봤고 KOMIS 제공값 경로는 무조건 신뢰했었다).
+    #
+    # 조회기간 폭은 `srch_field`/`srch_start_date`/`srch_end_date`(호출자가
+    # KOMIS에 실제로 던진 조회 파라미터, 2026-08-31 사용자 후속 지시로
+    # 신설)가 있으면 그 값을 그대로 쓰고, 없으면 `observations`의 실제
+    # 날짜 폭(첫 관측일~최신 관측일)으로 대체한다 — `komis_response`
+    # 응답 본문 자체엔 이 정보가 없어서(KOMIS는 조회 평균옵션과 무관하게
+    # `dataAvg.stdMap`에 day/week/month/year를 항상 다 채운다, 실측
+    # 확인) 처음엔 추론만 가능했는데, 사용자가 "평균옵션·기간을 입력으로
+    # 받게 할 예정"이라고 명시해 그 입력이 있을 때 우선하도록 확장했다.
     _PERIOD_COVERAGE_RATIO = 0.6
     first_price_obs = next((item for item in observations if item.commerce_price is not None), latest)
-    total_span_days = (_date.fromisoformat(latest.date) - _date.fromisoformat(first_price_obs.date)).days
+    observed_span_days = (_date.fromisoformat(latest.date) - _date.fromisoformat(first_price_obs.date)).days
+    requested_span_days = _requested_span_days(srch_field, srch_start_date, srch_end_date)
+    total_span_days = requested_span_days if requested_span_days is not None else observed_span_days
     _KOMIS_PERIOD_FIELD = {"week_avg": "week", "month_avg": "month", "year_avg": "year"}
     _avg_windows_seen: set[tuple[str, ...]] = set()
     for days, label, metric_id in ((7, "전주평균", "week_avg"), (30, "전월평균", "month_avg"), (365, "전년평균", "year_avg")):
@@ -775,7 +788,7 @@ def calculate_price_summary(
     # 넘지 않는다 — 계산된 층 개수 + (생략 있으면 1) ≤ 6신규층 자체 상한).
     skipped_layer_notes: list[str] = []
 
-    volatility_fact, volatility_skipped = _volatility_fact(observations_with_price, latest.date)
+    volatility_fact, volatility_skipped = _volatility_fact(observations_with_price, latest.date, srch_avg_opt=srch_avg_opt)
     if volatility_fact is not None and sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP:
         claims.append(EvidenceClaim("volatility", "current_position", volatility_fact))
     if volatility_skipped:
@@ -785,7 +798,7 @@ def calculate_price_summary(
         )
         skipped_layer_notes.append(f"변동성({'·'.join(volatility_skipped)})")
 
-    ma_rsi_fact, ma_rsi_computed = _ma_rsi_fact(observations_with_price, latest.commerce_price)
+    ma_rsi_fact, ma_rsi_computed = _ma_rsi_fact(observations_with_price, latest.commerce_price, srch_avg_opt=srch_avg_opt)
     if ma_rsi_fact is not None and sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP:
         claims.append(EvidenceClaim("ma_rsi", "current_position", ma_rsi_fact))
     if not ma_rsi_computed:
@@ -1299,12 +1312,26 @@ _GRANULARITY_BUCKETS: tuple[tuple[float, str, int], ...] = (
     (float("inf"), "년", 1),
 )
 
+# 2026-08-31 신설 — 호출자가 KOMIS 조회 파라미터 `srchAvgOpt`를 그대로
+# 보내면(`models.py::AnalysisSummaryRequest.srch_avg_opt`) 날짜 간격
+# 추론보다 이 값을 우선한다(더 권위 있는 신호).
+_SRCH_AVG_OPT_TO_GRANULARITY: dict[str, tuple[str, int]] = {
+    "DAY": ("일", 252),
+    "WEEK": ("주", 52),
+    "MONTH": ("개월", 12),
+    "QUARTER": ("분기", 4),
+    "YEAR": ("년", 1),
+}
 
-def _detect_granularity(observations_with_price: list) -> tuple[str, int]:
-    """(단위 라벨, 연간 관측 횟수) — 관측치 날짜 간격의 중앙값으로 판별.
-    관측치 2건 미만이면 판별 불가라 일간으로 취급한다(기존 동작과 동일,
+
+def _detect_granularity(observations_with_price: list, srch_avg_opt: str | None = None) -> tuple[str, int]:
+    """(단위 라벨, 연간 관측 횟수). `srch_avg_opt`(KOMIS 조회 평균옵션)가
+    있으면 그대로 쓰고, 없으면 관측치 날짜 간격의 중앙값으로 추론한다
+    (관측치 2건 미만이면 판별 불가라 일간으로 취급 — 기존 동작과 동일,
     하위호환)."""
 
+    if srch_avg_opt in _SRCH_AVG_OPT_TO_GRANULARITY:
+        return _SRCH_AVG_OPT_TO_GRANULARITY[srch_avg_opt]
     dates = sorted(item.date for item in observations_with_price)
     if len(dates) < 2:
         return "일", 252
@@ -1318,6 +1345,32 @@ def _detect_granularity(observations_with_price: list) -> tuple[str, int]:
     return "년", 1
 
 
+def _requested_span_days(srch_field: str | None, srch_start_date: str | None, srch_end_date: str | None) -> int | None:
+    """`srch_field`(year/month)+`srch_start_date`/`srch_end_date`(KOMIS 조회
+    파라미터)로 실제 조회기간의 캘린더 일수를 계산한다. 셋 중 하나라도
+    없으면 None(호출부가 observations 자체의 날짜 폭으로 대체한다)."""
+
+    if not srch_field or not srch_start_date or not srch_end_date:
+        return None
+    if srch_field == "year":
+        start = _date(int(srch_start_date), 1, 1)
+        end = _date(int(srch_end_date), 12, 31)
+    elif srch_field == "month":
+        start_year, start_month = (int(part) for part in srch_start_date.split("-"))
+        end_year, end_month = (int(part) for part in srch_end_date.split("-"))
+        start = _date(start_year, start_month, 1)
+        end = _month_end(end_year, end_month)
+    else:
+        return None
+    return (end - start).days
+
+
+def _month_end(year: int, month: int) -> _date:
+    if month == 12:
+        return _date(year + 1, 1, 1) - _timedelta(days=1)
+    return _date(year, month + 1, 1) - _timedelta(days=1)
+
+
 def _returns_with_dates(observations_with_price: list) -> list[tuple[str, str, float]]:
     """관측치가 있는 계열의 인접 쌍 일별 수익률 — (시작일, 종료일, 수익률) 튜플."""
 
@@ -1328,7 +1381,9 @@ def _returns_with_dates(observations_with_price: list) -> list[tuple[str, str, f
     return result
 
 
-def _volatility_fact(observations_with_price: list, latest_date: str) -> tuple[str | None, list[str]]:
+def _volatility_fact(
+    observations_with_price: list, latest_date: str, *, srch_avg_opt: str | None = None
+) -> tuple[str | None, list[str]]:
     """1개월/3개월/1년 연율화 변동성(수익률 표준편차×sqrt(연간 관측 횟수)).
     창별로 실제 관측 기간이 그 창의 60% 이상을 덮을 때만 포함한다(관측치가
     60일뿐인데 "1년 변동성"이라 표기하는 오해를 막기 위해서 — 2026-08-31
@@ -1340,7 +1395,7 @@ def _volatility_fact(observations_with_price: list, latest_date: str) -> tuple[s
     returns = _returns_with_dates(observations_with_price)
     if not returns:
         return None, [label for label, _ in _VOLATILITY_WINDOWS]
-    _, periods_per_year = _detect_granularity(observations_with_price)
+    _, periods_per_year = _detect_granularity(observations_with_price, srch_avg_opt=srch_avg_opt)
     parts: list[str] = []
     skipped: list[str] = []
     for label, days in _VOLATILITY_WINDOWS:
@@ -1400,7 +1455,9 @@ def _rsi14(observations_with_price: list) -> float | None:
     return 100 - (100 / (1 + rs))
 
 
-def _ma_rsi_fact(observations_with_price: list, latest_price: float) -> tuple[str | None, bool]:
+def _ma_rsi_fact(
+    observations_with_price: list, latest_price: float, *, srch_avg_opt: str | None = None
+) -> tuple[str | None, bool]:
     """이동평균 배열·RSI를 한 문장으로 묶는다(추세=forbidden term 회피). 반환
     2번째 값은 "무언가 계산됐는지"(경고 문구 생략 판단용).
 
@@ -1410,7 +1467,7 @@ def _ma_rsi_fact(observations_with_price: list, latest_price: float) -> tuple[st
     단위와 무관하게 "관측치 개수" 기준 그대로다 — 이 두 값을 단위별로
     다시 캘리브레이션하는 건 별도 설계 결정이 필요해 이번엔 라벨만 고친다."""
 
-    unit, _ = _detect_granularity(observations_with_price)
+    unit, _ = _detect_granularity(observations_with_price, srch_avg_opt=srch_avg_opt)
     mas = _moving_averages(observations_with_price)
     alignment = _ma_alignment_label(mas, latest_price)
     rsi = _rsi14(observations_with_price)

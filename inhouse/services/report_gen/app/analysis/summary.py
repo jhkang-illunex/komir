@@ -1958,6 +1958,10 @@ class AnalysisSummaryService:
             compare_series=compare_series,
             geo_events=geo_events,
             komis_period_comparisons=komis_period_comparisons,
+            srch_avg_opt=request.srch_avg_opt,
+            srch_field=request.srch_field,
+            srch_start_date=request.srch_start_date,
+            srch_end_date=request.srch_end_date,
         )
         context = effective_page_context(request.page_id)
         applied_filters = {
