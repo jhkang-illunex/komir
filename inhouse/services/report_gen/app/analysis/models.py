@@ -825,6 +825,21 @@ class SummarySentence(StrictModel):
     # `prompts.py`의 output_contract(max_evidence_ids_per_sentence)가 정한다.
     evidence_ids: list[str] = Field(min_length=1, max_length=5)
 
+    # 2026-08-31 안전장치 — `min_length=1`은 공백 1글자(" ")도 통과시킨다.
+    # 이 세션에서 실제 라이브 LLM 호출 중 "## 핵심 진단" 절이 헤더만 있고 본문이
+    # 안 보이는 사례를 2회 관측했다(재현율 낮음 — 이후 12회 재시도로도 재현
+    # 실패, 원인 확정은 못 함). `_validate_llm_summary`는 섹션별 문장 "개수"만
+    # 검사해 공백 문자열 sentence가 있어도 통과시킬 수 있다는 구조적 허점을
+    # 발견해 막는다 — 확정된 근본원인은 아니지만 이 경로를 막아도 유효한
+    # 출력을 해칠 일은 없다(공백만 있는 분석문은 어차피 무의미하다).
+    @field_validator("text")
+    @classmethod
+    def strip_and_require_content(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("text must not be blank/whitespace-only")
+        return stripped
+
 
 class SummaryNarrative(StrictModel):
     """3개 섹션으로 묶인 근거 연결 분석문."""
