@@ -110,7 +110,23 @@ KOMIR_PAGE_CONTEXTS = {
     "price_base_metals": SummaryPageContext(
         page_id="price_base_metals",
         name="광물자원가격(비철금속)",
-        definition="선택한 비철금속(LME 기준)의 일별 실거래가·최저가·최고가 추이를 보여주는 자료다.",
+        # 2026-08-31 사용자 실측 지적으로 "최저가·최고가"를 뺐다 — LME 6대
+        # 비철금속의 일별(DAY) 계열은 하루에 하나의 정산가만 존재해 KOMIS가
+        # hghstPrc/lowstPrc를 cmercPrc와 동일값 또는 0.00으로 채워 보낸다
+        # (income_data/komis/komis_01_base_metals.json 실측: 니켈 DAY
+        # 11,695행 중 값이 있는 10,829행 전부 hghstPrc==lowstPrc==cmercPrc,
+        # 나머지는 2025년 이후 0.00 — WEEK 이상 집계 단위는 이 문제가 없음,
+        # `calculate_price_summary`의 `has_full_hilo_coverage` 값기반
+        # 게이트가 이미 그 구분을 관측치 단위로 정확히 처리해 조회기간
+        # 범위 문장은 항상 정확하다). 정의문에서까지 "최고가·최저가"를
+        # 단정하면 실제로는 정보량 0인 컬럼을 있는 것처럼 약속하게 되므로,
+        # 정의문은 실거래가만 언급하고 최고/최저 유무는 본문 판단(계산된
+        # period_range/no_price_range 문장)에 맡긴다. 희소금속(price_minor_
+        # metals)은 같은 방식으로 실측 확인한 결과(가돌리늄·갈륨 DAY 전건
+        # hghstPrc!=lowstPrc) 이 결함이 없어 그대로 둔다 — 철광석·에너지/
+        # 기타(price_iron_energy/price_other)는 아직 원천 덤프가 없어
+        # 미검증이니 재확인 없이 같은 수정을 옮겨 적용하지 않는다.
+        definition="선택한 비철금속(LME 기준)의 일별 실거래가 추이를 보여주는 자료다.",
         analysis_constraints=[
             "제공된 가격 계열과 선택 기간만 사용한다.",
             "외부 사건을 가격 변화의 원인으로 추정하지 않는다.",
