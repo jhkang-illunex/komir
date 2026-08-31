@@ -1256,6 +1256,42 @@ _MA_WINDOWS: tuple[int, ...] = (20, 60, 120, 250)
 # 이동평균+RSI·백분위·낙폭국면·재고해석·상대가치).
 _CURRENT_POSITION_HARD_CAP = 9
 
+# 2026-08-31 사용자 지적 — "실 데이터 간격이 다르면 주·월·분기·년 단위를
+# 인식할 수 있나요?" KOMIS는 DAY/WEEK/MONTH/QUARTER/YEAR 5종 조회단위를
+# 제공하는데, 위 변동성·이동평균·RSI는 지금까지 관측치가 항상 일간(daily)
+# 이라고 암묵 가정하고 있었다(변동성 연율화 계수 √252 고정, 이동평균·RSI
+# 라벨이 "일선"/"14일 기준"으로 하드코딩). 새 데이터소스 없이 이미 받은
+# observations의 날짜 간격(중앙값)만으로 실제 단위를 판별해 연율화
+# 계수와 라벨을 맞춘다. (동적 대응 범위: 연율화 계수·이동평균/RSI 단위
+# 라벨. 이동평균 창 크기(20/60/120/250) 자체를 단위별로 다시 조정하는 건
+# 별도 설계 결정이 필요해 이번엔 손대지 않았다 — 예: 주간 데이터의
+# "20주선"은 일간의 "20일선"과 실제 걸치는 기간이 다르다.)
+_GRANULARITY_BUCKETS: tuple[tuple[float, str, int], ...] = (
+    (3, "일", 252),
+    (10, "주", 52),
+    (45, "개월", 12),
+    (150, "분기", 4),
+    (float("inf"), "년", 1),
+)
+
+
+def _detect_granularity(observations_with_price: list) -> tuple[str, int]:
+    """(단위 라벨, 연간 관측 횟수) — 관측치 날짜 간격의 중앙값으로 판별.
+    관측치 2건 미만이면 판별 불가라 일간으로 취급한다(기존 동작과 동일,
+    하위호환)."""
+
+    dates = sorted(item.date for item in observations_with_price)
+    if len(dates) < 2:
+        return "일", 252
+    gaps = [
+        (_date.fromisoformat(b) - _date.fromisoformat(a)).days for a, b in zip(dates, dates[1:])
+    ]
+    median_gap = _statistics.median(gaps)
+    for max_gap, unit, periods_per_year in _GRANULARITY_BUCKETS:
+        if median_gap <= max_gap:
+            return unit, periods_per_year
+    return "년", 1
+
 
 def _returns_with_dates(observations_with_price: list) -> list[tuple[str, str, float]]:
     """관측치가 있는 계열의 인접 쌍 일별 수익률 — (시작일, 종료일, 수익률) 튜플."""
@@ -1268,14 +1304,18 @@ def _returns_with_dates(observations_with_price: list) -> list[tuple[str, str, f
 
 
 def _volatility_fact(observations_with_price: list, latest_date: str) -> tuple[str | None, list[str]]:
-    """1개월/3개월/1년 연율화 변동성(일별 수익률 표준편차×sqrt(252)). 창별로
-    실제 관측 기간이 그 창의 60% 이상을 덮을 때만 포함한다(관측치가 60일뿐인데
-    "1년 변동성"이라 표기하는 오해를 막기 위해서 — 2026-08-31 사용자 지적의
-    hi/lo 문제와 같은 성격의 함정)."""
+    """1개월/3개월/1년 연율화 변동성(수익률 표준편차×sqrt(연간 관측 횟수)).
+    창별로 실제 관측 기간이 그 창의 60% 이상을 덮을 때만 포함한다(관측치가
+    60일뿐인데 "1년 변동성"이라 표기하는 오해를 막기 위해서 — 2026-08-31
+    사용자 지적의 hi/lo 문제와 같은 성격의 함정). 연율화 계수는 관측치가
+    일간이라고 고정하지 않고 `_detect_granularity`로 판별한 실제 단위를
+    쓴다(2026-08-31 사용자 지적 — KOMIS DAY/WEEK/MONTH/QUARTER/YEAR 5종
+    조회단위 대응)."""
 
     returns = _returns_with_dates(observations_with_price)
     if not returns:
         return None, [label for label, _ in _VOLATILITY_WINDOWS]
+    _, periods_per_year = _detect_granularity(observations_with_price)
     parts: list[str] = []
     skipped: list[str] = []
     for label, days in _VOLATILITY_WINDOWS:
@@ -1289,7 +1329,7 @@ def _volatility_fact(observations_with_price: list, latest_date: str) -> tuple[s
             skipped.append(label)
             continue
         stdev = _statistics.stdev(r for _, r in window)
-        annualized = stdev * (252 ** 0.5) * 100
+        annualized = stdev * (periods_per_year ** 0.5) * 100
         parts.append(f"{label} {_number(annualized)}%")
     if not parts:
         return None, skipped
@@ -1337,8 +1377,15 @@ def _rsi14(observations_with_price: list) -> float | None:
 
 def _ma_rsi_fact(observations_with_price: list, latest_price: float) -> tuple[str | None, bool]:
     """이동평균 배열·RSI를 한 문장으로 묶는다(추세=forbidden term 회피). 반환
-    2번째 값은 "무언가 계산됐는지"(경고 문구 생략 판단용)."""
+    2번째 값은 "무언가 계산됐는지"(경고 문구 생략 판단용).
 
+    2026-08-31 사용자 지적 반영 — 라벨의 단위("일선"/"14일 기준")를 일간
+    고정 대신 `_detect_granularity`로 판별해 쓴다(주간 데이터인데 "20일선"
+    이라 표기하는 오해를 막는다). 창 크기(20/60/120/250)·RSI 기간(14) 자체는
+    단위와 무관하게 "관측치 개수" 기준 그대로다 — 이 두 값을 단위별로
+    다시 캘리브레이션하는 건 별도 설계 결정이 필요해 이번엔 라벨만 고친다."""
+
+    unit, _ = _detect_granularity(observations_with_price)
     mas = _moving_averages(observations_with_price)
     alignment = _ma_alignment_label(mas, latest_price)
     rsi = _rsi14(observations_with_price)
@@ -1346,11 +1393,11 @@ def _ma_rsi_fact(observations_with_price: list, latest_price: float) -> tuple[st
         return None, False
     parts = []
     if alignment is not None:
-        ma_desc = "·".join(f"{window}일선 {_number(value)}" for window, value in sorted(mas.items()))
+        ma_desc = "·".join(f"{window}{unit}선 {_number(value)}" for window, value in sorted(mas.items()))
         parts.append(f"{ma_desc}로 이동평균이 {alignment} 상태다")
     if rsi is not None:
         zone = "과매수" if rsi >= 70 else "과매도" if rsi <= 30 else "중립"
-        parts.append(f"14일 기준 가격강도지수(RSI)는 {_number(rsi)}로 {zone} 구간이다")
+        parts.append(f"14{unit} 기준 가격강도지수(RSI)는 {_number(rsi)}로 {zone} 구간이다")
     return ". ".join(parts) + ".", True
 
 

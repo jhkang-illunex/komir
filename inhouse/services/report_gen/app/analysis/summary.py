@@ -270,10 +270,38 @@ def _komis_zero_to_none(value) -> float | None:
 
 
 def _komis_crtr_ymd_to_date(crtr_ymd) -> str:
-    """KOMIS `crtrYmd`(YYYYMMDD 문자열)를 report_gen `Day`(YYYY-MM-DD)로."""
+    """KOMIS `crtrYmd`를 report_gen `Day`(YYYY-MM-DD)로 정규화한다.
 
-    s = str(crtr_ymd)
-    return f"{s[0:4]}-{s[4:6]}-{s[6:8]}"
+    2026-08-31 사용자 질문("주·월·분기·년 단위를 인식할 수 있나요?")으로
+    실측 확인(`income_data/komis/komis_01_base_metals.json`) — KOMIS는
+    조회단위(DAY/WEEK/MONTH/QUARTER/YEAR)에 따라 `crtrYmd` 형식이 전부
+    다른데, 이 함수는 여태 DAY/WEEK의 "YYYYMMDD"(8자리)만 가정하고 있었다.
+    MONTH("202608")·QUARTER("2026.3Q")·YEAR("2026") 형식을 넣으면
+    `s[6:8]`가 빈 문자열이 되어 "2026-08-"처럼 깨진 날짜가 나갔고, 이는
+    `PriceObservation.date`의 `Day` 패턴 검증에 걸려 그 요청 전체가
+    실패했다(월/분기/년 단위 가격 조회가 사실상 동작하지 않던 상태) —
+    이번에 4가지 형식을 전부 정규화한다. MONTH/QUARTER/YEAR는 원래
+    특정 "일자"가 없는 기간 집계값이라, 그 기간의 대표일(월초/분기
+    첫 달 1일/1월 1일)로 정한다 — 실제 관측일이 아니라 정렬·간격판별용
+    근사치임을 유의할 것(`komir_summary.py::_detect_granularity`가 이
+    간격으로 단위를 재판별해 변동성 연율화 계수·이동평균 라벨 등에 쓴다)."""
+
+    s = str(crtr_ymd).strip()
+    if s.isdigit():
+        if len(s) == 8:
+            return f"{s[0:4]}-{s[4:6]}-{s[6:8]}"
+        if len(s) == 6:
+            return f"{s[0:4]}-{s[4:6]}-01"
+        if len(s) == 4:
+            return f"{s}-01-01"
+    if "Q" in s.upper():
+        year, _, quarter_part = s.partition(".")
+        quarter_num = quarter_part.upper().replace("Q", "").strip()
+        month = {"1": "01", "2": "04", "3": "07", "4": "10"}.get(quarter_num, "01")
+        return f"{year}-{month}-01"
+    # 알 수 없는 형식 — 추정으로 임의 정규화하지 않고 원본을 그대로
+    # 돌려줘 Pydantic 검증에서 명시적으로 실패하게 둔다.
+    return s
 
 
 def _komis_rows_to_observations(rows: list[dict]) -> list[dict]:
