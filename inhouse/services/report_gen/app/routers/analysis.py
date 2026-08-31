@@ -175,14 +175,19 @@ class MineralMapSummaryRequest(AnalysisEndpointRequest):
     필수다 — 응답엔 국가별 매장량·생산량 값이 둘 다 항상 같이 오지만,
     지금 조회가 어느 쪽을 의도한 건지는 그 값만으로 구분이 안 된다.
 
-    2026-08-27 신설 매장량/생산량 교차 비교(PDF §4)용
-    `secondary_measure_observations`/`secondary_unit`은 komis_response가
-    아직 커버 못 하는 유일한 기능이라 그대로 남겨뒀다 — 반대 measure의
-    두 번째 KOMIS 응답을 받는 경로는 미구현.
-
     2026-08-31 정리 — 손 매핑 전용이던 `observations`는 komis_response로
     완전히 대체돼 제거(2026-08-26 도입, 2026-08-30 komis_response 신설로
     불필요). `unit`은 자동채움의 폴백/오버라이드로 여전히 유효해 남겼다.
+
+    2026-08-31 신설 — 사용자 요청으로 KOMIS 광물지도 페이지의 나머지 2개
+    엔드포인트를 추가. `komis_snapshot_response`(`getListMapMnrlData`)가
+    2026-08-27 신설 `secondary_measure_observations`/`secondary_unit`(매장량/
+    생산량 교차 비교, PDF §4)을 완전히 대체한다 — 국가별로 두 measure를
+    한 응답에 동시에 주는 걸 실측 확인(사용자 확인, "대체(권장)"). ⚠단일
+    연도 조회(srchDateS==srchDateE) 전제, 다년 범위는 KOMIS가 합산한 값을
+    준다(`models.py`의 필드 docstring에 실측 근거 상세). `komis_share_response`
+    (`getListMnrlTablePrdctnBurgudg`)는 국가별 최근 5개년 값 + KOMIS 공식
+    세계비중(`rate`, "전년대비 증감률" 아님 — 실측 대조로 정정)을 준다.
 
     2026-08-30 추가 정리 — `start_year`/`end_year`도 제거했다. streamlit_demo
     가 실제로 이 필드를 선택 입력란(연도)으로 렌더링해 보내고 있었지만
@@ -199,9 +204,9 @@ class MineralMapSummaryRequest(AnalysisEndpointRequest):
     mineral_name: str | None = Field(default=None, min_length=1)
     measure: MineralMapMeasure
     unit: str | None = None
-    secondary_measure_observations: list[dict] | None = None
-    secondary_unit: str | None = None
     komis_response: dict | None = None
+    komis_snapshot_response: dict | None = None
+    komis_share_response: dict | None = None
 
 
 class PriceForecastSummaryRequest(AnalysisEndpointRequest):
