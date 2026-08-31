@@ -43,6 +43,26 @@ public 프로필/private 프로필로 항상 구분해 쓴다.
 | OKF/PageIndex 트리 | 파일시스템(마크다운+JSON 트리) | `pageindex_lookup`·`pageindex_agentic` | §1-3 |
 | Vector DB(pgvector, `mineral_risk.doc_chunk`) | Postgres 확장(벡터 컬럼) | `hybrid_search`(dense+BM25 RRF) | §1-3 |
 
+### 0-1-1. 구조도
+
+```mermaid
+flowchart TB
+    User["사용자 질문"] --> Graph["chatbot_graph.py<br/>_retrieve_node(병렬 조회)"]
+    Graph --> MCP["public/private MCP 프로필<br/>(mcp_server_public.py / _private.py)"]
+
+    MCP --> PG_MR[("Postgres<br/>mineral_risk 스키마")]
+    MCP --> PG_PUB[("Postgres<br/>public 스키마")]
+    MCP --> VDB[("Vector DB<br/>pgvector")]
+    MCP --> OKF["OKF/PageIndex 트리<br/>(파일시스템)"]
+
+    PG_MR -->|"latest_diagnosis<br/>import_forecast<br/>geo_index_trend"| T1["out_diagnosis_alert<br/>out_import_forecast<br/>geo_index<br/>(발주 5광종만)"]
+    PG_PUB -->|"komis_raw_lookup<br/>komis_resolve_mineral"| T2["ko_* 9개<br/>ai_* 28개<br/>(KOMIS 전 광종)"]
+    VDB -->|"hybrid_search"| T3["doc_chunk<br/>(dense+BM25)"]
+    OKF -->|"pageindex_lookup<br/>pageindex_agentic"| T4["보고서 목차/섹션<br/>트리 + OKF 본문"]
+
+    T1 & T2 & T3 & T4 --> Evidence["Evidence 리스트로 통합<br/>(citations로 답변에 반영)"]
+```
+
 ⚠ OKF와 PageIndex는 같은 파이프라인의 앞뒤 단계다 — OKF는 원본 보고서
 (PDF/HWP/docx 등)를 LLM/파서로 마크다운화한 중간 산출물이고, PageIndex는
 그 OKF 마크다운에서 목차/섹션 트리를 뽑아 만든 탐색 구조다. `pageindex_
