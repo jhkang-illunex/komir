@@ -29,6 +29,40 @@ public 프로필/private 프로필로 항상 구분해 쓴다.
 추가된, 완전히 다른 접근 경로(`services/shared/komis_raw.py`)를 쓴다. 이
 문서가 그 둘을 분명히 가르는 게 목적이다.
 
+## 0-1. 요구사항 — public MCP는 4개 이질적 데이터원을 단일 게이트웨이로 통합한다
+
+`mcp_server_public.py`(챗봇 public MCP 프로필)는 아래 **4가지 서로 다른
+저장소 종류**를 하나의 조회 인터페이스(도구 8종, §1-3·§2-3)로 묶어
+챗봇 답변의 근거로 제공해야 한다 — 이미 그렇게 구현돼 있다(아래 표가
+현재 코드 상태의 확인이다, 신규 요구사항이 아니라 기존 설계의 명시화).
+
+| 데이터원 | 저장 형태 | 담당 도구 | 절 |
+|---|---|---|---|
+| Postgres `mineral_risk` 스키마 | 관계형 테이블 | `latest_diagnosis`·`import_forecast`·`geo_index_trend` | §1 |
+| Postgres `public` 스키마(KOMIS 원천) | 관계형 테이블 | `komis_raw_lookup`·`komis_resolve_mineral` | §2 |
+| OKF/PageIndex 트리 | 파일시스템(마크다운+JSON 트리) | `pageindex_lookup`·`pageindex_agentic` | §1-3 |
+| Vector DB(pgvector, `mineral_risk.doc_chunk`) | Postgres 확장(벡터 컬럼) | `hybrid_search`(dense+BM25 RRF) | §1-3 |
+
+⚠ OKF와 PageIndex는 같은 파이프라인의 앞뒤 단계다 — OKF는 원본 보고서
+(PDF/HWP/docx 등)를 LLM/파서로 마크다운화한 중간 산출물이고, PageIndex는
+그 OKF 마크다운에서 목차/섹션 트리를 뽑아 만든 탐색 구조다. `pageindex_
+lookup`/`pageindex_agentic`은 트리를 거쳐 결국 OKF 본문 텍스트를 근거로
+반환한다 — 별도의 두 저장소가 아니라 한 파이프라인의 산출물 2종.
+
+이 4개 중 앞의 3개(Postgres 2종·`hybrid_search`/`pageindex_*`의 원천
+데이터 자체)는 **public/private 프로필 결과가 완전히 동일**하고,
+`hybrid_search`·`pageindex_lookup`만 **제3자 라이선스(Argus) 콘텐츠
+포함 여부**로 프로필이 갈린다(§1-3) — "이 4개 데이터원을 다 쓴다"는
+것과 "public/private 프로필로 갈린다"는 것은 서로 다른 축이라는 걸
+여기서도 재확인해둔다(§0의 혼동 방지 원칙과 일관).
+
+챗봇 그래프(`chatbot_graph.py::_retrieve_node`)는 매 턴마다 라우터
+LLM이 고른 도구들을 스레드풀로 **병렬 조회**해 하나의 근거(Evidence)
+리스트로 합친다 — 즉 한 답변이 Postgres 두 스키마+OKF/PageIndex+
+Vector DB 중 여러 개를 동시에 근거로 삼을 수 있다(예: "니켈 가격+공급위기
+원인" 같은 복합 질문은 `komis_raw`+`hybrid_search`+`pageindex`를 한 번에
+켤 수 있음).
+
 ## 1. `mineral_risk` 스키마 — komir 자체 산출물
 
 ### 1-1. 접근 계층
