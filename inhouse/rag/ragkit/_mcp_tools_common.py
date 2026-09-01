@@ -9,8 +9,9 @@
 라이선스 제한 콘텐츠(Argus)가 아니라 public/private 결과가 완전히 같다
 (2026-08-26 smoke_mcp_access.py 실측 확인). **komis_raw_lookup만 예외**다 —
 2026-09-01 사용자 지시로 `page_id` 11개 중 `indicator_market`(시장동향지표)·
-`indicator_supply`(수급동향지표) 2개는 private 프로필 전용이 됐다
-(`shared.retrieval.access.PRIVATE_ONLY_KOMIS_PAGES`). `register_common_tools()`가
+`indicator_supply`(수급동향지표)·`indicator_composite`(광물종합지수) 3개는
+private 프로필 전용이 됐다(`shared.retrieval.access.PRIVATE_ONLY_KOMIS_PAGES`,
+`indicator_composite`는 같은 날 사용자 정정으로 뒤늦게 추가됨). `register_common_tools()`가
 호출자로부터 `private_only_pages`를 받아 komis_raw_lookup 안에서 검사한다 —
 hybrid_search·pageindex_lookup처럼 서버 파일 자체를 물리적으로 나누지 않은
 이유는 이 도구가 다단계 번역 로직(가격기준/HS코드 자동매핑, 150줄)을 갖고
@@ -176,7 +177,8 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
 
         ⚠ 2026-09-01 사용자 지시로 `indicator_market`(시장동향지표,
         KO_MRKT_PRSPECT_IDCT)·`indicator_supply`(수급동향지표,
-        KO_SPDM_STBT_INDX) 2개 page_id는 private 프로필 전용이다 — public
+        KO_SPDM_STBT_INDX)·`indicator_composite`(광물종합지수,
+        KO_MNRL_SNTHS_INDX) 3개 page_id는 private 프로필 전용이다 — public
         프로필에서 호출하면 조회 없이 거부되고 warnings에만 사유가 담긴다
         (`shared.retrieval.access.PRIVATE_ONLY_KOMIS_PAGES`).
 

@@ -163,7 +163,7 @@ komir의 진단·예측·지수 모델이 애초에 이 5광종만 계산해 발
 |---|---|---|---|
 | `ko_mnrl_prc` | 광종별 일별 가격(최저/최고/실거래가) | `price_base_metals`/`price_minor_metals`/`price_iron_energy`/`price_other` | public+private |
 | `ko_mnrl_prc_predc` | KOMIS 자체 가격예측(komir의 `out_import_forecast`와 다름) | `forecast_price` | public+private |
-| `ko_mnrl_snths_indx` | 종합지수(HI001~003, 구성 의미 미확인) | `indicator_composite` | public+private |
+| `ko_mnrl_snths_indx` | 종합지수(HI001~003, 구성 의미 미확인, 광물종합지수) | `indicator_composite` | **private 전용**(2026-09-01 최초 public 지정 후 같은 날 정정) |
 | `ko_mrkt_prspect_idct` | 시장전망지표(시장동향지표) | `indicator_market` | **private 전용** |
 | `ko_spdm_stbt_indx` | 수급안정지수(수급동향지표) | `indicator_supply` | **private 전용** |
 | `ko_cstm_cmmrc` | 국내(관세청) 수출입 | `map_korea` | public+private |
@@ -197,8 +197,9 @@ KOMIS 표본 아님)다. 유일한 실샘플은 텅스텐(`MNRL0018`,
 ### 2-3. MCP 도구 (`komis_resolve_mineral`은 public/private 프로필 결과
 동일. `komis_raw_lookup`은 2026-09-01부터 **일부 page_id만** 예외 —
 아래 참고. 둘 다 "타 팀 소유"일 뿐 원래는 제3자 재배포 제한 콘텐츠가
-아니었으나, 2026-09-01 사용자가 `indicator_market`/`indicator_supply`
-2개 page_id만 private 프로필 전용으로 지정했다)
+아니었으나, 2026-09-01 사용자가 `indicator_market`/`indicator_supply`/
+`indicator_composite` 3개 page_id만 private 프로필 전용으로 지정했다 —
+`indicator_composite`는 최초엔 public으로 지정됐다가 같은 날 정정됨)
 
 - `komis_resolve_mineral(korean_name)` — 한글 광종명(자유형, "텅스텐"처럼
   질문에 쓰인 그대로) → `{mineral_code, price_category, warnings}`.
@@ -221,8 +222,8 @@ KOMIS 표본 아님)다. 유일한 실샘플은 텅스텐(`MNRL0018`,
   `chatbot.py::_dummy_data_notice()`가 인용 스트리퍼 통과 후 코드로
   화면에 무조건 노출한다(LLM이 알아서 옮겨 적을 거라 기대하지 않음).
   **private 전용 page_id 거부**(2026-09-01): `page_id`가
-  `indicator_market`/`indicator_supply`면 public 프로필에서는 DB 조회
-  자체를 하지 않고 `{"evidence": [], "warnings": ["'...'는 private
+  `indicator_market`/`indicator_supply`/`indicator_composite`면 public
+  프로필에서는 DB 조회 자체를 하지 않고 `{"evidence": [], "warnings": ["'...'는 private
   전용 데이터입니다..."]}`를 즉시 반환한다(`_mcp_tools_common.py::
   register_common_tools`의 `private_only_pages` 인자,
   `mcp_server_public.py`만 `PRIVATE_ONLY_KOMIS_PAGES`를 소스코드로 넘김 —

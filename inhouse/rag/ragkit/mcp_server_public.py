@@ -15,8 +15,9 @@ hybrid_search_pg`/`pageindex.lookup`)에 넘긴다. 조건문·환경변수 분�
 정형 3종·komis_raw_lookup·komis_resolve_mineral·pageindex_agentic은
 `_mcp_tools_common.py`에 한 번만 구현돼 있고 여기서는 등록만 한다(재구현
 금지). 이 중 komis_raw_lookup만 예외적으로 `PRIVATE_ONLY_KOMIS_PAGES`
-(indicator_market·indicator_supply, 2026-09-01)를 `private_only_pages`로
-넘겨 두 page_id를 거부시킨다 — 나머지 다섯은 결과가 완전히 같다.
+(indicator_market·indicator_supply·indicator_composite, 2026-09-01)를
+`private_only_pages`로 넘겨 세 page_id를 거부시킨다 — 나머지 다섯은 결과가
+완전히 같다.
 
 실행(직접 점검용, 실제로는 mcp_client.py가 서브프로세스로 띄운다):
     cd inhouse && python -m rag.ragkit.mcp_server_public
