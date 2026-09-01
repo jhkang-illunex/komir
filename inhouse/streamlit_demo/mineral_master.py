@@ -15,9 +15,24 @@ report_gen API 자체엔 광종 목록 엔드포인트가 없어(라우트 전�
 BASE_METALS_CODES와 DB `prc_cat_cd` 값이 정확히 일치함을 확인) 서브메뉴가
 바뀌면 광종·비교광종 드롭다운도 그 서브메뉴 소속 광종만 보여야 한다. 이번엔
 indicator_market과 달리 실제로 KOMIS 구조에 대응되는 분류라 삭제 대상이 아니다
-— `PRICE_CATEGORY_BY_PAGE`로 page_id→prc_cat_cd(HP001~004) 매핑."""
+— `PRICE_CATEGORY_BY_PAGE`로 page_id→prc_cat_cd(HP001~004) 매핑.
+
+2026-09-01(사용자 지시): 시장동향지표/수급동향지표(indicator_market/supply)는
+`ai_mnrl_mst`로 광종을 고르면 안 된다는 게 드러났다 — 이 테이블은 이
+프로젝트가 가격·진단 계산에 직접 쓰는 19종(사용 중)뿐인 "AI 설정성" 목록이라,
+사용자가 KOMIS 실제 화면에서 확인해 알려준 시장동향지표 39종/수급동향지표
+36종(갈륨·규소·니오븀 등, 5대 핵심광물 밖 다수 포함)과 크게 어긋난다(실측:
+라이브검증에 쓴 갈륨 MNRL0024조차 `ai_mnrl_mst`엔 없었다). 사용자가 "기존에
+있는 광종명 및 코드로 맵핑하자"고 지시해 찾아보니, report_gen 서버 자신이
+`services/report_gen/app/analysis/resources/komis-metadata.subset.json`의
+`metadata.indicators.market_minerals`/`supply_minerals`(2026-07-16 KOMIS
+브라우저 실측 프로브 `artifacts/browser/page-probe/metadata-catalog.json`의
+파생본, report_gen_client.py의 `section` 필드 출처와 같은 registry)를 이미
+정본으로 갖고 있었다 — `MARKET_SUPPLY_MINERAL_REGISTRY_PATH`로 이 파일을
+그대로 읽어 두 메뉴 전용 드롭다운을 만든다(DB 무관, ai_mnrl_mst 손 안 댐)."""
 from __future__ import annotations
 
+import json
 import logging
 import sys
 from pathlib import Path
@@ -29,6 +44,10 @@ if str(_INHOUSE_ROOT / "services") not in sys.path:
     sys.path.insert(0, str(_INHOUSE_ROOT / "services"))
 
 _log = logging.getLogger(__name__)
+
+MARKET_SUPPLY_MINERAL_REGISTRY_PATH = (
+    _INHOUSE_ROOT / "services" / "report_gen" / "app" / "analysis" / "resources" / "komis-metadata.subset.json"
+)
 
 
 # DB 실측(2026-08-31): public.ai_mnrl_mst.prc_cat_cd 값 HP001~HP004가
@@ -72,12 +91,45 @@ def mineral_options() -> list[dict]:
 
 def mineral_options_for_page(page_id: str) -> list[dict]:
     """광물자원가격 4종(price_*)이면 그 서브메뉴 소속 광종만, 아니면 전체 목록을
-    반환한다 — §모듈 docstring 2026-08-31 재도입 참고."""
+    반환한다 — §모듈 docstring 2026-08-31 재도입 참고.
+
+    indicator_market/indicator_supply는 이 함수를 쓰지 않는다 —
+    `market_supply_mineral_options()`(§2026-09-01 docstring 참고)가 대신
+    report_gen 자체 registry로 채운다."""
     options = load_minerals()
     prc_cat_cd = PRICE_CATEGORY_BY_PAGE.get(page_id)
     if prc_cat_cd is None:
         return options
     return [m for m in options if m["prc_cat_cd"] == prc_cat_cd]
+
+
+_MARKET_SUPPLY_REGISTRY_REF: dict[str, str] = {
+    "indicator_market": "metadata.indicators.market_minerals",
+    "indicator_supply": "metadata.indicators.supply_minerals",
+}
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def market_supply_mineral_options(page_id: str) -> list[dict]:
+    """indicator_market/indicator_supply 전용 — `ai_mnrl_mst`(DB, 이 프로젝트가
+    쓰는 19종뿐) 대신 report_gen 서버 자신이 참조하는 KOMIS 실측 registry
+    (§모듈 docstring 2026-09-01)에서 [{code, name_ko}, ...]를 돌려준다.
+    page_id가 이 registry에 없거나 파일을 못 읽으면 빈 리스트(호출부가
+    코드 직접입력으로 폴백, §mineral_master.py 기존 관례와 동일)."""
+
+    ref = _MARKET_SUPPLY_REGISTRY_REF.get(page_id)
+    if ref is None:
+        return []
+    try:
+        data = json.loads(MARKET_SUPPLY_MINERAL_REGISTRY_PATH.read_text(encoding="utf-8"))
+        raw_options = data["refs"][ref]["options"]
+    except (OSError, json.JSONDecodeError, KeyError, TypeError):
+        _log.exception(
+            "market_supply_mineral_options 읽기 실패(page_id=%s, path=%s) — 코드 직접입력으로 폴백",
+            page_id, MARKET_SUPPLY_MINERAL_REGISTRY_PATH,
+        )
+        return []
+    return [{"code": o["external_value"], "name_ko": o["label"]} for o in raw_options]
 
 
 def mineral_label(m: dict) -> str:

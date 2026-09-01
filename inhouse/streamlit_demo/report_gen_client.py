@@ -66,28 +66,83 @@ class PageSpec:
 # 아래 관측치 대부분은 `documents/산출물/2026-W35_0824-0830/
 # report_gen_KOMIS라이브재검증_Phase{1,2,3,4}_260829_evidence/`의 실측 라이브
 # 캡처를 그대로 옮긴 것이다(값을 지어내지 않는다는 원칙) — 페이지별 출처는
-# 각 PageSpec 주석에 명시. indicator_market/indicator_supply만 로그인 필요라
-# 라이브 캡처가 없어 예시로 남겨두되 개월 수만 늘렸다(실측 아님, 주석 명시).
+# 각 PageSpec 주석에 명시.
 PAGE_SPECS: dict[str, PageSpec] = {
     "indicator_market": PageSpec(
-        # ⚠ KOMIS 로그인 필요 페이지라 라이브 캡처 없음(Phase1~4 실측 대상 밖) —
-        # 실측이 아니라 개월 수만 6개월로 늘린 예시(추세 서술이 나오게).
+        # 2026-09-01: 발주처가 이 페이지(로그인 필요라 그동안 라이브 캡처가
+        # 없었음)의 KOMIS 원본 JSON 덤프를 처음 제공, report_gen이
+        # komis_response 파싱을 추가하면서(worktree-report_gen 커밋 53425f1e4)
+        # KOMIS_RAW_PAGES로 옮겨져 아래 observations_example은 더 이상 화면에
+        # 안 쓰인다(§komis_raw.py의 indicator_market 실측 예시가 정본) —
+        # 스키마 호환용으로만 남긴다. 값은 실측 getListIndxMnrk.json(2024-09~
+        # 2026-07, mrktPrspectIdct→score, realPrc→price)을 그대로 옮겼다(기존
+        # 가짜 placeholder였던 걸 사용자 지적으로 실측 교체) — crisis_flag는
+        # 이 응답에 대응 필드(crisisYn)가 없어 넣지 않는다(§summary.py
+        # _parse_komis_market_response 참고).
+        # 2026-09-01 재수정(사용자 지적): price_unit/price_criterion은 실제
+        # KOMIS 시장동향지표 화면에 없는 필드고 komis_response로도 채울 방법이
+        # 없어(가격 페이지의 dataAvg.INFO.prcCrtr 같은 자동채움 소스가 없음)
+        # 항상 빈 값 → report_gen이 매번 "가격 기준/단위 누락"으로만 표시하는
+        # 무용한 필드였다 — extra_fields에서 제거.
         "시장동향지표", "광물전망지표", "market-indicator", True, ("start_month", "end_month"), "month",
-        ("price_unit", "price_criterion"),
-        '[{"month": "2025-04", "score": 74.2, "price": 9350.0, "crisis_flag": false}, '
-        '{"month": "2025-05", "score": 70.8, "price": 9480.0, "crisis_flag": false}, '
-        '{"month": "2025-06", "score": 66.5, "price": 9600.0, "crisis_flag": false}, '
-        '{"month": "2025-07", "score": 63.9, "price": 9700.0, "crisis_flag": false}, '
-        '{"month": "2025-08", "score": 62.5, "price": 9800.0, "crisis_flag": false}, '
-        '{"month": "2025-09", "score": 58.1, "price": 9650.0, "crisis_flag": true}]',
+        (),
+        '[{"month": "2024-09", "score": 5.27, "price": 447.46}, '
+        '{"month": "2024-10", "score": 5.55, "price": 455.23}, '
+        '{"month": "2024-11", "score": 7.99, "price": 438.84}, '
+        '{"month": "2024-12", "score": 11.41, "price": 420.54}, '
+        '{"month": "2025-01", "score": 20.24, "price": 387.64}, '
+        '{"month": "2025-02", "score": 21.51, "price": 385.0}, '
+        '{"month": "2025-03", "score": 21.01, "price": 387.31}, '
+        '{"month": "2025-04", "score": 21.24, "price": 389.15}, '
+        '{"month": "2025-05", "score": 20.79, "price": 394.63}, '
+        '{"month": "2025-06", "score": 20.63, "price": 398.48}, '
+        '{"month": "2025-07", "score": 22.16, "price": 395.84}, '
+        '{"month": "2025-08", "score": 23.33, "price": 394.77}, '
+        '{"month": "2025-09", "score": 23.6, "price": 398.26}, '
+        '{"month": "2025-10", "score": 24.3, "price": 400.16}, '
+        '{"month": "2025-11", "score": 25.56, "price": 399.42}, '
+        '{"month": "2025-12", "score": 28.19, "price": 393.05}, '
+        '{"month": "2026-01", "score": 30.07, "price": 390.01}, '
+        '{"month": "2026-02", "score": 29.2, "price": 399.84}, '
+        '{"month": "2026-03", "score": 30.12, "price": 399.91}, '
+        '{"month": "2026-04", "score": 31.5, "price": 398.47}, '
+        '{"month": "2026-05", "score": 32.74, "price": 398.9}, '
+        '{"month": "2026-06", "score": 34.04, "price": 400.4}, '
+        '{"month": "2026-07", "score": 30.38, "price": 418.09}]',
     ),
     "indicator_supply": PageSpec(
-        # ⚠ 위와 동일 이유로 실측 아님(개월 수만 6개월로 확장).
+        # 2026-09-01: §위 indicator_market과 동일 이유로 KOMIS_RAW_PAGES로
+        # 옮겨졌다(worktree-report_gen 커밋 cd51bc205) — observations_example은
+        # 스키마 호환용으로만 남긴다. 값은 실측 getListIndxSplyBalncMnrk.json
+        # (2024-09~2026-07, spdmStbtIndx→score, realPrc→price, crisisYn→
+        # crisis_flag, 조회기간 전체 "N"=false)을 그대로 옮겼다(기존 가짜
+        # placeholder 교체). price_unit/price_criterion 제거 사유는
+        # §indicator_market 주석과 동일.
         "수급동향지표", "광물전망지표", "supply-indicator", True, ("start_month", "end_month"), "month",
-        ("price_unit", "price_criterion"),
-        '[{"month": "2025-04", "score": 78.6}, {"month": "2025-05", "score": 76.1}, '
-        '{"month": "2025-06", "score": 73.4}, {"month": "2025-07", "score": 71.0}, '
-        '{"month": "2025-08", "score": 71.0}, {"month": "2025-09", "score": 68.4}]',
+        (),
+        '[{"month": "2024-09", "score": 5.07, "price": 447.46, "crisis_flag": false}, '
+        '{"month": "2024-10", "score": 5.34, "price": 455.23, "crisis_flag": false}, '
+        '{"month": "2024-11", "score": 7.69, "price": 438.84, "crisis_flag": false}, '
+        '{"month": "2024-12", "score": 10.97, "price": 420.54, "crisis_flag": false}, '
+        '{"month": "2025-01", "score": 19.46, "price": 387.64, "crisis_flag": false}, '
+        '{"month": "2025-02", "score": 20.68, "price": 385.0, "crisis_flag": false}, '
+        '{"month": "2025-03", "score": 20.2, "price": 387.31, "crisis_flag": false}, '
+        '{"month": "2025-04", "score": 20.43, "price": 389.15, "crisis_flag": false}, '
+        '{"month": "2025-05", "score": 19.99, "price": 394.63, "crisis_flag": false}, '
+        '{"month": "2025-06", "score": 19.84, "price": 398.48, "crisis_flag": false}, '
+        '{"month": "2025-07", "score": 21.3, "price": 395.84, "crisis_flag": false}, '
+        '{"month": "2025-08", "score": 22.44, "price": 394.77, "crisis_flag": false}, '
+        '{"month": "2025-09", "score": 22.7, "price": 398.26, "crisis_flag": false}, '
+        '{"month": "2025-10", "score": 23.36, "price": 400.16, "crisis_flag": false}, '
+        '{"month": "2025-11", "score": 24.57, "price": 399.42, "crisis_flag": false}, '
+        '{"month": "2025-12", "score": 27.11, "price": 393.05, "crisis_flag": false}, '
+        '{"month": "2026-01", "score": 29.19, "price": 390.01, "crisis_flag": false}, '
+        '{"month": "2026-02", "score": 28.08, "price": 399.84, "crisis_flag": false}, '
+        '{"month": "2026-03", "score": 28.96, "price": 399.91, "crisis_flag": false}, '
+        '{"month": "2026-04", "score": 30.58, "price": 398.47, "crisis_flag": false}, '
+        '{"month": "2026-05", "score": 31.79, "price": 398.9, "crisis_flag": false}, '
+        '{"month": "2026-06", "score": 33.05, "price": 400.4, "crisis_flag": false}, '
+        '{"month": "2026-07", "score": 29.5, "price": 418.09, "crisis_flag": false}]',
     ),
     "indicator_composite": PageSpec(
         # 실측: Phase4 `composite_forecast_live_capture_260829.json`

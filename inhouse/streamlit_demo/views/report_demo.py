@@ -36,7 +36,12 @@ from datetime import date
 
 import streamlit as st
 
-from streamlit_demo.mineral_master import PRICE_CATEGORY_BY_PAGE, mineral_label, mineral_options_for_page
+from streamlit_demo.mineral_master import (
+    PRICE_CATEGORY_BY_PAGE,
+    market_supply_mineral_options,
+    mineral_label,
+    mineral_options_for_page,
+)
 from streamlit_demo.komis_fetch import (
     KOMIS_FETCH_DISPATCH,
     KomisFetchError,
@@ -101,6 +106,13 @@ page_id = col2.selectbox(
 )
 spec = PAGE_SPECS[page_id]
 
+# 2026-09-01 사용자 지시: 주메뉴/서브메뉴를 바꿔도 이전 페이지에서 생성된
+# 결과 보고서가 하단에 그대로 남아 있어 "지금 선택과 무관한 결과"처럼
+# 보이는 문제 — page_id 변경을 감지해 결과를 비운다.
+if st.session_state.get("_report_demo_last_page_id") != page_id:
+    st.session_state["_report_demo_last_page_id"] = page_id
+    st.session_state["report_demo_result"] = None
+
 payload: dict = {}
 
 
@@ -154,8 +166,16 @@ def _compare_mineral_picker(col, page_id: str) -> None:
 # KOMIS 시장동향지표 화면엔 이런 구분이 없다고 확인해줘서(같은 날
 # indicator_supply를 로그인해 확인하고 분리를 안 했던 것과 같은 결론) 걷어냈다.
 # 이제 나머지 has_mineral 페이지와 동일하게 전체 광종 드롭다운 하나만 쓴다.
+# 2026-09-01(사용자 지시): indicator_market/supply는 `ai_mnrl_mst`(이 프로젝트
+# 19종 한정 DB)가 아니라 report_gen 자신의 registry(§mineral_master.py
+# market_supply_mineral_options)로 광종을 채운다 — 실제 KOMIS 화면 39종/36종과
+# 일치, 라이브검증에 쓴 갈륨(MNRL0024) 포함.
 if spec.has_mineral:
-    _mineral_picker(prioritize_core_minerals(mineral_options_for_page(page_id)), key=f"mineral_{page_id}")
+    if page_id in ("indicator_market", "indicator_supply"):
+        mineral_opts = prioritize_core_minerals(market_supply_mineral_options(page_id))
+    else:
+        mineral_opts = prioritize_core_minerals(mineral_options_for_page(page_id))
+    _mineral_picker(mineral_opts, key=f"mineral_{page_id}")
 
 # 2026-09-01(SC-105): period_kind="year"는 현재 PAGE_SPECS 12개 항목 어디에도
 # 없다(전수 확인 — indicator_market/supply만 "month", 나머지는 ""). 그래서 아래
@@ -259,6 +279,14 @@ if page_id in KOMIS_RAW_PAGES:
         f"KOMIS 데이터 조회 결과(외부에서 조회한 원본 JSON을 붙여넣으세요) — "
         f"komis.or.kr {raw_spec.label}을 그대로 붙여넣으면 이 화면이 report_gen이 원하는 형태로 변환합니다."
     )
+    # 2026-09-01 report-summary-agent 지적: 위 광종 드롭다운 값(payload["mineral"])이
+    # 항상 우선이고(request.mineral or snapshot_mineral_code), 서버는 "드롭다운에서
+    # 고른 광종"과 "붙여넣은 JSON이 실제로 어떤 광종 데이터인지"를 교차검증하지
+    # 않는다 — 니켈을 고르고 리튬 JSON을 붙여넣으면 광종명은 니켈, 수치는 리튬인
+    # 조합이 조용히 만들어질 수 있다. indicator_market/supply는 komis_snapshot_
+    # response에 광종명이 들어있어 이 불일치가 특히 눈에 안 띄기 쉬워 안내를 둔다.
+    if page_id in ("indicator_market", "indicator_supply"):
+        st.caption("⚠ 위 광종 드롭다운 값이 붙여넣은 JSON의 실제 광종과 다르면, 광종명과 수치가 서로 다른 광종 것으로 섞여 나올 수 있습니다 — 드롭다운과 JSON을 같은 광종으로 맞춰주세요.")
     # 2026-08-31 사용자 지시: 주메뉴/서브메뉴/광종/비교광종 중 하나라도 바뀌면
     # "KOMIS 데이터 조회 결과"도 그 선택에 맞게 바뀌어야 한다 — 이전엔 위젯
     # key가 page_id에만 묶여 있어(서브메뉴는 반영됐지만) 광종·비교광종만 바꾸면
