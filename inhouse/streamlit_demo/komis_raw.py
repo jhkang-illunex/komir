@@ -5,11 +5,11 @@ report_gen 원칙("prompt 제외 DB/외부호출 없음, 외부에서 입력된 
 "실시간 가져오기" 시도는 이 세션에서 komis.or.kr 자체가 네트워크 레벨로 막혀
 있어 취소됨). 대신 **사람이 외부에서(브라우저 개발자도구·curl 등) KOMIS를
 직접 조회해 얻은 원본 JSON을 화면에 그대로 붙여넣으면**, 이 모듈이 그걸
-`komis_response` 필드에 그대로 실어 report_gen에 보낸다 — 9개 페이지 전부
+`komis_response` 필드에 그대로 실어 report_gen에 보낸다 — 11개 페이지 전부
 (price_base_metals/minor_metals/iron_energy/other·map_korea/global/mineral·
-indicator_composite·forecast_price) report_gen이 원본을 직접 파싱하므로,
-이 모듈은 "구조가 맞는지" 얕은 검증만 하고 원본을 그대로 전달한다
-(passthrough) — 필드명 손 매핑은 하지 않는다.
+indicator_composite·forecast_price·indicator_market·indicator_supply)
+report_gen이 원본을 직접 파싱하므로, 이 모듈은 "구조가 맞는지" 얕은 검증만
+하고 원본을 그대로 전달한다(passthrough) — 필드명 손 매핑은 하지 않는다.
 
 원본 캡처 구조는 전부 `documents/산출물/2026-W35_0824-0830/
 report_gen_KOMIS라이브재검증_Phase{1,2,3,4}_260829_evidence/`의 실측 JSON을
@@ -32,8 +32,15 @@ report_gen_KOMIS라이브재검증_Phase{1,2,3,4}_260829_evidence/`의 실측 JS
    indicator_composite는 `data.tableData`가 새 파서 입력임에 주의)해, 이
    5종의 손 매핑도 전부 passthrough로 교체.
 
-⚠ indicator_market/supply는 로그인 필요 페이지라 원본 캡처가 없어 이 목록에
-없다 — 그 페이지들은 기존 방식(observations 수동 JSON 입력)을 그대로 쓴다.
+2026-09-01: indicator_market/indicator_supply(광물전망지표 대메뉴)는 로그인
+필요 페이지라 그동안 원본 캡처가 없어 이 목록 밖(observations 수동 입력)
+이었는데, 발주처가 이날 처음으로 두 페이지의 KOMIS 원본 JSON 덤프를 제공해
+report-summary-agent가 report_gen 쪽에 komis_response 파싱을 추가했다
+(worktree-report_gen 커밋 53425f1e4/0cb4a5108/cd51bc205) — 이 목록에 합류.
+indicator_market은 getListIndxMnrk 단일 응답을 그대로(다른 단일-엔드포인트
+페이지와 동일 패턴), indicator_supply는 getListIndxSplyBalncMnrk(필수)+
+getChartDataSpdmStbt(선택, "주요 요인" 문단용)를 map_mineral/map_global과
+같은 envelope 1개로 묶어 받는다.
 (price_group은 2026-08-31 report_gen 외부 인터페이스 자체가 삭제돼 이 데모의
 PAGE_SPECS에서도 제거됐다 — §report_gen_client.py 주석 참고.)"""
 from __future__ import annotations
@@ -76,30 +83,80 @@ def passthrough_map_korea(raw: dict, ctx: dict) -> dict:
 
 def passthrough_map_global(raw: dict, ctx: dict) -> dict:
     """map_global — 2026-08-30 report_gen이 `getListDataNation` 원본 응답을
-    그대로 받아 내부에서 파싱한다(`_parse_komis_map_global_response`)."""
+    그대로 받아 내부에서 파싱한다(`_parse_komis_map_global_response`).
 
-    if not isinstance(raw, dict) or not isinstance(raw.get("list"), list):
-        raise KomisRawConversionError("list(루트별 목록)를 찾을 수 없습니다 — 글로벌 수급지도 조회 결과(getListDataNation) JSON이 맞는지 확인하세요.")
-    return {"komis_response": raw}
+    2026-08-31 사용자 지시로 komis_fetch.py의 fetch_map_global이 나머지 2개
+    엔드포인트(getBarChartDataNation·getListMapNationData)도 같이 조회해
+    {"list_data","bar_chart","nation_map"} envelope으로 묶는다.
+
+    2026-08-31 report-summary-agent 계약 확정(커밋 67452b73a) —
+    `komis_bar_chart_response`(envelope의 bar_chart 그대로)·
+    `komis_route_share_response`(envelope의 nation_map 그대로) 2개 필드
+    신설, 셋 다 선택·독립(하나만 보내도 동작). ⚠ report-summary-agent 실측
+    경고: 바차트 국가합계가 list_data의 sumAmt와 30%대 차이(집계범위가
+    다름) — report_gen은 바차트를 "세계 총액"으로 안 쓰고 1위국 연도별
+    수치만 쓴다, 이 데모는 원본을 그대로 붙여넣기/표시만 하므로 별도
+    집계를 안 해 이 문제와 무관하다. bar_chart의 마지막 연도(xaxis 끝)는
+    연중 진행분이라 report_gen이 제외한다는 점도 참고."""
+
+    if not isinstance(raw, dict):
+        raise KomisRawConversionError(
+            "글로벌 수급지도 조회 결과 JSON이 아닙니다 — "
+            '{"list_data": <getListDataNation 응답>, "bar_chart": <getBarChartDataNation 응답, 선택>, '
+            '"nation_map": <getListMapNationData 응답, 선택>} 형태로 붙여넣었는지 확인하세요.'
+        )
+    list_data = raw.get("list_data", raw)  # 구버전 예시(레거시, envelope 없이 그대로)와 호환
+    if not isinstance(list_data, dict) or not isinstance(list_data.get("list"), list):
+        raise KomisRawConversionError(
+            "list_data.list(루트별 목록)를 찾을 수 없습니다 — 글로벌 수급지도 조회 결과(getListDataNation) JSON이 맞는지 확인하세요."
+        )
+    converted: dict = {"komis_response": list_data}
+    if isinstance(raw.get("bar_chart"), dict):
+        converted["komis_bar_chart_response"] = raw["bar_chart"]
+    if isinstance(raw.get("nation_map"), dict):
+        converted["komis_route_share_response"] = raw["nation_map"]
+    return converted
 
 
 def passthrough_map_mineral(raw: dict, ctx: dict) -> dict:
-    """map_mineral — 2026-08-30 report_gen이 `getListMapMnrlChartData`(주의:
-    예전 `getListMapMnrlData`가 아니다 — 연도별 시계열 차트 엔드포인트) 원본
-    응답을 그대로 받아 내부에서 파싱한다(`_parse_komis_mineral_map_response` —
-    행마다 있는 `crtrYr`로 연도를 묶고, `cdVal`에서 unit을 자동 채운다).
-    `measure`(매장량/생산량)는 응답 본문에 없는 조회 파라미터라 여전히
-    호출자가 명시해야 한다."""
+    """map_mineral — 2026-08-31 report_gen이 이 페이지의 KOMIS 엔드포인트
+    3개를 각각 다른 요청 필드로 받도록 확장됐다(계약: documents/산출물/
+    2026-W36_0831-0906/report_gen_광물지도_2개엔드포인트_추가_260831.md) —
+    `chart`(getListMapMnrlChartData, 연도별 시계열, 필수)·`snapshot`
+    (getListMapMnrlData, 단일연도 국가별 스냅샷, 선택)·`share`
+    (getListMnrlTablePrdctnBurgudg, 국가별 최근5개년+비중표, 선택)를 한
+    JSON 객체로 묶어 붙여넣으면(§komis_fetch.py fetch_map_mineral과 같은
+    envelope) 이 함수가 3개 요청 필드로 각각 갈라 보낸다. snapshot·share는
+    없어도(하나만 있어도) 그대로 동작(report_gen 쪽 "독립적으로 동작"
+    확인됨) — `measure`(매장량/생산량)는 응답 본문에 없는 조회 파라미터라
+    여전히 호출자가 명시해야 한다."""
 
-    if not isinstance(raw, dict) or not isinstance(raw.get("data"), list):
-        raise KomisRawConversionError("data(국가별 매장량/생산량 목록)를 찾을 수 없습니다 — 광물지도 조회 결과(getListMapMnrlChartData) JSON이 맞는지 확인하세요.")
-    return {"komis_response": raw}
+    if not isinstance(raw, dict) or not isinstance((raw.get("chart") or {}).get("data"), list):
+        raise KomisRawConversionError(
+            "chart.data(국가별 매장량/생산량 시계열)를 찾을 수 없습니다 — "
+            '{"chart": <getListMapMnrlChartData 응답>, "snapshot": <getListMapMnrlData 응답, 선택>, '
+            '"share": <getListMnrlTablePrdctnBurgudg 응답, 선택>} 형태로 붙여넣었는지 확인하세요.'
+        )
+    converted: dict = {"komis_response": raw["chart"]}
+    if isinstance(raw.get("snapshot"), dict):
+        converted["komis_snapshot_response"] = raw["snapshot"]
+    if isinstance(raw.get("share"), dict):
+        converted["komis_share_response"] = raw["share"]
+    return converted
 
 
 def passthrough_indicator_composite(raw: dict, ctx: dict) -> dict:
     """indicator_composite — 2026-08-30 report_gen이 `getLineChartIndx` 원본
     응답을 그대로 받아 내부에서 파싱한다(`_parse_komis_composite_response` —
     `data.tableData`의 날짜×지수유형(MNRL/MAJOR/RARE) 행을 crtrYmd로 묶는다).
+
+    엔드포인트 전체 경로(2026-08-31 사용자 제공+라이브 재검증, 200 확인):
+    `https://www.komis.or.kr/Komis/MnrlIndc/IndxMinDex/ajax/getLineChartIndx`
+    (POST, srchDateS/srchDateE=yyyymmdd) — 페이지 URL(`/Komis/MnrlIndc/IndxMin`,
+    §komis_menu_map.yaml)과 AJAX 세션 경로(`IndxMinDex`)가 다르므로 페이지를
+    먼저 GET해 세션 쿠키를 받은 뒤 이 경로로 POST해야 한다(§모듈 docstring
+    "KOMIS AJAX는 쿠키 동일출처 세션 필요" 원칙과 동일 — komis_fetch.py에 이
+    페이지의 실시간 조회는 아직 없다, 있다면 이 패턴을 그대로 따를 것).
 
     ⚠ `data.xaxis`+`data.series`(예전 클라이언트 손 변환이 쓰던 필드)가 아니라
     `data.tableData`가 새 파서의 입력이다 — KOMIS 원본 응답엔 둘 다 있지만
@@ -121,6 +178,56 @@ def passthrough_forecast_price(raw: dict, ctx: dict) -> dict:
     if not isinstance(raw, dict) or not isinstance(raw.get("data"), list):
         raise KomisRawConversionError("data(분기·연도별 예측 목록)를 찾을 수 없습니다 — 가격예측 조회 결과(getListPricePredc) JSON이 맞는지 확인하세요.")
     return {"komis_response": raw}
+
+
+def passthrough_indicator_market(raw: dict, ctx: dict) -> dict:
+    """indicator_market — 2026-09-01 report_gen이 `getListIndxMnrk` 원본
+    응답을 그대로 받아 내부에서 파싱한다(`IndicatorSummaryRequest.
+    komis_response`, worktree-report_gen 커밋 53425f1e4). `data`(월별 목록)만
+    쓰고 `chartData`는 `data`와 같은 값을 그래프용으로 재구성한 것이라 서버가
+    읽지 않는다. `mineral`은 응답 본문에 광종 식별자가 없어 여전히 필수 —
+    광종 드롭다운이 채운 `ctx["mineral"]`을 그대로 쓴다."""
+
+    if not isinstance(raw, dict) or not isinstance(raw.get("data"), list):
+        raise KomisRawConversionError(
+            "data(월별 시장동향지표 목록)를 찾을 수 없습니다 — 시장동향지표 조회 결과(getListIndxMnrk) JSON이 맞는지 확인하세요."
+        )
+    return {"komis_response": raw}
+
+
+def passthrough_indicator_supply(raw: dict, ctx: dict) -> dict:
+    """indicator_supply — 2026-09-01 report_gen이 `getListIndxSplyBalncMnrk`
+    (필수)·`getChartDataSpdmStbt`(선택)를 각각 `komis_response`/
+    `komis_snapshot_response` 필드로 받는다(`SupplyIndicatorSummaryRequest`,
+    worktree-report_gen 커밋 cd51bc205). `komis_snapshot_response`가 있으면
+    서버가 그 안 `chartSpdmStbt.mnrkndUnqCd`/`mnrkndKornNm`에서 `mineral`을
+    자동채움하지만(map_korea의 `mttr_flow_name`과 같은 패턴), 이 데모는 광종
+    드롭다운을 그대로 두고(`ctx["mineral"]`) 같이 보낸다. `komis_snapshot_
+    response`가 있어야 PDF 양식의 "주요 요인"(국내 수입증가율·수입국 편중도)
+    문단이 채워진다 — 없어도 나머지는 그대로 나온다.
+
+    붙여넣는 JSON은 map_mineral/map_global과 같은 envelope 패턴 하나로 묶는다:
+    `{"komis_response": <getListIndxSplyBalncMnrk 원본>,
+    "komis_snapshot_response": <getChartDataSpdmStbt 원본, 선택>}`. envelope
+    없이 `getListIndxSplyBalncMnrk` 원본만 붙여넣어도(구버전 예시 호환)
+    `komis_snapshot_response` 없이 그대로 동작한다."""
+
+    if not isinstance(raw, dict):
+        raise KomisRawConversionError(
+            "수급동향지표 조회 결과 JSON이 아닙니다 — "
+            '{"komis_response": <getListIndxSplyBalncMnrk 응답>, '
+            '"komis_snapshot_response": <getChartDataSpdmStbt 응답, 선택>} 형태로 붙여넣었는지 확인하세요.'
+        )
+    inner = raw.get("komis_response", raw)  # envelope 없이 원본만 붙여넣은 경우도 허용
+    if not isinstance(inner, dict) or not isinstance(inner.get("data"), list):
+        raise KomisRawConversionError(
+            "komis_response.data(월별 수급동향지표 목록)를 찾을 수 없습니다 — "
+            "수급동향지표 조회 결과(getListIndxSplyBalncMnrk) JSON이 맞는지 확인하세요."
+        )
+    converted: dict = {"komis_response": inner}
+    if isinstance(raw.get("komis_snapshot_response"), dict):
+        converted["komis_snapshot_response"] = raw["komis_snapshot_response"]
+    return converted
 
 
 @dataclass(frozen=True)
@@ -218,10 +325,15 @@ KOMIS_RAW_PAGES: dict[str, KomisRawPage] = {
         '"sumExpAmt": 4246583}], "listCount": "10"}',
     ),
     "map_global": KomisRawPage(
-        "루트별 목록 조회 결과(getListDataNation)",
+        "글로벌 수급지도 조회 결과(getListDataNation+getBarChartDataNation+getListMapNationData)",
         passthrough_map_global,
-        # 실측: Phase3 map_global_live_capture_260829.json(MNRL0024, 상위 5루트).
-        '{"srchMnrkndUnqCd": "MNRL0024", "srchDateS": "20260101", "srchDateE": "20261231", '
+        # list_data 실측: Phase3 map_global_live_capture_260829.json(MNRL0024,
+        # 상위 5루트). bar_chart·nation_map은 2026-08-31 이 세션이 같은
+        # 광종(MNRL0024, 갈륨)으로 komis.or.kr 직접 재검증 — §komis_fetch.py
+        # fetch_map_global과 같은 {"list_data","bar_chart","nation_map"}
+        # envelope(passthrough_map_global은 구버전 unwrap 예시도 하위호환으로
+        # 받는다).
+        '{"list_data": {"srchMnrkndUnqCd": "MNRL0024", "srchDateS": "20260101", "srchDateE": "20261231", '
         '"list": [{"RNUM": 1, "incmNtnNm": "독일", "incmNtnCd": "DE", "expNtnNm": "미국", "amt": 10855175.06, '
         '"weig": 29409.43, "sumWeig": 1704156.52, "weigRate": "1.73", "sumAmt": 76968241.63, '
         '"expNtnCd": "US", "amtRate": "14.10"}, '
@@ -236,15 +348,35 @@ KOMIS_RAW_PAGES: dict[str, KomisRawPage] = {
         '"expNtnCd": "BR", "amtRate": "4.55"}, '
         '{"RNUM": 5, "incmNtnNm": "미국", "incmNtnCd": "US", "expNtnNm": "브라질", "amt": 3183660, '
         '"weig": 72000, "sumWeig": 1704156.52, "weigRate": "4.22", "sumAmt": 76968241.63, '
-        '"expNtnCd": "BR", "amtRate": "4.14"}], "listCount": "15"}',
+        '"expNtnCd": "BR", "amtRate": "4.14"}], "listCount": "15"}, '
+        '"bar_chart": {"data": {"barChart": {"xaxis": ["2022", "2023", "2024", "2025", "2026"], '
+        '"minValue": 0.0, "maxValue": 0.0, "series": [ '
+        '{"seriesCd": "CN", "name": "중국", "data": [510406544.62, 644474354.26, 760854691.43, 188233346.71, 17831773.47]}, '
+        '{"seriesCd": "US", "name": "미국", "data": [333967253.35, 343817977.07, 447042680.43, 272917053.71, 28333942.74]}'
+        ']}}}, '
+        '"nation_map": {"data": {"mapData": [ '
+        '{"crtrNtnCd": "KR", "crtrNtnKornNm": "대한민국", "trgtNtnCd": "JP", "trgtNtnKornNm": "일본", '
+        '"mnrkndUnqCd": "MNRL0024", "mnrkndKornNm": "갈륨", "typeIE": "I", "typeAW": "A", '
+        '"crtrTotalAmt": 10020621.78, "trgtTotalAmt": 4117833.61, "crtrNtnAmtRt": "21.0817", "trgtNtnAmtRt": "51.3018"}, '
+        '{"crtrNtnCd": "CA", "crtrNtnKornNm": "캐나다", "trgtNtnCd": "US", "trgtNtnKornNm": "미국", '
+        '"mnrkndUnqCd": "MNRL0024", "mnrkndKornNm": "갈륨", "typeIE": "I", "typeAW": "A", '
+        '"crtrTotalAmt": 32581402.04, "trgtTotalAmt": 11626193.4, "crtrNtnAmtRt": "7.8838", "trgtNtnAmtRt": "22.0936"}'
+        ']}}}',
     ),
     "map_mineral": KomisRawPage(
-        "국가별 매장량/생산량 조회 결과(getListMapMnrlChartData)",
+        "광물지도 조회 결과(getListMapMnrlChartData+getListMapMnrlData+getListMnrlTablePrdctnBurgudg)",
         passthrough_map_mineral,
-        # 실측: Phase3 map_mineral_live_capture_260829.json(MNRL0008=동,
-        # getListMapMnrlChartData — 예전 getListMapMnrlData와 달리 crtrYr별
-        # 시계열이 전부 온다. 2024·2025년 상위 5개국).
-        '{"data": ['
+        # chart 실측: Phase3 map_mineral_live_capture_260829.json(MNRL0008=동,
+        # getListMapMnrlChartData, 2024·2025년 상위 5개국). snapshot·share는
+        # 2026-08-31 이 세션이 komis.or.kr 직접 호출로 재검증(MNRL0008=동,
+        # 2025년 단일연도 snapshot 상위 3개국, 2021~2025 share 상위 3개국) —
+        # §komis_fetch.py fetch_map_mineral과 같은 {"chart","snapshot","share"}
+        # envelope.
+        # 2026-08-31 재수정(main-agent 통합검증 제보): chart를 5개국→2개국으로
+        # 줄였다가 report_gen "3개국 이상 필요" 검증에 걸려 NO_DATA가 났다 —
+        # 원래 5개국(칠레/호주/페루/DRC/러시아)으로 복원, snapshot도 3개국으로
+        # 맞춤(둘 다 최소 표본 3개국 이상 유지).
+        '{"chart": {"data": ['
         '{"cdVal": "k ton", "prdctnQuty": 5510000, "crtrYr": "2024", "totalBurudgQuty": 3738700000, '
         '"massUnitCd": "WT003", "burudgQuty": 190000000, "ntnEngNm": "Chile", "ntnKornNm": "칠레", "ntnEngCd": "CL"}, '
         '{"cdVal": "k ton", "prdctnQuty": 765000, "crtrYr": "2024", "totalBurudgQuty": 3738700000, '
@@ -266,7 +398,21 @@ KOMIS_RAW_PAGES: dict[str, KomisRawPage] = {
         '"massUnitCd": "WT003", "burudgQuty": 80000000, "ntnEngNm": "Democratic Republic of Congo", '
         '"ntnKornNm": "콩고민주공화국", "ntnEngCd": "CD"}, '
         '{"cdVal": "k ton", "prdctnQuty": 1300000, "crtrYr": "2025", "totalBurudgQuty": 3738700000, '
-        '"massUnitCd": "WT003", "burudgQuty": 80000000, "ntnEngNm": "Russia", "ntnKornNm": "러시아", "ntnEngCd": "RU"}]}',
+        '"massUnitCd": "WT003", "burudgQuty": 80000000, "ntnEngNm": "Russia", "ntnKornNm": "러시아", "ntnEngCd": "RU"}]}, '
+        '"snapshot": {"data": ['
+        '{"cdVal": "k ton", "prdctnQuty": 730000, "totalBurudgQuty": 770200000, "totalPrdctnQuty": 20013000, '
+        '"massUnitCd": "WT003", "burudgQuty": 100000000, "ntnEngNm": "Australia", "ntnKornNm": "호주", "ntnEngCd": "AU"}, '
+        '{"cdVal": "k ton", "prdctnQuty": 500000, "totalBurudgQuty": 770200000, "totalPrdctnQuty": 20013000, '
+        '"massUnitCd": "WT003", "burudgQuty": 7000000, "ntnEngNm": "Canada", "ntnKornNm": "캐나다", "ntnEngCd": "CA"}, '
+        '{"cdVal": "k ton", "prdctnQuty": 200000, "totalBurudgQuty": 770200000, "totalPrdctnQuty": 20013000, '
+        '"massUnitCd": "WT003", "burudgQuty": 35000000, "ntnEngNm": "Chile", "ntnKornNm": "칠레", "ntnEngCd": "CL"}]}, '
+        '"share": {"data": ['
+        '{"ntnKornNm": "칠레", "ntnEngCd": "CL", "before5": "200,000,000", "before4": "190,000,000", '
+        '"before3": "190,000,000", "before2": "190,000,000", "before1": "180,000,000", "rate": "18.37"}, '
+        '{"ntnKornNm": "호주", "ntnEngCd": "AU", "before5": "93,000,000", "before4": "97,000,000", '
+        '"before3": "100,000,000", "before2": "100,000,000", "before1": "100,000,000", "rate": "10.20"}, '
+        '{"ntnKornNm": "_TOTAL_", "ntnEngCd": "SU", "before5": "980,000,000", "before4": "990,000,000", '
+        '"before3": "1,000,000,000", "before2": "1,000,000,000", "before1": "980,000,000", "rate": "100.00"}]}}',
     ),
     "indicator_composite": KomisRawPage(
         "광물종합지수 조회 결과(getLineChartIndx)",
@@ -322,5 +468,77 @@ KOMIS_RAW_PAGES: dict[str, KomisRawPage] = {
         '"mnrkndKornNm": "니켈", "crtrPrd": "25년 4Q"}, '
         '{"prc": "15014.77", "flutRt": "-1.03", "flutPrc": "-156.71", "realYn": "Y", "realPrc": "15014.77", '
         '"mnrkndKornNm": "니켈", "crtrPrd": "25년 3Q"}]}',
+    ),
+    "indicator_market": KomisRawPage(
+        "시장동향지표 조회 결과(getListIndxMnrk)",
+        passthrough_indicator_market,
+        # 실측: documents/기획문서/order/report_summary/메뉴/광물전망지표/시장동향지표/
+        # getListIndxMnrk.json(2026-09-01 발주처 제공, 2024.09~2026.07 월별 23개월
+        # 전체) — chartData는 data와 같은 값의 그래프용 재구성이라 서버가 안 읽어
+        # 예시에서 제외(§passthrough_indicator_market 참고).
+        '{"data": [{"flutRt": "-10.75", "flutPrc": "-3.66", "realFlutRt": "0", "crtrYmd": "20260701", "realPrc": "418.09", "realFlutPrc": "17.69", "mrktPrspectIdct": "30.38"}, '
+        '{"flutRt": "3.97", "flutPrc": "1.30", "realFlutRt": "0", "crtrYmd": "20260601", "realPrc": "400.40", "realFlutPrc": "1.50", "mrktPrspectIdct": "34.04"}, '
+        '{"flutRt": "3.94", "flutPrc": "1.24", "realFlutRt": "0", "crtrYmd": "20260501", "realPrc": "398.90", "realFlutPrc": "0.43", "mrktPrspectIdct": "32.74"}, '
+        '{"flutRt": "4.58", "flutPrc": "1.38", "realFlutRt": "0", "crtrYmd": "20260401", "realPrc": "398.47", "realFlutPrc": "-1.44", "mrktPrspectIdct": "31.50"}, '
+        '{"flutRt": "3.15", "flutPrc": "0.92", "realFlutRt": "0", "crtrYmd": "20260301", "realPrc": "399.91", "realFlutPrc": "0.07", "mrktPrspectIdct": "30.12"}, '
+        '{"flutRt": "-2.89", "flutPrc": "-0.87", "realFlutRt": "0", "crtrYmd": "20260201", "realPrc": "399.84", "realFlutPrc": "9.83", "mrktPrspectIdct": "29.20"}, '
+        '{"flutRt": "6.67", "flutPrc": "1.88", "realFlutRt": "0", "crtrYmd": "20260101", "realPrc": "390.01", "realFlutPrc": "-3.04", "mrktPrspectIdct": "30.07"}, '
+        '{"flutRt": "10.29", "flutPrc": "2.63", "realFlutRt": "0", "crtrYmd": "20251201", "realPrc": "393.05", "realFlutPrc": "-6.37", "mrktPrspectIdct": "28.19"}, '
+        '{"flutRt": "5.19", "flutPrc": "1.26", "realFlutRt": "0", "crtrYmd": "20251101", "realPrc": "399.42", "realFlutPrc": "-0.74", "mrktPrspectIdct": "25.56"}, '
+        '{"flutRt": "2.97", "flutPrc": "0.70", "realFlutRt": "0", "crtrYmd": "20251001", "realPrc": "400.16", "realFlutPrc": "1.90", "mrktPrspectIdct": "24.30"}, '
+        '{"flutRt": "1.16", "flutPrc": "0.27", "realFlutRt": "0", "crtrYmd": "20250901", "realPrc": "398.26", "realFlutPrc": "3.49", "mrktPrspectIdct": "23.60"}, '
+        '{"flutRt": "5.28", "flutPrc": "1.17", "realFlutRt": "0", "crtrYmd": "20250801", "realPrc": "394.77", "realFlutPrc": "-1.07", "mrktPrspectIdct": "23.33"}, '
+        '{"flutRt": "7.42", "flutPrc": "1.53", "realFlutRt": "0", "crtrYmd": "20250701", "realPrc": "395.84", "realFlutPrc": "-2.64", "mrktPrspectIdct": "22.16"}, '
+        '{"flutRt": "-0.77", "flutPrc": "-0.16", "realFlutRt": "0", "crtrYmd": "20250601", "realPrc": "398.48", "realFlutPrc": "3.85", "mrktPrspectIdct": "20.63"}, '
+        '{"flutRt": "-2.12", "flutPrc": "-0.45", "realFlutRt": "0", "crtrYmd": "20250501", "realPrc": "394.63", "realFlutPrc": "5.48", "mrktPrspectIdct": "20.79"}, '
+        '{"flutRt": "1.09", "flutPrc": "0.23", "realFlutRt": "0", "crtrYmd": "20250401", "realPrc": "389.15", "realFlutPrc": "1.84", "mrktPrspectIdct": "21.24"}, '
+        '{"flutRt": "-2.32", "flutPrc": "-0.50", "realFlutRt": "0", "crtrYmd": "20250301", "realPrc": "387.31", "realFlutPrc": "2.31", "mrktPrspectIdct": "21.01"}, '
+        '{"flutRt": "6.27", "flutPrc": "1.27", "realFlutRt": "0", "crtrYmd": "20250201", "realPrc": "385.00", "realFlutPrc": "-2.64", "mrktPrspectIdct": "21.51"}, '
+        '{"flutRt": "77.39", "flutPrc": "8.83", "realFlutRt": "0", "crtrYmd": "20250101", "realPrc": "387.64", "realFlutPrc": "-32.90", "mrktPrspectIdct": "20.24"}, '
+        '{"flutRt": "42.80", "flutPrc": "3.42", "realFlutRt": "0", "crtrYmd": "20241201", "realPrc": "420.54", "realFlutPrc": "-18.30", "mrktPrspectIdct": "11.41"}, '
+        '{"flutRt": "43.96", "flutPrc": "2.44", "realFlutRt": "0", "crtrYmd": "20241101", "realPrc": "438.84", "realFlutPrc": "-16.39", "mrktPrspectIdct": "7.99"}, '
+        '{"flutRt": "5.31", "flutPrc": "0.28", "realFlutRt": "0", "crtrYmd": "20241001", "realPrc": "455.23", "realFlutPrc": "7.77", "mrktPrspectIdct": "5.55"}, '
+        '{"flutRt": "0", "flutPrc": "0", "realFlutRt": "0", "crtrYmd": "20240901", "realPrc": "447.46", "realFlutPrc": "0", "mrktPrspectIdct": "5.27"}]}',
+    ),
+    "indicator_supply": KomisRawPage(
+        "수급동향지표 조회 결과(getListIndxSplyBalncMnrk+getChartDataSpdmStbt)",
+        passthrough_indicator_supply,
+        # 실측: documents/기획문서/order/report_summary/메뉴/광물전망지표/수급동향지표/
+        # getListIndxSplyBalncMnrk.json(2026-09-01 발주처 제공, 2024.09~2026.07
+        # 월별 23개월 전체)+getChartDataSpdmStbt.json(같은 날 제공, MNRL0024=갈륨
+        # 스냅샷) 그대로 — envelope {"komis_response": ..., "komis_snapshot_response":
+        # ...}로 묶는다(§passthrough_indicator_supply 참고, map_mineral/map_global과
+        # 같은 패턴).
+        '{"komis_response": {"data": [{"flutRt": "-10.74", "spdmStbtIndx": "29.50", "flutPrc": "-3.55", "crisisYn": "N", "realFlutRt": "4.42", "crtrYmd": "202607", "realPrc": "418.09", "realFlutPrc": "17.69"}, '
+        '{"flutRt": "3.96", "spdmStbtIndx": "33.05", "flutPrc": "1.26", "crisisYn": "N", "realFlutRt": "0.38", "crtrYmd": "202606", "realPrc": "400.40", "realFlutPrc": "1.50"}, '
+        '{"flutRt": "3.96", "spdmStbtIndx": "31.79", "flutPrc": "1.21", "crisisYn": "N", "realFlutRt": "0.11", "crtrYmd": "202605", "realPrc": "398.90", "realFlutPrc": "0.43"}, '
+        '{"flutRt": "5.59", "spdmStbtIndx": "30.58", "flutPrc": "1.62", "crisisYn": "N", "realFlutRt": "-0.36", "crtrYmd": "202604", "realPrc": "398.47", "realFlutPrc": "-1.44"}, '
+        '{"flutRt": "3.13", "spdmStbtIndx": "28.96", "flutPrc": "0.88", "crisisYn": "N", "realFlutRt": "0.02", "crtrYmd": "202603", "realPrc": "399.91", "realFlutPrc": "0.07"}, '
+        '{"flutRt": "-3.80", "spdmStbtIndx": "28.08", "flutPrc": "-1.11", "crisisYn": "N", "realFlutRt": "2.52", "crtrYmd": "202602", "realPrc": "399.84", "realFlutPrc": "9.83"}, '
+        '{"flutRt": "7.67", "spdmStbtIndx": "29.19", "flutPrc": "2.08", "crisisYn": "N", "realFlutRt": "-0.77", "crtrYmd": "202601", "realPrc": "390.01", "realFlutPrc": "-3.04"}, '
+        '{"flutRt": "10.34", "spdmStbtIndx": "27.11", "flutPrc": "2.54", "crisisYn": "N", "realFlutRt": "-1.59", "crtrYmd": "202512", "realPrc": "393.05", "realFlutPrc": "-6.37"}, '
+        '{"flutRt": "5.18", "spdmStbtIndx": "24.57", "flutPrc": "1.21", "crisisYn": "N", "realFlutRt": "-0.18", "crtrYmd": "202511", "realPrc": "399.42", "realFlutPrc": "-0.74"}, '
+        '{"flutRt": "2.91", "spdmStbtIndx": "23.36", "flutPrc": "0.66", "crisisYn": "N", "realFlutRt": "0.48", "crtrYmd": "202510", "realPrc": "400.16", "realFlutPrc": "1.90"}, '
+        '{"flutRt": "1.16", "spdmStbtIndx": "22.70", "flutPrc": "0.26", "crisisYn": "N", "realFlutRt": "0.88", "crtrYmd": "202509", "realPrc": "398.26", "realFlutPrc": "3.49"}, '
+        '{"flutRt": "5.35", "spdmStbtIndx": "22.44", "flutPrc": "1.14", "crisisYn": "N", "realFlutRt": "-0.27", "crtrYmd": "202508", "realPrc": "394.77", "realFlutPrc": "-1.07"}, '
+        '{"flutRt": "7.36", "spdmStbtIndx": "21.30", "flutPrc": "1.46", "crisisYn": "N", "realFlutRt": "-0.66", "crtrYmd": "202507", "realPrc": "395.84", "realFlutPrc": "-2.64"}, '
+        '{"flutRt": "-0.75", "spdmStbtIndx": "19.84", "flutPrc": "-0.15", "crisisYn": "N", "realFlutRt": "0.98", "crtrYmd": "202506", "realPrc": "398.48", "realFlutPrc": "3.85"}, '
+        '{"flutRt": "-2.15", "spdmStbtIndx": "19.99", "flutPrc": "-0.44", "crisisYn": "N", "realFlutRt": "1.41", "crtrYmd": "202505", "realPrc": "394.63", "realFlutPrc": "5.48"}, '
+        '{"flutRt": "1.14", "spdmStbtIndx": "20.43", "flutPrc": "0.23", "crisisYn": "N", "realFlutRt": "0.48", "crtrYmd": "202504", "realPrc": "389.15", "realFlutPrc": "1.84"}, '
+        '{"flutRt": "-2.32", "spdmStbtIndx": "20.20", "flutPrc": "-0.48", "crisisYn": "N", "realFlutRt": "0.60", "crtrYmd": "202503", "realPrc": "387.31", "realFlutPrc": "2.31"}, '
+        '{"flutRt": "6.27", "spdmStbtIndx": "20.68", "flutPrc": "1.22", "crisisYn": "N", "realFlutRt": "-0.68", "crtrYmd": "202502", "realPrc": "385.00", "realFlutPrc": "-2.64"}, '
+        '{"flutRt": "77.39", "spdmStbtIndx": "19.46", "flutPrc": "8.49", "crisisYn": "N", "realFlutRt": "-7.82", "crtrYmd": "202501", "realPrc": "387.64", "realFlutPrc": "-32.90"}, '
+        '{"flutRt": "42.65", "spdmStbtIndx": "10.97", "flutPrc": "3.28", "crisisYn": "N", "realFlutRt": "-4.17", "crtrYmd": "202412", "realPrc": "420.54", "realFlutPrc": "-18.30"}, '
+        '{"flutRt": "44.01", "spdmStbtIndx": "7.69", "flutPrc": "2.35", "crisisYn": "N", "realFlutRt": "-3.60", "crtrYmd": "202411", "realPrc": "438.84", "realFlutPrc": "-16.39"}, '
+        '{"flutRt": "5.33", "spdmStbtIndx": "5.34", "flutPrc": "0.27", "crisisYn": "N", "realFlutRt": "1.74", "crtrYmd": "202410", "realPrc": "455.23", "realFlutPrc": "7.77"}, '
+        '{"flutRt": "0", "spdmStbtIndx": "5.07", "flutPrc": "0", "crisisYn": "N", "realFlutRt": "0", "crtrYmd": "202409", "realPrc": "447.46", "realFlutPrc": "0"}]}, '
+        '"komis_snapshot_response": {"data": {'
+        '"subChart01": {"xaxis": ["2025.09", "2025.10", "2025.11", "2025.12", "2026.01", "2026.02", "2026.03", "2026.04", "2026.05", "2026.06", "2026.07"], "min": 351.009, "max": 459.899, "series": [{"data": [398.26, 400.16, 399.42, 393.05, 390.01, 399.84, 399.91, 398.47, 398.9, 400.4, 418.09], "name": "실질가격"}]}, '
+        '"subChart07": [{"prdtnRt": "0", "totalBurudgQuty": 0, "crtrYr": "2025", "burudgQuty": 0, "ntnEngNm": "Russia", "ntnKornNm": "러시아"}, {"prdtnRt": "0", "totalBurudgQuty": 0, "crtrYr": "2025", "burudgQuty": 0, "ntnEngNm": "China", "ntnKornNm": "중국"}, {"prdtnRt": "0", "totalBurudgQuty": 0, "crtrYr": "2025", "burudgQuty": 0, "ntnEngNm": "Japan", "ntnKornNm": "일본"}, {"prdtnRt": "0", "totalBurudgQuty": 0, "crtrYr": "2025", "burudgQuty": 0, "ntnEngNm": "United States of America", "ntnKornNm": "미국"}], '
+        '"chartSpdmStbt": {"mnrkndUnqCd": "MNRL0024", "spdmStbtIndx": "29.50", "crisisYn": "N", "mnrkndKornNm": "갈륨", "crtrYm": "202607"}, '
+        '"subChart03": {"series": [647905, 645000, 604115, 454240, 120133], "crtrYr": "2025", "labels": ["중국", "독일", "미국", "일본", "대만"]}, '
+        '"subChart02": {"yaxisTitle": "수입량(톤)", "min": 3099.6, "max": 13657846.4, "series": [{"data": [5133, 4706, 5055, 27727, 3444], "name": "수입량", "type": "column"}, {"data": [3315714, 4360325, 2738446, 12416224, 2488838], "name": "수입액", "type": "line"}], "oppoTitle": "수입액(백만$)", "labels": ["2021", "2022", "2023", "2024", "2025"]}, '
+        '"subChart05": {"xaxis": [], "series": [{"data": [], "name": "수요", "type": "line"}, {"data": [], "name": "공급", "type": "column"}, {"data": [], "name": "과부족", "type": "column"}]}, '
+        '"subChart04": [{"prdctnQuty": 900, "prdtnRt": "100.00", "totalPrdctnQuty": 900, "crtrYr": "2025", "ntnEngNm": "China", "ntnKornNm": "중국"}, {"prdctnQuty": 6, "prdtnRt": "0.67", "totalPrdctnQuty": 900, "crtrYr": "2025", "ntnEngNm": "Russia", "ntnKornNm": "러시아"}, {"prdctnQuty": 3, "prdtnRt": "0.33", "totalPrdctnQuty": 900, "crtrYr": "2025", "ntnEngNm": "Japan", "ntnKornNm": "일본"}]}}}',
     ),
 }
