@@ -69,12 +69,12 @@ flowchart TB
 lookup`/`pageindex_agentic`은 트리를 거쳐 결국 OKF 본문 텍스트를 근거로
 반환한다 — 별도의 두 저장소가 아니라 한 파이프라인의 산출물 2종.
 
-이 4개 중 앞의 3개(Postgres 2종·`hybrid_search`/`pageindex_*`의 원천
-데이터 자체)는 **public/private 프로필 결과가 완전히 동일**하고,
-`hybrid_search`·`pageindex_lookup`만 **제3자 라이선스(Argus) 콘텐츠
-포함 여부**로 프로필이 갈린다(§1-3) — "이 4개 데이터원을 다 쓴다"는
-것과 "public/private 프로필로 갈린다"는 것은 서로 다른 축이라는 걸
-여기서도 재확인해둔다(§0의 혼동 방지 원칙과 일관).
+이 4개 데이터원 각각의 내부에도 **다시 public/private로 갈리는 항목이
+있다** — "이 4개 데이터원을 다 쓴다"는 것과 "그 안의 어느 조각이
+public/private로 갈리는가"는 서로 다른 축이다(§0의 혼동 방지 원칙과
+일관). `hybrid_search`·`pageindex_lookup`은 **제3자 라이선스(Argus)
+콘텐츠 포함 여부**로(§1-3), `komis_raw_lookup`은 2026-09-01부터 **일부
+`page_id`**로(§2-3) 갈린다 — 전체 식별표는 §0-2 참고.
 
 챗봇 그래프(`chatbot_graph.py::_retrieve_node`)는 매 턴마다 라우터
 LLM이 고른 도구들을 스레드풀로 **병렬 조회**해 하나의 근거(Evidence)
@@ -82,6 +82,93 @@ LLM이 고른 도구들을 스레드풀로 **병렬 조회**해 하나의 근거
 Vector DB 중 여러 개를 동시에 근거로 삼을 수 있다(예: "니켈 가격+공급위기
 원인" 같은 복합 질문은 `komis_raw`+`hybrid_search`+`pageindex`를 한 번에
 켤 수 있음).
+
+### 0-2. 전체 데이터 식별표(RDB·VectorDB·OKF/PageIndex × public/private/common)
+
+2026-09-01 사용자 요청으로 작성. `공통(common)`은 public/private 프로필
+결과가 완전히 같다는 뜻이고(private가 public의 상위집합이라 "public
+전용"은 존재하지 않는다), `private 전용`은 public 프로필에서 조회/검색
+자체가 거부된다는 뜻이다. 건수는 아래 "재현" 쿼리로 2026-09-01 직접
+실측한 값 — 문서 재인용이 아니다(`data-quantity-verification-rule`).
+
+**A. RDB — Postgres `mineral_risk` 스키마(komir 자체 산출물, §1)**
+
+| 테이블 | 내용 | 건수 | 분류 | 담당 도구 |
+|---|---|---|---|---|
+| `out_diagnosis_alert` | 수급위기 진단 등급(5광종) | 1,652 | common | `latest_diagnosis` |
+| `out_import_forecast` | 12개월 수입물량/금액 예측(5광종) | 120 | common | `import_forecast` |
+| `geo_index` | 지정학 위기지수(5광종) | 3,566 | common | `geo_index_trend` |
+
+**B. RDB — Postgres `public` 스키마, `ko_*`(KOMIS 원천, §2)**
+
+| 테이블 | 내용 | 건수 | page_id | 분류 |
+|---|---|---|---|---|
+| `ko_mnrl_prc` | 광종별 일별 가격 | 13,731 | `price_base_metals`/`_minor_metals`/`_iron_energy`/`_other` | public |
+| `ko_mnrl_prc_predc` | KOMIS 자체 가격예측 | 76 | `forecast_price` | public |
+| `ko_cstm_cmmrc` | 국내(관세청) 수출입 | 22,486 | `map_korea` | public |
+| `ko_un_cmmrc` | 세계(UN Comtrade) 교역 | 25,342 | `map_global` | public |
+| `ko_rsrc_burudg_quty` | 국가별 매장량 | 272 | `map_mineral` | public |
+| `ko_rsrc_prdctn_quty` | 국가별 생산량 | 279 | `map_mineral` | public |
+| `ko_mnrl_snths_indx` | 광물종합지수 | 10,899 | `indicator_composite` | **private 전용** |
+| `ko_mrkt_prspect_idct` | 시장동향지표(시장전망지표) | 170 | `indicator_market` | **private 전용** |
+| `ko_spdm_stbt_indx` | 수급동향지표(수급안정지수) | 98 | `indicator_supply` | **private 전용** |
+
+**C. RDB — Postgres `public` 스키마, `ai_*` 공통 메타(코드↔광종 변환 전용, §2-2)**
+
+| 테이블 | 역할 | 건수 | 분류 |
+|---|---|---|---|
+| `ai_mnrl_mst` | 광종 마스터(코드↔한글명↔가격분류↔데이터출처) | 28 | common |
+| `ai_prc_mnrl_map` | 광종→가격기준일련번호("SN-광종간 매핑정보") | 25 | common |
+| `ai_hs_mnrl_map` | 광종→HS코드("HS코드-광종간 매핑 정보") | 56 | common |
+
+⚠ 이 3개는 어느 `page_id`로도 직접 노출되지 않고 `komis_raw_lookup`
+내부에서 코드→필터값 번역에만 쓰인다 — public 전용/private 전용
+page_id 어느 쪽이 켜졌는지와 무관하게 항상 공통으로 참조된다.
+
+**D. VectorDB — pgvector(`mineral_risk.doc_chunk`, `hybrid_search` 담당, §1-3)**
+
+| 소스그룹(`src`) | 내용 | 건수 | 분류 |
+|---|---|---|---|
+| `Argus_비철금속_일일` | 제3자 라이선스(Argus) 비철금속 일일동향 | 77,648 | **private 전용** |
+| `조달청보고서` | 조달청 주간동향 보고서 | 55,530 | common |
+| `생산매장량_USGS` | USGS 광종별 생산량/매장량 보고서 | 5,647 | common |
+| `외부자료` | 기타 외부 조달 자료 | 176 | common |
+| `documents/산출물` | komir 자체 산출물(2026-08-28 A7 화이트리스트로 제한된 서브셋, `rag_incoming_corpus_restriction_260828`) | 108 | common |
+
+**E. OKF/PageIndex — 파일시스템(`data_lake/semi_structure/{okf_documents,pageindex_trees}`, `pageindex_lookup`·`pageindex_agentic` 담당, §1-3)**
+
+| 소스그룹(`source_group`) | 내용 | 파일 수 | 분류 |
+|---|---|---|---|
+| `Argus_비철금속_일일` | 제3자 라이선스(Argus) 비철금속 일일동향 | 690 | **private 전용** |
+| `조달청보고서` | 조달청 주간동향 보고서 | 868 | common |
+| `생산매장량_USGS` | USGS 광종별 생산량/매장량 보고서 | 8 | common |
+| `외부자료` | 기타 외부 조달 자료 | 4 | common |
+| `기타` | 미분류 | 7 | common |
+
+⚠ D·E는 원천은 같은 코퍼스지만 그룹 목록이 완전히 일치하진 않는다 —
+`documents/산출물`은 D(VectorDB)에만 있고(OKF/PageIndex 트리를 안 거치고
+직접 청킹·색인됨), `기타`는 E(OKF/PageIndex)에만 있다(아직 벡터
+색인이 안 된 상태로 추정, 미확인). `pageindex_agentic`은 이 중
+`생산매장량_USGS` 그룹만 스캔한다(Argus를 애초에 안 건드려 프로필
+무관, §1-3).
+
+**재현(2026-09-01 실측 쿼리)**:
+```bash
+# RDB 건수(komir-rag-chat-test 컨테이너, PYTHONPATH=/app)
+python3 -c "
+from shared.db import read_sql_pg
+for schema, t in [('mineral_risk','out_diagnosis_alert'), ('public','ko_mnrl_prc'), ...]:
+    print(schema, t, read_sql_pg(f'select count(*) as n from {schema}.{t}').iloc[0]['n'])
+"
+# VectorDB 소스그룹별 건수
+python3 -c "
+from shared.db import read_sql_pg
+print(read_sql_pg('select src, count(*) as n from mineral_risk.doc_chunk group by src order by n desc'))
+"
+# OKF/PageIndex 소스그룹별 파일 수
+find data_lake/semi_structure/okf_documents -maxdepth 1 -mindepth 1 -type d \
+  -exec sh -c 'echo -n "{}: "; find "{}" -type f | wc -l' \;
+```
 
 ## 1. `mineral_risk` 스키마 — komir 자체 산출물
 
