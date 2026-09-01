@@ -789,9 +789,17 @@ def _parse_komis_composite_response(raw: dict) -> list[dict]:
     종합지수/MAJOR=메이저금속지수/RARE=희소금속지수) 3종을 행 3개로 나눠서
     준다 — 같은 crtrYmd(YYYY.MM.DD 점 구분)끼리 묶어 CompositeIndexObservation
     1건(세 지수값 전부)으로 합친다. 세 지수 중 하나라도 없는 날짜는 모델
-    요구사항(gt=0 필수 3종)을 못 채워 건너뛴다."""
+    요구사항(gt=0 필수 3종)을 못 채워 건너뛴다.
 
-    table = (raw.get("data") or {}).get("tableData") or []
+    2026-09-01 수정 — 전체 응답 봉투(`{"status":..., "data": {"tableData":
+    ...}}`)뿐 아니라 그 안의 `data` 페이로드만 떼어 낸 형태(`{"tableData":
+    ...}`, 발주처 기획문서 `report_summary/메뉴/광물전망지표/광물종합지수/
+    getLineChartIndx.json`이 이 모양)도 그대로 받는다 — 그 파일로 실측
+    검증한 결과 봉투 없이 `tableData`가 최상위에 바로 있어 기존 코드로는
+    0건으로 파싱됐다."""
+
+    payload = raw.get("data") if isinstance(raw.get("data"), dict) else raw
+    table = payload.get("tableData") or []
     by_date: dict[str, dict[str, float]] = {}
     for row in table:
         crtr = row.get("crtrYmd")
