@@ -110,10 +110,11 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
      **이 세 가지에 없는 지표(가격·교역·매장량·생산량·시장전망·수급안정 등)는
      structured가 아니라 아래 komis_raw가 담당한다** — 그런 질문에 structured를
      같이 켤 필요는 없다(commodity_code가 있으면 komis_raw만으로 충분).
-   - komis_raw(2026-08-31 신설, 2026-09-01 전 광종으로 확대): KOMIS가 자체
-     웹사이트에서 공개하는 원천 데이터(광종별 실거래가·최저/최고가,
-     국내(관세청)·세계(UN Comtrade) 교역량, 국가별 매장량·생산량, 시장전망
-     지표, 수급안정지수, 가격예측)를 조회한다. "{광종} 가격/시세 알려줘",
+   - komis_raw(2026-08-31 신설, 2026-09-01 전 광종으로 확대+광물종합지수
+     topic 추가): KOMIS가 자체 웹사이트에서 공개하는 원천 데이터(광종별
+     실거래가·최저/최고가, 국내(관세청)·세계(UN Comtrade) 교역량, 국가별
+     매장량·생산량, 시장전망지표, 수급안정지수, 가격예측, 광물종합지수)를
+     조회한다. "{광종} 가격/시세 알려줘",
      "{광종} 수입/수출 현황", "{광종} 매장량/생산량", "{광종} 가격 전망" 류의
      **구체적 수치를 원하는 질문**일 때 켠다(화면·메뉴 위치 자체를 묻는
      질문이 아니라 수치 자체를 원할 때 — 화면 위치 질문은 이 그래프가 아니라
@@ -127,15 +128,19 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
         - domestic_trade: 한국 관세청 기준 수입/수출 물량·금액(국가별).
         - global_trade: UN Comtrade 기준 세계 교역(국가 간 수출입).
         - reserves_production: 국가별 매장량·생산량(세계 공급 구조).
-        - market_outlook: 시장전망지표.
-        - supply_stability: 수급안정지수.
+        - market_outlook: 시장전망지표(="시장동향지표"라고 묻는 질문도 이거다 —
+          KOMIS 표시명과 사용자 표현이 다를 수 있다, 같은 지표다).
+        - supply_stability: 수급안정지수(="수급동향지표"라고 묻는 질문도
+          이거다 — 위와 같은 이유).
         - price_forecast: KOMIS 자체 가격예측(위 structured의 import_forecast
           와 다르다 — 이건 komir가 만든 예측이 아니라 KOMIS가 게시하는
           예측이다).
-        "종합지수"·"위기지수"·"수급동향지표"·"시장동향지표"처럼 여러 지표를
-        합성한 지수는 komis_topic 어디에도 없다 — 그런 질문은 komis_raw를
-        켜지 않는다(이 그래프로 오기 전 단계에서 이미 걸러졌어야 정상이지만,
-        혹시 오더라도 이 도구로는 못 답한다는 뜻).
+        - composite_index: 광물종합지수(HI001~003, 여러 지표를 합성한 KOMIS
+          자체 게시 지수 — "종합지수" 질문은 대개 이거다).
+        **"위기지수"만 예외다** — 이건 komir 자체 산출물(지정학 위기지수)이라
+        komis_topic이 아니라 위 structured의 geo_index_trend가 담당한다.
+        "위기지수" 질문엔 komis_raw를 켜지 않는다(광물종합지수·시장전망·
+        수급안정과 헷갈리지 말 것 — 전부 KOMIS가 게시하는 별개 지표다).
      2) komis_mineral_name — 질문이 가리키는 광종의 한글명을 질문에 쓰인
         표현 그대로 채운다(예: "텅스텐", "금", "구리". commodity_code처럼
         CU/NI 같은 영문 약어로 바꿔쓰지 않는다 — 이 필드는 5광종 제한이
@@ -212,7 +217,7 @@ class RetrievalRoute(BaseModel):
     structured_template: Literal["latest_diagnosis", "import_forecast", "geo_index_trend"] | None = None
     komis_topic: Literal[
         "price", "domestic_trade", "global_trade", "reserves_production",
-        "market_outlook", "supply_stability", "price_forecast",
+        "market_outlook", "supply_stability", "price_forecast", "composite_index",
     ] | None = None
     # 2026-09-01: komis_raw 전용 광종명 필드 신설(자유형, 5광종 제한 없음) —
     # commodity_code(바로 아래)는 structured(komir 자체 산출물, latest_diagnosis
@@ -239,8 +244,15 @@ _STRUCTURED_CALL_NAMES = {
 }
 
 #: komis_topic -> komis_raw_lookup page_id(price 제외 — 광종과 무관하게
-#: 페이지가 고정된 5개 topic만). 이건 KOMIS 사이트의 고정 페이지 구조라
-#: 하드코딩해도 안전하다(광종이 새로 추가돼도 안 바뀜).
+#: 페이지가 고정된 6개 topic만, 2026-09-01 composite_index 추가). 이건 KOMIS
+#: 사이트의 고정 페이지 구조라 하드코딩해도 안전하다(광종이 새로 추가돼도
+#: 안 바뀜). ⚠ indicator_composite(KO_MNRL_SNTHS_INDX)는 komis_raw.py의
+#: _PAGE_DATASETS에 filter_columns가 index_type_code뿐이라 광종 필터가 아예
+#: 없다 — 그런데도 `_retrieve_node`는 komis_mineral_name이 없으면 komis_raw
+#: 자체를 안 켠다(아래 route.use_komis_raw 조건). 즉 "광물종합지수 알려줘"처럼
+#: 광종을 안 짚은 질문은 지금도 안 켜진다 — 이 topic이 private 전용이 되며
+#: 우선순위가 낮아져 이번엔 손대지 않았다(index_type_code를 라우터가 직접
+#: 고르게 하는 별도 설계가 필요, 후속 과제로 남김).
 _KOMIS_TOPIC_TO_PAGE = {
     "domestic_trade": "map_korea",
     "global_trade": "map_global",
@@ -248,6 +260,7 @@ _KOMIS_TOPIC_TO_PAGE = {
     "market_outlook": "indicator_market",
     "supply_stability": "indicator_supply",
     "price_forecast": "forecast_price",
+    "composite_index": "indicator_composite",
 }
 #: price_category(ai_mnrl_mst.prc_cat_cd, HP001~004 — 광종이 아니라 KOMIS
 #: 가격 서브메뉴 4종의 고정 분류코드) -> komis_raw_lookup page_id. 이것도
