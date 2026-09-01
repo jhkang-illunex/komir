@@ -38,7 +38,7 @@ import streamlit as st
 
 from streamlit_demo.mineral_master import (
     PRICE_CATEGORY_BY_PAGE,
-    market_supply_mineral_options,
+    komis_registry_mineral_options,
     mineral_label,
     mineral_options_for_page,
 )
@@ -167,12 +167,16 @@ def _compare_mineral_picker(col, page_id: str) -> None:
 # indicator_supply를 로그인해 확인하고 분리를 안 했던 것과 같은 결론) 걷어냈다.
 # 이제 나머지 has_mineral 페이지와 동일하게 전체 광종 드롭다운 하나만 쓴다.
 # 2026-09-01(사용자 지시): indicator_market/supply는 `ai_mnrl_mst`(이 프로젝트
-# 19종 한정 DB)가 아니라 report_gen 자신의 registry(§mineral_master.py
-# market_supply_mineral_options)로 광종을 채운다 — 실제 KOMIS 화면 39종/36종과
+# 19종 한정 DB)가 아니라 KOMIS 실측 registry(§mineral_master.py
+# komis_registry_mineral_options)로 광종을 채운다 — 실제 KOMIS 화면 39종/36종과
 # 일치, 라이브검증에 쓴 갈륨(MNRL0024) 포함.
+# 2026-09-01 확장(사용자 제공 74종 목록): map_korea(핵심광물지도>수급지도>
+# 대한민국)도 같은 이유로 registry(metadata.maps.trade_minerals, 73종)를 쓴다
+# — 사용자 목록과 71/74종 일치 확인(§mineral_master.py 모듈 docstring 참고).
+_KOMIS_REGISTRY_PAGE_IDS = ("indicator_market", "indicator_supply", "map_korea")
 if spec.has_mineral:
-    if page_id in ("indicator_market", "indicator_supply"):
-        mineral_opts = prioritize_core_minerals(market_supply_mineral_options(page_id))
+    if page_id in _KOMIS_REGISTRY_PAGE_IDS:
+        mineral_opts = prioritize_core_minerals(komis_registry_mineral_options(page_id))
     else:
         mineral_opts = prioritize_core_minerals(mineral_options_for_page(page_id))
     _mineral_picker(mineral_opts, key=f"mineral_{page_id}")

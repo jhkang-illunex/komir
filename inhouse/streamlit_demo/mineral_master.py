@@ -23,13 +23,23 @@ indicator_market과 달리 실제로 KOMIS 구조에 대응되는 분류라 삭�
 사용자가 KOMIS 실제 화면에서 확인해 알려준 시장동향지표 39종/수급동향지표
 36종(갈륨·규소·니오븀 등, 5대 핵심광물 밖 다수 포함)과 크게 어긋난다(실측:
 라이브검증에 쓴 갈륨 MNRL0024조차 `ai_mnrl_mst`엔 없었다). 사용자가 "기존에
-있는 광종명 및 코드로 맵핑하자"고 지시해 찾아보니, report_gen 서버 자신이
-`services/report_gen/app/analysis/resources/komis-metadata.subset.json`의
-`metadata.indicators.market_minerals`/`supply_minerals`(2026-07-16 KOMIS
-브라우저 실측 프로브 `artifacts/browser/page-probe/metadata-catalog.json`의
-파생본, report_gen_client.py의 `section` 필드 출처와 같은 registry)를 이미
-정본으로 갖고 있었다 — `MARKET_SUPPLY_MINERAL_REGISTRY_PATH`로 이 파일을
-그대로 읽어 두 메뉴 전용 드롭다운을 만든다(DB 무관, ai_mnrl_mst 손 안 댐)."""
+있는 광종명 및 코드로 맵핑하자"고 지시해 찾아보니, `services/rag_chat/app/
+page_recommend/resources/metadata/komis-metadata.snapshot.json`(2026-07-16
+KOMIS 브라우저 실측 프로브 `artifacts/browser/page-probe/metadata-catalog.json`
+그대로, report_gen_client.py의 `section` 필드 출처와 같은 registry — report_gen
+서버가 쓰는 `services/report_gen/app/analysis/resources/komis-metadata.subset.json`
+은 이 전체 스냅샷에서 5개 ref만 추린 파생본이라 아래 map_korea 추가 시점부터
+파생본 대신 전체 스냅샷을 직접 읽는다)에 26개 메뉴별 ref로 이미 정본이 있었다
+— `KOMIS_METADATA_REGISTRY_PATH`로 이 파일을 그대로 읽어 DB 무관하게 메뉴별
+드롭다운을 만든다(ai_mnrl_mst 손 안 댐).
+
+2026-09-01 확장(사용자 제공 목록): 핵심광물지도>수급지도>대한민국(map_korea)도
+같은 문제 — 사용자가 알려준 74종(갈륨~황철석, "기타광물"·"인광석" 포함)이
+registry의 `metadata.maps.trade_minerals`(73종)와 71종이 정확히 일치해(나머지는
+"인"(registry) vs "인광석"(사용자) 표기차 + 사용자쪽 "기타광물" 1건 추가뿐)
+이 ref가 정본임을 확인, `_KOMIS_REGISTRY_REF`에 추가했다. map_korea/global(둘 다
+KOMIS "수급지도" 하위, HS코드 기반 무역통계)은 같은 광종 집합을 쓸 가능성이 높지만
+map_global은 이번 요청 범위 밖이라 아직 안 바꿨다."""
 from __future__ import annotations
 
 import json
@@ -45,8 +55,9 @@ if str(_INHOUSE_ROOT / "services") not in sys.path:
 
 _log = logging.getLogger(__name__)
 
-MARKET_SUPPLY_MINERAL_REGISTRY_PATH = (
-    _INHOUSE_ROOT / "services" / "report_gen" / "app" / "analysis" / "resources" / "komis-metadata.subset.json"
+KOMIS_METADATA_REGISTRY_PATH = (
+    _INHOUSE_ROOT / "services" / "rag_chat" / "app" / "page_recommend" / "resources" / "metadata"
+    / "komis-metadata.snapshot.json"
 )
 
 
@@ -93,9 +104,9 @@ def mineral_options_for_page(page_id: str) -> list[dict]:
     """광물자원가격 4종(price_*)이면 그 서브메뉴 소속 광종만, 아니면 전체 목록을
     반환한다 — §모듈 docstring 2026-08-31 재도입 참고.
 
-    indicator_market/indicator_supply는 이 함수를 쓰지 않는다 —
-    `market_supply_mineral_options()`(§2026-09-01 docstring 참고)가 대신
-    report_gen 자체 registry로 채운다."""
+    indicator_market/indicator_supply/map_korea는 이 함수를 쓰지 않는다 —
+    `komis_registry_mineral_options()`(§2026-09-01 docstring 참고)가 대신
+    KOMIS 실측 registry로 채운다."""
     options = load_minerals()
     prc_cat_cd = PRICE_CATEGORY_BY_PAGE.get(page_id)
     if prc_cat_cd is None:
@@ -103,30 +114,30 @@ def mineral_options_for_page(page_id: str) -> list[dict]:
     return [m for m in options if m["prc_cat_cd"] == prc_cat_cd]
 
 
-_MARKET_SUPPLY_REGISTRY_REF: dict[str, str] = {
+_KOMIS_REGISTRY_REF: dict[str, str] = {
     "indicator_market": "metadata.indicators.market_minerals",
     "indicator_supply": "metadata.indicators.supply_minerals",
+    "map_korea": "metadata.maps.trade_minerals",
 }
 
 
 @st.cache_data(ttl=300, show_spinner=False)
-def market_supply_mineral_options(page_id: str) -> list[dict]:
-    """indicator_market/indicator_supply 전용 — `ai_mnrl_mst`(DB, 이 프로젝트가
-    쓰는 19종뿐) 대신 report_gen 서버 자신이 참조하는 KOMIS 실측 registry
-    (§모듈 docstring 2026-09-01)에서 [{code, name_ko}, ...]를 돌려준다.
-    page_id가 이 registry에 없거나 파일을 못 읽으면 빈 리스트(호출부가
-    코드 직접입력으로 폴백, §mineral_master.py 기존 관례와 동일)."""
+def komis_registry_mineral_options(page_id: str) -> list[dict]:
+    """`ai_mnrl_mst`(DB, 이 프로젝트가 쓰는 19종뿐)로는 부족한 메뉴 전용 —
+    KOMIS 실측 registry(§모듈 docstring 2026-09-01)에서 [{code, name_ko}, ...]를
+    돌려준다. page_id가 `_KOMIS_REGISTRY_REF`에 없거나 파일을 못 읽으면 빈
+    리스트(호출부가 코드 직접입력으로 폴백, §mineral_master.py 기존 관례와 동일)."""
 
-    ref = _MARKET_SUPPLY_REGISTRY_REF.get(page_id)
+    ref = _KOMIS_REGISTRY_REF.get(page_id)
     if ref is None:
         return []
     try:
-        data = json.loads(MARKET_SUPPLY_MINERAL_REGISTRY_PATH.read_text(encoding="utf-8"))
+        data = json.loads(KOMIS_METADATA_REGISTRY_PATH.read_text(encoding="utf-8"))
         raw_options = data["refs"][ref]["options"]
     except (OSError, json.JSONDecodeError, KeyError, TypeError):
         _log.exception(
-            "market_supply_mineral_options 읽기 실패(page_id=%s, path=%s) — 코드 직접입력으로 폴백",
-            page_id, MARKET_SUPPLY_MINERAL_REGISTRY_PATH,
+            "komis_registry_mineral_options 읽기 실패(page_id=%s, path=%s) — 코드 직접입력으로 폴백",
+            page_id, KOMIS_METADATA_REGISTRY_PATH,
         )
         return []
     return [{"code": o["external_value"], "name_ko": o["label"]} for o in raw_options]
