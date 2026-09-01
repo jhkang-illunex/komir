@@ -312,8 +312,14 @@ class AnalysisSummaryRequest(StrictModel):
             raise ValueError("komis_bar_chart_response is only accepted for page_id=map_global")
         if self.komis_route_share_response is not None and self.page_id != "map_global":
             raise ValueError("komis_route_share_response is only accepted for page_id=map_global")
-        if self.komis_snapshot_response is not None and self.page_id != "map_mineral":
-            raise ValueError("komis_snapshot_response is only accepted for page_id=map_mineral")
+        if self.komis_snapshot_response is not None and self.page_id not in (
+            "map_mineral", "indicator_supply",
+        ):
+            # 2026-09-01 — indicator_supply 추가. `getChartDataSpdmStbt`(수급동향지표
+            # 상세: 국가별 수입비중·5개년 수입량/수입액·광종 식별자)가 map_mineral의
+            # `getListMapMnrlData`와 마찬가지로 "리스트 응답 하나로는 못 채우는 보조
+            # 정보"라는 같은 역할이라 필드명을 재사용한다.
+            raise ValueError("komis_snapshot_response is only accepted for page_id=map_mineral/indicator_supply")
         if self.komis_share_response is not None and self.page_id != "map_mineral":
             raise ValueError("komis_share_response is only accepted for page_id=map_mineral")
         # 2026-08-27 price page_id 분리 당시엔 비교광종이 희소금속 전용 KOMIS
@@ -391,7 +397,15 @@ class AnalysisSummaryRequest(StrictModel):
             raise ValueError("komis_response is not accepted for this page_id")
 
         if self.page_id in PAGE_PROFILES:
-            if self.mineral is None:
+            # 2026-09-01 예외 — indicator_supply는 komis_snapshot_response
+            # (`getChartDataSpdmStbt`)가 있으면 그 안의 `chartSpdmStbt.mnrkndUnqCd`
+            # 로 광종 코드를 자동 채울 수 있다(map_korea/global과 같은 패턴).
+            # indicator_market은 대응 상세 엔드포인트 자체가 없어(2026-09-01
+            # 사용자 확인 — "데이터가 없고 양식에도 나올 필요 없다") 계속 필수다.
+            mineral_derivable_from_snapshot = (
+                self.page_id == "indicator_supply" and self.komis_snapshot_response is not None
+            )
+            if self.mineral is None and not mineral_derivable_from_snapshot:
                 raise ValueError("mineral is required for indicator summaries")
             if any(
                 value is not None
@@ -570,24 +584,38 @@ class SupplyWorldBalanceObservation(StrictModel):
 
 
 class SupplyImportDependencyObservation(StrictModel):
-    """상위 3개국 수입의존도 보조패널의 국가 1행."""
+    """상위 3개국 수입의존도 보조패널의 국가 1행.
+
+    2026-09-01 — `weight_kg`를 선택 필드로 완화했다. `getChartDataSpdmStbt`의
+    subChart03(국가별 수입 파이)이 실측 확인(사용자) 결과 국가당 금액(USD)
+    하나만 주고 중량은 안 준다 — 이 값 하나만으로는 채울 수 없어 `None`으로
+    둔다(원래 타입은 둘 다 필수였던 "이식 당시 가정"이었을 뿐, 실측 근거는
+    아니었다)."""
 
     year: int = Field(ge=1900, le=2100)
     country_name: str
     amount_usd: float = Field(ge=0)
-    weight_kg: float = Field(ge=0)
+    weight_kg: float | None = Field(default=None, ge=0)
     share_percent: float = Field(ge=0, le=100)
 
 
 class SupplyAuxiliaryData(StrictModel):
     """수급안정 페이지의 선택적 보조패널 묶음.
 
-    ⚠ 현재 komir가 쓰는 `DatabaseIndicatorDataSource`는 이 값을 채우지 않는다
-    (`public.KO_SPDM_STBT_INDX` 한 테이블만 읽으므로 보조패널 원천이 없다) —
-    항상 None이라 `summary.py._supply_auxiliary_metrics`가 빈 리스트를 돌려준다.
-    그럼에도 타입을 이식해 둔 이유는 `summary.py`를 원본과 동일하게 유지하기
-    위해서다(외부repo가 계속 개발 중이라 포크를 만들면 재동기화가 어려워진다).
-    """
+    2026-09-01 — 발주처가 `getChartDataSpdmStbt`(수급동향지표 상세) 덤프를
+    제공해 `domestic_imports`(subChart02, 수입량·수입액 5개년)·
+    `import_dependencies`/`top_three_dependency_percent`(subChart03, 국가별
+    수입금액 비중)를 채울 수 있게 됐다(`summary.py::
+    _parse_komis_supply_snapshot_response`). `international_prices`(subChart01,
+    실질가격)는 핵심 관측치(`IndicatorObservation.price`, `getListIndxSplyBalncMnrk`
+    의 `realPrc`)와 같은 값의 중복이라 안 채운다. `world_balances`(subChart05,
+    수요·공급·과부족)는 필드는 남겨 두되(다른 광종은 값이 있을 수 있어 스키마
+    호환 유지 목적) `_parse_komis_supply_snapshot_response`에 실제 파싱 로직은
+    없다 — 실측 덤프가 빈 배열+빈 xaxis라 연도 매핑을 검증할 수 없어 구현을
+    보류했다. 세계 공급 편중도(subChart04, 국가별 생산량)·매장 편중도
+    (subChart07, 국가별 매장량)에 대응하는 필드는 이 클래스에 아예 없다 —
+    PDF가 요구하는 5개 요인 중 이 둘은 이번 반영 범위 밖이다(§WORKLOG
+    2026-09-01 참고)."""
 
     international_prices: list[SupplyInternationalPriceObservation] = Field(
         default_factory=list

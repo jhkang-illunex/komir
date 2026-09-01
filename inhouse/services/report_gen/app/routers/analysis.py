@@ -122,22 +122,25 @@ class AnalysisEndpointRequest(ApiModel):
 
 
 class IndicatorSummaryRequest(AnalysisEndpointRequest):
-    """시장동향·수급동향 지표 요약 요청.
+    """시장동향지표 요약 요청(수급동향지표는 `SupplyIndicatorSummaryRequest`가 상속·확장).
 
     2026-08-26: `observations`(IndicatorObservation 리스트, dict 그대로) —
     DB 대신 요청 바디로 원자료를 받는다(§`models.py::AnalysisSummaryRequest`
     2026-08-26 주석 참고). `mineral_name`이 없으면 `mineral`(코드)을 표시명으로도
     쓴다.
 
-    2026-09-01 추가 — `komis_response`에 KOMIS 원본 응답을 그대로 담으면
-    직접 파싱한다(indicator_market: `getListIndxMnrk`, indicator_supply:
-    `getListIndxSplyBalncMnrk` — 둘 다 `{"data": [...행들], "chartData": {...}}`
-    형태, `chartData`는 `data`와 같은 값을 그래프용으로 재구성한 것이라
-    쓰지 않는다). 이 2개 페이지는 로그인 필요 화면이라 그동안 정적 데이터
-    예시가 없어 `observations` 손 매핑만 지원했는데, 발주처가 두 엔드포인트의
-    실제 덤프를 제공해 komis_response 경로를 추가했다. `mineral`(코드)은
-    두 응답 모두 본문에 광종 식별자가 없어 여전히 필수다 — `observations`는
-    하위호환으로 남긴다(둘 다 없으면 NO_DATA)."""
+    2026-09-01 추가 — `komis_response`에 KOMIS 원본 응답(`getListIndxMnrk`,
+    `{"data": [...행들], "chartData": {...}}` 형태, `chartData`는 `data`와 같은
+    값을 그래프용으로 재구성한 것이라 쓰지 않는다)을 그대로 담으면 직접
+    파싱한다. 이 페이지는 로그인 필요 화면이라 그동안 정적 데이터 예시가
+    없어 `observations` 손 매핑만 지원했는데, 발주처가 덤프를 제공해
+    komis_response 경로를 추가했다. `mineral`(코드)은 응답 본문에 광종
+    식별자가 없어 여전히 필수다 — `observations`는 하위호환으로 남긴다(둘
+    다 없으면 NO_DATA).
+
+    2026-09-01 정리 — `supply_auxiliary`는 수급동향지표 전용 필드라
+    `SupplyIndicatorSummaryRequest`로 옮겼다(시장동향지표 Swagger에 안 쓰는
+    필드가 노출되는 문제, `_DateRangeMineralRequest` 분리와 같은 이유)."""
 
     mineral: str = Field(min_length=1)
     mineral_name: str | None = Field(default=None, min_length=1)
@@ -148,13 +151,41 @@ class IndicatorSummaryRequest(AnalysisEndpointRequest):
     price_unit: str | None = None
     price_criterion: str | None = None
     unavailable_page_data: list[str] | None = None
-    supply_auxiliary: dict | None = None
 
     @model_validator(mode="after")
     def validate_period(self) -> IndicatorSummaryRequest:
         if self.start_month and self.end_month and self.start_month > self.end_month:
             raise ValueError("start_month must not be after end_month")
         return self
+
+
+class SupplyIndicatorSummaryRequest(IndicatorSummaryRequest):
+    """수급동향지표 요약 요청 — `IndicatorSummaryRequest`를 상속하고 수급동향
+    전용 필드만 얹는다(2026-09-01 신설, `_DateRangeMineralRequest`와 같은
+    분리 이유).
+
+    `mineral`을 선택으로 재선언한다 — `komis_snapshot_response`
+    (`getChartDataSpdmStbt`)가 있으면 그 안의 `chartSpdmStbt.mnrkndUnqCd`/
+    `mnrkndKornNm`으로 광종 코드·이름을 자동 채운다(map_korea/global과 같은
+    패턴, `models.py`의 `mineral_derivable_from_snapshot` 참고). 둘 다 없으면
+    (komis_response만 보내고 komis_snapshot_response는 안 보내는 경우)
+    여전히 필수다.
+
+    `komis_snapshot_response`에 `getChartDataSpdmStbt` 원본 응답을 담으면
+    `subChart02`(수입량·수입액 5개년)→`domestic_imports`, `subChart03`
+    (국가별 수입금액 비중, 실측 확인 — 사용자가 "일본 454240=금액(USD)"로
+    확정, 중량은 이 응답에 없어 `SupplyImportDependencyObservation.weight_kg`
+    를 선택 필드로 완화함)→`import_dependencies`/`top_three_dependency_percent`
+    로 파싱한다(`models.py`의 `SupplyAuxiliaryData` docstring 참고).
+    `subChart01`(실질가격)은 핵심 관측치(`realPrc`)와 중복이라 안 쓴다.
+    `subChart04`(국가별 생산량, "세계 공급 편중도")·`subChart07`(국가별
+    매장량)은 대응 모델 필드가 없어 이번 반영 범위 밖이다. 손 매핑 전용이던
+    `supply_auxiliary`는 여기 그대로 남긴다(komis_snapshot_response가 없을 때의
+    폴백 경로)."""
+
+    mineral: str | None = Field(default=None, min_length=1)
+    komis_snapshot_response: dict | None = None
+    supply_auxiliary: dict | None = None
 
 
 class CompositeIndexSummaryRequest(AnalysisEndpointRequest):
@@ -448,7 +479,7 @@ def summarize_market_indicator(
 
 @router.post("/supply-indicator", response_model=AnalysisReportResponse)
 def summarize_supply_indicator(
-    payload: IndicatorSummaryRequest,
+    payload: SupplyIndicatorSummaryRequest,
     request: Request,
 ) -> AnalysisReportResponse:
     """수급동향지표 분석요약."""
