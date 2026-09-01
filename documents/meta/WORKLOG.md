@@ -2,7 +2,359 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-08-28 (최신) — comprehensive.py analysis_lock 무제한 대기 수정(skeptic 감사 HIGH)
+## 2026-09-01 (최신) — 워크트리 4라운드 병합 마무리: 후속 수정 4건(가격예측 메뉴 제거·수급동향지표 5단계 등급 재정정·map_korea 광종 registry 확장)
+
+skeptic-code 감사(아래 항목)·챗봇 komis_raw 분류+라우팅 수정·streamlit/
+report_gen KOMIS 연동(모두 아래 항목들) 이후, 사용자가 "메인에 싹 머지하고
+리빌드·재배포"를 반복 지시할 때마다 main-agent가 5개 워크트리(chatbot·
+report_gen·streamlit·report_summary·ingest)를 매번 재점검해 남은 커밋을
+병합하는 방식으로 마무리까지 진행했다. 이번 라운드에서 새로 발견·병합된
+4건:
+
+- **`d653f4230`**(streamlit): 요약보고서 데모에서 "광물전망지표>가격예측
+  (중기/장기)" 메뉴 제거(사용자 지시, 이유는 별도로 안 들음) — `price_group`
+  삭제(2026-08-31) 때와 같은 패턴으로 `report_gen_client.py`의 `PAGE_SPECS`
+  에서만 빼고 report_gen 서버·`komis_raw.py`의 백엔드 로직은 그대로 둠.
+- **`036eb231e`**(report_gen): 수급동향지표 등급 구간을 발주처가 직접
+  확인해준 값으로 정정 — 기존 4단계(주의 1~5·관심 5~20·안정 20~80·원활
+  80~100, 비대칭+0~1점 미분류 구간)를 5단계(긴장 0~20·주의 20~40·관심
+  40~60·안정 60~80·원활 80~100, 균등 20점 간격)로 교체. `_grade_for_summary`
+  의 0~1점 특수 우회로(PolicyError 회피용)도 이제 전 구간이 등급으로
+  덮여 무의미해져 제거, `policy.classify()`를 직접 쓰도록 단순화. 경계값
+  8개(0/20/20.01/40/40.01/60/60.01/80/80.01/100) 직접 회귀테스트로 확인.
+- **`7107d30be`**(report_gen): 위 커밋에서 새로 쓴 정의문 마지막 문장이
+  형용사 활용형("...강하다.")으로 끝나 `report_render.py::_to_polite_copula`
+  (무조건 "다."→"입니다." 치환)를 거치며 "...강하입니다."라는 비문이 났던
+  것을 명사+계사 종결형("...강한 지표다.")으로 재수정 — 오늘 앞서
+  indicator_market/supply에서 겪은 것과 같은 함정.
+- **`348afa51e`**(streamlit): 국내 수급지도(map_korea) 광종 드롭다운을
+  `ai_mnrl_mst`(DB, 19종) 대신 KOMIS 실측 registry(`komis-metadata.
+  snapshot.json`의 `metadata.maps.trade_minerals`, 73종)로 확장 —
+  `market_supply_mineral_options()`를 `komis_registry_mineral_options()`로
+  일반화하고, 읽는 파일도 report_gen의 파생 subset 대신 원본 전체
+  스냅샷으로 바꿔 다른 메뉴 확장 시에도 바로 재사용 가능하게 함.
+
+**검증·배포**: main-agent가 매 라운드 diff 직접 리뷰 후 병합(전부 fast-
+forward, 충돌 없음) → report_gen 재빌드+`seed_prompts`재시딩+
+`/admin/prompts/reload`(등급 정정은 정책 YAML/프롬프트 텍스트 변경이라
+필수) → streamlit 프로세스 재기동(매번 PID lstart vs 파일 mtime 비교로
+확인) → 라이브 curl로 15.00점 관측치가 실제로 "긴장" 단계로 분류되는 것,
+정의문이 "...강한 지표입니다"로 정상 렌더링되는 것 확인. 이후 3개
+워크트리(chatbot·report_gen·streamlit) 전부에 `git merge main`으로 최신
+main을 역반영 요청해 완료 확인까지 받았다 — 최종적으로 5개 워크트리
+전체 미병합 커밋 0건 상태로 종료.
+
+## 2026-09-01 — streamlit_demo·report_gen: 시장동향/수급동향지표 KOMIS 연동 + 광물종합지수 구성광종 가중치
+
+발주처가 2026-09-01 처음 로그인 필요 KOMIS 화면(시장동향지표·수급동향지표·
+광물종합지수 상세)의 실측 덤프를 제공하면서, 그동안 정적 예시가 없어
+`observations` 손 매핑만 지원하던 페이지들에 `komis_response` 자동 파싱
+경로를 추가하는 큰 작업이 두 워크트리(streamlit·report_gen)에서 동시에
+진행됐다.
+
+**streamlit 쪽(`8578e902d`, 6개 파일 +1121줄)**: indicator_market/
+indicator_supply를 `KOMIS_RAW_PAGES`(붙여넣기→report_gen 스키마 변환)에
+편입, 광종 드롭다운을 이 두 메뉴만 `ai_mnrl_mst`(19종) 대신 report_gen이
+쓰는 `komis-metadata.subset.json` registry(39종/36종)로 교체, 실제 KOMIS
+화면에 없던 가격단위/가격기준 필드 제거, 주메뉴/서브메뉴 변경 시 결과
+초기화, 드롭다운/JSON 광종 불일치 안내 캡션 추가. **병합 시 main이 그새
+챗봇/skeptic-code 작업으로 많이 전진해 있어(merge-base 이후 103커밋)
+fast-forward가 아니라 3개 파일(`komis_fetch.py`·`mineral_master.py`·
+`views/report_demo.py`) 충돌** — main-agent가 전부 수동 해결(제 skeptic-code
+수정과 이 브랜치의 신규 기능을 모두 보존, 자동병합이 충돌마커 없이
+삽입한 `PRICE_CATEGORY_BY_PAGE` 중복 선언도 발견해 제거).
+
+**report_gen 쪽(7개 커밋)**: `111cecedb`(광물종합지수 `komis_response`
+파서가 봉투 없는 원본도 받도록 수정) → `6d759e082`(발주처 제공
+`index_table.png`를 `resources/mineral_index_weights.yaml`로 사전화,
+광물종합·메이저·희소 3개 지수의 상위 가중 구성 광종을 major_changes에
+반영 — "비중이 큰 구성 광종이라 민감하다"는 구조 서술로 제한, 원인 단정
+금지를 프롬프트에 명시) → `b9530ff35`/`044fb4ffc`(report-gen·rag-chat
+컨테이너가 `host.docker.internal` LLM에 닿도록 `extra_hosts` 추가 —
+LLM 정제가 계속 규칙기반으로 조용히 폴백하던 원인, main-agent가 세션
+내내 `docker run --add-host`로 수동 우회하던 것을 compose 설정으로
+공식화) → `53425f1e4`(시장동향·수급동향 `komis_response` 파싱 신설,
+KOMIS 내림차순 응답을 오름차순 정렬 안 하면 최신월이 아니라 최고령월이
+"현재"로 잘못 계산되는 버그 발견·수정, 월간 점수 변화 서술을 점수차에서
+PDF 스펙대로 퍼센트로 변경) → `0cb4a5108`(정의문 동사 활용형→계사
+종결형 정정, `_to_polite_copula` 함정) → `cd51bc205`(수급동향지표
+`komis_snapshot_response` 신설로 국내 수입량·수입국 편중도 반영, PDF
+"주요 요인" 절 서술 추가 — 퍼센트 수치가 "수입증가율" 자체가 아니라
+"국내 수입량"의 증감률임을 서술·프롬프트 양쪽에 명시, advisor 리뷰 지적
+반영). 전 커밋이 key_metrics 8개 상한 초과를 실측으로 미리 발견해
+detailed_metrics로 옮기거나, 실측 덤프가 검증 불가능한 필드(subChart04/
+05/07)는 억지로 채우지 않고 반영범위 밖으로 정직하게 문서화하는 등
+꼼꼼하게 스코프됨.
+
+**검증·배포**: main-agent가 7개 커밋 diff 전부 직접 리뷰(충돌 없음,
+prompts.py만 auto-merge) → report_gen 재빌드(`260901-all-merged`)+
+`seed_prompts` 재시딩+reload → 라이브 curl 3종으로 확인 — supply-indicator
+observations 경로("전월 45.00점 대비 11.11% 상승"), komis_response 경로
+(status=ok), composite-index komis_response(tableData, 봉투 없는 형태)
+경로에서 "광물종합지수는 유연탄(25.6%)·동(16.6%)·알루미늄(15.7%)... 등
+비중이 큰 광종의 가격 변동에 상대적으로 민감한 구조다" 가중치 문장 정상
+생성 확인. streamlit도 재기동해 두 페이지 다 report_gen까지 완전히
+연동됨을 확인.
+
+## 2026-09-01 — 챗봇 komis_raw public/private 테이블 분류 + ROUTE_PROMPT 라우팅 버그 수정
+
+사용자 요청("일부 테이블은 public, 일부는 private에서만 조회 가능하도록
+분류해달라")으로 시작해, 진행 중 라우팅 버그 발견·수정, 전체 데이터
+식별표 작성으로 이어진 5라운드 작업. worktree-chatbot(코드/문서 작성)과
+main-agent(병합·재빌드·재배포·라이브 재현)가 릴레이로 진행 — 상세는
+`documents/산출물/2026-W36_0831-0906/chatbot_komis_raw_public_private_
+분류_260901.md`(chatbot-agent 작성, main-agent 검토 완료) 참고. 요지만
+기록:
+
+1. **`25b7ad0d9`**: `komis_raw_lookup`의 `public.KO_*` 9개 테이블 중
+   `indicator_market`(시장동향지표)·`indicator_supply`(수급동향지표) 2개를
+   private 프로필 전용으로 지정 — `shared.retrieval.access.
+   PRIVATE_ONLY_KOMIS_PAGES` 신설, `register_common_tools()`에
+   `private_only_pages` 인자 추가, `mcp_server_public.py`만 이 상수를
+   소스코드로 넘김(hybrid_search/pageindex_lookup과 같은 "어느 파일을
+   실행했는가" 신뢰경계 원칙 유지).
+2. **`ba7d8eb74`+`8d66f48af`**: 사용자가 광물종합지수(indicator_composite)
+   도 private 전용이라고 정정(2→3개) + `CHATBOT_POSTGRES_MCP_SPEC.md`에
+   RDB 16개 테이블·VectorDB/OKF·PageIndex 소스그룹 전체를 public/private/
+   common 3분류한 §0-2 식별표 신설(건수 전부 실측 재확인).
+3. **`c13d9560a`**: main-agent가 라이브 재현("니켈 수급동향지표 알려줘")
+   중 라우터가 매번 `komis_raw=False`로 판단하는 걸 발견 — `ROUTE_PROMPT`
+   가 "수급동향지표"·"시장동향지표"를 자기가 만든 topic(`market_outlook`/
+   `supply_stability`)의 동의어인 줄 모르고 "komis_topic에 없는 합성지수"
+   로 취급해 스스로 막고 있던 버그. 동의어 명시 + `composite_index` topic
+   신설로 수정.
+4. **`d399ef614`**: 사용자 지시("광물종합지수는 광종 없어도 조회 가능,
+   단 private만")로 `_retrieve_node`가 `composite_index`만 예외로 분리해
+   `komis_mineral_name` 없이도 조회를 켜도록 수정(다른 topic은 광종 필수
+   유지).
+5. **`7537eba65`**: 위 4라운드를 하나의 보고서로 정리(문서만, 재배포
+   불필요) — "이슈로 남김" 절에 다단계 대화 교차턴 추론(직전 턴 수치
+   재사용)과 "매 턴 신선한 근거만 인용" 원칙 사이 우선순위 미결정 문제를
+   기록, 검토된 방향 3가지만 남기고 구현은 사용자 결정 대기.
+
+**검증**: main-agent가 매 라운드 `smoke_mcp_access.py`(최종 9/9)·
+`smoke_chat_routing.py`(6/6) 재실행 + rag_chat 컨테이너 재빌드(4회)·
+재배포 + `/pubchat`·`/prichat` SSE 라이브 재현(서버 로그로 라우팅 결정
+직접 확인, public 정상 거부→dense 대체·private 정상 조회+더미경고 확인)
+까지 전부 완료.
+
+## 2026-09-01 — report_gen·streamlit_demo·chatbot 3개 서비스 skeptic-code DEEP 감사·수정·재배포
+
+사용자 요청으로 main-agent가 그날까지 3개 워크트리(worktree-report_gen·
+worktree-streamlit·worktree-chatbot)에서 병합된 기능을 모두 main으로 모은
+뒤(당시 미병합 커밋 없음 확인), origin/main 대비 main의 실코드 diff
+(3개 서비스, 29개 파일, +5705/-737줄) 전체를 skeptic-code DEEP 모드로
+감사했다. 서비스별 fork 3개를 병렬로 띄워 Pass 1A(존재성 12항목)+Pass 1B
+(안전성 6항목) 전수 라인감사를 수행 — report_gen은 0 CUT/FIX/ADD(QUESTION
+2건, 전부 false alarm은 아니고 기존 확정설계 4건은 오탐 처리), chatbot/
+rag_chat/shared는 CUT 1건, streamlit_demo는 CUT 2·FIX 1·ADD 1·QUESTION 1건.
+
+사용자가 CUT/FIX/ADD 5건 + QUESTION 3건(RG-001·RG-002·SC-105) 전부 수정
+승인 → 담당 fork별로 Step 7(승인된 변경 적용) 진행, 커밋 `575979a52`
+("fix: skeptic-code DEEP 감사 5건 적용")로 8건 전부 반영:
+
+- **SC-RG-001**: `prompts.py`의 `map_korea` `major_changes` 문장수 상한이
+  (1,2)였는데 `calculate_domestic_trade_summary`(국가필터 없는 기본 경로)는
+  최대 3개 근거(top1_country/top3_concentration/top5_concentration)를
+  만들어 3번째 근거가 잘릴 위험 — (1,3)으로 확대.
+- **SC-RG-002**: `main.py`의 레거시 `/reports/{template}/generate` 500
+  응답이 원시 예외 문자열(`str(exc)`)을 그대로 노출하던 걸
+  `routers/_common.py`와 동일 계약(코드만 노출, 상세는 `logging.exception`)
+  으로 통일.
+- **SC-001**: `komis_raw.py`에 `resolve_mineral_meta()` 신설,
+  `_mcp_tools_common.py::komis_raw_lookup`이 `resolve_data_source()`+
+  `resolve_mineral()`로 `public.ai_mnrl_mst`를 같은 조건으로 두 번
+  왕복하던 걸 단일 쿼리로 통합(`resolve_mineral()` 단독은
+  `report_gen/.../extra.py`가 별도로 쓰고 있어 보존).
+- **SC-101**: `prompt_admin.py` 비교광종 selectbox에 `index=None` 누락 —
+  `report_demo.py`가 8/31에 고친 "비교 안 함 기본값" 버그가 복제 폼에
+  남아있던 것을 동일하게 수정.
+- **SC-102/SC-103**: `komis_fetch.py`의 인라인 중복(비교기준 조회 15줄,
+  전년대비 기간계산 11줄×2)을 기존/신규 헬퍼(`_resolve_compare_criterion`/
+  `_prev_period_bounds`) 호출로 통합.
+- **SC-104**: `_pick_price_criterion`이 KOMIS 응답에 `cdKey`가 없으면
+  `KeyError`를 그대로 흘려 `report_demo.py`의 `except KomisFetchError`에
+  안 걸리던 문제 — `KomisFetchError`로 변경.
+- **SC-105**: `period_kind=="year"` 정수 변환 실패 시 트레이스백 대신
+  `st.error` 친화적 처리(report_demo.py·prompt_admin.py 양쪽) — 단,
+  PAGE_SPECS 12개 항목 전수 확인 결과 현재 "year"/"period" 값은 어디에도
+  없어 도달 불가능한 방어코드임을 확인·기록.
+
+**Pass 3 독립검증**: maker와 무관한 fresh general-purpose 체커 1개를
+correctness 레인으로 디스패치(auth/payment/destructive-path 없어 단일
+레인) — 8건 전부 재현으로 시도(예: `main.py` 몽키패치로 실제 예외 발생시켜
+`HTTPException.detail`에 시크릿 텍스트 미노출 확인, `_pick_price_criterion`
+adversarial 입력 재현, leap-year·연도경계 케이스로 `_prev_period_bounds`
+검증). **verdict: APPROVE**, LOW 1건(`resolve_data_source()`가 이번
+변경으로 실호출자 0개 됨 + `evidence.py:181` 독스트링이 옛 흐름 설명 —
+비차단 후속과제로 남김).
+
+**재배포**: report_gen(`komir-report-gen:260901-skeptic-fixes` 재빌드 +
+`seed_prompts` 재시딩 13행 + `/admin/prompts/reload`) · rag_chat
+(`komir-rag-chat:260901-skeptic-fixes` 재빌드, 컨테이너 내부에서
+`resolve_mineral_meta()` 라이브 재확인) · streamlit_demo(프로세스
+재기동, PID lstart(01:06:57) > 파일 mtime(00:53:55)로 재기동 확인) —
+3개 서비스 전부 healthz/HTTP 200 확인.
+
+## 2026-08-31 — 챗봇 komis_raw MCP 신설 + 5광종 제한 철폐
+
+사용자 요청으로 챗봇 MCP에 KOMIS 공개 원천(`public.KO_*`) 조회 도구
+`komis_raw_lookup`/`komis_resolve_mineral`을 신설했다(`f7a8a6636`) —
+라이선스 무관(Argus처럼 제한 콘텐츠가 아님)이라 public/private 프로필
+양쪽에 동일 등록. 이어서 사용자가 "5대 광종 제한은 진단·예측 등 komir
+자체 산출물에 쓰는 제한이고 챗봇 전체는 아니다"라고 명시 정정
+(계기: "텅스텐 가격추이" 질문이 5광종 밖이라 부당하게 기권) →
+`chatbot.py`의 `CHATBOT_SYSTEM_PROMPT` 규칙11(5광종 화이트리스트)과
+`_AbstainReason.unsupported_commodity`를 완전 제거, 18개 KOMIS
+실사용 광종 전체로 확대(`288b8c9d1`) — `RetrievalRoute.commodity_code`
+(5광종 고정, mineral_risk 스키마)와 `komis_mineral_name`(자유 한글명,
+public 스키마)을 분리해 이 확대가 mineral_risk 쪽 진단/예측 제한에는
+영향 없게 했다. `komis_raw_lookup`을 그래프 라우팅에 배선하고 표/차트
+노출 규칙을 세분화(`c80a74379`), 근거 section에 광종코드 대신 한글명
+노출(`a13f38be5`) → 이후 광종 해석을 DB 실조회(`resolve_mineral`)로
+전환하며 NameError·동의어 회귀를 같이 수정(`d2404f8f0`), 라벨 파라미터를
+없애고 `ai_mnrl_mst` 직접조회로 단순화(`8f6945a9b`, 사용자 지적 — "내부에
+코드-한글명 매핑 테이블이 이미 있지 않냐").
+
+**추가 버그 수정**: near-miss 답변에서 `[1,2,3]`처럼 쉼표로 몰아쓴 인용이
+`CLAUSE_RE`에 안 걸려 문장 전체가 조용히 사라지던 버그(`41957602e`,
+근접매칭 제안 시 개별 대괄호 `[1][2][3]`로 강제), 표+차트 노출 로직을
+"조건부 억제"에서 "항상 함께"로 되돌림(`3804f8ab6`, `_wants_chart`
+도입 후 재검토 결과 사용자가 정정), table/image 근거에 사람이 읽는
+출처 문구 추가(`ec0908ab3`).
+
+**검증**: main-agent가 병합 후 실제 라이브 재현(텅스텐 질의 5/5 성공,
+근접매칭 인용 케이스 재현)으로 확인 — 상세는 `documents/meta/
+CHATBOT_POSTGRES_MCP_SPEC.md`, 메모리 `chatbot_5mineral_whitelist_removed_260901`
+등 참고.
+
+## 2026-08-31 — KOMIS 실시간 조회(streamlit_demo) 확장: 가격 4종 + 지도 3종
+
+배경: 요약보고서 데모(`report_demo.py`)가 KOMIS 원본 JSON 수동 붙여넣기
+방식이었는데, 실제 komis.or.kr AJAX를 라이브로 호출해 자동 채우는 fetch
+버튼을 요청받아(`9922df7c8`) 확장했다. 가격 4종(`price_base_metals`
+등)에 평균옵션·기간구분자(일/주/월/년)·기간(시작~종료) 콤보박스 UI
+추가(`e613eedd0`, `648b1a3a2`) + report_gen 쪽 `srchAvgOpt`/`srchField`/
+`srchStartDate`/`srchEndDate` 명시 입력 지원(`8847b9ae9`) — KOMIS
+`dataAvg.stdMap`이 조회단위와 무관하게 항상 모든 일/주/월/년 데이터를
+포함해서 report_gen이 실제 조회단위를 구분할 수 없던 문제 해결. 비교광종
+값 누락 버그 수정 + 위젯 key에 광종 반영(`7aeeba9ee`, `cd6e47a80`).
+
+지도 3종: 광물지도(map_mineral)를 매장량·생산량·점유율 3개 KOMIS
+엔드포인트 envelope로 확장 + 기간 콤보박스(`715f62d44`, `78cc3d783`),
+대한민국 수급지도(map_korea)에 조회필터 4종(기간구분자·국가·품목유형·
+HS코드) 반영 + `mttr_flow_name` report_gen 전달(`ea5c6be3d`,
+`6cdd18250`, `f338356ea`), 글로벌 수급지도(map_global)에 필터 4종 +
+`getBarChartDataNation`/`getListMapNationData` 엔드포인트 2개 +
+report_gen 배선(`4fc787aee`, `67452b73a`, `d707a9416`). 핵심광물지도는
+`getListMapMnrlData`/`getListMnrlTablePrdctnBurgudg` 2개 엔드포인트
+추가(`b7f0f8050`). 부수 수정: 시장동향지표의 비철/희소 광종군 UI 분리가
+실제 KOMIS 메뉴 구조와 안 맞아 제거(`3be0d998b`).
+
+**검증**: 각 fetch 함수를 실제 komis.or.kr에 라이브로 호출해 응답 스키마
+확인 후 report_gen 쪽 파서(`komis_raw.py::passthrough_*`)와 필드 계약을
+맞추는 방식으로 반복 검증(라이브 접속 가능 여부가 세션마다 달라 curl/
+httpx/Playwright 등 다른 클라이언트로 재시도하는 패턴 — 메모리
+`sandbox_playwright_outbound_network_260826` 참고).
+
+## 2026-08-31 — report_gen 광물자원가격 통계 확장(6+2층) + 현재위치 렌더링 개선
+
+사용자 피드백: "지금 보고서는 '현재 위치'만 있고 '성격(변동성)·맥락
+(추세·상대위치)'이 없다" → `price_*` 4종에 통계 팩트 6종(변동성·MA+RSI·
+백분위순위·낙폭국면·재고해석·상대가치) + 연도별수익률표·계절성 2종을
+추가(`c6f763f2b`). `current_position` 섹션이 3문장 넘으면 목록 렌더링으로
+전환 + 정의문 존댓말 변환 + 조회단위(주/월/분기/년) 인식(`1a81ff771`).
+후속 수정: 데이터부족 안내를 `warnings`가 아닌 문장으로, 연도별표 부분연도
+라벨링, 계절성 게이트 조건 수정(`caea46d67`) — 이 라이브 LLM 검증 결과
+원인이 `seed_prompts.py` 미재실행이었음을 기록(`be7e87fdf`, 이후 배포
+체크리스트에 편입 — 메모리 `feedback-report-gen-deploy-seed-prompts-checklist`).
+그 외: 재고 동행비율 문구의 "거래일"을 단위무관 "관측치"로(`67d10a124`),
+전주/전월/전년 비교에 기간 커버리지 게이트 추가(`d04062eb8`), map_korea
+지침에 범위 한정어("이 범위 내") 보존 지시 추가(`e9eabfeaa`), price_
+base_metals 정의문에서 정보량 0인 "최고가·최저가" 삭제(`7a3b13c56`),
+"일별" 하드코딩을 실제 조회단위로 동적화(`1d9877b05`), `SummarySentence`
+빈 문장 안전장치 추가(`59b4bd4bd`).
+
+**검증**: `seed_prompts` 재실행 후 실제 LLM 호출로 통계 6+2층 문장이
+정상 생성되는지, 데이터 부족 케이스에서 경고가 응답 문장으로 노출되는지
+라이브 재현으로 확인.
+
+## 2026-08-31 — report_gen price_group 외부 인터페이스 제거
+
+메뉴별 템플릿 현황 문서에 대한 사용자 피드백: "전체 광종은 필요 없어
+보임"(발주처 PDF도 "전체광종(필요시)"로 조건부 기능 명시) → `price_group`
+페이지의 외부 API 인터페이스(Swagger 엔드포인트)를 제거하되 내부 계산
+코드는 보존(`de2bd6336`, 재요청 시 빠르게 복원 가능하도록). streamlit_demo
+데모 탭도 맞춰 제거(`af8a37a8a`).
+
+## 2026-08-31 — 문서: 발주처 템플릿 대비 구현현황·KOMIS 스키마 조사 3건
+
+`documents/meta/`에 3건 기록: 발주처 PDF 템플릿과 report_gen 구현 현황을
+메뉴별 3종(광물자원가격/핵심광물지도/광물전망지표)으로 대조한 현황
+문서(`417fb24e8`), 광물종합지수(indicator_composite) 화면의 실제 AJAX
+엔드포인트 경로 기록(`b1be9b80c`), `public.ko_*` 9개 테이블 1차 스키마
+매핑(`edaf63a2d`, 챗봇 MCP postgres 검색 준비 — 위 komis_raw MCP 신설의
+사전조사). `komis_share_response` docstring 문구 정정(`143472409`,
+main-agent 감사 지적).
+
+## 2026-08-30 — report_gen komis_response 패스스루 신설(KOMIS 원본 JSON 통째로 수신)
+
+발주처(KOMIS) 납품 최적화 지시 — 호출자가 KOMIS AJAX 응답을 매번 손으로
+report_gen 자체 스키마(`observations` 등)로 매핑하지 않고, 원본 응답을
+그대로 실어 보내면 report_gen이 내부에서 파싱하도록 전환. `price_*` 4종에
+`komis_response` 필드 신설(`a3eaa8da1`) + streamlit_demo 쪽 패스스루 교체
+(`3c05f0522`) → 나머지 5종(map_korea/global/mineral·indicator_composite·
+forecast_price)까지 확장(`ae3d85230`, `73a1453a9`). 자동채움 필드: 광종
+코드(`e4fc136fb`), 예측기간(`9268f782d`), 비교광종명(`9598776b8`), 비교
+광종 범위를 price_* 4종 전체로 확장(`96ab460f4`), 가격기준/비교가격기준
+복원(`ecc4cb8a7`, `268626968`, `fd53ee9cf` — Swagger 트리밍 과정에서
+실수로 지워졌던 걸 재감사로 발견해 복원한 회귀 수정). 파서 버그 2건:
+`latest_price`가 배열 순서에 의존하던 버그(`9e49d0c16`), KOMIS "0.00"
+결측값이 최고/최저가 계산을 오염시키던 버그(`7af11d6bf`). 정렬순서 버그
+3건도 같이 수정(`2bdeeb760`). 관측치 입력 방식을 수동입력에서 KOMIS 원본
+JSON 붙여넣기로 전환(`fd75f2dec`), 12개 page_id 기본값을 실측 KOMIS
+데이터로 전면 풍부화(`6aa6ad22a`), 요약보고서 데모 화면을 선택위젯+원본
+JSON+결과 3요소로 단순화(`eb7ef2ceb`).
+
+**검증**: 자동채움 가능 필드 재감사를 3~4차례 반복(`f69179e5a`,
+`fb6c8eded`, `50f530f1d`)하며 실제 KOMIS 응답 원문과 대조 — 그 과정에서
+발견한 회귀(가격기준 필드 삭제 등)를 복원.
+
+## 2026-08-30 — report_gen Swagger 스키마 트리밍 + 미사용 필드/라우터 제거
+
+사용자 지적: "`/api/v1/analysis/prices/base-metals` 파라미터에 필요없는
+필드가 다 나온다, 지워달라" — `komis_response` 신설로 손 매핑이 불필요해진
+필드들을 Swagger 요청 스키마에서 제거(`c76466a47`), 기간 필터 필드 6쌍
+(`start_date`/`end_date` 등) 제거(`0d0568a50`) + streamlit_demo UI도 맞춰
+정리(`22684b0e2`, `085ddcf8b`), `request_id`/`analysis_scope`를 전
+엔드포인트에서 제거(`53cc0a078`), 미사용 REST 별칭 라우터
+`routers/report_data.py` 제거(`a38f3b29b`). geo_events를 KOMIS 고급입력
+expander에서 분리(`7e340a9a3`).
+
+**검증**: 재감사 2회(`2ef6c74fb` 기록, `50f530f1d` 잔여 필드 전수 점검) —
+두 번째 재감사 결과 추가 제거 대상 없음으로 결론.
+
+## 2026-08-29 — report_gen 신규 필드 통로 + KOMIS 진짜값 패스스루 + 버그 3건
+
+main-agent 지시("값을 지어내지 말고 나오는 값만 전달") 반영 — price 4종
+`observations_example`에 inventory 예시 추가 등 신규 필드(inventory·
+is_actual·geo_events) 전달 통로 신설(`5fc28656d`). map_korea/global의
+총액을 report_gen이 재계산하지 않고 KOMIS가 낸 진짜값으로 패스스루
+(`aa186b908`, main-agent 승인). 버그 수정 3건: 재고량 "0.00"을 결측으로
+게이트(`1b004fbc5`, main-agent 승인 — KOMIS가 6대 전통 LME금속 외
+광종엔 재고량을 매 행 0.00으로 보내는 결측 관행이 있어 실측값으로 오인되던
+문제), forecast_price의 `is_actual` 필드로 실측/예측 혼입 방지
+(`a009cb87c`), `period_range`가 최근 hghst/lowst 미제공 구간에서 왜곡되던
+문제 수정(`2f13eef23`). geo_events placeholder severity를 문턱값 이상
+(2.8)으로 수정(`70f441b85`), map_mineral NO_DATA 원인 2건(unit 기본값+
+예시 3개국) 수정(`f443e9815`).
+
+**검증**: 라이브 재검증 Phase2~4를 문서로 기록(`8fe260723`, `29bab0eae`,
+`e173f3c8b`) — Phase2에서 재고 0.00 버그, Phase3에서 map_global 총액절단
+중증 버그를 발견해 위 수정으로 이어짐. map_korea 시계열 자동계산 여부도
+확인(코드 수정 불필요로 결론, `fd0a76860`).
+
+## 2026-08-28 — comprehensive.py analysis_lock 무제한 대기 수정(skeptic 감사 HIGH)
 
 사용자 요청으로 main-agent가 report_gen 전체(`app/`)에 skeptic-code 감사를
 돌려 HIGH 1건 발견: `routers/comprehensive.py:29`(`GET /api/v1/dashboard/
