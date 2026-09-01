@@ -202,23 +202,12 @@ PAGE_SPECS: dict[str, PageSpec] = {
         '{"year": 2025, "country_code": "US", "country_name": "미국", "value": 47000.0}, '
         '{"year": 2025, "country_code": "ZM", "country_name": "잠비아", "value": 21000.0}]',
     ),
-    "forecast_price": PageSpec(
-        # 실측: Phase4 `composite_forecast_live_capture_260829.json`
-        # (getListPricePredc, 니켈·중기, realYn 그대로 is_actual에 매핑). 실측
-        # 25년4Q~26년2Q(is_actual=true) + 예측 26년3Q~27년1Q(is_actual=false) 6개 —
-        # 2개(실측1+예측1)로는 계산기가 실측을 제외해 예측치 1개만 남아 NO_DATA로
-        # 회귀했던 걸 12개 페이지 재검사에서 발견해 6개로 확장(실측 확인).
-        # 2026-08-30 report-summary-agent 제보(커밋 0d0568a50) — start_period/
-        # end_period가 요청 모델에서 삭제됐다(§indicator_composite 주석 참고).
-        "가격예측(중기/장기)", "광물전망지표", "price-forecast", True, ("", ""), "",
-        ("forecast_horizon", "price_unit"),
-        '[{"period": "2025-Q4", "price": 14891.8, "is_actual": true}, '
-        '{"period": "2026-Q1", "price": 17356.03, "is_actual": true}, '
-        '{"period": "2026-Q2", "price": 18458.52, "is_actual": true}, '
-        '{"period": "2026-Q3", "price": 19713.08, "is_actual": false}, '
-        '{"period": "2026-Q4", "price": 20563.75, "is_actual": false}, '
-        '{"period": "2027-Q1", "price": 20716.95, "is_actual": false}]',
-    ),
+    # 2026-09-01 삭제(사용자 지시): "광물전망지표>가격예측(중기/장기)" 메뉴를
+    # 화면에서 지웠다 — page_id "forecast_price"(path price-forecast)를
+    # PAGE_SPECS에서 제거(§price_group 2026-08-31 삭제와 같은 패턴, 이유는
+    # 별도로 듣지 못해 기록만). report_gen 서버 쪽 엔드포인트·komis_raw.py의
+    # KOMIS_RAW_PAGES["forecast_price"]/passthrough_forecast_price는 손대지
+    # 않았다(이 화면의 메뉴 노출만 제거 대상이라 판단, 백엔드 범위 밖).
     "price_base_metals": PageSpec(
         # 실측: Phase1 `harness_sample_entries_260828.json`(동|LME 3개월, 최근
         # 14영업일 + inventory) — 이 샘플은 report-summary-agent가 실제 스크린샷
