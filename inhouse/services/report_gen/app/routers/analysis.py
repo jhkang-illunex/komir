@@ -127,13 +127,24 @@ class IndicatorSummaryRequest(AnalysisEndpointRequest):
     2026-08-26: `observations`(IndicatorObservation 리스트, dict 그대로) —
     DB 대신 요청 바디로 원자료를 받는다(§`models.py::AnalysisSummaryRequest`
     2026-08-26 주석 참고). `mineral_name`이 없으면 `mineral`(코드)을 표시명으로도
-    쓴다."""
+    쓴다.
+
+    2026-09-01 추가 — `komis_response`에 KOMIS 원본 응답을 그대로 담으면
+    직접 파싱한다(indicator_market: `getListIndxMnrk`, indicator_supply:
+    `getListIndxSplyBalncMnrk` — 둘 다 `{"data": [...행들], "chartData": {...}}`
+    형태, `chartData`는 `data`와 같은 값을 그래프용으로 재구성한 것이라
+    쓰지 않는다). 이 2개 페이지는 로그인 필요 화면이라 그동안 정적 데이터
+    예시가 없어 `observations` 손 매핑만 지원했는데, 발주처가 두 엔드포인트의
+    실제 덤프를 제공해 komis_response 경로를 추가했다. `mineral`(코드)은
+    두 응답 모두 본문에 광종 식별자가 없어 여전히 필수다 — `observations`는
+    하위호환으로 남긴다(둘 다 없으면 NO_DATA)."""
 
     mineral: str = Field(min_length=1)
     mineral_name: str | None = Field(default=None, min_length=1)
     start_month: Month | None = None
     end_month: Month | None = None
     observations: list[dict] | None = None
+    komis_response: dict | None = None
     price_unit: str | None = None
     price_criterion: str | None = None
     unavailable_page_data: list[str] | None = None

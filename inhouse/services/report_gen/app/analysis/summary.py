@@ -823,6 +823,70 @@ def _parse_komis_composite_response(raw: dict) -> list[dict]:
     return observations
 
 
+def _komis_ymd_to_month(crtr_ymd) -> str | None:
+    """KOMIS `crtrYmd`(시장동향지표는 "YYYYMMDD" 8자리 — 매월 1일자 스냅샷,
+    수급동향지표는 "YYYYMM" 6자리)를 둘 다 report_gen `Month`("YYYY-MM")로
+    정규화한다. 두 형식 모두 앞 6자리가 그대로 연월이라 슬라이스 하나로
+    충분하다(2026-09-01, `getListIndxMnrk`/`getListIndxSplyBalncMnrk`
+    실측 확인)."""
+
+    text = str(crtr_ymd or "").strip()
+    if len(text) < 6 or not text[:6].isdigit():
+        return None
+    return f"{text[0:4]}-{text[4:6]}"
+
+
+def _parse_komis_indicator_list_response(raw: dict | list, score_field: str) -> list[dict]:
+    """시장동향·수급동향 지표 리스트 응답 공통 파서(2026-09-01 신설).
+
+    `getListIndxMnrk`(시장동향, `score_field="mrktPrspectIdct"`)·
+    `getListIndxSplyBalncMnrk`(수급동향, `score_field="spdmStbtIndx"`) 둘 다
+    `{"data": [...행들], "chartData": {...}}` 모양이다(실측). `chartData`는
+    `data`를 그래프용으로 재구성한 값이라 안 쓴다(같은 정보의 중복). 행마다
+    있는 `realPrc`(실질가격)를 `price`로, `crisisYn`("Y"/"N")을 `crisis_flag`로
+    옮긴다. `flutRt`/`flutPrc`/`realFlutRt`/`realFlutPrc`(전월 대비 등락)는
+    이미 `IndicatorObservation` 목록에서 인접 월 비교로 재계산하는 값과
+    같아서(계산기가 이미 그 일을 함) 옮기지 않는다.
+
+    KOMIS는 두 응답 모두 최신월이 먼저 오는 내림차순으로 행을 준다(실측) —
+    `summary.py::_calculate_summary`는 (composite와 달리) 내부에서 재정렬하지
+    않고 `observations[-1]`을 그대로 "현재"로 쓰므로, 여기서 오름차순으로
+    정렬해 반환하지 않으면 가장 오래된 달이 "현재"로 잘못 계산된다(실측
+    재현됨)."""
+
+    rows = raw.get("data") if isinstance(raw, dict) else raw
+    if not isinstance(rows, list):
+        return []
+    observations: list[dict] = []
+    for row in rows:
+        month = _komis_ymd_to_month(row.get("crtrYmd"))
+        score = _komis_num(row.get(score_field))
+        if month is None or score is None:
+            continue
+        entry: dict = {"month": month, "score": score}
+        price = _komis_num(row.get("realPrc"))
+        if price is not None:
+            entry["price"] = price
+        crisis_raw = row.get("crisisYn")
+        if crisis_raw is not None:
+            entry["crisis_flag"] = str(crisis_raw).strip().upper() == "Y"
+        observations.append(entry)
+    observations.sort(key=lambda item: item["month"])
+    return observations
+
+
+def _parse_komis_market_response(raw: dict | list) -> list[dict]:
+    """`getListIndxMnrk`(시장동향지표) 원본 응답 → observations."""
+
+    return _parse_komis_indicator_list_response(raw, "mrktPrspectIdct")
+
+
+def _parse_komis_supply_response(raw: dict | list) -> list[dict]:
+    """`getListIndxSplyBalncMnrk`(수급동향지표) 원본 응답 → observations."""
+
+    return _parse_komis_indicator_list_response(raw, "spdmStbtIndx")
+
+
 _KOMIS_FORECAST_PERIOD_RE = re.compile(r"^(\d{2})년\s*(?:(\d)Q)?")
 
 
@@ -1122,10 +1186,25 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
             if months_are_contiguous(previous.month, current.month)
             else "직전 관측치 대비"
         )
-        score_fact = (
-            f"{comparison}에는 점수가 {_change_phrase(score_change)} "
-            f"{_score_meaning(series.page_id, score_change)}."
-        )
+        # 2026-09-01 수정 — PDF §2-2/2-3("전월 [전월 지수] 대비 [증감률]%
+        # [상승/하락]")은 등락을 %로 요구하는데, 이전 문구는 점수차(점)로만
+        # 서술했다(시장동향·수급동향 두 페이지 모두 이번에 komis_response로
+        # 처음 실제 렌더링을 해보며 발견 — market/supply 공용 코드라 한 번의
+        # 수정으로 둘 다 반영된다). previous.score가 0이면 %를 정의할 수
+        # 없어 점수차 문구로 폴백한다.
+        if previous.score != 0:
+            pct_change = score_change / previous.score * 100
+            score_fact = (
+                f"{comparison}에는 전월 {_number(previous.score)}점 대비 "
+                f"{_number(abs(pct_change))}% {'상승' if pct_change > 0 else '하락' if pct_change < 0 else '보합'}하며 "
+                f"{_score_meaning(series.page_id, score_change)}."
+            )
+        else:
+            pct_change = None
+            score_fact = (
+                f"{comparison}에는 점수가 {_change_phrase(score_change)} "
+                f"{_score_meaning(series.page_id, score_change)}."
+            )
         key_metrics.append(
             _metric(
                 "latest_score_change",
@@ -1135,6 +1214,23 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
                 basis=f"{previous.month} 대비",
             )
         )
+        if pct_change is not None:
+            # key_metrics가 아니라 detailed_metrics에만 담는다 — 이 페이지의
+            # key_metrics는 8개 상한(`models.py::AnalysisSummaryResponse.
+            # key_metrics`)인데 이미 8개가 꽉 차 있어(2026-09-01 실측: 여기
+            # 추가했더니 뒤에서 채워지는 "조회기간 평균 점수"가 조용히
+            # 밀려났다 — composite 가중치 작업 때와 같은 종류의 회귀) 그
+            # 근거를 detailed_metrics로만 남긴다. 값 자체는 위 서사 문장에
+            # 이미 그대로 노출돼 있다.
+            detailed_metrics.append(
+                _metric(
+                    "latest_score_change_percent",
+                    "최근 점수 변화율",
+                    pct_change,
+                    unit="%",
+                    basis=f"{previous.month} 대비",
+                )
+            )
         claims.append(_EvidenceClaim("latest_score_change", "core_diagnosis", score_fact))
     else:
         claims.append(
@@ -1595,7 +1691,18 @@ class AnalysisSummaryService:
         #     start_month=request.start_month,
         #     end_month=request.end_month,
         # )
-        observations = _observations_from_request(IndicatorObservation, request)
+        # 2026-09-01 신설 — komis_response(원본 KOMIS 응답)가 있으면 직접
+        # 파싱한다(§`IndicatorSummaryRequest.komis_response` docstring).
+        # 없으면 기존 observations 손 매핑 경로 그대로(하위호환).
+        raw_observations = None
+        if request.komis_response is not None:
+            parser = (
+                _parse_komis_market_response
+                if request.page_id == "indicator_market"
+                else _parse_komis_supply_response
+            )
+            raw_observations = parser(request.komis_response)
+        observations = _observations_from_request(IndicatorObservation, request, raw=raw_observations)
         if request.start_month:
             observations = [o for o in observations if o.month >= request.start_month]
         if request.end_month:

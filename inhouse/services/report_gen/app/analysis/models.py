@@ -378,13 +378,16 @@ class AnalysisSummaryRequest(StrictModel):
         if self.komis_response is not None and self.page_id not in (
             "price_base_metals", "price_minor_metals", "price_iron_energy", "price_other",
             "map_korea", "map_global", "map_mineral", "indicator_composite", "forecast_price",
+            "indicator_market", "indicator_supply",
         ):
             # 2026-08-30 price_* 4종에서 신설, 같은 날 main-agent 지시로
             # 로그인 불필요한 나머지 5종(map_korea/global/mineral,
             # indicator_composite, forecast_price)까지 확장 — indicator_market/
-            # indicator_supply는 로그인 필요라 이번 재검증 범위 밖(세션 시작
-            # 스코핑 그대로), price_group은 KOMIS 직접 대응 엔드포인트가
-            # 없는 report_gen 자체 집계 페이지라 제외.
+            # indicator_supply는 당시 로그인 필요 화면이라 정적 데이터 예시가
+            # 없어 범위 밖이었다. 2026-09-01 발주처가 두 엔드포인트
+            # (getListIndxMnrk/getListIndxSplyBalncMnrk) 덤프를 제공해 추가.
+            # price_group은 KOMIS 직접 대응 엔드포인트가 없는 report_gen 자체
+            # 집계 페이지라 여전히 제외.
             raise ValueError("komis_response is not accepted for this page_id")
 
         if self.page_id in PAGE_PROFILES:
