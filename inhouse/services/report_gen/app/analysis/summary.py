@@ -789,9 +789,17 @@ def _parse_komis_composite_response(raw: dict) -> list[dict]:
     종합지수/MAJOR=메이저금속지수/RARE=희소금속지수) 3종을 행 3개로 나눠서
     준다 — 같은 crtrYmd(YYYY.MM.DD 점 구분)끼리 묶어 CompositeIndexObservation
     1건(세 지수값 전부)으로 합친다. 세 지수 중 하나라도 없는 날짜는 모델
-    요구사항(gt=0 필수 3종)을 못 채워 건너뛴다."""
+    요구사항(gt=0 필수 3종)을 못 채워 건너뛴다.
 
-    table = (raw.get("data") or {}).get("tableData") or []
+    2026-09-01 수정 — 전체 응답 봉투(`{"status":..., "data": {"tableData":
+    ...}}`)뿐 아니라 그 안의 `data` 페이로드만 떼어 낸 형태(`{"tableData":
+    ...}`, 발주처 기획문서 `report_summary/메뉴/광물전망지표/광물종합지수/
+    getLineChartIndx.json`이 이 모양)도 그대로 받는다 — 그 파일로 실측
+    검증한 결과 봉투 없이 `tableData`가 최상위에 바로 있어 기존 코드로는
+    0건으로 파싱됐다."""
+
+    payload = raw.get("data") if isinstance(raw.get("data"), dict) else raw
+    table = payload.get("tableData") or []
     by_date: dict[str, dict[str, float]] = {}
     for row in table:
         crtr = row.get("crtrYmd")
@@ -813,6 +821,159 @@ def _parse_komis_composite_response(raw: dict) -> list[dict]:
             }
         )
     return observations
+
+
+def _komis_ymd_to_month(crtr_ymd) -> str | None:
+    """KOMIS `crtrYmd`(시장동향지표는 "YYYYMMDD" 8자리 — 매월 1일자 스냅샷,
+    수급동향지표는 "YYYYMM" 6자리)를 둘 다 report_gen `Month`("YYYY-MM")로
+    정규화한다. 두 형식 모두 앞 6자리가 그대로 연월이라 슬라이스 하나로
+    충분하다(2026-09-01, `getListIndxMnrk`/`getListIndxSplyBalncMnrk`
+    실측 확인)."""
+
+    text = str(crtr_ymd or "").strip()
+    if len(text) < 6 or not text[:6].isdigit():
+        return None
+    return f"{text[0:4]}-{text[4:6]}"
+
+
+def _parse_komis_indicator_list_response(raw: dict | list, score_field: str) -> list[dict]:
+    """시장동향·수급동향 지표 리스트 응답 공통 파서(2026-09-01 신설).
+
+    `getListIndxMnrk`(시장동향, `score_field="mrktPrspectIdct"`)·
+    `getListIndxSplyBalncMnrk`(수급동향, `score_field="spdmStbtIndx"`) 둘 다
+    `{"data": [...행들], "chartData": {...}}` 모양이다(실측). `chartData`는
+    `data`를 그래프용으로 재구성한 값이라 안 쓴다(같은 정보의 중복). 행마다
+    있는 `realPrc`(실질가격)를 `price`로, `crisisYn`("Y"/"N")을 `crisis_flag`로
+    옮긴다. `flutRt`/`flutPrc`/`realFlutRt`/`realFlutPrc`(전월 대비 등락)는
+    이미 `IndicatorObservation` 목록에서 인접 월 비교로 재계산하는 값과
+    같아서(계산기가 이미 그 일을 함) 옮기지 않는다.
+
+    KOMIS는 두 응답 모두 최신월이 먼저 오는 내림차순으로 행을 준다(실측) —
+    `summary.py::_calculate_summary`는 (composite와 달리) 내부에서 재정렬하지
+    않고 `observations[-1]`을 그대로 "현재"로 쓰므로, 여기서 오름차순으로
+    정렬해 반환하지 않으면 가장 오래된 달이 "현재"로 잘못 계산된다(실측
+    재현됨)."""
+
+    rows = raw.get("data") if isinstance(raw, dict) else raw
+    if not isinstance(rows, list):
+        return []
+    observations: list[dict] = []
+    for row in rows:
+        month = _komis_ymd_to_month(row.get("crtrYmd"))
+        score = _komis_num(row.get(score_field))
+        if month is None or score is None:
+            continue
+        entry: dict = {"month": month, "score": score}
+        price = _komis_num(row.get("realPrc"))
+        if price is not None:
+            entry["price"] = price
+        crisis_raw = row.get("crisisYn")
+        if crisis_raw is not None:
+            entry["crisis_flag"] = str(crisis_raw).strip().upper() == "Y"
+        observations.append(entry)
+    observations.sort(key=lambda item: item["month"])
+    return observations
+
+
+def _parse_komis_market_response(raw: dict | list) -> list[dict]:
+    """`getListIndxMnrk`(시장동향지표) 원본 응답 → observations."""
+
+    return _parse_komis_indicator_list_response(raw, "mrktPrspectIdct")
+
+
+def _parse_komis_supply_response(raw: dict | list) -> list[dict]:
+    """`getListIndxSplyBalncMnrk`(수급동향지표) 원본 응답 → observations."""
+
+    return _parse_komis_indicator_list_response(raw, "spdmStbtIndx")
+
+
+def _parse_komis_supply_snapshot_response(raw: dict) -> tuple[dict, str | None, str | None]:
+    """`getChartDataSpdmStbt`(수급동향지표 상세) 원본 응답 →
+    (supply_auxiliary dict, mineral_code, mineral_name), 2026-09-01 신설.
+
+    `subChart02`(수입량·수입액 5개년, yaxisTitle "수입량(톤)"/oppoTitle
+    "수입액(백만$)" 라벨 그대로 신뢰 — 사용자가 2024년 값 12,416,224가
+    이상해 보인다고 재확인 요청했으나 "라벨 그대로 백만$가 맞음"으로 확정)
+    → `domestic_imports`.
+
+    `subChart03`(국가별 파이, 라벨 없이 `series`/`labels` 두 배열만 줌)은
+    사용자 실측 확인(2026-09-01, "일본 데이터에서 454240인 필드는 금액(USD)")
+    으로 단일 값이 **금액(USD, 백만달러 아님)**임을 확정했다 — 중량(kg)은
+    이 응답에 없어(`SupplyImportDependencyObservation.weight_kg`를 선택
+    필드로 완화) `amount_usd`만 채우고, `share_percent`는 이 표에 나열된
+    국가들의 합계 대비 비중으로 계산한다(세계 총액이 아님 — `komis_share_
+    response`/`market_share`의 "소계 대비 비중" 선례와 같은 결). 상위 3개국
+    합을 `top_three_dependency_percent`로 둔다.
+
+    `subChart01`(실질가격)은 핵심 관측치(`IndicatorObservation.price`,
+    `getListIndxSplyBalncMnrk`의 `realPrc`)와 같은 값의 중복이라 안 쓴다.
+    `subChart04`(국가별 생산량, "세계 공급 편중도")·`subChart07`(국가별
+    매장량)은 대응 모델 필드가 없어 파싱하지 않는다(§`models.py`의
+    `SupplyAuxiliaryData` docstring 참고, 이번 반영 범위 밖)."""
+
+    payload = raw.get("data") if isinstance(raw.get("data"), dict) else raw
+    if not isinstance(payload, dict):
+        return {}, None, None
+
+    chart_info = payload.get("chartSpdmStbt") or {}
+    mineral_code = chart_info.get("mnrkndUnqCd") or None
+    mineral_name = chart_info.get("mnrkndKornNm") or None
+
+    aux: dict = {}
+
+    sub02 = payload.get("subChart02") or {}
+    labels = sub02.get("labels") or []
+    series_by_name = {
+        item.get("name"): item.get("data") or [] for item in (sub02.get("series") or [])
+    }
+    weights = series_by_name.get("수입량") or []
+    amounts = series_by_name.get("수입액") or []
+    domestic_imports = []
+    for index, year_label in enumerate(labels):
+        year = _komis_num(year_label)
+        if year is None or index >= len(weights) or index >= len(amounts):
+            continue
+        weight = _komis_num(weights[index])
+        amount = _komis_num(amounts[index])
+        if weight is None or amount is None:
+            continue
+        domestic_imports.append(
+            {
+                "year": int(year),
+                "import_weight_ton": weight,
+                "import_amount_million_usd": amount,
+            }
+        )
+    if domestic_imports:
+        aux["domestic_imports"] = domestic_imports
+
+    sub03 = payload.get("subChart03") or {}
+    sub03_labels = sub03.get("labels") or []
+    sub03_series = sub03.get("series") or []
+    sub03_year = _komis_num(sub03.get("crtrYr"))
+    rows = [
+        (name, _komis_num(value))
+        for name, value in zip(sub03_labels, sub03_series)
+    ]
+    rows = [(name, value) for name, value in rows if value is not None]
+    total = sum(value for _, value in rows)
+    if sub03_year is not None and total > 0:
+        rows.sort(key=lambda item: item[1], reverse=True)
+        import_dependencies = [
+            {
+                "year": int(sub03_year),
+                "country_name": name,
+                "amount_usd": value,
+                "share_percent": value / total * 100,
+            }
+            for name, value in rows
+        ]
+        aux["import_dependencies"] = import_dependencies
+        aux["top_three_dependency_percent"] = sum(
+            row["share_percent"] for row in import_dependencies[:3]
+        )
+
+    return aux, mineral_code, mineral_name
 
 
 _KOMIS_FORECAST_PERIOD_RE = re.compile(r"^(\d{2})년\s*(?:(\d)Q)?")
@@ -1114,10 +1275,25 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
             if months_are_contiguous(previous.month, current.month)
             else "직전 관측치 대비"
         )
-        score_fact = (
-            f"{comparison}에는 점수가 {_change_phrase(score_change)} "
-            f"{_score_meaning(series.page_id, score_change)}."
-        )
+        # 2026-09-01 수정 — PDF §2-2/2-3("전월 [전월 지수] 대비 [증감률]%
+        # [상승/하락]")은 등락을 %로 요구하는데, 이전 문구는 점수차(점)로만
+        # 서술했다(시장동향·수급동향 두 페이지 모두 이번에 komis_response로
+        # 처음 실제 렌더링을 해보며 발견 — market/supply 공용 코드라 한 번의
+        # 수정으로 둘 다 반영된다). previous.score가 0이면 %를 정의할 수
+        # 없어 점수차 문구로 폴백한다.
+        if previous.score != 0:
+            pct_change = score_change / previous.score * 100
+            score_fact = (
+                f"{comparison}에는 전월 {_number(previous.score)}점 대비 "
+                f"{_number(abs(pct_change))}% {'상승' if pct_change > 0 else '하락' if pct_change < 0 else '보합'}하며 "
+                f"{_score_meaning(series.page_id, score_change)}."
+            )
+        else:
+            pct_change = None
+            score_fact = (
+                f"{comparison}에는 점수가 {_change_phrase(score_change)} "
+                f"{_score_meaning(series.page_id, score_change)}."
+            )
         key_metrics.append(
             _metric(
                 "latest_score_change",
@@ -1127,6 +1303,23 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
                 basis=f"{previous.month} 대비",
             )
         )
+        if pct_change is not None:
+            # key_metrics가 아니라 detailed_metrics에만 담는다 — 이 페이지의
+            # key_metrics는 8개 상한(`models.py::AnalysisSummaryResponse.
+            # key_metrics`)인데 이미 8개가 꽉 차 있어(2026-09-01 실측: 여기
+            # 추가했더니 뒤에서 채워지는 "조회기간 평균 점수"가 조용히
+            # 밀려났다 — composite 가중치 작업 때와 같은 종류의 회귀) 그
+            # 근거를 detailed_metrics로만 남긴다. 값 자체는 위 서사 문장에
+            # 이미 그대로 노출돼 있다.
+            detailed_metrics.append(
+                _metric(
+                    "latest_score_change_percent",
+                    "최근 점수 변화율",
+                    pct_change,
+                    unit="%",
+                    basis=f"{previous.month} 대비",
+                )
+            )
         claims.append(_EvidenceClaim("latest_score_change", "core_diagnosis", score_fact))
     else:
         claims.append(
@@ -1245,6 +1438,72 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
     claims.append(
         _EvidenceClaim("largest_monthly_score_change", "major_changes", largest_fact)
     )
+
+    # 2026-09-01 신설 — PDF §2-3 "주요 요인으로는 [가격리스크/세계 수급비율/
+    # 세계 공급 편중도/국내 수입증가율/국내 수입국 편중도 등]의 변동성이
+    # 확대된 결과로 분석됩니다" 대응. `getChartDataSpdmStbt` 기반
+    # supply_auxiliary가 있을 때만(indicator_supply 전용) 그 중 실제로
+    # 계산 가능한 두 요인(국내 수입증가율·국내 수입국 편중도)만 쓴다 — 나머지
+    # 3개(가격리스크는 핵심 관측치와 중복이라 별도 서술 안 함, 세계 수급비율·
+    # 세계 공급 편중도는 대응 모델 필드 자체가 없음)는 evidence가 없어 언급
+    # 하지 않는다(§`models.py`의 `SupplyAuxiliaryData` docstring). 수입증가율은
+    # 실제 연간 증감 실측치라 PDF의 "변동성이 확대된 결과로 분석된다" 인과
+    # 서술을 그대로 쓰되, 수입국 편중도는 이번 표본에 연도별 비교값이 없어
+    # (단일 연도 스냅샷) 변동 여부를 알 수 없으므로 구조적 사실(현재 집중도
+    # 수준)로만 덧붙인다 — composite의 구성 광종 가중치와 같은 구분.
+    if series.page_id == "indicator_supply" and series.supply_auxiliary is not None:
+        imports = sorted(series.supply_auxiliary.domestic_imports, key=lambda item: item.year)
+        dependencies = series.supply_auxiliary.import_dependencies
+        import_growth_fact = None
+        if len(imports) >= 2:
+            latest_import, previous_import = imports[-1], imports[-2]
+            import_growth = percent_change(
+                latest_import.import_weight_ton, previous_import.import_weight_ton
+            )
+            if import_growth is not None:
+                growth_direction = "감소" if import_growth < 0 else "증가"
+                import_growth_fact = (
+                    f"주요 요인으로는 국내 수입증가율 변동에 따라 국내 수입량이 "
+                    f"{previous_import.year}년 대비 {latest_import.year}년 "
+                    f"{_number(abs(import_growth) * 100)}% {growth_direction}한 점 등으로 "
+                    f"변동성이 확대된 결과로 분석된다"
+                )
+                detailed_metrics.append(
+                    _metric(
+                        "supply_import_weight_yoy_change",
+                        "국내 수입량 전년 대비 증감률",
+                        import_growth,
+                        unit="ratio",
+                        basis=f"{previous_import.year}년 대비 {latest_import.year}년",
+                    )
+                )
+        top_three = series.supply_auxiliary.top_three_dependency_percent
+        concentration_fact = None
+        if top_three is not None and dependencies:
+            concentration_fact = (
+                f"상위 3개국({'·'.join(item.country_name for item in dependencies[:3])}) "
+                f"수입의존도는 {_number(top_three)}%로 집중된 구조다"
+            )
+        if import_growth_fact and concentration_fact:
+            claims.append(
+                _EvidenceClaim(
+                    "supply_key_factors",
+                    "major_changes",
+                    f"{import_growth_fact}. {concentration_fact}.",
+                )
+            )
+        elif import_growth_fact:
+            claims.append(
+                _EvidenceClaim("supply_key_factors", "major_changes", f"{import_growth_fact}.")
+            )
+        elif concentration_fact:
+            claims.append(
+                _EvidenceClaim(
+                    "supply_key_factors",
+                    "major_changes",
+                    f"국내 수입국 편중도를 보면 {concentration_fact}.",
+                )
+            )
 
     price_change = (
         percent_change(current.price, previous.price)
@@ -1575,8 +1834,22 @@ class AnalysisSummaryService:
     ) -> AnalysisSummaryResponse:
         """Load an indicator series and build its validated summary response."""
 
-        if request.mineral is None:
+        # 2026-09-01 신설 — indicator_supply는 komis_snapshot_response
+        # (`getChartDataSpdmStbt`)가 있으면 그 안의 `chartSpdmStbt`에서
+        # mineral 코드·이름을 자동 채운다(§`SupplyIndicatorSummaryRequest`
+        # docstring). 같은 응답에서 보조패널(수입량/수입액·수입국 비중)도
+        # 함께 뽑아 둔다 — 아래 `series` 조립에서 쓴다.
+        snapshot_mineral_code: str | None = None
+        snapshot_mineral_name: str | None = None
+        supply_auxiliary_raw: dict | None = None
+        if request.page_id == "indicator_supply" and request.komis_snapshot_response is not None:
+            supply_auxiliary_raw, snapshot_mineral_code, snapshot_mineral_name = (
+                _parse_komis_supply_snapshot_response(request.komis_snapshot_response)
+            )
+        mineral_code = request.mineral or snapshot_mineral_code
+        if mineral_code is None:
             raise DataSourceError("indicator analysis requires mineral in the request body")
+        mineral_name = request.mineral_name or snapshot_mineral_name or mineral_code
         # 2026-08-26 DB 조회 경로 비활성화(요청 바디 입력으로 전환, WORKLOG 참고) —
         # 복원 시 아래 두 줄 주석을 해제하고 그 아래 request 기반 조립 블록을 지운다.
         # if self._data_source is None:
@@ -1587,7 +1860,18 @@ class AnalysisSummaryService:
         #     start_month=request.start_month,
         #     end_month=request.end_month,
         # )
-        observations = _observations_from_request(IndicatorObservation, request)
+        # 2026-09-01 신설 — komis_response(원본 KOMIS 응답)가 있으면 직접
+        # 파싱한다(§`IndicatorSummaryRequest.komis_response` docstring).
+        # 없으면 기존 observations 손 매핑 경로 그대로(하위호환).
+        raw_observations = None
+        if request.komis_response is not None:
+            parser = (
+                _parse_komis_market_response
+                if request.page_id == "indicator_market"
+                else _parse_komis_supply_response
+            )
+            raw_observations = parser(request.komis_response)
+        observations = _observations_from_request(IndicatorObservation, request, raw=raw_observations)
         if request.start_month:
             observations = [o for o in observations if o.month >= request.start_month]
         if request.end_month:
@@ -1595,9 +1879,16 @@ class AnalysisSummaryService:
         if not observations:
             raise DataSourceError("indicator analysis: 필터 적용 후 observations가 비었다")
         months = sorted(o.month for o in observations)
+        # komis_snapshot_response로 이미 뽑아 둔 보조패널이 있으면 그쪽을
+        # 우선한다 — 손 매핑 `supply_auxiliary`는 그게 없을 때만의 폴백.
+        supply_auxiliary = (
+            SupplyAuxiliaryData.model_validate(supply_auxiliary_raw)
+            if supply_auxiliary_raw
+            else _supply_auxiliary_from_request(request)
+        )
         series = IndicatorSeries(
             page_id=request.page_id,
-            mineral=MineralRef(code=request.mineral, name=request.mineral_name or request.mineral),
+            mineral=MineralRef(code=mineral_code, name=mineral_name),
             requested_start_month=request.start_month,
             requested_end_month=request.end_month,
             available_start_month=months[0],
@@ -1607,7 +1898,7 @@ class AnalysisSummaryService:
             data_version=_data_version([o.model_dump(mode="json") for o in observations]),
             data_as_of=months[-1],
             observations=observations,
-            supply_auxiliary=_supply_auxiliary_from_request(request),
+            supply_auxiliary=supply_auxiliary,
             price_unit=request.price_unit,
             price_criterion=request.price_criterion,
             unavailable_page_data=request.unavailable_page_data or [],

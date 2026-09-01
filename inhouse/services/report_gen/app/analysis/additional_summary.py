@@ -1,10 +1,19 @@
 # -*- coding: utf-8 -*-
 """광물종합지수·광물지도·가격예측 3종의 결정론적(비-LLM) 요약 계산 — 외부 저장소
-`komis_report_generator/analysis/additional_summary.py` **무수정 이식**(2026-08-13).
+`komis_report_generator/analysis/additional_summary.py` **무수정 이식**(2026-08-13)
+으로 시작했다.
 
-**원본에서 바뀐 것은 import 경로 1줄뿐**이다(`komis_report_generator.analysis.models`
-→ `.models`). 계산 로직·문구·evidence 규약은 원본 그대로다 — 외부repo가 계속
-개발 중이라(2026-08-12 커밋 `b6c17ca`가 가격예측을 추가) 포크를 만들지 않는다.
+**원본에서 바뀐 것은 원래 import 경로 1줄뿐**이었다(`komis_report_generator.
+analysis.models` → `.models`). 계산 로직·문구·evidence 규약은 원본 그대로였다
+— 외부repo가 계속 개발 중이라(2026-08-12 커밋 `b6c17ca`가 가격예측을 추가)
+포크를 만들지 않는다는 원칙이었다.
+
+**2026-09-01 예외** — `calculate_composite_summary`에 구성 광종 가중치
+(`resources/mineral_index_weights.yaml`, 발주처 제공 index_table.png 기반)를
+반영하는 로직을 komir 자체로 추가했다(사용자 지시, 원본 외부repo에 없는 기능).
+이후 그 저장소를 재동기화할 때는 이 블록(코드에 "2026-09-01 신설" 주석으로
+표시)이 덮어써지지 않도록 주의할 것 — 이 파일에서 유일하게 "무수정 이식"
+원칙을 벗어난 부분이다.
 
 이 파일이 `summary.py`에 제공하는 것:
 - `ADDITIONAL_PAGE_CONTEXTS` — YAML 정책이 없는 3종 페이지의 정의·제약·정책버전
@@ -17,7 +26,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, timedelta
+from functools import lru_cache
+from pathlib import Path
 from typing import Literal
+
+import yaml
 
 from .models import (
     CompositeIndexObservation,
@@ -77,8 +90,11 @@ ADDITIONAL_PAGE_CONTEXTS = {
             "조회기간 변화를 함께 보여주는 일간 지수다."
         ),
         analysis_constraints=[
-            "현재 페이지의 세 지수와 선택 기간만 사용한다.",
-            "개별 광물이나 외부 사건을 지수 변화의 원인으로 추정하지 않는다.",
+            "현재 페이지의 세 지수·선택 기간·구성 광종 가중치 참고자료만 사용한다.",
+            "구성 광종 가중치는 각 지수의 구성 구조를 설명할 뿐이며, 그 광종의 "
+            "실제 가격 변동 방향을 알 수 없으므로 이번 조회기간 등락의 원인으로 "
+            "단정하지 않는다.",
+            "외부 사건을 지수 변화의 원인으로 추정하지 않는다.",
             "전주·전월·전년 비교에는 해당 기준일 이전의 가장 가까운 관측값을 사용한다.",
         ],
         policy_version="indicator-composite-summary-v1",
@@ -145,6 +161,40 @@ def _percent_change(current: float, previous: float) -> float | None:
     if previous == 0:
         return None
     return (current - previous) / previous
+
+
+_MINERAL_INDEX_WEIGHTS_RESOURCE = (
+    Path(__file__).resolve().parent / "resources" / "mineral_index_weights.yaml"
+)
+
+
+@dataclass(frozen=True, slots=True)
+class _MineralWeight:
+    """구성 광종 1건의 이름과 지수 산정 가중치(%)."""
+
+    mineral: str
+    weight_pct: float
+
+
+@lru_cache(maxsize=1)
+def _load_mineral_index_weights() -> dict[str, list[_MineralWeight]]:
+    """`resources/mineral_index_weights.yaml`(2026-09-01 신설, 발주처 제공
+    index_table.png 반영) — 광물종합지수(MNRL)·메이저금속지수(MAJOR)·
+    희소금속지수(RARE) 각각의 구성 광종·가중치를 rank 순으로 돌려준다.
+    지수 시계열과 무관한 정적 참고자료라 프로세스 생존 동안 1회만 읽는다."""
+
+    payload = yaml.safe_load(_MINERAL_INDEX_WEIGHTS_RESOURCE.read_text(encoding="utf-8"))
+    return {
+        index_type: [
+            _MineralWeight(mineral=row["mineral"], weight_pct=float(row["weight_pct"]))
+            for row in sorted(rows, key=lambda item: item["rank"])
+        ]
+        for index_type, rows in payload["weights"].items()
+    }
+
+
+def _top_weighted_minerals_text(weights: list[_MineralWeight], limit: int) -> str:
+    return "·".join(f"{item.mineral}({_number(item.weight_pct, 1)}%)" for item in weights[:limit])
 
 
 def _forecast_period_text(period: str) -> str:
@@ -512,6 +562,38 @@ def calculate_composite_summary(
     ]
     detailed_metrics = [*key_metrics]
 
+    # 2026-09-01 신설(사용자 지시) — `resources/mineral_index_weights.yaml`
+    # (발주처 제공 index_table.png)의 구성 광종 가중치. PDF §2-1이 요구하는
+    # "[주요 원인 광종(3개 이내)]"/"(2개 이내)" 칸을 채우는 재료지만, 이
+    # 표는 구성비일 뿐 이번 조회기간에 그 광종의 가격이 실제로 오르내렸는지는
+    # 알려주지 않는다 — 그래서 서사 문장(아래 major_changes의
+    # index_top_weighted_minerals)은 "원인으로 분석됩니다"가 아니라 "비중이
+    # 커 민감하다"는 구조 서술로 그친다(analysis_constraints와 짝을 이룬다).
+    # `core_diagnosis`는 `SummaryNarrative.max_length=2`(current_state +
+    # medium_long_term_contrast로 이미 참)라 여기서는 지표만 쌓아 두고,
+    # 서사 문장은 major_changes 쪽 여유(5개 상한)에 합쳐 넣는다.
+    index_weights = _load_mineral_index_weights()
+    composite_weights = index_weights.get("MNRL", [])
+    if composite_weights:
+        weight_metrics = [
+            _metric(
+                f"composite_weight_{item.mineral}",
+                f"광물종합지수 구성비중({item.mineral})",
+                item.weight_pct,
+                unit="%",
+                basis="index_table.png",
+            )
+            for item in composite_weights
+        ]
+        # key_metrics는 아니다 — 이 페이지 응답의 `key_metrics`는 8개 상한
+        # (`models.py::AnalysisSummaryResponse.key_metrics`)이라 이미 현재
+        # 지수 3종 + 전주/전월/전년 대비 최대 3종으로 거의 다 찬다(2026-09-01
+        # 실측: 여기서 채우면 뒤에서 계산되는 전년 대비 등 기존 항목이
+        # 조용히 밀려 사라진다). 근거는 아래 서사 문장(major_changes)에
+        # 값과 함께 이미 그대로 노출되므로 detailed_metrics로만 남긴다
+        # (`komir_summary.py`의 `market_share`/`route_shares` 선례와 동일 결).
+        detailed_metrics.extend(weight_metrics)
+
     week_change = (
         _percent_change(current.composite_index, week.composite_index) if week else None
     )
@@ -728,6 +810,51 @@ def calculate_composite_summary(
                 evidence=[f"1년 변화율 차이 {_number(abs(difference) * 100)}%포인트"],
             )
         )
+
+    # 2026-09-01 신설 — 위에서 쌓아 둔 구성 광종 가중치(광물종합·메이저·
+    # 희소 3개 지수 전부)를 한 문장으로 묶어 major_changes에 넣는다.
+    # PDF §2-1의 "[주요 원인 광종(3개 이내)]"(광물종합)/"(2개 이내)"
+    # (메이저·희소 각각) 대응 — `SummaryNarrative.major_changes`
+    # max_length=5(위 composite_recent_changes·weekly/monthly/yearly_
+    # subindex_comparison 4개가 이미 그 상한을 다 쓸 수 있어) 하나로
+    # 합쳐야 5개 상한을 넘기지 않는다.
+    major_weights = index_weights.get("MAJOR", [])
+    minor_weights = index_weights.get("RARE", [])
+    if composite_weights and major_weights and minor_weights:
+        claims.append(
+            EvidenceClaim(
+                "index_top_weighted_minerals",
+                "major_changes",
+                f"광물종합지수는 {_top_weighted_minerals_text(composite_weights, 3)}, "
+                f"메이저금속지수는 {_top_weighted_minerals_text(major_weights, 2)}, "
+                f"희소금속지수는 {_top_weighted_minerals_text(minor_weights, 2)} "
+                "등 비중이 큰 광종의 가격 변동에 상대적으로 민감한 구조다.",
+            )
+        )
+        major_weight_metrics = [
+            _metric(
+                f"major_weight_{item.mineral}",
+                f"메이저금속지수 구성비중({item.mineral})",
+                item.weight_pct,
+                unit="%",
+                basis="index_table.png",
+            )
+            for item in major_weights
+        ]
+        minor_weight_metrics = [
+            _metric(
+                f"minor_weight_{item.mineral}",
+                f"희소금속지수 구성비중({item.mineral})",
+                item.weight_pct,
+                unit="%",
+                basis="index_table.png",
+            )
+            for item in minor_weights
+        ]
+        # key_metrics 8개 상한 사유는 위 composite_weights 블록과 동일 —
+        # detailed_metrics로만 남긴다.
+        detailed_metrics.extend(major_weight_metrics)
+        detailed_metrics.extend(minor_weight_metrics)
 
     highest = max(observations, key=lambda item: item.composite_index)
     lowest = min(observations, key=lambda item: item.composite_index)

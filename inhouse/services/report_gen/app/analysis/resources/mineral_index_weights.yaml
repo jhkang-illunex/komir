@@ -1,0 +1,42 @@
+schema_version: 1
+page_id: indicator_composite
+source_note: >-
+  발주처 제공 index_table.png(getMnrlWeight/getMajorWeight/getRareWeight,
+  documents/기획문서/order/report_summary/메뉴/광물전망지표/광물종합지수/
+  index_table.png, 2026-09-01 확보) — 광물종합지수·메이저금속지수·희소금속지수
+  각각의 구성 광종과 산정 가중치(%). 지수 계산 자체에 쓰이는 값이 아니라
+  분석요약에서 각 지수의 구성 구조를 설명하는 참고자료다. 특정 조회기간의
+  등락 원인을 이 표만으로 단정하지 않는다(additional_summary.py의
+  analysis_constraints 참고).
+weights:
+  MNRL:
+    - {rank: 1, mineral: "유연탄", weight_pct: 25.6}
+    - {rank: 2, mineral: "동", weight_pct: 16.6}
+    - {rank: 3, mineral: "알루미늄", weight_pct: 15.7}
+    - {rank: 4, mineral: "철광석", weight_pct: 14.1}
+    - {rank: 5, mineral: "리튬", weight_pct: 9.8}
+    - {rank: 6, mineral: "니켈", weight_pct: 4.2}
+    - {rank: 7, mineral: "아연", weight_pct: 3.8}
+    - {rank: 8, mineral: "연", weight_pct: 3.7}
+    - {rank: 9, mineral: "몰리브덴", weight_pct: 1.6}
+    - {rank: 10, mineral: "우라늄", weight_pct: 1.6}
+    - {rank: 11, mineral: "크롬", weight_pct: 1.3}
+    - {rank: 12, mineral: "주석", weight_pct: 0.8}
+    - {rank: 13, mineral: "망간", weight_pct: 0.6}
+    - {rank: 14, mineral: "코발트", weight_pct: 0.3}
+    - {rank: 15, mineral: "희토류", weight_pct: 0.2}
+  MAJOR:
+    - {rank: 1, mineral: "동", weight_pct: 28.2}
+    - {rank: 2, mineral: "알루미늄", weight_pct: 26.6}
+    - {rank: 3, mineral: "철광석", weight_pct: 23.9}
+    - {rank: 4, mineral: "니켈", weight_pct: 7.2}
+    - {rank: 5, mineral: "아연", weight_pct: 6.5}
+    - {rank: 6, mineral: "연", weight_pct: 6.3}
+    - {rank: 7, mineral: "주석", weight_pct: 1.3}
+  RARE:
+    - {rank: 1, mineral: "리튬", weight_pct: 71.0}
+    - {rank: 2, mineral: "몰리브덴", weight_pct: 11.7}
+    - {rank: 3, mineral: "크롬", weight_pct: 9.1}
+    - {rank: 4, mineral: "망간", weight_pct: 4.5}
+    - {rank: 5, mineral: "코발트", weight_pct: 2.3}
+    - {rank: 6, mineral: "희토류", weight_pct: 1.4}

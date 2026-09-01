@@ -4,7 +4,7 @@ page_id: indicator_market
 name: "시장동향지표"
 definition: >-
   국내 고수요 광종에 대한 중장기 가격리스크 표준척도로서 0~100 값을 가지며
-  신중·주의·중립·관심·기회의 5개 등급으로 분류한다.
+  신중·주의·중립·관심·기회의 5개 등급으로 분류하는 지표다.
 score_min: 0
 score_max: 100
 grade_rules:

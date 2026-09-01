@@ -9,7 +9,8 @@
 # Compose 키인 `dockerfile`(파일명이 실제로는 Containerfile이어도 무관 — 경로만 지정).
 #
 # TODO(구현 단계): geo/docker-compose.yml의 host.docker.internal:host-gateway 패턴
-# (호스트측 로컬 LLM 접속)을 필요 서비스에 이식.
+# (호스트측 로컬 LLM 접속)을 필요 서비스에 이식 — report-gen·rag-chat 모두
+# 2026-09-01 반영 완료(각 서비스의 extra_hosts).
 #
 # rag-chat·report-gen의 `environment: LLM_BASE_URL=...` — 지금은 두 서비스가 같은
 # LLM_BASE_URL(단일 모델 인스턴스)을 공유한다(2026-08-13 논의, 발주처 배포 디바이스
@@ -50,6 +51,9 @@ services:
     depends_on: [qdrant]
     ports:
       - "8002:8002"
+    extra_hosts:
+      # 2026-09-01 — report-gen과 동일 사유(위 TODO 참고).
+      - "host.docker.internal:host-gateway"   # 호스트 LLM(.env RAG_CHAT_LLM_BASE_URL)
     restart: unless-stopped
 
   report-gen:
@@ -62,6 +66,11 @@ services:
     depends_on: [qdrant]
     ports:
       - "8003:8003"
+    extra_hosts:
+      # 2026-09-01 — 아래 TODO(11행)가 미이식이던 부분: LLM_BASE_URL이
+      # host.docker.internal을 가리켜도 이 매핑이 없으면 컨테이너 안에서
+      # 이름이 안 풀려 LLM 정제가 계속 규칙기반으로 조용히 폴백한다(실측).
+      - "host.docker.internal:host-gateway"   # 호스트 LLM(.env REPORT_GEN_LLM_BASE_URL)
     restart: unless-stopped
 
   # 파일 기반 보고서 정제·색인 주간 배치(2026-08-27, §5-3 "미구현" 항목의 구현) —

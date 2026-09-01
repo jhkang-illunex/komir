@@ -116,12 +116,21 @@ SUPPLY_SUMMARY_INSTRUCTIONS = """\
   (b) 전환이 없었으면 grade_streak의 유지개월수를 그대로 써서
       "[단계]를 [N]개월째 유지중입니다"처럼 유지 사실만 쓴다.
   최대 월간 변화 시점과 전환 시점이 다르면 인과관계 없이 시간 순서로만 구분한다.
+- supply_key_factors(있으면, major_changes) — 국내 수입증가율(전년 대비
+  실제 증감률)과 국내 수입국 편중도(상위 3개국 수입의존도 비중)다. 수입증가율
+  문장에서 퍼센트 수치는 "국내 수입량"의 전년 대비 증감률이지 "수입증가율"
+  자체의 증감이 아니다 — 근거 그대로 "국내 수입량이 X% 증가/감소했다"는
+  주어로 옮겨 쓰고("변동성이 확대된 결과로 분석된다" 포함), "수입증가율이
+  X% 감소했다"처럼 증가율 자체가 줄었다는 식으로 바꿔 쓰지 않는다. 수입국
+  편중도는 이 표본이 단일 연도 스냅샷이라
+  증감 추세를 알 수 없으므로 "집중된 구조다"처럼 현재 수준만 서술하고
+  "확대/축소됐다"처럼 변화를 단정하지 않는다. 가격리스크(핵심 관측치의
+  가격과 중복)·세계 수급비율·세계 공급 편중도는 evidence에 없으므로 언급하지
+  않는다.
 - current_position은 period_average_position을 이용해 최근 가격 움직임과
   조회기간 평균 대비 안정성을 연결하되 원인으로 단정하지 않는다.
 - 단기 개선에도 평균보다 안정성이 낮으면 `단기 반등에도 평균 수준을 회복하지 못함`을 분명히 쓴다.
 - 단계 유지 자체를 정체·고착으로 해석하지 않고 수급 단계가 지속됐다고만 설명한다.
-- "주요 요인" 절은 만들지 않는다 — 가격리스크·세계 수급비율·공급 편중도 등으로
-  변동성을 분해한 근거가 없으므로, 단계·점수·유지기간 사실만 쓰고 원인은 추정하지 않는다.
 """
 
 COMPOSITE_SUMMARY_INSTRUCTIONS = """\
@@ -144,6 +153,11 @@ COMPOSITE_SUMMARY_INSTRUCTIONS = """\
   조회기간 고저점 위치와 단기·장기 방향을 이어 현재 수준의 의미를 판단한다.
 - 하위지수의 방향이 다르면 전체 지수만으로 가려지는 차별화를 명시하되
   구체적인 견인 광종이나 원인은 evidence에 없으므로 추정하지 않는다.
+- index_top_weighted_minerals(있으면, major_changes) — 광물종합·메이저금속·
+  희소금속지수 각각의 구성 광종과 산정 가중치(%)다. 이번 조회기간에 그
+  광종의 가격이 실제로 오르내렸는지는 evidence에 없으므로, "이 광종의
+  가격 상승/하락이 원인"이라고 쓰지 않는다 — "비중이 큰 구성 광종이라
+  지수 변동에 상대적으로 민감하다"처럼 구조적 사실로만 그대로 옮긴다.
 """
 
 MINERAL_MAP_SUMMARY_INSTRUCTIONS = """\
@@ -355,8 +369,16 @@ SECTION_SENTENCE_RANGES: dict[str, dict[str, tuple[int, int]]] = {
     # 3개(grade_streak·grade_transition·largest_monthly_score_change)를 1문장에
     # 넣지 못해 근거 누락/절 이동으로 폴백하는 사례 → (1,2)로 완화.
     "indicator_market": {"core_diagnosis": (1, 1), "major_changes": (1, 2), "current_position": (1, 1)},
-    "indicator_supply": {"core_diagnosis": (1, 1), "major_changes": (1, 2), "current_position": (1, 1)},
-    "indicator_composite": {"core_diagnosis": (1, 1), "major_changes": (1, 2), "current_position": (1, 1)},
+    # 2026-09-01 — supply_key_factors(주요 요인) 신설로 major_changes 근거가
+    # 최대 4개(grade_streak·grade_transition·largest_monthly_score_change·
+    # supply_key_factors)가 됐다 — indicator_composite와 같은 이유로
+    # (1,2)→(1,3) 완화.
+    "indicator_supply": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 1)},
+    # 2026-09-01 — index_top_weighted_minerals(구성 광종 가중치) 신설로
+    # major_changes 근거가 최대 5개(composite_recent_changes·weekly/monthly/
+    # yearly_subindex_comparison·index_top_weighted_minerals)가 됐다 — price
+    # major_changes(근거 5개, 위 (1,3))와 같은 이유로 (1,2)→(1,3) 완화.
+    "indicator_composite": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 1)},
     "forecast_price": {"core_diagnosis": (1, 1), "major_changes": (1, 1), "current_position": (1, 1)},
     # price의 current_position은 (1,2) — 비교광종(compare_observations)이 있으면
     # compare_overall_change 근거 1문장이 더 붙는다(2026-08-26. 2026-08-30 확인:
