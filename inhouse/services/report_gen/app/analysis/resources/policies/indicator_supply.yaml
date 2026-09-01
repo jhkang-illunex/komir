@@ -1,21 +1,24 @@
 schema_version: 1
-policy_version: "2026-07-16"
+policy_version: "2026-09-01"
 page_id: indicator_supply
 name: "수급동향지표"
 definition: >-
-  4차산업 원료광물의 국내 수급리스크 표준척도다. 광종별 중장기 가격리스크,
-  세계 수급비율, 세계 공급·매장 편중도, 국내 수입증가율과 국내 수입국 편중도
-  등을 반영하며 0~100 값을 가지는 지표다.
+  4차산업 원료광물의 국내 수급리스크 표준척도로서 0~100 값을 가지며
+  긴장·주의·관심·안정·원활의 5개 등급으로 분류하는 지표다. 광종별 중장기
+  가격리스크, 세계 수급비율, 세계 공급·매장 편중도, 국내 수입증가율과
+  국내 수입국 편중도 등을 반영하며, 점수가 높을수록 수급 안정성이 강한 지표다.
 score_min: 0
 score_max: 100
 grade_rules:
-  - {label: "주의", min_score: 1, max_score: 5, include_min: false, include_max: true}
-  - {label: "관심", min_score: 5, max_score: 20, include_min: false, include_max: true}
-  - {label: "안정", min_score: 20, max_score: 80, include_min: false, include_max: true}
+  - {label: "긴장", min_score: 0, max_score: 20, include_min: true, include_max: true}
+  - {label: "주의", min_score: 20, max_score: 40, include_min: false, include_max: true}
+  - {label: "관심", min_score: 40, max_score: 60, include_min: false, include_max: true}
+  - {label: "안정", min_score: 60, max_score: 80, include_min: false, include_max: true}
   - {label: "원활", min_score: 80, max_score: 100, include_min: false, include_max: true}
 analysis_constraints:
-  - "0~1점 구간은 현재 다운로드·기준정보만으로 단계를 확정하지 않는다."
   - "보조 패널별 기준시점이 다르면 동일 시점의 원인과 결과로 연결하지 않는다."
   - "국내 수입국 편중도는 단일 연도 스냅샷이라 증감 추세를 알 수 없다 — 현재
     집중 수준만 서술하고 변동성이 커지거나 작아졌다고 단정하지 않는다."
-source_note: "KOMIS 수급동향지표 화면 설명 및 등급 밴드 확인"
+source_note: "2026-09-01 사용자(발주처) 확인 — 긴장 0~20·주의 20~40·관심 40~60·
+  안정 60~80·원활 80~100의 5단계, 점수가 높을수록 수급 안정성이 강함. 이전
+  4단계(주의 1~5·관심 5~20·안정 20~80·원활 80~100)를 대체함"
