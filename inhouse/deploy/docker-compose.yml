@@ -9,9 +9,8 @@
 # Compose 키인 `dockerfile`(파일명이 실제로는 Containerfile이어도 무관 — 경로만 지정).
 #
 # TODO(구현 단계): geo/docker-compose.yml의 host.docker.internal:host-gateway 패턴
-# (호스트측 로컬 LLM 접속)을 필요 서비스에 이식 — report-gen은 2026-09-01 반영
-# 완료(아래 report-gen 서비스의 extra_hosts), rag-chat은 아직 미반영(동일
-# LLM_BASE_URL 패턴이라 같은 문제가 잠재해 있음).
+# (호스트측 로컬 LLM 접속)을 필요 서비스에 이식 — report-gen·rag-chat 모두
+# 2026-09-01 반영 완료(각 서비스의 extra_hosts).
 #
 # rag-chat·report-gen의 `environment: LLM_BASE_URL=...` — 지금은 두 서비스가 같은
 # LLM_BASE_URL(단일 모델 인스턴스)을 공유한다(2026-08-13 논의, 발주처 배포 디바이스
@@ -52,6 +51,9 @@ services:
     depends_on: [qdrant]
     ports:
       - "8002:8002"
+    extra_hosts:
+      # 2026-09-01 — report-gen과 동일 사유(위 TODO 참고).
+      - "host.docker.internal:host-gateway"   # 호스트 LLM(.env RAG_CHAT_LLM_BASE_URL)
     restart: unless-stopped
 
   report-gen:
