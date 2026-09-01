@@ -1075,19 +1075,6 @@ def _filter_hash(page_id: str, filters: dict[str, str | None]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def _grade_for_summary(
-    series: IndicatorSeries,
-    observation: IndicatorObservation,
-    policy: PagePolicy,
-) -> GradeResult | None:
-    if (
-        series.page_id == "indicator_supply"
-        and observation.score <= 1
-    ):
-        return None
-    return policy.classify(observation.score)
-
-
 def _score_meaning(page_id: str, change: float) -> str:
     if change == 0:
         return "점수와 지표가 나타내는 상태에 변화가 없었다"
@@ -1216,7 +1203,7 @@ def _classify_series(
     series: IndicatorSeries,
     policy: PagePolicy,
 ) -> list[GradeResult | None]:
-    return [_grade_for_summary(series, item, policy) for item in series.observations]
+    return [policy.classify(item.score) for item in series.observations]
 
 
 def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _CalculatedSummary:

@@ -104,10 +104,8 @@ MARKET_SUMMARY_INSTRUCTIONS = """\
 """
 
 SUPPLY_SUMMARY_INSTRUCTIONS = """\
-- 이 페이지는 수급동향지표(0~100점, 5단계: 주의 0~5·관심 5~20·안정 20~80·
-  원활 80~100. 0~1점 구간은 현재 데이터만으로 단계를 확정하지 않아 evidence에
-  단계명이 없을 수 있다 — 그 경우 없는 단계명을 지어내지 않는다)다. 점수가
-  높을수록 수급 안정성이 강하다는 뜻이다.
+- 이 페이지는 수급동향지표(0~100점, 5단계: 긴장 0~20·주의 20~40·관심 40~60·
+  안정 60~80·원활 80~100)다. 점수가 높을수록 수급 안정성이 강하다는 뜻이다.
 - core_diagnosis는 current_state·latest_score_change 근거를 연결해
   현재 수급 단계와 최근 수급 안정성 변화가 같은 방향인지 한 문장으로 판단한다.
 - major_changes는 grade_streak·grade_transition·largest_monthly_score_change를
