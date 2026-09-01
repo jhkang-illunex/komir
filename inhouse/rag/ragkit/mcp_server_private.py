@@ -10,9 +10,14 @@
 `shared.retrieval.access.PRIVATE_ONLY_SOURCE_GROUPS`를 이 파일이 import조차
 안 한다 — public 쪽 제한 로직을 우회할 조건문이 구조적으로 없다.
 
-정형 3종·komis_raw_lookup·komis_resolve_mineral·pageindex_agentic(라이선스
-무관, public/private 결과 동일)은 `_mcp_tools_common.py`에 한 번만 구현돼
-있고 여기서는 등록만 한다(재구현 금지).
+정형 3종·komis_raw_lookup·komis_resolve_mineral·pageindex_agentic은
+`_mcp_tools_common.py`에 한 번만 구현돼 있고 여기서는 등록만 한다(재구현
+금지). `register_common_tools(mcp)`를 인자 없이 호출해 `private_only_pages`가
+기본값(빈 집합)인 채로 남는다 — `PRIVATE_ONLY_KOMIS_PAGES`
+(indicator_market·indicator_supply, 2026-09-01)를 이 파일이 아예
+import하지 않으므로 komis_raw_lookup의 11개 page_id 전부가 제한 없이
+조회된다. 나머지 넷(정형 3종·komis_resolve_mineral·pageindex_agentic)은
+애초에 라이선스/접근 축이 없어 public과 결과가 완전히 같다.
 
 실행(직접 점검용, 실제로는 mcp_client.py가 서브프로세스로 띄운다):
     cd inhouse && python -m rag.ragkit.mcp_server_private

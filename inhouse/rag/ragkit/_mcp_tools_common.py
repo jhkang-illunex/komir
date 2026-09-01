@@ -1,12 +1,24 @@
 # -*- coding: utf-8 -*-
-"""public/private MCP 서버 두 파일이 공유하는 **라이선스 무관** tool 6개 —
-정형 3종(structured 산출물, 라이선스 이슈 없음)·komis_raw_lookup·
-komis_resolve_mineral(KOMIS 공개원천 public.KO_*, 2026-08-31/09-01 추가 —
-타 팀 소유일 뿐 라이선스 제한 콘텐츠(Argus)는 아니라 여기 둠)·
-pageindex_agentic(USGS 코퍼스만 스캔, Argus를 애초에 안 건드림). 이 여섯은
-public/private가 결과가 완전히 같아야 정상이므로(2026-08-26
-smoke_mcp_access.py로 실측 확인, komis_* 2종은 그 이후 추가라 별도 재검증
-필요) 여기 한 번만 구현하고 두 서버 파일이 그대로 등록만 한다.
+"""public/private MCP 서버 두 파일이 공유하는 tool 6개 — 정형 3종(structured
+산출물, 라이선스 이슈 없음)·komis_raw_lookup·komis_resolve_mineral(KOMIS
+공개원천 public.KO_*, 2026-08-31/09-01 추가)·pageindex_agentic(USGS 코퍼스만
+스캔, Argus를 애초에 안 건드림)은 여기 한 번만 구현하고 두 서버 파일이 그대로
+등록만 한다(재구현 금지).
+
+다섯(정형 3종·komis_resolve_mineral·pageindex_agentic)은 타 팀 소유이거나
+라이선스 제한 콘텐츠(Argus)가 아니라 public/private 결과가 완전히 같다
+(2026-08-26 smoke_mcp_access.py 실측 확인). **komis_raw_lookup만 예외**다 —
+2026-09-01 사용자 지시로 `page_id` 11개 중 `indicator_market`(시장동향지표)·
+`indicator_supply`(수급동향지표) 2개는 private 프로필 전용이 됐다
+(`shared.retrieval.access.PRIVATE_ONLY_KOMIS_PAGES`). `register_common_tools()`가
+호출자로부터 `private_only_pages`를 받아 komis_raw_lookup 안에서 검사한다 —
+hybrid_search·pageindex_lookup처럼 서버 파일 자체를 물리적으로 나누지 않은
+이유는 이 도구가 다단계 번역 로직(가격기준/HS코드 자동매핑, 150줄)을 갖고
+있어 파일을 통째로 복제하면 그 로직이 두 곳에서 갈라질 위험이 더 커서다 —
+대신 `private_only_pages` 인자는 **호출 시점에 각 서버 파일이 소스코드로
+직접 박아 넣는 값**이라(런타임 env var 아님) 신뢰 경계는 여전히 "어느 파일을
+실행했는가"에 있다(mcp_server_public.py만 이 상수를 넘긴다, private.py는
+아예 import하지 않고 기본값 빈 집합 그대로 쓴다).
 
 **라이선스 제한 소스(Argus)가 갈리는 hybrid_search·pageindex_lookup 두
 도구는 여기 없다** — 그 둘은 `mcp_server_public.py`/`mcp_server_private.py`
@@ -58,9 +70,12 @@ _PRICE_PAGES = frozenset({"price_base_metals", "price_minor_metals", "price_iron
 _HS_TRANSLATE_PAGES = frozenset({"map_korea", "map_global"})
 
 
-def register_common_tools(mcp: FastMCP) -> None:
+def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = frozenset()) -> None:
     """호출자(mcp_server_public.py·mcp_server_private.py)가 자기 `FastMCP`
-    인스턴스를 넘겨 이 4개 tool을 등록한다. 모든 tool은 top-level에서 항상
+    인스턴스를 넘겨 이 6개 tool을 등록한다. `private_only_pages`는
+    komis_raw_lookup에서 거부할 `page_id` 집합 — public.py만 소스코드로
+    `PRIVATE_ONLY_KOMIS_PAGES`를 박아 넣어 넘기고, private.py는 기본값(빈
+    집합=제한 없음) 그대로 둔다. 모든 tool은 top-level에서 항상
     `dict[str, Any]`(Optional도 list도 아닌 순수 object)를 반환한다 — FastMCP가
     반환 타입이 이미 object 스키마면 `structuredContent`에 그대로 싣고,
     `dict | None`/`list[...]`처럼 top-level이 object가 아니면 `{"result": ...}`
@@ -159,6 +174,12 @@ def register_common_tools(mcp: FastMCP) -> None:
         매핑되면 그중 첫 번째(오름차순)만 미리보기로 쓰고 `warnings`에 명시한다
         (전부 합쳐 보려면 `price_criterion_serial`/`hs_code`를 직접 지정할 것).
 
+        ⚠ 2026-09-01 사용자 지시로 `indicator_market`(시장동향지표,
+        KO_MRKT_PRSPECT_IDCT)·`indicator_supply`(수급동향지표,
+        KO_SPDM_STBT_INDX) 2개 page_id는 private 프로필 전용이다 — public
+        프로필에서 호출하면 조회 없이 거부되고 warnings에만 사유가 담긴다
+        (`shared.retrieval.access.PRIVATE_ONLY_KOMIS_PAGES`).
+
         2026-09-01 실사용 버그 발견·수정 — 근거(Evidence)의 `section`에
         `mineral_code`(예: "MNRL0018")가 그대로 노출돼 있었다. 실측으로
         재현된 실패: "텅스텐 가격 조회"가 komis_raw로 정상 라우팅·조회까지
@@ -173,6 +194,12 @@ def register_common_tools(mcp: FastMCP) -> None:
         `resolve_mineral()`로 직접 한글명을 끌어와 라벨을 채운다(호출자는
         여전히 `mineral_code`만 넘기면 된다, API 단순화).
         {"evidence": [...], "warnings": [...]}."""
+
+        if page_id in private_only_pages:
+            return {
+                "evidence": [],
+                "warnings": [f"'{page_id}'는 private 전용 데이터입니다 — public 프로필에서는 조회할 수 없습니다."],
+            }
 
         try:
             request = AnalysisPreviewRequest(

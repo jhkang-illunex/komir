@@ -12,9 +12,11 @@
 hybrid_search_pg`/`pageindex.lookup`)에 넘긴다. 조건문·환경변수 분기가 전혀
 없다 — private 쪽으로 값이 새려면 이 파일 자체를 고쳐야 한다.
 
-정형 3종·komis_raw_lookup·komis_resolve_mineral·pageindex_agentic(라이선스
-무관, public/private 결과 동일)은 `_mcp_tools_common.py`에 한 번만 구현돼
-있고 여기서는 등록만 한다(재구현 금지).
+정형 3종·komis_raw_lookup·komis_resolve_mineral·pageindex_agentic은
+`_mcp_tools_common.py`에 한 번만 구현돼 있고 여기서는 등록만 한다(재구현
+금지). 이 중 komis_raw_lookup만 예외적으로 `PRIVATE_ONLY_KOMIS_PAGES`
+(indicator_market·indicator_supply, 2026-09-01)를 `private_only_pages`로
+넘겨 두 page_id를 거부시킨다 — 나머지 다섯은 결과가 완전히 같다.
 
 실행(직접 점검용, 실제로는 mcp_client.py가 서브프로세스로 띄운다):
     cd inhouse && python -m rag.ragkit.mcp_server_public
@@ -32,13 +34,13 @@ from ._shared_root import ensure_shared_on_path
 ensure_shared_on_path(Path(__file__).resolve())
 
 from shared.retrieval import hybrid_pg, pageindex  # noqa: E402
-from shared.retrieval.access import PRIVATE_ONLY_SOURCE_GROUPS  # noqa: E402
+from shared.retrieval.access import PRIVATE_ONLY_KOMIS_PAGES, PRIVATE_ONLY_SOURCE_GROUPS  # noqa: E402
 from shared.retrieval.evidence import from_dense_chunk, from_pageindex_hit  # noqa: E402
 
 from ._mcp_tools_common import register_common_tools  # noqa: E402
 
 mcp = FastMCP("komir-ragkit-public")
-register_common_tools(mcp)
+register_common_tools(mcp, private_only_pages=PRIVATE_ONLY_KOMIS_PAGES)
 
 
 @mcp.tool()

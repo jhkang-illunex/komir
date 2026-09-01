@@ -154,28 +154,33 @@ komir의 진단·예측·지수 모델이 애초에 이 5광종만 계산해 발
 
 **`ko_*`(9개, KOMIS 원천 데이터)** — 2026-08-31 스키마매핑 실측
 (`documents/산출물/2026-W36_0831-0906/KOMIS_public_ko테이블_스키마매핑_260831.md`
-참고, 이하 요약):
+참고, 이하 요약). **MCP 프로필 접근**(2026-09-01 사용자 지시,
+`shared.retrieval.access.PRIVATE_ONLY_KOMIS_PAGES`) 열은 이 테이블이
+`komis_raw_lookup`의 어느 page_id로 나가고 어느 MCP 프로필에서 조회
+가능한지를 보인다:
 
-| 테이블 | 내용 |
-|---|---|
-| `ko_mnrl_prc` | 광종별 일별 가격(최저/최고/실거래가) |
-| `ko_mnrl_prc_predc` | KOMIS 자체 가격예측(komir의 `out_import_forecast`와 다름) |
-| `ko_mnrl_snths_indx` | 종합지수(HI001~003, 구성 의미 미확인) |
-| `ko_mrkt_prspect_idct` | 시장전망지표 |
-| `ko_spdm_stbt_indx` | 수급안정지수 |
-| `ko_cstm_cmmrc` | 국내(관세청) 수출입 |
-| `ko_un_cmmrc` | 세계(UN Comtrade) 교역 |
-| `ko_rsrc_burudg_quty` | 국가별 매장량 |
-| `ko_rsrc_prdctn_quty` | 국가별 생산량 |
+| 테이블 | 내용 | page_id | MCP 프로필 접근 |
+|---|---|---|---|
+| `ko_mnrl_prc` | 광종별 일별 가격(최저/최고/실거래가) | `price_base_metals`/`price_minor_metals`/`price_iron_energy`/`price_other` | public+private |
+| `ko_mnrl_prc_predc` | KOMIS 자체 가격예측(komir의 `out_import_forecast`와 다름) | `forecast_price` | public+private |
+| `ko_mnrl_snths_indx` | 종합지수(HI001~003, 구성 의미 미확인) | `indicator_composite` | public+private |
+| `ko_mrkt_prspect_idct` | 시장전망지표(시장동향지표) | `indicator_market` | **private 전용** |
+| `ko_spdm_stbt_indx` | 수급안정지수(수급동향지표) | `indicator_supply` | **private 전용** |
+| `ko_cstm_cmmrc` | 국내(관세청) 수출입 | `map_korea` | public+private |
+| `ko_un_cmmrc` | 세계(UN Comtrade) 교역 | `map_global` | public+private |
+| `ko_rsrc_burudg_quty` | 국가별 매장량 | `map_mineral` | public+private |
+| `ko_rsrc_prdctn_quty` | 국가별 생산량 | `map_mineral` | public+private |
 
 **`ai_*`(28개, 마스터/매핑 + KOMIS 사이트 자체 AI 기능 추정)** — 이 중
-실제로 쓰는 3개(코드↔광종 조회의 근간):
+실제로 쓰는 3개(코드↔광종 조회의 근간, **어느 page_id로도 직접 노출되지
+않고 komis_raw.py 내부 번역에만 쓰여 위 private 전용 제한과 무관 — 항상
+public+private 공통**):
 
 | 테이블 | 역할 |
 |---|---|
 | `ai_mnrl_mst` | 광종 마스터 — 코드(`mnrknd_unq_cd`)·한글명(`mnrl_nm_ko`)·가격분류(`prc_cat_cd`, HP001~004)·데이터출처(`ko_data_src_cd`) |
-| `ai_prc_mnrl_map` | 광종 → 가격기준일련번호(`ko_mnrl_prc.mnrl_prc_crtr_sn`) 매핑(1:N) |
-| `ai_hs_mnrl_map` | 광종 → HS코드(`ko_cstm_cmmrc`/`ko_un_cmmrc.hs_cd`) 매핑(1:N) |
+| `ai_prc_mnrl_map` | 광종 → 가격기준일련번호(`ko_mnrl_prc.mnrl_prc_crtr_sn`) 매핑(1:N, "SN-광종간 매핑정보") |
+| `ai_hs_mnrl_map` | 광종 → HS코드(`ko_cstm_cmmrc`/`ko_un_cmmrc.hs_cd`) 매핑(1:N, "HS코드-광종간 매핑 정보") |
 
 나머지 25개 `ai_*`는 미조사(범위 밖 — `ai_mnrl_diag`·`ai_dash_diag`·
 `ai_report`·`ai_evid`·`ai_news` 등, 이름으로 미루어 KOMIS 사이트 자체
@@ -189,8 +194,11 @@ KOMIS 표본 아님)다. 유일한 실샘플은 텅스텐(`MNRL0018`,
 상태 — 나머지 광종을 물으면 `komis_resolve_mineral`이 `mineral_code: null`
 을 정직하게 돌려준다(§2-3).
 
-### 2-3. MCP 도구 (public/private 프로필 결과 동일 — 라이선스 이슈 없음,
-타 팀 소유일 뿐 제3자 재배포 제한 콘텐츠는 아님)
+### 2-3. MCP 도구 (`komis_resolve_mineral`은 public/private 프로필 결과
+동일. `komis_raw_lookup`은 2026-09-01부터 **일부 page_id만** 예외 —
+아래 참고. 둘 다 "타 팀 소유"일 뿐 원래는 제3자 재배포 제한 콘텐츠가
+아니었으나, 2026-09-01 사용자가 `indicator_market`/`indicator_supply`
+2개 page_id만 private 프로필 전용으로 지정했다)
 
 - `komis_resolve_mineral(korean_name)` — 한글 광종명(자유형, "텅스텐"처럼
   질문에 쓰인 그대로) → `{mineral_code, price_category, warnings}`.
@@ -212,6 +220,16 @@ KOMIS 표본 아님)다. 유일한 실샘플은 텅스텐(`MNRL0018`,
   `KOMIS_SAMPLE`이 아니면 `Evidence.caveat`에 강제 경고 문구를 심고,
   `chatbot.py::_dummy_data_notice()`가 인용 스트리퍼 통과 후 코드로
   화면에 무조건 노출한다(LLM이 알아서 옮겨 적을 거라 기대하지 않음).
+  **private 전용 page_id 거부**(2026-09-01): `page_id`가
+  `indicator_market`/`indicator_supply`면 public 프로필에서는 DB 조회
+  자체를 하지 않고 `{"evidence": [], "warnings": ["'...'는 private
+  전용 데이터입니다..."]}`를 즉시 반환한다(`_mcp_tools_common.py::
+  register_common_tools`의 `private_only_pages` 인자,
+  `mcp_server_public.py`만 `PRIVATE_ONLY_KOMIS_PAGES`를 소스코드로 넘김 —
+  hybrid_search/pageindex_lookup과 같은 원칙으로 신뢰 경계가 "어느 파일을
+  실행했는가"에 있음, 런타임 플래그 아님). `chatbot_graph.py::_retrieve_node`는
+  이 경우를 별도 분기 없이 그대로 처리한다 — evidence가 비면 인용이 안
+  붙고 warnings는 기존 기권사유 분류 경로를 그대로 탄다.
 
 ### 2-4. 안전장치 변경 이력
 

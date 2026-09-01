@@ -12,9 +12,11 @@
 검증 대상:
 - hybrid_search·pageindex_lookup: public은 라이선스 제한 소스(Argus 비철금속
   일일동향)를 절대 안 돌려주고, private는 돌려준다.
-- latest_diagnosis·import_forecast·geo_index_trend·komis_raw_lookup·
+- latest_diagnosis·import_forecast·geo_index_trend·komis_raw_lookup(일부)·
   pageindex_agentic: 프로필 무관 — 둘이 완전히 같은 결과를 낸다(정형 산출물·
   KOMIS 공개원천(public.KO_*)·USGS는 라이선스 이슈가 없어 구분이 없어야 정상).
+- komis_raw_lookup의 `indicator_market`/`indicator_supply` 2개 page_id만
+  예외(2026-09-01) — public은 조회 없이 거부되고, private는 정상 조회된다.
 """
 from __future__ import annotations
 
@@ -92,6 +94,17 @@ def main() -> int:
     )
     print(f"[OK] komis_raw_lookup: public/private 완전 동일(프로필 무관 확인), "
           f"텅스텐 실샘플 {len(pub_kr)}건 더미경고 없음 + 관측일자 컷오프 확인")
+
+    # komis_raw_lookup 예외(2026-09-01) — indicator_market/indicator_supply는
+    # private 전용. public은 조회 자체가 막혀야(evidence 0건+거부 warning),
+    # private는 정상 조회돼야 한다.
+    for page_id in ("indicator_market", "indicator_supply"):
+        pub_ev, pub_warn = mcp_client.public.call_komis_raw_lookup(page_id, limit=3)
+        pri_ev, pri_warn = mcp_client.private.call_komis_raw_lookup(page_id, limit=3)
+        assert pub_ev == [] and any("private 전용" in w for w in pub_warn), (page_id, pub_ev, pub_warn)
+        assert pri_ev != [] or not any("private 전용" in w for w in pri_warn), (page_id, pri_ev, pri_warn)
+        print(f"[OK] komis_raw_lookup({page_id}): public 거부(evidence 0건) 확인, "
+              f"private 통과(evidence {len(pri_ev)}건, warnings={pri_warn})")
 
     # pageindex_agentic — USGS 코퍼스만 스캔(Argus를 애초에 안 건드림). 실제 LLM이
     # 매 스텝 판단하므로(temp=0이어도 두 프로필 프로세스가 완전히 독립적으로
