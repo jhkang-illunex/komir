@@ -118,6 +118,20 @@ _KOMIS_REGISTRY_REF: dict[str, str] = {
     "indicator_market": "metadata.indicators.market_minerals",
     "indicator_supply": "metadata.indicators.supply_minerals",
     "map_korea": "metadata.maps.trade_minerals",
+    # 2026-09-01(사용자 제공 34종 목록): price_minor_metals(광물자원가격>희소금속)도
+    # ai_mnrl_mst(prc_cat_cd=HP002)엔 5종(텅스텐·리튬·코발트·망간·네오디뮴)뿐이라
+    # 크게 부족했다 — registry의 metadata.prices.minor_metals.minerals(34종)가
+    # 사용자 목록과 정확히 일치해 채택. base_metals/other도 각자 registry ref
+    # (metadata.prices.{base_metals,other}.minerals)가 있지만 이번엔 minor_metals/
+    # iron_energy만 요청받아 나머지는 안 바꿨다.
+    "price_minor_metals": "metadata.prices.minor_metals.minerals",
+    # 2026-09-01(사용자 제공 3종 목록): price_iron_energy(광물자원가격>철광석 및
+    # 에너지)는 ai_mnrl_mst(prc_cat_cd=HP003)엔 2종(우라늄·"철광석")뿐이라
+    # 유연탄(MNRL0032)이 아예 빠져 있었다 — registry의
+    # metadata.prices.iron_energy.minerals(우라늄·유연탄·철, 3종)가 사용자
+    # 목록과 정확히 일치해 채택("철" vs DB의 "철광석" 라벨 차이는 코드
+    # MNRL1011로 동일 광종 확인).
+    "price_iron_energy": "metadata.prices.iron_energy.minerals",
 }
 
 

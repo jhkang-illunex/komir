@@ -68,6 +68,30 @@ class PageSpec:
 # 캡처를 그대로 옮긴 것이다(값을 지어내지 않는다는 원칙) — 페이지별 출처는
 # 각 PageSpec 주석에 명시.
 PAGE_SPECS: dict[str, PageSpec] = {
+    # 2026-09-01(사용자 지시): 광물전망지표 서브메뉴 순서를 komis_menu_map.yaml
+    # 실측 사이트맵 순서(광물종합지수→시장동향지표→수급동향지표)에 맞춰 이
+    # dict의 등록 순서 자체를 재배열했다 — section_page_ids(report_demo.py)가
+    # PAGE_SPECS dict 순회 순서를 그대로 쓰기 때문(§SECTION_ORDER 방식과 달리
+    # 서브메뉴 전용 정렬 리스트는 따로 없음, 등록 순서로 충분해 새로 안 만듦).
+    "indicator_composite": PageSpec(
+        # 실측: Phase4 `composite_forecast_live_capture_260829.json`
+        # (getLineChartIndx, 2026-08-14~27 10영업일) 그대로.
+        # 2026-08-30 report-summary-agent 제보(커밋 0d0568a50) — start_date/
+        # end_date가 요청 모델에서 삭제됐다(komis_response가 이미 KOMIS 조회
+        # 범위 그대로의 시계열이라 서버 재필터가 중복) — period_fields 제거.
+        "광물종합지수", "광물전망지표", "composite-index", False, ("", ""), "",
+        (),
+        '[{"date": "2026-08-14", "composite_index": 3454.93, "major_metals_index": 2969.95, "minor_metals_index": 2905.63}, '
+        '{"date": "2026-08-17", "composite_index": 3469.62, "major_metals_index": 2981.77, "minor_metals_index": 2906.34}, '
+        '{"date": "2026-08-18", "composite_index": 3489.6, "major_metals_index": 3003.3, "minor_metals_index": 2906.34}, '
+        '{"date": "2026-08-19", "composite_index": 3458.39, "major_metals_index": 2955.1, "minor_metals_index": 2906.34}, '
+        '{"date": "2026-08-20", "composite_index": 3496.56, "major_metals_index": 2942.08, "minor_metals_index": 2906.34}, '
+        '{"date": "2026-08-21", "composite_index": 3503.6, "major_metals_index": 2938.34, "minor_metals_index": 2906.34}, '
+        '{"date": "2026-08-24", "composite_index": 3539.45, "major_metals_index": 2968.06, "minor_metals_index": 2911.8}, '
+        '{"date": "2026-08-25", "composite_index": 3557.13, "major_metals_index": 2977.82, "minor_metals_index": 2911.8}, '
+        '{"date": "2026-08-26", "composite_index": 3546.37, "major_metals_index": 2974.51, "minor_metals_index": 2911.8}, '
+        '{"date": "2026-08-27", "composite_index": 3558.81, "major_metals_index": 2999.54, "minor_metals_index": 2911.8}]',
+    ),
     "indicator_market": PageSpec(
         # 2026-09-01: 발주처가 이 페이지(로그인 필요라 그동안 라이브 캡처가
         # 없었음)의 KOMIS 원본 JSON 덤프를 처음 제공, report_gen이
@@ -143,64 +167,6 @@ PAGE_SPECS: dict[str, PageSpec] = {
         '{"month": "2026-05", "score": 31.79, "price": 398.9, "crisis_flag": false}, '
         '{"month": "2026-06", "score": 33.05, "price": 400.4, "crisis_flag": false}, '
         '{"month": "2026-07", "score": 29.5, "price": 418.09, "crisis_flag": false}]',
-    ),
-    "indicator_composite": PageSpec(
-        # 실측: Phase4 `composite_forecast_live_capture_260829.json`
-        # (getLineChartIndx, 2026-08-14~27 10영업일) 그대로.
-        # 2026-08-30 report-summary-agent 제보(커밋 0d0568a50) — start_date/
-        # end_date가 요청 모델에서 삭제됐다(komis_response가 이미 KOMIS 조회
-        # 범위 그대로의 시계열이라 서버 재필터가 중복) — period_fields 제거.
-        "광물종합지수", "광물전망지표", "composite-index", False, ("", ""), "",
-        (),
-        '[{"date": "2026-08-14", "composite_index": 3454.93, "major_metals_index": 2969.95, "minor_metals_index": 2905.63}, '
-        '{"date": "2026-08-17", "composite_index": 3469.62, "major_metals_index": 2981.77, "minor_metals_index": 2906.34}, '
-        '{"date": "2026-08-18", "composite_index": 3489.6, "major_metals_index": 3003.3, "minor_metals_index": 2906.34}, '
-        '{"date": "2026-08-19", "composite_index": 3458.39, "major_metals_index": 2955.1, "minor_metals_index": 2906.34}, '
-        '{"date": "2026-08-20", "composite_index": 3496.56, "major_metals_index": 2942.08, "minor_metals_index": 2906.34}, '
-        '{"date": "2026-08-21", "composite_index": 3503.6, "major_metals_index": 2938.34, "minor_metals_index": 2906.34}, '
-        '{"date": "2026-08-24", "composite_index": 3539.45, "major_metals_index": 2968.06, "minor_metals_index": 2911.8}, '
-        '{"date": "2026-08-25", "composite_index": 3557.13, "major_metals_index": 2977.82, "minor_metals_index": 2911.8}, '
-        '{"date": "2026-08-26", "composite_index": 3546.37, "major_metals_index": 2974.51, "minor_metals_index": 2911.8}, '
-        '{"date": "2026-08-27", "composite_index": 3558.81, "major_metals_index": 2999.54, "minor_metals_index": 2911.8}]',
-    ),
-    "map_mineral": PageSpec(
-        # 실측: Phase3 `map_mineral_live_capture_260829.json`(getListMapMnrlData,
-        # MNRL0008=동, 2025년 매장량 burudgQuty 14개국, 천톤 환산=÷1000). 2024년은
-        # 라이브 재캡처를 못 받아(2차 연도 미보유) 서버 최소요건(연도≥2) 충족용으로
-        # 2025년 값을 그대로 복제했다 — 국가별 실측값 자체는 100% 라이브, 연도 간
-        # 변화율만 0%로 나온다(지어낸 델타 없음, 정직한 한계).
-        # 2026-08-30 report-summary-agent 제보(커밋 0d0568a50) — start_year/
-        # end_year가 요청 모델에서 삭제됐다(§indicator_composite 주석 참고).
-        "광물지도(매장량/생산량)", "핵심광물지도", "mineral-map", True, ("", ""), "",
-        ("measure", "unit"),
-        '[{"year": 2024, "country_code": "AU", "country_name": "호주", "value": 100000.0}, '
-        '{"year": 2024, "country_code": "CA", "country_name": "캐나다", "value": 7000.0}, '
-        '{"year": 2024, "country_code": "CD", "country_name": "콩고민주공화국", "value": 80000.0}, '
-        '{"year": 2024, "country_code": "CL", "country_name": "칠레", "value": 180000.0}, '
-        '{"year": 2024, "country_code": "CN", "country_name": "중국", "value": 41000.0}, '
-        '{"year": 2024, "country_code": "ID", "country_name": "인도네시아", "value": 21000.0}, '
-        '{"year": 2024, "country_code": "IN", "country_name": "인도", "value": 2200.0}, '
-        '{"year": 2024, "country_code": "KZ", "country_name": "카자흐스탄", "value": 20000.0}, '
-        '{"year": 2024, "country_code": "MX", "country_name": "멕시코", "value": 53000.0}, '
-        '{"year": 2024, "country_code": "PE", "country_name": "페루", "value": 85000.0}, '
-        '{"year": 2024, "country_code": "PL", "country_name": "폴란드", "value": 33000.0}, '
-        '{"year": 2024, "country_code": "RU", "country_name": "러시아", "value": 80000.0}, '
-        '{"year": 2024, "country_code": "US", "country_name": "미국", "value": 47000.0}, '
-        '{"year": 2024, "country_code": "ZM", "country_name": "잠비아", "value": 21000.0}, '
-        '{"year": 2025, "country_code": "AU", "country_name": "호주", "value": 100000.0}, '
-        '{"year": 2025, "country_code": "CA", "country_name": "캐나다", "value": 7000.0}, '
-        '{"year": 2025, "country_code": "CD", "country_name": "콩고민주공화국", "value": 80000.0}, '
-        '{"year": 2025, "country_code": "CL", "country_name": "칠레", "value": 180000.0}, '
-        '{"year": 2025, "country_code": "CN", "country_name": "중국", "value": 41000.0}, '
-        '{"year": 2025, "country_code": "ID", "country_name": "인도네시아", "value": 21000.0}, '
-        '{"year": 2025, "country_code": "IN", "country_name": "인도", "value": 2200.0}, '
-        '{"year": 2025, "country_code": "KZ", "country_name": "카자흐스탄", "value": 20000.0}, '
-        '{"year": 2025, "country_code": "MX", "country_name": "멕시코", "value": 53000.0}, '
-        '{"year": 2025, "country_code": "PE", "country_name": "페루", "value": 85000.0}, '
-        '{"year": 2025, "country_code": "PL", "country_name": "폴란드", "value": 33000.0}, '
-        '{"year": 2025, "country_code": "RU", "country_name": "러시아", "value": 80000.0}, '
-        '{"year": 2025, "country_code": "US", "country_name": "미국", "value": 47000.0}, '
-        '{"year": 2025, "country_code": "ZM", "country_name": "잠비아", "value": 21000.0}]',
     ),
     # 2026-09-01 삭제(사용자 지시): "광물전망지표>가격예측(중기/장기)" 메뉴를
     # 화면에서 지웠다 — page_id "forecast_price"(path price-forecast)를
@@ -367,6 +333,49 @@ PAGE_SPECS: dict[str, PageSpec] = {
         '{"date": "2025-08-01", "country_code": "US", "country_name": "미국", "import_weight": 25095634, "import_amount": 325830531, "origin_country_code": "AU", "origin_country_name": "호주"}, '
         '{"date": "2025-08-01", "country_code": "BR", "country_name": "브라질", "import_weight": 25902594, "import_amount": 303322485, "origin_country_code": "CL", "origin_country_name": "칠레"}, '
         '{"date": "2025-08-01", "country_code": "US", "country_name": "미국", "import_weight": 27102934, "import_amount": 303312213, "origin_country_code": "CD", "origin_country_name": "콩고민주공화국"}]',
+    ),
+    # 2026-09-01(사용자 지시): 핵심광물지도 서브메뉴 순서를 [수급지도>대한민국,
+    # 수급지도>글로벌, 광물지도]로 맞추기 위해 map_mineral을 map_korea/
+    # map_global 뒤로 옮겼다(§indicator_composite 재배치와 같은 이유·같은 패턴,
+    # PAGE_SPECS dict 등록 순서 = section_page_ids 순서).
+    "map_mineral": PageSpec(
+        # 실측: Phase3 `map_mineral_live_capture_260829.json`(getListMapMnrlData,
+        # MNRL0008=동, 2025년 매장량 burudgQuty 14개국, 천톤 환산=÷1000). 2024년은
+        # 라이브 재캡처를 못 받아(2차 연도 미보유) 서버 최소요건(연도≥2) 충족용으로
+        # 2025년 값을 그대로 복제했다 — 국가별 실측값 자체는 100% 라이브, 연도 간
+        # 변화율만 0%로 나온다(지어낸 델타 없음, 정직한 한계).
+        # 2026-08-30 report-summary-agent 제보(커밋 0d0568a50) — start_year/
+        # end_year가 요청 모델에서 삭제됐다(§indicator_composite 주석 참고).
+        "광물지도(매장량/생산량)", "핵심광물지도", "mineral-map", True, ("", ""), "",
+        ("measure", "unit"),
+        '[{"year": 2024, "country_code": "AU", "country_name": "호주", "value": 100000.0}, '
+        '{"year": 2024, "country_code": "CA", "country_name": "캐나다", "value": 7000.0}, '
+        '{"year": 2024, "country_code": "CD", "country_name": "콩고민주공화국", "value": 80000.0}, '
+        '{"year": 2024, "country_code": "CL", "country_name": "칠레", "value": 180000.0}, '
+        '{"year": 2024, "country_code": "CN", "country_name": "중국", "value": 41000.0}, '
+        '{"year": 2024, "country_code": "ID", "country_name": "인도네시아", "value": 21000.0}, '
+        '{"year": 2024, "country_code": "IN", "country_name": "인도", "value": 2200.0}, '
+        '{"year": 2024, "country_code": "KZ", "country_name": "카자흐스탄", "value": 20000.0}, '
+        '{"year": 2024, "country_code": "MX", "country_name": "멕시코", "value": 53000.0}, '
+        '{"year": 2024, "country_code": "PE", "country_name": "페루", "value": 85000.0}, '
+        '{"year": 2024, "country_code": "PL", "country_name": "폴란드", "value": 33000.0}, '
+        '{"year": 2024, "country_code": "RU", "country_name": "러시아", "value": 80000.0}, '
+        '{"year": 2024, "country_code": "US", "country_name": "미국", "value": 47000.0}, '
+        '{"year": 2024, "country_code": "ZM", "country_name": "잠비아", "value": 21000.0}, '
+        '{"year": 2025, "country_code": "AU", "country_name": "호주", "value": 100000.0}, '
+        '{"year": 2025, "country_code": "CA", "country_name": "캐나다", "value": 7000.0}, '
+        '{"year": 2025, "country_code": "CD", "country_name": "콩고민주공화국", "value": 80000.0}, '
+        '{"year": 2025, "country_code": "CL", "country_name": "칠레", "value": 180000.0}, '
+        '{"year": 2025, "country_code": "CN", "country_name": "중국", "value": 41000.0}, '
+        '{"year": 2025, "country_code": "ID", "country_name": "인도네시아", "value": 21000.0}, '
+        '{"year": 2025, "country_code": "IN", "country_name": "인도", "value": 2200.0}, '
+        '{"year": 2025, "country_code": "KZ", "country_name": "카자흐스탄", "value": 20000.0}, '
+        '{"year": 2025, "country_code": "MX", "country_name": "멕시코", "value": 53000.0}, '
+        '{"year": 2025, "country_code": "PE", "country_name": "페루", "value": 85000.0}, '
+        '{"year": 2025, "country_code": "PL", "country_name": "폴란드", "value": 33000.0}, '
+        '{"year": 2025, "country_code": "RU", "country_name": "러시아", "value": 80000.0}, '
+        '{"year": 2025, "country_code": "US", "country_name": "미국", "value": 47000.0}, '
+        '{"year": 2025, "country_code": "ZM", "country_name": "잠비아", "value": 21000.0}]',
     ),
     # 2026-08-31 삭제(report-summary-agent 알림, 커밋 de2bd6336): 사용자가
     # 메뉴별 템플릿 현황 문서를 보고 "전체 광종은 필요 없어 보임"이라 피드백,

@@ -115,6 +115,18 @@ if st.session_state.get("_report_demo_last_page_id") != page_id:
 
 payload: dict = {}
 
+# 2026-09-01: ai_mnrl_mst(DB, 이 프로젝트가 쓰는 19종뿐)로는 부족해 KOMIS 실측
+# registry(§mineral_master.py komis_registry_mineral_options)로 광종을 채우는
+# page_id 목록 — indicator_market/supply(39종/36종)·map_korea(73종)에 이어
+# price_minor_metals(광물자원가격>희소금속, 34종)도 사용자 제공 목록이 registry
+# 와 정확히 일치해 추가했다. 광종 드롭다운(_mineral_picker 호출부)과 비교광종
+# 드롭다운(_compare_mineral_picker) 둘 다 이 목록을 참조한다 — 같은 페이지
+# 안에서 한쪽만 registry를 쓰면 "본 광종은 34종 중 고르는데 비교광종은 DB
+# 5종뿐"인 불일치가 생기기 때문.
+_KOMIS_REGISTRY_PAGE_IDS = (
+    "indicator_market", "indicator_supply", "map_korea", "price_minor_metals", "price_iron_energy",
+)
+
 
 def _mineral_picker(options: list, *, key: str) -> None:
     """드롭다운에서 고른 광종의 코드+한글명을 payload 에 채운다. DB 조회가
@@ -141,8 +153,13 @@ def _compare_mineral_picker(col, page_id: str) -> None:
     2026-08-31 재수정(사용자 지적): compare_mineral은 KOMIS에서도 선택 필드라
     "비교 안 함"이 기본이어야 하는데 selectbox가 항상 첫 옵션을 자동 선택해
     원치 않아도 비교가 걸렸다 — index=None으로 기본 미선택, 값을 고를 때만
-    payload에 채운다."""
-    options = prioritize_core_minerals(mineral_options_for_page(page_id))
+    payload에 채운다. 2026-09-01: page_id가 _KOMIS_REGISTRY_PAGE_IDS(현재는
+    price_minor_metals)에 있으면 본 광종 드롭다운과 같은 KOMIS 실측 registry를
+    쓴다 — 본 광종은 34종인데 비교광종만 DB 5종으로 좁아지는 불일치 방지."""
+    if page_id in _KOMIS_REGISTRY_PAGE_IDS:
+        options = prioritize_core_minerals(komis_registry_mineral_options(page_id))
+    else:
+        options = prioritize_core_minerals(mineral_options_for_page(page_id))
     label = EXTRA_FIELD_LABELS.get("compare_mineral", "compare_mineral")
     if not options:
         code = col.text_input(
@@ -172,8 +189,9 @@ def _compare_mineral_picker(col, page_id: str) -> None:
 # 일치, 라이브검증에 쓴 갈륨(MNRL0024) 포함.
 # 2026-09-01 확장(사용자 제공 74종 목록): map_korea(핵심광물지도>수급지도>
 # 대한민국)도 같은 이유로 registry(metadata.maps.trade_minerals, 73종)를 쓴다
-# — 사용자 목록과 71/74종 일치 확인(§mineral_master.py 모듈 docstring 참고).
-_KOMIS_REGISTRY_PAGE_IDS = ("indicator_market", "indicator_supply", "map_korea")
+# — 사용자 목록과 71/74종 일치 확인. price_minor_metals(광물자원가격>희소금속,
+# 34종)도 같은 패턴 — §_KOMIS_REGISTRY_PAGE_IDS 정의부(위쪽) 및
+# mineral_master.py 모듈 docstring 참고.
 if spec.has_mineral:
     if page_id in _KOMIS_REGISTRY_PAGE_IDS:
         mineral_opts = prioritize_core_minerals(komis_registry_mineral_options(page_id))
