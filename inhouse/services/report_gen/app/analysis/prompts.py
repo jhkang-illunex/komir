@@ -144,6 +144,11 @@ COMPOSITE_SUMMARY_INSTRUCTIONS = """\
   조회기간 고저점 위치와 단기·장기 방향을 이어 현재 수준의 의미를 판단한다.
 - 하위지수의 방향이 다르면 전체 지수만으로 가려지는 차별화를 명시하되
   구체적인 견인 광종이나 원인은 evidence에 없으므로 추정하지 않는다.
+- index_top_weighted_minerals(있으면, major_changes) — 광물종합·메이저금속·
+  희소금속지수 각각의 구성 광종과 산정 가중치(%)다. 이번 조회기간에 그
+  광종의 가격이 실제로 오르내렸는지는 evidence에 없으므로, "이 광종의
+  가격 상승/하락이 원인"이라고 쓰지 않는다 — "비중이 큰 구성 광종이라
+  지수 변동에 상대적으로 민감하다"처럼 구조적 사실로만 그대로 옮긴다.
 """
 
 MINERAL_MAP_SUMMARY_INSTRUCTIONS = """\
@@ -356,7 +361,11 @@ SECTION_SENTENCE_RANGES: dict[str, dict[str, tuple[int, int]]] = {
     # 넣지 못해 근거 누락/절 이동으로 폴백하는 사례 → (1,2)로 완화.
     "indicator_market": {"core_diagnosis": (1, 1), "major_changes": (1, 2), "current_position": (1, 1)},
     "indicator_supply": {"core_diagnosis": (1, 1), "major_changes": (1, 2), "current_position": (1, 1)},
-    "indicator_composite": {"core_diagnosis": (1, 1), "major_changes": (1, 2), "current_position": (1, 1)},
+    # 2026-09-01 — index_top_weighted_minerals(구성 광종 가중치) 신설로
+    # major_changes 근거가 최대 5개(composite_recent_changes·weekly/monthly/
+    # yearly_subindex_comparison·index_top_weighted_minerals)가 됐다 — price
+    # major_changes(근거 5개, 위 (1,3))와 같은 이유로 (1,2)→(1,3) 완화.
+    "indicator_composite": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 1)},
     "forecast_price": {"core_diagnosis": (1, 1), "major_changes": (1, 1), "current_position": (1, 1)},
     # price의 current_position은 (1,2) — 비교광종(compare_observations)이 있으면
     # compare_overall_change 근거 1문장이 더 붙는다(2026-08-26. 2026-08-30 확인:
