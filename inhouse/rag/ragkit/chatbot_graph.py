@@ -136,7 +136,10 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
           와 다르다 — 이건 komir가 만든 예측이 아니라 KOMIS가 게시하는
           예측이다).
         - composite_index: 광물종합지수(HI001~003, 여러 지표를 합성한 KOMIS
-          자체 게시 지수 — "종합지수" 질문은 대개 이거다).
+          자체 게시 지수 — "종합지수" 질문은 대개 이거다). **광종과 무관한
+          지표라 광종을 몰라도 켠다** — komis_topic 중 유일하게
+          komis_mineral_name 없이도 use_komis_raw=true로 켤 수 있다(맨 아래
+          문단의 "komis_mineral_name 필수" 규칙의 유일한 예외).
         **"위기지수"만 예외다** — 이건 komir 자체 산출물(지정학 위기지수)이라
         komis_topic이 아니라 위 structured의 geo_index_trend가 담당한다.
         "위기지수" 질문엔 komis_raw를 켜지 않는다(광물종합지수·시장전망·
@@ -144,7 +147,8 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
      2) komis_mineral_name — 질문이 가리키는 광종의 한글명을 질문에 쓰인
         표현 그대로 채운다(예: "텅스텐", "금", "구리". commodity_code처럼
         CU/NI 같은 영문 약어로 바꿔쓰지 않는다 — 이 필드는 5광종 제한이
-        없는 별도 필드다). 광종을 특정할 수 없으면 komis_raw를 켜지 않는다.
+        없는 별도 필드다). 광종을 특정할 수 없으면 komis_raw를 켜지 않는다
+        (단, komis_topic=composite_index는 예외 — 위 참고, null로 둔다).
    - dense: 보고서·기사·백서 등 비정형 문서를 의미 기반으로 검색한다. 애매하면
      켜는 게 안전하다(기본값에 가깝게 취급). komis_raw를 켤 때도, 그 데이터가
      실제로는 없거나(발주 5광종 상당수가 아직 개발용 더미다) 부족할 수 있어
@@ -163,7 +167,9 @@ structured를 켤 땐 commodity_code(CU|NI|CO|LI|REE)를 반드시 함께 지정
 광종을 모르거나 이 5개 밖이면 켜지 않는다(use_structured=false, komir 자체
 산출물은 이 5광종만 계산되어 있다). komis_raw를 켤 땐 komis_mineral_name을
 반드시 함께 지정한다 — 광종을 모르면 켜지 않는다(use_komis_raw=false, 다만
-5광종 제한은 없다)."""
+5광종 제한은 없다). **유일한 예외: komis_topic=composite_index는
+komis_mineral_name 없이도(null) use_komis_raw=true로 켠다** — 광물종합지수는
+광종과 무관한 지표라서다."""
 
 
 REFORMULATE_PROMPT = """직전 검색이 근거를 하나도 찾지 못했다. 같은 의도를
@@ -407,9 +413,19 @@ def _retrieve_node(state: RetrievalState, *, dense_k: int, pageindex_k: int) -> 
     # 여부에 따른 page_id가 광종의 price_category(ai_mnrl_mst.prc_cat_cd)에
     # 달려 있어 하드코딩 딕셔너리 대신 komis_resolve_mineral을 먼저(동기)
     # 호출해 알아낸다 — 그 뒤 dense/pageindex와 나란히 병렬 조회한다(아래 풀).
+    # composite_index(광물종합지수, KO_MNRL_SNTHS_INDX)만 예외다 — 이 페이지는
+    # komis_raw.py의 filter_columns에 mineral_code가 아예 없어(index_type_code
+    # 뿐) 광종을 몰라도(komis_mineral_name=None이어도) 조회 가능해야 정상이다
+    # (사용자 지시, 2026-09-01). 나머지 topic은 여전히 광종을 반드시 알아야 한다.
     komis_raw_page_id: str | None = None
     komis_raw_mineral_code: str | None = None
-    if route.use_komis_raw and route.komis_topic and route.komis_mineral_name:
+    if route.use_komis_raw and route.komis_topic == "composite_index":
+        komis_raw_page_id = "indicator_composite"
+        if route.komis_mineral_name:
+            resolved = session.call_komis_resolve_mineral(route.komis_mineral_name)
+            warnings.extend(resolved.get("warnings", []))
+            komis_raw_mineral_code = resolved.get("mineral_code")
+    elif route.use_komis_raw and route.komis_topic and route.komis_mineral_name:
         resolved = session.call_komis_resolve_mineral(route.komis_mineral_name)
         warnings.extend(resolved.get("warnings", []))
         komis_raw_mineral_code = resolved.get("mineral_code")
@@ -424,7 +440,9 @@ def _retrieve_node(state: RetrievalState, *, dense_k: int, pageindex_k: int) -> 
         if route.use_structured and route.structured_template and route.commodity_code:
             call = getattr(session, _STRUCTURED_CALL_NAMES[route.structured_template])
             jobs["structured"] = pool.submit(call, route.commodity_code, route.target, route.forecast_months)
-        if komis_raw_page_id and komis_raw_mineral_code:
+        # composite_index는 komis_raw_mineral_code가 None이어도(광종 미지정)
+        # 조회한다 — 위에서 이미 그 경우만 komis_raw_page_id를 채워뒀다.
+        if komis_raw_page_id:
             jobs["komis_raw"] = pool.submit(
                 session.call_komis_raw_lookup, komis_raw_page_id, mineral_code=komis_raw_mineral_code,
             )
