@@ -50,7 +50,11 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from streamlit_demo.mineral_master import mineral_label, mineral_options
+from streamlit_demo.mineral_master import (
+    komis_registry_mineral_options,
+    mineral_label,
+    mineral_options_for_page,
+)
 from streamlit_demo.komis_raw import KOMIS_RAW_PAGES, KomisRawConversionError
 from streamlit_demo.report_gen_client import (
     EXTRA_FIELD_DEFAULTS,
@@ -96,6 +100,23 @@ _PERIOD_PLACEHOLDERS = {
     "period": ("2026-Q1", "2026-Q2"),
 }
 
+# 2026-09-02(skeptic 2차 감사 PA-004, TWIN 드리프트 3차 재발): 기능테스트 광종
+# 드롭다운이 report_demo.py의 registry 확장(§mineral_master.py
+# komis_registry_mineral_options)을 못 따라가 평면 mineral_options()(19종,
+# 페이지 구분 없음)에 머물러 있었다 — 갈륨 등 registry 전용 광종을 테스트할
+# 수 없었고, price_* 4종은 카테고리 필터(HP001~004)조차 없었다. report_demo.py
+# 의 동일 분기를 그대로 이식한다(공용 헬퍼 추출은 이번 스코프 밖 — 감사 문서
+# "묶음 C" 후속과제로 남김).
+_KOMIS_REGISTRY_PAGE_IDS = (
+    "indicator_market", "indicator_supply", "map_korea", "price_minor_metals", "price_iron_energy",
+)
+
+
+def _mineral_options_for(page_id: str) -> list[dict]:
+    if page_id in _KOMIS_REGISTRY_PAGE_IDS:
+        return prioritize_core_minerals(komis_registry_mineral_options(page_id))
+    return prioritize_core_minerals(mineral_options_for_page(page_id))
+
 
 @st.cache_data(ttl=30, show_spinner="ai_cfg.cfg_prompt를 조회하는 중…")
 def _fetch_prompts():
@@ -117,6 +138,62 @@ def _jsonb_to_text(value) -> str:
         except json.JSONDecodeError:
             return value
     return json.dumps(value, ensure_ascii=False, indent=2)
+
+
+# 2026-09-02(skeptic 2차 감사 PA-003): 저장 시 json.loads 문법만 검증해 오타 키
+# (예: "section_sentence_range")·범위 위반(예: max_evidence_ids_per_sentence=99)이
+# 그대로 저장·reload "성공"까지 통과한 뒤 report_gen
+# `prompts.py::_parse_output_contract`에서 조용히 코드 기본값으로 폴백했다
+# (로그도 없어 운영자가 계약이 안 먹힌 걸 알 방법이 없었다). 그 함수가 실제로
+# 읽는 스키마를 그대로 미러링 — 아래 상수·검증 로직은 `_parse_output_contract`/
+# `_parse_range`(같은 파일 507~513행)와 정확히 같은 규칙이어야 한다.
+_OUTPUT_CONTRACT_SECTIONS = ("core_diagnosis", "major_changes", "current_position")
+_OUTPUT_CONTRACT_MAX_EVIDENCE_IDS_CAP = 5
+_OUTPUT_CONTRACT_ALLOWED_KEYS = {
+    "section_sentence_ranges", "total_sentence_range", "max_evidence_ids_per_sentence",
+}
+
+
+def _valid_range_pair(value) -> bool:
+    if not isinstance(value, (list, tuple)) or len(value) != 2:
+        return False
+    lo, hi = value
+    if isinstance(lo, bool) or isinstance(hi, bool) or not isinstance(lo, int) or not isinstance(hi, int):
+        return False
+    return lo >= 1 and hi >= lo
+
+
+def _validate_output_contract(data) -> list[str]:
+    """report_gen이 읽지 않을(=저장해도 무효) output_contract를 저장 전에 막는다."""
+
+    if not isinstance(data, dict):
+        return ["JSON 객체({...}) 형태여야 합니다."]
+    errors = [f"알 수 없는 키입니다(오타 의심, report_gen이 읽지 않습니다): {key}" for key in data if key not in _OUTPUT_CONTRACT_ALLOWED_KEYS]
+
+    if "section_sentence_ranges" in data:
+        ranges = data["section_sentence_ranges"]
+        if not isinstance(ranges, dict):
+            errors.append("section_sentence_ranges는 JSON 객체({...})여야 합니다.")
+        else:
+            missing = [s for s in _OUTPUT_CONTRACT_SECTIONS if s not in ranges]
+            if missing:
+                errors.append(
+                    f"section_sentence_ranges에 {', '.join(missing)} 키가 빠졌습니다 — "
+                    "하나라도 빠지면 전체가 코드 기본값으로 무시됩니다."
+                )
+            for section in _OUTPUT_CONTRACT_SECTIONS:
+                if section in ranges and not _valid_range_pair(ranges[section]):
+                    errors.append(f"section_sentence_ranges.{section}은 [최소, 최대] 정수 쌍(최소≥1, 최대≥최소)이어야 합니다.")
+
+    if "total_sentence_range" in data and not _valid_range_pair(data["total_sentence_range"]):
+        errors.append("total_sentence_range는 [최소, 최대] 정수 쌍(최소≥1, 최대≥최소)이어야 합니다.")
+
+    if "max_evidence_ids_per_sentence" in data:
+        value = data["max_evidence_ids_per_sentence"]
+        if isinstance(value, bool) or not isinstance(value, int) or not (1 <= value <= _OUTPUT_CONTRACT_MAX_EVIDENCE_IDS_CAP):
+            errors.append(f"max_evidence_ids_per_sentence는 1~{_OUTPUT_CONTRACT_MAX_EVIDENCE_IDS_CAP} 사이의 정수여야 합니다.")
+
+    return errors
 
 
 try:
@@ -179,6 +256,17 @@ prompt_key = pk_col2.selectbox(
 )
 row = prompts[prompts["prompt_key"] == prompt_key].iloc[0]
 st.caption(f"마지막 수정: {row['updated_at'] or '(기록 없음)'}")
+# 2026-09-02(skeptic 2차 감사 PA-002, HIGH): seed_prompts.py 재실행(배포 절차상
+# 의무)이 이 화면의 모든 편집(content·page_definition·output_contract 등 전
+# 컬럼)을 무경고로 코드 기본값에 덮어쓴다 — DB 실측: 13행 전부 updated_at이
+# 마지막 seed 시각으로 통일돼 그날 편집이 있었다면 전부 소실됐을 상태였다.
+# 서버 쪽 백업/diff 인프라는 범위 밖(report-summary-agent 진행 중) — 여기선
+# 저렴한 정적 경고만 둔다.
+st.warning(
+    "⚠ 배포 시 seed_prompts.py를 재실행하면 이 화면에서 편집한 모든 값이 "
+    "코드 기본값으로 무경고 초기화될 수 있습니다 — 편집 직후 캡처(스크린샷·복사)해두세요.",
+    icon=":material/warning:",
+)
 
 content = st.text_area("content(지시문 본문)", value=row["content"] or "", height=220)
 st.caption(
@@ -191,24 +279,43 @@ description = st.text_input(
     help="⚠ 참고용 메모입니다 — report_gen(prompt_store.py::PromptRow)이 이 컬럼을 읽지 않아 실제 분석요약 결과엔 영향이 없습니다.",
 )
 
-with st.expander("페이지 정책 · 출력 계약(고급 — 비우면 NULL로 저장, 코드 기본값 사용)"):
-    page_name = st.text_input("page_name", value=row["page_name"] or "")
-    page_definition = st.text_area("page_definition", value=row["page_definition"] or "", height=100)
+# 2026-09-02(skeptic 2차 감사 PA-007, 결정 포함): summary_common(공통 프롬프트)
+# 행의 page_name/page_definition/analysis_constraints/policy_version/
+# output_contract는 어떤 코드 경로에서도 안 읽힌다(resolve_page_config는
+# page_id별로 호출되고 summary_common은 그 page_id 집합 밖) — 편집·저장해도
+# 조용한 no-op이라 혼동만 준다. main-agent 조율 결과 "숨기는 쪽"으로 결정
+# (저렴하고 필요 시 복구 쉬움) — summary_common일 때만 이 expander를 건너뛴다.
+if prompt_key != "summary_common":
+    with st.expander("페이지 정책 · 출력 계약(고급 — 비우면 NULL로 저장, 코드 기본값 사용)"):
+        page_name = st.text_input("page_name", value=row["page_name"] or "")
+        page_definition = st.text_area("page_definition", value=row["page_definition"] or "", height=100)
+        _constraints = row["analysis_constraints"]
+        if isinstance(_constraints, str):
+            try:
+                _constraints = json.loads(_constraints)
+            except json.JSONDecodeError:
+                _constraints = None
+        constraints_text = st.text_area(
+            "analysis_constraints(한 줄 = 항목 1개)",
+            value="\n".join(_constraints) if _constraints else "",
+            height=100,
+        )
+        policy_version = st.text_input("policy_version", value=row["policy_version"] or "")
+        output_contract_text = st.text_area(
+            "output_contract(JSON)", value=_jsonb_to_text(row["output_contract"]), height=140,
+        )
+else:
+    page_name = row["page_name"] or ""
+    page_definition = row["page_definition"] or ""
     _constraints = row["analysis_constraints"]
     if isinstance(_constraints, str):
         try:
             _constraints = json.loads(_constraints)
         except json.JSONDecodeError:
             _constraints = None
-    constraints_text = st.text_area(
-        "analysis_constraints(한 줄 = 항목 1개)",
-        value="\n".join(_constraints) if _constraints else "",
-        height=100,
-    )
-    policy_version = st.text_input("policy_version", value=row["policy_version"] or "")
-    output_contract_text = st.text_area(
-        "output_contract(JSON)", value=_jsonb_to_text(row["output_contract"]), height=140,
-    )
+    constraints_text = "\n".join(_constraints) if _constraints else ""
+    policy_version = row["policy_version"] or ""
+    output_contract_text = _jsonb_to_text(row["output_contract"])
 
 client = client_from_env()
 
@@ -222,17 +329,24 @@ if st.button("저장 + report_gen 캐시 reload", type="primary"):
 
     output_contract_json = None
     output_contract_error: json.JSONDecodeError | None = None
+    output_contract_schema_errors: list[str] = []
     if output_contract_text.strip():
         try:
-            output_contract_json = json.dumps(json.loads(output_contract_text), ensure_ascii=False)
+            output_contract_parsed = json.loads(output_contract_text)
         except json.JSONDecodeError as exc:
             output_contract_error = exc
+        else:
+            output_contract_schema_errors = _validate_output_contract(output_contract_parsed)
+            if not output_contract_schema_errors:
+                output_contract_json = json.dumps(output_contract_parsed, ensure_ascii=False)
 
-    if errors or output_contract_error:
+    if errors or output_contract_error or output_contract_schema_errors:
         for message in errors:
             st.error(message)
         if output_contract_error:
             render_json_error(output_contract_error, field_label="output_contract")
+        for message in output_contract_schema_errors:
+            st.error(f"output_contract: {message}")
     else:
         from shared.db import execute_pg
 
@@ -248,11 +362,22 @@ if st.button("저장 + report_gen 캐시 reload", type="primary"):
             prompt_key,
         )
         try:
-            execute_pg(_UPDATE_SQL, params)
+            update_result = execute_pg(_UPDATE_SQL, params)
         except Exception as exc:  # noqa: BLE001
             _log.exception("ai_cfg.cfg_prompt UPDATE 실패(prompt_key=%s)", prompt_key)
             st.error(f"DB 저장 실패: {exc}")
         else:
+            # 2026-09-02(skeptic 2차 감사 PA-005): execute_pg가 rowcount를 안
+            # 돌려줘(shared/db.py, 항상 None) UPDATE가 0행에 매칭돼도(예: 편집
+            # 화면을 열어둔 사이 그 prompt_key 행이 삭제된 경우) "저장 완료"로
+            # 표시됐다. chatbot-agent가 execute_pg를 rowcount(int) 반환으로
+            # 바꾸는 중이라(병렬 작업, 2026-09-02 기준 이 워크트리엔 아직
+            # 미반영) None이면 구버전 그대로 성공 처리, int 0이면 저장 실패로
+            # 표시한다.
+            if isinstance(update_result, int) and update_result == 0:
+                _log.warning("ai_cfg.cfg_prompt UPDATE 0행 매칭(prompt_key=%s)", prompt_key)
+                st.error(f"DB 저장 실패 — prompt_key '{prompt_key}' 행이 더 이상 존재하지 않습니다(0행 매칭). 목록을 새로고침한 뒤 다시 시도하세요.")
+                st.stop()
             _log.info("ai_cfg.cfg_prompt UPDATE 완료(prompt_key=%s)", prompt_key)
             st.success("DB 저장 완료")
             _fetch_prompts.clear()
@@ -263,7 +388,18 @@ if st.button("저장 + report_gen 캐시 reload", type="primary"):
                 response.raise_for_status()
                 reload_body = response.json()
                 reloaded_count = reload_body.get("reloaded_prompt_count")
-                if reloaded_count is not None:
+                # 2026-09-02(skeptic 2차 감사 PA-001): 서버가 reload 실패 시에도
+                # 이전 캐시 크기를 그대로 돌려줘(예외 없음) "성공"과 구분이 안
+                # 됐다 — report-summary-agent가 응답에 `ok: bool`을 추가하는 중
+                # (아직 이 워크트리엔 반영 전, 2026-09-02 확인). `ok`가 없는
+                # 구버전 서버는 기존 동작(reloaded_count만 보고 성공 처리) 유지.
+                ok = reload_body.get("ok")
+                if ok is False:
+                    st.warning(
+                        f"DB는 반영됐지만 report_gen 캐시 reload 실패 — 수동으로 재시도하세요. "
+                        f"(서버 응답: {reload_body})"
+                    )
+                elif reloaded_count is not None:
                     st.success(f"report_gen 캐시 reload 완료 — 프롬프트 {reloaded_count}개 갱신")
                 else:
                     st.success(f"report_gen 캐시 reload 완료 — {reload_body}")
@@ -310,7 +446,7 @@ if test_page_id is not None:
     test_payload: dict = {}
 
     if spec.has_mineral:
-        options = prioritize_core_minerals(mineral_options())
+        options = _mineral_options_for(test_page_id)
         if options:
             picked = st.selectbox("광종", options, format_func=mineral_label, key=f"pa_mineral_{test_page_id}")
             test_payload["mineral"] = picked["code"]
@@ -376,7 +512,7 @@ if test_page_id is not None:
                 if value:
                     test_payload[field] = int(value)
             elif field == "compare_mineral":
-                compare_options = prioritize_core_minerals(mineral_options())
+                compare_options = _mineral_options_for(test_page_id)
                 if compare_options:
                     compare_picked = col.selectbox(
                         label, compare_options, format_func=mineral_label, key=key,
