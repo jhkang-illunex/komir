@@ -279,24 +279,31 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
                     f"(ko_data_src_cd={data_source or '확인불가'})일 수 있습니다 — "
                     "실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요."
                 )
-        elif page_id == "indicator_composite":
+        unverified = False
+        if not mineral_code and page_id == "indicator_composite":
             # 2026-09-02 skeptic 2차감사 SC-CB2-001 수정 — mineral_code가 없는
             # 경로(광물종합지수는 광종과 무관한 지표라 정상적으로 없을 수 있다,
             # composite_index 분기 참고)는 위 if를 안 타 is_dummy가 계속
             # None(=판정 자체를 안 함)이었다 — fail-open. 이 page는 광종 키가
             # 없어(index_type_code뿐) ai_mnrl_mst로 실샘플/더미를 확인할 방법이
             # 구조적으로 없다(KO_MNRL_SNTHS_INDX엔 데이터출처 컬럼 자체가 없음,
-            # 2026-09-02 실측 확인). 위 mineral_code 분기와 같은 원칙("확인 안
-            # 되면 안전한 쪽으로 열화")으로 판정 불가 시 더미로 간주한다.
-            is_dummy = True
+            # 2026-09-02 실측 확인 — 오히려 2011~2025 연속 영업일 데이터라
+            # 실데이터로 보이지만 확정할 근거가 없다). "확인 안 되면 안전한
+            # 쪽으로 열화"는 유지하되, `is_dummy=True`(확정 더미)로 두면
+            # KOMIS_RAW_DUMMY_CAVEAT의 "실제 값이 아닙니다"가 그대로 붙어
+            # 판정 불가를 확정 더미로 잘못 단정하게 된다(main-agent 결과감사
+            # 지적) — 별도의 "판정 불가" caveat(`unverified=True`)로 처리한다.
+            unverified = True
             warnings.append(
                 "⚠ 광물종합지수(KO_MNRL_SNTHS_INDX)는 광종과 무관한 지표라 KOMIS "
                 "실제 표본인지 자동으로 확인할 방법이 없습니다 — 실제 수치인 "
                 "것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요."
             )
 
-        # is_dummy를 Evidence.caveat에도 심는다(위 warnings는 도구 호출 로그·
-        # 기권사유 분류용, caveat는 이 근거가 실제로 인용됐을 때 사용자 화면에
-        # 강제로 뜨는 경고용 — 둘은 소비처가 달라 둘 다 채운다).
-        evidence = from_komis_raw(page_id, datasets, mineral_code=mineral_label, is_dummy=is_dummy)
+        # is_dummy/unverified를 Evidence.caveat에도 심는다(위 warnings는 도구
+        # 호출 로그·기권사유 분류용, caveat는 이 근거가 실제로 인용됐을 때
+        # 사용자 화면에 강제로 뜨는 경고용 — 둘은 소비처가 달라 둘 다 채운다).
+        evidence = from_komis_raw(
+            page_id, datasets, mineral_code=mineral_label, is_dummy=is_dummy, unverified=unverified,
+        )
         return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}

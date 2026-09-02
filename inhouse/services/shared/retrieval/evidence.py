@@ -162,13 +162,23 @@ def from_pageindex_hit(hit: dict[str, Any]) -> Evidence:
     )
 
 
-#: komis_raw_lookup이 실제 KOMIS 표본이 아닐 때 인용 근거에 강제로 붙이는
-#: 경고 문구(Evidence.caveat) — chatbot.py가 코드로 이 문구를 답변에 덧붙인다.
+#: komis_raw_lookup이 실제 KOMIS 표본이 아닌 게 **확인된** 경우 인용 근거에
+#: 강제로 붙이는 경고 문구(Evidence.caveat) — chatbot.py가 코드로 이 문구를
+#: 답변에 덧붙인다.
 KOMIS_RAW_DUMMY_CAVEAT = "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+
+#: 2026-09-02 skeptic 2차감사 SC-CB2-001 결과감사(main-agent) 지적으로 신설
+#: — "확정 더미"(KOMIS_RAW_DUMMY_CAVEAT)와 "판정 자체가 불가능"은 다른
+#: 상태다. 광물종합지수(indicator_composite, 광종 키가 없어 ai_mnrl_mst와
+#: 조인해 확인할 방법이 구조적으로 없음)처럼 실제로는 실데이터일 수도 있는
+#: 근거에 "실제 값이 아닙니다"라고 단정하면 fail-open을 고치려다 반대 방향
+#: 오단정을 만든다 — 이 경우엔 이 문구를 대신 쓴다.
+KOMIS_RAW_UNVERIFIED_CAVEAT = "이 수치는 KOMIS 실제 표본 여부를 자동으로 확인할 수 없는 데이터입니다 — 참고용으로만 활용하세요."
 
 
 def from_komis_raw(
-    page_id: str, datasets: list[Any], *, mineral_code: str | None = None, is_dummy: bool | None = None,
+    page_id: str, datasets: list[Any], *, mineral_code: str | None = None,
+    is_dummy: bool | None = None, unverified: bool = False,
 ) -> list[Evidence]:
     """`komis_raw.KomisRawDataRepository.fetch()`가 돌려준 RawDataset 목록
     (page_id당 원천 테이블 1~2개, 예: map_mineral은 매장량+생산량 2개) ->
@@ -182,7 +192,13 @@ def from_komis_raw(
     True면 모든 Evidence에 `caveat`(KOMIS_RAW_DUMMY_CAVEAT)을 심어서, 이
     근거가 실제로 인용되면 chatbot.py가 그 사실을 코드로 강제 경고하게 한다
     (LLM이 [근거] 텍스트만 보고 알아서 옮겨 적을 거라 기대하지 않는다 —
-    인용 스트리퍼가 근거 없는 문장은 지운다)."""
+    인용 스트리퍼가 근거 없는 문장은 지운다).
+
+    2026-09-02: `unverified`는 `is_dummy`와 독립된 별도 상태다 — "확정 더미"가
+    아니라 "더미인지 실데이터인지 판정할 방법이 없음"을 뜻하며, 그때는
+    KOMIS_RAW_UNVERIFIED_CAVEAT을 대신 붙인다. `is_dummy`가 우선한다(둘 다
+    True로 넘어올 일은 호출부 설계상 없지만, 있다면 확정 더미 쪽이 더 강한
+    주장이라 우선)."""
 
     evidence: list[Evidence] = []
     for ds in datasets:
@@ -192,11 +208,17 @@ def from_komis_raw(
         table_rows = [[str(row.get(c, "")) for c in columns] for row in ds.rows]
         suffix = f"({mineral_code})" if mineral_code else ""
         section = f"KOMIS 원천 · {ds.source_table}{suffix}"
+        if is_dummy:
+            caveat = KOMIS_RAW_DUMMY_CAVEAT
+        elif unverified:
+            caveat = KOMIS_RAW_UNVERIFIED_CAVEAT
+        else:
+            caveat = None
         evidence.append(
             Evidence(
                 kind="structured", source=f"public.{ds.source_table}", section=section,
                 text=_markdown_table(columns, table_rows),
-                caveat=KOMIS_RAW_DUMMY_CAVEAT if is_dummy else None,
+                caveat=caveat,
             )
         )
     return evidence
