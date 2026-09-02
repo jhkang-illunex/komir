@@ -417,14 +417,18 @@ def _retrieve_node(state: RetrievalState, *, dense_k: int, pageindex_k: int) -> 
     # komis_raw.py의 filter_columns에 mineral_code가 아예 없어(index_type_code
     # 뿐) 광종을 몰라도(komis_mineral_name=None이어도) 조회 가능해야 정상이다
     # (사용자 지시, 2026-09-01). 나머지 topic은 여전히 광종을 반드시 알아야 한다.
+    #
+    # 2026-09-02 skeptic 2차감사 SC-CB2-002 수정: 예전엔 komis_mineral_name이
+    # 있으면(예: "니켈 광물종합지수") 그 광종코드를 komis_raw_lookup에
+    # mineral_code로 그대로 넘겼다 — 그런데 이 page는 mineral_code 필터가
+    # 아예 없어(위 주석 참고) SQL엔 아무 효과가 없는데도, 응답 Evidence.section
+    # 라벨엔 "KO_MNRL_SNTHS_INDX(니켈)"처럼 그 광종 전용 데이터인 것처럼
+    # 붙어 나왔다(실제로는 전체 지수). composite_index는 mineral_code를
+    # 아예 넘기지 않는다 — 필터에 안 쓰이는 값을 넘겨 오표기를 만들 이유가 없다.
     komis_raw_page_id: str | None = None
     komis_raw_mineral_code: str | None = None
     if route.use_komis_raw and route.komis_topic == "composite_index":
         komis_raw_page_id = "indicator_composite"
-        if route.komis_mineral_name:
-            resolved = session.call_komis_resolve_mineral(route.komis_mineral_name)
-            warnings.extend(resolved.get("warnings", []))
-            komis_raw_mineral_code = resolved.get("mineral_code")
     elif route.use_komis_raw and route.komis_topic and route.komis_mineral_name:
         resolved = session.call_komis_resolve_mineral(route.komis_mineral_name)
         warnings.extend(resolved.get("warnings", []))
