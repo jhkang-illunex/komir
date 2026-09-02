@@ -92,9 +92,24 @@ def seed_rows() -> list[tuple]:
 RETIRED_KEYS = ("price",)
 
 
+_BACKUP_SQL = """
+INSERT INTO ai_cfg.cfg_prompt_backup
+  (backup_at, prompt_key, content, description, updated_at,
+   page_name, page_definition, analysis_constraints, policy_version, output_contract)
+SELECT now(), prompt_key, content, description, updated_at,
+       page_name, page_definition, analysis_constraints, policy_version, output_contract
+FROM ai_cfg.cfg_prompt
+"""
+
+
 def main() -> None:
     n_stmt = apply_schema_pg(str(SCHEMA_SQL))
     print(f"{SCHEMA_SQL.name} 적용: {n_stmt}개 statement (ai_cfg 스키마·cfg_prompt 테이블·컬럼 포함, 이미 있으면 no-op)")
+    # 2026-09-02 skeptic 2차 감사 PA-002: upsert가 운영자 편집을 무경고로
+    # 덮어쓰므로, 덮기 전에 현재 행 전체를 백업 테이블에 스냅샷으로 남긴다
+    # (테이블이 아직 비어 있는 최초 실행이어도 SELECT 0행 INSERT라 안전).
+    execute_pg(_BACKUP_SQL)
+    print("cfg_prompt → cfg_prompt_backup 스냅샷 저장 완료(재시드 전 백업)")
     rows = seed_rows()
     for row in rows:
         execute_pg(_UPSERT_SQL, row)

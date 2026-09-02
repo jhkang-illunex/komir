@@ -19,10 +19,14 @@ CREATE SCHEMA IF NOT EXISTS ai_cfg;
 
 -- 분석요약 LLM 프롬프트(report_gen/app/analysis/prompt_store.py가 런타임에
 -- 읽는 테이블). prompt_key: 'summary_common'(공통 서두) 또는
--- AnalysisSummaryRequest.page_id 값(indicator_market/indicator_supply/
--- indicator_composite/map_mineral/forecast_price) — LLM 정제를 쓰지 않는
--- price/map_korea/map_global은 대상이 아니다(§report_gen/app/analysis/
--- summary.py).
+-- AnalysisSummaryRequest.page_id 값 — 2026-09-02 기준 seed_prompts.py가
+-- `prompts.py::PROMPTS`의 13개 키(summary_common + indicator_market/
+-- indicator_supply/indicator_composite/map_mineral/forecast_price/
+-- price_base_metals/price_minor_metals/price_iron_energy/price_other/
+-- price_group/map_korea/map_global)를 전부 심는다 — LLM 정제를 안 쓰던
+-- price/map_korea/map_global 제외는 260827 이후 없어졌다(옛 주석은
+-- 5개 page_id 시절 기준이라 갱신, 실제 시딩 대상은 `python -m app.analysis.
+-- seed_prompts` 실행 로그 또는 `prompts.py::PROMPTS`가 정본).
 CREATE TABLE IF NOT EXISTS ai_cfg.cfg_prompt (
   prompt_key  VARCHAR(40) NOT NULL,
   content     TEXT NOT NULL,
@@ -44,3 +48,24 @@ ALTER TABLE ai_cfg.cfg_prompt ADD COLUMN IF NOT EXISTS page_definition      TEXT
 ALTER TABLE ai_cfg.cfg_prompt ADD COLUMN IF NOT EXISTS analysis_constraints JSONB;
 ALTER TABLE ai_cfg.cfg_prompt ADD COLUMN IF NOT EXISTS policy_version       VARCHAR(60);
 ALTER TABLE ai_cfg.cfg_prompt ADD COLUMN IF NOT EXISTS output_contract      JSONB;
+
+-- 2026-09-02 skeptic 2차 감사 PA-002: `ON CONFLICT DO UPDATE`(위 upsert)는
+-- 전 컬럼을 코드 기본값으로 무조건 덮어써서, 운영자가 prompt_admin UI로
+-- 편집해 둔 행도 재시드 한 번이면 조용히 사라진다 — 배포 절차가 재시드를
+-- 의무화하고 있어(2회 실사고로 규칙화) 실제 위험이 크다. 최소 대응으로
+-- `seed_prompts.py`가 upsert 직전 현재 cfg_prompt 전체를 여기 백업한다
+-- (append-only, id 자동증가라 실행마다 새 스냅샷이 쌓임 — 필요시 UI 경고·
+-- 복원 기능은 후속 과제).
+CREATE TABLE IF NOT EXISTS ai_cfg.cfg_prompt_backup (
+  id                    BIGSERIAL PRIMARY KEY,
+  backup_at             TIMESTAMP NOT NULL,
+  prompt_key            VARCHAR(40) NOT NULL,
+  content               TEXT NOT NULL,
+  description           VARCHAR(200),
+  updated_at            TIMESTAMP,
+  page_name             VARCHAR(80),
+  page_definition       TEXT,
+  analysis_constraints  JSONB,
+  policy_version        VARCHAR(60),
+  output_contract       JSONB
+);

@@ -219,7 +219,11 @@ async def lifespan(app: FastAPI):
     scheduler.start()
     app.state.scheduler = scheduler
     loaded = prompt_store.reload()
-    logging.getLogger(__name__).info("cfg_prompt에서 프롬프트 %d건 로드(없으면 하드코드 기본값 사용)", loaded)
+    logging.getLogger(__name__).info(
+        "cfg_prompt에서 프롬프트 %d건 로드(없으면 하드코드 기본값 사용, ok=%s)",
+        loaded.count,
+        loaded.ok,
+    )
     try:
         app.state.analysis_summary_service = build_analysis_summary_service()
     except Exception:  # noqa: BLE001 — 분석요약이 못 떠도 리포트 생성은 살려둔다
@@ -286,9 +290,15 @@ def healthz() -> dict:
 @app.post("/admin/prompts/reload")
 def reload_prompts() -> dict:
     """`cfg_prompt`를 다시 읽어 프롬프트 캐시를 교체한다(서버 재시동 불필요).
-    이후 생성되는 보고서부터 새 프롬프트를 쓴다 — 진행 중인 호출에는 영향 없다."""
+    이후 생성되는 보고서부터 새 프롬프트를 쓴다 — 진행 중인 호출에는 영향 없다.
 
-    return {"reloaded_prompt_count": prompt_store.reload()}
+    2026-09-02 skeptic 2차 감사 PA-001: DB 재조회 실패(순단 등)도 예전엔
+    이전 캐시 크기를 그대로 돌려줘 호출자가 성공과 구분할 수 없었다 —
+    `ok`로 구분한다(HTTP 상태는 이 서비스의 기존 계약대로 항상 200 유지,
+    prompt_admin UI가 `ok` 필드로 실패 분기를 이미 갖고 있다)."""
+
+    result = prompt_store.reload()
+    return {"ok": result.ok, "reloaded_prompt_count": result.count}
 
 
 @app.post("/reports/{template}/generate")

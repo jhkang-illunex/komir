@@ -77,8 +77,9 @@ def v1_columns() -> None:
 def v2_roundtrip() -> None:
     print("V2 시드 라운드트립")
     seed_prompts.main()
-    n = prompt_store.reload()
-    check(n == len(PROMPTS), f"reload 행 수 == PROMPTS 키 수 ({n})")
+    result = prompt_store.reload()
+    check(result.ok, f"reload 성공(ok={result.ok})")
+    check(result.count == len(PROMPTS), f"reload 행 수 == PROMPTS 키 수 ({result.count})")
     for key in PROMPTS:
         row = _db_row(key)
         check(row["content"] == PROMPTS[key], f"{key}: content 동일")

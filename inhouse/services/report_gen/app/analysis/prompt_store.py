@@ -173,13 +173,26 @@ def _json_column(key: str, column: str, value: Any) -> Any:
         return None
 
 
-def reload() -> int:
+@dataclass(frozen=True, slots=True)
+class ReloadResult:
+    """`reload()` 1회 호출 결과 — `ok=False`면 DB 재조회가 실패해 기존 캐시를
+    그대로 유지했다는 뜻이다(`count`는 여전히 캐시에 있는 행 수 — 실패해도
+    직전 성공분이 남아 있으면 0이 아닐 수 있다)."""
+
+    ok: bool
+    count: int
+
+
+def reload() -> ReloadResult:
     """(컬럼 자동 추가 →) `cfg_prompt`를 다시 읽어 캐시를 통째로 교체한다.
-    반환값은 로드된 행 수.
 
     조회가 실패해도 예외를 올리지 않는다 — 기동 시점에 DB가 잠깐 안 뜬 경우
     등으로 report_gen 자체가 죽으면 안 된다(기존 캐시 또는 빈 캐시→코드
-    기본값 폴백을 유지한 채 계속 뜬다)."""
+    기본값 폴백을 유지한 채 계속 뜬다). 2026-09-02 skeptic 2차 감사 PA-001:
+    이전엔 실패해도 이전 캐시 크기를 그대로 돌려줘 `/admin/prompts/reload`
+    호출자가 성공과 실패(DB 순단 등)를 구분할 수 없었다 — `ok` 플래그를
+    추가해 호출부가 구분하게 한다(기동 시 삼킴 자체는 그대로 유지, 이
+    엔드포인트의 재사용만 결함이었다)."""
 
     global _cache
     try:
@@ -187,9 +200,9 @@ def reload() -> int:
         fresh = _fetch_all()
     except Exception:  # noqa: BLE001 — DB 미기동·테이블 미생성 등 원인 다양
         _log.exception("cfg_prompt 재조회 실패 — 기존 캐시(또는 코드 기본값)를 유지한다")
-        return len(_cache)
+        return ReloadResult(ok=False, count=len(_cache))
     _cache = fresh
-    return len(_cache)
+    return ReloadResult(ok=True, count=len(_cache))
 
 
 def get_prompt(prompt_key: str, *, default: str) -> str:
@@ -210,4 +223,14 @@ def cached_keys() -> list[str]:
     return sorted(_cache)
 
 
-__all__ = ["PromptRow", "REQUIRED_COLUMNS", "SCHEMA_SQL", "cached_keys", "ensure_schema", "get_page_row", "get_prompt", "reload"]
+__all__ = [
+    "PromptRow",
+    "ReloadResult",
+    "REQUIRED_COLUMNS",
+    "SCHEMA_SQL",
+    "cached_keys",
+    "ensure_schema",
+    "get_page_row",
+    "get_prompt",
+    "reload",
+]
