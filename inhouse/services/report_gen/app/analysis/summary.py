@@ -852,17 +852,27 @@ def _parse_komis_indicator_list_response(raw: dict | list, score_field: str) -> 
     `summary.py::_calculate_summary`는 (composite와 달리) 내부에서 재정렬하지
     않고 `observations[-1]`을 그대로 "현재"로 쓰므로, 여기서 오름차순으로
     정렬해 반환하지 않으면 가장 오래된 달이 "현재"로 잘못 계산된다(실측
-    재현됨)."""
+    재현됨).
+
+    2026-09-02 skeptic 2차 감사 SC-R2-006: `Month`(YYYY-MM)는 KOMIS `crtrYmd`
+    앞 6자리라 월중 재게시로 같은 달에 `crtrYmd`가 두 번(예: 20260801·20260815)
+    오면 같은 달이 관측치 2건으로 중복돼, 그 달이 "전월"과 나란히 비교되는
+    사고가 날 수 있다 — 발주처 제공 실측 덤프(23개월치, 시장동향)에선 중복이
+    없었지만(월당 1행 확인됨) 다른 기간·광종에서 재게시가 없다는 보장은 없어
+    방어적으로 dedup한다. KOMIS가 최신 `crtrYmd`를 먼저 주므로(내림차순), 같은
+    달이 반복되면 먼저 나온 쪽(=그 달 안에서 가장 최근 crtrYmd)만 남긴다."""
 
     rows = raw.get("data") if isinstance(raw, dict) else raw
     if not isinstance(rows, list):
         return []
     observations: list[dict] = []
+    seen_months: set[str] = set()
     for row in rows:
         month = _komis_ymd_to_month(row.get("crtrYmd"))
         score = _komis_num(row.get(score_field))
-        if month is None or score is None:
+        if month is None or score is None or month in seen_months:
             continue
+        seen_months.add(month)
         entry: dict = {"month": month, "score": score}
         price = _komis_num(row.get("realPrc"))
         if price is not None:
@@ -969,8 +979,8 @@ def _parse_komis_supply_snapshot_response(raw: dict) -> tuple[dict, str | None, 
             for name, value in rows
         ]
         aux["import_dependencies"] = import_dependencies
-        aux["top_three_dependency_percent"] = sum(
-            row["share_percent"] for row in import_dependencies[:3]
+        aux["top_three_dependency_percent"] = min(
+            100.0, sum(row["share_percent"] for row in import_dependencies[:3])
         )
 
     return aux, mineral_code, mineral_name
@@ -1034,7 +1044,7 @@ class _EvidenceClaim:
 
 @dataclass(slots=True)
 class _CalculatedSummary:
-    grade: GradeResult | None
+    grade: GradeResult
     claims: list[_EvidenceClaim]
     key_metrics: list[Metric]
     detailed_metrics: list[Metric]
@@ -1202,7 +1212,12 @@ def _supply_auxiliary_metrics(series: IndicatorSeries) -> list[Metric]:
 def _classify_series(
     series: IndicatorSeries,
     policy: PagePolicy,
-) -> list[GradeResult | None]:
+) -> list[GradeResult]:
+    # 2026-09-02 skeptic 2차 감사 SC-R2-005: 036eb231e 이후 policy.classify()는
+    # 실패 시 None이 아니라 PolicyError를 던지고, indicator_market/supply
+    # 둘 다 grade_rules가 [score_min, score_max]를 빈틈없이 덮어(IndicatorObservation.
+    # score도 pydantic이 이미 그 범위로 강제) None이 나올 경로가 없다 — 이 함수의
+    # 반환값은 항상 완전히 채워진 GradeResult 리스트다.
     return [policy.classify(item.score) for item in series.observations]
 
 
@@ -1216,10 +1231,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
     patterns: list[DetectedPattern] = []
 
     current_grade_metric = _metric(
-        "current_grade",
-        "현재 단계",
-        grade.label if grade else None,
-        status="available" if grade else "insufficient_data",
+        "current_grade", "현재 단계", grade.label, status="available"
     )
     key_metrics = [
         _metric("current_score", "현재 점수", current.score, unit="점"),
@@ -1229,18 +1241,8 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
 
     current_fact = (
         f"{current.month} {series.mineral.name} {policy.name}는 "
-        f"{_number(current.score)}점"
+        f"{_number(current.score)}점으로 {grade.label} 단계다."
     )
-    if grade is None:
-        current_fact += "이며 0~1점 구간은 현재 데이터만으로 단계를 확정하지 않는다."
-        omitted.append(
-            OmittedIndicator(
-                id="current_grade",
-                reason="0~1점 구간은 현재 다운로드·기준정보만으로 단계를 확정하지 않는다.",
-            )
-        )
-    else:
-        current_fact += f"으로 {grade.label} 단계다."
     claims = [_EvidenceClaim("current_state", "core_diagnosis", current_fact)]
 
     contiguous_pairs = [
@@ -1257,11 +1259,8 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
     score_change: float | None = None
     if previous is not None:
         score_change = current.score - previous.score
-        comparison = (
-            "최근 한 달"
-            if months_are_contiguous(previous.month, current.month)
-            else "직전 관측치 대비"
-        )
+        is_contiguous = months_are_contiguous(previous.month, current.month)
+        comparison = "최근 한 달" if is_contiguous else "직전 관측치 대비"
         # 2026-09-01 수정 — PDF §2-2/2-3("전월 [전월 지수] 대비 [증감률]%
         # [상승/하락]")은 등락을 %로 요구하는데, 이전 문구는 점수차(점)로만
         # 서술했다(시장동향·수급동향 두 페이지 모두 이번에 komis_response로
@@ -1270,8 +1269,15 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
         # 없어 점수차 문구로 폴백한다.
         if previous.score != 0:
             pct_change = score_change / previous.score * 100
+            # 2026-09-02 skeptic 2차 감사 SC-R2-003: KOMIS 결측월 등으로
+            # previous가 바로 전달이 아닐 때(비연속)도 "전월"이 고정 문구라
+            # 몇 달 전 값을 전월로 오표기했다("직전 관측치 대비에는 전월
+            # 45.00점 대비..."처럼 라벨과 본문이 모순). 비연속이면 어느 달
+            # 값인지 괄호로 밝히고 "전월" 대신 그 라벨을 그대로 쓴다(comparison
+            # 은 이 문장에선 안 쓴다 — "직전 관측치" 중복 표기 방지).
+            previous_lead = "최근 한 달에는 전월" if is_contiguous else f"직전 관측치({previous.month})"
             score_fact = (
-                f"{comparison}에는 전월 {_number(previous.score)}점 대비 "
+                f"{previous_lead} {_number(previous.score)}점 대비 "
                 f"{_number(abs(pct_change))}% {'상승' if pct_change > 0 else '하락' if pct_change < 0 else '보합'}하며 "
                 f"{_score_meaning(series.page_id, score_change)}."
             )
@@ -1320,59 +1326,30 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
             OmittedIndicator(id="latest_score_change", reason="이전 관측치가 없다.")
         )
 
-    streak = 0
-    if grade is not None:
-        streak = 1
-        for index in range(len(observations) - 1, 0, -1):
-            before_grade = grades[index - 1]
-            if (
-                before_grade is None
-                or before_grade.label != grade.label
-                or not months_are_contiguous(
-                    observations[index - 1].month,
-                    observations[index].month,
-                )
-            ):
-                break
-            streak += 1
-        streak_basis = "조회범위 내 최소 " if streak == len(observations) else ""
-        streak_fact = f"{grade.label} 단계는 {streak_basis}{streak}개월 연속 유지됐다."
-        streak_metric = _metric(
-            "current_grade_streak",
-            "현재 단계 연속기간",
-            streak,
-            unit="개월",
-        )
-    else:
-        streak_fact = "현재 단계가 확인되지 않아 단계 유지기간은 계산하지 않았다."
-        streak_metric = _metric(
-            "current_grade_streak",
-            "현재 단계 연속기간",
-            None,
-            unit="개월",
-            status="insufficient_data",
-        )
-        omitted.append(
-            OmittedIndicator(
-                id="current_grade_streak",
-                reason="현재 단계가 확인되지 않았다.",
-            )
-        )
-    key_metrics.append(streak_metric)
-    if grade is not None:
-        claims.append(_EvidenceClaim("grade_streak", "major_changes", streak_fact))
+    streak = 1
+    for index in range(len(observations) - 1, 0, -1):
+        before_grade = grades[index - 1]
+        if before_grade.label != grade.label or not months_are_contiguous(
+            observations[index - 1].month,
+            observations[index].month,
+        ):
+            break
+        streak += 1
+    streak_basis = "조회범위 내 최소 " if streak == len(observations) else ""
+    streak_fact = f"{grade.label} 단계는 {streak_basis}{streak}개월 연속 유지됐다."
+    key_metrics.append(
+        _metric("current_grade_streak", "현재 단계 연속기간", streak, unit="개월")
+    )
+    claims.append(_EvidenceClaim("grade_streak", "major_changes", streak_fact))
 
     transitions = [
-        pair
-        for pair in contiguous_pairs
-        if pair[2] is not None and pair[3] is not None and pair[2].label != pair[3].label
+        pair for pair in contiguous_pairs if pair[2].label != pair[3].label
     ]
     key_metrics.append(
         _metric("grade_transition_count", "단계 전환 횟수", len(transitions), unit="회")
     )
     if transitions:
         before, after, before_grade, after_grade = transitions[-1]
-        assert before_grade is not None and after_grade is not None
         transition_fact = (
             f"가장 최근에는 {after.month}에 {before_grade.label}에서 "
             f"{after_grade.label} 단계로 전환됐다."
@@ -1467,10 +1444,23 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
         top_three = series.supply_auxiliary.top_three_dependency_percent
         concentration_fact = None
         if top_three is not None and dependencies:
-            concentration_fact = (
-                f"상위 3개국({'·'.join(item.country_name for item in dependencies[:3])}) "
-                f"수입의존도는 {_number(top_three)}%로 집중된 구조다"
-            )
+            top_names = "·".join(item.country_name for item in dependencies[:3])
+            # 2026-09-02 skeptic 2차 감사 SC-R2-004: share_percent 분모가 세계
+            # 총액이 아니라 이 표에 나열된 국가들의 소계라(§docstring), 나열국이
+            # 3개 이하면 상위 3개국 합이 정의상 항상 100%에 가깝다 — 실측 측정이
+            # 아니라 계산 방식의 항등식인데 "집중된 구조다"로 쓰면 실제 편중도
+            # 측정처럼 읽힌다. 발주처 제공 실측 덤프는 갈륨 1건(5개국)뿐이라 다른
+            # 광종에서 3개국 이하가 실제로 나오는지 확인은 못 했지만, 나오더라도
+            # 오도되지 않도록 나열국 수가 3 이하면 한정어를 붙인다.
+            if len(dependencies) <= 3:
+                concentration_fact = (
+                    f"나열된 수입국({top_names}) 전체 기준 수입의존도는 "
+                    f"{_number(top_three)}%다"
+                )
+            else:
+                concentration_fact = (
+                    f"상위 3개국({top_names}) 수입의존도는 {_number(top_three)}%로 집중된 구조다"
+                )
         if import_growth_fact and concentration_fact:
             claims.append(
                 _EvidenceClaim(
@@ -1868,11 +1858,16 @@ class AnalysisSummaryService:
         months = sorted(o.month for o in observations)
         # komis_snapshot_response로 이미 뽑아 둔 보조패널이 있으면 그쪽을
         # 우선한다 — 손 매핑 `supply_auxiliary`는 그게 없을 때만의 폴백.
-        supply_auxiliary = (
-            SupplyAuxiliaryData.model_validate(supply_auxiliary_raw)
-            if supply_auxiliary_raw
-            else _supply_auxiliary_from_request(request)
-        )
+        if supply_auxiliary_raw:
+            try:
+                supply_auxiliary = SupplyAuxiliaryData.model_validate(supply_auxiliary_raw)
+            except Exception as exc:  # noqa: BLE001 — pydantic ValidationError 등
+                raise DataSourceError(
+                    f"{request.page_id}: komis_snapshot_response에서 뽑은 보조패널이 "
+                    f"SupplyAuxiliaryData와 맞지 않는다: {exc}"
+                ) from exc
+        else:
+            supply_auxiliary = _supply_auxiliary_from_request(request)
         series = IndicatorSeries(
             page_id=request.page_id,
             mineral=MineralRef(code=mineral_code, name=mineral_name),

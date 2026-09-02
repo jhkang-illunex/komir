@@ -24,6 +24,7 @@ analysis.models` → `.models`). 계산 로직·문구·evidence 규약은 원�
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import date, timedelta
 from functools import lru_cache
@@ -31,6 +32,8 @@ from pathlib import Path
 from typing import Literal
 
 import yaml
+
+_log = logging.getLogger(__name__)
 
 from .models import (
     CompositeIndexObservation,
@@ -181,16 +184,24 @@ def _load_mineral_index_weights() -> dict[str, list[_MineralWeight]]:
     """`resources/mineral_index_weights.yaml`(2026-09-01 신설, 발주처 제공
     index_table.png 반영) — 광물종합지수(MNRL)·메이저금속지수(MAJOR)·
     희소금속지수(RARE) 각각의 구성 광종·가중치를 rank 순으로 돌려준다.
-    지수 시계열과 무관한 정적 참고자료라 프로세스 생존 동안 1회만 읽는다."""
+    지수 시계열과 무관한 정적 참고자료라 프로세스 생존 동안 1회만 읽는다.
+    로드 실패(파일 부재·YAML 오타·키 누락 등)는 빈 dict를 돌려준다 — 호출부
+    (`calculate_composite_summary`의 `if composite_weights:` 가드)가 이미
+    "가중치 없음"을 정상 처리하므로, 이 절만 조용히 빠지고 나머지 광물종합지수
+    응답은 그대로 나가야 한다(가중치 로드 실패로 페이지 전체가 죽으면 안 됨)."""
 
-    payload = yaml.safe_load(_MINERAL_INDEX_WEIGHTS_RESOURCE.read_text(encoding="utf-8"))
-    return {
-        index_type: [
-            _MineralWeight(mineral=row["mineral"], weight_pct=float(row["weight_pct"]))
-            for row in sorted(rows, key=lambda item: item["rank"])
-        ]
-        for index_type, rows in payload["weights"].items()
-    }
+    try:
+        payload = yaml.safe_load(_MINERAL_INDEX_WEIGHTS_RESOURCE.read_text(encoding="utf-8"))
+        return {
+            index_type: [
+                _MineralWeight(mineral=row["mineral"], weight_pct=float(row["weight_pct"]))
+                for row in sorted(rows, key=lambda item: item["rank"])
+            ]
+            for index_type, rows in payload["weights"].items()
+        }
+    except Exception:  # noqa: BLE001 — 가중치는 부가 기능, 실패해도 페이지는 살아야 한다
+        _log.exception("mineral_index_weights.yaml 로드 실패 — 가중치 없이 계속 진행")
+        return {}
 
 
 def _top_weighted_minerals_text(weights: list[_MineralWeight], limit: int) -> str:
