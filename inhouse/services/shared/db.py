@@ -142,14 +142,21 @@ def pg_connect():
     return sa.create_engine(_pg_dsn()).raw_connection()
 
 
-def execute_pg(sql: str, params: tuple | list | None = None) -> None:
-    """단일 DML/DDL 문 실행(psycopg2 paramstyle: %s)."""
+def execute_pg(sql: str, params: tuple | list | None = None) -> int:
+    """단일 DML/DDL 문 실행(psycopg2 paramstyle: %s) — 영향받은 행 수를
+    돌려준다(2026-09-02 skeptic 2차감사 PA-005 — 예전엔 반환값이 없어
+    UPDATE 0행(예: WHERE 조건에 안 걸리는 prompt_key)도 호출부에서 구분할
+    방법이 없었다). 기존 호출부는 전부 반환값을 무시하는 statement라
+    하위호환 깨짐 없음(DDL 등 rowcount가 의미 없는 문은 -1이 나올 수 있다 —
+    psycopg2 cursor.rowcount 규약 그대로)."""
 
     con = pg_connect()
     try:
         with con.cursor() as cur:
             cur.execute(sql, params)
+            rowcount = cur.rowcount
         con.commit()
+        return rowcount
     finally:
         con.close()
 
