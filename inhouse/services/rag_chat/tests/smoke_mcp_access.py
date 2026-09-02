@@ -103,7 +103,13 @@ def main() -> int:
         pub_ev, pub_warn = mcp_client.public.call_komis_raw_lookup(page_id, limit=3)
         pri_ev, pri_warn = mcp_client.private.call_komis_raw_lookup(page_id, limit=3)
         assert pub_ev == [] and any("private 전용" in w for w in pub_warn), (page_id, pub_ev, pub_warn)
-        assert pri_ev != [] or not any("private 전용" in w for w in pri_warn), (page_id, pri_ev, pri_warn)
+        # 2026-09-02 skeptic 2차감사 SC-CB2-003 — 예전엔 `or not any(...)`라
+        # private 경로가 조용히 죽어(evidence=[]) 있어도 "private 전용 거부
+        # warning만 없으면" 통과했다(그 경우 실제로 걸러내는 건 "게이팅이
+        # private에도 잘못 넘어간 경우" 하나뿐이라 주석의 "정상 조회돼야
+        # 한다"는 의도와 검증 강도가 안 맞았다). 세 테이블 전부 현재 데이터를
+        # 보유한 걸 확인했으므로 evidence 비어있지 않음을 직접 요구한다.
+        assert pri_ev != [], (page_id, pri_warn)
         print(f"[OK] komis_raw_lookup({page_id}): public 거부(evidence 0건) 확인, "
               f"private 통과(evidence {len(pri_ev)}건, warnings={pri_warn})")
 
