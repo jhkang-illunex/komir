@@ -122,7 +122,10 @@ SUPPLY_SUMMARY_INSTRUCTIONS = """\
   X% 감소했다"처럼 증가율 자체가 줄었다는 식으로 바꿔 쓰지 않는다. 수입국
   편중도는 이 표본이 단일 연도 스냅샷이라
   증감 추세를 알 수 없으므로 "집중된 구조다"처럼 현재 수준만 서술하고
-  "확대/축소됐다"처럼 변화를 단정하지 않는다. 가격리스크(핵심 관측치의
+  "확대/축소됐다"처럼 변화를 단정하지 않는다(단, evidence 문장이 "나열된
+  수입국 전체 기준"이라고 돼 있으면 — 나열국이 3개 이하라 상위 3개국이
+  전체와 같은 경우 — "집중된 구조다"로 바꿔 쓰지 않고 evidence 문구를
+  그대로 따른다). 가격리스크(핵심 관측치의
   가격과 중복)·세계 수급비율·세계 공급 편중도는 evidence에 없으므로 언급하지
   않는다.
 - current_position은 period_average_position을 이용해 최근 가격 움직임과
@@ -543,6 +546,22 @@ def _parse_output_contract(page_id: str, raw: Any, base: PageConfig) -> tuple[di
             max_ids = raw_max  # `SummarySentence.evidence_ids` max_length(5)가 절대 상한
         else:
             log.warning("%s: output_contract.max_evidence_ids_per_sentence는 1~%d이어야 한다 — 코드 기본값 사용", page_id, _EVIDENCE_IDS_HARD_CAP)
+    # 2026-09-02 skeptic 2차 감사 PA-003: 위 3개 키 이외의 키(오타 등, 예:
+    # "section_sentence_range")는 그냥 무시돼 로그조차 없었다 — 저장은
+    # json.loads 문법만 검증하고 reload도 "성공"으로 보이니, 운영자는 계약을
+    # 바꿨다고 믿지만 실제로는 아무 변화가 없어도 알 방법이 없었다. 동작은
+    # 그대로(여전히 무시 — 코드 기본값 유지) 두고 경고 로그만 남긴다.
+    unknown_keys = set(raw) - {
+        "section_sentence_ranges",
+        "total_sentence_range",
+        "max_evidence_ids_per_sentence",
+    }
+    if unknown_keys:
+        log.warning(
+            "%s: output_contract에 인식하지 못하는 키 %s — 무시하고 코드 기본값 유지",
+            page_id,
+            sorted(unknown_keys),
+        )
     return ranges, total, max_ids
 
 
