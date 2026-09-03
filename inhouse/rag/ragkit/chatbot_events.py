@@ -135,14 +135,21 @@ def _numeric_series(rows: list[list[str]], col_idx: int) -> list[float] | None:
 
 
 def render_chart_png(table: dict) -> tuple[bytes, str] | None:
-    """표에서 첫 번째 완전 숫자열을 찾아 즉석 차트(PNG bytes, 캡션)로 렌더링한다.
-    숫자열이 하나도 없으면 None(표 이벤트만 보내고 차트는 만들지 않는다 — 강제로
-    억지 차트를 그리지 않는게 원칙, 근거 없는 시각화가 오히려 오해를 부른다).
-    행이 4개 이상이면 추이로 보고 선그래프, 그보다 적으면 막대그래프.
+    """표의 완전 숫자열 **전부**를 한 차트에 겹쳐 그리고 범례로 구분한다
+    (2026-09-03 변경 — 예전엔 처음 만나는 숫자열 하나만 그려서, 니켈 가격표
+    처럼 최저가·최고가·선물가격이 나란히 있어도 최저가만 보이고 나머지는
+    표에만 남았다. 사용자 지적으로 다중 계열 지원). 숫자열이 하나도 없으면
+    None(표 이벤트만 보내고 차트는 만들지 않는다 — 강제로 억지 차트를 그리지
+    않는게 원칙, 근거 없는 시각화가 오히려 오해를 부른다). 행이 4개 이상이면
+    추이로 보고 선그래프(계열별 겹쳐그리기), 그보다 적으면 막대그래프(계열별
+    묶음막대).
 
     X축 라벨은 날짜열(crtr_ymd/crtr_yr, 위치 무관)이 있으면 그걸 최우선 —
     없으면 기존대로 첫 번째 열을 쓴다(국가·광종명 등 범주형 첫 열이 라벨로
-    맞는 표가 더 많다).
+    맞는 표가 더 많다). **날짜열일 때만** 과거→최근 오름차순으로 재정렬한다
+    (KOMIS 원본은 최신순으로 내려오는 경우가 많아 차트가 거꾸로 읽혔다,
+    사용자 지적) — 날짜가 아닌 라벨(랭킹 순위 등)은 원본 순서가 이미 의미가
+    있어 재정렬하지 않는다.
 
     matplotlib은 이 함수를 실제로 쓸 때만 임포트한다(차트 후보가 없는 대다수
     턴에서는 무거운 임포트 비용을 안 치르게)."""
@@ -151,39 +158,60 @@ def render_chart_png(table: dict) -> tuple[bytes, str] | None:
     if len(rows) < 2 or len(columns) < 2:
         return None
     label_idx = next((i for i, c in enumerate(columns) if _is_date_column(c)), 0)
+    is_date_axis = _is_date_column(columns[label_idx])
+
+    series_list: list[tuple[str, list[float]]] = []
     for idx in range(len(columns)):
         if idx == label_idx or _is_date_column(columns[idx]):
             continue
         series = _numeric_series(rows, idx)
         # 값이 전부 같으면(예: mnrl_prc_crtr_sn처럼 조회 전체에 걸쳐 고정된
-        # 식별자 열) 정보량이 0인 평평한 선이라 다음 후보로 넘어간다 — 여러
-        # 행에 걸쳐 값이 갈리는 진짜 수치열(가격 등)을 우선한다.
+        # 식별자 열) 정보량이 0인 평평한 선이라 후보에서 뺀다 — 여러 행에
+        # 걸쳐 값이 갈리는 진짜 수치열(가격 등)만 그린다.
         if series is None or len(set(series)) <= 1:
             continue
-        labels = [row[label_idx] for row in rows]
+        series_list.append((columns[idx], series))
+    if not series_list:
+        return None
 
-        import matplotlib
+    labels = [row[label_idx] for row in rows]
+    if is_date_axis:
+        order = sorted(range(len(labels)), key=lambda i: labels[i])
+        labels = [labels[i] for i in order]
+        series_list = [(name, [values[i] for i in order]) for name, values in series_list]
 
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
+    import matplotlib
 
-        matplotlib.rcParams["axes.unicode_minus"] = False
-        _apply_korean_font()
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
 
-        fig, ax = plt.subplots(figsize=(6, 3.2))
-        if len(rows) >= 4:
-            ax.plot(labels, series, marker="o")
-        else:
-            ax.bar(labels, series)
-        ax.set_title(columns[idx])
-        ax.tick_params(axis="x", labelrotation=30)
-        fig.tight_layout()
+    matplotlib.rcParams["axes.unicode_minus"] = False
+    _apply_korean_font()
 
-        buf = io.BytesIO()
-        fig.savefig(buf, format="png", dpi=110)
-        plt.close(fig)
-        return buf.getvalue(), columns[idx]
-    return None
+    fig, ax = plt.subplots(figsize=(6, 3.2))
+    if len(rows) >= 4:
+        for name, values in series_list:
+            ax.plot(labels, values, marker="o", label=name)
+    else:
+        x = range(len(labels))
+        n = len(series_list)
+        width = 0.8 / n
+        for i, (name, values) in enumerate(series_list):
+            offsets = [xi + (i - (n - 1) / 2) * width for xi in x]
+            ax.bar(offsets, values, width=width, label=name)
+        ax.set_xticks(list(x))
+        ax.set_xticklabels(labels)
+    caption = " · ".join(name for name, _ in series_list)
+    ax.set_title(caption)
+    if len(series_list) > 1:
+        ax.legend(fontsize="small")
+    ax.tick_params(axis="x", labelrotation=30)
+    fig.tight_layout()
+
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=110)
+    plt.close(fig)
+    return buf.getvalue(), caption
 
 
 def png_to_data_uri_payload(png_bytes: bytes, caption: str, source_index: int | None = None) -> dict:
