@@ -123,8 +123,13 @@ payload: dict = {}
 # 드롭다운(_compare_mineral_picker) 둘 다 이 목록을 참조한다 — 같은 페이지
 # 안에서 한쪽만 registry를 쓰면 "본 광종은 34종 중 고르는데 비교광종은 DB
 # 5종뿐"인 불일치가 생기기 때문.
+# 2026-09-03: map_global(핵심광물지도>글로벌 수급지도)도 같은 이유로 추가 —
+# registry엔 전용 ref가 없어 map_korea와 같은 metadata.maps.trade_minerals를
+# 재사용한다(§mineral_master.py _KOMIS_REGISTRY_REF 주석 참고, 사용자 목록
+# 대조는 안 함).
 _KOMIS_REGISTRY_PAGE_IDS = (
-    "indicator_market", "indicator_supply", "map_korea", "price_minor_metals", "price_iron_energy",
+    "indicator_market", "indicator_supply", "map_korea", "map_global",
+    "price_minor_metals", "price_iron_energy",
 )
 
 
