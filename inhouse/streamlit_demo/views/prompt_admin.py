@@ -107,8 +107,11 @@ _PERIOD_PLACEHOLDERS = {
 # 수 없었고, price_* 4종은 카테고리 필터(HP001~004)조차 없었다. report_demo.py
 # 의 동일 분기를 그대로 이식한다(공용 헬퍼 추출은 이번 스코프 밖 — 감사 문서
 # "묶음 C" 후속과제로 남김).
+# 2026-09-03: map_global도 같은 이유로 추가(§report_demo.py 동일 목록과 동기화
+# 유지 — mineral_master.py 쪽 registry ref는 map_korea와 공용).
 _KOMIS_REGISTRY_PAGE_IDS = (
-    "indicator_market", "indicator_supply", "map_korea", "price_minor_metals", "price_iron_energy",
+    "indicator_market", "indicator_supply", "map_korea", "map_global",
+    "price_minor_metals", "price_iron_energy",
 )
 
 

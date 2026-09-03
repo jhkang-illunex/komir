@@ -132,6 +132,13 @@ _KOMIS_REGISTRY_REF: dict[str, str] = {
     # 목록과 정확히 일치해 채택("철" vs DB의 "철광석" 라벨 차이는 코드
     # MNRL1011로 동일 광종 확인).
     "price_iron_energy": "metadata.prices.iron_energy.minerals",
+    # 2026-09-03(사용자 지시 "어차피 데모니까 웹 페이지랑 맞춰주세요"): map_global
+    # (핵심광물지도>글로벌 수급지도)도 ai_mnrl_mst(DB, 19종)로는 부족했다.
+    # registry엔 map_korea/global 전용 ref가 따로 없고 둘 다 KOMIS "수급지도"
+    # 하위 메뉴라 공용으로 보이는 metadata.maps.trade_minerals(73종, map_korea에
+    # 쓴 것과 동일 — 2026-07-16 실제 KOMIS 페이지 브라우저 프로브 기반)를 그대로
+    # 재사용했다 — map_global 전용 사용자 목록 대조는 안 했다(데모 목적상 생략).
+    "map_global": "metadata.maps.trade_minerals",
 }
 
 
