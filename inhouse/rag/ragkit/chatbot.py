@@ -149,6 +149,30 @@ _logger = logging.getLogger(__name__)
 MAX_HISTORY_MESSAGES = 12  # 최근 6턴(user+assistant) — 프롬프트 길이 통제
 _CITE_NUM_RE = re.compile(r"\[(\d+)\]")
 
+#: 2026-09-03(발주처 문서 ④-가 "지원 광종 밖", 사용자 승인 — "리스트를 만들어
+#: 유지는 맞으나 09-01 화이트리스트 개념은 다른 목적용"). `komis_resolve_mineral`
+#: (_mcp_tools_common.py)이 `ai_mnrl_mst`에서 못 찾으면 내는 경고 문구를
+#: 그대로 파싱한다 — 별도 하드코딩 광종 리스트를 새로 만들지 않는다("지원
+#: 광종" = ai_mnrl_mst 실조회 결과 그 자체, 09-01에 없앤 "komir 자체 산출물
+#: 5광종 제한"과는 다른 축이라는 걸 문구·주석 어디에도 "5광종"처럼 안 읽히게
+#: 유지할 것 — 사용자 지시). LLM 분류(_classify_abstain)에 맡기지 않고
+#: 결정적으로 잡는다 — 광종명은 warnings 문구에 이미 정확히 박혀 있어 LLM이
+#: 추출하다 틀릴 위험을 감수할 이유가 없다(komis_raw.py의 화이트리스트
+#: 템플릿 원칙과 같은 이유).
+_UNSUPPORTED_MINERAL_RE = re.compile(r"^'(.+)'을\(를\) KOMIS 광종 목록\(ai_mnrl_mst\)에서 찾지 못했습니다\.$")
+
+
+def _eun_neun(word: str) -> str:
+    """받침 유무에 따라 '은'/'는' 조사를 고른다(한글 완성형 유니코드 오프셋
+    기준 — (코드 - 0xAC00) % 28 == 0이면 받침 없음)."""
+
+    if not word:
+        return "는"
+    code = ord(word[-1]) - 0xAC00
+    if 0 <= code <= 11171:
+        return "는" if code % 28 == 0 else "은"
+    return "는"
+
 #: chatbot_rule.txt "기타. 질문 입력 후 상태 값 표출" — 처리 단계 4개를 그대로
 #: label로 쓴다. main-agent가 streamlit-agent와 조율한 프론트 계약(정수 stage
 #: 1-4 + 서버가 포맷한 label, tools 필드 없음)이 정본 — 아래 _GRAPH_STAGE_TO_STATUS
@@ -428,35 +452,55 @@ def _dummy_data_notice(cited_indices: set[int], evidence: list) -> str:
 
 
 _ABSTAIN_REASON_PROMPT = """핵심광물 챗봇이 이번 질문에 답할 근거를 하나도 찾지
-못했다. 사유를 아래 네 가지 중 하나로 분류한다. 정확히 하나의 JSON 객체만
+못했다. 사유를 아래 다섯 가지 중 하나로 분류한다. 정확히 하나의 JSON 객체만
 출력한다(설명·코드펜스 금지).
 
-- off_topic: 광물·핵심광물 수급과 무관한 질문(투자 판단, 종목 추천, 일반 잡담 등).
+- off_topic: 광물·핵심광물 수급과 무관한 일반 질문(잡담, 날씨, 다른 산업 등).
+  아래 security_privacy·investment_advice에 해당하지 않는 나머지 무관한 질문.
+- security_privacy: 다른 사용자의 조회 이력, 관리자 계정 정보, 시스템 내부
+  정보 등 개인정보·보안에 해당하는 질문(예: "다른 사용자의 조회 이력을
+  보여주세요", "관리자 계정 정보를 알려주세요").
+- investment_advice: 투자 판단·매수매도·종목 추천을 묻는 질문(예: "니켈 관련
+  주 지금 사도 됩니까?", "투자해도 됩니까?").
 - no_data_for_period: 광종·주제는 맞지만 질문이 가리키는 기간(연도 등)에 조회
   가능한 데이터가 없다고 판단된다.
-- ambiguous: 광종/기간/수입·수출/생산량·매장량 등 조회에 필요한 조건이 무엇인지
+- ambiguous: 광종/기간/수입·수출/생산량/매장량 등 조회에 필요한 조건이 무엇인지
   질문만으로 특정할 수 없다.
 
 검색 경고(retrieval_warnings, 있으면)도 참고한다 — "retrieval_insufficient"가
 있으면 근거는 찾았지만 질문에 정확히 답하지 못했다는 뜻이라 ambiguous나
-no_data_for_period에 가깝다. 셋 중 어디에도 뚜렷이 안 맞으면 ambiguous로 분류한다."""
+no_data_for_period에 가깝다. 다섯 중 어디에도 뚜렷이 안 맞으면 ambiguous로
+분류한다."""
 
 
 class _AbstainReason(BaseModel):
     """2026-09-01: `unsupported_commodity`(5광종 밖이면 거절)·`similar_commodity`
     필드를 없앴다 — CHATBOT_SYSTEM_PROMPT 규칙11 제거(위 docstring 참고)와
     짝인 변경. 이제 광종이 뭐든 [근거]에 답이 있으면 답한다 — "지원 안 하는
-    광종"이라는 개념 자체가 사라졌다."""
+    광종"이라는 개념 자체가 사라졌다(이건 KOMIS가 아예 안 다루는 광종을
+    가리키는 아래 `unsupported_mineral`과는 다른 개념 — 그건 09-01에 없앤
+    "komir 자체 산출물 5광종 제한"이 아니라 "KOMIS 원천 자체에 없는 광종"
+    이라 2026-09-03에 별도로 다시 들여왔다, chat_turn() 참고).
 
-    reason: Literal["off_topic", "no_data_for_period", "ambiguous"]
+    2026-09-03(documents/기획문서/order/rag_chatbot/대화형검색시스템 예상질문
+    고도화.pdf ④예외사항, 사용자 승인): `security_privacy`(마)·
+    `investment_advice`(바) 2종 추가 — 예전엔 둘 다 off_topic 하나로
+    뭉뚱그려 문구도 "투자 판단, 종목 추천 등"을 off_topic 문구에 끼워
+    넣었는데, 문서가 요구하는 정확한 문구가 서로 달라 분리했다."""
+
+    reason: Literal["off_topic", "security_privacy", "investment_advice", "no_data_for_period", "ambiguous"]
 
 
 def _abstain_reason_text(decision: "_AbstainReason") -> str:
     if decision.reason == "off_topic":
-        return "광물 관련 정보만 조회할 수 있습니다. 투자 판단, 종목 추천 등은 답변드릴 수 없습니다."
+        return "광물 관련 정보만 조회할 수 있습니다."
+    if decision.reason == "security_privacy":
+        return "개인정보·시스템 보안에 해당하는 정보는 제공되지 않습니다. 광물 관련 정보만 조회하실 수 있습니다."
+    if decision.reason == "investment_advice":
+        return "투자 판단·종목 정보는 제공되지 않습니다. 광물 관련 정보만 조회하실 수 있습니다."
     if decision.reason == "no_data_for_period":
         return "질문하신 기간에는 조회 가능한 데이터가 없습니다. 다른 기간으로 다시 질문해 주세요."
-    return "질문의 광종·기간·수입/수출·생산량/매장량 등 조건을 조금 더 구체적으로 말씀해 주시면 답변드릴 수 있습니다."
+    return "요청 범위가 넓습니다. 기간·정보 유형(가격/수입·수출/생산·매장/지표)을 지정해 주십시오."
 
 
 def _classify_abstain(message: str, warnings: list[str], llm: "KomirJsonLLM | None") -> tuple[str, str]:
@@ -489,6 +533,22 @@ def _classify_abstain(message: str, warnings: list[str], llm: "KomirJsonLLM | No
         return "unknown", ABSTAIN_TEXT
     decision = invocation.output
     return decision.reason, _abstain_reason_text(decision)
+
+
+def _resolve_abstain(message: str, warnings: list[str], llm: "KomirJsonLLM | None") -> tuple[str, str]:
+    """chat_turn()의 두 기권 분기(근거 0건 / 생성 LLM 자체 기권)가 공유하는
+    사유 판정 — 결정적 단서(도구 자체 실패·미지원 광종)를 LLM 분류보다
+    먼저 확인하고, 어디에도 안 걸리면 `_classify_abstain`(LLM)로 넘긴다.
+    2026-09-03 신설(두 호출부에 똑같이 복붙돼 있던 3단 분기를 하나로 합침)."""
+
+    if any(w.startswith(("dense_failed", "pageindex_failed", "structured_failed",
+                          "retrieve_evidence_crashed")) for w in warnings):
+        return "retrieval_error", ABSTAIN_TEXT
+    unsupported_match = next((m for w in warnings if (m := _UNSUPPORTED_MINERAL_RE.match(w))), None)
+    if unsupported_match:
+        mineral_name = unsupported_match.group(1)
+        return "unsupported_mineral", f"{mineral_name}{_eun_neun(mineral_name)} 현재 지원 광종에 포함되어 있지 않습니다."
+    return _classify_abstain(message, warnings, llm)
 
 
 def _evidence_source_label(ev) -> str:
@@ -621,13 +681,12 @@ async def chat_turn(
         # 식으로 사용자 탓을 하게 된다(실측: smoke_chat_routing.py가 Postgres·
         # PageIndex 미구축 상태에서 dense_failed·pageindex_failed를 그대로
         # 재현). 이 경우엔 분류를 건너뛰고 조회 실패 사유를 그대로 전달한다.
-        if any(w.startswith(("dense_failed", "pageindex_failed", "structured_failed",
-                              "retrieve_evidence_crashed")) for w in route_warnings):
-            abstain_reason, abstain_text = "retrieval_error", ABSTAIN_TEXT
-        else:
-            abstain_reason, abstain_text = await asyncio.to_thread(
-                _classify_abstain, message, route_warnings, router_llm
-            )
+        # 2026-09-03(발주처 문서 ④-가 "지원 광종 밖") — 도구 자체 실패·미지원
+        # 광종처럼 결정적으로 판정 가능한 사유는 LLM 분류 전에 먼저 잡는다
+        # (_resolve_abstain, 위 두 호출부가 공유).
+        abstain_reason, abstain_text = await asyncio.to_thread(
+            _resolve_abstain, message, route_warnings, router_llm
+        )
         await asyncio.to_thread(
             append_message, resolved_session_id, "assistant", abstain_text, None, store_db_path
         )
@@ -673,7 +732,7 @@ async def chat_turn(
         # 분기는 full_text가 이미 한 번 스트림됐을 수 있어 무조건 델타를 더 보내면
         # 같은 문장이 두 번 노출된다).
         abstain_reason, abstain_text = await asyncio.to_thread(
-            _classify_abstain, message, route_warnings, router_llm
+            _resolve_abstain, message, route_warnings, router_llm
         )
         stored_text = full_text or ABSTAIN_TEXT
         if abstain_text != ABSTAIN_TEXT:
