@@ -70,6 +70,30 @@ def _evidence_dict(ev: Evidence | None) -> dict[str, Any] | None:
 _PRICE_PAGES = frozenset({"price_base_metals", "price_minor_metals", "price_iron_energy", "price_other"})
 _HS_TRANSLATE_PAGES = frozenset({"map_korea", "map_global"})
 
+#: 2026-09-03(발주처 문서 대화형검색시스템 예상질문 고도화.pdf ②-1·②-3·④-나,
+#: 사용자 승인 — "3곳 전부 한번에") — 0건 조회 시 "조회 가능 기간은
+#: YYYY.MM.DD~YYYY.MM.DD입니다"류 안내에 쓸 실제 범위를 붙이는 대상 page_id와
+#: 그 안내 문구의 선행절. 문서가 딱 이 두 갈래만 예시로 들었다(가격=일단위
+#: "조회 가능 기간", 지표=월단위 "지표 산출 가능 기간") — 교역(map_korea 등,
+#: "기간을 다시 지정해 주십시오"만 요구)·매장량/생산량(기간 언급 자체 없음)
+#: 은 문서에 근거가 없어 이번 스코프에 안 넣었다(과잉 확장 금지).
+_PERIOD_BOUNDS_LEAD: dict[str, str] = {
+    "price_base_metals": "조회 가능 기간",
+    "price_minor_metals": "조회 가능 기간",
+    "price_iron_energy": "조회 가능 기간",
+    "price_other": "조회 가능 기간",
+    "indicator_market": "지표 산출 가능 기간",
+    "indicator_supply": "지표 산출 가능 기간",
+}
+
+
+def _format_period_bound(value: str, precision: str) -> str:
+    if precision == "day" and len(value) >= 8:
+        return f"{value[:4]}.{value[4:6]}.{value[6:8]}"
+    if len(value) >= 6:
+        return f"{value[:4]}.{value[4:6]}"
+    return value[:4]
+
 
 def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = frozenset()) -> None:
     """호출자(mcp_server_public.py·mcp_server_private.py)가 자기 `FastMCP`
@@ -252,6 +276,30 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
             datasets = repo.fetch(request)
         except RawDataAccessError as exc:
             return {"evidence": [], "warnings": [*warnings, str(exc)]}
+
+        # 2026-09-03(발주처 문서, 사용자 승인) — price_*/indicator_market/
+        # indicator_supply가 0건이면 "조회 가능 기간은 ...입니다"를 실제 DB
+        # 범위로 채워 warnings에 붙인다. ⚠ 이건 "0건으로 이미 돌아온 결과"만
+        # 다룬다 — ROUTE_PROMPT/chatbot_graph.py가 아직 사용자가 말한 특정
+        # 과거 기간(예: "2010년 1월")을 start_period/end_period로 추출해
+        # 넘기는 경로가 없어서, 그런 질문은 지금도 최신 N행이 그대로 조회돼
+        # 이 분기 자체를 안 탄다(범위 밖 — main-agent에게 별도 보고).
+        if all(not ds.rows for ds in datasets) and page_id in _PERIOD_BOUNDS_LEAD:
+            try:
+                bounds = repo.resolve_period_bounds(
+                    page_id, mineral_code=request.mineral_code, hs_code=request.hs_code,
+                    price_criterion_serial=request.price_criterion_serial,
+                    index_type_code=request.index_type_code,
+                )
+            except RawDataAccessError:
+                bounds = None
+            if bounds:
+                start, end, precision = bounds
+                warnings.append(
+                    f"{_PERIOD_BOUNDS_LEAD[page_id]}은 "
+                    f"{_format_period_bound(start, precision)}~{_format_period_bound(end, precision)}"
+                    "입니다."
+                )
 
         # 근거 라벨용 한글명 + 더미데이터 판정 — ai_mnrl_mst 한 번의 조회로
         # 함께 얻는다(resolve_mineral_meta). 예전엔 resolve_data_source()·
