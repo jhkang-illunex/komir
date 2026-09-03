@@ -1,0 +1,2600 @@
+{
+  "item": [
+    {
+      "name": "api",
+      "description": "",
+      "item": [
+        {
+          "name": "v1",
+          "description": "",
+          "item": [
+            {
+              "name": "analysis",
+              "description": "",
+              "item": [
+                {
+                  "name": "indicators",
+                  "description": "",
+                  "item": [
+                    {
+                      "name": "market",
+                      "description": "",
+                      "item": [
+                        {
+                          "id": "dcbde6c7-7242-447e-9491-7c413ea0aeca",
+                          "name": "Summarize Market Indicator",
+                          "request": {
+                            "name": "Summarize Market Indicator",
+                            "description": {
+                              "content": "시장동향지표 분석요약.",
+                              "type": "text/plain"
+                            },
+                            "url": {
+                              "path": [
+                                "api",
+                                "v1",
+                                "analysis",
+                                "indicators",
+                                "market"
+                              ],
+                              "host": [
+                                "{{baseUrl}}"
+                              ],
+                              "query": [],
+                              "variable": []
+                            },
+                            "header": [
+                              {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                              },
+                              {
+                                "key": "Accept",
+                                "value": "application/json"
+                              }
+                            ],
+                            "method": "POST",
+                            "body": {
+                              "mode": "raw",
+                              "raw": "{\n  \"mineral\": \"MNRL0018\",\n  \"mineral_name\": \"텅스텐\",\n  \"komis_response\": {\n    \"data\": [\n      {\n        \"flutRt\": \"-10.75\",\n        \"flutPrc\": \"-3.66\",\n        \"realFlutRt\": \"0\",\n        \"crtrYmd\": \"20260701\",\n        \"realPrc\": \"418.09\",\n        \"realFlutPrc\": \"17.69\",\n        \"mrktPrspectIdct\": \"30.38\"\n      },\n      {\n        \"flutRt\": \"3.97\",\n        \"flutPrc\": \"1.30\",\n        \"realFlutRt\": \"0\",\n        \"crtrYmd\": \"20260601\",\n        \"realPrc\": \"400.40\",\n        \"realFlutPrc\": \"1.50\",\n        \"mrktPrspectIdct\": \"34.04\"\n      },\n      {\n        \"flutRt\": \"3.94\",\n        \"flutPrc\": \"1.24\",\n        \"realFlutRt\": \"0\",\n        \"crtrYmd\": \"20260501\",\n        \"realPrc\": \"398.90\",\n        \"realFlutPrc\": \"0.43\",\n        \"mrktPrspectIdct\": \"32.74\"\n      },\n      {\n        \"flutRt\": \"4.58\",\n        \"flutPrc\": \"1.38\",\n        \"realFlutRt\": \"0\",\n        \"crtrYmd\": \"20260401\",\n        \"realPrc\": \"398.47\",\n        \"realFlutPrc\": \"-1.44\",\n        \"mrktPrspectIdct\": \"31.50\"\n      },\n      {\n        \"flutRt\": \"3.15\",\n        \"flutPrc\": \"0.92\",\n        \"realFlutRt\": \"0\",\n        \"crtrYmd\": \"20260301\",\n        \"realPrc\": \"399.91\",\n        \"realFlutPrc\": \"0.07\",\n        \"mrktPrspectIdct\": \"30.12\"\n      },\n      {\n        \"flutRt\": \"-2.89\",\n        \"flutPrc\": \"-0.87\",\n        \"realFlutRt\": \"0\",\n        \"crtrYmd\": \"20260201\",\n        \"realPrc\": \"399.84\",\n        \"realFlutPrc\": \"9.83\",\n        \"mrktPrspectIdct\": \"29.20\"\n      },\n      {\n        \"flutRt\": \"6.67\",\n        \"flutPrc\": \"1.88\",\n        \"realFlutRt\": \"0\",\n        \"crtrYmd\": \"20260101\",\n        \"realPrc\": \"390.01\",\n        \"realFlutPrc\": \"-3.04\",\n        \"mrktPrspectIdct\": \"30.07\"\n      },\n      {\n        \"flutRt\": \"10.29\",\n        \"flutPrc\": \"2.63\",\n        \"realFlutRt\": \"0\",\n        \"crtrYmd\": \"20251201\",\n        \"realPrc\": \"393.05\",\n        \"realFlutPrc\": \"-6.37\",\n        \"mrktPrspectIdct\": \"28.19\"\n      },\n      {\n        \"flutRt\": \"5.19\",\n        \"flutPrc\": \"1.26\",\n        \"realFlutRt\": \"0\",\n        \"crtrYmd\": \"20251101\",\n        \"realPrc\": \"399.42\",\n        \"realFlutPrc\": \"-0.74\",\n        \"mrktPrspectIdct\": \"25.56\"\n      },\n      {\n        \"flutRt\": \"2.97\",\n        \"flutPrc\": \"0.70\",\n        \"realFlutRt\": \"0\",\n        \"crtrYmd\": \"20251001\",\n        \"realPrc\": \"400.16\",\n        \"realFlutPrc\": \"1.90\",\n        \"mrktPrspectIdct\": \"24.30\"\n      },\n      {\n        \"flutRt\": \"1.16\",\n        \"flutPrc\": \"0.27\",\n        \"realFlutRt\": \"0\",\n        \"crtrYmd\": \"20250901\",\n        \"realPrc\": \"398.26\",\n        \"realFlutPrc\": \"3.49\",\n        \"mrktPrspectIdct\": \"23.60\"\n      },\n      {\n        \"flutRt\": \"5.28\",\n        \"flutPrc\": \"1.17\",\n        \"realFlutRt\": \"0\",\n        \"crtrYmd\": \"20250801\",\n        \"realPrc\": \"394.77\",\n        \"realFlutPrc\": \"-1.07\",\n        \"mrktPrspectIdct\": \"23.33\"\n      },\n      {\n        \"flutRt\": \"7.42\",\n        \"flutPrc\": \"1.53\",\n        \"realFlutRt\": \"0\",\n        \"crtrYmd\": \"20250701\",\n        \"realPrc\": \"395.84\",\n        \"realFlutPrc\": \"-2.64\",\n        \"mrktPrspectIdct\": \"22.16\"\n      },\n      {\n        \"flutRt\": \"-0.77\",\n        \"flutPrc\": \"-0.16\",\n        \"realFlutRt\": \"0\",\n        \"crtrYmd\": \"20250601\",\n        \"realPrc\": \"398.48\",\n        \"realFlutPrc\": \"3.85\",\n        \"mrktPrspectIdct\": \"20.63\"\n      },\n      {\n        \"flutRt\": \"-2.12\",\n        \"flutPrc\": \"-0.45\",\n        \"realFlutRt\": \"0\",\n        \"crtrYmd\": \"20250501\",\n        \"realPrc\": \"394.63\",\n        \"realFlutPrc\": \"5.48\",\n        \"mrktPrspectIdct\": \"20.79\"\n      },\n      {\n        \"flutRt\": \"1.09\",\n        \"flutPrc\": \"0.23\",\n        \"realFlutRt\": \"0\",\n        \"crtrYmd\": \"20250401\",\n        \"realPrc\": \"389.15\",\n        \"realFlutPrc\": \"1.84\",\n        \"mrktPrspectIdct\": \"21.24\"\n      },\n      {\n        \"flutRt\": \"-2.32\",\n        \"flutPrc\": \"-0.50\",\n        \"realFlutRt\": \"0\",\n        \"crtrYmd\": \"20250301\",\n        \"realPrc\": \"387.31\",\n        \"realFlutPrc\": \"2.31\",\n        \"mrktPrspectIdct\": \"21.01\"\n      },\n      {\n        \"flutRt\": \"6.27\",\n        \"flutPrc\": \"1.27\",\n        \"realFlutRt\": \"0\",\n        \"crtrYmd\": \"20250201\",\n        \"realPrc\": \"385.00\",\n        \"realFlutPrc\": \"-2.64\",\n        \"mrktPrspectIdct\": \"21.51\"\n      },\n      {\n        \"flutRt\": \"77.39\",\n        \"flutPrc\": \"8.83\",\n        \"realFlutRt\": \"0\",\n        \"crtrYmd\": \"20250101\",\n        \"realPrc\": \"387.64\",\n        \"realFlutPrc\": \"-32.90\",\n        \"mrktPrspectIdct\": \"20.24\"\n      },\n      {\n        \"flutRt\": \"42.80\",\n        \"flutPrc\": \"3.42\",\n        \"realFlutRt\": \"0\",\n        \"crtrYmd\": \"20241201\",\n        \"realPrc\": \"420.54\",\n        \"realFlutPrc\": \"-18.30\",\n        \"mrktPrspectIdct\": \"11.41\"\n      },\n      {\n        \"flutRt\": \"43.96\",\n        \"flutPrc\": \"2.44\",\n        \"realFlutRt\": \"0\",\n        \"crtrYmd\": \"20241101\",\n        \"realPrc\": \"438.84\",\n        \"realFlutPrc\": \"-16.39\",\n        \"mrktPrspectIdct\": \"7.99\"\n      },\n      {\n        \"flutRt\": \"5.31\",\n        \"flutPrc\": \"0.28\",\n        \"realFlutRt\": \"0\",\n        \"crtrYmd\": \"20241001\",\n        \"realPrc\": \"455.23\",\n        \"realFlutPrc\": \"7.77\",\n        \"mrktPrspectIdct\": \"5.55\"\n      },\n      {\n        \"flutRt\": \"0\",\n        \"flutPrc\": \"0\",\n        \"realFlutRt\": \"0\",\n        \"crtrYmd\": \"20240901\",\n        \"realPrc\": \"447.46\",\n        \"realFlutPrc\": \"0\",\n        \"mrktPrspectIdct\": \"5.27\"\n      }\n    ]\n  }\n}",
+                              "options": {
+                                "raw": {
+                                  "language": "json"
+                                }
+                              }
+                            },
+                            "auth": null
+                          },
+                          "response": [
+                            {
+                              "id": "69c4e787-121d-467d-9e16-bf1afe80b8d2",
+                              "name": "Successful Response",
+                              "originalRequest": {
+                                "url": {
+                                  "path": [
+                                    "api",
+                                    "v1",
+                                    "analysis",
+                                    "indicators",
+                                    "market"
+                                  ],
+                                  "host": [
+                                    "{{baseUrl}}"
+                                  ],
+                                  "query": [],
+                                  "variable": []
+                                },
+                                "header": [
+                                  {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                  },
+                                  {
+                                    "key": "Accept",
+                                    "value": "application/json"
+                                  }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                  "mode": "raw",
+                                  "raw": "{\n  \"mineral\": \"<string>\",\n  \"mineral_name\": \"<string>\",\n  \"start_month\": \"6127-11\",\n  \"end_month\": \"9801-06\",\n  \"observations\": [\n    {\n      \"key_0\": 804.6941787098782,\n      \"key_1\": 6388.8636136844225,\n      \"key_2\": 1568\n    },\n    {\n      \"key_0\": 5333\n    }\n  ],\n  \"komis_response\": {\n    \"key_0\": true\n  },\n  \"price_unit\": \"<string>\",\n  \"price_criterion\": \"<string>\",\n  \"unavailable_page_data\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
+                                  "options": {
+                                    "raw": {
+                                      "headerFamily": "json",
+                                      "language": "json"
+                                    }
+                                  }
+                                }
+                              },
+                              "status": "OK",
+                              "code": 200,
+                              "header": [
+                                {
+                                  "key": "Content-Type",
+                                  "value": "application/json"
+                                }
+                              ],
+                              "body": "{\n  \"status\": \"ok\",\n  \"report\": \"<string>\"\n}",
+                              "cookie": [],
+                              "_postman_previewlanguage": "json"
+                            },
+                            {
+                              "id": "a53127ca-fed7-4f7e-ab85-82e602c41d8f",
+                              "name": "Validation Error",
+                              "originalRequest": {
+                                "url": {
+                                  "path": [
+                                    "api",
+                                    "v1",
+                                    "analysis",
+                                    "indicators",
+                                    "market"
+                                  ],
+                                  "host": [
+                                    "{{baseUrl}}"
+                                  ],
+                                  "query": [],
+                                  "variable": []
+                                },
+                                "header": [
+                                  {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                  },
+                                  {
+                                    "key": "Accept",
+                                    "value": "application/json"
+                                  }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                  "mode": "raw",
+                                  "raw": "{\n  \"mineral\": \"<string>\",\n  \"mineral_name\": \"<string>\",\n  \"start_month\": \"6127-11\",\n  \"end_month\": \"9801-06\",\n  \"observations\": [\n    {\n      \"key_0\": 804.6941787098782,\n      \"key_1\": 6388.8636136844225,\n      \"key_2\": 1568\n    },\n    {\n      \"key_0\": 5333\n    }\n  ],\n  \"komis_response\": {\n    \"key_0\": true\n  },\n  \"price_unit\": \"<string>\",\n  \"price_criterion\": \"<string>\",\n  \"unavailable_page_data\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
+                                  "options": {
+                                    "raw": {
+                                      "headerFamily": "json",
+                                      "language": "json"
+                                    }
+                                  }
+                                }
+                              },
+                              "status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+                              "code": 422,
+                              "header": [
+                                {
+                                  "key": "Content-Type",
+                                  "value": "application/json"
+                                }
+                              ],
+                              "body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}",
+                              "cookie": [],
+                              "_postman_previewlanguage": "json"
+                            }
+                          ],
+                          "event": [],
+                          "protocolProfileBehavior": {
+                            "disableBodyPruning": true
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "name": "supply",
+                      "description": "",
+                      "item": [
+                        {
+                          "id": "7f7e0d5c-d3a8-4d25-8131-07b050ca7390",
+                          "name": "Summarize Supply Indicator",
+                          "request": {
+                            "name": "Summarize Supply Indicator",
+                            "description": {
+                              "content": "수급동향지표 분석요약.",
+                              "type": "text/plain"
+                            },
+                            "url": {
+                              "path": [
+                                "api",
+                                "v1",
+                                "analysis",
+                                "indicators",
+                                "supply"
+                              ],
+                              "host": [
+                                "{{baseUrl}}"
+                              ],
+                              "query": [],
+                              "variable": []
+                            },
+                            "header": [
+                              {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                              },
+                              {
+                                "key": "Accept",
+                                "value": "application/json"
+                              }
+                            ],
+                            "method": "POST",
+                            "body": {
+                              "mode": "raw",
+                              "raw": "{\n  \"mineral\": \"MNRL0018\",\n  \"mineral_name\": \"텅스텐\",\n  \"komis_response\": {\n    \"data\": [\n      {\n        \"flutRt\": \"-10.74\",\n        \"spdmStbtIndx\": \"29.50\",\n        \"flutPrc\": \"-3.55\",\n        \"crisisYn\": \"N\",\n        \"realFlutRt\": \"4.42\",\n        \"crtrYmd\": \"202607\",\n        \"realPrc\": \"418.09\",\n        \"realFlutPrc\": \"17.69\"\n      },\n      {\n        \"flutRt\": \"3.96\",\n        \"spdmStbtIndx\": \"33.05\",\n        \"flutPrc\": \"1.26\",\n        \"crisisYn\": \"N\",\n        \"realFlutRt\": \"0.38\",\n        \"crtrYmd\": \"202606\",\n        \"realPrc\": \"400.40\",\n        \"realFlutPrc\": \"1.50\"\n      },\n      {\n        \"flutRt\": \"3.96\",\n        \"spdmStbtIndx\": \"31.79\",\n        \"flutPrc\": \"1.21\",\n        \"crisisYn\": \"N\",\n        \"realFlutRt\": \"0.11\",\n        \"crtrYmd\": \"202605\",\n        \"realPrc\": \"398.90\",\n        \"realFlutPrc\": \"0.43\"\n      },\n      {\n        \"flutRt\": \"5.59\",\n        \"spdmStbtIndx\": \"30.58\",\n        \"flutPrc\": \"1.62\",\n        \"crisisYn\": \"N\",\n        \"realFlutRt\": \"-0.36\",\n        \"crtrYmd\": \"202604\",\n        \"realPrc\": \"398.47\",\n        \"realFlutPrc\": \"-1.44\"\n      },\n      {\n        \"flutRt\": \"3.13\",\n        \"spdmStbtIndx\": \"28.96\",\n        \"flutPrc\": \"0.88\",\n        \"crisisYn\": \"N\",\n        \"realFlutRt\": \"0.02\",\n        \"crtrYmd\": \"202603\",\n        \"realPrc\": \"399.91\",\n        \"realFlutPrc\": \"0.07\"\n      },\n      {\n        \"flutRt\": \"-3.80\",\n        \"spdmStbtIndx\": \"28.08\",\n        \"flutPrc\": \"-1.11\",\n        \"crisisYn\": \"N\",\n        \"realFlutRt\": \"2.52\",\n        \"crtrYmd\": \"202602\",\n        \"realPrc\": \"399.84\",\n        \"realFlutPrc\": \"9.83\"\n      },\n      {\n        \"flutRt\": \"7.67\",\n        \"spdmStbtIndx\": \"29.19\",\n        \"flutPrc\": \"2.08\",\n        \"crisisYn\": \"N\",\n        \"realFlutRt\": \"-0.77\",\n        \"crtrYmd\": \"202601\",\n        \"realPrc\": \"390.01\",\n        \"realFlutPrc\": \"-3.04\"\n      },\n      {\n        \"flutRt\": \"10.34\",\n        \"spdmStbtIndx\": \"27.11\",\n        \"flutPrc\": \"2.54\",\n        \"crisisYn\": \"N\",\n        \"realFlutRt\": \"-1.59\",\n        \"crtrYmd\": \"202512\",\n        \"realPrc\": \"393.05\",\n        \"realFlutPrc\": \"-6.37\"\n      },\n      {\n        \"flutRt\": \"5.18\",\n        \"spdmStbtIndx\": \"24.57\",\n        \"flutPrc\": \"1.21\",\n        \"crisisYn\": \"N\",\n        \"realFlutRt\": \"-0.18\",\n        \"crtrYmd\": \"202511\",\n        \"realPrc\": \"399.42\",\n        \"realFlutPrc\": \"-0.74\"\n      },\n      {\n        \"flutRt\": \"2.91\",\n        \"spdmStbtIndx\": \"23.36\",\n        \"flutPrc\": \"0.66\",\n        \"crisisYn\": \"N\",\n        \"realFlutRt\": \"0.48\",\n        \"crtrYmd\": \"202510\",\n        \"realPrc\": \"400.16\",\n        \"realFlutPrc\": \"1.90\"\n      },\n      {\n        \"flutRt\": \"1.16\",\n        \"spdmStbtIndx\": \"22.70\",\n        \"flutPrc\": \"0.26\",\n        \"crisisYn\": \"N\",\n        \"realFlutRt\": \"0.88\",\n        \"crtrYmd\": \"202509\",\n        \"realPrc\": \"398.26\",\n        \"realFlutPrc\": \"3.49\"\n      },\n      {\n        \"flutRt\": \"5.35\",\n        \"spdmStbtIndx\": \"22.44\",\n        \"flutPrc\": \"1.14\",\n        \"crisisYn\": \"N\",\n        \"realFlutRt\": \"-0.27\",\n        \"crtrYmd\": \"202508\",\n        \"realPrc\": \"394.77\",\n        \"realFlutPrc\": \"-1.07\"\n      },\n      {\n        \"flutRt\": \"7.36\",\n        \"spdmStbtIndx\": \"21.30\",\n        \"flutPrc\": \"1.46\",\n        \"crisisYn\": \"N\",\n        \"realFlutRt\": \"-0.66\",\n        \"crtrYmd\": \"202507\",\n        \"realPrc\": \"395.84\",\n        \"realFlutPrc\": \"-2.64\"\n      },\n      {\n        \"flutRt\": \"-0.75\",\n        \"spdmStbtIndx\": \"19.84\",\n        \"flutPrc\": \"-0.15\",\n        \"crisisYn\": \"N\",\n        \"realFlutRt\": \"0.98\",\n        \"crtrYmd\": \"202506\",\n        \"realPrc\": \"398.48\",\n        \"realFlutPrc\": \"3.85\"\n      },\n      {\n        \"flutRt\": \"-2.15\",\n        \"spdmStbtIndx\": \"19.99\",\n        \"flutPrc\": \"-0.44\",\n        \"crisisYn\": \"N\",\n        \"realFlutRt\": \"1.41\",\n        \"crtrYmd\": \"202505\",\n        \"realPrc\": \"394.63\",\n        \"realFlutPrc\": \"5.48\"\n      },\n      {\n        \"flutRt\": \"1.14\",\n        \"spdmStbtIndx\": \"20.43\",\n        \"flutPrc\": \"0.23\",\n        \"crisisYn\": \"N\",\n        \"realFlutRt\": \"0.48\",\n        \"crtrYmd\": \"202504\",\n        \"realPrc\": \"389.15\",\n        \"realFlutPrc\": \"1.84\"\n      },\n      {\n        \"flutRt\": \"-2.32\",\n        \"spdmStbtIndx\": \"20.20\",\n        \"flutPrc\": \"-0.48\",\n        \"crisisYn\": \"N\",\n        \"realFlutRt\": \"0.60\",\n        \"crtrYmd\": \"202503\",\n        \"realPrc\": \"387.31\",\n        \"realFlutPrc\": \"2.31\"\n      },\n      {\n        \"flutRt\": \"6.27\",\n        \"spdmStbtIndx\": \"20.68\",\n        \"flutPrc\": \"1.22\",\n        \"crisisYn\": \"N\",\n        \"realFlutRt\": \"-0.68\",\n        \"crtrYmd\": \"202502\",\n        \"realPrc\": \"385.00\",\n        \"realFlutPrc\": \"-2.64\"\n      },\n      {\n        \"flutRt\": \"77.39\",\n        \"spdmStbtIndx\": \"19.46\",\n        \"flutPrc\": \"8.49\",\n        \"crisisYn\": \"N\",\n        \"realFlutRt\": \"-7.82\",\n        \"crtrYmd\": \"202501\",\n        \"realPrc\": \"387.64\",\n        \"realFlutPrc\": \"-32.90\"\n      },\n      {\n        \"flutRt\": \"42.65\",\n        \"spdmStbtIndx\": \"10.97\",\n        \"flutPrc\": \"3.28\",\n        \"crisisYn\": \"N\",\n        \"realFlutRt\": \"-4.17\",\n        \"crtrYmd\": \"202412\",\n        \"realPrc\": \"420.54\",\n        \"realFlutPrc\": \"-18.30\"\n      },\n      {\n        \"flutRt\": \"44.01\",\n        \"spdmStbtIndx\": \"7.69\",\n        \"flutPrc\": \"2.35\",\n        \"crisisYn\": \"N\",\n        \"realFlutRt\": \"-3.60\",\n        \"crtrYmd\": \"202411\",\n        \"realPrc\": \"438.84\",\n        \"realFlutPrc\": \"-16.39\"\n      },\n      {\n        \"flutRt\": \"5.33\",\n        \"spdmStbtIndx\": \"5.34\",\n        \"flutPrc\": \"0.27\",\n        \"crisisYn\": \"N\",\n        \"realFlutRt\": \"1.74\",\n        \"crtrYmd\": \"202410\",\n        \"realPrc\": \"455.23\",\n        \"realFlutPrc\": \"7.77\"\n      },\n      {\n        \"flutRt\": \"0\",\n        \"spdmStbtIndx\": \"5.07\",\n        \"flutPrc\": \"0\",\n        \"crisisYn\": \"N\",\n        \"realFlutRt\": \"0\",\n        \"crtrYmd\": \"202409\",\n        \"realPrc\": \"447.46\",\n        \"realFlutPrc\": \"0\"\n      }\n    ]\n  },\n  \"komis_snapshot_response\": {\n    \"data\": {\n      \"subChart01\": {\n        \"xaxis\": [\n          \"2025.09\",\n          \"2025.10\",\n          \"2025.11\",\n          \"2025.12\",\n          \"2026.01\",\n          \"2026.02\",\n          \"2026.03\",\n          \"2026.04\",\n          \"2026.05\",\n          \"2026.06\",\n          \"2026.07\"\n        ],\n        \"min\": 351.009,\n        \"max\": 459.899,\n        \"series\": [\n          {\n            \"data\": [\n              398.26,\n              400.16,\n              399.42,\n              393.05,\n              390.01,\n              399.84,\n              399.91,\n              398.47,\n              398.9,\n              400.4,\n              418.09\n            ],\n            \"name\": \"실질가격\"\n          }\n        ]\n      },\n      \"subChart07\": [\n        {\n          \"prdtnRt\": \"0\",\n          \"totalBurudgQuty\": 0,\n          \"crtrYr\": \"2025\",\n          \"burudgQuty\": 0,\n          \"ntnEngNm\": \"Russia\",\n          \"ntnKornNm\": \"러시아\"\n        },\n        {\n          \"prdtnRt\": \"0\",\n          \"totalBurudgQuty\": 0,\n          \"crtrYr\": \"2025\",\n          \"burudgQuty\": 0,\n          \"ntnEngNm\": \"China\",\n          \"ntnKornNm\": \"중국\"\n        },\n        {\n          \"prdtnRt\": \"0\",\n          \"totalBurudgQuty\": 0,\n          \"crtrYr\": \"2025\",\n          \"burudgQuty\": 0,\n          \"ntnEngNm\": \"Japan\",\n          \"ntnKornNm\": \"일본\"\n        },\n        {\n          \"prdtnRt\": \"0\",\n          \"totalBurudgQuty\": 0,\n          \"crtrYr\": \"2025\",\n          \"burudgQuty\": 0,\n          \"ntnEngNm\": \"United States of America\",\n          \"ntnKornNm\": \"미국\"\n        }\n      ],\n      \"chartSpdmStbt\": {\n        \"mnrkndUnqCd\": \"MNRL0024\",\n        \"spdmStbtIndx\": \"29.50\",\n        \"crisisYn\": \"N\",\n        \"mnrkndKornNm\": \"갈륨\",\n        \"crtrYm\": \"202607\"\n      },\n      \"subChart03\": {\n        \"series\": [\n          647905,\n          645000,\n          604115,\n          454240,\n          120133\n        ],\n        \"crtrYr\": \"2025\",\n        \"labels\": [\n          \"중국\",\n          \"독일\",\n          \"미국\",\n          \"일본\",\n          \"대만\"\n        ]\n      },\n      \"subChart02\": {\n        \"yaxisTitle\": \"수입량(톤)\",\n        \"min\": 3099.6,\n        \"max\": 13657846.4,\n        \"series\": [\n          {\n            \"data\": [\n              5133,\n              4706,\n              5055,\n              27727,\n              3444\n            ],\n            \"name\": \"수입량\",\n            \"type\": \"column\"\n          },\n          {\n            \"data\": [\n              3315714,\n              4360325,\n              2738446,\n              12416224,\n              2488838\n            ],\n            \"name\": \"수입액\",\n            \"type\": \"line\"\n          }\n        ],\n        \"oppoTitle\": \"수입액(백만$)\",\n        \"labels\": [\n          \"2021\",\n          \"2022\",\n          \"2023\",\n          \"2024\",\n          \"2025\"\n        ]\n      },\n      \"subChart05\": {\n        \"xaxis\": [],\n        \"series\": [\n          {\n            \"data\": [],\n            \"name\": \"수요\",\n            \"type\": \"line\"\n          },\n          {\n            \"data\": [],\n            \"name\": \"공급\",\n            \"type\": \"column\"\n          },\n          {\n            \"data\": [],\n            \"name\": \"과부족\",\n            \"type\": \"column\"\n          }\n        ]\n      },\n      \"subChart04\": [\n        {\n          \"prdctnQuty\": 900,\n          \"prdtnRt\": \"100.00\",\n          \"totalPrdctnQuty\": 900,\n          \"crtrYr\": \"2025\",\n          \"ntnEngNm\": \"China\",\n          \"ntnKornNm\": \"중국\"\n        },\n        {\n          \"prdctnQuty\": 6,\n          \"prdtnRt\": \"0.67\",\n          \"totalPrdctnQuty\": 900,\n          \"crtrYr\": \"2025\",\n          \"ntnEngNm\": \"Russia\",\n          \"ntnKornNm\": \"러시아\"\n        },\n        {\n          \"prdctnQuty\": 3,\n          \"prdtnRt\": \"0.33\",\n          \"totalPrdctnQuty\": 900,\n          \"crtrYr\": \"2025\",\n          \"ntnEngNm\": \"Japan\",\n          \"ntnKornNm\": \"일본\"\n        }\n      ]\n    }\n  }\n}",
+                              "options": {
+                                "raw": {
+                                  "language": "json"
+                                }
+                              }
+                            },
+                            "auth": null
+                          },
+                          "response": [
+                            {
+                              "id": "2abc16f7-87d0-4a3d-8964-203334295f6d",
+                              "name": "Successful Response",
+                              "originalRequest": {
+                                "url": {
+                                  "path": [
+                                    "api",
+                                    "v1",
+                                    "analysis",
+                                    "indicators",
+                                    "supply"
+                                  ],
+                                  "host": [
+                                    "{{baseUrl}}"
+                                  ],
+                                  "query": [],
+                                  "variable": []
+                                },
+                                "header": [
+                                  {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                  },
+                                  {
+                                    "key": "Accept",
+                                    "value": "application/json"
+                                  }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                  "mode": "raw",
+                                  "raw": "{\n  \"mineral\": \"<string>\",\n  \"mineral_name\": \"<string>\",\n  \"start_month\": \"0034-12\",\n  \"end_month\": \"8914-08\",\n  \"observations\": [\n    {\n      \"key_0\": \"string\",\n      \"key_1\": false,\n      \"key_2\": \"string\"\n    },\n    {\n      \"key_0\": 1796\n    }\n  ],\n  \"komis_response\": {\n    \"key_0\": 5726.07516408708,\n    \"key_1\": 1245.1477606808326,\n    \"key_2\": 7465\n  },\n  \"price_unit\": \"<string>\",\n  \"price_criterion\": \"<string>\",\n  \"unavailable_page_data\": [\n    \"<string>\",\n    \"<string>\"\n  ],\n  \"komis_snapshot_response\": {\n    \"key_0\": true,\n    \"key_1\": 6059.4466945469285\n  },\n  \"supply_auxiliary\": {\n    \"key_0\": \"string\"\n  }\n}",
+                                  "options": {
+                                    "raw": {
+                                      "headerFamily": "json",
+                                      "language": "json"
+                                    }
+                                  }
+                                }
+                              },
+                              "status": "OK",
+                              "code": 200,
+                              "header": [
+                                {
+                                  "key": "Content-Type",
+                                  "value": "application/json"
+                                }
+                              ],
+                              "body": "{\n  \"status\": \"ok\",\n  \"report\": \"<string>\"\n}",
+                              "cookie": [],
+                              "_postman_previewlanguage": "json"
+                            },
+                            {
+                              "id": "2335aee8-8161-48c6-9de5-9456005cadcc",
+                              "name": "Validation Error",
+                              "originalRequest": {
+                                "url": {
+                                  "path": [
+                                    "api",
+                                    "v1",
+                                    "analysis",
+                                    "indicators",
+                                    "supply"
+                                  ],
+                                  "host": [
+                                    "{{baseUrl}}"
+                                  ],
+                                  "query": [],
+                                  "variable": []
+                                },
+                                "header": [
+                                  {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                  },
+                                  {
+                                    "key": "Accept",
+                                    "value": "application/json"
+                                  }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                  "mode": "raw",
+                                  "raw": "{\n  \"mineral\": \"<string>\",\n  \"mineral_name\": \"<string>\",\n  \"start_month\": \"0034-12\",\n  \"end_month\": \"8914-08\",\n  \"observations\": [\n    {\n      \"key_0\": \"string\",\n      \"key_1\": false,\n      \"key_2\": \"string\"\n    },\n    {\n      \"key_0\": 1796\n    }\n  ],\n  \"komis_response\": {\n    \"key_0\": 5726.07516408708,\n    \"key_1\": 1245.1477606808326,\n    \"key_2\": 7465\n  },\n  \"price_unit\": \"<string>\",\n  \"price_criterion\": \"<string>\",\n  \"unavailable_page_data\": [\n    \"<string>\",\n    \"<string>\"\n  ],\n  \"komis_snapshot_response\": {\n    \"key_0\": true,\n    \"key_1\": 6059.4466945469285\n  },\n  \"supply_auxiliary\": {\n    \"key_0\": \"string\"\n  }\n}",
+                                  "options": {
+                                    "raw": {
+                                      "headerFamily": "json",
+                                      "language": "json"
+                                    }
+                                  }
+                                }
+                              },
+                              "status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+                              "code": 422,
+                              "header": [
+                                {
+                                  "key": "Content-Type",
+                                  "value": "application/json"
+                                }
+                              ],
+                              "body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}",
+                              "cookie": [],
+                              "_postman_previewlanguage": "json"
+                            }
+                          ],
+                          "event": [],
+                          "protocolProfileBehavior": {
+                            "disableBodyPruning": true
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "name": "composite-index",
+                      "description": "",
+                      "item": [
+                        {
+                          "id": "b3fa1a36-ed5c-4741-be23-dd4a949163ff",
+                          "name": "Summarize Composite Index",
+                          "request": {
+                            "name": "Summarize Composite Index",
+                            "description": {
+                              "content": "광물종합지수 분석요약.",
+                              "type": "text/plain"
+                            },
+                            "url": {
+                              "path": [
+                                "api",
+                                "v1",
+                                "analysis",
+                                "indicators",
+                                "composite-index"
+                              ],
+                              "host": [
+                                "{{baseUrl}}"
+                              ],
+                              "query": [],
+                              "variable": []
+                            },
+                            "header": [
+                              {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                              },
+                              {
+                                "key": "Accept",
+                                "value": "application/json"
+                              }
+                            ],
+                            "method": "POST",
+                            "body": {
+                              "mode": "raw",
+                              "raw": "{\n  \"komis_response\": {\n    \"data\": {\n      \"tableData\": [\n        {\n          \"prvdyFlutRt\": \"-1.03\",\n          \"prvdyCprs\": -31.03,\n          \"indx\": 2969.95,\n          \"SORT\": 2,\n          \"crtrYmd\": \"2026.08.14\",\n          \"indxTp\": \"MAJOR\"\n        },\n        {\n          \"prvdyFlutRt\": \"-0.72\",\n          \"prvdyCprs\": -24.93,\n          \"indx\": 3454.93,\n          \"SORT\": 1,\n          \"crtrYmd\": \"2026.08.14\",\n          \"indxTp\": \"MNRL\"\n        },\n        {\n          \"prvdyFlutRt\": \"0.00\",\n          \"prvdyCprs\": 0,\n          \"indx\": 2905.63,\n          \"SORT\": 3,\n          \"crtrYmd\": \"2026.08.14\",\n          \"indxTp\": \"RARE\"\n        },\n        {\n          \"prvdyFlutRt\": \"0.40\",\n          \"prvdyCprs\": 11.82,\n          \"indx\": 2981.77,\n          \"SORT\": 2,\n          \"crtrYmd\": \"2026.08.17\",\n          \"indxTp\": \"MAJOR\"\n        },\n        {\n          \"prvdyFlutRt\": \"0.43\",\n          \"prvdyCprs\": 14.69,\n          \"indx\": 3469.62,\n          \"SORT\": 1,\n          \"crtrYmd\": \"2026.08.17\",\n          \"indxTp\": \"MNRL\"\n        },\n        {\n          \"prvdyFlutRt\": \"0.02\",\n          \"prvdyCprs\": 0.71,\n          \"indx\": 2906.34,\n          \"SORT\": 3,\n          \"crtrYmd\": \"2026.08.17\",\n          \"indxTp\": \"RARE\"\n        },\n        {\n          \"prvdyFlutRt\": \"0.72\",\n          \"prvdyCprs\": 21.54,\n          \"indx\": 3003.3,\n          \"SORT\": 2,\n          \"crtrYmd\": \"2026.08.18\",\n          \"indxTp\": \"MAJOR\"\n        },\n        {\n          \"prvdyFlutRt\": \"0.58\",\n          \"prvdyCprs\": 19.98,\n          \"indx\": 3489.6,\n          \"SORT\": 1,\n          \"crtrYmd\": \"2026.08.18\",\n          \"indxTp\": \"MNRL\"\n        },\n        {\n          \"prvdyFlutRt\": \"0.00\",\n          \"prvdyCprs\": 0,\n          \"indx\": 2906.34,\n          \"SORT\": 3,\n          \"crtrYmd\": \"2026.08.18\",\n          \"indxTp\": \"RARE\"\n        },\n        {\n          \"prvdyFlutRt\": \"-1.60\",\n          \"prvdyCprs\": -48.2,\n          \"indx\": 2955.1,\n          \"SORT\": 2,\n          \"crtrYmd\": \"2026.08.19\",\n          \"indxTp\": \"MAJOR\"\n        },\n        {\n          \"prvdyFlutRt\": \"-0.89\",\n          \"prvdyCprs\": -31.21,\n          \"indx\": 3458.39,\n          \"SORT\": 1,\n          \"crtrYmd\": \"2026.08.19\",\n          \"indxTp\": \"MNRL\"\n        },\n        {\n          \"prvdyFlutRt\": \"0.00\",\n          \"prvdyCprs\": 0,\n          \"indx\": 2906.34,\n          \"SORT\": 3,\n          \"crtrYmd\": \"2026.08.19\",\n          \"indxTp\": \"RARE\"\n        },\n        {\n          \"prvdyFlutRt\": \"-0.44\",\n          \"prvdyCprs\": -13.02,\n          \"indx\": 2942.08,\n          \"SORT\": 2,\n          \"crtrYmd\": \"2026.08.20\",\n          \"indxTp\": \"MAJOR\"\n        },\n        {\n          \"prvdyFlutRt\": \"1.10\",\n          \"prvdyCprs\": 38.17,\n          \"indx\": 3496.56,\n          \"SORT\": 1,\n          \"crtrYmd\": \"2026.08.20\",\n          \"indxTp\": \"MNRL\"\n        },\n        {\n          \"prvdyFlutRt\": \"0.00\",\n          \"prvdyCprs\": 0,\n          \"indx\": 2906.34,\n          \"SORT\": 3,\n          \"crtrYmd\": \"2026.08.20\",\n          \"indxTp\": \"RARE\"\n        },\n        {\n          \"prvdyFlutRt\": \"-0.13\",\n          \"prvdyCprs\": -3.74,\n          \"indx\": 2938.34,\n          \"SORT\": 2,\n          \"crtrYmd\": \"2026.08.21\",\n          \"indxTp\": \"MAJOR\"\n        },\n        {\n          \"prvdyFlutRt\": \"0.20\",\n          \"prvdyCprs\": 7.04,\n          \"indx\": 3503.6,\n          \"SORT\": 1,\n          \"crtrYmd\": \"2026.08.21\",\n          \"indxTp\": \"MNRL\"\n        },\n        {\n          \"prvdyFlutRt\": \"0.00\",\n          \"prvdyCprs\": 0,\n          \"indx\": 2906.34,\n          \"SORT\": 3,\n          \"crtrYmd\": \"2026.08.21\",\n          \"indxTp\": \"RARE\"\n        },\n        {\n          \"prvdyFlutRt\": \"1.01\",\n          \"prvdyCprs\": 29.72,\n          \"indx\": 2968.06,\n          \"SORT\": 2,\n          \"crtrYmd\": \"2026.08.24\",\n          \"indxTp\": \"MAJOR\"\n        },\n        {\n          \"prvdyFlutRt\": \"1.02\",\n          \"prvdyCprs\": 35.86,\n          \"indx\": 3539.45,\n          \"SORT\": 1,\n          \"crtrYmd\": \"2026.08.24\",\n          \"indxTp\": \"MNRL\"\n        },\n        {\n          \"prvdyFlutRt\": \"0.19\",\n          \"prvdyCprs\": 5.46,\n          \"indx\": 2911.8,\n          \"SORT\": 3,\n          \"crtrYmd\": \"2026.08.24\",\n          \"indxTp\": \"RARE\"\n        },\n        {\n          \"prvdyFlutRt\": \"0.33\",\n          \"prvdyCprs\": 9.76,\n          \"indx\": 2977.82,\n          \"SORT\": 2,\n          \"crtrYmd\": \"2026.08.25\",\n          \"indxTp\": \"MAJOR\"\n        },\n        {\n          \"prvdyFlutRt\": \"0.50\",\n          \"prvdyCprs\": 17.67,\n          \"indx\": 3557.13,\n          \"SORT\": 1,\n          \"crtrYmd\": \"2026.08.25\",\n          \"indxTp\": \"MNRL\"\n        },\n        {\n          \"prvdyFlutRt\": \"0.00\",\n          \"prvdyCprs\": 0,\n          \"indx\": 2911.8,\n          \"SORT\": 3,\n          \"crtrYmd\": \"2026.08.25\",\n          \"indxTp\": \"RARE\"\n        },\n        {\n          \"prvdyFlutRt\": \"-0.11\",\n          \"prvdyCprs\": -3.31,\n          \"indx\": 2974.51,\n          \"SORT\": 2,\n          \"crtrYmd\": \"2026.08.26\",\n          \"indxTp\": \"MAJOR\"\n        },\n        {\n          \"prvdyFlutRt\": \"-0.30\",\n          \"prvdyCprs\": -10.76,\n          \"indx\": 3546.37,\n          \"SORT\": 1,\n          \"crtrYmd\": \"2026.08.26\",\n          \"indxTp\": \"MNRL\"\n        },\n        {\n          \"prvdyFlutRt\": \"0.00\",\n          \"prvdyCprs\": 0,\n          \"indx\": 2911.8,\n          \"SORT\": 3,\n          \"crtrYmd\": \"2026.08.26\",\n          \"indxTp\": \"RARE\"\n        },\n        {\n          \"prvdyFlutRt\": \"0.84\",\n          \"prvdyCprs\": 25.03,\n          \"indx\": 2999.54,\n          \"SORT\": 2,\n          \"crtrYmd\": \"2026.08.27\",\n          \"indxTp\": \"MAJOR\"\n        },\n        {\n          \"prvdyFlutRt\": \"0.35\",\n          \"prvdyCprs\": 12.44,\n          \"indx\": 3558.81,\n          \"SORT\": 1,\n          \"crtrYmd\": \"2026.08.27\",\n          \"indxTp\": \"MNRL\"\n        },\n        {\n          \"prvdyFlutRt\": \"0.00\",\n          \"prvdyCprs\": 0,\n          \"indx\": 2911.8,\n          \"SORT\": 3,\n          \"crtrYmd\": \"2026.08.27\",\n          \"indxTp\": \"RARE\"\n        }\n      ]\n    }\n  }\n}",
+                              "options": {
+                                "raw": {
+                                  "language": "json"
+                                }
+                              }
+                            },
+                            "auth": null
+                          },
+                          "response": [
+                            {
+                              "id": "fa5789f8-b6a8-4b0e-8b75-b00a86a93139",
+                              "name": "Successful Response",
+                              "originalRequest": {
+                                "url": {
+                                  "path": [
+                                    "api",
+                                    "v1",
+                                    "analysis",
+                                    "indicators",
+                                    "composite-index"
+                                  ],
+                                  "host": [
+                                    "{{baseUrl}}"
+                                  ],
+                                  "query": [],
+                                  "variable": []
+                                },
+                                "header": [
+                                  {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                  },
+                                  {
+                                    "key": "Accept",
+                                    "value": "application/json"
+                                  }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                  "mode": "raw",
+                                  "raw": "{\n  \"komis_response\": {\n    \"key_0\": false\n  }\n}",
+                                  "options": {
+                                    "raw": {
+                                      "headerFamily": "json",
+                                      "language": "json"
+                                    }
+                                  }
+                                }
+                              },
+                              "status": "OK",
+                              "code": 200,
+                              "header": [
+                                {
+                                  "key": "Content-Type",
+                                  "value": "application/json"
+                                }
+                              ],
+                              "body": "{\n  \"status\": \"ok\",\n  \"report\": \"<string>\"\n}",
+                              "cookie": [],
+                              "_postman_previewlanguage": "json"
+                            },
+                            {
+                              "id": "f5c81d5a-8e7b-468e-8776-43f74899fa3b",
+                              "name": "Validation Error",
+                              "originalRequest": {
+                                "url": {
+                                  "path": [
+                                    "api",
+                                    "v1",
+                                    "analysis",
+                                    "indicators",
+                                    "composite-index"
+                                  ],
+                                  "host": [
+                                    "{{baseUrl}}"
+                                  ],
+                                  "query": [],
+                                  "variable": []
+                                },
+                                "header": [
+                                  {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                  },
+                                  {
+                                    "key": "Accept",
+                                    "value": "application/json"
+                                  }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                  "mode": "raw",
+                                  "raw": "{\n  \"komis_response\": {\n    \"key_0\": false\n  }\n}",
+                                  "options": {
+                                    "raw": {
+                                      "headerFamily": "json",
+                                      "language": "json"
+                                    }
+                                  }
+                                }
+                              },
+                              "status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+                              "code": 422,
+                              "header": [
+                                {
+                                  "key": "Content-Type",
+                                  "value": "application/json"
+                                }
+                              ],
+                              "body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}",
+                              "cookie": [],
+                              "_postman_previewlanguage": "json"
+                            }
+                          ],
+                          "event": [],
+                          "protocolProfileBehavior": {
+                            "disableBodyPruning": true
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "name": "price-forecast",
+                      "description": "",
+                      "item": [
+                        {
+                          "id": "f15f561d-55c0-40f5-a21f-ee6df128d230",
+                          "name": "Summarize Price Forecast",
+                          "request": {
+                            "name": "Summarize Price Forecast",
+                            "description": {
+                              "content": "중기 분기 또는 장기 연간 가격예측 분석요약.",
+                              "type": "text/plain"
+                            },
+                            "url": {
+                              "path": [
+                                "api",
+                                "v1",
+                                "analysis",
+                                "indicators",
+                                "price-forecast"
+                              ],
+                              "host": [
+                                "{{baseUrl}}"
+                              ],
+                              "query": [],
+                              "variable": []
+                            },
+                            "header": [
+                              {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                              },
+                              {
+                                "key": "Accept",
+                                "value": "application/json"
+                              }
+                            ],
+                            "method": "POST",
+                            "body": {
+                              "mode": "raw",
+                              "raw": "{\n  \"mineral\": \"MNRL0018\",\n  \"mineral_name\": \"텅스텐\",\n  \"komis_response\": {\n    \"data\": [\n      {\n        \"prc\": \"20563.75\",\n        \"flutRt\": \"4.32\",\n        \"flutPrc\": \"850.67\",\n        \"realYn\": \"N\",\n        \"realPrc\": \"20563.75\",\n        \"mnrkndKornNm\": \"니켈\",\n        \"crtrPrd\": \"26년 4Q\"\n      },\n      {\n        \"prc\": \"19713.08\",\n        \"flutRt\": \"6.80\",\n        \"flutPrc\": \"1,254.56\",\n        \"realYn\": \"N\",\n        \"realPrc\": \"19713.08\",\n        \"mnrkndKornNm\": \"니켈\",\n        \"crtrPrd\": \"26년 3Q\"\n      },\n      {\n        \"prc\": \"18458.52\",\n        \"flutRt\": \"6.35\",\n        \"flutPrc\": \"1,102.49\",\n        \"realYn\": \"Y\",\n        \"realPrc\": \"18458.52\",\n        \"mnrkndKornNm\": \"니켈\",\n        \"crtrPrd\": \"26년 2Q\"\n      },\n      {\n        \"prc\": \"17356.03\",\n        \"flutRt\": \"16.55\",\n        \"flutPrc\": \"2,464.23\",\n        \"realYn\": \"Y\",\n        \"realPrc\": \"17356.03\",\n        \"mnrkndKornNm\": \"니켈\",\n        \"crtrPrd\": \"26년 1Q\"\n      },\n      {\n        \"prc\": \"14891.80\",\n        \"flutRt\": \"-0.82\",\n        \"flutPrc\": \"-122.97\",\n        \"realYn\": \"Y\",\n        \"realPrc\": \"14891.80\",\n        \"mnrkndKornNm\": \"니켈\",\n        \"crtrPrd\": \"25년 4Q\"\n      },\n      {\n        \"prc\": \"15014.77\",\n        \"flutRt\": \"-1.03\",\n        \"flutPrc\": \"-156.71\",\n        \"realYn\": \"Y\",\n        \"realPrc\": \"15014.77\",\n        \"mnrkndKornNm\": \"니켈\",\n        \"crtrPrd\": \"25년 3Q\"\n      }\n    ]\n  }\n}",
+                              "options": {
+                                "raw": {
+                                  "language": "json"
+                                }
+                              }
+                            },
+                            "auth": null
+                          },
+                          "response": [
+                            {
+                              "id": "c191e240-77d8-4524-adc8-61241f9e3a65",
+                              "name": "Successful Response",
+                              "originalRequest": {
+                                "url": {
+                                  "path": [
+                                    "api",
+                                    "v1",
+                                    "analysis",
+                                    "indicators",
+                                    "price-forecast"
+                                  ],
+                                  "host": [
+                                    "{{baseUrl}}"
+                                  ],
+                                  "query": [],
+                                  "variable": []
+                                },
+                                "header": [
+                                  {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                  },
+                                  {
+                                    "key": "Accept",
+                                    "value": "application/json"
+                                  }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                  "mode": "raw",
+                                  "raw": "{\n  \"mineral\": \"<string>\",\n  \"mineral_name\": \"<string>\",\n  \"forecast_horizon\": \"long\",\n  \"price_unit\": \"<string>\",\n  \"komis_response\": {\n    \"key_0\": 8203.559135902804,\n    \"key_1\": 6669.977057474256\n  }\n}",
+                                  "options": {
+                                    "raw": {
+                                      "headerFamily": "json",
+                                      "language": "json"
+                                    }
+                                  }
+                                }
+                              },
+                              "status": "OK",
+                              "code": 200,
+                              "header": [
+                                {
+                                  "key": "Content-Type",
+                                  "value": "application/json"
+                                }
+                              ],
+                              "body": "{\n  \"status\": \"ok\",\n  \"report\": \"<string>\"\n}",
+                              "cookie": [],
+                              "_postman_previewlanguage": "json"
+                            },
+                            {
+                              "id": "00c3ad82-8fe4-4cf1-85ac-e4b152829a5b",
+                              "name": "Validation Error",
+                              "originalRequest": {
+                                "url": {
+                                  "path": [
+                                    "api",
+                                    "v1",
+                                    "analysis",
+                                    "indicators",
+                                    "price-forecast"
+                                  ],
+                                  "host": [
+                                    "{{baseUrl}}"
+                                  ],
+                                  "query": [],
+                                  "variable": []
+                                },
+                                "header": [
+                                  {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                  },
+                                  {
+                                    "key": "Accept",
+                                    "value": "application/json"
+                                  }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                  "mode": "raw",
+                                  "raw": "{\n  \"mineral\": \"<string>\",\n  \"mineral_name\": \"<string>\",\n  \"forecast_horizon\": \"long\",\n  \"price_unit\": \"<string>\",\n  \"komis_response\": {\n    \"key_0\": 8203.559135902804,\n    \"key_1\": 6669.977057474256\n  }\n}",
+                                  "options": {
+                                    "raw": {
+                                      "headerFamily": "json",
+                                      "language": "json"
+                                    }
+                                  }
+                                }
+                              },
+                              "status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+                              "code": 422,
+                              "header": [
+                                {
+                                  "key": "Content-Type",
+                                  "value": "application/json"
+                                }
+                              ],
+                              "body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}",
+                              "cookie": [],
+                              "_postman_previewlanguage": "json"
+                            }
+                          ],
+                          "event": [],
+                          "protocolProfileBehavior": {
+                            "disableBodyPruning": true
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "maps",
+                  "description": "",
+                  "item": [
+                    {
+                      "name": "mineral",
+                      "description": "",
+                      "item": [
+                        {
+                          "id": "18237dd3-ff37-44fa-8eab-dc2caf0328e7",
+                          "name": "Summarize Mineral Map",
+                          "request": {
+                            "name": "Summarize Mineral Map",
+                            "description": {
+                              "content": "광물지도(매장량 또는 생산량) 분석요약.",
+                              "type": "text/plain"
+                            },
+                            "url": {
+                              "path": [
+                                "api",
+                                "v1",
+                                "analysis",
+                                "maps",
+                                "mineral"
+                              ],
+                              "host": [
+                                "{{baseUrl}}"
+                              ],
+                              "query": [],
+                              "variable": []
+                            },
+                            "header": [
+                              {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                              },
+                              {
+                                "key": "Accept",
+                                "value": "application/json"
+                              }
+                            ],
+                            "method": "POST",
+                            "body": {
+                              "mode": "raw",
+                              "raw": "{\n  \"mineral\": \"MNRL0018\",\n  \"mineral_name\": \"텅스텐\",\n  \"measure\": \"reserves\",\n  \"unit\": \"천톤\",\n  \"komis_response\": {\n    \"data\": [\n      {\n        \"cdVal\": \"k ton\",\n        \"prdctnQuty\": 5510000,\n        \"crtrYr\": \"2024\",\n        \"totalBurudgQuty\": 3738700000,\n        \"massUnitCd\": \"WT003\",\n        \"burudgQuty\": 190000000,\n        \"ntnEngNm\": \"Chile\",\n        \"ntnKornNm\": \"칠레\",\n        \"ntnEngCd\": \"CL\"\n      },\n      {\n        \"cdVal\": \"k ton\",\n        \"prdctnQuty\": 765000,\n        \"crtrYr\": \"2024\",\n        \"totalBurudgQuty\": 3738700000,\n        \"massUnitCd\": \"WT003\",\n        \"burudgQuty\": 100000000,\n        \"ntnEngNm\": \"Australia\",\n        \"ntnKornNm\": \"호주\",\n        \"ntnEngCd\": \"AU\"\n      },\n      {\n        \"cdVal\": \"k ton\",\n        \"prdctnQuty\": 2740000,\n        \"crtrYr\": \"2024\",\n        \"totalBurudgQuty\": 3738700000,\n        \"massUnitCd\": \"WT003\",\n        \"burudgQuty\": 100000000,\n        \"ntnEngNm\": \"Peru\",\n        \"ntnKornNm\": \"페루\",\n        \"ntnEngCd\": \"PE\"\n      },\n      {\n        \"cdVal\": \"k ton\",\n        \"prdctnQuty\": 2990000,\n        \"crtrYr\": \"2024\",\n        \"totalBurudgQuty\": 3738700000,\n        \"massUnitCd\": \"WT003\",\n        \"burudgQuty\": 80000000,\n        \"ntnEngNm\": \"Democratic Republic of Congo\",\n        \"ntnKornNm\": \"콩고민주공화국\",\n        \"ntnEngCd\": \"CD\"\n      },\n      {\n        \"cdVal\": \"k ton\",\n        \"prdctnQuty\": 1020000,\n        \"crtrYr\": \"2024\",\n        \"totalBurudgQuty\": 3738700000,\n        \"massUnitCd\": \"WT003\",\n        \"burudgQuty\": 80000000,\n        \"ntnEngNm\": \"Russia\",\n        \"ntnKornNm\": \"러시아\",\n        \"ntnEngCd\": \"RU\"\n      },\n      {\n        \"cdVal\": \"k ton\",\n        \"prdctnQuty\": 5300000,\n        \"crtrYr\": \"2025\",\n        \"totalBurudgQuty\": 3738700000,\n        \"massUnitCd\": \"WT003\",\n        \"burudgQuty\": 180000000,\n        \"ntnEngNm\": \"Chile\",\n        \"ntnKornNm\": \"칠레\",\n        \"ntnEngCd\": \"CL\"\n      },\n      {\n        \"cdVal\": \"k ton\",\n        \"prdctnQuty\": 730000,\n        \"crtrYr\": \"2025\",\n        \"totalBurudgQuty\": 3738700000,\n        \"massUnitCd\": \"WT003\",\n        \"burudgQuty\": 100000000,\n        \"ntnEngNm\": \"Australia\",\n        \"ntnKornNm\": \"호주\",\n        \"ntnEngCd\": \"AU\"\n      },\n      {\n        \"cdVal\": \"k ton\",\n        \"prdctnQuty\": 2700000,\n        \"crtrYr\": \"2025\",\n        \"totalBurudgQuty\": 3738700000,\n        \"massUnitCd\": \"WT003\",\n        \"burudgQuty\": 85000000,\n        \"ntnEngNm\": \"Peru\",\n        \"ntnKornNm\": \"페루\",\n        \"ntnEngCd\": \"PE\"\n      },\n      {\n        \"cdVal\": \"k ton\",\n        \"prdctnQuty\": 3200000,\n        \"crtrYr\": \"2025\",\n        \"totalBurudgQuty\": 3738700000,\n        \"massUnitCd\": \"WT003\",\n        \"burudgQuty\": 80000000,\n        \"ntnEngNm\": \"Democratic Republic of Congo\",\n        \"ntnKornNm\": \"콩고민주공화국\",\n        \"ntnEngCd\": \"CD\"\n      },\n      {\n        \"cdVal\": \"k ton\",\n        \"prdctnQuty\": 1300000,\n        \"crtrYr\": \"2025\",\n        \"totalBurudgQuty\": 3738700000,\n        \"massUnitCd\": \"WT003\",\n        \"burudgQuty\": 80000000,\n        \"ntnEngNm\": \"Russia\",\n        \"ntnKornNm\": \"러시아\",\n        \"ntnEngCd\": \"RU\"\n      }\n    ]\n  },\n  \"komis_snapshot_response\": {\n    \"data\": [\n      {\n        \"cdVal\": \"k ton\",\n        \"prdctnQuty\": 730000,\n        \"totalBurudgQuty\": 770200000,\n        \"totalPrdctnQuty\": 20013000,\n        \"massUnitCd\": \"WT003\",\n        \"burudgQuty\": 100000000,\n        \"ntnEngNm\": \"Australia\",\n        \"ntnKornNm\": \"호주\",\n        \"ntnEngCd\": \"AU\"\n      },\n      {\n        \"cdVal\": \"k ton\",\n        \"prdctnQuty\": 500000,\n        \"totalBurudgQuty\": 770200000,\n        \"totalPrdctnQuty\": 20013000,\n        \"massUnitCd\": \"WT003\",\n        \"burudgQuty\": 7000000,\n        \"ntnEngNm\": \"Canada\",\n        \"ntnKornNm\": \"캐나다\",\n        \"ntnEngCd\": \"CA\"\n      },\n      {\n        \"cdVal\": \"k ton\",\n        \"prdctnQuty\": 200000,\n        \"totalBurudgQuty\": 770200000,\n        \"totalPrdctnQuty\": 20013000,\n        \"massUnitCd\": \"WT003\",\n        \"burudgQuty\": 35000000,\n        \"ntnEngNm\": \"Chile\",\n        \"ntnKornNm\": \"칠레\",\n        \"ntnEngCd\": \"CL\"\n      }\n    ]\n  },\n  \"komis_share_response\": {\n    \"data\": [\n      {\n        \"ntnKornNm\": \"칠레\",\n        \"ntnEngCd\": \"CL\",\n        \"before5\": \"200,000,000\",\n        \"before4\": \"190,000,000\",\n        \"before3\": \"190,000,000\",\n        \"before2\": \"190,000,000\",\n        \"before1\": \"180,000,000\",\n        \"rate\": \"18.37\"\n      },\n      {\n        \"ntnKornNm\": \"호주\",\n        \"ntnEngCd\": \"AU\",\n        \"before5\": \"93,000,000\",\n        \"before4\": \"97,000,000\",\n        \"before3\": \"100,000,000\",\n        \"before2\": \"100,000,000\",\n        \"before1\": \"100,000,000\",\n        \"rate\": \"10.20\"\n      },\n      {\n        \"ntnKornNm\": \"_TOTAL_\",\n        \"ntnEngCd\": \"SU\",\n        \"before5\": \"980,000,000\",\n        \"before4\": \"990,000,000\",\n        \"before3\": \"1,000,000,000\",\n        \"before2\": \"1,000,000,000\",\n        \"before1\": \"980,000,000\",\n        \"rate\": \"100.00\"\n      }\n    ]\n  }\n}",
+                              "options": {
+                                "raw": {
+                                  "language": "json"
+                                }
+                              }
+                            },
+                            "auth": null
+                          },
+                          "response": [
+                            {
+                              "id": "bbc3b2ce-0f0b-4bc5-b0e0-352ac292891b",
+                              "name": "Successful Response",
+                              "originalRequest": {
+                                "url": {
+                                  "path": [
+                                    "api",
+                                    "v1",
+                                    "analysis",
+                                    "maps",
+                                    "mineral"
+                                  ],
+                                  "host": [
+                                    "{{baseUrl}}"
+                                  ],
+                                  "query": [],
+                                  "variable": []
+                                },
+                                "header": [
+                                  {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                  },
+                                  {
+                                    "key": "Accept",
+                                    "value": "application/json"
+                                  }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                  "mode": "raw",
+                                  "raw": "{\n  \"mineral\": \"<string>\",\n  \"measure\": \"reserves\",\n  \"mineral_name\": \"<string>\",\n  \"unit\": \"<string>\",\n  \"komis_response\": {\n    \"key_0\": 2051.1702038061276,\n    \"key_1\": 6337.282504495304\n  },\n  \"komis_snapshot_response\": {\n    \"key_0\": 1248\n  },\n  \"komis_share_response\": {\n    \"key_0\": \"string\"\n  }\n}",
+                                  "options": {
+                                    "raw": {
+                                      "headerFamily": "json",
+                                      "language": "json"
+                                    }
+                                  }
+                                }
+                              },
+                              "status": "OK",
+                              "code": 200,
+                              "header": [
+                                {
+                                  "key": "Content-Type",
+                                  "value": "application/json"
+                                }
+                              ],
+                              "body": "{\n  \"status\": \"ok\",\n  \"report\": \"<string>\"\n}",
+                              "cookie": [],
+                              "_postman_previewlanguage": "json"
+                            },
+                            {
+                              "id": "0bf65ffb-d6a7-418f-a441-1e5b4fd9c59b",
+                              "name": "Validation Error",
+                              "originalRequest": {
+                                "url": {
+                                  "path": [
+                                    "api",
+                                    "v1",
+                                    "analysis",
+                                    "maps",
+                                    "mineral"
+                                  ],
+                                  "host": [
+                                    "{{baseUrl}}"
+                                  ],
+                                  "query": [],
+                                  "variable": []
+                                },
+                                "header": [
+                                  {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                  },
+                                  {
+                                    "key": "Accept",
+                                    "value": "application/json"
+                                  }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                  "mode": "raw",
+                                  "raw": "{\n  \"mineral\": \"<string>\",\n  \"measure\": \"reserves\",\n  \"mineral_name\": \"<string>\",\n  \"unit\": \"<string>\",\n  \"komis_response\": {\n    \"key_0\": 2051.1702038061276,\n    \"key_1\": 6337.282504495304\n  },\n  \"komis_snapshot_response\": {\n    \"key_0\": 1248\n  },\n  \"komis_share_response\": {\n    \"key_0\": \"string\"\n  }\n}",
+                                  "options": {
+                                    "raw": {
+                                      "headerFamily": "json",
+                                      "language": "json"
+                                    }
+                                  }
+                                }
+                              },
+                              "status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+                              "code": 422,
+                              "header": [
+                                {
+                                  "key": "Content-Type",
+                                  "value": "application/json"
+                                }
+                              ],
+                              "body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}",
+                              "cookie": [],
+                              "_postman_previewlanguage": "json"
+                            }
+                          ],
+                          "event": [],
+                          "protocolProfileBehavior": {
+                            "disableBodyPruning": true
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "name": "domestic-trade",
+                      "description": "",
+                      "item": [
+                        {
+                          "id": "c0c70cce-9021-40db-b2b5-cb2a890525b1",
+                          "name": "Summarize Domestic Trade",
+                          "request": {
+                            "name": "Summarize Domestic Trade",
+                            "description": {
+                              "content": "국내 수급지도 분석요약(KO_CSTM_CMMRC, 관세청).",
+                              "type": "text/plain"
+                            },
+                            "url": {
+                              "path": [
+                                "api",
+                                "v1",
+                                "analysis",
+                                "maps",
+                                "domestic-trade"
+                              ],
+                              "host": [
+                                "{{baseUrl}}"
+                              ],
+                              "query": [],
+                              "variable": []
+                            },
+                            "header": [
+                              {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                              },
+                              {
+                                "key": "Accept",
+                                "value": "application/json"
+                              }
+                            ],
+                            "method": "POST",
+                            "body": {
+                              "mode": "raw",
+                              "raw": "{\n  \"mineral\": \"MNRL0018\",\n  \"mineral_name\": \"텅스텐\",\n  \"trade_direction\": \"import\",\n  \"komis_response\": {\n    \"srchMnrkndUnqCd\": \"MNRL0024\",\n    \"srchDateS\": \"20260101\",\n    \"srchDateE\": \"20261231\",\n    \"list\": [\n      {\n        \"incmAmt\": 2429691,\n        \"RNUM\": 1,\n        \"expAmt\": 668454,\n        \"sumExpWeig\": 2504,\n        \"expWeig\": 359,\n        \"sumIncmAmt\": 6350539,\n        \"incmWeig\": 1255,\n        \"sumIncmWeig\": 3690,\n        \"ntnCd\": \"TW\",\n        \"ntnKornNm\": \"대만\",\n        \"sumExpAmt\": 4246583\n      },\n      {\n        \"incmAmt\": 2106864,\n        \"RNUM\": 2,\n        \"expAmt\": 512149,\n        \"sumExpWeig\": 2504,\n        \"expWeig\": 270,\n        \"sumIncmAmt\": 6350539,\n        \"incmWeig\": 949,\n        \"sumIncmWeig\": 3690,\n        \"ntnCd\": \"DE\",\n        \"ntnKornNm\": \"독일\",\n        \"sumExpAmt\": 4246583\n      },\n      {\n        \"incmAmt\": 775645,\n        \"RNUM\": 3,\n        \"expAmt\": 1695825,\n        \"sumExpWeig\": 2504,\n        \"expWeig\": 965,\n        \"sumIncmAmt\": 6350539,\n        \"incmWeig\": 287,\n        \"sumIncmWeig\": 3690,\n        \"ntnCd\": \"US\",\n        \"ntnKornNm\": \"미국\",\n        \"sumExpAmt\": 4246583\n      },\n      {\n        \"incmAmt\": 690468,\n        \"RNUM\": 4,\n        \"expAmt\": 769144,\n        \"sumExpWeig\": 2504,\n        \"expWeig\": 423,\n        \"sumIncmAmt\": 6350539,\n        \"incmWeig\": 459,\n        \"sumIncmWeig\": 3690,\n        \"ntnCd\": \"JP\",\n        \"ntnKornNm\": \"일본\",\n        \"sumExpAmt\": 4246583\n      },\n      {\n        \"incmAmt\": 332372,\n        \"RNUM\": 5,\n        \"expAmt\": 13425,\n        \"sumExpWeig\": 2504,\n        \"expWeig\": 1,\n        \"sumIncmAmt\": 6350539,\n        \"incmWeig\": 736,\n        \"sumIncmWeig\": 3690,\n        \"ntnCd\": \"CN\",\n        \"ntnKornNm\": \"중국\",\n        \"sumExpAmt\": 4246583\n      }\n    ],\n    \"listCount\": \"10\"\n  }\n}",
+                              "options": {
+                                "raw": {
+                                  "language": "json"
+                                }
+                              }
+                            },
+                            "auth": null
+                          },
+                          "response": [
+                            {
+                              "id": "2e20ffc8-fc77-4b0b-be5f-3d0d6dd45ab8",
+                              "name": "Successful Response",
+                              "originalRequest": {
+                                "url": {
+                                  "path": [
+                                    "api",
+                                    "v1",
+                                    "analysis",
+                                    "maps",
+                                    "domestic-trade"
+                                  ],
+                                  "host": [
+                                    "{{baseUrl}}"
+                                  ],
+                                  "query": [],
+                                  "variable": []
+                                },
+                                "header": [
+                                  {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                  },
+                                  {
+                                    "key": "Accept",
+                                    "value": "application/json"
+                                  }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                  "mode": "raw",
+                                  "raw": "{\n  \"mineral\": \"<string>\",\n  \"mineral_name\": \"<string>\",\n  \"komis_response\": {\n    \"key_0\": false\n  },\n  \"trade_direction\": \"import\",\n  \"mttr_flow_name\": \"<string>\"\n}",
+                                  "options": {
+                                    "raw": {
+                                      "headerFamily": "json",
+                                      "language": "json"
+                                    }
+                                  }
+                                }
+                              },
+                              "status": "OK",
+                              "code": 200,
+                              "header": [
+                                {
+                                  "key": "Content-Type",
+                                  "value": "application/json"
+                                }
+                              ],
+                              "body": "{\n  \"status\": \"ok\",\n  \"report\": \"<string>\"\n}",
+                              "cookie": [],
+                              "_postman_previewlanguage": "json"
+                            },
+                            {
+                              "id": "2eea5cac-789a-4597-bb58-562e57bd5082",
+                              "name": "Validation Error",
+                              "originalRequest": {
+                                "url": {
+                                  "path": [
+                                    "api",
+                                    "v1",
+                                    "analysis",
+                                    "maps",
+                                    "domestic-trade"
+                                  ],
+                                  "host": [
+                                    "{{baseUrl}}"
+                                  ],
+                                  "query": [],
+                                  "variable": []
+                                },
+                                "header": [
+                                  {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                  },
+                                  {
+                                    "key": "Accept",
+                                    "value": "application/json"
+                                  }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                  "mode": "raw",
+                                  "raw": "{\n  \"mineral\": \"<string>\",\n  \"mineral_name\": \"<string>\",\n  \"komis_response\": {\n    \"key_0\": false\n  },\n  \"trade_direction\": \"import\",\n  \"mttr_flow_name\": \"<string>\"\n}",
+                                  "options": {
+                                    "raw": {
+                                      "headerFamily": "json",
+                                      "language": "json"
+                                    }
+                                  }
+                                }
+                              },
+                              "status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+                              "code": 422,
+                              "header": [
+                                {
+                                  "key": "Content-Type",
+                                  "value": "application/json"
+                                }
+                              ],
+                              "body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}",
+                              "cookie": [],
+                              "_postman_previewlanguage": "json"
+                            }
+                          ],
+                          "event": [],
+                          "protocolProfileBehavior": {
+                            "disableBodyPruning": true
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "name": "global-trade",
+                      "description": "",
+                      "item": [
+                        {
+                          "id": "22ecbc4a-a1a1-4e28-bfb2-a38950b9317b",
+                          "name": "Summarize Global Trade",
+                          "request": {
+                            "name": "Summarize Global Trade",
+                            "description": {
+                              "content": "글로벌 수급지도 분석요약(KO_UN_CMMRC, UN Comtrade).",
+                              "type": "text/plain"
+                            },
+                            "url": {
+                              "path": [
+                                "api",
+                                "v1",
+                                "analysis",
+                                "maps",
+                                "global-trade"
+                              ],
+                              "host": [
+                                "{{baseUrl}}"
+                              ],
+                              "query": [],
+                              "variable": []
+                            },
+                            "header": [
+                              {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                              },
+                              {
+                                "key": "Accept",
+                                "value": "application/json"
+                              }
+                            ],
+                            "method": "POST",
+                            "body": {
+                              "mode": "raw",
+                              "raw": "{\n  \"mineral\": \"MNRL0018\",\n  \"mineral_name\": \"텅스텐\",\n  \"komis_response\": {\n    \"srchMnrkndUnqCd\": \"MNRL0024\",\n    \"srchDateS\": \"20260101\",\n    \"srchDateE\": \"20261231\",\n    \"list\": [\n      {\n        \"RNUM\": 1,\n        \"incmNtnNm\": \"독일\",\n        \"incmNtnCd\": \"DE\",\n        \"expNtnNm\": \"미국\",\n        \"amt\": 10855175.06,\n        \"weig\": 29409.43,\n        \"sumWeig\": 1704156.52,\n        \"weigRate\": \"1.73\",\n        \"sumAmt\": 76968241.63,\n        \"expNtnCd\": \"US\",\n        \"amtRate\": \"14.10\"\n      },\n      {\n        \"RNUM\": 2,\n        \"incmNtnNm\": \"영국\",\n        \"incmNtnCd\": \"GB\",\n        \"expNtnNm\": \"독일\",\n        \"amt\": 7839564.69,\n        \"weig\": 138246,\n        \"sumWeig\": 1704156.52,\n        \"weigRate\": \"8.11\",\n        \"sumAmt\": 76968241.63,\n        \"expNtnCd\": \"DE\",\n        \"amtRate\": \"10.19\"\n      },\n      {\n        \"RNUM\": 3,\n        \"incmNtnNm\": \"독일\",\n        \"incmNtnCd\": \"DE\",\n        \"expNtnNm\": \"중국\",\n        \"amt\": 4818696.95,\n        \"weig\": 16205.2,\n        \"sumWeig\": 1704156.52,\n        \"weigRate\": \"0.95\",\n        \"sumAmt\": 76968241.63,\n        \"expNtnCd\": \"CN\",\n        \"amtRate\": \"6.26\"\n      },\n      {\n        \"RNUM\": 4,\n        \"incmNtnNm\": \"독일\",\n        \"incmNtnCd\": \"DE\",\n        \"expNtnNm\": \"브라질\",\n        \"amt\": 3499065.45,\n        \"weig\": 60000,\n        \"sumWeig\": 1704156.52,\n        \"weigRate\": \"3.52\",\n        \"sumAmt\": 76968241.63,\n        \"expNtnCd\": \"BR\",\n        \"amtRate\": \"4.55\"\n      },\n      {\n        \"RNUM\": 5,\n        \"incmNtnNm\": \"미국\",\n        \"incmNtnCd\": \"US\",\n        \"expNtnNm\": \"브라질\",\n        \"amt\": 3183660,\n        \"weig\": 72000,\n        \"sumWeig\": 1704156.52,\n        \"weigRate\": \"4.22\",\n        \"sumAmt\": 76968241.63,\n        \"expNtnCd\": \"BR\",\n        \"amtRate\": \"4.14\"\n      }\n    ],\n    \"listCount\": \"15\"\n  },\n  \"komis_bar_chart_response\": {\n    \"data\": {\n      \"barChart\": {\n        \"xaxis\": [\n          \"2022\",\n          \"2023\",\n          \"2024\",\n          \"2025\",\n          \"2026\"\n        ],\n        \"minValue\": 0.0,\n        \"maxValue\": 0.0,\n        \"series\": [\n          {\n            \"seriesCd\": \"CN\",\n            \"name\": \"중국\",\n            \"data\": [\n              510406544.62,\n              644474354.26,\n              760854691.43,\n              188233346.71,\n              17831773.47\n            ]\n          },\n          {\n            \"seriesCd\": \"US\",\n            \"name\": \"미국\",\n            \"data\": [\n              333967253.35,\n              343817977.07,\n              447042680.43,\n              272917053.71,\n              28333942.74\n            ]\n          }\n        ]\n      }\n    }\n  },\n  \"komis_route_share_response\": {\n    \"data\": {\n      \"mapData\": [\n        {\n          \"crtrNtnCd\": \"KR\",\n          \"crtrNtnKornNm\": \"대한민국\",\n          \"trgtNtnCd\": \"JP\",\n          \"trgtNtnKornNm\": \"일본\",\n          \"mnrkndUnqCd\": \"MNRL0024\",\n          \"mnrkndKornNm\": \"갈륨\",\n          \"typeIE\": \"I\",\n          \"typeAW\": \"A\",\n          \"crtrTotalAmt\": 10020621.78,\n          \"trgtTotalAmt\": 4117833.61,\n          \"crtrNtnAmtRt\": \"21.0817\",\n          \"trgtNtnAmtRt\": \"51.3018\"\n        },\n        {\n          \"crtrNtnCd\": \"CA\",\n          \"crtrNtnKornNm\": \"캐나다\",\n          \"trgtNtnCd\": \"US\",\n          \"trgtNtnKornNm\": \"미국\",\n          \"mnrkndUnqCd\": \"MNRL0024\",\n          \"mnrkndKornNm\": \"갈륨\",\n          \"typeIE\": \"I\",\n          \"typeAW\": \"A\",\n          \"crtrTotalAmt\": 32581402.04,\n          \"trgtTotalAmt\": 11626193.4,\n          \"crtrNtnAmtRt\": \"7.8838\",\n          \"trgtNtnAmtRt\": \"22.0936\"\n        }\n      ]\n    }\n  }\n}",
+                              "options": {
+                                "raw": {
+                                  "language": "json"
+                                }
+                              }
+                            },
+                            "auth": null
+                          },
+                          "response": [
+                            {
+                              "id": "90ac5609-38e4-4545-be0e-59427d41e7dd",
+                              "name": "Successful Response",
+                              "originalRequest": {
+                                "url": {
+                                  "path": [
+                                    "api",
+                                    "v1",
+                                    "analysis",
+                                    "maps",
+                                    "global-trade"
+                                  ],
+                                  "host": [
+                                    "{{baseUrl}}"
+                                  ],
+                                  "query": [],
+                                  "variable": []
+                                },
+                                "header": [
+                                  {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                  },
+                                  {
+                                    "key": "Accept",
+                                    "value": "application/json"
+                                  }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                  "mode": "raw",
+                                  "raw": "{\n  \"mineral\": \"<string>\",\n  \"mineral_name\": \"<string>\",\n  \"komis_response\": {\n    \"key_0\": 326\n  },\n  \"komis_bar_chart_response\": {\n    \"key_0\": \"string\",\n    \"key_1\": true\n  },\n  \"komis_route_share_response\": {\n    \"key_0\": 8927.38299081736,\n    \"key_1\": \"string\",\n    \"key_2\": true\n  }\n}",
+                                  "options": {
+                                    "raw": {
+                                      "headerFamily": "json",
+                                      "language": "json"
+                                    }
+                                  }
+                                }
+                              },
+                              "status": "OK",
+                              "code": 200,
+                              "header": [
+                                {
+                                  "key": "Content-Type",
+                                  "value": "application/json"
+                                }
+                              ],
+                              "body": "{\n  \"status\": \"ok\",\n  \"report\": \"<string>\"\n}",
+                              "cookie": [],
+                              "_postman_previewlanguage": "json"
+                            },
+                            {
+                              "id": "fdc3bf61-314a-42ba-b7a0-9dc13096aeac",
+                              "name": "Validation Error",
+                              "originalRequest": {
+                                "url": {
+                                  "path": [
+                                    "api",
+                                    "v1",
+                                    "analysis",
+                                    "maps",
+                                    "global-trade"
+                                  ],
+                                  "host": [
+                                    "{{baseUrl}}"
+                                  ],
+                                  "query": [],
+                                  "variable": []
+                                },
+                                "header": [
+                                  {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                  },
+                                  {
+                                    "key": "Accept",
+                                    "value": "application/json"
+                                  }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                  "mode": "raw",
+                                  "raw": "{\n  \"mineral\": \"<string>\",\n  \"mineral_name\": \"<string>\",\n  \"komis_response\": {\n    \"key_0\": 326\n  },\n  \"komis_bar_chart_response\": {\n    \"key_0\": \"string\",\n    \"key_1\": true\n  },\n  \"komis_route_share_response\": {\n    \"key_0\": 8927.38299081736,\n    \"key_1\": \"string\",\n    \"key_2\": true\n  }\n}",
+                                  "options": {
+                                    "raw": {
+                                      "headerFamily": "json",
+                                      "language": "json"
+                                    }
+                                  }
+                                }
+                              },
+                              "status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+                              "code": 422,
+                              "header": [
+                                {
+                                  "key": "Content-Type",
+                                  "value": "application/json"
+                                }
+                              ],
+                              "body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}",
+                              "cookie": [],
+                              "_postman_previewlanguage": "json"
+                            }
+                          ],
+                          "event": [],
+                          "protocolProfileBehavior": {
+                            "disableBodyPruning": true
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "name": "prices",
+                  "description": "",
+                  "item": [
+                    {
+                      "name": "base-metals",
+                      "description": "",
+                      "item": [
+                        {
+                          "id": "96ad1f40-a3e5-4c10-b04a-a11739967bdd",
+                          "name": "Summarize Price Base Metals",
+                          "request": {
+                            "name": "Summarize Price Base Metals",
+                            "description": {
+                              "content": "비철금속 가격 분석요약(KO_MNRL_PRC) — 2026-08-27 이전엔 `/prices`\n(`page_id=\"price\"`)로 희소금속과 합쳐 다뤘다(§모듈 docstring).",
+                              "type": "text/plain"
+                            },
+                            "url": {
+                              "path": [
+                                "api",
+                                "v1",
+                                "analysis",
+                                "prices",
+                                "base-metals"
+                              ],
+                              "host": [
+                                "{{baseUrl}}"
+                              ],
+                              "query": [],
+                              "variable": []
+                            },
+                            "header": [
+                              {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                              },
+                              {
+                                "key": "Accept",
+                                "value": "application/json"
+                              }
+                            ],
+                            "method": "POST",
+                            "body": {
+                              "mode": "raw",
+                              "raw": "{\n  \"mineral\": \"MNRL0018\",\n  \"mineral_name\": \"텅스텐\",\n  \"compare_mineral\": \"MNRL0002\",\n  \"komis_response\": {\n    \"dataAvg\": {\n      \"stdMap\": {\n        \"MONTH\": {\n          \"flctnPrc\": \"964.83\",\n          \"crtrYmd\": \"202608\",\n          \"flctnPrcnt\": \"7.13\"\n        },\n        \"YEAR\": {\n          \"flctnPrc\": \"4545.06\",\n          \"crtrYmd\": \"2026\",\n          \"flctnPrcnt\": \"45.70\"\n        },\n        \"CRTRYMD\": {\n          \"crtrYmd\": \"20260827\",\n          \"cmercPrc\": \"14490.00\"\n        },\n        \"INFO\": {\n          \"mnrkndKornNm\": \"동\",\n          \"prcCrtr\": \"LME CASH\",\n          \"isISE\": \"N\",\n          \"weigUnitCd\": \"ton\",\n          \"prcUnitCdNm\": \"USD\"\n        },\n        \"WEEK\": {\n          \"flctnPrc\": \"124.80\",\n          \"crtrYmd\": \"20260824\",\n          \"flctnPrcnt\": \"0.87\"\n        },\n        \"DAY\": {\n          \"flctnPrc\": \"-35.00\",\n          \"crtrYmd\": \"20260827\",\n          \"flctnPrcnt\": \"-0.24\",\n          \"cmercPrc\": 14490\n        }\n      },\n      \"INFO\": {\n        \"mnrkndKornNm\": \"동\",\n        \"prcCrtr\": \"LME CASH\",\n        \"isISE\": \"N\",\n        \"weigUnitCd\": \"ton\",\n        \"prcUnitCdNm\": \"USD\"\n      }\n    },\n    \"data\": {\n      \"compareMnrl\": [],\n      \"defaultMnrl\": [\n        {\n          \"lowstPrc\": \"0.00\",\n          \"invt\": \"235575.00\",\n          \"flctnPrc\": \"-35.00\",\n          \"invtPrcnt\": \"-0.80\",\n          \"invtPrc\": \"-1900.00\",\n          \"hghstPrc\": \"0.00\",\n          \"crtrYmd\": \"20260827\",\n          \"flctnPrcnt\": \"-0.24\",\n          \"cmercPrc\": \"14490.00\"\n        }\n      ]\n    }\n  }\n}",
+                              "options": {
+                                "raw": {
+                                  "language": "json"
+                                }
+                              }
+                            },
+                            "auth": null
+                          },
+                          "response": [
+                            {
+                              "id": "54e13708-c0dc-4d12-b30d-e93980d5a0e6",
+                              "name": "Successful Response",
+                              "originalRequest": {
+                                "url": {
+                                  "path": [
+                                    "api",
+                                    "v1",
+                                    "analysis",
+                                    "prices",
+                                    "base-metals"
+                                  ],
+                                  "host": [
+                                    "{{baseUrl}}"
+                                  ],
+                                  "query": [],
+                                  "variable": []
+                                },
+                                "header": [
+                                  {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                  },
+                                  {
+                                    "key": "Accept",
+                                    "value": "application/json"
+                                  }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                  "mode": "raw",
+                                  "raw": "{\n  \"mineral\": \"<string>\",\n  \"mineral_name\": \"<string>\",\n  \"komis_response\": {\n    \"key_0\": false,\n    \"key_1\": 128.79798469128235,\n    \"key_2\": 2449.7860668222547\n  },\n  \"compare_mineral\": \"<string>\",\n  \"compare_mineral_name\": \"<string>\",\n  \"compare_price_criterion\": \"<string>\",\n  \"price_criterion\": \"<string>\",\n  \"srch_avg_opt\": \"QUARTER\",\n  \"srch_field\": \"month\",\n  \"srch_start_date\": \"<string>\",\n  \"srch_end_date\": \"<string>\"\n}",
+                                  "options": {
+                                    "raw": {
+                                      "headerFamily": "json",
+                                      "language": "json"
+                                    }
+                                  }
+                                }
+                              },
+                              "status": "OK",
+                              "code": 200,
+                              "header": [
+                                {
+                                  "key": "Content-Type",
+                                  "value": "application/json"
+                                }
+                              ],
+                              "body": "{\n  \"status\": \"ok\",\n  \"report\": \"<string>\"\n}",
+                              "cookie": [],
+                              "_postman_previewlanguage": "json"
+                            },
+                            {
+                              "id": "f6454139-32e1-4439-895a-e3e5052f649e",
+                              "name": "Validation Error",
+                              "originalRequest": {
+                                "url": {
+                                  "path": [
+                                    "api",
+                                    "v1",
+                                    "analysis",
+                                    "prices",
+                                    "base-metals"
+                                  ],
+                                  "host": [
+                                    "{{baseUrl}}"
+                                  ],
+                                  "query": [],
+                                  "variable": []
+                                },
+                                "header": [
+                                  {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                  },
+                                  {
+                                    "key": "Accept",
+                                    "value": "application/json"
+                                  }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                  "mode": "raw",
+                                  "raw": "{\n  \"mineral\": \"<string>\",\n  \"mineral_name\": \"<string>\",\n  \"komis_response\": {\n    \"key_0\": false,\n    \"key_1\": 128.79798469128235,\n    \"key_2\": 2449.7860668222547\n  },\n  \"compare_mineral\": \"<string>\",\n  \"compare_mineral_name\": \"<string>\",\n  \"compare_price_criterion\": \"<string>\",\n  \"price_criterion\": \"<string>\",\n  \"srch_avg_opt\": \"QUARTER\",\n  \"srch_field\": \"month\",\n  \"srch_start_date\": \"<string>\",\n  \"srch_end_date\": \"<string>\"\n}",
+                                  "options": {
+                                    "raw": {
+                                      "headerFamily": "json",
+                                      "language": "json"
+                                    }
+                                  }
+                                }
+                              },
+                              "status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+                              "code": 422,
+                              "header": [
+                                {
+                                  "key": "Content-Type",
+                                  "value": "application/json"
+                                }
+                              ],
+                              "body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}",
+                              "cookie": [],
+                              "_postman_previewlanguage": "json"
+                            }
+                          ],
+                          "event": [],
+                          "protocolProfileBehavior": {
+                            "disableBodyPruning": true
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "name": "minor-metals",
+                      "description": "",
+                      "item": [
+                        {
+                          "id": "3bbe9d13-cec0-4772-a2f6-4a9190cbb5e0",
+                          "name": "Summarize Price Minor Metals",
+                          "request": {
+                            "name": "Summarize Price Minor Metals",
+                            "description": {
+                              "content": "희소금속 가격 분석요약(KO_MNRL_PRC) — 2026-08-27 이전엔 `/prices`\n(`page_id=\"price\"`)로 비철금속과 합쳐 다뤘다(§모듈 docstring).",
+                              "type": "text/plain"
+                            },
+                            "url": {
+                              "path": [
+                                "api",
+                                "v1",
+                                "analysis",
+                                "prices",
+                                "minor-metals"
+                              ],
+                              "host": [
+                                "{{baseUrl}}"
+                              ],
+                              "query": [],
+                              "variable": []
+                            },
+                            "header": [
+                              {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                              },
+                              {
+                                "key": "Accept",
+                                "value": "application/json"
+                              }
+                            ],
+                            "method": "POST",
+                            "body": {
+                              "mode": "raw",
+                              "raw": "{\n  \"mineral\": \"MNRL0018\",\n  \"mineral_name\": \"텅스텐\",\n  \"compare_mineral\": \"MNRL0002\",\n  \"komis_response\": {\n    \"dataAvg\": {\n      \"stdMap\": {\n        \"MONTH\": {\n          \"flctnPrc\": \"-13.04\",\n          \"crtrYmd\": \"202608\",\n          \"flctnPrcnt\": \"-0.02\"\n        },\n        \"YEAR\": {\n          \"flctnPrc\": \"21039.47\",\n          \"crtrYmd\": \"2026\",\n          \"flctnPrcnt\": \"60.42\"\n        },\n        \"CRTRYMD\": {\n          \"crtrYmd\": \"20260827\",\n          \"cmercPrc\": \"55860.00\"\n        },\n        \"INFO\": {\n          \"mnrkndKornNm\": \"코발트\",\n          \"prcCrtr\": \"LME CASH\",\n          \"isISE\": \"N\",\n          \"weigUnitCd\": \"ton\",\n          \"prcUnitCdNm\": \"USD\"\n        },\n        \"WEEK\": {\n          \"flctnPrc\": \"10.00\",\n          \"crtrYmd\": \"20260824\",\n          \"flctnPrcnt\": \"0.02\"\n        },\n        \"DAY\": {\n          \"flctnPrc\": \"20.00\",\n          \"crtrYmd\": \"20260827\",\n          \"flctnPrcnt\": \"0.04\",\n          \"cmercPrc\": 55860\n        }\n      },\n      \"INFO\": {\n        \"mnrkndKornNm\": \"코발트\",\n        \"prcCrtr\": \"LME CASH\",\n        \"isISE\": \"N\",\n        \"weigUnitCd\": \"ton\",\n        \"prcUnitCdNm\": \"USD\"\n      }\n    },\n    \"data\": {\n      \"compareMnrl\": [],\n      \"defaultMnrl\": [\n        {\n          \"lowstPrc\": \"0.00\",\n          \"invt\": \"0.00\",\n          \"flctnPrc\": \"20.00\",\n          \"invtPrcnt\": \"0.00\",\n          \"invtPrc\": \"0.00\",\n          \"hghstPrc\": \"0.00\",\n          \"crtrYmd\": \"20260827\",\n          \"flctnPrcnt\": \"0.04\",\n          \"cmercPrc\": \"55860.00\"\n        }\n      ]\n    }\n  }\n}",
+                              "options": {
+                                "raw": {
+                                  "language": "json"
+                                }
+                              }
+                            },
+                            "auth": null
+                          },
+                          "response": [
+                            {
+                              "id": "d254a32e-cd4e-462e-a7cf-a564497464ab",
+                              "name": "Successful Response",
+                              "originalRequest": {
+                                "url": {
+                                  "path": [
+                                    "api",
+                                    "v1",
+                                    "analysis",
+                                    "prices",
+                                    "minor-metals"
+                                  ],
+                                  "host": [
+                                    "{{baseUrl}}"
+                                  ],
+                                  "query": [],
+                                  "variable": []
+                                },
+                                "header": [
+                                  {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                  },
+                                  {
+                                    "key": "Accept",
+                                    "value": "application/json"
+                                  }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                  "mode": "raw",
+                                  "raw": "{\n  \"mineral\": \"<string>\",\n  \"mineral_name\": \"<string>\",\n  \"komis_response\": {\n    \"key_0\": false,\n    \"key_1\": 128.79798469128235,\n    \"key_2\": 2449.7860668222547\n  },\n  \"compare_mineral\": \"<string>\",\n  \"compare_mineral_name\": \"<string>\",\n  \"compare_price_criterion\": \"<string>\",\n  \"price_criterion\": \"<string>\",\n  \"srch_avg_opt\": \"QUARTER\",\n  \"srch_field\": \"month\",\n  \"srch_start_date\": \"<string>\",\n  \"srch_end_date\": \"<string>\"\n}",
+                                  "options": {
+                                    "raw": {
+                                      "headerFamily": "json",
+                                      "language": "json"
+                                    }
+                                  }
+                                }
+                              },
+                              "status": "OK",
+                              "code": 200,
+                              "header": [
+                                {
+                                  "key": "Content-Type",
+                                  "value": "application/json"
+                                }
+                              ],
+                              "body": "{\n  \"status\": \"ok\",\n  \"report\": \"<string>\"\n}",
+                              "cookie": [],
+                              "_postman_previewlanguage": "json"
+                            },
+                            {
+                              "id": "05ae3cc0-dfa4-4be6-8fb6-d751a91fa452",
+                              "name": "Validation Error",
+                              "originalRequest": {
+                                "url": {
+                                  "path": [
+                                    "api",
+                                    "v1",
+                                    "analysis",
+                                    "prices",
+                                    "minor-metals"
+                                  ],
+                                  "host": [
+                                    "{{baseUrl}}"
+                                  ],
+                                  "query": [],
+                                  "variable": []
+                                },
+                                "header": [
+                                  {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                  },
+                                  {
+                                    "key": "Accept",
+                                    "value": "application/json"
+                                  }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                  "mode": "raw",
+                                  "raw": "{\n  \"mineral\": \"<string>\",\n  \"mineral_name\": \"<string>\",\n  \"komis_response\": {\n    \"key_0\": false,\n    \"key_1\": 128.79798469128235,\n    \"key_2\": 2449.7860668222547\n  },\n  \"compare_mineral\": \"<string>\",\n  \"compare_mineral_name\": \"<string>\",\n  \"compare_price_criterion\": \"<string>\",\n  \"price_criterion\": \"<string>\",\n  \"srch_avg_opt\": \"QUARTER\",\n  \"srch_field\": \"month\",\n  \"srch_start_date\": \"<string>\",\n  \"srch_end_date\": \"<string>\"\n}",
+                                  "options": {
+                                    "raw": {
+                                      "headerFamily": "json",
+                                      "language": "json"
+                                    }
+                                  }
+                                }
+                              },
+                              "status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+                              "code": 422,
+                              "header": [
+                                {
+                                  "key": "Content-Type",
+                                  "value": "application/json"
+                                }
+                              ],
+                              "body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}",
+                              "cookie": [],
+                              "_postman_previewlanguage": "json"
+                            }
+                          ],
+                          "event": [],
+                          "protocolProfileBehavior": {
+                            "disableBodyPruning": true
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "name": "iron-energy",
+                      "description": "",
+                      "item": [
+                        {
+                          "id": "dae7c22a-c964-4916-a516-2ba3c66575a4",
+                          "name": "Summarize Price Iron Energy",
+                          "request": {
+                            "name": "Summarize Price Iron Energy",
+                            "description": {
+                              "content": "철광석·유연탄·우라늄 가격 분석요약(KO_MNRL_PRC) — 2026-08-28 신설\n(§모듈 docstring \"광물자원가격 나머지 서브메뉴\").",
+                              "type": "text/plain"
+                            },
+                            "url": {
+                              "path": [
+                                "api",
+                                "v1",
+                                "analysis",
+                                "prices",
+                                "iron-energy"
+                              ],
+                              "host": [
+                                "{{baseUrl}}"
+                              ],
+                              "query": [],
+                              "variable": []
+                            },
+                            "header": [
+                              {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                              },
+                              {
+                                "key": "Accept",
+                                "value": "application/json"
+                              }
+                            ],
+                            "method": "POST",
+                            "body": {
+                              "mode": "raw",
+                              "raw": "{\n  \"mineral\": \"MNRL0018\",\n  \"mineral_name\": \"텅스텐\",\n  \"compare_mineral\": \"MNRL0002\",\n  \"komis_response\": {\n    \"dataAvg\": {\n      \"stdMap\": {\n        \"MONTH\": {\n          \"flctnPrc\": \"1.91\",\n          \"crtrYmd\": \"202608\",\n          \"flctnPrcnt\": \"1.94\"\n        },\n        \"YEAR\": {\n          \"flctnPrc\": \"-1.71\",\n          \"crtrYmd\": \"2026\",\n          \"flctnPrcnt\": \"-1.67\"\n        },\n        \"CRTRYMD\": {\n          \"crtrYmd\": \"20260827\",\n          \"cmercPrc\": \"100.50\"\n        },\n        \"INFO\": {\n          \"mnrkndKornNm\": \"철\",\n          \"prcCrtr\": \"Australian 62%min CNF China\",\n          \"isISE\": \"Y\",\n          \"weigUnitCd\": \"mt\",\n          \"prcUnitCdNm\": \"USD\"\n        },\n        \"WEEK\": {\n          \"flctnPrc\": \"1.40\",\n          \"crtrYmd\": \"20260824\",\n          \"flctnPrcnt\": \"1.41\"\n        },\n        \"DAY\": {\n          \"flctnPrc\": \"0.00\",\n          \"crtrYmd\": \"20260827\",\n          \"flctnPrcnt\": \"0.00\",\n          \"cmercPrc\": 100.5\n        }\n      },\n      \"INFO\": {\n        \"mnrkndKornNm\": \"철\",\n        \"prcCrtr\": \"Australian 62%min CNF China\",\n        \"isISE\": \"Y\",\n        \"weigUnitCd\": \"mt\",\n        \"prcUnitCdNm\": \"USD\"\n      }\n    },\n    \"data\": {\n      \"compareMnrl\": [],\n      \"defaultMnrl\": [\n        {\n          \"lowstPrc\": \"100.00\",\n          \"invt\": \"0.00\",\n          \"flctnPrc\": \"0.00\",\n          \"invtPrcnt\": \"0.00\",\n          \"invtPrc\": \"0.00\",\n          \"hghstPrc\": \"101.00\",\n          \"crtrYmd\": \"20260827\",\n          \"flctnPrcnt\": \"0.00\",\n          \"cmercPrc\": \"100.50\"\n        }\n      ]\n    }\n  }\n}",
+                              "options": {
+                                "raw": {
+                                  "language": "json"
+                                }
+                              }
+                            },
+                            "auth": null
+                          },
+                          "response": [
+                            {
+                              "id": "e9969367-7d5a-4c80-97f6-c3e2b6f02449",
+                              "name": "Successful Response",
+                              "originalRequest": {
+                                "url": {
+                                  "path": [
+                                    "api",
+                                    "v1",
+                                    "analysis",
+                                    "prices",
+                                    "iron-energy"
+                                  ],
+                                  "host": [
+                                    "{{baseUrl}}"
+                                  ],
+                                  "query": [],
+                                  "variable": []
+                                },
+                                "header": [
+                                  {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                  },
+                                  {
+                                    "key": "Accept",
+                                    "value": "application/json"
+                                  }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                  "mode": "raw",
+                                  "raw": "{\n  \"mineral\": \"<string>\",\n  \"mineral_name\": \"<string>\",\n  \"komis_response\": {\n    \"key_0\": false,\n    \"key_1\": 128.79798469128235,\n    \"key_2\": 2449.7860668222547\n  },\n  \"compare_mineral\": \"<string>\",\n  \"compare_mineral_name\": \"<string>\",\n  \"compare_price_criterion\": \"<string>\",\n  \"price_criterion\": \"<string>\",\n  \"srch_avg_opt\": \"QUARTER\",\n  \"srch_field\": \"month\",\n  \"srch_start_date\": \"<string>\",\n  \"srch_end_date\": \"<string>\"\n}",
+                                  "options": {
+                                    "raw": {
+                                      "headerFamily": "json",
+                                      "language": "json"
+                                    }
+                                  }
+                                }
+                              },
+                              "status": "OK",
+                              "code": 200,
+                              "header": [
+                                {
+                                  "key": "Content-Type",
+                                  "value": "application/json"
+                                }
+                              ],
+                              "body": "{\n  \"status\": \"ok\",\n  \"report\": \"<string>\"\n}",
+                              "cookie": [],
+                              "_postman_previewlanguage": "json"
+                            },
+                            {
+                              "id": "3e3fca40-f3a1-46ab-bcd1-eb1b716eae35",
+                              "name": "Validation Error",
+                              "originalRequest": {
+                                "url": {
+                                  "path": [
+                                    "api",
+                                    "v1",
+                                    "analysis",
+                                    "prices",
+                                    "iron-energy"
+                                  ],
+                                  "host": [
+                                    "{{baseUrl}}"
+                                  ],
+                                  "query": [],
+                                  "variable": []
+                                },
+                                "header": [
+                                  {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                  },
+                                  {
+                                    "key": "Accept",
+                                    "value": "application/json"
+                                  }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                  "mode": "raw",
+                                  "raw": "{\n  \"mineral\": \"<string>\",\n  \"mineral_name\": \"<string>\",\n  \"komis_response\": {\n    \"key_0\": false,\n    \"key_1\": 128.79798469128235,\n    \"key_2\": 2449.7860668222547\n  },\n  \"compare_mineral\": \"<string>\",\n  \"compare_mineral_name\": \"<string>\",\n  \"compare_price_criterion\": \"<string>\",\n  \"price_criterion\": \"<string>\",\n  \"srch_avg_opt\": \"QUARTER\",\n  \"srch_field\": \"month\",\n  \"srch_start_date\": \"<string>\",\n  \"srch_end_date\": \"<string>\"\n}",
+                                  "options": {
+                                    "raw": {
+                                      "headerFamily": "json",
+                                      "language": "json"
+                                    }
+                                  }
+                                }
+                              },
+                              "status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+                              "code": 422,
+                              "header": [
+                                {
+                                  "key": "Content-Type",
+                                  "value": "application/json"
+                                }
+                              ],
+                              "body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}",
+                              "cookie": [],
+                              "_postman_previewlanguage": "json"
+                            }
+                          ],
+                          "event": [],
+                          "protocolProfileBehavior": {
+                            "disableBodyPruning": true
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "name": "other",
+                      "description": "",
+                      "item": [
+                        {
+                          "id": "aeebb08b-dfb4-4600-a8fb-9b93adc74cc4",
+                          "name": "Summarize Price Other",
+                          "request": {
+                            "name": "Summarize Price Other",
+                            "description": {
+                              "content": "금·은·백금족·흑연 가격 분석요약(KO_MNRL_PRC) — 2026-08-28 신설\n(§모듈 docstring \"광물자원가격 나머지 서브메뉴\").",
+                              "type": "text/plain"
+                            },
+                            "url": {
+                              "path": [
+                                "api",
+                                "v1",
+                                "analysis",
+                                "prices",
+                                "other"
+                              ],
+                              "host": [
+                                "{{baseUrl}}"
+                              ],
+                              "query": [],
+                              "variable": []
+                            },
+                            "header": [
+                              {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                              },
+                              {
+                                "key": "Accept",
+                                "value": "application/json"
+                              }
+                            ],
+                            "method": "POST",
+                            "body": {
+                              "mode": "raw",
+                              "raw": "{\n  \"mineral\": \"MNRL0018\",\n  \"mineral_name\": \"텅스텐\",\n  \"compare_mineral\": \"MNRL0002\",\n  \"komis_response\": {\n    \"dataAvg\": {\n      \"stdMap\": {\n        \"MONTH\": {\n          \"flctnPrc\": \"495.03\",\n          \"crtrYmd\": \"202608\",\n          \"flctnPrcnt\": \"12.15\"\n        },\n        \"YEAR\": {\n          \"flctnPrc\": \"1137.41\",\n          \"crtrYmd\": \"2026\",\n          \"flctnPrcnt\": \"33.15\"\n        },\n        \"CRTRYMD\": {\n          \"crtrYmd\": \"20260827\",\n          \"cmercPrc\": \"4568.95\"\n        },\n        \"INFO\": {\n          \"mnrkndKornNm\": \"금\",\n          \"prcCrtr\": \"London Gold Market Fixing Ltd- LBMA PM Fixing Price/USD\",\n          \"isISE\": \"N\",\n          \"weigUnitCd\": \"troz\",\n          \"prcUnitCdNm\": \"USD\"\n        },\n        \"WEEK\": {\n          \"flctnPrc\": \"101.94\",\n          \"crtrYmd\": \"20260824\",\n          \"flctnPrcnt\": \"2.28\"\n        },\n        \"DAY\": {\n          \"flctnPrc\": \"-62.55\",\n          \"crtrYmd\": \"20260827\",\n          \"flctnPrcnt\": \"-1.35\",\n          \"cmercPrc\": 4568.95\n        }\n      },\n      \"INFO\": {\n        \"mnrkndKornNm\": \"금\",\n        \"prcCrtr\": \"London Gold Market Fixing Ltd- LBMA PM Fixing Price/USD\",\n        \"isISE\": \"N\",\n        \"weigUnitCd\": \"troz\",\n        \"prcUnitCdNm\": \"USD\"\n      }\n    },\n    \"data\": {\n      \"compareMnrl\": [],\n      \"defaultMnrl\": [\n        {\n          \"lowstPrc\": \"0.00\",\n          \"invt\": \"0.00\",\n          \"flctnPrc\": \"-62.55\",\n          \"invtPrcnt\": \"0.00\",\n          \"invtPrc\": \"0.00\",\n          \"hghstPrc\": \"0.00\",\n          \"crtrYmd\": \"20260827\",\n          \"flctnPrcnt\": \"-1.35\",\n          \"cmercPrc\": \"4568.95\"\n        }\n      ]\n    }\n  }\n}",
+                              "options": {
+                                "raw": {
+                                  "language": "json"
+                                }
+                              }
+                            },
+                            "auth": null
+                          },
+                          "response": [
+                            {
+                              "id": "3f063c2c-e405-440c-adcf-23396d9c1989",
+                              "name": "Successful Response",
+                              "originalRequest": {
+                                "url": {
+                                  "path": [
+                                    "api",
+                                    "v1",
+                                    "analysis",
+                                    "prices",
+                                    "other"
+                                  ],
+                                  "host": [
+                                    "{{baseUrl}}"
+                                  ],
+                                  "query": [],
+                                  "variable": []
+                                },
+                                "header": [
+                                  {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                  },
+                                  {
+                                    "key": "Accept",
+                                    "value": "application/json"
+                                  }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                  "mode": "raw",
+                                  "raw": "{\n  \"mineral\": \"<string>\",\n  \"mineral_name\": \"<string>\",\n  \"komis_response\": {\n    \"key_0\": false,\n    \"key_1\": 128.79798469128235,\n    \"key_2\": 2449.7860668222547\n  },\n  \"compare_mineral\": \"<string>\",\n  \"compare_mineral_name\": \"<string>\",\n  \"compare_price_criterion\": \"<string>\",\n  \"price_criterion\": \"<string>\",\n  \"srch_avg_opt\": \"QUARTER\",\n  \"srch_field\": \"month\",\n  \"srch_start_date\": \"<string>\",\n  \"srch_end_date\": \"<string>\"\n}",
+                                  "options": {
+                                    "raw": {
+                                      "headerFamily": "json",
+                                      "language": "json"
+                                    }
+                                  }
+                                }
+                              },
+                              "status": "OK",
+                              "code": 200,
+                              "header": [
+                                {
+                                  "key": "Content-Type",
+                                  "value": "application/json"
+                                }
+                              ],
+                              "body": "{\n  \"status\": \"ok\",\n  \"report\": \"<string>\"\n}",
+                              "cookie": [],
+                              "_postman_previewlanguage": "json"
+                            },
+                            {
+                              "id": "400f5924-ad76-42e7-96b5-1e89d6b8b3ef",
+                              "name": "Validation Error",
+                              "originalRequest": {
+                                "url": {
+                                  "path": [
+                                    "api",
+                                    "v1",
+                                    "analysis",
+                                    "prices",
+                                    "other"
+                                  ],
+                                  "host": [
+                                    "{{baseUrl}}"
+                                  ],
+                                  "query": [],
+                                  "variable": []
+                                },
+                                "header": [
+                                  {
+                                    "key": "Content-Type",
+                                    "value": "application/json"
+                                  },
+                                  {
+                                    "key": "Accept",
+                                    "value": "application/json"
+                                  }
+                                ],
+                                "method": "POST",
+                                "body": {
+                                  "mode": "raw",
+                                  "raw": "{\n  \"mineral\": \"<string>\",\n  \"mineral_name\": \"<string>\",\n  \"komis_response\": {\n    \"key_0\": false,\n    \"key_1\": 128.79798469128235,\n    \"key_2\": 2449.7860668222547\n  },\n  \"compare_mineral\": \"<string>\",\n  \"compare_mineral_name\": \"<string>\",\n  \"compare_price_criterion\": \"<string>\",\n  \"price_criterion\": \"<string>\",\n  \"srch_avg_opt\": \"QUARTER\",\n  \"srch_field\": \"month\",\n  \"srch_start_date\": \"<string>\",\n  \"srch_end_date\": \"<string>\"\n}",
+                                  "options": {
+                                    "raw": {
+                                      "headerFamily": "json",
+                                      "language": "json"
+                                    }
+                                  }
+                                }
+                              },
+                              "status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+                              "code": 422,
+                              "header": [
+                                {
+                                  "key": "Content-Type",
+                                  "value": "application/json"
+                                }
+                              ],
+                              "body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}",
+                              "cookie": [],
+                              "_postman_previewlanguage": "json"
+                            }
+                          ],
+                          "event": [],
+                          "protocolProfileBehavior": {
+                            "disableBodyPruning": true
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "dashboard",
+              "description": "",
+              "item": [
+                {
+                  "name": "comprehensive",
+                  "description": "",
+                  "item": [
+                    {
+                      "id": "b9fbc40c-1bef-42c2-8d01-69f138daed38",
+                      "name": "Get Comprehensive Analysis",
+                      "request": {
+                        "name": "Get Comprehensive Analysis",
+                        "description": {
+                          "content": "대시보드 최상단 \"AI 종합분석 및 관련뉴스\"(화면기획 ver.1.3 11p).",
+                          "type": "text/plain"
+                        },
+                        "url": {
+                          "path": [
+                            "api",
+                            "v1",
+                            "dashboard",
+                            "comprehensive"
+                          ],
+                          "host": [
+                            "{{baseUrl}}"
+                          ],
+                          "query": [],
+                          "variable": []
+                        },
+                        "header": [
+                          {
+                            "key": "Accept",
+                            "value": "application/json"
+                          }
+                        ],
+                        "method": "GET",
+                        "body": {},
+                        "auth": null
+                      },
+                      "response": [
+                        {
+                          "id": "2e1bc3fa-a687-48a5-b6c6-e96bfb8baabf",
+                          "name": "Successful Response",
+                          "originalRequest": {
+                            "url": {
+                              "path": [
+                                "api",
+                                "v1",
+                                "dashboard",
+                                "comprehensive"
+                              ],
+                              "host": [
+                                "{{baseUrl}}"
+                              ],
+                              "query": [],
+                              "variable": []
+                            },
+                            "header": [
+                              {
+                                "key": "Accept",
+                                "value": "application/json"
+                              }
+                            ],
+                            "method": "GET",
+                            "body": {}
+                          },
+                          "status": "OK",
+                          "code": 200,
+                          "header": [
+                            {
+                              "key": "Content-Type",
+                              "value": "application/json"
+                            }
+                          ],
+                          "body": "{\n  \"overview\": {\n    \"as_of\": \"<string>\",\n    \"composite_index\": \"<number>\",\n    \"top_commodity\": \"<string>\",\n    \"core_diagnosis\": \"<string>\",\n    \"llm_refined\": \"<boolean>\",\n    \"composite_index_change\": \"<number>\",\n    \"risk_tags\": [\n      {\n        \"category\": \"공급망\",\n        \"text\": \"<string>\"\n      },\n      {\n        \"category\": \"지정학적\",\n        \"text\": \"<string>\"\n      }\n    ],\n    \"response_strategies\": [\n      \"<string>\",\n      \"<string>\"\n    ],\n    \"warnings\": [\n      \"<string>\",\n      \"<string>\"\n    ]\n  },\n  \"news\": [\n    {\n      \"commodity_code\": \"<string>\",\n      \"commodity_name\": \"<string>\",\n      \"headline\": \"<string>\",\n      \"as_of\": \"<string>\",\n      \"llm_refined\": \"<boolean>\",\n      \"source_count\": \"<integer>\",\n      \"driver_up\": \"<string>\",\n      \"driver_down\": \"<string>\"\n    },\n    {\n      \"commodity_code\": \"<string>\",\n      \"commodity_name\": \"<string>\",\n      \"headline\": \"<string>\",\n      \"as_of\": \"<string>\",\n      \"llm_refined\": \"<boolean>\",\n      \"source_count\": \"<integer>\",\n      \"driver_up\": \"<string>\",\n      \"driver_down\": \"<string>\"\n    }\n  ],\n  \"generated_at\": \"<string>\"\n}",
+                          "cookie": [],
+                          "_postman_previewlanguage": "json"
+                        }
+                      ],
+                      "event": [],
+                      "protocolProfileBehavior": {
+                        "disableBodyPruning": true
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "healthz",
+      "description": "",
+      "item": [
+        {
+          "id": "6a35352f-0c22-4f8a-9f73-771a031f7220",
+          "name": "Healthz",
+          "request": {
+            "name": "Healthz",
+            "description": {},
+            "url": {
+              "path": [
+                "healthz"
+              ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "query": [],
+              "variable": []
+            },
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "method": "GET",
+            "body": {},
+            "auth": null
+          },
+          "response": [
+            {
+              "id": "91942649-8a4b-4f32-8a4d-a603c1a07faf",
+              "name": "Successful Response",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "healthz"
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"key_0\": true,\n  \"key_1\": \"string\"\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            }
+          ],
+          "event": [],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "admin",
+      "description": "",
+      "item": [
+        {
+          "name": "prompts",
+          "description": "",
+          "item": [
+            {
+              "name": "reload",
+              "description": "",
+              "item": [
+                {
+                  "id": "b1e3879b-89b5-4f9b-af69-36a55613ce27",
+                  "name": "Reload Prompts",
+                  "request": {
+                    "name": "Reload Prompts",
+                    "description": {
+                      "content": "`cfg_prompt`를 다시 읽어 프롬프트 캐시를 교체한다(서버 재시동 불필요).\n이후 생성되는 보고서부터 새 프롬프트를 쓴다 — 진행 중인 호출에는 영향 없다.\n\n2026-09-02 skeptic 2차 감사 PA-001: DB 재조회 실패(순단 등)도 예전엔\n이전 캐시 크기를 그대로 돌려줘 호출자가 성공과 구분할 수 없었다 —\n`ok`로 구분한다(HTTP 상태는 이 서비스의 기존 계약대로 항상 200 유지,\nprompt_admin UI가 `ok` 필드로 실패 분기를 이미 갖고 있다).",
+                      "type": "text/plain"
+                    },
+                    "url": {
+                      "path": [
+                        "admin",
+                        "prompts",
+                        "reload"
+                      ],
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "query": [],
+                      "variable": []
+                    },
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "method": "POST",
+                    "body": {},
+                    "auth": null
+                  },
+                  "response": [
+                    {
+                      "id": "55bceb48-760d-499a-8584-47c6bde879b6",
+                      "name": "Successful Response",
+                      "originalRequest": {
+                        "url": {
+                          "path": [
+                            "admin",
+                            "prompts",
+                            "reload"
+                          ],
+                          "host": [
+                            "{{baseUrl}}"
+                          ],
+                          "query": [],
+                          "variable": []
+                        },
+                        "header": [
+                          {
+                            "key": "Accept",
+                            "value": "application/json"
+                          }
+                        ],
+                        "method": "POST",
+                        "body": {}
+                      },
+                      "status": "OK",
+                      "code": 200,
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "body": "{\n  \"key_0\": 2078,\n  \"key_1\": \"string\"\n}",
+                      "cookie": [],
+                      "_postman_previewlanguage": "json"
+                    }
+                  ],
+                  "event": [],
+                  "protocolProfileBehavior": {
+                    "disableBodyPruning": true
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "reports",
+      "description": "",
+      "item": [
+        {
+          "name": "{template}",
+          "description": "",
+          "item": [
+            {
+              "name": "generate",
+              "description": "",
+              "item": [
+                {
+                  "id": "225f8da4-7280-4cda-90ee-21b3796d36bf",
+                  "name": "Generate",
+                  "request": {
+                    "name": "Generate",
+                    "description": {
+                      "content": "템플릿×정형데이터로 리포트 1건을 생성한다(기본은 `out_report` 적재까지).",
+                      "type": "text/plain"
+                    },
+                    "url": {
+                      "path": [
+                        "reports",
+                        ":template",
+                        "generate"
+                      ],
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "query": [
+                        {
+                          "disabled": false,
+                          "description": {
+                            "content": "(Required) CU|NI|CO|LI|REE",
+                            "type": "text/plain"
+                          },
+                          "key": "commodity_code",
+                          "value": "<string>"
+                        },
+                        {
+                          "disabled": false,
+                          "description": {
+                            "content": "false면 out_report에 적재하지 않고 본문만 반환",
+                            "type": "text/plain"
+                          },
+                          "key": "store",
+                          "value": "true"
+                        }
+                      ],
+                      "variable": [
+                        {
+                          "type": "any",
+                          "value": "<string>",
+                          "key": "template",
+                          "disabled": false,
+                          "description": {
+                            "content": "(Required) ",
+                            "type": "text/plain"
+                          }
+                        }
+                      ]
+                    },
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "method": "POST",
+                    "body": {},
+                    "auth": null
+                  },
+                  "response": [
+                    {
+                      "id": "d24fbb78-5713-4d7f-8618-b6986434f9da",
+                      "name": "Successful Response",
+                      "originalRequest": {
+                        "url": {
+                          "path": [
+                            "reports",
+                            ":template",
+                            "generate"
+                          ],
+                          "host": [
+                            "{{baseUrl}}"
+                          ],
+                          "query": [
+                            {
+                              "disabled": false,
+                              "description": {
+                                "content": "(Required) CU|NI|CO|LI|REE",
+                                "type": "text/plain"
+                              },
+                              "key": "commodity_code",
+                              "value": "<string>"
+                            },
+                            {
+                              "disabled": false,
+                              "description": {
+                                "content": "false면 out_report에 적재하지 않고 본문만 반환",
+                                "type": "text/plain"
+                              },
+                              "key": "store",
+                              "value": "true"
+                            }
+                          ],
+                          "variable": [
+                            {
+                              "disabled": false,
+                              "description": {
+                                "content": "(Required) ",
+                                "type": "text/plain"
+                              },
+                              "type": "any",
+                              "value": "<string>",
+                              "key": "template"
+                            }
+                          ]
+                        },
+                        "header": [
+                          {
+                            "key": "Accept",
+                            "value": "application/json"
+                          }
+                        ],
+                        "method": "POST",
+                        "body": {}
+                      },
+                      "status": "OK",
+                      "code": 200,
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "body": "{\n  \"key_0\": \"string\"\n}",
+                      "cookie": [],
+                      "_postman_previewlanguage": "json"
+                    },
+                    {
+                      "id": "bac2163a-eddb-4455-aa5c-65f1d90b9136",
+                      "name": "Validation Error",
+                      "originalRequest": {
+                        "url": {
+                          "path": [
+                            "reports",
+                            ":template",
+                            "generate"
+                          ],
+                          "host": [
+                            "{{baseUrl}}"
+                          ],
+                          "query": [
+                            {
+                              "disabled": false,
+                              "description": {
+                                "content": "(Required) CU|NI|CO|LI|REE",
+                                "type": "text/plain"
+                              },
+                              "key": "commodity_code",
+                              "value": "<string>"
+                            },
+                            {
+                              "disabled": false,
+                              "description": {
+                                "content": "false면 out_report에 적재하지 않고 본문만 반환",
+                                "type": "text/plain"
+                              },
+                              "key": "store",
+                              "value": "true"
+                            }
+                          ],
+                          "variable": [
+                            {
+                              "disabled": false,
+                              "description": {
+                                "content": "(Required) ",
+                                "type": "text/plain"
+                              },
+                              "type": "any",
+                              "value": "<string>",
+                              "key": "template"
+                            }
+                          ]
+                        },
+                        "header": [
+                          {
+                            "key": "Accept",
+                            "value": "application/json"
+                          }
+                        ],
+                        "method": "POST",
+                        "body": {}
+                      },
+                      "status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+                      "code": 422,
+                      "header": [
+                        {
+                          "key": "Content-Type",
+                          "value": "application/json"
+                        }
+                      ],
+                      "body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}",
+                      "cookie": [],
+                      "_postman_previewlanguage": "json"
+                    }
+                  ],
+                  "event": [],
+                  "protocolProfileBehavior": {
+                    "disableBodyPruning": true
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "{report_id}",
+          "description": "",
+          "item": [
+            {
+              "id": "8d0f5cb7-7d52-4c14-b35a-7baddb4e5b98",
+              "name": "Get Report",
+              "request": {
+                "name": "Get Report",
+                "description": {
+                  "content": "적재된 리포트 1건을 돌려준다.",
+                  "type": "text/plain"
+                },
+                "url": {
+                  "path": [
+                    "reports",
+                    ":report_id"
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [],
+                  "variable": [
+                    {
+                      "type": "any",
+                      "value": "<string>",
+                      "key": "report_id",
+                      "disabled": false,
+                      "description": {
+                        "content": "(Required) ",
+                        "type": "text/plain"
+                      }
+                    }
+                  ]
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "method": "GET",
+                "body": {},
+                "auth": null
+              },
+              "response": [
+                {
+                  "id": "b19dade3-79fc-4958-9045-a759ebd6ada4",
+                  "name": "Successful Response",
+                  "originalRequest": {
+                    "url": {
+                      "path": [
+                        "reports",
+                        ":report_id"
+                      ],
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "query": [],
+                      "variable": [
+                        {
+                          "disabled": false,
+                          "description": {
+                            "content": "(Required) ",
+                            "type": "text/plain"
+                          },
+                          "type": "any",
+                          "value": "<string>",
+                          "key": "report_id"
+                        }
+                      ]
+                    },
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "method": "GET",
+                    "body": {}
+                  },
+                  "status": "OK",
+                  "code": 200,
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"key_0\": \"string\",\n  \"key_1\": 7811,\n  \"key_2\": 1225.3858221138291\n}",
+                  "cookie": [],
+                  "_postman_previewlanguage": "json"
+                },
+                {
+                  "id": "1690cacd-cfa5-4152-a174-e943ec562624",
+                  "name": "Validation Error",
+                  "originalRequest": {
+                    "url": {
+                      "path": [
+                        "reports",
+                        ":report_id"
+                      ],
+                      "host": [
+                        "{{baseUrl}}"
+                      ],
+                      "query": [],
+                      "variable": [
+                        {
+                          "disabled": false,
+                          "description": {
+                            "content": "(Required) ",
+                            "type": "text/plain"
+                          },
+                          "type": "any",
+                          "value": "<string>",
+                          "key": "report_id"
+                        }
+                      ]
+                    },
+                    "header": [
+                      {
+                        "key": "Accept",
+                        "value": "application/json"
+                      }
+                    ],
+                    "method": "GET",
+                    "body": {}
+                  },
+                  "status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+                  "code": 422,
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    }
+                  ],
+                  "body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}",
+                  "cookie": [],
+                  "_postman_previewlanguage": "json"
+                }
+              ],
+              "event": [],
+              "protocolProfileBehavior": {
+                "disableBodyPruning": true
+              }
+            }
+          ]
+        },
+        {
+          "id": "0f3df55e-93a5-42ef-a2c8-d15981d8bfbc",
+          "name": "List Reports",
+          "request": {
+            "name": "List Reports",
+            "description": {
+              "content": "최근 생성된 리포트 목록(본문 제외).",
+              "type": "text/plain"
+            },
+            "url": {
+              "path": [
+                "reports"
+              ],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "query": [
+                {
+                  "disabled": false,
+                  "description": {
+                    "content": "",
+                    "type": "text/plain"
+                  },
+                  "key": "limit",
+                  "value": "20"
+                }
+              ],
+              "variable": []
+            },
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "method": "GET",
+            "body": {},
+            "auth": null
+          },
+          "response": [
+            {
+              "id": "8df8c9a3-4db2-4fc8-a90a-26d478a5f122",
+              "name": "Successful Response",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "reports"
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "",
+                        "type": "text/plain"
+                      },
+                      "key": "limit",
+                      "value": "20"
+                    }
+                  ],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "OK",
+              "code": 200,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "[\n  {\n    \"key_0\": 6076,\n    \"key_1\": \"string\"\n  },\n  {\n    \"key_0\": 4712,\n    \"key_1\": \"string\",\n    \"key_2\": 7783.251435344203\n  }\n]",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            },
+            {
+              "id": "4859b4ae-1073-406e-afd9-856134b72535",
+              "name": "Validation Error",
+              "originalRequest": {
+                "url": {
+                  "path": [
+                    "reports"
+                  ],
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "query": [
+                    {
+                      "disabled": false,
+                      "description": {
+                        "content": "",
+                        "type": "text/plain"
+                      },
+                      "key": "limit",
+                      "value": "20"
+                    }
+                  ],
+                  "variable": []
+                },
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
+                "method": "GET",
+                "body": {}
+              },
+              "status": "Unprocessable Entity (WebDAV) (RFC 4918)",
+              "code": 422,
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"detail\": [\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    },\n    {\n      \"loc\": [\n        \"<string>\",\n        \"<string>\"\n      ],\n      \"msg\": \"<string>\",\n      \"type\": \"<string>\",\n      \"input\": \"\",\n      \"ctx\": {}\n    }\n  ]\n}",
+              "cookie": [],
+              "_postman_previewlanguage": "json"
+            }
+          ],
+          "event": [],
+          "protocolProfileBehavior": {
+            "disableBodyPruning": true
+          }
+        }
+      ]
+    }
+  ],
+  "event": [],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:18003",
+      "type": "string",
+      "description": "테스트 컨테이너 기준(2026-09-03). 실제 docker-compose 배포 시 8003으로 변경."
+    }
+  ],
+  "info": {
+    "_postman_id": "f3d4dfeb-ba5e-4afb-bb4e-6c4cde421efe",
+    "name": "komir report_gen",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": {
+      "content": "",
+      "type": "text/plain"
+    }
+  }
+}
