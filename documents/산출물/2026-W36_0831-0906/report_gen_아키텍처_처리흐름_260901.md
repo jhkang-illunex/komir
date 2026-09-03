@@ -16,6 +16,13 @@
 `forecast_price` · `price_base_metals` · `price_minor_metals` · `price_iron_energy` ·
 `price_other` · `map_korea`(수급지도-국내) · `map_global`(수급지도-해외)
 
+> **2026-09-03 추가 안내**: `forecast_price`(가격예측)는 **백엔드 코드엔 여전히
+> 남아있지만 요약보고서 작업 대상(사용자 지정 스코프)에서는 제외**다(2026-09-01
+> streamlit 메뉴 제거, 커밋 `d653f4230`). 이 문서·향후 산출물에서 "11개 page_id"
+> 등 배열을 그대로 옮길 때 `forecast_price`를 목록에서 뺄 것 — 실제 작업 대상은
+> 10개다. 백엔드 코드 완전 삭제는 보류 중(다음 세션 예정, [[feedback_forecast_price_exclusion_260903]]
+> 참고).
+
 각 요청은 **결정론적 계산**(코드가 원자료로부터 근거·수치를 직접 산출)과
 **LLM 정제**(그 근거를 자연어 문장으로 다듬되, 근거 밖 서술은 검증에서 걸러짐)
 두 단계를 거쳐 Markdown으로 렌더링된다. 이 서비스는 자체 DB를 조회하지 않는다
