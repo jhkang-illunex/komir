@@ -1,9 +1,6 @@
 # report_gen — API 단위별 내부 동작
 
-> **⚠ `forecast_price`(가격예측)는 작업 대상이 아니다** — 백엔드 코드엔 남아있지만
-> 2026-09-01 사용자 지시로 요약보고서 작업 대상 스코프에서 제외됐다(streamlit 메뉴
-> 제거, 커밋 `d653f4230`). 아래 본문 9개 절과 동급으로 다루지 않고 맨 끝 부록에서만
-> 짧게 언급한다. ([[feedback_forecast_price_exclusion_260903]] 참고)
+> `forecast_price`(가격예측)는 작업 대상이 아니라 아래 9개 어디에도 포함하지 않는다.
 >
 > 대상: `inhouse/services/report_gen/`. 전체 파이프라인 개요(요청→계산→LLM 정제→
 > 렌더링 공통 흐름, 안전장치, 프롬프트/DB 계약)는 이미
@@ -66,9 +63,8 @@ Client → routers/analysis.py(엔드포인트) → run_summary(routers/_common.
    각 절 참고).
 
 등급 판정 정책: **`indicator_market`·`indicator_supply` 2개만** YAML
-등급 밴드(`resources/policies/*.yaml`)를 쓴다. 나머지 8개(`indicator_composite`
-포함, `forecast_price`도)는 등급 개념 자체가 없다 — `policy.py` 모듈 docstring이
-명시하는 원칙이다.
+등급 밴드(`resources/policies/*.yaml`)를 쓴다. 나머지 7개(`indicator_composite`
+포함)는 등급 개념 자체가 없다 — `policy.py` 모듈 docstring이 명시하는 원칙이다.
 
 ## 3. page_id별 내부 동작
 
@@ -288,28 +284,7 @@ period_total_change가 거의 발동 안 하는 걸 보완)·`komis_route_share_
 
 **실측 예시**: 없음(코드 확인만).
 
-## 4. 부록 — `forecast_price`(작업 대상 아님)
-
-`indicator_composite`와 같은 파일(`additional_summary.py::
-calculate_price_forecast_summary`)에서 계산되며 등급 개념이 없다. 요청은
-`mineral`(필수)·`forecast_horizon`(medium|long, `komis_response` 있으면
-자동판별)·`komis_response`(`getListPricePredc`)를 받는다. 백엔드 라우터
-(`POST /api/v1/analysis/indicators/price-forecast`)와 코드는 살아있지만 2026-09-01
-사용자 지시로 streamlit 메뉴·요약보고서 작업 대상 스코프에서 제외됐다 — 이
-문서·향후 산출물에서 9개 목록에 함께 세지 말 것. 백엔드 완전 삭제는 보류
-상태([[feedback_forecast_price_exclusion_260903]] 참고).
-
-**참고용 실측 예시**(`getListPricePredc` 라이브 캡처, 니켈·중기 — 작업 대상은
-아니지만 이미 확보된 자료라 남겨둠):
-
-```
-## 핵심 진단
-니켈 중기 예측가격은 2026년 3분기 19,713.08에서 2028년 4분기 19,715.78로
-0.01% 상승할 것으로 전망되나, 2027년 1분기부터 2028년 2분기 사이에는
-방향이 4차례 바뀌며 등락이 반복되는 경로를 보입니다.
-```
-
-## 5. 코드 확인 중 발견한 참고 사항(수정 아님, 기록만)
+## 4. 코드 확인 중 발견한 참고 사항(수정 아님, 기록만)
 
 - `analysis/store.py`(`out_report` 적재)는 **현재 미사용 죽은 코드**다 — 2026-08-19
   도입 후 2026-08-26 사용자 지시로 `routers/_common.py::run_summary`가

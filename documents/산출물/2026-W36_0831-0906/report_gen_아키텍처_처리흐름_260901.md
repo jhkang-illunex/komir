@@ -7,21 +7,14 @@
 
 ## 1. 개요
 
-`report_gen`은 KOMIS 5개 메뉴 계열(시장동향지표·수급동향지표·핵심광물지표
-(광물종합지수)·핵심광물지도(3종)·광물자원가격(4종)·수입가격예측)에 대한
-**분석요약(MD 보고서 텍스트)** 을 생성하는 FastAPI 서비스다. `/api/v1/analysis/*`
-아래 **11개 page_id**를 지원한다:
+`report_gen`은 KOMIS 4개 메뉴 계열(시장동향지표·수급동향지표·핵심광물지표
+(광물종합지수)·핵심광물지도(3종)·광물자원가격(4종))에 대한 **분석요약(MD 보고서
+텍스트)** 을 생성하는 FastAPI 서비스다. `/api/v1/analysis/*` 아래 **10개 page_id**를
+지원한다(가격예측은 작업 대상이 아니라 여기 포함하지 않는다):
 
 `indicator_market` · `indicator_supply` · `indicator_composite` · `map_mineral` ·
-`forecast_price` · `price_base_metals` · `price_minor_metals` · `price_iron_energy` ·
+`price_base_metals` · `price_minor_metals` · `price_iron_energy` ·
 `price_other` · `map_korea`(수급지도-국내) · `map_global`(수급지도-해외)
-
-> **2026-09-03 추가 안내**: `forecast_price`(가격예측)는 **백엔드 코드엔 여전히
-> 남아있지만 요약보고서 작업 대상(사용자 지정 스코프)에서는 제외**다(2026-09-01
-> streamlit 메뉴 제거, 커밋 `d653f4230`). 이 문서·향후 산출물에서 "11개 page_id"
-> 등 배열을 그대로 옮길 때 `forecast_price`를 목록에서 뺄 것 — 실제 작업 대상은
-> 10개다. 백엔드 코드 완전 삭제는 보류 중(다음 세션 예정, [[feedback_forecast_price_exclusion_260903]]
-> 참고).
 
 각 요청은 **결정론적 계산**(코드가 원자료로부터 근거·수치를 직접 산출)과
 **LLM 정제**(그 근거를 자연어 문장으로 다듬되, 근거 밖 서술은 검증에서 걸러짐)
@@ -92,7 +85,6 @@ Client(streamlit_demo)
 ```python
 if page_id == "indicator_composite": _analyze_composite()
 if page_id == "map_mineral":         _analyze_mineral_map()
-if page_id == "forecast_price":      _analyze_price_forecast()
 if page_id in (price_base_metals, price_minor_metals,
                price_iron_energy, price_other): _analyze_price()
 if page_id == "map_korea":           _analyze_domestic_trade()
