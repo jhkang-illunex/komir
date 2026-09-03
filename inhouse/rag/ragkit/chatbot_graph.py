@@ -149,6 +149,15 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
         CU/NI 같은 영문 약어로 바꿔쓰지 않는다 — 이 필드는 5광종 제한이
         없는 별도 필드다). 광종을 특정할 수 없으면 komis_raw를 켜지 않는다
         (단, komis_topic=composite_index는 예외 — 위 참고, null로 둔다).
+     3) komis_start_period·komis_end_period(선택) — 질문이 특정 연도/월/날짜를
+        명시적으로 지정하면 YYYY/YYYYMM/YYYYMMDD 숫자 문자열로 둘 다 채운다
+        (예: "2010년 1월"→둘 다 "201001", "2024년"→둘 다 "2024"). 기간을
+        범위로 말하면("2024년 1월~3월") 시작·끝을 각각 채운다. 특정 기간을
+        언급하지 않았으면(예: "니켈 가격 알려줘") 둘 다 null로 둔다(최신
+        데이터를 조회한다는 뜻). "최근 3개월"·"최근 1년" 같은 상대 표현은
+        이 필드가 아직 다루지 않는다 — 둘 다 null로 두고(그 경우 최신
+        limit개만큼 조회된다), 상대 표현 자체를 절대 날짜로 계산해 채우려
+        들지 않는다.
    - dense: 보고서·기사·백서 등 비정형 문서를 의미 기반으로 검색한다. 애매하면
      켜는 게 안전하다(기본값에 가깝게 취급). komis_raw를 켤 때도, 그 데이터가
      실제로는 없거나(발주 5광종 상당수가 아직 개발용 더미다) 부족할 수 있어
@@ -233,6 +242,16 @@ class RetrievalRoute(BaseModel):
     # 에서만 쓰는 것, 챗봇 전체는 아니다")로 CHATBOT_SYSTEM_PROMPT 규칙11도
     # 같이 제거했다(chatbot.py 참고).
     komis_mineral_name: str | None = None
+    # 2026-09-03(발주처 문서 ④-나 "조회 기간 데이터 없음") — 질문이 명시적
+    # 과거 기간을 지정했는데도 komis_raw_lookup에 아무 기간 필터가 안 실려
+    # 최신 데이터가 그대로 나오던 갭을 메운다. `AnalysisPreviewRequest.
+    # start_period`/`end_period`(komis_raw.py)와 같은 형식(YYYY/YYYYMM/
+    # YYYYMMDD 숫자 문자열, `_coerce_period`가 page 정밀도에 맞춰 알아서
+    # 자르거나 채운다)을 그대로 쓴다 — 이 그래프에서 별도로 정규화하지 않고
+    # 라우터가 낸 문자열을 그대로 넘긴다(검증은 komis_raw.py의 pydantic
+    # 정규식이 2차 방어선으로 이미 있음).
+    komis_start_period: str | None = None
+    komis_end_period: str | None = None
     commodity_code: Literal["CU", "NI", "CO", "LI", "REE"] | None = None
     target: Literal["volume", "value"] | None = None
     forecast_months: int | None = None  # import_forecast 전용 — "N개월치만" 요청 시 1~N만 반환
@@ -358,7 +377,7 @@ def _route_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
                 "history": _recent_history(state),
                 "last_answer": _last_assistant_answer(state),
             },
-            output_model=RetrievalRoute, max_tokens=160,
+            output_model=RetrievalRoute, max_tokens=200,  # 2026-09-03: komis_start/end_period 2필드 추가로 여유 확보
         )
         route = invocation.output
         if not route.resolved_query.strip():
@@ -446,9 +465,12 @@ def _retrieve_node(state: RetrievalState, *, dense_k: int, pageindex_k: int) -> 
             jobs["structured"] = pool.submit(call, route.commodity_code, route.target, route.forecast_months)
         # composite_index는 komis_raw_mineral_code가 None이어도(광종 미지정)
         # 조회한다 — 위에서 이미 그 경우만 komis_raw_page_id를 채워뒀다.
+        # start_period/end_period(2026-09-03, ④-나)는 그대로 패스스루 —
+        # 둘 다 None이면 기존과 동일하게 최신 limit개가 조회된다.
         if komis_raw_page_id:
             jobs["komis_raw"] = pool.submit(
                 session.call_komis_raw_lookup, komis_raw_page_id, mineral_code=komis_raw_mineral_code,
+                start_period=route.komis_start_period, end_period=route.komis_end_period,
             )
         query = route.resolved_query or state["question"]
         if route.use_dense:
@@ -595,6 +617,20 @@ def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
 #: 아래 _finalize_node가 near-miss 대신 강제 기권으로 보낸다.
 _UNSUPPORTED_MINERAL_MARKER = "KOMIS 광종 목록(ai_mnrl_mst)에서 찾지 못했습니다"
 
+#: `_mcp_tools_common.py::komis_raw_lookup`의 `_PERIOD_BOUNDS_LEAD` 두
+#: 값("조회 가능 기간"/"지표 산출 가능 기간")이 만드는 경고 문구의 공통
+#: 접두부 — 2026-09-03(발주처 문서 ④-나). 위 미지원광종과 같은 이유로 값을
+#: 그대로 맞춘다. 이 경고가 있다는 건 komis_raw가 사용자가 지정한 기간에
+#: 0건을 받았다는 뜻이라, 역시 near-miss 대신 강제 기권으로 보낸다 — 문서가
+#: "답변 불가 안내 + 조회 가능 기간 안내"를 정확한 문구로 요구한다.
+_PERIOD_BOUNDS_MARKER = "가능 기간은 "
+
+
+def _has_deterministic_abstain_signal(warnings: list[str]) -> bool:
+    return any(
+        _UNSUPPORTED_MINERAL_MARKER in w or _PERIOD_BOUNDS_MARKER in w for w in warnings
+    )
+
 
 def _finalize_node(state: RetrievalState) -> RetrievalState:
     """verify가 재시도 소진 후에도 "불충분"이면 어떻게 할지 결정한다.
@@ -616,12 +652,20 @@ def _finalize_node(state: RetrievalState) -> RetrievalState:
     하는 chat_turn()의 기권 분기에 영영 도달하지 못했다(실측 재현: "규회석
     가격 추이" → near-miss "이 자료라도 보여드릴까요?"). 문서가 이 케이스를
     "대안 질문 미제공(B안)"으로 명시했으므로 — 미지원 광종 경고가 있으면
-    near-miss 후보에서 완전히 빼고 강제로 기권시킨다."""
+    near-miss 후보에서 완전히 빼고 강제로 기권시킨다.
+
+    2026-09-03(발주처 문서 ④-나 "조회 기간 데이터 없음") — 같은 문제를 komis_
+    start_period/end_period 신설(사용자가 명시한 과거 기간을 komis_raw_lookup에
+    실어 보내는 배선) 직후 실측으로 다시 발견했다: "2010년 1월 니켈 수급동향
+    지표"를 물으면 라우팅·기간전달까지는 정확한데, komis_raw가 0건을 받아
+    "조회 가능 기간은 ...입니다" 경고를 냈어도 dense가 날짜만 우연히 겹치는
+    무관한 문서를 찾아오면 역시 near-miss로 샜다. 같은 원칙으로 처리한다
+    (_has_deterministic_abstain_signal)."""
 
     if state.get("sufficient", True):
         return {}
     warnings = state.get("warnings", [])
-    if any(_UNSUPPORTED_MINERAL_MARKER in w for w in warnings):
+    if _has_deterministic_abstain_signal(warnings):
         return {"evidence": []}
     if state.get("evidence"):
         return {"warnings": [*warnings, "retrieval_near_miss"]}
