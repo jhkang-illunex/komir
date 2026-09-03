@@ -106,6 +106,20 @@ def extract_markdown_tables(text: str) -> list[dict]:
     return tables
 
 
+#: `komis_raw.py::_PAGE_DATASETS`의 `period_column`이 전 page_id에 걸쳐 쓰는
+#: 두 이름뿐이다(실측 확인, grep "period_column=" 전수조사) — YYYYMMDD/YYYYMM
+#: 숫자문자열이라 `_NUM_RE`에 그대로 걸려 아래 숫자열 탐색에서 가격·지표
+#: 같은 진짜 수치로 오인되던 버그(2026-09-03, 사용자 실측 제보 — 니켈 가격
+#: 차트의 X축이 날짜(crtr_ymd)가 아니라 광종 식별자(mnrl_prc_crtr_sn)로,
+#: Y축은 가격이 아니라 crtr_ymd 자체로 그려짐). 이 열은 (1) 라벨(X축) 후보로
+#: 최우선하고 (2) 숫자열(Y축) 후보에서는 무조건 제외한다.
+_DATE_COLUMN_NAMES = {"crtr_ymd", "crtr_yr"}
+
+
+def _is_date_column(header: str) -> bool:
+    return header.strip().lower() in _DATE_COLUMN_NAMES
+
+
 def _numeric_series(rows: list[list[str]], col_idx: int) -> list[float] | None:
     """col_idx 열의 모든 셀이 숫자(콤마·% 허용)로 읽히면 float 리스트, 하나라도
     아니면 None(그 열은 차트 후보에서 제외 — 범주형 라벨 열을 숫자로 억지로
@@ -126,17 +140,27 @@ def render_chart_png(table: dict) -> tuple[bytes, str] | None:
     억지 차트를 그리지 않는게 원칙, 근거 없는 시각화가 오히려 오해를 부른다).
     행이 4개 이상이면 추이로 보고 선그래프, 그보다 적으면 막대그래프.
 
+    X축 라벨은 날짜열(crtr_ymd/crtr_yr, 위치 무관)이 있으면 그걸 최우선 —
+    없으면 기존대로 첫 번째 열을 쓴다(국가·광종명 등 범주형 첫 열이 라벨로
+    맞는 표가 더 많다).
+
     matplotlib은 이 함수를 실제로 쓸 때만 임포트한다(차트 후보가 없는 대다수
     턴에서는 무거운 임포트 비용을 안 치르게)."""
 
     columns, rows = table["columns"], table["rows"]
     if len(rows) < 2 or len(columns) < 2:
         return None
-    for idx in range(1, len(columns)):
-        series = _numeric_series(rows, idx)
-        if series is None:
+    label_idx = next((i for i, c in enumerate(columns) if _is_date_column(c)), 0)
+    for idx in range(len(columns)):
+        if idx == label_idx or _is_date_column(columns[idx]):
             continue
-        labels = [row[0] for row in rows]
+        series = _numeric_series(rows, idx)
+        # 값이 전부 같으면(예: mnrl_prc_crtr_sn처럼 조회 전체에 걸쳐 고정된
+        # 식별자 열) 정보량이 0인 평평한 선이라 다음 후보로 넘어간다 — 여러
+        # 행에 걸쳐 값이 갈리는 진짜 수치열(가격 등)을 우선한다.
+        if series is None or len(set(series)) <= 1:
+            continue
+        labels = [row[label_idx] for row in rows]
 
         import matplotlib
 
