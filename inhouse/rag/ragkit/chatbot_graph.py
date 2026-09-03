@@ -587,6 +587,15 @@ def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
     return {"sufficient": sufficient, "warnings": warnings}
 
 
+#: `_mcp_tools_common.py::komis_resolve_mineral`이 `ai_mnrl_mst`에서 광종을
+#: 못 찾았을 때 내는 경고 문구의 고정 부분(전체 정규식은 chatbot.py::
+#: _UNSUPPORTED_MINERAL_RE가 따로 갖고 있다 — 두 파일이 각각 정형/생성
+#: 프로세스에서 독립적으로 도는 별도 모듈이라 상수를 공유 import하지 않고
+#: 문구만 그대로 맞춘다, 바뀌면 둘 다 같이 고칠 것). 이 마커가 있으면
+#: 아래 _finalize_node가 near-miss 대신 강제 기권으로 보낸다.
+_UNSUPPORTED_MINERAL_MARKER = "KOMIS 광종 목록(ai_mnrl_mst)에서 찾지 못했습니다"
+
+
 def _finalize_node(state: RetrievalState) -> RetrievalState:
     """verify가 재시도 소진 후에도 "불충분"이면 어떻게 할지 결정한다.
 
@@ -598,12 +607,24 @@ def _finalize_node(state: RetrievalState) -> RetrievalState:
     수 있게 한다 — retrieval_near_miss 경고로 표시. **evidence가 애초에 0건**
     (조회 자체가 아무것도 못 찾음)이면 제안할 게 없으므로 그대로 기권 경로
     (chat_turn의 "evidence 없음" 분기)로 보낸다(retrieve_evidence()의 반환
-    계약은 그대로 (evidence, warnings) 2-tuple 유지)."""
+    계약은 그대로 (evidence, warnings) 2-tuple 유지).
+
+    2026-09-03(발주처 문서 ④-가 "지원 광종 밖", 실측으로 발견·사용자 승인 후
+    수정) — 원래는 이 분기가 "미지원 광종" 질문("규회석 가격 추이")에서도
+    dense가 뭔가 topically 비슷한 문서(알루미늄·구리 가격 등)를 찾아오면
+    무조건 near-miss로 흘러 "정확한 문구로 지원 광종 밖임을 정확히 안내"
+    하는 chat_turn()의 기권 분기에 영영 도달하지 못했다(실측 재현: "규회석
+    가격 추이" → near-miss "이 자료라도 보여드릴까요?"). 문서가 이 케이스를
+    "대안 질문 미제공(B안)"으로 명시했으므로 — 미지원 광종 경고가 있으면
+    near-miss 후보에서 완전히 빼고 강제로 기권시킨다."""
 
     if state.get("sufficient", True):
         return {}
+    warnings = state.get("warnings", [])
+    if any(_UNSUPPORTED_MINERAL_MARKER in w for w in warnings):
+        return {"evidence": []}
     if state.get("evidence"):
-        return {"warnings": [*state.get("warnings", []), "retrieval_near_miss"]}
+        return {"warnings": [*warnings, "retrieval_near_miss"]}
     return {"evidence": []}
 
 
