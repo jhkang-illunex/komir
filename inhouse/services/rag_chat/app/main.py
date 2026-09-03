@@ -79,8 +79,14 @@ async def _lifespan(_app: FastAPI):
         await asyncio.to_thread(mcp_client.stop_all)
 
 
-app = FastAPI(title="komir rag_chat", lifespan=_lifespan)
+app = FastAPI(title="komir rag_chat", lifespan=_lifespan, docs_url=None, redoc_url=None)
 app.include_router(chat_router)
+
+# 2026-09-03: report_gen과 동일 이유(§shared/docs_static.py 모듈 docstring)
+# — 기본 /docs·/redoc의 CDN 의존을 없애 사내망 브라우저에서도 뜨게 한다.
+from shared.docs_static import mount_offline_docs  # noqa: E402
+
+mount_offline_docs(app, title="komir rag_chat")
 
 
 @app.get("/healthz")

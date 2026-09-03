@@ -252,9 +252,17 @@ async def lifespan(app: FastAPI):
             comprehensive_service.close()
 
 
-app = FastAPI(title="komir report_gen", lifespan=lifespan)
+app = FastAPI(title="komir report_gen", lifespan=lifespan, docs_url=None, redoc_url=None)
 app.include_router(analysis_router)
 app.include_router(comprehensive_router)
+
+# 2026-09-03: 기본 /docs·/redoc은 CDN(jsdelivr·구글폰트) 절대 URL을 HTML에
+# 박아 보내 사내망 브라우저에서 화면이 안 뜨는 문제가 있었다(서버 자체는
+# CDN에 닿아도 사용자 브라우저가 못 닿으면 재현) — 로컬 정적자산으로
+# self-host한다(§shared/docs_static.py).
+from shared.docs_static import mount_offline_docs  # noqa: E402
+
+mount_offline_docs(app, title="komir report_gen")
 
 #: 분석요약 API 프리픽스 — 이 아래 경로만 "HTTP 항상 200 + 바디 status" 계약이다.
 # 2026-08-31 정리 — `/api/v1/prices`·`/indicators`·`/maps`(구
