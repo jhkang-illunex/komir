@@ -29,14 +29,10 @@
   붙여넣기 UI가 정본이다.
 - **KOMIS 원본은 로그인·세션 쿠키가 필요한 AJAX**라 이 sandbox/컨테이너에서 직접
   호출할 수 없다 — 그래서 "사람이 브라우저에서 떠서 붙여넣기" 방식이다.
-- `forecast_price`(가격예측)는 백엔드 라우터·파서·streamlit_demo의
-  `passthrough_forecast_price`/`KOMIS_RAW_PAGES` 항목이 전부 살아있지만,
-  **2026-09-01 사용자 지시로 streamlit 메뉴(드롭다운)에서는 제거**됐다 — API 자체는
-  유효하나 데모 화면에는 안 뜬다. 참고용으로 §12에 남긴다.
-- `price_group`은 2026-08-31 report_gen 외부 인터페이스 자체가 삭제돼(내부 로직은
-  보존) 이 문서·streamlit_demo 양쪽 다 대상이 아니다.
+- `forecast_price`(가격예측)·`price_group`은 streamlit 요약보고서 작업 대상에서
+  제외됐다 — 이 문서·목록·표 어디에도 포함하지 않는다.
 
-## 1. 페이지 목록(11 + 부록 1)
+## 1. 페이지 목록(11종)
 
 | # | page_id | 엔드포인트 | KOMIS API(필수) | KOMIS API(선택) |
 |---|---|---|---|---|
@@ -50,7 +46,6 @@
 | 8 | `price_other` | `POST /api/v1/analysis/prices/other` | `getMnrlPrcByMnrkndUnqCd` | — |
 | 9 | `map_korea` | `POST /api/v1/analysis/maps/domestic-trade` | `getListKoreaData` | — |
 | 10 | `map_global` | `POST /api/v1/analysis/maps/global-trade` | `getListDataNation` | `getBarChartDataNation`·`getListMapNationData` |
-| (부록) | `forecast_price` | `POST /api/v1/analysis/indicators/price-forecast` | `getListPricePredc` | — (streamlit 메뉴 제외) |
 
 `map_mineral`·`price_*` 4종은 KOMIS 응답 본문에 광종 식별자가 없어(있어도 `mnrkndKornNm`
 한글명뿐) `mineral`(코드)을 항상 별도로 명시해야 한다 — 자동채움 불가(§report_gen_
@@ -268,24 +263,7 @@ komis_response_필드_최종감사_260831.md에서 실측 확인된 결론).
 
 ---
 
-## 12. 부록 — `forecast_price`(streamlit 메뉴 제외, API는 유효)
-
-- **streamlit_demo**: `komis_raw.py::passthrough_forecast_price`는 존재하나
-  `report_gen_client.py::PAGE_SPECS`에서 2026-09-01 제거돼 드롭다운엔 안 뜬다.
-- **붙여넣는 JSON**: `getListPricePredc` 원본 그대로(envelope 없음).
-- **Request 모델**: `PriceForecastSummaryRequest` — `mineral`(필수)·`forecast_horizon`
-  ("medium"|"long", `komis_response` 있으면 자동판별)·`komis_response`.
-
-| KOMIS 원본 필드 | 내부 필드 | 비고 |
-|---|---|---|
-| `data[].crtrPrd`("28년 4Q"/"01년 1Q") | `period`("YYYY-QN" 또는 "YYYY") | 정규식 `^(\d{2})년\s*(?:(\d)Q)?` |
-| `data[].prc` | `price` | |
-| `data[].realYn`("Y"/"N") | `is_actual`(True/False) | |
-| `data[].mnrkndKornNm` | `mineral_name`(자동채움) | |
-
----
-
-## 13. 자주 걸리는 함정
+## 12. 자주 걸리는 함정
 
 - **`komis_snapshot_response`/`komis_share_response`/`komis_bar_chart_response`/
   `komis_route_share_response`는 page_id별 화이트리스트**가 있다 — 허용 안 된
@@ -294,8 +272,8 @@ komis_response_필드_최종감사_260831.md에서 실측 확인된 결론).
   `komis_bar_chart_response`/`komis_route_share_response`는 `map_global`만.
 - **광종 자동채움 우선순위**: 항상 "호출자가 명시한 값 > 응답 본문에서 자동채움"
   순서다 — `indicator_supply`(snapshot의 `mnrkndUnqCd`)·`map_korea`/`map_global`
-  (`srchMnrkndUnqCd` echo)·`price_*`/`forecast_price`(`mnrkndKornNm`, 이름만 채움,
-  코드는 여전히 필수) 전부 같은 규칙. 드롭다운 값과 붙여넣은 JSON의 실제 광종이
+  (`srchMnrkndUnqCd` echo)·`price_*`(`mnrkndKornNm`, 이름만 채움, 코드는 여전히
+  필수) 전부 같은 규칙. 드롭다운 값과 붙여넣은 JSON의 실제 광종이
   다르면 광종명·수치가 서로 다른 광종 것으로 섞여 나올 수 있다(교차검증 없음).
 - **총액/비중 필드는 관측치 합산이 아니라 응답에 동봉된 총계 필드를 우선**한다
   (`map_korea`의 `sumIncmAmt`/`sumExpAmt`, `map_global`의 `sumAmt`) — KOMIS `list`
