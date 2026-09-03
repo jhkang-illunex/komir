@@ -451,6 +451,53 @@ def _dummy_data_notice(cited_indices: set[int], evidence: list) -> str:
     return "\n\n" + "\n".join(f"⚠ {c}" for c in sorted(caveats))
 
 
+#: 2026-09-03(발주처 문서 ④-마/바, 사용자 승인 — "별도 사전분류 LLM 호출
+#: 추가", 공유 ROUTE_PROMPT는 건드리지 말라는 명시적 지시). 검색을 시작하기
+#: 전에 먼저 판단한다 — security_privacy/investment_advice는 [근거]가 뭘
+#: 찾아오든 애초에 답해서는 안 되는 질문이라, dense 검색이 topically 비슷한
+#: 문서를 찾아와 near-miss로 새는 걸 원천 차단한다(_finalize_node의
+#: unsupported_mineral과 같은 문제를 겪는데, 그건 komis_resolve_mineral의
+#: 경고 문구로 결정적 검출이 가능했지만 이 둘은 그런 도구가 없어 같은
+#: 방식을 못 쓴다 — 그래서 검색 전 단계에서 아예 막는 방식을 택했다).
+_PRE_GATE_PROMPT = """이번 질문이 아래 두 가지 중 하나에 해당하는지만 판단한다.
+정확히 하나의 JSON 객체만 출력한다(설명·코드펜스 금지).
+
+- security_privacy: 다른 사용자의 조회 이력, 관리자 계정 정보, 시스템 내부
+  정보·설정 등 개인정보·보안에 해당하는 것을 요청한다(예: "다른 사용자의
+  조회 이력을 보여주세요", "관리자 계정 정보를 알려주세요").
+- investment_advice: 투자 판단·매수매도·종목 추천을 묻는다(예: "니켈 관련
+  주 지금 사도 됩니까?", "투자해도 됩니까?").
+- none: 위 둘 다 아니다 — 광물 가격·수급·생산 등 정상적인 정보 조회
+  질문이면 광종이 무엇이든, 얼마나 구체적이든 항상 none이다. 애매하면
+  none으로 판단한다(과잉 차단 금지 — 이 판단은 정상 질문의 검색 자체를
+  막아버리므로 확실할 때만 security_privacy/investment_advice를 고른다)."""
+
+
+class _PreGateDecision(BaseModel):
+    category: Literal["security_privacy", "investment_advice", "none"]
+
+
+def _classify_pre_gate(message: str, llm: "KomirJsonLLM | None") -> str | None:
+    """검색 도구를 하나도 돌리기 전에 호출 — security_privacy/investment_advice면
+    그 문자열을, 아니면(정상 질문이거나 LLM 호출 자체가 실패하면 — 안전한
+    쪽은 "일단 검색을 진행"이다) None을 돌려준다. 이 함수가 True를 내면
+    chat_turn()은 retrieve_evidence()를 아예 호출하지 않는다."""
+
+    client = llm or KomirJsonLLM()
+    try:
+        invocation = client.invoke(
+            task="chat_pre_gate", instructions=_PRE_GATE_PROMPT,
+            payload={"question": message}, output_model=_PreGateDecision, max_tokens=30,
+        )
+    except LLM_TRANSIENT_ERRORS as exc:
+        _logger.warning(
+            "chat_pre_gate 분류 실패, 정상 검색으로 진행: %s: %s", type(exc).__name__, exc
+        )
+        return None
+    category = invocation.output.category
+    return None if category == "none" else category
+
+
 _ABSTAIN_REASON_PROMPT = """핵심광물 챗봇이 이번 질문에 답할 근거를 하나도 찾지
 못했다. 사유를 아래 다섯 가지 중 하나로 분류한다. 정확히 하나의 JSON 객체만
 출력한다(설명·코드펜스 금지).
@@ -537,9 +584,10 @@ def _classify_abstain(message: str, warnings: list[str], llm: "KomirJsonLLM | No
 
 def _resolve_abstain(message: str, warnings: list[str], llm: "KomirJsonLLM | None") -> tuple[str, str]:
     """chat_turn()의 두 기권 분기(근거 0건 / 생성 LLM 자체 기권)가 공유하는
-    사유 판정 — 결정적 단서(도구 자체 실패·미지원 광종)를 LLM 분류보다
-    먼저 확인하고, 어디에도 안 걸리면 `_classify_abstain`(LLM)로 넘긴다.
-    2026-09-03 신설(두 호출부에 똑같이 복붙돼 있던 3단 분기를 하나로 합침)."""
+    사유 판정 — 결정적 단서(도구 자체 실패·미지원 광종·기간없음)를 LLM
+    분류보다 먼저 확인하고, 어디에도 안 걸리면 `_classify_abstain`(LLM)로
+    넘긴다. 2026-09-03 신설(두 호출부에 똑같이 복붙돼 있던 3단 분기를
+    하나로 합침)."""
 
     if any(w.startswith(("dense_failed", "pageindex_failed", "structured_failed",
                           "retrieve_evidence_crashed")) for w in warnings):
@@ -548,6 +596,14 @@ def _resolve_abstain(message: str, warnings: list[str], llm: "KomirJsonLLM | Non
     if unsupported_match:
         mineral_name = unsupported_match.group(1)
         return "unsupported_mineral", f"{mineral_name}{_eun_neun(mineral_name)} 현재 지원 광종에 포함되어 있지 않습니다."
+    # 2026-09-03(④-나) — komis_raw_lookup(_mcp_tools_common.py)이 이미 실제
+    # DB 범위로 "조회 가능 기간은 ...입니다"를 정확히 만들어뒀다 — 이걸
+    # _classify_abstain(LLM)에 넘겨 다시 일반화된 문구로 뭉개지 않고 그대로
+    # 쓴다(chatbot_graph.py::_PERIOD_BOUNDS_MARKER와 같은 문자열, 그쪽이
+    # near-miss를 막아 이 경고가 warnings까지 살아서 도달하게 해준다).
+    bounds_warning = next((w for w in warnings if "가능 기간은 " in w), None)
+    if bounds_warning:
+        return "no_data_for_period", f"질문하신 기간에는 조회 가능한 데이터가 없습니다. {bounds_warning}"
     return _classify_abstain(message, warnings, llm)
 
 
@@ -647,6 +703,27 @@ async def chat_turn(
     # 모두에 넘긴다.
     history = [{"role": row["role"], "content": row["content"]} for row in history_rows]
     await asyncio.to_thread(append_message, resolved_session_id, "user", message, None, store_db_path)
+
+    # 2026-09-03(발주처 문서 ④-마/바) — 검색을 시작하기도 전에 보안/개인정보·
+    # 투자자문 질문인지 먼저 확인한다(_classify_pre_gate 독스트링 참고). 여기서
+    # 걸리면 retrieve_evidence()를 아예 안 부른다 — dense가 뭘 찾아오든 애초에
+    # 답할 수 없는 질문이라 검색 자체가 낭비이자 near-miss로 새는 경로였다.
+    yield _status_event(1)  # 질문 조건 확인
+    pre_gate_reason = await asyncio.to_thread(_classify_pre_gate, message, router_llm)
+    if pre_gate_reason:
+        abstain_text = _abstain_reason_text(_AbstainReason(reason=pre_gate_reason))
+        await asyncio.to_thread(
+            append_message, resolved_session_id, "assistant", abstain_text, None, store_db_path
+        )
+        yield ChatEvent(type="delta", data={"delta": abstain_text})
+        yield ChatEvent(
+            type="done",
+            data={
+                "done": True, "citations": [], "bogus_citations": [], "abstained": True,
+                "abstain_reason": pre_gate_reason,
+            },
+        )
+        return
 
     evidence, route_warnings = [], []
     try:
