@@ -44,7 +44,20 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-_INHOUSE_ROOT = Path(__file__).resolve().parents[3]
+def _find_inhouse_root(start: Path) -> Path:
+    """`shared/llm_client.py`(아래서 바로 import하는 그 모듈)를 담은 디렉토리를
+    위로 훑어 찾는다 — 고정 `parents[3]`은 소스트리(inhouse root)에선 맞지만
+    컨테이너 배포본(services/shared→./shared로 평평하게 COPY, inhouse root가
+    parents[2]=/app)에선 어긋난다(pageindex.py와 동일 버그, 2026-09-03
+    실측 확인 후 같은 패턴으로 수정 — routers/chat.py의 `_find_root` 참고)."""
+
+    for candidate in (start, *start.parents):
+        if (candidate / "shared/llm_client.py").is_file():
+            return candidate
+    raise ImportError(f"shared/llm_client.py를 {start} 상위에서 찾지 못함")
+
+
+_INHOUSE_ROOT = _find_inhouse_root(Path(__file__).resolve())
 if str(_INHOUSE_ROOT) not in sys.path:
     sys.path.insert(0, str(_INHOUSE_ROOT))
 

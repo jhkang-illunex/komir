@@ -30,7 +30,24 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-_INHOUSE_ROOT = Path(__file__).resolve().parents[3]
+def _find_inhouse_root(start: Path) -> Path:
+    """`rag/ragkit/tokenize_ko.py`(아래서 바로 import하는 그 모듈)를 담은
+    디렉토리를 위로 훑어 찾는다. 소스트리(inhouse/services/shared/retrieval/
+    pageindex.py, parents[3]=inhouse)와 컨테이너 배포본(Containerfile이
+    services/shared→./shared, rag/ragkit→./rag/ragkit로 평평하게 COPY,
+    parents[3]=/ 인 반면 실제 inhouse root는 parents[2]=/app)의 상대 깊이가
+    달라 고정 parents[N] 인덱스로는 한쪽에서 반드시 틀린다 — 2026-09-03 실측
+    확인(컨테이너에서 TREES_ROOT가 `/data_lake/...`로 잘못 잡혀 매 조회가
+    "디렉토리 없음"으로 실패, routers/chat.py의 `_find_root` 탐색 패턴과
+    동일 원리로 교체)."""
+
+    for candidate in (start, *start.parents):
+        if (candidate / "rag/ragkit/tokenize_ko.py").is_file():
+            return candidate
+    raise ImportError(f"rag/ragkit/tokenize_ko.py를 {start} 상위에서 찾지 못함")
+
+
+_INHOUSE_ROOT = _find_inhouse_root(Path(__file__).resolve())
 if str(_INHOUSE_ROOT) not in sys.path:
     sys.path.insert(0, str(_INHOUSE_ROOT))
 
