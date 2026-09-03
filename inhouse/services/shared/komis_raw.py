@@ -572,6 +572,52 @@ class KomisRawDataRepository:
         data_source = row["ko_data_src_cd"]
         return str(row["mnrl_nm_ko"]), (None if data_source is None else str(data_source))
 
+    def resolve_period_bounds(
+        self,
+        page_id: str,
+        *,
+        mineral_code: str | None = None,
+        hs_code: str | None = None,
+        price_criterion_serial: int | None = None,
+        index_type_code: str | None = None,
+    ) -> tuple[str, str, Period] | None:
+        """`page_id`가 실제로 조회 가능한 기간(MIN~MAX `period_column`)을 돌려준다
+        — (시작, 끝, 정밀도) 또는 데이터가 아예 없으면 None. 2026-09-03,
+        발주처 문서(대화형검색시스템 예상질문 고도화.pdf) ②-1/②-3/④-나가
+        요구하는 "조회 가능 기간은 YYYY.MM.DD~YYYY.MM.DD입니다" 안내에 쓴다
+        — `komis_raw_lookup`이 0건을 받았을 때 호출측(_mcp_tools_common.py)이
+        이 메서드로 실제 범위를 채운다(하드코딩 문구 금지 원칙 유지).
+
+        필터 인자가 주어지면(예: 특정 광종의 가격기준일련번호) 그 필터가
+        걸린 상태의 범위를, 주어지지 않으면 페이지 테이블 전체 범위를
+        돌려준다 — `_fetch_dataset`과 같은 `_SAFE_VALUE`/`_literal()` 화이트리스트
+        경로만 쓴다(자유형 SQL 금지 원칙 동일). `_PAGE_DATASETS[page_id]`의
+        첫 번째 데이터셋만 본다(map_mineral처럼 2개인 page도 첫 번째로 충분 —
+        이 메서드는 정밀 데이터가 아니라 안내 문구용 범위 참고치라서다)."""
+
+        spec = _PAGE_DATASETS[page_id][0]
+        conditions = list(spec.fixed_conditions)
+        candidate_filters: dict[str, str | int | None] = {
+            "mineral_code": mineral_code,
+            "hs_code": hs_code,
+            "price_criterion_serial": price_criterion_serial,
+            "index_type_code": index_type_code,
+        }
+        for filter_name, column in spec.filter_columns.items():
+            value = candidate_filters.get(filter_name)
+            if value is not None:
+                conditions.append(f"{column} = {_literal(value)}")
+        where_clause = f" WHERE {' AND '.join(conditions)}" if conditions else ""
+        query = (
+            f"SELECT MIN({spec.period_column}) AS mn, MAX({spec.period_column}) AS mx "
+            f"FROM {KOMIS_SCHEMA}.{spec.table}{where_clause}"
+        )
+        frame = read_sql_pg(query)
+        if frame.empty or frame.iloc[0]["mn"] is None:
+            return None
+        row = frame.iloc[0]
+        return str(row["mn"]), str(row["mx"]), spec.period_precision
+
 
 def _json_value(value: Any) -> Any:
     """DB 값을 JSON 직렬화 가능한 스칼라로 정규화(원본 `_json_value` 이식).
