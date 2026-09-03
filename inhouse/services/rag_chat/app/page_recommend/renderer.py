@@ -164,9 +164,10 @@ def render_relation_ambiguous(item: RecommendationItem) -> str:
 
 
 def render_not_found() -> str:
-    """Render guidance for a question that matches no registered page."""
+    """Render guidance for a question that matches no registered page.
 
-    return (
-        "현재 정리된 KOMIS 서비스 목록에서는 질문에 맞는 페이지를 찾지 못했습니다. "
-        "찾고 싶은 광종, 국가, 가격·수급·전망 중 어떤 정보인지 조금 더 구체적으로 알려주세요."
-    )
+    2026-09-03(documents/기획문서/order/rag_chatbot/대화형검색시스템 예상질문
+    고도화.pdf ①메뉴안내 5문항, 사용자 승인 후 문구 정렬) — 발주처 문서가
+    지정한 실패 문구를 그대로 쓴다."""
+
+    return "요청하신 메뉴 경로를 확인하지 못했습니다. 상단 전체메뉴에서 확인해 주십시오."
