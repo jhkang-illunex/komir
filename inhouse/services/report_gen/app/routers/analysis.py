@@ -6,9 +6,17 @@
 제거로 5종. 내부 계산 로직·컨텍스트는 그대로 남겨 언제든 복원 가능 —
 아래 `price_group` 관련 주석 참고).
 
-원본 경로(`/api/v1/analysis/...`)와 메서드(POST)·이식 5종의 요청 본문·응답 모델은
-그대로 유지한다 — 발주처 프론트가 외부repo API 계약에 맞춰 개발 중일 수 있어
-komir 쪽에서 경로를 바꿀 이유가 없다.
+이식 5종의 요청 본문·응답 모델은 원본(`komis_report_generator`) 그대로 유지한다.
+
+**2026-09-03 정정**: 위 "원본 경로도 유지한다"는 이전 문구는 오해 소지가 있었다
+— `komis_report_generator`는 report_gen이 코드를 이식해 온 **참고용 소스 저장소**
+일 뿐 런타임에 호출하는 외부 서비스가 아니고, "발주처 프론트가 그 원본 경로
+그대로 개발 중일 수 있다"는 것도 2026-08-13 시점의 추측성 우려였다(이후 2026-08-30
+API 표면 전체 감사(`a38f3b29b`)에서 실제 호출자가 `streamlit_demo` 하나뿐임을
+grep으로 확인, 그 근거로 미사용 별칭 라우터까지 제거한 이력이 있다 — 그 우려가
+실현된 적이 없다). 이 경로 자체는 이번에 `indicators/`·`maps/` 하위로 재편했다
+(`market-indicator→indicators/market` 등, §각 `@router.post` 데코레이터 참고) —
+요청/응답 모델(스키마)만 원본과 동일하게 유지한다는 뜻으로 위 문장을 좁힌다.
 
 **원본에서 바뀐 것(이식 5종)**
 
@@ -467,7 +475,7 @@ class GlobalTradeSummaryRequest(_DateRangeMineralRequest):
 # ── 공용 실행부 ───────────────────────────────────────────────────────
 
 
-@router.post("/market-indicator", response_model=AnalysisReportResponse)
+@router.post("/indicators/market", response_model=AnalysisReportResponse)
 def summarize_market_indicator(
     payload: IndicatorSummaryRequest,
     request: Request,
@@ -477,7 +485,7 @@ def summarize_market_indicator(
     return run_summary("indicator_market", payload, request)
 
 
-@router.post("/supply-indicator", response_model=AnalysisReportResponse)
+@router.post("/indicators/supply", response_model=AnalysisReportResponse)
 def summarize_supply_indicator(
     payload: SupplyIndicatorSummaryRequest,
     request: Request,
@@ -487,7 +495,7 @@ def summarize_supply_indicator(
     return run_summary("indicator_supply", payload, request)
 
 
-@router.post("/composite-index", response_model=AnalysisReportResponse)
+@router.post("/indicators/composite-index", response_model=AnalysisReportResponse)
 def summarize_composite_index(
     payload: CompositeIndexSummaryRequest,
     request: Request,
@@ -497,7 +505,7 @@ def summarize_composite_index(
     return run_summary("indicator_composite", payload, request)
 
 
-@router.post("/mineral-map", response_model=AnalysisReportResponse)
+@router.post("/maps/mineral", response_model=AnalysisReportResponse)
 def summarize_mineral_map(
     payload: MineralMapSummaryRequest,
     request: Request,
@@ -507,7 +515,7 @@ def summarize_mineral_map(
     return run_summary("map_mineral", payload, request)
 
 
-@router.post("/price-forecast", response_model=AnalysisReportResponse)
+@router.post("/indicators/price-forecast", response_model=AnalysisReportResponse)
 def summarize_price_forecast(
     payload: PriceForecastSummaryRequest,
     request: Request,
@@ -566,7 +574,7 @@ def summarize_price_other(
     return run_summary("price_other", payload, request)
 
 
-@router.post("/domestic-trade", response_model=AnalysisReportResponse)
+@router.post("/maps/domestic-trade", response_model=AnalysisReportResponse)
 def summarize_domestic_trade(
     payload: DomesticTradeSummaryRequest,
     request: Request,
@@ -576,7 +584,7 @@ def summarize_domestic_trade(
     return run_summary("map_korea", payload, request)
 
 
-@router.post("/global-trade", response_model=AnalysisReportResponse)
+@router.post("/maps/global-trade", response_model=AnalysisReportResponse)
 def summarize_global_trade(
     payload: GlobalTradeSummaryRequest,
     request: Request,

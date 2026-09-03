@@ -1,0 +1,3315 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "komir report_gen",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/v1/analysis/indicators/market": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Summarize Market Indicator",
+        "description": "시장동향지표 분석요약.",
+        "operationId": "summarize_market_indicator_api_v1_analysis_indicators_market_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IndicatorSummaryRequest"
+              },
+              "example": {
+                "mineral": "MNRL0018",
+                "mineral_name": "텅스텐",
+                "komis_response": {
+                  "data": [
+                    {
+                      "flutRt": "-10.75",
+                      "flutPrc": "-3.66",
+                      "realFlutRt": "0",
+                      "crtrYmd": "20260701",
+                      "realPrc": "418.09",
+                      "realFlutPrc": "17.69",
+                      "mrktPrspectIdct": "30.38"
+                    },
+                    {
+                      "flutRt": "3.97",
+                      "flutPrc": "1.30",
+                      "realFlutRt": "0",
+                      "crtrYmd": "20260601",
+                      "realPrc": "400.40",
+                      "realFlutPrc": "1.50",
+                      "mrktPrspectIdct": "34.04"
+                    },
+                    {
+                      "flutRt": "3.94",
+                      "flutPrc": "1.24",
+                      "realFlutRt": "0",
+                      "crtrYmd": "20260501",
+                      "realPrc": "398.90",
+                      "realFlutPrc": "0.43",
+                      "mrktPrspectIdct": "32.74"
+                    },
+                    {
+                      "flutRt": "4.58",
+                      "flutPrc": "1.38",
+                      "realFlutRt": "0",
+                      "crtrYmd": "20260401",
+                      "realPrc": "398.47",
+                      "realFlutPrc": "-1.44",
+                      "mrktPrspectIdct": "31.50"
+                    },
+                    {
+                      "flutRt": "3.15",
+                      "flutPrc": "0.92",
+                      "realFlutRt": "0",
+                      "crtrYmd": "20260301",
+                      "realPrc": "399.91",
+                      "realFlutPrc": "0.07",
+                      "mrktPrspectIdct": "30.12"
+                    },
+                    {
+                      "flutRt": "-2.89",
+                      "flutPrc": "-0.87",
+                      "realFlutRt": "0",
+                      "crtrYmd": "20260201",
+                      "realPrc": "399.84",
+                      "realFlutPrc": "9.83",
+                      "mrktPrspectIdct": "29.20"
+                    },
+                    {
+                      "flutRt": "6.67",
+                      "flutPrc": "1.88",
+                      "realFlutRt": "0",
+                      "crtrYmd": "20260101",
+                      "realPrc": "390.01",
+                      "realFlutPrc": "-3.04",
+                      "mrktPrspectIdct": "30.07"
+                    },
+                    {
+                      "flutRt": "10.29",
+                      "flutPrc": "2.63",
+                      "realFlutRt": "0",
+                      "crtrYmd": "20251201",
+                      "realPrc": "393.05",
+                      "realFlutPrc": "-6.37",
+                      "mrktPrspectIdct": "28.19"
+                    },
+                    {
+                      "flutRt": "5.19",
+                      "flutPrc": "1.26",
+                      "realFlutRt": "0",
+                      "crtrYmd": "20251101",
+                      "realPrc": "399.42",
+                      "realFlutPrc": "-0.74",
+                      "mrktPrspectIdct": "25.56"
+                    },
+                    {
+                      "flutRt": "2.97",
+                      "flutPrc": "0.70",
+                      "realFlutRt": "0",
+                      "crtrYmd": "20251001",
+                      "realPrc": "400.16",
+                      "realFlutPrc": "1.90",
+                      "mrktPrspectIdct": "24.30"
+                    },
+                    {
+                      "flutRt": "1.16",
+                      "flutPrc": "0.27",
+                      "realFlutRt": "0",
+                      "crtrYmd": "20250901",
+                      "realPrc": "398.26",
+                      "realFlutPrc": "3.49",
+                      "mrktPrspectIdct": "23.60"
+                    },
+                    {
+                      "flutRt": "5.28",
+                      "flutPrc": "1.17",
+                      "realFlutRt": "0",
+                      "crtrYmd": "20250801",
+                      "realPrc": "394.77",
+                      "realFlutPrc": "-1.07",
+                      "mrktPrspectIdct": "23.33"
+                    },
+                    {
+                      "flutRt": "7.42",
+                      "flutPrc": "1.53",
+                      "realFlutRt": "0",
+                      "crtrYmd": "20250701",
+                      "realPrc": "395.84",
+                      "realFlutPrc": "-2.64",
+                      "mrktPrspectIdct": "22.16"
+                    },
+                    {
+                      "flutRt": "-0.77",
+                      "flutPrc": "-0.16",
+                      "realFlutRt": "0",
+                      "crtrYmd": "20250601",
+                      "realPrc": "398.48",
+                      "realFlutPrc": "3.85",
+                      "mrktPrspectIdct": "20.63"
+                    },
+                    {
+                      "flutRt": "-2.12",
+                      "flutPrc": "-0.45",
+                      "realFlutRt": "0",
+                      "crtrYmd": "20250501",
+                      "realPrc": "394.63",
+                      "realFlutPrc": "5.48",
+                      "mrktPrspectIdct": "20.79"
+                    },
+                    {
+                      "flutRt": "1.09",
+                      "flutPrc": "0.23",
+                      "realFlutRt": "0",
+                      "crtrYmd": "20250401",
+                      "realPrc": "389.15",
+                      "realFlutPrc": "1.84",
+                      "mrktPrspectIdct": "21.24"
+                    },
+                    {
+                      "flutRt": "-2.32",
+                      "flutPrc": "-0.50",
+                      "realFlutRt": "0",
+                      "crtrYmd": "20250301",
+                      "realPrc": "387.31",
+                      "realFlutPrc": "2.31",
+                      "mrktPrspectIdct": "21.01"
+                    },
+                    {
+                      "flutRt": "6.27",
+                      "flutPrc": "1.27",
+                      "realFlutRt": "0",
+                      "crtrYmd": "20250201",
+                      "realPrc": "385.00",
+                      "realFlutPrc": "-2.64",
+                      "mrktPrspectIdct": "21.51"
+                    },
+                    {
+                      "flutRt": "77.39",
+                      "flutPrc": "8.83",
+                      "realFlutRt": "0",
+                      "crtrYmd": "20250101",
+                      "realPrc": "387.64",
+                      "realFlutPrc": "-32.90",
+                      "mrktPrspectIdct": "20.24"
+                    },
+                    {
+                      "flutRt": "42.80",
+                      "flutPrc": "3.42",
+                      "realFlutRt": "0",
+                      "crtrYmd": "20241201",
+                      "realPrc": "420.54",
+                      "realFlutPrc": "-18.30",
+                      "mrktPrspectIdct": "11.41"
+                    },
+                    {
+                      "flutRt": "43.96",
+                      "flutPrc": "2.44",
+                      "realFlutRt": "0",
+                      "crtrYmd": "20241101",
+                      "realPrc": "438.84",
+                      "realFlutPrc": "-16.39",
+                      "mrktPrspectIdct": "7.99"
+                    },
+                    {
+                      "flutRt": "5.31",
+                      "flutPrc": "0.28",
+                      "realFlutRt": "0",
+                      "crtrYmd": "20241001",
+                      "realPrc": "455.23",
+                      "realFlutPrc": "7.77",
+                      "mrktPrspectIdct": "5.55"
+                    },
+                    {
+                      "flutRt": "0",
+                      "flutPrc": "0",
+                      "realFlutRt": "0",
+                      "crtrYmd": "20240901",
+                      "realPrc": "447.46",
+                      "realFlutPrc": "0",
+                      "mrktPrspectIdct": "5.27"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisReportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/indicators/supply": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Summarize Supply Indicator",
+        "description": "수급동향지표 분석요약.",
+        "operationId": "summarize_supply_indicator_api_v1_analysis_indicators_supply_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SupplyIndicatorSummaryRequest"
+              },
+              "example": {
+                "mineral": "MNRL0018",
+                "mineral_name": "텅스텐",
+                "komis_response": {
+                  "data": [
+                    {
+                      "flutRt": "-10.74",
+                      "spdmStbtIndx": "29.50",
+                      "flutPrc": "-3.55",
+                      "crisisYn": "N",
+                      "realFlutRt": "4.42",
+                      "crtrYmd": "202607",
+                      "realPrc": "418.09",
+                      "realFlutPrc": "17.69"
+                    },
+                    {
+                      "flutRt": "3.96",
+                      "spdmStbtIndx": "33.05",
+                      "flutPrc": "1.26",
+                      "crisisYn": "N",
+                      "realFlutRt": "0.38",
+                      "crtrYmd": "202606",
+                      "realPrc": "400.40",
+                      "realFlutPrc": "1.50"
+                    },
+                    {
+                      "flutRt": "3.96",
+                      "spdmStbtIndx": "31.79",
+                      "flutPrc": "1.21",
+                      "crisisYn": "N",
+                      "realFlutRt": "0.11",
+                      "crtrYmd": "202605",
+                      "realPrc": "398.90",
+                      "realFlutPrc": "0.43"
+                    },
+                    {
+                      "flutRt": "5.59",
+                      "spdmStbtIndx": "30.58",
+                      "flutPrc": "1.62",
+                      "crisisYn": "N",
+                      "realFlutRt": "-0.36",
+                      "crtrYmd": "202604",
+                      "realPrc": "398.47",
+                      "realFlutPrc": "-1.44"
+                    },
+                    {
+                      "flutRt": "3.13",
+                      "spdmStbtIndx": "28.96",
+                      "flutPrc": "0.88",
+                      "crisisYn": "N",
+                      "realFlutRt": "0.02",
+                      "crtrYmd": "202603",
+                      "realPrc": "399.91",
+                      "realFlutPrc": "0.07"
+                    },
+                    {
+                      "flutRt": "-3.80",
+                      "spdmStbtIndx": "28.08",
+                      "flutPrc": "-1.11",
+                      "crisisYn": "N",
+                      "realFlutRt": "2.52",
+                      "crtrYmd": "202602",
+                      "realPrc": "399.84",
+                      "realFlutPrc": "9.83"
+                    },
+                    {
+                      "flutRt": "7.67",
+                      "spdmStbtIndx": "29.19",
+                      "flutPrc": "2.08",
+                      "crisisYn": "N",
+                      "realFlutRt": "-0.77",
+                      "crtrYmd": "202601",
+                      "realPrc": "390.01",
+                      "realFlutPrc": "-3.04"
+                    },
+                    {
+                      "flutRt": "10.34",
+                      "spdmStbtIndx": "27.11",
+                      "flutPrc": "2.54",
+                      "crisisYn": "N",
+                      "realFlutRt": "-1.59",
+                      "crtrYmd": "202512",
+                      "realPrc": "393.05",
+                      "realFlutPrc": "-6.37"
+                    },
+                    {
+                      "flutRt": "5.18",
+                      "spdmStbtIndx": "24.57",
+                      "flutPrc": "1.21",
+                      "crisisYn": "N",
+                      "realFlutRt": "-0.18",
+                      "crtrYmd": "202511",
+                      "realPrc": "399.42",
+                      "realFlutPrc": "-0.74"
+                    },
+                    {
+                      "flutRt": "2.91",
+                      "spdmStbtIndx": "23.36",
+                      "flutPrc": "0.66",
+                      "crisisYn": "N",
+                      "realFlutRt": "0.48",
+                      "crtrYmd": "202510",
+                      "realPrc": "400.16",
+                      "realFlutPrc": "1.90"
+                    },
+                    {
+                      "flutRt": "1.16",
+                      "spdmStbtIndx": "22.70",
+                      "flutPrc": "0.26",
+                      "crisisYn": "N",
+                      "realFlutRt": "0.88",
+                      "crtrYmd": "202509",
+                      "realPrc": "398.26",
+                      "realFlutPrc": "3.49"
+                    },
+                    {
+                      "flutRt": "5.35",
+                      "spdmStbtIndx": "22.44",
+                      "flutPrc": "1.14",
+                      "crisisYn": "N",
+                      "realFlutRt": "-0.27",
+                      "crtrYmd": "202508",
+                      "realPrc": "394.77",
+                      "realFlutPrc": "-1.07"
+                    },
+                    {
+                      "flutRt": "7.36",
+                      "spdmStbtIndx": "21.30",
+                      "flutPrc": "1.46",
+                      "crisisYn": "N",
+                      "realFlutRt": "-0.66",
+                      "crtrYmd": "202507",
+                      "realPrc": "395.84",
+                      "realFlutPrc": "-2.64"
+                    },
+                    {
+                      "flutRt": "-0.75",
+                      "spdmStbtIndx": "19.84",
+                      "flutPrc": "-0.15",
+                      "crisisYn": "N",
+                      "realFlutRt": "0.98",
+                      "crtrYmd": "202506",
+                      "realPrc": "398.48",
+                      "realFlutPrc": "3.85"
+                    },
+                    {
+                      "flutRt": "-2.15",
+                      "spdmStbtIndx": "19.99",
+                      "flutPrc": "-0.44",
+                      "crisisYn": "N",
+                      "realFlutRt": "1.41",
+                      "crtrYmd": "202505",
+                      "realPrc": "394.63",
+                      "realFlutPrc": "5.48"
+                    },
+                    {
+                      "flutRt": "1.14",
+                      "spdmStbtIndx": "20.43",
+                      "flutPrc": "0.23",
+                      "crisisYn": "N",
+                      "realFlutRt": "0.48",
+                      "crtrYmd": "202504",
+                      "realPrc": "389.15",
+                      "realFlutPrc": "1.84"
+                    },
+                    {
+                      "flutRt": "-2.32",
+                      "spdmStbtIndx": "20.20",
+                      "flutPrc": "-0.48",
+                      "crisisYn": "N",
+                      "realFlutRt": "0.60",
+                      "crtrYmd": "202503",
+                      "realPrc": "387.31",
+                      "realFlutPrc": "2.31"
+                    },
+                    {
+                      "flutRt": "6.27",
+                      "spdmStbtIndx": "20.68",
+                      "flutPrc": "1.22",
+                      "crisisYn": "N",
+                      "realFlutRt": "-0.68",
+                      "crtrYmd": "202502",
+                      "realPrc": "385.00",
+                      "realFlutPrc": "-2.64"
+                    },
+                    {
+                      "flutRt": "77.39",
+                      "spdmStbtIndx": "19.46",
+                      "flutPrc": "8.49",
+                      "crisisYn": "N",
+                      "realFlutRt": "-7.82",
+                      "crtrYmd": "202501",
+                      "realPrc": "387.64",
+                      "realFlutPrc": "-32.90"
+                    },
+                    {
+                      "flutRt": "42.65",
+                      "spdmStbtIndx": "10.97",
+                      "flutPrc": "3.28",
+                      "crisisYn": "N",
+                      "realFlutRt": "-4.17",
+                      "crtrYmd": "202412",
+                      "realPrc": "420.54",
+                      "realFlutPrc": "-18.30"
+                    },
+                    {
+                      "flutRt": "44.01",
+                      "spdmStbtIndx": "7.69",
+                      "flutPrc": "2.35",
+                      "crisisYn": "N",
+                      "realFlutRt": "-3.60",
+                      "crtrYmd": "202411",
+                      "realPrc": "438.84",
+                      "realFlutPrc": "-16.39"
+                    },
+                    {
+                      "flutRt": "5.33",
+                      "spdmStbtIndx": "5.34",
+                      "flutPrc": "0.27",
+                      "crisisYn": "N",
+                      "realFlutRt": "1.74",
+                      "crtrYmd": "202410",
+                      "realPrc": "455.23",
+                      "realFlutPrc": "7.77"
+                    },
+                    {
+                      "flutRt": "0",
+                      "spdmStbtIndx": "5.07",
+                      "flutPrc": "0",
+                      "crisisYn": "N",
+                      "realFlutRt": "0",
+                      "crtrYmd": "202409",
+                      "realPrc": "447.46",
+                      "realFlutPrc": "0"
+                    }
+                  ]
+                },
+                "komis_snapshot_response": {
+                  "data": {
+                    "subChart01": {
+                      "xaxis": [
+                        "2025.09",
+                        "2025.10",
+                        "2025.11",
+                        "2025.12",
+                        "2026.01",
+                        "2026.02",
+                        "2026.03",
+                        "2026.04",
+                        "2026.05",
+                        "2026.06",
+                        "2026.07"
+                      ],
+                      "min": 351.009,
+                      "max": 459.899,
+                      "series": [
+                        {
+                          "data": [
+                            398.26,
+                            400.16,
+                            399.42,
+                            393.05,
+                            390.01,
+                            399.84,
+                            399.91,
+                            398.47,
+                            398.9,
+                            400.4,
+                            418.09
+                          ],
+                          "name": "실질가격"
+                        }
+                      ]
+                    },
+                    "subChart07": [
+                      {
+                        "prdtnRt": "0",
+                        "totalBurudgQuty": 0,
+                        "crtrYr": "2025",
+                        "burudgQuty": 0,
+                        "ntnEngNm": "Russia",
+                        "ntnKornNm": "러시아"
+                      },
+                      {
+                        "prdtnRt": "0",
+                        "totalBurudgQuty": 0,
+                        "crtrYr": "2025",
+                        "burudgQuty": 0,
+                        "ntnEngNm": "China",
+                        "ntnKornNm": "중국"
+                      },
+                      {
+                        "prdtnRt": "0",
+                        "totalBurudgQuty": 0,
+                        "crtrYr": "2025",
+                        "burudgQuty": 0,
+                        "ntnEngNm": "Japan",
+                        "ntnKornNm": "일본"
+                      },
+                      {
+                        "prdtnRt": "0",
+                        "totalBurudgQuty": 0,
+                        "crtrYr": "2025",
+                        "burudgQuty": 0,
+                        "ntnEngNm": "United States of America",
+                        "ntnKornNm": "미국"
+                      }
+                    ],
+                    "chartSpdmStbt": {
+                      "mnrkndUnqCd": "MNRL0024",
+                      "spdmStbtIndx": "29.50",
+                      "crisisYn": "N",
+                      "mnrkndKornNm": "갈륨",
+                      "crtrYm": "202607"
+                    },
+                    "subChart03": {
+                      "series": [
+                        647905,
+                        645000,
+                        604115,
+                        454240,
+                        120133
+                      ],
+                      "crtrYr": "2025",
+                      "labels": [
+                        "중국",
+                        "독일",
+                        "미국",
+                        "일본",
+                        "대만"
+                      ]
+                    },
+                    "subChart02": {
+                      "yaxisTitle": "수입량(톤)",
+                      "min": 3099.6,
+                      "max": 13657846.4,
+                      "series": [
+                        {
+                          "data": [
+                            5133,
+                            4706,
+                            5055,
+                            27727,
+                            3444
+                          ],
+                          "name": "수입량",
+                          "type": "column"
+                        },
+                        {
+                          "data": [
+                            3315714,
+                            4360325,
+                            2738446,
+                            12416224,
+                            2488838
+                          ],
+                          "name": "수입액",
+                          "type": "line"
+                        }
+                      ],
+                      "oppoTitle": "수입액(백만$)",
+                      "labels": [
+                        "2021",
+                        "2022",
+                        "2023",
+                        "2024",
+                        "2025"
+                      ]
+                    },
+                    "subChart05": {
+                      "xaxis": [],
+                      "series": [
+                        {
+                          "data": [],
+                          "name": "수요",
+                          "type": "line"
+                        },
+                        {
+                          "data": [],
+                          "name": "공급",
+                          "type": "column"
+                        },
+                        {
+                          "data": [],
+                          "name": "과부족",
+                          "type": "column"
+                        }
+                      ]
+                    },
+                    "subChart04": [
+                      {
+                        "prdctnQuty": 900,
+                        "prdtnRt": "100.00",
+                        "totalPrdctnQuty": 900,
+                        "crtrYr": "2025",
+                        "ntnEngNm": "China",
+                        "ntnKornNm": "중국"
+                      },
+                      {
+                        "prdctnQuty": 6,
+                        "prdtnRt": "0.67",
+                        "totalPrdctnQuty": 900,
+                        "crtrYr": "2025",
+                        "ntnEngNm": "Russia",
+                        "ntnKornNm": "러시아"
+                      },
+                      {
+                        "prdctnQuty": 3,
+                        "prdtnRt": "0.33",
+                        "totalPrdctnQuty": 900,
+                        "crtrYr": "2025",
+                        "ntnEngNm": "Japan",
+                        "ntnKornNm": "일본"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisReportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/indicators/composite-index": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Summarize Composite Index",
+        "description": "광물종합지수 분석요약.",
+        "operationId": "summarize_composite_index_api_v1_analysis_indicators_composite_index_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompositeIndexSummaryRequest"
+              },
+              "example": {
+                "komis_response": {
+                  "data": {
+                    "tableData": [
+                      {
+                        "prvdyFlutRt": "-1.03",
+                        "prvdyCprs": -31.03,
+                        "indx": 2969.95,
+                        "SORT": 2,
+                        "crtrYmd": "2026.08.14",
+                        "indxTp": "MAJOR"
+                      },
+                      {
+                        "prvdyFlutRt": "-0.72",
+                        "prvdyCprs": -24.93,
+                        "indx": 3454.93,
+                        "SORT": 1,
+                        "crtrYmd": "2026.08.14",
+                        "indxTp": "MNRL"
+                      },
+                      {
+                        "prvdyFlutRt": "0.00",
+                        "prvdyCprs": 0,
+                        "indx": 2905.63,
+                        "SORT": 3,
+                        "crtrYmd": "2026.08.14",
+                        "indxTp": "RARE"
+                      },
+                      {
+                        "prvdyFlutRt": "0.40",
+                        "prvdyCprs": 11.82,
+                        "indx": 2981.77,
+                        "SORT": 2,
+                        "crtrYmd": "2026.08.17",
+                        "indxTp": "MAJOR"
+                      },
+                      {
+                        "prvdyFlutRt": "0.43",
+                        "prvdyCprs": 14.69,
+                        "indx": 3469.62,
+                        "SORT": 1,
+                        "crtrYmd": "2026.08.17",
+                        "indxTp": "MNRL"
+                      },
+                      {
+                        "prvdyFlutRt": "0.02",
+                        "prvdyCprs": 0.71,
+                        "indx": 2906.34,
+                        "SORT": 3,
+                        "crtrYmd": "2026.08.17",
+                        "indxTp": "RARE"
+                      },
+                      {
+                        "prvdyFlutRt": "0.72",
+                        "prvdyCprs": 21.54,
+                        "indx": 3003.3,
+                        "SORT": 2,
+                        "crtrYmd": "2026.08.18",
+                        "indxTp": "MAJOR"
+                      },
+                      {
+                        "prvdyFlutRt": "0.58",
+                        "prvdyCprs": 19.98,
+                        "indx": 3489.6,
+                        "SORT": 1,
+                        "crtrYmd": "2026.08.18",
+                        "indxTp": "MNRL"
+                      },
+                      {
+                        "prvdyFlutRt": "0.00",
+                        "prvdyCprs": 0,
+                        "indx": 2906.34,
+                        "SORT": 3,
+                        "crtrYmd": "2026.08.18",
+                        "indxTp": "RARE"
+                      },
+                      {
+                        "prvdyFlutRt": "-1.60",
+                        "prvdyCprs": -48.2,
+                        "indx": 2955.1,
+                        "SORT": 2,
+                        "crtrYmd": "2026.08.19",
+                        "indxTp": "MAJOR"
+                      },
+                      {
+                        "prvdyFlutRt": "-0.89",
+                        "prvdyCprs": -31.21,
+                        "indx": 3458.39,
+                        "SORT": 1,
+                        "crtrYmd": "2026.08.19",
+                        "indxTp": "MNRL"
+                      },
+                      {
+                        "prvdyFlutRt": "0.00",
+                        "prvdyCprs": 0,
+                        "indx": 2906.34,
+                        "SORT": 3,
+                        "crtrYmd": "2026.08.19",
+                        "indxTp": "RARE"
+                      },
+                      {
+                        "prvdyFlutRt": "-0.44",
+                        "prvdyCprs": -13.02,
+                        "indx": 2942.08,
+                        "SORT": 2,
+                        "crtrYmd": "2026.08.20",
+                        "indxTp": "MAJOR"
+                      },
+                      {
+                        "prvdyFlutRt": "1.10",
+                        "prvdyCprs": 38.17,
+                        "indx": 3496.56,
+                        "SORT": 1,
+                        "crtrYmd": "2026.08.20",
+                        "indxTp": "MNRL"
+                      },
+                      {
+                        "prvdyFlutRt": "0.00",
+                        "prvdyCprs": 0,
+                        "indx": 2906.34,
+                        "SORT": 3,
+                        "crtrYmd": "2026.08.20",
+                        "indxTp": "RARE"
+                      },
+                      {
+                        "prvdyFlutRt": "-0.13",
+                        "prvdyCprs": -3.74,
+                        "indx": 2938.34,
+                        "SORT": 2,
+                        "crtrYmd": "2026.08.21",
+                        "indxTp": "MAJOR"
+                      },
+                      {
+                        "prvdyFlutRt": "0.20",
+                        "prvdyCprs": 7.04,
+                        "indx": 3503.6,
+                        "SORT": 1,
+                        "crtrYmd": "2026.08.21",
+                        "indxTp": "MNRL"
+                      },
+                      {
+                        "prvdyFlutRt": "0.00",
+                        "prvdyCprs": 0,
+                        "indx": 2906.34,
+                        "SORT": 3,
+                        "crtrYmd": "2026.08.21",
+                        "indxTp": "RARE"
+                      },
+                      {
+                        "prvdyFlutRt": "1.01",
+                        "prvdyCprs": 29.72,
+                        "indx": 2968.06,
+                        "SORT": 2,
+                        "crtrYmd": "2026.08.24",
+                        "indxTp": "MAJOR"
+                      },
+                      {
+                        "prvdyFlutRt": "1.02",
+                        "prvdyCprs": 35.86,
+                        "indx": 3539.45,
+                        "SORT": 1,
+                        "crtrYmd": "2026.08.24",
+                        "indxTp": "MNRL"
+                      },
+                      {
+                        "prvdyFlutRt": "0.19",
+                        "prvdyCprs": 5.46,
+                        "indx": 2911.8,
+                        "SORT": 3,
+                        "crtrYmd": "2026.08.24",
+                        "indxTp": "RARE"
+                      },
+                      {
+                        "prvdyFlutRt": "0.33",
+                        "prvdyCprs": 9.76,
+                        "indx": 2977.82,
+                        "SORT": 2,
+                        "crtrYmd": "2026.08.25",
+                        "indxTp": "MAJOR"
+                      },
+                      {
+                        "prvdyFlutRt": "0.50",
+                        "prvdyCprs": 17.67,
+                        "indx": 3557.13,
+                        "SORT": 1,
+                        "crtrYmd": "2026.08.25",
+                        "indxTp": "MNRL"
+                      },
+                      {
+                        "prvdyFlutRt": "0.00",
+                        "prvdyCprs": 0,
+                        "indx": 2911.8,
+                        "SORT": 3,
+                        "crtrYmd": "2026.08.25",
+                        "indxTp": "RARE"
+                      },
+                      {
+                        "prvdyFlutRt": "-0.11",
+                        "prvdyCprs": -3.31,
+                        "indx": 2974.51,
+                        "SORT": 2,
+                        "crtrYmd": "2026.08.26",
+                        "indxTp": "MAJOR"
+                      },
+                      {
+                        "prvdyFlutRt": "-0.30",
+                        "prvdyCprs": -10.76,
+                        "indx": 3546.37,
+                        "SORT": 1,
+                        "crtrYmd": "2026.08.26",
+                        "indxTp": "MNRL"
+                      },
+                      {
+                        "prvdyFlutRt": "0.00",
+                        "prvdyCprs": 0,
+                        "indx": 2911.8,
+                        "SORT": 3,
+                        "crtrYmd": "2026.08.26",
+                        "indxTp": "RARE"
+                      },
+                      {
+                        "prvdyFlutRt": "0.84",
+                        "prvdyCprs": 25.03,
+                        "indx": 2999.54,
+                        "SORT": 2,
+                        "crtrYmd": "2026.08.27",
+                        "indxTp": "MAJOR"
+                      },
+                      {
+                        "prvdyFlutRt": "0.35",
+                        "prvdyCprs": 12.44,
+                        "indx": 3558.81,
+                        "SORT": 1,
+                        "crtrYmd": "2026.08.27",
+                        "indxTp": "MNRL"
+                      },
+                      {
+                        "prvdyFlutRt": "0.00",
+                        "prvdyCprs": 0,
+                        "indx": 2911.8,
+                        "SORT": 3,
+                        "crtrYmd": "2026.08.27",
+                        "indxTp": "RARE"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisReportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/maps/mineral": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Summarize Mineral Map",
+        "description": "광물지도(매장량 또는 생산량) 분석요약.",
+        "operationId": "summarize_mineral_map_api_v1_analysis_maps_mineral_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MineralMapSummaryRequest"
+              },
+              "example": {
+                "mineral": "MNRL0018",
+                "mineral_name": "텅스텐",
+                "measure": "reserves",
+                "unit": "천톤",
+                "komis_response": {
+                  "data": [
+                    {
+                      "cdVal": "k ton",
+                      "prdctnQuty": 5510000,
+                      "crtrYr": "2024",
+                      "totalBurudgQuty": 3738700000,
+                      "massUnitCd": "WT003",
+                      "burudgQuty": 190000000,
+                      "ntnEngNm": "Chile",
+                      "ntnKornNm": "칠레",
+                      "ntnEngCd": "CL"
+                    },
+                    {
+                      "cdVal": "k ton",
+                      "prdctnQuty": 765000,
+                      "crtrYr": "2024",
+                      "totalBurudgQuty": 3738700000,
+                      "massUnitCd": "WT003",
+                      "burudgQuty": 100000000,
+                      "ntnEngNm": "Australia",
+                      "ntnKornNm": "호주",
+                      "ntnEngCd": "AU"
+                    },
+                    {
+                      "cdVal": "k ton",
+                      "prdctnQuty": 2740000,
+                      "crtrYr": "2024",
+                      "totalBurudgQuty": 3738700000,
+                      "massUnitCd": "WT003",
+                      "burudgQuty": 100000000,
+                      "ntnEngNm": "Peru",
+                      "ntnKornNm": "페루",
+                      "ntnEngCd": "PE"
+                    },
+                    {
+                      "cdVal": "k ton",
+                      "prdctnQuty": 2990000,
+                      "crtrYr": "2024",
+                      "totalBurudgQuty": 3738700000,
+                      "massUnitCd": "WT003",
+                      "burudgQuty": 80000000,
+                      "ntnEngNm": "Democratic Republic of Congo",
+                      "ntnKornNm": "콩고민주공화국",
+                      "ntnEngCd": "CD"
+                    },
+                    {
+                      "cdVal": "k ton",
+                      "prdctnQuty": 1020000,
+                      "crtrYr": "2024",
+                      "totalBurudgQuty": 3738700000,
+                      "massUnitCd": "WT003",
+                      "burudgQuty": 80000000,
+                      "ntnEngNm": "Russia",
+                      "ntnKornNm": "러시아",
+                      "ntnEngCd": "RU"
+                    },
+                    {
+                      "cdVal": "k ton",
+                      "prdctnQuty": 5300000,
+                      "crtrYr": "2025",
+                      "totalBurudgQuty": 3738700000,
+                      "massUnitCd": "WT003",
+                      "burudgQuty": 180000000,
+                      "ntnEngNm": "Chile",
+                      "ntnKornNm": "칠레",
+                      "ntnEngCd": "CL"
+                    },
+                    {
+                      "cdVal": "k ton",
+                      "prdctnQuty": 730000,
+                      "crtrYr": "2025",
+                      "totalBurudgQuty": 3738700000,
+                      "massUnitCd": "WT003",
+                      "burudgQuty": 100000000,
+                      "ntnEngNm": "Australia",
+                      "ntnKornNm": "호주",
+                      "ntnEngCd": "AU"
+                    },
+                    {
+                      "cdVal": "k ton",
+                      "prdctnQuty": 2700000,
+                      "crtrYr": "2025",
+                      "totalBurudgQuty": 3738700000,
+                      "massUnitCd": "WT003",
+                      "burudgQuty": 85000000,
+                      "ntnEngNm": "Peru",
+                      "ntnKornNm": "페루",
+                      "ntnEngCd": "PE"
+                    },
+                    {
+                      "cdVal": "k ton",
+                      "prdctnQuty": 3200000,
+                      "crtrYr": "2025",
+                      "totalBurudgQuty": 3738700000,
+                      "massUnitCd": "WT003",
+                      "burudgQuty": 80000000,
+                      "ntnEngNm": "Democratic Republic of Congo",
+                      "ntnKornNm": "콩고민주공화국",
+                      "ntnEngCd": "CD"
+                    },
+                    {
+                      "cdVal": "k ton",
+                      "prdctnQuty": 1300000,
+                      "crtrYr": "2025",
+                      "totalBurudgQuty": 3738700000,
+                      "massUnitCd": "WT003",
+                      "burudgQuty": 80000000,
+                      "ntnEngNm": "Russia",
+                      "ntnKornNm": "러시아",
+                      "ntnEngCd": "RU"
+                    }
+                  ]
+                },
+                "komis_snapshot_response": {
+                  "data": [
+                    {
+                      "cdVal": "k ton",
+                      "prdctnQuty": 730000,
+                      "totalBurudgQuty": 770200000,
+                      "totalPrdctnQuty": 20013000,
+                      "massUnitCd": "WT003",
+                      "burudgQuty": 100000000,
+                      "ntnEngNm": "Australia",
+                      "ntnKornNm": "호주",
+                      "ntnEngCd": "AU"
+                    },
+                    {
+                      "cdVal": "k ton",
+                      "prdctnQuty": 500000,
+                      "totalBurudgQuty": 770200000,
+                      "totalPrdctnQuty": 20013000,
+                      "massUnitCd": "WT003",
+                      "burudgQuty": 7000000,
+                      "ntnEngNm": "Canada",
+                      "ntnKornNm": "캐나다",
+                      "ntnEngCd": "CA"
+                    },
+                    {
+                      "cdVal": "k ton",
+                      "prdctnQuty": 200000,
+                      "totalBurudgQuty": 770200000,
+                      "totalPrdctnQuty": 20013000,
+                      "massUnitCd": "WT003",
+                      "burudgQuty": 35000000,
+                      "ntnEngNm": "Chile",
+                      "ntnKornNm": "칠레",
+                      "ntnEngCd": "CL"
+                    }
+                  ]
+                },
+                "komis_share_response": {
+                  "data": [
+                    {
+                      "ntnKornNm": "칠레",
+                      "ntnEngCd": "CL",
+                      "before5": "200,000,000",
+                      "before4": "190,000,000",
+                      "before3": "190,000,000",
+                      "before2": "190,000,000",
+                      "before1": "180,000,000",
+                      "rate": "18.37"
+                    },
+                    {
+                      "ntnKornNm": "호주",
+                      "ntnEngCd": "AU",
+                      "before5": "93,000,000",
+                      "before4": "97,000,000",
+                      "before3": "100,000,000",
+                      "before2": "100,000,000",
+                      "before1": "100,000,000",
+                      "rate": "10.20"
+                    },
+                    {
+                      "ntnKornNm": "_TOTAL_",
+                      "ntnEngCd": "SU",
+                      "before5": "980,000,000",
+                      "before4": "990,000,000",
+                      "before3": "1,000,000,000",
+                      "before2": "1,000,000,000",
+                      "before1": "980,000,000",
+                      "rate": "100.00"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisReportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/indicators/price-forecast": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Summarize Price Forecast",
+        "description": "중기 분기 또는 장기 연간 가격예측 분석요약.",
+        "operationId": "summarize_price_forecast_api_v1_analysis_indicators_price_forecast_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriceForecastSummaryRequest"
+              },
+              "example": {
+                "mineral": "MNRL0018",
+                "mineral_name": "텅스텐",
+                "komis_response": {
+                  "data": [
+                    {
+                      "prc": "20563.75",
+                      "flutRt": "4.32",
+                      "flutPrc": "850.67",
+                      "realYn": "N",
+                      "realPrc": "20563.75",
+                      "mnrkndKornNm": "니켈",
+                      "crtrPrd": "26년 4Q"
+                    },
+                    {
+                      "prc": "19713.08",
+                      "flutRt": "6.80",
+                      "flutPrc": "1,254.56",
+                      "realYn": "N",
+                      "realPrc": "19713.08",
+                      "mnrkndKornNm": "니켈",
+                      "crtrPrd": "26년 3Q"
+                    },
+                    {
+                      "prc": "18458.52",
+                      "flutRt": "6.35",
+                      "flutPrc": "1,102.49",
+                      "realYn": "Y",
+                      "realPrc": "18458.52",
+                      "mnrkndKornNm": "니켈",
+                      "crtrPrd": "26년 2Q"
+                    },
+                    {
+                      "prc": "17356.03",
+                      "flutRt": "16.55",
+                      "flutPrc": "2,464.23",
+                      "realYn": "Y",
+                      "realPrc": "17356.03",
+                      "mnrkndKornNm": "니켈",
+                      "crtrPrd": "26년 1Q"
+                    },
+                    {
+                      "prc": "14891.80",
+                      "flutRt": "-0.82",
+                      "flutPrc": "-122.97",
+                      "realYn": "Y",
+                      "realPrc": "14891.80",
+                      "mnrkndKornNm": "니켈",
+                      "crtrPrd": "25년 4Q"
+                    },
+                    {
+                      "prc": "15014.77",
+                      "flutRt": "-1.03",
+                      "flutPrc": "-156.71",
+                      "realYn": "Y",
+                      "realPrc": "15014.77",
+                      "mnrkndKornNm": "니켈",
+                      "crtrPrd": "25년 3Q"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisReportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/prices/base-metals": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Summarize Price Base Metals",
+        "description": "비철금속 가격 분석요약(KO_MNRL_PRC) — 2026-08-27 이전엔 `/prices`\n(`page_id=\"price\"`)로 희소금속과 합쳐 다뤘다(§모듈 docstring).",
+        "operationId": "summarize_price_base_metals_api_v1_analysis_prices_base_metals_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriceSummaryRequest"
+              },
+              "example": {
+                "mineral": "MNRL0018",
+                "mineral_name": "텅스텐",
+                "compare_mineral": "MNRL0002",
+                "komis_response": {
+                  "dataAvg": {
+                    "stdMap": {
+                      "MONTH": {
+                        "flctnPrc": "964.83",
+                        "crtrYmd": "202608",
+                        "flctnPrcnt": "7.13"
+                      },
+                      "YEAR": {
+                        "flctnPrc": "4545.06",
+                        "crtrYmd": "2026",
+                        "flctnPrcnt": "45.70"
+                      },
+                      "CRTRYMD": {
+                        "crtrYmd": "20260827",
+                        "cmercPrc": "14490.00"
+                      },
+                      "INFO": {
+                        "mnrkndKornNm": "동",
+                        "prcCrtr": "LME CASH",
+                        "isISE": "N",
+                        "weigUnitCd": "ton",
+                        "prcUnitCdNm": "USD"
+                      },
+                      "WEEK": {
+                        "flctnPrc": "124.80",
+                        "crtrYmd": "20260824",
+                        "flctnPrcnt": "0.87"
+                      },
+                      "DAY": {
+                        "flctnPrc": "-35.00",
+                        "crtrYmd": "20260827",
+                        "flctnPrcnt": "-0.24",
+                        "cmercPrc": 14490
+                      }
+                    },
+                    "INFO": {
+                      "mnrkndKornNm": "동",
+                      "prcCrtr": "LME CASH",
+                      "isISE": "N",
+                      "weigUnitCd": "ton",
+                      "prcUnitCdNm": "USD"
+                    }
+                  },
+                  "data": {
+                    "compareMnrl": [],
+                    "defaultMnrl": [
+                      {
+                        "lowstPrc": "0.00",
+                        "invt": "235575.00",
+                        "flctnPrc": "-35.00",
+                        "invtPrcnt": "-0.80",
+                        "invtPrc": "-1900.00",
+                        "hghstPrc": "0.00",
+                        "crtrYmd": "20260827",
+                        "flctnPrcnt": "-0.24",
+                        "cmercPrc": "14490.00"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisReportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/prices/minor-metals": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Summarize Price Minor Metals",
+        "description": "희소금속 가격 분석요약(KO_MNRL_PRC) — 2026-08-27 이전엔 `/prices`\n(`page_id=\"price\"`)로 비철금속과 합쳐 다뤘다(§모듈 docstring).",
+        "operationId": "summarize_price_minor_metals_api_v1_analysis_prices_minor_metals_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriceSummaryRequest"
+              },
+              "example": {
+                "mineral": "MNRL0018",
+                "mineral_name": "텅스텐",
+                "compare_mineral": "MNRL0002",
+                "komis_response": {
+                  "dataAvg": {
+                    "stdMap": {
+                      "MONTH": {
+                        "flctnPrc": "-13.04",
+                        "crtrYmd": "202608",
+                        "flctnPrcnt": "-0.02"
+                      },
+                      "YEAR": {
+                        "flctnPrc": "21039.47",
+                        "crtrYmd": "2026",
+                        "flctnPrcnt": "60.42"
+                      },
+                      "CRTRYMD": {
+                        "crtrYmd": "20260827",
+                        "cmercPrc": "55860.00"
+                      },
+                      "INFO": {
+                        "mnrkndKornNm": "코발트",
+                        "prcCrtr": "LME CASH",
+                        "isISE": "N",
+                        "weigUnitCd": "ton",
+                        "prcUnitCdNm": "USD"
+                      },
+                      "WEEK": {
+                        "flctnPrc": "10.00",
+                        "crtrYmd": "20260824",
+                        "flctnPrcnt": "0.02"
+                      },
+                      "DAY": {
+                        "flctnPrc": "20.00",
+                        "crtrYmd": "20260827",
+                        "flctnPrcnt": "0.04",
+                        "cmercPrc": 55860
+                      }
+                    },
+                    "INFO": {
+                      "mnrkndKornNm": "코발트",
+                      "prcCrtr": "LME CASH",
+                      "isISE": "N",
+                      "weigUnitCd": "ton",
+                      "prcUnitCdNm": "USD"
+                    }
+                  },
+                  "data": {
+                    "compareMnrl": [],
+                    "defaultMnrl": [
+                      {
+                        "lowstPrc": "0.00",
+                        "invt": "0.00",
+                        "flctnPrc": "20.00",
+                        "invtPrcnt": "0.00",
+                        "invtPrc": "0.00",
+                        "hghstPrc": "0.00",
+                        "crtrYmd": "20260827",
+                        "flctnPrcnt": "0.04",
+                        "cmercPrc": "55860.00"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisReportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/prices/iron-energy": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Summarize Price Iron Energy",
+        "description": "철광석·유연탄·우라늄 가격 분석요약(KO_MNRL_PRC) — 2026-08-28 신설\n(§모듈 docstring \"광물자원가격 나머지 서브메뉴\").",
+        "operationId": "summarize_price_iron_energy_api_v1_analysis_prices_iron_energy_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriceSummaryRequest"
+              },
+              "example": {
+                "mineral": "MNRL0018",
+                "mineral_name": "텅스텐",
+                "compare_mineral": "MNRL0002",
+                "komis_response": {
+                  "dataAvg": {
+                    "stdMap": {
+                      "MONTH": {
+                        "flctnPrc": "1.91",
+                        "crtrYmd": "202608",
+                        "flctnPrcnt": "1.94"
+                      },
+                      "YEAR": {
+                        "flctnPrc": "-1.71",
+                        "crtrYmd": "2026",
+                        "flctnPrcnt": "-1.67"
+                      },
+                      "CRTRYMD": {
+                        "crtrYmd": "20260827",
+                        "cmercPrc": "100.50"
+                      },
+                      "INFO": {
+                        "mnrkndKornNm": "철",
+                        "prcCrtr": "Australian 62%min CNF China",
+                        "isISE": "Y",
+                        "weigUnitCd": "mt",
+                        "prcUnitCdNm": "USD"
+                      },
+                      "WEEK": {
+                        "flctnPrc": "1.40",
+                        "crtrYmd": "20260824",
+                        "flctnPrcnt": "1.41"
+                      },
+                      "DAY": {
+                        "flctnPrc": "0.00",
+                        "crtrYmd": "20260827",
+                        "flctnPrcnt": "0.00",
+                        "cmercPrc": 100.5
+                      }
+                    },
+                    "INFO": {
+                      "mnrkndKornNm": "철",
+                      "prcCrtr": "Australian 62%min CNF China",
+                      "isISE": "Y",
+                      "weigUnitCd": "mt",
+                      "prcUnitCdNm": "USD"
+                    }
+                  },
+                  "data": {
+                    "compareMnrl": [],
+                    "defaultMnrl": [
+                      {
+                        "lowstPrc": "100.00",
+                        "invt": "0.00",
+                        "flctnPrc": "0.00",
+                        "invtPrcnt": "0.00",
+                        "invtPrc": "0.00",
+                        "hghstPrc": "101.00",
+                        "crtrYmd": "20260827",
+                        "flctnPrcnt": "0.00",
+                        "cmercPrc": "100.50"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisReportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/prices/other": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Summarize Price Other",
+        "description": "금·은·백금족·흑연 가격 분석요약(KO_MNRL_PRC) — 2026-08-28 신설\n(§모듈 docstring \"광물자원가격 나머지 서브메뉴\").",
+        "operationId": "summarize_price_other_api_v1_analysis_prices_other_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriceSummaryRequest"
+              },
+              "example": {
+                "mineral": "MNRL0018",
+                "mineral_name": "텅스텐",
+                "compare_mineral": "MNRL0002",
+                "komis_response": {
+                  "dataAvg": {
+                    "stdMap": {
+                      "MONTH": {
+                        "flctnPrc": "495.03",
+                        "crtrYmd": "202608",
+                        "flctnPrcnt": "12.15"
+                      },
+                      "YEAR": {
+                        "flctnPrc": "1137.41",
+                        "crtrYmd": "2026",
+                        "flctnPrcnt": "33.15"
+                      },
+                      "CRTRYMD": {
+                        "crtrYmd": "20260827",
+                        "cmercPrc": "4568.95"
+                      },
+                      "INFO": {
+                        "mnrkndKornNm": "금",
+                        "prcCrtr": "London Gold Market Fixing Ltd- LBMA PM Fixing Price/USD",
+                        "isISE": "N",
+                        "weigUnitCd": "troz",
+                        "prcUnitCdNm": "USD"
+                      },
+                      "WEEK": {
+                        "flctnPrc": "101.94",
+                        "crtrYmd": "20260824",
+                        "flctnPrcnt": "2.28"
+                      },
+                      "DAY": {
+                        "flctnPrc": "-62.55",
+                        "crtrYmd": "20260827",
+                        "flctnPrcnt": "-1.35",
+                        "cmercPrc": 4568.95
+                      }
+                    },
+                    "INFO": {
+                      "mnrkndKornNm": "금",
+                      "prcCrtr": "London Gold Market Fixing Ltd- LBMA PM Fixing Price/USD",
+                      "isISE": "N",
+                      "weigUnitCd": "troz",
+                      "prcUnitCdNm": "USD"
+                    }
+                  },
+                  "data": {
+                    "compareMnrl": [],
+                    "defaultMnrl": [
+                      {
+                        "lowstPrc": "0.00",
+                        "invt": "0.00",
+                        "flctnPrc": "-62.55",
+                        "invtPrcnt": "0.00",
+                        "invtPrc": "0.00",
+                        "hghstPrc": "0.00",
+                        "crtrYmd": "20260827",
+                        "flctnPrcnt": "-1.35",
+                        "cmercPrc": "4568.95"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisReportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/maps/domestic-trade": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Summarize Domestic Trade",
+        "description": "국내 수급지도 분석요약(KO_CSTM_CMMRC, 관세청).",
+        "operationId": "summarize_domestic_trade_api_v1_analysis_maps_domestic_trade_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DomesticTradeSummaryRequest"
+              },
+              "example": {
+                "mineral": "MNRL0018",
+                "mineral_name": "텅스텐",
+                "trade_direction": "import",
+                "komis_response": {
+                  "srchMnrkndUnqCd": "MNRL0024",
+                  "srchDateS": "20260101",
+                  "srchDateE": "20261231",
+                  "list": [
+                    {
+                      "incmAmt": 2429691,
+                      "RNUM": 1,
+                      "expAmt": 668454,
+                      "sumExpWeig": 2504,
+                      "expWeig": 359,
+                      "sumIncmAmt": 6350539,
+                      "incmWeig": 1255,
+                      "sumIncmWeig": 3690,
+                      "ntnCd": "TW",
+                      "ntnKornNm": "대만",
+                      "sumExpAmt": 4246583
+                    },
+                    {
+                      "incmAmt": 2106864,
+                      "RNUM": 2,
+                      "expAmt": 512149,
+                      "sumExpWeig": 2504,
+                      "expWeig": 270,
+                      "sumIncmAmt": 6350539,
+                      "incmWeig": 949,
+                      "sumIncmWeig": 3690,
+                      "ntnCd": "DE",
+                      "ntnKornNm": "독일",
+                      "sumExpAmt": 4246583
+                    },
+                    {
+                      "incmAmt": 775645,
+                      "RNUM": 3,
+                      "expAmt": 1695825,
+                      "sumExpWeig": 2504,
+                      "expWeig": 965,
+                      "sumIncmAmt": 6350539,
+                      "incmWeig": 287,
+                      "sumIncmWeig": 3690,
+                      "ntnCd": "US",
+                      "ntnKornNm": "미국",
+                      "sumExpAmt": 4246583
+                    },
+                    {
+                      "incmAmt": 690468,
+                      "RNUM": 4,
+                      "expAmt": 769144,
+                      "sumExpWeig": 2504,
+                      "expWeig": 423,
+                      "sumIncmAmt": 6350539,
+                      "incmWeig": 459,
+                      "sumIncmWeig": 3690,
+                      "ntnCd": "JP",
+                      "ntnKornNm": "일본",
+                      "sumExpAmt": 4246583
+                    },
+                    {
+                      "incmAmt": 332372,
+                      "RNUM": 5,
+                      "expAmt": 13425,
+                      "sumExpWeig": 2504,
+                      "expWeig": 1,
+                      "sumIncmAmt": 6350539,
+                      "incmWeig": 736,
+                      "sumIncmWeig": 3690,
+                      "ntnCd": "CN",
+                      "ntnKornNm": "중국",
+                      "sumExpAmt": 4246583
+                    }
+                  ],
+                  "listCount": "10"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisReportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analysis/maps/global-trade": {
+      "post": {
+        "tags": [
+          "analysis"
+        ],
+        "summary": "Summarize Global Trade",
+        "description": "글로벌 수급지도 분석요약(KO_UN_CMMRC, UN Comtrade).",
+        "operationId": "summarize_global_trade_api_v1_analysis_maps_global_trade_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GlobalTradeSummaryRequest"
+              },
+              "example": {
+                "mineral": "MNRL0018",
+                "mineral_name": "텅스텐",
+                "komis_response": {
+                  "srchMnrkndUnqCd": "MNRL0024",
+                  "srchDateS": "20260101",
+                  "srchDateE": "20261231",
+                  "list": [
+                    {
+                      "RNUM": 1,
+                      "incmNtnNm": "독일",
+                      "incmNtnCd": "DE",
+                      "expNtnNm": "미국",
+                      "amt": 10855175.06,
+                      "weig": 29409.43,
+                      "sumWeig": 1704156.52,
+                      "weigRate": "1.73",
+                      "sumAmt": 76968241.63,
+                      "expNtnCd": "US",
+                      "amtRate": "14.10"
+                    },
+                    {
+                      "RNUM": 2,
+                      "incmNtnNm": "영국",
+                      "incmNtnCd": "GB",
+                      "expNtnNm": "독일",
+                      "amt": 7839564.69,
+                      "weig": 138246,
+                      "sumWeig": 1704156.52,
+                      "weigRate": "8.11",
+                      "sumAmt": 76968241.63,
+                      "expNtnCd": "DE",
+                      "amtRate": "10.19"
+                    },
+                    {
+                      "RNUM": 3,
+                      "incmNtnNm": "독일",
+                      "incmNtnCd": "DE",
+                      "expNtnNm": "중국",
+                      "amt": 4818696.95,
+                      "weig": 16205.2,
+                      "sumWeig": 1704156.52,
+                      "weigRate": "0.95",
+                      "sumAmt": 76968241.63,
+                      "expNtnCd": "CN",
+                      "amtRate": "6.26"
+                    },
+                    {
+                      "RNUM": 4,
+                      "incmNtnNm": "독일",
+                      "incmNtnCd": "DE",
+                      "expNtnNm": "브라질",
+                      "amt": 3499065.45,
+                      "weig": 60000,
+                      "sumWeig": 1704156.52,
+                      "weigRate": "3.52",
+                      "sumAmt": 76968241.63,
+                      "expNtnCd": "BR",
+                      "amtRate": "4.55"
+                    },
+                    {
+                      "RNUM": 5,
+                      "incmNtnNm": "미국",
+                      "incmNtnCd": "US",
+                      "expNtnNm": "브라질",
+                      "amt": 3183660,
+                      "weig": 72000,
+                      "sumWeig": 1704156.52,
+                      "weigRate": "4.22",
+                      "sumAmt": 76968241.63,
+                      "expNtnCd": "BR",
+                      "amtRate": "4.14"
+                    }
+                  ],
+                  "listCount": "15"
+                },
+                "komis_bar_chart_response": {
+                  "data": {
+                    "barChart": {
+                      "xaxis": [
+                        "2022",
+                        "2023",
+                        "2024",
+                        "2025",
+                        "2026"
+                      ],
+                      "minValue": 0.0,
+                      "maxValue": 0.0,
+                      "series": [
+                        {
+                          "seriesCd": "CN",
+                          "name": "중국",
+                          "data": [
+                            510406544.62,
+                            644474354.26,
+                            760854691.43,
+                            188233346.71,
+                            17831773.47
+                          ]
+                        },
+                        {
+                          "seriesCd": "US",
+                          "name": "미국",
+                          "data": [
+                            333967253.35,
+                            343817977.07,
+                            447042680.43,
+                            272917053.71,
+                            28333942.74
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                },
+                "komis_route_share_response": {
+                  "data": {
+                    "mapData": [
+                      {
+                        "crtrNtnCd": "KR",
+                        "crtrNtnKornNm": "대한민국",
+                        "trgtNtnCd": "JP",
+                        "trgtNtnKornNm": "일본",
+                        "mnrkndUnqCd": "MNRL0024",
+                        "mnrkndKornNm": "갈륨",
+                        "typeIE": "I",
+                        "typeAW": "A",
+                        "crtrTotalAmt": 10020621.78,
+                        "trgtTotalAmt": 4117833.61,
+                        "crtrNtnAmtRt": "21.0817",
+                        "trgtNtnAmtRt": "51.3018"
+                      },
+                      {
+                        "crtrNtnCd": "CA",
+                        "crtrNtnKornNm": "캐나다",
+                        "trgtNtnCd": "US",
+                        "trgtNtnKornNm": "미국",
+                        "mnrkndUnqCd": "MNRL0024",
+                        "mnrkndKornNm": "갈륨",
+                        "typeIE": "I",
+                        "typeAW": "A",
+                        "crtrTotalAmt": 32581402.04,
+                        "trgtTotalAmt": 11626193.4,
+                        "crtrNtnAmtRt": "7.8838",
+                        "trgtNtnAmtRt": "22.0936"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalysisReportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/dashboard/comprehensive": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Get Comprehensive Analysis",
+        "description": "대시보드 최상단 \"AI 종합분석 및 관련뉴스\"(화면기획 ver.1.3 11p).",
+        "operationId": "get_comprehensive_analysis_api_v1_dashboard_comprehensive_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComprehensiveDashboardResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/healthz": {
+      "get": {
+        "summary": "Healthz",
+        "operationId": "healthz_healthz_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Healthz Healthz Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/prompts/reload": {
+      "post": {
+        "summary": "Reload Prompts",
+        "description": "`cfg_prompt`를 다시 읽어 프롬프트 캐시를 교체한다(서버 재시동 불필요).\n이후 생성되는 보고서부터 새 프롬프트를 쓴다 — 진행 중인 호출에는 영향 없다.\n\n2026-09-02 skeptic 2차 감사 PA-001: DB 재조회 실패(순단 등)도 예전엔\n이전 캐시 크기를 그대로 돌려줘 호출자가 성공과 구분할 수 없었다 —\n`ok`로 구분한다(HTTP 상태는 이 서비스의 기존 계약대로 항상 200 유지,\nprompt_admin UI가 `ok` 필드로 실패 분기를 이미 갖고 있다).",
+        "operationId": "reload_prompts_admin_prompts_reload_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "type": "object",
+                  "title": "Response Reload Prompts Admin Prompts Reload Post"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/{template}/generate": {
+      "post": {
+        "summary": "Generate",
+        "description": "템플릿×정형데이터로 리포트 1건을 생성한다(기본은 `out_report` 적재까지).",
+        "operationId": "generate_reports__template__generate_post",
+        "parameters": [
+          {
+            "name": "template",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Template"
+            }
+          },
+          {
+            "name": "commodity_code",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "CU|NI|CO|LI|REE",
+              "title": "Commodity Code"
+            },
+            "description": "CU|NI|CO|LI|REE"
+          },
+          {
+            "name": "store",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "false면 out_report에 적재하지 않고 본문만 반환",
+              "default": true,
+              "title": "Store"
+            },
+            "description": "false면 out_report에 적재하지 않고 본문만 반환"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Generate Reports  Template  Generate Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports/{report_id}": {
+      "get": {
+        "summary": "Get Report",
+        "description": "적재된 리포트 1건을 돌려준다.",
+        "operationId": "get_report_reports__report_id__get",
+        "parameters": [
+          {
+            "name": "report_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Report Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Report Reports  Report Id  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/reports": {
+      "get": {
+        "summary": "List Reports",
+        "description": "최근 생성된 리포트 목록(본문 제외).",
+        "operationId": "list_reports_reports_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "title": "Response List Reports Reports Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AnalysisReportResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "NO_DATA",
+              "TIMEOUT",
+              "INTERNAL_ERROR"
+            ],
+            "title": "Status"
+          },
+          "report": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "AnalysisReportResponse",
+        "description": "분석요약 8종의 API 응답 계약 — 2026-08-26 신설.\n\n사용자 지시: \"보고서는 DB에 저장하지 않고 MD 형태로 풍부한 표현력을 가진\n텍스트로 바로 response에 작성\", \"response에 status(정상/오류코드)\", \"요청당\n20초 초과 금지\". `AnalysisSummaryResponse`(구조화 JSON)는 내부 계산\n결과로는 그대로 두고, 라우터 경계(`routers/_common.py::run_summary`)에서\n이 얇은 겉껍질로 감싼다 — 계산·검증·프롬프트 레이어는 무수정.\n\n`status`는 한 필드가 성공/실패를 겸한다: 성공 시 `\"ok\"`, 실패 시 오류\n코드 문자열. 오류 코드 3종: `NO_DATA`(요청에 observations가 없거나\n분석 불가능한 형태 — 이전 `DataSourceError`/422에 대응),\n`TIMEOUT`(20초 초과), `INTERNAL_ERROR`(그 밖의 예외 — 서버 로그에 상세\n기록, 클라이언트에는 코드만). HTTP 상태 코드는 8종 전부 항상 200이고,\n성공/실패 구분은 이 `status` 필드로만 한다(라우터에서 HTTPException을\n던지지 않는다)."
+      },
+      "CompositeIndexSummaryRequest": {
+        "properties": {
+          "komis_response": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Komis Response"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CompositeIndexSummaryRequest",
+        "description": "광물종합지수 요약 요청.\n\n`komis_response`에 KOMIS `getLineChartIndx` 원본 응답을 그대로 담으면\n시계열 전체(광물종합·메이저금속·희소금속 3개 지수)를 직접 파싱한다\n(`models.py`의 `komis_response` 필드 docstring 참고) — mineral 개념\n자체가 없는 페이지라 이제 komis_response 하나만 보내면 된다.\n\n2026-08-31 정리 — 손 매핑 전용이던 `observations`는 komis_response로\n완전히 대체돼 제거했다(2026-08-26 도입, 2026-08-30 komis_response\n신설로 불필요).\n\n2026-08-30 추가 정리 — 사용자가 \"start_date/end_date가 필요하냐\"고\n지적, `_DateRangeMineralRequest` 쪽 근거와 동일해 여기도 함께\n제거했다(§`_DateRangeMineralRequest` docstring 참고)."
+      },
+      "ComprehensiveDashboardResponse": {
+        "properties": {
+          "overview": {
+            "$ref": "#/components/schemas/ComprehensiveOverview"
+          },
+          "news": {
+            "items": {
+              "$ref": "#/components/schemas/WeeklyNewsCard"
+            },
+            "type": "array",
+            "title": "News"
+          },
+          "generated_at": {
+            "type": "string",
+            "title": "Generated At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "overview",
+          "news",
+          "generated_at"
+        ],
+        "title": "ComprehensiveDashboardResponse",
+        "description": "`GET /api/v1/dashboard/comprehensive` 응답 전체."
+      },
+      "ComprehensiveOverview": {
+        "properties": {
+          "as_of": {
+            "type": "string",
+            "title": "As Of",
+            "description": "geo_index 최신 주간(freq=W) period, YYYY-MM-DD(일요일)"
+          },
+          "composite_index": {
+            "type": "number",
+            "title": "Composite Index",
+            "description": "5광종 idx_value 평균"
+          },
+          "composite_index_change": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Composite Index Change",
+            "description": "전주 대비 변동폭(포인트), 직전 주 데이터 없으면 null"
+          },
+          "top_commodity": {
+            "type": "string",
+            "title": "Top Commodity",
+            "description": "이번 주 idx_value가 가장 높은 광종 코드"
+          },
+          "core_diagnosis": {
+            "type": "string",
+            "title": "Core Diagnosis",
+            "description": "현황 — 정량 요약 1문장"
+          },
+          "risk_tags": {
+            "items": {
+              "$ref": "#/components/schemas/RiskTag"
+            },
+            "type": "array",
+            "title": "Risk Tags",
+            "description": "원인 — 리스크 요인 태그"
+          },
+          "response_strategies": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Response Strategies",
+            "description": "대응 — 고정 카탈로그에서 태그 매핑(LLM 생성 아님, policy 성격상 규칙기반)"
+          },
+          "llm_refined": {
+            "type": "boolean",
+            "title": "Llm Refined",
+            "description": "core_diagnosis가 LLM 다듬기를 거쳤는지"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "as_of",
+          "composite_index",
+          "top_commodity",
+          "core_diagnosis",
+          "llm_refined"
+        ],
+        "title": "ComprehensiveOverview",
+        "description": "종합진단(현황→원인→대응) — 대시보드 최상단 AI 종합분석."
+      },
+      "DomesticTradeSummaryRequest": {
+        "properties": {
+          "mineral": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mineral"
+          },
+          "mineral_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mineral Name"
+          },
+          "komis_response": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Komis Response"
+          },
+          "trade_direction": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "import",
+                  "export"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trade Direction"
+          },
+          "mttr_flow_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mttr Flow Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "DomesticTradeSummaryRequest",
+        "description": "국내 수급지도(map_korea, KO_CSTM_CMMRC) 요청.\n\n`komis_response`에 KOMIS `getListKoreaData` 원본 응답을 그대로 담으면\n국가별 수입/수출·총액까지 전부 직접 뽑아 쓴다. `mineral`(코드)도 이\n응답이 조회 파라미터(`srchMnrkndUnqCd`)를 그대로 돌려주므로 안 보내면\n거기서 자동으로 채운다(2026-08-31 확인) — 사실상 `komis_response`\n하나만 보내도 된다.\n\n2026-08-31 신설 — 사용자 지시로 KOMIS 화면의 조회필터 4종(기간구분·\n국가·생산품유형·HS코드)을 추가. 응답이 이 4개 요청 파라미터\n(`srchCrtrYmd`/`srchNtnCd`/`srchMttrFlowCd`/`srchHsCd`)를 전부 최상위에\necho하는 걸 실측 확인해 새 요청 필드 없이 `komis_response` 안에서 다\n읽는다 — 유일한 예외인 `mttr_flow_name`은 아래 참고."
+      },
+      "GlobalTradeSummaryRequest": {
+        "properties": {
+          "mineral": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mineral"
+          },
+          "mineral_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mineral Name"
+          },
+          "komis_response": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Komis Response"
+          },
+          "komis_bar_chart_response": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Komis Bar Chart Response"
+          },
+          "komis_route_share_response": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Komis Route Share Response"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "GlobalTradeSummaryRequest",
+        "description": "글로벌 수급지도(map_global, KO_UN_CMMRC) 요청.\n\n`komis_response`에 KOMIS `getListDataNation` 원본 응답을 그대로 담으면\n도착국·원산국 루트별 교역량·총액까지 전부 직접 뽑아 쓴다. `mineral`\n(코드)도 이 응답이 조회 파라미터(`srchMnrkndUnqCd`)를 그대로 돌려\n주므로 안 보내면 거기서 자동으로 채운다(2026-08-31 확인) — 사실상\n`komis_response` 하나만 보내도 된다.\n\n2026-08-31 신설 — 사용자 지시로 KOMIS 글로벌 수급지도 엔드포인트\n2개를 추가. `komis_bar_chart_response`(`getBarChartDataNation`,\n국가별 다년 시계열)는 `getListDataNation`이 스냅샷 1건뿐이라 실전에서\n거의 항상 비어 있던 기간변화(period_total_change)를 보완한다 —\n\"세계 총액\"이 아니라 1위국 자체 수치로만 쓴다(실측으로 두 엔드포인트의\n총액 집계범위가 다름을 확인, `models.py` 필드 docstring 참고).\n`komis_route_share_response`(`getListMapNationData`, 루트별 각국\n집계총액 대비 비중)는 detailed_metrics로만 반영한다."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "IndicatorSummaryRequest": {
+        "properties": {
+          "mineral": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Mineral"
+          },
+          "mineral_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mineral Name"
+          },
+          "start_month": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Month"
+          },
+          "end_month": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Month"
+          },
+          "observations": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observations"
+          },
+          "komis_response": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Komis Response"
+          },
+          "price_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Unit"
+          },
+          "price_criterion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Criterion"
+          },
+          "unavailable_page_data": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Page Data"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "mineral"
+        ],
+        "title": "IndicatorSummaryRequest",
+        "description": "시장동향지표 요약 요청(수급동향지표는 `SupplyIndicatorSummaryRequest`가 상속·확장).\n\n2026-08-26: `observations`(IndicatorObservation 리스트, dict 그대로) —\nDB 대신 요청 바디로 원자료를 받는다(§`models.py::AnalysisSummaryRequest`\n2026-08-26 주석 참고). `mineral_name`이 없으면 `mineral`(코드)을 표시명으로도\n쓴다.\n\n2026-09-01 추가 — `komis_response`에 KOMIS 원본 응답(`getListIndxMnrk`,\n`{\"data\": [...행들], \"chartData\": {...}}` 형태, `chartData`는 `data`와 같은\n값을 그래프용으로 재구성한 것이라 쓰지 않는다)을 그대로 담으면 직접\n파싱한다. 이 페이지는 로그인 필요 화면이라 그동안 정적 데이터 예시가\n없어 `observations` 손 매핑만 지원했는데, 발주처가 덤프를 제공해\nkomis_response 경로를 추가했다. `mineral`(코드)은 응답 본문에 광종\n식별자가 없어 여전히 필수다 — `observations`는 하위호환으로 남긴다(둘\n다 없으면 NO_DATA).\n\n2026-09-01 정리 — `supply_auxiliary`는 수급동향지표 전용 필드라\n`SupplyIndicatorSummaryRequest`로 옮겼다(시장동향지표 Swagger에 안 쓰는\n필드가 노출되는 문제, `_DateRangeMineralRequest` 분리와 같은 이유)."
+      },
+      "MineralMapSummaryRequest": {
+        "properties": {
+          "mineral": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Mineral"
+          },
+          "mineral_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mineral Name"
+          },
+          "measure": {
+            "type": "string",
+            "enum": [
+              "reserves",
+              "production"
+            ],
+            "title": "Measure"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "komis_response": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Komis Response"
+          },
+          "komis_snapshot_response": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Komis Snapshot Response"
+          },
+          "komis_share_response": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Komis Share Response"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "mineral",
+          "measure"
+        ],
+        "title": "MineralMapSummaryRequest",
+        "description": "광물지도(매장량/생산량) 요약 요청.\n\n`komis_response`에 KOMIS `getListMapMnrlChartData` 원본 응답을 그대로\n담으면 observations·unit(`cdVal`, 예: \"천톤\")을 직접 파싱한다\n(`models.py`의 `komis_response` 필드 docstring 참고). `mineral`(코드)·\n`measure`(매장량/생산량)는 응답 본문에 없는 조회 파라미터라 여전히\n필수다 — 응답엔 국가별 매장량·생산량 값이 둘 다 항상 같이 오지만,\n지금 조회가 어느 쪽을 의도한 건지는 그 값만으로 구분이 안 된다.\n\n2026-08-31 정리 — 손 매핑 전용이던 `observations`는 komis_response로\n완전히 대체돼 제거(2026-08-26 도입, 2026-08-30 komis_response 신설로\n불필요). `unit`은 자동채움의 폴백/오버라이드로 여전히 유효해 남겼다.\n\n2026-08-31 신설 — 사용자 요청으로 KOMIS 광물지도 페이지의 나머지 2개\n엔드포인트를 추가. `komis_snapshot_response`(`getListMapMnrlData`)가\n2026-08-27 신설 `secondary_measure_observations`/`secondary_unit`(매장량/\n생산량 교차 비교, PDF §4)을 완전히 대체한다 — 국가별로 두 measure를\n한 응답에 동시에 주는 걸 실측 확인(사용자 확인, \"대체(권장)\"). ⚠단일\n연도 조회(srchDateS==srchDateE) 전제, 다년 범위는 KOMIS가 합산한 값을\n준다(`models.py`의 필드 docstring에 실측 근거 상세). `komis_share_response`\n(`getListMnrlTablePrdctnBurgudg`)는 국가별 최근 5개년 값 + `rate`(국가목록\n내 비중, \"전년대비 증감률\"도 \"세계비중\"도 아님 — 이 표에 나열된 국가들의\n소계 대비 비중, 실측 대조로 정정. `additional_summary.py`의 `market_share`\ndocstring 참고)를 준다.\n\n2026-08-30 추가 정리 — `start_year`/`end_year`도 제거했다. streamlit_demo\n가 실제로 이 필드를 선택 입력란(연도)으로 렌더링해 보내고 있었지만\n(report_gen_client.py PAGE_SPECS의 `(\"start_year\", \"end_year\")`),\nkomis_response 자체가 이미 \"그 조회 범위의\" 시계열이라 이 필드는\n받은 응답을 사후에 다시 좁히는 중복 레이어일 뿐이었다 — 범위를\n좁히고 싶으면 KOMIS 조회 자체를 그 연도로 다시 하면 된다는 게\n`_DateRangeMineralRequest` docstring과 같은 결론. **UI가 실제로\n이 필드를 채워 보내는 유일한 경로라 streamlit_demo 쪽도 같이\n갱신해야 한다**(요청 시 extra=\"forbid\"로 조용히 NO_DATA 처리됨) —\nstreamlit-agent에 통지."
+      },
+      "PriceForecastSummaryRequest": {
+        "properties": {
+          "mineral": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Mineral"
+          },
+          "mineral_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mineral Name"
+          },
+          "forecast_horizon": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "medium",
+                  "long"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Forecast Horizon"
+          },
+          "price_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Unit"
+          },
+          "komis_response": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Komis Response"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "mineral"
+        ],
+        "title": "PriceForecastSummaryRequest",
+        "description": "중기(분기)·장기(연간) 가격예측 요약 요청.\n\n`komis_response`에 KOMIS `getListPricePredc` 원본 응답을 그대로 담으면\nrealYn→is_actual 변환까지 포함해 직접 파싱한다(`models.py`의\n`komis_response` 필드 docstring 참고). `mineral`(코드, 응답 본문엔\n`mnrkndKornNm` 한글명만 있고 코드가 없음)은 여전히 필수다.\n`forecast_horizon`은 komis_response가 있으면 선택이다 — 응답의\n`crtrPrd` 형식(분기 \"28년 4Q\" 대 연 \"2028년\") 자체가 medium/long을\n이미 구분해서 담고 있어 `summary.py::_analyze_price_forecast`가\n자동 판별한다(komis_response 없이 손 매핑 경로만 쓸 땐 형식을 알\n방법이 없어 여전히 필수). `price_unit`은 응답에 없는 값이라 자동\n채움은 안 되지만, 있으면 가격 문장에 단위를 붙여주는 순수 선택\n필드라 그대로 남겼다(`additional_summary.py::_forecast_price_text`\n참고 — price_* 페이지의 `price_criterion_serial`처럼 죽은 필드는\n아니다).\n\n2026-08-31 정리 — 손 매핑 전용이던 `observations`는 komis_response로\n완전히 대체돼 제거(2026-08-26 도입, 2026-08-30 komis_response 신설로\n불필요).\n\n2026-08-30 추가 정리 — `start_period`/`end_period`도 제거했다.\nstreamlit_demo가 실제로 이 필드를 선택 입력란(분기/연도)으로\n렌더링해 보내고 있었지만(`report_gen_client.py` PAGE_SPECS의\n`(\"start_period\", \"end_period\")`), komis_response 자체가 이미 그\n조회 범위의 예측 시계열이라 사후 재필터링은 `_DateRangeMineralRequest`\n/`MineralMapSummaryRequest`와 동일한 순수 중복이었다. 이 필드에\n딸려 있던 medium/long 기간형식 교차검증(`-Q` 유무)도 필드와 함께\n제거한다 — 그 검증은 애초에 komis_response 자동판별 로직\n(`forecast_horizon` docstring 참고)이 이미 하는 일과 같은 것을\n호출자 입력에 대해서만 별도로 하던 것이라 필드가 없으면 대상이\n없다. **streamlit_demo 쪽도 이 필드 전송을 멈춰야 한다**(안 그러면\nextra=\"forbid\"로 조용히 NO_DATA) — streamlit-agent에 통지."
+      },
+      "PriceSummaryRequest": {
+        "properties": {
+          "mineral": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Mineral"
+          },
+          "mineral_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mineral Name"
+          },
+          "komis_response": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Komis Response"
+          },
+          "compare_mineral": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compare Mineral"
+          },
+          "compare_mineral_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compare Mineral Name"
+          },
+          "compare_price_criterion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compare Price Criterion"
+          },
+          "price_criterion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Criterion"
+          },
+          "srch_avg_opt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "DAY",
+                  "WEEK",
+                  "MONTH",
+                  "QUARTER",
+                  "YEAR"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Srch Avg Opt"
+          },
+          "srch_field": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "year",
+                  "month"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Srch Field"
+          },
+          "srch_start_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Srch Start Date"
+          },
+          "srch_end_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Srch End Date"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "mineral"
+        ],
+        "title": "PriceSummaryRequest",
+        "description": "광물자원가격(비철금속/희소금속/철광석·에너지/기타) 4종 공통 요청.\n\n`komis_response`에 KOMIS `getMnrlPrcByMnrkndUnqCd` 원본 응답을 그대로\n담으면 report_gen이 일별 시세·재고·전주/전월/전년 비교·가격기준\n(\"LME CASH\" 등)까지 전부 직접 뽑아 쓴다(`models.py`의 `komis_response`\n필드 docstring 참고). `mineral`(코드)은 여기서만 필수로 재선언한다 —\n이 응답 본문엔 `mnrkndKornNm`(한글명)만 있고 내부 코드가 없어서\n(map_korea/global과 달리) 자동으로 못 채운다.\n\n`compare_mineral`(코드)은 비교광종 조회 시에만 채운다 — KOMIS\n응답에 `data.compareMnrl`(비교 계열 가격)은 있어도 그 광종의\n내부 코드는 없어서 여전히 호출자가 명시해야 한다. 비교광종은\nprice_* 4종 전부 동일 지원(2026-08-30 확인, 희소금속 전용 아님).\n\n`compare_mineral_name`(한글명)은 komis_response가 있으면 자동\n채움이다(`dataAvg.cmpMap.INFO.mnrkndKornNm`, 2026-08-30 2차 확인 —\n사용자가 \"compare_mineral_name도 komis_response 안에 있지 않냐\"고\n지적, Playwright 라이브 재현으로 확정) — `mineral_name`과 동일한\n자동채움+오버라이드 패턴이라 required로 바꾸지 않고 optional로\n남긴다.\n\n`compare_price_criterion`(비교광종 자신의 가격기준, 예: \"99.99%min\nFOB China\")도 같은 자리(`dataAvg.cmpMap.INFO.prcCrtr`)에서 자동\n채움된다(2026-08-30 3차 확인) — 이 필드는 한 차례 회귀가 있었다:\n`c76466a47`(2026-08-30 Swagger 트리밍)에서 \"komis_response로\n대체돼 불필요\"라고 잘못 판단해 여기서 지웠는데, 실제로는 auto-fill\n경로가 없어서 그 이후로는 `_analyze_price`가 계속 읽던 이 값을\n캐스터가 채울 방법 자체가 없었다(표시가 조용히 죽어 있었다) —\n이번에 필드를 복원하면서 auto-fill까지 같이 넣어 재발을 막는다.\n\n`price_criterion`(기본 광종 자신의 가격기준)도 같은 이유로 4차\n확인 후 복원한다(2026-08-30) — `compare_price_criterion`과 정확히\n같은 커밋(`c76466a47`)에서 같은 근거(\"komis_response로 대체돼\n불필요\")로 같이 지워졌다. 다만 이쪽은 auto-fill(`dataAvg.INFO.\nprcCrtr`)이 그 트리밍보다 먼저(`ecc4cb8a7`) 이미 들어가 있어서\n표시 자체는 안 깨졌었다 — 그래도 `mineral_name`·\n`compare_mineral_name`·`compare_price_criterion`이 전부 \"자동채움\n+오버라이드 가능\"인데 이것만 \"자동채움뿐, 오버라이드 불가\"인 건\n비일관적이라 나머지와 맞춘다(호출자가 KOMIS 원문과 다른 값을\n표시하고 싶을 수 있는 경우 대비).\n\n`srch_avg_opt`/`srch_field`/`srch_start_date`/`srch_end_date`(2026-08-31\n신설)는 호출자가 KOMIS에 실제로 던진 조회 파라미터(`srchAvgOpt`/\n`srchField`/`srchStartDate`/`srchEndDate`)를 그대로 옮겨 보내는\n필드다 — `komis_response`(응답 본문)엔 이 정보가 없어서(KOMIS는\n조회 평균옵션과 무관하게 `dataAvg.stdMap`에 day/week/month/year를\n항상 다 채운다) 지금까지는 `observations`의 실제 날짜 간격·폭으로\n평균옵션과 조회기간을 추론했다 — 명시적으로 보내면 그 추론보다\n우선한다. `srch_avg_opt`는 DAY/WEEK/MONTH/QUARTER/YEAR, `srch_field`는\n`srch_start_date`/`srch_end_date`의 형식을 정한다(`year`→\"YYYY\",\n`month`→\"YYYY-MM\", KOMIS 화면의 실제 두 형식 그대로)."
+      },
+      "RiskTag": {
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "지정학적",
+              "공급망",
+              "시장",
+              "산업영향"
+            ],
+            "title": "Category"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "category",
+          "text"
+        ],
+        "title": "RiskTag",
+        "description": "리스크 요인 태그 1건 — 화면기획 \"태그형: 핵심 내용만 키워드 형식\"."
+      },
+      "SupplyIndicatorSummaryRequest": {
+        "properties": {
+          "mineral": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mineral"
+          },
+          "mineral_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mineral Name"
+          },
+          "start_month": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Month"
+          },
+          "end_month": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{4}-(?:0[1-9]|1[0-2])$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Month"
+          },
+          "observations": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observations"
+          },
+          "komis_response": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Komis Response"
+          },
+          "price_unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Unit"
+          },
+          "price_criterion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Criterion"
+          },
+          "unavailable_page_data": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Page Data"
+          },
+          "komis_snapshot_response": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Komis Snapshot Response"
+          },
+          "supply_auxiliary": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supply Auxiliary"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SupplyIndicatorSummaryRequest",
+        "description": "수급동향지표 요약 요청 — `IndicatorSummaryRequest`를 상속하고 수급동향\n전용 필드만 얹는다(2026-09-01 신설, `_DateRangeMineralRequest`와 같은\n분리 이유).\n\n`mineral`을 선택으로 재선언한다 — `komis_snapshot_response`\n(`getChartDataSpdmStbt`)가 있으면 그 안의 `chartSpdmStbt.mnrkndUnqCd`/\n`mnrkndKornNm`으로 광종 코드·이름을 자동 채운다(map_korea/global과 같은\n패턴, `models.py`의 `mineral_derivable_from_snapshot` 참고). 둘 다 없으면\n(komis_response만 보내고 komis_snapshot_response는 안 보내는 경우)\n여전히 필수다.\n\n`komis_snapshot_response`에 `getChartDataSpdmStbt` 원본 응답을 담으면\n`subChart02`(수입량·수입액 5개년)→`domestic_imports`, `subChart03`\n(국가별 수입금액 비중, 실측 확인 — 사용자가 \"일본 454240=금액(USD)\"로\n확정, 중량은 이 응답에 없어 `SupplyImportDependencyObservation.weight_kg`\n를 선택 필드로 완화함)→`import_dependencies`/`top_three_dependency_percent`\n로 파싱한다(`models.py`의 `SupplyAuxiliaryData` docstring 참고).\n`subChart01`(실질가격)은 핵심 관측치(`realPrc`)와 중복이라 안 쓴다.\n`subChart04`(국가별 생산량, \"세계 공급 편중도\")·`subChart07`(국가별\n매장량)은 대응 모델 필드가 없어 이번 반영 범위 밖이다. 손 매핑 전용이던\n`supply_auxiliary`는 여기 그대로 남긴다(komis_snapshot_response가 없을 때의\n폴백 경로)."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "WeeklyNewsCard": {
+        "properties": {
+          "commodity_code": {
+            "type": "string",
+            "title": "Commodity Code"
+          },
+          "commodity_name": {
+            "type": "string",
+            "title": "Commodity Name"
+          },
+          "headline": {
+            "type": "string",
+            "maxLength": 60,
+            "title": "Headline",
+            "description": "핵심 결론 1줄(기획 스펙 25자 내외, 여유를 둠)"
+          },
+          "driver_up": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Driver Up",
+            "description": "가격을 움직인 주된 요인(상승 압력)"
+          },
+          "driver_down": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Driver Down",
+            "description": "반대/제약 요인(없으면 생략)"
+          },
+          "as_of": {
+            "type": "string",
+            "title": "As Of"
+          },
+          "llm_refined": {
+            "type": "boolean",
+            "title": "Llm Refined"
+          },
+          "source_count": {
+            "type": "integer",
+            "title": "Source Count",
+            "description": "이번 주 근거로 쓴 geo_event 건수"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "commodity_code",
+          "commodity_name",
+          "headline",
+          "as_of",
+          "llm_refined",
+          "source_count"
+        ],
+        "title": "WeeklyNewsCard",
+        "description": "광종 1개의 주간 뉴스 카드 — 화면기획 \"제목 25자 내외 + 상승/하락 압력 요인\"."
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:18003",
+      "description": "report_gen 테스트 컨테이너(현재 세션 기준 실제 리스닝 포트). 실제 docker-compose 배포 시엔 deploy/docker-compose.yml 기준 8003 포트로 바뀐다 — 이 문서 발행 시점(2026-09-03) 기준 값이니 접속 실패 시 실제 뜬 포트로 갱신할 것."
+    }
+  ]
+}

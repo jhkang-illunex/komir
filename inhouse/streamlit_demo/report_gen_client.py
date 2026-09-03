@@ -79,7 +79,7 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # 2026-08-30 report-summary-agent 제보(커밋 0d0568a50) — start_date/
         # end_date가 요청 모델에서 삭제됐다(komis_response가 이미 KOMIS 조회
         # 범위 그대로의 시계열이라 서버 재필터가 중복) — period_fields 제거.
-        "광물종합지수", "광물전망지표", "composite-index", False, ("", ""), "",
+        "광물종합지수", "광물전망지표", "indicators/composite-index", False, ("", ""), "",
         (),
         '[{"date": "2026-08-14", "composite_index": 3454.93, "major_metals_index": 2969.95, "minor_metals_index": 2905.63}, '
         '{"date": "2026-08-17", "composite_index": 3469.62, "major_metals_index": 2981.77, "minor_metals_index": 2906.34}, '
@@ -108,7 +108,7 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # 없어(가격 페이지의 dataAvg.INFO.prcCrtr 같은 자동채움 소스가 없음)
         # 항상 빈 값 → report_gen이 매번 "가격 기준/단위 누락"으로만 표시하는
         # 무용한 필드였다 — extra_fields에서 제거.
-        "시장동향지표", "광물전망지표", "market-indicator", True, ("start_month", "end_month"), "month",
+        "시장동향지표", "광물전망지표", "indicators/market", True, ("start_month", "end_month"), "month",
         (),
         '[{"month": "2024-09", "score": 5.27, "price": 447.46}, '
         '{"month": "2024-10", "score": 5.55, "price": 455.23}, '
@@ -142,7 +142,7 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # crisis_flag, 조회기간 전체 "N"=false)을 그대로 옮겼다(기존 가짜
         # placeholder 교체). price_unit/price_criterion 제거 사유는
         # §indicator_market 주석과 동일.
-        "수급동향지표", "광물전망지표", "supply-indicator", True, ("start_month", "end_month"), "month",
+        "수급동향지표", "광물전망지표", "indicators/supply", True, ("start_month", "end_month"), "month",
         (),
         '[{"month": "2024-09", "score": 5.07, "price": 447.46, "crisis_flag": false}, '
         '{"month": "2024-10", "score": 5.34, "price": 455.23, "crisis_flag": false}, '
@@ -291,7 +291,7 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # expander 기본값)도 같은 캡처의 sumIncmAmt/sumIncmWeig 그대로.
         # 2026-08-30 report-summary-agent 제보(커밋 0d0568a50) — start_date/
         # end_date가 요청 모델에서 삭제됐다(§indicator_composite 주석 참고).
-        "국내 수급지도(수출입)", "핵심광물지도", "domestic-trade", True, ("", ""), "",
+        "국내 수급지도(수출입)", "핵심광물지도", "maps/domestic-trade", True, ("", ""), "",
         ("trade_direction",),
         '[{"date": "2025-08-01", "country_code": "CL", "country_name": "칠레", "import_weight": 458239149, "import_amount": 2546230722}, '
         '{"date": "2025-08-01", "country_code": "US", "country_name": "미국", "import_weight": 138542249, "import_amount": 1200849392}, '
@@ -317,7 +317,7 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # "30행 절단으로 인한 과소총액" 문제를 실측으로 보여준다.
         # 2026-08-30 report-summary-agent 제보(커밋 0d0568a50) — start_date/
         # end_date가 요청 모델에서 삭제됐다(§indicator_composite 주석 참고).
-        "글로벌 수급지도(원산지→도착지)", "핵심광물지도", "global-trade", True, ("", ""), "",
+        "글로벌 수급지도(원산지→도착지)", "핵심광물지도", "maps/global-trade", True, ("", ""), "",
         (),
         '[{"date": "2025-08-01", "country_code": "JP", "country_name": "일본", "import_weight": 339553072, "import_amount": 912677544.84, "origin_country_code": "CL", "origin_country_name": "칠레"}, '
         '{"date": "2025-08-01", "country_code": "US", "country_name": "미국", "import_weight": 70155941, "import_amount": 855452708, "origin_country_code": "CL", "origin_country_name": "칠레"}, '
@@ -346,7 +346,7 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # 변화율만 0%로 나온다(지어낸 델타 없음, 정직한 한계).
         # 2026-08-30 report-summary-agent 제보(커밋 0d0568a50) — start_year/
         # end_year가 요청 모델에서 삭제됐다(§indicator_composite 주석 참고).
-        "광물지도(매장량/생산량)", "핵심광물지도", "mineral-map", True, ("", ""), "",
+        "광물지도(매장량/생산량)", "핵심광물지도", "maps/mineral", True, ("", ""), "",
         ("measure", "unit"),
         '[{"year": 2024, "country_code": "AU", "country_name": "호주", "value": 100000.0}, '
         '{"year": 2024, "country_code": "CA", "country_name": "캐나다", "value": 7000.0}, '
