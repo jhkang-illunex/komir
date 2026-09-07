@@ -37,6 +37,8 @@ def _subject(name: str) -> str:
     has_batchim = 0xAC00 <= codepoint <= 0xD7A3 and (codepoint - 0xAC00) % 28 != 0
     return f"{name}{'이' if has_batchim else '가'}"
 from .models import (
+    CURRENT_POSITION_MAX_SENTENCES,
+    MAJOR_CHANGES_MAX_SENTENCES,
     DetectedPattern,
     GeoEventObservation,
     Metric,
@@ -595,7 +597,7 @@ def calculate_price_summary(
         # price_streak만으로 5개에 닿을 수 있다(관측치가 창마다 달라지는
         # 경우) — 새 근거를 무조건 추가하면 그 경로가 `ValidationError`로
         # 죽는다(2026-08-28 실측 재현). 남은 자리만큼만 추가해 절대 넘지 않는다.
-        _MAJOR_CHANGES_HARD_CAP = 5
+        _MAJOR_CHANGES_HARD_CAP = MAJOR_CHANGES_MAX_SENTENCES
         room = _MAJOR_CHANGES_HARD_CAP - sum(1 for claim in claims if claim.section == "major_changes")
         selected = sorted(
             (event for event in geo_events if event.severity >= _PRICE_DRIVER_MIN_SEVERITY),
@@ -1421,14 +1423,12 @@ def _shift_date(date_text: str, days: int) -> str:
 
 _VOLATILITY_WINDOWS: tuple[tuple[str, int], ...] = (("1개월", 30), ("3개월", 90), ("1년", 365))
 _MA_WINDOWS: tuple[int, ...] = (20, 60, 120, 250)
-# current_position 절 근거 상한 — `SummaryNarrative.current_position`
-# (models.py) 및 `prompts.py::SECTION_SENTENCE_RANGES`의 price_* 4종
-# "current_position" 최댓값과 반드시 같이 바꾼다(안 맞추면 `_MAJOR_CHANGES_
-# HARD_CAP`과 같은 이유로 ValidationError로 죽는다 — 위 두 상수 옆에 각각
-# 동일한 경고 주석을 남겨뒀다). 근거 최대 9개 = period_range/no_price_range(1)
-# + compare_overall_change/no(1) + inventory_level(1) + 신규 6종(변동성·
-# 이동평균+RSI·백분위·낙폭국면·재고해석·상대가치).
-_CURRENT_POSITION_HARD_CAP = 9
+# current_position 절 근거 상한 — `models.py::CURRENT_POSITION_MAX_SENTENCES`
+# 단일 출처를 import(2026-09-08 SC-002, 세 파일 리터럴 동기화 제거). 근거
+# 최대 9개 = period_range/no_price_range(1) + compare_overall_change/no(1)
+# + inventory_level(1) + 신규 6종(변동성·이동평균+RSI·백분위·낙폭국면·
+# 재고해석·상대가치).
+_CURRENT_POSITION_HARD_CAP = CURRENT_POSITION_MAX_SENTENCES
 
 # 2026-08-31 사용자 지적 — "실 데이터 간격이 다르면 주·월·분기·년 단위를
 # 인식할 수 있나요?" KOMIS는 DAY/WEEK/MONTH/QUARTER/YEAR 5종 조회단위를

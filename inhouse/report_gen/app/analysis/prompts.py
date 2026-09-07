@@ -36,7 +36,12 @@ from typing import Any
 from . import prompt_store
 from .additional_summary import ADDITIONAL_PAGE_CONTEXTS, SummaryPageContext
 from .komir_summary import KOMIR_PAGE_CONTEXTS
-from .models import AnalysisSummaryResponse
+from .models import (
+    CORE_DIAGNOSIS_MAX_SENTENCES,
+    CURRENT_POSITION_MAX_SENTENCES,
+    MAJOR_CHANGES_MAX_SENTENCES,
+    AnalysisSummaryResponse,
+)
 from .policy import PagePolicy, load_page_policy
 
 # 아래 10개 상수 + `PROMPTS`가 분석요약 프롬프트의 **단일 소스**다(2026-08-27,
@@ -426,6 +431,16 @@ MAX_EVIDENCE_IDS_PER_SENTENCE_BY_PAGE: dict[str, int] = {
 _EVIDENCE_IDS_HARD_CAP = 5
 
 _SECTIONS = ("core_diagnosis", "major_changes", "current_position")
+#: `_parse_output_contract`가 DB `section_sentence_ranges`를 받아들이기 전에
+#: 대조하는 절대 상한 — `models.py::SummaryNarrative`의 각 섹션 `max_length`와
+#: 같은 값(2026-09-08 SC-002). 이 검사가 없으면 DB에 이 상한을 넘는 hi를 넣어도
+#: 그대로 받아들여져 LLM 출력이 항상 `SummaryNarrative` 생성에서 ValidationError로
+#: 죽는 영구 무언 폴백이 생긴다(실측 재현됨).
+_SECTION_SENTENCE_HARD_CAP: dict[str, int] = {
+    "core_diagnosis": CORE_DIAGNOSIS_MAX_SENTENCES,
+    "major_changes": MAJOR_CHANGES_MAX_SENTENCES,
+    "current_position": CURRENT_POSITION_MAX_SENTENCES,
+}
 
 
 # ────────────────────────────────────────────────────────────────────
@@ -506,13 +521,15 @@ def code_page_config(page_id: str) -> PageConfig:
     )
 
 
-def _parse_range(value: Any) -> tuple[int, int] | None:
+def _parse_range(value: Any, max_hi: int | None = None) -> tuple[int, int] | None:
     if not isinstance(value, (list, tuple)) or len(value) != 2:
         return None
     lo, hi = value
     if isinstance(lo, bool) or isinstance(hi, bool) or not isinstance(lo, int) or not isinstance(hi, int):
         return None
     if lo < 1 or hi < lo:
+        return None
+    if max_hi is not None and hi > max_hi:
         return None
     return (lo, hi)
 
@@ -529,11 +546,20 @@ def _parse_output_contract(page_id: str, raw: Any, base: PageConfig) -> tuple[di
     ranges: dict[str, tuple[int, int]] | None = None
     raw_ranges = raw.get("section_sentence_ranges")
     if raw_ranges is not None:
-        parsed = {section: _parse_range(raw_ranges.get(section)) for section in _SECTIONS} if isinstance(raw_ranges, dict) else {}
+        parsed = (
+            {section: _parse_range(raw_ranges.get(section), _SECTION_SENTENCE_HARD_CAP[section]) for section in _SECTIONS}
+            if isinstance(raw_ranges, dict)
+            else {}
+        )
         if all(parsed.get(section) is not None for section in _SECTIONS):
             ranges = {section: parsed[section] for section in _SECTIONS}  # type: ignore[misc]
         else:
-            log.warning("%s: output_contract.section_sentence_ranges 형식 오류 — 코드 기본값 사용: %r", page_id, raw_ranges)
+            log.warning(
+                "%s: output_contract.section_sentence_ranges 형식 오류 또는 상한(%s) 초과 — 코드 기본값 사용: %r",
+                page_id,
+                _SECTION_SENTENCE_HARD_CAP,
+                raw_ranges,
+            )
     total: tuple[int, int] | None = None
     if raw.get("total_sentence_range") is not None:
         total = _parse_range(raw.get("total_sentence_range"))
