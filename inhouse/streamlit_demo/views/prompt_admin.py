@@ -123,7 +123,7 @@ def _mineral_options_for(page_id: str) -> list[dict]:
 
 @st.cache_data(ttl=30, show_spinner="ai_cfg.cfg_prompt를 조회하는 중…")
 def _fetch_prompts():
-    from shared.db import read_sql_pg
+    from common.db import read_sql_pg
 
     return read_sql_pg(
         "SELECT prompt_key, content, description, updated_at, page_name, page_definition, "
@@ -351,7 +351,7 @@ if st.button("저장 + report_gen 캐시 reload", type="primary"):
         for message in output_contract_schema_errors:
             st.error(f"output_contract: {message}")
     else:
-        from shared.db import execute_pg
+        from common.db import execute_pg
 
         params = (
             content,

@@ -35,9 +35,9 @@ from ingest import status as ingest_status  # noqa: E402
 from rag.ragkit.chunk import chunk_document  # noqa: E402
 from rag.ragkit.embed import DIM, encode_passages  # noqa: E402
 from rag.ragkit.ingest import load_documents  # noqa: E402
-from services.shared.config import get_settings  # noqa: E402
-from services.shared.db import apply_schema_pg, pg_connect  # noqa: E402
-from services.shared.logging_config import configure_logging  # noqa: E402
+from common.config import get_settings  # noqa: E402
+from common.db import apply_schema_pg, pg_connect  # noqa: E402
+from common.logging_config import configure_logging  # noqa: E402
 
 SCHEMA_SQL = _INHOUSE_ROOT / "data_lake/db/schema_pgvector.sql"
 

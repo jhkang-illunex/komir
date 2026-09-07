@@ -44,7 +44,7 @@ if str(_INHOUSE_ROOT) not in sys.path:
     sys.path.insert(0, str(_INHOUSE_ROOT))
 
 from ingest import status as ingest_status  # noqa: E402
-from services.shared.logging_config import configure_logging  # noqa: E402
+from common.logging_config import configure_logging  # noqa: E402
 
 OKF_DOCUMENTS_ROOT = _INHOUSE_ROOT / "data_lake/semi_structure/okf_documents"
 PAGEINDEX_TREES_ROOT = _INHOUSE_ROOT / "data_lake/semi_structure/pageindex_trees"
@@ -119,7 +119,7 @@ def build_tree_for_okf(
 ) -> dict:
     """OKF 파일 1건 → 트리 JSON(메타데이터 포함 dict)."""
 
-    from services.shared.pageindex_client import build_tree_from_markdown
+    from rag.pageindex_client import build_tree_from_markdown
 
     text = okf_path.read_text(encoding="utf-8")
     front, body, offset = split_frontmatter(text)

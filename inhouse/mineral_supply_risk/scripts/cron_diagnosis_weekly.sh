@@ -47,7 +47,7 @@ set +a
   python3 -m msr.models.alert 2>&1 | tail -10
 
   echo "--- [5/5] 텍스트 보고서 화면 데이터 생성(out_ai_dashboard_summary, LLM 서술) ---"
-  ( cd "$ROOT/inhouse/services/report_gen" && python3 -m app.dashboard_summary 2>&1 | tail -5 )
+  ( cd "$ROOT/inhouse/report_gen" && python3 -m app.dashboard_summary 2>&1 | tail -5 )
 
   echo "=== $(date '+%F %T') 종료(exit=$?) ==="
 } >> "$LOG" 2>&1

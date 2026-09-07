@@ -35,8 +35,8 @@ from ._shared_root import ensure_shared_on_path
 
 ensure_shared_on_path(Path(__file__).resolve())
 
-from shared.retrieval import hybrid_pg, pageindex  # noqa: E402
-from shared.retrieval.evidence import from_dense_chunk, from_pageindex_hit  # noqa: E402
+from rag.retrieval import hybrid_pg, pageindex  # noqa: E402
+from rag.retrieval.evidence import from_dense_chunk, from_pageindex_hit  # noqa: E402
 
 from ._mcp_tools_common import register_common_tools  # noqa: E402
 

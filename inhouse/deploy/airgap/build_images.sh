@@ -9,7 +9,7 @@ podman pull docker.io/qdrant/qdrant:latest
 
 for svc in commodity_api rag_chat report_gen; do
   echo "[build] ${svc}"
-  podman build -f "services/${svc}/Containerfile" -t "komir/${svc}:latest" .
+  podman build -f "${svc}/Containerfile" -t "komir/${svc}:latest" .
 done
 
 # ingestion(2026-08-27, ingest/ 독립 패키지) — 다른 3개와 달리 services/ 아래가

@@ -36,9 +36,9 @@ if str(_INHOUSE_ROOT) not in sys.path:
     sys.path.insert(0, str(_INHOUSE_ROOT))
 
 from ingest import status as ingest_status  # noqa: E402
-from services.shared.config import get_settings  # noqa: E402
-from services.shared.db import pg_connect  # noqa: E402
-from services.shared.logging_config import configure_logging  # noqa: E402
+from common.config import get_settings  # noqa: E402
+from common.db import pg_connect  # noqa: E402
+from common.logging_config import configure_logging  # noqa: E402
 
 _ARGUS_RE = re.compile(r"\((\d{4})-(\d{2})-(\d{2})\)")
 _JODAL_RE = re.compile(r"\((\d{4})\.(\d{1,2})\.(\d{1,2})\)")

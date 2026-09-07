@@ -58,7 +58,7 @@ from ._shared_root import ensure_shared_on_path
 
 ensure_shared_on_path(Path(__file__).resolve())
 
-from shared.retrieval.evidence import Evidence  # noqa: E402
+from rag.retrieval.evidence import Evidence  # noqa: E402
 
 _logger = logging.getLogger(__name__)
 

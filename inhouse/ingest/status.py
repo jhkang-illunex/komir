@@ -36,7 +36,7 @@ _INHOUSE_ROOT = Path(__file__).resolve().parents[1]
 if str(_INHOUSE_ROOT) not in sys.path:
     sys.path.insert(0, str(_INHOUSE_ROOT))
 
-from services.shared.db import apply_schema_pg, pg_connect  # noqa: E402
+from common.db import apply_schema_pg, pg_connect  # noqa: E402
 
 INGEST_SCHEMA = "ingest"
 SCHEMA_SQL = Path(__file__).resolve().parent / "db" / "schema_ingest.sql"

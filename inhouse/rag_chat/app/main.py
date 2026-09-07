@@ -1,0 +1,94 @@
+# -*- coding: utf-8 -*-
+"""RAG 챗봇 API 엔트리 — POST /chat(user_id·session_id 필수) → retrieval/
+unstructured.py+structured.py 병행 조회 → rag/ragkit/generate.py 인용강제 생성 →
+streaming.py로 SSE 청크 전송 → session_store.py에 chat_message 적재.
+
+2026-08-11(1차): structured.py(정형 템플릿 조회)를 매 턴 언제 부를지 동적으로 판단하는
+로직(§5-4 "RAG 챗봇은 매 턴 LLM이 세 도구 중 무엇을 쓸지 동적으로 판단")은 아직
+routers/chat.py에 안 붙어 있음 — 그 시점엔 비정형 문서검색 경로만 실제로 동작했다.
+
+2026-08-11(2차): 페이지/필터 추천(komis-report-generator-main의 search/ LangGraph
+그래프, 병합계획 결정①로 이 챗봇 기능 일부로 편입)을 app/page_recommend/로 이식하고
+routers/chat.py에 배선했다 — 이제 두 경로(document|page)가 동작한다.
+
+2026-08-13: structured.py가 chatbot_graph.py에 세 번째 도구로 배선 완료(위 문단의
+"남은 것"은 그때 해소됨 — 이 문단만 갱신 안 돼 있던 stale 기록이었다).
+
+2026-08-19: structured.py·chatbot_store.py 둘 다 데이터소스를 PostgreSQL(mineral_risk
+스키마)로 전환 — 컨테이너에 로컬 DuckDB 파일을 마운트하지 않고도(§0 "DB는 외부서비스"
+원칙) 정형조회·세션히스토리 전부 동작한다. `MSR_DB` 환경변수에 `PG_DSN`과 같은 값을
+주면 된다(두 모듈 다 URL 타깃이면 자동으로 postgres 분기).
+
+2026-08-26: startup에서 `rag.ragkit.mcp_client.start_all()`로 public/private MCP
+서브프로세스 둘 다 미리 띄운다(요청마다 새로 띄우면 매 턴 수백ms~수초의 프로세스
+기동 비용이 붙는다 — mcp_client.py 모듈독스트링의 "턴마다 재시작 안 함" 설계와
+짝). shutdown에서 `stop_all()`로 정리. `chatbot_graph.py __main__`·smoke 테스트처럼
+FastAPI 바깥에서 도는 경로는 `mcp_client`의 lazy-start(`ensure_started()`)로
+이 lifespan 없이도 그대로 동작한다.
+
+2026-08-28: `configure_logging()`(services/shared/logging_config.py)을 다른 모든
+임포트보다 먼저 호출한다 — 지금까지 이 main.py가 `logging.basicConfig()`를 안
+불러서 chatbot.py·chatbot_graph.py 전역의 `_logger.warning/.exception`(근거
+조회 경고·LLM 폴백 등)이 파이썬 로깅 lastResort 핸들러(WARNING 이상만, 포맷
+없음)로 떨어져 컨테이너 로그에 사실상 안 남고 있었을 가능성 — 사용자 지적."""
+from __future__ import annotations
+
+import asyncio
+import sys
+from contextlib import asynccontextmanager
+from pathlib import Path
+
+from fastapi import FastAPI
+
+
+def _find_root(start: Path, marker: str) -> Path:
+    for candidate in (start, *start.parents):
+        if (candidate / marker).is_file():
+            return candidate
+    raise ImportError(f"{marker}를 {start} 상위에서 찾지 못함")
+
+
+_HERE = Path(__file__).resolve()
+
+# 다른 로깅 호출(mcp_client·chat_router 임포트가 끌어오는 chatbot.py·
+# chatbot_graph.py의 모듈 로거 포함)보다 먼저 루트 로거를 설정한다 — 순서가
+# 바뀌면 그 전에 찍히는 로그가 여전히 lastResort 핸들러로 떨어질 수 있다.
+_SHARED_ROOT = _find_root(_HERE, "common/llm_client.py")
+if str(_SHARED_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SHARED_ROOT))
+
+from common.logging_config import configure_logging  # noqa: E402
+
+configure_logging()
+
+_RAG_ROOT = _find_root(_HERE, "rag/ragkit/mcp_client.py")
+if str(_RAG_ROOT) not in sys.path:
+    sys.path.insert(0, str(_RAG_ROOT))
+
+from rag.ragkit import mcp_client  # noqa: E402
+
+from .routers.chat import router as chat_router  # noqa: E402
+
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    await asyncio.to_thread(mcp_client.start_all)
+    try:
+        yield
+    finally:
+        await asyncio.to_thread(mcp_client.stop_all)
+
+
+app = FastAPI(title="komir rag_chat", lifespan=_lifespan, docs_url=None, redoc_url=None)
+app.include_router(chat_router)
+
+# 2026-09-03: report_gen과 동일 이유(§shared/docs_static.py 모듈 docstring)
+# — 기본 /docs·/redoc의 CDN 의존을 없애 사내망 브라우저에서도 뜨게 한다.
+from common.docs_static import mount_offline_docs  # noqa: E402
+
+mount_offline_docs(app, title="komir rag_chat")
+
+
+@app.get("/healthz")
+def healthz() -> dict:
+    return {"status": "ok"}

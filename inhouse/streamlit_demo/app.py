@@ -24,10 +24,8 @@ from pathlib import Path
 _INHOUSE_ROOT = Path(__file__).resolve().parents[1]
 if str(_INHOUSE_ROOT) not in sys.path:
     sys.path.insert(0, str(_INHOUSE_ROOT))
-if str(_INHOUSE_ROOT / "services") not in sys.path:
-    sys.path.insert(0, str(_INHOUSE_ROOT / "services"))
 
-from shared.logging_config import configure_logging  # noqa: E402
+from common.logging_config import configure_logging  # noqa: E402
 
 # 2026-08-28 사용자 지적("LLM 경과 같은 부분은 로깅으로 기록") 대응 — 지금까지
 # streamlit_demo 는 오류를 st.error/st.warning으로 화면에만 보여주고 서버 콘솔

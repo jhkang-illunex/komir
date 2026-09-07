@@ -48,12 +48,16 @@ COPY ingest ./ingest
 COPY rag/ragkit ./rag/ragkit
 COPY geo/__init__.py ./geo/__init__.py
 COPY geo/extractors.py ./geo/extractors.py
-# services/shared는 평탄화하지 않고 경로 그대로 보존한다(다른 서비스는 ./shared로
-# 평탄화하지만, ingest 모듈들은 `from services.shared.db import ...` 완전경로
-# import를 쓴다). services/·services/shared/엔 __init__.py가 없지만 Python 3
-# namespace package로 소스트리에서 이미 정상 동작 확인됨.
-COPY services/shared ./services/shared
-# services/shared/db.py가 mineral_supply_risk/db/dbio.py를 재노출 — db/ 서브패키지만.
+# 공용 인프라(2026-09-07 services/ 해체 — 구 services/shared의 config/db/logging/
+# llm_client가 inhouse 루트 직속 common/으로 이동, ingest 모듈들은 `from common.db
+# import ...`를 쓴다). common/엔 __init__.py가 없지만 Python 3 namespace package로
+# 소스트리에서 이미 정상 동작 확인됨.
+COPY common ./common
+# PageIndex 트리 빌드(pageindex/build_pageindex_trees.py)가 쓰는 LLM 진입점+벤더 —
+# 2026-09-07 구 services/shared/pageindex_client.py·pageindex_vendor/가 rag/로 이동.
+COPY rag/pageindex_client.py ./rag/pageindex_client.py
+COPY rag/pageindex_vendor ./rag/pageindex_vendor
+# common/db.py가 mineral_supply_risk/db/dbio.py를 재노출 — db/ 서브패키지만.
 COPY mineral_supply_risk/db ./mineral_supply_risk/db
 # build_pgvector_index.py가 적용하는 DDL(dense 벡터 컬럼·HNSW 인덱스).
 COPY data_lake/db/schema_pgvector.sql ./data_lake/db/schema_pgvector.sql

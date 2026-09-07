@@ -47,7 +47,7 @@ _REPO_ROOT = _INHOUSE_ROOT.parent
 if str(_INHOUSE_ROOT) not in sys.path:
     sys.path.insert(0, str(_INHOUSE_ROOT))
 
-from services.shared.logging_config import configure_logging  # noqa: E402
+from common.logging_config import configure_logging  # noqa: E402
 
 from ingest import status as ingest_status  # noqa: E402
 

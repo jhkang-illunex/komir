@@ -80,7 +80,7 @@ def _heartbeat_style(seconds) -> str:
 
 @st.cache_data(ttl=30, show_spinner="파이프라인 실행 현황을 조회하는 중…")
 def _pipeline_run_latest() -> pd.DataFrame | None:
-    from shared.db import read_sql_pg
+    from common.db import read_sql_pg
 
     return read_sql_pg(
         "SELECT job_name, stage, trigger, status, started_at, finished_at, metrics, error_message "
@@ -90,7 +90,7 @@ def _pipeline_run_latest() -> pd.DataFrame | None:
 
 @st.cache_data(ttl=15, show_spinner="실행 중인 잡을 확인하는 중…")
 def _running_jobs() -> pd.DataFrame | None:
-    from shared.db import read_sql_pg
+    from common.db import read_sql_pg
 
     return read_sql_pg(
         "SELECT job_name, stage, trigger, started_at, heartbeat_at, "
@@ -101,7 +101,7 @@ def _running_jobs() -> pd.DataFrame | None:
 
 @st.cache_data(ttl=30, show_spinner="최근 실행 이력을 조회하는 중…")
 def _recent_runs(limit: int = 50) -> pd.DataFrame | None:
-    from shared.db import read_sql_pg
+    from common.db import read_sql_pg
 
     return read_sql_pg(
         "SELECT run_id, job_name, stage, trigger, status, started_at, finished_at, "
@@ -112,7 +112,7 @@ def _recent_runs(limit: int = 50) -> pd.DataFrame | None:
 
 @st.cache_data(ttl=30, show_spinner="파일별 단계 진행 상태를 조회하는 중…")
 def _file_stage_matrix() -> pd.DataFrame | None:
-    from shared.db import read_sql_pg
+    from common.db import read_sql_pg
 
     return read_sql_pg(
         "SELECT sf.file_id, sf.file_name, sf.source_group, sf.commodity_hint, "

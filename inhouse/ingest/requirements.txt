@@ -1,6 +1,6 @@
 # inhouse/ingest — 파일 기반 보고서 정제·색인 패키지 의존성(2026-08-27 독립 시점 정리).
 # 버전 하한은 이 패키지가 흡수한 모듈들이 이전 위치에서 쓰던 requirements
-# (geo/requirements.txt, services/rag_chat/requirements.txt, mineral_supply_risk/requirements.txt)
+# (geo/requirements.txt, rag_chat/requirements.txt, mineral_supply_risk/requirements.txt)
 # 값을 그대로 가져왔다 — 이동으로 새로 생긴 의존성은 없다.
 
 # 추출 파이프라인(pipeline.py·models.py·parsers/)
@@ -24,17 +24,17 @@ xlrd>=2.0                # 〃 .xls
 # okf/ · vectorize/ — rag.ragkit.{ingest,chunk,embed} 재사용
 python-docx>=1.1         # rag/ragkit/ingest.py(documents/산출물 docx 로드)
 sentence-transformers    # rag/ragkit/embed.py (intfloat/multilingual-e5-small, 로컬)
-sqlalchemy               # services/shared/db.py pg_connect(sa.create_engine 경유) — 2026-08-27
-                          # 컨테이너 실측으로 발견한 누락(services/{rag_chat,report_gen,commodity_api}
+sqlalchemy               # common/db.py pg_connect(sa.create_engine 경유) — 2026-08-27
+                          # 컨테이너 실측으로 발견한 누락({rag_chat,report_gen,commodity_api}
                           # requirements.txt엔 이미 있었음, 소스트리 실행에선 다른 곳에서 먼저
                           # 깔려 있어 안 드러났던 함정 — rag_chat 컨테이너 최초 빌드 때의
                           # python-docx 누락 사례와 같은 종류)
-psycopg2-binary          # services/shared/db.py pg_connect
-pydantic-settings>=2.5   # services/shared/config.py
-duckdb>=1.1              # mineral_supply_risk/db/dbio.py(services/shared/db.py가 재노출)
+psycopg2-binary          # common/db.py pg_connect
+pydantic-settings>=2.5   # common/config.py
+duckdb>=1.1              # mineral_supply_risk/db/dbio.py(common/db.py가 재노출)
 
-# pageindex/ — services/shared/pageindex_client.py(vendored pageindex_lib) 의존성,
-# 버전은 services/rag_chat/requirements.txt와 동일하게 고정
+# pageindex/ — rag/pageindex_client.py(vendored pageindex_lib) 의존성,
+# 버전은 rag_chat/requirements.txt와 동일하게 고정
 litellm==1.84.0
 openai>=1.70.0
 python-dotenv>=1.0

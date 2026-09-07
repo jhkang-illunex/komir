@@ -36,7 +36,7 @@ services:
   commodity-api:
     build:
       context: ..
-      containerfile: services/commodity_api/Containerfile
+      containerfile: commodity_api/Containerfile
     env_file: [.env]
     ports:
       - "8001:8001"
@@ -45,7 +45,7 @@ services:
   rag-chat:
     build:
       context: ..
-      containerfile: services/rag_chat/Containerfile
+      containerfile: rag_chat/Containerfile
     env_file: [.env]
     environment:
       - LLM_BASE_URL=${RAG_CHAT_LLM_BASE_URL:-$LLM_BASE_URL}
@@ -60,7 +60,7 @@ services:
   report-gen:
     build:
       context: ..
-      containerfile: services/report_gen/Containerfile
+      containerfile: report_gen/Containerfile
     env_file: [.env]
     environment:
       - LLM_BASE_URL=${REPORT_GEN_LLM_BASE_URL:-$LLM_BASE_URL}

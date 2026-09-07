@@ -95,7 +95,7 @@ from ._shared_root import ensure_shared_on_path
 
 ensure_shared_on_path(Path(__file__).resolve())
 
-from shared.llm_client import LLM_TRANSIENT_ERRORS, KomirJsonLLM  # noqa: E402
+from common.llm_client import LLM_TRANSIENT_ERRORS, KomirJsonLLM  # noqa: E402
 
 from .chatbot_events import ChatEvent, extract_markdown_tables, png_to_data_uri_payload, render_chart_png
 from .chatbot_graph import retrieve_evidence

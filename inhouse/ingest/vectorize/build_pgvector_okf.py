@@ -34,8 +34,8 @@ from ingest import status as ingest_status  # noqa: E402
 from rag.ragkit.chunk import chunk_document  # noqa: E402
 from rag.ragkit.embed import DIM, encode_passages  # noqa: E402
 from rag.ragkit.ingest import DocRecord  # noqa: E402
-from services.shared.db import pg_connect  # noqa: E402
-from services.shared.config import get_settings  # noqa: E402
+from common.db import pg_connect  # noqa: E402
+from common.config import get_settings  # noqa: E402
 
 from .build_pgvector_index import _COLUMNS, _vector_literal  # noqa: E402
 

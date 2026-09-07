@@ -42,15 +42,16 @@ from mcp.server.fastmcp import FastMCP
 
 from pydantic import ValidationError
 
-from shared.komis_raw import (
+from common.komis_raw import (
     AnalysisPreviewPageId,
     AnalysisPreviewRequest,
     KomisRawDataRepository,
     RawDataAccessError,
 )
-from shared.llm_client import KomirJsonLLM
-from shared.retrieval import pageindex_agent, structured
-from shared.retrieval.evidence import Evidence, from_komis_raw, from_structured
+from common.llm_client import KomirJsonLLM
+from common import structured
+from rag.retrieval import pageindex_agent
+from rag.retrieval.evidence import Evidence, from_komis_raw, from_structured
 
 
 def _evidence_dict(ev: Evidence | None) -> dict[str, Any] | None:

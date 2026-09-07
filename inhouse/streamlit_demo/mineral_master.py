@@ -50,13 +50,13 @@ from pathlib import Path
 import streamlit as st
 
 _INHOUSE_ROOT = Path(__file__).resolve().parents[1]
-if str(_INHOUSE_ROOT / "services") not in sys.path:
-    sys.path.insert(0, str(_INHOUSE_ROOT / "services"))
+if str(_INHOUSE_ROOT) not in sys.path:
+    sys.path.insert(0, str(_INHOUSE_ROOT))
 
 _log = logging.getLogger(__name__)
 
 KOMIS_METADATA_REGISTRY_PATH = (
-    _INHOUSE_ROOT / "services" / "rag_chat" / "app" / "page_recommend" / "resources" / "metadata"
+    _INHOUSE_ROOT / "rag_chat" / "app" / "page_recommend" / "resources" / "metadata"
     / "komis-metadata.snapshot.json"
 )
 
@@ -78,7 +78,7 @@ def load_minerals() -> list[dict]:
     빈 리스트(호출부가 코드 직접입력으로 폴백)."""
 
     try:
-        from shared.db import read_sql_pg
+        from common.db import read_sql_pg
     except Exception:
         _log.exception("shared.db import 실패 — 광종 목록 없이 코드 직접입력으로 폴백")
         return []

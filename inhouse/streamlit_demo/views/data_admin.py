@@ -22,10 +22,8 @@ import yaml
 
 _INHOUSE_ROOT = Path(__file__).resolve().parents[2]
 _SEMI = _INHOUSE_ROOT / "data_lake" / "semi_structure"
-if str(_INHOUSE_ROOT / "services") not in sys.path:
-    sys.path.insert(0, str(_INHOUSE_ROOT / "services"))
 
-from shared.retrieval.access import PRIVATE_ONLY_SOURCE_GROUPS  # noqa: E402
+from rag.retrieval.access import PRIVATE_ONLY_SOURCE_GROUPS  # noqa: E402
 
 # Streamlit이 view 파일을 __main__으로 실행해(exec) __name__ 기반 로거명이
 # 전부 "__main__"으로 뭉개진다(실측 확인) — 이 파일에서만은 경로를 그대로 쓴다.
@@ -68,7 +66,7 @@ def _scan_pageindex() -> pd.DataFrame:
 @st.cache_data(ttl=300, show_spinner="doc_chunk 테이블을 조회하는 중…")
 def _doc_chunk_counts() -> pd.DataFrame | None:
     try:
-        from shared.db import read_sql_pg
+        from common.db import read_sql_pg
 
         return read_sql_pg(
             "SELECT src AS source_group, COUNT(*) AS chunks FROM mineral_risk.doc_chunk "
