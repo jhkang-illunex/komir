@@ -337,11 +337,21 @@ def _komis_rows_to_observations(rows: list[dict]) -> list[dict]:
     return out
 
 
-def _parse_komis_price_response(
-    raw: dict,
-) -> tuple[
-    list[dict], list[dict] | None, dict | None, str | None, str | None, str | None, str | None
-]:
+@dataclass(frozen=True, slots=True)
+class _KomisPriceParsed:
+    """`_parse_komis_price_response`의 반환 shape(2026-09-08 SC-003: 자리만
+    구분되는 7-튜플 대신 이름으로 접근하게 함)."""
+
+    observations: list[dict]
+    compare_observations: list[dict] | None
+    komis_period_comparisons: dict | None
+    mineral_name: str | None
+    price_criterion: str | None
+    compare_mineral_name: str | None
+    compare_price_criterion: str | None
+
+
+def _parse_komis_price_response(raw: dict) -> _KomisPriceParsed:
     """`request.komis_response`(2026-08-30 신설)를 report_gen 내부 shape 7종
     (observations, compare_observations, komis_period_comparisons, mineral_name,
     price_criterion, compare_mineral_name, compare_price_criterion)으로
@@ -421,14 +431,14 @@ def _parse_komis_price_response(
             continue
         komis_period_comparisons[key] = {"average_price": latest_price - delta, "change_pct": pct}
 
-    return (
-        observations,
-        compare_observations,
-        (komis_period_comparisons or None),
-        mineral_name,
-        price_criterion,
-        compare_mineral_name,
-        compare_price_criterion,
+    return _KomisPriceParsed(
+        observations=observations,
+        compare_observations=compare_observations,
+        komis_period_comparisons=(komis_period_comparisons or None),
+        mineral_name=mineral_name,
+        price_criterion=price_criterion,
+        compare_mineral_name=compare_mineral_name,
+        compare_price_criterion=compare_price_criterion,
     )
 
 
@@ -2373,19 +2383,15 @@ class AnalysisSummaryService:
         komis_compare_mineral_name = None
         komis_compare_price_criterion = None
         if request.komis_response is not None:
-            (
-                parsed_observations,
-                parsed_compare,
-                parsed_period_comparisons,
-                komis_mineral_name,
-                komis_price_criterion,
-                komis_compare_mineral_name,
-                komis_compare_price_criterion,
-            ) = _parse_komis_price_response(request.komis_response)
-            raw_observations = parsed_observations
-            if parsed_compare is not None:
-                raw_compare_observations = parsed_compare
-            raw_komis_period_comparisons = parsed_period_comparisons
+            parsed = _parse_komis_price_response(request.komis_response)
+            komis_mineral_name = parsed.mineral_name
+            komis_price_criterion = parsed.price_criterion
+            komis_compare_mineral_name = parsed.compare_mineral_name
+            komis_compare_price_criterion = parsed.compare_price_criterion
+            raw_observations = parsed.observations
+            if parsed.compare_observations is not None:
+                raw_compare_observations = parsed.compare_observations
+            raw_komis_period_comparisons = parsed.komis_period_comparisons
 
         observations = _observations_from_request(PriceObservation, request, raw=raw_observations)
         if request.start_date:
