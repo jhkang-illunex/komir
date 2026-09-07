@@ -51,6 +51,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
+from datetime import date
 from pathlib import Path
 from typing import Literal, TypedDict
 
@@ -181,6 +182,20 @@ komis_mineral_name 없이도(null) use_komis_raw=true로 켠다** — 광물종�
 광종과 무관한 지표라서다."""
 
 
+#: 2026-09-07 — VERIFY_PROMPT/_verify_node에는 "오늘_날짜"를 payload로 실어
+#: LLM이 2026년 데이터를 "미래 시점"이라 의심해 불충분 처리하던 버그를 고쳤다
+#: (사용자 실측 제보: "니켈 최근 6개월 가격"이 근접매칭으로 새던 문제 — 로그로
+#: "2026년 데이터(미래 시점)"이라는 verify 판정 텍스트를 직접 확인, 재현
+#: 근거는 documents/meta/WORKLOG.md 2026-09-07 항목 참고). **REFORMULATE_PROMPT·
+#: ROUTE_PROMPT는 아직 이 정보가 없다** — 사용자 지시로 이번엔 verify만 먼저
+#: 고치고 이 둘은 차후 라운드로 미룬다. 재발 가능 지점: (1) 이 REFORMULATE_
+#: PROMPT 자체는 날짜 판단을 안 하니 이 버그의 직접 재현 경로는 아니지만,
+#: 검색어를 다시 쓸 때 "최근"의 기준 시점을 모른 채로 재구성한다는 점은
+#: 동일한 근본 원인(LLM이 "오늘"을 모른다)의 다른 증상일 수 있다. (2)
+#: ROUTE_PROMPT의 komis_start_period/komis_end_period 필드는 "최근 3개월"
+#: 같은 상대 표현을 아직 명시적으로 null 처리하는데(§komis_start_period 주석
+#: 참고), 나중에 이 상대 표현을 실제 절대기간으로 계산하게 확장한다면 그때는
+#: "오늘 날짜"를 route 단계 payload에도 반드시 실어야 한다.
 REFORMULATE_PROMPT = """직전 검색이 근거를 하나도 찾지 못했다. 같은 의도를
 유지하면서 검색 성공률을 높이도록 검색어를 다시 쓴다. 정확히 하나의 JSON
 객체만 출력한다.
@@ -210,7 +225,13 @@ sufficient=true다(모든 근거가 완벽할 필요는 없다).
 위기지수" 중 정확히 하나의 지표만 담고 있다. 질문이 "가격"을 물었는데 근거가
 "수입금액"(수입 총액, 가격이 아니다)이거나, "생산량"을 물었는데 근거가
 "수입물량"(한국의 수입량, 세계 생산량이 아니다)이면 — 같은 광종·비슷한 숫자
-단위로 보여도 다른 지표이므로 sufficient=false다."""
+단위로 보여도 다른 지표이므로 sufficient=false다.
+
+**근거에 실린 날짜를 "미래라서 이상하다"는 이유로 의심하지 않는다** — payload의
+`오늘_날짜`가 실제 현재 시점이다. 근거의 날짜가 그보다 과거이면(오늘 포함)
+정상 데이터이고, "너무 최근이라 미래 데이터 같다" 식의 추측으로 불충분
+처리하지 않는다. 날짜 자체가 아니라 위에서 설명한 기준(질문에 실제로 답하는
+내용인지, 지표가 일치하는지)으로만 충분성을 판단한다."""
 
 
 class GroundingCheck(BaseModel):
@@ -583,6 +604,7 @@ def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
         invocation = llm.invoke(
             task="retrieval_verify", instructions=VERIFY_PROMPT,
             payload={
+                "오늘_날짜": date.today().isoformat(),
                 "question": state["route"].resolved_query,
                 "history": _recent_history(state),
                 "evidence": [
