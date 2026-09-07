@@ -10,7 +10,9 @@
 > 챗봇부)·`commodity_api/`·`rag_chat/`·`report_gen/`이 inhouse 직속이며, 컨테이너도
 > 소스트리와 동일한 상대 경로(`./common`, `./rag/...`)로 COPY한다 — 평탄화 관례 폐지.
 > 상세는 CLAUDE.md §1 "경로 이관 주의(2026-09-07)"와 WORKLOG 해당 항목(커밋
-> `0cdd6a579`) 참고.
+> `0cdd6a579`) 참고. 같은 날 후속으로 `commodity_api`·`geo`·`mineral_supply_risk`·
+> `dashboard_expire`는 `expired/`로 격리되고 관련 cron이 중단됐다(커밋 `4b24d0485`) —
+> 이 문서의 commodity_api·지수/진단 파이프라인 서술도 그 시점까지의 역사 기록이다.
 
 ## 0. 확정된 요구사항 (사용자 확인 완료, 2026-08-05)
 

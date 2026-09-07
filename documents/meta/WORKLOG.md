@@ -2,7 +2,31 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-07 (최신) — services/ 해체: common/ 신설 + 서비스 3종 inhouse 직속 승격, 순환 의존 소멸(커밋 `0cdd6a579`)
+## 2026-09-07 (최신) — 미사용 패키지 expired/ 격리: geo·msr·commodity_api·dashboard_expire 이동 + cron 중단(커밋 `4b24d0485`)
+
+services/ 해체(아래 항목) 직후 사용자 추가 지시. "geo·mineral_supply_risk는
+유지만 하고 사용하지 않음, 참조 경로도 없어야 함"을 사용자가 확정했고,
+commodity_api(msr 의존+미가동)도 함께 이동, 관련 cron은 백업 후 제거로 결정.
+
+- komir 루트에 `expired/` 신설(dmz/inhouse와 동급, 미사용 패키지 임시 보관).
+  geo·mineral_supply_risk·commodity_api·dashboard_expire·구 inhouse/Makefile 이동.
+- **살아있는 인프라 흡수(참조 경로 소멸이 목적)**: `geo/llm`(rule.py 제외)→
+  `common/llm`(llm_client·ragkit generate/chatbot이 사용하는 LLM HTTP 어댑터),
+  `geo/extractors.py`→`ingest/extractors.py`(PDF 추출 폴백 체인),
+  `mineral_supply_risk/db/dbio.py`→`common/dbio.py`(DB 접근 코어 — common/db.py의
+  msr 마커 탐색·sys.path 삽입 자체를 삭제하고 상대 import로).
+- **host crontab 7건 제거**(dmz 수집 3 + inhouse 수집·GKG·월간예측 4) — 백업
+  `data_archive/crontab_backup_260907_expired_move.txt`. **운영상 의미**: out_*·
+  geo_* 테이블은 이 시점 데이터로 동결. 챗봇 structured 조회·리포트는 동결
+  데이터를 계속 서빙(라이브 재검증으로 확인). 재가동하려면 crontab 백업+expired
+  패키지 복원.
+- Containerfile 3종 geo/·msr COPY 제거, compose 2종 commodity-api 서비스 정의
+  제거, build_images.sh 대상 축소.
+- 재빌드·재배포: komir-rag-chat:260907-expired(18002)·komir-report-gen:260907-expired
+  (18003) 교체, seed_prompts 재실행, streamlit_demo 재기동(lstart 23:45 > mtime
+  23:41 확인). 검증 상세는 이 항목 아래 "라이브 검증" 참조.
+
+## 2026-09-07 (이어짐) — services/ 해체: common/ 신설 + 서비스 3종 inhouse 직속 승격, 순환 의존 소멸(커밋 `0cdd6a579`)
 
 사용자 요청("모듈 간 지식이 분리 안 돼 서로 영향을 준다 → services는 없애고
 inhouse 직속이 개별 서비스/데이터로만 남게") 구조 조정. 배경 진단:
