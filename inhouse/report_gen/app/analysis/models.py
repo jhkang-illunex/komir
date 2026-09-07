@@ -1023,6 +1023,12 @@ class SummaryNarrative(StrictModel):
     current_position: list[SummarySentence] = Field(min_length=1, max_length=CURRENT_POSITION_MAX_SENTENCES)
 
 
+#: `AnalysisSummaryResponse.key_metrics` 상한 — 계산기가 이보다 많이 만들면
+#: 나머지는 조용히 잘린다(2026-09-08 SC-009: komir_summary.py가 이 상수를
+#: import해 잘릴 때 경고 로그를 남긴다).
+KEY_METRICS_MAX_COUNT = 8
+
+
 class AnalysisSummaryResponse(StrictModel):
     """페이지 단위 분석요약 응답 전체와 그 산출 메타."""
 
@@ -1039,7 +1045,7 @@ class AnalysisSummaryResponse(StrictModel):
     grade: GradeResult | None
     data_quality: DataQuality
     summary: SummaryNarrative
-    key_metrics: list[Metric] = Field(max_length=8)
+    key_metrics: list[Metric] = Field(max_length=KEY_METRICS_MAX_COUNT)
     detailed_metrics: list[Metric]
     detected_patterns: list[DetectedPattern]
     omitted_indicators: list[OmittedIndicator]

@@ -81,6 +81,7 @@ from .data_sources import (  # noqa: E402
 )
 from .indicators import months_are_contiguous, percent_change  # noqa: E402
 from .komir_summary import (  # noqa: E402
+    _capped_key_metrics,
     _detect_granularity,
     calculate_domestic_trade_summary,
     calculate_global_trade_summary,
@@ -1603,7 +1604,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
     return _CalculatedSummary(
         grade=grade,
         claims=claims,
-        key_metrics=key_metrics[:8],
+        key_metrics=_capped_key_metrics(key_metrics, page_id=f"{series.page_id}:{series.mineral.name}"),
         detailed_metrics=detailed_metrics,
         patterns=patterns,
         omitted=omitted,
