@@ -70,6 +70,16 @@ def _evidence_dict(ev: Evidence | None) -> dict[str, Any] | None:
 _PRICE_PAGES = frozenset({"price_base_metals", "price_minor_metals", "price_iron_energy", "price_other"})
 _HS_TRANSLATE_PAGES = frozenset({"map_korea", "map_global"})
 
+#: 2026-09-07("니켈 최근 6개월 가격" 사용자 제보 후속) — start_period·
+#: end_period가 둘 다 있으면 그 범위 전체를 봐야 "추이" 질문에 답이 되는데,
+#: `AnalysisPreviewRequest.limit`은 최대 20으로 pydantic이 못박아둬서(요약
+#: 미리보기 용도) 6개월치 일별 가격(~130행)은 애초에 다 못 온다. 기간이
+#: 명시된 조회는 `fetch()`(limit 적용) 대신 `fetch_complete()`로 바꾸되,
+#: "최근 10년" 같은 과도한 범위 요청까지 표를 무한정 키우지 않도록 최근
+#: N행으로만 자른다(정렬이 이미 period_column DESC라 최신순 상위 N이 곧
+#: "최근 N행").
+_MAX_RANGED_ROWS = 200
+
 #: 2026-09-03(발주처 문서 대화형검색시스템 예상질문 고도화.pdf ②-1·②-3·④-나,
 #: 사용자 승인 — "3곳 전부 한번에") — 0건 조회 시 "조회 가능 기간은
 #: YYYY.MM.DD~YYYY.MM.DD입니다"류 안내에 쓸 실제 범위를 붙이는 대상 page_id와
@@ -272,18 +282,25 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
                     f"그중 첫 번째({hs_codes[0]})만 미리보기로 조회했습니다."
                 )
 
+        has_period_range = bool(request.start_period and request.end_period)
         try:
-            datasets = repo.fetch(request)
+            datasets = repo.fetch_complete(request) if has_period_range else repo.fetch(request)
         except RawDataAccessError as exc:
             return {"evidence": [], "warnings": [*warnings, str(exc)]}
+        if has_period_range:
+            datasets = [
+                ds.model_copy(update={"rows": ds.rows[:_MAX_RANGED_ROWS]})
+                if len(ds.rows) > _MAX_RANGED_ROWS else ds
+                for ds in datasets
+            ]
 
         # 2026-09-03(발주처 문서, 사용자 승인) — price_*/indicator_market/
         # indicator_supply가 0건이면 "조회 가능 기간은 ...입니다"를 실제 DB
-        # 범위로 채워 warnings에 붙인다. ⚠ 이건 "0건으로 이미 돌아온 결과"만
-        # 다룬다 — ROUTE_PROMPT/chatbot_graph.py가 아직 사용자가 말한 특정
-        # 과거 기간(예: "2010년 1월")을 start_period/end_period로 추출해
-        # 넘기는 경로가 없어서, 그런 질문은 지금도 최신 N행이 그대로 조회돼
-        # 이 분기 자체를 안 탄다(범위 밖 — main-agent에게 별도 보고).
+        # 범위로 채워 warnings에 붙인다. (2026-09-07 갱신 — 예전엔 "ROUTE_PROMPT가
+        # 특정 과거기간·상대기간을 추출하는 경로가 없다"는 이유로 이 분기가
+        # 사실상 안 탔는데, 이제 둘 다(komis_start/end_period 명시기간,
+        # komis_relative_months 상대기간→_relative_period_bounds()) 배선돼
+        # 실제로 0건 응답을 받을 수 있게 됐다.)
         if all(not ds.rows for ds in datasets) and page_id in _PERIOD_BOUNDS_LEAD:
             try:
                 bounds = repo.resolve_period_bounds(

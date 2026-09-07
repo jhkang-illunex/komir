@@ -48,6 +48,7 @@ asyncio.to_thread로 감싼다. MCP/tool로 향후 노출할 걸 염두에 두�
 함수를 얇게 호출만 한다(로직을 노드 안에 박아넣지 않음 — 사용자 요청 메모)."""
 from __future__ import annotations
 
+import calendar
 import logging
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -155,10 +156,15 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
         (예: "2010년 1월"→둘 다 "201001", "2024년"→둘 다 "2024"). 기간을
         범위로 말하면("2024년 1월~3월") 시작·끝을 각각 채운다. 특정 기간을
         언급하지 않았으면(예: "니켈 가격 알려줘") 둘 다 null로 둔다(최신
-        데이터를 조회한다는 뜻). "최근 3개월"·"최근 1년" 같은 상대 표현은
-        이 필드가 아직 다루지 않는다 — 둘 다 null로 두고(그 경우 최신
-        limit개만큼 조회된다), 상대 표현 자체를 절대 날짜로 계산해 채우려
-        들지 않는다.
+        데이터를 조회한다는 뜻).
+     4) komis_relative_months(선택) — "최근 N개월"·"최근 N년"처럼 **상대적**
+        기간 표현이면 개월수로 환산해 채운다(예: "최근 6개월"→6, "최근
+        1년"→12, "최근 3개월"→3). 이 필드가 채워지면 오늘 날짜 기준으로
+        실제 날짜범위를 코드가 계산하니, 절대 날짜로 직접 계산하려 들지
+        않는다 — 위 3)의 komis_start_period/komis_end_period와는 서로
+        배타적이다(특정 연/월을 직접 지정한 질문엔 3)을, 상대 표현엔 이
+        필드를 쓴다. 상대 표현도 특정 기간 언급도 없으면 둘 다 null로
+        둔다).
    - dense: 보고서·기사·백서 등 비정형 문서를 의미 기반으로 검색한다. 애매하면
      켜는 게 안전하다(기본값에 가깝게 취급). komis_raw를 켤 때도, 그 데이터가
      실제로는 없거나(발주 5광종 상당수가 아직 개발용 더미다) 부족할 수 있어
@@ -182,20 +188,23 @@ komis_mineral_name 없이도(null) use_komis_raw=true로 켠다** — 광물종�
 광종과 무관한 지표라서다."""
 
 
-#: 2026-09-07 — VERIFY_PROMPT/_verify_node에는 "오늘_날짜"를 payload로 실어
-#: LLM이 2026년 데이터를 "미래 시점"이라 의심해 불충분 처리하던 버그를 고쳤다
-#: (사용자 실측 제보: "니켈 최근 6개월 가격"이 근접매칭으로 새던 문제 — 로그로
-#: "2026년 데이터(미래 시점)"이라는 verify 판정 텍스트를 직접 확인, 재현
-#: 근거는 documents/meta/WORKLOG.md 2026-09-07 항목 참고). **REFORMULATE_PROMPT·
-#: ROUTE_PROMPT는 아직 이 정보가 없다** — 사용자 지시로 이번엔 verify만 먼저
-#: 고치고 이 둘은 차후 라운드로 미룬다. 재발 가능 지점: (1) 이 REFORMULATE_
-#: PROMPT 자체는 날짜 판단을 안 하니 이 버그의 직접 재현 경로는 아니지만,
-#: 검색어를 다시 쓸 때 "최근"의 기준 시점을 모른 채로 재구성한다는 점은
-#: 동일한 근본 원인(LLM이 "오늘"을 모른다)의 다른 증상일 수 있다. (2)
-#: ROUTE_PROMPT의 komis_start_period/komis_end_period 필드는 "최근 3개월"
-#: 같은 상대 표현을 아직 명시적으로 null 처리하는데(§komis_start_period 주석
-#: 참고), 나중에 이 상대 표현을 실제 절대기간으로 계산하게 확장한다면 그때는
-#: "오늘 날짜"를 route 단계 payload에도 반드시 실어야 한다.
+#: 2026-09-07 — 두 단계에 걸쳐 "니켈 최근 6개월 가격"이 근접매칭으로 새던
+#: 문제를 고쳤다(사용자 실측 제보, 로그 재현 근거는 documents/meta/WORKLOG.md
+#: 2026-09-07 항목).
+#: (1) VERIFY_PROMPT/_verify_node에 "오늘_날짜"를 payload로 실어, LLM이
+#:     2026년 데이터를 "미래 시점"이라 의심해 불충분 처리하던 오판을 고쳤다
+#:     (로그로 "2026년 데이터(미래 시점)" 판정 텍스트 직접 확인).
+#: (2) 오판을 고치고 나니 바로 그 밑에 있던 진짜 갭이 드러났다 — "최근
+#:     6개월"류 상대기간이 실제 날짜범위로 안 바뀌어 komis_raw_lookup이
+#:     최신 소수 행만 조회했고, verify가 "스냅샷일 뿐 넓은 추이가 아니다"로
+#:     정당하게 재기각했다. `RetrievalRoute.komis_relative_months` +
+#:     `_relative_period_bounds()`(코드로 결정적 계산, LLM에 날짜산술 안
+#:     시킴)로 해소.
+#: **REFORMULATE_PROMPT는 여전히 "오늘"을 모른다** — 검색어를 다시 쓸 때
+#: "최근"의 기준 시점 없이 재구성하는데, 지금까지는 이게 실제 버그로
+#: 이어지는 경로가 확인된 적 없어(위 (1)(2) 둘 다 route/verify 쪽 문제였다)
+#: 그대로 둔다. 앞으로 reformulate 단계에서 날짜 관련 오판이 재현되면 그때
+#: 같은 방식(payload에 오늘_날짜 추가)으로 고칠 것.
 REFORMULATE_PROMPT = """직전 검색이 근거를 하나도 찾지 못했다. 같은 의도를
 유지하면서 검색 성공률을 높이도록 검색어를 다시 쓴다. 정확히 하나의 JSON
 객체만 출력한다.
@@ -273,6 +282,12 @@ class RetrievalRoute(BaseModel):
     # 정규식이 2차 방어선으로 이미 있음).
     komis_start_period: str | None = None
     komis_end_period: str | None = None
+    # 2026-09-07 — "최근 N개월"류 상대 기간 표현 전용(사용자 지시로 09-03엔
+    # 미루고 null 처리만 하다가, verify 날짜그라운딩 버그를 고치고 나니 바로
+    # 이 갭이 "니켈 최근 6개월 가격"에서 실제로 걸리는 걸 확인해 이번에
+    # 마저 처리). LLM에게 절대 날짜 계산을 맡기지 않는다 — 개월수만 뽑고
+    # 실제 YYYYMMDD 변환은 `_relative_period_bounds()`(코드, 결정적)가 한다.
+    komis_relative_months: int | None = None
     commodity_code: Literal["CU", "NI", "CO", "LI", "REE"] | None = None
     target: Literal["volume", "value"] | None = None
     forecast_months: int | None = None  # import_forecast 전용 — "N개월치만" 요청 시 1~N만 반환
@@ -325,6 +340,34 @@ def _komis_raw_page_id(topic: str, price_category: str | None) -> str | None:
     if topic == "price":
         return _PRICE_CATEGORY_TO_PAGE.get(price_category or "")
     return _KOMIS_TOPIC_TO_PAGE.get(topic)
+
+
+def _months_ago(today: date, months: int) -> date:
+    """`today`에서 `months`개월 전 날짜(일자는 그대로, 말일이 없는 달이면
+    그 달 말일로 보정). LLM에게 날짜 산술을 시키지 않으려고 코드로 결정적
+    으로 계산한다(2026-09-07, "최근 N개월" 상대기간 처리 — 아래 함수 참고)."""
+
+    month_index = today.month - 1 - months
+    year = today.year + month_index // 12
+    month = month_index % 12 + 1
+    day = min(today.day, calendar.monthrange(year, month)[1])
+    return date(year, month, day)
+
+
+def _relative_period_bounds(route: RetrievalRoute) -> tuple[str | None, str | None]:
+    """`route.komis_relative_months`("최근 N개월")를 실제 YYYYMMDD 시작·끝
+    문자열로 바꾼다. 명시적 `komis_start_period`/`komis_end_period`가 이미
+    있으면(질문이 특정 연/월을 직접 지정) 그쪽을 우선하고 이 함수는 관여하지
+    않는다 — 두 경로가 서로 배타적이라는 ROUTE_PROMPT 지시와 짝을 이룬다.
+    끝은 항상 오늘, 자릿수는 `_coerce_period`가 각 page의 실제 정밀도
+    (year/month/day)에 맞춰 알아서 잘라 쓰므로 여기선 항상 day 정밀도
+    (YYYYMMDD)로 계산해 넘긴다."""
+
+    if route.komis_start_period or route.komis_end_period or not route.komis_relative_months:
+        return route.komis_start_period, route.komis_end_period
+    today = date.today()
+    start = _months_ago(today, route.komis_relative_months)
+    return start.strftime("%Y%m%d"), today.strftime("%Y%m%d")
 
 
 MAX_ATTEMPTS = 2  # 최초 1회 + 재시도 1회 — "빠른시간내에" 요구사항상 무한 재시도는 안 함
@@ -398,7 +441,7 @@ def _route_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
                 "history": _recent_history(state),
                 "last_answer": _last_assistant_answer(state),
             },
-            output_model=RetrievalRoute, max_tokens=200,  # 2026-09-03: komis_start/end_period 2필드 추가로 여유 확보
+            output_model=RetrievalRoute, max_tokens=220,  # 2026-09-03/07: 기간 필드 3개 추가로 여유 확보
         )
         route = invocation.output
         if not route.resolved_query.strip():
@@ -486,12 +529,15 @@ def _retrieve_node(state: RetrievalState, *, dense_k: int, pageindex_k: int) -> 
             jobs["structured"] = pool.submit(call, route.commodity_code, route.target, route.forecast_months)
         # composite_index는 komis_raw_mineral_code가 None이어도(광종 미지정)
         # 조회한다 — 위에서 이미 그 경우만 komis_raw_page_id를 채워뒀다.
-        # start_period/end_period(2026-09-03, ④-나)는 그대로 패스스루 —
-        # 둘 다 None이면 기존과 동일하게 최신 limit개가 조회된다.
+        # start_period/end_period: 명시적 기간(2026-09-03, ④-나)이 있으면
+        # 그대로, 없고 상대기간("최근 N개월")만 있으면 _relative_period_
+        # bounds()가 오늘 날짜 기준으로 계산해 채운다(2026-09-07). 둘 다
+        # 없으면 여전히 None → 기존과 동일하게 최신 limit개가 조회된다.
         if komis_raw_page_id:
+            start_period, end_period = _relative_period_bounds(route)
             jobs["komis_raw"] = pool.submit(
                 session.call_komis_raw_lookup, komis_raw_page_id, mineral_code=komis_raw_mineral_code,
-                start_period=route.komis_start_period, end_period=route.komis_end_period,
+                start_period=start_period, end_period=end_period,
             )
         query = route.resolved_query or state["question"]
         if route.use_dense:
@@ -573,6 +619,19 @@ def _reformulate_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalStat
     }
 
 
+def _verify_excerpt(text: str, head: int = 300, tail: int = 300) -> str:
+    """앞 `head`자·뒤 `tail`자를 이어붙인 발췌 — 단순 `text[:200]`은 komis_raw
+    가격표처럼 `ORDER BY 날짜 DESC`로 정렬된 표에서 최신 날짜 몇 줄만 보여줘
+    verify가 "이건 특정 시점 스냅샷일 뿐"이라고 오판하게 만들었다(2026-09-07,
+    "니켈 최근 6개월 가격" 재현 — fetch_complete()로 130행을 다 가져와도
+    발췌가 최신 2~3행만 보여줘 verify는 여전히 못 봤다). 표 앞부분(최신)과
+    뒷부분(가장 과거)을 같이 보여주면 verify가 실제 날짜 범위를 볼 수 있다."""
+
+    if len(text) <= head + tail + 20:
+        return text
+    return f"{text[:head]}\n...\n{text[-tail:]}"
+
+
 def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
     """"correct 체크"(사용자 요청, 2026-08-13) — 근거가 실제로 질문에 답이
     되는지 확인한다. evidence가 애초에 비어있으면 LLM을 부를 필요도 없이
@@ -608,7 +667,7 @@ def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
                 "question": state["route"].resolved_query,
                 "history": _recent_history(state),
                 "evidence": [
-                    {"index": i, "source": ev.source, "section": ev.section, "excerpt": ev.text[:200]}
+                    {"index": i, "source": ev.source, "section": ev.section, "excerpt": _verify_excerpt(ev.text)}
                     for i, ev in enumerate(evidence, 1)
                 ],
             },
