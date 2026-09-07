@@ -206,6 +206,18 @@ def from_komis_raw(
             continue
         columns = ds.columns
         table_rows = [[str(row.get(c, "")) for c in columns] for row in ds.rows]
+        # 2026-09-07(사용자 요청) — Postgres COMMENT ON COLUMN으로 이미 달려
+        # 있는 한글 설명을 표 헤더에 같이 보여준다("lowst_prc(최저가격)"
+        # 형식, 설명이 없는 컬럼은 원본 컬럼명만). LLM이 지금까지 "최저가격
+        # (lowst_prc)"처럼 스스로 라벨을 추측해 붙이던 걸 실제 DB 코멘트로
+        # 대체 — 라벨은 여기서만 붙이고 columns/row dict 키는 원본 그대로
+        # 유지한다(chatbot_events.py의 날짜열 판정 등 원본 컬럼명에 의존하는
+        # 코드가 안 깨지게, _is_date_column이 "컬럼명(...)" 접두 매칭도
+        # 허용하도록 같이 수정함).
+        column_labels = getattr(ds, "column_labels", None) or {}
+        display_columns = [
+            f"{c}({column_labels[c]})" if c in column_labels else c for c in columns
+        ]
         suffix = f"({mineral_code})" if mineral_code else ""
         section = f"KOMIS 원천 · {ds.source_table}{suffix}"
         if is_dummy:
@@ -217,7 +229,7 @@ def from_komis_raw(
         evidence.append(
             Evidence(
                 kind="structured", source=f"public.{ds.source_table}", section=section,
-                text=_markdown_table(columns, table_rows),
+                text=_markdown_table(display_columns, table_rows),
                 caveat=caveat,
             )
         )

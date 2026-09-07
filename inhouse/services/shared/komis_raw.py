@@ -79,6 +79,50 @@ Period = Literal["year", "month", "day"]
 #: `KO_*`가 사는 스키마. 타 팀(public) 소유 — 읽기 전용.
 KOMIS_SCHEMA = "public"
 
+#: 2026-09-07(사용자 요청) — `COMMENT ON COLUMN`으로 이미 달려있는 한글
+#: 설명(예: KO_MNRL_PRC.lowst_prc="최저가격")을 테이블당 한 번만 조회해
+#: 캐싱한다. 스키마 코멘트는 런타임에 안 바뀌므로 프로세스 생애주기 동안
+#: 재조회할 이유가 없다 — 매 komis_raw_lookup 호출마다 다시 물으면 조회
+#: 1건이 SQL 2번(본 쿼리+코멘트 쿼리)이 된다.
+_COLUMN_COMMENT_CACHE: dict[str, dict[str, str]] = {}
+
+
+def _column_comments(table: str) -> dict[str, str]:
+    """`table`(KOMIS_SCHEMA 기준)의 컬럼명 -> 코멘트 매핑. 코멘트가 없는
+    컬럼은 결과에서 빠진다(호출측이 `.get(column)`으로 조회, 없으면 원본
+    컬럼명만 쓰면 됨). 조회 자체가 실패해도(권한 문제 등) 빈 dict로 조용히
+    열화 — 컬럼 라벨은 부가정보라 실패해도 본 조회를 막을 이유가 없다."""
+
+    if table in _COLUMN_COMMENT_CACHE:
+        return _COLUMN_COMMENT_CACHE[table]
+    # _DatasetSpec.table은 SQL 안에서 부호 없는 식별자로 쓰여(예: "KO_MNRL_PRC")
+    # Postgres가 파싱 시 자동으로 소문자로 접기 때문에 실제 pg_class.relname은
+    # 항상 소문자다("ko_mnrl_prc") — 여기 c.relname 비교는 리터럴 문자열이라
+    # 자동 접기가 안 일어나므로 직접 소문자로 맞춰야 한다(2026-09-07 실측
+    # 발견 — 안 맞추면 늘 빈 dict만 돌아와 라벨이 조용히 하나도 안 붙었다).
+    table_lower = table.lower()
+    query = (
+        "SELECT a.attname AS column_name, d.description "
+        "FROM pg_catalog.pg_attribute a "
+        "JOIN pg_catalog.pg_class c ON c.oid = a.attrelid "
+        "JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace "
+        "LEFT JOIN pg_catalog.pg_description d ON d.objoid = c.oid AND d.objsubid = a.attnum "
+        f"WHERE n.nspname = {_literal(KOMIS_SCHEMA)} AND c.relname = {_literal(table_lower)} "
+        "AND a.attnum > 0 AND NOT a.attisdropped"
+    )
+    try:
+        frame = read_sql_pg(query)
+    except Exception:  # noqa: BLE001 — 부가정보 조회 실패는 조용히 열화
+        _COLUMN_COMMENT_CACHE[table] = {}
+        return {}
+    comments = {
+        str(row["column_name"]).lower(): str(row["description"])
+        for row in frame.to_dict("records")
+        if row.get("description")
+    }
+    _COLUMN_COMMENT_CACHE[table] = comments
+    return comments
+
 
 class RawDataAccessError(RuntimeError):
     """KO_* 원천 조회에 실패했을 때(원본 `scaffold.RawDataAccessError` 이식)."""
@@ -129,10 +173,18 @@ class AnalysisPreviewRequest(StrictModel):
 
 
 class RawDataset(StrictModel):
-    """원천 테이블 1개에서 읽어온 행과 컬럼 메타."""
+    """원천 테이블 1개에서 읽어온 행과 컬럼 메타.
+
+    2026-09-07(사용자 요청) — `column_labels`는 Postgres `COMMENT ON COLUMN`
+    으로 이미 달려있는 한글 설명(예: `lowst_prc`="최저가격")을 컬럼명별로
+    담는다. `columns`(row dict 키·필터·날짜열 판정 등 코드 전반이 참조하는
+    원본 컬럼명)는 그대로 두고, 화면·근거 표시용 라벨만 별도 필드로 분리했다
+    — 표시 형식을 나중에 바꾸더라도 원본 컬럼명에 의존하는 로직(예:
+    chatbot_events.py의 날짜열 판정)이 깨지지 않는다."""
 
     source_table: str
     columns: list[str]
+    column_labels: dict[str, str] = Field(default_factory=dict)
     row_count: int = Field(ge=0)
     rows: list[dict[str, Any]]
 
@@ -436,9 +488,12 @@ class KomisRawDataRepository:
             {column: _json_value(value) for column, value in zip(column_names, record)}
             for record in frame.itertuples(index=False, name=None)
         ]
+        comments = _column_comments(spec.table)
+        column_labels = {c: comments[c] for c in column_names if c in comments}
         return RawDataset(
             source_table=spec.table,
             columns=column_names,
+            column_labels=column_labels,
             row_count=len(rows),
             rows=rows,
         )

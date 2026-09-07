@@ -117,7 +117,15 @@ _DATE_COLUMN_NAMES = {"crtr_ymd", "crtr_yr"}
 
 
 def _is_date_column(header: str) -> bool:
-    return header.strip().lower() in _DATE_COLUMN_NAMES
+    """정확히 일치("crtr_ymd")하거나, 컬럼 라벨이 붙은 형태("crtr_ymd(기준일자)",
+    2026-09-07 — evidence.py::from_komis_raw가 Postgres COMMENT ON COLUMN을
+    표 헤더에 같이 보여주기 시작하면서 헤더가 순수 컬럼명이 아닐 수 있게
+    됐다)로 시작하면 날짜열로 본다."""
+
+    normalized = header.strip().lower()
+    return any(
+        normalized == name or normalized.startswith(f"{name}(") for name in _DATE_COLUMN_NAMES
+    )
 
 
 def _numeric_series(rows: list[list[str]], col_idx: int) -> list[float] | None:
