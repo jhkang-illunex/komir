@@ -52,6 +52,10 @@ class ChatMessage:
     created_at: datetime = field(default_factory=_now)
 
 
+class SessionOwnershipError(PermissionError):
+    """Raised when a session is requested by a different user."""
+
+
 def _is_url(target: str) -> bool:
     return "://" in target
 
@@ -127,10 +131,12 @@ def get_or_create_session(
     if session_id:
         existing = _read(
             db_path,
-            f"SELECT session_id FROM {_tbl(db_path, 'chat_session')} WHERE session_id = ?",
+            f"SELECT session_id, user_id FROM {_tbl(db_path, 'chat_session')} WHERE session_id = ?",
             [session_id],
         )
         if len(existing):
+            if existing.iloc[0]["user_id"] != user_id:
+                raise SessionOwnershipError("session does not belong to the requested user")
             return session_id
 
     new_id = session_id or str(uuid.uuid4())

@@ -68,9 +68,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import sys
+import threading
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Literal
+from typing import Iterator, Literal
+from uuid import UUID
 
 
 def _find_root(start: Path, marker: str) -> Path:
@@ -111,6 +115,32 @@ from ..page_recommend.service import get_service as get_page_recommend_service  
 from ..streaming import sse_event  # noqa: E402
 
 router = APIRouter()
+_logger = logging.getLogger(__name__)
+
+# A chat turn reads its prior state and later appends its answer.  Serializing a
+# session in this process prevents interleaved user/assistant rows from being
+# mistaken for a coherent conversation.  Multi-process deployments still need
+# a shared lock or a transactional session-version check at the DB boundary.
+_session_locks: dict[str, threading.Lock] = {}
+_session_lock_counts: dict[str, int] = {}
+_session_locks_guard = threading.Lock()
+
+
+@contextmanager
+def _session_turn_lock(session_id: str) -> Iterator[None]:
+    with _session_locks_guard:
+        lock = _session_locks.setdefault(session_id, threading.Lock())
+        _session_lock_counts[session_id] = _session_lock_counts.get(session_id, 0) + 1
+    lock.acquire()
+    try:
+        yield
+    finally:
+        lock.release()
+        with _session_locks_guard:
+            _session_lock_counts[session_id] -= 1
+            if _session_lock_counts[session_id] == 0:
+                del _session_lock_counts[session_id]
+                del _session_locks[session_id]
 
 def _status_event(stage: int) -> dict:
     """document 경로(chat_turn)의 STATUS_STAGES를 page 경로에서도 재사용 —
@@ -126,8 +156,8 @@ _PAGE_STATE_KEY = "page_recommend"
 
 
 class ChatRequest(BaseModel):
-    user_id: str
-    session_id: str | None = None
+    user_id: str = Field(min_length=1, max_length=80)
+    session_id: UUID | None = None
     # skeptic-code 감사(2026-08-28) — 빈 문자열이 그대로 통과해 근거 없는 턴을
     # 만들고, top_k는 상한이 없어 임의로 큰 값이 dense_k로 그대로 SQL LIMIT에
     # 실렸다(크래시는 아니지만 자원낭비). 상한은 top_k=6 기본값보다 넉넉히 잡아
@@ -251,12 +281,36 @@ def _run_page_recommend(request: ChatRequest, session_id: str):
     yield sse_event({"session_id": session_id})
     yield _status_event(1)  # 질문 조건 확인
 
-    turn = get_page_recommend_service().recommend(
-        request.message,
-        thread_id=session_id,
-        message_history=message_history,
-        active_artifact=active_artifact,
-    )
+    try:
+        turn = get_page_recommend_service().recommend(
+            request.message,
+            thread_id=session_id,
+            message_history=message_history,
+            active_artifact=active_artifact,
+        )
+    except Exception:
+        _logger.exception("page recommendation failed for session %s", session_id)
+        try:
+            session_store.append_message(
+                session_id,
+                "assistant",
+                "페이지 추천을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+            )
+        except Exception:
+            _logger.exception("could not persist page recommendation failure for session %s", session_id)
+        yield sse_event({"code": "page_recommend_failed"}, event="error")
+        yield sse_event(
+            {
+                "done": True,
+                "mode": "page",
+                "status": "error",
+                "relation": None,
+                "recommendations": [],
+                "warnings": ["page_recommend_failed"],
+            },
+            event="done",
+        )
+        return
     response = turn.response
     recommendations = [item.model_dump(mode="json") for item in response.recommendations]
 
@@ -302,12 +356,21 @@ def _run_chat(request: ChatRequest, profile: Literal["public", "private"]):
     `profile`은 page 경로엔 영향 없다(그 경로는 hybrid_search/pageindex_lookup을
     안 씀) — document 경로에만 전달."""
 
-    session_id = session_store.get_or_create_session(request.session_id, request.user_id)
-    mode = request.mode if request.mode in {"document", "page"} else classify_intent(request.message)
-    if mode == "page":
-        yield from _run_page_recommend(request, session_id)
+    requested_session_id = str(request.session_id) if request.session_id else None
+    try:
+        session_id = session_store.get_or_create_session(requested_session_id, request.user_id)
+    except session_store.SessionOwnershipError:
+        # Do not disclose whether another user's session ID exists.
+        yield sse_event({"code": "invalid_session"}, event="error")
+        yield sse_event({"done": True, "warnings": ["invalid_session"]}, event="done")
         return
-    yield from _run_document_qa(request, session_id, profile)
+
+    with _session_turn_lock(session_id):
+        mode = request.mode if request.mode in {"document", "page"} else classify_intent(request.message)
+        if mode == "page":
+            yield from _run_page_recommend(request, session_id)
+            return
+        yield from _run_document_qa(request, session_id, profile)
 
 
 @router.post("/pubchat")

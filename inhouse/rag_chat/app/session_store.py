@@ -35,7 +35,7 @@ for _root in (
         sys.path.insert(0, str(_root))
 
 from rag_core.ragkit import chatbot_store as _store  # noqa: E402
-from rag_core.ragkit.chatbot_store import ChatMessage  # noqa: E402,F401
+from rag_core.ragkit.chatbot_store import ChatMessage, SessionOwnershipError  # noqa: E402,F401
 
 from common.config import get_settings  # noqa: E402
 

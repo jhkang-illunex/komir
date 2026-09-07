@@ -117,6 +117,42 @@ def main() -> int:
     print(f"[OK] chat_message {len(rows)}행(중복저장 없음), "
           f"citations_json {len(rows[-1][2])}자, artifact 키={sorted(state['active_artifact'])}")
 
+    # 3-a) 다른 user_id로 기존 session_id를 넘기면 대화/상태를 읽거나 쓰지 못해야 한다.
+    intruder_events = _events(
+        chat_router._run_chat(
+            chat_router.ChatRequest(
+                user_id="intruder", session_id=session_id, message="이전 대화 보여줘", mode="page"
+            ),
+            "public",
+        )
+    )
+    assert intruder_events == [
+        {"code": "invalid_session"},
+        {"done": True, "warnings": ["invalid_session"]},
+    ], intruder_events
+    assert duckdb.connect(str(_TMP_DB)).execute(
+        "SELECT count(*) FROM chat_message WHERE session_id = ?", [session_id]
+    ).fetchone()[0] == 4
+    print("[OK] 다른 사용자 session_id 재사용 차단")
+
+    # 3-c) 그래프의 예상 밖 예외는 빈 SSE 종료가 아니라 error와 done으로 끝나고,
+    #      대화에도 user/assistant 한 쌍으로 남아 다음 턴 관계 분류를 오염시키지 않는다.
+    _install_scripted_service({})
+    failed_events = _events(
+        chat_router._run_chat(
+            chat_router.ChatRequest(user_id="smoke3", message="실패 경로", mode="page"),
+            "public",
+        )
+    )
+    assert failed_events[-2] == {"code": "page_recommend_failed"}, failed_events
+    assert failed_events[-1]["status"] == "error", failed_events
+    failed_roles = duckdb.connect(str(_TMP_DB)).execute(
+        "SELECT role FROM chat_message WHERE session_id = ? ORDER BY created_at",
+        [failed_events[0]["session_id"]],
+    ).fetchall()
+    assert failed_roles == [("user",), ("assistant",)], failed_roles
+    print("[OK] 페이지추천 예외: error/done SSE + assistant 실패기록")
+
     # 3-b) ambiguous → 후속 선택. same_task와 저장되는 상태 키가 다른 경로다
     #      (pending_candidate_page_ids·original_question·inherited_filters) — 여기서
     #      original_question이 DB를 왕복해 살아남아야 2턴 필터추출이 "원래 질문 + 추가
