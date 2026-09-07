@@ -64,7 +64,9 @@ from .budget import ANALYSIS_LLM_TIMEOUT_SECONDS  # noqa: E402
 from .additional_summary import (  # noqa: E402
     AdditionalCalculatedSummary,
     EvidenceClaim,
+    SectionId,
     SummaryPageContext,
+    _number,
     calculate_composite_summary,
     calculate_mineral_map_summary,
     calculate_price_forecast_summary,
@@ -127,9 +129,6 @@ from .prompts import (  # noqa: E402
     resolve_page_config,
     summary_instructions,
 )
-
-SectionId = Literal["core_diagnosis", "major_changes", "current_position"]
-
 
 def _calculate_or_no_data(page_id: str, calculate, /, *args, **kwargs):
     """`calculate_*`가 데이터 조건 미충족(관측 1건뿐·국가 3개 미만·총액 0 등)으로
@@ -1054,10 +1053,6 @@ class _CalculatedSummary:
     detailed_metrics: list[Metric]
     patterns: list[DetectedPattern]
     omitted: list[OmittedIndicator]
-
-
-def _number(value: float, digits: int = 2) -> str:
-    return f"{value:,.{digits}f}"
 
 
 def _metric(

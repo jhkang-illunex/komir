@@ -534,7 +534,7 @@ def _parse_range(value: Any, max_hi: int | None = None) -> tuple[int, int] | Non
     return (lo, hi)
 
 
-def _parse_output_contract(page_id: str, raw: Any, base: PageConfig) -> tuple[dict[str, tuple[int, int]] | None, tuple[int, int] | None, int | None]:
+def _parse_output_contract(page_id: str, raw: Any) -> tuple[dict[str, tuple[int, int]] | None, tuple[int, int] | None, int | None]:
     """DB `output_contract` JSON을 검증해 (섹션범위, 총범위, 문장당 근거수)로.
     형식이 틀린 항목은 None(=코드 기본값)으로 두고 경고만 남긴다 — 운영 중
     DB 값 하나가 틀렸다고 보고서 생성이 멈추면 안 된다."""
@@ -614,7 +614,7 @@ def resolve_page_config(page_id: str) -> PageConfig:
         version, source["policy_version"] = row.policy_version.strip(), "db"
     ranges, total, max_ids = base.section_sentence_ranges, base.total_sentence_range, base.max_evidence_ids_per_sentence
     if row.output_contract is not None:
-        db_ranges, db_total, db_max = _parse_output_contract(page_id, row.output_contract, base)
+        db_ranges, db_total, db_max = _parse_output_contract(page_id, row.output_contract)
         if db_ranges is not None:
             ranges, source["section_sentence_ranges"] = db_ranges, "db"
         if db_total is not None:
