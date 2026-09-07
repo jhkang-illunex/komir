@@ -2622,9 +2622,10 @@ class AnalysisSummaryService:
         # )
         series, raw_komis_trade_totals = self._trade_series_from_request(request, "map_korea")
         komis_trade_totals = _komis_trade_totals_from_request(request, raw=raw_komis_trade_totals)
-        _period_unit, country_filter_name, scope_label = _map_korea_query_filters(
+        map_korea_filters = _map_korea_query_filters(
             request.komis_response, series.observations, request.mttr_flow_name
         )
+        _period_unit, country_filter_name, scope_label = map_korea_filters
         calculated = _calculate_or_no_data(
             request.page_id,
             calculate_domestic_trade_summary,
@@ -2634,7 +2635,11 @@ class AnalysisSummaryService:
             country_filter_name=country_filter_name,
             scope_label=scope_label,
         )
-        return self._respond_trade_map(request, series, calculated, effective_page_context("map_korea"))
+        # 2026-09-08 SC-005: 아래에서 다시 계산하지 않고 위 결과를 그대로 넘긴다
+        # (같은 request.komis_response·series.observations로 동일한 값이 나온다).
+        return self._respond_trade_map(
+            request, series, calculated, effective_page_context("map_korea"), map_korea_filters=map_korea_filters
+        )
 
     def _analyze_global_trade(self, request: AnalysisSummaryRequest) -> AnalysisSummaryResponse:
         """Load a global (KO_UN_CMMRC) trade-map series and build its response."""
@@ -2721,8 +2726,13 @@ class AnalysisSummaryService:
         series: TradeMapSeries,
         calculated: AdditionalCalculatedSummary,
         context: SummaryPageContext,
+        map_korea_filters: tuple[str | None, str | None, str | None] | None = None,
     ) -> AnalysisSummaryResponse:
-        """`_analyze_domestic_trade`/`_analyze_global_trade` 공통 응답 조립부."""
+        """`_analyze_domestic_trade`/`_analyze_global_trade` 공통 응답 조립부.
+
+        `map_korea_filters`는 `page_id="map_korea"`일 때 호출부(`_analyze_domestic_
+        trade`)가 이미 계산해 둔 `_map_korea_query_filters()` 결과다(2026-09-08
+        SC-005: 이전엔 같은 인자로 여기서 다시 계산했다)."""
 
         dates = sorted({item.date for item in series.observations})
         applied_filters = {
@@ -2739,9 +2749,8 @@ class AnalysisSummaryService:
             # 2026-08-31 신설 — 조회필터 4종(기간구분·국가·생산품유형/HS)을
             # 보고서 상단 표에도 노출한다(서사 반영은 calculate_domestic_
             # trade_summary가 이미 처리 — 여기는 메타데이터 표시용).
-            period_unit, country_filter_name, scope_label = _map_korea_query_filters(
-                request.komis_response, series.observations, request.mttr_flow_name
-            )
+            assert map_korea_filters is not None, "map_korea 응답은 map_korea_filters가 필요하다"
+            period_unit, country_filter_name, scope_label = map_korea_filters
             if period_unit:
                 applied_filters["period_unit"] = period_unit
             if country_filter_name:
