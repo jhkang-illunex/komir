@@ -1,42 +1,18 @@
 # -*- coding: utf-8 -*-
-"""서빙 레이어(commodity_api·rag_chat·report_gen) 공통 DB 접근점.
+"""서빙 레이어(rag_chat·report_gen) 공통 DB 접근점.
 
-mineral_supply_risk/db/dbio.py를 그대로 재노출한다(재구현 금지) — 이 모듈이
-유일한 DB 진입점이 되어 서비스 코드가 duckdb/sqlalchemy를 직접 임포트하지
-않게 한다(엔진 쪽 mineral_supply_risk/scripts/*는 예외 — 배치 파이프라인은
-별도 사이클로 이관).
+common/dbio.py(구 mineral_supply_risk/db/dbio.py — 2026-09-07 msr 패키지가
+expired/로 이동하면서 살아있는 DB 코어만 이쪽으로 흡수)를 그대로 재노출한다
+(재구현 금지) — 이 모듈이 유일한 DB 진입점이 되어 서비스 코드가
+duckdb/sqlalchemy를 직접 임포트하지 않게 한다.
 
 2026-08-11: dbio.apply_schema()의 DuckDB 분기 버그(정의 안 된 schema 변수
 참조)는 dbio.py 자체에서 직접 수정함(재노출판을 따로 두지 않음 — 원본이
 고쳐졌으니 그대로 재노출하면 됨)."""
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
-
-def _find_msr_root(start: Path) -> Path:
-    """`mineral_supply_risk/db/dbio.py`를 담은 디렉토리를 위로 훑어 찾는다.
-
-    2026-09-07 services/ 해체 후 소스트리(inhouse/common/db.py)와 컨테이너
-    배포본(/app/common/db.py) 모두 1단 위가 루트로 같아졌지만, 고정 depth보다
-    마커 탐색이 배치 변화에 강해 기존 패턴을 유지한다(ingest/parsers/pdf.py의
-    geo 탐색과 같은 이유·같은 패턴, 2026-08-11)."""
-
-    for candidate in (start, *start.parents):
-        if (candidate / "mineral_supply_risk" / "db" / "dbio.py").is_file():
-            return candidate
-    raise ImportError(f"mineral_supply_risk/db/dbio.py를 {start} 상위에서 찾지 못함")
-
-
-_MSR_PARENT = _find_msr_root(Path(__file__).resolve())
-_MSR_DB_PKG_ROOT = _MSR_PARENT / "mineral_supply_risk"
-if str(_MSR_DB_PKG_ROOT) not in sys.path:
-    sys.path.insert(0, str(_MSR_DB_PKG_ROOT))
-
-from db.dbio import apply_schema, connect_ro, is_url, read_sql, upsert_df, write_df  # noqa: E402,F401
-
 from .config import get_settings
+from .dbio import apply_schema, connect_ro, is_url, read_sql, upsert_df, write_df  # noqa: F401
 
 
 def read_sql_msr(query: str):

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """서빙 레이어 공통 LLM 클라이언트.
 
-geo/llm/openai_compat.py(provider 무관 어댑터, rag/ragkit/generate.py가 이미
+common/llm/openai_compat.py(provider 무관 어댑터, rag/ragkit/generate.py가 이미
 재사용 중, .env의 LLM_PROVIDER/LLM_BASE_URL/LLM_MODEL/LLM_API_KEY/LLM_TEMPERATURE
 규약)를 그대로 재노출한다 — 신규 LLM 클라이언트 재구현 금지.
 
@@ -31,23 +31,16 @@ from __future__ import annotations
 import json
 import logging
 import re
-import sys
 from collections.abc import Mapping
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, TypeVar
 
 from pydantic import BaseModel, ValidationError
 
 _logger = logging.getLogger(__name__)
 
-_INHOUSE_ROOT = Path(__file__).resolve().parents[1]
-if str(_INHOUSE_ROOT) not in sys.path:
-    sys.path.insert(0, str(_INHOUSE_ROOT))
-
-from geo.llm.openai_compat import OpenAICompatChat  # noqa: E402
-
 from .config import get_settings
+from .llm.openai_compat import OpenAICompatChat
 
 OutputT = TypeVar("OutputT", bound=BaseModel)
 
@@ -68,7 +61,7 @@ class LLMOutputError(LLMError):
 
 #: `KomirJsonLLM.invoke()` 호출부가 "LLM 호출 실패 시 부분 결과라도 살린다"는
 #: 부분열화 계약을 지키려면 `except LLMError`만으로는 부족하다 — 실제 HTTP는
-#: `geo/llm/openai_compat.py`의 `OpenAICompatChat.complete()`가 수행하는데,
+#: `common/llm/openai_compat.py`의 `OpenAICompatChat.complete()`가 수행하는데,
 #: 재시도 소진 후 HTTP 429/5xx는 평범한 `RuntimeError`로, 타임아웃·커넥션
 #: 오류는 `requests.RequestException`(OSError의 서브클래스)으로 던진다 — 둘 다
 #: `LLMError`의 서브클래스가 아니다(정의가 서로 다른 파일에 독립적으로 있음).

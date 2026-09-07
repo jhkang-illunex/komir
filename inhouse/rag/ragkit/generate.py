@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 
 from dotenv import load_dotenv
 
-from geo.llm.openai_compat import OpenAICompatChat
+from common.llm.openai_compat import OpenAICompatChat
 
 from .build_index import DB_PATH
 from .retrieve import RetrievedChunk, hybrid_search

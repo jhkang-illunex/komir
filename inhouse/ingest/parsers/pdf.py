@@ -20,32 +20,18 @@ import sys
 from pathlib import Path
 
 
-def _find_geo_root(start: Path) -> Path:
-    """`geo/extractors.py`를 담은 디렉토리를 위로 훑어 찾는다.
-
-    소스 트리(inhouse/ingest/parsers/pdf.py, 3단 위가 inhouse/)와 컨테이너
-    배포본(Containerfile이 ingest→./ingest, geo/→./geo로 COPY, 3단 위가 /app)은
-    2026-08-27 이동 후 깊이가 같아졌지만, 과거(services/ingestion 시절)엔 달랐고
-    앞으로도 배포 레이아웃이 바뀔 수 있어 고정 깊이 대신 탐색으로 맞춘다."""
-
-    for candidate in (start, *start.parents):
-        if (candidate / "geo" / "extractors.py").is_file():
-            return candidate
-    raise ImportError(f"geo/extractors.py를 {start} 상위에서 찾지 못함")
-
-
-_GEO_ROOT = _find_geo_root(Path(__file__).resolve())
-if str(_GEO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_GEO_ROOT))
-
-from geo.extractors import extract_with_fallback, md_to_text, opendataloader_batch_convert  # noqa: E402
+# 2026-09-07 geo 패키지가 expired/로 이동하면서 추출기(구 geo/extractors.py)를
+# ingest/extractors.py로 흡수 — 같은 패키지 상대 import라 경로 부트스트랩 불필요.
+from ..extractors import extract_with_fallback, md_to_text, opendataloader_batch_convert
 
 from ..models import ContentUnit
 from . import ParseResult
 
 _MIN_USABLE_CHARS = 30
+# inhouse 루트(소스트리·컨테이너 /komir/inhouse 모두 ingest/parsers/pdf.py의 2단 위)
+_INHOUSE_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_OCR_CACHE_DIR = str(
-    _GEO_ROOT / "data_lake/semi_structure/pdf_extract/_ocr_cache"
+    _INHOUSE_ROOT / "data_lake/semi_structure/pdf_extract/_ocr_cache"
 )
 
 

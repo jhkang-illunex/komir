@@ -88,7 +88,7 @@ from datetime import date
 from pathlib import Path
 from typing import Literal
 
-from geo.llm.openai_compat import OpenAICompatChat
+from common.llm.openai_compat import OpenAICompatChat
 from pydantic import BaseModel
 
 from ._shared_root import ensure_shared_on_path

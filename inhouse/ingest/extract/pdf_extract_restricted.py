@@ -46,7 +46,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]  # ingest/extract/x.py → inhou
 INHOUSE_ROOT = REPO_ROOT / "inhouse"
 if str(INHOUSE_ROOT) not in sys.path:
     sys.path.insert(0, str(INHOUSE_ROOT))
-from geo.extractors import extract_with_fallback, md_to_text  # noqa: E402
+from ingest.extractors import extract_with_fallback, md_to_text  # noqa: E402
 from ingest import status as ingest_status  # noqa: E402
 
 SOURCES = [

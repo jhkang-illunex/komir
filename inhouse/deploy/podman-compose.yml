@@ -33,14 +33,8 @@ services:
       - "6333:6333"
     restart: unless-stopped
 
-  commodity-api:
-    build:
-      context: ..
-      containerfile: commodity_api/Containerfile
-    env_file: [.env]
-    ports:
-      - "8001:8001"
-    restart: unless-stopped
+  # commodity-api는 2026-09-07 expired/commodity_api로 이동(msr 모델 코드 의존,
+  # 미가동 상태 확인 후 사용자 결정) — 서비스 정의 제거.
 
   rag-chat:
     build:

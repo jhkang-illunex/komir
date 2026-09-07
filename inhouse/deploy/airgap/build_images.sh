@@ -7,7 +7,7 @@ cd "$(dirname "$0")/../.."
 echo "[pull] qdrant (공식 이미지, komir이 직접 소유·기동 — build 대상 아님)"
 podman pull docker.io/qdrant/qdrant:latest
 
-for svc in commodity_api rag_chat report_gen; do
+for svc in rag_chat report_gen; do  # commodity_api는 2026-09-07 expired/로 이동
   echo "[build] ${svc}"
   podman build -f "${svc}/Containerfile" -t "komir/${svc}:latest" .
 done

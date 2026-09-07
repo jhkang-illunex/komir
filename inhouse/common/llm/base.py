@@ -48,7 +48,9 @@ def get_extractor(cfg: dict) -> "Extractor":
     """cfg['provider']: rule | mock | openai_compat | anthropic."""
     p = (cfg.get("provider") or "rule").lower()
     if p == "rule":
-        from .rule import RuleExtractor; return RuleExtractor()
+        # rule 추출기는 구 geo 파이프라인 전용(geo.classify 의존) — 2026-09-07
+        # geo가 expired/로 이동하면서 rule.py는 expired/geo/llm/에 남았다.
+        raise RuntimeError("provider=rule은 expired/geo 파이프라인 전용으로 제거됨 — openai_compat을 쓸 것")
     if p == "mock":
         from .mock import MockExtractor; return MockExtractor()
     if p in ("openai_compat", "openai", "ollama", "vllm", "gemini"):

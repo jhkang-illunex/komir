@@ -29,7 +29,7 @@ import opendataloader_pdf
 REPO_ROOT = Path(__file__).resolve().parents[3]  # ingest/extract/x.py → inhouse/ingest → inhouse → komir
 if str(REPO_ROOT / "inhouse") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "inhouse"))
-from geo.extractors import extract_with_fallback  # noqa: E402
+from ingest.extractors import extract_with_fallback  # noqa: E402
 from ingest import status as ingest_status  # noqa: E402
 from rag.ragkit.ingest import _real_content_len  # noqa: E402
 
