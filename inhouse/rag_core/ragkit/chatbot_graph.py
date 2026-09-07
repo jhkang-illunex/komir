@@ -820,16 +820,31 @@ def _finalize_node(state: RetrievalState) -> RetrievalState:
         # 2026-09-07(사용자 실측 제보: "니켈 최근 6개월 가격"·"광물종합지수"가
         # verify를 통과하고도 생성 단계에서 통째로 기권) — dense는 komis_raw가
         # 실패할 수 있다는 전제로 ROUTE_PROMPT가 항상 안전망으로 같이 켜둔다.
-        # 그런데 komis_raw(kind="structured", 지금은 STRUCTURED_ENABLED=False
-        # 라 이 kind는 komis_raw 전용이다)만으로 **1차 시도에서 이미** 충분
-        # 판정이 났다면, 그 안전망은 목적을 다한 것이라 더 이상 필요 없다 —
-        # 오히려 dense가 같이 딸려온 무관한 문서(예: "니켈" 검색에 걸린
-        # 예측모델 방법론·타 광종 시장동향 보고서)가 생성 LLM을 "일부는
-        # 관련없다"며 전체 기권으로 몰아넣는 걸 실측 재현했다(노이즈 5건
-        # 섞이면 실패, 그 5건을 빼면 즉시 정상 — 프롬프트 지시만으로는
-        # 완전히 못 막음). 재시도(reformulate) 이후엔 dense/pageindex를
-        # **의도적으로** 추가 켠 것이므로 이 가지치기를 하지 않는다(attempt
-        # 로 구분 — reformulate가 attempt를 늘린다).
+        # 그런데 dense가 같이 딸려온 무관한 문서(예: "니켈" 검색에 걸린 예측모델
+        # 방법론·타 광종 시장동향 보고서)가 생성 LLM을 "일부는 관련없다"며 전체
+        # 기권으로 몰아넣는 걸 실측 재현했다(노이즈 5건 섞이면 실패, 그 5건을
+        # 빼면 즉시 정상 — 프롬프트 지시만으로는 완전히 못 막음). 재시도
+        # (reformulate) 이후엔 dense/pageindex를 **의도적으로** 추가 켠 것이므로
+        # 이 가지치기를 하지 않는다(attempt로 구분 — reformulate가 attempt를
+        # 늘린다).
+        #
+        # ⚠ 실제 조건은 "구조화 근거가 하나라도 있으면"(any)이지 "전부 구조화
+        # 근거"(all)가 아니다 — 후자로 바꾸면 이 분기는 늘 무동작이 된다: verify가
+        # 패스트패스(전부 structured)를 탄 경우엔 애초에 잘라낼 dense/pageindex가
+        # 없고, 이 가지치기가 실제로 뭔가를 지우는 유일한 경우는 "구조화+비정형이
+        # 섞였는데 LLM verify가 (패스트패스를 안 타고) 전체를 sufficient로
+        # 판정한" 경우뿐이다 — 바로 위에서 재현한 노이즈발 전체기권 버그가 딱 이
+        # 상황이다. 즉 "구조화 근거만으로 충분했을 것"이라는 보장은 없다(verify는
+        # 근거별로 무엇이 기여했는지 알려주지 않는다) — dense/pageindex가 실제로
+        # 답의 일부(예: "가격+최근 시장동향 요약")였을 가능성이 있는 혼합 질문도
+        # 이 조건에 걸리면 구조화 근거만 남고 그 내용은 사라진다. 2026-09-08
+        # skeptic-code 감사(SC-1)에서 이 잘못된 전제를 재현으로 확인했지만,
+        # any→all로 되돌리면 위에서 실측 재현된 노이즈 버그가 그대로 재발하므로
+        # 로직은 바꾸지 않는다 — komis_raw(결정적 SQL, 지금까지 오조회 0건)가
+        # dense(베스트에포트 의미검색)보다 신뢰도가 높다는 전제 하의 의도된
+        # 트레이드오프다. 실제로 혼합 근거가 필요했던 질문이 이걸로 답이 부실해진
+        # 사례가 재현되면, verify가 근거별 기여도까지 판정하도록 재설계가
+        # 필요하다(현재는 그런 재현 사례 없음).
         evidence = state.get("evidence", [])
         if state.get("attempt", 1) == 1 and any(ev.kind == "structured" for ev in evidence):
             pruned = [ev for ev in evidence if ev.kind == "structured"]

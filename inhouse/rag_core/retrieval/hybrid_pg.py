@@ -67,10 +67,6 @@ def hybrid_search_pg(
     return out
 
 
-def hybrid_search_pg_ids(query: str, k: int, fanout: int = 30) -> list[str]:
-    return [c.chunk_id for c in hybrid_search_pg(query, k, fanout)]
-
-
 if __name__ == "__main__":
     q = sys.argv[1] if len(sys.argv) > 1 else "2026년 상반기 니켈 LME 가격 동향"
     for c in hybrid_search_pg(q, k=8):

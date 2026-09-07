@@ -42,6 +42,7 @@ ABSTAIN_REASON_LABELS = {
     "no_data_for_period": "해당 기간 데이터 없음",
     "ambiguous": "질문이 모호함",
     "unknown": "원인 미상",
+    "generation_error": "답변 생성 중 오류",
 }
 
 
@@ -187,9 +188,12 @@ def _render_details(record: dict[str, Any]) -> None:
     if record.get("abstained"):
         reason = record.get("abstain_reason")
         reason_label = ABSTAIN_REASON_LABELS.get(reason, reason)
-        message = "근거를 찾지 못해 기권한 응답입니다."
-        if reason_label:
-            message += f" (사유: {reason_label})"
+        if reason == "generation_error":
+            message = "근거는 찾았으나 답변 생성 중 오류가 발생해 응답이 중단됐습니다."
+        else:
+            message = "근거를 찾지 못해 기권한 응답입니다."
+            if reason_label:
+                message += f" (사유: {reason_label})"
         st.info(message)
     citations = record.get("citations") or []
     if citations:

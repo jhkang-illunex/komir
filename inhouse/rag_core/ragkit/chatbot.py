@@ -173,6 +173,16 @@ _UNSUPPORTED_MINERAL_RE = re.compile(r"^'(.+)'을\(를\) KOMIS 광종 목록\(ai
 #: 광종·기간없음과 같은 이유로 상수 공유 import 안 하고 문구만 맞춘다).
 _NO_DATA_FOUND_MARKER = "조회하신 조건에 해당하는 데이터를 찾지 못했습니다."
 
+#: 2026-09-08(skeptic-code 감사 SC-2) — 근거 조회(retrieve_evidence)는 실패해도
+#: try/except로 감싸 기권 응답으로 대체하는데(위 chat_turn() 본문), 바로 다음
+#: 단계인 답변 생성 스트리밍(OpenAICompatChat.complete_stream())은 아무 보호가
+#: 없어 vLLM이 스트림 도중 죽거나 커넥션이 끊기면 예외가 chat_turn() 밖으로
+#: 그대로 새어나가 SSE가 done 이벤트 없이 끊기고, 그때까지 스트리밍된 부분
+#: 답변도 세션에 저장되지 않았다(재현: 토큰 일부 전송 후 예외 발생 스텁으로
+#: 확인). ABSTAIN_TEXT("근거를 찾지 못했습니다")는 이 경우엔 사실과 다르다
+#: (근거는 찾았고 생성이 실패한 것) — 별도 문구를 쓴다.
+_GENERATION_ERROR_TEXT = "답변 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해 주십시오."
+
 
 def _eun_neun(word: str) -> str:
     """받침 유무에 따라 '은'/'는' 조사를 고른다(한글 완성형 유니코드 오프셋
@@ -844,9 +854,32 @@ async def chat_turn(
 
     yield _status_event(4)  # 답변 생성 중
     full_text_parts: list[str] = []
-    async for delta in _iter_async(chat.complete_stream(system_prompt, user_prompt, max_tokens=max_tokens)):
-        full_text_parts.append(delta)
-        yield ChatEvent(type="delta", data={"delta": delta})
+    try:
+        async for delta in _iter_async(chat.complete_stream(system_prompt, user_prompt, max_tokens=max_tokens)):
+            full_text_parts.append(delta)
+            yield ChatEvent(type="delta", data={"delta": delta})
+    except Exception:
+        # 2026-09-08(skeptic-code SC-2) — complete_stream()은 재시도를 하지 않고
+        # (모듈독스트링: "상위 호출자가 필요시 전체를 재시도") 그 책임을 여기로
+        # 넘기는데, 지금까지 여기서 아무것도 안 받았다. 부분 스트리밍된 내용이
+        # 있어도 그대로 생성을 재시도하면 이미 화면에 나간 텍스트와 중복되므로
+        # 재시도하지 않는다 — retrieve_evidence 실패와 같은 원칙으로 조용히
+        # 삼키지 않고 로그를 남긴 뒤 정중한 오류 응답으로 마무리한다.
+        _logger.exception("답변 생성 스트리밍 실패(부분 응답 %d자 이후 중단)", len("".join(full_text_parts)))
+        partial = "".join(full_text_parts).strip()
+        stored_text = f"{partial}\n\n{_GENERATION_ERROR_TEXT}" if partial else _GENERATION_ERROR_TEXT
+        yield ChatEvent(type="delta", data={"delta": ("\n\n" + _GENERATION_ERROR_TEXT) if partial else _GENERATION_ERROR_TEXT})
+        await asyncio.to_thread(
+            append_message, resolved_session_id, "assistant", stored_text, None, store_db_path
+        )
+        yield ChatEvent(
+            type="done",
+            data={
+                "done": True, "citations": [], "bogus_citations": [], "abstained": True,
+                "abstain_reason": "generation_error",
+            },
+        )
+        return
 
     full_text = "".join(full_text_parts).strip()
 

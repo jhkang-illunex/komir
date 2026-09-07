@@ -13,11 +13,14 @@ LLM 호출 자체가 안 되는 환경(서버 다운 등)에서도 문서 경로
 안전하게 끝난다."""
 from __future__ import annotations
 
+import logging
 from typing import Literal
 
 from pydantic import BaseModel
 
 from common.llm_client import KomirJsonLLM
+
+_logger = logging.getLogger(__name__)
 
 ROUTES = ("document", "page")
 
@@ -157,6 +160,6 @@ def classify_intent(message: str, llm: KomirJsonLLM | None = None) -> str:
     except Exception as exc:
         # 조용히 삼키지 않고 로그엔 남긴다 — 분류가 계속 실패하면 페이지추천 경로가
         # 영영 안 타므로 운영에서 알아챌 수 있어야 한다.
-        print(f"[rag_chat] 의도분류 실패, 문서 Q&A로 폴백: {type(exc).__name__}: {exc}")
+        _logger.warning("의도분류 실패, 문서 Q&A로 폴백: %s: %s", type(exc).__name__, exc)
         return "document"
     return invocation.output.route

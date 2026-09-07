@@ -4,8 +4,8 @@
 노드·엣지·라우팅 로직은 원본 그대로이고, komir 이식에서 바꾼 것은 두 가지뿐이다.
 
 1. LLM 클라이언트: 원본의 `JsonLLM` Protocol(=httpx 기반 OpenAICompatibleJsonLLM)
-   자리에 `services/shared/llm_client.KomirJsonLLM`을 그대로 끼웠다(같은 invoke
-   시그니처). 프로젝트에 LLM 클라이언트를 2벌 두지 않기 위함.
+   자리에 `common/llm_client.KomirJsonLLM`을 그대로 끼웠다(같은 invoke 시그니처).
+   프로젝트에 LLM 클라이언트를 2벌 두지 않기 위함.
 2. 전송오류 분기 제거: 원본은 `except LLMTransportError: raise`로 전송실패를
    먼저 재던지고 그 아래 `except LLMError`에서 출력오류만 흡수했다. komir의
    OpenAICompatChat은 전송실패 시 `requests.RequestException`/`RuntimeError`를

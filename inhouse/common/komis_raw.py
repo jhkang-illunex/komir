@@ -578,39 +578,19 @@ class KomisRawDataRepository:
         prc_cat_cd = row["prc_cat_cd"]
         return str(row["mnrknd_unq_cd"]), (None if prc_cat_cd is None else str(prc_cat_cd))
 
-    def resolve_data_source(self, mineral_code: str) -> str | None:
-        """`ai_mnrl_mst`에서 광종의 `ko_data_src_cd`(예: `KOMIS_SAMPLE`·
-        `DEV_DUMMY`)를 찾는다 — 2026-08-31 스키마매핑 조사에서 발주 5광종
-        (CU/NI/CO/LI/REE)의 `ko_*` 데이터가 대부분 개발용 더미로 확인되어
-        (`documents/산출물/2026-W36_0831-0906/KOMIS_public_ko테이블_
-        스키마매핑_260831.md` 참고), MCP 도구가 조회 결과에 더미 경고를
-        동봉할 수 있게 추가했다. 값이 없거나 광종이 없으면 None."""
-
-        code = _literal(mineral_code)
-        frame = read_sql_pg(
-            f"SELECT ko_data_src_cd FROM {KOMIS_SCHEMA}.ai_mnrl_mst"
-            f" WHERE mnrknd_unq_cd = {code}"
-        )
-        if frame.empty:
-            return None
-        value = frame.iloc[0]["ko_data_src_cd"]
-        return None if value is None else str(value)
-
     def resolve_mineral_meta(self, mineral_code: str) -> tuple[str, str | None] | None:
         """`ai_mnrl_mst`에서 (한글명, `ko_data_src_cd`)를 한 번의 조회로 찾는다.
 
-        `resolve_mineral()`(코드→한글명)과 `resolve_data_source()`(코드→
-        데이터출처코드)가 완전히 같은 테이블·같은 WHERE 조건(`mnrknd_unq_cd`
-        = code)을 각각 별도 `read_sql_pg()` 왕복으로 조회하던 걸 하나로
-        합친다 — `komis_raw_lookup`(rag_core/ragkit/_mcp_tools_common.py)이 근거
+        `resolve_mineral()`(코드→한글명)과 (코드→데이터출처코드) 조회가
+        완전히 같은 테이블·같은 WHERE 조건(`mnrknd_unq_cd` = code)을 각각
+        별도 `read_sql_pg()` 왕복으로 조회하던 걸 하나로 합친다 —
+        `komis_raw_lookup`(rag_core/ragkit/_mcp_tools_common.py)이 근거
         라벨(한글명)과 더미데이터 경고(데이터출처코드)를 매 호출마다 함께
         필요로 하면서 mineral_code 하나당 DB 왕복이 최대 3~4회까지 쌓이던
         것의 일부를 줄인다(skeptic-code DEEP 감사 SC-001, 2026-09-01, 사용자
         승인). `resolve_mineral()`은 `report_gen/app/analysis/data_sources/
         extra.py`에서 별도로 쓰이고 있어 그대로 남겨뒀다(이 메서드가 그걸
-        대체하지 않는다) — `resolve_data_source()`는 이 변경 이후 호출부가
-        없어졌지만, 리포지토리의 공개 API로 남겨두는 것 자체는 이번 지시
-        범위 밖이라 함께 손대지 않았다."""
+        대체하지 않는다)."""
 
         code = _literal(mineral_code)
         frame = read_sql_pg(

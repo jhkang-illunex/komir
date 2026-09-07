@@ -13,7 +13,7 @@ komir 이식에서 바꾼 것:
    결과 상태를 돌려받는 형태로 계약을 바꿨다 — DB 접근은 이 파일이 아니라
    routers/chat.py가 session_store로 처리한다(이 모듈은 DB를 모르므로 LLM 더블만
    있으면 테스트 가능).
-2. 설정: `search/config.Settings.from_env()` 대신 services/shared/config.py의
+2. 설정: `search/config.Settings.from_env()` 대신 common/config.py의
    통합 Settings(get_settings)를 쓴다. LLM은 KomirJsonLLM.
 
 원본에 있던 `close()`/컨텍스트매니저는 없앴다 — httpx 클라이언트와 sqlite 커넥션을
@@ -65,7 +65,7 @@ class PageRecommendService:
 
     @classmethod
     def from_settings(cls) -> PageRecommendService:
-        """services/shared/config.py의 통합 설정으로 서비스를 만든다."""
+        """common/config.py의 통합 설정으로 서비스를 만든다."""
 
         settings = get_settings()
         return cls(

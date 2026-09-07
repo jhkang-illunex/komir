@@ -188,7 +188,8 @@ def from_komis_raw(
 
     2026-08-31: 발주 5광종의 `ko_*` 데이터가 대부분 개발용 더미(DEV_DUMMY)로
     확인되어(스키마매핑 문서 참고), 더미 여부는 호출측(MCP tool)이
-    `komis_raw.resolve_data_source()`로 미리 확인해 `is_dummy`로 넘긴다 —
+    `komis_raw.resolve_mineral_meta()`(2026-09-01, 한글명 조회와 통합)로
+    미리 확인해 `is_dummy`로 넘긴다 —
     True면 모든 Evidence에 `caveat`(KOMIS_RAW_DUMMY_CAVEAT)을 심어서, 이
     근거가 실제로 인용되면 chatbot.py가 그 사실을 코드로 강제 경고하게 한다
     (LLM이 [근거] 텍스트만 보고 알아서 옮겨 적을 거라 기대하지 않는다 —

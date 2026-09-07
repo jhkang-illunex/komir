@@ -46,12 +46,6 @@ def get_or_create_session(session_id: str | None, user_id: str, title: str | Non
     return _store.get_or_create_session(session_id, user_id, title, db_path=get_settings().MSR_DB)
 
 
-def touch_session(session_id: str) -> None:
-    """세션의 updated_at을 현재 시각으로 갱신(새 메시지 저장 시 호출)."""
-
-    _store.touch_session(session_id, db_path=get_settings().MSR_DB)
-
-
 def append_message(
     session_id: str,
     role: str,

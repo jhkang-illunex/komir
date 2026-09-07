@@ -37,12 +37,15 @@ pageindex.py)는 건드리지 않는다 — 광종 세계생산 집계가 아닌
 가 이미 그렇듯 ThreadPoolExecutor 안에서 호출할 것을 전제한다."""
 from __future__ import annotations
 
+import logging
 import re
 import sys
 from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel
+
+_logger = logging.getLogger(__name__)
 
 def _find_inhouse_root(start: Path) -> Path:
     """`shared/llm_client.py`(아래서 바로 import하는 그 모듈)를 담은 디렉토리를
@@ -651,7 +654,10 @@ def agentic_lookup(
             warnings.append(f"pageindex_agent_llm_error:{type(exc).__name__}")
             break
 
-        print(f"[pageindex_agent step {step + 1}] {action.action} commodity={action.commodity!r} note={action.note!r}")
+        _logger.info(
+            "pageindex_agent step %d: %s commodity=%r note=%r",
+            step + 1, action.action, action.commodity, action.note,
+        )
 
         key = (action.action, action.commodity.strip().upper())
         if key in seen:

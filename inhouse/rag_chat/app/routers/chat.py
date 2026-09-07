@@ -56,7 +56,9 @@ main-agent가 streamlit-agent와 이 정수 계약으로 조율 완료):
                          "caption": "...", "source_index": n}
   event: done    data: {"done": true, "abstained": bool, "bogus_citations": [...],
                          "abstain_reason": "off_topic|unsupported_commodity|
-                         no_data_for_period|ambiguous|unknown"|null,
+                         no_data_for_period|ambiguous|unknown|generation_error"|null,
+                         (generation_error: 2026-09-08 skeptic-code SC-2 신설 — 근거는
+                         찾았으나 답변 생성 스트리밍 도중 예외로 중단된 경우)
                          "citations": [{"index": n, "kind": "structured|dense|
                          pageindex", "source": "...", "section": "...",
                          "as_of": "..."|null, "unit": "..."|null}, ...]}    — 문서 경로

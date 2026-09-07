@@ -98,10 +98,6 @@ def bm25_search_pg(
     ]
 
 
-def bm25_search_pg_ids(query: str, k: int) -> list[str]:
-    return [c.chunk_id for c in bm25_search_pg(query, k)]
-
-
 if __name__ == "__main__":
     q = sys.argv[1] if len(sys.argv) > 1 else "DRC 코발트 수출 2025"
     for c in bm25_search_pg(q, k=5):

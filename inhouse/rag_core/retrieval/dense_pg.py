@@ -223,15 +223,6 @@ def dense_search_pg(
     ]
 
 
-def dense_search_pg_ids(query: str, k: int) -> list[str]:
-    """`rag_core/ragkit/retrieve.dense_search()`의 드롭인 대체(chunk_id 리스트만).
-
-    hybrid_search의 RRF 융합부에 그대로 꽂을 수 있는 형태 — 융합 로직 자체는
-    건드리지 않는다."""
-
-    return [c.chunk_id for c in dense_search_pg(query, k)]
-
-
 if __name__ == "__main__":
     q = sys.argv[1] if len(sys.argv) > 1 else "핵심광물 진단모델 QWK 성능은 얼마인가"
     for c in dense_search_pg(q, k=5):
