@@ -11,13 +11,13 @@
 44%는 NULL이라 하드 필터는 관련 청크를 대량으로 잘라낼 위험, 2026-08-19 조사에서
 직접 확인). 날짜 언급이 없거나 매칭되는 청크가 없으면 기존 동작과 동일하게 전락한다.
 
-`rag/ragkit/retrieve.py`의 `dense_search()`(DuckDB `list_cosine_similarity`)와
+`rag_core/ragkit/retrieve.py`의 `dense_search()`(DuckDB `list_cosine_similarity`)와
 **같은 역할·같은 반환 계약**을 갖는 교체 가능한 구현이다. RRF 융합 로직은
 여기 재구현하지 않는다(재구현 금지) — 이 모듈은 하이브리드의 dense 절반만
-담당하고, BM25 절반은 당분간 rag/index/rag.duckdb의 DuckDB FTS 그대로다
+담당하고, BM25 절반은 당분간 rag_core/index/rag.duckdb의 DuckDB FTS 그대로다
 (2026-08-11 작업 범위: dense 벡터 저장소 전환만).
 
-질의 임베딩은 `rag/ragkit/embed.encode_query()`를 그대로 쓴다 — 적재
+질의 임베딩은 `rag_core/ragkit/embed.encode_query()`를 그대로 쓴다 — 적재
 (build_pgvector_index.py)와 같은 모델·같은 접두어("query: "/"passage: ")를
 써야 벡터 공간이 일치한다. 로컬 sentence-transformers라 외부 API 호출 없음
 (airgap 전제).
@@ -104,26 +104,26 @@ def extract_date_range(query: str) -> tuple[str, str] | None:
 
 
 def _find_rag_parent(start: Path) -> Path:
-    """`rag/ragkit/embed.py`를 담은 디렉토리를 위로 훑어 찾는다(소스트리는
+    """`rag_core/ragkit/embed.py`를 담은 디렉토리를 위로 훑어 찾는다(소스트리는
     inhouse/, 컨테이너 배포본은 COPY 깊이가 달라 고정 depth를 못 쓴다 —
     services/shared/db.py `_find_msr_root`와 같은 이유·같은 패턴)."""
 
     for candidate in (start, *start.parents):
-        if (candidate / "rag" / "ragkit" / "embed.py").is_file():
+        if (candidate / "rag_core" / "ragkit" / "embed.py").is_file():
             return candidate
-    raise ImportError(f"rag/ragkit/embed.py를 {start} 상위에서 찾지 못함")
+    raise ImportError(f"rag_core/ragkit/embed.py를 {start} 상위에서 찾지 못함")
 
 
 _RAG_PARENT = _find_rag_parent(Path(__file__).resolve())
 if str(_RAG_PARENT) not in sys.path:
     sys.path.insert(0, str(_RAG_PARENT))
 
-from rag.ragkit.embed import encode_query  # noqa: E402
+from rag_core.ragkit.embed import encode_query  # noqa: E402
 
 
 @dataclass
 class PgRetrievedChunk:
-    """`rag/ragkit/retrieve.RetrievedChunk`와 필드명을 맞춘 결과 레코드.
+    """`rag_core/ragkit/retrieve.RetrievedChunk`와 필드명을 맞춘 결과 레코드.
 
     dense 전용이라 bm25_rank/rrf_score는 없고, 대신 코사인 유사도(score)를
     싣는다 — RRF 융합 쪽에 넘길 땐 chunk_id/dense_rank만 있으면 된다."""
@@ -224,7 +224,7 @@ def dense_search_pg(
 
 
 def dense_search_pg_ids(query: str, k: int) -> list[str]:
-    """`rag/ragkit/retrieve.dense_search()`의 드롭인 대체(chunk_id 리스트만).
+    """`rag_core/ragkit/retrieve.dense_search()`의 드롭인 대체(chunk_id 리스트만).
 
     hybrid_search의 RRF 융합부에 그대로 꽂을 수 있는 형태 — 융합 로직 자체는
     건드리지 않는다."""

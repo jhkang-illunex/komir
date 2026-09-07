@@ -119,7 +119,7 @@ def build_tree_for_okf(
 ) -> dict:
     """OKF 파일 1건 → 트리 JSON(메타데이터 포함 dict)."""
 
-    from rag.pageindex_client import build_tree_from_markdown
+    from rag_core.pageindex_client import build_tree_from_markdown
 
     text = okf_path.read_text(encoding="utf-8")
     front, body, offset = split_frontmatter(text)

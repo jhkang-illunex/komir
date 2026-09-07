@@ -16,7 +16,7 @@ LLM 없이도 (1) 문서 찾기 (2) 노드(섹션) 찾기 (3) 노드 원문 읽�
 `data_lake/semi_structure/pageindex_trees/**/*.tree.json`
 (원문은 `data_lake/semi_structure/okf_documents/**/*.md`).
 
-점수 계산은 `rag/ragkit/tokenize_ko.py`의 토크나이저를 그대로 쓴다 — BM25 색인과
+점수 계산은 `rag_core/ragkit/tokenize_ko.py`의 토크나이저를 그대로 쓴다 — BM25 색인과
 같은 토큰화를 써야 "같은 질의에 두 도구가 딴소리하는" 상황을 피할 수 있고,
 한국어 조사 때문에 단순 부분문자열 매칭이 잘 안 걸리는 문제도 그쪽에서 이미
 해결돼 있다(글자 바이그램).
@@ -31,9 +31,9 @@ from pathlib import Path
 from typing import Any
 
 def _find_inhouse_root(start: Path) -> Path:
-    """`rag/ragkit/tokenize_ko.py`(아래서 바로 import하는 그 모듈)를 담은
+    """`rag_core/ragkit/tokenize_ko.py`(아래서 바로 import하는 그 모듈)를 담은
     디렉토리를 위로 훑어 찾는다. 2026-09-07 services/ 해체 후 이 파일은
-    rag/retrieval/pageindex.py로 소스트리·컨테이너(/app) 모두 parents[2]가
+    rag_core/retrieval/pageindex.py로 소스트리·컨테이너(/app) 모두 parents[2]가
     루트로 같아졌지만, 고정 parents[N] 인덱스는 배치가 달라지는 순간 조용히
     틀리는 전례가 있어 마커 탐색을 유지한다 — 2026-09-03 실측
     확인(컨테이너에서 TREES_ROOT가 `/data_lake/...`로 잘못 잡혀 매 조회가
@@ -41,16 +41,16 @@ def _find_inhouse_root(start: Path) -> Path:
     동일 원리로 교체)."""
 
     for candidate in (start, *start.parents):
-        if (candidate / "rag/ragkit/tokenize_ko.py").is_file():
+        if (candidate / "rag_core/ragkit/tokenize_ko.py").is_file():
             return candidate
-    raise ImportError(f"rag/ragkit/tokenize_ko.py를 {start} 상위에서 찾지 못함")
+    raise ImportError(f"rag_core/ragkit/tokenize_ko.py를 {start} 상위에서 찾지 못함")
 
 
 _INHOUSE_ROOT = _find_inhouse_root(Path(__file__).resolve())
 if str(_INHOUSE_ROOT) not in sys.path:
     sys.path.insert(0, str(_INHOUSE_ROOT))
 
-from rag.ragkit.tokenize_ko import to_fts_text  # noqa: E402
+from rag_core.ragkit.tokenize_ko import to_fts_text  # noqa: E402
 
 #: 트리·원문 위치. 컨테이너에서 마운트 지점이 달라질 수 있어 환경변수로 덮어쓸 수 있게 둔다.
 TREES_ROOT = Path(

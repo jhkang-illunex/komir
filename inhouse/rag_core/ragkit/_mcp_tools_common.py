@@ -50,8 +50,8 @@ from common.komis_raw import (
 )
 from common.llm_client import KomirJsonLLM
 from common import structured
-from rag.retrieval import pageindex_agent
-from rag.retrieval.evidence import Evidence, from_komis_raw, from_structured
+from rag_core.retrieval import pageindex_agent
+from rag_core.retrieval.evidence import Evidence, from_komis_raw, from_structured
 
 
 def _evidence_dict(ev: Evidence | None) -> dict[str, Any] | None:

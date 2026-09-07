@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """dense(`dense_pg.py`) + sparse(`bm25_pg.py`) RRF 융합 — pgvector 코퍼스용.
 
-RRF 공식·상수(`RRF_K=60`)는 `rag/ragkit/retrieve.py::hybrid_search()`와 **동일**
+RRF 공식·상수(`RRF_K=60`)는 `rag_core/ragkit/retrieve.py::hybrid_search()`와 **동일**
 (재구현이 아니라 같은 알고리즘을 새 데이터소스에 재적용 — 그 모듈 자체는 구
 DuckDB 코퍼스<100건 전용이라 못 씀, 2026-08-19 조사 근거는 dense_pg.py 상단
 주석 참고). fanout(각 리트리버에서 몇 개씩 뽑아 융합 풀에 넣을지)은 기존과
@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from .bm25_pg import bm25_search_pg
 from .dense_pg import dense_search_pg
 
-RRF_K = 60  # rag/ragkit/retrieve.py와 동일 값
+RRF_K = 60  # rag_core/ragkit/retrieve.py와 동일 값
 
 
 @dataclass

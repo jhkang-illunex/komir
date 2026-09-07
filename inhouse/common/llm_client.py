@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """서빙 레이어 공통 LLM 클라이언트.
 
-common/llm/openai_compat.py(provider 무관 어댑터, rag/ragkit/generate.py가 이미
+common/llm/openai_compat.py(provider 무관 어댑터, rag_core/ragkit/generate.py가 이미
 재사용 중, .env의 LLM_PROVIDER/LLM_BASE_URL/LLM_MODEL/LLM_API_KEY/LLM_TEMPERATURE
 규약)를 그대로 재노출한다 — 신규 LLM 클라이언트 재구현 금지.
 
 2026-08-11 연계 현황 정리(병합계획_komis-report-generator_260811.md 관련 작업
 중 사용자 질문에 대한 답): 이식 전에는 LLM/임베딩 설정이 서로 안 이어져 있었다.
 - **LLM(채팅)**: komir는 이 파일이 감싸는 OpenAICompatChat(requests 기반, 커넥션
-  풀 재사용 등 실측 튜닝 반영) 하나만 써왔다(geo 추출·rag/ragkit/generate.py).
+  풀 재사용 등 실측 튜닝 반영) 하나만 써왔다(geo 추출·rag_core/ragkit/generate.py).
   외부 repo(komis-report-generator-main)의 search/llm.py는 env 변수 이름은
   우연히 같지만(LLM_BASE_URL 등) httpx 기반의 **별개 클라이언트**
   (OpenAICompatibleJsonLLM)를 갖고 있었다 — 그대로 들여오면 프로젝트에 LLM
@@ -17,7 +17,7 @@ common/llm/openai_compat.py(provider 무관 어댑터, rag/ragkit/generate.py가
   실제 HTTP 호출은 komir의 OpenAICompatChat.complete()에 위임한다 — 클라이언트는
   하나만 남는다.
 - **임베딩**: 전혀 안 이어져 있었다(지금도 그대로). komir 쪽 실제 구현
-  (`rag/ragkit/embed.py`)은 `.env`의 EMBEDDING_BASE_URL을 참조조차 하지 않고
+  (`rag_core/ragkit/embed.py`)은 `.env`의 EMBEDDING_BASE_URL을 참조조차 하지 않고
   sentence-transformers(intfloat/multilingual-e5-small)를 코드에 하드코딩해
   프로세스 내부에서 직접 로드한다(HTTP 서버 없음). 외부 repo의
   vector_index/embeddings.py는 반대로 OpenAI 호환 HTTP `/embeddings` 엔드포인트

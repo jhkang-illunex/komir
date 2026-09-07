@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """public/private MCP 프로필의 데이터 접근 경계 — 단일 진리원.
 
-`rag/ragkit/mcp_server_public.py`(물리적으로 분리된 public 전용 모듈)가
+`rag_core/ragkit/mcp_server_public.py`(물리적으로 분리된 public 전용 모듈)가
 hybrid_search·pageindex_lookup 두 도구에서 `PRIVATE_ONLY_SOURCE_GROUPS`를,
 `_mcp_tools_common.py`가 등록하는 `komis_raw_lookup`이 `PRIVATE_ONLY_KOMIS_PAGES`를
 참조한다 — 짝인 `mcp_server_private.py`는 두 상수 모두 아예 import하지 않는다

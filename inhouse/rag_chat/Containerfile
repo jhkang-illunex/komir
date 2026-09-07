@@ -1,6 +1,6 @@
 # RAG 챗봇 — user_id/session_id 히스토리 + 스트리밍. 정형(Postgres out_*)·
 # dense(pgvector doc_chunk)·PageIndex(OKF 트리) 3도구를 LangGraph로 조합한다
-# (rag/ragkit/chatbot_graph.py, 2026-08-13). dense용 임베딩 모델(e5-small)만
+# (rag_core/ragkit/chatbot_graph.py, 2026-08-13). dense용 임베딩 모델(e5-small)만
 # 이 컨테이너 안에서 직접 로드하고, PageIndex는 트리 JSON을 파일로 읽는다 —
 # PAGEINDEX_TREES_DIR·OKF_DOCUMENTS_DIR가 가리키는 data_lake/semi_structure/
 # {pageindex_trees,okf_documents}는 이미지에 안 굽고 볼륨 마운트로 붙일 것
@@ -8,7 +8,7 @@
 # e5-small 임베딩 가중치는 airgap 전제상 빌드 시점(망 연결 가능)에 이미지에 미리
 # 다운로드해 포함한다 — 런타임엔 인터넷 접근이 없다는 전제라 HF_HUB_OFFLINE=1로
 # 캐시 재다운로드를 막는다(2026-08-19 실제 구현·빌드 검증, 모델명은
-# rag/ragkit/embed.py의 MODEL_NAME과 반드시 일치시킬 것).
+# rag_core/ragkit/embed.py의 MODEL_NAME과 반드시 일치시킬 것).
 FROM python:3.12-slim
 
 WORKDIR /app
@@ -26,15 +26,15 @@ COPY rag_chat/app ./app
 COPY common ./common
 # 2026-09-07 expired/ 이동: geo/llm→common/llm, geo/extractors.py→ingest/extractors.py,
 # mineral_supply_risk/db/dbio.py→common/dbio.py로 흡수돼 geo/·mineral_supply_risk/ COPY 불필요.
-# 챗봇 검색 레이어(2026-09-07 services/ 해체 때 구 services/shared/retrieval → rag/retrieval로 이동)
-COPY rag/retrieval ./rag/retrieval
-# 주의(2026-08-05): rag/ 전체를 COPY하지 말 것 — rag/index/rag.duckdb(벡터+
-# BM25 인덱스, Qdrant/Postgres 이관 후 더 이상 정본 아님)와 rag/docs/estimate_question
+# 챗봇 검색 레이어(2026-09-07 services/ 해체 때 구 services/shared/retrieval → rag_core/retrieval로 이동)
+COPY rag_core/retrieval ./rag_core/retrieval
+# 주의(2026-08-05): rag_core/ 전체를 COPY하지 말 것 — rag_core/index/rag.duckdb(벡터+
+# BM25 인덱스, Qdrant/Postgres 이관 후 더 이상 정본 아님)와 rag_core/docs/estimate_question
 # (원본 문서·골든셋)이 함께 딸려와 §0 요구사항②("DB는 외부서비스")와 충돌한다. ragkit 코드
 # 모듈만 선택 COPY — 정확한 서브셋은 구현 단계에서 확정.
-# (2026-08-11: 경로를 engine/rag/ragkit → rag/ragkit으로 정정 — 2026-08-06 DMZ/inhouse
+# (2026-08-11: 경로를 engine/rag_core/ragkit → rag_core/ragkit으로 정정 — 2026-08-06 DMZ/inhouse
 # 분리로 engine/이 없어지고 inhouse/rag가 됐음, 이 Containerfile 빌드 컨텍스트는 inhouse/)
-COPY rag/ragkit ./rag/ragkit
+COPY rag_core/ragkit ./rag_core/ragkit
 
 # ingest/(2026-08-11 services/ingestion으로 신설 → 2026-08-27 inhouse/ingest/로
 # 독립 패키지화, 병합계획_komis-report-generator_260811.md) — PDF 파서가

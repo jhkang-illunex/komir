@@ -13,7 +13,7 @@
 **왜 ingest/ 패키지에 두는가**: §5-3이 문서-OKF를 in-house ingestion(공용
 LLM ETL 엔진)의 산출물로 정의하고, 대용량 원본(PDF/HWP) 경로가 이미 여기
 `ingest.pipeline.run_extraction()`이라 입력 두 갈래 중 하나가 이 패키지 안에 있다.
-(rag/ragkit/ 쪽은 "RAG 인덱스 전용" 경로라 Report 생성기도 쓰는 산출물의
+(rag_core/ragkit/ 쪽은 "RAG 인덱스 전용" 경로라 Report 생성기도 쓰는 산출물의
 생산자로는 맞지 않다.) 2026-08-27 services/ingestion/ → inhouse/ingest/okf/로
 이동(파일 기반 문서 ETL을 서빙 레이어에서 떼어 독립 패키지화, ingest/README.md).
 
@@ -79,7 +79,7 @@ JODALCHEONG_EXTRACT_DIR = _INHOUSE_ROOT / "data_lake/semi_structure/pdf_extract/
 # 금지가 일반적) — 2026-08-12 사용자가 "라이선스상 내부 파생 DB 구축 허용"을
 # 직접 확인하고 이번 내부 전용 인덱스 구축에 한해 우회를 명시적으로 지시했다.
 # `allow_paid_sources=True`는 이 갈래에서만 켠다 — source_policy.py 자체나
-# 다른 호출자(특히 공개 RAG 코퍼스 rag/ragkit/ingest.py)는 그대로 차단 유지.
+# 다른 호출자(특히 공개 RAG 코퍼스 rag_core/ragkit/ingest.py)는 그대로 차단 유지.
 ARGUS_DATA_ROOT = _REPO_ROOT / "documents/보고서_2"
 ARGUS_SOURCE_GROUP = "Argus Metal_비철금속_2023~2026_일일 (1)"
 ARGUS_OUT_DIRNAME = "Argus_비철금속_일일"
@@ -209,7 +209,7 @@ def _unique_path(base: Path, used: set[Path]) -> Path:
 def build_from_artifacts(out_root: Path = OKF_DOCUMENTS_ROOT, limit: int | None = None) -> list[Path]:
     """`rag.ragkit.ingest.load_documents()` 결과를 문서-OKF로 렌더링."""
 
-    from rag.ragkit.ingest import load_documents
+    from rag_core.ragkit.ingest import load_documents
 
     docs = load_documents()
     if limit:

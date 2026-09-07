@@ -8,7 +8,7 @@
 
 2026-08-28: SSE status 계약이 문자열 stage(routing/retrieving/verifying/
 reformulating/generating, `tools` 필드 있음)에서 정수 4단계로 바뀌었다
-(`services/rag_chat/app/routers/chat.py`::`_status_event`, `rag/ragkit/
+(`services/rag_chat/app/routers/chat.py`::`_status_event`, `rag_core/ragkit/
 chatbot.py`::`STATUS_STAGES`가 정본) — `{"stage": 1|2|3|4, "label": "질문
 조건 확인"|"답변 준비중"|"데이터 분석 중"|"답변 생성 중"}`, `label`은 서버가
 이미 한글로 포맷해서 보내므로 클라이언트 쪽 매핑 테이블(STAGE_LABELS)이

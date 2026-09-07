@@ -602,7 +602,7 @@ class KomisRawDataRepository:
         `resolve_mineral()`(코드→한글명)과 `resolve_data_source()`(코드→
         데이터출처코드)가 완전히 같은 테이블·같은 WHERE 조건(`mnrknd_unq_cd`
         = code)을 각각 별도 `read_sql_pg()` 왕복으로 조회하던 걸 하나로
-        합친다 — `komis_raw_lookup`(rag/ragkit/_mcp_tools_common.py)이 근거
+        합친다 — `komis_raw_lookup`(rag_core/ragkit/_mcp_tools_common.py)이 근거
         라벨(한글명)과 더미데이터 경고(데이터출처코드)를 매 호출마다 함께
         필요로 하면서 mineral_code 하나당 DB 왕복이 최대 3~4회까지 쌓이던
         것의 일부를 줄인다(skeptic-code DEEP 감사 SC-001, 2026-09-01, 사용자

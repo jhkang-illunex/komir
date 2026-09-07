@@ -21,7 +21,7 @@ pageindex_agentic)은 애초에 라이선스/접근 축이 없어 public과 결�
 완전히 같다.
 
 실행(직접 점검용, 실제로는 mcp_client.py가 서브프로세스로 띄운다):
-    cd inhouse && python -m rag.ragkit.mcp_server_private
+    cd inhouse && python -m rag_core.ragkit.mcp_server_private
 """
 from __future__ import annotations
 
@@ -35,8 +35,8 @@ from ._shared_root import ensure_shared_on_path
 
 ensure_shared_on_path(Path(__file__).resolve())
 
-from rag.retrieval import hybrid_pg, pageindex  # noqa: E402
-from rag.retrieval.evidence import from_dense_chunk, from_pageindex_hit  # noqa: E402
+from rag_core.retrieval import hybrid_pg, pageindex  # noqa: E402
+from rag_core.retrieval.evidence import from_dense_chunk, from_pageindex_hit  # noqa: E402
 
 from ._mcp_tools_common import register_common_tools  # noqa: E402
 

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""검색 품질 평가 — rag/docs/estimate_question(2,800여 문항, 문서별 정답 source가 이미
+"""검색 품질 평가 — rag_core/docs/estimate_question(2,800여 문항, 문서별 정답 source가 이미
 frontmatter에 있음)을 골든셋으로 재사용(가이드 §7: 골든셋 기반 평가). LLM 호출 없이
 임베딩+BM25만으로 끝까지 도는 것이 핵심 — 생성 품질과 분리해 리트리버 자체의
 실패모드를 진단한다(가이드 §1: 실패유형을 먼저 진단하고 그다음 아키텍처를 고른다)."""
@@ -18,7 +18,7 @@ from .build_index import DB_PATH
 from .embed import get_model
 from .tokenize_ko import to_fts_text
 
-QUESTION_DIR = "rag/docs/estimate_question"
+QUESTION_DIR = "rag_core/docs/estimate_question"
 RRF_K = 60
 FANOUT = 30
 KS = (1, 3, 5, 10)

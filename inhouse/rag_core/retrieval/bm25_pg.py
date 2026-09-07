@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """비정형 sparse(어휘) 검색 — Postgres 전문검색(FTS) 버전, `dense_pg.py`의 짝.
 
-`rag/ragkit/retrieve.py`의 `bm25_search()`(DuckDB `fts_main_chunk.match_bm25`)와
+`rag_core/ragkit/retrieve.py`의 `bm25_search()`(DuckDB `fts_main_chunk.match_bm25`)와
 같은 역할이지만, 그 인덱스는 구 코퍼스(<100건)용이라 지금 코퍼스(pgvector
 `mineral_risk.doc_chunk`, 140,031행)엔 안 맞는다(같은 데이터를 DuckDB FTS에도
 중복 색인하면 두 저장소를 계속 동기화해야 함 — 유지보수 부담). 대신 dense와
@@ -12,7 +12,7 @@
 문제 없고, 한국어 문서(조달청·KOMIS 등)는 어간 활용형까지는 못 잡지만 **숫자·
 연도·영문 고유명사**(이 하이브리드를 도입한 원래 동기 — "2026", "DRC", "LME" 같은
 dense 임베딩이 놓치기 쉬운 정확 토큰) 매칭엔 그걸로 충분하다. 한국어 형태소
-분석기(`rag/ragkit/tokenize_ko.py`)를 여기 붙이는 건 별도 과업(제목에 없는 범위
+분석기(`rag_core/ragkit/tokenize_ko.py`)를 여기 붙이는 건 별도 과업(제목에 없는 범위
 확장이라 지금은 안 함) — 필요해지면 `to_tsvector('simple', tokenize_ko.to_fts_text(txt))`
 GENERATED 컬럼으로 교체 검토.
 

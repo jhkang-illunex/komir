@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """RAG 챗봇 API 엔트리 — POST /chat(user_id·session_id 필수) → retrieval/
-unstructured.py+structured.py 병행 조회 → rag/ragkit/generate.py 인용강제 생성 →
+unstructured.py+structured.py 병행 조회 → rag_core/ragkit/generate.py 인용강제 생성 →
 streaming.py로 SSE 청크 전송 → session_store.py에 chat_message 적재.
 
 2026-08-11(1차): structured.py(정형 템플릿 조회)를 매 턴 언제 부를지 동적으로 판단하는
@@ -61,11 +61,11 @@ from common.logging_config import configure_logging  # noqa: E402
 
 configure_logging()
 
-_RAG_ROOT = _find_root(_HERE, "rag/ragkit/mcp_client.py")
+_RAG_ROOT = _find_root(_HERE, "rag_core/ragkit/mcp_client.py")
 if str(_RAG_ROOT) not in sys.path:
     sys.path.insert(0, str(_RAG_ROOT))
 
-from rag.ragkit import mcp_client  # noqa: E402
+from rag_core.ragkit import mcp_client  # noqa: E402
 
 from .routers.chat import router as chat_router  # noqa: E402
 

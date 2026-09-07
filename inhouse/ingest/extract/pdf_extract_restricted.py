@@ -20,7 +20,7 @@ opendataloader 기본 모드에서 실제 텍스트가 거의 안 나옴 — pyp
 진단지수 모델개발에만 사용 가능. RAG 코퍼스·대시보드·외부공개 절대 금지 — 그래서
 출력 경로를 RAG가 읽는 트리(data_lake/semi_structure/pdf_extract/shareable/)와
 물리적으로 분리했다(pdf_extract/restricted_diagnosis_only/). rag 쪽 코드는 이
-경로를 참조하지 않는다(inhouse/rag/ragkit/ingest.py, 같은 디렉토리의
+경로를 참조하지 않는다(inhouse/rag_core/ragkit/ingest.py, 같은 디렉토리의
 pdf_extract_shareable.py 어디에도 restricted_diagnosis_only 문자열이 없어야 함).
 
 이 스크립트는 ETL(변환+저장+매니페스트)까지만 한다. 마크다운 텍스트를 진단모델
@@ -66,7 +66,7 @@ META_TEXT = """# 사용 제한 -- 진단모델 개발 전용 (RAG/대시보드/�
 근거: `documents/0807/메일내용_0807.txt` 2번 항목
 반영계획: `documents/산출물/2026-W33_0810-0816/발주처_0807_제공자료_반영계획_260810.md`
 
-RAG 코퍼스 확장 작업(inhouse/rag/ragkit/ingest.py 등) 시 이 경로를 절대 소스
+RAG 코퍼스 확장 작업(inhouse/rag_core/ragkit/ingest.py 등) 시 이 경로를 절대 소스
 루트에 추가하지 말 것.
 """
 

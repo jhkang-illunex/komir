@@ -70,7 +70,7 @@ def extract_markdown_tables(text: str) -> list[dict]:
     """GFM 스타일 표(`| a | b |` + `| --- | --- |` 구분선)를 파싱해
     [{"columns": [...], "rows": [[...], ...]}] 로 돌려준다.
 
-    rag/ragkit/ingest.py가 docx·opendataloader-pdf 산출물을 마크다운으로 펼쳐서
+    rag_core/ragkit/ingest.py가 docx·opendataloader-pdf 산출물을 마크다운으로 펼쳐서
     청킹하므로(§chunk.py), 청크 본문에 이 형태의 표가 그대로 남아 있다 — 별도
     표 추출 파이프라인을 새로 만들 필요 없이 정규식 파싱만으로 충분하다."""
 

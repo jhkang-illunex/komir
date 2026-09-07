@@ -7,7 +7,7 @@ citations_json 또는 페이지추천 결과 포함. 이 두 엔드포인트가 
 **2026-08-26 public/private MCP 분리**: 문서 Q&A 경로가 참조하는 hybrid_search·
 pageindex_lookup 두 도구는 이제 `rag.ragkit.mcp_client`의 public/private 세션
 중 하나를 거친다(라이선스 제한 제3자 문서 접근 여부가 갈림 — 두 프로필은
-`rag/ragkit/mcp_server_public.py`·`mcp_server_private.py` 물리적으로 분리된
+`rag_core/ragkit/mcp_server_public.py`·`mcp_server_private.py` 물리적으로 분리된
 별도 모듈, 모듈독스트링 참고). `/pubchat`은 `profile="public"`,
 `/prichat`은 `profile="private"`로 `chat_turn()`을 부른다. 페이지추천
 (`page`) 경로는 이 세 도구를 안 써서 profile 무관, 두 엔드포인트 전부 같은
@@ -78,7 +78,7 @@ def _find_root(start: Path, marker: str) -> Path:
 
     소스트리(inhouse/rag_chat/app/routers/chat.py)와 컨테이너 배포본
     (Containerfile이 services/rag_chat/app→./app, services/shared→./shared,
-    rag/ragkit→./rag/ragkit로 평평하게 COPY)의 상대 깊이가 다르다 — 고정 depth
+    rag_core/ragkit→./rag_core/ragkit로 평평하게 COPY)의 상대 깊이가 다르다 — 고정 depth
     대신 탐색으로 두 경우를 다 맞춘다(services/shared/db.py·ingest/
     parsers/pdf.py와 같은 패턴)."""
 
@@ -91,7 +91,7 @@ def _find_root(start: Path, marker: str) -> Path:
 _HERE = Path(__file__).resolve()
 for _root in (
     _find_root(_HERE, "common/llm_client.py"),
-    _find_root(_HERE, "rag/ragkit/generate.py"),
+    _find_root(_HERE, "rag_core/ragkit/generate.py"),
 ):
     if str(_root) not in sys.path:
         sys.path.insert(0, str(_root))
@@ -100,7 +100,7 @@ from fastapi import APIRouter  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
 from sse_starlette.sse import EventSourceResponse  # noqa: E402
 
-from rag.ragkit.chatbot import STATUS_STAGES, chat_turn  # noqa: E402
+from rag_core.ragkit.chatbot import STATUS_STAGES, chat_turn  # noqa: E402
 
 from common.config import get_settings  # noqa: E402
 from common.llm_client import get_chat_client  # noqa: E402

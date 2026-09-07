@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     LLM_CONCURRENCY: int = 8
     LLM_TIMEOUT_SECONDS: float = 120.0
 
-    # ── 임베딩(dense, rag/ragkit/embed.py가 실제로 쓰는 값 — 로컬 sentence-
+    # ── 임베딩(dense, rag_core/ragkit/embed.py가 실제로 쓰는 값 — 로컬 sentence-
     #    transformers 직접 로드라 EMBEDDING_BASE_URL은 현재 코드 경로에서는 안
     #    쓰이지만(§5 실사 기록), Settings 계약 자체는 유지) ──
     EMBEDDING_BASE_URL: str = ""

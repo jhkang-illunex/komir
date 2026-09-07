@@ -58,11 +58,11 @@ from ._shared_root import ensure_shared_on_path
 
 ensure_shared_on_path(Path(__file__).resolve())
 
-from rag.retrieval.evidence import Evidence  # noqa: E402
+from rag_core.retrieval.evidence import Evidence  # noqa: E402
 
 _logger = logging.getLogger(__name__)
 
-#: `inhouse/rag/ragkit/mcp_client.py` -> ragkit -> rag -> inhouse. `python -m
+#: `inhouse/rag_core/ragkit/mcp_client.py` -> ragkit -> rag -> inhouse. `python -m
 #: rag.ragkit.mcp_server_{public,private}`는 이 디렉토리를 cwd로 해야 `rag`
 #: 패키지가 보인다(CLAUDE.md §2의 "python -m geo는 부모에서" 함정과 같은 원리).
 _INHOUSE_ROOT = Path(__file__).resolve().parents[2]
@@ -70,8 +70,8 @@ _INHOUSE_ROOT = Path(__file__).resolve().parents[2]
 #: 프로필 -> 실행할 모듈. 물리적 분리의 핵심 — 접근범위는 여기서 "어느 파일을
 #: 띄울지"로만 정해지고, 그 아래로는 어떤 옵션도 전달하지 않는다.
 _MODULE_BY_PROFILE: dict[str, str] = {
-    "public": "rag.ragkit.mcp_server_public",
-    "private": "rag.ragkit.mcp_server_private",
+    "public": "rag_core.ragkit.mcp_server_public",
+    "private": "rag_core.ragkit.mcp_server_private",
 }
 
 _START_TIMEOUT = 30.0

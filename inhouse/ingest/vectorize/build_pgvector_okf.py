@@ -31,9 +31,9 @@ if str(_INHOUSE_ROOT) not in sys.path:
     sys.path.insert(0, str(_INHOUSE_ROOT))
 
 from ingest import status as ingest_status  # noqa: E402
-from rag.ragkit.chunk import chunk_document  # noqa: E402
-from rag.ragkit.embed import DIM, encode_passages  # noqa: E402
-from rag.ragkit.ingest import DocRecord  # noqa: E402
+from rag_core.ragkit.chunk import chunk_document  # noqa: E402
+from rag_core.ragkit.embed import DIM, encode_passages  # noqa: E402
+from rag_core.ragkit.ingest import DocRecord  # noqa: E402
 from common.db import pg_connect  # noqa: E402
 from common.config import get_settings  # noqa: E402
 

@@ -13,7 +13,7 @@ ingest.py의 load_documents()가 documents/산출물과 함께 자동으로 읽�
 별도 물리 경로(pdf_extract/restricted_diagnosis_only/)로 처리한다 — 이 파일은 그
 경로를 참조하지 않는다(두 파일이 한 패키지에 있어도 출력 트리는 계속 분리).
 
-2026-08-27 rag/ragkit/pdf_extract.py → inhouse/ingest/extract/pdf_extract_shareable.py로
+2026-08-27 rag_core/ragkit/pdf_extract.py → inhouse/ingest/extract/pdf_extract_shareable.py로
 이동(ETL 전용이라 서빙 패키지에서 분리, ingest/README.md).
 
 실행: cd inhouse && python -m ingest.extract.pdf_extract_shareable
@@ -31,7 +31,7 @@ if str(REPO_ROOT / "inhouse") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "inhouse"))
 from ingest.extractors import extract_with_fallback  # noqa: E402
 from ingest import status as ingest_status  # noqa: E402
-from rag.ragkit.ingest import _real_content_len  # noqa: E402
+from rag_core.ragkit.ingest import _real_content_len  # noqa: E402
 
 SHAREABLE_ROOT = REPO_ROOT / "inhouse/data_lake/semi_structure/pdf_extract/shareable"
 OCR_CACHE_DIR = str(SHAREABLE_ROOT / "_ocr_cache")

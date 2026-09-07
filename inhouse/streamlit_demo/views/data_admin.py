@@ -23,7 +23,7 @@ import yaml
 _INHOUSE_ROOT = Path(__file__).resolve().parents[2]
 _SEMI = _INHOUSE_ROOT / "data_lake" / "semi_structure"
 
-from rag.retrieval.access import PRIVATE_ONLY_SOURCE_GROUPS  # noqa: E402
+from rag_core.retrieval.access import PRIVATE_ONLY_SOURCE_GROUPS  # noqa: E402
 
 # Streamlit이 view 파일을 __main__으로 실행해(exec) __name__ 기반 로거명이
 # 전부 "__main__"으로 뭉개진다(실측 확인) — 이 파일에서만은 경로를 그대로 쓴다.

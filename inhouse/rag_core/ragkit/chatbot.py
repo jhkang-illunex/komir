@@ -8,12 +8,12 @@ routers/chat.py가 이 async generator를 SSE로 감싸기만 한다(2026-08-13 
 
 근거 조회: 정형(Postgres out_*)·dense(pgvector doc_chunk)·PageIndex(OKF 트리) 세
 도구를 LangGraph로 오케스트레이션하는 chatbot_graph.retrieve_evidence()가 담당한다
-(2026-08-13 재작업 — 최초 구현은 `rag/index/rag.duckdb` 기반 hybrid_search 하나만
+(2026-08-13 재작업 — 최초 구현은 `rag_core/index/rag.duckdb` 기반 hybrid_search 하나만
 썼는데, 그 인덱스는 구 코퍼스(문서<100건)용이고 같은 날 이미 pgvector로
 140,031청크 코퍼스가 구축돼 있던 걸 뒤늦게 발견해 전량 교체했다 — WORKLOG
 "rag 패키지에 chatbot 엔트리포인트 신설" 절 참고).
 
-인용강제 답변 생성(ABSTAIN_TEXT·_strip_uncited_sentences)은 rag/ragkit/generate.py
+인용강제 답변 생성(ABSTAIN_TEXT·_strip_uncited_sentences)은 rag_core/ragkit/generate.py
 를 재사용한다(재구현 금지 — 가이드 §4 "증명 가능한 것만 말하고 나머지는 기권"
 원칙이 이미 거기 구현돼 있음). 다만 어투·유형별 지시(아래 CHATBOT_SYSTEM_PROMPT
 단락)가 붙어 인용 규칙 자체는 같지만 프롬프트 상수는 generate.SYSTEM_PROMPT를

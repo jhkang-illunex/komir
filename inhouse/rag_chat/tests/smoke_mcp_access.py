@@ -25,11 +25,11 @@ import sys
 from pathlib import Path
 
 _HERE = Path(__file__).resolve()
-_RAG_ROOT = next(p for p in (_HERE, *_HERE.parents) if (p / "rag" / "ragkit" / "mcp_client.py").is_file())
+_RAG_ROOT = next(p for p in (_HERE, *_HERE.parents) if (p / "rag_core" / "ragkit" / "mcp_client.py").is_file())
 if str(_RAG_ROOT) not in sys.path:
     sys.path.insert(0, str(_RAG_ROOT))
 
-from rag.ragkit import mcp_client  # noqa: E402
+from rag_core.ragkit import mcp_client  # noqa: E402
 
 #: doc_chunk.src / PageIndex source_group에 실제로 찍히는 라이선스 제한 갈래.
 _PRIVATE_SOURCE = "Argus_비철금속_일일"

@@ -64,7 +64,7 @@ from ._shared_root import ensure_shared_on_path
 ensure_shared_on_path(Path(__file__).resolve())
 
 from common.llm_client import LLM_TRANSIENT_ERRORS, KomirJsonLLM  # noqa: E402
-from rag.retrieval.evidence import Evidence  # noqa: E402
+from rag_core.retrieval.evidence import Evidence  # noqa: E402
 
 _logger = logging.getLogger(__name__)
 
@@ -433,7 +433,7 @@ def _last_assistant_answer(state: RetrievalState) -> str:
 
 def _log_prefix(state: RetrievalState) -> str:
     session_id = state.get("session_id")
-    return f"[rag/ragkit/chatbot_graph session={session_id[:8] if session_id else '?'}]"
+    return f"[rag_core/ragkit/chatbot_graph session={session_id[:8] if session_id else '?'}]"
 
 
 def _route_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:

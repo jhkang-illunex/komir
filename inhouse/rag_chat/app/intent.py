@@ -8,7 +8,7 @@
 방식 선택 이유: 완벽한 자동판별을 노리지 않고 (a) 요청 바디의 명시적 `mode`가 있으면
 그대로 따르고 (b) mode=auto일 때만 LLM 1회 호출로 분류한다. 분류에 실패하면 문서
 Q&A로 보낸다 — 먼저 구현돼 실제로 돌던 기본 경로이고, 문서에 근거가 없으면 이미
-기권(ABSTAIN)하도록 돼 있어(rag/ragkit/generate.py) 오분류 비용이 더 작다.
+기권(ABSTAIN)하도록 돼 있어(rag_core/ragkit/generate.py) 오분류 비용이 더 작다.
 LLM 호출 자체가 안 되는 환경(서버 다운 등)에서도 문서 경로는 검색결과 0건 → 기권으로
 안전하게 끝난다."""
 from __future__ import annotations

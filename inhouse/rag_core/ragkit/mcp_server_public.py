@@ -20,7 +20,7 @@ hybrid_search_pg`/`pageindex.lookup`)에 넘긴다. 조건문·환경변수 분�
 완전히 같다.
 
 실행(직접 점검용, 실제로는 mcp_client.py가 서브프로세스로 띄운다):
-    cd inhouse && python -m rag.ragkit.mcp_server_public
+    cd inhouse && python -m rag_core.ragkit.mcp_server_public
 """
 from __future__ import annotations
 
@@ -34,9 +34,9 @@ from ._shared_root import ensure_shared_on_path
 
 ensure_shared_on_path(Path(__file__).resolve())
 
-from rag.retrieval import hybrid_pg, pageindex  # noqa: E402
-from rag.retrieval.access import PRIVATE_ONLY_KOMIS_PAGES, PRIVATE_ONLY_SOURCE_GROUPS  # noqa: E402
-from rag.retrieval.evidence import from_dense_chunk, from_pageindex_hit  # noqa: E402
+from rag_core.retrieval import hybrid_pg, pageindex  # noqa: E402
+from rag_core.retrieval.access import PRIVATE_ONLY_KOMIS_PAGES, PRIVATE_ONLY_SOURCE_GROUPS  # noqa: E402
+from rag_core.retrieval.evidence import from_dense_chunk, from_pageindex_hit  # noqa: E402
 
 from ._mcp_tools_common import register_common_tools  # noqa: E402
 

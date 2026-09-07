@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """chat_session/chat_message CRUD — rag.ragkit.chatbot_store 재노출.
 
-2026-08-13: 실제 CRUD 로직을 rag/ragkit/chatbot_store.py로 이관했다(rag 패키지
+2026-08-13: 실제 CRUD 로직을 rag_core/ragkit/chatbot_store.py로 이관했다(rag 패키지
 chatbot 엔트리포인트 신설과 함께 — 재구현 금지 원칙, 로직은 한 곳만 둔다). 이
 모듈은 서빙 레이어의 설정 해석(get_settings().MSR_DB — DuckDB/Postgres cutover를
 아는 유일한 곳)을 ragkit의 범용 CRUD에 주입하는 얇은 어댑터로만 남는다. 호출부
@@ -15,8 +15,8 @@ from pathlib import Path
 
 def _find_root(start: Path, marker: str) -> Path:
     """marker(상대경로 파일)를 담은 디렉토리를 위로 훑어 찾는다 — 소스트리와
-    컨테이너 배포본(Containerfile이 services/shared→./shared, rag/ragkit→
-    ./rag/ragkit로 평평하게 COPY)의 상대 깊이가 달라 고정 depth 대신 탐색한다
+    컨테이너 배포본(Containerfile이 services/shared→./shared, rag_core/ragkit→
+    ./rag_core/ragkit로 평평하게 COPY)의 상대 깊이가 달라 고정 depth 대신 탐색한다
     (routers/chat.py의 같은 이름 헬퍼와 동일 패턴 — 이 파일도 독립적으로 임포트될
     수 있어 자체 path 설정을 갖는다)."""
 
@@ -29,13 +29,13 @@ def _find_root(start: Path, marker: str) -> Path:
 _HERE = Path(__file__).resolve()
 for _root in (
     _find_root(_HERE, "common/llm_client.py"),
-    _find_root(_HERE, "rag/ragkit/generate.py"),
+    _find_root(_HERE, "rag_core/ragkit/generate.py"),
 ):
     if str(_root) not in sys.path:
         sys.path.insert(0, str(_root))
 
-from rag.ragkit import chatbot_store as _store  # noqa: E402
-from rag.ragkit.chatbot_store import ChatMessage  # noqa: E402,F401
+from rag_core.ragkit import chatbot_store as _store  # noqa: E402
+from rag_core.ragkit.chatbot_store import ChatMessage  # noqa: E402,F401
 
 from common.config import get_settings  # noqa: E402
 

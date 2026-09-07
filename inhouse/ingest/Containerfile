@@ -4,7 +4,7 @@
 # 달리 /app이 아니라 /komir/inhouse인 이유: 이 패키지 안의 두 관례가 소스트리에서만
 # 우연히 맞물린다 — okf/pageindex/vectorize 쪽(예: build_okf_documents.py)은
 # `parents[2]`로 inhouse를 찾고, extract 쪽(pdf_extract_shareable.py·
-# pdf_extract_restricted.py)과 rag/ragkit/ingest.py는 `parents[3]` 뒤 "inhouse"를
+# pdf_extract_restricted.py)과 rag_core/ragkit/ingest.py는 `parents[3]` 뒤 "inhouse"를
 # 붙여 찾는다. /app으로 평평하게 COPY하면 전자는 우연히 맞지만(parents[2]=/app을
 # inhouse로 취급) 후자는 존재하지 않는 "/inhouse"를 가리키게 돼 `load_documents()`의
 # EXTRA_ROOTS가 조용히 빈 결과를 내고, build_pgvector_index의 전량 재적재가 매주
@@ -45,7 +45,7 @@ COPY ingest ./ingest
 # rag_chat 컨테이너 런타임 의존 라이브러리(ingest/README.md "남긴 것")를 이쪽도
 # import한다 — chunk/embed/ingest만, tokenize_ko·generate·chatbot 등은 불필요
 # (common.llm을 쓰는 건 그쪽뿐이라 이 컨테이너엔 안 실음).
-COPY rag/ragkit ./rag/ragkit
+COPY rag_core/ragkit ./rag_core/ragkit
 # 공용 인프라(2026-09-07 services/ 해체 — 구 services/shared의 config/db/logging/
 # llm_client가 inhouse 루트 직속 common/으로 이동, ingest 모듈들은 `from common.db
 # import ...`를 쓴다). common/엔 __init__.py가 없지만 Python 3 namespace package로
@@ -55,8 +55,8 @@ COPY common ./common
 # mineral_supply_risk/db/dbio.py→common/dbio.py로 흡수돼 geo/·mineral_supply_risk/ COPY 불필요.
 # PageIndex 트리 빌드(pageindex/build_pageindex_trees.py)가 쓰는 LLM 진입점+벤더 —
 # 2026-09-07 구 services/shared/pageindex_client.py·pageindex_vendor/가 rag/로 이동.
-COPY rag/pageindex_client.py ./rag/pageindex_client.py
-COPY rag/pageindex_vendor ./rag/pageindex_vendor
+COPY rag_core/pageindex_client.py ./rag_core/pageindex_client.py
+COPY rag_core/pageindex_vendor ./rag_core/pageindex_vendor
 
 # build_pgvector_index.py가 적용하는 DDL(dense 벡터 컬럼·HNSW 인덱스).
 COPY data_lake/db/schema_pgvector.sql ./data_lake/db/schema_pgvector.sql

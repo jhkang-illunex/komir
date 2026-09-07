@@ -3,17 +3,17 @@
 
 build_index.py(DuckDB)와 **병렬 구조**다 — 로딩(ingest.load_documents)·청킹
 (chunk.chunk_document)·임베딩(embed.encode_passages)은 완전히 같은 코드를 쓰고,
-저장소만 DuckDB 대신 Postgres+pgvector다. 기존 rag/index/rag.duckdb는 건드리지
+저장소만 DuckDB 대신 Postgres+pgvector다. 기존 rag_core/index/rag.duckdb는 건드리지
 않는다(이번 작업은 추가이지 대체가 아님 — BM25 절반은 여전히 DuckDB FTS).
 
 왜 pgvector인가: 2026-08-11 사용자 결정. komis_demo에 pgvector 0.8.2가 이미
 설치돼 있어(실측) Qdrant 컨테이너를 새로 띄울 이유가 없어졌다. 상세는
 data_lake/db/schema_pgvector.sql 헤더와 CONTAINER_ARCHITECTURE.md §0·§4.
 
-2026-08-27: rag/ragkit/build_pgvector_index.py에서 inhouse/ingest/vectorize/로 이동
-(ETL 전용 스크립트라 서빙 패키지 rag/ragkit에서 분리 — ingest/README.md 참고).
+2026-08-27: rag_core/ragkit/build_pgvector_index.py에서 inhouse/ingest/vectorize/로 이동
+(ETL 전용 스크립트라 서빙 패키지 rag_core/ragkit에서 분리 — ingest/README.md 참고).
 로딩·청킹·임베딩 라이브러리(rag.ragkit.{ingest,chunk,embed})는 rag_chat 컨테이너의
-런타임 의존이라 그대로 rag/ragkit에 남겨 두고 여기서 import만 한다.
+런타임 의존이라 그대로 rag_core/ragkit에 남겨 두고 여기서 import만 한다.
 
 실행(cwd=inhouse/ — CLAUDE.md §2 표준 실행 관례):
     cd inhouse && python -m ingest.vectorize.build_pgvector_index
@@ -32,9 +32,9 @@ if str(_INHOUSE_ROOT) not in sys.path:
     sys.path.insert(0, str(_INHOUSE_ROOT))
 
 from ingest import status as ingest_status  # noqa: E402
-from rag.ragkit.chunk import chunk_document  # noqa: E402
-from rag.ragkit.embed import DIM, encode_passages  # noqa: E402
-from rag.ragkit.ingest import load_documents  # noqa: E402
+from rag_core.ragkit.chunk import chunk_document  # noqa: E402
+from rag_core.ragkit.embed import DIM, encode_passages  # noqa: E402
+from rag_core.ragkit.ingest import load_documents  # noqa: E402
 from common.config import get_settings  # noqa: E402
 from common.db import apply_schema_pg, pg_connect  # noqa: E402
 from common.logging_config import configure_logging  # noqa: E402
@@ -103,7 +103,7 @@ def build(schema_only: bool = False, run: "ingest_status.RunHandle | None" = Non
         ))
 
     # 재발 방지 가드(2026-08-27 실사고): documents/산출물 로딩이 어떤 이유로든
-    # 0건이면(예: cwd가 잘못돼 ROOT를 못 찾음 — rag/ragkit/ingest.py의 2026-08-11
+    # 0건이면(예: cwd가 잘못돼 ROOT를 못 찾음 — rag_core/ragkit/ingest.py의 2026-08-11
     # 버그수정 이력과 같은 종류의 실패) 아래 DELETE가 그대로 실행되고 재적재는
     # 0행이라 결과적으로 전체 코퍼스가 삭제된다(실측: 이 경로로 mineral_risk.
     # doc_chunk 138,825행이 통째로 날아간 사고 발생, 원본 OKF 마크다운이 살아있어

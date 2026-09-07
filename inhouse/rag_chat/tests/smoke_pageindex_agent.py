@@ -23,7 +23,7 @@ sys.path.insert(0, str(_INHOUSE_ROOT))
 
 from smoke_page_recommend import ScriptedJsonLLM  # noqa: E402
 
-from rag.retrieval import pageindex_agent  # noqa: E402
+from rag_core.retrieval import pageindex_agent  # noqa: E402
 from common.llm_client import LLMError, LLMOutputError  # noqa: E402
 
 

@@ -62,8 +62,8 @@ if str(_INHOUSE_ROOT) not in sys.path:
     sys.path.insert(0, str(_INHOUSE_ROOT))
 
 from common.llm_client import LLM_TRANSIENT_ERRORS, KomirJsonLLM  # noqa: E402
-from rag.retrieval import pageindex  # noqa: E402
-from rag.retrieval.evidence import Evidence  # noqa: E402
+from rag_core.retrieval import pageindex  # noqa: E402
+from rag_core.retrieval.evidence import Evidence  # noqa: E402
 
 # 2026-08-13 herd 코드리뷰(비판자②)로 실측 발견한 "LLM 장애 시 근거 유실" 버그의
 # 수정을 llm_client.LLM_TRANSIENT_ERRORS로 승격했다(chatbot_graph.py의 route/

@@ -4,13 +4,13 @@
 `인수인계서_TODO_대조_260813.md`(documents/산출물/2026-W33_0810-0816/) §1-2 —
 "DB/VDB 결과를 공통 근거 계약(단위·기준시점·출처)으로 통일" 항목에 대한 구현.
 세 도구(structured.py/dense_pg.py/pageindex.py)가 각각 다른 모양을 반환해
-rag/ragkit/chatbot_graph.py가 그대로는 하나의 인용 프롬프트에 섞어 넣을 수
+rag_core/ragkit/chatbot_graph.py가 그대로는 하나의 인용 프롬프트에 섞어 넣을 수
 없었다 — 이 모듈이 그 통일 지점이다. 각 도구의 원본 결과를 `Evidence`로
 변환하는 어댑터 함수만 두고, 조회 로직 자체(structured.py/dense_pg.py/
 pageindex.py)는 건드리지 않는다(재구현 금지).
 
 `text`는 항상 사람이 읽는 근거 발췌문 — 구조화 결과(다건)는 마크다운 표로
-렌더링해 넣는다. 이렇게 하면 rag/ragkit/chatbot_events.py의 표·차트 추출
+렌더링해 넣는다. 이렇게 하면 rag_core/ragkit/chatbot_events.py의 표·차트 추출
 (GFM 파싱)이 kind에 상관없이 동일하게 동작한다(structured/dense/pageindex를
 구분하는 별도 분기가 필요 없다 — 오히려 structured 결과가 markdown 스크래핑
 결과보다 완전한 숫자열이라 차트 재료로 더 낫다)."""
@@ -80,7 +80,7 @@ def from_structured(template: str, commodity_code: str, result: Any) -> Evidence
             return None
         row = result
         # 2026-08-28(챗봇_룰준수_감사_260828.md §7) — 원래 라벨이 "사유:"였다.
-        # 챗봇(rag/ragkit/chatbot.py)은 [근거] 발췌문을 그대로 인용하도록
+        # 챗봇(rag_core/ragkit/chatbot.py)은 [근거] 발췌문을 그대로 인용하도록
         # 강제되어 있어("오직 [근거] 섹션에만 근거", CHATBOT_SYSTEM_PROMPT
         # 규칙1) 이 라벨을 그대로 옮겨 답하는데, chatbot_rule.txt 유형5
         # 유의사항("인과 단정 금지, 동시 발생 흐름으로 서술")과 충돌한다 —

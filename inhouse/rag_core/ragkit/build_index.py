@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""documents/산출물 -> DuckDB 인덱스(rag/index/rag.duckdb) 빌드.
+"""documents/산출물 -> DuckDB 인덱스(rag_core/index/rag.duckdb) 빌드.
 - doc/chunk 테이블 적재
 - dense: multilingual-e5-small 임베딩(FLOAT[384], list_cosine_similarity로 질의)
 - sparse: DuckDB FTS(BM25) + 한글 바이그램 토크나이저(tokenize_ko) 조합
@@ -16,7 +16,7 @@ from .embed import DIM, encode_passages
 from .ingest import load_documents
 from .tokenize_ko import to_fts_text
 
-DB_PATH = "rag/index/rag.duckdb"
+DB_PATH = "rag_core/index/rag.duckdb"
 
 DDL = f"""
 CREATE OR REPLACE TABLE doc (

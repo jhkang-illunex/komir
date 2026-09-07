@@ -31,8 +31,8 @@ from datetime import datetime, timezone
 _PG_SCHEMA = os.environ.get("PG_SCHEMA", "mineral_risk")
 _QMARK_RE = re.compile(r"\?")
 
-# rag/ragkit이 표준 실행 관례(CLAUDE.md §2: `cd inhouse && python -m rag ...`)로
-# cwd=inhouse/일 때 맞는 상대경로 — build_index.py의 DB_PATH="rag/index/rag.duckdb"와
+# rag_core/ragkit이 표준 실행 관례(CLAUDE.md §2: `cd inhouse && python -m rag_core ...`)로
+# cwd=inhouse/일 때 맞는 상대경로 — build_index.py의 DB_PATH="rag_core/index/rag.duckdb"와
 # 같은 패턴. 서빙 레이어(services/rag_chat)는 절대경로(get_settings().MSR_DB)를
 # db_path 인자로 명시 주입하므로 이 기본값을 쓰지 않는다.
 DEFAULT_DB_PATH = os.environ.get("MSR_DB", "data_lake/db/minerals.duckdb")
