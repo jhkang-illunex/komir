@@ -1035,17 +1035,10 @@ def _supply_auxiliary_from_request(request: AnalysisSummaryRequest) -> SupplyAux
         ) from exc
 
 
-@dataclass(frozen=True, slots=True)
-class _EvidenceClaim:
-    id: str
-    section: SectionId
-    fact: str
-
-
 @dataclass(slots=True)
 class _CalculatedSummary:
     grade: GradeResult
-    claims: list[_EvidenceClaim]
+    claims: list[EvidenceClaim]
     key_metrics: list[Metric]
     detailed_metrics: list[Metric]
     patterns: list[DetectedPattern]
@@ -1243,7 +1236,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
         f"{current.month} {series.mineral.name} {policy.name}는 "
         f"{_number(current.score)}점으로 {grade.label} 단계다."
     )
-    claims = [_EvidenceClaim("current_state", "core_diagnosis", current_fact)]
+    claims = [EvidenceClaim("current_state", "core_diagnosis", current_fact, required=True)]
 
     contiguous_pairs = [
         (before, after, before_grade, after_grade)
@@ -1313,13 +1306,14 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
                     basis=f"{previous.month} 대비",
                 )
             )
-        claims.append(_EvidenceClaim("latest_score_change", "core_diagnosis", score_fact))
+        claims.append(EvidenceClaim("latest_score_change", "core_diagnosis", score_fact, required=True))
     else:
         claims.append(
-            _EvidenceClaim(
+            EvidenceClaim(
                 "latest_score_change",
                 "core_diagnosis",
                 "이전 관측치가 없어 최근 점수 변화는 계산하지 않았다.",
+                required=True,
             )
         )
         omitted.append(
@@ -1340,7 +1334,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
     key_metrics.append(
         _metric("current_grade_streak", "현재 단계 연속기간", streak, unit="개월")
     )
-    claims.append(_EvidenceClaim("grade_streak", "major_changes", streak_fact))
+    claims.append(EvidenceClaim("grade_streak", "major_changes", streak_fact, required=True))
 
     transitions = [
         pair for pair in contiguous_pairs if pair[2].label != pair[3].label
@@ -1366,7 +1360,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
         )
     else:
         transition_fact = "조회기간의 연속 월 구간에서는 단계 전환이 확인되지 않았다."
-    claims.append(_EvidenceClaim("grade_transition", "major_changes", transition_fact))
+    claims.append(EvidenceClaim("grade_transition", "major_changes", transition_fact, required=True))
 
     if contiguous_pairs:
         largest = max(contiguous_pairs, key=lambda pair: abs(pair[1].score - pair[0].score))
@@ -1400,7 +1394,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
             )
         )
     claims.append(
-        _EvidenceClaim("largest_monthly_score_change", "major_changes", largest_fact)
+        EvidenceClaim("largest_monthly_score_change", "major_changes", largest_fact, required=True)
     )
 
     # 2026-09-01 신설 — PDF §2-3 "주요 요인으로는 [가격리스크/세계 수급비율/
@@ -1463,22 +1457,24 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
                 )
         if import_growth_fact and concentration_fact:
             claims.append(
-                _EvidenceClaim(
+                EvidenceClaim(
                     "supply_key_factors",
                     "major_changes",
                     f"{import_growth_fact}. {concentration_fact}.",
+                    required=True,
                 )
             )
         elif import_growth_fact:
             claims.append(
-                _EvidenceClaim("supply_key_factors", "major_changes", f"{import_growth_fact}.")
+                EvidenceClaim("supply_key_factors", "major_changes", f"{import_growth_fact}.", required=True)
             )
         elif concentration_fact:
             claims.append(
-                _EvidenceClaim(
+                EvidenceClaim(
                     "supply_key_factors",
                     "major_changes",
                     f"국내 수입국 편중도를 보면 {concentration_fact}.",
+                    required=True,
                 )
             )
 
@@ -1509,7 +1505,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
             )
         )
         claims.append(
-            _EvidenceClaim("latest_price_change", "current_position", price_fact)
+            EvidenceClaim("latest_price_change", "current_position", price_fact, required=True)
         )
     else:
         omitted.append(
@@ -1591,7 +1587,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
     )
     detailed_metrics.extend(_supply_auxiliary_metrics(series))
     claims.append(
-        _EvidenceClaim("period_average_position", "current_position", position_fact)
+        EvidenceClaim("period_average_position", "current_position", position_fact, required=True)
     )
 
     return _CalculatedSummary(
@@ -1605,7 +1601,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
 
 
 def _deterministic_narrative(
-    claims: list[_EvidenceClaim] | list[EvidenceClaim],
+    claims: list[EvidenceClaim],
 ) -> SummaryNarrative:
     grouped: dict[SectionId, list[SummarySentence]] = {
         "core_diagnosis": [],
@@ -1655,7 +1651,7 @@ def _number_tokens(text: str) -> set[str]:
 
 def _validate_llm_summary(
     candidate: SummaryNarrative,
-    claims: list[_EvidenceClaim] | list[EvidenceClaim],
+    claims: list[EvidenceClaim],
     *,
     page_id: SummaryPageId,
 ) -> str | None:
@@ -1713,9 +1709,7 @@ def _validate_llm_summary(
                     return "근거에 없는 단계명을 사용했다."
             used_ids.extend(sentence.evidence_ids)
     if page_id == "map_mineral":
-        required_ids = {
-            claim.id for claim in claims if getattr(claim, "required", False)
-        }
+        required_ids = {claim.id for claim in claims if claim.required}
         if not required_ids <= set(used_ids):
             return "필수 evidence_id를 모두 사용하지 않았다."
     elif Counter(used_ids) != Counter(claim_map.keys()):
@@ -2814,7 +2808,7 @@ class AnalysisSummaryService:
         self,
         response: AnalysisSummaryResponse,
         policy: PagePolicy | SummaryPageContext,
-        claims: list[_EvidenceClaim] | list[EvidenceClaim],
+        claims: list[EvidenceClaim],
     ) -> AnalysisSummaryResponse:
         """Request LLM refinement and accept only evidence-valid output."""
 
@@ -2824,7 +2818,7 @@ class AnalysisSummaryService:
                 "evidence_id": claim.id,
                 "section": claim.section,
                 "fact": claim.fact,
-                "required": getattr(claim, "required", True),
+                "required": claim.required,
             }
             for claim in claims
         ]
@@ -2834,7 +2828,7 @@ class AnalysisSummaryService:
         cfg = resolve_page_config(response.page_id)
         if response.page_id == "map_mineral":
             capacity = (cfg.total_sentence_range or (5, 8))[1] * cfg.max_evidence_ids_per_sentence
-            demand = sum(1 for claim in claims if getattr(claim, "required", False))
+            demand = sum(1 for claim in claims if claim.required)
         else:
             capacity = sum(hi for _, hi in cfg.section_sentence_ranges.values()) * cfg.max_evidence_ids_per_sentence
             demand = len(claims)
