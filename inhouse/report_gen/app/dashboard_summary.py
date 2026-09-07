@@ -146,7 +146,7 @@ def _fallback_commodity(cc: str, alert_name: str, ci: float) -> CommodityNarrati
 # ─────────────────────────── LLM 호출(공용) ───────────────────────────
 def _call_llm(task: str, instructions: str, payload: dict, output_model, fallback):
     try:
-        from common.llm_client import KomirJsonLLM, LLMError
+        from common.llm_client import KomirJsonLLM
 
         llm = KomirJsonLLM()
         invocation = llm.invoke(task=task, instructions=instructions, payload=payload,
