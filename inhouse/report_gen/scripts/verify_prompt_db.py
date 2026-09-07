@@ -117,7 +117,7 @@ def v3_db_change_propagates() -> None:
         svc = AnalysisSummaryService(None, llm=None)
         resp = svc.analyze(AnalysisSummaryRequest(page_id="price_minor_metals", **PRICE_BODY))
         check(resp.page_definition == marker_def and resp.notices == [marker_constraint], "analyze() 응답 page_definition/notices 반영")
-        payload = build_summary_payload(response=resp, policy=None, allowed_evidence=[])  # type: ignore[arg-type]
+        payload = build_summary_payload(response=resp, allowed_evidence=[])
         check(payload["page_policy"]["definition"] == marker_def and payload["output_contract"]["section_sentence_ranges"]["major_changes"] == [1, 3], "build_summary_payload page_policy/output_contract 반영")
         # 검증기: major_changes 3문장 — 코드 기본값(1,2)이면 거부, DB(1,3)면 문장수 통과
         claims = [c for c in svc.analyze(AnalysisSummaryRequest(page_id="price_minor_metals", **PRICE_BODY)).summary.major_changes]

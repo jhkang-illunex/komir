@@ -12,6 +12,7 @@ summary` 등을 따른다 — 재사용 가능한 헬퍼(`EvidenceClaim`·`Summa
 """
 from __future__ import annotations
 
+import logging
 import re as _re
 import statistics as _statistics
 from datetime import date as _date, timedelta as _timedelta
@@ -37,6 +38,9 @@ def _subject(name: str) -> str:
     has_batchim = 0xAC00 <= codepoint <= 0xD7A3 and (codepoint - 0xAC00) % 28 != 0
     return f"{name}{'이' if has_batchim else '가'}"
 from .models import (
+    CURRENT_POSITION_MAX_SENTENCES,
+    KEY_METRICS_MAX_COUNT,
+    MAJOR_CHANGES_MAX_SENTENCES,
     DetectedPattern,
     GeoEventObservation,
     Metric,
@@ -46,6 +50,27 @@ from .models import (
     TradeKomisTotals,
     TradeMapSeries,
 )
+
+_log = logging.getLogger(__name__)
+
+
+def _capped_key_metrics(key_metrics: list[Metric], *, page_id: str) -> list[Metric]:
+    """`AnalysisSummaryResponse.key_metrics` 상한(`KEY_METRICS_MAX_COUNT`)에 맞춰
+    자르되, 실제로 잘릴 때만 경고 로그를 남긴다(2026-09-08 SC-009: `key_metrics
+    [:8]`이 여러 계산기에 그대로 복제돼 있었고, 상한을 넘는 계산기가 새로 추가돼도
+    뒤쪽 지표가 조용히 사라지는 걸 알 방법이 없었다 — 재발 사고 2건 기록)."""
+
+    if len(key_metrics) > KEY_METRICS_MAX_COUNT:
+        _log.warning(
+            "%s: key_metrics %d개 중 %d개가 상한(%d)을 넘어 잘렸다: %s",
+            page_id,
+            len(key_metrics),
+            len(key_metrics) - KEY_METRICS_MAX_COUNT,
+            KEY_METRICS_MAX_COUNT,
+            [metric.id for metric in key_metrics[KEY_METRICS_MAX_COUNT:]],
+        )
+    return key_metrics[:KEY_METRICS_MAX_COUNT]
+
 
 # 2026-08-28: `direction`은 실제 `geo_event` 데이터 확인 결과 7개 값의 깨끗한
 # 통제 어휘라(`GeoEventObservation` docstring 참고) 라벨링이 안전하다.
@@ -324,7 +349,7 @@ def calculate_price_group_summary(
 
     return AdditionalCalculatedSummary(
         claims=claims,
-        key_metrics=key_metrics[:8],
+        key_metrics=_capped_key_metrics(key_metrics, page_id=f"price_group:{group}"),
         detailed_metrics=key_metrics,
         patterns=[],
         omitted=[],
@@ -595,7 +620,7 @@ def calculate_price_summary(
         # price_streak만으로 5개에 닿을 수 있다(관측치가 창마다 달라지는
         # 경우) — 새 근거를 무조건 추가하면 그 경로가 `ValidationError`로
         # 죽는다(2026-08-28 실측 재현). 남은 자리만큼만 추가해 절대 넘지 않는다.
-        _MAJOR_CHANGES_HARD_CAP = 5
+        _MAJOR_CHANGES_HARD_CAP = MAJOR_CHANGES_MAX_SENTENCES
         room = _MAJOR_CHANGES_HARD_CAP - sum(1 for claim in claims if claim.section == "major_changes")
         selected = sorted(
             (event for event in geo_events if event.severity >= _PRICE_DRIVER_MIN_SEVERITY),
@@ -789,7 +814,7 @@ def calculate_price_summary(
     skipped_layer_notes: list[str] = []
 
     volatility_fact, volatility_skipped = _volatility_fact(observations_with_price, latest.date, srch_avg_opt=srch_avg_opt)
-    if volatility_fact is not None and sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP:
+    if volatility_fact is not None and _has_current_position_room(claims):
         claims.append(EvidenceClaim("volatility", "current_position", volatility_fact))
     if volatility_skipped:
         warnings.append(
@@ -799,14 +824,14 @@ def calculate_price_summary(
         skipped_layer_notes.append(f"변동성({'·'.join(volatility_skipped)})")
 
     ma_rsi_fact, ma_rsi_computed = _ma_rsi_fact(observations_with_price, latest.commerce_price, srch_avg_opt=srch_avg_opt)
-    if ma_rsi_fact is not None and sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP:
+    if ma_rsi_fact is not None and _has_current_position_room(claims):
         claims.append(EvidenceClaim("ma_rsi", "current_position", ma_rsi_fact))
     if not ma_rsi_computed:
         warnings.append("이동평균·RSI는 관측치가 부족해 계산하지 않았다(이동평균 최소 20건, RSI 최소 15건 필요).")
         skipped_layer_notes.append("이동평균·RSI")
 
     percentile = _percentile_rank(observations_with_price, latest.commerce_price)
-    if percentile is not None and sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP:
+    if percentile is not None and _has_current_position_room(claims):
         claims.append(
             EvidenceClaim(
                 "percentile_position",
@@ -820,7 +845,7 @@ def calculate_price_summary(
         skipped_layer_notes.append("백분위 위치")
 
     drawdown_fact = _drawdown_fact(observations_with_price)
-    if drawdown_fact is not None and sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP:
+    if drawdown_fact is not None and _has_current_position_room(claims):
         claims.append(EvidenceClaim("drawdown", "current_position", drawdown_fact))
     elif drawdown_fact is None:
         warnings.append("낙폭 국면은 관측치가 2건 미만이라 계산하지 않았다.")
@@ -832,7 +857,7 @@ def calculate_price_summary(
     inventory_context_fact = _inventory_context_fact(observations_with_price_and_inventory)
     if (
         inventory_context_fact is not None
-        and sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP
+        and _has_current_position_room(claims)
     ):
         claims.append(EvidenceClaim("inventory_context", "current_position", inventory_context_fact))
     elif latest_inventory is not None and inventory_context_fact is None:
@@ -883,7 +908,7 @@ def calculate_price_summary(
         )
         if (
             relative_value_fact is not None
-            and sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP
+            and _has_current_position_room(claims)
         ):
             claims.append(EvidenceClaim("relative_value", "current_position", relative_value_fact))
         elif relative_value_fact is None:
@@ -906,7 +931,7 @@ def calculate_price_summary(
     # 문장 1개로 합쳐 넣는다 — AskUserQuestion에서 사용자가 고른 "명시적 문장
     # 안내"를 실제로 독자가 보는 채널(claim)에 반영한다(`warnings`만으로는
     # report_render.py가 항상 걸러내 독자에게 전혀 노출되지 않는다).
-    if skipped_layer_notes and sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP:
+    if skipped_layer_notes and _has_current_position_room(claims):
         claims.append(
             EvidenceClaim(
                 "insufficient_history",
@@ -917,7 +942,7 @@ def calculate_price_summary(
 
     return AdditionalCalculatedSummary(
         claims=claims,
-        key_metrics=key_metrics[:8],
+        key_metrics=_capped_key_metrics(key_metrics, page_id=f"{series.page_id}:{series.mineral.name}"),
         detailed_metrics=key_metrics + table_metrics,
         patterns=patterns,
         omitted=[],
@@ -1086,7 +1111,7 @@ def calculate_domestic_trade_summary(
 
     return AdditionalCalculatedSummary(
         claims=claims,
-        key_metrics=key_metrics[:8],
+        key_metrics=_capped_key_metrics(key_metrics, page_id=f"{series.page_id}:{series.mineral.name}"),
         detailed_metrics=key_metrics,
         patterns=patterns,
         omitted=[],
@@ -1366,7 +1391,7 @@ def calculate_global_trade_summary(
 
     return AdditionalCalculatedSummary(
         claims=claims,
-        key_metrics=key_metrics[:8],
+        key_metrics=_capped_key_metrics(key_metrics, page_id=f"{series.page_id}:{series.mineral.name}"),
         detailed_metrics=detailed_metrics,
         patterns=patterns,
         omitted=[],
@@ -1421,14 +1446,20 @@ def _shift_date(date_text: str, days: int) -> str:
 
 _VOLATILITY_WINDOWS: tuple[tuple[str, int], ...] = (("1개월", 30), ("3개월", 90), ("1년", 365))
 _MA_WINDOWS: tuple[int, ...] = (20, 60, 120, 250)
-# current_position 절 근거 상한 — `SummaryNarrative.current_position`
-# (models.py) 및 `prompts.py::SECTION_SENTENCE_RANGES`의 price_* 4종
-# "current_position" 최댓값과 반드시 같이 바꾼다(안 맞추면 `_MAJOR_CHANGES_
-# HARD_CAP`과 같은 이유로 ValidationError로 죽는다 — 위 두 상수 옆에 각각
-# 동일한 경고 주석을 남겨뒀다). 근거 최대 9개 = period_range/no_price_range(1)
-# + compare_overall_change/no(1) + inventory_level(1) + 신규 6종(변동성·
-# 이동평균+RSI·백분위·낙폭국면·재고해석·상대가치).
-_CURRENT_POSITION_HARD_CAP = 9
+# current_position 절 근거 상한 — `models.py::CURRENT_POSITION_MAX_SENTENCES`
+# 단일 출처를 import(2026-09-08 SC-002, 세 파일 리터럴 동기화 제거). 근거
+# 최대 9개 = period_range/no_price_range(1) + compare_overall_change/no(1)
+# + inventory_level(1) + 신규 6종(변동성·이동평균+RSI·백분위·낙폭국면·
+# 재고해석·상대가치).
+_CURRENT_POSITION_HARD_CAP = CURRENT_POSITION_MAX_SENTENCES
+
+
+def _has_current_position_room(claims: list[EvidenceClaim]) -> bool:
+    """current_position 절에 근거 1개를 더 추가해도 상한을 넘지 않는지(2026-09-08
+    SC-006: `calculate_price_summary` 7곳에 복제돼 있던 조건식을 하나로)."""
+
+    return sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP
+
 
 # 2026-08-31 사용자 지적 — "실 데이터 간격이 다르면 주·월·분기·년 단위를
 # 인식할 수 있나요?" KOMIS는 DAY/WEEK/MONTH/QUARTER/YEAR 5종 조회단위를

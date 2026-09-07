@@ -36,7 +36,12 @@ from typing import Any
 from . import prompt_store
 from .additional_summary import ADDITIONAL_PAGE_CONTEXTS, SummaryPageContext
 from .komir_summary import KOMIR_PAGE_CONTEXTS
-from .models import AnalysisSummaryResponse
+from .models import (
+    CORE_DIAGNOSIS_MAX_SENTENCES,
+    CURRENT_POSITION_MAX_SENTENCES,
+    MAJOR_CHANGES_MAX_SENTENCES,
+    AnalysisSummaryResponse,
+)
 from .policy import PagePolicy, load_page_policy
 
 # 아래 10개 상수 + `PROMPTS`가 분석요약 프롬프트의 **단일 소스**다(2026-08-27,
@@ -426,6 +431,16 @@ MAX_EVIDENCE_IDS_PER_SENTENCE_BY_PAGE: dict[str, int] = {
 _EVIDENCE_IDS_HARD_CAP = 5
 
 _SECTIONS = ("core_diagnosis", "major_changes", "current_position")
+#: `_parse_output_contract`가 DB `section_sentence_ranges`를 받아들이기 전에
+#: 대조하는 절대 상한 — `models.py::SummaryNarrative`의 각 섹션 `max_length`와
+#: 같은 값(2026-09-08 SC-002). 이 검사가 없으면 DB에 이 상한을 넘는 hi를 넣어도
+#: 그대로 받아들여져 LLM 출력이 항상 `SummaryNarrative` 생성에서 ValidationError로
+#: 죽는 영구 무언 폴백이 생긴다(실측 재현됨).
+_SECTION_SENTENCE_HARD_CAP: dict[str, int] = {
+    "core_diagnosis": CORE_DIAGNOSIS_MAX_SENTENCES,
+    "major_changes": MAJOR_CHANGES_MAX_SENTENCES,
+    "current_position": CURRENT_POSITION_MAX_SENTENCES,
+}
 
 
 # ────────────────────────────────────────────────────────────────────
@@ -506,7 +521,7 @@ def code_page_config(page_id: str) -> PageConfig:
     )
 
 
-def _parse_range(value: Any) -> tuple[int, int] | None:
+def _parse_range(value: Any, max_hi: int | None = None) -> tuple[int, int] | None:
     if not isinstance(value, (list, tuple)) or len(value) != 2:
         return None
     lo, hi = value
@@ -514,10 +529,12 @@ def _parse_range(value: Any) -> tuple[int, int] | None:
         return None
     if lo < 1 or hi < lo:
         return None
+    if max_hi is not None and hi > max_hi:
+        return None
     return (lo, hi)
 
 
-def _parse_output_contract(page_id: str, raw: Any, base: PageConfig) -> tuple[dict[str, tuple[int, int]] | None, tuple[int, int] | None, int | None]:
+def _parse_output_contract(page_id: str, raw: Any) -> tuple[dict[str, tuple[int, int]] | None, tuple[int, int] | None, int | None]:
     """DB `output_contract` JSON을 검증해 (섹션범위, 총범위, 문장당 근거수)로.
     형식이 틀린 항목은 None(=코드 기본값)으로 두고 경고만 남긴다 — 운영 중
     DB 값 하나가 틀렸다고 보고서 생성이 멈추면 안 된다."""
@@ -529,11 +546,20 @@ def _parse_output_contract(page_id: str, raw: Any, base: PageConfig) -> tuple[di
     ranges: dict[str, tuple[int, int]] | None = None
     raw_ranges = raw.get("section_sentence_ranges")
     if raw_ranges is not None:
-        parsed = {section: _parse_range(raw_ranges.get(section)) for section in _SECTIONS} if isinstance(raw_ranges, dict) else {}
+        parsed = (
+            {section: _parse_range(raw_ranges.get(section), _SECTION_SENTENCE_HARD_CAP[section]) for section in _SECTIONS}
+            if isinstance(raw_ranges, dict)
+            else {}
+        )
         if all(parsed.get(section) is not None for section in _SECTIONS):
             ranges = {section: parsed[section] for section in _SECTIONS}  # type: ignore[misc]
         else:
-            log.warning("%s: output_contract.section_sentence_ranges 형식 오류 — 코드 기본값 사용: %r", page_id, raw_ranges)
+            log.warning(
+                "%s: output_contract.section_sentence_ranges 형식 오류 또는 상한(%s) 초과 — 코드 기본값 사용: %r",
+                page_id,
+                _SECTION_SENTENCE_HARD_CAP,
+                raw_ranges,
+            )
     total: tuple[int, int] | None = None
     if raw.get("total_sentence_range") is not None:
         total = _parse_range(raw.get("total_sentence_range"))
@@ -588,7 +614,7 @@ def resolve_page_config(page_id: str) -> PageConfig:
         version, source["policy_version"] = row.policy_version.strip(), "db"
     ranges, total, max_ids = base.section_sentence_ranges, base.total_sentence_range, base.max_evidence_ids_per_sentence
     if row.output_contract is not None:
-        db_ranges, db_total, db_max = _parse_output_contract(page_id, row.output_contract, base)
+        db_ranges, db_total, db_max = _parse_output_contract(page_id, row.output_contract)
         if db_ranges is not None:
             ranges, source["section_sentence_ranges"] = db_ranges, "db"
         if db_total is not None:
@@ -644,14 +670,13 @@ def summary_instructions(page_id: str) -> str:
 def build_summary_payload(
     *,
     response: AnalysisSummaryResponse,
-    policy: PagePolicy | SummaryPageContext,
     allowed_evidence: list[dict[str, str]],
     previous_validation_error: str | None = None,
 ) -> dict[str, Any]:
     """Build an evidence-bounded payload for summary refinement.
 
-    `policy` 인자는 호출부 호환용으로 남겼다 — 페이지 정책·출력 계약은 2026-08-27
-    부터 `resolve_page_config()`(코드 기본값 + DB 오버레이)에서 가져온다."""
+    페이지 정책·출력 계약은 `resolve_page_config()`(코드 기본값 + DB 오버레이)에서
+    가져온다(2026-08-27) — 호출부가 따로 정책 객체를 넘길 필요가 없다."""
 
     cfg = resolve_page_config(response.page_id)
     if response.page_id == "map_mineral":

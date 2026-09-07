@@ -64,7 +64,9 @@ from .budget import ANALYSIS_LLM_TIMEOUT_SECONDS  # noqa: E402
 from .additional_summary import (  # noqa: E402
     AdditionalCalculatedSummary,
     EvidenceClaim,
+    SectionId,
     SummaryPageContext,
+    _number,
     calculate_composite_summary,
     calculate_mineral_map_summary,
     calculate_price_forecast_summary,
@@ -81,6 +83,7 @@ from .data_sources import (  # noqa: E402
 )
 from .indicators import months_are_contiguous, percent_change  # noqa: E402
 from .komir_summary import (  # noqa: E402
+    _capped_key_metrics,
     _detect_granularity,
     calculate_domestic_trade_summary,
     calculate_global_trade_summary,
@@ -126,9 +129,6 @@ from .prompts import (  # noqa: E402
     resolve_page_config,
     summary_instructions,
 )
-
-SectionId = Literal["core_diagnosis", "major_changes", "current_position"]
-
 
 def _calculate_or_no_data(page_id: str, calculate, /, *args, **kwargs):
     """`calculate_*`가 데이터 조건 미충족(관측 1건뿐·국가 3개 미만·총액 0 등)으로
@@ -337,11 +337,21 @@ def _komis_rows_to_observations(rows: list[dict]) -> list[dict]:
     return out
 
 
-def _parse_komis_price_response(
-    raw: dict,
-) -> tuple[
-    list[dict], list[dict] | None, dict | None, str | None, str | None, str | None, str | None
-]:
+@dataclass(frozen=True, slots=True)
+class _KomisPriceParsed:
+    """`_parse_komis_price_response`의 반환 shape(2026-09-08 SC-003: 자리만
+    구분되는 7-튜플 대신 이름으로 접근하게 함)."""
+
+    observations: list[dict]
+    compare_observations: list[dict] | None
+    komis_period_comparisons: dict | None
+    mineral_name: str | None
+    price_criterion: str | None
+    compare_mineral_name: str | None
+    compare_price_criterion: str | None
+
+
+def _parse_komis_price_response(raw: dict) -> _KomisPriceParsed:
     """`request.komis_response`(2026-08-30 신설)를 report_gen 내부 shape 7종
     (observations, compare_observations, komis_period_comparisons, mineral_name,
     price_criterion, compare_mineral_name, compare_price_criterion)으로
@@ -421,14 +431,14 @@ def _parse_komis_price_response(
             continue
         komis_period_comparisons[key] = {"average_price": latest_price - delta, "change_pct": pct}
 
-    return (
-        observations,
-        compare_observations,
-        (komis_period_comparisons or None),
-        mineral_name,
-        price_criterion,
-        compare_mineral_name,
-        compare_price_criterion,
+    return _KomisPriceParsed(
+        observations=observations,
+        compare_observations=compare_observations,
+        komis_period_comparisons=(komis_period_comparisons or None),
+        mineral_name=mineral_name,
+        price_criterion=price_criterion,
+        compare_mineral_name=compare_mineral_name,
+        compare_price_criterion=compare_price_criterion,
     )
 
 
@@ -1035,25 +1045,14 @@ def _supply_auxiliary_from_request(request: AnalysisSummaryRequest) -> SupplyAux
         ) from exc
 
 
-@dataclass(frozen=True, slots=True)
-class _EvidenceClaim:
-    id: str
-    section: SectionId
-    fact: str
-
-
 @dataclass(slots=True)
 class _CalculatedSummary:
     grade: GradeResult
-    claims: list[_EvidenceClaim]
+    claims: list[EvidenceClaim]
     key_metrics: list[Metric]
     detailed_metrics: list[Metric]
     patterns: list[DetectedPattern]
     omitted: list[OmittedIndicator]
-
-
-def _number(value: float, digits: int = 2) -> str:
-    return f"{value:,.{digits}f}"
 
 
 def _metric(
@@ -1243,7 +1242,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
         f"{current.month} {series.mineral.name} {policy.name}는 "
         f"{_number(current.score)}점으로 {grade.label} 단계다."
     )
-    claims = [_EvidenceClaim("current_state", "core_diagnosis", current_fact)]
+    claims = [EvidenceClaim("current_state", "core_diagnosis", current_fact, required=True)]
 
     contiguous_pairs = [
         (before, after, before_grade, after_grade)
@@ -1313,13 +1312,14 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
                     basis=f"{previous.month} 대비",
                 )
             )
-        claims.append(_EvidenceClaim("latest_score_change", "core_diagnosis", score_fact))
+        claims.append(EvidenceClaim("latest_score_change", "core_diagnosis", score_fact, required=True))
     else:
         claims.append(
-            _EvidenceClaim(
+            EvidenceClaim(
                 "latest_score_change",
                 "core_diagnosis",
                 "이전 관측치가 없어 최근 점수 변화는 계산하지 않았다.",
+                required=True,
             )
         )
         omitted.append(
@@ -1340,7 +1340,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
     key_metrics.append(
         _metric("current_grade_streak", "현재 단계 연속기간", streak, unit="개월")
     )
-    claims.append(_EvidenceClaim("grade_streak", "major_changes", streak_fact))
+    claims.append(EvidenceClaim("grade_streak", "major_changes", streak_fact, required=True))
 
     transitions = [
         pair for pair in contiguous_pairs if pair[2].label != pair[3].label
@@ -1366,7 +1366,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
         )
     else:
         transition_fact = "조회기간의 연속 월 구간에서는 단계 전환이 확인되지 않았다."
-    claims.append(_EvidenceClaim("grade_transition", "major_changes", transition_fact))
+    claims.append(EvidenceClaim("grade_transition", "major_changes", transition_fact, required=True))
 
     if contiguous_pairs:
         largest = max(contiguous_pairs, key=lambda pair: abs(pair[1].score - pair[0].score))
@@ -1400,7 +1400,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
             )
         )
     claims.append(
-        _EvidenceClaim("largest_monthly_score_change", "major_changes", largest_fact)
+        EvidenceClaim("largest_monthly_score_change", "major_changes", largest_fact, required=True)
     )
 
     # 2026-09-01 신설 — PDF §2-3 "주요 요인으로는 [가격리스크/세계 수급비율/
@@ -1463,22 +1463,24 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
                 )
         if import_growth_fact and concentration_fact:
             claims.append(
-                _EvidenceClaim(
+                EvidenceClaim(
                     "supply_key_factors",
                     "major_changes",
                     f"{import_growth_fact}. {concentration_fact}.",
+                    required=True,
                 )
             )
         elif import_growth_fact:
             claims.append(
-                _EvidenceClaim("supply_key_factors", "major_changes", f"{import_growth_fact}.")
+                EvidenceClaim("supply_key_factors", "major_changes", f"{import_growth_fact}.", required=True)
             )
         elif concentration_fact:
             claims.append(
-                _EvidenceClaim(
+                EvidenceClaim(
                     "supply_key_factors",
                     "major_changes",
                     f"국내 수입국 편중도를 보면 {concentration_fact}.",
+                    required=True,
                 )
             )
 
@@ -1509,7 +1511,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
             )
         )
         claims.append(
-            _EvidenceClaim("latest_price_change", "current_position", price_fact)
+            EvidenceClaim("latest_price_change", "current_position", price_fact, required=True)
         )
     else:
         omitted.append(
@@ -1591,13 +1593,13 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
     )
     detailed_metrics.extend(_supply_auxiliary_metrics(series))
     claims.append(
-        _EvidenceClaim("period_average_position", "current_position", position_fact)
+        EvidenceClaim("period_average_position", "current_position", position_fact, required=True)
     )
 
     return _CalculatedSummary(
         grade=grade,
         claims=claims,
-        key_metrics=key_metrics[:8],
+        key_metrics=_capped_key_metrics(key_metrics, page_id=f"{series.page_id}:{series.mineral.name}"),
         detailed_metrics=detailed_metrics,
         patterns=patterns,
         omitted=omitted,
@@ -1605,7 +1607,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
 
 
 def _deterministic_narrative(
-    claims: list[_EvidenceClaim] | list[EvidenceClaim],
+    claims: list[EvidenceClaim],
 ) -> SummaryNarrative:
     grouped: dict[SectionId, list[SummarySentence]] = {
         "core_diagnosis": [],
@@ -1655,7 +1657,7 @@ def _number_tokens(text: str) -> set[str]:
 
 def _validate_llm_summary(
     candidate: SummaryNarrative,
-    claims: list[_EvidenceClaim] | list[EvidenceClaim],
+    claims: list[EvidenceClaim],
     *,
     page_id: SummaryPageId,
 ) -> str | None:
@@ -1713,9 +1715,7 @@ def _validate_llm_summary(
                     return "근거에 없는 단계명을 사용했다."
             used_ids.extend(sentence.evidence_ids)
     if page_id == "map_mineral":
-        required_ids = {
-            claim.id for claim in claims if getattr(claim, "required", False)
-        }
+        required_ids = {claim.id for claim in claims if claim.required}
         if not required_ids <= set(used_ids):
             return "필수 evidence_id를 모두 사용하지 않았다."
     elif Counter(used_ids) != Counter(claim_map.keys()):
@@ -1952,7 +1952,7 @@ class AnalysisSummaryService:
         )
         if self._llm is None or len(calculated.claims) < 5 or quality_status == "insufficient":
             return response
-        return self._refine_with_llm(response, policy, calculated.claims)
+        return self._refine_with_llm(response, calculated.claims)
 
     def _analyze_composite(
         self,
@@ -2055,7 +2055,7 @@ class AnalysisSummaryService:
         )
         if self._llm is None or len(calculated.claims) < 5 or quality_status == "insufficient":
             return response
-        return self._refine_with_llm(response, context, calculated.claims)
+        return self._refine_with_llm(response, calculated.claims)
 
     def _analyze_mineral_map(
         self,
@@ -2215,7 +2215,7 @@ class AnalysisSummaryService:
         )
         if self._llm is None or len(calculated.claims) < 5 or quality_status == "insufficient":
             return response
-        return self._refine_with_llm(response, context, calculated.claims)
+        return self._refine_with_llm(response, calculated.claims)
 
     def _analyze_price_forecast(
         self,
@@ -2346,7 +2346,7 @@ class AnalysisSummaryService:
         )
         if self._llm is None:
             return response
-        return self._refine_with_llm(response, context, calculated.claims)
+        return self._refine_with_llm(response, calculated.claims)
 
     # ────────────────────────────────────────────────────────────────
     # 아래 3개 메서드는 komir 자체 추가(2026-08-19, 이식 아님) — §모듈 docstring
@@ -2379,19 +2379,15 @@ class AnalysisSummaryService:
         komis_compare_mineral_name = None
         komis_compare_price_criterion = None
         if request.komis_response is not None:
-            (
-                parsed_observations,
-                parsed_compare,
-                parsed_period_comparisons,
-                komis_mineral_name,
-                komis_price_criterion,
-                komis_compare_mineral_name,
-                komis_compare_price_criterion,
-            ) = _parse_komis_price_response(request.komis_response)
-            raw_observations = parsed_observations
-            if parsed_compare is not None:
-                raw_compare_observations = parsed_compare
-            raw_komis_period_comparisons = parsed_period_comparisons
+            parsed = _parse_komis_price_response(request.komis_response)
+            komis_mineral_name = parsed.mineral_name
+            komis_price_criterion = parsed.price_criterion
+            komis_compare_mineral_name = parsed.compare_mineral_name
+            komis_compare_price_criterion = parsed.compare_price_criterion
+            raw_observations = parsed.observations
+            if parsed.compare_observations is not None:
+                raw_compare_observations = parsed.compare_observations
+            raw_komis_period_comparisons = parsed.komis_period_comparisons
 
         observations = _observations_from_request(PriceObservation, request, raw=raw_observations)
         if request.start_date:
@@ -2558,7 +2554,7 @@ class AnalysisSummaryService:
         # 가 "insufficient"(관측치 부족)일 때만 건너뛴다.
         if self._llm is None or quality_status == "insufficient":
             return response
-        return self._refine_with_llm(response, context, calculated.claims)
+        return self._refine_with_llm(response, calculated.claims)
 
     @staticmethod
     def _trade_series_from_request(
@@ -2628,9 +2624,10 @@ class AnalysisSummaryService:
         # )
         series, raw_komis_trade_totals = self._trade_series_from_request(request, "map_korea")
         komis_trade_totals = _komis_trade_totals_from_request(request, raw=raw_komis_trade_totals)
-        _period_unit, country_filter_name, scope_label = _map_korea_query_filters(
+        map_korea_filters = _map_korea_query_filters(
             request.komis_response, series.observations, request.mttr_flow_name
         )
+        _period_unit, country_filter_name, scope_label = map_korea_filters
         calculated = _calculate_or_no_data(
             request.page_id,
             calculate_domestic_trade_summary,
@@ -2640,7 +2637,11 @@ class AnalysisSummaryService:
             country_filter_name=country_filter_name,
             scope_label=scope_label,
         )
-        return self._respond_trade_map(request, series, calculated, effective_page_context("map_korea"))
+        # 2026-09-08 SC-005: 아래에서 다시 계산하지 않고 위 결과를 그대로 넘긴다
+        # (같은 request.komis_response·series.observations로 동일한 값이 나온다).
+        return self._respond_trade_map(
+            request, series, calculated, effective_page_context("map_korea"), map_korea_filters=map_korea_filters
+        )
 
     def _analyze_global_trade(self, request: AnalysisSummaryRequest) -> AnalysisSummaryResponse:
         """Load a global (KO_UN_CMMRC) trade-map series and build its response."""
@@ -2719,7 +2720,7 @@ class AnalysisSummaryService:
         )
         if self._llm is None:
             return response
-        return self._refine_with_llm(response, context, calculated.claims)
+        return self._refine_with_llm(response, calculated.claims)
 
     def _respond_trade_map(
         self,
@@ -2727,8 +2728,13 @@ class AnalysisSummaryService:
         series: TradeMapSeries,
         calculated: AdditionalCalculatedSummary,
         context: SummaryPageContext,
+        map_korea_filters: tuple[str | None, str | None, str | None] | None = None,
     ) -> AnalysisSummaryResponse:
-        """`_analyze_domestic_trade`/`_analyze_global_trade` 공통 응답 조립부."""
+        """`_analyze_domestic_trade`/`_analyze_global_trade` 공통 응답 조립부.
+
+        `map_korea_filters`는 `page_id="map_korea"`일 때 호출부(`_analyze_domestic_
+        trade`)가 이미 계산해 둔 `_map_korea_query_filters()` 결과다(2026-09-08
+        SC-005: 이전엔 같은 인자로 여기서 다시 계산했다)."""
 
         dates = sorted({item.date for item in series.observations})
         applied_filters = {
@@ -2745,9 +2751,8 @@ class AnalysisSummaryService:
             # 2026-08-31 신설 — 조회필터 4종(기간구분·국가·생산품유형/HS)을
             # 보고서 상단 표에도 노출한다(서사 반영은 calculate_domestic_
             # trade_summary가 이미 처리 — 여기는 메타데이터 표시용).
-            period_unit, country_filter_name, scope_label = _map_korea_query_filters(
-                request.komis_response, series.observations, request.mttr_flow_name
-            )
+            assert map_korea_filters is not None, "map_korea 응답은 map_korea_filters가 필요하다"
+            period_unit, country_filter_name, scope_label = map_korea_filters
             if period_unit:
                 applied_filters["period_unit"] = period_unit
             if country_filter_name:
@@ -2808,13 +2813,12 @@ class AnalysisSummaryService:
         # 항상 3개 이상 확보되므로 별도 최소 근거수 게이트는 두지 않는다.
         if self._llm is None or quality_status == "insufficient":
             return response
-        return self._refine_with_llm(response, context, calculated.claims)
+        return self._refine_with_llm(response, calculated.claims)
 
     def _refine_with_llm(
         self,
         response: AnalysisSummaryResponse,
-        policy: PagePolicy | SummaryPageContext,
-        claims: list[_EvidenceClaim] | list[EvidenceClaim],
+        claims: list[EvidenceClaim],
     ) -> AnalysisSummaryResponse:
         """Request LLM refinement and accept only evidence-valid output."""
 
@@ -2824,7 +2828,7 @@ class AnalysisSummaryService:
                 "evidence_id": claim.id,
                 "section": claim.section,
                 "fact": claim.fact,
-                "required": getattr(claim, "required", True),
+                "required": claim.required,
             }
             for claim in claims
         ]
@@ -2834,7 +2838,7 @@ class AnalysisSummaryService:
         cfg = resolve_page_config(response.page_id)
         if response.page_id == "map_mineral":
             capacity = (cfg.total_sentence_range or (5, 8))[1] * cfg.max_evidence_ids_per_sentence
-            demand = sum(1 for claim in claims if getattr(claim, "required", False))
+            demand = sum(1 for claim in claims if claim.required)
         else:
             capacity = sum(hi for _, hi in cfg.section_sentence_ranges.values()) * cfg.max_evidence_ids_per_sentence
             demand = len(claims)
@@ -2859,7 +2863,6 @@ class AnalysisSummaryService:
                     instructions=summary_instructions(response.page_id),
                     payload=build_summary_payload(
                         response=response,
-                        policy=policy,
                         allowed_evidence=evidence_payload,
                         previous_validation_error=validation_error,
                     ),

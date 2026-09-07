@@ -996,23 +996,37 @@ class SummarySentence(StrictModel):
         return stripped
 
 
+#: 섹션별 문장수 pydantic 상한 — `komir_summary.py`의 하드캡·`prompts.py`의
+#: DB `output_contract.section_sentence_ranges` 클램프가 이 값을 단일 출처로
+#: import한다(2026-09-08 skeptic 감사 SC-002: 이전엔 세 파일에 리터럴로 복제돼
+#: 있었고, DB 값이 이 상한을 넘어도 걸러내지 않아 LLM이 상한 초과 문장을 쓰면
+#: `SummaryNarrative` 생성이 영구히 `ValidationError`로 죽는 무언 폴백이 가능했다).
+CORE_DIAGNOSIS_MAX_SENTENCES = 2
+MAJOR_CHANGES_MAX_SENTENCES = 5
+CURRENT_POSITION_MAX_SENTENCES = 9
+
+
 class SummaryNarrative(StrictModel):
     """3개 섹션으로 묶인 근거 연결 분석문."""
 
-    core_diagnosis: list[SummarySentence] = Field(min_length=1, max_length=2)
-    # major_changes의 max_length=5를 바꾸면 `komir_summary.py::calculate_price_
-    # summary`의 `_MAJOR_CHANGES_HARD_CAP`(규칙기반 폴백 경로가 근거 1개=문장
-    # 1개로 그대로 매핑해 이 상한을 직접 참조·복제한다, 2026-08-28)도 같이
-    # 바꿔야 한다 — 한쪽만 바뀌면 관측치가 조밀한 요청에서 `ValidationError`로
-    # 죽는다(실측 재현됨).
-    major_changes: list[SummarySentence] = Field(min_length=1, max_length=5)
+    core_diagnosis: list[SummarySentence] = Field(min_length=1, max_length=CORE_DIAGNOSIS_MAX_SENTENCES)
+    # major_changes의 상한을 바꾸면 `komir_summary.py::calculate_price_summary`의
+    # `_MAJOR_CHANGES_HARD_CAP`(규칙기반 폴백 경로가 근거 1개=문장 1개로 그대로
+    # 매핑해 이 상한을 그대로 import해 쓴다, 2026-08-28)도 같이 바뀐다 — 위
+    # `MAJOR_CHANGES_MAX_SENTENCES`가 단일 출처라 더 이상 수동 동기화가 필요
+    # 없다.
+    major_changes: list[SummarySentence] = Field(min_length=1, max_length=MAJOR_CHANGES_MAX_SENTENCES)
     # 2026-08-31 사용자 통계확장 피드백(변동성·이동평균+RSI·백분위·낙폭국면·
     # 재고해석·상대가치 6개 신규 층) 반영으로 3→9 확대 — `komir_summary.py::
-    # _CURRENT_POSITION_HARD_CAP`(정확히 9, 계산 근거 주석 참고)과
-    # `prompts.py::SECTION_SENTENCE_RANGES`의 price_* 4종 "current_position"을
-    # 반드시 같이 바꾼다. 셋 중 하나만 바뀌면 major_changes의 5-cap과 같은
-    # 이유로 관측치가 조밀한 요청에서 `ValidationError`로 죽는다.
-    current_position: list[SummarySentence] = Field(min_length=1, max_length=9)
+    # _CURRENT_POSITION_HARD_CAP`과 `prompts.py`의 DB 클램프가 위
+    # `CURRENT_POSITION_MAX_SENTENCES`를 import하므로 여기 한 곳만 바꾸면 된다.
+    current_position: list[SummarySentence] = Field(min_length=1, max_length=CURRENT_POSITION_MAX_SENTENCES)
+
+
+#: `AnalysisSummaryResponse.key_metrics` 상한 — 계산기가 이보다 많이 만들면
+#: 나머지는 조용히 잘린다(2026-09-08 SC-009: komir_summary.py가 이 상수를
+#: import해 잘릴 때 경고 로그를 남긴다).
+KEY_METRICS_MAX_COUNT = 8
 
 
 class AnalysisSummaryResponse(StrictModel):
@@ -1031,7 +1045,7 @@ class AnalysisSummaryResponse(StrictModel):
     grade: GradeResult | None
     data_quality: DataQuality
     summary: SummaryNarrative
-    key_metrics: list[Metric] = Field(max_length=8)
+    key_metrics: list[Metric] = Field(max_length=KEY_METRICS_MAX_COUNT)
     detailed_metrics: list[Metric]
     detected_patterns: list[DetectedPattern]
     omitted_indicators: list[OmittedIndicator]
