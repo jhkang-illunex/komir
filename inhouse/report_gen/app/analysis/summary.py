@@ -1055,6 +1055,24 @@ class _CalculatedSummary:
     omitted: list[OmittedIndicator]
 
 
+def _source_info_from_series(
+    series: IndicatorSeries | CompositeIndexSeries | MineralMapSeries | PriceForecastSeries | PriceSeries | TradeMapSeries,
+) -> SourceInfo:
+    """6개 응답조립 지점(indicator·composite·mineral_map·forecast·price·trade_map)이
+    바이트 단위로 반복하던 `SourceInfo(...)` 조립을 하나로(2026-09-08 SC-DEEP-007:
+    이 6종 series 모델이 모두 같은 이름의 출처 메타 필드를 갖고 있어 성립한다 —
+    `price_group`은 series가 아니라 request에서 직접 조립해 이 헬퍼 대상이 아니다)."""
+
+    return SourceInfo(
+        type=series.source_type,
+        id=series.source_id,
+        data_version=series.data_version,
+        as_of=series.data_as_of,
+        file=series.source_file,
+        sheets=series.source_sheets,
+    )
+
+
 def _metric(
     metric_id: str,
     label: str,
@@ -1922,14 +1940,7 @@ class AnalysisSummaryService:
             applied_filters=applied_filters,
             defaulted_filters=defaulted_filters,
             filter_hash=_filter_hash(request.page_id, applied_filters),
-            source=SourceInfo(
-                type=series.source_type,
-                id=series.source_id,
-                data_version=series.data_version,
-                as_of=series.data_as_of,
-                file=series.source_file,
-                sheets=series.source_sheets,
-            ),
+            source=_source_info_from_series(series),
             policy_version=policy.policy_version,
             page_definition=policy.definition,
             grade=calculated.grade,
@@ -2026,14 +2037,7 @@ class AnalysisSummaryService:
             applied_filters=applied_filters,
             defaulted_filters=defaulted_filters,
             filter_hash=_filter_hash(request.page_id, applied_filters),
-            source=SourceInfo(
-                type=series.source_type,
-                id=series.source_id,
-                data_version=series.data_version,
-                as_of=series.data_as_of,
-                file=series.source_file,
-                sheets=series.source_sheets,
-            ),
+            source=_source_info_from_series(series),
             policy_version=context.policy_version,
             page_definition=context.definition,
             grade=None,
@@ -2186,14 +2190,7 @@ class AnalysisSummaryService:
             applied_filters=applied_filters,
             defaulted_filters=defaulted_filters,
             filter_hash=_filter_hash(request.page_id, applied_filters),
-            source=SourceInfo(
-                type=series.source_type,
-                id=series.source_id,
-                data_version=series.data_version,
-                as_of=series.data_as_of,
-                file=series.source_file,
-                sheets=series.source_sheets,
-            ),
+            source=_source_info_from_series(series),
             policy_version=context.policy_version,
             page_definition=context.definition,
             grade=None,
@@ -2316,14 +2313,7 @@ class AnalysisSummaryService:
             applied_filters=applied_filters,
             defaulted_filters=defaulted_filters,
             filter_hash=_filter_hash(request.page_id, applied_filters),
-            source=SourceInfo(
-                type=series.source_type,
-                id=series.source_id,
-                data_version=series.data_version,
-                as_of=series.data_as_of,
-                file=series.source_file,
-                sheets=series.source_sheets,
-            ),
+            source=_source_info_from_series(series),
             policy_version=context.policy_version,
             page_definition=context.definition,
             grade=None,
@@ -2519,14 +2509,7 @@ class AnalysisSummaryService:
             applied_filters=applied_filters,
             defaulted_filters=defaulted_filters,
             filter_hash=_filter_hash(request.page_id, applied_filters),
-            source=SourceInfo(
-                type=series.source_type,
-                id=series.source_id,
-                data_version=series.data_version,
-                as_of=series.data_as_of,
-                file=series.source_file,
-                sheets=series.source_sheets,
-            ),
+            source=_source_info_from_series(series),
             policy_version=context.policy_version,
             page_definition=page_definition,
             grade=None,
@@ -2781,14 +2764,7 @@ class AnalysisSummaryService:
             applied_filters=applied_filters,
             defaulted_filters=defaulted_filters,
             filter_hash=_filter_hash(request.page_id, applied_filters),
-            source=SourceInfo(
-                type=series.source_type,
-                id=series.source_id,
-                data_version=series.data_version,
-                as_of=series.data_as_of,
-                file=series.source_file,
-                sheets=series.source_sheets,
-            ),
+            source=_source_info_from_series(series),
             policy_version=context.policy_version,
             page_definition=context.definition,
             grade=None,
