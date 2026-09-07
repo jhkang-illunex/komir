@@ -670,14 +670,13 @@ def summary_instructions(page_id: str) -> str:
 def build_summary_payload(
     *,
     response: AnalysisSummaryResponse,
-    policy: PagePolicy | SummaryPageContext,
     allowed_evidence: list[dict[str, str]],
     previous_validation_error: str | None = None,
 ) -> dict[str, Any]:
     """Build an evidence-bounded payload for summary refinement.
 
-    `policy` 인자는 호출부 호환용으로 남겼다 — 페이지 정책·출력 계약은 2026-08-27
-    부터 `resolve_page_config()`(코드 기본값 + DB 오버레이)에서 가져온다."""
+    페이지 정책·출력 계약은 `resolve_page_config()`(코드 기본값 + DB 오버레이)에서
+    가져온다(2026-08-27) — 호출부가 따로 정책 객체를 넘길 필요가 없다."""
 
     cfg = resolve_page_config(response.page_id)
     if response.page_id == "map_mineral":

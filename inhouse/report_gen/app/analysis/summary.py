@@ -1946,7 +1946,7 @@ class AnalysisSummaryService:
         )
         if self._llm is None or len(calculated.claims) < 5 or quality_status == "insufficient":
             return response
-        return self._refine_with_llm(response, policy, calculated.claims)
+        return self._refine_with_llm(response, calculated.claims)
 
     def _analyze_composite(
         self,
@@ -2049,7 +2049,7 @@ class AnalysisSummaryService:
         )
         if self._llm is None or len(calculated.claims) < 5 or quality_status == "insufficient":
             return response
-        return self._refine_with_llm(response, context, calculated.claims)
+        return self._refine_with_llm(response, calculated.claims)
 
     def _analyze_mineral_map(
         self,
@@ -2209,7 +2209,7 @@ class AnalysisSummaryService:
         )
         if self._llm is None or len(calculated.claims) < 5 or quality_status == "insufficient":
             return response
-        return self._refine_with_llm(response, context, calculated.claims)
+        return self._refine_with_llm(response, calculated.claims)
 
     def _analyze_price_forecast(
         self,
@@ -2340,7 +2340,7 @@ class AnalysisSummaryService:
         )
         if self._llm is None:
             return response
-        return self._refine_with_llm(response, context, calculated.claims)
+        return self._refine_with_llm(response, calculated.claims)
 
     # ────────────────────────────────────────────────────────────────
     # 아래 3개 메서드는 komir 자체 추가(2026-08-19, 이식 아님) — §모듈 docstring
@@ -2552,7 +2552,7 @@ class AnalysisSummaryService:
         # 가 "insufficient"(관측치 부족)일 때만 건너뛴다.
         if self._llm is None or quality_status == "insufficient":
             return response
-        return self._refine_with_llm(response, context, calculated.claims)
+        return self._refine_with_llm(response, calculated.claims)
 
     @staticmethod
     def _trade_series_from_request(
@@ -2713,7 +2713,7 @@ class AnalysisSummaryService:
         )
         if self._llm is None:
             return response
-        return self._refine_with_llm(response, context, calculated.claims)
+        return self._refine_with_llm(response, calculated.claims)
 
     def _respond_trade_map(
         self,
@@ -2802,12 +2802,11 @@ class AnalysisSummaryService:
         # 항상 3개 이상 확보되므로 별도 최소 근거수 게이트는 두지 않는다.
         if self._llm is None or quality_status == "insufficient":
             return response
-        return self._refine_with_llm(response, context, calculated.claims)
+        return self._refine_with_llm(response, calculated.claims)
 
     def _refine_with_llm(
         self,
         response: AnalysisSummaryResponse,
-        policy: PagePolicy | SummaryPageContext,
         claims: list[EvidenceClaim],
     ) -> AnalysisSummaryResponse:
         """Request LLM refinement and accept only evidence-valid output."""
@@ -2853,7 +2852,6 @@ class AnalysisSummaryService:
                     instructions=summary_instructions(response.page_id),
                     payload=build_summary_payload(
                         response=response,
-                        policy=policy,
                         allowed_evidence=evidence_payload,
                         previous_validation_error=validation_error,
                     ),
