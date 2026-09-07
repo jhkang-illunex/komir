@@ -70,8 +70,6 @@ from streamlit_demo.report_gen_client import (
 )
 
 _INHOUSE_ROOT = Path(__file__).resolve().parents[2]
-if str(_INHOUSE_ROOT / "services") not in sys.path:
-    sys.path.insert(0, str(_INHOUSE_ROOT / "services"))
 
 # Streamlit이 view 파일을 __main__으로 실행해(exec) __name__ 기반 로거명이
 # 전부 "__main__"으로 뭉개진다(실측 확인, data_admin.py와 동일) — 경로를 그대로 쓴다.
