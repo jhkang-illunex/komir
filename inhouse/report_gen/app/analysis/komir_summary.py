@@ -791,7 +791,7 @@ def calculate_price_summary(
     skipped_layer_notes: list[str] = []
 
     volatility_fact, volatility_skipped = _volatility_fact(observations_with_price, latest.date, srch_avg_opt=srch_avg_opt)
-    if volatility_fact is not None and sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP:
+    if volatility_fact is not None and _has_current_position_room(claims):
         claims.append(EvidenceClaim("volatility", "current_position", volatility_fact))
     if volatility_skipped:
         warnings.append(
@@ -801,14 +801,14 @@ def calculate_price_summary(
         skipped_layer_notes.append(f"변동성({'·'.join(volatility_skipped)})")
 
     ma_rsi_fact, ma_rsi_computed = _ma_rsi_fact(observations_with_price, latest.commerce_price, srch_avg_opt=srch_avg_opt)
-    if ma_rsi_fact is not None and sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP:
+    if ma_rsi_fact is not None and _has_current_position_room(claims):
         claims.append(EvidenceClaim("ma_rsi", "current_position", ma_rsi_fact))
     if not ma_rsi_computed:
         warnings.append("이동평균·RSI는 관측치가 부족해 계산하지 않았다(이동평균 최소 20건, RSI 최소 15건 필요).")
         skipped_layer_notes.append("이동평균·RSI")
 
     percentile = _percentile_rank(observations_with_price, latest.commerce_price)
-    if percentile is not None and sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP:
+    if percentile is not None and _has_current_position_room(claims):
         claims.append(
             EvidenceClaim(
                 "percentile_position",
@@ -822,7 +822,7 @@ def calculate_price_summary(
         skipped_layer_notes.append("백분위 위치")
 
     drawdown_fact = _drawdown_fact(observations_with_price)
-    if drawdown_fact is not None and sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP:
+    if drawdown_fact is not None and _has_current_position_room(claims):
         claims.append(EvidenceClaim("drawdown", "current_position", drawdown_fact))
     elif drawdown_fact is None:
         warnings.append("낙폭 국면은 관측치가 2건 미만이라 계산하지 않았다.")
@@ -834,7 +834,7 @@ def calculate_price_summary(
     inventory_context_fact = _inventory_context_fact(observations_with_price_and_inventory)
     if (
         inventory_context_fact is not None
-        and sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP
+        and _has_current_position_room(claims)
     ):
         claims.append(EvidenceClaim("inventory_context", "current_position", inventory_context_fact))
     elif latest_inventory is not None and inventory_context_fact is None:
@@ -885,7 +885,7 @@ def calculate_price_summary(
         )
         if (
             relative_value_fact is not None
-            and sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP
+            and _has_current_position_room(claims)
         ):
             claims.append(EvidenceClaim("relative_value", "current_position", relative_value_fact))
         elif relative_value_fact is None:
@@ -908,7 +908,7 @@ def calculate_price_summary(
     # 문장 1개로 합쳐 넣는다 — AskUserQuestion에서 사용자가 고른 "명시적 문장
     # 안내"를 실제로 독자가 보는 채널(claim)에 반영한다(`warnings`만으로는
     # report_render.py가 항상 걸러내 독자에게 전혀 노출되지 않는다).
-    if skipped_layer_notes and sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP:
+    if skipped_layer_notes and _has_current_position_room(claims):
         claims.append(
             EvidenceClaim(
                 "insufficient_history",
@@ -1429,6 +1429,14 @@ _MA_WINDOWS: tuple[int, ...] = (20, 60, 120, 250)
 # + inventory_level(1) + 신규 6종(변동성·이동평균+RSI·백분위·낙폭국면·
 # 재고해석·상대가치).
 _CURRENT_POSITION_HARD_CAP = CURRENT_POSITION_MAX_SENTENCES
+
+
+def _has_current_position_room(claims: list[EvidenceClaim]) -> bool:
+    """current_position 절에 근거 1개를 더 추가해도 상한을 넘지 않는지(2026-09-08
+    SC-006: `calculate_price_summary` 7곳에 복제돼 있던 조건식을 하나로)."""
+
+    return sum(1 for c in claims if c.section == "current_position") < _CURRENT_POSITION_HARD_CAP
+
 
 # 2026-08-31 사용자 지적 — "실 데이터 간격이 다르면 주·월·분기·년 단위를
 # 인식할 수 있나요?" KOMIS는 DAY/WEEK/MONTH/QUARTER/YEAR 5종 조회단위를
