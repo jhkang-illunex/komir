@@ -1,12 +1,9 @@
-# komir services/ 오케스트레이션 — Docker Compose 버전(로컬 개발·테스트 편의용).
-# ⚠ airgap 운영 배포의 정본은 podman-compose.yml(§7, podman save/load 흐름)이다 —
-# 이 파일은 로컬에서 docker/docker-compose로 빠르게 기동해볼 때만 쓴다. 서비스 구성은
-# 두 파일이 항상 동일해야 한다(수정 시 양쪽 다 반영할 것 — 설계 단계라 자동 생성 없음).
+# komir services/ 오케스트레이션 — airgap 운영 배포의 정본(설계 단계 스켈레톤,
+# docs/CONTAINER_ARCHITECTURE.md §7). 로컬 개발·테스트엔 같은 폴더의 docker-compose.yml을
+# 대신 써도 된다(구성 동일, build 키 표기만 다름) — 수정 시 두 파일 다 반영할 것.
 # 정형DB(Postgres)·LLM/임베딩 서버는 여기 정의하지 않는다 — 전부 외부 서비스, .env로만
-# 참조. 예외 — qdrant: 벡터DB는 komir이 직접 소유·기동(2026-08-05 결정, §0·§4·§7).
-#
-# 차이점(podman-compose.yml 대비): build 키가 `containerfile`이 아니라 표준 Docker
-# Compose 키인 `dockerfile`(파일명이 실제로는 Containerfile이어도 무관 — 경로만 지정).
+# 참조(airgap 이미지를 가볍게 유지하고, 운영 DB/LLM은 별도 관리 주체가 소유하는 구조
+# 전제). 예외 — qdrant: 벡터DB는 komir이 직접 소유·기동(2026-08-05 결정, §0·§4·§7).
 #
 # TODO(구현 단계): geo/docker-compose.yml의 host.docker.internal:host-gateway 패턴
 # (호스트측 로컬 LLM 접속)을 필요 서비스에 이식 — report-gen·rag-chat 모두
@@ -17,7 +14,11 @@
 # 미확정이라 분리 여부 보류). RAG_CHAT_LLM_BASE_URL·REPORT_GEN_LLM_BASE_URL(.env,
 # 기본 공백)이 채워지면 그 값으로, 비어 있으면 공용 LLM_BASE_URL로 자동 폴백한다
 # (`${VAR:-$LLM_BASE_URL}`) — 물리 분리를 결정하면 .env 두 줄만 채우면 되고 compose
-# 파일·코드는 그대로 둔다.
+# 파일·코드는 그대로 둔다. podman-compose(python 구현, v1.6.0) `${A:-$B}` 중첩 치환
+# 실측 검증 완료(2026-08-13) — 내부 var_interpolate()를 직접 호출해 공용폴백·개별
+# 오버라이드·미설정 3케이스 전부 docker compose v2와 동일 결과 확인. CLI(podman-compose
+# config)는 이 환경에 podman 바이너리 자체가 없어 못 돌렸으나, CLI가 쓰는 것과 동일한
+# 치환 함수로 검증했으므로 결론엔 영향 없음.
 
 version: "3.9"
 
@@ -37,8 +38,8 @@ services:
 
   rag-chat:
     build:
-      context: ..
-      dockerfile: rag_chat/Containerfile
+      context: ../inhouse
+      containerfile: rag_chat/Containerfile
     env_file: [.env]
     environment:
       - LLM_BASE_URL=${RAG_CHAT_LLM_BASE_URL:-$LLM_BASE_URL}
@@ -52,8 +53,8 @@ services:
 
   report-gen:
     build:
-      context: ..
-      dockerfile: report_gen/Containerfile
+      context: ../inhouse
+      containerfile: report_gen/Containerfile
     env_file: [.env]
     environment:
       - LLM_BASE_URL=${REPORT_GEN_LLM_BASE_URL:-$LLM_BASE_URL}
@@ -61,9 +62,7 @@ services:
     ports:
       - "8003:8003"
     extra_hosts:
-      # 2026-09-01 — 아래 TODO(11행)가 미이식이던 부분: LLM_BASE_URL이
-      # host.docker.internal을 가리켜도 이 매핑이 없으면 컨테이너 안에서
-      # 이름이 안 풀려 LLM 정제가 계속 규칙기반으로 조용히 폴백한다(실측).
+      # 2026-09-01 — docker-compose.yml과 동일 사유(위 TODO 참고).
       - "host.docker.internal:host-gateway"   # 호스트 LLM(.env REPORT_GEN_LLM_BASE_URL)
     restart: unless-stopped
 
@@ -72,13 +71,14 @@ services:
   # 볼륨 마운트가 필요하다. 스케줄은 .env의 INGESTION_SCHEDULE_CRON.
   ingestion:
     build:
-      context: ..
-      dockerfile: ingest/Containerfile
+      context: ../inhouse
+      containerfile: ingest/Containerfile
     # supercronic이 PID 1로 직접 실행되면(entrypoint.sh가 exec로 자리를 넘김) 이
-    # 환경(볼륨 마운트가 있는 조건, 2026-08-27 실측 재현)에서 내장 프로세스 reaping이
-    # "Failed to fork exec: no such file or directory"로 즉시 죽는 버그가 있다 —
-    # init: true(Docker 내장 tini를 PID 1로 둠)로 supercronic이 PID 1이 아니게 만들면
-    # 우회된다("process reaping disabled, not pid 1" 경고만 뜨고 정상 동작 확인됨).
+    # 환경(볼륨 마운트가 있는 조건, 2026-08-27 실측 재현, docker-compose.yml에서
+    # 검증)에서 내장 프로세스 reaping이 "Failed to fork exec: no such file or
+    # directory"로 즉시 죽는 버그가 있다 — init: true(컨테이너 내장 tini를 PID 1로
+    # 둠)로 우회한다. podman-compose(python 구현)가 이 키를 무시하면 `podman run
+    # --init` 동등 옵션을 배포 스크립트에서 직접 줄 것.
     init: true
     env_file: [.env]
     environment:
@@ -88,8 +88,8 @@ services:
       - PDF_MAXPAGES=500
       - OCR_MAXPAGES=60
     volumes:
-      - ../../documents:/komir/documents:ro
-      - ../data_lake/semi_structure:/komir/inhouse/data_lake/semi_structure
+      - ../documents:/komir/documents:ro
+      - ../inhouse/data_lake/semi_structure:/komir/inhouse/data_lake/semi_structure
     extra_hosts:
       - "host.docker.internal:host-gateway"   # 호스트 LLM(.env LLM_BASE_URL) — geo compose 선례
     restart: unless-stopped

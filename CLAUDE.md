@@ -61,8 +61,6 @@ komir/
 │  ├─ rag_chat/            # 서빙: RAG 챗봇 SSE API(구 services/rag_chat, 컨테이너 가동 중)
 │  ├─ report_gen/          # 서빙: 요약보고서 9종 API(구 services/report_gen, 컨테이너 가동 중)
 │  │       # 서빙 공통 사항은 documents/meta/CONTAINER_ARCHITECTURE.md
-│  ├─ deploy/               # 컨테이너화·airgap 배포(설계 단계)
-│  │       # documents/meta/CONTAINER_ARCHITECTURE.md
 │  ├─ streamlit_demo/       # 개발 데모 멀티페이지(komis-report-generator-main/streamlit_demo
 │  │                          이식, 2026-08-27) — 챗봇(rag_chat SSE, 동작)·요약보고서(report_gen
 │  │                          9종, 동작)·데이터관리(동작) + 진단예측·프롬프트관리(stub)
@@ -74,6 +72,9 @@ komir/
 │     ├─ semi_structure/    # 구 geo_data(이름 변경) — geo 파이프라인 정본 store(parquet,
 │     │                       gitignore) — inbox/archive/store
 │     └─ vector_db/         # 벡터 파트(Qdrant 마운트, RAG용)
+├─ deploy/                  # 컨테이너화·airgap 배포(compose 2종+airgap 스크립트 —
+│                              ★2026-09-07 inhouse/deploy에서 루트로 승격, build context는
+│                              ../inhouse). documents/meta/CONTAINER_ARCHITECTURE.md 참고
 ├─ expired/                 # ★2026-09-07 신설 — 사용하지 않는 패키지 임시 보관(사용자 결정:
 │  │                          "유지만 하고 사용하지 않음, 참조 경로도 없어야 함"). live 코드가
 │  │                          이 안을 import하는 것 금지. 관련 host cron 7건도 같은 날 제거

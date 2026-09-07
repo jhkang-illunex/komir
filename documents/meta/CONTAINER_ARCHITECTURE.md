@@ -254,7 +254,7 @@ EMBEDDING_BASE_URL=                # 비워두면 로컬 e5-small(컨테이너 �
 EMBEDDING_MODEL=intfloat/multilingual-e5-small
 
 # ── 벡터DB(komir이 직접 소유·기동 — LLM/정형DB와 달리 "외부 서비스"가 아님, §0) ──
-QDRANT_URL=http://qdrant:6333       # inhouse/deploy/podman-compose.yml 내부 서비스명 기본값
+QDRANT_URL=http://qdrant:6333       # deploy/podman-compose.yml 내부 서비스명 기본값
 QDRANT_COLLECTION=doc_chunks
 
 # ── 챗봇 서비스 ──
@@ -484,7 +484,7 @@ RAG 챗봇과 Report 생성기가 **동일한 3개 조회 도구**를 쓴다(사
 > DMZ→in-house 경계에 "파일이 감사를 통과해 들어오는 지점"이 있다는 것만 ingestion
 > 설계(§5-3)에 전제로 반영한다.
 
-- 이미지는 **연결망에서 1회 빌드**(`inhouse/deploy/airgap/build_images.sh`) → `podman save`로
+- 이미지는 **연결망에서 1회 빌드**(`deploy/airgap/build_images.sh`) → `podman save`로
   tar 아카이브화 → 물리 반입 → airgap 환경에서 `podman load`. LLM/임베딩 서버·DB는
   이미지에 포함하지 않고 **항상 외부 서비스**(§0 ②, `.env`로만 연결) — 이미지 자체는
   가볍고 airgap 환경 요구사항(내부 네트워크 반입 규정)에 맞음.
@@ -509,7 +509,7 @@ RAG 챗봇과 Report 생성기가 **동일한 3개 조회 도구**를 쓴다(사
   (`QDRANT__TELEMETRY_DISABLED=true` 환경변수로 꺼야 함) — 임베딩 모델의 HuggingFace
   오프라인 모드 설정(`HF_HUB_OFFLINE=1`/`TRANSFORMERS_OFFLINE=1`, 이것도 이번에 함께
   명시)과 같은 종류의 "airgap이라고 믿었는데 실은 조용히 접속을 시도하는" 함정 — 두
-  값 다 `inhouse/deploy/.env.example`·서비스 `Containerfile`에 명시할 것.
+  값 다 `deploy/.env.example`·서비스 `Containerfile`에 명시할 것.
 - **opendataloader-pdf**(2026-08-10 추기, §5-3 문서-OKF 파서의 PDF 처리 후보):
   Java 11+ 필요한 CLI(pip `opendataloader-pdf`가 JAR을 감싼 얇은 래퍼) — 기본 모드는
   임베딩 모델과 같은 패턴으로 **오프라인·로컬 완결**(클라우드 전송 없음, airgap
@@ -544,7 +544,7 @@ RAG 챗봇과 Report 생성기가 **동일한 3개 조회 도구**를 쓴다(사
    리트리버는 템플릿 질의 방식으로 최소 구현.
 5. `inhouse/services/report_gen` — commodity_api·rag_chat이 자리잡은 뒤 마지막(의존성
    가장 큼).
-6. `inhouse/deploy/` podman-compose 통합 기동 테스트(로컬 Postgres+로컬 LLM 서버로
+6. `deploy/` podman-compose 통합 기동 테스트(로컬 Postgres+로컬 LLM 서버로
    airgap 시뮬레이션).
 7. ~~(Phase 2, §2-1 트리거 조건 충족 후) `engine/` 통합 마이그레이션~~ — **2026-08-05
    같은 날 트리거 조건(1~6단계 완료) 미충족 상태에서 사용자 위험 감수 재확정으로
