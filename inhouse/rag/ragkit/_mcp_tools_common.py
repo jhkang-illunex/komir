@@ -80,6 +80,14 @@ _HS_TRANSLATE_PAGES = frozenset({"map_korea", "map_global"})
 #: "최근 N행").
 _MAX_RANGED_ROWS = 200
 
+#: 2026-09-07 — komis_raw_lookup이 0건을 받았는데 `_PERIOD_BOUNDS_LEAD`
+#: 대상 page_id가 아니거나(예: price_forecast는 텅스텐 외 광종은 원본 테이블
+#: 자체에 행이 없다) 가용기간 계산이 안 되면, 이 마커 하나만 붙인다 — "이
+#: 광종만 지원합니다" 류의 근거 없는 주장을 만들지 않는다(사용자 지시).
+#: chatbot_graph.py::_has_deterministic_abstain_signal·chatbot.py::
+#: _resolve_abstain이 이 문자열을 그대로 찾는다(값이 바뀌면 세 곳 다 같이).
+_NO_DATA_FOUND_MARKER = "조회하신 조건에 해당하는 데이터를 찾지 못했습니다."
+
 #: 2026-09-03(발주처 문서 대화형검색시스템 예상질문 고도화.pdf ②-1·②-3·④-나,
 #: 사용자 승인 — "3곳 전부 한번에") — 0건 조회 시 "조회 가능 기간은
 #: YYYY.MM.DD~YYYY.MM.DD입니다"류 안내에 쓸 실제 범위를 붙이는 대상 page_id와
@@ -301,15 +309,17 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
         # 사실상 안 탔는데, 이제 둘 다(komis_start/end_period 명시기간,
         # komis_relative_months 상대기간→_relative_period_bounds()) 배선돼
         # 실제로 0건 응답을 받을 수 있게 됐다.)
-        if all(not ds.rows for ds in datasets) and page_id in _PERIOD_BOUNDS_LEAD:
-            try:
-                bounds = repo.resolve_period_bounds(
-                    page_id, mineral_code=request.mineral_code, hs_code=request.hs_code,
-                    price_criterion_serial=request.price_criterion_serial,
-                    index_type_code=request.index_type_code,
-                )
-            except RawDataAccessError:
-                bounds = None
+        if all(not ds.rows for ds in datasets):
+            bounds = None
+            if page_id in _PERIOD_BOUNDS_LEAD:
+                try:
+                    bounds = repo.resolve_period_bounds(
+                        page_id, mineral_code=request.mineral_code, hs_code=request.hs_code,
+                        price_criterion_serial=request.price_criterion_serial,
+                        index_type_code=request.index_type_code,
+                    )
+                except RawDataAccessError:
+                    bounds = None
             if bounds:
                 start, end, precision = bounds
                 warnings.append(
@@ -317,6 +327,16 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
                     f"{_format_period_bound(start, precision)}~{_format_period_bound(end, precision)}"
                     "입니다."
                 )
+            else:
+                # 2026-09-07(사용자 지시: "값이 없으면 없다고 나오면 되지 왜
+                # 이상한 짓을 더하지") — price_forecast처럼 광종별 가용기간
+                # 계산이 안 되는(또는 그 페이지가 애초에 _PERIOD_BOUNDS_LEAD
+                # 대상이 아닌) 경우, "이 광종만 지원합니다" 같은 추가 주장을
+                # 만들어내지 않고 단순히 "조회 결과가 없다"는 사실만 알린다.
+                # 이 문구는 chatbot.py::_resolve_abstain이 결정적 마커로 잡아
+                # dense 노이즈발 near-miss/오분류(예: "investment_advice"
+                # 오판)로 새지 않고 정확한 이유로 곧장 기권하게 한다.
+                warnings.append(_NO_DATA_FOUND_MARKER)
 
         # 근거 라벨용 한글명 + 더미데이터 판정 — ai_mnrl_mst 한 번의 조회로
         # 함께 얻는다(resolve_mineral_meta). 예전엔 resolve_data_source()·

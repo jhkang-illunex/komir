@@ -84,6 +84,7 @@ import logging
 import re
 import threading
 from collections.abc import AsyncIterator, Iterator
+from datetime import date
 from pathlib import Path
 from typing import Literal
 
@@ -160,6 +161,14 @@ _CITE_NUM_RE = re.compile(r"\[(\d+)\]")
 #: 추출하다 틀릴 위험을 감수할 이유가 없다(komis_raw.py의 화이트리스트
 #: 템플릿 원칙과 같은 이유).
 _UNSUPPORTED_MINERAL_RE = re.compile(r"^'(.+)'을\(를\) KOMIS 광종 목록\(ai_mnrl_mst\)에서 찾지 못했습니다\.$")
+
+#: `_mcp_tools_common.py::_NO_DATA_FOUND_MARKER`와 같은 문자열(2026-09-07,
+#: 사용자 지시: "값이 없으면 없다고 나오면 되지 왜 이상한 짓을 더하지") —
+#: price_forecast처럼 광종별 가용기간을 따로 계산 못 하는 page_id가 0건을
+#: 받았을 때 붙는다. "이 광종만 지원합니다" 같은 근거 없는 주장을 만들지
+#: 않고, 이미 정확한 문장인 이 마커를 그대로 최종 메시지로 쓴다(위 미지원
+#: 광종·기간없음과 같은 이유로 상수 공유 import 안 하고 문구만 맞춘다).
+_NO_DATA_FOUND_MARKER = "조회하신 조건에 해당하는 데이터를 찾지 못했습니다."
 
 
 def _eun_neun(word: str) -> str:
@@ -244,7 +253,12 @@ CHATBOT_SYSTEM_PROMPT = (
     "\"~와 비슷한 시기에/동시에 ~가 있었습니다\"처럼 동시 발생 흐름으로 서술하세요.\n"
     "10. 시계열·추이 질문은 질문이 명시한 기간을 그대로 따르고, 기간을 특정하지 "
     "않았다면 최근 1개월을 기본으로 하되 근거상 필요하면 최대 3개월까지 확장해 "
-    "답하세요."
+    "답하세요.\n"
+    "11. [오늘 날짜]가 항상 주어집니다. \"올해\"·\"작년\"·\"이번 달\"·\"지난달\" 같은 "
+    "상대 시점 표현은 이 날짜를 기준으로 직접 계산해 확신 있게 해석하세요"
+    "(예: 오늘 날짜가 2026-09-07이면 \"작년\"=2025년, \"올해\"=2026년). "
+    "오늘이 몇 년도인지 몰라서 못 정한다는 이유로 기권하지 마세요 — [오늘 날짜]가 "
+    "이미 그 정보입니다."
 )
 
 
@@ -350,9 +364,18 @@ def _build_evidence_prompt(question: str, evidence: list) -> str:
     """generate.build_user_prompt()과 같은 모양([질문]/[근거] + [n]번호)이되,
     입력이 RetrievedChunk가 아니라 Evidence라 별도로 둔다 — 출처 표시에 기준시점·
     단위가 있으면 같이 보여줘 모델이 그 값을 그대로 옮기지 않고 맥락과 함께
-    인용하게 한다."""
+    인용하게 한다.
 
-    lines = [f"[질문]\n{question}\n"]
+    2026-09-07(사용자 실측 제보) — 오늘 날짜를 명시한다. route/verify/reformulate는
+    이미 오늘_날짜를 받는데 생성 단계만 빠져 있었다 — "올해"·"작년" 같은 상대
+    연도 표현이 있는 질문에서 재현: 근거 데이터(179줄, 2026년 1~9월)가 충분한데도
+    "2026년 니켈 가격"은 성공하고 "올해 니켈 가격"만 전체 기권했다(데이터 크기·
+    노이즈와 무관 — 질문 문구만 바꿔도 재현/미재현이 갈림을 직접 확인). 오늘이
+    몇 년도인지 몰라 "올해"를 근거의 2026년 데이터와 확신 있게 연결하지 못해
+    규칙1(오직 근거에만 근거)·규칙3(지어내지 마라)을 과하게 적용해 기권한 것으로
+    보인다."""
+
+    lines = [f"[오늘 날짜]\n{date.today().isoformat()}\n", f"[질문]\n{question}\n"]
     if _needs_constraint_reminder(evidence):
         lines.append(_CONSTRAINT_REMINDER)
     lines.append("[근거]")
@@ -606,6 +629,8 @@ def _resolve_abstain(message: str, warnings: list[str], llm: "KomirJsonLLM | Non
     bounds_warning = next((w for w in warnings if "가능 기간은 " in w), None)
     if bounds_warning:
         return "no_data_for_period", f"질문하신 기간에는 조회 가능한 데이터가 없습니다. {bounds_warning}"
+    if any(_NO_DATA_FOUND_MARKER in w for w in warnings):
+        return "no_data_for_period", _NO_DATA_FOUND_MARKER
     return _classify_abstain(message, warnings, llm)
 
 

@@ -78,6 +78,13 @@ from . import mcp_client  # noqa: E402
 # profile)만 고른다. Evidence 타입 자체는 여전히 공유 정의를 그대로 쓴다
 # (mcp_client가 서버 응답 dict를 이 타입으로 복원).
 
+#: 2026-09-07(사용자 지시) — structured(수급위기 진단·수입예측·지정학위기지수,
+#: mineral_risk 스키마 테이블 3종)를 챗봇 검색 도구에서 임시 분리한다. 이
+#: 테이블들이 향후 다른 테이블로 교체될 예정이라 지금 연계를 유지하는 게
+#: 의미 없다는 판단 — komis_raw(public 스키마, KOMIS 공개원천)만 제대로
+#: 동작하게 정비하는 데 집중한다. 재연결 시 이 플래그만 True로.
+STRUCTURED_ENABLED = False
+
 ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗봇의 검색 라우터다.
 직전 대화(history, 있으면)와 이번 질문(question)을 보고 정확히 하나의 JSON
 객체로 결정한다. 설명·코드펜스·사고과정은 출력하지 않는다.
@@ -98,20 +105,15 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
    resolved_query는 "가격"을 그대로 유지한다("수입금액"·"수입물량" 등 available한
    지표 이름으로 슬쩍 바꿔쓰면 안 됨 — 뒤 단계가 질문이 실제로 바뀐 것으로
    착각해 오답을 정답처럼 통과시킨다).
-2. 아래 네 근거 도구 중 무엇을 쓸지 정한다(resolved_query 기준으로 판단):
-   - structured: komir 자체 산출물(수급위기 진단 등급, 12개월 수입물량/금액
-     예측, 지정학 위기지수 추이)을 특정 광종 기준으로 조회한다. "{광종}
-     진단등급이/예측이/위기지수가 어떻게 되나" 류의 수치 질문일 때만 켠다.
-     광종(CU=동, NI=니켈, CO=코발트, LI=리튬, REE=네오디뮴 또는 그 별칭)을
-     특정할 수 없으면 절대 켜지 않는다. 켤 때는 structured_template을 정확히
-     하나 고른다: latest_diagnosis(최근 진단등급 1건) | import_forecast
-     (수입 예측, target=volume(수입"물량")|value(수입"금액", 가격이 아니다))
-     | geo_index_trend(위기지수 추이). import_forecast를 고르고 질문이 특정
-     개월수를 요구하면(예: "3개월치", "6개월 예측") forecast_months에 그
-     숫자를 넣는다 — 지정이 없으면 forecast_months=null(=12개월 전체).
-     **이 세 가지에 없는 지표(가격·교역·매장량·생산량·시장전망·수급안정 등)는
-     structured가 아니라 아래 komis_raw가 담당한다** — 그런 질문에 structured를
-     같이 켤 필요는 없다(commodity_code가 있으면 komis_raw만으로 충분).
+2. 아래 세 근거 도구 중 무엇을 쓸지 정한다(resolved_query 기준으로 판단):
+   - structured(2026-09-07 임시 비활성화): komir 자체 산출물(수급위기 진단
+     등급·12개월 수입물량/금액 예측·지정학 위기지수 추이)을 담던 테이블이
+     교체될 예정이라 연결을 끊었다 — **use_structured는 항상 false로 두고,
+     structured_template·commodity_code·target·forecast_months는 채우지
+     않는다.** "진단등급이 어떻게 되나"·"수입 예측"·"위기지수 추이" 같은
+     질문도 지금은 이 도구로 답할 수 없다 — dense/pageindex로 관련 문서를
+     찾아보되, 못 찾으면 근거 없음으로 처리한다(정상적인 결과다, 데이터
+     자체가 임시로 없는 것이지 오류가 아니다).
    - komis_raw(2026-08-31 신설, 2026-09-01 전 광종으로 확대+광물종합지수
      topic 추가): KOMIS가 자체 웹사이트에서 공개하는 원천 데이터(광종별
      실거래가·최저/최고가, 국내(관세청)·세계(UN Comtrade) 교역량, 국가별
@@ -131,9 +133,15 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
         - global_trade: UN Comtrade 기준 세계 교역(국가 간 수출입).
         - reserves_production: 국가별 매장량·생산량(세계 공급 구조).
         - market_outlook: 시장전망지표(="시장동향지표"라고 묻는 질문도 이거다 —
-          KOMIS 표시명과 사용자 표현이 다를 수 있다, 같은 지표다).
+          KOMIS 표시명과 사용자 표현이 다를 수 있다, 같은 지표다). **"시장"이라는
+          단어가 들어간 질문은 이거다** — "수급"이 아니라 "시장"이면 반드시
+          market_outlook.
         - supply_stability: 수급안정지수(="수급동향지표"라고 묻는 질문도
-          이거다 — 위와 같은 이유).
+          이거다 — 위와 같은 이유). **"수급"이라는 단어가 들어간 질문은
+          이거다** — "시장"이 아니라 "수급"이면 반드시 supply_stability.
+          (둘을 헷갈리지 말 것: "니켈 시장동향지표"→market_outlook, "니켈
+          수급동향지표"→supply_stability — 질문에 실제로 쓰인 단어가 "시장"
+          인지 "수급"인지만 보고 정확히 그대로 매칭한다.)
         - price_forecast: KOMIS 자체 가격예측(위 structured의 import_forecast
           와 다르다 — 이건 komir가 만든 예측이 아니라 KOMIS가 게시하는
           예측이다).
@@ -142,29 +150,38 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
           지표라 광종을 몰라도 켠다** — komis_topic 중 유일하게
           komis_mineral_name 없이도 use_komis_raw=true로 켤 수 있다(맨 아래
           문단의 "komis_mineral_name 필수" 규칙의 유일한 예외).
-        **"위기지수"만 예외다** — 이건 komir 자체 산출물(지정학 위기지수)이라
-        komis_topic이 아니라 위 structured의 geo_index_trend가 담당한다.
-        "위기지수" 질문엔 komis_raw를 켜지 않는다(광물종합지수·시장전망·
-        수급안정과 헷갈리지 말 것 — 전부 KOMIS가 게시하는 별개 지표다).
+        **"위기지수"는 이 중 어디에도 없다** — komir 자체 산출물(지정학
+        위기지수, KOMIS가 게시하는 지표가 아니다)이라 komis_raw가 담당하는
+        범위 밖이고, 위 structured도 비활성화됐다(같은 이유). "위기지수"
+        질문엔 komis_raw를 켜지 않는다(광물종합지수·시장전망·수급안정과
+        헷갈리지 말 것 — 이 셋은 KOMIS가 게시하는 별개 지표라 komis_raw가
+        정상 담당한다).
      2) komis_mineral_name — 질문이 가리키는 광종의 한글명을 질문에 쓰인
         표현 그대로 채운다(예: "텅스텐", "금", "구리". commodity_code처럼
         CU/NI 같은 영문 약어로 바꿔쓰지 않는다 — 이 필드는 5광종 제한이
         없는 별도 필드다). 광종을 특정할 수 없으면 komis_raw를 켜지 않는다
         (단, komis_topic=composite_index는 예외 — 위 참고, null로 둔다).
      3) komis_start_period·komis_end_period(선택) — 질문이 특정 연도/월/날짜를
-        명시적으로 지정하면 YYYY/YYYYMM/YYYYMMDD 숫자 문자열로 둘 다 채운다
-        (예: "2010년 1월"→둘 다 "201001", "2024년"→둘 다 "2024"). 기간을
-        범위로 말하면("2024년 1월~3월") 시작·끝을 각각 채운다. 특정 기간을
-        언급하지 않았으면(예: "니켈 가격 알려줘") 둘 다 null로 둔다(최신
-        데이터를 조회한다는 뜻).
-     4) komis_relative_months(선택) — "최근 N개월"·"최근 N년"처럼 **상대적**
-        기간 표현이면 개월수로 환산해 채운다(예: "최근 6개월"→6, "최근
-        1년"→12, "최근 3개월"→3). 이 필드가 채워지면 오늘 날짜 기준으로
-        실제 날짜범위를 코드가 계산하니, 절대 날짜로 직접 계산하려 들지
+        지정하면 YYYY/YYYYMM/YYYYMMDD 숫자 문자열로 둘 다 채운다. 두 가지
+        경우가 있다: (a) 완전히 명시적인 연/월("2010년 1월"→둘 다 "201001",
+        "2024년"→둘 다 "2024", "2024년 1월~3월"→시작·끝 각각), (b) 오늘
+        기준 상대 연도("올해"→오늘_날짜의 연도, "작년"→그 전년도, "이번
+        달"→오늘_날짜의 연월) — payload의 오늘_날짜(YYYY-MM-DD)를 기준으로
+        계산한다(예: 오늘_날짜가 "2026-09-07"이면 "올해 니켈 가격"의
+        komis_start_period/komis_end_period는 둘 다 "2026"). **"최근
+        N개월/N년"처럼 오늘로부터 거슬러 세는 상대기간은 여기가 아니라
+        아래 4)를 쓴다** — 그 계산은 개월수 뺄셈이 필요해 LLM 산술 오차
+        위험이 있어 코드가 대신한다. 특정 기간·상대연도 언급이 전혀
+        없으면(예: "니켈 가격 알려줘") 둘 다 null로 둔다(최신 데이터를
+        조회한다는 뜻).
+     4) komis_relative_months(선택) — "최근 N개월"·"최근 N년"처럼 **오늘로부터
+        거슬러 세는** 기간 표현이면 개월수로 환산해 채운다(예: "최근
+        6개월"→6, "최근 1년"→12, "최근 3개월"→3) — 실제 날짜범위는
+        오늘_날짜 기준으로 코드가 계산하니, 절대 날짜로 직접 계산하려 들지
         않는다 — 위 3)의 komis_start_period/komis_end_period와는 서로
-        배타적이다(특정 연/월을 직접 지정한 질문엔 3)을, 상대 표현엔 이
-        필드를 쓴다. 상대 표현도 특정 기간 언급도 없으면 둘 다 null로
-        둔다).
+        배타적이다(3은 "올해"·"2024년"처럼 특정 연도를 가리킬 때, 4는 "최근
+        N개월"처럼 오늘부터 거슬러 셀 때). 상대 표현도 특정 기간 언급도
+        없으면 둘 다 null로 둔다).
    - dense: 보고서·기사·백서 등 비정형 문서를 의미 기반으로 검색한다. 애매하면
      켜는 게 안전하다(기본값에 가깝게 취급). komis_raw를 켤 때도, 그 데이터가
      실제로는 없거나(발주 5광종 상당수가 아직 개발용 더미다) 부족할 수 있어
@@ -179,9 +196,7 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
        광종은?"). 여러 광종 섹션을 훑어 국가별 표를 대조해야 답이 나오는
        질문이라 simple보다 느리다 — 필요할 때만 켤 것.
 
-structured를 켤 땐 commodity_code(CU|NI|CO|LI|REE)를 반드시 함께 지정한다 —
-광종을 모르거나 이 5개 밖이면 켜지 않는다(use_structured=false, komir 자체
-산출물은 이 5광종만 계산되어 있다). komis_raw를 켤 땐 komis_mineral_name을
+komis_raw를 켤 땐 komis_mineral_name을
 반드시 함께 지정한다 — 광종을 모르면 켜지 않는다(use_komis_raw=false, 다만
 5광종 제한은 없다). **유일한 예외: komis_topic=composite_index는
 komis_mineral_name 없이도(null) use_komis_raw=true로 켠다** — 광물종합지수는
@@ -200,11 +215,15 @@ komis_mineral_name 없이도(null) use_komis_raw=true로 켠다** — 광물종�
 #:     정당하게 재기각했다. `RetrievalRoute.komis_relative_months` +
 #:     `_relative_period_bounds()`(코드로 결정적 계산, LLM에 날짜산술 안
 #:     시킴)로 해소.
-#: **REFORMULATE_PROMPT는 여전히 "오늘"을 모른다** — 검색어를 다시 쓸 때
-#: "최근"의 기준 시점 없이 재구성하는데, 지금까지는 이게 실제 버그로
-#: 이어지는 경로가 확인된 적 없어(위 (1)(2) 둘 다 route/verify 쪽 문제였다)
-#: 그대로 둔다. 앞으로 reformulate 단계에서 날짜 관련 오판이 재현되면 그때
-#: 같은 방식(payload에 오늘_날짜 추가)으로 고칠 것.
+#: 2026-09-07 후속(같은 날, 사용자 지시로 미뤄뒀던 나머지도 마저 처리) —
+#: ROUTE_PROMPT/_route_node에도 오늘_날짜를 추가했다("올해"·"작년"처럼 오늘
+#: 기준 상대연도를 komis_start_period/komis_end_period에 채울 때 필요 —
+#: "최근 N개월"과 달리 이건 코드가 계산 안 하고 LLM이 직접 연도를 채우는
+#: 경로라 오늘이 몇 년인지 몰랐으면 계속 틀렸을 것). REFORMULATE_PROMPT에도
+#: 같은 이유로 추가 — 검색어를 다시 쓸 때 "최근"의 기준 시점이 없어
+#: "recent nickel price"처럼 시점이 빠진 영어 검색어를 만들 위험이 있었다
+#: (구체적 버그로 재현된 적은 없지만, route/verify와 같은 근본원인이라
+#: 굳이 남겨둘 이유가 없다는 사용자 판단).
 REFORMULATE_PROMPT = """직전 검색이 근거를 하나도 찾지 못했다. 같은 의도를
 유지하면서 검색 성공률을 높이도록 검색어를 다시 쓴다. 정확히 하나의 JSON
 객체만 출력한다.
@@ -216,7 +235,13 @@ REFORMULATE_PROMPT = """직전 검색이 근거를 하나도 찾지 못했다. �
 못 찾는 경우가 많다(실측 확인) — 이럴 땐 핵심 개체(국가명·광종명)를 영어
 전문용어로 바꾸거나 병기해서 다시 써라(예: "인도네시아 보크사이트 생산" ->
 "Indonesia bauxite mine production"). 완전히 다른 질문으로 바꾸지 말고, 원래
-질문이 묻는 것은 그대로 유지한다."""
+질문이 묻는 것은 그대로 유지한다.
+
+원 질문에 "최근"·"요즘"·"올해" 같은 시점 표현이 있었다면 검색어에도 그
+시점을 구체적으로 반영한다 — payload의 오늘_날짜(YYYY-MM-DD)를 기준으로
+연도를 채워라(예: 오늘_날짜가 "2026-09-07"이고 원 질문이 "니켈 최근 동향"
+이면 "nickel market trend 2026"처럼 연도를 넣는다 — "recent"처럼 시점이
+빠진 채로만 쓰지 않는다)."""
 
 
 VERIFY_PROMPT = """직전 검색으로 근거 후보를 찾았다. 이 근거들이 실제로 질문에
@@ -437,6 +462,7 @@ def _route_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
         invocation = llm.invoke(
             task="retrieval_route", instructions=ROUTE_PROMPT,
             payload={
+                "오늘_날짜": date.today().isoformat(),
                 "question": state["question"],
                 "history": _recent_history(state),
                 "last_answer": _last_assistant_answer(state),
@@ -524,7 +550,12 @@ def _retrieve_node(state: RetrievalState, *, dense_k: int, pageindex_k: int) -> 
                 )
 
     with ThreadPoolExecutor(max_workers=4) as pool:
-        if route.use_structured and route.structured_template and route.commodity_code:
+        # STRUCTURED_ENABLED=False인 동안은 ROUTE_PROMPT가 use_structured를
+        # 항상 false로 두도록 지시돼 있지만, LLM 출력이라 100% 보장은
+        # 아니다 — 여기서 한 번 더 코드로 확정 차단한다(2026-09-07, 사용자
+        # 지시: mineral_risk 스키마의 구 산출물 테이블 연계를 끊음, 향후
+        # 새 테이블로 교체 예정. 재연결 시 이 플래그만 True로 돌리면 된다).
+        if STRUCTURED_ENABLED and route.use_structured and route.structured_template and route.commodity_code:
             call = getattr(session, _STRUCTURED_CALL_NAMES[route.structured_template])
             jobs["structured"] = pool.submit(call, route.commodity_code, route.target, route.forecast_months)
         # composite_index는 komis_raw_mineral_code가 None이어도(광종 미지정)
@@ -600,7 +631,10 @@ def _reformulate_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalStat
     try:
         invocation = llm.invoke(
             task="retrieval_reformulate", instructions=REFORMULATE_PROMPT,
-            payload={"question": route.resolved_query, "history": _recent_history(state)},
+            payload={
+                "오늘_날짜": date.today().isoformat(),
+                "question": route.resolved_query, "history": _recent_history(state),
+            },
             output_model=ReformulatedQuery, max_tokens=80,
         )
         new_query = invocation.output.query.strip() or route.resolved_query
@@ -632,6 +666,15 @@ def _verify_excerpt(text: str, head: int = 300, tail: int = 300) -> str:
     return f"{text[:head]}\n...\n{text[-tail:]}"
 
 
+#: `_verify_node`의 선택적 패스트패스가 "애매함 신호"로 보는 warnings 문구
+#: 조각들 — `_mcp_tools_common.py::komis_raw_lookup`이 가격기준/HS코드가
+#: 여러 개라 첫 번째만 미리보기로 조회했을 때, 또는 komis_topic이 page_id로
+#: 안 매핑됐을 때 붙이는 문구다. 이런 신호가 있으면 komis_raw 결과가
+#: "이 질문에 정말 맞는 조회였나"를 사람(LLM)이 한 번 더 봐야 하므로
+#: 패스트패스에서 제외한다.
+_VERIFY_SKIP_AMBIGUOUS_MARKERS = ("가격기준이", "HS코드가", "komis_raw_unmapped_topic")
+
+
 def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
     """"correct 체크"(사용자 요청, 2026-08-13) — 근거가 실제로 질문에 답이
     되는지 확인한다. evidence가 애초에 비어있으면 LLM을 부를 필요도 없이
@@ -653,11 +696,32 @@ def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
     구조적으로 부족했다(JSON 포맷 문제가 아니라 순수 토큰 상한 부족).
     300으로 올려 여유를 둔다(관찰된 성공 케이스의 약 2배 — route(160)·
     reformulate(80)보다 verify의 reason이 원래 더 길 수밖에 없다: 근거
-    여러 건 각각을 왜 불충분한지 설명해야 하는 유일한 노드)."""
+    여러 건 각각을 왜 불충분한지 설명해야 하는 유일한 노드).
+
+    2026-09-07 — **선택적 패스트패스**(사용자 설계: "전면 삭제도 전면 유지도
+    문제, 적절히 컷오프해야"). komis_raw(kind="structured")는 화이트리스트된
+    컬럼·필터만 쓰는 결정적 SQL이라 원천 조회 자체는 한 번도 틀린 적이
+    없다 — 오늘 재현된 버그는 전부 "그 결과가 질문에 충분한가"를 다시 LLM에게
+    묻는 이 단계, 그리고 뒤이은 생성 단계에서 났다(미래데이터 오판·발췌
+    truncation·노이즈 혼입 전체기권). 아래 세 조건을 **전부** 만족하면(단일
+    출처·비어있지 않음·애매함 신호 없음) verify LLM 호출 자체를 건너뛰고
+    sufficient=True로 확정한다 — 비교·복합질문처럼 여러 출처를 종합해야
+    하거나 조회 자체가 애매했던 경우(가격기준·HS코드 다중 매핑 등)는 여전히
+    LLM 검증을 받는다. `_finalize_node`의 노이즈 근거 가지치기와 짝을 이루되
+    그쪽은 "verify 통과 후 정리"고 이쪽은 "애초에 verify를 안 태움"이라는
+    차이다."""
 
     evidence = state.get("evidence", [])
     if not evidence:
         return {"sufficient": False}
+
+    warnings_so_far = state.get("warnings", [])
+    is_ambiguous = any(
+        any(marker in w for marker in _VERIFY_SKIP_AMBIGUOUS_MARKERS) for w in warnings_so_far
+    )
+    if all(ev.kind == "structured" for ev in evidence) and not is_ambiguous:
+        _logger.info("%s verify: 패스트패스(komis_raw 단일출처, LLM 검증 생략)", _log_prefix(state))
+        return {"sufficient": True}
 
     try:
         invocation = llm.invoke(
@@ -706,10 +770,19 @@ _UNSUPPORTED_MINERAL_MARKER = "KOMIS 광종 목록(ai_mnrl_mst)에서 찾지 못
 #: "답변 불가 안내 + 조회 가능 기간 안내"를 정확한 문구로 요구한다.
 _PERIOD_BOUNDS_MARKER = "가능 기간은 "
 
+#: `_mcp_tools_common.py::_NO_DATA_FOUND_MARKER`와 같은 문자열(2026-09-07) —
+#: 기간·광종별 가용범위를 따로 계산할 수 없는 page_id(예: price_forecast는
+#: 텅스텐 외 광종은 원본 테이블에 행 자체가 없다)가 0건을 받았을 때 붙는다.
+#: "이 광종만 지원합니다" 같은 근거 없는 주장을 만들지 않고 사실만 알리라는
+#: 사용자 지시 — 위 두 마커와 같은 이유로 near-miss 대신 강제 기권시킨다.
+_NO_DATA_FOUND_MARKER = "조회하신 조건에 해당하는 데이터를 찾지 못했습니다."
+
 
 def _has_deterministic_abstain_signal(warnings: list[str]) -> bool:
     return any(
-        _UNSUPPORTED_MINERAL_MARKER in w or _PERIOD_BOUNDS_MARKER in w for w in warnings
+        _UNSUPPORTED_MINERAL_MARKER in w or _PERIOD_BOUNDS_MARKER in w
+        or _NO_DATA_FOUND_MARKER in w
+        for w in warnings
     )
 
 
@@ -744,6 +817,24 @@ def _finalize_node(state: RetrievalState) -> RetrievalState:
     (_has_deterministic_abstain_signal)."""
 
     if state.get("sufficient", True):
+        # 2026-09-07(사용자 실측 제보: "니켈 최근 6개월 가격"·"광물종합지수"가
+        # verify를 통과하고도 생성 단계에서 통째로 기권) — dense는 komis_raw가
+        # 실패할 수 있다는 전제로 ROUTE_PROMPT가 항상 안전망으로 같이 켜둔다.
+        # 그런데 komis_raw(kind="structured", 지금은 STRUCTURED_ENABLED=False
+        # 라 이 kind는 komis_raw 전용이다)만으로 **1차 시도에서 이미** 충분
+        # 판정이 났다면, 그 안전망은 목적을 다한 것이라 더 이상 필요 없다 —
+        # 오히려 dense가 같이 딸려온 무관한 문서(예: "니켈" 검색에 걸린
+        # 예측모델 방법론·타 광종 시장동향 보고서)가 생성 LLM을 "일부는
+        # 관련없다"며 전체 기권으로 몰아넣는 걸 실측 재현했다(노이즈 5건
+        # 섞이면 실패, 그 5건을 빼면 즉시 정상 — 프롬프트 지시만으로는
+        # 완전히 못 막음). 재시도(reformulate) 이후엔 dense/pageindex를
+        # **의도적으로** 추가 켠 것이므로 이 가지치기를 하지 않는다(attempt
+        # 로 구분 — reformulate가 attempt를 늘린다).
+        evidence = state.get("evidence", [])
+        if state.get("attempt", 1) == 1 and any(ev.kind == "structured" for ev in evidence):
+            pruned = [ev for ev in evidence if ev.kind == "structured"]
+            if len(pruned) != len(evidence):
+                return {"evidence": pruned}
         return {}
     warnings = state.get("warnings", [])
     if _has_deterministic_abstain_signal(warnings):
