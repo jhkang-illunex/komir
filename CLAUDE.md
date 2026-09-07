@@ -43,8 +43,15 @@ komir/
 │  │  ├─ msr/{features,models,storage}/  # collectors는 dmz/msr_collectors/로 이동
 │  │  ├─ db/schema_core.sql
 │  │  └─ scripts/          # 백필·백테스트·검증·A-5·GKG정제 등 실행 스크립트 다수
-│  ├─ rag/                 # 문서 기반 RAG(하이브리드 BM25+dense)
-│  │  └─ ragkit/{ingest,chunk,tokenize_ko,embed,retrieve,generate,build_index,eval_retrieval}.py
+│  ├─ common/              # ★2026-09-07 신설(services/ 해체) — 전 서비스 공용 인프라·조회:
+│  │                          config·db·logging_config·llm_client·docs_static(+static_docs/),
+│  │                          komis_raw(KOMIS 원천 조회)·structured(out_*/geo_* 서빙 조회).
+│  │                          의존 방향: 앱/도메인 → common 단방향(역참조 금지)
+│  ├─ rag/                 # 문서 기반 RAG(하이브리드 BM25+dense) — 챗봇 도메인
+│  │  ├─ ragkit/{ingest,chunk,tokenize_ko,embed,retrieve,generate,build_index,eval_retrieval}.py
+│  │  ├─ retrieval/        # ★2026-09-07 구 services/shared/retrieval 편입 — pageindex·
+│  │  │                       pageindex_agent·dense_pg·bm25_pg·hybrid_pg·access·evidence
+│  │  └─ pageindex_client.py + pageindex_vendor/   # 구 services/shared에서 편입
 │  ├─ ingest/              # ★2026-08-27 신설 — 파일 기반 보고서 정제·색인 독립 패키지
 │  │  │                      (구 services/ingestion + rag/ragkit ETL 2종 + mineral_supply_risk
 │  │  │                       파일 추출기 4종을 한곳으로). 실행은 cwd=inhouse에서
@@ -54,9 +61,10 @@ komir/
 │  │  ├─ okf/              # build_okf_documents.py (문서-OKF)
 │  │  ├─ pageindex/        # build_pageindex_trees.py
 │  │  └─ vectorize/        # build_pgvector_{index,okf}.py·backfill_doc_chunk_pub_date.py
-│  ├─ services/            # 서빙 레이어(commodity_api·rag_chat·report_gen 컨테이너 가동 중)
-│  │  └─ {shared,commodity_api,rag_chat,report_gen}/   # ingestion/은 2026-08-27 ingest/로 이동
-│  │       # documents/meta/CONTAINER_ARCHITECTURE.md
+│  ├─ commodity_api/       # 서빙: 광종 리스트·진단·예측·지수 API(구 services/commodity_api)
+│  ├─ rag_chat/            # 서빙: RAG 챗봇 SSE API(구 services/rag_chat, 컨테이너 가동 중)
+│  ├─ report_gen/          # 서빙: 요약보고서 9종 API(구 services/report_gen, 컨테이너 가동 중)
+│  │       # 서빙 3종 공통 사항은 documents/meta/CONTAINER_ARCHITECTURE.md
 │  ├─ deploy/               # 컨테이너화·airgap 배포(설계 단계)
 │  │       # documents/meta/CONTAINER_ARCHITECTURE.md
 │  ├─ dashboard_expire/     # 구 dashboards/(2026-08-27 개명) — streamlit_app.py 모델 재현 데모,
@@ -104,6 +112,19 @@ komir/
   물리 이동은 별도로 신중하게 진행 — 이 경로 표기가 최종 목적지). 과거 WORKLOG·
   DATA_REGISTRY 항목의 구 경로(`engine/...`, `docs/...`, `geo_data/...` 등) 표기는
   **그 시점 기록이라 갱신하지 않았음**, 재현할 땐 아래 §2의 새 경로를 쓸 것.
+- **경로 이관 주의(2026-09-07)**: `inhouse/services/`를 해체했다 — 목적은 inhouse 직속
+  디렉토리가 "개별 서비스 또는 데이터"로만 남게 하고 모듈 간 지식·코드 결합을 끊는 것.
+  `services/shared`는 두 성격으로 분해: 전 서비스 공용(config·db·logging_config·
+  llm_client·docs_static·komis_raw·retrieval/structured.py)은 신설 `inhouse/common/`으로,
+  챗봇 도메인 전용(retrieval 나머지 7종·pageindex_client·pageindex_vendor)은
+  `inhouse/rag/`로. `services/{commodity_api,rag_chat,report_gen}`은 inhouse 직속으로
+  승격. 효과: 구 shared→ragkit 역참조가 rag 패키지 내부화되어 **순환 의존 소멸**,
+  의존 방향은 앱(rag_chat·report_gen·commodity_api·streamlit_demo·ingest) → 도메인(rag)
+  → common 단방향(ingest→rag 단방향 참조는 의도적 허용). import 철자도
+  `shared.*`/`services.shared.*` 이중 표기에서 `common.*`/`rag.retrieval.*`로 단일화됐고,
+  sys.path 부트스트랩은 마커(`common/llm_client.py`·`common/db.py`) 탐색 단일 방식으로
+  통일(소스트리와 컨테이너 /app 레이아웃이 동일해짐). 과거 WORKLOG·DATA_REGISTRY의
+  `services/...` 표기는 그 시점 기록이라 갱신하지 않았음.
 
 ## 2. 실행 방법(현재 실제로 쓰는 방식 — README의 docker-compose `make` 흐름과 다를 수 있음)
 ```bash

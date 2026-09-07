@@ -2,7 +2,45 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-07 (최신, 이어짐) — 프롬프트 인젝션 방어 + komis_raw 컬럼 주석 표시(커밋 `1226202b9`)
+## 2026-09-07 (최신) — services/ 해체: common/ 신설 + 서비스 3종 inhouse 직속 승격, 순환 의존 소멸(커밋 `0cdd6a579`)
+
+사용자 요청("모듈 간 지식이 분리 안 돼 서로 영향을 준다 → services는 없애고
+inhouse 직속이 개별 서비스/데이터로만 남게") 구조 조정. 배경 진단:
+`services/shared` ↔ `rag/ragkit` 상호 import 순환(shared/retrieval의
+pageindex→tokenize_ko, dense_pg→embed 역참조 2건)과 `services.shared` vs
+`shared` 이중 import 철자, 소스트리/컨테이너 이중 분기 sys.path 부트스트랩이
+원인이었다.
+
+- **이동(260파일, 전부 git rename 추적)**: `services/shared` →
+  공용(config·db·logging_config·llm_client·docs_static·komis_raw·
+  retrieval/structured.py)은 신설 `common/`, 챗봇 도메인(retrieval 7종·
+  pageindex_client·pageindex_vendor)은 `rag/`. 서비스 3종은 inhouse 직속.
+  **분류 규칙**: rag계·report_gen·commodity_api 중 2곳 이상이 쓰면 common,
+  챗봇 전용이면 rag — 사전 전수 grep으로 확정(komis_raw·structured가
+  report_gen에서도 쓰여 common행이 된 게 핵심, 처음 육안 조사에선 여러 줄
+  import `from shared.komis_raw import (`를 grep 패턴이 놓쳤었다).
+- **import 90여 줄 치환** + `_mcp_tools_common.py`의 `pageindex_agent,
+  structured` 복합 import를 도메인별 2줄로 분리. common 내부는 상대 import
+  (`from .db import`)로 바꿔 komis_raw의 자체 부트스트랩 삭제.
+- **부트스트랩 단일화**: services/shared→./shared 평탄화 COPY 관례가 없어져
+  소스트리(inhouse/)와 컨테이너(/app) 레이아웃이 동일해짐 →
+  `_shared_root.py`의 소스트리/컨테이너 이중 분기 제거, 전 부트스트랩을
+  `common/llm_client.py`(또는 `common/db.py`) 마커 탐색 하나로 통일.
+  streamlit_demo·테스트의 `inhouse/services` sys.path 삽입도 루트 삽입으로.
+- **컨테이너/배포**: Containerfile 4종 COPY 경로 갱신(rag_chat에
+  `rag/retrieval` 추가, ingest에 `rag/pageindex_client.py`+`pageindex_vendor`
+  추가 — 구 shared COPY에 묻어가던 것). **부수 발견**: commodity_api
+  Containerfile이 8-27 개명 전 `dashboards/` 스냅샷을 COPY하고 있어 재빌드
+  시 무조건 실패할 잠복 버그 — `dashboard_expire/`로 수정. compose 2종·
+  build_images.sh·cron_diagnosis_weekly.sh 경로 갱신.
+- **의존 방향 확정**: 앱(rag_chat·report_gen·commodity_api·streamlit_demo·
+  ingest) → 도메인(rag) → common 단방향. ingest→rag(chunk·embed·ingest 등
+  8건)는 의도적 단방향 허용(색인 빌더가 챗봇과 동일 청킹·임베딩을 쓰는
+  설계 결합 — 260827 "ragkit에 남긴다" 결정 유지).
+- 검증: 전 모듈 import 스모크(common 7·rag 11·앱 3·ingest 4·streamlit)
+  통과 후 커밋, 이미지 재빌드·재배포·라이브 검증은 같은 날 후속 항목 참조.
+
+## 2026-09-07 (이어짐) — 프롬프트 인젝션 방어 + komis_raw 컬럼 주석 표시(커밋 `1226202b9`)
 
 사용자 요청 2건. (1) `_classify_pre_gate`(기존 security_privacy/
 investment_advice 사전차단)에 `prompt_injection` 카테고리 신설 + 생성
