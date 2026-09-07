@@ -18,8 +18,9 @@ from ._bootstrap import ensure_shared_on_path
 ensure_shared_on_path()
 
 from common.config import get_settings  # noqa: E402
+from common.structured import VALID_COMMODITIES  # noqa: E402
 
-from .generator import VALID_COMMODITIES, generate_and_store  # noqa: E402
+from .generator import generate_and_store  # noqa: E402
 
 logger = logging.getLogger(__name__)
 

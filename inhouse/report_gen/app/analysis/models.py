@@ -69,22 +69,10 @@ ForecastHorizon = Literal["medium", "long"]
 ForecastPeriod = Annotated[str, Field(pattern=r"^\d{4}(?:-Q[1-4])?$")]
 
 #: 광종·월 필터를 쓰는 "지표" 페이지 집합. `AnalysisSummaryRequest`의 필터 검증이
-#: 이 dict의 키를 그대로 쓴다(원본은 profile_id 목록도 담았지만, 프로파일 경로를
-#: 이식하지 않았으므로 값은 페이지 구분용으로만 남는다).
-PAGE_PROFILES: dict[str, set[str]] = {
-    "indicator_market": {
-        "current_status",
-        "grade_persistence",
-        "score_price_relationship",
-    },
-    "indicator_supply": {
-        "current_status",
-        "grade_persistence",
-        "score_price_relationship",
-        "world_supply_balance",
-        "domestic_procurement_concentration",
-    },
-}
+#: 멤버십 검사(`in`)에만 이 값을 쓴다(2026-09-08 SC-DEEP-001: 원본은 페이지별
+#: profile_id 값도 담았지만 프로파일 경로를 이식하지 않아 값 자체는 죽어 있었다
+#: — dict[str, set[str]]를 frozenset으로 좁힌다).
+_INDICATOR_PAGE_IDS: frozenset[str] = frozenset({"indicator_market", "indicator_supply"})
 
 
 class StrictModel(BaseModel):
@@ -396,7 +384,7 @@ class AnalysisSummaryRequest(StrictModel):
             # 집계 페이지라 여전히 제외.
             raise ValueError("komis_response is not accepted for this page_id")
 
-        if self.page_id in PAGE_PROFILES:
+        if self.page_id in _INDICATOR_PAGE_IDS:
             # 2026-09-01 예외 — indicator_supply는 komis_snapshot_response
             # (`getChartDataSpdmStbt`)가 있으면 그 안의 `chartSpdmStbt.mnrkndUnqCd`
             # 로 광종 코드를 자동 채울 수 있다(map_korea/global과 같은 패턴).

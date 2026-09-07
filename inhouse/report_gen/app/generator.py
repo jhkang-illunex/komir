@@ -39,7 +39,6 @@ ensure_shared_on_path()
 from common.config import get_settings  # noqa: E402
 from common.db import execute_msr, write_df_msr  # noqa: E402
 from common.structured import (  # noqa: E402
-    VALID_COMMODITIES,
     StructuredQueryError,
     check_commodity,
     geo_index_trend,
