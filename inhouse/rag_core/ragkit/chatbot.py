@@ -378,6 +378,26 @@ def _needs_constraint_reminder(evidence: list) -> bool:
     return len(sections) > 1
 
 
+#: 2026-09-08(KOMIS_RAW_MAX_TIMESTAMPS=60 도입 회귀 수정) — "최근 1년간 니켈
+#: 가격"처럼 komis_raw 시계열이 실제로는 최근 60일(일별 데이터 기준 약 2개월)
+#: 치만 오는데, 그 사실이 근거에 없으면 LLM이 "질문의 1년을 못 채운다"며
+#: 전체 기권했다. CHATBOT_SYSTEM_PROMPT의 시계열 규칙(10)에 영구히 새 문장을
+#: 넣어봤지만(2026-09-08 재현) "조달청 비철금속 시장동향 요약해줘"처럼 komis_raw
+#: 와 무관한 pageindex/dense 질문에도 그 문구가 걸려 성공률이 오히려 떨어졌다
+#: (신규 1/8 vs 기존 4/8, 8회 반복 통계). `_CONSTRAINT_REMINDER`와 같은 패턴으로
+#: komis_raw 근거가 실제로 기간범위 압축(evidence.py::_period_span, as_of에
+#: "~" 포함)됐을 때만 조건부로 붙인다 — 시스템 프롬프트는 건드리지 않는다.
+_PERIOD_TRUNCATION_REMINDER = (
+    "[유의사항] 아래 [근거] 중 조회기간이 표시된 항목은 그 기간이 질문이 요구한 "
+    "전체 기간보다 짧을 수 있습니다(최신 데이터 상한 적용). 그래도 기권하지 말고 "
+    "근거에 있는 범위로 답한 뒤, 그 실제 조회기간을 답변에 명시하십시오.\n"
+)
+
+
+def _needs_period_truncation_reminder(evidence: list) -> bool:
+    return any(ev.as_of and "~" in ev.as_of for ev in evidence)
+
+
 def _build_evidence_prompt(question: str, evidence: list) -> str:
     """generate.build_user_prompt()과 같은 모양([질문]/[근거] + [n]번호)이되,
     입력이 RetrievedChunk가 아니라 Evidence라 별도로 둔다 — 출처 표시에 기준시점·
@@ -396,11 +416,24 @@ def _build_evidence_prompt(question: str, evidence: list) -> str:
     lines = [f"[오늘 날짜]\n{date.today().isoformat()}\n", f"[질문]\n{question}\n"]
     if _needs_constraint_reminder(evidence):
         lines.append(_CONSTRAINT_REMINDER)
+    if _needs_period_truncation_reminder(evidence):
+        lines.append(_PERIOD_TRUNCATION_REMINDER)
     lines.append("[근거]")
     for i, ev in enumerate(evidence, 1):
         meta = f"(출처: {ev.source} · {ev.section}"
         if ev.as_of:
-            meta += f" · 기준시점 {ev.as_of}"
+            # 2026-09-08 — "기준시점"은 단일 시점을 뜻하는 라벨이라 komis_raw
+            # 시계열의 기간 범위(물결표 포함, evidence.py::_period_span)와
+            # 붙이면 LLM이 그 의미를 약하게 받아들여 "질문이 요구한 기간을
+            # 근거가 못 채운다"고 오판, 전체 기권하는 회귀가 재현됐다. A/B
+            # 재현(5회 반복)으로 짧은 명사 레이블("조회기간")은 1/5로 여전히
+            # 약했고, 완전한 문장형 레이블("이 근거의 실제 조회기간:")로
+            # 바꾸니 5/5 안정적으로 통과함을 확인했다 — 범위(~)가 섞인
+            # as_of만 이 문장형 레이블을 쓴다.
+            if "~" in ev.as_of:
+                meta += f" · 이 근거의 실제 조회기간: {ev.as_of}"
+            else:
+                meta += f" · 기준시점 {ev.as_of}"
         if ev.unit:
             meta += f" · 단위 {ev.unit}"
         meta += ")"

@@ -42,6 +42,7 @@ from mcp.server.fastmcp import FastMCP
 
 from pydantic import ValidationError
 
+from common.config import get_settings
 from common.komis_raw import (
     AnalysisPreviewPageId,
     AnalysisPreviewRequest,
@@ -73,13 +74,14 @@ _HS_TRANSLATE_PAGES = frozenset({"map_korea", "map_global"})
 
 #: 2026-09-07("니켈 최근 6개월 가격" 사용자 제보 후속) — start_period·
 #: end_period가 둘 다 있으면 그 범위 전체를 봐야 "추이" 질문에 답이 되는데,
-#: `AnalysisPreviewRequest.limit`은 최대 20으로 pydantic이 못박아둬서(요약
-#: 미리보기 용도) 6개월치 일별 가격(~130행)은 애초에 다 못 온다. 기간이
-#: 명시된 조회는 `fetch()`(limit 적용) 대신 `fetch_complete()`로 바꾸되,
-#: "최근 10년" 같은 과도한 범위 요청까지 표를 무한정 키우지 않도록 최근
-#: N행으로만 자른다(정렬이 이미 period_column DESC라 최신순 상위 N이 곧
-#: "최근 N행").
-_MAX_RANGED_ROWS = 200
+#: `AnalysisPreviewRequest.limit`을 그대로 쓰면(요약 미리보기 용도) 반년치
+#: 일별 가격(~130행)도 다 못 온다. 기간이 명시된 조회는 `fetch()`(limit 적용)
+#: 대신 `fetch_complete()`로 바꾸되, "최근 10년" 같은 과도한 범위 요청까지
+#: 표를 무한정 키우지 않도록 최근 N행으로만 자른다(정렬이 이미 period_column
+#: DESC라 최신순 상위 N이 곧 "최근 N행"). 2026-09-08부터 N은
+#: `Settings.KOMIS_RAW_MAX_TIMESTAMPS`(기본 60, register_common_tools가
+#: 서버 기동 시 한 번 읽음)로 이 값과 komis_raw_lookup의 기본 limit을
+#: 동시에 맞춘다(documents/AI_TEAM_DATA_SCHEMA_HANDOFF.md §5 주의5).
 
 #: 2026-09-07 — komis_raw_lookup이 0건을 받았는데 `_PERIOD_BOUNDS_LEAD`
 #: 대상 page_id가 아니거나(예: price_forecast는 텅스텐 외 광종은 원본 테이블
@@ -125,6 +127,10 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
     `dict | None`/`list[...]`처럼 top-level이 object가 아니면 `{"result": ...}`
     로 감싸는 걸 실측으로 확인했기 때문(`mcp_client.py`가 도구마다 다른 언랩
     로직 없이 `structuredContent`를 그대로 쓰게 하려는 것)."""
+
+    # 2026-09-08 — 서버 기동 시(이 함수가 호출되는 시점) 한 번만 읽는다.
+    # komis_raw_lookup의 기본 limit과 기간범위 조회 컷 둘 다 이 값을 쓴다.
+    _max_timestamps = get_settings().KOMIS_RAW_MAX_TIMESTAMPS
 
     @mcp.tool()
     def latest_diagnosis(commodity_code: str) -> dict[str, Any]:
@@ -194,7 +200,7 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
         price_criterion_serial: int | None = None,
         start_period: str | None = None,
         end_period: str | None = None,
-        limit: int = 5,
+        limit: int = _max_timestamps,
     ) -> dict[str, Any]:
         """KOMIS 공개원천(public.KO_*, 타 팀 소유·읽기전용) 정형 데이터 조회 —
         가격(price_*)·교역(map_korea/map_global)·매장량·생산량(map_mineral)·
@@ -298,8 +304,8 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
             return {"evidence": [], "warnings": [*warnings, str(exc)]}
         if has_period_range:
             datasets = [
-                ds.model_copy(update={"rows": ds.rows[:_MAX_RANGED_ROWS]})
-                if len(ds.rows) > _MAX_RANGED_ROWS else ds
+                ds.model_copy(update={"rows": ds.rows[:_max_timestamps]})
+                if len(ds.rows) > _max_timestamps else ds
                 for ds in datasets
             ]
 

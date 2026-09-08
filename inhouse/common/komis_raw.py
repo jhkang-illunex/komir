@@ -140,7 +140,11 @@ class AnalysisPreviewRequest(StrictModel):
     price_criterion_serial: int | None = Field(default=None, ge=1)
     start_period: str | None = Field(default=None, pattern=r"^\d{4}(?:\d{2}(?:\d{2})?)?$")
     end_period: str | None = Field(default=None, pattern=r"^\d{4}(?:\d{2}(?:\d{2})?)?$")
-    limit: int = Field(default=5, ge=1, le=20)
+    # 2026-09-08: 상한을 200으로 완화(구 20) — 실제 기본값·타임스탬프 상한은
+    # common.config.Settings.KOMIS_RAW_MAX_TIMESTAMPS(기본 60)가 단일 소스로
+    # 강제한다(_mcp_tools_common.py::register_common_tools 참고). 이 필드
+    # 자체는 그보다 더 큰 값을 직접 지정하고 싶을 때를 위한 상위 안전장치.
+    limit: int = Field(default=5, ge=1, le=200)
 
     @model_validator(mode="after")
     def validate_period(self) -> "AnalysisPreviewRequest":

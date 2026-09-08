@@ -175,6 +175,48 @@ KOMIS_RAW_DUMMY_CAVEAT = "이 수치는 KOMIS 실제 표본이 아니라 개발�
 #: 오단정을 만든다 — 이 경우엔 이 문구를 대신 쓴다.
 KOMIS_RAW_UNVERIFIED_CAVEAT = "이 수치는 KOMIS 실제 표본 여부를 자동으로 확인할 수 없는 데이터입니다 — 참고용으로만 활용하세요."
 
+#: chatbot_events.py::_DATE_COLUMN_NAMES와 같은 KOMIS 날짜열 이름(그쪽은 차트축
+#: 판정용으로 더 넓게 매칭하지만, 여기는 min/max만 뽑으면 되니 단순 포함 검사로
+#: 충분하다 — 두 파일이 갈라지지 않게 이름 자체는 그대로 맞춤).
+_KOMIS_DATE_COLUMNS = ("crtr_ymd", "crtr_yr")
+
+
+def _format_ymd(raw: str) -> str:
+    """`crtr_ymd`(YYYYMMDD)·`crtr_yr`(YYYY) 등 KOMIS 원시 날짜 문자열을
+    LLM이 명확히 날짜로 인식하는 하이픈 포맷으로("20260617"→"2026-06-17").
+    8자리 미만(연도만 등)은 그대로 둔다."""
+
+    if len(raw) == 8 and raw.isdigit():
+        return f"{raw[:4]}-{raw[4:6]}-{raw[6:8]}"
+    if len(raw) == 6 and raw.isdigit():
+        return f"{raw[:4]}-{raw[4:6]}"
+    return raw
+
+
+def _period_span(ds: Any) -> str | None:
+    """`ds.rows`(이미 period_column DESC로 정렬됨, komis_raw.py::_fetch_dataset)
+    에서 날짜열을 찾아 실제 커버 기간을 사람이 읽는 문자열로 만든다.
+
+    2026-09-08(KOMIS_RAW_MAX_TIMESTAMPS=60 도입 회귀 수정) — "최근 1년간
+    니켈 가격" 같은 질문에 실제로는 최근 60일치(일별 데이터라 약 2개월)만
+    주어지는데, 생성 프롬프트에 이 사실이 없으면 LLM이 "근거가 질문의 1년을
+    커버 못 한다"고 스스로 판단해 전체 기권했다(재현 확인). 이 문자열을
+    `Evidence.as_of`에 실어 `_build_evidence_prompt`의 기존 "· 기준시점
+    {as_of}" meta 슬롯에 자동 노출시킨다(새 필드·새 슬롯 추가 없음) —
+    chatbot.py CHATBOT_SYSTEM_PROMPT 규칙4·10의 "기간이 짧아도 기권 금지"
+    지시와 짝을 이뤄야 효과가 있었다(하이픈 없는 원시 날짜 포맷·약한
+    표현만으로는 재현 실패, "요청한 N 전체가 아님"처럼 명확히 부정하는
+    문구가 필요했음 — 2026-09-08 A/B 재현으로 확인)."""
+
+    date_col = next((c for c in ds.columns if c in _KOMIS_DATE_COLUMNS), None)
+    if date_col is None:
+        return None
+    values = [str(row[date_col]) for row in ds.rows if row.get(date_col) is not None]
+    if not values:
+        return None
+    oldest, newest = _format_ymd(values[-1]), _format_ymd(values[0])
+    return f"{oldest}~{newest}, 최신순 {len(values)}건만 제공됨(요청한 전체 기간이 아닐 수 있음)"
+
 
 def from_komis_raw(
     page_id: str, datasets: list[Any], *, mineral_code: str | None = None,
@@ -231,7 +273,7 @@ def from_komis_raw(
             Evidence(
                 kind="structured", source=f"public.{ds.source_table}", section=section,
                 text=_markdown_table(display_columns, table_rows),
-                caveat=caveat,
+                caveat=caveat, as_of=_period_span(ds),
             )
         )
     return evidence
