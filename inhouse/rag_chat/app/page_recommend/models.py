@@ -246,7 +246,6 @@ class ScreenControl(StrictModel):
 class PageScreen(StrictModel):
     """Observed controls and inference policy for a page screen."""
 
-    infer_unlisted_query_filters: bool = True
     controls: list[ScreenControl] = Field(default_factory=list)
 
 
