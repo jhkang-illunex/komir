@@ -91,6 +91,27 @@ class Settings(BaseSettings):
     REPORT_SCHEDULE_CRON: str = "0 6 * * MON"
     REPORT_TEMPLATE_DIR: str = str(_INHOUSE_ROOT / "services/report_gen/app/templates")
 
+    # ── report_gen 분석요약: 광물자원가격 "가격 위치" 판정(고가권/중간권/
+    #    저가권) 임계값(2026-09-09, 사용자 요청으로 .env화 — 코드 재배포
+    #    없이 재시작만으로 반영). 기본값은 균등 3등분(하위/상위 1/3
+    #    지점) — 특정 광종·기간에 맞춘 값이 아니라 백분위 정의 자체에서
+    #    나오는 중립적 분할이라 이 값으로 시작한다. 단위는 백분위 %(0~100),
+    #    LOW < HIGH를 요구하며 어기면 report_gen이 기동 시 실패한다
+    #    (`app/analysis/komir_summary.py::_price_position_label` 소비) ──
+    PRICE_POSITION_LOW_PCT: float = 100 / 3
+    PRICE_POSITION_HIGH_PCT: float = 200 / 3
+
+    @field_validator("PRICE_POSITION_HIGH_PCT", mode="after")
+    @classmethod
+    def _validate_price_position_thresholds(cls, value: float, info) -> float:
+        low = info.data.get("PRICE_POSITION_LOW_PCT")
+        if low is not None and not (0 <= low < value <= 100):
+            raise ValueError(
+                "PRICE_POSITION_LOW_PCT < PRICE_POSITION_HIGH_PCT이고 둘 다 0~100 "
+                f"범위여야 합니다(현재 LOW={low}, HIGH={value})."
+            )
+        return value
+
     # INGESTION_SCHEDULE_CRON·FORECAST_SCHEDULE_CRON(.env에 있음)은 이 Settings의
     # 소비자가 아직 없다 — 실제 crontab이 직접 참조하는 목표값(§.env 주석,
     # "전환 시점에 crontab도 이 값으로 다시 짜야 함")이라 여기 필드를 만들지 않는다

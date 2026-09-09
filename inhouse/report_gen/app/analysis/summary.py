@@ -58,6 +58,7 @@ from .._bootstrap import ensure_shared_on_path
 
 ensure_shared_on_path()
 
+from common.config import get_settings  # noqa: E402
 from common.llm_client import KomirJsonLLM, LLMError  # noqa: E402
 
 from .budget import ANALYSIS_LLM_TIMEOUT_SECONDS  # noqa: E402
@@ -2443,6 +2444,7 @@ class AnalysisSummaryService:
         komis_period_comparisons = _komis_period_comparisons_from_request(
             request, raw=raw_komis_period_comparisons
         )
+        price_position_settings = get_settings()
         calculated = _calculate_or_no_data(
             request.page_id,
             calculate_price_summary,
@@ -2453,6 +2455,8 @@ class AnalysisSummaryService:
             srch_field=request.srch_field,
             srch_start_date=request.srch_start_date,
             srch_end_date=request.srch_end_date,
+            price_position_low_pct=price_position_settings.PRICE_POSITION_LOW_PCT,
+            price_position_high_pct=price_position_settings.PRICE_POSITION_HIGH_PCT,
         )
         context = effective_page_context(request.page_id)
         applied_filters = {
