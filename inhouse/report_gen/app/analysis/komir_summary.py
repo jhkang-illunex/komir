@@ -39,6 +39,7 @@ def _subject(name: str) -> str:
 from .models import (
     CURRENT_POSITION_MAX_SENTENCES,
     KEY_METRICS_MAX_COUNT,
+    MAJOR_CHANGES_MAX_SENTENCES,
     DetectedPattern,
     Metric,
     PriceGroupMineralObservation,
@@ -537,10 +538,11 @@ def calculate_price_summary(
     # 통계(전주/전월/전년)만 다뤘고, "이번에 받은 조회기간 전체가 어떻게
     # 움직였는지"는 어느 근거에도 없었다. 새 데이터소스 없이 이미 받은
     # observations의 첫 관측치(조회기간 시작)와 최신 관측치를 직접
-    # 비교해서 만든다. major_changes 5-cap(day_over_day+week+month+year+
-    # price_streak만으로 이미 5개까지 찰 수 있음)을 넘지 않도록 남은
-    # 자리가 있을 때만 추가한다.
-    if sum(1 for claim in claims if claim.section == "major_changes") < 5:
+    # 비교해서 만든다. major_changes 상한(day_over_day+week+month+year+
+    # price_streak만으로 이미 5개까지 찰 수 있고, 아래 ma_trend도 같은
+    # 자리를 다툰다 — `MAJOR_CHANGES_MAX_SENTENCES`가 둘 다 참조하는 이유는
+    # 그 상수 정의 참고)을 넘지 않도록 남은 자리가 있을 때만 추가한다.
+    if sum(1 for claim in claims if claim.section == "major_changes") < MAJOR_CHANGES_MAX_SENTENCES:
         first = observations[0]
         if first is not latest and first.commerce_price is not None:
             overall_change = _pct(latest.commerce_price, first.commerce_price)
@@ -749,12 +751,20 @@ def calculate_price_summary(
             )
             break
 
-    ma_rsi_fact, ma_rsi_computed = _ma_rsi_fact(observations_with_price, latest.commerce_price, srch_avg_opt=srch_avg_opt)
-    if ma_rsi_fact is not None and _has_current_position_room(claims):
-        claims.append(EvidenceClaim("ma_rsi", "current_position", ma_rsi_fact))
+    ma_trend_fact, price_momentum_fact, ma_rsi_computed = _ma_rsi_fact(observations_with_price, latest.commerce_price)
+    # 2026-09-09 발주처 업무지시서 §3.1 재배치 — "평균 대비 위치"(이동평균
+    # 배열 기반)는 "최근 변화"(major_changes)로, 단기 매매압력(RSI 기반)은
+    # "변동 구간"과 함께 current_position에 남긴다.
+    if ma_trend_fact is not None and sum(1 for claim in claims if claim.section == "major_changes") < MAJOR_CHANGES_MAX_SENTENCES:
+        claims.append(EvidenceClaim("ma_trend", "major_changes", ma_trend_fact))
+    if price_momentum_fact is not None and _has_current_position_room(claims):
+        claims.append(EvidenceClaim("price_momentum", "current_position", price_momentum_fact))
     if not ma_rsi_computed:
         warnings.append("이동평균·RSI는 관측치가 부족해 계산하지 않았다(이동평균 최소 20건, RSI 최소 15건 필요).")
-        skipped_layer_notes.append("이동평균·RSI")
+        # 사용자 노출 라벨(skipped_layer_notes)은 기술지표명을 직접 쓰지
+        # 않는다(2026-09-09 업무지시서 §2.3) — warnings(서버 로그 전용)는
+        # 운영자가 원인을 바로 알아보도록 기술 용어를 그대로 둔다.
+        skipped_layer_notes.append("평균 대비 위치·단기 매매압력")
 
     percentile = _percentile_rank(observations_with_price, latest.commerce_price)
     if percentile is not None and _has_current_position_room(claims):
@@ -1401,8 +1411,10 @@ _MA_WINDOWS: tuple[int, ...] = (20, 60, 120, 250)
 # current_position 절 근거 상한 — `models.py::CURRENT_POSITION_MAX_SENTENCES`
 # 단일 출처를 import(2026-09-08 SC-002, 세 파일 리터럴 동기화 제거). 근거
 # 최대 9개 = period_range/no_price_range(1) + compare_overall_change/no(1)
-# + inventory_level(1) + 신규 6종(변동성·이동평균+RSI·백분위·낙폭국면·
-# 재고해석·상대가치).
+# + inventory_level(1) + 신규 6종 중 이 절에 남은 5종(변동성·단기 매매압력
+# ["price_momentum", 구 ma_rsi]·백분위·낙폭국면·재고해석·상대가치) —
+# 2026-09-09 발주처 업무지시서로 "평균 대비 위치"(ma_trend, 구 ma_rsi의
+# 절반)는 major_changes로 옮겼다.
 _CURRENT_POSITION_HARD_CAP = CURRENT_POSITION_MAX_SENTENCES
 
 
@@ -1580,32 +1592,49 @@ def _rsi14(observations_with_price: list) -> float | None:
     return 100 - (100 / (1 + rs))
 
 
+#: 이동평균 배열(정배열/역배열/혼조) → 사용자 친화 문구(2026-09-09 발주처
+#: 업무지시서 §2.3 — "20일선"·"이동평균"·"배열" 등 기술지표명을 화면에 직접
+#: 노출하지 않는다). "정배열"에 대응하는 "단기·중기 흐름 모두 상승 방향"은
+#: 업무지시서가 제시한 표현을 그대로 썼다 — "역배열"은 업무지시서에 없어
+#: 대칭으로 만들었다. "추세"라는 단어는 어디에도 쓰지 않는다(`summary.py::
+#: _FORBIDDEN_SUMMARY_TERMS`에 있어 LLM 정제 출력이 이 단어를 그대로
+#: 옮기면 검증 실패 → 영구 규칙기반 폴백으로 떨어진다 — 이 파일의 기존
+#: "이동평균 배열"·"가격강도지수(RSI)" 완곡어법도 같은 이유였다).
+_MA_ALIGNMENT_LABELS = {
+    "정배열": "최근 가격 흐름은 단기·중기 평균 모두 상승 방향이다.",
+    "역배열": "최근 가격 흐름은 단기·중기 평균 모두 하락 방향이다.",
+    "혼조": "최근 가격 흐름은 단기와 중기 흐름이 엇갈리는 상태다.",
+}
+
+
 def _ma_rsi_fact(
-    observations_with_price: list, latest_price: float, *, srch_avg_opt: str | None = None
-) -> tuple[str | None, bool]:
-    """이동평균 배열·RSI를 한 문장으로 묶는다(추세=forbidden term 회피). 반환
-    2번째 값은 "무언가 계산됐는지"(경고 문구 생략 판단용).
+    observations_with_price: list, latest_price: float
+) -> tuple[str | None, str | None, bool]:
+    """이동평균 배열·RSI를 각각 사용자 친화 문구 1개씩으로 바꾼다(2026-09-09
+    발주처 업무지시서 §2.3 대응 — 이전엔 "20일선 X·60일선 Y로 이동평균이
+    정배열", "RSI는 N로 과매수 구간"처럼 수치·지표명을 그대로 노출했다).
 
-    2026-08-31 사용자 지적 반영 — 라벨의 단위("일선"/"14일 기준")를 일간
-    고정 대신 `_detect_granularity`로 판별해 쓴다(주간 데이터인데 "20일선"
-    이라 표기하는 오해를 막는다). 창 크기(20/60/120/250)·RSI 기간(14) 자체는
-    단위와 무관하게 "관측치 개수" 기준 그대로다 — 이 두 값을 단위별로
-    다시 캘리브레이션하는 건 별도 설계 결정이 필요해 이번엔 라벨만 고친다."""
+    반환값 3개 — (평균 대비 추이 문구, 단기 매매압력 문구, 무언가 계산됐는지).
+    호출자가 앞쪽은 major_changes("최근 변화" — 업무지시서 §3.1의 "평균 대비
+    위치"에 대응), 뒤쪽은 current_position에 각각 별도 근거로 배치한다
+    (2026-09-09 섹션 재배치 — 이전엔 한 문장으로 합쳐 current_position에만
+    넣었다)."""
 
-    unit, _ = _detect_granularity(observations_with_price, srch_avg_opt=srch_avg_opt)
     mas = _moving_averages(observations_with_price)
     alignment = _ma_alignment_label(mas, latest_price)
     rsi = _rsi14(observations_with_price)
     if alignment is None and rsi is None:
-        return None, False
-    parts = []
-    if alignment is not None:
-        ma_desc = "·".join(f"{window}{unit}선 {_number(value)}" for window, value in sorted(mas.items()))
-        parts.append(f"{ma_desc}로 이동평균이 {alignment} 상태다")
+        return None, None, False
+    trend_fact = _MA_ALIGNMENT_LABELS.get(alignment) if alignment is not None else None
+    momentum_fact = None
     if rsi is not None:
-        zone = "과매수" if rsi >= 70 else "과매도" if rsi <= 30 else "중립"
-        parts.append(f"14{unit} 기준 가격강도지수(RSI)는 {_number(rsi)}로 {zone} 구간이다")
-    return ". ".join(parts) + ".", True
+        if rsi >= 70:
+            momentum_fact = "단기적으로 가격 부담이 높아진 상태다."
+        elif rsi <= 30:
+            momentum_fact = "단기적으로 가격 하락 압력이 크게 반영된 상태다."
+        else:
+            momentum_fact = "단기 매매 압력은 특별히 어느 한쪽으로 치우치지 않은 상태다."
+    return trend_fact, momentum_fact, True
 
 
 def _percentile_rank(observations_with_price: list, latest_price: float) -> float | None:
