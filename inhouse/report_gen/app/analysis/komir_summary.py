@@ -650,6 +650,20 @@ def calculate_price_summary(
                         evidence=["period_range", "current_state"],
                     )
                 )
+        # 2026-09-09 발주처 피드백(오전 2차 상세) — "변동 구간" 서술 순서를
+        # 지시서 기준(고점·저점 → 저점 이후 회복률 → 낙폭·가격 위치)에 맞춘다.
+        # period_low/low_obs는 바로 위에서 이미 계산된 값을 그대로 재사용한다
+        # (재계산 없음 — 최고/최저와 다른 값이 나올 위험을 차단).
+        recovery_pct = _pct(latest.commerce_price, period_low)
+        if recovery_pct is not None and _has_current_position_room(claims):
+            claims.append(
+                EvidenceClaim(
+                    "recovery_since_low",
+                    "current_position",
+                    f"조회기간 저점({_korean_date(low_obs.date)}, {_number(period_low)}) 대비 "
+                    f"현재가는 {_number(recovery_pct * 100)}% 회복한 수준입니다.",
+                )
+            )
     else:
         claims.append(
             EvidenceClaim(
@@ -757,7 +771,9 @@ def calculate_price_summary(
             )
             break
 
-    ma_trend_fact, price_momentum_fact, ma_rsi_computed = _ma_rsi_fact(observations_with_price, latest.commerce_price)
+    ma_trend_fact, price_momentum_fact, ma_rsi_computed = _ma_rsi_fact(
+        observations_with_price, latest.commerce_price, srch_avg_opt=srch_avg_opt
+    )
     # 2026-09-09 발주처 업무지시서 §3.1 재배치 — "평균 대비 위치"(이동평균
     # 배열 기반)는 "최근 변화"(major_changes)로, 단기 매매압력(RSI 기반)은
     # "변동 구간"과 함께 current_position에 남긴다.
@@ -772,34 +788,57 @@ def calculate_price_summary(
         # 운영자가 원인을 바로 알아보도록 기술 용어를 그대로 둔다.
         skipped_layer_notes.append("평균 대비 위치·단기 매매압력")
 
+    # 2026-09-09 발주처 피드백(오전 2차 상세) — "변동 구간" 순서의 세 번째
+    # 항목("현재가의 고점 대비 낙폭 및 가격 위치")을 한 근거로 합친다.
+    # 이전엔 percentile_position(백분위)·drawdown(낙폭)을 별개 문장 2개로
+    # 냈는데, 지시서는 이 둘을 "낙폭 및 가격 위치"라는 하나의 항목으로
+    # 요구한다 — 또한 백분위는 더 이상 "높을수록 고가권" 식 산식 설명이
+    # 아니라 실제로 저가권/중간권/고가권 중 어디인지 데이터 기반으로 짚어야
+    # 한다(사용자 지적: "29.32%면 저가권인지 고가권인지 설명 필요").
+    # 고점→저점 최대 하락폭(Max Drawdown)은 지시서상 필수 항목이 아니므로
+    # "참고로" 접두를 붙여 참고지표로만 남긴다(제거하지 않음 — 표시할 때의
+    # 위상만 낮춘다).
     percentile = _percentile_rank(observations_with_price, latest.commerce_price)
-    if percentile is not None and _has_current_position_room(claims):
-        claims.append(
-            EvidenceClaim(
-                "percentile_position",
-                "current_position",
-                # 2026-09-09 발주처 피드백(오전 2차) — "관측치 N건 기준"·
-                # "분포상 백분위" 등 통계 용어·관측치 건수 노출을 없애고
-                # "조회기간 전체 가격 대비 위치"로 쉽게 풀어 쓴다(숫자
-                # 자체는 그대로 — percentile 값을 지어내지 않는다).
-                f"현재 가격은 조회기간 전체 가격 대비 {_number(percentile)}% 위치에 있습니다"
-                f"(높을수록 조회기간 중 고가권에 가깝습니다).",
+    drawdown_stats = _drawdown_stats(observations_with_price)
+    position_sentences: list[str] = []
+    if drawdown_stats is not None:
+        if drawdown_stats["current_dd_pct"] >= -0.005:  # 반올림상 0%대(현재가=조회기간 최고가)
+            position_sentences.append(
+                f"현재가는 조회기간 중 최고가({_korean_date(drawdown_stats['overall_peak_date'])}, "
+                f"{_number(drawdown_stats['overall_peak_price'])})와 같은 수준입니다."
             )
+        else:
+            position_sentences.append(
+                f"현재가는 조회기간 중 최고가({_korean_date(drawdown_stats['overall_peak_date'])}, "
+                f"{_number(drawdown_stats['overall_peak_price'])}) 대비 "
+                f"{_number(abs(drawdown_stats['current_dd_pct']))}% 낮습니다."
+            )
+    if percentile is not None:
+        position_sentences.append(
+            f"조회기간 전체 가격 대비로는 {_number(percentile)}% 위치로 "
+            f"{_price_position_label(percentile)}에 속합니다."
         )
-    elif percentile is None:
+    else:
         warnings.append("가격 분포상 백분위는 관측치가 20건 미만이라 계산하지 않았다.")
         skipped_layer_notes.append("가격 위치")
-
-    drawdown_fact = _drawdown_fact(observations_with_price)
-    if drawdown_fact is not None and _has_current_position_room(claims):
-        claims.append(EvidenceClaim("drawdown", "current_position", drawdown_fact))
-    elif drawdown_fact is None:
+    if drawdown_stats is not None and drawdown_stats["max_dd_pct"] <= -0.5 and (
+        drawdown_stats["max_dd_peak_date"] != drawdown_stats["overall_peak_date"]
+        or abs(drawdown_stats["max_dd_pct"] - drawdown_stats["current_dd_pct"]) >= 0.5
+    ):
+        position_sentences.append(
+            f"참고로 조회기간 내 최대 하락폭(고점→저점, 필수 지표는 아님)은 "
+            f"{_korean_date(drawdown_stats['max_dd_peak_date'])} 고점 대비 "
+            f"{_korean_date(drawdown_stats['max_dd_trough_date'])}까지 "
+            f"{_number(abs(drawdown_stats['max_dd_pct']))}%였습니다."
+        )
+    if drawdown_stats is None:
         warnings.append("낙폭 국면은 관측치가 2건 미만이라 계산하지 않았다.")
         skipped_layer_notes.append("낙폭 국면")
+    if position_sentences and _has_current_position_room(claims):
+        claims.append(EvidenceClaim("price_position", "current_position", " ".join(position_sentences)))
     # 2026-09-09 발주처 업무지시서 대응 — 주요 지표 표에 낙폭이 빠져 있었다.
-    # drawdown_fact와 같은 함수(_drawdown_stats)의 값을 그대로 써서 문장·표
-    # 숫자가 어긋나지 않게 한다.
-    drawdown_stats = _drawdown_stats(observations_with_price)
+    # 위 문장과 같은 drawdown_stats 값을 그대로 써서 문장·표 숫자가
+    # 어긋나지 않게 한다(중복 계산 없이 변수 재사용).
     if drawdown_stats is not None:
         key_metrics.append(
             _price_metric(
@@ -1581,7 +1620,7 @@ _MA_ALIGNMENT_LABELS = {
 
 
 def _ma_rsi_fact(
-    observations_with_price: list, latest_price: float
+    observations_with_price: list, latest_price: float, *, srch_avg_opt: str | None = None
 ) -> tuple[str | None, str | None, bool]:
     """이동평균 배열·RSI를 각각 사용자 친화 문구 1개씩으로 바꾼다(2026-09-09
     발주처 업무지시서 §2.3 대응 — 이전엔 "20일선 X·60일선 Y로 이동평균이
@@ -1596,7 +1635,14 @@ def _ma_rsi_fact(
     2026-09-09 후속(3단계, 발주처 복잡성 해소 지시) — 이 함수에서만 쓰이던
     이동평균 계산·배열 판정·RSI 계산 3개 헬퍼(구 _moving_averages·
     _ma_alignment_label·_rsi14, 호출부가 이 함수 하나뿐이었다)를 인라인
-    통합했다. 산식은 그대로다."""
+    통합했다. 산식은 그대로다.
+
+    2026-09-09 오전 2차 상세 피드백 후속(main-agent 검증에서 발견·반려) —
+    momentum_fact 수치 근거에 쓰는 `srch_avg_opt`는 관측치가 일간이라고
+    고정하지 않는다. `_volatility_fact`·`price_streak`(`_detect_granularity`
+    기반)와 같은 방식으로 실제 조회 단위(일/주/개월/분기/년)를 판별해
+    "거래일" 하드코딩(주간·월간 요청에도 무조건 "일"로 표기하던 버그,
+    2026-08-31 이동평균 창 라벨 버그와 같은 종류) 재발을 막는다."""
 
     prices = [item.commerce_price for item in observations_with_price]
 
@@ -1632,12 +1678,28 @@ def _ma_rsi_fact(
     trend_fact = _MA_ALIGNMENT_LABELS.get(alignment) if alignment is not None else None
     momentum_fact = None
     if rsi is not None:
+        # 2026-09-09 발주처 피드백(오전 2차 상세) — "단기 매매 압력은 어느
+        # 한쪽으로도 치우치지 않았다" 문장에 근거 데이터가 없다는 지적.
+        # RSI 값·"RSI"·"과매수"·"과매도" 단어는 여전히 노출하지 않되(§2.3
+        # 제약 유지), 이미 계산해 둔 최근 14개 관측치 등락(deltas[-14:])의
+        # 상승/하락 횟수를 세어 근거 수치로 붙인다. 단위는 하드코딩("일")
+        # 하지 않고 `_detect_granularity`로 실제 조회 단위를 판별한다 —
+        # 주간·월간 요청에도 "거래일"로 고정 표기하던 버그를
+        # main-agent가 재현·반려해 수정(2026-08-31 이동평균 창 라벨 버그와
+        # 같은 종류의 재발).
+        unit, _ = _detect_granularity(observations_with_price, srch_avg_opt=srch_avg_opt)
+        recent_deltas = deltas[-14:]
+        up_count = sum(1 for delta in recent_deltas if delta > 0)
+        down_count = sum(1 for delta in recent_deltas if delta < 0)
         if rsi >= 70:
-            momentum_fact = "단기적으로 가격 부담이 높아진 상태입니다."
+            momentum_fact = f"최근 14{unit} 중 {up_count}{unit} 상승하며 단기적으로 가격 부담이 높아진 상태입니다."
         elif rsi <= 30:
-            momentum_fact = "단기적으로 가격 하락 압력이 크게 반영된 상태입니다."
+            momentum_fact = f"최근 14{unit} 중 {down_count}{unit} 하락하며 단기적으로 가격 하락 압력이 크게 반영된 상태입니다."
         else:
-            momentum_fact = "단기 매매 압력은 특별히 어느 한쪽으로 치우치지 않은 상태입니다."
+            momentum_fact = (
+                f"최근 14{unit}간 상승 {up_count}{unit}·하락 {down_count}{unit}로 단기 매매 압력은 "
+                "특별히 어느 한쪽으로 치우치지 않은 상태입니다."
+            )
     return trend_fact, momentum_fact, True
 
 
@@ -1649,18 +1711,30 @@ def _percentile_rank(observations_with_price: list, latest_price: float) -> floa
     return rank / len(prices) * 100
 
 
+#: 2026-09-09 발주처 피드백(오전 2차 상세) — 백분위 수치만 보여주고 "높을수록
+#: 고가권"이라는 산식 설명으로 대신하던 것을 실제 위치(저가권/중간권/고가권)
+#: 판정으로 바꾼다. 임계값은 조회기간 가격 분포를 정확히 3등분하는 하위/상위
+#: 1/3 지점(약 33.3%·66.7%) — 특정 광종·기간에 맞춘 값이 아니라 백분위 정의
+#: 자체에서 나오는 균등 삼분할이라 다른 근거(30/70 RSI 임계값 등)와 무관하다.
+def _price_position_label(percentile: float) -> str:
+    if percentile <= 100 / 3:
+        return "저가권"
+    if percentile >= 200 / 3:
+        return "고가권"
+    return "중간권"
+
+
 def _drawdown_stats(observations_with_price: list) -> dict | None:
     """조회기간 내 러닝피크 대비 최대 낙폭(MDD 국면)과, 조회기간 전체 최고가
     대비 현재가의 낙폭. 둘 다 "조회기간 중"으로 범위를 명시한다 — 이 계산기는
     요청받은 구간 밖 데이터를 모르므로 절대적 전고점이라 단정하지 않는다.
 
-    2026-09-09 3단계 복잡성 검토 — 이전 감사는 "호출부가 _drawdown_fact
-    하나뿐이라 인라인 통합 가능"이라고 봤지만, 1단계(주요 지표 표에 낙폭
-    추가)에서 `calculate_price_summary`가 문장·표 숫자를 일치시키려고 이
-    함수를 직접 한 번 더 호출하게 됐다 — 현재 호출부 2곳(`_drawdown_fact`,
-    `calculate_price_summary`)이라 재사용 기준("여러 곳에서 재사용되는가")
-    으로 유지 대상이다. 인라인하면 계산이 중복되거나 계산기 본문이 다시
-    비대해진다."""
+    2026-09-09 발주처 피드백(오전 2차 상세)으로 이 값을 문장으로 엮던
+    `_drawdown_fact`가 `calculate_price_summary`에 인라인 통합됐다(백분위와
+    한 근거로 합쳐야 해 문자열 하나만 반환하는 별도 함수로는 부족해졌다) —
+    이제 호출부는 `calculate_price_summary` 1곳뿐이지만, 순수 계산 함수를
+    문장 조립과 분리해 두면 두 값(문장·주요 지표 표)이 항상 같은 계산에서
+    나온다는 걸 보장하기 쉬워 별도 함수로 유지한다."""
 
     if len(observations_with_price) < 2:
         return None
@@ -1690,27 +1764,6 @@ def _drawdown_stats(observations_with_price: list) -> dict | None:
         "max_dd_peak_date": max_dd_peak_date,
         "max_dd_trough_date": max_dd_trough_date,
     }
-
-
-def _drawdown_fact(observations_with_price: list) -> str | None:
-    stats = _drawdown_stats(observations_with_price)
-    if stats is None:
-        return None
-    if stats["current_dd_pct"] >= -0.005:  # 반올림상 0%대(현재가=조회기간 최고가)
-        fact = f"현재가는 조회기간 중 최고가({_korean_date(stats['overall_peak_date'])}, {_number(stats['overall_peak_price'])})와 같은 수준입니다."
-    else:
-        fact = (
-            f"현재가는 조회기간 중 최고가({_korean_date(stats['overall_peak_date'])}, "
-            f"{_number(stats['overall_peak_price'])}) 대비 {_number(abs(stats['current_dd_pct']))}% 낮습니다."
-        )
-    if stats["max_dd_pct"] <= -0.5 and (
-        stats["max_dd_peak_date"] != stats["overall_peak_date"] or abs(stats["max_dd_pct"] - stats["current_dd_pct"]) >= 0.5
-    ):
-        fact += (
-            f" 조회기간 내 최대 하락폭은 {_korean_date(stats['max_dd_peak_date'])} 고점 대비 "
-            f"{_korean_date(stats['max_dd_trough_date'])}까지 {_number(abs(stats['max_dd_pct']))}%였습니다."
-        )
-    return fact
 
 
 def _inventory_context_fact(observations_with_price_and_inventory: list) -> str | None:
