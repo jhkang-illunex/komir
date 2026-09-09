@@ -90,18 +90,6 @@ def _year6(text: str) -> str:
     return f"{text[0:4]}-{text[4:6]}"
 
 
-def _ci_get(row: dict, *names: str):
-    """대소문자가 다른 동의 키(예: totalBurudgQuty vs TOTALPRDCTNQUTY)를 순서대로 찾는다."""
-    for name in names:
-        if name in row:
-            return row[name]
-    lowered = {key.lower(): value for key, value in row.items()}
-    for name in names:
-        if name.lower() in lowered:
-            return lowered[name.lower()]
-    return None
-
-
 def _load(name: str) -> dict:
     return json.loads((DUMP_DIR / name).read_text(encoding="utf-8"))
 
@@ -357,13 +345,19 @@ def adapt_mineral_map(dump: dict) -> list[tuple[str, dict]]:
         if not rows:
             continue
         value_key = "burudgQuty" if measure == "reserves" else "prdctnQuty"
-        total_key_candidates = (
-            ("totalBurudgQuty",) if measure == "reserves" else ("TOTALPRDCTNQUTY", "totalPrdctnQuty")
-        )
         unit = str(rows[0].get("cdVal") or "").strip() or "단위미상"
-        mineral_code = str(rows[0].get("ntnEngCd") or mineral_label)
+        # 2026-09-09 발주처 업무지시서 §3.3 대응 — 이전엔 KOMIS의
+        # totalBurudgQuty/TOTALPRDCTNQUTY를 "공식 세계 총계"로 신뢰해
+        # is_total 관측치를 만들었는데, 실 덤프(동 매장량) 대조 결과 이
+        # 필드가 2019~2025년 내내 완전히 같은 값(연도별 국가 합계와
+        # 무관한 상수, 실제 합계보다 6~8배 큼)이었다 — 실제 프로덕션
+        # 경로(app/analysis/summary.py::_parse_komis_mineral_map_response)
+        # 에서 이미 이 필드를 안 쓰기로 고쳤다. 이 하네스가 그 필드를
+        # 계속 신뢰하면 회귀 스모크가 고쳐지기 전의 버그를 "정답"으로
+        # 착각해 항상 mismatches=0을 내는 거짓 안심 테스트가 된다 —
+        # 같은 이유로 여기서도 제거하고 국가별 실측 합계만 쓴다.
+        observations = []
         by_year: dict[int, list[dict]] = {}
-        totals: dict[int, float] = {}
         for row in rows:
             year = int(row["crtrYr"])
             value = _num(row.get(value_key))
@@ -379,23 +373,8 @@ def adapt_mineral_map(dump: dict) -> list[tuple[str, dict]]:
                     "is_other": False,
                 }
             )
-            total_val = _num(_ci_get(row, *total_key_candidates))
-            if total_val is not None:
-                totals[year] = total_val
-        observations = []
         for year in sorted(by_year):
             observations.extend(by_year[year])
-            if year in totals:
-                observations.append(
-                    {
-                        "year": year,
-                        "country_code": "WORLD",
-                        "country_name": "세계",
-                        "value": totals[year],
-                        "is_total": True,
-                        "is_other": False,
-                    }
-                )
         years_present = sorted({o["year"] for o in observations})
         if len(years_present) < 2:
             continue
