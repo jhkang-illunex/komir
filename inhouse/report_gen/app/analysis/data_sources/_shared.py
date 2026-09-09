@@ -61,8 +61,7 @@ COMPOSITE_SHEETS = {
 }
 
 
-class DataSourceError(RuntimeError):
-    """설정된 원천 데이터가 분석 요청을 만족하지 못할 때."""
+from ..errors import DataSourceError  # 기존 import 경로 호환
 
 
 class IndicatorDataSource(Protocol):

@@ -1,36 +1,17 @@
 # -*- coding: utf-8 -*-
-"""분석문 생성 지시문과 근거로 한정된 payload — 외부 저장소
-`komis_report_generator/analysis/prompts.py` 이식본(2026-08-13).
+"""보고서 지시문과 페이지별 출력 설정.
 
-**원본에서 뺀 것**: `NARRATIVE_INSTRUCTIONS`·`build_narrative_payload()`.
-둘은 profile_id 기반 분석 경로(`AnalysisResponse`/`NarrativeOutput`) 전용인데,
-외부repo에서도 5개 운영 엔드포인트가 아니라
-`experiments/analysis_summary_evaluation/profile_service.py`만 쓴다(2026-08-13
-grep 실측) — 소비자 없는 코드를 들여오지 않는다(CLAUDE.md §4).
-
-그 밖에는 지시문 문구·출력계약(section_sentence_ranges 등)까지 원본 그대로다.
-import 경로만 상대경로로 바꿨다.
-
-**2026-08-26**: 아래 지시문 상수들은 이제 "DB에 없을 때 쓰는 기본값"이다.
-`summary_instructions()`가 `prompt_store.get_prompt()`로 `ai_cfg.cfg_prompt`
-(PostgreSQL, PG_DSN) 캐시를 먼저 확인하고, 해당 `prompt_key` 행이 없으면 이
-상수로 폴백한다 —
-운영 중 프롬프트 문구를 바꾸고 싶으면 DB 행을 갱신하고 `POST /admin/
-prompts/reload`를 호출하면 되고, DB를 아직 안 채웠거나 접속이 끊겨도 이
-상수들 덕에 서비스가 하드코드 상태로 계속 동작한다(`prompt_store.py` 참고).
-
-**2026-08-27(skeptic 감사 SC-004·005·006)**: (1) 이 파일의 `PROMPTS`가 프롬프트
-본문의 단일 소스이고 `seed_prompts.py`는 이걸 import해 DB에 심는다(폴백과
-시드가 따로 놀던 드리프트 제거). (2) 섹션별 문장수 계약(`SECTION_SENTENCE_RANGES`
-등)도 여기 한 곳에만 두고 `summary.py::_validate_llm_summary`가 같은 상수를
-쓴다. (3) payload에 `detected_patterns`(code·label)를 실어 보낸다 — price
-프롬프트가 `near_period_high/low` 패턴을 참조하는데 정작 LLM은 그걸 받은 적이
-없었다(실측).
+기본 지시문은 resources/prompts/*.md가 정본이며 PROMPTS는 시드/기존 호출자용
+동일 문자열을 제공한다. DB 편집·reload·잘못된 설정의 기본값 폴백을 유지한다.
+page_prompt_scope에서 한 요청의 설정과 지시문을 확정해 계산·LLM·검증이 공유한다.
 """
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from contextlib import contextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass, replace
+from pathlib import Path
 from typing import Any
 
 from . import prompt_store
@@ -44,6 +25,10 @@ from .models import (
 )
 from .policy import PagePolicy, load_page_policy
 
+def _read_prompt(filename: str) -> str:
+    return (Path(__file__).parent / "resources" / "prompts" / filename).read_text(encoding="utf-8")
+
+
 # 아래 10개 상수 + `PROMPTS`가 분석요약 프롬프트의 **단일 소스**다(2026-08-27,
 # skeptic 감사 SC-004). 이전에는 `seed_prompts.py`(DB 시드)와 이 파일(DB 미접속
 # 폴백)이 같은 문구를 따로 들고 있어 10키 중 9키가 조용히 어긋나 있었다 — 예:
@@ -56,335 +41,30 @@ from .policy import PagePolicy, load_page_policy
 # 만드는 EvidenceClaim 범위를 벗어나는 지시는 넣지 않았다 — 검증기
 # (`summary.py::_validate_llm_summary`)가 근거 밖 숫자·단계명·원인 서술을
 # 걸러 규칙기반으로 되돌리기 때문에, 지어내도 실제로 적용되지 않는다.
-SUMMARY_COMMON_INSTRUCTIONS = """\
-당신은 KOMIS 수치를 단순히 읽어 주는 사람이 아니라,
-확인된 근거 사이의 관계를 설명하는 분석 편집기다.
-- allowed_evidence에 있는 사실만 사용하고, 각 문장에 사용한 evidence_id는 JSON의
-  `evidence_ids` 필드에만 적는다 — 본문 `text` 안에 `(current_state)`처럼 id를 괄호로
-  덧붙이지 않는다(id가 본문에 있으면 검증에서 거부된다).
-- 일자는 `2026년 8월 25일`처럼 `YYYY년 M월 D일`로, 월은 `YYYY년 M월`로 쓴다 —
-  `2026-08-25`·`2026-08` 같은 원형 표기를 본문에 남기지 않는다(숫자는 그대로).
-- 관련 근거 2~3개를 한 문장에 연결해 대비, 지속 여부, 현재 위치 또는 구조적 의미를 설명한다.
-- 모든 근거를 항목별로 다시 나열하지 말고, 수치가 보여 주는 핵심 판단을 먼저 쓴다.
-- 숫자, 기간, 단계, 순위, 변화 방향을 바꾸거나 새로 만들지 않는다.
-- 원본 DB 행, 내부 테이블명, 제공되지 않은 원인·사건·단위·발생확률을 추정하지 않는다.
-- 같은 수치나 판단을 다른 섹션에서 반복하지 않는다.
-- `확인할 수 있다`, `나타났다`만 반복하지 말고 `~지만`, `~인 반면`, `따라서`로 관계를 분명히 한다.
-- `YYYY-MM` 형식의 기준월은 숫자를 바꾸지 않고 `YYYY년 M월`로 자연스럽게 쓴다.
-- 분석범위, 데이터 결측, 면책 문구는 본문에 쓰지 않는다.
-- 최근 한 달 변화만으로 장기 `추세`라고 표현하지 않는다.
-- 발주처 보고서 문체를 따라 문장은 `~했습니다`, `~입니다`, `~로 나타났습니다`처럼
-  격식체로 끝맺는다(예시 문구의 `~다` 종결은 evidence 원문일 뿐 그대로 베끼지 않는다).
-- allowed_evidence의 evidence_id는 **빠짐없이 정확히 한 번씩** 사용한다 — "(있는
-  경우)"라고 적힌 근거도 allowed_evidence에 실려 왔으면 반드시 쓴다(생략·중복 금지).
-  한 문장에 묶는 근거 수는 output_contract.max_evidence_ids_per_sentence(보통 3)를
-  넘기지 않고, 그래도 남으면 그 절의 문장수 상한(output_contract.section_sentence_
-  ranges) 안에서 문장을 늘린다. 한 문장에 적은 사실·숫자의 근거 id는 **전부** 그
-  문장의 evidence_ids에 넣는다(넣지 않은 근거의 숫자를 쓰면 검증에서 거부된다).
-- 각 근거는 allowed_evidence의 section 값에 지정된 절(core_diagnosis/major_changes/
-  current_position)에서만 쓴다 — 다른 절로 옮기거나 두 절에서 겹쳐 쓰지 않는다.
-  어떤 절에 지정된 근거가 1개뿐이면 그 절은 그 근거 하나로만 쓴다.
-"""
+SUMMARY_COMMON_INSTRUCTIONS = _read_prompt("summary_common.md")
 
-MARKET_SUMMARY_INSTRUCTIONS = """\
-- 이 페이지는 시장동향지표(0~100점, 5단계: 신중 0~20·주의 20~40·중립 40~60·
-  관심 60~80·기회 80~100)다. 점수가 높을수록 중장기 가격위험이 낮다는 뜻이다.
-- core_diagnosis는 current_state·latest_score_change 근거를 연결해
-  "[기준월] 기준 [광종]의 시장동향지표는 [점수]점으로 [단계]입니다"에 최근 한 달
-  변화 방향이 같은 흐름인지 다른 흐름인지를 한 문장으로 판단한다.
-- major_changes는 grade_streak·grade_transition·largest_monthly_score_change를
-  연결해 다음 두 형태 중 근거에 맞는 쪽으로 쓴다:
-  (a) 이번 조회기간에 단계 전환이 있었으면 "[단계]로 상승/하락했습니다"처럼
-      전환을 명시한다.
-  (b) 전환이 없었으면 grade_streak의 유지개월수를 그대로 써서
-      "[단계]를 [N]개월째 유지중입니다"처럼 유지 사실만 쓴다.
-  전환 시점과 최대 월간 변화 시점이 다르면 인과관계 없이 시간 순서로만 구분한다.
-- current_position은 period_average_position을 이용해 최근 가격 움직임과
-  조회기간 평균 대비 점수를 연결하되 인과관계로 단정하지 않는다.
-- 단기 점수 개선에도 평균보다 위험이 높으면
-  `단기 완화에도 평균보다 높은 위험`처럼 남은 약점을 분명히 쓴다.
-- 단계 유지 자체를 정체·고착으로 해석하지 않고 위험 단계가 지속됐다고만 설명한다.
-- "주요 요인" 절은 만들지 않는다 — 가격 변동 원인이나 투자환경지수 요인을
-  분해한 근거가 없으므로, 단계·점수·유지기간 사실만 쓰고 원인은 추정하지 않는다.
-"""
+MARKET_SUMMARY_INSTRUCTIONS = _read_prompt("market_summary.md")
 
-SUPPLY_SUMMARY_INSTRUCTIONS = """\
-- 이 페이지는 수급동향지표(0~100점, 5단계: 긴장 0~20·주의 20~40·관심 40~60·
-  안정 60~80·원활 80~100)다. 점수가 높을수록 수급 안정성이 강하다는 뜻이다.
-- core_diagnosis는 current_state·latest_score_change 근거를 연결해
-  현재 수급 단계와 최근 수급 안정성 변화가 같은 방향인지 한 문장으로 판단한다.
-- major_changes는 grade_streak·grade_transition·largest_monthly_score_change를
-  연결해 다음 두 형태 중 근거에 맞는 쪽으로 쓴다:
-  (a) 단계 전환이 있었으면 "[단계]로 상승/하락했습니다"처럼 전환을 명시한다.
-  (b) 전환이 없었으면 grade_streak의 유지개월수를 그대로 써서
-      "[단계]를 [N]개월째 유지중입니다"처럼 유지 사실만 쓴다.
-  최대 월간 변화 시점과 전환 시점이 다르면 인과관계 없이 시간 순서로만 구분한다.
-- supply_key_factors(있으면, major_changes) — 국내 수입증가율(전년 대비
-  실제 증감률)과 국내 수입국 편중도(상위 3개국 수입의존도 비중)다. 수입증가율
-  문장에서 퍼센트 수치는 "국내 수입량"의 전년 대비 증감률이지 "수입증가율"
-  자체의 증감이 아니다 — 근거 그대로 "국내 수입량이 X% 증가/감소해, 이
-  변동이 수급동향지표 변화와 함께 확인됩니다"는 주어·어투로 옮겨 쓰고,
-  "수입증가율이 X% 감소했습니다"처럼 증가율 자체가 줄었다는 식으로 바꿔 쓰지
-  않는다. 2026-09-09 발주처 업무지시서 §2.2 대응으로 이 근거는 "주요
-  요인으로는 ... 분석됩니다"는 인과 단정 표현을 뺐다 — "원인"·"요인"·
-  "분석됩니다"는 말을 되살려 쓰지 않는다. 수입국
-  편중도는 이 표본이 단일 연도 스냅샷이라
-  증감 추세를 알 수 없으므로 "집중된 구조입니다"처럼 현재 수준만 서술하고
-  "확대/축소됐습니다"처럼 변화를 단정하지 않는다(단, evidence 문장이 "나열된
-  수입국 전체 기준"이라고 돼 있으면 — 나열국이 3개 이하라 상위 3개국이
-  전체와 같은 경우 — "집중된 구조입니다"로 바꿔 쓰지 않고 evidence 문구를
-  그대로 따른다). 가격리스크(핵심 관측치의
-  가격과 중복)·세계 수급비율·세계 공급 편중도는 evidence에 없으므로 언급하지
-  않는다.
-- current_position은 period_average_position을 이용해 최근 가격 움직임과
-  조회기간 평균 대비 안정성을 연결하되 원인으로 단정하지 않는다.
-- 단기 개선에도 평균보다 안정성이 낮으면 `단기 반등에도 평균 수준을 회복하지 못함`을 분명히 쓴다.
-- 단계 유지 자체를 정체·고착으로 해석하지 않고 수급 단계가 지속됐다고만 설명한다.
-"""
+SUPPLY_SUMMARY_INSTRUCTIONS = _read_prompt("supply_summary.md")
 
-COMPOSITE_SUMMARY_INSTRUCTIONS = """\
-- 이 페이지는 광물종합지수와 그 하위지수인 메이저금속지수·희소금속지수를
-  함께 다룬다. 세 지수 모두 포인트 단위이며 기준연도 환산 근거(예: 특정
-  연도=1000)는 evidence에 없으므로 언급하지 않는다 — "[일자] 기준 지수는
-  [포인트]입니다"처럼 현재 값만 서술한다.
-- core_diagnosis는 current_state·medium_long_term_contrast를 연결해
-  "종합지수는 [포인트]로, 전월 대비 [상승/하락/보합]했지만 1년 전보다
-  [고/저] 수준입니다"처럼 현재 지수와 단기·1년 방향을 한 문장으로 판단한다.
-  medium_long_term_contrast 근거가 없으면(조회기간에 1년 비교값 없음)
-  core_diagnosis는 current_state 하나로만 쓰고, major_changes 근거
-  (composite_recent_changes 등)를 core_diagnosis로 끌어오지 않는다.
-- major_changes는 composite_recent_changes(전주·전월 비교)와
-  weekly_subindex_comparison/monthly_subindex_comparison/yearly_subindex_comparison
-  (메이저·희소 하위지수의 전주·전월·전년 비교)을 연결해 어느 하위지수의
-  변화가 두드러졌는지 설명한다. 두 하위지수 방향이 다르면(예: 메이저 상승·
-  희소 하락) 그 차이를 명시한다.
-- current_position은 period_range_position·overall_pattern을 연결해
-  조회기간 고저점 위치와 단기·장기 방향을 이어 현재 수준의 의미를 판단한다.
-- 하위지수의 방향이 다르면 전체 지수만으로 가려지는 차별화를 명시하되
-  구체적인 견인 광종이나 원인은 evidence에 없으므로 추정하지 않는다.
-- index_top_weighted_minerals(있으면, major_changes) — 광물종합·메이저금속·
-  희소금속지수 각각의 구성 광종과 산정 가중치(%)다. 이번 조회기간에 그
-  광종의 가격이 실제로 오르내렸는지는 evidence에 없으므로, "이 광종의
-  가격 상승/하락이 원인"이라고 쓰지 않는다 — "비중이 큰 구성 광종이라
-  지수 변동에 상대적으로 민감하다"처럼 구조적 사실로만 그대로 옮긴다.
-"""
+COMPOSITE_SUMMARY_INSTRUCTIONS = _read_prompt("composite_summary.md")
 
-MINERAL_MAP_SUMMARY_INSTRUCTIONS = """\
-- 이 페이지는 선택한 광종의 매장량 또는 생산량(둘 중 하나)을 주로 다룬다.
-  cross_measure_comparison 근거가 없으면 분석 대상이 아닌 다른 항목(예:
-  생산량 조회인데 매장량)과 비교·환산하지 않는다 — 그 근거가 있을 때만
-  major_changes 마지막 문장으로 그대로 옮겨 쓴다(PDF의 "매장량 2위 호주는
-  생산량 8위" 같은 교차 비교, 순위·비중 숫자를 새로 계산하지 않는다).
-- 세계 전체 규모의 변화와 상위 국가 집중도(cr3·cr5) 변화를 연결해 분포가
-  넓어졌는지 집중됐는지 판단한다.
-- required=true인 근거는 반드시 사용하고, optional 근거는 핵심 흐름에 필요할 때만 선택한다.
-- 같은 섹션의 관련 근거는 한 문장에 최대 3개까지 연결할 수 있으며, 근거를 단순 나열하지 않는다.
-- 한 근거에 서로 다른 국가의 변화가 함께 있으면 두 문장으로 나누되 같은 내용을 반복하지 않는다.
-- core_diagnosis는 current_state·period_total_change를 연결해 "[연도] 세계
-  [광종] [매장량/생산량]은 [수치][단위]로, [기간]년간 [증감률]% [증가/감소]했습니다"처럼
-  1~2문장으로 쓴다.
-- major_changes는 current_leaders·third_country를 이용해 1~3위 국가의
-  규모·비중·순위를 2~3문장으로 설명한다. extreme_change_countries
-  근거가 있으면(2026-09-09 발주처 업무지시서 §3.3 대응 신설 — "매장량이
-  가장 크게 증가/감소한 국가", top3 밖 국가도 포함될 수 있다) 그대로
-  옮겨 마지막 문장으로 덧붙인다 — 이미 완성 문장이니 새 국가·수치를
-  지어내지 않는다.
-- current_position은 leading_country_changes·concentration_change·
-  current_concentration_structure를 연결해 국가별 기간 변화와 CR3/CR5
-  집중도 변화, 그리고 그 구조적 의미를 2~3문장으로 쓴다.
-- 전체는 5~9문장으로 쓰며 같은 수치나 판단을 다른 섹션에서 반복하지 않는다.
-- `상위 국가 중심`, `특정 한 국가가 압도하지 않음` 같은 판단은 이를 뒷받침하는 비중과 함께 쓴다.
-- 비교연도 값이 없는 국가를 0으로 보거나 매장량·생산량이 새로 생겼다고 표현하지 않는다.
-- 매장량·생산량의 수치 변화는 `성장`보다 `증가` 또는 `감소`로 표현한다.
-"""
+MINERAL_MAP_SUMMARY_INSTRUCTIONS = _read_prompt("mineral_map_summary.md")
 
-PRICE_FORECAST_SUMMARY_INSTRUCTIONS = """\
-- core_diagnosis는 전망 시작·종료 변화와 경로 전환을 연결해
-  전체 방향과 경로의 안정성을 한 문장으로 판단한다.
-- major_changes는 첫 예측값과 고점·저점을 연결해
-  어느 시점에 상승·하락 압력이 두드러지는지 한 문장으로 설명한다.
-- current_position은 마지막 값의 고저 범위 내 위치를 이용해
-  전망 종단부가 강세·약세 어느 쪽에 가까운지 설명한다.
-- 예측가격을 확정된 실제가격처럼 표현하지 말고 `예측된다`, `전망된다`, `제시됐다`로 구분한다.
-- 예측 정확도, 발생확률, 외부 사건과 가격 변화의 원인을 추정하지 않는다.
-- 전체 변화율과 중간 등락을 구분하고, 중간 반등만으로 전체 전망 방향을 뒤집어 설명하지 않는다.
-- 예측기간의 등락을 `확정`, `실현`, `발생`으로 표현하지 않는다.
-- 제공되지 않은 가격 단위나 결측정보를 본문에 추가하지 않는다.
-"""
+PRICE_FORECAST_SUMMARY_INSTRUCTIONS = _read_prompt("price_forecast_summary.md")
 
 # 2026-08-26: `price`/`map_korea`/`map_global` LLM 배선 추가와 함께 실제
 # 지시문으로 채웠다(위 모듈 docstring "실제 반영 범위" 참고). `komir_summary.py`가
 # 만드는 EvidenceClaim id(current_state·day_over_day·week_avg/month_avg/
 # year_avg·period_range, 또는 current_state·top1_country·top3_concentration·
 # period_total_change) 범위 안에서만 쓰도록 지시한다.
-PRICE_SUMMARY_INSTRUCTIONS = """\
-- 이 페이지는 등급·단계가 없다. 실거래가와 전일·전주평균·전월평균·전년평균
-  대비 등락만 다룬다. 모든 문장은 격식체(~습니다)로 쓴다 — evidence
-  문장이 이미 이 어투로 완성돼 있으니 그대로 옮기면 된다(해라체 "~다"로
-  바꿔 쓰지 않는다).
-- 2026-09-09 발주처 피드백(오전 2차, "가격요약 통합")으로 core_diagnosis가
-  "가격 요약" 역할을 한다 — current_state·day_over_day·week_avg/month_avg/
-  year_avg 중 evidence에 있는 항목을 전부 이어 "[기준일] 기준 [광종]
-  실거래가는 [가격]입니다. [전일 또는 직전 관측치] 대비 [등락률]% 변동
-  했습니다. 전주평균 대비 [등락률]%, 전월평균 대비 [등락률]%, 전년평균
-  대비 [등락률]% 수준입니다."처럼 하나의 문단으로 쓴다 — 없는 비교기간을
-  만들어 채우지 않는다. evidence의 등락률 숫자를 그대로 옮기고 평균값·
-  차이를 새로 계산해 적지 않는다. 이 페이지는 한 문장에 근거 5개까지
-  묶을 수 있으므로(output_contract.max_evidence_ids_per_sentence=5) 여러
-  비교를 한 문장에 이어 써도 되지만, 그 문장의 evidence_ids에 쓴 근거
-  id를 전부 넣는다. day_over_day 근거 문장이 "전일(...)"로 시작하면
-  그대로 "전일"을 쓰고, "직전 관측치(...)"로 시작하면 관측 간격이 하루가
-  아니라는 뜻이니 "전일"로 바꿔 쓰지 말고 "직전 관측치"를 그대로
-  유지한다.
-- current_position은 발주처 지시서 기준 순서(고점·저점 → 저점 이후
-  회복률 → 낙폭·가격 위치)로 나온 근거들을 그 순서 그대로 옮긴다:
-  period_range(조회기간 최고·최저가) → recovery_since_low(저점 대비 현재가
-  회복률) → price_position(현재가의 고점 대비 낙폭 + 저가권/중간권/고가권
-  위치, 있으면 참고용 최대 하락폭 문장 포함 — "참고로"로 시작하는 부분은
-  필수 지표가 아니라는 뜻이니 그 표현을 지우지 않는다). near_period_high/
-  near_period_low 패턴이 있으면 고점·저점 근접 사실만 쓴다.
-- 2026-09-09 발주처 피드백("문장과 문장이 부자연스럽게 뚝뚝 끊겨 있다,
-  섹션별로 문장 연결이 필요하다") 대응 — current_position 절 안에서
-  순서가 바로 이어지는 근거 2개는 "-며"·"-고"·"-지만"·"한편"·"이어"
-  같은 자연스러운 접속 표현으로 붙여 한 문장으로 써도 된다(문장 수가
-  줄어드는 것은 output_contract.section_sentence_ranges 하한(1)을
-  만족하는 한 허용된다). 단, 이렇게 이어 쓸 때도 각 근거의 사실·숫자·
-  단위·완성된 캐비엇 문구("참고로 … 필수 지표는 아님" 등)는 그대로
-  유지하고, 서로 다른 주제인 두 근거를 원인-결과나 상관관계처럼 엮는
-  새 서술(예: "재고량이 늘어 가격이 올랐다")은 만들지 않는다 — 이어
-  쓰는 건 어순·접속어일 뿐, 새로운 사실 관계를 만드는 게 아니다.
-- compare_overall_change 근거가 있으면(비교광종 지정 시) current_position에
-  두 번째 문장으로 "같은 조회기간 동안 [비교광종]은 [등락률]% 변동한 반면,
-  [광종]은 [등락률]% 변동했습니다"를 그대로 옮겨 쓴다 — 어느 쪽이 더 크게
-  움직였는지는 숫자로만 드러내고, 원인이나 상관관계를 추정하지 않는다.
-- price_streak 근거가 있으면(연속 2회 이상 같은 방향 변동) major_changes
-  ("최근 변화")에 "[N][일/주/월] 연속 [상승세/하락세/보합세]를 보이고
-  있습니다"를 그대로 옮겨 쓴다. 근거가 없으면(연속 변동이 1회뿐이거나
-  계산 불가) 지속 기간을 추정해서 만들어 쓰지 않는다.
-- ma_trend 근거가 있으면(2026-09-09 발주처 업무지시서 §3.1 "최근 변화" —
-  평균 대비 위치) major_changes에 그대로 옮겨 쓴다 — 이미 "최근 가격
-  흐름은 단기·중기 평균 모두 상승/하락 방향입니다" 또는 "단기와 중기
-  흐름이 엇갈리는 상태입니다"로 완성된 문장이니 새 수치나 지표명(이동
-  평균·일선 등)을 덧붙이지 않는다. 근거가 없으면 이 문장 자체를 만들지
-  않는다.
-- 2026-09-09 발주처 업무지시서(§2.2)로 "가격 변동의 주요 요인" 서술이
-  삭제됐다 — 화면(komis_response)에 없는 뉴스·보고서·정성 이슈·지정학
-  이벤트를 원인처럼 서술하지 않는다. 가격·지수의 변동은 화면에 표시된
-  시계열 데이터(등락률·연속추세·고점저점 등)로만 서술하고, "때문에"·
-  "영향으로"·"원인으로 분석됩니다"처럼 인과관계를 단정하는 표현을 쓰지
-  않는다.
-- inventory_level 근거가 있으면 current_position에 재고량 수준과(있으면) 전일
-  또는 직전 관측치 대비 등락을 그대로 옮겨 쓴다 — 근거 문장이 이미 완성된
-  문장이니(2026-09-09 오전 2차 상세 피드백으로 "톤" 단위가 이미 포함돼
-  있다) 그 단위를 그대로 유지하고, "LME" 같은 거래소명은 여전히 새로
-  지어 붙이지 않는다. 근거가 없으면(inventory_level이 없는 요청) 재고량을
-  언급하지 않는다 — 다른 절의 수치로 재고 수준을 추정해서 채우지 않는다.
-- volatility·price_momentum·recovery_since_low·price_position·
-  inventory_context·relative_value 근거는(2026-08-31 신설, price_momentum은
-  2026-09-09 기술지표명 순화로 개명, recovery_since_low·price_position은
-  2026-09-09 오전 2차 상세 피드백으로 percentile_position·drawdown을 대체)
-  각각 current_position 근거로 쓴다 — 이질적인 주제라 원래는 별도 문장을
-  기본으로 하되, 위 "문장 연결" 지침에 따라 인접한 2개 정도는 접속어로
-  이어 써도 된다(사실·숫자·완성된 캐비엇 문구는 유지, 새 인과관계는
-  만들지 않는다). 근거가 없으면(관측치 부족으로 계산되지 않음) 그
-  문장 자체를 만들지 않는다 —
-  "데이터가 부족하다"는 문장을 지어내지 않는다. 이 근거들은 2026-09-09
-  발주처 피드백(오전 2차)으로 "연율화 변동성"·"분포상 백분위"·관측치
-  건수(예: "관측치 258건 기준") 같은 통계 용어·raw 수치 노출을 이미 뺀
-  완성 문장이다 — 그런 표현을 되살려 쓰지 않는다. price_position 문장
-  안에 "참고로 조회기간 내 최대 하락폭(...)은 필수 지표는 아님)"이 있으면
-  그 부분은 참고용이라는 뜻이니 삭제하거나 다른 문장으로 승격하지 않는다.
-  inventory_context 문장도 마찬가지로(2026-09-09 오전 2차 상세 피드백 —
-  가격·재고량 동행비율이 상관관계처럼 오독될 위험 지적) "참고로 …
-  (인과관계를 의미하지 않는 참고 지표입니다)" 부분이 있으면 그대로
-  유지한다 — 이 캐비엇을 지우거나 "관련이 있다"는 식으로 바꿔 쓰지 않는다.
-- insufficient_history 근거가 있으면(신규 6개 층 중 일부가 관측치 부족으로
-  생략됨) current_position 마지막 문장으로 그 근거를 그대로 옮겨 쓴다 —
-  어떤 층이 왜 빠졌는지 새로 설명을 덧붙이지 않는다. 근거가 없으면 이
-  문장 자체를 만들지 않는다.
-- "추세"·"상관계수"라는 단어는 이 페이지를 포함해 어디에도 쓰지 않는다.
-  재고-가격 연동 근거는 "동행 비율"로 이미 표현돼 있으니 그 어휘를 그대로
-  옮긴다(다른 표현으로 바꿔 쓰지 않는다). 이동평균·RSI 관련 근거(ma_trend·
-  price_momentum)는 2026-09-09부터 "이동평균"·"배열"·"RSI"·"과매수"·
-  "과매도" 같은 기술지표명을 이미 쓰지 않는 완성 문장이다 — 그 문장을
-  그대로 옮기고, 옛 기술지표명을 되살려 쓰지 않는다.
-- 2026-09-09 발주처 피드백(오전 2차) — 이 페이지는 "주요 지표" 표를
-  렌더링하지 않는다(report_render.py가 처리, 지침에서 신경 쓸 것 없음).
-"""
+PRICE_SUMMARY_INSTRUCTIONS = _read_prompt("price_summary.md")
 
-MAP_KOREA_SUMMARY_INSTRUCTIONS = """\
-- 이 페이지는 관세청 원천으로, 한국의 상대국별 수입·수출을 한 보고서에
-  함께 다룬다(2026-09-09 발주처 업무지시서 §3.3 대응 — 이전엔 수입
-  또는 수출 한쪽만 보여줬으나 발주처 템플릿이 "수입 현황→수입 집중도→
-  수출 현황"을 요구해 둘 다 계산하도록 바뀌었다). 등급·단계는 없다.
-- core_diagnosis는 current_state 근거를 그대로 한 문장으로 쓴다 — 이미
-  "수입 현황"(기준일·수입총액·1~3위 수입국명·비중)이 완성 문장으로
-  들어 있다(금액 단위는 "달러"로 이미 표기돼 있다 — 다른 단위로
-  바꾸거나 지우지 않는다). evidence에 "{국가} 대상"이나 특정 범위명
-  (생산품유형·HS코드 등)이 붙어 있으면 그 한정어를 그대로 살려서
-  쓴다 — 불필요한 수식어로 보여도 지우지 않는다(조회가 그 국가·범위로
-  좁혀졌다는 뜻이라 빼면 전체 광종 수치로 오해된다).
-- major_changes는 import_concentration 근거를 그대로 쓴다 — "수입
-  집중도"(상위 3개국·5개국 합산 비중, CR3/CR5)가 이미 완성 문장이다.
-  evidence에 "이 범위 내"라는 표현이 있으면 반드시 그대로 유지한다 —
-  "전체의"와 뜻이 달라서(광종 전체가 아니라 지정된 생산품유형/HS코드
-  범위 안에서의 비중), 생략하거나 그냥 "비중은 X%"로 다듬으면 안 된다.
-  국가가 단 하나로 조회가 한정된 경우엔 import_concentration에 랭킹
-  문장 대신 "조회가 {국가} 한 국가로 한정돼 있어 ... 전체 금액입니다"류
-  단문 하나만 온다 — 이건 evidence 누락이 아니라 정상이니 순위·비중을
-  새로 지어내 채우지 않는다.
-- current_position은 export_summary(있으면) 또는 no_export_data(수출
-  관측치가 없을 때)를 그대로 쓴다 — export_summary는 "수출 현황"
-  (수출총액·주요 수출대상국·수입 대비 수출 비율)이 이미 완성 문장이다.
-- 집중도(상위국 비중)를 공급망 리스크로 단정하지 않고 사실만 서술한다.
-- 증가·감소의 원인(관세, 대체 공급선 확보 등)은 evidence에 없으므로
-  추정하지 않는다.
-"""
+MAP_KOREA_SUMMARY_INSTRUCTIONS = _read_prompt("map_korea_summary.md")
 
-MAP_GLOBAL_SUMMARY_INSTRUCTIONS = """\
-- 이 페이지는 UN Comtrade 원천으로, 전세계 원산지→도착지 양자무역 "루트"
-  단위 데이터를 다룬다 — 한국 한정 데이터가 아니라는 점을 흐리지 않는다.
-  등급·단계는 없다.
-- core_diagnosis는 current_state 근거로 "[기준일] 기준 [광종] 세계 교역
-  총액은 [금액]입니다"를 한 문장으로 쓴다.
-- major_changes는 top1_country(1~3위 루트 랭킹)와 top3_concentration·
-  top5_concentration을 연결해 상위 루트들의 금액·비중과 상위 3개·5개 루트
-  합산 비중을 설명한다 — top5_concentration이 allowed_evidence에 있으면
-  CR5 문장을 생략하지 말고 반드시 포함한다. 이어서 korea_route_rank 또는
-  korea_route_absent 근거를 그대로 옮겨 대한민국이 관련된 루트의 순위를
-  별도 문장으로 설명한다 — 순위·비중 숫자를 새로 계산하지 않는다. 근거가
-  4개면 2~3문장으로 나눠 전부 쓴다.
-- 루트는 근거의 `원산국→도착국` 화살표 표기를 그대로 쓰고, 화살표 표기 바로 뒤에는
-  항상 `루트`를 붙인 뒤 조사를 쓴다("미국→독일 루트로 …", "페루→미국 루트가 …").
-  "미국→독일로"처럼 화살표 표기에 조사를 직접 붙이거나 "미국에서 독일로 향하는"처럼
-  풀어 쓰지 않는다 — 국가명 뒤 조사 오류(예: "미국로")를 피하기 위해서다.
-- current_position은 period_total_change(있는 경우)로 직전 관측 대비
-  총액 변동을 쓴다. country_yearly_trend 근거가 있으면 그 대신 그대로
-  옮겨 쓴다 — 이건 "세계 교역 총액"이 아니라 KOMIS 차트 기준 특정 1개국
-  자신의 연도별 수치이므로, 국가명·연도를 임의로 "세계"·"전체"로
-  일반화하지 않는다(근거 문장에 이미 그 국가명이 명시돼 있으니 그대로
-  옮기면 된다). period_total_change도 country_yearly_trend도 없이
-  single_snapshot 근거만 있으면 map_korea와 같은 방식으로 관측이 1건뿐
-  이라는 결측 사실을 그대로 옮겨 쓴다(공통 지침의 예외는 map_korea
-  프롬프트와 동일하게 적용). 세 근거는 상호배타라 한 번에 하나만 온다.
-- 루트에 등장하는 두 국가 사이의 인과관계(생산 차질, 수출 규제 등)는
-  evidence에 없으므로 추정하지 않는다.
-"""
+MAP_GLOBAL_SUMMARY_INSTRUCTIONS = _read_prompt("map_global_summary.md")
 
-PRICE_GROUP_SUMMARY_INSTRUCTIONS = """\
-- 이 페이지는 광종 1개가 아니라 비철금속 또는 희소금속 그룹 전체를 다룬다.
-  등급·단계는 없다.
-- core_diagnosis는 current_state 근거로 "[그룹]금속 가격은 전주 대비 평균
-  [증감률]% [상승/하락](, 전월 대비 평균 [증감률]% [상승/하락])했다"를 한
-  문장으로 쓴다 — 전월 비교가 evidence에 없으면 전주 비교만 쓴다.
-- major_changes는 group_movers(강세/약세 광종군)와 extreme_movers(최대
-  상승·최대 하락 광종)를 근거에 있는 그대로 옮겨 쓴다 — "주요 요인"(가격
-  변동 원인)은 evidence에 없으므로 절대 추정하지 않는다(다른 가격·지표
-  페이지와 같은 이유).
-- current_position은 group_composition 근거로 상승·하락·보합 광종 수를
-  그대로 쓴다.
-- 그룹 평균이 개별 광종 전부를 대표한다고 단정하지 않는다.
-"""
+PRICE_GROUP_SUMMARY_INSTRUCTIONS = _read_prompt("price_group_summary.md")
 
 PROMPTS = {
     "summary_common": SUMMARY_COMMON_INSTRUCTIONS,
@@ -416,11 +96,7 @@ SECTION_SENTENCE_RANGES: dict[str, dict[str, tuple[int, int]]] = {
     # 3개(grade_streak·grade_transition·largest_monthly_score_change)를 1문장에
     # 넣지 못해 근거 누락/절 이동으로 폴백하는 사례 → (1,2)로 완화.
     "indicator_market": {"core_diagnosis": (1, 1), "major_changes": (1, 2), "current_position": (1, 1)},
-    # 2026-09-01 — supply_key_factors(주요 요인) 신설로 major_changes 근거가
-    # 최대 4개(grade_streak·grade_transition·largest_monthly_score_change·
-    # supply_key_factors)가 됐다 — indicator_composite와 같은 이유로
-    # (1,2)→(1,3) 완화.
-    "indicator_supply": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 1)},
+    "indicator_supply": {"core_diagnosis": (1, 1), "major_changes": (1, 2), "current_position": (1, 2)},
     # 2026-09-01 — index_top_weighted_minerals(구성 광종 가중치) 신설로
     # major_changes 근거가 최대 5개(composite_recent_changes·weekly/monthly/
     # yearly_subindex_comparison·index_top_weighted_minerals)가 됐다 — price
@@ -640,47 +316,53 @@ def _parse_output_contract(page_id: str, raw: Any) -> tuple[dict[str, tuple[int,
     return ranges, total, max_ids
 
 
-def resolve_page_config(page_id: str) -> PageConfig:
-    """코드 기본값 위에 DB 행(`prompt_store.get_page_row`)의 NULL 아닌 컬럼을 덮는다."""
-
+def _resolve_page_config(page_id: str, row: prompt_store.PromptRow | None) -> PageConfig:
+    """검증된 DB 필드만 기본 설정에 덮는다. NULL/잘못된 값은 기존 기본값 유지."""
     base = code_page_config(page_id)
-    row = prompt_store.get_page_row(page_id)
     if row is None:
         return base
-    source = dict(base.source)
-    name, definition, constraints, version = base.name, base.definition, base.analysis_constraints, base.policy_version
-    # 공백만 있는 값은 "없음"으로(Pass 3 R3-L3: ' '가 그대로 서술문에 들어가 "니켈  는"이 됐다).
-    if row.page_name and row.page_name.strip():
-        name, source["name"] = row.page_name.strip(), "db"
-    if row.page_definition and row.page_definition.strip():
-        definition, source["definition"] = row.page_definition.strip(), "db"
+    updates: dict[str, Any] = {}
+    for field, value in (("name", row.page_name), ("definition", row.page_definition),
+                         ("policy_version", row.policy_version)):
+        if value and value.strip():
+            updates[field] = value.strip()
     if row.analysis_constraints is not None:
         if isinstance(row.analysis_constraints, list) and all(isinstance(item, str) for item in row.analysis_constraints):
-            constraints, source["analysis_constraints"] = tuple(row.analysis_constraints), "db"
+            updates["analysis_constraints"] = tuple(row.analysis_constraints)
         else:
             logging.getLogger(__name__).warning("%s: analysis_constraints는 문자열 배열이어야 한다 — 코드 기본값 사용", page_id)
-    if row.policy_version and row.policy_version.strip():
-        version, source["policy_version"] = row.policy_version.strip(), "db"
-    ranges, total, max_ids = base.section_sentence_ranges, base.total_sentence_range, base.max_evidence_ids_per_sentence
     if row.output_contract is not None:
-        db_ranges, db_total, db_max = _parse_output_contract(page_id, row.output_contract)
-        if db_ranges is not None:
-            ranges, source["section_sentence_ranges"] = db_ranges, "db"
-        if db_total is not None:
-            total, source["total_sentence_range"] = db_total, "db"
-        if db_max is not None:
-            max_ids, source["max_evidence_ids_per_sentence"] = db_max, "db"
-    return PageConfig(
-        page_id=page_id,
-        name=name,
-        definition=definition,
-        analysis_constraints=constraints,
-        policy_version=version,
-        section_sentence_ranges=ranges,
-        total_sentence_range=total,
-        max_evidence_ids_per_sentence=max_ids,
-        source=source,
+        values = _parse_output_contract(page_id, row.output_contract)
+        updates.update((key, value) for key, value in zip(
+            ("section_sentence_ranges", "total_sentence_range", "max_evidence_ids_per_sentence"), values
+        ) if value is not None)
+    return replace(base, **updates, source={**base.source, **{key: "db" for key in updates}})
+
+
+# 각 요청에서 계산·프롬프트·검증이 같은 설정을 사용한다. 동시 reload는 다음 요청에 반영.
+_active_prompt: ContextVar[tuple[PageConfig, str] | None] = ContextVar("analysis_prompt", default=None)
+
+
+@contextmanager
+def page_prompt_scope(page_id: str):
+    rows = prompt_store.snapshot()
+    cfg = _resolve_page_config(page_id, rows.get(page_id))
+    common, page = rows.get("summary_common"), rows.get(page_id)
+    instructions = (common.content if common else PROMPTS["summary_common"]) + (
+        page.content if page else PROMPTS[page_id]
     )
+    token = _active_prompt.set((cfg, instructions))
+    try:
+        yield
+    finally:
+        _active_prompt.reset(token)
+
+
+def resolve_page_config(page_id: str) -> PageConfig:
+    active = _active_prompt.get()
+    if active is not None and active[0].page_id == page_id:
+        return active[0]
+    return _resolve_page_config(page_id, prompt_store.get_page_row(page_id))
 
 
 def effective_page_context(page_id: str) -> SummaryPageContext:
@@ -711,6 +393,9 @@ def summary_instructions(page_id: str) -> str:
     하드코드 상수를 쓴다 — `prompt_key`는 공통 서두가 "summary_common", 페이지별
     지시문은 `page_id` 그대로다."""
 
+    active = _active_prompt.get()
+    if active is not None and active[0].page_id == page_id:
+        return active[1]
     common = prompt_store.get_prompt("summary_common", default=PROMPTS["summary_common"])
     page_text = prompt_store.get_prompt(page_id, default=PROMPTS[page_id])
     return common + page_text

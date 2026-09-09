@@ -81,6 +81,11 @@ class StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+def _reject_filters(request, fields: tuple[str, ...], message: str) -> None:
+    if any(getattr(request, field) is not None for field in fields):
+        raise ValueError(message)
+
+
 class AnalysisSummaryRequest(StrictModel):
     """페이지 단위 분석요약 요청(페이지별로 허용 필터가 다르다)."""
 
@@ -387,35 +392,11 @@ class AnalysisSummaryRequest(StrictModel):
             )
             if self.mineral is None and not mineral_derivable_from_snapshot:
                 raise ValueError("mineral is required for indicator summaries")
-            if any(
-                value is not None
-                for value in (
-                    self.start_date,
-                    self.end_date,
-                    self.start_year,
-                    self.end_year,
-                    self.measure,
-                    self.forecast_horizon,
-                    self.start_period,
-                    self.end_period,
-                )
-            ):
-                raise ValueError("indicator summaries only accept month filters")
+            _reject_filters(self, ('start_date', 'end_date', 'start_year', 'end_year', 'measure', 'forecast_horizon', 'start_period', 'end_period'),
+                            'indicator summaries only accept month filters')
         elif self.page_id == "indicator_composite":
-            if any(
-                value is not None
-                for value in (
-                    self.start_month,
-                    self.end_month,
-                    self.start_year,
-                    self.end_year,
-                    self.measure,
-                    self.forecast_horizon,
-                    self.start_period,
-                    self.end_period,
-                )
-            ):
-                raise ValueError("composite index summaries only accept date filters")
+            _reject_filters(self, ('start_month', 'end_month', 'start_year', 'end_year', 'measure', 'forecast_horizon', 'start_period', 'end_period'),
+                            'composite index summaries only accept date filters')
         elif self.page_id == "forecast_price":
             if self.mineral is None:
                 raise ValueError("mineral is required for price forecast summaries")
@@ -429,19 +410,8 @@ class AnalysisSummaryRequest(StrictModel):
             # 방법이 없어 그대로 필수다.
             if self.forecast_horizon is None and self.komis_response is None:
                 raise ValueError("forecast_horizon is required for price forecasts")
-            if any(
-                value is not None
-                for value in (
-                    self.start_month,
-                    self.end_month,
-                    self.start_date,
-                    self.end_date,
-                    self.start_year,
-                    self.end_year,
-                    self.measure,
-                )
-            ):
-                raise ValueError("price forecasts only accept forecast-period filters")
+            _reject_filters(self, ('start_month', 'end_month', 'start_date', 'end_date', 'start_year', 'end_year', 'measure'),
+                            'price forecasts only accept forecast-period filters')
             periods = [value for value in (self.start_period, self.end_period) if value]
             if self.forecast_horizon == "medium" and any("-Q" not in value for value in periods):
                 raise ValueError("medium forecasts require YYYY-Q1..Q4 periods")
@@ -452,19 +422,8 @@ class AnalysisSummaryRequest(StrictModel):
                 raise ValueError("mineral is required for mineral map summaries")
             if self.measure is None:
                 raise ValueError("measure is required for mineral map summaries")
-            if any(
-                value is not None
-                for value in (
-                    self.start_month,
-                    self.end_month,
-                    self.start_date,
-                    self.end_date,
-                    self.forecast_horizon,
-                    self.start_period,
-                    self.end_period,
-                )
-            ):
-                raise ValueError("mineral map summaries only accept year filters")
+            _reject_filters(self, ('start_month', 'end_month', 'start_date', 'end_date', 'forecast_horizon', 'start_period', 'end_period'),
+                            'mineral map summaries only accept year filters')
         elif self.page_id == "price_group":
             # 2026-08-27 신설 — 광종 1개가 아니라 그룹(비철금속/희소금속)
             # 전체를 다뤄 다른 페이지와 달리 mineral을 받지 않는다.
@@ -472,22 +431,8 @@ class AnalysisSummaryRequest(StrictModel):
                 raise ValueError("price_group is required for price_group summaries")
             if self.mineral is not None:
                 raise ValueError("price_group summaries do not accept mineral (group-level only)")
-            if any(
-                value is not None
-                for value in (
-                    self.start_month,
-                    self.end_month,
-                    self.start_date,
-                    self.end_date,
-                    self.start_year,
-                    self.end_year,
-                    self.measure,
-                    self.forecast_horizon,
-                    self.start_period,
-                    self.end_period,
-                )
-            ):
-                raise ValueError("price_group summaries do not accept period filters")
+            _reject_filters(self, ('start_month', 'end_month', 'start_date', 'end_date', 'start_year', 'end_year', 'measure', 'forecast_horizon', 'start_period', 'end_period'),
+                            'price_group summaries do not accept period filters')
         else:
             # "price_base_metals"·"price_minor_metals"·"price_iron_energy"·
             # "price_other"·"map_korea"·"map_global" — komir 자체 추가 6종
@@ -506,20 +451,8 @@ class AnalysisSummaryRequest(StrictModel):
             )
             if self.mineral is None and not mineral_derivable_from_response:
                 raise ValueError("mineral is required for price/trade map summaries")
-            if any(
-                value is not None
-                for value in (
-                    self.start_month,
-                    self.end_month,
-                    self.start_year,
-                    self.end_year,
-                    self.measure,
-                    self.forecast_horizon,
-                    self.start_period,
-                    self.end_period,
-                )
-            ):
-                raise ValueError("price/trade map summaries only accept date filters")
+            _reject_filters(self, ('start_month', 'end_month', 'start_year', 'end_year', 'measure', 'forecast_horizon', 'start_period', 'end_period'),
+                            'price/trade map summaries only accept date filters')
         return self
 
 

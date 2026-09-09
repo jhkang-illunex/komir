@@ -47,12 +47,12 @@ _SECTION_TITLES_OVERRIDES: dict[str, dict[str, str]] = {
     "indicator_market": {
         "core_diagnosis": "현재 단계",
         "major_changes": "단계 변화",
-        "current_position": "평균 대비 위치",
+        "current_position": "주요 변동 특징",
     },
     "indicator_supply": {
         "core_diagnosis": "현재 수급 단계",
         "major_changes": "단계 변화",
-        "current_position": "평균 대비 위치",
+        "current_position": "구성요소 변화",
     },
     "map_korea": {
         "core_diagnosis": "수입 현황",

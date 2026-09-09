@@ -205,6 +205,11 @@ def reload() -> ReloadResult:
     return ReloadResult(ok=True, count=len(_cache))
 
 
+def snapshot() -> dict[str, PromptRow]:
+    """한 요청이 사용할 행 스냅샷. reload는 기존 dict를 수정하지 않고 교체한다."""
+    return _cache.copy()
+
+
 def get_prompt(prompt_key: str, *, default: str) -> str:
     """`prompt_key`의 캐시된 DB 지시문을 돌려준다. 캐시에 없으면 `default`
     (prompts.py 하드코드 값)로 폴백한다. DB를 직접 조회하지 않는다."""

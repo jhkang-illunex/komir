@@ -695,6 +695,8 @@ def calculate_composite_summary(
             EvidenceClaim(
                 "weekly_subindex_comparison",
                 "major_changes",
+                f"현재 메이저금속지수는 {_number(current.major_metals_index)}포인트, "
+                f"희소금속지수는 {_number(current.minor_metals_index)}포인트이며, "
                 "최근 한 주 동안 메이저금속지수는 "
                 f"{weekly_connective} 희소금속지수는 "
                 f"{_change_verb(weekly_minor)}.",

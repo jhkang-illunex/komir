@@ -61,7 +61,7 @@ from fastapi import Request
 from pydantic import BaseModel, ValidationError
 
 from ..analysis.budget import ANALYSIS_LLM_RETRIES, ANALYSIS_LLM_TIMEOUT_SECONDS, REQUEST_BUDGET_SECONDS
-from ..analysis.data_sources import DataSourceError
+from ..analysis.errors import DataSourceError
 from ..analysis.models import AnalysisReportResponse, AnalysisSummaryRequest, SummaryPageId
 from ..analysis.report_render import render_markdown_report
 

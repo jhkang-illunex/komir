@@ -109,75 +109,25 @@ ANALYSIS_LLM_CONCURRENCY = 8
 
 
 def build_analysis_summary_service():
-    """분석요약 11종 서비스를 조립한다(외부repo `api/app.py`의 동명 함수 대응).
-
-    원본은 자체 psycopg 커넥션 팩토리(`PostgresRawDataRepository(PostgresSettings)`)와
-    자체 LLM 클라이언트(`OpenAICompatibleJsonLLM`)를 썼다. 여기서는 komir의
-    `services/shared/llm_client.KomirJsonLLM`을 쓴다.
-
-    **2026-08-26: DB 조회 경로 비활성화** — "이 서버는 prompt/template를 제외하고는
-    DB에서 값을 로딩하지 않는다"는 원칙에 따라, 11종 전부 `public.KO_*` 직접
-    조회(`KomisRawDataRepository`+`Database*DataSource`)를 멈췄다. 이제
-    `AnalysisSummaryService`의 각 `_analyze_*`가 요청 바디의 `observations`로
-    Series를 직접 조립한다(`analysis/summary.py` 참고) — 그래서 DataSource
-    인자는 전부 `None`으로 넘긴다. 복원하려면 아래 주석 블록을 해제하고
-    `None` 대신 다시 인스턴스를 넘기면 된다(DataSource 클래스 정의 자체는
-    `data_sources/`에 그대로 남아 있다 — 삭제하지 않았다).
-    """
-
+    """요청 데이터로 보고서를 만드는 서비스를 조립한다. DB는 프롬프트 설정에만 사용한다."""
     from common.config import get_settings
-
-    # from .analysis.data_sources import (
-    #     DatabaseCompositeIndexDataSource,
-    #     DatabaseDomesticTradeDataSource,
-    #     DatabaseGlobalTradeDataSource,
-    #     DatabaseIndicatorDataSource,
-    #     DatabaseMineralMapDataSource,
-    #     DatabasePriceDataSource,
-    #     DatabasePriceForecastDataSource,
-    # )
-    # from .analysis.scaffold import KomisRawDataRepository
     from .analysis.summary import AnalysisSummaryService
 
-    # PG_DSN 가드는 예전엔 "DataSource가 DB에 붙을 수 있는지"의 대리 지표였다.
-    # 이제 analyze() 자체는 DB가 필요 없지만, 프롬프트 캐시(ai_cfg.cfg_prompt)는
-    # 여전히 PG_DSN이 필요해(§lifespan의 prompt_store.reload()) 이 가드를
-    # 일단 유지한다 — PG_DSN 없이도 분석요약 11종을 규칙기반으로라도 띄우고
-    # 싶다면 이 줄을 지우면 된다(열린 결정, WORKLOG 참고).
-    if not get_settings().PG_DSN:
+    settings = get_settings()
+    # 기존 기동 계약 유지: PG_DSN이 없으면 분석 서비스는 비활성화한다.
+    if not settings.PG_DSN:
         return None
-    # repository = KomisRawDataRepository()
-    llm = None
     try:
         from common.llm_client import KomirJsonLLM
 
-        # 2026-08-27 skeptic 감사 SC-002: 기본 cfg(LLM_TIMEOUT_SECONDS=120, retries 3)
-        # 그대로 쓰면 느린 LLM 응답 1건이 `routers/_common.py`의 analysis_lock을
-        # 수 분(전송 실패 경로 ≈372s) 쥐고 뒤 요청 전부를 TIMEOUT시킨다(실측).
-        # 요청당 예산이 20초이므로 report_gen용 클라이언트만 timeout·retries를
-        # 그 규모로 줄여 lock 점유를 바운드한다 — LLM 자체를 20초 안에 "맞추는"
-        # 게 아니라 연쇄 반경을 줄이는 것(vLLM 장애 시 폴백은 그대로 규칙기반).
-        llm = KomirJsonLLM(
-            {
-                **get_settings().llm_cfg(),
-                "timeout": ANALYSIS_LLM_TIMEOUT_SECONDS,
-                "retries": ANALYSIS_LLM_RETRIES,
-            }
-        )
-    except Exception:  # noqa: BLE001 — LLM 없이도 규칙기반 요약은 나와야 한다
+        llm = KomirJsonLLM({
+            **settings.llm_cfg(),
+            "timeout": ANALYSIS_LLM_TIMEOUT_SECONDS,
+            "retries": ANALYSIS_LLM_RETRIES,
+        })
+    except Exception:  # LLM 초기화 실패 시 규칙 기반 보고서 사용
         llm = None
-    return AnalysisSummaryService(
-        None,  # DatabaseIndicatorDataSource(repository) — 2026-08-26 비활성화
-        composite_source=None,  # DatabaseCompositeIndexDataSource(repository)
-        mineral_map_source=None,  # DatabaseMineralMapDataSource(repository)
-        price_forecast_source=None,  # DatabasePriceForecastDataSource(repository)
-        # 아래 3개는 komir 자체 추가(2026-08-19) — `/prices`·`/domestic-trade`·
-        # `/global-trade`, §routers/analysis.py 모듈 docstring 참고.
-        price_source=None,  # DatabasePriceDataSource(repository)
-        domestic_trade_source=None,  # DatabaseDomesticTradeDataSource(repository)
-        global_trade_source=None,  # DatabaseGlobalTradeDataSource(repository)
-        llm=llm,
-    )
+    return AnalysisSummaryService(llm=llm)
 
 
 def build_comprehensive_service():

@@ -1,0 +1,33 @@
+{
+  "baseline_commit": "89d1741f2",
+  "comparison_count": 3777,
+  "changed": [],
+  "analysis_counts": {
+    "price_base_metals:ok": 34,
+    "price_base_metals:DataSourceError": 41,
+    "price_minor_metals:ok": 336,
+    "price_iron_energy:ok": 280,
+    "price_other:ok": 280,
+    "price_minor_metals:DataSourceError": 21,
+    "price_iron_energy:DataSourceError": 21,
+    "price_other:DataSourceError": 21,
+    "indicator_composite:ok": 6,
+    "indicator_market:ok": 78,
+    "indicator_supply:ok": 72,
+    "map_korea:ok": 1100,
+    "map_korea:ValidationError": 33,
+    "map_korea:DataSourceError": 36,
+    "map_global:ok": 1069,
+    "map_global:DataSourceError": 100,
+    "map_mineral:DataSourceError": 27,
+    "map_mineral:ok": 208,
+    "indicator_market:DataSourceError": 1,
+    "indicator_supply:DataSourceError": 1,
+    "indicator_composite:DataSourceError": 1
+  },
+  "hashseed": "0",
+  "result_fingerprint": "826740784063af3e457ea0a9f35975ee68daa61a3973c8fc267c35d3d1f6c48f",
+  "unit_tests_passed": 11,
+  "live_llm_tested": false,
+  "deployed": false
+}

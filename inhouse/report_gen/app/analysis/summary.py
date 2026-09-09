@@ -1,43 +1,10 @@
 # -*- coding: utf-8 -*-
-"""검증된 계산 + LLM 분석문 생성 서비스 — 외부 저장소
-`komis_report_generator/analysis/summary.py` 이식본(2026-08-13).
+"""보고서 생성 흐름: 입력 정규화 → 수치·근거 계산 → LLM 정제 → 구조화 응답.
 
-5개 분석요약 엔드포인트(시장동향지표·수급동향지표·광물종합지수·광물지도·가격예측)가
-전부 이 파일의 `AnalysisSummaryService.analyze()` 하나로 들어온다.
-
-**원본에서 바뀐 것 3가지**
-
-1. **LLM 클라이언트**: `search.llm.JsonLLM`(httpx 기반 별도 구현) →
-   `services/shared/llm_client.KomirJsonLLM`. 두 타입은 `invoke(task=, instructions=,
-   payload=, output_model=, max_tokens=) -> LLMInvocation` 시그니처가 같게 설계돼
-   있어 호출부는 손대지 않았다(`rag_chat`의 `page_recommend/graph.py`가 8/11에 쓴
-   같은 방식 — LLM 호출 클라이언트를 2벌 만들지 않는다).
-2. **import 경로**: 절대(`komis_report_generator.analysis.*`) → 상대(`.`).
-3. **`_refine_with_llm`의 예외 처리 범위**(⚠ 실질적 차이): 원본은 `LLMError`만
-   잡는다. 그런데 komir의 `KomirJsonLLM`은 JSON 파싱·스키마 검증 실패만
-   `LLMOutputError(LLMError)`로 바꾸고, 그 아래 `OpenAICompatChat.complete()`가
-   내는 **전송 계층 오류는 그대로 통과시킨다**(실측: 재시도 소진 시 맨
-   `RuntimeError`, 타임아웃·커넥션 오류는 `requests.RequestException`). 그대로
-   두면 vLLM이 죽었을 때 규칙기반 요약으로 우아하게 물러나지 않고 API가 500을
-   낸다 — 그래서 `RuntimeError`/`OSError`까지 잡아 원본이 의도한 폴백 동작을
-   유지한다(`LLMError`·`requests.RequestException`이 각각 그 하위형이다).
-4. **komir 자체 3종 추가(2026-08-19, 이식 아님 — 2026-08-26 LLM 배선 추가)**:
-   `price`·`map_korea`·`map_global`(광물자원가격·국내/글로벌 수급지도) 디스패치를
-   추가했다. 원본은 이 3종을 501 스텁으로만 뒀지 `analyze()`에 분기가 없다 —
-   `_analyze_price`/`_analyze_domestic_trade`/`_analyze_global_trade`는 komir가
-   새로 짠 것이고, 계산은 `komir_summary.py`(별도 파일, `additional_summary.py`와
-   안 섞음)를 쓴다. 2026-08-19 최초 추가 때는 `prompts.py`(이식본)에 이 3종용
-   프롬프트·검증계약이 없어 `_refine_with_llm`을 안 태우고 규칙기반 응답만
-   돌려줬다. **2026-08-26 발주처 KOMIS 템플릿 PDF(`income_data/komis/`)를
-   근거로 이 3종 전용 지시문·output_contract를 `prompts.py`에 마련하고
-   `_refine_with_llm`을 태우도록 배선했다** — 이 과정에서 `komir_summary.py::
-   calculate_price_summary`의 core_diagnosis 근거 id가 다른 7종과 다르게
-   `"latest_price"`였던 걸 `"current_state"`로 맞췄다(`_validate_llm_summary`가
-   "core_diagnosis에 current_state가 있어야 한다"를 페이지 무관 공통 규칙으로
-   검사하는데, 예전엔 이 3종이 LLM을 안 태워 이 불일치가 드러나지 않았다).
-
-계산 로직·검증 규칙(`_validate_llm_summary`)·문구는 원본 그대로다(포터 5종 한정 —
-komir 자체 3종은 위 4번대로 komir가 새로 마련했다).
+KOMIS 파싱은 input_data, 시장·수급 계산은 indicator_summary가 담당한다.
+공개 Markdown 변환은 report_render에서 수행하며 여기서는 출력 계약을 유지한다.
+프롬프트 설정은 요청당 한 번 확정하고, LLM 실패 시 계산된 서사를 반환한다.
+과거 직접 호출자와의 호환을 위해 이동한 내부 함수도 재노출한다.
 """
 
 from __future__ import annotations
@@ -49,9 +16,8 @@ import re
 import threading
 import time
 from collections import Counter
-from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
-from typing import Literal
+from typing import Literal, TYPE_CHECKING
 
 from pydantic import ValidationError
 
@@ -70,25 +36,24 @@ from .additional_summary import (  # noqa: E402
     EvidenceClaim,
     SectionId,
     SummaryPageContext,
-    _number,
-    _quantity,
     calculate_composite_summary,
     calculate_mineral_map_summary,
     calculate_price_forecast_summary,
 )
-from .data_sources import (  # noqa: E402
-    CompositeIndexDataSource,
-    DataSourceError,
-    DomesticTradeDataSource,
-    GlobalTradeDataSource,
-    IndicatorDataSource,
-    MineralMapDataSource,
-    PriceDataSource,
-    PriceForecastDataSource,
-)
-from .indicators import months_are_contiguous, percent_change  # noqa: E402
+from .errors import DataSourceError
+
+if TYPE_CHECKING:
+    from .data_sources._shared import (  # noqa: E402
+        CompositeIndexDataSource,
+        DomesticTradeDataSource,
+        GlobalTradeDataSource,
+        IndicatorDataSource,
+        MineralMapDataSource,
+        PriceDataSource,
+        PriceForecastDataSource,
+    )
+
 from .komir_summary import (  # noqa: E402
-    _capped_key_metrics,
     _detect_granularity,
     calculate_domestic_trade_summary,
     calculate_global_trade_summary,
@@ -101,7 +66,6 @@ from .models import (  # noqa: E402
     CompositeIndexObservation,
     CompositeIndexSeries,
     DataQuality,
-    DetectedPattern,
     GradeResult,
     IndicatorObservation,
     IndicatorSeries,
@@ -109,11 +73,9 @@ from .models import (  # noqa: E402
     MineralMapObservation,
     MineralMapSeries,
     MineralRef,
-    OmittedIndicator,
     PriceForecastObservation,
     PriceForecastSeries,
     PriceGroupMineralObservation,
-    PriceKomisPeriodComparisons,
     PriceObservation,
     PriceSeries,
     SourceInfo,
@@ -122,7 +84,6 @@ from .models import (  # noqa: E402
     SummarySentence,
     SupplyAuxiliaryData,
     TradeCountryObservation,
-    TradeKomisTotals,
     TradeMapSeries,
 )
 from .policy import PagePolicy, load_page_policy  # noqa: E402
@@ -131,7 +92,51 @@ from .prompts import (  # noqa: E402
     build_summary_payload,
     effective_page_context,
     resolve_page_config,
+    page_prompt_scope,
     summary_instructions,
+)
+
+from .indicator_summary import (
+    _CalculatedSummary,
+    _metric,
+    _score_meaning,
+    _score_position_meaning,
+    _change_phrase,
+    _supply_auxiliary_metrics,
+    _classify_series,
+    _calculate_summary,
+)
+from .input_data import (
+    normalize_price_request,
+    _observations_from_request,
+    _komis_period_comparisons_from_request,
+    _komis_trade_totals_from_request,
+    _komis_num,
+    _komis_num_comma,
+    _komis_zero_to_none,
+    _komis_crtr_ymd_to_date,
+    _komis_rows_to_observations,
+    _KomisPriceParsed,
+    _parse_komis_price_response,
+    _parse_komis_map_korea_response,
+    _map_korea_query_filters,
+    _parse_komis_map_global_response,
+    _parse_komis_map_global_bar_chart_top_country,
+    _parse_komis_map_global_route_shares,
+    _mineral_map_unit_label,
+    _mineral_map_value_key,
+    _mineral_map_country_observation,
+    _parse_komis_mineral_map_response,
+    _parse_komis_map_mineral_snapshot_response,
+    _parse_komis_map_mineral_share_response,
+    _parse_komis_composite_response,
+    _komis_ymd_to_month,
+    _parse_komis_indicator_list_response,
+    _parse_komis_market_response,
+    _parse_komis_supply_response,
+    _parse_komis_supply_snapshot_response,
+    _parse_komis_price_forecast_response,
+    _supply_auxiliary_from_request,
 )
 
 def _calculate_or_no_data(page_id: str, calculate, /, *args, **kwargs):
@@ -158,598 +163,6 @@ def _data_version(payload: object) -> str:
 
     canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
-
-
-def _observations_from_request(
-    observation_cls,
-    request: AnalysisSummaryRequest,
-    *,
-    raw: list[dict] | None = None,
-    field_name: str = "observations",
-):
-    """요청 바디의 observations(dict 리스트)를 페이지별 Observation 모델로 검증한다.
-
-    2026-08-26: "DB에서 값을 로딩하지 않는다"는 원칙 전환 이후, 계산에 쓰는
-    원자료는 전부 이 경로로 들어온다 — DB DataSource가 하던 일(원천 조회)을
-    호출자가 요청 바디에 실어 보내는 것으로 대체했다(옛 DB 조회 경로는
-    `data_sources/`에 그대로 남겨 뒀고, 이 서비스에서 호출부만 주석 처리했다 —
-    WORKLOG 2026-08-26 참고). `raw`/`field_name`은 `price` 페이지의
-    `compare_observations`(비교광종, KOMIS 원본의 `compareMnrl`에 대응)처럼
-    `observations` 외 다른 필드도 같은 방식으로 검증할 때 쓴다."""
-
-    payload = raw if raw is not None else request.observations
-    if not payload:
-        raise DataSourceError(
-            f"{request.page_id}: 요청 바디에 {field_name}가 없다 — "
-            "DB 조회 대신 요청에 원자료를 실어 보내야 한다(2026-08-26 이후 계약)."
-        )
-    try:
-        return [observation_cls.model_validate(item) for item in payload]
-    except Exception as exc:  # noqa: BLE001 — pydantic ValidationError 등을 422로 통일
-        raise DataSourceError(
-            f"{request.page_id}: {field_name} 형식이 {observation_cls.__name__}과 맞지 않는다: {exc}"
-        ) from exc
-
-
-def _komis_period_comparisons_from_request(
-    request: AnalysisSummaryRequest,
-    *,
-    raw: dict | None = None,
-) -> PriceKomisPeriodComparisons | None:
-    """`request.komis_period_comparisons`(선택 필드, 2026-08-28 추가조사 확정 —
-    `report_gen_price_base_metals_부실요약_원인조사_260828.md`)를 검증한다.
-    없으면 에러가 아니라 None(하위호환).
-
-    `raw`(2026-08-30 신설) — `_parse_komis_price_response`가 `komis_response`
-    에서 뽑아낸 값을 여기 override로 넘긴다(`_observations_from_request`의
-    `raw` 파라미터와 같은 패턴)."""
-
-    payload = raw if raw is not None else request.komis_period_comparisons
-    if not payload:
-        return None
-    try:
-        return PriceKomisPeriodComparisons.model_validate(payload)
-    except Exception as exc:  # noqa: BLE001 — pydantic ValidationError 등을 NO_DATA로 통일
-        raise DataSourceError(
-            f"{request.page_id}: komis_period_comparisons 형식이 PriceKomisPeriodComparisons와 맞지 않는다: {exc}"
-        ) from exc
-
-
-def _komis_trade_totals_from_request(
-    request: AnalysisSummaryRequest,
-    *,
-    raw: dict | None = None,
-) -> TradeKomisTotals | None:
-    """`request.komis_trade_totals`(선택 필드, 2026-08-29 Phase3 라이브 재검증
-    확정 — `report_gen_KOMIS라이브재검증_Phase3_260829.md`)를 검증한다.
-    없으면 에러가 아니라 None(하위호환).
-
-    `raw`(2026-08-30 신설) — `_trade_series_from_request`가 `komis_response`
-    에서 뽑아낸 값을 여기 override로 넘긴다(`_komis_period_comparisons_
-    from_request`의 `raw` 파라미터와 같은 패턴)."""
-
-    payload = raw if raw is not None else request.komis_trade_totals
-    if not payload:
-        return None
-    try:
-        return TradeKomisTotals.model_validate(payload)
-    except Exception as exc:  # noqa: BLE001 — pydantic ValidationError 등을 NO_DATA로 통일
-        raise DataSourceError(
-            f"{request.page_id}: komis_trade_totals 형식이 TradeKomisTotals와 맞지 않는다: {exc}"
-        ) from exc
-
-
-def _komis_num(value) -> float | None:
-    """KOMIS 응답 값(문자열 또는 숫자, 종종 `null`)을 float으로. 파싱 실패 시 None."""
-
-    if value is None:
-        return None
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
-
-
-def _komis_num_comma(value) -> float | None:
-    """콤마 천단위 구분자가 섞인 KOMIS 문자열 숫자(예: "110,000,000")를
-    float로. `getListMnrlTablePrdctnBurgudg`(2026-08-31 신설) 전용 —
-    다른 KOMIS 엔드포인트는 콤마 없는 숫자 문자열만 써서 `_komis_num`을
-    그대로 쓴다(실측 확인)."""
-
-    if value is None:
-        return None
-    try:
-        return float(str(value).replace(",", ""))
-    except (TypeError, ValueError):
-        return None
-
-
-def _komis_zero_to_none(value) -> float | None:
-    """KOMIS는 결측을 `null`이 아니라 문자열 "0.00"으로 채우는 관행이 있다
-    (이 세션에서 `inventory`·`lowest_price`/`highest_price` 둘 다 실측
-    확인) — 0(.0)은 항상 결측으로 정규화한다."""
-
-    n = _komis_num(value)
-    return None if n in (None, 0, 0.0) else n
-
-
-def _komis_crtr_ymd_to_date(crtr_ymd) -> str:
-    """KOMIS `crtrYmd`를 report_gen `Day`(YYYY-MM-DD)로 정규화한다.
-
-    2026-08-31 사용자 질문("주·월·분기·년 단위를 인식할 수 있나요?")으로
-    실측 확인(`income_data/komis/komis_01_base_metals.json`) — KOMIS는
-    조회단위(DAY/WEEK/MONTH/QUARTER/YEAR)에 따라 `crtrYmd` 형식이 전부
-    다른데, 이 함수는 여태 DAY/WEEK의 "YYYYMMDD"(8자리)만 가정하고 있었다.
-    MONTH("202608")·QUARTER("2026.3Q")·YEAR("2026") 형식을 넣으면
-    `s[6:8]`가 빈 문자열이 되어 "2026-08-"처럼 깨진 날짜가 나갔고, 이는
-    `PriceObservation.date`의 `Day` 패턴 검증에 걸려 그 요청 전체가
-    실패했다(월/분기/년 단위 가격 조회가 사실상 동작하지 않던 상태) —
-    이번에 4가지 형식을 전부 정규화한다. MONTH/QUARTER/YEAR는 원래
-    특정 "일자"가 없는 기간 집계값이라, 그 기간의 대표일(월초/분기
-    첫 달 1일/1월 1일)로 정한다 — 실제 관측일이 아니라 정렬·간격판별용
-    근사치임을 유의할 것(`komir_summary.py::_detect_granularity`가 이
-    간격으로 단위를 재판별해 변동성 연율화 계수·이동평균 라벨 등에 쓴다)."""
-
-    s = str(crtr_ymd).strip()
-    if s.isdigit():
-        if len(s) == 8:
-            return f"{s[0:4]}-{s[4:6]}-{s[6:8]}"
-        if len(s) == 6:
-            return f"{s[0:4]}-{s[4:6]}-01"
-        if len(s) == 4:
-            return f"{s}-01-01"
-    if "Q" in s.upper():
-        year, _, quarter_part = s.partition(".")
-        quarter_num = quarter_part.upper().replace("Q", "").strip()
-        month = {"1": "01", "2": "04", "3": "07", "4": "10"}.get(quarter_num, "01")
-        return f"{year}-{month}-01"
-    # 알 수 없는 형식 — 추정으로 임의 정규화하지 않고 원본을 그대로
-    # 돌려줘 Pydantic 검증에서 명시적으로 실패하게 둔다.
-    return s
-
-
-def _komis_rows_to_observations(rows: list[dict]) -> list[dict]:
-    out = []
-    for row in rows:
-        price = _komis_num(row.get("cmercPrc"))
-        if price is None or not row.get("crtrYmd"):
-            continue
-        out.append(
-            {
-                "date": _komis_crtr_ymd_to_date(row["crtrYmd"]),
-                "commerce_price": price,
-                "lowest_price": _komis_zero_to_none(row.get("lowstPrc")),
-                "highest_price": _komis_zero_to_none(row.get("hghstPrc")),
-                "inventory": _komis_zero_to_none(row.get("invt")),
-            }
-        )
-    return out
-
-
-@dataclass(frozen=True, slots=True)
-class _KomisPriceParsed:
-    """`_parse_komis_price_response`의 반환 shape(2026-09-08 SC-003: 자리만
-    구분되는 7-튜플 대신 이름으로 접근하게 함)."""
-
-    observations: list[dict]
-    compare_observations: list[dict] | None
-    komis_period_comparisons: dict | None
-    mineral_name: str | None
-    price_criterion: str | None
-    compare_mineral_name: str | None
-    compare_price_criterion: str | None
-    #: `dataAvg.INFO.prcUnitCdNm`(2026-09-09 발주처 업무지시서 — 핵심 진단
-    #: 문장에 단위가 없다는 지적 대응). mineral_name/price_criterion과 같은
-    #: 자리(`komis_info`)에서 뽑는다.
-    price_unit: str | None = None
-
-
-def _parse_komis_price_response(raw: dict) -> _KomisPriceParsed:
-    """`request.komis_response`(2026-08-30 신설)를 report_gen 내부 shape 8종
-    (observations, compare_observations, komis_period_comparisons, mineral_name,
-    price_criterion, compare_mineral_name, compare_price_criterion, price_unit)으로
-    변환한다 — KOMIS `getMnrlPrcByMnrkndUnqCd` 원본 응답을 그대로 받아
-    호출자가 필드명을 손으로 옮겨 담을 필요를 없앤다(발주처 납품 최적화
-    요청, 2026-08-30).
-
-    - `data.defaultMnrl[]` → observations(기본 계열)
-    - `data.compareMnrl[]` → compare_observations(비교광종 계열, 있을 때만)
-    - `dataAvg.stdMap.{WEEK,MONTH,YEAR}` → komis_period_comparisons.
-      `average_price`는 응답에 직접 없고 `flctnPrc`(등락액)만 있어
-      `latest_price - flctnPrc`로 역산한다(`komis_dump_smoke_test.py`의
-      하네스 산식과 동일 — 라이브 재현으로 확정된 공식).
-    - `dataAvg.INFO.mnrkndKornNm` → mineral_name(있으면, 호출자가 명시한
-      `mineral_name`이 있으면 그쪽이 항상 우선 — 호출부에서 처리).
-    - `dataAvg.INFO.prcCrtr`(예: "LME CASH") → price_criterion(2026-08-30
-      사용자 지적 — "LME쪽이 안 보인다": `applied_filters["price_criterion"]`
-      은 이미 있는데 komis_response 경로가 안 채워서 보고서 상단
-      "**가격기준**: ..." 줄이 항상 비어 있었다. mineral_name과 같은 규칙 —
-      호출자가 명시한 `price_criterion`이 있으면 그쪽이 우선).
-    - `dataAvg.INFO.prcUnitCdNm`(예: "USD"·"CNY") → price_unit(2026-09-09
-      발주처 업무지시서 대응 — 핵심 진단 문장에 단위가 없다는 지적. 실 KOMIS
-      덤프 전수 확인 결과 값은 "USD"/"CNY" 2종뿐이라 `komir_summary.py`가
-      한국어 표기("달러"/"위안")로 바꾼다 — mineral_name과 같은 자리에서
-      뽑되, 이 필드는 사람이 손으로 대체할 이유가 없어 호출자 우선순위
-      규칙은 두지 않는다).
-    - `dataAvg.cmpMap.INFO.mnrkndKornNm` → compare_mineral_name(2026-08-30
-      2차 발견 — 사용자가 "compare_mineral_name도 komis_response 안에
-      있지 않냐"고 지적해 Playwright 라이브 재현(네오디뮴 대비 갈륨
-      조회)으로 확인. `cmpMap`은 `stdMap`(기본 광종)과 완전히 같은
-      모양으로 비교 광종 몫이 따로 온다 — `mineral_name`과 같은 자리에
-      있는데도 그동안 안 읽고 있었다).
-    - `dataAvg.cmpMap.INFO.prcCrtr` → compare_price_criterion(2026-08-30
-      3차 발견 — `compare_mineral_name`과 같은 `cmpMap.INFO` 블록 안에
-      비교광종 자신의 가격기준도 같이 온다는 걸 그때 같이 확인해놓고
-      실제 배선은 놓쳤다. `routers/analysis.py::PriceSummaryRequest`가
-      `c76466a47`(2026-08-30 Swagger 트리밍)에서 이 필드를 "komis_
-      response로 대체돼 불필요"로 잘못 판단해 라우터에서 지운 적이 있다
-      — 그런데 `_analyze_price`(아래)는 계속 `request.compare_price_
-      criterion`을 읽고 있었으니, 그 트리밍 이후로는 호출자가 값을
-      보낼 방법 자체가 없어 이 표시가 조용히 죽어 있었다(회귀). 이번에
-      필드를 라우터에 복원하면서 auto-fill까지 같이 넣는다).
-
-    `mineral`/`compare_mineral`(코드)은 KOMIS 응답 본문 어디에도 없는
-    조회 파라미터라(`cmpMap.INFO`도 이름만 있고 코드가 없음, 실측
-    확인) 이 함수가 채우지 않는다 — 호출자가 그대로 명시해야 한다.
-
-    2026-08-30 실사용 재현으로 발견·수정한 버그: `latest_price`를
-    `observations[-1]`(defaultMnrl의 배열상 마지막 행)로 뽑았었는데, 실제
-    KOMIS 응답은 `defaultMnrl`을 최신일이 먼저 오는 내림차순으로 준다 —
-    `[-1]`은 오히려 조회기간 중 가장 오래된 행이라 전주/전월/전년 평균이
-    엉뚱한 값으로 역산됐다(예: 니켈 8/27 기준 16,660에서 -64 등락액으로
-    16,724가 나와야 하는데, 60일 조회에서 [-1]이 6/1 데이터라 19,050
-    기준으로 19,114가 나온 사례 실측). 배열 순서에 의존하지 않는
-    `dataAvg.stdMap.CRTRYMD.cmercPrc`(당일 실거래가, 순서 무관 고정
-    필드)를 우선 쓰고, 없으면 관측치를 날짜로 정렬해 최신값을 쓴다."""
-
-    data = raw.get("data") or {}
-    observations = _komis_rows_to_observations(data.get("defaultMnrl") or [])
-    compare_observations = _komis_rows_to_observations(data.get("compareMnrl") or []) or None
-    dataAvg = raw.get("dataAvg") or {}
-    komis_info = dataAvg.get("INFO") or {}
-    mineral_name = komis_info.get("mnrkndKornNm") or None
-    price_criterion = komis_info.get("prcCrtr") or None
-    price_unit = komis_info.get("prcUnitCdNm") or None
-    compare_info = (dataAvg.get("cmpMap") or {}).get("INFO") or {}
-    compare_mineral_name = compare_info.get("mnrkndKornNm") or None
-    compare_price_criterion = compare_info.get("prcCrtr") or None
-
-    std_map = ((raw.get("dataAvg") or {}).get("stdMap")) or {}
-    latest_price = _komis_num((std_map.get("CRTRYMD") or {}).get("cmercPrc"))
-    if latest_price is None:
-        latest_price = _komis_num((std_map.get("DAY") or {}).get("cmercPrc"))
-    if latest_price is None and observations:
-        latest_price = max(observations, key=lambda item: item["date"])["commerce_price"]
-    komis_period_comparisons: dict = {}
-    for key, field in (("week", "WEEK"), ("month", "MONTH"), ("year", "YEAR")):
-        entry = std_map.get(field)
-        if not entry or latest_price is None:
-            continue
-        delta = _komis_num(entry.get("flctnPrc"))
-        pct = _komis_num(entry.get("flctnPrcnt"))
-        if delta is None or pct is None:
-            continue
-        komis_period_comparisons[key] = {"average_price": latest_price - delta, "change_pct": pct}
-
-    return _KomisPriceParsed(
-        observations=observations,
-        compare_observations=compare_observations,
-        komis_period_comparisons=(komis_period_comparisons or None),
-        mineral_name=mineral_name,
-        price_criterion=price_criterion,
-        compare_mineral_name=compare_mineral_name,
-        compare_price_criterion=compare_price_criterion,
-        price_unit=price_unit,
-    )
-
-
-def _parse_komis_map_korea_response(raw: dict) -> tuple[list[dict], dict | None, str | None]:
-    """`getListKoreaData` 원본 응답(2026-08-30, 사용자 지시로 price와 같은 패턴을
-    나머지 페이지로 확장) → observations + komis_trade_totals + mineral(코드).
-    응답 자체가 조회 파라미터(`srchDateE`·`srchMnrkndUnqCd`)를 그대로
-    되돌려주므로 그걸 관측일·광종코드로 쓴다(행 자체엔 날짜가 없는 스냅샷
-    응답 — `komis_dump_smoke_test.py::adapt_map_korea`와 같은 근거).
-    2026-08-31 확인: `srchMnrkndUnqCd`가 있어 `mineral`도 자동 채움
-    가능(price_*는 응답 본문에 코드가 없어 이 자동채움이 불가능한 것과
-    대비된다)."""
-
-    rows = raw.get("list") or []
-    as_of = raw.get("srchDateE")
-    as_of_date = f"{as_of[0:4]}-{as_of[4:6]}-{as_of[6:8]}" if as_of else None
-    mineral_code = raw.get("srchMnrkndUnqCd") or None
-    observations: list[dict] = []
-    if as_of_date:
-        for row in rows:
-            code = row.get("ntnCd")
-            if not code:
-                continue
-            observations.append(
-                {
-                    "date": as_of_date,
-                    "country_code": code,
-                    "country_name": row.get("ntnKornNm") or code,
-                    "import_weight": _komis_num(row.get("incmWeig")),
-                    "import_amount": _komis_num(row.get("incmAmt")),
-                    "export_weight": _komis_num(row.get("expWeig")),
-                    "export_amount": _komis_num(row.get("expAmt")),
-                }
-            )
-    komis_trade_totals: dict = {}
-    if rows:
-        sum_incm = _komis_num(rows[0].get("sumIncmAmt"))
-        sum_exp = _komis_num(rows[0].get("sumExpAmt"))
-        if sum_incm:
-            komis_trade_totals["import_amount"] = sum_incm
-        if sum_exp:
-            komis_trade_totals["export_amount"] = sum_exp
-    return observations, (komis_trade_totals or None), mineral_code
-
-
-def _map_korea_query_filters(
-    komis_response: dict | None, observations: list, mttr_flow_name: str | None
-) -> tuple[str | None, str | None, str | None]:
-    """`request.komis_response`(`getListKoreaData`)의 echo에서 조회필터
-    3종(기간구분·국가·생산품유형/HS)을 뽑는다 — `komis_snapshot_response`
-    류와 달리 새 요청 필드가 필요 없다(2026-08-31, streamlit-agent 실측
-    확인: 이 응답은 `srchCrtrYmd`/`srchNtnCd`/`srchMttrFlowCd`/`srchHsCd`
-    요청 파라미터 전부를 최상위에 그대로 echo한다).
-
-    반환: (period_unit_label, country_filter_name, scope_label).
-    `country_filter_name`과 `scope_label`은 상호배타(국가필터가 있으면
-    scope_label은 만들지 않는다 — `calculate_domestic_trade_summary`
-    docstring 참고, 국가필터가 랭킹 claim 자체를 억제하므로 범위라벨은
-    의미가 없다)."""
-
-    if not komis_response:
-        return None, None, None
-    period_unit_label = "월별" if komis_response.get("srchCrtrYmd") == "M" else "년별"
-
-    ntn_cd = (komis_response.get("srchNtnCd") or "").strip()
-    country_filter_name = None
-    if ntn_cd:
-        hit = next((o for o in observations if o.country_code == ntn_cd), None)
-        country_filter_name = hit.country_name if hit is not None else ntn_cd
-
-    scope_label = None
-    if not country_filter_name:
-        hs_cd = (komis_response.get("srchHsCd") or "").strip()
-        mttr_flow_cd = (komis_response.get("srchMttrFlowCd") or "").strip()
-        if hs_cd:
-            item_name = None
-            for row in komis_response.get("list") or []:
-                if row.get("hsCd") == hs_cd and row.get("itemNm"):
-                    item_name = row["itemNm"]
-                    break
-            scope_label = f"HS {hs_cd}({item_name})" if item_name else f"HS {hs_cd}"
-        elif mttr_flow_cd:
-            scope_label = mttr_flow_name or f"생산품유형코드 {mttr_flow_cd}"
-
-    return period_unit_label, country_filter_name, scope_label
-
-
-def _parse_komis_map_global_response(raw: dict) -> tuple[list[dict], dict | None, str | None]:
-    """`getListDataNation` 원본 응답 → observations + komis_trade_totals +
-    mineral(코드). map_korea와 달리 행마다 도착국(`incmNtn*`)·원산국
-    (`expNtn*`) 쌍이 이미 있어 행 1개 = 루트 관측 1건(`komis_dump_smoke_
-    test.py::adapt_map_global`과 동일 근거). map_korea와 마찬가지로
-    `srchMnrkndUnqCd`가 응답에 echo되어 `mineral` 자동 채움 가능
-    (2026-08-31 확인)."""
-
-    rows = raw.get("list") or []
-    as_of = raw.get("srchDateE")
-    as_of_date = f"{as_of[0:4]}-{as_of[4:6]}-{as_of[6:8]}" if as_of else None
-    mineral_code = raw.get("srchMnrkndUnqCd") or None
-    observations: list[dict] = []
-    if as_of_date:
-        for row in rows:
-            dest_code, origin_code = row.get("incmNtnCd"), row.get("expNtnCd")
-            if not dest_code or not origin_code:
-                continue
-            observations.append(
-                {
-                    "date": as_of_date,
-                    "country_code": dest_code,
-                    "country_name": row.get("incmNtnNm") or dest_code,
-                    "origin_country_code": origin_code,
-                    "origin_country_name": row.get("expNtnNm") or origin_code,
-                    "import_weight": _komis_num(row.get("weig")) or 0.0,
-                    "import_amount": _komis_num(row.get("amt")) or 0.0,
-                }
-            )
-    komis_trade_totals = None
-    if rows:
-        sum_amt = _komis_num(rows[0].get("sumAmt"))
-        if sum_amt:
-            komis_trade_totals = {"import_amount": sum_amt}
-    return observations, komis_trade_totals, mineral_code
-
-
-def _parse_komis_map_global_bar_chart_top_country(raw: dict) -> tuple[str, dict[str, float]] | None:
-    """`getBarChartDataNation` 원본 응답 → `(1위국명, {연도: 값})`.
-
-    2026-08-31 신설 — `getListDataNation`이 스냅샷 1건뿐이라 실전에서
-    기간변화(`period_total_change`)가 거의 항상 비어 있던 문제(map_global
-    `dates`가 사실상 항상 1개)를 완화한다. 실측 대조 결과 바차트 국가별
-    합계가 `getListDataNation`의 `sumAmt`와 다르다(예: 2017년 갈륨 수입,
-    list sumAmt 886M 대 bar 국가합계 1,391M — 30%대 차이) — 두 엔드포인트의
-    "총액" 집계 범위가 다른 것으로 보여 합산값을 "세계 교역 총액"이라
-    부르지 않는다. 대신 **1위국 자신의 연도별 원값**만 쓴다(집계가 아니라
-    KOMIS가 이미 국가 단위로 준 값 그대로라 범위 논쟁이 없다).
-
-    ⚠바차트의 마지막 연도(`xaxis[-1]`)는 항상 연중 진행분으로 취급해
-    제외한다 — 실측 확인(최신 연도 값이 직전 연도의 1/9~1/15로 급감,
-    가격페이지 "{year}년(연중)" 문제와 같은 패턴). `srchDateChartS`/
-    `srchDateChartE`가 조회 대상 연도와 무관하게 항상 "최근 ~13개년~현재"
-    고정 폭이라(실측 확인 — list_data가 2017년을 조회해도 바차트는
-    2014~2026을 그대로 준다), 이 규칙은 조회 연도와 무관하게 항상
-    적용해도 안전하다."""
-
-    bar = ((raw.get("data") or {}).get("barChart")) or {}
-    xaxis = bar.get("xaxis") or []
-    series = bar.get("series") or []
-    if len(xaxis) < 3 or not series:
-        return None
-    complete_years = xaxis[:-1]
-    latest_idx = len(complete_years) - 1
-
-    def _value_at(entry: dict, idx: int) -> float:
-        values = entry.get("data") or []
-        return float(values[idx]) if idx < len(values) and values[idx] is not None else 0.0
-
-    ranked = sorted(series, key=lambda entry: _value_at(entry, latest_idx), reverse=True)
-    top = ranked[0]
-    yearly = {
-        str(complete_years[i]): _value_at(top, i)
-        for i in range(len(complete_years))
-        if (top.get("data") or [None] * len(complete_years))[i] is not None
-    }
-    if len(yearly) < 2:
-        return None
-    return (top.get("name") or top.get("seriesCd") or "1위국"), yearly
-
-
-def _parse_komis_map_global_route_shares(raw: dict) -> list[dict]:
-    """`getListMapNationData` 원본 응답 → 루트별
-    `[{origin_name, dest_name, origin_share_percent, dest_share_percent}]`.
-
-    2026-08-31 신설. `crtrNtnAmtRt`/`trgtNtnAmtRt`의 의미를 실측 교차곱
-    검증으로 확정했다 — 같은 루트에서 `crtrTotalAmt × crtrNtnAmtRt`와
-    `trgtTotalAmt × trgtNtnAmtRt`가 (반올림 오차 내로) 같은 값에 수렴한다,
-    즉 **"이 루트가 각국 자신의 집계총액에서 차지하는 비중"**이다. 다만
-    그 집계총액이 수출·수입 중 어느 방향인지까지는 검증하지 못해 호출부가
-    라벨을 방향중립("{국가}측 집계총액 대비")으로 둔다."""
-
-    rows = (raw.get("data") or {}).get("mapData") or []
-    result: list[dict] = []
-    for row in rows:
-        origin_name = row.get("crtrNtnKornNm")
-        dest_name = row.get("trgtNtnKornNm")
-        if not origin_name or not dest_name:
-            continue
-        result.append(
-            {
-                "origin_name": origin_name,
-                "dest_name": dest_name,
-                "origin_share_percent": _komis_num(row.get("crtrNtnAmtRt")),
-                "dest_share_percent": _komis_num(row.get("trgtNtnAmtRt")),
-            }
-        )
-    return result
-
-
-#: 2026-09-09 발주처 업무지시서 §3.3 대응 — `getListMapMnrlChartData`/
-#: `getListMapMnrlData`의 `cdVal`(단위 코드)이 영문 그대로("ton"/"k ton"/
-#: "kg"/"mt")라 한글 문장에 영문이 섞여 나온다(65개 광종 실측 전수 확인,
-#: `mt`는 철 등 WT007 계열에서 실측값 규모상 "metric ton"=톤과 동일).
-#: 매핑에 없는 코드가 오면 원문 코드를 그대로 쓴다(단위를 지어내지 않는다).
-#:
-#: ⚠"k ton"→"톤"(잠정, "천톤" 아님) — main-agent가 USGS 실측치와 교차
-#: 대조해 확정: 동(구리) 칠레 2025 매장량 원값 180,000,000을 "천톤"으로
-#: 읽으면 1,800억 톤(물리적으로 불가능한 규모)이지만 "톤"으로 읽으면
-#: 1.8억 톤 = USGS 실측(~1.9억 톤)과 일치한다. 생산량도 동일 검증
-#: (칠레 2025 원값 5,300,000을 톤으로 읽으면 530만 톤, 실제 연간
-#: 생산량과 정확히 일치). 즉 KOMIS `cdVal` 라벨("k ton")과 실제 값의
-#: 스케일이 서로 안 맞고, 값 자체는 이미 톤 단위다 — KOMIS 웹 화면에서
-#: 이 단위가 실제로 어떻게 표기되는지는 아직 직접 확인하지 못했다(이
-#: 세션은 오프라인이라 komis.or.kr 라이브 접속 불가) — 온라인 접속
-#: 가능한 세션에서 화면 표기와 최종 대조 필요.
-_MINERAL_MAP_UNIT_LABELS = {"ton": "톤", "k ton": "톤", "kg": "킬로그램", "mt": "톤"}
-
-
-def _mineral_map_unit_label(raw_unit: str | None) -> str | None:
-    if not raw_unit:
-        return None
-    return _MINERAL_MAP_UNIT_LABELS.get(raw_unit, raw_unit)
-
-
-def _mineral_map_value_key(measure: str) -> str:
-    return "burudgQuty" if measure == "reserves" else "prdctnQuty"
-
-
-def _mineral_map_country_observation(year: int, row: dict, value_key: str) -> dict | None:
-    """`getListMapMnrlChartData`/`getListMapMnrlData` 공통 행 구조(2026-09-09
-    복잡성 해소 — 두 파서가 이 추출 로직을 그대로 복제하고 있었다) →
-    국가별 관측치 dict 1건, 값이 없거나 0 이하면 None(호출부가 건너뛴다)."""
-
-    value = _komis_num(row.get(value_key))
-    if value is None or value <= 0:
-        return None
-    return {
-        "year": year,
-        "country_code": row.get("ntnEngCd") or row.get("ntnKornNm"),
-        "country_name": row.get("ntnKornNm") or row.get("ntnEngNm"),
-        "value": value,
-        "is_total": False,
-        "is_other": False,
-    }
-
-
-def _parse_komis_mineral_map_response(raw: dict, measure: str) -> tuple[list[dict], str | None]:
-    """`getListMapMnrlChartData` 원본 응답 → observations + unit.
-    `measure`("reserves"/"production")는 응답 본문에 없는 조회 파라미터라
-    호출자가 그대로 명시해야 한다(`komis_dump_smoke_test.py::
-    adapt_mineral_map`과 동일 근거).
-
-    2026-09-09 발주처 업무지시서 §3.3·§4-8("비중·합계 산출 검증 필요")
-    대응 — 이전엔 응답의 `totalBurudgQuty`/`TOTALPRDCTNQUTY`를 "공식
-    세계 총계"로 그대로 신뢰해 `is_total=True` 관측치를 만들었다. 동(구리)
-    실 덤프로 대조한 결과 이 필드가 **2019~2025년 내내 완전히 같은 값**
-    (예: 매장량 5,060,700,000)으로 고정돼 있어 그 해 국가별 합계(예: 2019년
-    651,000,000·2025년 770,200,000)와 다르다 — 실제 국가별 연도별 합계
-    보다 6~8배 크다. main-agent가 재검증해 정체를 확정했다: 이 값은
-    무의미한 상수가 아니라 **조회기간(2019~2025) 전체 연도·국가를 다
-    합산한 값**이다(직접 검산: 모든 연도·국가의 `burudgQuty` 총합 =
-    5,060,700,000, 생산량도 동일하게 `TOTALPRDCTNQUTY`=132,244,000과
-    일치). 즉 "그 해의 세계 총계"가 아니라 "조회기간 총합"을 담은
-    필드라 애초에 연도별 분모로 쓰기에 부적합하다(이 결론 자체는 그대로
-    유효). 이 필드를 아예 읽지 않는다 — `additional_summary.py::
-    _world_total()`이 이미 "공식 총계가 없으면 국가별 합계를 쓴다"는
-    폴백을 갖고 있어(그 파일은 무수정 이식이라 편집하지 않음), 여기서
-    가짜 `is_total` 관측치 생성을 멈추기만 하면 계산기가 자동으로
-    올바르게 그 해 국가별 합계를 쓴다."""
-
-    rows = raw.get("data") or []
-    value_key = _mineral_map_value_key(measure)
-    unit = _mineral_map_unit_label(str(rows[0].get("cdVal") or "").strip() or None) if rows else None
-    observations: list[dict] = []
-    for row in rows:
-        year_raw = row.get("crtrYr")
-        if year_raw is None:
-            continue
-        observation = _mineral_map_country_observation(int(year_raw), row, value_key)
-        if observation is not None:
-            observations.append(observation)
-    return observations, unit
-
-
-def _parse_komis_map_mineral_snapshot_response(
-    raw: dict, measure: str, year: int
-) -> tuple[list[dict], str | None]:
-    """`getListMapMnrlData` 원본 응답 → observations(단일 연도) + unit.
-
-    2026-08-31 신설 — 옛 `secondary_measure_observations`(손입력)를
-    대체한다. `measure`는 뽑아낼 항목("reserves"/"production", 보통
-    primary measure의 반대)이고, `year`는 응답 본문에 없는 연도라
-    호출자가 명시해야 한다(`_analyze_mineral_map`이 primary 계열의
-    `available_end_year`를 넘긴다 — `models.py`의 `komis_snapshot_response`
-    필드 docstring 참고). ⚠단일 연도 조회(srchDateS==srchDateE) 전제 —
-    다년 범위로 조회하면 KOMIS가 그 범위를 합산한 값을 준다(실측 확인,
-    같은 문서 참고), 이 함수는 그 구분을 응답만으로 할 수 없다.
-
-    2026-09-09 — `_parse_komis_mineral_map_response`와 같은 이유로 응답의
-    "공식 총계" 필드(`totalBurudgQuty`/`TOTALPRDCTNQUTY`)를 더 이상 신뢰
-    하지 않는다(위 함수 docstring의 실측 근거 참고) — 국가별 관측치만
-    반환하고, 세계 총계는 이 값들의 합으로 자동 계산되게 둔다."""
-
-    rows = raw.get("data") or []
-    value_key = _mineral_map_value_key(measure)
-    unit = _mineral_map_unit_label(str(rows[0].get("cdVal") or "").strip() or None) if rows else None
-    observations = [
-        observation
-        for row in rows
-        if (observation := _mineral_map_country_observation(year, row, value_key)) is not None
-    ]
-    return observations, unit
 
 
 def _build_mineral_map_secondary_series(
@@ -968,305 +381,6 @@ def _append_mineral_map_extreme_change(calculated: AdditionalCalculatedSummary, 
     calculated.detailed_metrics.extend(new_metrics)
 
 
-def _parse_komis_map_mineral_share_response(raw: dict) -> list[dict]:
-    """`getListMnrlTablePrdctnBurgudg` 원본 응답 → 국가별
-    `[{country_code, country_name, value, share_percent}]`.
-
-    2026-08-31 신설. 응답은 국가별 최근 5개년(`before1`=최신연도~
-    `before5`) 값을 주지만, 사용자 지시로 가장 최근 연도(`before1`)만
-    쓴다("매장량 현황은 가장 마지막 년도 값만 사용해요"). `rate`는 실측
-    대조(2개 표본 정확히 일치)로 확정 — "전년대비 증감률"이 아니라
-    **해당 국가가 이 표의 `_TOTAL_`(before1 연도, 표에 나열된 국가들의
-    소계)에서 차지하는 비중(%)**이다. ⚠이 `_TOTAL_`은 `getListMapMnrlChartData`
-    기반 세계합계보다 체계적으로 작다(실측 4개 광종에서 4~11배 — 표에
-    나열된 국가 수만큼만 합산된 소계라 그렇다, `additional_summary.py::
-    calculate_mineral_map_summary`의 `market_share` 파라미터 docstring
-    참고) — "세계비중"이라고 부르지 않는다. `_TOTAL_`(코드 SU)·`_ETC_`
-    (코드 OT)는 국가 목록이 아니라 국가 랭킹에서 제외한다. 값이 콤마
-    천단위 구분자 문자열이라 `_komis_num_comma`로 파싱한다."""
-
-    rows = raw.get("data") or []
-    result: list[dict] = []
-    for row in rows:
-        code = row.get("ntnEngCd")
-        if not code or code in ("SU", "OT"):
-            continue
-        value = _komis_num_comma(row.get("before1"))
-        if value is None or value <= 0:
-            continue
-        result.append(
-            {
-                "country_code": code,
-                "country_name": row.get("ntnKornNm") or code,
-                "value": value,
-                "share_percent": _komis_num_comma(row.get("rate")),
-            }
-        )
-    return result
-
-
-def _parse_komis_composite_response(raw: dict) -> list[dict]:
-    """`getLineChartIndx` 원본 응답(2026-08-29 Phase4 라이브재검증) →
-    observations. `data.tableData`가 날짜별로 지수유형(indxTp: MNRL=광물
-    종합지수/MAJOR=메이저금속지수/RARE=희소금속지수) 3종을 행 3개로 나눠서
-    준다 — 같은 crtrYmd(YYYY.MM.DD 점 구분)끼리 묶어 CompositeIndexObservation
-    1건(세 지수값 전부)으로 합친다. 세 지수 중 하나라도 없는 날짜는 모델
-    요구사항(gt=0 필수 3종)을 못 채워 건너뛴다.
-
-    2026-09-01 수정 — 전체 응답 봉투(`{"status":..., "data": {"tableData":
-    ...}}`)뿐 아니라 그 안의 `data` 페이로드만 떼어 낸 형태(`{"tableData":
-    ...}`, 발주처 기획문서 `report_summary/메뉴/광물전망지표/광물종합지수/
-    getLineChartIndx.json`이 이 모양)도 그대로 받는다 — 그 파일로 실측
-    검증한 결과 봉투 없이 `tableData`가 최상위에 바로 있어 기존 코드로는
-    0건으로 파싱됐다."""
-
-    payload = raw.get("data") if isinstance(raw.get("data"), dict) else raw
-    table = payload.get("tableData") or []
-    by_date: dict[str, dict[str, float]] = {}
-    for row in table:
-        crtr = row.get("crtrYmd")
-        indx_tp = row.get("indxTp")
-        value = _komis_num(row.get("indx"))
-        if not crtr or not indx_tp or value is None:
-            continue
-        by_date.setdefault(crtr, {})[indx_tp] = value
-    observations: list[dict] = []
-    for crtr, values in by_date.items():
-        if not all(key in values for key in ("MNRL", "MAJOR", "RARE")):
-            continue
-        observations.append(
-            {
-                "date": crtr.replace(".", "-"),
-                "composite_index": values["MNRL"],
-                "major_metals_index": values["MAJOR"],
-                "minor_metals_index": values["RARE"],
-            }
-        )
-    return observations
-
-
-def _komis_ymd_to_month(crtr_ymd) -> str | None:
-    """KOMIS `crtrYmd`(시장동향지표는 "YYYYMMDD" 8자리 — 매월 1일자 스냅샷,
-    수급동향지표는 "YYYYMM" 6자리)를 둘 다 report_gen `Month`("YYYY-MM")로
-    정규화한다. 두 형식 모두 앞 6자리가 그대로 연월이라 슬라이스 하나로
-    충분하다(2026-09-01, `getListIndxMnrk`/`getListIndxSplyBalncMnrk`
-    실측 확인)."""
-
-    text = str(crtr_ymd or "").strip()
-    if len(text) < 6 or not text[:6].isdigit():
-        return None
-    return f"{text[0:4]}-{text[4:6]}"
-
-
-def _parse_komis_indicator_list_response(raw: dict | list, score_field: str) -> list[dict]:
-    """시장동향·수급동향 지표 리스트 응답 공통 파서(2026-09-01 신설).
-
-    `getListIndxMnrk`(시장동향, `score_field="mrktPrspectIdct"`)·
-    `getListIndxSplyBalncMnrk`(수급동향, `score_field="spdmStbtIndx"`) 둘 다
-    `{"data": [...행들], "chartData": {...}}` 모양이다(실측). `chartData`는
-    `data`를 그래프용으로 재구성한 값이라 안 쓴다(같은 정보의 중복). 행마다
-    있는 `realPrc`(실질가격)를 `price`로, `crisisYn`("Y"/"N")을 `crisis_flag`로
-    옮긴다. `flutRt`/`flutPrc`/`realFlutRt`/`realFlutPrc`(전월 대비 등락)는
-    이미 `IndicatorObservation` 목록에서 인접 월 비교로 재계산하는 값과
-    같아서(계산기가 이미 그 일을 함) 옮기지 않는다.
-
-    KOMIS는 두 응답 모두 최신월이 먼저 오는 내림차순으로 행을 준다(실측) —
-    `summary.py::_calculate_summary`는 (composite와 달리) 내부에서 재정렬하지
-    않고 `observations[-1]`을 그대로 "현재"로 쓰므로, 여기서 오름차순으로
-    정렬해 반환하지 않으면 가장 오래된 달이 "현재"로 잘못 계산된다(실측
-    재현됨).
-
-    2026-09-02 skeptic 2차 감사 SC-R2-006: `Month`(YYYY-MM)는 KOMIS `crtrYmd`
-    앞 6자리라 월중 재게시로 같은 달에 `crtrYmd`가 두 번(예: 20260801·20260815)
-    오면 같은 달이 관측치 2건으로 중복돼, 그 달이 "전월"과 나란히 비교되는
-    사고가 날 수 있다 — 발주처 제공 실측 덤프(23개월치, 시장동향)에선 중복이
-    없었지만(월당 1행 확인됨) 다른 기간·광종에서 재게시가 없다는 보장은 없어
-    방어적으로 dedup한다. KOMIS가 최신 `crtrYmd`를 먼저 주므로(내림차순), 같은
-    달이 반복되면 먼저 나온 쪽(=그 달 안에서 가장 최근 crtrYmd)만 남긴다."""
-
-    rows = raw.get("data") if isinstance(raw, dict) else raw
-    if not isinstance(rows, list):
-        return []
-    observations: list[dict] = []
-    seen_months: set[str] = set()
-    for row in rows:
-        month = _komis_ymd_to_month(row.get("crtrYmd"))
-        score = _komis_num(row.get(score_field))
-        if month is None or score is None or month in seen_months:
-            continue
-        seen_months.add(month)
-        entry: dict = {"month": month, "score": score}
-        price = _komis_num(row.get("realPrc"))
-        if price is not None:
-            entry["price"] = price
-        crisis_raw = row.get("crisisYn")
-        if crisis_raw is not None:
-            entry["crisis_flag"] = str(crisis_raw).strip().upper() == "Y"
-        observations.append(entry)
-    observations.sort(key=lambda item: item["month"])
-    return observations
-
-
-def _parse_komis_market_response(raw: dict | list) -> list[dict]:
-    """`getListIndxMnrk`(시장동향지표) 원본 응답 → observations."""
-
-    return _parse_komis_indicator_list_response(raw, "mrktPrspectIdct")
-
-
-def _parse_komis_supply_response(raw: dict | list) -> list[dict]:
-    """`getListIndxSplyBalncMnrk`(수급동향지표) 원본 응답 → observations."""
-
-    return _parse_komis_indicator_list_response(raw, "spdmStbtIndx")
-
-
-def _parse_komis_supply_snapshot_response(raw: dict) -> tuple[dict, str | None, str | None]:
-    """`getChartDataSpdmStbt`(수급동향지표 상세) 원본 응답 →
-    (supply_auxiliary dict, mineral_code, mineral_name), 2026-09-01 신설.
-
-    `subChart02`(수입량·수입액 5개년, yaxisTitle "수입량(톤)"/oppoTitle
-    "수입액(백만$)" 라벨 그대로 신뢰 — 사용자가 2024년 값 12,416,224가
-    이상해 보인다고 재확인 요청했으나 "라벨 그대로 백만$가 맞음"으로 확정)
-    → `domestic_imports`.
-
-    `subChart03`(국가별 파이, 라벨 없이 `series`/`labels` 두 배열만 줌)은
-    사용자 실측 확인(2026-09-01, "일본 데이터에서 454240인 필드는 금액(USD)")
-    으로 단일 값이 **금액(USD, 백만달러 아님)**임을 확정했다 — 중량(kg)은
-    이 응답에 없어(`SupplyImportDependencyObservation.weight_kg`를 선택
-    필드로 완화) `amount_usd`만 채우고, `share_percent`는 이 표에 나열된
-    국가들의 합계 대비 비중으로 계산한다(세계 총액이 아님 — `komis_share_
-    response`/`market_share`의 "소계 대비 비중" 선례와 같은 결). 상위 3개국
-    합을 `top_three_dependency_percent`로 둔다.
-
-    `subChart01`(실질가격)은 핵심 관측치(`IndicatorObservation.price`,
-    `getListIndxSplyBalncMnrk`의 `realPrc`)와 같은 값의 중복이라 안 쓴다.
-    `subChart04`(국가별 생산량, "세계 공급 편중도")·`subChart07`(국가별
-    매장량)은 대응 모델 필드가 없어 파싱하지 않는다(§`models.py`의
-    `SupplyAuxiliaryData` docstring 참고, 이번 반영 범위 밖)."""
-
-    payload = raw.get("data") if isinstance(raw.get("data"), dict) else raw
-    if not isinstance(payload, dict):
-        return {}, None, None
-
-    chart_info = payload.get("chartSpdmStbt") or {}
-    mineral_code = chart_info.get("mnrkndUnqCd") or None
-    mineral_name = chart_info.get("mnrkndKornNm") or None
-
-    aux: dict = {}
-
-    sub02 = payload.get("subChart02") or {}
-    labels = sub02.get("labels") or []
-    series_by_name = {
-        item.get("name"): item.get("data") or [] for item in (sub02.get("series") or [])
-    }
-    weights = series_by_name.get("수입량") or []
-    amounts = series_by_name.get("수입액") or []
-    domestic_imports = []
-    for index, year_label in enumerate(labels):
-        year = _komis_num(year_label)
-        if year is None or index >= len(weights) or index >= len(amounts):
-            continue
-        weight = _komis_num(weights[index])
-        amount = _komis_num(amounts[index])
-        if weight is None or amount is None:
-            continue
-        domestic_imports.append(
-            {
-                "year": int(year),
-                "import_weight_ton": weight,
-                "import_amount_million_usd": amount,
-            }
-        )
-    if domestic_imports:
-        aux["domestic_imports"] = domestic_imports
-
-    sub03 = payload.get("subChart03") or {}
-    sub03_labels = sub03.get("labels") or []
-    sub03_series = sub03.get("series") or []
-    sub03_year = _komis_num(sub03.get("crtrYr"))
-    rows = [
-        (name, _komis_num(value))
-        for name, value in zip(sub03_labels, sub03_series)
-    ]
-    rows = [(name, value) for name, value in rows if value is not None]
-    total = sum(value for _, value in rows)
-    if sub03_year is not None and total > 0:
-        rows.sort(key=lambda item: item[1], reverse=True)
-        import_dependencies = [
-            {
-                "year": int(sub03_year),
-                "country_name": name,
-                "amount_usd": value,
-                "share_percent": value / total * 100,
-            }
-            for name, value in rows
-        ]
-        aux["import_dependencies"] = import_dependencies
-        aux["top_three_dependency_percent"] = min(
-            100.0, sum(row["share_percent"] for row in import_dependencies[:3])
-        )
-
-    return aux, mineral_code, mineral_name
-
-
-_KOMIS_FORECAST_PERIOD_RE = re.compile(r"^(\d{2})년\s*(?:(\d)Q)?")
-
-
-def _parse_komis_price_forecast_response(raw: dict) -> tuple[list[dict], str | None]:
-    """`getListPricePredc` 원본 응답(2026-08-29 Phase4 라이브재검증) →
-    observations + mineral_name. `data[]`의 `crtrPrd`("28년 4Q"/"01년 1Q"
-    형식, 2000년대만 관측됨)를 `YYYY-QN`/`YYYY`로, `realYn`(Y=확정 실적/
-    N=예측)을 `is_actual`로 변환한다(§models.py
-    `PriceForecastObservation.is_actual` 참고). 각 행의 `mnrkndKornNm`
-    (예: "니켈")도 mineral_name으로 뽑는다(2026-08-31 추가 — price
-    파서와 같은 패턴, 호출자가 명시한 mineral_name이 있으면 그쪽 우선)."""
-
-    rows = raw.get("data") or []
-    observations: list[dict] = []
-    mineral_name = None
-    for row in rows:
-        if mineral_name is None:
-            mineral_name = row.get("mnrkndKornNm") or None
-        prd = row.get("crtrPrd")
-        price = _komis_num(row.get("prc"))
-        if not prd or price is None:
-            continue
-        match = _KOMIS_FORECAST_PERIOD_RE.match(str(prd))
-        if not match:
-            continue
-        year = 2000 + int(match.group(1))
-        period = f"{year}-Q{match.group(2)}" if match.group(2) else str(year)
-        real_yn = row.get("realYn")
-        is_actual = True if real_yn == "Y" else False if real_yn == "N" else None
-        observations.append({"period": period, "price": price, "is_actual": is_actual})
-    return observations, mineral_name
-
-
-def _supply_auxiliary_from_request(request: AnalysisSummaryRequest) -> SupplyAuxiliaryData | None:
-    """`supply_auxiliary`(수급 보조패널, 선택)를 검증한다 — 형식이 틀리면
-    `DataSourceError`(→ NO_DATA). Pass 3 라운드 2 R2-F1: 이전엔 검증 예외가 그대로
-    새어 4개 지표 라우트에서 `{"bogus": 1}` 같은 바디가 INTERNAL_ERROR가 됐다
-    (`_observations_from_request`와 같은 규칙으로 맞춤)."""
-
-    if request.supply_auxiliary is None:
-        return None
-    try:
-        return SupplyAuxiliaryData.model_validate(request.supply_auxiliary)
-    except Exception as exc:  # noqa: BLE001 — pydantic ValidationError 등
-        raise DataSourceError(
-            f"{request.page_id}: supply_auxiliary 형식이 SupplyAuxiliaryData와 맞지 않는다: {exc}"
-        ) from exc
-
-
-@dataclass(slots=True)
-class _CalculatedSummary:
-    grade: GradeResult
-    claims: list[EvidenceClaim]
-    key_metrics: list[Metric]
-    detailed_metrics: list[Metric]
-    patterns: list[DetectedPattern]
-    omitted: list[OmittedIndicator]
-
-
 def _source_info_from_series(
     series: IndicatorSeries | CompositeIndexSeries | MineralMapSeries | PriceForecastSeries | PriceSeries | TradeMapSeries,
 ) -> SourceInfo:
@@ -1285,25 +399,6 @@ def _source_info_from_series(
     )
 
 
-def _metric(
-    metric_id: str,
-    label: str,
-    value: float | int | str | None,
-    *,
-    unit: str | None = None,
-    basis: str | None = None,
-    status: Literal["available", "insufficient_data"] = "available",
-) -> Metric:
-    return Metric(
-        id=metric_id,
-        label=label,
-        status=status,
-        value=round(value, 6) if isinstance(value, float) else value,
-        unit=unit,
-        basis=basis,
-    )
-
-
 def _filter_hash(page_id: str, filters: dict[str, str | None]) -> str:
     canonical = json.dumps(
         {"page_id": page_id, "filters": filters},
@@ -1312,543 +407,6 @@ def _filter_hash(page_id: str, filters: dict[str, str | None]) -> str:
         separators=(",", ":"),
     )
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
-
-
-def _score_meaning(page_id: str, change: float) -> str:
-    # 2026-09-09 main-agent 승인(B-3) — 과거형 "-았/었다"→"-았/었습니다"는
-    # 어간 구분 없이 안전한 변환(report_gen_to_polite_copula_gotcha_260901
-    # 함정은 계사/현재형에서만 발생, 과거형은 해당 없음).
-    if change == 0:
-        return "점수와 지표가 나타내는 상태에 변화가 없었습니다"
-    if page_id == "indicator_market":
-        return (
-            "중장기 가격위험이 낮아지는 방향으로 움직였습니다"
-            if change > 0
-            else "중장기 가격위험이 높아지는 방향으로 움직였습니다"
-        )
-    return (
-        "수급 안정성이 강화되는 방향으로 움직였습니다"
-        if change > 0
-        else "수급 안정성이 약해지는 방향으로 움직였습니다"
-    )
-
-
-def _score_position_meaning(page_id: str, difference: float) -> str:
-    # 2026-09-09 main-agent 승인(B-3) — 계사 "수준이다"→"수준입니다"(어간이
-    # 아니라 명사+계사 "이다"이므로 안전한 변환).
-    if difference == 0:
-        return (
-            "중장기 가격위험이 조회기간 평균 수준입니다"
-            if page_id == "indicator_market"
-            else "수급 안정성이 조회기간 평균 수준입니다"
-        )
-    if page_id == "indicator_market":
-        return (
-            "중장기 가격위험이 조회기간 평균보다 낮은 수준입니다"
-            if difference > 0
-            else "중장기 가격위험이 조회기간 평균보다 높은 수준입니다"
-        )
-    return (
-        "수급 안정성이 조회기간 평균보다 높은 수준입니다"
-        if difference > 0
-        else "수급 안정성이 조회기간 평균보다 낮은 수준입니다"
-    )
-
-
-def _change_phrase(value: float) -> str:
-    # 2026-09-09 사용자 지시 — price_* 4종에 적용한 "정수면 소숫점 생략"을
-    # 나머지 페이지에도 동일 적용(공통화). 지수 점수("점")는 등락률(%)과
-    # 달리 raw quantity이므로 `_number` 대신 `_quantity`를 쓴다.
-    if value > 0:
-        return f"{_quantity(value)}점 올라"
-    if value < 0:
-        return f"{_quantity(abs(value))}점 내려"
-    return "변동 없이"
-
-
-def _supply_auxiliary_metrics(series: IndicatorSeries) -> list[Metric]:
-    auxiliary = series.supply_auxiliary
-    if series.page_id != "indicator_supply" or auxiliary is None:
-        return []
-    metrics: list[Metric] = []
-    if auxiliary.international_prices:
-        latest = auxiliary.international_prices[-1]
-        metrics.append(
-            _metric(
-                "supply_international_price_latest",
-                "국제가격 최신값",
-                latest.price,
-                basis=latest.month,
-            )
-        )
-    if auxiliary.domestic_imports:
-        latest_import = auxiliary.domestic_imports[-1]
-        metrics.extend(
-            [
-                _metric(
-                    "supply_domestic_import_weight_latest",
-                    "국내 수입중량 최신값",
-                    latest_import.import_weight_ton,
-                    unit="톤",
-                    basis=str(latest_import.year),
-                ),
-                _metric(
-                    "supply_domestic_import_amount_latest",
-                    "국내 수입금액 최신값",
-                    latest_import.import_amount_million_usd,
-                    unit="백만USD",
-                    basis=str(latest_import.year),
-                ),
-            ]
-        )
-    if auxiliary.world_balances:
-        latest_balance = auxiliary.world_balances[-1]
-        metrics.extend(
-            [
-                _metric(
-                    "supply_world_demand_latest",
-                    "세계 수요 최신값",
-                    latest_balance.demand_thousand_ton,
-                    unit="천톤",
-                    basis=str(latest_balance.year),
-                ),
-                _metric(
-                    "supply_world_supply_latest",
-                    "세계 공급 최신값",
-                    latest_balance.supply_thousand_ton,
-                    unit="천톤",
-                    basis=str(latest_balance.year),
-                ),
-                _metric(
-                    "supply_world_balance_latest",
-                    "세계 수급 과부족 최신값",
-                    latest_balance.balance_thousand_ton,
-                    unit="천톤",
-                    basis=str(latest_balance.year),
-                ),
-            ]
-        )
-    if auxiliary.top_three_dependency_percent is not None:
-        dependency_year = (
-            str(auxiliary.import_dependencies[0].year)
-            if auxiliary.import_dependencies
-            else None
-        )
-        metrics.append(
-            _metric(
-                "supply_top_three_import_dependency",
-                "상위 3개국 수입의존도",
-                auxiliary.top_three_dependency_percent,
-                unit="%",
-                basis=dependency_year,
-            )
-        )
-    return metrics
-
-
-def _classify_series(
-    series: IndicatorSeries,
-    policy: PagePolicy,
-) -> list[GradeResult]:
-    # 2026-09-02 skeptic 2차 감사 SC-R2-005: 036eb231e 이후 policy.classify()는
-    # 실패 시 None이 아니라 PolicyError를 던지고, indicator_market/supply
-    # 둘 다 grade_rules가 [score_min, score_max]를 빈틈없이 덮어(IndicatorObservation.
-    # score도 pydantic이 이미 그 범위로 강제) None이 나올 경로가 없다 — 이 함수의
-    # 반환값은 항상 완전히 채워진 GradeResult 리스트다.
-    return [policy.classify(item.score) for item in series.observations]
-
-
-def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _CalculatedSummary:
-    observations = series.observations
-    current = observations[-1]
-    previous = observations[-2] if len(observations) >= 2 else None
-    grades = _classify_series(series, policy)
-    grade = grades[-1]
-    omitted: list[OmittedIndicator] = []
-    patterns: list[DetectedPattern] = []
-
-    current_grade_metric = _metric(
-        "current_grade", "현재 단계", grade.label, status="available"
-    )
-    key_metrics = [
-        _metric("current_score", "현재 점수", current.score, unit="점"),
-        current_grade_metric,
-    ]
-    detailed_metrics = [*key_metrics]
-
-    current_fact = (
-        f"{current.month} {series.mineral.name} {policy.name}는 "
-        f"{_quantity(current.score)}점으로 {grade.label} 단계입니다."
-    )
-    claims = [EvidenceClaim("current_state", "core_diagnosis", current_fact, required=True)]
-
-    contiguous_pairs = [
-        (before, after, before_grade, after_grade)
-        for before, after, before_grade, after_grade in zip(
-            observations[:-1],
-            observations[1:],
-            grades[:-1],
-            grades[1:],
-            strict=True,
-        )
-        if months_are_contiguous(before.month, after.month)
-    ]
-    score_change: float | None = None
-    if previous is not None:
-        score_change = current.score - previous.score
-        is_contiguous = months_are_contiguous(previous.month, current.month)
-        comparison = "최근 한 달" if is_contiguous else "직전 관측치 대비"
-        # 2026-09-01 수정 — PDF §2-2/2-3("전월 [전월 지수] 대비 [증감률]%
-        # [상승/하락]")은 등락을 %로 요구하는데, 이전 문구는 점수차(점)로만
-        # 서술했다(시장동향·수급동향 두 페이지 모두 이번에 komis_response로
-        # 처음 실제 렌더링을 해보며 발견 — market/supply 공용 코드라 한 번의
-        # 수정으로 둘 다 반영된다). previous.score가 0이면 %를 정의할 수
-        # 없어 점수차 문구로 폴백한다.
-        if previous.score != 0:
-            pct_change = score_change / previous.score * 100
-            # 2026-09-02 skeptic 2차 감사 SC-R2-003: KOMIS 결측월 등으로
-            # previous가 바로 전달이 아닐 때(비연속)도 "전월"이 고정 문구라
-            # 몇 달 전 값을 전월로 오표기했다("직전 관측치 대비에는 전월
-            # 45.00점 대비..."처럼 라벨과 본문이 모순). 비연속이면 어느 달
-            # 값인지 괄호로 밝히고 "전월" 대신 그 라벨을 그대로 쓴다(comparison
-            # 은 이 문장에선 안 쓴다 — "직전 관측치" 중복 표기 방지).
-            previous_lead = "최근 한 달에는 전월" if is_contiguous else f"직전 관측치({previous.month})"
-            score_fact = (
-                f"{previous_lead} {_quantity(previous.score)}점 대비 "
-                f"{_number(abs(pct_change))}% {'상승' if pct_change > 0 else '하락' if pct_change < 0 else '보합'}하며 "
-                f"{_score_meaning(series.page_id, score_change)}."
-            )
-        else:
-            pct_change = None
-            score_fact = (
-                f"{comparison}에는 점수가 {_change_phrase(score_change)} "
-                f"{_score_meaning(series.page_id, score_change)}."
-            )
-        key_metrics.append(
-            _metric(
-                "latest_score_change",
-                "최근 점수 변화",
-                score_change,
-                unit="점",
-                basis=f"{previous.month} 대비",
-            )
-        )
-        if pct_change is not None:
-            # key_metrics가 아니라 detailed_metrics에만 담는다 — 이 페이지의
-            # key_metrics는 8개 상한(`models.py::AnalysisSummaryResponse.
-            # key_metrics`)인데 이미 8개가 꽉 차 있어(2026-09-01 실측: 여기
-            # 추가했더니 뒤에서 채워지는 "조회기간 평균 점수"가 조용히
-            # 밀려났다 — composite 가중치 작업 때와 같은 종류의 회귀) 그
-            # 근거를 detailed_metrics로만 남긴다. 값 자체는 위 서사 문장에
-            # 이미 그대로 노출돼 있다.
-            detailed_metrics.append(
-                _metric(
-                    "latest_score_change_percent",
-                    "최근 점수 변화율",
-                    pct_change,
-                    unit="%",
-                    basis=f"{previous.month} 대비",
-                )
-            )
-        claims.append(EvidenceClaim("latest_score_change", "core_diagnosis", score_fact, required=True))
-    else:
-        claims.append(
-            EvidenceClaim(
-                "latest_score_change",
-                "core_diagnosis",
-                "이전 관측치가 없어 최근 점수 변화는 계산하지 않았습니다.",
-                required=True,
-            )
-        )
-        omitted.append(
-            OmittedIndicator(id="latest_score_change", reason="이전 관측치가 없다.")
-        )
-
-    streak = 1
-    for index in range(len(observations) - 1, 0, -1):
-        before_grade = grades[index - 1]
-        if before_grade.label != grade.label or not months_are_contiguous(
-            observations[index - 1].month,
-            observations[index].month,
-        ):
-            break
-        streak += 1
-    streak_basis = "조회범위 내 최소 " if streak == len(observations) else ""
-    streak_fact = f"{grade.label} 단계는 {streak_basis}{streak}개월 연속 유지됐습니다."
-    key_metrics.append(
-        _metric("current_grade_streak", "현재 단계 연속기간", streak, unit="개월")
-    )
-    claims.append(EvidenceClaim("grade_streak", "major_changes", streak_fact, required=True))
-
-    transitions = [
-        pair for pair in contiguous_pairs if pair[2].label != pair[3].label
-    ]
-    key_metrics.append(
-        _metric("grade_transition_count", "단계 전환 횟수", len(transitions), unit="회")
-    )
-    if transitions:
-        before, after, before_grade, after_grade = transitions[-1]
-        transition_fact = (
-            f"가장 최근에는 {after.month}에 {before_grade.label}에서 "
-            f"{after_grade.label} 단계로 전환됐습니다."
-        )
-        patterns.append(
-            DetectedPattern(
-                code="latest_grade_transition",
-                label="가장 최근 단계 전환",
-                evidence=[
-                    f"{before.month} {before_grade.label}",
-                    f"{after.month} {after_grade.label}",
-                ],
-            )
-        )
-    else:
-        transition_fact = "조회기간의 연속 월 구간에서는 단계 전환이 확인되지 않았습니다."
-    claims.append(EvidenceClaim("grade_transition", "major_changes", transition_fact, required=True))
-
-    if contiguous_pairs:
-        largest = max(contiguous_pairs, key=lambda pair: abs(pair[1].score - pair[0].score))
-        largest_change = largest[1].score - largest[0].score
-        largest_fact = (
-            f"조회기간 중 월간 점수 변화 폭이 가장 컸던 때는 {largest[1].month}로, "
-            f"직전월보다 {_change_phrase(largest_change)} 움직였습니다."
-        )
-        key_metrics.append(
-            _metric(
-                "largest_monthly_score_change",
-                "최대 월간 점수 변화",
-                largest_change,
-                unit="점",
-                basis=f"{largest[0].month} 대비 {largest[1].month}",
-            )
-        )
-        patterns.append(
-            DetectedPattern(
-                code="largest_monthly_score_change",
-                label="조회기간 최대 월간 점수 변화",
-                evidence=[largest_fact],
-            )
-        )
-    else:
-        largest_fact = "연속된 월 데이터가 없어 최대 월간 점수 변화는 계산하지 않았습니다."
-        omitted.append(
-            OmittedIndicator(
-                id="largest_monthly_score_change",
-                reason="연속된 월 데이터가 없다.",
-            )
-        )
-    claims.append(
-        EvidenceClaim("largest_monthly_score_change", "major_changes", largest_fact, required=True)
-    )
-
-    # 2026-09-01 신설 — 발주처 제안요청서(구 PDF) §2-3의 "주요 요인으로는
-    # [가격리스크/세계 수급비율/세계 공급 편중도/국내 수입증가율/국내 수입국
-    # 편중도 등]의 변동성이 확대된 결과로 분석됩니다" 문구를 그대로 옮겨
-    # 반영했었다. `getChartDataSpdmStbt` 기반 supply_auxiliary가 있을 때만
-    # (indicator_supply 전용) 그 중 실제로 계산 가능한 두 요인(국내
-    # 수입증가율·국내 수입국 편중도)만 쓴다 — 나머지 3개(가격리스크는 핵심
-    # 관측치와 중복이라 별도 서술 안 함, 세계 수급비율·세계 공급 편중도는
-    # 대응 모델 필드 자체가 없음)는 evidence가 없어 언급하지 않는다
-    # (§`models.py`의 `SupplyAuxiliaryData` docstring). 수입국 편중도는 이번
-    # 표본에 연도별 비교값이 없어(단일 연도 스냅샷) 변동 여부를 알 수
-    # 없으므로 구조적 사실(현재 집중도 수준)로만 덧붙인다 — composite의
-    # 구성 광종 가중치와 같은 구분.
-    #
-    # 2026-09-09 발주처 업무지시서 §2.2("가격변동의 주요요인" 삭제·"원인으로
-    # 분석됩니다"→"해당 항목의 변동이 함께 확인됩니다" 순화 매핑표) 대응 —
-    # 위 "주요 요인으로는 ... 분석됩니다"는 이 업무지시서가 명시적으로 겨냥한
-    # 바로 그 인과 단정 패턴이었다(§3.2 정합화 점검 중 재발견). 구 제안요청서
-    # 문구보다 이 업무지시서(더 최신·발주처 확정본)가 우선한다 — "주요
-    # 요인으로는"·"분석된다"를 빼고 §2.2 매핑표의 "동반 확인" 어투로
-    # 바꿨다(수치·근거는 그대로, 인과관계 단정만 제거).
-    if series.page_id == "indicator_supply" and series.supply_auxiliary is not None:
-        imports = sorted(series.supply_auxiliary.domestic_imports, key=lambda item: item.year)
-        dependencies = series.supply_auxiliary.import_dependencies
-        import_growth_fact = None
-        if len(imports) >= 2:
-            latest_import, previous_import = imports[-1], imports[-2]
-            import_growth = percent_change(
-                latest_import.import_weight_ton, previous_import.import_weight_ton
-            )
-            if import_growth is not None:
-                growth_direction = "감소" if import_growth < 0 else "증가"
-                import_growth_fact = (
-                    f"화면상 확인되는 국내 수입량은 {previous_import.year}년 대비 "
-                    f"{latest_import.year}년 {_number(abs(import_growth) * 100)}% "
-                    f"{growth_direction}해, 이 변동이 수급동향지표 변화와 함께 확인됩니다"
-                )
-                detailed_metrics.append(
-                    _metric(
-                        "supply_import_weight_yoy_change",
-                        "국내 수입량 전년 대비 증감률",
-                        import_growth,
-                        unit="ratio",
-                        basis=f"{previous_import.year}년 대비 {latest_import.year}년",
-                    )
-                )
-        top_three = series.supply_auxiliary.top_three_dependency_percent
-        concentration_fact = None
-        if top_three is not None and dependencies:
-            top_names = "·".join(item.country_name for item in dependencies[:3])
-            # 2026-09-02 skeptic 2차 감사 SC-R2-004: share_percent 분모가 세계
-            # 총액이 아니라 이 표에 나열된 국가들의 소계라(§docstring), 나열국이
-            # 3개 이하면 상위 3개국 합이 정의상 항상 100%에 가깝다 — 실측 측정이
-            # 아니라 계산 방식의 항등식인데 "집중된 구조다"로 쓰면 실제 편중도
-            # 측정처럼 읽힌다. 발주처 제공 실측 덤프는 갈륨 1건(5개국)뿐이라 다른
-            # 광종에서 3개국 이하가 실제로 나오는지 확인은 못 했지만, 나오더라도
-            # 오도되지 않도록 나열국 수가 3 이하면 한정어를 붙인다.
-            if len(dependencies) <= 3:
-                concentration_fact = (
-                    f"나열된 수입국({top_names}) 전체 기준 수입의존도는 "
-                    f"{_number(top_three)}%입니다"
-                )
-            else:
-                concentration_fact = (
-                    f"상위 3개국({top_names}) 수입의존도는 {_number(top_three)}%로 집중된 구조입니다"
-                )
-        if import_growth_fact and concentration_fact:
-            claims.append(
-                EvidenceClaim(
-                    "supply_key_factors",
-                    "major_changes",
-                    f"{import_growth_fact}. {concentration_fact}.",
-                    required=True,
-                )
-            )
-        elif import_growth_fact:
-            claims.append(
-                EvidenceClaim("supply_key_factors", "major_changes", f"{import_growth_fact}.", required=True)
-            )
-        elif concentration_fact:
-            claims.append(
-                EvidenceClaim(
-                    "supply_key_factors",
-                    "major_changes",
-                    f"국내 수입국 편중도를 보면 {concentration_fact}.",
-                    required=True,
-                )
-            )
-
-    price_change = (
-        percent_change(current.price, previous.price)
-        if previous is not None and months_are_contiguous(previous.month, current.month)
-        else None
-    )
-    if price_change is not None:
-        price_direction = (
-            "올랐습니다"
-            if price_change > 0
-            else "내렸습니다"
-            if price_change < 0
-            else "같았습니다"
-        )
-        price_fact = (
-            f"같은 최근 한 달 동안 가격은 {_number(abs(price_change) * 100)}% "
-            f"{price_direction}."
-        )
-        key_metrics.append(
-            _metric(
-                "latest_price_change_rate",
-                "최근 가격 변화율",
-                price_change,
-                unit="ratio",
-                basis=f"{previous.month} 대비",
-            )
-        )
-        claims.append(
-            EvidenceClaim("latest_price_change", "current_position", price_fact, required=True)
-        )
-    else:
-        omitted.append(
-            OmittedIndicator(
-                id="latest_price_change_rate",
-                reason="비교 가능한 연속 월 가격이 없다.",
-            )
-        )
-
-    period_average = sum(item.score for item in observations) / len(observations)
-    difference_from_average = current.score - period_average
-    key_metrics.append(
-        _metric(
-            "period_average_score",
-            "조회기간 평균 점수",
-            period_average,
-            unit="점",
-            basis=f"{observations[0].month}~{observations[-1].month}",
-        )
-    )
-    if difference_from_average > 0:
-        average_comparison = (
-            f"평균 {_quantity(period_average)}점보다 "
-            f"{_quantity(difference_from_average)}점 높아"
-        )
-    elif difference_from_average < 0:
-        average_comparison = (
-            f"평균 {_quantity(period_average)}점보다 "
-            f"{_quantity(abs(difference_from_average))}점 낮아"
-        )
-    else:
-        average_comparison = f"평균 {_quantity(period_average)}점과 같아"
-    position_detail = (
-        f"현재 점수 {_quantity(current.score)}점은 조회기간 {average_comparison}, "
-        f"{_score_position_meaning(series.page_id, difference_from_average)}."
-    )
-    if score_change is None or score_change == 0:
-        position_fact = position_detail
-    else:
-        if series.page_id == "indicator_market":
-            recent_position = (
-                "최근 한 달 중장기 가격위험은 낮아졌"
-                if score_change > 0
-                else "최근 한 달 중장기 가격위험은 높아졌"
-            )
-        else:
-            recent_position = (
-                "최근 한 달 수급 안정성은 강화됐"
-                if score_change > 0
-                else "최근 한 달 수급 안정성은 약해졌"
-            )
-        if difference_from_average == 0:
-            connector = "으며"
-        elif score_change * difference_from_average > 0:
-            connector = "고"
-        else:
-            connector = "지만"
-        position_fact = f"{recent_position}{connector}, {position_detail}"
-
-    score_changes = [after.score - before.score for before, after, _, _ in contiguous_pairs]
-    rising = sum(change > 0 for change in score_changes)
-    falling = sum(change < 0 for change in score_changes)
-    flat = sum(change == 0 for change in score_changes)
-    detailed_metrics.extend(
-        [
-            *key_metrics[2:],
-            _metric("score_rising_months", "점수 상승 월", rising, unit="개월"),
-            _metric("score_falling_months", "점수 하락 월", falling, unit="개월"),
-            _metric("score_flat_months", "점수 보합 월", flat, unit="개월"),
-            _metric("observation_count", "유효 관측월", len(observations), unit="개월"),
-            _metric(
-                "current_vs_period_average",
-                "평균 대비 현재 점수",
-                difference_from_average,
-                unit="점",
-                basis=f"조회기간 평균 {_quantity(period_average)}점 대비",
-            ),
-        ]
-    )
-    detailed_metrics.extend(_supply_auxiliary_metrics(series))
-    claims.append(
-        EvidenceClaim("period_average_position", "current_position", position_fact, required=True)
-    )
-
-    return _CalculatedSummary(
-        grade=grade,
-        claims=claims,
-        key_metrics=_capped_key_metrics(key_metrics, page_id=f"{series.page_id}:{series.mineral.name}"),
-        detailed_metrics=detailed_metrics,
-        patterns=patterns,
-        omitted=omitted,
-    )
 
 
 def _deterministic_narrative(
@@ -1873,6 +431,10 @@ _FORBIDDEN_SUMMARY_TERMS = (
     "방향 일치율",
     "상관계수",
     "추세",
+    "주요 요인",
+    "요인으로",
+    "원인으로 분석",
+    "함에 따라",
 )
 _GRADE_LABELS = {"신중", "주의", "중립", "관심", "기회", "긴장", "안정", "원활"}
 # 2026-08-28 작업C(main-agent 조사) — "근거 4개 이상이면 최소 1문장은 근거
@@ -1980,12 +542,48 @@ def _validate_llm_summary(
     return None
 
 
+def _build_response(
+    request: AnalysisSummaryRequest,
+    series,
+    calculated,
+    context: PagePolicy | SummaryPageContext,
+    *,
+    mineral: MineralRef,
+    applied_filters: dict,
+    defaulted_filters: list[str],
+    page_definition: str,
+    grade: GradeResult | None,
+    data_quality: DataQuality,
+) -> AnalysisSummaryResponse:
+    """페이지별 계산·품질 판정 이후의 공통 응답 조립. 출력 필드는 그대로 유지한다."""
+    return AnalysisSummaryResponse(
+        request_id=request.request_id,
+        page_id=request.page_id,
+        analysis_scope=request.analysis_scope,
+        mineral=mineral,
+        applied_filters=applied_filters,
+        defaulted_filters=defaulted_filters,
+        filter_hash=_filter_hash(request.page_id, applied_filters),
+        source=_source_info_from_series(series),
+        policy_version=context.policy_version,
+        page_definition=page_definition,
+        grade=grade,
+        data_quality=data_quality,
+        summary=_deterministic_narrative(calculated.claims),
+        key_metrics=calculated.key_metrics,
+        detailed_metrics=calculated.detailed_metrics,
+        detected_patterns=calculated.patterns,
+        omitted_indicators=calculated.omitted,
+        notices=context.analysis_constraints,
+    )
+
+
 class AnalysisSummaryService:
     """Calculate a page-scoped summary and optionally refine it with verified LLM output."""
 
     def __init__(
         self,
-        data_source: IndicatorDataSource | None,
+        data_source: IndicatorDataSource | None = None,
         *,
         composite_source: CompositeIndexDataSource | None = None,
         mineral_map_source: MineralMapDataSource | None = None,
@@ -2029,7 +627,8 @@ class AnalysisSummaryService:
 
         self._deadlines.value = deadline
         try:
-            return self._dispatch(request)
+            with page_prompt_scope(request.page_id):
+                return self._dispatch(request)
         finally:
             self._deadlines.value = None
 
@@ -2072,19 +671,6 @@ class AnalysisSummaryService:
         if mineral_code is None:
             raise DataSourceError("indicator analysis requires mineral in the request body")
         mineral_name = request.mineral_name or snapshot_mineral_name or mineral_code
-        # 2026-08-26 DB 조회 경로 비활성화(요청 바디 입력으로 전환, WORKLOG 참고) —
-        # 복원 시 아래 두 줄 주석을 해제하고 그 아래 request 기반 조립 블록을 지운다.
-        # if self._data_source is None:
-        #     raise ValueError("indicator analysis data source is not configured")
-        # series = self._data_source.get_series(
-        #     page_id=request.page_id,
-        #     mineral=request.mineral,
-        #     start_month=request.start_month,
-        #     end_month=request.end_month,
-        # )
-        # 2026-09-01 신설 — komis_response(원본 KOMIS 응답)가 있으면 직접
-        # 파싱한다(§`IndicatorSummaryRequest.komis_response` docstring).
-        # 없으면 기존 observations 손 매핑 경로 그대로(하위호환).
         raw_observations = None
         if request.komis_response is not None:
             parser = (
@@ -2159,16 +745,11 @@ class AnalysisSummaryService:
             quality_status = "insufficient"
         elif not missing_data and not series.warnings:
             quality_status = "available"
-        response = AnalysisSummaryResponse(
-            request_id=request.request_id,
-            page_id=request.page_id,
-            analysis_scope=request.analysis_scope,
+        response = _build_response(
+            request, series, calculated, policy,
             mineral=series.mineral,
             applied_filters=applied_filters,
             defaulted_filters=defaulted_filters,
-            filter_hash=_filter_hash(request.page_id, applied_filters),
-            source=_source_info_from_series(series),
-            policy_version=policy.policy_version,
             page_definition=policy.definition,
             grade=calculated.grade,
             data_quality=DataQuality(
@@ -2181,12 +762,6 @@ class AnalysisSummaryService:
                 missing_data=missing_data,
                 warnings=series.warnings,
             ),
-            summary=_deterministic_narrative(calculated.claims),
-            key_metrics=calculated.key_metrics,
-            detailed_metrics=calculated.detailed_metrics,
-            detected_patterns=calculated.patterns,
-            omitted_indicators=calculated.omitted,
-            notices=policy.analysis_constraints,
         )
         if self._llm is None or len(calculated.claims) < 5 or quality_status == "insufficient":
             return response
@@ -2198,18 +773,6 @@ class AnalysisSummaryService:
     ) -> AnalysisSummaryResponse:
         """Load a composite-index series and build its validated summary response."""
 
-        # 2026-08-26 DB 조회 경로 비활성화(요청 바디 입력으로 전환, WORKLOG 참고) —
-        # 복원 시 아래 두 줄 주석을 해제하고 그 아래 request 기반 조립 블록을 지운다.
-        # if self._composite_source is None:
-        #     raise ValueError("composite index analysis data source is not configured")
-        # series = self._composite_source.get_composite_series(
-        #     start_date=request.start_date,
-        #     end_date=request.end_date,
-        # )
-        # 2026-08-30 신설(사용자 지시로 price의 komis_response 패턴 확장) —
-        # `getLineChartIndx` 원본 응답이 있으면 시계열 전체를 직접 파싱한다
-        # (Phase4 라이브재검증에서 확인한 대로 스냅샷이 아니라 tableData
-        # 전체를 읽어야 한다).
         raw_observations = request.observations
         if request.komis_response is not None:
             raw_observations = _parse_komis_composite_response(request.komis_response)
@@ -2257,16 +820,11 @@ class AnalysisSummaryService:
         )
         if effective_warnings and quality_status == "available":
             quality_status = "partial"
-        response = AnalysisSummaryResponse(
-            request_id=request.request_id,
-            page_id=request.page_id,
-            analysis_scope=request.analysis_scope,
+        response = _build_response(
+            request, series, calculated, context,
             mineral=MineralRef(code="COMPOSITE", name="광물종합지수"),
             applied_filters=applied_filters,
             defaulted_filters=defaulted_filters,
-            filter_hash=_filter_hash(request.page_id, applied_filters),
-            source=_source_info_from_series(series),
-            policy_version=context.policy_version,
             page_definition=context.definition,
             grade=None,
             data_quality=DataQuality(
@@ -2278,12 +836,6 @@ class AnalysisSummaryService:
                 effective_end_date=series.observations[-1].date,
                 warnings=effective_warnings,
             ),
-            summary=_deterministic_narrative(calculated.claims),
-            key_metrics=calculated.key_metrics,
-            detailed_metrics=calculated.detailed_metrics,
-            detected_patterns=calculated.patterns,
-            omitted_indicators=calculated.omitted,
-            notices=context.analysis_constraints,
         )
         if self._llm is None or len(calculated.claims) < 5 or quality_status == "insufficient":
             return response
@@ -2310,16 +862,6 @@ class AnalysisSummaryService:
         unit = request.unit or komis_unit
         if not unit:
             raise DataSourceError("mineral map analysis requires unit in the request body")
-        # 2026-08-26 DB 조회 경로 비활성화(요청 바디 입력으로 전환, WORKLOG 참고) —
-        # 복원 시 아래 두 줄 주석을 해제하고 그 아래 request 기반 조립 블록을 지운다.
-        # if self._mineral_map_source is None:
-        #     raise ValueError("mineral map analysis data source is not configured")
-        # series = self._mineral_map_source.get_mineral_map_series(
-        #     mineral=request.mineral,
-        #     measure=request.measure,
-        #     start_year=request.start_year,
-        #     end_year=request.end_year,
-        # )
         observations = _observations_from_request(MineralMapObservation, request, raw=raw_observations)
         if request.start_year:
             observations = [o for o in observations if o.year >= request.start_year]
@@ -2379,16 +921,11 @@ class AnalysisSummaryService:
         )
         if effective_warnings and quality_status == "available":
             quality_status = "partial"
-        response = AnalysisSummaryResponse(
-            request_id=request.request_id,
-            page_id=request.page_id,
-            analysis_scope=request.analysis_scope,
+        response = _build_response(
+            request, series, calculated, context,
             mineral=series.mineral,
             applied_filters=applied_filters,
             defaulted_filters=defaulted_filters,
-            filter_hash=_filter_hash(request.page_id, applied_filters),
-            source=_source_info_from_series(series),
-            policy_version=context.policy_version,
             page_definition=context.definition,
             grade=None,
             data_quality=DataQuality(
@@ -2400,12 +937,6 @@ class AnalysisSummaryService:
                 effective_end_year=years[-1],
                 warnings=effective_warnings,
             ),
-            summary=_deterministic_narrative(calculated.claims),
-            key_metrics=calculated.key_metrics,
-            detailed_metrics=calculated.detailed_metrics,
-            detected_patterns=calculated.patterns,
-            omitted_indicators=calculated.omitted,
-            notices=context.analysis_constraints,
         )
         if self._llm is None or len(calculated.claims) < 5 or quality_status == "insufficient":
             return response
@@ -2418,20 +949,6 @@ class AnalysisSummaryService:
         """Load forecast prices and build a validated forecast summary."""
         if request.mineral is None:
             raise DataSourceError("price forecast analysis requires mineral in the request body")
-        # 2026-08-26 DB 조회 경로 비활성화(요청 바디 입력으로 전환, WORKLOG 참고) —
-        # 복원 시 아래 두 줄 주석을 해제하고 그 아래 request 기반 조립 블록을 지운다.
-        # if self._price_forecast_source is None:
-        #     raise ValueError("price forecast analysis data source is not configured")
-        # series = self._price_forecast_source.get_price_forecast_series(
-        #     mineral=request.mineral,
-        #     horizon=request.forecast_horizon,
-        #     start_period=request.start_period,
-        #     end_period=request.end_period,
-        # )
-        # 2026-08-30 신설(사용자 지시로 price의 komis_response 패턴 확장) —
-        # `getListPricePredc` 원본 응답이 있으면 realYn→is_actual 변환까지
-        # 포함해 직접 파싱한다. 2026-08-31: mineral_name도 같이 뽑는다
-        # (price 파서와 같은 패턴).
         raw_observations = request.observations
         komis_mineral_name = None
         if request.komis_response is not None:
@@ -2502,16 +1019,11 @@ class AnalysisSummaryService:
         quality_status: Literal["available", "partial", "insufficient"] = (
             "partial" if warnings else "available"
         )
-        response = AnalysisSummaryResponse(
-            request_id=request.request_id,
-            page_id=request.page_id,
-            analysis_scope=request.analysis_scope,
+        response = _build_response(
+            request, series, calculated, context,
             mineral=series.mineral,
             applied_filters=applied_filters,
             defaulted_filters=defaulted_filters,
-            filter_hash=_filter_hash(request.page_id, applied_filters),
-            source=_source_info_from_series(series),
-            policy_version=context.policy_version,
             page_definition=context.definition,
             grade=None,
             data_quality=DataQuality(
@@ -2524,12 +1036,6 @@ class AnalysisSummaryService:
                 missing_data=["가격 단위"] if series.price_unit is None else [],
                 warnings=warnings,
             ),
-            summary=_deterministic_narrative(calculated.claims),
-            key_metrics=calculated.key_metrics,
-            detailed_metrics=calculated.detailed_metrics,
-            detected_patterns=calculated.patterns,
-            omitted_indicators=calculated.omitted,
-            notices=context.analysis_constraints,
         )
         if self._llm is None:
             return response
@@ -2545,40 +1051,8 @@ class AnalysisSummaryService:
 
         if request.mineral is None:
             raise DataSourceError("price analysis requires mineral in the request body")
-        # 2026-08-26 DB 조회 경로 비활성화(요청 바디 입력으로 전환, WORKLOG 참고) —
-        # 복원 시 아래 두 줄 주석을 해제하고 그 아래 request 기반 조립 블록을 지운다.
-        # if self._price_source is None:
-        #     raise ValueError("price analysis data source is not configured")
-        # series = self._price_source.get_price_series(
-        #     mineral=request.mineral,
-        #     start_date=request.start_date,
-        #     end_date=request.end_date,
-        # )
-        # 2026-08-30 신설 — `komis_response`(KOMIS 원본 응답 통째)가 있으면
-        # 그걸 파싱해서 observations/compare_observations/
-        # komis_period_comparisons를 직접 만든다. 있으면 이걸 우선 쓰고,
-        # 없으면(하위호환) 기존처럼 손으로 매핑된 필드들을 그대로 쓴다.
-        raw_observations = request.observations
-        raw_compare_observations = request.compare_observations
-        raw_komis_period_comparisons = None
-        komis_mineral_name = None
-        komis_price_criterion = None
-        komis_compare_mineral_name = None
-        komis_compare_price_criterion = None
-        komis_price_unit = None
-        if request.komis_response is not None:
-            parsed = _parse_komis_price_response(request.komis_response)
-            komis_mineral_name = parsed.mineral_name
-            komis_price_criterion = parsed.price_criterion
-            komis_compare_mineral_name = parsed.compare_mineral_name
-            komis_compare_price_criterion = parsed.compare_price_criterion
-            komis_price_unit = parsed.price_unit
-            raw_observations = parsed.observations
-            if parsed.compare_observations is not None:
-                raw_compare_observations = parsed.compare_observations
-            raw_komis_period_comparisons = parsed.komis_period_comparisons
-
-        observations = _observations_from_request(PriceObservation, request, raw=raw_observations)
+        parsed = normalize_price_request(request)
+        observations = _observations_from_request(PriceObservation, request, raw=parsed.observations)
         if request.start_date:
             observations = [o for o in observations if o.date >= request.start_date]
         if request.end_date:
@@ -2597,7 +1071,7 @@ class AnalysisSummaryService:
             page_id=request.page_id,
             mineral=MineralRef(
                 code=request.mineral,
-                name=request.mineral_name or komis_mineral_name or request.mineral,
+                name=parsed.mineral_name,
             ),
             price_criterion_serial=request.price_criterion_serial or 0,
             available_start_date=dates[0],
@@ -2608,20 +1082,20 @@ class AnalysisSummaryService:
             data_as_of=dates[-1],
             observations=observations,
             warnings=[],
-            price_unit=request.price_unit or komis_price_unit,
+            price_unit=parsed.price_unit,
         )
         # 2026-08-26: KOMIS 광물자원가격 "비교광종" 대응(price_* 4종 공통,
         # 2026-08-30 확인) — 원본 응답의 `compareMnrl`에
         # 해당하는 `compare_observations`가 있을 때만 두 번째 PriceSeries를
         # 조립해 비교 근거를 계산한다(§`komir_summary.py::calculate_price_summary`).
         compare_series = None
-        if raw_compare_observations:
+        if parsed.compare_observations:
             if request.compare_mineral is None:
                 raise DataSourceError("price analysis: compare_observations가 있으면 compare_mineral도 필요하다")
             compare_obs = _observations_from_request(
                 PriceObservation,
                 request,
-                raw=raw_compare_observations,
+                raw=parsed.compare_observations,
                 field_name="compare_observations",
             )
             compare_dates = sorted(o.date for o in compare_obs)
@@ -2629,7 +1103,7 @@ class AnalysisSummaryService:
                 page_id=request.page_id,
                 mineral=MineralRef(
                     code=request.compare_mineral,
-                    name=request.compare_mineral_name or komis_compare_mineral_name or request.compare_mineral,
+                    name=parsed.compare_mineral_name,
                 ),
                 price_criterion_serial=0,
                 available_start_date=compare_dates[0],
@@ -2642,7 +1116,7 @@ class AnalysisSummaryService:
                 warnings=[],
             )
         komis_period_comparisons = _komis_period_comparisons_from_request(
-            request, raw=raw_komis_period_comparisons
+            request, raw=parsed.komis_period_comparisons
         )
         price_position_settings = get_settings()
         calculated = _calculate_or_no_data(
@@ -2671,12 +1145,12 @@ class AnalysisSummaryService:
         # (report_render.py가 applied_filters를 보고서 상단에 렌더링한다).
         # 2026-08-30 사용자 지적("LME쪽이 안 보인다") — komis_response 경로가
         # dataAvg.INFO.prcCrtr를 안 채워서 이 줄이 항상 비어 있었다.
-        price_criterion = request.price_criterion or komis_price_criterion
+        price_criterion = parsed.price_criterion
         if price_criterion:
             applied_filters["price_criterion"] = price_criterion
         if compare_series is not None:
             applied_filters["compare_mineral"] = compare_series.mineral.name
-            compare_price_criterion = request.compare_price_criterion or komis_compare_price_criterion
+            compare_price_criterion = parsed.compare_price_criterion
             if compare_price_criterion:
                 applied_filters["compare_price_criterion"] = compare_price_criterion
         defaulted_filters = [
@@ -2702,16 +1176,11 @@ class AnalysisSummaryService:
         # 앞에 정확히 1번만 있어 안전하게 치환된다.
         granularity_unit, _ = _detect_granularity(series.observations, srch_avg_opt=request.srch_avg_opt)
         page_definition = context.definition.replace("일별", f"{granularity_unit}별")
-        response = AnalysisSummaryResponse(
-            request_id=request.request_id,
-            page_id=request.page_id,
-            analysis_scope=request.analysis_scope,
+        response = _build_response(
+            request, series, calculated, context,
             mineral=series.mineral,
             applied_filters=applied_filters,
             defaulted_filters=defaulted_filters,
-            filter_hash=_filter_hash(request.page_id, applied_filters),
-            source=_source_info_from_series(series),
-            policy_version=context.policy_version,
             page_definition=page_definition,
             grade=None,
             data_quality=DataQuality(
@@ -2723,12 +1192,6 @@ class AnalysisSummaryService:
                 effective_end_date=series.observations[-1].date,
                 warnings=effective_warnings,
             ),
-            summary=_deterministic_narrative(calculated.claims),
-            key_metrics=calculated.key_metrics,
-            detailed_metrics=calculated.detailed_metrics,
-            detected_patterns=calculated.patterns,
-            omitted_indicators=calculated.omitted,
-            notices=context.analysis_constraints,
         )
         # 2026-08-26부터 LLM 정제를 태운다(§모듈 docstring 4번) — 발주처 KOMIS
         # 템플릿 PDF를 근거로 `prompts.py`에 이 3종 전용 지시문·출력계약을
@@ -2797,15 +1260,6 @@ class AnalysisSummaryService:
     def _analyze_domestic_trade(self, request: AnalysisSummaryRequest) -> AnalysisSummaryResponse:
         """Load a domestic (KO_CSTM_CMMRC) trade-map series and build its response."""
 
-        # 2026-08-26 DB 조회 경로 비활성화(요청 바디 입력으로 전환, WORKLOG 참고) —
-        # 복원 시 아래 두 줄 주석을 해제하고 그 아래 request 기반 조립 호출을 지운다.
-        # if self._domestic_trade_source is None:
-        #     raise ValueError("domestic trade analysis data source is not configured")
-        # series = self._domestic_trade_source.get_domestic_trade_series(
-        #     mineral=request.mineral,
-        #     start_date=request.start_date,
-        #     end_date=request.end_date,
-        # )
         series, raw_komis_trade_totals = self._trade_series_from_request(request, "map_korea")
         komis_trade_totals = _komis_trade_totals_from_request(request, raw=raw_komis_trade_totals)
         map_korea_filters = _map_korea_query_filters(
@@ -2829,15 +1283,6 @@ class AnalysisSummaryService:
     def _analyze_global_trade(self, request: AnalysisSummaryRequest) -> AnalysisSummaryResponse:
         """Load a global (KO_UN_CMMRC) trade-map series and build its response."""
 
-        # 2026-08-26 DB 조회 경로 비활성화(요청 바디 입력으로 전환, WORKLOG 참고) —
-        # 복원 시 아래 두 줄 주석을 해제하고 그 아래 request 기반 조립 호출을 지운다.
-        # if self._global_trade_source is None:
-        #     raise ValueError("global trade analysis data source is not configured")
-        # series = self._global_trade_source.get_global_trade_series(
-        #     mineral=request.mineral,
-        #     start_date=request.start_date,
-        #     end_date=request.end_date,
-        # )
         series, raw_komis_trade_totals = self._trade_series_from_request(request, "map_global")
         komis_trade_totals = _komis_trade_totals_from_request(request, raw=raw_komis_trade_totals)
         top_country_yearly_trend = None
@@ -2959,16 +1404,11 @@ class AnalysisSummaryService:
         )
         if effective_warnings and quality_status == "available":
             quality_status = "partial"
-        response = AnalysisSummaryResponse(
-            request_id=request.request_id,
-            page_id=request.page_id,
-            analysis_scope=request.analysis_scope,
+        response = _build_response(
+            request, series, calculated, context,
             mineral=series.mineral,
             applied_filters=applied_filters,
             defaulted_filters=defaulted_filters,
-            filter_hash=_filter_hash(request.page_id, applied_filters),
-            source=_source_info_from_series(series),
-            policy_version=context.policy_version,
             page_definition=context.definition,
             grade=None,
             data_quality=DataQuality(
@@ -2980,12 +1420,6 @@ class AnalysisSummaryService:
                 effective_end_date=dates[-1],
                 warnings=effective_warnings,
             ),
-            summary=_deterministic_narrative(calculated.claims),
-            key_metrics=calculated.key_metrics,
-            detailed_metrics=calculated.detailed_metrics,
-            detected_patterns=calculated.patterns,
-            omitted_indicators=calculated.omitted,
-            notices=context.analysis_constraints,
         )
         # `_analyze_price`와 같은 패턴으로 LLM 정제를 태운다(§주석 참고,
         # 2026-08-26). single_snapshot(관측 1건뿐) claim만 있어도 claim 수 자체는
