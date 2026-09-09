@@ -25,18 +25,18 @@ AI_통계분석_요약기능_수정_업무지시서.md`) 대응으로 report_gen
   komis_01_base_metals.json`·`komis_02_minor_metals.json`, 발주처가 앞서
   제공한 자료)에서 관측치가 풍부한 광종(니켈 6,227건·가돌리늄 3,132건)을
   뽑아 사용 — 어제 예시(동·코발트)와 광종은 다르지만 **동일 코드**가
-  동일하게 적용된다. 변동성·평균 대비 위치·단기 매매압력·백분위·낙폭 등
-  데이터가 충분해야 계산되는 항목을 전부 시연하려면 258일치보다 훨씬 긴
-  이력이 필요했다.
-- **03(철광석 및 에너지)·04(기타)**: 이 두 메뉴는 실 KOMIS 덤프가 없어
-  `inhouse/streamlit_demo/komis_raw.py`에 이미 실려 있는 실측 캡처
-  (2026-08-27, 광종당 관측치 1건)를 그대로 사용했다. 관측치가 1건뿐이라
-  등락률·변동성 등은 "관측치가 부족해 계산하지 않았다"로 정상 처리된다 —
-  단위 표기·최고가/최저가 추가·안내 문구 순화는 이 얇은 데이터로도 전부
-  확인 가능했다.
-- 광종은 어제 예시와 최대한 일치시켰다(03·04는 완전히 같은 철/금, 01·02는
-  같은 KOMIS 카테고리 내 다른 광종) — 페이지별 계산 로직(`calculate_price_
-  summary`)은 광종과 무관하게 4개 서브메뉴가 100% 공유한다.
+  동일하게 적용된다.
+- **03(철광석 및 에너지)·04(기타)**: **2026-09-09 2차 재작성** — 최초
+  재작성본은 `komis_raw.py`의 관측치 1건짜리 정적 예시를 써서 등락률·
+  변동성 등이 전부 "계산 불가"였다. 사용자 지적("검증이 불가능하다는 건
+  아닌 것 같다")에 따라, 발주처가 앞서 제공한 실측 캡처(`documents/
+  산출물/2026-W35_0824-0830/report_gen_KOMIS라이브재검증_Phase2_260829_
+  evidence/collected_iron_other_day_raw_260829.json`)에 이미 담겨 있던
+  **2024-01-02~2026-08-27 전체 구간**(철 614건·금 669건)으로 다시
+  만들었다 — 광종은 어제 예시와 완전히 동일(철·금), 조회 기간만 2024~2026
+  실측 전체로 넓어졌다.
+- 페이지별 계산 로직(`calculate_price_summary`)은 광종과 무관하게 4개
+  서브메뉴가 100% 공유한다.
 
 ## 실행 방법(재현 절차)
 `cd inhouse/report_gen`에서 `AnalysisSummaryService(None, llm=None)`을 직접
@@ -44,8 +44,10 @@ AI_통계분석_요약기능_수정_업무지시서.md`) 대응으로 report_gen
 render_markdown_report()`로 원문을 그대로 얻었다(스크린샷·브라우저 조작
 없음, streamlit 데모가 내부적으로 하는 것과 동일한 계산·렌더링 경로).
 01·02는 `scripts/komis_dump_smoke_test.py::adapt_price_pages()`로 실 덤프를
-파싱, 03·04는 `komis_raw.py::KOMIS_RAW_PAGES[page_id].example_raw_json`을
-`komis_response`로 그대로 전달.
+파싱, 03·04는 위 Phase2 evidence json의 `defaultMnrl` 배열 전체를
+`observations`로 직접 변환해 요청 바디를 구성(같은 파일 shape을 이미
+`adapt_price_pages`가 다루는 것과 동일한 필드 매핑, `dataAvg.INFO.
+prcUnitCdNm`도 `price_unit`으로 같이 전달).
 
 ## 검증
 - `scripts/komis_dump_smoke_test.py` 395콤보 전수(오류 0·불일치 0, 01·02
