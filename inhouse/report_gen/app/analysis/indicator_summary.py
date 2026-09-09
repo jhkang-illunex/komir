@@ -1,12 +1,17 @@
-"""시장·수급 지표의 등급, 변화와 보고서 근거를 계산한다. IO/LLM 호출은 없다."""
+"""API 입력에서 시장·수급 지표를 계산해 LLM 보고서용 근거를 만든다.
+
+이 모듈은 정규화된 입력을 결정론적으로 계산하는 단계만 담당한다. 생성한
+``EvidenceClaim``은 ``summary.py``가 프롬프트와 함께 LLM에 전달하고, 그 결과를
+근거와 대조해 검증한다. 이 모듈 자체는 외부 IO나 LLM 호출을 수행하지 않는다.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Literal
 
+from ._metrics import capped_key_metrics
 from .additional_summary import EvidenceClaim, _number, _quantity
 from .indicators import months_are_contiguous, percent_change
-from .komir_summary import _capped_key_metrics
 from .models import (DetectedPattern, GradeResult, IndicatorSeries, Metric, OmittedIndicator)
 from .policy import PagePolicy
 
@@ -561,7 +566,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
     return _CalculatedSummary(
         grade=grade,
         claims=claims,
-        key_metrics=_capped_key_metrics(key_metrics, page_id=f"{series.page_id}:{series.mineral.name}"),
+        key_metrics=capped_key_metrics(key_metrics, page_id=f"{series.page_id}:{series.mineral.name}"),
         detailed_metrics=detailed_metrics,
         patterns=patterns,
         omitted=omitted,

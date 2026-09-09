@@ -16,6 +16,7 @@ import logging
 import statistics as _statistics
 from datetime import date as _date, timedelta as _timedelta
 
+from ._metrics import capped_key_metrics
 from .additional_summary import (
     AdditionalCalculatedSummary,
     EvidenceClaim,
@@ -53,7 +54,6 @@ def _toward(name: str) -> str:
     return f"{name}{'로' if not has_batchim or is_rieul else '으로'}"
 from .models import (
     CURRENT_POSITION_MAX_SENTENCES,
-    KEY_METRICS_MAX_COUNT,
     MAJOR_CHANGES_MAX_SENTENCES,
     DetectedPattern,
     Metric,
@@ -65,24 +65,6 @@ from .models import (
 )
 
 _log = logging.getLogger(__name__)
-
-
-def _capped_key_metrics(key_metrics: list[Metric], *, page_id: str) -> list[Metric]:
-    """`AnalysisSummaryResponse.key_metrics` 상한(`KEY_METRICS_MAX_COUNT`)에 맞춰
-    자르되, 실제로 잘릴 때만 경고 로그를 남긴다(2026-09-08 SC-009: `key_metrics
-    [:8]`이 여러 계산기에 그대로 복제돼 있었고, 상한을 넘는 계산기가 새로 추가돼도
-    뒤쪽 지표가 조용히 사라지는 걸 알 방법이 없었다 — 재발 사고 2건 기록)."""
-
-    if len(key_metrics) > KEY_METRICS_MAX_COUNT:
-        _log.warning(
-            "%s: key_metrics %d개 중 %d개가 상한(%d)을 넘어 잘렸다: %s",
-            page_id,
-            len(key_metrics),
-            len(key_metrics) - KEY_METRICS_MAX_COUNT,
-            KEY_METRICS_MAX_COUNT,
-            [metric.id for metric in key_metrics[KEY_METRICS_MAX_COUNT:]],
-        )
-    return key_metrics[:KEY_METRICS_MAX_COUNT]
 
 
 KOMIR_PAGE_CONTEXTS = {
@@ -307,7 +289,7 @@ def calculate_price_group_summary(
 
     return AdditionalCalculatedSummary(
         claims=claims,
-        key_metrics=_capped_key_metrics(key_metrics, page_id=f"price_group:{group}"),
+        key_metrics=capped_key_metrics(key_metrics, page_id=f"price_group:{group}"),
         detailed_metrics=key_metrics,
         patterns=[],
         omitted=[],
@@ -975,7 +957,7 @@ def calculate_price_summary(
 
     return AdditionalCalculatedSummary(
         claims=claims,
-        key_metrics=_capped_key_metrics(key_metrics, page_id=f"{series.page_id}:{series.mineral.name}"),
+        key_metrics=capped_key_metrics(key_metrics, page_id=f"{series.page_id}:{series.mineral.name}"),
         detailed_metrics=key_metrics + table_metrics,
         patterns=patterns,
         omitted=[],
@@ -1153,7 +1135,7 @@ def calculate_domestic_trade_summary(
 
     return AdditionalCalculatedSummary(
         claims=claims,
-        key_metrics=_capped_key_metrics(key_metrics, page_id=f"{series.page_id}:{series.mineral.name}"),
+        key_metrics=capped_key_metrics(key_metrics, page_id=f"{series.page_id}:{series.mineral.name}"),
         detailed_metrics=key_metrics,
         patterns=patterns,
         omitted=[],
@@ -1446,7 +1428,7 @@ def calculate_global_trade_summary(
 
     return AdditionalCalculatedSummary(
         claims=claims,
-        key_metrics=_capped_key_metrics(key_metrics, page_id=f"{series.page_id}:{series.mineral.name}"),
+        key_metrics=capped_key_metrics(key_metrics, page_id=f"{series.page_id}:{series.mineral.name}"),
         detailed_metrics=detailed_metrics,
         patterns=patterns,
         omitted=[],
