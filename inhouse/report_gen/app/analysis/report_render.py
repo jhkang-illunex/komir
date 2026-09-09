@@ -12,6 +12,7 @@ llm_summary`의 근거 검증 계약을 벗어나므로 하지 않는다(검증�
 from __future__ import annotations
 
 import logging
+import re
 
 from .models import AnalysisSummaryResponse
 
@@ -31,6 +32,52 @@ _PRICE_SECTION_TITLES = {
     "core_diagnosis": "가격 요약",
     "major_changes": "최근 변화",
     "current_position": "변동 구간",
+}
+
+#: 2026-09-09 main-agent 승인(B-5) — 나머지 6종도 각 페이지 실제 절 내용에 맞춰
+#: 업무지시서 블록명에 가깝게 표시명을 바꾼다. `_SECTION_TITLES`(범용 기본값)를
+#: 깔고 여기 등록된 page_id만 덮어쓴다 — 신규 page_id가 추가돼도 등록을 잊으면
+#: 그냥 범용 이름으로 렌더링될 뿐 죽지 않는다.
+_SECTION_TITLES_OVERRIDES: dict[str, dict[str, str]] = {
+    "indicator_composite": {
+        "core_diagnosis": "지수 요약",
+        "major_changes": "하위지수 변화",
+        "current_position": "지수 위치",
+    },
+    "indicator_market": {
+        "core_diagnosis": "현재 단계",
+        "major_changes": "단계 변화",
+        "current_position": "평균 대비 위치",
+    },
+    "indicator_supply": {
+        "core_diagnosis": "현재 수급 단계",
+        "major_changes": "단계 변화",
+        "current_position": "평균 대비 위치",
+    },
+    "map_korea": {
+        "core_diagnosis": "수입 현황",
+        "major_changes": "수입 집중도",
+        "current_position": "수출 현황",
+    },
+    "map_global": {
+        "core_diagnosis": "글로벌 교역 현황",
+        "major_changes": "주요 교역 루트",
+        "current_position": "기간 변화",
+    },
+    "map_mineral": {
+        # core_diagnosis는 measure(매장량/생산량)에 따라 동적으로 정해진다 —
+        # 아래 `_MINERAL_MAP_MEASURE_TITLES` 참고, 여기엔 안 둔다.
+        "major_changes": "국가별 순위 및 변화",
+        "current_position": "집중도 변화",
+    },
+}
+
+#: map_mineral 전용 — `_analyze_mineral_map`이 applied_filters["measure"]에
+#: `MineralMapMeasure`("reserves"/"production") 원문을 그대로 싣는다(summary.py
+#: 참고). 등록에 없는 값(신규 measure 추가 등)은 범용 "핵심 진단"으로 폴백한다.
+_MINERAL_MAP_MEASURE_TITLES = {
+    "reserves": "세계 매장량 현황",
+    "production": "세계 생산량 현황",
 }
 
 #: applied_filters의 보조 필드를 사람이 읽을 라벨로 바꾼다 — 매핑에 없는
@@ -71,19 +118,31 @@ def _format_metric_row(value: float | int | str | None, unit: str | None) -> tup
     return str(value), unit or ""
 
 
+#: (?<!니)다\.(?=\s|$) — "다." 앞이 "니"가 아니면서(이미 "입니다."인 것과
+#: 구분) 뒤가 공백 또는 문자열 끝인 것만 문장 종결로 본다("단계다"처럼 단어
+#: 중간의 "다"는 애초에 "다." 형태가 아니라 매치되지 않는다).
+_COPULA_SENTENCE_END_RE = re.compile(r"(?<!니)다\.(?=\s|$)")
+
+
 def _to_polite_copula(text: str) -> str:
-    """정의문 끝의 평서형 계사("...자료다.")를 존댓말("...자료입니다.")로
+    """정의문의 평서형 계사("...자료다.")를 존댓말("...자료입니다.")로
     바꾼다(2026-08-31 사용자 지시 — 제목 줄 어투가 본문 LLM 정제 문장의
     "-습니다"체와 안 맞는다는 지적). `KOMIR_PAGE_CONTEXTS`(komir_summary.py)·
     `ADDITIONAL_PAGE_CONTEXTS`(additional_summary.py, 외부repo "무수정 이식"이라
-    원문을 못 고침)의 정의문이 전부 이 "...(명사)다." 계사 종결형이라 —
-    범용 한국어 활용 변환이 아니라 이 특정 종결형(계사 "이다"의 "-다"체)에만
-    적용되는 정확한 규칙이다. 이 형태가 아니면(예: 동사 활용형) 원문 그대로
-    둔다 — 잘못된 변환보다 무변환이 안전하다."""
+    원문을 못 고침)·정책 YAML(`resources/policies/*.yaml`)의 정의문이 전부 이
+    "...(명사)다." 계사 종결형이라 — 범용 한국어 활용 변환이 아니라 이 특정
+    종결형(계사 "이다"의 "-다"체)에만 적용되는 정확한 규칙이다. 이 형태가
+    아니면(예: 동사 활용형) 원문 그대로 둔다 — 잘못된 변환보다 무변환이 안전
+    하다.
 
-    if text.endswith("다."):
-        return text[:-2] + "입니다."
-    return text
+    2026-09-09 main-agent 재검증(B-3) — indicator_supply.yaml의 정의문이
+    두 문장(둘 다 "...지표다.")인데, 예전 구현은 문자열 끝만 보고 치환해
+    (`text.endswith("다.")`) 중간 문장은 그대로 남아 있었다("...분류하는
+    지표다. 광종별 ... 강한 지표다."에서 앞 문장만 비격식체로 잔존) —
+    395콤보 렌더링을 `(?<!니)다\\.` 정규식으로 스캔해 발견. 문자열 끝
+    검사 대신 정규식으로 텍스트 안의 모든 계사 종결을 치환한다."""
+
+    return _COPULA_SENTENCE_END_RE.sub("입니다.", text)
 
 
 def render_markdown_report(response: AnalysisSummaryResponse) -> str:
@@ -113,7 +172,15 @@ def render_markdown_report(response: AnalysisSummaryResponse) -> str:
         lines.append(f"**현재 단계**: {response.grade.label} ({response.grade.score:,.2f}점)")
         lines.append("")
 
-    section_titles = _PRICE_SECTION_TITLES if response.page_id in _PRICE_PAGE_IDS else _SECTION_TITLES
+    if response.page_id in _PRICE_PAGE_IDS:
+        section_titles = _PRICE_SECTION_TITLES
+    else:
+        section_titles = {**_SECTION_TITLES, **_SECTION_TITLES_OVERRIDES.get(response.page_id, {})}
+        if response.page_id == "map_mineral":
+            measure = response.applied_filters.get("measure")
+            section_titles["core_diagnosis"] = _MINERAL_MAP_MEASURE_TITLES.get(
+                measure, _SECTION_TITLES["core_diagnosis"]
+            )
     for key, title in section_titles.items():
         sentences = getattr(response.summary, key)
         if not sentences:

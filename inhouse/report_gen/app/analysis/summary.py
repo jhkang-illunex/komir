@@ -1204,38 +1204,43 @@ def _filter_hash(page_id: str, filters: dict[str, str | None]) -> str:
 
 
 def _score_meaning(page_id: str, change: float) -> str:
+    # 2026-09-09 main-agent 승인(B-3) — 과거형 "-았/었다"→"-았/었습니다"는
+    # 어간 구분 없이 안전한 변환(report_gen_to_polite_copula_gotcha_260901
+    # 함정은 계사/현재형에서만 발생, 과거형은 해당 없음).
     if change == 0:
-        return "점수와 지표가 나타내는 상태에 변화가 없었다"
+        return "점수와 지표가 나타내는 상태에 변화가 없었습니다"
     if page_id == "indicator_market":
         return (
-            "중장기 가격위험이 낮아지는 방향으로 움직였다"
+            "중장기 가격위험이 낮아지는 방향으로 움직였습니다"
             if change > 0
-            else "중장기 가격위험이 높아지는 방향으로 움직였다"
+            else "중장기 가격위험이 높아지는 방향으로 움직였습니다"
         )
     return (
-        "수급 안정성이 강화되는 방향으로 움직였다"
+        "수급 안정성이 강화되는 방향으로 움직였습니다"
         if change > 0
-        else "수급 안정성이 약해지는 방향으로 움직였다"
+        else "수급 안정성이 약해지는 방향으로 움직였습니다"
     )
 
 
 def _score_position_meaning(page_id: str, difference: float) -> str:
+    # 2026-09-09 main-agent 승인(B-3) — 계사 "수준이다"→"수준입니다"(어간이
+    # 아니라 명사+계사 "이다"이므로 안전한 변환).
     if difference == 0:
         return (
-            "중장기 가격위험이 조회기간 평균 수준이다"
+            "중장기 가격위험이 조회기간 평균 수준입니다"
             if page_id == "indicator_market"
-            else "수급 안정성이 조회기간 평균 수준이다"
+            else "수급 안정성이 조회기간 평균 수준입니다"
         )
     if page_id == "indicator_market":
         return (
-            "중장기 가격위험이 조회기간 평균보다 낮은 수준이다"
+            "중장기 가격위험이 조회기간 평균보다 낮은 수준입니다"
             if difference > 0
-            else "중장기 가격위험이 조회기간 평균보다 높은 수준이다"
+            else "중장기 가격위험이 조회기간 평균보다 높은 수준입니다"
         )
     return (
-        "수급 안정성이 조회기간 평균보다 높은 수준이다"
+        "수급 안정성이 조회기간 평균보다 높은 수준입니다"
         if difference > 0
-        else "수급 안정성이 조회기간 평균보다 낮은 수준이다"
+        else "수급 안정성이 조회기간 평균보다 낮은 수준입니다"
     )
 
 
@@ -1362,7 +1367,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
 
     current_fact = (
         f"{current.month} {series.mineral.name} {policy.name}는 "
-        f"{_quantity(current.score)}점으로 {grade.label} 단계다."
+        f"{_quantity(current.score)}점으로 {grade.label} 단계입니다."
     )
     claims = [EvidenceClaim("current_state", "core_diagnosis", current_fact, required=True)]
 
@@ -1440,7 +1445,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
             EvidenceClaim(
                 "latest_score_change",
                 "core_diagnosis",
-                "이전 관측치가 없어 최근 점수 변화는 계산하지 않았다.",
+                "이전 관측치가 없어 최근 점수 변화는 계산하지 않았습니다.",
                 required=True,
             )
         )
@@ -1458,7 +1463,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
             break
         streak += 1
     streak_basis = "조회범위 내 최소 " if streak == len(observations) else ""
-    streak_fact = f"{grade.label} 단계는 {streak_basis}{streak}개월 연속 유지됐다."
+    streak_fact = f"{grade.label} 단계는 {streak_basis}{streak}개월 연속 유지됐습니다."
     key_metrics.append(
         _metric("current_grade_streak", "현재 단계 연속기간", streak, unit="개월")
     )
@@ -1474,7 +1479,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
         before, after, before_grade, after_grade = transitions[-1]
         transition_fact = (
             f"가장 최근에는 {after.month}에 {before_grade.label}에서 "
-            f"{after_grade.label} 단계로 전환됐다."
+            f"{after_grade.label} 단계로 전환됐습니다."
         )
         patterns.append(
             DetectedPattern(
@@ -1487,7 +1492,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
             )
         )
     else:
-        transition_fact = "조회기간의 연속 월 구간에서는 단계 전환이 확인되지 않았다."
+        transition_fact = "조회기간의 연속 월 구간에서는 단계 전환이 확인되지 않았습니다."
     claims.append(EvidenceClaim("grade_transition", "major_changes", transition_fact, required=True))
 
     if contiguous_pairs:
@@ -1495,7 +1500,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
         largest_change = largest[1].score - largest[0].score
         largest_fact = (
             f"조회기간 중 월간 점수 변화 폭이 가장 컸던 때는 {largest[1].month}로, "
-            f"직전월보다 {_change_phrase(largest_change)} 움직였다."
+            f"직전월보다 {_change_phrase(largest_change)} 움직였습니다."
         )
         key_metrics.append(
             _metric(
@@ -1514,7 +1519,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
             )
         )
     else:
-        largest_fact = "연속된 월 데이터가 없어 최대 월간 점수 변화는 계산하지 않았다."
+        largest_fact = "연속된 월 데이터가 없어 최대 월간 점수 변화는 계산하지 않았습니다."
         omitted.append(
             OmittedIndicator(
                 id="largest_monthly_score_change",
@@ -1559,7 +1564,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
                 import_growth_fact = (
                     f"화면상 확인되는 국내 수입량은 {previous_import.year}년 대비 "
                     f"{latest_import.year}년 {_number(abs(import_growth) * 100)}% "
-                    f"{growth_direction}해, 이 변동이 수급동향지표 변화와 함께 확인된다"
+                    f"{growth_direction}해, 이 변동이 수급동향지표 변화와 함께 확인됩니다"
                 )
                 detailed_metrics.append(
                     _metric(
@@ -1584,11 +1589,11 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
             if len(dependencies) <= 3:
                 concentration_fact = (
                     f"나열된 수입국({top_names}) 전체 기준 수입의존도는 "
-                    f"{_number(top_three)}%다"
+                    f"{_number(top_three)}%입니다"
                 )
             else:
                 concentration_fact = (
-                    f"상위 3개국({top_names}) 수입의존도는 {_number(top_three)}%로 집중된 구조다"
+                    f"상위 3개국({top_names}) 수입의존도는 {_number(top_three)}%로 집중된 구조입니다"
                 )
         if import_growth_fact and concentration_fact:
             claims.append(
@@ -1620,11 +1625,11 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
     )
     if price_change is not None:
         price_direction = (
-            "올랐다"
+            "올랐습니다"
             if price_change > 0
-            else "내렸다"
+            else "내렸습니다"
             if price_change < 0
-            else "같았다"
+            else "같았습니다"
         )
         price_fact = (
             f"같은 최근 한 달 동안 가격은 {_number(abs(price_change) * 100)}% "

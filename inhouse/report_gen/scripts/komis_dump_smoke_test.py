@@ -52,7 +52,7 @@ ensure_shared_on_path()
 from app.analysis.data_sources import DataSourceError  # noqa: E402
 from app.analysis.models import AnalysisSummaryRequest  # noqa: E402
 from app.analysis.report_render import render_markdown_report  # noqa: E402
-from app.analysis.summary import AnalysisSummaryService  # noqa: E402
+from app.analysis.summary import AnalysisSummaryService, _mineral_map_unit_label  # noqa: E402
 
 DUMP_DIR = Path("/home/nuri/dev/git/ws/mine_ws/komir/income_data/komis")
 DEFAULT_OUT = Path(os.environ.get("KOMIS_HARNESS_SCRATCH", "/tmp/claude-1002/-home-nuri-dev-git-ws-mine-ws-komir/8f5c04be-95b3-4831-b723-8ff599b42842/scratchpad")) / "komis_harness_results.json"
@@ -345,7 +345,12 @@ def adapt_mineral_map(dump: dict) -> list[tuple[str, dict]]:
         if not rows:
             continue
         value_key = "burudgQuty" if measure == "reserves" else "prdctnQuty"
-        unit = str(rows[0].get("cdVal") or "").strip() or "단위미상"
+        # 2026-09-09 main-agent 지적 — 프로덕션 경로(_parse_komis_mineral_map_
+        # response)는 cdVal 원시 코드("k ton" 등)를 _mineral_map_unit_label로
+        # 사람이 읽는 라벨("톤")로 매핑하는데, 이 하네스는 원시값을 그대로 넣어
+        # 회귀 스모크가 프로덕션과 다른 출력("k ton")을 "정상"으로 오인하고
+        # 있었다 — 같은 매핑 함수를 재사용해 프로덕션 경로를 정확히 미러링한다.
+        unit = _mineral_map_unit_label(str(rows[0].get("cdVal") or "").strip() or None) or "단위미상"
         # 2026-09-09 발주처 업무지시서 §3.3 대응 — 이전엔 KOMIS의
         # totalBurudgQuty/TOTALPRDCTNQUTY를 "공식 세계 총계"로 신뢰해
         # is_total 관측치를 만들었는데, 실 덤프(동 매장량) 대조 결과 이
