@@ -2,6 +2,27 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-09 (최신) — report_gen 광물지도(map_mineral) JSON 파싱 복잡성 해소(커밋 `d2f92bef9`, 병합 `1d52acf45`)
+
+사용자 지시("JSON 받아서 전처리·프롬프트 문구 만드는 루틴이 너무
+복잡해지는 것 같다") 대응 순수 리팩터. 계산 로직(`additional_summary.
+py::calculate_mineral_map_summary`, 프로즌)은 미변경, 파싱 계층
+(`summary.py`)만: 국가별 행 추출 중복 2곳→`_mineral_map_country_
+observation()`+`_mineral_map_value_key()`로 통합, 죽은 재계산(`years`)
+제거, 40줄 조립 블록을 `_build_mineral_map_secondary_series()`로 분리.
+
+main-agent가 임시 워크트리로 리팩터 전/후 map_mineral 104콤보 전체
+렌더링을 뽑아 문자열 비교 — 104/104 바이트 단위 완전 일치 확인(순수
+구조 변경, 회귀 없음). pyflakes 0경고, 395콤보 재현(오류·불일치 0).
+
+발주처 템플릿 §3.3③④ 대조 결과 계산 로직 자체는 이미 충분(세계현황+
+증감률·CR3/CR5·매장량-생산량 교차비교)했음이 확인됐다. **미결정
+사항(사용자 확인 필요)**: "매장량이 가장 크게 증가/감소한 국가"(top3
+밖에서 급증한 국가도 잡는 전체국가 기준 항목, PDF 예시: 콩고민주공화국)
+는 프로즌 계산기에 없는 신규 기능이라 추가 여부는 사용자 결정 대기.
+
+## 2026-09-09 — report_gen 수급지도(map_korea/map_global) 발주처 템플릿 정합화(커밋 `82b8096fa`, 병합 `2395b6264`)
+
 ## 2026-09-09 (최신) — report_gen 수급지도(map_korea/map_global) 발주처 템플릿 정합화(커밋 `82b8096fa`, 병합 `2395b6264`)
 
 발주처 업무지시서 §3.3 대응(광물지도 다음 라운드). report-summary-agent
