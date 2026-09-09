@@ -2,6 +2,36 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-09 (최신) — report_gen 광물지도에 "매장량/생산량 최대 증가·감소 국가" 신규 근거 추가(커밋 `f52767f97`, 병합 `fa1af15d2`) — §3.3 라운드 완결
+
+앞선 리팩터에서 사용자 확인 대기로 남겼던 기능을 사용자 승인 후 반영.
+발주처 템플릿 §3.3③④ "조회기간 중 매장량이 가장 크게 증가한 국가는
+[국가], 가장 크게 감소한 국가는 [국가]"(PDF 예시: 콩고민주공화국처럼
+상위 3개국 밖에서 급증한 국가도 포함) 대응.
+
+`calculate_mineral_map_summary`(additional_summary.py, 프로즌)는
+상위 3개국 개별 변화만 다뤄 이 요구를 못 채운다 — 대신
+`AdditionalCalculatedSummary`가 frozen dataclass가 아니라(claims/
+key_metrics 다 일반 list) 편집 가능한 summary.py 계층에서 계산 결과에
+사후로 근거·지표를 추가하는 방식으로 구현
+(`_mineral_map_extreme_change_countries`+`_append_mineral_map_
+extreme_change`). 절대량 변화(비율 아님 — 새로 나타나거나 사라진
+국가의 나눗셈0 문제 회피) 기준. major_changes 근거 최대 3→4개로
+늘어난 것에 맞춰 이 페이지 전용 LLM 출력계약(`MINERAL_MAP_SECTION_
+SENTENCE_RANGES`(2,3)→(2,4)·`MINERAL_MAP_TOTAL_SENTENCE_RANGE`(5,8)→
+(5,9))도 상향 — 안 올리면 근거 4개인 요청이 LLM 검증 실패로 계속
+폴백될 뻔했다.
+
+main-agent 재현: 동(구리) 2019~2025 실 덤프로 "매장량이 가장 크게
+증가한 국가는 콩고민주공화국이며, 가장 크게 감소한 국가는 칠레다"
+문장 + key_metrics 표에 문자열 값 행("최대 증가/감소 국가") 정상
+렌더링 확인. pyflakes 0경고, 395콤보 재현(오류·불일치 0).
+
+**이걸로 발주처 업무지시서 §3.3(수급지도 map_korea/map_global +
+광물지도 map_mineral) 라운드 전체 완결.**
+
+## 2026-09-09 — report_gen 광물지도(map_mineral) JSON 파싱 복잡성 해소(커밋 `d2f92bef9`, 병합 `1d52acf45`)
+
 ## 2026-09-09 (최신) — report_gen 광물지도(map_mineral) JSON 파싱 복잡성 해소(커밋 `d2f92bef9`, 병합 `1d52acf45`)
 
 사용자 지시("JSON 받아서 전처리·프롬프트 문구 만드는 루틴이 너무
