@@ -440,21 +440,6 @@ def _parse_komis_price_response(raw: dict) -> _KomisPriceParsed:
     )
 
 
-def _komis_ci_get(row: dict, *names: str):
-    """`_komis_num`류 헬퍼와 짝 — 대소문자가 다른 동의 키(예: totalBurudgQuty
-    vs TOTALPRDCTNQUTY)를 순서대로 찾는다(map_mineral 응답에서 관측된 표기
-    불일치)."""
-
-    for name in names:
-        if name in row:
-            return row[name]
-    lowered = {key.lower(): value for key, value in row.items()}
-    for name in names:
-        if name.lower() in lowered:
-            return lowered[name.lower()]
-    return None
-
-
 def _parse_komis_map_korea_response(raw: dict) -> tuple[list[dict], dict | None, str | None]:
     """`getListKoreaData` 원본 응답(2026-08-30, 사용자 지시로 price와 같은 패턴을
     나머지 페이지로 확장) → observations + komis_trade_totals + mineral(코드).
@@ -649,21 +634,46 @@ def _parse_komis_map_global_route_shares(raw: dict) -> list[dict]:
     return result
 
 
+#: 2026-09-09 발주처 업무지시서 §3.3 대응 — `getListMapMnrlChartData`/
+#: `getListMapMnrlData`의 `cdVal`(단위 코드)이 영문 그대로("ton"/"k ton"/
+#: "kg"/"mt")라 한글 문장에 영문이 섞여 나온다(65개 광종 실측 전수 확인,
+#: `mt`는 철 등 WT007 계열에서 실측값 규모상 "metric ton"=톤과 동일).
+#: 매핑에 없는 코드가 오면 원문 코드를 그대로 쓴다(단위를 지어내지 않는다).
+_MINERAL_MAP_UNIT_LABELS = {"ton": "톤", "k ton": "천톤", "kg": "킬로그램", "mt": "톤"}
+
+
+def _mineral_map_unit_label(raw_unit: str | None) -> str | None:
+    if not raw_unit:
+        return None
+    return _MINERAL_MAP_UNIT_LABELS.get(raw_unit, raw_unit)
+
+
 def _parse_komis_mineral_map_response(raw: dict, measure: str) -> tuple[list[dict], str | None]:
     """`getListMapMnrlChartData` 원본 응답 → observations + unit.
     `measure`("reserves"/"production")는 응답 본문에 없는 조회 파라미터라
     호출자가 그대로 명시해야 한다(`komis_dump_smoke_test.py::
-    adapt_mineral_map`과 동일 근거 — 매장량/생산량 총계 키가 대소문자
-    표기까지 다를 수 있어 `_komis_ci_get`으로 찾는다)."""
+    adapt_mineral_map`과 동일 근거).
+
+    2026-09-09 발주처 업무지시서 §3.3·§4-8("비중·합계 산출 검증 필요")
+    대응 — 이전엔 응답의 `totalBurudgQuty`/`TOTALPRDCTNQUTY`를 "공식
+    세계 총계"로 그대로 신뢰해 `is_total=True` 관측치를 만들었다. 동(구리)
+    실 덤프로 대조한 결과 이 필드가 **2019~2025년 내내 완전히 같은 값**
+    (예: 매장량 5,060,700,000)으로 고정돼 있어 그 해 국가별 합계(예: 2019년
+    651,000,000·2025년 770,200,000)와 무관한 상수였다 — 실제 국가별
+    합계보다 6~8배 크고 연도에 따라 전혀 변하지 않는다(생산량도 동일
+    패턴, `TOTALPRDCTNQUTY`=132,244,000 고정). 이 값을 분모로 쓰면 모든
+    국가 비중이 실제보다 6~8배 작게 계산된다 — 발주처가 지적한
+    "칠레 비중 4.81%"(정상 계산 시 약 18%)가 바로 이 버그다. 이제 이
+    필드를 아예 읽지 않는다 — `additional_summary.py::_world_total()`이
+    이미 "공식 총계가 없으면 국가별 합계를 쓴다"는 폴백을 갖고 있어(그
+    파일은 무수정 이식이라 편집하지 않음), 여기서 가짜 `is_total`
+    관측치 생성을 멈추기만 하면 계산기가 자동으로 올바르게 국가별
+    합계를 쓴다."""
 
     rows = raw.get("data") or []
     value_key = "burudgQuty" if measure == "reserves" else "prdctnQuty"
-    total_key_candidates = (
-        ("totalBurudgQuty",) if measure == "reserves" else ("TOTALPRDCTNQUTY", "totalPrdctnQuty")
-    )
-    unit = (str(rows[0].get("cdVal") or "").strip() or None) if rows else None
-    by_year: dict[int, list[dict]] = {}
-    totals: dict[int, float] = {}
+    unit = _mineral_map_unit_label(str(rows[0].get("cdVal") or "").strip() or None) if rows else None
+    observations: list[dict] = []
     for row in rows:
         year_raw = row.get("crtrYr")
         if year_raw is None:
@@ -672,7 +682,7 @@ def _parse_komis_mineral_map_response(raw: dict, measure: str) -> tuple[list[dic
         value = _komis_num(row.get(value_key))
         if value is None or value <= 0:
             continue
-        by_year.setdefault(year, []).append(
+        observations.append(
             {
                 "year": year,
                 "country_code": row.get("ntnEngCd") or row.get("ntnKornNm"),
@@ -682,23 +692,6 @@ def _parse_komis_mineral_map_response(raw: dict, measure: str) -> tuple[list[dic
                 "is_other": False,
             }
         )
-        total_val = _komis_num(_komis_ci_get(row, *total_key_candidates))
-        if total_val is not None:
-            totals[year] = total_val
-    observations: list[dict] = []
-    for year in sorted(by_year):
-        observations.extend(by_year[year])
-        if year in totals:
-            observations.append(
-                {
-                    "year": year,
-                    "country_code": "WORLD",
-                    "country_name": "세계",
-                    "value": totals[year],
-                    "is_total": True,
-                    "is_other": False,
-                }
-            )
     return observations, unit
 
 
@@ -714,16 +707,17 @@ def _parse_komis_map_mineral_snapshot_response(
     `available_end_year`를 넘긴다 — `models.py`의 `komis_snapshot_response`
     필드 docstring 참고). ⚠단일 연도 조회(srchDateS==srchDateE) 전제 —
     다년 범위로 조회하면 KOMIS가 그 범위를 합산한 값을 준다(실측 확인,
-    같은 문서 참고), 이 함수는 그 구분을 응답만으로 할 수 없다."""
+    같은 문서 참고), 이 함수는 그 구분을 응답만으로 할 수 없다.
+
+    2026-09-09 — `_parse_komis_mineral_map_response`와 같은 이유로 응답의
+    "공식 총계" 필드(`totalBurudgQuty`/`TOTALPRDCTNQUTY`)를 더 이상 신뢰
+    하지 않는다(위 함수 docstring의 실측 근거 참고) — 국가별 관측치만
+    반환하고, 세계 총계는 이 값들의 합으로 자동 계산되게 둔다."""
 
     rows = raw.get("data") or []
     value_key = "burudgQuty" if measure == "reserves" else "prdctnQuty"
-    total_key_candidates = (
-        ("totalBurudgQuty",) if measure == "reserves" else ("TOTALPRDCTNQUTY", "totalPrdctnQuty")
-    )
-    unit = (str(rows[0].get("cdVal") or "").strip() or None) if rows else None
+    unit = _mineral_map_unit_label(str(rows[0].get("cdVal") or "").strip() or None) if rows else None
     observations: list[dict] = []
-    total_val: float | None = None
     for row in rows:
         value = _komis_num(row.get(value_key))
         if value is None or value <= 0:
@@ -735,19 +729,6 @@ def _parse_komis_map_mineral_snapshot_response(
                 "country_name": row.get("ntnKornNm") or row.get("ntnEngNm"),
                 "value": value,
                 "is_total": False,
-                "is_other": False,
-            }
-        )
-        if total_val is None:
-            total_val = _komis_num(_komis_ci_get(row, *total_key_candidates))
-    if total_val is not None:
-        observations.append(
-            {
-                "year": year,
-                "country_code": "WORLD",
-                "country_name": "세계",
-                "value": total_val,
-                "is_total": True,
                 "is_other": False,
             }
         )
