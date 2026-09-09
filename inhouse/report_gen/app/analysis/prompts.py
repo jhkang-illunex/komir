@@ -181,11 +181,15 @@ MINERAL_MAP_SUMMARY_INSTRUCTIONS = """\
   [광종] [매장량/생산량]은 [수치][단위]로, [기간]년간 [증감률]% [증가/감소]했다"처럼
   1~2문장으로 쓴다.
 - major_changes는 current_leaders·third_country를 이용해 1~3위 국가의
-  규모·비중·순위를 2~3문장으로 설명한다.
+  규모·비중·순위를 2~3문장으로 설명한다. extreme_change_countries
+  근거가 있으면(2026-09-09 발주처 업무지시서 §3.3 대응 신설 — "매장량이
+  가장 크게 증가/감소한 국가", top3 밖 국가도 포함될 수 있다) 그대로
+  옮겨 마지막 문장으로 덧붙인다 — 이미 완성 문장이니 새 국가·수치를
+  지어내지 않는다.
 - current_position은 leading_country_changes·concentration_change·
   current_concentration_structure를 연결해 국가별 기간 변화와 CR3/CR5
   집중도 변화, 그리고 그 구조적 의미를 2~3문장으로 쓴다.
-- 전체는 5~8문장으로 쓰며 같은 수치나 판단을 다른 섹션에서 반복하지 않는다.
+- 전체는 5~9문장으로 쓰며 같은 수치나 판단을 다른 섹션에서 반복하지 않는다.
 - `상위 국가 중심`, `특정 한 국가가 압도하지 않음` 같은 판단은 이를 뒷받침하는 비중과 함께 쓴다.
 - 비교연도 값이 없는 국가를 0으로 보거나 매장량·생산량이 새로 생겼다고 표현하지 않는다.
 - 매장량·생산량의 수치 변화는 `성장`보다 `증가` 또는 `감소`로 표현한다.
@@ -446,12 +450,20 @@ SECTION_SENTENCE_RANGES: dict[str, dict[str, tuple[int, int]]] = {
     # 2026-08-27 신설 — group_movers·extreme_movers 2건까지 major_changes에.
     "price_group": {"core_diagnosis": (1, 1), "major_changes": (1, 2), "current_position": (1, 1)},
 }
+#: 2026-09-09 발주처 업무지시서 §3.3 대응 — `summary.py::
+#: _append_mineral_map_extreme_change`가 "매장량/생산량 최대 증가·감소
+#: 국가"(extreme_change_countries) 근거를 major_changes에 추가하면서
+#: 실측 최대 개수가 3→4로 늘었다(current_leaders·third_country·
+#: cross_measure_comparison·extreme_change_countries가 전부 있는 경우) —
+#: `models.py::MAJOR_CHANGES_MAX_SENTENCES`(전역, 현재 7)는 이미 여유가
+#: 있어 규칙기반 폴백엔 영향 없지만, 이 페이지 전용 LLM 출력계약은 그대로
+#: 두면 4번째 근거가 있을 때 검증 실패로 폴백된다 — 여기도 맞춰 올린다.
 MINERAL_MAP_SECTION_SENTENCE_RANGES: dict[str, tuple[int, int]] = {
     "core_diagnosis": (1, 2),
-    "major_changes": (2, 3),
+    "major_changes": (2, 4),
     "current_position": (2, 3),
 }
-MINERAL_MAP_TOTAL_SENTENCE_RANGE: tuple[int, int] = (5, 8)
+MINERAL_MAP_TOTAL_SENTENCE_RANGE: tuple[int, int] = (5, 9)
 MAX_EVIDENCE_IDS_PER_SENTENCE = 3
 #: 페이지별 예외 — price는 PDF 1-1 템플릿이 전일·전주·전월·전년(·연속) 비교를 한
 #: 문장에 담으므로 5(2026-08-27 반복 루프 4회차). `SummarySentence.evidence_ids`
