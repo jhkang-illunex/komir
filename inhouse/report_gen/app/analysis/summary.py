@@ -1512,18 +1512,26 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
         EvidenceClaim("largest_monthly_score_change", "major_changes", largest_fact, required=True)
     )
 
-    # 2026-09-01 신설 — PDF §2-3 "주요 요인으로는 [가격리스크/세계 수급비율/
-    # 세계 공급 편중도/국내 수입증가율/국내 수입국 편중도 등]의 변동성이
-    # 확대된 결과로 분석됩니다" 대응. `getChartDataSpdmStbt` 기반
-    # supply_auxiliary가 있을 때만(indicator_supply 전용) 그 중 실제로
-    # 계산 가능한 두 요인(국내 수입증가율·국내 수입국 편중도)만 쓴다 — 나머지
-    # 3개(가격리스크는 핵심 관측치와 중복이라 별도 서술 안 함, 세계 수급비율·
-    # 세계 공급 편중도는 대응 모델 필드 자체가 없음)는 evidence가 없어 언급
-    # 하지 않는다(§`models.py`의 `SupplyAuxiliaryData` docstring). 수입증가율은
-    # 실제 연간 증감 실측치라 PDF의 "변동성이 확대된 결과로 분석된다" 인과
-    # 서술을 그대로 쓰되, 수입국 편중도는 이번 표본에 연도별 비교값이 없어
-    # (단일 연도 스냅샷) 변동 여부를 알 수 없으므로 구조적 사실(현재 집중도
-    # 수준)로만 덧붙인다 — composite의 구성 광종 가중치와 같은 구분.
+    # 2026-09-01 신설 — 발주처 제안요청서(구 PDF) §2-3의 "주요 요인으로는
+    # [가격리스크/세계 수급비율/세계 공급 편중도/국내 수입증가율/국내 수입국
+    # 편중도 등]의 변동성이 확대된 결과로 분석됩니다" 문구를 그대로 옮겨
+    # 반영했었다. `getChartDataSpdmStbt` 기반 supply_auxiliary가 있을 때만
+    # (indicator_supply 전용) 그 중 실제로 계산 가능한 두 요인(국내
+    # 수입증가율·국내 수입국 편중도)만 쓴다 — 나머지 3개(가격리스크는 핵심
+    # 관측치와 중복이라 별도 서술 안 함, 세계 수급비율·세계 공급 편중도는
+    # 대응 모델 필드 자체가 없음)는 evidence가 없어 언급하지 않는다
+    # (§`models.py`의 `SupplyAuxiliaryData` docstring). 수입국 편중도는 이번
+    # 표본에 연도별 비교값이 없어(단일 연도 스냅샷) 변동 여부를 알 수
+    # 없으므로 구조적 사실(현재 집중도 수준)로만 덧붙인다 — composite의
+    # 구성 광종 가중치와 같은 구분.
+    #
+    # 2026-09-09 발주처 업무지시서 §2.2("가격변동의 주요요인" 삭제·"원인으로
+    # 분석됩니다"→"해당 항목의 변동이 함께 확인됩니다" 순화 매핑표) 대응 —
+    # 위 "주요 요인으로는 ... 분석됩니다"는 이 업무지시서가 명시적으로 겨냥한
+    # 바로 그 인과 단정 패턴이었다(§3.2 정합화 점검 중 재발견). 구 제안요청서
+    # 문구보다 이 업무지시서(더 최신·발주처 확정본)가 우선한다 — "주요
+    # 요인으로는"·"분석된다"를 빼고 §2.2 매핑표의 "동반 확인" 어투로
+    # 바꿨다(수치·근거는 그대로, 인과관계 단정만 제거).
     if series.page_id == "indicator_supply" and series.supply_auxiliary is not None:
         imports = sorted(series.supply_auxiliary.domestic_imports, key=lambda item: item.year)
         dependencies = series.supply_auxiliary.import_dependencies
@@ -1536,10 +1544,9 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
             if import_growth is not None:
                 growth_direction = "감소" if import_growth < 0 else "증가"
                 import_growth_fact = (
-                    f"주요 요인으로는 국내 수입증가율 변동에 따라 국내 수입량이 "
-                    f"{previous_import.year}년 대비 {latest_import.year}년 "
-                    f"{_number(abs(import_growth) * 100)}% {growth_direction}한 점 등으로 "
-                    f"변동성이 확대된 결과로 분석된다"
+                    f"화면상 확인되는 국내 수입량은 {previous_import.year}년 대비 "
+                    f"{latest_import.year}년 {_number(abs(import_growth) * 100)}% "
+                    f"{growth_direction}해, 이 변동이 수급동향지표 변화와 함께 확인된다"
                 )
                 detailed_metrics.append(
                     _metric(
