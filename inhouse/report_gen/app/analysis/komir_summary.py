@@ -36,6 +36,21 @@ def _subject(name: str) -> str:
     codepoint = ord(final)
     has_batchim = 0xAC00 <= codepoint <= 0xD7A3 and (codepoint - 0xAC00) % 28 != 0
     return f"{name}{'이' if has_batchim else '가'}"
+
+
+def _toward(name: str) -> str:
+    """방향 조사(로/으로) — 2026-09-09 map_korea 수입 현황 재구성 중 발견한
+    조사 오류("1위 수입국은 중국로") 수정. `_subject`/`_topic`과 같은 받침
+    판정에 ㄹ받침 예외("서울로"이지 "서울으로"가 아님)만 추가한다."""
+
+    final = name[-1]
+    codepoint = ord(final)
+    if not (0xAC00 <= codepoint <= 0xD7A3):
+        return f"{name}로"
+    trailing_consonant_index = (codepoint - 0xAC00) % 28
+    has_batchim = trailing_consonant_index != 0
+    is_rieul = trailing_consonant_index == 8  # 종성 순서상 8번째가 'ㄹ'
+    return f"{name}{'로' if not has_batchim or is_rieul else '으로'}"
 from .models import (
     CURRENT_POSITION_MAX_SENTENCES,
     KEY_METRICS_MAX_COUNT,
@@ -143,12 +158,12 @@ KOMIR_PAGE_CONTEXTS = {
     "map_korea": SummaryPageContext(
         page_id="map_korea",
         name="국내 수급지도",
-        definition="선택한 광종을 한국이 어느 나라와 수입 또는 수출 거래를 하는지(조회 방향 기준) 국가별 금액·중량으로 보여주는 자료다.",
+        definition="선택한 광종을 한국이 어느 나라와 수입·수출 거래를 하는지 국가별 금액으로 보여주는 자료다.",
         analysis_constraints=[
             "관세청 원천에 있는 상대국·기간만 분석한다.",
             "수입/수출 집중도(상위국 비중)를 공급망 리스크로 단정하지 않고 사실만 서술한다.",
         ],
-        policy_version="map-korea-summary-v2",
+        policy_version="map-korea-summary-v3",
     ),
     "map_global": SummaryPageContext(
         page_id="map_global",
@@ -971,27 +986,37 @@ def calculate_price_summary(
 def calculate_domestic_trade_summary(
     series: TradeMapSeries,
     *,
-    direction: str = "import",
     komis_totals: TradeKomisTotals | None = None,
     country_filter_name: str | None = None,
     scope_label: str | None = None,
 ) -> AdditionalCalculatedSummary:
-    """국내(관세청) 수급지도 계열 계산 — `direction`으로 수입/수출을 고른다.
+    """국내(관세청) 수급지도 계열 계산 — 수입·수출을 한 보고서에 함께 낸다.
 
-    2026-08-27: PDF 지침 점검(/unlazy)에서 발견한 버그 수정 — 이전에는
-    `direction_label="수입"`이 하드코딩돼 있어 KOMIS 화면에서 수출 방향으로
-    조회해도 보고서는 항상 "수입총액"으로 렌더링됐다(실측: 수출 73건 중
-    "수출총액" 문구 0건). 이제 `direction`에 따라 읽는 금액 필드
-    (`import_amount`/`export_amount`)와 라벨("수입"/"수출") 둘 다 바뀐다.
+    2026-09-09 발주처 업무지시서 §3.3 대응 — 이전엔 `direction` 인자로
+    수입 또는 수출 한쪽만 계산했다(호출자가 `request.trade_direction`으로
+    골랐다). 발주처 템플릿은 "수입 현황→수입 집중도→수출 현황"을 한
+    보고서 안에 전부 요구하는데(수출총액·상위 수출국·수입 대비 수출
+    규모가 누락돼 있다고 지적), `TradeCountryObservation`이 애초에
+    국가별 `import_amount`/`export_amount`를 동시에 담고 있어 새
+    데이터소스 없이 같은 `series`로 양쪽을 함께 계산할 수 있다 — 이제
+    항상 둘 다 계산한다. `request.trade_direction` 필드 자체는 다른
+    소비자(streamlit_demo)가 여전히 보낼 수 있어 모델에는 남겨뒀지만
+    이 계산기는 더 이상 참조하지 않는다.
+
+    2026-09-09 후속 — "단위 미상"도 발주처가 §4-7에서 지적한 치명적
+    오류다. KOMIS 응답엔 명시적 통화단위 필드가 없지만, 실측 대조
+    (`income_data/komis/komis_06_supply_map_korea.json`)로 원값이 이미
+    실제 달러 단위 그대로임을 확인했다 — 예: 한 갈륨 콤보의
+    `sumIncmAmt=6,350,539`를 "천 달러"로 해석하면 한국의 갈륨 수입
+    총액이 63억 달러가 돼(비현실적, 갈륨 세계시장 자체가 연간 수억
+    달러 규모) 원값 자체가 "달러"임이 자연스럽다 — "달러"로 표기한다
+    (단위를 지어내지 않되, "미상"도 아니다).
 
     `komis_totals`(2026-08-29 Phase3 라이브 재검증 확정) — KOMIS `list`
     응답이 최대 30행까지만 국가를 주는데(정적덤프 145콤보 전수 재검증
     결과 9건이 영향, 최악 5.8% 과소) 같은 응답에 진짜 총액(`sumIncmAmt`/
     `sumExpAmt`)이 함께 온다. 있으면 관측치 합산 대신 이 값을 최신 관측일의
-    총액으로 쓴다 — top1/3/5 비중의 분모가 정확해진다. `previous_total`
-    (기간변화율 비교 대상)은 과거 시점 KOMIS 총액을 받을 방법이 없어
-    여전히 관측치 합산이다(하위호환, `report_gen_KOMIS라이브재검증_
-    Phase3_260829.md` §1 참고).
+    총액으로 쓴다 — top1/3/5 비중의 분모가 정확해진다.
 
     `country_filter_name`/`scope_label`(2026-08-31 신설, 사용자 지시로
     map_korea 조회필터 4종 추가) — KOMIS가 `sumIncmAmt`/`sumExpAmt`를
@@ -1000,130 +1025,129 @@ def calculate_domestic_trade_summary(
     생산품유형/HS필터를 걸면 그 범위만의 소계로 줄어듦). 그래서:
     - `country_filter_name`이 있으면(단일 국가로 조회 한정) `total`이 그
       국가 자체 값이라 top1/3/5 비중이 항상 100%로 공허해진다 — 랭킹
-      claim(top1_country/top3/top5_concentration)을 만들지 않고, 대신
-      "{국가} 대상 {수입|수출}총액은 X다"라는 단문 하나로 대체한다(claim
-      id는 그대로 `top1_country`를 재사용 — `major_changes` 절이 비면
-      안 되고(SECTION_SENTENCE_RANGES 최소 1문장), MAP_KOREA_SUMMARY_
-      INSTRUCTIONS가 이미 이 id를 "있는 경우"로 다루고 있어 prompt 수정
-      없이도 안전하다).
+      대신 "{국가} 대상 {수입|수출}총액은 X다"류 단문으로 대체한다.
     - `scope_label`이 있으면(생산품유형/HS코드로 범위만 좁힘, 국가는 여러
-      개 그대로) 랭킹 claim은 그대로 만들되 "전체의"를 "이 범위 내"로
-      바꿔, 광종 전체가 아니라 좁혀진 범위 안에서의 비중임을 명시한다."""
+      개 그대로) 랭킹은 그대로 만들되 "전체의"를 "이 범위 내"로 바꿔,
+      광종 전체가 아니라 좁혀진 범위 안에서의 비중임을 명시한다."""
 
-    direction_label = "수입" if direction == "import" else "수출"
-    amount_field = "import_amount" if direction == "import" else "export_amount"
-
-    def _amount(item) -> float:
-        return getattr(item, amount_field) or 0.0
+    def _ranking_and_total(field: str) -> tuple[list, float]:
+        latest_rows = [item for item in series.observations if item.date == latest_date]
+        ranking = sorted(latest_rows, key=lambda item: getattr(item, field) or 0.0, reverse=True)
+        komis_total = getattr(komis_totals, field, None) if komis_totals else None
+        total = komis_total if komis_total not in (None, 0, 0.0) else sum(getattr(item, field) or 0.0 for item in ranking)
+        return ranking, total
 
     dates = sorted({item.date for item in series.observations})
     latest_date = dates[-1]
-    latest_rows = [item for item in series.observations if item.date == latest_date]
-    ranking = sorted(latest_rows, key=_amount, reverse=True)
-    komis_total = getattr(komis_totals, amount_field, None) if komis_totals else None
-    total = komis_total if komis_total not in (None, 0, 0.0) else sum(_amount(item) for item in ranking)
-    if total <= 0 or len(ranking) < 1:
-        raise ValueError("trade map summary requires a positive total amount")
+    import_ranking, import_total = _ranking_and_total("import_amount")
+    export_ranking, export_total = _ranking_and_total("export_amount")
+    if import_total <= 0 or len(import_ranking) < 1:
+        raise ValueError("trade map summary requires a positive import total amount")
 
     scope_prefix = f"{country_filter_name} 대상 " if country_filter_name else f"{scope_label} " if scope_label else ""
-    claims = [
-        EvidenceClaim(
-            "current_state",
-            "core_diagnosis",
-            f"{_korean_date(latest_date)} 기준 {series.mineral.name} {scope_prefix}{direction_label}총액은 "
-            f"{_quantity(total)}(단위 미상)이다.",
-            required=True,
-        )
-    ]
-    key_metrics = [_price_metric("total_amount", f"{direction_label}총액", total)]
+    share_scope = "이 범위 내" if scope_label else "전체의"
+    key_metrics = [_price_metric("import_total_amount", "수입총액", import_total, unit="달러")]
 
+    # ── 수입 현황(core_diagnosis, 발주처 템플릿 "수입 현황" 문단) ──
+    if country_filter_name:
+        core_fact = (
+            f"{_korean_date(latest_date)} 기준 한국의 {series.mineral.name} {scope_prefix}수입액은 총 "
+            f"{_quantity(import_total)}달러다."
+        )
+    else:
+        top3_import = import_ranking[: min(3, len(import_ranking))]
+        rank_parts = []
+        for rank, item in enumerate(top3_import, start=1):
+            share = (item.import_amount or 0.0) / import_total * 100
+            if rank == 1:
+                rank_parts.append(
+                    f"1위 수입국은 {_toward(item.country_name)} {_quantity(item.import_amount or 0.0)}달러"
+                    f"({_number(share)}%)"
+                )
+            else:
+                rank_parts.append(f"{rank}위는 {item.country_name} {_number(share)}%")
+            key_metrics.append(
+                _price_metric(f"top{rank}_import_share_pct", f"{rank}위 수입국 비중", share, unit="%")
+            )
+        core_fact = (
+            f"{_korean_date(latest_date)} 기준 한국의 {series.mineral.name} {scope_prefix}수입액은 총 "
+            f"{_quantity(import_total)}달러다. " + ", ".join(rank_parts) + "다."
+        )
+    claims = [EvidenceClaim("current_state", "core_diagnosis", core_fact, required=True)]
+
+    # ── 수입 집중도(major_changes, CR3/CR5) ──
+    patterns: list[DetectedPattern] = []
     if country_filter_name:
         claims.append(
             EvidenceClaim(
-                "top1_country",
+                "import_concentration",
                 "major_changes",
                 f"조회가 {country_filter_name} 한 국가로 한정돼 있어, {country_filter_name}의 "
-                f"{direction_label}액 {_quantity(total)}가 그대로 이번 조회의 전체 금액이다.",
+                f"수입액 {_quantity(import_total)}달러가 그대로 이번 조회의 전체 금액이다.",
                 required=True,
             )
         )
-        top_n: list = []
-        top5_n: list = []
     else:
-        share_scope = "이 범위 내" if scope_label else "전체의"
-        top_n = ranking[: min(3, len(ranking))]
-        if top_n:
-            top1 = top_n[0]
-            top1_share = _amount(top1) / total
+        top3_import = import_ranking[: min(3, len(import_ranking))]
+        top5_import = import_ranking[: min(5, len(import_ranking))]
+        cr3 = cr5 = None
+        if len(top3_import) >= 3:
+            cr3 = sum(item.import_amount or 0.0 for item in top3_import) / import_total
+            key_metrics.append(_price_metric("top3_import_share_pct", "상위3국 수입비중", cr3 * 100, unit="%"))
+        if len(top5_import) >= 5:
+            cr5 = sum(item.import_amount or 0.0 for item in top5_import) / import_total
+            key_metrics.append(_price_metric("top5_import_share_pct", "상위5국 수입비중", cr5 * 100, unit="%"))
+        if cr3 is not None and cr5 is not None:
+            concentration_fact = (
+                f"상위 3개국 수입 비중은 {share_scope} {_number(cr3 * 100)}%이며, "
+                f"상위 5개국까지 합산하면 {share_scope} {_number(cr5 * 100)}%를 차지한다."
+            )
+        elif cr3 is not None:
+            concentration_fact = f"상위 3개국 수입 비중은 {share_scope} {_number(cr3 * 100)}%다."
+        else:
+            concentration_fact = None
+        if concentration_fact is not None:
             claims.append(
-                EvidenceClaim(
-                    "top1_country",
-                    "major_changes",
-                    f"{_subject(top1.country_name)} {_quantity(_amount(top1))}({_number(top1_share * 100)}%)로 "
-                    f"1위 {direction_label}국이다.",
-                    required=True,
+                EvidenceClaim("import_concentration", "major_changes", concentration_fact, required=True)
+            )
+        if top3_import and (top3_import[0].import_amount or 0.0) / import_total >= 0.5:
+            patterns.append(
+                DetectedPattern(
+                    code="single_country_concentration",
+                    label="1개국 수입 과반 집중",
+                    evidence=["current_state"],
                 )
             )
-            key_metrics.append(
-                _price_metric("top1_share_pct", f"1위국 {direction_label}비중", top1_share * 100, unit="%")
-            )
-        if len(top_n) >= 3:
-            cr3 = sum(_amount(item) for item in top_n) / total
-            names = "·".join(item.country_name for item in top_n)
-            claims.append(
-                EvidenceClaim(
-                    "top3_concentration",
-                    "major_changes",
-                    f"상위 3개국({names})이 {share_scope} {_number(cr3 * 100)}%를 차지한다.",
-                    required=True,
-                )
-            )
-            key_metrics.append(_price_metric("top3_share_pct", f"상위3국 {direction_label}비중", cr3 * 100, unit="%"))
-        top5_n = ranking[: min(5, len(ranking))]
-        if len(top5_n) >= 5:
-            cr5 = sum(_amount(item) for item in top5_n) / total
-            claims.append(
-                EvidenceClaim(
-                    "top5_concentration",
-                    "major_changes",
-                    f"상위 5개국까지 합산하면 {share_scope} {_number(cr5 * 100)}%를 차지한다.",
-                )
-            )
-            key_metrics.append(_price_metric("top5_share_pct", f"상위5국 {direction_label}비중", cr5 * 100, unit="%"))
 
-    patterns: list[DetectedPattern] = []
-    if top_n and _amount(top_n[0]) / total >= 0.5:
-        patterns.append(
-            DetectedPattern(
-                code="single_country_concentration",
-                label=f"1개국 {direction_label} 과반 집중",
-                evidence=["top1_country"],
+    # ── 수출 현황(current_position, 발주처 템플릿 "수출 현황" 문단) ──
+    if export_total > 0 and export_ranking:
+        ratio = export_total / import_total * 100
+        key_metrics.append(_price_metric("export_total_amount", "수출총액", export_total, unit="달러"))
+        key_metrics.append(_price_metric("export_import_ratio_pct", "수입 대비 수출 비율", ratio, unit="%"))
+        if country_filter_name:
+            export_fact = (
+                f"같은 기간 한국의 {series.mineral.name} {scope_prefix}수출액은 총 {_quantity(export_total)}달러이며, "
+                f"수입총액 대비 수출총액은 {_number(ratio)}% 수준이다."
             )
-        )
-
-    if len(dates) >= 2:
-        previous_date = dates[-2]
-        previous_total = sum(
-            _amount(item) for item in series.observations if item.date == previous_date
-        )
-        change = _pct(total, previous_total)
-        if change is not None:
-            claims.append(
-                EvidenceClaim(
-                    "period_total_change",
-                    "current_position",
-                    f"직전 관측일({_korean_date(previous_date)}) 대비 {direction_label}총액이 {_signed_pct(change)} 변동했다.",
-                )
-            )
+        else:
+            top3_export = export_ranking[: min(3, len(export_ranking))]
+            export_names = ", ".join(item.country_name for item in top3_export)
+            top1_export_share = (top3_export[0].export_amount or 0.0) / export_total * 100
             key_metrics.append(
-                _price_metric("period_total_change_pct", f"직전 대비 {direction_label}총액 변동", change * 100, unit="%")
+                _price_metric("top1_export_share_pct", "1위 수출국 비중", top1_export_share, unit="%")
             )
+            export_fact = (
+                f"같은 기간 한국의 {series.mineral.name} {scope_prefix}수출액은 총 {_quantity(export_total)}달러이며, "
+                f"주요 수출 대상국은 {export_names} 순이다. 수입총액 대비 수출총액은 {_number(ratio)}% 수준이다."
+            )
+        claims.append(EvidenceClaim("export_summary", "current_position", export_fact, required=True))
     else:
         claims.append(
             EvidenceClaim(
-                "single_snapshot",
+                "no_export_data",
                 "current_position",
-                "조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았다.",
+                "같은 기간 수출 관측치가 없어 수출 현황은 계산하지 않았다.",
+                required=True,
             )
         )
 
@@ -1174,6 +1198,12 @@ def calculate_global_trade_summary(
     `import_amount` 필드를 재사용한다(map_global은 KOMIS가 사실상 수입
     방향만 제공 — 기존 코드도 `item.import_amount`만 읽는다).
 
+    2026-09-09 발주처 업무지시서 §4-7 대응 — "(단위 미상)"을 "달러"로
+    바꿨다. KOMIS 응답엔 명시적 통화단위 필드가 없지만, `calculate_
+    domestic_trade_summary`(map_korea)와 같은 실측 근거(원값이 이미
+    실제 달러 규모— 예: 갈륨 한 양자무역 루트가 천만 달러대, 천 달러
+    단위로 보면 백억 달러대가 돼 비현실적)로 "달러"임을 확인했다.
+
     `top_country_yearly_trend`(2026-08-31 신설, `getBarChartDataNation`
     기반) — 원래 `getListDataNation`은 단일 스냅샷이라(`dates`가 사실상
     항상 1개) `period_total_change`가 실전에서 거의 발동하지 않았다.
@@ -1216,11 +1246,11 @@ def calculate_global_trade_summary(
         EvidenceClaim(
             "current_state",
             "core_diagnosis",
-            f"{_korean_date(latest_date)} 기준 {series.mineral.name} 세계 교역 총액은 {_quantity(total)}(단위 미상)이다.",
+            f"{_korean_date(latest_date)} 기준 {series.mineral.name} 세계 교역 총액은 {_quantity(total)}달러다.",
             required=True,
         )
     ]
-    key_metrics = [_price_metric("total_amount", "세계 교역 총액", total)]
+    key_metrics = [_price_metric("total_amount", "세계 교역 총액", total, unit="달러")]
 
     top_n = ranking[: min(3, len(ranking))]
     if top_n:

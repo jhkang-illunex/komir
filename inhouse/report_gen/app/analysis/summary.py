@@ -2601,7 +2601,6 @@ class AnalysisSummaryService:
             request.page_id,
             calculate_domestic_trade_summary,
             series,
-            direction=request.trade_direction or "import",
             komis_totals=komis_trade_totals,
             country_filter_name=country_filter_name,
             scope_label=scope_label,
@@ -2713,10 +2712,13 @@ class AnalysisSummaryService:
             "end_date": request.end_date or dates[-1],
         }
         if request.page_id == "map_korea":
-            # 2026-08-27 신설 — 보고서 상단에 조회 방향(수입/수출)을 표시해
-            # PDF 지침 점검(/unlazy)에서 고친 방향 라벨 버그를 화면에서도
-            # 바로 확인할 수 있게 한다.
-            applied_filters["trade_direction"] = "수출" if request.trade_direction == "export" else "수입"
+            # 2026-09-09 발주처 업무지시서 §3.3 대응으로 report_gen
+            # 계산기(calculate_domestic_trade_summary)가 이제 수입·수출을
+            # 항상 함께 낸다 — `request.trade_direction`이 와도 더 이상
+            # 어느 한쪽만 보여준다는 뜻이 아니라서(2026-08-27에 추가했던
+            # "조회방향" 표시가 이제 부정확해진다), 그 표시를 뺐다.
+            # `trade_direction` 필드 자체는 다른 소비자(streamlit_demo)
+            # 호환을 위해 모델에는 남겨뒀다.
             # 2026-08-31 신설 — 조회필터 4종(기간구분·국가·생산품유형/HS)을
             # 보고서 상단 표에도 노출한다(서사 반영은 calculate_domestic_
             # trade_summary가 이미 처리 — 여기는 메타데이터 표시용).
