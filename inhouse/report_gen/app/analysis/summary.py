@@ -97,7 +97,6 @@ from .models import (  # noqa: E402
     CompositeIndexSeries,
     DataQuality,
     DetectedPattern,
-    GeoEventObservation,
     GradeResult,
     IndicatorObservation,
     IndicatorSeries,
@@ -187,21 +186,6 @@ def _observations_from_request(
         ) from exc
 
 
-def _geo_events_from_request(request: AnalysisSummaryRequest) -> list[GeoEventObservation] | None:
-    """`request.geo_events`(선택 필드, PDF §1-1 "가격 변동의 주요 요인" 대응)를
-    검증한다. `_observations_from_request`와 달리 **없으면 에러가 아니라 그냥
-    None**이다 — 하위호환 필드라 안 보내는 요청이 정상이다(2026-08-28 신설)."""
-
-    if not request.geo_events:
-        return None
-    try:
-        return [GeoEventObservation.model_validate(item) for item in request.geo_events]
-    except Exception as exc:  # noqa: BLE001 — pydantic ValidationError 등을 NO_DATA로 통일
-        raise DataSourceError(
-            f"{request.page_id}: geo_events 형식이 GeoEventObservation과 맞지 않는다: {exc}"
-        ) from exc
-
-
 def _komis_period_comparisons_from_request(
     request: AnalysisSummaryRequest,
     *,
@@ -209,7 +193,7 @@ def _komis_period_comparisons_from_request(
 ) -> PriceKomisPeriodComparisons | None:
     """`request.komis_period_comparisons`(선택 필드, 2026-08-28 추가조사 확정 —
     `report_gen_price_base_metals_부실요약_원인조사_260828.md`)를 검증한다.
-    `_geo_events_from_request`와 같은 패턴: 없으면 에러가 아니라 None(하위호환).
+    없으면 에러가 아니라 None(하위호환).
 
     `raw`(2026-08-30 신설) — `_parse_komis_price_response`가 `komis_response`
     에서 뽑아낸 값을 여기 override로 넘긴다(`_observations_from_request`의
@@ -233,7 +217,7 @@ def _komis_trade_totals_from_request(
 ) -> TradeKomisTotals | None:
     """`request.komis_trade_totals`(선택 필드, 2026-08-29 Phase3 라이브 재검증
     확정 — `report_gen_KOMIS라이브재검증_Phase3_260829.md`)를 검증한다.
-    `_geo_events_from_request`와 같은 패턴: 없으면 에러가 아니라 None(하위호환).
+    없으면 에러가 아니라 None(하위호환).
 
     `raw`(2026-08-30 신설) — `_trade_series_from_request`가 `komis_response`
     에서 뽑아낸 값을 여기 override로 넘긴다(`_komis_period_comparisons_
@@ -349,12 +333,16 @@ class _KomisPriceParsed:
     price_criterion: str | None
     compare_mineral_name: str | None
     compare_price_criterion: str | None
+    #: `dataAvg.INFO.prcUnitCdNm`(2026-09-09 발주처 업무지시서 — 핵심 진단
+    #: 문장에 단위가 없다는 지적 대응). mineral_name/price_criterion과 같은
+    #: 자리(`komis_info`)에서 뽑는다.
+    price_unit: str | None = None
 
 
 def _parse_komis_price_response(raw: dict) -> _KomisPriceParsed:
-    """`request.komis_response`(2026-08-30 신설)를 report_gen 내부 shape 7종
+    """`request.komis_response`(2026-08-30 신설)를 report_gen 내부 shape 8종
     (observations, compare_observations, komis_period_comparisons, mineral_name,
-    price_criterion, compare_mineral_name, compare_price_criterion)으로
+    price_criterion, compare_mineral_name, compare_price_criterion, price_unit)으로
     변환한다 — KOMIS `getMnrlPrcByMnrkndUnqCd` 원본 응답을 그대로 받아
     호출자가 필드명을 손으로 옮겨 담을 필요를 없앤다(발주처 납품 최적화
     요청, 2026-08-30).
@@ -372,6 +360,12 @@ def _parse_komis_price_response(raw: dict) -> _KomisPriceParsed:
       은 이미 있는데 komis_response 경로가 안 채워서 보고서 상단
       "**가격기준**: ..." 줄이 항상 비어 있었다. mineral_name과 같은 규칙 —
       호출자가 명시한 `price_criterion`이 있으면 그쪽이 우선).
+    - `dataAvg.INFO.prcUnitCdNm`(예: "USD"·"CNY") → price_unit(2026-09-09
+      발주처 업무지시서 대응 — 핵심 진단 문장에 단위가 없다는 지적. 실 KOMIS
+      덤프 전수 확인 결과 값은 "USD"/"CNY" 2종뿐이라 `komir_summary.py`가
+      한국어 표기("달러"/"위안")로 바꾼다 — mineral_name과 같은 자리에서
+      뽑되, 이 필드는 사람이 손으로 대체할 이유가 없어 호출자 우선순위
+      규칙은 두지 않는다).
     - `dataAvg.cmpMap.INFO.mnrkndKornNm` → compare_mineral_name(2026-08-30
       2차 발견 — 사용자가 "compare_mineral_name도 komis_response 안에
       있지 않냐"고 지적해 Playwright 라이브 재현(네오디뮴 대비 갈륨
@@ -410,6 +404,7 @@ def _parse_komis_price_response(raw: dict) -> _KomisPriceParsed:
     komis_info = dataAvg.get("INFO") or {}
     mineral_name = komis_info.get("mnrkndKornNm") or None
     price_criterion = komis_info.get("prcCrtr") or None
+    price_unit = komis_info.get("prcUnitCdNm") or None
     compare_info = (dataAvg.get("cmpMap") or {}).get("INFO") or {}
     compare_mineral_name = compare_info.get("mnrkndKornNm") or None
     compare_price_criterion = compare_info.get("prcCrtr") or None
@@ -439,6 +434,7 @@ def _parse_komis_price_response(raw: dict) -> _KomisPriceParsed:
         price_criterion=price_criterion,
         compare_mineral_name=compare_mineral_name,
         compare_price_criterion=compare_price_criterion,
+        price_unit=price_unit,
     )
 
 
@@ -2368,12 +2364,14 @@ class AnalysisSummaryService:
         komis_price_criterion = None
         komis_compare_mineral_name = None
         komis_compare_price_criterion = None
+        komis_price_unit = None
         if request.komis_response is not None:
             parsed = _parse_komis_price_response(request.komis_response)
             komis_mineral_name = parsed.mineral_name
             komis_price_criterion = parsed.price_criterion
             komis_compare_mineral_name = parsed.compare_mineral_name
             komis_compare_price_criterion = parsed.compare_price_criterion
+            komis_price_unit = parsed.price_unit
             raw_observations = parsed.observations
             if parsed.compare_observations is not None:
                 raw_compare_observations = parsed.compare_observations
@@ -2409,6 +2407,7 @@ class AnalysisSummaryService:
             data_as_of=dates[-1],
             observations=observations,
             warnings=[],
+            price_unit=request.price_unit or komis_price_unit,
         )
         # 2026-08-26: KOMIS 광물자원가격 "비교광종" 대응(price_* 4종 공통,
         # 2026-08-30 확인) — 원본 응답의 `compareMnrl`에
@@ -2441,7 +2440,6 @@ class AnalysisSummaryService:
                 observations=compare_obs,
                 warnings=[],
             )
-        geo_events = _geo_events_from_request(request)
         komis_period_comparisons = _komis_period_comparisons_from_request(
             request, raw=raw_komis_period_comparisons
         )
@@ -2450,7 +2448,6 @@ class AnalysisSummaryService:
             calculate_price_summary,
             series,
             compare_series=compare_series,
-            geo_events=geo_events,
             komis_period_comparisons=komis_period_comparisons,
             srch_avg_opt=request.srch_avg_opt,
             srch_field=request.srch_field,
