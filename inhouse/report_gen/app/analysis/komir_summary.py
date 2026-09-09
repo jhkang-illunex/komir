@@ -771,7 +771,9 @@ def calculate_price_summary(
             )
             break
 
-    ma_trend_fact, price_momentum_fact, ma_rsi_computed = _ma_rsi_fact(observations_with_price, latest.commerce_price)
+    ma_trend_fact, price_momentum_fact, ma_rsi_computed = _ma_rsi_fact(
+        observations_with_price, latest.commerce_price, srch_avg_opt=srch_avg_opt
+    )
     # 2026-09-09 발주처 업무지시서 §3.1 재배치 — "평균 대비 위치"(이동평균
     # 배열 기반)는 "최근 변화"(major_changes)로, 단기 매매압력(RSI 기반)은
     # "변동 구간"과 함께 current_position에 남긴다.
@@ -1618,7 +1620,7 @@ _MA_ALIGNMENT_LABELS = {
 
 
 def _ma_rsi_fact(
-    observations_with_price: list, latest_price: float
+    observations_with_price: list, latest_price: float, *, srch_avg_opt: str | None = None
 ) -> tuple[str | None, str | None, bool]:
     """이동평균 배열·RSI를 각각 사용자 친화 문구 1개씩으로 바꾼다(2026-09-09
     발주처 업무지시서 §2.3 대응 — 이전엔 "20일선 X·60일선 Y로 이동평균이
@@ -1633,7 +1635,14 @@ def _ma_rsi_fact(
     2026-09-09 후속(3단계, 발주처 복잡성 해소 지시) — 이 함수에서만 쓰이던
     이동평균 계산·배열 판정·RSI 계산 3개 헬퍼(구 _moving_averages·
     _ma_alignment_label·_rsi14, 호출부가 이 함수 하나뿐이었다)를 인라인
-    통합했다. 산식은 그대로다."""
+    통합했다. 산식은 그대로다.
+
+    2026-09-09 오전 2차 상세 피드백 후속(main-agent 검증에서 발견·반려) —
+    momentum_fact 수치 근거에 쓰는 `srch_avg_opt`는 관측치가 일간이라고
+    고정하지 않는다. `_volatility_fact`·`price_streak`(`_detect_granularity`
+    기반)와 같은 방식으로 실제 조회 단위(일/주/개월/분기/년)를 판별해
+    "거래일" 하드코딩(주간·월간 요청에도 무조건 "일"로 표기하던 버그,
+    2026-08-31 이동평균 창 라벨 버그와 같은 종류) 재발을 막는다."""
 
     prices = [item.commerce_price for item in observations_with_price]
 
@@ -1672,18 +1681,23 @@ def _ma_rsi_fact(
         # 2026-09-09 발주처 피드백(오전 2차 상세) — "단기 매매 압력은 어느
         # 한쪽으로도 치우치지 않았다" 문장에 근거 데이터가 없다는 지적.
         # RSI 값·"RSI"·"과매수"·"과매도" 단어는 여전히 노출하지 않되(§2.3
-        # 제약 유지), 이미 계산해 둔 최근 14거래일 등락(deltas[-14:])의
-        # 상승/하락 일수를 세어 근거 수치로 붙인다.
+        # 제약 유지), 이미 계산해 둔 최근 14개 관측치 등락(deltas[-14:])의
+        # 상승/하락 횟수를 세어 근거 수치로 붙인다. 단위는 하드코딩("일")
+        # 하지 않고 `_detect_granularity`로 실제 조회 단위를 판별한다 —
+        # 주간·월간 요청에도 "거래일"로 고정 표기하던 버그를
+        # main-agent가 재현·반려해 수정(2026-08-31 이동평균 창 라벨 버그와
+        # 같은 종류의 재발).
+        unit, _ = _detect_granularity(observations_with_price, srch_avg_opt=srch_avg_opt)
         recent_deltas = deltas[-14:]
-        up_days = sum(1 for delta in recent_deltas if delta > 0)
-        down_days = sum(1 for delta in recent_deltas if delta < 0)
+        up_count = sum(1 for delta in recent_deltas if delta > 0)
+        down_count = sum(1 for delta in recent_deltas if delta < 0)
         if rsi >= 70:
-            momentum_fact = f"최근 14거래일 중 {up_days}일 상승하며 단기적으로 가격 부담이 높아진 상태입니다."
+            momentum_fact = f"최근 14{unit} 중 {up_count}{unit} 상승하며 단기적으로 가격 부담이 높아진 상태입니다."
         elif rsi <= 30:
-            momentum_fact = f"최근 14거래일 중 {down_days}일 하락하며 단기적으로 가격 하락 압력이 크게 반영된 상태입니다."
+            momentum_fact = f"최근 14{unit} 중 {down_count}{unit} 하락하며 단기적으로 가격 하락 압력이 크게 반영된 상태입니다."
         else:
             momentum_fact = (
-                f"최근 14거래일간 상승 {up_days}일·하락 {down_days}일로 단기 매매 압력은 "
+                f"최근 14{unit}간 상승 {up_count}{unit}·하락 {down_count}{unit}로 단기 매매 압력은 "
                 "특별히 어느 한쪽으로 치우치지 않은 상태입니다."
             )
     return trend_fact, momentum_fact, True
