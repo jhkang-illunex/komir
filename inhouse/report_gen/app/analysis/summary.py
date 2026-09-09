@@ -648,6 +648,28 @@ def _mineral_map_unit_label(raw_unit: str | None) -> str | None:
     return _MINERAL_MAP_UNIT_LABELS.get(raw_unit, raw_unit)
 
 
+def _mineral_map_value_key(measure: str) -> str:
+    return "burudgQuty" if measure == "reserves" else "prdctnQuty"
+
+
+def _mineral_map_country_observation(year: int, row: dict, value_key: str) -> dict | None:
+    """`getListMapMnrlChartData`/`getListMapMnrlData` 공통 행 구조(2026-09-09
+    복잡성 해소 — 두 파서가 이 추출 로직을 그대로 복제하고 있었다) →
+    국가별 관측치 dict 1건, 값이 없거나 0 이하면 None(호출부가 건너뛴다)."""
+
+    value = _komis_num(row.get(value_key))
+    if value is None or value <= 0:
+        return None
+    return {
+        "year": year,
+        "country_code": row.get("ntnEngCd") or row.get("ntnKornNm"),
+        "country_name": row.get("ntnKornNm") or row.get("ntnEngNm"),
+        "value": value,
+        "is_total": False,
+        "is_other": False,
+    }
+
+
 def _parse_komis_mineral_map_response(raw: dict, measure: str) -> tuple[list[dict], str | None]:
     """`getListMapMnrlChartData` 원본 응답 → observations + unit.
     `measure`("reserves"/"production")는 응답 본문에 없는 조회 파라미터라
@@ -671,27 +693,16 @@ def _parse_komis_mineral_map_response(raw: dict, measure: str) -> tuple[list[dic
     합계를 쓴다."""
 
     rows = raw.get("data") or []
-    value_key = "burudgQuty" if measure == "reserves" else "prdctnQuty"
+    value_key = _mineral_map_value_key(measure)
     unit = _mineral_map_unit_label(str(rows[0].get("cdVal") or "").strip() or None) if rows else None
     observations: list[dict] = []
     for row in rows:
         year_raw = row.get("crtrYr")
         if year_raw is None:
             continue
-        year = int(year_raw)
-        value = _komis_num(row.get(value_key))
-        if value is None or value <= 0:
-            continue
-        observations.append(
-            {
-                "year": year,
-                "country_code": row.get("ntnEngCd") or row.get("ntnKornNm"),
-                "country_name": row.get("ntnKornNm") or row.get("ntnEngNm"),
-                "value": value,
-                "is_total": False,
-                "is_other": False,
-            }
-        )
+        observation = _mineral_map_country_observation(int(year_raw), row, value_key)
+        if observation is not None:
+            observations.append(observation)
     return observations, unit
 
 
@@ -715,24 +726,61 @@ def _parse_komis_map_mineral_snapshot_response(
     반환하고, 세계 총계는 이 값들의 합으로 자동 계산되게 둔다."""
 
     rows = raw.get("data") or []
-    value_key = "burudgQuty" if measure == "reserves" else "prdctnQuty"
+    value_key = _mineral_map_value_key(measure)
     unit = _mineral_map_unit_label(str(rows[0].get("cdVal") or "").strip() or None) if rows else None
-    observations: list[dict] = []
-    for row in rows:
-        value = _komis_num(row.get(value_key))
-        if value is None or value <= 0:
-            continue
-        observations.append(
-            {
-                "year": year,
-                "country_code": row.get("ntnEngCd") or row.get("ntnKornNm"),
-                "country_name": row.get("ntnKornNm") or row.get("ntnEngNm"),
-                "value": value,
-                "is_total": False,
-                "is_other": False,
-            }
-        )
+    observations = [
+        observation
+        for row in rows
+        if (observation := _mineral_map_country_observation(year, row, value_key)) is not None
+    ]
     return observations, unit
+
+
+def _build_mineral_map_secondary_series(
+    request: AnalysisSummaryRequest, primary_series: MineralMapSeries
+) -> MineralMapSeries | None:
+    """`komis_snapshot_response`(교차비교용 반대 measure 스냅샷)가 있으면
+    보조 `MineralMapSeries`를 만든다 — 없으면 `None`.
+
+    2026-09-09 복잡성 해소(사용자 지시 — "JSON 받아서 전처리하는 루틴이
+    너무 복잡해지는 것 같다") — `_analyze_mineral_map` 본문에 조건문 하나로
+    40줄 가까이 박혀 있던 블록을 분리했다. 호출부는 이 함수 하나뿐이지만
+    (2026-08-31 옛 `secondary_measure_observations`(손입력)를 대체) 이름이
+    붙은 함수로 빼는 것 자체가 `_analyze_mineral_map`의 주 흐름(원본
+    시리즈 조립 → 보조 시리즈 → market_share → 계산 → 응답 조립)을 한
+    눈에 보이게 한다 — 순수 리팩터, 계산·문구 변경 없음.
+
+    연도는 primary 계열의 최신연도로 붙인다 — `calculate_mineral_map_
+    summary`의 교차비교 게이트가 그 연도(`current_year`) 데이터를
+    찾으므로 구조적으로 맞다(`models.py`의 `komis_snapshot_response`
+    필드 docstring 참고)."""
+
+    if request.komis_snapshot_response is None:
+        return None
+    secondary_measure = "production" if request.measure == "reserves" else "reserves"
+    snapshot_year = primary_series.available_end_year
+    secondary_raw, secondary_unit = _parse_komis_map_mineral_snapshot_response(
+        request.komis_snapshot_response, secondary_measure, snapshot_year
+    )
+    if not secondary_raw:
+        return None
+    secondary_observations = _observations_from_request(
+        MineralMapObservation, request, raw=secondary_raw, field_name="komis_snapshot_response"
+    )
+    secondary_years = sorted({o.year for o in secondary_observations})
+    return MineralMapSeries(
+        mineral=primary_series.mineral,
+        measure=secondary_measure,
+        unit=secondary_unit or request.unit or primary_series.unit,
+        available_start_year=secondary_years[0],
+        available_end_year=secondary_years[-1],
+        source_type="api",
+        source_id="api:request",
+        data_version=_data_version([o.model_dump(mode="json") for o in secondary_observations]),
+        data_as_of=str(secondary_years[-1]),
+        observations=secondary_observations,
+        warnings=[],
+    )
 
 
 def _parse_komis_map_mineral_share_response(raw: dict) -> list[dict]:
@@ -2095,42 +2143,7 @@ class AnalysisSummaryService:
             observations=observations,
             warnings=[],
         )
-        secondary_series = None
-        # 2026-08-31 — 옛 `secondary_measure_observations`(손입력)를
-        # `komis_snapshot_response`(`getListMapMnrlData`)로 대체(사용자
-        # 확인, "대체(권장)"). 연도는 primary 계열의 최신연도로 붙인다 —
-        # 아래 `calculate_mineral_map_summary`의 교차비교 게이트가 그
-        # 연도(`current_year`) 데이터를 찾으므로 구조적으로 맞다
-        # (`models.py`의 `komis_snapshot_response` 필드 docstring 참고).
-        if request.komis_snapshot_response is not None:
-            secondary_measure = "production" if request.measure == "reserves" else "reserves"
-            snapshot_year = series.available_end_year
-            secondary_raw, secondary_unit = _parse_komis_map_mineral_snapshot_response(
-                request.komis_snapshot_response, secondary_measure, snapshot_year
-            )
-            if secondary_raw:
-                secondary_observations = _observations_from_request(
-                    MineralMapObservation,
-                    request,
-                    raw=secondary_raw,
-                    field_name="komis_snapshot_response",
-                )
-                secondary_years = sorted({o.year for o in secondary_observations})
-                secondary_series = MineralMapSeries(
-                    mineral=series.mineral,
-                    measure=secondary_measure,
-                    unit=secondary_unit or request.unit or unit,
-                    available_start_year=secondary_years[0],
-                    available_end_year=secondary_years[-1],
-                    source_type="api",
-                    source_id="api:request",
-                    data_version=_data_version(
-                        [o.model_dump(mode="json") for o in secondary_observations]
-                    ),
-                    data_as_of=str(secondary_years[-1]),
-                    observations=secondary_observations,
-                    warnings=[],
-                )
+        secondary_series = _build_mineral_map_secondary_series(request, series)
         market_share = None
         if request.komis_share_response is not None:
             market_share = _parse_komis_map_mineral_share_response(request.komis_share_response) or None
@@ -2142,7 +2155,9 @@ class AnalysisSummaryService:
             market_share=market_share,
         )
         context = effective_page_context("map_mineral")
-        years = sorted({item.year for item in series.observations})
+        # 2026-09-09 복잡성 해소 — `years`는 위에서 이미 계산됐다(`series.
+        # observations`가 그 `observations`와 동일 리스트라 재계산은 항상
+        # 같은 값을 냈다, 중복 계산 제거).
         applied_filters = {
             "mineral": series.mineral.name,
             "mineral_code": series.mineral.code,
