@@ -783,6 +783,67 @@ def _build_mineral_map_secondary_series(
     )
 
 
+def _mineral_map_extreme_change_countries(series: MineralMapSeries) -> tuple[str, str] | None:
+    """조회기간 첫 해→마지막 해 사이 매장량/생산량이 가장 크게 늘거나
+    준 국가를 (증가국, 감소국)으로 찾는다 — 없으면 `None`.
+
+    2026-09-09 발주처 업무지시서 §3.3 ③④ 대응(사용자 승인) —
+    `calculate_mineral_map_summary`(프로즌)는 상위 3개국 개별 변화만
+    다뤄서, PDF 예시의 콩고민주공화국처럼 top3 밖에서 급증한 국가는
+    잡지 못한다. 절대량 변화(현재값-시작값, 결측은 0 취급) 기준으로
+    전체 국가를 본다 — 비율로 하면 조회기간에 새로 나타난 국가(시작값
+    0)가 나눗셈 0으로 계산 자체가 안 된다."""
+
+    filtered = [o for o in series.observations if not o.is_total and not o.is_other]
+    years = sorted({o.year for o in filtered})
+    if len(years) < 2:
+        return None
+    start_year, current_year = years[0], years[-1]
+    start_values = {o.country_code: o.value for o in filtered if o.year == start_year}
+    current_values = {o.country_code: o.value for o in filtered if o.year == current_year}
+    names = {o.country_code: o.country_name for o in filtered}
+    codes = set(start_values) | set(current_values)
+    if len(codes) < 2:
+        return None
+    changes = {code: current_values.get(code, 0.0) - start_values.get(code, 0.0) for code in codes}
+    max_increase_code = max(codes, key=lambda code: changes[code])
+    max_decrease_code = min(codes, key=lambda code: changes[code])
+    if changes[max_increase_code] <= 0 or changes[max_decrease_code] >= 0:
+        return None
+    return names[max_increase_code], names[max_decrease_code]
+
+
+def _append_mineral_map_extreme_change(calculated: AdditionalCalculatedSummary, series: MineralMapSeries) -> None:
+    """`_mineral_map_extreme_change_countries` 결과가 있으면 major_changes
+    근거·주요 지표 2건을 덧붙인다(계산기 프로즌 파일은 안 건드리고
+    호출자가 결과에 추가하는 방식 — `AdditionalCalculatedSummary`는
+    frozen dataclass가 아니라 이 방식이 가능하다)."""
+
+    extreme = _mineral_map_extreme_change_countries(series)
+    if extreme is None:
+        return
+    max_increase_country, max_decrease_country = extreme
+    measure_name = "매장량" if series.measure == "reserves" else "생산량"
+    calculated.claims.append(
+        EvidenceClaim(
+            "extreme_change_countries",
+            "major_changes",
+            f"조회기간 중 {measure_name}이 가장 크게 증가한 국가는 {max_increase_country}이며, "
+            f"가장 크게 감소한 국가는 {max_decrease_country}다.",
+            required=True,
+        )
+    )
+    # key_metrics·detailed_metrics는 계산기(additional_summary.py)가 만들
+    # 때부터 별개 리스트(detailed_metrics = [*key_metrics, 추가 항목])라
+    # 두 곳에 각각 추가해야 한다 — 한쪽만 덮어쓰면 다른 항목이 사라진다.
+    new_metrics = [
+        Metric(id="max_increase_country", label="최대 증가 국가", status="available", value=max_increase_country),
+        Metric(id="max_decrease_country", label="최대 감소 국가", status="available", value=max_decrease_country),
+    ]
+    calculated.key_metrics.extend(new_metrics)
+    calculated.detailed_metrics.extend(new_metrics)
+
+
 def _parse_komis_map_mineral_share_response(raw: dict) -> list[dict]:
     """`getListMnrlTablePrdctnBurgudg` 원본 응답 → 국가별
     `[{country_code, country_name, value, share_percent}]`.
@@ -2154,6 +2215,7 @@ class AnalysisSummaryService:
             secondary_series=secondary_series,
             market_share=market_share,
         )
+        _append_mineral_map_extreme_change(calculated, series)
         context = effective_page_context("map_mineral")
         # 2026-09-09 복잡성 해소 — `years`는 위에서 이미 계산됐다(`series.
         # observations`가 그 `observations`와 동일 리스트라 재계산은 항상
