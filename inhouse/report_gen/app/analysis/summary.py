@@ -68,6 +68,7 @@ from .additional_summary import (  # noqa: E402
     SectionId,
     SummaryPageContext,
     _number,
+    _quantity,
     calculate_composite_summary,
     calculate_mineral_map_summary,
     calculate_price_forecast_summary,
@@ -1136,10 +1137,13 @@ def _score_position_meaning(page_id: str, difference: float) -> str:
 
 
 def _change_phrase(value: float) -> str:
+    # 2026-09-09 사용자 지시 — price_* 4종에 적용한 "정수면 소숫점 생략"을
+    # 나머지 페이지에도 동일 적용(공통화). 지수 점수("점")는 등락률(%)과
+    # 달리 raw quantity이므로 `_number` 대신 `_quantity`를 쓴다.
     if value > 0:
-        return f"{_number(value)}점 올라"
+        return f"{_quantity(value)}점 올라"
     if value < 0:
-        return f"{_number(abs(value))}점 내려"
+        return f"{_quantity(abs(value))}점 내려"
     return "변동 없이"
 
 
@@ -1255,7 +1259,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
 
     current_fact = (
         f"{current.month} {series.mineral.name} {policy.name}는 "
-        f"{_number(current.score)}점으로 {grade.label} 단계다."
+        f"{_quantity(current.score)}점으로 {grade.label} 단계다."
     )
     claims = [EvidenceClaim("current_state", "core_diagnosis", current_fact, required=True)]
 
@@ -1291,7 +1295,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
             # 은 이 문장에선 안 쓴다 — "직전 관측치" 중복 표기 방지).
             previous_lead = "최근 한 달에는 전월" if is_contiguous else f"직전 관측치({previous.month})"
             score_fact = (
-                f"{previous_lead} {_number(previous.score)}점 대비 "
+                f"{previous_lead} {_quantity(previous.score)}점 대비 "
                 f"{_number(abs(pct_change))}% {'상승' if pct_change > 0 else '하락' if pct_change < 0 else '보합'}하며 "
                 f"{_score_meaning(series.page_id, score_change)}."
             )
@@ -1549,18 +1553,18 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
     )
     if difference_from_average > 0:
         average_comparison = (
-            f"평균 {_number(period_average)}점보다 "
-            f"{_number(difference_from_average)}점 높아"
+            f"평균 {_quantity(period_average)}점보다 "
+            f"{_quantity(difference_from_average)}점 높아"
         )
     elif difference_from_average < 0:
         average_comparison = (
-            f"평균 {_number(period_average)}점보다 "
-            f"{_number(abs(difference_from_average))}점 낮아"
+            f"평균 {_quantity(period_average)}점보다 "
+            f"{_quantity(abs(difference_from_average))}점 낮아"
         )
     else:
-        average_comparison = f"평균 {_number(period_average)}점과 같아"
+        average_comparison = f"평균 {_quantity(period_average)}점과 같아"
     position_detail = (
-        f"현재 점수 {_number(current.score)}점은 조회기간 {average_comparison}, "
+        f"현재 점수 {_quantity(current.score)}점은 조회기간 {average_comparison}, "
         f"{_score_position_meaning(series.page_id, difference_from_average)}."
     )
     if score_change is None or score_change == 0:
@@ -1602,7 +1606,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
                 "평균 대비 현재 점수",
                 difference_from_average,
                 unit="점",
-                basis=f"조회기간 평균 {_number(period_average)}점 대비",
+                basis=f"조회기간 평균 {_quantity(period_average)}점 대비",
             ),
         ]
     )
