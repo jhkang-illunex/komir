@@ -12,6 +12,7 @@ llm_summary`의 근거 검증 계약을 벗어나므로 하지 않는다(검증�
 from __future__ import annotations
 
 import logging
+import re
 
 from .models import AnalysisSummaryResponse
 
@@ -117,19 +118,31 @@ def _format_metric_row(value: float | int | str | None, unit: str | None) -> tup
     return str(value), unit or ""
 
 
+#: (?<!니)다\.(?=\s|$) — "다." 앞이 "니"가 아니면서(이미 "입니다."인 것과
+#: 구분) 뒤가 공백 또는 문자열 끝인 것만 문장 종결로 본다("단계다"처럼 단어
+#: 중간의 "다"는 애초에 "다." 형태가 아니라 매치되지 않는다).
+_COPULA_SENTENCE_END_RE = re.compile(r"(?<!니)다\.(?=\s|$)")
+
+
 def _to_polite_copula(text: str) -> str:
-    """정의문 끝의 평서형 계사("...자료다.")를 존댓말("...자료입니다.")로
+    """정의문의 평서형 계사("...자료다.")를 존댓말("...자료입니다.")로
     바꾼다(2026-08-31 사용자 지시 — 제목 줄 어투가 본문 LLM 정제 문장의
     "-습니다"체와 안 맞는다는 지적). `KOMIR_PAGE_CONTEXTS`(komir_summary.py)·
     `ADDITIONAL_PAGE_CONTEXTS`(additional_summary.py, 외부repo "무수정 이식"이라
-    원문을 못 고침)의 정의문이 전부 이 "...(명사)다." 계사 종결형이라 —
-    범용 한국어 활용 변환이 아니라 이 특정 종결형(계사 "이다"의 "-다"체)에만
-    적용되는 정확한 규칙이다. 이 형태가 아니면(예: 동사 활용형) 원문 그대로
-    둔다 — 잘못된 변환보다 무변환이 안전하다."""
+    원문을 못 고침)·정책 YAML(`resources/policies/*.yaml`)의 정의문이 전부 이
+    "...(명사)다." 계사 종결형이라 — 범용 한국어 활용 변환이 아니라 이 특정
+    종결형(계사 "이다"의 "-다"체)에만 적용되는 정확한 규칙이다. 이 형태가
+    아니면(예: 동사 활용형) 원문 그대로 둔다 — 잘못된 변환보다 무변환이 안전
+    하다.
 
-    if text.endswith("다."):
-        return text[:-2] + "입니다."
-    return text
+    2026-09-09 main-agent 재검증(B-3) — indicator_supply.yaml의 정의문이
+    두 문장(둘 다 "...지표다.")인데, 예전 구현은 문자열 끝만 보고 치환해
+    (`text.endswith("다.")`) 중간 문장은 그대로 남아 있었다("...분류하는
+    지표다. 광종별 ... 강한 지표다."에서 앞 문장만 비격식체로 잔존) —
+    395콤보 렌더링을 `(?<!니)다\\.` 정규식으로 스캔해 발견. 문자열 끝
+    검사 대신 정규식으로 텍스트 안의 모든 계사 종결을 치환한다."""
+
+    return _COPULA_SENTENCE_END_RE.sub("입니다.", text)
 
 
 def render_markdown_report(response: AnalysisSummaryResponse) -> str:

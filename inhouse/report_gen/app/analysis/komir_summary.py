@@ -1052,7 +1052,7 @@ def calculate_domestic_trade_summary(
     if country_filter_name:
         core_fact = (
             f"{_korean_date(latest_date)} 기준 한국의 {series.mineral.name} {scope_prefix}수입액은 총 "
-            f"{_quantity(import_total)}달러다."
+            f"{_quantity(import_total)}달러입니다."
         )
     else:
         top3_import = import_ranking[: min(3, len(import_ranking))]
@@ -1071,7 +1071,7 @@ def calculate_domestic_trade_summary(
             )
         core_fact = (
             f"{_korean_date(latest_date)} 기준 한국의 {series.mineral.name} {scope_prefix}수입액은 총 "
-            f"{_quantity(import_total)}달러다. " + ", ".join(rank_parts) + "다."
+            f"{_quantity(import_total)}달러입니다. " + ", ".join(rank_parts) + "입니다."
         )
     claims = [EvidenceClaim("current_state", "core_diagnosis", core_fact, required=True)]
 
@@ -1083,7 +1083,7 @@ def calculate_domestic_trade_summary(
                 "import_concentration",
                 "major_changes",
                 f"조회가 {country_filter_name} 한 국가로 한정돼 있어, {country_filter_name}의 "
-                f"수입액 {_quantity(import_total)}달러가 그대로 이번 조회의 전체 금액이다.",
+                f"수입액 {_quantity(import_total)}달러가 그대로 이번 조회의 전체 금액입니다.",
                 required=True,
             )
         )
@@ -1100,10 +1100,10 @@ def calculate_domestic_trade_summary(
         if cr3 is not None and cr5 is not None:
             concentration_fact = (
                 f"상위 3개국 수입 비중은 {share_scope} {_number(cr3 * 100)}%이며, "
-                f"상위 5개국까지 합산하면 {share_scope} {_number(cr5 * 100)}%를 차지한다."
+                f"상위 5개국까지 합산하면 {share_scope} {_number(cr5 * 100)}%를 차지합니다."
             )
         elif cr3 is not None:
-            concentration_fact = f"상위 3개국 수입 비중은 {share_scope} {_number(cr3 * 100)}%다."
+            concentration_fact = f"상위 3개국 수입 비중은 {share_scope} {_number(cr3 * 100)}%입니다."
         else:
             concentration_fact = None
         if concentration_fact is not None:
@@ -1127,7 +1127,7 @@ def calculate_domestic_trade_summary(
         if country_filter_name:
             export_fact = (
                 f"같은 기간 한국의 {series.mineral.name} {scope_prefix}수출액은 총 {_quantity(export_total)}달러이며, "
-                f"수입총액 대비 수출총액은 {_number(ratio)}% 수준이다."
+                f"수입총액 대비 수출총액은 {_number(ratio)}% 수준입니다."
             )
         else:
             top3_export = export_ranking[: min(3, len(export_ranking))]
@@ -1138,7 +1138,7 @@ def calculate_domestic_trade_summary(
             )
             export_fact = (
                 f"같은 기간 한국의 {series.mineral.name} {scope_prefix}수출액은 총 {_quantity(export_total)}달러이며, "
-                f"주요 수출 대상국은 {export_names} 순이다. 수입총액 대비 수출총액은 {_number(ratio)}% 수준이다."
+                f"주요 수출 대상국은 {export_names} 순입니다. 수입총액 대비 수출총액은 {_number(ratio)}% 수준입니다."
             )
         claims.append(EvidenceClaim("export_summary", "current_position", export_fact, required=True))
     else:
@@ -1146,7 +1146,7 @@ def calculate_domestic_trade_summary(
             EvidenceClaim(
                 "no_export_data",
                 "current_position",
-                "같은 기간 수출 관측치가 없어 수출 현황은 계산하지 않았다.",
+                "같은 기간 수출 관측치가 없어 수출 현황은 계산하지 않았습니다.",
                 required=True,
             )
         )
@@ -1246,7 +1246,7 @@ def calculate_global_trade_summary(
         EvidenceClaim(
             "current_state",
             "core_diagnosis",
-            f"{_korean_date(latest_date)} 기준 {series.mineral.name} 세계 교역 총액은 {_quantity(total)}달러다.",
+            f"{_korean_date(latest_date)} 기준 {series.mineral.name} 세계 교역 총액은 {_quantity(total)}달러입니다.",
             required=True,
         )
     ]
@@ -1268,7 +1268,7 @@ def calculate_global_trade_summary(
             EvidenceClaim(
                 "top1_country",
                 "major_changes",
-                "글로벌 교역 규모 " + ", ".join(parts) + "를 기록했다.",
+                "글로벌 교역 규모 " + ", ".join(parts) + "를 기록했습니다.",
                 required=True,
             )
         )
@@ -1280,7 +1280,7 @@ def calculate_global_trade_summary(
             EvidenceClaim(
                 "top3_concentration",
                 "major_changes",
-                f"상위 3개 루트의 합산 점유율은 {_number(cr3 * 100)}%다.",
+                f"상위 3개 루트의 합산 점유율은 {_number(cr3 * 100)}%입니다.",
                 required=True,
             )
         )
@@ -1292,7 +1292,7 @@ def calculate_global_trade_summary(
             EvidenceClaim(
                 "top5_concentration",
                 "major_changes",
-                f"상위 5개 루트의 합산 점유율은 {_number(cr5 * 100)}%다.",
+                f"상위 5개 루트의 합산 점유율은 {_number(cr5 * 100)}%입니다.",
             )
         )
         key_metrics.append(_price_metric("top5_share_pct", "상위5루트 비중", cr5 * 100, unit="%"))
@@ -1326,17 +1326,17 @@ def calculate_global_trade_summary(
             hits_share = hits_sum / total * 100
             korea_fact = (
                 f"대한민국은 세부현황 기준 {pieces[0]}와 {pieces[1]}에 각각 등장하여, "
-                f"두 루트 합산 {_quantity(hits_sum)}달러({_number(hits_share)}%)를 기록했다."
+                f"두 루트 합산 {_quantity(hits_sum)}달러({_number(hits_share)}%)를 기록했습니다."
             )
         else:
-            korea_fact = f"대한민국은 세부현황 기준 {pieces[0]}로 나타났다."
+            korea_fact = f"대한민국은 세부현황 기준 {pieces[0]}로 나타났습니다."
         claims.append(EvidenceClaim("korea_route_rank", "major_changes", korea_fact))
     else:
         claims.append(
             EvidenceClaim(
                 "korea_route_absent",
                 "major_changes",
-                "대한민국이 포함된 개별 루트는 조회된 상위 데이터에 나타나지 않았다.",
+                "대한민국이 포함된 개별 루트는 조회된 상위 데이터에 나타나지 않았습니다.",
             )
         )
 
@@ -1361,7 +1361,7 @@ def calculate_global_trade_summary(
                 EvidenceClaim(
                     "period_total_change",
                     "current_position",
-                    f"직전 관측일({_korean_date(previous_date)}) 대비 세계 교역 총액이 {_signed_pct(change)} 변동했다.",
+                    f"직전 관측일({_korean_date(previous_date)}) 대비 세계 교역 총액이 {_signed_pct(change)} 변동했습니다.",
                 )
             )
             key_metrics.append(
@@ -1372,7 +1372,7 @@ def calculate_global_trade_summary(
                 EvidenceClaim(
                     "single_snapshot",
                     "current_position",
-                    "조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았다.",
+                    "조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
                 )
             )
     elif top_country_yearly_trend and len(top_country_yearly_trend[1]) >= 2:
@@ -1390,7 +1390,7 @@ def calculate_global_trade_summary(
                     "country_yearly_trend",
                     "current_position",
                     f"KOMIS 차트 기준 {country_name}의 {latest_year}년 교역액은 {previous_year}년 대비 "
-                    f"{_signed_pct(change)} 변동했다.",
+                    f"{_signed_pct(change)} 변동했습니다.",
                 )
             )
             key_metrics.append(
@@ -1403,7 +1403,7 @@ def calculate_global_trade_summary(
                 EvidenceClaim(
                     "single_snapshot",
                     "current_position",
-                    "조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았다.",
+                    "조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
                 )
             )
     else:
@@ -1411,7 +1411,7 @@ def calculate_global_trade_summary(
             EvidenceClaim(
                 "single_snapshot",
                 "current_position",
-                "조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았다.",
+                "조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
             )
         )
 
