@@ -258,9 +258,10 @@ PRICE_SUMMARY_INSTRUCTIONS = """\
   않는다.
 - inventory_level 근거가 있으면 current_position에 재고량 수준과(있으면) 전일
   또는 직전 관측치 대비 등락을 그대로 옮겨 쓴다 — 근거 문장이 이미 완성된
-  문장이니 새 단위·거래소명(예: "LME"·"톤")을 지어 붙이지 않는다. 근거가
-  없으면(inventory_level이 없는 요청) 재고량을 언급하지 않는다 — 다른 절의
-  수치로 재고 수준을 추정해서 채우지 않는다.
+  문장이니(2026-09-09 오전 2차 상세 피드백으로 "톤" 단위가 이미 포함돼
+  있다) 그 단위를 그대로 유지하고, "LME" 같은 거래소명은 여전히 새로
+  지어 붙이지 않는다. 근거가 없으면(inventory_level이 없는 요청) 재고량을
+  언급하지 않는다 — 다른 절의 수치로 재고 수준을 추정해서 채우지 않는다.
 - volatility·price_momentum·recovery_since_low·price_position·
   inventory_context·relative_value 근거는(2026-08-31 신설, price_momentum은
   2026-09-09 기술지표명 순화로 개명, recovery_since_low·price_position은
@@ -274,6 +275,10 @@ PRICE_SUMMARY_INSTRUCTIONS = """\
   완성 문장이다 — 그런 표현을 되살려 쓰지 않는다. price_position 문장
   안에 "참고로 조회기간 내 최대 하락폭(...)은 필수 지표는 아님)"이 있으면
   그 부분은 참고용이라는 뜻이니 삭제하거나 다른 문장으로 승격하지 않는다.
+  inventory_context 문장도 마찬가지로(2026-09-09 오전 2차 상세 피드백 —
+  가격·재고량 동행비율이 상관관계처럼 오독될 위험 지적) "참고로 …
+  (인과관계를 의미하지 않는 참고 지표입니다)" 부분이 있으면 그대로
+  유지한다 — 이 캐비엇을 지우거나 "관련이 있다"는 식으로 바꿔 쓰지 않는다.
 - insufficient_history 근거가 있으면(신규 6개 층 중 일부가 관측치 부족으로
   생략됨) current_position 마지막 문장으로 그 근거를 그대로 옮겨 쓴다 —
   어떤 층이 왜 빠졌는지 새로 설명을 덧붙이지 않는다. 근거가 없으면 이
