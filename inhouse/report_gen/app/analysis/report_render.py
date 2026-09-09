@@ -33,6 +33,52 @@ _PRICE_SECTION_TITLES = {
     "current_position": "변동 구간",
 }
 
+#: 2026-09-09 main-agent 승인(B-5) — 나머지 6종도 각 페이지 실제 절 내용에 맞춰
+#: 업무지시서 블록명에 가깝게 표시명을 바꾼다. `_SECTION_TITLES`(범용 기본값)를
+#: 깔고 여기 등록된 page_id만 덮어쓴다 — 신규 page_id가 추가돼도 등록을 잊으면
+#: 그냥 범용 이름으로 렌더링될 뿐 죽지 않는다.
+_SECTION_TITLES_OVERRIDES: dict[str, dict[str, str]] = {
+    "indicator_composite": {
+        "core_diagnosis": "지수 요약",
+        "major_changes": "하위지수 변화",
+        "current_position": "지수 위치",
+    },
+    "indicator_market": {
+        "core_diagnosis": "현재 단계",
+        "major_changes": "단계 변화",
+        "current_position": "평균 대비 위치",
+    },
+    "indicator_supply": {
+        "core_diagnosis": "현재 수급 단계",
+        "major_changes": "단계 변화",
+        "current_position": "평균 대비 위치",
+    },
+    "map_korea": {
+        "core_diagnosis": "수입 현황",
+        "major_changes": "수입 집중도",
+        "current_position": "수출 현황",
+    },
+    "map_global": {
+        "core_diagnosis": "글로벌 교역 현황",
+        "major_changes": "주요 교역 루트",
+        "current_position": "기간 변화",
+    },
+    "map_mineral": {
+        # core_diagnosis는 measure(매장량/생산량)에 따라 동적으로 정해진다 —
+        # 아래 `_MINERAL_MAP_MEASURE_TITLES` 참고, 여기엔 안 둔다.
+        "major_changes": "국가별 순위 및 변화",
+        "current_position": "집중도 변화",
+    },
+}
+
+#: map_mineral 전용 — `_analyze_mineral_map`이 applied_filters["measure"]에
+#: `MineralMapMeasure`("reserves"/"production") 원문을 그대로 싣는다(summary.py
+#: 참고). 등록에 없는 값(신규 measure 추가 등)은 범용 "핵심 진단"으로 폴백한다.
+_MINERAL_MAP_MEASURE_TITLES = {
+    "reserves": "세계 매장량 현황",
+    "production": "세계 생산량 현황",
+}
+
 #: applied_filters의 보조 필드를 사람이 읽을 라벨로 바꾼다 — 매핑에 없는
 #: 키는 원래 이름을 그대로 쓴다(신규 필드 추가 시 여기 등록을 잊어도 죽지 않음).
 _FILTER_LABELS = {
@@ -113,7 +159,15 @@ def render_markdown_report(response: AnalysisSummaryResponse) -> str:
         lines.append(f"**현재 단계**: {response.grade.label} ({response.grade.score:,.2f}점)")
         lines.append("")
 
-    section_titles = _PRICE_SECTION_TITLES if response.page_id in _PRICE_PAGE_IDS else _SECTION_TITLES
+    if response.page_id in _PRICE_PAGE_IDS:
+        section_titles = _PRICE_SECTION_TITLES
+    else:
+        section_titles = {**_SECTION_TITLES, **_SECTION_TITLES_OVERRIDES.get(response.page_id, {})}
+        if response.page_id == "map_mineral":
+            measure = response.applied_filters.get("measure")
+            section_titles["core_diagnosis"] = _MINERAL_MAP_MEASURE_TITLES.get(
+                measure, _SECTION_TITLES["core_diagnosis"]
+            )
     for key, title in section_titles.items():
         sentences = getattr(response.summary, key)
         if not sentences:
