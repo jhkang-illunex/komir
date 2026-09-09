@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import re
 import threading
 import time
@@ -53,6 +54,8 @@ from decimal import Decimal, InvalidOperation
 from typing import Literal
 
 from pydantic import ValidationError
+
+_log = logging.getLogger(__name__)
 
 from .._bootstrap import ensure_shared_on_path
 
@@ -796,6 +799,114 @@ def _build_mineral_map_secondary_series(
     )
 
 
+#: (?<!니)다\.(?=\s|$) — report_render.py::_to_polite_copula와 같은 규칙으로
+#: "이미 격식체(-니다.)"는 제외하고, 문장 끝(공백 또는 문자열 끝) 앞의 "다."만
+#: 비격식 종결로 본다.
+_RESIDUAL_INFORMAL_ENDING_RE = re.compile(r"(?<!니)다\.(?=\s|$)")
+
+#: 2026-09-09 main-agent 승인(B-3) — `calculate_composite_summary`(frozen,
+#: additional_summary.py)가 실제로 만드는 문장 종결 어미 전수 조사 결과.
+#: `report_gen_to_polite_copula_gotcha_260901` 함정(어간 안 가리는 기계적
+#: "다."→"입니다." 치환)을 피하려고, 이 계산기가 만드는 정확한 종결 문자열만
+#: 하나씩 나열해 대응하는 격식체로 바꾼다 — 일반 문법 변환기가 아니다. 새
+#: 문장 패턴이 추가되면(계산기 코드 변경) 여기 없는 종결은 그대로 통과하고
+#: 경고 로그만 남는다(`_apply_polite_endings` 참고) — 변환 실패로 요청을
+#: 죽이지 않는다.
+_COMPOSITE_POLITE_ENDINGS = {
+    # current_state: "...포인트다." (계사)
+    "포인트다": "포인트입니다",
+    # medium_long_term_contrast: _relative_level()의 "...수준이다." (계사)
+    "수준이다": "수준입니다",
+    # composite_recent_changes·weekly/monthly_subindex_comparison: _change_verb()
+    "올랐다": "올랐습니다",
+    "내렸다": "내렸습니다",
+    "없었다": "없었습니다",
+    # yearly_subindex_comparison: "...더 높았다." (과거형)
+    "높았다": "높았습니다",
+    # index_top_weighted_minerals: "...민감한 구조다." (계사)
+    "구조다": "구조입니다",
+    # period_range_position: "...% 높다." (형용사 현재형, 자음어간 "높-")
+    "높다": "높습니다",
+    # overall_pattern: year_word 3분기(형용사 현재형)
+    "낮다": "낮습니다",
+    "같다": "같습니다",
+    # overall_pattern 부가문장(과거형)
+    "달랐다": "달랐습니다",
+    "있었다": "있었습니다",
+}
+
+#: 2026-09-09 main-agent 승인(B-3) — `calculate_mineral_map_summary`(frozen)
+#: 전수 조사 결과. 위와 같은 원칙(명시적 나열, 기계적 치환 금지).
+_MINERAL_MAP_POLITE_ENDINGS = {
+    # current_state: "...{unit}이다." (계사)
+    "이다": "입니다",
+    # period_total_change: rate_word/latest_word(과거형)
+    "증가했다": "증가했습니다",
+    "감소했다": "감소했습니다",
+    "없었다": "없었습니다",
+    # current_leaders(1위다.)·third_country(3위다.): "...위다." (계사)
+    "위다": "위입니다",
+    # current_leaders: "...%포인트다." (계사)
+    "포인트다": "포인트입니다",
+    # leading_country_changes·concentration_change: _point_change_phrase()(과거형)
+    "높아졌다": "높아졌습니다",
+    "낮아졌다": "낮아졌습니다",
+    # leading_country_changes의 rank_text(과거형)
+    "바뀌었다": "바뀌었습니다",
+    "유지했다": "유지했습니다",
+    # current_concentration_structure 3분기 + 고정 종결
+    "분포다": "분포입니다",  # 계사
+    "아니다": "아닙니다",  # 부정 계사(불규칙 활용 — "아니입니다"가 아니다)
+    "%다": "%입니다",  # 계사
+    "차지한다": "차지합니다",  # "하다" 동사 현재형
+    # cross_measure_comparison 두 분기
+    "분류된다": "분류됩니다",  # "되다" 동사 현재형
+    "국가다": "국가입니다",  # 계사
+}
+
+
+def _apply_polite_endings(
+    calculated: AdditionalCalculatedSummary,
+    suffix_map: dict[str, str],
+    *,
+    context: str,
+) -> None:
+    """`calculated.claims`의 각 `EvidenceClaim.fact`를 `suffix_map`으로 격식체
+    변환한다 — frozen 계산기(additional_summary.py) 자체는 못 고치므로 결과를
+    받은 뒤 이 계층에서 문장만 다시 짓는 post-processing(2026-09-09 main-agent
+    승인 B-3, `_append_mineral_map_extreme_change`와 같은 방식 — `EvidenceClaim`
+    은 frozen dataclass라 텍스트만 바꿀 순 없고 새 인스턴스로 교체한다).
+
+    `report_render.py::_to_polite_copula`처럼 문자열 끝만 보지 않는다 — 한
+    claim.fact가 여러 문장을 이어붙인 경우(예: map_mineral의 current_leaders가
+    "...1위다. ...%포인트다."처럼 두 문장)가 있어, 텍스트 전체에서 일치하는
+    자리를 전부 바꾼다(`_to_polite_copula`가 정의문 2문장짜리에서 앞 문장을
+    놓쳤던 것과 같은 함정 — 2026-09-09 B-3 검증 중 발견·수정, `report_gen_
+    to_polite_copula_gotcha_260901` 참고).
+
+    매핑에 없는 종결이 남으면(향후 계산기 변경 등) 요청을 죽이지 않고 경고
+    로그만 남긴다 — 변환 실패보다 원문 그대로 노출이 안전하다(조건 2)."""
+
+    compiled = [
+        (re.compile(re.escape(informal) + r"\.(?=\s|$)"), f"{formal}.")
+        for informal, formal in suffix_map.items()
+    ]
+    new_claims = []
+    for claim in calculated.claims:
+        text = claim.fact
+        for pattern, replacement in compiled:
+            text = pattern.sub(replacement, text)
+        if _RESIDUAL_INFORMAL_ENDING_RE.search(text):
+            _log.warning(
+                "B-3 격식체 변환: %s claim=%s에 매핑되지 않은 비격식 종결이 남았다: %r",
+                context,
+                claim.id,
+                text,
+            )
+        new_claims.append(EvidenceClaim(claim.id, claim.section, text, claim.required))
+    calculated.claims = new_claims
+
+
 def _mineral_map_extreme_change_countries(series: MineralMapSeries) -> tuple[str, str] | None:
     """조회기간 첫 해→마지막 해 사이 매장량/생산량이 가장 크게 늘거나
     준 국가를 (증가국, 감소국)으로 찾는다 — 없으면 `None`.
@@ -842,7 +953,7 @@ def _append_mineral_map_extreme_change(calculated: AdditionalCalculatedSummary, 
             "extreme_change_countries",
             "major_changes",
             f"조회기간 중 {measure_name}이 가장 크게 증가한 국가는 {max_increase_country}이며, "
-            f"가장 크게 감소한 국가는 {max_decrease_country}다.",
+            f"가장 크게 감소한 국가는 {max_decrease_country}입니다.",
             required=True,
         )
     )
@@ -2126,6 +2237,7 @@ class AnalysisSummaryService:
             warnings=[],
         )
         calculated = _calculate_or_no_data(request.page_id, calculate_composite_summary, series)
+        _apply_polite_endings(calculated, _COMPOSITE_POLITE_ENDINGS, context="indicator_composite")
         context = effective_page_context("indicator_composite")
         applied_filters = {
             "start_date": request.start_date or series.observations[0].date,
@@ -2240,6 +2352,7 @@ class AnalysisSummaryService:
             secondary_series=secondary_series,
             market_share=market_share,
         )
+        _apply_polite_endings(calculated, _MINERAL_MAP_POLITE_ENDINGS, context="map_mineral")
         _append_mineral_map_extreme_change(calculated, series)
         context = effective_page_context("map_mineral")
         # 2026-09-09 복잡성 해소 — `years`는 위에서 이미 계산됐다(`series.
