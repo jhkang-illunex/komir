@@ -2,7 +2,49 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-09 (최신) — 발주처 PDF 20문항 재검증 + RAG 코퍼스 내부문서 오염 발견·격리(코드 변경 없음, DB/데이터만)
+## 2026-09-09 (최신) — report_gen 광물자원가격 4종 발주처 업무지시서 대응 1~3단계 완료(커밋 `5de0bbeca`·`628992250`·`93caad8e6`, 병합 `88cbed101`·`f50c5db88`·`ae2047842`)
+
+발주처 업무지시서(`documents/기획문서/order/0909/report_summary_feedback/
+AI_통계분석_요약기능_수정_업무지시서.md`) 대응. `price_base_metals/
+minor_metals/iron_energy/other` 4종 한정, `report-summary-agent`
+워크트리에 위임 후 main-agent가 단계별로 검증·병합(사용자 확립 프로토콜:
+diff 전체 대조 → 스모크·라이브 재현 → 승인 or 반려). 사용자가 작업 범위에
+"보고서 요약 복잡성 해소"를 3단계로 추가 지시.
+
+**1단계(치명적 오류)**: §2.2 "화면에 없는 뉴스·보고서를 원인처럼 서술하지
+않는다" 요구로 2026-08-28 도입했던 `geo_events`/`price_driver_event`
+기능(가격변동 주요요인) 전부 제거(관련 모델·죽은 헬퍼도 함께 삭제).
+key_metrics 표에 최고가·최저가·낙폭·변동성 4종 추가(문장과 같은 계산값
+재사용, 불일치 없음). `dataAvg.INFO.prcUnitCdNm`(USD/CNY)로 통화 단위
+표기 보강. 부수: `KEY_METRICS_MAX_COUNT` 8→14(비교광종 조합 실측 최대
+13+여유1). "금 조회시 철 표기" 메뉴명 오류는 재현 실패 — report_gen
+코드엔 "철" 하드코딩 0건, 호출측(UI 세션상태) 문제로 잠정 결론.
+
+**2단계(섹션 재배치+표현 순화)**: §2.3 "이동평균·RSI 등 기술지표명을
+직접 노출하지 않는다" 요구로 `_ma_rsi_fact`가 만들던 "20일선 X·RSI는
+N로 과매수" 류 문장을 업무지시서 매핑표 그대로("단기·중기 흐름 모두
+상승 방향" 등)로 교체. §3.1에 따라 "평균 대비 위치"는 major_changes로,
+"단기 매매압력"(RSI)은 current_position에 잔류시키는 재배치. 부수 발견:
+재배치 후 major_changes 5-cap이 실측상 거의 항상 꽉 차 새 근거가 조용히
+밀려남 발견 → `MAJOR_CHANGES_MAX_SENTENCES` 5→7(두 게이트 모두 이 상수
+참조, room-check 방식이라 post-hoc truncate보다 안전).
+
+**3단계(복잡성 해소, price 코드 한정)**: 사용자 지시로 추가. price 통계
+헬퍼 10개 중 유일 호출부만 있던 3개(`_moving_averages`·
+`_ma_alignment_label`·`_rsi14`)를 `_ma_rsi_fact`에 인라인 통합(산식
+무변경). `_drawdown_stats`는 원 감사(제출 전) 때와 달리 1단계에서 호출부가
+2곳이 돼 재사용 기준상 유지. 결과: 헬퍼 10→7개. main-agent가 임시
+워크트리(2단계 커밋 시점 체크아웃)로 65콤보 렌더링을 2단계 vs 3단계 양쪽
+직접 뽑아 바이트 단위 완전 일치 확인(순수 리팩터 검증).
+
+**검증(매 단계 공통, main-agent 직접 재현)**: `komis_dump_smoke_test.py`
+395콤보 전수(internal_error 0·mismatches 0) + 니켈/가돌리늄 실 KOMIS
+덤프로 `render_markdown_report()` 직접 렌더링 육안 대조 + pyflakes 0경고.
+`additional_summary.py`에 남은 "key_metrics 8개 상한" 주석 2곳(작업 범위
+밖 파일)은 하드코딩 리터럴이라 지금도 유효하지만 상향분(14)을 못 쓰는
+상태로 후속 과제 남음.
+
+## 2026-09-09 — 발주처 PDF 20문항 재검증 + RAG 코퍼스 내부문서 오염 발견·격리(코드 변경 없음, DB/데이터만)
 
 발주처 PDF(대화형검색시스템 예상질문 고도화.pdf) 20문항을 4개 카테고리로
 나눠 fork 병렬 검증(①메뉴안내·②수치조회·③문서검색·④예외사항). 결과:
