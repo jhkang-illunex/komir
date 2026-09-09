@@ -1553,45 +1553,6 @@ def _volatility_fact(
     return f"최근 {'·'.join(parts)} 연율화 변동성을 보였다.", skipped, values
 
 
-def _moving_averages(observations_with_price: list) -> dict[int, float]:
-    prices = [item.commerce_price for item in observations_with_price]
-    return {window: sum(prices[-window:]) / window for window in _MA_WINDOWS if len(prices) >= window}
-
-
-def _ma_alignment_label(mas: dict[int, float], latest_price: float) -> str | None:
-    """단기→장기 이동평균이 순서대로 내림차순(정배열)·오름차순(역배열)인지 —
-    2개 미만이면 배열을 판단할 수 없어 None."""
-
-    ordered = [value for _, value in sorted(mas.items())]
-    if len(ordered) < 2:
-        return None
-    if all(a > b for a, b in zip(ordered, ordered[1:])) and latest_price >= ordered[0]:
-        return "정배열"
-    if all(a < b for a, b in zip(ordered, ordered[1:])) and latest_price <= ordered[0]:
-        return "역배열"
-    return "혼조"
-
-
-def _rsi14(observations_with_price: list) -> float | None:
-    """Wilder 14일 스무딩 RSI — 최소 15개 관측치(수익률 14개) 필요."""
-
-    prices = [item.commerce_price for item in observations_with_price]
-    if len(prices) < 15:
-        return None
-    deltas = [prices[i] - prices[i - 1] for i in range(1, len(prices))]
-    gains = [max(d, 0.0) for d in deltas]
-    losses = [max(-d, 0.0) for d in deltas]
-    avg_gain = sum(gains[:14]) / 14
-    avg_loss = sum(losses[:14]) / 14
-    for gain, loss in zip(gains[14:], losses[14:]):
-        avg_gain = (avg_gain * 13 + gain) / 14
-        avg_loss = (avg_loss * 13 + loss) / 14
-    if avg_loss == 0:
-        return 100.0
-    rs = avg_gain / avg_loss
-    return 100 - (100 / (1 + rs))
-
-
 #: 이동평균 배열(정배열/역배열/혼조) → 사용자 친화 문구(2026-09-09 발주처
 #: 업무지시서 §2.3 — "20일선"·"이동평균"·"배열" 등 기술지표명을 화면에 직접
 #: 노출하지 않는다). "정배열"에 대응하는 "단기·중기 흐름 모두 상승 방향"은
@@ -1618,11 +1579,42 @@ def _ma_rsi_fact(
     호출자가 앞쪽은 major_changes("최근 변화" — 업무지시서 §3.1의 "평균 대비
     위치"에 대응), 뒤쪽은 current_position에 각각 별도 근거로 배치한다
     (2026-09-09 섹션 재배치 — 이전엔 한 문장으로 합쳐 current_position에만
-    넣었다)."""
+    넣었다).
 
-    mas = _moving_averages(observations_with_price)
-    alignment = _ma_alignment_label(mas, latest_price)
-    rsi = _rsi14(observations_with_price)
+    2026-09-09 후속(3단계, 발주처 복잡성 해소 지시) — 이 함수에서만 쓰이던
+    이동평균 계산·배열 판정·RSI 계산 3개 헬퍼(구 _moving_averages·
+    _ma_alignment_label·_rsi14, 호출부가 이 함수 하나뿐이었다)를 인라인
+    통합했다. 산식은 그대로다."""
+
+    prices = [item.commerce_price for item in observations_with_price]
+
+    # 이동평균(20/60/120/250) + 배열 판정 — 단기→장기 순으로 내림차순이면
+    # 정배열, 오름차순이면 역배열, 그 외는 혼조. 윈도우가 2개 미만이면
+    # 배열을 판단할 수 없다.
+    mas = {window: sum(prices[-window:]) / window for window in _MA_WINDOWS if len(prices) >= window}
+    ordered = [value for _, value in sorted(mas.items())]
+    alignment: str | None = None
+    if len(ordered) >= 2:
+        if all(a > b for a, b in zip(ordered, ordered[1:])) and latest_price >= ordered[0]:
+            alignment = "정배열"
+        elif all(a < b for a, b in zip(ordered, ordered[1:])) and latest_price <= ordered[0]:
+            alignment = "역배열"
+        else:
+            alignment = "혼조"
+
+    # RSI — Wilder 14일 스무딩, 최소 15개 관측치(수익률 14개) 필요.
+    rsi: float | None = None
+    if len(prices) >= 15:
+        deltas = [prices[i] - prices[i - 1] for i in range(1, len(prices))]
+        gains = [max(d, 0.0) for d in deltas]
+        losses = [max(-d, 0.0) for d in deltas]
+        avg_gain = sum(gains[:14]) / 14
+        avg_loss = sum(losses[:14]) / 14
+        for gain, loss in zip(gains[14:], losses[14:]):
+            avg_gain = (avg_gain * 13 + gain) / 14
+            avg_loss = (avg_loss * 13 + loss) / 14
+        rsi = 100.0 if avg_loss == 0 else 100 - (100 / (1 + avg_gain / avg_loss))
+
     if alignment is None and rsi is None:
         return None, None, False
     trend_fact = _MA_ALIGNMENT_LABELS.get(alignment) if alignment is not None else None
@@ -1648,7 +1640,15 @@ def _percentile_rank(observations_with_price: list, latest_price: float) -> floa
 def _drawdown_stats(observations_with_price: list) -> dict | None:
     """조회기간 내 러닝피크 대비 최대 낙폭(MDD 국면)과, 조회기간 전체 최고가
     대비 현재가의 낙폭. 둘 다 "조회기간 중"으로 범위를 명시한다 — 이 계산기는
-    요청받은 구간 밖 데이터를 모르므로 절대적 전고점이라 단정하지 않는다."""
+    요청받은 구간 밖 데이터를 모르므로 절대적 전고점이라 단정하지 않는다.
+
+    2026-09-09 3단계 복잡성 검토 — 이전 감사는 "호출부가 _drawdown_fact
+    하나뿐이라 인라인 통합 가능"이라고 봤지만, 1단계(주요 지표 표에 낙폭
+    추가)에서 `calculate_price_summary`가 문장·표 숫자를 일치시키려고 이
+    함수를 직접 한 번 더 호출하게 됐다 — 현재 호출부 2곳(`_drawdown_fact`,
+    `calculate_price_summary`)이라 재사용 기준("여러 곳에서 재사용되는가")
+    으로 유지 대상이다. 인라인하면 계산이 중복되거나 계산기 본문이 다시
+    비대해진다."""
 
     if len(observations_with_price) < 2:
         return None
@@ -1764,7 +1764,8 @@ def _relative_value_fact(
 
 def _annual_return_metrics(observations_with_price: list) -> list[Metric]:
     """연도별 수익률표(그 해 첫 관측가→마지막 관측가) — `detailed_metrics`에만
-    싣는다(key_metrics는 8개 상한이라 연도가 늘면 다른 핵심 지표를 밀어낸다).
+    싣는다(key_metrics는 상한이 있어 연도가 늘면 다른 핵심 지표를 밀어낸다 —
+    `models.py::KEY_METRICS_MAX_COUNT` 참고).
 
     2026-08-31 advisor 지적 반영 — 조회기간이 그 해 중간에 시작·끝나면(예:
     2026년 8월까지만 있는데 "2026년 수익률"이라 표기) hi/lo 문제와 같은
