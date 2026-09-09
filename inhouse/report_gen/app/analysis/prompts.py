@@ -229,9 +229,13 @@ PRICE_SUMMARY_INSTRUCTIONS = """\
   그대로 "전일"을 쓰고, "직전 관측치(...)"로 시작하면 관측 간격이 하루가
   아니라는 뜻이니 "전일"로 바꿔 쓰지 말고 "직전 관측치"를 그대로
   유지한다.
-- current_position은 period_range 근거로 조회기간 최고·최저가 대비 현재
-  가격의 위치를 설명한다. near_period_high/near_period_low 패턴이 있으면
-  고점·저점 근접 사실만 쓴다.
+- current_position은 발주처 지시서 기준 순서(고점·저점 → 저점 이후
+  회복률 → 낙폭·가격 위치)로 나온 근거들을 그 순서 그대로 옮긴다:
+  period_range(조회기간 최고·최저가) → recovery_since_low(저점 대비 현재가
+  회복률) → price_position(현재가의 고점 대비 낙폭 + 저가권/중간권/고가권
+  위치, 있으면 참고용 최대 하락폭 문장 포함 — "참고로"로 시작하는 부분은
+  필수 지표가 아니라는 뜻이니 그 표현을 지우지 않는다). near_period_high/
+  near_period_low 패턴이 있으면 고점·저점 근접 사실만 쓴다.
 - compare_overall_change 근거가 있으면(비교광종 지정 시) current_position에
   두 번째 문장으로 "같은 조회기간 동안 [비교광종]은 [등락률]% 변동한 반면,
   [광종]은 [등락률]% 변동했습니다"를 그대로 옮겨 쓴다 — 어느 쪽이 더 크게
@@ -257,16 +261,19 @@ PRICE_SUMMARY_INSTRUCTIONS = """\
   문장이니 새 단위·거래소명(예: "LME"·"톤")을 지어 붙이지 않는다. 근거가
   없으면(inventory_level이 없는 요청) 재고량을 언급하지 않는다 — 다른 절의
   수치로 재고 수준을 추정해서 채우지 않는다.
-- volatility·price_momentum·percentile_position·drawdown·inventory_context·
-  relative_value 근거는(2026-08-31 신설, price_momentum은 2026-09-09
-  기술지표명 순화로 개명) 각각 current_position에 별도 문장으로 그대로
-  옮겨 쓴다 — 이질적인 주제라 major_changes의 등락률 묶어쓰기와 달리 한
-  문장에 합치지 않는다. 근거가 없으면(관측치 부족으로 계산되지 않음) 그
-  문장 자체를 만들지 않는다 — "데이터가 부족하다"는 문장을 지어내지
-  않는다. 이 근거들은 2026-09-09 발주처 피드백(오전 2차)으로 "연율화
-  변동성"·"분포상 백분위"·관측치 건수(예: "관측치 258건 기준") 같은
-  통계 용어·raw 수치 노출을 이미 뺀 완성 문장이다 — 그런 표현을 되살려
-  쓰지 않는다.
+- volatility·price_momentum·recovery_since_low·price_position·
+  inventory_context·relative_value 근거는(2026-08-31 신설, price_momentum은
+  2026-09-09 기술지표명 순화로 개명, recovery_since_low·price_position은
+  2026-09-09 오전 2차 상세 피드백으로 percentile_position·drawdown을 대체)
+  각각 current_position에 별도 문장으로 그대로 옮겨 쓴다 — 이질적인 주제라
+  major_changes의 등락률 묶어쓰기와 달리 한 문장에 합치지 않는다. 근거가
+  없으면(관측치 부족으로 계산되지 않음) 그 문장 자체를 만들지 않는다 —
+  "데이터가 부족하다"는 문장을 지어내지 않는다. 이 근거들은 2026-09-09
+  발주처 피드백(오전 2차)으로 "연율화 변동성"·"분포상 백분위"·관측치
+  건수(예: "관측치 258건 기준") 같은 통계 용어·raw 수치 노출을 이미 뺀
+  완성 문장이다 — 그런 표현을 되살려 쓰지 않는다. price_position 문장
+  안에 "참고로 조회기간 내 최대 하락폭(...)은 필수 지표는 아님)"이 있으면
+  그 부분은 참고용이라는 뜻이니 삭제하거나 다른 문장으로 승격하지 않는다.
 - insufficient_history 근거가 있으면(신규 6개 층 중 일부가 관측치 부족으로
   생략됨) current_position 마지막 문장으로 그 근거를 그대로 옮겨 쓴다 —
   어떤 층이 왜 빠졌는지 새로 설명을 덧붙이지 않는다. 근거가 없으면 이
