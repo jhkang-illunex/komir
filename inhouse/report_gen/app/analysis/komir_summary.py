@@ -1182,7 +1182,7 @@ def calculate_global_trade_summary(
     2026-08-27: PDF 지침 점검(/unlazy)에서 발견한 gap 수정 — 이전에는
     원산국(수출국)별로 도착지를 뭉개고 집계해 "국가별 총 공급액" 랭킹만
     만들었다. PDF §2(UN Comtrade)는 "미국→독일" 같은 양자 루트 랭킹과
-    "대한민국은 세부현황 기준 6위(말레이시아行)...9위(일본行)" 같은 한국
+    "대한민국은 세부현황 기준 6위(말레이시아행)...9위(일본행)" 같은 한국
     자체 순위 하이라이트를 요구한다 — 실측 확인(Playwright로 원본
     `getListDataNation` 응답을 직접 조회)했더니 KOMIS 응답 자체에
     `incmNtnNm`(도착국)·`expNtnNm`(원산국) 필드가 이미 함께 온다는 걸
@@ -1259,7 +1259,11 @@ def calculate_global_trade_summary(
             share = (item.import_amount or 0.0) / total * 100
             # 화살표 표기 뒤엔 '루트'를 붙이고 조사를 쓴다("중국→대한민국로" 같은 조사 오류
             # 방지 — 2026-08-27 반복 루프 3회차, LLM 프롬프트와 같은 규칙).
-            parts.append(f"{rank}위는 {_route_label(item)} 루트로 {_quantity(item.import_amount or 0.0)}({_number(share)}%)")
+            # 2026-09-09 main-agent 지적(C-7) — 총액엔 "달러"가 있는데 루트별
+            # 금액엔 단위가 빠져 있었다(지시서 ② 템플릿 "교역액 [값][단위]" 요구).
+            parts.append(
+                f"{rank}위는 {_route_label(item)} 루트로 {_quantity(item.import_amount or 0.0)}달러({_number(share)}%)"
+            )
         claims.append(
             EvidenceClaim(
                 "top1_country",
@@ -1305,7 +1309,7 @@ def calculate_global_trade_summary(
             share = (item.import_amount or 0.0) / total * 100
             is_origin = _is_korea(item.origin_country_code, item.origin_country_name)
             counterpart = item.country_name if is_origin else (item.origin_country_name or "출처미상")
-            suffix = "行" if is_origin else "발"
+            suffix = "행" if is_origin else "발"  # 2026-09-09 한자 금지 규칙(feedback-no-hanja-kanji-in-korean-text) — "行"→"행"
             if rank <= len(top_n):
                 # 이미 top1_country 근거(1~3위 랭킹)에 금액·비중이 있는 루트는 순위·상대국만
                 # 적어 같은 숫자를 한 절에서 두 번 쓰지 않는다(2026-08-27 반복 루프 3회차:
@@ -1313,13 +1317,16 @@ def calculate_global_trade_summary(
                 # 한 절에 두 번 나온 사례 — PDF 예시는 한국이 6·9위라 이 케이스가 없다).
                 pieces.append(f"{rank}위({counterpart}{suffix}, 위 랭킹 참조)")
             else:
-                pieces.append(f"{rank}위({counterpart}{suffix} {_quantity(item.import_amount or 0.0)}, {_number(share)}%)")
+                # 2026-09-09 C-7 — 위 top1_country 근거와 동일하게 "달러" 명시.
+                pieces.append(
+                    f"{rank}위({counterpart}{suffix} {_quantity(item.import_amount or 0.0)}달러, {_number(share)}%)"
+                )
         if len(top_hits) >= 2:
             hits_sum = sum(item.import_amount or 0.0 for _, item in top_hits)
             hits_share = hits_sum / total * 100
             korea_fact = (
                 f"대한민국은 세부현황 기준 {pieces[0]}와 {pieces[1]}에 각각 등장하여, "
-                f"두 루트 합산 {_quantity(hits_sum)}({_number(hits_share)}%)를 기록했다."
+                f"두 루트 합산 {_quantity(hits_sum)}달러({_number(hits_share)}%)를 기록했다."
             )
         else:
             korea_fact = f"대한민국은 세부현황 기준 {pieces[0]}로 나타났다."
@@ -1752,13 +1759,27 @@ def _ma_rsi_fact(
         recent_deltas = deltas[-14:]
         up_count = sum(1 for delta in recent_deltas if delta > 0)
         down_count = sum(1 for delta in recent_deltas if delta < 0)
+        # 2026-09-09 main-agent 지적(C-8) — 과매수/과매도 분기가 상승 또는
+        # 하락 한쪽 횟수만 보여줘서, 나머지(보합 포함 반대 방향)가 몇 건인지
+        # 알 수 없어 "4일 상승·0일 하락"인데 "중립"이라고 쓰는 것처럼 수치와
+        # 판정이 상충돼 보이는 사례가 있었다(횟수 합이 14에 못 미치는 건
+        # 보합일 때문). 세 분기 모두 상승·하락·보합(0이면 생략) 횟수를 함께
+        # 밝힌다.
+        flat_count = len(recent_deltas) - up_count - down_count
+        flat_clause = f"·보합 {flat_count}{unit}" if flat_count > 0 else ""
         if rsi >= 70:
-            momentum_fact = f"최근 14{unit} 중 {up_count}{unit} 상승하며 단기적으로 가격 부담이 높아진 상태입니다."
+            momentum_fact = (
+                f"최근 14{unit} 중 상승 {up_count}{unit}·하락 {down_count}{unit}{flat_clause}로 "
+                "단기적으로 가격 부담이 높아진 상태입니다."
+            )
         elif rsi <= 30:
-            momentum_fact = f"최근 14{unit} 중 {down_count}{unit} 하락하며 단기적으로 가격 하락 압력이 크게 반영된 상태입니다."
+            momentum_fact = (
+                f"최근 14{unit} 중 상승 {up_count}{unit}·하락 {down_count}{unit}{flat_clause}로 "
+                "단기적으로 가격 하락 압력이 크게 반영된 상태입니다."
+            )
         else:
             momentum_fact = (
-                f"최근 14{unit}간 상승 {up_count}{unit}·하락 {down_count}{unit}로 단기 매매 압력은 "
+                f"최근 14{unit}간 상승 {up_count}{unit}·하락 {down_count}{unit}{flat_clause}로 단기 매매 압력은 "
                 "특별히 어느 한쪽으로 치우치지 않은 상태입니다."
             )
     return trend_fact, momentum_fact, True

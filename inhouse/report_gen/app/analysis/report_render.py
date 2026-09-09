@@ -58,6 +58,15 @@ def _format_metric_row(value: float | int | str | None, unit: str | None) -> tup
     if unit == "ratio" and isinstance(value, (int, float)):
         return f"{value * 100:,.2f}", "%"
     if isinstance(value, float):
+        # 2026-09-09 main-agent 지적(C-9) — price_* 4종은 이미 `_quantity()`
+        # (정수면 소숫점 생략)로 "16,780.00"류 표기를 없앴는데, 이 함수는
+        # 비price 페이지 "주요 지표" 표 전용이라 그 정리가 안 닿아 있었다
+        # ("75,818,972.00"·"770,200,000.00" 등 재발 지점). 같은 규칙을 여기
+        # 한 곳에만 적용하면 표를 쓰는 6개 페이지 전부에 일괄 반영된다 —
+        # additional_summary.py::_quantity()를 import하지 않고 로직만
+        # 그대로 복제한다(렌더링 계층이 그 모듈에 의존하지 않게 유지).
+        if value.is_integer():
+            return f"{int(value):,}", unit or ""
         return f"{value:,.2f}", unit or ""
     return str(value), unit or ""
 
