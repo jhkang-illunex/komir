@@ -309,6 +309,8 @@ def calculate_price_summary(
     srch_field: str | None = None,
     srch_start_date: str | None = None,
     srch_end_date: str | None = None,
+    price_position_low_pct: float = 100 / 3,
+    price_position_high_pct: float = 200 / 3,
 ) -> AdditionalCalculatedSummary:
     """Calculate deterministic evidence and metrics for a price series.
 
@@ -319,6 +321,13 @@ def calculate_price_summary(
     보다 우선한다 — `komis_response` 응답 본문엔 이 정보가 아예 없어서
     (KOMIS는 조회 평균옵션과 무관하게 `dataAvg.stdMap`에 day/week/month/year를
     항상 다 채운다, 실측 확인) 지금까지는 추론에만 의존했다.
+
+    `price_position_low_pct`/`price_position_high_pct`(2026-09-09 후속
+    신설) — "가격 위치"(고가권/중간권/저가권) 판정 임계값. 호출자
+    (`summary.py`)가 `common.config.Settings.PRICE_POSITION_LOW_PCT`/
+    `HIGH_PCT`(.env, 재시작 반영)를 읽어 넘긴다 — 기본 인자값은 그
+    설정의 기본값과 동일해 config 없이 단독 호출해도(테스트 등) 균등
+    3등분 그대로 동작한다.
 
     `compare_series`(2026-08-26 신설) — KOMIS 광물자원가격 메뉴의 "비교광종"
     기능 대응(당초 희소금속 전용으로 알았으나 2026-08-30 확인 결과 4개
@@ -814,9 +823,11 @@ def calculate_price_summary(
                 f"{_number(abs(drawdown_stats['current_dd_pct']))}% 낮습니다."
             )
     if percentile is not None:
+        position_label = _price_position_label(
+            percentile, low_threshold=price_position_low_pct, high_threshold=price_position_high_pct
+        )
         position_sentences.append(
-            f"조회기간 전체 가격 대비로는 {_number(percentile)}% 위치로 "
-            f"{_price_position_label(percentile)}에 속합니다."
+            f"조회기간 전체 가격 대비로는 {_number(percentile)}% 위치로 {position_label}에 속합니다."
         )
     else:
         warnings.append("가격 분포상 백분위는 관측치가 20건 미만이라 계산하지 않았다.")
@@ -1713,13 +1724,23 @@ def _percentile_rank(observations_with_price: list, latest_price: float) -> floa
 
 #: 2026-09-09 발주처 피드백(오전 2차 상세) — 백분위 수치만 보여주고 "높을수록
 #: 고가권"이라는 산식 설명으로 대신하던 것을 실제 위치(저가권/중간권/고가권)
-#: 판정으로 바꾼다. 임계값은 조회기간 가격 분포를 정확히 3등분하는 하위/상위
-#: 1/3 지점(약 33.3%·66.7%) — 특정 광종·기간에 맞춘 값이 아니라 백분위 정의
-#: 자체에서 나오는 균등 삼분할이라 다른 근거(30/70 RSI 임계값 등)와 무관하다.
-def _price_position_label(percentile: float) -> str:
-    if percentile <= 100 / 3:
+#: 판정으로 바꾼다. 기본 임계값은 조회기간 가격 분포를 정확히 3등분하는
+#: 하위/상위 1/3 지점(약 33.3%·66.7%) — 특정 광종·기간에 맞춘 값이 아니라
+#: 백분위 정의 자체에서 나오는 균등 삼분할이라 다른 근거(30/70 RSI 임계값
+#: 등)와 무관하다.
+#:
+#: 2026-09-09 후속(같은 날, 사용자 요청) — 이 기본값을 하드코딩 상수가
+#: 아니라 `common.config.Settings.PRICE_POSITION_LOW_PCT`/`HIGH_PCT`(.env,
+#: 재시작으로 반영)로 오버라이드할 수 있게 한다. 이 함수 자체는 여전히
+#: 순수 계산(config를 직접 읽지 않음) — 호출자(`calculate_price_summary`
+#: → `summary.py`)가 값을 읽어 인자로 넘긴다. 기본 인자값은 config 기본값과
+#: 동일해 호출자가 넘기지 않아도(단독 호출·테스트) 기존 동작과 같다.
+def _price_position_label(
+    percentile: float, *, low_threshold: float = 100 / 3, high_threshold: float = 200 / 3
+) -> str:
+    if percentile <= low_threshold:
         return "저가권"
-    if percentile >= 200 / 3:
+    if percentile >= high_threshold:
         return "고가권"
     return "중간권"
 
