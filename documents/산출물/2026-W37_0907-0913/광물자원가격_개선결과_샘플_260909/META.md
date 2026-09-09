@@ -26,17 +26,30 @@ AI_통계분석_요약기능_수정_업무지시서.md`) 대응으로 report_gen
   제공한 자료)에서 관측치가 풍부한 광종(니켈 6,227건·가돌리늄 3,132건)을
   뽑아 사용 — 어제 예시(동·코발트)와 광종은 다르지만 **동일 코드**가
   동일하게 적용된다.
-- **03(철광석 및 에너지)·04(기타)**: **2026-09-09 2차 재작성** — 최초
-  재작성본은 `komis_raw.py`의 관측치 1건짜리 정적 예시를 써서 등락률·
-  변동성 등이 전부 "계산 불가"였다. 사용자 지적("검증이 불가능하다는 건
-  아닌 것 같다")에 따라, 발주처가 앞서 제공한 실측 캡처(`documents/
-  산출물/2026-W35_0824-0830/report_gen_KOMIS라이브재검증_Phase2_260829_
-  evidence/collected_iron_other_day_raw_260829.json`)에 이미 담겨 있던
-  **2024-01-02~2026-08-27 전체 구간**(철 614건·금 669건)으로 다시
-  만들었다 — 광종은 어제 예시와 완전히 동일(철·금), 조회 기간만 2024~2026
-  실측 전체로 넓어졌다.
+- **03(철광석 및 에너지)·04(기타)**: **2026-09-09 3차 재작성**(경위 아래).
+  최초 재작성본은 `komis_raw.py`의 관측치 1건짜리 정적 예시를 써서
+  등락률·변동성 등이 전부 "계산 불가"였다. 사용자 지적("검증이 불가능
+  하다는 건 아닌 것 같다")에 따라, 발주처가 앞서 제공한 실측 캡처
+  (`documents/산출물/2026-W35_0824-0830/report_gen_KOMIS라이브재검증_
+  Phase2_260829_evidence/collected_iron_other_day_raw_260829.json`)에
+  이미 담겨 있던 **2024-01-02~2026-08-27 전체 구간**(철 614건·금 669건)
+  으로 2차 재작성했으나, main-agent 검증에서 요청 바디 구성 실수(아래
+  ⚠)가 발견돼 3차로 다시 수정했다 — 광종은 어제 예시와 완전히 동일(철·
+  금), 조회 기간만 2024~2026 실측 전체로 넓어졌다.
 - 페이지별 계산 로직(`calculate_price_summary`)은 광종과 무관하게 4개
   서브메뉴가 100% 공유한다.
+
+⚠ **2차→3차 수정(투명성 기록)**: 2차 재작성 때 03·04 요청 바디를 수동으로
+(`observations`+`price_unit`만) 구성하면서 `komis_period_comparisons`
+필드를 빠뜨렸다 — 이 필드가 없으면 계산기가 전주/전월/전년평균을 자체
+롤링윈도우로 계산하는데, 이는 2026-08-28에 이미 "부정확해서 KOMIS 공식
+값(`dataAvg.stdMap.WEEK/MONTH/YEAR`)으로 대체하기로 확정된 옛 경로다
+(`report_gen_price_base_metals_부실요약_원인조사_260828.md`). main-agent가
+같은 원본으로 `komis_response`를 직접 넘겨 재현해 값 불일치를 발견·반려
+했고, 요청 바디를 `komis_response`(원본 응답 전체) 전달 방식으로 바꿔
+바로잡았다 — 최고가/최저가/변동성/낙폭/백분위 등 나머지 값은 애초에
+정확했다. 01·02(니켈·가돌리늄)는 `adapt_price_pages()`가 이 필드를 자동
+계산해 애초에 문제가 없었다.
 
 ## 실행 방법(재현 절차)
 `cd inhouse/report_gen`에서 `AnalysisSummaryService(None, llm=None)`을 직접
@@ -44,10 +57,10 @@ AI_통계분석_요약기능_수정_업무지시서.md`) 대응으로 report_gen
 render_markdown_report()`로 원문을 그대로 얻었다(스크린샷·브라우저 조작
 없음, streamlit 데모가 내부적으로 하는 것과 동일한 계산·렌더링 경로).
 01·02는 `scripts/komis_dump_smoke_test.py::adapt_price_pages()`로 실 덤프를
-파싱, 03·04는 위 Phase2 evidence json의 `defaultMnrl` 배열 전체를
-`observations`로 직접 변환해 요청 바디를 구성(같은 파일 shape을 이미
-`adapt_price_pages`가 다루는 것과 동일한 필드 매핑, `dataAvg.INFO.
-prcUnitCdNm`도 `price_unit`으로 같이 전달).
+파싱, 03·04는 위 Phase2 evidence json의 `response`(dataAvg+data 전체)를
+`komis_response` 필드에 그대로 실어 요청 바디를 구성 — 실제 프로덕션이
+받는 형태와 동일해 `komis_period_comparisons`까지 report_gen 내부에서
+자동으로 채워진다.
 
 ## 검증
 - `scripts/komis_dump_smoke_test.py` 395콤보 전수(오류 0·불일치 0, 01·02
