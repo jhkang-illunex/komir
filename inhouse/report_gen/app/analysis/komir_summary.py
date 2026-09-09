@@ -391,8 +391,14 @@ def calculate_price_summary(
             # 일자는 한글 표기(2026-08-27 반복 루프 1회차: LLM이 근거의 "2026-08-24"
             # 원형을 그대로 베껴 지침 "YYYY년 M월 D일" 위반 8건 — 근거부터 한글로).
             # 2026-09-09 발주처 피드백(오전 2차) — 격식체(~습니다)로 전환.
+            # 2026-09-09 발주처 피드백(오전 2차 상세) — "16,780.00"처럼
+            # 불필요한 소숫점(.00)이 붙는 지적. price_* 계산기의 가격류
+            # 값(등락률 등 %는 제외)만 `_number`(항상 고정 2자리) 대신
+            # `_quantity`(additional_summary.py 기존 헬퍼 — 정수면 소숫점
+            # 생략, 아니면 2자리)로 바꾼다. 전역 `_number`는 그대로 둬서
+            # 다른 8개 페이지 표기에 영향이 없다.
             f"{_korean_date(latest.date)} 기준 {series.mineral.name} 실거래가는 "
-            f"{_number(latest.commerce_price)}{price_unit_label or ''}입니다.",
+            f"{_quantity(latest.commerce_price)}{price_unit_label or ''}입니다.",
             required=True,
         )
     ]
@@ -481,7 +487,7 @@ def calculate_price_summary(
                 EvidenceClaim(
                     metric_id,
                     "core_diagnosis",
-                    f"{label}({_number(komis_avg.average_price)}) 대비 {_signed_pct(change)} 수준입니다.",
+                    f"{label}({_quantity(komis_avg.average_price)}) 대비 {_signed_pct(change)} 수준입니다.",
                 )
             )
             key_metrics.append(_price_metric(f"{metric_id}_change_pct", f"{label}대비", change * 100, unit="%"))
@@ -500,7 +506,7 @@ def calculate_price_summary(
             EvidenceClaim(
                 metric_id,
                 "core_diagnosis",
-                f"{label}({_number(avg)}) 대비 {_signed_pct(change)} 수준입니다.",
+                f"{label}({_quantity(avg)}) 대비 {_signed_pct(change)} 수준입니다.",
             )
         )
         key_metrics.append(_price_metric(f"{metric_id}_change_pct", f"{label}대비", change * 100, unit="%"))
@@ -566,7 +572,7 @@ def calculate_price_summary(
                     EvidenceClaim(
                         "period_overall_change",
                         "major_changes",
-                        f"조회기간 시작({_korean_date(first.date)}, {_number(first.commerce_price)}) 대비 "
+                        f"조회기간 시작({_korean_date(first.date)}, {_quantity(first.commerce_price)}) 대비 "
                         f"{_signed_pct(overall_change)} 변동했습니다.",
                     )
                 )
@@ -614,8 +620,8 @@ def calculate_price_summary(
         low_obs = min(observations_with_price, key=lambda item: item.lowest_price)
         period_high, period_low = high_obs.highest_price, low_obs.lowest_price
         range_fact = (
-            f"조회기간 중 최고 {_number(period_high)}({_korean_date(high_obs.date)}), "
-            f"최저 {_number(period_low)}({_korean_date(low_obs.date)})였습니다."
+            f"조회기간 중 최고 {_quantity(period_high)}({_korean_date(high_obs.date)}), "
+            f"최저 {_quantity(period_low)}({_korean_date(low_obs.date)})였습니다."
         )
     elif observations_with_price:
         high_obs = max(observations_with_price, key=lambda item: item.commerce_price)
@@ -625,8 +631,8 @@ def calculate_price_summary(
         # 계산했음을 문구로 구분한다 — "KOMIS 공식 최고/최저"인 것처럼 단정하지
         # 않는다(main-agent 지시).
         range_fact = (
-            f"조회기간 관측치(실거래가) 기준 최고 {_number(period_high)}({_korean_date(high_obs.date)}), "
-            f"최저 {_number(period_low)}({_korean_date(low_obs.date)})였습니다."
+            f"조회기간 관측치(실거래가) 기준 최고 {_quantity(period_high)}({_korean_date(high_obs.date)}), "
+            f"최저 {_quantity(period_low)}({_korean_date(low_obs.date)})였습니다."
         )
     if period_high is not None and period_low is not None:
         claims.append(
@@ -669,7 +675,7 @@ def calculate_price_summary(
                 EvidenceClaim(
                     "recovery_since_low",
                     "current_position",
-                    f"조회기간 저점({_korean_date(low_obs.date)}, {_number(period_low)}) 대비 "
+                    f"조회기간 저점({_korean_date(low_obs.date)}, {_quantity(period_low)}) 대비 "
                     f"현재가는 {_number(recovery_pct * 100)}% 회복한 수준입니다.",
                 )
             )
@@ -688,9 +694,12 @@ def calculate_price_summary(
     # 아니라 "latest 이전 중 inventory가 있는 가장 최근 관측"을 찾는다 — 재고량은
     # 가격과 달리 결측일 수 있어 바로 앞 관측치에 없을 수 있다(라이브 재현으로
     # invtPrcnt 산식이 이 방식의 일별 등락률과 소수점까지 정확히 일치함을 확인,
-    # 672/672 표본). "LME"·"톤" 같은 단위·거래소를 문장에 하드코딩하지 않는다 —
-    # 이 계산기는 다른 가격 지표(day_over_day 등)에서도 단위를 안 쓴다(prompts.py
-    # 지침·PDF 원문 어디에도 단위 표기가 없는 것과 같은 관행).
+    # 672/672 표본). "LME" 같은 거래소명은 여전히 문장에 하드코딩하지 않는다 —
+    # 이 계산기는 다른 가격 지표(day_over_day 등)에서도 거래소명을 안 쓴다
+    # (prompts.py 지침·PDF 원문 어디에도 없는 것과 같은 관행). 재고량 단위
+    # ("톤")는 2026-09-09 사용자 승인으로 예외적으로 하드코딩한다 —
+    # `_INVENTORY_UNIT_LABEL` 정의부 주석 참고(데이터가 아니라 LME 창고
+    # 재고 업계 관행에 근거).
     #
     # 2026-08-29 Phase2 라이브 재검증에서 발견·main-agent 승인 — KOMIS는 전통 LME
     # 6대 비철금속(니켈·동·아연·알루미늄·연·주석) 외 광종은 `invt`(재고량)를 매
@@ -716,7 +725,7 @@ def calculate_price_summary(
                 ),
                 None,
             )
-            inventory_fact = f"{_korean_date(latest.date)} 기준 재고량은 {_number(latest_inventory)}입니다."
+            inventory_fact = f"{_korean_date(latest.date)} 기준 재고량은 {_quantity(latest_inventory)}{_INVENTORY_UNIT_LABEL}입니다."
             inventory_change_pct = None
             if prior_inventory_obs is not None:
                 inv_change = _pct(latest_inventory, prior_inventory_obs.inventory)
@@ -730,7 +739,7 @@ def calculate_price_summary(
                     inventory_fact = f"{inventory_fact} {inv_comparison_label} 대비 {_signed_pct(inv_change)} 변동했습니다."
                     inventory_change_pct = inv_change * 100
             claims.append(EvidenceClaim("inventory_level", "current_position", inventory_fact))
-            key_metrics.append(_price_metric("inventory_level", "재고량", latest_inventory))
+            key_metrics.append(_price_metric("inventory_level", "재고량", latest_inventory, unit=_INVENTORY_UNIT_LABEL))
             if inventory_change_pct is not None:
                 key_metrics.append(_price_metric("inventory_change_pct", "재고량 등락률", inventory_change_pct, unit="%"))
 
@@ -814,12 +823,12 @@ def calculate_price_summary(
         if drawdown_stats["current_dd_pct"] >= -0.005:  # 반올림상 0%대(현재가=조회기간 최고가)
             position_sentences.append(
                 f"현재가는 조회기간 중 최고가({_korean_date(drawdown_stats['overall_peak_date'])}, "
-                f"{_number(drawdown_stats['overall_peak_price'])})와 같은 수준입니다."
+                f"{_quantity(drawdown_stats['overall_peak_price'])})와 같은 수준입니다."
             )
         else:
             position_sentences.append(
                 f"현재가는 조회기간 중 최고가({_korean_date(drawdown_stats['overall_peak_date'])}, "
-                f"{_number(drawdown_stats['overall_peak_price'])}) 대비 "
+                f"{_quantity(drawdown_stats['overall_peak_price'])}) 대비 "
                 f"{_number(abs(drawdown_stats['current_dd_pct']))}% 낮습니다."
             )
     if percentile is not None:
@@ -1424,6 +1433,17 @@ def _price_metric(metric_id: str, label: str, value: float | None, *, unit: str 
 #: 코드가 오면 원문 코드를 그대로 쓴다(단위를 지어내지 않는다).
 _PRICE_UNIT_LABELS = {"USD": "달러", "CNY": "위안"}
 
+#: 2026-09-09 발주처 피드백(오전 2차 상세) — "재고량 단위 표출 필요" 지적.
+#: KOMIS 응답엔 재고량 단위 필드 자체가 없다(`invt`/`invtPrc`/`invtPrcnt`만
+#: 있고 `prcUnitCdNm` 같은 대응 필드가 없음, 2026-09-09 실측 확인) — 가격
+#: 단위(`_PRICE_UNIT_LABELS`)처럼 데이터에서 뽑을 수 없다. 대신 재고량이
+#: 실제로 채워지는 건 LME 6대 비철금속(니켈·동·아연·알루미늄·연·주석,
+#: 위 참고)뿐이고, LME 창고 재고는 업계 관행상 항상 메트릭톤(MT) 단위로
+#: 공시된다 — 데이터 기반이 아니라 이 도메인 관행에 근거한 상수다(사용자
+#: 승인, 2026-09-09). KOMIS가 재고량 단위 필드를 제공하기 시작하면 이
+#: 상수 대신 그 값을 우선하도록 바꿀 것.
+_INVENTORY_UNIT_LABEL = "톤"
+
 
 def _price_unit_label(price_unit: str | None) -> str | None:
     if not price_unit:
@@ -1798,7 +1818,7 @@ def _inventory_context_fact(observations_with_price_and_inventory: list) -> str 
     inv_rank = sum(1 for value in values if value <= latest.inventory) / len(values) * 100
     # 2026-09-09 발주처 피드백(오전 2차) — "분포상 백분위"·관측치 건수 노출을
     # 없애고 쉬운 표현으로 바꾼다(숫자 자체는 그대로).
-    parts = [f"재고량은 최근 조회기간 대비 {_number(inv_rank)}% 위치"]
+    sentences = [f"재고량은 최근 조회기간 대비 {_number(inv_rank)}% 위치입니다."]
     signed_pairs = []
     for prev, cur in zip(observations_with_price_and_inventory, observations_with_price_and_inventory[1:]):
         price_delta = cur.commerce_price - prev.commerce_price
@@ -1815,8 +1835,16 @@ def _inventory_context_fact(observations_with_price_and_inventory: list) -> str 
         # ("거래주"/"거래개월" 등)를 새로 만드는 대신, 어느 조회단위에도
         # 자연스러운 "관측치"로 통일해 단위 의존성 자체를 없앤다.
         # 2026-09-09 발주처 피드백(오전 2차) — 관측치 건수 노출 제거.
-        parts.append(f"최근 가격·재고량이 같은 방향으로 움직인 비율은 {_number(comovement)}%")
-    return "이고 ".join(parts) + "입니다."
+        # 2026-09-09 후속(같은 날, 사용자 승인) — "가격·재고량이 같은
+        # 방향으로 움직인 비율"이 상관관계처럼 오독될 위험이 있다는
+        # 지적 — 최대 하락폭(Max Drawdown)을 참고지표로 격하했을 때와
+        # 같은 패턴으로 "참고로" 접두 + 인과관계 아님을 명시하는 괄호를
+        # 붙여 별도 문장으로 분리한다(수치·정보 자체는 삭제하지 않음).
+        sentences.append(
+            f"참고로 최근 가격·재고량이 같은 방향으로 움직인 비율은 {_number(comovement)}%입니다"
+            "(인과관계를 의미하지 않는 참고 지표입니다)."
+        )
+    return " ".join(sentences)
 
 
 def _relative_value_fact(
