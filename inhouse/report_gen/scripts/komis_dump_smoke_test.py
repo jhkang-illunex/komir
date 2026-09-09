@@ -513,7 +513,24 @@ def _check_mismatch(page_id: str, expected: dict, response: dict) -> list[str]:
             )
         if metrics.get("top_country") != expected["top1_country"]:
             problems.append(f"top_country 불일치: expected={expected['top1_country']} actual={metrics.get('top_country')}")
-    elif page_id in ("map_korea", "map_global"):
+    elif page_id == "map_korea":
+        # 2026-09-09 발주처 업무지시서 §3.3 대응으로 calculate_domestic_trade_summary가
+        # 수입·수출을 함께 내면서 key_metrics 이름도 "수입" 명시로 바뀌었다
+        # (map_global은 이 리팩터 대상이 아니라 옛 이름 그대로 — 아래 분기 참고).
+        if not _close(
+            expected["total_amount"], metrics.get("import_total_amount"), tol=max(1.0, expected["total_amount"] * 0.01)
+        ):
+            problems.append(
+                f"import_total_amount 불일치: expected={expected['total_amount']} actual={metrics.get('import_total_amount')}"
+            )
+        if expected["top1_share_pct"] is not None and not _close(
+            expected["top1_share_pct"], metrics.get("top1_import_share_pct"), tol=0.5
+        ):
+            problems.append(
+                f"top1_import_share_pct 불일치: expected={expected['top1_share_pct']:.2f} "
+                f"actual={metrics.get('top1_import_share_pct')}"
+            )
+    elif page_id == "map_global":
         if not _close(expected["total_amount"], metrics.get("total_amount"), tol=max(1.0, expected["total_amount"] * 0.01)):
             problems.append(f"total_amount 불일치: expected={expected['total_amount']} actual={metrics.get('total_amount')}")
         if expected["top1_share_pct"] is not None and not _close(expected["top1_share_pct"], metrics.get("top1_share_pct"), tol=0.5):
