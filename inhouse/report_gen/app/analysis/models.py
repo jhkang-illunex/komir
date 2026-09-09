@@ -966,7 +966,13 @@ class SummarySentence(StrictModel):
 #: 있었고, DB 값이 이 상한을 넘어도 걸러내지 않아 LLM이 상한 초과 문장을 쓰면
 #: `SummaryNarrative` 생성이 영구히 `ValidationError`로 죽는 무언 폴백이 가능했다).
 CORE_DIAGNOSIS_MAX_SENTENCES = 2
-MAJOR_CHANGES_MAX_SENTENCES = 5
+#: 2026-09-09 발주처 업무지시서(§3.1 "최근 변화" 재배치)로 5→7 — price_*
+#: 계산기가 day_over_day+week_avg+month_avg+year_avg+price_streak(최대 5)에
+#: period_overall_change(구 komir 자체 추가)·ma_trend(평균 대비 위치, 신규)
+#: 둘 다 더할 수 있다(5+1+1=7, komir_summary.py::calculate_price_summary
+#: 실측 확인 — 두 게이트 모두 이 상수를 참조해야 어느 쪽이 먼저 계산돼도
+#: 서로의 자리를 뺏지 않는다).
+MAJOR_CHANGES_MAX_SENTENCES = 7
 CURRENT_POSITION_MAX_SENTENCES = 9
 
 

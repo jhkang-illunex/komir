@@ -101,8 +101,9 @@ def render_markdown_report(response: AnalysisSummaryResponse) -> str:
         lines.append(f"## {title}")
         lines.append("")
         if key == "current_position" and len(sentences) > 3:
-            # 2026-08-31 사용자 지시 — "현재 위치"는 통계 확장(변동성·이동평균·
-            # RSI·백분위·낙폭국면·재고해석 등)으로 최대 9문장까지 늘었는데,
+            # 2026-08-31 사용자 지시 — "현재 위치"는 통계 확장(변동성·단기
+            # 매매압력·백분위·낙폭국면·재고해석 등, 2026-09-09부터 평균 대비
+            # 위치는 major_changes로 이동)으로 최대 9문장까지 늘었는데,
             # 기존처럼 공백으로 이어붙여 한 문단으로 렌더링하면 읽기 힘들다.
             # 이 절의 문장들은 major_changes(의도적으로 한 문장에 여러 근거를
             # 잇는 서술형)와 달리 원래부터 각 문장이 서로 다른 독립 주제(범위·
