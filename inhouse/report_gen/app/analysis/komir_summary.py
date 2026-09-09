@@ -13,7 +13,6 @@ summary` 등을 따른다 — 재사용 가능한 헬퍼(`EvidenceClaim`·`Summa
 from __future__ import annotations
 
 import logging
-import re as _re
 import statistics as _statistics
 from datetime import date as _date, timedelta as _timedelta
 
@@ -40,9 +39,7 @@ def _subject(name: str) -> str:
 from .models import (
     CURRENT_POSITION_MAX_SENTENCES,
     KEY_METRICS_MAX_COUNT,
-    MAJOR_CHANGES_MAX_SENTENCES,
     DetectedPattern,
-    GeoEventObservation,
     Metric,
     PriceGroupMineralObservation,
     PriceKomisPeriodComparisons,
@@ -71,61 +68,6 @@ def _capped_key_metrics(key_metrics: list[Metric], *, page_id: str) -> list[Metr
         )
     return key_metrics[:KEY_METRICS_MAX_COUNT]
 
-
-# 2026-08-28: `direction`은 실제 `geo_event` 데이터 확인 결과 7개 값의 깨끗한
-# 통제 어휘라(`GeoEventObservation` docstring 참고) 라벨링이 안전하다.
-_DIRECTION_LABELS = {
-    "supply_down": "공급 감소",
-    "supply_up": "공급 증가",
-    "price_down": "가격 하락",
-    "price_up": "가격 상승",
-    "demand_down": "수요 감소",
-    "demand_up": "수요 증가",
-    "neutral": "동향 변화",
-}
-
-# 2026-08-28 데이터 품질 확인(`report_gen_구조개선_작업기록_260828_보강.md`
-# 참고) — severity>=2.0 표본 7,917건 실측: source가 비어있는(GDELT 원천) 행의
-# `evidence_quote`는 84.3%가 실제로는 문장이 아니라 URL 슬러그
-# ("trump-says-50-per-cent-tariff-..." 류)였고, 한국어 비율은 KOMIS(3.3%)·
-# PPS(0.3%) 두 출처만 예외적으로 높았다(평균 0.895, 나머지는 전부 0.0에
-# 수렴). 반대로 이 두 출처 안에서는 한국어 비율이 0.3 밑으로 떨어지는
-# 예외가 0건이었다 — source 이름을 하드코딩하는 대신 텍스트 자체의 한글
-# 비율로 판별하면 같은 효과를 소스 이름과 무관하게 얻는다(새 한국어 출처가
-# 추가돼도 재사용 가능).
-_QUOTE_KOREAN_RATIO_THRESHOLD = 0.3
-# 슬러그(하이픈으로 이어붙인 영소문자/숫자 토큰 4개 이상, 공백 없음) 방어용
-# 2차 체크 — 한글 비율 체크만으로도 실측 표본에서는 전부 걸러졌지만, 어쩌다
-# 한글 단어가 슬러그에 섞여 들어오는 경우까지 방어한다.
-_SLUG_RE = _re.compile(r"^[a-z0-9]+(-[a-z0-9]+){3,}$")
-
-
-def _korean_ratio(text: str) -> float:
-    letters = [c for c in text if c.isalpha() or ("가" <= c <= "힣")]
-    if not letters:
-        return 0.0
-    korean = sum(1 for c in letters if "가" <= c <= "힣")
-    return korean / len(letters)
-
-
-def _quote_passes_quality(quote: str | None) -> bool:
-    """`evidence_quote`를 "주요 요인" 절에 보강 문구로 붙여도 되는 품질인지 —
-    한글 비율 임계치를 넘고 슬러그 패턴이 아니어야 한다(실측 근거는 위 상수
-    주석·`report_gen_구조개선_작업기록_260828_보강.md` 참고)."""
-
-    if not quote or not quote.strip():
-        return False
-    stripped = quote.strip()
-    if _SLUG_RE.match(stripped.lower()):
-        return False
-    return _korean_ratio(stripped) >= _QUOTE_KOREAN_RATIO_THRESHOLD
-
-
-# "주요 요인" 절에 인용할 최소 심각도 — 이 밑이면 "주요"라 부르기엔 미미하다고
-# 판단해 claim 자체를 만들지 않는다(2026-08-28, 품질 확인에 쓴 표본 임계치와
-# 동일하게 맞춤).
-_PRICE_DRIVER_MIN_SEVERITY = 2.0
-_PRICE_DRIVER_MAX_EVENTS = 2
 
 KOMIR_PAGE_CONTEXTS = {
     # 2026-08-27: 실제 KOMIS 사이트맵 확인 결과 "price" 1개가 서로 다른 서브메뉴
@@ -361,7 +303,6 @@ def calculate_price_summary(
     series: PriceSeries,
     *,
     compare_series: PriceSeries | None = None,
-    geo_events: list[GeoEventObservation] | None = None,
     komis_period_comparisons: PriceKomisPeriodComparisons | None = None,
     srch_avg_opt: str | None = None,
     srch_field: str | None = None,
@@ -390,15 +331,10 @@ def calculate_price_summary(
     날짜가 정확히 일치하지 않을 수 있어 일별 대비가 아니라 "첫 관측 대비
     마지막 관측" 전체 변화율로 비교한다(둘 다 항상 계산 가능).
 
-    `geo_events`(2026-08-28 신설) — PDF §1-1 "가격 변동의 주요 요인" 대응.
-    `_PRICE_DRIVER_MIN_SEVERITY` 이상인 이벤트 중 severity 상위
-    `_PRICE_DRIVER_MAX_EVENTS`건(main-agent 결정: 품질이 아니라 severity만으로
-    선택 — "가장 심각한 이벤트"라는 의미를 지키기 위해)을 골라 `major_changes`에
-    근거를 추가한다. 문장은 `direction`(클린 통제 어휘)만으로 항상 만들 수
-    있는 결정론적 한국어 템플릿이 기본이고, `evidence_quote`는 `_quote_passes_
-    quality()`를 통과할 때만 보강 문구로 덧붙인다(원 데이터의 84%가 URL
-    슬러그라 그대로 인용하면 안 됨 — `report_gen_구조개선_작업기록_260828_
-    보강.md` 참고).
+    2026-09-09 발주처 업무지시서(§2.2)로 `geo_events`(외부 뉴스·보고서 기반
+    "가격 변동의 주요 요인" 서술, 2026-08-28 신설) 기능을 제거했다 — 화면에
+    표시된 시계열 데이터만 사용하고 외부 이슈를 원인처럼 서술하지 않는다는
+    요구사항으로 뒤집혔다. 재추가하지 말 것.
 
     `komis_period_comparisons`(2026-08-28 추가조사 확정) — 있으면 전주/전월/
     전년평균 대비 근거를 이 계산기의 롤링창 재계산 대신 KOMIS 제공값으로
@@ -427,6 +363,10 @@ def calculate_price_summary(
         avg = sum(item.commerce_price for item in window) / len(window)
         return avg, tuple(item.date for item in window)
 
+    # 2026-09-09 발주처 업무지시서 대응 — 핵심 진단의 가격 수치에 통화 단위가
+    # 없었다. `series.price_unit`(komis_response dataAvg.INFO.prcUnitCdNm 또는
+    # 호출자 명시값)이 있을 때만 표기한다 — 단위를 지어내지 않는다.
+    price_unit_label = _price_unit_label(series.price_unit)
     claims = [
         EvidenceClaim(
             # id는 "current_state" — 다른 7종 페이지(indicator_market 등)가 전부
@@ -440,11 +380,12 @@ def calculate_price_summary(
             "core_diagnosis",
             # 일자는 한글 표기(2026-08-27 반복 루프 1회차: LLM이 근거의 "2026-08-24"
             # 원형을 그대로 베껴 지침 "YYYY년 M월 D일" 위반 8건 — 근거부터 한글로).
-            f"{_korean_date(latest.date)} 기준 {series.mineral.name} 실거래가는 {_number(latest.commerce_price)}이다.",
+            f"{_korean_date(latest.date)} 기준 {series.mineral.name} 실거래가는 "
+            f"{_number(latest.commerce_price)}{price_unit_label or ''}이다.",
             required=True,
         )
     ]
-    key_metrics = [_price_metric("latest_price", "최신 가격", latest.commerce_price)]
+    key_metrics = [_price_metric("latest_price", "최신 가격", latest.commerce_price, unit=price_unit_label)]
     # 2026-08-31 사용자 통계확장 피드백 — 아래 신규 6개 층(변동성·이동평균+RSI·
     # 백분위·낙폭국면·재고해석·상대가치) 중 관측치 부족으로 건너뛴 항목을
     # 여기 모은다. `warnings`는 `data_quality.warnings`로 노출돼(summary.py)
@@ -598,7 +539,7 @@ def calculate_price_summary(
     # observations의 첫 관측치(조회기간 시작)와 최신 관측치를 직접
     # 비교해서 만든다. major_changes 5-cap(day_over_day+week+month+year+
     # price_streak만으로 이미 5개까지 찰 수 있음)을 넘지 않도록 남은
-    # 자리가 있을 때만 추가한다(geo_events 블록과 같은 방어 패턴).
+    # 자리가 있을 때만 추가한다.
     if sum(1 for claim in claims if claim.section == "major_changes") < 5:
         first = observations[0]
         if first is not latest and first.commerce_price is not None:
@@ -612,42 +553,6 @@ def calculate_price_summary(
                         f"{_signed_pct(overall_change)} 변동했다.",
                     )
                 )
-
-    if geo_events:
-        # `SummaryNarrative.major_changes`는 절 전체(모델 하드 제약, models.py)가
-        # 최대 5문장이고, 규칙기반 폴백 경로(`_deterministic_narrative`)는 근거
-        # 1개=문장 1개로 그대로 옮기므로 이미 day_over_day·week/month/year평균·
-        # price_streak만으로 5개에 닿을 수 있다(관측치가 창마다 달라지는
-        # 경우) — 새 근거를 무조건 추가하면 그 경로가 `ValidationError`로
-        # 죽는다(2026-08-28 실측 재현). 남은 자리만큼만 추가해 절대 넘지 않는다.
-        _MAJOR_CHANGES_HARD_CAP = MAJOR_CHANGES_MAX_SENTENCES
-        room = _MAJOR_CHANGES_HARD_CAP - sum(1 for claim in claims if claim.section == "major_changes")
-        selected = sorted(
-            (event for event in geo_events if event.severity >= _PRICE_DRIVER_MIN_SEVERITY),
-            key=lambda event: event.severity,
-            reverse=True,
-        )[: max(0, min(_PRICE_DRIVER_MAX_EVENTS, room))]
-        for index, event in enumerate(selected, start=1):
-            direction_label = _DIRECTION_LABELS.get(event.direction, "동향 변화")
-            fact = (
-                f"조회기간 중 {event.country}에서 {direction_label} 흐름과 맞물린 "
-                f"사안이 있었다({_korean_date(event.obs_date)} 기준)."
-            )
-            if _quote_passes_quality(event.evidence_quote):
-                quote = event.evidence_quote.strip()
-                # SummarySentence.text 상한(300자) 안에 안전하게 들어가도록
-                # 보강 문구 길이를 제한한다(템플릿 문장 자체가 이미 40~60자).
-                if len(quote) > 200:
-                    quote = quote[:200].rstrip() + "…"
-                fact = f"{fact} 관련 보도: {quote}"
-            claims.append(
-                EvidenceClaim(
-                    f"price_driver_event_{index}",
-                    "major_changes",
-                    fact,
-                    required=True,
-                )
-            )
 
     if not any(claim.section == "major_changes" for claim in claims):
         # `SummaryNarrative`는 3개 절 전부 최소 1개 근거를 요구한다(models.py) —
@@ -714,6 +619,11 @@ def calculate_price_summary(
                 range_fact,
             )
         )
+        # 2026-09-09 발주처 업무지시서 대응 — 주요 지표 표에 최고가·최저가가
+        # 빠져 있었다(문장(period_range)엔 있었지만 표엔 없음). 문장과 같은
+        # period_high/period_low를 그대로 써서 값 불일치가 나지 않게 한다.
+        key_metrics.append(_price_metric("period_high", "최고가", period_high, unit=price_unit_label))
+        key_metrics.append(_price_metric("period_low", "최저가", period_low, unit=price_unit_label))
         if period_high > period_low and latest.commerce_price is not None:
             position = (latest.commerce_price - period_low) / (period_high - period_low)
             if position >= 0.9:
@@ -813,7 +723,9 @@ def calculate_price_summary(
     # 넘지 않는다 — 계산된 층 개수 + (생략 있으면 1) ≤ 6신규층 자체 상한).
     skipped_layer_notes: list[str] = []
 
-    volatility_fact, volatility_skipped = _volatility_fact(observations_with_price, latest.date, srch_avg_opt=srch_avg_opt)
+    volatility_fact, volatility_skipped, volatility_values = _volatility_fact(
+        observations_with_price, latest.date, srch_avg_opt=srch_avg_opt
+    )
     if volatility_fact is not None and _has_current_position_room(claims):
         claims.append(EvidenceClaim("volatility", "current_position", volatility_fact))
     if volatility_skipped:
@@ -822,6 +734,20 @@ def calculate_price_summary(
             "이상을 덮지 않거나 관측치가 5건 미만이라 계산하지 않았다."
         )
         skipped_layer_notes.append(f"변동성({'·'.join(volatility_skipped)})")
+    # 2026-09-09 발주처 업무지시서 대응 — 주요 지표 표에 변동성이 빠져 있었다.
+    # 문장(volatility_fact)과 같은 계산값 중 최단 가용 창(보통 "1개월")을 표에
+    # 싣는다 — `_VOLATILITY_WINDOWS` 순서(1개월→3개월→1년)대로 먼저 있는 것.
+    for _window_label, _ in _VOLATILITY_WINDOWS:
+        if _window_label in volatility_values:
+            key_metrics.append(
+                _price_metric(
+                    "recent_volatility_pct",
+                    f"변동성({_window_label}, 연율화)",
+                    volatility_values[_window_label],
+                    unit="%",
+                )
+            )
+            break
 
     ma_rsi_fact, ma_rsi_computed = _ma_rsi_fact(observations_with_price, latest.commerce_price, srch_avg_opt=srch_avg_opt)
     if ma_rsi_fact is not None and _has_current_position_room(claims):
@@ -850,6 +776,19 @@ def calculate_price_summary(
     elif drawdown_fact is None:
         warnings.append("낙폭 국면은 관측치가 2건 미만이라 계산하지 않았다.")
         skipped_layer_notes.append("낙폭 국면")
+    # 2026-09-09 발주처 업무지시서 대응 — 주요 지표 표에 낙폭이 빠져 있었다.
+    # drawdown_fact와 같은 함수(_drawdown_stats)의 값을 그대로 써서 문장·표
+    # 숫자가 어긋나지 않게 한다.
+    drawdown_stats = _drawdown_stats(observations_with_price)
+    if drawdown_stats is not None:
+        key_metrics.append(
+            _price_metric(
+                "drawdown_from_period_high_pct",
+                "고점 대비 낙폭",
+                abs(drawdown_stats["current_dd_pct"]),
+                unit="%",
+            )
+        )
 
     observations_with_price_and_inventory = [
         item for item in observations_with_price if item.inventory not in (None, 0, 0.0)
@@ -1409,6 +1348,19 @@ def _price_metric(metric_id: str, label: str, value: float | None, *, unit: str 
     )
 
 
+#: KOMIS `dataAvg.INFO.prcUnitCdNm` → 사용자 표기(2026-09-09 발주처 업무지시서
+#: 대응 — "가격 수치에 단위가 없다" 지적). 실 KOMIS 덤프 전수 확인 결과 값은
+#: "USD"/"CNY" 2종뿐이다(`scan_price_units` 실측, 2026-09-09) — 매핑에 없는
+#: 코드가 오면 원문 코드를 그대로 쓴다(단위를 지어내지 않는다).
+_PRICE_UNIT_LABELS = {"USD": "달러", "CNY": "위안"}
+
+
+def _price_unit_label(price_unit: str | None) -> str | None:
+    if not price_unit:
+        return None
+    return _PRICE_UNIT_LABELS.get(price_unit, price_unit)
+
+
 def _pct(current: float | None, previous: float | None) -> float | None:
     if current is None or previous is None or previous == 0:
         return None
@@ -1550,21 +1502,26 @@ def _returns_with_dates(observations_with_price: list) -> list[tuple[str, str, f
 
 def _volatility_fact(
     observations_with_price: list, latest_date: str, *, srch_avg_opt: str | None = None
-) -> tuple[str | None, list[str]]:
+) -> tuple[str | None, list[str], dict[str, float]]:
     """1개월/3개월/1년 연율화 변동성(수익률 표준편차×sqrt(연간 관측 횟수)).
     창별로 실제 관측 기간이 그 창의 60% 이상을 덮을 때만 포함한다(관측치가
     60일뿐인데 "1년 변동성"이라 표기하는 오해를 막기 위해서 — 2026-08-31
     사용자 지적의 hi/lo 문제와 같은 성격의 함정). 연율화 계수는 관측치가
     일간이라고 고정하지 않고 `_detect_granularity`로 판별한 실제 단위를
     쓴다(2026-08-31 사용자 지적 — KOMIS DAY/WEEK/MONTH/QUARTER/YEAR 5종
-    조회단위 대응)."""
+    조회단위 대응).
+
+    2026-09-09 발주처 업무지시서 대응 — 세 번째 반환값(창 라벨→연율화%)은
+    `calculate_price_summary`가 key_metrics 표의 "변동성"(최단 가용 창)을
+    채우는 데 쓴다(문장·표가 같은 값을 쓰게 해 불일치를 막는다)."""
 
     returns = _returns_with_dates(observations_with_price)
     if not returns:
-        return None, [label for label, _ in _VOLATILITY_WINDOWS]
+        return None, [label for label, _ in _VOLATILITY_WINDOWS], {}
     _, periods_per_year = _detect_granularity(observations_with_price, srch_avg_opt=srch_avg_opt)
     parts: list[str] = []
     skipped: list[str] = []
+    values: dict[str, float] = {}
     for label, days in _VOLATILITY_WINDOWS:
         cutoff = _shift_date(latest_date, -days)
         window = [(d1, r) for d1, d2, r in returns if d2 >= cutoff]
@@ -1578,9 +1535,10 @@ def _volatility_fact(
         stdev = _statistics.stdev(r for _, r in window)
         annualized = stdev * (periods_per_year ** 0.5) * 100
         parts.append(f"{label} {_number(annualized)}%")
+        values[label] = annualized
     if not parts:
-        return None, skipped
-    return f"최근 {'·'.join(parts)} 연율화 변동성을 보였다.", skipped
+        return None, skipped, {}
+    return f"최근 {'·'.join(parts)} 연율화 변동성을 보였다.", skipped, values
 
 
 def _moving_averages(observations_with_price: list) -> dict[int, float]:

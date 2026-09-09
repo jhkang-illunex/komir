@@ -179,10 +179,6 @@ class AnalysisSummaryRequest(StrictModel):
     # (비철금속/희소금속). `observations`는 이 페이지에서 PriceGroupMineral
     # Observation dict 리스트(광종별 전주·전월 등락률)를 담는다.
     price_group: PriceGroup | None = None
-    # 2026-08-28: price_base_metals/minor_metals/iron_energy/other 4종 전용 —
-    # PDF §1-1 "가격 변동의 주요 요인" 대응(GeoEventObservation dict 리스트).
-    # 선택 필드라 없으면 지금처럼 이 절이 빈다(하위호환).
-    geo_events: list[dict] | None = None
     # 2026-08-28 추가조사(`report_gen_price_base_metals_부실요약_원인조사_260828.md`)
     # 확정 — price_base_metals/minor_metals/iron_energy/other 4종 전용. KOMIS
     # 응답의 `dataAvg.stdMap.{WEEK,MONTH,YEAR}`를 그대로 실어 보내면(선택,
@@ -334,10 +330,6 @@ class AnalysisSummaryRequest(StrictModel):
                 "compare_* fields are only accepted for price_* pages "
                 "(base_metals/minor_metals/iron_energy/other)"
             )
-        if self.geo_events is not None and self.page_id not in (
-            "price_base_metals", "price_minor_metals", "price_iron_energy", "price_other",
-        ):
-            raise ValueError("geo_events is only accepted for price_* pages")
         if self.komis_period_comparisons is not None and self.page_id not in (
             "price_base_metals", "price_minor_metals", "price_iron_energy", "price_other",
         ):
@@ -744,28 +736,6 @@ class PriceObservation(StrictModel):
     inventory: float | None = None
 
 
-class GeoEventObservation(StrictModel):
-    """`page_id="price_base_metals"/"price_minor_metals"/"price_iron_energy"/
-    "price_other"` 전용(2026-08-28 신설, PDF §1-1 "가격 변동의 주요 요인" 대응) —
-    지정학 위기지수 파이프라인의 `geo_event`(postgres `mineral_risk.geo_event`)에서
-    가격 조회기간과 겹치는 행을 호출자가 그대로 실어 보낸다(report_gen은 DB를
-    안 읽으므로 이 서버가 직접 조회하지 않는다).
-
-    `direction`은 `geo_event` 실제 데이터 확인 결과 7개 값의 깨끗한 통제 어휘라
-    (`komir_summary.py::_DIRECTION_LABELS` 참고) 안전하게 라벨링할 수 있지만,
-    `event_type`은 같은 확인에서 268종+ 자유서술(영어/한국어 혼재, 대소문자·
-    구두점 불일치)로 나와 이번 필드에는 포함하지 않았다(2026-08-28 데이터 품질
-    확인, `report_gen_구조개선_작업기록_260828_보강.md` 참고)."""
-
-    obs_date: Day
-    country: str = Field(min_length=1)
-    direction: Literal[
-        "supply_down", "supply_up", "price_down", "price_up", "demand_down", "demand_up", "neutral",
-    ]
-    severity: float
-    evidence_quote: str | None = None
-
-
 class PriceKomisPeriodAverage(StrictModel):
     """`dataAvg.stdMap.{WEEK,MONTH,YEAR}` 1개 항목 패스스루(2026-08-28 신설,
     `report_gen_price_base_metals_부실요약_원인조사_260828.md` 참고) — KOMIS가
@@ -823,6 +793,12 @@ class PriceSeries(StrictModel):
     source_sheets: list[str] = Field(default_factory=list)
     observations: list[PriceObservation] = Field(min_length=1)
     warnings: list[str] = Field(default_factory=list)
+    # 2026-09-09 발주처 업무지시서 대응 — komis_response의 `dataAvg.INFO.
+    # prcUnitCdNm`(mineral_name/price_criterion과 같은 자리, `_parse_komis_
+    # price_response`가 뽑는다)로 채운다. 없으면(호출자가 명시하지 않고
+    # komis_response도 없으면) None — 핵심 진단 문장·주요 지표 표에서 단위를
+    # 표시하지 않는다(단위를 지어내지 않는다).
+    price_unit: str | None = None
 
 
 class TradeCountryObservation(StrictModel):
@@ -998,11 +974,12 @@ class SummaryNarrative(StrictModel):
     """3개 섹션으로 묶인 근거 연결 분석문."""
 
     core_diagnosis: list[SummarySentence] = Field(min_length=1, max_length=CORE_DIAGNOSIS_MAX_SENTENCES)
-    # major_changes의 상한을 바꾸면 `komir_summary.py::calculate_price_summary`의
-    # `_MAJOR_CHANGES_HARD_CAP`(규칙기반 폴백 경로가 근거 1개=문장 1개로 그대로
-    # 매핑해 이 상한을 그대로 import해 쓴다, 2026-08-28)도 같이 바뀐다 — 위
-    # `MAJOR_CHANGES_MAX_SENTENCES`가 단일 출처라 더 이상 수동 동기화가 필요
-    # 없다.
+    # major_changes 규칙기반 폴백 경로(komir_summary.py)는 근거 1개=문장 1개로
+    # 그대로 매핑하므로, 이 상한을 넘는 근거를 만들면 `ValidationError`로 죽는다
+    # — 근거 개수를 늘리는 코드는 항상 이 상수 기준으로 여유를 확인할 것
+    # (2026-09-09 기준 price_* 계산기엔 이 확인이 필요한 경로가 없다 — 발주처
+    # 요구로 `geo_events`/`price_driver_event` 기능이 제거되며 유일한 소비처가
+    # 사라졌다).
     major_changes: list[SummarySentence] = Field(min_length=1, max_length=MAJOR_CHANGES_MAX_SENTENCES)
     # 2026-08-31 사용자 통계확장 피드백(변동성·이동평균+RSI·백분위·낙폭국면·
     # 재고해석·상대가치 6개 신규 층) 반영으로 3→9 확대 — `komir_summary.py::
@@ -1014,7 +991,12 @@ class SummaryNarrative(StrictModel):
 #: `AnalysisSummaryResponse.key_metrics` 상한 — 계산기가 이보다 많이 만들면
 #: 나머지는 조용히 잘린다(2026-09-08 SC-009: komir_summary.py가 이 상수를
 #: import해 잘릴 때 경고 로그를 남긴다).
-KEY_METRICS_MAX_COUNT = 8
+#: 2026-09-09 발주처 업무지시서(최고가·최저가·낙폭·변동성 4종 추가)로 8→14 —
+#: `calculate_price_summary`가 LME 6대 비철금속(재고량 있음) + 비교광종
+#: 지정 시 만드는 최대 개수(최신가격·전일대비·전주/전월/전년대비·연속추세·
+#: 최고가·최저가·재고량·재고량등락률·변동성·낙폭·비교광종변화율차 = 13개,
+#: 2026-09-09 실측)에 여유를 둔 값이다.
+KEY_METRICS_MAX_COUNT = 14
 
 
 class AnalysisSummaryResponse(StrictModel):

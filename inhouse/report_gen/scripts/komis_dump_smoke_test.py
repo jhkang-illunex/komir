@@ -163,6 +163,9 @@ def adapt_price_pages(dump: dict, source_label: str, page_id: str) -> list[tuple
             "mineral": mineral_code,
             "mineral_name": info.get("mnrkndKornNm") or mineral_code,
             "price_criterion": info.get("prcCrtr"),
+            # 2026-09-09 발주처 업무지시서(가격 단위 표기) 회귀 커버리지 —
+            # mineral_name/price_criterion과 같은 dataAvg.INFO 자리.
+            "price_unit": info.get("prcUnitCdNm"),
             "observations": observations,
         }
         komis_period_comparisons = _komis_period_comparisons(resp, observations[-1]["commerce_price"])
