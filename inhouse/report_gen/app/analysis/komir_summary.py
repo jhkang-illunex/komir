@@ -381,8 +381,9 @@ def calculate_price_summary(
             "core_diagnosis",
             # 일자는 한글 표기(2026-08-27 반복 루프 1회차: LLM이 근거의 "2026-08-24"
             # 원형을 그대로 베껴 지침 "YYYY년 M월 D일" 위반 8건 — 근거부터 한글로).
+            # 2026-09-09 발주처 피드백(오전 2차) — 격식체(~습니다)로 전환.
             f"{_korean_date(latest.date)} 기준 {series.mineral.name} 실거래가는 "
-            f"{_number(latest.commerce_price)}{price_unit_label or ''}이다.",
+            f"{_number(latest.commerce_price)}{price_unit_label or ''}입니다.",
             required=True,
         )
     ]
@@ -413,9 +414,13 @@ def calculate_price_summary(
             )
             claims.append(
                 EvidenceClaim(
+                    # 2026-09-09 발주처 피드백(오전 2차, "가격요약 통합") —
+                    # 이전엔 major_changes("주요 변화")였다. 현재가+전주/전월/
+                    # 전년 대비를 한 문단(가격 요약, core_diagnosis)으로
+                    # 묶으라는 요구로 옮겼다. 아래 week/month/year_avg도 동일.
                     "day_over_day",
-                    "major_changes",
-                    f"{comparison_label} 대비 {_signed_pct(change)} 변동했다.",
+                    "core_diagnosis",
+                    f"{comparison_label} 대비 {_signed_pct(change)} 변동했습니다.",
                     required=True,
                 )
             )
@@ -466,8 +471,8 @@ def calculate_price_summary(
             claims.append(
                 EvidenceClaim(
                     metric_id,
-                    "major_changes",
-                    f"{label}({_number(komis_avg.average_price)}) 대비 {_signed_pct(change)} 수준이다.",
+                    "core_diagnosis",
+                    f"{label}({_number(komis_avg.average_price)}) 대비 {_signed_pct(change)} 수준입니다.",
                 )
             )
             key_metrics.append(_price_metric(f"{metric_id}_change_pct", f"{label}대비", change * 100, unit="%"))
@@ -485,8 +490,8 @@ def calculate_price_summary(
         claims.append(
             EvidenceClaim(
                 metric_id,
-                "major_changes",
-                f"{label}({_number(avg)}) 대비 {_signed_pct(change)} 수준이다.",
+                "core_diagnosis",
+                f"{label}({_number(avg)}) 대비 {_signed_pct(change)} 수준입니다.",
             )
         )
         key_metrics.append(_price_metric(f"{metric_id}_change_pct", f"{label}대비", change * 100, unit="%"))
@@ -527,7 +532,7 @@ def calculate_price_summary(
                 EvidenceClaim(
                     "price_streak",
                     "major_changes",
-                    f"{streak}{unit} 연속 {trend_label}를 보이고 있다.",
+                    f"{streak}{unit} 연속 {trend_label}를 보이고 있습니다.",
                 )
             )
             key_metrics.append(_price_metric("price_streak_length", "연속 추세 기간", streak, unit=unit))
@@ -538,10 +543,11 @@ def calculate_price_summary(
     # 통계(전주/전월/전년)만 다뤘고, "이번에 받은 조회기간 전체가 어떻게
     # 움직였는지"는 어느 근거에도 없었다. 새 데이터소스 없이 이미 받은
     # observations의 첫 관측치(조회기간 시작)와 최신 관측치를 직접
-    # 비교해서 만든다. major_changes 상한(day_over_day+week+month+year+
-    # price_streak만으로 이미 5개까지 찰 수 있고, 아래 ma_trend도 같은
-    # 자리를 다툰다 — `MAJOR_CHANGES_MAX_SENTENCES`가 둘 다 참조하는 이유는
-    # 그 상수 정의 참고)을 넘지 않도록 남은 자리가 있을 때만 추가한다.
+    # 비교해서 만든다. 2026-09-09 발주처 피드백으로 day_over_day/week/
+    # month/year_avg가 core_diagnosis("가격 요약")로 옮겨간 뒤 major_changes
+    # ("최근 변화")는 price_streak+이 근거+ma_trend만 남아 최대 3개뿐이지만,
+    # `MAJOR_CHANGES_MAX_SENTENCES`(다른 페이지와 공유하는 상수라 7로 여유
+    # 있게 유지) 기준 room-check는 그대로 둔다 — 안전장치라 낮출 필요가 없다.
     if sum(1 for claim in claims if claim.section == "major_changes") < MAJOR_CHANGES_MAX_SENTENCES:
         first = observations[0]
         if first is not latest and first.commerce_price is not None:
@@ -552,7 +558,7 @@ def calculate_price_summary(
                         "period_overall_change",
                         "major_changes",
                         f"조회기간 시작({_korean_date(first.date)}, {_number(first.commerce_price)}) 대비 "
-                        f"{_signed_pct(overall_change)} 변동했다.",
+                        f"{_signed_pct(overall_change)} 변동했습니다.",
                     )
                 )
 
@@ -563,7 +569,7 @@ def calculate_price_summary(
             EvidenceClaim(
                 "no_comparable_period",
                 "major_changes",
-                "비교 가능한 이전 가격이 없어 등락률은 계산하지 않았다.",
+                "비교 가능한 이전 가격이 없어 등락률은 계산하지 않았습니다.",
             )
         )
 
@@ -600,7 +606,7 @@ def calculate_price_summary(
         period_high, period_low = high_obs.highest_price, low_obs.lowest_price
         range_fact = (
             f"조회기간 중 최고 {_number(period_high)}({_korean_date(high_obs.date)}), "
-            f"최저 {_number(period_low)}({_korean_date(low_obs.date)})였다."
+            f"최저 {_number(period_low)}({_korean_date(low_obs.date)})였습니다."
         )
     elif observations_with_price:
         high_obs = max(observations_with_price, key=lambda item: item.commerce_price)
@@ -611,7 +617,7 @@ def calculate_price_summary(
         # 않는다(main-agent 지시).
         range_fact = (
             f"조회기간 관측치(실거래가) 기준 최고 {_number(period_high)}({_korean_date(high_obs.date)}), "
-            f"최저 {_number(period_low)}({_korean_date(low_obs.date)})였다."
+            f"최저 {_number(period_low)}({_korean_date(low_obs.date)})였습니다."
         )
     if period_high is not None and period_low is not None:
         claims.append(
@@ -649,7 +655,7 @@ def calculate_price_summary(
             EvidenceClaim(
                 "no_price_range",
                 "current_position",
-                "최고가·최저가 정보가 없어 조회기간 범위는 계산하지 않았다.",
+                "최고가·최저가 정보가 없어 조회기간 범위는 계산하지 않았습니다.",
             )
         )
 
@@ -687,7 +693,7 @@ def calculate_price_summary(
                 ),
                 None,
             )
-            inventory_fact = f"{_korean_date(latest.date)} 기준 재고량은 {_number(latest_inventory)}이다."
+            inventory_fact = f"{_korean_date(latest.date)} 기준 재고량은 {_number(latest_inventory)}입니다."
             inventory_change_pct = None
             if prior_inventory_obs is not None:
                 inv_change = _pct(latest_inventory, prior_inventory_obs.inventory)
@@ -698,7 +704,7 @@ def calculate_price_summary(
                         if is_truly_next_day
                         else f"직전 관측치({_korean_date(prior_inventory_obs.date)})"
                     )
-                    inventory_fact = f"{inventory_fact} {inv_comparison_label} 대비 {_signed_pct(inv_change)} 변동했다."
+                    inventory_fact = f"{inventory_fact} {inv_comparison_label} 대비 {_signed_pct(inv_change)} 변동했습니다."
                     inventory_change_pct = inv_change * 100
             claims.append(EvidenceClaim("inventory_level", "current_position", inventory_fact))
             key_metrics.append(_price_metric("inventory_level", "재고량", latest_inventory))
@@ -772,13 +778,17 @@ def calculate_price_summary(
             EvidenceClaim(
                 "percentile_position",
                 "current_position",
-                f"조회기간 관측치 {len(observations_with_price)}건 기준 현재 가격의 분포상 백분위는 "
-                f"{_number(percentile)}%다(높을수록 조회기간 중 고가권).",
+                # 2026-09-09 발주처 피드백(오전 2차) — "관측치 N건 기준"·
+                # "분포상 백분위" 등 통계 용어·관측치 건수 노출을 없애고
+                # "조회기간 전체 가격 대비 위치"로 쉽게 풀어 쓴다(숫자
+                # 자체는 그대로 — percentile 값을 지어내지 않는다).
+                f"현재 가격은 조회기간 전체 가격 대비 {_number(percentile)}% 위치에 있습니다"
+                f"(높을수록 조회기간 중 고가권에 가깝습니다).",
             )
         )
     elif percentile is None:
         warnings.append("가격 분포상 백분위는 관측치가 20건 미만이라 계산하지 않았다.")
-        skipped_layer_notes.append("백분위 위치")
+        skipped_layer_notes.append("가격 위치")
 
     drawdown_fact = _drawdown_fact(observations_with_price)
     if drawdown_fact is not None and _has_current_position_room(claims):
@@ -826,7 +836,7 @@ def calculate_price_summary(
                     "current_position",
                     f"같은 조회기간 동안 {_topic(compare_series.mineral.name)} "
                     f"{_signed_pct(compare_overall)} 변동한 반면, {_topic(series.mineral.name)} "
-                    f"{_signed_pct(primary_overall)} 변동했다.",
+                    f"{_signed_pct(primary_overall)} 변동했습니다.",
                 )
             )
             key_metrics.append(
@@ -843,7 +853,7 @@ def calculate_price_summary(
                     "compare_no_overall_change",
                     "current_position",
                     f"{compare_series.mineral.name}과의 비교는 두 계열 모두 관측치가 "
-                    "2건 이상이어야 계산할 수 있어 이번에는 계산하지 않았다.",
+                    "2건 이상이어야 계산할 수 있어 이번에는 계산하지 않았습니다.",
                 )
             )
 
@@ -885,7 +895,7 @@ def calculate_price_summary(
             EvidenceClaim(
                 "insufficient_history",
                 "current_position",
-                f"관측치가 부족해 {'·'.join(skipped_layer_notes)}은 계산하지 않았다(또는 참고용에 그친다).",
+                f"관측치가 부족해 {'·'.join(skipped_layer_notes)}은 계산하지 않았습니다(또는 참고용에 그칩니다).",
             )
         )
 
@@ -1550,7 +1560,9 @@ def _volatility_fact(
         values[label] = annualized
     if not parts:
         return None, skipped, {}
-    return f"최근 {'·'.join(parts)} 연율화 변동성을 보였다.", skipped, values
+    # 2026-09-09 발주처 피드백(오전 2차) — "연율화 변동성"은 통계 전문용어라
+    # "가격 변동폭"으로 풀어 쓴다(수치·산식은 그대로, 라벨만 순화).
+    return f"최근 {'·'.join(parts)} 수준의 가격 변동폭을 보였습니다.", skipped, values
 
 
 #: 이동평균 배열(정배열/역배열/혼조) → 사용자 친화 문구(2026-09-09 발주처
@@ -1562,9 +1574,9 @@ def _volatility_fact(
 #: 옮기면 검증 실패 → 영구 규칙기반 폴백으로 떨어진다 — 이 파일의 기존
 #: "이동평균 배열"·"가격강도지수(RSI)" 완곡어법도 같은 이유였다).
 _MA_ALIGNMENT_LABELS = {
-    "정배열": "최근 가격 흐름은 단기·중기 평균 모두 상승 방향이다.",
-    "역배열": "최근 가격 흐름은 단기·중기 평균 모두 하락 방향이다.",
-    "혼조": "최근 가격 흐름은 단기와 중기 흐름이 엇갈리는 상태다.",
+    "정배열": "최근 가격 흐름은 단기·중기 평균 모두 상승 방향입니다.",
+    "역배열": "최근 가격 흐름은 단기·중기 평균 모두 하락 방향입니다.",
+    "혼조": "최근 가격 흐름은 단기와 중기 흐름이 엇갈리는 상태입니다.",
 }
 
 
@@ -1621,11 +1633,11 @@ def _ma_rsi_fact(
     momentum_fact = None
     if rsi is not None:
         if rsi >= 70:
-            momentum_fact = "단기적으로 가격 부담이 높아진 상태다."
+            momentum_fact = "단기적으로 가격 부담이 높아진 상태입니다."
         elif rsi <= 30:
-            momentum_fact = "단기적으로 가격 하락 압력이 크게 반영된 상태다."
+            momentum_fact = "단기적으로 가격 하락 압력이 크게 반영된 상태입니다."
         else:
-            momentum_fact = "단기 매매 압력은 특별히 어느 한쪽으로 치우치지 않은 상태다."
+            momentum_fact = "단기 매매 압력은 특별히 어느 한쪽으로 치우치지 않은 상태입니다."
     return trend_fact, momentum_fact, True
 
 
@@ -1685,18 +1697,18 @@ def _drawdown_fact(observations_with_price: list) -> str | None:
     if stats is None:
         return None
     if stats["current_dd_pct"] >= -0.005:  # 반올림상 0%대(현재가=조회기간 최고가)
-        fact = f"현재가는 조회기간 중 최고가({_korean_date(stats['overall_peak_date'])}, {_number(stats['overall_peak_price'])})와 같은 수준이다."
+        fact = f"현재가는 조회기간 중 최고가({_korean_date(stats['overall_peak_date'])}, {_number(stats['overall_peak_price'])})와 같은 수준입니다."
     else:
         fact = (
             f"현재가는 조회기간 중 최고가({_korean_date(stats['overall_peak_date'])}, "
-            f"{_number(stats['overall_peak_price'])}) 대비 {_number(abs(stats['current_dd_pct']))}% 낮다."
+            f"{_number(stats['overall_peak_price'])}) 대비 {_number(abs(stats['current_dd_pct']))}% 낮습니다."
         )
     if stats["max_dd_pct"] <= -0.5 and (
         stats["max_dd_peak_date"] != stats["overall_peak_date"] or abs(stats["max_dd_pct"] - stats["current_dd_pct"]) >= 0.5
     ):
         fact += (
             f" 조회기간 내 최대 하락폭은 {_korean_date(stats['max_dd_peak_date'])} 고점 대비 "
-            f"{_korean_date(stats['max_dd_trough_date'])}까지 {_number(abs(stats['max_dd_pct']))}%였다."
+            f"{_korean_date(stats['max_dd_trough_date'])}까지 {_number(abs(stats['max_dd_pct']))}%였습니다."
         )
     return fact
 
@@ -1710,7 +1722,9 @@ def _inventory_context_fact(observations_with_price_and_inventory: list) -> str 
     latest = observations_with_price_and_inventory[-1]
     values = [item.inventory for item in observations_with_price_and_inventory]
     inv_rank = sum(1 for value in values if value <= latest.inventory) / len(values) * 100
-    parts = [f"재고량은 최근 관측치 분포상 백분위 {_number(inv_rank)}%"]
+    # 2026-09-09 발주처 피드백(오전 2차) — "분포상 백분위"·관측치 건수 노출을
+    # 없애고 쉬운 표현으로 바꾼다(숫자 자체는 그대로).
+    parts = [f"재고량은 최근 조회기간 대비 {_number(inv_rank)}% 위치"]
     signed_pairs = []
     for prev, cur in zip(observations_with_price_and_inventory, observations_with_price_and_inventory[1:]):
         price_delta = cur.commerce_price - prev.commerce_price
@@ -1726,8 +1740,9 @@ def _inventory_context_fact(observations_with_price_and_inventory: list) -> str 
         # 어색하다(예: 월간 60건=5년인데 "거래일"이라 표기). 단위별 복합어
         # ("거래주"/"거래개월" 등)를 새로 만드는 대신, 어느 조회단위에도
         # 자연스러운 "관측치"로 통일해 단위 의존성 자체를 없앤다.
-        parts.append(f"최근 관측치 {len(recent)}건 중 가격·재고량이 같은 방향으로 움직인 관측치는 {_number(comovement)}%")
-    return "이고 ".join(parts) + "다."
+        # 2026-09-09 발주처 피드백(오전 2차) — 관측치 건수 노출 제거.
+        parts.append(f"최근 가격·재고량이 같은 방향으로 움직인 비율은 {_number(comovement)}%")
+    return "이고 ".join(parts) + "입니다."
 
 
 def _relative_value_fact(
@@ -1758,7 +1773,7 @@ def _relative_value_fact(
     level = "높은" if diff_pct > 0.5 else "낮은" if diff_pct < -0.5 else "비슷한"
     return (
         f"{primary_name}/{compare_name} 가격비율은 현재 {_number(latest_ratio, 4)}로, "
-        f"조회기간 평균({_number(avg_ratio, 4)}) 대비 {_number(abs(diff_pct))}% {level} 수준이다."
+        f"조회기간 평균({_number(avg_ratio, 4)}) 대비 {_number(abs(diff_pct))}% {level} 수준입니다."
     )
 
 
