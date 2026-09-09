@@ -965,7 +965,12 @@ class SummarySentence(StrictModel):
 #: import한다(2026-09-08 skeptic 감사 SC-002: 이전엔 세 파일에 리터럴로 복제돼
 #: 있었고, DB 값이 이 상한을 넘어도 걸러내지 않아 LLM이 상한 초과 문장을 쓰면
 #: `SummaryNarrative` 생성이 영구히 `ValidationError`로 죽는 무언 폴백이 가능했다).
-CORE_DIAGNOSIS_MAX_SENTENCES = 2
+#: 2026-09-09 발주처 피드백(오전 2차, "가격요약 통합")으로 2→5 — price_*
+#: 계산기가 current_state+day_over_day+week_avg+month_avg+year_avg(최대 5)를
+#: 전부 "가격 요약"(core_diagnosis)에 담는다(이전엔 day_over_day 이하 4개가
+#: major_changes였다 — 발주처 템플릿이 "현재가+전주/전월/전년 대비"를 한
+#: 문단으로 요구해 옮겼다). 다른 8종 page_id는 여전히 1개뿐이라 영향 없다.
+CORE_DIAGNOSIS_MAX_SENTENCES = 5
 #: 2026-09-09 발주처 업무지시서(§3.1 "최근 변화" 재배치)로 5→7 — price_*
 #: 계산기가 day_over_day+week_avg+month_avg+year_avg+price_streak(최대 5)에
 #: period_overall_change(구 komir 자체 추가)·ma_trend(평균 대비 위치, 신규)

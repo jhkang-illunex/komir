@@ -23,6 +23,16 @@ _SECTION_TITLES = {
     "current_position": "현재 위치",
 }
 
+#: 2026-09-09 발주처 피드백(오전 2차) — 광물자원가격 4종은 섹션명을 발주처
+#: 템플릿 흐름("가격 요약 → 최근 변화 → 변동 구간")에 맞춘다. 다른 8종
+#: page_id는 위 `_SECTION_TITLES` 그대로(이번 피드백 범위 밖).
+_PRICE_PAGE_IDS = ("price_base_metals", "price_minor_metals", "price_iron_energy", "price_other")
+_PRICE_SECTION_TITLES = {
+    "core_diagnosis": "가격 요약",
+    "major_changes": "최근 변화",
+    "current_position": "변동 구간",
+}
+
 #: applied_filters의 보조 필드를 사람이 읽을 라벨로 바꾼다 — 매핑에 없는
 #: 키는 원래 이름을 그대로 쓴다(신규 필드 추가 시 여기 등록을 잊어도 죽지 않음).
 _FILTER_LABELS = {
@@ -94,7 +104,8 @@ def render_markdown_report(response: AnalysisSummaryResponse) -> str:
         lines.append(f"**현재 단계**: {response.grade.label} ({response.grade.score:,.2f}점)")
         lines.append("")
 
-    for key, title in _SECTION_TITLES.items():
+    section_titles = _PRICE_SECTION_TITLES if response.page_id in _PRICE_PAGE_IDS else _SECTION_TITLES
+    for key, title in section_titles.items():
         sentences = getattr(response.summary, key)
         if not sentences:
             continue
@@ -116,7 +127,11 @@ def render_markdown_report(response: AnalysisSummaryResponse) -> str:
             lines.append(" ".join(sentence.text for sentence in sentences))
         lines.append("")
 
-    if response.key_metrics:
+    # 2026-09-09 발주처 피드백(오전 2차) — 광물자원가격 4종은 "주요 지표" 표를
+    # 표출하지 않는다(발주처 템플릿에 없는 내용이라는 지적). `key_metrics` 자체는
+    # 계속 계산·응답에 실어(API 소비자를 위해) 구조는 그대로 두고, 이 페이지들만
+    # 마크다운 렌더링에서 표를 뺀다.
+    if response.key_metrics and response.page_id not in _PRICE_PAGE_IDS:
         lines.append("## 주요 지표")
         lines.append("")
         lines.append("| 지표 | 값 | 단위 |")
