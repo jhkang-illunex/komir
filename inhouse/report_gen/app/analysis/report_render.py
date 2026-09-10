@@ -235,7 +235,10 @@ def render_markdown_report(response: AnalysisSummaryResponse) -> str:
                 measure, _SECTION_TITLES["core_diagnosis"]
             )
         for hidden_key in _HIDDEN_SECTIONS.get(response.page_id, frozenset()):
-            section_titles.pop(hidden_key, None)
+            if response.page_id == "map_global" and any("single_snapshot" not in sentence.evidence_ids for sentence in response.summary.current_position):
+                section_titles[hidden_key] = "참고: 연도별 교역액 변화"
+            else:
+                section_titles.pop(hidden_key, None)
     for key, title in section_titles.items():
         sentences = getattr(response.summary, key)
         if not sentences:
@@ -311,6 +314,9 @@ def render_markdown_report(response: AnalysisSummaryResponse) -> str:
         lines.append("|---|---|---|")
         for metric in response.key_metrics:
             value_text, unit_text = _format_metric_row(metric.value, metric.unit)
+            if response.page_id in {"map_korea", "map_global", "map_mineral"} and isinstance(metric.value, (int, float)) and metric.unit in {"달러", "톤", "천톤", "천 톤", "백만톤", "백만 톤"}:
+                from .map_presentation import compact_quantity
+                value_text, unit_text = compact_quantity(metric.value, metric.unit)
             lines.append(f"| {metric.label} | {value_text} | {unit_text} |")
         lines.append("")
 

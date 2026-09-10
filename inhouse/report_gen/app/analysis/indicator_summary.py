@@ -551,10 +551,11 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
                 # 세계 공급 편중도도 국내 수입국 편중도와 같은 원칙 — 이 표본이
                 # 단일 연도 스냅샷이라 "확대/축소" 추세는 알 수 없으므로 현재
                 # 수준(1위국 비중)만 서술한다.
-                top_country = production_shares[0].country_name
+                top_row = max(production_shares, key=lambda item: item.production_qty)
+                top_country = top_row.country_name
                 world_supply_fact = (
-                    f"세계 생산량 상위 국가는 {top_country}이며, "
-                    f"전체의 {_number(top_country_share)}%를 차지합니다."
+                    f"{top_row.year}년 국가별 생산량 자료에서 1위는 {top_country}이며, "
+                    f"자료에 포함된 국가 생산량 합계의 {_number(top_row.share_percent)}%를 차지합니다."
                 )
                 detailed_metrics.append(
                     _metric(
@@ -568,14 +569,12 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
                 factor_candidates.append(("세계 공급 편중도", top_country_share, world_supply_fact))
 
         if factor_candidates:
-            lead_name, _, _ = max(factor_candidates, key=lambda item: item[1])
             detail = " ".join(fact for _, _, fact in factor_candidates)
             claims.append(
                 EvidenceClaim(
                     "supply_key_factors",
                     "current_position",
-                    f"구성요소 중 {lead_name}의 변동이 상대적으로 크게 나타났습니다. "
-                    f"{detail}",
+                    detail,
                     required=True,
                 )
             )

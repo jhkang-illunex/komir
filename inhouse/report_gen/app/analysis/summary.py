@@ -744,6 +744,20 @@ def _validate_llm_summary(
             evidence_text = " ".join(claim.fact for claim in typed_references)
             if not _number_tokens(sentence.text) <= _number_tokens(evidence_text):
                 return "근거에 없는 숫자나 날짜를 사용했다."
+            if ((page_id in {"map_korea", "map_global"} and any(c.id in {"current_state", "export_summary", "top1_country", "korea_route_rank"} for c in typed_references))
+                    or (page_id == "indicator_supply" and "supply_key_factors" in sentence.evidence_ids)):
+                if not _number_tokens(evidence_text) <= _number_tokens(sentence.text):
+                    return "지도 금액·비중·시계열 또는 구성요소 상세 수치를 누락했다."
+            if page_id in {"map_korea", "map_global", "map_mineral"}:
+                quantities = re.findall(r"약 [\d,]+[만억] ?(?:달러|톤)", evidence_text)
+                if any(value not in sentence.text for value in quantities):
+                    return "지도 축약 금액·물량 또는 단위를 누락하거나 변경했다."
+            if page_id == "indicator_supply" and "supply_key_factors" in sentence.evidence_ids:
+                countries = re.findall(r"1위는 (.*?)이며", evidence_text)
+                if any(country not in sentence.text for country in countries):
+                    return "구성요소 근거의 생산국을 누락했다."
+            if page_id == "map_global" and ("[" in sentence.text or "]" in sentence.text):
+                return "글로벌 지도 본문에 대괄호를 사용했다."
             if check_grade_labels:
                 mentioned_grades = {label for label in _GRADE_LABELS if label in sentence.text}
                 allowed_grades = {label for label in _GRADE_LABELS if label in evidence_text}
@@ -827,6 +841,9 @@ def _build_response(
     data_quality: DataQuality,
 ) -> AnalysisSummaryResponse:
     """페이지별 계산·품질 판정 이후의 공통 응답 조립. 출력 필드는 그대로 유지한다."""
+    if request.page_id in {"map_korea", "map_global", "map_mineral"}:
+        from .map_presentation import compact_fact
+        calculated.claims = [EvidenceClaim(c.id, c.section, compact_fact(c.fact), c.required) for c in calculated.claims]
     return AnalysisSummaryResponse(
         request_id=request.request_id,
         page_id=request.page_id,
@@ -1652,6 +1669,10 @@ class AnalysisSummaryService:
         trade`)가 이미 계산해 둔 `_map_korea_query_filters()` 결과다(2026-09-08
         SC-005: 이전엔 같은 인자로 여기서 다시 계산했다)."""
 
+        from .map_presentation import import_history_fact
+        history = import_history_fact(request, series)
+        if history:
+            calculated.claims = [EvidenceClaim(c.id, c.section, c.fact + " " + history if c.id == "current_state" else c.fact, c.required) for c in calculated.claims]
         dates = sorted({item.date for item in series.observations})
         applied_filters = {
             "mineral": series.mineral.name,

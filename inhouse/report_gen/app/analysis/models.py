@@ -168,6 +168,7 @@ class AnalysisSummaryRequest(StrictModel):
     # 자신의 연도별 원값만 쓴다(`summary.py::
     # _parse_komis_map_global_bar_chart_top_country`, 상세 근거는 그
     # 함수·`komir_summary.py::calculate_global_trade_summary` docstring).
+    komis_history_responses: list[dict] | None = Field(default=None, max_length=20)
     komis_bar_chart_response: dict | None = None
     # `komis_route_share_response` — `getListMapNationData`(원산국↔도착국
     # 페어별 각자 집계총액 대비 비중) 원본 응답. 실측 교차곱 검증으로

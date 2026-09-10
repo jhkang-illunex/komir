@@ -1085,13 +1085,9 @@ def calculate_domestic_trade_summary(
         rank_parts = []
         for rank, item in enumerate(top3_import, start=1):
             share = (item.import_amount or 0.0) / import_total * 100
-            if rank == 1:
-                rank_parts.append(
-                    f"1위 수입국은 {_toward(item.country_name)} {_quantity(item.import_amount or 0.0)}달러"
-                    f"({_number(share)}%)"
-                )
-            else:
-                rank_parts.append(f"{rank}위는 {item.country_name} {_number(share)}%")
+            rank_parts.append(
+                f"{rank}위 수입국은 {item.country_name} {_quantity(item.import_amount or 0.0)}달러({_number(share)}%)"
+            )
             key_metrics.append(
                 _price_metric(f"top{rank}_import_share_pct", f"{rank}위 수입국 비중", share, unit="%")
             )
@@ -1154,16 +1150,19 @@ def calculate_domestic_trade_summary(
     # 한다(같은 latest_date라 두 섹션의 날짜는 항상 일치한다).
     if export_total > 0 and export_ranking:
         ratio = export_total / import_total * 100
+        ratio_text = f"약 {ratio:.0f}%" if ratio >= 1 else "1% 미만"
+        balance = "수입액이 수출액보다 많습니다" if import_total > export_total else "수출액이 수입액보다 많습니다" if export_total > import_total else "수입액과 수출액이 같습니다"
+        ratio_fact = f"수출액은 수입액의 {ratio_text} 수준으로, {balance}."
         key_metrics.append(_price_metric("export_total_amount", "수출총액", export_total, unit="달러"))
         key_metrics.append(_price_metric("export_import_ratio_pct", "수입 대비 수출 비율", ratio, unit="%"))
         if country_filter_name:
             export_fact = (
                 f"{_korean_date(latest_date)} 기준 한국의 {series.mineral.name} {scope_prefix}수출액은 총 "
-                f"{_quantity(export_total)}달러이며, 수입총액 대비 수출총액은 {_number(ratio)}% 수준입니다."
+                f"{_quantity(export_total)}달러입니다. {ratio_fact}"
             )
         else:
             top3_export = export_ranking[: min(3, len(export_ranking))]
-            export_names = ", ".join(item.country_name for item in top3_export)
+            export_names = ", ".join(f"{rank}위 {item.country_name} {_quantity(item.export_amount or 0.0)}달러({_number((item.export_amount or 0.0) / export_total * 100)}%)" for rank, item in enumerate(top3_export, 1))
             top1_export_share = (top3_export[0].export_amount or 0.0) / export_total * 100
             key_metrics.append(
                 _price_metric("top1_export_share_pct", "1위 수출국 비중", top1_export_share, unit="%")
@@ -1171,7 +1170,7 @@ def calculate_domestic_trade_summary(
             export_fact = (
                 f"{_korean_date(latest_date)} 기준 한국의 {series.mineral.name} {scope_prefix}수출액은 총 "
                 f"{_quantity(export_total)}달러이며, 주요 수출 대상국은 {export_names} 순입니다. "
-                f"수입총액 대비 수출총액은 {_number(ratio)}% 수준입니다."
+                + ratio_fact
             )
         claims.append(EvidenceClaim("export_summary", "current_position", export_fact, required=True))
     else:
@@ -1356,8 +1355,8 @@ def calculate_global_trade_summary(
         # 원산국→도착국 표기를 그대로 쓰면 방향 설명이 필요 없어진다.
         top_hits = korea_hits[:2]
         brackets = [
-            f"[{rank}위/{_route_label(item)}/{_quantity(item.import_amount or 0.0)}달러/"
-            f"{_number((item.import_amount or 0.0) / total * 100)}%]"
+            f"{rank}위 {_route_label(item)} 루트의 교역액 {_quantity(item.import_amount or 0.0)}달러"
+            f"({_number((item.import_amount or 0.0) / total * 100)}%)"
             for rank, item in top_hits
         ]
         korea_fact = "대한민국이 포함된 교역 루트는 " + ", ".join(brackets) + "로 확인됩니다."
@@ -1384,7 +1383,7 @@ def calculate_global_trade_summary(
                 EvidenceClaim(
                     "period_total_change",
                     "current_position",
-                    f"직전 관측연도({_korean_year(previous_date)}) 대비 세계 교역 총액이 {_signed_pct(change)} 변동했습니다.",
+                    f"직전 관측연도({_korean_year(previous_date)})의 세계 교역 총액 {_quantity(previous_total)}달러 대비 {_korean_year(latest_date)} 총액은 {_quantity(total)}달러로 {_signed_pct(change)} 변동했습니다.",
                 )
             )
             key_metrics.append(
@@ -1412,8 +1411,8 @@ def calculate_global_trade_summary(
                 EvidenceClaim(
                     "country_yearly_trend",
                     "current_position",
-                    f"KOMIS 차트 기준 {country_name}의 {latest_year}년 교역액은 {previous_year}년 대비 "
-                    f"{_signed_pct(change)} 변동했습니다.",
+                    f"KOMIS 차트 기준 {country_name}의 교역액은 {previous_year}년 {_quantity(previous_val)}달러에서 "
+                    f"{latest_year}년 {_quantity(latest_val)}달러로 {_signed_pct(change)} 변동했습니다.",
                 )
             )
             key_metrics.append(

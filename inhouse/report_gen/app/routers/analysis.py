@@ -435,6 +435,7 @@ class DomesticTradeSummaryRequest(_DateRangeMineralRequest):
     # 한글 라벨이 응답 어디에도 없다(국가명·HS품목명은 행 데이터에 이미
     # 있음). `mineral_name`과 같은 선택 라벨 passthrough — 없으면 코드로
     # 폴백.
+    komis_history_responses: list[dict] | None = Field(default=None, max_length=20, description="동일 조회조건의 과거 연도 getListKoreaData 원본 응답 목록. 전년 동기 수입액 비교에 사용합니다.")
     mttr_flow_name: str | None = Field(default=None, min_length=1)
 
 
@@ -456,6 +457,7 @@ class GlobalTradeSummaryRequest(_DateRangeMineralRequest):
     `komis_route_share_response`(`getListMapNationData`, 루트별 각국
     집계총액 대비 비중)는 detailed_metrics로만 반영한다."""
 
+    komis_history_responses: list[dict] | None = Field(default=None, max_length=20, description="동일 조회조건의 과거 연도 getListDataNation 원본 응답 목록. 총 수입액의 전년 동기 비교에 사용합니다.")
     komis_bar_chart_response: dict | None = None
     komis_route_share_response: dict | None = None
 
