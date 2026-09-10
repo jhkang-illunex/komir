@@ -62,7 +62,10 @@ _PRICE_KEY_METRIC_LABELS = {
 _SECTION_TITLES_OVERRIDES: dict[str, dict[str, str]] = {
     "indicator_composite": {
         "core_diagnosis": "지수 요약",
-        "major_changes": "하위지수 변화",
+        # 2026-09-10 발주처 피드백[4] 반영 후 이 절은 메이저·희소 "하위지수"만이
+        # 아니라 광물종합지수 자체의 변화도 지수별로 담아 "하위지수 변화"라는
+        # 이름이 더 이상 정확하지 않다 — "지수별 변화"로 개칭.
+        "major_changes": "지수별 변화",
         "current_position": "지수 위치",
     },
     "indicator_market": {

@@ -38,9 +38,11 @@ from .additional_summary import (  # noqa: E402
     SectionId,
     SummaryPageContext,
     _at_or_before,
+    _load_mineral_index_weights,
     _number,
     _shift_month,
     _shift_year,
+    _top_weighted_minerals_text,
     calculate_composite_summary,
     calculate_mineral_map_summary,
     calculate_price_forecast_summary,
@@ -499,6 +501,104 @@ def _append_composite_period_value_comparison(
     )
 
 
+#: 2026-09-10 발주처 피드백[4] — "메이저금속지수끼리, 희소금속지수끼리, 광물종합
+#: 지수끼리 각각 따로" 서술해달라는 요청과 정면으로 부딪히는 4개 claim(전부
+#: `calculate_composite_summary` 프로즌 산출, major_changes). 새로 추가하지
+#: 않고 아래 `_replace_composite_subindex_narrative`가 통째로 대체한다.
+_COMPOSITE_MIXED_SUBINDEX_CLAIM_IDS = frozenset(
+    {
+        "composite_recent_changes",
+        "weekly_subindex_comparison",
+        "monthly_subindex_comparison",
+        "yearly_subindex_comparison",
+        "index_top_weighted_minerals",
+    }
+)
+
+
+def _replace_composite_subindex_narrative(
+    calculated: AdditionalCalculatedSummary, series: CompositeIndexSeries
+) -> None:
+    """`calculate_composite_summary`(프로즌)의 major_changes 근거 4종
+    (`_COMPOSITE_MIXED_SUBINDEX_CLAIM_IDS`)은 "메이저금속지수는 ~한 반면
+    희소금속지수는 ~"처럼 세 지수를 한 문장 안에서 섞어 비교한다.
+
+    2026-09-10 발주처 피드백([4], 권가영 사원) — "각 지수가 오르는 추세인지
+    아닌지 근거 기반으로 간략히 표출, 지수별로 하나의 문장/영역으로 묶어서
+    '[지수명] 포인트 + 등락률(+추이) + 관련 광종' 형태로, 3개 지수를 한
+    문단에 섞지 말 것"이라는 요청은 이 4종 claim이 만드는 바로 그 "섞인"
+    형태를 지적한 것이라, 새 문장을 추가하는 대신 광물종합·메이저금속·
+    희소금속 지수별로 자기완결적인 문장 3개로 완전히 대체한다(숫자 자체는
+    이미 올바르므로 key_metrics/detailed_metrics는 손대지 않는다).
+
+    비교 시점은 `_append_composite_period_value_comparison`과 동일하게
+    `_at_or_before`/`_shift_month`/`_shift_year`(프로즌 날짜 헬퍼)를 그대로
+    재사용해 같은 보고서 안의 `weekly_composite_change` 등 기존 지표와
+    기준일이 어긋나지 않게 한다. "오르는 추세"라는 표현은 그대로 옮기지
+    않는다 — "추세"는 `_FORBIDDEN_SUMMARY_TERMS`(evidence에 없는 인과·상관
+    표현 차단용)에 있어 문자 그대로 쓰면 LLM 출력이 검증기에서 매번
+    기각된다. "상승/하락 흐름"·"뚜렷한 방향성 없이 등락을 반복"(가격 페이지
+    RSI 문구, `_ma_rsi_fact`와 동일 어휘)으로 대체한다.
+
+    새 문장을 하나도 만들 수 없으면(조회기간에 전주·전월·전년 비교 시점이
+    전혀 없음 — 이 경우 프로즌 계산기는 데이터와 무관한 `index_top_weighted_
+    minerals`만 major_changes에 남겨 `SummaryNarrative.major_changes`
+    min_length=1을 충족시켜 둔 상태다) 원래 claim을 그대로 두고 아무것도
+    지우지 않는다 — 대체할 문장이 없는데 원본만 지우면 major_changes가
+    통째로 비어 조립이 깨진다."""
+
+    observations = sorted(series.observations, key=lambda item: item.date)
+    current = observations[-1]
+    current_date = date.fromisoformat(current.date)
+    prior = observations[:-1]
+    week = _at_or_before(prior, current_date - timedelta(days=7))
+    month = _at_or_before(prior, _shift_month(current_date, -1))
+    year = _at_or_before(prior, _shift_year(current_date, -1))
+
+    index_weights = _load_mineral_index_weights()
+    specs = (
+        ("composite_index_trend", "광물종합지수", "composite_index", index_weights.get("MNRL", []), 3),
+        ("major_metals_index_trend", "메이저금속지수", "major_metals_index", index_weights.get("MAJOR", []), 2),
+        ("minor_metals_index_trend", "희소금속지수", "minor_metals_index", index_weights.get("RARE", []), 2),
+    )
+
+    new_narrative_claims: list[EvidenceClaim] = []
+    for claim_id, label, attr, weights, limit in specs:
+        current_value = getattr(current, attr)
+        pieces = []
+        changes = []
+        for period_label, compared in (("전주", week), ("전월", month), ("전년", year)):
+            if compared is None:
+                continue
+            change = _pct(current_value, getattr(compared, attr))
+            if change is None:
+                continue
+            changes.append(change)
+            direction = "상승" if change > 0 else "하락" if change < 0 else "보합"
+            pieces.append(f"{period_label} 대비 {_number(abs(change) * 100)}% {direction}")
+        if not pieces:
+            continue
+        fact = f"{label}는 {_number(current_value)}포인트로, " + ", ".join(pieces) + "했습니다."
+        if len(changes) >= 2:
+            if all(change > 0 for change in changes):
+                fact += " 최근 조회기간 동안 상승 흐름을 이어가고 있습니다."
+            elif all(change < 0 for change in changes):
+                fact += " 최근 조회기간 동안 하락 흐름을 이어가고 있습니다."
+            elif all(change == 0 for change in changes):
+                fact += " 최근 조회기간 동안 보합 흐름을 이어가고 있습니다."
+            else:
+                fact += " 뚜렷한 방향성 없이 등락을 반복하고 있습니다."
+        if weights:
+            fact += f" 구성 광종은 {_top_weighted_minerals_text(weights, limit)} 등입니다."
+        new_narrative_claims.append(EvidenceClaim(claim_id, "major_changes", fact, required=True))
+
+    if not new_narrative_claims:
+        return
+    calculated.claims = [
+        claim for claim in calculated.claims if claim.id not in _COMPOSITE_MIXED_SUBINDEX_CLAIM_IDS
+    ] + new_narrative_claims
+
+
 def _source_info_from_series(
     series: IndicatorSeries | CompositeIndexSeries | MineralMapSeries | PriceForecastSeries | PriceSeries | TradeMapSeries,
 ) -> SourceInfo:
@@ -920,6 +1020,7 @@ class AnalysisSummaryService:
         calculated = _calculate_or_no_data(request.page_id, calculate_composite_summary, series)
         _apply_polite_endings(calculated, _COMPOSITE_POLITE_ENDINGS, context="indicator_composite")
         _append_composite_period_value_comparison(calculated, series)
+        _replace_composite_subindex_narrative(calculated, series)
         context = effective_page_context("indicator_composite")
         applied_filters = {
             "start_date": request.start_date or series.observations[0].date,
