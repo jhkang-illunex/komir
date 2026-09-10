@@ -135,6 +135,15 @@ _FILTER_LABELS = {
     "compare_price_criterion": "비교광종 가격기준",
     "price_group": "그룹",
     "trade_direction": "조회방향",
+    # 2026-09-10 사용자 제보(report-summary-agent 경유) — map_korea가
+    # 2026-08-31부터 applied_filters에 채워온 3개 키가 이 매핑에 등록이
+    # 안 돼 있어 "**period_unit**: 년별"처럼 영문 키가 그대로 노출되고
+    # 있었다(위 "등록을 잊어도 죽지 않는다"는 설계가 실제로는 조용히
+    # 낡은 라벨을 서빙하는 함정이 됐다) — `_map_korea_query_filters()`
+    # (input_data.py) 반환값 그대로.
+    "period_unit": "기간 단위",
+    "country_filter": "국가 필터",
+    "scope_filter": "품목 범위",
 }
 
 
