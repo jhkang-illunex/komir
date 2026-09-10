@@ -320,16 +320,27 @@ def _apply_polite_endings(
     calculated.claims = new_claims
 
 
-def _mineral_map_extreme_change_countries(series: MineralMapSeries) -> tuple[str, str] | None:
+def _mineral_map_extreme_change_countries(series: MineralMapSeries) -> tuple[str | None, str | None] | None:
     """조회기간 첫 해→마지막 해 사이 매장량/생산량이 가장 크게 늘거나
-    준 국가를 (증가국, 감소국)으로 찾는다 — 없으면 `None`.
+    준 국가를 (증가국, 감소국)으로 찾는다 — 둘 다 없으면(전 국가 무변화)
+    전체가 `None`, 한쪽 방향이 아예 없으면(예: 전부 증가만 하고 감소한
+    국가가 하나도 없음) 그쪽만 `None`으로 채워 반환한다.
 
     2026-09-09 발주처 업무지시서 §3.3 ③④ 대응(사용자 승인) —
     `calculate_mineral_map_summary`(프로즌)는 상위 3개국 개별 변화만
     다뤄서, PDF 예시의 콩고민주공화국처럼 top3 밖에서 급증한 국가는
     잡지 못한다. 절대량 변화(현재값-시작값, 결측은 0 취급) 기준으로
     전체 국가를 본다 — 비율로 하면 조회기간에 새로 나타난 국가(시작값
-    0)가 나눗셈 0으로 계산 자체가 안 된다."""
+    0)가 나눗셈 0으로 계산 자체가 안 된다.
+
+    2026-09-10 사용자 지적("주요 변화 섹션이 안 나온다", main-agent 경유
+    재현 — 동/구리 2024~2025 단기 윈도우와 리튬 매장량 2019~2025 둘 다
+    같은 원인으로 재현) —
+    원래는 "증가국과 감소국이 둘 다 있어야만" 근거를 냈는데, 광물자원
+    특성상(매장량은 장기적으로 늘기만 하거나, 짧은 최근 2개년 윈도우는
+    거의 다 줄기만 하는 경우가 흔하다) 한쪽 방향이 아예 없는 조회가
+    드물지 않다 — 이 경우 "주요 변화" 섹션 전체가 통째로 사라지는 것보다
+    있는 쪽만이라도 보여주는 게 사용자 의도에 맞는다."""
 
     filtered = [o for o in series.observations if not o.is_total and not o.is_other]
     years = sorted({o.year for o in filtered})
@@ -345,38 +356,45 @@ def _mineral_map_extreme_change_countries(series: MineralMapSeries) -> tuple[str
     changes = {code: current_values.get(code, 0.0) - start_values.get(code, 0.0) for code in codes}
     max_increase_code = max(codes, key=lambda code: changes[code])
     max_decrease_code = min(codes, key=lambda code: changes[code])
-    if changes[max_increase_code] <= 0 or changes[max_decrease_code] >= 0:
+    increase_name = names[max_increase_code] if changes[max_increase_code] > 0 else None
+    decrease_name = names[max_decrease_code] if changes[max_decrease_code] < 0 else None
+    if increase_name is None and decrease_name is None:
         return None
-    return names[max_increase_code], names[max_decrease_code]
+    return increase_name, decrease_name
 
 
 def _append_mineral_map_extreme_change(calculated: AdditionalCalculatedSummary, series: MineralMapSeries) -> None:
     """`_mineral_map_extreme_change_countries` 결과가 있으면 major_changes
-    근거·주요 지표 2건을 덧붙인다(계산기 프로즌 파일은 안 건드리고
-    호출자가 결과에 추가하는 방식 — `AdditionalCalculatedSummary`는
-    frozen dataclass가 아니라 이 방식이 가능하다)."""
+    근거·주요 지표를 덧붙인다(계산기 프로즌 파일은 안 건드리고 호출자가
+    결과에 추가하는 방식 — `AdditionalCalculatedSummary`는 frozen
+    dataclass가 아니라 이 방식이 가능하다). 증가·감소 한쪽만 있으면 그
+    한쪽만 문장·지표로 낸다."""
 
     extreme = _mineral_map_extreme_change_countries(series)
     if extreme is None:
         return
     max_increase_country, max_decrease_country = extreme
     measure_name = "매장량" if series.measure == "reserves" else "생산량"
-    calculated.claims.append(
-        EvidenceClaim(
-            "extreme_change_countries",
-            "major_changes",
+    if max_increase_country and max_decrease_country:
+        fact = (
             f"조회기간 중 {measure_name}이 가장 크게 증가한 국가는 {max_increase_country}이며, "
-            f"가장 크게 감소한 국가는 {max_decrease_country}입니다.",
-            required=True,
+            f"가장 크게 감소한 국가는 {max_decrease_country}입니다."
         )
+    elif max_increase_country:
+        fact = f"조회기간 중 {measure_name}이 가장 크게 증가한 국가는 {max_increase_country}입니다."
+    else:
+        fact = f"조회기간 중 {measure_name}이 가장 크게 감소한 국가는 {max_decrease_country}입니다."
+    calculated.claims.append(
+        EvidenceClaim("extreme_change_countries", "major_changes", fact, required=True)
     )
     # key_metrics·detailed_metrics는 계산기(additional_summary.py)가 만들
     # 때부터 별개 리스트(detailed_metrics = [*key_metrics, 추가 항목])라
     # 두 곳에 각각 추가해야 한다 — 한쪽만 덮어쓰면 다른 항목이 사라진다.
-    new_metrics = [
-        Metric(id="max_increase_country", label="최대 증가 국가", status="available", value=max_increase_country),
-        Metric(id="max_decrease_country", label="최대 감소 국가", status="available", value=max_decrease_country),
-    ]
+    new_metrics = []
+    if max_increase_country:
+        new_metrics.append(Metric(id="max_increase_country", label="최대 증가 국가", status="available", value=max_increase_country))
+    if max_decrease_country:
+        new_metrics.append(Metric(id="max_decrease_country", label="최대 감소 국가", status="available", value=max_decrease_country))
     calculated.key_metrics.extend(new_metrics)
     calculated.detailed_metrics.extend(new_metrics)
 
