@@ -241,14 +241,28 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
         pct_change = score_change / previous.score * 100 if previous.score != 0 else None
         previous_lead = "최근 한 달에는 전월" if is_contiguous else f"직전 관측치({previous.month})"
         if score_change > 0:
-            point_change = f"{_quantity(score_change)}점 상승해"
+            point_change_clause = f"{_quantity(score_change)}점 상승했습니다."
         elif score_change < 0:
-            point_change = f"{_quantity(abs(score_change))}점 하락해"
+            point_change_clause = f"{_quantity(abs(score_change))}점 하락했습니다."
         else:
-            point_change = "점수 변동 없이"
+            point_change_clause = "점수 변동이 없었습니다."
+        meaning_sentence = f"{_score_meaning(series.page_id, score_change)}."
+        if series.page_id == "indicator_market" and score_change != 0:
+            # 2026-09-10 발주처 피드백[5](권가영 사원) — "34.04점 대비 3.66점
+            # 하락해 중장기 가격위험이 높아지는 방향으로 움직였습니다"처럼
+            # 점수 하락과 위험 상승을 한 문장 흐름으로 이어 쓰면, 이 지표가
+            # "점수 낮을수록 위험 높음"(반비례) 구조라는 걸 모르는 독자는
+            # 방향이 왜 반대로 읽히는지 헷갈린다는 지적. 점수 변화 사실
+            # 문장과 위험 방향 해석 문장을 분리하고(point_change_clause를
+            # 별도 문장으로 종결), 그 사이에 반비례 관계를 짧게 밝히는
+            # 문장을 끼워 넣는다. indicator_supply는 점수·안정성이 같은
+            # 방향(정비례)이라 이 혼동이 없어 그대로 둔다.
+            meaning_sentence = (
+                "이 지표는 점수가 낮을수록 위험이 커지는 구조입니다. " + meaning_sentence
+            )
         score_fact = (
-            f"{previous_lead} {_quantity(previous.score)}점 대비 {point_change} "
-            f"{_score_meaning(series.page_id, score_change)}."
+            f"{previous_lead} {_quantity(previous.score)}점 대비 {point_change_clause} "
+            f"{meaning_sentence}"
         )
         key_metrics.append(
             _metric(
