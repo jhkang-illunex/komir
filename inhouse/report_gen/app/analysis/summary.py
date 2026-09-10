@@ -699,11 +699,26 @@ _SUPPLY_FACTOR_EVIDENCE_IDS = {
     "supply_factor_world_concentration",
 }
 
-#: 2026-09-10 사용자 지시 — HHI 4단계 해석 문구의 단계 판정어. LLM이 값은
-#: 유지한 채 해석 문구만 순화·삭제하는 사고(latest_score_change의 반비례
-#: 설명 문구가 조용히 지워졌던 실측 사례와 같은 종류)를 막기 위해, 근거에
-#: 있는 단계 판정어가 출력 문장에도 그대로 있는지 검사한다.
-_HHI_TIER_MARKERS = ("안정적으로 다변화", "완만한 편중 경향", "고편중", "극단적 편중")
+#: 2026-09-10 사용자 지시 — HHI 4단계 해석 문구 전체("[값]으로, " 뒤 나머지
+#: 전부, 두 문장). 처음엔 짧은 단계 판정어(예: "완만한 편중 경향")만
+#: 검사했는데, 동(CU) 실측 라이브 재검증(3회 중 2회)에서 LLM이 그 판정어
+#: 앞부분은 남기고 뒤에 이어지는 두 번째 문장("아직 위험 수준은 아니나
+#: ...")을 조용히 잘라내는 사고가 실제로 재현됐다 — latest_score_change
+#: 반비례 설명 문구가 지워졌던 사례와 같은 종류라, 판정어 짧은 문구가
+#: 아니라 값 이후 전체 문구를 통째로 검사하도록 강화했다.
+_HHI_TIER_TAILS = (
+    "특정 국가에 치우치지 않고 공급처가 안정적으로 다변화되어 있는 상태입니다. "
+    "특정 국가의 지정학적 리스크가 전체 공급망에 미치는 영향은 미미할 것으로 "
+    "평가됩니다.",
+    "완만한 편중 경향을 보이고 있습니다. 아직 위험 수준은 아니나, 상위 공급국 "
+    "현황에 대한 지속적인 모니터링이 요구됩니다.",
+    "특정 소수 국가에 대한 의존도가 상당히 높은 '고편중' 상태입니다. 해당 "
+    "국가의 수출 규제나 물류 차질 시 공급망 타격이 우려되므로, 대안국 발굴 등 "
+    "리스크 관리가 필요합니다.",
+    "사실상 단일 국가가 공급을 독점하고 있는 '극단적 편중' 상태입니다. 공급 "
+    "전반을 특정국에 전적으로 의존하고 있어, 해당국의 대외 정책이나 환경 "
+    "변화에 매우 취약한 구조입니다.",
+)
 
 
 def _number_tokens(text: str) -> set[str]:
@@ -798,9 +813,9 @@ def _validate_llm_summary(
                 countries = re.findall(r"1위는 (.*?)이며", evidence_text)
                 if any(country not in sentence.text for country in countries):
                     return "구성요소 근거의 생산국을 누락했다."
-                mentioned_tiers = [marker for marker in _HHI_TIER_MARKERS if marker in evidence_text]
-                if any(marker not in sentence.text for marker in mentioned_tiers):
-                    return "HHI 편중도 해석 문구(단계 판정어)를 누락했다."
+                mentioned_tails = [tail for tail in _HHI_TIER_TAILS if tail in evidence_text]
+                if any(tail not in sentence.text for tail in mentioned_tails):
+                    return "HHI 편중도 해석 문구(단계 판정 전체 문장)를 누락·축약했다."
             if page_id == "map_global" and ("[" in sentence.text or "]" in sentence.text):
                 return "글로벌 지도 본문에 대괄호를 사용했다."
             if check_grade_labels:
