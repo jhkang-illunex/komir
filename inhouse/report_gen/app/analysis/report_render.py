@@ -202,6 +202,15 @@ def render_markdown_report(response: AnalysisSummaryResponse) -> str:
             section_titles["core_diagnosis"] = _MINERAL_MAP_MEASURE_TITLES.get(
                 measure, _SECTION_TITLES["core_diagnosis"]
             )
+        if response.page_id == "map_global":
+            # 2026-09-10 사용자 지시 — map_global의 "기간 변화" 절을 보고서에서
+            # 없앤다. `SummaryNarrative.current_position`은 9종 공유 스키마라
+            # min_length=1(계산 레이어는 그대로 두고 항상 최소 1개 근거를
+            # 채운다 — 대부분 "조회기간에 관측일이 1건뿐이라 계산하지
+            # 않았다"는 정보량 없는 결측 문장이라 사용자가 아예 빼길
+            # 원했다), 렌더링 단계에서만 이 절을 건너뛴다(위 korea_route_rank
+            # 분리와 같은 결의 페이지별 렌더링 특수처리).
+            section_titles.pop("current_position", None)
     for key, title in section_titles.items():
         sentences = getattr(response.summary, key)
         if not sentences:
