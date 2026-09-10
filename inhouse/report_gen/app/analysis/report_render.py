@@ -206,6 +206,28 @@ def render_markdown_report(response: AnalysisSummaryResponse) -> str:
         sentences = getattr(response.summary, key)
         if not sentences:
             continue
+        if response.page_id == "map_global" and key == "major_changes":
+            # 2026-09-10 사용자 지시 — 대한민국 관련 루트(korea_route_rank)를
+            # "주요 교역 루트"와 같은 문단에 묶지 말고 별도 섹션으로 빼서
+            # 표시한다. JSON 계약(`SummaryNarrative.major_changes`)은 그대로
+            # 두고(스키마가 3개 절 고정이라 4번째 절을 추가하면 다른 8종
+            # page_id까지 건드리게 된다) 렌더링 단계에서만 evidence_id 기준
+            # 으로 걸러 별도 "## " 블록으로 나눈다 — 계산·검증 레이어의
+            # "값이 있을 때만" 로직(komir_summary.py)은 그대로 유지되므로,
+            # 근거 자체가 없으면 이 블록도 자연히 생략된다.
+            korea_sentences = [s for s in sentences if "korea_route_rank" in s.evidence_ids]
+            other_sentences = [s for s in sentences if s not in korea_sentences]
+            if other_sentences:
+                lines.append(f"## {title}")
+                lines.append("")
+                lines.append(" ".join(sentence.text for sentence in other_sentences))
+                lines.append("")
+            if korea_sentences:
+                lines.append("## 한국 관련 루트")
+                lines.append("")
+                lines.append(" ".join(sentence.text for sentence in korea_sentences))
+                lines.append("")
+            continue
         lines.append(f"## {title}")
         lines.append("")
         if key == "current_position" and len(sentences) > 3:
