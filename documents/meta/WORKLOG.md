@@ -2,7 +2,25 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-10 (최신) — 글로벌 수급지도(map_global) 한국 관련 루트를 별도 렌더링 섹션으로 분리(사용자 지시, 커밋 `74689b4d6`, 병합 `0b5aeeea2`)
+## 2026-09-10 (최신) — 글로벌 수급지도(map_global) "기간 변화" 절 렌더링에서 제거(사용자 지시, 커밋 `b64d5ed50`, 병합 `9de084efd`)
+
+`getListDataNation`이 스냅샷 1건만 주는 게 전형적이라 "기간 변화" 절이
+대부분 "조회기간에 관측일이 1건뿐이라 계산하지 않았다"는 정보량 없는
+결측 문장만 반복해 노이즈였다 — 사용자가 아예 빼달라고 지시.
+`SummaryNarrative.current_position`은 9개 page_id 공유 스키마
+(min_length=1, 계산 레이어는 그대로 두고 항상 최소 1개 근거를 채운다)라
+스키마·계산·검증 로직은 안 건드리고, `report_render.py`에서
+map_global일 때만 `section_titles`에서 `current_position` 키를 제거해
+렌더링만 건너뛴다(바로 위 korea_route_rank 분리와 같은 결의 페이지별
+렌더링 특수처리 — `section_titles`가 매 호출 로컬 dict 복사라 `.pop()`이
+다른 page_id·다른 요청에 새지 않음을 확인).
+
+pyflakes/unittest 14종/395콤보 스모크 + 갈륨으로 map_global "기간 변화"
+소거·map_korea "수출 현황"(같은 TradeMapSeries 계열, current_position
+용도가 다름) 무영향을 둘 다 직접 렌더링 재검증. 배포까지 완료.
+
+
+## 2026-09-10 — 글로벌 수급지도(map_global) 한국 관련 루트를 별도 렌더링 섹션으로 분리(사용자 지시, 커밋 `74689b4d6`, 병합 `0b5aeeea2`)
 
 바로 위 항목에서 고친 korea_route_rank 문장이 "주요 교역 루트" 절에
 같이 묶여 있어 눈에 덜 띈다는 사용자 지적. `SummaryNarrative`는 9개
