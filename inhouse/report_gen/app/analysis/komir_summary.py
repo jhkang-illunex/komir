@@ -496,7 +496,7 @@ def calculate_price_summary(
                 EvidenceClaim(
                     metric_id,
                     "core_diagnosis",
-                    f"{label}({_quantity(komis_avg.average_price)}) 대비 {_signed_pct(change)} 수준입니다.",
+                    f"{label}({_quantity(komis_avg.average_price)}) 대비 {_price_comparison_phrase(change)}",
                 )
             )
             key_metrics.append(_price_metric(f"{metric_id}_change_pct", f"{label}대비", change * 100, unit="%"))
@@ -515,7 +515,7 @@ def calculate_price_summary(
             EvidenceClaim(
                 metric_id,
                 "core_diagnosis",
-                f"{label}({_quantity(avg)}) 대비 {_signed_pct(change)} 수준입니다.",
+                f"{label}({_quantity(avg)}) 대비 {_price_comparison_phrase(change)}",
             )
         )
         key_metrics.append(_price_metric(f"{metric_id}_change_pct", f"{label}대비", change * 100, unit="%"))
@@ -868,7 +868,7 @@ def calculate_price_summary(
             else:
                 position_sentences.append(
                     f"현재가는 {peak_desc} 대비 {_number(abs(drawdown_stats['current_dd_pct']))}% "
-                    f"낮음으로 전체 가격 대비 {position_label}에 속합니다."
+                    f"낮으며 전체 가격 대비 {position_label}에 속합니다."
                 )
         else:
             if at_peak:
@@ -1517,6 +1517,13 @@ def _pct(current: float | None, previous: float | None) -> float | None:
     return (current - previous) / previous
 
 
+def _price_comparison_phrase(change: float) -> str:
+    if change == 0:
+        return "같은 수준입니다."
+    direction = "높습니다" if change > 0 else "낮습니다"
+    return f"{_number(abs(change) * 100)}% {direction}."
+
+
 def _signed_pct(value: float) -> str:
     sign = "+" if value >= 0 else ""
     return f"{sign}{_number(value * 100)}%"
@@ -1704,9 +1711,14 @@ def _volatility_fact(
 #: 옮기면 검증 실패 → 영구 규칙기반 폴백으로 떨어진다 — 이 파일의 기존
 #: "이동평균 배열"·"가격강도지수(RSI)" 완곡어법도 같은 이유였다).
 _MA_ALIGNMENT_LABELS = {
-    "정배열": "최근 가격 흐름은 단기·중기 평균 모두 상승 방향입니다.",
-    "역배열": "최근 가격 흐름은 단기·중기 평균 모두 하락 방향입니다.",
-    "혼조": "최근 가격 흐름은 단기와 중기 흐름이 엇갈리는 상태입니다.",
+    # 2026-09-10 — "정배열"·"역배열"도 "혼조"와 같이 "최근에는 "로 시작하도록
+    # 맞췄다. summary.py의 price_streak+ma_trend 병합 로직이 이 접두어를
+    # 떼어내 재사용하는데(`trend.text.removeprefix("최근에는 ")`), 이 두
+    # 라벨만 다른 접두어("최근 가격 흐름은")를 쓰고 있어 병합 시 "최근에는
+    # N일 연속 ...하며, 최근 가격 흐름은 ..."처럼 "최근"이 중복 노출됐다.
+    "정배열": "최근에는 단기와 중기 가격 흐름이 모두 상승 방향입니다.",
+    "역배열": "최근에는 단기와 중기 가격 흐름이 모두 하락 방향입니다.",
+    "혼조": "최근에는 단기와 중기 가격 흐름이 엇갈리고 있습니다.",
 }
 
 

@@ -1437,6 +1437,20 @@ class AnalysisSummaryService:
                 warnings=effective_warnings,
             ),
         )
+        # 기본 요약도 전체 기간 → 최근 구간 순서로 읽히도록 정리한다.
+        changes = response.summary.major_changes
+        by_id = {sentence.evidence_ids[0]: sentence for sentence in changes
+                 if len(sentence.evidence_ids) == 1}
+        streak, trend = by_id.get("price_streak"), by_id.get("ma_trend")
+        if streak is not None and trend is not None and streak.text.endswith("보이고 있습니다."):
+            recent = SummarySentence(
+                text="최근에는 " + streak.text.removesuffix("보이고 있습니다.")
+                     + "보이고 있으며, " + trend.text.removeprefix("최근에는 "),
+                evidence_ids=["price_streak", "ma_trend"],
+            )
+            changes = [sentence for sentence in changes if sentence not in (streak, trend)] + [recent]
+        changes = sorted(changes, key=lambda sentence: "period_overall_change" not in sentence.evidence_ids)
+        response.summary.major_changes = changes
         # 2026-08-26부터 LLM 정제를 태운다(§모듈 docstring 4번) — 발주처 KOMIS
         # 템플릿 PDF를 근거로 `prompts.py`에 이 3종 전용 지시문·출력계약을
         # 마련했다. forecast_price와 같은 패턴으로 `len(claims) < 5` 같은 최소

@@ -109,10 +109,10 @@ def _change_phrase(value: float) -> str:
     # 나머지 페이지에도 동일 적용(공통화). 지수 점수("점")는 등락률(%)과
     # 달리 raw quantity이므로 `_number` 대신 `_quantity`를 쓴다.
     if value > 0:
-        return f"{_quantity(value)}점 올라"
+        return f"{_quantity(value)}점 올랐습니다"
     if value < 0:
-        return f"{_quantity(abs(value))}점 내려"
-    return "변동 없이"
+        return f"{_quantity(abs(value))}점 내렸습니다"
+    return "변동이 없었습니다"
 
 
 
@@ -378,7 +378,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
         largest_change = largest[1].score - largest[0].score
         largest_fact = (
             f"조회기간 중 월간 점수 변화 폭이 가장 컸던 때는 {_korean_month(largest[1].month)}로, "
-            f"직전월보다 {_change_phrase(largest_change)} 움직였습니다."
+            f"직전월보다 {_change_phrase(largest_change)}."
         )
         key_metrics.append(
             _metric(

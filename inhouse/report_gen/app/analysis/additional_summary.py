@@ -877,11 +877,12 @@ def calculate_composite_summary(
         EvidenceClaim(
             "period_range_position",
             "current_position",
-            f"현재 광물종합지수는 조회기간 최고치인 "
-            f"{_number(highest.composite_index)}포인트보다 "
-            f"{_number(abs(below_high) * 100)}% 낮고, 최저치인 "
-            f"{_number(lowest.composite_index)}포인트보다 "
-            f"{_number(abs(above_low) * 100)}% 높다.",
+            f"현재 광물종합지수는 조회기간 최고치인 {_number(highest.composite_index)}포인트"
+            + ("와 같으며, " if current.composite_index == highest.composite_index
+               else f"보다 {_number(abs(below_high) * 100)}% 낮으며, ")
+            + f"최저치인 {_number(lowest.composite_index)}포인트"
+            + ("와 같습니다." if current.composite_index == lowest.composite_index
+               else f"보다 {_number(abs(above_low) * 100)}% 높습니다."),
         )
     )
     detailed_metrics.extend(
