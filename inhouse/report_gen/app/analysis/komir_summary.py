@@ -1116,14 +1116,20 @@ def calculate_domestic_trade_summary(
             )
 
     # ── 수출 현황(current_position, 발주처 템플릿 "수출 현황" 문단) ──
+    # 2026-09-10 사용자 지적 — "같은 기간"의 "같은"은 위 "수입 현황" 절의
+    # 기준일을 가리키는 지시어였는데, B-5로 "수입 현황"과 "수출 현황"이 별도
+    # `##` 섹션으로 갈리면서(같은 문단 안에 있을 때만 자연스러운 지시어였다)
+    # 참조 대상이 앞 섹션으로 밀려나 문장이 붕 떴다. "수입 현황"과 똑같이
+    # "[기준일] 기준"을 그대로 반복해 각 섹션이 서로를 안 봐도 뜻이 통하게
+    # 한다(같은 latest_date라 두 섹션의 날짜는 항상 일치한다).
     if export_total > 0 and export_ranking:
         ratio = export_total / import_total * 100
         key_metrics.append(_price_metric("export_total_amount", "수출총액", export_total, unit="달러"))
         key_metrics.append(_price_metric("export_import_ratio_pct", "수입 대비 수출 비율", ratio, unit="%"))
         if country_filter_name:
             export_fact = (
-                f"같은 기간 한국의 {series.mineral.name} {scope_prefix}수출액은 총 {_quantity(export_total)}달러이며, "
-                f"수입총액 대비 수출총액은 {_number(ratio)}% 수준입니다."
+                f"{_korean_date(latest_date)} 기준 한국의 {series.mineral.name} {scope_prefix}수출액은 총 "
+                f"{_quantity(export_total)}달러이며, 수입총액 대비 수출총액은 {_number(ratio)}% 수준입니다."
             )
         else:
             top3_export = export_ranking[: min(3, len(export_ranking))]
@@ -1133,8 +1139,9 @@ def calculate_domestic_trade_summary(
                 _price_metric("top1_export_share_pct", "1위 수출국 비중", top1_export_share, unit="%")
             )
             export_fact = (
-                f"같은 기간 한국의 {series.mineral.name} {scope_prefix}수출액은 총 {_quantity(export_total)}달러이며, "
-                f"주요 수출 대상국은 {export_names} 순입니다. 수입총액 대비 수출총액은 {_number(ratio)}% 수준입니다."
+                f"{_korean_date(latest_date)} 기준 한국의 {series.mineral.name} {scope_prefix}수출액은 총 "
+                f"{_quantity(export_total)}달러이며, 주요 수출 대상국은 {export_names} 순입니다. "
+                f"수입총액 대비 수출총액은 {_number(ratio)}% 수준입니다."
             )
         claims.append(EvidenceClaim("export_summary", "current_position", export_fact, required=True))
     else:
@@ -1142,7 +1149,7 @@ def calculate_domestic_trade_summary(
             EvidenceClaim(
                 "no_export_data",
                 "current_position",
-                "같은 기간 수출 관측치가 없어 수출 현황은 계산하지 않았습니다.",
+                f"{_korean_date(latest_date)} 기준 수출 관측치가 없어 수출 현황은 계산하지 않았습니다.",
                 required=True,
             )
         )

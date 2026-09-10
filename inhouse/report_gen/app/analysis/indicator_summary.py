@@ -412,8 +412,15 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
             if price_change < 0
             else "같았습니다"
         )
+        # 2026-09-10 사용자 지적 — "같은 최근 한 달"의 "같은"은 직전 문장(현재
+        # 단계 절의 최근 점수 변화)을 가리키는 지시어였는데, §3.2 스펙 재정비로
+        # 이 문장이 별도 섹션("주요 변동 특징"/"구성요소 변화")의 선두 문장이
+        # 되거나 factor_candidates 목록의 한 항목으로 단독 등장할 수 있게 되면서
+        # 참조 대상이 사라져 문장이 붕 떴다. "최근 한 달"은 그 자체로 완결된
+        # 시점 표현이라 "같은" 없이도 뜻이 통한다(composite의 "최근 한 달 동안
+        # 메이저금속지수는..."과 같은 패턴).
         price_fact = (
-            f"같은 최근 한 달 동안 가격은 {_number(abs(price_change) * 100)}% "
+            f"최근 한 달 동안 가격은 {_number(abs(price_change) * 100)}% "
             f"{price_direction}."
         )
         key_metrics.append(
