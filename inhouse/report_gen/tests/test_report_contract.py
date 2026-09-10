@@ -113,7 +113,26 @@ class ReportContractTests(unittest.TestCase):
         self.assertIn("## 가격 요약\n", rendered)
         self.assertIn("## 최근 변화\n", rendered)
         self.assertIn("## 변동 구간\n", rendered)
-        self.assertNotIn("## 주요 지표", rendered)
+        # 2026-09-10 main-agent 지시 — 발주처 원본 업무지시서 §3.1 요구사항으로
+        # price_* "주요 지표" 표를 다시 켠다(2026-09-09 오전 2차 피드백 결정
+        # 번복). 이 fixture(관측치 2건)는 latest_price·period_high·period_low·
+        # drawdown_from_period_high_pct만 계산되고 week/month/year_avg·
+        # price_streak_length·recent_volatility_pct는 데이터 부족으로 생성되지
+        # 않는다 — 표가 다시 켜졌다는 것과 9개 화이트리스트가 존재하는 지표만
+        # 순서·라벨대로 골라낸다는 것 둘 다 검증한다.
+        self.assertIn("## 주요 지표\n", rendered)
+        self.assertIn("| 현재가격 | 110 | 달러/톤 |", rendered)
+        self.assertIn("| 최고가 | 110 | 달러/톤 |", rendered)
+        self.assertIn("| 최저가 | 100 | 달러/톤 |", rendered)
+        self.assertIn("| 낙폭 | 0 | % |", rendered)
+        # day_over_day_change_pct는 9개 화이트리스트에 없어 값 자체는 응답
+        # key_metrics에 있어도 표에는 나오지 않아야 한다.
+        self.assertNotIn("전일대비", rendered)
+        self.assertNotIn("전주 대비", rendered)
+        self.assertNotIn("전월 대비", rendered)
+        self.assertNotIn("전년 대비", rendered)
+        self.assertNotIn("연속 추세", rendered)
+        self.assertNotIn("변동성", rendered)
         self.assertEqual(llm.invoke.call_count, 1)
 
     def test_llm_invalid_output_retries_then_preserves_fallback(self):
