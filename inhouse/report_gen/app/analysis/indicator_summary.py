@@ -691,11 +691,25 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
                 )
                 if import_growth is not None:
                     growth_direction = "감소" if import_growth < 0 else "증가"
+                    # 2026-09-11 사용자 지적 — "이 변동이 수급동향지표 변화와
+                    # 함께 확인됩니다"는 수급동향지표가 실제로 어떻게(방향·
+                    # 수치) 바뀌었는지 안 보여줘 모호했다("함께"도 두 변화가
+                    # 같은 기간인 것처럼 잘못 읽힐 수 있었다 — 수입은 연간
+                    # 비교, 점수는 월간 비교라 기간 자체가 다르다). 두 사실을
+                    # "같은 기간"이라 엮지 않고 각각 독립 문장으로 병기해
+                    # score_change(최근 한 달 전월 대비 점수 변화, 이미
+                    # core_diagnosis에서 계산해 둔 값 재사용)의 방향·수치를
+                    # 그대로 옮긴다.
                     import_growth_fact = (
                         f"국내 수입량은 {previous_import.year}년 대비 "
                         f"{latest_import.year}년 {_number(abs(import_growth) * 100)}% "
-                        f"{growth_direction}해, 이 변동이 수급동향지표 변화와 함께 확인됩니다."
+                        f"{growth_direction}했습니다."
                     )
+                    if score_change is not None:
+                        import_growth_fact += (
+                            f" 최근 한 달간 수급동향지표는 전월 대비 "
+                            f"{_change_phrase(score_change)}."
+                        )
                     detailed_metrics.append(
                         _metric(
                             "supply_import_weight_yoy_change",
