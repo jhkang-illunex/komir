@@ -744,7 +744,7 @@ def _validate_llm_summary(
             evidence_text = " ".join(claim.fact for claim in typed_references)
             if not _number_tokens(sentence.text) <= _number_tokens(evidence_text):
                 return "근거에 없는 숫자나 날짜를 사용했다."
-            if ((page_id in {"map_korea", "map_global"} and any(c.id in {"current_state", "export_summary", "top1_country", "korea_route_rank"} for c in typed_references))
+            if ((page_id in {"map_korea", "map_global"} and any(c.id in {"current_state", "export_summary", "top1_country", "korea_route_rank", "trade_scale_trend"} for c in typed_references))
                     or (page_id == "indicator_supply" and "supply_key_factors" in sentence.evidence_ids)):
                 if not _number_tokens(evidence_text) <= _number_tokens(sentence.text):
                     return "지도 금액·비중·시계열 또는 구성요소 상세 수치를 누락했다."
@@ -1670,10 +1670,13 @@ class AnalysisSummaryService:
         trade`)가 이미 계산해 둔 `_map_korea_query_filters()` 결과다(2026-09-08
         SC-005: 이전엔 같은 인자로 여기서 다시 계산했다)."""
 
-        from .map_presentation import import_history_fact
+        from .map_presentation import import_history_fact, trade_scale_trend_fact
         history = import_history_fact(request, series)
         if history:
             calculated.claims = [EvidenceClaim(c.id, c.section, c.fact + " " + history if c.id == "current_state" else c.fact, c.required) for c in calculated.claims]
+        trend = trade_scale_trend_fact(request, series)
+        if trend:
+            calculated.claims = [*calculated.claims, EvidenceClaim("trade_scale_trend", "major_changes", trend, required=True)]
         dates = sorted({item.date for item in series.observations})
         applied_filters = {
             "mineral": series.mineral.name,

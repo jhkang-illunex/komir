@@ -103,6 +103,7 @@ _SECTION_TITLES_OVERRIDES: dict[str, dict[str, str]] = {
 _MAJOR_CHANGES_SPLIT_SECTIONS: dict[str, tuple[str, str]] = {
     "map_global": ("korea_route_rank", "한국 관련 루트"),
     "map_mineral": ("extreme_change_countries", "주요 변화"),
+    "map_korea": ("trade_scale_trend", "수입·수출 규모 추이"),
 }
 
 #: 렌더링에서 통째로 숨길 절 — 2026-09-10 사용자 지시로 map_global의 "기간
