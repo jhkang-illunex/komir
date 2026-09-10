@@ -196,8 +196,13 @@ class ReportContractTests(unittest.TestCase):
                  "major_metals_index": 920, "minor_metals_index": 790},
             ],
         ))
+        # 2026-09-10 발주처 피드백[4] — 메이저·희소·광물종합 지수를 한 문장에
+        # 섞어 비교하던 weekly_subindex_comparison("현재 메이저금속지수는
+        # ~포인트, 희소금속지수는 ~포인트이며...")을 지수별 자기완결 문장
+        # 3개로 대체(`summary.py::_replace_composite_subindex_narrative`)
+        # 하면서 "현재 " 접두어 없이 지수별로 따로 등장하도록 바뀌었다.
         report = render_markdown_report(response)
-        self.assertIn("현재 메이저금속지수는 920.00포인트", report)
+        self.assertIn("메이저금속지수는 920.00포인트", report)
         self.assertIn("희소금속지수는 790.00포인트", report)
 
     def test_llm_failure_preserves_fallback(self):

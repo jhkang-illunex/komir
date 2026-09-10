@@ -13,18 +13,22 @@
   문장이라 값·등락률을 새로 계산하거나 순서를 바꾸지 않는다. 두 근거
   모두 없으면 core_diagnosis는 current_state 하나로만 쓰고, major_changes
   근거(composite_recent_changes 등)를 core_diagnosis로 끌어오지 않는다.
-- major_changes는 composite_recent_changes(전주·전월 비교)와
-  weekly_subindex_comparison/monthly_subindex_comparison/yearly_subindex_comparison
-  (메이저·희소 하위지수의 전주·전월·전년 비교)을 연결해 어느 하위지수의
-  변화가 두드러졌는지 설명한다. weekly_subindex_comparison에 포함된 두 하위지수의
-  현재 포인트 값도 빠뜨리지 않는다. 두 하위지수 방향이 다르면(예: 메이저 상승·
-  희소 하락) 그 차이를 명시한다.
+- major_changes는 composite_index_trend/major_metals_index_trend/
+  minor_metals_index_trend(2026-09-10 발주처 피드백[4] 신설) 중 evidence에
+  있는 것만, 지수당 문장 하나씩 그대로 옮긴다. 각 문장은 이미 "[지수명]는
+  [포인트]포인트로, 전주/전월/전년 대비 [등락률]% [상승/하락/보합]했습니다.
+  (있으면) 최근 조회기간 동안 [상승/하락/보합] 흐름을 이어가고 있습니다./
+  뚜렷한 방향성 없이 등락을 반복하고 있습니다. (있으면) 구성 광종은
+  [광종(비중%)·...] 등입니다." 형태로 완성돼 있다 — 값·등락률·구성 광종을
+  새로 계산하거나 순서를 바꾸지 않는다.
+- **세 지수를 한 문장에 섞지 않는다** — 위 세 evidence_id는 각각 정확히
+  한 문장에 하나씩만 인용한다(한 문장에 두 evidence_id를 함께 인용해
+  "메이저는 ~한 반면 희소는 ~"처럼 합치지 않는다). 발주처가 지적한 것이
+  바로 이 "섞인" 서술 형태다.
 - current_position은 period_range_position·overall_pattern을 연결해
   조회기간 고저점 위치와 단기·장기 방향을 이어 현재 수준의 의미를 판단한다.
-- 하위지수의 방향이 다르면 전체 지수만으로 가려지는 차별화를 명시하되
-  구체적인 견인 광종이나 원인은 evidence에 없으므로 추정하지 않는다.
-- index_top_weighted_minerals(있으면, major_changes) — 광물종합·메이저금속·
-  희소금속지수 각각의 구성 광종과 산정 가중치(%)다. 이번 조회기간에 그
-  광종의 가격이 실제로 오르내렸는지는 evidence에 없으므로, "이 광종의
-  가격 상승/하락이 원인"이라고 쓰지 않는다 — "비중이 큰 구성 광종이라
-  지수 변동에 상대적으로 민감하다"처럼 구조적 사실로만 그대로 옮긴다.
+- 구체적인 견인 광종이나 원인은 evidence에 없으므로 추정하지 않는다 —
+  각 지수 문장 끝의 "구성 광종은 ..." 부분은 "비중이 큰 구성 광종이라
+  지수 변동에 상대적으로 민감하다"는 구조적 사실이지, "이 광종의 가격
+  상승/하락이 원인"이라는 뜻이 아니다(evidence 문장 자체를 그대로 옮기면
+  자동으로 지켜진다).
