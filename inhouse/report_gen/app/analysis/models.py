@@ -540,11 +540,11 @@ class SupplyAuxiliaryData(StrictModel):
     _parse_komis_supply_snapshot_response`). `international_prices`(subChart01,
     실질가격)는 핵심 관측치(`IndicatorObservation.price`, `getListIndxSplyBalncMnrk`
     의 `realPrc`)와 같은 값의 중복이라 안 채운다. `world_balances`(subChart05,
-    수요·공급·과부족)는 필드는 남겨 두되(다른 광종은 값이 있을 수 있어 스키마
-    호환 유지 목적) `_parse_komis_supply_snapshot_response`에 실제 파싱 로직은
-    없다 — 실측 덤프가 빈 배열+빈 xaxis라 연도 매핑을 검증할 수 없다(2026-09-10
-    사용자가 재확인 — 갈륨 실측도 여전히 빈 배열, 이 요인(세계수급비율)은
-    지금 있는 데이터로는 계산도 추론도 불가해 반영 범위 밖으로 확정 유지).
+    수요·공급·과부족, "세계수급비율")는 2026-09-10 사용자 후속 지시로
+    파싱을 구현했다 — 갈륨 실측 덤프는 여전히 xaxis·수요·공급·과부족
+    전부 빈 배열이라 이 필드가 비어 있지만(그 광종에선 factor 자체가
+    생략된다, 다른 요인과 같은 "있으면 반영" 원칙), 다른 광종은 값이
+    채워질 수 있어 파싱 로직 자체는 항상 시도한다.
 
     2026-09-10 — `production_shares`/`top_country_production_share_percent`
     (subChart04, 국가별 생산량 → 세계 공급 편중도)를 추가로 반영했다.

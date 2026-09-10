@@ -608,6 +608,65 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
             )
 
         if series.supply_auxiliary is not None:
+            # 2026-09-10 사용자 후속 지시("세계 수급비율도 구성요소 변화에
+            # 포함") — subChart05(세계 수요-공급)는 원래 5개 요인 스펙 순서상
+            # 가격리스크 다음이라 여기 둔다. "과부족"은 KOMIS가 이미 계산해
+            # 준 값을 그대로 신뢰하고(subChart02 수입액과 같은 원칙), 없으면
+            # 공급-수요로 직접 계산한다. 비어 있으면(갈륨 실측처럼) 조용히
+            # 생략 — 다른 요인과 같은 "있으면 반영" 패턴.
+            # ⚠ 단위(천톤)·"과부족" 부호(양수=과잉 가정)·"공급/수요" 비율
+            # 정의는 실측 대조 불가(갈륨 subChart05가 항상 빈 배열이라 KOMIS
+            # 화면과 대조할 근거가 없음, input_data.py::
+            # _parse_komis_supply_snapshot_response docstring 참고) — 실제로
+            # 값이 채워진 광종을 처음 받으면 KOMIS 화면과 반드시 대조할 것.
+            world_balances = sorted(
+                series.supply_auxiliary.world_balances, key=lambda item: item.year
+            )
+            if world_balances:
+                latest_balance = world_balances[-1]
+                demand = latest_balance.demand_thousand_ton
+                supply = latest_balance.supply_thousand_ton
+                balance = latest_balance.balance_thousand_ton
+                if balance > 0:
+                    world_balance_fact = (
+                        f"{latest_balance.year}년 세계 수요는 {_number(demand, 0)}천톤, "
+                        f"공급은 {_number(supply, 0)}천톤으로, 공급 과잉 "
+                        f"{_number(balance, 0)}천톤 수준입니다."
+                    )
+                elif balance < 0:
+                    world_balance_fact = (
+                        f"{latest_balance.year}년 세계 수요는 {_number(demand, 0)}천톤, "
+                        f"공급은 {_number(supply, 0)}천톤으로, 공급 부족 "
+                        f"{_number(abs(balance), 0)}천톤 수준입니다."
+                    )
+                else:
+                    world_balance_fact = (
+                        f"{latest_balance.year}년 세계 수요는 {_number(demand, 0)}천톤, "
+                        f"공급은 {_number(supply, 0)}천톤으로, 수급 균형 상태입니다."
+                    )
+                if demand != 0:
+                    ratio = supply / demand * 100
+                    world_balance_fact += (
+                        f" 세계 수급비율(공급/수요)은 {_number(ratio)}%입니다."
+                    )
+                detailed_metrics.append(
+                    _metric(
+                        "supply_world_balance_thousand_ton",
+                        "세계 수급 과부족",
+                        balance,
+                        unit="천톤",
+                        basis=f"{latest_balance.year}년",
+                    )
+                )
+                supply_factor_claims.append(
+                    EvidenceClaim(
+                        "supply_factor_world_balance",
+                        "current_position",
+                        world_balance_fact,
+                        required=True,
+                    )
+                )
+
             imports = sorted(series.supply_auxiliary.domestic_imports, key=lambda item: item.year)
             dependencies = series.supply_auxiliary.import_dependencies
             if len(imports) >= 2:

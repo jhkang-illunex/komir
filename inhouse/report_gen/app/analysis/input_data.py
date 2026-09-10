@@ -789,9 +789,25 @@ def _parse_komis_supply_snapshot_response(raw: dict) -> tuple[dict, str | None, 
 
     `subChart07`(국가별 매장량)은 대응 모델 필드가 없어 파싱하지 않는다
     (§`models.py`의 `SupplyAuxiliaryData` docstring 참고, 5개 요인에 없는
-    항목이라 범위 밖). `subChart05`(세계 수요-공급, "세계수급비율")도
-    실측 덤프가 xaxis·수요·공급·과부족 전부 빈 배열이라(2026-09-10
-    사용자 재확인) 여전히 파싱하지 않는다."""
+    항목이라 범위 밖).
+
+    `subChart05`(세계 수요-공급, "세계수급비율", 2026-09-10 사용자 후속
+    지시로 파싱 구현) — subChart02처럼 `xaxis`(연도 라벨)+`series`(이름별
+    배열) 쌍이다. 이름 "수요"/"공급"/"과부족" 그대로 신뢰하고, "과부족"이
+    없거나 결측이면 공급-수요로 직접 계산한다(KOMIS가 이미 계산해 주는
+    값이 있으면 그쪽을 우선 — `subChart02`의 수입액과 같은 "라벨 그대로
+    신뢰" 원칙). 갈륨 실측 덤프는 여전히 xaxis·수요·공급·과부족 전부
+    빈 배열이라(2026-09-10 재확인) 갈륨에서는 이 factor가 생략되지만,
+    다른 광종은 값이 있을 수 있어 파싱 자체는 항상 시도한다.
+
+    ⚠ **단위·부호 미검증**(2026-09-10, advisor 검토로 지적) — "천톤" 단위는
+    `SupplyWorldBalanceObservation`(모델, 이번 세션 이전부터 존재하던 스텁)
+    필드명을 그대로 따른 것이고, "과부족=공급-수요(양수=과잉)" 부호도
+    이쪽 코드의 가정이다. 갈륨 실측 덤프엔 subChart02의 `yaxisTitle`/
+    `oppoTitle` 같은 단위 라벨이 subChart05엔 아예 없어(빈 객체) 대조할
+    근거가 없다 — subChart02의 "수입액 백만$" 오인 사례와 같은 종류의
+    함정일 수 있다. **실제로 값이 채워진 광종을 처음 받으면 KOMIS 화면과
+    반드시 대조해 단위·부호를 확인할 것.**"""
 
     payload = raw.get("data") if isinstance(raw.get("data"), dict) else raw
     if not isinstance(payload, dict):
@@ -880,6 +896,37 @@ def _parse_komis_supply_snapshot_response(raw: dict) -> tuple[dict, str | None, 
         aux["top_country_production_share_percent"] = min(
             100.0, production_shares[0]["share_percent"]
         )
+
+    sub05 = payload.get("subChart05") or {}
+    sub05_labels = sub05.get("xaxis") or []
+    sub05_series_by_name = {
+        item.get("name"): item.get("data") or [] for item in (sub05.get("series") or [])
+    }
+    demands = sub05_series_by_name.get("수요") or []
+    supplies = sub05_series_by_name.get("공급") or []
+    balances = sub05_series_by_name.get("과부족") or []
+    world_balances = []
+    for index, year_label in enumerate(sub05_labels):
+        year = _komis_num(year_label)
+        if year is None or index >= len(demands) or index >= len(supplies):
+            continue
+        demand = _komis_num(demands[index])
+        supply = _komis_num(supplies[index])
+        if demand is None or supply is None:
+            continue
+        balance = _komis_num(balances[index]) if index < len(balances) else None
+        if balance is None:
+            balance = supply - demand
+        world_balances.append(
+            {
+                "year": int(year),
+                "demand_thousand_ton": demand,
+                "supply_thousand_ton": supply,
+                "balance_thousand_ton": balance,
+            }
+        )
+    if world_balances:
+        aux["world_balances"] = world_balances
 
     return aux, mineral_code, mineral_name
 

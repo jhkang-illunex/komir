@@ -693,6 +693,7 @@ _COMBINED_SENTENCE_EXEMPT_PAGES = {"price_group", "map_korea"}
 #: 예전엔 "supply_key_factors" 단일 id로 판별했던 것을 이 집합 전체로 판별.
 _SUPPLY_FACTOR_EVIDENCE_IDS = {
     "supply_factor_price_risk",
+    "supply_factor_world_balance",
     "supply_factor_import_growth",
     "supply_factor_import_dependency",
     "supply_factor_world_concentration",
