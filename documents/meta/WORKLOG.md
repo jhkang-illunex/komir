@@ -2,7 +2,27 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-10 (최신) — 글로벌 수급지도(map_global) 기준연도 일자오표기·근거누락·한국루트 서식 수정(사용자 지적 4건, 커밋 `3213ce767`, 병합 `32ae77ed2`)
+## 2026-09-10 (최신) — 글로벌 수급지도(map_global) 한국 관련 루트를 별도 렌더링 섹션으로 분리(사용자 지시, 커밋 `74689b4d6`, 병합 `0b5aeeea2`)
+
+바로 위 항목에서 고친 korea_route_rank 문장이 "주요 교역 루트" 절에
+같이 묶여 있어 눈에 덜 띈다는 사용자 지적. `SummaryNarrative`는 9개
+page_id가 공유하는 고정 3섹션(core_diagnosis/major_changes/
+current_position) 계약이라 4번째 절을 스키마에 추가하면 다른 8종까지
+건드리게 된다 — 대신 계산·검증 레이어(komir_summary.py의 "값이 있을
+때만" claim 생성 로직)는 그대로 두고, `report_render.py`의 렌더링
+단계에서만 map_global의 major_changes 문장을 `evidence_id ==
+"korea_route_rank"` 기준으로 걸러 "## 한국 관련 루트"라는 별도 markdown
+절로 분리했다(price_* 주요지표 화이트리스트·map_mineral 동적 제목과
+같은 결의 페이지별 렌더링 특수처리 패턴). `map_global_summary.md`에도
+"korea_route_rank는 항상 evidence_ids가 그 하나뿐인 독립 문장으로 쓴다"
+지시를 추가해 렌더링 분리 가정과 맞췄다.
+
+pyflakes/unittest 14종/395콤보 스모크(map_global 73건 ok) + 갈륨(한국
+루트 2건 → "## 한국 관련 루트" 절 분리 확인)·갈탄(한국 루트 0건 → 그
+절 자체가 안 나오는 것 확인) 직접 렌더링으로 재검증 완료. 배포까지 완료.
+
+
+## 2026-09-10 — 글로벌 수급지도(map_global) 기준연도 일자오표기·근거누락·한국루트 서식 수정(사용자 지적 4건, 커밋 `3213ce767`, 병합 `32ae77ed2`)
 
 1. "글로벌 교역 현황"의 기준 시점이 "2026년 12월 31일 기준"처럼 없는
    일자로 표시됐다 — map_global(UN Comtrade)의 `srchDateE`는 실제 관측일이
