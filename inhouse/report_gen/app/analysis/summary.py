@@ -381,6 +381,53 @@ def _append_mineral_map_extreme_change(calculated: AdditionalCalculatedSummary, 
     calculated.detailed_metrics.extend(new_metrics)
 
 
+def _mineral_map_latest_year_change(series: MineralMapSeries) -> tuple[float, int, int] | None:
+    """직전 연도 대비 세계 합계 변화율("전년 대비 변화율") — (변화율, 직전연도,
+    최근연도), 없으면 `None`.
+
+    2026-09-10 사용자 지시 — `calculate_mineral_map_summary`(프로즌)는 이 값을
+    `period_total_change`(core_diagnosis, "조회기간 전체 변화율") 서사 문장
+    안에서만 계산하고(3개 연도 이상일 때만, `previous_year != start_year`
+    조건) 별도 key_metric으로 내보내지 않는다. "주요 지표" 표에 항상
+    노출해야 해서 여기서 독립적으로 다시 계산한다 —
+    `_mineral_map_extreme_change_countries`와 같은 결로 프로즌 파일의 사설
+    헬퍼(`_by_year`/`_world_total`/`_percent_change`)는 재사용하지 않고
+    `series.observations`를 직접 본다. 조회기간이 연도 2개뿐이면 이 값은
+    `period_world_total_change`(조회기간 전체 변화율)와 같아지지만, 사용자가
+    항상 이 라벨을 보길 원해 조건 분기 없이 매번 계산한다."""
+
+    filtered = [o for o in series.observations if not o.is_total and not o.is_other]
+    years = sorted({o.year for o in filtered})
+    if len(years) < 2:
+        return None
+    latest_year, previous_year = years[-1], years[-2]
+    latest_total = sum(o.value for o in filtered if o.year == latest_year)
+    previous_total = sum(o.value for o in filtered if o.year == previous_year)
+    if previous_total == 0:
+        return None
+    return (latest_total - previous_total) / previous_total, previous_year, latest_year
+
+
+def _append_mineral_map_latest_year_change(calculated: AdditionalCalculatedSummary, series: MineralMapSeries) -> None:
+    """`_mineral_map_latest_year_change` 결과가 있으면 "주요 지표"에 "전년
+    대비 변화율" 1건을 덧붙인다(서사 문장은 이미 `period_total_change`
+    claim이 다루므로 여기선 metric만 추가한다)."""
+
+    result = _mineral_map_latest_year_change(series)
+    if result is None:
+        return
+    change, previous_year, latest_year = result
+    metric = _metric(
+        "latest_year_total_change",
+        "전년 대비 변화율",
+        change,
+        unit="ratio",
+        basis=f"{previous_year} 대비 {latest_year}",
+    )
+    calculated.key_metrics.append(metric)
+    calculated.detailed_metrics.append(metric)
+
+
 def _source_info_from_series(
     series: IndicatorSeries | CompositeIndexSeries | MineralMapSeries | PriceForecastSeries | PriceSeries | TradeMapSeries,
 ) -> SourceInfo:
@@ -896,6 +943,7 @@ class AnalysisSummaryService:
         )
         _apply_polite_endings(calculated, _MINERAL_MAP_POLITE_ENDINGS, context="map_mineral")
         _append_mineral_map_extreme_change(calculated, series)
+        _append_mineral_map_latest_year_change(calculated, series)
         context = effective_page_context("map_mineral")
         # 2026-09-09 복잡성 해소 — `years`는 위에서 이미 계산됐다(`series.
         # observations`가 그 `observations`와 동일 리스트라 재계산은 항상

@@ -93,6 +93,15 @@ _SECTION_TITLES_OVERRIDES: dict[str, dict[str, str]] = {
     },
 }
 
+#: major_changes 안의 특정 evidence_id 문장을 별도 "## " 절로 분리해 보여줄
+#: page_id → (evidence_id, 분리 절 제목) — 2026-09-10 사용자 지시로 map_global
+#: (한국 관련 루트)에 이어 map_mineral(주요 변화)도 같은 패턴이 필요해졌다.
+#: `_SECTION_TITLES_OVERRIDES`처럼 등록에 없는 page_id는 그냥 영향받지 않는다.
+_MAJOR_CHANGES_SPLIT_SECTIONS: dict[str, tuple[str, str]] = {
+    "map_global": ("korea_route_rank", "한국 관련 루트"),
+    "map_mineral": ("extreme_change_countries", "주요 변화"),
+}
+
 #: map_mineral 전용 — `_analyze_mineral_map`이 applied_filters["measure"]에
 #: `MineralMapMeasure`("reserves"/"production") 원문을 그대로 싣는다(summary.py
 #: 참고). 등록에 없는 값(신규 measure 추가 등)은 범용 "핵심 진단"으로 폴백한다.
@@ -215,26 +224,29 @@ def render_markdown_report(response: AnalysisSummaryResponse) -> str:
         sentences = getattr(response.summary, key)
         if not sentences:
             continue
-        if response.page_id == "map_global" and key == "major_changes":
-            # 2026-09-10 사용자 지시 — 대한민국 관련 루트(korea_route_rank)를
-            # "주요 교역 루트"와 같은 문단에 묶지 말고 별도 섹션으로 빼서
-            # 표시한다. JSON 계약(`SummaryNarrative.major_changes`)은 그대로
-            # 두고(스키마가 3개 절 고정이라 4번째 절을 추가하면 다른 8종
-            # page_id까지 건드리게 된다) 렌더링 단계에서만 evidence_id 기준
-            # 으로 걸러 별도 "## " 블록으로 나눈다 — 계산·검증 레이어의
-            # "값이 있을 때만" 로직(komir_summary.py)은 그대로 유지되므로,
+        split = _MAJOR_CHANGES_SPLIT_SECTIONS.get(response.page_id)
+        if split and key == "major_changes":
+            # 2026-09-10 사용자 지시(map_global 한국 관련 루트·map_mineral
+            # 주요 변화, 같은 패턴) — 특정 evidence_id 문장을 major_changes의
+            # 나머지 서술과 같은 문단에 묶지 말고 별도 섹션으로 뺀다. JSON
+            # 계약(`SummaryNarrative.major_changes`)은 그대로 두고(스키마가
+            # 3개 절 고정이라 4번째 절을 추가하면 다른 8종 page_id까지
+            # 건드리게 된다) 렌더링 단계에서만 evidence_id 기준으로 걸러
+            # 별도 "## " 블록으로 나눈다 — 계산·검증 레이어의 "값이 있을
+            # 때만" 로직(komir_summary.py/summary.py)은 그대로 유지되므로,
             # 근거 자체가 없으면 이 블록도 자연히 생략된다.
-            korea_sentences = [s for s in sentences if "korea_route_rank" in s.evidence_ids]
-            other_sentences = [s for s in sentences if s not in korea_sentences]
+            evidence_id, split_title = split
+            split_sentences = [s for s in sentences if evidence_id in s.evidence_ids]
+            other_sentences = [s for s in sentences if s not in split_sentences]
             if other_sentences:
                 lines.append(f"## {title}")
                 lines.append("")
                 lines.append(" ".join(sentence.text for sentence in other_sentences))
                 lines.append("")
-            if korea_sentences:
-                lines.append("## 한국 관련 루트")
+            if split_sentences:
+                lines.append(f"## {split_title}")
                 lines.append("")
-                lines.append(" ".join(sentence.text for sentence in korea_sentences))
+                lines.append(" ".join(sentence.text for sentence in split_sentences))
                 lines.append("")
             continue
         lines.append(f"## {title}")
