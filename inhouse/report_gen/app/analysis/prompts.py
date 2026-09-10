@@ -96,7 +96,10 @@ SECTION_SENTENCE_RANGES: dict[str, dict[str, tuple[int, int]]] = {
     # 3개(grade_streak·grade_transition·largest_monthly_score_change)를 1문장에
     # 넣지 못해 근거 누락/절 이동으로 폴백하는 사례 → (1,2)로 완화.
     "indicator_market": {"core_diagnosis": (1, 1), "major_changes": (1, 2), "current_position": (1, 1)},
-    "indicator_supply": {"core_diagnosis": (1, 1), "major_changes": (1, 2), "current_position": (1, 2)},
+    # current_position 상한 4 — 2026-09-10 사용자 후속 지시로 supply_key_factors
+    # 결합 문장(300자 상한 초과 위험, HHI 해석문 추가로 확정)을 요인별 4개
+    # 개별 근거(supply_factor_price_risk 등)로 분리하면서 상향(기존 2).
+    "indicator_supply": {"core_diagnosis": (1, 1), "major_changes": (1, 2), "current_position": (1, 4)},
     # core_diagnosis: 2026-09-10 발주처 피드백([3])으로 신설된
     # period_value_comparison(전주/전월/전년동기 값+등락률)까지 더하면 최대
     # 3개(current_state·medium_long_term_contrast·period_value_comparison)라

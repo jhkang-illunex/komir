@@ -13,6 +13,7 @@ from typing import Literal
 from ._metrics import capped_key_metrics
 from .additional_summary import EvidenceClaim, _number, _quantity
 from .indicators import months_are_contiguous, percent_change
+from .komir_summary import _toward
 from .models import (DetectedPattern, GradeResult, IndicatorSeries, Metric, OmittedIndicator)
 from .policy import PagePolicy
 
@@ -226,6 +227,41 @@ def _price_volatility_pct(observations: list) -> tuple[float, int] | None:
     stdev = statistics.stdev(returns)
     annualized = stdev * (12 ** 0.5) * 100
     return annualized, len(returns)
+
+
+#: 2026-09-10 사용자 지시 — HHI 공급 편중도 해석 문구. 임계값(0.15/0.25/0.50)과
+#: 문구는 사용자가 제공한 원문 그대로다(국제적으로 통용되는 HHI 관례 구간에
+#: 0.50 이상 "극단적 편중" 구간을 사용자가 추가한 것) — 임의로 다듬지 않는다.
+def _hhi_classification_sentence(hhi: float) -> str:
+    # 숫자로 끝나는 값의 로/으로 조사는 `_toward()`(2026-09-09 map_korea
+    # "중국로" 조사 버그 수정 헬퍼)로 통일한다 — 같은 계산을 다시 만들지 않는다.
+    value = _toward(_number(hhi, 3))
+    if hhi < 0.15:
+        return (
+            f"국가별 공급망 편중도는 {value}, 특정 국가에 치우치지 않고 "
+            "공급처가 안정적으로 다변화되어 있는 상태입니다. 특정 국가의 "
+            "지정학적 리스크가 전체 공급망에 미치는 영향은 미미할 것으로 "
+            "평가됩니다."
+        )
+    if hhi < 0.25:
+        return (
+            f"국가별 공급망 편중도는 {value}, 완만한 편중 경향을 보이고 "
+            "있습니다. 아직 위험 수준은 아니나, 상위 공급국 현황에 대한 "
+            "지속적인 모니터링이 요구됩니다."
+        )
+    if hhi < 0.50:
+        return (
+            f"국가별 공급망 편중도는 {value}, 특정 소수 국가에 대한 "
+            "의존도가 상당히 높은 '고편중' 상태입니다. 해당 국가의 수출 "
+            "규제나 물류 차질 시 공급망 타격이 우려되므로, 대안국 발굴 등 "
+            "리스크 관리가 필요합니다."
+        )
+    return (
+        f"국가별 공급망 편중도는 {value}, 사실상 단일 국가가 공급을 "
+        "독점하고 있는 '극단적 편중' 상태입니다. 공급 전반을 특정국에 "
+        "전적으로 의존하고 있어, 해당국의 대외 정책이나 환경 변화에 매우 "
+        "취약한 구조입니다."
+    )
 
 
 def _classify_series(
@@ -513,23 +549,29 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
         )
 
     if series.page_id == "indicator_supply":
-        # 2026-09-10 사용자 지시 — 업무지시서 §3.2 "구성요소 변화" 템플릿
-        # ("구성요소 중 [요인]의 변동이 상대적으로 크게 나타났습니다")대로,
-        # 계산 가능한 요인을 전부 후보로 모아 변동·수준이
-        # 가장 큰 쪽을 선문장에 명시한다(`largest_monthly_score_change`의
-        # `max(..., key=lambda: abs(...))` 선례와 같은 패턴). 후보 4개
-        # (가격리스크·국내 수입증가율·국내 수입국 편중도·세계 공급 편중도)는
-        # 성격이 다른 값이지만 전부 %라 현재 가진 신호들을 견줄 수 있는
-        # 유일한 공통 척도다. 세계수급비율(세계 수요-공급)은 실측 덤프가
-        # 항상 빈 배열이라(2026-09-10 사용자 재확인) 후보에 없다 — 데이터가
-        # 없는 요인을 추론으로 채우지 않는다.
-        factor_candidates: list[tuple[str, float, str]] = []
+        # 2026-09-10 사용자 지시 — 업무지시서 §3.2 "구성요소 변화" 템플릿대로
+        # 계산 가능한 요인(가격리스크·국내 수입증가율·국내 수입국 편중도·
+        # 세계 공급 편중도)을 요인별 별도 근거(EvidenceClaim)로 분리해
+        # current_position에 나란히 싣는다(전부 다 오지 않을 수 있다 — 있는
+        # 것만). 세계수급비율(세계 수요-공급)은 실측 덤프가 항상 빈 배열이라
+        # (2026-09-10 사용자 재확인) 후보에 없다 — 데이터가 없는 요인을
+        # 추론으로 채우지 않는다.
+        # 2026-09-10 사용자 후속 지시로 요인별 문장을 하나로 합치지 않고
+        # 분리했다 — HHI 4단계 해석 문장(추가 60~130자)까지 합치면 4요인
+        # 결합 문장이 300자(SummarySentence.text 상한)를 넘을 위험이 커서다
+        # (실측: 이전 4요인 결합 문장이 해석문 없이도 이미 272자였다). 분리한
+        # 순서(가격리스크→국내 수입증가율→국내 수입국 편중도→세계 공급
+        # 편중도)는 "수입의존도(국내 수입국 편중도)와 국가편중도(세계 공급
+        # 편중도)가 연속으로 나오게" 요청을 그대로 만족한다(이미 마지막
+        # 두 자리가 이 순서였다).
+        supply_factor_claims: list[EvidenceClaim] = []
         if price_fact is not None:
             # 2026-09-10 사용자 지시 — 가격리스크 요인에 1개월 등락률뿐 아니라
-            # 가격 데이터 기반 계산식(연율화 변동성, _price_volatility_pct)도
-            # 반영한다. market의 latest_price_change(공유 변수 price_fact)는
-            # 건드리지 않고 supply의 factor_candidates 항목에만 이어붙인다.
-            price_risk_fact = price_fact
+            # 가격 데이터 기반 계산식(연율화 변동성, _price_volatility_pct)과
+            # 기준월 접두어("[YYYY년 MM월] 기준")도 반영한다. market의
+            # latest_price_change(공유 변수 price_fact)는 건드리지 않고
+            # supply의 요인 문장에만 적용한다.
+            price_risk_fact = f"{_korean_month(current.month)} 기준 {price_fact}"
             volatility = _price_volatility_pct(observations)
             if volatility is not None:
                 vol_value, vol_months = volatility
@@ -546,7 +588,11 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
                         basis=f"최근 {vol_months}개월",
                     )
                 )
-            factor_candidates.append(("가격리스크", abs(price_change) * 100, price_risk_fact))
+            supply_factor_claims.append(
+                EvidenceClaim(
+                    "supply_factor_price_risk", "current_position", price_risk_fact, required=True
+                )
+            )
 
         if series.supply_auxiliary is not None:
             imports = sorted(series.supply_auxiliary.domestic_imports, key=lambda item: item.year)
@@ -572,8 +618,13 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
                             basis=f"{previous_import.year}년 대비 {latest_import.year}년",
                         )
                     )
-                    factor_candidates.append(
-                        ("국내 수입증가율", abs(import_growth) * 100, import_growth_fact)
+                    supply_factor_claims.append(
+                        EvidenceClaim(
+                            "supply_factor_import_growth",
+                            "current_position",
+                            import_growth_fact,
+                            required=True,
+                        )
                     )
 
             top_three = series.supply_auxiliary.top_three_dependency_percent
@@ -595,7 +646,14 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
                     concentration_fact = (
                         f"상위 3개국({top_names}) 수입의존도는 {_number(top_three)}%로 집중된 구조입니다."
                     )
-                factor_candidates.append(("국내 수입국 편중도", top_three, concentration_fact))
+                supply_factor_claims.append(
+                    EvidenceClaim(
+                        "supply_factor_import_dependency",
+                        "current_position",
+                        concentration_fact,
+                        required=True,
+                    )
+                )
 
             production_shares = series.supply_auxiliary.production_shares
             top_country_share = series.supply_auxiliary.top_country_production_share_percent
@@ -616,11 +674,12 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
                 # 클램프가 필요 없다(전통적 0~10000 스케일 HHI와 달리 분수
                 # 점유율을 직접 쓰는 정의라 이 정규화가 정의상 보장된다).
                 production_hhi = sum((row.share_percent / 100.0) ** 2 for row in production_shares)
+                # 2026-09-10 사용자 후속 지시 — 단순 수치 문장 대신 4단계 해석
+                # 문구(_hhi_classification_sentence)를 붙인다.
                 world_supply_fact = (
                     f"{top_row.year}년 국가별 생산량 자료에서 1위는 {top_country}이며, "
                     f"자료에 포함된 국가 생산량 합계의 {_number(top_row.share_percent)}%를 차지합니다. "
-                    f"국가별 비중 제곱합(HHI, 0~1)으로 계산한 공급 편중도는 "
-                    f"{_number(production_hhi, 3)}입니다."
+                    + _hhi_classification_sentence(production_hhi)
                 )
                 detailed_metrics.append(
                     _metric(
@@ -640,18 +699,17 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
                         basis=f"{top_row.year}년, {len(production_shares)}개국 비중 제곱합",
                     )
                 )
-                factor_candidates.append(("세계 공급 편중도", top_country_share, world_supply_fact))
-
-        if factor_candidates:
-            detail = " ".join(fact for _, _, fact in factor_candidates)
-            claims.append(
-                EvidenceClaim(
-                    "supply_key_factors",
-                    "current_position",
-                    detail,
-                    required=True,
+                supply_factor_claims.append(
+                    EvidenceClaim(
+                        "supply_factor_world_concentration",
+                        "current_position",
+                        world_supply_fact,
+                        required=True,
+                    )
                 )
-            )
+
+        if supply_factor_claims:
+            claims.extend(supply_factor_claims)
             current_position_primary_claim_added = True
 
     # 2026-09-10 사용자 지시 — indicator_market의 "주요 변동 특징"은 가격

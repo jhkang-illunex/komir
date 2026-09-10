@@ -687,6 +687,23 @@ _GRADE_LABELS = {"신중", "주의", "중립", "관심", "기회", "긴장", "�
 # 동시에 만족할 수 없다(실측: 4개년 이상 표본에서 매번 100% 폴백).
 _COMBINED_SENTENCE_EXEMPT_PAGES = {"price_group", "map_korea"}
 
+#: 2026-09-10 사용자 후속 지시 — indicator_supply "구성요소 변화"를 단일
+#: supply_key_factors 결합 문장에서 요인별 개별 evidence_id 4종으로 분리한
+#: 것(indicator_summary.py 참고, 300자 상한 초과 위험 회피). 아래 두 검사가
+#: 예전엔 "supply_key_factors" 단일 id로 판별했던 것을 이 집합 전체로 판별.
+_SUPPLY_FACTOR_EVIDENCE_IDS = {
+    "supply_factor_price_risk",
+    "supply_factor_import_growth",
+    "supply_factor_import_dependency",
+    "supply_factor_world_concentration",
+}
+
+#: 2026-09-10 사용자 지시 — HHI 4단계 해석 문구의 단계 판정어. LLM이 값은
+#: 유지한 채 해석 문구만 순화·삭제하는 사고(latest_score_change의 반비례
+#: 설명 문구가 조용히 지워졌던 실측 사례와 같은 종류)를 막기 위해, 근거에
+#: 있는 단계 판정어가 출력 문장에도 그대로 있는지 검사한다.
+_HHI_TIER_MARKERS = ("안정적으로 다변화", "완만한 편중 경향", "고편중", "극단적 편중")
+
 
 def _number_tokens(text: str) -> set[str]:
     result: set[str] = set()
@@ -714,6 +731,20 @@ def _validate_llm_summary(
         ("current_position", candidate.current_position),
     ]
     sentences = [sentence for _, values in sections for sentence in values]
+    # 2026-09-10 사용자 지시 — "수입의존도(국내 수입국 편중도)와 국가편중도
+    # (세계 공급 편중도)가 연속으로 나오게". 결정론적 경로는 요인을 이 순서
+    # (가격리스크→수입증가율→수입국편중도→세계공급편중도)로 이미 이어붙이지만
+    # LLM 정제는 문장 순서를 자유롭게 바꿀 수 있어 별도로 검사한다.
+    if page_id == "indicator_supply":
+        position_sentence_by_id: dict[str, int] = {
+            eid: idx
+            for idx, sentence in enumerate(candidate.current_position)
+            for eid in sentence.evidence_ids
+        }
+        dep_idx = position_sentence_by_id.get("supply_factor_import_dependency")
+        world_idx = position_sentence_by_id.get("supply_factor_world_concentration")
+        if dep_idx is not None and world_idx is not None and abs(dep_idx - world_idx) > 1:
+            return "수입의존도와 국가편중도(HHI) 요인이 연속으로 배치되지 않았다."
     # 섹션별 문장수 계약은 `prompts.py::resolve_page_config`(코드 기본값 + DB
     # 오버레이) 한 곳에서 온다 — LLM에 보내는 output_contract와 이 검증기가 같은
     # 값을 보게 하기 위해서다(2026-08-27 skeptic 감사 SC-005 → 같은 날 DB화 2단계).
@@ -755,17 +786,20 @@ def _validate_llm_summary(
             if not _number_tokens(sentence.text) <= _number_tokens(evidence_text):
                 return "근거에 없는 숫자나 날짜를 사용했다."
             if ((page_id in {"map_korea", "map_global"} and any(c.id in {"current_state", "export_summary", "top1_country", "korea_route_rank", "trade_scale_trend"} for c in typed_references))
-                    or (page_id == "indicator_supply" and "supply_key_factors" in sentence.evidence_ids)):
+                    or (page_id == "indicator_supply" and any(eid in _SUPPLY_FACTOR_EVIDENCE_IDS for eid in sentence.evidence_ids))):
                 if not _number_tokens(evidence_text) <= _number_tokens(sentence.text):
                     return "지도 금액·비중·시계열 또는 구성요소 상세 수치를 누락했다."
             if page_id in {"map_korea", "map_global", "map_mineral"}:
                 quantities = re.findall(r"약 [\d,]+[만억] ?(?:달러|톤)", evidence_text)
                 if any(value not in sentence.text for value in quantities):
                     return "지도 축약 금액·물량 또는 단위를 누락하거나 변경했다."
-            if page_id == "indicator_supply" and "supply_key_factors" in sentence.evidence_ids:
+            if page_id == "indicator_supply" and "supply_factor_world_concentration" in sentence.evidence_ids:
                 countries = re.findall(r"1위는 (.*?)이며", evidence_text)
                 if any(country not in sentence.text for country in countries):
                     return "구성요소 근거의 생산국을 누락했다."
+                mentioned_tiers = [marker for marker in _HHI_TIER_MARKERS if marker in evidence_text]
+                if any(marker not in sentence.text for marker in mentioned_tiers):
+                    return "HHI 편중도 해석 문구(단계 판정어)를 누락했다."
             if page_id == "map_global" and ("[" in sentence.text or "]" in sentence.text):
                 return "글로벌 지도 본문에 대괄호를 사용했다."
             if check_grade_labels:
