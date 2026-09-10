@@ -393,97 +393,17 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
     # 우선 채우고, 그 근거가 없을 때만 아래 범용 문장으로 순서대로 폴백한다
     # (섹션이 비는 일은 없게, min 1문장 제약 유지).
     current_position_primary_claim_added = False
-    if series.page_id == "indicator_supply" and series.supply_auxiliary is not None:
-        imports = sorted(series.supply_auxiliary.domestic_imports, key=lambda item: item.year)
-        dependencies = series.supply_auxiliary.import_dependencies
-        import_growth_fact = None
-        if len(imports) >= 2:
-            latest_import, previous_import = imports[-1], imports[-2]
-            import_growth = percent_change(
-                latest_import.import_weight_ton, previous_import.import_weight_ton
-            )
-            if import_growth is not None:
-                growth_direction = "감소" if import_growth < 0 else "증가"
-                import_growth_fact = (
-                    f"화면상 확인되는 국내 수입량은 {previous_import.year}년 대비 "
-                    f"{latest_import.year}년 {_number(abs(import_growth) * 100)}% "
-                    f"{growth_direction}해, 이 변동이 수급동향지표 변화와 함께 확인됩니다"
-                )
-                detailed_metrics.append(
-                    _metric(
-                        "supply_import_weight_yoy_change",
-                        "국내 수입량 전년 대비 증감률",
-                        import_growth,
-                        unit="ratio",
-                        basis=f"{previous_import.year}년 대비 {latest_import.year}년",
-                    )
-                )
-        top_three = series.supply_auxiliary.top_three_dependency_percent
-        concentration_fact = None
-        if top_three is not None and dependencies:
-            top_names = "·".join(item.country_name for item in dependencies[:3])
-            # 2026-09-02 skeptic 2차 감사 SC-R2-004: share_percent 분모가 세계
-            # 총액이 아니라 이 표에 나열된 국가들의 소계라(§docstring), 나열국이
-            # 3개 이하면 상위 3개국 합이 정의상 항상 100%에 가깝다 — 실측 측정이
-            # 아니라 계산 방식의 항등식인데 "집중된 구조다"로 쓰면 실제 편중도
-            # 측정처럼 읽힌다. 발주처 제공 실측 덤프는 갈륨 1건(5개국)뿐이라 다른
-            # 광종에서 3개국 이하가 실제로 나오는지 확인은 못 했지만, 나오더라도
-            # 오도되지 않도록 나열국 수가 3 이하면 한정어를 붙인다.
-            if len(dependencies) <= 3:
-                concentration_fact = (
-                    f"나열된 수입국({top_names}) 전체 기준 수입의존도는 "
-                    f"{_number(top_three)}%입니다"
-                )
-            else:
-                concentration_fact = (
-                    f"상위 3개국({top_names}) 수입의존도는 {_number(top_three)}%로 집중된 구조입니다"
-                )
-        # 2026-09-10 사용자 지시 — 업무지시서 §3.2 "구성요소 변화" 템플릿
-        # ("화면상 확인되는 구성요소 중 [요인]의 변동이 상대적으로 크게
-        # 나타났습니다")대로, 계산 가능한 두 요인 중 변동 크기가 더 큰 쪽을
-        # 선문장에 명시한다. 국내 수입증가율(전년 대비 변화율의 절대값)과
-        # 국내 수입국 편중도(단일 시점 수준)는 성격이 다른 값이지만 둘 다
-        # %라 현재 가진 두 신호를 견줄 수 있는 유일한 공통 척도다.
-        if import_growth_fact and concentration_fact:
-            lead_factor = "국내 수입증가율" if abs(import_growth) * 100 >= top_three else "국내 수입국 편중도"
-            claims.append(
-                EvidenceClaim(
-                    "supply_key_factors",
-                    "current_position",
-                    f"화면상 확인되는 구성요소 중 {lead_factor}의 변동이 상대적으로 크게 나타났습니다. "
-                    f"{import_growth_fact}. {concentration_fact}.",
-                    required=True,
-                )
-            )
-            current_position_primary_claim_added = True
-        elif import_growth_fact:
-            claims.append(
-                EvidenceClaim(
-                    "supply_key_factors",
-                    "current_position",
-                    f"화면상 확인되는 구성요소 중 국내 수입증가율의 변동이 상대적으로 크게 나타났습니다. "
-                    f"{import_growth_fact}.",
-                    required=True,
-                )
-            )
-            current_position_primary_claim_added = True
-        elif concentration_fact:
-            claims.append(
-                EvidenceClaim(
-                    "supply_key_factors",
-                    "current_position",
-                    f"화면상 확인되는 구성요소 중 국내 수입국 편중도의 변동이 상대적으로 크게 나타났습니다. "
-                    f"{concentration_fact}.",
-                    required=True,
-                )
-            )
-            current_position_primary_claim_added = True
 
+    # 2026-09-10 사용자 지시 — 가격 변동은 §3.2의 "가격리스크" 구성요소
+    # 소스(수급동향지표 자체+국제가격추이)이기도 해서, supply_auxiliary
+    # 유무와 무관하게 항상 계산해 둔다(indicator_market의 "주요 변동
+    # 특징"·indicator_supply의 "구성요소 변화" 후보 둘 다에서 재사용).
     price_change = (
         percent_change(current.price, previous.price)
         if previous is not None and months_are_contiguous(previous.month, current.month)
         else None
     )
+    price_fact = None
     if price_change is not None:
         price_direction = (
             "올랐습니다"
@@ -505,15 +425,6 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
                 basis=f"{previous.month} 대비",
             )
         )
-        # 2026-09-10 사용자 지시 — indicator_market의 "주요 변동 특징"은
-        # 가격 관련 지표 변동을 기반으로 쓴다(§3.2 스펙). indicator_supply는
-        # 위에서 이미 구성요소 근거를 채웠으면(현재가 구성요소 변화 절이니)
-        # 성격이 다른 가격 변동 문장을 더 섞지 않는다.
-        if not current_position_primary_claim_added:
-            claims.append(
-                EvidenceClaim("latest_price_change", "current_position", price_fact, required=True)
-            )
-            current_position_primary_claim_added = True
     else:
         omitted.append(
             OmittedIndicator(
@@ -521,6 +432,118 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
                 reason="비교 가능한 연속 월 가격이 없다.",
             )
         )
+
+    if series.page_id == "indicator_supply":
+        # 2026-09-10 사용자 지시 — 업무지시서 §3.2 "구성요소 변화" 템플릿
+        # ("화면상 확인되는 구성요소 중 [요인]의 변동이 상대적으로 크게
+        # 나타났습니다")대로, 계산 가능한 요인을 전부 후보로 모아 변동·수준이
+        # 가장 큰 쪽을 선문장에 명시한다(`largest_monthly_score_change`의
+        # `max(..., key=lambda: abs(...))` 선례와 같은 패턴). 후보 4개
+        # (가격리스크·국내 수입증가율·국내 수입국 편중도·세계 공급 편중도)는
+        # 성격이 다른 값이지만 전부 %라 현재 가진 신호들을 견줄 수 있는
+        # 유일한 공통 척도다. 세계수급비율(세계 수요-공급)은 실측 덤프가
+        # 항상 빈 배열이라(2026-09-10 사용자 재확인) 후보에 없다 — 데이터가
+        # 없는 요인을 추론으로 채우지 않는다.
+        factor_candidates: list[tuple[str, float, str]] = []
+        if price_fact is not None:
+            factor_candidates.append(("가격리스크", abs(price_change) * 100, price_fact))
+
+        if series.supply_auxiliary is not None:
+            imports = sorted(series.supply_auxiliary.domestic_imports, key=lambda item: item.year)
+            dependencies = series.supply_auxiliary.import_dependencies
+            if len(imports) >= 2:
+                latest_import, previous_import = imports[-1], imports[-2]
+                import_growth = percent_change(
+                    latest_import.import_weight_ton, previous_import.import_weight_ton
+                )
+                if import_growth is not None:
+                    growth_direction = "감소" if import_growth < 0 else "증가"
+                    import_growth_fact = (
+                        f"화면상 확인되는 국내 수입량은 {previous_import.year}년 대비 "
+                        f"{latest_import.year}년 {_number(abs(import_growth) * 100)}% "
+                        f"{growth_direction}해, 이 변동이 수급동향지표 변화와 함께 확인됩니다."
+                    )
+                    detailed_metrics.append(
+                        _metric(
+                            "supply_import_weight_yoy_change",
+                            "국내 수입량 전년 대비 증감률",
+                            import_growth,
+                            unit="ratio",
+                            basis=f"{previous_import.year}년 대비 {latest_import.year}년",
+                        )
+                    )
+                    factor_candidates.append(
+                        ("국내 수입증가율", abs(import_growth) * 100, import_growth_fact)
+                    )
+
+            top_three = series.supply_auxiliary.top_three_dependency_percent
+            if top_three is not None and dependencies:
+                top_names = "·".join(item.country_name for item in dependencies[:3])
+                # 2026-09-02 skeptic 2차 감사 SC-R2-004: share_percent 분모가 세계
+                # 총액이 아니라 이 표에 나열된 국가들의 소계라(§docstring), 나열국이
+                # 3개 이하면 상위 3개국 합이 정의상 항상 100%에 가깝다 — 실측 측정이
+                # 아니라 계산 방식의 항등식인데 "집중된 구조다"로 쓰면 실제 편중도
+                # 측정처럼 읽힌다. 발주처 제공 실측 덤프는 갈륨 1건(5개국)뿐이라 다른
+                # 광종에서 3개국 이하가 실제로 나오는지 확인은 못 했지만, 나오더라도
+                # 오도되지 않도록 나열국 수가 3 이하면 한정어를 붙인다.
+                if len(dependencies) <= 3:
+                    concentration_fact = (
+                        f"나열된 수입국({top_names}) 전체 기준 수입의존도는 "
+                        f"{_number(top_three)}%입니다."
+                    )
+                else:
+                    concentration_fact = (
+                        f"상위 3개국({top_names}) 수입의존도는 {_number(top_three)}%로 집중된 구조입니다."
+                    )
+                factor_candidates.append(("국내 수입국 편중도", top_three, concentration_fact))
+
+            production_shares = series.supply_auxiliary.production_shares
+            top_country_share = series.supply_auxiliary.top_country_production_share_percent
+            if top_country_share is not None and production_shares:
+                # 세계 공급 편중도도 국내 수입국 편중도와 같은 원칙 — 이 표본이
+                # 단일 연도 스냅샷이라 "확대/축소" 추세는 알 수 없으므로 현재
+                # 수준(1위국 비중)만 서술한다.
+                top_country = production_shares[0].country_name
+                world_supply_fact = (
+                    f"화면상 확인되는 세계 생산량 상위 국가는 {top_country}이며, "
+                    f"전체의 {_number(top_country_share)}%를 차지합니다."
+                )
+                detailed_metrics.append(
+                    _metric(
+                        "supply_world_production_top_share",
+                        "세계 생산량 1위국 비중",
+                        top_country_share,
+                        unit="%",
+                        basis=top_country,
+                    )
+                )
+                factor_candidates.append(("세계 공급 편중도", top_country_share, world_supply_fact))
+
+        if factor_candidates:
+            lead_name, _, _ = max(factor_candidates, key=lambda item: item[1])
+            detail = " ".join(fact for _, _, fact in factor_candidates)
+            claims.append(
+                EvidenceClaim(
+                    "supply_key_factors",
+                    "current_position",
+                    f"화면상 확인되는 구성요소 중 {lead_name}의 변동이 상대적으로 크게 나타났습니다. "
+                    f"{detail}",
+                    required=True,
+                )
+            )
+            current_position_primary_claim_added = True
+
+    # 2026-09-10 사용자 지시 — indicator_market의 "주요 변동 특징"은 가격
+    # 관련 지표 변동을 기반으로 쓴다(§3.2 스펙). indicator_supply는 위에서
+    # 이미 구성요소 근거를 채웠으면(현재가 구성요소 변화 절이니) 성격이
+    # 다른 가격 변동 문장을 더 섞지 않는다 — supply인데 위 factor_candidates
+    # 가 전부 비어 있었을 때만(가격 데이터도 supply_auxiliary도 없는 극단적
+    # 결측) 여기로 떨어진다.
+    if price_fact is not None and not current_position_primary_claim_added:
+        claims.append(
+            EvidenceClaim("latest_price_change", "current_position", price_fact, required=True)
+        )
+        current_position_primary_claim_added = True
 
     period_average = sum(item.score for item in observations) / len(observations)
     difference_from_average = current.score - period_average
