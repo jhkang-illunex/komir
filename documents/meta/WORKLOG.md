@@ -2,7 +2,29 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-10 (최신) — map_korea "수입·수출 규모 추이" 시계열 섹션 신설(사용자 지시, 커밋 `622ae73e2`)
+## 2026-09-10 (최신) — map_korea trade_scale_trend 신설로 생긴 결합문장 규칙 충돌 해소(배포 직후 실LLM 재검증 중 발견, 커밋 `02771af35`)
+
+바로 위 항목(`622ae73e2`) 배포 직후 실LLM 재검증에서 map_korea가
+trend 있는 요청마다 100% `llm_refined=False`로 폴백함을 발견 — 사유는
+"관련 근거를 결합한 분석 문장이 없다"(SC-018, `len(claims)>=4`면 최소
+1문장은 근거 2개를 결합해야 한다는 규칙). `trade_scale_trend` 신설로
+map_korea claim이 4개가 됐는데, 이 근거는 렌더링 분리 절이 성립하려면
+항상 독립 문장이어야 해서(같은 절의 유일한 짝 `import_concentration`
+과의 결합은 프롬프트로 금지) 이 규칙을 만족할 방법이 구조적으로
+없었다 — `price_group`이 2026-08-28에 이미 겪은 것과 같은 클래스의
+문제.
+
+`_COMBINED_SENTENCE_EXEMPT_PAGES`에 `map_korea` 추가로 해소
+(`trade_scale_trend`가 없는 통상 3-claim 케이스는 애초에
+`len(claims)>=4` 조건 자체가 안 걸려 무영향).
+
+검증: pyflakes/unittest 14종/395콤보 스모크 전부 ok + 재배포 후 5개년
+추이 케이스 실LLM 3회 반복(`llm_refined=True` 3/3, 전체 5개년 데이터
+정상 보존) + 추이 없는 통상 케이스도 회귀 없이 `llm_refined=True`
+확인. 배포까지 완료.
+
+
+## 2026-09-10 — map_korea "수입·수출 규모 추이" 시계열 섹션 신설(사용자 지시, 커밋 `622ae73e2`)
 
 사용자 지시 — "해당 보고서에 수입규모 추이 차트용 데이터가 있는데
 이걸로 시계열 변동량에 대한 섹션도 추가해주세요(수출/수입 잘 판별해서)".
