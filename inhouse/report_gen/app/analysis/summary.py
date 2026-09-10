@@ -772,6 +772,25 @@ def _validate_llm_summary(
                     and required_clause not in sentence.text
                 ):
                     return "점수-위험 반비례 설명 문장을 누락했다."
+            # 2026-09-10 사용자 지적 — map_global "한국 관련 루트" 절이
+            # "[14위/대한민국→인도네시아/...달러/1.33%], [27위/...]로
+            # 확인됩니다."처럼 완성된 문장이 아니라 대괄호 목록만 남고
+            # 앞뒤 문장 틀("대한민국이 포함된 교역 루트는"/"로 확인됩니다")
+            # 이 사라진 채로 나온 적이 있었다는 제보 — [5]와 같은 성격의
+            # 문제(evidence_id는 그대로 인용하면서 그 안의 문구만 LLM이
+            # 지움, 확률적이라 프롬프트 지시만으론 못 막음). korea_fact는
+            # 항상 "대한민국이 포함된 교역 루트는 "로 시작하므로(komir_
+            # summary.py::calculate_global_trade_summary), 그 접두어가
+            # 출력 문장에 없으면 검증 실패로 안전하게 규칙 기반 폴백.
+            if "korea_route_rank" in sentence.evidence_ids:
+                required_prefix = "대한민국이 포함된 교역 루트는"
+                korea_claim = claim_map.get("korea_route_rank")
+                if (
+                    korea_claim is not None
+                    and korea_claim.fact.startswith(required_prefix)
+                    and required_prefix not in sentence.text
+                ):
+                    return "한국 관련 루트 문장의 서술 틀을 누락했다."
             used_ids.extend(sentence.evidence_ids)
     if page_id == "map_mineral":
         required_ids = {claim.id for claim in claims if claim.required}
