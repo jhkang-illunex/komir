@@ -838,29 +838,47 @@ def calculate_price_summary(
     # 설명은 빼고 실제 데이터 서술만 남겼다(아래 참고).
     percentile = _percentile_rank(observations_with_price, latest.commerce_price)
     drawdown_stats = _drawdown_stats(observations_with_price)
-    position_sentences: list[str] = []
-    if drawdown_stats is not None:
-        if drawdown_stats["current_dd_pct"] >= -0.005:  # 반올림상 0%대(현재가=조회기간 최고가)
-            position_sentences.append(
-                f"현재가는 조회기간 중 최고가({_korean_date(drawdown_stats['overall_peak_date'])}, "
-                f"{_quantity(drawdown_stats['overall_peak_price'])})와 같은 수준입니다."
-            )
-        else:
-            position_sentences.append(
-                f"현재가는 조회기간 중 최고가({_korean_date(drawdown_stats['overall_peak_date'])}, "
-                f"{_quantity(drawdown_stats['overall_peak_price'])}) 대비 "
-                f"{_number(abs(drawdown_stats['current_dd_pct']))}% 낮습니다."
-            )
+    position_label = None
     if percentile is not None:
         position_label = _price_position_label(
             percentile, low_threshold=price_position_low_pct, high_threshold=price_position_high_pct
         )
-        position_sentences.append(
-            f"조회기간 전체 가격 대비로는 {_number(percentile)}% 위치로 {position_label}에 속합니다."
-        )
     else:
         warnings.append("가격 분포상 백분위는 관측치가 20건 미만이라 계산하지 않았다.")
         skipped_layer_notes.append("가격 위치")
+
+    # 2026-09-10 발주처 피드백(권가영 사원) — "99.53% 위치" 같은 퍼센타일
+    # 수치는 사용자가 감을 잡기 어렵다는 지적. 백분위 계산(`_price_position_
+    # label`) 자체는 그대로 두되, 노출 문장에서는 숫자를 빼고 최고가 대비
+    # 하락률 문장에 라벨만 붙여 한 문장으로 합친다(이전엔 "현재가는 최고가
+    # 대비 X% 낮습니다."와 "조회기간 전체 가격 대비로는 Y% 위치로 Z에
+    # 속합니다." 2문장이었다).
+    position_sentences: list[str] = []
+    if drawdown_stats is not None:
+        at_peak = drawdown_stats["current_dd_pct"] >= -0.005  # 반올림상 0%대(현재가=조회기간 최고가)
+        peak_desc = (
+            f"조회기간 중 최고가({_korean_date(drawdown_stats['overall_peak_date'])}, "
+            f"{_quantity(drawdown_stats['overall_peak_price'])})"
+        )
+        if position_label is not None:
+            if at_peak:
+                position_sentences.append(
+                    f"현재가는 {peak_desc}와 같은 수준으로 전체 가격 대비 {position_label}에 속합니다."
+                )
+            else:
+                position_sentences.append(
+                    f"현재가는 {peak_desc} 대비 {_number(abs(drawdown_stats['current_dd_pct']))}% "
+                    f"낮음으로 전체 가격 대비 {position_label}에 속합니다."
+                )
+        else:
+            if at_peak:
+                position_sentences.append(f"현재가는 {peak_desc}와 같은 수준입니다.")
+            else:
+                position_sentences.append(
+                    f"현재가는 {peak_desc} 대비 {_number(abs(drawdown_stats['current_dd_pct']))}% 낮습니다."
+                )
+    elif position_label is not None:
+        position_sentences.append(f"전체 가격 대비 {position_label}에 속합니다.")
     if drawdown_stats is not None and drawdown_stats["max_dd_pct"] <= -0.5 and (
         drawdown_stats["max_dd_peak_date"] != drawdown_stats["overall_peak_date"]
         or abs(drawdown_stats["max_dd_pct"] - drawdown_stats["current_dd_pct"]) >= 0.5
@@ -1783,9 +1801,12 @@ def _ma_rsi_fact(
                 "단기적으로 가격 하락 압력이 크게 반영된 상태입니다."
             )
         else:
+            # 2026-09-10 발주처 피드백(권가영 사원) — "단기 매매 압력"류
+            # 전문용어 대신 일상어로. "최근 14일간"의 "간"도 위 두 분기
+            # ("중")와 표기가 어긋나 있었던 김에 통일한다.
             momentum_fact = (
-                f"최근 14{unit}간 상승 {up_count}{unit}·하락 {down_count}{unit}{flat_clause}로 단기 매매 압력은 "
-                "특별히 어느 한쪽으로 치우치지 않은 상태입니다."
+                f"최근 14{unit} 중 상승 {up_count}{unit}·하락 {down_count}{unit}{flat_clause}로 "
+                "뚜렷한 방향성 없이 등락을 반복하고 있습니다."
             )
     return trend_fact, momentum_fact, True
 
