@@ -465,8 +465,8 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
 
     if series.page_id == "indicator_supply":
         # 2026-09-10 사용자 지시 — 업무지시서 §3.2 "구성요소 변화" 템플릿
-        # ("화면상 확인되는 구성요소 중 [요인]의 변동이 상대적으로 크게
-        # 나타났습니다")대로, 계산 가능한 요인을 전부 후보로 모아 변동·수준이
+        # ("구성요소 중 [요인]의 변동이 상대적으로 크게 나타났습니다")대로,
+        # 계산 가능한 요인을 전부 후보로 모아 변동·수준이
         # 가장 큰 쪽을 선문장에 명시한다(`largest_monthly_score_change`의
         # `max(..., key=lambda: abs(...))` 선례와 같은 패턴). 후보 4개
         # (가격리스크·국내 수입증가율·국내 수입국 편중도·세계 공급 편중도)는
@@ -489,7 +489,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
                 if import_growth is not None:
                     growth_direction = "감소" if import_growth < 0 else "증가"
                     import_growth_fact = (
-                        f"화면상 확인되는 국내 수입량은 {previous_import.year}년 대비 "
+                        f"국내 수입량은 {previous_import.year}년 대비 "
                         f"{latest_import.year}년 {_number(abs(import_growth) * 100)}% "
                         f"{growth_direction}해, 이 변동이 수급동향지표 변화와 함께 확인됩니다."
                     )
@@ -535,7 +535,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
                 # 수준(1위국 비중)만 서술한다.
                 top_country = production_shares[0].country_name
                 world_supply_fact = (
-                    f"화면상 확인되는 세계 생산량 상위 국가는 {top_country}이며, "
+                    f"세계 생산량 상위 국가는 {top_country}이며, "
                     f"전체의 {_number(top_country_share)}%를 차지합니다."
                 )
                 detailed_metrics.append(
@@ -556,7 +556,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
                 EvidenceClaim(
                     "supply_key_factors",
                     "current_position",
-                    f"화면상 확인되는 구성요소 중 {lead_name}의 변동이 상대적으로 크게 나타났습니다. "
+                    f"구성요소 중 {lead_name}의 변동이 상대적으로 크게 나타났습니다. "
                     f"{detail}",
                     required=True,
                 )
