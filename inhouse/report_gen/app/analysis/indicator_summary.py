@@ -213,9 +213,13 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
     ]
     detailed_metrics = [*key_metrics]
 
+    # 2026-09-10 사용자 지시 — 발주처 업무지시서 §3.2 원문 그대로("[기준월]
+    # 기준 [광종]의 시장동향지표는 [점수]점으로, 현재 [단계]에 해당합니다")
+    # 맞추기 위해 "기준"·"의"·"현재"·"~에 해당합니다"를 추가(이전엔
+    # "{month} {mineral} {policy}는 ...단계입니다"로 그 네 요소가 빠져 있었다).
     current_fact = (
-        f"{current.month} {series.mineral.name} {policy.name}는 "
-        f"{_quantity(current.score)}점으로 {grade.label} 단계입니다."
+        f"{current.month} 기준 {series.mineral.name}의 {policy.name}는 "
+        f"{_quantity(current.score)}점으로, 현재 {grade.label} 단계에 해당합니다."
     )
     claims = [EvidenceClaim("current_state", "core_diagnosis", current_fact, required=True)]
 
