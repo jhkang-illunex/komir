@@ -2,7 +2,38 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-10 (최신) — map_korea "기준일"이 년별 조회에서 12월 31일로 오표기되던 문제 수정(사용자 제보, 커밋 `cc544378d`)
+## 2026-09-10 (최신) — map_korea "수입·수출 규모 추이" 시계열 섹션 신설(사용자 지시, 커밋 `622ae73e2`)
+
+사용자 지시 — "해당 보고서에 수입규모 추이 차트용 데이터가 있는데
+이걸로 시계열 변동량에 대한 섹션도 추가해주세요(수출/수입 잘 판별해서)".
+바로 위 항목에서 신설된 `komis_history_responses`(전년 동기 비교용,
+`import_history_fact`)를 확장해 다년(최대 5개년) 수입·수출 규모를
+별도 절로 보여준다.
+
+`map_presentation.py::trade_scale_trend_fact` 신설 — map_korea 전용
+(map_global의 `getListDataNation`은 행마다 세계 교역 "루트" 1건일 뿐
+한국의 수입/수출 방향 쌍이 아니라 "수출액" 개념 자체가 없어 대상
+아님). 현재 `komis_response`+`komis_history_responses`를 합쳐 연도별
+(수입액, 수출액) 쌍을 뽑고, 최근 5개년까지 "[연도] [금액] → [연도]
+[금액] → ..." 형태로 수입·수출 두 문장을 분리해 절대 섞이지 않게
+만든다(`SummarySentence` 300자 제한 고려해 5개년으로 캡). 2개년
+미만이면 섹션 자체가 안 생긴다.
+
+`EvidenceClaim("trade_scale_trend", "major_changes", ...)`로 추가,
+`_MAJOR_CHANGES_SPLIT_SECTIONS`에 등록해 렌더링 단계에서 "## 수입·
+수출 규모 추이" 별도 절로 분리(korea_route_rank·extreme_change_
+countries와 같은 패턴). `_validate_llm_summary`의 기존 map_korea/
+map_global 숫자보존 검증 대상에 `trade_scale_trend` 추가 — LLM이
+연도·금액을 누락하면 규칙 기반으로 안전 폴백.
+
+검증: pyflakes/unittest 14종/395콤보 스모크 전부 ok + 동(구리) 5개년
+실데이터 직접 렌더링(예: "최근 5개년(2022~2026) 수입액 추이는 2022년
+약 151억 달러 → ... → 2026년 약 109억 달러입니다. 같은 기간 수출액
+추이는 ...", 문장 218자로 300자 제한 이내) + history 없음(섹션
+미생성)·2개년만(최소 케이스 정상) 경계 케이스 확인. 배포까지 완료.
+
+
+## 2026-09-10 — map_korea "기준일"이 년별 조회에서 12월 31일로 오표기되던 문제 수정(사용자 제보, 커밋 `cc544378d`)
 
 사용자가 "수급현황(map_korea)에서 년도가 표시돼야 하는데 날짜가
 표시된다"고 제보(예: 동/2026년 조회에 "2026년 12월 31일 기준"). 원인은
