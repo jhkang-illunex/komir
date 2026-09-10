@@ -305,6 +305,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
         )
 
     streak = 1
+    streak_start_index = len(observations) - 1
     for index in range(len(observations) - 1, 0, -1):
         before_grade = grades[index - 1]
         if before_grade.label != grade.label or not months_are_contiguous(
@@ -313,8 +314,16 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
         ):
             break
         streak += 1
+        streak_start_index = index - 1
     streak_basis = "조회범위 내 최소 " if streak == len(observations) else ""
-    streak_fact = f"{grade.label} 단계는 {streak_basis}{streak}개월 연속 유지됐습니다."
+    # 2026-09-10 발주처 피드백[6](권가영 사원) — "19개월 연속 유지됐습니다"처럼
+    # 개월 수만 나오면 언제부터 시작됐는지 알 수 없다는 지적. 몇 번째 관측치
+    # (`streak_start_index`)에서 연속 구간이 시작됐는지는 이미 위 루프가
+    # 추적하므로, 그 관측치의 월을 그대로 시작월로 밝힌다.
+    streak_start_month = observations[streak_start_index].month
+    streak_fact = (
+        f"{streak_start_month}부터 {grade.label} 단계를 {streak_basis}{streak}개월째 유지 중입니다."
+    )
     key_metrics.append(
         _metric("current_grade_streak", "현재 단계 연속기간", streak, unit="개월")
     )
