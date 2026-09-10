@@ -387,6 +387,12 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
     # 문구보다 이 업무지시서(더 최신·발주처 확정본)가 우선한다 — "주요
     # 요인으로는"·"분석된다"를 빼고 §2.2 매핑표의 "동반 확인" 어투로
     # 바꿨다(수치·근거는 그대로, 인과관계 단정만 제거).
+    # 2026-09-10 사용자 지시 — "구성요소 변화"/"주요 변동 특징" 절이 실제로는
+    # latest_price_change·period_average_position(둘 다 페이지 성격과 무관한
+    # 범용 문장)만 보여주고 있었다. 이제 이 두 절의 실제 목적에 맞는 근거를
+    # 우선 채우고, 그 근거가 없을 때만 아래 범용 문장으로 순서대로 폴백한다
+    # (섹션이 비는 일은 없게, min 1문장 제약 유지).
+    current_position_primary_claim_added = False
     if series.page_id == "indicator_supply" and series.supply_auxiliary is not None:
         imports = sorted(series.supply_auxiliary.domestic_imports, key=lambda item: item.year)
         dependencies = series.supply_auxiliary.import_dependencies
@@ -432,28 +438,46 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
                 concentration_fact = (
                     f"상위 3개국({top_names}) 수입의존도는 {_number(top_three)}%로 집중된 구조입니다"
                 )
+        # 2026-09-10 사용자 지시 — 업무지시서 §3.2 "구성요소 변화" 템플릿
+        # ("화면상 확인되는 구성요소 중 [요인]의 변동이 상대적으로 크게
+        # 나타났습니다")대로, 계산 가능한 두 요인 중 변동 크기가 더 큰 쪽을
+        # 선문장에 명시한다. 국내 수입증가율(전년 대비 변화율의 절대값)과
+        # 국내 수입국 편중도(단일 시점 수준)는 성격이 다른 값이지만 둘 다
+        # %라 현재 가진 두 신호를 견줄 수 있는 유일한 공통 척도다.
         if import_growth_fact and concentration_fact:
+            lead_factor = "국내 수입증가율" if abs(import_growth) * 100 >= top_three else "국내 수입국 편중도"
             claims.append(
                 EvidenceClaim(
                     "supply_key_factors",
                     "current_position",
+                    f"화면상 확인되는 구성요소 중 {lead_factor}의 변동이 상대적으로 크게 나타났습니다. "
                     f"{import_growth_fact}. {concentration_fact}.",
                     required=True,
                 )
             )
+            current_position_primary_claim_added = True
         elif import_growth_fact:
             claims.append(
-                EvidenceClaim("supply_key_factors", "current_position", f"{import_growth_fact}.", required=True)
+                EvidenceClaim(
+                    "supply_key_factors",
+                    "current_position",
+                    f"화면상 확인되는 구성요소 중 국내 수입증가율의 변동이 상대적으로 크게 나타났습니다. "
+                    f"{import_growth_fact}.",
+                    required=True,
+                )
             )
+            current_position_primary_claim_added = True
         elif concentration_fact:
             claims.append(
                 EvidenceClaim(
                     "supply_key_factors",
                     "current_position",
-                    f"국내 수입국 편중도를 보면 {concentration_fact}.",
+                    f"화면상 확인되는 구성요소 중 국내 수입국 편중도의 변동이 상대적으로 크게 나타났습니다. "
+                    f"{concentration_fact}.",
                     required=True,
                 )
             )
+            current_position_primary_claim_added = True
 
     price_change = (
         percent_change(current.price, previous.price)
@@ -481,9 +505,15 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
                 basis=f"{previous.month} 대비",
             )
         )
-        claims.append(
-            EvidenceClaim("latest_price_change", "current_position", price_fact, required=True)
-        )
+        # 2026-09-10 사용자 지시 — indicator_market의 "주요 변동 특징"은
+        # 가격 관련 지표 변동을 기반으로 쓴다(§3.2 스펙). indicator_supply는
+        # 위에서 이미 구성요소 근거를 채웠으면(현재가 구성요소 변화 절이니)
+        # 성격이 다른 가격 변동 문장을 더 섞지 않는다.
+        if not current_position_primary_claim_added:
+            claims.append(
+                EvidenceClaim("latest_price_change", "current_position", price_fact, required=True)
+            )
+            current_position_primary_claim_added = True
     else:
         omitted.append(
             OmittedIndicator(
@@ -563,9 +593,14 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
         ]
     )
     detailed_metrics.extend(_supply_auxiliary_metrics(series))
-    claims.append(
-        EvidenceClaim("period_average_position", "current_position", position_fact, required=True)
-    )
+    # 2026-09-10 사용자 지시 — 구성요소/가격변동 근거가 이미 채워졌으면 성격이
+    # 다른 "평균 대비 위치" 문장을 더 섞지 않는다. 둘 다 없을 때(비연속월 등
+    # 극단적 결측)만 최종 폴백으로 쓴다 — current_position이 빈 채 남는 것을
+    # 막는다(min 1문장 제약).
+    if not current_position_primary_claim_added:
+        claims.append(
+            EvidenceClaim("period_average_position", "current_position", position_fact, required=True)
+        )
 
     return _CalculatedSummary(
         grade=grade,
