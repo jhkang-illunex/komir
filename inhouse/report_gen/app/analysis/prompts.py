@@ -99,9 +99,14 @@ SECTION_SENTENCE_RANGES: dict[str, dict[str, tuple[int, int]]] = {
     "indicator_supply": {"core_diagnosis": (1, 1), "major_changes": (1, 2), "current_position": (1, 2)},
     # 2026-09-01 — index_top_weighted_minerals(구성 광종 가중치) 신설로
     # major_changes 근거가 최대 5개(composite_recent_changes·weekly/monthly/
-    # yearly_subindex_comparison·index_top_weighted_minerals)가 됐다 — price
-    # major_changes(근거 5개, 위 (1,3))와 같은 이유로 (1,2)→(1,3) 완화.
-    "indicator_composite": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 1)},
+    # yearly_subindex_comparison·index_top_weighted_minerals)가 됐는데
+    # 상한을 (1,2)→(1,3)까지만 완화해 실제로는 여전히 부족했다(map_global
+    # SC-RG-001과 같은 패턴 — 주석엔 "5개"라 적혀 있었는데 값은 3이었다,
+    # 2026-09-10 발견) → (1,5)로 다시 맞춘다. core_diagnosis도 2026-09-10
+    # 발주처 피드백([3])으로 신설된 period_value_comparison(전주/전월/
+    # 전년동기 값+등락률)까지 더하면 최대 3개(current_state·medium_long_
+    # term_contrast·period_value_comparison)라 (1,1)→(1,3).
+    "indicator_composite": {"core_diagnosis": (1, 3), "major_changes": (1, 5), "current_position": (1, 1)},
     "forecast_price": {"core_diagnosis": (1, 1), "major_changes": (1, 1), "current_position": (1, 1)},
     # price의 current_position은 (1,2) — 비교광종(compare_observations)이 있으면
     # compare_overall_change 근거 1문장이 더 붙는다(2026-08-26. 2026-08-30 확인:

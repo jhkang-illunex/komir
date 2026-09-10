@@ -16,6 +16,7 @@ import re
 import threading
 import time
 from collections import Counter
+from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Literal, TYPE_CHECKING
 
@@ -36,6 +37,10 @@ from .additional_summary import (  # noqa: E402
     EvidenceClaim,
     SectionId,
     SummaryPageContext,
+    _at_or_before,
+    _number,
+    _shift_month,
+    _shift_year,
     calculate_composite_summary,
     calculate_mineral_map_summary,
     calculate_price_forecast_summary,
@@ -55,6 +60,7 @@ if TYPE_CHECKING:
 
 from .komir_summary import (  # noqa: E402
     _detect_granularity,
+    _pct,
     calculate_domestic_trade_summary,
     calculate_global_trade_summary,
     calculate_price_group_summary,
@@ -444,6 +450,53 @@ def _append_mineral_map_latest_year_change(calculated: AdditionalCalculatedSumma
     )
     calculated.key_metrics.append(metric)
     calculated.detailed_metrics.append(metric)
+
+
+def _append_composite_period_value_comparison(
+    calculated: AdditionalCalculatedSummary, series: CompositeIndexSeries
+) -> None:
+    """`calculate_composite_summary`(프로즌)는 전주/전월/전년 대비 등락률만
+    key_metrics(`weekly_composite_change` 등)로 내고, 비교 시점의 실제
+    지수값 자체는 서사에 없다.
+
+    2026-09-10 발주처 피드백([3], 권가영 사원) — "전주 [전주 평균지수] 대비
+    [증감률]% [상승/하락], 전월 ..., 전년 동기 ..."처럼 값과 등락률을 함께
+    밝히는 문장을 core_diagnosis에 추가해달라는 요청.
+
+    `_at_or_before`/`_shift_month`/`_shift_year`(프로즌 파일의 날짜 헬퍼)를
+    그대로 재사용해 `calculate_composite_summary`가 이미 고른 비교 시점
+    (전주=7일 전, 전월=달력상 한 달 전, 전년=달력상 1년 전 시점 이전 최근
+    관측치)과 항상 일치시킨다 — 날짜 선택 로직을 따로 재구현하면 이 문장의
+    등락률이 같은 보고서의 `weekly_composite_change` 등 기존 지표와
+    미묘하게 어긋날 위험이 있다(map_mineral의 `_mineral_map_latest_year_
+    change`와 달리 여기서는 그 위험을 감수할 이유가 없어 프로즌 헬퍼를
+    그대로 가져다 쓴다 — 순수 날짜 계산 함수라 결합 부담이 없다)."""
+
+    observations = sorted(series.observations, key=lambda item: item.date)
+    current = observations[-1]
+    current_date = date.fromisoformat(current.date)
+    week = _at_or_before(observations[:-1], current_date - timedelta(days=7))
+    month = _at_or_before(observations[:-1], _shift_month(current_date, -1))
+    year = _at_or_before(observations[:-1], _shift_year(current_date, -1))
+
+    pieces = []
+    for label, compared in (("전주", week), ("전월", month), ("전년 동기", year)):
+        if compared is None:
+            continue
+        change = _pct(current.composite_index, compared.composite_index)
+        if change is None:
+            continue
+        direction = "상승" if change > 0 else "하락" if change < 0 else "보합"
+        pieces.append(
+            f"{label} {_number(compared.composite_index)}포인트 대비 "
+            f"{_number(abs(change) * 100)}% {direction}"
+        )
+    if not pieces:
+        return
+    fact = ", ".join(pieces) + "했습니다."
+    calculated.claims.append(
+        EvidenceClaim("period_value_comparison", "core_diagnosis", fact, required=True)
+    )
 
 
 def _source_info_from_series(
@@ -866,6 +919,7 @@ class AnalysisSummaryService:
         )
         calculated = _calculate_or_no_data(request.page_id, calculate_composite_summary, series)
         _apply_polite_endings(calculated, _COMPOSITE_POLITE_ENDINGS, context="indicator_composite")
+        _append_composite_period_value_comparison(calculated, series)
         context = effective_page_context("indicator_composite")
         applied_filters = {
             "start_date": request.start_date or series.observations[0].date,
