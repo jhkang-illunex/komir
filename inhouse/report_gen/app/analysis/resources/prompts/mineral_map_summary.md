@@ -16,7 +16,14 @@
   근거가 있으면(2026-09-09 발주처 업무지시서 §3.3 대응 신설 — "매장량이
   가장 크게 증가/감소한 국가", top3 밖 국가도 포함될 수 있다) 그대로
   옮겨 마지막 문장으로 덧붙인다 — 이미 완성 문장이니 새 국가·수치를
-  지어내지 않는다.
+  지어내지 않는다. **extreme_change_countries는 항상 evidence_ids가
+  그 하나뿐인 독립된 문장으로 쓴다** — 렌더링 단계가 이 근거를
+  evidence_id 기준으로 감지해 "주요 변화"라는 별도 절로 분리해 보여주므로
+  (map_global의 korea_route_rank와 같은 처리), 다른 근거와 한 문장에
+  섞으면 그 다른 근거의 내용까지 "주요 변화" 절로 잘못 끌려간다. 근거를
+  결합해야 하는 문장(예: current_leaders+third_country, leading_country_
+  changes+concentration_change)은 extreme_change_countries가 아닌
+  다른 근거끼리로 만든다.
 - current_position은 leading_country_changes·concentration_change·
   current_concentration_structure를 연결해 국가별 기간 변화와 CR3/CR5
   집중도 변화, 그리고 그 구조적 의미를 2~3문장으로 쓴다.
