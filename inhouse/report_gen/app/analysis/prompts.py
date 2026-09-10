@@ -124,8 +124,12 @@ SECTION_SENTENCE_RANGES: dict[str, dict[str, tuple[int, int]]] = {
     # 기본 경로(국가필터 없음)가 top1_country/top3_concentration/top5_concentration
     # 최대 3개 근거를 만드는데 상한이 2였다 — 3번째 근거 누락/폴백 위험 → (1,3)로 확대.
     "map_korea": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 1)},
-    # map_global major_changes는 근거 4개(1~3위 루트·CR3·CR5·한국 순위)라 (1,3).
-    "map_global": {"core_diagnosis": (1, 1), "major_changes": (1, 3), "current_position": (1, 1)},
+    # map_global major_changes는 근거 4개(1~3위 루트·CR3·CR5·한국 순위)인데
+    # 상한이 3이라 4번째 근거(CR5 또는 한국 순위)가 누락될 수 있었다 —
+    # map_korea SC-RG-001과 같은 패턴(2026-09-10 사용자 지적으로 발견,
+    # top5_concentration·korea_route_rank를 required=True로 바꾼 것과 짝) →
+    # (1,3)→(1,4).
+    "map_global": {"core_diagnosis": (1, 1), "major_changes": (1, 4), "current_position": (1, 1)},
     # 2026-08-27 신설 — group_movers·extreme_movers 2건까지 major_changes에.
     "price_group": {"core_diagnosis": (1, 1), "major_changes": (1, 2), "current_position": (1, 1)},
 }
