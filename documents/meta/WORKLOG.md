@@ -2,7 +2,41 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-10 (최신) — 발주처 피드백 [7] 반영: indicator_supply "화면상 확인되는" 문구 전부 제거(커밋 `8145c65e8`, 병합 `06a296ea2`)
+## 2026-09-10 (최신) — 발주처 피드백 [8](b) 반영, 8항목 배치 완결: indicator_market/supply 공통 날짜서식 스윕(커밋 `18af33d48`, 병합 `4d0a85e04`)
+
+일자 단위는 "YYYY년 MM월 DD일", 월 단위는 "YYYY년 MM월"로 전 페이지
+통일해달라는 요청 — report-summary-agent가 사전 조사로 전체 395콤보를
+렌더링해 본문(narrative)에서 raw ISO 날짜/월 패턴을 정규식 스캔한 결과,
+indicator_composite·map_korea·map_global·map_mineral·price_*는 이미
+`_korean_date`/`_korean_year`를 쓰고 있어 문제 없었고
+**indicator_market/indicator_supply만** raw ISO 월("2026-07")을 그대로
+노출하고 있었음을 특정.
+
+`indicator_summary.py`에 `_korean_month()`(신규, "YYYY-MM"→"YYYY년
+MM월") 추가, 본문에 노출되는 5개 지점(current_state 기준월·비연속
+직전 관측치월·grade_streak 시작월·grade_transition 전환월·
+largest_monthly_score_change 변화월)에 적용. `Metric.basis`/
+`DetectedPattern.evidence`는 렌더링 안 되는 메타데이터라 범위 제외
+(API 응답 필드 변경 없음).
+
+**[8](a) "문장 흐름 개선"은 이번엔 보류** — 구체적인 개선 대상 문장
+예시가 없어 코드로 옮길 기준이 없었고, 임의로 "덜 딱딱하게" 손대면
+이번 배치([4]의 지수별 분리 문장, [5]의 3문장 반비례 연결 등)에서
+의도적으로 만든 문장 분리를 오히려 되돌릴 위험이 있다고 판단 — 발주처가
+구체적 예시를 주면 별도 처리 예정.
+
+pyflakes/unittest 14종/395콤보 스모크 + main-agent 독립 재스캔(정규식
+`\d{4}-\d{2}(-\d{2})?` 패턴으로 전체 8페이지 395콤보 전수 확인, 0건)
++ market_trend(바나듐)·supply_trend(흑연) 직접 렌더링(기준월·시작월·
+전환월·최대변화월 전부 "YYYY년 MM월" 확인) 재검증 완료. 배포까지 완료.
+
+**이걸로 발주처 3차/2차 피드백 8항목 배치([1]~[8]) 전부 완결.** 커밋
+계보: `ae8de3c89`·`6d63f64c0`([1][2][3]) → `235959499`([4]) →
+`fba9c0c52`([5]) → `8d4511019`([6]) → `8145c65e8`([7]) →
+`18af33d48`([8]).
+
+
+## 2026-09-10 — 발주처 피드백 [7] 반영: indicator_supply "화면상 확인되는" 문구 전부 제거(커밋 `8145c65e8`, 병합 `06a296ea2`)
 
 "화면상 확인되는 구성요소 중...", "화면상 확인되는 국내 수입량은...",
 "화면상 확인되는 세계 생산량 상위 국가는..." 3곳 모두 불필요하다는
