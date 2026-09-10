@@ -2,7 +2,49 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-10 (최신) — map_korea 필터 라벨 3종 영문 키 노출 수정(report-summary-agent 발견, 커밋 `762e49403`)
+## 2026-09-10 (최신) — 지도 3종 단위 간소화+대괄호 제거+전년비교, 수급동향지표 구성요소 상세 강제(발주처 2차 피드백, 커밋 `0cb9f84a0`)
+
+발주처 2차 피드백 배치 — [수급지도] 큰 금액 단위 간소화("약 251억
+달러")·1~3위 표출 일관성(1위만 금액 있고 2/3위는 없던 것)·"수입총액
+대비 수출총액 X% 수준입니다" 해석 보강("수출액은 수입액의 약 X% 수준
+으로, 수입이 수출보다 많다")·전년대비 수입액 시계열 추가. [글로벌
+수급지도] "[대괄호]" 서식 제거·억/만 단위 환산+소수점 제거·전년대비
+시계열. [광물지도] 톤 단위 간소화("약 7,702만톤"). 그리고 별도 제보로
+[광물전망지표-수급동향지표] "구성요소 변화"가 "구성요소 중 세계 공급
+편중도의 변동이 상대적으로 크게 나타났습니다"라는 선문장만 나오고
+실제 요인별 근거 데이터가 표시되지 않는 문제.
+
+사용자가 Codex로 main 체크아웃에서 직접 작업을 시작했다가 rate limit로
+중단, main-agent가 이어받아 검증·완결.
+
+신규 `map_presentation.py`: `compact_quantity`/`compact_fact`(달러·톤·
+천톤·백만톤을 "약 N억/만"으로 축약, `_build_response`에서 모든
+claim.fact에 일괄 적용 + "주요 지표" 표에도 반영)·`import_history_fact`
+(동일 조회조건 과거 연도 KOMIS 응답 또는 다년 observations로 전년
+동기 비교 문장 생성, map_korea/map_global 공통 응답 조립부에서
+current_state에 이어붙임 — 신규 요청 필드 `komis_history_responses`,
+models.py+routers/analysis.py 양쪽 추가).
+
+`komir_summary.py`: map_korea 1~3위 전부 금액+비율 일관 표출, "수출액은
+수입액의 약 X% 수준으로 [수입/수출]액이 더 많습니다" 방향 해석,
+map_global korea_route_rank 대괄호→서술형 교체, 전년도 절대값 병기.
+
+`indicator_summary.py`: supply_key_factors 선문장 제거, 요인별 상세
+문장만 남김(선문장만 나오고 근거가 안 보이던 사고의 원천 차단).
+
+`summary.py::_validate_llm_summary` 구조적 백스톱 4건 추가: map_korea/
+map_global/indicator_supply 핵심 근거의 숫자 개수가 출력에도 전부
+있어야 함(역방향 검사), 지도 3종의 "약 N만/억" 축약 표현 변경 금지,
+supply_key_factors 생산국명 누락 금지, map_global 대괄호 사용 자체
+금지 — 오늘 반복 확인된 "프롬프트 지시만으론 확률적으로 샌다" 패턴에
+대한 선제 방어.
+
+검증: pyflakes 신규 경고 0/unittest 14종/395콤보 스모크 전부 ok/0
+mismatch + 직접 렌더링으로 map_korea(갈륨)·map_global(갈륨)·
+map_mineral(동)·indicator_supply(갈륨 4요인) 전부 확인. 배포까지 완료.
+
+
+## 2026-09-10 — map_korea 필터 라벨 3종 영문 키 노출 수정(report-summary-agent 발견, 커밋 `762e49403`)
 
 report-summary-agent가 문서 재생성(2차, 실LLM 캡처본 교체) 중 map_korea
 실LLM 응답에서 이전 규칙기반 캡처엔 없던 `**period_unit**: 년별`
