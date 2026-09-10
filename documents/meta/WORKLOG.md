@@ -2,7 +2,31 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-10 (최신) — 프롬프트 예시 문구 재동기화 3건(커밋 `71dc23de7`, 병합 `d95e29d51`)
+## 2026-09-10 (최신) — map_korea 필터 라벨 3종 영문 키 노출 수정(report-summary-agent 발견, 커밋 `762e49403`)
+
+report-summary-agent가 문서 재생성(2차, 실LLM 캡처본 교체) 중 map_korea
+실LLM 응답에서 이전 규칙기반 캡처엔 없던 `**period_unit**: 년별`
+메타데이터를 발견해 보고 — main-agent가 조사한 결과 실제 버그로 확인.
+
+2026-08-31에 map_korea 조회필터 3종(기간구분·국가·생산품유형/HS) 표시가
+`applied_filters`에 `period_unit`/`country_filter`/`scope_filter` 키로
+추가됐는데(`_map_korea_query_filters()`, input_data.py), 이 3개 키가
+`report_render.py`의 `_FILTER_LABELS`(영문 키→한국어 라벨 매핑)에
+등록되지 않았다. `_FILTER_LABELS`는 "매핑에 없는 키는 원래 이름을
+그대로 쓴다(등록을 잊어도 죽지 않음)"는 안전장치를 갖고 있는데, 이게
+실제로는 "죽지는 않지만 조용히 영문 snake_case 키를 사용자 화면에
+그대로 노출한다"는 함정으로 작동했다 — 2026-08-31부터 지금까지 계속
+있었던 회귀로 보인다(그동안 아무도 실제 LLM 정제 응답을 이렇게 자세히
+들여다본 적이 없어 이번에 처음 발견됨).
+
+3개 키에 한국어 라벨 추가: `period_unit`→"기간 단위",
+`country_filter`→"국가 필터", `scope_filter`→"품목 범위".
+
+검증: pyflakes/unittest 14종/395콤보 스모크 전부 ok + 직접 렌더링으로
+"**기간 단위**: 년별" 정상 확인(수정 전 "**period_unit**: 년별").
+
+
+## 2026-09-10 — 프롬프트 예시 문구 재동기화 3건(커밋 `71dc23de7`, 병합 `d95e29d51`)
 
 발주처 준수감사 문서 10종 재생성 작업 중 report-summary-agent가
 프롬프트-코드 대조 점검을 해 잔여 불일치 3건을 발견·수정(main-agent가
