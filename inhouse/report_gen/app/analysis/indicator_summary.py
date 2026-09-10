@@ -89,6 +89,21 @@ def _score_position_meaning(page_id: str, difference: float) -> str:
 
 
 
+def _korean_month(value: str) -> str:
+    """ISO 월("YYYY-MM")을 "YYYY년 MM월"로 바꾼다.
+
+    2026-09-10 발주처 피드백[8](공통 날짜서식 스윕, 권가영 사원) — 이
+    페이지(시장동향·수급동향지표)의 월 표기가 다른 페이지(가격·수급지도
+    등, `additional_summary.py::_korean_date`/`komir_summary.py::
+    _korean_year`가 이미 처리)와 달리 여태 raw ISO("2026-07")로 나가고
+    있었다. 월(day 없음) 없이 일 단위까지 표시하는 `_korean_date`를 그대로
+    쓸 수 없어 월 전용 버전을 만든다 — 패딩 없는 자리수(`_korean_date`와
+    동일하게 "07월"이 아니라 "7월")로 다른 페이지와 표기 방식을 맞춘다."""
+
+    year_str, month_str = value.split("-")
+    return f"{int(year_str)}년 {int(month_str)}월"
+
+
 def _change_phrase(value: float) -> str:
     # 2026-09-09 사용자 지시 — price_* 4종에 적용한 "정수면 소숫점 생략"을
     # 나머지 페이지에도 동일 적용(공통화). 지수 점수("점")는 등락률(%)과
@@ -218,7 +233,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
     # 맞추기 위해 "기준"·"의"·"현재"·"~에 해당합니다"를 추가(이전엔
     # "{month} {mineral} {policy}는 ...단계입니다"로 그 네 요소가 빠져 있었다).
     current_fact = (
-        f"{current.month} 기준 {series.mineral.name}의 {policy.name}는 "
+        f"{_korean_month(current.month)} 기준 {series.mineral.name}의 {policy.name}는 "
         f"{_quantity(current.score)}점으로, 현재 {grade.label} 단계에 해당합니다."
     )
     claims = [EvidenceClaim("current_state", "core_diagnosis", current_fact, required=True)]
@@ -239,7 +254,9 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
         score_change = current.score - previous.score
         is_contiguous = months_are_contiguous(previous.month, current.month)
         pct_change = score_change / previous.score * 100 if previous.score != 0 else None
-        previous_lead = "최근 한 달에는 전월" if is_contiguous else f"직전 관측치({previous.month})"
+        previous_lead = (
+            "최근 한 달에는 전월" if is_contiguous else f"직전 관측치({_korean_month(previous.month)})"
+        )
         if score_change > 0:
             point_change_clause = f"{_quantity(score_change)}점 상승했습니다."
         elif score_change < 0:
@@ -322,7 +339,8 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
     # 추적하므로, 그 관측치의 월을 그대로 시작월로 밝힌다.
     streak_start_month = observations[streak_start_index].month
     streak_fact = (
-        f"{streak_start_month}부터 {grade.label} 단계를 {streak_basis}{streak}개월째 유지 중입니다."
+        f"{_korean_month(streak_start_month)}부터 {grade.label} 단계를 "
+        f"{streak_basis}{streak}개월째 유지 중입니다."
     )
     key_metrics.append(
         _metric("current_grade_streak", "현재 단계 연속기간", streak, unit="개월")
@@ -338,7 +356,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
     if transitions:
         before, after, before_grade, after_grade = transitions[-1]
         transition_fact = (
-            f"가장 최근에는 {after.month}에 {before_grade.label}에서 "
+            f"가장 최근에는 {_korean_month(after.month)}에 {before_grade.label}에서 "
             f"{after_grade.label} 단계로 전환됐습니다."
         )
         patterns.append(
@@ -359,7 +377,7 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
         largest = max(contiguous_pairs, key=lambda pair: abs(pair[1].score - pair[0].score))
         largest_change = largest[1].score - largest[0].score
         largest_fact = (
-            f"조회기간 중 월간 점수 변화 폭이 가장 컸던 때는 {largest[1].month}로, "
+            f"조회기간 중 월간 점수 변화 폭이 가장 컸던 때는 {_korean_month(largest[1].month)}로, "
             f"직전월보다 {_change_phrase(largest_change)} 움직였습니다."
         )
         key_metrics.append(
