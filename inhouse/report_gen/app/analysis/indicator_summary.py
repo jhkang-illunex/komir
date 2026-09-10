@@ -13,7 +13,6 @@ from typing import Literal
 from ._metrics import capped_key_metrics
 from .additional_summary import EvidenceClaim, _number, _quantity
 from .indicators import months_are_contiguous, percent_change
-from .komir_summary import _toward
 from .models import (DetectedPattern, GradeResult, IndicatorSeries, Metric, OmittedIndicator)
 from .policy import PagePolicy
 
@@ -229,13 +228,27 @@ def _price_volatility_pct(observations: list) -> tuple[float, int] | None:
     return annualized, len(returns)
 
 
+#: 아라비아 숫자 문자열 뒤 로/으로 조사 — 마지막 자리 숫자를 한글로 읽었을 때
+#: 받침 여부로 판정한다(0=영/공·3=삼·6=육은 받침 있어 "으로", 1=일·7=칠·8=팔은
+#: ㄹ받침 예외로 "로", 나머지(2·4·5·9)는 받침 없어 "로"). `komir_summary.py::
+#: _toward()`는 한글 명사(국가명 등) 끝 받침만 판정하므로 숫자 문자열에는
+#: 그대로 쓸 수 없다(마지막 문자가 Hangul 범위 밖이라 항상 "로"로 잘못
+#: 빠진다 — "0.980로" 오조사를 advisor 검토로 발견·수정).
+_NUMBER_JOSA_TOWARD_BY_LAST_DIGIT = {
+    "0": "으로", "3": "으로", "6": "으로",
+    "1": "로", "2": "로", "4": "로", "5": "로", "7": "로", "8": "로", "9": "로",
+}
+
+
+def _number_toward(value: str) -> str:
+    return value + _NUMBER_JOSA_TOWARD_BY_LAST_DIGIT.get(value[-1], "으로")
+
+
 #: 2026-09-10 사용자 지시 — HHI 공급 편중도 해석 문구. 임계값(0.15/0.25/0.50)과
 #: 문구는 사용자가 제공한 원문 그대로다(국제적으로 통용되는 HHI 관례 구간에
 #: 0.50 이상 "극단적 편중" 구간을 사용자가 추가한 것) — 임의로 다듬지 않는다.
 def _hhi_classification_sentence(hhi: float) -> str:
-    # 숫자로 끝나는 값의 로/으로 조사는 `_toward()`(2026-09-09 map_korea
-    # "중국로" 조사 버그 수정 헬퍼)로 통일한다 — 같은 계산을 다시 만들지 않는다.
-    value = _toward(_number(hhi, 3))
+    value = _number_toward(_number(hhi, 3))
     if hhi < 0.15:
         return (
             f"국가별 공급망 편중도는 {value}, 특정 국가에 치우치지 않고 "
