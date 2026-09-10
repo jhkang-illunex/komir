@@ -675,7 +675,17 @@ _GRADE_LABELS = {"신중", "주의", "중립", "관심", "기회", "긴장", "�
 # 불가능하다 — 실측(26건 표본 재전송) 결과 price_group은 매번 100% 폴백,
 # 우연이 아니라 예정된 실패였다. 이 규칙에서만 예외 처리한다("모든 evidence_id
 # 정확히 1회 사용" 체크는 여전히 걸린다 — 안전장치로 유효해 유지).
-_COMBINED_SENTENCE_EXEMPT_PAGES = {"price_group"}
+# 2026-09-10 map_korea 추가 — trade_scale_trend(수입·수출 규모 추이)
+# 신설로 major_changes에 근거가 2개(import_concentration·
+# trade_scale_trend)가 됐는데, trade_scale_trend는 렌더링 분리 절
+# ("## 수입·수출 규모 추이")이 성립하려면 항상 evidence_ids가 그
+# 하나뿐인 독립 문장이어야 한다(map_global의 korea_route_rank와 같은
+# 제약). 전체 claim 4개(core_diagnosis 1·major_changes 2·
+# current_position 1)가 서로 다른 절에 흩어져 있고 같은 절 안의 유일한
+# 짝(import_concentration+trade_scale_trend)은 결합이 금지돼 있어,
+# price_group과 같은 이유로 "각자 따로 쓰기"와 "누군가는 합쳐 쓰기"를
+# 동시에 만족할 수 없다(실측: 4개년 이상 표본에서 매번 100% 폴백).
+_COMBINED_SENTENCE_EXEMPT_PAGES = {"price_group", "map_korea"}
 
 
 def _number_tokens(text: str) -> set[str]:
