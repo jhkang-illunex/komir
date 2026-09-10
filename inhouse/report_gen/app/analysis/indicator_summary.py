@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import statistics
 from dataclasses import dataclass
 from typing import Literal
 
@@ -195,6 +196,36 @@ def _supply_auxiliary_metrics(series: IndicatorSeries) -> list[Metric]:
         )
     return metrics
 
+
+
+def _price_volatility_pct(observations: list) -> tuple[float, int] | None:
+    """가격 데이터 기반 가격 리스크 지수 — 최근 최대 12개월(관측치 13개)
+    연속 구간의 월간 가격 수익률 표준편차를 연율화(×sqrt(12))한 값(%).
+
+    2026-09-10 사용자 지시("가격 데이터를 통해 가격 리스크에 대한 계산
+    및 표시가 필요합니다. 적절한 지수나 계산식을 반영해주세요") — 기존
+    "가격리스크" 요인은 최근 1개월 등락률 1개 값뿐이었다. `komir_summary.
+    py::_volatility_fact`(price_* 페이지의 "가격 변동폭", 수익률 표준편차
+    ×sqrt(연간 관측 횟수))와 같은 산식을 월 단위 관측(연간 관측 횟수=12)에
+    맞게 적용한다 — 같은 계산 방법을 페이지마다 다시 발명하지 않는다.
+
+    연속되지 않는 두 달 사이(결측 구간)는 그 구간의 수익률을 건너뛴다.
+    유효 수익률이 3개 미만이면(표준편차가 통계적으로 무의미) `None`."""
+
+    priced = [
+        item for item in sorted(observations, key=lambda o: o.month)
+        if item.price is not None and item.price > 0
+    ]
+    window = priced[-13:]
+    returns: list[float] = []
+    for prev, cur in zip(window, window[1:]):
+        if months_are_contiguous(prev.month, cur.month):
+            returns.append((cur.price - prev.price) / prev.price)
+    if len(returns) < 3:
+        return None
+    stdev = statistics.stdev(returns)
+    annualized = stdev * (12 ** 0.5) * 100
+    return annualized, len(returns)
 
 
 def _classify_series(
@@ -494,7 +525,28 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
         # 없는 요인을 추론으로 채우지 않는다.
         factor_candidates: list[tuple[str, float, str]] = []
         if price_fact is not None:
-            factor_candidates.append(("가격리스크", abs(price_change) * 100, price_fact))
+            # 2026-09-10 사용자 지시 — 가격리스크 요인에 1개월 등락률뿐 아니라
+            # 가격 데이터 기반 계산식(연율화 변동성, _price_volatility_pct)도
+            # 반영한다. market의 latest_price_change(공유 변수 price_fact)는
+            # 건드리지 않고 supply의 factor_candidates 항목에만 이어붙인다.
+            price_risk_fact = price_fact
+            volatility = _price_volatility_pct(observations)
+            if volatility is not None:
+                vol_value, vol_months = volatility
+                price_risk_fact = (
+                    f"{price_risk_fact} 최근 {vol_months}개월 {_number(vol_value)}% "
+                    "수준의 가격 변동폭을 보였습니다."
+                )
+                detailed_metrics.append(
+                    _metric(
+                        "supply_price_volatility_pct",
+                        "가격 변동성(연율화)",
+                        vol_value,
+                        unit="%",
+                        basis=f"최근 {vol_months}개월",
+                    )
+                )
+            factor_candidates.append(("가격리스크", abs(price_change) * 100, price_risk_fact))
 
         if series.supply_auxiliary is not None:
             imports = sorted(series.supply_auxiliary.domestic_imports, key=lambda item: item.year)
@@ -553,9 +605,22 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
                 # 수준(1위국 비중)만 서술한다.
                 top_row = max(production_shares, key=lambda item: item.production_qty)
                 top_country = top_row.country_name
+                # 2026-09-10 사용자 지시 — "국가별 비중을 반영한 공급 편중도를
+                # 추가, 지수는 HHI이고 생산국의 점유율의 제곱의 합, 0~1 사이값으로
+                # 노말라이즈". `production_shares`의 `share_percent`는 이미
+                # (KOMIS의 prdtnRt를 신뢰하지 않고) 이 표에 나열된 국가 생산량
+                # 합계 대비로 재계산해 둔 값이라 전부 더하면 정확히 100%에
+                # 수렴한다(input_data.py 참고) — 그래서 share_percent/100을
+                # 분수 점유율로 그대로 써서 제곱합을 구하면 Σ=1인 분포의 성질상
+                # 자연히 [1/국가수, 1] 구간(0~1 이내)에 든다. 별도 스케일링·
+                # 클램프가 필요 없다(전통적 0~10000 스케일 HHI와 달리 분수
+                # 점유율을 직접 쓰는 정의라 이 정규화가 정의상 보장된다).
+                production_hhi = sum((row.share_percent / 100.0) ** 2 for row in production_shares)
                 world_supply_fact = (
                     f"{top_row.year}년 국가별 생산량 자료에서 1위는 {top_country}이며, "
-                    f"자료에 포함된 국가 생산량 합계의 {_number(top_row.share_percent)}%를 차지합니다."
+                    f"자료에 포함된 국가 생산량 합계의 {_number(top_row.share_percent)}%를 차지합니다. "
+                    f"국가별 비중 제곱합(HHI, 0~1)으로 계산한 공급 편중도는 "
+                    f"{_number(production_hhi, 3)}입니다."
                 )
                 detailed_metrics.append(
                     _metric(
@@ -564,6 +629,15 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
                         top_country_share,
                         unit="%",
                         basis=top_country,
+                    )
+                )
+                detailed_metrics.append(
+                    _metric(
+                        "supply_world_production_hhi",
+                        "세계 공급 편중도(HHI)",
+                        production_hhi,
+                        unit="지수",
+                        basis=f"{top_row.year}년, {len(production_shares)}개국 비중 제곱합",
                     )
                 )
                 factor_candidates.append(("세계 공급 편중도", top_country_share, world_supply_fact))
