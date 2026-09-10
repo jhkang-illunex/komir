@@ -40,6 +40,31 @@ def _korean_year(value: str) -> str:
     return f"{_date.fromisoformat(value).year}년"
 
 
+def _map_korea_as_of(value: str, period_unit: str | None) -> str:
+    """map_korea(관세청 수급지도)의 "기준" 시점 표시 — `_korean_year()`와
+    같은 이유(2026-09-10 사용자 지적)로 신설.
+
+    `_parse_komis_map_korea_response()`의 `as_of_date`는 행 자체엔 날짜가
+    없는 스냅샷 응답이라 조회 파라미터 `srchDateE`(조회 구간의 끝)를 그대로
+    쓴다 — `_map_korea_query_filters()`가 같은 응답에서 뽑는 `period_unit`
+    ("년별"은 `srchCrtrYmd != "M"`, "월별"은 `srchCrtrYmd == "M"`)이 "년별"
+    이면 `srchDateE`는 항상 12월 31일(연간 조회 구간의 끝)이라 실제 관측일이
+    아니다 — `_korean_year()`처럼 연도만 표시한다. "월별"이어도 `srchDateE`는
+    여전히 그 달의 마지막 날(조회 구간의 끝)일 뿐 실제 거래일이 아니므로
+    일자 없이 연·월까지만 표시한다("YYYY-MM" 전용 `_korean_month`와 달리
+    여기는 "YYYY-MM-DD" 전체 문자열을 받으므로 별도 구현). `period_unit`이
+    없으면(구 `supply_auxiliary` 손 매핑 등 komis_response 없이 들어온
+    경로) 안전하게 기존 `_korean_date()`(일자 표시)로 폴백한다 — 이 경로는
+    행 자체에 진짜 날짜가 있을 수도 있어 정보를 줄일 근거가 없다."""
+
+    parsed = _date.fromisoformat(value)
+    if period_unit == "년별":
+        return f"{parsed.year}년"
+    if period_unit == "월별":
+        return f"{parsed.year}년 {parsed.month}월"
+    return _korean_date(value)
+
+
 def _subject(name: str) -> str:
     """`_topic()`(은/는)과 같은 받침 규칙의 이/가 버전 — `additional_summary.py`에는
     없어서 komir 자체 파일인 여기 둔다(2026-08-26, KOMIS 실데이터 회귀 테스트
@@ -1015,6 +1040,7 @@ def calculate_domestic_trade_summary(
     komis_totals: TradeKomisTotals | None = None,
     country_filter_name: str | None = None,
     scope_label: str | None = None,
+    period_unit: str | None = None,
 ) -> AdditionalCalculatedSummary:
     """국내(관세청) 수급지도 계열 계산 — 수입·수출을 한 보고서에 함께 낸다.
 
@@ -1077,7 +1103,7 @@ def calculate_domestic_trade_summary(
     # ── 수입 현황(core_diagnosis, 발주처 템플릿 "수입 현황" 문단) ──
     if country_filter_name:
         core_fact = (
-            f"{_korean_date(latest_date)} 기준 한국의 {series.mineral.name} {scope_prefix}수입액은 총 "
+            f"{_map_korea_as_of(latest_date, period_unit)} 기준 한국의 {series.mineral.name} {scope_prefix}수입액은 총 "
             f"{_quantity(import_total)}달러입니다."
         )
     else:
@@ -1092,7 +1118,7 @@ def calculate_domestic_trade_summary(
                 _price_metric(f"top{rank}_import_share_pct", f"{rank}위 수입국 비중", share, unit="%")
             )
         core_fact = (
-            f"{_korean_date(latest_date)} 기준 한국의 {series.mineral.name} {scope_prefix}수입액은 총 "
+            f"{_map_korea_as_of(latest_date, period_unit)} 기준 한국의 {series.mineral.name} {scope_prefix}수입액은 총 "
             f"{_quantity(import_total)}달러입니다. " + ", ".join(rank_parts) + "입니다."
         )
     claims = [EvidenceClaim("current_state", "core_diagnosis", core_fact, required=True)]
@@ -1157,7 +1183,7 @@ def calculate_domestic_trade_summary(
         key_metrics.append(_price_metric("export_import_ratio_pct", "수입 대비 수출 비율", ratio, unit="%"))
         if country_filter_name:
             export_fact = (
-                f"{_korean_date(latest_date)} 기준 한국의 {series.mineral.name} {scope_prefix}수출액은 총 "
+                f"{_map_korea_as_of(latest_date, period_unit)} 기준 한국의 {series.mineral.name} {scope_prefix}수출액은 총 "
                 f"{_quantity(export_total)}달러입니다. {ratio_fact}"
             )
         else:
@@ -1168,7 +1194,7 @@ def calculate_domestic_trade_summary(
                 _price_metric("top1_export_share_pct", "1위 수출국 비중", top1_export_share, unit="%")
             )
             export_fact = (
-                f"{_korean_date(latest_date)} 기준 한국의 {series.mineral.name} {scope_prefix}수출액은 총 "
+                f"{_map_korea_as_of(latest_date, period_unit)} 기준 한국의 {series.mineral.name} {scope_prefix}수출액은 총 "
                 f"{_quantity(export_total)}달러이며, 주요 수출 대상국은 {export_names} 순입니다. "
                 + ratio_fact
             )
@@ -1178,7 +1204,7 @@ def calculate_domestic_trade_summary(
             EvidenceClaim(
                 "no_export_data",
                 "current_position",
-                f"{_korean_date(latest_date)} 기준 수출 관측치가 없어 수출 현황은 계산하지 않았습니다.",
+                f"{_map_korea_as_of(latest_date, period_unit)} 기준 수출 관측치가 없어 수출 현황은 계산하지 않았습니다.",
                 required=True,
             )
         )

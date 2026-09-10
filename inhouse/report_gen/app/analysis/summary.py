@@ -1570,7 +1570,7 @@ class AnalysisSummaryService:
         map_korea_filters = _map_korea_query_filters(
             request.komis_response, series.observations, request.mttr_flow_name
         )
-        _period_unit, country_filter_name, scope_label = map_korea_filters
+        period_unit, country_filter_name, scope_label = map_korea_filters
         calculated = _calculate_or_no_data(
             request.page_id,
             calculate_domestic_trade_summary,
@@ -1578,6 +1578,7 @@ class AnalysisSummaryService:
             komis_totals=komis_trade_totals,
             country_filter_name=country_filter_name,
             scope_label=scope_label,
+            period_unit=period_unit,
         )
         # 2026-09-08 SC-005: 아래에서 다시 계산하지 않고 위 결과를 그대로 넘긴다
         # (같은 request.komis_response·series.observations로 동일한 값이 나온다).
