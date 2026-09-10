@@ -738,6 +738,29 @@ def _validate_llm_summary(
                 allowed_grades = {label for label in _GRADE_LABELS if label in evidence_text}
                 if not mentioned_grades <= allowed_grades:
                     return "근거에 없는 단계명을 사용했다."
+            # 2026-09-10 사용자 지시 — indicator_market의 latest_score_change
+            # 근거는 점수 하락과 위험 상승(또는 그 반대)을 반비례 관계 설명
+            # 없이 한 문장으로 이으면 사용자에게 방향이 반대로 읽혀 혼동을
+            # 준다는 지적(발주처 피드백[5])으로 "이 지표는 점수가 낮을수록
+            # 위험이 커지는 구조입니다."를 근거 문장에 넣어뒀다. 그런데 이
+            # 문장이 evidence_id 하나(latest_score_change) 안의 자유 텍스트라
+            # LLM 정제 단계에서 조용히 병합·삭제될 수 있음을 실측으로 확인
+            # (2026-09-10, LLM_BASE_URL 컨테이너 접속 버그를 고친 뒤 실LLM
+            # 재검증 중 재현) — evidence_id 커버리지 검사만으로는 이 사고를
+            # 못 잡는다(같은 id를 인용하면서 안의 문구만 지워도 통과). 그
+            # 근거의 fact 자체에 이 반비례 설명 문구가 들어있는 문장이면
+            # (score_change != 0인 indicator_market 케이스에서만 존재)
+            # 출력 문장도 그 문구를 그대로 담고 있어야 한다 — 없으면 검증
+            # 실패로 안전하게 규칙 기반 폴백으로 보낸다.
+            if page_id == "indicator_market" and "latest_score_change" in sentence.evidence_ids:
+                required_clause = "점수가 낮을수록 위험이 커지는"
+                score_claim = claim_map.get("latest_score_change")
+                if (
+                    score_claim is not None
+                    and required_clause in score_claim.fact
+                    and required_clause not in sentence.text
+                ):
+                    return "점수-위험 반비례 설명 문장을 누락했다."
             used_ids.extend(sentence.evidence_ids)
     if page_id == "map_mineral":
         required_ids = {claim.id for claim in claims if claim.required}
