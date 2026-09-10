@@ -28,6 +28,18 @@ from .additional_summary import (
 )
 
 
+def _korean_year(value: str) -> str:
+    """`_korean_date()`의 연도 전용 버전 — map_global(UN Comtrade 연간 집계)은
+    KOMIS 응답의 `srchDateE`가 실제 관측일이 아니라 조회 연도 구간의 끝
+    (예: "20261231"은 2026년 1월 1일~12월 31일 조회의 종료일일 뿐, 실제
+    관측이 12월 31일에 있었다는 뜻이 아니다)이라, `_korean_date()`로 찍으면
+    "2026년 12월 31일 기준"처럼 존재하지 않는 일자 관측인 것처럼 보인다
+    (2026-09-10 사용자 지적). additional_summary.py에는 없어서 komir 자체
+    파일인 여기 둔다."""
+
+    return f"{_date.fromisoformat(value).year}년"
+
+
 def _subject(name: str) -> str:
     """`_topic()`(은/는)과 같은 받침 규칙의 이/가 버전 — `additional_summary.py`에는
     없어서 komir 자체 파일인 여기 둔다(2026-08-26, KOMIS 실데이터 회귀 테스트
@@ -1229,7 +1241,19 @@ def calculate_global_trade_summary(
     방향중립("{국가}측 집계총액 대비")으로 둔다. 서사 claim이 아니라
     detailed_metrics로만 추가한다(map_mineral의 `market_share` 선례와
     동일 — 숫자 자체의 의미는 확정됐지만 서사 문장으로 엮기엔 아직
-    이르다고 판단, 한국 루트 하이라이트 연동은 별도 사이클)."""
+    이르다고 판단, 한국 루트 하이라이트 연동은 별도 사이클).
+
+    2026-09-10 사용자 지적 3건 반영 — (1) `latest_date`가 map_global에선
+    실제 관측일이 아니라 조회 연도 구간의 끝(`srchDateE`, 연간 조회의
+    12월 31일)이라 `_korean_date()`로 찍으면 "OOOO년 12월 31일 기준"처럼
+    없는 일자 관측인 것처럼 보였다 — `_korean_year()`로 연도만 표시.
+    (2) top5_concentration을 required=True로 바꿔 LLM이 CR5 문장을
+    생략하지 못하게 했다(SECTION_SENTENCE_RANGES["map_global"]["major_
+    changes"]도 (1,3)→(1,4)로 같이 올렸다 — 안 그러면 4번째 근거가 상한에
+    걸려 폴백된다). (3) 한국 루트 하이라이트를 "값이 있을 때만"
+    `[순위/루트/금액/비중]` 형식으로 바꾸고, 없을 때 폴백 문장("나타나지
+    않았습니다")을 만들던 분기를 아예 없앴다 — 방향별 상대국·행/발
+    접미사 계산도 `_route_label()` 재사용으로 대체해 코드가 더 짧아졌다."""
 
     dates = sorted({item.date for item in series.observations})
     latest_date = dates[-1]
@@ -1249,7 +1273,7 @@ def calculate_global_trade_summary(
         EvidenceClaim(
             "current_state",
             "core_diagnosis",
-            f"{_korean_date(latest_date)} 기준 {series.mineral.name} 세계 교역 총액은 {_quantity(total)}달러입니다.",
+            f"{_korean_year(latest_date)} 기준 {series.mineral.name} 세계 교역 총액은 {_quantity(total)}달러입니다.",
             required=True,
         )
     ]
@@ -1296,6 +1320,7 @@ def calculate_global_trade_summary(
                 "top5_concentration",
                 "major_changes",
                 f"상위 5개 루트의 합산 점유율은 {_number(cr5 * 100)}%입니다.",
+                required=True,
             )
         )
         key_metrics.append(_price_metric("top5_share_pct", "상위5루트 비중", cr5 * 100, unit="%"))
@@ -1306,42 +1331,19 @@ def calculate_global_trade_summary(
         if _is_korea(item.country_code, item.country_name) or _is_korea(item.origin_country_code, item.origin_country_name)
     ]
     if korea_hits:
+        # 2026-09-10 사용자 지시 — 대한민국이 포함된 루트는 값이 있을 때만
+        # [순위/루트/금액/비중] 형식으로 밝힌다(이전엔 없을 때 "나타나지
+        # 않았습니다" 폴백 문장을 넣었는데 그 문장 자체를 없앴다). 방향별
+        # 상대국·행/발 접미사를 따로 계산하지 않고 `_route_label()`의
+        # 원산국→도착국 표기를 그대로 쓰면 방향 설명이 필요 없어진다.
         top_hits = korea_hits[:2]
-        pieces = []
-        for rank, item in top_hits:
-            share = (item.import_amount or 0.0) / total * 100
-            is_origin = _is_korea(item.origin_country_code, item.origin_country_name)
-            counterpart = item.country_name if is_origin else (item.origin_country_name or "출처미상")
-            suffix = "행" if is_origin else "발"  # 2026-09-09 한자 금지 규칙(feedback-no-hanja-kanji-in-korean-text) — "行"→"행"
-            if rank <= len(top_n):
-                # 이미 top1_country 근거(1~3위 랭킹)에 금액·비중이 있는 루트는 순위·상대국만
-                # 적어 같은 숫자를 한 절에서 두 번 쓰지 않는다(2026-08-27 반복 루프 3회차:
-                # LLM이 두 근거를 그대로 옮겨 "중국→대한민국 루트가 24,056,…(27.45%)"가
-                # 한 절에 두 번 나온 사례 — PDF 예시는 한국이 6·9위라 이 케이스가 없다).
-                pieces.append(f"{rank}위({counterpart}{suffix}, 위 랭킹 참조)")
-            else:
-                # 2026-09-09 C-7 — 위 top1_country 근거와 동일하게 "달러" 명시.
-                pieces.append(
-                    f"{rank}위({counterpart}{suffix} {_quantity(item.import_amount or 0.0)}달러, {_number(share)}%)"
-                )
-        if len(top_hits) >= 2:
-            hits_sum = sum(item.import_amount or 0.0 for _, item in top_hits)
-            hits_share = hits_sum / total * 100
-            korea_fact = (
-                f"대한민국은 세부현황 기준 {pieces[0]}와 {pieces[1]}에 각각 등장하여, "
-                f"두 루트 합산 {_quantity(hits_sum)}달러({_number(hits_share)}%)를 기록했습니다."
-            )
-        else:
-            korea_fact = f"대한민국은 세부현황 기준 {pieces[0]}로 나타났습니다."
-        claims.append(EvidenceClaim("korea_route_rank", "major_changes", korea_fact))
-    else:
-        claims.append(
-            EvidenceClaim(
-                "korea_route_absent",
-                "major_changes",
-                "대한민국이 포함된 개별 루트는 조회된 상위 데이터에 나타나지 않았습니다.",
-            )
-        )
+        brackets = [
+            f"[{rank}위/{_route_label(item)}/{_quantity(item.import_amount or 0.0)}달러/"
+            f"{_number((item.import_amount or 0.0) / total * 100)}%]"
+            for rank, item in top_hits
+        ]
+        korea_fact = "대한민국이 포함된 교역 루트는 " + ", ".join(brackets) + "로 확인됩니다."
+        claims.append(EvidenceClaim("korea_route_rank", "major_changes", korea_fact, required=True))
 
     patterns: list[DetectedPattern] = []
     if top_n and (top_n[0].import_amount or 0.0) / total >= 0.5:
@@ -1364,7 +1366,7 @@ def calculate_global_trade_summary(
                 EvidenceClaim(
                     "period_total_change",
                     "current_position",
-                    f"직전 관측일({_korean_date(previous_date)}) 대비 세계 교역 총액이 {_signed_pct(change)} 변동했습니다.",
+                    f"직전 관측연도({_korean_year(previous_date)}) 대비 세계 교역 총액이 {_signed_pct(change)} 변동했습니다.",
                 )
             )
             key_metrics.append(
