@@ -435,9 +435,12 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
     )
     if transitions:
         before, after, before_grade, after_grade = transitions[-1]
+        # 2026-09-10 사용자 지적 — "가장 최근에는 2025년 7월에 ..."처럼 시간
+        # 표현("에는"·"에")이 겹쳐 붙어 어색했다. 바로 아래 largest_fact의
+        # "때는 {month}로," 패턴(주제격+로)과 같은 틀로 통일해 자연스럽게 한다.
         transition_fact = (
-            f"가장 최근에는 {_korean_month(after.month)}에 {before_grade.label}에서 "
-            f"{after_grade.label} 단계로 전환됐습니다."
+            f"가장 최근 단계 전환은 {_korean_month(after.month)}로, "
+            f"{before_grade.label}에서 {after_grade.label} 단계로 바뀌었습니다."
         )
         patterns.append(
             DetectedPattern(
