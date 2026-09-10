@@ -733,7 +733,17 @@ def calculate_price_summary(
                         if is_truly_next_day
                         else f"직전 관측치({_korean_date(prior_inventory_obs.date)})"
                     )
-                    inventory_fact = f"{inventory_fact} {inv_comparison_label} 대비 {_signed_pct(inv_change)} 변동했습니다."
+                    # 2026-09-10 사용자 가독성 피드백 — 부호 붙은 등락률("-0.80%
+                    # 변동했습니다")보다 방향을 말로 밝히는 쪽("0.80% 감소했습니다")이
+                    # 해석하기 쉽다. 두 문장(현재값·등락)도 쉼표로 한 문장에 합친다.
+                    inv_direction = (
+                        "증가했습니다" if inv_change > 0 else "감소했습니다" if inv_change < 0 else "변동이 없었습니다"
+                    )
+                    inventory_fact = (
+                        f"{_korean_date(latest.date)} 기준 재고량은 {_quantity(latest_inventory)}"
+                        f"{_INVENTORY_UNIT_LABEL}으로, {inv_comparison_label} 대비 "
+                        f"{_number(abs(inv_change) * 100)}% {inv_direction}."
+                    )
                     inventory_change_pct = inv_change * 100
             claims.append(EvidenceClaim("inventory_level", "current_position", inventory_fact))
             key_metrics.append(_price_metric("inventory_level", "재고량", latest_inventory, unit=_INVENTORY_UNIT_LABEL))
@@ -810,9 +820,10 @@ def calculate_price_summary(
     # 요구한다 — 또한 백분위는 더 이상 "높을수록 고가권" 식 산식 설명이
     # 아니라 실제로 저가권/중간권/고가권 중 어디인지 데이터 기반으로 짚어야
     # 한다(사용자 지적: "29.32%면 저가권인지 고가권인지 설명 필요").
-    # 고점→저점 최대 하락폭(Max Drawdown)은 지시서상 필수 항목이 아니므로
-    # "참고로" 접두를 붙여 참고지표로만 남긴다(제거하지 않음 — 표시할 때의
-    # 위상만 낮춘다).
+    # 고점→저점 최대 하락폭(Max Drawdown)은 지시서상 필수 항목은 아니지만
+    # 계속 싣는다(제거하지 않음). 2026-09-10 사용자 가독성 피드백으로
+    # "참고로"·"(고점→저점, 필수 지표는 아님)" 같은 지표 자체에 대한 부연
+    # 설명은 빼고 실제 데이터 서술만 남겼다(아래 참고).
     percentile = _percentile_rank(observations_with_price, latest.commerce_price)
     drawdown_stats = _drawdown_stats(observations_with_price)
     position_sentences: list[str] = []
@@ -842,11 +853,14 @@ def calculate_price_summary(
         drawdown_stats["max_dd_peak_date"] != drawdown_stats["overall_peak_date"]
         or abs(drawdown_stats["max_dd_pct"] - drawdown_stats["current_dd_pct"]) >= 0.5
     ):
+        # 2026-09-10 사용자 가독성 피드백 — "(고점→저점, 필수 지표는 아님)" 같은
+        # 지표 자체에 대한 부연 설명은 빼고, 시점(언제부터 언제까지)과 수치
+        # (얼마나 하락했는지)를 각각 한 절씩 나눠 말한다(한 문장에 여러 정보를
+        # 몰아넣지 않는다).
         position_sentences.append(
-            f"참고로 조회기간 내 최대 하락폭(고점→저점, 필수 지표는 아님)은 "
-            f"{_korean_date(drawdown_stats['max_dd_peak_date'])} 고점 대비 "
-            f"{_korean_date(drawdown_stats['max_dd_trough_date'])}까지 "
-            f"{_number(abs(drawdown_stats['max_dd_pct']))}%였습니다."
+            f"조회기간 중 가장 큰 하락은 {_korean_date(drawdown_stats['max_dd_peak_date'])}부터 "
+            f"{_korean_date(drawdown_stats['max_dd_trough_date'])}까지 이어졌으며, 이 기간 "
+            f"{_number(abs(drawdown_stats['max_dd_pct']))}% 하락했습니다."
         )
     if drawdown_stats is None:
         warnings.append("낙폭 국면은 관측치가 2건 미만이라 계산하지 않았다.")
@@ -1789,13 +1803,23 @@ def _percentile_rank(observations_with_price: list, latest_price: float) -> floa
 #: → `summary.py`)가 값을 읽어 인자로 넘긴다. 기본 인자값은 config 기본값과
 #: 동일해 호출자가 넘기지 않아도(단독 호출·테스트) 기존 동작과 같다.
 def _price_position_label(
-    percentile: float, *, low_threshold: float = 100 / 3, high_threshold: float = 200 / 3
+    percentile: float,
+    *,
+    low_threshold: float = 100 / 3,
+    high_threshold: float = 200 / 3,
+    low_label: str = "저가권",
+    mid_label: str = "중간권",
+    high_label: str = "고가권",
 ) -> str:
+    # 2026-09-10 사용자 가독성 피드백 — 재고량 위치(`_inventory_context_fact`)도
+    # 같은 균등 삼분할 규칙으로 "낮은/중간/높은 수준"을 매기려는데, 재고량은
+    # "저가권"·"고가권" 같은 가격 전용 어휘가 안 맞아 라벨을 바꿔 부를 수
+    # 있게 한다(임계값 산식·기본값은 그대로, 부르는 이름만 다르다).
     if percentile <= low_threshold:
-        return "저가권"
+        return low_label
     if percentile >= high_threshold:
-        return "고가권"
-    return "중간권"
+        return high_label
+    return mid_label
 
 
 def _drawdown_stats(observations_with_price: list) -> dict | None:
@@ -1841,43 +1865,25 @@ def _drawdown_stats(observations_with_price: list) -> dict | None:
 
 
 def _inventory_context_fact(observations_with_price_and_inventory: list) -> str | None:
-    """재고량 백분위 + 가격·재고 동행 비율(부호 일치 일수 비율) — "상관계수"는
-    forbidden term이라 %(동행 비율)로 대신 서술한다."""
+    """재고량이 조회기간 내 어느 수준인지(백분위 기반 낮은/중간/높은 수준 판정).
+
+    2026-09-10 사용자 가독성 피드백 — 이전엔 (1) 재고량 백분위 수치를 그대로
+    노출하고 (2) 가격·재고량의 부호 일치 비율("동행 비율")을 인과관계
+    아니라는 괄호 설명과 함께 덧붙였는데, 둘 다 "해석하기 어려운 수치"로
+    지적됐다. 백분위는 `_price_position_label`과 같은 삼분할 판정으로
+    바꿔 숫자 없이 수준(낮은/중간/높은)만 말하고, 동행 비율은 그 자체로
+    해석이 어렵고 인과관계 아님을 매번 설명해야 하는 수치라 문장에서
+    완전히 뺀다(계산도 하지 않는다)."""
 
     if len(observations_with_price_and_inventory) < 10:
         return None
     latest = observations_with_price_and_inventory[-1]
     values = [item.inventory for item in observations_with_price_and_inventory]
     inv_rank = sum(1 for value in values if value <= latest.inventory) / len(values) * 100
-    # 2026-09-09 발주처 피드백(오전 2차) — "분포상 백분위"·관측치 건수 노출을
-    # 없애고 쉬운 표현으로 바꾼다(숫자 자체는 그대로).
-    sentences = [f"재고량은 최근 조회기간 대비 {_number(inv_rank)}% 위치입니다."]
-    signed_pairs = []
-    for prev, cur in zip(observations_with_price_and_inventory, observations_with_price_and_inventory[1:]):
-        price_delta = cur.commerce_price - prev.commerce_price
-        inventory_delta = cur.inventory - prev.inventory
-        if price_delta == 0 or inventory_delta == 0:
-            continue
-        signed_pairs.append((price_delta > 0) == (inventory_delta > 0))
-    recent = signed_pairs[-60:]
-    if len(recent) >= 10:
-        comovement = sum(1 for same in recent if same) / len(recent) * 100
-        # 2026-08-31 main-agent 지적(1a81ff771 스팟체크 중 발견) — "거래일"은
-        # 일간 전용 어휘라 월간·분기 데이터에서도 "60거래일"이라 나오면
-        # 어색하다(예: 월간 60건=5년인데 "거래일"이라 표기). 단위별 복합어
-        # ("거래주"/"거래개월" 등)를 새로 만드는 대신, 어느 조회단위에도
-        # 자연스러운 "관측치"로 통일해 단위 의존성 자체를 없앤다.
-        # 2026-09-09 발주처 피드백(오전 2차) — 관측치 건수 노출 제거.
-        # 2026-09-09 후속(같은 날, 사용자 승인) — "가격·재고량이 같은
-        # 방향으로 움직인 비율"이 상관관계처럼 오독될 위험이 있다는
-        # 지적 — 최대 하락폭(Max Drawdown)을 참고지표로 격하했을 때와
-        # 같은 패턴으로 "참고로" 접두 + 인과관계 아님을 명시하는 괄호를
-        # 붙여 별도 문장으로 분리한다(수치·정보 자체는 삭제하지 않음).
-        sentences.append(
-            f"참고로 최근 가격·재고량이 같은 방향으로 움직인 비율은 {_number(comovement)}%입니다"
-            "(인과관계를 의미하지 않는 참고 지표입니다)."
-        )
-    return " ".join(sentences)
+    level = _price_position_label(
+        inv_rank, low_label="낮은 수준", mid_label="중간 수준", high_label="높은 수준"
+    )
+    return f"현재 재고량은 조회기간 중 {level}입니다."
 
 
 def _relative_value_fact(
