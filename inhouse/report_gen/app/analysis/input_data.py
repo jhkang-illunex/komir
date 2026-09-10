@@ -774,9 +774,24 @@ def _parse_komis_supply_snapshot_response(raw: dict) -> tuple[dict, str | None, 
 
     `subChart01`(실질가격)은 핵심 관측치(`IndicatorObservation.price`,
     `getListIndxSplyBalncMnrk`의 `realPrc`)와 같은 값의 중복이라 안 쓴다.
-    `subChart04`(국가별 생산량, "세계 공급 편중도")·`subChart07`(국가별
-    매장량)은 대응 모델 필드가 없어 파싱하지 않는다(§`models.py`의
-    `SupplyAuxiliaryData` docstring 참고, 이번 반영 범위 밖)."""
+
+    `subChart04`(국가별 생산량, "세계 공급 편중도", 2026-09-10 추가) —
+    subChart02/03과 달리 `labels`/`series` 쌍이 아니라 국가당 1행인 리스트
+    (`[{"prdctnQuty":..., "ntnKornNm":..., "crtrYr":..., ...}, ...]`)다.
+    KOMIS가 주는 `prdtnRt`/`totalPrdctnQuty`는 신뢰하지 않는다 — 실측
+    확인 결과 `totalPrdctnQuty`가 모든 행에 1위국 자신의 생산량과 똑같이
+    찍혀 있어(예: 중국 900·러시아 6·일본 3인데 `totalPrdctnQuty`가 세
+    행 다 900) `prdtnRt` 합이 100%를 넘는다 — map_mineral 세계총계 버그
+    (2026-09-09)와 같은 신뢰 불가 패턴. `subChart03`처럼 나열된 국가의
+    생산량 합계를 직접 구해 그 소계 대비로 `share_percent`를 다시
+    계산한다 → `production_shares`(전체)+`top_country_production_share_
+    percent`(1위국 비중).
+
+    `subChart07`(국가별 매장량)은 대응 모델 필드가 없어 파싱하지 않는다
+    (§`models.py`의 `SupplyAuxiliaryData` docstring 참고, 5개 요인에 없는
+    항목이라 범위 밖). `subChart05`(세계 수요-공급, "세계수급비율")도
+    실측 덤프가 xaxis·수요·공급·과부족 전부 빈 배열이라(2026-09-10
+    사용자 재확인) 여전히 파싱하지 않는다."""
 
     payload = raw.get("data") if isinstance(raw.get("data"), dict) else raw
     if not isinstance(payload, dict):
@@ -838,6 +853,32 @@ def _parse_komis_supply_snapshot_response(raw: dict) -> tuple[dict, str | None, 
         aux["import_dependencies"] = import_dependencies
         aux["top_three_dependency_percent"] = min(
             100.0, sum(row["share_percent"] for row in import_dependencies[:3])
+        )
+
+    sub04 = payload.get("subChart04") or []
+    production_rows = []
+    for row in sub04 if isinstance(sub04, list) else []:
+        year = _komis_num(row.get("crtrYr"))
+        quantity = _komis_num(row.get("prdctnQuty"))
+        name = row.get("ntnKornNm") or row.get("ntnEngNm")
+        if year is None or quantity is None or quantity <= 0 or not name:
+            continue
+        production_rows.append((int(year), name, quantity))
+    production_total = sum(quantity for _, _, quantity in production_rows)
+    if production_rows and production_total > 0:
+        production_rows.sort(key=lambda item: item[2], reverse=True)
+        production_shares = [
+            {
+                "year": year,
+                "country_name": name,
+                "production_qty": quantity,
+                "share_percent": quantity / production_total * 100,
+            }
+            for year, name, quantity in production_rows
+        ]
+        aux["production_shares"] = production_shares
+        aux["top_country_production_share_percent"] = min(
+            100.0, production_shares[0]["share_percent"]
         )
 
     return aux, mineral_code, mineral_name

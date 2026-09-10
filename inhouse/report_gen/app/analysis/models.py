@@ -512,6 +512,23 @@ class SupplyImportDependencyObservation(StrictModel):
     share_percent: float = Field(ge=0, le=100)
 
 
+class SupplyProductionShareObservation(StrictModel):
+    """세계 공급 편중도 보조패널(국가별 생산량)의 국가 1행.
+
+    2026-09-10 — `getChartDataSpdmStbt`의 subChart04(국가별 생산량)가
+    실측 확인(사용자) 결과 행 리스트 형태로 국가당 생산량을 준다.
+    `share_percent`는 KOMIS가 준 `prdtnRt`를 그대로 신뢰하지 않고, 이 표에
+    나열된 국가들의 생산량 합계 대비로 다시 계산한다 — 실측 덤프에서
+    `totalPrdctnQuty`가 모든 행에 1위국 자신의 생산량과 똑같이 찍혀 있고
+    `prdtnRt` 합이 100%를 넘어(반올림 오차 이상) map_mineral 세계총계
+    버그(2026-09-09)와 같은 신뢰 불가 패턴이었다."""
+
+    year: int = Field(ge=1900, le=2100)
+    country_name: str
+    production_qty: float = Field(ge=0)
+    share_percent: float = Field(ge=0, le=100)
+
+
 class SupplyAuxiliaryData(StrictModel):
     """수급안정 페이지의 선택적 보조패널 묶음.
 
@@ -524,11 +541,15 @@ class SupplyAuxiliaryData(StrictModel):
     의 `realPrc`)와 같은 값의 중복이라 안 채운다. `world_balances`(subChart05,
     수요·공급·과부족)는 필드는 남겨 두되(다른 광종은 값이 있을 수 있어 스키마
     호환 유지 목적) `_parse_komis_supply_snapshot_response`에 실제 파싱 로직은
-    없다 — 실측 덤프가 빈 배열+빈 xaxis라 연도 매핑을 검증할 수 없어 구현을
-    보류했다. 세계 공급 편중도(subChart04, 국가별 생산량)·매장 편중도
-    (subChart07, 국가별 매장량)에 대응하는 필드는 이 클래스에 아예 없다 —
-    PDF가 요구하는 5개 요인 중 이 둘은 이번 반영 범위 밖이다(§WORKLOG
-    2026-09-01 참고)."""
+    없다 — 실측 덤프가 빈 배열+빈 xaxis라 연도 매핑을 검증할 수 없다(2026-09-10
+    사용자가 재확인 — 갈륨 실측도 여전히 빈 배열, 이 요인(세계수급비율)은
+    지금 있는 데이터로는 계산도 추론도 불가해 반영 범위 밖으로 확정 유지).
+
+    2026-09-10 — `production_shares`/`top_country_production_share_percent`
+    (subChart04, 국가별 생산량 → 세계 공급 편중도)를 추가로 반영했다.
+    매장 편중도(subChart07, 국가별 매장량)에 대응하는 필드는 여전히 없다 —
+    이 값이 실 덤프에서 조회 광종 전부 0으로 와서(갈륨 실측) 검증 자체가
+    안 됐고, PDF가 요구하는 5개 요인에도 없는 항목이라 범위 밖이다."""
 
     international_prices: list[SupplyInternationalPriceObservation] = Field(
         default_factory=list
@@ -539,6 +560,8 @@ class SupplyAuxiliaryData(StrictModel):
         default_factory=list
     )
     top_three_dependency_percent: float | None = Field(default=None, ge=0, le=100)
+    production_shares: list[SupplyProductionShareObservation] = Field(default_factory=list)
+    top_country_production_share_percent: float | None = Field(default=None, ge=0, le=100)
 
 
 class IndicatorSeries(StrictModel):
