@@ -34,6 +34,27 @@ _PRICE_SECTION_TITLES = {
     "current_position": "변동 구간",
 }
 
+#: 2026-09-10 main-agent 지시(2026-09-09 오전 2차 피드백 결정 번복) — 발주처
+#: 원본 업무지시서 §3.1(오전 2차 피드백보다 상위 문서)이 "주요 지표" 표를
+#: 정확히 이 9개 항목으로 명시하고 있었다. 표 자체를 껐던 이전 결정이 그
+#: 요구사항을 놓친 것으로 판단돼 다시 켠다 — 단, 전체 key_metrics를 그대로
+#: 노출하던 다른 8종과 달리 이 9개 화이트리스트 순서·라벨로만 표시한다
+#: (`Metric.label`은 API 응답에도 쓰이는 값이라 안 건드리고, 이 표시용
+#: 라벨은 렌더링 계층에만 둔다 — `_MINERAL_MAP_UNIT_LABELS`·
+#: `_SECTION_TITLES_OVERRIDES`와 같은 로컬 오버라이드 패턴).
+_PRICE_KEY_METRIC_ORDER = (
+    "latest_price", "week_avg_change_pct", "month_avg_change_pct",
+    "year_avg_change_pct", "price_streak_length", "period_high",
+    "period_low", "drawdown_from_period_high_pct", "recent_volatility_pct",
+)
+_PRICE_KEY_METRIC_LABELS = {
+    "latest_price": "현재가격", "week_avg_change_pct": "전주 대비",
+    "month_avg_change_pct": "전월 대비", "year_avg_change_pct": "전년 대비",
+    "price_streak_length": "연속 추세", "period_high": "최고가",
+    "period_low": "최저가", "drawdown_from_period_high_pct": "낙폭",
+    "recent_volatility_pct": "변동성",
+}
+
 #: 2026-09-09 main-agent 승인(B-5) — 나머지 6종도 각 페이지 실제 절 내용에 맞춰
 #: 업무지시서 블록명에 가깝게 표시명을 바꾼다. `_SECTION_TITLES`(범용 기본값)를
 #: 깔고 여기 등록된 page_id만 덮어쓴다 — 신규 page_id가 추가돼도 등록을 잊으면
@@ -203,11 +224,28 @@ def render_markdown_report(response: AnalysisSummaryResponse) -> str:
             lines.append(" ".join(sentence.text for sentence in sentences))
         lines.append("")
 
-    # 2026-09-09 발주처 피드백(오전 2차) — 광물자원가격 4종은 "주요 지표" 표를
-    # 표출하지 않는다(발주처 템플릿에 없는 내용이라는 지적). `key_metrics` 자체는
-    # 계속 계산·응답에 실어(API 소비자를 위해) 구조는 그대로 두고, 이 페이지들만
-    # 마크다운 렌더링에서 표를 뺀다.
-    if response.key_metrics and response.page_id not in _PRICE_PAGE_IDS:
+    # 2026-09-10 main-agent 지시 — 2026-09-09 오전 2차 피드백으로 광물자원가격
+    # 4종의 "주요 지표" 표를 껐었는데, 발주처 원본 업무지시서 §3.1(그 피드백보다
+    # 상위 문서)이 9개 항목 표를 명시하고 있어 그 결정을 뒤집는다. price_* 4종은
+    # 전체 key_metrics가 아니라 `_PRICE_KEY_METRIC_ORDER` 화이트리스트 순서·
+    # 라벨로만 표시하고, 나머지 8종은 기존대로 key_metrics 전체를 그대로 낸다.
+    if response.page_id in _PRICE_PAGE_IDS:
+        by_id = {metric.id: metric for metric in response.key_metrics}
+        rows = [
+            (metric_id, by_id[metric_id])
+            for metric_id in _PRICE_KEY_METRIC_ORDER
+            if metric_id in by_id
+        ]
+        if rows:
+            lines.append("## 주요 지표")
+            lines.append("")
+            lines.append("| 지표 | 값 | 단위 |")
+            lines.append("|---|---|---|")
+            for metric_id, metric in rows:
+                value_text, unit_text = _format_metric_row(metric.value, metric.unit)
+                lines.append(f"| {_PRICE_KEY_METRIC_LABELS[metric_id]} | {value_text} | {unit_text} |")
+            lines.append("")
+    elif response.key_metrics:
         lines.append("## 주요 지표")
         lines.append("")
         lines.append("| 지표 | 값 | 단위 |")
