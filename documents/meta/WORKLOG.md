@@ -2,7 +2,33 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-10 (최신) — 글로벌 수급지도(map_global) "기간 변화" 절 렌더링에서 제거(사용자 지시, 커밋 `b64d5ed50`, 병합 `9de084efd`)
+## 2026-09-10 (최신) — 광물지도(map_mineral) "주요 변화" 절 신설 + "전년 대비 변화율" 지표 추가(사용자 지시, 커밋 `e9021585e`, 병합 `ff1d645e1`)
+
+사용자가 광물지도 페이지에 "주요 변화"(최대 증가·감소 국가) 섹션과
+"주요 지표" 6종(세계 매장량/생산량 합계·전년 대비 변화율·조회기간 전체
+변화율·1위 국가 및 비중·CR3·CR5)을 요청. 실제 대조 결과 5개는 이미
+key_metrics에 있었고 "전년 대비 변화율"만 누락돼 있었다. 최대 증가·감소
+국가(`extreme_change_countries`)도 이미 계산돼 있었지만 "국가별 순위 및
+변화"(1~3위 랭킹 서술)와 같은 문단에 묶여 눈에 덜 띄었다.
+
+1. `report_render.py`: 바로 위 map_global "한국 관련 루트" 분리 패턴을
+   `_MAJOR_CHANGES_SPLIT_SECTIONS`(page_id → (evidence_id, 분리 절
+   제목)) 딕셔너리로 일반화, map_mineral(`extreme_change_countries` →
+   "주요 변화") 등록 — JSON 계약은 그대로, 렌더링 단계에서만 분리.
+2. `summary.py`: `_mineral_map_latest_year_change`/`_append_mineral_map_
+   latest_year_change` 신설 — `calculate_mineral_map_summary`(프로즌)가
+   서사 문장 안에서만 쓰던 "직전 연도 대비" 값을 `series.observations`
+   직접 참조로 독립 재계산해 "전년 대비 변화율" key_metric으로 추가
+   (프로즌 파일 사설 헬퍼는 재사용하지 않음).
+
+pyflakes(기존 unused-import 경고 1건 해소 — `_metric` 실사용 전환)/
+unittest 14종/395콤보 스모크(map_mineral 104건 ok) + 104개 조합 전체
+직접 렌더링 재검증(98/104 "## 주요 변화" 정상 분리, 6/104는 증가·감소
+국가가 안 갈리는 데이터라 근거 자체 없어 정상 생략, 104/104 "전년 대비
+변화율" 지표 정상 표시·음수 사례 포함). 배포까지 완료.
+
+
+## 2026-09-10 — 글로벌 수급지도(map_global) "기간 변화" 절 렌더링에서 제거(사용자 지시, 커밋 `b64d5ed50`, 병합 `9de084efd`)
 
 `getListDataNation`이 스냅샷 1건만 주는 게 전형적이라 "기간 변화" 절이
 대부분 "조회기간에 관측일이 1건뿐이라 계산하지 않았다"는 정보량 없는
