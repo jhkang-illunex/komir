@@ -614,16 +614,28 @@ def _calculate_summary(series: IndicatorSeries, policy: PagePolicy) -> _Calculat
             # 준 값을 그대로 신뢰하고(subChart02 수입액과 같은 원칙), 없으면
             # 공급-수요로 직접 계산한다. 비어 있으면(갈륨 실측처럼) 조용히
             # 생략 — 다른 요인과 같은 "있으면 반영" 패턴.
-            # ⚠ 단위(천톤)·"과부족" 부호(양수=과잉 가정)·"공급/수요" 비율
-            # 정의는 실측 대조 불가(갈륨 subChart05가 항상 빈 배열이라 KOMIS
-            # 화면과 대조할 근거가 없음, input_data.py::
-            # _parse_komis_supply_snapshot_response docstring 참고) — 실제로
-            # 값이 채워진 광종을 처음 받으면 KOMIS 화면과 반드시 대조할 것.
+            # 단위(천톤)·"과부족" 부호(공급-수요, 양수=과잉)는 2026-09-10
+            # 동(CU) 실측(사용자 제공)으로 확정 — 세계 수요 26,751(2024년)이
+            # 실제 세계 정제동 생산량(연 약 2,600만~2,700만 톤)과 일치해
+            # "천톤" 단위를 확인했고, "과부족" 10개 값 중 8개가 공급-수요와
+            # 정확히 일치(나머지 2개는 소수점 반올림 오차 1 — KOMIS가 이미
+            # 계산한 값을 그대로 신뢰하는 설계가 맞았다는 근거).
             world_balances = sorted(
                 series.supply_auxiliary.world_balances, key=lambda item: item.year
             )
             if world_balances:
-                latest_balance = world_balances[-1]
+                # subChart05는 과거~미래 예측을 함께 담은 다년 시계열이다
+                # (동 실측: 2024~2033년 10개년, 2027년 이후는 예측치로 추정
+                # 됨) — `[-1]`(최대 연도)을 쓰면 7년 뒤 예측치가 "현재
+                # 수급비율"로 잘못 표시된다(실측 재현: 2033년이 뽑혀 나옴).
+                # 다른 4개 요인처럼 "현재 관측 시점"(current.month의 연도)에
+                # 가장 가까운 연도를 고른다 — 동일 거리면 미래보다 과거를
+                # 우선한다(예측치보다 실적/확정치 쪽에 가깝다는 가정).
+                current_year = int(current.month[:4])
+                latest_balance = min(
+                    world_balances,
+                    key=lambda item: (abs(item.year - current_year), item.year),
+                )
                 demand = latest_balance.demand_thousand_ton
                 supply = latest_balance.supply_thousand_ton
                 balance = latest_balance.balance_thousand_ton
