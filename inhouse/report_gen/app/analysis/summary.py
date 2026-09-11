@@ -129,7 +129,7 @@ from .input_data import (
     _parse_komis_map_korea_response,
     _map_korea_query_filters,
     _parse_komis_map_global_response,
-    _parse_komis_map_global_bar_chart_top_country,
+    _parse_komis_map_global_bar_chart_top_movers,
     _parse_komis_map_global_route_shares,
     _mineral_map_unit_label,
     _mineral_map_value_key,
@@ -1651,9 +1651,9 @@ class AnalysisSummaryService:
 
         series, raw_komis_trade_totals = self._trade_series_from_request(request, "map_global")
         komis_trade_totals = _komis_trade_totals_from_request(request, raw=raw_komis_trade_totals)
-        top_country_yearly_trend = None
+        top_trade_movers = None
         if request.komis_bar_chart_response is not None:
-            top_country_yearly_trend = _parse_komis_map_global_bar_chart_top_country(
+            top_trade_movers = _parse_komis_map_global_bar_chart_top_movers(
                 request.komis_bar_chart_response
             )
         route_shares = None
@@ -1664,7 +1664,7 @@ class AnalysisSummaryService:
             calculate_global_trade_summary,
             series,
             komis_totals=komis_trade_totals,
-            top_country_yearly_trend=top_country_yearly_trend,
+            top_trade_movers=top_trade_movers,
             route_shares=route_shares,
         )
         return self._respond_trade_map(request, series, calculated, effective_page_context("map_global"))

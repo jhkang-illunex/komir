@@ -1231,7 +1231,7 @@ def calculate_global_trade_summary(
     series: TradeMapSeries,
     *,
     komis_totals: TradeKomisTotals | None = None,
-    top_country_yearly_trend: tuple[str, dict[str, float]] | None = None,
+    top_trade_movers: list[dict] | None = None,
     route_shares: list[dict] | None = None,
 ) -> AdditionalCalculatedSummary:
     """글로벌(UN Comtrade) 수급지도 계열 계산 — 원산지→도착지 양자무역 "루트"
@@ -1262,19 +1262,23 @@ def calculate_global_trade_summary(
     실제 달러 규모— 예: 갈륨 한 양자무역 루트가 천만 달러대, 천 달러
     단위로 보면 백억 달러대가 돼 비현실적)로 "달러"임을 확인했다.
 
-    `top_country_yearly_trend`(2026-08-31 신설, `getBarChartDataNation`
-    기반) — 원래 `getListDataNation`은 단일 스냅샷이라(`dates`가 사실상
-    항상 1개) `period_total_change`가 실전에서 거의 발동하지 않았다.
-    바차트가 다년 시계열을 주지만 실측 대조 결과 **바차트 국가합계와
-    list_data의 `sumAmt`가 같은 조회에서 서로 다르다**(예: 2017년 갈륨
-    수입, list sumAmt 886M 대 bar 합계 1,391M — 30% 이상 차이, 두
-    엔드포인트의 "총액" 집계 범위가 다른 것으로 보인다). 그래서 "세계
-    교역 총액 변동"이라 부르는 대신, **바차트 1위국 자신의 연도별
-    수치만** 쓴다(합산이 아니라 KOMIS가 이미 준 국가별 원값이라 집계
-    범위 논쟁이 없다) — `(국가명, {연도: 값})` 튜플. 바차트의 마지막
-    연도는 항상 진행중(실측: 최신 연도 값이 직전 연도의 1/9~1/15로 급감
-    — 연중 미완결 패턴)으로 보고 호출부(`summary.py::
-    _parse_komis_map_global_bar_chart_top_country`)가 이미 제외했다.
+    `top_trade_movers`(2026-08-31 신설, 2026-09-11 3개국 확장,
+    `getBarChartDataNation` 기반) — 원래 `getListDataNation`은 단일
+    스냅샷이라(`dates`가 사실상 항상 1개) `period_total_change`가 실전
+    에서 거의 발동하지 않았다. 바차트가 다년 시계열을 주지만 실측 대조
+    결과 **바차트 국가합계와 list_data의 `sumAmt`가 같은 조회에서 서로
+    다르다**(예: 2017년 갈륨 수입, list sumAmt 886M 대 bar 합계 1,391M —
+    30% 이상 차이, 두 엔드포인트의 "총액" 집계 범위가 다른 것으로
+    보인다). 그래서 "세계 교역 총액 변동"이라 부르는 대신, **국가 자신의
+    연도별 수치만** 쓴다(합산이 아니라 KOMIS가 이미 준 국가별 원값이라
+    집계 범위 논쟁이 없다). 2026-09-11 사용자 지시로 "최신연도 값이 가장
+    큰 1개국"이 아니라 **최근 2개년 변화량(절대값)이 가장 큰 3개국**을
+    고르도록 바꿨다(신호 부호 내림차순 — "+--" 패턴) —
+    `[{country_name, previous_year, previous_value, latest_year,
+    latest_value, change}, ...]` 리스트. 바차트의 마지막 연도는 항상
+    진행중(실측: 최신 연도 값이 직전 연도의 1/9~1/15로 급감 — 연중
+    미완결 패턴)으로 보고 호출부(`input_data.py::
+    _parse_komis_map_global_bar_chart_top_movers`)가 이미 제외했다.
 
     `route_shares`(2026-08-31 신설, `getListMapNationData` 기반) —
     실측 대조로 `crtrNtnAmtRt`/`trgtNtnAmtRt`가 "이 루트가 각국 자신의
@@ -1423,37 +1427,48 @@ def calculate_global_trade_summary(
                     "조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
                 )
             )
-    elif top_country_yearly_trend and len(top_country_yearly_trend[1]) >= 2:
+    elif top_trade_movers:
         # 2026-08-31 신설 — list_data가 스냅샷 1건뿐이라 위 분기가 거의 항상
-        # 빈다(docstring 참고). 바차트 1위국 자체 시계열로 대체한다("세계
-        # 교역 총액"이 아니라 그 국가 자신의 값이라는 걸 문장에 명시).
-        country_name, yearly = top_country_yearly_trend
-        years_sorted = sorted(yearly, key=lambda y: int(y))
-        latest_year, previous_year = years_sorted[-1], years_sorted[-2]
-        latest_val, previous_val = yearly[latest_year], yearly[previous_year]
-        change = _pct(latest_val, previous_val)
-        if change is not None:
-            claims.append(
-                EvidenceClaim(
-                    "country_yearly_trend",
-                    "current_position",
-                    f"KOMIS 차트 기준 {country_name}의 교역액은 {previous_year}년 {_quantity(previous_val)}달러에서 "
-                    f"{latest_year}년 {_quantity(latest_val)}달러로 {_signed_pct(change)} 변동했습니다.",
-                )
+        # 빈다(docstring 참고). 바차트 국가별 시계열로 대체한다("세계
+        # 교역 총액"이 아니라 각 국가 자신의 값이라는 걸 문장에 명시).
+        # 2026-09-11 사용자 지시 — 변화량(절대값) 기준 상위 3개국을 신호
+        # 부호 내림차순("+--" 패턴)으로 나열한다. current_position은
+        # map_global 상 1문장 상한(300자)이라 국가당 전/후 값을 다 싣지
+        # 않고 국가명+변화액(+변화율)만 간결하게 싣는다.
+        previous_year = top_trade_movers[0]["previous_year"]
+        latest_year = top_trade_movers[0]["latest_year"]
+        mover_parts = []
+        for mover in top_trade_movers:
+            change_amount = mover["change"]
+            # 2026-09-11 — "+"/"-" 부호 문자를 직접 붙이면 map_global 공통
+            # 후처리(`summary.py`의 `compact_fact`)의 금액 압축 정규식이
+            # "-"만 숫자에 흡수해 "약 -3,000만"처럼 부호 위치가 "+"와
+            # 비대칭으로 어색해진다(실측 확인) — 부호 문자 대신 "증가"/
+            # "감소" 단어로 방향을 표현한다("증가"/"감소" 순서 자체가
+            # +-- 패턴을 나타낸다). %는 `_signed_pct`가 이미 이 정규식
+            # 대상이 아니라 +/- 그대로 정상 표시된다.
+            direction = "증가" if change_amount >= 0 else "감소"
+            change_pct = _pct(mover["latest_value"], mover["previous_value"])
+            pct_clause = f"({_signed_pct(change_pct)})" if change_pct is not None else ""
+            mover_parts.append(
+                f"{mover['country_name']} {_quantity(abs(change_amount))}달러 {direction}{pct_clause}"
             )
             key_metrics.append(
                 _price_metric(
-                    "country_yearly_trend_pct", f"{country_name} 연도별 교역액 변동", change * 100, unit="%"
+                    f"trade_mover_{mover['country_name']}_change",
+                    f"{mover['country_name']} 연도별 교역액 변화",
+                    change_amount,
+                    unit="달러",
                 )
             )
-        else:
-            claims.append(
-                EvidenceClaim(
-                    "single_snapshot",
-                    "current_position",
-                    "조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
-                )
+        claims.append(
+            EvidenceClaim(
+                "country_yearly_trend",
+                "current_position",
+                f"KOMIS 차트 기준 {previous_year}년→{latest_year}년 교역액 변화량(절대값)이 컸던 "
+                f"상위 {len(top_trade_movers)}개국은 " + ", ".join(mover_parts) + "했습니다.",
             )
+        )
     else:
         claims.append(
             EvidenceClaim(

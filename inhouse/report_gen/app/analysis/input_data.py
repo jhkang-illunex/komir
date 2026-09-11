@@ -415,16 +415,24 @@ def _parse_komis_map_global_response(raw: dict) -> tuple[list[dict], dict | None
     return observations, komis_trade_totals, mineral_code
 
 
-def _parse_komis_map_global_bar_chart_top_country(raw: dict) -> tuple[str, dict[str, float]] | None:
-    """`getBarChartDataNation` 원본 응답 → `(1위국명, {연도: 값})`.
+def _parse_komis_map_global_bar_chart_top_movers(raw: dict) -> list[dict] | None:
+    """`getBarChartDataNation` 원본 응답 → 최근 2개년 교역액 변화량(절대값)
+    기준 상위 3개국 `[{country_name, previous_year, previous_value,
+    latest_year, latest_value, change}, ...]`(신호 부호 내림차순 정렬 —
+    호출부가 그대로 "+--" 패턴으로 서술할 수 있게).
 
-    2026-08-31 신설 — `getListDataNation`이 스냅샷 1건뿐이라 실전에서
+    2026-09-11 사용자 지시로 확장 — 예전엔 최신연도 값 기준 1위국만
+    골라 그 국가의 연도별 추이 하나만 보여줬는데("교역액이 많이 변화된
+    국가"가 아니라 "교역액 자체가 큰 국가"를 고르던 것과 다르다), 이제
+    변화량(latest-previous)의 절대값 기준으로 상위 3개국을 고른다.
+
+    2026-08-31 신설 배경 — `getListDataNation`이 스냅샷 1건뿐이라 실전에서
     기간변화(`period_total_change`)가 거의 항상 비어 있던 문제(map_global
     `dates`가 사실상 항상 1개)를 완화한다. 실측 대조 결과 바차트 국가별
     합계가 `getListDataNation`의 `sumAmt`와 다르다(예: 2017년 갈륨 수입,
     list sumAmt 886M 대 bar 국가합계 1,391M — 30%대 차이) — 두 엔드포인트의
     "총액" 집계 범위가 다른 것으로 보여 합산값을 "세계 교역 총액"이라
-    부르지 않는다. 대신 **1위국 자신의 연도별 원값**만 쓴다(집계가 아니라
+    부르지 않는다. 대신 **국가 자신의 연도별 원값**만 쓴다(집계가 아니라
     KOMIS가 이미 국가 단위로 준 값 그대로라 범위 논쟁이 없다).
 
     ⚠바차트의 마지막 연도(`xaxis[-1]`)는 항상 연중 진행분으로 취급해
@@ -442,21 +450,39 @@ def _parse_komis_map_global_bar_chart_top_country(raw: dict) -> tuple[str, dict[
         return None
     complete_years = xaxis[:-1]
     latest_idx = len(complete_years) - 1
-
-    def _value_at(entry: dict, idx: int) -> float:
-        values = entry.get("data") or []
-        return float(values[idx]) if idx < len(values) and values[idx] is not None else 0.0
-
-    ranked = sorted(series, key=lambda entry: _value_at(entry, latest_idx), reverse=True)
-    top = ranked[0]
-    yearly = {
-        str(complete_years[i]): _value_at(top, i)
-        for i in range(len(complete_years))
-        if (top.get("data") or [None] * len(complete_years))[i] is not None
-    }
-    if len(yearly) < 2:
+    previous_idx = latest_idx - 1
+    if previous_idx < 0:
         return None
-    return (top.get("name") or top.get("seriesCd") or "1위국"), yearly
+
+    def _value_at(entry: dict, idx: int) -> float | None:
+        values = entry.get("data") or []
+        if idx >= len(values) or values[idx] is None:
+            return None
+        return float(values[idx])
+
+    candidates = []
+    for entry in series:
+        latest_val = _value_at(entry, latest_idx)
+        previous_val = _value_at(entry, previous_idx)
+        name = entry.get("name") or entry.get("seriesCd")
+        if latest_val is None or previous_val is None or not name:
+            continue
+        candidates.append(
+            {
+                "country_name": name,
+                "previous_year": str(complete_years[previous_idx]),
+                "previous_value": previous_val,
+                "latest_year": str(complete_years[latest_idx]),
+                "latest_value": latest_val,
+                "change": latest_val - previous_val,
+            }
+        )
+    if not candidates:
+        return None
+    candidates.sort(key=lambda c: abs(c["change"]), reverse=True)
+    top3 = candidates[: min(3, len(candidates))]
+    top3.sort(key=lambda c: c["change"], reverse=True)
+    return top3
 
 
 def _parse_komis_map_global_route_shares(raw: dict) -> list[dict]:
