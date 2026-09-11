@@ -469,7 +469,7 @@ def calculate_price_summary(
                     # 묶으라는 요구로 옮겼다. 아래 week/month/year_avg도 동일.
                     "day_over_day",
                     "core_diagnosis",
-                    f"{comparison_label} 대비 {_signed_pct(change)} 변동했습니다.",
+                    f"{comparison_label} 대비 {_signed_pct(change)}했습니다.",
                     required=True,
                 )
             )
@@ -521,7 +521,7 @@ def calculate_price_summary(
                 EvidenceClaim(
                     metric_id,
                     "core_diagnosis",
-                    f"{label}({_quantity(komis_avg.average_price)}) 대비 {_price_comparison_phrase(change)}",
+                    f"{label}({_quantity(komis_avg.average_price)}{price_unit_label or ''}) 대비 {_price_comparison_phrase(change)}",
                 )
             )
             key_metrics.append(_price_metric(f"{metric_id}_change_pct", f"{label}대비", change * 100, unit="%"))
@@ -540,7 +540,7 @@ def calculate_price_summary(
             EvidenceClaim(
                 metric_id,
                 "core_diagnosis",
-                f"{label}({_quantity(avg)}) 대비 {_price_comparison_phrase(change)}",
+                f"{label}({_quantity(avg)}{price_unit_label or ''}) 대비 {_price_comparison_phrase(change)}",
             )
         )
         key_metrics.append(_price_metric(f"{metric_id}_change_pct", f"{label}대비", change * 100, unit="%"))
@@ -606,8 +606,8 @@ def calculate_price_summary(
                     EvidenceClaim(
                         "period_overall_change",
                         "major_changes",
-                        f"조회기간 시작({_korean_date(first.date)}, {_quantity(first.commerce_price)}) 대비 "
-                        f"{_signed_pct(overall_change)} 변동했습니다.",
+                        f"조회기간 시작({_korean_date(first.date)}, {_quantity(first.commerce_price)}{price_unit_label or ''}) 대비 "
+                        f"{_signed_pct(overall_change)}했습니다.",
                     )
                 )
 
@@ -654,8 +654,8 @@ def calculate_price_summary(
         low_obs = min(observations_with_price, key=lambda item: item.lowest_price)
         period_high, period_low = high_obs.highest_price, low_obs.lowest_price
         range_fact = (
-            f"조회기간 중 최고 {_quantity(period_high)}({_korean_date(high_obs.date)}), "
-            f"최저 {_quantity(period_low)}({_korean_date(low_obs.date)})였습니다."
+            f"조회기간 중 최고 {_quantity(period_high)}{price_unit_label or ''}({_korean_date(high_obs.date)}), "
+            f"최저 {_quantity(period_low)}{price_unit_label or ''}({_korean_date(low_obs.date)})였습니다."
         )
     elif observations_with_price:
         high_obs = max(observations_with_price, key=lambda item: item.commerce_price)
@@ -665,8 +665,8 @@ def calculate_price_summary(
         # 계산했음을 문구로 구분한다 — "KOMIS 공식 최고/최저"인 것처럼 단정하지
         # 않는다(main-agent 지시).
         range_fact = (
-            f"조회기간 관측치(실거래가) 기준 최고 {_quantity(period_high)}({_korean_date(high_obs.date)}), "
-            f"최저 {_quantity(period_low)}({_korean_date(low_obs.date)})였습니다."
+            f"조회기간 관측치(실거래가) 기준 최고 {_quantity(period_high)}{price_unit_label or ''}({_korean_date(high_obs.date)}), "
+            f"최저 {_quantity(period_low)}{price_unit_label or ''}({_korean_date(low_obs.date)})였습니다."
         )
     if period_high is not None and period_low is not None:
         claims.append(
@@ -709,7 +709,7 @@ def calculate_price_summary(
                 EvidenceClaim(
                     "recovery_since_low",
                     "current_position",
-                    f"조회기간 저점({_korean_date(low_obs.date)}, {_quantity(period_low)}) 대비 "
+                    f"조회기간 저점({_korean_date(low_obs.date)}, {_quantity(period_low)}{price_unit_label or ''}) 대비 "
                     f"현재가는 {_number(recovery_pct * 100)}% 회복한 수준입니다.",
                 )
             )
@@ -883,7 +883,7 @@ def calculate_price_summary(
         at_peak = drawdown_stats["current_dd_pct"] >= -0.005  # 반올림상 0%대(현재가=조회기간 최고가)
         peak_desc = (
             f"조회기간 중 최고가({_korean_date(drawdown_stats['overall_peak_date'])}, "
-            f"{_quantity(drawdown_stats['overall_peak_price'])})"
+            f"{_quantity(drawdown_stats['overall_peak_price'])}{price_unit_label or ''})"
         )
         if position_label is not None:
             if at_peak:
@@ -960,8 +960,8 @@ def calculate_price_summary(
                     "compare_overall_change",
                     "current_position",
                     f"같은 조회기간 동안 {_topic(compare_series.mineral.name)} "
-                    f"{_signed_pct(compare_overall)} 변동한 반면, {_topic(series.mineral.name)} "
-                    f"{_signed_pct(primary_overall)} 변동했습니다.",
+                    f"{_signed_pct(compare_overall)}한 반면, {_topic(series.mineral.name)} "
+                    f"{_signed_pct(primary_overall)}했습니다.",
                 )
             )
             key_metrics.append(
@@ -1413,7 +1413,7 @@ def calculate_global_trade_summary(
                 EvidenceClaim(
                     "period_total_change",
                     "current_position",
-                    f"직전 관측연도({_korean_year(previous_date)})의 세계 교역 총액 {_quantity(previous_total)}달러 대비 {_korean_year(latest_date)} 총액은 {_quantity(total)}달러로 {_signed_pct(change)} 변동했습니다.",
+                    f"직전 관측연도({_korean_year(previous_date)})의 세계 교역 총액 {_quantity(previous_total)}달러 대비 {_korean_year(latest_date)} 총액은 {_quantity(total)}달러로 {_signed_pct(change)}했습니다.",
                 )
             )
             key_metrics.append(
@@ -1445,11 +1445,12 @@ def calculate_global_trade_summary(
             # "-"만 숫자에 흡수해 "약 -3,000만"처럼 부호 위치가 "+"와
             # 비대칭으로 어색해진다(실측 확인) — 부호 문자 대신 "증가"/
             # "감소" 단어로 방향을 표현한다("증가"/"감소" 순서 자체가
-            # +-- 패턴을 나타낸다). %는 `_signed_pct`가 이미 이 정규식
-            # 대상이 아니라 +/- 그대로 정상 표시된다.
+            # +-- 패턴을 나타낸다). 괄호 안 %는 이미 "증가"/"감소" 단어가
+            # 방향을 말하고 있어 부호·방향어를 또 붙이지 않고 순수 숫자만
+            # 둔다(발주처 공통 개선요청[1] — "+/-" 대신 방향을 말로).
             direction = "증가" if change_amount >= 0 else "감소"
             change_pct = _pct(mover["latest_value"], mover["previous_value"])
-            pct_clause = f"({_signed_pct(change_pct)})" if change_pct is not None else ""
+            pct_clause = f"({_number(abs(change_pct) * 100)}%)" if change_pct is not None else ""
             mover_parts.append(
                 f"{mover['country_name']} {_quantity(abs(change_amount))}달러 {direction}{pct_clause}"
             )
@@ -1571,8 +1572,20 @@ def _price_comparison_phrase(change: float) -> str:
 
 
 def _signed_pct(value: float) -> str:
-    sign = "+" if value >= 0 else ""
-    return f"{sign}{_number(value * 100)}%"
+    # 2026-09-11 발주처 공통 개선요청[1] — "+5.00%"/"-12.34%"처럼 부호
+    # 문자를 그대로 노출하지 말고 "5.00% 상승"/"12.34% 하락"처럼 방향을
+    # 말로 표현한다(재고량 부분이 2026-09-10에 이미 같은 이유로 이렇게
+    # 바뀌어 있었다 — "부호 붙은 등락률보다 방향을 말로 밝히는 쪽이
+    # 해석하기 쉽다"). "했습니다"/"한 반면" 등 활용은 호출부가 문맥에
+    # 맞게 붙인다(이 함수는 항상 "-습니다"로 끝나지 않는다 — 관형형으로도
+    # 쓰이므로 완결형을 강제하지 않는다). "보합"은 표준국어대사전에
+    # "보합하다"(시세가 변동 없이 계속되다)가 동사로 등재돼 있어
+    # "보합했습니다"/"보합한"으로 그대로 활용해도 문법상 맞다.
+    if value > 0:
+        return f"{_number(value * 100)}% 상승"
+    if value < 0:
+        return f"{_number(abs(value) * 100)}% 하락"
+    return "보합"
 
 
 def _shift_date(date_text: str, days: int) -> str:
