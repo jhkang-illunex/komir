@@ -813,6 +813,18 @@ def _validate_llm_summary(
                 quantities = re.findall(r"약 [\d,]+[만억] ?(?:달러|톤)", evidence_text)
                 if any(value not in sentence.text for value in quantities):
                     return "지도 축약 금액·물량 또는 단위를 누락하거나 변경했다."
+            if page_id == "map_mineral" and "extreme_change_countries" in sentence.evidence_ids:
+                # 2026-09-11 사용자 지적 — "주요 변화"에 감소국만 나오고
+                # 증가국이 안 보인다는 제보. 재현은 안 됐지만(실측 5개년·
+                # 2개년 데이터 둘 다 양쪽 다 정상 표시) 근거 자체가 "증가한
+                # 국가는 X이며, 감소한 국가는 Y입니다" 두 국가명을 담은
+                # 한 문장이라 LLM이 한쪽만 남겨도 국가명은 숫자가 아니라
+                # 기존 숫자보존 검사(`_number_tokens`)로는 못 잡는 구조적
+                # 사각지대였다 — 두 국가명이 근거에 있으면 출력에도 둘 다
+                # 있어야 한다고 검증한다.
+                extreme_countries = re.findall(r"(?:증가한|감소한) 국가는 (.*?)(?:이며|입니다)", evidence_text)
+                if any(country not in sentence.text for country in extreme_countries):
+                    return "주요 변화(증가국·감소국)를 일부 누락했다."
             if page_id == "indicator_supply" and "supply_factor_world_concentration" in sentence.evidence_ids:
                 countries = re.findall(r"1위는 (.*?)이며", evidence_text)
                 if any(country not in sentence.text for country in countries):
