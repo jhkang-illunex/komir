@@ -63,6 +63,8 @@ if TYPE_CHECKING:
 from .komir_summary import (  # noqa: E402
     _detect_granularity,
     _pct,
+    _quantity,
+    _toward,
     calculate_domestic_trade_summary,
     calculate_global_trade_summary,
     calculate_price_group_summary,
@@ -328,11 +330,12 @@ def _apply_polite_endings(
     calculated.claims = new_claims
 
 
-def _mineral_map_extreme_change_countries(series: MineralMapSeries) -> tuple[str | None, str | None] | None:
+def _mineral_map_extreme_change_countries(series: MineralMapSeries) -> tuple[dict | None, dict | None, int, int] | None:
     """조회기간 첫 해→마지막 해 사이 매장량/생산량이 가장 크게 늘거나
-    준 국가를 (증가국, 감소국)으로 찾는다 — 둘 다 없으면(전 국가 무변화)
-    전체가 `None`, 한쪽 방향이 아예 없으면(예: 전부 증가만 하고 감소한
-    국가가 하나도 없음) 그쪽만 `None`으로 채워 반환한다.
+    준 국가를 (증가국 상세, 감소국 상세, 시작연도, 최근연도)로 찾는다 —
+    둘 다 없으면(전 국가 무변화) 전체가 `None`, 한쪽 방향이 아예 없으면
+    (예: 전부 증가만 하고 감소한 국가가 하나도 없음) 그쪽만 `None`으로
+    채워 반환한다. 각 상세는 `{name, start_value, current_value, change}`.
 
     2026-09-09 발주처 업무지시서 §3.3 ③④ 대응(사용자 승인) —
     `calculate_mineral_map_summary`(프로즌)는 상위 3개국 개별 변화만
@@ -348,7 +351,12 @@ def _mineral_map_extreme_change_countries(series: MineralMapSeries) -> tuple[str
     특성상(매장량은 장기적으로 늘기만 하거나, 짧은 최근 2개년 윈도우는
     거의 다 줄기만 하는 경우가 흔하다) 한쪽 방향이 아예 없는 조회가
     드물지 않다 — 이 경우 "주요 변화" 섹션 전체가 통째로 사라지는 것보다
-    있는 쪽만이라도 보여주는 게 사용자 의도에 맞는다."""
+    있는 쪽만이라도 보여주는 게 사용자 의도에 맞는다.
+
+    2026-09-11 사용자 지시("증가 감소 실제값, 비율도 같이 기재") —
+    국가명만 있던 반환값에 시작값·현재값·변화량을 추가했다(비율은
+    호출부가 `_pct()`로 그때그때 계산 — 시작값 0인 신규 진입 국가는
+    비율이 정의되지 않는다)."""
 
     filtered = [o for o in series.observations if not o.is_total and not o.is_other]
     years = sorted({o.year for o in filtered})
@@ -364,11 +372,37 @@ def _mineral_map_extreme_change_countries(series: MineralMapSeries) -> tuple[str
     changes = {code: current_values.get(code, 0.0) - start_values.get(code, 0.0) for code in codes}
     max_increase_code = max(codes, key=lambda code: changes[code])
     max_decrease_code = min(codes, key=lambda code: changes[code])
-    increase_name = names[max_increase_code] if changes[max_increase_code] > 0 else None
-    decrease_name = names[max_decrease_code] if changes[max_decrease_code] < 0 else None
-    if increase_name is None and decrease_name is None:
+
+    def _detail(code: str) -> dict:
+        return {
+            "name": names[code],
+            "start_value": start_values.get(code, 0.0),
+            "current_value": current_values.get(code, 0.0),
+            "change": changes[code],
+        }
+
+    increase_detail = _detail(max_increase_code) if changes[max_increase_code] > 0 else None
+    decrease_detail = _detail(max_decrease_code) if changes[max_decrease_code] < 0 else None
+    if increase_detail is None and decrease_detail is None:
         return None
-    return increase_name, decrease_name
+    return increase_detail, decrease_detail, start_year, current_year
+
+
+def _extreme_change_country_clause(detail: dict, start_year: int, current_year: int, unit: str) -> str:
+    """`_mineral_map_extreme_change_countries`의 국가 1건 상세 →
+    "{국가}로, {시작연도}년 {값}{단위}에서 {최근연도}년 {값}{단위}로
+    {변화량}{단위}({비율}%) 증가/감소했습니다" 완성 문장. 시작값이 0
+    (조회기간 첫 해엔 없던 국가가 새로 집계된 경우)이면 비율이 정의되지
+    않으므로 "(신규 집계)"로 대체한다."""
+
+    direction = "증가" if detail["change"] > 0 else "감소"
+    pct = _pct(detail["current_value"], detail["start_value"])
+    pct_clause = f"({_number(abs(pct) * 100)}%)" if detail["start_value"] > 0 and pct is not None else "(신규 집계)"
+    return (
+        f"{_toward(detail['name'])}, {start_year}년 {_quantity(detail['start_value'])}{unit}에서 "
+        f"{current_year}년 {_quantity(detail['current_value'])}{unit}으로 "
+        f"{_quantity(abs(detail['change']))}{unit} {pct_clause} {direction}했습니다"
+    )
 
 
 def _append_mineral_map_extreme_change(calculated: AdditionalCalculatedSummary, series: MineralMapSeries) -> None:
@@ -381,28 +415,42 @@ def _append_mineral_map_extreme_change(calculated: AdditionalCalculatedSummary, 
     extreme = _mineral_map_extreme_change_countries(series)
     if extreme is None:
         return
-    max_increase_country, max_decrease_country = extreme
+    increase_detail, decrease_detail, start_year, current_year = extreme
     measure_name = "매장량" if series.measure == "reserves" else "생산량"
-    if max_increase_country and max_decrease_country:
+    unit = series.unit
+    if increase_detail and decrease_detail:
         fact = (
-            f"조회기간 중 {measure_name}이 가장 크게 증가한 국가는 {max_increase_country}이며, "
-            f"가장 크게 감소한 국가는 {max_decrease_country}입니다."
+            f"조회기간 중 {measure_name}이 가장 크게 증가한 국가는 "
+            + _extreme_change_country_clause(increase_detail, start_year, current_year, unit)
+            + ". 가장 크게 감소한 국가는 "
+            + _extreme_change_country_clause(decrease_detail, start_year, current_year, unit)
+            + "."
         )
-    elif max_increase_country:
-        fact = f"조회기간 중 {measure_name}이 가장 크게 증가한 국가는 {max_increase_country}입니다."
+    elif increase_detail:
+        fact = (
+            f"조회기간 중 {measure_name}이 가장 크게 증가한 국가는 "
+            + _extreme_change_country_clause(increase_detail, start_year, current_year, unit)
+            + "."
+        )
     else:
-        fact = f"조회기간 중 {measure_name}이 가장 크게 감소한 국가는 {max_decrease_country}입니다."
+        fact = (
+            f"조회기간 중 {measure_name}이 가장 크게 감소한 국가는 "
+            + _extreme_change_country_clause(decrease_detail, start_year, current_year, unit)
+            + "."
+        )
     calculated.claims.append(
         EvidenceClaim("extreme_change_countries", "major_changes", fact, required=True)
     )
     # key_metrics·detailed_metrics는 계산기(additional_summary.py)가 만들
     # 때부터 별개 리스트(detailed_metrics = [*key_metrics, 추가 항목])라
     # 두 곳에 각각 추가해야 한다 — 한쪽만 덮어쓰면 다른 항목이 사라진다.
+    # 2026-09-11 — 실제값·비율은 이제 서사 문장에 이미 있으므로 표
+    # (key_metrics, 8개 상한)엔 국가명만 그대로 유지한다(중복 노출 방지).
     new_metrics = []
-    if max_increase_country:
-        new_metrics.append(Metric(id="max_increase_country", label="최대 증가 국가", status="available", value=max_increase_country))
-    if max_decrease_country:
-        new_metrics.append(Metric(id="max_decrease_country", label="최대 감소 국가", status="available", value=max_decrease_country))
+    if increase_detail:
+        new_metrics.append(Metric(id="max_increase_country", label="최대 증가 국가", status="available", value=increase_detail["name"]))
+    if decrease_detail:
+        new_metrics.append(Metric(id="max_decrease_country", label="최대 감소 국가", status="available", value=decrease_detail["name"]))
     calculated.key_metrics.extend(new_metrics)
     calculated.detailed_metrics.extend(new_metrics)
 
@@ -817,14 +865,19 @@ def _validate_llm_summary(
                 # 2026-09-11 사용자 지적 — "주요 변화"에 감소국만 나오고
                 # 증가국이 안 보인다는 제보. 재현은 안 됐지만(실측 5개년·
                 # 2개년 데이터 둘 다 양쪽 다 정상 표시) 근거 자체가 "증가한
-                # 국가는 X이며, 감소한 국가는 Y입니다" 두 국가명을 담은
-                # 한 문장이라 LLM이 한쪽만 남겨도 국가명은 숫자가 아니라
-                # 기존 숫자보존 검사(`_number_tokens`)로는 못 잡는 구조적
-                # 사각지대였다 — 두 국가명이 근거에 있으면 출력에도 둘 다
-                # 있어야 한다고 검증한다.
-                extreme_countries = re.findall(r"(?:증가한|감소한) 국가는 (.*?)(?:이며|입니다)", evidence_text)
+                # 국가는 X로, ...했습니다. 감소한 국가는 Y로, ...했습니다"
+                # 두 국가명을 담은 문장이라 LLM이 한쪽만 남겨도 국가명은
+                # 숫자가 아니라 기존 숫자보존 검사(`_number_tokens`)로는
+                # 못 잡는 구조적 사각지대였다 — 두 국가명이 근거에 있으면
+                # 출력에도 둘 다 있어야 한다고 검증한다. 같은 날 후속 지시로
+                # 이 근거에 실제값·변화량·비율 숫자도 추가됐으니(구 국가명
+                # 하나뿐이던 짧은 문장과 달리 지금은 숫자가 많아졌다) 역방향
+                # 숫자보존(근거의 숫자가 전부 출력에 있어야 함)도 같이 본다.
+                extreme_countries = re.findall(r"(?:증가한|감소한) 국가는 (.*?)(?:으로|로|이며|입니다)", evidence_text)
                 if any(country not in sentence.text for country in extreme_countries):
                     return "주요 변화(증가국·감소국)를 일부 누락했다."
+                if not _number_tokens(evidence_text) <= _number_tokens(sentence.text):
+                    return "주요 변화의 실제값·변화량·비율 수치를 누락했다."
             if page_id == "indicator_supply" and "supply_factor_world_concentration" in sentence.evidence_ids:
                 countries = re.findall(r"1위는 (.*?)이며", evidence_text)
                 if any(country not in sentence.text for country in countries):
