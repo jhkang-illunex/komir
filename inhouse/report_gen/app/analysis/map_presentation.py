@@ -17,10 +17,13 @@ def compact_quantity(value: float, unit: str) -> tuple[str, str]:
     if abs(amount) >= 10000:
         # 2026-09-11 사용자 지적 — 정수(소수점 0자리)로 반올림하면 예를
         # 들어 1.5억~2.49억이 전부 "약 2억"으로 뭉개져(최대 약 33% 상대
-        # 오차) "1.7~1.8억인데 2억으로 나온다"는 혼동을 준다. 소수점
-        # 1자리까지 남겨 오차를 ±5% 수준으로 줄이되, 정수로 딱 떨어지면
-        # (예: 2.0억) 불필요한 ".0"은 보이지 않는다.
-        rounded = (amount / divisor).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
+        # 오차) "1.7~1.8억인데 2억으로 나온다"는 혼동을 준다. 1차로 소수점
+        # 1자리까지 남겼다가, 같은 날 사용자 후속 지시("소수점 이하
+        # 3자리에서 반올림해서 2자리까지 표기")로 소수점 2자리까지
+        # 확장했다(오차 ±0.5% 수준) — 돈·무게라 더 러프하면 안 된다는
+        # 판단. 정수로 딱 떨어지면(예: 2.00억) 불필요한 ".00"은 보이지
+        # 않는다.
+        rounded = (amount / divisor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         display = f"{int(rounded):,}" if rounded == rounded.to_integral_value() else f"{rounded:,}"
         return f"약 {display}{suffix}", label
     return f"{amount.normalize():,f}", label
