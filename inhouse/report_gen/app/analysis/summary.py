@@ -801,7 +801,11 @@ def _validate_llm_summary(
             evidence_text = " ".join(claim.fact for claim in typed_references)
             if not _number_tokens(sentence.text) <= _number_tokens(evidence_text):
                 return "근거에 없는 숫자나 날짜를 사용했다."
-            if ((page_id in {"map_korea", "map_global"} and any(c.id in {"current_state", "export_summary", "top1_country", "korea_route_rank", "trade_scale_trend"} for c in typed_references))
+            # 2026-09-11 사용자 지적 — country_yearly_trend(상위 3개국 교역액
+            # 변화) 문장을 LLM이 정제할 때 연도(전년→당해)를 조용히 빠뜨려
+            # "언제 대비 언제인지 모르겠다"는 문제가 생길 수 있다 — 이 집합에
+            # 추가해 근거의 연도·금액·비율 숫자가 전부 출력에 남게 강제한다.
+            if ((page_id in {"map_korea", "map_global"} and any(c.id in {"current_state", "export_summary", "top1_country", "korea_route_rank", "trade_scale_trend", "country_yearly_trend"} for c in typed_references))
                     or (page_id == "indicator_supply" and any(eid in _SUPPLY_FACTOR_EVIDENCE_IDS for eid in sentence.evidence_ids))):
                 if not _number_tokens(evidence_text) <= _number_tokens(sentence.text):
                     return "지도 금액·비중·시계열 또는 구성요소 상세 수치를 누락했다."

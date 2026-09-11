@@ -1465,8 +1465,14 @@ def calculate_global_trade_summary(
             EvidenceClaim(
                 "country_yearly_trend",
                 "current_position",
-                f"KOMIS 차트 기준 {previous_year}년→{latest_year}년 교역액 변화량(절대값)이 컸던 "
-                f"상위 {len(top_trade_movers)}개국은 " + ", ".join(mover_parts) + "했습니다.",
+                # 2026-09-11 사용자 지적 — "언제 대비 언제 비교인지 모르겠다"는
+                # 지적으로 화살표(→) 대신 이 코드베이스 전반에서 쓰는 "N년
+                # 대비 M년" 어투로 바꾸고(map_korea·indicator_* 페이지의
+                # "전년 대비"·"전월 대비"와 같은 표현), _validate_llm_summary
+                # 의 country_yearly_trend 역방향 숫자보존 검사(신설)로 LLM
+                # 정제가 연도를 조용히 빠뜨리지 못하게 했다.
+                f"KOMIS 차트 기준 {previous_year}년 대비 {latest_year}년 교역액 변화량(절대값)이 "
+                f"컸던 상위 {len(top_trade_movers)}개국은 " + ", ".join(mover_parts) + "했습니다.",
             )
         )
     else:
