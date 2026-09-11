@@ -858,7 +858,9 @@ def _validate_llm_summary(
                 if not _number_tokens(evidence_text) <= _number_tokens(sentence.text):
                     return "지도 금액·비중·시계열 또는 구성요소 상세 수치를 누락했다."
             if page_id in {"map_korea", "map_global", "map_mineral"}:
-                quantities = re.findall(r"약 [\d,]+[만억] ?(?:달러|톤)", evidence_text)
+                # 2026-09-11 — compact_quantity()가 소수점 1자리까지 표시하도록
+                # 바뀌어("약 1.8억") 정수만 매칭하던 패턴을 소수점 허용으로 확장.
+                quantities = re.findall(r"약 [\d,]+(?:\.\d+)?[만억] ?(?:달러|톤)", evidence_text)
                 if any(value not in sentence.text for value in quantities):
                     return "지도 축약 금액·물량 또는 단위를 누락하거나 변경했다."
             if page_id == "map_mineral" and "extreme_change_countries" in sentence.evidence_ids:
