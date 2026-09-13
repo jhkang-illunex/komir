@@ -46,6 +46,10 @@ _PRICE_KEY_METRIC_ORDER = (
     "latest_price", "week_avg_change_pct", "month_avg_change_pct",
     "year_avg_change_pct", "price_streak_length", "period_high",
     "period_low", "drawdown_from_period_high_pct", "recent_volatility_pct",
+    # 2026-09-13 사용자 결정 — 비교광종을 넣었을 때만 생기는
+    # "{비교광종} 대비 조회기간 변화율차"도 표에 노출한다(라벨은 광종명이
+    # 들어가 동적이라 `_PRICE_KEY_METRIC_LABELS`가 아니라 metric.label 사용).
+    "compare_overall_change_pct",
 )
 _PRICE_KEY_METRIC_LABELS = {
     "latest_price": "현재가격", "week_avg_change_pct": "전주 대비",
@@ -148,6 +152,18 @@ _FILTER_LABELS = {
 }
 
 
+def _trim_trailing_zero(text: str) -> str:
+    """2026-09-13 사용자 지시 — "전체 공통 소수점 이하 3자리에서 반올림
+    표시할 때 소수점 이하 2번째 자리가 0이면 생략"(예: 45.70 → 45.7,
+    0.00 → 0). `additional_summary.py::_trim_trailing_zero`와 로직이
+    같다 — 이 파일은 그 모듈을 import하지 않는다는 기존 원칙(아래
+    2026-09-09 주석 참고)이라 로직만 그대로 복제한다."""
+
+    if "." not in text:
+        return text
+    return text.rstrip("0").rstrip(".")
+
+
 def _format_metric_row(value: float | int | str | None, unit: str | None) -> tuple[str, str]:
     """(값 문자열, 단위 문자열) — `unit="ratio"`(0.0356 같은 소수)는 표에서
     읽기 힘들어(2026-08-26 KOMIS 실데이터 회귀 테스트(/unlazy)에서 발견 —
@@ -157,7 +173,7 @@ def _format_metric_row(value: float | int | str | None, unit: str | None) -> tup
     if value is None:
         return "-", unit or ""
     if unit == "ratio" and isinstance(value, (int, float)):
-        return f"{value * 100:,.2f}", "%"
+        return _trim_trailing_zero(f"{value * 100:,.2f}"), "%"
     if isinstance(value, float):
         # 2026-09-09 main-agent 지적(C-9) — price_* 4종은 이미 `_quantity()`
         # (정수면 소숫점 생략)로 "16,780.00"류 표기를 없앴는데, 이 함수는
@@ -168,7 +184,7 @@ def _format_metric_row(value: float | int | str | None, unit: str | None) -> tup
         # 그대로 복제한다(렌더링 계층이 그 모듈에 의존하지 않게 유지).
         if value.is_integer():
             return f"{int(value):,}", unit or ""
-        return f"{value:,.2f}", unit or ""
+        return _trim_trailing_zero(f"{value:,.2f}"), unit or ""
     return str(value), unit or ""
 
 
@@ -223,7 +239,7 @@ def render_markdown_report(response: AnalysisSummaryResponse) -> str:
         )
         lines.append("")
     if response.grade is not None:
-        lines.append(f"**현재 단계**: {response.grade.label} ({response.grade.score:,.2f}점)")
+        lines.append(f"**현재 단계**: {response.grade.label} ({_trim_trailing_zero(f'{response.grade.score:,.2f}')}점)")
         lines.append("")
 
     if response.page_id in _PRICE_PAGE_IDS:
@@ -237,7 +253,8 @@ def render_markdown_report(response: AnalysisSummaryResponse) -> str:
             )
         for hidden_key in _HIDDEN_SECTIONS.get(response.page_id, frozenset()):
             if response.page_id == "map_global" and any("single_snapshot" not in sentence.evidence_ids for sentence in response.summary.current_position):
-                section_titles[hidden_key] = "참고: 연도별 교역액 변화"
+                # 2026-09-13 사용자 지시 — "참고:" 접두어 제거.
+                section_titles[hidden_key] = "연도별 교역액 변화"
             else:
                 section_titles.pop(hidden_key, None)
     for key, title in section_titles.items():
@@ -306,7 +323,7 @@ def render_markdown_report(response: AnalysisSummaryResponse) -> str:
             lines.append("|---|---|---|")
             for metric_id, metric in rows:
                 value_text, unit_text = _format_metric_row(metric.value, metric.unit)
-                lines.append(f"| {_PRICE_KEY_METRIC_LABELS[metric_id]} | {value_text} | {unit_text} |")
+                lines.append(f"| {_PRICE_KEY_METRIC_LABELS.get(metric_id, metric.label)} | {value_text} | {unit_text} |")
             lines.append("")
     elif response.key_metrics:
         lines.append("## 주요 지표")

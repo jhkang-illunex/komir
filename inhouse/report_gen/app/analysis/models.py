@@ -260,17 +260,24 @@ class AnalysisSummaryRequest(StrictModel):
     #
     # `komis_share_response` — `getListMnrlTablePrdctnBurgudg` 원본 응답.
     # 국가별 최근 5개년(before1=최신연도~before5) 값 + `rate`를 주지만,
-    # 사용자 지시로 before1(가장 최근 연도)만 쓴다("매장량 현황은 가장
-    # 마지막 년도 값만 사용해요"). `rate`는 실측 대조 결과(여러 표본
-    # 정확히 일치) "전년대비 증감률"이 아니라 **해당 국가가 이 표의
-    # `_TOTAL_`행(표에 나열된 국가들의 소계)에서 차지하는 비중(%)**이다.
-    # ⚠이 `_TOTAL_`은 `getListMapMnrlChartData` 기반 세계합계보다 체계적으로
-    # 작다(실측 4개 광종 4~11배 차이 — 표에 나열된 국가 수만큼만 합산된
-    # 소계라 그렇다) — "세계비중"으로 부르지 않고 별도 라벨을 쓴다
-    # (`additional_summary.py::calculate_mineral_map_summary`). 기존에 자체
-    # 계산하던 1위국 비중(`current_leaders` claim)을 이 값으로 갈아끼우지
-    # 않는다(검증 끝난 기존 claim은 최소수정 원칙상 유지, 필요하면 별도
-    # 사이클).
+    # 국가별 비중표(`_parse_komis_map_mineral_share_response`)는 사용자
+    # 지시로 before1(가장 최근 연도)만 쓴다("매장량 현황은 가장 마지막
+    # 년도 값만 사용해요"). `rate`는 실측 대조 결과(여러 표본 정확히
+    # 일치) "전년대비 증감률"이 아니라 **해당 국가가 이 표의 `_TOTAL_`행
+    # (표에 나열된 국가들의 소계)에서 차지하는 비중(%)**이다.
+    #
+    # 2026-09-13 정정(사용자 제보로 발견) — 이 문단은 원래 "`_TOTAL_`이
+    # `getListMapMnrlChartData` 기반 세계합계보다 체계적으로 4~11배
+    # 작다"고 적혀 있었다. **이 주장은 틀렸다**(정적 덤프 87쌍 전수 스윕
+    # 반증, `input_data.py::_parse_komis_map_mineral_share_totals`
+    # docstring 참고) — 오히려 `_TOTAL_`이 ChartData 세계합계보다
+    # 크거나 같다(지도에 개별 표시 안 되는 "그 밖의 국가"가 `_TOTAL_`엔
+    # 잡히고 ChartData 합계엔 안 잡혀서). 이제 `_TOTAL_`(before1~5)을
+    # 연도별 세계총계로 직접 써 `summary.py::_analyze_mineral_map`이
+    # `is_total=True` 관측치로 series에 얹는다(`_parse_komis_map_
+    # mineral_share_totals`) — `calculate_mineral_map_summary`의
+    # `_world_total()`이 기존에 갖고 있던 "official 관측치 우선" 폴백을
+    # 그대로 탄다.
     komis_snapshot_response: dict | None = None
     komis_share_response: dict | None = None
 

@@ -654,13 +654,24 @@ def _parse_komis_map_mineral_share_response(raw: dict) -> list[dict]:
     쓴다("매장량 현황은 가장 마지막 년도 값만 사용해요"). `rate`는 실측
     대조(2개 표본 정확히 일치)로 확정 — "전년대비 증감률"이 아니라
     **해당 국가가 이 표의 `_TOTAL_`(before1 연도, 표에 나열된 국가들의
-    소계)에서 차지하는 비중(%)**이다. ⚠이 `_TOTAL_`은 `getListMapMnrlChartData`
-    기반 세계합계보다 체계적으로 작다(실측 4개 광종에서 4~11배 — 표에
-    나열된 국가 수만큼만 합산된 소계라 그렇다, `additional_summary.py::
-    calculate_mineral_map_summary`의 `market_share` 파라미터 docstring
-    참고) — "세계비중"이라고 부르지 않는다. `_TOTAL_`(코드 SU)·`_ETC_`
-    (코드 OT)는 국가 목록이 아니라 국가 랭킹에서 제외한다. 값이 콤마
-    천단위 구분자 문자열이라 `_komis_num_comma`로 파싱한다."""
+    소계)에서 차지하는 비중(%)**이다.
+
+    2026-09-13 정정(사용자 제보로 발견) — 이 문단은 원래 "`_TOTAL_`이
+    `getListMapMnrlChartData` 기반 세계합계보다 체계적으로 4~11배 작다"고
+    적혀 있었다. **이 주장은 틀렸다** — 정적 덤프 87쌍(65광종×매장량/생산량)
+    전수 스윕 결과 `_TOTAL_`이 지도(chart) 합계보다 작았던 경우는 단 1건도
+    없었고, 대부분 `지도합계 + _ETC_(그 밖의 국가) ≈ _TOTAL_`로 거의
+    정확히 일치했다(지도에 개별 표시 안 되는 국가 생산량이 `_TOTAL_`엔
+    잡히고 지도 합계엔 안 잡히는 구조). 당시 경위는 재현하지 않았으나,
+    이미 신뢰불가로 폐기된 `totalBurudgQuty`/`TOTALPRDCTNQUTY`류 필드
+    (조회기간 전체 합산값이라 연도별 분모로 못 씀, 위
+    `_parse_komis_mineral_map_response` docstring 참고)와 혼동했을
+    가능성이 있다. 세계총계 산출에 `_TOTAL_`을 실제로 쓰는 로직은
+    `_parse_komis_map_mineral_share_totals`(바로 아래 함수) 참고.
+    `_TOTAL_`(코드 SU)·`_ETC_`(코드 OT)는 국가 목록이 아니라 국가
+    랭킹에서 제외한다(이 함수의 역할은 국가별 KOMIS 공식비중 표만
+    만드는 것). 값이 콤마 천단위 구분자 문자열이라 `_komis_num_comma`로
+    파싱한다."""
 
     rows = raw.get("data") or []
     result: list[dict] = []
@@ -680,6 +691,45 @@ def _parse_komis_map_mineral_share_response(raw: dict) -> list[dict]:
             }
         )
     return result
+
+
+def _parse_komis_map_mineral_share_totals(raw: dict, end_year: int) -> dict[int, float]:
+    """`getListMnrlTablePrdctnBurgudg` 원본 응답의 `_TOTAL_`(코드 SU) 행에서
+    연도별 KOMIS 공식 세계총계를 뽑는다.
+
+    2026-09-13 신설 — 사용자 제보("생산량 총계가 따로 데이터로 제공되고
+    광물지도/동 2021~2025 생산량 총계가 23000000인데 보고서 요약으로
+    나온값과 다른데?")로 발견: 지금까지 세계총계로 쓰던
+    `additional_summary.py::_world_total()`은 지도(`getListMapMnrlChartData`)
+    에 개별 국가로 나열된 값만 더한다 — 지도에 안 나열되는 "그 밖의 국가"
+    생산량이 빠져 실제보다 작게 나온다(동 2025 생산량 예시: 지도합계
+    20,013,000 vs KOMIS 공식총계 23,000,000). `_parse_komis_map_mineral_
+    share_response` docstring의 2026-09-13 정정 문단 참고 — 지도합계가
+    이 `_TOTAL_`보다 큰 경우는 실측(87쌍 전수 스윕)에 단 1건도 없었다.
+
+    응답 자체엔 연도 정보가 없어(`before1`=최신연도~`before5`=4년 전),
+    호출자가 넘긴 `end_year`(조회 시리즈의 최신 연도)를 `before1`로 놓고
+    역산한다 — `getListMapMnrlChartData`와 이 엔드포인트가 항상 같은
+    `srchDateE`로 호출되는 것을 실 덤프로 확인했다. 반환값은
+    `additional_summary.py::_world_total()`이 이미 갖고 있던 "`is_total=True`
+    관측치가 있으면 그걸 쓴다"는 기존 폴백 경로에 그대로 태울
+    `{연도: 공식총계}` — 그 계산 함수 자체는 건드리지 않는다(호출부
+    `summary.py::_analyze_mineral_map`이 이 dict로 `is_total=True`
+    관측치를 만들어 얹는다). 조회기간이 5년보다 넓어 `before5`보다 과거
+    연도가 있으면 그 연도는 이 dict에 없다(그 해는 자동으로 기존 지도합계
+    폴백을 그대로 탄다)."""
+
+    rows = raw.get("data") or []
+    total_row = next((row for row in rows if row.get("ntnEngCd") == "SU"), None)
+    if total_row is None:
+        return {}
+    totals: dict[int, float] = {}
+    for offset in range(1, 6):
+        value = _komis_num_comma(total_row.get(f"before{offset}"))
+        if value is None or value <= 0:
+            continue
+        totals[end_year - (offset - 1)] = value
+    return totals
 
 
 def _parse_komis_composite_response(raw: dict) -> list[dict]:

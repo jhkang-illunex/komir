@@ -132,14 +132,28 @@ ADDITIONAL_PAGE_CONTEXTS = {
 }
 
 
+def _trim_trailing_zero(text: str) -> str:
+    """2026-09-13 사용자 지시 — "전체 공통 소수점 이하 3자리에서 반올림
+    표시할 때 소수점 이하 2번째 자리가 0이면 생략"(예: 45.70% → 45.7%,
+    0.00% → 0%). `.` 뒤 trailing "0"을 지우고, 그 결과 소수부가 통째로
+    비면 `.`도 지운다 — 정수부 자릿수(콤마 포함)는 손대지 않는다(`.` 앞
+    에서 rstrip이 멈춘다). `_number`/`_quantity`(이 파일)뿐 아니라
+    `report_render.py::_format_metric_row`(무수정 이식 원칙상 이 모듈을
+    import하지 않고 같은 로직을 그대로 복제)에도 동일 규칙을 적용한다."""
+
+    if "." not in text:
+        return text
+    return text.rstrip("0").rstrip(".")
+
+
 def _number(value: float, digits: int = 2) -> str:
-    return f"{value:,.{digits}f}"
+    return _trim_trailing_zero(f"{value:,.{digits}f}")
 
 
 def _quantity(value: float) -> str:
     if value.is_integer():
         return f"{int(value):,}"
-    return f"{value:,.2f}"
+    return _trim_trailing_zero(f"{value:,.2f}")
 
 
 def _metric(
@@ -1052,16 +1066,25 @@ def calculate_mineral_map_summary(
     연도만, 사용자 지시: "매장량 현황은 가장 마지막 년도 값만 사용해요").
     `share_percent`는 실측 대조로 "해당 국가가 이 표의 `_TOTAL_`(표에
     나열된 국가들의 소계)에서 차지하는 비중(%, KOMIS 공식 발표치)"임을
-    확정했다. ⚠이 `_TOTAL_`은 `series`(ChartData 기반) 세계합계보다
-    체계적으로 작다(실측 4개 광종에서 4~11배 — 표에 나열된 국가 수만큼만
-    합산된 소계라 그렇다) — 그래서 `top_country_share`(자체계산, ChartData
-    세계합계 기준) 옆에 같은 이름("세계비중")으로 나란히 두면 같은 국가에
-    다른 숫자 두 개가 보여 오해를 준다. 라벨을 "국가목록 내 비중(KOMIS
-    매장량표 기준)"으로 명시해 다른 기준값임을 드러낸다. 1위국 비중은
-    아래 본문의 `current_leaders` claim이 이미 자체 계산값으로 말하고
-    있어 같은 숫자를 claim으로 중복 서술하지 않고, 상위 국가들의 KOMIS
-    공식 비중을 detailed_metrics 표로만 덧붙인다(최소수정 — 기존
-    claim·랭킹 로직은 건드리지 않는다)."""
+    확정했다.
+
+    2026-09-13 정정(사용자 제보로 발견) — 이 문단은 원래 "`_TOTAL_`이
+    `series`(ChartData 기반) 세계합계보다 체계적으로 4~11배 작다"고
+    적혀 있었다. **이 주장은 틀렸다**(정적 덤프 87쌍 전수 스윕으로 반증
+    — `input_data.py::_parse_komis_map_mineral_share_totals` docstring
+    참고) — 오히려 `_TOTAL_`이 ChartData 세계합계보다 크거나 같다(지도에
+    개별 표시 안 되는 "그 밖의 국가"가 `_TOTAL_`엔 잡히고 ChartData
+    합계엔 안 잡혀서). 그래서 `series.observations`에 이제
+    `summary.py::_analyze_mineral_map`이 `_TOTAL_` 기반 `is_total=True`
+    관측치를 얹어 보내고, 아래 `_world_total()`의 기존 "official 관측치
+    우선" 폴백이 그 값을 세계총계로 쓴다(이 함수 자체는 무수정). 즉
+    `top_country_share`(자체계산)와 아래 detailed_metrics의 "국가목록 내
+    비중(KOMIS 매장량표 기준)"은 이제 같은 분모(`_TOTAL_`)를 쓰므로 더는
+    "다른 기준값"이 아니다 — 다만 라벨은 출처를 명시하는 의미로 그대로
+    둔다. 1위국 비중은 아래 본문의 `current_leaders` claim이 이미 자체
+    계산값으로 말하고 있어 같은 숫자를 claim으로 중복 서술하지 않고,
+    상위 국가들의 KOMIS 공식 비중을 detailed_metrics 표로만 덧붙인다
+    (최소수정 — 기존 claim·랭킹 로직은 건드리지 않는다)."""
 
     grouped = _by_year(series.observations)
     years = sorted(grouped)

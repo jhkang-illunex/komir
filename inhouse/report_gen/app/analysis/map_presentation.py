@@ -5,6 +5,8 @@ import re
 from datetime import date, datetime
 from decimal import Decimal, ROUND_HALF_UP
 
+from .additional_summary import _number
+
 
 def compact_quantity(value: float, unit: str) -> tuple[str, str]:
     scales = {"달러": (1, "달러"), "톤": (1, "톤"), "천톤": (1000, "톤"),
@@ -91,9 +93,15 @@ def import_history_fact(request, series) -> str | None:
         return None
     change = (current - previous) / previous * 100
     direction = "증가" if change > 0 else "감소"
-    comparison = f"{abs(change):.2f}% {direction}했습니다" if change else "변동이 없습니다"
-    return (f"참고로 동일 조회범위의 수입액은 {previous_year}년 {previous:,.0f}달러에서 "
-            f"{current_year}년 {current:,.0f}달러로 전년 동기 대비 {comparison}.")
+    comparison = f"{_number(abs(change))}% {direction}했습니다" if change else "변동이 없습니다"
+    # 2026-09-13 검수 정정 — ①map_global은 세계 교역 총액인데 "수입액"으로
+    # 하드코딩돼 있었다 ②과거 응답은 전년 연간(1/1~12/31) 전체이고 당해는
+    # 조회 종료일까지의 집계라 "전년 동기"는 사실과 다르다(리튬 -89%가
+    # 대부분 이 차이) — "전년 대비"로 중립화 ③"참고로" 접두어 제거(같은
+    # 날 "참고:" 절 제목 제거와 같은 지시).
+    label = "세계 교역 총액" if request.page_id == "map_global" else "수입액"
+    return (f"동일 조회범위의 {label}은 {previous_year}년 {previous:,.0f}달러에서 "
+            f"{current_year}년 {current:,.0f}달러로 전년 대비 {comparison}.")
 
 
 def route_yearly_trend_fact(request, series) -> str | None:
@@ -158,7 +166,7 @@ def route_yearly_trend_fact(request, series) -> str | None:
         direction = "증가" if change > 0 else "감소" if change < 0 else "보합"
         parts.append(
             f"{rank}위 {origin_name}→{dest_name} 루트는 {previous_amount:,.0f}달러에서 "
-            f"{latest_amount:,.0f}달러로 {abs(change):.2f}% {direction}"
+            f"{latest_amount:,.0f}달러로 {_number(abs(change))}% {direction}"
         )
     if not parts:
         return None

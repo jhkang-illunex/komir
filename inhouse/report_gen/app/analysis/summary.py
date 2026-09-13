@@ -139,6 +139,7 @@ from .input_data import (
     _parse_komis_mineral_map_response,
     _parse_komis_map_mineral_snapshot_response,
     _parse_komis_map_mineral_share_response,
+    _parse_komis_map_mineral_share_totals,
     _parse_komis_composite_response,
     _komis_ymd_to_month,
     _parse_komis_indicator_list_response,
@@ -470,13 +471,25 @@ def _mineral_map_latest_year_change(series: MineralMapSeries) -> tuple[float, in
     `period_world_total_change`(조회기간 전체 변화율)와 같아지지만, 사용자가
     항상 이 라벨을 보길 원해 조건 분기 없이 매번 계산한다."""
 
-    filtered = [o for o in series.observations if not o.is_total and not o.is_other]
-    years = sorted({o.year for o in filtered})
+    # 2026-09-13 검수 정정 — 이 값은 국가별 합계(is_total 제외)로만 계산해서
+    # 본문 "직전 관측연도 … 변동" 문장(`additional_summary._world_total`,
+    # KOMIS 공식 `_TOTAL_` 관측치가 있으면 그것을 우선)과 다른 세계총계를
+    # 썼다. 그 결과 동 매장량에서 표는 "전년 대비 -3.42%", 본문은 "0% 변동
+    # 없음"으로 같은 보고서 안에서 모순이 났다. 본문과 같은 규칙(공식 총계
+    # 우선, 없으면 그 해 관측치 합)으로 통일한다.
+    def _year_total(year: int) -> float:
+        rows = [o for o in series.observations if o.year == year]
+        official = [o.value for o in rows if o.is_total]
+        if official:
+            return official[0]
+        return sum(o.value for o in rows if not o.is_total)
+
+    years = sorted({o.year for o in series.observations if not o.is_total and not o.is_other})
     if len(years) < 2:
         return None
     latest_year, previous_year = years[-1], years[-2]
-    latest_total = sum(o.value for o in filtered if o.year == latest_year)
-    previous_total = sum(o.value for o in filtered if o.year == previous_year)
+    latest_total = _year_total(latest_year)
+    previous_total = _year_total(previous_year)
     if previous_total == 0:
         return None
     return (latest_total - previous_total) / previous_total, previous_year, latest_year
@@ -926,6 +939,22 @@ def _validate_llm_summary(
                     and required_clause not in sentence.text
                 ):
                     return "점수-위험 반비례 설명 문장을 누락했다."
+            # 2026-09-13 사용자 지시(D-10 LLM 경로 강제) — map_korea/map_global의
+            # current_state·export_summary·no_export_data 근거는 "조회기간(2026년)
+            # 한국의 …"처럼 조회 구간을 명시하는데(D-10, 발주처 피드백 — flow
+            # 금액을 "[기준일] 기준"으로 쓰면 시점 값처럼 읽힌다), 실LLM 배포본
+            # 검수에서 LLM이 이를 "2026년 한국의 …"로 고쳐 쓰는 것을 확인했다
+            # (숫자 검사는 연도가 남아 통과). 근거에 "조회기간(…)" 구절이 있으면
+            # 출력 문장에도 같은 구절이 그대로 있어야 한다 — 없으면 규칙 기반
+            # 폴백.
+            if page_id in {"map_korea", "map_global"}:
+                for claim_id in ("current_state", "export_summary", "no_export_data"):
+                    claim = claim_map.get(claim_id)
+                    if claim is None or claim_id not in sentence.evidence_ids:
+                        continue
+                    period_phrases = re.findall(r"조회기간\([^)]*\)", claim.fact)
+                    if any(phrase not in sentence.text for phrase in period_phrases):
+                        return "조회기간(…) 표기를 누락하거나 변경했다."
             # 2026-09-10 사용자 지적 — map_global "한국 관련 루트" 절이
             # "[14위/대한민국→인도네시아/...달러/1.33%], [27위/...]로
             # 확인됩니다."처럼 완성된 문장이 아니라 대괄호 목록만 남고
@@ -1300,6 +1329,27 @@ class AnalysisSummaryService:
         if not observations:
             raise DataSourceError("mineral map analysis: 필터 적용 후 observations가 비었다")
         years = sorted({o.year for o in observations})
+        # 2026-09-13 신설(사용자 제보로 발견 — "생산량 총계가 따로 데이터로
+        # 제공되는데 보고서 요약값과 다르다") — `additional_summary.py::
+        # _world_total()`은 이미 `is_total=True` 관측치가 있으면 그걸
+        # 세계총계로 우선 쓰는 폴백을 갖고 있다(2026-09-09에 신뢰불가
+        # 필드 때문에 끈 채였을 뿐, 계산 함수 자체는 무수정). KOMIS 공식
+        # 세계총계(`komis_share_response`의 `_TOTAL_`)를 그 경로에 얹는다
+        # — `calculate_mineral_map_summary`(frozen)는 건드리지 않는다.
+        if request.komis_share_response is not None:
+            official_totals = _parse_komis_map_mineral_share_totals(request.komis_share_response, years[-1])
+            observations = observations + [
+                MineralMapObservation(
+                    year=year,
+                    country_code="_TOTAL_",
+                    country_name="_TOTAL_",
+                    value=total,
+                    is_total=True,
+                    is_other=False,
+                )
+                for year, total in official_totals.items()
+                if year in years
+            ]
         series = MineralMapSeries(
             mineral=MineralRef(code=request.mineral, name=request.mineral_name or request.mineral),
             measure=request.measure,
@@ -1676,9 +1726,19 @@ class AnalysisSummaryService:
         raw_observations = request.observations
         raw_komis_trade_totals = None
         komis_mineral = None
+        query_start_date = None
         if request.komis_response is not None:
             parser = _parse_komis_map_korea_response if page_id == "map_korea" else _parse_komis_map_global_response
             raw_observations, raw_komis_trade_totals, komis_mineral = parser(request.komis_response)
+            # 2026-09-13 D-10 — 원본 조회 시작일(`srchDateS`)을 뽑아둔다
+            # (파서 반환 튜플 계약은 다른 호출부(komis_dump_smoke_test.py
+            # 등)와 공유돼 건드리지 않고, 여기서 직접 원본 dict를 한 번 더
+            # 읽는다). `komir_summary.py::_query_period_phrase()`가
+            # "[기준일] 기준" 대신 "조회기간(YYYY~YYYY)"을 쓰는 데 필요.
+            raw_start = request.komis_response.get("srchDateS")
+            if raw_start and len(str(raw_start)) == 8:
+                s = str(raw_start)
+                query_start_date = f"{s[0:4]}-{s[4:6]}-{s[6:8]}"
         mineral = request.mineral or komis_mineral
         if mineral is None:
             raise DataSourceError(f"{page_id} analysis requires mineral in the request body")
@@ -1702,12 +1762,12 @@ class AnalysisSummaryService:
             observations=observations,
             warnings=[],
         )
-        return series, raw_komis_trade_totals
+        return series, raw_komis_trade_totals, query_start_date
 
     def _analyze_domestic_trade(self, request: AnalysisSummaryRequest) -> AnalysisSummaryResponse:
         """Load a domestic (KO_CSTM_CMMRC) trade-map series and build its response."""
 
-        series, raw_komis_trade_totals = self._trade_series_from_request(request, "map_korea")
+        series, raw_komis_trade_totals, query_start_date = self._trade_series_from_request(request, "map_korea")
         komis_trade_totals = _komis_trade_totals_from_request(request, raw=raw_komis_trade_totals)
         map_korea_filters = _map_korea_query_filters(
             request.komis_response, series.observations, request.mttr_flow_name
@@ -1717,6 +1777,7 @@ class AnalysisSummaryService:
             request.page_id,
             calculate_domestic_trade_summary,
             series,
+            query_start_date=query_start_date,
             komis_totals=komis_trade_totals,
             country_filter_name=country_filter_name,
             scope_label=scope_label,
@@ -1731,7 +1792,7 @@ class AnalysisSummaryService:
     def _analyze_global_trade(self, request: AnalysisSummaryRequest) -> AnalysisSummaryResponse:
         """Load a global (KO_UN_CMMRC) trade-map series and build its response."""
 
-        series, raw_komis_trade_totals = self._trade_series_from_request(request, "map_global")
+        series, raw_komis_trade_totals, query_start_date = self._trade_series_from_request(request, "map_global")
         komis_trade_totals = _komis_trade_totals_from_request(request, raw=raw_komis_trade_totals)
         top_trade_movers = None
         if request.komis_bar_chart_response is not None:
@@ -1748,6 +1809,7 @@ class AnalysisSummaryService:
             komis_totals=komis_trade_totals,
             top_trade_movers=top_trade_movers,
             route_shares=route_shares,
+            query_start_date=query_start_date,
         )
         return self._respond_trade_map(request, series, calculated, effective_page_context("map_global"))
 

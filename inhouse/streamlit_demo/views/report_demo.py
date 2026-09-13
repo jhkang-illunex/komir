@@ -491,6 +491,23 @@ if page_id in KOMIS_RAW_PAGES:
             start_period = f"{start_year_opt}-{start_month_opt}"
             end_period = f"{end_year_opt}-{end_month_opt}"
 
+        # 2026-09-13 신설(사용자 지시 — "글로벌 수급지도에 수출입 UI 추가")
+        # — KOMIS 화면의 수입/수출 탭(`data-im="I"`/`data-im="O"`)을 그대로
+        # 노출한다. map_korea의 "수출입방향"과 이름은 비슷하지만 전혀
+        # 다르다: map_korea는 I/E 값이 같은 raw row set(정렬기준만 다름)을
+        # 주는 반면, map_global은 I/O가 완전히 다른 데이터셋을 준다(§komis_
+        # fetch.py::fetch_map_global docstring 참고) — 그래서 이 값은
+        # report_gen 요청 바디(`payload`)에 싣지 않고 komis.or.kr 조회
+        # 옵션(`period_fetch_opts`)으로만 쓴다. `trade_direction`은
+        # `AnalysisSummaryRequest`에서 `page_id=map_korea` 전용으로 막혀
+        # 있어(모델 검증기, 위 mttr_flow_name과 같은 이유) map_global에
+        # 그대로 보내면 report_gen이 거부한다.
+        row0 = st.columns(1)
+        direction_label = row0[0].radio(
+            "수입/수출", ("수입(I)", "수출(O)"), horizontal=True, key=f"komis_direction_{page_id}",
+        )
+        trade_direction = "import" if direction_label == "수입(I)" else "export"
+
         row3 = st.columns(2)
         export_country_name = row3[0].text_input(
             "수출국가(선택, 기본 전체)", value="", key=f"komis_export_country_{page_id}",
@@ -527,6 +544,7 @@ if page_id in KOMIS_RAW_PAGES:
             "period_field": period_field, "start_period": start_period, "end_period": end_period,
             "export_country_name": export_country_name, "import_country_name": import_country_name,
             "product_type_code": product_type_code, "hs_code": hs_code,
+            "trade_direction": trade_direction,
         }
     if page_id in KOMIS_FETCH_DISPATCH:
         if st.button("komis.or.kr에서 실시간 조회", key=f"komis_fetch_btn_{page_id}"):

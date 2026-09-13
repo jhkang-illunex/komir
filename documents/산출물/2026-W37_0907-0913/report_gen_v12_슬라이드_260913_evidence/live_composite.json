@@ -1,0 +1,669 @@
+{
+  "data": {
+    "xaxis": [
+      "2026.08.13",
+      "2026.08.14",
+      "2026.08.17",
+      "2026.08.18",
+      "2026.08.19",
+      "2026.08.20",
+      "2026.08.21",
+      "2026.08.24",
+      "2026.08.25",
+      "2026.08.26",
+      "2026.08.27",
+      "2026.08.28",
+      "2026.08.31",
+      "2026.09.01",
+      "2026.09.02",
+      "2026.09.03",
+      "2026.09.04",
+      "2026.09.07",
+      "2026.09.08",
+      "2026.09.09",
+      "2026.09.10",
+      "2026.09.11"
+    ],
+    "min": 2615.067,
+    "max": 4042.5,
+    "series": [
+      {
+        "indxTp": "MNRL",
+        "name": "광물종합지수",
+        "data": [
+          3479.87,
+          3454.93,
+          3469.62,
+          3489.6,
+          3458.39,
+          3496.56,
+          3503.6,
+          3539.45,
+          3557.13,
+          3546.37,
+          3558.81,
+          3563.59,
+          3583.2,
+          3608.83,
+          3619.92,
+          3619.73,
+          3628.15,
+          3651.45,
+          3659.52,
+          3668.84,
+          3675,
+          3647.92
+        ]
+      },
+      {
+        "indxTp": "MAJOR",
+        "name": "메이저금속지수",
+        "data": [
+          3000.97,
+          2969.95,
+          2981.77,
+          3003.3,
+          2955.1,
+          2942.08,
+          2938.34,
+          2968.06,
+          2977.82,
+          2974.51,
+          2999.54,
+          2988.94,
+          3000.35,
+          3004.01,
+          2995.08,
+          2985.73,
+          3001.67,
+          3011.24,
+          3036.47,
+          3053.99,
+          3059.95,
+          3030.47
+        ]
+      },
+      {
+        "indxTp": "RARE",
+        "name": "희소금속지수",
+        "data": [
+          2905.63,
+          2905.63,
+          2906.34,
+          2906.34,
+          2906.34,
+          2906.34,
+          2906.34,
+          2911.8,
+          2911.8,
+          2911.8,
+          2911.8,
+          2911.8,
+          2911.18,
+          2911.18,
+          2911.18,
+          2911.18,
+          2911.18,
+          2925.65,
+          2925.65,
+          2925.65,
+          2925.65,
+          2925.65
+        ]
+      }
+    ],
+    "tableData": [
+      {
+        "prvdyFlutRt": "-0.07",
+        "prvdyCprs": -2.52,
+        "indx": 3479.87,
+        "SORT": 1,
+        "crtrYmd": "2026.08.13",
+        "indxTp": "MNRL"
+      },
+      {
+        "prvdyFlutRt": "-0.72",
+        "prvdyCprs": -24.93,
+        "indx": 3454.93,
+        "SORT": 1,
+        "crtrYmd": "2026.08.14",
+        "indxTp": "MNRL"
+      },
+      {
+        "prvdyFlutRt": "0.43",
+        "prvdyCprs": 14.69,
+        "indx": 3469.62,
+        "SORT": 1,
+        "crtrYmd": "2026.08.17",
+        "indxTp": "MNRL"
+      },
+      {
+        "prvdyFlutRt": "0.58",
+        "prvdyCprs": 19.98,
+        "indx": 3489.6,
+        "SORT": 1,
+        "crtrYmd": "2026.08.18",
+        "indxTp": "MNRL"
+      },
+      {
+        "prvdyFlutRt": "-0.89",
+        "prvdyCprs": -31.21,
+        "indx": 3458.39,
+        "SORT": 1,
+        "crtrYmd": "2026.08.19",
+        "indxTp": "MNRL"
+      },
+      {
+        "prvdyFlutRt": "1.10",
+        "prvdyCprs": 38.17,
+        "indx": 3496.56,
+        "SORT": 1,
+        "crtrYmd": "2026.08.20",
+        "indxTp": "MNRL"
+      },
+      {
+        "prvdyFlutRt": "0.20",
+        "prvdyCprs": 7.04,
+        "indx": 3503.6,
+        "SORT": 1,
+        "crtrYmd": "2026.08.21",
+        "indxTp": "MNRL"
+      },
+      {
+        "prvdyFlutRt": "1.02",
+        "prvdyCprs": 35.86,
+        "indx": 3539.45,
+        "SORT": 1,
+        "crtrYmd": "2026.08.24",
+        "indxTp": "MNRL"
+      },
+      {
+        "prvdyFlutRt": "0.50",
+        "prvdyCprs": 17.67,
+        "indx": 3557.13,
+        "SORT": 1,
+        "crtrYmd": "2026.08.25",
+        "indxTp": "MNRL"
+      },
+      {
+        "prvdyFlutRt": "-0.30",
+        "prvdyCprs": -10.76,
+        "indx": 3546.37,
+        "SORT": 1,
+        "crtrYmd": "2026.08.26",
+        "indxTp": "MNRL"
+      },
+      {
+        "prvdyFlutRt": "0.35",
+        "prvdyCprs": 12.44,
+        "indx": 3558.81,
+        "SORT": 1,
+        "crtrYmd": "2026.08.27",
+        "indxTp": "MNRL"
+      },
+      {
+        "prvdyFlutRt": "0.13",
+        "prvdyCprs": 4.78,
+        "indx": 3563.59,
+        "SORT": 1,
+        "crtrYmd": "2026.08.28",
+        "indxTp": "MNRL"
+      },
+      {
+        "prvdyFlutRt": "0.55",
+        "prvdyCprs": 19.61,
+        "indx": 3583.2,
+        "SORT": 1,
+        "crtrYmd": "2026.08.31",
+        "indxTp": "MNRL"
+      },
+      {
+        "prvdyFlutRt": "0.72",
+        "prvdyCprs": 25.63,
+        "indx": 3608.83,
+        "SORT": 1,
+        "crtrYmd": "2026.09.01",
+        "indxTp": "MNRL"
+      },
+      {
+        "prvdyFlutRt": "0.31",
+        "prvdyCprs": 11.09,
+        "indx": 3619.92,
+        "SORT": 1,
+        "crtrYmd": "2026.09.02",
+        "indxTp": "MNRL"
+      },
+      {
+        "prvdyFlutRt": "-0.01",
+        "prvdyCprs": -0.19,
+        "indx": 3619.73,
+        "SORT": 1,
+        "crtrYmd": "2026.09.03",
+        "indxTp": "MNRL"
+      },
+      {
+        "prvdyFlutRt": "0.23",
+        "prvdyCprs": 8.42,
+        "indx": 3628.15,
+        "SORT": 1,
+        "crtrYmd": "2026.09.04",
+        "indxTp": "MNRL"
+      },
+      {
+        "prvdyFlutRt": "0.64",
+        "prvdyCprs": 23.31,
+        "indx": 3651.45,
+        "SORT": 1,
+        "crtrYmd": "2026.09.07",
+        "indxTp": "MNRL"
+      },
+      {
+        "prvdyFlutRt": "0.22",
+        "prvdyCprs": 8.06,
+        "indx": 3659.52,
+        "SORT": 1,
+        "crtrYmd": "2026.09.08",
+        "indxTp": "MNRL"
+      },
+      {
+        "prvdyFlutRt": "0.25",
+        "prvdyCprs": 9.32,
+        "indx": 3668.84,
+        "SORT": 1,
+        "crtrYmd": "2026.09.09",
+        "indxTp": "MNRL"
+      },
+      {
+        "prvdyFlutRt": "0.17",
+        "prvdyCprs": 6.16,
+        "indx": 3675,
+        "SORT": 1,
+        "crtrYmd": "2026.09.10",
+        "indxTp": "MNRL"
+      },
+      {
+        "prvdyFlutRt": "-0.74",
+        "prvdyCprs": -27.07,
+        "indx": 3647.92,
+        "SORT": 1,
+        "crtrYmd": "2026.09.11",
+        "indxTp": "MNRL"
+      },
+      {
+        "prvdyFlutRt": "-0.46",
+        "prvdyCprs": -13.77,
+        "indx": 3000.97,
+        "SORT": 2,
+        "crtrYmd": "2026.08.13",
+        "indxTp": "MAJOR"
+      },
+      {
+        "prvdyFlutRt": "-1.03",
+        "prvdyCprs": -31.03,
+        "indx": 2969.95,
+        "SORT": 2,
+        "crtrYmd": "2026.08.14",
+        "indxTp": "MAJOR"
+      },
+      {
+        "prvdyFlutRt": "0.40",
+        "prvdyCprs": 11.82,
+        "indx": 2981.77,
+        "SORT": 2,
+        "crtrYmd": "2026.08.17",
+        "indxTp": "MAJOR"
+      },
+      {
+        "prvdyFlutRt": "0.72",
+        "prvdyCprs": 21.54,
+        "indx": 3003.3,
+        "SORT": 2,
+        "crtrYmd": "2026.08.18",
+        "indxTp": "MAJOR"
+      },
+      {
+        "prvdyFlutRt": "-1.60",
+        "prvdyCprs": -48.2,
+        "indx": 2955.1,
+        "SORT": 2,
+        "crtrYmd": "2026.08.19",
+        "indxTp": "MAJOR"
+      },
+      {
+        "prvdyFlutRt": "-0.44",
+        "prvdyCprs": -13.02,
+        "indx": 2942.08,
+        "SORT": 2,
+        "crtrYmd": "2026.08.20",
+        "indxTp": "MAJOR"
+      },
+      {
+        "prvdyFlutRt": "-0.13",
+        "prvdyCprs": -3.74,
+        "indx": 2938.34,
+        "SORT": 2,
+        "crtrYmd": "2026.08.21",
+        "indxTp": "MAJOR"
+      },
+      {
+        "prvdyFlutRt": "1.01",
+        "prvdyCprs": 29.72,
+        "indx": 2968.06,
+        "SORT": 2,
+        "crtrYmd": "2026.08.24",
+        "indxTp": "MAJOR"
+      },
+      {
+        "prvdyFlutRt": "0.33",
+        "prvdyCprs": 9.76,
+        "indx": 2977.82,
+        "SORT": 2,
+        "crtrYmd": "2026.08.25",
+        "indxTp": "MAJOR"
+      },
+      {
+        "prvdyFlutRt": "-0.11",
+        "prvdyCprs": -3.31,
+        "indx": 2974.51,
+        "SORT": 2,
+        "crtrYmd": "2026.08.26",
+        "indxTp": "MAJOR"
+      },
+      {
+        "prvdyFlutRt": "0.84",
+        "prvdyCprs": 25.03,
+        "indx": 2999.54,
+        "SORT": 2,
+        "crtrYmd": "2026.08.27",
+        "indxTp": "MAJOR"
+      },
+      {
+        "prvdyFlutRt": "-0.35",
+        "prvdyCprs": -10.6,
+        "indx": 2988.94,
+        "SORT": 2,
+        "crtrYmd": "2026.08.28",
+        "indxTp": "MAJOR"
+      },
+      {
+        "prvdyFlutRt": "0.38",
+        "prvdyCprs": 11.41,
+        "indx": 3000.35,
+        "SORT": 2,
+        "crtrYmd": "2026.08.31",
+        "indxTp": "MAJOR"
+      },
+      {
+        "prvdyFlutRt": "0.12",
+        "prvdyCprs": 3.66,
+        "indx": 3004.01,
+        "SORT": 2,
+        "crtrYmd": "2026.09.01",
+        "indxTp": "MAJOR"
+      },
+      {
+        "prvdyFlutRt": "-0.30",
+        "prvdyCprs": -8.94,
+        "indx": 2995.08,
+        "SORT": 2,
+        "crtrYmd": "2026.09.02",
+        "indxTp": "MAJOR"
+      },
+      {
+        "prvdyFlutRt": "-0.31",
+        "prvdyCprs": -9.35,
+        "indx": 2985.73,
+        "SORT": 2,
+        "crtrYmd": "2026.09.03",
+        "indxTp": "MAJOR"
+      },
+      {
+        "prvdyFlutRt": "0.53",
+        "prvdyCprs": 15.94,
+        "indx": 3001.67,
+        "SORT": 2,
+        "crtrYmd": "2026.09.04",
+        "indxTp": "MAJOR"
+      },
+      {
+        "prvdyFlutRt": "0.32",
+        "prvdyCprs": 9.57,
+        "indx": 3011.24,
+        "SORT": 2,
+        "crtrYmd": "2026.09.07",
+        "indxTp": "MAJOR"
+      },
+      {
+        "prvdyFlutRt": "0.84",
+        "prvdyCprs": 25.24,
+        "indx": 3036.47,
+        "SORT": 2,
+        "crtrYmd": "2026.09.08",
+        "indxTp": "MAJOR"
+      },
+      {
+        "prvdyFlutRt": "0.58",
+        "prvdyCprs": 17.52,
+        "indx": 3053.99,
+        "SORT": 2,
+        "crtrYmd": "2026.09.09",
+        "indxTp": "MAJOR"
+      },
+      {
+        "prvdyFlutRt": "0.20",
+        "prvdyCprs": 5.96,
+        "indx": 3059.95,
+        "SORT": 2,
+        "crtrYmd": "2026.09.10",
+        "indxTp": "MAJOR"
+      },
+      {
+        "prvdyFlutRt": "-0.96",
+        "prvdyCprs": -29.49,
+        "indx": 3030.47,
+        "SORT": 2,
+        "crtrYmd": "2026.09.11",
+        "indxTp": "MAJOR"
+      },
+      {
+        "prvdyFlutRt": "0.00",
+        "prvdyCprs": 0,
+        "indx": 2905.63,
+        "SORT": 3,
+        "crtrYmd": "2026.08.13",
+        "indxTp": "RARE"
+      },
+      {
+        "prvdyFlutRt": "0.00",
+        "prvdyCprs": 0,
+        "indx": 2905.63,
+        "SORT": 3,
+        "crtrYmd": "2026.08.14",
+        "indxTp": "RARE"
+      },
+      {
+        "prvdyFlutRt": "0.02",
+        "prvdyCprs": 0.71,
+        "indx": 2906.34,
+        "SORT": 3,
+        "crtrYmd": "2026.08.17",
+        "indxTp": "RARE"
+      },
+      {
+        "prvdyFlutRt": "0.00",
+        "prvdyCprs": 0,
+        "indx": 2906.34,
+        "SORT": 3,
+        "crtrYmd": "2026.08.18",
+        "indxTp": "RARE"
+      },
+      {
+        "prvdyFlutRt": "0.00",
+        "prvdyCprs": 0,
+        "indx": 2906.34,
+        "SORT": 3,
+        "crtrYmd": "2026.08.19",
+        "indxTp": "RARE"
+      },
+      {
+        "prvdyFlutRt": "0.00",
+        "prvdyCprs": 0,
+        "indx": 2906.34,
+        "SORT": 3,
+        "crtrYmd": "2026.08.20",
+        "indxTp": "RARE"
+      },
+      {
+        "prvdyFlutRt": "0.00",
+        "prvdyCprs": 0,
+        "indx": 2906.34,
+        "SORT": 3,
+        "crtrYmd": "2026.08.21",
+        "indxTp": "RARE"
+      },
+      {
+        "prvdyFlutRt": "0.19",
+        "prvdyCprs": 5.46,
+        "indx": 2911.8,
+        "SORT": 3,
+        "crtrYmd": "2026.08.24",
+        "indxTp": "RARE"
+      },
+      {
+        "prvdyFlutRt": "0.00",
+        "prvdyCprs": 0,
+        "indx": 2911.8,
+        "SORT": 3,
+        "crtrYmd": "2026.08.25",
+        "indxTp": "RARE"
+      },
+      {
+        "prvdyFlutRt": "0.00",
+        "prvdyCprs": 0,
+        "indx": 2911.8,
+        "SORT": 3,
+        "crtrYmd": "2026.08.26",
+        "indxTp": "RARE"
+      },
+      {
+        "prvdyFlutRt": "0.00",
+        "prvdyCprs": 0,
+        "indx": 2911.8,
+        "SORT": 3,
+        "crtrYmd": "2026.08.27",
+        "indxTp": "RARE"
+      },
+      {
+        "prvdyFlutRt": "0.00",
+        "prvdyCprs": 0,
+        "indx": 2911.8,
+        "SORT": 3,
+        "crtrYmd": "2026.08.28",
+        "indxTp": "RARE"
+      },
+      {
+        "prvdyFlutRt": "-0.02",
+        "prvdyCprs": -0.62,
+        "indx": 2911.18,
+        "SORT": 3,
+        "crtrYmd": "2026.08.31",
+        "indxTp": "RARE"
+      },
+      {
+        "prvdyFlutRt": "0.00",
+        "prvdyCprs": 0,
+        "indx": 2911.18,
+        "SORT": 3,
+        "crtrYmd": "2026.09.01",
+        "indxTp": "RARE"
+      },
+      {
+        "prvdyFlutRt": "0.00",
+        "prvdyCprs": 0,
+        "indx": 2911.18,
+        "SORT": 3,
+        "crtrYmd": "2026.09.02",
+        "indxTp": "RARE"
+      },
+      {
+        "prvdyFlutRt": "0.00",
+        "prvdyCprs": 0,
+        "indx": 2911.18,
+        "SORT": 3,
+        "crtrYmd": "2026.09.03",
+        "indxTp": "RARE"
+      },
+      {
+        "prvdyFlutRt": "0.00",
+        "prvdyCprs": 0,
+        "indx": 2911.18,
+        "SORT": 3,
+        "crtrYmd": "2026.09.04",
+        "indxTp": "RARE"
+      },
+      {
+        "prvdyFlutRt": "0.50",
+        "prvdyCprs": 14.47,
+        "indx": 2925.65,
+        "SORT": 3,
+        "crtrYmd": "2026.09.07",
+        "indxTp": "RARE"
+      },
+      {
+        "prvdyFlutRt": "0.00",
+        "prvdyCprs": 0,
+        "indx": 2925.65,
+        "SORT": 3,
+        "crtrYmd": "2026.09.08",
+        "indxTp": "RARE"
+      },
+      {
+        "prvdyFlutRt": "0.00",
+        "prvdyCprs": 0,
+        "indx": 2925.65,
+        "SORT": 3,
+        "crtrYmd": "2026.09.09",
+        "indxTp": "RARE"
+      },
+      {
+        "prvdyFlutRt": "0.00",
+        "prvdyCprs": 0,
+        "indx": 2925.65,
+        "SORT": 3,
+        "crtrYmd": "2026.09.10",
+        "indxTp": "RARE"
+      },
+      {
+        "prvdyFlutRt": "0.00",
+        "prvdyCprs": 0,
+        "indx": 2925.65,
+        "SORT": 3,
+        "crtrYmd": "2026.09.11",
+        "indxTp": "RARE"
+      }
+    ],
+    "dataIndx": [
+      {
+        "indxTp": "MNRL",
+        "indxNm": "광물종합지수",
+        "indxVal": 3647.92,
+        "prvdyFlutPrc": -27.07,
+        "prvdyFlutRt": "-0.74"
+      },
+      {
+        "indxTp": "MAJOR",
+        "indxNm": "메이저금속지수",
+        "indxVal": 3030.47,
+        "prvdyFlutPrc": -29.49,
+        "prvdyFlutRt": "-0.96"
+      },
+      {
+        "indxTp": "RARE",
+        "indxNm": "희소금속지수",
+        "indxVal": 2925.65,
+        "prvdyFlutPrc": 0,
+        "prvdyFlutRt": "0.00"
+      }
+    ]
+  }
+}

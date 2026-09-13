@@ -1,0 +1,569 @@
+{
+  "request_id": "co-mo-cmp",
+  "page_id": "price_minor_metals",
+  "analysis_scope": "page_only",
+  "mineral": {
+    "code": "코발트",
+    "name": "코발트"
+  },
+  "applied_filters": {
+    "mineral": "코발트",
+    "mineral_code": "코발트",
+    "start_date": "2010-07-02",
+    "end_date": "2026-08-25",
+    "price_criterion": "99.8%min In warehouse Rotterdam",
+    "compare_mineral": "몰리브덴",
+    "compare_price_criterion": "60%min EXW China"
+  },
+  "defaulted_filters": [
+    "start_date",
+    "end_date"
+  ],
+  "filter_hash": "ae80650b5017ad68e5e291123ccc09f0ca493d90d8ccdc1661073cc65cb0793f",
+  "source": {
+    "type": "api",
+    "id": "api:request",
+    "data_version": "5f5a7b5520c38941",
+    "as_of": "2026-08-25",
+    "file": null,
+    "sheets": []
+  },
+  "policy_version": "price-minor-metals-summary-v1",
+  "page_definition": "선택한 희소금속(품목·규격 기준)의 일별 실거래가·최저가·최고가 추이를 보여주는 자료다.",
+  "grade": null,
+  "data_quality": {
+    "status": "available",
+    "observation_count": 3677,
+    "available_start_month": null,
+    "available_end_month": null,
+    "effective_start_month": null,
+    "effective_end_month": null,
+    "available_start_date": "2010-07-02",
+    "available_end_date": "2026-08-25",
+    "effective_start_date": "2010-07-02",
+    "effective_end_date": "2026-08-25",
+    "available_start_year": null,
+    "available_end_year": null,
+    "effective_start_year": null,
+    "effective_end_year": null,
+    "available_start_period": null,
+    "available_end_period": null,
+    "effective_start_period": null,
+    "effective_end_period": null,
+    "missing_data": [],
+    "warnings": []
+  },
+  "summary": {
+    "core_diagnosis": [
+      {
+        "text": "2026년 8월 25일 기준 코발트 실거래가는 53.46달러입니다.",
+        "evidence_ids": [
+          "current_state"
+        ]
+      },
+      {
+        "text": "전일(2026년 8월 24일) 대비 보합했습니다.",
+        "evidence_ids": [
+          "day_over_day"
+        ]
+      },
+      {
+        "text": "전주평균(53.46달러) 대비 같은 수준입니다.",
+        "evidence_ids": [
+          "week_avg"
+        ]
+      },
+      {
+        "text": "전월평균(53.60달러) 대비 0.26% 낮습니다.",
+        "evidence_ids": [
+          "month_avg"
+        ]
+      },
+      {
+        "text": "전년평균(34.21달러) 대비 56.27% 높습니다.",
+        "evidence_ids": [
+          "year_avg"
+        ]
+      }
+    ],
+    "major_changes": [
+      {
+        "text": "조회기간 시작(2010년 7월 2일, 42.85달러) 대비 24.76% 상승했습니다.",
+        "evidence_ids": [
+          "period_overall_change"
+        ]
+      },
+      {
+        "text": "최근에는 11일 연속 보합세를 보이고 있으며, 단기와 중기 가격 흐름이 엇갈리고 있습니다.",
+        "evidence_ids": [
+          "price_streak",
+          "ma_trend"
+        ]
+      }
+    ],
+    "current_position": [
+      {
+        "text": "조회기간 관측치(실거래가) 기준 최고 95.46달러(2018년 5월 7일), 최저 21.13달러(2025년 3월 4일)였습니다.",
+        "evidence_ids": [
+          "period_range"
+        ]
+      },
+      {
+        "text": "조회기간 저점(2025년 3월 4일, 21.13달러) 대비 현재가는 153.01% 회복한 수준입니다.",
+        "evidence_ids": [
+          "recovery_since_low"
+        ]
+      },
+      {
+        "text": "최근 1개월 4.71%·3개월 7.37%·1년 14.78% 수준의 가격 변동폭을 보였습니다.",
+        "evidence_ids": [
+          "volatility"
+        ]
+      },
+      {
+        "text": "최근 14일 중 상승 2일·하락 1일·보합 11일로 뚜렷한 방향성 없이 등락을 반복하고 있습니다.",
+        "evidence_ids": [
+          "price_momentum"
+        ]
+      },
+      {
+        "text": "현재가는 조회기간 중 최고가(2018년 5월 7일, 95.46달러) 대비 44.00% 낮으며 전체 가격 대비 고가권에 속합니다. 조회기간 중 가장 큰 하락은 2018년 5월 7일부터 2025년 3월 4일까지 이어졌으며, 이 기간 77.87% 하락했습니다.",
+        "evidence_ids": [
+          "price_position"
+        ]
+      },
+      {
+        "text": "같은 조회기간 동안 몰리브덴은 204.75% 상승한 반면, 코발트는 24.76% 상승했습니다.",
+        "evidence_ids": [
+          "compare_overall_change"
+        ]
+      },
+      {
+        "text": "코발트/몰리브덴 가격비율은 현재 0.0011로, 조회기간 평균(0.0023) 대비 54.75% 낮은 수준입니다.",
+        "evidence_ids": [
+          "relative_value"
+        ]
+      }
+    ]
+  },
+  "key_metrics": [
+    {
+      "id": "latest_price",
+      "label": "최신 가격",
+      "status": "available",
+      "value": 53.46,
+      "unit": "달러",
+      "basis": null
+    },
+    {
+      "id": "day_over_day_change_pct",
+      "label": "전일대비",
+      "status": "available",
+      "value": 0.0,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "week_avg_change_pct",
+      "label": "전주평균대비",
+      "status": "available",
+      "value": 0.0,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "month_avg_change_pct",
+      "label": "전월평균대비",
+      "status": "available",
+      "value": -0.26,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "year_avg_change_pct",
+      "label": "전년평균대비",
+      "status": "available",
+      "value": 56.27,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "price_streak_length",
+      "label": "연속 추세 기간",
+      "status": "available",
+      "value": 11,
+      "unit": "일",
+      "basis": null
+    },
+    {
+      "id": "period_high",
+      "label": "최고가",
+      "status": "available",
+      "value": 95.46,
+      "unit": "달러",
+      "basis": null
+    },
+    {
+      "id": "period_low",
+      "label": "최저가",
+      "status": "available",
+      "value": 21.13,
+      "unit": "달러",
+      "basis": null
+    },
+    {
+      "id": "recent_volatility_pct",
+      "label": "변동성(1개월, 연율화)",
+      "status": "available",
+      "value": 4.712504,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "drawdown_from_period_high_pct",
+      "label": "고점 대비 낙폭",
+      "status": "available",
+      "value": 43.997486,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "compare_overall_change_pct",
+      "label": "몰리브덴 대비 조회기간 변화율차",
+      "status": "available",
+      "value": -179.991792,
+      "unit": "%p",
+      "basis": null
+    }
+  ],
+  "detailed_metrics": [
+    {
+      "id": "latest_price",
+      "label": "최신 가격",
+      "status": "available",
+      "value": 53.46,
+      "unit": "달러",
+      "basis": null
+    },
+    {
+      "id": "day_over_day_change_pct",
+      "label": "전일대비",
+      "status": "available",
+      "value": 0.0,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "week_avg_change_pct",
+      "label": "전주평균대비",
+      "status": "available",
+      "value": 0.0,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "month_avg_change_pct",
+      "label": "전월평균대비",
+      "status": "available",
+      "value": -0.26,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "year_avg_change_pct",
+      "label": "전년평균대비",
+      "status": "available",
+      "value": 56.27,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "price_streak_length",
+      "label": "연속 추세 기간",
+      "status": "available",
+      "value": 11,
+      "unit": "일",
+      "basis": null
+    },
+    {
+      "id": "period_high",
+      "label": "최고가",
+      "status": "available",
+      "value": 95.46,
+      "unit": "달러",
+      "basis": null
+    },
+    {
+      "id": "period_low",
+      "label": "최저가",
+      "status": "available",
+      "value": 21.13,
+      "unit": "달러",
+      "basis": null
+    },
+    {
+      "id": "recent_volatility_pct",
+      "label": "변동성(1개월, 연율화)",
+      "status": "available",
+      "value": 4.712504,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "drawdown_from_period_high_pct",
+      "label": "고점 대비 낙폭",
+      "status": "available",
+      "value": 43.997486,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "compare_overall_change_pct",
+      "label": "몰리브덴 대비 조회기간 변화율차",
+      "status": "available",
+      "value": -179.991792,
+      "unit": "%p",
+      "basis": null
+    },
+    {
+      "id": "annual_return_2010",
+      "label": "2010년(연중) 수익률",
+      "status": "available",
+      "value": -6.604434,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "annual_return_2011",
+      "label": "2011년 수익률",
+      "status": "available",
+      "value": -18.05,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "annual_return_2012",
+      "label": "2012년 수익률",
+      "status": "available",
+      "value": -22.205392,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "annual_return_2013",
+      "label": "2013년 수익률",
+      "status": "available",
+      "value": 9.253499,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "annual_return_2014",
+      "label": "2014년 수익률",
+      "status": "available",
+      "value": 11.963081,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "annual_return_2015",
+      "label": "2015년 수익률",
+      "status": "available",
+      "value": -22.958057,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "annual_return_2016",
+      "label": "2016년 수익률",
+      "status": "available",
+      "value": 27.482489,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "annual_return_2017",
+      "label": "2017년 수익률",
+      "status": "available",
+      "value": 155.158096,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "annual_return_2018",
+      "label": "2018년 수익률",
+      "status": "available",
+      "value": -23.153942,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "annual_return_2019",
+      "label": "2019년 수익률",
+      "status": "available",
+      "value": -43.842922,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "annual_return_2020",
+      "label": "2020년 수익률",
+      "status": "available",
+      "value": -5.754366,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "annual_return_2021",
+      "label": "2021년 수익률",
+      "status": "available",
+      "value": 126.941896,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "annual_return_2022",
+      "label": "2022년 수익률",
+      "status": "available",
+      "value": -43.175818,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "annual_return_2023",
+      "label": "2023년 수익률",
+      "status": "available",
+      "value": -34.714907,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "annual_return_2024",
+      "label": "2024년 수익률",
+      "status": "available",
+      "value": -22.776421,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "annual_return_2025",
+      "label": "2025년 수익률",
+      "status": "available",
+      "value": 140.395861,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "annual_return_2026",
+      "label": "2026년(연중) 수익률",
+      "status": "available",
+      "value": -0.168067,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "seasonality_month_01",
+      "label": "1월 평균 수익률",
+      "status": "available",
+      "value": 2.682905,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "seasonality_month_02",
+      "label": "2월 평균 수익률",
+      "status": "available",
+      "value": 1.625853,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "seasonality_month_03",
+      "label": "3월 평균 수익률",
+      "status": "available",
+      "value": 3.806992,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "seasonality_month_04",
+      "label": "4월 평균 수익률",
+      "status": "available",
+      "value": -0.089734,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "seasonality_month_05",
+      "label": "5월 평균 수익률",
+      "status": "available",
+      "value": -2.379215,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "seasonality_month_06",
+      "label": "6월 평균 수익률",
+      "status": "available",
+      "value": 0.097935,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "seasonality_month_07",
+      "label": "7월 평균 수익률",
+      "status": "available",
+      "value": -1.317536,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "seasonality_month_08",
+      "label": "8월 평균 수익률",
+      "status": "available",
+      "value": 0.868045,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "seasonality_month_09",
+      "label": "9월 평균 수익률",
+      "status": "available",
+      "value": 1.822785,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "seasonality_month_10",
+      "label": "10월 평균 수익률",
+      "status": "available",
+      "value": 1.529307,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "seasonality_month_11",
+      "label": "11월 평균 수익률",
+      "status": "available",
+      "value": -2.968899,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "seasonality_month_12",
+      "label": "12월 평균 수익률",
+      "status": "available",
+      "value": -0.42267,
+      "unit": "%",
+      "basis": null
+    }
+  ],
+  "detected_patterns": [],
+  "omitted_indicators": [],
+  "notices": [
+    "제공된 가격 계열과 선택 기간만 사용한다.",
+    "외부 사건을 가격 변화의 원인으로 추정하지 않는다.",
+    "가격 단위·기준이 없으면 절대 수준을 해석하지 않는다."
+  ],
+  "llm_refined": false
+}

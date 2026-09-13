@@ -65,6 +65,41 @@ def _map_korea_as_of(value: str, period_unit: str | None) -> str:
     return _korean_date(value)
 
 
+def _query_period_phrase(start_raw: str | None, end_value: str, period_unit: str | None) -> str:
+    """D-10(2026-09-09 발주처 피드백, 다음 세션 최우선으로 미뤄졌다가 이번에
+    반영) — map_korea/map_global의 "[기준일] 기준 수입액은 총 X달러"
+    문구는 두 문제가 있었다: ①수입액은 flow(조회기간 누계)인데 "기준"은
+    시점(stock)처럼 읽힌다 ②조회 파라미터 종료일(`srchDateE`)을 그대로
+    찍어 UI가 잘못된 연도를 보내면 존재하지 않는 미래 날짜가 그대로
+    노출된다. `start_raw`(조회 시작일, `srchDateS` 원문)를 알면
+    "조회기간(YYYY~YYYY)"로 바꿔 "구간 조회"라는 뜻을 분명히 한다 —
+    종료일이 미래여도 "그 구간을 조회했다"는 사실 자체는 참이라 ②도
+    해소된다. `start_raw`가 없으면(구 supply_auxiliary 손 매핑 등
+    komis_response 없이 들어온 경로) 기존 `_map_korea_as_of()`+"기준"
+    으로 안전하게 폴백한다."""
+
+    if not start_raw:
+        # period_unit이 없으면 map_global 호출(연 단위, `_korean_year`가
+        # 기존 폴백) — map_korea는 항상 "년별"/"월별"이 있어 `_map_korea_
+        # as_of`로 간다. 여기서 갈라야 map_global의 "OOOO년 12월 31일
+        # 기준"류 실제일자 노출 버그(2026-09-10에 이미 고쳤던 것)가
+        # 이 함수 신설로 되살아나지 않는다.
+        if period_unit is None:
+            return f"{_korean_year(end_value)} 기준"
+        return f"{_map_korea_as_of(end_value, period_unit)} 기준"
+    start_dt = _date.fromisoformat(start_raw)
+    end_dt = _date.fromisoformat(end_value)
+    if period_unit == "월별":
+        start_label = f"{start_dt.year}년 {start_dt.month}월"
+        end_label = f"{end_dt.year}년 {end_dt.month}월"
+    else:
+        start_label = f"{start_dt.year}년"
+        end_label = f"{end_dt.year}년"
+    if start_label == end_label:
+        return f"조회기간({start_label})"
+    return f"조회기간({start_label}~{end_label})"
+
+
 def _subject(name: str) -> str:
     """`_topic()`(은/는)과 같은 받침 규칙의 이/가 버전 — `additional_summary.py`에는
     없어서 komir 자체 파일인 여기 둔다(2026-08-26, KOMIS 실데이터 회귀 테스트
@@ -1090,8 +1125,13 @@ def calculate_domestic_trade_summary(
     country_filter_name: str | None = None,
     scope_label: str | None = None,
     period_unit: str | None = None,
+    query_start_date: str | None = None,
 ) -> AdditionalCalculatedSummary:
     """국내(관세청) 수급지도 계열 계산 — 수입·수출을 한 보고서에 함께 낸다.
+
+    `query_start_date`(2026-09-13, D-10 반영) — 조회 시작일(원본 `srchDateS`).
+    있으면 "[기준일] 기준" 대신 "조회기간(YYYY~YYYY)"로 문구를 바꾼다
+    (`_query_period_phrase()` 참고) — 없으면 기존 문구 그대로.
 
     2026-09-09 발주처 업무지시서 §3.3 대응 — 이전엔 `direction` 인자로
     수입 또는 수출 한쪽만 계산했다(호출자가 `request.trade_direction`으로
@@ -1152,7 +1192,7 @@ def calculate_domestic_trade_summary(
     # ── 수입 현황(core_diagnosis, 발주처 템플릿 "수입 현황" 문단) ──
     if country_filter_name:
         core_fact = (
-            f"{_map_korea_as_of(latest_date, period_unit)} 기준 한국의 {series.mineral.name} {scope_prefix}수입액은 총 "
+            f"{_query_period_phrase(query_start_date, latest_date, period_unit)} 한국의 {series.mineral.name} {scope_prefix}수입액은 총 "
             f"{_quantity(import_total)}달러입니다."
         )
     else:
@@ -1167,7 +1207,7 @@ def calculate_domestic_trade_summary(
                 _price_metric(f"top{rank}_import_share_pct", f"{rank}위 수입국 비중", share, unit="%")
             )
         core_fact = (
-            f"{_map_korea_as_of(latest_date, period_unit)} 기준 한국의 {series.mineral.name} {scope_prefix}수입액은 총 "
+            f"{_query_period_phrase(query_start_date, latest_date, period_unit)} 한국의 {series.mineral.name} {scope_prefix}수입액은 총 "
             f"{_quantity(import_total)}달러입니다. " + ", ".join(rank_parts) + "입니다."
         )
     claims = [EvidenceClaim("current_state", "core_diagnosis", core_fact, required=True)]
@@ -1232,7 +1272,7 @@ def calculate_domestic_trade_summary(
         key_metrics.append(_price_metric("export_import_ratio_pct", "수입 대비 수출 비율", ratio, unit="%"))
         if country_filter_name:
             export_fact = (
-                f"{_map_korea_as_of(latest_date, period_unit)} 기준 한국의 {series.mineral.name} {scope_prefix}수출액은 총 "
+                f"{_query_period_phrase(query_start_date, latest_date, period_unit)} 한국의 {series.mineral.name} {scope_prefix}수출액은 총 "
                 f"{_quantity(export_total)}달러입니다. {ratio_fact}"
             )
         else:
@@ -1243,7 +1283,7 @@ def calculate_domestic_trade_summary(
                 _price_metric("top1_export_share_pct", "1위 수출국 비중", top1_export_share, unit="%")
             )
             export_fact = (
-                f"{_map_korea_as_of(latest_date, period_unit)} 기준 한국의 {series.mineral.name} {scope_prefix}수출액은 총 "
+                f"{_query_period_phrase(query_start_date, latest_date, period_unit)} 한국의 {series.mineral.name} {scope_prefix}수출액은 총 "
                 f"{_quantity(export_total)}달러이며, 주요 수출 대상국은 {export_names} 순입니다. "
                 + ratio_fact
             )
@@ -1253,7 +1293,10 @@ def calculate_domestic_trade_summary(
             EvidenceClaim(
                 "no_export_data",
                 "current_position",
-                f"{_map_korea_as_of(latest_date, period_unit)} 기준 수출 관측치가 없어 수출 현황은 계산하지 않았습니다.",
+                # 2026-09-13 검수 정정 — D-10(조회기간 표기)이 이 폴백 문장에만
+                # 빠져 있었다. 시작일이 없으면 _query_period_phrase가 기존
+                # "[기준일] 기준"으로 폴백하므로 동작 범위는 그대로다.
+                f"{_query_period_phrase(query_start_date, latest_date, period_unit)} 수출 관측치가 없어 수출 현황은 계산하지 않았습니다.",
                 required=True,
             )
         )
@@ -1282,9 +1325,13 @@ def calculate_global_trade_summary(
     komis_totals: TradeKomisTotals | None = None,
     top_trade_movers: list[dict] | None = None,
     route_shares: list[dict] | None = None,
+    query_start_date: str | None = None,
 ) -> AdditionalCalculatedSummary:
     """글로벌(UN Comtrade) 수급지도 계열 계산 — 원산지→도착지 양자무역 "루트"
     랭킹 + 대한민국 자체 순위 하이라이트.
+
+    `query_start_date`(2026-09-13, D-10 반영) — map_korea와 같은 이유로
+    "[연도] 기준" 대신 조회 시작일을 알면 "조회기간(YYYY~YYYY)"로 바꾼다.
 
     2026-08-27: PDF 지침 점검(/unlazy)에서 발견한 gap 수정 — 이전에는
     원산국(수출국)별로 도착지를 뭉개고 집계해 "국가별 총 공급액" 랭킹만
@@ -1369,7 +1416,7 @@ def calculate_global_trade_summary(
         EvidenceClaim(
             "current_state",
             "core_diagnosis",
-            f"{_korean_year(latest_date)} 기준 {series.mineral.name} 세계 교역 총액은 {_quantity(total)}달러입니다.",
+            f"{_query_period_phrase(query_start_date, latest_date, None)} {series.mineral.name} 세계 교역 총액은 {_quantity(total)}달러입니다.",
             required=True,
         )
     ]

@@ -1,0 +1,803 @@
+{
+  "list_data": {
+    "srchDateE": "20261231",
+    "orderSort": "DESC",
+    "srchMttrFlowDtlCd": "",
+    "srchExpNtnCd": "",
+    "srchDateChartE": "20261231",
+    "srchIncmExp": null,
+    "srchHsCd": "",
+    "orderBy": "",
+    "srchMnrkndUnqCd": "MNRL0001",
+    "list": [
+      {
+        "RNUM": 1,
+        "incmNtnNm": "인도네시아",
+        "incmNtnCd": "ID",
+        "expNtnNm": "호주",
+        "amt": 12289705.92,
+        "weig": 15696017.73,
+        "sumWeig": 655593481.77,
+        "weigRate": "2.39",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "AU",
+        "amtRate": "7.11"
+      },
+      {
+        "RNUM": 2,
+        "incmNtnNm": "독일",
+        "incmNtnCd": "DE",
+        "expNtnNm": "칠레",
+        "amt": 7679873.68,
+        "weig": 525880,
+        "sumWeig": 655593481.77,
+        "weigRate": "0.08",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "CL",
+        "amtRate": "4.44"
+      },
+      {
+        "RNUM": 3,
+        "incmNtnNm": "영국",
+        "incmNtnCd": "GB",
+        "expNtnNm": "칠레",
+        "amt": 7556092.11,
+        "weig": 678000,
+        "sumWeig": 655593481.77,
+        "weigRate": "0.10",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "CL",
+        "amtRate": "4.37"
+      },
+      {
+        "RNUM": 4,
+        "incmNtnNm": "미국",
+        "incmNtnCd": "US",
+        "expNtnNm": "아르헨티나",
+        "amt": 7476097,
+        "weig": 708561,
+        "sumWeig": 655593481.77,
+        "weigRate": "0.11",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "AR",
+        "amtRate": "4.33"
+      },
+      {
+        "RNUM": 5,
+        "incmNtnNm": "인도네시아",
+        "incmNtnCd": "ID",
+        "expNtnNm": "대한민국",
+        "amt": 6874199,
+        "weig": 1170500,
+        "sumWeig": 655593481.77,
+        "weigRate": "0.18",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "KR",
+        "amtRate": "3.98"
+      },
+      {
+        "RNUM": 6,
+        "incmNtnNm": "인도",
+        "incmNtnCd": "IN",
+        "expNtnNm": "중국",
+        "amt": 6083815.02,
+        "weig": 16629660,
+        "sumWeig": 655593481.77,
+        "weigRate": "2.54",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "CN",
+        "amtRate": "3.52"
+      },
+      {
+        "RNUM": 7,
+        "incmNtnNm": "인도",
+        "incmNtnCd": "IN",
+        "expNtnNm": "아랍에미리트",
+        "amt": 5601064.19,
+        "weig": 294778004,
+        "sumWeig": 655593481.77,
+        "weigRate": "44.96",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "AE",
+        "amtRate": "3.24"
+      },
+      {
+        "RNUM": 8,
+        "incmNtnNm": "독일",
+        "incmNtnCd": "DE",
+        "expNtnNm": "호주",
+        "amt": 5047386,
+        "weig": 2458279.53,
+        "sumWeig": 655593481.77,
+        "weigRate": "0.37",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "AU",
+        "amtRate": "2.92"
+      },
+      {
+        "RNUM": 9,
+        "incmNtnNm": "네덜란드",
+        "incmNtnCd": "NL",
+        "expNtnNm": "칠레",
+        "amt": 4880485.86,
+        "weig": 532355,
+        "sumWeig": 655593481.77,
+        "weigRate": "0.08",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "CL",
+        "amtRate": "2.82"
+      },
+      {
+        "RNUM": 10,
+        "incmNtnNm": "헝가리",
+        "incmNtnCd": "HU",
+        "expNtnNm": "중국",
+        "amt": 4210860.78,
+        "weig": 227534,
+        "sumWeig": 655593481.77,
+        "weigRate": "0.03",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "CN",
+        "amtRate": "2.44"
+      },
+      {
+        "RNUM": 11,
+        "incmNtnNm": "캐나다",
+        "incmNtnCd": "CA",
+        "expNtnNm": "미국",
+        "amt": 4005631.84,
+        "weig": 10063708,
+        "sumWeig": 655593481.77,
+        "weigRate": "1.54",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "US",
+        "amtRate": "2.32"
+      },
+      {
+        "RNUM": 12,
+        "incmNtnNm": "일본",
+        "incmNtnCd": "JP",
+        "expNtnNm": "중국",
+        "amt": 3538054.06,
+        "weig": 9908000,
+        "sumWeig": 655593481.77,
+        "weigRate": "1.51",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "CN",
+        "amtRate": "2.05"
+      },
+      {
+        "RNUM": 13,
+        "incmNtnNm": "인도",
+        "incmNtnCd": "IN",
+        "expNtnNm": "아르헨티나",
+        "amt": 3255803.7,
+        "weig": 360000,
+        "sumWeig": 655593481.77,
+        "weigRate": "0.05",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "AR",
+        "amtRate": "1.88"
+      },
+      {
+        "RNUM": 14,
+        "incmNtnNm": "영국",
+        "incmNtnCd": "GB",
+        "expNtnNm": "미국",
+        "amt": 3105478.68,
+        "weig": 726138,
+        "sumWeig": 655593481.77,
+        "weigRate": "0.11",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "US",
+        "amtRate": "1.80"
+      },
+      {
+        "RNUM": 15,
+        "incmNtnNm": "독일",
+        "incmNtnCd": "DE",
+        "expNtnNm": "스페인",
+        "amt": 2855281.79,
+        "weig": 26860734,
+        "sumWeig": 655593481.77,
+        "weigRate": "4.10",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "ES",
+        "amtRate": "1.65"
+      },
+      {
+        "RNUM": 16,
+        "incmNtnNm": "독일",
+        "incmNtnCd": "DE",
+        "expNtnNm": "미국",
+        "amt": 2592911.04,
+        "weig": 2868075.05,
+        "sumWeig": 655593481.77,
+        "weigRate": "0.44",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "US",
+        "amtRate": "1.50"
+      },
+      {
+        "RNUM": 17,
+        "incmNtnNm": "이탈리아",
+        "incmNtnCd": "IT",
+        "expNtnNm": "독일",
+        "amt": 2547027.44,
+        "weig": 2267836,
+        "sumWeig": 655593481.77,
+        "weigRate": "0.35",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "DE",
+        "amtRate": "1.47"
+      },
+      {
+        "RNUM": 18,
+        "incmNtnNm": "스페인",
+        "incmNtnCd": "ES",
+        "expNtnNm": "아르헨티나",
+        "amt": 2368560.73,
+        "weig": 261600,
+        "sumWeig": 655593481.77,
+        "weigRate": "0.04",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "AR",
+        "amtRate": "1.37"
+      },
+      {
+        "RNUM": 19,
+        "incmNtnNm": "미국",
+        "incmNtnCd": "US",
+        "expNtnNm": "일본",
+        "amt": 1906137,
+        "weig": 1559375,
+        "sumWeig": 655593481.77,
+        "weigRate": "0.24",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "JP",
+        "amtRate": "1.10"
+      },
+      {
+        "RNUM": 20,
+        "incmNtnNm": "인도네시아",
+        "incmNtnCd": "ID",
+        "expNtnNm": "칠레",
+        "amt": 1902483.91,
+        "weig": 200100,
+        "sumWeig": 655593481.77,
+        "weigRate": "0.03",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "CL",
+        "amtRate": "1.10"
+      },
+      {
+        "RNUM": 21,
+        "incmNtnNm": "미국",
+        "incmNtnCd": "US",
+        "expNtnNm": "캐나다",
+        "amt": 1868378,
+        "weig": 10682290,
+        "sumWeig": 655593481.77,
+        "weigRate": "1.63",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "CA",
+        "amtRate": "1.08"
+      },
+      {
+        "RNUM": 22,
+        "incmNtnNm": "인도",
+        "incmNtnCd": "IN",
+        "expNtnNm": "미국",
+        "amt": 1866397.05,
+        "weig": 210898.82,
+        "sumWeig": 655593481.77,
+        "weigRate": "0.03",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "US",
+        "amtRate": "1.08"
+      },
+      {
+        "RNUM": 23,
+        "incmNtnNm": "네덜란드",
+        "incmNtnCd": "NL",
+        "expNtnNm": "미국",
+        "amt": 1865048.72,
+        "weig": 181520,
+        "sumWeig": 655593481.77,
+        "weigRate": "0.03",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "US",
+        "amtRate": "1.08"
+      },
+      {
+        "RNUM": 24,
+        "incmNtnNm": "미국",
+        "incmNtnCd": "US",
+        "expNtnNm": "멕시코",
+        "amt": 1649519,
+        "weig": 9212119,
+        "sumWeig": 655593481.77,
+        "weigRate": "1.41",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "MX",
+        "amtRate": "0.95"
+      },
+      {
+        "RNUM": 25,
+        "incmNtnNm": "체코",
+        "incmNtnCd": "CZ",
+        "expNtnNm": "슬로바키아",
+        "amt": 1632140,
+        "weig": 10499200,
+        "sumWeig": 655593481.77,
+        "weigRate": "1.60",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "SK",
+        "amtRate": "0.94"
+      },
+      {
+        "RNUM": 26,
+        "incmNtnNm": "미국",
+        "incmNtnCd": "US",
+        "expNtnNm": "칠레",
+        "amt": 1535398,
+        "weig": 125522,
+        "sumWeig": 655593481.77,
+        "weigRate": "0.02",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "CL",
+        "amtRate": "0.89"
+      },
+      {
+        "RNUM": 27,
+        "incmNtnNm": "독일",
+        "incmNtnCd": "DE",
+        "expNtnNm": "네덜란드",
+        "amt": 1532865.99,
+        "weig": 4710534,
+        "sumWeig": 655593481.77,
+        "weigRate": "0.72",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "NL",
+        "amtRate": "0.89"
+      },
+      {
+        "RNUM": 28,
+        "incmNtnNm": "독일",
+        "incmNtnCd": "DE",
+        "expNtnNm": "오스트리아",
+        "amt": 1498820.4,
+        "weig": 2650964,
+        "sumWeig": 655593481.77,
+        "weigRate": "0.40",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "AT",
+        "amtRate": "0.87"
+      },
+      {
+        "RNUM": 29,
+        "incmNtnNm": "스페인",
+        "incmNtnCd": "ES",
+        "expNtnNm": "멕시코",
+        "amt": 1475888.71,
+        "weig": 3993000,
+        "sumWeig": 655593481.77,
+        "weigRate": "0.61",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "MX",
+        "amtRate": "0.85"
+      },
+      {
+        "RNUM": 30,
+        "incmNtnNm": "영국",
+        "incmNtnCd": "GB",
+        "expNtnNm": "네덜란드",
+        "amt": 1472077.78,
+        "weig": 2934398,
+        "sumWeig": 655593481.77,
+        "weigRate": "0.45",
+        "sumAmt": 172819326.26,
+        "expNtnCd": "NL",
+        "amtRate": "0.85"
+      }
+    ],
+    "listCount": "15",
+    "srchDatePE": "20251231",
+    "srchMttrFlowCd": "",
+    "srchDateS": "20260101",
+    "srchIncmNtnCd": "",
+    "srchDateChartS": "20220101",
+    "page": "1",
+    "srchTypeAW": "A",
+    "srchCrtrYmd": "Y",
+    "srchDatePS": "20250101"
+  },
+  "bar_chart": {
+    "data": {
+      "barChart": {
+        "xaxis": [
+          "2022",
+          "2023",
+          "2024",
+          "2025",
+          "2026"
+        ],
+        "minValue": 0.0,
+        "maxValue": 0.0,
+        "series": [
+          {
+            "seriesCd": "CL",
+            "data": [
+              17571824504.75,
+              16967411010.23,
+              6134038057.55,
+              2091106908.05,
+              296972409.15
+            ],
+            "name": "칠레"
+          },
+          {
+            "seriesCd": "AU",
+            "data": [
+              16397621621.34,
+              26378866523.25,
+              6804336162.83,
+              2408194833.74,
+              454076845.36
+            ],
+            "name": "호주"
+          },
+          {
+            "seriesCd": "CN",
+            "data": [
+              9964729673.51,
+              13874820004.23,
+              4637104366.07,
+              322083743.81,
+              20134347.81
+            ],
+            "name": "중국"
+          },
+          {
+            "seriesCd": "US",
+            "data": [
+              1389972445.55,
+              1347792129.98,
+              829168032.5,
+              412913719.34,
+              42137642.7
+            ],
+            "name": "미국"
+          },
+          {
+            "seriesCd": "AR",
+            "data": [
+              681875773.59,
+              1173733878.37,
+              1295403603.93,
+              403189701.61,
+              208699388.18
+            ],
+            "name": "아르헨티나"
+          },
+          {
+            "seriesCd": "BR",
+            "data": [
+              653600830.14,
+              1136099018.82,
+              583479468.74,
+              173631140.51,
+              0
+            ],
+            "name": "브라질"
+          },
+          {
+            "seriesCd": "NL",
+            "data": [
+              625946920.24,
+              381146967.21,
+              262831019.33,
+              124016459.69,
+              20555484.05
+            ],
+            "name": "네덜란드"
+          },
+          {
+            "seriesCd": "DE",
+            "data": [
+              511994171.52,
+              475839094.75,
+              419225574.26,
+              180417329.64,
+              32015683.27
+            ],
+            "name": "독일"
+          },
+          {
+            "seriesCd": "BE",
+            "data": [
+              495713255.9,
+              0,
+              0,
+              0,
+              0
+            ],
+            "name": "벨기에"
+          },
+          {
+            "seriesCd": "KR",
+            "data": [
+              491621858.4,
+              524280945.26,
+              0,
+              0,
+              0
+            ],
+            "name": "대한민국"
+          },
+          {
+            "seriesCd": "ZW",
+            "data": [
+              0,
+              1294277365.24,
+              1076597100.61,
+              0,
+              0
+            ],
+            "name": "짐바브웨"
+          },
+          {
+            "seriesCd": "ES",
+            "data": [
+              0,
+              0,
+              290377865.7,
+              170026387.74,
+              23748704.35
+            ],
+            "name": "스페인"
+          },
+          {
+            "seriesCd": "CA",
+            "data": [
+              0,
+              0,
+              0,
+              79077048.92,
+              126905308.08
+            ],
+            "name": "캐나다"
+          },
+          {
+            "seriesCd": "ID",
+            "data": [
+              0,
+              0,
+              0,
+              0,
+              30280360.83
+            ],
+            "name": "인도네시아"
+          }
+        ]
+      },
+      "dataType": "B"
+    }
+  },
+  "nation_map": {
+    "data": {
+      "mapData": [
+        {
+          "trgtNtnWeigRt": "6.3073",
+          "crtrNtnKornNm": "대한민국",
+          "trgtNtnCd": "ID",
+          "crtrTotalWeig": 66455231.1,
+          "crtrNtnCd": "KR",
+          "weight": 1170500,
+          "crtrNtnWeigRt": "1.7613",
+          "crtrTotalAmt": 75020312.9,
+          "mnrkndUnqCd": "MNRL0001",
+          "RNUM": 5,
+          "trgtTotalWeig": 18557895,
+          "price": 6874199,
+          "typeIE": "I",
+          "trgtTotalAmt": 9304666.3,
+          "crtrNtnAmtRt": "9.1631",
+          "mnrkndKornNm": "리튬",
+          "trgtNtnAmtRt": "73.8790",
+          "trgtNtnKornNm": "인도네시아",
+          "typeAW": "A"
+        },
+        {
+          "trgtNtnWeigRt": "4.3359",
+          "crtrNtnKornNm": "호주",
+          "trgtNtnCd": "ID",
+          "crtrTotalWeig": 66455231.1,
+          "crtrNtnCd": "AU",
+          "weight": 15696017.73,
+          "crtrNtnWeigRt": "23.6189",
+          "crtrTotalAmt": 75020312.9,
+          "mnrkndUnqCd": "MNRL0001",
+          "RNUM": 1,
+          "trgtTotalWeig": 362003973.55,
+          "price": 12289705.92,
+          "typeIE": "I",
+          "trgtTotalAmt": 454076845.36,
+          "crtrNtnAmtRt": "16.3818",
+          "mnrkndKornNm": "리튬",
+          "trgtNtnAmtRt": "2.7065",
+          "trgtNtnKornNm": "인도네시아",
+          "typeAW": "A"
+        },
+        {
+          "trgtNtnWeigRt": "99.9825",
+          "crtrNtnKornNm": "아랍에미리트",
+          "trgtNtnCd": "IN",
+          "crtrTotalWeig": 333088102.57,
+          "crtrNtnCd": "AE",
+          "weight": 294778004,
+          "crtrNtnWeigRt": "88.4985",
+          "crtrTotalAmt": 22403747.04,
+          "mnrkndUnqCd": "MNRL0001",
+          "RNUM": 7,
+          "trgtTotalWeig": 294829566.18,
+          "price": 5601064.19,
+          "typeIE": "I",
+          "trgtTotalAmt": 5632622.36,
+          "crtrNtnAmtRt": "25.0006",
+          "mnrkndKornNm": "리튬",
+          "trgtNtnAmtRt": "99.4397",
+          "trgtNtnKornNm": "인도",
+          "typeAW": "A"
+        },
+        {
+          "trgtNtnWeigRt": "37.7026",
+          "crtrNtnKornNm": "중국",
+          "trgtNtnCd": "IN",
+          "crtrTotalWeig": 333088102.57,
+          "crtrNtnCd": "CN",
+          "weight": 16629660,
+          "crtrNtnWeigRt": "4.9926",
+          "crtrTotalAmt": 22403747.04,
+          "mnrkndUnqCd": "MNRL0001",
+          "RNUM": 6,
+          "trgtTotalWeig": 44107439.81,
+          "price": 6083815.02,
+          "typeIE": "I",
+          "trgtTotalAmt": 20134347.81,
+          "crtrNtnAmtRt": "27.1553",
+          "mnrkndKornNm": "리튬",
+          "trgtNtnAmtRt": "30.2161",
+          "trgtNtnKornNm": "인도",
+          "typeAW": "A"
+        },
+        {
+          "trgtNtnWeigRt": "2.9509",
+          "crtrNtnKornNm": "아르헨티나",
+          "trgtNtnCd": "US",
+          "crtrTotalWeig": 59962008.37,
+          "crtrNtnCd": "AR",
+          "weight": 708561,
+          "crtrNtnWeigRt": "1.1817",
+          "crtrTotalAmt": 29718206.22,
+          "mnrkndUnqCd": "MNRL0001",
+          "RNUM": 4,
+          "trgtTotalWeig": 24011472.48,
+          "price": 7476097,
+          "typeIE": "I",
+          "trgtTotalAmt": 208699388.18,
+          "crtrNtnAmtRt": "25.1566",
+          "mnrkndKornNm": "리튬",
+          "trgtNtnAmtRt": "3.5822",
+          "trgtNtnKornNm": "미국",
+          "typeAW": "A"
+        },
+        {
+          "trgtNtnWeigRt": "1.9463",
+          "crtrNtnKornNm": "칠레",
+          "trgtNtnCd": "DE",
+          "crtrTotalWeig": 170800981.25,
+          "crtrNtnCd": "CL",
+          "weight": 525880,
+          "crtrNtnWeigRt": "0.3079",
+          "crtrTotalAmt": 40972014.3,
+          "mnrkndUnqCd": "MNRL0001",
+          "RNUM": 2,
+          "trgtTotalWeig": 27019931.47,
+          "price": 7679873.68,
+          "typeIE": "I",
+          "trgtTotalAmt": 296972409.15,
+          "crtrNtnAmtRt": "18.7442",
+          "mnrkndKornNm": "리튬",
+          "trgtNtnAmtRt": "2.5861",
+          "trgtNtnKornNm": "독일",
+          "typeAW": "A"
+        },
+        {
+          "trgtNtnWeigRt": "0.6791",
+          "crtrNtnKornNm": "호주",
+          "trgtNtnCd": "DE",
+          "crtrTotalWeig": 170800981.25,
+          "crtrNtnCd": "AU",
+          "weight": 2458279.53,
+          "crtrNtnWeigRt": "1.4393",
+          "crtrTotalAmt": 40972014.3,
+          "mnrkndUnqCd": "MNRL0001",
+          "RNUM": 8,
+          "trgtTotalWeig": 362003973.55,
+          "price": 5047386,
+          "typeIE": "I",
+          "trgtTotalAmt": 454076845.36,
+          "crtrNtnAmtRt": "12.3191",
+          "mnrkndKornNm": "리튬",
+          "trgtNtnAmtRt": "1.1116",
+          "trgtNtnKornNm": "독일",
+          "typeAW": "A"
+        },
+        {
+          "trgtNtnWeigRt": "2.5093",
+          "crtrNtnKornNm": "칠레",
+          "trgtNtnCd": "GB",
+          "crtrTotalWeig": 9786900.49,
+          "crtrNtnCd": "CL",
+          "weight": 678000,
+          "crtrNtnWeigRt": "6.9276",
+          "crtrTotalAmt": 21472677.36,
+          "mnrkndUnqCd": "MNRL0001",
+          "RNUM": 3,
+          "trgtTotalWeig": 27019931.47,
+          "price": 7556092.11,
+          "typeIE": "I",
+          "trgtTotalAmt": 296972409.15,
+          "crtrNtnAmtRt": "35.1893",
+          "mnrkndKornNm": "리튬",
+          "trgtNtnAmtRt": "2.5444",
+          "trgtNtnKornNm": "영국",
+          "typeAW": "A"
+        },
+        {
+          "trgtNtnWeigRt": "0.5159",
+          "crtrNtnKornNm": "중국",
+          "trgtNtnCd": "HU",
+          "crtrTotalWeig": 3856217.73,
+          "crtrNtnCd": "CN",
+          "weight": 227534,
+          "crtrNtnWeigRt": "5.9004",
+          "crtrTotalAmt": 6870411.63,
+          "mnrkndUnqCd": "MNRL0001",
+          "RNUM": 10,
+          "trgtTotalWeig": 44107439.81,
+          "price": 4210860.78,
+          "typeIE": "I",
+          "trgtTotalAmt": 20134347.81,
+          "crtrNtnAmtRt": "61.2898",
+          "mnrkndKornNm": "리튬",
+          "trgtNtnAmtRt": "20.9138",
+          "trgtNtnKornNm": "헝가리",
+          "typeAW": "A"
+        },
+        {
+          "trgtNtnWeigRt": "1.9702",
+          "crtrNtnKornNm": "칠레",
+          "trgtNtnCd": "NL",
+          "crtrTotalWeig": 18882714.37,
+          "crtrNtnCd": "CL",
+          "weight": 532355,
+          "crtrNtnWeigRt": "2.8193",
+          "crtrTotalAmt": 15502961.31,
+          "mnrkndUnqCd": "MNRL0001",
+          "RNUM": 9,
+          "trgtTotalWeig": 27019931.47,
+          "price": 4880485.86,
+          "typeIE": "I",
+          "trgtTotalAmt": 296972409.15,
+          "crtrNtnAmtRt": "31.4810",
+          "mnrkndKornNm": "리튬",
+          "trgtNtnAmtRt": "1.6434",
+          "trgtNtnKornNm": "네덜란드",
+          "typeAW": "A"
+        }
+      ]
+    }
+  }
+}

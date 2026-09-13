@@ -1,0 +1,248 @@
+{
+  "data": {
+    "subChart01": {
+      "xaxis": [
+        "2025.09",
+        "2025.10",
+        "2025.11",
+        "2025.12",
+        "2026.01",
+        "2026.02",
+        "2026.03",
+        "2026.04",
+        "2026.05",
+        "2026.06",
+        "2026.07"
+      ],
+      "min": 8957.457,
+      "max": 14931.752,
+      "series": [
+        {
+          "data": [
+            9952.73,
+            10696.02,
+            10800.78,
+            11803.79,
+            13088.88,
+            12967.83,
+            12498.98,
+            12891.38,
+            13507.13,
+            13574.32,
+            13525.17
+          ],
+          "name": "실질가격"
+        }
+      ]
+    },
+    "subChart07": [
+      {
+        "prdtnRt": "18.37",
+        "totalBurudgQuty": 980000000,
+        "crtrYr": "2025",
+        "burudgQuty": 180000000,
+        "ntnEngNm": "Chile",
+        "ntnKornNm": "칠레"
+      },
+      {
+        "prdtnRt": "10.20",
+        "totalBurudgQuty": 980000000,
+        "crtrYr": "2025",
+        "burudgQuty": 100000000,
+        "ntnEngNm": "Australia",
+        "ntnKornNm": "호주"
+      },
+      {
+        "prdtnRt": "8.67",
+        "totalBurudgQuty": 980000000,
+        "crtrYr": "2025",
+        "burudgQuty": 85000000,
+        "ntnEngNm": "Peru",
+        "ntnKornNm": "페루"
+      },
+      {
+        "prdtnRt": "8.16",
+        "totalBurudgQuty": 980000000,
+        "crtrYr": "2025",
+        "burudgQuty": 80000000,
+        "ntnEngNm": "Russia",
+        "ntnKornNm": "러시아"
+      },
+      {
+        "prdtnRt": "8.16",
+        "totalBurudgQuty": 980000000,
+        "crtrYr": "2025",
+        "burudgQuty": 80000000,
+        "ntnEngNm": "Democratic Republic of Congo",
+        "ntnKornNm": "콩고민주공화국"
+      }
+    ],
+    "chartSpdmStbt": {
+      "mnrkndUnqCd": "MNRL0008",
+      "spdmStbtIndx": "1.73",
+      "crisisYn": "N",
+      "mnrkndKornNm": "동",
+      "crtrYm": "202607"
+    },
+    "subChart03": {
+      "series": [
+        2642748787,
+        1650864721,
+        1327215806,
+        1026243736,
+        856921815
+      ],
+      "crtrYr": "2025",
+      "labels": [
+        "칠레",
+        "호주",
+        "콩고민주공화국",
+        "미국",
+        "캐나다"
+      ]
+    },
+    "subChart02": {
+      "yaxisTitle": "수입량(톤)",
+      "min": 2296692992.7,
+      "max": 16616694242.5,
+      "series": [
+        {
+          "data": [
+            3049916448,
+            3323038640,
+            3033046584,
+            2551881103,
+            2575234253
+          ],
+          "name": "수입량",
+          "type": "column"
+        },
+        {
+          "data": [
+            14524358589,
+            15106085675,
+            12771141403,
+            12379438890,
+            14206660043
+          ],
+          "name": "수입액",
+          "type": "line"
+        }
+      ],
+      "oppoTitle": "수입액(백만$)",
+      "labels": [
+        "2021",
+        "2022",
+        "2023",
+        "2024",
+        "2025"
+      ]
+    },
+    "subChart05": {
+      "xaxis": [
+        "2024",
+        "2025",
+        "2026",
+        "2027",
+        "2028",
+        "2029",
+        "2030",
+        "2031",
+        "2032",
+        "2033"
+      ],
+      "series": [
+        {
+          "data": [
+            26751,
+            27884,
+            28567,
+            29232,
+            29821,
+            30403,
+            30960,
+            31197,
+            31566,
+            31863
+          ],
+          "name": "수요",
+          "type": "line"
+        },
+        {
+          "data": [
+            26941,
+            27681,
+            28247,
+            29231,
+            30038,
+            30739,
+            31151,
+            31388,
+            31760,
+            32068
+          ],
+          "name": "공급",
+          "type": "column"
+        },
+        {
+          "data": [
+            190,
+            -203,
+            -320,
+            -1,
+            216,
+            336,
+            191,
+            191,
+            193,
+            205
+          ],
+          "name": "과부족",
+          "type": "column"
+        }
+      ]
+    },
+    "subChart04": [
+      {
+        "prdctnQuty": 5300000,
+        "prdtnRt": "23.04",
+        "totalPrdctnQuty": 23000000,
+        "crtrYr": "2025",
+        "ntnEngNm": "Chile",
+        "ntnKornNm": "칠레"
+      },
+      {
+        "prdctnQuty": 3200000,
+        "prdtnRt": "13.91",
+        "totalPrdctnQuty": 23000000,
+        "crtrYr": "2025",
+        "ntnEngNm": "Democratic Republic of Congo",
+        "ntnKornNm": "콩고민주공화국"
+      },
+      {
+        "prdctnQuty": 2700000,
+        "prdtnRt": "11.74",
+        "totalPrdctnQuty": 23000000,
+        "crtrYr": "2025",
+        "ntnEngNm": "Peru",
+        "ntnKornNm": "페루"
+      },
+      {
+        "prdctnQuty": 1800000,
+        "prdtnRt": "7.83",
+        "totalPrdctnQuty": 23000000,
+        "crtrYr": "2025",
+        "ntnEngNm": "China",
+        "ntnKornNm": "중국"
+      },
+      {
+        "prdctnQuty": 1300000,
+        "prdtnRt": "5.65",
+        "totalPrdctnQuty": 23000000,
+        "crtrYr": "2025",
+        "ntnEngNm": "Russia",
+        "ntnKornNm": "러시아"
+      }
+    ]
+  }
+}

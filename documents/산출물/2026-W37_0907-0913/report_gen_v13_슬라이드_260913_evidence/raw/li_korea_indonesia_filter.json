@@ -1,0 +1,93 @@
+{
+  "list_data": {
+    "srchDateE": "20261231",
+    "orderSort": "DESC",
+    "srchMttrFlowDtlCd": "",
+    "srchExpNtnCd": "KR",
+    "srchDateChartE": "20261231",
+    "srchIncmExp": null,
+    "srchHsCd": "",
+    "orderBy": "",
+    "srchMnrkndUnqCd": "MNRL0001",
+    "list": [
+      {
+        "RNUM": 1,
+        "incmNtnNm": "인도네시아",
+        "incmNtnCd": "ID",
+        "expNtnNm": "대한민국",
+        "amt": 6874199,
+        "weig": 1170500,
+        "sumWeig": 1170500,
+        "weigRate": "100.00",
+        "sumAmt": 6874199,
+        "expNtnCd": "KR",
+        "amtRate": "100.00"
+      }
+    ],
+    "listCount": "15",
+    "srchDatePE": "20251231",
+    "srchMttrFlowCd": "",
+    "srchDateS": "20260101",
+    "srchIncmNtnCd": "ID",
+    "srchDateChartS": "20220101",
+    "page": "1",
+    "srchTypeAW": "A",
+    "srchCrtrYmd": "Y",
+    "srchDatePS": "20250101"
+  },
+  "bar_chart": {
+    "data": {
+      "barChart": {
+        "xaxis": [
+          "2022",
+          "2023",
+          "2024",
+          "2025",
+          "2026"
+        ],
+        "minValue": 0.0,
+        "maxValue": 18999746.447,
+        "series": [
+          {
+            "data": [
+              1395210,
+              2713889,
+              5210467,
+              17272496.77,
+              6874199
+            ],
+            "name": "수입"
+          }
+        ]
+      },
+      "dataType": "A"
+    }
+  },
+  "nation_map": {
+    "data": {
+      "mapData": [
+        {
+          "trgtNtnWeigRt": "6.3073",
+          "crtrNtnKornNm": "대한민국",
+          "trgtNtnCd": "ID",
+          "crtrTotalWeig": 66455231.1,
+          "crtrNtnCd": "KR",
+          "weight": 1170500,
+          "crtrNtnWeigRt": "1.7613",
+          "crtrTotalAmt": 75020312.9,
+          "mnrkndUnqCd": "MNRL0001",
+          "RNUM": 1,
+          "trgtTotalWeig": 18557895,
+          "price": 6874199,
+          "typeIE": "I",
+          "trgtTotalAmt": 9304666.3,
+          "crtrNtnAmtRt": "9.1631",
+          "mnrkndKornNm": "리튬",
+          "trgtNtnAmtRt": "73.8790",
+          "trgtNtnKornNm": "인도네시아",
+          "typeAW": "A"
+        }
+      ]
+    }
+  }
+}

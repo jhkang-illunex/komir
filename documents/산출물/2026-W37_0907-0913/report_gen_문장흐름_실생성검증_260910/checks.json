@@ -1,0 +1,38 @@
+[
+  {
+    "page": "price_base_metals",
+    "http_status": 200,
+    "status": "ok",
+    "seconds": 8.446,
+    "new_numeric_values": [],
+    "metrics_table_matches": true,
+    "awkward_phrases_absent": true
+  },
+  {
+    "page": "price_minor_metals",
+    "http_status": 200,
+    "status": "ok",
+    "seconds": 8.054,
+    "new_numeric_values": [],
+    "metrics_table_matches": true,
+    "awkward_phrases_absent": true
+  },
+  {
+    "page": "indicator_composite",
+    "http_status": 200,
+    "status": "ok",
+    "seconds": 5.284,
+    "new_numeric_values": [],
+    "metrics_table_matches": true,
+    "awkward_phrases_absent": true
+  },
+  {
+    "page": "indicator_market",
+    "http_status": 200,
+    "status": "ok",
+    "seconds": 3.957,
+    "new_numeric_values": [],
+    "metrics_table_matches": true,
+    "awkward_phrases_absent": true
+  }
+]

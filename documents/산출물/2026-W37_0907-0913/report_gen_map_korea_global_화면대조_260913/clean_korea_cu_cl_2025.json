@@ -1,0 +1,33 @@
+{
+  "srchNtnCd": "CL",
+  "srchDateE": "20251231",
+  "orderSort": "DESC",
+  "srchMttrFlowDtlCd": "",
+  "srchIncmExp": "I",
+  "srchHsCd": "",
+  "orderBy": "realPrdctnQuty1",
+  "srchMnrkndUnqCd": "MNRL0008",
+  "list": [
+    {
+      "incmAmt": 2642748787,
+      "RNUM": 1,
+      "expAmt": 3463586,
+      "sumExpWeig": 479350,
+      "expWeig": 479350,
+      "sumIncmAmt": 2642748787,
+      "incmWeig": 693638889,
+      "sumIncmWeig": 693638889,
+      "ntnCd": "CL",
+      "ntnKornNm": "칠레",
+      "sumExpAmt": 3463586
+    }
+  ],
+  "listCount": "10",
+  "srchDatePE": "20241231",
+  "srchMttrFlowCd": "",
+  "srchDateS": "20250101",
+  "page": "1",
+  "srchTypeAW": "A",
+  "srchCrtrYmd": "Y",
+  "srchDatePS": "20240101"
+}

@@ -1,0 +1,252 @@
+{
+  "request_id": "li-2026-route-share",
+  "page_id": "map_global",
+  "analysis_scope": "page_only",
+  "mineral": {
+    "code": "MNRL0001",
+    "name": "리튬"
+  },
+  "applied_filters": {
+    "mineral": "리튬",
+    "mineral_code": "MNRL0001",
+    "start_date": "2026-12-31",
+    "end_date": "2026-12-31"
+  },
+  "defaulted_filters": [
+    "start_date",
+    "end_date"
+  ],
+  "filter_hash": "3490290492304aa40798c6ef51023abe8895dcc27cdf047eafdfa56889f08264",
+  "source": {
+    "type": "api",
+    "id": "api:request",
+    "data_version": "90454c618337e9b9",
+    "as_of": "2026-12-31",
+    "file": null,
+    "sheets": []
+  },
+  "policy_version": "map-global-summary-v2",
+  "page_definition": "선택한 광종의 전세계 UN Comtrade 양자무역 기록에서 원산지→도착지 루트별 규모를 보여주고, 그중 대한민국이 관련된 루트의 순위를 별도로 표시하는 자료다.",
+  "grade": null,
+  "data_quality": {
+    "status": "available",
+    "observation_count": 30,
+    "available_start_month": null,
+    "available_end_month": null,
+    "effective_start_month": null,
+    "effective_end_month": null,
+    "available_start_date": "2026-12-31",
+    "available_end_date": "2026-12-31",
+    "effective_start_date": "2026-12-31",
+    "effective_end_date": "2026-12-31",
+    "available_start_year": null,
+    "available_end_year": null,
+    "effective_start_year": null,
+    "effective_end_year": null,
+    "available_start_period": null,
+    "available_end_period": null,
+    "effective_start_period": null,
+    "effective_end_period": null,
+    "missing_data": [],
+    "warnings": []
+  },
+  "summary": {
+    "core_diagnosis": [
+      {
+        "text": "2026년 기준 리튬 세계 교역 총액은 약 1.73억 달러입니다.",
+        "evidence_ids": [
+          "current_state"
+        ]
+      }
+    ],
+    "major_changes": [
+      {
+        "text": "글로벌 교역 규모 1위는 호주→인도네시아 루트로 약 1,228.97만 달러(7.11%), 2위는 칠레→독일 루트로 약 767.99만 달러(4.44%), 3위는 칠레→영국 루트로 약 755.61만 달러(4.37%)를 기록했습니다.",
+        "evidence_ids": [
+          "top1_country"
+        ]
+      },
+      {
+        "text": "상위 3개 루트의 합산 점유율은 15.93%입니다.",
+        "evidence_ids": [
+          "top3_concentration"
+        ]
+      },
+      {
+        "text": "상위 5개 루트의 합산 점유율은 24.23%입니다.",
+        "evidence_ids": [
+          "top5_concentration"
+        ]
+      },
+      {
+        "text": "대한민국이 포함된 교역 루트는 5위 대한민국→인도네시아 루트의 교역액 약 687.42만 달러(3.98%)로 확인됩니다.",
+        "evidence_ids": [
+          "korea_route_rank"
+        ]
+      }
+    ],
+    "current_position": [
+      {
+        "text": "조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
+        "evidence_ids": [
+          "single_snapshot"
+        ]
+      }
+    ]
+  },
+  "key_metrics": [
+    {
+      "id": "total_amount",
+      "label": "세계 교역 총액",
+      "status": "available",
+      "value": 172819326.26,
+      "unit": "달러",
+      "basis": null
+    },
+    {
+      "id": "top1_share_pct",
+      "label": "1위 루트 비중",
+      "status": "available",
+      "value": 7.111303,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "top3_share_pct",
+      "label": "상위3루트 비중",
+      "status": "available",
+      "value": 15.927427,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "top5_share_pct",
+      "label": "상위5루트 비중",
+      "status": "available",
+      "value": 24.231068,
+      "unit": "%",
+      "basis": null
+    }
+  ],
+  "detailed_metrics": [
+    {
+      "id": "total_amount",
+      "label": "세계 교역 총액",
+      "status": "available",
+      "value": 172819326.26,
+      "unit": "달러",
+      "basis": null
+    },
+    {
+      "id": "top1_share_pct",
+      "label": "1위 루트 비중",
+      "status": "available",
+      "value": 7.111303,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "top3_share_pct",
+      "label": "상위3루트 비중",
+      "status": "available",
+      "value": 15.927427,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "top5_share_pct",
+      "label": "상위5루트 비중",
+      "status": "available",
+      "value": 24.231068,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "route_share_origin_대한민국_인도네시아",
+      "label": "대한민국→인도네시아 경로 비중(대한민국측 집계총액 대비)",
+      "status": "available",
+      "value": 9.1631,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "route_share_dest_대한민국_인도네시아",
+      "label": "대한민국→인도네시아 경로 비중(인도네시아측 집계총액 대비)",
+      "status": "available",
+      "value": 73.879,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "route_share_origin_호주_인도네시아",
+      "label": "호주→인도네시아 경로 비중(호주측 집계총액 대비)",
+      "status": "available",
+      "value": 16.3818,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "route_share_dest_호주_인도네시아",
+      "label": "호주→인도네시아 경로 비중(인도네시아측 집계총액 대비)",
+      "status": "available",
+      "value": 2.7065,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "route_share_origin_아랍에미리트_인도",
+      "label": "아랍에미리트→인도 경로 비중(아랍에미리트측 집계총액 대비)",
+      "status": "available",
+      "value": 25.0006,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "route_share_dest_아랍에미리트_인도",
+      "label": "아랍에미리트→인도 경로 비중(인도측 집계총액 대비)",
+      "status": "available",
+      "value": 99.4397,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "route_share_origin_중국_인도",
+      "label": "중국→인도 경로 비중(중국측 집계총액 대비)",
+      "status": "available",
+      "value": 27.1553,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "route_share_dest_중국_인도",
+      "label": "중국→인도 경로 비중(인도측 집계총액 대비)",
+      "status": "available",
+      "value": 30.2161,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "route_share_origin_아르헨티나_미국",
+      "label": "아르헨티나→미국 경로 비중(아르헨티나측 집계총액 대비)",
+      "status": "available",
+      "value": 25.1566,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "route_share_dest_아르헨티나_미국",
+      "label": "아르헨티나→미국 경로 비중(미국측 집계총액 대비)",
+      "status": "available",
+      "value": 3.5822,
+      "unit": "%",
+      "basis": null
+    }
+  ],
+  "detected_patterns": [],
+  "omitted_indicators": [],
+  "notices": [
+    "한국 기준이 아니라 전세계 보고국 기준 데이터다 — 이 점을 서술에서 흐리지 않는다.",
+    "UN Comtrade 원천에 있는 루트(원산국-도착국 쌍)·기간만 분석한다."
+  ],
+  "llm_refined": false
+}

@@ -1,0 +1,236 @@
+{
+  "request_id": "cu-scope-filter",
+  "page_id": "map_korea",
+  "analysis_scope": "page_only",
+  "mineral": {
+    "code": "동",
+    "name": "동"
+  },
+  "applied_filters": {
+    "mineral": "동",
+    "mineral_code": "동",
+    "start_date": "2026-12-31",
+    "end_date": "2026-12-31",
+    "period_unit": "년별",
+    "scope_filter": "기초금속"
+  },
+  "defaulted_filters": [
+    "start_date",
+    "end_date"
+  ],
+  "filter_hash": "457cf299c97b39b4bcc39ff931945a30ccaad0917a03a3d34e0273f5e71597c7",
+  "source": {
+    "type": "api",
+    "id": "api:request",
+    "data_version": "db4b687465047d57",
+    "as_of": "2026-12-31",
+    "file": null,
+    "sheets": []
+  },
+  "policy_version": "map-korea-summary-v3",
+  "page_definition": "선택한 광종을 한국이 어느 나라와 수입·수출 거래를 하는지 국가별 금액으로 보여주는 자료다.",
+  "grade": null,
+  "data_quality": {
+    "status": "available",
+    "observation_count": 30,
+    "available_start_month": null,
+    "available_end_month": null,
+    "effective_start_month": null,
+    "effective_end_month": null,
+    "available_start_date": "2026-12-31",
+    "available_end_date": "2026-12-31",
+    "effective_start_date": "2026-12-31",
+    "effective_end_date": "2026-12-31",
+    "available_start_year": null,
+    "available_end_year": null,
+    "effective_start_year": null,
+    "effective_end_year": null,
+    "available_start_period": null,
+    "available_end_period": null,
+    "effective_start_period": null,
+    "effective_end_period": null,
+    "missing_data": [],
+    "warnings": []
+  },
+  "summary": {
+    "core_diagnosis": [
+      {
+        "text": "2026년 기준 한국의 동 기초금속 수입액은 총 약 32.80억 달러입니다. 1위 수입국은 칠레 약 12.69억 달러(38.69%), 2위 수입국은 콩고민주공화국 약 9.83억 달러(29.97%), 3위 수입국은 멕시코 약 1.96억 달러(5.97%)입니다.",
+        "evidence_ids": [
+          "current_state"
+        ]
+      }
+    ],
+    "major_changes": [
+      {
+        "text": "상위 3개국 수입 비중은 이 범위 내 74.62%이며, 상위 5개국까지 합산하면 이 범위 내 82.48%를 차지합니다.",
+        "evidence_ids": [
+          "import_concentration"
+        ]
+      }
+    ],
+    "current_position": [
+      {
+        "text": "2026년 기준 한국의 동 기초금속 수출액은 총 약 18.19억 달러이며, 주요 수출 대상국은 1위 중국 약 7.33억 달러(40.29%), 2위 미국 약 5.67억 달러(31.16%), 3위 대만 약 2.50억 달러(13.76%) 순입니다. 수출액은 수입액의 약 55% 수준으로, 수입액이 수출액보다 많습니다.",
+        "evidence_ids": [
+          "export_summary"
+        ]
+      }
+    ]
+  },
+  "key_metrics": [
+    {
+      "id": "import_total_amount",
+      "label": "수입총액",
+      "status": "available",
+      "value": 3279534751.0,
+      "unit": "달러",
+      "basis": null
+    },
+    {
+      "id": "top1_import_share_pct",
+      "label": "1위 수입국 비중",
+      "status": "available",
+      "value": 38.686181,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "top2_import_share_pct",
+      "label": "2위 수입국 비중",
+      "status": "available",
+      "value": 29.966833,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "top3_import_share_pct",
+      "label": "3위 수입국 비중",
+      "status": "available",
+      "value": 5.971001,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "top3_import_share_pct",
+      "label": "상위3국 수입비중",
+      "status": "available",
+      "value": 74.624015,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "top5_import_share_pct",
+      "label": "상위5국 수입비중",
+      "status": "available",
+      "value": 82.479369,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "export_total_amount",
+      "label": "수출총액",
+      "status": "available",
+      "value": 1819392224.0,
+      "unit": "달러",
+      "basis": null
+    },
+    {
+      "id": "export_import_ratio_pct",
+      "label": "수입 대비 수출 비율",
+      "status": "available",
+      "value": 55.477144,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "top1_export_share_pct",
+      "label": "1위 수출국 비중",
+      "status": "available",
+      "value": 40.292241,
+      "unit": "%",
+      "basis": null
+    }
+  ],
+  "detailed_metrics": [
+    {
+      "id": "import_total_amount",
+      "label": "수입총액",
+      "status": "available",
+      "value": 3279534751.0,
+      "unit": "달러",
+      "basis": null
+    },
+    {
+      "id": "top1_import_share_pct",
+      "label": "1위 수입국 비중",
+      "status": "available",
+      "value": 38.686181,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "top2_import_share_pct",
+      "label": "2위 수입국 비중",
+      "status": "available",
+      "value": 29.966833,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "top3_import_share_pct",
+      "label": "3위 수입국 비중",
+      "status": "available",
+      "value": 5.971001,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "top3_import_share_pct",
+      "label": "상위3국 수입비중",
+      "status": "available",
+      "value": 74.624015,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "top5_import_share_pct",
+      "label": "상위5국 수입비중",
+      "status": "available",
+      "value": 82.479369,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "export_total_amount",
+      "label": "수출총액",
+      "status": "available",
+      "value": 1819392224.0,
+      "unit": "달러",
+      "basis": null
+    },
+    {
+      "id": "export_import_ratio_pct",
+      "label": "수입 대비 수출 비율",
+      "status": "available",
+      "value": 55.477144,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "top1_export_share_pct",
+      "label": "1위 수출국 비중",
+      "status": "available",
+      "value": 40.292241,
+      "unit": "%",
+      "basis": null
+    }
+  ],
+  "detected_patterns": [],
+  "omitted_indicators": [],
+  "notices": [
+    "관세청 원천에 있는 상대국·기간만 분석한다.",
+    "수입/수출 집중도(상위국 비중)를 공급망 리스크로 단정하지 않고 사실만 서술한다."
+  ],
+  "llm_refined": false
+}

@@ -1,0 +1,493 @@
+{
+  "request_id": "cu-ni-cmp",
+  "page_id": "price_base_metals",
+  "analysis_scope": "page_only",
+  "mineral": {
+    "code": "동",
+    "name": "동"
+  },
+  "applied_filters": {
+    "mineral": "동",
+    "mineral_code": "동",
+    "start_date": "2024-01-02",
+    "end_date": "2026-08-27",
+    "price_criterion": "LME CASH",
+    "compare_mineral": "니켈",
+    "compare_price_criterion": "LME CASH"
+  },
+  "defaulted_filters": [
+    "start_date",
+    "end_date"
+  ],
+  "filter_hash": "7c63f626d7d43386d3d38c83d9336d06391cb141f1c3265f074d3c329d8b0361",
+  "source": {
+    "type": "api",
+    "id": "api:request",
+    "data_version": "d55a06b648442308",
+    "as_of": "2026-08-27",
+    "file": null,
+    "sheets": []
+  },
+  "policy_version": "price-base-metals-summary-v1",
+  "page_definition": "선택한 비철금속(LME 기준)의 일별 실거래가 추이를 보여주는 자료다.",
+  "grade": null,
+  "data_quality": {
+    "status": "available",
+    "observation_count": 673,
+    "available_start_month": null,
+    "available_end_month": null,
+    "effective_start_month": null,
+    "effective_end_month": null,
+    "available_start_date": "2024-01-02",
+    "available_end_date": "2026-08-27",
+    "effective_start_date": "2024-01-02",
+    "effective_end_date": "2026-08-27",
+    "available_start_year": null,
+    "available_end_year": null,
+    "effective_start_year": null,
+    "effective_end_year": null,
+    "available_start_period": null,
+    "available_end_period": null,
+    "effective_start_period": null,
+    "effective_end_period": null,
+    "missing_data": [],
+    "warnings": []
+  },
+  "summary": {
+    "core_diagnosis": [
+      {
+        "text": "2026년 8월 27일 기준 동 실거래가는 14,490달러입니다.",
+        "evidence_ids": [
+          "current_state"
+        ]
+      },
+      {
+        "text": "전일(2026년 8월 26일) 대비 0.24% 하락했습니다.",
+        "evidence_ids": [
+          "day_over_day"
+        ]
+      },
+      {
+        "text": "전주평균(14,365.20달러) 대비 0.87% 높습니다.",
+        "evidence_ids": [
+          "week_avg"
+        ]
+      },
+      {
+        "text": "전월평균(13,525.17달러) 대비 7.13% 높습니다.",
+        "evidence_ids": [
+          "month_avg"
+        ]
+      },
+      {
+        "text": "전년평균(9,944.94달러) 대비 45.70% 높습니다.",
+        "evidence_ids": [
+          "year_avg"
+        ]
+      }
+    ],
+    "major_changes": [
+      {
+        "text": "조회기간 시작(2024년 1월 2일, 8,430달러) 대비 71.89% 상승했습니다.",
+        "evidence_ids": [
+          "period_overall_change"
+        ]
+      },
+      {
+        "text": "최근에는 단기와 중기 가격 흐름이 모두 상승 방향입니다.",
+        "evidence_ids": [
+          "ma_trend"
+        ]
+      }
+    ],
+    "current_position": [
+      {
+        "text": "조회기간 관측치(실거래가) 기준 최고 14,850달러(2026년 8월 17일), 최저 8,085.50달러(2024년 2월 12일)였습니다.",
+        "evidence_ids": [
+          "period_range"
+        ]
+      },
+      {
+        "text": "조회기간 저점(2024년 2월 12일, 8,085.50달러) 대비 현재가는 79.21% 회복한 수준입니다.",
+        "evidence_ids": [
+          "recovery_since_low"
+        ]
+      },
+      {
+        "text": "2026년 8월 27일 기준 재고량은 235,575톤으로, 전일(2026년 8월 26일) 대비 0.80% 감소했습니다.",
+        "evidence_ids": [
+          "inventory_level"
+        ]
+      },
+      {
+        "text": "최근 1개월 20.38%·3개월 18.03%·1년 21.13% 수준의 가격 변동폭을 보였습니다.",
+        "evidence_ids": [
+          "volatility"
+        ]
+      },
+      {
+        "text": "최근 14일 중 상승 8일·하락 6일로 뚜렷한 방향성 없이 등락을 반복하고 있습니다.",
+        "evidence_ids": [
+          "price_momentum"
+        ]
+      },
+      {
+        "text": "현재가는 조회기간 중 최고가(2026년 8월 17일, 14,850달러) 대비 2.42% 낮으며 전체 가격 대비 고가권에 속합니다. 조회기간 중 가장 큰 하락은 2024년 5월 20일부터 2025년 4월 9일까지 이어졌으며, 이 기간 21.35% 하락했습니다.",
+        "evidence_ids": [
+          "price_position"
+        ]
+      },
+      {
+        "text": "현재 재고량은 조회기간 중 중간 수준입니다.",
+        "evidence_ids": [
+          "inventory_context"
+        ]
+      },
+      {
+        "text": "같은 조회기간 동안 니켈은 186.84% 상승한 반면, 동은 71.89% 상승했습니다.",
+        "evidence_ids": [
+          "compare_overall_change"
+        ]
+      },
+      {
+        "text": "동/니켈 가격비율은 현재 0.8597로, 조회기간 평균(0.6401) 대비 34.31% 높은 수준입니다.",
+        "evidence_ids": [
+          "relative_value"
+        ]
+      }
+    ]
+  },
+  "key_metrics": [
+    {
+      "id": "latest_price",
+      "label": "최신 가격",
+      "status": "available",
+      "value": 14490.0,
+      "unit": "달러",
+      "basis": null
+    },
+    {
+      "id": "day_over_day_change_pct",
+      "label": "전일대비",
+      "status": "available",
+      "value": -0.240964,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "week_avg_change_pct",
+      "label": "전주평균대비",
+      "status": "available",
+      "value": 0.87,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "month_avg_change_pct",
+      "label": "전월평균대비",
+      "status": "available",
+      "value": 7.13,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "year_avg_change_pct",
+      "label": "전년평균대비",
+      "status": "available",
+      "value": 45.7,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "period_high",
+      "label": "최고가",
+      "status": "available",
+      "value": 14850.0,
+      "unit": "달러",
+      "basis": null
+    },
+    {
+      "id": "period_low",
+      "label": "최저가",
+      "status": "available",
+      "value": 8085.5,
+      "unit": "달러",
+      "basis": null
+    },
+    {
+      "id": "inventory_level",
+      "label": "재고량",
+      "status": "available",
+      "value": 235575.0,
+      "unit": "톤",
+      "basis": null
+    },
+    {
+      "id": "inventory_change_pct",
+      "label": "재고량 등락률",
+      "status": "available",
+      "value": -0.800084,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "recent_volatility_pct",
+      "label": "변동성(1개월, 연율화)",
+      "status": "available",
+      "value": 20.377441,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "drawdown_from_period_high_pct",
+      "label": "고점 대비 낙폭",
+      "status": "available",
+      "value": 2.424242,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "compare_overall_change_pct",
+      "label": "니켈 대비 조회기간 변화율차",
+      "status": "available",
+      "value": -114.951486,
+      "unit": "%p",
+      "basis": null
+    }
+  ],
+  "detailed_metrics": [
+    {
+      "id": "latest_price",
+      "label": "최신 가격",
+      "status": "available",
+      "value": 14490.0,
+      "unit": "달러",
+      "basis": null
+    },
+    {
+      "id": "day_over_day_change_pct",
+      "label": "전일대비",
+      "status": "available",
+      "value": -0.240964,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "week_avg_change_pct",
+      "label": "전주평균대비",
+      "status": "available",
+      "value": 0.87,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "month_avg_change_pct",
+      "label": "전월평균대비",
+      "status": "available",
+      "value": 7.13,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "year_avg_change_pct",
+      "label": "전년평균대비",
+      "status": "available",
+      "value": 45.7,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "period_high",
+      "label": "최고가",
+      "status": "available",
+      "value": 14850.0,
+      "unit": "달러",
+      "basis": null
+    },
+    {
+      "id": "period_low",
+      "label": "최저가",
+      "status": "available",
+      "value": 8085.5,
+      "unit": "달러",
+      "basis": null
+    },
+    {
+      "id": "inventory_level",
+      "label": "재고량",
+      "status": "available",
+      "value": 235575.0,
+      "unit": "톤",
+      "basis": null
+    },
+    {
+      "id": "inventory_change_pct",
+      "label": "재고량 등락률",
+      "status": "available",
+      "value": -0.800084,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "recent_volatility_pct",
+      "label": "변동성(1개월, 연율화)",
+      "status": "available",
+      "value": 20.377441,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "drawdown_from_period_high_pct",
+      "label": "고점 대비 낙폭",
+      "status": "available",
+      "value": 2.424242,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "compare_overall_change_pct",
+      "label": "니켈 대비 조회기간 변화율차",
+      "status": "available",
+      "value": -114.951486,
+      "unit": "%p",
+      "basis": null
+    },
+    {
+      "id": "annual_return_2024",
+      "label": "2024년 수익률",
+      "status": "available",
+      "value": 3.274021,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "annual_return_2025",
+      "label": "2025년 수익률",
+      "status": "available",
+      "value": 43.964078,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "annual_return_2026",
+      "label": "2026년(연중) 수익률",
+      "status": "available",
+      "value": 15.265293,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "seasonality_month_01",
+      "label": "1월 평균 수익률",
+      "status": "available",
+      "value": 3.458683,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "seasonality_month_02",
+      "label": "2월 평균 수익률",
+      "status": "available",
+      "value": 2.840233,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "seasonality_month_03",
+      "label": "3월 평균 수익률",
+      "status": "available",
+      "value": -0.252746,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "seasonality_month_04",
+      "label": "4월 평균 수익률",
+      "status": "available",
+      "value": 4.414936,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "seasonality_month_05",
+      "label": "5월 평균 수익률",
+      "status": "available",
+      "value": 4.073225,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "seasonality_month_06",
+      "label": "6월 평균 수익률",
+      "status": "available",
+      "value": -1.522942,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "seasonality_month_07",
+      "label": "7월 평균 수익률",
+      "status": "available",
+      "value": -1.586892,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "seasonality_month_08",
+      "label": "8월 평균 수익률",
+      "status": "available",
+      "value": 3.048713,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "seasonality_month_09",
+      "label": "9월 평균 수익률",
+      "status": "available",
+      "value": 6.583797,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "seasonality_month_10",
+      "label": "10월 평균 수익률",
+      "status": "available",
+      "value": 1.498945,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "seasonality_month_11",
+      "label": "11월 평균 수익률",
+      "status": "available",
+      "value": -2.291815,
+      "unit": "%",
+      "basis": null
+    },
+    {
+      "id": "seasonality_month_12",
+      "label": "12월 평균 수익률",
+      "status": "available",
+      "value": 4.402334,
+      "unit": "%",
+      "basis": null
+    }
+  ],
+  "detected_patterns": [
+    {
+      "code": "near_period_high",
+      "label": "조회기간 고점 근접",
+      "evidence": [
+        "period_range",
+        "current_state"
+      ]
+    }
+  ],
+  "omitted_indicators": [],
+  "notices": [
+    "제공된 가격 계열과 선택 기간만 사용한다.",
+    "외부 사건을 가격 변화의 원인으로 추정하지 않는다.",
+    "가격 단위·기준이 없으면 절대 수준을 해석하지 않는다."
+  ],
+  "llm_refined": false
+}

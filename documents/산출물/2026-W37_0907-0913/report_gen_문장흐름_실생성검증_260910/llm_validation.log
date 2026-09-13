@@ -1,0 +1,9 @@
+2026-09-10 11:06:04,385 INFO app.analysis.report_render: 분석요약 완료 request_id=7eb417cc-9eae-4716-be13-c24267f2dcf6 page_id=price_base_metals mineral=MNRL0002 llm_refined=True
+2026-09-10 11:06:11,866 INFO app.analysis.report_render: 분석요약 완료 request_id=7756ef5e-ccc2-45a2-8197-e16e24c3c47f page_id=price_minor_metals mineral=MNRL1064 llm_refined=True
+2026-09-10 11:06:17,152 INFO app.analysis.report_render: 분석요약 완료 request_id=20c872d9-6874-4b1b-9b6a-7a2276b18a3d page_id=indicator_composite mineral=COMPOSITE llm_refined=True
+2026-09-10 11:06:21,109 INFO app.analysis.report_render: 분석요약 완료 request_id=e2fec1a7-79e1-43d1-a4cc-84b0d62ff048 page_id=indicator_market mineral=MNRL0024 llm_refined=True
+2026-09-10 11:07:30,916 WARNING app.analysis.report_render: LLM 경고(독자 응답에는 미노출) a8b04658-453e-47d8-9ada-f6e21e2a0cd5(page_id=price_base_metals, mineral=MNRL0002): LLM 분석요약을 건너뛰었다 — 요청 예산 안에 LLM 호출을 마칠 수 없어 규칙 기반 요약을 반환했다.
+2026-09-10 11:07:30,916 INFO app.analysis.report_render: 분석요약 완료 request_id=a8b04658-453e-47d8-9ada-f6e21e2a0cd5 page_id=price_base_metals mineral=MNRL0002 llm_refined=False
+2026-09-10 11:07:38,542 INFO app.analysis.report_render: 분석요약 완료 request_id=8a576663-e8c3-4941-81a7-fec4a5de9e1f page_id=price_minor_metals mineral=MNRL1064 llm_refined=True
+2026-09-10 11:09:37,337 INFO app.analysis.report_render: 분석요약 완료 request_id=c0a81df8-b5c7-43da-98a0-10c986bf815b page_id=price_base_metals mineral=MNRL0002 llm_refined=True
+2026-09-10 11:09:45,391 INFO app.analysis.report_render: 분석요약 완료 request_id=26883199-9e3f-4679-a0c3-0002a7c72b08 page_id=price_minor_metals mineral=MNRL1064 llm_refined=True

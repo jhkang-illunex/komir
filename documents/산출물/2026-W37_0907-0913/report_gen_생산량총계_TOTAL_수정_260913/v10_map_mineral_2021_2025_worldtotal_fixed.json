@@ -1,0 +1,1133 @@
+{
+  "map_mineral_baseline_2021_2025": {
+    "request_id": "v10-refetch",
+    "page_id": "map_mineral",
+    "analysis_scope": "page_only",
+    "mineral": {
+      "code": "MNRL0008",
+      "name": "동"
+    },
+    "applied_filters": {
+      "mineral": "동",
+      "mineral_code": "MNRL0008",
+      "measure": "reserves",
+      "start_year": "2021",
+      "end_year": "2025"
+    },
+    "defaulted_filters": [],
+    "filter_hash": "741fca27f9845a8cc02a8a39ddd2457d85088999c2c35d5daf7753e6572138b1",
+    "source": {
+      "type": "api",
+      "id": "api:request",
+      "data_version": "49e80f3accd36428",
+      "as_of": "2025",
+      "file": null,
+      "sheets": []
+    },
+    "policy_version": "mineral-map-summary-v1",
+    "page_definition": "선택한 광종의 국가별 매장량 또는 생산량과 세계 전체 규모를 연도별로 보여주는 자료다.",
+    "grade": null,
+    "data_quality": {
+      "status": "available",
+      "observation_count": 71,
+      "available_start_month": null,
+      "available_end_month": null,
+      "effective_start_month": null,
+      "effective_end_month": null,
+      "available_start_date": null,
+      "available_end_date": null,
+      "effective_start_date": null,
+      "effective_end_date": null,
+      "available_start_year": 2021,
+      "available_end_year": 2025,
+      "effective_start_year": 2021,
+      "effective_end_year": 2025,
+      "available_start_period": null,
+      "available_end_period": null,
+      "effective_start_period": null,
+      "effective_end_period": null,
+      "missing_data": [],
+      "warnings": []
+    },
+    "summary": {
+      "core_diagnosis": [
+        {
+          "text": "2025년 세계 동 매장량은 약 9.80억톤입니다.",
+          "evidence_ids": [
+            "current_state"
+          ]
+        },
+        {
+          "text": "2021년보다 약 1억톤 늘어 4년간 11.36% 증가했습니다. 직전 관측연도인 2024년과 비교하면 0톤, 0.00% 변동이 없었습니다.",
+          "evidence_ids": [
+            "period_total_change"
+          ]
+        }
+      ],
+      "major_changes": [
+        {
+          "text": "2025년 기준 칠레는 약 1.80억톤으로 세계 전체의 18.37%를 차지해 1위입니다. 호주는 약 1억톤, 10.20%로 2위이며 두 국가의 비중 차이는 8.16%포인트입니다.",
+          "evidence_ids": [
+            "current_leaders"
+          ]
+        },
+        {
+          "text": "페루는 약 8,500만톤, 8.67%로 3위입니다.",
+          "evidence_ids": [
+            "third_country"
+          ]
+        },
+        {
+          "text": "조회기간 중 매장량이 가장 크게 증가한 국가는 콩고민주공화국으로, 2021년 0톤에서 2025년 약 8,000만톤으로 약 8,000만톤 (신규 집계) 증가했습니다. 가장 크게 감소한 국가는 칠레로, 2021년 약 2억톤에서 2025년 약 1.80억톤으로 약 2,000만톤 (10.00%) 감소했습니다.",
+          "evidence_ids": [
+            "extreme_change_countries"
+          ]
+        }
+      ],
+      "current_position": [
+        {
+          "text": "칠레는 2021년 약 2억톤에서 2025년 약 1.80억톤으로 약 2,000만톤, 10.00% 감소했습니다. 매장량 비중은 22.73%에서 18.37%로 4.36%포인트 낮아졌습니다. 순위는 1위를 유지했습니다.",
+          "evidence_ids": [
+            "leading_country_change_1"
+          ]
+        },
+        {
+          "text": "호주는 2021년 약 9,300만톤에서 2025년 약 1억톤으로 약 700만톤, 7.53% 증가했습니다. 매장량 비중은 10.57%에서 10.20%로 0.36%포인트 낮아졌습니다. 순위는 2위를 유지했습니다.",
+          "evidence_ids": [
+            "leading_country_change_2"
+          ]
+        },
+        {
+          "text": "상위 3개국 비중은 2021년 42.05%에서 2025년 37.24%로 4.80%포인트 낮아졌습니다. 상위 5개국 비중도 55.11%에서 53.57%로 1.54%포인트 낮아졌습니다.",
+          "evidence_ids": [
+            "concentration_change"
+          ]
+        },
+        {
+          "text": "1위 칠레의 비중은 18.37%이고 상위 5개국 밖에도 46.43%가 분포해 특정 한 국가가 압도하는 구조는 아닙니다. 상위 5개국은 53.57%, 그 밖의 국가는 46.43%를 차지합니다.",
+          "evidence_ids": [
+            "current_concentration_structure"
+          ]
+        }
+      ]
+    },
+    "key_metrics": [
+      {
+        "id": "current_world_total",
+        "label": "현재 세계 매장량",
+        "status": "available",
+        "value": 980000000.0,
+        "unit": "톤",
+        "basis": "2025"
+      },
+      {
+        "id": "period_world_total_change",
+        "label": "조회기간 세계합계 변화율",
+        "status": "available",
+        "value": 0.113636,
+        "unit": "ratio",
+        "basis": "2021 대비 2025"
+      },
+      {
+        "id": "top_country",
+        "label": "1위 국가",
+        "status": "available",
+        "value": "칠레",
+        "unit": null,
+        "basis": null
+      },
+      {
+        "id": "top_country_share",
+        "label": "1위 국가 비중",
+        "status": "available",
+        "value": 0.183673,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "cr3",
+        "label": "상위 3개국 비중",
+        "status": "available",
+        "value": 0.372449,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "cr5",
+        "label": "상위 5개국 비중",
+        "status": "available",
+        "value": 0.535714,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "top_two_share_gap",
+        "label": "1·2위 비중 차이",
+        "status": "available",
+        "value": 0.081633,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "max_increase_country",
+        "label": "최대 증가 국가",
+        "status": "available",
+        "value": "콩고민주공화국",
+        "unit": null,
+        "basis": null
+      },
+      {
+        "id": "max_decrease_country",
+        "label": "최대 감소 국가",
+        "status": "available",
+        "value": "칠레",
+        "unit": null,
+        "basis": null
+      },
+      {
+        "id": "latest_year_total_change",
+        "label": "전년 대비 변화율",
+        "status": "available",
+        "value": -0.034232,
+        "unit": "ratio",
+        "basis": "2024 대비 2025"
+      }
+    ],
+    "detailed_metrics": [
+      {
+        "id": "current_world_total",
+        "label": "현재 세계 매장량",
+        "status": "available",
+        "value": 980000000.0,
+        "unit": "톤",
+        "basis": "2025"
+      },
+      {
+        "id": "period_world_total_change",
+        "label": "조회기간 세계합계 변화율",
+        "status": "available",
+        "value": 0.113636,
+        "unit": "ratio",
+        "basis": "2021 대비 2025"
+      },
+      {
+        "id": "top_country",
+        "label": "1위 국가",
+        "status": "available",
+        "value": "칠레",
+        "unit": null,
+        "basis": null
+      },
+      {
+        "id": "top_country_share",
+        "label": "1위 국가 비중",
+        "status": "available",
+        "value": 0.183673,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "cr3",
+        "label": "상위 3개국 비중",
+        "status": "available",
+        "value": 0.372449,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "cr5",
+        "label": "상위 5개국 비중",
+        "status": "available",
+        "value": 0.535714,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "top_two_share_gap",
+        "label": "1·2위 비중 차이",
+        "status": "available",
+        "value": 0.081633,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "start_world_total",
+        "label": "시작연도 세계 매장량",
+        "status": "available",
+        "value": 880000000.0,
+        "unit": "톤",
+        "basis": "2021"
+      },
+      {
+        "id": "outside_top5_share",
+        "label": "상위 5개국 외 비중",
+        "status": "available",
+        "value": 0.464286,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "start_cr3",
+        "label": "시작연도 상위 3개국 비중",
+        "status": "available",
+        "value": 0.420455,
+        "unit": "ratio",
+        "basis": "2021"
+      },
+      {
+        "id": "cr3_change",
+        "label": "상위 3개국 비중 변화",
+        "status": "available",
+        "value": -0.048006,
+        "unit": "ratio",
+        "basis": "2021 대비 2025"
+      },
+      {
+        "id": "cr5_change",
+        "label": "상위 5개국 비중 변화",
+        "status": "available",
+        "value": -0.015422,
+        "unit": "ratio",
+        "basis": "2021 대비 2025"
+      },
+      {
+        "id": "komis_market_share_CL",
+        "label": "칠레 국가목록 내 비중(KOMIS 매장량표 기준)",
+        "status": "available",
+        "value": 0.1837,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "komis_market_share_AU",
+        "label": "호주 국가목록 내 비중(KOMIS 매장량표 기준)",
+        "status": "available",
+        "value": 0.102,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "komis_market_share_PE",
+        "label": "페루 국가목록 내 비중(KOMIS 매장량표 기준)",
+        "status": "available",
+        "value": 0.0867,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "komis_market_share_RU",
+        "label": "러시아 국가목록 내 비중(KOMIS 매장량표 기준)",
+        "status": "available",
+        "value": 0.0816,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "komis_market_share_CD",
+        "label": "콩고민주공화국 국가목록 내 비중(KOMIS 매장량표 기준)",
+        "status": "available",
+        "value": 0.0816,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "max_increase_country",
+        "label": "최대 증가 국가",
+        "status": "available",
+        "value": "콩고민주공화국",
+        "unit": null,
+        "basis": null
+      },
+      {
+        "id": "max_decrease_country",
+        "label": "최대 감소 국가",
+        "status": "available",
+        "value": "칠레",
+        "unit": null,
+        "basis": null
+      },
+      {
+        "id": "latest_year_total_change",
+        "label": "전년 대비 변화율",
+        "status": "available",
+        "value": -0.034232,
+        "unit": "ratio",
+        "basis": "2024 대비 2025"
+      }
+    ],
+    "detected_patterns": [
+      {
+        "code": "top_country_distribution",
+        "label": "상위 국가 분포",
+        "evidence": [
+          "1위 칠레 18.37%",
+          "상위 3개국 37.24%",
+          "상위 5개국 53.57%"
+        ]
+      }
+    ],
+    "omitted_indicators": [],
+    "notices": [
+      "사용자가 선택한 매장량 또는 생산량 한 항목만 분석한다.",
+      "기타로 집계된 값을 개별 국가로 나누어 추정하지 않는다.",
+      "외부 사건을 국가별 수치 변화의 원인으로 추정하지 않는다."
+    ],
+    "llm_refined": false
+  },
+  "map_mineral_cross_2021_2025": {
+    "request_id": "v10-refetch",
+    "page_id": "map_mineral",
+    "analysis_scope": "page_only",
+    "mineral": {
+      "code": "MNRL0008",
+      "name": "동"
+    },
+    "applied_filters": {
+      "mineral": "동",
+      "mineral_code": "MNRL0008",
+      "measure": "reserves",
+      "start_year": "2021",
+      "end_year": "2025"
+    },
+    "defaulted_filters": [],
+    "filter_hash": "741fca27f9845a8cc02a8a39ddd2457d85088999c2c35d5daf7753e6572138b1",
+    "source": {
+      "type": "api",
+      "id": "api:request",
+      "data_version": "49e80f3accd36428",
+      "as_of": "2025",
+      "file": null,
+      "sheets": []
+    },
+    "policy_version": "mineral-map-summary-v1",
+    "page_definition": "선택한 광종의 국가별 매장량 또는 생산량과 세계 전체 규모를 연도별로 보여주는 자료다.",
+    "grade": null,
+    "data_quality": {
+      "status": "available",
+      "observation_count": 71,
+      "available_start_month": null,
+      "available_end_month": null,
+      "effective_start_month": null,
+      "effective_end_month": null,
+      "available_start_date": null,
+      "available_end_date": null,
+      "effective_start_date": null,
+      "effective_end_date": null,
+      "available_start_year": 2021,
+      "available_end_year": 2025,
+      "effective_start_year": 2021,
+      "effective_end_year": 2025,
+      "available_start_period": null,
+      "available_end_period": null,
+      "effective_start_period": null,
+      "effective_end_period": null,
+      "missing_data": [],
+      "warnings": []
+    },
+    "summary": {
+      "core_diagnosis": [
+        {
+          "text": "2025년 세계 동 매장량은 약 9.80억톤입니다.",
+          "evidence_ids": [
+            "current_state"
+          ]
+        },
+        {
+          "text": "2021년보다 약 1억톤 늘어 4년간 11.36% 증가했습니다. 직전 관측연도인 2024년과 비교하면 0톤, 0.00% 변동이 없었습니다.",
+          "evidence_ids": [
+            "period_total_change"
+          ]
+        }
+      ],
+      "major_changes": [
+        {
+          "text": "2025년 기준 칠레는 약 1.80억톤으로 세계 전체의 18.37%를 차지해 1위입니다. 호주는 약 1억톤, 10.20%로 2위이며 두 국가의 비중 차이는 8.16%포인트입니다.",
+          "evidence_ids": [
+            "current_leaders"
+          ]
+        },
+        {
+          "text": "페루는 약 8,500만톤, 8.67%로 3위입니다.",
+          "evidence_ids": [
+            "third_country"
+          ]
+        },
+        {
+          "text": "매장량 2위인 호주는 생산량 기준 8위(약 575만톤, 4.35%)에 그치고 있어, 매장량 대비 생산량 비율이 낮은 국가로 분류됩니다.",
+          "evidence_ids": [
+            "cross_measure_comparison"
+          ]
+        },
+        {
+          "text": "조회기간 중 매장량이 가장 크게 증가한 국가는 콩고민주공화국으로, 2021년 0톤에서 2025년 약 8,000만톤으로 약 8,000만톤 (신규 집계) 증가했습니다. 가장 크게 감소한 국가는 칠레로, 2021년 약 2억톤에서 2025년 약 1.80억톤으로 약 2,000만톤 (10.00%) 감소했습니다.",
+          "evidence_ids": [
+            "extreme_change_countries"
+          ]
+        }
+      ],
+      "current_position": [
+        {
+          "text": "칠레는 2021년 약 2억톤에서 2025년 약 1.80억톤으로 약 2,000만톤, 10.00% 감소했습니다. 매장량 비중은 22.73%에서 18.37%로 4.36%포인트 낮아졌습니다. 순위는 1위를 유지했습니다.",
+          "evidence_ids": [
+            "leading_country_change_1"
+          ]
+        },
+        {
+          "text": "호주는 2021년 약 9,300만톤에서 2025년 약 1억톤으로 약 700만톤, 7.53% 증가했습니다. 매장량 비중은 10.57%에서 10.20%로 0.36%포인트 낮아졌습니다. 순위는 2위를 유지했습니다.",
+          "evidence_ids": [
+            "leading_country_change_2"
+          ]
+        },
+        {
+          "text": "상위 3개국 비중은 2021년 42.05%에서 2025년 37.24%로 4.80%포인트 낮아졌습니다. 상위 5개국 비중도 55.11%에서 53.57%로 1.54%포인트 낮아졌습니다.",
+          "evidence_ids": [
+            "concentration_change"
+          ]
+        },
+        {
+          "text": "1위 칠레의 비중은 18.37%이고 상위 5개국 밖에도 46.43%가 분포해 특정 한 국가가 압도하는 구조는 아닙니다. 상위 5개국은 53.57%, 그 밖의 국가는 46.43%를 차지합니다.",
+          "evidence_ids": [
+            "current_concentration_structure"
+          ]
+        }
+      ]
+    },
+    "key_metrics": [
+      {
+        "id": "current_world_total",
+        "label": "현재 세계 매장량",
+        "status": "available",
+        "value": 980000000.0,
+        "unit": "톤",
+        "basis": "2025"
+      },
+      {
+        "id": "period_world_total_change",
+        "label": "조회기간 세계합계 변화율",
+        "status": "available",
+        "value": 0.113636,
+        "unit": "ratio",
+        "basis": "2021 대비 2025"
+      },
+      {
+        "id": "top_country",
+        "label": "1위 국가",
+        "status": "available",
+        "value": "칠레",
+        "unit": null,
+        "basis": null
+      },
+      {
+        "id": "top_country_share",
+        "label": "1위 국가 비중",
+        "status": "available",
+        "value": 0.183673,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "cr3",
+        "label": "상위 3개국 비중",
+        "status": "available",
+        "value": 0.372449,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "cr5",
+        "label": "상위 5개국 비중",
+        "status": "available",
+        "value": 0.535714,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "top_two_share_gap",
+        "label": "1·2위 비중 차이",
+        "status": "available",
+        "value": 0.081633,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "max_increase_country",
+        "label": "최대 증가 국가",
+        "status": "available",
+        "value": "콩고민주공화국",
+        "unit": null,
+        "basis": null
+      },
+      {
+        "id": "max_decrease_country",
+        "label": "최대 감소 국가",
+        "status": "available",
+        "value": "칠레",
+        "unit": null,
+        "basis": null
+      },
+      {
+        "id": "latest_year_total_change",
+        "label": "전년 대비 변화율",
+        "status": "available",
+        "value": -0.034232,
+        "unit": "ratio",
+        "basis": "2024 대비 2025"
+      }
+    ],
+    "detailed_metrics": [
+      {
+        "id": "current_world_total",
+        "label": "현재 세계 매장량",
+        "status": "available",
+        "value": 980000000.0,
+        "unit": "톤",
+        "basis": "2025"
+      },
+      {
+        "id": "period_world_total_change",
+        "label": "조회기간 세계합계 변화율",
+        "status": "available",
+        "value": 0.113636,
+        "unit": "ratio",
+        "basis": "2021 대비 2025"
+      },
+      {
+        "id": "top_country",
+        "label": "1위 국가",
+        "status": "available",
+        "value": "칠레",
+        "unit": null,
+        "basis": null
+      },
+      {
+        "id": "top_country_share",
+        "label": "1위 국가 비중",
+        "status": "available",
+        "value": 0.183673,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "cr3",
+        "label": "상위 3개국 비중",
+        "status": "available",
+        "value": 0.372449,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "cr5",
+        "label": "상위 5개국 비중",
+        "status": "available",
+        "value": 0.535714,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "top_two_share_gap",
+        "label": "1·2위 비중 차이",
+        "status": "available",
+        "value": 0.081633,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "start_world_total",
+        "label": "시작연도 세계 매장량",
+        "status": "available",
+        "value": 880000000.0,
+        "unit": "톤",
+        "basis": "2021"
+      },
+      {
+        "id": "outside_top5_share",
+        "label": "상위 5개국 외 비중",
+        "status": "available",
+        "value": 0.464286,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "start_cr3",
+        "label": "시작연도 상위 3개국 비중",
+        "status": "available",
+        "value": 0.420455,
+        "unit": "ratio",
+        "basis": "2021"
+      },
+      {
+        "id": "cr3_change",
+        "label": "상위 3개국 비중 변화",
+        "status": "available",
+        "value": -0.048006,
+        "unit": "ratio",
+        "basis": "2021 대비 2025"
+      },
+      {
+        "id": "cr5_change",
+        "label": "상위 5개국 비중 변화",
+        "status": "available",
+        "value": -0.015422,
+        "unit": "ratio",
+        "basis": "2021 대비 2025"
+      },
+      {
+        "id": "komis_market_share_CL",
+        "label": "칠레 국가목록 내 비중(KOMIS 매장량표 기준)",
+        "status": "available",
+        "value": 0.1837,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "komis_market_share_AU",
+        "label": "호주 국가목록 내 비중(KOMIS 매장량표 기준)",
+        "status": "available",
+        "value": 0.102,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "komis_market_share_PE",
+        "label": "페루 국가목록 내 비중(KOMIS 매장량표 기준)",
+        "status": "available",
+        "value": 0.0867,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "komis_market_share_RU",
+        "label": "러시아 국가목록 내 비중(KOMIS 매장량표 기준)",
+        "status": "available",
+        "value": 0.0816,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "komis_market_share_CD",
+        "label": "콩고민주공화국 국가목록 내 비중(KOMIS 매장량표 기준)",
+        "status": "available",
+        "value": 0.0816,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "max_increase_country",
+        "label": "최대 증가 국가",
+        "status": "available",
+        "value": "콩고민주공화국",
+        "unit": null,
+        "basis": null
+      },
+      {
+        "id": "max_decrease_country",
+        "label": "최대 감소 국가",
+        "status": "available",
+        "value": "칠레",
+        "unit": null,
+        "basis": null
+      },
+      {
+        "id": "latest_year_total_change",
+        "label": "전년 대비 변화율",
+        "status": "available",
+        "value": -0.034232,
+        "unit": "ratio",
+        "basis": "2024 대비 2025"
+      }
+    ],
+    "detected_patterns": [
+      {
+        "code": "top_country_distribution",
+        "label": "상위 국가 분포",
+        "evidence": [
+          "1위 칠레 18.37%",
+          "상위 3개국 37.24%",
+          "상위 5개국 53.57%"
+        ]
+      }
+    ],
+    "omitted_indicators": [],
+    "notices": [
+      "사용자가 선택한 매장량 또는 생산량 한 항목만 분석한다.",
+      "기타로 집계된 값을 개별 국가로 나누어 추정하지 않는다.",
+      "외부 사건을 국가별 수치 변화의 원인으로 추정하지 않는다."
+    ],
+    "llm_refined": false
+  },
+  "map_mineral_production_2021_2025": {
+    "request_id": "v10-refetch",
+    "page_id": "map_mineral",
+    "analysis_scope": "page_only",
+    "mineral": {
+      "code": "MNRL0008",
+      "name": "동"
+    },
+    "applied_filters": {
+      "mineral": "동",
+      "mineral_code": "MNRL0008",
+      "measure": "production",
+      "start_year": "2021",
+      "end_year": "2025"
+    },
+    "defaulted_filters": [],
+    "filter_hash": "60b5086fac3a91971f16b0f6911f9dd1c1d41585922cb421ffb9a551edc92230",
+    "source": {
+      "type": "api",
+      "id": "api:request",
+      "data_version": "dc39562ca6105aed",
+      "as_of": "2025",
+      "file": null,
+      "sheets": []
+    },
+    "policy_version": "mineral-map-summary-v1",
+    "page_definition": "선택한 광종의 국가별 매장량 또는 생산량과 세계 전체 규모를 연도별로 보여주는 자료다.",
+    "grade": null,
+    "data_quality": {
+      "status": "available",
+      "observation_count": 73,
+      "available_start_month": null,
+      "available_end_month": null,
+      "effective_start_month": null,
+      "effective_end_month": null,
+      "available_start_date": null,
+      "available_end_date": null,
+      "effective_start_date": null,
+      "effective_end_date": null,
+      "available_start_year": 2021,
+      "available_end_year": 2025,
+      "effective_start_year": 2021,
+      "effective_end_year": 2025,
+      "available_start_period": null,
+      "available_end_period": null,
+      "effective_start_period": null,
+      "effective_end_period": null,
+      "missing_data": [],
+      "warnings": []
+    },
+    "summary": {
+      "core_diagnosis": [
+        {
+          "text": "2025년 세계 동 생산량은 약 2,300만톤입니다.",
+          "evidence_ids": [
+            "current_state"
+          ]
+        },
+        {
+          "text": "2021년보다 약 180만톤 늘어 4년간 8.49% 증가했습니다. 직전 관측연도인 2024년과 비교하면 0톤, 0.00% 변동이 없었습니다.",
+          "evidence_ids": [
+            "period_total_change"
+          ]
+        }
+      ],
+      "major_changes": [
+        {
+          "text": "2025년 기준 칠레는 약 530만톤으로 세계 전체의 23.04%를 차지해 1위입니다. 콩고민주공화국은 약 320만톤, 13.91%로 2위이며 두 국가의 비중 차이는 9.13%포인트입니다.",
+          "evidence_ids": [
+            "current_leaders"
+          ]
+        },
+        {
+          "text": "페루는 약 270만톤, 11.74%로 3위입니다.",
+          "evidence_ids": [
+            "third_country"
+          ]
+        },
+        {
+          "text": "조회기간 중 생산량이 가장 크게 증가한 국가는 콩고민주공화국으로, 2021년 약 174만톤에서 2025년 약 320만톤으로 약 146만톤 (83.91%) 증가했습니다. 가장 크게 감소한 국가는 칠레로, 2021년 약 562만톤에서 2025년 약 530만톤으로 약 32만톤 (5.69%) 감소했습니다.",
+          "evidence_ids": [
+            "extreme_change_countries"
+          ]
+        }
+      ],
+      "current_position": [
+        {
+          "text": "칠레는 2021년 약 562만톤에서 2025년 약 530만톤으로 약 32만톤, 5.69% 감소했습니다. 생산량 비중은 26.51%에서 23.04%로 3.47%포인트 낮아졌습니다. 순위는 1위를 유지했습니다.",
+          "evidence_ids": [
+            "leading_country_change_1"
+          ]
+        },
+        {
+          "text": "콩고민주공화국은 2021년 약 174만톤에서 2025년 약 320만톤으로 약 146만톤, 83.91% 증가했습니다. 생산량 비중은 8.21%에서 13.91%로 5.71%포인트 높아졌습니다. 순위는 4위에서 2위로 바뀌었습니다.",
+          "evidence_ids": [
+            "leading_country_change_2"
+          ]
+        },
+        {
+          "text": "상위 3개국 비중은 2021년 46.37%에서 2025년 48.70%로 2.33%포인트 높아졌습니다. 상위 5개국 비중도 60.38%에서 62.17%로 1.80%포인트 높아졌습니다.",
+          "evidence_ids": [
+            "concentration_change"
+          ]
+        },
+        {
+          "text": "1위 칠레의 비중은 23.04%이고 상위 5개국 밖에도 37.83%가 분포해 특정 한 국가가 압도하는 구조는 아닙니다. 상위 5개국은 62.17%, 그 밖의 국가는 37.83%를 차지합니다.",
+          "evidence_ids": [
+            "current_concentration_structure"
+          ]
+        }
+      ]
+    },
+    "key_metrics": [
+      {
+        "id": "current_world_total",
+        "label": "현재 세계 생산량",
+        "status": "available",
+        "value": 23000000.0,
+        "unit": "톤",
+        "basis": "2025"
+      },
+      {
+        "id": "period_world_total_change",
+        "label": "조회기간 세계합계 변화율",
+        "status": "available",
+        "value": 0.084906,
+        "unit": "ratio",
+        "basis": "2021 대비 2025"
+      },
+      {
+        "id": "top_country",
+        "label": "1위 국가",
+        "status": "available",
+        "value": "칠레",
+        "unit": null,
+        "basis": null
+      },
+      {
+        "id": "top_country_share",
+        "label": "1위 국가 비중",
+        "status": "available",
+        "value": 0.230435,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "cr3",
+        "label": "상위 3개국 비중",
+        "status": "available",
+        "value": 0.486957,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "cr5",
+        "label": "상위 5개국 비중",
+        "status": "available",
+        "value": 0.621739,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "top_two_share_gap",
+        "label": "1·2위 비중 차이",
+        "status": "available",
+        "value": 0.091304,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "max_increase_country",
+        "label": "최대 증가 국가",
+        "status": "available",
+        "value": "콩고민주공화국",
+        "unit": null,
+        "basis": null
+      },
+      {
+        "id": "max_decrease_country",
+        "label": "최대 감소 국가",
+        "status": "available",
+        "value": "칠레",
+        "unit": null,
+        "basis": null
+      },
+      {
+        "id": "latest_year_total_change",
+        "label": "전년 대비 변화율",
+        "status": "available",
+        "value": -0.005862,
+        "unit": "ratio",
+        "basis": "2024 대비 2025"
+      }
+    ],
+    "detailed_metrics": [
+      {
+        "id": "current_world_total",
+        "label": "현재 세계 생산량",
+        "status": "available",
+        "value": 23000000.0,
+        "unit": "톤",
+        "basis": "2025"
+      },
+      {
+        "id": "period_world_total_change",
+        "label": "조회기간 세계합계 변화율",
+        "status": "available",
+        "value": 0.084906,
+        "unit": "ratio",
+        "basis": "2021 대비 2025"
+      },
+      {
+        "id": "top_country",
+        "label": "1위 국가",
+        "status": "available",
+        "value": "칠레",
+        "unit": null,
+        "basis": null
+      },
+      {
+        "id": "top_country_share",
+        "label": "1위 국가 비중",
+        "status": "available",
+        "value": 0.230435,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "cr3",
+        "label": "상위 3개국 비중",
+        "status": "available",
+        "value": 0.486957,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "cr5",
+        "label": "상위 5개국 비중",
+        "status": "available",
+        "value": 0.621739,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "top_two_share_gap",
+        "label": "1·2위 비중 차이",
+        "status": "available",
+        "value": 0.091304,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "start_world_total",
+        "label": "시작연도 세계 생산량",
+        "status": "available",
+        "value": 21200000.0,
+        "unit": "톤",
+        "basis": "2021"
+      },
+      {
+        "id": "outside_top5_share",
+        "label": "상위 5개국 외 비중",
+        "status": "available",
+        "value": 0.378261,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "start_cr3",
+        "label": "시작연도 상위 3개국 비중",
+        "status": "available",
+        "value": 0.463679,
+        "unit": "ratio",
+        "basis": "2021"
+      },
+      {
+        "id": "cr3_change",
+        "label": "상위 3개국 비중 변화",
+        "status": "available",
+        "value": 0.023277,
+        "unit": "ratio",
+        "basis": "2021 대비 2025"
+      },
+      {
+        "id": "cr5_change",
+        "label": "상위 5개국 비중 변화",
+        "status": "available",
+        "value": 0.017966,
+        "unit": "ratio",
+        "basis": "2021 대비 2025"
+      },
+      {
+        "id": "komis_market_share_CL",
+        "label": "칠레 국가목록 내 비중(KOMIS 매장량표 기준)",
+        "status": "available",
+        "value": 0.2304,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "komis_market_share_CD",
+        "label": "콩고민주공화국 국가목록 내 비중(KOMIS 매장량표 기준)",
+        "status": "available",
+        "value": 0.1391,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "komis_market_share_PE",
+        "label": "페루 국가목록 내 비중(KOMIS 매장량표 기준)",
+        "status": "available",
+        "value": 0.1174,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "komis_market_share_CN",
+        "label": "중국 국가목록 내 비중(KOMIS 매장량표 기준)",
+        "status": "available",
+        "value": 0.0783,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "komis_market_share_RU",
+        "label": "러시아 국가목록 내 비중(KOMIS 매장량표 기준)",
+        "status": "available",
+        "value": 0.0565,
+        "unit": "ratio",
+        "basis": "2025"
+      },
+      {
+        "id": "max_increase_country",
+        "label": "최대 증가 국가",
+        "status": "available",
+        "value": "콩고민주공화국",
+        "unit": null,
+        "basis": null
+      },
+      {
+        "id": "max_decrease_country",
+        "label": "최대 감소 국가",
+        "status": "available",
+        "value": "칠레",
+        "unit": null,
+        "basis": null
+      },
+      {
+        "id": "latest_year_total_change",
+        "label": "전년 대비 변화율",
+        "status": "available",
+        "value": -0.005862,
+        "unit": "ratio",
+        "basis": "2024 대비 2025"
+      }
+    ],
+    "detected_patterns": [
+      {
+        "code": "top_country_distribution",
+        "label": "상위 국가 분포",
+        "evidence": [
+          "1위 칠레 23.04%",
+          "상위 3개국 48.70%",
+          "상위 5개국 62.17%"
+        ]
+      }
+    ],
+    "omitted_indicators": [],
+    "notices": [
+      "사용자가 선택한 매장량 또는 생산량 한 항목만 분석한다.",
+      "기타로 집계된 값을 개별 국가로 나누어 추정하지 않는다.",
+      "외부 사건을 국가별 수치 변화의 원인으로 추정하지 않는다."
+    ],
+    "llm_refined": false
+  }
+}

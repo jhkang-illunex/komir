@@ -509,8 +509,18 @@ def fetch_map_global(
     period_field: str = "year", start_period: str = "2025", end_period: str = "2025",
     export_country_name: str = "", import_country_name: str = "",
     product_type_code: str = "", hs_code: str = "",
+    trade_direction: str = "import",
     chart_start_date: str = "20220101", chart_end_date: str = "20261231",
 ) -> dict:
+    # 2026-09-13 신설(사용자 제보로 발견한 기능갭 — "글로벌수급지도에 수출
+    # 옵션이 없다") — 이 페이지 실측(/Komis/MnrlMap/Nation HTML)으로 확정한
+    # `srchImxprtSeCd` 코드는 map_korea의 `srchIncmExp`(I/E)와 다르게 I/O다
+    # (`data-im="I"`=수입 탭, `data-im="O"`=수출 탭, "E"가 아님). 이전엔 이
+    # 값이 "I"로 고정돼 있어 "수출" 탭 데이터를 이 함수로 가져올 방법이
+    # 아예 없었다 — 두 탭은 map_korea의 I/E(정렬기준만 다름)와 달리 서로
+    # 다른 데이터셋을 반환한다(실측: 동 2025, I탭 1위 칠레→미국 $6.09B vs
+    # O탭 1위 칠레→중국 $23.26B — `report_gen_map_global_방향라벨_
+    # 버그_260913/README.md` 참고).
     start_date, end_date = _period_date_bounds(period_field, start_period, end_period)
     prev_start_date, prev_end_date = _prev_period_bounds(period_field, start_period, end_period)
     client = _open_session("/Komis/MnrlMap/Nation")
@@ -527,7 +537,8 @@ def fetch_map_global(
             "srchDatePE": prev_end_date, "srchMttrFlowCd": product_type_code, "srchDateS": start_date,
             "srchIncmNtnCd": import_country_code, "srchDateChartS": chart_start_date, "page": "1",
             "srchTypeAW": "A", "srchCrtrYmd": "Y" if period_field == "year" else "M",
-            "srchDatePS": prev_start_date, "srchImxprtSeCd": "I",
+            "srchDatePS": prev_start_date,
+            "srchImxprtSeCd": "I" if trade_direction == "import" else "O",
         }
         list_data = _ajax_post(client, "/Komis/MnrlMap/MapNation/ajax/getListDataNation", params)
         bar_chart = _ajax_post(client, "/Komis/MnrlMap/MapNation/ajax/getBarChartDataNation", params)

@@ -202,8 +202,10 @@ class ReportContractTests(unittest.TestCase):
         # 3개로 대체(`summary.py::_replace_composite_subindex_narrative`)
         # 하면서 "현재 " 접두어 없이 지수별로 따로 등장하도록 바뀌었다.
         report = render_markdown_report(response)
-        self.assertIn("메이저금속지수는 920.00포인트", report)
-        self.assertIn("희소금속지수는 790.00포인트", report)
+        # 2026-09-13 사용자 지시 — 소수점 2번째 자리가 0이면 생략(_number
+        # 트림 규칙 신설)하면서 920.00/790.00포인트가 920/790포인트로 바뀜.
+        self.assertIn("메이저금속지수는 920포인트", report)
+        self.assertIn("희소금속지수는 790포인트", report)
 
     def test_llm_failure_preserves_fallback(self):
         llm = Mock()
