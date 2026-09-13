@@ -92,8 +92,10 @@ def run_summary(
         _LOG.error("analysis_summary_service가 조립되지 않았다 — INTERNAL_ERROR로 응답")
         return AnalysisReportResponse(status="INTERNAL_ERROR")
 
+    payload_data = payload.model_dump()
+    refine_with_llm = bool(payload_data.pop("refine_with_llm", False))  # 2026-09-13 기본 규칙 기반(내부 모델 필드 아님)
     try:
-        summary_request = AnalysisSummaryRequest(page_id=page_id, **payload.model_dump())
+        summary_request = AnalysisSummaryRequest(page_id=page_id, **payload_data)
     except ValidationError as exc:
         _LOG.info("%s: NO_DATA — 요청 필드가 페이지 계약과 맞지 않는다: %s", page_id, exc.errors()[0].get("msg") if exc.errors() else exc)
         return AnalysisReportResponse(status="NO_DATA")
@@ -122,9 +124,9 @@ def run_summary(
             # 호출 1회분보다 짧으면 어차피 클라이언트는 TIMEOUT을 받고, 이 스레드는
             # 아무도 안 읽는 LLM 호출로 lock을 자기 deadline 너머까지 쥔다 —
             # LLM이 배선된 서비스면 여기서 포기한다(규칙기반만이면 ms라 계속).
-            if getattr(service, "uses_llm", False) and (deadline - time.monotonic()) < ANALYSIS_LLM_TIMEOUT_SECONDS:
+            if refine_with_llm and getattr(service, "uses_llm", False) and (deadline - time.monotonic()) < ANALYSIS_LLM_TIMEOUT_SECONDS:
                 raise _LockTimeout()
-            return service.analyze(summary_request, deadline=deadline)
+            return service.analyze(summary_request, deadline=deadline, refine_with_llm=refine_with_llm)
         finally:
             lock.release()
 

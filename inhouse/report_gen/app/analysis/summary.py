@@ -1073,8 +1073,17 @@ class AnalysisSummaryService:
         request: AnalysisSummaryRequest,
         *,
         deadline: float | None = None,
+        refine_with_llm: bool = False,
     ) -> AnalysisSummaryResponse:
         """Calculate the summary appropriate for the requested page.
+
+        `refine_with_llm`(기본 False, 2026-09-13 사용자 결정 "규칙 기반을
+        기본값으로") — False면 LLM이 배선돼 있어도 정제를 건너뛰고 규칙 기반
+        문장을 그대로 낸다(`llm=None`으로 만든 서비스와 동일 출력). True는
+        호출자가 명시적으로 LLM 문체 정제를 요구할 때만.
+        같은 데이터에 같은 문장이 나와야 하는 요구(temperature=0에서도 vLLM
+        출력이 호출마다 흔들리는 실측)에 대한 호출 단위 스위치다. 상태는
+        `deadline`과 같은 스레드 로컬에 둔다.
 
         `deadline`(`time.monotonic()` 기준, 선택) — `routers/_common.py`가 요청당
         예산을 넘긴다. `_refine_with_llm`이 LLM 호출 전마다 남은 예산이 호출 1회
@@ -1083,11 +1092,13 @@ class AnalysisSummaryService:
         보관한다 — 서비스 객체는 공유되고 하네스는 동시 호출한다."""
 
         self._deadlines.value = deadline
+        self._deadlines.refine = refine_with_llm
         try:
             with page_prompt_scope(request.page_id):
                 return self._dispatch(request)
         finally:
             self._deadlines.value = None
+            self._deadlines.refine = True
 
     def _dispatch(self, request: AnalysisSummaryRequest) -> AnalysisSummaryResponse:
         if request.page_id == "indicator_composite":
@@ -1975,6 +1986,8 @@ class AnalysisSummaryService:
     ) -> AnalysisSummaryResponse:
         """Request LLM refinement and accept only evidence-valid output."""
 
+        if not getattr(self._deadlines, "refine", True):
+            return response  # 호출자가 규칙 기반 출력을 요구(analyze(refine_with_llm=False))
         validation_error = None
         evidence_payload = [
             {

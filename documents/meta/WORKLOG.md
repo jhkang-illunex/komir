@@ -2,7 +2,41 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-13 (최신) — report_gen 검수 → API 3건·슬라이드 스크립트 3건 정정, v13.pptx, 템플릿 문서 4종 재생성
+## 2026-09-13 (최신) — report_gen LLM 정제 기본 비활성(`refine_with_llm` 기본 false) + streamlit 버튼 2개
+
+배경(사용자 지적): v13 슬라이드(`llm=None` 결정론 경로)와 streamlit 데모
+(배포 API, LLM 정제 경로)가 같은 데이터에 다른 문장을 냈다. 실측: `.env`
+`LLM_TEMPERATURE=0`이 vLLM에 그대로 전달되는데도 price_base 같은 입력 3회
+호출 중 2가지 문장이 나옴(gemma 서빙 비결정성, map_korea는 3회 동일). 정보
+내용은 100% 규칙 기반이고 LLM은 문체만 건드리는데 그 문체가 흔들리는 구조
+— "데이터 전처리에 LLM 일부 사용" 같은 설명은 사실과 달라 권하지 않았고,
+"본문은 일관성을 위해 규칙 기반, LLM 정제는 구현돼 있으나 기본 비활성
+(옵션)"이 정확한 표현임을 정리.
+
+사용자 지시로 비교 테스트용 스위치 추가: `routers/analysis.py::
+AnalysisEndpointRequest.refine_with_llm`(기본 true, 전 엔드포인트) →
+`_common.run_summary`가 빼서 `service.analyze(refine_with_llm=)`로 →
+`summary.py` 스레드 로컬 플래그로 `_refine_with_llm`이 즉시 반환.
+streamlit `views/report_demo.py`는 "분석요약 생성"(LLM) 옆에 "규칙 기반
+보고서 생성" 버튼(`refine_with_llm=false`)을 두고 결과에 생성 방식을 표시
+(전 페이지 공통 버튼이라 비철금속 외 페이지에도 적용). 검증: FakeLLM으로
+refine=False에서 LLM 호출 0회, 유닛 14/14, 395콤보 HARNESS_OK,
+`komir-report-gen:260913-rulebtn` 재배포 후 라이브 규칙기반 3회 호출 결과
+동일 + v13 슬라이드 소스 렌더와 바이트 동일, LLM본은 다름(의도된 대조).
+streamlit은 `st.Page` 파일 스크립트라 재시작 없이 다음 rerun에 반영.
+
+**사용자 결정 "규칙 기반을 기본값으로"**: 라우터 `refine_with_llm` 기본값
+false, `_common.run_summary`·`service.analyze` 기본값도 false로 통일(true는
+호출자가 명시할 때만 LLM 정제). streamlit은 "분석요약 생성"(primary)=규칙
+기반, "LLM 정제 보고서 생성"=refine_with_llm=true로 역할을 바꿈. 검증: 유닛
+14/14·395콤보 HARNESS_OK·`komir-report-gen:260913-ruledefault` 재배포 후
+필드 없이 호출한 price_base·map_korea 응답이 2회 동일하고 v13 슬라이드
+소스 렌더와 바이트 동일, `refine_with_llm=true`만 LLM본. 결과적으로 배포
+API 응답 = 템플릿 정본 = v13 슬라이드가 글자 단위로 일치한다. 발주처
+설명 문구는 "분석요약 본문은 검증 가능성·일관성을 위해 규칙 기반으로
+생성하며, LLM 문체 정제는 구현돼 있으나 기본 비활성(옵션)"으로 정리.
+
+## 2026-09-13 — report_gen 검수 → API 3건·슬라이드 스크립트 3건 정정, v13.pptx, 템플릿 문서 4종 재생성
 
 사용자 지시: "report-summary 작업에 대해서 완료된 결과와 사용자 피드백에
 대한 검수를 진행해주세요" → "api를 수정해야할 내용은 없나요?" → "3. 노출

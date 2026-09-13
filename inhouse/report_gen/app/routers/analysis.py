@@ -128,6 +128,15 @@ class AnalysisEndpointRequest(ApiModel):
     (`request_id` 자동 uuid4, `analysis_scope="page_only"`)이 있어서
     라우터가 이 두 키를 안 실어 보내도 그대로 정상 동작한다."""
 
+    # 2026-09-13 신설(사용자 지시) — 기본값 false: 분석요약 본문은 출력
+    # 일관성을 위해 규칙 기반 문장을 그대로 낸다(동일 입력 → 동일 출력).
+    # true로 보내면 LLM 문체 정제를 거친다(실측: temperature=0에서도 vLLM
+    # 출력이 호출마다 흔들려 같은 데이터에 다른 문장이 나오던 문제로 사용자가
+    # 규칙 기반을 기본값으로 결정, 같은 날). 내부 모델
+    # `AnalysisSummaryRequest`의 필드가 아니라 `_common.run_summary`가 빼서
+    # `service.analyze(refine_with_llm=)`로 넘긴다.
+    refine_with_llm: bool = Field(default=False, description="true면 LLM 문체 정제를 거칩니다. 기본값 false — 규칙 기반 문장을 그대로 반환합니다(동일 입력에 항상 동일 출력).")
+
 
 class IndicatorSummaryRequest(AnalysisEndpointRequest):
     """시장동향지표 요약 요청(수급동향지표는 `SupplyIndicatorSummaryRequest`가 상속·확장).

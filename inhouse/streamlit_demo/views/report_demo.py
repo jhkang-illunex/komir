@@ -579,7 +579,17 @@ else:
     st.caption("observations(JSON 배열) — 계산에 쓰는 원자료. DB를 안 읽으므로 비우면 대부분 NO_DATA로 응답합니다.")
     observations_text = st.text_area("observations", value=spec.observations_example, height=140)
 
-if st.button("분석요약 생성", type="primary"):
+# 2026-09-13 사용자 지시 — LLM 정제본과 규칙 기반본을 같은 입력으로 나란히
+# 비교할 수 있도록 버튼을 둘로 나눈다. 규칙 기반 버튼은 요청에
+# `refine_with_llm=false`를 실어 report_gen이 LLM 정제를 건너뛰게 한다
+# (동일 입력에 항상 동일 문장 — 슬라이드·템플릿 정본과 글자 단위로 같다).
+# 2026-09-13 후속 결정 — 규칙 기반이 기본값(API 기본값도 refine_with_llm=false).
+_btn_rule, _btn_llm = st.columns(2)
+_run_rule = _btn_rule.button("분석요약 생성", type="primary", help="규칙 기반 문장 그대로(API 기본값, 동일 입력에 항상 동일 출력)")
+_run_llm = _btn_llm.button("LLM 정제 보고서 생성", help="LLM 문체 정제를 거친 결과(refine_with_llm=true, 호출마다 문장이 달라질 수 있음)")
+if _run_llm or _run_rule:
+    payload["refine_with_llm"] = bool(_run_llm)
+    st.session_state["report_demo_mode"] = "LLM 정제" if _run_llm else "규칙 기반(기본)"
     if page_id in KOMIS_RAW_PAGES:
         try:
             raw = json.loads(komis_raw_text) if komis_raw_text.strip() else None
@@ -625,7 +635,7 @@ result = st.session_state.get("report_demo_result")
 if result:
     status = result.get("status")
     if status == "ok":
-        st.success("status: ok")
+        st.success(f"status: ok · 생성 방식: {st.session_state.get('report_demo_mode', '규칙 기반(기본)')}")
         render_report_markdown(result.get("report"))
     else:
         st.warning(f"status: {status}")
