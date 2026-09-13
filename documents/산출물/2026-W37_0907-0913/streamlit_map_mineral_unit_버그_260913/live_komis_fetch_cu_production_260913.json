@@ -1,0 +1,1315 @@
+{
+  "chart": {
+    "data": [
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 5620000,
+        "crtrYr": "2021",
+        "massUnitCd": "WT003",
+        "burudgQuty": 200000000,
+        "ntnEngNm": "Chile",
+        "ntnKornNm": "칠레",
+        "ntnEngCd": "CL",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 2300000,
+        "crtrYr": "2021",
+        "massUnitCd": "WT003",
+        "burudgQuty": 77000000,
+        "ntnEngNm": "Peru",
+        "ntnKornNm": "페루",
+        "ntnEngCd": "PE",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 1910000,
+        "crtrYr": "2021",
+        "massUnitCd": "WT003",
+        "burudgQuty": 26000000,
+        "ntnEngNm": "China",
+        "ntnKornNm": "중국",
+        "ntnEngCd": "CN",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 1740000,
+        "crtrYr": "2021",
+        "massUnitCd": "WT003",
+        "burudgQuty": 0,
+        "ntnEngNm": "Democratic Republic of Congo",
+        "ntnKornNm": "콩고민주공화국",
+        "ntnEngCd": "CD",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 1230000,
+        "crtrYr": "2021",
+        "massUnitCd": "WT003",
+        "burudgQuty": 48000000,
+        "ntnEngNm": "United States of America",
+        "ntnKornNm": "미국",
+        "ntnEngCd": "US",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 940000,
+        "crtrYr": "2021",
+        "massUnitCd": "WT003",
+        "burudgQuty": 62000000,
+        "ntnEngNm": "Russia",
+        "ntnKornNm": "러시아",
+        "ntnEngCd": "RU",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 842000,
+        "crtrYr": "2021",
+        "massUnitCd": "WT003",
+        "burudgQuty": 21000000,
+        "ntnEngNm": "Zambia",
+        "ntnKornNm": "잠비아",
+        "ntnEngCd": "ZM",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 813000,
+        "crtrYr": "2021",
+        "massUnitCd": "WT003",
+        "burudgQuty": 93000000,
+        "ntnEngNm": "Australia",
+        "ntnKornNm": "호주",
+        "ntnEngCd": "AU",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 734000,
+        "crtrYr": "2021",
+        "massUnitCd": "WT003",
+        "burudgQuty": 53000000,
+        "ntnEngNm": "Mexico",
+        "ntnKornNm": "멕시코",
+        "ntnEngCd": "MX",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 731000,
+        "crtrYr": "2021",
+        "massUnitCd": "WT003",
+        "burudgQuty": 24000000,
+        "ntnEngNm": "Indonesia",
+        "ntnKornNm": "인도네시아",
+        "ntnEngCd": "ID",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 550000,
+        "crtrYr": "2021",
+        "massUnitCd": "WT003",
+        "burudgQuty": 9800000,
+        "ntnEngNm": "Canada",
+        "ntnKornNm": "캐나다",
+        "ntnEngCd": "CA",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 510000,
+        "crtrYr": "2021",
+        "massUnitCd": "WT003",
+        "burudgQuty": 20000000,
+        "ntnEngNm": "Kazakhstan",
+        "ntnKornNm": "카자흐스탄",
+        "ntnEngCd": "KZ",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 391000,
+        "crtrYr": "2021",
+        "massUnitCd": "WT003",
+        "burudgQuty": 31000000,
+        "ntnEngNm": "Poland",
+        "ntnKornNm": "폴란드",
+        "ntnEngCd": "PL",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 5330000,
+        "crtrYr": "2022",
+        "massUnitCd": "WT003",
+        "burudgQuty": 190000000,
+        "ntnEngNm": "Chile",
+        "ntnKornNm": "칠레",
+        "ntnEngCd": "CL",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 2450000,
+        "crtrYr": "2022",
+        "massUnitCd": "WT003",
+        "burudgQuty": 81000000,
+        "ntnEngNm": "Peru",
+        "ntnKornNm": "페루",
+        "ntnEngCd": "PE",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 2350000,
+        "crtrYr": "2022",
+        "massUnitCd": "WT003",
+        "burudgQuty": 31000000,
+        "ntnEngNm": "Democratic Republic of Congo",
+        "ntnKornNm": "콩고민주공화국",
+        "ntnEngCd": "CD",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 1940000,
+        "crtrYr": "2022",
+        "massUnitCd": "WT003",
+        "burudgQuty": 27000000,
+        "ntnEngNm": "China",
+        "ntnKornNm": "중국",
+        "ntnEngCd": "CN",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 1230000,
+        "crtrYr": "2022",
+        "massUnitCd": "WT003",
+        "burudgQuty": 44000000,
+        "ntnEngNm": "United States of America",
+        "ntnKornNm": "미국",
+        "ntnEngCd": "US",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 941000,
+        "crtrYr": "2022",
+        "massUnitCd": "WT003",
+        "burudgQuty": 24000000,
+        "ntnEngNm": "Indonesia",
+        "ntnKornNm": "인도네시아",
+        "ntnEngCd": "ID",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 936000,
+        "crtrYr": "2022",
+        "massUnitCd": "WT003",
+        "burudgQuty": 62000000,
+        "ntnEngNm": "Russia",
+        "ntnKornNm": "러시아",
+        "ntnEngCd": "RU",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 819000,
+        "crtrYr": "2022",
+        "massUnitCd": "WT003",
+        "burudgQuty": 97000000,
+        "ntnEngNm": "Australia",
+        "ntnKornNm": "호주",
+        "ntnEngCd": "AU",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 797000,
+        "crtrYr": "2022",
+        "massUnitCd": "WT003",
+        "burudgQuty": 19000000,
+        "ntnEngNm": "Zambia",
+        "ntnKornNm": "잠비아",
+        "ntnEngCd": "ZM",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 754000,
+        "crtrYr": "2022",
+        "massUnitCd": "WT003",
+        "burudgQuty": 53000000,
+        "ntnEngNm": "Mexico",
+        "ntnKornNm": "멕시코",
+        "ntnEngCd": "MX",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 593000,
+        "crtrYr": "2022",
+        "massUnitCd": "WT003",
+        "burudgQuty": 20000000,
+        "ntnEngNm": "Kazakhstan",
+        "ntnKornNm": "카자흐스탄",
+        "ntnEngCd": "KZ",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 520000,
+        "crtrYr": "2022",
+        "massUnitCd": "WT003",
+        "burudgQuty": 7600000,
+        "ntnEngNm": "Canada",
+        "ntnKornNm": "캐나다",
+        "ntnEngCd": "CA",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 393000,
+        "crtrYr": "2022",
+        "massUnitCd": "WT003",
+        "burudgQuty": 30000000,
+        "ntnEngNm": "Poland",
+        "ntnKornNm": "폴란드",
+        "ntnEngCd": "PL",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 5250000,
+        "crtrYr": "2023",
+        "massUnitCd": "WT003",
+        "burudgQuty": 190000000,
+        "ntnEngNm": "Chile",
+        "ntnKornNm": "칠레",
+        "ntnEngCd": "CL",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 2930000,
+        "crtrYr": "2023",
+        "massUnitCd": "WT003",
+        "burudgQuty": 80000000,
+        "ntnEngNm": "Democratic Republic of Congo",
+        "ntnKornNm": "콩고민주공화국",
+        "ntnEngCd": "CD",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 2760000,
+        "crtrYr": "2023",
+        "massUnitCd": "WT003",
+        "burudgQuty": 120000000,
+        "ntnEngNm": "Peru",
+        "ntnKornNm": "페루",
+        "ntnEngCd": "PE",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 1820000,
+        "crtrYr": "2023",
+        "massUnitCd": "WT003",
+        "burudgQuty": 41000000,
+        "ntnEngNm": "China",
+        "ntnKornNm": "중국",
+        "ntnEngCd": "CN",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 1130000,
+        "crtrYr": "2023",
+        "massUnitCd": "WT003",
+        "burudgQuty": 50000000,
+        "ntnEngNm": "United States of America",
+        "ntnKornNm": "미국",
+        "ntnEngCd": "US",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 907000,
+        "crtrYr": "2023",
+        "massUnitCd": "WT003",
+        "burudgQuty": 24000000,
+        "ntnEngNm": "Indonesia",
+        "ntnKornNm": "인도네시아",
+        "ntnEngCd": "ID",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 890000,
+        "crtrYr": "2023",
+        "massUnitCd": "WT003",
+        "burudgQuty": 80000000,
+        "ntnEngNm": "Russia",
+        "ntnKornNm": "러시아",
+        "ntnEngCd": "RU",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 778000,
+        "crtrYr": "2023",
+        "massUnitCd": "WT003",
+        "burudgQuty": 100000000,
+        "ntnEngNm": "Australia",
+        "ntnKornNm": "호주",
+        "ntnEngCd": "AU",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 740000,
+        "crtrYr": "2023",
+        "massUnitCd": "WT003",
+        "burudgQuty": 20000000,
+        "ntnEngNm": "Kazakhstan",
+        "ntnKornNm": "카자흐스탄",
+        "ntnEngCd": "KZ",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 712000,
+        "crtrYr": "2023",
+        "massUnitCd": "WT003",
+        "burudgQuty": 21000000,
+        "ntnEngNm": "Zambia",
+        "ntnKornNm": "잠비아",
+        "ntnEngCd": "ZM",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 699000,
+        "crtrYr": "2023",
+        "massUnitCd": "WT003",
+        "burudgQuty": 53000000,
+        "ntnEngNm": "Mexico",
+        "ntnKornNm": "멕시코",
+        "ntnEngCd": "MX",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 500000,
+        "crtrYr": "2023",
+        "massUnitCd": "WT003",
+        "burudgQuty": 7600000,
+        "ntnEngNm": "Canada",
+        "ntnKornNm": "캐나다",
+        "ntnEngCd": "CA",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 395000,
+        "crtrYr": "2023",
+        "massUnitCd": "WT003",
+        "burudgQuty": 34000000,
+        "ntnEngNm": "Poland",
+        "ntnKornNm": "폴란드",
+        "ntnEngCd": "PL",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 27000,
+        "crtrYr": "2023",
+        "massUnitCd": "WT003",
+        "ntnEngNm": "India",
+        "ntnKornNm": "인도",
+        "ntnEngCd": "IN",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 5510000,
+        "crtrYr": "2024",
+        "massUnitCd": "WT003",
+        "burudgQuty": 190000000,
+        "ntnEngNm": "Chile",
+        "ntnKornNm": "칠레",
+        "ntnEngCd": "CL",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 2990000,
+        "crtrYr": "2024",
+        "massUnitCd": "WT003",
+        "burudgQuty": 80000000,
+        "ntnEngNm": "Democratic Republic of Congo",
+        "ntnKornNm": "콩고민주공화국",
+        "ntnEngCd": "CD",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 2740000,
+        "crtrYr": "2024",
+        "massUnitCd": "WT003",
+        "burudgQuty": 100000000,
+        "ntnEngNm": "Peru",
+        "ntnKornNm": "페루",
+        "ntnEngCd": "PE",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 1840000,
+        "crtrYr": "2024",
+        "massUnitCd": "WT003",
+        "burudgQuty": 41000000,
+        "ntnEngNm": "China",
+        "ntnKornNm": "중국",
+        "ntnEngCd": "CN",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 1050000,
+        "crtrYr": "2024",
+        "massUnitCd": "WT003",
+        "burudgQuty": 47000000,
+        "ntnEngNm": "United States of America",
+        "ntnKornNm": "미국",
+        "ntnEngCd": "US",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 1020000,
+        "crtrYr": "2024",
+        "massUnitCd": "WT003",
+        "burudgQuty": 80000000,
+        "ntnEngNm": "Russia",
+        "ntnKornNm": "러시아",
+        "ntnEngCd": "RU",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 1010000,
+        "crtrYr": "2024",
+        "massUnitCd": "WT003",
+        "burudgQuty": 21000000,
+        "ntnEngNm": "Indonesia",
+        "ntnKornNm": "인도네시아",
+        "ntnEngCd": "ID",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 823000,
+        "crtrYr": "2024",
+        "massUnitCd": "WT003",
+        "burudgQuty": 21000000,
+        "ntnEngNm": "Zambia",
+        "ntnKornNm": "잠비아",
+        "ntnEngCd": "ZM",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 765000,
+        "crtrYr": "2024",
+        "massUnitCd": "WT003",
+        "burudgQuty": 100000000,
+        "ntnEngNm": "Australia",
+        "ntnKornNm": "호주",
+        "ntnEngCd": "AU",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 724000,
+        "crtrYr": "2024",
+        "massUnitCd": "WT003",
+        "burudgQuty": 20000000,
+        "ntnEngNm": "Kazakhstan",
+        "ntnKornNm": "카자흐스탄",
+        "ntnEngCd": "KZ",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 717000,
+        "crtrYr": "2024",
+        "massUnitCd": "WT003",
+        "burudgQuty": 53000000,
+        "ntnEngNm": "Mexico",
+        "ntnKornNm": "멕시코",
+        "ntnEngCd": "MX",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 515000,
+        "crtrYr": "2024",
+        "massUnitCd": "WT003",
+        "burudgQuty": 8300000,
+        "ntnEngNm": "Canada",
+        "ntnKornNm": "캐나다",
+        "ntnEngCd": "CA",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 400000,
+        "crtrYr": "2024",
+        "massUnitCd": "WT003",
+        "burudgQuty": 34000000,
+        "ntnEngNm": "Poland",
+        "ntnKornNm": "폴란드",
+        "ntnEngCd": "PL",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 27000,
+        "crtrYr": "2024",
+        "massUnitCd": "WT003",
+        "burudgQuty": 2200000,
+        "ntnEngNm": "India",
+        "ntnKornNm": "인도",
+        "ntnEngCd": "IN",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 5300000,
+        "crtrYr": "2025",
+        "massUnitCd": "WT003",
+        "burudgQuty": 180000000,
+        "ntnEngNm": "Chile",
+        "ntnKornNm": "칠레",
+        "ntnEngCd": "CL",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 3200000,
+        "crtrYr": "2025",
+        "massUnitCd": "WT003",
+        "burudgQuty": 80000000,
+        "ntnEngNm": "Democratic Republic of Congo",
+        "ntnKornNm": "콩고민주공화국",
+        "ntnEngCd": "CD",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 2700000,
+        "crtrYr": "2025",
+        "massUnitCd": "WT003",
+        "burudgQuty": 85000000,
+        "ntnEngNm": "Peru",
+        "ntnKornNm": "페루",
+        "ntnEngCd": "PE",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 1800000,
+        "crtrYr": "2025",
+        "massUnitCd": "WT003",
+        "burudgQuty": 41000000,
+        "ntnEngNm": "China",
+        "ntnKornNm": "중국",
+        "ntnEngCd": "CN",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 1300000,
+        "crtrYr": "2025",
+        "massUnitCd": "WT003",
+        "burudgQuty": 80000000,
+        "ntnEngNm": "Russia",
+        "ntnKornNm": "러시아",
+        "ntnEngCd": "RU",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 1000000,
+        "crtrYr": "2025",
+        "massUnitCd": "WT003",
+        "burudgQuty": 47000000,
+        "ntnEngNm": "United States of America",
+        "ntnKornNm": "미국",
+        "ntnEngCd": "US",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 940000,
+        "crtrYr": "2025",
+        "massUnitCd": "WT003",
+        "burudgQuty": 21000000,
+        "ntnEngNm": "Zambia",
+        "ntnKornNm": "잠비아",
+        "ntnEngCd": "ZM",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 730000,
+        "crtrYr": "2025",
+        "massUnitCd": "WT003",
+        "burudgQuty": 100000000,
+        "ntnEngNm": "Australia",
+        "ntnKornNm": "호주",
+        "ntnEngCd": "AU",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 710000,
+        "crtrYr": "2025",
+        "massUnitCd": "WT003",
+        "burudgQuty": 21000000,
+        "ntnEngNm": "Indonesia",
+        "ntnKornNm": "인도네시아",
+        "ntnEngCd": "ID",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 710000,
+        "crtrYr": "2025",
+        "massUnitCd": "WT003",
+        "burudgQuty": 20000000,
+        "ntnEngNm": "Kazakhstan",
+        "ntnKornNm": "카자흐스탄",
+        "ntnEngCd": "KZ",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 690000,
+        "crtrYr": "2025",
+        "massUnitCd": "WT003",
+        "burudgQuty": 53000000,
+        "ntnEngNm": "Mexico",
+        "ntnKornNm": "멕시코",
+        "ntnEngCd": "MX",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 500000,
+        "crtrYr": "2025",
+        "massUnitCd": "WT003",
+        "burudgQuty": 7000000,
+        "ntnEngNm": "Canada",
+        "ntnKornNm": "캐나다",
+        "ntnEngCd": "CA",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 410000,
+        "crtrYr": "2025",
+        "massUnitCd": "WT003",
+        "burudgQuty": 33000000,
+        "ntnEngNm": "Poland",
+        "ntnKornNm": "폴란드",
+        "ntnEngCd": "PL",
+        "TOTALPRDCTNQUTY": 97046000
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 23000,
+        "crtrYr": "2025",
+        "massUnitCd": "WT003",
+        "burudgQuty": 2200000,
+        "ntnEngNm": "India",
+        "ntnKornNm": "인도",
+        "ntnEngCd": "IN",
+        "TOTALPRDCTNQUTY": 97046000
+      }
+    ]
+  },
+  "snapshot": {
+    "data": [
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 730000,
+        "totalBurudgQuty": 770200000,
+        "totalPrdctnQuty": 20013000,
+        "massUnitCd": "WT003",
+        "burudgQuty": 100000000,
+        "ntnEngNm": "Australia",
+        "ntnKornNm": "호주",
+        "ntnEngCd": "AU",
+        "mnrkndData": [
+          {
+            "mnrkndUnqCd": "MNRL0008",
+            "cdVal": "k ton",
+            "prdctnQuty": 730000,
+            "totalBurudgQuty": 770200000,
+            "totalPrdctnQuty": 20013000,
+            "mnrkndKornNm": "동",
+            "massUnitCd": "WT003",
+            "burudgQuty": 100000000,
+            "ntnEngNm": "Australia",
+            "ntnKornNm": "호주",
+            "ntnEngCd": "AU"
+          }
+        ]
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 500000,
+        "totalBurudgQuty": 770200000,
+        "totalPrdctnQuty": 20013000,
+        "massUnitCd": "WT003",
+        "burudgQuty": 7000000,
+        "ntnEngNm": "Canada",
+        "ntnKornNm": "캐나다",
+        "ntnEngCd": "CA",
+        "mnrkndData": [
+          {
+            "mnrkndUnqCd": "MNRL0008",
+            "cdVal": "k ton",
+            "prdctnQuty": 500000,
+            "totalBurudgQuty": 770200000,
+            "totalPrdctnQuty": 20013000,
+            "mnrkndKornNm": "동",
+            "massUnitCd": "WT003",
+            "burudgQuty": 7000000,
+            "ntnEngNm": "Canada",
+            "ntnKornNm": "캐나다",
+            "ntnEngCd": "CA"
+          }
+        ]
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 3200000,
+        "totalBurudgQuty": 770200000,
+        "totalPrdctnQuty": 20013000,
+        "massUnitCd": "WT003",
+        "burudgQuty": 80000000,
+        "ntnEngNm": "Democratic Republic of Congo",
+        "ntnKornNm": "콩고민주공화국",
+        "ntnEngCd": "CD",
+        "mnrkndData": [
+          {
+            "mnrkndUnqCd": "MNRL0008",
+            "cdVal": "k ton",
+            "prdctnQuty": 3200000,
+            "totalBurudgQuty": 770200000,
+            "totalPrdctnQuty": 20013000,
+            "mnrkndKornNm": "동",
+            "massUnitCd": "WT003",
+            "burudgQuty": 80000000,
+            "ntnEngNm": "Democratic Republic of Congo",
+            "ntnKornNm": "콩고민주공화국",
+            "ntnEngCd": "CD"
+          }
+        ]
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 5300000,
+        "totalBurudgQuty": 770200000,
+        "totalPrdctnQuty": 20013000,
+        "massUnitCd": "WT003",
+        "burudgQuty": 180000000,
+        "ntnEngNm": "Chile",
+        "ntnKornNm": "칠레",
+        "ntnEngCd": "CL",
+        "mnrkndData": [
+          {
+            "mnrkndUnqCd": "MNRL0008",
+            "cdVal": "k ton",
+            "prdctnQuty": 5300000,
+            "totalBurudgQuty": 770200000,
+            "totalPrdctnQuty": 20013000,
+            "mnrkndKornNm": "동",
+            "massUnitCd": "WT003",
+            "burudgQuty": 180000000,
+            "ntnEngNm": "Chile",
+            "ntnKornNm": "칠레",
+            "ntnEngCd": "CL"
+          }
+        ]
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 1800000,
+        "totalBurudgQuty": 770200000,
+        "totalPrdctnQuty": 20013000,
+        "massUnitCd": "WT003",
+        "burudgQuty": 41000000,
+        "ntnEngNm": "China",
+        "ntnKornNm": "중국",
+        "ntnEngCd": "CN",
+        "mnrkndData": [
+          {
+            "mnrkndUnqCd": "MNRL0008",
+            "cdVal": "k ton",
+            "prdctnQuty": 1800000,
+            "totalBurudgQuty": 770200000,
+            "totalPrdctnQuty": 20013000,
+            "mnrkndKornNm": "동",
+            "massUnitCd": "WT003",
+            "burudgQuty": 41000000,
+            "ntnEngNm": "China",
+            "ntnKornNm": "중국",
+            "ntnEngCd": "CN"
+          }
+        ]
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 710000,
+        "totalBurudgQuty": 770200000,
+        "totalPrdctnQuty": 20013000,
+        "massUnitCd": "WT003",
+        "burudgQuty": 21000000,
+        "ntnEngNm": "Indonesia",
+        "ntnKornNm": "인도네시아",
+        "ntnEngCd": "ID",
+        "mnrkndData": [
+          {
+            "mnrkndUnqCd": "MNRL0008",
+            "cdVal": "k ton",
+            "prdctnQuty": 710000,
+            "totalBurudgQuty": 770200000,
+            "totalPrdctnQuty": 20013000,
+            "mnrkndKornNm": "동",
+            "massUnitCd": "WT003",
+            "burudgQuty": 21000000,
+            "ntnEngNm": "Indonesia",
+            "ntnKornNm": "인도네시아",
+            "ntnEngCd": "ID"
+          }
+        ]
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 23000,
+        "totalBurudgQuty": 770200000,
+        "totalPrdctnQuty": 20013000,
+        "massUnitCd": "WT003",
+        "burudgQuty": 2200000,
+        "ntnEngNm": "India",
+        "ntnKornNm": "인도",
+        "ntnEngCd": "IN",
+        "mnrkndData": [
+          {
+            "mnrkndUnqCd": "MNRL0008",
+            "cdVal": "k ton",
+            "prdctnQuty": 23000,
+            "totalBurudgQuty": 770200000,
+            "totalPrdctnQuty": 20013000,
+            "mnrkndKornNm": "동",
+            "massUnitCd": "WT003",
+            "burudgQuty": 2200000,
+            "ntnEngNm": "India",
+            "ntnKornNm": "인도",
+            "ntnEngCd": "IN"
+          }
+        ]
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 710000,
+        "totalBurudgQuty": 770200000,
+        "totalPrdctnQuty": 20013000,
+        "massUnitCd": "WT003",
+        "burudgQuty": 20000000,
+        "ntnEngNm": "Kazakhstan",
+        "ntnKornNm": "카자흐스탄",
+        "ntnEngCd": "KZ",
+        "mnrkndData": [
+          {
+            "mnrkndUnqCd": "MNRL0008",
+            "cdVal": "k ton",
+            "prdctnQuty": 710000,
+            "totalBurudgQuty": 770200000,
+            "totalPrdctnQuty": 20013000,
+            "mnrkndKornNm": "동",
+            "massUnitCd": "WT003",
+            "burudgQuty": 20000000,
+            "ntnEngNm": "Kazakhstan",
+            "ntnKornNm": "카자흐스탄",
+            "ntnEngCd": "KZ"
+          }
+        ]
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 690000,
+        "totalBurudgQuty": 770200000,
+        "totalPrdctnQuty": 20013000,
+        "massUnitCd": "WT003",
+        "burudgQuty": 53000000,
+        "ntnEngNm": "Mexico",
+        "ntnKornNm": "멕시코",
+        "ntnEngCd": "MX",
+        "mnrkndData": [
+          {
+            "mnrkndUnqCd": "MNRL0008",
+            "cdVal": "k ton",
+            "prdctnQuty": 690000,
+            "totalBurudgQuty": 770200000,
+            "totalPrdctnQuty": 20013000,
+            "mnrkndKornNm": "동",
+            "massUnitCd": "WT003",
+            "burudgQuty": 53000000,
+            "ntnEngNm": "Mexico",
+            "ntnKornNm": "멕시코",
+            "ntnEngCd": "MX"
+          }
+        ]
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 2700000,
+        "totalBurudgQuty": 770200000,
+        "totalPrdctnQuty": 20013000,
+        "massUnitCd": "WT003",
+        "burudgQuty": 85000000,
+        "ntnEngNm": "Peru",
+        "ntnKornNm": "페루",
+        "ntnEngCd": "PE",
+        "mnrkndData": [
+          {
+            "mnrkndUnqCd": "MNRL0008",
+            "cdVal": "k ton",
+            "prdctnQuty": 2700000,
+            "totalBurudgQuty": 770200000,
+            "totalPrdctnQuty": 20013000,
+            "mnrkndKornNm": "동",
+            "massUnitCd": "WT003",
+            "burudgQuty": 85000000,
+            "ntnEngNm": "Peru",
+            "ntnKornNm": "페루",
+            "ntnEngCd": "PE"
+          }
+        ]
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 410000,
+        "totalBurudgQuty": 770200000,
+        "totalPrdctnQuty": 20013000,
+        "massUnitCd": "WT003",
+        "burudgQuty": 33000000,
+        "ntnEngNm": "Poland",
+        "ntnKornNm": "폴란드",
+        "ntnEngCd": "PL",
+        "mnrkndData": [
+          {
+            "mnrkndUnqCd": "MNRL0008",
+            "cdVal": "k ton",
+            "prdctnQuty": 410000,
+            "totalBurudgQuty": 770200000,
+            "totalPrdctnQuty": 20013000,
+            "mnrkndKornNm": "동",
+            "massUnitCd": "WT003",
+            "burudgQuty": 33000000,
+            "ntnEngNm": "Poland",
+            "ntnKornNm": "폴란드",
+            "ntnEngCd": "PL"
+          }
+        ]
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 1300000,
+        "totalBurudgQuty": 770200000,
+        "totalPrdctnQuty": 20013000,
+        "massUnitCd": "WT003",
+        "burudgQuty": 80000000,
+        "ntnEngNm": "Russia",
+        "ntnKornNm": "러시아",
+        "ntnEngCd": "RU",
+        "mnrkndData": [
+          {
+            "mnrkndUnqCd": "MNRL0008",
+            "cdVal": "k ton",
+            "prdctnQuty": 1300000,
+            "totalBurudgQuty": 770200000,
+            "totalPrdctnQuty": 20013000,
+            "mnrkndKornNm": "동",
+            "massUnitCd": "WT003",
+            "burudgQuty": 80000000,
+            "ntnEngNm": "Russia",
+            "ntnKornNm": "러시아",
+            "ntnEngCd": "RU"
+          }
+        ]
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 1000000,
+        "totalBurudgQuty": 770200000,
+        "totalPrdctnQuty": 20013000,
+        "massUnitCd": "WT003",
+        "burudgQuty": 47000000,
+        "ntnEngNm": "United States of America",
+        "ntnKornNm": "미국",
+        "ntnEngCd": "US",
+        "mnrkndData": [
+          {
+            "mnrkndUnqCd": "MNRL0008",
+            "cdVal": "k ton",
+            "prdctnQuty": 1000000,
+            "totalBurudgQuty": 770200000,
+            "totalPrdctnQuty": 20013000,
+            "mnrkndKornNm": "동",
+            "massUnitCd": "WT003",
+            "burudgQuty": 47000000,
+            "ntnEngNm": "United States of America",
+            "ntnKornNm": "미국",
+            "ntnEngCd": "US"
+          }
+        ]
+      },
+      {
+        "cdVal": "k ton",
+        "prdctnQuty": 940000,
+        "totalBurudgQuty": 770200000,
+        "totalPrdctnQuty": 20013000,
+        "massUnitCd": "WT003",
+        "burudgQuty": 21000000,
+        "ntnEngNm": "Zambia",
+        "ntnKornNm": "잠비아",
+        "ntnEngCd": "ZM",
+        "mnrkndData": [
+          {
+            "mnrkndUnqCd": "MNRL0008",
+            "cdVal": "k ton",
+            "prdctnQuty": 940000,
+            "totalBurudgQuty": 770200000,
+            "totalPrdctnQuty": 20013000,
+            "mnrkndKornNm": "동",
+            "massUnitCd": "WT003",
+            "burudgQuty": 21000000,
+            "ntnEngNm": "Zambia",
+            "ntnKornNm": "잠비아",
+            "ntnEngCd": "ZM"
+          }
+        ]
+      }
+    ]
+  },
+  "share": {
+    "data": [
+      {
+        "ntnKornNm": "칠레",
+        "ntnEngCd": "CL",
+        "before5": "5,620,000",
+        "before4": "5,330,000",
+        "before3": "5,250,000",
+        "before2": "5,510,000",
+        "before1": "5,300,000",
+        "rate": "23.04"
+      },
+      {
+        "ntnKornNm": "콩고민주공화국",
+        "ntnEngCd": "CD",
+        "before5": "1,740,000",
+        "before4": "2,350,000",
+        "before3": "2,930,000",
+        "before2": "2,990,000",
+        "before1": "3,200,000",
+        "rate": "13.91"
+      },
+      {
+        "ntnKornNm": "페루",
+        "ntnEngCd": "PE",
+        "before5": "2,300,000",
+        "before4": "2,450,000",
+        "before3": "2,760,000",
+        "before2": "2,740,000",
+        "before1": "2,700,000",
+        "rate": "11.74"
+      },
+      {
+        "ntnKornNm": "중국",
+        "ntnEngCd": "CN",
+        "before5": "1,910,000",
+        "before4": "1,940,000",
+        "before3": "1,820,000",
+        "before2": "1,840,000",
+        "before1": "1,800,000",
+        "rate": "7.83"
+      },
+      {
+        "ntnKornNm": "러시아",
+        "ntnEngCd": "RU",
+        "before5": "940,000",
+        "before4": "936,000",
+        "before3": "890,000",
+        "before2": "1,020,000",
+        "before1": "1,300,000",
+        "rate": "5.65"
+      },
+      {
+        "ntnKornNm": "미국",
+        "ntnEngCd": "US",
+        "before5": "1,230,000",
+        "before4": "1,230,000",
+        "before3": "1,130,000",
+        "before2": "1,050,000",
+        "before1": "1,000,000",
+        "rate": "4.35"
+      },
+      {
+        "ntnKornNm": "잠비아",
+        "ntnEngCd": "ZM",
+        "before5": "842,000",
+        "before4": "797,000",
+        "before3": "712,000",
+        "before2": "823,000",
+        "before1": "940,000",
+        "rate": "4.09"
+      },
+      {
+        "ntnKornNm": "호주",
+        "ntnEngCd": "AU",
+        "before5": "813,000",
+        "before4": "819,000",
+        "before3": "778,000",
+        "before2": "765,000",
+        "before1": "730,000",
+        "rate": "3.17"
+      },
+      {
+        "ntnKornNm": "카자흐스탄",
+        "ntnEngCd": "KZ",
+        "before5": "510,000",
+        "before4": "593,000",
+        "before3": "740,000",
+        "before2": "724,000",
+        "before1": "710,000",
+        "rate": "3.09"
+      },
+      {
+        "ntnKornNm": "인도네시아",
+        "ntnEngCd": "ID",
+        "before5": "731,000",
+        "before4": "941,000",
+        "before3": "907,000",
+        "before2": "1,010,000",
+        "before1": "710,000",
+        "rate": "3.09"
+      },
+      {
+        "ntnKornNm": "멕시코",
+        "ntnEngCd": "MX",
+        "before5": "734,000",
+        "before4": "754,000",
+        "before3": "699,000",
+        "before2": "717,000",
+        "before1": "690,000",
+        "rate": "3.00"
+      },
+      {
+        "ntnKornNm": "캐나다",
+        "ntnEngCd": "CA",
+        "before5": "550,000",
+        "before4": "520,000",
+        "before3": "500,000",
+        "before2": "515,000",
+        "before1": "500,000",
+        "rate": "2.17"
+      },
+      {
+        "ntnKornNm": "폴란드",
+        "ntnEngCd": "PL",
+        "before5": "391,000",
+        "before4": "393,000",
+        "before3": "395,000",
+        "before2": "400,000",
+        "before1": "410,000",
+        "rate": "1.78"
+      },
+      {
+        "ntnKornNm": "인도",
+        "ntnEngCd": "IN",
+        "before5": "0",
+        "before4": "0",
+        "before3": "27,000",
+        "before2": "27,000",
+        "before1": "23,000",
+        "rate": "0.10"
+      },
+      {
+        "ntnKornNm": "일본",
+        "ntnEngCd": "JP",
+        "before5": "0",
+        "before4": "0",
+        "before3": "0",
+        "before2": "0",
+        "before1": "0",
+        "rate": "0.00"
+      },
+      {
+        "ntnKornNm": "독일",
+        "ntnEngCd": "DE",
+        "before5": "0",
+        "before4": "0",
+        "before3": "0",
+        "before2": "0",
+        "before1": "0",
+        "rate": "0.00"
+      },
+      {
+        "ntnKornNm": "대한민국",
+        "ntnEngCd": "KR",
+        "before5": "0",
+        "before4": "0",
+        "before3": "0",
+        "before2": "0",
+        "before1": "0",
+        "rate": "0.00"
+      },
+      {
+        "ntnKornNm": "_ETC_",
+        "ntnEngCd": "OT",
+        "before5": "2,850,000",
+        "before4": "2,850,000",
+        "before3": "3,020,000",
+        "before2": "2,850,000",
+        "before1": "3,000,000",
+        "rate": "13.04"
+      },
+      {
+        "ntnKornNm": "_TOTAL_",
+        "ntnEngCd": "SU",
+        "before5": "21,200,000",
+        "before4": "21,900,000",
+        "before3": "22,600,000",
+        "before2": "23,000,000",
+        "before1": "23,000,000",
+        "rate": "100.00"
+      }
+    ]
+  }
+}

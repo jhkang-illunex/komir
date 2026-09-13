@@ -401,10 +401,16 @@ EXTRA_FIELD_LABELS: dict[str, str] = {
 }
 
 EXTRA_FIELD_DEFAULTS: dict[str, str] = {
-    # 2026-08-29 report-summary-agent 확정: map_mineral의 unit이 빈 text_input이라
-    # 버튼만 누르면 payload에 키 자체가 안 들어가 서버가 "unit in the request body"
-    # NO_DATA를 던졌다 — 기본값을 채워 즉시 status:ok 재현되게 한다.
-    "unit": "천톤",
+    # 2026-09-13 삭제(사용자 제보 — "생산량으로 검색시 수치가 이상하다") —
+    # "천톤" 기본값이 있으면 komis_response로 정상 자동유도되는 올바른
+    # 단위("톤", `_mineral_map_unit_label`의 "k ton"→"톤" 매핑 실측 확정값)
+    # 를 덮어써 원값을 1000배 부풀렸다(`compact_fact`의 scales 딕셔너리에서
+    # "천톤"=값×1000으로 정의돼 있는데 원값은 이미 톤 단위였음 — 예: 칠레
+    # 2025 동 생산량 실측 5,300,000톤이 "약 53억톤"으로 표시됨). 애초
+    # 2026-08-29에 이 기본값을 넣은 이유(정적 템플릿 미리보기에서 komis_
+    # response 없이 unit 필드가 비면 NO_DATA)는 map_mineral이 KOMIS_RAW_
+    # PAGES로 편입돼 정적 예시도 komis_response 변환을 거치게 되면서 이미
+    # 해소됐다 — 기본값을 비워 자동유도(komis_unit)에 맡긴다.
 }
 
 EXTRA_FIELD_VALUE_LABELS: dict[str, dict[str, str]] = {
