@@ -219,6 +219,14 @@
   (재현 스크립트 `full_verify.py`+결과 `full_verify_result.json`) +
   `documents/산출물/2026-W37_0907-0913/report_gen_풀검증_보고서_260913.md`
   — 715개 (page_id,아이템) 조합·3,465개 지표를 raw KOMIS JSON 독립 재계산
-  대 `komis_response` 패스스루 실호출로 전수 대조. 실버그 2건(map_mineral
-  300자 초과 INTERNAL_ERROR — 수정완료, price_* avg_opt≠DAY 현재가/등락률
-  기준 불일치 — 미수정·판단대기). 방법론·검증범위밖 목록은 보고서 참고.
+  대 `komis_response` 패스스루 실호출로 전수 대조. 실버그 2건 발견, 둘 다
+  수정·배포·실HTTP 재점검까지 완료(map_mineral 300자 초과 INTERNAL_ERROR,
+  price_* avg_opt≠DAY 현재가/등락률 기준 불일치 — "현재가=실시간가" 확정).
+  방법론·검증범위밖 목록은 보고서 참고.
+- **광물가격·핵심광물지도 신규조건 확인(2026-09-13)**:
+  `documents/산출물/2026-W37_0907-0913/report_gen_신규조건_확인_260913/`
+  — 위 풀 검증 이후 사용자 요청으로 이전에 예시로 안 쓴 새 조건(광종·
+  가격기준·평균옵션·측정항목) 메뉴당 4~5개, 7개 메뉴 32건을 배포된
+  컨테이너에 실 HTTP로 호출. 28건 ok(전부 KOMIS 원본과 교차검산 일치)·
+  4건 NO_DATA(해당 조합 raw 덤프 자체가 0행이라 정상 응답, report_gen
+  결함 아님). INTERNAL_ERROR 0건.

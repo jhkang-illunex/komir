@@ -2,7 +2,23 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-13 (최신, 후속) — price_* "현재가=실시간가" 수정·배포·재점검 완료
+## 2026-09-13 (최신) — 광물가격·핵심광물지도 신규조건 32건 실HTTP 확인, 전부 정상
+
+사용자 요청("지금까지 입력된 조건 말고 다른 조건으로 메뉴당 4~5개 정도")에
+따라 이 세션에서 예시로 쓴 적 없는 새 조건(광종·가격기준·평균옵션·측정항목)
+을 골라 광물가격 4메뉴+핵심광물지도 3메뉴, 총 32건을 배포된 컨테이너
+(`komir-report-gen-test`, 실시간가 수정 반영판)에 실제 `POST /api/v1/
+analysis/...`로 호출했다. 28건 `status: ok`(가격류는 "현재가격" 표 값을
+KOMIS 실시간 현물가와, map_korea/global은 "수입/수출총액"·"세계 교역
+총액"을 KOMIS `sumIncmAmt`/`sumExpAmt`/`sumAmt`와 전부 대조해 일치 확인,
+map_mineral 5건은 오늘 오전 `full_verify.py` 66개 전수검증에 이미 포함된
+조합이라 배포판 재확인만), 4건 `status: NO_DATA`(아연 LME CASH MONTH·
+알루미늄 LME 3개월 QUARTER·연 LME CASH YEAR·주석 LME CASH WEEK — raw
+덤프의 해당 조합 `defaultMnrl`이 애초에 0행이라 정상 응답, report_gen
+결함 아님). `INTERNAL_ERROR` 0건. 상세는
+`documents/산출물/2026-W37_0907-0913/report_gen_신규조건_확인_260913/`.
+
+## 2026-09-13 — price_* "현재가=실시간가" 수정·배포·재점검 완료
 
 바로 아래 §의 "발견 2"(price_* 평균옵션≠DAY 시 현재가/등락률 기준 불일치)를
 사용자가 "실시간가 기준으로 계산하세요. 그걸 기반으로 수정하고 다시 배포해서
