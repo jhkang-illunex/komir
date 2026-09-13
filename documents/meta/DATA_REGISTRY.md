@@ -206,3 +206,19 @@
   forecast_price 데모 placeholder가 서버 최소요건 미달, indicator_composite 대조접속사
   하드코딩 버그(`additional_summary.py`, LLM 아닌 규칙기반 경로로 확인). ⚠ 워크트리
   `worktree-report_gen`에서 작성, 감사 시점 기준 미커밋.
+- **요약보고서 데모 메뉴별 옵션·분석요약 생성 결과(2026-09-08)**:
+  `documents/산출물/2026-W37_0907-0913/요약보고서데모_메뉴별_옵션_결과_260908/`
+  — `report_demo.py`(요약보고서 작성 데모)에 실제로 뜨는 주메뉴×서브메뉴 10개
+  케이스(광물전망지표 3·광물자원가격 4·핵심광물지도 3) 전부에 대해 선택 가능한
+  UI 옵션 서술 + report_gen API 실호출(`komir-report-gen-test`, 10건 전부
+  `status: ok`) 결과를 케이스 단위 md 10개로 정리. forecast_price·price_group
+  2종은 UI 미노출이라 의도적으로 제외(META.md 명시). 출처·재현 절차는 폴더
+  `META.md`.
+- **report_gen 풀 검증(2026-09-13)**:
+  `documents/산출물/2026-W37_0907-0913/report_gen_풀검증_260913_evidence/`
+  (재현 스크립트 `full_verify.py`+결과 `full_verify_result.json`) +
+  `documents/산출물/2026-W37_0907-0913/report_gen_풀검증_보고서_260913.md`
+  — 715개 (page_id,아이템) 조합·3,465개 지표를 raw KOMIS JSON 독립 재계산
+  대 `komis_response` 패스스루 실호출로 전수 대조. 실버그 2건(map_mineral
+  300자 초과 INTERNAL_ERROR — 수정완료, price_* avg_opt≠DAY 현재가/등락률
+  기준 불일치 — 미수정·판단대기). 방법론·검증범위밖 목록은 보고서 참고.

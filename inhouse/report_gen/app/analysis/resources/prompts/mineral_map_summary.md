@@ -32,9 +32,11 @@
   (map_global의 korea_route_rank와 같은 처리), 다른 근거와 한 문장에
   섞으면 그 다른 근거의 내용까지 "주요 변화" 절로 잘못 끌려간다. 근거를
   결합해야 하는 문장(예: current_leaders+third_country, leading_country_
-  changes+concentration_change)은 extreme_change_countries가 아닌
-  다른 근거끼리로 만든다.
-- current_position은 leading_country_changes·concentration_change·
+  change_1+leading_country_change_2+concentration_change)은
+  extreme_change_countries가 아닌 다른 근거끼리로 만든다.
+- current_position은 leading_country_change_1·leading_country_change_2
+  (2026-09-13 — 국가명이 길고 수치가 큰 광종에서 300자 상한을 넘던 문제로
+  국가당 별개 근거로 분리됨, 내용은 동일)·concentration_change·
   current_concentration_structure를 연결해 국가별 기간 변화와 CR3/CR5
   집중도 변화, 그리고 그 구조적 의미를 2~3문장으로 쓴다.
 - 전체는 5~9문장으로 쓰며 같은 수치나 판단을 다른 섹션에서 반복하지 않는다.

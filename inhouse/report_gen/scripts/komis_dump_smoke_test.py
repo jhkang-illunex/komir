@@ -276,12 +276,22 @@ def adapt_map_korea(dump: dict) -> list[tuple[str, dict]]:
             "observations": observations,
         }
         # 2026-08-29 Phase3 라이브 재검증 확정 — 같은 응답에 KOMIS 진짜 총액
-        # (sumIncmAmt)이 반복 필드로 온다(list가 최대 30행까지만 줘서 관측치
-        # 합산이 과소될 수 있음, report_gen_KOMIS라이브재검증_Phase3_260829.md
-        # 참고).
+        # (sumIncmAmt/sumExpAmt)이 반복 필드로 온다(list가 최대 30행까지만 줘서
+        # 관측치 합산이 과소될 수 있음, report_gen_KOMIS라이브재검증_Phase3_
+        # 260829.md 참고). 2026-09-13 발견·수정 — 이 어댑터가 sumIncmAmt만
+        # 넣고 sumExpAmt는 빠뜨려서(만드는 요청이 옛 관측치 경로였음) G4가
+        # export_total_amount를 한 번도 실제 대조하지 않고 있었다(raw
+        # komis_response 패스스루 경로는 처음부터 문제없었음 — production
+        # 코드 버그 아니라 이 하네스의 회귀 커버리지 공백).
+        totals: dict = {}
         sum_incm = _num(rows[0].get("sumIncmAmt")) if rows else None
         if sum_incm:
-            request["komis_trade_totals"] = {"import_amount": sum_incm}
+            totals["import_amount"] = sum_incm
+        sum_exp = _num(rows[0].get("sumExpAmt")) if rows else None
+        if sum_exp:
+            totals["export_amount"] = sum_exp
+        if totals:
+            request["komis_trade_totals"] = totals
         out.append((f"supply_map_korea:{r['key']}", request))
     return out
 
@@ -464,11 +474,17 @@ def _expected_facts(page_id: str, request: dict) -> dict:
             else sum(o["import_amount"] or 0.0 for o in obs)
         )
         top1 = max(obs, key=lambda o: o["import_amount"] or 0.0)
-        return {
+        facts = {
             "total_amount": total,
             "top1_country": top1["country_name"],
             "top1_share_pct": (top1["import_amount"] or 0.0) / total * 100 if total else None,
         }
+        # 2026-09-13 신설 — export_total_amount도 sumIncmAmt와 같은 원칙
+        # (komis_trade_totals 있으면 그게 정답)으로 독립 대조한다. map_korea만
+        # 수출 방향 데이터가 있다(map_global은 수입만).
+        if page_id == "map_korea" and komis_totals and komis_totals.get("export_amount"):
+            facts["export_total_amount"] = komis_totals["export_amount"]
+        return facts
     return {}
 
 
@@ -534,6 +550,14 @@ def _check_mismatch(page_id: str, expected: dict, response: dict) -> list[str]:
             problems.append(
                 f"top1_import_share_pct 불일치: expected={expected['top1_share_pct']:.2f} "
                 f"actual={metrics.get('top1_import_share_pct')}"
+            )
+        if "export_total_amount" in expected and not _close(
+            expected["export_total_amount"], metrics.get("export_total_amount"),
+            tol=max(1.0, expected["export_total_amount"] * 0.01),
+        ):
+            problems.append(
+                f"export_total_amount 불일치: expected={expected['export_total_amount']} "
+                f"actual={metrics.get('export_total_amount')}"
             )
     elif page_id == "map_global":
         if not _close(expected["total_amount"], metrics.get("total_amount"), tol=max(1.0, expected["total_amount"] * 0.01)):

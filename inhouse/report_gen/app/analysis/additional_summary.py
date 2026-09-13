@@ -1188,27 +1188,34 @@ def calculate_mineral_map_summary(
         if item.country_code in start_by_code
         and start_by_code[item.country_code].value > 0
     ][:2]
-    if comparable_leaders:
-        country_facts = [
-            _country_change_fact(
-                current=item,
-                previous=start_by_code[item.country_code],
-                current_total=current_total,
-                start_total=start_total,
-                current_rank=current_rank_by_code[item.country_code],
-                start_rank=start_rank_by_code[item.country_code],
-                measure_name=measure_name,
-                unit=series.unit,
-                start_year=start_year,
-                current_year=current_year,
-            )
-            for item in comparable_leaders
-        ]
+    # 2026-09-13 '풀 검증'에서 실측 재현 — 위 두 국가(comparable_leaders)의
+    # 변화문을 " ".join()으로 한 EvidenceClaim에 합치면, 국가명이 길고
+    # (예: 남아프리카공화국) 수치 자릿수가 큰 광종(망간·칼륨·크롬 매장량,
+    # 실 KOMIS 덤프로 재현)에서 합친 문장이 SummarySentence의 300자 상한을
+    # 넘어 pydantic ValidationError → INTERNAL_ERROR로 응답이 죽는다.
+    # claim을 국가당 1개씩(최대 2개)으로 쪼갠다 — `SummarySentence(text=
+    # claim.fact, ...)`가 claim 1개당 문장 1개이므로(688행), 국가 1개분
+    # 문장은 이 표본 재현 범위에서 300자를 넘지 않는다. 문구·수치는 그대로,
+    # claim 개수만 늘어난다(select_and_synthesize 모드는 llm=None 규칙기반
+    # 경로에 영향 없음 — 위에서 확인).
+    for index, item in enumerate(comparable_leaders, start=1):
+        country_fact = _country_change_fact(
+            current=item,
+            previous=start_by_code[item.country_code],
+            current_total=current_total,
+            start_total=start_total,
+            current_rank=current_rank_by_code[item.country_code],
+            start_rank=start_rank_by_code[item.country_code],
+            measure_name=measure_name,
+            unit=series.unit,
+            start_year=start_year,
+            current_year=current_year,
+        )
         claims.append(
             EvidenceClaim(
-                "leading_country_changes",
+                f"leading_country_change_{index}",
                 "current_position",
-                " ".join(country_facts),
+                country_fact,
             )
         )
 
