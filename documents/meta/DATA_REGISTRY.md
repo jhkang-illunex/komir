@@ -237,3 +237,10 @@
   배포된 컨테이너에 실 HTTP로 호출. 13/13 ok, "같은 조회기간 동안…" 비교
   문장의 주계열·비교광종 변화율 전부 raw JSON 독립 재계산과 소수점 둘째
   자리까지 일치. 비교광종 가격기준 자동 채움·상대가치 문장도 확인.
+- **핵심광물지도 날짜 외 옵션(국가·생산품유형·교차비교) 확인(2026-09-13)**:
+  `documents/산출물/2026-W37_0907-0913/report_gen_지도옵션_확인_260913/`
+  — map_korea 조회필터(국가/생산품유형/HS코드, 5건)·map_global
+  `komis_route_share_response`(4건, 최초 실행)·map_mineral
+  `komis_snapshot_response`+`komis_share_response`(교차비교, 표본 2건
+  실HTTP+130개 조합 전수 in-process). 전부 정상, `leading_country_changes`
+  와 같은 패턴(`" ".join()` 300자류) 재발 없음 확인.
