@@ -2,7 +2,36 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-13 (최신) — report_gen LLM 정제 기본 비활성(`refine_with_llm` 기본 false) + streamlit 버튼 2개
+## 2026-09-13 (최신) — rag_chat `/prichat` 구조화 블록(table·chart) 이벤트(미커밋)
+
+사용자 제안(표·차트를 그리는 주체는 프론트여야 하니 메타를 가진 JSON 객체를
+넘기자, `<json></json>` 태그 방식 검토)에 대해 태그 방식 대신 SSE 이벤트
+타입 분리(콘텐츠 블록 패턴)를 권했고, 사용자 지시로 **private 엔트리에만**
+구현했다(프론트가 적용해 보고 좋으면 `/pubchat`에도 확장).
+
+- `rag_core/ragkit/chatbot_events.py`: `extract_markdown_tables()`에 원문
+  `markdown` 키 추가(프론트가 본문 안 표를 컴포넌트로 치환할 때 사용),
+  `table_block()`(schema_version·block_id·columns_meta[key/label/type/unit]·
+  rows_typed·meta, 기존 columns/rows/source 키 유지), `chart_spec()`(PNG
+  대신 kind/x/x_type/series/sort_x_ascending/title 선언 스펙 + data_ref —
+  판정 규칙은 `render_chart_png`와 동일).
+- `rag_core/ragkit/chatbot.py::_multimodal_events(profile=)`: private면
+  확장 `table` + 신설 `chart` 이벤트, `image`(PNG) 미발송. public은 기존
+  계약 그대로.
+- streamlit `chatbot.py`: `chart` 이벤트를 받아 `st.line_chart/bar_chart`로
+  직접 그림(프론트 참고 구현, 히스토리 재렌더 포함).
+- 테스트 `rag_chat/tests/test_private_blocks.py` 3건 통과. 이미지
+  `komir-rag-chat:260913-priblocks` 재배포(기존 run 설정과 동일: .env·
+  KOMIS_RAW_MAX_TIMESTAMPS·host-gateway·pageindex/okf ro 마운트) 후 라이브:
+  `/prichat` "동 최근 일주일 LME 가격" → table(t1-1, date/number 타입,
+  markdown 키)+chart(line, x=crtr_ymd, series=lowst/hghst/cmerc_prc, 고정
+  식별자 열 제외), image 0건. `/pubchat` 같은 질문 → 종전대로 table+image.
+- 프론트 팀용 명세: `documents/산출물/2026-W37_0907-0913/
+  rag_chat_prichat_구조화블록_명세_260913.md`.
+- 광물별 가격 조회는 private에서도 가능(komis_raw_lookup의 price_* 4개
+  page_id는 public·private 공통, private 전용은 indicator 3개뿐).
+
+## 2026-09-13 — report_gen LLM 정제 기본 비활성(`refine_with_llm` 기본 false) + streamlit 버튼 2개
 
 배경(사용자 지적): v13 슬라이드(`llm=None` 결정론 경로)와 streamlit 데모
 (배포 API, LLM 정제 경로)가 같은 데이터에 다른 문장을 냈다. 실측: `.env`

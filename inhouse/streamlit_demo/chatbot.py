@@ -100,7 +100,7 @@ def _submit_question(client: RagChatClient, question: str, *, profile: Profile, 
         st.markdown(question)
 
     record: dict[str, Any] = {
-        "role": "assistant", "content": "", "tables": [], "images": [],
+        "role": "assistant", "content": "", "tables": [], "images": [], "charts": [],
         "citations": [], "bogus_citations": [], "recommendations": [], "warnings": [],
         "stages": [], "abstained": False, "profile": profile,
     }
@@ -141,6 +141,12 @@ def _apply_event(event: ChatEvent, record: dict[str, Any], *, status_box, text_b
         record["images"].append(data)
         with media_area:
             _render_image(data)
+    elif event.event == "chart":
+        # 2026-09-13 — /prichat 전용 구조화 차트 블록(PNG 대신 스펙). 데모가
+        # "프론트"로서 스펙을 직접 그려 명세가 실제로 그려지는지 확인한다.
+        record["charts"].append(data)
+        with media_area:
+            _render_chart(data, record.get("tables", []))
     elif event.event == "done":
         text_box.markdown(record["content"] or "_(응답 없음)_")
         record["citations"] = data.get("citations", [])
@@ -162,6 +168,8 @@ def _render_assistant_parts(message: dict[str, Any]) -> None:
         _render_table(table)
     for image in message.get("images", []):
         _render_image(image)
+    for chart in message.get("charts", []):
+        _render_chart(chart, message.get("tables", []))
     _render_details(message)
 
 
@@ -170,6 +178,33 @@ def _render_table(table: dict[str, Any]) -> None:
     caption = f"표 · 근거 [{table.get('source_index')}]" if table.get("source_index") else "표"
     st.caption(caption)
     st.dataframe(pd.DataFrame(rows, columns=columns), hide_index=True, use_container_width=True)
+
+
+def _render_chart(chart: dict[str, Any], tables: list[dict[str, Any]]) -> None:
+    """private `chart` 블록 렌더링 — data_ref가 가리키는 table 블록의
+    rows_typed/columns_meta로 DataFrame을 만들고 spec(kind·x·series)대로 그린다."""
+
+    table = next((t for t in tables if t.get("block_id") == chart.get("data_ref")), None)
+    spec = chart.get("spec") or {}
+    if not table or not spec.get("series"):
+        st.warning("차트 블록이 참조하는 표를 찾지 못했습니다.")
+        return
+    keys = [c["key"] for c in table.get("columns_meta", [])]
+    frame = pd.DataFrame(table.get("rows_typed", []), columns=keys)
+    x = spec.get("x")
+    if x in frame.columns:
+        if spec.get("sort_x_ascending"):
+            frame = frame.sort_values(x)
+        frame = frame.set_index(x)
+    series = [k for k in spec["series"] if k in frame.columns]
+    caption = f"차트(블록) · {spec.get('title', '')}"
+    if chart.get("source_index"):
+        caption += f" · 근거 [{chart['source_index']}]"
+    st.caption(caption)
+    if spec.get("kind") == "line":
+        st.line_chart(frame[series])
+    else:
+        st.bar_chart(frame[series])
 
 
 def _render_image(image: dict[str, Any]) -> None:

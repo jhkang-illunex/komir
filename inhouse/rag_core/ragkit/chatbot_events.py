@@ -55,8 +55,10 @@ def _apply_korean_font() -> None:
 
 @dataclass(frozen=True)
 class ChatEvent:
-    """type: session|delta|table|image|done. sse_name은 SSE `event:` 필드에 쓸
-    이름(None이면 무명 기본 이벤트 — 기존 계약에서 session/delta가 그랬다)."""
+    """type: session|delta|table|image|chart|done. sse_name은 SSE `event:` 필드에
+    쓸 이름(None이면 무명 기본 이벤트 — 기존 계약에서 session/delta가 그랬다).
+    `chart`(2026-09-13 신설)는 private 프로필 전용 — PNG 대신 프론트가 직접
+    그릴 선언적 차트 스펙(`chart_spec()` 참고)."""
 
     type: str
     data: dict
@@ -101,7 +103,9 @@ def extract_markdown_tables(text: str) -> list[dict]:
                 rows.append(cells)
             j += 1
         if rows:
-            tables.append({"columns": columns, "rows": rows})
+            # `markdown`(2026-09-13 신설) — 원문 조각. private 블록 이벤트를 받는
+            # 프론트가 답변 텍스트 안의 이 표를 자기 컴포넌트로 치환할 때 쓴다.
+            tables.append({"columns": columns, "rows": rows, "markdown": "\n".join(lines[i:j])})
         i = j
     return tables
 
@@ -231,4 +235,101 @@ def png_to_data_uri_payload(png_bytes: bytes, caption: str, source_index: int | 
         "data_base64": base64.b64encode(png_bytes).decode("ascii"),
         "caption": caption,
         "source_index": source_index,
+    }
+
+
+# ---- private 프로필 전용 구조화 블록(2026-09-13, 사용자 지시) ----------------
+#: 표·차트를 그리는 주체는 챗봇이 아니라 프론트여야 한다는 원칙으로, PNG 대신
+#: "데이터 + 표현 힌트"를 준다. 우선 /prichat에만 적용하고 프론트가 쓰기 좋으면
+#: /pubchat에도 넓힌다. 블록 형태는 콘텐츠 블록 패턴(타입별 객체 + schema_version)
+#: — `<json></json>` 같은 HTML 태그를 마크다운에 끼우는 방식은 렌더러 sanitize·
+#: SSE 청크 분절 문제로 채택하지 않았다.
+BLOCK_SCHEMA_VERSION = 1
+
+
+def _column_types(table: dict) -> list[dict]:
+    """헤더마다 {key, label, type(date|number|string), unit(%|None)}. 판정 규칙은
+    render_chart_png와 동일(_is_date_column·_numeric_series)이라 차트 스펙과
+    표 타입이 어긋나지 않는다."""
+
+    columns, rows = table["columns"], table["rows"]
+    out = []
+    for idx, header in enumerate(columns):
+        key = header.split("(", 1)[0].strip() or f"col{idx}"
+        if _is_date_column(header):
+            ctype, unit = "date", None
+        elif _numeric_series(rows, idx) is not None:
+            ctype = "number"
+            unit = "%" if rows and all(r[idx].strip().endswith("%") for r in rows) else None
+        else:
+            ctype, unit = "string", None
+        out.append({"key": key, "label": header, "type": ctype, "unit": unit})
+    return out
+
+
+def table_block(table: dict, *, block_id: str, source_index: int | None, source_label: str | None) -> dict:
+    """private `table` 이벤트 payload. 기존 키(columns·rows·source_index·source)는
+    그대로 두고(구 클라이언트 호환) 구조화 필드를 덧붙인다."""
+
+    columns_meta = _column_types(table)
+    typed_rows = []
+    for row in table["rows"]:
+        typed = []
+        for cell, meta in zip(row, columns_meta):
+            if meta["type"] == "number":
+                typed.append(float(cell.strip().replace(",", "").replace("%", "")))
+            else:
+                typed.append(cell)
+        typed_rows.append(typed)
+    return {
+        "schema_version": BLOCK_SCHEMA_VERSION,
+        "block_id": block_id,
+        "columns": table["columns"],
+        "rows": table["rows"],
+        "columns_meta": columns_meta,
+        "rows_typed": typed_rows,
+        "markdown": table.get("markdown"),
+        "meta": {"source_index": source_index, "source": source_label, "row_count": len(table["rows"])},
+        "source_index": source_index,
+        "source": source_label,
+    }
+
+
+def chart_spec(table: dict, *, block_id: str, data_ref: str, source_index: int | None, source_label: str | None) -> dict | None:
+    """private `chart` 이벤트 payload — render_chart_png와 같은 판정(숫자열 전부,
+    값이 전부 같은 열 제외, 날짜열 우선 X축, 4행 이상이면 line 아니면 bar,
+    날짜축이면 오름차순 정렬)을 PNG 대신 선언적 스펙으로 낸다. 그릴 계열이
+    없으면 None(억지 차트 금지 원칙 동일)."""
+
+    columns, rows = table["columns"], table["rows"]
+    if len(rows) < 2 or len(columns) < 2:
+        return None
+    columns_meta = _column_types(table)
+    label_idx = next((i for i, c in enumerate(columns) if _is_date_column(c)), 0)
+    is_date_axis = _is_date_column(columns[label_idx])
+    series_keys = []
+    for idx in range(len(columns)):
+        if idx == label_idx or _is_date_column(columns[idx]):
+            continue
+        series = _numeric_series(rows, idx)
+        if series is None or len(set(series)) <= 1:
+            continue
+        series_keys.append(columns_meta[idx]["key"])
+    if not series_keys:
+        return None
+    return {
+        "schema_version": BLOCK_SCHEMA_VERSION,
+        "block_id": block_id,
+        "data_ref": data_ref,
+        "spec": {
+            "kind": "line" if len(rows) >= 4 else "bar",
+            "x": columns_meta[label_idx]["key"],
+            "x_type": "date" if is_date_axis else "category",
+            "series": series_keys,
+            "sort_x_ascending": is_date_axis,
+            "title": " · ".join(series_keys),
+        },
+        "meta": {"source_index": source_index, "source": source_label},
+        "source_index": source_index,
+        "source": source_label,
     }

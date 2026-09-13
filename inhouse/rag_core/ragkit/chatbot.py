@@ -97,7 +97,9 @@ ensure_shared_on_path(Path(__file__).resolve())
 
 from common.llm_client import LLM_TRANSIENT_ERRORS, KomirJsonLLM  # noqa: E402
 
-from .chatbot_events import ChatEvent, extract_markdown_tables, png_to_data_uri_payload, render_chart_png
+from .chatbot_events import (
+    ChatEvent, chart_spec, extract_markdown_tables, png_to_data_uri_payload, render_chart_png, table_block,
+)
 from .chatbot_graph import retrieve_evidence
 from .chatbot_store import DEFAULT_DB_PATH as DEFAULT_STORE_DB_PATH
 from .chatbot_store import append_message, get_or_create_session, list_messages
@@ -722,7 +724,7 @@ def _evidence_source_label(ev) -> str:
     return label
 
 
-def _multimodal_events(cited_indices: set[int], evidence: list) -> list[ChatEvent]:
+def _multimodal_events(cited_indices: set[int], evidence: list, profile: str = "public") -> list[ChatEvent]:
     """인용된 근거에서 표를 뽑아 table 이벤트로, 숫자열이 있으면 차트를 렌더링해
     image 이벤트로도 낸다. 인용 안 된 근거(조회는 됐지만 답변 근거로 안 쓰인
     것)는 건너뛴다 — 표시되는 표/그림도 텍스트 답변과 같은 인용 규율을 따라야
@@ -736,14 +738,29 @@ def _multimodal_events(cited_indices: set[int], evidence: list) -> list[ChatEven
     같은 날 후속(사용자 요청) — table·image 이벤트에 `source_index`(번호)뿐
     아니라 사람이 바로 읽을 수 있는 `source` 문구도 같이 싣는다. 예전엔
     번호만 있어서 답변 끝의 "출처:" 목록까지 따로 봐야 어느 근거에서 나온
-    표·차트인지 알 수 있었다."""
+    표·차트인지 알 수 있었다.
+
+    2026-09-13(사용자 지시) — `profile="private"`(/prichat)에서는 표·차트를
+    그리는 주체가 프론트라는 원칙으로 PNG `image` 대신 구조화 블록을 낸다:
+    `table` 이벤트에 columns_meta·rows_typed·markdown·meta를 덧붙이고(기존 키는
+    유지), 차트는 `chart` 이벤트(선언적 스펙, data_ref로 표 블록 참조)로 낸다.
+    /pubchat은 기존 계약 그대로(프론트가 적용해 보고 좋으면 넓힌다)."""
 
     events: list[ChatEvent] = []
     for i, ev in enumerate(evidence, 1):
         if i not in cited_indices:
             continue
         source_label = _evidence_source_label(ev)
-        for table in extract_markdown_tables(ev.text):
+        for t_idx, table in enumerate(extract_markdown_tables(ev.text), 1):
+            if profile == "private":
+                table_id = f"t{i}-{t_idx}"
+                events.append(ChatEvent(type="table", data=table_block(
+                    table, block_id=table_id, source_index=i, source_label=source_label,
+                )))
+                spec = chart_spec(table, block_id=f"c{i}-{t_idx}", data_ref=table_id, source_index=i, source_label=source_label)
+                if spec is not None:
+                    events.append(ChatEvent(type="chart", data=spec))
+                continue
             events.append(ChatEvent(
                 type="table",
                 data={
@@ -983,7 +1000,7 @@ async def chat_turn(
         yield ChatEvent(type="delta", data={"delta": extra})
     final_text = cleaned + extra
 
-    for event in _multimodal_events(cited_indices, evidence):
+    for event in _multimodal_events(cited_indices, evidence, profile=profile):
         yield event
 
     await asyncio.to_thread(

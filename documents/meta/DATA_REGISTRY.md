@@ -346,7 +346,11 @@
   9/11 교체), market/supply는 월간 지표 지연공시로 정상, map_korea·
   map_mineral은 라이브값과 이미 일치 확인. 상세는 WORKLOG 2026-09-13
   항목.
-- **report_gen 검수 → v13.pptx + 템플릿 문서 4종 재생성(2026-09-13, 최신)**:
+- **rag_chat /prichat 구조화 블록 명세(2026-09-13, 최신)**: `documents/산출물/
+  2026-W37_0907-0913/rag_chat_prichat_구조화블록_명세_260913.md` — 프론트
+  팀용 table/chart SSE 이벤트 계약(schema_version 1, private 전용, pubchat
+  미적용). 상세는 WORKLOG 2026-09-13(최신).
+- **report_gen 검수 → v13.pptx + 템플릿 문서 4종 재생성(2026-09-13)**:
   `documents/산출물/2026-W37_0907-0913/report_gen_v13_슬라이드_260913_evidence/`
   (README·`refetch_v13_sources.py`·`build_v13_full.py`·`raw/` 라이브 원본
   17개·`v13_sources.json`) — API 3건(전년비교 문장 라벨/"전년 대비"/"참고로",
