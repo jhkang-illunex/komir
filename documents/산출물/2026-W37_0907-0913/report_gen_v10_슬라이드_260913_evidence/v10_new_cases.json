@@ -1,0 +1,1692 @@
+{
+  "cmp_price_base_metals": {
+    "page_id": "price_base_metals",
+    "applied_filters": {
+      "mineral": "아연",
+      "mineral_code": "아연",
+      "start_date": "2024-01-02",
+      "end_date": "2026-08-27",
+      "price_criterion": "LME CASH",
+      "compare_mineral": "알루미늄",
+      "compare_price_criterion": "LME CASH"
+    },
+    "sentences": {
+      "core_diagnosis": [
+        "2026년 8월 27일 기준 아연 실거래가는 4,107달러입니다.",
+        "전일(2026년 8월 26일) 대비 보합했습니다.",
+        "전주평균(3,849.10달러) 대비 6.70% 높습니다.",
+        "전월평균(3,596.11달러) 대비 14.21% 높습니다.",
+        "전년평균(2,869.66달러) 대비 43.12% 높습니다."
+      ],
+      "major_changes": [
+        "조회기간 시작(2024년 1월 2일, 2,607달러) 대비 57.54% 상승했습니다.",
+        "최근에는 단기와 중기 가격 흐름이 모두 상승 방향입니다."
+      ],
+      "current_position": [
+        "조회기간 관측치(실거래가) 기준 최고 4,107달러(2026년 8월 26일), 최저 2,285.50달러(2024년 2월 14일)였습니다.",
+        "조회기간 저점(2024년 2월 14일, 2,285.50달러) 대비 현재가는 79.70% 회복한 수준입니다.",
+        "2026년 8월 27일 기준 재고량은 97,875톤으로, 전일(2026년 8월 26일) 대비 0.57% 증가했습니다.",
+        "최근 1개월 24.40%·3개월 22.62%·1년 25.10% 수준의 가격 변동폭을 보였습니다.",
+        "최근 14일 중 상승 9일·하락 4일·보합 1일로 단기적으로 가격 부담이 높아진 상태입니다.",
+        "현재가는 조회기간 중 최고가(2026년 8월 26일, 4,107달러)와 같은 수준으로 전체 가격 대비 고가권에 속합니다. 조회기간 중 가장 큰 하락은 2024년 10월 24일부터 2025년 4월 17일까지 이어졌으며, 이 기간 22.13% 하락했습니다.",
+        "현재 재고량은 조회기간 중 낮은 수준입니다.",
+        "같은 조회기간 동안 알루미늄은 37.49% 상승한 반면, 아연은 57.54% 상승했습니다.",
+        "아연/알루미늄 가격비율은 현재 1.2784로, 조회기간 평균(1.0987) 대비 16.36% 높은 수준입니다."
+      ]
+    },
+    "key_metrics": [
+      {
+        "id": "latest_price",
+        "label": "최신 가격",
+        "value": 4107.0,
+        "unit": "달러"
+      },
+      {
+        "id": "day_over_day_change_pct",
+        "label": "전일대비",
+        "value": 0.0,
+        "unit": "%"
+      },
+      {
+        "id": "week_avg_change_pct",
+        "label": "전주평균대비",
+        "value": 6.7,
+        "unit": "%"
+      },
+      {
+        "id": "month_avg_change_pct",
+        "label": "전월평균대비",
+        "value": 14.21,
+        "unit": "%"
+      },
+      {
+        "id": "year_avg_change_pct",
+        "label": "전년평균대비",
+        "value": 43.12,
+        "unit": "%"
+      },
+      {
+        "id": "period_high",
+        "label": "최고가",
+        "value": 4107.0,
+        "unit": "달러"
+      },
+      {
+        "id": "period_low",
+        "label": "최저가",
+        "value": 2285.5,
+        "unit": "달러"
+      },
+      {
+        "id": "inventory_level",
+        "label": "재고량",
+        "value": 97875.0,
+        "unit": "톤"
+      },
+      {
+        "id": "inventory_change_pct",
+        "label": "재고량 등락률",
+        "value": 0.565117,
+        "unit": "%"
+      },
+      {
+        "id": "recent_volatility_pct",
+        "label": "변동성(1개월, 연율화)",
+        "value": 24.400237,
+        "unit": "%"
+      },
+      {
+        "id": "drawdown_from_period_high_pct",
+        "label": "고점 대비 낙폭",
+        "value": 0.0,
+        "unit": "%"
+      },
+      {
+        "id": "compare_overall_change_pct",
+        "label": "알루미늄 대비 조회기간 변화율차",
+        "value": 20.045424,
+        "unit": "%p"
+      }
+    ],
+    "detailed_metrics": [
+      {
+        "id": "latest_price",
+        "label": "최신 가격",
+        "value": 4107.0,
+        "unit": "달러"
+      },
+      {
+        "id": "day_over_day_change_pct",
+        "label": "전일대비",
+        "value": 0.0,
+        "unit": "%"
+      },
+      {
+        "id": "week_avg_change_pct",
+        "label": "전주평균대비",
+        "value": 6.7,
+        "unit": "%"
+      },
+      {
+        "id": "month_avg_change_pct",
+        "label": "전월평균대비",
+        "value": 14.21,
+        "unit": "%"
+      },
+      {
+        "id": "year_avg_change_pct",
+        "label": "전년평균대비",
+        "value": 43.12,
+        "unit": "%"
+      },
+      {
+        "id": "period_high",
+        "label": "최고가",
+        "value": 4107.0,
+        "unit": "달러"
+      },
+      {
+        "id": "period_low",
+        "label": "최저가",
+        "value": 2285.5,
+        "unit": "달러"
+      },
+      {
+        "id": "inventory_level",
+        "label": "재고량",
+        "value": 97875.0,
+        "unit": "톤"
+      },
+      {
+        "id": "inventory_change_pct",
+        "label": "재고량 등락률",
+        "value": 0.565117,
+        "unit": "%"
+      },
+      {
+        "id": "recent_volatility_pct",
+        "label": "변동성(1개월, 연율화)",
+        "value": 24.400237,
+        "unit": "%"
+      },
+      {
+        "id": "drawdown_from_period_high_pct",
+        "label": "고점 대비 낙폭",
+        "value": 0.0,
+        "unit": "%"
+      },
+      {
+        "id": "compare_overall_change_pct",
+        "label": "알루미늄 대비 조회기간 변화율차",
+        "value": 20.045424,
+        "unit": "%p"
+      },
+      {
+        "id": "annual_return_2024",
+        "label": "2024년 수익률",
+        "value": 14.077484,
+        "unit": "%"
+      },
+      {
+        "id": "annual_return_2025",
+        "label": "2025년 수익률",
+        "value": 4.68136,
+        "unit": "%"
+      },
+      {
+        "id": "annual_return_2026",
+        "label": "2026년(연중) 수익률",
+        "value": 32.227946,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_01",
+        "label": "1월 평균 수익률",
+        "value": -0.615379,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_02",
+        "label": "2월 평균 수익률",
+        "value": -0.884036,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_03",
+        "label": "3월 평균 수익률",
+        "value": -1.015203,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_04",
+        "label": "4월 평균 수익률",
+        "value": 5.314958,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_05",
+        "label": "5월 평균 수익률",
+        "value": 4.690419,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_06",
+        "label": "6월 평균 수익률",
+        "value": 1.384986,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_07",
+        "label": "7월 평균 수익률",
+        "value": -0.849174,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_08",
+        "label": "8월 평균 수익률",
+        "value": 7.557689,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_09",
+        "label": "9월 평균 수익률",
+        "value": 8.347529,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_10",
+        "label": "10월 평균 수익률",
+        "value": 2.257523,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_11",
+        "label": "11월 평균 수익률",
+        "value": 1.500441,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_12",
+        "label": "12월 평균 수익률",
+        "value": -5.600202,
+        "unit": "%"
+      }
+    ],
+    "mineral_name": "아연"
+  },
+  "cmp_price_minor_metals": {
+    "page_id": "price_minor_metals",
+    "applied_filters": {
+      "mineral": "텅스텐",
+      "mineral_code": "텅스텐",
+      "start_date": "2010-07-02",
+      "end_date": "2026-08-25",
+      "price_criterion": "88.5%min EXW China",
+      "compare_mineral": "몰리브덴",
+      "compare_price_criterion": "60%min EXW China"
+    },
+    "sentences": {
+      "core_diagnosis": [
+        "2026년 8월 25일 기준 텅스텐 실거래가는 87.69달러입니다.",
+        "전일(2026년 8월 24일) 대비 1.67% 하락했습니다.",
+        "전주평균(88.69달러) 대비 1.13% 낮습니다.",
+        "전월평균(92.12달러) 대비 4.81% 낮습니다.",
+        "전년평균(44달러) 대비 99.30% 높습니다."
+      ],
+      "major_changes": [
+        "조회기간 시작(2010년 7월 2일, 19.14달러) 대비 358.15% 상승했습니다.",
+        "최근에는 2일 연속 하락세를 보이고 있으며, 단기와 중기 가격 흐름이 엇갈리고 있습니다."
+      ],
+      "current_position": [
+        "조회기간 관측치(실거래가) 기준 최고 216.98달러(2026년 3월 12일), 최저 12.90달러(2015년 11월 5일)였습니다.",
+        "조회기간 저점(2015년 11월 5일, 12.90달러) 대비 현재가는 579.77% 회복한 수준입니다.",
+        "최근 1개월 9.92%·3개월 23.81%·1년 36.91% 수준의 가격 변동폭을 보였습니다.",
+        "최근 14일 중 상승 7일·하락 7일로 단기적으로 가격 하락 압력이 크게 반영된 상태입니다.",
+        "현재가는 조회기간 중 최고가(2026년 3월 12일, 216.98달러) 대비 59.59% 낮으며 전체 가격 대비 고가권에 속합니다. 조회기간 중 가장 큰 하락은 2011년 8월 8일부터 2015년 11월 5일까지 이어졌으며, 이 기간 66.21% 하락했습니다.",
+        "같은 조회기간 동안 몰리브덴은 204.75% 상승한 반면, 텅스텐은 358.15% 상승했습니다.",
+        "텅스텐/몰리브덴 가격비율은 현재 0.0017로, 조회기간 평균(0.0014) 대비 20.09% 높은 수준입니다."
+      ]
+    },
+    "key_metrics": [
+      {
+        "id": "latest_price",
+        "label": "최신 가격",
+        "value": 87.69,
+        "unit": "달러"
+      },
+      {
+        "id": "day_over_day_change_pct",
+        "label": "전일대비",
+        "value": -1.670778,
+        "unit": "%"
+      },
+      {
+        "id": "week_avg_change_pct",
+        "label": "전주평균대비",
+        "value": -1.13,
+        "unit": "%"
+      },
+      {
+        "id": "month_avg_change_pct",
+        "label": "전월평균대비",
+        "value": -4.81,
+        "unit": "%"
+      },
+      {
+        "id": "year_avg_change_pct",
+        "label": "전년평균대비",
+        "value": 99.3,
+        "unit": "%"
+      },
+      {
+        "id": "price_streak_length",
+        "label": "연속 추세 기간",
+        "value": 2,
+        "unit": "일"
+      },
+      {
+        "id": "period_high",
+        "label": "최고가",
+        "value": 216.98,
+        "unit": "달러"
+      },
+      {
+        "id": "period_low",
+        "label": "최저가",
+        "value": 12.9,
+        "unit": "달러"
+      },
+      {
+        "id": "recent_volatility_pct",
+        "label": "변동성(1개월, 연율화)",
+        "value": 9.922908,
+        "unit": "%"
+      },
+      {
+        "id": "drawdown_from_period_high_pct",
+        "label": "고점 대비 낙폭",
+        "value": 59.586137,
+        "unit": "%"
+      },
+      {
+        "id": "compare_overall_change_pct",
+        "label": "몰리브덴 대비 조회기간 변화율차",
+        "value": 153.397885,
+        "unit": "%p"
+      }
+    ],
+    "detailed_metrics": [
+      {
+        "id": "latest_price",
+        "label": "최신 가격",
+        "value": 87.69,
+        "unit": "달러"
+      },
+      {
+        "id": "day_over_day_change_pct",
+        "label": "전일대비",
+        "value": -1.670778,
+        "unit": "%"
+      },
+      {
+        "id": "week_avg_change_pct",
+        "label": "전주평균대비",
+        "value": -1.13,
+        "unit": "%"
+      },
+      {
+        "id": "month_avg_change_pct",
+        "label": "전월평균대비",
+        "value": -4.81,
+        "unit": "%"
+      },
+      {
+        "id": "year_avg_change_pct",
+        "label": "전년평균대비",
+        "value": 99.3,
+        "unit": "%"
+      },
+      {
+        "id": "price_streak_length",
+        "label": "연속 추세 기간",
+        "value": 2,
+        "unit": "일"
+      },
+      {
+        "id": "period_high",
+        "label": "최고가",
+        "value": 216.98,
+        "unit": "달러"
+      },
+      {
+        "id": "period_low",
+        "label": "최저가",
+        "value": 12.9,
+        "unit": "달러"
+      },
+      {
+        "id": "recent_volatility_pct",
+        "label": "변동성(1개월, 연율화)",
+        "value": 9.922908,
+        "unit": "%"
+      },
+      {
+        "id": "drawdown_from_period_high_pct",
+        "label": "고점 대비 낙폭",
+        "value": 59.586137,
+        "unit": "%"
+      },
+      {
+        "id": "compare_overall_change_pct",
+        "label": "몰리브덴 대비 조회기간 변화율차",
+        "value": 153.397885,
+        "unit": "%p"
+      },
+      {
+        "id": "annual_return_2010",
+        "label": "2010년(연중) 수익률",
+        "value": 35.370951,
+        "unit": "%"
+      },
+      {
+        "id": "annual_return_2011",
+        "label": "2011년 수익률",
+        "value": 28.20711,
+        "unit": "%"
+      },
+      {
+        "id": "annual_return_2012",
+        "label": "2012년 수익률",
+        "value": -16.228332,
+        "unit": "%"
+      },
+      {
+        "id": "annual_return_2013",
+        "label": "2013년 수익률",
+        "value": 6.28796,
+        "unit": "%"
+      },
+      {
+        "id": "annual_return_2014",
+        "label": "2014년 수익률",
+        "value": -28.442814,
+        "unit": "%"
+      },
+      {
+        "id": "annual_return_2015",
+        "label": "2015년 수익률",
+        "value": -28.146772,
+        "unit": "%"
+      },
+      {
+        "id": "annual_return_2016",
+        "label": "2016년 수익률",
+        "value": 4.396325,
+        "unit": "%"
+      },
+      {
+        "id": "annual_return_2017",
+        "label": "2017년 수익률",
+        "value": 64.819427,
+        "unit": "%"
+      },
+      {
+        "id": "annual_return_2018",
+        "label": "2018년 수익률",
+        "value": -17.150396,
+        "unit": "%"
+      },
+      {
+        "id": "annual_return_2019",
+        "label": "2019년 수익률",
+        "value": -12.646265,
+        "unit": "%"
+      },
+      {
+        "id": "annual_return_2020",
+        "label": "2020년 수익률",
+        "value": 2.921579,
+        "unit": "%"
+      },
+      {
+        "id": "annual_return_2021",
+        "label": "2021년 수익률",
+        "value": 31.82945,
+        "unit": "%"
+      },
+      {
+        "id": "annual_return_2022",
+        "label": "2022년 수익률",
+        "value": -9.415584,
+        "unit": "%"
+      },
+      {
+        "id": "annual_return_2023",
+        "label": "2023년 수익률",
+        "value": -0.510806,
+        "unit": "%"
+      },
+      {
+        "id": "annual_return_2024",
+        "label": "2024년 수익률",
+        "value": 14.088398,
+        "unit": "%"
+      },
+      {
+        "id": "annual_return_2025",
+        "label": "2025년 수익률",
+        "value": 231.082012,
+        "unit": "%"
+      },
+      {
+        "id": "annual_return_2026",
+        "label": "2026년(연중) 수익률",
+        "value": -9.091852,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_01",
+        "label": "1월 평균 수익률",
+        "value": 1.844898,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_02",
+        "label": "2월 평균 수익률",
+        "value": 4.008429,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_03",
+        "label": "3월 평균 수익률",
+        "value": -0.154204,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_04",
+        "label": "4월 평균 수익률",
+        "value": 1.389921,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_05",
+        "label": "5월 평균 수익률",
+        "value": -1.525272,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_06",
+        "label": "6월 평균 수익률",
+        "value": -2.962102,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_07",
+        "label": "7월 평균 수익률",
+        "value": 1.093711,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_08",
+        "label": "8월 평균 수익률",
+        "value": 2.031264,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_09",
+        "label": "9월 평균 수익률",
+        "value": 0.282249,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_10",
+        "label": "10월 평균 수익률",
+        "value": -0.921547,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_11",
+        "label": "11월 평균 수익률",
+        "value": 1.675577,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_12",
+        "label": "12월 평균 수익률",
+        "value": 4.011772,
+        "unit": "%"
+      }
+    ],
+    "mineral_name": "텅스텐"
+  },
+  "cmp_price_iron_energy": {
+    "page_id": "price_iron_energy",
+    "applied_filters": {
+      "mineral": "우라늄",
+      "mineral_code": "우라늄",
+      "start_date": "2024-01-01",
+      "end_date": "2026-08-17",
+      "price_criterion": "Nuexco weekly price indicator $ per lb U3O8",
+      "compare_mineral": "유연탄",
+      "compare_price_criterion": " Q:5500 In port Qinhuangdao"
+    },
+    "sentences": {
+      "core_diagnosis": [
+        "2026년 8월 17일 기준 우라늄 실거래가는 88.30달러입니다.",
+        "직전 관측치(2026년 8월 10일) 대비 1.37% 상승했습니다.",
+        "전주평균(87.11달러) 대비 1.37% 높습니다.",
+        "전월평균(86달러) 대비 2.67% 높습니다.",
+        "전년평균(73.13달러) 대비 20.74% 높습니다."
+      ],
+      "major_changes": [
+        "조회기간 시작(2024년 1월 1일, 92.25달러) 대비 4.28% 하락했습니다.",
+        "최근에는 2주 연속 상승세를 보이고 있으며, 단기와 중기 가격 흐름이 모두 상승 방향입니다."
+      ],
+      "current_position": [
+        "조회기간 관측치(실거래가) 기준 최고 105.81달러(2024년 1월 15일), 최저 63.87달러(2025년 3월 10일)였습니다.",
+        "조회기간 저점(2025년 3월 10일, 63.87달러) 대비 현재가는 38.25% 회복한 수준입니다.",
+        "최근 1개월 3.96%·3개월 4.45%·1년 17.83% 수준의 가격 변동폭을 보였습니다.",
+        "최근 14주 중 상승 7주·하락 7주로 뚜렷한 방향성 없이 등락을 반복하고 있습니다.",
+        "현재가는 조회기간 중 최고가(2024년 1월 15일, 105.81달러) 대비 16.55% 낮으며 전체 가격 대비 고가권에 속합니다. 조회기간 중 가장 큰 하락은 2024년 1월 15일부터 2025년 3월 10일까지 이어졌으며, 이 기간 39.64% 하락했습니다.",
+        "같은 조회기간 동안 유연탄은 3.39% 하락한 반면, 우라늄은 4.28% 하락했습니다.",
+        "우라늄/유연탄 가격비율은 현재 0.7051로, 조회기간 평균(0.7390) 대비 4.59% 낮은 수준입니다."
+      ]
+    },
+    "key_metrics": [
+      {
+        "id": "latest_price",
+        "label": "최신 가격",
+        "value": 88.3,
+        "unit": "달러"
+      },
+      {
+        "id": "day_over_day_change_pct",
+        "label": "직전관측치대비",
+        "value": 1.366089,
+        "unit": "%"
+      },
+      {
+        "id": "week_avg_change_pct",
+        "label": "전주평균대비",
+        "value": 1.37,
+        "unit": "%"
+      },
+      {
+        "id": "month_avg_change_pct",
+        "label": "전월평균대비",
+        "value": 2.67,
+        "unit": "%"
+      },
+      {
+        "id": "year_avg_change_pct",
+        "label": "전년평균대비",
+        "value": 20.74,
+        "unit": "%"
+      },
+      {
+        "id": "price_streak_length",
+        "label": "연속 추세 기간",
+        "value": 2,
+        "unit": "주"
+      },
+      {
+        "id": "period_high",
+        "label": "최고가",
+        "value": 105.81,
+        "unit": "달러"
+      },
+      {
+        "id": "period_low",
+        "label": "최저가",
+        "value": 63.87,
+        "unit": "달러"
+      },
+      {
+        "id": "recent_volatility_pct",
+        "label": "변동성(1개월, 연율화)",
+        "value": 3.960609,
+        "unit": "%"
+      },
+      {
+        "id": "drawdown_from_period_high_pct",
+        "label": "고점 대비 낙폭",
+        "value": 16.54853,
+        "unit": "%"
+      },
+      {
+        "id": "compare_overall_change_pct",
+        "label": "유연탄 대비 조회기간 변화율차",
+        "value": -0.894966,
+        "unit": "%p"
+      }
+    ],
+    "detailed_metrics": [
+      {
+        "id": "latest_price",
+        "label": "최신 가격",
+        "value": 88.3,
+        "unit": "달러"
+      },
+      {
+        "id": "day_over_day_change_pct",
+        "label": "직전관측치대비",
+        "value": 1.366089,
+        "unit": "%"
+      },
+      {
+        "id": "week_avg_change_pct",
+        "label": "전주평균대비",
+        "value": 1.37,
+        "unit": "%"
+      },
+      {
+        "id": "month_avg_change_pct",
+        "label": "전월평균대비",
+        "value": 2.67,
+        "unit": "%"
+      },
+      {
+        "id": "year_avg_change_pct",
+        "label": "전년평균대비",
+        "value": 20.74,
+        "unit": "%"
+      },
+      {
+        "id": "price_streak_length",
+        "label": "연속 추세 기간",
+        "value": 2,
+        "unit": "주"
+      },
+      {
+        "id": "period_high",
+        "label": "최고가",
+        "value": 105.81,
+        "unit": "달러"
+      },
+      {
+        "id": "period_low",
+        "label": "최저가",
+        "value": 63.87,
+        "unit": "달러"
+      },
+      {
+        "id": "recent_volatility_pct",
+        "label": "변동성(1개월, 연율화)",
+        "value": 3.960609,
+        "unit": "%"
+      },
+      {
+        "id": "drawdown_from_period_high_pct",
+        "label": "고점 대비 낙폭",
+        "value": 16.54853,
+        "unit": "%"
+      },
+      {
+        "id": "compare_overall_change_pct",
+        "label": "유연탄 대비 조회기간 변화율차",
+        "value": -0.894966,
+        "unit": "%p"
+      },
+      {
+        "id": "annual_return_2024",
+        "label": "2024년 수익률",
+        "value": -20.444444,
+        "unit": "%"
+      },
+      {
+        "id": "annual_return_2025",
+        "label": "2025년 수익률",
+        "value": 11.439466,
+        "unit": "%"
+      },
+      {
+        "id": "annual_return_2026",
+        "label": "2026년(연중) 수익률",
+        "value": 6.053327,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_01",
+        "label": "1월 평균 수익률",
+        "value": 8.11956,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_02",
+        "label": "2월 평균 수익률",
+        "value": -5.709583,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_03",
+        "label": "3월 평균 수익률",
+        "value": -1.710256,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_04",
+        "label": "4월 평균 수익률",
+        "value": 3.17088,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_05",
+        "label": "5월 평균 수익률",
+        "value": -1.136886,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_06",
+        "label": "6월 평균 수익률",
+        "value": 1.228449,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_07",
+        "label": "7월 평균 수익률",
+        "value": -1.499291,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_08",
+        "label": "8월 평균 수익률",
+        "value": 0.952616,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_09",
+        "label": "9월 평균 수익률",
+        "value": 5.109419,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_10",
+        "label": "10월 평균 수익률",
+        "value": -1.233062,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_11",
+        "label": "11월 평균 수익률",
+        "value": -1.827788,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_12",
+        "label": "12월 평균 수익률",
+        "value": 0.819456,
+        "unit": "%"
+      }
+    ],
+    "mineral_name": "우라늄"
+  },
+  "cmp_price_other": {
+    "page_id": "price_other",
+    "applied_filters": {
+      "mineral": "흑연",
+      "mineral_code": "흑연",
+      "start_date": "2024-01-02",
+      "end_date": "2026-08-27",
+      "price_criterion": "-194 FOB China",
+      "compare_mineral": "금",
+      "compare_price_criterion": "London Gold Market Fixing Ltd- LBMA PM Fixing Price/USD"
+    },
+    "sentences": {
+      "core_diagnosis": [
+        "2026년 8월 27일 기준 흑연 실거래가는 390달러입니다.",
+        "전일(2026년 8월 26일) 대비 보합했습니다.",
+        "전주평균(390달러) 대비 같은 수준입니다.",
+        "전월평균(396.79달러) 대비 1.71% 낮습니다.",
+        "전년평균(415.42달러) 대비 6.12% 낮습니다."
+      ],
+      "major_changes": [
+        "조회기간 시작(2024년 1월 2일, 614.93달러) 대비 36.58% 하락했습니다.",
+        "최근에는 13일 연속 보합세를 보이고 있으며, 단기와 중기 가격 흐름이 엇갈리고 있습니다."
+      ],
+      "current_position": [
+        "조회기간 관측치(실거래가) 기준 최고 614.93달러(2024년 1월 2일), 최저 387.31달러(2026년 7월 29일)였습니다.",
+        "조회기간 저점(2026년 7월 29일, 387.31달러) 대비 현재가는 0.69% 회복한 수준입니다.",
+        "최근 1개월 4.65%·3개월 9.10%·1년 9.68% 수준의 가격 변동폭을 보였습니다.",
+        "최근 14일 중 상승 1일·하락 0일·보합 13일로 뚜렷한 방향성 없이 등락을 반복하고 있습니다.",
+        "현재가는 조회기간 중 최고가(2024년 1월 2일, 614.93달러) 대비 36.58% 낮으며 전체 가격 대비 저가권에 속합니다.",
+        "같은 조회기간 동안 금은 120.98% 상승한 반면, 흑연은 36.58% 하락했습니다.",
+        "흑연/금 가격비율은 현재 0.0854로, 조회기간 평균(0.1447) 대비 41.02% 낮은 수준입니다."
+      ]
+    },
+    "key_metrics": [
+      {
+        "id": "latest_price",
+        "label": "최신 가격",
+        "value": 390.0,
+        "unit": "달러"
+      },
+      {
+        "id": "day_over_day_change_pct",
+        "label": "전일대비",
+        "value": 0.0,
+        "unit": "%"
+      },
+      {
+        "id": "week_avg_change_pct",
+        "label": "전주평균대비",
+        "value": 0.0,
+        "unit": "%"
+      },
+      {
+        "id": "month_avg_change_pct",
+        "label": "전월평균대비",
+        "value": -1.71,
+        "unit": "%"
+      },
+      {
+        "id": "year_avg_change_pct",
+        "label": "전년평균대비",
+        "value": -6.12,
+        "unit": "%"
+      },
+      {
+        "id": "price_streak_length",
+        "label": "연속 추세 기간",
+        "value": 13,
+        "unit": "일"
+      },
+      {
+        "id": "period_high",
+        "label": "최고가",
+        "value": 614.93,
+        "unit": "달러"
+      },
+      {
+        "id": "period_low",
+        "label": "최저가",
+        "value": 387.31,
+        "unit": "달러"
+      },
+      {
+        "id": "recent_volatility_pct",
+        "label": "변동성(1개월, 연율화)",
+        "value": 4.654312,
+        "unit": "%"
+      },
+      {
+        "id": "drawdown_from_period_high_pct",
+        "label": "고점 대비 낙폭",
+        "value": 36.578147,
+        "unit": "%"
+      },
+      {
+        "id": "compare_overall_change_pct",
+        "label": "금 대비 조회기간 변화율차",
+        "value": -157.56192,
+        "unit": "%p"
+      }
+    ],
+    "detailed_metrics": [
+      {
+        "id": "latest_price",
+        "label": "최신 가격",
+        "value": 390.0,
+        "unit": "달러"
+      },
+      {
+        "id": "day_over_day_change_pct",
+        "label": "전일대비",
+        "value": 0.0,
+        "unit": "%"
+      },
+      {
+        "id": "week_avg_change_pct",
+        "label": "전주평균대비",
+        "value": 0.0,
+        "unit": "%"
+      },
+      {
+        "id": "month_avg_change_pct",
+        "label": "전월평균대비",
+        "value": -1.71,
+        "unit": "%"
+      },
+      {
+        "id": "year_avg_change_pct",
+        "label": "전년평균대비",
+        "value": -6.12,
+        "unit": "%"
+      },
+      {
+        "id": "price_streak_length",
+        "label": "연속 추세 기간",
+        "value": 13,
+        "unit": "일"
+      },
+      {
+        "id": "period_high",
+        "label": "최고가",
+        "value": 614.93,
+        "unit": "달러"
+      },
+      {
+        "id": "period_low",
+        "label": "최저가",
+        "value": 387.31,
+        "unit": "달러"
+      },
+      {
+        "id": "recent_volatility_pct",
+        "label": "변동성(1개월, 연율화)",
+        "value": 4.654312,
+        "unit": "%"
+      },
+      {
+        "id": "drawdown_from_period_high_pct",
+        "label": "고점 대비 낙폭",
+        "value": 36.578147,
+        "unit": "%"
+      },
+      {
+        "id": "compare_overall_change_pct",
+        "label": "금 대비 조회기간 변화율차",
+        "value": -157.56192,
+        "unit": "%p"
+      },
+      {
+        "id": "annual_return_2024",
+        "label": "2024년 수익률",
+        "value": -28.983787,
+        "unit": "%"
+      },
+      {
+        "id": "annual_return_2025",
+        "label": "2025년 수익률",
+        "value": -6.377254,
+        "unit": "%"
+      },
+      {
+        "id": "annual_return_2026",
+        "label": "2026년(연중) 수익률",
+        "value": -5.245511,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_01",
+        "label": "1월 평균 수익률",
+        "value": -1.898629,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_02",
+        "label": "2월 평균 수익률",
+        "value": -0.975749,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_03",
+        "label": "3월 평균 수익률",
+        "value": -3.71727,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_04",
+        "label": "4월 평균 수익률",
+        "value": -1.077367,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_05",
+        "label": "5월 평균 수익률",
+        "value": -1.509354,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_06",
+        "label": "6월 평균 수익률",
+        "value": -0.993892,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_07",
+        "label": "7월 평균 수익률",
+        "value": -2.312142,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_08",
+        "label": "8월 평균 수익률",
+        "value": -1.070774,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_09",
+        "label": "9월 평균 수익률",
+        "value": -0.144784,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_10",
+        "label": "10월 평균 수익률",
+        "value": -1.819169,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_11",
+        "label": "11월 평균 수익률",
+        "value": 0.570317,
+        "unit": "%"
+      },
+      {
+        "id": "seasonality_month_12",
+        "label": "12월 평균 수익률",
+        "value": 0.681863,
+        "unit": "%"
+      }
+    ],
+    "mineral_name": "흑연"
+  },
+  "map_korea_country_filter": {
+    "page_id": "map_korea",
+    "applied_filters": {
+      "mineral": "동",
+      "mineral_code": "MNRL0008",
+      "start_date": "2026-12-31",
+      "end_date": "2026-12-31",
+      "period_unit": "년별",
+      "country_filter": "칠레"
+    },
+    "sentences": {
+      "core_diagnosis": [
+        "2026년 기준 한국의 동 칠레 대상 수입액은 총 약 1,434.77억 달러입니다."
+      ],
+      "major_changes": [
+        "조회가 칠레 한 국가로 한정돼 있어, 칠레의 수입액 약 1,434.77억 달러가 그대로 이번 조회의 전체 금액입니다."
+      ],
+      "current_position": [
+        "2026년 기준 한국의 동 칠레 대상 수출액은 총 약 726.44억 달러입니다. 수출액은 수입액의 약 51% 수준으로, 수입액이 수출액보다 많습니다."
+      ]
+    },
+    "key_metrics": [
+      {
+        "id": "import_total_amount",
+        "label": "수입총액",
+        "value": 143477105645.0,
+        "unit": "달러"
+      },
+      {
+        "id": "export_total_amount",
+        "label": "수출총액",
+        "value": 72643639024.0,
+        "unit": "달러"
+      },
+      {
+        "id": "export_import_ratio_pct",
+        "label": "수입 대비 수출 비율",
+        "value": 50.630823,
+        "unit": "%"
+      }
+    ],
+    "detailed_metrics": [
+      {
+        "id": "import_total_amount",
+        "label": "수입총액",
+        "value": 143477105645.0,
+        "unit": "달러"
+      },
+      {
+        "id": "export_total_amount",
+        "label": "수출총액",
+        "value": 72643639024.0,
+        "unit": "달러"
+      },
+      {
+        "id": "export_import_ratio_pct",
+        "label": "수입 대비 수출 비율",
+        "value": 50.630823,
+        "unit": "%"
+      }
+    ],
+    "mineral_name": "동",
+    "filter_country": "칠레"
+  },
+  "map_korea_scope_filter": {
+    "page_id": "map_korea",
+    "applied_filters": {
+      "mineral": "코발트",
+      "mineral_code": "MNRL0003",
+      "start_date": "2026-12-31",
+      "end_date": "2026-12-31",
+      "period_unit": "년별",
+      "scope_filter": "정련품"
+    },
+    "sentences": {
+      "core_diagnosis": [
+        "2026년 기준 한국의 코발트 정련품 수입액은 총 약 52.52억 달러입니다. 1위 수입국은 중국 약 24.30억 달러(46.27%), 2위 수입국은 벨기에 약 8.04억 달러(15.32%), 3위 수입국은 핀란드 약 6.86억 달러(13.07%)입니다."
+      ],
+      "major_changes": [
+        "상위 3개국 수입 비중은 이 범위 내 74.66%이며, 상위 5개국까지 합산하면 이 범위 내 86.04%를 차지합니다."
+      ],
+      "current_position": [
+        "2026년 기준 한국의 코발트 정련품 수출액은 총 약 3.55억 달러이며, 주요 수출 대상국은 1위 중국 약 1.84억 달러(51.65%), 2위 일본 약 4,587.10만 달러(12.91%), 3위 벨기에 약 1,054.07만 달러(2.97%) 순입니다. 수출액은 수입액의 약 7% 수준으로, 수입액이 수출액보다 많습니다."
+      ]
+    },
+    "key_metrics": [
+      {
+        "id": "import_total_amount",
+        "label": "수입총액",
+        "value": 5251835650.0,
+        "unit": "달러"
+      },
+      {
+        "id": "top1_import_share_pct",
+        "label": "1위 수입국 비중",
+        "value": 46.270527,
+        "unit": "%"
+      },
+      {
+        "id": "top2_import_share_pct",
+        "label": "2위 수입국 비중",
+        "value": 15.317781,
+        "unit": "%"
+      },
+      {
+        "id": "top3_import_share_pct",
+        "label": "3위 수입국 비중",
+        "value": 13.067389,
+        "unit": "%"
+      },
+      {
+        "id": "top3_import_share_pct",
+        "label": "상위3국 수입비중",
+        "value": 74.655697,
+        "unit": "%"
+      },
+      {
+        "id": "top5_import_share_pct",
+        "label": "상위5국 수입비중",
+        "value": 86.036231,
+        "unit": "%"
+      },
+      {
+        "id": "export_total_amount",
+        "label": "수출총액",
+        "value": 355319028.0,
+        "unit": "달러"
+      },
+      {
+        "id": "export_import_ratio_pct",
+        "label": "수입 대비 수출 비율",
+        "value": 6.765616,
+        "unit": "%"
+      },
+      {
+        "id": "top1_export_share_pct",
+        "label": "1위 수출국 비중",
+        "value": 51.654227,
+        "unit": "%"
+      }
+    ],
+    "detailed_metrics": [
+      {
+        "id": "import_total_amount",
+        "label": "수입총액",
+        "value": 5251835650.0,
+        "unit": "달러"
+      },
+      {
+        "id": "top1_import_share_pct",
+        "label": "1위 수입국 비중",
+        "value": 46.270527,
+        "unit": "%"
+      },
+      {
+        "id": "top2_import_share_pct",
+        "label": "2위 수입국 비중",
+        "value": 15.317781,
+        "unit": "%"
+      },
+      {
+        "id": "top3_import_share_pct",
+        "label": "3위 수입국 비중",
+        "value": 13.067389,
+        "unit": "%"
+      },
+      {
+        "id": "top3_import_share_pct",
+        "label": "상위3국 수입비중",
+        "value": 74.655697,
+        "unit": "%"
+      },
+      {
+        "id": "top5_import_share_pct",
+        "label": "상위5국 수입비중",
+        "value": 86.036231,
+        "unit": "%"
+      },
+      {
+        "id": "export_total_amount",
+        "label": "수출총액",
+        "value": 355319028.0,
+        "unit": "달러"
+      },
+      {
+        "id": "export_import_ratio_pct",
+        "label": "수입 대비 수출 비율",
+        "value": 6.765616,
+        "unit": "%"
+      },
+      {
+        "id": "top1_export_share_pct",
+        "label": "1위 수출국 비중",
+        "value": 51.654227,
+        "unit": "%"
+      }
+    ],
+    "mineral_name": "코발트"
+  },
+  "map_global_route_share": {
+    "page_id": "map_global",
+    "applied_filters": {
+      "mineral": "동",
+      "mineral_code": "MNRL0008",
+      "start_date": "2026-12-31",
+      "end_date": "2026-12-31"
+    },
+    "sentences": {
+      "core_diagnosis": [
+        "2026년 기준 동 세계 교역 총액은 약 28,081.01억 달러입니다."
+      ],
+      "major_changes": [
+        "글로벌 교역 규모 1위는 칠레→중국 루트로 약 2,027.52억 달러(7.22%), 2위는 페루→중국 루트로 약 1,120.46억 달러(3.99%), 3위는 콩고민주공화국→중국 루트로 약 543.58억 달러(1.94%)를 기록했습니다.",
+        "상위 3개 루트의 합산 점유율은 13.15%입니다.",
+        "상위 5개 루트의 합산 점유율은 16.48%입니다.",
+        "대한민국이 포함된 교역 루트는 16위 대한민국→중국 루트의 교역액 약 246.17억 달러(0.88%)로 확인됩니다."
+      ],
+      "current_position": [
+        "조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았습니다."
+      ]
+    },
+    "key_metrics": [
+      {
+        "id": "total_amount",
+        "label": "세계 교역 총액",
+        "value": 2808101137990.07,
+        "unit": "달러"
+      },
+      {
+        "id": "top1_share_pct",
+        "label": "1위 루트 비중",
+        "value": 7.220249,
+        "unit": "%"
+      },
+      {
+        "id": "top3_share_pct",
+        "label": "상위3루트 비중",
+        "value": 13.146088,
+        "unit": "%"
+      },
+      {
+        "id": "top5_share_pct",
+        "label": "상위5루트 비중",
+        "value": 16.479715,
+        "unit": "%"
+      }
+    ],
+    "detailed_metrics": [
+      {
+        "id": "total_amount",
+        "label": "세계 교역 총액",
+        "value": 2808101137990.07,
+        "unit": "달러"
+      },
+      {
+        "id": "top1_share_pct",
+        "label": "1위 루트 비중",
+        "value": 7.220249,
+        "unit": "%"
+      },
+      {
+        "id": "top3_share_pct",
+        "label": "상위3루트 비중",
+        "value": 13.146088,
+        "unit": "%"
+      },
+      {
+        "id": "top5_share_pct",
+        "label": "상위5루트 비중",
+        "value": 16.479715,
+        "unit": "%"
+      },
+      {
+        "id": "route_share_origin_일본_중국",
+        "label": "일본→중국 경로 비중(일본측 집계총액 대비)",
+        "value": 2.354,
+        "unit": "%"
+      },
+      {
+        "id": "route_share_dest_일본_중국",
+        "label": "일본→중국 경로 비중(중국측 집계총액 대비)",
+        "value": 19.9282,
+        "unit": "%"
+      },
+      {
+        "id": "route_share_origin_카자흐스탄_중국",
+        "label": "카자흐스탄→중국 경로 비중(카자흐스탄측 집계총액 대비)",
+        "value": 2.0187,
+        "unit": "%"
+      },
+      {
+        "id": "route_share_dest_카자흐스탄_중국",
+        "label": "카자흐스탄→중국 경로 비중(중국측 집계총액 대비)",
+        "value": 35.0085,
+        "unit": "%"
+      },
+      {
+        "id": "route_share_origin_칠레_중국",
+        "label": "칠레→중국 경로 비중(칠레측 집계총액 대비)",
+        "value": 12.6374,
+        "unit": "%"
+      },
+      {
+        "id": "route_share_dest_칠레_중국",
+        "label": "칠레→중국 경로 비중(중국측 집계총액 대비)",
+        "value": 22.2086,
+        "unit": "%"
+      },
+      {
+        "id": "route_share_origin_페루_중국",
+        "label": "페루→중국 경로 비중(페루측 집계총액 대비)",
+        "value": 6.9837,
+        "unit": "%"
+      },
+      {
+        "id": "route_share_dest_페루_중국",
+        "label": "페루→중국 경로 비중(중국측 집계총액 대비)",
+        "value": 41.8947,
+        "unit": "%"
+      },
+      {
+        "id": "route_share_origin_콩고민주공화국_중국",
+        "label": "콩고민주공화국→중국 경로 비중(콩고민주공화국측 집계총액 대비)",
+        "value": 3.3881,
+        "unit": "%"
+      },
+      {
+        "id": "route_share_dest_콩고민주공화국_중국",
+        "label": "콩고민주공화국→중국 경로 비중(중국측 집계총액 대비)",
+        "value": 35.2659,
+        "unit": "%"
+      }
+    ],
+    "mineral_name": "동"
+  },
+  "map_mineral_cross": {
+    "page_id": "map_mineral",
+    "applied_filters": {
+      "mineral": "동",
+      "mineral_code": "동",
+      "measure": "reserves",
+      "start_year": "2019",
+      "end_year": "2025"
+    },
+    "sentences": {
+      "core_diagnosis": [
+        "2025년 세계 동 매장량은 770,200,000k ton입니다.",
+        "2019년보다 119,200,000k ton 늘어 6년간 18.31% 증가했습니다. 직전 관측연도인 2024년과 비교하면 27,300,000k ton, 3.42% 감소했습니다."
+      ],
+      "major_changes": [
+        "2025년 기준 칠레는 180,000,000k ton으로 세계 전체의 23.37%를 차지해 1위입니다. 호주는 100,000,000k ton, 12.98%로 2위이며 두 국가의 비중 차이는 10.39%포인트입니다.",
+        "페루는 85,000,000k ton, 11.04%로 3위입니다.",
+        "매장량 2위인 호주는 생산량 기준 8위(약 575만톤, 4.46%)에 그치고 있어, 매장량 대비 생산량 비율이 낮은 국가로 분류됩니다.",
+        "조회기간 중 매장량이 가장 크게 증가한 국가는 콩고민주공화국으로, 2019년 19,000,000k ton에서 2025년 80,000,000k ton으로 61,000,000k ton (321.05%) 증가했습니다. 가장 크게 감소한 국가는 칠레로, 2019년 200,000,000k ton에서 2025년 180,000,000k ton으로 20,000,000k ton (10.00%) 감소했습니다."
+      ],
+      "current_position": [
+        "칠레는 2019년 200,000,000k ton에서 2025년 180,000,000k ton으로 20,000,000k ton, 10.00% 감소했습니다. 매장량 비중은 30.72%에서 23.37%로 7.35%포인트 낮아졌습니다. 순위는 1위를 유지했습니다.",
+        "호주는 2019년 87,000,000k ton에서 2025년 100,000,000k ton으로 13,000,000k ton, 14.94% 증가했습니다. 매장량 비중은 13.36%에서 12.98%로 0.38%포인트 낮아졌습니다. 순위는 3위에서 2위로 바뀌었습니다.",
+        "상위 3개국 비중은 2019년 57.45%에서 2025년 47.39%로 10.06%포인트 낮아졌습니다. 상위 5개국 비중도 74.96%에서 68.16%로 6.80%포인트 낮아졌습니다.",
+        "1위 칠레의 비중은 23.37%, 상위 3개국은 47.39%입니다. 상위 5개국은 68.16%, 그 밖의 국가는 31.84%를 차지합니다."
+      ]
+    },
+    "key_metrics": [
+      {
+        "id": "current_world_total",
+        "label": "현재 세계 매장량",
+        "value": 770200000.0,
+        "unit": "k ton"
+      },
+      {
+        "id": "period_world_total_change",
+        "label": "조회기간 세계합계 변화율",
+        "value": 0.183103,
+        "unit": "ratio"
+      },
+      {
+        "id": "top_country",
+        "label": "1위 국가",
+        "value": "칠레",
+        "unit": null
+      },
+      {
+        "id": "top_country_share",
+        "label": "1위 국가 비중",
+        "value": 0.233706,
+        "unit": "ratio"
+      },
+      {
+        "id": "cr3",
+        "label": "상위 3개국 비중",
+        "value": 0.473903,
+        "unit": "ratio"
+      },
+      {
+        "id": "cr5",
+        "label": "상위 5개국 비중",
+        "value": 0.681641,
+        "unit": "ratio"
+      },
+      {
+        "id": "top_two_share_gap",
+        "label": "1·2위 비중 차이",
+        "value": 0.103869,
+        "unit": "ratio"
+      },
+      {
+        "id": "max_increase_country",
+        "label": "최대 증가 국가",
+        "value": "콩고민주공화국",
+        "unit": null
+      },
+      {
+        "id": "max_decrease_country",
+        "label": "최대 감소 국가",
+        "value": "칠레",
+        "unit": null
+      },
+      {
+        "id": "latest_year_total_change",
+        "label": "전년 대비 변화율",
+        "value": -0.034232,
+        "unit": "ratio"
+      }
+    ],
+    "detailed_metrics": [
+      {
+        "id": "current_world_total",
+        "label": "현재 세계 매장량",
+        "value": 770200000.0,
+        "unit": "k ton"
+      },
+      {
+        "id": "period_world_total_change",
+        "label": "조회기간 세계합계 변화율",
+        "value": 0.183103,
+        "unit": "ratio"
+      },
+      {
+        "id": "top_country",
+        "label": "1위 국가",
+        "value": "칠레",
+        "unit": null
+      },
+      {
+        "id": "top_country_share",
+        "label": "1위 국가 비중",
+        "value": 0.233706,
+        "unit": "ratio"
+      },
+      {
+        "id": "cr3",
+        "label": "상위 3개국 비중",
+        "value": 0.473903,
+        "unit": "ratio"
+      },
+      {
+        "id": "cr5",
+        "label": "상위 5개국 비중",
+        "value": 0.681641,
+        "unit": "ratio"
+      },
+      {
+        "id": "top_two_share_gap",
+        "label": "1·2위 비중 차이",
+        "value": 0.103869,
+        "unit": "ratio"
+      },
+      {
+        "id": "start_world_total",
+        "label": "시작연도 세계 매장량",
+        "value": 651000000.0,
+        "unit": "k ton"
+      },
+      {
+        "id": "outside_top5_share",
+        "label": "상위 5개국 외 비중",
+        "value": 0.318359,
+        "unit": "ratio"
+      },
+      {
+        "id": "start_cr3",
+        "label": "시작연도 상위 3개국 비중",
+        "value": 0.574501,
+        "unit": "ratio"
+      },
+      {
+        "id": "cr3_change",
+        "label": "상위 3개국 비중 변화",
+        "value": -0.100598,
+        "unit": "ratio"
+      },
+      {
+        "id": "cr5_change",
+        "label": "상위 5개국 비중 변화",
+        "value": -0.067975,
+        "unit": "ratio"
+      },
+      {
+        "id": "komis_market_share_CL",
+        "label": "칠레 국가목록 내 비중(KOMIS 매장량표 기준)",
+        "value": 0.1837,
+        "unit": "ratio"
+      },
+      {
+        "id": "komis_market_share_AU",
+        "label": "호주 국가목록 내 비중(KOMIS 매장량표 기준)",
+        "value": 0.102,
+        "unit": "ratio"
+      },
+      {
+        "id": "komis_market_share_PE",
+        "label": "페루 국가목록 내 비중(KOMIS 매장량표 기준)",
+        "value": 0.0867,
+        "unit": "ratio"
+      },
+      {
+        "id": "komis_market_share_RU",
+        "label": "러시아 국가목록 내 비중(KOMIS 매장량표 기준)",
+        "value": 0.0816,
+        "unit": "ratio"
+      },
+      {
+        "id": "komis_market_share_CD",
+        "label": "콩고민주공화국 국가목록 내 비중(KOMIS 매장량표 기준)",
+        "value": 0.0816,
+        "unit": "ratio"
+      },
+      {
+        "id": "max_increase_country",
+        "label": "최대 증가 국가",
+        "value": "콩고민주공화국",
+        "unit": null
+      },
+      {
+        "id": "max_decrease_country",
+        "label": "최대 감소 국가",
+        "value": "칠레",
+        "unit": null
+      },
+      {
+        "id": "latest_year_total_change",
+        "label": "전년 대비 변화율",
+        "value": -0.034232,
+        "unit": "ratio"
+      }
+    ],
+    "mineral_name": "동"
+  }
+}
