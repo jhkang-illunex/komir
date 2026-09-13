@@ -2,7 +2,54 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-13 (최신) — report_gen "풀 검증": 715개 조합·3,465개 지표 전수 재계산, 실제 버그 2건 발견(1건 수정)
+## 2026-09-13 (최신, 후속) — price_* "현재가=실시간가" 수정·배포·재점검 완료
+
+바로 아래 §의 "발견 2"(price_* 평균옵션≠DAY 시 현재가/등락률 기준 불일치)를
+사용자가 "실시간가 기준으로 계산하세요. 그걸 기반으로 수정하고 다시 배포해서
+재 점검 하세요"로 확정.
+
+**수정**: `input_data.py::_parse_komis_price_response`가 `dataAvg.stdMap.
+CRTRYMD`(없으면 `DAY`)의 실시간 현물가·날짜를 `realtime_price`/
+`realtime_date`로 새로 노출(`_KomisPriceParsed`에 필드 추가) →
+`normalize_price_request`·`summary.py::_analyze_price`가 그대로 threading →
+`komir_summary.py::calculate_price_summary`가 그 시점이 관측치 배열의
+마지막 행보다 실제로 더 최신일 때만 `PriceObservation` 1건(고가·저가는
+자기 값으로 채움, `has_full_hilo_coverage` 안 깨지게)으로 배열 끝에
+**추가**한다(덮어쓰지 않음). 이 함수의 나머지 로직(직전 관측치 대비 등락·
+연속추세·구간고저·회복률·백분위·낙폭 등)이 전부 이미 "배열의 마지막/그
+직전 행"을 현재/직전으로 참조해서, 이 한 군데만 고치면 전부 자동으로
+일관되게 실시간가 기준이 된다. 유일한 예외는 재고량(KOMIS 실시간가
+필드엔 재고가 없음) — `historical_latest`(배열에 실제 존재하는 마지막
+행)를 그대로 앵커로 써서 기존 동작 유지.
+
+**검증**: pyflakes·unittest(14)·395콤보 스모크 전부 통과. `full_verify.py`
+독립 재계산도 수정된 동작(실시간가가 배열 마지막 행보다 최신이면 구간
+고저·연속추세도 그 시점까지 포함)에 맞춰 갱신 후 재실행 — 가격 4종
+(price_base_metals 173/173·price_minor_metals 1,866/1,866·price_iron_energy
+9/9·price_other 21/21) 전부 불일치 0건. 재검증 중 부수적으로 발견: 원래
+`full_verify.py`의 period_high/period_low "정답"이 cmercPrc(종가)만 쓰고
+있어, KOMIS가 실제 고가·저가 필드(hghstPrc/lowstPrc)를 따로 주는 광종
+(탄탈륨·티타늄·몰리브덴 등)에서 검증 스크립트 자체의 오탐이 있었음 —
+production은 처음부터 `has_full_hilo_coverage`로 그 필드를 올바르게 우선
+써왔음(회귀 아님), 검증 스크립트만 그 규칙을 안 따라했던 것이라 스크립트를
+같은 규칙으로 맞춤.
+
+**배포**: `docker build -f report_gen/Containerfile -t komir-report-gen:260913 .`
+(map_mineral 300자 수정분 포함) → `komir-report-gen-test` 컨테이너 교체 →
+`python3 -m app.analysis.seed_prompts`(13건 upsert) →
+`/admin/prompts/reload`(`{"ok":true,"reloaded_prompt_count":13}`).
+
+**배포된 컨테이너로 실 HTTP 재점검**(in-process 호출이 아니라
+`POST /api/v1/analysis/...` 실제 라우트로): 스트론튬 WEEK 조회 —
+"12,350달러로, 전일 대비 1.02% 상승했으며 전주평균(12,020달러) 대비
+2.75% 높고"(12,350/12,020=2.75%로 산수 일치, 수정 전 12,225/12,020≠2.75%
+모순이었던 것과 대조) — `report` 마크다운·`주요 지표` 표 둘 다 일치 확인.
+니켈 WEEK 조회도 같은 패턴으로 일치(16,780/16,724=0.33%) 확인. map_mineral
+망간·칼륨·크롬 매장량도 실 라우트로 `status: ok`(수정 전 `INTERNAL_ERROR`)
+확인. 상세는 `documents/산출물/2026-W37_0907-0913/
+report_gen_풀검증_260913_evidence/`·`report_gen_풀검증_보고서_260913.md`.
+
+## 2026-09-13 — report_gen "풀 검증": 715개 조합·3,465개 지표 전수 재계산, 실제 버그 2건 발견(1건 수정)
 
 **계기**: 사용자가 "검증을 요청할때 마다 이런식으로 오류를 찾아 내면 내가
 검증된거라고 어떻게 믿어... 제대로 다시 풀 검증해"라고 명시 지적 — 슬라이드
@@ -26,18 +73,18 @@ indicator_supply·map_korea(광종×수입/수출 전부)·map_global 전부 불
    국가명 길이+수치 자릿수가 겹쳐 `SummarySentence` 300자 상한을 넘어
    `INTERNAL_ERROR`(보고서를 아예 못 받음)가 나는 실제 재현 버그. 두 국가
    문장을 `leading_country_change_1`/`_2`로 분리(내용 동일, 개수만 분리)해
-   수정, pyflakes·unittest(14)·395콤보 스모크 전부 통과. **main 미병합·미배포**.
-2. **[수정 안 함, 판단 필요]** price_* 4종 — KOMIS를 WEEK/MONTH/QUARTER/YEAR
-   평균옵션으로 조회하면, "현재가" 문장·`latest_price`는 관측치 배열의
-   최신 행(그 기간의 집계값)을 쓰는데 "전주/전월/전년 대비 등락률"은 KOMIS가
-   별도로 주는 실시간 현물가(`dataAvg.stdMap.CRTRYMD`) 기준으로 계산돼,
-   같은 문단 안에서 "현재가"와 "등락률"의 기준일·기준값이 서로 달라 산수가
-   안 맞는다(실측 예: 스트론튬 WEEK 조회 — "12,225달러... 전주평균(12,020)
-   대비 2.75%"라고 쓰는데 12,225/12,020은 실제로 1.71%). DAY 옵션 조회에선
-   두 값이 같은 기준일이라 우연히 안 보이던 모순이 비-DAY 옵션에서 드러남 —
-   가격 253개 조합 중 252건(전부 비-DAY 옵션)이 이 근본원인. "현재가"를
-   실시간가/집계평균 중 무엇으로 할지는 코드 버그가 아니라 제품 설계 결정이
-   필요해 코드는 그대로 두고 보고만 함.
+   수정, pyflakes·unittest(14)·395콤보 스모크 전부 통과.
+2. **[같은 날 후속 — 수정 완료, 아래 배포 기록 참고]** price_* 4종 — KOMIS를
+   WEEK/MONTH/QUARTER/YEAR 평균옵션으로 조회하면, "현재가" 문장·
+   `latest_price`는 관측치 배열의 최신 행(그 기간의 집계값)을 쓰는데
+   "전주/전월/전년 대비 등락률"은 KOMIS가 별도로 주는 실시간 현물가
+   (`dataAvg.stdMap.CRTRYMD`) 기준으로 계산돼, 같은 문단 안에서 "현재가"와
+   "등락률"의 기준일·기준값이 서로 달라 산수가 안 맞았다(실측 예: 스트론튬
+   WEEK 조회 — "12,225달러... 전주평균(12,020) 대비 2.75%"인데 12,225/12,020은
+   실제로 1.71%). DAY 옵션 조회에선 두 값이 같은 기준일이라 우연히 안 보이던
+   모순이 비-DAY 옵션에서 드러남 — 가격 253개 조합 중 252건(전부 비-DAY
+   옵션)이 이 근본원인. 사용자가 "현재가는 실시간가 기준"으로 확정해 같은 날
+   바로 수정 — 상세는 이어지는 항목 참고.
 
 **검증 범위 밖(정직하게 명시)**: 변동성·이동평균/RSI·백분위·낙폭국면 등
 통계 심화층(공식 복잡+헤드라인 수치보다 파급력 작음), route_yearly_trend

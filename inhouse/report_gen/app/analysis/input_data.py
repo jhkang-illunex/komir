@@ -193,6 +193,18 @@ class _KomisPriceParsed:
     #: 문장에 단위가 없다는 지적 대응). mineral_name/price_criterion과 같은
     #: 자리(`komis_info`)에서 뽑는다.
     price_unit: str | None = None
+    #: `dataAvg.stdMap.CRTRYMD`(없으면 `DAY`)의 실시간 현물가·날짜(2026-09-13
+    #: '풀 검증'에서 실측 재현한 버그 수정 — 조회 평균옵션이 WEEK/MONTH/
+    #: QUARTER/YEAR면 `defaultMnrl`의 마지막 행은 그 기간의 집계값이라 KOMIS가
+    #: 별도로 주는 실시간 현물가(CRTRYMD)와 값·날짜가 달라진다. 그런데
+    #: `komis_period_comparisons`(전주/전월/전년 평균 대비 등락률)는 이미 이
+    #: 실시간 현물가를 기준으로 계산돼 있어(위 로직), "현재가" 표시를 그대로
+    #: `defaultMnrl` 마지막 행에서 뽑으면 같은 문단 안에서 "현재가"와
+    #: "등락률"의 기준일·기준값이 서로 달라지는 산수 불일치가 났다(실측: 스트론튬
+    #: WEEK 조회 — 12,225달러 대비 "전주평균 대비 2.75%"인데 실제로는 1.71%).
+    #: `calculate_price_summary`가 이 값을 "현재가"로 우선 쓰도록 넘긴다.
+    realtime_price: float | None = None
+    realtime_date: str | None = None
 
 
 def _parse_komis_price_response(raw: dict) -> _KomisPriceParsed:
@@ -266,7 +278,9 @@ def _parse_komis_price_response(raw: dict) -> _KomisPriceParsed:
     compare_price_criterion = compare_info.get("prcCrtr") or None
 
     std_map = ((raw.get("dataAvg") or {}).get("stdMap")) or {}
-    latest_price = _komis_num((std_map.get("CRTRYMD") or {}).get("cmercPrc"))
+    realtime_entry = std_map.get("CRTRYMD") or std_map.get("DAY") or {}
+    latest_price = _komis_num(realtime_entry.get("cmercPrc"))
+    realtime_date = _komis_crtr_ymd_to_date(realtime_entry.get("crtrYmd")) if realtime_entry.get("crtrYmd") else None
     if latest_price is None:
         latest_price = _komis_num((std_map.get("DAY") or {}).get("cmercPrc"))
     if latest_price is None and observations:
@@ -291,6 +305,8 @@ def _parse_komis_price_response(raw: dict) -> _KomisPriceParsed:
         compare_mineral_name=compare_mineral_name,
         compare_price_criterion=compare_price_criterion,
         price_unit=price_unit,
+        realtime_price=latest_price,
+        realtime_date=realtime_date,
     )
 
 
@@ -1036,4 +1052,6 @@ def normalize_price_request(request: AnalysisSummaryRequest) -> _KomisPriceParse
         compare_mineral_name=request.compare_mineral_name or parsed.compare_mineral_name or request.compare_mineral,
         compare_price_criterion=request.compare_price_criterion or parsed.compare_price_criterion,
         price_unit=request.price_unit or parsed.price_unit,
+        realtime_price=parsed.realtime_price,
+        realtime_date=parsed.realtime_date,
     )

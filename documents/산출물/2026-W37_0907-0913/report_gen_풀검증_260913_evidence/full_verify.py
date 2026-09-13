@@ -53,6 +53,28 @@ def close(a, b, tol_rel=0.001, tol_abs=0.01):
     return abs(a - b) <= max(tol_abs, abs(a) * tol_rel)
 
 
+def normalize_crtr_ymd(value):
+    """Same normalization intent as input_data.py::_komis_crtr_ymd_to_date,
+    reimplemented independently here (verification code only) so the
+    realtime-vs-last-row date comparison in the expected-side calc matches
+    what production will do — this is a date-format normalizer, not a value
+    extraction, so mirroring it does not hide the kind of bug this script
+    exists to catch."""
+    s = str(value)
+    if "." in s and "Q" in s:  # "2026.3Q"
+        year, rest = s.split(".")
+        quarter = int(rest[0])
+        month = (quarter - 1) * 3 + 1
+        return f"{year}-{month:02d}-01"
+    if len(s) == 8:
+        return f"{s[0:4]}-{s[4:6]}-{s[6:8]}"
+    if len(s) == 6:
+        return f"{s[0:4]}-{s[4:6]}-01"
+    if len(s) == 4:
+        return f"{s}-01-01"
+    return s
+
+
 def call(page_id, komis_response, mineral_name=None, extra=None, mineral_code=None):
     payload = {"page_id": page_id, "komis_response": komis_response}
     if mineral_name:
@@ -95,15 +117,46 @@ def verify_price_group(dump_name, page_id, mineral_filter=None):
         if not prices:
             continue
         std_map = ((resp.get("dataAvg") or {}).get("stdMap")) or {}
-        latest_expected = num((std_map.get("CRTRYMD") or {}).get("cmercPrc"))
+        realtime_entry = std_map.get("CRTRYMD") or std_map.get("DAY") or {}
+        latest_expected = num(realtime_entry.get("cmercPrc"))
+        realtime_date_norm = normalize_crtr_ymd(realtime_entry["crtrYmd"]) if realtime_entry.get("crtrYmd") else None
         if latest_expected is None:
             latest_expected = num((std_map.get("DAY") or {}).get("cmercPrc"))
         if latest_expected is None:
             latest_expected = prices[-1][1]
 
-        # period high/low over ALL rows with a price (independent scan)
-        high_expected = max(p for _, p in prices)
-        low_expected = min(p for _, p in prices)
+        # 2026-09-13 — production now appends a realtime observation to the
+        # array when it is strictly newer than the last historical row
+        # (calculate_price_summary fix). Mirror that here so period high/low
+        # and streak reflect the corrected behavior, not the pre-fix one.
+        last_row_date_norm = normalize_crtr_ymd(rows_asc[-1]["crtrYmd"])
+        realtime_is_new = (
+            realtime_date_norm is not None
+            and latest_expected is not None
+            and realtime_date_norm > last_row_date_norm
+        )
+
+        # period high/low: production prefers KOMIS's own hghstPrc/lowstPrc
+        # fields (real intraday hi/lo) when ALL priced rows have them
+        # populated (has_full_hilo_coverage in komir_summary.py); otherwise
+        # falls back to the close-price (cmercPrc) range. Mirror that same
+        # documented rule independently here rather than only ever using
+        # cmercPrc (which understates/overstates whenever real hi/lo differ
+        # from the close, e.g. 탄탈륨/티타늄/몰리브덴 in this dump).
+        priced_rows = [row for row in rows_asc if num(row.get("cmercPrc")) not in (None, 0)]
+        has_full_hilo = bool(priced_rows) and all(
+            num(row.get("hghstPrc")) not in (None, 0) and num(row.get("lowstPrc")) not in (None, 0)
+            for row in priced_rows
+        )
+        if has_full_hilo:
+            high_expected = max(num(row["hghstPrc"]) for row in priced_rows)
+            low_expected = min(num(row["lowstPrc"]) for row in priced_rows)
+        else:
+            high_expected = max(p for _, p in prices)
+            low_expected = min(p for _, p in prices)
+        if realtime_is_new:
+            high_expected = max(high_expected, latest_expected)
+            low_expected = min(low_expected, latest_expected)
 
         # inventory
         inv_rows = [(row["crtrYmd"], num(row.get("invt"))) for row in rows_asc if num(row.get("invt")) not in (None, 0)]
@@ -117,6 +170,8 @@ def verify_price_group(dump_name, page_id, mineral_filter=None):
         # streak: direction scan over the full ascending price series (all rows, not just >0 filtered)
         full_prices = [(row["crtrYmd"], num(row.get("cmercPrc"))) for row in rows_asc]
         full_prices = [x for x in full_prices if x[1] is not None]
+        if realtime_is_new:
+            full_prices = full_prices + [(realtime_entry["crtrYmd"], latest_expected)]
         directions = []
         for (_, a), (_, b) in zip(full_prices, full_prices[1:]):
             directions.append("up" if b > a else "down" if b < a else "flat")

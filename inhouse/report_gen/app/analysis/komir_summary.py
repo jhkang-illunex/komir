@@ -96,6 +96,7 @@ from .models import (
     Metric,
     PriceGroupMineralObservation,
     PriceKomisPeriodComparisons,
+    PriceObservation,
     PriceSeries,
     TradeKomisTotals,
     TradeMapSeries,
@@ -345,6 +346,8 @@ def calculate_price_summary(
     srch_end_date: str | None = None,
     price_position_low_pct: float = 100 / 3,
     price_position_high_pct: float = 200 / 3,
+    realtime_price: float | None = None,
+    realtime_date: str | None = None,
 ) -> AdditionalCalculatedSummary:
     """Calculate deterministic evidence and metrics for a price series.
 
@@ -384,9 +387,50 @@ def calculate_price_summary(
     전년평균 대비 근거를 이 계산기의 롤링창 재계산 대신 KOMIS 제공값으로
     만든다(라이브 재현으로 산식이 다름을 확정, `report_gen_price_base_metals_
     부실요약_원인조사_260828.md` 참고). 문장 템플릿은 자체 계산 경로와
-    완전히 동일해 prompts.py 지침은 그대로 쓴다."""
+    완전히 동일해 prompts.py 지침은 그대로 쓴다.
+
+    `realtime_price`/`realtime_date`(2026-09-13 '풀 검증'에서 실측 재현한
+    버그 수정) — `input_data.py::_parse_komis_price_response`가
+    `dataAvg.stdMap.CRTRYMD`(없으면 `DAY`)에서 뽑은 KOMIS 실시간 현물가·
+    날짜. 조회 평균옵션이 WEEK/MONTH/QUARTER/YEAR면 `observations`(=
+    `defaultMnrl`)의 마지막 행은 실시간가가 아니라 그 기간의 집계값이라
+    날짜·값이 실시간가와 달라진다 — 그런데 `komis_period_comparisons`
+    (전주/전월/전년 평균 대비 등락률)는 이미 이 실시간가를 기준으로 계산돼
+    있어서, "현재가"를 관측치 배열의 마지막 행 그대로 쓰면 같은 문단 안에서
+    "현재가"와 "등락률"의 기준일·기준값이 서로 달라지는 산수 불일치가
+    났다(실측: 스트론튬 WEEK 조회 — 12,225달러 대비 "전주평균 대비 2.75%"
+    인데 실제 12,225/12,020은 1.71%). 사용자 결정(2026-09-13): 현재가는
+    항상 실시간가 기준으로 계산한다.
+
+    수정 방식은 `observations`에 실시간 시점의 관측치 1건을 **추가**하는
+    것이다(기존 관측치를 덮어쓰거나 스칼라 변수를 따로 두지 않음) — 이
+    함수의 나머지 로직(등락·연속추세·구간고저·백분위·낙폭 등)이 전부 이미
+    `observations[-1]`/`observations[-2]`를 "현재"/"직전"으로 참조하므로,
+    배열 끝에 실시간 관측치를 실제로 붙이면 그 로직을 하나도 안 건드리고도
+    전부 일관되게 실시간가 기준이 된다. 유일한 예외는 재고량(`inventory`) —
+    KOMIS 실시간가 필드엔 재고량이 없어 이 새 관측치엔 재고 정보가 없으므로,
+    재고 관련 계산은 `historical_latest`(배열에 실제로 존재하는 마지막 행)를
+    그대로 앵커로 쓴다(아래)."""
 
     observations = sorted(series.observations, key=lambda item: item.date)
+    historical_latest = observations[-1]
+    if (
+        realtime_price is not None
+        and realtime_date is not None
+        and realtime_date > historical_latest.date
+    ):
+        observations = observations + [
+            PriceObservation(
+                date=realtime_date,
+                commerce_price=realtime_price,
+                # 실시간가는 그 시점의 단일 값만 있어 고가·저가를 별도로
+                # 알 수 없다 — 자기 자신을 고가·저가로 둔다(구간 고저 계산의
+                # `has_full_hilo_coverage` 커버리지를 깨지 않기 위함이자,
+                # "이 시점에 관측된 범위는 이 값 하나뿐"이라는 사실 그대로).
+                lowest_price=realtime_price,
+                highest_price=realtime_price,
+            )
+        ]
     latest = observations[-1]
     if latest.commerce_price is None:
         raise ValueError("price summary requires the latest observation to have commerce_price")
@@ -747,24 +791,29 @@ def calculate_price_summary(
     # 동일하게 취급한다. 페이지 하드코딩(`page_id == "price_base_metals"`) 대신
     # 값 기반 게이트를 쓴다 — 지금은 관측 사실이지 코드 계약이 아니라, KOMIS가
     # 다른 광종에도 재고량을 채우기 시작하면 코드 수정 없이 자동 반영된다.
-    latest_inventory = latest.inventory if latest.inventory not in (None, 0, 0.0) else None
+    # 2026-09-13 — 재고량은 KOMIS 실시간가 필드(stdMap.CRTRYMD)에 없어 위에서
+    # 붙였을 수 있는 합성 관측치엔 재고 정보가 없다. `historical_latest`(배열에
+    # 실제로 존재하는 마지막 행)를 그대로 앵커로 쓴다 — 실시간가 보정 이전과
+    # 동일한 재고 표시 동작을 유지한다.
+    historical_observations = observations if latest is historical_latest else observations[:-1]
+    latest_inventory = historical_latest.inventory if historical_latest.inventory not in (None, 0, 0.0) else None
     if latest_inventory is not None:
         current_position_count = sum(1 for claim in claims if claim.section == "current_position")
         if current_position_count < _CURRENT_POSITION_HARD_CAP:  # SummaryNarrative.current_position 하드 제약(models.py)
             prior_inventory_obs = next(
                 (
                     item
-                    for item in reversed(observations[:-1])
+                    for item in reversed(historical_observations[:-1])
                     if item.inventory not in (None, 0, 0.0)
                 ),
                 None,
             )
-            inventory_fact = f"{_korean_date(latest.date)} 기준 재고량은 {_quantity(latest_inventory)}{_INVENTORY_UNIT_LABEL}입니다."
+            inventory_fact = f"{_korean_date(historical_latest.date)} 기준 재고량은 {_quantity(latest_inventory)}{_INVENTORY_UNIT_LABEL}입니다."
             inventory_change_pct = None
             if prior_inventory_obs is not None:
                 inv_change = _pct(latest_inventory, prior_inventory_obs.inventory)
                 if inv_change is not None:
-                    is_truly_next_day = prior_inventory_obs.date == _shift_date(latest.date, -1)
+                    is_truly_next_day = prior_inventory_obs.date == _shift_date(historical_latest.date, -1)
                     inv_comparison_label = (
                         f"전일({_korean_date(prior_inventory_obs.date)})"
                         if is_truly_next_day
@@ -777,7 +826,7 @@ def calculate_price_summary(
                         "증가했습니다" if inv_change > 0 else "감소했습니다" if inv_change < 0 else "변동이 없었습니다"
                     )
                     inventory_fact = (
-                        f"{_korean_date(latest.date)} 기준 재고량은 {_quantity(latest_inventory)}"
+                        f"{_korean_date(historical_latest.date)} 기준 재고량은 {_quantity(latest_inventory)}"
                         f"{_INVENTORY_UNIT_LABEL}으로, {inv_comparison_label} 대비 "
                         f"{_number(abs(inv_change) * 100)}% {inv_direction}."
                     )

@@ -1562,6 +1562,8 @@ class AnalysisSummaryService:
             srch_end_date=request.srch_end_date,
             price_position_low_pct=price_position_settings.PRICE_POSITION_LOW_PCT,
             price_position_high_pct=price_position_settings.PRICE_POSITION_HIGH_PCT,
+            realtime_price=parsed.realtime_price,
+            realtime_date=parsed.realtime_date,
         )
         context = effective_page_context(request.page_id)
         applied_filters = {
