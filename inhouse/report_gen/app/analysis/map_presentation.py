@@ -96,6 +96,75 @@ def import_history_fact(request, series) -> str | None:
             f"{current_year}년 {current:,.0f}달러로 전년 동기 대비 {comparison}.")
 
 
+def route_yearly_trend_fact(request, series) -> str | None:
+    """map_global 전용 — 화면의 "주요 교역 루트"(원산국→도착국) 서사에 맞춰
+    현재 상위 1~3위 루트의 전년대비 변화를 서술한다(2026-09-13, 발주처
+    피드백 §10/§7-3 대응).
+
+    기존 `country_yearly_trend`(`getBarChartDataNation` 기반 국가 단일축
+    상위 3개국)는 화면이 보여주는 "1위는 중국→일본 루트" 같은 양자무역
+    루트 서사와 축 자체가 달라 지적받았다("호주 교역액"처럼 화면 서사와
+    무관한 국가가 나옴). 이 함수는 `import_history_fact`와 같은 재료
+    (`komis_history_responses` — 과거 연도 `getListDataNation` 원본, 이미
+    `GlobalTradeSummaryRequest`에 배선돼 있었지만 총액 비교에만 쓰였다)를
+    (원산국코드, 도착국코드) 키로 매칭해 루트 단위 비교로 확장한다.
+
+    호출부(`summary.py::_respond_trade_map`)가 이 함수보다 먼저
+    `import_history_fact()`를 호출해 `komis_history_responses`의 필터
+    (광종·기간 등)가 `komis_response`와 전부 일치하는지 이미 검증했다
+    (불일치 시 `DataSourceError`로 그 시점에 실패한다) — 이 함수는 그
+    검증을 통과한 뒤에만 호출되므로 필터를 다시 확인하지 않는다."""
+
+    from .input_data import _parse_komis_map_global_response
+
+    if request.page_id != "map_global":
+        return None
+    raw = request.komis_response
+    snapshots = request.komis_history_responses or []
+    if raw is None or not snapshots:
+        return None
+
+    def _routes_by_year(payload):
+        observations, _, _ = _parse_komis_map_global_response(payload)
+        if not observations:
+            return None
+        year = int(observations[0]["date"][0:4])
+        routes = {(o["origin_country_code"], o["country_code"]): o["import_amount"] for o in observations}
+        names = {(o["origin_country_code"], o["country_code"]): (o["origin_country_name"], o["country_name"]) for o in observations}
+        return year, routes, names
+
+    current = _routes_by_year(raw)
+    if current is None:
+        return None
+    current_year, current_routes, names = current
+    previous_year = current_year - 1
+    previous_routes = None
+    for snapshot in snapshots:
+        parsed = _routes_by_year(snapshot)
+        if parsed and parsed[0] == previous_year:
+            previous_routes = parsed[1]
+            break
+    if not previous_routes:
+        return None
+
+    ranking = sorted(current_routes.items(), key=lambda item: item[1] or 0.0, reverse=True)
+    parts = []
+    for rank, (route_key, latest_amount) in enumerate(ranking[: min(3, len(ranking))], start=1):
+        previous_amount = previous_routes.get(route_key)
+        if not previous_amount:
+            continue
+        origin_name, dest_name = names.get(route_key, route_key)
+        change = (latest_amount - previous_amount) / previous_amount * 100
+        direction = "증가" if change > 0 else "감소" if change < 0 else "보합"
+        parts.append(
+            f"{rank}위 {origin_name}→{dest_name} 루트는 {previous_amount:,.0f}달러에서 "
+            f"{latest_amount:,.0f}달러로 {abs(change):.2f}% {direction}"
+        )
+    if not parts:
+        return None
+    return f"{current_year}년 기준 {previous_year}년 대비, " + ", ".join(parts) + "했습니다."
+
+
 def trade_scale_trend_fact(request, series) -> str | None:
     """map_korea 전용 — 수입·수출 규모의 연도별 시계열 문장(2026-09-10
     사용자 지시 — "규입규모 추이 차트용 데이터가 있는데 이걸로 시계열

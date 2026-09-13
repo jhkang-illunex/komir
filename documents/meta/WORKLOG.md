@@ -2,7 +2,68 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-11 (최신) — 지도 압축 금액 표기(약 N억/만) 소수점 0자리 반올림 오차 수정
+## 2026-09-13 (최신) — map_global "연도별 교역액 변화" 국가축→루트축 재설계(§10/§7-3)
+
+**피드백**(강재호 수석·권가영 사원, 09-11 저녁) — "핵심광물지도 - 글로벌수급지도"
+화면 서사는 "1위는 중국→일본 루트" 같은 원산국→도착국 "루트" 단위인데,
+맨 아래 "참고: 연도별 교역액 변화"에는 그 서사와 무관한 **호주 단일국
+전체 교역액**(바차트 `getBarChartDataNation` 기반 국가 단일축, 2026-09-11
+신설 `country_yearly_trend`)이 나왔다. 요청: ①화면 주요 교역루트 안에
+시계열 데이터가 같이 들어갈 것 ②국가가 아니라 주요 교역 1~3위 루트에
+해당하는 데이터일 것 ③전년대비 시 기준연도 표출.
+
+**재검증(2026-09-12)으로 확인한 사실**: 필요한 원재료는 이미 배선돼
+있었다 — `komis_history_responses`(과거 연도 `getListDataNation` 원본)가
+`GlobalTradeSummaryRequest`에 이미 존재(총액 전년비교 `import_history_fact`
+에만 쓰이고 있었음). map_global의 `current_position` 섹션은 렌더링에서
+통째로 숨겨지는 절이라(`report_render.py::_HIDDEN_SECTIONS`)
+`country_yearly_trend`가 애초에 "참고"로도 잘 안 보였을 가능성도 확인.
+
+**구현**:
+- `map_presentation.py::route_yearly_trend_fact(request, series)` 신설 —
+  `komis_history_responses`를 (원산국코드, 도착국코드) 키로 매칭해 현재
+  상위 1~3위 루트 각각의 전년대비 금액·증감률을 계산한다. 필터 검증은
+  같은 호출부에서 먼저 도는 `import_history_fact()`가 이미 하므로
+  중복 검증하지 않는다(불일치 시 거기서 먼저 `DataSourceError`).
+- `summary.py::_respond_trade_map` — 이 사실이 있으면 **major_changes**
+  절(`report_render.py`에서 "주요 교역 루트"로 렌더링되는 그 절)에
+  `route_yearly_trend` 근거로 추가하고, 국가축 `country_yearly_trend`는
+  제거한다(과거응답 미제공 등으로 루트 매칭이 안 되면 기존
+  `country_yearly_trend` 폴백 유지). `country_yearly_trend`가
+  `current_position`의 유일한 근거였을 경우를 대비해 제거 후 그 섹션이
+  비면 `single_snapshot`과 같은 결측 문구로 채운다(`SummaryNarrative`가
+  섹션당 min_length=1 — 안 채우면 조립이 깨짐, 실제로 첫 시도에서 재현·
+  수정함).
+- `prompts.py` — map_global `major_changes` 문장수 상한 (1,4)→(1,5)(5번째
+  근거 추가), `resources/prompts/map_global_summary.md` — route_yearly_trend
+  가이드 추가(major_changes 안에서 서술, 루트명·숫자 보존 요구) +
+  current_position 절 country_yearly_trend 설명을 "route_yearly_trend가
+  없을 때만 내려오는 폴백"으로 정정.
+- `summary.py::_validate_llm_summary` — 역방향 숫자보존 검사 대상에
+  `route_yearly_trend` 추가 + 루트명(국가명, 텍스트라 숫자검사로 못 잡음)
+  누락 방지 검사 신설(map_mineral의 `extreme_change_countries` 사각지대와
+  같은 패턴).
+
+**검증**: 합성 데이터(4개 루트, 2025→2026, `map_global_route_test.json`)로
+`AnalysisSummaryService(None, llm=None)` 직접 렌더링 + `render_markdown_report`
+로 최종 마크다운까지 확인 — "주요 교역 루트" 절 안에 "2026년 기준 2025년
+대비, 1위 중국→일본 루트는 약 1.80억 달러에서 약 2억 달러로 11.11% 증가,
+..." 형태로 정확히 원하는 위치·형식으로 나옴. 국가축 대체(바차트만 있고
+이력 없음 → 기존 country_yearly_trend 유지) 폴백도 별도 검증. `tests/`
+14건 전부 통과, `komis_dump_smoke_test.py` 395콤보 전부 ok(0 mismatch).
+배포 컨테이너(`komir-report-gen:260913-route`)에 실 LLM으로 라이브 검증 —
+1차 시도에서 근거 5개(top1_country·top3_concentration·korea_route_rank·
+route_yearly_trend + core_diagnosis)일 때 LLM 정제가 4/4 모두 "관련 근거를
+결합한 분석 문장이 없다" 검증에 걸려 규칙 기반으로 폴백했다
+(`llm_refined=False`) — route_yearly_trend를 추가하면서 "verbatim 유지"형
+근거가 2개(korea_route_rank·route_yearly_trend)로 늘어 LLM이 결합 문장을
+못 만든 것으로 추정. **map_global_summary.md에 "top1_country+top3_
+concentration(+top5_concentration)을 한 문장으로 묶어 이 요건을 만족한다"는
+결합 지시를 명시적으로 추가(mineral_map_summary.md의 기존 패턴과 동일)한
+뒤 재배포하니 4/4 전부 정상 정제(`llm_refined=True`)로 해결됐다** —
+규칙 기반 출력은 두 시도 모두 매 번 정확했음(내용·섹션 위치 전부 검증됨).
+
+## 2026-09-11 — 지도 압축 금액 표기(약 N억/만) 소수점 0자리 반올림 오차 수정
 
 사용자 지적 — "핵심광물지도 글로벌 수급 2026 리튬에서 전체 교역 금액이
 약 2억이라고 표시했는데 대략 1.7~1.8억 정도인 것 같은데 반올림이 바로

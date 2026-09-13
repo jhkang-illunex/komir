@@ -139,8 +139,9 @@ SECTION_SENTENCE_RANGES: dict[str, dict[str, tuple[int, int]]] = {
     # 상한이 3이라 4번째 근거(CR5 또는 한국 순위)가 누락될 수 있었다 —
     # map_korea SC-RG-001과 같은 패턴(2026-09-10 사용자 지적으로 발견,
     # top5_concentration·korea_route_rank를 required=True로 바꾼 것과 짝) →
-    # (1,3)→(1,4).
-    "map_global": {"core_diagnosis": (1, 1), "major_changes": (1, 4), "current_position": (1, 1)},
+    # (1,3)→(1,4). 2026-09-13 route_yearly_trend 신설로 5번째 근거(루트별
+    # 전년대비 변화)가 같은 섹션에 추가될 수 있어 (1,4)→(1,5).
+    "map_global": {"core_diagnosis": (1, 1), "major_changes": (1, 5), "current_position": (1, 1)},
     # 2026-08-27 신설 — group_movers·extreme_movers 2건까지 major_changes에.
     "price_group": {"core_diagnosis": (1, 1), "major_changes": (1, 2), "current_position": (1, 1)},
 }

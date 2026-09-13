@@ -853,10 +853,19 @@ def _validate_llm_summary(
             # 변화) 문장을 LLM이 정제할 때 연도(전년→당해)를 조용히 빠뜨려
             # "언제 대비 언제인지 모르겠다"는 문제가 생길 수 있다 — 이 집합에
             # 추가해 근거의 연도·금액·비율 숫자가 전부 출력에 남게 강제한다.
-            if ((page_id in {"map_korea", "map_global"} and any(c.id in {"current_state", "export_summary", "top1_country", "korea_route_rank", "trade_scale_trend", "country_yearly_trend"} for c in typed_references))
+            if ((page_id in {"map_korea", "map_global"} and any(c.id in {"current_state", "export_summary", "top1_country", "korea_route_rank", "trade_scale_trend", "country_yearly_trend", "route_yearly_trend"} for c in typed_references))
                     or (page_id == "indicator_supply" and any(eid in _SUPPLY_FACTOR_EVIDENCE_IDS for eid in sentence.evidence_ids))):
                 if not _number_tokens(evidence_text) <= _number_tokens(sentence.text):
                     return "지도 금액·비중·시계열 또는 구성요소 상세 수치를 누락했다."
+            if page_id == "map_global" and "route_yearly_trend" in sentence.evidence_ids:
+                # 2026-09-13 신설 — route_yearly_trend_fact는 루트(원산국→
+                # 도착국) 이름 자체가 근거의 핵심이라(연도·금액은 숫자검사로
+                # 잡히지만 국가명은 텍스트라 못 잡는다 — extreme_change_
+                # countries와 같은 사각지대) 등장한 루트명이 전부 남는지도
+                # 확인한다.
+                routes = re.findall(r"\d위 (\S+→\S+) 루트는", evidence_text)
+                if any(route not in sentence.text for route in routes):
+                    return "루트별 전년대비 변화에서 교역 루트명을 일부 누락했다."
             if page_id in {"map_korea", "map_global", "map_mineral"}:
                 # 2026-09-11 — compact_quantity()가 소수점 1자리까지 표시하도록
                 # 바뀌어("약 1.8억") 정수만 매칭하던 패턴을 소수점 허용으로 확장.
@@ -1801,13 +1810,36 @@ class AnalysisSummaryService:
         trade`)가 이미 계산해 둔 `_map_korea_query_filters()` 결과다(2026-09-08
         SC-005: 이전엔 같은 인자로 여기서 다시 계산했다)."""
 
-        from .map_presentation import import_history_fact, trade_scale_trend_fact
+        from .map_presentation import import_history_fact, route_yearly_trend_fact, trade_scale_trend_fact
         history = import_history_fact(request, series)
         if history:
             calculated.claims = [EvidenceClaim(c.id, c.section, c.fact + " " + history if c.id == "current_state" else c.fact, c.required) for c in calculated.claims]
         trend = trade_scale_trend_fact(request, series)
         if trend:
             calculated.claims = [*calculated.claims, EvidenceClaim("trade_scale_trend", "major_changes", trend, required=True)]
+        # 2026-09-13 발주처 피드백 §10/§7-3 — map_global의 "연도별 교역액
+        # 변화"는 화면의 "루트"(원산국→도착국) 서사에 맞아야 한다는 지적을
+        # 반영해 route_yearly_trend_fact로 국가축 country_yearly_trend를
+        # 대체한다. 루트별 이력 매칭이 안 되는 조회(과거응답 미제공 등)는
+        # 기존 country_yearly_trend를 그대로 둔다(완전 삭제보다 폴백 유지).
+        route_trend = route_yearly_trend_fact(request, series)
+        if route_trend:
+            without_country_trend = [c for c in calculated.claims if c.id != "country_yearly_trend"]
+            # country_yearly_trend가 current_position의 유일한 근거였을 수
+            # 있다(map_global은 스냅샷 1건뿐이면 period_total_change도 없다)
+            # — SummaryNarrative는 섹션당 min_length=1이라 그대로 빼면 조립이
+            # 깨진다. map_global의 current_position은 렌더링에서 통째로
+            # 숨겨지는 절이라(`report_render.py::_HIDDEN_SECTIONS`) 자리만
+            # 채우면 되므로 기존 single_snapshot과 같은 결측 문구로 채운다.
+            if not any(c.section == "current_position" for c in without_country_trend):
+                without_country_trend.append(
+                    EvidenceClaim(
+                        "single_snapshot",
+                        "current_position",
+                        "조회기간에 관측일이 1건뿐이라 기간별 변화는 계산하지 않았습니다.",
+                    )
+                )
+            calculated.claims = [*without_country_trend, EvidenceClaim("route_yearly_trend", "major_changes", route_trend, required=True)]
         dates = sorted({item.date for item in series.observations})
         applied_filters = {
             "mineral": series.mineral.name,
