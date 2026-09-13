@@ -36,3 +36,17 @@
 - **검증**: python-pptx로 재오픈(20슬라이드 확인)·zip 무결성(`testzip()`
   None)·red-run 0건 확인. 표·본문 수치는 전부 `v10_new_cases.json`에서
   그대로 포맷팅해 옮긴 값(재타이핑 없음).
+- **정정(같은 날 후속, 사용자 지적)**: 슬라이드19(매장량·생산량 교차비교)의
+  "주요 변화" 절이 "2019년 19,000,000k ton..."처럼 숫자를 그대로 표시해,
+  바로 이전 슬라이드18(기존 baseline, "약 1,900만톤"류 축약)과 표기가
+  안 맞았다. 원인은 `fetch_v10_new_cases.py`가 `unit=rows[0]['cdVal']`
+  (KOMIS 원시 코드 "k ton")을 그대로 넘겨 `_analyze_mineral_map`의
+  `request.unit or komis_unit`(호출자 값 우선) 규칙에 따라 komis_response
+  에서 자동 유도되는 올바른 단위("톤")를 덮어썼기 때문 — `compact_fact()`
+  (map_korea/global/mineral 공통 억/만 축약 후처리기)가 "톤"/"달러"만
+  정규식으로 매칭해 "k ton" 문장은 축약 안 됨. **report_gen API 코드는
+  무결점**(unit 필드를 안 보내 자동유도에 맡기면 정상적으로 축약됨을
+  재확인) — 캐스트 쪽(이 evidence의 fetch 스크립트) 버그였다. `unit` 필드를
+  빼고 재호출해 `v10_new_cases.json`의 `map_mineral_cross`를 갱신, pptx
+  슬라이드19를 그 값으로 재수정 완료(`fix_v10_slide19_unit.py`, 이 폴더에
+  보존). `report_gen_지도옵션_확인_260913/README.md`에도 같은 정정 추가.

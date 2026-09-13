@@ -2,7 +2,34 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-13 (최신) — v10.pptx: 가격 4종 비교광종 슬라이드 + 지도 3종 옵션 슬라이드 8개 추가
+## 2026-09-13 (최신, 후속) — v10 슬라이드19 단위축약 불일치 — 원인은 report_gen 아니라 fetch 스크립트
+
+사용자 지적 — "광물지도 매장량/생산량 교차비교 슬라이드의 '주요 변화'가
+'2019년 19,000,000k ton'처럼 그대로 표시되는데, 이전 페이지(baseline)는
+'만톤' 단위로 축약해서 보여준다. API를 수정해야 할 것 같다"는 제보로
+조사, **report_gen API 문제가 아니라 어제까지 이 세션이 짠 fetch
+스크립트(`fetch_v10_new_cases.py`, `map_options_check.py`)의 호출측
+버그**로 확정했다.
+
+**원인**: 두 스크립트가 map_mineral 호출 시 `unit=rows[0]['cdVal']`
+(KOMIS 원시 코드, 예: "k ton")을 그대로 넘겼다. `summary.py::
+_analyze_mineral_map`은 `unit = request.unit or komis_unit`(호출자가
+명시한 값을 `komis_response`에서 자동 유도되는 값보다 우선)이라, 이
+raw 코드가 원래 자동 유도됐어야 할 올바른 한글 단위("톤")를 덮어썼다.
+그 결과 map_korea/global/mineral 공통 후처리기 `compact_fact()`
+(summary.py:986, "톤"·"달러" 단위 문장만 정규식으로 매칭해 억/만으로
+축약)가 "k ton" 문장에는 매칭되지 않아 숫자가 축약 없이 그대로 나갔다.
+`unit` 필드를 아예 안 보내(자동유도에 맡기면) 정상적으로 "약 7.70억톤"
+류로 축약됨을 재현·확인 — **report_gen 코드는 무결점**.
+
+**조치**: `unit` 필드를 빼고 map_mineral_cross를 재호출해
+`v10_new_cases.json` 갱신 → v10.pptx 슬라이드19를 그 값으로 재수정
+(`fix_v10_slide19_unit.py`). `report_gen_지도옵션_확인_260913/README.md`
+에도 같은 정정 추가(그 문서의 "크래시 없음" 결론 자체는 이 단위표시
+이슈와 무관해 유효). 상세는
+`documents/산출물/2026-W37_0907-0913/report_gen_v10_슬라이드_260913_evidence/`.
+
+## 2026-09-13 — v10.pptx: 가격 4종 비교광종 슬라이드 + 지도 3종 옵션 슬라이드 8개 추가
 
 사용자 요청으로 v9.pptx(12슬라이드)에 신규 슬라이드 8개를 추가해 v10.pptx
 (20슬라이드)를 만들었다 — 기존 12개는 무변경, 각 원본 슬라이드 바로 뒤에
