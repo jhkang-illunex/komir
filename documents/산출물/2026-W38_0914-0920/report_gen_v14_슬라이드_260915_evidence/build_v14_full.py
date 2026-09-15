@@ -647,13 +647,16 @@ def _mark_cell_red(cell):
 
 
 _A = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
+#: v10 템플릿에 박혀 있던 적색 계열 — FF0000(슬라이드 14~21 "표 6" 일부 셀)과
+#: C00000(슬라이드 13 수급동향지표 "표 10" 전체). 둘 다 흑색으로 통일한다.
+_INHERITED_REDS = {"FF0000", "C00000"}
 
 
 def clear_inherited_red(prs):
     """v10 템플릿부터 표 셀 일부(슬라이드 14~21 "표 6")에 적색 글꼴이 박혀 있어
     v13까지 그대로 물려받았다(v13 표 적색 run 35개, 텍스트는 v13과 동일).
     v14는 "v13과 차이나는 부분만 적색"이 목적이라, 대조 전에 물려받은 적색
-    (srgbClr FF0000)을 전부 흑색(000000)으로 통일한다(사용자 지시 2026-09-15
+    (srgbClr FF0000·C00000)을 전부 흑색(000000)으로 통일한다(사용자 지시 2026-09-15
     "기존에 있던 적색은 다 흑색으로 통일"). 반환: 바꾼 run 수."""
     cleared = 0
     for slide in prs.slides:
@@ -671,7 +674,7 @@ def clear_inherited_red(prs):
                             continue
                         for fill in rpr.findall(_A + "solidFill"):
                             clr = fill.find(_A + "srgbClr")
-                            if clr is not None and (clr.get("val") or "").upper() == "FF0000":
+                            if clr is not None and (clr.get("val") or "").upper() in _INHERITED_REDS:
                                 clr.set("val", "000000")
                                 cleared += 1
     return cleared
