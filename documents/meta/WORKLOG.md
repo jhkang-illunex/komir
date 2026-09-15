@@ -52,7 +52,14 @@
   HI001~003 세 행을 한 선으로 이어 톱니 모양 → 새 스펙 `group=indx_se_cd`로 프론트가
   지수종류별 선으로 나눠 그릴 것(명세 §6에 기록). `komir-rag-chat:260916-blocks2`
   재배포·같은 질문 라이브 재확인.
-- 미반영: 호스트 streamlit(main 체크아웃 기준 가동)은 이 워크트리 병합 후 재기동 필요.
+- 병합·재기동(같은 날 00:40, main-agent 대행): main ff 병합 → 11ac30d74, streamlit
+  PID 1799610 재기동(lstart 00:39:43 > chatbot.py·api_client.py mtime 00:39:34 확인).
+- 문서 추가(사용자 요청 "0913 private 문서처럼 pub에도 데이터·차트 예제"):
+  `documents/산출물/2026-W38_0914-0920/rag_chat_pubchat_구조화블록_명세_예제_260916.md`
+  — `/pubchat` 라이브 캡처 3건(니켈 가격 line, 희토류 생산량 bar+pie 대안, 동 국내수입
+  bar)의 본문·table·chart·done JSON 원문 + 추천 차트 규칙 요약. 생성 스크립트로 캡처
+  JSON을 그대로 직렬화(수기 전사 없음). 확인된 사실: 본문의 표는 LLM이 한글 헤더로
+  다시 쓴 것이라 `table.markdown`과 일치하지 않음 → 문자열 치환보다 별도 렌더 권고.
 
 ## 2026-09-15 — mnrl_report 엔진 분리: RuleEngine·GenEngine + 버전(YYMMDD-sha8) 등록부
 
