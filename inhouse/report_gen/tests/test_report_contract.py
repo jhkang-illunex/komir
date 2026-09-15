@@ -333,6 +333,28 @@ class ReportContractTests(unittest.TestCase):
         metrics = {m.id: m.value for m in response.key_metrics}
         self.assertEqual((metrics["max_increase_country"], metrics["max_decrease_country"]), ("콩고민주공화국", "칠레"))
 
+    def test_map_mineral_http_accepts_year_range(self):
+        """2026-09-15 사용자 지시 — 광물지도 HTTP 모델에 start_year/end_year 복원.
+        2019~2025 chart 응답을 보내고 2021~2025로 좁히면 조회기간 표기·시작연도가 그
+        범위를 따른다. 뒤집힌 범위(start>end)는 NO_DATA."""
+        rows = []
+        for year in range(2019, 2026):
+            for code, name, base in (("CL", "칠레", 200), ("AU", "호주", 90), ("PE", "페루", 80), ("RU", "러시아", 60)):
+                rows.append({"crtrYr": str(year), "ntnEngCd": code, "ntnKornNm": name, "cdVal": "ton",
+                             "burudgQuty": base + year - 2019, "prdctnQuty": 1})
+        body = {"mineral": "MNRL0008", "mineral_name": "동", "measure": "reserves",
+                "komis_response": {"data": rows}, "start_year": 2021, "end_year": 2025}
+        with patch.object(app.state, "analysis_summary_service", AnalysisSummaryService(None, llm=None), create=True), \
+             patch.object(app.state, "analysis_lock", Semaphore(8), create=True):
+            client = TestClient(app)
+            result = client.post("/api/v1/analysis/maps/mineral", json=body).json()
+            self.assertEqual(result["status"], "ok")
+            self.assertIn("조회기간(2021~2025년)", result["report"])
+            self.assertIn("2021년보다", result["report"])
+            self.assertNotIn("2019년", result["report"])
+            reversed_range = client.post("/api/v1/analysis/maps/mineral", json={**body, "start_year": 2025, "end_year": 2021}).json()
+            self.assertEqual(reversed_range["status"], "NO_DATA")
+
     def test_compact_quantity_trims_trailing_zero(self):
         """2026-09-15 사용자 지시 — 축약 물량·금액도 '3자리에서 반올림해 2자리, 끝자리 0
         생략' 규칙(표·본문 공통). 이전엔 Decimal 그대로 찍혀 '약 9.80억'이 남았다."""

@@ -2,7 +2,21 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-15 (최신, 심야 5) — 대상 1~6 전부 origin/main 푸시 + report_gen 재배포(`komir-report-gen:260915-mapmineral`)
+## 2026-09-15 (최신, 심야 6) — 광물지도 HTTP API에 조회연도(start_year/end_year) 복원 + 재배포(`komir-report-gen:260915-mapmineral-years`)
+
+사용자 지시("광물지도 http api에 조회년도 값을 추가해서 배포"). 직전 재배포 라이브
+확인에서 연도 필드 포함 호출이 "Extra inputs are not permitted"→NO_DATA였던 것(2026-08-30에
+HTTP 모델에서만 제거, 내부 `AnalysisSummaryRequest`는 계속 보유·필터 적용)을 되돌림 —
+`routers/analysis.py::MineralMapSummaryRequest`에 `start_year`/`end_year`(선택, 1900~2100,
+Swagger description) 추가만으로 끝(`run_summary`가 model_dump로 그대로 넘긴다, start>end는
+내부 검증 ValueError→NO_DATA). 테스트 `test_map_mineral_http_accepts_year_range`(TestClient
+실서비스, 2019~2025 chart→2021~2025 좁힘·역순 NO_DATA) 추가, 20 passed. 이미지
+`260915-mapmineral-years` 빌드·컨테이너 교체(프롬프트 무변경이라 seed 불필요), 라이브:
+2019~2025 전체 chart + start_year=2021로 "2021년보다 … 4년간" 정상, Swagger에 두 필드 노출.
+streamlit_demo report_gen_client(PAGE_SPECS map_mineral)는 아직 이 필드를 안 보낸다(KOMIS
+조회 자체를 연도로 하고 있어 동작엔 문제 없음, 필요 시 후속).
+
+## 2026-09-15 (심야 5) — 대상 1~6 전부 origin/main 푸시 + report_gen 재배포(`komir-report-gen:260915-mapmineral`)
 
 사용자 지시("api 수정된 내역을 커밋하고 푸쉬 및 api 재배포"). 워크트리 브랜치
 worktree-report-summary(10커밋, main 대비 fast-forward)를 `origin/worktree-report-summary`와
