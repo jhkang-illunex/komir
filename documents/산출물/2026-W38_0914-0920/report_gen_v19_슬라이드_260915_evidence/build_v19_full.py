@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """v10.pptx -> v19.pptx 전체 재생성(2026-09-15, 대상 6 광물지도-생산량 내용 보강)
-+ v18.pptx 대비 변경 구간 적색 표시. 절차 동일, 소스만 v19_sources.json, 대조 기준 v18.
++ v13.pptx 대비 변경 구간 적색 표시(사용자 지시: v13 이후 모든 수정 누적 적색). 절차 동일, 소스만 v19_sources.json, 대조 기준 v13.
 `rebuild_map_mineral_slide`: 국가별 순위 절에 reserve_production_ratio_low/high(구
 cross_measure_comparison 대체, 스냅샷 있을 때), 주요 변화 절에 volatility_country 추가.
 core는 core_diagnosis 전체를 그대로 쓰므로 world_total_recent_trend가 자동 포함된다.
@@ -805,7 +805,10 @@ def mark_diff_red(new_prs, old_prs):
 KOMIR_ROOT = os.environ.get("KOMIR_ROOT", ".")
 PPTX_DIR = os.path.join(KOMIR_ROOT, EVID37, "요약분석_정리결과물")
 path_v10 = glob.glob(f"{PPTX_DIR}/*v10*.pptx")[0]
-path_v13 = glob.glob(f"{PPTX_DIR}/*v18.pptx")[0]  # 대조 기준 = v18(손대지 않음; 변수명은 v13 스크립트 호환)
+# 2026-09-15 사용자 지시("v19는 v13 이후 모든 수정 내역에 적색으로 표기") — 대조 기준을
+# 직전 버전(v18)이 아니라 v13(2026-09-13 검수 정정판, 발주처 피드백 반영 전)으로 잡아
+# 대상 1~6 변경분이 누적으로 전부 적색이 되게 한다. v14~v18은 각각 직전 버전 대비.
+path_v13 = glob.glob(f"{PPTX_DIR}/*v13.pptx")[0]  # 대조 기준 = v13(손대지 않음)
 path_v12 = path_v10.replace("v10", "v19")
 import shutil  # noqa: E402
 shutil.copy(path_v10, path_v12)
