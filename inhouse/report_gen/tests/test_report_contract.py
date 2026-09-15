@@ -267,6 +267,23 @@ class ReportContractTests(unittest.TestCase):
         from app.analysis.data_sources import DataSourceError as legacy_error
         self.assertIs(legacy_error, DataSourceError)
 
+    def test_relative_value_fact_uses_percent_and_spelled_out_pair(self):
+        """2026-09-15 발주처 피드백 — 가격비율은 퍼센트(86.53%)로, 평균도 같은
+        단위로, "동/니켈" 대신 "니켈 대비 동의"로 풀어 쓴다."""
+        from app.analysis.komir_summary import _relative_value_fact
+
+        # 20일 중 앞 19일은 비율 0.6, 마지막 날만 0.8 → 평균 0.61, 괴리 +31.15%
+        primary = [SimpleNamespace(date=f"2026-01-{d:02d}", commerce_price=60.0) for d in range(1, 20)]
+        primary.append(SimpleNamespace(date="2026-01-20", commerce_price=80.0))
+        compare = [SimpleNamespace(date=f"2026-01-{d:02d}", commerce_price=100.0) for d in range(1, 21)]
+        fact = _relative_value_fact("동", primary, "니켈", compare)
+        self.assertEqual(
+            fact,
+            "니켈 대비 동의 가격비율은 현재 80%로, 조회기간 평균(61%) 대비 31.15% 높은 수준입니다.",
+        )
+        self.assertNotIn("동/니켈", fact)
+        self.assertIsNone(_relative_value_fact("동", primary[:19], "니켈", compare[:19]))
+
 
 if __name__ == "__main__":
     unittest.main()

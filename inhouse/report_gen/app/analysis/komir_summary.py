@@ -2109,9 +2109,12 @@ def _relative_value_fact(
         return None
     diff_pct = (latest_ratio - avg_ratio) / avg_ratio * 100
     level = "높은" if diff_pct > 0.5 else "낮은" if diff_pct < -0.5 else "비슷한"
+    # 2026-09-15 발주처 피드백 — ① 비율(0.8653)은 퍼센트(86.53%)로, ② 조회기간
+    # 평균도 같은 단위(64.38%)로, ③ "동/니켈"은 "니켈 대비 동의"로 풀어 쓴다.
+    # 마지막 "[차이]%"는 종전과 같이 평균 대비 상대 괴리율(%p 차이가 아님).
     return (
-        f"{primary_name}/{compare_name} 가격비율은 현재 {_number(latest_ratio, 4)}로, "
-        f"조회기간 평균({_number(avg_ratio, 4)}) 대비 {_number(abs(diff_pct))}% {level} 수준입니다."
+        f"{compare_name} 대비 {primary_name}의 가격비율은 현재 {_number(latest_ratio * 100)}%로, "
+        f"조회기간 평균({_number(avg_ratio * 100)}%) 대비 {_number(abs(diff_pct))}% {level} 수준입니다."
     )
 
 
