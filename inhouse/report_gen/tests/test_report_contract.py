@@ -333,6 +333,17 @@ class ReportContractTests(unittest.TestCase):
         metrics = {m.id: m.value for m in response.key_metrics}
         self.assertEqual((metrics["max_increase_country"], metrics["max_decrease_country"]), ("콩고민주공화국", "칠레"))
 
+    def test_compact_quantity_trims_trailing_zero(self):
+        """2026-09-15 사용자 지시 — 축약 물량·금액도 '3자리에서 반올림해 2자리, 끝자리 0
+        생략' 규칙(표·본문 공통). 이전엔 Decimal 그대로 찍혀 '약 9.80억'이 남았다."""
+        from app.analysis.map_presentation import compact_fact, compact_quantity
+        self.assertEqual(compact_quantity(980_000_000, "톤"), ("약 9.8억", "톤"))
+        self.assertEqual(compact_quantity(200_000_000, "톤"), ("약 2억", "톤"))
+        self.assertEqual(compact_quantity(5_130_000_000, "달러"), ("약 51.3억", "달러"))
+        self.assertEqual(compact_quantity(15_485_000, "톤"), ("약 1,548.5만", "톤"))
+        self.assertEqual(compact_quantity(4_043_210_000, "달러"), ("약 40.43억", "달러"))
+        self.assertEqual(compact_fact("2025년 세계 동 매장량은 980,000,000톤이다."), "2025년 세계 동 매장량은 약 9.8억톤이다.")
+
     def test_composite_period_average_and_weight_label(self):
         """2026-09-15 발주처 피드백(광물종합지수) — 조회기간 평균 지수 metric 추가,
         구성 광종 문장은 "구성 광종(가중치)은 …"으로. 1년 넘는 관측치를 주면

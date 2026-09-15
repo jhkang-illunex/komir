@@ -5,7 +5,7 @@ import re
 from datetime import date, datetime
 from decimal import Decimal, ROUND_HALF_UP
 
-from .additional_summary import _number
+from .additional_summary import _number, _trim_trailing_zero
 
 
 def compact_quantity(value: float, unit: str) -> tuple[str, str]:
@@ -26,7 +26,11 @@ def compact_quantity(value: float, unit: str) -> tuple[str, str]:
         # 판단. 정수로 딱 떨어지면(예: 2.00억) 불필요한 ".00"은 보이지
         # 않는다.
         rounded = (amount / divisor).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        display = f"{int(rounded):,}" if rounded == rounded.to_integral_value() else f"{rounded:,}"
+        # 2026-09-15 사용자 지시 — "소수점 이하 3자리에서 반올림해 2자리 표시하되
+        # 마지막이 0이면 생략"을 전체 적용. Decimal("9.80")을 그대로 찍으면 "약 9.80억"
+        # 처럼 끝자리 0이 남아 `_number`/`_quantity`(2026-09-13 트림 규칙)와 어긋났다
+        # (표·본문 모두 이 함수를 거친다). `_trim_trailing_zero`가 "2.00"→"2"도 처리.
+        display = _trim_trailing_zero(f"{rounded:,}")
         return f"약 {display}{suffix}", label
     return f"{amount.normalize():,f}", label
 
