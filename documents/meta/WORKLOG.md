@@ -2,7 +2,23 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-15 (최신, 심야 4) — 축약 물량·금액 끝자리 0 생략 전면 적용 + v19 재생성(워크트리 report-summary)
+## 2026-09-15 (최신, 심야 5) — 대상 1~6 전부 origin/main 푸시 + report_gen 재배포(`komir-report-gen:260915-mapmineral`)
+
+사용자 지시("api 수정된 내역을 커밋하고 푸쉬 및 api 재배포"). 워크트리 브랜치
+worktree-report-summary(10커밋, main 대비 fast-forward)를 `origin/worktree-report-summary`와
+`origin/main`(02d7ab647→ec41f0960)에 푸시. ⚠로컬 main 체크아웃(`komir/` 본 저장소)은 이
+세션(워크트리 격리)에서 갱신 못 함 — 본 저장소에서 `git pull --ff-only` 필요.
+재배포: 워크트리 `inhouse/`를 build context로 `docker build -f report_gen/Containerfile -t
+komir-report-gen:260915-mapmineral .` → 기존 `komir-report-gen-test`(260913-ruledefault) 중지·
+제거 → 같은 옵션(`-p 18003:8003 --env-file inhouse/.env -e LLM_BASE_URL=http://host.docker.
+internal:52302/v1 --add-host host.docker.internal:host-gateway`)으로 기동 → 컨테이너 안에서
+`python -m app.analysis.seed_prompts`(13행 upsert, 백업 스냅샷) → `POST /admin/prompts/reload`
+(13건). 라이브 확인(실 HTTP 라우트, 정적 덤프 2021~2025 행): 매장량·생산량 둘 다 대상 5·6
+문장 전부 서빙, "약 9.8억톤"·"약 1.8억톤" 트림 반영, map_korea "약 109.42억 달러" 정상.
+주의: HTTP 모델(`MineralMapSummaryRequest`)엔 start_year/end_year가 없어(2026-08-30 제거)
+호출자가 조회 연도 행만 보내야 한다 — 첫 호출이 이 필드 때문에 NO_DATA("Extra inputs")였다.
+
+## 2026-09-15 (심야 4) — 축약 물량·금액 끝자리 0 생략 전면 적용 + v19 재생성(워크트리 report-summary)
 
 사용자 지시("표 값 만들 때 소수점 이하 3자리에서 반올림해 2자리 표시하되 마지막이
 0이면 생략을 전체적으로 적용"). 원인: 표·본문이 공용으로 쓰는
