@@ -379,6 +379,13 @@ if page_id in KOMIS_RAW_PAGES:
             "기간 종료(YYYY)", map_year_options, index=len(map_year_options) - 1, key=f"komis_end_{page_id}",
         )
         period_fetch_opts = {"start_year": start_year_opt, "end_year": end_year_opt}
+        # 2026-09-15 사용자 지시("후속으로 연결하고 기본값을 매겨서 처리") — 같은 날
+        # report_gen HTTP 모델에 start_year/end_year가 복원돼(2026-08-30 제거분 되돌림)
+        # 위 콤보박스 값(기본 2021~2025)을 API 요청에도 그대로 싣는다. KOMIS 조회는
+        # 이미 이 연도로 하지만, 붙여넣은 JSON이 더 넓은 기간이어도 API가 같은 범위로
+        # 좁혀 KOMIS 조회 옵션과 보고서 조회기간이 항상 일치한다.
+        payload["start_year"] = int(start_year_opt)
+        payload["end_year"] = int(end_year_opt)
     elif page_id == "map_korea":
         # 2026-08-31 사용자 지시: 대한민국 수급지도(map_korea)에 기간 구분자
         # (년/월)·국가명 직접입력(기본 전체)·생산품 유형·HS코드 구분자 추가 —

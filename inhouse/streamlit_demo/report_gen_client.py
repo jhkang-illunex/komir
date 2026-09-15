@@ -346,6 +346,9 @@ PAGE_SPECS: dict[str, PageSpec] = {
         # 변화율만 0%로 나온다(지어낸 델타 없음, 정직한 한계).
         # 2026-08-30 report-summary-agent 제보(커밋 0d0568a50) — start_year/
         # end_year가 요청 모델에서 삭제됐다(§indicator_composite 주석 참고).
+        # 2026-09-15 복원 — report_gen HTTP 모델이 두 필드를 다시 받는다(선택).
+        # views/report_demo.py의 map_mineral 연도 콤보박스(기본 2021~2025)가
+        # payload["start_year"/"end_year"]로 직접 싣는다(extra_fields 아님).
         "광물지도(매장량/생산량)", "핵심광물지도", "maps/mineral", True, ("", ""), "",
         ("measure", "unit"),
         '[{"year": 2024, "country_code": "AU", "country_name": "호주", "value": 100000.0}, '

@@ -2,7 +2,17 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-15 (최신, 심야 6) — 광물지도 HTTP API에 조회연도(start_year/end_year) 복원 + 재배포(`komir-report-gen:260915-mapmineral-years`)
+## 2026-09-15 (최신, 심야 7) — streamlit_demo 광물지도 연도 콤보박스를 report_gen API 요청에 연결(기본 2021~2025)
+
+사용자 지시("후속으로 연결하고 기본값을 매겨서 처리"). `views/report_demo.py` map_mineral
+분기에서 기존 연도 콤보박스(기본 시작 2021·종료 2025, KOMIS 조회 옵션으로만 쓰던 값)를
+`payload["start_year"/"end_year"]`(int)로도 실어 API가 같은 범위로 좁히게 함 —
+붙여넣은 JSON이 더 넓어도 보고서 조회기간이 화면 선택과 일치. `report_gen_client.py`
+주석 갱신(필드 복원 경위). py_compile 확인. ⚠가동 중인 streamlit(8501)은 본 저장소
+`komir/inhouse/streamlit_demo`에서 09-13 18:24 기동된 프로세스라 워크트리 변경이 아직
+반영 안 됨 — 본 저장소 `git pull --ff-only` 후 재기동 필요(mtime 대조 원칙).
+
+## 2026-09-15 (심야 6) — 광물지도 HTTP API에 조회연도(start_year/end_year) 복원 + 재배포(`komir-report-gen:260915-mapmineral-years`)
 
 사용자 지시("광물지도 http api에 조회년도 값을 추가해서 배포"). 직전 재배포 라이브
 확인에서 연도 필드 포함 호출이 "Extra inputs are not permitted"→NO_DATA였던 것(2026-08-30에
