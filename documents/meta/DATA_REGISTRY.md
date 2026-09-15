@@ -378,10 +378,16 @@
   주간 보고서 양식 2종(전체·광종별, 원본은 `nas_document/temp/기획문서/order/
   통합보고서/` 미추적)의 20개 섹션별 필요 데이터·현재 대응·주간 업무·결정
   사항. 상세는 WORKLOG 2026-09-15(최신).
+- **rag_chat 구조화 블록 공통 명세 + 추천 차트(2026-09-16)** ★현행 정본:
+  `documents/산출물/2026-W38_0914-0920/rag_chat_구조화블록_공통명세_차트추천_260916.md`
+  — `/pubchat`·`/prichat` 공통 table/chart SSE 계약, `chart_hint`(추천 차트
+  line/bar/pie + 규칙), 실데이터 데모 블록 4종, 취소선 정책, `image` 이벤트
+  제거. 상세는 WORKLOG 2026-09-16(최신).
 - **rag_chat /prichat 구조화 블록 명세(2026-09-13)**: `documents/산출물/
   2026-W37_0907-0913/rag_chat_prichat_구조화블록_명세_260913.md` — 프론트
   팀용 table/chart SSE 이벤트 계약(schema_version 1, private 전용, pubchat
-  미적용). 상세는 WORKLOG 2026-09-13(최신).
+  미적용). **2026-09-16 위 공통 명세로 대체됨(역사 기록)**. 상세는 WORKLOG
+  2026-09-13.
 - **report_gen 검수 → v13.pptx + 템플릿 문서 4종 재생성(2026-09-13)**:
   `documents/산출물/2026-W37_0907-0913/report_gen_v13_슬라이드_260913_evidence/`
   (README·`refetch_v13_sources.py`·`build_v13_full.py`·`raw/` 라이브 원본

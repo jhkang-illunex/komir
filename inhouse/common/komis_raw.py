@@ -212,7 +212,11 @@ _PRICE_SPEC = _DatasetSpec(
     period_column="CRTR_YMD",
     period_precision="day",
     filter_columns={"price_criterion_serial": "MNRL_PRC_CRTR_SN"},
-    fixed_conditions=("STATUS = 'Y'",),
+    # 2026-09-16 실측: STATUS='Y'인데 LAST_DEL_DT(최종삭제일시)가 채워진 소프트삭제
+    # 행 11건이 있고 전부 기준일자 20270703(미래)·최저/최고가 NULL이다 — 최신순
+    # 조회에서 맨 앞에 와 "니켈 최신 가격 2027-07-03 15,250"처럼 답변·차트를
+    # 오염시켰다. 삭제된 행은 KOMIS 원천 어디서도 살아있는 데이터가 아니므로 뺀다.
+    fixed_conditions=("STATUS = 'Y'", "LAST_DEL_DT IS NULL"),
 )
 
 _PAGE_DATASETS: dict[str, tuple[_DatasetSpec, ...]] = {

@@ -1,5 +1,10 @@
 # rag_chat `/prichat` 구조화 블록(table·chart) 이벤트 명세 — 프론트 팀용
 
+> **2026-09-16 대체됨**: 같은 블록이 `/pubchat`에도 적용되고 표 블록에 추천 차트
+> (`chart_hint`)·차트 스펙에 `alternatives`/`x_format`/`group`이 추가됐다. 현행
+> 정본은 `documents/산출물/2026-W38_0914-0920/rag_chat_구조화블록_공통명세_차트추천_260916.md`.
+> 이 문서는 2026-09-13 시점 기록으로만 보존한다.
+
 작성 2026-09-13. **적용 범위: `POST /prichat`(private 프로필)만.** `/pubchat`은
 기존 계약(마크다운 표 + PNG `image` 이벤트) 그대로다. 프론트가 이 방식으로
 그려 보고 쓰기 좋으면 `/pubchat`에도 같은 형태로 넓힌다.

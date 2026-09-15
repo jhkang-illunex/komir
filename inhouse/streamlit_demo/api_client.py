@@ -44,7 +44,8 @@ def client_from_env() -> "RagChatClient":
 
 @dataclass(frozen=True)
 class ChatEvent:
-    """SSE 이벤트 1건. event 는 session|status|delta|table|image|done.
+    """SSE 이벤트 1건. event 는 session|status|delta|table|chart|done(2026-09-16
+    `image` 제거 — 차트는 `chart` 스펙 블록으로 온다).
 
     session·delta 는 서버가 `event:` 필드 없이(무명) 보내므로 data 의 키로 추론한다."""
 

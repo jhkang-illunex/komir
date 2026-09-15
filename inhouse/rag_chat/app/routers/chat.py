@@ -50,10 +50,22 @@ main-agent가 streamlit-agent와 이 정수 계약으로 조율 완료):
                          페이지 경로: 1·4만(중간 단계를 안 쪼갬, rag.ragkit.chatbot의
                          _GRAPH_STAGE_TO_STATUS·STATUS_STAGES가 정본).
   event: (무명)  data: {"delta": "..."}                                    — 텍스트 조각
-                         (출처 footer·원인해석 주의문구도 델타로 추가 전송될 수 있음)
-  event: table   data: {"columns": [...], "rows": [[...]], "source_index": n}
-  event: image   data: {"mime": "image/png", "data_base64": "...",
-                         "caption": "...", "source_index": n}
+                         (출처 footer·원인해석 주의문구도 델타로 추가 전송될 수 있음.
+                         2026-09-16: streaming.StrikethroughFilter를 거쳐 취소선
+                         스팬은 제거, 단일 `~`는 `\~`로 이스케이프된 마크다운)
+  event: table   data: {"schema_version": 1, "block_id": "t1-1", "columns": [...],
+                         "rows": [[...]], "columns_meta": [...], "rows_typed": [...],
+                         "markdown": "...", "chart_hint": {"recommended": "line"|
+                         "bar"|"pie"|null, "alternatives": [...], "reason": "..."},
+                         "meta": {...}, "source_index": n, "source": "..."}
+                         — 2026-09-13 /prichat 도입, 2026-09-16 /pubchat 공통 적용
+  event: chart   data: {"schema_version": 1, "block_id": "c1-1", "data_ref": "t1-1",
+                         "spec": {"kind", "alternatives", "x", "x_type", "x_format",
+                         "series", "group", "sort_x_ascending", "title"},
+                         "source_index": n, "source": "..."}
+                         — 추천 차트가 있을 때만. 구 `image`(PNG) 이벤트는 2026-09-16
+                         제거(명세: documents/산출물/2026-W38_0914-0920/
+                         rag_chat_구조화블록_공통명세_차트추천_260916.md)
   event: done    data: {"done": true, "abstained": bool, "bogus_citations": [...],
                          "abstain_reason": "off_topic|unsupported_commodity|
                          no_data_for_period|ambiguous|unknown|generation_error"|null,
@@ -114,7 +126,7 @@ from common.llm_client import get_chat_client  # noqa: E402
 from .. import session_store  # noqa: E402
 from ..intent import classify_intent  # noqa: E402
 from ..page_recommend.service import get_service as get_page_recommend_service  # noqa: E402
-from ..streaming import sse_event  # noqa: E402
+from ..streaming import StrikethroughFilter, sse_event, strip_strikethrough  # noqa: E402
 
 router = APIRouter()
 _logger = logging.getLogger(__name__)
@@ -244,8 +256,24 @@ def _run_document_qa(request: ChatRequest, session_id: str, profile: Literal["pu
         chat=get_chat_client(),
         profile=profile,
     )
+    # 2026-09-16(사용자 지시) — SSE로 나가기 직전 취소선 제거(streaming.py 주석
+    # 참고). delta는 청크 경계를 넘어 판정해야 해서 상태 유지 필터, 비-delta
+    # 이벤트 직전엔 보류분을 flush한다. 표 블록의 `markdown`(본문 안 표 원문)도
+    # 본문과 같은 규칙을 거쳐야 프론트의 문자열 치환이 어긋나지 않는다.
+    strike = StrikethroughFilter()
     for event in _drain_sync(events):
-        yield sse_event(event.data, event=event.sse_name)
+        if event.type == "delta":
+            text = strike.feed(event.data["delta"])
+            if text:
+                yield sse_event({"delta": text})
+            continue
+        pending = strike.flush()
+        if pending:
+            yield sse_event({"delta": pending})
+        data = event.data
+        if event.type == "table" and data.get("markdown"):
+            data = {**data, "markdown": strip_strikethrough(data["markdown"])}
+        yield sse_event(data, event=event.sse_name)
 
 
 def _persistable_artifact(artifact: dict | None) -> dict | None:
@@ -338,7 +366,7 @@ def _run_page_recommend(request: ChatRequest, session_id: str):
     )
 
     # 그래프 답변은 LLM 토큰 스트림이 아니라 렌더 완료된 텍스트라 한 번에 내보낸다.
-    yield sse_event({"delta": response.answer})
+    yield sse_event({"delta": strip_strikethrough(response.answer)})
     yield sse_event(
         {
             "done": True,

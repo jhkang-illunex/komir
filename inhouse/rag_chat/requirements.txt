@@ -13,10 +13,9 @@ python-docx  # rag/ragkit/ingest.py가 모듈최상단에서 import(2026-08-19 �
              # 소스트리 실행에선 다른 곳에서 먼저 깔려 있어 안 드러났던 누락)
 duckdb>=1.1    # mineral_supply_risk/db/dbio.py(common/db.py가 재노출)
 pandas>=2.0    # 〃
-matplotlib>=3.7  # rag/ragkit/chatbot_events.py — 인용된 표에서 즉석 차트(PNG) 렌더링,
-                 # 2026-08-13 rag 패키지 chatbot 엔트리포인트 신설(다중매체 이벤트)
-koreanize-matplotlib>=0.1.1  # 〃 차트 라벨 한글 글리프(NanumGothic 정적 폰트 번들,
-                 # MIT, 순수파이썬 — airgap 안전). import만으로 font.family 설정됨
+# (2026-09-16 제거) matplotlib·koreanize-matplotlib — chatbot_events.py의 PNG 차트
+# 렌더(`image` 이벤트)가 없어지고 public/private 모두 구조화 블록(table+chart 스펙)만
+# 내보내므로 더 이상 필요 없다. 차트는 프론트가 그린다.
 
 # common·ingest(구 services/ingestion, 2026-08-27 이동) 공용(2026-08-11, 병합계획 문서 참고:
 # 병합계획_komis-report-generator_260811.md)

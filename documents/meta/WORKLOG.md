@@ -2,7 +2,52 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-15 (최신) — mnrl_report 엔진 분리: RuleEngine·GenEngine + 버전(YYMMDD-sha8) 등록부
+## 2026-09-16 (최신) — rag_chat 구조화 블록 public 공통화 + 추천 차트(chart_hint) + SSE 취소선 제거
+
+사용자 지시: "/prichat에 적용한 JSON을 public API에도 반영하고, JSON에 추천 차트
+형태를 같이 기재, md로 정리(데모 데이터·차트 종류). SSE로 넘기기 전에 취소선이 있는
+데이터는 넘기지 말 것" + 후속 제보 "/prichat 코발트 광물종합지표 최근 12개월 결과에
+취소선 데이터가 나타남".
+
+- **취소선 원인(실측)**: 저장된 그 답변의 출처 푸터에 `2026-08-11~2026-09-05`·
+  `Argus …_2023~2026_일일 (2023-09-21~2024-12/…)`처럼 단일 `~`가 여러 개 → GFM
+  렌더러(remark-gfm singleTilde 기본값)가 `~…~`를 취소선으로 그림. 마크다운
+  `~~`/`<del>`은 답변 597건·청크 13.9만 건 어디에도 실질적으로 없었다(OCR 깨진 3건뿐).
+  → `rag_chat/app/streaming.py::StrikethroughFilter`(delta 청크 경계를 넘겨 판정) +
+  `strip_strikethrough`: 명시적 `~~…~~`·`<s>/<del>/<strike>` 스팬은 내용째 제거, 단일
+  `~`는 `\~` 이스케이프. `routers/chat.py`가 document(delta·table.markdown)·page 두
+  경로에 적용. JSON 데이터 필드(citations.as_of·rows)는 손대지 않음.
+- **블록 공통화**: `chatbot.py::_multimodal_events` profile 분기 제거 — /pubchat·
+  /prichat 모두 `table` 블록 + `chart` 스펙, `image`(PNG) 이벤트 제거. `chatbot_events.py`
+  에서 matplotlib PNG 렌더(`render_chart_png`·`png_to_data_uri_payload`·한글 폰트
+  탐색) 삭제, `rag_chat/requirements.txt`에서 matplotlib·koreanize-matplotlib 제거.
+- **추천 차트**: `chatbot_events.recommend_chart()` 신설(단일 판정 소스) — line(시점
+  4개 이상 시계열)·bar(범주 비교/짧은 시계열)·pie(단일 계열 구성비, 대안으로만).
+  표 블록에 `chart_hint{recommended, alternatives, reason}`, 차트 스펙에
+  `alternatives`·`x_format`(YYYYMMDD/YYYYMM/YYYY)·`group`(연도×국가·일자×지수종류처럼
+  X가 중복될 때 구분 열) 추가, `columns_meta[].display`(괄호 안 한글 설명) 추가.
+  숫자열 판정이 DB NULL("None" 셀)을 건너뛰도록 수정(예전엔 셀 하나만 None이어도
+  열 전체가 문자열 취급돼 차트에서 빠짐), `rows_typed`의 NULL은 타입 무관 `null`,
+  값이 완전히 같은 중복 열(`*_quty`↔`*_quty_ton`)은 계열에서 제외.
+- **데이터 정정(부수 발견)**: `common/komis_raw.py` KO_MNRL_PRC에 `LAST_DEL_DT IS
+  NULL` 추가 — STATUS='Y'인데 소프트삭제된 11행(전부 기준일자 20270703·최저/최고가
+  NULL)이 최신순 조회 맨 앞에 와 "니켈 최신가 2027-07-03 15,250"으로 답변·차트를
+  오염시키고 있었다. report_gen도 같은 조회를 쓰므로 함께 정정(계약 테스트 20건 통과).
+- streamlit 데모: `image` 렌더 제거, `_render_chart`에 `group` 피벗, 표 캡션에 추천
+  차트 표시(프론트 참고 구현).
+- 테스트: `rag_chat/tests/test_private_blocks.py` → `test_structured_blocks.py`(블록 5건 +
+  취소선 필터 3건, 8/8 통과).
+- 재배포 `komir-rag-chat:260916-blocks`(기존 run 설정 동일) 후 라이브 3문항: /prichat
+  "코발트 광물종합지표 최근 12개월" → 푸터 `\~` 이스케이프 1건·미이스케이프 0, table
+  60행 + chart(line, group=indx_se_cd), image 0; /pubchat "니켈 최근 일주일 LME 가격" →
+  table 5행(20270703 삭제행 없음) + chart(line, series 4), image 0; /prichat "희토류
+  국가별 생산량" → chart(bar, 대안 pie, x=ntn_eng_cd, series=prdctn_quty).
+- 문서: `documents/산출물/2026-W38_0914-0920/rag_chat_구조화블록_공통명세_차트추천_260916.md`
+  (프론트 팀용 — 변경점 표·이벤트 계약·차트 종류/추천 규칙·page_id별 실측 모양·실데이터
+  데모 블록 4종·취소선 정책). 2026-09-13 명세는 상단에 "대체됨" 표기.
+- 미반영: 호스트 streamlit(main 체크아웃 기준 가동)은 이 워크트리 병합 후 재기동 필요.
+
+## 2026-09-15 — mnrl_report 엔진 분리: RuleEngine·GenEngine + 버전(YYMMDD-sha8) 등록부
 
 사용자 지적: "만든 건 rule 엔진이 아니라 읽고 저장하는 pipeline" → 파이프라인이 쓰는
 규칙/생성형 엔진을 분리하고 엔진마다 버전을 날짜+sha로 기록, LLM 생성 엔진도 구현.

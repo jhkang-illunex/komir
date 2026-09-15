@@ -1,4 +1,6 @@
-"""챗봇 화면 — rag_chat SSE 스트림(status/delta/table/image/done)을 실시간으로 그린다.
+"""챗봇 화면 — rag_chat SSE 스트림(status/delta/table/chart/done)을 실시간으로 그린다.
+(2026-09-16: `image`(PNG) 이벤트는 서버에서 제거돼 public/private 모두 table 블록 +
+chart 스펙으로 온다 — `_render_chart`가 프론트 참고 구현.)
 
 원본(komis-report-generator-main/streamlit_demo/chatbot.py)은 페이지추천 응답
 (`SearchResponse`) 하나를 받아 그렸다. komir 챗봇은 문서 Q&A(스트리밍 답변+인용+표/
@@ -16,7 +18,6 @@ chatbot.py`::`STATUS_STAGES`가 정본) — `{"stage": 1|2|3|4, "label": "질문
 """
 from __future__ import annotations
 
-import base64
 import logging
 from typing import Any
 
@@ -100,7 +101,7 @@ def _submit_question(client: RagChatClient, question: str, *, profile: Profile, 
         st.markdown(question)
 
     record: dict[str, Any] = {
-        "role": "assistant", "content": "", "tables": [], "images": [], "charts": [],
+        "role": "assistant", "content": "", "tables": [], "charts": [],
         "citations": [], "bogus_citations": [], "recommendations": [], "warnings": [],
         "stages": [], "abstained": False, "profile": profile,
     }
@@ -137,13 +138,10 @@ def _apply_event(event: ChatEvent, record: dict[str, Any], *, status_box, text_b
         record["tables"].append(data)
         with media_area:
             _render_table(data)
-    elif event.event == "image":
-        record["images"].append(data)
-        with media_area:
-            _render_image(data)
     elif event.event == "chart":
-        # 2026-09-13 — /prichat 전용 구조화 차트 블록(PNG 대신 스펙). 데모가
-        # "프론트"로서 스펙을 직접 그려 명세가 실제로 그려지는지 확인한다.
+        # 2026-09-13 /prichat 도입 → 2026-09-16 public 공통 — 구조화 차트 블록(PNG
+        # 대신 스펙). 데모가 "프론트"로서 스펙을 직접 그려 명세가 실제로 그려지는지
+        # 확인한다.
         record["charts"].append(data)
         with media_area:
             _render_chart(data, record.get("tables", []))
@@ -166,8 +164,6 @@ def _render_assistant_parts(message: dict[str, Any]) -> None:
     st.markdown(message.get("content") or "_(응답 없음)_")
     for table in message.get("tables", []):
         _render_table(table)
-    for image in message.get("images", []):
-        _render_image(image)
     for chart in message.get("charts", []):
         _render_chart(chart, message.get("tables", []))
     _render_details(message)
@@ -176,13 +172,19 @@ def _render_assistant_parts(message: dict[str, Any]) -> None:
 def _render_table(table: dict[str, Any]) -> None:
     columns, rows = table.get("columns", []), table.get("rows", [])
     caption = f"표 · 근거 [{table.get('source_index')}]" if table.get("source_index") else "표"
+    hint = table.get("chart_hint") or {}
+    if hint.get("recommended"):
+        alternatives = ", ".join(hint.get("alternatives") or [])
+        caption += f" · 추천 차트 {hint['recommended']}" + (f" (대안 {alternatives})" if alternatives else "")
     st.caption(caption)
     st.dataframe(pd.DataFrame(rows, columns=columns), hide_index=True, use_container_width=True)
 
 
 def _render_chart(chart: dict[str, Any], tables: list[dict[str, Any]]) -> None:
-    """private `chart` 블록 렌더링 — data_ref가 가리키는 table 블록의
-    rows_typed/columns_meta로 DataFrame을 만들고 spec(kind·x·series)대로 그린다."""
+    """`chart` 블록 렌더링 — data_ref가 가리키는 table 블록의 rows_typed/
+    columns_meta로 DataFrame을 만들고 spec(kind·x·series·group)대로 그린다.
+    `group`이 있으면(연도×국가 등) 계열 하나를 구분값별 열로 펼친다. pie는
+    streamlit 기본 차트에 없어 bar로 대신 그리고 캡션에만 표시한다."""
 
     table = next((t for t in tables if t.get("block_id") == chart.get("data_ref")), None)
     spec = chart.get("spec") or {}
@@ -191,13 +193,16 @@ def _render_chart(chart: dict[str, Any], tables: list[dict[str, Any]]) -> None:
         return
     keys = [c["key"] for c in table.get("columns_meta", [])]
     frame = pd.DataFrame(table.get("rows_typed", []), columns=keys)
-    x = spec.get("x")
-    if x in frame.columns:
-        if spec.get("sort_x_ascending"):
-            frame = frame.sort_values(x)
-        frame = frame.set_index(x)
+    x, group = spec.get("x"), spec.get("group")
     series = [k for k in spec["series"] if k in frame.columns]
-    caption = f"차트(블록) · {spec.get('title', '')}"
+    if group in frame.columns and x in frame.columns and series:
+        frame = frame.pivot_table(index=x, columns=group, values=series[0], aggfunc="first")
+        series = list(frame.columns)
+    elif x in frame.columns:
+        frame = frame.set_index(x)
+    if spec.get("sort_x_ascending"):
+        frame = frame.sort_index()
+    caption = f"차트(블록·{spec.get('kind')}) · {spec.get('title', '')}"
     if chart.get("source_index"):
         caption += f" · 근거 [{chart['source_index']}]"
     st.caption(caption)
@@ -205,18 +210,6 @@ def _render_chart(chart: dict[str, Any], tables: list[dict[str, Any]]) -> None:
         st.line_chart(frame[series])
     else:
         st.bar_chart(frame[series])
-
-
-def _render_image(image: dict[str, Any]) -> None:
-    try:
-        png = base64.b64decode(image.get("data_base64", ""))
-    except ValueError:
-        st.warning("차트 이미지를 해석하지 못했습니다.")
-        return
-    caption = image.get("caption") or "차트"
-    if image.get("source_index"):
-        caption += f" · 근거 [{image['source_index']}]"
-    st.image(png, caption=caption)
 
 
 def _render_details(record: dict[str, Any]) -> None:
