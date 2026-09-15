@@ -1575,7 +1575,10 @@ def calculate_global_trade_summary(
                 # "전년 대비"·"전월 대비"와 같은 표현), _validate_llm_summary
                 # 의 country_yearly_trend 역방향 숫자보존 검사(신설)로 LLM
                 # 정제가 연도를 조용히 빠뜨리지 못하게 했다.
-                f"KOMIS 차트 기준 {previous_year}년 대비 {latest_year}년 교역액 변화량(절대값)이 "
+                # 2026-09-15 발주처 피드백(대상 4, 수출 옵션) — "KOMIS 차트 기준"
+                # 접두어는 불필요하다는 지적으로 삭제(데이터 출처는 응답 source·
+                # 캡션이 이미 밝힌다).
+                f"{previous_year}년 대비 {latest_year}년 교역액 변화량(절대값)이 "
                 f"컸던 상위 {len(top_trade_movers)}개국은 " + ", ".join(mover_parts) + "했습니다.",
             )
         )
