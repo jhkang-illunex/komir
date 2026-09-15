@@ -478,7 +478,11 @@ def _source_footer(cited_indices: set[int], evidence: list) -> str:
         lines.append(line)
     if not lines:
         return ""
-    return "\n\n출처:\n" + "\n".join(lines)
+    # 2026-09-16(프론트 캡처 `documents/기획문서/image (1).png`) — 항목을 그냥 줄바꿈으로
+    # 이으면 마크다운 소프트 줄바꿈이라 [1]~[6]이 한 문단으로 뭉쳐 렌더됐다. 목록
+    # 항목으로 내보내 출처마다 줄이 나뉘게 한다(기간 표기 `~`의 취소선 문제는
+    # rag_chat/app/streaming.py::StrikethroughFilter가 SSE 직전에 이스케이프).
+    return "\n\n출처:\n" + "\n".join(f"- {line}" for line in lines)
 
 
 def _caution_notice(cited_indices: set[int], evidence: list) -> str:
