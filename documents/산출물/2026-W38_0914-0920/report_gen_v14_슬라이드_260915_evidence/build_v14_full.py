@@ -653,7 +653,8 @@ def clear_inherited_red(prs):
     """v10 템플릿부터 표 셀 일부(슬라이드 14~21 "표 6")에 적색 글꼴이 박혀 있어
     v13까지 그대로 물려받았다(v13 표 적색 run 35개, 텍스트는 v13과 동일).
     v14는 "v13과 차이나는 부분만 적색"이 목적이라, 대조 전에 물려받은 적색
-    (srgbClr FF0000)을 전부 걷어내 기본 글꼴색으로 되돌린다. 반환: 걷어낸 run 수."""
+    (srgbClr FF0000)을 전부 흑색(000000)으로 통일한다(사용자 지시 2026-09-15
+    "기존에 있던 적색은 다 흑색으로 통일"). 반환: 바꾼 run 수."""
     cleared = 0
     for slide in prs.slides:
         for shape in slide.shapes:
@@ -671,7 +672,7 @@ def clear_inherited_red(prs):
                         for fill in rpr.findall(_A + "solidFill"):
                             clr = fill.find(_A + "srgbClr")
                             if clr is not None and (clr.get("val") or "").upper() == "FF0000":
-                                rpr.remove(fill)
+                                clr.set("val", "000000")
                                 cleared += 1
     return cleared
 
@@ -836,10 +837,10 @@ rebuild_map_mineral_slide(
 )
 
 assert len(p.slides) == 21, len(p.slides)
-cleared = clear_inherited_red(p)  # 템플릿 잔존 적색 제거(진짜 변경분만 남기기 위해)
+cleared = clear_inherited_red(p)  # 템플릿 잔존 적색→흑색 통일(진짜 변경분만 적색으로 남기기 위해)
 changed = mark_diff_red(p, Presentation(path_v13))
 p.save(path)
-print("v14.pptx 저장 완료:", path, "| 슬라이드", len(p.slides), "| 적색 표시", len(changed), "곳 | 템플릿 잔존 적색 제거", cleared, "run")
+print("v14.pptx 저장 완료:", path, "| 슬라이드", len(p.slides), "| 적색 표시", len(changed), "곳 | 템플릿 잔존 적색→흑색", cleared, "run")
 for item in changed:
     print("  ", item)
 
