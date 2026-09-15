@@ -44,6 +44,7 @@ from .additional_summary import (  # noqa: E402
     _shift_month,
     _shift_year,
     _top_weighted_minerals_text,
+    _topic,
     calculate_composite_summary,
     calculate_mineral_map_summary,
     calculate_price_forecast_summary,
@@ -141,6 +142,7 @@ from .input_data import (
     _parse_komis_map_mineral_snapshot_response,
     _parse_komis_map_mineral_share_response,
     _parse_komis_map_mineral_share_totals,
+    _parse_komis_map_mineral_share_others,
     _parse_komis_composite_response,
     _komis_ymd_to_month,
     _parse_komis_indicator_list_response,
@@ -332,12 +334,12 @@ def _apply_polite_endings(
     calculated.claims = new_claims
 
 
-def _mineral_map_extreme_change_countries(series: MineralMapSeries) -> tuple[dict | None, dict | None, int, int] | None:
+def _mineral_map_extreme_change_countries(series: MineralMapSeries) -> tuple[list[dict], list[dict], int, int] | None:
     """조회기간 첫 해→마지막 해 사이 매장량/생산량이 가장 크게 늘거나
-    준 국가를 (증가국 상세, 감소국 상세, 시작연도, 최근연도)로 찾는다 —
-    둘 다 없으면(전 국가 무변화) 전체가 `None`, 한쪽 방향이 아예 없으면
-    (예: 전부 증가만 하고 감소한 국가가 하나도 없음) 그쪽만 `None`으로
-    채워 반환한다. 각 상세는 `{name, start_value, current_value, change}`.
+    준 국가를 (증가국 상세 리스트, 감소국 상세 리스트, 시작연도, 최근연도)로
+    찾는다 — 둘 다 없으면(전 국가 무변화) 전체가 `None`, 한쪽 방향이 아예
+    없으면(예: 전부 증가만 하고 감소한 국가가 하나도 없음) 그쪽은 빈
+    리스트다. 각 상세는 `{name, start_value, current_value, change, sharp}`.
 
     2026-09-09 발주처 업무지시서 §3.3 ③④ 대응(사용자 승인) —
     `calculate_mineral_map_summary`(프로즌)는 상위 3개국 개별 변화만
@@ -358,36 +360,127 @@ def _mineral_map_extreme_change_countries(series: MineralMapSeries) -> tuple[dic
     2026-09-11 사용자 지시("증가 감소 실제값, 비율도 같이 기재") —
     국가명만 있던 반환값에 시작값·현재값·변화량을 추가했다(비율은
     호출부가 `_pct()`로 그때그때 계산 — 시작값 0인 신규 진입 국가는
-    비율이 정의되지 않는다)."""
+    비율이 정의되지 않는다).
+
+    2026-09-15 발주처 피드백(대상 5 광물지도-매장량, "크게 증가/감소한 국가
+    최소 2개 이상 표출 + 증가/감소 폭이 급격해진 기간 표출") — 방향별
+    1개국이던 반환값을 방향별 **상위 2개국 리스트**로 바꾸고, 각 국가
+    상세에 `sharp`(변화 폭이 가장 컸던 연속 관측연도 구간,
+    `_mineral_map_sharpest_interval`)를 붙였다. 반환 형태는
+    (증가국 상세 리스트, 감소국 상세 리스트, 시작연도, 최근연도)이며 한쪽
+    방향이 없으면 빈 리스트다."""
 
     filtered = [o for o in series.observations if not o.is_total and not o.is_other]
     years = sorted({o.year for o in filtered})
     if len(years) < 2:
         return None
     start_year, current_year = years[0], years[-1]
-    start_values = {o.country_code: o.value for o in filtered if o.year == start_year}
-    current_values = {o.country_code: o.value for o in filtered if o.year == current_year}
-    names = {o.country_code: o.country_name for o in filtered}
-    codes = set(start_values) | set(current_values)
+    values_by_code: dict[str, dict[int, float]] = {}
+    names: dict[str, str] = {}
+    for o in filtered:
+        values_by_code.setdefault(o.country_code, {})[o.year] = o.value
+        names[o.country_code] = o.country_name
+    codes = {code for code, values in values_by_code.items() if start_year in values or current_year in values}
     if len(codes) < 2:
         return None
-    changes = {code: current_values.get(code, 0.0) - start_values.get(code, 0.0) for code in codes}
-    max_increase_code = max(codes, key=lambda code: changes[code])
-    max_decrease_code = min(codes, key=lambda code: changes[code])
+    changes = {
+        code: values_by_code[code].get(current_year, 0.0) - values_by_code[code].get(start_year, 0.0)
+        for code in codes
+    }
+    totals = _mineral_map_year_totals(series)
 
     def _detail(code: str) -> dict:
+        values = values_by_code[code]
+        direction = 1 if changes[code] > 0 else -1
+        sharp = _mineral_map_sharpest_interval(values, years, start_year, direction)
+        if sharp is not None:
+            total = totals.get(sharp["end_year"], 0.0)
+            sharp["share"] = sharp["to_value"] / total if total > 0 else None
+            # "급격히"는 두 조건을 다 만족할 때만 — ① 한 구간이 조회기간 전체
+            # 변화의 절반을 "넘고"(같은 폭의 두 구간, 예: 동 매장량 칠레
+            # 2022·2025년 각 1,000만톤 감소는 어느 한 시기에 집중된 게 아님)
+            # ② 그 구간 자체가 직전 값 대비 20% 이상(미집계 0에서 시작하면
+            # 무조건) — 동 생산량 칠레 2022년 −5.2%처럼 작은 등락까지 "급격"
+            # 이라 부르지 않기 위한 크기 조건. 아니면 중립 서술.
+            sharp["dominant"] = (
+                sharp["step"] > 0.5 * abs(changes[code])
+                and (sharp["from_value"] <= 0 or sharp["step"] >= 0.2 * sharp["from_value"])
+            )
         return {
             "name": names[code],
-            "start_value": start_values.get(code, 0.0),
-            "current_value": current_values.get(code, 0.0),
+            "start_value": values.get(start_year, 0.0),
+            "current_value": values.get(current_year, 0.0),
             "change": changes[code],
+            "sharp": sharp,
         }
 
-    increase_detail = _detail(max_increase_code) if changes[max_increase_code] > 0 else None
-    decrease_detail = _detail(max_decrease_code) if changes[max_decrease_code] < 0 else None
-    if increase_detail is None and decrease_detail is None:
+    increases = [_detail(code) for code in sorted(codes, key=lambda c: (-changes[c], names[c])) if changes[code] > 0][:2]
+    decreases = [_detail(code) for code in sorted(codes, key=lambda c: (changes[c], names[c])) if changes[code] < 0][:2]
+    if not increases and not decreases:
         return None
-    return increase_detail, decrease_detail, start_year, current_year
+    return increases, decreases, start_year, current_year
+
+
+def _mineral_map_year_totals(series: MineralMapSeries) -> dict[int, float]:
+    """연도별 세계총계 — KOMIS 공식 `_TOTAL_`(`is_total`) 관측치가 있으면
+    그 값, 없으면 그 해 국가별(총계·기타 제외) 합계. `additional_summary.
+    _world_total()`·`_mineral_map_latest_year_change._year_total`과 같은
+    규칙(공식 총계 우선)이라 본문·표와 분모가 일치한다."""
+
+    rows_by_year: dict[int, list[MineralMapObservation]] = {}
+    for o in series.observations:
+        rows_by_year.setdefault(o.year, []).append(o)
+    totals: dict[int, float] = {}
+    for year, rows in rows_by_year.items():
+        official = [o.value for o in rows if o.is_total]
+        totals[year] = official[0] if official else sum(o.value for o in rows if not o.is_total and not o.is_other)
+    return totals
+
+
+def _mineral_map_sharpest_interval(
+    values: dict[int, float], years: list[int], start_year: int, direction: int
+) -> dict | None:
+    """한 국가의 연도별 값에서 `direction`(+1 증가/-1 감소) 방향으로 변화
+    폭이 가장 컸던 연속 관측연도 구간을 찾고, 그 뒤 값이 같은 연도까지
+    구간 끝을 늘린다(발주처 템플릿의 "2022년 3,100만 톤, 2023~2025년
+    8,000만 톤으로 급격히 상향" 표기 — 콩고민주공화국 매장량이 2023년에
+    뛴 뒤 2025년까지 같은 값). 시작연도에 값이 없는 국가는 기존 규칙대로
+    시작연도를 0(미집계)으로 두고, 그 밖의 결측 연도는 구간에서 건너뛴다
+    (결측을 0으로 보면 없는 급감·급증이 생긴다). 그 방향의 구간이 하나도
+    없거나 관측연도가 2개뿐이면 `None`."""
+
+    country_years = [year for year in years if year in values or year == start_year]
+    if len(country_years) < 3:
+        return None
+    steps = []
+    for previous, year in zip(country_years, country_years[1:]):
+        delta = values.get(year, 0.0) - values.get(previous, 0.0)
+        if delta * direction > 0:
+            steps.append((abs(delta), previous, year))
+    if not steps:
+        return None
+    step, from_year, to_year = max(steps)
+    end_year = to_year
+    for later in country_years[country_years.index(to_year) + 1:]:
+        if values.get(later) != values.get(to_year):
+            break
+        end_year = later
+    # 구간 앞쪽도 같은 값이 이어진 연도까지 넓힌다(템플릿 "러시아 또한
+    # 2021~2022년 6,200만 톤에서 2023~2025년 8,000만 톤으로").
+    from_start_year = from_year
+    for earlier in reversed(country_years[: country_years.index(from_year)]):
+        if values.get(earlier, 0.0) != values.get(from_year, 0.0):
+            break
+        from_start_year = earlier
+    return {
+        "from_start_year": from_start_year,
+        "from_year": from_year,
+        "from_value": values.get(from_year, 0.0),
+        "to_year": to_year,
+        "end_year": end_year,
+        "to_value": values.get(to_year, 0.0),
+        "step": step,
+    }
 
 
 def _extreme_change_country_clause(detail: dict, start_year: int, current_year: int, unit: str) -> str:
@@ -407,54 +500,430 @@ def _extreme_change_country_clause(detail: dict, start_year: int, current_year: 
     )
 
 
+def _sharp_interval_clause(detail: dict, unit: str) -> str:
+    """국가 상세의 `sharp`(변화 폭이 가장 컸던 구간) → 앞 문장에 이어붙일
+    " 특히 …"/" 연도별로는 …" 문장. 구간이 없으면(관측연도 2개뿐·해당
+    방향 구간 없음) 빈 문자열.
+
+    2026-09-15 발주처 피드백(대상 5) 예시 "2023~2025년 OOOO만톤(XX%)으로
+    급격히 상향되어"를 따른다 — 괄호의 %는 발주처 템플릿 원문("2023~2025년
+    8,000만 톤(8.16%)")과 같은 **그 구간 끝 연도의 세계 비중**이다(구간
+    증감률이 아님 — 애매사항 기록 참고). "급격히"는 그 구간 한 번의
+    변화가 조회기간 전체 변화의 절반 이상일 때만 쓰고, 아니면 "변화 폭이
+    가장 컸다"로 중립 서술한다."""
+
+    sharp = detail.get("sharp")
+    if sharp is None:
+        return ""
+
+    def _span(first: int, last: int) -> str:
+        return f"{first}년" if first == last else f"{first}~{last}년"
+
+    share = f"(세계 비중 {_number(sharp['share'] * 100)}%)" if sharp.get("share") is not None else ""
+    move = (
+        f"{_span(sharp['from_start_year'], sharp['from_year'])} {_quantity(sharp['from_value'])}{unit}에서 "
+        f"{_span(sharp['to_year'], sharp['end_year'])} {_quantity(sharp['to_value'])}{unit}{share}으로"
+    )
+    increased = detail["change"] > 0
+    if sharp["dominant"]:
+        return f" 특히 {move} 급격히 {'상향' if increased else '하향'}돼 변화가 집중됐습니다."
+    return f" 연도별로는 {move} {'늘어난' if increased else '줄어든'} 구간의 변화 폭이 가장 컸습니다."
+
+
 def _append_mineral_map_extreme_change(calculated: AdditionalCalculatedSummary, series: MineralMapSeries) -> None:
     """`_mineral_map_extreme_change_countries` 결과가 있으면 major_changes
     근거·주요 지표를 덧붙인다(계산기 프로즌 파일은 안 건드리고 호출자가
     결과에 추가하는 방식 — `AdditionalCalculatedSummary`는 frozen
     dataclass가 아니라 이 방식이 가능하다). 증가·감소 한쪽만 있으면 그
-    한쪽만 문장·지표로 낸다."""
+    한쪽만 문장·지표로 낸다.
+
+    2026-09-15 발주처 피드백(대상 5) — 방향별 상위 2개국까지 국가당 근거
+    1개(`extreme_increase_1/2`·`extreme_decrease_1/2`, 최대 4문장)로 낸다.
+    이전엔 증가 1·감소 1을 `extreme_change_countries` 근거 하나에 합쳤는데,
+    국가가 4개로 늘면 `SummarySentence` 300자 상한을 넘기 때문에 국가당
+    쪼갰다(2026-09-13 leading_country_change 분리와 같은 이유). 렌더링은
+    `report_render._MAJOR_CHANGES_SPLIT_SECTIONS`가 이 id들을 "주요 변화"
+    절로 모은다. 주요 지표(최대 증가/감소 국가)는 방향별 1위만 그대로."""
 
     extreme = _mineral_map_extreme_change_countries(series)
     if extreme is None:
         return
-    increase_detail, decrease_detail, start_year, current_year = extreme
+    increases, decreases, start_year, current_year = extreme
     measure_name = "매장량" if series.measure == "reserves" else "생산량"
     unit = series.unit
-    if increase_detail and decrease_detail:
-        fact = (
-            f"조회기간 중 {measure_name}이 가장 크게 증가한 국가는 "
-            + _extreme_change_country_clause(increase_detail, start_year, current_year, unit)
-            + ". 가장 크게 감소한 국가는 "
-            + _extreme_change_country_clause(decrease_detail, start_year, current_year, unit)
-            + "."
-        )
-    elif increase_detail:
-        fact = (
-            f"조회기간 중 {measure_name}이 가장 크게 증가한 국가는 "
-            + _extreme_change_country_clause(increase_detail, start_year, current_year, unit)
-            + "."
-        )
-    else:
-        fact = (
-            f"조회기간 중 {measure_name}이 가장 크게 감소한 국가는 "
-            + _extreme_change_country_clause(decrease_detail, start_year, current_year, unit)
-            + "."
-        )
-    calculated.claims.append(
-        EvidenceClaim("extreme_change_countries", "major_changes", fact, required=True)
-    )
+    for direction, details in (("increase", increases), ("decrease", decreases)):
+        direction_word = "증가" if direction == "increase" else "감소"
+        for index, detail in enumerate(details, start=1):
+            clause = _extreme_change_country_clause(detail, start_year, current_year, unit)
+            if index == 1:
+                lead = (
+                    f"조회기간 중 {measure_name}이 가장 크게 {direction_word}한 국가는 "
+                    if direction == "increase" or not increases
+                    else f"가장 크게 {direction_word}한 국가는 "
+                )
+                fact = lead + clause + "."
+            else:
+                fact = f"다음으로 {clause.replace(_toward(detail['name']) + ',', _topic(detail['name']), 1)}."
+            fact += _sharp_interval_clause(detail, unit)
+            calculated.claims.append(
+                EvidenceClaim(f"extreme_{direction}_{index}", "major_changes", fact, required=True)
+            )
     # key_metrics·detailed_metrics는 계산기(additional_summary.py)가 만들
     # 때부터 별개 리스트(detailed_metrics = [*key_metrics, 추가 항목])라
     # 두 곳에 각각 추가해야 한다 — 한쪽만 덮어쓰면 다른 항목이 사라진다.
     # 2026-09-11 — 실제값·비율은 이제 서사 문장에 이미 있으므로 표
     # (key_metrics, 8개 상한)엔 국가명만 그대로 유지한다(중복 노출 방지).
     new_metrics = []
-    if increase_detail:
-        new_metrics.append(Metric(id="max_increase_country", label="최대 증가 국가", status="available", value=increase_detail["name"]))
-    if decrease_detail:
-        new_metrics.append(Metric(id="max_decrease_country", label="최대 감소 국가", status="available", value=decrease_detail["name"]))
+    if increases:
+        new_metrics.append(Metric(id="max_increase_country", label="최대 증가 국가", status="available", value=increases[0]["name"]))
+    if decreases:
+        new_metrics.append(Metric(id="max_decrease_country", label="최대 감소 국가", status="available", value=decreases[0]["name"]))
     calculated.key_metrics.extend(new_metrics)
     calculated.detailed_metrics.extend(new_metrics)
+
+
+def _append_mineral_map_world_total_trend(calculated: AdditionalCalculatedSummary, series: MineralMapSeries) -> None:
+    """연도별 세계 합계 추이 1문장을 core_diagnosis에 덧붙인다 — 2026-09-15
+    발주처 피드백(대상 5, "내용이 부실합니다. 공단 템플릿 참고") 대응.
+    템플릿 첫 문장("동의 전 세계 매장량 합계는 2021년 8억 8,000만 톤에서
+    2023년 10억 톤으로 증가하였으나, 2024년과 2025년에는 9억 8,000만
+    톤으로 …")에 해당하는 연도별 값을 map_korea "수입·수출 규모 추이"와
+    같은 "→" 나열로 낸다(증감 해석은 `period_total_change`가 이미 다룬다).
+    관측연도 2개면 `period_total_change`가 두 값을 이미 말하므로 생략,
+    3개 이상일 때 최근 7개년까지."""
+
+    totals = _mineral_map_year_totals(series)
+    years = sorted({o.year for o in series.observations if not o.is_total and not o.is_other})
+    if len(years) < 3:
+        return
+    years = years[-7:]
+    measure_name = "매장량" if series.measure == "reserves" else "생산량"
+    path = " → ".join(f"{year}년 {_quantity(totals[year])}{series.unit}" for year in years)
+    calculated.claims.append(
+        EvidenceClaim("world_total_trend", "core_diagnosis", f"연도별 세계 {measure_name} 합계는 {path}입니다.")
+    )
+
+
+def _append_mineral_map_top3_detail(calculated: AdditionalCalculatedSummary, series: MineralMapSeries) -> None:
+    """"국가별 순위 및 변화" 절 보강 2문장 — 2026-09-15 발주처 피드백(대상 5,
+    "국가별 순위 및 변화에 상위 3개국 + 값 + 증감률 표출").
+
+    1. `top3_period_change`: 상위 3개국의 조회기간 시작→최근 값과 증감률.
+       프로즌 계산기의 `leading_country_change_1/2`(current_position)는
+       상위 2개국뿐이고 그 절은 2026-09-10부터 렌더링에서 숨겨져 발주처가
+       "증감률이 없다"고 본 것 — 3개국을 한 문장에 담아 보이는 절에 넣는다.
+    2. `top3_concentration`: 발주처 템플릿의 "상위 3개국의 매장량 합산
+       비중은 37.24%로 …" 문장. 수치는 계산기가 이미 만든 key_metrics
+       `cr3`/`cr5`를 그대로 읽어 표와 반드시 일치시킨다(대상 3 map_korea
+       "수입 집중도(CR3)"와 같은 표기)."""
+
+    filtered = [o for o in series.observations if not o.is_total and not o.is_other]
+    years = sorted({o.year for o in filtered})
+    if len(years) < 2:
+        return
+    start_year, current_year = years[0], years[-1]
+    ranking = sorted((o for o in filtered if o.year == current_year and o.value > 0), key=lambda o: (-o.value, o.country_name))
+    if len(ranking) < 3:
+        return
+    start_values = {o.country_code: o.value for o in filtered if o.year == start_year}
+    start_ranking = sorted((o for o in filtered if o.year == start_year and o.value > 0), key=lambda o: (-o.value, o.country_name))
+    start_rank = {o.country_code: rank for rank, o in enumerate(start_ranking, start=1)}
+    measure_name = "매장량" if series.measure == "reserves" else "생산량"
+    unit = series.unit
+    parts = []
+    for rank, item in enumerate(ranking[:3], start=1):
+        start_value = start_values.get(item.country_code)
+        if not start_value:
+            parts.append(f"{item.country_name} {current_year}년 {_quantity(item.value)}{unit}({start_year}년 비교값 없음)")
+            continue
+        change = _pct(item.value, start_value) or 0.0
+        change_text = "변동 없음" if change == 0 else f"{_number(abs(change) * 100)}% {'증가' if change > 0 else '감소'}"
+        # 2026-09-15 대상 6 — 템플릿 "5년간 32만 톤(△5.7%) 감소하였으나 1위를
+        # 유지", "4위에 진입"처럼 순위 유지/변동을 함께 표기.
+        rank_text = f"{rank}위 유지" if start_rank.get(item.country_code) == rank else f"{start_rank[item.country_code]}위→{rank}위"
+        parts.append(f"{item.country_name} {_quantity(start_value)}{unit}→{_quantity(item.value)}{unit}({change_text}, {rank_text})")
+    calculated.claims.append(
+        EvidenceClaim(
+            "top3_period_change",
+            "major_changes",
+            f"조회기간({start_year}~{current_year}년) 상위 3개국의 {measure_name} 변화는 {', '.join(parts)}입니다.",
+            required=True,
+        )
+    )
+    metrics = {metric.id: metric for metric in calculated.key_metrics}
+    cr3 = metrics.get("cr3")
+    if cr3 is None or cr3.value is None:
+        return
+    cr5 = metrics.get("cr5")
+    # 2026-09-15 대상 6 — 템플릿 "상위 3개국의 생산 집중도(CR3)는 48.69%로,
+    # 전체 생산량의 절반에 가까운 물량이 이 3개국에서 공급됩니다"(매장량은
+    # "약 3분의 1 이상이 이 3개국에 집중"). 해석 구절은 비중 구간으로만 정한다.
+    fact = f"상위 3개국의 {'매장량' if series.measure == 'reserves' else '생산'} 집중도(CR3)는 {_number(cr3.value * 100)}%"
+    tier = _concentration_tier_phrase(cr3.value)
+    if tier:
+        if series.measure == "reserves":
+            fact += f"로, 전체 {measure_name}의 {tier}이 이 3개국에 집중돼 있습니다."
+        else:
+            volume = f"{tier} 물량" if tier.endswith("가까운") else f"{tier}의 물량"
+            fact += f"로, 전체 {measure_name}의 {volume}이 이 3개국에서 공급됩니다."
+    else:
+        fact += "입니다."
+    if len(ranking) >= 5 and cr5 is not None and cr5.value is not None:
+        fact += f" 상위 5개국까지 합산하면(CR5) 전체의 {_number(cr5.value * 100)}%를 차지합니다."
+    calculated.claims.append(EvidenceClaim("top3_concentration", "major_changes", fact, required=True))
+
+
+def _concentration_tier_phrase(share: float) -> str | None:
+    """CR3 비중 → 해석 구절("절반 이상"·"절반에 가까운"·"3분의 1 이상"·
+    "4분의 1 이상"), 25% 미만이면 None(수치만 쓴다)."""
+
+    if share >= 0.5:
+        return "절반 이상"
+    if share >= 0.45:
+        return "절반에 가까운"
+    if share >= 1 / 3:
+        return "3분의 1 이상"
+    if share >= 0.25:
+        return "4분의 1 이상"
+    return None
+
+
+def _object_particle(name: str) -> str:
+    final = name[-1]
+    codepoint = ord(final)
+    has_batchim = 0xAC00 <= codepoint <= 0xD7A3 and (codepoint - 0xAC00) % 28 != 0
+    return "을" if has_batchim else "를"
+
+
+def _append_mineral_map_top_country_vs_others(calculated: AdditionalCalculatedSummary, series: MineralMapSeries) -> None:
+    """"주요 변화" 절 마지막 총정리 1문장 — 2026-09-15 발주처 피드백(대상 5,
+    "상위 1위 국가 표출(단일 국가 기준) 총 정리, 예: 단일 국가 기준 1위인
+    칠레를 상회하고 있어 복수의 중소 매장국에도 상당한 자원이 분포되어
+    있음을 알 수 있습니다"). KOMIS 비중표의 `_ETC_`(기타 국가 합산,
+    `is_other` 관측치)와 1위국을 최근연도에서 비교한다 — 기타 합산이
+    없으면(`komis_share_response` 미포함) 문장도 없다. 상회/하회 두 갈래
+    모두 수치를 먼저 두고 해석은 그 비교에서 바로 따라오는 범위로만 쓴다."""
+
+    years = sorted({o.year for o in series.observations if not o.is_total and not o.is_other})
+    if not years:
+        return
+    current_year = years[-1]
+    rows = [o for o in series.observations if o.year == current_year]
+    others = [o.value for o in rows if o.is_other]
+    official = [o.value for o in rows if o.is_total]
+    ranking = sorted((o for o in rows if not o.is_total and not o.is_other and o.value > 0), key=lambda o: (-o.value, o.country_name))
+    if not others or not official or not ranking or others[0] <= 0 or official[0] <= 0:
+        return
+    other_total, world_total, top1 = others[0], official[0], ranking[0]
+    measure_name = "매장량" if series.measure == "reserves" else "생산량"
+    unit = series.unit
+    lead = (
+        f"기타 국가 합산은 {current_year}년 {_quantity(other_total)}{unit}({_number(other_total / world_total * 100)}%)으로, "
+        f"단일 국가 기준 1위인 {top1.country_name}({_quantity(top1.value)}{unit}, {_number(top1.value / world_total * 100)}%)"
+    )
+    if other_total > top1.value:
+        fact = (
+            lead + f"{_object_particle(top1.country_name)} 상회하고 있어 복수의 중소 "
+            f"{'매장' if series.measure == 'reserves' else '생산'}국에도 상당한 {measure_name}이 분포돼 있습니다."
+        )
+    else:
+        fact = lead + f"에 미치지 못해 1위 국가 한 곳의 {measure_name}이 나머지 국가 합산을 웃도는 구조입니다."
+    calculated.claims.append(EvidenceClaim("top_country_vs_others", "major_changes", fact, required=True))
+
+
+#: 세계 합계의 연도별 등락을 보합/상승/하락으로 나누는 문턱(전년 대비 ±2%) —
+#: 2026-09-15 대상 6, 발주처 템플릿 "2023년 이후 2,300만 톤 수준에서 보합세"에
+#: 해당(동 생산량 2023→2024 +1.8%·2024→2025 0%). 애매사항 기록 #18.
+_WORLD_TOTAL_FLAT_THRESHOLD = 0.02
+
+
+def _append_mineral_map_world_total_recent_trend(calculated: AdditionalCalculatedSummary, series: MineralMapSeries) -> None:
+    """세계 합계의 최근 추세 1문장(core_diagnosis) — 2026-09-15 발주처 피드백
+    (대상 6, "조회기간 내 어떻게 증가했는지 수치 및 하락/상승 여부 표출").
+    마지막 연도 변화의 종류(보합/상승/하락)를 잡고 같은 종류가 이어진
+    연도까지 거슬러 올라가 "[연도]년 이후 …" 문장을 만든다. 관측연도
+    3개 미만이면 `period_total_change`가 이미 다루므로 생략."""
+
+    totals = _mineral_map_year_totals(series)
+    years = sorted({o.year for o in series.observations if not o.is_total and not o.is_other})
+    if len(years) < 3:
+        return
+
+    def _kind(previous: int, year: int) -> str:
+        change = _pct(totals[year], totals[previous])
+        if change is None or abs(change) <= _WORLD_TOTAL_FLAT_THRESHOLD:
+            return "flat"
+        return "up" if change > 0 else "down"
+
+    kind = _kind(years[-2], years[-1])
+    start_index = len(years) - 2
+    while start_index > 0 and _kind(years[start_index - 1], years[start_index]) == kind:
+        start_index -= 1
+    run_years = years[start_index:]
+    measure_name = "매장량" if series.measure == "reserves" else "생산량"
+    unit = series.unit
+    if kind == "flat":
+        low, high = min(totals[y] for y in run_years), max(totals[y] for y in run_years)
+        level = f"{_quantity(low)}{unit}" if low == high else f"{_quantity(low)}{unit}~{_quantity(high)}{unit}"
+        fact = f"세계 {measure_name}은 {run_years[0]}년 이후 {level} 수준에서 보합세를 유지하고 있습니다."
+    else:
+        verb, trend = ("증가", "상승") if kind == "up" else ("감소", "하락")
+        fact = (
+            f"세계 {measure_name}은 {run_years[0]}년 이후 {_quantity(totals[run_years[0]])}{unit}에서 "
+            f"{run_years[-1]}년 {_quantity(totals[run_years[-1]])}{unit}으로 {len(run_years) - 1}년 연속 {verb}하는 {trend} 추세입니다."
+        )
+    calculated.claims.append(EvidenceClaim("world_total_recent_trend", "core_diagnosis", fact, required=True))
+
+
+def _mineral_map_latest_ranking(series: MineralMapSeries, year: int) -> tuple[list[MineralMapObservation], float]:
+    """`year`의 국가 랭킹(총계·기타 제외, 값>0, 값 내림차순·이름순)과 그 해
+    세계총계(공식 우선) — 프로즌 `_country_ranking`/`_world_total`과 같은 규칙."""
+
+    rows = [o for o in series.observations if o.year == year]
+    ranking = sorted((o for o in rows if not o.is_total and not o.is_other and o.value > 0), key=lambda o: (-o.value, o.country_name))
+    official = [o.value for o in rows if o.is_total]
+    total = official[0] if official else sum(o.value for o in ranking)
+    return ranking, total
+
+
+def _append_mineral_map_reserve_production_ratio(
+    calculated: AdditionalCalculatedSummary, series: MineralMapSeries, secondary_series: MineralMapSeries | None
+) -> None:
+    """매장량 대비 생산량 비율이 낮은 국가·높은 국가 각 1문장(major_changes) —
+    2026-09-15 발주처 피드백(대상 6). 발주처 템플릿 §4 "매장량 2위인 호주는
+    생산량 기준 8위(73만 톤, 3.17%)에 그치고 있어 … 낮은 국가 / 콩고민주공화국은
+    매장량 4위(8.16%)임에도 생산량은 2위(13.91%)로 … 높은 국가"를 두 랭킹의
+    순위 차이로 만든다. 프로즌 `cross_measure_comparison`은 조회한 measure의
+    상위 3개국만 보고 문장이 measure 방향에 따라 뒤집혀(생산량 조회면 "생산량
+    대비 매장량 비율") 템플릿과 어긋나므로, 반대 measure 스냅샷이 있으면 그
+    근거·omitted 항목을 이 두 문장으로 **대체**한다(계산기는 무수정). 스냅샷이
+    없으면 아무것도 바꾸지 않는다.
+
+    낮은 국가: 매장량 상위 5개국 중 생산량 순위가 매장량 순위보다 2계단 이상
+    아래인 국가 중 차이가 가장 큰 국가. 높은 국가: 생산량 상위 5개국 중 매장량
+    순위가 생산량 순위보다 2계단 이상 아래인 국가 중 차이가 가장 큰 국가
+    (템플릿 사례 4위→2위가 걸리도록). 둘 다 없으면 문장 없음.
+
+    2026-09-15 검증 스윕(정적 덤프 65광종) 정정 — 낮은 국가 문턱을 3→2계단으로.
+    3계단이면 스트론튬 생산량(중국 매장량 1위 85.71% vs 생산량 3위 17.78%)이
+    안 걸려 프로즌 문장("생산량 대비 매장량 집중도가 높은")이 뒤집힌 방향
+    그대로 남았다. 2계단이면 프로즌 계산기가 문장을 내는 모든 조건(조회
+    measure 상위 3개국, ±3/±2계단)을 이 함수가 포함하므로 스냅샷이 있으면
+    항상 이 두 문장으로 대체된다."""
+
+    if secondary_series is None:
+        return
+    reserves, production = (series, secondary_series) if series.measure == "reserves" else (secondary_series, series)
+    year = series.available_end_year
+    reserve_ranking, reserve_total = _mineral_map_latest_ranking(reserves, year)
+    production_ranking, production_total = _mineral_map_latest_ranking(production, year)
+    if not reserve_ranking or not production_ranking or reserve_total <= 0 or production_total <= 0:
+        return
+    reserve_rank = {o.country_code: (rank, o) for rank, o in enumerate(reserve_ranking, start=1)}
+    production_rank = {o.country_code: (rank, o) for rank, o in enumerate(production_ranking, start=1)}
+
+    low = max(
+        (
+            (production_rank[o.country_code][0] - rank, rank, o)
+            for rank, o in enumerate(reserve_ranking[:5], start=1)
+            if o.country_code in production_rank
+        ),
+        key=lambda item: item[0],
+        default=None,
+    )
+    high = max(
+        (
+            (reserve_rank[o.country_code][0] - rank, rank, o)
+            for rank, o in enumerate(production_ranking[:5], start=1)
+            if o.country_code in reserve_rank
+        ),
+        key=lambda item: item[0],
+        default=None,
+    )
+    facts: list[tuple[str, str]] = []
+    if low is not None and low[0] >= 2:
+        gap, rank, item = low
+        p_rank, p_item = production_rank[item.country_code]
+        facts.append((
+            "reserve_production_ratio_low",
+            f"매장량 {rank}위인 {_topic(item.country_name)} 생산량 기준 {p_rank}위({_quantity(p_item.value)}{production.unit}, "
+            f"{_number(p_item.value / production_total * 100)}%)에 그치고 있어, 매장량 대비 생산량 비율이 낮은 국가로 분류됩니다.",
+        ))
+    if high is not None and high[0] >= 2:
+        gap, rank, item = high
+        r_rank, r_item = reserve_rank[item.country_code]
+        lead = "반면 " if facts else ""
+        facts.append((
+            "reserve_production_ratio_high",
+            f"{lead}{_topic(item.country_name)} 매장량 {r_rank}위({_number(r_item.value / reserve_total * 100)}%)임에도 생산량은 "
+            f"{rank}위({_number(item.value / production_total * 100)}%)로, 매장량 대비 생산 집중도가 높은 국가입니다.",
+        ))
+    if not facts:
+        return
+    calculated.claims = [claim for claim in calculated.claims if claim.id != "cross_measure_comparison"]
+    calculated.omitted = [item for item in calculated.omitted if item.id != "cross_measure_comparison"]
+    for claim_id, fact in facts:
+        calculated.claims.append(EvidenceClaim(claim_id, "major_changes", fact, required=True))
+
+
+def _append_mineral_map_volatility(calculated: AdditionalCalculatedSummary, series: MineralMapSeries) -> None:
+    """조회기간 변동폭(최대값 대비 최소값 차이)이 가장 큰 국가 1문장(major_changes,
+    "주요 변화" 절) — 2026-09-15 발주처 피드백(대상 6, "생산량 변동폭 국가(최대-
+    최소) 차이 표출"). 템플릿 §4 "인도네시아는 2021년 73만 1,000톤에서 2022년
+    94만 1,000톤으로 증가하였다가 2025년 71만 톤으로 감소하는 등 생산량 변동폭이
+    가장 큰 국가(최대값 대비 최소값 차이 약 25.5%)". 비율은 (최대−최소)/최대.
+    후보는 최근연도 상위 10개국 중 조회기간 전 연도에 값이 있는 국가(소규모
+    국가의 미세 등락이 비율로는 크게 잡히는 것을 막는다 — 애매사항 기록 #19).
+    관측연도 3개 미만이면 변동폭이 곧 증감이라 생략."""
+
+    filtered = [o for o in series.observations if not o.is_total and not o.is_other]
+    years = sorted({o.year for o in filtered})
+    if len(years) < 3:
+        return
+    start_year, current_year = years[0], years[-1]
+    ranking, _ = _mineral_map_latest_ranking(series, current_year)
+    values_by_code: dict[str, dict[int, float]] = {}
+    for o in filtered:
+        values_by_code.setdefault(o.country_code, {})[o.year] = o.value
+    best = None
+    for item in ranking[:10]:
+        values = values_by_code[item.country_code]
+        if any(year not in values for year in years):
+            continue
+        steps = [values[year] - values[previous] for previous, year in zip(years, years[1:])]
+        # 한 방향으로만 움직인 국가(계속 증가/감소)는 "변동"이 아니라 추세라
+        # 제외한다 — 템플릿이 45.6% 늘기만 한 콩고민주공화국이 아니라 올랐다
+        # 내린 인도네시아를 고른 것과 같은 기준(애매사항 기록 #19).
+        if not (any(step > 0 for step in steps) and any(step < 0 for step in steps)):
+            continue
+        high, low = max(values.values()), min(values.values())
+        if high <= 0 or high == low:
+            continue
+        ratio = (high - low) / high
+        if best is None or ratio > best[0]:
+            best = (ratio, item.country_name, values)
+    if best is None:
+        return
+    ratio, name, values = best
+    max_year = min(year for year in years if values[year] == max(values.values()))
+    min_year = min(year for year in years if values[year] == min(values.values()))
+    points = []
+    for year in sorted({start_year, max_year, min_year, current_year}):
+        if points and values[year] == values[points[-1]]:
+            continue
+        points.append(year)
+    unit = series.unit
+    measure_name = "매장량" if series.measure == "reserves" else "생산량"
+    path = f"{points[0]}년 {_quantity(values[points[0]])}{unit}에서"
+    for index, year in enumerate(points[1:], start=1):
+        verb = "증가" if values[year] > values[points[index - 1]] else "감소"
+        connector = "하는 등" if index == len(points) - 1 else "했다가"
+        path += f" {year}년 {_quantity(values[year])}{unit}으로 {verb}{connector}"
+    fact = (
+        f"{_topic(name)} {path} 조회기간 {measure_name} 변동폭이 가장 큰 국가"
+        f"(최대값 대비 최소값 차이 {_number(ratio * 100)}%)입니다."
+    )
+    calculated.claims.append(EvidenceClaim("volatility_country", "major_changes", fact, required=True))
 
 
 def _mineral_map_latest_year_change(series: MineralMapSeries) -> tuple[float, int, int] | None:
@@ -919,7 +1388,7 @@ def _validate_llm_summary(
                 quantities = re.findall(r"약 [\d,]+(?:\.\d+)?[만억] ?(?:달러|톤)", evidence_text)
                 if any(value not in sentence.text for value in quantities):
                     return "지도 축약 금액·물량 또는 단위를 누락하거나 변경했다."
-            if page_id == "map_mineral" and "extreme_change_countries" in sentence.evidence_ids:
+            if page_id == "map_mineral" and any(eid.startswith("extreme_") for eid in sentence.evidence_ids):
                 # 2026-09-11 사용자 지적 — "주요 변화"에 감소국만 나오고
                 # 증가국이 안 보인다는 제보. 재현은 안 됐지만(실측 5개년·
                 # 2개년 데이터 둘 다 양쪽 다 정상 표시) 근거 자체가 "증가한
@@ -931,7 +1400,10 @@ def _validate_llm_summary(
                 # 이 근거에 실제값·변화량·비율 숫자도 추가됐으니(구 국가명
                 # 하나뿐이던 짧은 문장과 달리 지금은 숫자가 많아졌다) 역방향
                 # 숫자보존(근거의 숫자가 전부 출력에 있어야 함)도 같이 본다.
-                extreme_countries = re.findall(r"(?:증가한|감소한) 국가는 (.*?)(?:으로|로|이며|입니다)", evidence_text)
+                # 2026-09-15 대상 5 — 근거가 국가당 1개(extreme_increase_1/2·
+                # extreme_decrease_1/2)로 쪼개지며 2번째 국가는 "다음으로
+                # X는 …" 꼴이라 두 형태를 모두 잡는다.
+                extreme_countries = re.findall(r"(?:국가는|다음으로) (.+?)(?:으로|로|은|는)[, ]", evidence_text)
                 if any(country not in sentence.text for country in extreme_countries):
                     return "주요 변화(증가국·감소국)를 일부 누락했다."
                 if not _number_tokens(evidence_text) <= _number_tokens(sentence.text):
@@ -1396,6 +1868,23 @@ class AnalysisSummaryService:
                 for year, total in official_totals.items()
                 if year in years
             ]
+            # 2026-09-15 발주처 피드백(대상 5) — 같은 표의 `_ETC_`(기타 국가
+            # 합산)도 `is_other=True` 관측치로 얹는다. 국가 랭킹·최대 증감국
+            # 계산은 전부 `is_other`를 제외하므로 기존 문장·지표는 불변이고,
+            # `_append_mineral_map_top_country_vs_others`만 이 값을 읽는다.
+            other_totals = _parse_komis_map_mineral_share_others(request.komis_share_response, years[-1])
+            observations = observations + [
+                MineralMapObservation(
+                    year=year,
+                    country_code="_ETC_",
+                    country_name="기타 국가",
+                    value=total,
+                    is_total=False,
+                    is_other=True,
+                )
+                for year, total in other_totals.items()
+                if year in years
+            ]
         series = MineralMapSeries(
             mineral=MineralRef(code=request.mineral, name=request.mineral_name or request.mineral),
             measure=request.measure,
@@ -1421,7 +1910,17 @@ class AnalysisSummaryService:
             market_share=market_share,
         )
         _apply_polite_endings(calculated, _MINERAL_MAP_POLITE_ENDINGS, context="map_mineral")
+        # 2026-09-15 발주처 피드백(대상 5) — 아래 순서가 그대로 "국가별 순위 및
+        # 변화"(top3 2문장) → "주요 변화"(증감국 최대 4문장 + 1위 vs 기타
+        # 총정리) 렌더링 순서다(`_deterministic_narrative`는 claim 순서 보존).
+        # 대상 6(같은 날)로 ratio 2문장(순위 절)·volatility(주요 변화)·recent_trend(core) 추가.
+        _append_mineral_map_top3_detail(calculated, series)
+        _append_mineral_map_reserve_production_ratio(calculated, series, secondary_series)
+        _append_mineral_map_world_total_trend(calculated, series)
+        _append_mineral_map_world_total_recent_trend(calculated, series)
         _append_mineral_map_extreme_change(calculated, series)
+        _append_mineral_map_volatility(calculated, series)
+        _append_mineral_map_top_country_vs_others(calculated, series)
         _append_mineral_map_latest_year_change(calculated, series)
         context = effective_page_context("map_mineral")
         # 2026-09-09 복잡성 해소 — `years`는 위에서 이미 계산됐다(`series.

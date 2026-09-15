@@ -104,10 +104,16 @@ _SECTION_TITLES_OVERRIDES: dict[str, dict[str, str]] = {
 #: page_id → (evidence_id, 분리 절 제목) — 2026-09-10 사용자 지시로 map_global
 #: (한국 관련 루트)에 이어 map_mineral(주요 변화)도 같은 패턴이 필요해졌다.
 #: `_SECTION_TITLES_OVERRIDES`처럼 등록에 없는 page_id는 그냥 영향받지 않는다.
-_MAJOR_CHANGES_SPLIT_SECTIONS: dict[str, tuple[str, str]] = {
-    "map_global": ("korea_route_rank", "한국 관련 루트"),
-    "map_mineral": ("extreme_change_countries", "주요 변화"),
-    "map_korea": ("trade_scale_trend", "수입·수출 규모 추이"),
+#: 2026-09-15 발주처 피드백(대상 5) — map_mineral "주요 변화"는 증감국
+#: 근거가 국가당 1개(최대 4개)로 쪼개지고 1위 vs 기타 총정리 문장이 붙어
+#: evidence_id가 여러 개가 됐다. 값은 (분리할 evidence_id 튜플, 절 제목).
+_MAJOR_CHANGES_SPLIT_SECTIONS: dict[str, tuple[tuple[str, ...], str]] = {
+    "map_global": (("korea_route_rank",), "한국 관련 루트"),
+    "map_mineral": (
+        ("extreme_increase_1", "extreme_increase_2", "extreme_decrease_1", "extreme_decrease_2", "volatility_country", "top_country_vs_others"),
+        "주요 변화",
+    ),
+    "map_korea": (("trade_scale_trend",), "수입·수출 규모 추이"),
 }
 
 #: 렌더링에서 통째로 숨길 절 — 2026-09-10 사용자 지시로 map_global의 "기간
@@ -272,8 +278,8 @@ def render_markdown_report(response: AnalysisSummaryResponse) -> str:
             # 별도 "## " 블록으로 나눈다 — 계산·검증 레이어의 "값이 있을
             # 때만" 로직(komir_summary.py/summary.py)은 그대로 유지되므로,
             # 근거 자체가 없으면 이 블록도 자연히 생략된다.
-            evidence_id, split_title = split
-            split_sentences = [s for s in sentences if evidence_id in s.evidence_ids]
+            evidence_ids, split_title = split
+            split_sentences = [s for s in sentences if any(eid in s.evidence_ids for eid in evidence_ids)]
             other_sentences = [s for s in sentences if s not in split_sentences]
             if other_sentences:
                 lines.append(f"## {title}")

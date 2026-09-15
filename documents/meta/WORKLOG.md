@@ -2,7 +2,73 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-15 (최신, 심야) — report_gen 글로벌수급지도 "KOMIS 차트 기준" 삭제(대상 4) + v17 슬라이드(워크트리 report-summary)
+## 2026-09-15 (최신, 심야 3) — report_gen 광물지도-생산량 내용 보강(대상 6, 마지막) + v19 슬라이드 + 애매사항 5건(워크트리 report-summary)
+
+발주처 피드백(대상 6 핵심광물지도-생산량) 4항목 — ①상위 3개국 생산 집중도(CR3)
+해석 문구 ②조회기간 내 세계 합계 증가 수치+상승/하락 여부 ③매장량 대비 생산량
+비율이 낮은/높은 국가 ④변동폭(최대-최소) 최대 국가 + "내용 부실". 템플릿 §4(동
+생산량 예문)와 대조. 대상 5와 같은 방식(`summary.py` append, 프로즌 무수정).
+
+- `top3_concentration`: 라벨 "생산 집중도(CR3)"(매장량은 "매장량 집중도") + 비중
+  구간별 해석 구절(≥50 절반 이상/≥45 절반에 가까운/≥33.3 3분의 1 이상/≥25 4분의 1
+  이상), CR5는 뒤 문장. `top3_period_change`에 순위 유지/변동("1위 유지"·"4위→2위").
+- `_append_mineral_map_world_total_recent_trend`(core): 전년 대비 ±2% 이내 보합,
+  마지막 변화 종류가 이어진 연도까지 "[연도]년 이후 … 보합세/N년 연속 증가하는
+  상승 추세".
+- `_append_mineral_map_reserve_production_ratio`: 두 랭킹 순위 차이로 낮은 국가
+  (매장량 top5 중 생산량 순위 2계단↓ — 당초 3, 검증 스윕의 스트론튬 사례로 정정)·
+  높은 국가(생산량 top5 중 매장량 순위 2계단↓)
+  각 1문장, 항상 "매장량 대비" 방향. 스냅샷 있으면 프로즌 `cross_measure_comparison`
+  근거·omitted를 대체(방향 뒤집힘 문제).
+- `_append_mineral_map_volatility`: 상위 10개국 중 전 연도 값 있고 양방향으로 움직인
+  국가에서 (최대−최소)/최대 최대 국가, 시작·최대·최소·당해 경로 서술("주요 변화"
+  절). 단방향 국가 제외(템플릿이 콩고 대신 인도네시아를 고른 기준).
+- 상한: MAJOR_CHANGES_MAX_SENTENCES 10→12, MINERAL_MAP core(1,4)·major(2,12)·
+  total(5,19). 렌더 분리 절 id에 volatility_country. 프롬프트 md 갱신 — **seed_prompts
+  재실행 필요**. 테스트 18 passed(기존 map_mineral 테스트에 문장 갱신·추가).
+- v19 슬라이드 입력 교정: v13~v18의 교차비교 스냅샷이 다년 합산 덤프(`동|생산량|map`,
+  호주 575만톤)였음 → chart 2025년 행으로 단일연도 스냅샷 구성(호주 73만톤 3.17%,
+  템플릿 일치), 생산량 슬라이드에도 매장량 스냅샷 추가. v19.pptx: v18 대비 슬라이드
+  20·21 문단 2·4·6 적색 6곳, 그 외 19건 동일. 본문 약 1,650자(9pt·6.6in, 추정 32줄).
+- 템플릿 정본 2종 갱신, 애매사항 #17~#21(CR3 구간, 보합 문턱, 변동폭 산식·후보,
+  비율 판정·분모, 스냅샷 입력).
+
+## 2026-09-15 (심야 2) — report_gen 광물지도-매장량 내용 보강(대상 5) + v18 슬라이드 + 애매사항 6건(워크트리 report-summary)
+
+발주처 피드백(대상 5 핵심광물지도-매장량) 4항목 — ①국가별 순위에 상위 3개국+값+
+증감률 ②주요 변화에 크게 증가/감소한 국가 2개 이상+급변 기간(예 "2023~2025년
+OOOO만톤(XX%)으로 급격히 상향되어") ③단일 국가 1위 총정리("기타 국가 합산이 …
+칠레를 상회") ④"내용 부실, 공단 템플릿 참고". 발주처 PDF 템플릿(§3 광산지도-매장량
+동 사례)과 대조해 문단 구성을 맞췄다. 프로즌 `additional_summary.py`는 무수정,
+전부 `summary.py` 후처리(append)로.
+
+- `summary.py`: `_append_mineral_map_world_total_trend`(core, 연도별 세계 합계 "→"
+  나열), `_append_mineral_map_top3_detail`(major: `top3_period_change` 상위 3개국
+  시작→최근 값+증감률, `top3_concentration` CR3/CR5 — key_metrics 값을 그대로 읽어
+  표와 일치), `_append_mineral_map_extreme_change`를 방향별 상위 2개국·국가당 근거
+  1개(`extreme_increase_1/2`·`extreme_decrease_1/2`, 구 `extreme_change_countries`
+  대체)로 확장 + `_mineral_map_sharpest_interval`(변화 폭 최대 연속구간, 앞뒤 동값
+  연도 "YYYY~YYYY년" 묶음, "급격히"는 전체 변화의 절반 초과+직전 값 대비 20%
+  이상일 때만), `_append_mineral_map_top_country_vs_others`(기타 국가 합산 vs 1위,
+  KOMIS 비중표 `_ETC_` 기반 — `input_data.py::_parse_komis_map_mineral_share_others`
+  신설, `is_other=True` 관측치로 얹음). LLM 검증의 extreme 국가명 보존 검사는
+  "다음으로 X는" 형태까지 잡도록 정규식 확장.
+- `report_render.py`: `_MAJOR_CHANGES_SPLIT_SECTIONS` 값을 evidence_id 튜플로(map_
+  mineral "주요 변화"에 5개 id). `models.py` MAJOR_CHANGES_MAX_SENTENCES 7→10,
+  `prompts.py` MINERAL_MAP 범위 core(1,3)·major(2,10)·total(5,16) — **배포 시
+  seed_prompts 재실행 필요**(output_contract·프롬프트 md 변경). 프롬프트
+  `mineral_map_summary.md` 근거 안내 갱신.
+- 테스트 `test_map_mineral_ranking_detail_and_major_changes`(동 매장량 실데이터를
+  1/100,000로 줄인 6개국·`_ETC_`/`_TOTAL_` 합성) 추가, 18 passed. 실데이터 확인:
+  동 2021~2025·2024~2025(2년창, 급변 구간 없음)·리튬 2019~2025 매장량/생산량.
+- 템플릿 정본 2종(01_메뉴별·AI통계분석_핵심광물지도 §3-3) 갱신, 애매사항 기록
+  #10~#16 추가(괄호 %=세계 비중, "급격히" 임계값, 방향별 2개국, 총정리 위치, 기타
+  국가 정의, 슬라이드 분량, 생산량에도 동일 적용).
+- v18.pptx(`report_gen_v18_슬라이드_260915_evidence/`): v17 대비 차이=슬라이드
+  20·21(광물지도 매장량·생산량) 본문 문단 2·4·6 = 적색 6곳, 그 외 19건 소스 동일.
+  본문이 약 500자→약 1,400자로 늘어 그 두 슬라이드만 상자 6.6in·9pt로 조정.
+
+## 2026-09-15 (심야) — report_gen 글로벌수급지도 "KOMIS 차트 기준" 삭제(대상 4) + v17 슬라이드(워크트리 report-summary)
 
 발주처 피드백(수출 옵션): country_yearly_trend 문장의 "KOMIS 차트 기준" 접두어
 불필요 → `komir_summary.py`에서 삭제(수치·순서 불변). 템플릿 정본 2종 갱신,
