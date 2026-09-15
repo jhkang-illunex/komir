@@ -1186,7 +1186,6 @@ def calculate_domestic_trade_summary(
         raise ValueError("trade map summary requires a positive import total amount")
 
     scope_prefix = f"{country_filter_name} 대상 " if country_filter_name else f"{scope_label} " if scope_label else ""
-    share_scope = "이 범위 내" if scope_label else "전체의"
     key_metrics = [_price_metric("import_total_amount", "수입총액", import_total, unit="달러")]
 
     # ── 수입 현황(core_diagnosis, 발주처 템플릿 "수입 현황" 문단) ──
@@ -1234,13 +1233,21 @@ def calculate_domestic_trade_summary(
         if len(top5_import) >= 5:
             cr5 = sum(item.import_amount or 0.0 for item in top5_import) / import_total
             key_metrics.append(_price_metric("top5_import_share_pct", "상위5국 수입비중", cr5 * 100, unit="%"))
+        # 2026-09-15 발주처 피드백(대상 3) — "수입 비중"이 아니라 발주처 템플릿
+        # (AI 통계분석 요약답변_수급지도광물지도.pdf: "상위 3개국의 수입 집중도
+        # (CR3)는 83.72%에 달하며, 상위 5개국까지 합산하면 전체 수입의 99.70%를
+        # 차지합니다.")처럼 "수입 집중도(CR3)"로. "달하며"류 평가어는 안 쓴다.
+        # 범위 한정(생산품유형·HS코드 필터)이면 "이 범위 내"를 문두에 두고, 전체면
+        # 5개국 절에만 "전체의"를 남긴다("집중도는 전체의 N%"는 어색해서).
+        scope_prefix_cr = "이 범위 내 " if scope_label else ""
+        whole_word = "" if scope_label else "전체의 "
         if cr3 is not None and cr5 is not None:
             concentration_fact = (
-                f"상위 3개국 수입 비중은 {share_scope} {_number(cr3 * 100)}%이며, "
-                f"상위 5개국까지 합산하면 {share_scope} {_number(cr5 * 100)}%를 차지합니다."
+                f"{scope_prefix_cr}상위 3개국의 수입 집중도(CR3)는 {_number(cr3 * 100)}%이며, "
+                f"상위 5개국까지 합산하면(CR5) {whole_word}{_number(cr5 * 100)}%를 차지합니다."
             )
         elif cr3 is not None:
-            concentration_fact = f"상위 3개국 수입 비중은 {share_scope} {_number(cr3 * 100)}%입니다."
+            concentration_fact = f"{scope_prefix_cr}상위 3개국의 수입 집중도(CR3)는 {_number(cr3 * 100)}%입니다."
         else:
             concentration_fact = None
         if concentration_fact is not None:

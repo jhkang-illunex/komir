@@ -267,6 +267,26 @@ class ReportContractTests(unittest.TestCase):
         from app.analysis.data_sources import DataSourceError as legacy_error
         self.assertIs(legacy_error, DataSourceError)
 
+    def test_map_korea_import_concentration_uses_cr3_wording(self):
+        """2026-09-15 발주처 피드백(대상 3) — "상위 3개국 수입 비중은 …" 대신 발주처
+        템플릿처럼 "상위 3개국의 수입 집중도(CR3)는 …"으로."""
+        countries = [("중국", 500.0), ("칠레", 300.0), ("일본", 200.0), ("미국", 100.0), ("페루", 50.0), ("호주", 25.0)]
+        response = AnalysisSummaryService().analyze(AnalysisSummaryRequest(
+            page_id="map_korea", mineral="동", mineral_name="동",
+            observations=[
+                {"date": "2026-06-30", "country_code": f"C{i}", "country_name": name,
+                 "import_amount": amount, "export_amount": 10.0}
+                for i, (name, amount) in enumerate(countries)
+            ],
+        ))
+        texts = [s.text for sec in ("core_diagnosis", "major_changes", "current_position") for s in getattr(response.summary, sec)]
+        sentence = next(t for t in texts if "수입 집중도(CR3)" in t)
+        self.assertEqual(
+            sentence,
+            "상위 3개국의 수입 집중도(CR3)는 85.11%이며, 상위 5개국까지 합산하면(CR5) 전체의 97.87%를 차지합니다.",
+        )
+        self.assertFalse(any("수입 비중은" in t for t in texts))
+
     def test_composite_period_average_and_weight_label(self):
         """2026-09-15 발주처 피드백(광물종합지수) — 조회기간 평균 지수 metric 추가,
         구성 광종 문장은 "구성 광종(가중치)은 …"으로. 1년 넘는 관측치를 주면
