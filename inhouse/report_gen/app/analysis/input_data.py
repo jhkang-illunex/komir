@@ -719,17 +719,39 @@ def _parse_komis_map_mineral_share_totals(raw: dict, end_year: int) -> dict[int,
     연도가 있으면 그 연도는 이 dict에 없다(그 해는 자동으로 기존 지도합계
     폴백을 그대로 탄다)."""
 
+    return _komis_map_mineral_share_row_by_year(raw, end_year, "SU")
+
+
+def _parse_komis_map_mineral_share_others(raw: dict, end_year: int) -> dict[int, float]:
+    """`getListMnrlTablePrdctnBurgudg` 원본 응답의 `_ETC_`(코드 OT, "기타
+    국가" — 지도에 개별 국가로 나열되지 않은 나머지 국가의 합산) 행에서
+    연도별 값을 뽑는다. 연도 역산 규칙은 `_parse_komis_map_mineral_share_
+    totals`와 같다.
+
+    2026-09-15 발주처 피드백(대상 5 광물지도-매장량) 대응 — 발주처 템플릿의
+    마지막 문장("기타 국가 합산은 2025년 2억 1,000만 톤(21.43%)으로, 단일
+    국가 기준 1위인 칠레를 상회하고 있어 …")을 만들려면 이 값이 필요하다.
+    동 매장량 덤프로 확인: `_ETC_` before1=210,000,000·rate=21.43 —
+    템플릿 수치와 정확히 일치. 호출부(`summary.py::_analyze_mineral_map`)는
+    이 dict로 `is_other=True` 관측치를 만들어 `series.observations`에
+    얹는다 — `additional_summary.py`의 `_country_ranking()`이 이미
+    `is_other`를 국가 랭킹에서 제외하고 있어 기존 계산엔 영향이 없다."""
+
+    return _komis_map_mineral_share_row_by_year(raw, end_year, "OT")
+
+
+def _komis_map_mineral_share_row_by_year(raw: dict, end_year: int, code: str) -> dict[int, float]:
     rows = raw.get("data") or []
-    total_row = next((row for row in rows if row.get("ntnEngCd") == "SU"), None)
-    if total_row is None:
+    row = next((item for item in rows if item.get("ntnEngCd") == code), None)
+    if row is None:
         return {}
-    totals: dict[int, float] = {}
+    values: dict[int, float] = {}
     for offset in range(1, 6):
-        value = _komis_num_comma(total_row.get(f"before{offset}"))
+        value = _komis_num_comma(row.get(f"before{offset}"))
         if value is None or value <= 0:
             continue
-        totals[end_year - (offset - 1)] = value
-    return totals
+        values[end_year - (offset - 1)] = value
+    return values
 
 
 def _parse_komis_composite_response(raw: dict) -> list[dict]:

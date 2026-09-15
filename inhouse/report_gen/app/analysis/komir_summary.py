@@ -1186,7 +1186,6 @@ def calculate_domestic_trade_summary(
         raise ValueError("trade map summary requires a positive import total amount")
 
     scope_prefix = f"{country_filter_name} 대상 " if country_filter_name else f"{scope_label} " if scope_label else ""
-    share_scope = "이 범위 내" if scope_label else "전체의"
     key_metrics = [_price_metric("import_total_amount", "수입총액", import_total, unit="달러")]
 
     # ── 수입 현황(core_diagnosis, 발주처 템플릿 "수입 현황" 문단) ──
@@ -1234,13 +1233,21 @@ def calculate_domestic_trade_summary(
         if len(top5_import) >= 5:
             cr5 = sum(item.import_amount or 0.0 for item in top5_import) / import_total
             key_metrics.append(_price_metric("top5_import_share_pct", "상위5국 수입비중", cr5 * 100, unit="%"))
+        # 2026-09-15 발주처 피드백(대상 3) — "수입 비중"이 아니라 발주처 템플릿
+        # (AI 통계분석 요약답변_수급지도광물지도.pdf: "상위 3개국의 수입 집중도
+        # (CR3)는 83.72%에 달하며, 상위 5개국까지 합산하면 전체 수입의 99.70%를
+        # 차지합니다.")처럼 "수입 집중도(CR3)"로. "달하며"류 평가어는 안 쓴다.
+        # 범위 한정(생산품유형·HS코드 필터)이면 "이 범위 내"를 문두에 두고, 전체면
+        # 5개국 절에만 "전체의"를 남긴다("집중도는 전체의 N%"는 어색해서).
+        scope_prefix_cr = "이 범위 내 " if scope_label else ""
+        whole_word = "" if scope_label else "전체의 "
         if cr3 is not None and cr5 is not None:
             concentration_fact = (
-                f"상위 3개국 수입 비중은 {share_scope} {_number(cr3 * 100)}%이며, "
-                f"상위 5개국까지 합산하면 {share_scope} {_number(cr5 * 100)}%를 차지합니다."
+                f"{scope_prefix_cr}상위 3개국의 수입 집중도(CR3)는 {_number(cr3 * 100)}%이며, "
+                f"상위 5개국까지 합산하면(CR5) {whole_word}{_number(cr5 * 100)}%를 차지합니다."
             )
         elif cr3 is not None:
-            concentration_fact = f"상위 3개국 수입 비중은 {share_scope} {_number(cr3 * 100)}%입니다."
+            concentration_fact = f"{scope_prefix_cr}상위 3개국의 수입 집중도(CR3)는 {_number(cr3 * 100)}%입니다."
         else:
             concentration_fact = None
         if concentration_fact is not None:
@@ -1568,7 +1575,10 @@ def calculate_global_trade_summary(
                 # "전년 대비"·"전월 대비"와 같은 표현), _validate_llm_summary
                 # 의 country_yearly_trend 역방향 숫자보존 검사(신설)로 LLM
                 # 정제가 연도를 조용히 빠뜨리지 못하게 했다.
-                f"KOMIS 차트 기준 {previous_year}년 대비 {latest_year}년 교역액 변화량(절대값)이 "
+                # 2026-09-15 발주처 피드백(대상 4, 수출 옵션) — "KOMIS 차트 기준"
+                # 접두어는 불필요하다는 지적으로 삭제(데이터 출처는 응답 source·
+                # 캡션이 이미 밝힌다).
+                f"{previous_year}년 대비 {latest_year}년 교역액 변화량(절대값)이 "
                 f"컸던 상위 {len(top_trade_movers)}개국은 " + ", ".join(mover_parts) + "했습니다.",
             )
         )
@@ -2109,9 +2119,12 @@ def _relative_value_fact(
         return None
     diff_pct = (latest_ratio - avg_ratio) / avg_ratio * 100
     level = "높은" if diff_pct > 0.5 else "낮은" if diff_pct < -0.5 else "비슷한"
+    # 2026-09-15 발주처 피드백 — ① 비율(0.8653)은 퍼센트(86.53%)로, ② 조회기간
+    # 평균도 같은 단위(64.38%)로, ③ "동/니켈"은 "니켈 대비 동의"로 풀어 쓴다.
+    # 마지막 "[차이]%"는 종전과 같이 평균 대비 상대 괴리율(%p 차이가 아님).
     return (
-        f"{primary_name}/{compare_name} 가격비율은 현재 {_number(latest_ratio, 4)}로, "
-        f"조회기간 평균({_number(avg_ratio, 4)}) 대비 {_number(abs(diff_pct))}% {level} 수준입니다."
+        f"{compare_name} 대비 {primary_name}의 가격비율은 현재 {_number(latest_ratio * 100)}%로, "
+        f"조회기간 평균({_number(avg_ratio * 100)}%) 대비 {_number(abs(diff_pct))}% {level} 수준입니다."
     )
 
 

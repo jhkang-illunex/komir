@@ -11,29 +11,44 @@
 - core_diagnosis는 current_state·period_total_change를 연결해 "[연도] 세계
   [광종] [매장량/생산량]은 [수치][단위]로, [기간]년간 [증감률]% [증가/감소]했습니다"처럼
   1~2문장으로 쓴다.
+- core_diagnosis에 world_total_trend(연도별 세계 합계 "→" 나열, 관측연도
+  3개 이상일 때)·world_total_recent_trend("[연도]년 이후 … 보합세/상승
+  추세/하락 추세", 대상 6) 근거가 있으면 각각 그대로 한 문장으로 옮긴다 —
+  연도·값을 빠뜨리거나 재환산하지 않는다(2026-09-15 발주처 피드백 대상 5·6).
 - major_changes는 current_leaders·third_country를 이용해 1~3위 국가의
-  규모·비중·순위를 2~3문장으로 설명한다. extreme_change_countries
-  근거가 있으면(2026-09-09 발주처 업무지시서 §3.3 대응 신설 — "매장량이
-  가장 크게 증가/감소한 국가", top3 밖 국가도 포함될 수 있다) 그대로
-  옮겨 마지막 문장으로 덧붙인다 — 이미 완성 문장이니 새 국가·수치를
-  지어내지 않는다. **근거 문장에 증가한 국가와 감소한 국가가 둘 다
-  있으면(예: "증가한 국가는 X로, [시작연도]년 [값]에서 [최근연도]년
-  [값]으로 [변화량]([비율]%) 증가했습니다. 감소한 국가는 Y로, ...했습니다")
-  둘 다 반드시 옮긴다** — 한쪽만 요약하듯 줄이지 않는다(2026-09-11
+  규모·비중·순위를 2~3문장으로 설명하고, top3_period_change(상위 3개국의
+  조회기간 시작→최근 값과 증감률, 순위 유지/변동)·top3_concentration(CR3의
+  해석 구절 "절반에 가까운 물량이 이 3개국에서 공급" 등 + CR5)을 이어서
+  그대로 옮긴다(2026-09-15 대상 5·6 — 발주처가 "상위 3개국 + 값 + 증감률",
+  "생산 집중도(CR3)"를 요구). reserve_production_ratio_low/
+  reserve_production_ratio_high(매장량 대비 생산량 비율이 낮은/높은 국가,
+  반대 measure 스냅샷이 있을 때 cross_measure_comparison을 대체)가 있으면
+  순위 절 끝에 그대로 옮긴다 — 순위·비중 숫자를 새로 계산하지 않는다.
+  volatility_country(조회기간 변동폭이 가장 큰 국가, "최대값 대비 최소값
+  차이 N%")는 extreme_*와 함께 "주요 변화" 절로 분리되는 독립 문장이다.
+  extreme_increase_1/extreme_increase_2/extreme_decrease_1/
+  extreme_decrease_2 근거가 있으면(2026-09-09 발주처 업무지시서 §3.3 대응
+  신설, 2026-09-15 방향별 2개국·급변 구간으로 확장 — "매장량이 가장 크게
+  증가/감소한 국가", top3 밖 국가도 포함될 수 있다) 각각 그대로 옮긴다 —
+  이미 완성 문장이니 새 국가·수치를 지어내지 않는다. **네 근거 중 있는
+  것은 전부 옮긴다** — 한쪽 방향만 요약하듯 줄이지 않는다(2026-09-11
   사용자 지적 — 증가국이 누락되고 감소국만 남는 사례가 있었다는 제보로
-  검증도 강화했다). **2026-09-11 후속 지시로 각 국가에 시작연도·
-  최근연도의 실제값과 변화량·비율까지 근거에 포함됐다** — 국가명만
-  남기고 값·비율을 생략하거나 반올림해 다시 계산하지 않는다("(신규
-  집계)"는 조회기간 첫 해에 값이 없던 국가라 비율이 정의되지 않는다는
-  뜻이니 그대로 둔다, 임의로 "0%"나 다른 수치로 바꾸지 않는다).
-  **extreme_change_countries는 항상 evidence_ids가
-  그 하나뿐인 독립된 문장으로 쓴다** — 렌더링 단계가 이 근거를
-  evidence_id 기준으로 감지해 "주요 변화"라는 별도 절로 분리해 보여주므로
-  (map_global의 korea_route_rank와 같은 처리), 다른 근거와 한 문장에
-  섞으면 그 다른 근거의 내용까지 "주요 변화" 절로 잘못 끌려간다. 근거를
-  결합해야 하는 문장(예: current_leaders+third_country, leading_country_
-  change_1+leading_country_change_2+concentration_change)은
-  extreme_change_countries가 아닌 다른 근거끼리로 만든다.
+  검증도 강화했다). 각 국가 근거에는 시작연도·최근연도의 실제값과
+  변화량·비율, 그리고 "특히 …으로 급격히 상향/하향돼" 또는 "연도별로는 …
+  구간의 변화 폭이 가장 컸습니다"(변화가 집중된 구간, 괄호의 %는 그 구간
+  끝 연도의 세계 비중)가 들어 있다 — 국가명만 남기고 값·비율·구간을
+  생략하거나 반올림해 다시 계산하지 않는다("(신규 집계)"는 조회기간 첫
+  해에 값이 없던 국가라 비율이 정의되지 않는다는 뜻이니 그대로 둔다,
+  임의로 "0%"나 다른 수치로 바꾸지 않는다). top_country_vs_others(기타
+  국가 합산 vs 단일 국가 1위 총정리)가 있으면 major_changes 마지막
+  문장으로 그대로 옮긴다. **extreme_*·volatility_country·
+  top_country_vs_others는 항상 evidence_ids가 그 하나뿐인 독립된 문장으로
+  쓴다** — 렌더링 단계가 이 근거들을 evidence_id 기준으로 감지해 "주요
+  변화"라는 별도 절로 분리해 보여주므로(map_global의 korea_route_rank와
+  같은 처리), 다른 근거와 한 문장에 섞으면 그 다른 근거의 내용까지 "주요
+  변화" 절로 잘못 끌려간다. 근거를 결합해야 하는 문장(예: current_leaders+
+  third_country, leading_country_change_1+leading_country_change_2+
+  concentration_change)은 그 세 종류가 아닌 다른 근거끼리로 만든다.
 - current_position은 leading_country_change_1·leading_country_change_2
   (2026-09-13 — 국가명이 길고 수치가 큰 광종에서 300자 상한을 넘던 문제로
   국가당 별개 근거로 분리됨, 내용은 동일)·concentration_change·

@@ -174,6 +174,216 @@ HHI·CR3/CR5)은 report_gen 계산기 재사용으로 대부분 자동화 가능
 선결 결정 사항. 원본 PDF는 제3자 원본이라 미추적, 경로만 기록.
 
 ## 2026-09-13 — rag_chat `/prichat` 구조화 블록(table·chart) 이벤트
+## 2026-09-15 (최신, 심야 7) — streamlit_demo 광물지도 연도 콤보박스를 report_gen API 요청에 연결(기본 2021~2025)
+
+사용자 지시("후속으로 연결하고 기본값을 매겨서 처리"). `views/report_demo.py` map_mineral
+분기에서 기존 연도 콤보박스(기본 시작 2021·종료 2025, KOMIS 조회 옵션으로만 쓰던 값)를
+`payload["start_year"/"end_year"]`(int)로도 실어 API가 같은 범위로 좁히게 함 —
+붙여넣은 JSON이 더 넓어도 보고서 조회기간이 화면 선택과 일치. `report_gen_client.py`
+주석 갱신(필드 복원 경위). py_compile 확인. ⚠가동 중인 streamlit(8501)은 본 저장소
+`komir/inhouse/streamlit_demo`에서 09-13 18:24 기동된 프로세스라 워크트리 변경이 아직
+반영 안 됨 — 본 저장소 `git pull --ff-only` 후 재기동 필요(mtime 대조 원칙).
+
+## 2026-09-15 (심야 6) — 광물지도 HTTP API에 조회연도(start_year/end_year) 복원 + 재배포(`komir-report-gen:260915-mapmineral-years`)
+
+사용자 지시("광물지도 http api에 조회년도 값을 추가해서 배포"). 직전 재배포 라이브
+확인에서 연도 필드 포함 호출이 "Extra inputs are not permitted"→NO_DATA였던 것(2026-08-30에
+HTTP 모델에서만 제거, 내부 `AnalysisSummaryRequest`는 계속 보유·필터 적용)을 되돌림 —
+`routers/analysis.py::MineralMapSummaryRequest`에 `start_year`/`end_year`(선택, 1900~2100,
+Swagger description) 추가만으로 끝(`run_summary`가 model_dump로 그대로 넘긴다, start>end는
+내부 검증 ValueError→NO_DATA). 테스트 `test_map_mineral_http_accepts_year_range`(TestClient
+실서비스, 2019~2025 chart→2021~2025 좁힘·역순 NO_DATA) 추가, 20 passed. 이미지
+`260915-mapmineral-years` 빌드·컨테이너 교체(프롬프트 무변경이라 seed 불필요), 라이브:
+2019~2025 전체 chart + start_year=2021로 "2021년보다 … 4년간" 정상, Swagger에 두 필드 노출.
+streamlit_demo report_gen_client(PAGE_SPECS map_mineral)는 아직 이 필드를 안 보낸다(KOMIS
+조회 자체를 연도로 하고 있어 동작엔 문제 없음, 필요 시 후속).
+
+## 2026-09-15 (심야 5) — 대상 1~6 전부 origin/main 푸시 + report_gen 재배포(`komir-report-gen:260915-mapmineral`)
+
+사용자 지시("api 수정된 내역을 커밋하고 푸쉬 및 api 재배포"). 워크트리 브랜치
+worktree-report-summary(10커밋, main 대비 fast-forward)를 `origin/worktree-report-summary`와
+`origin/main`(02d7ab647→ec41f0960)에 푸시. ⚠로컬 main 체크아웃(`komir/` 본 저장소)은 이
+세션(워크트리 격리)에서 갱신 못 함 — 본 저장소에서 `git pull --ff-only` 필요.
+재배포: 워크트리 `inhouse/`를 build context로 `docker build -f report_gen/Containerfile -t
+komir-report-gen:260915-mapmineral .` → 기존 `komir-report-gen-test`(260913-ruledefault) 중지·
+제거 → 같은 옵션(`-p 18003:8003 --env-file inhouse/.env -e LLM_BASE_URL=http://host.docker.
+internal:52302/v1 --add-host host.docker.internal:host-gateway`)으로 기동 → 컨테이너 안에서
+`python -m app.analysis.seed_prompts`(13행 upsert, 백업 스냅샷) → `POST /admin/prompts/reload`
+(13건). 라이브 확인(실 HTTP 라우트, 정적 덤프 2021~2025 행): 매장량·생산량 둘 다 대상 5·6
+문장 전부 서빙, "약 9.8억톤"·"약 1.8억톤" 트림 반영, map_korea "약 109.42억 달러" 정상.
+주의: HTTP 모델(`MineralMapSummaryRequest`)엔 start_year/end_year가 없어(2026-08-30 제거)
+호출자가 조회 연도 행만 보내야 한다 — 첫 호출이 이 필드 때문에 NO_DATA("Extra inputs")였다.
+
+## 2026-09-15 (심야 4) — 축약 물량·금액 끝자리 0 생략 전면 적용 + v19 재생성(워크트리 report-summary)
+
+사용자 지시("표 값 만들 때 소수점 이하 3자리에서 반올림해 2자리 표시하되 마지막이
+0이면 생략을 전체적으로 적용"). 원인: 표·본문이 공용으로 쓰는
+`map_presentation.py::compact_quantity`가 Decimal("9.80")을 그대로 찍어 "약 9.80억"
+처럼 끝자리 0이 남았다(`_number`/`_quantity`의 2026-09-13 트림 규칙과 불일치).
+`_trim_trailing_zero`를 적용해 "약 9.8억톤"·"약 51.3억 달러"·"약 1,548.5만톤"으로
+통일 — map_korea/map_global/map_mineral 본문·표 전부 영향(지도 3페이지 외엔 이 함수를
+쓰지 않는다). 테스트 `test_compact_quantity_trims_trailing_zero` 추가(19 passed).
+v19 소스 21건 중 map_korea 3건·map_mineral 2건 문장 갱신, v19.pptx 재생성 — v13 대비
+누적 적색 30→36곳(map_korea 슬라이드 14·15·16의 끝자리 0 제거분 추가). 템플릿 정본
+2종·README·애매사항의 예시 숫자도 같은 규칙으로 치환. 슬라이드 스크립트의 표
+포매터(smart_fmt)는 원래 트림하고 있어 이제 API 표와 슬라이드 표가 완전히 같다.
+
+## 2026-09-15 (심야 3) — report_gen 광물지도-생산량 내용 보강(대상 6, 마지막) + v19 슬라이드 + 애매사항 5건(워크트리 report-summary)
+
+발주처 피드백(대상 6 핵심광물지도-생산량) 4항목 — ①상위 3개국 생산 집중도(CR3)
+해석 문구 ②조회기간 내 세계 합계 증가 수치+상승/하락 여부 ③매장량 대비 생산량
+비율이 낮은/높은 국가 ④변동폭(최대-최소) 최대 국가 + "내용 부실". 템플릿 §4(동
+생산량 예문)와 대조. 대상 5와 같은 방식(`summary.py` append, 프로즌 무수정).
+
+- `top3_concentration`: 라벨 "생산 집중도(CR3)"(매장량은 "매장량 집중도") + 비중
+  구간별 해석 구절(≥50 절반 이상/≥45 절반에 가까운/≥33.3 3분의 1 이상/≥25 4분의 1
+  이상), CR5는 뒤 문장. `top3_period_change`에 순위 유지/변동("1위 유지"·"4위→2위").
+- `_append_mineral_map_world_total_recent_trend`(core): 전년 대비 ±2% 이내 보합,
+  마지막 변화 종류가 이어진 연도까지 "[연도]년 이후 … 보합세/N년 연속 증가하는
+  상승 추세".
+- `_append_mineral_map_reserve_production_ratio`: 두 랭킹 순위 차이로 낮은 국가
+  (매장량 top5 중 생산량 순위 2계단↓ — 당초 3, 검증 스윕의 스트론튬 사례로 정정)·
+  높은 국가(생산량 top5 중 매장량 순위 2계단↓)
+  각 1문장, 항상 "매장량 대비" 방향. 스냅샷 있으면 프로즌 `cross_measure_comparison`
+  근거·omitted를 대체(방향 뒤집힘 문제).
+- `_append_mineral_map_volatility`: 상위 10개국 중 전 연도 값 있고 양방향으로 움직인
+  국가에서 (최대−최소)/최대 최대 국가, 시작·최대·최소·당해 경로 서술("주요 변화"
+  절). 단방향 국가 제외(템플릿이 콩고 대신 인도네시아를 고른 기준).
+- 상한: MAJOR_CHANGES_MAX_SENTENCES 10→12, MINERAL_MAP core(1,4)·major(2,12)·
+  total(5,19). 렌더 분리 절 id에 volatility_country. 프롬프트 md 갱신 — **seed_prompts
+  재실행 필요**. 테스트 18 passed(기존 map_mineral 테스트에 문장 갱신·추가).
+- v19 슬라이드 입력 교정: v13~v18의 교차비교 스냅샷이 다년 합산 덤프(`동|생산량|map`,
+  호주 575만톤)였음 → chart 2025년 행으로 단일연도 스냅샷 구성(호주 73만톤 3.17%,
+  템플릿 일치), 생산량 슬라이드에도 매장량 스냅샷 추가. v19.pptx: 소스는 v18 대비
+  광물지도 2건만 다름(그 외 19건 동일). **적색은 사용자 지시로 v13 대비 누적 30곳**
+  (대상 1~6 전부 — 슬라이드 4·6·8·10·11(17)·14·16·18·20(3)·21(3)), 대상 6 몫은 슬라이드
+  20·21 문단 2·4·6. 본문 약 1,650자(9pt·6.6in, 추정 32줄). 커밋 `ffa4fee5f`(대상 5·6)
+  + v13 기준 적색 재생성 후속 커밋.
+- 템플릿 정본 2종 갱신, 애매사항 #17~#21(CR3 구간, 보합 문턱, 변동폭 산식·후보,
+  비율 판정·분모, 스냅샷 입력).
+
+## 2026-09-15 (심야 2) — report_gen 광물지도-매장량 내용 보강(대상 5) + v18 슬라이드 + 애매사항 6건(워크트리 report-summary)
+
+발주처 피드백(대상 5 핵심광물지도-매장량) 4항목 — ①국가별 순위에 상위 3개국+값+
+증감률 ②주요 변화에 크게 증가/감소한 국가 2개 이상+급변 기간(예 "2023~2025년
+OOOO만톤(XX%)으로 급격히 상향되어") ③단일 국가 1위 총정리("기타 국가 합산이 …
+칠레를 상회") ④"내용 부실, 공단 템플릿 참고". 발주처 PDF 템플릿(§3 광산지도-매장량
+동 사례)과 대조해 문단 구성을 맞췄다. 프로즌 `additional_summary.py`는 무수정,
+전부 `summary.py` 후처리(append)로.
+
+- `summary.py`: `_append_mineral_map_world_total_trend`(core, 연도별 세계 합계 "→"
+  나열), `_append_mineral_map_top3_detail`(major: `top3_period_change` 상위 3개국
+  시작→최근 값+증감률, `top3_concentration` CR3/CR5 — key_metrics 값을 그대로 읽어
+  표와 일치), `_append_mineral_map_extreme_change`를 방향별 상위 2개국·국가당 근거
+  1개(`extreme_increase_1/2`·`extreme_decrease_1/2`, 구 `extreme_change_countries`
+  대체)로 확장 + `_mineral_map_sharpest_interval`(변화 폭 최대 연속구간, 앞뒤 동값
+  연도 "YYYY~YYYY년" 묶음, "급격히"는 전체 변화의 절반 초과+직전 값 대비 20%
+  이상일 때만), `_append_mineral_map_top_country_vs_others`(기타 국가 합산 vs 1위,
+  KOMIS 비중표 `_ETC_` 기반 — `input_data.py::_parse_komis_map_mineral_share_others`
+  신설, `is_other=True` 관측치로 얹음). LLM 검증의 extreme 국가명 보존 검사는
+  "다음으로 X는" 형태까지 잡도록 정규식 확장.
+- `report_render.py`: `_MAJOR_CHANGES_SPLIT_SECTIONS` 값을 evidence_id 튜플로(map_
+  mineral "주요 변화"에 5개 id). `models.py` MAJOR_CHANGES_MAX_SENTENCES 7→10,
+  `prompts.py` MINERAL_MAP 범위 core(1,3)·major(2,10)·total(5,16) — **배포 시
+  seed_prompts 재실행 필요**(output_contract·프롬프트 md 변경). 프롬프트
+  `mineral_map_summary.md` 근거 안내 갱신.
+- 테스트 `test_map_mineral_ranking_detail_and_major_changes`(동 매장량 실데이터를
+  1/100,000로 줄인 6개국·`_ETC_`/`_TOTAL_` 합성) 추가, 18 passed. 실데이터 확인:
+  동 2021~2025·2024~2025(2년창, 급변 구간 없음)·리튬 2019~2025 매장량/생산량.
+- 템플릿 정본 2종(01_메뉴별·AI통계분석_핵심광물지도 §3-3) 갱신, 애매사항 기록
+  #10~#16 추가(괄호 %=세계 비중, "급격히" 임계값, 방향별 2개국, 총정리 위치, 기타
+  국가 정의, 슬라이드 분량, 생산량에도 동일 적용).
+- v18.pptx(`report_gen_v18_슬라이드_260915_evidence/`): v17 대비 차이=슬라이드
+  20·21(광물지도 매장량·생산량) 본문 문단 2·4·6 = 적색 6곳, 그 외 19건 소스 동일.
+  본문이 약 500자→약 1,400자로 늘어 그 두 슬라이드만 상자 6.6in·9pt로 조정.
+
+## 2026-09-15 (심야) — report_gen 글로벌수급지도 "KOMIS 차트 기준" 삭제(대상 4) + v17 슬라이드(워크트리 report-summary)
+
+발주처 피드백(수출 옵션): country_yearly_trend 문장의 "KOMIS 차트 기준" 접두어
+불필요 → `komir_summary.py`에서 삭제(수치·순서 불변). 템플릿 정본 2종 갱신,
+테스트 17 passed. v17.pptx(`report_gen_v17_슬라이드_260915_evidence/`): v16 대비
+차이 1곳(슬라이드 18 기간 변화 문장)=적색 run 1 — 접두어 삭제라 새 토큰이 없어
+폴백(문단 전체 적색) 적용, README에 명시. 그 외 적색 없음.
+
+## 2026-09-15 (밤) — report_gen 국내수급지도 수입 집중도(대상 3) + v16 슬라이드 + 애매사항 기록(워크트리 report-summary)
+
+발주처 피드백 "상위 3개국 수입 비중은 …"을 템플릿 기준 "수입 집중도(CR3)"로.
+발주처 PDF 템플릿 원문("상위 3개국의 수입 집중도(CR3)는 83.72%에 달하며, 상위
+5개국까지 합산하면 전체 수입의 99.70%를 차지합니다.")을 pypdf로 확인해 근거로 삼음.
+
+- `komir_summary.py` import_concentration: "상위 3개국의 수입 집중도(CR3)는 N%이며,
+  상위 5개국까지 합산하면(CR5) 전체의 M%를 차지합니다." 범위 한정 조회면 문두에
+  "이 범위 내". "에 달하며"(평가어)는 "이며"로. `share_scope` 변수 제거.
+- 테스트 추가(17 passed), 템플릿 정본 2종(01_메뉴별·AI통계분석_핵심광물지도) 갱신.
+- v16.pptx(`report_gen_v16_슬라이드_260915_evidence/`): v15 대비 차이 2곳(슬라이드
+  14·16 수입 집중도 문장)=적색 run 5, 그 외 적색 없음.
+- 사용자 지시("원하는 대로 하고 애매한 부분은 기록")로 `documents/산출물/
+  2026-W38_0914-0920/report_gen_피드백반영_애매사항_기록_260915.md` 신설 — 괴리율
+  vs %p, 평균에 % 여부, 종합지수 조회 창(호출 측), 평균 지수 정의, 조건부 문장
+  동반 등장, 표 라벨 통일 여부, "달하며" 평가어, "이 범위 내" 위치, 글로벌
+  루트 집중도 표기 9건. 현행은 전부 최소 변경(기존 산식·라벨 유지) 쪽으로 결정.
+
+## 2026-09-15 (저녁) — report_gen 광물종합지수 피드백(대상 2) + v15 슬라이드(워크트리 report-summary)
+
+발주처 피드백 "전주·전월·전년 대비 증감률과 평균 지수 표출(현재 전주만)",
+"구성 광종(가중치)은 …으로 오해 없게" 반영. `summary.py` 후처리만 고치고
+프로즌 `additional_summary.py`는 손대지 않음.
+
+- `_replace_composite_subindex_narrative`: " 구성 광종은 …" → " 구성 광종(가중치)은 …".
+- `_append_composite_period_average`(신설, `_analyze_composite`): key_metrics에
+  `period_average_composite_index`("조회기간 평균 지수", 포인트) 추가.
+- 전주·전월·전년 대비는 코드가 이미 내고 있었다 — v13/v14에 전주만 나온 건 KOMIS
+  `getLineChartIndx` 기본 1개월 프리셋(08-13~09-11) 입력에 비교 시점이 없어서.
+  호출 측이 `srchDateS`를 1년 이상 전으로 넘겨야 셋 다 나온다(README에 명시).
+- 테스트 `test_composite_period_average_and_weight_label` 추가(16 passed), 템플릿
+  정본 2종(01_메뉴별·AI통계분석_광물전망지표) 갱신.
+- v15.pptx: `documents/산출물/2026-W38_0914-0920/report_gen_v15_슬라이드_260915_evidence/`.
+  종합지수만 정적 덤프 전체기간을 `start_date=2025-07-01`로 잘라 입력("1년"
+  프리셋은 1년 전 시점이 2일 모자라 전년 대비 불가), 표에 전월·전년·평균 행 복제
+  삽입(평균 행 단위 셀 "포인트"로 교정), 캡션 도형 없어 시장동향 슬라이드의
+  "TextBox 11" 복제. v14 대비 차이 17곳(전부 슬라이드 11) = 적색 run 36, 그 외
+  적색 없음(잔존 적색→흑색 규칙 동일).
+
+## 2026-09-15 — report_gen 광물자원가격 비교광종 상대가치 문장 표기 변경(워크트리 report-summary)
+
+발주처 피드백(광물가격지표 비교광종 추가 화면) 3건 반영 — `komir_summary.py::
+_relative_value_fact` 문장 형식만 바꿨고 산식(공통 관측일 20건 이상, 비율의
+조회기간 평균 대비 상대 괴리율, ±0.5% 보합 문턱)은 그대로다.
+
+- 비율 → 퍼센트: `0.8653` → `86.53%`. 조회기간 평균도 같은 단위(`0.6438` →
+  `64.38%`). 마지막 "[차이]%"는 종전과 같이 평균 대비 상대 괴리율이지 %p 차이가
+  아니다(문서·코드 주석에 명시).
+- "동/니켈 가격비율" → "니켈 대비 동의 가격비율"로 풀어 씀(분모 광종을 먼저).
+- 실데이터 재현(v12 evidence `live_price_*.json` 4건, llm=None): 동/니켈
+  `86.53%·평균 64.38%·34.41% 높음`, 코발트/몰리브덴 `85.1%·221.53%·61.58% 낮음`,
+  우라늄/유연탄 `70.04%·73.84%·5.15% 낮음`, 흑연/금 `8.93%·14.39%·37.9% 낮음` —
+  수치는 v12 슬라이드와 동일하고 표기만 바뀜.
+- 템플릿 정본 6종 갱신(`report_gen_10페이지_업무지시서_준수점검_260909/`의
+  01_메뉴별·AI통계분석_광물자원가격·광물자원가격_{비철금속,희소금속,철광석에너지,기타}).
+- 테스트 `test_relative_value_fact_uses_percent_and_spelled_out_pair` 추가(15건 통과).
+- 발주처 "확인 필요"(최근 14일/14주 상승·하락·보합 수 기준) 답변: 같은 함수
+  파일의 `_ma_rsi_fact` — 조회기간 관측치 중 **마지막 14개
+  관측치의 직전 대비 가격 차이**를 세어 `>0` 상승, `<0` 하락, `=0` 보합으로
+  분류한다(합은 항상 14). 단위(일/주/개월)는 요청의 `srch_avg_opt`(KOMIS
+  `srchAvgOpt` DAY/WEEK/MONTH…)가 있으면 그것, 없으면 관측일 간격 중앙값
+  (≤3일→일, ≤10일→주, ≤45일→개월)으로 판별한다. 14는 RSI(Wilder 14) 창과
+  같은 값이며 문장 자체는 관측치 15개 이상일 때만 생성된다.
+- 컨테이너(komir-report-gen-test, 18003) 재배포는 아직 안 함 — main 병합 후
+  재빌드 필요(프롬프트 DB는 건드리지 않아 seed_prompts 재실행은 불필요).
+- (후속 지시 "v13은 두고 v14를 만들어 v13과 차이나는 부분만 적색") —
+  `documents/산출물/2026-W38_0914-0920/report_gen_v14_슬라이드_260915_evidence/`
+  (refetch·build 스크립트, v14_sources.json, README). 입력·절차는 v13과
+  동일(raw/는 v13 evidence 참조), 소스 차이는 가격 비교 4건의 relative_value
+  문장뿐. `build_v14_full.py::mark_diff_red`가 실제 v13.pptx와 문단 단위
+  대조 후 토큰 단위 diff로 바뀐 토큰만 적색 run(12개, 서식 유지). v10
+  템플릿부터 표 셀에 박혀 있던 잔존 적색(FF0000 35 run + 슬라이드13 표
+  전체 C00000 26 run)은 사용자 지시("기존 적색은 다 흑색으로 통일")대로
+  v14에서 흑색(000000)으로 통일
+  (`clear_inherited_red`). 산출물
+  `요약분석_정리결과물/분석요약_개선_결과작업_v14.pptx`(21슬라이드, 미추적).
+  워크트리엔 gitignore 데이터가 없어 `KOMIR_ROOT=<실체크아웃>`으로 실행.
+
+## 2026-09-13 — rag_chat `/prichat` 구조화 블록(table·chart) 이벤트(미커밋)
 
 사용자 제안(표·차트를 그리는 주체는 프론트여야 하니 메타를 가진 JSON 객체를
 넘기자, `<json></json>` 태그 방식 검토)에 대해 태그 방식 대신 SSE 이벤트

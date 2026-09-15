@@ -153,12 +153,18 @@ SECTION_SENTENCE_RANGES: dict[str, dict[str, tuple[int, int]]] = {
 #: `models.py::MAJOR_CHANGES_MAX_SENTENCES`(전역, 현재 7)는 이미 여유가
 #: 있어 규칙기반 폴백엔 영향 없지만, 이 페이지 전용 LLM 출력계약은 그대로
 #: 두면 4번째 근거가 있을 때 검증 실패로 폴백된다 — 여기도 맞춰 올린다.
+#: 2026-09-15 발주처 피드백(대상 5·6) — core에 world_total_trend·
+#: world_total_recent_trend(+2), major_changes에 top3_period_change·
+#: top3_concentration·reserve_production_ratio_low/high·extreme_*(최대 4)·
+#: volatility_country·top_country_vs_others가 더해져 core 최대 4, major 최대
+#: 12(전역 상한과 동일)로 올린다. 프롬프트 DB(ai_cfg.cfg_prompt)의
+#: output_contract는 seed_prompts 재실행으로 갱신해야 LLM 경로에 반영된다.
 MINERAL_MAP_SECTION_SENTENCE_RANGES: dict[str, tuple[int, int]] = {
-    "core_diagnosis": (1, 2),
-    "major_changes": (2, 4),
+    "core_diagnosis": (1, 4),
+    "major_changes": (2, 12),
     "current_position": (2, 3),
 }
-MINERAL_MAP_TOTAL_SENTENCE_RANGE: tuple[int, int] = (5, 9)
+MINERAL_MAP_TOTAL_SENTENCE_RANGE: tuple[int, int] = (5, 19)
 MAX_EVIDENCE_IDS_PER_SENTENCE = 3
 #: 페이지별 예외 — price는 PDF 1-1 템플릿이 전일·전주·전월·전년(·연속) 비교를 한
 #: 문장에 담으므로 5(2026-08-27 반복 루프 4회차). `SummarySentence.evidence_ids`

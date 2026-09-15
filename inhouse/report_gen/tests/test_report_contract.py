@@ -267,6 +267,149 @@ class ReportContractTests(unittest.TestCase):
         from app.analysis.data_sources import DataSourceError as legacy_error
         self.assertIs(legacy_error, DataSourceError)
 
+    def test_map_korea_import_concentration_uses_cr3_wording(self):
+        """2026-09-15 발주처 피드백(대상 3) — "상위 3개국 수입 비중은 …" 대신 발주처
+        템플릿처럼 "상위 3개국의 수입 집중도(CR3)는 …"으로."""
+        countries = [("중국", 500.0), ("칠레", 300.0), ("일본", 200.0), ("미국", 100.0), ("페루", 50.0), ("호주", 25.0)]
+        response = AnalysisSummaryService().analyze(AnalysisSummaryRequest(
+            page_id="map_korea", mineral="동", mineral_name="동",
+            observations=[
+                {"date": "2026-06-30", "country_code": f"C{i}", "country_name": name,
+                 "import_amount": amount, "export_amount": 10.0}
+                for i, (name, amount) in enumerate(countries)
+            ],
+        ))
+        texts = [s.text for sec in ("core_diagnosis", "major_changes", "current_position") for s in getattr(response.summary, sec)]
+        sentence = next(t for t in texts if "수입 집중도(CR3)" in t)
+        self.assertEqual(
+            sentence,
+            "상위 3개국의 수입 집중도(CR3)는 85.11%이며, 상위 5개국까지 합산하면(CR5) 전체의 97.87%를 차지합니다.",
+        )
+        self.assertFalse(any("수입 비중은" in t for t in texts))
+
+    def test_map_mineral_ranking_detail_and_major_changes(self):
+        """2026-09-15 발주처 피드백(대상 5 광물지도-매장량) — 국가별 순위에 상위
+        3개국 값+증감률·CR3, 주요 변화에 방향별 2개국+급변 구간, 1위 vs 기타
+        총정리. 수치는 동 매장량 실데이터(2021~2025)를 1/100,000로 줄인 것."""
+        rows = {
+            "칠레": [2000, 1900, 1900, 1900, 1800], "호주": [930, 970, 1000, 1000, 1000],
+            "페루": [770, 810, 1200, 1000, 850], "콩고민주공화국": [None, 310, 800, 800, 800],
+            "러시아": [620, 620, 800, 800, 800], "인도네시아": [240, 240, 240, 210, 210],
+        }
+        observations = [
+            {"year": 2021 + i, "country_code": name, "country_name": name, "value": value}
+            for name, values in rows.items() for i, value in enumerate(values) if value is not None
+        ]
+        share = {"data": [
+            {"ntnKornNm": "_ETC_", "ntnEngCd": "OT", "before1": "2,100", "rate": "21.43"},
+            {"ntnKornNm": "_TOTAL_", "ntnEngCd": "SU", "before5": "8,800", "before4": "8,900",
+             "before3": "9,900", "before2": "9,800", "before1": "9,800", "rate": "100.00"},
+        ]}
+        response = AnalysisSummaryService().analyze(AnalysisSummaryRequest(
+            page_id="map_mineral", mineral="동", mineral_name="동", measure="reserves", unit="톤",
+            observations=observations, komis_share_response=share,
+        ))
+        by_id = {s.evidence_ids[0]: s.text for sec in ("core_diagnosis", "major_changes") for s in getattr(response.summary, sec)}
+        self.assertEqual(by_id["world_total_trend"], "연도별 세계 매장량 합계는 2021년 8,800톤 → 2022년 8,900톤 → 2023년 9,900톤 → 2024년 9,800톤 → 2025년 9,800톤입니다.")
+        # 대상 6 — 마지막 변화(0%)가 보합, 2023→2024(-1.0%)도 보합, 2022→2023(+11.2%)에서 끊긴다.
+        self.assertEqual(by_id["world_total_recent_trend"], "세계 매장량은 2023년 이후 9,800톤~9,900톤 수준에서 보합세를 유지하고 있습니다.")
+        self.assertEqual(by_id["top3_period_change"], "조회기간(2021~2025년) 상위 3개국의 매장량 변화는 칠레 2,000톤→1,800톤(10% 감소, 1위 유지), 호주 930톤→1,000톤(7.53% 증가, 2위 유지), 페루 770톤→850톤(10.39% 증가, 3위 유지)입니다.")
+        self.assertEqual(by_id["top3_concentration"], "상위 3개국의 매장량 집중도(CR3)는 37.24%로, 전체 매장량의 3분의 1 이상이 이 3개국에 집중돼 있습니다. 상위 5개국까지 합산하면(CR5) 전체의 53.57%를 차지합니다.")
+        # 대상 6 — 오르내린 국가만 후보(칠레·인도네시아는 감소만, 호주·러시아는 증가만).
+        self.assertEqual(by_id["volatility_country"], "페루는 2021년 770톤에서 2023년 1,200톤으로 증가했다가 2025년 850톤으로 감소하는 등 조회기간 매장량 변동폭이 가장 큰 국가(최대값 대비 최소값 차이 35.83%)입니다.")
+        self.assertEqual(by_id["extreme_increase_1"], "조회기간 중 매장량이 가장 크게 증가한 국가는 콩고민주공화국으로, 2021년 0톤에서 2025년 800톤으로 800톤 (신규 집계) 증가했습니다. 특히 2022년 310톤에서 2023~2025년 800톤(세계 비중 8.16%)으로 급격히 상향돼 변화가 집중됐습니다.")
+        self.assertEqual(by_id["extreme_increase_2"], "다음으로 러시아는 2021년 620톤에서 2025년 800톤으로 180톤 (29.03%) 증가했습니다. 특히 2021~2022년 620톤에서 2023~2025년 800톤(세계 비중 8.16%)으로 급격히 상향돼 변화가 집중됐습니다.")
+        self.assertEqual(by_id["extreme_decrease_1"], "가장 크게 감소한 국가는 칠레로, 2021년 2,000톤에서 2025년 1,800톤으로 200톤 (10%) 감소했습니다. 연도별로는 2022~2024년 1,900톤에서 2025년 1,800톤(세계 비중 18.37%)으로 줄어든 구간의 변화 폭이 가장 컸습니다.")
+        self.assertEqual(by_id["extreme_decrease_2"], "다음으로 인도네시아는 2021년 240톤에서 2025년 210톤으로 30톤 (12.5%) 감소했습니다. 연도별로는 2021~2023년 240톤에서 2024~2025년 210톤(세계 비중 2.14%)으로 줄어든 구간의 변화 폭이 가장 컸습니다.")
+        self.assertEqual(by_id["top_country_vs_others"], "기타 국가 합산은 2025년 2,100톤(21.43%)으로, 단일 국가 기준 1위인 칠레(1,800톤, 18.37%)를 상회하고 있어 복수의 중소 매장국에도 상당한 매장량이 분포돼 있습니다.")
+        report = render_markdown_report(response)
+        ranking = report.split("## 국가별 순위 및 변화")[1].split("## 주요 변화")[0]
+        changes = report.split("## 주요 변화")[1].split("## 주요 지표")[0]
+        self.assertIn(by_id["top3_period_change"], ranking)
+        self.assertIn(by_id["top3_concentration"], ranking)
+        for key in ("extreme_increase_1", "extreme_increase_2", "extreme_decrease_1", "extreme_decrease_2", "volatility_country", "top_country_vs_others"):
+            self.assertIn(by_id[key], changes)
+            self.assertNotIn(by_id[key], ranking)
+        metrics = {m.id: m.value for m in response.key_metrics}
+        self.assertEqual((metrics["max_increase_country"], metrics["max_decrease_country"]), ("콩고민주공화국", "칠레"))
+
+    def test_map_mineral_http_accepts_year_range(self):
+        """2026-09-15 사용자 지시 — 광물지도 HTTP 모델에 start_year/end_year 복원.
+        2019~2025 chart 응답을 보내고 2021~2025로 좁히면 조회기간 표기·시작연도가 그
+        범위를 따른다. 뒤집힌 범위(start>end)는 NO_DATA."""
+        rows = []
+        for year in range(2019, 2026):
+            for code, name, base in (("CL", "칠레", 200), ("AU", "호주", 90), ("PE", "페루", 80), ("RU", "러시아", 60)):
+                rows.append({"crtrYr": str(year), "ntnEngCd": code, "ntnKornNm": name, "cdVal": "ton",
+                             "burudgQuty": base + year - 2019, "prdctnQuty": 1})
+        body = {"mineral": "MNRL0008", "mineral_name": "동", "measure": "reserves",
+                "komis_response": {"data": rows}, "start_year": 2021, "end_year": 2025}
+        with patch.object(app.state, "analysis_summary_service", AnalysisSummaryService(None, llm=None), create=True), \
+             patch.object(app.state, "analysis_lock", Semaphore(8), create=True):
+            client = TestClient(app)
+            result = client.post("/api/v1/analysis/maps/mineral", json=body).json()
+            self.assertEqual(result["status"], "ok")
+            self.assertIn("조회기간(2021~2025년)", result["report"])
+            self.assertIn("2021년보다", result["report"])
+            self.assertNotIn("2019년", result["report"])
+            reversed_range = client.post("/api/v1/analysis/maps/mineral", json={**body, "start_year": 2025, "end_year": 2021}).json()
+            self.assertEqual(reversed_range["status"], "NO_DATA")
+
+    def test_compact_quantity_trims_trailing_zero(self):
+        """2026-09-15 사용자 지시 — 축약 물량·금액도 '3자리에서 반올림해 2자리, 끝자리 0
+        생략' 규칙(표·본문 공통). 이전엔 Decimal 그대로 찍혀 '약 9.80억'이 남았다."""
+        from app.analysis.map_presentation import compact_fact, compact_quantity
+        self.assertEqual(compact_quantity(980_000_000, "톤"), ("약 9.8억", "톤"))
+        self.assertEqual(compact_quantity(200_000_000, "톤"), ("약 2억", "톤"))
+        self.assertEqual(compact_quantity(5_130_000_000, "달러"), ("약 51.3억", "달러"))
+        self.assertEqual(compact_quantity(15_485_000, "톤"), ("약 1,548.5만", "톤"))
+        self.assertEqual(compact_quantity(4_043_210_000, "달러"), ("약 40.43억", "달러"))
+        self.assertEqual(compact_fact("2025년 세계 동 매장량은 980,000,000톤이다."), "2025년 세계 동 매장량은 약 9.8억톤이다.")
+
+    def test_composite_period_average_and_weight_label(self):
+        """2026-09-15 발주처 피드백(광물종합지수) — 조회기간 평균 지수 metric 추가,
+        구성 광종 문장은 "구성 광종(가중치)은 …"으로. 1년 넘는 관측치를 주면
+        전주·전월·전년 대비가 모두 나온다(프로즌 계산기 기존 동작 확인)."""
+        from datetime import date, timedelta
+
+        start = date(2025, 8, 1)
+        observations = [
+            {"date": (start + timedelta(days=7 * i)).isoformat(), "composite_index": 1000 + i,
+             "major_metals_index": 900 + i, "minor_metals_index": 800 + i}
+            for i in range(60)  # 2025-08-01 ~ 2026-09-18, 주간 60건
+        ]
+        response = AnalysisSummaryService().analyze(AnalysisSummaryRequest(
+            page_id="indicator_composite", observations=observations,
+        ))
+        by_id = {m.id: m for m in response.key_metrics}
+        for metric_id in ("weekly_composite_change", "monthly_composite_change", "yearly_composite_change"):
+            self.assertIn(metric_id, by_id)
+        average = by_id["period_average_composite_index"]
+        self.assertEqual(average.label, "조회기간 평균 지수")
+        self.assertEqual(average.unit, "포인트")
+        self.assertAlmostEqual(average.value, 1000 + 59 / 2, places=6)
+        report = render_markdown_report(response)
+        self.assertIn("구성 광종(가중치)은 ", report)
+        self.assertNotIn(" 구성 광종은 ", report)
+        self.assertIn("| 조회기간 평균 지수 |", report)
+
+    def test_relative_value_fact_uses_percent_and_spelled_out_pair(self):
+        """2026-09-15 발주처 피드백 — 가격비율은 퍼센트(86.53%)로, 평균도 같은
+        단위로, "동/니켈" 대신 "니켈 대비 동의"로 풀어 쓴다."""
+        from app.analysis.komir_summary import _relative_value_fact
+
+        # 20일 중 앞 19일은 비율 0.6, 마지막 날만 0.8 → 평균 0.61, 괴리 +31.15%
+        primary = [SimpleNamespace(date=f"2026-01-{d:02d}", commerce_price=60.0) for d in range(1, 20)]
+        primary.append(SimpleNamespace(date="2026-01-20", commerce_price=80.0))
+        compare = [SimpleNamespace(date=f"2026-01-{d:02d}", commerce_price=100.0) for d in range(1, 21)]
+        fact = _relative_value_fact("동", primary, "니켈", compare)
+        self.assertEqual(
+            fact,
+            "니켈 대비 동의 가격비율은 현재 80%로, 조회기간 평균(61%) 대비 31.15% 높은 수준입니다.",
+        )
+        self.assertNotIn("동/니켈", fact)
+        self.assertIsNone(_relative_value_fact("동", primary[:19], "니켈", compare[:19]))
+
 
 if __name__ == "__main__":
     unittest.main()

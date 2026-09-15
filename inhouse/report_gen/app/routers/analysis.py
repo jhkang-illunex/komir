@@ -259,12 +259,22 @@ class MineralMapSummaryRequest(AnalysisEndpointRequest):
     `_DateRangeMineralRequest` docstring과 같은 결론. **UI가 실제로
     이 필드를 채워 보내는 유일한 경로라 streamlit_demo 쪽도 같이
     갱신해야 한다**(요청 시 extra="forbid"로 조용히 NO_DATA 처리됨) —
-    streamlit-agent에 통지."""
+    streamlit-agent에 통지.
+
+    2026-09-15 사용자 지시로 `start_year`/`end_year` **복원** — 재배포 라이브
+    확인 때 조회 연도를 넣은 첫 호출이 "Extra inputs are not permitted"로
+    NO_DATA가 났고, 호출자가 매번 chart 응답 행을 직접 잘라 보내는 것보다
+    API가 받는 편이 낫다는 판단. 내부 `AnalysisSummaryRequest`는 이 두
+    필드를 계속 갖고 있었고(`_analyze_mineral_map`이 observations를 그
+    범위로 좁힌다, start_year>end_year는 ValueError→NO_DATA), 여기서
+    막기만 했던 것이라 통과시키면 끝. 둘 다 없으면 응답 전체 기간."""
 
     mineral: str = Field(min_length=1)
     mineral_name: str | None = Field(default=None, min_length=1)
     measure: MineralMapMeasure
     unit: str | None = None
+    start_year: int | None = Field(default=None, ge=1900, le=2100, description="조회 시작연도(선택). komis_response의 연도별 행을 이 범위로 좁힙니다. 없으면 응답 전체 기간.")
+    end_year: int | None = Field(default=None, ge=1900, le=2100, description="조회 종료연도(선택). start_year보다 앞설 수 없습니다.")
     komis_response: dict | None = None
     komis_snapshot_response: dict | None = None
     komis_share_response: dict | None = None

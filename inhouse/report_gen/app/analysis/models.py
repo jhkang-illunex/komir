@@ -941,7 +941,13 @@ CORE_DIAGNOSIS_MAX_SENTENCES = 5
 #: 둘 다 더할 수 있다(5+1+1=7, komir_summary.py::calculate_price_summary
 #: 실측 확인 — 두 게이트 모두 이 상수를 참조해야 어느 쪽이 먼저 계산돼도
 #: 서로의 자리를 뺏지 않는다).
-MAJOR_CHANGES_MAX_SENTENCES = 7
+#: 2026-09-15 발주처 피드백(대상 5·6 광물지도)으로 7→12 — map_mineral이
+#: current_leaders·third_country·top3_period_change·top3_concentration·
+#: reserve_production_ratio_low/high(또는 cross_measure_comparison) +
+#: extreme_increase_1/2·extreme_decrease_1/2·volatility_country·
+#: top_country_vs_others 최대 12개를 낸다(summary.py::_analyze_mineral_map).
+#: price_*의 room-check(komir_summary.py)는 실측 최대 3개라 이 인상에 영향 없음.
+MAJOR_CHANGES_MAX_SENTENCES = 12
 CURRENT_POSITION_MAX_SENTENCES = 9
 
 
