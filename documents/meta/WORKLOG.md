@@ -2,7 +2,178 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-13 (최신) — rag_chat `/prichat` 구조화 블록(table·chart) 이벤트(미커밋)
+## 2026-09-15 (최신) — mnrl_report 엔진 분리: RuleEngine·GenEngine + 버전(YYMMDD-sha8) 등록부
+
+사용자 지적: "만든 건 rule 엔진이 아니라 읽고 저장하는 pipeline" → 파이프라인이 쓰는
+규칙/생성형 엔진을 분리하고 엔진마다 버전을 날짜+sha로 기록, LLM 생성 엔진도 구현.
+- `engines/base.py`: `Engine` 인터페이스·`EngineResult`(columns/evidence/dropped)·
+  `compute_version()` — 엔진 구성 파일 내용 sha256 앞 8자리(+모델명) + 파일 최종
+  변경일(커밋된 깨끗한 파일은 git 커밋일, 미커밋은 mtime — clone으로 mtime이 바뀌어도
+  같은 코드는 같은 버전) → `YYMMDD-sha8`(varchar(30) 이내). 손으로 올리는 버전 상수 없음.
+  컨테이너(git 없음)에서도 mtime 폴백으로 호스트와 같은 버전이 나오는 것 확인, 이미지
+  komir-mnrl-report:260915 빌드·컨테이너 안 unittest 20건 통과.
+- `engines/rule_engine.py`(RuleEngine, 해시 입력 rules 3종+policy+config)·
+  `engines/gen_engine.py`(GenEngine, 해시 입력 엔진 소스+`engines/prompts/*.md`+
+  `LLM_PROVIDER:LLM_MODEL`). `llm_stage.py` 삭제, `writer.upsert`는 EngineResult와
+  버전 문자열을 받아 `rule_ver`/`llm_model_ver`에 찍음, `run.py`는 읽기→엔진→쓰기→
+  기록만.
+- `engines/registry.py`: `public.ai_rpt_engine_ver`(engine_cd+ver PK, engine_type,
+  ver_date, ver_sha, model_nm, src_files JSON)·`public.ai_rpt_gen_run`(행마다 엔진·
+  버전·write_stts·채움/폐기 컬럼 수·dropped_json·facts_path·시각) 신설(IF NOT
+  EXISTS, COMMENT 포함). `db.WRITABLE_TABLES`에 2종 추가.
+- GenEngine 검증(실측으로 규칙 추가): ①공용 클라이언트 json_mode 기본 True →
+  `{"컬럼": "…"}` 껍데기가 그대로 저장됨 → json_mode=False + `unwrap` ②"정보가
+  없습니다"류 메타 문장·`(없음)` 혼입·"공급측면에서 가 주요 원인"/"정보는 ." 같은
+  빈 자리표시자 폐기 ③근거 밖 숫자 검사에서 `25년·7월·3개국 같은 날짜·개수 표기
+  제외(정상 문장이 통째로 폐기되던 것) ④근거와 반대 방향어(4.61% 상승→하락)
+  폐기 ⑤`## <컬럼> [needs:news]` 헤더 — 원인·사건 컬럼은 뉴스 근거 없으면 호출
+  없이 `no_news_evidence`(현재 뉴스 원천 미연결이라 전부 NULL).
+- **규칙 버그 2건 발견·수정**(LLM이 규칙 문장을 그대로 옮기며 드러남):
+  overall `smry_quant_txt`가 첫 광종 방향어를 전 광종에 적용("주석 4.61% 하락세",
+  실제 상승), `risk2_quant_txt`가 전주 방향을 전월·전년에도 적용 → 방향이 다르면
+  항목마다 방향어. 규칙 버전 `260915-09133a4f`→`260915-d7339d7b`로 자동 상승.
+- 실행(20260615, `LLM_BASE_URL=http://localhost:52302/v1 … --llm` — common/config가
+  저장소 루트 .env의 host.docker.internal을 읽어 호스트에선 덮어써야 함):
+  광종 7행+전체 1행 updated, rule_ver=260915-d7339d7b, llm_model_ver=260915-b0efce44
+  (gemma-4-26b-a4b). GEN 채움: 텅스텐 risk_narr·response 2, 동·주석·아연 response 1,
+  전체 risk2_title·response 2, 니켈·알루미늄·연 0(모델이 "(없음)"). 나머지는
+  no_news_evidence/empty로 폐기(사유는 ai_rpt_gen_run.dropped_json). 시험 반복으로
+  engine_ver 8행·gen_run 112행 누적. 테스트 20건(test_rules 9+test_engines 11) 통과,
+  pyflakes 클린. README 재작성. 설계·결과 문서 `documents/산출물/2026-W38_0914-0920/
+  통합보고서_생성엔진_설계및결과_260915.md` 작성(공유용).
+- 후속(같은 날 저녁): 사용자 확정 "수급위기 진단은 5종 고정" → `config.TARGET_MINERALS`
+  (동 MNRL0008·니켈 MNRL0002·코발트 MNRL0003·리튬 MNRL0001·희토류 MNRL0006)를 기본
+  대상으로, `MNRL_REPORT_MINERALS=all`이면 READY 전부. 실측: 5광종 중 실데이터는 동·니켈
+  주간가격뿐(관세청·USGS 5광종 행은 전부 DEV_DUMMY) → 광종별 행 2건, 3광종 skipped.
+  config.py가 해시에 들어가 규칙 버전 260915-09bf954d로 자동 상승.
+  시험 때 만든 범위 밖 5행(알루미늄·주석·텅스텐·연·아연 DRAFT)은 삭제 여부 미결. 희토류는
+  사용자 확정으로 네오디뮴 MNRL1001(마스터 '희토류' MNRL0006 미사용), 규칙 버전 260915-0ada7065.
+  테스트 21건. 코드 미커밋.
+
+## 2026-09-15 — `inhouse/mnrl_report` 신설: 통합보고서 주간 규칙 엔진(RULE→LLM→검수)
+
+사용자 지시: 섹션별 RULE 엔진을 `inhouse/mnrl_report` 모듈로, 주 단위 스케줄러
+연동·RDB 읽기/쓰기 루틴. 설계 답(스키마의 RULE/LLM 구분이 너무 단순한가): 태그는
+"계약"이고 동작은 엔진의 **컬럼 정책 레지스트리 + 덮어쓰기 규칙 + 근거 전달 +
+검증**이 결정 — ①RULE: 원장→facts→문장, 결정론, DRAFT 행만 재계산 ②LLM(기본
+비활성): RULE 문장·수치만 근거로 서술, 근거 밖 숫자·금지어면 폐기 ③MANUAL:
+엔진이 절대 덮어쓰지 않고 최초 INSERT 때 고정 문안만 시드 ④검수: gen_stts_cd
+DRAFT→REVIEWED→DONE, DRAFT가 아니면 `--force` 없이 불변. 더미(`ai_dev_dummy_
+load`·DEV_DUMMY)는 원천 불인정, 원천 없으면 NULL·광종 행 미생성, facts 스냅샷을
+`data_lake/mnrl_report/facts_{base_ymd}.json`에 보존(.gitignore 추가).
+구성: config(env는 get_config() 호출 시 읽음 — dataclass 기본값에 getenv를 쓰면
+CLI env가 무시되는 버그를 실측 후 수정)·db(public 쓰기는 ai_rpt_* 2종만 허용)·
+policy(45/42 컬럼 정책, 테스트가 전수 검사)·sources(주간가격·진단·관세청·USGS·
+거시, 단위 가정 명시, USGS 'SU'=세계합계·'OT'=기타, ISO 국가코드 폴백)·rules/
+(fmt·mnrl·overall, 양식 문구 그대로)·llm_stage·writer(ON CONFLICT … WHERE
+DRAFT)·run(CLI)·scheduler(APScheduler)+cron 스크립트·entrypoint·Containerfile
+(supercronic, ingest 패턴)·tests 7건·README. 실행: `python -m mnrl_report.run
+--base-ymd 20260615` → ai_rpt_mnrl 7행(비철 6종 가격 문장, 텅스텐 관세청·USGS
+14컬럼)+ai_rpt_overall 1행 DRAFT 적재, 재실행 updated(멱등), `--minerals`
+필터·REVIEWED 행 skipped 확인. rule_ver varchar(30) 초과로 첫 INSERT 실패 →
+`rules_v1_260915`로 단축. 미확정 산식(가격이격률·신호)은 계산하지 않음.
+
+## 2026-09-15 — 통합보고서 텍스트 섹션 테이블 2종 생성(public.ai_rpt_overall·ai_rpt_mnrl)
+
+사용자 지시("테이블을 만들어주세요")로 초안 md 말미의 DDL을 komis_demo
+(172.30.1.101:5433, `inhouse/.env` PG_DSN) `public` 스키마에 그대로 실행·커밋.
+`ai_rpt_overall`(45컬럼, PK base_ymd, CHECK 2)·`ai_rpt_mnrl`(42컬럼, PK
+mnrknd_unq_cd+base_ymd, FK ai_mnrl_mst, CHECK 2, ix base_ymd). 테이블·컬럼
+COMMENT 46/43건 적용([RULE]/[LLM]/[MANUAL] 태그 포함). 0행. 첫 시도는
+SQLAlchemy autobegin 상태에서 begin()을 다시 불러 실패했으나 DDL 실행 전이라
+부작용 없음, `eng.begin()`으로 재실행. 정본 문서 `documents/meta/DB_SCHEMA.md`에
+두 테이블 항목 추가.
+
+## 2026-09-15 — 통합보고서 텍스트 섹션 테이블 초안 2종(ai_rpt_overall·ai_rpt_mnrl)
+
+사용자 지시: 템플릿 2종을 postgres 테이블로 만들되 표·차트는 제외, 텍스트
+부분과 광종 구분·날짜 식별자를 포함, 컬럼 코멘트에 섹션별 룰/LLM 구분,
+우선 스키마 초안을 개별 작성. 처음 SQL(DDL)로 썼다가 사용자 지시("sql이
+아니라 우선 md 표로, 컬럼별·크기·들어갈 내용")로 **md 표로 재작성**하고 SQL은
+삭제. 산출물 `documents/산출물/2026-W38_0914-0920/통합보고서_테이블초안_
+ai_rpt_overall_260915.md`(45컬럼, PK base_ymd; RULE 18·LLM 14·MANUAL→RULE
+5·메타 8)·`통합보고서_테이블초안_ai_rpt_mnrl_260915.md`(42컬럼, PK
+mnrknd_unq_cd+base_ymd, FK ai_mnrl_mst; RULE 27·LLM 5·MANUAL 2·메타 8).
+컬럼마다 타입(크기)·키/NULL·생성 방식·들어갈 내용(원천 테이블·문장 템플릿)을
+표로 적었고, 이어서 사용자 요청("같이 작업하는 사람들에게 공유")으로 각
+문서 말미에 **전체 컬럼 한 표(45/42행)와 PostgreSQL DDL 블록**을 추가했다
+(DDL은 실DB 트랜잭션 실행·롤백으로 재검증). 정량 문장과 서술이 섞인
+섹션(A2·A5·A6②④·B2·B5·B9)은 두 컬럼으로 분리. 생성·검수 메타(gen_stts_cd
+DRAFT/REVIEWED/DONE, rule_ver, llm_model_ver, llm_refined_yn, reviewer)
+포함. A8 관리카드는 품목 단위라 기존 ai_item_card 재사용 제안, 광종별은
+기존 ai_mnrl_sect(세로형) 대안과 절 코드 매핑을 병기. md 전환 전 SQL 판을 실DB에서
+트랜잭션 실행 후 ROLLBACK으로 문법·코멘트 검증했다(테이블 미생성 확인).
+**미적용(초안)** — 가로형/세로형 선택과 등급 코드 매핑 확정 후 적용.
+
+## 2026-09-15 — 통합보고서 템플릿 2종(전체·광종별) 작성 — 표·차트 분리, public 실데이터 연계
+
+사용자 지시: 두 PDF 기반 보고서 템플릿을 분석요약 템플릿 형식으로, 표·차트는
+별도 절로 분리하고 지금 있는 데이터로 섹션을 채워 보고서가 나오게. 산출물
+`documents/산출물/2026-W38_0914-0920/통합보고서_템플릿_전체_260915.md`(A0~A8
++ §표 2종·§차트 6종)·`통합보고서_템플릿_광종별_260915.md`(B0~B10 + §표
+4종·§차트 5종). 원본 문장을 그대로 두고 값 자리를 [대괄호], 분기를 (a)~(i)
+상자로, 채울 수 없는 자리는 `[입력: …]`로 표시. 각 자리마다 `public`
+테이블.컬럼·계산식·실데이터 광종 범위를 적었고, 연계 쿼리는 DB에서 실행해
+예시 값을 검증(동 주간가격 2026-06-15 13,698/전주비 +1.06%, 텅스텐 관세청
+2021~2025 연 합산·2025 수입국 비중 중국 63.0%·HHI 4,295, USGS 2025 생산
+중국 67/85천톤=78.8% — 원본 PDF 수치와 일치, `ntn_eng_cd='SU'`가 세계
+합계·'OT'가 기타임을 확인). 충족 요약: 자동 채움은 가격(비철 6종)·관세청/
+USGS(텅스텐)·품목 기본정보뿐, 진단 등급·지수·요인·지정학·GSCPI·이격률과
+모든 정성 서술은 [입력]. `mineral_risk`는 사용자 지시대로 제외.
+
+## 2026-09-15 — 통합보고서 섹션별 PostgreSQL 충족도(최신 스키마 재스캔, `mineral_risk` 제외)
+
+사용자 지시: 앞서 정리한 섹션별 항목을 "postgres에서 값을 가져와 메울 수
+있는 부분/없는 부분"으로 구분, 최근 스키마 변경이 있으니 재스캔 후 판정.
+komis_demo(5433) 전 스키마 전수 스캔(public 46·mineral_risk 41·ai_cfg 2·
+ingest 4) — `public.ai_*` 30종(ai_dash_diag·ai_mnrl_diag·ai_dash_factor·
+ai_macro_indc·ai_news·ai_item_*·ai_mnrl_event/sect/var·ai_report 등)과
+`ko_wkly_mnrl_prc`·`ko_wkly_indc`가 신규. **핵심 발견**: `ai_dev_dummy_load`
+(14,729행)로 대조하면 `ai_mnrl_diag`·`ai_dash_diag`·`ai_dash_factor`·
+`ai_news`는 100% DEV_DUMMY, `ai_macro_indc`는 SPGSCI·USD_INDEX만 실데이터
+(KoreaPDS)이고 GSCPI·GPR·LME는 더미, `ko_mnrl_prc`는 텅스텐·니켈·이리듐·
+로듐만 실데이터(9,107행 더미), `ko_cstm_cmmrc`는 텅스텐만 실데이터. 반면
+`mineral_risk`는 5광종 실데이터이나 동결(진단 07-06, 지정학 08-23, 관세청
+2025-12). 산출물 `documents/산출물/2026-W38_0914-0920/통합보고서_PostgreSQL_
+충족도_260915.md`: 51개 항목을 가능 13·부분 26·불가 12로 판정하고 항목마다
+스키마.테이블.컬럼·신선도·더미 여부를 적었다. 결론: 수치 뼈대는 있으나
+5광종 한정·동결 시점·더미 자리 세 제약, 정성 서술·국가별 리스크 맵·외부
+지표·관리카드 수기 3항목은 DB에 없음. 이번 판정 중 스키마 스캔 결과가
+`ko_mnrl_prc`에 미래일(2027-07-03) 1행이 있음도 드러남(더미).
+**같은 날 재정리(사용자: "mineral_risk는 빼고 다시 정리, 해당 스키마도
+expired")** — `mineral_risk` 41개 테이블을 소스에서 제외하고 `public`만으로
+재판정: A 38항목 가능 1·부분 15·불가 22, B 22항목 가능 1·부분 10·불가 11.
+`public` 실데이터로 값을 낼 수 있는 광종은 가격(비철 6종 주간, 텅스텐·
+니켈·이리듐·로듐 일별)·지표 6종(수급안정화·시장전망)·관세청/USGS는
+텅스텐 1종뿐. 위기진단 등급·지수·요인·지정학 지수는 실데이터 원천이
+전혀 없음(`ai_mnrl_diag`·`ai_dash_diag`·`ai_mnrl_var` 더미/0행). 선결 과제:
+진단 값 산출 로직 신설(또는 공단 제공), 광종별 원장 실샘플 확보,
+GSCPI·GPR 실값 적재, 정성 항목 작성 주체 결정. 섹션분해 문서의 "현재
+시스템 상태"도 `mineral_risk` 폐기로 정정.
+
+## 2026-09-15 — 통합보고서 양식 2종 섹션 분해 + 섹션별 필요 내용·주간 업무 정의
+
+사용자 지시: `nas_document/temp/기획문서/order/통합보고서/`의 발주처 양식
+2종(전체 3쪽·광종별 2쪽, 주간 보고서 "’26년도 24주차")을 섹션별로 분리하고
+섹션 단위 필요 내용과 주간 업무를 기록. PDF는 텍스트 추출이 레이아웃 때문에
+깨져 PyMuPDF로 5쪽을 이미지 렌더링해 읽었다.
+
+산출물 `documents/산출물/2026-W38_0914-0920/통합보고서_섹션분해_주간업무정의_
+260915.md`: 양식 A 9개 섹션(A0~A8, 품목별 관리카드 포함)·양식 B 11개 섹션
+(B0~B10)마다 양식 내용·필요 데이터/계산·**현재 komir 대응(있음/부분/없음)**·
+주간 업무를 표로 정리, 주간 반복 업무 7단계, 결정 필요 사항 7건. 대응
+판단은 DB 실측(진단 경보 최신 2026-07-06 5광종 등급 정상/관심/주의/경계/
+심각, geo_index 주간 최신 2026-08-23, mart_weekly_diagnosis에 import_hhi·
+production_hhi, out_import_forecast 기준일 2025-12-01)과 가동 중인
+report_gen/komis_raw 범위 기준. 핵심 결론: 정량 항목(가격·수입·매장/생산·
+HHI·CR3/CR5)은 report_gen 계산기 재사용으로 대부분 자동화 가능, 추가
+계산은 주간/월 평균·전월비·연속 주수·CAGR·가격이격률·전체 평균 지수,
+정성 서술(원인·사건·정책)과 관리카드 수기 3항목·외부 지표(GSCPI 등)는
+규칙 불가. 진단·지정학 값은 expired/ 파이프라인 재가동 없이는 동결 시점
+고정 — 재가동 여부·등급 4/5단계 매핑·38종 vs 5광종·가격이격률 산식이
+선결 결정 사항. 원본 PDF는 제3자 원본이라 미추적, 경로만 기록.
+
+## 2026-09-13 — rag_chat `/prichat` 구조화 블록(table·chart) 이벤트
 
 사용자 제안(표·차트를 그리는 주체는 프론트여야 하니 메타를 가진 JSON 객체를
 넘기자, `<json></json>` 태그 방식 검토)에 대해 태그 방식 대신 SSE 이벤트

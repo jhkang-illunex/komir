@@ -61,6 +61,11 @@ komir/
 │  ├─ rag_chat/            # 서빙: RAG 챗봇 SSE API(구 services/rag_chat, 컨테이너 가동 중)
 │  ├─ report_gen/          # 서빙: 요약보고서 9종 API(구 services/report_gen, 컨테이너 가동 중)
 │  │       # 서빙 공통 사항은 documents/meta/CONTAINER_ARCHITECTURE.md
+│  ├─ mnrl_report/          # ★2026-09-15 신설 — 통합보고서(수급위기 진단결과 보고서) 주간 생성
+│  │                          파이프라인(run.py) + engines/ RuleEngine(규칙)·GenEngine(LLM) 분리.
+│  │                          엔진 버전 YYMMDD-sha8 자동계산 → public.ai_rpt_engine_ver/ai_rpt_gen_run
+│  │                          기록, ai_rpt_overall·ai_rpt_mnrl 행의 rule_ver/llm_model_ver가 참조.
+│  │                          cron 컨테이너(supercronic) 또는 APScheduler. README 정본
 │  ├─ streamlit_demo/       # 개발 데모 멀티페이지(komis-report-generator-main/streamlit_demo
 │  │                          이식, 2026-08-27) — 챗봇(rag_chat SSE, 동작)·요약보고서(report_gen
 │  │                          9종, 동작)·데이터관리(동작) + 진단예측·프롬프트관리(stub)

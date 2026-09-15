@@ -433,3 +433,57 @@ TreeExplainer 기반 자연어 설명문·구조화 근거, `msr/models/forecast
 
 ### out_report (미사용, 0행)
 PK: report_id(VARCHAR) — 컬럼: commodity_code, period, kind, title, body, generated_at.
+
+---
+
+## [2026-09-15 추기] 본사업 postgres `public` 스키마 — 통합보고서 텍스트 테이블 2종 + 엔진 보조 테이블 2종
+
+> 위 본문은 2026-07-22 기준 `minerals.duckdb`/`mineral_risk` 스키마 실측이며, 그
+> 파이프라인과 `mineral_risk` 스키마는 2026-09-07/09-15 expired 취급이다(새
+> 산출물 소스로 쓰지 않음). 현재 살아있는 원장은 komis_demo(172.30.1.101:5433)
+> `public` 스키마(공단 원장 `ko_*` 12종 + 본사업 `ai_*`)이고, 아래 2종은
+> 2026-09-15 신설했다. 컬럼별 상세·생성 방식([RULE]/[LLM]/[MANUAL])·DDL 원문은
+> `documents/산출물/2026-W38_0914-0920/통합보고서_테이블초안_ai_rpt_overall_
+> 260915.md`·`통합보고서_테이블초안_ai_rpt_mnrl_260915.md`(말미 "전체 컬럼
+> 정리"·"SQL 스키마") 참고. 실DB 적용 확인: 컬럼 45/42, COMMENT 46/43, 0행.
+
+### public.ai_rpt_overall (핵심광물 수급위기 진단결과 보고서·전체, 텍스트 섹션)
+PK: base_ymd(보고 주차 월요일 YYYYMMDD). 45컬럼. 표·차트 제외, 섹션 A0~A7 텍스트와
+본문 수치(overall_score/overall_wow, geo_risk_idx, gscpi_*). 생성·검수 메타
+(gen_stts_cd DRAFT/REVIEWED/DONE, rule_ver, llm_model_ver, llm_refined_yn,
+reviewer_id, reviewed_dt, frst_reg_dt, last_mdfcn_dt). CHECK: gen_stts_cd,
+llm_refined_yn. A8 관리카드는 기존 `ai_item_card` 재사용.
+
+### public.ai_rpt_mnrl ([광종] 수급위기 진단결과 보고서·광종별, 텍스트 섹션)
+PK: (mnrknd_unq_cd, base_ymd). FK mnrknd_unq_cd → `ai_mnrl_mst`. 42컬럼. 섹션
+B0~B10 텍스트와 본문 수치(grade_cd/grade_nm, score, score_wow, score_mom,
+grade_streak_wk, price_wow_pct, price_signal_cd/streak, import_month_ymd,
+import_hhi). 메타 컬럼·CHECK는 overall과 동일. 인덱스 ix_ai_rpt_mnrl_base_ymd.
+
+### public.ai_rpt_engine_ver (통합보고서 생성 엔진 버전 등록부, 2026-09-15 같은 날 추가)
+PK: (engine_cd, ver). engine_cd `rule`|`gen`, ver `YYMMDD-sha8`(엔진 구성 파일 내용
+sha256 앞 8자리 + 모델명, 날짜는 파일 최종 수정일), engine_type RULE|GEN, ver_date,
+ver_sha, model_nm(GEN의 LLM 모델명), src_files(해시에 넣은 파일 목록 JSON), frst_reg_dt.
+`ai_rpt_overall.rule_ver/llm_model_ver`·`ai_rpt_mnrl.rule_ver/llm_model_ver`가 이 ver를
+가리킨다. `inhouse/mnrl_report/engines/registry.py`가 소유(IF NOT EXISTS로 생성).
+
+### public.ai_rpt_gen_run (통합보고서 행 생성 실행 로그, 2026-09-15 같은 날 추가)
+PK: run_sn(bigserial). base_ymd, tbl_nm, row_key(mnrl은 mnrknd_unq_cd, overall은
+base_ymd), engine_cd, engine_ver, write_stts(inserted|updated|skipped(not DRAFT)|dry-run|
+error), cols_filled, cols_dropped, dropped_json({컬럼: 폐기 사유} — no_news_evidence·
+empty·number_not_in_evidence·direction_mismatch·meta_no_info_sentence·empty_placeholder·
+forbidden_phrase·too_long·llm_error), facts_path(근거 스냅샷 파일), started_dt,
+finished_dt, err_msg. 인덱스 ix_ai_rpt_gen_run_key(base_ymd, tbl_nm, row_key).
+행 1건마다 엔진별 1행(규칙 1 + 생성형 1). 시험 실행도 남으므로 행 수는 실행 횟수만큼 는다.
+
+갱신 방법(public 스키마 introspection):
+```bash
+cd komir && python3 -c "
+from dotenv import dotenv_values; import sqlalchemy as sa
+env=dotenv_values('inhouse/.env'); eng=sa.create_engine((env.get('PG_DSN') or env['MSR_DB']).split('?')[0])
+with eng.connect() as c:
+    for t in ('ai_rpt_overall','ai_rpt_mnrl','ai_rpt_engine_ver','ai_rpt_gen_run'):
+        for r in c.execute(sa.text(\"select a.attname, format_type(a.atttypid,a.atttypmod), col_description(a.attrelid,a.attnum) from pg_attribute a where a.attrelid=('public.'||:t)::regclass and a.attnum>0 and not a.attisdropped order by a.attnum\"),{'t':t}): print(t, r)
+"
+```
+

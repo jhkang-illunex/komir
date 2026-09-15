@@ -67,3 +67,6 @@ data_archive/
 # 제3자 원본자료는 git 미추적, 로컬 전용.
 income_data/
 nas_documents/
+
+# mnrl_report 주간 facts 스냅샷(감사용 로컬 산출물, 2026-09-15)
+inhouse/data_lake/mnrl_report/

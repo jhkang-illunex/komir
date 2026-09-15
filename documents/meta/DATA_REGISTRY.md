@@ -346,7 +346,39 @@
   9/11 교체), market/supply는 월간 지표 지연공시로 정상, map_korea·
   map_mineral은 라이브값과 이미 일치 확인. 상세는 WORKLOG 2026-09-13
   항목.
-- **rag_chat /prichat 구조화 블록 명세(2026-09-13, 최신)**: `documents/산출물/
+- **통합보고서 생성 엔진 설계·결과 문서(2026-09-15, 최신)**: `documents/산출물/2026-W38_0914-0920/
+  통합보고서_생성엔진_설계및결과_260915.md` — 파이프라인/엔진 분리 이유, 컬럼 정책, 규칙·생성형
+  엔진, 검증 규칙 8종(실측 계기 포함), 버전 체계(YYMMDD-sha8)·보조 테이블 2종·역추적 SQL,
+  20260615 실행 결과, 규칙 버그 2건, 함정, 하드코딩 vs 템플릿 판단 기록, 남은 결정. 공유용 정본.
+- **mnrl_report 주간 생성 파이프라인 + 엔진 2종(2026-09-15)**: `inhouse/mnrl_report/`
+  (README.md 정본) — ai_rpt_overall·ai_rpt_mnrl를 주 단위로 채운다. `engines/`의
+  RuleEngine(규칙, RULE 컬럼)·GenEngine(LLM, LLM 컬럼, 프롬프트 `engines/prompts/*.md`)이
+  각각 `YYMMDD-sha8` 버전을 갖고 `public.ai_rpt_engine_ver`(버전 등록부)·
+  `public.ai_rpt_gen_run`(행별 실행 로그, 폐기 사유)에 기록되며 보고서 행의
+  rule_ver/llm_model_ver가 그 버전을 참조한다. 적재 base_ymd=20260615(광종 7행+전체
+  1행, DRAFT, rule 260915-d7339d7b / gen 260915-b0efce44). facts 스냅샷은
+  `inhouse/data_lake/mnrl_report/`(미추적). 상세는 WORKLOG 2026-09-15(최신).
+- **통합보고서 텍스트 섹션 테이블 2종(2026-09-15, komis_demo public에 생성 완료)**:
+  `documents/산출물/2026-W38_0914-0920/통합보고서_테이블초안_ai_rpt_overall_
+  260915.md`·`통합보고서_테이블초안_ai_rpt_mnrl_260915.md` — 컬럼별
+  타입(크기)·키·생성 방식(RULE/LLM/MANUAL)·들어갈 내용. 표·차트 제외,
+  주차·광종 식별자 포함. 문서 말미 DDL을 실DB에 적용(0행). 스키마 정본은 DB_SCHEMA.md. 상세는 WORKLOG 2026-09-15(최신).
+- **통합보고서 템플릿 2종(2026-09-15)**: `documents/산출물/2026-W38_0914-0920/
+  통합보고서_템플릿_전체_260915.md`·`통합보고서_템플릿_광종별_260915.md` —
+  발주처 주간 보고서 양식의 문장 템플릿([대괄호] 변수·분기 상자), §표·§차트
+  분리, `public` 실데이터 연계·예시 값 검증, [입력] 자리 명시. 상세는 WORKLOG
+  2026-09-15(최신).
+- **통합보고서 섹션별 PostgreSQL 충족도(2026-09-15)**: `documents/산출물/
+  2026-W38_0914-0920/통합보고서_PostgreSQL_충족도_260915.md` — 최신 스키마
+  전수 스캔(public.ai_* 신규 포함) 기반, **`mineral_risk` 제외(expired)** —
+  `public`만으로 60항목을 가능/부분/불가로 판정, 실데이터 vs DEV_DUMMY 표
+  포함. 상세는 WORKLOG 2026-09-15(최신).
+- **통합보고서 섹션 분해·주간 업무 정의(2026-09-15)**: `documents/산출물/
+  2026-W38_0914-0920/통합보고서_섹션분해_주간업무정의_260915.md` — 발주처
+  주간 보고서 양식 2종(전체·광종별, 원본은 `nas_document/temp/기획문서/order/
+  통합보고서/` 미추적)의 20개 섹션별 필요 데이터·현재 대응·주간 업무·결정
+  사항. 상세는 WORKLOG 2026-09-15(최신).
+- **rag_chat /prichat 구조화 블록 명세(2026-09-13)**: `documents/산출물/
   2026-W37_0907-0913/rag_chat_prichat_구조화블록_명세_260913.md` — 프론트
   팀용 table/chart SSE 이벤트 계약(schema_version 1, private 전용, pubchat
   미적용). 상세는 WORKLOG 2026-09-13(최신).
