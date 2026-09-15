@@ -39,6 +39,7 @@ from .additional_summary import (  # noqa: E402
     SummaryPageContext,
     _at_or_before,
     _load_mineral_index_weights,
+    _metric,
     _number,
     _shift_month,
     _shift_year,
@@ -562,6 +563,37 @@ def _append_composite_period_value_comparison(
     )
 
 
+def _append_composite_period_average(
+    calculated: AdditionalCalculatedSummary, series: CompositeIndexSeries
+) -> None:
+    """2026-09-15 발주처 피드백(광물종합지수) — 주요 지표에 "평균 지수" 표출.
+    조회기간(요청 필터 적용 후 observations 전체)의 광물종합지수 단순 평균을
+    key_metrics `period_average_composite_index`("조회기간 평균 지수", 포인트)로
+    낸다. 전주/전월/전년 대비(`weekly/monthly/yearly_composite_change`)는
+    프로즌 계산기가 이미 내고 있으며 비교 시점이 조회기간 안에 있을 때만
+    나온다 — KOMIS 기본 조회(1개월 프리셋)로는 전월·전년 비교 시점이 없어
+    전주 대비만 나오니, 셋 다 보려면 호출 측이 srchDateS를 최소 1년 전으로
+    잡아야 한다(코드가 아니라 입력 창의 문제).
+
+    같은 피드백의 "전주·전월·전년 대비 증감률" 항목은 이 함수가 아니라 위
+    설명대로 입력 창에 달려 있어 여기서는 평균만 추가한다. key_metrics 상한
+    (`KEY_METRICS_MAX_COUNT`=14) 대비 이 페이지는 최대 7개라 여유가 있다."""
+
+    observations = sorted(series.observations, key=lambda item: item.date)
+    if not observations:
+        return
+    average = sum(item.composite_index for item in observations) / len(observations)
+    metric = _metric(
+        "period_average_composite_index",
+        "조회기간 평균 지수",
+        average,
+        unit="포인트",
+        basis=f"{observations[0].date}~{observations[-1].date} 관측치 {len(observations)}건 단순 평균",
+    )
+    calculated.key_metrics.append(metric)
+    calculated.detailed_metrics.append(metric)
+
+
 #: 2026-09-10 발주처 피드백[4] — "메이저금속지수끼리, 희소금속지수끼리, 광물종합
 #: 지수끼리 각각 따로" 서술해달라는 요청과 정면으로 부딪히는 4개 claim(전부
 #: `calculate_composite_summary` 프로즌 산출, major_changes). 새로 추가하지
@@ -650,7 +682,9 @@ def _replace_composite_subindex_narrative(
             else:
                 fact += " 뚜렷한 방향성 없이 등락을 반복하고 있습니다."
         if weights:
-            fact += f" 구성 광종은 {_top_weighted_minerals_text(weights, limit)} 등입니다."
+            # 2026-09-15 발주처 피드백 — 괄호 안 숫자가 가중치임을 문장에서 바로
+            # 알 수 있게 "구성 광종(가중치)은 …"으로 표기(오해 방지).
+            fact += f" 구성 광종(가중치)은 {_top_weighted_minerals_text(weights, limit)} 등입니다."
         new_narrative_claims.append(EvidenceClaim(claim_id, "major_changes", fact, required=True))
 
     if not new_narrative_claims:
@@ -1271,6 +1305,7 @@ class AnalysisSummaryService:
         _apply_polite_endings(calculated, _COMPOSITE_POLITE_ENDINGS, context="indicator_composite")
         _append_composite_period_value_comparison(calculated, series)
         _replace_composite_subindex_narrative(calculated, series)
+        _append_composite_period_average(calculated, series)
         context = effective_page_context("indicator_composite")
         applied_filters = {
             "start_date": request.start_date or series.observations[0].date,

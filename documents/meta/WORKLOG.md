@@ -2,7 +2,28 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-15 (최신) — report_gen 광물자원가격 비교광종 상대가치 문장 표기 변경(워크트리 report-summary)
+## 2026-09-15 (최신, 저녁) — report_gen 광물종합지수 피드백(대상 2) + v15 슬라이드(워크트리 report-summary)
+
+발주처 피드백 "전주·전월·전년 대비 증감률과 평균 지수 표출(현재 전주만)",
+"구성 광종(가중치)은 …으로 오해 없게" 반영. `summary.py` 후처리만 고치고
+프로즌 `additional_summary.py`는 손대지 않음.
+
+- `_replace_composite_subindex_narrative`: " 구성 광종은 …" → " 구성 광종(가중치)은 …".
+- `_append_composite_period_average`(신설, `_analyze_composite`): key_metrics에
+  `period_average_composite_index`("조회기간 평균 지수", 포인트) 추가.
+- 전주·전월·전년 대비는 코드가 이미 내고 있었다 — v13/v14에 전주만 나온 건 KOMIS
+  `getLineChartIndx` 기본 1개월 프리셋(08-13~09-11) 입력에 비교 시점이 없어서.
+  호출 측이 `srchDateS`를 1년 이상 전으로 넘겨야 셋 다 나온다(README에 명시).
+- 테스트 `test_composite_period_average_and_weight_label` 추가(16 passed), 템플릿
+  정본 2종(01_메뉴별·AI통계분석_광물전망지표) 갱신.
+- v15.pptx: `documents/산출물/2026-W38_0914-0920/report_gen_v15_슬라이드_260915_evidence/`.
+  종합지수만 정적 덤프 전체기간을 `start_date=2025-07-01`로 잘라 입력("1년"
+  프리셋은 1년 전 시점이 2일 모자라 전년 대비 불가), 표에 전월·전년·평균 행 복제
+  삽입(평균 행 단위 셀 "포인트"로 교정), 캡션 도형 없어 시장동향 슬라이드의
+  "TextBox 11" 복제. v14 대비 차이 17곳(전부 슬라이드 11) = 적색 run 36, 그 외
+  적색 없음(잔존 적색→흑색 규칙 동일).
+
+## 2026-09-15 — report_gen 광물자원가격 비교광종 상대가치 문장 표기 변경(워크트리 report-summary)
 
 발주처 피드백(광물가격지표 비교광종 추가 화면) 3건 반영 — `komir_summary.py::
 _relative_value_fact` 문장 형식만 바꿨고 산식(공통 관측일 20건 이상, 비율의

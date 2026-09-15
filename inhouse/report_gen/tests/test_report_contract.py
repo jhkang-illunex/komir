@@ -267,6 +267,33 @@ class ReportContractTests(unittest.TestCase):
         from app.analysis.data_sources import DataSourceError as legacy_error
         self.assertIs(legacy_error, DataSourceError)
 
+    def test_composite_period_average_and_weight_label(self):
+        """2026-09-15 발주처 피드백(광물종합지수) — 조회기간 평균 지수 metric 추가,
+        구성 광종 문장은 "구성 광종(가중치)은 …"으로. 1년 넘는 관측치를 주면
+        전주·전월·전년 대비가 모두 나온다(프로즌 계산기 기존 동작 확인)."""
+        from datetime import date, timedelta
+
+        start = date(2025, 8, 1)
+        observations = [
+            {"date": (start + timedelta(days=7 * i)).isoformat(), "composite_index": 1000 + i,
+             "major_metals_index": 900 + i, "minor_metals_index": 800 + i}
+            for i in range(60)  # 2025-08-01 ~ 2026-09-18, 주간 60건
+        ]
+        response = AnalysisSummaryService().analyze(AnalysisSummaryRequest(
+            page_id="indicator_composite", observations=observations,
+        ))
+        by_id = {m.id: m for m in response.key_metrics}
+        for metric_id in ("weekly_composite_change", "monthly_composite_change", "yearly_composite_change"):
+            self.assertIn(metric_id, by_id)
+        average = by_id["period_average_composite_index"]
+        self.assertEqual(average.label, "조회기간 평균 지수")
+        self.assertEqual(average.unit, "포인트")
+        self.assertAlmostEqual(average.value, 1000 + 59 / 2, places=6)
+        report = render_markdown_report(response)
+        self.assertIn("구성 광종(가중치)은 ", report)
+        self.assertNotIn(" 구성 광종은 ", report)
+        self.assertIn("| 조회기간 평균 지수 |", report)
+
     def test_relative_value_fact_uses_percent_and_spelled_out_pair(self):
         """2026-09-15 발주처 피드백 — 가격비율은 퍼센트(86.53%)로, 평균도 같은
         단위로, "동/니켈" 대신 "니켈 대비 동의"로 풀어 쓴다."""
