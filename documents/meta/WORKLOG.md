@@ -28,6 +28,16 @@ _relative_value_fact` 문장 형식만 바꿨고 산식(공통 관측일 20건 �
   같은 값이며 문장 자체는 관측치 15개 이상일 때만 생성된다.
 - 컨테이너(komir-report-gen-test, 18003) 재배포는 아직 안 함 — main 병합 후
   재빌드 필요(프롬프트 DB는 건드리지 않아 seed_prompts 재실행은 불필요).
+- (후속 지시 "v13은 두고 v14를 만들어 v13과 차이나는 부분만 적색") —
+  `documents/산출물/2026-W38_0914-0920/report_gen_v14_슬라이드_260915_evidence/`
+  (refetch·build 스크립트, v14_sources.json, README). 입력·절차는 v13과
+  동일(raw/는 v13 evidence 참조), 소스 차이는 가격 비교 4건의 relative_value
+  문장뿐. `build_v14_full.py::mark_diff_red`가 실제 v13.pptx와 문단 단위
+  대조 후 토큰 단위 diff로 바뀐 토큰만 적색 run(12개, 서식 유지). v10
+  템플릿부터 표 셀에 박혀 있던 잔존 적색(v13 35 run)은 "차이만 적색"이
+  되도록 v14에서 기본색으로 되돌림(`clear_inherited_red`). 산출물
+  `요약분석_정리결과물/분석요약_개선_결과작업_v14.pptx`(21슬라이드, 미추적).
+  워크트리엔 gitignore 데이터가 없어 `KOMIR_ROOT=<실체크아웃>`으로 실행.
 
 ## 2026-09-13 — rag_chat `/prichat` 구조화 블록(table·chart) 이벤트(미커밋)
 
