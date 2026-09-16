@@ -116,8 +116,14 @@ class ReportContractTests(unittest.TestCase):
         untagged = _re.sub(r"</?font[^>]*>", "", plain)
         for line in untagged.strip().splitlines():
             if line:
-                self.assertIn(line, markdown, line)
+                self.assertIn(line.rstrip(), markdown, line)
         self.assertIn("<font color='red'>상승</font>", plain)
+        # 2026-09-16 사용자 제보 — Markdown 렌더러가 단일 줄바꿈을 접지 않도록 문장 끝은
+        # 하드 브레이크("  \n"). 단락 사이는 빈 줄, 마지막 줄은 공백 없이 끝난다.
+        for paragraph in paragraphs:
+            for line in paragraph.split("\n")[:-1]:
+                self.assertTrue(line.endswith("  "), repr(line))
+            self.assertFalse(paragraph.endswith(" "), repr(paragraph[-20:]))
 
     def test_colorize_tone(self):
         self.assertEqual(colorize_tone("가격이 10% 상승했으며 재고는 감소했습니다."),

@@ -25,8 +25,16 @@
   blue: 하락·하향·감소·급락·약세·내렸·줄어·줄었) + `TONE_TAG`
   (`<font color='{color}'>{word}</font>`), `colorize_tone()` 한 번 훑기. 어휘 부분 문자열
   매치라 활용형 포함, 부정문도 어휘만 색칠(방향 재판정 없음 — 의도적 단순 규칙).
-- streamlit `render_report_markdown`: 단일 줄바꿈을 하드 브레이크로, `unsafe_allow_html`
-  로 font 태그 렌더. 테스트 23 passed(신규 3: 평문 형식·colorize·문장 분할).
+- streamlit `render_report_markdown`: `unsafe_allow_html`로 font 태그 렌더. 테스트
+  23 passed(신규 3: 평문 형식·colorize·문장 분할). 배포 `komir-report-gen:260916-plain`.
+- **후속(사용자 제보 "문장 단위로 줄바꿈이 되어 있어야 하는데 붙어 보인다")**: API
+  응답엔 `\n`이 있었고(cat -A로 확인), 보던 화면은 호스트 streamlit(00:39 기동, main
+  = 병합 전 코드)의 `st.markdown`이 단일 줄바꿈을 공백으로 접은 것. 프론트도 `<font>`
+  태그를 그리려면 Markdown+HTML 렌더러일 가능성이 높아 서버 쪽에서 문장 줄 구분자를
+  Markdown 하드 브레이크 `PLAIN_LINE_BREAK="  \n"`로 바꿈(평문 뷰어엔 안 보이는 공백,
+  Markdown 뷰어엔 줄바꿈). streamlit 쪽 하드 브레이크 치환은 제거(서버가 넣으므로).
+  재배포 `komir-report-gen:260916-plain2`. 호스트 streamlit은 main 병합·재기동 전까지
+  font 태그가 문자 그대로 보인다(unsafe_allow_html 미적용).
 
 ## 2026-09-16 — report_gen "주요 지표" 표를 응답 `table` 키로 분리
 
