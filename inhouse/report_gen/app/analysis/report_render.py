@@ -388,6 +388,26 @@ def colorize_tone(text: str) -> str:
     return _TONE_RE.sub(lambda m: TONE_TAG.format(color=_WORD_COLOR[m.group(0)], word=m.group(0)), text)
 
 
+#: 2026-09-16 사용자 지시 — "시장동향지표, 수급위기지표 그리고 다른 지표도 해당 단어는
+#: 볼드 처리". 본문 문장에 등장하는 지표·지수 명칭(계산 모듈 문장 템플릿에서 수집:
+#: summary.py·additional_summary.py·komir_summary.py·indicator_summary.py·정책 YAML).
+#: "수급위기지표"는 코드상 "수급동향지표"로 표기되지만 사용자가 부른 이름이라 함께 둔다.
+#: 긴 이름을 먼저 매치해 "시장동향·수급동향지표"처럼 붙은 표기에서도 잘린 태그가 안 생긴다.
+INDICATOR_TERMS: tuple[str, ...] = (
+    "시장동향지표", "수급동향지표", "수급위기지표",
+    "광물종합지수", "메이저금속지수", "희소금속지수", "가격강도지수",
+)
+#: 볼드 마크업 템플릿 — `TONE_TAG`와 같은 HTML 태그 방식(프론트가 `<font>`를 그리는 렌더러).
+BOLD_TAG = "<b>{word}</b>"
+_INDICATOR_RE = re.compile("|".join(re.escape(term) for term in sorted(INDICATOR_TERMS, key=len, reverse=True)))
+
+
+def emphasize_indicators(text: str) -> str:
+    """`INDICATOR_TERMS`를 `BOLD_TAG`로 감싼다(한 번만 훑음, `colorize_tone`과 어휘가 겹치지 않는다)."""
+
+    return _INDICATOR_RE.sub(lambda m: BOLD_TAG.format(word=m.group(0)), text)
+
+
 #: 평문 보고서의 문장 줄 구분자 — Markdown 하드 브레이크(공백 2개+줄바꿈). 단락 구분은 "\n\n".
 PLAIN_LINE_BREAK = "  \n"
 
@@ -407,8 +427,8 @@ def render_plain_report(response: AnalysisSummaryResponse) -> str:
     공백 2개는 평문 뷰어에서는 보이지 않고 Markdown 뷰어에서는 줄바꿈이 된다. 상단 보조
     정보(조회조건·현재 단계)는 내지 않는다(2026-09-16 후속 지시 — Markdown 렌더러에만
     남는다). 문장 순서·내용·절 구성(분리 절·숨김 절)은 Markdown 렌더러와 동일
-    (`_section_blocks` 공유), 문장 텍스트는 `colorize_tone`과 `_escape_tildes`(단일
-    `~`→`\\~`)만 거친다."""
+    (`_section_blocks` 공유), 문장 텍스트는 `colorize_tone`(상승/하락 색)·
+    `emphasize_indicators`(지표 명칭 볼드)·`_escape_tildes`(단일 `~`→`\\~`)만 거친다."""
 
     # 2026-09-16 사용자 지시("기존 첫 번째 heading은 표시 안 되게") — Markdown 렌더러의
     # 제목 자리에 있던 상단 보조 정보(조회조건 "가격기준: LME CASH · …"·"현재 단계: …")
@@ -416,7 +436,8 @@ def render_plain_report(response: AnalysisSummaryResponse) -> str:
     paragraphs: list[str] = []
     for _title, sentences, _as_list in _section_blocks(response):
         paragraphs.append(PLAIN_LINE_BREAK.join(
-            _escape_tildes(colorize_tone(line)) for sentence in sentences for line in _plain_lines(sentence.text)
+            _escape_tildes(emphasize_indicators(colorize_tone(line)))
+            for sentence in sentences for line in _plain_lines(sentence.text)
         ))
 
     _log_diagnostics(response)
@@ -527,4 +548,8 @@ def build_key_metrics_table(response: AnalysisSummaryResponse) -> ReportTable | 
     )
 
 
-__all__ = ["PLAIN_LINE_BREAK", "build_key_metrics_table", "colorize_tone", "render_markdown_report", "render_plain_report"]
+__all__ = [
+    "BOLD_TAG", "INDICATOR_TERMS", "PLAIN_LINE_BREAK", "TONE_COLORS", "TONE_TAG",
+    "build_key_metrics_table", "colorize_tone", "emphasize_indicators",
+    "render_markdown_report", "render_plain_report",
+]

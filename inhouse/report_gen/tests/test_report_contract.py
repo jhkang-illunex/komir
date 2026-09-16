@@ -21,7 +21,9 @@ from app.analysis import prompt_store, prompts
 from app.analysis.additional_summary import EvidenceClaim
 from app.analysis.errors import DataSourceError
 from app.analysis.models import AnalysisSummaryRequest, SummaryNarrative
-from app.analysis.report_render import build_key_metrics_table, colorize_tone, render_markdown_report, render_plain_report
+from app.analysis.report_render import (
+    build_key_metrics_table, colorize_tone, emphasize_indicators, render_markdown_report, render_plain_report,
+)
 from app.analysis.summary import AnalysisSummaryService
 from app.routers import _common
 
@@ -113,7 +115,7 @@ class ReportContractTests(unittest.TestCase):
         # 절 하나 = 단락 하나, 문장 하나 = 한 줄: 평문의 모든 줄(태그 제거 후)이 Markdown
         # 본문 문장에 그대로 있어야 한다.
         import re as _re
-        untagged = _re.sub(r"</?font[^>]*>", "", plain)
+        untagged = _re.sub(r"</?font[^>]*>|</?b>", "", plain)
         for line in untagged.strip().splitlines():
             if line:
                 self.assertIn(line.rstrip(), markdown, line)
@@ -129,6 +131,24 @@ class ReportContractTests(unittest.TestCase):
         self.assertEqual(colorize_tone("가격이 10% 상승했으며 재고는 감소했습니다."),
                          "가격이 10% <font color='red'>상승</font>했으며 재고는 <font color='blue'>감소</font>했습니다.")
         self.assertEqual(colorize_tone("보합세를 유지했습니다."), "보합세를 유지했습니다.")
+
+    def test_emphasize_indicators(self):
+        """2026-09-16 사용자 지시 — 지표·지수 명칭 볼드. 붙은 표기·다른 지표명도 처리."""
+        self.assertEqual(emphasize_indicators("시장동향지표는 2단계, 수급동향지표는 3단계입니다."),
+                         "<b>시장동향지표</b>는 2단계, <b>수급동향지표</b>는 3단계입니다.")
+        self.assertEqual(emphasize_indicators("시장동향·수급동향지표를 함께 보면 광물종합지수가 1,000포인트입니다."),
+                         "시장동향·<b>수급동향지표</b>를 함께 보면 <b>광물종합지수</b>가 1,000포인트입니다.")
+        self.assertEqual(emphasize_indicators("메이저금속지수는 <font color='red'>상승</font>했습니다."),
+                         "<b>메이저금속지수</b>는 <font color='red'>상승</font>했습니다.")
+
+    def test_plain_report_bolds_indicator_terms_live_path(self):
+        service = AnalysisSummaryService()
+        market = render_plain_report(service.analyze(AnalysisSummaryRequest(
+            page_id="indicator_market", mineral="CU", mineral_name="동",
+            observations=[{"month": "2026-06", "score": 34.04, "price": 100}, {"month": "2026-07", "score": 30.38, "price": 104.42}],
+        )))
+        self.assertIn("<b>시장동향지표</b>", market)
+        self.assertNotIn("**", market)
 
     def test_plain_report_has_no_header_paragraph(self):
         """2026-09-16 후속 지시 — 조회조건·현재 단계 보조 정보 단락은 평문에 없다."""

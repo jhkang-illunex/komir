@@ -42,6 +42,12 @@
   비교광종: …"·"현재 단계: …")을 제거 — Markdown 렌더러에는 그대로 남음. 테스트 24
   passed(신규 1: 헤더 단락 부재, 기존 1 갱신: `2021\~2025년`). 재배포
   `komir-report-gen:260916-plain3`.
+- **후속 3(사용자 지시 "시장동향지표, 수급위기지표 그리고 다른 지표도 해당 단어는
+  볼드")**: `INDICATOR_TERMS`(시장동향지표·수급동향지표·수급위기지표·광물종합지수·
+  메이저금속지수·희소금속지수·가격강도지수 — 계산 모듈 문장 템플릿에서 수집) +
+  `BOLD_TAG="<b>{word}</b>"`(font 태그와 같은 HTML 방식), `emphasize_indicators()`.
+  적용 순서 colorize → bold → tilde escape(어휘 겹침 없음). 테스트 26 passed(신규 2).
+  재배포 `komir-report-gen:260916-plain4`.
 
 ## 2026-09-16 — report_gen "주요 지표" 표를 응답 `table` 키로 분리
 
