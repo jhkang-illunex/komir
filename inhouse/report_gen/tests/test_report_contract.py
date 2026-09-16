@@ -21,7 +21,7 @@ from app.analysis import prompt_store, prompts
 from app.analysis.additional_summary import EvidenceClaim
 from app.analysis.errors import DataSourceError
 from app.analysis.models import AnalysisSummaryRequest, SummaryNarrative
-from app.analysis.report_render import render_markdown_report
+from app.analysis.report_render import build_key_metrics_table, render_markdown_report
 from app.analysis.summary import AnalysisSummaryService
 from app.routers import _common
 
@@ -83,11 +83,19 @@ class ReportContractTests(unittest.TestCase):
                 with self.subTest(page=page):
                     result = client.post("/api/v1/analysis/" + route, json=payload)
                     self.assertEqual(result.status_code, 200)
-                    self.assertEqual(result.json(), {"status": "ok", "report": render_markdown_report(self.response)})
+                    # 2026-09-16 사용자 지시 — "주요 지표" 표는 본문이 아니라 별도
+                    # `table` 키로 나간다(`models.ReportTable`).
+                    expected_table = build_key_metrics_table(self.response)
+                    self.assertEqual(result.json(), {
+                        "status": "ok",
+                        "report": render_markdown_report(self.response),
+                        "table": expected_table.model_dump(),
+                    })
+                    self.assertNotIn("## 주요 지표", result.json()["report"])
                     self.assertEqual(service.analyze.call_args.args[0].page_id, page)
                     invalid = client.post("/api/v1/analysis/" + route, json={"unknown": True})
                     self.assertEqual(invalid.status_code, 200)
-                    self.assertEqual(invalid.json(), {"status": "NO_DATA", "report": None})
+                    self.assertEqual(invalid.json(), {"status": "NO_DATA", "report": None, "table": None})
 
     def test_error_status_contract(self):
         service = Mock(uses_llm=False)
@@ -100,7 +108,7 @@ class ReportContractTests(unittest.TestCase):
                 service.analyze.side_effect = error
                 result = client.post("/api/v1/analysis/prices/base-metals", json={"mineral": "CU"})
                 self.assertEqual(result.status_code, 200)
-                self.assertEqual(result.json(), {"status": status, "report": None})
+                self.assertEqual(result.json(), {"status": status, "report": None, "table": None})
 
     def test_llm_success_keeps_render_format(self):
         claims, narrative = claims_and_narrative()
@@ -120,14 +128,24 @@ class ReportContractTests(unittest.TestCase):
         # price_streak_length·recent_volatility_pct는 데이터 부족으로 생성되지
         # 않는다 — 표가 다시 켜졌다는 것과 9개 화이트리스트가 존재하는 지표만
         # 순서·라벨대로 골라낸다는 것 둘 다 검증한다.
-        self.assertIn("## 주요 지표\n", rendered)
-        self.assertIn("| 현재가격 | 110 | 달러/톤 |", rendered)
-        self.assertIn("| 최고가 | 110 | 달러/톤 |", rendered)
-        self.assertIn("| 최저가 | 100 | 달러/톤 |", rendered)
-        self.assertIn("| 낙폭 | 0 | % |", rendered)
+        # 2026-09-16 사용자 지시 — 표는 본문(`report`)이 아니라 별도 `table`
+        # 키(`build_key_metrics_table`)로 나간다. 본문에는 절 자체가 없어야 한다.
+        self.assertNotIn("## 주요 지표", rendered)
+        table = build_key_metrics_table(result)
+        self.assertEqual(table.columns, ["지표", "값", "단위"])
+        self.assertEqual(table.rows, [
+            ["현재가격", "110", "달러/톤"],
+            ["최고가", "110", "달러/톤"],
+            ["최저가", "100", "달러/톤"],
+            ["낙폭", "0", "%"],
+        ])
+        self.assertEqual(table.rows_typed[0], ["현재가격", 110, "달러/톤"])
+        self.assertEqual([column.type for column in table.columns_meta], ["string", "number", "string"])
+        self.assertIn("| 현재가격 | 110 | 달러/톤 |", table.markdown)
+        self.assertIn("| 낙폭 | 0 | % |", table.markdown)
         # day_over_day_change_pct는 9개 화이트리스트에 없어 값 자체는 응답
         # key_metrics에 있어도 표에는 나오지 않아야 한다.
-        self.assertNotIn("전일대비", rendered)
+        self.assertNotIn("전일대비", table.markdown)
         self.assertNotIn("전주 대비", rendered)
         self.assertNotIn("전월 대비", rendered)
         self.assertNotIn("전년 대비", rendered)
@@ -324,7 +342,7 @@ class ReportContractTests(unittest.TestCase):
         self.assertEqual(by_id["top_country_vs_others"], "기타 국가 합산은 2025년 2,100톤(21.43%)으로, 단일 국가 기준 1위인 칠레(1,800톤, 18.37%)를 상회하고 있어 복수의 중소 매장국에도 상당한 매장량이 분포돼 있습니다.")
         report = render_markdown_report(response)
         ranking = report.split("## 국가별 순위 및 변화")[1].split("## 주요 변화")[0]
-        changes = report.split("## 주요 변화")[1].split("## 주요 지표")[0]
+        changes = report.split("## 주요 변화")[1]
         self.assertIn(by_id["top3_period_change"], ranking)
         self.assertIn(by_id["top3_concentration"], ranking)
         for key in ("extreme_increase_1", "extreme_increase_2", "extreme_decrease_1", "extreme_decrease_2", "volatility_country", "top_country_vs_others"):
@@ -391,7 +409,7 @@ class ReportContractTests(unittest.TestCase):
         report = render_markdown_report(response)
         self.assertIn("구성 광종(가중치)은 ", report)
         self.assertNotIn(" 구성 광종은 ", report)
-        self.assertIn("| 조회기간 평균 지수 |", report)
+        self.assertIn("| 조회기간 평균 지수 |", build_key_metrics_table(response).markdown)
 
     def test_relative_value_fact_uses_percent_and_spelled_out_pair(self):
         """2026-09-15 발주처 피드백 — 가격비율은 퍼센트(86.53%)로, 평균도 같은

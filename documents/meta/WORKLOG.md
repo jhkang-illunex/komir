@@ -2,7 +2,33 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-16 (최신) — rag_chat 구조화 블록 public 공통화 + 추천 차트(chart_hint) + SSE 취소선 제거
+## 2026-09-16 (최신) — report_gen "주요 지표" 표를 응답 `table` 키로 분리
+
+사용자 지시(report-summary 워크트리): "전체 공통 아웃풋이 수정되었다. report에서
+주요 지표는 `table`이라는 별개의 키워드로 출력시켜 달라."
+
+- **응답 계약**: `AnalysisReportResponse`가 `{status, report}` → `{status, report, table}`.
+  `table`은 신설 `models.ReportTable`(`columns`·`rows`·`columns_meta`·`rows_typed`·
+  `markdown`) — rag_chat `table` 이벤트 공통 명세(§2)의 핵심 키와 같은 구성이라
+  프론트가 챗봇 표 컴포넌트를 재사용할 수 있게 했다. 챗봇 전용 키(`block_id`·
+  `source_index`·`chart_hint`)는 싣지 않는다. 표가 없으면(지표 0건·실패 응답) `null`.
+- **본문 변경**: `report` Markdown 끝의 `## 주요 지표` 절이 사라졌다. 행 선택
+  (price_* 4종 9개 화이트리스트·나머지 전체)·라벨·값 표기(비율 %, 지도 3종 "약
+  4.46억" 축약, 끝자리 0 생략)는 이전 본문 표와 문자 단위로 동일 — 렌더러 안의
+  표 블록을 `report_render.build_key_metrics_table()`로 그대로 옮긴 것.
+- **`rows_typed` 값 열**은 표시 단위 기준 숫자(비율은 %로 환산, 축약 표기는 표시
+  단위 원값 — `map_presentation.scaled_quantity`, `compact_quantity`와 배율표
+  `QUANTITY_SCALES` 공유). 문자열 지표(1위 국가 등)가 섞이면 `columns_meta[1].type`
+  은 `string`.
+- **소비자**: streamlit `report_gen_client.render_report_markdown(report, table)`이
+  본문 아래에 `table.markdown`을 이어 그린다(`views/report_demo.py` 호출부 2곳).
+  `scripts/capture_output_contract.py` 지문에도 `table` 포함.
+- 테스트 20 passed(계약 테스트 6곳 갱신: 라우트 JSON 등식에 `table` 포함, 본문에
+  `## 주요 지표` 부재 검증, price 표 rows/rows_typed/columns_meta 검증).
+- 미커밋·미배포 — 재배포 시 seed_prompts 재실행 규칙은 그대로(이번 변경은 프롬프트·
+  output_contract 무관이라 필수는 아님).
+
+## 2026-09-16 — rag_chat 구조화 블록 public 공통화 + 추천 차트(chart_hint) + SSE 취소선 제거
 
 사용자 지시: "/prichat에 적용한 JSON을 public API에도 반영하고, JSON에 추천 차트
 형태를 같이 기재, md로 정리(데모 데이터·차트 종류). SSE로 넘기기 전에 취소선이 있는

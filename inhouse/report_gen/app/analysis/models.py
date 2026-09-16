@@ -1007,6 +1007,43 @@ class AnalysisSummaryResponse(StrictModel):
 ReportStatus = Literal["ok", "NO_DATA", "TIMEOUT", "INTERNAL_ERROR"]
 
 
+class ReportTableColumn(StrictModel):
+    """`ReportTable.columns_meta` 1열 — rag_chat 구조화 블록 공통 명세
+    (`documents/산출물/2026-W38_0914-0920/rag_chat_구조화블록_공통명세_차트추천_260916.md`
+    §2 `columns_meta[]`)와 같은 키를 쓴다. `type`은 `number`(빈 값을 제외한 모든 셀이
+    숫자)·`string`, `unit`은 열 전체가 한 단위일 때만 채운다(주요 지표 표는 행마다
+    단위가 달라 항상 null)."""
+
+    key: str
+    label: str
+    display: str
+    type: Literal["number", "string"]
+    unit: str | None = None
+
+
+class ReportTable(StrictModel):
+    """분석요약 응답의 "주요 지표" 표 — 2026-09-16 사용자 지시("전체 공통 아웃풋이
+    수정됐다. report에서 주요 지표는 `table`이라는 별개의 키워드로 출력")로 신설.
+    그 전까지는 `report` Markdown 끝에 `## 주요 지표` 절로 붙어 나가던 표를
+    본문에서 떼어 이 구조로 낸다(본문 `report`에는 더 이상 이 절이 없다).
+
+    키 구성은 rag_chat `table` 이벤트(공통 명세 §2)의 핵심 키를 그대로 따른다 —
+    `columns`·`rows`(표시 문자열 그대로)·`columns_meta`·`rows_typed`(값 열은 숫자,
+    없으면 null)·`markdown`(같은 표의 Markdown, 프론트가 본문 아래에 그대로 붙여도
+    된다). 챗봇 전용 키(`block_id`·`source_index`·`chart_hint`)는 근거 인용·차트
+    추천이 없는 요약표라 싣지 않는다.
+
+    `rows_typed`의 값 열은 **표시 단위 기준 숫자**다 — 비율(`ratio`) 지표는 %로
+    환산한 값, 지도 3종의 축약 표기("약 9.8억")는 표시 단위(달러·톤)로 환산한
+    원값(980,000,000)이다. 표시 문자열(`rows`)과 단위 열이 항상 같은 기준을 가리킨다."""
+
+    columns: list[str]
+    rows: list[list[str]]
+    columns_meta: list[ReportTableColumn]
+    rows_typed: list[list[int | float | bool | str | None]]
+    markdown: str
+
+
 class AnalysisReportResponse(StrictModel):
     """분석요약 8종의 API 응답 계약 — 2026-08-26 신설.
 
@@ -1022,7 +1059,12 @@ class AnalysisReportResponse(StrictModel):
     `TIMEOUT`(20초 초과), `INTERNAL_ERROR`(그 밖의 예외 — 서버 로그에 상세
     기록, 클라이언트에는 코드만). HTTP 상태 코드는 8종 전부 항상 200이고,
     성공/실패 구분은 이 `status` 필드로만 한다(라우터에서 HTTPException을
-    던지지 않는다)."""
+    던지지 않는다).
+
+    **2026-09-16 `table` 추가**: "주요 지표" 표가 `report` 본문에서 빠져 `table`
+    (`ReportTable`)로 분리됐다. 표가 없는 페이지(지표가 하나도 안 잡힌 경우)나
+    실패 응답에서는 `None`이다."""
 
     status: ReportStatus
     report: str | None = None
+    table: ReportTable | None = None

@@ -14,7 +14,8 @@ from __future__ import annotations
 import logging
 import re
 
-from .models import AnalysisSummaryResponse
+from .map_presentation import QUANTITY_SCALES, compact_quantity, scaled_quantity
+from .models import AnalysisSummaryResponse, Metric, ReportTable, ReportTableColumn
 
 _log = logging.getLogger(__name__)
 
@@ -310,39 +311,8 @@ def render_markdown_report(response: AnalysisSummaryResponse) -> str:
             lines.append(" ".join(sentence.text for sentence in sentences))
         lines.append("")
 
-    # 2026-09-10 main-agent 지시 — 2026-09-09 오전 2차 피드백으로 광물자원가격
-    # 4종의 "주요 지표" 표를 껐었는데, 발주처 원본 업무지시서 §3.1(그 피드백보다
-    # 상위 문서)이 9개 항목 표를 명시하고 있어 그 결정을 뒤집는다. price_* 4종은
-    # 전체 key_metrics가 아니라 `_PRICE_KEY_METRIC_ORDER` 화이트리스트 순서·
-    # 라벨로만 표시하고, 나머지 8종은 기존대로 key_metrics 전체를 그대로 낸다.
-    if response.page_id in _PRICE_PAGE_IDS:
-        by_id = {metric.id: metric for metric in response.key_metrics}
-        rows = [
-            (metric_id, by_id[metric_id])
-            for metric_id in _PRICE_KEY_METRIC_ORDER
-            if metric_id in by_id
-        ]
-        if rows:
-            lines.append("## 주요 지표")
-            lines.append("")
-            lines.append("| 지표 | 값 | 단위 |")
-            lines.append("|---|---|---|")
-            for metric_id, metric in rows:
-                value_text, unit_text = _format_metric_row(metric.value, metric.unit)
-                lines.append(f"| {_PRICE_KEY_METRIC_LABELS.get(metric_id, metric.label)} | {value_text} | {unit_text} |")
-            lines.append("")
-    elif response.key_metrics:
-        lines.append("## 주요 지표")
-        lines.append("")
-        lines.append("| 지표 | 값 | 단위 |")
-        lines.append("|---|---|---|")
-        for metric in response.key_metrics:
-            value_text, unit_text = _format_metric_row(metric.value, metric.unit)
-            if response.page_id in {"map_korea", "map_global", "map_mineral"} and isinstance(metric.value, (int, float)) and metric.unit in {"달러", "톤", "천톤", "천 톤", "백만톤", "백만 톤"}:
-                from .map_presentation import compact_quantity
-                value_text, unit_text = compact_quantity(metric.value, metric.unit)
-            lines.append(f"| {metric.label} | {value_text} | {unit_text} |")
-        lines.append("")
+    # "주요 지표" 표는 2026-09-16부터 본문에 넣지 않는다 — `build_key_metrics_table()`
+    # 이 `AnalysisReportResponse.table`로 따로 낸다(아래 함수 docstring 참고).
 
     # 2026-08-27 skeptic 감사 SC-016: `notices`(= 페이지 정책의 analysis_constraints,
     # "제공된 가격 계열과 선택 기간만 사용한다." 같은 LLM 작성 제약)와 LLM 정제
@@ -384,4 +354,75 @@ def render_markdown_report(response: AnalysisSummaryResponse) -> str:
     return "\n".join(lines).strip() + "\n"
 
 
-__all__ = ["render_markdown_report"]
+_TABLE_COLUMNS = ("지표", "값", "단위")
+_MAP_PAGE_IDS = frozenset({"map_korea", "map_global", "map_mineral"})
+
+
+def _key_metric_rows(response: AnalysisSummaryResponse) -> list[tuple[str, Metric]]:
+    """표에 실을 (표시 라벨, 지표) 목록 — 2026-09-10 main-agent 지시(2026-09-09 오전
+    2차 피드백 결정 번복): 발주처 원본 업무지시서 §3.1이 광물자원가격 표를 9개
+    항목으로 명시하고 있어 price_* 4종은 `_PRICE_KEY_METRIC_ORDER` 화이트리스트
+    순서·라벨로만, 나머지 8종은 key_metrics 전체를 그대로 낸다."""
+
+    if response.page_id in _PRICE_PAGE_IDS:
+        by_id = {metric.id: metric for metric in response.key_metrics}
+        return [
+            (_PRICE_KEY_METRIC_LABELS.get(metric_id, by_id[metric_id].label), by_id[metric_id])
+            for metric_id in _PRICE_KEY_METRIC_ORDER
+            if metric_id in by_id
+        ]
+    return [(metric.label, metric) for metric in response.key_metrics]
+
+
+def _metric_cells(page_id: str, metric: Metric) -> tuple[str, str, int | float | bool | str | None]:
+    """(값 표시 문자열, 단위 표시 문자열, 표시 단위 기준 숫자값). 표시 문자열은
+    2026-09-16 이전 본문 표와 문자 단위로 동일하다(`_format_metric_row` + 지도 3종
+    축약 표기)."""
+
+    value_text, unit_text = _format_metric_row(metric.value, metric.unit)
+    typed: int | float | bool | str | None = metric.value
+    is_number = isinstance(metric.value, (int, float)) and not isinstance(metric.value, bool)
+    if metric.unit == "ratio" and is_number:
+        typed = metric.value * 100
+    elif page_id in _MAP_PAGE_IDS and is_number and metric.unit in QUANTITY_SCALES:
+        value_text, unit_text = compact_quantity(metric.value, metric.unit)
+        typed, _ = scaled_quantity(metric.value, metric.unit)
+    return value_text, unit_text, typed
+
+
+def build_key_metrics_table(response: AnalysisSummaryResponse) -> ReportTable | None:
+    """"주요 지표" 표를 `ReportTable`로 만든다 — 2026-09-16 사용자 지시("전체 공통
+    아웃풋이 수정됐다. report에서 주요 지표는 `table`이라는 별개의 키워드로 출력").
+    그 전까지 `render_markdown_report`가 본문 끝에 `## 주요 지표` 절로 붙이던 것을
+    떼어 `AnalysisReportResponse.table`로 낸다. 행 선택·라벨·값 표기 규칙은 그대로
+    (`_key_metric_rows`·`_metric_cells`). 실을 지표가 없으면 None."""
+
+    rows: list[list[str]] = []
+    rows_typed: list[list[int | float | bool | str | None]] = []
+    for label, metric in _key_metric_rows(response):
+        value_text, unit_text, typed = _metric_cells(response.page_id, metric)
+        rows.append([label, value_text, unit_text])
+        rows_typed.append([label, typed, unit_text or None])
+    if not rows:
+        return None
+    value_is_number = all(
+        cell is None or (isinstance(cell, (int, float)) and not isinstance(cell, bool))
+        for _, cell, _ in rows_typed
+    )
+    columns_meta = [
+        ReportTableColumn(key="label", label="지표", display="지표", type="string"),
+        ReportTableColumn(key="value", label="값", display="값", type="number" if value_is_number else "string"),
+        ReportTableColumn(key="unit", label="단위", display="단위", type="string"),
+    ]
+    markdown_lines = ["| " + " | ".join(_TABLE_COLUMNS) + " |", "|---|---|---|"]
+    markdown_lines.extend("| " + " | ".join(row) + " |" for row in rows)
+    return ReportTable(
+        columns=list(_TABLE_COLUMNS),
+        rows=rows,
+        columns_meta=columns_meta,
+        rows_typed=rows_typed,
+        markdown="\n".join(markdown_lines),
+    )
+
+
+__all__ = ["build_key_metrics_table", "render_markdown_report"]

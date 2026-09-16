@@ -63,7 +63,7 @@ from pydantic import BaseModel, ValidationError
 from ..analysis.budget import ANALYSIS_LLM_RETRIES, ANALYSIS_LLM_TIMEOUT_SECONDS, REQUEST_BUDGET_SECONDS
 from ..analysis.errors import DataSourceError
 from ..analysis.models import AnalysisReportResponse, AnalysisSummaryRequest, SummaryPageId
-from ..analysis.report_render import render_markdown_report
+from ..analysis.report_render import build_key_metrics_table, render_markdown_report
 
 _LOG = logging.getLogger(__name__)
 _TIMEOUT_SECONDS = REQUEST_BUDGET_SECONDS
@@ -144,7 +144,13 @@ def run_summary(
         _LOG.exception("%s: 분석요약 처리 중 예외 발생 — INTERNAL_ERROR로 응답", page_id)
         return AnalysisReportResponse(status="INTERNAL_ERROR")
 
-    return AnalysisReportResponse(status="ok", report=render_markdown_report(response))
+    # 2026-09-16 사용자 지시 — "주요 지표" 표는 본문 Markdown이 아니라 별도 `table`
+    # 키로 낸다(`models.ReportTable` docstring 참고).
+    return AnalysisReportResponse(
+        status="ok",
+        report=render_markdown_report(response),
+        table=build_key_metrics_table(response),
+    )
 
 
 __all__ = ["ANALYSIS_LLM_RETRIES", "ANALYSIS_LLM_TIMEOUT_SECONDS", "run_summary"]

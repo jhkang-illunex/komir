@@ -8,12 +8,25 @@ from decimal import Decimal, ROUND_HALF_UP
 from .additional_summary import _number, _trim_trailing_zero
 
 
+#: 축약 표기(`compact_quantity`) 대상 단위 → (표시 단위로의 배율, 표시 단위 라벨).
+#: 2026-09-16 `report_render.build_key_metrics_table`이 `rows_typed`에 표시 단위
+#: 기준 숫자를 싣기 위해 같은 표를 공유한다(`scaled_quantity`).
+QUANTITY_SCALES = {"달러": (1, "달러"), "톤": (1, "톤"), "천톤": (1000, "톤"),
+                   "천 톤": (1000, "톤"), "백만톤": (1000000, "톤"), "백만 톤": (1000000, "톤")}
+
+
+def scaled_quantity(value: float, unit: str) -> tuple[float, str]:
+    """`compact_quantity`와 같은 배율로 (표시 단위 기준 원값, 표시 단위 라벨)을 돌려준다."""
+    if unit not in QUANTITY_SCALES:
+        return value, unit
+    scale, label = QUANTITY_SCALES[unit]
+    return value * scale, label
+
+
 def compact_quantity(value: float, unit: str) -> tuple[str, str]:
-    scales = {"달러": (1, "달러"), "톤": (1, "톤"), "천톤": (1000, "톤"),
-              "천 톤": (1000, "톤"), "백만톤": (1000000, "톤"), "백만 톤": (1000000, "톤")}
-    if unit not in scales:
+    if unit not in QUANTITY_SCALES:
         return str(value), unit
-    scale, label = scales[unit]
+    scale, label = QUANTITY_SCALES[unit]
     amount = Decimal(str(value)) * scale
     divisor, suffix = (Decimal(100000000), "억") if abs(amount) >= 100000000 else (Decimal(10000), "만")
     if abs(amount) >= 10000:

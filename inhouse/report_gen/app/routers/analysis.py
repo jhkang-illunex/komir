@@ -77,7 +77,8 @@ build_analysis_summary_service()`·`analysis/summary.py`에서 호출부만 주�
 처리해 남겨뒀다(복원 가능, WORKLOG 2026-08-26 참고).
 
 **2026-08-26 응답 계약도 함께 교체**: 구조화 JSON(`AnalysisSummaryResponse`)
-대신 `AnalysisReportResponse`(`status`+`report`, Markdown 텍스트)를 돌려준다 —
+대신 `AnalysisReportResponse`(`status`+`report`, Markdown 텍스트 — 2026-09-16부터
+`table`(주요 지표 표, `models.ReportTable`)이 추가돼 본문에서 그 절이 빠졌다)를 돌려준다 —
 `status`는 성공 시 `"ok"`, 실패 시 오류 코드(`NO_DATA`·`TIMEOUT`·
 `INTERNAL_ERROR`) 하나로 성공/실패를 겸한다. **HTTP 상태 코드는 전부 항상
 200**이고(더 이상 422/503 HTTPException을 던지지 않는다), 요청당 20초
@@ -119,8 +120,9 @@ class AnalysisEndpointRequest(ApiModel):
     2026-08-31 정리(사용자 지시 — Swagger에 여전히 필요없어 보이는
     필드가 남아있다는 지적) — `request_id`·`analysis_scope`를 여기서
     제거했다. 둘 다 캐스터가 채워도 아무 효과가 없었다:
-    `AnalysisReportResponse`(실제 HTTP 응답, `{status, report}` 2개
-    필드뿐)는 `request_id`를 아예 안 돌려줘서 캐스터가 자기가 보낸
+    `AnalysisReportResponse`(실제 HTTP 응답, 당시 `{status, report}` 2개
+    필드뿐 — 2026-09-16부터 "주요 지표" 표가 `table` 키로 분리돼 3개)는
+    `request_id`를 아예 안 돌려줘서 캐스터가 자기가 보낸
     값을 응답에서 확인할 방법이 없었고(서버 로그에만 남는데 캐스터가
     모르는 채로), `analysis_scope`는 타입이 `Literal["page_only"]`라
     처음부터 다른 값을 보낼 수조차 없는 상수였다. 내부

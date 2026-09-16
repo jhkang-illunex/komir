@@ -643,8 +643,8 @@ if result:
     status = result.get("status")
     if status == "ok":
         st.success(f"status: ok · 생성 방식: {st.session_state.get('report_demo_mode', '규칙 기반(기본)')}")
-        render_report_markdown(result.get("report"))
+        render_report_markdown(result.get("report"), result.get("table"))
     else:
         st.warning(f"status: {status}")
         if result.get("report"):
-            render_report_markdown(result["report"])
+            render_report_markdown(result["report"], result.get("table"))
