@@ -1063,7 +1063,12 @@ class AnalysisReportResponse(StrictModel):
 
     **2026-09-16 `table` 추가**: "주요 지표" 표가 `report` 본문에서 빠져 `table`
     (`ReportTable`)로 분리됐다. 표가 없는 페이지(지표가 하나도 안 잡힌 경우)나
-    실패 응답에서는 `None`이다."""
+    실패 응답에서는 `None`이다.
+
+    **2026-09-16 `report` 포맷 변경(같은 날 후속)**: Markdown(제목·`##` 절)이 아니라
+    평문 — heading 없음, 절마다 단락(빈 줄), 단락 안은 문장마다 한 줄, 상승/하락 계열
+    어휘는 `<font color='red'>…</font>`/`'blue'` 태그(`report_render.render_plain_report`·
+    `TONE_COLORS`). 필드 이름은 그대로 `report`."""
 
     status: ReportStatus
     report: str | None = None

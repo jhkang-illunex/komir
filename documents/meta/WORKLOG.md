@@ -2,7 +2,33 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-16 (최신) — report_gen "주요 지표" 표를 응답 `table` 키로 분리
+## 2026-09-16 (최신) — report_gen `report` 평문 포맷터(`render_plain_report`) 신설·연동
+
+사용자 지시(table 분리 직후 후속): "모든 보고서에서 report 안의 md에 새로운 포맷이
+반영된 아웃풋 함수를 만들어서 연동 — ① heading 제거 ② 섹션 문자열은 줄 단위·단락
+단위로 구분한 평문 ③ 상승/하락 등은 `<font color='red'> </font>` 식 커스텀 색 지정.
+기존 아웃풋 포맷 함수와 둘 다 유지."
+
+- **`report_render.render_plain_report()`** 신설, `routers/_common.py`가 `report`에 이것을
+  쓴다. `render_markdown_report()`는 그대로 유지(스크립트 8종·capture 지문·테스트가
+  계속 사용) — HEAD 렌더러와 3케이스(광물지도·비철금속 KOMIS 덤프·fixture) Markdown
+  문자 단위 동일 확인.
+- **리팩터**: 두 렌더러가 절 구성(page_id별 제목·map_mineral 측정항목 제목·숨김 절·
+  major_changes evidence_id 분리 절·current_position 목록형 판정)을 `_section_blocks()`
+  로 공유. 상단 보조정보(`_extra_filters`·`_grade_text`)와 서버 로그(`_log_diagnostics`)도
+  공용화.
+- **평문 형식**: 제목·`##` 없음. 절 하나 = 단락 하나(빈 줄), 단락 안은 문장 하나 = 한 줄.
+  한 `Sentence`에 붙어 있던 복수 문장("…속합니다. 조회기간 중 …")은 `_plain_lines`
+  (종결 "다." 뒤 공백)로 나눈다. 첫 단락은 조회조건("가격기준: LME CASH · 비교광종:
+  니켈")·"현재 단계: …"가 있을 때만.
+- **색 태그**: `TONE_COLORS`(red: 상승·상향·증가·급등·반등·강세·올랐·늘어·늘었 /
+  blue: 하락·하향·감소·급락·약세·내렸·줄어·줄었) + `TONE_TAG`
+  (`<font color='{color}'>{word}</font>`), `colorize_tone()` 한 번 훑기. 어휘 부분 문자열
+  매치라 활용형 포함, 부정문도 어휘만 색칠(방향 재판정 없음 — 의도적 단순 규칙).
+- streamlit `render_report_markdown`: 단일 줄바꿈을 하드 브레이크로, `unsafe_allow_html`
+  로 font 태그 렌더. 테스트 23 passed(신규 3: 평문 형식·colorize·문장 분할).
+
+## 2026-09-16 — report_gen "주요 지표" 표를 응답 `table` 키로 분리
 
 사용자 지시(report-summary 워크트리): "전체 공통 아웃풋이 수정되었다. report에서
 주요 지표는 `table`이라는 별개의 키워드로 출력시켜 달라."

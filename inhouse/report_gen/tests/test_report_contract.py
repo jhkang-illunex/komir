@@ -21,7 +21,7 @@ from app.analysis import prompt_store, prompts
 from app.analysis.additional_summary import EvidenceClaim
 from app.analysis.errors import DataSourceError
 from app.analysis.models import AnalysisSummaryRequest, SummaryNarrative
-from app.analysis.report_render import build_key_metrics_table, render_markdown_report
+from app.analysis.report_render import build_key_metrics_table, colorize_tone, render_markdown_report, render_plain_report
 from app.analysis.summary import AnalysisSummaryService
 from app.routers import _common
 
@@ -86,16 +86,49 @@ class ReportContractTests(unittest.TestCase):
                     # 2026-09-16 사용자 지시 — "주요 지표" 표는 본문이 아니라 별도
                     # `table` 키로 나간다(`models.ReportTable`).
                     expected_table = build_key_metrics_table(self.response)
+                    # 같은 날 후속 지시 — `report`는 Markdown이 아니라 평문 포맷
+                    # (`render_plain_report`), Markdown 렌더러는 별도 유지.
                     self.assertEqual(result.json(), {
                         "status": "ok",
-                        "report": render_markdown_report(self.response),
+                        "report": render_plain_report(self.response),
                         "table": expected_table.model_dump(),
                     })
-                    self.assertNotIn("## 주요 지표", result.json()["report"])
+                    self.assertNotIn("주요 지표", result.json()["report"])
+                    self.assertNotIn("#", result.json()["report"])
                     self.assertEqual(service.analyze.call_args.args[0].page_id, page)
                     invalid = client.post("/api/v1/analysis/" + route, json={"unknown": True})
                     self.assertEqual(invalid.status_code, 200)
                     self.assertEqual(invalid.json(), {"status": "NO_DATA", "report": None, "table": None})
+
+    def test_plain_report_format(self):
+        """2026-09-16 사용자 지시 — heading 제거·문장별 줄·절별 단락·상승/하락 색 태그.
+        Markdown 렌더러와 문장 집합은 같아야 한다(포맷만 다름)."""
+        plain = render_plain_report(self.response)
+        markdown = render_markdown_report(self.response)
+        self.assertFalse(any(line.startswith("#") or line.startswith("- ") for line in plain.splitlines()))
+        self.assertNotIn("**", plain)
+        paragraphs = [p for p in plain.strip().split("\n\n") if p]
+        blocks = [line[3:] for line in markdown.splitlines() if line.startswith("## ")]
+        self.assertEqual(len(paragraphs), len(blocks), f"절 수가 다르다: {paragraphs} vs {blocks}")
+        # 절 하나 = 단락 하나, 문장 하나 = 한 줄: 평문의 모든 줄(태그 제거 후)이 Markdown
+        # 본문 문장에 그대로 있어야 한다.
+        import re as _re
+        untagged = _re.sub(r"</?font[^>]*>", "", plain)
+        for line in untagged.strip().splitlines():
+            if line:
+                self.assertIn(line, markdown, line)
+        self.assertIn("<font color='red'>상승</font>", plain)
+
+    def test_colorize_tone(self):
+        self.assertEqual(colorize_tone("가격이 10% 상승했으며 재고는 감소했습니다."),
+                         "가격이 10% <font color='red'>상승</font>했으며 재고는 <font color='blue'>감소</font>했습니다.")
+        self.assertEqual(colorize_tone("보합세를 유지했습니다."), "보합세를 유지했습니다.")
+
+    def test_plain_report_splits_joined_sentences(self):
+        from app.analysis.report_render import _plain_lines
+        self.assertEqual(_plain_lines("고가권에 속합니다. 조회기간 중 약 2.04억톤 하락했습니다."),
+                         ["고가권에 속합니다.", "조회기간 중 약 2.04억톤 하락했습니다."])
+        self.assertEqual(_plain_lines("2026년 9월 10일 기준 14,390달러입니다."), ["2026년 9월 10일 기준 14,390달러입니다."])
 
     def test_error_status_contract(self):
         service = Mock(uses_llm=False)

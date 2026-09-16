@@ -5,8 +5,9 @@
 - DB 조회 없음(prompt만 DB). 원자료는 요청 바디의 `observations`(+`mineral_name`·
   `unit`·`price_unit` 등 부속 필드)로 받는다.
 - 응답은 항상 HTTP 200 + `{"status": "ok"|"NO_DATA"|"TIMEOUT"|"INTERNAL_ERROR",
-  "report": "<Markdown 또는 null>", "table": {...} | null}` — 성공/실패를 status 한
-  필드로 겸한다. `table`(2026-09-16 추가)은 본문에서 분리된 "주요 지표" 표
+  "report": "<평문 또는 null>", "table": {...} | null}` — 성공/실패를 status 한
+  필드로 겸한다. `report`는 2026-09-16부터 Markdown이 아니라 평문(heading 없음, 절마다
+  단락, 문장마다 한 줄, 상승/하락 어휘는 `<font color='red'>…</font>` 태그). `table`(2026-09-16 추가)은 본문에서 분리된 "주요 지표" 표
   (`columns`·`rows`·`columns_meta`·`rows_typed`·`markdown`, rag_chat table 블록과
   같은 핵심 키), 실을 지표가 없으면 null.
 - 12개 페이지 전부 `POST /api/v1/analysis/<path>`, 요청 바디 필드는 page_id별로
@@ -537,8 +538,11 @@ def render_report_markdown(report: str | None, table: dict[str, Any] | None = No
 
     text = report or "_(빈 보고서)_"
     demoted = re.sub(r"(?m)^(#{1,5})(\s)", r"#\1\2", text)
+    # 2026-09-16 평문 포맷: 문장마다 한 줄이라 Markdown 하드 브레이크("  \n")로 줄을
+    # 살리고, `<font color=…>` 태그를 그리기 위해 unsafe_allow_html을 켠다.
+    hard_breaks = re.sub(r"(?<!\n)\n(?!\n)", "  \n", demoted)
     with st.container(border=True):
-        st.markdown(demoted)
+        st.markdown(hard_breaks, unsafe_allow_html=True)
         if table and table.get("markdown"):
             st.markdown("### 주요 지표")
             st.markdown(table["markdown"])
