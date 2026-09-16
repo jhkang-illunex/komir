@@ -67,9 +67,9 @@ class ContentUnit(StrictModel):
 class DocumentRecord(StrictModel):
     """승인된 원천 문서 1건의 완전한 정규화 표현.
 
-    extension은 현재 구현된 파서(pdf/hwp)로 제한 — docx/doc/xlsx/xls/csv 파서
+    extension은 현재 구현된 파서(pdf/hwp/xlsx)로 제한 — docx/doc/xls/csv 파서
     구현 시 이 Literal도 함께 확장할 것(parsers/__init__.py의 DEFAULT_PARSERS와
-    동기화 필요).
+    동기화 필요). xlsx는 2026-09-16 추가.
     """
 
     schema_version: Literal[1] = SCHEMA_VERSION
@@ -78,7 +78,7 @@ class DocumentRecord(StrictModel):
     title: str
     source_group: str
     source_relative_path: str
-    extension: Literal[".pdf", ".hwp"]
+    extension: Literal[".pdf", ".hwp", ".xlsx"]
     file_size: int = Field(ge=0)
     source_type: Literal["komis"] = "komis"
     provider: str = "한국광해광업공단"

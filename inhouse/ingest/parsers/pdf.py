@@ -28,11 +28,11 @@ from ..models import ContentUnit
 from . import ParseResult
 
 _MIN_USABLE_CHARS = 30
-# inhouse 루트(소스트리·컨테이너 /komir/inhouse 모두 ingest/parsers/pdf.py의 2단 위)
-_INHOUSE_ROOT = Path(__file__).resolve().parents[2]
-_DEFAULT_OCR_CACHE_DIR = str(
-    _INHOUSE_ROOT / "data_lake/semi_structure/pdf_extract/_ocr_cache"
-)
+# OCR 캐시 기본 경로는 processing/_ocr_cache(ingest/paths.py, 레거시 기본값 =
+# data_lake/semi_structure/pdf_extract/_ocr_cache — 2026-09-16 이전과 동일 위치).
+from ..paths import get_paths
+
+_DEFAULT_OCR_CACHE_DIR = str(get_paths().ocr_cache)
 
 
 class PdfParser:

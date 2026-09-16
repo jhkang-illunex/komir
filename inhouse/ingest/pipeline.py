@@ -40,7 +40,7 @@ from .models import DocumentRecord, ExtractionManifest, ManifestEntry
 from .parsers import DEFAULT_PARSERS, DocumentParser, ParseResult
 from .source_policy import is_excluded_paid_source
 
-SUPPORTED_EXTENSIONS = (".hwp", ".pdf")
+SUPPORTED_EXTENSIONS = (".hwp", ".pdf", ".xlsx")  # .xlsx는 2026-09-16 추가(parsers/xlsx.py)
 
 
 class ExtractionConfigurationError(ValueError):

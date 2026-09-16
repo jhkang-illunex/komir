@@ -38,12 +38,14 @@ from common.db import pg_connect  # noqa: E402
 from common.config import get_settings  # noqa: E402
 
 from .build_pgvector_index import _COLUMNS, _vector_literal  # noqa: E402
+from ingest.paths import get_paths  # noqa: E402
+from ingest.registry import OKF_SOURCE_GROUPS  # noqa: E402
 
-OKF_DOCUMENTS_ROOT = _INHOUSE_ROOT / "data_lake/semi_structure/okf_documents"
+OKF_DOCUMENTS_ROOT = get_paths().okf_documents  # INGEST_DATA_LAKE_DIR(.env), 미설정 시 레거시 위치
 
-#: 이 스크립트가 다루는 대용량 보고서 갈래. documents/산출물·외부자료는
-#: build_pgvector_index.py 소관이라 여기서 건드리지 않는다(중복 임베딩 방지).
-SOURCE_GROUPS = ("생산매장량_USGS", "조달청보고서", "Argus_비철금속_일일")
+#: 이 스크립트가 다루는 대용량 보고서 갈래(= registry.PDF_GROUPS의 out_dirname).
+#: documents/산출물·외부자료는 build_pgvector_index.py 소관이라 여기서 건드리지 않는다(중복 임베딩 방지).
+SOURCE_GROUPS = OKF_SOURCE_GROUPS
 
 #: schema_pgvector.sql의 doc_chunk.source_type — documents/산출물 쪽("unstructured")과
 #: 구분해 어느 파이프라인이 넣었는지 한눈에 알 수 있게 한다.
@@ -175,6 +177,9 @@ def build(
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--source-group", action="append", dest="groups", choices=SOURCE_GROUPS)
+    ap.add_argument("--okf-root", default=None, help="okf_documents 루트 덮어쓰기(기본: 이 소스트리의 data_lake)")
     args = ap.parse_args()
+    if args.okf_root:
+        OKF_DOCUMENTS_ROOT = Path(args.okf_root).expanduser().resolve()  # noqa: F811
     with ingest_status.pipeline_run("vectorize.build_pgvector_okf", args=vars(args)) as run:
         build(tuple(args.groups) if args.groups else SOURCE_GROUPS, run=run)

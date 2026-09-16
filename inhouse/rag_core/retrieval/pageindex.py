@@ -52,12 +52,27 @@ if str(_INHOUSE_ROOT) not in sys.path:
 
 from rag_core.ragkit.tokenize_ko import to_fts_text  # noqa: E402
 
-#: 트리·원문 위치. 컨테이너에서 마운트 지점이 달라질 수 있어 환경변수로 덮어쓸 수 있게 둔다.
+def _data_lake_default() -> Path:
+    """INGEST_DATA_LAKE_DIR(.env, 2026-09-16 ingest 디렉토리 계약)가 있으면 그곳, 없으면 레거시
+    data_lake/semi_structure. PAGEINDEX_TREES_DIR·OKF_DOCUMENTS_DIR 환경변수가 있으면 그쪽이 우선."""
+    try:
+        from common.config import get_settings
+
+        v = (get_settings().INGEST_DATA_LAKE_DIR or "").strip()
+        if v:
+            return Path(v).expanduser().resolve()
+    except Exception:  # noqa: BLE001
+        pass
+    return _INHOUSE_ROOT / "data_lake/semi_structure"
+
+
+#: 트리·원문 위치. 컨테이너에서 마운트 지점이 달라질 수 있어 환경변수로 덮어쓸 수 있게 둔다
+#: (PAGEINDEX_TREES_DIR·OKF_DOCUMENTS_DIR > INGEST_DATA_LAKE_DIR > 레거시).
 TREES_ROOT = Path(
-    os.environ.get("PAGEINDEX_TREES_DIR", _INHOUSE_ROOT / "data_lake/semi_structure/pageindex_trees")
+    os.environ.get("PAGEINDEX_TREES_DIR", _data_lake_default() / "pageindex_trees")
 )
 OKF_DOCUMENTS_ROOT = Path(
-    os.environ.get("OKF_DOCUMENTS_DIR", _INHOUSE_ROOT / "data_lake/semi_structure/okf_documents")
+    os.environ.get("OKF_DOCUMENTS_DIR", _data_lake_default() / "okf_documents")
 )
 
 

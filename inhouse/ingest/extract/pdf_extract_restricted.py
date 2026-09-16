@@ -49,11 +49,16 @@ if str(INHOUSE_ROOT) not in sys.path:
 from ingest.extractors import extract_with_fallback, md_to_text  # noqa: E402
 from ingest import status as ingest_status  # noqa: E402
 
+from ingest.paths import get_paths  # noqa: E402
+
+# 원본 zip: 새 레이아웃이면 landing/restricted/, 레거시면 documents/0807/.
+_ZIP_ROOT = get_paths().landing_root("restricted", REPO_ROOT / "documents/0807")
 SOURCES = [
-    {"zip": REPO_ROOT / "documents/0807/2. 비축월보_시장동향보고서.zip",
+    {"zip": _ZIP_ROOT / "2. 비축월보_시장동향보고서.zip",
      "label": "비축월보_시장동향보고서_0807"},
 ]
-OUT_ROOT = INHOUSE_ROOT / "data_lake/semi_structure/pdf_extract/restricted_diagnosis_only"
+# processing/restricted_diagnosis_only/ — RAG 소스 트리(okf/pageindex/shareable)와 물리 분리 유지.
+OUT_ROOT = get_paths().restricted
 MANIFEST = OUT_ROOT / "_manifest.parquet"
 OCR_CACHE_DIR = str(OUT_ROOT / "_ocr_cache")
 

@@ -2,7 +2,77 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-16 (최신) — rag_chat 구조화 블록 public 공통화 + 추천 차트(chart_hint) + SSE 취소선 제거
+## 2026-09-16 (최신) — ingest 디렉토리 계약(landing/processing/data_lake) + 광산자료 갈래(학습데이터 154건) public 챗봇 제공
+
+사용자 지시(mnrl-rpt 워크트리): ① "nas_document/학습데이터의 광종별 광산 자료를 챗봇 public에서 제공
+가능하게" ② "제공받은 문서 중복 목록 md" ③ "landing/processing/data_lake를 .env 경로로 받아 docker
+개별 마운트·crontab 주기 실행되게 수정·검증 후 main에 머지 요청".
+
+- **광산자료 갈래**: 6광종(동·니켈·코발트·리튬·우라늄·철광석) 광산별 생산·매장량 기업 공시
+  PDF 136 + xlsx 18(png 1 제외). 신규 소스 그룹 `광산자료`(out_dirname = doc_chunk.src) — 문서-OKF
+  99건(내용 sha256 동일 중복 55건 제외, 바이트 비교로 재확인) → PageIndex 트리 99 → `doc_chunk`
+  42,299청크. public 프로필 제외 목록은 Argus뿐이라 /pubchat·/prichat 양쪽에서 검색됨.
+  라이브 검증: /pubchat "Kazatomprom 우라늄 광산 위치·지분" → xlsx 표(위경도·지분) 인용 정답,
+  "Weda Bay 2025 광석 생산량" → 41.9 Mwmt 인용 정답. /prichat 후자는 3회 모두 "기간 데이터 없음"
+  (연도+생산량 질의가 private 라우팅에서 정형 조회로 빠지는 듯 — 챗봇 쪽 별건, 미수정).
+- **xlsx 파서 구현**(`ingest/parsers/xlsx.py`, openpyxl 시트→마크다운 표, 스켈레톤이던 것) +
+  `pipeline.SUPPORTED_EXTENSIONS`·`models.DocumentRecord.extension`에 `.xlsx`. Kazatomprom 광산
+  정리 xlsx(광산명·위경도·지분)가 이 경로로 들어갔다.
+- **중복 목록**: `documents/산출물/2026-W38_0914-0920/학습데이터_광산자료_중복문서_목록_260916.md`
+  (묶음 20, 제거 가능 55, 광종 간 13묶음 — BHP·Anglo·Rio Tinto 연간보고서 등이 광종 폴더마다 중복).
+  메인 체크아웃에도 복사.
+- **ingest 디렉토리 계약**: 신설 `ingest/paths.py`(INGEST_LANDING_DIR·INGEST_PROCESSING_DIR·
+  INGEST_DATA_LAKE_DIR, common/config.Settings 필드; 비면 레거시 경로 = 이전과 동일 — 테스트가
+  상수 단위로 검사)·`ingest/registry.py`(그룹 표: 키·landing 폴더·레거시 원본·출력명·태그·유료/
+  private·in_all; private_only는 access.py와 일치 테스트)·`ingest/run_chain.py`(체인 진입점: flock·
+  processing/_logs 로그·단계 순서·필수 단계 실패 시 중단·LLM 미응답 시 pageindex `--no-summary`
+  폴백)·`ingest/prune.py`(landing에서 사라진 원본의 okf/트리/doc_chunk 정리, 기본 dry-run, 50%
+  초과 거부, landing 비면 건너뜀). `build_okf_documents.py`는 그룹별 함수 → registry 순회(원본 없는
+  그룹은 건너뜀, `--what all`에 mines 포함), pageindex/vectorize/parsers/extract/rag_core(ragkit
+  ingest·retrieval pageindex)가 전부 paths.py에서 경로를 받음. entrypoint.sh·cron_ingest_weekly.sh
+  → run_chain 호출. compose 2종: ingestion에 landing(ro)·processing·data_lake 3개 마운트 +
+  INGEST_*_DIR, rag-chat에 data_lake ro; deploy/.env.example `INGEST_*_HOST_DIR`, inhouse/.env.example
+  `INGEST_*_DIR`. `ingest.status.STAGES`에 chain·prune 추가(stage 컬럼 CHECK 없음).
+- **검증**: `ingest/tests/test_paths_registry.py` 12건(레거시 상수 일치·레이아웃 오버라이드·env 우선·
+  레지스트리 불변·체인 순서·prune 판정·resource 표기 호환) 통과; 스크래치 landing으로 새 레이아웃
+  E2E(run_chain okf→pageindex→prune, 원본 제거 후 prune dry-run/apply) 통과; `docker compose config`
+  보간 확인; 레거시 모드 `run_chain --list` 정상; 광산자료 라이브 스모크 위와 같음.
+- 미실행: 기존 산출물의 새 레이아웃 물리 이관(레거시 기본값이라 불필요, README "1회 이관" 절),
+  ingestion 컨테이너 재빌드(컨테이너 미가동 상태).
+
+## 2026-09-16 — mnrl_report 임시 채움: 더미 원천 허용(--allow-dummy) + 임시 문안 엔진(--temp-fill)
+
+사용자 지시(mnrl-rpt 워크트리): "정의된 통합보고서·광종별 수급위기 보고서에 데이터가 너무
+없으니 임시로 내용을 우선 채워 달라".
+
+- **원인**: 5광종 진단·관세청·USGS·GSCPI·GPR **더미(DEV_DUMMY)는 DB에 이미 있었으나**
+  파이프라인이 더미를 차단(지어내지 않는다 원칙)해 광종별 2행(동·니켈 가격 문장뿐)·
+  전체 1행만 있었고 서술 컬럼은 전부 NULL(뉴스 원천 미연결 → `[needs:news]` 컬럼 생성 생략).
+- **스위치 2개(기본 꺼짐)**: `config.ReportConfig.allow_dummy`(`--allow-dummy`) —
+  `sources.py`의 더미 필터(`dummy_codes`·`mineral_diag`·`overall_diag`·`macro`·`usgs`)가
+  cfg를 받아 해제. `temp_fill`(`--temp-fill`) — 신설 `engines/temp_engine.py::TempEngine`
+  (engine_cd `temp`, engine_type TEMP, model_nm `TEMP_TEXT`, 버전 해시 = 엔진 소스 +
+  `resources/temp_texts.json`)이 LLM 정책 컬럼을 임시 문안으로 채움. `run._merge_temp`가
+  GenEngine 결과 위에 **빈 컬럼만** 덧대고, 임시 문안이 하나라도 들어간 행은
+  `llm_model_ver`=temp 버전으로 표시(SQL로 임시 행 식별 가능). MANUAL 컬럼(장기 가격
+  배경·국내 생산 구조)은 같은 파일 문안을 시드.
+- **writer 정정**: MANUAL 시드가 INSERT 때만 들어가던 것을 정책 문구("비어 있을 때만
+  시드")대로 UPDATE에서도 `COALESCE(기존값, EXCLUDED)`로 — 기존 동·니켈 행에도 시드됨.
+  overall MANUAL 수치(gscpi_val/mom/yoy·geo_risk_idx/wow_pct)는 `run.overall_manual_from_facts`
+  가 facts(더미 허용 시 GSCPI·GPR)에서 시드. `sources.macro`가 4주 전·52주 전 차이를 반환.
+- **서식 버그 2건 수정(부수)**: `fmt.kton` 1천톤 미만 "0천톤"→"2.8톤"; `overall.py`
+  수입 1위국 조사 "호주이"→"호주가"(`fmt.josa` 신설).
+- **임시 문안 원칙**: `temp_texts.json`은 발주처 양식 예시 문장(리튬 원인·배경 등)과
+  광종별 일반 배경만, **숫자 없음**(테스트가 검사). 분석 결과가 아니며 뉴스·실값 연결 후
+  스위치 없이 재실행하면 밀려난다.
+- **적재(20260615)**: 광종 5행(코발트·리튬·네오디뮴 신규 INSERT, 동·니켈 UPDATE) + 전체
+  1행, 전부 DRAFT. rule `260916-178f3028`, temp `260916-7ca16ad7`. 남은 NULL: 가격이격률·
+  신호 3컬럼(산식 미확정, 의도), import_cagr_txt(더미에 5개년 없음), 네오디뮴 진단·가격
+  (더미 없음), gscpi_yoy(52주 전 더미 없음). 가격은 동·니켈만 실데이터.
+- 테스트 25건 통과(`tests/test_rules.py`·`tests/test_engines.py`, TempEngine 3건·서식 추가).
+  README §임시 채움 신설. 코드 미커밋(사용자 지시 시 커밋).
+
+## 2026-09-16 — rag_chat 구조화 블록 public 공통화 + 추천 차트(chart_hint) + SSE 취소선 제거
 
 사용자 지시: "/prichat에 적용한 JSON을 public API에도 반영하고, JSON에 추천 차트
 형태를 같이 기재, md로 정리(데모 데이터·차트 종류). SSE로 넘기기 전에 취소선이 있는

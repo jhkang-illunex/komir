@@ -12,7 +12,9 @@ set -euo pipefail
 CRON_EXPR="${INGESTION_SCHEDULE_CRON%\"}"
 CRON_EXPR="${CRON_EXPR#\"}"
 
-printf '%s /komir/inhouse/ingest/cron_ingest_weekly.sh\n' "$CRON_EXPR" > /tmp/ingest.crontab
+# 2026-09-16: 체인 본체는 python -m ingest.run_chain(락·로그·단계 순서·실패 처리 내장).
+# cron_ingest_weekly.sh는 호스트 crontab 호환용 얇은 래퍼로 남긴다.
+printf '%s cd /komir/inhouse && python3 -m ingest.run_chain --trigger cron\n' "$CRON_EXPR" > /tmp/ingest.crontab
 echo "[entrypoint] crontab: $(cat /tmp/ingest.crontab)"
 
 exec supercronic -passthrough-logs /tmp/ingest.crontab

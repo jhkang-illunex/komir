@@ -5,8 +5,9 @@ opendataloader-pdf(Java CLI, Apache 2.0, 오프라인 동작)로 1차 변환하�
 부족하면(스캔형 PDF) pypdf → OCR(easyocr) 순으로 폴백한다 — 이 3단계 체인은 새로
 만든 게 아니라 `inhouse/geo/extractors.py`의 `extract_with_fallback()`을 그대로
 재사용한다(2026-07-07 geo 파이프라인에서 이미 검증된 로직 — DRY, 재발명 금지).
-결과는 data_lake/semi_structure/pdf_extract/shareable/<label>/ 아래 저장하면,
-ingest.py의 load_documents()가 documents/산출물과 함께 자동으로 읽어들인다.
+결과는 processing/shareable/<label>/(ingest/paths.py — 레거시 기본
+data_lake/semi_structure/pdf_extract/shareable) 아래 저장하면, rag_core/ragkit/ingest.py의
+load_documents()가 landing/incoming(레거시 inhouse/incoming) 문서와 함께 자동으로 읽어들인다.
 
 **여기서 다루는 소스는 발주처가 "외부공개 가능"이라 명시한 것만.** 진단모델 전용
 (RAG 금지) 자료는 이 파일이 아니라 같은 디렉토리의 pdf_extract_restricted.py가
@@ -32,12 +33,16 @@ if str(REPO_ROOT / "inhouse") not in sys.path:
 from ingest.extractors import extract_with_fallback  # noqa: E402
 from ingest import status as ingest_status  # noqa: E402
 from rag_core.ragkit.ingest import _real_content_len  # noqa: E402
+from ingest.paths import get_paths  # noqa: E402
 
-SHAREABLE_ROOT = REPO_ROOT / "inhouse/data_lake/semi_structure/pdf_extract/shareable"
+# processing/shareable/<label>/ (INGEST_PROCESSING_DIR, 레거시 = data_lake/semi_structure/pdf_extract/shareable)
+SHAREABLE_ROOT = get_paths().shareable
 OCR_CACHE_DIR = str(SHAREABLE_ROOT / "_ocr_cache")
 
+# 원본 zip: 새 레이아웃이면 landing/shareable/, 레거시면 documents/0807/.
+_ZIP_ROOT = get_paths().landing_root("shareable", REPO_ROOT / "documents/0807")
 SOURCES = [
-    {"zip": REPO_ROOT / "documents/0807/3. 해외투자실무가이드(4개국).zip",
+    {"zip": _ZIP_ROOT / "3. 해외투자실무가이드(4개국).zip",
      "label": "komis_해외투자가이드_4개국"},
 ]
 

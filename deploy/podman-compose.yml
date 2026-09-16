@@ -43,6 +43,9 @@ services:
     env_file: [.env]
     environment:
       - LLM_BASE_URL=${RAG_CHAT_LLM_BASE_URL:-$LLM_BASE_URL}
+      - INGEST_DATA_LAKE_DIR=/komir/data_lake   # PageIndex 트리·OKF 원문 읽기(ro) — ingestion과 같은 호스트 경로
+    volumes:
+      - ${INGEST_DATA_LAKE_HOST_DIR:-../inhouse/data_lake/semi_structure}:/komir/data_lake:ro
     depends_on: [qdrant]
     ports:
       - "8002:8002"
@@ -87,9 +90,18 @@ services:
       # 서비스별 오버라이드와 같은 패턴).
       - PDF_MAXPAGES=500
       - OCR_MAXPAGES=60
+      # ingest 디렉토리 계약(2026-09-16): landing(원본, ro) / processing(작업 중, rw) /
+      # data_lake(정리 완료, rw). 호스트 경로는 deploy/.env의 INGEST_*_HOST_DIR로 받고(기본은
+      # 저장소 안 레거시 위치), 컨테이너 안 고정 경로를 INGEST_*_DIR로 코드에 알린다.
+      # landing 하위 폴더명 = ingest/registry.py의 landing_subdir(usgs·jodalcheong·argus·mines·
+      # incoming·shareable·restricted) — NAS 등 외부 원본은 landing/<subdir>에 개별 마운트한다.
+      - INGEST_LANDING_DIR=/komir/landing
+      - INGEST_PROCESSING_DIR=/komir/processing
+      - INGEST_DATA_LAKE_DIR=/komir/data_lake
     volumes:
-      - ../documents:/komir/documents:ro
-      - ../inhouse/data_lake/semi_structure:/komir/inhouse/data_lake/semi_structure
+      - ${INGEST_LANDING_HOST_DIR:-../landing}:/komir/landing:ro
+      - ${INGEST_PROCESSING_HOST_DIR:-../inhouse/data_lake/processing}:/komir/processing
+      - ${INGEST_DATA_LAKE_HOST_DIR:-../inhouse/data_lake/semi_structure}:/komir/data_lake
     extra_hosts:
       - "host.docker.internal:host-gateway"   # 호스트 LLM(.env LLM_BASE_URL) — geo compose 선례
     restart: unless-stopped

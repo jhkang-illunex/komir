@@ -41,13 +41,28 @@ DATE_RE = re.compile(r"_(\d{6})(?=_|\.|$)")
 # (build_pgvector_index 등)은 별도 승인 후 진행한다 — 그 전까지 mineral_risk.doc_chunk
 # 등 운영 DB는 그대로다.
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-ROOT = str(_REPO_ROOT / "inhouse/incoming")
 
-# (경로, week에 쓸 태그 접두사) — 각 하위 디렉토리명이 태그 뒤에 붙는다.
+
+def _layout_roots() -> tuple[str, list[tuple[Path, str]]]:
+    """(ROOT, EXTRA_ROOTS)를 ingest 디렉토리 계약(2026-09-16)에서 받는다 — INGEST_LANDING_DIR가
+    설정되면 landing/incoming, 아니면 레거시 inhouse/incoming. shareable 정제본은
+    processing/shareable(레거시 = data_lake/semi_structure/pdf_extract/shareable).
+    ingest 패키지를 import할 수 없는 환경(rag_chat 컨테이너는 ingest를 싣지만 실행하지 않음)에서도
+    레거시 경로로 폴백해 동작이 바뀌지 않게 한다."""
+    try:
+        from ingest.paths import get_paths
+
+        p = get_paths()
+        root = p.landing_root("incoming", _REPO_ROOT / "inhouse/incoming")
+        return str(root), [(p.shareable, "외부자료")]
+    except Exception:  # noqa: BLE001
+        return (str(_REPO_ROOT / "inhouse/incoming"),
+                [(_REPO_ROOT / "inhouse/data_lake/semi_structure/pdf_extract/shareable", "외부자료")])
+
+
+ROOT, EXTRA_ROOTS = _layout_roots()
+# EXTRA_ROOTS: (경로, week에 쓸 태그 접두사) — 각 하위 디렉토리명이 태그 뒤에 붙는다.
 # 예: pdf_extract/shareable/komis_해외투자가이드_4개국/ -> week="외부자료:komis_해외투자가이드_4개국"
-EXTRA_ROOTS = [
-    (_REPO_ROOT / "inhouse/data_lake/semi_structure/pdf_extract/shareable", "외부자료"),
-]
 
 # opendataloader-pdf 기본(비-hybrid) 모드는 텍스트 레이어가 없는 스캔형 PDF에서
 # 거의 아무 것도 못 뽑는다(2026-08-10 실측: 해외투자가이드 4개국 전부 이 경우 —

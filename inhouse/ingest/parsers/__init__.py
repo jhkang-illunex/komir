@@ -9,8 +9,9 @@ parsers.py에서 이식(병합계획 결정②). pdf.py는 원본의 PyMuPDF 단
 komir 자체 opendataloader-pdf+OCR폴백 체인을 쓴다(병합계획 결정③ — komir 쪽이
 이미 검증·가동 중인 파이프라인을 정본으로 유지).
 
-docx/doc/xlsx/xls/csv는 외부 repo에도 구현이 없어 이번 이식 범위 밖 — 여전히
-스켈레톤(raise NotImplementedError)."""
+docx/doc/xls/csv는 외부 repo에도 구현이 없어 이번 이식 범위 밖 — 여전히
+스켈레톤(raise NotImplementedError). xlsx는 2026-09-16 구현(parsers/xlsx.py,
+학습데이터 광산 자료 xlsx 18건 계기)."""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -46,8 +47,9 @@ class DocumentParser(Protocol):
 def _default_parsers() -> dict[str, DocumentParser]:
     from .hwp import HwpParser
     from .pdf import PdfParser
+    from .xlsx import XlsxParser
 
-    return {".pdf": PdfParser(), ".hwp": HwpParser()}
+    return {".pdf": PdfParser(), ".hwp": HwpParser(), ".xlsx": XlsxParser()}
 
 
 DEFAULT_PARSERS: dict[str, DocumentParser] = _default_parsers()

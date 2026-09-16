@@ -40,7 +40,7 @@ from common.db import apply_schema_pg, pg_connect  # noqa: E402
 
 INGEST_SCHEMA = "ingest"
 SCHEMA_SQL = Path(__file__).resolve().parent / "db" / "schema_ingest.sql"
-STAGES = ("extract", "okf", "pageindex", "vectorize")
+STAGES = ("extract", "okf", "pageindex", "vectorize", "chain", "prune")  # chain·prune: 2026-09-16 run_chain/prune 잡(stage 컬럼은 VARCHAR, CHECK 없음)
 
 _HEARTBEAT_SEC = 60
 _STALE_MINUTES = 10

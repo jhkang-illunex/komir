@@ -46,8 +46,11 @@ if str(_INHOUSE_ROOT) not in sys.path:
 from ingest import status as ingest_status  # noqa: E402
 from common.logging_config import configure_logging  # noqa: E402
 
-OKF_DOCUMENTS_ROOT = _INHOUSE_ROOT / "data_lake/semi_structure/okf_documents"
-PAGEINDEX_TREES_ROOT = _INHOUSE_ROOT / "data_lake/semi_structure/pageindex_trees"
+from ingest.paths import get_paths  # noqa: E402
+
+# data_lake/{okf_documents,pageindex_trees} — INGEST_DATA_LAKE_DIR(.env), 미설정 시 레거시 위치.
+OKF_DOCUMENTS_ROOT = get_paths().okf_documents
+PAGEINDEX_TREES_ROOT = get_paths().pageindex_trees
 
 logger = logging.getLogger(__name__)
 

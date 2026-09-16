@@ -109,6 +109,16 @@ class Settings(BaseSettings):
     PRICE_POSITION_LOW_PCT: float = 100 / 3
     PRICE_POSITION_HIGH_PCT: float = 200 / 3
 
+    # ── ingest 디렉토리 계약(2026-09-16, 사용자 지시): landing(원본) / processing(작업 중) /
+    #    data_lake(정리 완료 — okf_documents·pageindex_trees). 비어 있으면 레거시 소스트리
+    #    고정 경로(ingest/paths.py 참고)라 .env를 안 건드린 기존 배포는 동작이 같다.
+    #    컨테이너는 compose가 /komir/{landing,processing,data_lake}로 마운트하며 이 값을 넣는다.
+    #    소비자: ingest/paths.py(전 ingest 모듈), rag_core/retrieval/pageindex.py(data_lake 읽기),
+    #    rag_core/ragkit/ingest.py(landing/incoming·processing/shareable 읽기) ──
+    INGEST_LANDING_DIR: str = ""
+    INGEST_PROCESSING_DIR: str = ""
+    INGEST_DATA_LAKE_DIR: str = ""
+
     @field_validator("PRICE_POSITION_HIGH_PCT", mode="after")
     @classmethod
     def _validate_price_position_thresholds(cls, value: float, info) -> float:
