@@ -370,6 +370,18 @@ def _plain_lines(text: str) -> list[str]:
     return [part for part in _PLAIN_LINE_SPLIT_RE.split(text) if part]
 
 
+#: 2026-09-16 사용자 제보 — "2021~2025년"·"약 4.3억톤~약 4.38억톤"처럼 문장 중간의
+#: 단일 `~`를 GFM 렌더러(remark-gfm singleTilde 기본값 등)가 취소선으로 그린다.
+#: rag_chat `streaming.py::_escape_tildes`와 같은 규칙으로 `\~` 이스케이프(이미
+#: 이스케이프된 것은 건드리지 않음). 평문 뷰어에서는 `\~`가 그대로 보일 수 있으나
+#: 프로젝트 공통 결정(챗봇과 동일)이라 따른다.
+_UNESCAPED_TILDE_RE = re.compile(r"(?<!\\)~")
+
+
+def _escape_tildes(text: str) -> str:
+    return _UNESCAPED_TILDE_RE.sub(r"\\~", text)
+
+
 def colorize_tone(text: str) -> str:
     """`TONE_COLORS` 어휘를 `TONE_TAG`로 감싼다(한 번만 훑으므로 중첩 태그 없음)."""
 
@@ -392,23 +404,19 @@ def render_plain_report(response: AnalysisSummaryResponse) -> str:
     `PLAIN_LINE_BREAK`("  \n", Markdown 하드 브레이크) — 2026-09-16 사용자 제보("문장
     단위로 줄바꿈이 되어 있어야 하는데 한 줄로 붙어 보인다"): 프론트가 `<font>` 태그를
     그리려면 Markdown+HTML 렌더러인데 Markdown은 단일 "\n"을 공백으로 접는다. 문장 끝
-    공백 2개는 평문 뷰어에서는 보이지 않고 Markdown 뷰어에서는 줄바꿈이 된다. 첫 단락은 보조 정보(조회조건 "라벨: 값", "현재 단계: …")가 있을 때만.
-    문장 순서·내용·절 구성(분리 절·숨김 절)은 Markdown 렌더러와 동일(`_section_blocks`
-    공유), 문장 텍스트는 `colorize_tone`만 거친다."""
+    공백 2개는 평문 뷰어에서는 보이지 않고 Markdown 뷰어에서는 줄바꿈이 된다. 상단 보조
+    정보(조회조건·현재 단계)는 내지 않는다(2026-09-16 후속 지시 — Markdown 렌더러에만
+    남는다). 문장 순서·내용·절 구성(분리 절·숨김 절)은 Markdown 렌더러와 동일
+    (`_section_blocks` 공유), 문장 텍스트는 `colorize_tone`과 `_escape_tildes`(단일
+    `~`→`\\~`)만 거친다."""
 
+    # 2026-09-16 사용자 지시("기존 첫 번째 heading은 표시 안 되게") — Markdown 렌더러의
+    # 제목 자리에 있던 상단 보조 정보(조회조건 "가격기준: LME CASH · …"·"현재 단계: …")
+    # 단락을 평문에서는 내지 않는다. 본문 절만 단락으로 나간다.
     paragraphs: list[str] = []
-    header: list[str] = []
-    extra_filters = _extra_filters(response)
-    if extra_filters:
-        header.append(" · ".join(f"{label}: {value}" for label, value in extra_filters))
-    grade_text = _grade_text(response)
-    if grade_text:
-        header.append(f"현재 단계: {grade_text}")
-    if header:
-        paragraphs.append(PLAIN_LINE_BREAK.join(header))
     for _title, sentences, _as_list in _section_blocks(response):
         paragraphs.append(PLAIN_LINE_BREAK.join(
-            colorize_tone(line) for sentence in sentences for line in _plain_lines(sentence.text)
+            _escape_tildes(colorize_tone(line)) for sentence in sentences for line in _plain_lines(sentence.text)
         ))
 
     _log_diagnostics(response)

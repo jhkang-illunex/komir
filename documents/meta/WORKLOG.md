@@ -35,6 +35,13 @@
   Markdown 뷰어엔 줄바꿈). streamlit 쪽 하드 브레이크 치환은 제거(서버가 넣으므로).
   재배포 `komir-report-gen:260916-plain2`. 호스트 streamlit은 main 병합·재기동 전까지
   font 태그가 문자 그대로 보인다(unsafe_allow_html 미적용).
+- **후속 2(사용자 제보 "~이 문장 중간에 있어 취소선으로 표시" + "기존 첫 번째
+  heading은 표시 안 되게")**: ① 단일 `~`("2021~2025년" 등)를 rag_chat
+  `StrikethroughFilter`와 같은 규칙으로 `\~` 이스케이프(`_escape_tildes`, 이미
+  이스케이프된 것은 제외). ② 평문에서 상단 보조 정보 단락(조회조건 "가격기준: … ·
+  비교광종: …"·"현재 단계: …")을 제거 — Markdown 렌더러에는 그대로 남음. 테스트 24
+  passed(신규 1: 헤더 단락 부재, 기존 1 갱신: `2021\~2025년`). 재배포
+  `komir-report-gen:260916-plain3`.
 
 ## 2026-09-16 — report_gen "주요 지표" 표를 응답 `table` 키로 분리
 

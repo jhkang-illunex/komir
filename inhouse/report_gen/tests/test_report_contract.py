@@ -130,6 +130,22 @@ class ReportContractTests(unittest.TestCase):
                          "가격이 10% <font color='red'>상승</font>했으며 재고는 <font color='blue'>감소</font>했습니다.")
         self.assertEqual(colorize_tone("보합세를 유지했습니다."), "보합세를 유지했습니다.")
 
+    def test_plain_report_has_no_header_paragraph(self):
+        """2026-09-16 후속 지시 — 조회조건·현재 단계 보조 정보 단락은 평문에 없다."""
+        request = AnalysisSummaryRequest(
+            page_id="price_minor_metals", mineral="CO", mineral_name="코발트",
+            compare_mineral="NI", compare_mineral_name="니켈", price_criterion="LME CASH",
+            observations=[{"date": "2026-08-01", "commerce_price": 100}, {"date": "2026-08-02", "commerce_price": 110}],
+            compare_observations=[{"date": "2026-08-01", "commerce_price": 50}, {"date": "2026-08-02", "commerce_price": 60}],
+            price_unit="달러/톤",
+        )
+        response = AnalysisSummaryService().analyze(request)
+        self.assertIn("**가격기준**: LME CASH", render_markdown_report(response))
+        plain = render_plain_report(response)
+        self.assertNotIn("가격기준: LME CASH", plain)
+        self.assertNotIn("비교광종:", plain)
+        self.assertTrue(plain.startswith("2026년"), plain[:40])
+
     def test_plain_report_splits_joined_sentences(self):
         from app.analysis.report_render import _plain_lines
         self.assertEqual(_plain_lines("고가권에 속합니다. 조회기간 중 약 2.04억톤 하락했습니다."),
@@ -406,7 +422,9 @@ class ReportContractTests(unittest.TestCase):
             client = TestClient(app)
             result = client.post("/api/v1/analysis/maps/mineral", json=body).json()
             self.assertEqual(result["status"], "ok")
-            self.assertIn("조회기간(2021~2025년)", result["report"])
+            # 2026-09-16 평문 포맷: 단일 `~`는 취소선 오해석 방지로 `\~` 이스케이프.
+            self.assertIn("조회기간(2021\\~2025년)", result["report"])
+            self.assertNotRegex(result["report"], r"(?<!\\)~")
             self.assertIn("2021년보다", result["report"])
             self.assertNotIn("2019년", result["report"])
             reversed_range = client.post("/api/v1/analysis/maps/mineral", json={**body, "start_year": 2025, "end_year": 2021}).json()
