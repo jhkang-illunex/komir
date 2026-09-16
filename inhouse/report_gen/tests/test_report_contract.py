@@ -119,7 +119,7 @@ class ReportContractTests(unittest.TestCase):
         for line in untagged.strip().splitlines():
             if line:
                 self.assertIn(line.rstrip(), markdown, line)
-        self.assertIn("<font color='red'>상승</font>", plain)
+        self.assertRegex(plain, r"<font color='red'>[^<]*상승</font>")
         # 2026-09-16 사용자 제보 — Markdown 렌더러가 단일 줄바꿈을 접지 않도록 문장 끝은
         # 하드 브레이크("  \n"). 단락 사이는 빈 줄, 마지막 줄은 공백 없이 끝난다.
         for paragraph in paragraphs:
@@ -128,9 +128,23 @@ class ReportContractTests(unittest.TestCase):
             self.assertFalse(paragraph.endswith(" "), repr(paragraph[-20:]))
 
     def test_colorize_tone(self):
+        """2026-09-16 사용자 지시 — 어휘 바로 앞뒤 수치는 같은 font 영역에."""
         self.assertEqual(colorize_tone("가격이 10% 상승했으며 재고는 감소했습니다."),
-                         "가격이 10% <font color='red'>상승</font>했으며 재고는 <font color='blue'>감소</font>했습니다.")
+                         "가격이 <font color='red'>10% 상승</font>했으며 재고는 <font color='blue'>감소</font>했습니다.")
         self.assertEqual(colorize_tone("보합세를 유지했습니다."), "보합세를 유지했습니다.")
+        self.assertEqual(colorize_tone("전일(2026년 9월 9일) 대비 1.92% 하락했습니다."),
+                         "전일(2026년 9월 9일) 대비 <font color='blue'>1.92% 하락</font>했습니다.")
+        self.assertEqual(colorize_tone("2021년보다 약 800만톤 늘어 4년간 1.86% 증가했습니다."),
+                         "2021년보다 <font color='red'>약 800만톤 늘어</font> 4년간 <font color='red'>1.86% 증가</font>했습니다.")
+        # 뒤에 붙은 수치("상승 9일")도 포함, 단위 뒤 조사("5일로"의 "로")는 밖에 남는다.
+        self.assertEqual(colorize_tone("최근 14일 중 상승 9일·하락 5일로 등락을 반복했습니다."),
+                         "최근 14일 중 <font color='red'>상승 9일</font>·<font color='blue'>하락 5일</font>로 등락을 반복했습니다.")
+        # 사이에 낱말·쉼표가 있으면 수치는 포함하지 않는다. "2일 연속"은 "연속"이 끼어 제외.
+        self.assertEqual(colorize_tone("약 200만톤, 0.46% 증가했고 2일 연속 하락세입니다."),
+                         "약 200만톤, <font color='red'>0.46% 증가</font>했고 2일 연속 <font color='blue'>하락</font>세입니다.")
+        # 볼드가 먼저 걸린 값도 색 영역에 들어간다(적용 순서: 볼드 → 색).
+        self.assertEqual(colorize_tone("메이저금속지수는 <b>3.66</b>점 하락했습니다."),
+                         "메이저금속지수는 <font color='blue'><b>3.66</b>점 하락</font>했습니다.")
 
     def test_emphasize_indicators(self):
         """2026-09-16 사용자 예시 — 지표 명칭이 아니라 그 뒤의 값과 단계 명칭을 볼드."""

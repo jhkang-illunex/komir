@@ -357,7 +357,21 @@ TONE_COLORS: dict[str, tuple[str, ...]] = {
 #: 색 마크업 템플릿(프론트 요구 형식). `{color}`·`{word}` 자리표시자.
 TONE_TAG = "<font color='{color}'>{word}</font>"
 _WORD_COLOR = {word: color for color, words in TONE_COLORS.items() for word in words}
-_TONE_RE = re.compile("|".join(re.escape(word) for word in sorted(_WORD_COLOR, key=len, reverse=True)))
+_TONE_ALT = "|".join(re.escape(word) for word in sorted(_WORD_COLOR, key=len, reverse=True))
+#: 2026-09-16 사용자 지시 — "상승/하락 font 처리할 때 앞뒤에 점수가 있으면 점수까지 같이
+#: font 영역에 넣어 달라". 어휘 바로 앞("1.92% 하락", "약 800만톤 늘어", "3.66점 하락")
+#: 또는 바로 뒤("상승 9일")에 공백 하나로 붙은 수치 토큰을 같은 태그 안에 넣는다.
+#: 수치 토큰 = 선택적 "약 " + 부호 + 숫자(콤마·소수) + 선택적 단위(아래 목록). 볼드가
+#: 먼저 걸린 값(`<b>3.66</b>점 하락`)도 토큰으로 인정한다. 단위 목록에 없는 글자가 붙은
+#: 수치("5일로"의 "로", "2021년보다")는 단위까지만 잡거나 아예 안 잡아 조사가 태그 안에
+#: 들어가지 않는다. 사이에 다른 낱말·괄호·쉼표가 있으면 수치는 포함하지 않는다.
+_TONE_NUM_UNITS = "%p|%|점|포인트|개월|일|년|달러|백만톤|만톤|억톤|천톤|톤|개국|건|배"
+_TONE_NUM = rf"(?:약\s+)?(?:<b>)?[+-]?\d[\d,]*(?:\.\d+)?(?:</b>)?(?:{_TONE_NUM_UNITS})?"
+#: 뒤에 붙는 수치는 단위 뒤에 조사(로·으로·이·가·은·는·을·를·의·에·과·와·도)만 오거나 바로
+#: 비한글이어야 한다 — "상승 9일·", "하락 5일로"는 잡고 "늘어 4년간"의 "4년"(뒤에 "간")은
+#: 수치가 아니라 기간 표현이라 제외.
+_TONE_TAIL_OK = r"(?=(?:으로|로|이|가|은|는|을|를|의|에|과|와|도)?(?![가-힣]))"
+_TONE_RE = re.compile(rf"(?:{_TONE_NUM}\s+)?(?P<word>{_TONE_ALT})(?:\s+{_TONE_NUM}{_TONE_TAIL_OK})?")
 
 
 #: 평문 줄 나누기 — 계산기가 한 `Sentence`에 두 문장을 붙여 두는 경우가 있어("…고가권에
@@ -383,9 +397,10 @@ def _escape_tildes(text: str) -> str:
 
 
 def colorize_tone(text: str) -> str:
-    """`TONE_COLORS` 어휘를 `TONE_TAG`로 감싼다(한 번만 훑으므로 중첩 태그 없음)."""
+    """`TONE_COLORS` 어휘(+바로 앞뒤 수치 토큰, `_TONE_RE` 주석)를 `TONE_TAG`로 감싼다.
+    색은 어휘로 정하고 한 번만 훑으므로 font 태그가 중첩되지 않는다."""
 
-    return _TONE_RE.sub(lambda m: TONE_TAG.format(color=_WORD_COLOR[m.group(0)], word=m.group(0)), text)
+    return _TONE_RE.sub(lambda m: TONE_TAG.format(color=_WORD_COLOR[m.group("word")], word=m.group(0)), text)
 
 
 #: 2026-09-16 사용자 지시 — 처음엔 "시장동향지표, 수급위기지표 … 해당 단어는 볼드"로
@@ -438,8 +453,9 @@ def render_plain_report(response: AnalysisSummaryResponse) -> str:
     공백 2개는 평문 뷰어에서는 보이지 않고 Markdown 뷰어에서는 줄바꿈이 된다. 상단 보조
     정보(조회조건·현재 단계)는 내지 않는다(2026-09-16 후속 지시 — Markdown 렌더러에만
     남는다). 문장 순서·내용·절 구성(분리 절·숨김 절)은 Markdown 렌더러와 동일
-    (`_section_blocks` 공유), 문장 텍스트는 `colorize_tone`(상승/하락 색)·
-    `emphasize_indicators`(지표 값·단계 명칭 볼드)·`_escape_tildes`(단일 `~`→`\\~`)만 거친다."""
+    (`_section_blocks` 공유), 문장 텍스트는 `emphasize_indicators`(지표 값·단계 명칭 볼드)
+    → `colorize_tone`(상승/하락 색, 앞뒤 수치 포함 — 볼드된 값도 포함) → `_escape_tildes`
+    (단일 `~`→`\\~`) 순으로만 거친다."""
 
     # 2026-09-16 사용자 지시("기존 첫 번째 heading은 표시 안 되게") — Markdown 렌더러의
     # 제목 자리에 있던 상단 보조 정보(조회조건 "가격기준: LME CASH · …"·"현재 단계: …")
@@ -447,7 +463,7 @@ def render_plain_report(response: AnalysisSummaryResponse) -> str:
     paragraphs: list[str] = []
     for _title, sentences, _as_list in _section_blocks(response):
         paragraphs.append(PLAIN_LINE_BREAK.join(
-            _escape_tildes(emphasize_indicators(colorize_tone(line)))
+            _escape_tildes(colorize_tone(emphasize_indicators(line)))
             for sentence in sentences for line in _plain_lines(sentence.text)
         ))
 
