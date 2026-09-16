@@ -136,7 +136,8 @@ def build(facts: dict, base: date, cfg: ReportConfig) -> dict:
         s = f"한국의 {m['name']} 수입금액은 {fmt.yy(cu['prev_year'])} 기준 {fmt.k_usd_u(yt['usd'])}으로"
         if yoy is not None:
             s += f" 전년 대비 {fmt.pct(abs(yoy))} {fmt.signed_dir(yoy, '증가', '감소', '보합')}하였으며,"
-        s += f" 국가별 비중은 {shares}로 {cu['shares'][0][0]}이 대부분을 차지하고 있습니다."
+        top = cu['shares'][0][0]
+        s += f" 국가별 비중은 {shares}로 {top}{fmt.josa(top, '이', '가')} 대부분을 차지하고 있습니다."
         q4.append(s)
     out["risk4_quant_txt"] = " ".join(q4) or None
     return out

@@ -35,6 +35,11 @@ class FmtTest(unittest.TestCase):
     def test_units(self):
         self.assertEqual(fmt.kton(24_000), "24천톤")
         self.assertEqual(fmt.kton(4_700_000), "4.7백만톤")
+        self.assertEqual(fmt.kton(2_798.06 / 1000 * 1000), "2.8천톤")
+        self.assertEqual(fmt.kton(2.79806), "2.8톤")  # 1천톤 미만은 톤(더미 관세청 중량 "0천톤" 방지)
+        self.assertEqual(fmt.josa("중국", "이", "가"), "이")
+        self.assertEqual(fmt.josa("호주", "이", "가"), "가")
+        self.assertEqual(fmt.josa("남아프리카공화국", "이", "가"), "이")
         self.assertEqual(fmt.eok_usd(1.9e8), "1.9억달러")
         self.assertEqual(fmt.k_usd(386_379_000), "386,379천달러")
         self.assertEqual(fmt.k_usd_u(86_537_000), "U$86,537천")
@@ -98,6 +103,12 @@ class OverallRuleTest(unittest.TestCase):
         row = overall.build(facts, BASE, CFG)
         self.assertEqual(row["smry_quant_txt"], "6월 3주차 주석의 주간 평균가격은 전주 대비 4.61%의 하락세를 나타내었습니다.")
         self.assertEqual(row["risk2_quant_txt"], "6월 3주차 주석의 가격은 54,900달러로 전주 대비 4.61% 하락, 전월 대비 3.2% 상승, 전년 대비 69.8% 상승을 기록하였습니다.")
+
+    def test_top_import_country_josa(self):
+        cu = dict(CUSTOMS, shares=[("호주", 37.6), ("중국", 26.3)], year_tot={"2025": {"ton": 1.0, "usd": 1e8}})
+        facts = {"overall": None, "gscpi": None, "minerals": {"MNRL0001": {"name": "리튬", "price": None, "diag": None, "customs": cu, "production": None}}}
+        row = overall.build(facts, BASE, CFG)
+        self.assertIn("호주가 대부분을", row["risk4_quant_txt"])
 
     def test_with_diag(self):
         facts = {"overall": {"overall_score": 63.2, "overall_wow": 2.3}, "minerals": {

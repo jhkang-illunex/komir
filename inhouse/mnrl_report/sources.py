@@ -4,6 +4,8 @@
 - 개발 더미는 원천으로 인정하지 않는다: 행 단위 더미는 `ai_dev_dummy_load`
   (tbl_nm, mnrknd_unq_cd, nat_key)로, 진단·거시·뉴스는 model_ver/src_nm의
   DEV_DUMMY 표식으로 걸러 facts에서 뺀다(→ 해당 문장은 NULL).
+  예외: `cfg.allow_dummy`(MNRL_REPORT_ALLOW_DUMMY=1, --allow-dummy)가 켜지면 더미도
+  원천으로 쓴다 — 실데이터 적재 전 화면을 채워 보기 위한 임시 스위치(2026-09-16).
 - 모든 수치는 원장 값 그대로(반올림·축약은 rules/fmt.py에서만).
 - 단위 가정: ko_cstm_cmmrc.incm_amt=USD, incm_weig=kg(config.customs_weight_kg),
   ko_rsrc_*_ton=톤, ntn_eng_cd 'SU'=세계 합계, 'OT'=기타.
@@ -51,8 +53,11 @@ def country_names() -> dict[str, str]:
     return names
 
 
-def dummy_codes(table: str) -> set[str]:
-    """해당 테이블에서 더미 행이 있는 광종코드 집합(그 광종의 그 테이블은 통째로 불신)."""
+def dummy_codes(table: str, cfg: ReportConfig) -> set[str]:
+    """해당 테이블에서 더미 행이 있는 광종코드 집합(그 광종의 그 테이블은 통째로 불신).
+    allow_dummy면 빈 집합(=아무것도 거르지 않음)."""
+    if cfg.allow_dummy:
+        return set()
     return {r["mnrknd_unq_cd"] for r in db.fetch_all(
         "select distinct mnrknd_unq_cd from public.ai_dev_dummy_load where tbl_nm=:t", {"t": table})}
 
@@ -86,13 +91,14 @@ def weekly_price(code: str, base: date) -> dict | None:
 
 
 # ── 진단(ai_mnrl_diag / ai_dash_diag) — 더미 차단 ────────────────────
-def mineral_diag(code: str, base: date) -> dict | None:
+def mineral_diag(code: str, base: date, cfg: ReportConfig) -> dict | None:
     rows = db.fetch_all(
         """select base_ymd, score, grade, score_wow_pct, model_ver
            from public.ai_mnrl_diag where mnrknd_unq_cd=:c and base_ymd<=:b
            order by base_ymd desc limit 30""",
         {"c": code, "b": to_ymd(base)})
-    rows = [r for r in rows if (r.get("model_ver") or "") != DUMMY_MARK]
+    if not cfg.allow_dummy:
+        rows = [r for r in rows if (r.get("model_ver") or "") != DUMMY_MARK]
     if not rows or rows[0]["base_ymd"] != to_ymd(base):
         return None
     cur = rows[0]
@@ -114,24 +120,37 @@ def mineral_diag(code: str, base: date) -> dict | None:
     }
 
 
-def overall_diag(base: date) -> dict | None:
+def overall_diag(base: date, cfg: ReportConfig) -> dict | None:
     r = db.fetch_one("select * from public.ai_dash_diag where base_ymd=:b", {"b": to_ymd(base)})
-    if not r or (r.get("model_ver") or "") == DUMMY_MARK:
+    if not r or ((r.get("model_ver") or "") == DUMMY_MARK and not cfg.allow_dummy):
         return None
     return {k: (_f(v) if k.endswith(("_score", "_wow")) else v) for k, v in r.items()}
 
 
-def macro(code: str, base: date) -> dict | None:
-    r = db.fetch_one(
+def macro(code: str, base: date, cfg: ReportConfig) -> dict | None:
+    """거시지표(GSCPI·GPR 등) 최신값 + 4주 전(전월 대체)·52주 전(전년) 대비 차이(p)."""
+    rows = db.fetch_all(
         """select indc_val, wow_pct, base_ymd, src_nm from public.ai_macro_indc
-           where indc_cd=:i and base_ymd<=:b and coalesce(src_nm,'')<>:d order by base_ymd desc limit 1""",
-        {"i": code, "b": to_ymd(base), "d": DUMMY_MARK})
-    return {"val": _f(r["indc_val"]), "wow_pct": _f(r["wow_pct"]), "as_of": r["base_ymd"]} if r else None
+           where indc_cd=:i and base_ymd<=:b order by base_ymd desc limit 60""",
+        {"i": code, "b": to_ymd(base)})
+    if not cfg.allow_dummy:
+        rows = [r for r in rows if (r.get("src_nm") or "") != DUMMY_MARK]
+    if not rows:
+        return None
+    cur = rows[0]
+    by = {r["base_ymd"]: r for r in rows}
+    ref = from_ymd(cur["base_ymd"])
+    prev4 = by.get(to_ymd(ref - timedelta(weeks=4)))
+    prev52 = by.get(to_ymd(ref - timedelta(weeks=52)))
+    val = _f(cur["indc_val"])
+    return {"val": val, "wow_pct": _f(cur["wow_pct"]), "as_of": cur["base_ymd"],
+            "mom_diff": val - _f(prev4["indc_val"]) if prev4 and val is not None and prev4["indc_val"] is not None else None,
+            "yoy_diff": val - _f(prev52["indc_val"]) if prev52 and val is not None and prev52["indc_val"] is not None else None}
 
 
 # ── 관세청(ko_cstm_cmmrc) — 광종 HS 전체 합산 ─────────────────────────
 def customs(code: str, base: date, cfg: ReportConfig, ntn: dict[str, str]) -> dict | None:
-    if code in dummy_codes("ko_cstm_cmmrc"):
+    if code in dummy_codes("ko_cstm_cmmrc", cfg):
         return None
     rows = db.fetch_all(
         """select substr(c.crtr_ymd,1,6) ym, c.trgt_ntn_cd, c.trgt_ntn,
@@ -181,8 +200,8 @@ def customs(code: str, base: date, cfg: ReportConfig, ntn: dict[str, str]) -> di
 
 
 # ── USGS(ko_rsrc_*) ──────────────────────────────────────────────────
-def usgs(code: str, base: date, table: str, col: str, ntn: dict[str, str]) -> dict | None:
-    if code in dummy_codes(table):
+def usgs(code: str, base: date, table: str, col: str, ntn: dict[str, str], cfg: ReportConfig) -> dict | None:
+    if code in dummy_codes(table, cfg):
         return None
     rows = db.fetch_all(
         f"""select crtr_yr, ntn_eng_cd, {col} v from public.{table}

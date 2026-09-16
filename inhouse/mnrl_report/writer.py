@@ -1,8 +1,9 @@
 """정책을 지키는 upsert.
 
 - INSERT … ON CONFLICT DO UPDATE. UPDATE 대상 컬럼은 이번 실행이 만든 RULE 컬럼
-  (+ 생성형 엔진이 돌았으면 LLM 컬럼) + 엔진 메타뿐. MANUAL 컬럼은 UPDATE 절에
-  넣지 않고 INSERT 시 초기 시드만 넣는다(이미 있는 행의 MANUAL 값은 보존).
+  (+ 생성형 엔진이 돌았으면 LLM 컬럼) + 엔진 메타뿐. MANUAL 컬럼은 시드가 있을 때
+  `COALESCE(기존값, 시드)`로만 쓴다 — 비어 있을 때만 채우고 담당자가 채운 값은 보존
+  (2026-09-16: 기존 행에도 빈 MANUAL 컬럼은 시드되도록 정정. 전엔 INSERT 때만 들어갔다).
 - 기존 행이 DRAFT가 아니면(REVIEWED/DONE) force=False일 때 UPDATE를 건너뛴다
   (ON CONFLICT … WHERE gen_stts_cd='DRAFT').
 - 값이 None인 RULE 컬럼도 NULL로 덮어쓴다(원천이 사라지면 문장도 사라져야
@@ -39,12 +40,13 @@ def upsert(table: str, rule: EngineResult, rule_ver: str, *, gen: EngineResult |
         values["llm_model_ver"] = gen_ver
         values["llm_refined_yn"] = "Y" if gen.filled else "N"
         update_cols += ["llm_model_ver", "llm_refined_yn"]
-    for c, k in policy.items():
-        if k == MANUAL and manual_seed and manual_seed.get(c) is not None:
-            values[c] = manual_seed[c]  # INSERT 시에만 유효(UPDATE 절엔 넣지 않음)
+    manual_cols = [c for c, k in policy.items() if k == MANUAL and manual_seed and manual_seed.get(c) is not None]
+    for c in manual_cols:
+        values[c] = manual_seed[c]
     cols = list(values)
-    set_clause = ", ".join(f"{c}=EXCLUDED.{c}" for c in update_cols if c not in keys)
-    set_clause += ", last_mdfcn_dt=now()"
+    set_parts = [f"{c}=EXCLUDED.{c}" for c in update_cols if c not in keys]
+    set_parts += [f"{c}=COALESCE({table}.{c}, EXCLUDED.{c})" for c in manual_cols]  # 비어 있을 때만 시드
+    set_clause = ", ".join(set_parts) + ", last_mdfcn_dt=now()"
     where = "" if force else f" WHERE {table}.gen_stts_cd='DRAFT'"
     sql = (f"INSERT INTO public.{table} ({', '.join(cols)}) VALUES ({', '.join(':' + c for c in cols)}) "
            f"ON CONFLICT ({', '.join(keys)}) DO UPDATE SET {set_clause}{where} "

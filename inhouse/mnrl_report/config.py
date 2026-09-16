@@ -49,6 +49,13 @@ class ReportConfig:
     #: 광종 선택 — 기본은 수급위기 진단 대상 5광종(TARGET_MINERALS, 사용자 확정 2026-09-15).
     #: MNRL_REPORT_MINERALS에 코드 목록을 주면 그 광종만, "all"이면 ai_mnrl_mst READY 전부.
     minerals_env: str
+    #: 개발 더미(DEV_DUMMY·ai_dev_dummy_load)를 원천으로 허용할지(기본 False). 실데이터 적재 전
+    #: 보고서 화면을 채워 보기 위한 임시 스위치(2026-09-16 사용자 요청) — 켜면 진단·관세청·
+    #: USGS·GSCPI·GPR 더미로 정량 문장이 만들어진다. facts 스냅샷에 allow_dummy=true가 남는다.
+    allow_dummy: bool
+    #: 임시 문안 엔진(TempEngine) 사용 여부(기본 False). LLM 컬럼(원인·해석·정책 제언)을
+    #: resources/temp_texts.json의 임시 문안으로 채운다 — 생성형 엔진이 채우지 못한 컬럼만.
+    temp_fill: bool
 
     @property
     def minerals(self) -> list[str] | None:
@@ -68,6 +75,8 @@ def get_config() -> ReportConfig:
         facts_dir=os.getenv("MNRL_REPORT_FACTS_DIR",
                             os.path.join(os.path.dirname(os.path.dirname(__file__)), "data_lake", "mnrl_report")),
         minerals_env=os.getenv("MNRL_REPORT_MINERALS", ""),
+        allow_dummy=os.getenv("MNRL_REPORT_ALLOW_DUMMY", "0") == "1",
+        temp_fill=os.getenv("MNRL_REPORT_TEMP_FILL", "0") == "1",
     )
 
 

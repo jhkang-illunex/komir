@@ -13,11 +13,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from mnrl_report.config import get_config  # noqa: E402
-from mnrl_report.engines import EngineResult, GenEngine, RuleEngine  # noqa: E402
+from mnrl_report.engines import EngineResult, GenEngine, RuleEngine, TempEngine  # noqa: E402
 from mnrl_report.engines.base import compute_version  # noqa: E402
 from mnrl_report.engines.gen_engine import PROMPT_DIR, evidence_text, load_prompts, unwrap, validate  # noqa: E402
 from mnrl_report.engines.rule_engine import RULE_FILES  # noqa: E402
-from mnrl_report.policy import LLM, POLICIES, RULE, columns_of  # noqa: E402
+from mnrl_report.policy import LLM, MANUAL, POLICIES, RULE, columns_of  # noqa: E402
+from mnrl_report.run import _merge_temp, overall_manual_from_facts  # noqa: E402
 from mnrl_report.tests.test_rules import BASE, CUSTOMS, DIAG, PRICE, PROD, RESV  # noqa: E402
 
 CFG = get_config()
@@ -194,3 +195,48 @@ class GenEngineTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TempEngineTest(unittest.TestCase):
+    """임시 문안 엔진 — 정책 범위·광종 치환·생성형 결과와의 병합(빈 컬럼만)·MANUAL 시드."""
+
+    def test_columns_within_policy_and_no_numbers(self):
+        eng = TempEngine(CFG)
+        self.assertEqual(eng.engine_type, "TEMP")
+        self.assertEqual(eng.model_nm, "TEMP_TEXT")
+        self.assertRegex(eng.version.ver, VER_RE)
+        self.assertIn("temp_texts.json", {Path(f).name for f in eng.version.files})
+        for table, code, name in (("ai_rpt_mnrl", "MNRL0008", "동"), ("ai_rpt_mnrl", "MNRL0099", "미등록광종"), ("ai_rpt_overall", None, None)):
+            ctx = {"base": BASE, "code": code, "facts": {"name": name}}
+            res = eng.generate(table, ctx)
+            self.assertEqual(set(res.columns), set(columns_of(table, LLM)), f"{table} 임시 문안이 LLM 컬럼 전부를 덮지 않음")
+            self.assertTrue(set(eng.manual(table, ctx)) <= set(columns_of(table, MANUAL)))
+            for c, v in res.columns.items():
+                self.assertNotIn("{name}", v)
+                self.assertFalse(re.search(r"\d", v), f"{table}.{c} 임시 문안에 숫자가 있음: {v}")
+                if c.endswith("_title"):
+                    self.assertLessEqual(len(v), 60)
+        # 광종 절이 _default를 덮어쓰고, 미등록 광종은 _default+이름 치환
+        cu = eng.generate("ai_rpt_mnrl", {"base": BASE, "code": "MNRL0008", "facts": {"name": "동"}})
+        other = eng.generate("ai_rpt_mnrl", {"base": BASE, "code": "MNRL0099", "facts": {"name": "미등록광종"}})
+        self.assertNotEqual(cu.columns["smry_cause_txt"], other.columns["smry_cause_txt"])
+        self.assertIn("미등록광종", other.columns["risk_narr_txt"])
+        self.assertIn("국내 동 생산광산", eng.manual("ai_rpt_mnrl", {"code": "MNRL0008", "facts": {"name": "동"}})["domestic_prod_txt"])
+
+    def test_merge_fills_only_gaps(self):
+        gen = EngineResult(table="ai_rpt_mnrl", columns={"response_txt": "생성형 문장"},
+                           dropped={"smry_cause_txt": "no_news_evidence", "risk_narr_txt": "empty"})
+        temp = EngineResult(table="ai_rpt_mnrl", columns={"response_txt": "임시", "smry_cause_txt": "임시 원인"})
+        merged = _merge_temp(gen, temp)
+        self.assertEqual(merged.columns["response_txt"], "생성형 문장")   # 생성형이 우선
+        self.assertEqual(merged.columns["smry_cause_txt"], "임시 원인")   # 빈 자리만 임시 문안
+        self.assertEqual(merged.dropped, {"risk_narr_txt": "empty"})     # 메워진 컬럼은 폐기 목록에서 빠짐
+        alone = _merge_temp(None, temp)
+        self.assertEqual(alone.columns, temp.columns)
+
+    def test_overall_manual_seed_from_macro_facts(self):
+        self.assertEqual(overall_manual_from_facts({"gscpi": None, "gpr": None}), {})
+        seed = overall_manual_from_facts({"gscpi": {"val": 0.821, "mom_diff": -0.0085, "yoy_diff": None},
+                                          "gpr": {"val": 117.9306, "wow_pct": -1.49}})
+        self.assertEqual(seed, {"gscpi_val": 0.82, "gscpi_mom": -0.01, "geo_risk_idx": 117.93, "geo_risk_wow_pct": -1.49})
+        self.assertTrue(set(seed) <= set(columns_of("ai_rpt_overall", MANUAL)))

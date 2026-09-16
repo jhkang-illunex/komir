@@ -24,6 +24,7 @@
 |---|---|---|---|
 | `RuleEngine` (engine_cd=`rule`, RULE) | `engines/rule_engine.py` → `rules/{fmt,mnrl,overall}.py` | rules 3종 + `policy.py` + `config.py` 내용 | 정책 RULE 컬럼(결정론, 동일 입력→동일 문장) |
 | `GenEngine` (engine_cd=`gen`, GEN) | `engines/gen_engine.py` + `engines/prompts/ai_rpt_{mnrl,overall}.md` | 엔진 소스 + 프롬프트 2종 + `LLM_PROVIDER:LLM_MODEL` | 정책 LLM 컬럼(원인·해석·정책 제언) |
+| `TempEngine` (engine_cd=`temp`, TEMP, model_nm `TEMP_TEXT`) — `--temp-fill` | `engines/temp_engine.py` + `resources/temp_texts.json` | 엔진 소스 + 문안 파일 | GenEngine이 비워 둔 LLM 컬럼을 **임시 문안**으로 메움(분석 결과 아님, §임시 채움 참고) |
 
 버전 = `YYMMDD-sha8`: sha8은 위 파일 내용을 정렬해 이어붙인 sha256 앞 8자리(+모델명),
 YYMMDD는 그 파일들의 최종 변경일(커밋된 깨끗한 파일은 git 커밋일, 미커밋 파일은 mtime).
@@ -51,7 +52,7 @@ YYMMDD는 그 파일들의 최종 변경일(커밋된 깨끗한 파일은 git �
 |---|---|---|
 | RULE | RuleEngine(결정론, 동일 입력→동일 문장) | 매 실행 재계산. 행이 DRAFT일 때만(REVIEWED/DONE은 `--force` 없이는 불변) |
 | LLM | GenEngine(기본 비활성 `MNRL_REPORT_LLM_ENABLED=0`, `--llm`) | 실행했을 때만, DRAFT일 때만. 검증 실패 컬럼은 폐기(NULL) |
-| MANUAL | 담당자 | 엔진은 절대 덮어쓰지 않음. 행 최초 INSERT 때 `resources/fixed_texts.json` 시드만 |
+| MANUAL | 담당자 | 엔진은 절대 덮어쓰지 않음. 비어 있을 때만 시드(`COALESCE(기존값, 시드)` — fixed_texts.json > temp_texts.json > 더미 허용 시 GSCPI·GPR 값 순) |
 | META | 파이프라인(rule_ver·llm_model_ver=엔진 버전, llm_refined_yn)/검수 화면(gen_stts_cd·reviewer_*) | — |
 
 정책표는 `policy.py`가 코드로 고정하며 테이블 COMMENT의 [RULE]/[LLM]/[MANUAL]
@@ -62,11 +63,36 @@ YYMMDD는 그 파일들의 최종 변경일(커밋된 깨끗한 파일은 git �
   행 자체를 만들지 않는다(`skipped(no source)`).
 - **더미 차단**: `ai_dev_dummy_load`에 잡힌 광종×테이블, `model_ver/src_nm=DEV_DUMMY`
   행은 원천으로 쓰지 않는다(`ai_mnrl_diag`·`ai_dash_diag`·GSCPI 등은 현재 전부 더미라
-  진단·지정학 문장은 실값 적재 전까지 NULL).
+  진단·지정학 문장은 실값 적재 전까지 NULL). 예외는 아래 §임시 채움의 `--allow-dummy`.
 - **근거 스냅샷**: 실행마다 `data_lake/mnrl_report/facts_{base_ymd}.json`에 facts를
   남긴다(감사·LLM 검증 재현용, git 미추적).
 - **미확정 산식은 계산하지 않는다**: 가격이격률·가격신호(B6)는 발주처와 산식·임계 확정
   전까지 NULL.
+
+## 임시 채움(2026-09-16, 사용자 요청 "데이터가 너무 없으니 임시로 내용을 우선 채워 달라")
+
+실데이터·뉴스가 붙기 전 보고서 화면을 채워 보기 위한 스위치 2개. 기본은 둘 다 꺼져 있고,
+켜서 만든 내용은 **분석 결과가 아니다**.
+
+| 스위치 | 효과 | 흔적 |
+|---|---|---|
+| `--allow-dummy` (`MNRL_REPORT_ALLOW_DUMMY=1`) | 더미 차단을 해제 — 5광종 진단(`ai_mnrl_diag`)·전체(`ai_dash_diag`)·관세청·USGS·GSCPI·GPR 더미로 RULE 정량 문장을 만든다 | 실행 로그 WARNING, facts 스냅샷 `allow_dummy: true` |
+| `--temp-fill` (`MNRL_REPORT_TEMP_FILL=1`) | `TempEngine`이 `resources/temp_texts.json`의 임시 문안(양식 예시 문장 + 광종별 일반 배경, 숫자 없음)으로 LLM 컬럼을 채운다. `--llm`과 같이 쓰면 GenEngine이 채운 컬럼은 그대로 두고 비운 컬럼만 메운다. MANUAL 컬럼(`price_bg_long_txt`·`domestic_prod_txt`)은 같은 파일의 문안이 비어 있을 때만 시드된다 | `llm_model_ver`가 engine_cd=`temp`(model_nm `TEMP_TEXT`) 버전을 가리킴, `ai_rpt_gen_run`에 engine_cd=`temp` 행 |
+
+```bash
+cd inhouse
+python -m mnrl_report.run --base-ymd 20260615 --allow-dummy --temp-fill   # 5광종 + 전체, DRAFT만 갱신
+# 임시 문안이 들어간 행 찾기
+#   SELECT m.mnrknd_unq_cd, m.base_ymd FROM public.ai_rpt_mnrl m
+#     JOIN public.ai_rpt_engine_ver v ON v.ver=m.llm_model_ver WHERE v.engine_cd='temp';
+```
+
+주의: `--temp-fill`만 켜고 `--llm`을 끄면 그 행의 LLM 컬럼은 임시 문안으로 덮인다(DRAFT만).
+실데이터·뉴스가 연결되면 스위치 없이 다시 돌려 정상 흐름으로 되돌린다 — RULE 컬럼은
+원천이 없으면 NULL로 돌아가고, LLM 컬럼은 `--llm`으로 다시 생성한다. 2026-09-16 적재
+상태: 20260615 주차 5광종+전체 6행이 이 스위치로 채워져 있다(가격은 동·니켈만 실데이터,
+그 외 정량은 더미, 서술은 임시 문안). 더미 관세청 중량이 톤 단위 소량이라 서식이 1천톤
+미만을 "2.8톤"처럼 톤으로 적도록 바뀌었다(`rules/fmt.kton`).
 
 ## 실행
 
@@ -78,6 +104,7 @@ python -m mnrl_report.run --base-ymd 20260615               # DRAFT 행 upsert
 python -m mnrl_report.run                                   # 가장 최근 월요일 주차
 python -m mnrl_report.run --minerals MNRL0018 --scope mnrl  # 광종·범위 지정(기본은 진단 대상 5광종, all=READY 전부)
 python -m mnrl_report.run --llm                             # 생성형 엔진 포함
+python -m mnrl_report.run --allow-dummy --temp-fill         # 임시 채움(§임시 채움) — 더미 원천 + 임시 문안
 # 호스트에서 --llm: common/config가 저장소 루트 .env(컨테이너용 host.docker.internal)를 읽으므로
 LLM_BASE_URL=http://localhost:52302/v1 python -m mnrl_report.run --base-ymd 20260615 --llm
 ```
@@ -96,7 +123,8 @@ MNRL0002·코발트 MNRL0003·리튬 MNRL0001·희토류=네오디뮴 MNRL1001(`
 
 환경변수(`inhouse/.env` + 선택): `PG_DSN`(필수), `MNRL_REPORT_SCHEDULE_CRON`,
 `MNRL_REPORT_LLM_ENABLED`, `MNRL_REPORT_HHI_HIGH`(기본 2500), `MNRL_REPORT_OVERALL_HIGH`
-(기본 60), `MNRL_REPORT_CUSTOMS_WEIGHT_KG`(기본 1), `MNRL_REPORT_MINERALS`(기본 5광종, all=전부), `MNRL_REPORT_FACTS_DIR`.
+(기본 60), `MNRL_REPORT_CUSTOMS_WEIGHT_KG`(기본 1), `MNRL_REPORT_MINERALS`(기본 5광종, all=전부), `MNRL_REPORT_FACTS_DIR`,
+`MNRL_REPORT_ALLOW_DUMMY`·`MNRL_REPORT_TEMP_FILL`(기본 0, §임시 채움).
 
 ## 원천 → 컬럼 매핑(현재 실데이터 범위)
 
@@ -106,7 +134,7 @@ MNRL0002·코발트 MNRL0003·리튬 MNRL0001·희토류=네오디뮴 MNRL1001(`
 | diag | `ai_mnrl_diag`(비더미만) | 없음(전부 DEV_DUMMY) | grade_*, score*, grade_streak_wk, smry_quant_txt(지수 문장), diag_result_txt, overall A3/A4/A5 |
 | customs | `ko_cstm_cmmrc`×`ai_hs_mnrl_map` | 텅스텐 | import_* 5컬럼, import_struct_txt, risk_quant_txt(수입), overall.risk4_quant_txt |
 | production/reserve | `ko_rsrc_prdctn_quty`/`ko_rsrc_burudg_quty`(SU=세계합계, OT=기타) | 텅스텐 | production_txt, reserve_txt, risk_quant_txt(생산), overall.risk2_quant_txt(USGS) |
-| overall / gscpi | `ai_dash_diag` / `ai_macro_indc(GSCPI)` (비더미만) | 없음 | overall_score/wow/level, gscpi_val |
+| overall / gscpi / gpr | `ai_dash_diag` / `ai_macro_indc(GSCPI·GPR)` (비더미만; 4주 전·52주 전 차이 포함) | 없음 | overall_score/wow/level; MANUAL 시드 gscpi_val/mom/yoy·geo_risk_idx/wow_pct(원천 있을 때만) |
 
 `public` 쓰기는 이 모듈의 `db.WRITABLE_TABLES`(ai_rpt_overall·ai_rpt_mnrl + 이 모듈 소유
 보조 테이블 ai_rpt_engine_ver·ai_rpt_gen_run)로만 제한한다(`common/db.py`의 public 금지
