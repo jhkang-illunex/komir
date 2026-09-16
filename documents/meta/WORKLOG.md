@@ -48,6 +48,12 @@
   `BOLD_TAG="<b>{word}</b>"`(font 태그와 같은 HTML 방식), `emphasize_indicators()`.
   적용 순서 colorize → bold → tilde escape(어휘 겹침 없음). 테스트 26 passed(신규 2).
   재배포 `komir-report-gen:260916-plain4`.
+- **후속 4(사용자 예시로 정정 — "시장동향지표는 <b>1.73</b>점으로, 현재 <b>신중</b>
+  단계")**: 볼드 대상은 지표 명칭이 아니라 **지표 값과 단계 명칭**. `INDICATOR_TERMS`는
+  값 위치 앵커로만 쓰고(`_INDICATOR_VALUE_RE`: "<지표명><조사> <숫자>(점|포인트)"),
+  단계 명칭은 정책 YAML grade label 8종(`GRADE_LABELS`)이 " 단계" 또는 "에서 " 앞에
+  올 때만(`_GRADE_RE` — 전환 문장 "신중에서 주의 단계로"는 둘 다, 일반 명사 "관심이
+  필요"는 제외). 테스트 26 passed(2건 갱신). 재배포 `komir-report-gen:260916-plain5`.
 
 ## 2026-09-16 — report_gen "주요 지표" 표를 응답 `table` 키로 분리
 

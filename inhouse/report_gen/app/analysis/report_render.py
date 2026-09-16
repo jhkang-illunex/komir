@@ -388,24 +388,35 @@ def colorize_tone(text: str) -> str:
     return _TONE_RE.sub(lambda m: TONE_TAG.format(color=_WORD_COLOR[m.group(0)], word=m.group(0)), text)
 
 
-#: 2026-09-16 사용자 지시 — "시장동향지표, 수급위기지표 그리고 다른 지표도 해당 단어는
-#: 볼드 처리". 본문 문장에 등장하는 지표·지수 명칭(계산 모듈 문장 템플릿에서 수집:
-#: summary.py·additional_summary.py·komir_summary.py·indicator_summary.py·정책 YAML).
-#: "수급위기지표"는 코드상 "수급동향지표"로 표기되지만 사용자가 부른 이름이라 함께 둔다.
-#: 긴 이름을 먼저 매치해 "시장동향·수급동향지표"처럼 붙은 표기에서도 잘린 태그가 안 생긴다.
+#: 2026-09-16 사용자 지시 — 처음엔 "시장동향지표, 수급위기지표 … 해당 단어는 볼드"로
+#: 지표 명칭을 볼드했으나, 같은 날 예시로 정정: 볼드 대상은 명칭이 아니라 **지표 값과
+#: 단계 명칭**이다("시장동향지표는 <b>1.73</b>점으로, 현재 <b>신중</b> 단계"). 지표 명칭
+#: 목록은 값 위치를 찾는 앵커로 쓴다(계산 모듈 문장 템플릿에서 수집). "수급위기지표"는
+#: 코드상 "수급동향지표"로 표기되지만 사용자가 부른 이름이라 함께 둔다.
 INDICATOR_TERMS: tuple[str, ...] = (
     "시장동향지표", "수급동향지표", "수급위기지표",
     "광물종합지수", "메이저금속지수", "희소금속지수", "가격강도지수",
 )
+#: 단계 명칭 — `resources/policies/indicator_market.yaml`(신중·주의·중립·관심·기회)·
+#: `indicator_supply.yaml`(긴장·주의·관심·안정·원활)의 grade label. 문장 안에서 " 단계"
+#: 바로 앞("현재 신중 단계", "주의 단계로")이거나 "에서 " 앞("신중에서 주의 단계로",
+#: 전환 문장)일 때만 볼드해 일반 명사 "관심"·"주의"의 오탐을 막는다.
+GRADE_LABELS: tuple[str, ...] = ("신중", "주의", "중립", "관심", "기회", "긴장", "안정", "원활")
 #: 볼드 마크업 템플릿 — `TONE_TAG`와 같은 HTML 태그 방식(프론트가 `<font>`를 그리는 렌더러).
 BOLD_TAG = "<b>{word}</b>"
-_INDICATOR_RE = re.compile("|".join(re.escape(term) for term in sorted(INDICATOR_TERMS, key=len, reverse=True)))
+_INDICATOR_ALT = "|".join(re.escape(term) for term in sorted(INDICATOR_TERMS, key=len, reverse=True))
+#: "<지표명><조사> <숫자>(점|포인트)" — 지표 명칭 바로 뒤의 값만(다른 숫자는 손대지 않음).
+_INDICATOR_VALUE_RE = re.compile(rf"(?P<head>(?:{_INDICATOR_ALT})[은는이가]\s+)(?P<num>-?[\d,]+(?:\.\d+)?)(?=점|포인트)")
+_GRADE_ALT = "|".join(re.escape(label) for label in GRADE_LABELS)
+_GRADE_RE = re.compile(rf"(?<![가-힣])(?P<grade>{_GRADE_ALT})(?=\s+단계|에서\s)")
 
 
 def emphasize_indicators(text: str) -> str:
-    """`INDICATOR_TERMS`를 `BOLD_TAG`로 감싼다(한 번만 훑음, `colorize_tone`과 어휘가 겹치지 않는다)."""
+    """지표 명칭 뒤의 값(`_INDICATOR_VALUE_RE`)과 단계 명칭(`_GRADE_RE`)을 `BOLD_TAG`로
+    감싼다. 각 규칙이 한 번씩만 훑고 대상이 겹치지 않아 중첩 태그는 생기지 않는다."""
 
-    return _INDICATOR_RE.sub(lambda m: BOLD_TAG.format(word=m.group(0)), text)
+    text = _INDICATOR_VALUE_RE.sub(lambda m: m.group("head") + BOLD_TAG.format(word=m.group("num")), text)
+    return _GRADE_RE.sub(lambda m: BOLD_TAG.format(word=m.group("grade")), text)
 
 
 #: 평문 보고서의 문장 줄 구분자 — Markdown 하드 브레이크(공백 2개+줄바꿈). 단락 구분은 "\n\n".
@@ -428,7 +439,7 @@ def render_plain_report(response: AnalysisSummaryResponse) -> str:
     정보(조회조건·현재 단계)는 내지 않는다(2026-09-16 후속 지시 — Markdown 렌더러에만
     남는다). 문장 순서·내용·절 구성(분리 절·숨김 절)은 Markdown 렌더러와 동일
     (`_section_blocks` 공유), 문장 텍스트는 `colorize_tone`(상승/하락 색)·
-    `emphasize_indicators`(지표 명칭 볼드)·`_escape_tildes`(단일 `~`→`\\~`)만 거친다."""
+    `emphasize_indicators`(지표 값·단계 명칭 볼드)·`_escape_tildes`(단일 `~`→`\\~`)만 거친다."""
 
     # 2026-09-16 사용자 지시("기존 첫 번째 heading은 표시 안 되게") — Markdown 렌더러의
     # 제목 자리에 있던 상단 보조 정보(조회조건 "가격기준: LME CASH · …"·"현재 단계: …")
@@ -549,7 +560,7 @@ def build_key_metrics_table(response: AnalysisSummaryResponse) -> ReportTable | 
 
 
 __all__ = [
-    "BOLD_TAG", "INDICATOR_TERMS", "PLAIN_LINE_BREAK", "TONE_COLORS", "TONE_TAG",
+    "BOLD_TAG", "GRADE_LABELS", "INDICATOR_TERMS", "PLAIN_LINE_BREAK", "TONE_COLORS", "TONE_TAG",
     "build_key_metrics_table", "colorize_tone", "emphasize_indicators",
     "render_markdown_report", "render_plain_report",
 ]

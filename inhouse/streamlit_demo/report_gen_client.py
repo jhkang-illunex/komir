@@ -8,7 +8,8 @@
   "report": "<평문 또는 null>", "table": {...} | null}` — 성공/실패를 status 한
   필드로 겸한다. `report`는 2026-09-16부터 Markdown이 아니라 평문(heading 없음, 절마다
   단락, 문장마다 한 줄 — 줄 끝은 Markdown 하드 브레이크 "  \n", 상승/하락 어휘는
-  `<font color='red'>…</font>` 태그, 지표 명칭(시장동향지표·광물종합지수 등)은 `<b>…</b>`,
+  `<font color='red'>…</font>` 태그, 지표 값·단계 명칭("시장동향지표는 <b>1.73</b>점으로,
+  현재 <b>신중</b> 단계")은 `<b>…</b>`,
   단일 `~`는 `\~` 이스케이프, 조회조건·현재 단계 상단 줄 없음). `table`(2026-09-16 추가)은 본문에서 분리된 "주요 지표" 표
   (`columns`·`rows`·`columns_meta`·`rows_typed`·`markdown`, rag_chat table 블록과
   같은 핵심 키), 실을 지표가 없으면 null.

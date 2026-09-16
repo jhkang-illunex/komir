@@ -133,13 +133,21 @@ class ReportContractTests(unittest.TestCase):
         self.assertEqual(colorize_tone("보합세를 유지했습니다."), "보합세를 유지했습니다.")
 
     def test_emphasize_indicators(self):
-        """2026-09-16 사용자 지시 — 지표·지수 명칭 볼드. 붙은 표기·다른 지표명도 처리."""
-        self.assertEqual(emphasize_indicators("시장동향지표는 2단계, 수급동향지표는 3단계입니다."),
-                         "<b>시장동향지표</b>는 2단계, <b>수급동향지표</b>는 3단계입니다.")
-        self.assertEqual(emphasize_indicators("시장동향·수급동향지표를 함께 보면 광물종합지수가 1,000포인트입니다."),
-                         "시장동향·<b>수급동향지표</b>를 함께 보면 <b>광물종합지수</b>가 1,000포인트입니다.")
-        self.assertEqual(emphasize_indicators("메이저금속지수는 <font color='red'>상승</font>했습니다."),
-                         "<b>메이저금속지수</b>는 <font color='red'>상승</font>했습니다.")
+        """2026-09-16 사용자 예시 — 지표 명칭이 아니라 그 뒤의 값과 단계 명칭을 볼드."""
+        self.assertEqual(
+            emphasize_indicators("2026년 7월 기준 동의 시장동향지표는 1.73점으로, 현재 신중 단계에 해당합니다."),
+            "2026년 7월 기준 동의 시장동향지표는 <b>1.73</b>점으로, 현재 <b>신중</b> 단계에 해당합니다.")
+        self.assertEqual(
+            emphasize_indicators("2026년 7월 기준 동의 수급동향지표는 1.73점으로, 현재 긴장 단계에 해당합니다."),
+            "2026년 7월 기준 동의 수급동향지표는 <b>1.73</b>점으로, 현재 <b>긴장</b> 단계에 해당합니다.")
+        self.assertEqual(emphasize_indicators("2026년 9월 11일 광물종합지수는 3,647.92포인트입니다."),
+                         "2026년 9월 11일 광물종합지수는 <b>3,647.92</b>포인트입니다.")
+        # 단계 전환 문장: 앞뒤 단계 둘 다. 일반 명사 "관심"(뒤에 " 단계"/"에서 " 없음)은 그대로.
+        self.assertEqual(emphasize_indicators("가장 최근 단계 전환은 2026년 5월로, 신중에서 주의 단계로 바뀌었습니다. 관심이 필요합니다."),
+                         "가장 최근 단계 전환은 2026년 5월로, <b>신중</b>에서 <b>주의</b> 단계로 바뀌었습니다. 관심이 필요합니다.")
+        # 지표 명칭 뒤가 아닌 숫자·색 태그는 손대지 않는다.
+        self.assertEqual(emphasize_indicators("메이저금속지수는 <font color='red'>상승</font>했으며 920포인트입니다."),
+                         "메이저금속지수는 <font color='red'>상승</font>했으며 920포인트입니다.")
 
     def test_plain_report_bolds_indicator_terms_live_path(self):
         service = AnalysisSummaryService()
@@ -147,7 +155,8 @@ class ReportContractTests(unittest.TestCase):
             page_id="indicator_market", mineral="CU", mineral_name="동",
             observations=[{"month": "2026-06", "score": 34.04, "price": 100}, {"month": "2026-07", "score": 30.38, "price": 104.42}],
         )))
-        self.assertIn("<b>시장동향지표</b>", market)
+        self.assertIn("시장동향지표는 <b>30.38</b>점으로, 현재 <b>주의</b> 단계", market)
+        self.assertNotIn("<b>시장동향지표</b>", market)
         self.assertNotIn("**", market)
 
     def test_plain_report_has_no_header_paragraph(self):
