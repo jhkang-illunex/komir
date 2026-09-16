@@ -25,8 +25,17 @@
   `scripts/capture_output_contract.py` 지문에도 `table` 포함.
 - 테스트 20 passed(계약 테스트 6곳 갱신: 라우트 JSON 등식에 `table` 포함, 본문에
   `## 주요 지표` 부재 검증, price 표 rows/rows_typed/columns_meta 검증).
-- 미커밋·미배포 — 재배포 시 seed_prompts 재실행 규칙은 그대로(이번 변경은 프롬프트·
-  output_contract 무관이라 필수는 아님).
+- **커밋·배포**(사용자 지시): 워크트리 커밋 `f3c871eaf` → 이미지
+  `komir-report-gen:260916-table` 빌드(cwd=inhouse, `-f report_gen/Containerfile`) →
+  `komir-report-gen-test` 교체(`--env-file inhouse/.env`, `LLM_BASE_URL=host.docker.internal`,
+  `--add-host`, 18003:8003) → 컨테이너 안 `seed_prompts`(13행 upsert, 프롬프트 무변경이라
+  체크리스트 준수 목적) → `/admin/prompts/reload` 13건 → 라이브 HTTP 확인: 광물지도
+  (합성 5개년 chart)와 비철금속(v12 evidence의 KOMIS 원본 덤프 `live_price_base.json`,
+  비교광종 니켈) 둘 다 `{status, report, table}` 3키, 본문에 `## 주요 지표` 없음, 가격
+  표 10행(9개 화이트리스트+비교광종 변화율차) `rows`/`rows_typed` 정상, 잘못된 요청은
+  `{"status":"NO_DATA","report":null,"table":null}`.
+- streamlit(8501)은 호스트에서 본 저장소 main 기준으로 뜨므로 main 병합 후 재기동해야
+  새 렌더링(본문 아래 table.markdown)이 반영된다 — 워크트리 세션에서는 불가.
 
 ## 2026-09-16 — rag_chat 구조화 블록 public 공통화 + 추천 차트(chart_hint) + SSE 취소선 제거
 
