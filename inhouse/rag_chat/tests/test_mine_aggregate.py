@@ -52,6 +52,14 @@ class UnitConversionTest(unittest.TestCase):
         self.assertIsNone(ma.normalize_unit_to_tonnes(10, None))
         self.assertIsNone(ma.normalize_unit_to_tonnes(10, "furlong"))
 
+    def test_uppercase_mt_is_ambiguous_not_million(self):
+        # 2026-09-17 실측(Cerro Verde 문서) — "51,902 MT"를 5.19천만톤 아니라
+        # 5,190,200,000,000(519억)톤으로 부풀리는 사고 재현·수정. "Mt"(대문자
+        # M+소문자 t)만 백만톤으로 신뢰하고, "MT"/"mT"는 모두 제외한다.
+        self.assertIsNone(ma.normalize_unit_to_tonnes(51902, "MT"))
+        self.assertIsNone(ma.normalize_unit_to_tonnes(51902, "mT"))
+        self.assertEqual(ma.normalize_unit_to_tonnes(263, "Mt"), 263_000_000)
+
 
 class MineralFolderTest(unittest.TestCase):
     def test_aliases_resolve(self):

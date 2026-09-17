@@ -80,6 +80,57 @@ def split_frontmatter(text: str) -> tuple[dict, str, int]:
 
 _HEADING_RE = re.compile(r"^#{1,6}\s")
 _BLANK_TITLE_HEADING_RE = re.compile(r"^#{1,6}\s*$")
+_HEADING_MARKER_AND_TITLE_RE = re.compile(r"^(#{1,6})\s+(.+)$")
+#: 통화·퍼센트·단위·구두점만으로 이뤄진 "제목"을 걷어내기 위한 토큰. 순서 중요
+#: (긴 토큰 먼저) — 예: "US$1.19/lb"·"kt"·"bn"·"koz". 실측(2026-09-17, BHP
+#: Escondida 보고서)에서 본 표기 전부 포함.
+_NUMERIC_HEADING_UNIT_RE = re.compile(
+    r"(?:US\$|A\$|C\$|NT\$|\$|%|kt|Mt|wmt|dmt|koz|Mlb|klb|lbs?|oz|bn|mm|ktpa|mtpa|/lb)",
+    re.IGNORECASE,
+)
+_NUMERIC_HEADING_NUMBER_RE = re.compile(r"[\d,.\-–()/]+")
+
+
+def _is_numeric_only_title(title: str) -> bool:
+    """제목에서 통화·단위·숫자·구두점을 다 걷어내고도 알파벳 단어(3자 이상)가
+    하나도 안 남으면 "숫자만 있는 제목"으로 판정한다."""
+
+    residue = _NUMERIC_HEADING_UNIT_RE.sub(" ", title)
+    residue = _NUMERIC_HEADING_NUMBER_RE.sub(" ", residue)
+    return not any(len(word) >= 3 for word in residue.split())
+
+
+def demote_numeric_only_headings(text: str) -> str:
+    """제목 텍스트가 숫자·통화·퍼센트·단위 표기뿐인 헤딩(`#`)을 평문으로
+    강등한다(헤딩 마커만 제거, 줄 수는 그대로 유지 — `fix_blank_heading_titles`
+    와 같은 이유로 `body_line_offset`/`line_num`을 안 깨기 위함).
+
+    실측 발견(2026-09-17, `mine_aggregate.py` 라이브 검증 — BHP Escondida
+    연차보고서): PDF→마크다운 변환이 굵은 글씨로 강조된 큰 수치("1,305 kt 16%
+    US$1.19/lb 18% US$8.6 bn 49%", "US$9.0 bn 14%" 등)를 본문이 아니라 `#`
+    헤딩으로 잘못 인식한다 — 원본 PDF가 "라벨 텍스트 + 큰 숫자 강조박스"
+    레이아웃을 쓰는 재무 하이라이트 페이지에서 반복적으로 나타나는 패턴이다
+    (같은 문서에서 4곳 이상 확인). 이 결함은 `page_index_md.
+    extract_nodes_from_markdown()`(vendored, 직접 수정 금지)가 `#`이 붙은
+    줄을 무조건 헤딩으로 신뢰하는 순수 정규식 파서라 그대로 승계된다.
+
+    영향: 이 수치-헤딩이 진짜 절 제목("### Escondida") 바로 다음 줄에 오면,
+    `read_node_text()`(다음 동급 헤딩 직전까지만 읽음)가 그 절 제목 헤딩의
+    본문을 사실상 텅 빈 것으로 만들어(값이 바로 다음 "헤딩" 취급된 줄에
+    있으므로), 그 절에서 수치를 못 뽑는다 — `rag_core/retrieval/mine_aggregate.py`
+    가 광산별 생산량·매장량을 추출할 때 이 결함 때문에 특정 문서에서 값을
+    놓치는 사례가 재현됐다(검증결과: `documents/산출물/2026-W38_0914-0920/
+    광산자료_집계질의_검증결과_260917.md` §6)."""
+
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        match = _HEADING_MARKER_AND_TITLE_RE.match(line)
+        if not match:
+            continue
+        hashes, title = match.group(1), match.group(2)
+        if _is_numeric_only_title(title):
+            lines[i] = title
+    return "\n".join(lines) + ("\n" if text.endswith("\n") else "")
 
 
 def fix_blank_heading_titles(text: str, *, max_title_len: int = 60) -> str:
@@ -129,6 +180,7 @@ def build_tree_for_okf(
     # 줄 수를 절대 안 바꾼다(헤딩 줄 하나를 그대로 교체만 함) — body_line_offset과
     # 트리 line_num이 그대로 OKF 파일 실제 줄 번호를 가리키게 유지하기 위해서다.
     body = fix_blank_heading_titles(body)
+    body = demote_numeric_only_headings(body)
 
     # doc_name은 md 파일 basename에서 나오므로(page_index_md.md_to_tree) 임시
     # 파일도 원본과 같은 이름으로 만든다.
