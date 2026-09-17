@@ -131,6 +131,42 @@
   JSON을 그대로 직렬화(수기 전사 없음). 확인된 사실: 본문의 표는 LLM이 한글 헤더로
   다시 쓴 것이라 `table.markdown`과 일치하지 않음 → 문자열 치환보다 별도 렌더 권고.
 
+## 2026-09-16 (최신) — 챗봇 off_topic pre-gate 추가: 무관 질문에 근거·표·차트 오부착 수정
+
+사용자 제보 "관련 없는 질문에 답을 하면서 근거 자료를 막 붙이고 차트를 붙인다" →
+실측 재현(라이브 /pubchat): "오늘 서울 날씨 어때?"에 "…자료는 없습니다. [1][4]
+Davis Weather Station 및 Campbell North Weather Station의 기상 관련 수치 자료는
+있습니다. 보여드릴까요?"(리튬 매장량 NI 43-101 보고서 오인용) + 출처footer,
+"김치찌개 맛있게 끓이는 법"에 조달청 비철금속 시장동향 보고서 6건 인용.
+
+**원인**: dense 검색(hybrid_pg)에 최소 유사도 임계값이 없어 완전 무관한 질문도
+최근접 문서를 "찾음"으로 반환 → ROUTE_PROMPT가 dense를 "애매하면 켜라"로
+기본 온(on) 취급 → `_finalize_node`엔 komis_raw 결정적 실패(미지원광종·기간없음·
+조회결과없음) 3종 마커뿐이라 완전 무관 질문엔 강제기권 마커가 없음 →
+evidence가 비지 않아 `retrieval_near_miss`로 흘러 NEAR_MISS_SYSTEM_PROMPT("이
+자료라도 보여드릴까요?")가 무관 문서를 인용, 인용스트리퍼가 그 인용을 지우지
+않아 출처footer·(구조화 근거면)표/차트까지 그대로 붙음. off_topic은 이미
+`_ABSTAIN_REASON_PROMPT`에 사유 라벨로 있었지만 evidence=0건 경로에서만
+호출돼 이 케이스엔 도달 못 했다.
+
+**수정**(`inhouse/rag_core/ragkit/chatbot.py`): `_classify_pre_gate`(검색 시작
+전 결정적 차단, security_privacy/investment_advice/prompt_injection과 동일
+메커니즘)에 `off_topic` 카테고리 추가 — 광물·수급·경제·공급망·지정학과
+무관한 질문이면 검색 자체를 안 돌리고 즉시 기권(근거·인용·표·차트 전부 없음).
+`_abstain_reason_text`가 이미 off_topic 문구를 갖고 있어 `chat_turn()`의
+범용 pre_gate 분기는 코드 수정 없이 재사용됨. 과잉차단 방지 문구("광물·원자재·
+경제와 조금이라도 관련 있으면 off_topic 아님", "단어만 우연히 겹쳐도 판단 안
+바꿈")를 명시.
+
+**검증**(실배포, `komir-rag-chat:260916-offtopic-gate`, 컨테이너 `komir-rag-chat-test`
+교체, env·mount·포트 기존과 동일): 날씨·김치찌개 재현 케이스 → 무인용·무표·무차트
+깨끗한 기권(`abstain_reason: off_topic`) 확인(2건 다). 회귀 확인 3건 — 온토픽
+"니켈 가격 알려줘"는 표+차트+인용 그대로 동작, 경계 사례 "요즘 원자재 시장
+어때?"(off_topic 프롬프트가 예시로 든 "차단하면 안 되는" 문구)는 정상 검색으로
+진행해 관련 문서 인용, 기존 미지원광종 기권("규회석 가격 추이")은
+`unsupported_mineral`로 그대로 유지(off_topic에 안 먹힘). `/prichat`도 동일 모듈
+공유라 함께 수정됨, 확인 완료. rag_chat/tests 기존 유닛테스트 8건 통과. 코드 미커밋.
+
 ## 2026-09-16 — mnrl_report 후속: 5광종·네오디뮴 확정 반영, 시험 적재 범위 밖 행 정리, 워크트리 병합 대행
 
 - 사용자 확정 2건 반영: 수급위기 진단 대상 5광종 고정(`config.TARGET_MINERALS`) + 희토류는
