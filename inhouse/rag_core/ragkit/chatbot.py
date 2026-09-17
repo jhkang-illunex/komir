@@ -224,8 +224,16 @@ _GRAPH_STAGE_TO_STATUS = {
 }
 
 
-def _status_event(stage: int) -> ChatEvent:
-    return ChatEvent(type="status", data={"stage": stage, "label": STATUS_STAGES[stage]})
+def _status_event(stage: int, **extra) -> ChatEvent:
+    """2026-09-17(광산자료 집계 파이프라인, PRD §4.2 "SSE 진행상황") — `extra`는
+    `_run_with_status`의 콜백이 이미 받고 있던(지금까지 버려지던) `**extra`를
+    그대로 얹는다. 기존 `{"stage", "label"}` 두 키는 그대로 유지되므로(프론트가
+    `extra`를 안 읽으면) 계약을 깨지 않는 순수 추가 필드다 — 예:
+    `detail="7/21 문서 확인 중"`."""
+
+    data = {"stage": stage, "label": STATUS_STAGES[stage]}
+    data.update(extra)
+    return ChatEvent(type="status", data=data)
 
 
 #: generate.SYSTEM_PROMPT(인용강제 5개조)를 그대로 포함하되(레거시 generate.answer()
@@ -903,7 +911,7 @@ async def chat_turn(
             dense_k=dense_k, pageindex_k=pageindex_k, profile=profile,
         ):
             if kind == "status":
-                yield _status_event(_GRAPH_STAGE_TO_STATUS.get(payload, 3))
+                yield _status_event(_GRAPH_STAGE_TO_STATUS.get(payload, 3), **extra)
             elif kind == "result":
                 evidence, route_warnings = payload
     except Exception:
