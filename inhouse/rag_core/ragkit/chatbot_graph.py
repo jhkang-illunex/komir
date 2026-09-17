@@ -200,7 +200,15 @@ komis_raw를 켤 땐 komis_mineral_name을
 반드시 함께 지정한다 — 광종을 모르면 켜지 않는다(use_komis_raw=false, 다만
 5광종 제한은 없다). **유일한 예외: komis_topic=composite_index는
 komis_mineral_name 없이도(null) use_komis_raw=true로 켠다** — 광물종합지수는
-광종과 무관한 지표라서다."""
+광종과 무관한 지표라서다.
+
+2026-09-17(사용자 실측 제보, "금 수입량과 날씨 상관관계" — 이 질문은 komis_raw
+가 못 답하는 상관관계 요청이라 use_komis_raw=false가 되지만, "금"이라는 광종은
+분명히 특정된다) — **komis_mineral_name은 use_komis_raw와 독립적으로도 채운다.**
+질문이 특정 광종을 명시적으로 언급하면(komis_raw를 켤지 여부와 무관하게)
+komis_mineral_name에 그 한글명을 넣는다. 이 값은 뒤 단계가 "이 질문이 실제로
+어느 광종에 관한 것인가"를 판단하는 유일한 결정적 신호로도 쓰여, 완전히 다른
+광종을 다룬 근거를 엉뚱하게 제안하지 않게 하는 데 쓰인다."""
 
 
 #: 2026-09-07 — 두 단계에 걸쳐 "니켈 최근 6개월 가격"이 근접매칭으로 새던
@@ -854,9 +862,47 @@ def _finalize_node(state: RetrievalState) -> RetrievalState:
     warnings = state.get("warnings", [])
     if _has_deterministic_abstain_signal(warnings):
         return {"evidence": []}
-    if state.get("evidence"):
-        return {"warnings": [*warnings, "retrieval_near_miss"]}
+    evidence = state.get("evidence", [])
+    if evidence:
+        kept = _prune_unrelated_near_miss_evidence(evidence, state.get("route"))
+        if kept:
+            out: RetrievalState = {"warnings": [*warnings, "retrieval_near_miss"]}
+            if len(kept) != len(evidence):
+                out["evidence"] = kept
+            return out
+        # 근거가 있었지만 전부 무관하다고 판정됨 — 제안할 게 없으므로 완전 기권.
+        return {"evidence": []}
     return {"evidence": []}
+
+
+def _prune_unrelated_near_miss_evidence(evidence: list[Evidence], route: "RetrievalRoute | None") -> list[Evidence]:
+    """근접제안(near-miss)에 실제로 쓸 근거만 남긴다(2026-09-17, 사용자 실측 제보
+    — "금 수입량과 날씨 상관관계" 질문에 구리 광산 기업 사업부문 설명 문서가
+    무관하게 인용됨). verify()는 "충분한가"만 판정하고 개별 근거를 가지치기하지
+    않아, 불충분 판정 후에도 완전 무관한 dense 잡음이 그대로 near-miss 생성에
+    넘어가던 갭이었다.
+
+    LLM을 추가로 부르지 않고 결정적 규칙 2단계로 가지치기한다(구조화 근거의
+    "결정적 SQL이 dense 잡음보다 신뢰도 높다"는 전제는 위 `sufficient=True`
+    분기와 동일):
+    1. 구조화(komis_raw/structured) 근거가 하나라도 있으면 그것만 남긴다 —
+       실제 수치가 있다면 그게 최선의 제안 후보다.
+    2. 구조화 근거가 없으면(dense/pageindex뿐) route가 특정한 광종명
+       (`komis_mineral_name`)이 그 근거의 출처·섹션·본문 어디에도 전혀
+       없는 항목은 버린다 — 완전히 다른 광종을 다룬 문서를 "이 자료라도
+       보여드릴까요?"로 제안하지 않는다. 광종명을 특정하지 못한 질문
+       (route가 없거나 komis_mineral_name이 비어 있음)은 이 신호 자체가
+       없으므로 필터링하지 않는다(과잉차단 방지 — 기존 근접매칭 정상
+       케이스, 예: "니켈 최근 6개월 가격"은 광종명이 항상 있어 영향받지
+       않는다)."""
+    structured = [e for e in evidence if e.kind == "structured"]
+    if structured:
+        return structured
+    mineral = getattr(route, "komis_mineral_name", None) if route else None
+    if not mineral:
+        return evidence
+    needle = mineral.strip().lower()
+    return [e for e in evidence if needle in f"{e.source} {e.section} {e.text}".lower()]
 
 
 def _route_after_verify(state: RetrievalState) -> str:
