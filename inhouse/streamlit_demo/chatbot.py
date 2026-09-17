@@ -42,6 +42,7 @@ ABSTAIN_REASON_LABELS = {
     "unsupported_commodity": "지원하지 않는 광종",
     "no_data_for_period": "해당 기간 데이터 없음",
     "insufficient_training_data": "데이터·학습 부족으로 결과 제공 불가",
+    "source_not_extracted": "원본 자료가 이미지 형태라 텍스트 확인 불가",
     "ambiguous": "질문이 모호함",
     "unknown": "원인 미상",
     "generation_error": "답변 생성 중 오류",

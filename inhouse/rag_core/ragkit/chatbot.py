@@ -624,7 +624,7 @@ def _classify_pre_gate(message: str, llm: "KomirJsonLLM | None") -> str | None:
 
 
 _ABSTAIN_REASON_PROMPT = """핵심광물 챗봇이 이번 질문에 답할 근거를 하나도 찾지
-못했다. 사유를 아래 여섯 가지 중 하나로 분류한다. 정확히 하나의 JSON 객체만
+못했다. 사유를 아래 여덟 가지 중 하나로 분류한다. 정확히 하나의 JSON 객체만
 출력한다(설명·코드펜스 금지).
 
 - off_topic: 광물·핵심광물 수급과 무관한 일반 질문(잡담, 날씨, 다른 산업 등).
@@ -648,10 +648,17 @@ _ABSTAIN_REASON_PROMPT = """핵심광물 챗봇이 이번 질문에 답할 근�
   여기 해당한다 — 기간만 바꾸면 되는 경우는 no_data_for_period로 분류한다.
 - ambiguous: 광종/기간/수입·수출/생산량/매장량 등 조회에 필요한 조건이 무엇인지
   질문만으로 특정할 수 없다.
+- source_not_extracted: 질문이 가리키는 대상(예: 특정 광산·설비)의 문서 자체는
+  근거로 찾았지만, 실제로 물어본 세부 내용(위치·좌표·수치 등)이 그 문서에서
+  이미지·도면·표 캡처 형태로만 존재해 텍스트로 추출되지 않아 답할 수 없다고
+  판단된다. **다른 기간·다른 표현으로 다시 물어도 해결되지 않는다**(원본
+  자료 자체의 한계)는 점에서 no_data_for_period·ambiguous와 다르다. 근거
+  발췌문에 이미지 참조(`![image ...]`)만 있고 실제 위치·수치 서술 문장이
+  없는데 질문은 정확히 그 위치·수치를 묻는 경우가 전형적이다.
 
 검색 경고(retrieval_warnings, 있으면)도 참고한다 — "retrieval_insufficient"가
 있으면 근거는 찾았지만 질문에 정확히 답하지 못했다는 뜻이라 ambiguous나
-no_data_for_period에 가깝다. 일곱 중 어디에도 뚜렷이 안 맞으면 ambiguous로
+no_data_for_period에 가깝다. 여덟 중 어디에도 뚜렷이 안 맞으면 ambiguous로
 분류한다."""
 
 
@@ -675,11 +682,19 @@ class _AbstainReason(BaseModel):
     (조회 **기간**에 데이터가 없음)와 달리 광종 자체가 예측·분석 대상에
     편입되지 않았거나 구조적으로 데이터가 부족한 경우다. 신규 광종 여부를
     판별할 결정적 마커가 없어 `_resolve_abstain`의 결정적 분기에는 안 넣고
-    LLM 분류(`_classify_abstain`)에만 맡긴다."""
+    LLM 분류(`_classify_abstain`)에만 맡긴다.
+
+    2026-09-17(사용자 제보 재확인 — "Weda Bay 니켈 광산 위치" 실측): 근거는
+    non-empty·sufficient=true로 정상 조회됐는데도 생성 단계가 스스로
+    ABSTAIN_TEXT로 기권하는 경우(원본 문서에 위치 텍스트가 없고 이미지만
+    있었음)가 `off_topic`으로 오분류됐다 — 여덟 사유 중 이 경우에 맞는 게
+    없어 LLM이 가장 가까운 것(off_topic)으로 잘못 골랐다. `source_not_
+    extracted` 추가로 해소한다."""
 
     reason: Literal[
         "off_topic", "security_privacy", "investment_advice", "prompt_injection",
         "no_data_for_period", "insufficient_training_data", "ambiguous",
+        "source_not_extracted",
     ]
 
 
@@ -701,6 +716,8 @@ def _abstain_reason_text(decision: "_AbstainReason") -> str:
         # 전체 원칙 — data-quantity-verification-rule과 같은 이유). 시점 언급
         # 없이 확보 시 제공 가능하다는 사실만 안내한다.
         return "해당 광종은 분석·예측에 필요한 데이터가 충분하지 않아 결과를 제공하지 못합니다. 충분한 데이터가 확보되면 제공 가능합니다."
+    if decision.reason == "source_not_extracted":
+        return "관련 문서는 있으나 요청하신 내용이 이미지·도면 형태로만 포함되어 텍스트로 확인할 수 없습니다. 다른 항목이나 다른 자료로 다시 질문해 주십시오."
     return "요청 범위가 넓습니다. 기간·정보 유형(가격/수입·수출/생산·매장/지표)을 지정해 주십시오."
 
 

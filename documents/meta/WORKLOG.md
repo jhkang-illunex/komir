@@ -2,7 +2,27 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-17 (최신) — 근접제안(near-miss) 근거 관련성 가지치기 — 무관 광종 오인용 수정
+## 2026-09-17 (최신) — 기권 사유 `source_not_extracted` 추가 — "이미지뿐인 근거"를 off_topic으로 오분류하던 것 수정
+
+사용자 제보 재확인("Weda Bay 니켈 광산 위치" → off_topic 오분류, 전 턴에서 직접
+원인 추적함): 근거는 정상 조회(sufficient=true)됐지만 실제 원문이 이미지
+참조뿐이라 생성 LLM이 스스로 기권했고, 기존 6개 사유 중 이 상황에 맞는 게 없어
+`_classify_abstain`이 가장 가까운 `off_topic`으로 잘못 골랐다.
+
+`chatbot.py`에 `source_not_extracted` 사유 추가(`_ABSTAIN_REASON_PROMPT`·
+`_AbstainReason.reason`·`_abstain_reason_text`) — "근거 문서는 찾았으나 위치·
+수치 등 세부 내용이 이미지·도면으로만 있어 텍스트로 확인 불가"를 가리키며,
+no_data_for_period·ambiguous와 달리 기간·표현을 바꿔도 해결 안 됨을 명시.
+`streamlit_demo/chatbot.py`의 `ABSTAIN_REASON_LABELS`에도 라벨 추가.
+
+검증(실배포 `komir-rag-chat:260917-source-extract`, 컨테이너 교체): 재현
+질문 3회 재시도 — off_topic은 더 이상 안 나옴, 3회 중 1회 `source_not_extracted`
+(정확), 2회 `ambiguous`(부정확하진 않으나 최적은 아님 — 이 모델의 기존에
+기록된 간헐적 비결정성 범위, chatbot_injection_defense_column_labels_260907
+참고, 추가 재시도 없이 현재 수준으로 종결). 회귀 확인: Kazatomprom xlsx
+위치·지분 조회 그대로 정상, 순수 오프토픽(날씨) 그대로 off_topic. 커밋 6f552761e.
+
+## 2026-09-17 — 근접제안(near-miss) 근거 관련성 가지치기 — 무관 광종 오인용 수정
 
 사용자 제보: "금 수입량과 날씨 상관관계" 질문에 구리·리튬·우라늄 광산 문서가
 근거로 인용됨(라이브 재현). 원인: verify()는 "충분한가"만 판정하고 개별 근거를
