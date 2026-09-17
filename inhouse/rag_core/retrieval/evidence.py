@@ -218,6 +218,23 @@ def _period_span(ds: Any) -> str | None:
     return f"{oldest}~{newest}, 최신순 {len(values)}건만 제공됨(요청한 전체 기간이 아닐 수 있음)"
 
 
+#: 2026-09-17(챗봇_대화형검색_피드백_PRD §1.2, 대화형검색시스템 예상질문
+#: 고도화.pdf §3.2 "비중 계산 시 분자와 분모를 명시") — map_korea/map_global
+#: (KO_CSTM_CMMRC/KO_UN_CMMRC)은 국가별 수입액·수입중량 원자료만 갖고 있고
+#: 비중(%) 컬럼 자체가 없다 — "상위 5개국 비중" 질문에 답하려면 생성 LLM이
+#: 표에 나열된 국가들의 값을 스스로 합산해 분모로 써야 한다. 그 계산 기준을
+#: [근거] 텍스트에 명시해두지 않으면 분모(전체 대비 vs 상위 N개국 대비 등)가
+#: 답변마다 달라질 수 있어, 표 자체에 계산 기준을 한 줄 못박는다(caveat이
+#: 아니라 text에 붙인다 — caveat은 "더미 데이터" 같은 강제 경고 문구용이고
+#: 이건 계산 기준 안내라 성격이 다름).
+_TRADE_SHARE_PAGES = frozenset({"map_korea", "map_global"})
+_TRADE_SHARE_BASIS_NOTE = (
+    "※ 이 표에는 비중(%) 컬럼이 없습니다 — 국가별 비중을 답할 때는 분모를 "
+    "이 표에 나타난 국가들의 수입액(또는 수입중량) 합계로, 분자를 개별 국가의 "
+    "수입액(또는 수입중량)으로 명시해 계산하십시오."
+)
+
+
 def from_komis_raw(
     page_id: str, datasets: list[Any], *, mineral_code: str | None = None,
     is_dummy: bool | None = None, unverified: bool = False,
@@ -269,10 +286,13 @@ def from_komis_raw(
             caveat = KOMIS_RAW_UNVERIFIED_CAVEAT
         else:
             caveat = None
+        text = _markdown_table(display_columns, table_rows)
+        if page_id in _TRADE_SHARE_PAGES:
+            text += f"\n\n{_TRADE_SHARE_BASIS_NOTE}"
         evidence.append(
             Evidence(
                 kind="structured", source=f"public.{ds.source_table}", section=section,
-                text=_markdown_table(display_columns, table_rows),
+                text=text,
                 caveat=caveat, as_of=_period_span(ds),
             )
         )

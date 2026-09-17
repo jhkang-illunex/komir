@@ -2,7 +2,49 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-16 (최신) — ingest 디렉토리 계약(landing/processing/data_lake) + 광산자료 갈래(학습데이터 154건) public 챗봇 제공
+## 2026-09-17 (최신) — 챗봇 대화형검색 피드백 PRD §1 갭 3건 반영(worktree, 미병합)
+
+사용자 지시(main-agent 경유, `documents/산출물/2026-W38_0914-0920/챗봇_대화형검색_피드백_PRD_260917.md`)
+— §0(이미 구현됨) 코드 재확인 후 §1.1~1.5를 항목별로 갭 판정, 갭인 것만 최소 구현.
+
+- **§1.1 데이터 부족·산출 한계(신규 abstain 사유) — 갭, 구현함**: `_AbstainReason.reason`에
+  `insufficient_training_data` 추가(`chatbot.py`) — `no_data_for_period`(조회 **기간**에 없음)와
+  구분 기준은 "기간을 바꿔도 안 되는가"로 `_ABSTAIN_REASON_PROMPT`에 명시. 결정적 마커가 없어
+  LLM 분류(`_classify_abstain`)에만 맡김(PRD 지시대로 결정적 검출 범위 밖). 근거 없는 연도를
+  지어내지 않기 위해 "충분한 데이터 확보 시점은 YYYY년" 문구는 빼고 "확보되면 제공 가능"으로
+  낮춰서 `_abstain_reason_text`에 추가. `streamlit_demo/chatbot.py::ABSTAIN_REASON_LABELS`에도
+  라벨 한 줄 추가(이미 `.get(reason, reason)` fallback이라 필수는 아니었지만 일관성 위해 추가).
+- **§1.2 수입국 비중 분자·분모 명시 — 갭, 구현함**: `map_korea`/`map_global`(KO_CSTM_CMMRC/
+  KO_UN_CMMRC)엔 비중(%) 컬럼 자체가 없어(수입액·수입중량 원자료만) `evidence.py::from_komis_raw`가
+  해당 두 page_id 표에 한해 계산 기준 안내 문장(`_TRADE_SHARE_BASIS_NOTE`, "분모=표에 나타난
+  국가들 합계, 분자=개별 국가 값")을 text에 덧붙이도록 수정. caveat이 아니라 text에 붙인 이유:
+  caveat은 "더미 데이터" 같은 강제 경고 문구용이고 이건 계산 기준 안내라 성격이 다름. 단위테스트
+  대신 컨테이너 안에서 `from_komis_raw()` 직접 호출로 map_korea엔 노트가 붙고 indicator_market
+  등 다른 page_id엔 안 붙는 것을 확인.
+- **§1.3 시계열 기본범위(1~3개월) 초과 안내 — 확인함, 변경 없음**: `komis_relative_months`→
+  `_relative_period_bounds()`(chatbot_graph.py)가 `fetch_complete()`+`KOMIS_RAW_MAX_TIMESTAMPS`
+  컷으로 최근 N행만 반환하고, `evidence.py::_period_span()`이 이미 "YYYY-MM-DD~YYYY-MM-DD,
+  최신순 N건만 제공됨(요청한 전체 기간이 아닐 수 있음)" 형태로 실제 조회범위를 매번 못박고
+  있음 — PRD가 예시로 든 "최근 N건(범위)만 제공됨" 형태와 실질적으로 동일. 임의로 3개월 상한을
+  새로 만들지 말라는 PRD 지시대로 변경 없음.
+- **§1.4 인과관계 "(시점)↔(시점)" 표기 — 갭, 구현함**: `CHATBOT_SYSTEM_PROMPT` 규칙9에 "두
+  사건 각각의 시점을 특정할 수 있으면 (사건A, 시점) ↔ (사건B, 시점)처럼 병렬 표기를 덧붙이라"는
+  한 줄 + 예시를 추가(기존 "동시 발생 흐름으로 서술" 문구는 유지). 라이브로 이 형식이 실제
+  나오는 걸 반복 재현하려 했으나(코발트/니켈 "왜 바뀌었어" 질의 5회) 이 환경 DB 상태에서 구조화
+  진단근거+문서근거가 함께 인용되는 케이스 자체가 안 걸려(near-miss/기권으로 빠짐) 형식 자체의
+  라이브 노출은 미확인 — 프롬프트 반영은 컨테이너 안에서 `CHATBOT_SYSTEM_PROMPT` 직접 출력으로
+  정적 확인함. off_topic pre-gate 등 기존 기능 회귀 없음은 라이브로 재확인.
+- **§1.5 메뉴안내 서브시스템 — 확인함, 변경 없음**: `rag_chat/app/page_recommend/renderer.py`가
+  계층 경로(`KOMIS > 중분류 > 소분류`), 클릭 가능 URL, "바로 이동하시겠어요?" 유도문구
+  (`render_selected`), 복수 후보 제시(`render_ambiguous`), 경로 불명 시 PRD가 지정한 문구 그대로
+  (`render_not_found`)를 이미 전부 구현하고 있어 갭 없음.
+- **검증**: `python3 -m unittest discover -s rag_chat/tests`(8건) 통과. `komir-rag-chat:260917-prd`
+  재빌드 → `komir-rag-chat-test` 교체(기존 컨테이너는 `komir-rag-chat-test-pre-260917-prd`로
+  보존, 동일 env/mount/port). `/pubchat` off_topic 회귀 없음, `/pubchat`·`/prichat` 정상 응답
+  확인. 커밋은 검증 후 진행하되 **push는 사용자 지시 대기**(PRD·main-agent 지시).
+- 잔여: §1.4 ↔ 형식의 라이브 노출 미확인(데이터 상태 문제로 추정, 코드 배선은 정적 확인 완료).
+
+## 2026-09-16 — ingest 디렉토리 계약(landing/processing/data_lake) + 광산자료 갈래(학습데이터 154건) public 챗봇 제공
 
 사용자 지시(mnrl-rpt 워크트리): ① "nas_document/학습데이터의 광종별 광산 자료를 챗봇 public에서 제공
 가능하게" ② "제공받은 문서 중복 목록 md" ③ "landing/processing/data_lake를 .env 경로로 받아 docker
