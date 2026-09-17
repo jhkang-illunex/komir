@@ -21,7 +21,9 @@ from app.analysis import prompt_store, prompts
 from app.analysis.additional_summary import EvidenceClaim
 from app.analysis.errors import DataSourceError
 from app.analysis.models import AnalysisSummaryRequest, SummaryNarrative
-from app.analysis.report_render import render_markdown_report
+from app.analysis.report_render import (
+    build_key_metrics_table, colorize_tone, emphasize_indicators, render_markdown_report, render_plain_report,
+)
 from app.analysis.summary import AnalysisSummaryService
 from app.routers import _common
 
@@ -83,11 +85,115 @@ class ReportContractTests(unittest.TestCase):
                 with self.subTest(page=page):
                     result = client.post("/api/v1/analysis/" + route, json=payload)
                     self.assertEqual(result.status_code, 200)
-                    self.assertEqual(result.json(), {"status": "ok", "report": render_markdown_report(self.response)})
+                    # 2026-09-16 사용자 지시 — "주요 지표" 표는 본문이 아니라 별도
+                    # `table` 키로 나간다(`models.ReportTable`).
+                    expected_table = build_key_metrics_table(self.response)
+                    # 같은 날 후속 지시 — `report`는 Markdown이 아니라 평문 포맷
+                    # (`render_plain_report`), Markdown 렌더러는 별도 유지.
+                    self.assertEqual(result.json(), {
+                        "status": "ok",
+                        "report": render_plain_report(self.response),
+                        "table": expected_table.model_dump(),
+                    })
+                    self.assertNotIn("주요 지표", result.json()["report"])
+                    self.assertNotIn("#", result.json()["report"])
                     self.assertEqual(service.analyze.call_args.args[0].page_id, page)
                     invalid = client.post("/api/v1/analysis/" + route, json={"unknown": True})
                     self.assertEqual(invalid.status_code, 200)
-                    self.assertEqual(invalid.json(), {"status": "NO_DATA", "report": None})
+                    self.assertEqual(invalid.json(), {"status": "NO_DATA", "report": None, "table": None})
+
+    def test_plain_report_format(self):
+        """2026-09-16 사용자 지시 — heading 제거·문장별 줄·절별 단락·상승/하락 색 태그.
+        Markdown 렌더러와 문장 집합은 같아야 한다(포맷만 다름)."""
+        plain = render_plain_report(self.response)
+        markdown = render_markdown_report(self.response)
+        self.assertFalse(any(line.startswith("#") or line.startswith("- ") for line in plain.splitlines()))
+        self.assertNotIn("**", plain)
+        paragraphs = [p for p in plain.strip().split("\n\n") if p]
+        blocks = [line[3:] for line in markdown.splitlines() if line.startswith("## ")]
+        self.assertEqual(len(paragraphs), len(blocks), f"절 수가 다르다: {paragraphs} vs {blocks}")
+        # 절 하나 = 단락 하나, 문장 하나 = 한 줄: 평문의 모든 줄(태그 제거 후)이 Markdown
+        # 본문 문장에 그대로 있어야 한다.
+        import re as _re
+        untagged = _re.sub(r"</?font[^>]*>|</?b>", "", plain)
+        for line in untagged.strip().splitlines():
+            if line:
+                self.assertIn(line.rstrip(), markdown, line)
+        self.assertRegex(plain, r"<font color='red'>[^<]*상승</font>")
+        # 2026-09-16 사용자 제보 — Markdown 렌더러가 단일 줄바꿈을 접지 않도록 문장 끝은
+        # 하드 브레이크("  \n"). 단락 사이는 빈 줄, 마지막 줄은 공백 없이 끝난다.
+        for paragraph in paragraphs:
+            for line in paragraph.split("\n")[:-1]:
+                self.assertTrue(line.endswith("  "), repr(line))
+            self.assertFalse(paragraph.endswith(" "), repr(paragraph[-20:]))
+
+    def test_colorize_tone(self):
+        """2026-09-16 사용자 지시 — 어휘 바로 앞뒤 수치는 같은 font 영역에."""
+        self.assertEqual(colorize_tone("가격이 10% 상승했으며 재고는 감소했습니다."),
+                         "가격이 <font color='red'>10% 상승</font>했으며 재고는 <font color='blue'>감소</font>했습니다.")
+        self.assertEqual(colorize_tone("보합세를 유지했습니다."), "보합세를 유지했습니다.")
+        self.assertEqual(colorize_tone("전일(2026년 9월 9일) 대비 1.92% 하락했습니다."),
+                         "전일(2026년 9월 9일) 대비 <font color='blue'>1.92% 하락</font>했습니다.")
+        self.assertEqual(colorize_tone("2021년보다 약 800만톤 늘어 4년간 1.86% 증가했습니다."),
+                         "2021년보다 <font color='red'>약 800만톤 늘어</font> 4년간 <font color='red'>1.86% 증가</font>했습니다.")
+        # 뒤에 붙은 수치("상승 9일")도 포함, 단위 뒤 조사("5일로"의 "로")는 밖에 남는다.
+        self.assertEqual(colorize_tone("최근 14일 중 상승 9일·하락 5일로 등락을 반복했습니다."),
+                         "최근 14일 중 <font color='red'>상승 9일</font>·<font color='blue'>하락 5일</font>로 등락을 반복했습니다.")
+        # 사이에 낱말·쉼표가 있으면 수치는 포함하지 않는다. "2일 연속"은 "연속"이 끼어 제외.
+        self.assertEqual(colorize_tone("약 200만톤, 0.46% 증가했고 2일 연속 하락세입니다."),
+                         "약 200만톤, <font color='red'>0.46% 증가</font>했고 2일 연속 <font color='blue'>하락</font>세입니다.")
+        # 볼드가 먼저 걸린 값도 색 영역에 들어간다(적용 순서: 볼드 → 색).
+        self.assertEqual(colorize_tone("메이저금속지수는 <b>3.66</b>점 하락했습니다."),
+                         "메이저금속지수는 <font color='blue'><b>3.66</b>점 하락</font>했습니다.")
+
+    def test_emphasize_indicators(self):
+        """2026-09-16 사용자 예시 — 지표 명칭이 아니라 그 뒤의 값과 단계 명칭을 볼드."""
+        self.assertEqual(
+            emphasize_indicators("2026년 7월 기준 동의 시장동향지표는 1.73점으로, 현재 신중 단계에 해당합니다."),
+            "2026년 7월 기준 동의 시장동향지표는 <b>1.73</b>점으로, 현재 <b>신중</b> 단계에 해당합니다.")
+        self.assertEqual(
+            emphasize_indicators("2026년 7월 기준 동의 수급동향지표는 1.73점으로, 현재 긴장 단계에 해당합니다."),
+            "2026년 7월 기준 동의 수급동향지표는 <b>1.73</b>점으로, 현재 <b>긴장</b> 단계에 해당합니다.")
+        self.assertEqual(emphasize_indicators("2026년 9월 11일 광물종합지수는 3,647.92포인트입니다."),
+                         "2026년 9월 11일 광물종합지수는 <b>3,647.92</b>포인트입니다.")
+        # 단계 전환 문장: 앞뒤 단계 둘 다. 일반 명사 "관심"(뒤에 " 단계"/"에서 " 없음)은 그대로.
+        self.assertEqual(emphasize_indicators("가장 최근 단계 전환은 2026년 5월로, 신중에서 주의 단계로 바뀌었습니다. 관심이 필요합니다."),
+                         "가장 최근 단계 전환은 2026년 5월로, <b>신중</b>에서 <b>주의</b> 단계로 바뀌었습니다. 관심이 필요합니다.")
+        # 지표 명칭 뒤가 아닌 숫자·색 태그는 손대지 않는다.
+        self.assertEqual(emphasize_indicators("메이저금속지수는 <font color='red'>상승</font>했으며 920포인트입니다."),
+                         "메이저금속지수는 <font color='red'>상승</font>했으며 920포인트입니다.")
+
+    def test_plain_report_bolds_indicator_terms_live_path(self):
+        service = AnalysisSummaryService()
+        market = render_plain_report(service.analyze(AnalysisSummaryRequest(
+            page_id="indicator_market", mineral="CU", mineral_name="동",
+            observations=[{"month": "2026-06", "score": 34.04, "price": 100}, {"month": "2026-07", "score": 30.38, "price": 104.42}],
+        )))
+        self.assertIn("시장동향지표는 <b>30.38</b>점으로, 현재 <b>주의</b> 단계", market)
+        self.assertNotIn("<b>시장동향지표</b>", market)
+        self.assertNotIn("**", market)
+
+    def test_plain_report_has_no_header_paragraph(self):
+        """2026-09-16 후속 지시 — 조회조건·현재 단계 보조 정보 단락은 평문에 없다."""
+        request = AnalysisSummaryRequest(
+            page_id="price_minor_metals", mineral="CO", mineral_name="코발트",
+            compare_mineral="NI", compare_mineral_name="니켈", price_criterion="LME CASH",
+            observations=[{"date": "2026-08-01", "commerce_price": 100}, {"date": "2026-08-02", "commerce_price": 110}],
+            compare_observations=[{"date": "2026-08-01", "commerce_price": 50}, {"date": "2026-08-02", "commerce_price": 60}],
+            price_unit="달러/톤",
+        )
+        response = AnalysisSummaryService().analyze(request)
+        self.assertIn("**가격기준**: LME CASH", render_markdown_report(response))
+        plain = render_plain_report(response)
+        self.assertNotIn("가격기준: LME CASH", plain)
+        self.assertNotIn("비교광종:", plain)
+        self.assertTrue(plain.startswith("2026년"), plain[:40])
+
+    def test_plain_report_splits_joined_sentences(self):
+        from app.analysis.report_render import _plain_lines
+        self.assertEqual(_plain_lines("고가권에 속합니다. 조회기간 중 약 2.04억톤 하락했습니다."),
+                         ["고가권에 속합니다.", "조회기간 중 약 2.04억톤 하락했습니다."])
+        self.assertEqual(_plain_lines("2026년 9월 10일 기준 14,390달러입니다."), ["2026년 9월 10일 기준 14,390달러입니다."])
 
     def test_error_status_contract(self):
         service = Mock(uses_llm=False)
@@ -100,7 +206,7 @@ class ReportContractTests(unittest.TestCase):
                 service.analyze.side_effect = error
                 result = client.post("/api/v1/analysis/prices/base-metals", json={"mineral": "CU"})
                 self.assertEqual(result.status_code, 200)
-                self.assertEqual(result.json(), {"status": status, "report": None})
+                self.assertEqual(result.json(), {"status": status, "report": None, "table": None})
 
     def test_llm_success_keeps_render_format(self):
         claims, narrative = claims_and_narrative()
@@ -120,14 +226,24 @@ class ReportContractTests(unittest.TestCase):
         # price_streak_length·recent_volatility_pct는 데이터 부족으로 생성되지
         # 않는다 — 표가 다시 켜졌다는 것과 9개 화이트리스트가 존재하는 지표만
         # 순서·라벨대로 골라낸다는 것 둘 다 검증한다.
-        self.assertIn("## 주요 지표\n", rendered)
-        self.assertIn("| 현재가격 | 110 | 달러/톤 |", rendered)
-        self.assertIn("| 최고가 | 110 | 달러/톤 |", rendered)
-        self.assertIn("| 최저가 | 100 | 달러/톤 |", rendered)
-        self.assertIn("| 낙폭 | 0 | % |", rendered)
+        # 2026-09-16 사용자 지시 — 표는 본문(`report`)이 아니라 별도 `table`
+        # 키(`build_key_metrics_table`)로 나간다. 본문에는 절 자체가 없어야 한다.
+        self.assertNotIn("## 주요 지표", rendered)
+        table = build_key_metrics_table(result)
+        self.assertEqual(table.columns, ["지표", "값", "단위"])
+        self.assertEqual(table.rows, [
+            ["현재가격", "110", "달러/톤"],
+            ["최고가", "110", "달러/톤"],
+            ["최저가", "100", "달러/톤"],
+            ["낙폭", "0", "%"],
+        ])
+        self.assertEqual(table.rows_typed[0], ["현재가격", 110, "달러/톤"])
+        self.assertEqual([column.type for column in table.columns_meta], ["string", "number", "string"])
+        self.assertIn("| 현재가격 | 110 | 달러/톤 |", table.markdown)
+        self.assertIn("| 낙폭 | 0 | % |", table.markdown)
         # day_over_day_change_pct는 9개 화이트리스트에 없어 값 자체는 응답
         # key_metrics에 있어도 표에는 나오지 않아야 한다.
-        self.assertNotIn("전일대비", rendered)
+        self.assertNotIn("전일대비", table.markdown)
         self.assertNotIn("전주 대비", rendered)
         self.assertNotIn("전월 대비", rendered)
         self.assertNotIn("전년 대비", rendered)
@@ -324,7 +440,7 @@ class ReportContractTests(unittest.TestCase):
         self.assertEqual(by_id["top_country_vs_others"], "기타 국가 합산은 2025년 2,100톤(21.43%)으로, 단일 국가 기준 1위인 칠레(1,800톤, 18.37%)를 상회하고 있어 복수의 중소 매장국에도 상당한 매장량이 분포돼 있습니다.")
         report = render_markdown_report(response)
         ranking = report.split("## 국가별 순위 및 변화")[1].split("## 주요 변화")[0]
-        changes = report.split("## 주요 변화")[1].split("## 주요 지표")[0]
+        changes = report.split("## 주요 변화")[1]
         self.assertIn(by_id["top3_period_change"], ranking)
         self.assertIn(by_id["top3_concentration"], ranking)
         for key in ("extreme_increase_1", "extreme_increase_2", "extreme_decrease_1", "extreme_decrease_2", "volatility_country", "top_country_vs_others"):
@@ -349,7 +465,9 @@ class ReportContractTests(unittest.TestCase):
             client = TestClient(app)
             result = client.post("/api/v1/analysis/maps/mineral", json=body).json()
             self.assertEqual(result["status"], "ok")
-            self.assertIn("조회기간(2021~2025년)", result["report"])
+            # 2026-09-16 평문 포맷: 단일 `~`는 취소선 오해석 방지로 `\~` 이스케이프.
+            self.assertIn("조회기간(2021\\~2025년)", result["report"])
+            self.assertNotRegex(result["report"], r"(?<!\\)~")
             self.assertIn("2021년보다", result["report"])
             self.assertNotIn("2019년", result["report"])
             reversed_range = client.post("/api/v1/analysis/maps/mineral", json={**body, "start_year": 2025, "end_year": 2021}).json()
@@ -391,7 +509,7 @@ class ReportContractTests(unittest.TestCase):
         report = render_markdown_report(response)
         self.assertIn("구성 광종(가중치)은 ", report)
         self.assertNotIn(" 구성 광종은 ", report)
-        self.assertIn("| 조회기간 평균 지수 |", report)
+        self.assertIn("| 조회기간 평균 지수 |", build_key_metrics_table(response).markdown)
 
     def test_relative_value_fact_uses_percent_and_spelled_out_pair(self):
         """2026-09-15 발주처 피드백 — 가격비율은 퍼센트(86.53%)로, 평균도 같은

@@ -5,7 +5,14 @@
 - DB 조회 없음(prompt만 DB). 원자료는 요청 바디의 `observations`(+`mineral_name`·
   `unit`·`price_unit` 등 부속 필드)로 받는다.
 - 응답은 항상 HTTP 200 + `{"status": "ok"|"NO_DATA"|"TIMEOUT"|"INTERNAL_ERROR",
-  "report": "<Markdown 또는 null>"}` — 성공/실패를 status 한 필드로 겸한다.
+  "report": "<평문 또는 null>", "table": {...} | null}` — 성공/실패를 status 한
+  필드로 겸한다. `report`는 2026-09-16부터 Markdown이 아니라 평문(heading 없음, 절마다
+  단락, 문장마다 한 줄 — 줄 끝은 Markdown 하드 브레이크 "  \n", 상승/하락 어휘는
+  `<font color='red'>…</font>` 태그, 지표 값·단계 명칭("시장동향지표는 <b>1.73</b>점으로,
+  현재 <b>신중</b> 단계")은 `<b>…</b>`,
+  단일 `~`는 `\~` 이스케이프, 조회조건·현재 단계 상단 줄 없음). `table`(2026-09-16 추가)은 본문에서 분리된 "주요 지표" 표
+  (`columns`·`rows`·`columns_meta`·`rows_typed`·`markdown`, rag_chat table 블록과
+  같은 핵심 키), 실을 지표가 없으면 null.
 - 12개 페이지 전부 `POST /api/v1/analysis/<path>`, 요청 바디 필드는 page_id별로
   달라(PAGE_SPECS가 그 차이를 담는다). 2026-08-27 `price`(광물자원가격)가 KOMIS
   실제 구조대로 `price_base_metals`(비철금속)·`price_minor_metals`(희소금속)
@@ -521,15 +528,23 @@ def render_json_error(exc: Exception, *, field_label: str = "observations") -> N
         st.code(str(exc), language=None)
 
 
-def render_report_markdown(report: str | None) -> None:
+def render_report_markdown(report: str | None, table: dict[str, Any] | None = None) -> None:
     """report_gen이 돌려준 마크다운을 페이지 제목보다 크게 보이지 않도록 감싸서
     렌더링한다(2026-08-28 UI/UX 감사 — 응답 본문이 `# 제목`으로 시작해 h1이 페이지
-    타이틀보다 커 보이는 문제). 헤딩 레벨을 한 단계씩 낮춘 뒤 테두리 컨테이너에 담는다."""
+    타이틀보다 커 보이는 문제). 헤딩 레벨을 한 단계씩 낮춘 뒤 테두리 컨테이너에 담는다.
+
+    2026-09-16: "주요 지표" 표가 본문에서 분리돼 응답 `table` 키로 오므로(위 모듈
+    docstring), 같은 컨테이너 안 본문 아래에 `table.markdown`을 이어 그린다."""
     import re
 
     import streamlit as st
 
     text = report or "_(빈 보고서)_"
     demoted = re.sub(r"(?m)^(#{1,5})(\s)", r"#\1\2", text)
+    # 2026-09-16 평문 포맷: 서버가 문장 끝에 Markdown 하드 브레이크("  \n")를 넣어
+    # 보내므로 여기서는 `<font color=…>` 태그를 그리기 위해 unsafe_allow_html만 켠다.
     with st.container(border=True):
-        st.markdown(demoted)
+        st.markdown(demoted, unsafe_allow_html=True)
+        if table and table.get("markdown"):
+            st.markdown("### 주요 지표")
+            st.markdown(table["markdown"])

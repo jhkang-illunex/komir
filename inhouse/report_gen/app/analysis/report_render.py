@@ -14,7 +14,8 @@ from __future__ import annotations
 import logging
 import re
 
-from .models import AnalysisSummaryResponse
+from .map_presentation import QUANTITY_SCALES, compact_quantity, scaled_quantity
+from .models import AnalysisSummaryResponse, Metric, ReportTable, ReportTableColumn
 
 _log = logging.getLogger(__name__)
 
@@ -221,128 +222,89 @@ def _to_polite_copula(text: str) -> str:
     return _COPULA_SENTENCE_END_RE.sub("입니다.", text)
 
 
-def render_markdown_report(response: AnalysisSummaryResponse) -> str:
-    """검증된 `AnalysisSummaryResponse` 1건을 사람이 읽는 Markdown 보고서로 렌더링한다."""
+_TITLE_FILTER_KEYS = frozenset({
+    "mineral", "mineral_code", "start_date", "end_date", "start_month", "end_month", "start_year", "end_year",
+})
 
-    lines: list[str] = []
-    lines.append(f"# {response.mineral.name} 분석 요약 — {_to_polite_copula(response.page_definition)}")
-    lines.append("")
-    # 비철금속/희소금속처럼 같은 광종이라도 조회조건(가격기준·품목/스펙 등)이
-    # 그룹별로 다를 수 있다 — 요청 바디에 실려 온 값이 있으면 상단에 표시한다
-    # (`applied_filters`는 자유 텍스트 dict라 mineral/mineral_code/날짜 범위는
-    # 위 제목·섹션에 이미 드러나므로 여기선 그 외 필드만 보조 정보로 보여준다).
-    extra_filters = {
-        key: value
+
+def _extra_filters(response: AnalysisSummaryResponse) -> list[tuple[str, str]]:
+    """상단 보조 정보로 보여줄 (라벨, 값) — 비철금속/희소금속처럼 같은 광종이라도
+    조회조건(가격기준·품목/스펙 등)이 그룹별로 다를 수 있어 요청 바디에 실려 온
+    값이 있으면 표시한다(`applied_filters`는 자유 텍스트 dict라 mineral/mineral_code/
+    날짜 범위는 제목·본문에 이미 드러나므로 그 외 필드만)."""
+
+    return [
+        (_FILTER_LABELS.get(key, key), value)
         for key, value in response.applied_filters.items()
-        if key not in {"mineral", "mineral_code", "start_date", "end_date", "start_month", "end_month", "start_year", "end_year"}
-        and value
-    }
-    if extra_filters:
-        lines.append(
-            " · ".join(
-                f"**{_FILTER_LABELS.get(key, key)}**: {value}" for key, value in extra_filters.items()
-            )
-        )
-        lines.append("")
-    if response.grade is not None:
-        lines.append(f"**현재 단계**: {response.grade.label} ({_trim_trailing_zero(f'{response.grade.score:,.2f}')}점)")
-        lines.append("")
+        if key not in _TITLE_FILTER_KEYS and value
+    ]
+
+
+def _grade_text(response: AnalysisSummaryResponse) -> str | None:
+    if response.grade is None:
+        return None
+    return f"{response.grade.label} ({_trim_trailing_zero(f'{response.grade.score:,.2f}')}점)"
+
+
+def _section_titles(response: AnalysisSummaryResponse) -> dict[str, str]:
+    """page_id별 절 키 → 표시 제목(순서 포함). 숨김 절(`_HIDDEN_SECTIONS`)은 빠진다."""
 
     if response.page_id in _PRICE_PAGE_IDS:
-        section_titles = _PRICE_SECTION_TITLES
-    else:
-        section_titles = {**_SECTION_TITLES, **_SECTION_TITLES_OVERRIDES.get(response.page_id, {})}
-        if response.page_id == "map_mineral":
-            measure = response.applied_filters.get("measure")
-            section_titles["core_diagnosis"] = _MINERAL_MAP_MEASURE_TITLES.get(
-                measure, _SECTION_TITLES["core_diagnosis"]
-            )
-        for hidden_key in _HIDDEN_SECTIONS.get(response.page_id, frozenset()):
-            if response.page_id == "map_global" and any("single_snapshot" not in sentence.evidence_ids for sentence in response.summary.current_position):
-                # 2026-09-13 사용자 지시 — "참고:" 접두어 제거.
-                section_titles[hidden_key] = "연도별 교역액 변화"
-            else:
-                section_titles.pop(hidden_key, None)
-    for key, title in section_titles.items():
+        return dict(_PRICE_SECTION_TITLES)
+    section_titles = {**_SECTION_TITLES, **_SECTION_TITLES_OVERRIDES.get(response.page_id, {})}
+    if response.page_id == "map_mineral":
+        measure = response.applied_filters.get("measure")
+        section_titles["core_diagnosis"] = _MINERAL_MAP_MEASURE_TITLES.get(
+            measure, _SECTION_TITLES["core_diagnosis"]
+        )
+    for hidden_key in _HIDDEN_SECTIONS.get(response.page_id, frozenset()):
+        if response.page_id == "map_global" and any("single_snapshot" not in sentence.evidence_ids for sentence in response.summary.current_position):
+            # 2026-09-13 사용자 지시 — "참고:" 접두어 제거.
+            section_titles[hidden_key] = "연도별 교역액 변화"
+        else:
+            section_titles.pop(hidden_key, None)
+    return section_titles
+
+
+def _section_blocks(response: AnalysisSummaryResponse) -> list[tuple[str, list, bool]]:
+    """본문 절을 (표시 제목, 문장 목록, 목록형 여부) 순서대로 — 2026-09-16 두 렌더러
+    (`render_markdown_report`·`render_plain_report`)가 공유하도록 루프에서 분리. 빈 절은
+    생략된다.
+
+    - major_changes 분리 절: 2026-09-10 사용자 지시(map_global 한국 관련 루트·map_mineral
+      주요 변화, 같은 패턴) — 특정 evidence_id 문장을 major_changes의 나머지 서술과 같은
+      문단에 묶지 말고 별도 절로 뺀다. JSON 계약(`SummaryNarrative.major_changes`)은
+      그대로 두고(스키마가 3개 절 고정이라 4번째 절을 추가하면 다른 8종 page_id까지
+      건드리게 된다) 렌더링 단계에서만 evidence_id 기준으로 거른다 — 계산·검증 레이어의
+      "값이 있을 때만" 로직(komir_summary.py/summary.py)은 그대로라 근거 자체가 없으면
+      이 절도 자연히 생략된다.
+    - 목록형: 2026-08-31 사용자 지시 — "현재 위치"는 통계 확장(변동성·단기 매매압력·
+      백분위·낙폭국면·재고해석 등)으로 최대 9문장까지 늘었는데 공백으로 이어붙여 한
+      문단으로 렌더링하면 읽기 힘들다. 이 절의 문장들은 원래부터 각 문장이 서로 다른
+      독립 주제라 문단보다 목록이 자연스럽다(3문장 이하면 문단 유지). core_diagnosis·
+      major_changes는 서술 흐름을 의도한 절이라 문단 형태."""
+
+    blocks: list[tuple[str, list, bool]] = []
+    for key, title in _section_titles(response).items():
         sentences = getattr(response.summary, key)
         if not sentences:
             continue
         split = _MAJOR_CHANGES_SPLIT_SECTIONS.get(response.page_id)
         if split and key == "major_changes":
-            # 2026-09-10 사용자 지시(map_global 한국 관련 루트·map_mineral
-            # 주요 변화, 같은 패턴) — 특정 evidence_id 문장을 major_changes의
-            # 나머지 서술과 같은 문단에 묶지 말고 별도 섹션으로 뺀다. JSON
-            # 계약(`SummaryNarrative.major_changes`)은 그대로 두고(스키마가
-            # 3개 절 고정이라 4번째 절을 추가하면 다른 8종 page_id까지
-            # 건드리게 된다) 렌더링 단계에서만 evidence_id 기준으로 걸러
-            # 별도 "## " 블록으로 나눈다 — 계산·검증 레이어의 "값이 있을
-            # 때만" 로직(komir_summary.py/summary.py)은 그대로 유지되므로,
-            # 근거 자체가 없으면 이 블록도 자연히 생략된다.
             evidence_ids, split_title = split
             split_sentences = [s for s in sentences if any(eid in s.evidence_ids for eid in evidence_ids)]
             other_sentences = [s for s in sentences if s not in split_sentences]
             if other_sentences:
-                lines.append(f"## {title}")
-                lines.append("")
-                lines.append(" ".join(sentence.text for sentence in other_sentences))
-                lines.append("")
+                blocks.append((title, other_sentences, False))
             if split_sentences:
-                lines.append(f"## {split_title}")
-                lines.append("")
-                lines.append(" ".join(sentence.text for sentence in split_sentences))
-                lines.append("")
+                blocks.append((split_title, split_sentences, False))
             continue
-        lines.append(f"## {title}")
-        lines.append("")
-        if key == "current_position" and len(sentences) > 3:
-            # 2026-08-31 사용자 지시 — "현재 위치"는 통계 확장(변동성·단기
-            # 매매압력·백분위·낙폭국면·재고해석 등, 2026-09-09부터 평균 대비
-            # 위치는 major_changes로 이동)으로 최대 9문장까지 늘었는데,
-            # 기존처럼 공백으로 이어붙여 한 문단으로 렌더링하면 읽기 힘들다.
-            # 이 절의 문장들은 major_changes(의도적으로 한 문장에 여러 근거를
-            # 잇는 서술형)와 달리 원래부터 각 문장이 서로 다른 독립 주제(범위·
-            # 재고·변동성·추세 등)라 문단보다 목록이 자연스럽다. core_diagnosis·
-            # major_changes는 문장 수가 적고(최대 1~3개) 서술 흐름을 의도한
-            # 절이라 문단 형태를 그대로 둔다(3문장 이하면 이 절도 문단 유지).
-            for sentence in sentences:
-                lines.append(f"- {sentence.text}")
-        else:
-            lines.append(" ".join(sentence.text for sentence in sentences))
-        lines.append("")
+        blocks.append((title, list(sentences), key == "current_position" and len(sentences) > 3))
+    return blocks
 
-    # 2026-09-10 main-agent 지시 — 2026-09-09 오전 2차 피드백으로 광물자원가격
-    # 4종의 "주요 지표" 표를 껐었는데, 발주처 원본 업무지시서 §3.1(그 피드백보다
-    # 상위 문서)이 9개 항목 표를 명시하고 있어 그 결정을 뒤집는다. price_* 4종은
-    # 전체 key_metrics가 아니라 `_PRICE_KEY_METRIC_ORDER` 화이트리스트 순서·
-    # 라벨로만 표시하고, 나머지 8종은 기존대로 key_metrics 전체를 그대로 낸다.
-    if response.page_id in _PRICE_PAGE_IDS:
-        by_id = {metric.id: metric for metric in response.key_metrics}
-        rows = [
-            (metric_id, by_id[metric_id])
-            for metric_id in _PRICE_KEY_METRIC_ORDER
-            if metric_id in by_id
-        ]
-        if rows:
-            lines.append("## 주요 지표")
-            lines.append("")
-            lines.append("| 지표 | 값 | 단위 |")
-            lines.append("|---|---|---|")
-            for metric_id, metric in rows:
-                value_text, unit_text = _format_metric_row(metric.value, metric.unit)
-                lines.append(f"| {_PRICE_KEY_METRIC_LABELS.get(metric_id, metric.label)} | {value_text} | {unit_text} |")
-            lines.append("")
-    elif response.key_metrics:
-        lines.append("## 주요 지표")
-        lines.append("")
-        lines.append("| 지표 | 값 | 단위 |")
-        lines.append("|---|---|---|")
-        for metric in response.key_metrics:
-            value_text, unit_text = _format_metric_row(metric.value, metric.unit)
-            if response.page_id in {"map_korea", "map_global", "map_mineral"} and isinstance(metric.value, (int, float)) and metric.unit in {"달러", "톤", "천톤", "천 톤", "백만톤", "백만 톤"}:
-                from .map_presentation import compact_quantity
-                value_text, unit_text = compact_quantity(metric.value, metric.unit)
-            lines.append(f"| {metric.label} | {value_text} | {unit_text} |")
-        lines.append("")
+
+def _log_diagnostics(response: AnalysisSummaryResponse) -> None:
+    """독자 응답에는 안 싣는 경고·정제 여부를 서버 로그로만 남긴다(두 렌더러 공용)."""
 
     # 2026-08-27 skeptic 감사 SC-016: `notices`(= 페이지 정책의 analysis_constraints,
     # "제공된 가격 계열과 선택 기간만 사용한다." 같은 LLM 작성 제약)와 LLM 정제
@@ -381,7 +343,240 @@ def render_markdown_report(response: AnalysisSummaryResponse) -> str:
         response.request_id, response.page_id, response.mineral.code, response.llm_refined,
     )
 
+
+
+#: 2026-09-16 사용자 지시 — 평문 보고서(`render_plain_report`)에서 상승/하락 계열 어휘에
+#: 색을 입힌다. 색 → 어휘 목록. 국내 시세 관행(상승=적색, 하락=청색)을 따른다. 어휘는
+#: 문장 안 부분 문자열로 매치되므로("상승했으며"→"<font color='red'>상승</font>했으며")
+#: 활용형까지 한 항목으로 잡힌다. 부정문("감소하지 않았다")도 어휘 자체는 색칠된다 —
+#: 방향 판정을 새로 하지 않고 어휘만 표시하는 단순 규칙이라는 뜻(의도적).
+TONE_COLORS: dict[str, tuple[str, ...]] = {
+    "red": ("상승", "상향", "증가", "급등", "반등", "강세", "올랐", "늘어", "늘었"),
+    "blue": ("하락", "하향", "감소", "급락", "약세", "내렸", "줄어", "줄었"),
+}
+#: 색 마크업 템플릿(프론트 요구 형식). `{color}`·`{word}` 자리표시자.
+TONE_TAG = "<font color='{color}'>{word}</font>"
+_WORD_COLOR = {word: color for color, words in TONE_COLORS.items() for word in words}
+_TONE_ALT = "|".join(re.escape(word) for word in sorted(_WORD_COLOR, key=len, reverse=True))
+#: 2026-09-16 사용자 지시 — "상승/하락 font 처리할 때 앞뒤에 점수가 있으면 점수까지 같이
+#: font 영역에 넣어 달라". 어휘 바로 앞("1.92% 하락", "약 800만톤 늘어", "3.66점 하락")
+#: 또는 바로 뒤("상승 9일")에 공백 하나로 붙은 수치 토큰을 같은 태그 안에 넣는다.
+#: 수치 토큰 = 선택적 "약 " + 부호 + 숫자(콤마·소수) + 선택적 단위(아래 목록). 볼드가
+#: 먼저 걸린 값(`<b>3.66</b>점 하락`)도 토큰으로 인정한다. 단위 목록에 없는 글자가 붙은
+#: 수치("5일로"의 "로", "2021년보다")는 단위까지만 잡거나 아예 안 잡아 조사가 태그 안에
+#: 들어가지 않는다. 사이에 다른 낱말·괄호·쉼표가 있으면 수치는 포함하지 않는다.
+_TONE_NUM_UNITS = "%p|%|점|포인트|개월|일|년|달러|백만톤|만톤|억톤|천톤|톤|개국|건|배"
+_TONE_NUM = rf"(?:약\s+)?(?:<b>)?[+-]?\d[\d,]*(?:\.\d+)?(?:</b>)?(?:{_TONE_NUM_UNITS})?"
+#: 뒤에 붙는 수치는 단위 뒤에 조사(로·으로·이·가·은·는·을·를·의·에·과·와·도)만 오거나 바로
+#: 비한글이어야 한다 — "상승 9일·", "하락 5일로"는 잡고 "늘어 4년간"의 "4년"(뒤에 "간")은
+#: 수치가 아니라 기간 표현이라 제외.
+_TONE_TAIL_OK = r"(?=(?:으로|로|이|가|은|는|을|를|의|에|과|와|도)?(?![가-힣]))"
+_TONE_RE = re.compile(rf"(?:{_TONE_NUM}\s+)?(?P<word>{_TONE_ALT})(?:\s+{_TONE_NUM}{_TONE_TAIL_OK})?")
+
+
+#: 평문 줄 나누기 — 계산기가 한 `Sentence`에 두 문장을 붙여 두는 경우가 있어("…고가권에
+#: 속합니다. 조회기간 중 가장 큰 하락은 …") 종결어미 "다." 뒤 공백에서 줄을 나눈다.
+#: 숫자 표기("2.04억톤")·날짜에는 "다."가 없어 오분할되지 않는다.
+_PLAIN_LINE_SPLIT_RE = re.compile(r"(?<=다\.)\s+")
+
+
+def _plain_lines(text: str) -> list[str]:
+    return [part for part in _PLAIN_LINE_SPLIT_RE.split(text) if part]
+
+
+#: 2026-09-16 사용자 제보 — "2021~2025년"·"약 4.3억톤~약 4.38억톤"처럼 문장 중간의
+#: 단일 `~`를 GFM 렌더러(remark-gfm singleTilde 기본값 등)가 취소선으로 그린다.
+#: rag_chat `streaming.py::_escape_tildes`와 같은 규칙으로 `\~` 이스케이프(이미
+#: 이스케이프된 것은 건드리지 않음). 평문 뷰어에서는 `\~`가 그대로 보일 수 있으나
+#: 프로젝트 공통 결정(챗봇과 동일)이라 따른다.
+_UNESCAPED_TILDE_RE = re.compile(r"(?<!\\)~")
+
+
+def _escape_tildes(text: str) -> str:
+    return _UNESCAPED_TILDE_RE.sub(r"\\~", text)
+
+
+def colorize_tone(text: str) -> str:
+    """`TONE_COLORS` 어휘(+바로 앞뒤 수치 토큰, `_TONE_RE` 주석)를 `TONE_TAG`로 감싼다.
+    색은 어휘로 정하고 한 번만 훑으므로 font 태그가 중첩되지 않는다."""
+
+    return _TONE_RE.sub(lambda m: TONE_TAG.format(color=_WORD_COLOR[m.group("word")], word=m.group(0)), text)
+
+
+#: 2026-09-16 사용자 지시 — 처음엔 "시장동향지표, 수급위기지표 … 해당 단어는 볼드"로
+#: 지표 명칭을 볼드했으나, 같은 날 예시로 정정: 볼드 대상은 명칭이 아니라 **지표 값과
+#: 단계 명칭**이다("시장동향지표는 <b>1.73</b>점으로, 현재 <b>신중</b> 단계"). 지표 명칭
+#: 목록은 값 위치를 찾는 앵커로 쓴다(계산 모듈 문장 템플릿에서 수집). "수급위기지표"는
+#: 코드상 "수급동향지표"로 표기되지만 사용자가 부른 이름이라 함께 둔다.
+INDICATOR_TERMS: tuple[str, ...] = (
+    "시장동향지표", "수급동향지표", "수급위기지표",
+    "광물종합지수", "메이저금속지수", "희소금속지수", "가격강도지수",
+)
+#: 단계 명칭 — `resources/policies/indicator_market.yaml`(신중·주의·중립·관심·기회)·
+#: `indicator_supply.yaml`(긴장·주의·관심·안정·원활)의 grade label. 문장 안에서 " 단계"
+#: 바로 앞("현재 신중 단계", "주의 단계로")이거나 "에서 " 앞("신중에서 주의 단계로",
+#: 전환 문장)일 때만 볼드해 일반 명사 "관심"·"주의"의 오탐을 막는다.
+GRADE_LABELS: tuple[str, ...] = ("신중", "주의", "중립", "관심", "기회", "긴장", "안정", "원활")
+#: 볼드 마크업 템플릿 — `TONE_TAG`와 같은 HTML 태그 방식(프론트가 `<font>`를 그리는 렌더러).
+BOLD_TAG = "<b>{word}</b>"
+_INDICATOR_ALT = "|".join(re.escape(term) for term in sorted(INDICATOR_TERMS, key=len, reverse=True))
+#: "<지표명><조사> <숫자>(점|포인트)" — 지표 명칭 바로 뒤의 값만(다른 숫자는 손대지 않음).
+_INDICATOR_VALUE_RE = re.compile(rf"(?P<head>(?:{_INDICATOR_ALT})[은는이가]\s+)(?P<num>-?[\d,]+(?:\.\d+)?)(?=점|포인트)")
+_GRADE_ALT = "|".join(re.escape(label) for label in GRADE_LABELS)
+_GRADE_RE = re.compile(rf"(?<![가-힣])(?P<grade>{_GRADE_ALT})(?=\s+단계|에서\s)")
+
+
+def emphasize_indicators(text: str) -> str:
+    """지표 명칭 뒤의 값(`_INDICATOR_VALUE_RE`)과 단계 명칭(`_GRADE_RE`)을 `BOLD_TAG`로
+    감싼다. 각 규칙이 한 번씩만 훑고 대상이 겹치지 않아 중첩 태그는 생기지 않는다."""
+
+    text = _INDICATOR_VALUE_RE.sub(lambda m: m.group("head") + BOLD_TAG.format(word=m.group("num")), text)
+    return _GRADE_RE.sub(lambda m: BOLD_TAG.format(word=m.group("grade")), text)
+
+
+#: 평문 보고서의 문장 줄 구분자 — Markdown 하드 브레이크(공백 2개+줄바꿈). 단락 구분은 "\n\n".
+PLAIN_LINE_BREAK = "  \n"
+
+
+def render_plain_report(response: AnalysisSummaryResponse) -> str:
+    """검증된 `AnalysisSummaryResponse` 1건을 **평문** 보고서로 렌더링한다 — 2026-09-16
+    사용자 지시("모든 보고서에서 report 안의 md에 새 포맷: ① heading 제거 ② 섹션 문자열은
+    줄 단위·단락 단위로 구분한 평문 ③ 상승/하락 등은 `<font color='red'>` 식 커스텀
+    색 지정"). `render_markdown_report`(Markdown, 제목·`##` 절 포함)는 그대로 두고 이
+    함수를 `routers/_common.py`가 `report`에 쓴다 — 둘 다 유지(사용자 지시).
+
+    형식: 제목·절 제목 없음. 절 하나가 단락 하나(빈 줄로 구분), 단락 안에서는 문장
+    하나가 한 줄(`_plain_lines` — 한 Sentence에 붙은 복수 문장도 나눔). 줄 구분자는
+    `PLAIN_LINE_BREAK`("  \n", Markdown 하드 브레이크) — 2026-09-16 사용자 제보("문장
+    단위로 줄바꿈이 되어 있어야 하는데 한 줄로 붙어 보인다"): 프론트가 `<font>` 태그를
+    그리려면 Markdown+HTML 렌더러인데 Markdown은 단일 "\n"을 공백으로 접는다. 문장 끝
+    공백 2개는 평문 뷰어에서는 보이지 않고 Markdown 뷰어에서는 줄바꿈이 된다. 상단 보조
+    정보(조회조건·현재 단계)는 내지 않는다(2026-09-16 후속 지시 — Markdown 렌더러에만
+    남는다). 문장 순서·내용·절 구성(분리 절·숨김 절)은 Markdown 렌더러와 동일
+    (`_section_blocks` 공유), 문장 텍스트는 `emphasize_indicators`(지표 값·단계 명칭 볼드)
+    → `colorize_tone`(상승/하락 색, 앞뒤 수치 포함 — 볼드된 값도 포함) → `_escape_tildes`
+    (단일 `~`→`\\~`) 순으로만 거친다."""
+
+    # 2026-09-16 사용자 지시("기존 첫 번째 heading은 표시 안 되게") — Markdown 렌더러의
+    # 제목 자리에 있던 상단 보조 정보(조회조건 "가격기준: LME CASH · …"·"현재 단계: …")
+    # 단락을 평문에서는 내지 않는다. 본문 절만 단락으로 나간다.
+    paragraphs: list[str] = []
+    for _title, sentences, _as_list in _section_blocks(response):
+        paragraphs.append(PLAIN_LINE_BREAK.join(
+            _escape_tildes(colorize_tone(emphasize_indicators(line)))
+            for sentence in sentences for line in _plain_lines(sentence.text)
+        ))
+
+    _log_diagnostics(response)
+    return "\n\n".join(paragraphs).strip() + "\n"
+
+
+def render_markdown_report(response: AnalysisSummaryResponse) -> str:
+    """검증된 `AnalysisSummaryResponse` 1건을 사람이 읽는 Markdown 보고서로 렌더링한다."""
+
+    lines: list[str] = []
+    lines.append(f"# {response.mineral.name} 분석 요약 — {_to_polite_copula(response.page_definition)}")
+    lines.append("")
+    extra_filters = _extra_filters(response)
+    if extra_filters:
+        lines.append(" · ".join(f"**{label}**: {value}" for label, value in extra_filters))
+        lines.append("")
+    grade_text = _grade_text(response)
+    if grade_text:
+        lines.append(f"**현재 단계**: {grade_text}")
+        lines.append("")
+
+    for title, sentences, as_list in _section_blocks(response):
+        lines.append(f"## {title}")
+        lines.append("")
+        if as_list:
+            for sentence in sentences:
+                lines.append(f"- {sentence.text}")
+        else:
+            lines.append(" ".join(sentence.text for sentence in sentences))
+        lines.append("")
+
+    # "주요 지표" 표는 2026-09-16부터 본문에 넣지 않는다 — `build_key_metrics_table()`
+    # 이 `AnalysisReportResponse.table`로 따로 낸다(아래 함수 docstring 참고).
+
+    _log_diagnostics(response)
+
     return "\n".join(lines).strip() + "\n"
 
 
-__all__ = ["render_markdown_report"]
+_TABLE_COLUMNS = ("지표", "값", "단위")
+_MAP_PAGE_IDS = frozenset({"map_korea", "map_global", "map_mineral"})
+
+
+def _key_metric_rows(response: AnalysisSummaryResponse) -> list[tuple[str, Metric]]:
+    """표에 실을 (표시 라벨, 지표) 목록 — 2026-09-10 main-agent 지시(2026-09-09 오전
+    2차 피드백 결정 번복): 발주처 원본 업무지시서 §3.1이 광물자원가격 표를 9개
+    항목으로 명시하고 있어 price_* 4종은 `_PRICE_KEY_METRIC_ORDER` 화이트리스트
+    순서·라벨로만, 나머지 8종은 key_metrics 전체를 그대로 낸다."""
+
+    if response.page_id in _PRICE_PAGE_IDS:
+        by_id = {metric.id: metric for metric in response.key_metrics}
+        return [
+            (_PRICE_KEY_METRIC_LABELS.get(metric_id, by_id[metric_id].label), by_id[metric_id])
+            for metric_id in _PRICE_KEY_METRIC_ORDER
+            if metric_id in by_id
+        ]
+    return [(metric.label, metric) for metric in response.key_metrics]
+
+
+def _metric_cells(page_id: str, metric: Metric) -> tuple[str, str, int | float | bool | str | None]:
+    """(값 표시 문자열, 단위 표시 문자열, 표시 단위 기준 숫자값). 표시 문자열은
+    2026-09-16 이전 본문 표와 문자 단위로 동일하다(`_format_metric_row` + 지도 3종
+    축약 표기)."""
+
+    value_text, unit_text = _format_metric_row(metric.value, metric.unit)
+    typed: int | float | bool | str | None = metric.value
+    is_number = isinstance(metric.value, (int, float)) and not isinstance(metric.value, bool)
+    if metric.unit == "ratio" and is_number:
+        typed = metric.value * 100
+    elif page_id in _MAP_PAGE_IDS and is_number and metric.unit in QUANTITY_SCALES:
+        value_text, unit_text = compact_quantity(metric.value, metric.unit)
+        typed, _ = scaled_quantity(metric.value, metric.unit)
+    return value_text, unit_text, typed
+
+
+def build_key_metrics_table(response: AnalysisSummaryResponse) -> ReportTable | None:
+    """"주요 지표" 표를 `ReportTable`로 만든다 — 2026-09-16 사용자 지시("전체 공통
+    아웃풋이 수정됐다. report에서 주요 지표는 `table`이라는 별개의 키워드로 출력").
+    그 전까지 `render_markdown_report`가 본문 끝에 `## 주요 지표` 절로 붙이던 것을
+    떼어 `AnalysisReportResponse.table`로 낸다. 행 선택·라벨·값 표기 규칙은 그대로
+    (`_key_metric_rows`·`_metric_cells`). 실을 지표가 없으면 None."""
+
+    rows: list[list[str]] = []
+    rows_typed: list[list[int | float | bool | str | None]] = []
+    for label, metric in _key_metric_rows(response):
+        value_text, unit_text, typed = _metric_cells(response.page_id, metric)
+        rows.append([label, value_text, unit_text])
+        rows_typed.append([label, typed, unit_text or None])
+    if not rows:
+        return None
+    value_is_number = all(
+        cell is None or (isinstance(cell, (int, float)) and not isinstance(cell, bool))
+        for _, cell, _ in rows_typed
+    )
+    columns_meta = [
+        ReportTableColumn(key="label", label="지표", display="지표", type="string"),
+        ReportTableColumn(key="value", label="값", display="값", type="number" if value_is_number else "string"),
+        ReportTableColumn(key="unit", label="단위", display="단위", type="string"),
+    ]
+    markdown_lines = ["| " + " | ".join(_TABLE_COLUMNS) + " |", "|---|---|---|"]
+    markdown_lines.extend("| " + " | ".join(row) + " |" for row in rows)
+    return ReportTable(
+        columns=list(_TABLE_COLUMNS),
+        rows=rows,
+        columns_meta=columns_meta,
+        rows_typed=rows_typed,
+        markdown="\n".join(markdown_lines),
+    )
+
+
+__all__ = [
+    "BOLD_TAG", "GRADE_LABELS", "INDICATOR_TERMS", "PLAIN_LINE_BREAK", "TONE_COLORS", "TONE_TAG",
+    "build_key_metrics_table", "colorize_tone", "emphasize_indicators",
+    "render_markdown_report", "render_plain_report",
+]

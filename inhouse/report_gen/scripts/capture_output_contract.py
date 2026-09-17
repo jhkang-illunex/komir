@@ -21,7 +21,7 @@ from collections import Counter
 sys.path.insert(0, os.environ.get('REPORT_GEN_APP_ROOT', str(Path.cwd() / 'inhouse/report_gen')))
 from app.analysis.summary import AnalysisSummaryService
 from app.analysis.models import AnalysisSummaryRequest
-from app.analysis.report_render import render_markdown_report
+from app.analysis.report_render import build_key_metrics_table, render_markdown_report, render_plain_report
 from app.analysis.prompts import summary_instructions, resolve_page_config
 from app.main import app
 parser = argparse.ArgumentParser(description=__doc__)
@@ -44,7 +44,10 @@ def run(key, req):
         response = service.analyze(AnalysisSummaryRequest(request_id='regression', **req))
         body = response.model_dump(mode='json')
         body.pop('generated_at', None)
-        value = {'response': body, 'report': render_markdown_report(response)}
+        table = build_key_metrics_table(response)
+        value = {'response': body, 'report': render_markdown_report(response),
+                 'report_plain': render_plain_report(response),
+                 'table': table.model_dump() if table else None}
         counts[req['page_id'] + ':ok'] += 1
     except Exception as e:
         value = {'error': type(e).__name__, 'message': str(e)}

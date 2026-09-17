@@ -72,6 +72,101 @@
 - 테스트 25건 통과(`tests/test_rules.py`·`tests/test_engines.py`, TempEngine 3건·서식 추가).
   README §임시 채움 신설. 코드 미커밋(사용자 지시 시 커밋).
 
+## 2026-09-16 — report_gen `report` 평문 포맷터(`render_plain_report`) 신설·연동
+
+사용자 지시(table 분리 직후 후속): "모든 보고서에서 report 안의 md에 새로운 포맷이
+반영된 아웃풋 함수를 만들어서 연동 — ① heading 제거 ② 섹션 문자열은 줄 단위·단락
+단위로 구분한 평문 ③ 상승/하락 등은 `<font color='red'> </font>` 식 커스텀 색 지정.
+기존 아웃풋 포맷 함수와 둘 다 유지."
+
+- **`report_render.render_plain_report()`** 신설, `routers/_common.py`가 `report`에 이것을
+  쓴다. `render_markdown_report()`는 그대로 유지(스크립트 8종·capture 지문·테스트가
+  계속 사용) — HEAD 렌더러와 3케이스(광물지도·비철금속 KOMIS 덤프·fixture) Markdown
+  문자 단위 동일 확인.
+- **리팩터**: 두 렌더러가 절 구성(page_id별 제목·map_mineral 측정항목 제목·숨김 절·
+  major_changes evidence_id 분리 절·current_position 목록형 판정)을 `_section_blocks()`
+  로 공유. 상단 보조정보(`_extra_filters`·`_grade_text`)와 서버 로그(`_log_diagnostics`)도
+  공용화.
+- **평문 형식**: 제목·`##` 없음. 절 하나 = 단락 하나(빈 줄), 단락 안은 문장 하나 = 한 줄.
+  한 `Sentence`에 붙어 있던 복수 문장("…속합니다. 조회기간 중 …")은 `_plain_lines`
+  (종결 "다." 뒤 공백)로 나눈다. 첫 단락은 조회조건("가격기준: LME CASH · 비교광종:
+  니켈")·"현재 단계: …"가 있을 때만.
+- **색 태그**: `TONE_COLORS`(red: 상승·상향·증가·급등·반등·강세·올랐·늘어·늘었 /
+  blue: 하락·하향·감소·급락·약세·내렸·줄어·줄었) + `TONE_TAG`
+  (`<font color='{color}'>{word}</font>`), `colorize_tone()` 한 번 훑기. 어휘 부분 문자열
+  매치라 활용형 포함, 부정문도 어휘만 색칠(방향 재판정 없음 — 의도적 단순 규칙).
+- streamlit `render_report_markdown`: `unsafe_allow_html`로 font 태그 렌더. 테스트
+  23 passed(신규 3: 평문 형식·colorize·문장 분할). 배포 `komir-report-gen:260916-plain`.
+- **후속(사용자 제보 "문장 단위로 줄바꿈이 되어 있어야 하는데 붙어 보인다")**: API
+  응답엔 `\n`이 있었고(cat -A로 확인), 보던 화면은 호스트 streamlit(00:39 기동, main
+  = 병합 전 코드)의 `st.markdown`이 단일 줄바꿈을 공백으로 접은 것. 프론트도 `<font>`
+  태그를 그리려면 Markdown+HTML 렌더러일 가능성이 높아 서버 쪽에서 문장 줄 구분자를
+  Markdown 하드 브레이크 `PLAIN_LINE_BREAK="  \n"`로 바꿈(평문 뷰어엔 안 보이는 공백,
+  Markdown 뷰어엔 줄바꿈). streamlit 쪽 하드 브레이크 치환은 제거(서버가 넣으므로).
+  재배포 `komir-report-gen:260916-plain2`. 호스트 streamlit은 main 병합·재기동 전까지
+  font 태그가 문자 그대로 보인다(unsafe_allow_html 미적용).
+- **후속 2(사용자 제보 "~이 문장 중간에 있어 취소선으로 표시" + "기존 첫 번째
+  heading은 표시 안 되게")**: ① 단일 `~`("2021~2025년" 등)를 rag_chat
+  `StrikethroughFilter`와 같은 규칙으로 `\~` 이스케이프(`_escape_tildes`, 이미
+  이스케이프된 것은 제외). ② 평문에서 상단 보조 정보 단락(조회조건 "가격기준: … ·
+  비교광종: …"·"현재 단계: …")을 제거 — Markdown 렌더러에는 그대로 남음. 테스트 24
+  passed(신규 1: 헤더 단락 부재, 기존 1 갱신: `2021\~2025년`). 재배포
+  `komir-report-gen:260916-plain3`.
+- **후속 3(사용자 지시 "시장동향지표, 수급위기지표 그리고 다른 지표도 해당 단어는
+  볼드")**: `INDICATOR_TERMS`(시장동향지표·수급동향지표·수급위기지표·광물종합지수·
+  메이저금속지수·희소금속지수·가격강도지수 — 계산 모듈 문장 템플릿에서 수집) +
+  `BOLD_TAG="<b>{word}</b>"`(font 태그와 같은 HTML 방식), `emphasize_indicators()`.
+  적용 순서 colorize → bold → tilde escape(어휘 겹침 없음). 테스트 26 passed(신규 2).
+  재배포 `komir-report-gen:260916-plain4`.
+- **후속 4(사용자 예시로 정정 — "시장동향지표는 <b>1.73</b>점으로, 현재 <b>신중</b>
+  단계")**: 볼드 대상은 지표 명칭이 아니라 **지표 값과 단계 명칭**. `INDICATOR_TERMS`는
+  값 위치 앵커로만 쓰고(`_INDICATOR_VALUE_RE`: "<지표명><조사> <숫자>(점|포인트)"),
+  단계 명칭은 정책 YAML grade label 8종(`GRADE_LABELS`)이 " 단계" 또는 "에서 " 앞에
+  올 때만(`_GRADE_RE` — 전환 문장 "신중에서 주의 단계로"는 둘 다, 일반 명사 "관심이
+  필요"는 제외). 테스트 26 passed(2건 갱신). 재배포 `komir-report-gen:260916-plain5`.
+- **후속 5(사용자 지시 "상승/하락 font 처리할 때 앞뒤에 점수가 있으면 점수까지 font
+  영역에")**: `_TONE_RE`를 "(수치 )?어휘( 수치)?"로 확장 — 수치 토큰 = 선택 "약 "+부호+
+  숫자+선택 단위(`_TONE_NUM_UNITS`: %p·%·점·포인트·개월·일·년·달러·톤류·개국·건·배),
+  공백 하나로 바로 붙은 것만("1.92% 하락"·"약 800만톤 늘어"·"상승 9일"; "약 200만톤,
+  0.46% 증가"는 0.46%만, "2일 연속 하락"은 어휘만). 적용 순서를 볼드 → 색 → 물결표로
+  바꿔 볼드된 지표 값(`<b>3.66</b>점 하락`)도 색 영역에 들어간다. 테스트 26 passed
+  (colorize 6케이스). 재배포 `komir-report-gen:260916-plain6`.
+
+## 2026-09-16 — report_gen "주요 지표" 표를 응답 `table` 키로 분리
+
+사용자 지시(report-summary 워크트리): "전체 공통 아웃풋이 수정되었다. report에서
+주요 지표는 `table`이라는 별개의 키워드로 출력시켜 달라."
+
+- **응답 계약**: `AnalysisReportResponse`가 `{status, report}` → `{status, report, table}`.
+  `table`은 신설 `models.ReportTable`(`columns`·`rows`·`columns_meta`·`rows_typed`·
+  `markdown`) — rag_chat `table` 이벤트 공통 명세(§2)의 핵심 키와 같은 구성이라
+  프론트가 챗봇 표 컴포넌트를 재사용할 수 있게 했다. 챗봇 전용 키(`block_id`·
+  `source_index`·`chart_hint`)는 싣지 않는다. 표가 없으면(지표 0건·실패 응답) `null`.
+- **본문 변경**: `report` Markdown 끝의 `## 주요 지표` 절이 사라졌다. 행 선택
+  (price_* 4종 9개 화이트리스트·나머지 전체)·라벨·값 표기(비율 %, 지도 3종 "약
+  4.46억" 축약, 끝자리 0 생략)는 이전 본문 표와 문자 단위로 동일 — 렌더러 안의
+  표 블록을 `report_render.build_key_metrics_table()`로 그대로 옮긴 것.
+- **`rows_typed` 값 열**은 표시 단위 기준 숫자(비율은 %로 환산, 축약 표기는 표시
+  단위 원값 — `map_presentation.scaled_quantity`, `compact_quantity`와 배율표
+  `QUANTITY_SCALES` 공유). 문자열 지표(1위 국가 등)가 섞이면 `columns_meta[1].type`
+  은 `string`.
+- **소비자**: streamlit `report_gen_client.render_report_markdown(report, table)`이
+  본문 아래에 `table.markdown`을 이어 그린다(`views/report_demo.py` 호출부 2곳).
+  `scripts/capture_output_contract.py` 지문에도 `table` 포함.
+- 테스트 20 passed(계약 테스트 6곳 갱신: 라우트 JSON 등식에 `table` 포함, 본문에
+  `## 주요 지표` 부재 검증, price 표 rows/rows_typed/columns_meta 검증).
+- **커밋·배포**(사용자 지시): 워크트리 커밋 `f3c871eaf` → 이미지
+  `komir-report-gen:260916-table` 빌드(cwd=inhouse, `-f report_gen/Containerfile`) →
+  `komir-report-gen-test` 교체(`--env-file inhouse/.env`, `LLM_BASE_URL=host.docker.internal`,
+  `--add-host`, 18003:8003) → 컨테이너 안 `seed_prompts`(13행 upsert, 프롬프트 무변경이라
+  체크리스트 준수 목적) → `/admin/prompts/reload` 13건 → 라이브 HTTP 확인: 광물지도
+  (합성 5개년 chart)와 비철금속(v12 evidence의 KOMIS 원본 덤프 `live_price_base.json`,
+  비교광종 니켈) 둘 다 `{status, report, table}` 3키, 본문에 `## 주요 지표` 없음, 가격
+  표 10행(9개 화이트리스트+비교광종 변화율차) `rows`/`rows_typed` 정상, 잘못된 요청은
+  `{"status":"NO_DATA","report":null,"table":null}`.
+- streamlit(8501)은 호스트에서 본 저장소 main 기준으로 뜨므로 main 병합 후 재기동해야
+  새 렌더링(본문 아래 table.markdown)이 반영된다 — 워크트리 세션에서는 불가.
+
 ## 2026-09-16 — rag_chat 구조화 블록 public 공통화 + 추천 차트(chart_hint) + SSE 취소선 제거
 
 사용자 지시: "/prichat에 적용한 JSON을 public API에도 반영하고, JSON에 추천 차트
