@@ -2,7 +2,97 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
-## 2026-09-17 (최신) — 기권 사유 `source_not_extracted` 추가 — "이미지뿐인 근거"를 off_topic으로 오분류하던 것 수정
+## 2026-09-17 (최신, 같은 날 후속) — mine_aggregate 값 흔들림 근본원인(ingest PDF변환 결함) 수정
+
+사용자 지시("1번[ingest 근본수정] 진행해주세요") — 바로 아래 mine_aggregate 신설
+항목의 §7-1이 미해결로 남긴 "Escondida류 문서에서 답이 실행마다 흔들림" 한계의
+원인을 실제로 고쳤다. 원인은 mine_aggregate.py가 아니라 **ingest 파이프라인**
+(PDF→OKF 변환 결함)이었다: OKF `.md`에 큰 강조 수치가 문자 그대로 `#` 헤딩으로
+박혀 있어("### 1,305 kt 16% ..."), 진짜 절 제목("### Escondida") 바로 다음에 오면
+`read_node_text()`가 그 절의 실제 수치를 통째로 잘라버렸다.
+
+- **ingest 수정**: `ingest/pageindex/build_pageindex_trees.py::
+  demote_numeric_only_headings()` 신설(통화·퍼센트·단위·숫자뿐인 헤딩을 평문으로
+  강등, 줄 수 유지) — vendored 트리 빌더는 안 건드리고 `fix_blank_heading_titles`
+  와 같은 전처리 위치에 배선. 광산자료 99건 트리 전량 `--force` 재생성(1.7초,
+  실패 0건 — 사전 추정과 일치). 신규 단위테스트 5건.
+- **재검증 중 라이브로 발견·수정한 버그 2건 추가**(ingest 수정만으론 안 끝났음):
+  ①`_read_section_text`의 "절 매칭 성공" 판정을 "비어있지 않음"에서 "숫자+
+  단위 신호 ≥3개"로 교체 + 실패 시 문서 전체에서 가장 수치 밀도 높은 창을
+  선택하도록 폴백 강화 ②이 과정에서 "MT"(metric ton)를 "Mt"(백만톤)로 오인해
+  51,902톤을 519억톤으로 부풀리는 **심각한 단위 버그**를 새로 발견 —
+  "Mt"(대문자M+소문자t)만 백만톤으로 신뢰하고 그 외 대소문자 조합은 전부
+  모호한 것으로 제외하도록 정정(회귀 테스트 3건 추가) ③전망치(FY26e 등)가
+  실적처럼 뽑히던 것도 발견해 추출 프롬프트에 배제 규칙 추가.
+- **재검증**: 단위테스트 39/39+5/5(신규)+17/17(기존 ingest 회귀없음). 회귀 4건
+  전부 통과. "동 생산량 최대" 3회 재현 — 완전히 고정되진 않았으나(LLM 추출
+  비결정성 잔존) Escondida(1,305,000t, 정답)·Tenke Fungurume(519,361t, 다른
+  실제값)로 흔들림 범위가 좁혀짐(수정 전엔 519억톤 같은 명백한 오류까지 나왔음).
+  **부수 효과**: 우라늄(11건 중 0→1건 성공, Kazatomprom 29,000t)·니켈("unknown"
+  →"PT Vale 72,027t") 성공률도 개선됨. 상세는
+  `광산자료_집계질의_검증결과_260917.md` §9.
+- 잔존: LLM 추출 자체의 비결정성(같은 텍스트를 매번 같은 방식으로 못 읽음)은
+  이번 범위 밖. basis 프레임이 우라늄·코발트·철광석에 안 맞는 문제(§7-2)도 미해결.
+- 배포: `komir-rag-chat:260917-mineagg10`(직전 mineagg 계열 미세수정 이미지들은
+  각각 `-pre-260917-mineaggN`으로 보존). 커밋은 진행, **push는 사용자 지시 대기**.
+
+## 2026-09-17 — 광산자료 집계질의 실시간 계산 파이프라인 신설(mine_aggregate, worktree, 미병합)
+
+사용자 지시(main-agent 경유,
+`documents/산출물/2026-W38_0914-0920/광산자료_집계질의_실시간계산파이프라인_PRD_260917.md`)
+— "구리 채굴 광산중 작년에 채굴량이 가장 많은 광산이 어디야?"가 근거는 있는데
+`no_data_for_period`/`ambiguous`로 잘못 기권하던 문제(원인: 국가별 순위는 되는데
+개별 광산 154→실측 99건에 흩어진 수치를 모아 집계하는 기능 자체가 없었음) 해결.
+배치 사전계산은 확정 기각(PRD §0) — 광종·지표·집계를 매개변수로 받는 범용 실시간
+fan-out/reduce 파이프라인 하나로 구현.
+
+- **신규 모듈** `rag_core/retrieval/mine_aggregate.py`: 광종→OKF 폴더 상수 6개
+  (별칭 포함), `pageindex.py`의 기존 결정적 헬퍼(`load_trees`/`iter_nodes`/
+  `read_node_text`)를 재사용해 지표 키워드가 제목에 있는 절만 찾고(3단 폴백:
+  절 매칭→키워드 줄 ±40창→앞 3만자 절단), 문서마다 KomirJsonLLM으로 광산목록+
+  연도별값+unit+basis(ore/metal/concentrate/payable/unknown) 구조화 추출,
+  ThreadPoolExecutor(concurrency=LLM_CONCURRENCY)로 병렬화, 단위 정규화(톤 환산,
+  대소문자·"'000 tonnes" 관행표기 처리)·같은 basis끼리만 순위·연도규칙①②③·
+  동일광산 중복관측 병합(더 큰 값 우선)·회사전체합계/불명광산명 배제.
+  `Evidence.kind="aggregated"`(4번째 값) 신설 — 기존 kind 분기 코드가 안전하게
+  무시함을 사전 확인 후 도입.
+- **chatbot_graph.py**: `RetrievalRoute`에 `use_mine_aggregate`/`mine_metric`/
+  `mine_agg`/`mine_targets`/`mine_year` 추가(광종명은 기존 `komis_mineral_name`
+  재사용, 신규 필드 안 만듦). ROUTE_PROMPT에 "국가 단위(1위 생산국)는 agentic,
+  개별 광산 비교·순위는 mine_aggregate, 단일 광산 단순조회(위치 등)는 둘 다
+  아님" 3분류 경계 예시 추가. `_retrieve_node`가 다른 도구와 나란히
+  ThreadPoolExecutor job으로 호출, `on_status`를 `build_graph`→`_retrieve_node`
+  클로저로 관통시켜 문서 처리 진행상황을 SSE로 흘림. `_finalize_node`의 기존
+  "structured 근거만 남기고 노이즈 가지치기" 로직에 `"aggregated"`도 포함.
+- **SSE**: `chatbot.py::_status_event(stage, **extra)` 확장 — 기존에 버려지던
+  `extra` 채널(이미 `_run_with_status`가 받고 있었음)을 그대로 실어 보냄,
+  `{"stage":2,"detail":"7/20 문서 확인 중"}` 형태로 노출(기존 계약 비파괴).
+- **라이브 검증 중 발견·수정한 버그 6건**(상세는
+  `광산자료_집계질의_검증결과_260917.md` §4): ①route `max_tokens` 부족으로
+  mine_aggregate가 한 번도 안 켜짐(220→350) ②복합기업 보고서에서 광종 혼입
+  (철광석·다이아몬드가 구리로 섞임, 추출 프롬프트에 광종 필터 규칙 추가)
+  ③"BHP Group"·"unknown" 같은 회사합계/불명광산명이 개별광산처럼 순위에 섞임
+  (프롬프트+코드 이중 배제) ④"KTON"·"'000 tonnes" 미인식으로 세계 최대급
+  구리광산 다수가 "단위 환산 불가"로 제외됨(정규식 대소문자 무시+전처리)
+  ⑤mine_aggregate 근거(정답)에 무관한 dense 노이즈가 섞이면 생성 LLM이 통째로
+  기권(④의 노이즈 가지치기 확장) ⑥mine_aggregate 도입 직후 단순 위치조회
+  질문(Kazatomprom xlsx)까지 오라우팅되는 회귀 발견·ROUTE_PROMPT 경계 예시로 수정.
+- **검증**: 단위테스트 38건(신규 `test_mine_aggregate.py`) 전부 통과. 회귀
+  4건(국가순위·xlsx위치·off_topic·가격표) 전부 통과. 목표 재현 질문 라이브 성공
+  (Escondida 1,305,000t 등, 원문 grep 대조 일치). §5-6 다중 케이스(6광종+연도
+  규칙+basis전환+값없음지표) 각각 라이브 실행, 답변 수치 전부 grep 대조 스크립트로
+  원문 존재 확인(지어낸 값 없음). **미해결로 남긴 한계**: 동일 케이스 반복 시
+  Escondida류(PDF 변환이 수치를 별도 헤딩으로 분리한 문서)에서 절 매칭이 실패해
+  1위 값이 실행마다 흔들리는 사례 발견(전부 실제 원문 수치, fabrication 아님) —
+  근본 해결은 후속 과제로 명시. 우라늄(11건, PRD 표기 40건과 실측 불일치)·코발트
+  (5건, PRD 표기 20건)·철광석(12건, PRD 표기 17건)은 basis 프레임이 해당 광종
+  보고관행과 안 맞아 "수치 없음"으로 자주 빠짐(코드 결함 아닌 basis 프레임 한계,
+  후속 검토 필요).
+- 배포: `komir-rag-chat:260917-mineagg9` → `komir-rag-chat-test` 교체(직전
+  8개 빌드는 반복 수정 과정의 중간 이미지, 각각 `-pre-260917-mineaggN`으로
+  보존). 커밋은 진행하되 **push는 사용자 지시 대기**.
+
+## 2026-09-17 — 기권 사유 `source_not_extracted` 추가 — "이미지뿐인 근거"를 off_topic으로 오분류하던 것 수정
 
 사용자 제보 재확인("Weda Bay 니켈 광산 위치" → off_topic 오분류, 전 턴에서 직접
 원인 추적함): 근거는 정상 조회(sufficient=true)됐지만 실제 원문이 이미지

@@ -64,6 +64,7 @@ from ._shared_root import ensure_shared_on_path
 ensure_shared_on_path(Path(__file__).resolve())
 
 from common.llm_client import LLM_TRANSIENT_ERRORS, KomirJsonLLM  # noqa: E402
+from rag_core.retrieval import mine_aggregate  # noqa: E402
 from rag_core.retrieval.evidence import Evidence  # noqa: E402
 
 _logger = logging.getLogger(__name__)
@@ -195,6 +196,30 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
        "1위 생산국과의 생산량 차이는?", "상위 5개국이 가장 많이 생산하는
        광종은?"). 여러 광종 섹션을 훑어 국가별 표를 대조해야 답이 나오는
        질문이라 simple보다 느리다 — 필요할 때만 켤 것.
+   - mine_aggregate(2026-09-17 신설): 광종의 **개별 광산·사업장 여러 곳의
+     수치를 모아 최대/최소/순위/비교로 답해야 하는** 질문에만 켠다 — "여러
+     광산을 놓고 비교·순위를 매겨야 하는가"가 핵심 판단 기준이다. **아래
+     둘 다 mine_aggregate가 아니다**(반드시 예시로 경계를 구분):
+     - 국가 단위 질문("구리 1위 생산국은?") → pageindex agentic이 담당.
+     - **특정 광산 하나에 대한 단순 정보 조회**(위치·지분율·소유사·설명 등,
+       비교·순위가 아님, 예: "Kazatomprom 우라늄 광산 위치 알려줘", "그
+       광산 지분은 누가 갖고 있어?") → dense/pageindex(simple)가 이미
+       담당하던 영역이다, mine_aggregate로 보내지 않는다(회귀 방지 —
+       실측: 이 예시 없이는 라우터가 단순 위치질문까지 mine_aggregate로
+       잘못 보내 xlsx 조회가 깨졌다).
+     - "구리 1위 생산 광산은?"·"구리 채굴 광산 중 채굴량이 가장 많은 곳은?" →
+       여러 광산 비교·순위 → mine_aggregate.
+     켤 땐 함께 정한다(use_mine_aggregate=true):
+     1) mine_metric — 질문이 원하는 지표를 자유형 한글로 그대로 적는다(예:
+        "생산량", "매장량", "지분율"). 광종명은 여기가 아니라
+        komis_mineral_name에 넣는다.
+     2) mine_agg — "max"(가장 많은/최대) | "min"(가장 적은/최소) | "rank"
+        (순위·상위 몇 개) | "compare"(정확히 두 대상 비교) 중 하나.
+     3) mine_targets — mine_agg=compare일 때만 비교할 두 광산 이름을 배열로.
+     4) mine_year — 질문이 특정 연도를 가리키면(예: "작년"→오늘_날짜 기준
+        전년도의 정수, "2024년"→2024) 정수로 채운다. 지정 안 했으면 null.
+     mine_aggregate를 켤 땐 komis_mineral_name도 반드시 함께 채운다(광종을
+     모르면 켜지 않는다).
 
 komis_raw를 켤 땐 komis_mineral_name을
 반드시 함께 지정한다 — 광종을 모르면 켜지 않는다(use_komis_raw=false, 다만
@@ -324,6 +349,16 @@ class RetrievalRoute(BaseModel):
     commodity_code: Literal["CU", "NI", "CO", "LI", "REE"] | None = None
     target: Literal["volume", "value"] | None = None
     forecast_months: int | None = None  # import_forecast 전용 — "N개월치만" 요청 시 1~N만 반환
+    # 2026-09-17(광산자료_집계질의_실시간계산파이프라인_PRD) — 개별 광산·사업장
+    # 단위 생산량/매장량 등을 여러 문서에서 모아 최대/최소/순위/비교로 답하는
+    # 전용 경로. 국가 단위(1위 생산국 등)는 그대로 pageindex agentic이 담당 —
+    # ROUTE_PROMPT 위쪽 경계 예시 참고. 광종명은 새 필드를 안 만들고 기존
+    # komis_mineral_name을 그대로 재사용한다(신규 매핑 전 기존 필드 확인 원칙).
+    use_mine_aggregate: bool = False
+    mine_metric: str | None = None
+    mine_agg: Literal["max", "min", "rank", "compare"] | None = None
+    mine_targets: list[str] | None = None
+    mine_year: int | None = None
 
 
 #: structured_template 이름 -> (session, commodity_code, target) 받는 호출부.
@@ -475,7 +510,14 @@ def _route_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
                 "history": _recent_history(state),
                 "last_answer": _last_assistant_answer(state),
             },
-            output_model=RetrievalRoute, max_tokens=220,  # 2026-09-03/07: 기간 필드 3개 추가로 여유 확보
+            # 2026-09-03/07: 기간 필드 3개 추가로 220까지 확보. 2026-09-17(광산자료
+            # 집계 파이프라인) — mine_* 필드 5개 추가 후 실측(라이브 curl)으로
+            # 220에서 JSON이 중간에 잘려("Expecting ',' delimiter") 복구 재시도도
+            # 실패, route 전체가 안전 폴백(dense+pageindex만)으로 떨어져
+            # mine_aggregate가 단 한 번도 켜지지 못하는 회귀를 확인했다 — 350으로
+            # 재확보(성공 케이스 관찰 토큰 수의 여유를 둠, verify_node가 150->300
+            # 올릴 때와 같은 원인·같은 해법).
+            output_model=RetrievalRoute, max_tokens=350,
         )
         route = invocation.output
         if not route.resolved_query.strip():
@@ -495,7 +537,10 @@ def _route_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
     return {"route": route, "warnings": warnings}
 
 
-def _retrieve_node(state: RetrievalState, *, dense_k: int, pageindex_k: int) -> RetrievalState:
+def _retrieve_node(
+    state: RetrievalState, *, dense_k: int, pageindex_k: int,
+    llm: KomirJsonLLM | None = None, on_status: Callable[..., None] | None = None,
+) -> RetrievalState:
     """route가 켠 도구들을 스레드풀로 병렬 조회 — 도구 하나가 실패해도(DB
     미접속·PageIndex 트리 미구축 등) 나머지는 계속 진행한다(부분 열화, 전체
     실패가 아님). 모든 도구가 비거나 실패하면 evidence=[]로 돌아가고,
@@ -578,6 +623,19 @@ def _retrieve_node(state: RetrievalState, *, dense_k: int, pageindex_k: int) -> 
                 session.call_komis_raw_lookup, komis_raw_page_id, mineral_code=komis_raw_mineral_code,
                 start_period=start_period, end_period=end_period,
             )
+        # 2026-09-17(광산자료 집계 파이프라인) — 다른 job과 같은 풀에서 병렬
+        # 실행하되, 내부적으로 문서 20~40건을 자체 스레드풀로 또 fan-out한다
+        # (mine_aggregate.py 참고) — 이 job의 future.result()가 그 안쪽 fan-out
+        # 전체가 끝날 때까지 이 노드를 블로킹하므로, on_status를 그대로 넘겨
+        # 문서 처리 진행상황(§4.2 "SSE 진행상황")이 이 블로킹 구간 동안에도
+        # 나가게 한다(_run_with_status의 콜백은 스레드에서 불려도 안전 —
+        # chatbot.py::_run_with_status 참고).
+        if route.use_mine_aggregate and route.komis_mineral_name and route.mine_metric and route.mine_agg:
+            jobs["mine_aggregate"] = pool.submit(
+                mine_aggregate.aggregate_mine_metric,
+                route.komis_mineral_name, route.mine_metric, route.mine_agg,
+                year=route.mine_year, targets=route.mine_targets, llm=llm, on_status=on_status,
+            )
         query = route.resolved_query or state["question"]
         if route.use_dense:
             jobs["dense"] = pool.submit(session.call_hybrid_search, query, dense_k)
@@ -607,6 +665,10 @@ def _retrieve_node(state: RetrievalState, *, dense_k: int, pageindex_k: int) -> 
         evidence.extend(kr_evidence)
         warnings.extend(kr_warnings)
     evidence.extend(results.get("dense", []))
+    if "mine_aggregate" in results:
+        ma_evidence, ma_warnings = results["mine_aggregate"]
+        evidence.extend(ma_evidence)
+        warnings.extend(ma_warnings)
     if "pageindex" in results:
         if route.pageindex_mode == "agentic":
             pi_evidence, pi_warnings = results["pageindex"]
@@ -853,9 +915,19 @@ def _finalize_node(state: RetrievalState) -> RetrievalState:
         # 트레이드오프다. 실제로 혼합 근거가 필요했던 질문이 이걸로 답이 부실해진
         # 사례가 재현되면, verify가 근거별 기여도까지 판정하도록 재설계가
         # 필요하다(현재는 그런 재현 사례 없음).
+        # 2026-09-17(광산자료 집계 파이프라인) — 실측 재현: "구리 채굴 광산중
+        # 작년에 채굴량이 가장 많은 광산이 어디야?"가 mine_aggregate로 정확한
+        # 집계표를 만들어도(evidence 1건) route.use_dense가 항상 안전망으로
+        # 같이 켜져 있어 무관한 조달청 가격동향 보고서 5건이 같이 딸려오면
+        # 생성 LLM이 통째로 ABSTAIN_TEXT를 냈다(위 komis_raw 노이즈 버그와
+        # 동일 실패 모드) — kind 목록에 "aggregated"도 포함해 같은 가지치기를
+        # 적용한다. mine_aggregate 근거는 komis_raw와 같은 이유로 dense보다
+        # 신뢰도가 높다(이미 문서 전량을 fan-out 추출해 계산한 결과물이라
+        # dense의 베스트에포트 의미검색과 다르다).
         evidence = state.get("evidence", [])
-        if state.get("attempt", 1) == 1 and any(ev.kind == "structured" for ev in evidence):
-            pruned = [ev for ev in evidence if ev.kind == "structured"]
+        _TRUSTED_KINDS = ("structured", "aggregated")
+        if state.get("attempt", 1) == 1 and any(ev.kind in _TRUSTED_KINDS for ev in evidence):
+            pruned = [ev for ev in evidence if ev.kind in _TRUSTED_KINDS]
             if len(pruned) != len(evidence):
                 return {"evidence": pruned}
         return {}
@@ -911,16 +983,32 @@ def _route_after_verify(state: RetrievalState) -> str:
     return "done"
 
 
-def build_graph(llm: KomirJsonLLM, *, dense_k: int = 5, pageindex_k: int = 3):
+def build_graph(
+    llm: KomirJsonLLM, *, dense_k: int = 5, pageindex_k: int = 3,
+    on_status: Callable[..., None] | None = None,
+):
     """route -> retrieve -> verify -> (불충분하면 reformulate -> retrieve ->
     verify, 최대 MAX_ATTEMPTS번) -> finalize -> END. 매 호출마다 새로 짓는다
     (체크포인터 없음, 컴파일 비용은 LLM/DB 왕복에 비하면 무시할 만하다) —
     llm을 인자로 받아 테스트에서 모의로 갈아끼우기 쉽게 한다
-    (page_recommend/service.py의 llm 주입 방식과 동일)."""
+    (page_recommend/service.py의 llm 주입 방식과 동일).
+
+    2026-09-17(광산자료 집계 파이프라인) — `on_status`를 retrieve 노드까지
+    클로저로 관통시킨다(PRD §4.4-5 "on_status가 _retrieve_node까지 어떻게
+    전달되는지 구현 전 확인" — route/verify/reformulate와 같은 클로저 패턴을
+    그대로 재사용, 새 배선 방식 도입 안 함). `retrieve_evidence()`가 노드
+    완료 시점 기준으로 내는 상위 on_status("retrieving"/"verifying" 등)와는
+    별개로, 이 콜백은 retrieve 노드 **안에서**(mine_aggregate가 문서 하나
+    끝낼 때마다) 추가로 불린다 — 같은 stage 문자열("retrieving")이 여러 번
+    나가는 것은 기존에도 허용되는 동작이다(모듈 상단 _GRAPH_STAGE_TO_STATUS
+    주석 "중복 emit 허용" 참고)."""
 
     builder = StateGraph(RetrievalState)
     builder.add_node("route", lambda s: _route_node(s, llm))
-    builder.add_node("retrieve", lambda s: _retrieve_node(s, dense_k=dense_k, pageindex_k=pageindex_k))
+    builder.add_node(
+        "retrieve",
+        lambda s: _retrieve_node(s, dense_k=dense_k, pageindex_k=pageindex_k, llm=llm, on_status=on_status),
+    )
     builder.add_node("verify", lambda s: _verify_node(s, llm))
     builder.add_node("reformulate", lambda s: _reformulate_node(s, llm))
     builder.add_node("finalize", _finalize_node)
@@ -979,7 +1067,7 @@ def retrieve_evidence(
     바꾸면 여기도 같이 볼 것."""
 
     llm = llm or KomirJsonLLM()
-    graph = build_graph(llm, dense_k=dense_k, pageindex_k=pageindex_k)
+    graph = build_graph(llm, dense_k=dense_k, pageindex_k=pageindex_k, on_status=on_status)
     state: dict = {
         "question": question, "history": history or [], "session_id": session_id,
         "profile": profile, "attempt": 1,
