@@ -2,6 +2,23 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-18 (후속, 같은 날) — komis_mineral_ranking 신설(RDB 결정적쿼리 1순위)
+
+어제(같은 날 앞선 항목) 정리한 `챗봇_RDB_결정적쿼리_후보리스트_260918.md`
+1순위를 구현. 커밋 `a415374d5`. `KO_RSRC_PRDCTN_QUTY`(생산량)/
+`KO_RSRC_BURUDG_QUTY`(매장량)가 49개국·35광종·1,130+행으로 풍부한데도
+"니켈 매장량 1위 국가는?"류 질문이 느리고 가끔 놓치는 pageindex_agent(USGS
+문서 반복탐색)에만 의존하던 걸, `common/komis_raw.py::fetch_mineral_country_ranking()`
+(결정적 GROUP BY, `ai_ntn_mst` 조인으로 국가코드→한글명 변환)로 대체.
+구현 전 우려했던 "ore vs metal content 단위 혼재"는 KOMIS가 이미 `*_ton`
+컬럼으로 정규화해둬 기각됐지만, 대신 "매장량은 연도 스냅샷이라 여러 해
+SUM 금지(생산량은 흐름값이라 SUM 가능)"라는 새 이슈를 실측으로 발견해
+반영. ROUTE_PROMPT의 pageindex agentic 절도 함께 손봐 "광종 하나의 국가별
+순위"는 새 도구로, "여러 광종을 가로지르는 질문"만 agentic에 남게
+리다이렉트. 라이브 검증: "니켈 매장량 1위 국가"(중국 62.37%) 즉답, 경계
+회귀 없음(cross-mineral·개별광산 질문은 각각 여전히 agentic·mine_aggregate).
+2순위(다광종 비교랭킹)는 아직 미착수.
+
 ## 2026-09-18 — 멀티소스 검색 감사(확정버그 4건 수정) + 챗봇 피드백 통합 QA
 
 1) **멀티소스 검색 감사**(사용자 요청 — "임베딩·RDB·pageindex·OKF 4개 소스가
