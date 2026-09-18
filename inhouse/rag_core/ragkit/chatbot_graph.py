@@ -301,6 +301,47 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
         절 참고)에 YYYY로 채운다 — 연도만 받고 월/일은 없다.
      komis_mineral_ranking을 켤 땐 komis_mineral_name도 반드시 함께
      채운다(광종을 모르면 켜지 않는다).
+   - komis_price_volatility_ranking(2026-09-18 신설): **여러 광종을
+     가로질러** 가격 변동(폭)을 비교·랭킹할 때 켠다 — "니켈과 리튬 중
+     가격 변동이 큰 광물은?"(광종 2개 비교), "가격이 가장 많이 움직인
+     광종은?"(전체 랭킹) 둘 다 여기다. **단일 광종의 가격 자체(시세)를
+     묻는 질문은 이게 아니라 komis_raw(komis_topic=price)다** — "니켈
+     가격 알려줘"는 komis_raw, "니켈과 리튬 중 뭐가 더 변동이 크냐"만
+     이 도구다.
+     ⚠ **질문에 "최근"·"요즘" 같은 시점 표현이 있으면 반드시 기간을
+     채운다**(komis_relative_months 또는 komis_start_period/end_period) —
+     기간을 안 주면 광종마다 KOMIS 가격 이력이 시작된 시점부터 전체
+     기간으로 계산되는데, 광종별로 이력 길이가 크게 달라(어떤 광종은
+     20년치, 어떤 광종은 몇 달치만) 안 채우면 불공정한 비교가 된다.
+     **"최근"이라고만 하고 구체적 숫자가 없으면(예: "최근 변동성이 큰
+     광물은?") komis_relative_months=3(최근 3개월)을 기본값으로 채운다** —
+     숫자가 없다고 기간 자체를 비워두지 않는다. 시점 표현이 아예 없으면
+     (예: "가격이 가장 안정적인 광종은?") 채우지 않아도 된다.
+     켤 땐 함께 정한다(use_komis_price_volatility_ranking=true):
+     1) komis_compare_mineral_names — 질문이 구체적 광종 2개 이상을
+        지목하면 그 한글명 배열(예: ["니켈","리튬"]), "가장 큰/작은
+        광종은?"처럼 전체 중에서 찾는 질문이면 null(전 광종 대상 랭킹).
+        **위쪽의 komis_mineral_name(단일 문자열 필드)과 다른 필드다 —
+        여기 배열을 komis_mineral_name에 넣지 않는다**(타입 오류로
+        재시도가 발생한다).
+     2) komis_ranking_top_n(재사용) — "상위 N개"류 숫자, 없으면 5(비교
+        대상이 정확히 몇 개면 그 개수만큼이 자연히 나온다).
+   - komis_indicator_ranking(2026-09-18 신설): **여러 광종을 가로질러**
+     수급동향지표 또는 시장전망지표를 비교·랭킹할 때 켠다 — "수급동향지표가
+     가장 낮은/위험한 광종은?", "시장전망지표가 가장 좋은 광종은?" 같은
+     질문. **단일 광종의 지표 추이는 komis_raw(komis_topic=supply_stability
+     또는 market_outlook)가 담당** — 이 도구는 "여러 광종 중 어디"를 물을
+     때만.
+     켤 땐 함께 정한다(use_komis_indicator_ranking=true):
+     1) komis_indicator_ranking_page — "indicator_supply"(수급동향지표)
+        | "indicator_market"(시장전망지표). "수급"이면 supply, "시장"이면
+        market(위 komis_raw의 supply_stability/market_outlook 구분과 같은
+        기준).
+     2) komis_indicator_ranking_ascending — 질문이 "가장 낮은/나쁜/위험한"
+        류면 true, "가장 높은/좋은"류면 false.
+     3) komis_compare_mineral_names(재사용, 위 komis_price_volatility_ranking
+        과 동일 필드) — 특정 광종들만 비교하면 그 한글명 배열, 전체
+        대상이면 null.
 
 komis_raw를 켤 땐 komis_mineral_name을
 반드시 함께 지정한다 — 광종을 모르면 켜지 않는다(use_komis_raw=false, 다만
@@ -443,6 +484,16 @@ class RetrievalRoute(BaseModel):
     # 2026-09-18(RDB 결정적쿼리 후보리스트 1순위 — 매장량/생산량 국가랭킹)
     use_komis_mineral_ranking: bool = False
     komis_mineral_ranking_metric: Literal["production", "reserves"] | None = None
+    # 2026-09-18(RDB 결정적쿼리 후보리스트 2순위 — 다광종 비교랭킹). 위
+    # komis_ranking/komis_mineral_ranking은 "하나의 광종 안에서 국가별
+    # 순위"였다면, 이 둘은 반대로 "여러 광종을 가로질러 비교"한다.
+    # komis_compare_mineral_names는 두 도구가 공유(예: ["니켈","리튬"] —
+    # 없으면 전 광종 대상 랭킹).
+    use_komis_price_volatility_ranking: bool = False
+    use_komis_indicator_ranking: bool = False
+    komis_indicator_ranking_page: Literal["indicator_supply", "indicator_market"] | None = None
+    komis_indicator_ranking_ascending: bool | None = None
+    komis_compare_mineral_names: list[str] | None = None
     # 2026-09-03(발주처 문서 ④-나 "조회 기간 데이터 없음") — 질문이 명시적
     # 과거 기간을 지정했는데도 komis_raw_lookup에 아무 기간 필터가 안 실려
     # 최신 데이터가 그대로 나오던 갭을 메운다. `AnalysisPreviewRequest.
@@ -646,12 +697,16 @@ def _route_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
         warnings: list[str] = []
         _logger.info(
             "%s route: resolved_query=%r ambiguous=%s structured=%s(%s/%s) komis_raw=%s(%s/%s) "
-            "komis_ranking=%s(%s/%s) komis_mineral_ranking=%s(%s) dense=%s pageindex=%s(%s) mine_aggregate=%s",
+            "komis_ranking=%s(%s/%s) komis_mineral_ranking=%s(%s) price_volatility=%s "
+            "indicator_ranking=%s(%s/asc=%s) compare=%s dense=%s pageindex=%s(%s) mine_aggregate=%s",
             _log_prefix(state), route.resolved_query, route.is_ambiguous, route.use_structured,
             route.structured_template, route.commodity_code, route.use_komis_raw, route.komis_topic,
             route.komis_mineral_name, route.use_komis_ranking, route.komis_ranking_page,
             route.komis_ranking_metric, route.use_komis_mineral_ranking, route.komis_mineral_ranking_metric,
-            route.use_dense, route.use_pageindex, route.pageindex_mode, route.use_mine_aggregate,
+            route.use_komis_price_volatility_ranking, route.use_komis_indicator_ranking,
+            route.komis_indicator_ranking_page, route.komis_indicator_ranking_ascending,
+            route.komis_compare_mineral_names, route.use_dense, route.use_pageindex, route.pageindex_mode,
+            route.use_mine_aggregate,
         )
     except LLM_TRANSIENT_ERRORS as exc:
         route = RetrievalRoute(
@@ -797,6 +852,26 @@ def _retrieve_node(
                 start_period=route.komis_start_period, end_period=route.komis_end_period,
                 top_n=route.komis_ranking_top_n or 5,
             )
+        # 2026-09-18(RDB 결정적쿼리 후보리스트 2순위) — 여러 광종을 가로지르는
+        # 비교/랭킹 두 종. 이 둘은 mineral_code 해소가 필요 없다(광종명을
+        # 그대로 SQL의 ai_mnrl_mst 조인 필터로 쓴다 — komis_compare_mineral_names
+        # 참고). 가격변동은 "최근 N개월"류 상대기간이 자연스러워
+        # _relative_period_bounds()를 그대로 쓴다(indicator_ranking은 항상
+        # "최신값" 하나만 보므로 기간 자체가 필요 없다).
+        if route.use_komis_price_volatility_ranking:
+            vol_start, vol_end = _relative_period_bounds(route)
+            jobs["komis_price_volatility"] = pool.submit(
+                session.call_komis_price_volatility_ranking,
+                mineral_names=route.komis_compare_mineral_names,
+                start_period=vol_start, end_period=vol_end,
+                top_n=route.komis_ranking_top_n or 5,
+            )
+        if route.use_komis_indicator_ranking and route.komis_indicator_ranking_page:
+            jobs["komis_indicator_ranking"] = pool.submit(
+                session.call_komis_indicator_ranking, route.komis_indicator_ranking_page,
+                ascending=route.komis_indicator_ranking_ascending if route.komis_indicator_ranking_ascending is not None else True,
+                mineral_names=route.komis_compare_mineral_names, top_n=route.komis_ranking_top_n or 5,
+            )
         # 2026-09-17(광산자료 집계 파이프라인) — 다른 job과 같은 풀에서 병렬
         # 실행하되, 내부적으로 문서 20~40건을 자체 스레드풀로 또 fan-out한다
         # (mine_aggregate.py 참고) — 이 job의 future.result()가 그 안쪽 fan-out
@@ -848,6 +923,14 @@ def _retrieve_node(
         mrank_evidence, mrank_warnings = results["komis_mineral_ranking"]
         evidence.extend(mrank_evidence)
         warnings.extend(mrank_warnings)
+    if "komis_price_volatility" in results:
+        vol_evidence, vol_warnings = results["komis_price_volatility"]
+        evidence.extend(vol_evidence)
+        warnings.extend(vol_warnings)
+    if "komis_indicator_ranking" in results:
+        ind_evidence, ind_warnings = results["komis_indicator_ranking"]
+        evidence.extend(ind_evidence)
+        warnings.extend(ind_warnings)
     evidence.extend(results.get("dense", []))
     if "mine_aggregate" in results:
         ma_evidence, ma_warnings = results["mine_aggregate"]

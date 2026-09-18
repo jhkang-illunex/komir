@@ -351,6 +351,47 @@ class _ProfileSession:
         )
         return [Evidence(**d) for d in data["evidence"]], data["warnings"]
 
+    def call_komis_price_volatility_ranking(
+        self,
+        *,
+        mineral_names: list[str] | None = None,
+        start_period: str | None = None,
+        end_period: str | None = None,
+        top_n: int = 5,
+    ) -> tuple[list[Evidence], list[str]]:
+        """광종 간 가격 변동률 비교/랭킹(2026-09-18 추가) — "니켈과 리튬 중
+        가격 변동이 큰 광물은?" 같은 여러 광종 비교 질문 전용."""
+
+        data = self._call(
+            "komis_price_volatility_ranking",
+            {
+                "mineral_names": mineral_names, "start_period": start_period,
+                "end_period": end_period, "top_n": top_n,
+            },
+        )
+        return [Evidence(**d) for d in data["evidence"]], data["warnings"]
+
+    def call_komis_indicator_ranking(
+        self,
+        page_id: str,
+        *,
+        ascending: bool = True,
+        mineral_names: list[str] | None = None,
+        top_n: int = 5,
+    ) -> tuple[list[Evidence], list[str]]:
+        """지표(수급동향/시장전망) 최신값 기준 광종 간 비교/랭킹(2026-09-18
+        추가) — "수급동향지표가 가장 낮은 광종은?" 같은 여러 광종 비교
+        질문 전용."""
+
+        data = self._call(
+            "komis_indicator_ranking",
+            {
+                "page_id": page_id, "ascending": ascending,
+                "mineral_names": mineral_names, "top_n": top_n,
+            },
+        )
+        return [Evidence(**d) for d in data["evidence"]], data["warnings"]
+
     def call_komis_resolve_mineral(self, korean_name: str) -> dict[str, Any]:
         """한글 광종명 -> {mineral_code, price_category, warnings} — 2026-09-01
         추가. `call_komis_raw_lookup`에 넘길 `mineral_code`를 구하는 선행 호출로

@@ -786,6 +786,162 @@ class KomisRawDataRepository:
             row_count=len(rows), rows=rows,
         )
 
+    def fetch_price_volatility_ranking(
+        self, *, mineral_names: list[str] | None,
+        start_period: str | None, end_period: str | None, top_n: int = 5,
+    ) -> RawDataset:
+        """광종 간 가격 변동률 비교/랭킹(결정적 window function, 2026-09-18
+        신설 — RDB 결정적쿼리 후보리스트 2순위). `KO_MNRL_PRC`엔
+        mnrknd_unq_cd가 없어(가격기준일련번호로만 연결) `ai_prc_mnrl_map`으로
+        먼저 광종을 번역한다 — 한 광종이 여러 가격기준에 매핑되면
+        (`komis_raw_lookup`과 같은 원칙) 가장 작은 일련번호 하나만 대표로
+        쓴다. 기간 시작·끝 각각 최초/최근 1건(ROW_NUMBER 윈도우함수)을 뽑아
+        변동률(%)을 코드로 계산한다(LLM이 스스로 계산하지 않는다 — 더
+        정확하다). 정렬은 항상 변동폭의 **절댓값** 기준이다("변동성이 큰"은
+        방향과 무관 — 오른 것도 내린 것도 변동성이다, 부호는 결과의
+        pct_change 값으로 그대로 보여준다).
+
+        `mineral_names`(한글명 리스트)가 있으면 그 광종들만 비교(예: "니켈과
+        리튬 중"), 없으면 가격 매핑이 있는 전 광종을 대상으로 상위 N개
+        랭킹("가격이 가장 많이 움직인 광종은?")."""
+
+        name_filter = ""
+        if mineral_names:
+            names_literal = ", ".join(_literal(n) for n in mineral_names)
+            name_filter = f" AND ms.mnrl_nm_ko IN ({names_literal})"
+
+        period_conditions = []
+        if start_period:
+            period_conditions.append(f"p.crtr_ymd >= {_literal(_coerce_period(start_period, 'day', False))}")
+        if end_period:
+            period_conditions.append(f"p.crtr_ymd <= {_literal(_coerce_period(end_period, 'day', True))}")
+        period_clause = (" AND " + " AND ".join(period_conditions)) if period_conditions else ""
+
+        try:
+            frame = read_sql_pg(f"""
+                WITH representative_serial AS (
+                    SELECT pm.mnrknd_unq_cd AS mineral_code, ms.mnrl_nm_ko AS mineral,
+                           MIN(pm.mnrl_prc_crtr_sn) AS serial
+                    FROM {KOMIS_SCHEMA}.ai_prc_mnrl_map pm
+                    JOIN {KOMIS_SCHEMA}.ai_mnrl_mst ms ON ms.mnrknd_unq_cd = pm.mnrknd_unq_cd
+                    WHERE pm.use_yn = 'Y'{name_filter}
+                    GROUP BY pm.mnrknd_unq_cd, ms.mnrl_nm_ko
+                ),
+                bounded AS (
+                    SELECT rs.mineral, p.crtr_ymd, p.cmerc_prc,
+                           ROW_NUMBER() OVER (PARTITION BY rs.mineral ORDER BY p.crtr_ymd ASC) AS rn_first,
+                           ROW_NUMBER() OVER (PARTITION BY rs.mineral ORDER BY p.crtr_ymd DESC) AS rn_last
+                    FROM representative_serial rs
+                    JOIN {KOMIS_SCHEMA}.KO_MNRL_PRC p ON p.mnrl_prc_crtr_sn = rs.serial
+                    WHERE p.status = 'Y' AND p.last_del_dt IS NULL{period_clause}
+                )
+                SELECT mineral,
+                       MAX(CASE WHEN rn_first = 1 THEN crtr_ymd END) AS first_date,
+                       MAX(CASE WHEN rn_first = 1 THEN cmerc_prc END) AS first_price,
+                       MAX(CASE WHEN rn_last = 1 THEN crtr_ymd END) AS last_date,
+                       MAX(CASE WHEN rn_last = 1 THEN cmerc_prc END) AS last_price
+                FROM bounded
+                WHERE rn_first = 1 OR rn_last = 1
+                GROUP BY mineral
+            """)
+        except Exception as exc:  # noqa: BLE001 — 원본과 같은 사용자 노출 메시지
+            raise RawDataAccessError("광종 간 가격 변동률 비교 조회에 실패했습니다.") from exc
+
+        candidates: list[dict[str, Any]] = []
+        for record in frame.itertuples(index=False, name=None):
+            mineral, first_date, first_price, last_date, last_price = record
+            if first_price is None or last_price is None or float(first_price) == 0.0:
+                continue
+            pct_change = round((float(last_price) - float(first_price)) / float(first_price) * 100, 2)
+            candidates.append({
+                "mineral": mineral, "first_date": str(first_date), "first_price": _json_value(first_price),
+                "last_date": str(last_date), "last_price": _json_value(last_price), "pct_change": pct_change,
+            })
+        candidates.sort(key=lambda row: abs(row["pct_change"]), reverse=True)
+        rows = candidates[: max(1, int(top_n))]
+        for rank, row in enumerate(rows, start=1):
+            row["rank"] = rank
+        rows = [
+            {k: row[k] for k in ("rank", "mineral", "first_date", "first_price", "last_date", "last_price", "pct_change")}
+            for row in rows
+        ]
+
+        return RawDataset(
+            source_table="KO_MNRL_PRC",
+            columns=["rank", "mineral", "first_date", "first_price", "last_date", "last_price", "pct_change"],
+            column_labels={
+                "rank": "순위", "mineral": "광종", "first_date": "시작일자", "first_price": "시작가격",
+                "last_date": "종료일자", "last_price": "종료가격", "pct_change": "변동률(%)",
+            },
+            row_count=len(rows), rows=rows,
+        )
+
+    #: 2026-09-18(RDB 결정적쿼리 후보리스트 2순위) — 광종 간 지표 비교/랭킹
+    #: 대상 두 page_id. 값이 클수록 좋은/나쁜 방향이 지표마다 달라(수급동향
+    #: 지표는 낮을수록 위험 쪽, 시장전망지표는 방향성이 문서에 명시 안 돼
+    #: 있음) 정렬 방향(ascending)은 호출측(ROUTE_PROMPT 판단)이 고른다 —
+    #: 여기서 임의로 "좋다/나쁘다"를 단정하지 않는다.
+    _LATEST_INDICATOR_RANKING_SPECS: dict[str, dict[str, str]] = {
+        "indicator_supply": {
+            "table": "KO_SPDM_STBT_INDX", "value_column": "SPDM_STBT_INDX",
+            "period_column": "CRTR_YMD", "value_label": "수급동향지표",
+        },
+        "indicator_market": {
+            "table": "KO_MRKT_PRSPECT_IDCT", "value_column": "MRKT_PRSPECT_IDCT",
+            "period_column": "CRTR_YMD", "value_label": "시장전망지표",
+        },
+    }
+
+    def fetch_latest_indicator_ranking(
+        self, *, page_id: str, ascending: bool, mineral_names: list[str] | None, top_n: int = 5,
+    ) -> RawDataset:
+        """지표(수급동향/시장전망) 최신값 기준 광종 간 랭킹(결정적, 2026-09-18
+        신설). 각 광종의 가장 최근 1건(`DISTINCT ON`)만 골라 비교한다.
+        `mineral_names`가 있으면 그 광종들만, 없으면 지표가 있는 전 광종
+        대상 상위 N개."""
+
+        spec = self._LATEST_INDICATOR_RANKING_SPECS.get(page_id)
+        if spec is None:
+            raise RawDataAccessError(f"'{page_id}'는 광종 간 지표 랭킹을 지원하지 않습니다.")
+        table, value_column, period_column = spec["table"], spec["value_column"], spec["period_column"]
+
+        name_filter = ""
+        if mineral_names:
+            names_literal = ", ".join(_literal(n) for n in mineral_names)
+            name_filter = f" AND ms.mnrl_nm_ko IN ({names_literal})"
+
+        order = "ASC" if ascending else "DESC"
+        try:
+            frame = read_sql_pg(f"""
+                SELECT latest.mineral, latest.as_of, latest.value
+                FROM (
+                    SELECT DISTINCT ON (t.mnrknd_unq_cd)
+                           ms.mnrl_nm_ko AS mineral, t.{period_column} AS as_of, t.{value_column} AS value
+                    FROM {KOMIS_SCHEMA}.{table} t
+                    JOIN {KOMIS_SCHEMA}.ai_mnrl_mst ms ON ms.mnrknd_unq_cd = t.mnrknd_unq_cd
+                    WHERE t.{value_column} IS NOT NULL{name_filter}
+                    ORDER BY t.mnrknd_unq_cd, t.{period_column} DESC
+                ) latest
+                ORDER BY latest.value {order} NULLS LAST
+                LIMIT {int(top_n)}
+            """)
+        except Exception as exc:  # noqa: BLE001 — 원본과 같은 사용자 노출 메시지
+            raise RawDataAccessError("광종 간 지표 랭킹 조회에 실패했습니다.") from exc
+
+        rows = [
+            {"rank": i + 1, "mineral": mineral, "as_of": str(as_of), "value": _json_value(value)}
+            for i, (mineral, as_of, value) in enumerate(frame.itertuples(index=False, name=None))
+        ]
+        value_label = spec["value_label"]
+        return RawDataset(
+            source_table=table,
+            columns=["rank", "mineral", "as_of", "value"],
+            column_labels={
+                "rank": "순위", "mineral": "광종", "as_of": "기준시점(광종별 최신)", "value": value_label,
+            },
+            row_count=len(rows), rows=rows,
+        )
+
     def resolve_mineral_full(self, korean_name: str) -> tuple[str, str | None] | None:
         """한글 광종명(질문에 쓰인 표현 그대로, 예: "텅스텐")으로 `ai_mnrl_mst`
         에서 (mnrknd_unq_cd, prc_cat_cd)를 찾는다 — `resolve_mineral()`(코드→

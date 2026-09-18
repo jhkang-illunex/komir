@@ -301,12 +301,18 @@ def from_komis_raw(
 
 def from_komis_ranking(
     dataset: Any, *, mineral_code: str | None = None, metric_label: str, is_dummy: bool | None = None,
+    row_kind: str = "국가",
 ) -> list[Evidence]:
-    """`KomisRawDataRepository.fetch_country_ranking()`이 돌려준 RawDataset(국가별
-    순위 1건, 2026-09-18 신설) -> Evidence 1건. `from_komis_raw`와 달리 이미
-    DB에서 GROUP BY로 집계돼 표 자체가 "상위 N개국"이고 비중(%) 컬럼도 서버가
+    """`KomisRawDataRepository`의 각종 `fetch_*_ranking()`이 돌려준 RawDataset
+    (순위 1건, 2026-09-18 신설) -> Evidence 1건. `from_komis_raw`와 달리 이미
+    DB에서 GROUP BY로 집계돼 표 자체가 "상위 N개"이고 비중(%) 컬럼도 서버가
     계산해뒀다 — `_TRADE_SHARE_BASIS_NOTE`(원자료 미리보기에서 LLM이 스스로
-    분모를 계산하라던 안내)를 붙일 필요가 없다, 이 표는 이미 계산된 결과다."""
+    분모를 계산하라던 안내)를 붙일 필요가 없다, 이 표는 이미 계산된 결과다.
+
+    `row_kind`는 표의 각 행이 무엇의 순위인지("국가"|"광종") — 국가별
+    교역/매장량/생산량 랭킹은 기본값 그대로, 광종 간 비교(가격변동률·지표
+    랭킹, 2026-09-18 후속)는 "광종"을 넘긴다(섹션 문구가 "국가별...개국"으로
+    고정돼 있으면 광종 비교 결과에 안 맞는다)."""
 
     if not dataset.rows:
         return []
@@ -317,7 +323,7 @@ def from_komis_ranking(
     ]
     table_rows = [[str(row.get(c, "")) for c in columns] for row in dataset.rows]
     suffix = f"({mineral_code})" if mineral_code else ""
-    section = f"KOMIS 원천 · {dataset.source_table}{suffix} · 국가별 {metric_label} 상위 {len(dataset.rows)}개국"
+    section = f"KOMIS 원천 · {dataset.source_table}{suffix} · {row_kind}별 {metric_label} 상위 {len(dataset.rows)}개"
     caveat = KOMIS_RAW_DUMMY_CAVEAT if is_dummy else None
     text = _markdown_table(display_columns, table_rows)
     return [

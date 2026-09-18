@@ -531,3 +531,126 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
             metric_label=_RESERVES_PRODUCTION_METRIC_LABELS.get(metric, metric), is_dummy=is_dummy,
         )
         return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}
+
+    def _any_dummy(repo: KomisRawDataRepository, mineral_names: list[str]) -> bool:
+        """결과에 실제로 나온 광종들 중 하나라도 더미면 보수적으로 True —
+        여러 광종을 한 표에 합치는 비교/랭킹 도구는 행마다 다른 caveat을
+        달 수 없어(Evidence 1건에 caveat 1개) 하나라도 더미면 전체를 더미로
+        취급한다(2026-09-18, "확인 안 되면 안전한 쪽으로" 기존 원칙 재사용)."""
+
+        for name in mineral_names:
+            try:
+                resolved = repo.resolve_mineral_full(name)
+            except RawDataAccessError:
+                return True
+            if resolved is None:
+                continue
+            code = resolved[0]
+            try:
+                meta = repo.resolve_mineral_meta(code)
+            except RawDataAccessError:
+                return True
+            if meta is None or meta[1] != "KOMIS_SAMPLE":
+                return True
+        return False
+
+    @mcp.tool()
+    def komis_price_volatility_ranking(
+        mineral_names: list[str] | None = None,
+        start_period: str | None = None,
+        end_period: str | None = None,
+        top_n: int = 5,
+    ) -> dict[str, Any]:
+        """광종 간 가격 변동률 비교/랭킹(결정적, 2026-09-18 신설) — "니켈과
+        리튬 중 가격 변동이 큰 광물은?", "가격이 가장 많이 움직인 광종은?"
+        같은 **여러 광종을 가로지르는** 비교 질문 전용(단일 광종 가격
+        조회는 `komis_raw_lookup`의 price_* page_id가 그대로 담당).
+
+        ⚠ start_period/end_period를 안 주면 광종마다 KOMIS 가격 이력이
+        시작된 시점부터 전체 기간으로 변동률을 계산한다 — 광종별 이력
+        길이가 다르면(예: 어떤 광종은 20년치, 어떤 광종은 2개월치) 공정한
+        비교가 안 된다. 질문에 "최근"이 있으면 반드시 기간을 채울 것.
+
+        mineral_names: 비교할 광종 한글명 리스트(예: ["니켈","리튬"]) —
+        없으면 가격 데이터가 있는 전 광종 대상 상위 N개 랭킹.
+        {"evidence": [...], "warnings": [...]}."""
+
+        repo = KomisRawDataRepository()
+        try:
+            dataset = repo.fetch_price_volatility_ranking(
+                mineral_names=mineral_names, start_period=start_period,
+                end_period=end_period, top_n=top_n,
+            )
+        except RawDataAccessError as exc:
+            return {"evidence": [], "warnings": [str(exc)]}
+
+        warnings: list[str] = []
+        if not dataset.rows:
+            warnings.append(_NO_DATA_FOUND_MARKER)
+            return {"evidence": [], "warnings": warnings}
+
+        is_dummy = _any_dummy(repo, [row["mineral"] for row in dataset.rows])
+        if is_dummy:
+            warnings.append(
+                "⚠ 비교 대상 광종 중 일부는 KOMIS 실제 표본이 아니라 개발용 더미일 수 있습니다 — "
+                "실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요."
+            )
+
+        evidence = from_komis_ranking(
+            dataset, metric_label="가격 변동률", is_dummy=is_dummy, row_kind="광종",
+        )
+        return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}
+
+    _INDICATOR_RANKING_LABELS = {"indicator_supply": "수급동향지표", "indicator_market": "시장전망지표"}
+
+    @mcp.tool()
+    def komis_indicator_ranking(
+        page_id: str,
+        ascending: bool = True,
+        mineral_names: list[str] | None = None,
+        top_n: int = 5,
+    ) -> dict[str, Any]:
+        """지표(수급동향/시장전망) 최신값 기준 광종 간 비교/랭킹(결정적,
+        2026-09-18 신설) — "수급동향지표가 가장 낮은 광종은?", "시장전망지표가
+        가장 좋은 광종은?" 같은 **여러 광종을 가로지르는** 비교 질문 전용
+        (단일 광종 지표 추이는 `komis_raw_lookup`이 담당).
+
+        page_id: "indicator_supply"|"indicator_market"만 지원(private
+        프로필 전용 — 이 tool도 그 제약을 그대로 물려받는다).
+        ascending: True면 값이 가장 낮은 광종이 1위(예: "가장 위험한/안
+        좋은"), False면 가장 높은 광종이 1위("가장 좋은") — 질문 뉘앙스에
+        맞춰 호출측(라우터)이 고른다.
+        mineral_names: 비교할 광종 한글명 리스트, 없으면 지표가 있는 전
+        광종 대상. {"evidence": [...], "warnings": [...]}."""
+
+        if page_id in private_only_pages:
+            return {
+                "evidence": [],
+                "warnings": [f"'{page_id}'는 private 전용 데이터입니다 — public 프로필에서는 조회할 수 없습니다."],
+            }
+
+        repo = KomisRawDataRepository()
+        try:
+            dataset = repo.fetch_latest_indicator_ranking(
+                page_id=page_id, ascending=ascending, mineral_names=mineral_names, top_n=top_n,
+            )
+        except RawDataAccessError as exc:
+            return {"evidence": [], "warnings": [str(exc)]}
+
+        warnings: list[str] = []
+        if not dataset.rows:
+            warnings.append(_NO_DATA_FOUND_MARKER)
+            return {"evidence": [], "warnings": warnings}
+
+        is_dummy = _any_dummy(repo, [row["mineral"] for row in dataset.rows])
+        if is_dummy:
+            warnings.append(
+                "⚠ 비교 대상 광종 중 일부는 KOMIS 실제 표본이 아니라 개발용 더미일 수 있습니다 — "
+                "실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요."
+            )
+
+        evidence = from_komis_ranking(
+            dataset, metric_label=_INDICATOR_RANKING_LABELS.get(page_id, page_id),
+            is_dummy=is_dummy, row_kind="광종",
+        )
+        return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}
