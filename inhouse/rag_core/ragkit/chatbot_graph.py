@@ -106,7 +106,22 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
    resolved_query는 "가격"을 그대로 유지한다("수입금액"·"수입물량" 등 available한
    지표 이름으로 슬쩍 바꿔쓰면 안 됨 — 뒤 단계가 질문이 실제로 바뀐 것으로
    착각해 오답을 정답처럼 통과시킨다).
-2. 아래 세 근거 도구 중 무엇을 쓸지 정한다(resolved_query 기준으로 판단):
+1.5. is_ambiguous(2026-09-18, 실측 회귀: "니켈 데이터 보여주세요"가 광종만
+   특정되고 원하는 정보유형이 전혀 없는데도, dense가 "니켈"이 언급된 아무
+   문서나 찾아와 그걸로 무관한 옛 수치를 답변해버렸다 — 질문이 애초에
+   불명확했다는 사실 자체가 묻혔다). resolved_query(및 history)에 **광종만
+   있고 정보유형(가격/수입·수출/생산·매장/지표 등 구체적으로 무엇을 원하는지)
+   이 전혀 지정되지 않았으며, history를 봐도 앞선 대화에서 그 정보유형이
+   정해진 적이 없다면** is_ambiguous=true로 표시하고, 아래 2번의 모든 도구
+   플래그(use_dense·use_pageindex·use_komis_raw·use_mine_aggregate)는 전부
+   false로, 관련 필드는 전부 null로 둔다(검색 자체를 시도하지 않는다 —
+   무엇을 찾아야 할지 모르는데 검색하면 무관한 결과로 오답을 만들 뿐이다).
+   반대로 정보유형이 하나라도 특정됐다면(가격·수급동향지표·매장량·규제
+   등 무엇이든) is_ambiguous=false다 — 광종+정보유형 조합이면 충분하고,
+   기간·세부 범위까지 명시할 필요는 없다("니켈 가격"은 명확하다, "니켈
+   데이터"만 명확하지 않다).
+2. 아래 세 근거 도구 중 무엇을 쓸지 정한다(resolved_query 기준으로 판단,
+   is_ambiguous=true면 이 단계 전체를 건너뛰고 모든 도구를 false로 둔다):
    - structured(2026-09-07 임시 비활성화): komir 자체 산출물(수급위기 진단
      등급·12개월 수입물량/금액 예측·지정학 위기지수 추이)을 담던 테이블이
      교체될 예정이라 연결을 끊었다 — **use_structured는 항상 false로 두고,
@@ -336,6 +351,12 @@ class ReformulatedQuery(BaseModel):
 
 class RetrievalRoute(BaseModel):
     resolved_query: str = ""
+    # 2026-09-18 — 광종만 있고 정보유형이 전혀 없는 질문("니켈 데이터
+    # 보여주세요")을 검색 전에 걸러낸다(ROUTE_PROMPT 1.5 참고). true면
+    # _retrieve_node가 모든 도구를 건너뛰고 evidence=[]를 바로 반환 —
+    # chat_turn()의 기존 "evidence 0건 -> 유형8 사유 분류" 경로가 그대로
+    # "ambiguous" 사유·안내문으로 처리한다(새 경로를 만들지 않음).
+    is_ambiguous: bool = False
     use_structured: bool
     use_komis_raw: bool = False  # 2026-08-31 신설(komis_raw_lookup MCP tool)
     use_dense: bool
@@ -600,6 +621,16 @@ def _retrieve_node(
 
     route = state["route"]
     warnings = list(state.get("warnings", []))
+    if route.is_ambiguous:
+        # 2026-09-18 — ROUTE_PROMPT 1.5가 이미 모든 도구 플래그를 false로
+        # 뒀겠지만, 검색 자체를 시도하지 않는다는 걸 여기서도 코드로 확정한다
+        # (LLM 출력이라 100% 보장은 아니다고 취급 — STRUCTURED_ENABLED 가드와
+        # 같은 원칙). evidence=[]로 즉시 반환하면 chat_turn()의 기존
+        # "근거 0건 -> _classify_abstain" 경로가 원 질문 메시지를 그대로 보고
+        # "ambiguous" 사유·안내문("요청 범위가 넓습니다...")을 낸다 — 새 경로를
+        # 만들지 않고 기존 유형8 분류를 재사용한다.
+        warnings.append("route_ambiguous_question")
+        return {"evidence": [], "warnings": warnings}
     session = mcp_client.private if state.get("profile") == "private" else mcp_client.public
     jobs: dict[str, Future] = {}
 
@@ -1034,6 +1065,11 @@ def _prune_unrelated_near_miss_evidence(evidence: list[Evidence], route: "Retrie
 
 
 def _route_after_verify(state: RetrievalState) -> str:
+    # 2026-09-18 — 모호 질문(route_ambiguous_question)은 애초에 무엇을 찾아야
+    # 할지 모르는 상태라 reformulate(검색어 재작성)로 나아질 여지가 없다 —
+    # 재시도 사이클 하나를 그대로 낭비하지 않고 바로 finalize로 보낸다.
+    if "route_ambiguous_question" in state.get("warnings", []):
+        return "done"
     if not state.get("sufficient", True) and state.get("attempt", 1) < MAX_ATTEMPTS:
         return "retry"
     return "done"
