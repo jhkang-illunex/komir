@@ -62,6 +62,30 @@
    해당 안 됨 — B4/C3와 같은 "성실한 대체 근거 제시" 패턴에 더 가까워
    명확한 결함으로 보기 애매함, 그대로 둠.
 
+4) **B2 실제 수정 — komis_ranking 신설**(사용자 지적으로 재조사: "RDB에
+   있지 않을까요?" — 맞았다). `KO_CSTM_CMMRC.trgt_ntn`(대상국가) 컬럼이
+   28만 행 전부 채워져 있어 GROUP BY 하나만 추가하면 되는 문제였다(mine_
+   aggregate급 신규 파이프라인 불필요, 위 3번 판단이 틀렸음). 커밋
+   `e018f4e01`: `common/komis_raw.py::fetch_country_ranking()`(결정적
+   GROUP BY+ORDER BY+LIMIT+비중% 계산) + `komis_country_ranking` MCP tool
+   + `RetrievalRoute.use_komis_ranking` 등 배선. 라이브 검증: "리튬 수입
+   상위 5개국과 비중" → 정확한 순위표+비중%+막대차트(호주 37.6%·중국
+   26.27%·...), komis_raw(단일조회)와 동시 실행도 확인. map_global(UN
+   Comtrade)은 코드는 정상이나 dev-dummy HS코드가 `ai_hs_mnrl_map`과 안
+   겹쳐 광종 무관 0건(기존부터 있던 데이터 갭, 결정적 마커로 정직하게
+   기권 — 별도 버그 아님). 디버그 로그 포맷에 is_ambiguous·komis_ranking·
+   mine_aggregate 필드도 추가(그동안 안 찍혀 불편했음).
+
+5) **추가 후속 기능 후보 리스트업**(사용자 요청) — `documents/산출물/
+   2026-W38_0914-0920/챗봇_RDB_결정적쿼리_후보리스트_260918.md` 참고. 최우선
+   후보: `KO_RSRC_PRDCTN_QUTY`/`KO_RSRC_BURUDG_QUTY`(매장량·생산량) 실측
+   확인 결과 49개국·35광종·1,130+행으로 데이터가 풍부한데도 현재 "매장량/
+   생산량 1위 국가" 질문은 USGS 문서를 스캔하는 pageindex_agent(느리고
+   repeat_guard로 가끔 놓침, 오늘 세션 앞부분에서 확인)에만 의존 — RDB
+   랭킹으로 옮기면 komis_ranking과 같은 패턴으로 더 빠르고 안정적으로 답할
+   수 있다(단, 연도별 단위/기준(ore vs metal content) 일관성은 구현 전 추가
+   확인 필요).
+
 ## 2026-09-17 (최신, 같은 날 후속) — mine_aggregate 값 흔들림 근본원인(ingest PDF변환 결함) 수정
 
 사용자 지시("1번[ingest 근본수정] 진행해주세요") — 바로 아래 mine_aggregate 신설
