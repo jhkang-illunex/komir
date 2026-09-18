@@ -24,11 +24,14 @@ LLM 없이도 (1) 문서 찾기 (2) 노드(섹션) 찾기 (3) 노드 원문 읽�
 from __future__ import annotations
 
 import json
+import logging
 import os
 import sys
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+
+_logger = logging.getLogger(__name__)
 
 def _find_inhouse_root(start: Path) -> Path:
     """`rag_core/ragkit/tokenize_ko.py`(아래서 바로 import하는 그 모듈)를 담은
@@ -315,6 +318,16 @@ def read_node_text(
 
     okf_path = Path(okf_root) / hit["okf_path"]
     if not okf_path.is_file():
+        # 2026-09-18(감사 후속): 예전엔 여기서 조용히 ""을 돌려줘서, 호출부가
+        # title/summary는 있고 본문만 빈 "가짜 근거"를 그대로 evidence로
+        # 흘려보낼 수 있었다(필터링 없이). 최소한 로그는 남긴다 — 이 함수
+        # 자체는 여전히 ""을 돌려주고(트리 JSON이 원문 없이도 만들어질 수
+        # 있는 정상 상황을 에러로 취급하지 않는다), 실제 필터링은 lookup()이
+        # 이 빈 텍스트를 근거로 내보내지 않도록 처리한다.
+        _logger.warning(
+            "pageindex OKF 원문 없음: doc_id=%s okf_path=%s node_id=%s",
+            hit.get("doc_id", ""), hit["okf_path"], hit.get("node_id", ""),
+        )
         return ""
     lines = okf_path.read_text(encoding="utf-8").splitlines()
     start = hit.get("line_num", 1) + hit.get("body_line_offset", 0) - 1
@@ -368,6 +381,10 @@ def lookup(
     if with_text:
         for hit in nodes:
             hit["text"] = read_node_text(hit)
+        # 2026-09-18(감사 후속): OKF 원문이 없어 본문이 빈 hit는 title/summary만
+        # 있는 "가짜 근거"가 되므로 여기서 걸러낸다(read_node_text가 이미
+        # 그 경우를 경고 로그로 남긴 뒤다 — 위 read_node_text 참고).
+        nodes = [hit for hit in nodes if hit["text"]]
     return {"query": query, "documents": documents, "nodes": nodes}
 
 

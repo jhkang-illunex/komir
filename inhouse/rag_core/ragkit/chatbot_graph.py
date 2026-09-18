@@ -187,6 +187,16 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
      켜는 게 안전하다(기본값에 가깝게 취급). komis_raw를 켤 때도, 그 데이터가
      실제로는 없거나(발주 5광종 상당수가 아직 개발용 더미다) 부족할 수 있어
      안전망으로 함께 켜두는 걸 권장한다.
+     **복합 질문 필수 규칙(2026-09-18, 실측 회귀: "니켈 가격 동향과 함께 니켈
+     매장량 1위 국가도 알려줘"에서 komis_topic=price만 켜고 매장량 부분은
+     아무 도구도 안 켜 통째로 "근거 없음"으로 기권했다)** — 위 komis_topic은
+     질문 하나당 정확히 하나만 고를 수 있다. 한 질문에 서로 다른 정보요구가
+     여러 개 섞여 있는데 그중 하나만 komis_topic으로 커버된다면(예:
+     "가격"+"매장량 1위국" → topic은 price 하나뿐, 매장량 순위 요구가 그대로
+     남는다), **komis_topic이 못 담는 나머지 정보요구마다** 그걸 답할 수 있는
+     도구(dense, 그리고 국가별 순위·비교가 필요하면 pageindex agentic도)를
+     반드시 추가로 켠다. 질문에 담긴 정보요구 개수만큼 도구를 검토하되, 그중
+     하나를 komis_raw가 맡았다고 나머지를 안 켜고 넘어가지 않는다.
    - pageindex: USGS·조달청·Argus 같은 대형 구조화 보고서를 목차/섹션 단위로
      찾는다. dense만으로는 놓치기 쉬운 대량 통계표·국가별 수치 질문일 때 같이
      켠다. pageindex를 켤 땐 pageindex_mode도 정한다:
@@ -257,9 +267,11 @@ komis_mineral_name에 그 한글명을 넣는다. 이 값은 뒤 단계가 "이 
 #: "recent nickel price"처럼 시점이 빠진 영어 검색어를 만들 위험이 있었다
 #: (구체적 버그로 재현된 적은 없지만, route/verify와 같은 근본원인이라
 #: 굳이 남겨둘 이유가 없다는 사용자 판단).
-REFORMULATE_PROMPT = """직전 검색이 근거를 하나도 찾지 못했다. 같은 의도를
-유지하면서 검색 성공률을 높이도록 검색어를 다시 쓴다. 정확히 하나의 JSON
-객체만 출력한다.
+REFORMULATE_PROMPT = """직전 검색이 근거를 하나도 찾지 못했거나(evidence=0건),
+복합 질문 중 일부 정보요구만 답이 되고 나머지는 근거가 하나도 없었다. 같은
+의도를 유지하면서(이미 답이 된 부분이 있어도 그 사실은 신경쓰지 말고, 원
+질문이 묻는 것 전체를 그대로 담아) 검색 성공률을 높이도록 검색어를 다시
+쓴다. 정확히 하나의 JSON 객체만 출력한다.
 
 이 코퍼스는 두 갈래로 섞여 있다: 한국어 조달청 주간동향 보고서(가격·재고
 위주)와 영어 USGS/Argus 보고서(광종별 세계 생산량·매장량·국가별 통계 위주).
@@ -285,7 +297,19 @@ VERIFY_PROMPT = """직전 검색으로 근거 후보를 찾았다. 이 근거들
 예: 질문이 "구리가 많이 나는 나라는 어디야?"인데 근거가 전부 구리 가격 차트·
 재고 동향·시장뉴스뿐이고 국가별 생산량·순위를 언급한 문장이 하나도 없다면
 sufficient=false다. 근거 중 일부라도 질문에 실제로 답하는 문장이 있으면
-sufficient=true다(모든 근거가 완벽할 필요는 없다).
+sufficient=true다(모든 근거가 완벽할 필요는 없다) — **단, 이 규칙은 정보요구가
+하나일 때 그 안에 섞인 근거(일부는 노이즈, 일부는 정답)를 판단하는 기준이다.**
+
+**복합 질문(정보요구가 여러 개)은 요구마다 따로 확인한다**(2026-09-18, 실측
+회귀: "니켈 가격 동향과 함께 니켈 매장량 1위 국가도 알려줘"에서 가격 근거만
+있고 매장량 근거는 하나도 없었는데 위 규칙을 전체 질문에 그대로 적용해
+sufficient=true로 통과시켜, 매장량 부분이 재시도 기회도 없이 그대로 기권으로
+끝났다). 질문이 "A와 함께 B도"·"A, B 둘 다"처럼 서로 다른 사실을 묻는 절을
+여러 개 담고 있다면, **정보요구 하나하나에 대해 그걸 답하는 근거가 있는지
+따로** 확인한다. 그중 단 하나라도 답하는 근거가 전혀 없는 정보요구가 있으면
+sufficient=false이고, reason에 어느 정보요구가 비어 있는지 구체적으로 적는다
+(예: "가격은 근거 있음, 매장량 1위국은 근거 없음") — 다른 정보요구가 이미
+충실히 답변됐다는 이유로 넘어가지 않는다.
 
 **주제만 같고 지표가 다른 경우도 불충분이다** — 특히 정형(structured) 근거는
 "12개월 수입물량 예측"·"12개월 수입금액 예측"·"수급위기 진단 등급"·"지정학
@@ -440,6 +464,14 @@ def _relative_period_bounds(route: RetrievalRoute) -> tuple[str | None, str | No
 
 MAX_ATTEMPTS = 2  # 최초 1회 + 재시도 1회 — "빠른시간내에" 요구사항상 무한 재시도는 안 함
 HISTORY_WINDOW = 4  # route/reformulate/verify 세 LLM 호출이 공유하는 히스토리 창(최근 N메시지)
+#: 2026-09-18(감사 후속) — _retrieve_node의 도구 job 하나가 멈추면(특히
+#: mine_aggregate는 내부에서 문서 20~40건을 또 fan-out) 예전엔 future.result()에
+#: timeout이 없어 이 노드가, 나아가 챗봇 응답 전체가 무기한 블로킹됐다.
+#: common.config.Settings.LLM_TIMEOUT_SECONDS(개별 LLM 호출 1건, 기본 120s)보다
+#: 넉넉히 잡아 정상적인 mine_aggregate fan-out(여러 LLM 호출의 합)을 잘못 끊지
+#: 않으면서도, 실제 행(hang)에서는 이 시간 안에 그 도구만 포기하고 나머지 근거로
+#: 계속 진행한다.
+RETRIEVE_JOB_TIMEOUT_SECONDS = 180.0
 
 
 class RetrievalState(TypedDict, total=False):
@@ -602,7 +634,15 @@ def _retrieve_node(
                     f"komis_raw_unmapped_topic:{route.komis_topic}(mineral={route.komis_mineral_name})"
                 )
 
-    with ThreadPoolExecutor(max_workers=4) as pool:
+    # 2026-09-18(감사 후속): `with ThreadPoolExecutor(...) as pool:`을 쓰지
+    # 않는다 — context manager의 __exit__는 shutdown(wait=True)라 아래
+    # future.result(timeout=...)로 한 job을 포기해도, 블록을 빠져나갈 때 그
+    # 스레드가 실제로 끝날 때까지 다시 블로킹돼 timeout이 무의미해진다.
+    # try/finally + shutdown(wait=False)로 바꿔 timeout이 실제로 이 노드의
+    # 상한이 되게 한다(포기한 job의 스레드 자체는 백그라운드에서 계속 돌다
+    # 알아서 끝난다 — 파이썬 스레드는 강제 종료가 안 되므로 이게 최선).
+    pool = ThreadPoolExecutor(max_workers=4)
+    try:
         # STRUCTURED_ENABLED=False인 동안은 ROUTE_PROMPT가 use_structured를
         # 항상 false로 두도록 지시돼 있지만, LLM 출력이라 100% 보장은
         # 아니다 — 여기서 한 번 더 코드로 확정 차단한다(2026-09-07, 사용자
@@ -652,10 +692,12 @@ def _retrieve_node(
         results: dict[str, object] = {}
         for name, future in jobs.items():
             try:
-                results[name] = future.result()
-            except Exception as exc:  # noqa: BLE001 — 도구 하나 실패는 부분 열화로 흡수
+                results[name] = future.result(timeout=RETRIEVE_JOB_TIMEOUT_SECONDS)
+            except Exception as exc:  # noqa: BLE001 — 도구 하나 실패(timeout 포함)는 부분 열화로 흡수
                 _logger.warning("%s %s 조회 실패: %s: %s", _log_prefix(state), name, type(exc).__name__, exc)
                 warnings.append(f"{name}_failed")
+    finally:
+        pool.shutdown(wait=False)
 
     evidence: list[Evidence] = []
     if "structured" in results and results["structured"] is not None:
@@ -677,7 +719,21 @@ def _retrieve_node(
         else:
             evidence.extend(results["pageindex"])
 
-    return {"evidence": evidence, "warnings": warnings}
+    # 2026-09-18(감사 후속): 서로 다른 도구가(예: dense의 청크 vs pageindex의
+    # 노드) 같은 근거를 각기 다른 kind로 중복 반환해도 그대로 합쳐지던 문제 —
+    # (kind, source, section, text) 완전일치만 걸러낸다(교차 도구의 유사-중복을
+    # 잡는 의미적 dedup은 범위 밖 — 완전일치가 아닌 건 서로 다른 근거일 수
+    # 있어 임의로 지우면 오히려 근거 유실 위험이 크다).
+    deduped: list[Evidence] = []
+    seen: set[tuple[str, str, str, str]] = set()
+    for ev in evidence:
+        key = (ev.kind, ev.source, ev.section, ev.text)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(ev)
+
+    return {"evidence": deduped, "warnings": warnings}
 
 
 def _reformulate_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
