@@ -307,10 +307,19 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
      "이 광물 1위 생산국은?"·"이 광물 매장량 상위 5개국은?"·"1위 생산국과의
      생산량 차이는?"(순위표에서 계산 가능) → komis_mineral_ranking. 켤 땐
      함께 정한다(use_komis_mineral_ranking=true):
-     1) komis_mineral_ranking_metric — "production"(생산량, 흐름값 — 특정
-        연도만 물으면 그 해, "최근 N년 합"처럼 기간을 물으면 그 범위 합산,
-        아무 기간 언급 없으면 최신 연도) | "reserves"(매장량, 특정 시점
-        스냅샷 — 항상 연도 하나만, 미지정 시 최신 연도).
+     1) komis_mineral_ranking_metrics — **배열**이다(2026-09-18, 실측 회귀:
+        "희토류 생산량과 매장량 상위국을 알려줘"에서 단일값 시절엔 하나만
+        골라 나머지는 아예 조회를 안 해 "근거를 찾지 못했습니다"로
+        누락됐다 — 위 komis_raw의 "복합 질문 필수 규칙"과 같은 원칙).
+        "production"(생산량, 흐름값 — 특정 연도만 물으면 그 해, "최근
+        N년 합"처럼 기간을 물으면 그 범위 합산, 아무 기간 언급 없으면
+        최신 연도)과 "reserves"(매장량, 특정 시점 스냅샷 — 항상 연도
+        하나만, 미지정 시 최신 연도) 중 질문이 요구하는 걸 배열에 전부
+        담는다 — "생산량"만 물으면 `["production"]`, "매장량"만 물으면
+        `["reserves"]`, "생산량과 매장량 둘 다"·"생산·매장 현황"처럼 둘
+        다 묻거나 구분 없이 "현황"만 물으면 `["production", "reserves"]`.
+        하나만 담아야 할 이유가 없으면(질문이 둘 다 걸치면) 항상 둘 다
+        넣는다.
      2) komis_ranking_top_n(재사용) — "상위 N개국" 숫자, 없으면 5.
      3) 연도를 특정하면 komis_start_period/komis_end_period(위 komis_raw
         절 참고)에 YYYY로 채운다 — 연도만 받고 월/일은 없다.
@@ -498,7 +507,9 @@ class RetrievalRoute(BaseModel):
     komis_ranking_top_n: int | None = None
     # 2026-09-18(RDB 결정적쿼리 후보리스트 1순위 — 매장량/생산량 국가랭킹)
     use_komis_mineral_ranking: bool = False
-    komis_mineral_ranking_metric: Literal["production", "reserves"] | None = None
+    # 2026-09-18: 단일값(Literal)이던 걸 리스트로 확장 — "생산량과 매장량"
+    # 복합요청을 하나만 처리하던 결함 수정(ROUTE_PROMPT 참고).
+    komis_mineral_ranking_metrics: list[Literal["production", "reserves"]] | None = None
     # 2026-09-18(RDB 결정적쿼리 후보리스트 2순위 — 다광종 비교랭킹). 위
     # komis_ranking/komis_mineral_ranking은 "하나의 광종 안에서 국가별
     # 순위"였다면, 이 둘은 반대로 "여러 광종을 가로질러 비교"한다.
@@ -717,7 +728,7 @@ def _route_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
             _log_prefix(state), route.resolved_query, route.is_ambiguous, route.use_structured,
             route.structured_template, route.commodity_code, route.use_komis_raw, route.komis_topic,
             route.komis_mineral_name, route.use_komis_ranking, route.komis_ranking_page,
-            route.komis_ranking_metric, route.use_komis_mineral_ranking, route.komis_mineral_ranking_metric,
+            route.komis_ranking_metric, route.use_komis_mineral_ranking, route.komis_mineral_ranking_metrics,
             route.use_komis_price_volatility_ranking, route.use_komis_indicator_ranking,
             route.komis_indicator_ranking_page, route.komis_indicator_ranking_ascending,
             route.komis_compare_mineral_names, route.use_dense, route.use_pageindex, route.pageindex_mode,
@@ -860,13 +871,17 @@ def _retrieve_node(
         # ROUTE_PROMPT도 명시 연도만 채우게 했다 — komis_raw/komis_ranking과
         # 달리 _relative_period_bounds()를 부르지 않고 route의 명시 필드를
         # 그대로 넘긴다).
-        if route.use_komis_mineral_ranking and komis_raw_mineral_code and route.komis_mineral_ranking_metric:
-            jobs["komis_mineral_ranking"] = pool.submit(
-                session.call_komis_mineral_ranking, komis_raw_mineral_code,
-                route.komis_mineral_ranking_metric,
-                start_period=route.komis_start_period, end_period=route.komis_end_period,
-                top_n=route.komis_ranking_top_n or 5,
-            )
+        # 2026-09-18(고정질문 #4 회귀 수정) — komis_mineral_ranking_metrics가
+        # 리스트라 "생산량과 매장량" 복합요청은 지표마다 별도 job을 하나씩
+        # 낸다(RDB 조회 로직·MCP tool은 그대로 — call_komis_mineral_ranking을
+        # 지표 수만큼 반복 호출할 뿐). job 키에 지표명을 붙여 구분한다.
+        if route.use_komis_mineral_ranking and komis_raw_mineral_code:
+            for metric in route.komis_mineral_ranking_metrics or []:
+                jobs[f"komis_mineral_ranking:{metric}"] = pool.submit(
+                    session.call_komis_mineral_ranking, komis_raw_mineral_code, metric,
+                    start_period=route.komis_start_period, end_period=route.komis_end_period,
+                    top_n=route.komis_ranking_top_n or 5,
+                )
         # 2026-09-18(RDB 결정적쿼리 후보리스트 2순위) — 여러 광종을 가로지르는
         # 비교/랭킹 두 종. 이 둘은 mineral_code 해소가 필요 없다(광종명을
         # 그대로 SQL의 ai_mnrl_mst 조인 필터로 쓴다 — komis_compare_mineral_names
@@ -948,10 +963,11 @@ def _retrieve_node(
         rank_evidence, rank_warnings = results["komis_ranking"]
         evidence.extend(rank_evidence)
         warnings.extend(rank_warnings)
-    if "komis_mineral_ranking" in results:
-        mrank_evidence, mrank_warnings = results["komis_mineral_ranking"]
-        evidence.extend(mrank_evidence)
-        warnings.extend(mrank_warnings)
+    for name, payload in results.items():
+        if name.startswith("komis_mineral_ranking:"):
+            mrank_evidence, mrank_warnings = payload
+            evidence.extend(mrank_evidence)
+            warnings.extend(mrank_warnings)
     if "komis_price_volatility" in results:
         vol_evidence, vol_warnings = results["komis_price_volatility"]
         evidence.extend(vol_evidence)
