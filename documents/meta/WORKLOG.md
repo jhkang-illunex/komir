@@ -2,6 +2,23 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-18 (후속8, 같은 날) — push + rag_chat 정식 재배포
+
+사용자 지시("푸시를 진행하고 재배포를 진행해주세요"). `git push origin
+main`으로 오늘 26개 커밋 전부 origin에 반영(`f9db0bc31..2c6682d0d`).
+이어서 하루 종일 `docker cp`+`docker restart`로 실행 중 컨테이너에만
+반영돼 있던 변경사항(이미지 자체는 여전히 어제 `260917-mineagg-main`
+이미지)을 정식으로 이미지에 굽는 재배포 진행:
+- `docker build -f rag_chat/Containerfile -t komir-rag-chat:260918-rdb-ranking-main inhouse/`
+- 기존 `komir-rag-chat-test`를 `komir-rag-chat-test-pre-260918-rdbranking`
+  으로 정지+rename 보존(과거 `-pre-260917-*` 계열과 같은 백업 관례),
+  동일 env/mount(okf_documents·pageindex_trees ro)/port(18002)/
+  extra-host(host.docker.internal)로 새 컨테이너 기동.
+- 재기동 후 스모크 5종(오늘 가격·리튬수입상위국·희토류생산+매장량·
+  니켈vs리튬변동성·모호질문차단) 전부 기대대로 통과 — 하루 종일
+  docker cp로 검증하던 것과 이미지 빌드 결과가 동일함을 확인.
+- report_gen(18003)은 오늘 변경 없어 재배포 대상 아님.
+
 ## 2026-09-18 (후속, 같은 날) — komis_mineral_ranking 신설(RDB 결정적쿼리 1순위)
 
 어제(같은 날 앞선 항목) 정리한 `챗봇_RDB_결정적쿼리_후보리스트_260918.md`
