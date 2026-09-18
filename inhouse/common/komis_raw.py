@@ -404,6 +404,26 @@ _RANKING_METRIC_LABELS = {
     "export_weight": ("수출중량", "kg"),
 }
 
+#: 2026-09-18(챗봇 RDB 결정적쿼리 후보리스트 1순위) — 매장량·생산량 국가
+#: 랭킹. `_RANKING_SPECS`(교역, HS코드 번역 필요)와 달리 이 두 테이블은
+#: map_mineral의 기존 필터(mnrknd_unq_cd)로 광종을 바로 거른다 — HS코드
+#: 매핑을 거치지 않는다. `*_ton` 컬럼은 KOMIS가 이미 톤 단위로 환산해둔
+#: 값이라(컬럼 코멘트 "[샘플확장] 생산량/매장량(톤환산)") mine_aggregate처럼
+#: 별도 단위정규화 로직을 새로 만들 필요가 없다(2026-09-18 실측 확인 —
+#: WT002 단위 행도 prdctn_quty==prdctn_quty_ton으로 이미 톤 기준이었음).
+_RESERVES_PRODUCTION_RANKING_SPECS: dict[str, dict[str, str]] = {
+    "production": {
+        "table": "KO_RSRC_PRDCTN_QUTY", "country_column": "NTN_ENG_CD",
+        "metric_column": "PRDCTN_QUTY_TON", "period_column": "CRTR_YR",
+        "metric_label": "생산량",
+    },
+    "reserves": {
+        "table": "KO_RSRC_BURUDG_QUTY", "country_column": "NTN_ENG_CD",
+        "metric_column": "BURUDG_QUTY_TON", "period_column": "CRTR_YR",
+        "metric_label": "매장량",
+    },
+}
+
 #: 흔한 광종 동의어 -> `ai_mnrl_mst.mnrl_nm_ko`에 실제로 저장된 정본 명칭.
 #: 그 컬럼엔 동의어 컬럼이 따로 없어(정본 하나만) `resolve_mineral_full()`이
 #: 이 목록으로 원래 표현이 안 잡히면 정본으로도 같이 시도한다(2026-09-01,
@@ -665,6 +685,103 @@ class KomisRawDataRepository:
             column_labels={
                 "rank": "순위", "country": "국가", "total": f"{metric_label}합계({unit})",
                 "share_pct": "비중(%, 같은 기간·조건의 전체 국가 합계 대비)", "transaction_count": "거래건수",
+            },
+            row_count=len(rows), rows=rows,
+        )
+
+    def fetch_mineral_country_ranking(
+        self, *, metric: str, mineral_code: str,
+        start_period: str | None, end_period: str | None, top_n: int = 5,
+    ) -> RawDataset:
+        """매장량/생산량 국가별 상위 N(결정적 GROUP BY, 2026-09-18 신설,
+        `fetch_country_ranking`(교역)과 같은 원칙). metric: "production"|
+        "reserves".
+
+        매장량(reserves)은 연도별 **스냅샷**이라 여러 연도를 SUM하면 안 된다
+        (2024년 매장량 + 2025년 매장량을 더하는 건 의미가 없다 — 2025년 값이
+        2024년을 대체한 것이다) — 그래서 reserves는 항상 연도 하나(요청
+        기간의 끝, 없으면 그 광종의 최신 연도)만 본다. 생산량(production)은
+        **흐름값**이라 명시 기간이 있으면 그 범위를 SUM해도 "그 기간 총
+        생산량"으로 의미가 성립하지만, 기간이 없으면 똑같이 최신 연도
+        하나로 좁힌다(과도한 다년 누적을 기본값으로 만들지 않는다 —
+        "생산량 1위 국가"라고만 물으면 보통 최신 연도를 기대한다)."""
+
+        spec = _RESERVES_PRODUCTION_RANKING_SPECS.get(metric)
+        if spec is None:
+            raise RawDataAccessError(f"'{metric}'은 매장량/생산량 랭킹을 지원하지 않습니다.")
+
+        table = spec["table"]
+        country_column = spec["country_column"]
+        metric_column = spec["metric_column"]
+        period_column = spec["period_column"]
+        code = _literal(mineral_code)
+        conditions = [f"mnrknd_unq_cd = {code}"]
+
+        single_year_only = metric == "reserves" or not (start_period or end_period)
+        if single_year_only:
+            if start_period or end_period:
+                target_year = _coerce_period(end_period or start_period, "year", True)
+            else:
+                latest = read_sql_pg(
+                    f"SELECT MAX({period_column}) AS latest_year FROM {KOMIS_SCHEMA}.{table}"
+                    f" WHERE mnrknd_unq_cd = {code}"
+                )
+                latest_year_value = latest["latest_year"].iloc[0] if not latest.empty else None
+                if latest_year_value is None:
+                    return RawDataset(
+                        source_table=table, columns=["rank", "country", "total", "share_pct"],
+                        column_labels={}, row_count=0, rows=[],
+                    )
+                target_year = str(int(latest_year_value))
+            conditions.append(f"{period_column} = {_literal(target_year)}")
+        else:
+            if start_period:
+                conditions.append(f"{period_column} >= {_literal(_coerce_period(start_period, 'year', False))}")
+            if end_period:
+                conditions.append(f"{period_column} <= {_literal(_coerce_period(end_period, 'year', True))}")
+
+        where_clause = " AND ".join(f"t.{c}" for c in conditions)
+        # 2026-09-18: NTN_ENG_CD는 "CN"·"AU" 같은 2자리 코드뿐이라(컬럼명은
+        # eng_cd지만 실제 값은 국가명이 아니다) `ai_ntn_mst`(25개국 코드↔한글/
+        # 영문명 마스터, 다른 테이블과 같은 원리)로 조인해 한글명을 붙인다.
+        # LEFT JOIN이라 마스터에 없는 코드("OT"=기타 등)는 원본 코드가 그대로
+        # 나온다(행을 잃지 않음).
+        try:
+            frame = read_sql_pg(
+                f"SELECT COALESCE(m.ntn_nm_ko, t.{country_column}) AS country,"
+                f" SUM(t.{metric_column}) AS total, COUNT(*) AS n"
+                f" FROM {KOMIS_SCHEMA}.{table} t"
+                f" LEFT JOIN {KOMIS_SCHEMA}.ai_ntn_mst m ON m.ntn_cd = t.{country_column}"
+                f" WHERE {where_clause}"
+                f" GROUP BY COALESCE(m.ntn_nm_ko, t.{country_column})"
+                f" ORDER BY total DESC NULLS LAST LIMIT {int(top_n)}"
+            )
+            total_frame = read_sql_pg(
+                f"SELECT SUM(t.{metric_column}) AS grand_total FROM {KOMIS_SCHEMA}.{table} t WHERE {where_clause}"
+            )
+        except Exception as exc:  # noqa: BLE001 — 원본과 같은 사용자 노출 메시지
+            raise RawDataAccessError("매장량/생산량 국가별 랭킹 조회에 실패했습니다.") from exc
+
+        grand_total_value = total_frame["grand_total"].iloc[0] if not total_frame.empty else None
+        grand_total = float(grand_total_value) if grand_total_value is not None else 0.0
+
+        rows: list[dict[str, Any]] = []
+        for rank, record in enumerate(frame.itertuples(index=False, name=None), start=1):
+            country, total, n = record
+            total_value = float(total) if total is not None else 0.0
+            share_pct = round(total_value / grand_total * 100, 2) if grand_total else None
+            rows.append({
+                "rank": rank, "country": country, "total": _json_value(total),
+                "share_pct": share_pct, "record_count": int(n),
+            })
+
+        metric_label = spec["metric_label"]
+        return RawDataset(
+            source_table=table,
+            columns=["rank", "country", "total", "share_pct", "record_count"],
+            column_labels={
+                "rank": "순위", "country": "국가", "total": f"{metric_label}합계(톤)",
+                "share_pct": "비중(%, 같은 기간·조건의 전체 국가 합계 대비)", "record_count": "레코드건수",
             },
             row_count=len(rows), rows=rows,
         )

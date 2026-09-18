@@ -328,6 +328,29 @@ class _ProfileSession:
         )
         return [Evidence(**d) for d in data["evidence"]], data["warnings"]
 
+    def call_komis_mineral_ranking(
+        self,
+        mineral_code: str,
+        metric: str,
+        *,
+        start_period: str | None = None,
+        end_period: str | None = None,
+        top_n: int = 5,
+    ) -> tuple[list[Evidence], list[str]]:
+        """매장량/생산량 국가별 상위 N개(결정적 GROUP BY, 2026-09-18 추가) —
+        "매장량 1위 국가" 같은 질문 전용. `call_komis_country_ranking`(교역)과
+        달리 HS코드 번역이 필요 없다(§_mcp_tools_common.py::komis_mineral_ranking
+        독스트링 참고)."""
+
+        data = self._call(
+            "komis_mineral_ranking",
+            {
+                "mineral_code": mineral_code, "metric": metric,
+                "start_period": start_period, "end_period": end_period, "top_n": top_n,
+            },
+        )
+        return [Evidence(**d) for d in data["evidence"]], data["warnings"]
+
     def call_komis_resolve_mineral(self, korean_name: str) -> dict[str, Any]:
         """한글 광종명 -> {mineral_code, price_category, warnings} — 2026-09-01
         추가. `call_komis_raw_lookup`에 넘길 `mineral_code`를 구하는 선행 호출로

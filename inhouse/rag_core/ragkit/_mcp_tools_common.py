@@ -475,3 +475,59 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
             metric_label=_RANKING_METRIC_LABELS.get(metric, metric), is_dummy=is_dummy,
         )
         return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}
+
+    _RESERVES_PRODUCTION_METRIC_LABELS = {"production": "생산량", "reserves": "매장량"}
+
+    @mcp.tool()
+    def komis_mineral_ranking(
+        mineral_code: str,
+        metric: str,
+        start_period: str | None = None,
+        end_period: str | None = None,
+        top_n: int = 5,
+    ) -> dict[str, Any]:
+        """매장량/생산량 국가별 상위 N개(결정적 GROUP BY, 2026-09-18 신설) —
+        "{광종} 매장량 1위 국가", "{광종} 생산량 상위 5개국" 같은 순위형
+        질문 전용. `komis_country_ranking`(교역)과 같은 원칙이지만 이쪽은
+        HS코드 번역이 필요 없다(map_mineral은 광종코드로 직접 필터).
+
+        metric: "production"(생산량, 흐름값 — start/end 지정 시 그 기간
+        합산, 미지정 시 최신 연도)|"reserves"(매장량, 스냅샷 — 항상 연도
+        하나만, start/end 지정 시 end 연도, 미지정 시 최신 연도. 여러 해를
+        합산하지 않는다 — 매장량은 누적되는 값이 아니다).
+        start_period/end_period: YYYY(연도 4자리)만 받는다(월/일 없음).
+        mineral_code는 `komis_resolve_mineral`로 먼저 얻은 값(예: "MNRL0002").
+        {"evidence": [...], "warnings": [...]}."""
+
+        repo = KomisRawDataRepository()
+        try:
+            dataset = repo.fetch_mineral_country_ranking(
+                metric=metric, mineral_code=mineral_code,
+                start_period=start_period, end_period=end_period, top_n=top_n,
+            )
+        except RawDataAccessError as exc:
+            return {"evidence": [], "warnings": [str(exc)]}
+
+        warnings: list[str] = []
+        if not dataset.rows:
+            warnings.append(_NO_DATA_FOUND_MARKER)
+
+        try:
+            resolved_meta = repo.resolve_mineral_meta(mineral_code)
+        except RawDataAccessError:
+            resolved_meta = None
+        mineral_label = resolved_meta[0] if resolved_meta else mineral_code
+        data_source = resolved_meta[1] if resolved_meta else None
+        is_dummy = data_source != "KOMIS_SAMPLE"
+        if is_dummy and dataset.rows:
+            warnings.append(
+                f"⚠ '{mineral_code}' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미"
+                f"(ko_data_src_cd={data_source or '확인불가'})일 수 있습니다 — "
+                "실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요."
+            )
+
+        evidence = from_komis_ranking(
+            dataset, mineral_code=mineral_label,
+            metric_label=_RESERVES_PRODUCTION_METRIC_LABELS.get(metric, metric), is_dummy=is_dummy,
+        )
+        return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}

@@ -216,11 +216,15 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
      찾는다. dense만으로는 놓치기 쉬운 대량 통계표·국가별 수치 질문일 때 같이
      켠다. pageindex를 켤 땐 pageindex_mode도 정한다:
      - "simple"(기본값): 특정 문서·섹션 하나로 답이 되는 단순 조회.
-     - "agentic": 국가별 생산량 순위·비교·집계가 필요한 질문일 때만 고른다
-       (예: "이 광물 1위 생산국은?", "그 나라가 몇 번째로 많이 캐는 광종은?",
-       "1위 생산국과의 생산량 차이는?", "상위 5개국이 가장 많이 생산하는
-       광종은?"). 여러 광종 섹션을 훑어 국가별 표를 대조해야 답이 나오는
-       질문이라 simple보다 느리다 — 필요할 때만 켤 것.
+     - "agentic": 국가별 생산량 순위·비교·집계가 필요한 질문일 때만 고른다.
+       **단, "이 광물 1위 생산국은?"·"이 광물 생산량 상위 5개국은?"류(광종
+       하나의 국가별 순위)는 2026-09-18부터 komis_mineral_ranking이 담당한다
+       — agentic은 켜지 않는다(더 느리고 USGS 코퍼스 커버리지에 의존적이라,
+       DB 직접 집계가 되는 경우엔 그쪽이 우선이다).** agentic은 **여러
+       광종을 가로질러야 하는** 질문에만 쓴다(예: "그 나라가 몇 번째로
+       많이 캐는 광종은?", "상위 5개국이 가장 많이 생산하는 광종은?") —
+       여러 광종 섹션을 훑어 국가별 표를 대조해야 답이 나오는 질문이라
+       simple보다 느리다.
    - mine_aggregate(2026-09-17 신설): 광종의 **개별 광산·사업장 여러 곳의
      수치를 모아 최대/최소/순위/비교로 답해야 하는** 질문에만 켠다 — "여러
      광산을 놓고 비교·순위를 매겨야 하는가"가 핵심 판단 기준이다. **아래
@@ -272,6 +276,31 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
      komis_ranking을 켤 땐 komis_mineral_name도 반드시 함께 채운다(광종을
      모르면 켜지 않는다). komis_raw(단일 조회)와 동시에 켤 수 있다(예:
      "니켈 가격이랑 수입 상위국 같이 알려줘"는 둘 다 켠다).
+   - komis_mineral_ranking(2026-09-18 신설): **하나의 광종**을 놓고 **매장량
+     또는 생산량 기준 국가별 순위**를 물을 때 켠다(komis_ranking과 같은
+     "국가 여러 곳을 랭킹" 성격이지만 대상이 교역이 아니라 매장량/생산량
+     이라는 점이 다르다 — komis_ranking은 매장량/생산량을 다루지 않는다,
+     komis_mineral_ranking은 수입/수출을 다루지 않는다). **아래는 pageindex
+     agentic이 대신 담당한다**(komis_mineral_ranking이 아니다):
+     - **특정 국가 하나**를 기준으로 "그 나라가 몇 번째로 많이 캐는
+       광종은?"처럼 **여러 광종을 가로질러** 비교해야 하는 질문 — 이건
+       광종 하나의 국가별 순위가 아니라 국가 하나의 광종별 순위라 반대
+       방향이다.
+     - 정성적 맥락(왜 그 나라가 1위인지, 최근 동향 등)까지 함께 필요한
+       질문 — komis_mineral_ranking은 숫자 순위표만 준다, 서술적 배경은
+       USGS 문서(pageindex agentic/simple)가 담당.
+     "이 광물 1위 생산국은?"·"이 광물 매장량 상위 5개국은?"·"1위 생산국과의
+     생산량 차이는?"(순위표에서 계산 가능) → komis_mineral_ranking. 켤 땐
+     함께 정한다(use_komis_mineral_ranking=true):
+     1) komis_mineral_ranking_metric — "production"(생산량, 흐름값 — 특정
+        연도만 물으면 그 해, "최근 N년 합"처럼 기간을 물으면 그 범위 합산,
+        아무 기간 언급 없으면 최신 연도) | "reserves"(매장량, 특정 시점
+        스냅샷 — 항상 연도 하나만, 미지정 시 최신 연도).
+     2) komis_ranking_top_n(재사용) — "상위 N개국" 숫자, 없으면 5.
+     3) 연도를 특정하면 komis_start_period/komis_end_period(위 komis_raw
+        절 참고)에 YYYY로 채운다 — 연도만 받고 월/일은 없다.
+     komis_mineral_ranking을 켤 땐 komis_mineral_name도 반드시 함께
+     채운다(광종을 모르면 켜지 않는다).
 
 komis_raw를 켤 땐 komis_mineral_name을
 반드시 함께 지정한다 — 광종을 모르면 켜지 않는다(use_komis_raw=false, 다만
@@ -411,6 +440,9 @@ class RetrievalRoute(BaseModel):
         "import_amount", "import_weight", "export_amount", "export_weight",
     ] | None = None
     komis_ranking_top_n: int | None = None
+    # 2026-09-18(RDB 결정적쿼리 후보리스트 1순위 — 매장량/생산량 국가랭킹)
+    use_komis_mineral_ranking: bool = False
+    komis_mineral_ranking_metric: Literal["production", "reserves"] | None = None
     # 2026-09-03(발주처 문서 ④-나 "조회 기간 데이터 없음") — 질문이 명시적
     # 과거 기간을 지정했는데도 komis_raw_lookup에 아무 기간 필터가 안 실려
     # 최신 데이터가 그대로 나오던 갭을 메운다. `AnalysisPreviewRequest.
@@ -614,12 +646,12 @@ def _route_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
         warnings: list[str] = []
         _logger.info(
             "%s route: resolved_query=%r ambiguous=%s structured=%s(%s/%s) komis_raw=%s(%s/%s) "
-            "komis_ranking=%s(%s/%s) dense=%s pageindex=%s(%s) mine_aggregate=%s",
+            "komis_ranking=%s(%s/%s) komis_mineral_ranking=%s(%s) dense=%s pageindex=%s(%s) mine_aggregate=%s",
             _log_prefix(state), route.resolved_query, route.is_ambiguous, route.use_structured,
             route.structured_template, route.commodity_code, route.use_komis_raw, route.komis_topic,
             route.komis_mineral_name, route.use_komis_ranking, route.komis_ranking_page,
-            route.komis_ranking_metric, route.use_dense, route.use_pageindex, route.pageindex_mode,
-            route.use_mine_aggregate,
+            route.komis_ranking_metric, route.use_komis_mineral_ranking, route.komis_mineral_ranking_metric,
+            route.use_dense, route.use_pageindex, route.pageindex_mode, route.use_mine_aggregate,
         )
     except LLM_TRANSIENT_ERRORS as exc:
         route = RetrievalRoute(
@@ -699,7 +731,7 @@ def _retrieve_node(
         # 수 있어 중복 DB 왕복을 피한다). page_id 결정(_komis_raw_page_id)은
         # 아래에서 여전히 komis_raw 전용으로만 한다 — 랭킹은 route가 이미
         # page_id를 직접 고른다(komis_ranking_page).
-        route.use_komis_ranking and route.komis_mineral_name
+        (route.use_komis_ranking or route.use_komis_mineral_ranking) and route.komis_mineral_name
     ):
         resolved = session.call_komis_resolve_mineral(route.komis_mineral_name)
         warnings.extend(resolved.get("warnings", []))
@@ -751,6 +783,20 @@ def _retrieve_node(
                 route.komis_ranking_metric, start_period=rank_start, end_period=rank_end,
                 top_n=route.komis_ranking_top_n or 5,
             )
+        # 2026-09-18(RDB 결정적쿼리 후보리스트 1순위) — "{광종} 매장량/생산량
+        # 국가랭킹" 전용. komis_ranking(교역)과 별도 job, mineral_code 해소는
+        # 위에서 공유한다. 연도는 relative_months 계산을 거치지 않는다(연 단위
+        # 매장량/생산량엔 "최근 N개월" 같은 상대기간 표현이 자연스럽지 않아
+        # ROUTE_PROMPT도 명시 연도만 채우게 했다 — komis_raw/komis_ranking과
+        # 달리 _relative_period_bounds()를 부르지 않고 route의 명시 필드를
+        # 그대로 넘긴다).
+        if route.use_komis_mineral_ranking and komis_raw_mineral_code and route.komis_mineral_ranking_metric:
+            jobs["komis_mineral_ranking"] = pool.submit(
+                session.call_komis_mineral_ranking, komis_raw_mineral_code,
+                route.komis_mineral_ranking_metric,
+                start_period=route.komis_start_period, end_period=route.komis_end_period,
+                top_n=route.komis_ranking_top_n or 5,
+            )
         # 2026-09-17(광산자료 집계 파이프라인) — 다른 job과 같은 풀에서 병렬
         # 실행하되, 내부적으로 문서 20~40건을 자체 스레드풀로 또 fan-out한다
         # (mine_aggregate.py 참고) — 이 job의 future.result()가 그 안쪽 fan-out
@@ -798,6 +844,10 @@ def _retrieve_node(
         rank_evidence, rank_warnings = results["komis_ranking"]
         evidence.extend(rank_evidence)
         warnings.extend(rank_warnings)
+    if "komis_mineral_ranking" in results:
+        mrank_evidence, mrank_warnings = results["komis_mineral_ranking"]
+        evidence.extend(mrank_evidence)
+        warnings.extend(mrank_warnings)
     evidence.extend(results.get("dense", []))
     if "mine_aggregate" in results:
         ma_evidence, ma_warnings = results["mine_aggregate"]
