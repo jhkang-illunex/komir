@@ -2,6 +2,49 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-18 — 멀티소스 검색 감사(확정버그 4건 수정) + 챗봇 피드백 통합 QA
+
+1) **멀티소스 검색 감사**(사용자 요청 — "임베딩·RDB·pageindex·OKF 4개 소스가
+   유기적으로 연동되는지"): 코드 감사+라이브 테스트로 확정 버그 4건 발견·수정,
+   커밋 `f59475cd8`. ① `_retrieve_node`의 `future.result()`에 timeout이 없어
+   도구 하나(특히 mine_aggregate 내부 fan-out)가 멈추면 응답 전체가 무기한
+   블로킹 — timeout 추가 + `with`(shutdown(wait=True)) 대신
+   try/finally+shutdown(wait=False)로 교체. ② evidence 병합 dedup 부재 →
+   (kind,source,section,text) 완전일치 dedup 추가. ③ pageindex OKF 원문 누락 시
+   silent empty → 경고 로그+lookup() 필터링 추가. ④ ROUTE_PROMPT의 komis_topic
+   단일선택 제약 때문에 복합 질문(가격+매장량 등) 중 일부만 답변되던 라우팅
+   누락 — ROUTE_PROMPT에 복합질문 규칙 추가. 이어서 VERIFY_PROMPT의 "근거
+   일부만 있어도 충분" 규칙이 복합질문 전체에 그대로 적용돼 한쪽만 답변되면
+   나머지가 재시도 기회 없이 기권되던 후속 결함도 발견·수정(VERIFY_PROMPT·
+   REFORMULATE_PROMPT). 라이브 검증(`komir-rag-chat-test` 재기동): 복합질문
+   재현 쿼리 가격+매장량 둘 다 정상 인용, 단일소스 4종 회귀 없음 확인.
+
+2) **챗봇 피드백·요구사항 통합 + 기능 QA**(사용자 요청): 그동안 흩어진 챗봇
+   관련 문서(`챗봇_대화형검색_피드백_PRD_260917.md`, 발주처 원본 21문항,
+   `챗봇_20문항검증_RAG코퍼스오염_260909.md`, 메모리 20여 건)를 통합해 16개
+   대표 케이스로 라이브(`/pubchat`, mode=auto) 재검증. 상세는
+   `documents/산출물/2026-W38_0914-0920/챗봇_피드백통합_기능QA_260918.md`.
+   - **확인**: PRD 260917 §1의 갭 5건은 같은 날(260917) 커밋 `e4fd3d9a0`으로
+     이미 전부 반영 완료 상태였다(PRD 문서 자체가 "확인 필요"로 남아 최신
+     상태를 못 따라감 — 문서 갱신 필요, 아직 미착수).
+   - **PASS 8 / PARTIAL 2 / FAIL 4 / 판정보류 2**(총 16케이스). 기존에 알려진
+     한계(B4·C3, 코퍼스 희소성)는 회귀 없이 유지, RAG 내부문서 오염
+     (2026-09-09 조치) 재발 없음, 5광종 화이트리스트 제거·보안/투자자문
+     pre-gate·멀티턴 대용어 해소 전부 회귀 없음 확인.
+   - **새로 발견(오늘 처음 확인, 미착수)**: (B2) "수입 상위 N개국+비중"류
+     순위·비중형 질문이 komis_raw domestic_trade/global_trade topic으로
+     안 켜짐. (D2) 조회기간이 완전히 범위 밖(예: 2010년)이고 komis_raw가
+     부분(연간) 데이터를 돌려주면 verify가 결정적 `no_data_for_period`
+     경로로 못 빠지고 reformulate가 대신 돌아 엉뚱한 문서로 귀결. (D4)
+     "니켈 데이터 보여주세요"류 모호질문 대표 예시가 모호-판정 경로를 안
+     타고 정상 검색으로 흘러 무관한 옛 데이터로 답변 — 로그상
+     `komis_topic=None`인데 `use_komis_raw=True`인 모순 조합도 관찰(ROUTE_PROMPT
+     스키마 일관성 문제). 세 건 다 원인 조사·수정 필요, 이번 세션에서는
+     발견만 하고 미착수.
+   - **미해결 잔존**: `data_lake/semi_structure/okf_documents/기타/` 내부문서
+     오염 재발 방지책(ingest source_policy 화이트리스트/블랙리스트) — 2026-09-09
+     부터 미착수 그대로.
+
 ## 2026-09-17 (최신, 같은 날 후속) — mine_aggregate 값 흔들림 근본원인(ingest PDF변환 결함) 수정
 
 사용자 지시("1번[ingest 근본수정] 진행해주세요") — 바로 아래 mine_aggregate 신설
