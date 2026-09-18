@@ -901,7 +901,21 @@ def _retrieve_node(
                 year=route.mine_year, targets=route.mine_targets, llm=llm, on_status=on_status,
             )
         query = route.resolved_query or state["question"]
-        if route.use_dense:
+        # 2026-09-18(사용자 지시 "안전망 보강") — komis_ranking 계열 4종(교역·
+        # 매장량/생산량·가격변동률·지표 비교)은 komis_raw와 달리 ROUTE_PROMPT의
+        # "권장" 문구에만 기대면 LLM이 안 켤 수 있다(실측 재현: "한국이 리튬을
+        # 가장 많이 수출하는 나라는?" — 라우팅 자체는 정확히 komis_ranking으로
+        # 갔지만 use_dense=False라 그 결과가 0건(수출 데이터 미적재)이어도
+        # 대체 근거가 전혀 없어 "질문 모호"로 잘못 기권했다). ROUTE_PROMPT
+        # 권장에 기대지 않고 이 4종을 켤 땐 dense를 코드로 강제 병행한다 —
+        # dense가 실제로 쓸모없어도(관련 문서가 없어도) 비용은 검색 1회뿐이고,
+        # _finalize_node가 구조화 근거가 있으면 이미 dense 노이즈를 가지치기
+        # 하므로 부작용이 없다(2026-09-07 노이즈 가지치기 로직 재사용).
+        use_dense_effective = route.use_dense or any((
+            route.use_komis_ranking, route.use_komis_mineral_ranking,
+            route.use_komis_price_volatility_ranking, route.use_komis_indicator_ranking,
+        ))
+        if use_dense_effective:
             jobs["dense"] = pool.submit(session.call_hybrid_search, query, dense_k)
         if route.use_pageindex:
             if route.pageindex_mode == "agentic":
