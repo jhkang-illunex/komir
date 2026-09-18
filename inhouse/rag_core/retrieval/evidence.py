@@ -297,3 +297,32 @@ def from_komis_raw(
             )
         )
     return evidence
+
+
+def from_komis_ranking(
+    dataset: Any, *, mineral_code: str | None = None, metric_label: str, is_dummy: bool | None = None,
+) -> list[Evidence]:
+    """`KomisRawDataRepository.fetch_country_ranking()`이 돌려준 RawDataset(국가별
+    순위 1건, 2026-09-18 신설) -> Evidence 1건. `from_komis_raw`와 달리 이미
+    DB에서 GROUP BY로 집계돼 표 자체가 "상위 N개국"이고 비중(%) 컬럼도 서버가
+    계산해뒀다 — `_TRADE_SHARE_BASIS_NOTE`(원자료 미리보기에서 LLM이 스스로
+    분모를 계산하라던 안내)를 붙일 필요가 없다, 이 표는 이미 계산된 결과다."""
+
+    if not dataset.rows:
+        return []
+    columns = dataset.columns
+    column_labels = getattr(dataset, "column_labels", None) or {}
+    display_columns = [
+        f"{c}({column_labels[c]})" if c in column_labels else c for c in columns
+    ]
+    table_rows = [[str(row.get(c, "")) for c in columns] for row in dataset.rows]
+    suffix = f"({mineral_code})" if mineral_code else ""
+    section = f"KOMIS 원천 · {dataset.source_table}{suffix} · 국가별 {metric_label} 상위 {len(dataset.rows)}개국"
+    caveat = KOMIS_RAW_DUMMY_CAVEAT if is_dummy else None
+    text = _markdown_table(display_columns, table_rows)
+    return [
+        Evidence(
+            kind="structured", source=f"public.{dataset.source_table}", section=section,
+            text=text, caveat=caveat,
+        )
+    ]

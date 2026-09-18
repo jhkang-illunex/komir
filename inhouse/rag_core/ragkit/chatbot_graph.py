@@ -245,6 +245,33 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
         전년도의 정수, "2024년"→2024) 정수로 채운다. 지정 안 했으면 null.
      mine_aggregate를 켤 땐 komis_mineral_name도 반드시 함께 채운다(광종을
      모르면 켜지 않는다).
+   - komis_ranking(2026-09-18 신설): 광종의 **수입/수출 국가별 순위**를
+     물을 때만 켠다 — "그 광종을 수입/수출하는 국가 여러 곳을 비교·순위
+     매겨야 하는가"가 핵심 판단 기준이다(mine_aggregate·pageindex agentic과
+     같은 "여러 개를 모아 순위" 성격이지만 **대상이 교역 국가**라는 점이
+     다르다). **아래는 komis_ranking이 아니다**(경계 구분):
+     - 매장량·생산량 국가 순위("니켈 매장량 1위 국가는?") → pageindex
+       agentic이 담당(USGS 코퍼스). komis_ranking은 매장량/생산량을 다루지
+       않는다 — 교역(수입/수출) 전용이다.
+     - 개별 광산 순위("구리 채굴량 1위 광산은?") → mine_aggregate.
+     - 특정 국가 하나의 수입/수출 실적 조회(비교·순위가 아님, 예: "호주에서
+       니켈 얼마나 수입했어?") → komis_raw(domestic_trade/global_trade)가
+       이미 담당 — 단일 국가 조회엔 komis_ranking을 켜지 않는다.
+     - "리튬 수입 상위 5개국과 비중은?"·"이 광종을 어디서 제일 많이
+       수출해?" → 여러 국가 비교·순위 → komis_ranking.
+     켤 땐 함께 정한다(use_komis_ranking=true):
+     1) komis_ranking_page — "map_korea"(한국 관세청 기준, "국내
+        수입/수출" 류 질문— 대부분 이거다) | "map_global"(세계 전체
+        교역, UN Comtrade 기준 — 한국이 아니라 "세계에서 어디가 제일
+        수출하나" 류일 때만).
+     2) komis_ranking_metric — "import_amount"(수입금액, "수입 상위"의
+        기본값) | "import_weight"(수입중량, 질문이 "물량"·"톤"을 명시할
+        때) | "export_amount"(수출금액) | "export_weight"(수출중량).
+     3) komis_ranking_top_n — 질문이 "상위 N개국"처럼 숫자를 명시하면
+        그 정수, 없으면 5.
+     komis_ranking을 켤 땐 komis_mineral_name도 반드시 함께 채운다(광종을
+     모르면 켜지 않는다). komis_raw(단일 조회)와 동시에 켤 수 있다(예:
+     "니켈 가격이랑 수입 상위국 같이 알려줘"는 둘 다 켠다).
 
 komis_raw를 켤 땐 komis_mineral_name을
 반드시 함께 지정한다 — 광종을 모르면 켜지 않는다(use_komis_raw=false, 다만
@@ -375,6 +402,15 @@ class RetrievalRoute(BaseModel):
     # 에서만 쓰는 것, 챗봇 전체는 아니다")로 CHATBOT_SYSTEM_PROMPT 규칙11도
     # 같이 제거했다(chatbot.py 참고).
     komis_mineral_name: str | None = None
+    # 2026-09-18(B2 후속 — "수입 상위 5개국" 국가 랭킹) — komis_raw_lookup과
+    # 별도 도구다(그쪽은 필터+정렬+LIMIT만, 집계가 없어 순위를 못 만든다).
+    # ROUTE_PROMPT 참고.
+    use_komis_ranking: bool = False
+    komis_ranking_page: Literal["map_korea", "map_global"] | None = None
+    komis_ranking_metric: Literal[
+        "import_amount", "import_weight", "export_amount", "export_weight",
+    ] | None = None
+    komis_ranking_top_n: int | None = None
     # 2026-09-03(발주처 문서 ④-나 "조회 기간 데이터 없음") — 질문이 명시적
     # 과거 기간을 지정했는데도 komis_raw_lookup에 아무 기간 필터가 안 실려
     # 최신 데이터가 그대로 나오던 갭을 메운다. `AnalysisPreviewRequest.
@@ -577,10 +613,13 @@ def _route_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
             route.resolved_query = state["question"]
         warnings: list[str] = []
         _logger.info(
-            "%s route: resolved_query=%r structured=%s(%s/%s) komis_raw=%s(%s/%s) dense=%s pageindex=%s(%s)",
-            _log_prefix(state), route.resolved_query, route.use_structured, route.structured_template,
-            route.commodity_code, route.use_komis_raw, route.komis_topic, route.komis_mineral_name,
-            route.use_dense, route.use_pageindex, route.pageindex_mode,
+            "%s route: resolved_query=%r ambiguous=%s structured=%s(%s/%s) komis_raw=%s(%s/%s) "
+            "komis_ranking=%s(%s/%s) dense=%s pageindex=%s(%s) mine_aggregate=%s",
+            _log_prefix(state), route.resolved_query, route.is_ambiguous, route.use_structured,
+            route.structured_template, route.commodity_code, route.use_komis_raw, route.komis_topic,
+            route.komis_mineral_name, route.use_komis_ranking, route.komis_ranking_page,
+            route.komis_ranking_metric, route.use_dense, route.use_pageindex, route.pageindex_mode,
+            route.use_mine_aggregate,
         )
     except LLM_TRANSIENT_ERRORS as exc:
         route = RetrievalRoute(
@@ -654,11 +693,18 @@ def _retrieve_node(
     komis_raw_mineral_code: str | None = None
     if route.use_komis_raw and route.komis_topic == "composite_index":
         komis_raw_page_id = "indicator_composite"
-    elif route.use_komis_raw and route.komis_topic and route.komis_mineral_name:
+    elif (route.use_komis_raw and route.komis_topic and route.komis_mineral_name) or (
+        # 2026-09-18(B2 후속 — 국가 랭킹) — 광종코드 해소는 komis_raw와
+        # komis_ranking이 공유한다(한 질문이 "가격+수입상위국"처럼 둘 다 켤
+        # 수 있어 중복 DB 왕복을 피한다). page_id 결정(_komis_raw_page_id)은
+        # 아래에서 여전히 komis_raw 전용으로만 한다 — 랭킹은 route가 이미
+        # page_id를 직접 고른다(komis_ranking_page).
+        route.use_komis_ranking and route.komis_mineral_name
+    ):
         resolved = session.call_komis_resolve_mineral(route.komis_mineral_name)
         warnings.extend(resolved.get("warnings", []))
         komis_raw_mineral_code = resolved.get("mineral_code")
-        if komis_raw_mineral_code:
+        if komis_raw_mineral_code and route.use_komis_raw and route.komis_topic:
             komis_raw_page_id = _komis_raw_page_id(route.komis_topic, resolved.get("price_category"))
             if not komis_raw_page_id:
                 warnings.append(
@@ -693,6 +739,17 @@ def _retrieve_node(
             jobs["komis_raw"] = pool.submit(
                 session.call_komis_raw_lookup, komis_raw_page_id, mineral_code=komis_raw_mineral_code,
                 start_period=start_period, end_period=end_period,
+            )
+        # 2026-09-18(B2 후속) — "{광종} 수입 상위 5개국" 같은 순위형 질문 전용
+        # 결정적 집계 조회(common/komis_raw.py::fetch_country_ranking, GROUP
+        # BY+ORDER BY+LIMIT). komis_raw_lookup과 별도 job이다 — 하나의 질문이
+        # 둘 다 필요로 할 수 있다(예: "가격 동향과 수입 상위국 같이").
+        if route.use_komis_ranking and komis_raw_mineral_code and route.komis_ranking_page and route.komis_ranking_metric:
+            rank_start, rank_end = _relative_period_bounds(route)
+            jobs["komis_ranking"] = pool.submit(
+                session.call_komis_country_ranking, komis_raw_mineral_code, route.komis_ranking_page,
+                route.komis_ranking_metric, start_period=rank_start, end_period=rank_end,
+                top_n=route.komis_ranking_top_n or 5,
             )
         # 2026-09-17(광산자료 집계 파이프라인) — 다른 job과 같은 풀에서 병렬
         # 실행하되, 내부적으로 문서 20~40건을 자체 스레드풀로 또 fan-out한다
@@ -737,6 +794,10 @@ def _retrieve_node(
         kr_evidence, kr_warnings = results["komis_raw"]
         evidence.extend(kr_evidence)
         warnings.extend(kr_warnings)
+    if "komis_ranking" in results:
+        rank_evidence, rank_warnings = results["komis_ranking"]
+        evidence.extend(rank_evidence)
+        warnings.extend(rank_warnings)
     evidence.extend(results.get("dense", []))
     if "mine_aggregate" in results:
         ma_evidence, ma_warnings = results["mine_aggregate"]

@@ -52,7 +52,7 @@ from common.komis_raw import (
 from common.llm_client import KomirJsonLLM
 from common import structured
 from rag_core.retrieval import pageindex_agent
-from rag_core.retrieval.evidence import Evidence, from_komis_raw, from_structured
+from rag_core.retrieval.evidence import Evidence, from_komis_raw, from_komis_ranking, from_structured
 
 
 def _evidence_dict(ev: Evidence | None) -> dict[str, Any] | None:
@@ -397,5 +397,81 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
         # 사용자 화면에 강제로 뜨는 경고용 — 둘은 소비처가 달라 둘 다 채운다).
         evidence = from_komis_raw(
             page_id, datasets, mineral_code=mineral_label, is_dummy=is_dummy, unverified=unverified,
+        )
+        return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}
+
+    #: metric -> 근거 section에 쓸 한글 라벨(komis_raw.py::_RANKING_METRIC_LABELS와
+    #: 같은 값 — evidence.py가 komis_raw.py를 모르게 하려고(계층 의존 방향
+    #: 유지) 이 파일에서 별도로 든다, 값 자체는 동일해야 함).
+    _RANKING_METRIC_LABELS = {
+        "import_amount": "수입금액", "import_weight": "수입중량",
+        "export_amount": "수출금액", "export_weight": "수출중량",
+    }
+
+    @mcp.tool()
+    def komis_country_ranking(
+        mineral_code: str,
+        page_id: str,
+        metric: str,
+        start_period: str | None = None,
+        end_period: str | None = None,
+        top_n: int = 5,
+    ) -> dict[str, Any]:
+        """국가별 합계 상위 N개(결정적 GROUP BY+ORDER BY+LIMIT, 2026-09-18
+        신설) — "{광종} 수입 상위 5개국", "{광종} 수출 많이 하는 나라" 같은
+        순위형 질문 전용. `komis_raw_lookup`(필터+정렬+LIMIT만, 집계 없음)로는
+        "최근 N건" 원자료만 나와 순위를 만들 수 없었다 — DB에서 직접 집계해
+        비중(%)까지 계산해 돌려준다(LLM이 원자료를 보고 스스로 분모를
+        계산하게 하지 않는다 — 그게 더 정확하다).
+
+        page_id: "map_korea"(관세청, 한국 기준 상대국 수입/수출)만 현재 실제
+        데이터가 있다. "map_global"(UN Comtrade)은 코드는 동작하지만
+        2026-09-18 실측 확인 결과 dev-dummy KO_UN_CMMRC의 HS코드가
+        `ai_hs_mnrl_map` 매핑과 겹치지 않아 광종 어느 것을 조회해도 0건이다
+        (데이터가 채워지면 별도 코드 변경 없이 그대로 동작).
+        metric: "import_amount"|"import_weight"|"export_amount"|"export_weight".
+        mineral_code는 `komis_resolve_mineral`로 먼저 얻은 값(예: "MNRL0001").
+        {"evidence": [...], "warnings": [...]}."""
+
+        repo = KomisRawDataRepository()
+        try:
+            hs_codes = repo.resolve_hs_codes(mineral_code)
+        except RawDataAccessError as exc:
+            return {"evidence": [], "warnings": [str(exc)]}
+        if not hs_codes:
+            return {
+                "evidence": [],
+                "warnings": [f"'{mineral_code}'에 대응하는 HS코드를 ai_hs_mnrl_map에서 찾지 못했습니다."],
+            }
+
+        try:
+            dataset = repo.fetch_country_ranking(
+                page_id=page_id, hs_codes=hs_codes, metric=metric,
+                start_period=start_period, end_period=end_period, top_n=top_n,
+            )
+        except RawDataAccessError as exc:
+            return {"evidence": [], "warnings": [str(exc)]}
+
+        warnings: list[str] = []
+        if not dataset.rows:
+            warnings.append(_NO_DATA_FOUND_MARKER)
+
+        try:
+            resolved_meta = repo.resolve_mineral_meta(mineral_code)
+        except RawDataAccessError:
+            resolved_meta = None
+        mineral_label = resolved_meta[0] if resolved_meta else mineral_code
+        data_source = resolved_meta[1] if resolved_meta else None
+        is_dummy = data_source != "KOMIS_SAMPLE"
+        if is_dummy and dataset.rows:
+            warnings.append(
+                f"⚠ '{mineral_code}' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미"
+                f"(ko_data_src_cd={data_source or '확인불가'})일 수 있습니다 — "
+                "실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요."
+            )
+
+        evidence = from_komis_ranking(
+            dataset, mineral_code=mineral_label,
+            metric_label=_RANKING_METRIC_LABELS.get(metric, metric), is_dummy=is_dummy,
         )
         return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}

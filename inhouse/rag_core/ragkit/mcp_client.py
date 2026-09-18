@@ -304,6 +304,30 @@ class _ProfileSession:
         )
         return [Evidence(**d) for d in data["evidence"]], data["warnings"]
 
+    def call_komis_country_ranking(
+        self,
+        mineral_code: str,
+        page_id: str,
+        metric: str,
+        *,
+        start_period: str | None = None,
+        end_period: str | None = None,
+        top_n: int = 5,
+    ) -> tuple[list[Evidence], list[str]]:
+        """국가별 합계 상위 N개(결정적 GROUP BY, 2026-09-18 추가) — "수입 상위
+        5개국" 같은 순위형 질문 전용. `call_komis_raw_lookup`은 필터+정렬+
+        LIMIT만이라 순위를 못 만든다(§_mcp_tools_common.py::komis_country_ranking
+        독스트링 참고)."""
+
+        data = self._call(
+            "komis_country_ranking",
+            {
+                "mineral_code": mineral_code, "page_id": page_id, "metric": metric,
+                "start_period": start_period, "end_period": end_period, "top_n": top_n,
+            },
+        )
+        return [Evidence(**d) for d in data["evidence"]], data["warnings"]
+
     def call_komis_resolve_mineral(self, korean_name: str) -> dict[str, Any]:
         """한글 광종명 -> {mineral_code, price_category, warnings} — 2026-09-01
         추가. `call_komis_raw_lookup`에 넘길 `mineral_code`를 구하는 선행 호출로

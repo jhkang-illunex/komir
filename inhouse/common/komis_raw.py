@@ -355,6 +355,55 @@ _PAGE_DATASETS: dict[str, tuple[_DatasetSpec, ...]] = {
     ),
 }
 
+#: 2026-09-18(챗봇 피드백통합 QA B2 후속) — 국가별 랭킹(GROUP BY+ORDER+LIMIT)
+#: 전용 스펙. `_PAGE_DATASETS`(필터+정렬+LIMIT만, 집계 없음)와 별개 경로다 —
+#: "리튬 수입 상위 5개국" 같은 질문이 komis_raw로 라우팅돼도 기존
+#: `_fetch_dataset`은 "최근 N건" 원자료만 돌려줘 순위를 만들 수 없었다(실측
+#: 확인: `KO_CSTM_CMMRC.trgt_ntn`(대상국가)이 28만행 전부 채워져 있어 집계
+#: 자체는 가능한데 도구가 안 했을 뿐). map_korea(관세청, 한국↔상대국)·
+#: map_global(UN Comtrade, 임의 두 나라 간 교역 — `imxprt_se_cd`로 수입/수출
+#: 관점을 가른다, 'I'=수입국 관점 crtr_ntn_nm이 수입국·'O'=수출국 관점
+#: crtr_ntn_nm이 수출국) 두 페이지만 국가 컬럼이 있어 대상이다. map_mineral
+#: (매장량·생산량)은 국가 컬럼(`ntn_eng_cd`)이 있지만 이번 범위 밖(§리스트업
+#: 참고 — 후속 후보로만 기록).
+_RANKING_SPECS: dict[str, dict[str, Any]] = {
+    "map_korea": {
+        "table": "KO_CSTM_CMMRC",
+        "country_column": "TRGT_NTN",
+        "period_column": "CRTR_YMD",
+        "period_precision": "day",
+        "metrics": {
+            "import_amount": "INCM_AMT", "import_weight": "INCM_WEIG",
+            "export_amount": "EXP_AMT", "export_weight": "EXP_WEIG",
+        },
+        "direction_column": None,
+        "direction_values": {},
+    },
+    "map_global": {
+        "table": "KO_UN_CMMRC",
+        "country_column": "CRTR_NTN_NM",
+        "period_column": "CRTR_YMD",
+        "period_precision": "day",
+        "metrics": {
+            "import_amount": "AMT", "import_weight": "WEIG",
+            "export_amount": "AMT", "export_weight": "WEIG",
+        },
+        "direction_column": "IMXPRT_SE_CD",
+        "direction_values": {
+            "import_amount": "I", "import_weight": "I",
+            "export_amount": "O", "export_weight": "O",
+        },
+    },
+}
+
+#: metric -> (한글 라벨, 단위) — Evidence 표 헤더·section 문구에 재사용.
+_RANKING_METRIC_LABELS = {
+    "import_amount": ("수입금액", "USD"),
+    "import_weight": ("수입중량", "kg"),
+    "export_amount": ("수출금액", "USD"),
+    "export_weight": ("수출중량", "kg"),
+}
+
 #: 흔한 광종 동의어 -> `ai_mnrl_mst.mnrl_nm_ko`에 실제로 저장된 정본 명칭.
 #: 그 컬럼엔 동의어 컬럼이 따로 없어(정본 하나만) `resolve_mineral_full()`이
 #: 이 목록으로 원래 표현이 안 잡히면 정본으로도 같이 시도한다(2026-09-01,
@@ -550,6 +599,75 @@ class KomisRawDataRepository:
             f" ORDER BY hs_cd"
         )
         return [str(value) for value in frame["hs_cd"]]
+
+    def fetch_country_ranking(
+        self, *, page_id: str, hs_codes: list[str], metric: str,
+        start_period: str | None, end_period: str | None, top_n: int = 5,
+    ) -> RawDataset:
+        """국가별 합계 상위 N(결정적 GROUP BY+ORDER BY+LIMIT, 2026-09-18 신설).
+
+        `_fetch_dataset`(위)는 필터+정렬+LIMIT만 지원해 "최근 N건" 원자료를
+        돌려줄 뿐 "상위 N개국"을 만들 수 없었다 — 이 메서드가 그 갭을 메운다.
+        `_literal()`/`_coerce_period()` 화이트리스트를 그대로 거치므로 자유형
+        SQL 생성 금지 원칙은 동일하게 유지된다(page_id·metric은 `_RANKING_SPECS`
+        키만 허용, hs_codes는 호출측이 `resolve_hs_codes()`로 이미 얻은 값)."""
+
+        spec = _RANKING_SPECS.get(page_id)
+        if spec is None or metric not in spec["metrics"]:
+            raise RawDataAccessError(f"'{page_id}'/{metric}은 국가 랭킹 조회를 지원하지 않습니다.")
+        if not hs_codes:
+            raise RawDataAccessError("국가 랭킹 조회에는 hs_codes가 최소 1개 필요합니다.")
+
+        conditions = [f"HS_CD IN ({', '.join(_literal(c) for c in hs_codes)})"]
+        direction_column = spec["direction_column"]
+        if direction_column:
+            conditions.append(f"{direction_column} = {_literal(spec['direction_values'][metric])}")
+        period_column = spec["period_column"]
+        period_precision = spec["period_precision"]
+        if start_period:
+            conditions.append(f"{period_column} >= {_literal(_coerce_period(start_period, period_precision, False))}")
+        if end_period:
+            conditions.append(f"{period_column} <= {_literal(_coerce_period(end_period, period_precision, True))}")
+        where_clause = " AND ".join(conditions)
+
+        table = spec["table"]
+        country_column = spec["country_column"]
+        metric_column = spec["metrics"][metric]
+        try:
+            frame = read_sql_pg(
+                f"SELECT {country_column} AS country, SUM({metric_column}) AS total, COUNT(*) AS n"
+                f" FROM {KOMIS_SCHEMA}.{table} WHERE {where_clause}"
+                f" GROUP BY {country_column} ORDER BY total DESC NULLS LAST LIMIT {int(top_n)}"
+            )
+            total_frame = read_sql_pg(
+                f"SELECT SUM({metric_column}) AS grand_total FROM {KOMIS_SCHEMA}.{table} WHERE {where_clause}"
+            )
+        except Exception as exc:  # noqa: BLE001 — 원본과 같은 사용자 노출 메시지
+            raise RawDataAccessError("국가별 랭킹 조회에 실패했습니다.") from exc
+
+        grand_total_value = total_frame["grand_total"].iloc[0] if not total_frame.empty else None
+        grand_total = float(grand_total_value) if grand_total_value is not None else 0.0
+
+        rows: list[dict[str, Any]] = []
+        for rank, record in enumerate(frame.itertuples(index=False, name=None), start=1):
+            country, total, n = record
+            total_value = float(total) if total is not None else 0.0
+            share_pct = round(total_value / grand_total * 100, 2) if grand_total else None
+            rows.append({
+                "rank": rank, "country": country, "total": _json_value(total),
+                "share_pct": share_pct, "transaction_count": int(n),
+            })
+
+        metric_label, unit = _RANKING_METRIC_LABELS[metric]
+        return RawDataset(
+            source_table=table,
+            columns=["rank", "country", "total", "share_pct", "transaction_count"],
+            column_labels={
+                "rank": "순위", "country": "국가", "total": f"{metric_label}합계({unit})",
+                "share_pct": "비중(%, 같은 기간·조건의 전체 국가 합계 대비)", "transaction_count": "거래건수",
+            },
+            row_count=len(rows), rows=rows,
+        )
 
     def resolve_mineral_full(self, korean_name: str) -> tuple[str, str | None] | None:
         """한글 광종명(질문에 쓰인 표현 그대로, 예: "텅스텐")으로 `ai_mnrl_mst`
