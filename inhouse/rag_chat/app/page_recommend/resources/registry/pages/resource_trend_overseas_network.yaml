@@ -1,0 +1,127 @@
+schema_version: 1
+page_id: resource_trend_overseas_network
+aliases: [overseas_network]
+identity:
+  section: "광물자원동향"
+  name: "해외네트워크뉴스"
+  page_kind: board
+  navigation: {method: GET, target: /Komis/Board/FRNNETNEWS, params: {}}
+  login_required: false
+  external: false
+screen:
+  controls:
+    - id: quick_period
+      label: "빠른 기간"
+      description: "전체·1개월·3개월·6개월·1년 버튼으로 조회 기간을 빠르게 설정할 수 있다."
+      widget: radio
+      role: shortcut
+      target_filters: [period]
+      transform: relative_date_range
+      options:
+        - {value: all, label: "전체", aliases: [전체]}
+        - {value: 1_month, label: "1개월", aliases: [한달, 최근한달]}
+        - {value: 3_months, label: "3개월", aliases: [최근3개월]}
+        - {value: 6_months, label: "6개월", aliases: [반년, 최근6개월]}
+        - {value: 1_year, label: "1년", aliases: [최근1년]}
+      observed_default: all
+routing:
+  summary: "해외 거점과 지역별 광물자원·공급망 뉴스를 조회하는 게시판"
+  use_when:
+    - "중국, 호주, 칠레 등 해외 거점의 광업 뉴스를 찾을 때"
+    - "특정 지역의 자원·공급망 동향을 보고 싶을 때"
+  do_not_use_when:
+    - "광종 중심의 일반 최신 뉴스를 찾을 때"
+    - "국가별 광업 제도나 통계형 국가정보를 찾을 때"
+  distinguish_from:
+    - {page_id: resource_trend_daily_news, reason: "해외네트워크뉴스는 해외 거점·지역 중심이고 일일자원뉴스는 광종 중심이다."}
+    - {page_id: country_info, reason: "해외네트워크뉴스는 시사 뉴스이며 국가정보는 국가별 참고자료다."}
+  example_queries:
+    - "최근 호주 광업 뉴스는 어디서 봐?"
+    - "칠레 공급망 동향 기사를 찾고 싶어"
+  keywords: [해외, 네트워크, 지역, 거점, 중국, 호주, 칠레, 광업뉴스]
+filters:
+  - id: region
+    semantic_key: region
+    label: "지역"
+    type: enum
+    required: false
+    default: all
+    default_label: "전체 지역"
+    options:
+      - {value: all, label: "전체", aliases: [전체지역]}
+      - {value: NA001, label: "중국", aliases: []}
+      - {value: NA002, label: "남아프리카공화국", aliases: [남아공]}
+      - {value: NA003, label: "러시아", aliases: []}
+      - {value: NA004, label: "몽골", aliases: []}
+      - {value: NA005, label: "인도네시아", aliases: []}
+      - {value: NA006, label: "호주", aliases: [오스트레일리아]}
+      - {value: NA007, label: "칠레", aliases: []}
+      - {value: NA008, label: "기타", aliases: []}
+      - {value: NA009, label: "캐나다", aliases: []}
+    values_ref: null
+    depends_on: []
+  - id: period
+    semantic_key: period
+    label: "기간"
+    type: date_range
+    required: false
+    default: all
+    default_label: "전체 기간"
+    options: []
+    values_ref: null
+    depends_on: []
+    temporal: {granularity: day}
+  - id: search_field
+    semantic_key: search_field
+    label: "검색 대상"
+    type: enum
+    required: false
+    default: all
+    default_label: "제목+내용"
+    options:
+      - {value: all, label: "제목+내용", aliases: [전체]}
+      - {value: title, label: "제목", aliases: [제목만]}
+      - {value: content, label: "내용", aliases: [본문]}
+    values_ref: null
+    depends_on: []
+  - id: query
+    semantic_key: query
+    label: "검색어"
+    type: text
+    required: false
+    default: null
+    default_label: null
+    options: []
+    values_ref: null
+    depends_on: []
+  - id: page_size
+    semantic_key: page_size
+    label: "페이지 크기"
+    type: integer
+    required: false
+    default: 15
+    default_label: "15개"
+    options:
+      - {value: 5, label: "5개", aliases: []}
+      - {value: 10, label: "10개", aliases: []}
+      - {value: 15, label: "15개", aliases: []}
+      - {value: 20, label: "20개", aliases: []}
+      - {value: 40, label: "40개", aliases: []}
+      - {value: 50, label: "50개", aliases: []}
+    values_ref: null
+    depends_on: []
+outputs:
+  available_data_labels: ["게시물 번호", "지역", "제목", "첨부파일 여부", "등록일", "조회수"]
+presentation:
+  summary: "지역 태그가 포함된 해외 뉴스 목록을 표로 제공한다."
+  panels:
+    - {type: table, label: "해외뉴스 목록", description: "지역, 제목, 등록일과 첨부 여부를 함께 확인한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "지역 분류는 국가 전체 목록이 아니라 KOMIS 해외 거점 9개 범주다."
+tool: {status: planned, planned_name: search_komis_board}
+provenance:
+  observed_at: "2026-07-16"
+  sources: [docs/komis_service_catalog.md, docs/komis_tool_parameter_spec.md, artifacts/browser/page-probe/pages.json]

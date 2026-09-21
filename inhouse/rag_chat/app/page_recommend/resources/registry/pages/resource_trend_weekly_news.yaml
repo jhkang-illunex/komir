@@ -1,0 +1,107 @@
+schema_version: 1
+page_id: resource_trend_weekly_news
+aliases: [weekly_news]
+identity:
+  section: "광물자원동향"
+  name: "주간자원뉴스"
+  page_kind: board
+  navigation: {method: GET, target: /Komis/Board/WEEKNEWS, params: {}}
+  login_required: false
+  external: false
+screen:
+  controls:
+    - id: quick_period
+      label: "빠른 기간"
+      description: "전체·1개월·3개월·6개월·1년 버튼으로 조회 기간을 빠르게 설정할 수 있다."
+      widget: radio
+      role: shortcut
+      target_filters: [period]
+      transform: relative_date_range
+      options:
+        - {value: all, label: "전체", aliases: [전체]}
+        - {value: 1_month, label: "1개월", aliases: [한달, 최근한달]}
+        - {value: 3_months, label: "3개월", aliases: [최근3개월]}
+        - {value: 6_months, label: "6개월", aliases: [반년, 최근6개월]}
+        - {value: 1_year, label: "1년", aliases: [최근1년]}
+      observed_default: all
+routing:
+  summary: "주간 광물가격 동향 보고서와 첨부자료를 조회하는 게시판"
+  use_when:
+    - "주간 단위의 광물가격 동향 보고서를 찾을 때"
+    - "주간자원뉴스 첨부파일을 내려받아 읽으려 할 때"
+  do_not_use_when:
+    - "오늘의 개별 광물 뉴스를 찾을 때"
+    - "월간 전략광종 또는 희소금속 분석 자료를 찾을 때"
+  distinguish_from:
+    - {page_id: resource_trend_daily_news, reason: "주간자원뉴스는 주간 보고서형 자료이고 일일자원뉴스는 개별 최신 기사다."}
+    - {page_id: resource_trend_strategy_monthly, reason: "주간 가격 동향과 전략광종 월간 인사이트는 발행 주기와 내용 범위가 다르다."}
+  example_queries:
+    - "이번 주 광물가격 동향 보고서 어디 있어?"
+    - "지난달 주간자원뉴스 자료를 찾고 싶어"
+  keywords: [주간, 주간뉴스, 주간보고서, 가격동향, 첨부파일]
+filters:
+  - id: period
+    semantic_key: period
+    label: "기간"
+    type: date_range
+    required: false
+    default: all
+    default_label: "전체 기간"
+    options: []
+    values_ref: null
+    depends_on: []
+    temporal: {granularity: day}
+  - id: search_field
+    semantic_key: search_field
+    label: "검색 대상"
+    type: enum
+    required: false
+    default: all
+    default_label: "제목+내용"
+    options:
+      - {value: all, label: "제목+내용", aliases: [전체]}
+      - {value: title, label: "제목", aliases: [제목만]}
+      - {value: content, label: "내용", aliases: [본문]}
+    values_ref: null
+    depends_on: []
+  - id: query
+    semantic_key: query
+    label: "검색어"
+    type: text
+    required: false
+    default: null
+    default_label: null
+    options: []
+    values_ref: null
+    depends_on: []
+  - id: page_size
+    semantic_key: page_size
+    label: "페이지 크기"
+    type: integer
+    required: false
+    default: 15
+    default_label: "15개"
+    options:
+      - {value: 5, label: "5개", aliases: []}
+      - {value: 10, label: "10개", aliases: []}
+      - {value: 15, label: "15개", aliases: []}
+      - {value: 20, label: "20개", aliases: []}
+      - {value: 40, label: "40개", aliases: []}
+      - {value: 50, label: "50개", aliases: []}
+    values_ref: null
+    depends_on: []
+outputs:
+  available_data_labels: ["게시물 번호", "제목", "첨부파일 여부", "등록일", "조회수"]
+presentation:
+  summary: "보고서 제목과 첨부 여부를 목록 표로 보여주며 상세에서 문서를 연다."
+  panels:
+    - {type: table, label: "보고서 목록", description: "제목, 등록일, 조회수와 첨부 여부를 목록으로 확인한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "목록만으로는 첨부 보고서 본문 수치를 알 수 없으며 상세·첨부파일 도구가 별도로 필요하다."
+tool: {status: planned, planned_name: search_komis_board}
+provenance:
+  observed_at: "2026-07-16"
+  sources: [docs/komis_service_catalog.md, docs/komis_tool_parameter_spec.md, artifacts/browser/page-probe/pages.json]

@@ -1,0 +1,112 @@
+schema_version: 1
+page_id: notice_qna
+aliases: [qna]
+identity:
+  section: "알림마당"
+  name: "Q&A"
+  page_kind: board
+  navigation: {method: GET, target: /Komis/Board/QnA, params: {}}
+  login_required: false
+  external: false
+screen:
+  controls:
+    - id: quick_period
+      label: "빠른 기간"
+      description: "전체·1개월·3개월·6개월·1년 버튼으로 조회 기간을 빠르게 설정할 수 있다."
+      widget: radio
+      role: shortcut
+      target_filters: [period]
+      transform: relative_date_range
+      options:
+        - {value: all, label: "전체", aliases: [전체]}
+        - {value: 1_month, label: "1개월", aliases: [한달, 최근한달]}
+        - {value: 3_months, label: "3개월", aliases: [최근3개월]}
+        - {value: 6_months, label: "6개월", aliases: [반년, 최근6개월]}
+        - {value: 1_year, label: "1년", aliases: [최근1년]}
+      observed_default: all
+routing:
+  summary: "기존 Q&A 문의의 공개 목록과 답변 완료 여부, 운영 종료·본인인증 안내를 확인하는 페이지"
+  use_when:
+    - "기존 Q&A 문의 제목이나 답변 완료 여부를 확인할 때"
+    - "Q&A 게시판의 운영 종료 또는 문의 절차를 확인할 때"
+  do_not_use_when:
+    - "FAQ의 공개 질문·답변 내용을 바로 읽고 싶을 때"
+    - "도구로 Q&A 상세를 열람하거나 새 문의를 작성하려 할 때"
+  distinguish_from:
+    - {page_id: notice_faq, reason: "Q&A는 이용자 문의 목록이며 제목 열람에 본인인증이 필요하고 FAQ는 공개 질문·답변이다."}
+    - {page_id: notice_announcements, reason: "Q&A는 이용자 문의 목록이고 공지사항은 운영자가 게시하는 서비스 안내다."}
+  example_queries:
+    - "KOMIS Q&A 게시판은 아직 운영해?"
+    - "과거 Open API 문의의 답변 상태를 어디서 봐?"
+  keywords: [Q&A, QNA, 문의, 질의응답, 답변완료, 본인인증, 휴대폰인증, 운영종료]
+filters:
+  - id: period
+    semantic_key: period
+    label: "기간"
+    type: date_range
+    required: false
+    default: all
+    default_label: "전체 기간"
+    options: []
+    values_ref: null
+    depends_on: []
+    temporal: {granularity: day}
+  - id: search_field
+    semantic_key: search_field
+    label: "검색 대상"
+    type: enum
+    required: false
+    default: all
+    default_label: "제목+내용"
+    options:
+      - {value: all, label: "제목+내용", aliases: [전체]}
+      - {value: title, label: "제목", aliases: [제목만]}
+      - {value: content, label: "내용", aliases: [본문]}
+    values_ref: null
+    depends_on: []
+  - id: query
+    semantic_key: query
+    label: "검색어"
+    type: text
+    required: false
+    default: null
+    default_label: null
+    options: []
+    values_ref: null
+    depends_on: []
+  - id: page_size
+    semantic_key: page_size
+    label: "페이지 크기"
+    type: integer
+    required: false
+    default: 5
+    default_label: "5개"
+    options:
+      - {value: 5, label: "5개", aliases: []}
+      - {value: 10, label: "10개", aliases: []}
+      - {value: 15, label: "15개", aliases: []}
+      - {value: 20, label: "20개", aliases: []}
+      - {value: 40, label: "40개", aliases: []}
+      - {value: 50, label: "50개", aliases: []}
+    values_ref: null
+    depends_on: []
+outputs:
+  available_data_labels: ["번호", "답변여부", "제목", "첨부파일 여부", "조회수", "등록일시", "운영 종료 안내"]
+presentation:
+  summary: "공개 목록 표에서 문의 제목과 답변 상태를 보여주고 운영 종료 안내를 함께 표시한다."
+  panels:
+    - {type: table, label: "Q&A 목록", description: "번호, 답변여부, 제목, 첨부 여부, 조회수와 등록일시를 확인한다."}
+    - {type: notice, label: "운영 종료 안내", description: "게시판 종료일과 이후 고객지원센터 이용 안내를 확인한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "목록은 비로그인 조회가 가능하지만 제목 열람과 문의하기는 CI 수집 동의 후 휴대폰 본인인증 화면으로 이동한다."
+    - "Q&A 게시판은 2026-07-27부로 운영 종료 예정이라고 안내하며 이후 문의는 고객지원센터 이용을 권고한다."
+    - '화면 필터는 period→srchStartDate/srchEndDate, search_field→srchField(전체="", 제목=ttl, 내용=cnts), query→srchValue, page_size→listCount로 전달된다.'
+    - "목록 조회는 boardType=Q, boardCd=QNA, regDate 내림차순을 사용한다."
+    - "Q&A 상세 열람·문의 작성·휴대폰 인증을 수행하는 도구 호출이나 쓰기 동작은 제공하지 않는다."
+tool: {status: none, planned_name: null}
+provenance:
+  observed_at: "2026-07-27"
+  sources: [artifacts/browser/page-probe/notice-pages.json, artifacts/browser/notice-probe/details.json]

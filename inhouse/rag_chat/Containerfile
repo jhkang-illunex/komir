@@ -1,0 +1,20 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY rag_chat/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('intfloat/multilingual-e5-small')"
+
+COPY rag_chat/app ./app
+COPY common ./common
+COPY rag_core/ragkit ./rag_core/ragkit
+COPY rag_core/retrieval ./rag_core/retrieval
+
+ENV PYTHONUNBUFFERED=1
+ENV HF_HUB_OFFLINE=1
+ENV TRANSFORMERS_OFFLINE=1
+
+EXPOSE 8002
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8002"]

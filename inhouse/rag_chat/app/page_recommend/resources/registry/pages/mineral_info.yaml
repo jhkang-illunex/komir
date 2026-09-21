@@ -1,0 +1,68 @@
+schema_version: 1
+page_id: mineral_info
+aliases: [mineral_information]
+identity:
+  section: "광종/국가정보"
+  name: "광종정보"
+  page_kind: info
+  navigation: {method: GET, target: /Komis/MnrlInfo/MnrlInfo, params: {}}
+  login_required: false
+  external: false
+routing:
+  summary: "74개 광종의 특성·용도·매장·생산·소비·교역·가격·국내현황·전망을 제공하는 백과형 페이지"
+  use_when:
+    - "특정 광물의 용도, 물성, 생산·소비와 시장전망을 폭넓게 알고 싶을 때"
+    - "광종별 상세 참고자료와 PDF를 찾을 때"
+  do_not_use_when:
+    - "실시간에 가까운 가격 시계열만 조회하려 할 때"
+    - "국가별 매장량·생산량을 지도에서 비교하려 할 때"
+  distinguish_from:
+    - {page_id: map_mineral, reason: "광종정보는 백과형 상세자료이고 광물지도는 국가별 매장량·생산량의 구조화된 지도 조회다."}
+    - {page_id: country_info, reason: "광종정보는 광물 중심이고 국가정보는 국가 중심이다."}
+  example_queries:
+    - "리튬의 용도와 생산·소비 현황을 어디서 봐?"
+    - "코발트 광종정보 PDF가 필요해"
+  keywords: [광종정보, 광물정보, 용도, 물성, 매장량, 생산, 소비, 교역, 가격, 국내현황, 전망, PDF]
+filters:
+  - id: mineral
+    semantic_key: mineral
+    label: "광종명"
+    type: mineral
+    required: false
+    default: all
+    default_label: "전체 광종 목록"
+    options: []
+    values_ref: metadata.information.minerals
+    depends_on: []
+  - id: category
+    semantic_key: mineral_category
+    label: "광종 분류"
+    type: enum
+    required: false
+    default: all
+    default_label: "전체 분류"
+    options:
+      - {value: all, label: "전체", aliases: []}
+      - {value: metal, label: "금속", aliases: [금속광]}
+      - {value: nonmetal, label: "비금속", aliases: [비금속광]}
+      - {value: energy, label: "에너지광", aliases: [에너지]}
+    values_ref: null
+    depends_on: []
+outputs:
+  available_data_labels: ["광종 코드", "한글명·영문명", "원소기호", "광종 분류", "원자번호·원자량·융점·비등점", "일반사항", "부존 및 매장량", "개발 및 처리", "용도", "생산·소비현황", "국제 교역·가격추이", "국내현황", "시장동향 및 전망", "PDF", "최종수정일시"]
+presentation:
+  summary: "긴 상세 문서를 아코디언 섹션으로 나누고 설명문, 참고 이미지와 여러 국가·연도 표를 제공한다."
+  panels:
+    - {type: accordion, label: "주제별 상세정보", description: "일반사항부터 전망까지 필요한 섹션을 펼쳐 읽는다."}
+    - {type: tables, label: "생산·교역 수치표", description: "국가와 연도, 품목·수입·수출·금액·중량 관점별 표를 제공한다."}
+    - {type: static_image_chart, label: "국제 가격추이 이미지", description: "본문에 삽입된 정적 그래프와 연평균 가격 표를 제공한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "정적 이미지 그래프는 원자료나 별도 이미지 분석 없이는 정밀 시계열로 간주하지 않는다."
+    - "교역 표의 품목, 수입·수출, 금액·중량과 단위를 잃지 않는다."
+tool: {status: planned, planned_name: get_mineral_info}
+provenance:
+  observed_at: "2026-07-16"
+  sources: [docs/komis_service_catalog.md, docs/komis_tool_parameter_spec.md, docs/komis_visual_presentation_catalog.md, artifacts/browser/detail-probe/details.json]

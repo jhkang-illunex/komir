@@ -1,0 +1,373 @@
+# -*- coding: utf-8 -*-
+"""정형(structured)·dense(pgvector)·PageIndex 세 검색 도구의 공통 근거 계약.
+
+`인수인계서_TODO_대조_260813.md`(documents/산출물/2026-W33_0810-0816/) §1-2 —
+"DB/VDB 결과를 공통 근거 계약(단위·기준시점·출처)으로 통일" 항목에 대한 구현.
+세 도구(structured.py/dense_pg.py/pageindex.py)가 각각 다른 모양을 반환해
+rag_core/ragkit/chatbot_graph.py가 그대로는 하나의 인용 프롬프트에 섞어 넣을 수
+없었다 — 이 모듈이 그 통일 지점이다. 각 도구의 원본 결과를 `Evidence`로
+변환하는 어댑터 함수만 두고, 조회 로직 자체(structured.py/dense_pg.py/
+pageindex.py)는 건드리지 않는다(재구현 금지).
+
+`text`는 항상 사람이 읽는 근거 발췌문 — 구조화 결과(다건)는 마크다운 표로
+렌더링해 넣는다. 이렇게 하면 rag_core/ragkit/chatbot_events.py의 표·차트 추출
+(GFM 파싱)이 kind에 상관없이 동일하게 동작한다(structured/dense/pageindex를
+구분하는 별도 분기가 필요 없다 — 오히려 structured 결과가 markdown 스크래핑
+결과보다 완전한 숫자열이라 차트 재료로 더 낫다)."""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any
+
+
+@dataclass
+class Evidence:
+    """인용 프롬프트 [n]번 근거 1건. 몇 번인지(index)는 각 도구가 아니라
+    chatbot_graph가 병합한 뒤에 매긴다."""
+
+    kind: str  # "structured" | "dense" | "pageindex"
+    source: str  # 출처 표시(파일 경로 / 템플릿명 / 문서 제목)
+    section: str  # 섹션·템플릿 세부·노드 제목
+    text: str  # 근거 발췌문(구조화 결과는 마크다운 표로 렌더링됨)
+    as_of: str | None = None  # 기준시점(있으면)
+    unit: str | None = None  # 단위(있으면)
+    # 2026-08-31(komis_raw_lookup 신설) — 이 근거가 실제로 인용됐을 때 생성
+    # 텍스트와 무관하게 코드가 강제로 덧붙여야 하는 경고(예: "개발용 더미
+    # 데이터"). LLM이 [근거] 텍스트를 읽고 스스로 이 사실을 문장으로 옮겨
+    # 적는다는 보장이 없고(_strip_uncited_sentences가 인용 없는 문장은
+    # 지워버림), 안전에 직결되는 경고라 chatbot.py가 인용 스트리퍼 통과
+    # 이후 코드로 무조건 붙인다(_caution_notice·_source_footer와 같은 원칙).
+    caveat: str | None = None
+    # action adapter가 채운 추적 키. 기존 MCP payload와 호환되도록 기본값을 둔다.
+    requirement_id: str | None = None
+    action_id: str | None = None
+    source_id: str | None = None
+    observed_period: str | None = None
+
+
+def _forecast_month_label(base_date: Any, horizon: Any) -> str:
+    """base_date(예: 2025-12-01) + horizon개월 → "2026-01" 같은 연월 라벨.
+
+    base_date나 horizon이 없으면(방어적) horizon 원값을 그대로 문자열화 —
+    표가 비거나 깨지는 것보다는 옛 동작(숫자만 표시)으로 물러나는 쪽이 낫다."""
+
+    if base_date is None or horizon is None:
+        return str(horizon)
+    try:
+        offset = int(horizon)
+        zero_based_month = base_date.month - 1 + offset
+        year = base_date.year + zero_based_month // 12
+        month = zero_based_month % 12 + 1
+        return f"{year:04d}-{month:02d}"
+    except (TypeError, ValueError, AttributeError):
+        return str(horizon)
+
+
+def _markdown_table(columns: list[str], rows: list[list[str]]) -> str:
+    header = "| " + " | ".join(columns) + " |"
+    sep = "| " + " | ".join("---" for _ in columns) + " |"
+    body = "\n".join("| " + " | ".join(row) + " |" for row in rows)
+    return "\n".join([header, sep, body])
+
+
+def from_structured(template: str, commodity_code: str, result: Any) -> Evidence | None:
+    """`shared.retrieval.structured`의 템플릿 함수 반환값(dict 1건 또는
+    list[dict])을 Evidence로 변환한다.
+
+    result가 비어 있으면(해당 광종에 데이터가 없음 — public.KO_* 텅스텐-only
+    같은 공백이 실제로 있다, WORKLOG 2026-08-13 참고) None을 돌려준다 — "정형
+    데이터 없음"을 억지 텍스트로 채우지 않고, 호출자가 그냥 건너뛴다."""
+
+    source = f"정형데이터 · {template}({commodity_code})"
+
+    if template == "latest_diagnosis":
+        if not result:
+            return None
+        row = result
+        # 2026-08-28(챗봇_룰준수_감사_260828.md §7) — 원래 라벨이 "사유:"였다.
+        # 챗봇(rag_core/ragkit/chatbot.py)은 [근거] 발췌문을 그대로 인용하도록
+        # 강제되어 있어("오직 [근거] 섹션에만 근거", CHATBOT_SYSTEM_PROMPT
+        # 규칙1) 이 라벨을 그대로 옮겨 답하는데, chatbot_rule.txt 유형5
+        # 유의사항("인과 단정 금지, 동시 발생 흐름으로 서술")과 충돌한다 —
+        # "사유"는 단정적 인과 표현이라, 실측(위 감사 §7)에서 "사유:
+        # 국제 핵심광물 시장의 가격 변동성 급증"처럼 인과관계를 확정하는
+        # 문장으로 그대로 노출됐다. 실제로는 진단모델의 risk_score 기여
+        # 요인 중 상위 항목일 뿐이므로 라벨을 순화한다(수치·의미는 그대로,
+        # 표현만 변경 — row.get('reason')이 담는 값 자체는 msr 진단 모델
+        # 소관이라 건드리지 않음).
+        text = (
+            f"{commodity_code} 최근 수급위기 진단 등급: {row.get('alert_level')} "
+            f"(위험점수 {row.get('risk_score')}, 주요 변동 요인: {row.get('reason')})"
+        )
+        return Evidence(
+            kind="structured", source=source, section="수급위기 진단 경보", text=text,
+            as_of=str(row.get("obs_date") or "") or None,
+        )
+
+    if template == "import_forecast":
+        rows = result or []
+        if not rows:
+            return None
+        is_volume = rows[0].get("target") == "volume"
+        base_date = rows[0].get("base_date")
+        # 2026-08-27: 기존엔 horizon(1~12, "개월 후")만 행 라벨이었다 — 몇 년 몇 월을
+        # 가리키는지가 표·차트(첫 컬럼을 그대로 x축 라벨로 쓴다, chatbot_events.py::
+        # render_chart_png)에 안 보여 사용자가 "날짜가 애매하다"고 지적했다. base_date
+        # 기준월 자체는 Evidence.as_of 에만 있어 표만 봐서는 알 수 없었던 것 — 실제
+        # 예측 대상월(base_date + horizon개월)을 행 라벨로 계산해 넣는다.
+        columns = ["예측월", "yhat", "yhat_lo", "yhat_hi"]
+        table_rows = [
+            [
+                _forecast_month_label(base_date, r.get("horizon")),
+                str(r.get("yhat")), str(r.get("yhat_lo")), str(r.get("yhat_hi")),
+            ]
+            for r in rows
+        ]
+        section = f"{len(rows)}개월 수입{'물량' if is_volume else '금액'} 예측"
+        text = f"{section}(기준월 {base_date} 기준 향후 예측)\n\n{_markdown_table(columns, table_rows)}"
+        return Evidence(
+            kind="structured", source=source, section=section, text=text,
+            as_of=str(rows[0].get("base_date") or "") or None,
+            unit="물량(톤)" if is_volume else "금액(천USD)",
+        )
+
+    if template == "geo_index_trend":
+        rows = result or []
+        if not rows:
+            return None
+        columns = ["period", "idx_value", "n_events"]
+        table_rows = [[str(r.get("period")), str(r.get("idx_value")), str(r.get("n_events"))] for r in rows]
+        section = f"지정학 위기지수 추이({rows[0].get('freq')}, 오래된순)"
+        text = f"{section}\n\n{_markdown_table(columns, table_rows)}"
+        return Evidence(
+            kind="structured", source=source, section=section, text=text,
+            as_of=str(rows[-1].get("period") or "") or None, unit="지수(0~100)",
+        )
+
+    return None
+
+
+def from_dense_chunk(chunk: Any) -> Evidence:
+    """`dense_pg.PgRetrievedChunk` -> Evidence."""
+
+    return Evidence(
+        kind="dense", source=chunk.source_path, section=chunk.section_heading,
+        text=chunk.text, as_of=chunk.week or None,
+    )
+
+
+def from_pageindex_hit(hit: dict[str, Any]) -> Evidence:
+    """`pageindex.search_nodes()`/`lookup()`이 낸 노드 1건(text 채워진 상태) ->
+    Evidence."""
+
+    return Evidence(
+        kind="pageindex", source=hit.get("source_override") or hit.get("doc_title") or hit.get("okf_path", ""),
+        section=hit.get("node_path") or hit.get("title", ""),
+        text=hit.get("text", ""),
+    )
+
+
+#: komis_raw_lookup이 실제 KOMIS 표본이 아닌 게 **확인된** 경우 인용 근거에
+#: 강제로 붙이는 경고 문구(Evidence.caveat) — chatbot.py가 코드로 이 문구를
+#: 답변에 덧붙인다.
+KOMIS_RAW_DUMMY_CAVEAT = "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+
+#: 2026-09-02 skeptic 2차감사 SC-CB2-001 결과감사(main-agent) 지적으로 신설
+#: — "확정 더미"(KOMIS_RAW_DUMMY_CAVEAT)와 "판정 자체가 불가능"은 다른
+#: 상태다. 광물종합지수(indicator_composite, 광종 키가 없어 ai_mnrl_mst와
+#: 조인해 확인할 방법이 구조적으로 없음)처럼 실제로는 실데이터일 수도 있는
+#: 근거에 "실제 값이 아닙니다"라고 단정하면 fail-open을 고치려다 반대 방향
+#: 오단정을 만든다 — 이 경우엔 이 문구를 대신 쓴다.
+KOMIS_RAW_UNVERIFIED_CAVEAT = "이 수치는 KOMIS 실제 표본 여부를 자동으로 확인할 수 없는 데이터입니다 — 참고용으로만 활용하세요."
+
+#: chatbot_events.py::_DATE_COLUMN_NAMES와 같은 KOMIS 날짜열 이름(그쪽은 차트축
+#: 판정용으로 더 넓게 매칭하지만, 여기는 min/max만 뽑으면 되니 단순 포함 검사로
+#: 충분하다 — 두 파일이 갈라지지 않게 이름 자체는 그대로 맞춤).
+_KOMIS_DATE_COLUMNS = ("crtr_ymd", "crtr_yr")
+
+
+def _format_ymd(raw: str) -> str:
+    """`crtr_ymd`(YYYYMMDD)·`crtr_yr`(YYYY) 등 KOMIS 원시 날짜 문자열을
+    LLM이 명확히 날짜로 인식하는 하이픈 포맷으로("20260617"→"2026-06-17").
+    8자리 미만(연도만 등)은 그대로 둔다."""
+
+    if len(raw) == 8 and raw.isdigit():
+        return f"{raw[:4]}-{raw[4:6]}-{raw[6:8]}"
+    if len(raw) == 6 and raw.isdigit():
+        return f"{raw[:4]}-{raw[4:6]}"
+    return raw
+
+
+def _period_span(ds: Any) -> str | None:
+    """`ds.rows`(이미 period_column DESC로 정렬됨, komis_raw.py::_fetch_dataset)
+    에서 날짜열을 찾아 실제 커버 기간을 사람이 읽는 문자열로 만든다.
+
+    2026-09-08(KOMIS_RAW_MAX_TIMESTAMPS=60 도입 회귀 수정) — "최근 1년간
+    니켈 가격" 같은 질문에 실제로는 최근 60일치(일별 데이터라 약 2개월)만
+    주어지는데, 생성 프롬프트에 이 사실이 없으면 LLM이 "근거가 질문의 1년을
+    커버 못 한다"고 스스로 판단해 전체 기권했다(재현 확인). 이 문자열을
+    `Evidence.as_of`에 실어 `_build_evidence_prompt`의 기존 "· 기준시점
+    {as_of}" meta 슬롯에 자동 노출시킨다(새 필드·새 슬롯 추가 없음) —
+    chatbot.py CHATBOT_SYSTEM_PROMPT 규칙4·10의 "기간이 짧아도 기권 금지"
+    지시와 짝을 이뤄야 효과가 있었다(하이픈 없는 원시 날짜 포맷·약한
+    표현만으로는 재현 실패, "요청한 N 전체가 아님"처럼 명확히 부정하는
+    문구가 필요했음 — 2026-09-08 A/B 재현으로 확인)."""
+
+    date_col = next((c for c in ds.columns if c in _KOMIS_DATE_COLUMNS), None)
+    if date_col is None:
+        return None
+    values = [str(row[date_col]) for row in ds.rows if row.get(date_col) is not None]
+    if not values:
+        return None
+    oldest, newest = _format_ymd(values[-1]), _format_ymd(values[0])
+    if getattr(ds, "metadata", {}).get("period_range_complete"):
+        return f"{oldest}~{newest}, 지정 기간 내 관측 {len(values)}건 전체"
+    return f"{oldest}~{newest}, 최신순 {len(values)}건만 제공됨(요청한 전체 기간이 아닐 수 있음)"
+
+
+#: 2026-09-17(챗봇_대화형검색_피드백_PRD §1.2, 대화형검색시스템 예상질문
+#: 고도화.pdf §3.2 "비중 계산 시 분자와 분모를 명시") — map_korea/map_global
+#: (KO_CSTM_CMMRC/KO_UN_CMMRC)은 국가별 수입액·수입중량 원자료만 갖고 있고
+#: 비중(%) 컬럼 자체가 없다 — "상위 5개국 비중" 질문에 답하려면 생성 LLM이
+#: 표에 나열된 국가들의 값을 스스로 합산해 분모로 써야 한다. 그 계산 기준을
+#: [근거] 텍스트에 명시해두지 않으면 분모(전체 대비 vs 상위 N개국 대비 등)가
+#: 답변마다 달라질 수 있어, 표 자체에 계산 기준을 한 줄 못박는다(caveat이
+#: 아니라 text에 붙인다 — caveat은 "더미 데이터" 같은 강제 경고 문구용이고
+#: 이건 계산 기준 안내라 성격이 다름).
+_TRADE_SHARE_PAGES = frozenset({"map_korea", "map_global"})
+_TRADE_SHARE_BASIS_NOTE = (
+    "※ 이 표에는 비중(%) 컬럼이 없습니다 — 국가별 비중을 답할 때는 분모를 "
+    "이 표에 나타난 국가들의 수입액(또는 수입중량) 합계로, 분자를 개별 국가의 "
+    "수입액(또는 수입중량)으로 명시해 계산하십시오."
+)
+
+
+def from_komis_raw(
+    page_id: str, datasets: list[Any], *, mineral_code: str | None = None,
+    is_dummy: bool | None = None, unverified: bool = False,
+) -> list[Evidence]:
+    """`komis_raw.KomisRawDataRepository.fetch()`가 돌려준 RawDataset 목록
+    (page_id당 원천 테이블 1~2개, 예: map_mineral은 매장량+생산량 2개) ->
+    Evidence 목록(테이블당 1건). 다른 from_* 어댑터와 달리 이건 komir가 계산한
+    결과가 아니라 KOMIS 원천(public.KO_*) 원자료를 그대로 표로 옮기는
+    패스스루다 — 해석·가공 없음.
+
+    2026-08-31: 발주 5광종의 `ko_*` 데이터가 대부분 개발용 더미(DEV_DUMMY)로
+    확인되어(스키마매핑 문서 참고), 더미 여부는 호출측(MCP tool)이
+    `komis_raw.resolve_mineral_meta()`(2026-09-01, 한글명 조회와 통합)로
+    미리 확인해 `is_dummy`로 넘긴다 —
+    True면 모든 Evidence에 `caveat`(KOMIS_RAW_DUMMY_CAVEAT)을 심어서, 이
+    근거가 실제로 인용되면 chatbot.py가 그 사실을 코드로 강제 경고하게 한다
+    (LLM이 [근거] 텍스트만 보고 알아서 옮겨 적을 거라 기대하지 않는다 —
+    인용 스트리퍼가 근거 없는 문장은 지운다).
+
+    2026-09-02: `unverified`는 `is_dummy`와 독립된 별도 상태다 — "확정 더미"가
+    아니라 "더미인지 실데이터인지 판정할 방법이 없음"을 뜻하며, 그때는
+    KOMIS_RAW_UNVERIFIED_CAVEAT을 대신 붙인다. `is_dummy`가 우선한다(둘 다
+    True로 넘어올 일은 호출부 설계상 없지만, 있다면 확정 더미 쪽이 더 강한
+    주장이라 우선)."""
+
+    evidence: list[Evidence] = []
+    for ds in datasets:
+        if not ds.rows:
+            continue
+        columns = ds.columns
+        table_rows = [[str(row.get(c, "")) for c in columns] for row in ds.rows]
+        # 2026-09-07(사용자 요청) — Postgres COMMENT ON COLUMN으로 이미 달려
+        # 있는 한글 설명을 표 헤더에 같이 보여준다("lowst_prc(최저가격)"
+        # 형식, 설명이 없는 컬럼은 원본 컬럼명만). LLM이 지금까지 "최저가격
+        # (lowst_prc)"처럼 스스로 라벨을 추측해 붙이던 걸 실제 DB 코멘트로
+        # 대체 — 라벨은 여기서만 붙이고 columns/row dict 키는 원본 그대로
+        # 유지한다(chatbot_events.py의 날짜열 판정 등 원본 컬럼명에 의존하는
+        # 코드가 안 깨지게, _is_date_column이 "컬럼명(...)" 접두 매칭도
+        # 허용하도록 같이 수정함).
+        column_labels = getattr(ds, "column_labels", None) or {}
+        display_columns = [
+            f"{c}({column_labels[c]})" if c in column_labels else c for c in columns
+        ]
+        suffix = f"({mineral_code})" if mineral_code else ""
+        section = f"KOMIS 원천 · {ds.source_table}{suffix}"
+        if is_dummy:
+            caveat = KOMIS_RAW_DUMMY_CAVEAT
+        elif unverified:
+            caveat = KOMIS_RAW_UNVERIFIED_CAVEAT
+        else:
+            caveat = None
+        text = _markdown_table(display_columns, table_rows)
+        if page_id in _TRADE_SHARE_PAGES:
+            text += f"\n\n{_TRADE_SHARE_BASIS_NOTE}"
+        evidence.append(
+            Evidence(
+                kind="structured", source=f"public.{ds.source_table}", section=section,
+                text=text,
+                caveat=caveat, as_of=_period_span(ds),
+            )
+        )
+    return evidence
+
+
+def from_komis_ranking(
+    dataset: Any, *, mineral_code: str | None = None, metric_label: str, is_dummy: bool | None = None,
+    row_kind: str = "국가",
+) -> list[Evidence]:
+    """`KomisRawDataRepository`의 각종 `fetch_*_ranking()`이 돌려준 RawDataset
+    (순위 1건, 2026-09-18 신설) -> Evidence 1건. `from_komis_raw`와 달리 이미
+    DB에서 GROUP BY로 집계돼 표 자체가 "상위 N개"이고 비중(%) 컬럼도 서버가
+    계산해뒀다 — `_TRADE_SHARE_BASIS_NOTE`(원자료 미리보기에서 LLM이 스스로
+    분모를 계산하라던 안내)를 붙일 필요가 없다, 이 표는 이미 계산된 결과다.
+
+    `row_kind`는 표의 각 행이 무엇의 순위인지("국가"|"광종") — 국가별
+    교역/매장량/생산량 랭킹은 기본값 그대로, 광종 간 비교(가격변동률·지표
+    랭킹, 2026-09-18 후속)는 "광종"을 넘긴다(섹션 문구가 "국가별...개국"으로
+    고정돼 있으면 광종 비교 결과에 안 맞는다)."""
+
+    if not dataset.rows:
+        return []
+    columns = dataset.columns
+    column_labels = getattr(dataset, "column_labels", None) or {}
+    display_columns = [
+        f"{c}({column_labels[c]})" if c in column_labels else c for c in columns
+    ]
+    table_rows = [[str(row.get(c, "")) for c in columns] for row in dataset.rows]
+    suffix = f"({mineral_code})" if mineral_code else ""
+    section = f"KOMIS 원천 · {dataset.source_table}{suffix} · {row_kind}별 {metric_label} 상위 {len(dataset.rows)}개"
+    caveat = KOMIS_RAW_DUMMY_CAVEAT if is_dummy else None
+    text = _markdown_table(display_columns, table_rows)
+    metadata = getattr(dataset, "metadata", None) or {}
+    grand_total = metadata.get("grand_total")
+    if grand_total is not None:
+        # 이 값은 상위 N행 합이 아니라 동일 조건의 전체 국가 모집단 합계다.
+        # 생성 모델이 상위 표만 다시 더해 분모를 바꾸지 않도록 근거 자체에 고정한다.
+        text = (
+            f"집계 기준: 같은 기간·조건의 전체 {row_kind} 합계 {grand_total}"
+            f"{(' ' + str(getattr(dataset, 'unit', None))) if getattr(dataset, 'unit', None) else ''}를 분모로 사용.\n\n"
+            + text
+        )
+    return [
+        Evidence(
+            kind="structured", source=f"public.{dataset.source_table}", section=section,
+            text=text, caveat=caveat,
+            as_of=getattr(dataset, "as_of", None), unit=getattr(dataset, "unit", None),
+        )
+    ]
+
+
+def from_komis_aggregate(dataset: Any, *, label: str, mineral_name: str | None = None,
+                         is_dummy: bool | None = None) -> list[Evidence]:
+    """결정적 집계 결과의 표와 모집단·기간 메타데이터를 함께 근거로 보낸다."""
+    if not dataset.rows:
+        return []
+    columns = dataset.columns
+    labels = getattr(dataset, "column_labels", None) or {}
+    display = [f"{key}({labels[key]})" if key in labels else key for key in columns]
+    rows = [[str(row.get(key, "")) for key in columns] for row in dataset.rows]
+    metadata = getattr(dataset, "metadata", None) or {}
+    details = [f"{key}: {value}" for key, value in metadata.items() if value is not None]
+    text = "\n".join(details) + ("\n\n" if details else "") + _markdown_table(display, rows)
+    suffix = f"({mineral_name})" if mineral_name else ""
+    return [Evidence(
+        kind="structured", source=f"public.{dataset.source_table}",
+        section=f"KOMIS 원천 · {dataset.source_table}{suffix} · {label}",
+        text=text, caveat=KOMIS_RAW_DUMMY_CAVEAT if is_dummy else None,
+        as_of=getattr(dataset, "as_of", None), unit=getattr(dataset, "unit", None),
+    )]

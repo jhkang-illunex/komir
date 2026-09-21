@@ -1,0 +1,107 @@
+schema_version: 1
+page_id: resource_trend_rare_monthly
+aliases: [rare_monthly]
+identity:
+  section: "광물자원동향"
+  name: "희소금속 월간동향"
+  page_kind: board
+  navigation: {method: GET, target: /Komis/Board/RAREMONTH, params: {}}
+  login_required: false
+  external: false
+screen:
+  controls:
+    - id: quick_period
+      label: "빠른 기간"
+      description: "전체·1개월·3개월·6개월·1년 버튼으로 조회 기간을 빠르게 설정할 수 있다."
+      widget: radio
+      role: shortcut
+      target_filters: [period]
+      transform: relative_date_range
+      options:
+        - {value: all, label: "전체", aliases: [전체]}
+        - {value: 1_month, label: "1개월", aliases: [한달, 최근한달]}
+        - {value: 3_months, label: "3개월", aliases: [최근3개월]}
+        - {value: 6_months, label: "6개월", aliases: [반년, 최근6개월]}
+        - {value: 1_year, label: "1년", aliases: [최근1년]}
+      observed_default: all
+routing:
+  summary: "희소금속 더프라임 월간 자료를 조회하는 게시판"
+  use_when:
+    - "희소금속을 다룬 월간 분석 자료를 찾을 때"
+    - "희소금속 더프라임 발간물을 내려받으려 할 때"
+  do_not_use_when:
+    - "전략광종 전반의 월간 인사이트를 찾을 때"
+    - "희소금속의 일별 가격 시계열을 조회하려 할 때"
+  distinguish_from:
+    - {page_id: resource_trend_strategy_monthly, reason: "희소금속 전용 월간 자료와 전략광종 전반의 월간 인사이트를 구분한다."}
+    - {page_id: price_minor_metals, reason: "월간 보고서와 희소금속 수치 가격 조회는 다른 서비스다."}
+  example_queries:
+    - "희소금속 더프라임 자료 어디 있어?"
+    - "최근 희소금속 월간동향 보고서를 보고 싶어"
+  keywords: [희소금속, 월간, 더프라임, 월간동향, 보고서]
+filters:
+  - id: period
+    semantic_key: period
+    label: "기간"
+    type: date_range
+    required: false
+    default: all
+    default_label: "전체 기간"
+    options: []
+    values_ref: null
+    depends_on: []
+    temporal: {granularity: day}
+  - id: search_field
+    semantic_key: search_field
+    label: "검색 대상"
+    type: enum
+    required: false
+    default: all
+    default_label: "제목+내용"
+    options:
+      - {value: all, label: "제목+내용", aliases: [전체]}
+      - {value: title, label: "제목", aliases: [제목만]}
+      - {value: content, label: "내용", aliases: [본문]}
+    values_ref: null
+    depends_on: []
+  - id: query
+    semantic_key: query
+    label: "검색어"
+    type: text
+    required: false
+    default: null
+    default_label: null
+    options: []
+    values_ref: null
+    depends_on: []
+  - id: page_size
+    semantic_key: page_size
+    label: "페이지 크기"
+    type: integer
+    required: false
+    default: 15
+    default_label: "15개"
+    options:
+      - {value: 5, label: "5개", aliases: []}
+      - {value: 10, label: "10개", aliases: []}
+      - {value: 15, label: "15개", aliases: []}
+      - {value: 20, label: "20개", aliases: []}
+      - {value: 40, label: "40개", aliases: []}
+      - {value: 50, label: "50개", aliases: []}
+    values_ref: null
+    depends_on: []
+outputs:
+  available_data_labels: ["게시물 번호", "제목", "첨부파일 여부", "등록일", "조회수"]
+presentation:
+  summary: "희소금속 월간 발간물을 표 목록과 첨부파일로 제공한다."
+  panels:
+    - {type: table, label: "월간자료 목록", description: "제목과 발간일, 첨부 여부를 확인한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "보고서 본문 분석에는 상세 조회와 첨부파일 파싱이 필요하다."
+tool: {status: planned, planned_name: search_komis_board}
+provenance:
+  observed_at: "2026-07-16"
+  sources: [docs/komis_service_catalog.md, docs/komis_tool_parameter_spec.md, artifacts/browser/page-probe/pages.json]

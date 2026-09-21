@@ -1,0 +1,41 @@
+schema_version: 1
+page_id: mypage_menu_settings
+aliases: [my_menu_settings, "MY020"]
+identity:
+  section: "마이페이지"
+  name: "마이메뉴설정"
+  page_kind: account
+  navigation: {method: POST, target: /Komis/MyPage, params: {pageMode: MY020}}
+  login_required: true
+  external: false
+routing:
+  summary: "자주 쓰는 서비스 메뉴를 최대 10개 선택하고 순서를 정하는 로그인 페이지"
+  use_when:
+    - "마이메뉴에 표시할 메뉴를 추가·삭제하거나 순서를 바꾸려 할 때"
+    - "개인화 메뉴 설정 위치를 안내받고 싶을 때"
+  do_not_use_when:
+    - "이미 설정된 마이메뉴를 보기만 할 때"
+  distinguish_from:
+    - {page_id: mypage_menu, reason: "마이메뉴설정은 선택·순서 변경 페이지이고 마이메뉴는 설정 결과 조회 페이지다."}
+  example_queries:
+    - "마이메뉴를 설정하고 싶어"
+    - "자주 쓰는 페이지 순서를 바꾸려면 어디로 가?"
+  keywords: [마이메뉴설정, 개인화, 메뉴추가, 메뉴삭제, 순서변경, 최대10개]
+filters: []
+outputs:
+  available_data_labels: ["선택 가능 메뉴", "현재 선택 메뉴", "메뉴 순서", "최대 선택 개수"]
+presentation:
+  summary: "선택 가능 목록과 현재 선택 목록에서 최대 10개 메뉴와 순서를 설정한다."
+  panels:
+    - {type: dual_list, label: "마이메뉴 선택", description: "사용 가능한 메뉴와 선택된 메뉴를 나란히 보여준다."}
+    - {type: ordering, label: "메뉴 순서", description: "선택 메뉴의 표시 순서를 조정한다."}
+policies:
+  recommendation_only: true
+  mutation: account_change
+  caveats:
+    - "로그인이 필요하며 실제 저장은 명시적 사용자 확인 없이 수행하지 않는다."
+    - "최대 10개까지 선택할 수 있다."
+tool: {status: none, planned_name: null}
+provenance:
+  observed_at: "2026-07-16"
+  sources: [docs/komis_service_catalog.md, artifacts/browser/detail-probe/details.json]

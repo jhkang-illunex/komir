@@ -1,0 +1,120 @@
+schema_version: 1
+page_id: map_mineral
+aliases: [mineral_map, reserve_production_map]
+identity:
+  section: "핵심광물지도"
+  name: "광물지도"
+  page_kind: data
+  navigation: {method: GET, target: /Komis/MnrlMap/MnrlMap, params: {}}
+  login_required: false
+  external: false
+screen:
+  controls:
+    - id: mineral_variant_selector
+      label: "광종"
+      description: "티타늄은 Ilmenite와 Rutile 중 하나를 구분해 선택한다."
+      widget: select
+      role: direct
+      native_name: srchMnrkndUnqCd
+      target_filters: [mineral, mineral_subtype]
+      transform: split_mineral_variant
+      values_ref: metadata.maps.mineral_map_minerals
+      options:
+        - {value: MNRL0017-IM, label: "티타늄(Ilmenite)", aliases: [일메나이트]}
+        - {value: MNRL0017-RU, label: "티타늄(Rutile)", aliases: [루타일]}
+routing:
+  summary: "USGS 기반 국가별 광물 매장량·생산량을 세계지도, 순위, 연도별 추이와 표로 보여주는 페이지"
+  use_when:
+    - "특정 광물의 국가별 매장량이나 생산량을 비교할 때"
+    - "상위 보유국·생산국과 국가별 점유율·연도 추이를 보고 싶을 때"
+  do_not_use_when:
+    - "국가 간 광물 교역량과 경로를 찾을 때"
+    - "한 광물의 용도·가격·시장전망을 백과형 문서로 찾을 때"
+  distinguish_from:
+    - {page_id: map_global, reason: "광물지도는 매장량·생산량 분포이고 글로벌 수급지도는 국가 간 교역 흐름이다."}
+    - {page_id: mineral_info, reason: "광물지도는 국가별 구조화 수치이고 광종정보는 광물별 종합 참고자료다."}
+  example_queries:
+    - "리튬 매장량이 많은 국가를 지도에서 보고 싶어"
+    - "코발트 국가별 생산량 5년 추이는 어디서 봐?"
+  keywords: [광물지도, 매장량, 생산량, 국가별, 세계지도, 보유국, 생산국, 점유율, USGS]
+filters:
+  - id: mineral
+    semantic_key: mineral
+    label: "광종"
+    type: mineral
+    required: true
+    default: null
+    default_label: null
+    options: []
+    values_ref: metadata.maps.mineral_map_minerals
+    depends_on: []
+  - id: mineral_subtype
+    semantic_key: mineral_subtype
+    label: "티타늄 세부 광종"
+    type: enum
+    required: true
+    default: null
+    default_label: null
+    options:
+      - {value: ilmenite, label: "Ilmenite", aliases: [일메나이트]}
+      - {value: rutile, label: "Rutile", aliases: [루타일]}
+    values_ref: null
+    depends_on: [mineral]
+    applies_when: {mineral: ["티타늄"]}
+  - id: period
+    semantic_key: period
+    label: "조회 기간"
+    type: date_range
+    required: false
+    default: site_default
+    default_label: "화면 기본 기간"
+    options: []
+    values_ref: metadata.maps.mineral_map_years
+    depends_on: []
+    temporal:
+      granularity: year
+      max_year_offset: -1
+      overflow_policy: clamp_and_disclose
+  - id: metric
+    semantic_key: metric
+    label: "지표"
+    type: enum
+    required: false
+    default: reserves
+    default_label: "매장량"
+    options:
+      - {value: reserves, label: "매장량", aliases: [보유량, burudg]}
+      - {value: production, label: "생산량", aliases: [채굴량, prdctn]}
+    values_ref: null
+    depends_on: []
+  - id: country
+    semantic_key: country
+    label: "국가"
+    type: country
+    required: false
+    default: all
+    default_label: "국가 전체"
+    options: []
+    values_ref: metadata.maps.mineral_map_countries
+    depends_on: [mineral, metric]
+outputs:
+  available_data_labels: ["광종명", "국가", "선택 기간의 연도별 값", "최신연도 국가별 값", "최신연도 비중", "합계", "국가별 순위"]
+presentation:
+  summary: "국가별 색 농도 지도, 최신연도 순위 막대, 연도별 국가 누적 막대와 상세 표를 제공한다."
+  panels:
+    - {type: choropleth, label: "세계 광물지도", description: "국가별 매장량·생산량의 공간적 집중을 색 농도로 보여준다."}
+    - {type: ranked_bar, label: "최신연도 국가 순위", description: "상위국의 값과 점유율을 비교한다."}
+    - {type: stacked_bar, label: "연도별 국가 추이", description: "기간별 전체 규모와 국가 구성을 누적 막대로 보여준다."}
+    - {type: table, label: "국가별 연도 값", description: "연도별 값, 최신연도 비중과 합계를 확인한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "티타늄은 Ilmenite와 Rutile 두 세부 광종으로 분리된다."
+    - "연 단위 자료는 현재연도 값이 아직 확정되지 않은 것으로 보고 조회 상한을 현재연도-1로 적용한다."
+    - "지원 광종이어도 광종·지표·기간 조합별로 NO DATA, 0 또는 부분 제공일 수 있다."
+    - "USGS 반올림·미기재 때문에 국가별 합과 세계 총계가 다를 수 있다."
+tool: {status: planned, planned_name: get_mineral_reserve_or_production}
+provenance:
+  observed_at: "2026-07-16"
+  sources: [docs/komis_service_catalog.md, docs/komis_tool_parameter_spec.md, docs/komis_visual_presentation_catalog.md, artifacts/browser/page-probe/pages.json, artifacts/browser/visual-presentation/visuals.json]

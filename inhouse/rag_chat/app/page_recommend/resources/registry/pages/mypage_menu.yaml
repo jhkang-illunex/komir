@@ -1,0 +1,39 @@
+schema_version: 1
+page_id: mypage_menu
+aliases: [my_menu, "MY010"]
+identity:
+  section: "마이페이지"
+  name: "마이메뉴"
+  page_kind: account
+  navigation: {method: POST, target: /Komis/MyPage, params: {pageMode: MY010}}
+  login_required: true
+  external: false
+routing:
+  summary: "사용자가 설정한 개인화 메뉴를 표시하는 로그인 페이지"
+  use_when:
+    - "내가 설정한 KOMIS 바로가기 메뉴를 확인할 때"
+    - "마이메뉴의 위치를 안내받고 싶을 때"
+  do_not_use_when:
+    - "마이메뉴 항목을 새로 선택하거나 순서를 바꿀 때"
+  distinguish_from:
+    - {page_id: mypage_menu_settings, reason: "마이메뉴는 설정 결과를 보는 페이지이고 마이메뉴설정은 선택·순서를 변경하는 페이지다."}
+  example_queries:
+    - "내 마이메뉴는 어디서 봐?"
+    - "저장해 둔 개인 메뉴를 확인하고 싶어"
+  keywords: [마이페이지, 마이메뉴, 개인화메뉴, 바로가기]
+filters: []
+outputs:
+  available_data_labels: ["설정된 개인화 메뉴", "메뉴 순서", "설정 안내"]
+presentation:
+  summary: "사용자가 선택한 메뉴를 개인화 바로가기 형태로 보여준다."
+  panels:
+    - {type: menu, label: "마이메뉴", description: "설정된 서비스 메뉴를 순서대로 표시한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "로그인이 필요하며 설정한 메뉴가 없으면 마이메뉴설정 안내가 표시된다."
+tool: {status: none, planned_name: null}
+provenance:
+  observed_at: "2026-07-16"
+  sources: [docs/komis_service_catalog.md, artifacts/browser/detail-probe/details.json]

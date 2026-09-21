@@ -1,0 +1,45 @@
+schema_version: 1
+page_id: notice_terms
+aliases: [terms_of_use]
+identity:
+  section: "알림마당"
+  name: "이용약관"
+  page_kind: info
+  navigation: {method: GET, target: /Komis/UseProvision, params: {}}
+  login_required: false
+  external: false
+routing:
+  summary: "KOMIS 이용계약, 서비스 이용, 이용자 의무·게시물과 계약 변경·해지 등을 제1~21조와 부칙으로 제공하는 정적 약관"
+  use_when:
+    - "KOMIS 이용계약의 성립·제한·해지 조건을 확인할 때"
+    - "이용자번호 관리, 이용고객 의무나 게시물 저작권 조항을 찾을 때"
+  do_not_use_when:
+    - "KOMIS 화면·브라우저·첨부파일 사용법을 찾을 때"
+    - "공단 발간자료의 복제·인용 허용 범위만 확인할 때"
+  distinguish_from:
+    - {page_id: notice_usage_guide, reason: "이용약관은 계약 조건과 권리·의무이고 이용안내는 화면과 파일 사용법이다."}
+    - {page_id: notice_copyright, reason: "이용약관은 서비스 이용 전반을 다루고 저작권정책은 공단 자료의 복제·배포·인용에 집중한다."}
+    - {page_id: notice_ethics, reason: "이용약관은 계약 조항이고 윤리강령은 공단과 고객의 윤리적 행동 기준이다."}
+  example_queries:
+    - "KOMIS 회원의 의무는 이용약관 몇 조에 있어?"
+    - "KOMIS 이용계약 해지 조건을 확인하고 싶어"
+  keywords: [이용약관, 약관, 이용계약, 이용자번호, 서비스이용, 이용고객의무, 게시물, 계약해지, 손해배상]
+filters: []
+outputs:
+  available_data_labels: ["장·조 목차", "총칙", "계약 체결", "KOMIS 이용", "기타사항", "부칙"]
+presentation:
+  summary: "4개 장 목차 앵커와 제1~21조·부칙을 긴 단일 열 문서로 제공한다."
+  panels:
+    - {type: anchor_navigation, label: "약관 목차", description: "총칙·계약 체결·KOMIS 이용·기타사항으로 이동한다."}
+    - {type: legal_text, label: "이용약관 본문", description: "제1~21조와 부칙의 정적 문구를 순서대로 읽는다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "조회 필터나 제출 기능이 없는 정적 약관이며 화면 문구를 법률 자문으로 확대 해석하지 않는다."
+    - "부칙에는 2005-01-01 시행으로 표시되어 있으며 최신 개정 여부는 화면 공지와 운영기관에 확인해야 한다."
+    - "화면에는 제3조와 제6조가 모두 '약관의 공지'로 표시되지만 제6조 본문은 이용신청 승낙을 설명한다."
+tool: {status: none, planned_name: null}
+provenance:
+  observed_at: "2026-07-27"
+  sources: [docs/komis_service_catalog.md, artifacts/browser/page-probe/notice-pages.json]

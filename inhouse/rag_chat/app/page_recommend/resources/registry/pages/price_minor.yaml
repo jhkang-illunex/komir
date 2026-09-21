@@ -1,0 +1,135 @@
+schema_version: 1
+page_id: price_minor_metals
+aliases: [price_minor, minor_metals]
+identity:
+  section: "광물자원가격"
+  name: "희소금속"
+  page_kind: data
+  navigation: {method: GET, target: /Komis/RsrcPrice/MinorMetals, params: {}}
+  login_required: false
+  external: false
+routing:
+  summary: "리튬·코발트·희토류 등 희소금속의 품목·규격별 가격을 조회하는 페이지"
+  use_when:
+    - "희소금속의 과거 가격 시계열을 찾을 때"
+    - "리튬 탄산염·수산화물처럼 품목과 규격을 나눠 가격을 보고 싶을 때"
+  do_not_use_when:
+    - "비철금속 LME 가격이나 금·은 가격을 찾을 때"
+    - "희소금속 월간 보고서를 찾을 때"
+  distinguish_from:
+    - {page_id: price_base_metals, reason: "희소금속은 품목·규격별 가격이고 비철금속은 LME 중심 가격이다."}
+    - {page_id: resource_trend_rare_monthly, reason: "이 페이지는 수치 가격 조회이고 희소금속 월간동향은 보고서 게시판이다."}
+  example_queries:
+    - "탄산리튬 99.5 가격 추이를 보고 싶어"
+    - "코발트 메탈 가격은 어디서 조회해?"
+  keywords: [희소금속, 희토류, 리튬, 코발트, 탄산리튬, 수산화리튬, 품목, 규격, 가격]
+filters:
+  - id: mineral
+    semantic_key: mineral
+    label: "광종"
+    type: mineral
+    required: true
+    default: null
+    default_label: null
+    options: []
+    values_ref: metadata.prices.minor_metals.minerals
+    depends_on: []
+  - id: price_criterion
+    semantic_key: price_criterion
+    label: "품목·가격기준"
+    type: enum
+    required: false
+    default: site_default
+    default_label: "선택 광종의 화면 기본 품목"
+    options: []
+    values_ref: metadata.prices.price_criteria
+    depends_on: [mineral]
+  - id: specification
+    semantic_key: specification
+    label: "규격"
+    type: enum
+    required: false
+    default: site_default
+    default_label: "선택 품목의 화면 기본 규격"
+    options: []
+    values_ref: metadata.prices.specifications
+    depends_on: [mineral, price_criterion]
+  - id: average_interval
+    semantic_key: granularity
+    label: "평균 단위"
+    type: enum
+    required: false
+    default: DAY
+    default_label: "일간"
+    options:
+      - {value: DAY, label: "일간", aliases: [일별]}
+      - {value: WEEK, label: "주간", aliases: [주별]}
+      - {value: MONTH, label: "월간", aliases: [월별]}
+      - {value: QUARTER, label: "분기", aliases: [분기별]}
+      - {value: YEAR, label: "연간", aliases: [연도별]}
+    values_ref: null
+    depends_on: []
+  - id: period_mode
+    semantic_key: period_mode
+    label: "기간 입력 방식"
+    type: enum
+    required: false
+    default: year
+    default_label: "연도별"
+    options:
+      - {value: year, label: "연도별", aliases: [연간]}
+      - {value: month, label: "월별", aliases: [월간]}
+    values_ref: null
+    depends_on: []
+  - id: period
+    semantic_key: period
+    label: "조회 기간"
+    type: date_range
+    required: false
+    default: site_default
+    default_label: "화면 기본 기간"
+    options: []
+    values_ref: metadata.prices.available_periods
+    depends_on: [period_mode]
+    temporal:
+      granularity: year
+      granularity_filter: period_mode
+      granularity_map: {year: year, month: month}
+  - id: compare_mineral
+    semantic_key: compare_mineral
+    label: "비교 광종"
+    type: mineral
+    required: false
+    default: null
+    default_label: "비교하지 않음"
+    options: []
+    values_ref: metadata.prices.minor_metals.minerals
+    depends_on: []
+  - id: compare_price_criterion
+    semantic_key: compare_price_criterion
+    label: "비교 품목·가격기준"
+    type: enum
+    required: false
+    default: null
+    default_label: "비교하지 않음"
+    options: []
+    values_ref: metadata.prices.price_criteria
+    depends_on: [compare_mineral]
+outputs:
+  available_data_labels: ["기준일", "기준가격 또는 상업가격", "최저가", "최고가", "전일·전주·전월·전년 평균 대비 등락가와 등락률", "가격 시계열", "가격기준·규격·단위"]
+presentation:
+  summary: "선택한 품목·규격의 가격 선 그래프, 최신 비교표와 상세 원자료 표를 제공한다."
+  panels:
+    - {type: line, label: "가격 추이", description: "품목·규격이 고정된 가격의 방향과 변곡점을 본다."}
+    - {type: summary_table, label: "최신 가격 비교", description: "최근값을 전일·전주·전월·전년 평균과 비교한다."}
+    - {type: table, label: "상세 원자료", description: "기준일별 정확한 가격과 등락을 확인한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "광종만 같아도 품목·규격이 다르면 같은 가격 시계열로 취급하지 않는다."
+    - "API에만 있고 화면에서 숨긴 내부 지표 전용 가격코드는 추천하지 않는다."
+tool: {status: planned, planned_name: get_resource_price}
+provenance:
+  observed_at: "2026-07-16"
+  sources: [docs/komis_service_catalog.md, docs/komis_tool_parameter_spec.md, docs/komis_visual_presentation_catalog.md, artifacts/browser/page-probe/pages.json]

@@ -1,0 +1,70 @@
+schema_version: 1
+page_id: country_info
+aliases: [country_information]
+identity:
+  section: "광종/국가정보"
+  name: "국가정보"
+  page_kind: info
+  navigation: {method: GET, target: /Komis/MnrlInfo/NationInfo, params: {}}
+  login_required: false
+  external: false
+routing:
+  summary: "95개 국가의 기초정보와 광업개황·기관·정책·생산·소비·교역을 제공하는 국가별 참고자료 페이지"
+  use_when:
+    - "특정 국가의 광업 제도, 기관과 산업 개황을 폭넓게 알고 싶을 때"
+    - "한 국가의 광산물 생산·소비·교역 표와 PDF를 찾을 때"
+  do_not_use_when:
+    - "법령 원문과 첨부파일만 찾을 때"
+    - "국가 간 실제 교역 경로를 지도에서 비교하려 할 때"
+  distinguish_from:
+    - {page_id: law_info, reason: "국가정보는 종합 참고자료이고 법령정보는 법령 게시물과 첨부파일 목록이다."}
+    - {page_id: map_global, reason: "국가정보는 국가 한 곳의 상세자료이고 글로벌 수급지도는 국가 간 교역 흐름이다."}
+  example_queries:
+    - "칠레 광업 정책과 생산현황은 어디서 봐?"
+    - "캐나다 국가정보 PDF를 찾고 싶어"
+  keywords: [국가정보, 광업개황, 광업기관, 정책, 제도, 생산, 소비, 교역, 수도, 인구, PDF]
+filters:
+  - id: country
+    semantic_key: country
+    label: "국가명"
+    type: country
+    required: false
+    default: all
+    default_label: "전체 국가 목록"
+    options: []
+    values_ref: metadata.information.countries
+    depends_on: []
+  - id: continent
+    semantic_key: continent
+    label: "대륙"
+    type: enum
+    required: false
+    default: all
+    default_label: "전체 대륙"
+    options:
+      - {value: all, label: "전체", aliases: []}
+      - {value: asia, label: "아시아", aliases: []}
+      - {value: north_america, label: "북아메리카", aliases: [북미]}
+      - {value: south_america, label: "남아메리카", aliases: [남미]}
+      - {value: oceania, label: "오세아니아", aliases: [대양주]}
+      - {value: africa, label: "아프리카", aliases: []}
+      - {value: europe, label: "유럽", aliases: []}
+    values_ref: null
+    depends_on: []
+outputs:
+  available_data_labels: ["국가 코드", "대륙", "한글명·영문명", "수도", "인구", "면적", "언어", "화폐", "광업개황", "광업관련기관", "정책 및 제도", "광산물 생산·소비·교역현황", "PDF", "최종수정일시"]
+presentation:
+  summary: "국가 상세를 아코디언 섹션으로 나누고 기초정보, 설명문과 광종·연도·교역관점별 표를 제공한다."
+  panels:
+    - {type: accordion, label: "국가별 상세정보", description: "일반사항, 개황, 기관, 정책과 수치 섹션을 펼쳐 읽는다."}
+    - {type: tables, label: "생산·소비·교역 표", description: "광종별 연도 값과 HS 코드·품목·수입·수출·금액·중량별 표를 제공한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "국가정보 지원 목록은 법령·교역 필터의 전체 국가·지역 목록보다 작다."
+    - "교역 표를 광종 합계 하나로 자동 병합하지 않고 생산품 단계와 HS 품목 맥락을 보존한다."
+tool: {status: planned, planned_name: get_country_info}
+provenance:
+  observed_at: "2026-07-16"
+  sources: [docs/komis_service_catalog.md, docs/komis_tool_parameter_spec.md, docs/komis_visual_presentation_catalog.md, artifacts/browser/detail-probe/details.json]

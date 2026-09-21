@@ -1,0 +1,166 @@
+# -*- coding: utf-8 -*-
+"""서빙 레이어 공통 설정 로더 — deploy/.env.example 계약(§3) 그대로 읽는다.
+
+기존 geo/mineral_supply_risk .env 컨벤션과 이름을 그대로 쓴다(docs/
+CONTAINER_ARCHITECTURE.md §3, 새 접두사 만들지 않는다는 원칙). `PG_*`는
+2026-08-10 postgres 이관 작업에서 이미 `inhouse/.env`에 실존 — 이 Settings가
+그 값을 읽는 첫 소비자다(주의: `PG_DSN`이 가리키는 `public` 스키마는 타 팀 소유,
+komir 쪽 코드는 `PG_SCHEMA`(mineral_risk)로만 스키마를 한정해 조회할 것 —
+services/shared/db.py 참고).
+
+2026-08-11: 병합계획(documents/산출물/2026-W33_0810-0816/
+병합계획_komis-report-generator_260811.md) 결정②에 따라 search/config.py·
+vector_index/config.py(외부 repo, `LLM_TIMEOUT_SECONDS`/`KOMIS_EMBEDDING_*` 등
+별도 이름 체계)를 그대로 들여오지 않고, 이 파일 하나로 흡수했다 — 두 개의 설정
+로더가 같은 프로젝트에 공존하는 걸 피하기 위함(TWIN 방지)."""
+from __future__ import annotations
+
+from pathlib import Path
+
+from pydantic import field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_INHOUSE_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _strip_quotes(value: str) -> str:
+    """양끝을 감싼 큰따옴표 한 겹을 벗긴다.
+
+    python-dotenv(로컬 실행, `Settings.model_config.env_file`)는 `KEY="a b"`의
+    따옴표를 알아서 벗기지만, `docker run --env-file`은 벗기지 않고 값 그대로
+    프로세스 환경변수에 넣는다(공식 문서에 명시된 동작) — pydantic-settings는
+    이미 설정된 환경변수를 있는 그대로 읽으므로 이 경우 따옴표가 값에 남는다.
+    cron 표현식처럼 공백을 포함해 따옴표로 감싸고 싶어지는 값에서 실제로
+    터진 문제(2026-08-27, REPORT_SCHEDULE_CRON="0 6 * * MON"이 컨테이너에서
+    문자 그대로 `"0 6 * * MON"`으로 들어가 크론 파싱이 깨짐) — 소스가 어느
+    쪽이든 안전하도록 값 쪽에서 방어한다."""
+
+    if len(value) >= 2 and value[0] == value[-1] == '"':
+        return value[1:-1]
+    return value
+
+
+class Settings(BaseSettings):
+    """서비스 3종(commodity_api·rag_chat·report_gen) 공통 설정."""
+
+    model_config = SettingsConfigDict(
+        env_file=str(_INHOUSE_ROOT / ".env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
+
+    # ── 정형 DB(현재 DuckDB, PG_* 이관 진행 중 — MSR_DB가 정본, cutover 전) ──
+    MSR_DB: str = str(_INHOUSE_ROOT / "data_lake/db/minerals.duckdb")
+    MSR_PUBLISH_SCHEMA: str = ""
+
+    # ── PostgreSQL(komis_demo, 2026-08-10) — mineral_risk 스키마만 사용,
+    #    public(ko_*·ai_*)은 타 팀 소유라 이 프로젝트 코드가 건드리지 않는다 ──
+    PG_DSN: str = ""
+    PG_SCHEMA: str = "mineral_risk"
+
+    # ── LLM(chat, geo/llm/openai_compat.py가 이미 쓰는 규약 그대로) ──
+    LLM_PROVIDER: str = "openai_compat"
+    LLM_BASE_URL: str = "http://localhost:11434/v1"
+    LLM_MODEL: str = "qwen2.5:32b"
+    LLM_API_KEY: str = ""
+    LLM_TEMPERATURE: float = 0.0
+    LLM_CONCURRENCY: int = 8
+    LLM_TIMEOUT_SECONDS: float = 120.0
+
+    # ── 임베딩(dense, rag_core/ragkit/embed.py가 실제로 쓰는 값 — 로컬 sentence-
+    #    transformers 직접 로드라 EMBEDDING_BASE_URL은 현재 코드 경로에서는 안
+    #    쓰이지만(§5 실사 기록), Settings 계약 자체는 유지) ──
+    EMBEDDING_BASE_URL: str = ""
+    EMBEDDING_MODEL: str = "intfloat/multilingual-e5-small"
+
+    # ── 벡터DB(Qdrant, komir 직접 소유·기동) ──
+    QDRANT_URL: str = "http://qdrant:6333"
+    QDRANT_COLLECTION: str = "doc_chunks"
+
+    # ── 챗봇 서비스 ──
+    CHAT_SESSION_TTL_DAYS: int = 90
+    CHAT_STREAM_CHUNK_MS: int = 50
+
+    # 페이지추천(rag_chat/app/page_recommend, 2026-08-11 이식) — 상대기간("최근 5년")을
+    # 해석할 기준 현재시각의 지역. 외부 repo의 KOMIS_TIMEZONE을 이름 그대로 흡수했다.
+    # 같은 파일의 KOMIS_SEARCH_STATE_DB는 흡수하지 않았다 — 대화상태를 SQLite가 아니라
+    # 기존 chat_session/chat_message에 두므로 가리킬 파일 자체가 없다.
+    KOMIS_TIMEZONE: str = "Asia/Seoul"
+
+    # komis_raw_lookup(rag_core/ragkit/_mcp_tools_common.py)이 한 번에 돌려주는
+    # 시계열 최대 타임스탬프 수 — 2026-09-08 백엔드 인수인계 문서
+    # (documents/AI_TEAM_DATA_SCHEMA_HANDOFF.md §5 주의5, 내부 합의: 전체
+    # 시계열을 그대로 반환하면 챗봇 응답 지연·차트 가독성 저하) 반영. 기간이
+    # 없는 조회의 SQL LIMIT에만 이 값을 쓴다. 명시된 기간은 전체 조회한다
+    # (서버 기동 시 register_common_tools()가 한 번 읽어 고정).
+    KOMIS_RAW_MAX_TIMESTAMPS: int = 60
+
+    # ── 리포트 스케줄러 ──
+    REPORT_SCHEDULE_CRON: str = "0 6 * * MON"
+    REPORT_TEMPLATE_DIR: str = str(_INHOUSE_ROOT / "services/report_gen/app/templates")
+
+    # ── report_gen 분석요약: 광물자원가격 "가격 위치" 판정(고가권/중간권/
+    #    저가권) 임계값(2026-09-09, 사용자 요청으로 .env화 — 코드 재배포
+    #    없이 재시작만으로 반영). 기본값은 균등 3등분(하위/상위 1/3
+    #    지점) — 특정 광종·기간에 맞춘 값이 아니라 백분위 정의 자체에서
+    #    나오는 중립적 분할이라 이 값으로 시작한다. 단위는 백분위 %(0~100),
+    #    LOW < HIGH를 요구하며 어기면 report_gen이 기동 시 실패한다
+    #    (`app/analysis/komir_summary.py::_price_position_label` 소비) ──
+    PRICE_POSITION_LOW_PCT: float = 100 / 3
+    PRICE_POSITION_HIGH_PCT: float = 200 / 3
+
+    # ── ingest 디렉토리 계약(2026-09-16, 사용자 지시): landing(원본) / processing(작업 중) /
+    #    data_lake(정리 완료 — okf_documents·pageindex_trees). 비어 있으면 레거시 소스트리
+    #    고정 경로(ingest/paths.py 참고)라 .env를 안 건드린 기존 배포는 동작이 같다.
+    #    컨테이너는 compose가 /komir/{landing,processing,data_lake}로 마운트하며 이 값을 넣는다.
+    #    소비자: ingest/paths.py(전 ingest 모듈), rag_core/retrieval/pageindex.py(data_lake 읽기),
+    #    rag_core/ragkit/ingest.py(landing/incoming·processing/shareable 읽기) ──
+    INGEST_LANDING_DIR: str = ""
+    INGEST_PROCESSING_DIR: str = ""
+    INGEST_DATA_LAKE_DIR: str = ""
+
+    @field_validator("PRICE_POSITION_HIGH_PCT", mode="after")
+    @classmethod
+    def _validate_price_position_thresholds(cls, value: float, info) -> float:
+        low = info.data.get("PRICE_POSITION_LOW_PCT")
+        if low is not None and not (0 <= low < value <= 100):
+            raise ValueError(
+                "PRICE_POSITION_LOW_PCT < PRICE_POSITION_HIGH_PCT이고 둘 다 0~100 "
+                f"범위여야 합니다(현재 LOW={low}, HIGH={value})."
+            )
+        return value
+
+    # INGESTION_SCHEDULE_CRON·FORECAST_SCHEDULE_CRON(.env에 있음)은 이 Settings의
+    # 소비자가 아직 없다 — 실제 crontab이 직접 참조하는 목표값(§.env 주석,
+    # "전환 시점에 crontab도 이 값으로 다시 짜야 함")이라 여기 필드를 만들지 않는다
+    # (쓰는 곳 없는 필드 금지, CLAUDE.md §4).
+
+    @field_validator("REPORT_SCHEDULE_CRON", mode="after")
+    @classmethod
+    def _unquote_cron(cls, value: str) -> str:
+        return _strip_quotes(value)
+
+    def llm_cfg(self) -> dict:
+        """geo/llm/openai_compat.OpenAICompatChat이 받는 cfg dict로 변환."""
+
+        return {
+            "provider": self.LLM_PROVIDER,
+            "base_url": self.LLM_BASE_URL,
+            "model": self.LLM_MODEL,
+            "api_key": self.LLM_API_KEY,
+            "temperature": self.LLM_TEMPERATURE,
+            "timeout": int(self.LLM_TIMEOUT_SECONDS),
+            "concurrency": self.LLM_CONCURRENCY,
+        }
+
+
+_settings: Settings | None = None
+
+
+def get_settings() -> Settings:
+    """프로세스당 1회만 로드(캐시) — env 변경은 재시작으로 반영."""
+
+    global _settings
+    if _settings is None:
+        _settings = Settings()
+    return _settings

@@ -1,0 +1,67 @@
+schema_version: 1
+page_id: law_info
+aliases: [legal_information]
+identity:
+  section: "광종/국가정보"
+  name: "법령정보"
+  page_kind: board
+  navigation: {method: GET, target: /Komis/Board/LAWINFO, params: {}}
+  login_required: false
+  external: false
+routing:
+  summary: "국가별 광업 관련 법령명, 법 구분과 첨부파일을 조회하는 게시판"
+  use_when:
+    - "특정 국가의 광업 법령 문서나 첨부파일을 찾을 때"
+    - "국가별 법령 목록을 검색할 때"
+  do_not_use_when:
+    - "국가의 전반적인 광업 정책·산업 현황을 찾을 때"
+    - "실무 투자 가이드북을 찾을 때"
+  distinguish_from:
+    - {page_id: country_info, reason: "법령정보는 법령 문서 목록이고 국가정보는 광업 전반의 종합 참고자료다."}
+    - {page_id: external_investment_guide, reason: "법령 원문 목록과 국가별 투자 실무 가이드북을 구분한다."}
+  example_queries:
+    - "칠레 광업 법령은 어디서 찾아?"
+    - "몽골 광업법 첨부파일을 보고 싶어"
+  keywords: [법령정보, 광업법, 법률, 법령, 국가별법령, 첨부파일]
+filters:
+  - id: country
+    semantic_key: country
+    label: "국가"
+    type: country
+    required: false
+    default: all
+    default_label: "전체 국가·지역"
+    options: []
+    values_ref: metadata.information.all_countries
+    depends_on: []
+  - id: page_size
+    semantic_key: page_size
+    label: "페이지 크기"
+    type: integer
+    required: false
+    default: 15
+    default_label: "15개"
+    options:
+      - {value: 5, label: "5개", aliases: []}
+      - {value: 10, label: "10개", aliases: []}
+      - {value: 15, label: "15개", aliases: []}
+      - {value: 20, label: "20개", aliases: []}
+      - {value: 40, label: "40개", aliases: []}
+      - {value: 50, label: "50개", aliases: []}
+    values_ref: null
+    depends_on: []
+outputs:
+  available_data_labels: ["번호", "국가", "법 구분", "법령명", "첨부파일 여부", "조회수"]
+presentation:
+  summary: "국가별 법령명과 첨부 여부를 목록 표로 제공한다."
+  panels:
+    - {type: table, label: "법령 목록", description: "국가, 법 구분, 법령명과 첨부 여부를 확인한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "목록만으로 법령 본문을 설명하지 않으며 상세와 첨부파일 확인이 필요하다."
+tool: {status: planned, planned_name: search_komis_board}
+provenance:
+  observed_at: "2026-07-16"
+  sources: [docs/komis_service_catalog.md, docs/komis_tool_parameter_spec.md, artifacts/browser/page-probe/pages.json]

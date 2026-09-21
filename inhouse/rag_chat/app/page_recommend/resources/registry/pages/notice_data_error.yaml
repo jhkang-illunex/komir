@@ -1,0 +1,43 @@
+schema_version: 1
+page_id: notice_data_error
+aliases: [public_data_error_report]
+identity:
+  section: "알림마당"
+  name: "공공데이터 오류신고"
+  page_kind: info
+  navigation: {method: GET, target: /Komis/ErrNotice, params: {}}
+  login_required: false
+  external: false
+routing:
+  summary: "공공데이터 품질오류를 이메일·전화로 알릴 때의 접수·담당자 지정·처리·결과안내 절차를 설명하는 정적 페이지"
+  use_when:
+    - "KOMIS 공공데이터 오류를 어디에 어떻게 신고하는지 확인할 때"
+    - "공공데이터 오류신고 이후의 처리 단계와 연락처를 찾을 때"
+  do_not_use_when:
+    - "웹 폼으로 오류신고를 직접 제출하거나 첨부파일을 전송하려 할 때"
+    - "KOMIS 서비스 이용 문의를 Q&A나 FAQ에서 찾을 때"
+  distinguish_from:
+    - {page_id: notice_qna, reason: "공공데이터 오류신고는 이메일·전화 절차 안내이고 Q&A는 이용자 문의 목록과 본인인증 동선이다."}
+    - {page_id: notice_faq, reason: "공공데이터 오류신고는 데이터 품질 제보 절차이고 FAQ는 일반적인 서비스 이용 질문·답변이다."}
+  example_queries:
+    - "KOMIS 공공데이터 오류는 어디에 신고해?"
+    - "데이터 오류 신고 후 어떤 절차로 처리돼?"
+  keywords: [공공데이터, 오류신고, 데이터오류, 품질오류, 신고접수, 담당자지정, 처리결과, 고객지원센터]
+filters: []
+outputs:
+  available_data_labels: ["법적 근거", "신고접수", "담당자 지정", "담당자 처리", "처리결과 안내", "전화·이메일 문의처"]
+presentation:
+  summary: "법적 근거 안내와 신고접수부터 결과안내까지 4단계 흐름 카드를 제공한다."
+  panels:
+    - {type: process_flow, label: "공공데이터 오류신고 절차", description: "신고접수·담당자 지정·담당자 처리·처리결과 안내의 순서를 확인한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "페이지에는 신고 제출 폼이나 파일 첨부 기능이 없으며 챗봇이 신고를 대신 접수했다고 표현하지 않는다."
+    - "화면은 고객지원센터 033-736-5000과 csmaster@komir.or.kr을 통한 전화·이메일 접수를 안내한다."
+    - "화면의 '담당자 처리' 카드 설명은 신고접수 문구와 중복되므로 단계명 이상의 처리 내용을 추정하지 않는다."
+tool: {status: none, planned_name: null}
+provenance:
+  observed_at: "2026-07-27"
+  sources: [docs/komis_service_catalog.md, docs/komis_tool_parameter_spec.md, artifacts/browser/page-probe/notice-pages.json]

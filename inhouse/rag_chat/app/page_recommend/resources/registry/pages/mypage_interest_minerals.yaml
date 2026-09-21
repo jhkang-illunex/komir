@@ -1,0 +1,42 @@
+schema_version: 1
+page_id: mypage_interest_minerals
+aliases: [interest_minerals, "MY030"]
+identity:
+  section: "마이페이지"
+  name: "관심광종설정"
+  page_kind: account
+  navigation: {method: POST, target: /Komis/MyPage, params: {pageMode: MY030}}
+  login_required: true
+  external: false
+routing:
+  summary: "관심 광종을 최대 6개 선택하고 순서를 정하는 로그인 페이지"
+  use_when:
+    - "내 관심광종을 추가·삭제하거나 순서를 바꾸려 할 때"
+    - "마이메뉴의 관심광종 가격에 표시할 광종을 설정할 때"
+  do_not_use_when:
+    - "광종별 가격이나 상세정보를 조회하려 할 때"
+  distinguish_from:
+    - {page_id: mypage_menu_settings, reason: "관심광종설정은 광종을 선택하고 마이메뉴설정은 서비스 메뉴를 선택한다."}
+    - {page_id: mineral_info, reason: "관심광종설정은 개인화 변경이고 광종정보는 공개 참고자료 조회다."}
+  example_queries:
+    - "관심광종에 리튬을 추가하려면 어디로 가?"
+    - "내 관심광종 순서를 바꾸고 싶어"
+  keywords: [관심광종, 관심광물, 광종설정, 개인화, 최대6개, 순서변경]
+filters: []
+outputs:
+  available_data_labels: ["광종 분류", "선택 가능 광종", "현재 관심광종", "표시 순서", "최대 선택 개수"]
+presentation:
+  summary: "광종 분류별 목록에서 최대 6개 관심광종을 선택하고 순서를 정한다."
+  panels:
+    - {type: categorized_selector, label: "관심광종 선택", description: "비철·희소·철광석 및 에너지·기타 분류에서 광종을 고른다."}
+    - {type: ordering, label: "관심광종 순서", description: "선택한 광종의 표시 순서를 조정한다."}
+policies:
+  recommendation_only: true
+  mutation: account_change
+  caveats:
+    - "로그인이 필요하며 실제 저장은 명시적 사용자 확인 없이 수행하지 않는다."
+    - "최대 6개까지 선택할 수 있다."
+tool: {status: none, planned_name: null}
+provenance:
+  observed_at: "2026-07-16"
+  sources: [docs/komis_service_catalog.md, artifacts/browser/detail-probe/details.json]

@@ -1,0 +1,115 @@
+schema_version: 1
+page_id: notice_related_korea
+aliases: [domestic_related_sites]
+identity:
+  section: "알림마당"
+  name: "유관사이트 > 국내"
+  page_kind: info
+  navigation: {method: GET, target: /Komis/SiteCR/HvrlKorea, params: {}}
+  login_required: false
+  external: false
+screen:
+  controls:
+    - id: institution_category_radio
+      label: "분류"
+      description: "전체 또는 국내대학·연구기관 및 학회 등·자원관련기관·정부기관 등을 단일선택한다."
+      widget: radio
+      role: direct
+      native_name: srchTypeCd
+      target_filters: [institution_category]
+      options:
+        - {value: all, label: "전체", aliases: [전체 분류]}
+        - {value: RS001004, label: "국내대학", aliases: [대학]}
+        - {value: RS001005, label: "연구기관 및 학회 등", aliases: [연구기관, 학회]}
+        - {value: RS001006, label: "자원관련기관", aliases: [자원 기관]}
+        - {value: RS001007, label: "정부기관 등", aliases: [정부기관]}
+      observed_default: all
+    - id: search_field_selector
+      label: "검색 대상"
+      description: "기관·대학명 또는 요약정보 중 검색할 대상을 선택한다."
+      widget: select
+      role: direct
+      native_name: srchField
+      target_filters: [search_field]
+      options:
+        - {value: siteNm, label: "기관/대학명", aliases: [기관명, 대학명]}
+        - {value: siteInfo, label: "요약정보", aliases: [설명, 요약]}
+      observed_default: siteNm
+    - id: related_site_query
+      label: "검색어"
+      description: "선택한 검색 대상에서 기관·대학 또는 요약정보를 찾는다."
+      widget: text_search
+      role: direct
+      native_name: srchValue
+      target_filters: [query]
+routing:
+  summary: "국내 자원 관련 대학·연구기관·학회·자원기관·정부기관의 설명과 외부 URL을 찾는 디렉터리"
+  use_when:
+    - "국내 광업·지질·자원 관련 대학이나 연구기관의 홈페이지를 찾을 때"
+    - "국내 자원 관련 학회·정부기관·정보기관의 설명과 링크를 찾을 때"
+  do_not_use_when:
+    - "국외 자원 관련 기관이나 국제 학회 링크를 찾을 때"
+    - "국가별 인적교류기관 목록을 찾을 때"
+  distinguish_from:
+    - {page_id: notice_related_global, reason: "국내 페이지는 한국의 대학·기관 중심이고 국외 페이지는 해외 기관·단체 중심이다."}
+    - {page_id: notice_related_people, reason: "국내 페이지는 분류·검색 필터가 있고 인적교류기관은 필터 없이 국가별로 묶인 목록이다."}
+  example_queries:
+    - "국내 지질학과 홈페이지를 어디서 찾아?"
+    - "한국 자원 관련 연구기관과 학회 목록을 보고 싶어"
+  keywords: [유관사이트, 국내, 국내대학, 연구기관, 학회, 자원관련기관, 정부기관, 기관홈페이지]
+filters:
+  - id: institution_category
+    semantic_key: institution_category
+    label: "분류"
+    type: enum
+    required: false
+    default: all
+    default_label: "전체"
+    options:
+      - {value: all, label: "전체", aliases: [전체 분류]}
+      - {value: RS001004, label: "국내대학", aliases: [대학]}
+      - {value: RS001005, label: "연구기관 및 학회 등", aliases: [연구기관, 학회]}
+      - {value: RS001006, label: "자원관련기관", aliases: [자원 기관]}
+      - {value: RS001007, label: "정부기관 등", aliases: [정부기관]}
+    values_ref: null
+    depends_on: []
+  - id: search_field
+    semantic_key: search_field
+    label: "검색 대상"
+    type: enum
+    required: false
+    default: siteNm
+    default_label: "기관/대학명"
+    options:
+      - {value: siteNm, label: "기관/대학명", aliases: [기관명, 대학명]}
+      - {value: siteInfo, label: "요약정보", aliases: [설명, 요약]}
+    values_ref: null
+    depends_on: []
+  - id: query
+    semantic_key: query
+    label: "검색어"
+    type: text
+    required: false
+    default: null
+    default_label: null
+    options: []
+    values_ref: null
+    depends_on: []
+outputs:
+  available_data_labels: ["분류 코드", "분류", "기관·대학명", "요약정보", "외부 URL"]
+presentation:
+  summary: "분류별 제목 아래 기관·대학명, 요약정보와 새 창 외부 URL을 3열 표로 제공한다."
+  panels:
+    - {type: grouped_tables, label: "국내 유관기관 목록", description: "분류별 기관·대학명, 설명과 외부 홈페이지 주소를 확인한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "분류 메타데이터는 POST /Komis/SiteCR/ajax/getSiteCrCdList에 pageCd=HvrlKorea를 전달해 조회한다."
+    - '목록은 POST /Komis/SiteCR/ajax/getSiteCrDataList에 pageCd=HvrlKorea, srchTypeCd(전체=""), srchField(siteNm|siteInfo), srchValue를 전달해 조회한다.'
+    - "2026-07-27 조사 시 국내대학 RS001004 15건, 연구기관 및 학회 등 RS001005 15건, 자원관련기관 RS001006 3건, 정부기관 등 RS001007 11건으로 총 44건이었다."
+    - "KOMIS가 제공한 외부 URL의 현재 운영 여부나 연결 성공은 보장하지 않으며 링크는 새 창으로 열린다."
+tool: {status: none, planned_name: null}
+provenance:
+  observed_at: "2026-07-27"
+  sources: [docs/komis_service_catalog.md, docs/komis_tool_parameter_spec.md, artifacts/browser/page-probe/notice-pages.json, artifacts/browser/page-probe/notice-responses.json]

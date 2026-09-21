@@ -1,0 +1,45 @@
+schema_version: 1
+page_id: notice_related_people
+aliases: [exchange_organizations]
+identity:
+  section: "알림마당"
+  name: "유관사이트 > 인적교류기관"
+  page_kind: info
+  navigation: {method: GET, target: /Komis/SiteCR/HvrlOrg, params: {}}
+  login_required: false
+  external: false
+routing:
+  summary: "캐나다·칠레·남아공·인니·일본·중국·카자흐스탄의 주요 인적교류기관과 외부 URL을 국가별로 보는 디렉터리"
+  use_when:
+    - "KOMIS가 정리한 주요 국가별 인적교류기관을 찾을 때"
+    - "해외 광업·에너지 정부기관·공기업·협회의 설명과 홈페이지를 찾을 때"
+  do_not_use_when:
+    - "기관 유형이나 검색어로 국내·국외 유관사이트를 필터링할 때"
+    - "국가별 광업 현황·통계·투자정보를 조회할 때"
+  distinguish_from:
+    - {page_id: notice_related_korea, reason: "인적교류기관은 국가별 해외 기관 목록이고 국내 페이지는 한국 기관을 유형·검색어로 찾는다."}
+    - {page_id: notice_related_global, reason: "인적교류기관은 화면 필터가 없는 국가별 목록이고 국외 페이지는 기관 유형과 검색어 필터가 있다."}
+    - {page_id: country_info, reason: "인적교류기관은 외부 기관 링크 디렉터리이고 국가정보는 국가별 광업 종합 참고자료다."}
+  example_queries:
+    - "캐나다 인적교류기관 목록은 어디서 봐?"
+    - "칠레 광업 관련 교류기관 홈페이지를 찾고 싶어"
+  keywords: [유관사이트, 인적교류기관, 교류기관, 캐나다, 칠레, 남아공, 인니, 일본, 중국, 카자흐스탄]
+filters: []
+outputs:
+  available_data_labels: ["국가 코드", "국가", "기관명", "요약정보", "외부 URL"]
+presentation:
+  summary: "국가별 제목 아래 기관명, 요약정보와 새 창 외부 URL을 3열 표로 제공한다."
+  panels:
+    - {type: grouped_tables, label: "국가별 인적교류기관", description: "7개 국가별 기관명, 설명과 외부 홈페이지 주소를 확인한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "화면에 페이지 전용 검색이나 국가 선택 필터가 없으므로 검색 파라미터를 임의로 추가하지 않는다."
+    - "목록은 POST /Komis/SiteCR/ajax/getSiteCrDataList에 pageCd=HvrlOrg, 빈 srchTypeCd와 srchValue를 전달해 조회한다."
+    - "2026-07-27 조사 시 캐나다 RS003001 10건, 칠레 RS003002 3건, 남아공 RS003003 2건, 인니 RS003004 2건, 일본 RS003005 1건, 중국 RS003006 3건, 카자흐스탄 RS003007 3건으로 총 24건이었다."
+    - "KOMIS가 제공한 외부 URL의 현재 운영 여부나 연결 성공은 보장하지 않으며 링크는 새 창으로 열린다."
+tool: {status: none, planned_name: null}
+provenance:
+  observed_at: "2026-07-27"
+  sources: [docs/komis_service_catalog.md, docs/komis_tool_parameter_spec.md, artifacts/browser/page-probe/notice-pages.json, artifacts/browser/page-probe/notice-responses.json]

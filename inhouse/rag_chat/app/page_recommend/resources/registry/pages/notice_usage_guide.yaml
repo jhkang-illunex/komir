@@ -1,0 +1,45 @@
+schema_version: 1
+page_id: notice_usage_guide
+aliases: [usage_guide]
+identity:
+  section: "알림마당"
+  name: "이용안내"
+  page_kind: info
+  navigation: {method: GET, target: /Komis/UseInfo, params: {}}
+  login_required: false
+  external: false
+routing:
+  summary: "KOMIS 지원 브라우저, 개인화·공통 기능, 문서 뷰어와 첨부파일 문제 해결 방법을 안내하는 정적 페이지"
+  use_when:
+    - "KOMIS 권장 브라우저나 마이페이지·즐겨찾기·출력·TOP 기능 사용법을 찾을 때"
+    - "첨부파일이 열리지 않거나 한글·Word·Excel·PDF 뷰어가 필요할 때"
+  do_not_use_when:
+    - "KOMIS 이용계약의 법적 조건이나 회원 의무를 확인할 때"
+    - "개별 서비스의 데이터 조회 조건이나 분석 결과를 찾을 때"
+  distinguish_from:
+    - {page_id: notice_terms, reason: "이용안내는 화면과 파일 사용법이고 이용약관은 서비스 이용계약의 조건과 의무다."}
+    - {page_id: notice_faq, reason: "이용안내는 브라우저·공통 기능·뷰어 중심의 정적 설명이고 FAQ는 주제별 질문·답변 목록이다."}
+  example_queries:
+    - "KOMIS는 어떤 브라우저를 권장해?"
+    - "첨부파일이 열리지 않을 때 어떻게 해야 해?"
+  keywords: [이용안내, 브라우저, 마이페이지, 즐겨찾기, 출력, TOP, 뷰어, 첨부파일, 한컴, Word, Excel, Adobe Reader]
+filters: []
+outputs:
+  available_data_labels: ["지원 브라우저", "개인화 영역 이용방법", "공통 기능", "문서 뷰어 안내", "첨부파일 문제 해결", "외부 뷰어 링크"]
+presentation:
+  summary: "안내문과 화면 예시 이미지, 문제 해결 절차와 외부 뷰어 버튼을 세로 섹션으로 제공한다."
+  panels:
+    - {type: guide_sections, label: "KOMIS 이용방법", description: "브라우저 환경과 개인화·공통 기능을 설명문과 화면 예시로 확인한다."}
+    - {type: troubleshooting, label: "파일 이용 안내", description: "뷰어 프로그램과 첨부파일 문제 해결 절차를 확인한다."}
+    - {type: external_links, label: "뷰어프로그램 모음", description: "한컴·Word·Excel·Adobe Reader 제공 사이트로 이동한다."}
+policies:
+  recommendation_only: true
+  mutation: read_only
+  caveats:
+    - "조회 필터나 구조화된 데이터 표가 없는 정적 안내 페이지다."
+    - "일부 첨부파일 해결 절차는 Internet Explorer의 UTF-8 URL 설정을 기준으로 한 오래된 안내다."
+    - "뷰어 버튼은 외부 제공사 사이트를 새 창으로 열며 해당 사이트의 현재 주소나 다운로드 제공 여부를 보장하지 않는다."
+tool: {status: none, planned_name: null}
+provenance:
+  observed_at: "2026-07-27"
+  sources: [docs/komis_service_catalog.md, artifacts/browser/page-probe/notice-pages.json]
