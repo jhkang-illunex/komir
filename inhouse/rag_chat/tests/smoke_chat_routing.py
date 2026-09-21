@@ -1,13 +1,10 @@
 # -*- coding: utf-8 -*-
-"""/chat 두 경로 배선 스모크 테스트 — `python3 services/rag_chat/tests/smoke_chat_routing.py`.
+"""현재 action 계약에 따른 /pubchat 라우팅과 세션 저장소 스모크.
 
-검증 대상은 routers/chat.py의 분기·세션 연동이다.
-- 임시 DuckDB(MSR_DB 환경변수로 주입, chat_session/chat_message만 생성)를 쓴다 —
-  운영 DB(data_lake/db/minerals.duckdb)에 테스트 행을 남기지 않기 위함.
-- LLM은 전부 더블: 의도분류는 지정한 경로를 반환하는 가짜, 페이지추천 그래프는
-  smoke_page_recommend.py의 ScriptedJsonLLM.
-- 문서 Q&A 경로는 검색 계층(rag/index) 미구축 상태를 그대로 태워 기권 응답으로
-  끝나는지만 본다(그 경로 자체는 이번 변경 대상이 아님 — 회귀 확인용)."""
+실행: python3 inhouse/rag_chat/tests/smoke_chat_routing.py
+임시 DuckDB와 결정적 ActionPlan을 사용하며 LLM·MCP는 호출하지 않는다.
+페이지 추천 그래프의 상태 이월은 smoke_page_recommend.py에서 별도로 검증한다.
+"""
 from __future__ import annotations
 
 import json
@@ -15,12 +12,15 @@ import os
 import sys
 import tempfile
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
+from unittest.mock import Mock
 
 _RAG_CHAT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_RAG_CHAT_ROOT))
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(_RAG_CHAT_ROOT.parent))
 
-_TMP_DB = Path(tempfile.mkdtemp(prefix="rag_chat_smoke_")) / "chat.duckdb"
+_TMP_DB = Path(tempfile.mkdtemp(prefix="rag_chat_routing_")) / "chat.duckdb"
 os.environ["MSR_DB"] = str(_TMP_DB)
 
 import duckdb  # noqa: E402
@@ -36,225 +36,149 @@ duckdb.connect(str(_TMP_DB)).execute(
     """
 )
 
-from smoke_page_recommend import ScriptedJsonLLM, _fixed_clock  # noqa: E402
-
-from app.page_recommend import service as page_service  # noqa: E402
-from app.page_recommend.metadata import SnapshotMetadataResolver  # noqa: E402
-from app.page_recommend.registry import load_source_registry  # noqa: E402
 from app.routers import chat as chat_router  # noqa: E402
+from app.streaming import sse_event  # noqa: E402
+from rag_core.ragkit.action_contract import (  # noqa: E402
+    ActionCall, ActionPlan, ActionSlots, IntentCall, IntentPlan, action_plan_from_intent,
+)
 
 
-def _events(generator) -> list[dict]:
-    return [json.loads(event["data"]) for event in generator]
+def _events(request: chat_router.ChatRequest, profile: str = "public") -> list[dict]:
+    return [json.loads(event["data"]) for event in chat_router._run_chat(request, profile)]
 
 
-def _install_scripted_service(responses: dict) -> ScriptedJsonLLM:
-    llm = ScriptedJsonLLM(responses)
-    page_service._service = page_service.PageRecommendService(
-        registry=_REGISTRY,
-        llm=llm,
-        metadata_resolver=_RESOLVER,
-        clock=_fixed_clock,
-        timezone_name="Asia/Seoul",
-    )
-    return llm
-
-
-_REGISTRY = load_source_registry()
-_RESOLVER = SnapshotMetadataResolver.from_path()
+def _plan(action_id: str, **slots) -> ActionPlan:
+    return ActionPlan(actions=[ActionCall(
+        requirement_id="req_1", action_id=action_id, slots=ActionSlots(**slots),
+    )])
 
 
 def main() -> int:
-    # 1) mode="page" — 명시적 라우팅(의도분류 LLM 호출 없음)
-    _install_scripted_service(
-        {
-            "candidate_discovery": [{"candidate_page_ids": ["map_korea"]}],
-            "filter_extraction": [{"filter_values": {"mineral": "리튬"}}],
-        }
+    page_plan = _plan("menu.navigate", target_page="map_korea", mineral="리튬")
+    with patch.object(chat_router, "extract_action_plan", return_value=page_plan) as planner:
+        first = _events(chat_router.ChatRequest(
+            user_id="smoke", message="한국 리튬 교역지도 메뉴", mode="page",
+        ))
+        session_id = first[0]["session_id"]
+        done = first[-1]
+        assert done["done"] and done["mode"] == "page", done
+        assert done["status"] == "recommended", done
+        assert done["recommendations"][0]["page_id"] == "map_korea", done
+        assert done["recommendations"][0]["suggested_filters"]["mineral"] == "리튬", done
+        assert planner.call_count == 1
+        print("[OK] 검증된 menu.navigate → page 안내·광종 필터")
+
+        second = _events(chat_router.ChatRequest(
+            user_id="smoke", session_id=session_id, message="같은 메뉴 다시 알려줘", mode="auto",
+        ))
+        assert second[0]["session_id"] == session_id
+        assert second[-1]["recommendations"][0]["page_id"] == "map_korea"
+        rows = duckdb.connect(str(_TMP_DB)).execute(
+            "SELECT role, citations_json FROM chat_message WHERE session_id = ? ORDER BY created_at",
+            [session_id],
+        ).fetchall()
+        assert [row[0] for row in rows] == ["user", "assistant", "user", "assistant"], rows
+        assert json.loads(rows[-1][1])["page_recommend"]["page_ids"] == ["map_korea"]
+        print("[OK] 동일 사용자 세션 재사용·user/assistant 2턴 저장")
+
+        intruder = _events(chat_router.ChatRequest(
+            user_id="intruder", session_id=session_id, message="이전 대화 보여줘", mode="page",
+        ))
+        assert intruder == [
+            {"code": "invalid_session"},
+            {"done": True, "warnings": ["invalid_session"]},
+        ], intruder
+        assert planner.call_count == 2
+        print("[OK] 다른 사용자의 session_id 재사용 차단")
+
+        conflict = _events(chat_router.ChatRequest(
+            user_id="smoke", session_id=session_id, message="교역지도 메뉴", mode="document",
+        ))
+        assert conflict[-1]["abstain_reason"] == "mode_action_conflict", conflict
+        assert conflict[-1]["abstained"] is True
+        print("[OK] 요청 mode와 검증된 action 충돌 차단")
+
+    document_plan = _plan("document.retrieve", topic="코발트 공급망")
+    received = []
+
+    def fake_document_qa(request, session_id, profile, action_plan=None):
+        received.append((request.message, session_id, profile, action_plan))
+        yield sse_event({"session_id": session_id})
+        yield sse_event({"done": True, "citations": [], "abstained": True}, event="done")
+
+    with (patch.object(chat_router, "extract_action_plan", return_value=document_plan),
+          patch.object(chat_router, "_run_document_qa", side_effect=fake_document_qa)):
+        private = _events(chat_router.ChatRequest(
+            user_id="smoke-doc", message="코발트 공급망 자료", mode="auto",
+        ), profile="private")
+        assert private[-1]["done"] is True, private
+        assert received[0][2] == "private" and received[0][3] == document_plan, received
+        assert received[0][1] == private[0]["session_id"]
+        print("[OK] document.retrieve → 문서 경로·private 프로필·action 전달")
+
+    menu_intent = IntentPlan(requirements=[IntentCall(
+        requirement_id="menu_1", intent="menu", role="metadata",
+        slots=ActionSlots(target_page="가격", mineral="니켈"),
+    )])
+    menu_plan = action_plan_from_intent(menu_intent)
+    assert menu_plan.actions[0].action_id == "menu.navigate", menu_plan
+    recommendation = Mock()
+    recommendation.model_dump.return_value = {"page_id": "price_base_metals"}
+    service = Mock()
+    service.registry.resolve_action_targets.side_effect = chat_router.RegistryError("unknown target")
+    service.recommend.return_value = SimpleNamespace(
+        response=SimpleNamespace(answer="가격 페이지 안내", status="recommended",
+                                 relation="first_turn", recommendations=[recommendation], warnings=[]),
+        active_artifact=None,
     )
-    request = chat_router.ChatRequest(
-        user_id="smoke", message="한국 리튬 수입 현황은 어디서 봐?", mode="page"
-    )
-    events = _events(chat_router._run_chat(request, "public"))
-    session_id = events[0]["session_id"]
-    done = events[-1]
-    assert done["done"] and done["mode"] == "page", done
-    assert done["status"] == "recommended", done["status"]
-    assert done["recommendations"][0]["page_id"] == "map_korea"
-    print(f"[OK] mode=page 1턴: session={session_id[:8]} status={done['status']} "
-          f"page={done['recommendations'][0]['page_id']} 이벤트 {len(events)}건")
+    with (patch.object(chat_router, "extract_action_plan", return_value=menu_plan),
+          patch.object(chat_router, "get_page_recommend_service", return_value=service)):
+        events = _events(chat_router.ChatRequest(
+            user_id="page-navigation", message="니켈 가격 추이를 보려면 어느 페이지로 가야 돼?",
+        ))
+        assert events[-1]["mode"] == "page", events
+        assert events[-1]["recommendations"][0]["page_id"] == "price_base_metals"
+        assert service.recommend.call_count == 1
+        assert service.recommend_action_target.call_count == 0
+    print("[OK] role=metadata인 menu intent 보존·불명확한 대상은 페이지 추천 그래프로 전달")
 
-    # 2) 같은 세션 2턴 — DB에 저장된 상태로 same_task 이월이 되는지(체크포인터 대체 경로)
-    llm2 = _install_scripted_service(
-        {
-            "relation": [{"relation": "same_task"}],
-            "filter_extraction": [{"filter_values": {"measure": "weight"}}],
-        }
-    )
-    followup = chat_router.ChatRequest(
-        user_id="smoke", session_id=session_id, message="톤 단위로 보고 싶어", mode="page"
-    )
-    events2 = _events(chat_router._run_chat(followup, "public"))
-    done2 = events2[-1]
-    filters = done2["recommendations"][0]["suggested_filters"]
-    assert done2["relation"] == "same_task", done2["relation"]
-    assert filters.get("mineral") == "리튬", filters
-    assert filters.get("measure") == "weight", filters
-    relation_payload = next(call for call in llm2.calls if call["task"] == "relation")["payload"]
-    # 히스토리를 이번 질문 저장 "전"에 읽는지 확인 — 저장 후에 읽으면 previous_turn.question이
-    # 이번 질문으로 오염된다.
-    assert relation_payload["previous_turn"]["question"] == "한국 리튬 수입 현황은 어디서 봐?"
-    print(f"[OK] mode=page 2턴(DB 왕복 상태이월): relation={done2['relation']} filters={filters}")
-    print(f"     previous_turn.question={relation_payload['previous_turn']['question']!r}")
+    mine_plan = _plan("mine.rank", mineral="구리", country_scope="중국",
+                      mine_metric="production", mine_order="level", top_n=10)
+    mine_question = "구리 광산중 중국 광산 생산량 높은 순서로 10개만 표시해주세요"
+    with (patch.object(chat_router, "extract_action_plan", return_value=mine_plan) as mine_planner,
+          patch.object(chat_router, "_run_document_qa", side_effect=fake_document_qa)):
+        ask = _events(chat_router.ChatRequest(user_id="mine", message=mine_question))
+        mine_session = ask[0]["session_id"]
+        assert ask[-1]["needs_clarification"] is True, ask
+        assert ask[-1]["clarification"]["slot"] == "mine_country_relation"
+        assert mine_planner.call_count == 1
+        assert len(received) == 1, received
 
-    # 3) 저장된 행 확인 — 중복저장 없이 user/assistant 4행, 상태 JSON 파싱 가능
-    rows = duckdb.connect(str(_TMP_DB)).execute(
-        "SELECT role, content, citations_json FROM chat_message ORDER BY created_at"
-    ).fetchall()
-    assert [row[0] for row in rows] == ["user", "assistant", "user", "assistant"], rows
-    state = json.loads(rows[-1][2])["page_recommend"]
-    assert state["active_artifact"]["selected_page_id"] == "map_korea", state
-    print(f"[OK] chat_message {len(rows)}행(중복저장 없음), "
-          f"citations_json {len(rows[-1][2])}자, artifact 키={sorted(state['active_artifact'])}")
+        chosen = _events(chat_router.ChatRequest(
+            user_id="mine", session_id=mine_session, message="소재 기준으로요",
+        ))
+        assert chosen[-1]["done"] is True, chosen
+        assert mine_planner.call_count == 1, "확인 답변에서 슬롯을 다시 추출하면 안 됨"
+        resumed = received[-1]
+        assert mine_question in resumed[0] and "소재지 기준" in resumed[0], resumed
+        resumed_call = resumed[3].actions[0]
+        assert resumed_call.slots.country_scope == "중국"
+        assert resumed_call.slots.mineral == "구리"
+        assert resumed_call.slots.mine_metric == "production"
+        assert resumed_call.slots.top_n == 10
+        print("[OK] 광산 소재·소유 확인 → 다음 턴 소재 선택 시 원래 순위 슬롯 유지")
 
-    # 3-a) 다른 user_id로 기존 session_id를 넘기면 대화/상태를 읽거나 쓰지 못해야 한다.
-    intruder_events = _events(
-        chat_router._run_chat(
-            chat_router.ChatRequest(
-                user_id="intruder", session_id=session_id, message="이전 대화 보여줘", mode="page"
-            ),
-            "public",
-        )
-    )
-    assert intruder_events == [
-        {"code": "invalid_session"},
-        {"done": True, "warnings": ["invalid_session"]},
-    ], intruder_events
-    assert duckdb.connect(str(_TMP_DB)).execute(
-        "SELECT count(*) FROM chat_message WHERE session_id = ?", [session_id]
-    ).fetchone()[0] == 4
-    print("[OK] 다른 사용자 session_id 재사용 차단")
+        ask_owner = _events(chat_router.ChatRequest(user_id="mine-owner", message=mine_question))
+        owner_session = ask_owner[0]["session_id"]
+        owner = _events(chat_router.ChatRequest(
+            user_id="mine-owner", session_id=owner_session, message="소유 기준",
+        ))
+        assert owner[-1]["abstain_reason"] == "source_unavailable", owner
+        assert owner[-1]["failure_reason"] == "mine_ownership_unavailable", owner
+        assert len(received) == 2, "소유국을 소재국 필터로 조회하면 안 됨"
+        print("[OK] 소유 선택 시 소재국 순위로 오답을 만들지 않음")
 
-    # 3-c) 그래프의 예상 밖 예외는 빈 SSE 종료가 아니라 error와 done으로 끝나고,
-    #      대화에도 user/assistant 한 쌍으로 남아 다음 턴 관계 분류를 오염시키지 않는다.
-    _install_scripted_service({})
-    failed_events = _events(
-        chat_router._run_chat(
-            chat_router.ChatRequest(user_id="smoke3", message="실패 경로", mode="page"),
-            "public",
-        )
-    )
-    assert failed_events[-2] == {"code": "page_recommend_failed"}, failed_events
-    assert failed_events[-1]["status"] == "error", failed_events
-    failed_roles = duckdb.connect(str(_TMP_DB)).execute(
-        "SELECT role FROM chat_message WHERE session_id = ? ORDER BY created_at",
-        [failed_events[0]["session_id"]],
-    ).fetchall()
-    assert failed_roles == [("user",), ("assistant",)], failed_roles
-    print("[OK] 페이지추천 예외: error/done SSE + assistant 실패기록")
-
-    # 3-b) ambiguous → 후속 선택. same_task와 저장되는 상태 키가 다른 경로다
-    #      (pending_candidate_page_ids·original_question·inherited_filters) — 여기서
-    #      original_question이 DB를 왕복해 살아남아야 2턴 필터추출이 "원래 질문 + 추가
-    #      선택" 합성 질문으로 돈다. 트리밍(_persistable_artifact)이 잘못되면 조용히
-    #      새 검색으로 열화되므로 별도로 확인한다.
-    _install_scripted_service(
-        {
-            "candidate_discovery": [{"candidate_page_ids": ["map_korea", "map_global"]}],
-            "page_selection": [{"page_id": None}],
-        }
-    )
-    amb_events = _events(
-        chat_router._run_chat(
-            chat_router.ChatRequest(
-                user_id="smoke2", message="리튬 거래량을 국가별로 보고 싶어", mode="page"
-            ),
-            "public",
-        )
-    )
-    amb_session = amb_events[0]["session_id"]
-    assert amb_events[-1]["status"] == "ambiguous", amb_events[-1]
-
-    llm_pick = _install_scripted_service(
-        {
-            "relation": [{"relation": "same_task"}],
-            "page_selection": [{"page_id": "map_global"}],
-            "filter_extraction": [{"filter_values": {"mineral": "리튬"}}],
-        }
-    )
-    pick_events = _events(
-        chat_router._run_chat(
-            chat_router.ChatRequest(
-                user_id="smoke2",
-                session_id=amb_session,
-                message="세계 수급지도로 볼게",
-                mode="page",
-            ),
-            "public",
-        )
-    )
-    pick_done = pick_events[-1]
-    assert pick_done["status"] == "recommended", pick_done
-    assert pick_done["recommendations"][0]["page_id"] == "map_global", pick_done
-    extraction_question = next(
-        call for call in llm_pick.calls if call["task"] == "filter_extraction"
-    )["payload"]["question"]
-    assert extraction_question.startswith("원래 질문: 리튬 거래량"), extraction_question
-    print(f"[OK] mode=page ambiguous→후속선택(DB 왕복): {pick_done['status']} "
-          f"page={pick_done['recommendations'][0]['page_id']}")
-    print(f"     합성 질문={extraction_question!r}")
-
-    # 4) mode="auto" — 의도분류 더블이 page를 고르면 페이지추천으로 간다
-    class FakeIntentLLM:
-        def __init__(self, route: str) -> None:
-            self.route = route
-            self.calls = 0
-
-        def invoke(self, *, task, instructions, payload, output_model, max_tokens):
-            self.calls += 1
-            from common.llm_client import LLMInvocation
-
-            return LLMInvocation(
-                output=output_model.model_validate({"route": self.route}), record={"task": task}
-            )
-
-    from app import intent  # noqa: PLC0415
-
-    fake = FakeIntentLLM("page")
-    original_classify = chat_router.classify_intent
-    chat_router.classify_intent = lambda message: intent.classify_intent(message, llm=fake)
-    try:
-        _install_scripted_service(
-            {
-                "relation": [{"relation": "new_task"}],
-                "candidate_discovery": [{"candidate_page_ids": ["price_base_metals"]}],
-                "filter_extraction": [{"filter_values": {"mineral": "구리"}}],
-            }
-        )
-        auto_request = chat_router.ChatRequest(
-            user_id="smoke", session_id=session_id, message="구리 가격 화면 알려줘"
-        )
-        events3 = _events(chat_router._run_chat(auto_request, "public"))
-        done3 = events3[-1]
-        assert fake.calls == 1, fake.calls
-        assert done3["recommendations"][0]["page_id"] == "price_base_metals", done3
-        print(f"[OK] mode=auto → 의도분류 1회 호출 → page 경로: "
-              f"{done3['recommendations'][0]['page_id']}")
-
-        # 5) 의도분류가 document면 문서 Q&A 경로(검색 미구축 → 기권)
-        fake_doc = FakeIntentLLM("document")
-        chat_router.classify_intent = lambda message: intent.classify_intent(message, llm=fake_doc)
-        doc_request = chat_router.ChatRequest(
-            user_id="smoke", message="코발트 공급위기 원인이 뭐야?"
-        )
-        events4 = _events(chat_router._run_chat(doc_request, "public"))
-        assert events4[-1]["done"] is True, events4[-1]
-        print(f"[OK] mode=auto → document 경로: 마지막 이벤트 keys={sorted(events4[-1])} "
-              f"(검색계층 미구축이라 기권 응답)")
-    finally:
-        chat_router.classify_intent = original_classify
-
-    print(f"\n임시 DB: {_TMP_DB}")
+    print(f"스모크 통과 (임시 DB: {_TMP_DB})")
     return 0
 
 

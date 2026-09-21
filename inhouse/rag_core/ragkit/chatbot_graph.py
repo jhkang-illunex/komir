@@ -625,7 +625,7 @@ class RetrievalRoute(BaseModel):
     mine_year: int | None = None
     mine_since_year: int | None = None
     mine_country: str | None = None
-    mine_order: Literal["level", "increase"] = "level"
+    mine_order: Literal["level", "increase", "yoy_increase", "yoy_decrease"] = "level"
     mine_top_n: int = 5
 
 
@@ -1024,6 +1024,52 @@ def _is_complete_mine_rank_increase(evidence: list[Evidence], action_call) -> bo
                 or start_year >= end_year or increase <= 0
                 or abs((end_value - start_value) - increase) > 0.51):
             return False
+    return True
+
+
+def _is_complete_mine_rank_yoy(evidence: list[Evidence], action_call) -> bool:
+    """집계기가 만든 YoY 표의 연속 연도·방향·값·출처를 재검사한다."""
+    if action_call is None or action_call.action_id != "mine.rank" or len(evidence) != 1:
+        return False
+    order = action_call.slots.mine_order
+    if order not in {"yoy_increase", "yoy_decrease"}:
+        return False
+    ev = evidence[0]
+    if ev.kind != "aggregated" or ev.unit != "t" or "기간 검증: 아래 YoY 순위" not in ev.text:
+        return False
+    lines = [line.strip() for line in ev.text.splitlines() if line.strip().startswith("|")]
+    if len(lines) < 3:
+        return False
+    headers = [part.strip() for part in lines[0].strip("|").split("|")]
+    delta_heading = "증가량(t)" if order == "yoy_increase" else "감소량(t)"
+    required = ("순위", "광산", "광종", "시작연도", "시작값(t)", "끝연도", "끝값(t)",
+                delta_heading, "basis", "출처")
+    if any(column not in headers for column in required):
+        return False
+    indices = {column: headers.index(column) for column in required}
+    rows = [[part.strip() for part in line.strip("|").split("|")] for line in lines[2:]]
+    rows = [row for row in rows if len(row) == len(headers)]
+    if not 1 <= len(rows) <= (action_call.slots.top_n or 5):
+        return False
+    previous_delta = float("inf")
+    for rank, cells in enumerate(rows, 1):
+        try:
+            start_year = int(cells[indices["시작연도"]])
+            end_year = int(cells[indices["끝연도"]])
+            start_value = float(cells[indices["시작값(t)"]].replace(",", ""))
+            end_value = float(cells[indices["끝값(t)"]].replace(",", ""))
+            delta = float(cells[indices[delta_heading]].replace(",", ""))
+        except ValueError:
+            return False
+        actual = end_value - start_value
+        if (cells[indices["순위"]] != str(rank) or not cells[indices["광산"]]
+                or not cells[indices["광종"]] or not cells[indices["출처"]].endswith(".md")
+                or cells[indices["basis"]] not in {"ore", "metal"}
+                or end_year != start_year + 1 or delta <= 0 or delta > previous_delta
+                or (actual <= 0 if order == "yoy_increase" else actual >= 0)
+                or abs(abs(actual) - delta) > 0.51):
+            return False
+        previous_delta = delta
     return True
 
 
@@ -2020,7 +2066,8 @@ def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
         if not _evidence_matches_action_contract(evidence, action_call):
             return {"sufficient": False, "evidence": [], "warnings": ["advisor_contract_mismatch"]}
         if (_is_complete_explicit_hs_summary(evidence, action_call)
-                or _is_complete_mine_rank_increase(evidence, action_call)):
+                or _is_complete_mine_rank_increase(evidence, action_call)
+                or _is_complete_mine_rank_yoy(evidence, action_call)):
             return {"sufficient": True, "evidence": evidence, "warnings": state.get("warnings", [])}
         # stockpile.methodology는 실측 현황을 답하지 않는 정적 방법론 action이다.
         # adapter가 인용할 단일 문서를 결정적으로 만들었으므로, 원 질문의

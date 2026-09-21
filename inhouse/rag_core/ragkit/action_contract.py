@@ -57,7 +57,7 @@ class ActionSlots(BaseModel):
     windows: list[int] | None = None
     country_scope: str | None = None
     mine_metric: Literal["production", "reserves"] | None = None
-    mine_order: Literal["level", "increase"] | None = None
+    mine_order: Literal["level", "increase", "yoy_increase", "yoy_decrease"] | None = None
     mine_name: str | None = None
     dataset: Literal["supply_stability", "market_outlook"] | None = None
     requested_outputs: set[Literal["text", "table", "chart", "menu", "raw_data"]] = {"text"}
@@ -162,7 +162,10 @@ synthesis.brief 중 하나다. 원문과 확인된 대화에 있는 값만 slots
 수입액·수입중량·수출액·수출중량의 월별 추이는 trade.monthly이며 price action이 아니다.
 개별 광산의 생산량·매장량 순위, 국가 안의 광산 1위, 기간 내 생산량 증가 순위는
 mine.rank다. 국가별 자원 순위 resource.rank와 구분한다. mine_metric은
-production/reserves, mine_order는 level/increase, 국가 필터는 country_scope,
+production/reserves, mine_order는 level/increase/yoy_increase/yoy_decrease다.
+전년 대비(YoY) 증감은 연속된 두 관측 연도만 비교하는 yoy_increase/yoy_decrease로
+표현한다. 증가·감소 방향과 지표(생산량·매장량)를 질문대로 보존한다.
+산출량은 생산량(production)의 동의어다. 국가 필터는 country_scope,
 상위 개수는 top_n, 최근 N년은 period.trailing_months=12*N으로 둔다.
 비축 실측을 요청하면서 자료 부재 시 입력값·계산식 설명을 명시적으로 허용한 요구는
 stockpile.methodology다. 이 action은 실재고를 조회하거나 추정하지 않고 계산 정의만 제공한다.
@@ -214,6 +217,7 @@ def _normalize_mine_intent(plan: IntentPlan, message: str) -> IntentPlan:
     적힌 숫자만 사용한다. 광산 의도로 분류된 요구에만 적용한다.
     """
     recent = re.search(r"최근\s*(\d{1,2})\s*년", message)
+    count = re.search(r"(?:top\s*|상위\s*)(\d{1,3})\s*(?:개|곳|위)?", message, re.IGNORECASE)
     for item in plan.requirements:
         if item.intent != "mine_rank":
             continue
@@ -221,13 +225,20 @@ def _normalize_mine_intent(plan: IntentPlan, message: str) -> IntentPlan:
         if recent:
             slots.period = Period(kind="trailing_months", trailing_months=int(recent.group(1)) * 12,
                                   explicit=True)
+        if count and 1 <= int(count.group(1)) <= 100:
+            slots.top_n = int(count.group(1))
         if slots.mine_metric is None:
             if "매장량" in message:
                 slots.mine_metric = "reserves"
-            elif "생산량" in message:
+            elif "생산량" in message or "산출량" in message:
                 slots.mine_metric = "production"
         if slots.mine_order is None:
             slots.mine_order = "increase" if "증가" in message else "level"
+        if any(token in message.casefold() for token in ("yoy", "전년 대비", "전년대비", "전년보다")):
+            if any(token in message for token in ("감소", "축소", "줄어", "하락")):
+                slots.mine_order = "yoy_decrease"
+            elif any(token in message for token in ("증가", "늘어", "상승")):
+                slots.mine_order = "yoy_increase"
     return plan
 
 
@@ -272,6 +283,10 @@ def action_plan_from_intent(intent_plan: IntentPlan) -> ActionPlan:
     } >= {"resource_rank", "trade_rank"}
     deferred_metadata_outputs: set[str] = set()
     for item in intent_plan.requirements:
+        # 메뉴 위치 안내는 화면을 고르는 독립 요청이다. LLM이 role=metadata로
+        # 표기해도 문서 검색으로 바꾸지 않고 원래 menu/dataset intent를 보존한다.
+        if item.intent in {"menu", "dataset"} and item.role == "metadata":
+            item.role = "data"
         if item.intent == "mine_profile" and not item.slots.mine_name and has_mine_rank:
             # 순위 결과의 "이름"은 mine.rank가 반환하는 행의 필드다. 아직
             # 특정되지 않은 광산 profile을 별도 요구로 만들면 필수 mine_name

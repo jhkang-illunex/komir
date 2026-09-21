@@ -119,7 +119,7 @@ from pydantic import BaseModel, Field  # noqa: E402
 from sse_starlette.sse import EventSourceResponse  # noqa: E402
 
 from rag_core.ragkit.chatbot import STATUS_STAGES, chat_turn  # noqa: E402
-from rag_core.ragkit.action_contract import extract_action_plan, validate_action_plan  # noqa: E402
+from rag_core.ragkit.action_contract import ActionPlan, extract_action_plan, validate_action_plan  # noqa: E402
 from common.llm_client import KomirJsonLLM  # noqa: E402
 
 from common.config import get_settings  # noqa: E402
@@ -128,6 +128,7 @@ from common.llm_client import get_chat_client  # noqa: E402
 from .. import session_store  # noqa: E402
 from ..intent import classify_intent, is_unverified_import_demand_forecast_menu  # noqa: E402
 from ..page_recommend.service import get_service as get_page_recommend_service  # noqa: E402
+from ..page_recommend.registry import RegistryError  # noqa: E402
 from ..streaming import StrikethroughFilter, sse_event, strip_strikethrough  # noqa: E402
 
 router = APIRouter()
@@ -169,6 +170,76 @@ def _status_event(stage: int) -> dict:
 # 원본(komis-report-generator-main)은 이 상태를 LangGraph SqliteSaver에 뒀지만 komir는
 # 대화 저장소를 chat_session/chat_message 하나로 유지한다(page_recommend/service.py 주석).
 _PAGE_STATE_KEY = "page_recommend"
+_MINE_CLARIFICATION_KEY = "mine_country_clarification"
+
+
+def _pending_mine_clarification(session_id: str) -> dict | None:
+    messages = session_store.list_messages(session_id, limit=1)
+    if not messages or messages[-1]["role"] != "assistant":
+        return None
+    try:
+        payload = json.loads(messages[-1].get("citations_json") or "")
+    except (TypeError, ValueError):
+        return None
+    state = payload.get(_MINE_CLARIFICATION_KEY) if isinstance(payload, dict) else None
+    return state if isinstance(state, dict) else None
+
+
+def _mine_country_choice(message: str, country: str | None = None) -> str | None:
+    """광산 국가 기준에 대한 명시적 선택만 읽는다. 다른 슬롯은 재해석하지 않는다."""
+    compact = "".join(message.split()).casefold()
+    location = any(term in compact for term in ("소재", "위치"))
+    if country:
+        country_key = "".join(country.split()).casefold()
+        location = location or any(
+            term in compact for term in (f"{country_key}내", f"{country_key}에있는")
+        )
+    ownership = any(term in compact for term in ("소유", "보유"))
+    if location and not ownership:
+        return "location"
+    if ownership and not location:
+        return "ownership"
+    return None
+
+
+def _mine_country_call(plan: ActionPlan):
+    calls = [call for call in plan.actions if call.action_id == "mine.rank"]
+    if len(plan.actions) != 1 or len(calls) != 1:
+        return None
+    call = calls[0]
+    return call if call.slots.country_scope else None
+
+
+def _mine_clarification_response(session_id: str, message: str, plan: ActionPlan):
+    call = _mine_country_call(plan)
+    assert call is not None
+    country = call.slots.country_scope
+    answer = f"'{country}'은 광산 소재지를 뜻하시나요, 소유 기업의 국가를 뜻하시나요? 소재 또는 소유 중 하나를 선택해 주세요."
+    session_store.append_message(session_id, "user", message)
+    session_store.append_message(
+        session_id, "assistant", answer,
+        citations_json=json.dumps({_MINE_CLARIFICATION_KEY: {
+            "question": message, "plan": plan.model_dump(mode="json"),
+        }}, ensure_ascii=False),
+    )
+    yield sse_event({"session_id": session_id})
+    yield _status_event(1)
+    yield sse_event({"delta": answer})
+    yield sse_event({"done": True, "needs_clarification": True,
+                     "clarification": {"slot": "mine_country_relation",
+                                       "options": ["location", "ownership"]}}, event="done")
+
+
+def _unsupported_mine_ownership(session_id: str, message: str):
+    answer = "광산 소유 기업의 국가별 생산량 순위는 현재 검증된 집계 기준이 없어 제공할 수 없습니다."
+    session_store.append_message(session_id, "user", message)
+    session_store.append_message(session_id, "assistant", answer)
+    yield sse_event({"session_id": session_id})
+    yield _status_event(1)
+    yield sse_event({"delta": answer})
+    yield sse_event({"done": True, "abstained": True,
+                     "abstain_reason": "source_unavailable",
+                     "failure_reason": "mine_ownership_unavailable"}, event="done")
 
 
 class ChatRequest(BaseModel):
@@ -322,8 +393,16 @@ def _run_page_recommend(request: ChatRequest, session_id: str, action_target: st
     yield _status_event(1)  # 질문 조건 확인
 
     try:
-        turn = (get_page_recommend_service().recommend_action_target(action_target, thread_id=session_id, mineral=action_mineral)
-                if action_target else get_page_recommend_service().recommend(
+        service = get_page_recommend_service()
+        if action_target:
+            try:
+                service.registry.resolve_action_targets(action_target)
+            except RegistryError:
+                # LLM의 넓은 표현("가격" 등)은 등록 ID를 추측해 고정하지 않는다.
+                # 전체 질문을 기존 페이지 추천 그래프에 넘겨 후보를 고른다.
+                action_target = None
+        turn = (service.recommend_action_target(action_target, thread_id=session_id, mineral=action_mineral)
+                if action_target else service.recommend(
             request.message,
             thread_id=session_id,
             message_history=message_history,
@@ -440,10 +519,24 @@ def _run_chat(request: ChatRequest, profile: Literal["public", "private"]):
         return
 
     with _session_turn_lock(session_id):
+        pending = _pending_mine_clarification(session_id)
         try:
-            action_plan = extract_action_plan(
-                request.message, KomirJsonLLM(), history=_history_for_graph(session_id),
-            )
+            pending_plan = ActionPlan.model_validate(pending["plan"]) if pending else None
+        except (KeyError, TypeError, ValueError):
+            pending_plan = None
+        pending_call = _mine_country_call(pending_plan) if pending_plan else None
+        choice = _mine_country_choice(
+            request.message, pending_call.slots.country_scope if pending_call else None,
+        )
+        resumed = False
+        try:
+            if pending_call and choice:
+                action_plan = pending_plan
+                resumed = True
+            else:
+                action_plan = extract_action_plan(
+                    request.message, KomirJsonLLM(), history=_history_for_graph(session_id),
+                )
             assessment = validate_action_plan(action_plan)
         except Exception:
             failure_message = "질문의 조건을 확인할 수 없어 현재 제공할 수 없습니다."
@@ -467,6 +560,23 @@ def _run_chat(request: ChatRequest, profile: Literal["public", "private"]):
             yield sse_event({"delta": failure_message})
             yield sse_event({"done": True, "abstained": True, "abstain_reason": assessment.failure_reason}, event="done")
             return
+        mine_call = _mine_country_call(action_plan)
+        if mine_call and request.mode != "page":
+            if resumed:
+                if choice == "ownership":
+                    yield from _unsupported_mine_ownership(session_id, request.message)
+                    return
+                request = request.model_copy(update={
+                    "message": f"{pending['question']} (광산 소재지 기준: {mine_call.slots.country_scope})",
+                })
+            else:
+                choice = _mine_country_choice(request.message, mine_call.slots.country_scope)
+                if choice == "ownership":
+                    yield from _unsupported_mine_ownership(session_id, request.message)
+                    return
+                if choice is None:
+                    yield from _mine_clarification_response(session_id, request.message, action_plan)
+                    return
         action_page = any(call.action_id in {"menu.navigate", "dataset.navigate"} for call in action_plan.actions)
         if request.mode in {"document", "page"} and (request.mode == "page") != action_page:
             message = "요청 mode와 검증된 action 유형이 일치하지 않습니다."

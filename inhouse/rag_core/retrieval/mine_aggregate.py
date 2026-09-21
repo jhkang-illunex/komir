@@ -281,6 +281,8 @@ _EXTRACT_PROMPT = """다음은 광산 기업 공시자료(연차보고서·생�
      함께 있으면 Q4 2024 값을 2024년 연간값으로 바꾸지 않는다. 증가량 비교에
      쓸 annual 값은 연간 헤더와 정확히 연결된 셀만 values에 넣고, 헤더 연결을
      확인할 수 없으면 period_kind=unknown으로 둔다.
+    매장량은 연말 기준일(예: 2025-12-31)의 확정된 연간 스냅샷이면 annual로
+    적되, 분기·반기 또는 기준일을 확인할 수 없는 값은 annual로 추정하지 않는다.
 8. **전망치·목표치(guidance)는 실적이 아니다 — mines에 넣지 않는다.** "FY26e"·
    "expected to produce"·"guidance"·"targeting"·"medium-term"처럼 아직
    실현되지 않은 예상·목표 범위로 표시된 수치는 제외한다(예: "FY26e 1,150 –
@@ -613,7 +615,7 @@ def rank_observations(
     observations: list[Observation], *, agg: Literal["max", "min", "rank", "compare"],
     target_basis: str, year: int | None = None, targets: list[str] | None = None,
     since_year: int | None = None, country: str | None = None,
-    order: Literal["level", "increase"] = "level", top_n: int = 5,
+    order: Literal["level", "increase", "yoy_increase", "yoy_decrease"] = "level", top_n: int = 5,
 ) -> RankResult:
     """PRD §4.4-2 연도 규칙 ①②③ + §4.4-1 "같은 basis끼리만 순위"를 구현한다.
 
@@ -632,7 +634,8 @@ def rank_observations(
     for obs in observations:
         if country_key and normalize_country(obs.country) != country_key:
             continue
-        if since_year is not None and (obs.year is None or obs.year < since_year or obs.year > date.today().year):
+        lower_year = since_year - 1 if since_year is not None and order.startswith("yoy_") else since_year
+        if lower_year is not None and (obs.year is None or obs.year < lower_year or obs.year > date.today().year):
             continue
         by_mine[(obs.mineral, obs.mine_key)].append(obs)
 
@@ -652,16 +655,27 @@ def rank_observations(
                 )
         if not basis_matched:
             continue
-        if order == "increase":
+        if order in {"increase", "yoy_increase", "yoy_decrease"}:
             annual = [o for o in basis_matched if o.period_kind == "annual"]
             years = sorted({o.year for o in annual if o.year is not None and o.value_tonnes is not None})
             if len(years) < 2:
-                excluded_notes.append(f"{basis_matched[0].mine_name}: 비교 가능한 연간 생산 실적 2개 미만")
+                excluded_notes.append(f"{basis_matched[0].mine_name}: 비교 가능한 연간 {target_basis} 값 2개 미만")
                 continue
-            first = max((o for o in annual if o.year == years[0]), key=lambda o: o.value_tonnes or 0)
-            last = max((o for o in annual if o.year == years[-1]), key=lambda o: o.value_tonnes or 0)
+            if order.startswith("yoy_"):
+                pairs = [(start, end) for start, end in zip(years, years[1:])
+                         if end == start + 1 and (year is None or end == year)
+                         and (since_year is None or end >= since_year)]
+                if not pairs:
+                    excluded_notes.append(f"{basis_matched[0].mine_name}: 연속된 두 연도 값 없음")
+                    continue
+                start_year, end_year = pairs[-1]
+            else:
+                start_year, end_year = years[0], years[-1]
+            first = max((o for o in annual if o.year == start_year), key=lambda o: o.value_tonnes or 0)
+            last = max((o for o in annual if o.year == end_year), key=lambda o: o.value_tonnes or 0)
             delta = (last.value_tonnes or 0) - (first.value_tonnes or 0)
-            if delta <= 0:
+            if (order in {"increase", "yoy_increase"} and delta <= 0
+                    or order == "yoy_decrease" and delta >= 0):
                 continue
             chosen.append(replace(last, start_year=first.year, start_value_tonnes=first.value_tonnes,
                                   increase_tonnes=delta))
@@ -696,7 +710,8 @@ def rank_observations(
                 excluded_notes.append(f"{t}: 비교 대상 광산을 찾지 못함(문서에 값 없음 또는 이름 불일치)")
         ranked = matched
     else:
-        ranked = sorted(chosen, key=lambda o: (o.increase_tonnes if order == "increase" else o.value_tonnes) or 0,
+        ranked = sorted(chosen, key=lambda o: (abs(o.increase_tonnes or 0) if order.startswith("yoy_")
+                        else o.increase_tonnes if order == "increase" else o.value_tonnes) or 0,
                         reverse=(agg != "min"))
         if agg in ("max", "min") and ranked:
             ranked = ranked[:1]
@@ -732,27 +747,31 @@ def render_evidence(
         lines.append(
             f"{window}{scope}{mineral_name} 개별 광산 {metric} {agg_label} — 1위: {top.mine_name}"
             f"{f'({top.company})' if top.company else ''}, {top.year}년 기준 "
-            f"{(top.increase_tonnes if result.order == 'increase' else top.value_tonnes):,.0f} t"
-            f"({result.target_basis} 기준{' 증가' if result.order == 'increase' else ''}). "
+            f"{(abs(top.increase_tonnes or 0) if result.order.startswith('yoy_') else top.increase_tonnes if result.order == 'increase' else top.value_tonnes):,.0f} t"
+            f"({result.target_basis} 기준{' 전년 대비 증가' if result.order == 'yoy_increase' else ' 전년 대비 감소' if result.order == 'yoy_decrease' else ' 증가' if result.order == 'increase' else ''}). "
             f"(문서 {total_docs}건 중 값 확인 {found_docs}건)"
         )
         lines.append("")
-        if result.order == "increase":
+        if result.order in {"increase", "yoy_increase", "yoy_decrease"}:
             # 증가 순위에는 `rank_observations`가 원문 헤더로 annual 판정한
             # 관측만 넣는다. 이 명시 표식은 호출 계층이 분기·누계 자료를
             # annual-to-annual 답변으로 오인하지 않도록 하는 계약이다.
-            lines.append("기간 검증: 아래 증가 순위의 각 행은 원문에서 연간(annual/FY/Year/연간) 생산 실적으로 확인된 두 연도만 비교했습니다.")
-            lines.append("| 순위 | 광산 | 광종 | 국가 | 시작연도 | 시작값(t) | 끝연도 | 끝값(t) | 증가량(t) | basis | 출처 |")
+            if result.order == "increase":
+                lines.append("기간 검증: 아래 증가 순위의 각 행은 원문에서 연간(annual/FY/Year/연간) 생산 실적으로 확인된 두 연도만 비교했습니다.")
+            else:
+                lines.append("기간 검증: 아래 YoY 순위는 같은 기준의 연속된 두 연도 관측값만 비교했습니다.")
+            delta_heading = "감소량(t)" if result.order == "yoy_decrease" else "증가량(t)"
+            lines.append(f"| 순위 | 광산 | 광종 | 국가 | 시작연도 | 시작값(t) | 끝연도 | 끝값(t) | {delta_heading} | basis | 출처 |")
             lines.append("|---|---|---|---:|---:|---:|---:|---:|---:|---|---|")
         else:
             lines.append("| 순위 | 광산 | 광종 | 국가 | 회사 | 연도 | 값(t, 정규화) | 원문 표기 | basis | 출처 |")
             lines.append("|---|---|---|---|---|---:|---:|---|---|---|")
         for i, obs in enumerate(result.ranked, 1):
-            if result.order == "increase":
+            if result.order in {"increase", "yoy_increase", "yoy_decrease"}:
                 lines.append(
                     f"| {i} | {obs.mine_name} | {obs.mineral or '-'} | {obs.country or '-'} | "
                     f"{obs.start_year} | {obs.start_value_tonnes:,.0f} | {obs.year} | "
-                    f"{obs.value_tonnes:,.0f} | {obs.increase_tonnes:,.0f} | "
+                    f"{obs.value_tonnes:,.0f} | {abs(obs.increase_tonnes or 0):,.0f} | "
                     f"{obs.basis} | {obs.source_okf_path} |"
                 )
             else:
@@ -786,7 +805,7 @@ def aggregate_mine_metric(
     targets: list[str] | None = None,
     since_year: int | None = None,
     country: str | None = None,
-    order: Literal["level", "increase"] = "level",
+    order: Literal["level", "increase", "yoy_increase", "yoy_decrease"] = "level",
     top_n: int = 5,
     llm: KomirJsonLLM | None = None,
     on_status: Callable[..., None] | None = None,
@@ -822,7 +841,7 @@ def aggregate_mine_metric(
             max_workers=max_workers, max_chars=max_chars,
             mineral_hints=_MINERAL_ENGLISH_HINTS.get(current_folder, ()),
         )
-        if order == "increase":
+        if order in {"increase", "yoy_increase", "yoy_decrease"}:
             # 연도별 증가량은 annual-to-annual 비교만 허용한다. 분기·연간 혼합
             # 표는 현재 원문 셀 좌표를 보존하지 않아 안전하게 해석할 수 없다.
             # 단, 문서 전체가 아니라 실제로 LLM에 준 metric 발췌문에서 혼합
