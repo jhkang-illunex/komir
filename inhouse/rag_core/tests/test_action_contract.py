@@ -52,6 +52,66 @@ class ActionContractTest(unittest.TestCase):
         plan.actions[1].slots.indicator = "supply_stability"
         self.assertEqual(validate_action_plan(plan).failure_reason, "unsupported_combination")
 
+    def test_conditional_scenario_drops_unbounded_price_overdecomposition(self):
+        plan = action_plan_from_intent(IntentPlan(requirements=[
+            IntentCall(requirement_id="impact", intent="concept", role="content", slots=ActionSlots(
+                minerals=["리튬", "니켈", "코발트"], topic="EV 영향")),
+            IntentCall(requirement_id="prices", intent="price_compare", role="data", slots=ActionSlots(
+                minerals=["리튬", "니켈", "코발트"])),
+            IntentCall(requirement_id="reasoning", intent="concept", role="content", slots=ActionSlots(
+                minerals=["리튬", "니켈", "코발트"], topic="전기차 수요와 가격의 상관 및 추론")),
+        ]))
+        self.assertEqual([call.action_id for call in plan.actions], ["document.retrieve", "document.retrieve"])
+        self.assertTrue(validate_action_plan(plan).approved)
+
+    def test_trade_country_share_drops_duplicate_concentration_without_hhi_topic(self):
+        plan = action_plan_from_intent(IntentPlan(requirements=[
+            IntentCall(requirement_id="rank", intent="trade_rank", role="data", slots=ActionSlots(
+                mineral="리튬", flow="import", top_n=5, requested_outputs={"table"})),
+            IntentCall(requirement_id="share", intent="trade_concentration", role="data", slots=ActionSlots(
+                mineral="리튬", flow="import")),
+        ]))
+        self.assertEqual([call.action_id for call in plan.actions], ["trade.country_rank"])
+        self.assertTrue(validate_action_plan(plan).approved)
+
+    def test_independent_trade_concentration_is_preserved(self):
+        plan = action_plan_from_intent(IntentPlan(requirements=[IntentCall(
+            requirement_id="hhi", intent="trade_concentration", role="data", slots=ActionSlots(
+                mineral="리튬", flow="import", topic="수입국 HHI 집중도"),
+        )]))
+        self.assertEqual([call.action_id for call in plan.actions], ["trade.concentration"])
+        self.assertTrue(validate_action_plan(plan).approved)
+
+    def test_nonempty_trade_concentration_topic_is_not_absorbed_by_rank(self):
+        plan = action_plan_from_intent(IntentPlan(requirements=[
+            IntentCall(requirement_id="rank", intent="trade_rank", role="data", slots=ActionSlots(
+                mineral="리튬", flow="import", top_n=5)),
+            IntentCall(requirement_id="other", intent="trade_concentration", role="data", slots=ActionSlots(
+                mineral="리튬", flow="import", topic="국가별 공급망 위험 해석")),
+        ]))
+        self.assertEqual([call.action_id for call in plan.actions],
+                         ["trade.country_rank", "trade.concentration"])
+
+    def test_explicit_hhi_message_preserves_topicless_concentration_and_abstains(self):
+        intents = IntentPlan(requirements=[
+            IntentCall(requirement_id="rank", intent="trade_rank", role="data", slots=ActionSlots(
+                mineral="리튬", flow="import", top_n=5)),
+            IntentCall(requirement_id="hhi", intent="trade_concentration", role="data", slots=ActionSlots(
+                mineral="리튬", flow="import")),
+        ])
+        plan = action_plan_from_intent(
+            intents, "리튬 수입 상위 5개국과 국가별 비중, 그리고 국가 집중도 HHI를 계산해줘")
+        self.assertEqual([call.action_id for call in plan.actions],
+                         ["trade.country_rank", "trade.concentration"])
+        self.assertEqual(validate_action_plan(plan).failure_reason, "unsupported_combination")
+
+    def test_unbounded_price_compare_without_conditional_content_is_preserved(self):
+        plan = action_plan_from_intent(IntentPlan(requirements=[IntentCall(
+            requirement_id="prices", intent="price_compare", role="data",
+            slots=ActionSlots(minerals=["리튬", "니켈"]),
+        )]))
+        self.assertEqual([call.action_id for call in plan.actions], ["price.compare"])
+
     def test_advisor_runs_before_generation_for_structured_evidence(self):
         class Advisor:
             def __init__(self): self.called = False
@@ -209,6 +269,19 @@ class ActionContractTest(unittest.TestCase):
         self.assertTrue(result["sufficient"])
         self.assertEqual(result["evidence"], [evidence])
 
+    def test_q28_claim_contract_preserves_year_threshold_and_equals(self):
+        action = ActionCall(requirement_id="q28", action_id="price.verify_claim", slots=ActionSlots(
+            mineral="니켈", claimed_change_pct=300, comparator="equals",
+            period=Period(kind="calendar_year", calendar_year=2025, explicit=True),
+        ))
+        checked = validate_action_plan(ActionPlan(actions=[action]))
+        self.assertTrue(checked.approved)
+        route = graph._route_from_action_plan(checked.plan, "ignored")
+        self.assertEqual(route.komis_start_period, "2025")
+        self.assertEqual(route.komis_end_period, "2025")
+        self.assertEqual(route.komis_claimed_change_pct, 300)
+        self.assertEqual(route.komis_claim_comparator, "equals")
+
     def test_month_only_range_is_normalized_for_trade_adapter(self):
         plan = ActionPlan(actions=[ActionCall(
             requirement_id="trade", action_id="trade.monthly",
@@ -265,6 +338,16 @@ class ActionContractTest(unittest.TestCase):
         monthly = ActionCall(requirement_id="trade", action_id="trade.monthly", slots=ActionSlots(
             mineral="리튬", metric="import_amount"))
         self.assertFalse(graph._comparison_or_monthly_source_is_usable([dummy], monthly))
+
+    def test_unverified_price_comparison_cannot_verify_a_claim(self):
+        unverified = Evidence(kind="aggregated", source="KOMIS", section="가격 비교",
+                              text="| mineral | pct_change |\n| --- | --- |\n| 니켈 | -3.27 |",
+                              caveat="이 수치는 KOMIS 실제 표본 여부를 자동으로 확인할 수 없는 데이터입니다 — 참고용으로만 활용하세요.")
+        claim = ActionCall(requirement_id="q28", action_id="price.verify_claim", slots=ActionSlots(
+            mineral="니켈", claimed_change_pct=300, comparator="equals",
+            period=Period(kind="calendar_year", calendar_year=2025),
+        ))
+        self.assertFalse(graph._comparison_or_monthly_source_is_usable([unverified], claim))
 
 
 if __name__ == "__main__":

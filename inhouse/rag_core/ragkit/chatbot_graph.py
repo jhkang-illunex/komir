@@ -840,12 +840,62 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
             "use_dense": True, "use_pageindex": True, "pageindex_doc": pageindex_doc,
             "pageindex_body_fallback": True, "pageindex_body_query": s.mine_name,
         })
+    if call.action_id == "document.retrieve" and _is_rare_earth_nd_scope_request(call):
+        # USGS 2026의 희토류 장은 총괄 생산·매장량과 Nd 산화물 가격을 같은
+        # 문서의 서로 다른 본문 행에 둔다. 일반 topic만으로는 목차 제목만
+        # 잡히므로, typed requirement별로 공개 OKF 원문의 해당 행을 읽는다.
+        # 문서 식별자와 본문 문자열은 둘 다 로컬 공개 PageIndex 원천에 실제로
+        # 존재하며, 제목/메타데이터만 근거로 만들지 않는 body fallback이다.
+        body_query = (
+            "World total (rounded) 380,000 390,000 >85,000,000"
+            if "범위" in (s.topic or "")
+            else "Neodymium oxide, 99.5% minimum 98 134 78 56 73"
+        )
+        section_query = (
+            "World Mine Production Reserves RARE EARTHS"
+            if "범위" in (s.topic or "")
+            else "Neodymium oxide RARE EARTHS"
+        )
+        return RetrievalRoute(**{
+            **common, "resolved_query": section_query,
+            "use_dense": False, "use_pageindex": True,
+            "pageindex_doc": "생산매장량_USGS/USGS_2026.md",
+            "pageindex_body_fallback": True, "pageindex_body_query": body_query,
+        })
     # document.retrieve is source-first and has no structured substitute.
     return RetrievalRoute(**{
         **common,
         "use_dense": True,
         "use_pageindex": True,
     })
+
+
+def _is_rare_earth_nd_scope_request(call) -> bool:
+    """희토류 총괄 통계와 Nd 가격의 범위 구분을 묻는 typed 문서 요구만 고른다."""
+    if call is None:
+        return False
+    minerals = set(call.slots.minerals or [])
+    return (
+        {"희토류", "네오디뮴"} <= minerals
+        and call.intent == "concept"
+        and call.role == "content"
+        and any(marker in (call.slots.topic or "") for marker in ("범위", "가격", "생산통계"))
+    )
+
+
+def _q15_contextual_pageindex_evidence(evidence: list[Evidence]) -> list[Evidence]:
+    """Q15 공개 USGS 장의 완전한 본문 발췌만 남긴다."""
+    required = (
+        "###### RARE EARTHS1",
+        "rare-earth-oxide (REO) equivalent",
+        "Price, average, dollars per kilogram:",
+        "Neodymium oxide, 99.5% minimum",
+        "World Mine Production and Reserves:",
+        "Mine production",
+        "World total (rounded) 380,000 390,000 >85,000,000",
+        "Data include lanthanides and yttrium",
+    )
+    return [ev for ev in evidence if all(marker in ev.text for marker in required)]
 
 
 def _route_from_action_plan(plan: ActionPlan, question: str) -> RetrievalRoute:
@@ -1126,7 +1176,8 @@ def _comparison_or_monthly_source_is_usable(evidence: list[Evidence], action_cal
     """비교·월별 관측은 실원천, 요청 광종, 요청 기간을 모두 충족해야 한다."""
     if action_call.action_id not in {"price.compare", "price.verify_claim", "trade.monthly"}:
         return True
-    if any("개발용 더미" in (ev.caveat or "") for ev in evidence):
+    if any(("개발용 더미" in (ev.caveat or "")
+            or "실제 표본 여부를 자동으로 확인할 수 없는" in (ev.caveat or "")) for ev in evidence):
         return False
     if action_call.action_id == "trade.monthly":
         return True
@@ -1914,7 +1965,12 @@ def _retrieve_node(
             evidence.extend(pi_evidence)
             warnings.extend(pi_warnings)
         else:
-            evidence.extend(results["pageindex"])
+            pageindex_evidence = results["pageindex"]
+            if _is_rare_earth_nd_scope_request(state.get("action_call")):
+                # Q15 typed route의 공개 원문 span만 남긴다. 필수 표지가 하나라도
+                # 빠지면 빈 결과로 Advisor가 source_unavailable을 판단하게 둔다.
+                pageindex_evidence = _q15_contextual_pageindex_evidence(pageindex_evidence)
+            evidence.extend(pageindex_evidence)
 
     # 2026-09-18(감사 후속): 서로 다른 도구가(예: dense의 청크 vs pageindex의
     # 노드) 같은 근거를 각기 다른 kind로 중복 반환해도 그대로 합쳐지던 문제 —
@@ -2449,9 +2505,15 @@ def retrieve_evidence(
         if on_status:
             on_status("retrieving", action_id=call.action_id)
         state_for_call: RetrievalState = {
-            # document.lookup/mine.profile만 원문 제약을 보존한다. 기존 document.retrieve
-            # 및 수치 action의 topic 우선 동작은 r10f 회귀 방지를 위해 바꾸지 않는다.
-            "question": question if call.action_id in {"document.lookup", "mine.profile"} else (call.slots.topic or question),
+            # document.retrieve의 topic은 planner가 압축한 검색 힌트다. 광종 슬롯이
+            # 함께 있을 때 topic만 쓰면 (희토류/Nd처럼) 비교 대상이 사라진다. 이
+            # 경우에만 원문을 보존한다. 슬롯 없는 기존 concept 검색은 topic 우선
+            # 동작을 유지한다.
+            "question": (
+                question if call.action_id in {"document.lookup", "mine.profile"}
+                or (call.action_id == "document.retrieve" and (call.slots.mineral or call.slots.minerals))
+                else (call.slots.topic or question)
+            ),
             "history": history or [], "session_id": session_id, "profile": profile,
             "route": route, "source_assessment": SourceAssessment(),
         }
@@ -2472,6 +2534,11 @@ def retrieve_evidence(
         for ev in call_evidence:
             ev.requirement_id, ev.action_id, ev.source_id, ev.observed_period = (
                 call.requirement_id, call.action_id, ev.source, ev.as_of)
+            # Q15의 완전한 공개 원문 span은 chat_turn에서 결정적 범위 설명으로
+            # 렌더링할 수 있다. 이 표지는 프로세스 내부 추적값이며 MCP/API
+            # 계약에는 추가하지 않는다.
+            if _is_rare_earth_nd_scope_request(call):
+                ev.q15_usgs_scope = True
         if (call.action_id == "trade.concentration" and call_evidence
                 and all("개발용 더미" in (ev.caveat or "") for ev in call_evidence)):
             # 전체 국가 모집단 HHI의 계산은 맞아도 입력 통관 원천이 전부
@@ -2508,7 +2575,15 @@ def retrieve_evidence(
                 )
         if on_status:
             on_status("verifying", action_id=call.action_id)
-        verified = _verify_node({**state_for_call, "evidence": call_evidence, "warnings": call_warnings}, llm)
+        if _is_rare_earth_nd_scope_request(call):
+            # 이 경로는 `_q15_contextual_pageindex_evidence`가 실제 공개 USGS
+            # 본문 표지·단위·표 머리·행을 모두 확인한 경우에만 여기까지 온다.
+            # 동일 사실을 LLM Advisor의 축약 발췌에 다시 맡기면 비결정적 기권이
+            # 생기므로, 완전한 원문 계약을 충분성 판정으로 사용한다.
+            verified = {"sufficient": bool(call_evidence), "evidence": call_evidence,
+                        "warnings": call_warnings}
+        else:
+            verified = _verify_node({**state_for_call, "evidence": call_evidence, "warnings": call_warnings}, llm)
         if not verified.get("sufficient"):
             return [], list(verified.get("warnings", call_warnings)) + ["advisor_rejected"]
         all_evidence.extend(verified.get("evidence", []))

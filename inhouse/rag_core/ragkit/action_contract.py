@@ -201,7 +201,9 @@ trade_monthly data의 기간·관측범위 요구다. forecast는 미래 예측�
 diagnosis를 쓴다. 명시 HS 코드의 품목명·수입 현황·광종 전체와의 범위 구분은 trade_hs 하나의
 data와 metadata로 표현하며 HS가 없는 별도 광종 action이나 document를 만들지 않는다. trade_concentration은
 수입·수출 국가 집중도(HHI) 자체를 요청할 때만 쓰며, 생산국 비중과 수입국 비중의 비교는 resource_rank와
-trade_rank data의 조합이다. JSON 외 텍스트를 출력하지 않는다."""
+trade_rank data의 조합이다. 전기차 수요 둔화처럼 여러 광종의 조건부 영향·상관·시나리오를 설명하는
+요청은 가격 수치·가격변화·기간별 가격 비교를 명시하지 않는 한 concept 또는 document content 하나 이상으로
+표현하며 price_compare data를 추가하지 않는다. JSON 외 텍스트를 출력하지 않는다."""
 
 def extract_intent_plan(message: str, llm: Any, history: list[dict[str, str]] | None = None) -> IntentPlan:
     plan = llm.invoke(task="intent_plan", instructions=INTENT_PLAN_PROMPT,
@@ -260,7 +262,7 @@ def repair_intent_plan(
     ).output
     return _normalize_mine_intent(plan, message)
 
-def action_plan_from_intent(intent_plan: IntentPlan) -> ActionPlan:
+def action_plan_from_intent(intent_plan: IntentPlan, message: str = "") -> ActionPlan:
     actions: list[ActionCall] = []
     seen: dict[tuple[str, str], ActionCall] = {}
     # 명시 문서의 특정 광산 원문을 찾는 요구는 document.lookup 하나가
@@ -281,8 +283,36 @@ def action_plan_from_intent(intent_plan: IntentPlan) -> ActionPlan:
     has_population_comparison = {
         item.intent for item in intent_plan.requirements if item.role == "data"
     } >= {"resource_rank", "trade_rank"}
+    trade_rank_pairs = {
+        (item.slots.mineral, item.slots.flow)
+        for item in intent_plan.requirements
+        if item.intent == "trade_rank" and item.role == "data"
+    }
+    explicit_concentration = any(marker in message.casefold() for marker in ("hhi", "집중도", "집중도 지수"))
+    # 가격 수치를 요청하지 않은 조건부 영향 설명을 planner가 data+content로
+    # 과분해할 수 있다. 기간·창·가격기준도 없는 비교는 관측 요구가 아니므로,
+    # 같은 typed 계획 안의 시나리오 설명 source-first 요구에만 흡수한다.
+    # 정상적인 현재 가격 비교처럼 별도 문서 설명이 없는 price_compare에는 적용하지
+    # 않는다.
+    has_conditional_scenario_content = any(
+        candidate.intent in {"document", "concept"}
+        and candidate.role == "content"
+        and _is_conditional_scenario_topic(candidate.slots.topic)
+        for candidate in intent_plan.requirements
+    )
     deferred_metadata_outputs: set[str] = set()
     for item in intent_plan.requirements:
+        if (item.intent == "trade_concentration" and item.role == "data"
+                and (item.slots.mineral, item.slots.flow) in trade_rank_pairs
+                and not item.slots.topic and not explicit_concentration):
+            # 국가별 비중은 country rank 결과의 열이다. 같은 광종·flow의 순위
+            # data가 이미 있으면 topic 없는 concentration은 HHI가 아니라 이
+            # 비중 설명을 중복 action으로 과분해한 상태이므로 흡수한다.
+            continue
+        if (item.intent == "price_compare" and item.role == "data"
+                and has_conditional_scenario_content
+                and _is_unbounded_price_compare_slots(item.slots)):
+            continue
         # 메뉴 위치 안내는 화면을 고르는 독립 요청이다. LLM이 role=metadata로
         # 표기해도 문서 검색으로 바꾸지 않고 원래 menu/dataset intent를 보존한다.
         if item.intent in {"menu", "dataset"} and item.role == "metadata":
@@ -380,18 +410,34 @@ def _is_stockpile_methodology_topic(topic: str | None) -> bool:
     return has_stock and has_shortfall and has_days_or_formula
 
 
+def _is_unbounded_price_compare_slots(slots: ActionSlots) -> bool:
+    """관측 조건이 전혀 없는 price.compare 슬롯만 식별한다."""
+    return (slots.period is None and not slots.windows
+            and slots.price_basis is None and slots.currency is None
+            and slots.weight_unit is None)
+
+
+def _is_conditional_scenario_topic(topic: str | None) -> bool:
+    """수치 비교 없는 조건부 영향 설명의 closed topic 표지를 확인한다."""
+    normalized = (topic or "").replace(" ", "")
+    return (any(term in normalized for term in ("수요", "시나리오", "영향", "상관", "추론"))
+            and any(term in normalized for term in (
+                "둔화", "감소", "하락", "변화", "조건", "전기차", "ev",
+            )))
+
+
 def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | None = None) -> ActionPlan:
     intent_plan = extract_intent_plan(message, llm, history)
     semantic_failure = _intent_plan_semantic_failure(intent_plan)
     if semantic_failure:
         intent_plan = repair_intent_plan(message, llm, semantic_failure, history)
-    plan = action_plan_from_intent(intent_plan)
+    plan = action_plan_from_intent(intent_plan, message)
     assessment = validate_action_plan(plan)
     if assessment.approved or assessment.failure_reason not in {"slot_unresolved", "unsupported_combination"}:
         return plan
     # 모델 출력의 role/중복 오류만 한 번 고친다. 원천 미연결은 재시도로
     # available action처럼 바꾸지 않는다.
-    repaired = action_plan_from_intent(repair_intent_plan(message, llm, assessment.failure_reason, history))
+    repaired = action_plan_from_intent(repair_intent_plan(message, llm, assessment.failure_reason, history), message)
     if (validate_action_plan(repaired).failure_reason == "slot_unresolved"
             and _has_source_unavailable_predecessor(history or [], repaired)):
         repaired.predecessor_source_unavailable = True

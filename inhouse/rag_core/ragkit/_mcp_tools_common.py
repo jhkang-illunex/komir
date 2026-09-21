@@ -56,7 +56,10 @@ from common.komis_raw import (
 from common.llm_client import KomirJsonLLM
 from common import structured
 from rag_core.retrieval import pageindex_agent
-from rag_core.retrieval.evidence import Evidence, from_komis_raw, from_komis_ranking, from_komis_aggregate, from_structured
+from rag_core.retrieval.evidence import (
+    Evidence, KOMIS_RAW_UNVERIFIED_CAVEAT, from_komis_raw, from_komis_ranking,
+    from_komis_aggregate, from_structured,
+)
 
 
 def _evidence_dict(ev: Evidence | None) -> dict[str, Any] | None:
@@ -304,6 +307,30 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
         except RawDataAccessError as exc:
             return {"evidence": [], "warnings": [*warnings, str(exc)]}
 
+        # 가격 기준·단위와 더미 상태는 광종 마스터가 아니라 실제 선택한
+        # 가격기준에 귀속한다. 표시명 사전이 없으면 원시 코드를 보존한다.
+        selected_price_dummy: bool | None = None
+        if page_id in _PRICE_PAGES and request.price_criterion_serial is not None:
+            criterion_reader = getattr(repo, "resolve_price_criterion_metadata", None)
+            dummy_reader = getattr(repo, "price_criteria_have_dummy_rows", None)
+            if not callable(criterion_reader) or not callable(dummy_reader):
+                criterion, dummy_status = None, {}
+            else:
+                try:
+                    criterion = criterion_reader(request.price_criterion_serial)
+                    dummy_status = dummy_reader([request.price_criterion_serial])
+                except RawDataAccessError:
+                    criterion, dummy_status = None, {}
+            if criterion:
+                criterion_name, currency_code, weight_code = criterion
+                unit = "; ".join(part for part in (
+                    f"가격기준={criterion_name}" if criterion_name else None,
+                    f"통화코드={currency_code}" if currency_code else None,
+                    f"중량단위코드={weight_code}" if weight_code else None,
+                ) if part) or None
+                datasets = [dataset.model_copy(update={"unit": unit}) for dataset in datasets]
+            selected_price_dummy = dummy_status.get(request.price_criterion_serial)
+
         # 2026-09-03(발주처 문서, 사용자 승인) — price_*/indicator_market/
         # indicator_supply가 0건이면 "조회 가능 기간은 ...입니다"를 실제 DB
         # 범위로 채워 warnings에 붙인다. (2026-09-07 갱신 — 예전엔 "ROUTE_PROMPT가
@@ -350,6 +377,7 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
         # 쓰고 더미로 간주한다(원래 동작 그대로 — 확인 안 되면 안전한 쪽으로
         # 열화, is_dummy는 KOMIS_SAMPLE로 확인됐을 때만 False).
         is_dummy = None
+        unverified = False
         mineral_label = mineral_code
         if mineral_code:
             try:
@@ -359,14 +387,18 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
             if resolved_meta:
                 mineral_label = resolved_meta[0]
             data_source = resolved_meta[1] if resolved_meta else None
-            is_dummy = data_source != "KOMIS_SAMPLE"
+            is_dummy = (selected_price_dummy if page_id in _PRICE_PAGES
+                        else data_source != "KOMIS_SAMPLE")
+            if page_id in _PRICE_PAGES and selected_price_dummy is None:
+                # 행 단위 추적키를 확인하지 못했을 때 광종 단위 DEV_DUMMY로
+                # 실가격 기준까지 확정 더미라고 단정하지 않는다.
+                unverified = True
             if is_dummy:
                 warnings.append(
                     f"⚠ '{mineral_code}' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미"
                     f"(ko_data_src_cd={data_source or '확인불가'})일 수 있습니다 — "
                     "실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요."
                 )
-        unverified = False
         if not mineral_code and page_id == "indicator_composite":
             # 2026-09-02 skeptic 2차감사 SC-CB2-001 수정 — mineral_code가 없는
             # 경로(광물종합지수는 광종과 무관한 지표라 정상적으로 없을 수 있다,
@@ -685,7 +717,7 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
             return {"evidence": [], "warnings": [str(exc)]}
         if not dataset.rows:
             return {"evidence": [], "warnings": [_NO_DATA_FOUND_MARKER]}
-        is_dummy = _any_dummy(repo, mineral_names)
+        is_dummy = _selected_price_series_dummy(repo, dataset)
         grouped: dict[str, list[dict[str, Any]]] = {}
         for row in dataset.rows:
             grouped.setdefault(str(row["mineral"]), []).append(row)
@@ -699,6 +731,11 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
             sampled = [points[i] for i in sorted(indexes)]
             series_view = dataset.model_copy(update={
                 "rows": sampled, "row_count": len(sampled),
+                "unit": "; ".join(part for part in (
+                    f"가격기준={points[0].get('price_criterion')}" if points[0].get("price_criterion") else None,
+                    f"통화코드={points[0].get('price_currency_code')}" if points[0].get("price_currency_code") else None,
+                    f"중량단위코드={points[0].get('weight_unit_code')}" if points[0].get("weight_unit_code") else None,
+                ) if part) or None,
                 "metadata": {key: value for key, value in dataset.metadata.items() if key != "comparison"},
             })
             evidence.extend(from_komis_aggregate(
@@ -720,10 +757,22 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
                     "price_currency_code": "통화코드", "weight_unit_code": "중량단위코드",
                 },
                 row_count=len(comparison), rows=comparison, as_of=dataset.as_of,
+                unit=("; ".join(part for part in (
+                    f"통화코드={comparison[0].get('price_currency_code')}"
+                    if len({row.get('price_currency_code') for row in comparison}) == 1 and comparison[0].get("price_currency_code") else None,
+                    f"중량단위코드={comparison[0].get('weight_unit_code')}"
+                    if len({row.get('weight_unit_code') for row in comparison}) == 1 and comparison[0].get("weight_unit_code") else None,
+                ) if part) or None),
                 metadata={key: value for key, value in dataset.metadata.items() if key != "comparison"},
             )
             evidence.extend(from_komis_aggregate(compare_dataset, label=f"{window_label}동일 기간 가격 변동률",
                                                  is_dummy=is_dummy))
+        if is_dummy is None:
+            # 행 단위 더미 추적을 읽지 못하면 비교·전제 검증을 실측처럼
+            # 통과시키지 않는다. graph의 comparison contract가 이 caveat을
+            # source_unavailable로 닫고, 단일 가격 조회는 경고를 보존한다.
+            for ev in evidence:
+                ev.caveat = KOMIS_RAW_UNVERIFIED_CAVEAT
         missing = dataset.metadata.get("missing_minerals") or []
         warnings = [f"aggregate_incomplete:missing_minerals:{','.join(missing)}"] if missing else []
         return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}
@@ -794,27 +843,23 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
         )
         return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}
 
-    def _any_dummy(repo: KomisRawDataRepository, mineral_names: list[str]) -> bool:
-        """결과에 실제로 나온 광종들 중 하나라도 더미면 보수적으로 True —
-        여러 광종을 한 표에 합치는 비교/랭킹 도구는 행마다 다른 caveat을
-        달 수 없어(Evidence 1건에 caveat 1개) 하나라도 더미면 전체를 더미로
-        취급한다(2026-09-18, "확인 안 되면 안전한 쪽으로" 기존 원칙 재사용)."""
+    def _selected_price_series_dummy(repo: KomisRawDataRepository, dataset) -> bool | None:
+        """비교 결과에서 선택된 가격기준에 더미 행이 있는지 확인한다."""
 
-        for name in mineral_names:
-            try:
-                resolved = repo.resolve_mineral_full(name)
-            except RawDataAccessError:
-                return True
-            if resolved is None:
-                continue
-            code = resolved[0]
-            try:
-                meta = repo.resolve_mineral_meta(code)
-            except RawDataAccessError:
-                return True
-            if meta is None or meta[1] != "KOMIS_SAMPLE":
-                return True
-        return False
+        serials = sorted({int(row["price_criterion_serial"]) for row in dataset.rows
+                          if row.get("price_criterion_serial") is not None})
+        if not serials:
+            return None
+        reader = getattr(repo, "price_criteria_have_dummy_rows", None)
+        if not callable(reader):
+            return None
+        try:
+            status = reader(serials)
+        except RawDataAccessError:
+            return None
+        if set(status) != set(serials):
+            return None
+        return any(status.values())
 
     @mcp.tool()
     def komis_price_volatility_ranking(

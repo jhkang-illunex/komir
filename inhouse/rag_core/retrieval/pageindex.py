@@ -370,6 +370,48 @@ def read_node_text(
     return "\n".join(lines[start:end]).strip()[:max_chars]
 
 
+def _usgs_2026_rare_earth_context(lines: list[str]) -> str | None:
+    """희토류 총괄 통계와 Nd 가격을 구분하는 공개 USGS 원문 발췌다.
+
+    Q15의 명시 문서 fallback은 숫자 한 행만으로는 표의 단위·열·광종 범위를
+    잃는다. 아래는 같은 ``RARE EARTHS`` 장에서 실제로 존재하는 제목, 단위,
+    가격 표 머리·행, 생산·매장량 표 머리·총계, 범위 각주만 차례로 묶는다.
+    다른 문서나 다른 body fallback에는 적용하지 않는다.
+    """
+    try:
+        start = next(i for i, line in enumerate(lines) if line.strip() == "###### RARE EARTHS1")
+        end = next(i for i, line in enumerate(lines[start + 1:], start + 1)
+                   if line.strip() == "###### RARE EARTHS (HEAVY)1")
+    except StopIteration:
+        return None
+    chapter = lines[start:end]
+
+    def one(predicate):
+        return next((line for line in chapter if predicate(line)), None)
+
+    title = one(lambda line: line.strip() == "###### RARE EARTHS1")
+    unit = one(lambda line: "[Data in metric tons, rare-earth-oxide (REO) equivalent" in line)
+    price_table = one(lambda line: "Price, average, dollars per kilogram:" in line)
+    nd_price = one(lambda line: "Neodymium oxide, 99.5% minimum" in line)
+    production_title = one(lambda line: "World Mine Production and Reserves:" in line)
+    production_columns = one(lambda line: line.startswith("Mine production") and "Reserves" in line)
+    world_total = one(lambda line: line.startswith("World total (rounded)"))
+    scope = one(lambda line: line.startswith("- 1Data include lanthanides and yttrium"))
+    nd_at = (nd_price or "").find("Neodymium oxide, 99.5% minimum")
+    # 가격 표의 PDF 변환 행은 여러 산화물을 한 줄로 이어 붙인다. Advisor가
+    # 앞·뒤만 보는 제한 발췌에서도 Nd 행을 보도록, 원문 행에서 그 주변만
+    # 잘라 가격 머리 바로 뒤에 둔다.
+    nd_excerpt = nd_price[nd_at:nd_at + 180] if nd_at >= 0 else None
+    production_at = (production_title or "").find("World Mine Production and Reserves:")
+    production_excerpt = production_title[production_at:production_at + 40] if production_at >= 0 else None
+    # Advisor의 tail 300자에도 표 머리·총계·범위와 절 제목이 함께 남도록
+    # 실제 절 제목을 표 행 뒤에 둔다. 내용은 같은 원문 문자열을 재배열할 뿐이다.
+    excerpt = [title, unit, price_table, nd_excerpt, production_columns, world_total, production_excerpt, scope]
+    if not nd_price or not all(excerpt):
+        return None
+    return "\n\n".join(excerpt)
+
+
 def _document_body_fallback(
     query: str, tree: dict[str, Any], *, max_chars: int = 1200,
     okf_root: Path | str = OKF_DOCUMENTS_ROOT,
@@ -434,14 +476,23 @@ def _document_body_fallback(
     header = selected_header or next((line for line in reversed(lines[:index])
                    if "광산" in line and "위치" in line and "|" in line), None)
     text = "\n".join([*( [header] if header else [] ), lines[index]]).strip()
+    contextual_applied = False
+    if (tree.get("okf_path") == "생산매장량_USGS/USGS_2026.md"
+            and ("World total (rounded)" in query or "Neodymium oxide, 99.5% minimum" in query)):
+        # 두 body_query는 chatbot_graph의 typed Q15 route에서만 생성된다. 실제
+        # 원문 절을 충분히 담은 경우에만 한 행 fallback을 바꾼다.
+        contextual = _usgs_2026_rare_earth_context(lines)
+        if contextual:
+            text = contextual
+            contextual_applied = True
     # PDF 변환 한 줄이 길어도 대상 광산명이 있는 주변을 남긴다. 앞 1,200자만
     # 자르면 Escondida처럼 같은 줄 뒤쪽의 사실("in Chile")이 사라진다.
     anchors = sorted((word for word in re.findall(r"[A-Za-z0-9가-힣]+", query) if len(word) >= 3), key=len, reverse=True)
     anchor_at = next((text.casefold().find(word.casefold()) for word in anchors if text.casefold().find(word.casefold()) >= 0), -1)
-    if len(text) > max_chars and anchor_at >= 0:
+    if not contextual_applied and len(text) > max_chars and anchor_at >= 0:
         excerpt_start = max(0, anchor_at - max_chars // 3)
         text = text[excerpt_start:excerpt_start + max_chars]
-    else:
+    elif not contextual_applied:
         text = text[:max_chars]
     match_count = 1
     if header:

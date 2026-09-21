@@ -61,6 +61,25 @@ class MonthlyTradeAggregationTest(unittest.TestCase):
 
 
 class PriceComparisonAggregationTest(unittest.TestCase):
+    def test_price_dummy_status_uses_selected_criterion_not_mineral_master(self):
+        captured: list[str] = []
+        dummy_rows = pd.DataFrame([(900002,)], columns=["serial"])
+        with patch("common.komis_raw.read_sql_pg", side_effect=lambda query: (captured.append(query), dummy_rows)[1]):
+            status = KomisRawDataRepository().price_criteria_have_dummy_rows([502, 900002])
+
+        self.assertEqual(status, {502: False, 900002: True})
+        self.assertIn("tbl_nm = 'ko_mnrl_prc'", captured[0])
+        self.assertIn("SPLIT_PART(nat_key, '|', 1)", captured[0])
+        self.assertNotIn("ko_data_src_cd", captured[0])
+
+    def test_price_criterion_metadata_keeps_raw_unit_codes(self):
+        metadata = pd.DataFrame([("LME CASH", "PR001", "WT002")],
+                                columns=["prc_crtr", "prc_unit_cd", "weig_unit_cd"])
+        with patch("common.komis_raw.read_sql_pg", return_value=metadata):
+            result = KomisRawDataRepository().resolve_price_criterion_metadata(502)
+
+        self.assertEqual(result, ("LME CASH", "PR001", "WT002"))
+
     def test_price_comparison_uses_common_available_window_and_signed_change(self):
         criteria = pd.DataFrame([
             ("니켈", 502, "LME CASH", "PR001", "WT002", "20260101", "20261231"),

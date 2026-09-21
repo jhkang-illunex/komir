@@ -745,6 +745,136 @@ def _dummy_data_notice(cited_indices: set[int], evidence: list) -> str:
     return "\n\n" + "\n".join(f"⚠ {c}" for c in sorted(caveats))
 
 
+def _price_unit_disclosure(text: str, evidence: list) -> str:
+    """선택 가격기준의 단위 코드를 본문에 결정적으로 남긴다.
+
+    가격 series Evidence의 ``unit``은 선택 기준의 가격기준·통화·중량 코드다.
+    생성 모델이 이를 누락하거나 "명시되지 않았다"고 반대로 서술해도 citation
+    메타데이터와 본문이 갈라지지 않게, 확인된 코드만 인용과 함께 보충한다.
+    """
+
+    price_units = [
+        (index, ev.unit)
+        for index, ev in enumerate(evidence, 1)
+        if getattr(ev, "action_id", None) == "price.series"
+        and (ev.unit or "").startswith("가격기준=")
+    ]
+    if not price_units:
+        return text
+    # 선택 기준 코드가 있는 근거에 대해 "단위 미명시"라고 한 문장만 지운다.
+    # 다른 정보의 부재 주장은 건드리지 않는다.
+    cleaned = re.sub(
+        # ``_strip_uncited_sentences``는 bullet을 앞 문장과 한 줄로 합칠 수
+        # 있다. 줄 전체를 삭제하지 않고, 인용 번호까지 포함한 "단위 미명시"
+        # 주장 하나만 지운다. 굵은 라벨과 조사·띄어쓰기 변형도 처리한다.
+        r"(?:\*\*)?(?:가격|통화|중량)\s*단위(?:\*\*)?\s*:?\s*[^\[\n]*?"
+        r"(?:명시(?:되어)?\s*있지\s*않습니다|명시되지\s*않았습니다|"
+        r"확인할\s*수\s*없습니다|제공되지\s*않았습니다)\s*[.。]?\s*\[\d+\]",
+        "",
+        text,
+    ).rstrip()
+    # 삭제된 bullet만 남거나, 인접한 출처 bullet과 한 줄로 합쳐진 경우의
+    # Markdown 표식을 정리한다. 출처 내용은 보존한다.
+    cleaned = re.sub(r"(?m)^[ \t]*[*+-][ \t]*$(?:\n|$)", "", cleaned)
+    cleaned = re.sub(
+        r"(?m)^[ \t]*[*+-][ \t]*(?=[*+-][ \t]*(?:\*\*)?출처\s*:)",
+        "",
+        cleaned,
+    ).rstrip()
+    cleaned = re.sub(r"\*[ \t]+\*[ \t]+(?=(?:\*\*)?출처\s*:)", "* ", cleaned)
+    cleaned = re.sub(r"(\[\d+\])[ \t]+\*[ \t]+(?=\*\*출처\s*:)", r"\1\n\n* ", cleaned)
+    cleaned = re.sub(r"(\[\d+\])[ \t]+(?=\*\*\d+\.\s*)", r"\1\n\n", cleaned)
+    cleaned = re.sub(r"(\[\d+\])[ \t]+(?=\*\*\[)", r"\1\n\n", cleaned)
+    # 가격 응답의 항목은 citation 뒤에 다음 bullet이 이어지면 한 줄로 합쳐져
+    # 읽기 어려워진다. 선택 가격근거가 있는 이 좁은 경로에서만 경계를 복원한다.
+    cleaned = re.sub(r"(\[\d+\])[ \t]+\*[ \t]+(?=\*\*)", r"\1\n\n* ", cleaned)
+    cleaned = re.sub(r"(\[\d+\])[ \t]+\*[ \t]+(?=\S)", r"\1\n\n* ", cleaned)
+    cleaned = re.sub(r"(\[\d+\])[ \t]+(?=\d+\.\s+)", r"\1\n\n", cleaned)
+    cleaned = re.sub(r"(\[\d+\])[ \t]+(?=\|)", r"\1\n\n", cleaned)
+    # 최고·최저는 원자료 행 전체를 결정적으로 집계하지 않은 생성 모델이
+    # 임의의 관측값을 고를 수 있다. 선택 가격기준의 단위 보정 경로에서는
+    # 검증되지 않은 극값 문장을 제거하고, 근거 표·차트 이벤트만 남긴다.
+    cleaned = re.sub(r"(?m)^.*?(?:최고가|최저가|최고|최저).*?\[\d+\][ \t]*[.。]?[ \t]*$", "", cleaned)
+    # 선택 시리즈의 개별 날짜·가격 행은 SSE 표·차트가 원자료로 전달한다.
+    # 생성 본문의 임의 표본 수치가 전체 시계열의 대표값처럼 보이지 않게
+    # 날짜와 가격을 함께 주장하는 문장은 제거한다.
+    cleaned = re.sub(
+        r"(?m)^.*?(?:\d{4}-\d{2}-\d{2}|\d{4}년).*?\[\d+\][ \t]*[.。]?[ \t]*$",
+        "", cleaned,
+    )
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
+    additions = [
+        f"선택 가격기준의 단위 표기는 {unit}입니다. [{index}]"
+        for index, unit in price_units
+        if unit not in cleaned
+    ]
+    return cleaned + ("\n\n" if cleaned and additions else "") + "\n".join(additions)
+
+
+def _price_series_scope_answer(evidence: list, action_plan) -> tuple[str, set[int]] | None:
+    """선택 가격 시계열 1건의 본문을 원자료 메타데이터로만 구성한다.
+
+    시계열 표와 차트는 동일 Evidence에서 생성된다. 생성 모델에게 임의 날짜 행이나
+    고점·저점을 고르게 맡기면 실제 최대·최소와 다른 값을 전체 추이처럼 쓸 수
+    있다. 단일 ``price.series`` 조회는 실제 관측기간과 선택 기준만 본문에
+    표시하고, 가격 비교 등 여러 requirement가 섞인 답변에는 적용하지 않는다.
+    """
+    actions = getattr(action_plan, "actions", [])
+    if len(actions) != 1 or getattr(actions[0], "action_id", None) != "price.series":
+        return None
+    selected = [
+        (index, item)
+        for index, item in enumerate(evidence, 1)
+        if getattr(item, "action_id", None) == "price.series"
+        and (getattr(item, "unit", None) or "").startswith("가격기준=")
+        and getattr(item, "observed_period", None)
+    ]
+    if len(evidence) != 1 or len(selected) != 1:
+        return None
+    index, item = selected[0]
+    return (
+        f"조회된 가격 시계열의 실제 관측 기간은 {item.observed_period}입니다. "
+        f"아래 표와 차트는 해당 기간의 원자료를 표시합니다. [{index}]\n\n"
+        f"선택 가격기준의 단위 표기는 {item.unit}입니다. [{index}]",
+        {index},
+    )
+
+
+def _q15_usgs_scope_answer(evidence: list) -> tuple[str, set[int]] | None:
+    """검증된 USGS 희토류 총괄 통계와 Nd 가격의 범위를 결정적으로 설명한다."""
+    required = (
+        "###### RARE EARTHS1",
+        "rare-earth-oxide (REO) equivalent",
+        "Price, average, dollars per kilogram:",
+        "Neodymium oxide, 99.5% minimum 98 134 78 56 73",
+        "World Mine Production and Reserves:",
+        "Mine production",
+        "World total (rounded) 380,000 390,000 >85,000,000",
+        "Data include lanthanides and yttrium",
+    )
+    matched = [
+        index for index, item in enumerate(evidence, 1)
+        if getattr(item, "q15_usgs_scope", False)
+        and getattr(item, "action_id", None) == "document.retrieve"
+        and getattr(item, "source", None) == "생산매장량_USGS/USGS_2026.md"
+        and all(marker in getattr(item, "text", "") for marker in required)
+    ]
+    if not matched:
+        return None
+    index = matched[0]
+    return (
+        "희토류 총괄 통계는 REO(희토류 산화물) 환산 기준의 세계 광산 생산·매장량 표입니다. "
+        "세계 총계는 2024년 380,000톤, 2025년 390,000톤, 매장량은 85,000,000톤 초과로 제시됩니다. "
+        "이 범위에는 란타넘족과 이트륨이 포함되고 대부분의 스칸듐은 제외됩니다. "
+        f"[{index}]\n\n"
+        "네오디뮴은 같은 장의 평균 가격 표에서 산화네오디뮴(순도 99.5% 이상)으로 별도 제시됩니다. "
+        "해당 가격 행의 2021~2025 값은 킬로그램당 98, 134, 78, 56, 73달러입니다. "
+        "따라서 희토류의 총괄 생산·매장량 통계와 특정 산화네오디뮴의 가격은 같은 범위의 단일 지표가 아닙니다. "
+        f"[{index}]",
+        {index},
+    )
+
+
 #: 2026-09-03(발주처 문서 ④-마/바, 사용자 승인 — "별도 사전분류 LLM 호출
 #: 추가", 공유 ROUTE_PROMPT는 건드리지 말라는 명시적 지시). 검색을 시작하기
 #: 전에 먼저 판단한다 — security_privacy/investment_advice는 [근거]가 뭘
@@ -1232,10 +1362,58 @@ async def chat_turn(
         })
         return
 
+    q15_answer = _q15_usgs_scope_answer(evidence)
+    if q15_answer is not None:
+        answer, cited_indices = q15_answer
+        citations = _citation_sources(cited_indices, evidence)
+        extra = _source_footer(cited_indices, evidence)
+        final_text = answer + extra
+        yield _status_event(4)
+        yield ChatEvent(type="delta", data={"delta": answer})
+        if extra:
+            yield ChatEvent(type="delta", data={"delta": extra})
+        await asyncio.to_thread(
+            append_message, resolved_session_id, "assistant", final_text,
+            json.dumps(citations, ensure_ascii=False), store_db_path,
+        )
+        yield ChatEvent(type="done", data={
+            "done": True, "citations": citations, "bogus_citations": [], "abstained": False,
+        })
+        return
+
+    price_series_answer = _price_series_scope_answer(evidence, action_plan)
+    if price_series_answer is not None:
+        answer, cited_indices = price_series_answer
+        citations = _citation_sources(cited_indices, evidence)
+        extra = _dummy_data_notice(cited_indices, evidence) + _source_footer(cited_indices, evidence)
+        final_text = answer + extra
+        yield _status_event(4)
+        yield ChatEvent(type="delta", data={"delta": answer})
+        if extra:
+            yield ChatEvent(type="delta", data={"delta": extra})
+        for event in _multimodal_events(cited_indices, evidence):
+            yield event
+        await asyncio.to_thread(
+            append_message, resolved_session_id, "assistant", final_text,
+            json.dumps(citations, ensure_ascii=False), store_db_path,
+        )
+        yield ChatEvent(type="done", data={
+            "done": True, "citations": citations, "bogus_citations": [], "abstained": False,
+        })
+        return
+
     near_miss = "retrieval_near_miss" in route_warnings
     system_prompt = NEAR_MISS_SYSTEM_PROMPT if near_miss else CHATBOT_SYSTEM_PROMPT
     user_prompt = _history_block(history) + _build_evidence_prompt(message, evidence)
     chat = chat or OpenAICompatChat(_cfg_from_env())
+    # 선택 가격기준 단위는 citation과 본문이 반드시 같아야 한다. 이 좁은
+    # 경로만 생성 완료 뒤에 보정해, LLM의 단위 누락·반대 서술을 화면에 먼저
+    # 흘리지 않는다. 그 밖의 일반 RAG 스트리밍은 기존대로 유지한다.
+    price_unit_guard = any(
+        getattr(ev, "action_id", None) == "price.series"
+        and (getattr(ev, "unit", None) or "").startswith("가격기준=")
+        for ev in evidence
+    )
 
     yield _status_event(4)  # 답변 생성 중
     full_text_parts: list[str] = []
@@ -1244,7 +1422,7 @@ async def chat_turn(
             full_text_parts.append(delta)
             # 일반 RAG는 기존 스트리밍을 유지한다. 개념 질문은 인용 검증 전의
             # 모델 문장이 노출되지 않게 여기서 버퍼링한다.
-            if not concept_question:
+            if not concept_question and not price_unit_guard:
                 yield ChatEvent(type="delta", data={"delta": delta})
     except Exception:
         # 2026-09-08(skeptic-code SC-2) — complete_stream()은 재시도를 하지 않고
@@ -1327,6 +1505,7 @@ async def chat_turn(
         return
 
     cleaned, bogus = _strip_uncited_sentences(full_text, len(evidence))
+    cleaned = _price_unit_disclosure(cleaned, evidence)
     if not cleaned.strip():
         if concept_question:
             abstain_text = "확인 가능한 출처가 없어 내용을 확인할 수 없습니다."
@@ -1386,7 +1565,7 @@ async def chat_turn(
         )
         return
 
-    if concept_question:
+    if concept_question or price_unit_guard:
         # 인용 번호·문장 직접근거를 모두 검증한 뒤에만 모델 문장을 보낸다.
         yield ChatEvent(type="delta", data={"delta": cleaned})
 

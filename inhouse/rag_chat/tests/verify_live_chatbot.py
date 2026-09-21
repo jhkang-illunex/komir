@@ -1,6 +1,7 @@
 """배포된 챗봇의 핵심 질의 필수 수락 검사."""
 import json
 import os
+import re
 import sys
 import time
 import urllib.request
@@ -44,6 +45,54 @@ def check_price_series(mineral):
                     and any("가격" in column for column in table["columns"])]
     assert price_tables and len(price_tables[0]["rows"]) >= 2, (question, done)
     print(f"[OK] {mineral} 최근 1년 가격 추이 요청 · 실제 관측기간 명시", flush=True)
+
+
+def check_nickel_price_unit_contract():
+    for label, question in (
+        ("Q01", "최근 1년간 니켈 가격 추이를 보여줘"),
+        ("Q23", "니켈 가격 추이를 알려줘"),
+    ):
+        done, events = ask(question)
+        citation = require_citation(done, "price.series", "public.KO_MNRL_PRC")
+        unit = citation.get("unit") or ""
+        assert "가격기준=LME CASH" in unit and "통화코드=PR001" in unit and "중량단위코드=WT002" in unit, (label, citation)
+        answer = "".join(event.get("delta", "") for event in events)
+        assert unit in answer, (label, answer)
+        assert "조회된 가격 시계열의 실제 관측 기간은" in answer, (label, answer)
+        assert "아래 표와 차트는 해당 기간의 원자료를 표시합니다." in answer, (label, answer)
+        assert "가격 단위: 제공된 문서에 통화 단위가 명시되지 않았습니다" not in answer, (label, answer)
+        assert "개발용 더미" not in answer, (label, answer)
+        # 인용 뒤 목록은 같은 줄에 붙으면 Markdown 구조가 깨진다. ``\\s``는
+        # 정상 줄바꿈까지 잡으므로 공백·탭만 검사한다.
+        assert not re.search(r"\[\d+\][ \t]*\*", answer), (label, answer)
+        assert not re.search(r"\[\d+\][ \t]*\d+\.\s+", answer), (label, answer)
+        assert not re.search(r"\[\d+\]\s+\*\*\[", answer), (label, answer)
+        assert not re.search(r"\[\d+\][ \t]*\|", answer), (label, answer)
+        # 단일 series 본문은 관측기간·선택 기준만 결정적으로 말한다. 개별 행과
+        # 고점/저점의 생성 서술은 표·차트 원자료와 불일치할 위험이 있다.
+        assert not re.search(r"최고가|최저가|최고|최저|고점을\s*형성|저점을\s*형성", answer), (label, answer)
+        assert not re.search(r"\d{4}-\d{2}-\d{2}[ \t]+[\d,]+(?:\.\d+)?", answer), (label, answer)
+        print(f"[OK] {label} 니켈 선택 가격기준 단위·더미 경고 계약", flush=True)
+
+
+def check_q15_usgs_scope_contract():
+    done, events = ask("희토류와 네오디뮴은 같은 범위의 데이터야? 가격과 생산통계를 비교할 때 주의점을 알려줘.")
+    require_citation(done, "document.retrieve", "생산매장량_USGS/USGS_2026.md")
+    answer = "".join(event.get("delta", "") for event in events)
+    for required in ("REO", "380,000", "390,000", "85,000,000", "산화네오디뮴", "73달러"):
+        assert required in answer, (required, answer)
+    assert "같은 범위의 단일 지표가 아닙니다" in answer, answer
+    print("[OK] Q15 희토류 총괄 통계·Nd 산화물 가격 범위 및 USGS 인용", flush=True)
+
+
+def check_q28_nickel_2025_claim_contract():
+    done, events = ask("2025년 니켈 가격이 300% 이상 올랐어?")
+    require_citation(done, "price.verify_claim", "public.KO_MNRL_PRC")
+    answer = "".join(event.get("delta", "") for event in events)
+    compact = answer.replace(",", "").replace(" ", "")
+    assert "15010" in compact and "14519.04" in compact and "-3.27" in compact, answer
+    assert "300%" in answer and any(term in answer for term in ("아닙니다", "확인되지", "반박")), answer
+    print("[OK] Q28 2025 니켈 실제값·300% 전제 반박", flush=True)
 
 
 def check_import_country_share(mineral):
@@ -101,6 +150,8 @@ def check_q01_to_q30_samples():
         ("Q27", "언옵테이늄의 한국 수입국 비중과 현재 위기점수를 알려줘.",
          "source_unavailable"),
         ("Q30", "오늘 서울 날씨와 점심 메뉴를 추천해줘.", "out_of_scope"),
+        ("HHI+rank", "리튬 수입 상위 5개국과 국가별 비중, 그리고 국가 집중도 HHI를 계산해줘",
+         "unsupported_combination"),
     )
     for case_id, question, reason in failure_cases:
         done, events = ask(question)
@@ -137,6 +188,9 @@ def main():
     print("[OK] 광산 생산량 최근 YoY 증가", flush=True)
     for mineral in ("구리", "니켈"):
         check_price_series(mineral)
+    check_nickel_price_unit_contract()
+    check_q15_usgs_scope_contract()
+    check_q28_nickel_2025_claim_contract()
     check_import_country_share("리튬")
     check_rare_earth_resource_ranking()
     check_q01_to_q30_samples()

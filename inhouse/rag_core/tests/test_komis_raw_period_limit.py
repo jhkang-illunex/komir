@@ -44,6 +44,12 @@ class _Repository:
         self.requests.append(("complete", request))
         return self._dataset(request, 130, complete=True)
 
+    def resolve_price_criterion_metadata(self, serial):
+        return ("LME CASH", "PR001", "WT002")
+
+    def price_criteria_have_dummy_rows(self, serials):
+        return {int(serial): False for serial in serials}
+
 
 class PeriodLimitTest(unittest.TestCase):
     def test_explicit_period_returns_every_row_and_no_period_uses_env_cap(self):

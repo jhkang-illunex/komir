@@ -625,6 +625,45 @@ class KomisRawDataRepository:
         )
         return [int(value) for value in frame["mnrl_prc_crtr_sn"]]
 
+    def resolve_price_criterion_metadata(self, serial: int) -> tuple[str | None, str | None, str | None] | None:
+        """선택 가격기준의 표시명과 원시 단위 코드를 돌려준다."""
+
+        frame = read_sql_pg(
+            f"SELECT prc_crtr, prc_unit_cd, weig_unit_cd "
+            f"FROM {KOMIS_SCHEMA}.KO_MNRL_PRC_CRTR "
+            f"WHERE mnrl_prc_crtr_sn = {_literal(serial)}"
+        )
+        if frame.empty:
+            return None
+        row = frame.iloc[0]
+        return (
+            None if row["prc_crtr"] is None else str(row["prc_crtr"]),
+            None if row["prc_unit_cd"] is None else str(row["prc_unit_cd"]),
+            None if row["weig_unit_cd"] is None else str(row["weig_unit_cd"]),
+        )
+
+    def price_criteria_have_dummy_rows(self, serials: list[int]) -> dict[int, bool]:
+        """선택 가격기준별 ``KO_MNRL_PRC`` 더미 추적 행 존재를 확인한다.
+
+        광종 마스터의 출처 표식은 같은 광종의 다른 가격기준까지 포괄한다.
+        가격 원시행 추적키의 첫 토큰인 가격기준 일련번호만 사용한다.
+        """
+
+        if not serials:
+            return {}
+        # SPLIT_PART는 text를 반환한다. PostgreSQL이 text와 integer를 자동
+        # 비교하지 않으므로 serial도 명시적으로 text 리터럴로 맞춘다.
+        values = ", ".join(_literal(str(int(serial))) for serial in serials)
+        frame = read_sql_pg(
+            "SELECT CAST(SPLIT_PART(nat_key, '|', 1) AS INTEGER) AS serial "
+            f"FROM {KOMIS_SCHEMA}.ai_dev_dummy_load "
+            "WHERE tbl_nm = 'ko_mnrl_prc' "
+            f"AND SPLIT_PART(nat_key, '|', 1) IN ({values}) "
+            "GROUP BY 1"
+        )
+        found = {int(value) for value in frame["serial"]}
+        return {int(serial): int(serial) in found for serial in serials}
+
     def resolve_hs_codes(self, mineral_code: str) -> list[str]:
         """`ai_hs_mnrl_map`에서 광종의 HS코드(들)를 찾는다(오름차순)."""
 

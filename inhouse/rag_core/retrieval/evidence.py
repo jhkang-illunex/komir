@@ -300,7 +300,7 @@ def from_komis_raw(
             Evidence(
                 kind="structured", source=f"public.{ds.source_table}", section=section,
                 text=text,
-                caveat=caveat, as_of=_period_span(ds),
+                caveat=caveat, as_of=_period_span(ds), unit=getattr(ds, "unit", None),
             )
         )
     return evidence
