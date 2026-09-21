@@ -262,6 +262,7 @@ def action_plan_from_intent(intent_plan: IntentPlan) -> ActionPlan:
         for item in intent_plan.requirements
         if item.intent == "okf_lookup" and item.slots.mine_name
     }
+    has_mine_rank = any(item.intent == "mine_rank" for item in intent_plan.requirements)
     # role=metadata는 action을 만들지 않는다. data가 하나라도 있는 턴에서는
     # planner의 출력 순서와 무관하게 그 data 응답 계약에 붙인다. data가 없는
     # 단독 concept만 source-first document로 남긴다.
@@ -271,6 +272,11 @@ def action_plan_from_intent(intent_plan: IntentPlan) -> ActionPlan:
     } >= {"resource_rank", "trade_rank"}
     deferred_metadata_outputs: set[str] = set()
     for item in intent_plan.requirements:
+        if item.intent == "mine_profile" and not item.slots.mine_name and has_mine_rank:
+            # 순위 결과의 "이름"은 mine.rank가 반환하는 행의 필드다. 아직
+            # 특정되지 않은 광산 profile을 별도 요구로 만들면 필수 mine_name
+            # 슬롯만 비어 전체 질문이 실패한다.
+            continue
         if (item.intent == "mine_profile" and item.slots.mine_name
                 and item.slots.mine_name.casefold() in lookup_mines):
             continue

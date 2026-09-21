@@ -3,11 +3,13 @@ from __future__ import annotations
 
 import unittest
 from datetime import date
+from pathlib import Path
 from unittest.mock import patch
 
 from rag_core.ragkit.action_contract import ActionCall, ActionPlan, ActionSlots, Period, validate_action_plan
-from rag_core.ragkit.chatbot_graph import _route_from_action_call
+from rag_core.ragkit.chatbot_graph import _is_complete_mine_rank_increase, _route_from_action_call
 from rag_core.retrieval import mine_aggregate
+from rag_core.retrieval.evidence import Evidence
 from rag_core.retrieval.mine_aggregate import DocExtraction, MineRecord, MineYearValue, Observation, rank_observations
 
 
@@ -67,6 +69,32 @@ class MineRankingActionTest(unittest.TestCase):
         self.assertEqual((result.ranked[0].start_year, result.ranked[0].year),
                          (current - 2, current - 1))
 
+    def test_increase_uses_annual_values_not_quarter_and_annual_mixed_columns(self):
+        rows = [
+            Observation("oyu", "Oyu Tolgoi", None, "Mongolia", "구리", 2024,
+                        43_800, "t", "metal", 43_800, "rio.md", "rio", period_kind="quarter"),
+            Observation("oyu", "Oyu Tolgoi", None, "Mongolia", "구리", 2024,
+                        141_900, "t", "metal", 141_900, "rio.md", "rio", period_kind="annual"),
+            Observation("oyu", "Oyu Tolgoi", None, "Mongolia", "구리", 2025,
+                        227_800, "t", "metal", 227_800, "rio.md", "rio", period_kind="annual"),
+        ]
+        result = rank_observations(rows, agg="rank", target_basis="metal", order="increase", top_n=5)
+        self.assertEqual(len(result.ranked), 1)
+        self.assertEqual((result.ranked[0].start_year, result.ranked[0].year,
+                          result.ranked[0].increase_tonnes), (2024, 2025, 85_900))
+
+    def test_collapsed_quarter_and_annual_header_is_excluded_from_increase(self):
+        self.assertTrue(mine_aggregate._has_ambiguous_quarter_annual_header(
+            "Q4 2024 Q1 2025 Q2 2025 Q3 2025 Q4 2025 2024 2025"
+        ))
+        self.assertFalse(mine_aggregate._has_ambiguous_quarter_annual_header(
+            "2024 Annual production 141.9; 2025 Annual production 227.8"
+        ))
+        rio = Path(mine_aggregate.pageindex.OKF_DOCUMENTS_ROOT) / "광산자료/동_구리/Cu_Oyu_Tolgoi_Rio_Tinto.md"
+        self.assertTrue(mine_aggregate._has_ambiguous_quarter_annual_header(
+            "\n".join(rio.read_text(encoding="utf-8").splitlines()[891:914])
+        ))
+
     def test_china_filter_does_not_use_company_nationality_or_unknown_country(self):
         current = date.today().year
         rows = [observation("A", current - 1, 5, country="China"),
@@ -88,6 +116,23 @@ class MineRankingActionTest(unittest.TestCase):
         self.assertEqual((route.mine_metric, route.mine_order, route.mine_country, route.mine_top_n),
                          ("생산량", "increase", "중국", 5))
         self.assertEqual(route.mine_since_year, date.today().year - 2)
+
+    def test_complete_annual_increase_table_bypasses_advisor_only_when_all_rows_are_valid(self):
+        call = ActionCall(
+            requirement_id="mine_1", action_id="mine.rank",
+            slots=ActionSlots(mine_metric="production", mine_order="increase", top_n=2),
+        )
+        text = """기간 검증: 아래 증가 순위의 각 행은 원문에서 연간(annual/FY/Year/연간) 생산 실적으로 확인된 두 연도만 비교했습니다.
+| 순위 | 광산 | 광종 | 국가 | 시작연도 | 시작값(t) | 끝연도 | 끝값(t) | 증가량(t) | basis | 출처 |
+|---|---|---|---:|---:|---:|---:|---:|---:|---|---|
+| 1 | Mine A | 구리 | Chile | 2024 | 100 | 2025 | 180 | 80 | metal | 광산자료/동_구리/a.md |
+| 2 | Mine B | 구리 | Chile | 2024 | 200 | 2025 | 250 | 50 | metal | 광산자료/동_구리/b.md |
+"""
+        evidence = [Evidence(kind="aggregated", source="광산자료/동_구리", section="구리 생산량 rank", text=text, unit="t")]
+        self.assertTrue(_is_complete_mine_rank_increase(evidence, call))
+        invalid = Evidence(kind="aggregated", source="광산자료/동_구리", section="구리 생산량 rank",
+                           text=text.replace("| 2 | Mine B", "| 3 | Mine B"), unit="t")
+        self.assertFalse(_is_complete_mine_rank_increase([invalid], call))
 
     def test_aggregate_uses_country_and_reports_missing_source_without_empty_rank(self):
         year = date.today().year - 1

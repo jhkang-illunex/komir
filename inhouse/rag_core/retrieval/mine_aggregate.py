@@ -208,6 +208,9 @@ class MineYearValue(BaseModel):
     value: float | None = None
     unit: str | None = None
     basis: Literal["ore", "metal", "concentrate", "payable", "unknown"] = "unknown"
+    # 표의 Q4·반기·연간 열을 같은 연도로 뭉치지 않기 위한 원문 기간 종류.
+    # 추출기가 명시하지 않으면 unknown으로 남겨 증가량 비교에서 제외한다.
+    period_kind: Literal["annual", "quarter", "other", "unknown"] = "unknown"
 
 
 class MineRecord(BaseModel):
@@ -224,6 +227,9 @@ class MineRecord(BaseModel):
 class DocExtraction(BaseModel):
     found: bool
     mines: list[MineRecord] = Field(default_factory=list)
+    # `_extract_from_tree`가 실제 metric excerpt의 표 구조를 보고 결정한다.
+    # LLM 출력값이 아니라 원문 발췌문 검사용 내부 플래그다.
+    period_header_ambiguous: bool = False
 
 
 _EXTRACT_PROMPT = """다음은 광산 기업 공시자료(연차보고서·생산보고서·기술보고서
@@ -269,6 +275,12 @@ _EXTRACT_PROMPT = """다음은 광산 기업 공시자료(연차보고서·생�
    그 Mt 수치를 리튬 함유금속량으로 표시하지 않는다.
 7. year는 "게시일"이 아니라 그 수치가 가리키는 보고 대상 연도(회계연도)다 —
    둘이 다르면(예: 2026년 게시, 2025 회계연도 실적) 보고 대상 연도를 쓴다.
+7-1. period_kind는 **값이 놓인 바로 위 표 헤더**로 판정한다. Annual/FY/Year/연간
+     열의 실적만 annual, Q1~Q4·분기 열은 quarter, 반기·누계 등 다른 기간은
+     other로 적는다. 같은 표에 Q4 2024, Q1~Q4 2025, Annual 2024, Annual 2025가
+     함께 있으면 Q4 2024 값을 2024년 연간값으로 바꾸지 않는다. 증가량 비교에
+     쓸 annual 값은 연간 헤더와 정확히 연결된 셀만 values에 넣고, 헤더 연결을
+     확인할 수 없으면 period_kind=unknown으로 둔다.
 8. **전망치·목표치(guidance)는 실적이 아니다 — mines에 넣지 않는다.** "FY26e"·
    "expected to produce"·"guidance"·"targeting"·"medium-term"처럼 아직
    실현되지 않은 예상·목표 범위로 표시된 수치는 제외한다(예: "FY26e 1,150 –
@@ -341,6 +353,21 @@ def _value_signal_count(text: str) -> int:
 
 def _has_value_table_signal(text: str) -> bool:
     return _value_signal_count(text) >= _VALUE_SIGNAL_MIN_COUNT
+
+
+def _has_ambiguous_quarter_annual_header(text: str) -> bool:
+    """분기와 무라벨 연간 열이 한 줄로 붕괴한 표를 증가 비교에서 제외한다.
+
+    PDF 변환 후 ``Q4 2024, Q1..Q4 2025, 2024, 2025`` 헤더와 행 값이 한 줄에
+    이어진 Rio Tinto 표처럼, 현재 LLM 추출 스키마에는 셀 좌표가 없어 각 값을
+    연간 열과 결정적으로 연결할 수 없다. 이 경우 Q4를 전년 연간으로 바꾸는
+    수치 오류보다 해당 문서를 증가량 비교에서 빼는 것이 안전하다.
+    """
+    normalized = re.sub(r"\s+", " ", text)
+    quarters = re.findall(r"\bQ[1-4]\s+20\d{2}\b", normalized, re.IGNORECASE)
+    # 마지막 Q 열 뒤에 무라벨 연도 두 개가 붙은 전형적인 분기+연간 혼합 헤더.
+    annual_tail = re.search(r"\bQ[1-4]\s+20\d{2}\s+20\d{2}\s+20\d{2}\b", normalized, re.IGNORECASE)
+    return len(quarters) >= 2 and annual_tail is not None
 
 
 def _keyword_windows(lines: list[str], metric_terms: tuple[str, ...], *, span: int = 40) -> list[str]:
@@ -437,7 +464,9 @@ def _extract_from_tree(
                      "location_context": location_context},
             output_model=DocExtraction, max_tokens=2500,
         )
-        return invocation.output
+        extracted = invocation.output
+        extracted.period_header_ambiguous = _has_ambiguous_quarter_annual_header(text)
+        return extracted
     except LLM_TRANSIENT_ERRORS as exc:
         _logger.warning("mine_aggregate 추출 실패(%s): %s: %s", tree.get("okf_path"), type(exc).__name__, exc)
         return DocExtraction(found=False, mines=[])
@@ -518,6 +547,7 @@ class Observation:
     value_tonnes: float | None
     source_okf_path: str
     source_resource: str
+    period_kind: Literal["annual", "quarter", "other", "unknown"] = "annual"
     start_year: int | None = None
     start_value_tonnes: float | None = None
     increase_tonnes: float | None = None
@@ -560,6 +590,7 @@ def build_observations(extractions: list[tuple[dict, DocExtraction]], mineral_na
                         basis=entry.basis,
                         value_tonnes=normalize_unit_to_tonnes(entry.value, entry.unit),
                         source_okf_path=tree.get("okf_path", ""), source_resource=tree.get("resource", ""),
+                        period_kind=entry.period_kind,
                     )
                 )
     return observations
@@ -620,12 +651,13 @@ def rank_observations(
         if not basis_matched:
             continue
         if order == "increase":
-            years = sorted({o.year for o in basis_matched if o.year is not None and o.value_tonnes is not None})
+            annual = [o for o in basis_matched if o.period_kind == "annual"]
+            years = sorted({o.year for o in annual if o.year is not None and o.value_tonnes is not None})
             if len(years) < 2:
-                excluded_notes.append(f"{basis_matched[0].mine_name}: 비교 가능한 생산 실적 연도 2개 미만")
+                excluded_notes.append(f"{basis_matched[0].mine_name}: 비교 가능한 연간 생산 실적 2개 미만")
                 continue
-            first = max((o for o in basis_matched if o.year == years[0]), key=lambda o: o.value_tonnes or 0)
-            last = max((o for o in basis_matched if o.year == years[-1]), key=lambda o: o.value_tonnes or 0)
+            first = max((o for o in annual if o.year == years[0]), key=lambda o: o.value_tonnes or 0)
+            last = max((o for o in annual if o.year == years[-1]), key=lambda o: o.value_tonnes or 0)
             delta = (last.value_tonnes or 0) - (first.value_tonnes or 0)
             if delta <= 0:
                 continue
@@ -704,6 +736,10 @@ def render_evidence(
         )
         lines.append("")
         if result.order == "increase":
+            # 증가 순위에는 `rank_observations`가 원문 헤더로 annual 판정한
+            # 관측만 넣는다. 이 명시 표식은 호출 계층이 분기·누계 자료를
+            # annual-to-annual 답변으로 오인하지 않도록 하는 계약이다.
+            lines.append("기간 검증: 아래 증가 순위의 각 행은 원문에서 연간(annual/FY/Year/연간) 생산 실적으로 확인된 두 연도만 비교했습니다.")
             lines.append("| 순위 | 광산 | 광종 | 국가 | 시작연도 | 시작값(t) | 끝연도 | 끝값(t) | 증가량(t) | basis | 출처 |")
             lines.append("|---|---|---|---:|---:|---:|---:|---:|---:|---|---|")
         else:
@@ -784,6 +820,14 @@ def aggregate_mine_metric(
             max_workers=max_workers, max_chars=max_chars,
             mineral_hints=_MINERAL_ENGLISH_HINTS.get(current_folder, ()),
         )
+        if order == "increase":
+            # 연도별 증가량은 annual-to-annual 비교만 허용한다. 분기·연간 혼합
+            # 표는 현재 원문 셀 좌표를 보존하지 않아 안전하게 해석할 수 없다.
+            # 단, 문서 전체가 아니라 실제로 LLM에 준 metric 발췌문에서 혼합
+            # 헤더가 확인된 경우만 제외한다. 다른 절의 혼합 표 때문에 명확한
+            # 연간 생산 문단까지 버리지 않는다.
+            extractions = [(tree, extraction) for tree, extraction in extractions
+                           if not extraction.period_header_ambiguous]
         observations.extend(build_observations(extractions, current_mineral))
         found_docs += sum(1 for _, extraction in extractions if extraction.found)
     if not total_docs:

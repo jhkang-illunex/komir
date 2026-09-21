@@ -81,6 +81,17 @@ class OkfActionContractTest(unittest.TestCase):
         self.assertEqual([action.action_id for action in plan.actions], ["document.lookup"])
         self.assertTrue(validate_action_plan(plan).approved)
 
+    def test_rank_result_name_does_not_create_nameless_mine_profile(self):
+        intents = IntentPlan(requirements=[
+            IntentCall(requirement_id="rank", intent="mine_rank", role="data", slots=ActionSlots(
+                country_scope="중국", mine_metric="production", mine_order="level")),
+            IntentCall(requirement_id="name", intent="mine_profile", role="content", slots=ActionSlots(
+                country_scope="중국")),
+        ])
+        plan = action_plan_from_intent(intents)
+        self.assertEqual([action.action_id for action in plan.actions], ["mine.rank"])
+        self.assertTrue(validate_action_plan(plan).approved)
+
     def test_mcp_pageindex_doc_argument_is_forwarded(self):
         session = object.__new__(_ProfileSession)
         with patch.object(_ProfileSession, "_call", return_value={"nodes": []}) as call:

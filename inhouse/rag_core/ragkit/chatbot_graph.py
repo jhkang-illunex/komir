@@ -974,6 +974,59 @@ def _evidence_matches_action_contract(evidence: list[Evidence], action_call) -> 
     return True
 
 
+def _is_complete_mine_rank_increase(evidence: list[Evidence], action_call) -> bool:
+    """연간 생산 증가 순위 집계의 결정적 완전성 검사.
+
+    ``mine_aggregate``는 원문 셀/문단에서 annual로 판정된 두 연도만 증가량을
+    계산한다. 이 함수는 그 adapter가 만든 단일 집계 표가 요청한 행 수와 모든
+    값·출처 열을 갖췄을 때만 Advisor의 표 행 누락 오독을 우회한다. 일반 순위,
+    단일값 조회, 분기·누계 자료에는 적용하지 않는다.
+    """
+    if action_call is None or action_call.action_id != "mine.rank":
+        return False
+    slots = action_call.slots
+    if slots.mine_order != "increase" or len(evidence) != 1:
+        return False
+    ev = evidence[0]
+    if ev.kind != "aggregated" or ev.unit != "t" or not ev.text.strip():
+        return False
+    annual_marker = "기간 검증: 아래 증가 순위의 각 행은 원문에서 연간(annual/FY/Year/연간) 생산 실적으로 확인된 두 연도만 비교했습니다."
+    if annual_marker not in ev.text:
+        return False
+    lines = [line.strip() for line in ev.text.splitlines() if line.strip().startswith("|")]
+    if len(lines) < 3:
+        return False
+    headers = [part.strip() for part in lines[0].strip("|").split("|")]
+    required = ("순위", "광산", "광종", "시작연도", "시작값(t)", "끝연도", "끝값(t)", "증가량(t)", "basis", "출처")
+    if any(column not in headers for column in required):
+        return False
+    indices = {column: headers.index(column) for column in required}
+    expected_rows = slots.top_n or 5
+    rows: list[list[str]] = []
+    for line in lines[2:]:
+        cells = [part.strip() for part in line.strip("|").split("|")]
+        if len(cells) == len(headers):
+            rows.append(cells)
+    if len(rows) < expected_rows:
+        return False
+    for rank, cells in enumerate(rows[:expected_rows], 1):
+        try:
+            start_year = int(cells[indices["시작연도"]])
+            end_year = int(cells[indices["끝연도"]])
+            start_value = float(cells[indices["시작값(t)"]].replace(",", ""))
+            end_value = float(cells[indices["끝값(t)"]].replace(",", ""))
+            increase = float(cells[indices["증가량(t)"]].replace(",", ""))
+        except ValueError:
+            return False
+        if (cells[indices["순위"]] != str(rank) or not cells[indices["광산"]]
+                or not cells[indices["광종"]] or not cells[indices["basis"]]
+                or not cells[indices["출처"]].endswith(".md")
+                or start_year >= end_year or increase <= 0
+                or abs((end_value - start_value) - increase) > 0.51):
+            return False
+    return True
+
+
 def _is_complete_explicit_hs_summary(evidence: list[Evidence], action_call) -> bool:
     """명시 HS 단일 품목의 금액·중량 집계가 모두 있는지 결정적으로 확인한다.
 
@@ -1946,7 +1999,8 @@ def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
             return {"sufficient": False, "evidence": [], "warnings": ["advisor_period_mismatch"]}
         if not _evidence_matches_action_contract(evidence, action_call):
             return {"sufficient": False, "evidence": [], "warnings": ["advisor_contract_mismatch"]}
-        if _is_complete_explicit_hs_summary(evidence, action_call):
+        if (_is_complete_explicit_hs_summary(evidence, action_call)
+                or _is_complete_mine_rank_increase(evidence, action_call)):
             return {"sufficient": True, "evidence": evidence, "warnings": state.get("warnings", [])}
         # stockpile.methodology는 실측 현황을 답하지 않는 정적 방법론 action이다.
         # adapter가 인용할 단일 문서를 결정적으로 만들었으므로, 원 질문의

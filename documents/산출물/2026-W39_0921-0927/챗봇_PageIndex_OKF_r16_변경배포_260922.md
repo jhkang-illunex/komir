@@ -17,6 +17,17 @@
 - JV Inkai·Escondida는 OKF 원문 32·33행을 인용했다. 근거 없는 개별 광산 수입액 질문은 7/7회 무인용 `source_unavailable`이었다. HS 2603000000은 별도 3회와 전체 회귀 1회에서 금액·중량 원천 2건으로 답했다.
 - 관련 rag_core 단위 테스트 66건, rag_chat 테스트 23건, `git diff --check` 통과.
 
-## Git·서버 반영
+## Git·서버 반영 및 후속 수정
 
-이 절에는 실제 커밋·푸시와 서버 교체 후 이미지, 포트, 요청·응답을 기록한다.
+- 진행 중인 `main` 리베이스를 건드리지 않도록 `feature/pageindex-okf-r16-260922` 릴리스 브랜치를 분리했다. 최초 커밋 `44c0f9e73`을 `origin`에 푸시했다.
+- 최초 배포 이미지 `sha256:594646084f7109262ece6afc28b0ba4b48ae36bb27a506511c36908bc7b120e3`을 `komir-rag-chat-test`(18002)에 반영했다. 이전 컨테이너는 `komir-rag-chat-test-pre-r16-260922`로 중지·보존했다. 이미지의 환경변수 집합은 이전 컨테이너와 동일했다.
+- 운영 포트 첫 점검 원시 `/tmp/komir-r16-postdeploy-260922/`: JV Inkai·Escondida의 실제 OKF 행 인용, 복수 광산 모호성, 근거 없는 수입액·비공개 Argus 기권, 리튬 매장량 순위, 생산량 증가 순위, HS 2603000000 요약은 기대한 경로로 완료했다. 다만 “중국의 생산량이 가장 많은 광산이 어디 있나요? 이름이 뭔가요?”가 `slot_unresolved`로 실패했다.
+- 실제 계획 재추출 3회에서 `mine.rank`(production, level, top_n=1, country_scope=중국)와 광산명이 비어 있는 불필요한 `mine.profile`이 함께 생성됐다. 광산명은 순위 결과에서 찾는 값이므로 이 중복 profile을 제거하는 typed 정규화 규칙을 추가했다. 관련 단위 테스트 67건과 `git diff --check`가 통과했다.
+- 18023(r17)에서 중국 1위 질문은 슬롯 오류 없이 `mine_no_comparable_values:all`로 기권했다. 중국 필터의 광산별 비교 가능한 생산량이 확인되지 않아 광산명을 만들지 않았다. 그러나 생산량 증가 상위 5개는 모델 검증이 집계표를 한 행으로 오독해 거짓 기권했다.
+- 18024(r18)의 단순 순위표 우회는 더 심각한 수치 오류를 드러냈다. Rio Tinto 원문은 `Q4 2024`, `Q1~Q4 2025`, `연간 2024`, `연간 2025` 열을 섞는데, 기존 추출은 Q4 2024 값을 연간 2024로 읽었다. Oyu Tolgoi의 43.8천t→227.8천t 증가 184천t은 잘못된 계산이다. 이 후보는 배포하지 않았다.
+- `mine_aggregate.py`에서 증가량은 연간 실적 두 연도만 비교하고, 셀 좌표를 안전하게 복원할 수 없는 분기·연간 혼합 표의 생산 발췌문은 증가 순위에서 제외하도록 수정했다. 남은 집계 5행(Escondida, Tenke Fungurume, Salvador, Radomiro Tomic, Highland Valley Copper)의 시작·끝 값, 기간, 단위를 각각 OKF 원문에 대조했다.
+- 집계 5행과 원문 검증 후에도 후속 모델이 표를 한 행으로 오독하는 변동이 있어, `mine.rank` 생산 증가 순위에 한해 연간 검증 표식·요청 행 수·값/증가 산식·출처 경로를 모두 검사하는 결정적 통과 조건을 추가했다. 관련 단위 테스트 70건이 통과했다.
+- 최종 후보 이미지 `sha256:0caea6e44b2c3389a7318010547e9725522e7aed6f89c99fd89a7f4129bcdd5e`(r21)를 18027 격리 포트에서 검증했다. `MINE_INCREASE` 반복 2회에서 같은 안전한 5행·연간 수치·개별 OKF path를 반환했고 Rio 혼합 행은 없었다. 원시 `/tmp/komir-r21-predeploy-260922/MINE_INCREASE_{1,2}.json`.
+- r21의 기존 OKF·광산·HS 수용 9건은 기대한 답변 또는 근거에 맞는 기권이었다. 중국 1위 광산은 슬롯 오류 없이 `mine_no_comparable_values:all`로 기권했다. 원시 `/tmp/komir-r21-predeploy-260922/`.
+- r10f 원문 30건 전체 재실행은 30/30 완료, 답변 7·실원천 부족 22·실제 범위 밖(Q30) 1, `slot_unresolved` 0·`unsupported_combination` 0이었다. HS 2603000000은 USD/kg 근거 2건으로 답했다. 원시 `/tmp/sol-okf-r21-r10f-replay-260922/`.
+- 최종 커밋·운영 재배포·배포 후 응답 판정은 완료 후 이 문서에 기록한다.
