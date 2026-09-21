@@ -91,7 +91,36 @@ def extract_markdown_tables(text: str) -> list[dict]:
 #: 차트의 X축이 날짜(crtr_ymd)가 아니라 광종 식별자(mnrl_prc_crtr_sn)로,
 #: Y축은 가격이 아니라 crtr_ymd 자체로 그려짐). 이 열은 (1) 라벨(X축) 후보로
 #: 최우선하고 (2) 숫자열(Y축) 후보에서는 무조건 제외한다.
-_DATE_COLUMN_NAMES = {"crtr_ymd", "crtr_yr"}
+_DATE_COLUMN_NAMES = {
+    "crtr_ymd", "crtr_yr", "first_date", "last_date", "price_date", "month",
+}
+_NON_MEASURE_KEYS = frozenset({
+    "rank", "transaction_count", "record_count", "n", "count", "price_criterion_serial",
+})
+_PRICE_KEYS = frozenset({"lowst_prc", "hghst_prc", "cmerc_prc"})
+
+
+def _unit_from_header(header: str) -> str | None:
+    """표 헤더의 DB 메타데이터에 실제로 표시된 단위만 노출한다.
+
+    숫자의 크기나 컬럼명으로 통화/중량을 추정하지 않는다. 예를 들어 가격
+    테이블의 단위가 DB 코멘트에 없으면 차트에도 단위를 만들어 내지 않는다.
+    """
+
+    # 단위가 `total(수입금액합계(USD))`처럼 중첩 괄호 안에 있거나
+    # `수입중량 kg`처럼 설명 뒤에 붙는 경우를 모두 허용한다. 단위 표기는
+    # 원문 헤더에서 확인된 것만 반환해 임의의 차원 추정을 피한다.
+    match = re.search(
+        r"(?<![A-Za-z가-힣])(?:천USD|USD|kg|톤|%|지수(?:\([^)]*\))?)(?![A-Za-z가-힣])",
+        header, re.IGNORECASE,
+    )
+    if match:
+        return match.group(0)
+    # `share_pct(비중(%, 전체 국가 합계 대비))`처럼 사람이 읽는 설명 안에
+    # 괄호가 한 번 더 들어간 헤더는 `%` 다음에 바로 닫는 괄호가 없다. 이 경우
+    # 데이터셋 전체 단위(예: USD)를 비중 축에 물려 쓰면 차원이 뒤바뀌므로,
+    # 명시된 %를 우선 인식한다.
+    return "%" if "%" in header else None
 
 
 def _is_date_column(header: str) -> bool:
@@ -155,7 +184,9 @@ def _column_types(table: dict) -> list[dict]:
             ctype, unit = "date", None
         elif _numeric_series(rows, idx) is not None:
             ctype = "number"
-            unit = "%" if rows and all(r[idx].strip().endswith("%") for r in rows if r[idx].strip().lower() not in _NULL_CELLS) else None
+            unit = _unit_from_header(header)
+            if unit is None and rows and all(r[idx].strip().endswith("%") for r in rows if r[idx].strip().lower() not in _NULL_CELLS):
+                unit = "%"
         else:
             ctype, unit = "string", None
         out.append({"key": key, "label": header, "display": display or key, "type": ctype, "unit": unit})
@@ -163,8 +194,42 @@ def _column_types(table: dict) -> list[dict]:
 
 
 def _date_format(values: list[str]) -> str | None:
-    lengths = {len(v.strip()) for v in values}
+    normalized = [v.strip() for v in values]
+    if normalized and all(re.fullmatch(r"\d{4}-\d{2}", value) for value in normalized):
+        return "YYYY-MM"
+    lengths = {len(v) for v in normalized}
     return {8: "YYYYMMDD", 6: "YYYYMM", 4: "YYYY"}.get(next(iter(lengths))) if len(lengths) == 1 else None
+
+
+def _distinct_text_values(table: dict, key: str) -> list[str]:
+    """표의 보조 문자열 열에서 표시용 고유값을 순서대로 추출한다."""
+
+    meta = _column_types(table)
+    idx = next((i for i, m in enumerate(meta) if m["key"] == key), None)
+    if idx is None or meta[idx]["type"] != "string":
+        return []
+    values: list[str] = []
+    for row in table["rows"]:
+        value = row[idx].strip()
+        if value.lower() in _NULL_CELLS or value in values:
+            continue
+        values.append(value)
+    return values
+
+
+def _price_unit_from_codes(currency_codes: list[str], weight_codes: list[str]) -> str | None:
+    """명시된 통화·중량 코드가 검증된 경우에만 가격 단위를 만든다."""
+
+    currencies = {"USD", "KRW", "EUR", "CNY", "JPY", "GBP"}
+    weights = {"KG": "kg", "G": "g", "T": "톤", "TON": "톤", "MT": "톤", "LB": "lb", "OZ": "oz"}
+    currency = currency_codes[0].upper() if len(currency_codes) == 1 else None
+    weight = weight_codes[0].upper() if len(weight_codes) == 1 else None
+    if currency not in currencies:
+        return None
+    if weight is None:
+        return currency
+    normalized_weight = weights.get(weight)
+    return f"{currency}/{normalized_weight}" if normalized_weight else None
 
 
 def recommend_chart(table: dict, columns_meta: list[dict] | None = None) -> dict:
@@ -197,16 +262,44 @@ def recommend_chart(table: dict, columns_meta: list[dict] | None = None) -> dict
         return {**none, "reason": "행 2개 미만 또는 열 1개"}
 
     series_keys: list[str] = []
-    seen_values: list[list[float | None]] = []
+    seen_values: list[tuple[list[float | None], str | None]] = []
     for idx, m in enumerate(meta):
         if m["type"] != "number":
+            continue
+        key = m["key"].lower()
+        # 순위·거래/레코드 건수·코드/일련번호는 식별·보조 정보이지 Y축에서
+        # 비교할 측정값이 아니다. 값이 변한다는 이유만으로 계열에 넣지 않는다.
+        if (key in _NON_MEASURE_KEYS or key.endswith(("_cd", "_sn", "_id"))
+                or key.startswith("hs") or key in {"invt", "inventory"}):
             continue
         values = _numeric_series(rows, idx) or []
         # 값이 갈리지 않는 열(식별자·고정 코드)과, 앞선 계열과 값이 완전히 같은
         # 열(KOMIS `*_quty` ↔ `*_quty_ton` 톤환산 중복 열)은 계열에서 뺀다.
-        if len({v for v in values if v is not None}) > 1 and values not in seen_values:
+        # 원시값이 우연히 같은 total=80/20과 share_pct=80/20이라도 단위가
+        # 다르면 중복 계열이 아니다. 동일 단위의 톤환산 중복만 제거한다.
+        duplicate = any(
+            values == prior_values and m["unit"] == prior_unit
+            for prior_values, prior_unit in seen_values
+        )
+        if len({v for v in values if v is not None}) > 1 and not duplicate:
             series_keys.append(m["key"])
-            seen_values.append(values)
+            seen_values.append((values, m["unit"]))
+    # 가격표는 가격과 재고의 차원이 다르다. 단일 chart 스펙에 둘을 섞으면
+    # 축의 의미가 사라지므로 가격 계열을 우선하고 재고는 별도 표로만 보존한다.
+    price_series = [key for key in series_keys if key.lower() in _PRICE_KEYS]
+    if price_series:
+        series_keys = price_series
+    # 시작·종료 가격과 변동률은 서로 다른 차원이다. 비교 결과 표는 변동률을
+    # 시각화하고 시작/종료값은 표에서 검증하게 해 한 Y축에 섞지 않는다.
+    if "pct_change" in series_keys:
+        series_keys = ["pct_change"]
+    # 국가별 교역 랭킹의 total(금액/중량)과 share_pct(%)는 같은 모집단의 서로
+    # 다른 표현이다. 한 축에 섞지 않고, 비중 컬럼이 있는 교역표는 %만 그린다.
+    total_meta = next((m for m in meta if m["key"] == "total"), None)
+    if "share_pct" in series_keys and total_meta and any(term in total_meta["display"] for term in ("수입", "수출")):
+        series_keys = ["share_pct"]
+    elif "total" in series_keys and total_meta and any(term in total_meta["display"] for term in ("생산", "매장")):
+        series_keys = ["total"]
     if not series_keys:
         return {**none, "reason": "값이 갈리는 숫자 계열 없음"}
 
@@ -256,7 +349,8 @@ def recommend_chart(table: dict, columns_meta: list[dict] | None = None) -> dict
     return _categorical(x_idx, f"날짜열 없음 — {meta[x_idx]['key']}별 비교")
 
 
-def table_block(table: dict, *, block_id: str, source_index: int | None, source_label: str | None) -> dict:
+def table_block(table: dict, *, block_id: str, source_index: int | None, source_label: str | None,
+                as_of: str | None = None, unit: str | None = None) -> dict:
     """`table` 이벤트 payload. 기존 키(columns·rows·source_index·source)는
     그대로 두고(구 클라이언트 호환) 구조화 필드를 덧붙인다. `chart_hint`
     (2026-09-16)는 이 표에 추천하는 차트 종류 — 같은 판정으로 만든 `chart`
@@ -287,13 +381,15 @@ def table_block(table: dict, *, block_id: str, source_index: int | None, source_
         "chart_hint": {
             "recommended": hint["recommended"], "alternatives": hint["alternatives"], "reason": hint["reason"],
         },
-        "meta": {"source_index": source_index, "source": source_label, "row_count": len(table["rows"])},
+        "meta": {"source_index": source_index, "source": source_label, "row_count": len(table["rows"]),
+                 "as_of": as_of, "unit": unit},
         "source_index": source_index,
         "source": source_label,
     }
 
 
-def chart_spec(table: dict, *, block_id: str, data_ref: str, source_index: int | None, source_label: str | None) -> dict | None:
+def chart_spec(table: dict, *, block_id: str, data_ref: str, source_index: int | None, source_label: str | None,
+               as_of: str | None = None, unit: str | None = None) -> dict | None:
     """`chart` 이벤트 payload — `recommend_chart()` 판정을 선언적 스펙으로 낸다.
     데이터는 싣지 않고 `data_ref`가 가리키는 `table` 블록의 rows_typed/
     columns_meta를 쓴다. 추천 차트가 없으면 None(억지 차트 금지)."""
@@ -303,7 +399,21 @@ def chart_spec(table: dict, *, block_id: str, data_ref: str, source_index: int |
     if hint["recommended"] is None:
         return None
     display = {m["key"]: m["display"] for m in columns_meta}
-    return {
+    # Q05 가격 비교 long-form 표는 `group=mineral`, `series=price`로
+    # 광종별 계열을 표현한다. 가격 기준·단위는 표의 보조 열을 함께 내보내
+    # 프론트가 동일한 가격 기준을 범례/축 설명에 표시할 수 있게 한다.
+    price_criteria = _distinct_text_values(table, "price_criterion")
+    price_units = _distinct_text_values(table, "price_unit")
+    currency_codes = _distinct_text_values(table, "price_currency_code")
+    weight_codes = _distinct_text_values(table, "weight_unit_code")
+    inferred_unit = next((m["unit"] for m in columns_meta
+                          if m["key"] == hint["series"][0] and m["unit"]), None)
+    coded_unit = _price_unit_from_codes(currency_codes, weight_codes)
+    has_code_columns = any(m["key"] in {"price_currency_code", "weight_unit_code"} for m in columns_meta)
+    y_unit = inferred_unit or coded_unit
+    if not has_code_columns:
+        y_unit = y_unit or unit or (price_units[0] if len(price_units) == 1 else None)
+    spec = {
         "schema_version": BLOCK_SCHEMA_VERSION,
         "block_id": block_id,
         "data_ref": data_ref,
@@ -317,8 +427,19 @@ def chart_spec(table: dict, *, block_id: str, data_ref: str, source_index: int |
             "group": hint["group"],
             "sort_x_ascending": hint["sort_x_ascending"],
             "title": " · ".join(display[k] for k in hint["series"]),
+            "y_unit": y_unit,
+            "as_of": as_of,
         },
         "meta": {"source_index": source_index, "source": source_label},
         "source_index": source_index,
         "source": source_label,
     }
+    if price_criteria:
+        spec["spec"]["price_criterion"] = price_criteria[0] if len(price_criteria) == 1 else price_criteria
+    if price_units:
+        spec["spec"]["price_unit"] = price_units[0] if len(price_units) == 1 else price_units
+    if currency_codes:
+        spec["spec"]["price_currency_code"] = currency_codes[0] if len(currency_codes) == 1 else currency_codes
+    if weight_codes:
+        spec["spec"]["weight_unit_code"] = weight_codes[0] if len(weight_codes) == 1 else weight_codes
+    return spec

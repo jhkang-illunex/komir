@@ -50,6 +50,7 @@ from __future__ import annotations
 
 import calendar
 import logging
+import re
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
 from datetime import date
@@ -64,12 +65,17 @@ from ._shared_root import ensure_shared_on_path
 ensure_shared_on_path(Path(__file__).resolve())
 
 from common.llm_client import LLM_TRANSIENT_ERRORS, KomirJsonLLM  # noqa: E402
+from rag_core.retrieval.access import PRIVATE_ONLY_KOMIS_PAGES  # noqa: E402
 from rag_core.retrieval import mine_aggregate  # noqa: E402
 from rag_core.retrieval.evidence import Evidence  # noqa: E402
 
 _logger = logging.getLogger(__name__)
 
 from . import mcp_client  # noqa: E402
+from .source_contract import (  # noqa: E402
+    RequirementPlan, SourceAssessment, assess_requirement_plan, extract_requirement_plan,
+)
+from .action_contract import ActionPlan, PlanAssessment, extract_action_plan, validate_action_plan  # noqa: E402
 
 # 2026-08-26: 정형(structured)/hybrid(dense+BM25)/PageIndex 세 도구 직접호출을
 # MCP client 호출로 교체(public/private 두 프로필 — mcp_server_public.py·
@@ -86,9 +92,23 @@ from . import mcp_client  # noqa: E402
 #: 동작하게 정비하는 데 집중한다. 재연결 시 이 플래그만 True로.
 STRUCTURED_ENABLED = False
 
+#: public 프로필이 private 전용 KOMIS 원천을 의도해 라우팅했을 때의 결정적
+#: 중단 표식. 원천 MCP의 거부 경고만 기다리면 dense/PageIndex 안전망이 무관한
+#: 문서를 찾아 "정상 답변"처럼 보이게 하므로, 도구 실행 전에 종료한다.
+_PRIVATE_ONLY_PROFILE_WARNING = "private_only_profile_access"
+_AGGREGATE_INCOMPLETE_WARNING = "aggregate_incomplete"
+_SOURCE_UNAVAILABLE_WARNING_PREFIX = "source_unavailable:"
+
 ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗봇의 검색 라우터다.
 직전 대화(history, 있으면)와 이번 질문(question)을 보고 정확히 하나의 JSON
 객체로 결정한다. 설명·코드펜스·사고과정은 출력하지 않는다.
+
+0. JSON 스키마의 선택 필드는 질문에 직접 필요한 경우에만 채운다. 필요 없는
+   문자열·배열 필드는 null, 불리언 도구 플래그는 false로 둔다. 추측으로 광종,
+   기간, 금액/중량 기준, 순위 지표를 만들어 채우지 않는다. history를 이용한
+   후속 비교에서는 직전 답변이 확정한 금액/중량 기준과 기간을 보존한다. 이번
+   질문이 새 기준(예: "톤 기준", "금액 기준", 다른 기간)을 명시했을 때만
+   그 기준으로 바꾼다.
 
 1. resolved_query: 이번 질문을 history 없이도 이해되는 완전한 문장으로 새로
    쓴다. "그 나라", "거기", "그거", "그 광종" 같은 대용어는 실제 대상으로
@@ -133,9 +153,9 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
    - komis_raw(2026-08-31 신설, 2026-09-01 전 광종으로 확대+광물종합지수
      topic 추가): KOMIS가 자체 웹사이트에서 공개하는 원천 데이터(광종별
      실거래가·최저/최고가, 국내(관세청)·세계(UN Comtrade) 교역량, 국가별
-     매장량·생산량, 시장전망지표, 수급안정지수, 가격예측, 광물종합지수)를
+     매장량·생산량, 시장전망지표, 수급안정지수, 광물종합지수)를
      조회한다. "{광종} 가격/시세 알려줘",
-     "{광종} 수입/수출 현황", "{광종} 매장량/생산량", "{광종} 가격 전망" 류의
+     "{광종} 수입/수출 현황", "{광종} 매장량/생산량" 류의
      **구체적 수치를 원하는 질문**일 때 켠다(화면·메뉴 위치 자체를 묻는
      질문이 아니라 수치 자체를 원할 때 — 화면 위치 질문은 이 그래프가 아니라
      별도의 page 안내 경로로 이미 분류되어 여기로 오지 않는다). **발주
@@ -158,9 +178,6 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
           (둘을 헷갈리지 말 것: "니켈 시장동향지표"→market_outlook, "니켈
           수급동향지표"→supply_stability — 질문에 실제로 쓰인 단어가 "시장"
           인지 "수급"인지만 보고 정확히 그대로 매칭한다.)
-        - price_forecast: KOMIS 자체 가격예측(위 structured의 import_forecast
-          와 다르다 — 이건 komir가 만든 예측이 아니라 KOMIS가 게시하는
-          예측이다).
         - composite_index: 광물종합지수(HI001~003, 여러 지표를 합성한 KOMIS
           자체 게시 지수 — "종합지수" 질문은 대개 이거다). **광종과 무관한
           지표라 광종을 몰라도 켠다** — komis_topic 중 유일하게
@@ -176,6 +193,13 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
         표현 그대로 채운다(예: "텅스텐", "금", "구리". commodity_code처럼
         CU/NI 같은 영문 약어로 바꿔쓰지 않는다 — 이 필드는 5광종 제한이
         없는 별도 필드다). 광종을 특정할 수 없으면 komis_raw를 켜지 않는다
+     3) komis_hs_code — 질문에 HS 코드가 **명시**된 교역 조회에서는 그 숫자
+        문자열을 그대로 채운다. 이 경우 광종명 추정/HS 매핑으로 바꾸지 말고,
+        komis_topic은 domestic_trade(한국 수입·수출) 또는 global_trade(국가 간
+        교역)로 정한다. 코드가 명시되지 않은 질문에서는 null이다.
+     4) use_komis_concentration — "HHI" 또는 "집중도"를 국가별 수입/수출
+        비중으로 계산해 달라는 질문에만 true. 상위 N개국 표가 아니라 전체
+        국가 모집단을 쓰므로 use_komis_ranking으로 대체하지 않는다.
         (단, komis_topic=composite_index는 예외 — 위 참고, null로 둔다).
      3) komis_start_period·komis_end_period(선택) — 질문이 특정 연도/월/날짜를
         지정하면 YYYY/YYYYMM/YYYYMMDD 숫자 문자열로 둘 다 채운다. 두 가지
@@ -367,6 +391,22 @@ ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗�
         과 동일 필드) — 특정 광종들만 비교하면 그 한글명 배열, 전체
         대상이면 null.
 
+   - 월별 한국 수입액·중량 추이 또는 연간/동기간 비교는
+     use_komis_monthly_trade=true. komis_mineral_name을 채운다. 명시 HS가
+     있으면 komis_hs_code를 채우고 광종을 추정하지 않는다. 이 집계는 해당
+     광종에 연결된 HS 전부와 국가 전부를 월별 합산한다. 미래월은 값 0으로
+     만들지 않고 자료 없음으로 구분한다.
+   - 명시 HS의 품목명·기간 합계·수입 현황은
+     use_komis_explicit_hs_summary=true, komis_hs_code=질문 속 코드.
+     광종 전체 합계와 명시 HS 한 코드의 모집단을 혼동하지 않는다.
+   - 여러 광종의 가격 추이·같은 기간 비교·변동률, 단일 광종의 서로 다른
+     기간(3/6/12개월) 비교, 가격 상승률 전제 검증은
+     use_komis_price_comparison=true. 비교 광종은
+     komis_compare_mineral_names 배열에 모두 담는다. 후속 질문의 "같은
+     기간"은 직전 답변의 실제 조회기간을 사용하고, "그중 가장 크게
+     하락"은 음수 변동률만 비교한다. 3/6/12개월을 함께 요청하면
+     komis_price_windows_months=[3,6,12]로 채운다.
+
 komis_raw를 켤 땐 komis_mineral_name을
 반드시 함께 지정한다 — 광종을 모르면 켜지 않는다(use_komis_raw=false, 다만
 5광종 제한은 없다). **유일한 예외: komis_topic=composite_index는
@@ -454,16 +494,27 @@ sufficient=false이고, reason에 어느 정보요구가 비어 있는지 구체
 "수입물량"(한국의 수입량, 세계 생산량이 아니다)이면 — 같은 광종·비슷한 숫자
 단위로 보여도 다른 지표이므로 sufficient=false다.
 
+action.slots.metric은 이미 검증된 canonical ID다. `import_amount`는 **수입금액
+(USD)**이고 수입량이 아니며, `import_weight`는 **수입중량(kg)**이다. Evidence의
+section·표 컬럼·unit이 이 ID와 일치하면 금액을 중량으로 바꾸어 해석하거나 그
+이유로 불충분 처리하지 않는다.
+
 **근거에 실린 날짜를 "미래라서 이상하다"는 이유로 의심하지 않는다** — payload의
 `오늘_날짜`가 실제 현재 시점이다. 근거의 날짜가 그보다 과거이면(오늘 포함)
 정상 데이터이고, "너무 최근이라 미래 데이터 같다" 식의 추측으로 불충분
 처리하지 않는다. 날짜 자체가 아니라 위에서 설명한 기준(질문에 실제로 답하는
-내용인지, 지표가 일치하는지)으로만 충분성을 판단한다."""
+내용인지, 지표가 일치하는지)으로만 충분성을 판단한다.
+
+반드시 `supported_evidence_indices`에 실제로 하나 이상의 정보요구를 뒷받침하는
+근거의 index만 담는다. 광종명·일반 주제가 우연히 겹칠 뿐 요청한 가격·정책·기간
+등을 뒷받침하지 않는 문서는 넣지 않는다. 이 목록에 없는 근거는 답변 인용에서
+제외된다."""
 
 
 class GroundingCheck(BaseModel):
     sufficient: bool
     reason: str = ""
+    supported_evidence_indices: list[int] = []
 
 
 class ReformulatedQuery(BaseModel):
@@ -478,11 +529,19 @@ class RetrievalRoute(BaseModel):
     # chat_turn()의 기존 "evidence 0건 -> 유형8 사유 분류" 경로가 그대로
     # "ambiguous" 사유·안내문으로 처리한다(새 경로를 만들지 않음).
     is_ambiguous: bool = False
+    # 광물종합지수는 광종별 지표가 아니다. 광종을 붙여 요청하면 조회·재검색을
+    # 하지 않고 제품 정의를 안내해야 한다(_retrieve_node의 결정적 기권 경로).
+    is_mineral_specific_composite_index: bool = False
     use_structured: bool
     use_komis_raw: bool = False  # 2026-08-31 신설(komis_raw_lookup MCP tool)
     use_dense: bool
     use_pageindex: bool
     pageindex_mode: Literal["simple", "agentic"] = "simple"
+    # document.lookup만 문서 후보를 좁혀 MCP가 그 문서의 실제 OKF 본문을 읽게 한다.
+    # public/private source-group 필터는 MCP 서버가 계속 적용한다.
+    pageindex_doc: str | None = None
+    pageindex_body_fallback: bool = False
+    pageindex_body_query: str | None = None
     structured_template: Literal["latest_diagnosis", "import_forecast", "geo_index_trend"] | None = None
     komis_topic: Literal[
         "price", "domestic_trade", "global_trade", "reserves_production",
@@ -496,6 +555,21 @@ class RetrievalRoute(BaseModel):
     # 에서만 쓰는 것, 챗봇 전체는 아니다")로 CHATBOT_SYSTEM_PROMPT 규칙11도
     # 같이 제거했다(chatbot.py 참고).
     komis_mineral_name: str | None = None
+    # 명시 HS코드는 광종→HS 매핑보다 우선한다. 질문에 없는 코드를 추정해
+    # 넣지 않도록 라우터가 실제 문자열을 보았을 때만 채우는 선택 필드다.
+    komis_hs_code: str | None = None
+    use_komis_concentration: bool = False
+    use_komis_monthly_trade: bool = False
+    komis_monthly_trade_metric: Literal[
+        "import_amount", "import_weight", "export_amount", "export_weight",
+    ] | None = None
+    use_komis_explicit_hs_summary: bool = False
+    use_komis_price_comparison: bool = False
+    komis_price_windows_months: list[int] | None = None
+    # price.verify_claim 전용: 비교 원자료와 분리하지 않고 같은 adapter 결과에
+    # premise·연산자를 보존해 Advisor가 수치 전제를 확인한다.
+    komis_claimed_change_pct: float | None = None
+    komis_claim_comparator: Literal["greater_than", "less_than", "equals"] | None = None
     # 2026-09-18(B2 후속 — "수입 상위 5개국" 국가 랭킹) — komis_raw_lookup과
     # 별도 도구다(그쪽은 필터+정렬+LIMIT만, 집계가 없어 순위를 못 만든다).
     # ROUTE_PROMPT 참고.
@@ -549,6 +623,10 @@ class RetrievalRoute(BaseModel):
     mine_agg: Literal["max", "min", "rank", "compare"] | None = None
     mine_targets: list[str] | None = None
     mine_year: int | None = None
+    mine_since_year: int | None = None
+    mine_country: str | None = None
+    mine_order: Literal["level", "increase"] = "level"
+    mine_top_n: int = 5
 
 
 #: structured_template 이름 -> (session, commodity_code, target) 받는 호출부.
@@ -630,6 +708,10 @@ def _relative_period_bounds(route: RetrievalRoute) -> tuple[str | None, str | No
 
 MAX_ATTEMPTS = 2  # 최초 1회 + 재시도 1회 — "빠른시간내에" 요구사항상 무한 재시도는 안 함
 HISTORY_WINDOW = 4  # route/reformulate/verify 세 LLM 호출이 공유하는 히스토리 창(최근 N메시지)
+# `RetrievalRoute`는 도구·기간·순위 선택지가 늘어 350토큰 출력으로는 JSON 끝이
+# 잘리는 실측 장애가 있었다. 이 값은 route 한 곳에서만 쓰는 계약이라 상수로
+# 고정한다. 1,280은 실제 성공 출력보다 충분히 크면서 응답 지연도 과도하지 않다.
+RETRIEVAL_ROUTE_MAX_TOKENS = 1280
 #: 2026-09-18(감사 후속) — _retrieve_node의 도구 job 하나가 멈추면(특히
 #: mine_aggregate는 내부에서 문서 20~40건을 또 fan-out) 예전엔 future.result()에
 #: timeout이 없어 이 노드가, 나아가 챗봇 응답 전체가 무기한 블로킹됐다.
@@ -652,6 +734,10 @@ class RetrievalState(TypedDict, total=False):
     sufficient: bool
     warnings: list[str]
     attempt: int
+    requirement_plan: RequirementPlan
+    source_assessment: SourceAssessment
+    action_plan: ActionPlan
+    action_assessment: PlanAssessment
 
 
 def _recent_history(state: RetrievalState) -> list[dict[str, str]]:
@@ -670,6 +756,632 @@ def _last_assistant_answer(state: RetrievalState) -> str:
         if turn.get("role") == "assistant":
             return turn.get("content", "")
     return ""
+
+
+def _route_from_action_call(call, question: str) -> RetrievalRoute:
+    """검증된 action을 기존 MCP 어댑터 route로만 투영한다.
+
+    이 함수는 질문 문자열을 해석하지 않는다. 모든 값은 typed slots에서만 온다.
+    """
+    s = call.slots
+    period = s.period
+    requirement_query = " ".join(str(value) for value in (s.mineral, s.minerals, s.metric, s.indicator, s.mine_name, s.topic) if value)
+    common = {
+        "resolved_query": requirement_query or question, "use_structured": False, "use_dense": False, "use_pageindex": False,
+        "komis_mineral_name": s.mineral,
+        "komis_hs_code": s.hs_code,
+        "komis_ranking_top_n": s.top_n,
+        "komis_relative_months": period.trailing_months if period and period.kind == "trailing_months" else None,
+        "komis_start_period": period.start if period and period.kind == "range" else (str(period.calendar_year) if period and period.kind == "calendar_year" else None),
+        "komis_end_period": period.end if period and period.kind == "range" else (str(period.calendar_year) if period and period.kind == "calendar_year" else None),
+    }
+    if call.action_id == "price.series":
+        return RetrievalRoute(**common, use_komis_raw=True, komis_topic="price")
+    if call.action_id in {"price.compare", "price.verify_claim"}:
+        return RetrievalRoute(**common, use_komis_price_comparison=True,
+                              komis_compare_mineral_names=s.minerals or ([s.mineral] if s.mineral else None),
+                              komis_price_windows_months=s.windows,
+                              komis_claimed_change_pct=s.claimed_change_pct,
+                              komis_claim_comparator=s.comparator)
+    if call.action_id == "trade.country_rank":
+        return RetrievalRoute(**common, use_komis_ranking=True, komis_ranking_page="map_korea",
+                              komis_ranking_metric=s.metric)
+    if call.action_id == "trade.monthly":
+        return RetrievalRoute(**common, use_komis_monthly_trade=True,
+                              komis_monthly_trade_metric=s.metric)
+    if call.action_id == "trade.concentration":
+        return RetrievalRoute(**common, use_komis_concentration=True)
+    if call.action_id == "trade.hs_summary":
+        return RetrievalRoute(**common, use_komis_explicit_hs_summary=True)
+    if call.action_id == "resource.rank":
+        return RetrievalRoute(**common, use_komis_mineral_ranking=True,
+                              komis_mineral_ranking_metrics=[s.metric])
+    if call.action_id == "mine.rank":
+        since_year = None
+        mine_year = None
+        if period and period.kind == "trailing_months" and period.trailing_months:
+            since_year = date.today().year - ((period.trailing_months + 11) // 12) + 1
+        elif period and period.kind == "calendar_year":
+            mine_year = period.calendar_year
+        return RetrievalRoute(
+            **common, use_mine_aggregate=True,
+            mine_metric="생산량" if s.mine_metric == "production" else "매장량",
+            mine_agg="max" if (s.top_n or 5) == 1 else "rank",
+            mine_year=mine_year, mine_since_year=since_year,
+            mine_country=s.country_scope, mine_order=s.mine_order or "level",
+            mine_top_n=s.top_n or 5,
+        )
+    if call.action_id == "indicator.series":
+        topic = s.indicator
+        return RetrievalRoute(**common, use_komis_raw=True, komis_topic=topic)
+    if call.action_id in {"menu.navigate", "dataset.navigate"}:
+        return RetrievalRoute(**common)
+    if call.action_id == "document.lookup":
+        # topic은 지정 문서/절 식별자다. 검색어는 원문 전체를 보존해 광종·기간·
+        # 요구 사실이 줄어들지 않게 하고, doc은 MCP의 접근 제약 안에서 후보를 좁힌다.
+        return RetrievalRoute(**{
+            **common, "resolved_query": question, "use_dense": False, "use_pageindex": True,
+            "pageindex_doc": s.topic, "pageindex_body_fallback": True,
+            "pageindex_body_query": s.mine_name,
+        })
+    if call.action_id == "mine.profile":
+        # 단건 광산 사실은 순위 집계가 아니라 OKF 본문과 dense를 병행 조회한다.
+        # planner가 mine_name만 채운 경우에도 원 질문에 명시된 문서 식별자는
+        # PageIndex MCP의 doc 후보 선택에 남긴다. 이는 질문을 사실 슬롯으로
+        # 해석하지 않고, 선택할 공개 문서가 없으면 본문 근거 없이 기권하는
+        # 기존 접근 경계를 유지하는 fallback이다.
+        pageindex_doc = s.topic or question
+        return RetrievalRoute(**{
+            **common,
+            # 광산명과 planner가 보존한 문서 식별자로 검색한다. 원문 전체를
+            # dense에 넘기면 같은 광종의 다른 광산(Cigar Lake 등)이 상위에 올라
+            # 단건 사실을 오귀속할 수 있다.
+            "resolved_query": " ".join(value for value in (s.mine_name, s.topic) if value),
+            "use_dense": True, "use_pageindex": True, "pageindex_doc": pageindex_doc,
+            "pageindex_body_fallback": True, "pageindex_body_query": s.mine_name,
+        })
+    # document.retrieve is source-first and has no structured substitute.
+    return RetrievalRoute(**{
+        **common,
+        "use_dense": True,
+        "use_pageindex": True,
+    })
+
+
+def _route_from_action_plan(plan: ActionPlan, question: str) -> RetrievalRoute:
+    """호환용 단일 call 변환기. 실행은 retrieve_evidence가 call별로 수행한다."""
+    return _route_from_action_call(plan.actions[0], question)
+
+
+def _claim_matches_comparison(
+    evidence: list[Evidence], threshold: float, comparator: str | None, mineral: str | None,
+) -> bool:
+    """가격 비교 adapter가 계산한 ``pct_change``만으로 premise를 판정한다.
+
+    질문 문구를 재해석하지 않으며, 표에 없는 값은 통과시키지 않는다. 여러
+    광종 비교는 하나라도 요청 조건을 충족하면 해당 주장이 관측값으로 확인된
+    것으로 표시한다; 어느 광종의 주장인지는 planner의 mineral slot이 정한다.
+    """
+    values: list[float] = []
+    for ev in evidence:
+        lines = [line.strip() for line in ev.text.splitlines() if line.strip().startswith("|")]
+        if len(lines) < 3:
+            continue
+        headers = [_comparison_header_key(part) for part in lines[0].strip("|").split("|")]
+        try:
+            index = headers.index("pct_change")
+            mineral_index = headers.index("mineral")
+        except ValueError:
+            continue
+        for row in lines[2:]:
+            columns = [part.strip().replace("%", "") for part in row.strip("|").split("|")]
+            if len(columns) <= max(index, mineral_index) or (mineral and columns[mineral_index] != mineral):
+                continue
+            try:
+                values.append(float(columns[index].replace(",", "")))
+            except ValueError:
+                continue
+    if not values:
+        return False
+    if comparator == "less_than":
+        return any(value < threshold for value in values)
+    if comparator == "equals":
+        return any(abs(value - threshold) < 1e-9 for value in values)
+    return any(value > threshold for value in values)
+
+
+def _has_claim_comparison_evidence(evidence: list[Evidence], mineral: str | None) -> bool:
+    """검증 대상 광종의 adapter 계산 변동률 행이 있는지 확인한다.
+
+    가격 전제가 참인지와 별개로, 이 행이 있으면 참·거짓 판정에 필요한 원자료는
+    충분하다. 광종 행을 반드시 대조해 다른 광종의 변동률을 쓰지 않는다.
+    """
+    for ev in evidence:
+        lines = [line.strip() for line in ev.text.splitlines() if line.strip().startswith("|")]
+        if len(lines) < 3:
+            continue
+        headers = [_comparison_header_key(part) for part in lines[0].strip("|").split("|")]
+        try:
+            change_index = headers.index("pct_change")
+            mineral_index = headers.index("mineral")
+        except ValueError:
+            continue
+        for row in lines[2:]:
+            columns = [part.strip() for part in row.strip("|").split("|")]
+            if len(columns) > max(change_index, mineral_index) and (not mineral or columns[mineral_index] == mineral):
+                try:
+                    float(columns[change_index].replace(",", "").replace("%", ""))
+                    return True
+                except ValueError:
+                    continue
+    return False
+
+
+def _comparison_header_key(header: str) -> str:
+    """원천 표의 표시명(``key(한글 라벨)``)에서 stable schema key를 꺼낸다."""
+    return header.strip().split("(", 1)[0].strip()
+
+
+def _evidence_matches_required_period(evidence: list[Evidence], action_call) -> bool:
+    """명시 기간은 Advisor LLM 판단 전에 관측범위 메타데이터로 대조한다."""
+    period = action_call.slots.period
+    if not period or not period.explicit:
+        return True
+    observed = [ev.observed_period or ev.as_of or "" for ev in evidence]
+    if period.kind == "calendar_year" and period.calendar_year:
+        expected = str(period.calendar_year)
+        return bool(observed) and all(expected in value for value in observed)
+    if period.kind == "range" and period.start and period.end:
+        # 명시 범위보다 실제 관측범위가 짧으면 Evidence 메타데이터를 그대로
+        # 전달해 결측을 알린다. 다른 연도 자료로 바뀌는 경우만 차단한다.
+        return bool(observed) and all(period.start[:4] in value or period.end[:4] in value for value in observed)
+    return True
+
+
+def _evidence_matches_action_contract(evidence: list[Evidence], action_call) -> bool:
+    slots = action_call.slots
+    for ev in evidence:
+        if slots.currency and slots.currency.casefold() not in (ev.unit or "").casefold():
+            return False
+        if slots.weight_unit and slots.weight_unit.casefold() not in (ev.unit or "").casefold():
+            return False
+        if slots.mineral:
+            rows = [line.strip() for line in ev.text.splitlines() if line.strip().startswith("|")]
+            if len(rows) >= 3:
+                headers = [part.strip() for part in rows[0].strip("|").split("|")]
+                if "mineral" in headers:
+                    index = headers.index("mineral")
+                    values = [line.strip("|").split("|")[index].strip() for line in rows[2:]
+                              if len(line.strip("|").split("|")) > index]
+                    if slots.mineral not in values:
+                        return False
+        # 월별 교역 adapter는 금액과 중량을 별도 Evidence로 반환한다. action의
+        # metric과 표 컬럼/섹션/단위가 모두 맞아야 Advisor가 승인할 수 있다.
+        if action_call.action_id == "trade.monthly" and slots.metric:
+            text = (ev.section + "\n" + ev.text).casefold()
+            expected = {
+                "import_amount": (("import_amount", "수입금액"), "usd"),
+                "import_weight": (("import_weight", "수입중량"), "kg"),
+                "export_amount": (("export_amount", "수출금액"), "usd"),
+                "export_weight": (("export_weight", "수출중량"), "kg"),
+            }.get(slots.metric)
+            if expected:
+                markers, expected_unit = expected
+                if not any(marker.casefold() in text for marker in markers):
+                    return False
+                if expected_unit not in (ev.unit or "").casefold():
+                    return False
+    return True
+
+
+def _is_complete_mine_rank_increase(evidence: list[Evidence], action_call) -> bool:
+    """연간 생산 증가 순위 집계의 결정적 완전성 검사.
+
+    ``mine_aggregate``는 원문 셀/문단에서 annual로 판정된 두 연도만 증가량을
+    계산한다. 이 함수는 그 adapter가 만든 단일 집계 표가 요청한 행 수와 모든
+    값·출처 열을 갖췄을 때만 Advisor의 표 행 누락 오독을 우회한다. 일반 순위,
+    단일값 조회, 분기·누계 자료에는 적용하지 않는다.
+    """
+    if action_call is None or action_call.action_id != "mine.rank":
+        return False
+    slots = action_call.slots
+    if slots.mine_order != "increase" or len(evidence) != 1:
+        return False
+    ev = evidence[0]
+    if ev.kind != "aggregated" or ev.unit != "t" or not ev.text.strip():
+        return False
+    annual_marker = "기간 검증: 아래 증가 순위의 각 행은 원문에서 연간(annual/FY/Year/연간) 생산 실적으로 확인된 두 연도만 비교했습니다."
+    if annual_marker not in ev.text:
+        return False
+    lines = [line.strip() for line in ev.text.splitlines() if line.strip().startswith("|")]
+    if len(lines) < 3:
+        return False
+    headers = [part.strip() for part in lines[0].strip("|").split("|")]
+    required = ("순위", "광산", "광종", "시작연도", "시작값(t)", "끝연도", "끝값(t)", "증가량(t)", "basis", "출처")
+    if any(column not in headers for column in required):
+        return False
+    indices = {column: headers.index(column) for column in required}
+    expected_rows = slots.top_n or 5
+    rows: list[list[str]] = []
+    for line in lines[2:]:
+        cells = [part.strip() for part in line.strip("|").split("|")]
+        if len(cells) == len(headers):
+            rows.append(cells)
+    if len(rows) < expected_rows:
+        return False
+    for rank, cells in enumerate(rows[:expected_rows], 1):
+        try:
+            start_year = int(cells[indices["시작연도"]])
+            end_year = int(cells[indices["끝연도"]])
+            start_value = float(cells[indices["시작값(t)"]].replace(",", ""))
+            end_value = float(cells[indices["끝값(t)"]].replace(",", ""))
+            increase = float(cells[indices["증가량(t)"]].replace(",", ""))
+        except ValueError:
+            return False
+        if (cells[indices["순위"]] != str(rank) or not cells[indices["광산"]]
+                or not cells[indices["광종"]] or not cells[indices["basis"]]
+                or not cells[indices["출처"]].endswith(".md")
+                or start_year >= end_year or increase <= 0
+                or abs((end_value - start_value) - increase) > 0.51):
+            return False
+    return True
+
+
+def _is_complete_explicit_hs_summary(evidence: list[Evidence], action_call) -> bool:
+    """명시 HS 단일 품목의 금액·중량 집계가 모두 있는지 결정적으로 확인한다.
+
+    이 MCP adapter는 HS 코드와 전체 국가 범위를 SQL 필터로 고정하고 금액·중량을
+    별도 Evidence로 만든다. 둘의 source_id·HS 코드·단위·표 컬럼이 맞으면 LLM
+    Advisor의 JSON 형식 실패는 사실 판정 실패가 아니므로 재현 가능한 원천을
+    버리지 않는다.
+    """
+    if action_call is None or action_call.action_id != "trade.hs_summary":
+        return False
+    hs_code = action_call.slots.hs_code
+    if not hs_code or len(evidence) < 2 or not all(ev.kind == "structured" and ev.text.strip() for ev in evidence):
+        return False
+    source_ids = {ev.source_id for ev in evidence}
+    if len(source_ids) != 1 or not next(iter(source_ids), ""):
+        return False
+    texts = [f"{ev.section}\n{ev.text}".casefold() for ev in evidence]
+    if not all(f"hs {hs_code}".casefold() in text for text in texts):
+        return False
+    has_amount = any(("import_amount" in text or "수입금액" in text) and "usd" in (ev.unit or "").casefold()
+                     for ev, text in zip(evidence, texts))
+    has_weight = any(("import_weight" in text or "수입중량" in text) and "kg" in (ev.unit or "").casefold()
+                     for ev, text in zip(evidence, texts))
+    return has_amount and has_weight
+
+
+def _internal_methodology_evidence(action_call) -> list[Evidence]:
+    """정적 내부 원천이 명시한 계산법·사례만 document.retrieve에 제공한다.
+
+    이 경로는 실측값을 대신하지 않는다. 문서가 실제 값의 부재와 허용되는
+    대안 계산의 한계를 함께 명시한 좁은 질문군에만 적용한다. 따라서
+    외부 일반지식이나 생성 모델의 빈칸 채우기로 개념 답변을 만들지 않는다.
+    """
+    if action_call.action_id != "stockpile.methodology":
+        return []
+    return [Evidence(
+        kind="static_document",
+        source="rag_core/ragkit/static_docs/stockpile_calculation_methodology.md",
+        section="입력값과 계산",
+        text=("이 문서는 실비축 현황을 제공하지 않는 계산 정의다. 필요한 입력값은 기준일의 "
+              "현재재고와 목표재고(같은 질량 단위), 그리고 산정 기간을 명시한 일평균소비량(질량/일)이다. "
+              "부족량=max(목표재고−현재재고, 0)이고, 비축일수=현재재고/일평균소비량이다. "
+              "일평균소비량이 0이거나 확인되지 않으면 비축일수를 계산하지 않는다. 현재 서비스에는 "
+              "리튬의 현재재고·목표재고·일평균소비량 실측 원천이 없으므로 실제 부족량이나 비축일수는 "
+              "산출할 수 없다."),
+        as_of="2026-09-21",
+    )]
+
+
+def _comparison_or_monthly_source_is_usable(evidence: list[Evidence], action_call) -> bool:
+    """비교·월별 관측은 실원천, 요청 광종, 요청 기간을 모두 충족해야 한다."""
+    if action_call.action_id not in {"price.compare", "price.verify_claim", "trade.monthly"}:
+        return True
+    if any("개발용 더미" in (ev.caveat or "") for ev in evidence):
+        return False
+    if action_call.action_id == "trade.monthly":
+        return True
+    requested = set(action_call.slots.minerals or [])
+    if not requested:
+        return False
+    observed_minerals = {
+        mineral for mineral in requested
+        if any(f"({mineral})" in ev.section or f"| {mineral} |" in ev.text for ev in evidence)
+    }
+    if observed_minerals != requested:
+        return False
+    period = action_call.slots.period
+    if (action_call.action_id == "price.compare" and period
+            and period.kind == "trailing_months" and period.trailing_months):
+        expected_start = _months_ago(date.today(), period.trailing_months)
+        date_ranges = [re.findall(r"(\d{4}-\d{2}-\d{2})", ev.observed_period or ev.as_of or "")
+                       for ev in evidence]
+        starts = [date.fromisoformat(parts[0]) for parts in date_ranges if len(parts) >= 2]
+        if not starts or min(starts) > expected_start:
+            return False
+    return True
+
+
+def _okf_body_matches_profile(evidence: list[Evidence], mine_name: str | None) -> bool:
+    """단건 광산 근거에는 요청한 광산명이 실제 본문에 있어야 한다."""
+    needle = re.sub(r"\s+", "", mine_name or "").casefold()
+    if not needle:
+        return False
+    return any(
+        ev.kind == "pageindex" and needle in re.sub(r"\s+", "", ev.text).casefold()
+        for ev in evidence
+    )
+
+
+# JSON 라우터가 일시적으로 무효 출력을 낼 때에만 쓰는 좁은 안전망이다. 정상
+# 라우팅은 `komis_resolve_mineral`의 실제 광종 목록을 쓰므로 이 목록은 지원
+# 광종 화이트리스트가 아니다. 이 안전망이 확실히 판별할 수 있는 고정 검증
+# 질문의 광종 표기만 인식해, 모호하거나 여러 광종인 질문을 임의의 RDB 순위
+# 질의로 바꾸지 않는다.
+_SAFE_FALLBACK_MINERAL_ALIASES = (
+    "네오디뮴", "희귀토류", "희토류", "코발트", "리튬", "니켈", "구리",
+)
+_MINE_QUERY_MARKERS = ("광산", "광구", "제련소", "mine")
+_COMPOSITE_INDEX_ABORT_WARNING = "mineral_specific_composite_index"
+
+
+def _explicit_single_fallback_mineral(question: str) -> str | None:
+    """안전 폴백에 허용된 단일 광종만 돌려준다.
+
+    동음·다광종·개별 광산 질문은 ``None``으로 돌려 일반 비정형 폴백에 맡긴다.
+    이 함수의 보수성은 JSON 라우터 장애가 곧 잘못된 결정적 SQL로 이어지지 않게
+    하는 경계다.
+    """
+
+    normalized = question.lower().replace(" ", "")
+    if any(marker in normalized for marker in _MINE_QUERY_MARKERS):
+        return None
+    found = [name for name in _SAFE_FALLBACK_MINERAL_ALIASES if name in normalized]
+    unique = list(dict.fromkeys(found))
+    return unique[0] if len(unique) == 1 else None
+
+
+def _relative_months_in_question(question: str) -> int | None:
+    """명시된 '최근 N개월/N년'만 결정적으로 읽는다(그 외 기간은 추측하지 않는다)."""
+
+    match = re.search(r"최근\s*(\d+)\s*(개월|년)", question)
+    if not match:
+        return None
+    count = int(match.group(1))
+    return count * 12 if match.group(2) == "년" else count
+
+
+def _comparison_minerals_in_text(question: str) -> list[str]:
+    """가격 비교절에서 광종 후보를 읽는다.
+
+    이 단계는 광종 목록을 갖지 않는다. 후보 문자열은 이후 MCP의
+    ``komis_resolve_mineral``/가격 비교 조회가 실제 ``ai_mnrl_mst`` 기준으로
+    해소한다. 따라서 새 광종이 추가돼도 이 파서의 수정이 필요 없다.
+    """
+
+    compact = re.sub(r"\s+", " ", question).strip()
+    match = re.search(r"(.{1,80}?)(?:의 )?(?:가격|시세|거래가|단가)(?:을|를)?\s*(?:비교|비교해|등락|변동|하락)", compact)
+    if match:
+        subject = match.group(1)
+        candidates = re.split(r"\s*(?:,|·|/|와|과|및|그리고)\s*", subject)
+    else:
+        # 후속 답변의 "니켈 가격 추이"처럼 비교 동사가 없는 문장에서도
+        # 광종명 후보만 보존한다. 실제 유효성은 DB resolver가 판단한다.
+        candidates = re.findall(r"(?<![가-힣A-Za-z])([가-힣A-Za-z]{1,30})(?:의)?\s*(?:가격|시세|거래가|단가)", compact)
+    ignored = {"가격", "시세", "거래가", "단가", "최근", "각", "광종", "광물", "두", "개"}
+    names: list[str] = []
+    for candidate in candidates:
+        name = re.sub(r"^(?:최근|각|광종별|광물별)\s*", "", candidate).strip()
+        name = re.sub(r"\s*(?:중|의)$", "", name).strip()
+        if name and name not in ignored and len(name) <= 30 and name not in names:
+            names.append(name)
+    return names
+
+
+def _ranking_top_n_in_question(question: str) -> int:
+    """명시된 상위 N/ N개국만 읽고, 없으면 기존 UI 기본값 5를 유지한다."""
+
+    match = re.search(r"(?:상위\s*)?(\d+)\s*개?국", question)
+    if not match:
+        match = re.search(r"상위\s*(\d+)", question)
+    return int(match.group(1)) if match else 5
+
+
+def _has_country_ranking_request(question: str) -> bool:
+    normalized = question.replace(" ", "")
+    return any(marker in normalized for marker in ("상위", "순위", "1위", "2위", "3위", "가장", "제일")) and any(
+        marker in normalized for marker in ("국가", "나라", "개국", "상위국", "국은")
+    )
+
+
+def _has_country_concentration_request(question: str) -> bool:
+    normalized = question.upper().replace(" ", "")
+    return "HHI" in normalized or "집중도" in normalized
+
+
+def _safe_route_fallback(question: str) -> RetrievalRoute | None:
+    """무효 JSON 시에도 명확한 단일 광종 고정질문은 결정적으로 복구한다.
+
+    여기서 다루지 않는 질문은 ``None``을 반환해 기존 dense/pageindex 일반
+    폴백으로 간다. 즉 모호·광산·다광종 질문을 국가 랭킹이나 가격 조회로
+    과잉해석하지 않는다.
+    """
+
+    mineral = _explicit_single_fallback_mineral(question)
+    if not mineral:
+        return None
+    normalized = question.replace(" ", "")
+    if "광물종합지" in normalized:
+        return RetrievalRoute(
+            resolved_query=question, use_structured=False, use_dense=False, use_pageindex=False,
+            is_mineral_specific_composite_index=True,
+        )
+
+    if _has_country_concentration_request(question) and ("수입" in normalized or "수출" in normalized):
+        return RetrievalRoute(
+            resolved_query=question, use_structured=False, use_dense=False, use_pageindex=False,
+            komis_mineral_name=mineral, use_komis_concentration=True,
+        )
+
+    if _has_country_ranking_request(question):
+        metrics: list[Literal["production", "reserves"]] = []
+        if "생산" in normalized:
+            metrics.append("production")
+        if "매장" in normalized:
+            metrics.append("reserves")
+        if metrics:
+            return RetrievalRoute(
+                resolved_query=question, use_structured=False, use_dense=False, use_pageindex=False,
+                komis_mineral_name=mineral, use_komis_mineral_ranking=True,
+                komis_mineral_ranking_metrics=metrics, komis_ranking_top_n=_ranking_top_n_in_question(question),
+            )
+        if "수입" in normalized or "수출" in normalized:
+            is_import = "수입" in normalized
+            is_weight = any(marker in normalized for marker in ("물량", "중량", "톤"))
+            metric = (
+                "import_weight" if is_import and is_weight else
+                "export_weight" if not is_import and is_weight else
+                "import_amount" if is_import else "export_amount"
+            )
+            return RetrievalRoute(
+                resolved_query=question, use_structured=False, use_dense=False, use_pageindex=False,
+                komis_mineral_name=mineral, use_komis_ranking=True,
+                komis_ranking_page="map_global" if "세계" in normalized else "map_korea",
+                komis_ranking_metric=metric, komis_ranking_top_n=_ranking_top_n_in_question(question),
+            )
+
+    if any(marker in normalized for marker in ("가격", "시세", "거래가", "단가")):
+        return RetrievalRoute(
+            resolved_query=question, use_structured=False, use_dense=False, use_pageindex=False,
+            use_komis_raw=True, komis_topic="price", komis_mineral_name=mineral,
+            komis_relative_months=_relative_months_in_question(question),
+        )
+    return None
+
+
+def _is_mineral_specific_composite_index(question: str, route: RetrievalRoute) -> bool:
+    """광종별로 오해될 수 있는 광물종합지수 요청을 결정적으로 막는다."""
+
+    normalized = question.replace(" ", "")
+    if "광물종합지" not in normalized:
+        return False
+    return bool(route.komis_mineral_name or _explicit_single_fallback_mineral(question))
+
+
+def _apply_aggregate_route(state: RetrievalState, route: RetrievalRoute) -> RetrievalRoute:
+    """집계가 필요한 명시 질문을 원자료 미리보기 대신 결정적 조회로 보낸다."""
+    question = state["question"]
+    compact = re.sub(r"\s+", "", question)
+    updates: dict[str, object] = {}
+    # 라우터가 '최근 1년'을 누락해도 명시된 상대기간을 최신 N행으로
+    # 오인하지 않도록 원문에서 확인한다. 특정 연월 범위는 기존 라우터 값을 쓴다.
+    relative_months = _relative_months_in_question(question)
+    if relative_months and not (route.komis_start_period or route.komis_end_period):
+        updates["komis_relative_months"] = relative_months
+    hs_match = re.search(r"(?<!\d)\d{10}(?!\d)", question)
+    if hs_match and "수입" in compact and ("품목" in compact or "현황" in compact):
+        updates.update(use_komis_explicit_hs_summary=True, komis_hs_code=hs_match.group(),
+                       use_komis_raw=False, use_dense=False, use_pageindex=False,
+                       use_komis_price_comparison=False, use_komis_concentration=False,
+                       use_komis_ranking=False, use_komis_mineral_ranking=False)
+    elif "수입" in compact and any(t in compact for t in ("월별", "개월", "추이", "연간")):
+        if not any(t in compact for t in ("상위", "수입국", "HHI", "집중도")):
+            updates.update(use_komis_monthly_trade=True, use_komis_raw=False,
+                           use_dense=False, use_pageindex=False,
+                           use_komis_price_comparison=False, use_komis_concentration=False,
+                           use_komis_ranking=False, use_komis_mineral_ranking=False)
+    if "생산국비중" in compact and "수입국비중" in compact:
+        updates.update(use_komis_mineral_ranking=True,
+                       komis_mineral_ranking_metrics=["production"],
+                       use_komis_ranking=True, komis_ranking_page="map_korea",
+                       komis_ranking_metric="import_amount", komis_ranking_top_n=5,
+                       use_komis_raw=False, use_dense=False, use_pageindex=False,
+                       use_komis_price_comparison=False, use_komis_concentration=False)
+    # Action planner가 가격 비교로 일반화해도, "변동성이 큰/작은"은 가격
+    # 수준·등락률 비교가 아니라 절댓값 변동률 순위다. 최근만 지정한 경우는
+    # ROUTE_PROMPT의 기존 계약대로 3개월 창을 결정적으로 채운다.
+    volatility_rank = "변동성" in compact and any(
+        term in compact for term in ("가장", "큰", "작은", "높", "낮", "많", "적")
+    )
+    if volatility_rank:
+        names = list(dict.fromkeys([
+            *(route.komis_compare_mineral_names or []),
+            *([route.komis_mineral_name] if route.komis_mineral_name else []),
+        ])) or _comparison_minerals_in_text(question)
+        updates.update(
+            use_komis_price_volatility_ranking=True,
+            use_komis_price_comparison=False,
+            komis_compare_mineral_names=names or None,
+            komis_relative_months=(3 if "최근" in compact and not relative_months else relative_months),
+            use_komis_raw=False, use_dense=False, use_pageindex=False,
+            use_komis_monthly_trade=False, use_komis_explicit_hs_summary=False,
+            use_komis_concentration=False,
+        )
+    price_terms = any(t in compact for t in ("가격", "시세"))
+    # 수치 임계값 자체는 비교 경로의 조건이 아니다. 퍼센트 가격 변동 *주장*을
+    # 원자료로 검증하려는 의도를 읽어 어떤 임계값에도 같은 집계를 적용한다.
+    price_claim_verification = (
+        bool(re.search(r"\d+(?:\.\d+)?%", compact))
+        and any(t in compact for t in ("상승", "하락", "올랐", "내렸", "떨어", "급등", "급락"))
+        and any(t in compact for t in ("전제", "주장", "검증", "맞나", "맞는지", "사실", "확인"))
+    )
+    price_compare = any(t in compact for t in ("비교", "등락률", "변동률", "하락률")) or price_claim_verification
+    followup_compare = any(t in compact for t in ("같은기간", "그중가장크게하락"))
+    if (price_terms and price_compare) or followup_compare:
+        # 라우터가 이미 실제 광종명을 냈다면 일반 문장 파서는 보강하지 않는다.
+        # "최근 1년"·"비교하고" 같은 서술 조각을 광종으로 오인해 DB 조회를
+        # 실패시키는 것을 막고, 라우터가 비었을 때만 후보를 넘겨 resolver가
+        # ai_mnrl_mst 기준으로 최종 검증한다.
+        names = list(dict.fromkeys([
+            *(route.komis_compare_mineral_names or []),
+            *([route.komis_mineral_name] if route.komis_mineral_name else []),
+        ]))
+        if not names:
+            names = _comparison_minerals_in_text(question)
+        if followup_compare:
+            latest_answer = _last_assistant_answer(state)
+            from_latest = _comparison_minerals_in_text(latest_answer)
+            if from_latest:
+                names = list(dict.fromkeys([*from_latest, *names]))[:2]
+            if len(names) < 2:
+                for turn in reversed(_recent_history(state)):
+                    if turn.get("role") != "user":
+                        continue
+                    for name in _comparison_minerals_in_text(turn.get("content", "")):
+                        if name not in names:
+                            names.insert(0, name)
+                    if len(names) >= 2:
+                        break
+            explicit_span = re.search(
+                r"(?:실제\s*조회기간|공통\s*조회기간|조회기간)\s*:\s*"
+                r"(20\d{2}[-.]?\d{2}[-.]?\d{2})\s*(?:\\?~|부터|[-–])\s*"
+                r"(20\d{2}[-.]?\d{2}[-.]?\d{2})", latest_answer,
+            )
+            if explicit_span:
+                updates.update(komis_start_period=re.sub(r"\D", "", explicit_span.group(1)),
+                               komis_end_period=re.sub(r"\D", "", explicit_span.group(2)),
+                               komis_relative_months=None)
+        if names:
+            updates.update(use_komis_price_comparison=True,
+                           komis_compare_mineral_names=names,
+                           use_komis_price_volatility_ranking=False,
+                           use_komis_raw=False, use_dense=False, use_pageindex=False,
+                           use_komis_monthly_trade=False,
+                           use_komis_explicit_hs_summary=False,
+                           use_komis_concentration=False)
+        windows = [n for n in (3, 6, 12) if f"{n}개월" in compact or (n == 12 and "1년" in compact)]
+        if len(windows) > 1:
+            updates["komis_price_windows_months"] = windows
+    if updates:
+        updates["use_mine_aggregate"] = False
+        if not route.komis_mineral_name and not hs_match:
+            explicit = _explicit_single_fallback_mineral(question)
+            if explicit:
+                updates["komis_mineral_name"] = explicit
+    return route.model_copy(update=updates) if updates else route
 
 
 def _log_prefix(state: RetrievalState) -> str:
@@ -699,6 +1411,26 @@ def _route_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
     턴 전체가 죽었다(자세한 이유는 shared.llm_client.LLM_TRANSIENT_ERRORS
     docstring)."""
 
+    action_assessment = state.get("action_assessment")
+    if action_assessment is not None:
+        if not action_assessment.approved or action_assessment.plan is None:
+            route = RetrievalRoute(resolved_query=state["question"], use_structured=False,
+                                   use_komis_raw=False, use_dense=False, use_pageindex=False)
+            return {"route": route, "warnings": [f"action_plan_failed:{action_assessment.failure_reason}"]}
+        return {"route": _route_from_action_plan(action_assessment.plan, state["question"]), "warnings": []}
+
+    assessment = state.get("source_assessment")
+    if assessment is None or assessment.blocked:
+        # 원천 계약은 LLM 라우팅보다 먼저 적용한다. 모델이 dense/PageIndex를
+        # 켜더라도 미연결 결과를 유사 문서로 대체할 수 없다.
+        route = RetrievalRoute(
+            resolved_query=state["question"], use_structured=False, use_komis_raw=False,
+            use_dense=False, use_pageindex=False,
+        )
+        return {
+            "route": route,
+            "warnings": [f"{_SOURCE_UNAVAILABLE_WARNING_PREFIX}{','.join(assessment.unavailable_domains) if assessment else 'invalid_plan'}"],
+        }
     try:
         invocation = llm.invoke(
             task="retrieval_route", instructions=ROUTE_PROMPT,
@@ -708,19 +1440,38 @@ def _route_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
                 "history": _recent_history(state),
                 "last_answer": _last_assistant_answer(state),
             },
-            # 2026-09-03/07: 기간 필드 3개 추가로 220까지 확보. 2026-09-17(광산자료
-            # 집계 파이프라인) — mine_* 필드 5개 추가 후 실측(라이브 curl)으로
-            # 220에서 JSON이 중간에 잘려("Expecting ',' delimiter") 복구 재시도도
-            # 실패, route 전체가 안전 폴백(dense+pageindex만)으로 떨어져
-            # mine_aggregate가 단 한 번도 켜지지 못하는 회귀를 확인했다 — 350으로
-            # 재확보(성공 케이스 관찰 토큰 수의 여유를 둠, verify_node가 150->300
-            # 올릴 때와 같은 원인·같은 해법).
-            output_model=RetrievalRoute, max_tokens=350,
+            # 도구 선택 필드가 계속 늘어 350토큰에서는 JSON 끝이 잘리고, 복구
+            # 호출도 같은 상한이라 다시 실패했다. 상수(1,280)로 여유를 고정한다.
+            output_model=RetrievalRoute, max_tokens=RETRIEVAL_ROUTE_MAX_TOKENS,
         )
         route = invocation.output
         if not route.resolved_query.strip():
             route.resolved_query = state["question"]
         warnings: list[str] = []
+        if "price_forecast" in assessment.unavailable_domains and route.komis_topic == "price_forecast":
+            # KOMIS의 과거 예측 화면도 새 DB가 제공할 가격예측 결과의 대체
+            # 원천이 될 수 없다. 혼합 질문에서는 나머지 독립 도구만 남긴다.
+            route = route.model_copy(update={"use_komis_raw": False, "komis_topic": None})
+            warnings.append(f"{_SOURCE_UNAVAILABLE_WARNING_PREFIX}price_forecast")
+        if _is_mineral_specific_composite_index(state["question"], route):
+            route = route.model_copy(update={
+                "is_mineral_specific_composite_index": True,
+                "use_structured": False, "use_komis_raw": False,
+                "use_dense": False, "use_pageindex": False,
+            })
+            warnings.append(_COMPOSITE_INDEX_ABORT_WARNING)
+        # HHI는 최신 N행/상위 N개국을 다시 합산하면 값이 달라지는 계산이다.
+        # 질문이 명확히 집중도를 요구하고 광종도 해소됐을 때만 전체 모집단
+        # 결정적 도구를 강제한다. 다른 질문에 일반화하지 않는다.
+        if _has_country_concentration_request(state["question"]) and route.komis_mineral_name:
+            route = route.model_copy(update={
+                "use_komis_concentration": True,
+                "use_komis_ranking": False,
+                "use_komis_raw": False,
+                "use_dense": False,
+                "use_pageindex": False,
+            })
+        route = _apply_aggregate_route(state, route)
         _logger.info(
             "%s route: resolved_query=%r ambiguous=%s structured=%s(%s/%s) komis_raw=%s(%s/%s) "
             "komis_ranking=%s(%s/%s) komis_mineral_ranking=%s(%s) price_volatility=%s "
@@ -735,10 +1486,18 @@ def _route_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
             route.use_mine_aggregate,
         )
     except LLM_TRANSIENT_ERRORS as exc:
-        route = RetrievalRoute(
-            resolved_query=state["question"], use_structured=False, use_dense=True, use_pageindex=True,
-        )
+        # JSON 출력 장애라 해도 질문이 매우 좁고 명시적이면 결정적 RDB 경로를
+        # 복구할 수 있다. 그 외에는 기존 일반 검색 폴백을 유지하되, 추측으로
+        # 광종·광산·다광종 질문을 랭킹 질의로 바꾸지 않는다.
+        route = _safe_route_fallback(state["question"])
+        if route is None:
+            route = RetrievalRoute(
+                resolved_query=state["question"], use_structured=False, use_dense=True, use_pageindex=True,
+            )
+        route = _apply_aggregate_route(state, route)
         warnings = [f"retrieval_route_invalid_output:{type(exc).__name__}"]
+        if route.is_mineral_specific_composite_index:
+            warnings.append(_COMPOSITE_INDEX_ABORT_WARNING)
     return {"route": route, "warnings": warnings}
 
 
@@ -771,8 +1530,27 @@ def _retrieve_node(
     여기선 더 이상 from_structured/from_dense_chunk/from_pageindex_hit 변환이
     필요 없다(그 변환은 서버 쪽으로 옮겨감)."""
 
+    action_assessment = state.get("action_assessment")
+    if action_assessment is not None and not action_assessment.approved:
+        return {"evidence": [], "warnings": [f"action_plan_failed:{action_assessment.failure_reason}"]}
+    assessment = state.get("source_assessment")
+    if assessment is None or assessment.blocked:
+        # 진입점이 아닌 노드를 직접 호출하는 테스트/소비자도 같은 계약을
+        # 우회할 수 없도록 여기서 다시 확인한다.
+        warnings = list(state.get("warnings", []))
+        marker = f"{_SOURCE_UNAVAILABLE_WARNING_PREFIX}{','.join(assessment.unavailable_domains) if assessment else 'invalid_plan'}"
+        if marker not in warnings:
+            warnings.append(marker)
+        return {"evidence": [], "warnings": warnings}
     route = state["route"]
     warnings = list(state.get("warnings", []))
+    if route.is_mineral_specific_composite_index:
+        # KO_MNRL_SNTHS_INDX는 전체/메이저/희소 하위지수만 제공하며 광종별
+        # series가 없다. 코발트 등 특정 광종을 붙인 질문에 전체 지수를 재검색
+        # 하거나 dense 근접 문서를 인용하면 오답처럼 보이므로 여기서 끝낸다.
+        if _COMPOSITE_INDEX_ABORT_WARNING not in warnings:
+            warnings.append(_COMPOSITE_INDEX_ABORT_WARNING)
+        return {"evidence": [], "warnings": warnings}
     if route.is_ambiguous:
         # 2026-09-18 — ROUTE_PROMPT 1.5가 이미 모든 도구 플래그를 false로
         # 뒀겠지만, 검색 자체를 시도하지 않는다는 걸 여기서도 코드로 확정한다
@@ -806,13 +1584,23 @@ def _retrieve_node(
     komis_raw_mineral_code: str | None = None
     if route.use_komis_raw and route.komis_topic == "composite_index":
         komis_raw_page_id = "indicator_composite"
+    elif route.use_komis_raw and route.komis_topic and route.komis_hs_code:
+        # HS가 질문에 명시된 교역 질의는 광종 해석을 거치지 않는다. 예전에는
+        # 광종 후보가 있으면 매핑된 첫 HS로 바뀌어 다른 품목 수치를 귀속했다.
+        komis_raw_page_id = _komis_raw_page_id(route.komis_topic, None)
+        if not komis_raw_page_id:
+            warnings.append(
+                f"komis_raw_unmapped_topic:{route.komis_topic}(hs_code={route.komis_hs_code})"
+            )
     elif (route.use_komis_raw and route.komis_topic and route.komis_mineral_name) or (
         # 2026-09-18(B2 후속 — 국가 랭킹) — 광종코드 해소는 komis_raw와
         # komis_ranking이 공유한다(한 질문이 "가격+수입상위국"처럼 둘 다 켤
         # 수 있어 중복 DB 왕복을 피한다). page_id 결정(_komis_raw_page_id)은
         # 아래에서 여전히 komis_raw 전용으로만 한다 — 랭킹은 route가 이미
         # page_id를 직접 고른다(komis_ranking_page).
-        (route.use_komis_ranking or route.use_komis_mineral_ranking) and route.komis_mineral_name
+        (route.use_komis_ranking or route.use_komis_mineral_ranking or route.use_komis_concentration
+         or route.use_komis_monthly_trade)
+        and route.komis_mineral_name
     ):
         resolved = session.call_komis_resolve_mineral(route.komis_mineral_name)
         warnings.extend(resolved.get("warnings", []))
@@ -823,6 +1611,19 @@ def _retrieve_node(
                 warnings.append(
                     f"komis_raw_unmapped_topic:{route.komis_topic}(mineral={route.komis_mineral_name})"
                 )
+
+    # public 챗봇은 private 전용 지표를 다른 검색 도구로 우회해 답하면 안 된다.
+    # 특히 원천 MCP가 거부한 뒤 dense/PageIndex가 오래된 PDF를 반환하면 접근
+    # 제어는 지켰어도 사용자에게는 해당 지표를 조회한 것처럼 보이는 문제가 생긴다.
+    requested_private_pages = {
+        page_id for page_id in (
+            komis_raw_page_id,
+            route.komis_indicator_ranking_page if route.use_komis_indicator_ranking else None,
+        ) if page_id in PRIVATE_ONLY_KOMIS_PAGES
+    }
+    if state.get("profile") != "private" and requested_private_pages:
+        warnings.append(_PRIVATE_ONLY_PROFILE_WARNING)
+        return {"evidence": [], "warnings": warnings}
 
     # 2026-09-18(감사 후속): `with ThreadPoolExecutor(...) as pool:`을 쓰지
     # 않는다 — context manager의 __exit__는 shutdown(wait=True)라 아래
@@ -851,6 +1652,7 @@ def _retrieve_node(
             start_period, end_period = _relative_period_bounds(route)
             jobs["komis_raw"] = pool.submit(
                 session.call_komis_raw_lookup, komis_raw_page_id, mineral_code=komis_raw_mineral_code,
+                hs_code=route.komis_hs_code,
                 start_period=start_period, end_period=end_period,
             )
         # 2026-09-18(B2 후속) — "{광종} 수입 상위 5개국" 같은 순위형 질문 전용
@@ -864,6 +1666,47 @@ def _retrieve_node(
                 route.komis_ranking_metric, start_period=rank_start, end_period=rank_end,
                 top_n=route.komis_ranking_top_n or 5,
             )
+        if route.use_komis_concentration and komis_raw_mineral_code:
+            concentration_start, concentration_end = _relative_period_bounds(route)
+            jobs["komis_concentration"] = pool.submit(
+                session.call_komis_country_concentration, komis_raw_mineral_code,
+                start_period=concentration_start, end_period=concentration_end,
+            )
+        if route.use_komis_monthly_trade and (komis_raw_mineral_code or route.komis_hs_code):
+            trade_start, trade_end = _relative_period_bounds(route)
+            monthly_kwargs: dict[str, object] = {
+                "mineral_code": komis_raw_mineral_code, "hs_code": route.komis_hs_code,
+                "start_period": trade_start, "end_period": trade_end, "compare_year": None,
+            }
+            # 기존 MCP mock/서버도 metric 없는 조회는 계속 지원한다. typed action이
+            # 기준을 지정한 경우에만 필터를 넘겨 두 metric Evidence가 섞이지 않는다.
+            if route.komis_monthly_trade_metric is not None:
+                monthly_kwargs["metric"] = route.komis_monthly_trade_metric
+            jobs["komis_monthly_trade"] = pool.submit(
+                session.call_komis_monthly_trade_summary, **monthly_kwargs,
+            )
+        if route.use_komis_explicit_hs_summary and route.komis_hs_code:
+            hs_start, hs_end = _relative_period_bounds(route)
+            jobs["komis_explicit_hs_summary"] = pool.submit(
+                session.call_komis_explicit_hs_import_summary, route.komis_hs_code,
+                start_period=hs_start, end_period=hs_end,
+            )
+        if route.use_komis_price_comparison and route.komis_compare_mineral_names:
+            if route.komis_price_windows_months:
+                for months in route.komis_price_windows_months:
+                    window = route.model_copy(update={"komis_relative_months": months,
+                                                      "komis_start_period": None, "komis_end_period": None})
+                    p_start, p_end = _relative_period_bounds(window)
+                    jobs[f"komis_price_comparison:{months}"] = pool.submit(
+                        session.call_komis_price_comparison, route.komis_compare_mineral_names,
+                        start_period=p_start, end_period=p_end, window_months=months,
+                    )
+            else:
+                p_start, p_end = _relative_period_bounds(route)
+                jobs["komis_price_comparison"] = pool.submit(
+                    session.call_komis_price_comparison, route.komis_compare_mineral_names,
+                    start_period=p_start, end_period=p_end,
+                )
         # 2026-09-18(RDB 결정적쿼리 후보리스트 1순위) — "{광종} 매장량/생산량
         # 국가랭킹" 전용. komis_ranking(교역)과 별도 job, mineral_code 해소는
         # 위에서 공유한다. 연도는 relative_months 계산을 거치지 않는다(연 단위
@@ -876,11 +1719,13 @@ def _retrieve_node(
         # 낸다(RDB 조회 로직·MCP tool은 그대로 — call_komis_mineral_ranking을
         # 지표 수만큼 반복 호출할 뿐). job 키에 지표명을 붙여 구분한다.
         if route.use_komis_mineral_ranking and komis_raw_mineral_code:
+            share_comparison = "생산국비중" in re.sub(r"\s+", "", state.get("question", "")) and "수입국비중" in re.sub(r"\s+", "", state.get("question", ""))
             for metric in route.komis_mineral_ranking_metrics or []:
                 jobs[f"komis_mineral_ranking:{metric}"] = pool.submit(
                     session.call_komis_mineral_ranking, komis_raw_mineral_code, metric,
                     start_period=route.komis_start_period, end_period=route.komis_end_period,
                     top_n=route.komis_ranking_top_n or 5,
+                    share_only=share_comparison,
                 )
         # 2026-09-18(RDB 결정적쿼리 후보리스트 2순위) — 여러 광종을 가로지르는
         # 비교/랭킹 두 종. 이 둘은 mineral_code 해소가 필요 없다(광종명을
@@ -909,11 +1754,14 @@ def _retrieve_node(
         # 문서 처리 진행상황(§4.2 "SSE 진행상황")이 이 블로킹 구간 동안에도
         # 나가게 한다(_run_with_status의 콜백은 스레드에서 불려도 안전 —
         # chatbot.py::_run_with_status 참고).
-        if route.use_mine_aggregate and route.komis_mineral_name and route.mine_metric and route.mine_agg:
+        if route.use_mine_aggregate and route.mine_metric and route.mine_agg:
             jobs["mine_aggregate"] = pool.submit(
                 mine_aggregate.aggregate_mine_metric,
-                route.komis_mineral_name, route.mine_metric, route.mine_agg,
-                year=route.mine_year, targets=route.mine_targets, llm=llm, on_status=on_status,
+                route.komis_mineral_name or "", route.mine_metric, route.mine_agg,
+                year=route.mine_year, targets=route.mine_targets,
+                since_year=route.mine_since_year, country=route.mine_country,
+                order=route.mine_order, top_n=route.mine_top_n,
+                llm=llm, on_status=on_status,
             )
         query = route.resolved_query or state["question"]
         # 2026-09-18(사용자 지시 "안전망 보강") — komis_ranking 계열 4종(교역·
@@ -926,10 +1774,14 @@ def _retrieve_node(
         # dense가 실제로 쓸모없어도(관련 문서가 없어도) 비용은 검색 1회뿐이고,
         # _finalize_node가 구조화 근거가 있으면 이미 dense 노이즈를 가지치기
         # 하므로 부작용이 없다(2026-09-07 노이즈 가지치기 로직 재사용).
-        use_dense_effective = route.use_dense or any((
+        paired_population = route.use_komis_ranking and route.use_komis_mineral_ranking
+        strict_aggregate = any((route.use_komis_monthly_trade,
+                                route.use_komis_explicit_hs_summary,
+                                route.use_komis_price_comparison, paired_population))
+        use_dense_effective = not strict_aggregate and (route.use_dense or any((
             route.use_komis_ranking, route.use_komis_mineral_ranking,
             route.use_komis_price_volatility_ranking, route.use_komis_indicator_ranking,
-        ))
+        )))
         if use_dense_effective:
             jobs["dense"] = pool.submit(session.call_hybrid_search, query, dense_k)
         if route.use_pageindex:
@@ -939,7 +1791,10 @@ def _retrieve_node(
                 )
             else:
                 jobs["pageindex"] = pool.submit(
-                    session.call_pageindex_lookup, query, node_limit=pageindex_k, with_text=True,
+                    session.call_pageindex_lookup, query, doc=route.pageindex_doc,
+                    node_limit=pageindex_k, with_text=True,
+                    body_fallback=route.pageindex_body_fallback,
+                    body_query=route.pageindex_body_query,
                 )
 
         results: dict[str, object] = {}
@@ -952,6 +1807,23 @@ def _retrieve_node(
     finally:
         pool.shutdown(wait=False)
 
+    required_aggregate_jobs = [name for name in jobs if name.startswith((
+        "komis_monthly_trade", "komis_explicit_hs_summary", "komis_price_comparison",
+    ))]
+    if route.use_komis_monthly_trade and "komis_monthly_trade" not in required_aggregate_jobs:
+        required_aggregate_jobs.append("komis_monthly_trade")
+    if route.use_komis_explicit_hs_summary and "komis_explicit_hs_summary" not in required_aggregate_jobs:
+        required_aggregate_jobs.append("komis_explicit_hs_summary")
+    if route.use_komis_price_comparison and not any(name.startswith("komis_price_comparison") for name in required_aggregate_jobs):
+        required_aggregate_jobs.append("komis_price_comparison")
+    compact_question = re.sub(r"\s+", "", state.get("question", route.resolved_query))
+    if "생산국비중" in compact_question and "수입국비중" in compact_question:
+        required_aggregate_jobs.extend(("komis_ranking", "komis_mineral_ranking:production"))
+    for name in required_aggregate_jobs:
+        payload = results.get(name)
+        if not payload or not payload[0]:
+            warnings.append(f"{_AGGREGATE_INCOMPLETE_WARNING}:{name}")
+
     evidence: list[Evidence] = []
     if "structured" in results and results["structured"] is not None:
         evidence.append(results["structured"])
@@ -963,6 +1835,15 @@ def _retrieve_node(
         rank_evidence, rank_warnings = results["komis_ranking"]
         evidence.extend(rank_evidence)
         warnings.extend(rank_warnings)
+    if "komis_concentration" in results:
+        concentration_evidence, concentration_warnings = results["komis_concentration"]
+        evidence.extend(concentration_evidence)
+        warnings.extend(concentration_warnings)
+    for name, payload in results.items():
+        if name.startswith(("komis_monthly_trade", "komis_explicit_hs_summary", "komis_price_comparison")):
+            aggregate_evidence, aggregate_warnings = payload
+            evidence.extend(aggregate_evidence)
+            warnings.extend(aggregate_warnings)
     for name, payload in results.items():
         if name.startswith("komis_mineral_ranking:"):
             mrank_evidence, mrank_warnings = payload
@@ -1003,6 +1884,17 @@ def _retrieve_node(
         seen.add(key)
         deduped.append(ev)
 
+    # 모든 어댑터 결과에 plan 추적 키를 붙인다. 현재 capability는 한 action
+    # 또는 동종 resource.rank 묶음만 승인하므로 requirement/action 귀속이 모호하지 않다.
+    approved_plan = state.get("action_assessment")
+    if approved_plan and approved_plan.plan:
+        call = approved_plan.plan.actions[0]
+        for ev in deduped:
+            ev.requirement_id = call.requirement_id
+            ev.action_id = call.action_id
+            ev.source_id = ev.source
+            ev.observed_period = ev.as_of
+
     return {"evidence": deduped, "warnings": warnings}
 
 
@@ -1023,6 +1915,9 @@ def _reformulate_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalStat
     1차가 불충분으로 판정된 재시도에서는 두 비정형 도구를 추가로 열어 놓쳤을
     수 있는 실제 문서 근거를 찾을 기회를 준다."""
 
+    assessment = state.get("source_assessment")
+    if assessment is None or assessment.blocked:
+        return {}
     route = state["route"]
     try:
         invocation = llm.invoke(
@@ -1108,17 +2003,41 @@ def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
     차이다."""
 
     evidence = state.get("evidence", [])
+    if any(_AGGREGATE_INCOMPLETE_WARNING in w for w in state.get("warnings", [])):
+        return {"sufficient": False}
     if not evidence:
         return {"sufficient": False}
+
+    action_call = state.get("action_call")
+    if action_call is not None:
+        # requirement/action 귀속과 명시 관측범위는 의미 판정(LLM)의 대상이
+        # 아니라 adapter 계약의 필수 필드다.
+        if any(ev.requirement_id != action_call.requirement_id or ev.action_id != action_call.action_id
+               or not ev.source_id for ev in evidence):
+            return {"sufficient": False, "evidence": [], "warnings": ["advisor_contract_mismatch"]}
+        if not _evidence_matches_required_period(evidence, action_call):
+            return {"sufficient": False, "evidence": [], "warnings": ["advisor_period_mismatch"]}
+        if not _evidence_matches_action_contract(evidence, action_call):
+            return {"sufficient": False, "evidence": [], "warnings": ["advisor_contract_mismatch"]}
+        if (_is_complete_explicit_hs_summary(evidence, action_call)
+                or _is_complete_mine_rank_increase(evidence, action_call)):
+            return {"sufficient": True, "evidence": evidence, "warnings": state.get("warnings", [])}
+        # stockpile.methodology는 실측 현황을 답하지 않는 정적 방법론 action이다.
+        # adapter가 인용할 단일 문서를 결정적으로 만들었으므로, 원 질문의
+        # 실수치 부재를 다시 요구하는 Advisor 판정으로 대체 응답을 지우지 않는다.
+        if action_call.action_id == "stockpile.methodology":
+            return {"sufficient": True, "evidence": evidence, "warnings": state.get("warnings", [])}
+
+    # 복합 수치·문서 요청은 source_contract에서 검색 전에 차단된다. 여기에
+    # 도달한 정형+비정형 혼합은 안전망 잡음이므로 정형 근거만 검증한다.
+    trusted = [ev for ev in evidence if ev.kind in ("structured", "aggregated")]
+    if trusted:
+        evidence = trusted
 
     warnings_so_far = state.get("warnings", [])
     is_ambiguous = any(
         any(marker in w for marker in _VERIFY_SKIP_AMBIGUOUS_MARKERS) for w in warnings_so_far
     )
-    if all(ev.kind == "structured" for ev in evidence) and not is_ambiguous:
-        _logger.info("%s verify: 패스트패스(komis_raw 단일출처, LLM 검증 생략)", _log_prefix(state))
-        return {"sufficient": True}
-
     try:
         invocation = llm.invoke(
             task="retrieval_verify", instructions=VERIFY_PROMPT,
@@ -1126,28 +2045,70 @@ def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
                 "오늘_날짜": date.today().isoformat(),
                 "question": state["route"].resolved_query,
                 "history": _recent_history(state),
+                "action": ({"requirement_id": state["action_call"].requirement_id,
+                            "action_id": state["action_call"].action_id,
+                            "slots": state["action_call"].slots.model_dump(mode="json")}
+                           if state.get("action_call") else None),
                 "evidence": [
-                    {"index": i, "source": ev.source, "section": ev.section, "excerpt": _verify_excerpt(ev.text)}
+                    {"index": i, "requirement_id": ev.requirement_id, "action_id": ev.action_id,
+                     "source": ev.source, "source_id": ev.source_id, "section": ev.section,
+                     "observed_period": ev.observed_period, "as_of": ev.as_of, "unit": ev.unit,
+                     "caveat": ev.caveat, "excerpt": _verify_excerpt(ev.text)}
                     for i, ev in enumerate(evidence, 1)
                 ],
             },
             output_model=GroundingCheck, max_tokens=300,
         )
         sufficient = invocation.output.sufficient
+        supported = set(invocation.output.supported_evidence_indices)
+        # LLM이 번호로 확인한 근거만 생성 단계에 넘긴다. 숫자 범위 밖 번호는
+        # 무시하고, 빈 목록은 근거 없음으로 처리해 unrelated dense 문서가
+        # 복합 질문의 다른 절을 대신 인용하지 못하게 한다.
+        kept_evidence = [ev for index, ev in enumerate(evidence, 1) if index in supported]
+        if not kept_evidence:
+            sufficient = False
+        evidence = kept_evidence
+        # price.verify_claim의 성공은 전제가 참이라는 뜻이 아니라, 실제
+        # 비교값으로 참·거짓을 판정했다는 뜻이다. 계약을 통과한 같은 광종의
+        # pct_change 행은 LLM이 불일치를 '불충분'으로 오독해도 보존한다.
+        if (action_call is not None and action_call.action_id == "price.verify_claim"
+                and _has_claim_comparison_evidence(state.get("evidence", []), action_call.slots.mineral)):
+            evidence = state.get("evidence", [])
+            sufficient = True
+        # 국가 순위는 typed metric·기간·광종 계약을 통과한 결정적 집계다.
+        # Advisor가 import_amount를 수입량으로 오독해도 해당 계약을 깨고
+        # 기권시키지 않는다. LLM 호출은 유지하며, 이 좁은 경우만 선택 결과가
+        # 비어 있으면 adapter Evidence를 보존한다.
+        if (not evidence and action_call is not None
+                and action_call.action_id == "trade.country_rank"
+                and all(ev.kind == "aggregated" for ev in state.get("evidence", []))):
+            evidence = state.get("evidence", [])
+            sufficient = bool(evidence)
+        # trailing 기간은 원천의 실제 관측범위가 짧아도 부분 결과를 허용한다.
+        # Evidence.as_of/observed_period가 생성 단계에 그대로 전달돼 전체 기간인
+        # 척 답하지 못하며, Advisor 호출 자체는 항상 수행했다.
+        action_call = state.get("action_call")
+        partial_observed = (action_call is not None and action_call.slots.period is not None
+                            and action_call.slots.period.kind == "trailing_months"
+                            and all(ev.observed_period or ev.as_of for ev in evidence))
+        if partial_observed and not evidence:
+            # Advisor가 index를 비웠어도 adapter 계약을 통과한 원자료는 기간
+            # 부족 사유만으로 폐기하지 않는다.
+            evidence = state.get("evidence", [])
+            sufficient = bool(evidence)
         warning = None if sufficient else f"retrieval_insufficient:{invocation.output.reason[:80]}"
     except LLM_TRANSIENT_ERRORS as exc:
-        # 검증 호출 자체가 실패하면(LLM 장애 등) "일단 있는 근거로 진행"이 더
-        # 안전하다 — 생성 단계의 인용강제·기권(_strip_uncited_sentences)이
-        # 최종 방어선이라 이중 안전망이고, 검증 실패를 곧장 재시도로 몰면
-        # LLM이 계속 죽어있는 상황에서 매 턴 재시도만 반복하다 끝난다.
-        sufficient = True
+        # 검증 결과가 없으면 근거를 보존하지 않는다. 재시도 뒤에도 검증이
+        # 실패하면 출처 없는 응답으로 기권한다.
+        sufficient = False
+        evidence = []
         warning = f"retrieval_verify_invalid_output:{type(exc).__name__}"
 
     warnings = list(state.get("warnings", []))
     if warning:
         warnings.append(warning)
         _logger.warning("%s verify: sufficient=%s (%s)", _log_prefix(state), sufficient, warning)
-    return {"sufficient": sufficient, "warnings": warnings}
+    return {"sufficient": sufficient, "evidence": evidence, "warnings": warnings}
 
 
 #: `_mcp_tools_common.py::komis_resolve_mineral`이 `ai_mnrl_mst`에서 광종을
@@ -1177,7 +2138,9 @@ _NO_DATA_FOUND_MARKER = "조회하신 조건에 해당하는 데이터를 찾지
 def _has_deterministic_abstain_signal(warnings: list[str]) -> bool:
     return any(
         _UNSUPPORTED_MINERAL_MARKER in w or _PERIOD_BOUNDS_MARKER in w
-        or _NO_DATA_FOUND_MARKER in w
+        or _NO_DATA_FOUND_MARKER in w or _PRIVATE_ONLY_PROFILE_WARNING in w
+        or _AGGREGATE_INCOMPLETE_WARNING in w
+        or w.startswith(_SOURCE_UNAVAILABLE_WARNING_PREFIX)
         for w in warnings
     )
 
@@ -1251,11 +2214,9 @@ def _finalize_node(state: RetrievalState) -> RetrievalState:
         # 신뢰도가 높다(이미 문서 전량을 fan-out 추출해 계산한 결과물이라
         # dense의 베스트에포트 의미검색과 다르다).
         evidence = state.get("evidence", [])
-        _TRUSTED_KINDS = ("structured", "aggregated")
-        if state.get("attempt", 1) == 1 and any(ev.kind in _TRUSTED_KINDS for ev in evidence):
-            pruned = [ev for ev in evidence if ev.kind in _TRUSTED_KINDS]
-            if len(pruned) != len(evidence):
-                return {"evidence": pruned}
+        trusted = [ev for ev in evidence if ev.kind in ("structured", "aggregated")]
+        if trusted:
+            return {"evidence": trusted}
         return {}
     warnings = state.get("warnings", [])
     if _has_deterministic_abstain_signal(warnings):
@@ -1307,7 +2268,17 @@ def _route_after_verify(state: RetrievalState) -> str:
     # 2026-09-18 — 모호 질문(route_ambiguous_question)은 애초에 무엇을 찾아야
     # 할지 모르는 상태라 reformulate(검색어 재작성)로 나아질 여지가 없다 —
     # 재시도 사이클 하나를 그대로 낭비하지 않고 바로 finalize로 보낸다.
-    if "route_ambiguous_question" in state.get("warnings", []):
+    if any(marker in state.get("warnings", []) for marker in (
+        "route_ambiguous_question", _COMPOSITE_INDEX_ABORT_WARNING,
+        _PRIVATE_ONLY_PROFILE_WARNING,
+    )):
+        return "done"
+    if any(warning.startswith(_SOURCE_UNAVAILABLE_WARNING_PREFIX) for warning in state.get("warnings", [])):
+        return "done"
+    route = state.get("route")
+    if route and any((route.use_komis_monthly_trade, route.use_komis_explicit_hs_summary,
+                      route.use_komis_price_comparison,
+                      route.use_komis_ranking and route.use_komis_mineral_ranking)):
         return "done"
     if not state.get("sufficient", True) and state.get("attempt", 1) < MAX_ATTEMPTS:
         return "retry"
@@ -1360,6 +2331,8 @@ def retrieve_evidence(
     dense_k: int = 5,
     pageindex_k: int = 3,
     profile: Literal["public", "private"] = "public",
+    source_assessment: SourceAssessment | None = None,
+    action_plan: ActionPlan | None = None,
     on_status: Callable[..., None] | None = None,
 ) -> tuple[list[Evidence], list[str]]:
     """`chat_turn()`이 부르는 단일 진입점 — question(+history) -> (근거 리스트,
@@ -1398,10 +2371,123 @@ def retrieve_evidence(
     바꾸면 여기도 같이 볼 것."""
 
     llm = llm or KomirJsonLLM()
+    if on_status:
+        on_status("routing")
+    # Stage 1: typed intent/action/slot extraction. It is deliberately before
+    # every adapter: extraction failure and unsupported combinations invoke no tool.
+    if action_plan is not None:
+        action_assessment = validate_action_plan(action_plan)
+    else:
+        try:
+            action_plan = extract_action_plan(question, llm, history)
+            action_assessment = validate_action_plan(action_plan)
+        except Exception as exc:  # malformed model output is a plan failure, never a legacy fallback
+            _logger.warning("%s action plan 추출 실패: %s", "[rag action]", type(exc).__name__)
+            action_plan = None
+            action_assessment = PlanAssessment(approved=False, failure_reason="slot_unresolved")
+
+    if not action_assessment.approved or action_plan is None:
+        return [], [f"action_plan_failed:{action_assessment.failure_reason}"]
+
+    # 각 ActionCall은 독립 adapter와 Advisor를 통과한다. plan 전체를 하나의
+    # 자유형 route로 압축하지 않아 Q04/Q11/Q29의 requirement 귀속이 섞이지 않는다.
+    all_evidence: list[Evidence] = []
+    all_warnings: list[str] = []
+    for call in action_plan.actions:
+        if call.action_id in {"menu.navigate", "dataset.navigate"}:
+            # 메뉴 레지스트리는 app/page_recommend 어댑터 소관이다. 이 RAG core가
+            # 링크를 추측하거나 문서 검색으로 대체하지 않는다.
+            return [], ["action_plan_failed:adapter_unavailable"]
+        route = _route_from_action_call(call, question)
+        if on_status:
+            on_status("retrieving", action_id=call.action_id)
+        state_for_call: RetrievalState = {
+            # document.lookup/mine.profile만 원문 제약을 보존한다. 기존 document.retrieve
+            # 및 수치 action의 topic 우선 동작은 r10f 회귀 방지를 위해 바꾸지 않는다.
+            "question": question if call.action_id in {"document.lookup", "mine.profile"} else (call.slots.topic or question),
+            "history": history or [], "session_id": session_id, "profile": profile,
+            "route": route, "source_assessment": SourceAssessment(),
+        }
+        state_for_call["action_call"] = call
+        # 실제 값 부재와 질문이 허용한 대안 계산 범위를 함께 명시한 Q17은 그
+        # 문서 자체를 근거로 쓴다. 그 밖의 document.retrieve는
+        # 기존 검색·Advisor 경로를 그대로 거친다.
+        static_evidence = _internal_methodology_evidence(call)
+        if static_evidence:
+            call_evidence, call_warnings = static_evidence, []
+        else:
+            extracted = _retrieve_node(
+                state_for_call, dense_k=dense_k, pageindex_k=pageindex_k,
+                llm=llm, on_status=on_status,
+            )
+            call_evidence = extracted.get("evidence", [])
+            call_warnings = extracted.get("warnings", [])
+        for ev in call_evidence:
+            ev.requirement_id, ev.action_id, ev.source_id, ev.observed_period = (
+                call.requirement_id, call.action_id, ev.source, ev.as_of)
+        if (call.action_id == "trade.concentration" and call_evidence
+                and all("개발용 더미" in (ev.caveat or "") for ev in call_evidence)):
+            # 전체 국가 모집단 HHI의 계산은 맞아도 입력 통관 원천이 전부
+            # DEV_DUMMY이면 실제 한국 집중도로 제시할 수 없다.
+            return [], call_warnings + [f"{_SOURCE_UNAVAILABLE_WARNING_PREFIX}dummy_trade_concentration"]
+        if call.action_id in {"document.lookup", "mine.profile"}:
+            # 파일명/후보 메타데이터는 사실 근거가 아니다. MCP가 with_text=True로
+            # 읽은 PageIndex OKF 본문이 하나라도 있어야만 아래 Advisor로 넘긴다.
+            if not any(ev.kind == "pageindex" and ev.text.strip() for ev in call_evidence):
+                return [], call_warnings + [f"{_SOURCE_UNAVAILABLE_WARNING_PREFIX}okf_body_unavailable"]
+        if call.action_id == "mine.profile" and not _okf_body_matches_profile(call_evidence, call.slots.mine_name):
+            return [], call_warnings + [f"{_SOURCE_UNAVAILABLE_WARNING_PREFIX}okf_profile_mismatch"]
+        if call.action_id == "mine.profile" and any(
+                (matched := re.search(r"동일 식별자 행 (\d+)개", ev.section)) and int(matched.group(1)) >= 2
+                for ev in call_evidence):
+            return [], call_warnings + ["ambiguous_mine_profile"]
+        if call.action_id in {"document.lookup", "mine.profile"}:
+            # dense는 문서 후보 탐색 보조일 뿐, 명시 문서/단건 광산의 사실을
+            # 인용할 근거가 아니다. 확인된 OKF 본문만 Advisor·생성에 남긴다.
+            call_evidence = [ev for ev in call_evidence if ev.kind == "pageindex" and ev.text.strip()]
+        if not _comparison_or_monthly_source_is_usable(call_evidence, call):
+            return [], call_warnings + [f"{_SOURCE_UNAVAILABLE_WARNING_PREFIX}unverified_or_incomplete_observation"]
+        if call.action_id == "price.verify_claim":
+            threshold = call.slots.claimed_change_pct
+            if threshold is None:
+                return [], call_warnings + ["claim_not_supported"]
+            matched = _claim_matches_comparison(
+                call_evidence, threshold, call.slots.comparator, call.slots.mineral,
+            )
+            for ev in call_evidence:
+                ev.caveat = (ev.caveat + "\n" if ev.caveat else "") + (
+                    (f"가격 변동률 전제 {call.slots.comparator or 'greater_than'} {threshold}%를 원자료 비교값으로 확인했습니다."
+                     if matched else f"가격 변동률 전제 {call.slots.comparator or 'greater_than'} {threshold}%는 원자료 비교값으로 확인되지 않았습니다.")
+                )
+        if on_status:
+            on_status("verifying", action_id=call.action_id)
+        verified = _verify_node({**state_for_call, "evidence": call_evidence, "warnings": call_warnings}, llm)
+        if not verified.get("sufficient"):
+            return [], list(verified.get("warnings", call_warnings)) + ["advisor_rejected"]
+        all_evidence.extend(verified.get("evidence", []))
+        all_warnings.extend(verified.get("warnings", []))
+    return all_evidence, all_warnings
+
+    # Stage 1 compatibility source assessment remains for callers which pass
+    # only the earlier source-domain contract; action assessment is authoritative
+    # for tool execution below.
+    # this stage (chatbot entrypoint) passes the same assessment to avoid a
+    # second parse. Invalid extraction is intentionally fail-closed.
+    requirement_plan: RequirementPlan | None = None
+    if source_assessment is None:
+        try:
+            requirement_plan = extract_requirement_plan(question, llm)
+            source_assessment = assess_requirement_plan(requirement_plan)
+        except LLM_TRANSIENT_ERRORS:
+            source_assessment = SourceAssessment(blocked=True, extraction_valid=False)
     graph = build_graph(llm, dense_k=dense_k, pageindex_k=pageindex_k, on_status=on_status)
     state: dict = {
         "question": question, "history": history or [], "session_id": session_id,
         "profile": profile, "attempt": 1,
+        "requirement_plan": requirement_plan,
+        "source_assessment": source_assessment,
+        "action_plan": action_plan,
+        "action_assessment": action_assessment,
     }
     if on_status:
         on_status("routing")  # 첫 노드(route)는 완료 이벤트가 오기 전에 알려야 한다

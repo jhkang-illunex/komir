@@ -38,6 +38,11 @@ class Evidence:
     # 지워버림), 안전에 직결되는 경고라 chatbot.py가 인용 스트리퍼 통과
     # 이후 코드로 무조건 붙인다(_caution_notice·_source_footer와 같은 원칙).
     caveat: str | None = None
+    # action adapter가 채운 추적 키. 기존 MCP payload와 호환되도록 기본값을 둔다.
+    requirement_id: str | None = None
+    action_id: str | None = None
+    source_id: str | None = None
+    observed_period: str | None = None
 
 
 def _forecast_month_label(base_date: Any, horizon: Any) -> str:
@@ -156,7 +161,7 @@ def from_pageindex_hit(hit: dict[str, Any]) -> Evidence:
     Evidence."""
 
     return Evidence(
-        kind="pageindex", source=hit.get("doc_title") or hit.get("okf_path", ""),
+        kind="pageindex", source=hit.get("source_override") or hit.get("doc_title") or hit.get("okf_path", ""),
         section=hit.get("node_path") or hit.get("title", ""),
         text=hit.get("text", ""),
     )
@@ -215,6 +220,8 @@ def _period_span(ds: Any) -> str | None:
     if not values:
         return None
     oldest, newest = _format_ymd(values[-1]), _format_ymd(values[0])
+    if getattr(ds, "metadata", {}).get("period_range_complete"):
+        return f"{oldest}~{newest}, 지정 기간 내 관측 {len(values)}건 전체"
     return f"{oldest}~{newest}, 최신순 {len(values)}건만 제공됨(요청한 전체 기간이 아닐 수 있음)"
 
 
@@ -326,9 +333,41 @@ def from_komis_ranking(
     section = f"KOMIS 원천 · {dataset.source_table}{suffix} · {row_kind}별 {metric_label} 상위 {len(dataset.rows)}개"
     caveat = KOMIS_RAW_DUMMY_CAVEAT if is_dummy else None
     text = _markdown_table(display_columns, table_rows)
+    metadata = getattr(dataset, "metadata", None) or {}
+    grand_total = metadata.get("grand_total")
+    if grand_total is not None:
+        # 이 값은 상위 N행 합이 아니라 동일 조건의 전체 국가 모집단 합계다.
+        # 생성 모델이 상위 표만 다시 더해 분모를 바꾸지 않도록 근거 자체에 고정한다.
+        text = (
+            f"집계 기준: 같은 기간·조건의 전체 {row_kind} 합계 {grand_total}"
+            f"{(' ' + str(getattr(dataset, 'unit', None))) if getattr(dataset, 'unit', None) else ''}를 분모로 사용.\n\n"
+            + text
+        )
     return [
         Evidence(
             kind="structured", source=f"public.{dataset.source_table}", section=section,
             text=text, caveat=caveat,
+            as_of=getattr(dataset, "as_of", None), unit=getattr(dataset, "unit", None),
         )
     ]
+
+
+def from_komis_aggregate(dataset: Any, *, label: str, mineral_name: str | None = None,
+                         is_dummy: bool | None = None) -> list[Evidence]:
+    """결정적 집계 결과의 표와 모집단·기간 메타데이터를 함께 근거로 보낸다."""
+    if not dataset.rows:
+        return []
+    columns = dataset.columns
+    labels = getattr(dataset, "column_labels", None) or {}
+    display = [f"{key}({labels[key]})" if key in labels else key for key in columns]
+    rows = [[str(row.get(key, "")) for key in columns] for row in dataset.rows]
+    metadata = getattr(dataset, "metadata", None) or {}
+    details = [f"{key}: {value}" for key, value in metadata.items() if value is not None]
+    text = "\n".join(details) + ("\n\n" if details else "") + _markdown_table(display, rows)
+    suffix = f"({mineral_name})" if mineral_name else ""
+    return [Evidence(
+        kind="structured", source=f"public.{dataset.source_table}",
+        section=f"KOMIS 원천 · {dataset.source_table}{suffix} · {label}",
+        text=text, caveat=KOMIS_RAW_DUMMY_CAVEAT if is_dummy else None,
+        as_of=getattr(dataset, "as_of", None), unit=getattr(dataset, "unit", None),
+    )]

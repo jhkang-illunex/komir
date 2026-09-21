@@ -36,7 +36,10 @@ hybrid_search·pageindex_lookup처럼 서버 파일 자체를 물리적으로 �
 from __future__ import annotations
 
 import dataclasses
-from typing import Any
+from datetime import datetime
+from decimal import Decimal
+from typing import Any, Literal
+from zoneinfo import ZoneInfo
 
 from mcp.server.fastmcp import FastMCP
 
@@ -48,11 +51,12 @@ from common.komis_raw import (
     AnalysisPreviewRequest,
     KomisRawDataRepository,
     RawDataAccessError,
+    RawDataset,
 )
 from common.llm_client import KomirJsonLLM
 from common import structured
 from rag_core.retrieval import pageindex_agent
-from rag_core.retrieval.evidence import Evidence, from_komis_raw, from_komis_ranking, from_structured
+from rag_core.retrieval.evidence import Evidence, from_komis_raw, from_komis_ranking, from_komis_aggregate, from_structured
 
 
 def _evidence_dict(ev: Evidence | None) -> dict[str, Any] | None:
@@ -74,14 +78,9 @@ _HS_TRANSLATE_PAGES = frozenset({"map_korea", "map_global"})
 
 #: 2026-09-07("니켈 최근 6개월 가격" 사용자 제보 후속) — start_period·
 #: end_period가 둘 다 있으면 그 범위 전체를 봐야 "추이" 질문에 답이 되는데,
-#: `AnalysisPreviewRequest.limit`을 그대로 쓰면(요약 미리보기 용도) 반년치
-#: 일별 가격(~130행)도 다 못 온다. 기간이 명시된 조회는 `fetch()`(limit 적용)
-#: 대신 `fetch_complete()`로 바꾸되, "최근 10년" 같은 과도한 범위 요청까지
-#: 표를 무한정 키우지 않도록 최근 N행으로만 자른다(정렬이 이미 period_column
-#: DESC라 최신순 상위 N이 곧 "최근 N행"). 2026-09-08부터 N은
-#: `Settings.KOMIS_RAW_MAX_TIMESTAMPS`(기본 60, register_common_tools가
-#: 서버 기동 시 한 번 읽음)로 이 값과 komis_raw_lookup의 기본 limit을
-#: 동시에 맞춘다(documents/AI_TEAM_DATA_SCHEMA_HANDOFF.md §5 주의5).
+#: 일별 가격(~130행)도 다 못 온다. 기간이 명시된 조회는 `fetch_complete()`로
+#: 범위 내 모든 행을 반환한다. 기간이 없는 조회만
+#: `Settings.KOMIS_RAW_MAX_TIMESTAMPS`(기본 60) 이하로 제한한다.
 
 #: 2026-09-07 — komis_raw_lookup이 0건을 받았는데 `_PERIOD_BOUNDS_LEAD`
 #: 대상 page_id가 아니거나(예: price_forecast는 텅스텐 외 광종은 원본 테이블
@@ -129,7 +128,7 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
     로직 없이 `structuredContent`를 그대로 쓰게 하려는 것)."""
 
     # 2026-09-08 — 서버 기동 시(이 함수가 호출되는 시점) 한 번만 읽는다.
-    # komis_raw_lookup의 기본 limit과 기간범위 조회 컷 둘 다 이 값을 쓴다.
+    # 기간 미지정 조회의 최대 행 수에만 이 값을 쓴다.
     _max_timestamps = get_settings().KOMIS_RAW_MAX_TIMESTAMPS
 
     @mcp.tool()
@@ -297,17 +296,13 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
                     f"그중 첫 번째({hs_codes[0]})만 미리보기로 조회했습니다."
                 )
 
-        has_period_range = bool(request.start_period and request.end_period)
+        has_period_range = bool(request.start_period or request.end_period)
+        if not has_period_range and request.limit > _max_timestamps:
+            request = request.model_copy(update={"limit": _max_timestamps})
         try:
             datasets = repo.fetch_complete(request) if has_period_range else repo.fetch(request)
         except RawDataAccessError as exc:
             return {"evidence": [], "warnings": [*warnings, str(exc)]}
-        if has_period_range:
-            datasets = [
-                ds.model_copy(update={"rows": ds.rows[:_max_timestamps]})
-                if len(ds.rows) > _max_timestamps else ds
-                for ds in datasets
-            ]
 
         # 2026-09-03(발주처 문서, 사용자 승인) — price_*/indicator_market/
         # indicator_supply가 0건이면 "조회 가능 기간은 ...입니다"를 실제 DB
@@ -476,6 +471,263 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
         )
         return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}
 
+    @mcp.tool()
+    def komis_country_concentration(
+        mineral_code: str,
+        page_id: str = "map_korea",
+        metric: str = "import_amount",
+        start_period: str | None = None,
+        end_period: str | None = None,
+    ) -> dict[str, Any]:
+        """광종 교역의 전체 국가 모집단 HHI를 계산한다.
+
+        국가 순위의 상위 N개 미리보기와 달리, 같은 HS·기간·수입/수출 조건의
+        모든 국가를 집계한 뒤 HHI=Σ(국가별 비중[%]^2)를 코드로 계산한다.
+        """
+
+        repo = KomisRawDataRepository()
+        try:
+            hs_codes = repo.resolve_hs_codes(mineral_code)
+            dataset = repo.fetch_country_concentration(
+                page_id=page_id, hs_codes=hs_codes, metric=metric,
+                start_period=start_period, end_period=end_period,
+            )
+        except RawDataAccessError as exc:
+            return {"evidence": [], "warnings": [str(exc)]}
+        if not dataset.rows:
+            return {"evidence": [], "warnings": [_NO_DATA_FOUND_MARKER]}
+        try:
+            resolved_meta = repo.resolve_mineral_meta(mineral_code)
+        except RawDataAccessError:
+            resolved_meta = None
+        mineral_label = resolved_meta[0] if resolved_meta else mineral_code
+        data_source = resolved_meta[1] if resolved_meta else None
+        is_dummy = data_source != "KOMIS_SAMPLE"
+        hhi = dataset.metadata.get("hhi")
+        grand_total = dataset.metadata.get("grand_total")
+        formula = dataset.metadata.get("formula")
+        evidence = from_komis_ranking(
+            dataset, mineral_code=mineral_label,
+            metric_label=f"{_RANKING_METRIC_LABELS.get(metric, metric)} 집중도(HHI={hhi}, 전체합계={grand_total}, {formula})",
+            is_dummy=is_dummy,
+        )
+        warnings = []
+        if is_dummy:
+            warnings.append(
+                f"⚠ '{mineral_code}' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미"
+                f"(ko_data_src_cd={data_source or '확인불가'})일 수 있습니다 — 실제 수치인 것처럼 안내하지 마세요."
+            )
+        return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}
+
+    @mcp.tool()
+    def komis_monthly_trade_summary(
+        mineral_code: str | None = None, hs_code: str | None = None,
+        start_period: str | None = None, end_period: str | None = None,
+        compare_year: str | None = None,
+        metric: Literal["import_amount", "import_weight"] | None = None,
+    ) -> dict[str, Any]:
+        """한국 수입액(USD)·수입중량(kg)의 HS 전체 모집단 월별 합계."""
+        repo = KomisRawDataRepository()
+        try:
+            hs_codes = [hs_code] if hs_code else repo.resolve_hs_codes(mineral_code or "")
+            dataset = repo.fetch_monthly_trade_summary(
+                hs_codes=hs_codes, start_period=start_period, end_period=end_period,
+            )
+        except RawDataAccessError as exc:
+            return {"evidence": [], "warnings": [str(exc)]}
+        if not dataset.rows:
+            return {"evidence": [], "warnings": [_NO_DATA_FOUND_MARKER]}
+        mineral_name = None
+        is_dummy = False
+        if mineral_code:
+            try:
+                meta = repo.resolve_mineral_meta(mineral_code)
+                mineral_name = meta[0] if meta else mineral_code
+                is_dummy = bool(meta and meta[1] != "KOMIS_SAMPLE")
+            except RawDataAccessError:
+                mineral_name = mineral_code
+        evidence = []
+        missing_columns = {"import_amount", "import_weight"} - set(dataset.columns)
+        for column, label, unit in (
+            ("import_amount", "월별 한국 수입금액", "USD"),
+            ("import_weight", "월별 한국 수입중량", "kg"),
+        ):
+            if metric and column != metric:
+                continue
+            if column not in dataset.columns:
+                continue
+            view = dataset.model_copy(update={
+                "columns": ["month", column],
+                "rows": [{"month": row.get("month"), column: row.get(column)} for row in dataset.rows],
+                "unit": unit,
+            })
+            evidence.extend(from_komis_aggregate(view, label=label,
+                                                 mineral_name=mineral_name, is_dummy=is_dummy))
+        if compare_year and start_period and start_period[:4].isdigit():
+            try:
+                prior = repo.fetch_monthly_trade_summary(
+                    hs_codes=hs_codes, start_period=compare_year, end_period=compare_year,
+                )
+            except RawDataAccessError as exc:
+                return {"evidence": [dataclasses.asdict(e) for e in evidence],
+                        "warnings": [f"aggregate_incomplete:prior_year:{exc}"]}
+            observed = {str(row["month"])[-2:] for row in dataset.rows}
+            this_year = start_period[:4]
+            current_first = dataset.metadata.get("available_start")
+            current_last = dataset.metadata.get("available_end")
+            prior_first = f"{compare_year}{str(current_first)[4:]}" if current_first else None
+            prior_last = f"{compare_year}{str(current_last)[4:]}" if current_last else None
+            if prior_first and prior_last:
+                try:
+                    prior_same_period = repo.fetch_monthly_trade_summary(
+                        hs_codes=hs_codes, start_period=prior_first.replace("-", ""),
+                        end_period=prior_last.replace("-", ""),
+                    )
+                except RawDataAccessError as exc:
+                    return {"evidence": [dataclasses.asdict(e) for e in evidence],
+                            "warnings": [f"aggregate_incomplete:prior_same_period:{exc}"]}
+            else:
+                prior_same_period = None
+            today_month = datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m")
+            future_months = [f"{this_year}-{month:02d}" for month in range(1, 13)
+                             if f"{this_year}-{month:02d}" > today_month]
+            unavailable_months = [f"{this_year}-{month:02d}" for month in range(1, 13)
+                                  if f"{this_year}-{month:02d}" <= today_month
+                                  and f"{month:02d}" not in observed]
+            def amount(rows: list[dict[str, Any]]) -> Decimal:
+                return sum((Decimal(str(row["import_amount"])) for row in rows), Decimal(0))
+            comparison_rows = [
+                {"basis": f"{this_year} 관측기간 {current_first}~{current_last}",
+                 "import_amount": float(amount(dataset.rows))},
+                {"basis": f"{compare_year} 전년 동기간 {prior_first}~{prior_last}",
+                 "import_amount": float(amount(prior_same_period.rows)) if prior_same_period else None},
+                {"basis": f"{compare_year} 연간 합계", "import_amount": float(amount(prior.rows))},
+            ]
+            comparison_note = (
+                f"필수 비교: {this_year} 실제 관측기간 {current_first}~{current_last} "
+                f"{comparison_rows[0]['import_amount']} USD; "
+                f"{compare_year} 전년 동일 날짜 {prior_first}~{prior_last} "
+                f"{comparison_rows[1]['import_amount']} USD; "
+                f"{compare_year} 연간 {comparison_rows[2]['import_amount']} USD. "
+                "전년 동기간과 전년 연간은 수치가 같아도 서로 다른 기간으로 각각 표시해야 합니다."
+            )
+            prior_same_period_sentence = (
+                f"전년 동기간({prior_first}~{prior_last}) 수입금액은 "
+                f"{comparison_rows[1]['import_amount']} USD입니다. "
+                "전년 연간 합계와 값이 같더라도 비교 기간은 다릅니다."
+            )
+            comparison_dataset = RawDataset(
+                source_table=dataset.source_table, columns=["basis", "import_amount"],
+                column_labels={"basis": "비교 기준", "import_amount": "수입금액합계(USD)"},
+                row_count=len(comparison_rows), rows=comparison_rows, unit="USD",
+                metadata={"current_observed_months": sorted(observed),
+                          "required_comparison": comparison_note,
+                          "prior_same_period_sentence": prior_same_period_sentence,
+                          "future_months": future_months,
+                          "unavailable_past_months": unavailable_months,
+                          "same_period_basis": "현재 실제 관측 시작일·종료일과 전년도 동일 월일자를 비교(부분월 포함)",
+                          "current_period_start": current_first, "current_period_end": current_last,
+                          "prior_period_start": prior_first, "prior_period_end": prior_last,
+                          "current_year": this_year, "prior_year": compare_year,
+                          "hs_codes": hs_codes},
+            )
+            evidence.extend(from_komis_aggregate(comparison_dataset,
+                                                 label="현재 관측기간·전년 동일 날짜·전년 연간 3종 수입금액 비교",
+                                                 mineral_name=mineral_name, is_dummy=is_dummy))
+            if not prior.rows or prior_same_period is None or not prior_same_period.rows:
+                missing_columns.add("prior_year_data")
+        return {"evidence": [dataclasses.asdict(e) for e in evidence],
+                "warnings": [f"aggregate_incomplete:missing_columns:{','.join(sorted(missing_columns))}"]
+                if missing_columns else []}
+
+    @mcp.tool()
+    def komis_explicit_hs_import_summary(
+        hs_code: str, start_period: str | None = None, end_period: str | None = None,
+    ) -> dict[str, Any]:
+        """질문에 명시된 HS 한 코드의 품목명·기간 총합·월별 한국 수입 현황."""
+        repo = KomisRawDataRepository()
+        try:
+            dataset = repo.fetch_explicit_hs_import_summary(
+                hs_code=hs_code, start_period=start_period, end_period=end_period,
+            )
+        except RawDataAccessError as exc:
+            return {"evidence": [], "warnings": [str(exc)]}
+        dataset = dataset.model_copy(update={"metadata": {
+            **dataset.metadata,
+            "population_note": f"이 합계는 HS {hs_code} 한 품목·전체 국가·해당 기간만 포함합니다. 광종 전체 HS 품목 합계와 다릅니다.",
+        }})
+        evidence = []
+        for column, label, unit in (
+            ("import_amount", "수입금액", "USD"),
+            ("import_weight", "수입중량", "kg"),
+        ):
+            view = dataset.model_copy(update={
+                "columns": ["month", column],
+                "rows": [{"month": row.get("month"), column: row.get(column)} for row in dataset.rows],
+                "unit": unit,
+            })
+            evidence.extend(from_komis_aggregate(view, label=f"HS {hs_code} {label} 현황"))
+        return {"evidence": [dataclasses.asdict(e) for e in evidence],
+                "warnings": [] if evidence else [_NO_DATA_FOUND_MARKER]}
+
+    @mcp.tool()
+    def komis_price_comparison(
+        mineral_names: list[str], start_period: str | None = None,
+        end_period: str | None = None, window_months: int | None = None,
+    ) -> dict[str, Any]:
+        """같은 실제 기간·각 광종의 고정 가격기준으로 시계열과 변동률을 조회."""
+        repo = KomisRawDataRepository()
+        try:
+            dataset = repo.fetch_price_comparison(
+                mineral_names=mineral_names, start_period=start_period, end_period=end_period,
+            )
+        except RawDataAccessError as exc:
+            return {"evidence": [], "warnings": [str(exc)]}
+        if not dataset.rows:
+            return {"evidence": [], "warnings": [_NO_DATA_FOUND_MARKER]}
+        is_dummy = _any_dummy(repo, mineral_names)
+        grouped: dict[str, list[dict[str, Any]]] = {}
+        for row in dataset.rows:
+            grouped.setdefault(str(row["mineral"]), []).append(row)
+        window_label = f"최근 {window_months}개월 요청 · " if window_months else ""
+        evidence = []
+        for mineral, points in grouped.items():
+            # 서로 단위가 다른 광종 가격을 한 Y축에 합치지 않는다.
+            # 각 광종의 긴 일별 이력은 양끝을 포함해 최대 40시점만 표/차트에 실는다.
+            count = min(len(points), 40)
+            indexes = {round(i * (len(points) - 1) / (count - 1)) for i in range(count)} if count > 1 else {0}
+            sampled = [points[i] for i in sorted(indexes)]
+            series_view = dataset.model_copy(update={
+                "rows": sampled, "row_count": len(sampled),
+                "metadata": {key: value for key, value in dataset.metadata.items() if key != "comparison"},
+            })
+            evidence.extend(from_komis_aggregate(
+                series_view, label=f"{window_label}{mineral} 가격 시계열(최대 40시점)",
+                mineral_name=mineral, is_dummy=is_dummy,
+            ))
+        comparison = dataset.metadata.get("comparison") or []
+        if comparison:
+            compare_columns = [
+                "mineral", "start_date", "start_price", "end_date", "end_price",
+                "pct_change", "price_criterion", "price_currency_code", "weight_unit_code",
+            ]
+            compare_dataset = RawDataset(
+                source_table=dataset.source_table, columns=compare_columns,
+                column_labels={
+                    "mineral": "광종", "start_date": "시작일", "start_price": "시작가격",
+                    "end_date": "종료일", "end_price": "종료가격",
+                    "pct_change": "변동률(%)", "price_criterion": "가격기준",
+                    "price_currency_code": "통화코드", "weight_unit_code": "중량단위코드",
+                },
+                row_count=len(comparison), rows=comparison, as_of=dataset.as_of,
+                metadata={key: value for key, value in dataset.metadata.items() if key != "comparison"},
+            )
+            evidence.extend(from_komis_aggregate(compare_dataset, label=f"{window_label}동일 기간 가격 변동률",
+                                                 is_dummy=is_dummy))
+        missing = dataset.metadata.get("missing_minerals") or []
+        warnings = [f"aggregate_incomplete:missing_minerals:{','.join(missing)}"] if missing else []
+        return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}
+
     _RESERVES_PRODUCTION_METRIC_LABELS = {"production": "생산량", "reserves": "매장량"}
 
     @mcp.tool()
@@ -485,6 +737,7 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
         start_period: str | None = None,
         end_period: str | None = None,
         top_n: int = 5,
+        share_only: bool = False,
     ) -> dict[str, Any]:
         """매장량/생산량 국가별 상위 N개(결정적 GROUP BY, 2026-09-18 신설) —
         "{광종} 매장량 1위 국가", "{광종} 생산량 상위 5개국" 같은 순위형
@@ -525,6 +778,15 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
                 f"(ko_data_src_cd={data_source or '확인불가'})일 수 있습니다 — "
                 "실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요."
             )
+
+        if share_only:
+            # 생산국 비중과 수입국 비중을 비교하는 복합 질문에서는 두 차트를
+            # 모두 %로 맞춘다. 분모의 원 단위(톤)는 Evidence 설명에 보존한다.
+            dataset = dataset.model_copy(update={
+                "columns": ["rank", "country", "share_pct"],
+                "rows": [{key: row.get(key) for key in ("rank", "country", "share_pct")}
+                         for row in dataset.rows],
+            })
 
         evidence = from_komis_ranking(
             dataset, mineral_code=mineral_label,

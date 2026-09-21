@@ -91,8 +91,8 @@ class Settings(BaseSettings):
     # 시계열 최대 타임스탬프 수 — 2026-09-08 백엔드 인수인계 문서
     # (documents/AI_TEAM_DATA_SCHEMA_HANDOFF.md §5 주의5, 내부 합의: 전체
     # 시계열을 그대로 반환하면 챗봇 응답 지연·차트 가독성 저하) 반영. 기간이
-    # 없는 조회의 SQL LIMIT과, 기간범위 조회 후 최신순으로 자르는 컷 둘 다
-    # 이 값을 쓴다(서버 기동 시 register_common_tools()가 한 번 읽어 고정).
+    # 없는 조회의 SQL LIMIT에만 이 값을 쓴다. 명시된 기간은 전체 조회한다
+    # (서버 기동 시 register_common_tools()가 한 번 읽어 고정).
     KOMIS_RAW_MAX_TIMESTAMPS: int = 60
 
     # ── 리포트 스케줄러 ──

@@ -19,6 +19,11 @@ import yaml
 from .models import PageDefinition
 
 PAGE_ROOT = Path(__file__).resolve().parent / "resources" / "registry" / "pages"
+# dataset.navigate의 정본 dataset key → 실제 페이지. 원문 substring을 검색하지 않는다.
+DATASET_ACTION_TARGETS = {
+    "supply_stability": "indicator_supply",
+    "market_outlook": "indicator_market",
+}
 
 
 class RegistryError(RuntimeError):
@@ -65,10 +70,35 @@ class ServiceRegistry:
         """Resolve a canonical page ID or alias to its definition."""
 
         canonical_id = self._aliases.get(page_id_or_alias, page_id_or_alias)
+        if canonical_id not in self._pages:
+            normalized = " ".join(page_id_or_alias.casefold().split())
+            matches = [page.page_id for page in self.pages if normalized in {
+                " ".join(page.identity.name.casefold().split()),
+                " ".join(f"{page.identity.section} {page.identity.name}".casefold().split()),
+            }]
+            if len(matches) == 1:
+                canonical_id = matches[0]
+            elif len(matches) > 1:
+                raise RegistryError(f"ambiguous page target: {page_id_or_alias}")
         try:
             return self._pages[canonical_id]
         except KeyError as exc:
             raise RegistryError(f"unknown page_id: {page_id_or_alias}") from exc
+
+    def resolve_action_targets(self, target: str) -> list[PageDefinition]:
+        """typed menu/dataset slot을 등록된 ID·별칭·표시명으로만 해소한다."""
+        normalized = " ".join(target.casefold().split())
+        target = DATASET_ACTION_TARGETS.get(target, target)
+        normalized = " ".join(target.casefold().split())
+        exact = []
+        for page in self.pages:
+            labels = {page.page_id, *page.aliases, page.identity.name,
+                      f"{page.identity.section} {page.identity.name}"}
+            if normalized in {" ".join(label.casefold().split()) for label in labels}:
+                exact.append(page)
+        if exact:
+            return exact
+        raise RegistryError(f"unknown action target: {target}")
 
     def routing_index(self) -> list[dict[str, Any]]:
         """Serialize the compact routing index for all registered pages."""

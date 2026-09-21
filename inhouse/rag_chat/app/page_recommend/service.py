@@ -31,7 +31,8 @@ from common.llm_client import KomirJsonLLM
 
 from .graph import SearchWorkflow, validate_response
 from .metadata import MetadataResolver, SnapshotMetadataResolver
-from .models import SearchResponse
+from .models import RecommendationItem, SearchResponse
+from .renderer import build_recommendation
 from .registry import ServiceRegistry, load_source_registry
 from .temporal import build_request_context, utc_now
 
@@ -98,6 +99,28 @@ class PageRecommendService:
             active_artifact=state.get("active_artifact"),
             message_history=state.get("message_history", []),
         )
+
+    def recommend_action_target(self, target: str, *, thread_id: str, mineral: str | None = None) -> PageRecommendTurn:
+        """검증된 action slot의 page_id/alias만 레지스트리에서 직접 안내한다."""
+        pages = self.registry.resolve_action_targets(target)
+        items: list[RecommendationItem] = []
+        for page in pages:
+            # URL 파라미터를 추측하지 않는다. 대신 레지스트리에 실제 ``mineral``
+            # 필터가 있는 화면에만 typed filter를 전달해 클라이언트가 같은 값을
+            # 화면 제어에 적용할 수 있게 한다.
+            effective_filters = ({"mineral": mineral} if mineral and any(
+                item.semantic_key == "mineral" for item in page.filters
+            ) else {})
+            item = build_recommendation(page, effective_filters=effective_filters)
+            # API의 typed page action은 registry target 경로를 그대로 반환한다.
+            # 일반 추천 renderer의 절대 URL 변환은 기존 page API 계약에 적용하지 않는다.
+            items.append(item.model_copy(update={
+                "url": page.identity.navigation.target,
+                "reason": "검증된 메뉴 action 대상",
+            }))
+        response = SearchResponse(thread_id=thread_id, status="recommended", relation="first_turn",
+            answer="\n".join(f"KOMIS > {page.identity.section} > {page.identity.name} 메뉴입니다." for page in pages) + (f"\n광종 필터: {mineral}" if mineral else "") + "\n바로 이동하시겠어요?", recommendations=items)
+        return PageRecommendTurn(response=response, active_artifact=None, message_history=[])
 
 
 _service: PageRecommendService | None = None

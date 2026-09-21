@@ -140,10 +140,8 @@ class AnalysisPreviewRequest(StrictModel):
     price_criterion_serial: int | None = Field(default=None, ge=1)
     start_period: str | None = Field(default=None, pattern=r"^\d{4}(?:\d{2}(?:\d{2})?)?$")
     end_period: str | None = Field(default=None, pattern=r"^\d{4}(?:\d{2}(?:\d{2})?)?$")
-    # 2026-09-08: 상한을 200으로 완화(구 20) — 실제 기본값·타임스탬프 상한은
-    # common.config.Settings.KOMIS_RAW_MAX_TIMESTAMPS(기본 60)가 단일 소스로
-    # 강제한다(_mcp_tools_common.py::register_common_tools 참고). 이 필드
-    # 자체는 그보다 더 큰 값을 직접 지정하고 싶을 때를 위한 상위 안전장치.
+    # 미리보기 쿼리의 안전장치. 명시된 기간은 fetch_complete()가 limit 없이
+    # 조회하고, 기간 미지정 조회는 환경변수 상한도 적용한다.
     limit: int = Field(default=5, ge=1, le=200)
 
     @model_validator(mode="after")
@@ -187,6 +185,12 @@ class RawDataset(StrictModel):
     column_labels: dict[str, str] = Field(default_factory=dict)
     row_count: int = Field(ge=0)
     rows: list[dict[str, Any]]
+    # 집계 결과는 원시 행에서 기간을 다시 유추할 수 없다. 조회가 실제로 사용한
+    # 기간과 측정 단위를 결과 계약에 함께 보관해 Evidence/표/차트가 같은 기준을
+    # 보게 한다. 기존 원시 조회는 기본값(None)으로 하위 호환된다.
+    as_of: str | None = None
+    unit: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -470,6 +474,17 @@ def _coerce_period(value: str, precision: Period, upper: bool) -> str:
     return (value + suffix)[:expected_length]
 
 
+def _format_period_value(value: Any, precision: Period) -> str:
+    """DB 집계의 실제 기간값을 Evidence에 쓸 일관된 표기로 바꾼다."""
+
+    raw = str(value)
+    if precision == "day" and len(raw) >= 8 and raw[:8].isdigit():
+        return f"{raw[:4]}-{raw[4:6]}-{raw[6:8]}"
+    if precision == "month" and len(raw) >= 6 and raw[:6].isdigit():
+        return f"{raw[:4]}-{raw[4:6]}"
+    return raw[:4] if precision == "year" and len(raw) >= 4 else raw
+
+
 class KomisRawDataRepository:
     """`public.KO_*` 페이지 단위 원천 데이터셋 읽기 전용 리포지토리.
 
@@ -569,6 +584,7 @@ class KomisRawDataRepository:
             column_labels=column_labels,
             row_count=len(rows),
             rows=rows,
+            metadata={"period_range_complete": not apply_limit},
         )
 
     def close(self) -> None:
@@ -620,6 +636,244 @@ class KomisRawDataRepository:
         )
         return [str(value) for value in frame["hs_cd"]]
 
+    def fetch_monthly_trade_summary(
+        self, *, hs_codes: list[str], start_period: str | None, end_period: str | None,
+    ) -> RawDataset:
+        """HS 모집단의 한국 수입을 월별 금액·중량으로 집계한다.
+
+        ``KO_CSTM_CMMRC``의 기준일은 일/월 혼재 가능하므로 월 키를
+        ``LEFT(CRTR_YMD, 6)``으로 명시한다. 미래월을 0으로 채우지 않고 실제
+        관측된 월만 반환한다. 명시 HS 질의도 호출자가 한 코드만 넘겨 이 메서드로
+        처리하므로, 광종 HS 묶음과 혼동되지 않는다.
+        """
+
+        if not hs_codes:
+            raise RawDataAccessError("월별 수입 집계에는 hs_codes가 최소 1개 필요합니다.")
+        conditions = [f"HS_CD IN ({', '.join(_literal(code) for code in hs_codes)})"]
+        if start_period:
+            conditions.append(f"CRTR_YMD >= {_literal(_coerce_period(start_period, 'day', False))}")
+        if end_period:
+            conditions.append(f"CRTR_YMD <= {_literal(_coerce_period(end_period, 'day', True))}")
+        where_clause = " AND ".join(conditions)
+        try:
+            frame = read_sql_pg(
+                f"SELECT LEFT(CRTR_YMD, 6) AS month, SUM(INCM_AMT) AS import_amount, "
+                f"SUM(INCM_WEIG) AS import_weight, COUNT(*) AS transaction_count "
+                f"FROM {KOMIS_SCHEMA}.KO_CSTM_CMMRC WHERE {where_clause} "
+                "GROUP BY LEFT(CRTR_YMD, 6) ORDER BY month"
+            )
+            summary = read_sql_pg(
+                f"SELECT MIN(CRTR_YMD) AS available_start, MAX(CRTR_YMD) AS available_end, "
+                "SUM(INCM_AMT) AS period_total_amount, SUM(INCM_WEIG) AS period_total_weight, "
+                "COUNT(*) AS period_transaction_count, "
+                "STRING_AGG(DISTINCT ITEM_NM, ', ' ORDER BY ITEM_NM) AS item_names "
+                f"FROM {KOMIS_SCHEMA}.KO_CSTM_CMMRC WHERE {where_clause}"
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise RawDataAccessError("월별 수입금액·중량 집계 조회에 실패했습니다.") from exc
+
+        rows = [
+            {
+                "month": _format_period_value(month, "month"),
+                "import_amount": _json_value(amount),
+                "import_weight": _json_value(weight),
+                "transaction_count": int(count),
+            }
+            for month, amount, weight, count in frame.itertuples(index=False, name=None)
+        ]
+        meta = summary.iloc[0] if not summary.empty else None
+        available_start = meta["available_start"] if meta is not None else None
+        available_end = meta["available_end"] if meta is not None else None
+        return RawDataset(
+            source_table="KO_CSTM_CMMRC",
+            columns=["month", "import_amount", "import_weight", "transaction_count"],
+            column_labels={
+                "month": "월", "import_amount": "수입금액합계(USD)",
+                "import_weight": "수입중량합계(kg)", "transaction_count": "거래건수",
+            },
+            row_count=len(rows), rows=rows,
+            as_of=(f"{_format_period_value(available_start, 'day')}~"
+                   f"{_format_period_value(available_end, 'day')}"
+                   if available_start is not None and available_end is not None else None),
+            unit="USD, kg",
+            metadata={
+                "hs_codes": list(hs_codes),
+                "item_names": meta["item_names"] if meta is not None else None,
+                "available_start": _format_period_value(available_start, "day") if available_start is not None else None,
+                "available_end": _format_period_value(available_end, "day") if available_end is not None else None,
+                "requested_start": start_period,
+                "requested_end": end_period,
+                "period_total_amount": _json_value(meta["period_total_amount"]) if meta is not None else None,
+                "period_total_weight": _json_value(meta["period_total_weight"]) if meta is not None else None,
+                "period_transaction_count": int(meta["period_transaction_count"]) if meta is not None and meta["period_transaction_count"] is not None else 0,
+            },
+        )
+
+    def fetch_explicit_hs_import_summary(
+        self, *, hs_code: str, start_period: str | None, end_period: str | None,
+    ) -> RawDataset:
+        """명시한 한 HS 코드의 수입 월별 집계 래퍼다.
+
+        광종→HS 매핑을 적용하지 않는다. 따라서 사용자가 지정한 HS와 광종 전체
+        HS 모집단을 구별해야 하는 Q14 같은 질의에서 안전하다.
+        """
+
+        dataset = self.fetch_monthly_trade_summary(
+            hs_codes=[hs_code], start_period=start_period, end_period=end_period,
+        )
+        return dataset.model_copy(update={"metadata": {
+            "scope": "explicit_hs_only", "hs_code": hs_code,
+            **dataset.metadata,
+        }})
+
+    def fetch_price_comparison(
+        self, *, mineral_names: list[str], start_period: str | None, end_period: str | None,
+    ) -> RawDataset:
+        """선택 광종의 대표 가격기준을 공통 실제 가용기간에서 비교한다.
+
+        가격기준마다 시작·종료일이 달라 각 광종의 최초/최종 행을 바로 비교하면
+        기간이 달라진다. 먼저 광종별 가용범위를 구하고 그 교집합을 계산한 뒤,
+        그 범위의 시계열과 양 끝 가격·변동률을 함께 반환한다. ``PRC_UNIT_CD``와
+        ``WEIG_UNIT_CD``도 결과에 유지해 서로 다른 통화·중량 기준의 가격을
+        절대값으로 순위화하지 못하게 한다.
+        """
+
+        if not mineral_names:
+            raise RawDataAccessError("가격 비교에는 mineral_names가 최소 1개 필요합니다.")
+        # 질문 표현(구리 등)과 ai_mnrl_mst 정본명(동 등)을 맞춘다. 결과에는
+        # 사용자가 요청한 표현을 복원해 표·차트에서 광종이 사라진 것처럼 보이지
+        # 않게 한다.
+        requested_by_canonical = {
+            _MINERAL_SYNONYMS.get(name, name): name
+            for name in mineral_names
+        }
+        names = ", ".join(_literal(name) for name in requested_by_canonical)
+        requested_conditions: list[str] = ["p.status = 'Y'", "p.last_del_dt IS NULL", "p.cmerc_prc IS NOT NULL"]
+        if start_period:
+            requested_conditions.append(
+                f"p.crtr_ymd >= {_literal(_coerce_period(start_period, 'day', False))}"
+            )
+        if end_period:
+            requested_conditions.append(
+                f"p.crtr_ymd <= {_literal(_coerce_period(end_period, 'day', True))}"
+            )
+        price_where = " AND ".join(requested_conditions)
+        try:
+            criteria = read_sql_pg(f"""
+                WITH candidate_criteria AS (
+                    SELECT ms.mnrl_nm_ko AS mineral, pm.mnrl_prc_crtr_sn AS serial,
+                           c.prc_crtr, c.prc_unit_cd, c.weig_unit_cd,
+                           MIN(p.crtr_ymd) AS available_start, MAX(p.crtr_ymd) AS available_end
+                    FROM {KOMIS_SCHEMA}.ai_prc_mnrl_map pm
+                    JOIN {KOMIS_SCHEMA}.ai_mnrl_mst ms ON ms.mnrknd_unq_cd = pm.mnrknd_unq_cd
+                    JOIN {KOMIS_SCHEMA}.KO_MNRL_PRC_CRTR c ON c.mnrl_prc_crtr_sn = pm.mnrl_prc_crtr_sn
+                    JOIN {KOMIS_SCHEMA}.KO_MNRL_PRC p ON p.mnrl_prc_crtr_sn = pm.mnrl_prc_crtr_sn
+                    WHERE pm.use_yn = 'Y' AND ms.mnrl_nm_ko IN ({names}) AND {price_where}
+                    GROUP BY ms.mnrl_nm_ko, pm.mnrl_prc_crtr_sn, c.prc_crtr, c.prc_unit_cd, c.weig_unit_cd
+                ), ranked_criteria AS (
+                    SELECT *,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY mineral
+                               ORDER BY serial
+                           ) AS criterion_rank
+                    FROM candidate_criteria
+                )
+                SELECT rc.mineral, rc.serial, rc.prc_crtr, rc.prc_unit_cd, rc.weig_unit_cd,
+                       rc.available_start, rc.available_end
+                FROM ranked_criteria rc
+                WHERE rc.criterion_rank = 1
+                ORDER BY rc.mineral
+            """)
+        except Exception as exc:  # noqa: BLE001
+            raise RawDataAccessError("광종 간 가격 비교의 가용기간 조회에 실패했습니다.") from exc
+
+        if criteria.empty:
+            return RawDataset(source_table="KO_MNRL_PRC", columns=[], row_count=0, rows=[], metadata={
+                "requested_start": start_period, "requested_end": end_period,
+                "missing_minerals": list(mineral_names),
+            })
+        available = criteria.dropna(subset=["available_start", "available_end"])
+        found = set(str(value) for value in available["mineral"])
+        common_start = max(str(value) for value in available["available_start"])
+        common_end = min(str(value) for value in available["available_end"])
+        if common_start > common_end:
+            raise RawDataAccessError("선택 광종의 가격 가용기간에 공통 구간이 없습니다.")
+        serials = ", ".join(_literal(int(value)) for value in available["serial"])
+        try:
+            series = read_sql_pg(f"""
+                SELECT ms.mnrl_nm_ko AS mineral, p.crtr_ymd AS price_date, p.cmerc_prc AS price,
+                       pm.mnrl_prc_crtr_sn AS price_criterion_serial, c.prc_crtr AS price_criterion,
+                       c.prc_unit_cd AS price_currency_code, c.weig_unit_cd AS weight_unit_code
+                FROM {KOMIS_SCHEMA}.KO_MNRL_PRC p
+                JOIN {KOMIS_SCHEMA}.ai_prc_mnrl_map pm ON pm.mnrl_prc_crtr_sn = p.mnrl_prc_crtr_sn
+                JOIN {KOMIS_SCHEMA}.ai_mnrl_mst ms ON ms.mnrknd_unq_cd = pm.mnrknd_unq_cd
+                JOIN {KOMIS_SCHEMA}.KO_MNRL_PRC_CRTR c ON c.mnrl_prc_crtr_sn = pm.mnrl_prc_crtr_sn
+                WHERE p.status = 'Y' AND p.last_del_dt IS NULL AND p.cmerc_prc IS NOT NULL
+                  AND pm.use_yn = 'Y' AND pm.mnrl_prc_crtr_sn IN ({serials})
+                  AND p.crtr_ymd >= {_literal(common_start)} AND p.crtr_ymd <= {_literal(common_end)}
+                ORDER BY ms.mnrl_nm_ko, p.crtr_ymd
+            """)
+        except Exception as exc:  # noqa: BLE001
+            raise RawDataAccessError("광종 간 가격 시계열 조회에 실패했습니다.") from exc
+
+        rows = []
+        grouped: dict[str, list[dict[str, Any]]] = {}
+        for record in series.to_dict("records"):
+            row = {
+                "mineral": requested_by_canonical.get(str(record["mineral"]), str(record["mineral"])),
+                "price_date": _format_period_value(record["price_date"], "day"),
+                "price": _json_value(record["price"]),
+                "price_criterion_serial": _json_value(record["price_criterion_serial"]),
+                "price_criterion": record["price_criterion"],
+                "price_currency_code": record["price_currency_code"],
+                "weight_unit_code": record["weight_unit_code"],
+            }
+            rows.append(row)
+            grouped.setdefault(row["mineral"], []).append(row)
+        # 가용기간 교집합만으로는 휴장일·개별 결측 때문에 양 끝의 실제
+        # 관측일이 다를 수 있다. 비교 대상 모두에 존재하는 날짜의 교집합으로
+        # endpoint를 다시 고정해 변동률 분모·분자가 같은 날짜를 가리키게 한다.
+        date_sets = [{point["price_date"] for point in points} for points in grouped.values()]
+        common_dates = set.intersection(*date_sets) if date_sets else set()
+        if not common_dates:
+            raise RawDataAccessError("선택 광종의 가격 시계열에 공통 실제 관측일이 없습니다.")
+        common_actual_start, common_actual_end = min(common_dates), max(common_dates)
+        comparison = []
+        for mineral in sorted(grouped):
+            points = grouped[mineral]
+            by_date = {point["price_date"]: point for point in points}
+            first, last = by_date[common_actual_start], by_date[common_actual_end]
+            first_price, last_price = float(first["price"]), float(last["price"])
+            comparison.append({
+                "mineral": mineral, "start_date": first["price_date"], "start_price": first["price"],
+                "end_date": last["price_date"], "end_price": last["price"],
+                "pct_change": round((last_price - first_price) / first_price * 100, 2) if first_price else None,
+                "price_criterion": first["price_criterion"],
+                "price_currency_code": first["price_currency_code"], "weight_unit_code": first["weight_unit_code"],
+            })
+        return RawDataset(
+            source_table="KO_MNRL_PRC",
+            columns=["mineral", "price_date", "price", "price_criterion", "price_currency_code", "weight_unit_code"],
+            column_labels={
+                "mineral": "광종", "price_date": "가격일자", "price": "통상가격",
+                "price_criterion": "가격기준", "price_currency_code": "가격통화코드",
+                "weight_unit_code": "중량단위코드",
+            },
+            row_count=len(rows), rows=rows,
+            as_of=f"{common_actual_start}~{common_actual_end}",
+            metadata={
+                "comparison": comparison, "common_available_start": _format_period_value(common_start, "day"),
+                "common_available_end": _format_period_value(common_end, "day"),
+                "common_actual_start": common_actual_start, "common_actual_end": common_actual_end,
+                "requested_start": start_period, "requested_end": end_period,
+                "missing_minerals": [
+                    name for name in mineral_names
+                    if _MINERAL_SYNONYMS.get(name, name) not in found
+                ],
+                "resolved_mineral_names": requested_by_canonical,
+            },
+        )
+
     def fetch_country_ranking(
         self, *, page_id: str, hs_codes: list[str], metric: str,
         start_period: str | None, end_period: str | None, top_n: int = 5,
@@ -660,13 +914,17 @@ class KomisRawDataRepository:
                 f" GROUP BY {country_column} ORDER BY total DESC NULLS LAST LIMIT {int(top_n)}"
             )
             total_frame = read_sql_pg(
-                f"SELECT SUM({metric_column}) AS grand_total FROM {KOMIS_SCHEMA}.{table} WHERE {where_clause}"
+                f"SELECT SUM({metric_column}) AS grand_total, "
+                f"MIN({period_column}) AS period_start, MAX({period_column}) AS period_end "
+                f"FROM {KOMIS_SCHEMA}.{table} WHERE {where_clause}"
             )
         except Exception as exc:  # noqa: BLE001 — 원본과 같은 사용자 노출 메시지
             raise RawDataAccessError("국가별 랭킹 조회에 실패했습니다.") from exc
 
         grand_total_value = total_frame["grand_total"].iloc[0] if not total_frame.empty else None
         grand_total = float(grand_total_value) if grand_total_value is not None else 0.0
+        period_start = total_frame["period_start"].iloc[0] if not total_frame.empty else None
+        period_end = total_frame["period_end"].iloc[0] if not total_frame.empty else None
 
         rows: list[dict[str, Any]] = []
         for rank, record in enumerate(frame.itertuples(index=False, name=None), start=1):
@@ -687,6 +945,82 @@ class KomisRawDataRepository:
                 "share_pct": "비중(%, 같은 기간·조건의 전체 국가 합계 대비)", "transaction_count": "거래건수",
             },
             row_count=len(rows), rows=rows,
+            as_of=(f"{_format_period_value(period_start, period_precision)}~"
+                   f"{_format_period_value(period_end, period_precision)}"
+                   if period_start is not None and period_end is not None else None),
+            unit=unit,
+            metadata={"grand_total": _json_value(grand_total_value), "metric": metric},
+        )
+
+    def fetch_country_concentration(
+        self, *, page_id: str, hs_codes: list[str], metric: str,
+        start_period: str | None, end_period: str | None,
+    ) -> RawDataset:
+        """전체 국가 모집단으로 교역 집중도(HHI)를 결정적으로 계산한다.
+
+        상위 5행 미리보기는 순위 표시에는 충분하지만 HHI의 분모·분자에는
+        쓸 수 없다. 이 메서드는 같은 HS/기간/수입·수출 조건에서 국가별 합계를
+        먼저 만든 뒤 그 **전체** 행으로 비중과 HHI를 계산한다.
+        """
+
+        spec = _RANKING_SPECS.get(page_id)
+        if spec is None or metric not in spec["metrics"]:
+            raise RawDataAccessError(f"'{page_id}'/{metric}은 국가 집중도 조회를 지원하지 않습니다.")
+        if not hs_codes:
+            raise RawDataAccessError("국가 집중도 조회에는 hs_codes가 최소 1개 필요합니다.")
+        conditions = [f"HS_CD IN ({', '.join(_literal(c) for c in hs_codes)})"]
+        direction_column = spec["direction_column"]
+        if direction_column:
+            conditions.append(f"{direction_column} = {_literal(spec['direction_values'][metric])}")
+        period_column = spec["period_column"]
+        period_precision = spec["period_precision"]
+        if start_period:
+            conditions.append(f"{period_column} >= {_literal(_coerce_period(start_period, period_precision, False))}")
+        if end_period:
+            conditions.append(f"{period_column} <= {_literal(_coerce_period(end_period, period_precision, True))}")
+        where_clause = " AND ".join(conditions)
+        table = spec["table"]
+        country_column = spec["country_column"]
+        metric_column = spec["metrics"][metric]
+        try:
+            frame = read_sql_pg(
+                f"SELECT {country_column} AS country, SUM({metric_column}) AS total "
+                f"FROM {KOMIS_SCHEMA}.{table} WHERE {where_clause} "
+                f"GROUP BY {country_column} ORDER BY total DESC NULLS LAST"
+            )
+            period_frame = read_sql_pg(
+                f"SELECT MIN({period_column}) AS period_start, MAX({period_column}) AS period_end "
+                f"FROM {KOMIS_SCHEMA}.{table} WHERE {where_clause}"
+            )
+        except Exception as exc:  # noqa: BLE001
+            raise RawDataAccessError("국가 집중도 조회에 실패했습니다.") from exc
+
+        totals = [float(row[1]) for row in frame.itertuples(index=False, name=None) if row[1] is not None]
+        grand_total = sum(totals)
+        hhi = round(sum((value / grand_total * 100) ** 2 for value in totals), 2) if grand_total else None
+        rows = [
+            {"country": country, "total": _json_value(total),
+             "share_pct": round(float(total) / grand_total * 100, 4) if total is not None and grand_total else None}
+            for country, total in frame.itertuples(index=False, name=None)
+        ]
+        period_start = period_frame["period_start"].iloc[0] if not period_frame.empty else None
+        period_end = period_frame["period_end"].iloc[0] if not period_frame.empty else None
+        metric_label, unit = _RANKING_METRIC_LABELS[metric]
+        return RawDataset(
+            source_table=table, columns=["country", "total", "share_pct"],
+            column_labels={
+                "country": "국가", "total": f"{metric_label}합계({unit})",
+                "share_pct": "비중(%, 전체 국가 합계 대비)",
+            },
+            row_count=len(rows), rows=rows,
+            as_of=(f"{_format_period_value(period_start, period_precision)}~"
+                   f"{_format_period_value(period_end, period_precision)}"
+                   if period_start is not None and period_end is not None else None),
+            unit=unit,
+            metadata={
+                "grand_total": _json_value(grand_total), "hhi": hhi,
+                "formula": "Σ(국가별 비중[%]^2)", "metric": metric,
+            },
         )
 
     def fetch_mineral_country_ranking(
@@ -757,13 +1091,17 @@ class KomisRawDataRepository:
                 f" ORDER BY total DESC NULLS LAST LIMIT {int(top_n)}"
             )
             total_frame = read_sql_pg(
-                f"SELECT SUM(t.{metric_column}) AS grand_total FROM {KOMIS_SCHEMA}.{table} t WHERE {where_clause}"
+                f"SELECT SUM(t.{metric_column}) AS grand_total, "
+                f"MIN(t.{period_column}) AS period_start, MAX(t.{period_column}) AS period_end "
+                f"FROM {KOMIS_SCHEMA}.{table} t WHERE {where_clause}"
             )
         except Exception as exc:  # noqa: BLE001 — 원본과 같은 사용자 노출 메시지
             raise RawDataAccessError("매장량/생산량 국가별 랭킹 조회에 실패했습니다.") from exc
 
         grand_total_value = total_frame["grand_total"].iloc[0] if not total_frame.empty else None
         grand_total = float(grand_total_value) if grand_total_value is not None else 0.0
+        period_start = total_frame["period_start"].iloc[0] if not total_frame.empty else None
+        period_end = total_frame["period_end"].iloc[0] if not total_frame.empty else None
 
         rows: list[dict[str, Any]] = []
         for rank, record in enumerate(frame.itertuples(index=False, name=None), start=1):
@@ -784,6 +1122,11 @@ class KomisRawDataRepository:
                 "share_pct": "비중(%, 같은 기간·조건의 전체 국가 합계 대비)", "record_count": "레코드건수",
             },
             row_count=len(rows), rows=rows,
+            as_of=(f"{_format_period_value(period_start, 'year')}~"
+                   f"{_format_period_value(period_end, 'year')}"
+                   if period_start is not None and period_end is not None else None),
+            unit="톤",
+            metadata={"grand_total": _json_value(grand_total_value), "metric": metric},
         )
 
     def fetch_price_volatility_ranking(
@@ -804,6 +1147,41 @@ class KomisRawDataRepository:
         `mineral_names`(한글명 리스트)가 있으면 그 광종들만 비교(예: "니켈과
         리튬 중"), 없으면 가격 매핑이 있는 전 광종을 대상으로 상위 N개
         랭킹("가격이 가장 많이 움직인 광종은?")."""
+
+        # 명시 광종 비교는 2026-09-21부터 공통 실제 가용구간을 강제한다.
+        # 아래의 기존 전체 광종 랭킹은 서로 공통 기간이 없는 광종까지 포함할 수
+        # 있어 대표 질문(명시 광종 비교)과 계약이 다르므로 호환 경로로만 남긴다.
+        if mineral_names:
+            comparison_dataset = self.fetch_price_comparison(
+                mineral_names=mineral_names,
+                start_period=start_period,
+                end_period=end_period,
+            )
+            candidates = sorted(
+                comparison_dataset.metadata.get("comparison", []),
+                key=lambda row: abs(row["pct_change"]) if row["pct_change"] is not None else -1,
+                reverse=True,
+            )[:max(1, int(top_n))]
+            rows = [
+                {
+                    "rank": rank,
+                    "mineral": row["mineral"],
+                    "first_date": row["start_date"], "first_price": row["start_price"],
+                    "last_date": row["end_date"], "last_price": row["end_price"],
+                    "pct_change": row["pct_change"],
+                }
+                for rank, row in enumerate(candidates, start=1)
+            ]
+            return RawDataset(
+                source_table="KO_MNRL_PRC",
+                columns=["rank", "mineral", "first_date", "first_price", "last_date", "last_price", "pct_change"],
+                column_labels={
+                    "rank": "순위", "mineral": "광종", "first_date": "시작일자", "first_price": "시작가격",
+                    "last_date": "종료일자", "last_price": "종료가격", "pct_change": "변동률(%)",
+                },
+                row_count=len(rows), rows=rows, as_of=comparison_dataset.as_of,
+                metadata={**comparison_dataset.metadata, "ranking_order": "absolute_pct_change_desc"},
+            )
 
         name_filter = ""
         if mineral_names:

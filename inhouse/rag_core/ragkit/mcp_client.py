@@ -266,8 +266,15 @@ class _ProfileSession:
         data = self._call("hybrid_search", {"query": query, "k": k})["evidence"]
         return [Evidence(**d) for d in data]
 
-    def call_pageindex_lookup(self, query: str, *, node_limit: int, with_text: bool = True) -> list[Evidence]:
-        data = self._call("pageindex_lookup", {"query": query, "node_limit": node_limit, "with_text": with_text})
+    def call_pageindex_lookup(
+        self, query: str, *, doc: str | None = None, node_limit: int, with_text: bool = True,
+        body_fallback: bool = False, body_query: str | None = None,
+    ) -> list[Evidence]:
+        data = self._call("pageindex_lookup", {
+            "query": query, "doc": doc, "node_limit": node_limit, "with_text": with_text,
+            "body_fallback": body_fallback,
+            "body_query": body_query,
+        })
         return [Evidence(**d) for d in data["nodes"]]
 
     def call_pageindex_agentic(
@@ -286,7 +293,7 @@ class _ProfileSession:
         price_criterion_serial: int | None = None,
         start_period: str | None = None,
         end_period: str | None = None,
-        limit: int = 5,
+        limit: int | None = None,
     ) -> tuple[list[Evidence], list[str]]:
         """KOMIS 공개원천(public.KO_*) 원자료 조회 — 2026-08-31 추가. warnings에
         더미데이터 경고(§_mcp_tools_common.py::komis_raw_lookup)가 실릴 수 있다.
@@ -294,14 +301,14 @@ class _ProfileSession:
         직접 조회해 한글명으로 채운다(2026-09-01, 한때 별도 `mineral_label`
         파라미터가 있었으나 이미 있는 코드↔한글명 테이블과 중복이라 없앴다)."""
 
-        data = self._call(
-            "komis_raw_lookup",
-            {
-                "page_id": page_id, "mineral_code": mineral_code, "hs_code": hs_code,
-                "index_type_code": index_type_code, "price_criterion_serial": price_criterion_serial,
-                "start_period": start_period, "end_period": end_period, "limit": limit,
-            },
-        )
+        arguments = {
+            "page_id": page_id, "mineral_code": mineral_code, "hs_code": hs_code,
+            "index_type_code": index_type_code, "price_criterion_serial": price_criterion_serial,
+            "start_period": start_period, "end_period": end_period,
+        }
+        if limit is not None:
+            arguments["limit"] = limit
+        data = self._call("komis_raw_lookup", arguments)
         return [Evidence(**d) for d in data["evidence"]], data["warnings"]
 
     def call_komis_country_ranking(
@@ -328,6 +335,61 @@ class _ProfileSession:
         )
         return [Evidence(**d) for d in data["evidence"]], data["warnings"]
 
+    def call_komis_country_concentration(
+        self, mineral_code: str, *, page_id: str = "map_korea", metric: str = "import_amount",
+        start_period: str | None = None, end_period: str | None = None,
+    ) -> tuple[list[Evidence], list[str]]:
+        """전체 국가 모집단을 기준으로 계산한 교역 집중도(HHI) 조회."""
+
+        data = self._call(
+            "komis_country_concentration",
+            {
+                "mineral_code": mineral_code, "page_id": page_id, "metric": metric,
+                "start_period": start_period, "end_period": end_period,
+            },
+        )
+        return [Evidence(**d) for d in data["evidence"]], data["warnings"]
+
+    def call_komis_monthly_trade_summary(
+        self, *, mineral_code: str | None = None, hs_code: str | None = None,
+        start_period: str | None = None, end_period: str | None = None,
+        compare_year: str | None = None, metric: str | None = None,
+    ) -> tuple[list[Evidence], list[str]]:
+        # ActionSlots/Route는 ISO period를 보존한다. KO_CSTM_CMMRC tool의
+        # day filter만 YYYYMMDD를 요구하므로 MCP 경계에서만 변환한다.
+        def tool_period(value: str | None) -> str | None:
+            return value.replace("-", "") if value else None
+        data = self._call("komis_monthly_trade_summary", {
+            "mineral_code": mineral_code, "hs_code": hs_code,
+            "start_period": tool_period(start_period), "end_period": tool_period(end_period),
+            "compare_year": compare_year, "metric": metric,
+        })
+        return [Evidence(**d) for d in data["evidence"]], data["warnings"]
+
+    def call_komis_explicit_hs_import_summary(
+        self, hs_code: str, *, start_period: str | None = None,
+        end_period: str | None = None,
+    ) -> tuple[list[Evidence], list[str]]:
+        data = self._call("komis_explicit_hs_import_summary", {
+            "hs_code": hs_code, "start_period": start_period, "end_period": end_period,
+        })
+        return [Evidence(**d) for d in data["evidence"]], data["warnings"]
+
+    def call_komis_price_comparison(
+        self, mineral_names: list[str], *, start_period: str | None = None,
+        end_period: str | None = None, window_months: int | None = None,
+    ) -> tuple[list[Evidence], list[str]]:
+        # ActionSlots/Route는 ISO 날짜를 보존한다. KO_MNRL_PRC의 일자 필터는
+        # YYYYMMDD만 허용하므로 monthly trade와 같은 MCP 경계에서 변환한다.
+        def tool_period(value: str | None) -> str | None:
+            return value.replace("-", "") if value else None
+        data = self._call("komis_price_comparison", {
+            "mineral_names": mineral_names,
+            "start_period": tool_period(start_period), "end_period": tool_period(end_period),
+            "window_months": window_months,
+        })
+        return [Evidence(**d) for d in data["evidence"]], data["warnings"]
+
     def call_komis_mineral_ranking(
         self,
         mineral_code: str,
@@ -336,6 +398,7 @@ class _ProfileSession:
         start_period: str | None = None,
         end_period: str | None = None,
         top_n: int = 5,
+        share_only: bool = False,
     ) -> tuple[list[Evidence], list[str]]:
         """매장량/생산량 국가별 상위 N개(결정적 GROUP BY, 2026-09-18 추가) —
         "매장량 1위 국가" 같은 질문 전용. `call_komis_country_ranking`(교역)과
@@ -347,6 +410,7 @@ class _ProfileSession:
             {
                 "mineral_code": mineral_code, "metric": metric,
                 "start_period": start_period, "end_period": end_period, "top_n": top_n,
+                "share_only": share_only,
             },
         )
         return [Evidence(**d) for d in data["evidence"]], data["warnings"]

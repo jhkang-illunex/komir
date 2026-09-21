@@ -35,7 +35,8 @@ import sys
 import threading
 from collections import defaultdict
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+from datetime import date
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Literal
@@ -139,6 +140,8 @@ def default_basis(metric: str) -> Literal["ore", "metal"]:
     ore(PRD §4.4-1)."""
 
     m = (metric or "").lower()
+    if "매장량" in (metric or "") or "reserve" in m or "resource" in m:
+        return "ore"
     if "광석" in (metric or "") or "ore" in m:
         return "ore"
     return "metal"
@@ -205,11 +208,15 @@ class MineYearValue(BaseModel):
     value: float | None = None
     unit: str | None = None
     basis: Literal["ore", "metal", "concentrate", "payable", "unknown"] = "unknown"
+    # 표의 Q4·반기·연간 열을 같은 연도로 뭉치지 않기 위한 원문 기간 종류.
+    # 추출기가 명시하지 않으면 unknown으로 남겨 증가량 비교에서 제외한다.
+    period_kind: Literal["annual", "quarter", "other", "unknown"] = "unknown"
 
 
 class MineRecord(BaseModel):
     mine: str
     company: str | None = None
+    country: str | None = None
     values: list[MineYearValue] = Field(default_factory=list)
     # 2026-09-17 실측 — LLM이 이 필드를 종종 명시적으로 null로 채워 매 호출마다
     # pydantic 검증 실패→복구 재시도 왕복이 발생했다(값 자체는 맞았는데 타입만
@@ -220,10 +227,14 @@ class MineRecord(BaseModel):
 class DocExtraction(BaseModel):
     found: bool
     mines: list[MineRecord] = Field(default_factory=list)
+    # `_extract_from_tree`가 실제 metric excerpt의 표 구조를 보고 결정한다.
+    # LLM 출력값이 아니라 원문 발췌문 검사용 내부 플래그다.
+    period_header_ambiguous: bool = False
 
 
 _EXTRACT_PROMPT = """다음은 광산 기업 공시자료(연차보고서·생산보고서·기술보고서
-등)에서 발췌한 본문(payload.excerpt)이다. 요청된 광종(payload.mineral)의
+등)에서 발췌한 본문(payload.excerpt)이다. payload.location_context는 소재국
+확인용 문서 앞부분이며 그 안의 수치는 추출하지 않는다. 요청된 광종(payload.mineral)의
 요청된 지표(payload.metric)에 해당하는 값을 찾아 정확히 스키마대로만 답한다.
 설명·코드펜스·사고과정은 출력하지 않는다.
 
@@ -251,14 +262,25 @@ _EXTRACT_PROMPT = """다음은 광산 기업 공시자료(연차보고서·생�
    없으면 포함하지 않는다(2-1과 같은 원칙: 과다 포함보다 누락이 안전하다).
 4. 같은 광산이라도 연도별 값이 여러 개면 values 배열에 문서에 있는 연도를
    전부 담는다(하나만 있으면 하나만).
+4-1. country는 해당 개별 광산의 국가가 발췌문 또는 문서 앞부분의 위치 정보에
+   명시된 경우에만 적는다. 본사 소재지나 회사 국적을 광산 위치로 추정하지
+   않는다. Québec·Jujuy 등 주·도·지명은 국가가 아니다. 확인되지 않으면 null이다.
 5. unit은 원문 표기를 그대로 적는다(대소문자 포함, 예: t, kt, Mt, wmt, dmt,
    Mlb, klb, koz) — 다른 단위로 임의 변환해 적지 않는다.
 6. basis(수치의 성격)를 반드시 판단한다: 광석 자체의 채굴·처리량이면 "ore",
    함유 금속량(예: "t Cu", "contained metal", "payable metal"이 아닌 총
    금속함량)이면 "metal", 정광(concentrate)이면 "concentrate", 매입·지분
-   기준 물량(payable)이면 "payable", 판단 불가면 "unknown".
+   기준 물량(payable)이면 "payable", 판단 불가면 "unknown". 특히 리튬
+   매장량의 Mt 광석량·스포듀민 광석량은 품위(%)가 함께 적혀 있어도 ore다.
+   그 Mt 수치를 리튬 함유금속량으로 표시하지 않는다.
 7. year는 "게시일"이 아니라 그 수치가 가리키는 보고 대상 연도(회계연도)다 —
    둘이 다르면(예: 2026년 게시, 2025 회계연도 실적) 보고 대상 연도를 쓴다.
+7-1. period_kind는 **값이 놓인 바로 위 표 헤더**로 판정한다. Annual/FY/Year/연간
+     열의 실적만 annual, Q1~Q4·분기 열은 quarter, 반기·누계 등 다른 기간은
+     other로 적는다. 같은 표에 Q4 2024, Q1~Q4 2025, Annual 2024, Annual 2025가
+     함께 있으면 Q4 2024 값을 2024년 연간값으로 바꾸지 않는다. 증가량 비교에
+     쓸 annual 값은 연간 헤더와 정확히 연결된 셀만 values에 넣고, 헤더 연결을
+     확인할 수 없으면 period_kind=unknown으로 둔다.
 8. **전망치·목표치(guidance)는 실적이 아니다 — mines에 넣지 않는다.** "FY26e"·
    "expected to produce"·"guidance"·"targeting"·"medium-term"처럼 아직
    실현되지 않은 예상·목표 범위로 표시된 수치는 제외한다(예: "FY26e 1,150 –
@@ -331,6 +353,21 @@ def _value_signal_count(text: str) -> int:
 
 def _has_value_table_signal(text: str) -> bool:
     return _value_signal_count(text) >= _VALUE_SIGNAL_MIN_COUNT
+
+
+def _has_ambiguous_quarter_annual_header(text: str) -> bool:
+    """분기와 무라벨 연간 열이 한 줄로 붕괴한 표를 증가 비교에서 제외한다.
+
+    PDF 변환 후 ``Q4 2024, Q1..Q4 2025, 2024, 2025`` 헤더와 행 값이 한 줄에
+    이어진 Rio Tinto 표처럼, 현재 LLM 추출 스키마에는 셀 좌표가 없어 각 값을
+    연간 열과 결정적으로 연결할 수 없다. 이 경우 Q4를 전년 연간으로 바꾸는
+    수치 오류보다 해당 문서를 증가량 비교에서 빼는 것이 안전하다.
+    """
+    normalized = re.sub(r"\s+", " ", text)
+    quarters = re.findall(r"\bQ[1-4]\s+20\d{2}\b", normalized, re.IGNORECASE)
+    # 마지막 Q 열 뒤에 무라벨 연도 두 개가 붙은 전형적인 분기+연간 혼합 헤더.
+    annual_tail = re.search(r"\bQ[1-4]\s+20\d{2}\s+20\d{2}\s+20\d{2}\b", normalized, re.IGNORECASE)
+    return len(quarters) >= 2 and annual_tail is not None
 
 
 def _keyword_windows(lines: list[str], metric_terms: tuple[str, ...], *, span: int = 40) -> list[str]:
@@ -408,6 +445,13 @@ def _extract_from_tree(
     text = _read_section_text(tree, metric_terms, max_chars=max_chars, mineral_hints=mineral_hints)
     if not text.strip():
         return DocExtraction(found=False, mines=[])
+    # 지표 절만 발췌하면 광산 소재국이 빠지는 보고서가 있다. 앞부분은 국가
+    # 확인에만 사용하고, 수치 추출은 기존 지표 절로 제한한다.
+    okf_file = Path(pageindex.OKF_DOCUMENTS_ROOT) / tree.get("okf_path", "")
+    try:
+        location_context = okf_file.read_text(encoding="utf-8")[:3000]
+    except OSError:
+        location_context = ""
     try:
         invocation = llm.invoke(
             task="mine_metric_extract", instructions=_EXTRACT_PROMPT,
@@ -416,10 +460,13 @@ def _extract_from_tree(
             # 다이아몬드·코발트가 한 표에 섞여 있었다) — max_tokens=1000이던 것도
             # El Teniente/Grasberg/Oyu Tolgoi처럼 광산 수가 많은 문서에서 JSON이
             # 중간에 잘려 복구 재시도까지 실패했다(회귀 확인) — 2500으로 재확보.
-            payload={"mineral": mineral_name, "metric": metric, "excerpt": text},
+            payload={"mineral": mineral_name, "metric": metric, "excerpt": text,
+                     "location_context": location_context},
             output_model=DocExtraction, max_tokens=2500,
         )
-        return invocation.output
+        extracted = invocation.output
+        extracted.period_header_ambiguous = _has_ambiguous_quarter_annual_header(text)
+        return extracted
     except LLM_TRANSIENT_ERRORS as exc:
         _logger.warning("mine_aggregate 추출 실패(%s): %s: %s", tree.get("okf_path"), type(exc).__name__, exc)
         return DocExtraction(found=False, mines=[])
@@ -463,7 +510,27 @@ def _run_extractions(
 # ---------------------------------------------------------------------------
 
 def _normalize_mine_name(name: str) -> str:
-    return re.sub(r"[\s\-_/()]+", "", (name or "").strip().lower())
+    key = re.sub(r"[\s\-_/()]+", "", (name or "").strip().lower())
+    for suffix in ("lithiumproject", "project", "mine"):
+        if key.endswith(suffix):
+            key = key[:-len(suffix)]
+            break
+    return {"nal": "northamericanlithium"}.get(key, key)
+
+
+_COUNTRY_ALIASES = {
+    "중국": "china", "中国": "china", "china": "china", "prc": "china",
+    "people's republic of china": "china", "중화인민공화국": "china",
+    "인도네시아": "indonesia", "indonesia": "indonesia",
+    "칠레": "chile", "chile": "chile", "호주": "australia", "australia": "australia",
+}
+
+
+def normalize_country(name: str | None) -> str | None:
+    if not name:
+        return None
+    key = re.sub(r"\s+", " ", name.strip().casefold())
+    return _COUNTRY_ALIASES.get(key, key)
 
 
 @dataclass
@@ -471,13 +538,21 @@ class Observation:
     mine_key: str
     mine_name: str
     company: str | None
-    year: int | None
-    value_raw: float
-    unit_raw: str | None
-    basis: str
-    value_tonnes: float | None
-    source_okf_path: str
-    source_resource: str
+    # 기존 광산 집계 호출자는 country·mineral을 만들지 않았다. 새 국가/광종
+    # 필터는 이를 선택 정보로 취급해 기존 관측 생성 계약을 유지한다.
+    country: str | None = None
+    mineral: str = ""
+    year: int | None = None
+    value_raw: float = 0.0
+    unit_raw: str | None = None
+    basis: str = "metal"
+    value_tonnes: float | None = None
+    source_okf_path: str = ""
+    source_resource: str = ""
+    period_kind: Literal["annual", "quarter", "other", "unknown"] = "annual"
+    start_year: int | None = None
+    start_value_tonnes: float | None = None
+    increase_tonnes: float | None = None
 
 
 #: 2026-09-17 실측(구리 라이브 검증) — 추출 프롬프트 규칙3-1(회사 전체 합계·
@@ -493,7 +568,7 @@ def _is_generic_mine_name(mine_key: str) -> bool:
     return any(marker in mine_key for marker in _GENERIC_MINE_NAME_MARKERS)
 
 
-def build_observations(extractions: list[tuple[dict, DocExtraction]]) -> list[Observation]:
+def build_observations(extractions: list[tuple[dict, DocExtraction]], mineral_name: str = "") -> list[Observation]:
     """`found=false`·값 없는 항목은 제외(PRD 단위테스트 항목). 회사 전체
     합계·불명 광산명("BHP Group"·"unknown" 등, 위 `_is_generic_mine_name`)도
     개별 광산 비교에 넣지 않는다."""
@@ -512,10 +587,12 @@ def build_observations(extractions: list[tuple[dict, DocExtraction]]) -> list[Ob
                 observations.append(
                     Observation(
                         mine_key=mine_key, mine_name=mine.mine, company=mine.company,
+                        country=mine.country, mineral=mineral_name,
                         year=entry.year, value_raw=entry.value, unit_raw=entry.unit,
                         basis=entry.basis,
                         value_tonnes=normalize_unit_to_tonnes(entry.value, entry.unit),
                         source_okf_path=tree.get("okf_path", ""), source_resource=tree.get("resource", ""),
+                        period_kind=entry.period_kind,
                     )
                 )
     return observations
@@ -527,11 +604,16 @@ class RankResult:
     excluded_notes: list[str]
     year_substituted: bool
     target_basis: str
+    order: str = "level"
+    since_year: int | None = None
+    country: str | None = None
 
 
 def rank_observations(
     observations: list[Observation], *, agg: Literal["max", "min", "rank", "compare"],
     target_basis: str, year: int | None = None, targets: list[str] | None = None,
+    since_year: int | None = None, country: str | None = None,
+    order: Literal["level", "increase"] = "level", top_n: int = 5,
 ) -> RankResult:
     """PRD §4.4-2 연도 규칙 ①②③ + §4.4-1 "같은 basis끼리만 순위"를 구현한다.
 
@@ -543,9 +625,16 @@ def rank_observations(
     ③지정 연도가 **어느 광산에도** 없으면 최신 연도로 전량 대체하고 그 사실을
       (year_substituted) 반환한다 — 호출부가 답변 첫 문장에 명시한다."""
 
-    by_mine: dict[str, list[Observation]] = defaultdict(list)
+    if order == "increase" and year is not None:
+        raise ValueError("증가 순위에는 단일 연도를 지정할 수 없음")
+    country_key = normalize_country(country)
+    by_mine: dict[tuple[str, str], list[Observation]] = defaultdict(list)
     for obs in observations:
-        by_mine[obs.mine_key].append(obs)
+        if country_key and normalize_country(obs.country) != country_key:
+            continue
+        if since_year is not None and (obs.year is None or obs.year < since_year or obs.year > date.today().year):
+            continue
+        by_mine[(obs.mineral, obs.mine_key)].append(obs)
 
     year_substituted = False
     if year is not None:
@@ -553,7 +642,7 @@ def rank_observations(
 
     excluded_notes: list[str] = []
     chosen: list[Observation] = []
-    for mine_key, obs_list in by_mine.items():
+    for _, obs_list in by_mine.items():
         basis_matched = [o for o in obs_list if o.basis == target_basis]
         for o in obs_list:
             if o.basis != target_basis:
@@ -562,6 +651,20 @@ def rank_observations(
                     f"{target_basis} 비교에서 제외"
                 )
         if not basis_matched:
+            continue
+        if order == "increase":
+            annual = [o for o in basis_matched if o.period_kind == "annual"]
+            years = sorted({o.year for o in annual if o.year is not None and o.value_tonnes is not None})
+            if len(years) < 2:
+                excluded_notes.append(f"{basis_matched[0].mine_name}: 비교 가능한 연간 생산 실적 2개 미만")
+                continue
+            first = max((o for o in annual if o.year == years[0]), key=lambda o: o.value_tonnes or 0)
+            last = max((o for o in annual if o.year == years[-1]), key=lambda o: o.value_tonnes or 0)
+            delta = (last.value_tonnes or 0) - (first.value_tonnes or 0)
+            if delta <= 0:
+                continue
+            chosen.append(replace(last, start_year=first.year, start_value_tonnes=first.value_tonnes,
+                                  increase_tonnes=delta))
             continue
         if year is not None and not year_substituted:
             year_matched = [o for o in basis_matched if o.year == year]
@@ -593,13 +696,15 @@ def rank_observations(
                 excluded_notes.append(f"{t}: 비교 대상 광산을 찾지 못함(문서에 값 없음 또는 이름 불일치)")
         ranked = matched
     else:
-        ranked = sorted(chosen, key=lambda o: o.value_tonnes, reverse=(agg != "min"))
+        ranked = sorted(chosen, key=lambda o: (o.increase_tonnes if order == "increase" else o.value_tonnes) or 0,
+                        reverse=(agg != "min"))
         if agg in ("max", "min") and ranked:
             ranked = ranked[:1]
         elif agg == "rank":
-            ranked = ranked[:5]
+            ranked = ranked[:top_n]
 
-    return RankResult(ranked=ranked, excluded_notes=excluded_notes, year_substituted=year_substituted, target_basis=target_basis)
+    return RankResult(ranked=ranked, excluded_notes=excluded_notes, year_substituted=year_substituted,
+                      target_basis=target_basis, order=order, since_year=since_year, country=country)
 
 
 def render_evidence(
@@ -622,21 +727,40 @@ def render_evidence(
             lines.append(f"요청하신 {year}년 데이터가 확인된 문서에 없어, 광산별 최신 연도 값으로 대신 안내합니다.")
         top = result.ranked[0]
         agg_label = {"max": "최대", "min": "최소", "rank": "상위", "compare": "비교 대상"}[agg]
+        window = f"{result.since_year}년 이후 관측 " if result.since_year else ""
+        scope = f"{result.country} 소재 " if result.country else ""
         lines.append(
-            f"{mineral_name} {metric} {agg_label} — 1위: {top.mine_name}"
+            f"{window}{scope}{mineral_name} 개별 광산 {metric} {agg_label} — 1위: {top.mine_name}"
             f"{f'({top.company})' if top.company else ''}, {top.year}년 기준 "
-            f"{top.value_tonnes:,.0f} t({result.target_basis} 기준). "
+            f"{(top.increase_tonnes if result.order == 'increase' else top.value_tonnes):,.0f} t"
+            f"({result.target_basis} 기준{' 증가' if result.order == 'increase' else ''}). "
             f"(문서 {total_docs}건 중 값 확인 {found_docs}건)"
         )
         lines.append("")
-        lines.append("| 순위 | 광산 | 회사 | 연도 | 값(t, 정규화) | 원문 표기 | basis | 출처 |")
-        lines.append("|---|---|---|---|---|---|---|---|")
+        if result.order == "increase":
+            # 증가 순위에는 `rank_observations`가 원문 헤더로 annual 판정한
+            # 관측만 넣는다. 이 명시 표식은 호출 계층이 분기·누계 자료를
+            # annual-to-annual 답변으로 오인하지 않도록 하는 계약이다.
+            lines.append("기간 검증: 아래 증가 순위의 각 행은 원문에서 연간(annual/FY/Year/연간) 생산 실적으로 확인된 두 연도만 비교했습니다.")
+            lines.append("| 순위 | 광산 | 광종 | 국가 | 시작연도 | 시작값(t) | 끝연도 | 끝값(t) | 증가량(t) | basis | 출처 |")
+            lines.append("|---|---|---|---:|---:|---:|---:|---:|---:|---|---|")
+        else:
+            lines.append("| 순위 | 광산 | 광종 | 국가 | 회사 | 연도 | 값(t, 정규화) | 원문 표기 | basis | 출처 |")
+            lines.append("|---|---|---|---|---|---:|---:|---|---|---|")
         for i, obs in enumerate(result.ranked, 1):
-            lines.append(
-                f"| {i} | {obs.mine_name} | {obs.company or '-'} | {obs.year or '-'} | "
-                f"{obs.value_tonnes:,.0f} | {obs.value_raw:g}{obs.unit_raw or ''} | "
-                f"{obs.basis} | {obs.source_okf_path} |"
-            )
+            if result.order == "increase":
+                lines.append(
+                    f"| {i} | {obs.mine_name} | {obs.mineral or '-'} | {obs.country or '-'} | "
+                    f"{obs.start_year} | {obs.start_value_tonnes:,.0f} | {obs.year} | "
+                    f"{obs.value_tonnes:,.0f} | {obs.increase_tonnes:,.0f} | "
+                    f"{obs.basis} | {obs.source_okf_path} |"
+                )
+            else:
+                lines.append(
+                    f"| {i} | {obs.mine_name} | {obs.mineral or '-'} | {obs.country or '-'} | "
+                    f"{obs.company or '-'} | {obs.year or '-'} | {obs.value_tonnes:,.0f} | "
+                    f"{obs.value_raw:g}{obs.unit_raw or ''} | {obs.basis} | {obs.source_okf_path} |"
+                )
     if result.excluded_notes:
         lines.append("")
         lines.append(f"제외 목록({len(result.excluded_notes)}건, 기준 다름·해당 연도 없음·값 없음):")
@@ -647,7 +771,8 @@ def render_evidence(
         source=f"광산자료/{folder}(광산문서 {total_docs}건 실시간 집계)",
         section=f"{mineral_name} {metric} {agg}",
         text="\n".join(lines),
-        as_of=f"{year}년 지정" if year and not result.year_substituted else "광산별 최신 연도(표 참고)",
+        as_of=f"{year}년 지정" if year and not result.year_substituted else
+              (f"{result.since_year}년 이후 광산별 관측 연도(표 참고)" if result.since_year else "광산별 최신 연도(표 참고)"),
         unit="t",
     )
 
@@ -659,6 +784,10 @@ def aggregate_mine_metric(
     *,
     year: int | None = None,
     targets: list[str] | None = None,
+    since_year: int | None = None,
+    country: str | None = None,
+    order: Literal["level", "increase"] = "level",
+    top_n: int = 5,
     llm: KomirJsonLLM | None = None,
     on_status: Callable[..., None] | None = None,
     max_chars: int = 30_000,
@@ -667,35 +796,54 @@ def aggregate_mine_metric(
     dense·pageindex)와 나란히 ThreadPoolExecutor job으로 부른다. 반환 계약은
     다른 도구와 동일한 (evidence, warnings) 2-tuple."""
 
-    folder = resolve_mineral_folder(mineral_name)
-    if folder is None:
-        return [], [f"mine_aggregate_unknown_mineral:{mineral_name}"]
+    folder = resolve_mineral_folder(mineral_name) if mineral_name else None
+    if mineral_name and folder is None:
+        return [], [f"source_unavailable:mine_unknown_mineral:{mineral_name}"]
+    folders = [folder] if folder else list(MINERAL_FOLDER_ALIASES)
 
     try:
         all_trees = pageindex.load_trees(pageindex.TREES_ROOT)
     except pageindex.PageIndexError as exc:
         return [], [f"mine_aggregate_trees_unavailable:{exc}"]
-    prefix = f"{_MINES_OUT_DIRNAME}/{folder}/"
-    trees = [t for t in all_trees if t.get("okf_path", "").startswith(prefix)]
-    if not trees:
-        return [], [f"mine_aggregate_no_documents:{folder}"]
-
     llm = llm or KomirJsonLLM()
     metric_terms = metric_search_terms(metric)
-    mineral_hints = _MINERAL_ENGLISH_HINTS.get(folder, ())
     max_workers = get_settings().LLM_CONCURRENCY
-    extractions = _run_extractions(
-        trees, mineral_name, metric, metric_terms, llm, on_status, max_workers=max_workers, max_chars=max_chars,
-        mineral_hints=mineral_hints,
-    )
-
-    observations = build_observations(extractions)
-    found_docs = sum(1 for _, extraction in extractions if extraction.found)
+    observations: list[Observation] = []
+    found_docs = total_docs = 0
+    for current_folder in folders:
+        prefix = f"{_MINES_OUT_DIRNAME}/{current_folder}/"
+        trees = [t for t in all_trees if t.get("okf_path", "").startswith(prefix)]
+        total_docs += len(trees)
+        if not trees:
+            continue
+        current_mineral = "구리" if current_folder == "동_구리" else current_folder
+        extractions = _run_extractions(
+            trees, current_mineral, metric, metric_terms, llm, on_status,
+            max_workers=max_workers, max_chars=max_chars,
+            mineral_hints=_MINERAL_ENGLISH_HINTS.get(current_folder, ()),
+        )
+        if order == "increase":
+            # 연도별 증가량은 annual-to-annual 비교만 허용한다. 분기·연간 혼합
+            # 표는 현재 원문 셀 좌표를 보존하지 않아 안전하게 해석할 수 없다.
+            # 단, 문서 전체가 아니라 실제로 LLM에 준 metric 발췌문에서 혼합
+            # 헤더가 확인된 경우만 제외한다. 다른 절의 혼합 표 때문에 명확한
+            # 연간 생산 문단까지 버리지 않는다.
+            extractions = [(tree, extraction) for tree, extraction in extractions
+                           if not extraction.period_header_ambiguous]
+        observations.extend(build_observations(extractions, current_mineral))
+        found_docs += sum(1 for _, extraction in extractions if extraction.found)
+    if not total_docs:
+        return [], [f"source_unavailable:mine_no_documents:{mineral_name or 'all'}"]
     target_basis = default_basis(metric)
-    result = rank_observations(observations, agg=agg, target_basis=target_basis, year=year, targets=targets)
+    result = rank_observations(
+        observations, agg=agg, target_basis=target_basis, year=year, targets=targets,
+        since_year=since_year, country=country, order=order, top_n=top_n,
+    )
+    if not result.ranked:
+        return [], [f"source_unavailable:mine_no_comparable_values:{mineral_name or 'all'}"]
     evidence = render_evidence(
-        mineral_name=mineral_name, folder=folder, metric=metric, agg=agg, year=year,
-        result=result, total_docs=len(trees), found_docs=found_docs,
+        mineral_name=mineral_name or "전체 광종", folder=folder or "전체", metric=metric, agg=agg, year=year,
+        result=result, total_docs=total_docs, found_docs=found_docs,
     )
     return [evidence], []
 

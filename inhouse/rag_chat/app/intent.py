@@ -24,6 +24,18 @@ _logger = logging.getLogger(__name__)
 
 ROUTES = ("document", "page")
 
+
+def is_unverified_import_demand_forecast_menu(message: str) -> bool:
+    """등록되지 않은 '수입수요 예측' 메뉴를 인접 화면으로 추측하지 않는다.
+
+    요구사항은 경로를 확인할 수 없을 때 정해진 안내문을 내도록 한다. 현재
+    레지스트리에는 가격예측만 있고 수입수요 예측의 정식 page_id/URL은 없으므로,
+    이 표현을 포함한 메뉴 질문은 LLM 후보 추천 전에 결정적으로 처리한다.
+    """
+
+    normalized = "".join(message.casefold().split())
+    return "수입수요" in normalized and "예측" in normalized
+
 #: 2026-08-28(챗봇_룰준수_감사_260828.md 라운드3) — 기존 기준("화면·메뉴·경로를
 #: 찾는 질문이면 page")은 "어디서 봐?"류처럼 화면 위치를 명시적으로 묻는
 #: 질문만 page로 잡고, "최근 1년간 니켈 가격 추이를 보여줘"처럼 화면 위치는

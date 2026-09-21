@@ -26,6 +26,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import sys
 from functools import lru_cache
 from pathlib import Path
@@ -205,6 +206,27 @@ def get_tree(
     return None
 
 
+def _explicit_document_tree(doc: str, body_query: str | None, *, trees_root: Path | str,
+                            exclude_source_groups: frozenset[str]) -> dict[str, Any] | None:
+    """명시 lookup 전용으로 파일명 구분자까지 풀어 문서 하나를 고른다."""
+    trees = [tree for tree in load_trees(trees_root) if tree.get("source_group") not in exclude_source_groups]
+    words = [word.casefold() for word in re.findall(r"[A-Za-z0-9가-힣]+", f"{doc} {body_query or ''}")
+             if len(word) >= 3 and word not in {"보고서", "정리자료", "광산", "위치", "원문"}]
+    if not words:
+        return None
+    scored = []
+    for tree in trees:
+        haystack = " ".join(str(tree.get(key, "")).replace("_", " ").replace("-", " ")
+                            for key in ("title", "doc_name", "okf_path", "resource")).casefold()
+        score = sum(word in haystack for word in words)
+        if score:
+            scored.append((score, tree))
+    scored.sort(key=lambda item: (-item[0], item[1].get("okf_path", "")))
+    if not scored or (len(scored) > 1 and scored[0][0] == scored[1][0]):
+        return None
+    return scored[0][1]
+
+
 def iter_nodes(structure: list[dict[str, Any]], _path: tuple[str, ...] = ()):
     """트리를 깊이우선으로 펼치며 (노드, 상위제목 경로)를 낸다."""
 
@@ -348,6 +370,132 @@ def read_node_text(
     return "\n".join(lines[start:end]).strip()[:max_chars]
 
 
+def _document_body_fallback(
+    query: str, tree: dict[str, Any], *, max_chars: int = 1200,
+    okf_root: Path | str = OKF_DOCUMENTS_ROOT,
+) -> dict[str, Any] | None:
+    """명시 문서 안에서만 질의어가 가장 많이 겹치는 실제 본문 행을 읽는다.
+
+    제목·목차에 대상이 없어 node 검색이 0건인 경우의 좁은 보완이다. 호출자는
+    이미 ``doc``으로 하나의 접근 허용 트리를 확정했어야 하며, 본문에 질의어가
+    없으면 후보 메타데이터를 근거로 만들지 않고 None을 반환한다.
+    """
+    okf_path = Path(okf_root) / str(tree.get("okf_path", ""))
+    if not okf_path.is_file():
+        return None
+    lines = okf_path.read_text(encoding="utf-8").splitlines()
+    query_tokens = _tokens(query)
+    if not query_tokens:
+        return None
+    scored = [(_score(query_tokens, line), index) for index, line in enumerate(lines)]
+    # 동점은 문서 앞의 행을 고른다. 표의 "JV Inkai"와 "South Inkai"처럼
+    # 같은 토큰 수가 겹칠 때 뒤 행을 택하면 다른 광산 사실을 섞을 수 있다.
+    score, index = max(scored, key=lambda item: item[0], default=(0.0, -1))
+    selected_header: str | None = None
+    selected_columns: tuple[int, int] | None = None
+
+    # 문서 제목과 같은 일반어가 front matter에서 먼저 맞더라도, ``광산|위치``
+    # 표 안에 실제 대상 행이 있으면 그 행을 우선한다. 그래야 회사명 질의가
+    # 제목 행을 근거로 단일 광산처럼 보이는 일을 막을 수 있다.
+    table_candidates: list[tuple[float, int, str, int, int]] = []
+    for header_index, candidate_header in enumerate(lines):
+        if "광산" not in candidate_header or "위치" not in candidate_header or "|" not in candidate_header:
+            continue
+        header_cells = [cell.strip() for cell in candidate_header.strip("|").split("|")]
+        try:
+            mine_col = header_cells.index("광산")
+            location_col = header_cells.index("위치")
+        except ValueError:
+            continue
+        for row_index, row in enumerate(lines[header_index + 1:], header_index + 1):
+            if "|" not in row:
+                # 표 본문을 한 번 지난 뒤에는 다음 prose로 넘어간다.
+                if row_index > header_index + 1:
+                    break
+                continue
+            row_cells = [cell.strip() for cell in row.strip("|").split("|")]
+            if len(row_cells) <= mine_col or not row_cells[mine_col]:
+                continue
+            row_score = _score(query_tokens, row)
+            if row_score >= 0.5:
+                table_candidates.append((row_score, row_index, candidate_header, mine_col, location_col))
+    if table_candidates:
+        # 동점이면 앞 행을 택한다. 하나의 회사에 여러 광산이 있어도 그 사실은
+        # 아래 match_count로 보존하고, 서로 다른 행의 값을 섞지는 않는다.
+        score, index, selected_header, mine_col, location_col = max(
+            table_candidates, key=lambda item: (item[0], -item[1])
+        )
+        selected_columns = (mine_col, location_col)
+    # 한 글자 조사나 문서의 일반 제목만 겹친 경우에는 본문 사실로 취급하지 않는다.
+    if score < 0.5 or index < 0:
+        return None
+    # 광산 표는 인접 행이 모두 다른 광산이다. 선택 행과, 열 의미를 밝히는
+    # 가장 가까운 표 헤더만 남긴다. 이웃 광산 행은 절대 섞지 않는다.
+    header = selected_header or next((line for line in reversed(lines[:index])
+                   if "광산" in line and "위치" in line and "|" in line), None)
+    text = "\n".join([*( [header] if header else [] ), lines[index]]).strip()
+    # PDF 변환 한 줄이 길어도 대상 광산명이 있는 주변을 남긴다. 앞 1,200자만
+    # 자르면 Escondida처럼 같은 줄 뒤쪽의 사실("in Chile")이 사라진다.
+    anchors = sorted((word for word in re.findall(r"[A-Za-z0-9가-힣]+", query) if len(word) >= 3), key=len, reverse=True)
+    anchor_at = next((text.casefold().find(word.casefold()) for word in anchors if text.casefold().find(word.casefold()) >= 0), -1)
+    if len(text) > max_chars and anchor_at >= 0:
+        excerpt_start = max(0, anchor_at - max_chars // 3)
+        text = text[excerpt_start:excerpt_start + max_chars]
+    else:
+        text = text[:max_chars]
+    match_count = 1
+    if header:
+        header_cells = [cell.strip() for cell in header.strip("|").split("|")]
+        row_cells = [cell.strip() for cell in lines[index].strip("|").split("|")]
+        try:
+            mine_col, location_col = selected_columns or (header_cells.index("광산"), header_cells.index("위치"))
+        except ValueError:
+            mine_col = location_col = -1
+        if mine_col >= 0 and location_col >= 0 and len(row_cells) > max(mine_col, location_col):
+            mine_name = row_cells[mine_col]
+            # 위치 다음 열은 소유사 등 전혀 다른 필드일 수 있다. 두 값이 모두
+            # 숫자 좌표 형태일 때만 이어서 제시하고, 그 외에는 위치 첫 칸만 쓴다.
+            location_values = [row_cells[location_col]] if row_cells[location_col] else []
+            next_value = row_cells[location_col + 1] if len(row_cells) > location_col + 1 else ""
+            numeric = re.compile(r"^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$")
+            if location_values and next_value and numeric.fullmatch(location_values[0]) and numeric.fullmatch(next_value):
+                location_values.append(next_value)
+            if mine_name and location_values:
+                text += f"\n\n원문 표의 선택 행에서 {mine_name}의 위치 열 값은 {', '.join(location_values)}으로 기재되어 있다."
+            names: set[str] = set()
+            query_mentions = 0
+            header_index = lines.index(header)
+            for line in lines[header_index + 1:]:
+                if "|" not in line:
+                    break
+                cells = [cell.strip() for cell in line.strip("|").split("|")]
+                if len(cells) <= mine_col or not cells[mine_col]:
+                    continue
+                # 표의 바로 왼쪽 무제목 열에는 광상명이 따로 적히는 경우가 있다.
+                # 이 열과 '광산' 열만 합쳐 distinct 광산 행을 센다.
+                for candidate in (cells[mine_col - 1] if mine_col else "", cells[mine_col]):
+                    if candidate:
+                        names.add(candidate)
+                query_mentions += sum(query.strip().casefold() in cell.casefold() for cell in cells if query.strip())
+            query_name = query.strip().casefold()
+            title_mentions_query = query_name and query_name in str(tree.get("title", "")).casefold()
+            # 회사명은 문서 제목에는 있지만 표의 개별 광산명과 일치하지 않는다.
+            # 제목과 표 여러 행에서 반복되는 식별자는 단일 광산명이 아니므로,
+            # distinct 광산 행 수를 ambiguity metadata로 보존한다. 특정 광산명은
+            # 표에서 한 행만 맞아 기존 단건 경로를 유지한다.
+            match_count = len(names) if title_mentions_query and query_mentions >= 2 and len(names) >= 2 else 1
+    if not text:
+        return None
+    return {
+        "score": round(score, 3), "doc_id": tree.get("doc_id", ""),
+        "doc_title": tree.get("title", ""), "okf_path": tree.get("okf_path", ""),
+        "resource": tree.get("resource", ""), "node_id": f"body-line-{index + 1}",
+        "source_override": tree.get("okf_path", ""),
+        "title": "명시 문서 본문 행", "node_path": f"명시 문서 본문 {index + 1}행 (동일 식별자 행 {match_count}개)",
+        "line_num": index + 1, "body_line_offset": 0, "text": text,
+    }
+
+
 def lookup(
     query: str,
     *,
@@ -355,6 +503,8 @@ def lookup(
     doc_limit: int = 3,
     node_limit: int = 5,
     with_text: bool = True,
+    body_fallback: bool = False,
+    body_query: str | None = None,
     trees_root: Path | str = TREES_ROOT,
     exclude_source_groups: frozenset[str] = frozenset(),
 ) -> dict[str, Any]:
@@ -364,8 +514,11 @@ def lookup(
     `find_documents()`/`search_nodes()`와 동일 규약 — MCP public 프로필이 라이선스
     제한 소스를 걸러내는 지점(`shared.retrieval.access.PRIVATE_ONLY_SOURCE_GROUPS`)."""
 
+    target: dict[str, Any] | None = None
     if doc:
-        target = get_tree(doc, trees_root=trees_root)
+        target = _explicit_document_tree(
+            doc, body_query, trees_root=trees_root, exclude_source_groups=exclude_source_groups,
+        ) if body_fallback else get_tree(doc, trees_root=trees_root)
         if target is not None and target.get("source_group") in exclude_source_groups:
             target = None
         documents = [dict(_doc_meta(target), score=1.0)] if target else []
@@ -375,7 +528,7 @@ def lookup(
             exclude_source_groups=exclude_source_groups,
         )
     nodes = search_nodes(
-        query, doc=doc, doc_limit=doc_limit, node_limit=node_limit, trees_root=trees_root,
+        query, doc=(target.get("okf_path") if target is not None else doc), doc_limit=doc_limit, node_limit=node_limit, trees_root=trees_root,
         exclude_source_groups=exclude_source_groups,
     )
     if with_text:
@@ -385,6 +538,18 @@ def lookup(
         # 있는 "가짜 근거"가 되므로 여기서 걸러낸다(read_node_text가 이미
         # 그 경우를 경고 로그로 남긴 뒤다 — 위 read_node_text 참고).
         nodes = [hit for hit in nodes if hit["text"]]
+    # mine.profile처럼 문서 식별자는 없지만 public/private 필터 뒤 후보가 정확히
+    # 한 건인 경우도 같은 좁은 fallback을 허용한다. 후보가 둘 이상이면 어떤
+    # 문서의 행인지 추측하지 않는다.
+    fallback_target = target
+    if body_fallback and fallback_target is None and len(documents) == 1:
+        fallback_target = get_tree(documents[0]["okf_path"], trees_root=trees_root)
+    if body_fallback and with_text and fallback_target is not None:
+        fallback = _document_body_fallback(body_query or query, fallback_target)
+        if fallback is not None and not any(hit.get("line_num") == fallback["line_num"] for hit in nodes):
+            # 기존 목차 절도 보존하되, 특정 사실은 선택된 본문 행에서 먼저
+            # 확인할 수 있도록 fallback을 첫 근거로 둔다.
+            nodes = [fallback, *nodes]
     return {"query": query, "documents": documents, "nodes": nodes}
 
 

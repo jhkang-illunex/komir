@@ -60,12 +60,15 @@ def pageindex_lookup(
     doc_limit: int = 3,
     node_limit: int = 5,
     with_text: bool = True,
+    body_fallback: bool = False,
+    body_query: str | None = None,
 ) -> dict[str, Any]:
     """PageIndex(OKF 목차 트리) 결정적 단발조회 — {문서 후보, 관련 노드(+원문)}.
     라이선스 제한 소스(Argus) 포함 전체 트리 대상(필터 없음)."""
 
     result = pageindex.lookup(
         query, doc=doc, doc_limit=doc_limit, node_limit=node_limit, with_text=with_text,
+        body_fallback=body_fallback, body_query=body_query,
     )
     return {
         "documents": result["documents"],

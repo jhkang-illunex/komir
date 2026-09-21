@@ -119,12 +119,14 @@ from pydantic import BaseModel, Field  # noqa: E402
 from sse_starlette.sse import EventSourceResponse  # noqa: E402
 
 from rag_core.ragkit.chatbot import STATUS_STAGES, chat_turn  # noqa: E402
+from rag_core.ragkit.action_contract import extract_action_plan, validate_action_plan  # noqa: E402
+from common.llm_client import KomirJsonLLM  # noqa: E402
 
 from common.config import get_settings  # noqa: E402
 from common.llm_client import get_chat_client  # noqa: E402
 
 from .. import session_store  # noqa: E402
-from ..intent import classify_intent  # noqa: E402
+from ..intent import classify_intent, is_unverified_import_demand_forecast_menu  # noqa: E402
 from ..page_recommend.service import get_service as get_page_recommend_service  # noqa: E402
 from ..streaming import StrikethroughFilter, sse_event, strip_strikethrough  # noqa: E402
 
@@ -182,12 +184,19 @@ class ChatRequest(BaseModel):
 
 
 def _history_for_graph(session_id: str) -> list[dict]:
-    """직전 턴들의 role/content만 뽑아 그래프 입력 형태로 변환."""
-
-    return [
-        {"role": row["role"], "content": row["content"]}
-        for row in session_store.list_messages(session_id, limit=10)
-    ]
+    """직전 대화와 구조화된 기권 상태를 action planner에 전달한다."""
+    history = []
+    for row in session_store.list_messages(session_id, limit=10):
+        turn = {"role": row["role"], "content": row["content"]}
+        try:
+            payload = json.loads(row.get("citations_json") or "")
+            state = payload.get("rag_turn") if isinstance(payload, dict) else None
+            if isinstance(state, dict):
+                turn.update({key: state[key] for key in ("abstain_reason", "action_ids") if key in state})
+        except (TypeError, ValueError):
+            pass
+        history.append(turn)
+    return history
 
 
 def _load_page_state(session_id: str) -> dict | None:
@@ -233,7 +242,7 @@ def _drain_sync(async_gen):
         loop.close()
 
 
-def _run_document_qa(request: ChatRequest, session_id: str, profile: Literal["public", "private"]):
+def _run_document_qa(request: ChatRequest, session_id: str, profile: Literal["public", "private"], action_plan=None):
     """비정형+정형 혼합 문서 Q&A 경로 — 코어 로직(정형·dense·PageIndex 도구 선택+
     병렬조회를 위한 LangGraph 오케스트레이션·멀티턴 프롬프트·인용강제·표/차트
     다중매체 이벤트·세션저장)은 rag.ragkit.chatbot.chat_turn()에 있다(2026-08-13
@@ -255,6 +264,7 @@ def _run_document_qa(request: ChatRequest, session_id: str, profile: Literal["pu
         store_db_path=settings.MSR_DB,
         chat=get_chat_client(),
         profile=profile,
+        action_plan=action_plan,
     )
     # 2026-09-16(사용자 지시) — SSE로 나가기 직전 취소선 제거(streaming.py 주석
     # 참고). delta는 청크 경계를 넘어 판정해야 해서 상태 유지 필터, 비-delta
@@ -298,7 +308,7 @@ def _persistable_artifact(artifact: dict | None) -> dict | None:
     return {key: artifact[key] for key in kept if key in artifact}
 
 
-def _run_page_recommend(request: ChatRequest, session_id: str):
+def _run_page_recommend(request: ChatRequest, session_id: str, action_target: str | None = None, action_mineral: str | None = None):
     """KOMIS 페이지·필터 추천 경로."""
 
     # 히스토리·상태는 이번 질문을 저장하기 "전"에 읽어야 한다 — 먼저 저장하면
@@ -312,12 +322,13 @@ def _run_page_recommend(request: ChatRequest, session_id: str):
     yield _status_event(1)  # 질문 조건 확인
 
     try:
-        turn = get_page_recommend_service().recommend(
+        turn = (get_page_recommend_service().recommend_action_target(action_target, thread_id=session_id, mineral=action_mineral)
+                if action_target else get_page_recommend_service().recommend(
             request.message,
             thread_id=session_id,
             message_history=message_history,
             active_artifact=active_artifact,
-        )
+        ))
     except Exception:
         _logger.exception("page recommendation failed for session %s", session_id)
         try:
@@ -327,6 +338,8 @@ def _run_page_recommend(request: ChatRequest, session_id: str):
                 "페이지 추천을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.",
             )
         except Exception:
+            session_store.append_message(session_id, "user", request.message)
+            session_store.append_message(session_id, "assistant", "질문의 조건을 확인할 수 없어 현재 제공할 수 없습니다.")
             _logger.exception("could not persist page recommendation failure for session %s", session_id)
         yield sse_event({"code": "page_recommend_failed"}, event="error")
         yield sse_event(
@@ -380,6 +393,37 @@ def _run_page_recommend(request: ChatRequest, session_id: str):
     )
 
 
+def _run_unverified_menu_path(request: ChatRequest, session_id: str):
+    """레지스트리에 없는 수입수요 예측 메뉴는 추측 추천 없이 안내한다."""
+
+    answer = "요청하신 메뉴 경로를 확인하지 못했습니다. 상단 전체메뉴에서 확인해 주십시오."
+    session_store.append_message(session_id, "user", request.message)
+    session_store.append_message(
+        session_id,
+        "assistant",
+        answer,
+        citations_json=json.dumps(
+            {_PAGE_STATE_KEY: {"status": "not_found", "relation": "first_turn", "page_ids": []}},
+            ensure_ascii=False,
+        ),
+    )
+    yield sse_event({"session_id": session_id})
+    yield _status_event(1)
+    yield _status_event(4)
+    yield sse_event({"delta": answer})
+    yield sse_event(
+        {
+            "done": True,
+            "mode": "page",
+            "status": "not_found",
+            "relation": "first_turn",
+            "recommendations": [],
+            "warnings": ["unverified_menu_path"],
+        },
+        event="done",
+    )
+
+
 def _run_chat(request: ChatRequest, profile: Literal["public", "private"]):
     """제너레이터 — SSE로 그대로 넘긴다(테스트에서 list()로 직접 소비 가능).
 
@@ -396,11 +440,51 @@ def _run_chat(request: ChatRequest, profile: Literal["public", "private"]):
         return
 
     with _session_turn_lock(session_id):
-        mode = request.mode if request.mode in {"document", "page"} else classify_intent(request.message)
-        if mode == "page":
-            yield from _run_page_recommend(request, session_id)
+        try:
+            action_plan = extract_action_plan(
+                request.message, KomirJsonLLM(), history=_history_for_graph(session_id),
+            )
+            assessment = validate_action_plan(action_plan)
+        except Exception:
+            failure_message = "질문의 조건을 확인할 수 없어 현재 제공할 수 없습니다."
+            session_store.append_message(session_id, "user", request.message)
+            session_store.append_message(session_id, "assistant", failure_message)
+            yield sse_event({"session_id": session_id})
+            yield sse_event({"stage": 1, "label": STATUS_STAGES[1], "status": "조회실패",
+                             "failure_reason": "slot_unresolved"}, event="status")
+            yield sse_event({"delta": failure_message})
+            yield sse_event({"done": True, "abstained": True, "abstain_reason": "slot_unresolved"}, event="done")
             return
-        yield from _run_document_qa(request, session_id, profile)
+        if not assessment.approved:
+            failure_message = ("광물 관련 정보만 조회할 수 있습니다."
+                               if assessment.failure_reason == "out_of_scope"
+                               else "요청하신 정보는 현재 확인된 데이터 계약으로 제공할 수 없습니다.")
+            session_store.append_message(session_id, "user", request.message)
+            session_store.append_message(session_id, "assistant", failure_message)
+            yield sse_event({"session_id": session_id})
+            yield sse_event({"stage": 1, "label": STATUS_STAGES[1], "status": "조회실패",
+                             "failure_reason": assessment.failure_reason}, event="status")
+            yield sse_event({"delta": failure_message})
+            yield sse_event({"done": True, "abstained": True, "abstain_reason": assessment.failure_reason}, event="done")
+            return
+        action_page = any(call.action_id in {"menu.navigate", "dataset.navigate"} for call in action_plan.actions)
+        if request.mode in {"document", "page"} and (request.mode == "page") != action_page:
+            message = "요청 mode와 검증된 action 유형이 일치하지 않습니다."
+            session_store.append_message(session_id, "user", request.message)
+            session_store.append_message(session_id, "assistant", message)
+            yield sse_event({"session_id": session_id})
+            yield sse_event({"stage": 1, "label": STATUS_STAGES[1], "status": "조회실패",
+                             "failure_reason": "mode_action_conflict"}, event="status")
+            yield sse_event({"delta": message})
+            yield sse_event({"done": True, "abstained": True, "abstain_reason": "mode_action_conflict"}, event="done")
+            return
+        mode = "page" if action_page else "document"
+        if mode == "page":
+            page_call = next(call for call in action_plan.actions if call.action_id in {"menu.navigate", "dataset.navigate"})
+            yield from _run_page_recommend(request, session_id, action_target=page_call.slots.target_page or page_call.slots.dataset,
+                                           action_mineral=page_call.slots.mineral)
+            return
+        yield from _run_document_qa(request, session_id, profile, action_plan=action_plan)
 
 
 @router.post("/pubchat")
