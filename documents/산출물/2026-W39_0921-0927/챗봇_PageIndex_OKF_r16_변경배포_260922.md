@@ -30,4 +30,8 @@
 - 최종 후보 이미지 `sha256:0caea6e44b2c3389a7318010547e9725522e7aed6f89c99fd89a7f4129bcdd5e`(r21)를 18027 격리 포트에서 검증했다. `MINE_INCREASE` 반복 2회에서 같은 안전한 5행·연간 수치·개별 OKF path를 반환했고 Rio 혼합 행은 없었다. 원시 `/tmp/komir-r21-predeploy-260922/MINE_INCREASE_{1,2}.json`.
 - r21의 기존 OKF·광산·HS 수용 9건은 기대한 답변 또는 근거에 맞는 기권이었다. 중국 1위 광산은 슬롯 오류 없이 `mine_no_comparable_values:all`로 기권했다. 원시 `/tmp/komir-r21-predeploy-260922/`.
 - r10f 원문 30건 전체 재실행은 30/30 완료, 답변 7·실원천 부족 22·실제 범위 밖(Q30) 1, `slot_unresolved` 0·`unsupported_combination` 0이었다. HS 2603000000은 USD/kg 근거 2건으로 답했다. 원시 `/tmp/sol-okf-r21-r10f-replay-260922/`.
-- 최종 커밋·운영 재배포·배포 후 응답 판정은 완료 후 이 문서에 기록한다.
+- 수정 커밋 `e2d7f7e9d`를 같은 원격 릴리스 브랜치에 푸시했다. 이 커밋에서 빌드한 이미지 digest는 위 r21 후보와 동일한 `sha256:0caea6e44b2c3389a7318010547e9725522e7aed6f89c99fd89a7f4129bcdd5e`다.
+- 기존 18002 컨테이너는 `komir-rag-chat-test-r16-260922`로 중지·보존하고, 이미지 `komir-rag-chat:e2d7f7e9d`를 같은 `komir-rag-chat-test` 이름과 18002 포트에 기동했다. 새 프로세스의 `/healthz`는 `{"status":"ok"}`를 반환했다. 컨테이너 교체로 프로세스 내 캐시도 비워졌다.
+- 운영 포트의 배포 후 점검 원시 `/tmp/komir-r21-postdeploy-260922/`에서 10/10 요청이 exit 0·done이었다. JV Inkai·Escondida는 실제 OKF 32·33행을 인용했고, 복수 Kazatomprom은 광산명 지정을 안내했다. 리튬 매장량 상위 5개와 2024→2025 연간 생산량 증가 상위 5개는 집계 인용과 함께 답했다. 증가량 5행은 앞서 원문 대조한 Escondida 180,000t, Tenke Fungurume 109,951t, Salvador 41,300t, Radomiro Tomic 24,800t, Highland Valley Copper 24,700t과 일치했다.
+- HS 2603000000은 금액·중량 실자료 인용 2건으로 답했다. 중국 1위 광산은 `mine.rank`를 수행한 뒤 비교 가능한 생산량 근거가 없어 무인용 `source_unavailable`로 기권했고 `slot_unresolved`는 발생하지 않았다. 원문에 없는 JV Inkai 수입액, 공개 범위 밖 Argus, 데이터·추론 구분 질문도 각각 무인용 출처 부족으로 처리했다.
+- `main`은 별도 리베이스가 진행 중이어서 병합하거나 수정하지 않았다. 이번 푸시는 `feature/pageindex-okf-r16-260922` 브랜치에만 반영했다.
