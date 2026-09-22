@@ -1062,6 +1062,88 @@ class KomisRawDataRepository:
             },
         )
 
+    def fetch_trade_indicator(
+        self, *, trade_metric: str, hs_codes: list[str], reporter_country: str,
+        calendar_year: int, partner_country: str | None = None, flow: str | None = None,
+    ) -> RawDataset:
+        """관세청 원천으로 계산 가능한 연간 무역지표를 결정적으로 산출한다.
+
+        현재 ``KO_CSTM_CMMRC``는 한국 기준 교역만 제공한다. RCA/TII의 세계
+        전체 분모는 ``KO_UN_CMMRC``가 9개 HS의 부분 표본이라 산출하지 않는다.
+        부분 표본을 세계 총교역으로 오인해 수치를 만드는 일을 막기 위한 경계다.
+        """
+        if reporter_country.casefold() not in {"한국", "korea", "south korea", "republic of korea"}:
+            raise RawDataAccessError("현재 무역지표 원천은 한국 기준 교역만 제공합니다.")
+        if trade_metric in {"rca", "tii"}:
+            raise RawDataAccessError("세계 전체 분모 원천이 검증되지 않아 RCA·TII는 현재 계산할 수 없습니다.")
+        if not hs_codes:
+            raise RawDataAccessError("무역지표 계산에 필요한 HS 코드가 없습니다.")
+        if trade_metric in {"trade_growth", "country_dependency"} and flow not in {"import", "export"}:
+            raise RawDataAccessError("수출입증감률·특정국 의존도는 수입 또는 수출 구분이 필요합니다.")
+        if trade_metric == "country_dependency" and not partner_country:
+            raise RawDataAccessError("특정국 의존도는 상대국이 필요합니다.")
+        hs_clause = ", ".join(_literal(code) for code in hs_codes)
+        start, end = f"{calendar_year}0101", f"{calendar_year}1231"
+        base = f"HS_CD IN ({hs_clause}) AND CRTR_YMD >= {_literal(start)} AND CRTR_YMD <= {_literal(end)}"
+        try:
+            if trade_metric == "tsi":
+                frame = read_sql_pg(
+                    f"SELECT SUM(INCM_AMT) AS import_amount, SUM(EXP_AMT) AS export_amount "
+                    f"FROM {KOMIS_SCHEMA}.KO_CSTM_CMMRC WHERE {base}"
+                )
+                row = frame.iloc[0].to_dict() if not frame.empty else {}
+                imports, exports = float(row.get("import_amount") or 0), float(row.get("export_amount") or 0)
+                denominator = exports + imports
+                value = round((exports - imports) / denominator, 6) if denominator else None
+                rows = [{"year": calendar_year, "export_amount": exports, "import_amount": imports,
+                         "tsi": value}]
+                labels = {"year": "연도", "export_amount": "수출금액(USD)",
+                          "import_amount": "수입금액(USD)", "tsi": "무역특화지수(TSI)"}
+                formula = "(수출금액-수입금액)/(수출금액+수입금액)"
+            elif trade_metric == "trade_growth":
+                column = "INCM_AMT" if flow == "import" else "EXP_AMT"
+                prior_start, prior_end = f"{calendar_year - 1}0101", f"{calendar_year - 1}1231"
+                frame = read_sql_pg(
+                    f"SELECT CASE WHEN CRTR_YMD >= {_literal(start)} THEN 'current' ELSE 'prior' END AS period, "
+                    f"SUM({column}) AS amount FROM {KOMIS_SCHEMA}.KO_CSTM_CMMRC "
+                    f"WHERE HS_CD IN ({hs_clause}) AND CRTR_YMD >= {_literal(prior_start)} "
+                    f"AND CRTR_YMD <= {_literal(end)} GROUP BY 1"
+                )
+                values = {row.period: float(row.amount or 0) for row in frame.itertuples(index=False)}
+                current, prior = values.get("current", 0), values.get("prior", 0)
+                value = round((current - prior) / prior * 100, 4) if prior else None
+                rows = [{"year": calendar_year, "flow": flow, "current_amount": current,
+                         "prior_amount": prior, "growth_pct": value}]
+                labels = {"year": "연도", "flow": "교역방향", "current_amount": "당해금액(USD)",
+                          "prior_amount": "전년금액(USD)", "growth_pct": "수출입증감률(%)"}
+                formula = "(당해금액-전년금액)/전년금액×100"
+            elif trade_metric == "country_dependency":
+                column = "INCM_AMT" if flow == "import" else "EXP_AMT"
+                frame = read_sql_pg(
+                    f"SELECT SUM({column}) AS total_amount, "
+                    f"SUM(CASE WHEN TRGT_NTN = {_literal(partner_country or '')} THEN {column} ELSE 0 END) AS partner_amount "
+                    f"FROM {KOMIS_SCHEMA}.KO_CSTM_CMMRC WHERE {base}"
+                )
+                row = frame.iloc[0].to_dict() if not frame.empty else {}
+                total, partner = float(row.get("total_amount") or 0), float(row.get("partner_amount") or 0)
+                value = round(partner / total * 100, 4) if total else None
+                rows = [{"year": calendar_year, "flow": flow, "partner_country": partner_country,
+                         "partner_amount": partner, "total_amount": total, "dependency_pct": value}]
+                labels = {"year": "연도", "flow": "교역방향", "partner_country": "상대국",
+                          "partner_amount": "특정국 금액(USD)", "total_amount": "전체 금액(USD)",
+                          "dependency_pct": "특정국 의존도(%)"}
+                formula = "특정국 금액/전체 금액×100"
+            else:
+                raise RawDataAccessError(f"지원하지 않는 무역지표입니다: {trade_metric}")
+        except RawDataAccessError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            raise RawDataAccessError("무역지표 원자료 집계에 실패했습니다.") from exc
+        return RawDataset(source_table="KO_CSTM_CMMRC", columns=list(labels), column_labels=labels,
+                          row_count=len(rows), rows=rows, as_of=str(calendar_year), unit="USD",
+                          metadata={"trade_metric": trade_metric, "formula": formula,
+                                    "reporter_country": "한국", "hs_codes": hs_codes})
+
     def fetch_mineral_country_ranking(
         self, *, metric: str, mineral_code: str,
         start_period: str | None, end_period: str | None, top_n: int = 5,

@@ -61,6 +61,25 @@ OKF_DOCUMENTS_ROOT = get_paths().okf_documents
 OKF_VERSION = "0.1"
 
 _SAFE_NAME_RE = re.compile(r"[^\w가-힣.\-]+", re.UNICODE)
+_DATE_PATTERNS = (
+    re.compile(r"(?<!\d)(20\d{2})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일"),
+    re.compile(r"(?<!\d)(20\d{2})[-._/](\d{1,2})[-._/](\d{1,2})(?!\d)"),
+    re.compile(r"(?<!\d)(20\d{2})(\d{2})(\d{2})(?!\d)"),
+)
+_MINERAL_TERMS = {
+    # 한 글자 "동"은 동향·자동 등 일반어에 과다 매칭되어 광종 메타에는 쓰지 않는다.
+    "구리": ("구리", "copper"), "니켈": ("니켈", "nickel"),
+    "코발트": ("코발트", "cobalt"), "리튬": ("리튬", "lithium"),
+    "희토류": ("희토류", "rare earth"), "네오디뮴": ("네오디뮴", "neodymium"),
+}
+_KEYWORD_STOPWORDS = frozenset({
+    "보고서", "자료", "관련", "대한", "통해", "이번", "시장", "동향", "내용", "분석",
+    "있는", "에서", "으로", "한다", "합니다", "the", "and", "with", "from", "this",
+})
+_DOMAIN_KEYWORDS = (
+    "배터리", "설치량", "lfp", "ncm", "nca", "전기차", "수요", "공급", "재고",
+    "생산", "매장량", "수입", "수출", "가격", "제재", "광산",
+)
 
 
 def _safe_name(value: str, *, maxlen: int = 120) -> str:
@@ -118,6 +137,38 @@ def _body_starts_with_heading(text: str) -> bool:
     return False
 
 
+def extract_document_metadata(*, title: str, resource: str, body: str, doc_date: str | None = None) -> dict[str, object]:
+    """원본 형식과 무관하게 OKF 본문·제목·파일명에서 검색 메타를 결정적으로 만든다."""
+
+    haystack = "\n".join((title, resource, body[:20000]))
+    document_date = None
+    for pattern in _DATE_PATTERNS:
+        match = pattern.search(haystack)
+        if match:
+            year, month, day = match.groups()
+            try:
+                document_date = f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
+            except ValueError:
+                pass
+            break
+    if document_date is None and doc_date and re.fullmatch(r"\d{6}", str(doc_date)):
+        document_date = f"20{doc_date[:2]}-{doc_date[2:4]}-{doc_date[4:6]}"
+    lowered = haystack.casefold()
+    minerals = [name for name, aliases in _MINERAL_TERMS.items() if any(alias.casefold() in lowered for alias in aliases)]
+    tokens = re.findall(r"[A-Za-z][A-Za-z0-9+./-]{2,}|[가-힣]{2,}", body.casefold())
+    counts: dict[str, int] = {}
+    for token in tokens:
+        if token in _KEYWORD_STOPWORDS or token in {alias.casefold() for values in _MINERAL_TERMS.values() for alias in values}:
+            continue
+        counts[token] = counts.get(token, 0) + 1
+    # 빈도만 쓰면 주간·가격 같은 공통어가 독점해 단 한 번 등장해도 검색상 중요한
+    # "배터리 설치량"을 잃는다. 실제 본문에 있는 도메인 표지를 먼저 보존한다.
+    domain_keywords = [word for word in _DOMAIN_KEYWORDS if word in lowered]
+    frequent_keywords = [word for word, _ in sorted(counts.items(), key=lambda item: (-item[1], item[0]))]
+    content_keywords = list(dict.fromkeys([*domain_keywords, *frequent_keywords]))[:20]
+    return {"document_date": document_date, "minerals": minerals, "content_keywords": content_keywords}
+
+
 def render_okf(
     *,
     title: str,
@@ -153,6 +204,9 @@ def render_okf(
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "tags": tags,
     }
+    front.update(extract_document_metadata(
+        title=title, resource=resource, body=body, doc_date=(extra or {}).get("doc_date"),
+    ))
     for key, value in (extra or {}).items():
         if value not in (None, ""):
             front[key] = value
@@ -165,6 +219,38 @@ def render_okf(
 def _write(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8")
+
+
+def enrich_existing_okf_metadata(out_root: Path = OKF_DOCUMENTS_ROOT, pattern: str | None = None) -> int:
+    """이미 만든 OKF에도 동일 메타를 추가한다. 원문 재추출 없이 안전하게 보강한다."""
+
+    updated = 0
+    paths = sorted(out_root.rglob("*.md"))
+    if pattern:
+        paths = [path for path in paths if pattern in path.as_posix()]
+    for path in paths:
+        text = path.read_text(encoding="utf-8")
+        if not text.startswith("---\n"):
+            continue
+        end = text.find("\n---\n", 3)
+        if end < 0:
+            continue
+        try:
+            front = yaml.safe_load(text[4:end + 1]) or {}
+        except yaml.YAMLError:
+            continue
+        body = text[end + len("\n---\n"):].lstrip("\n")
+        metadata = extract_document_metadata(
+            title=str(front.get("title", path.stem)), resource=str(front.get("resource", path)),
+            body=body, doc_date=front.get("doc_date"),
+        )
+        if all(front.get(key) == value for key, value in metadata.items()):
+            continue
+        front.update(metadata)
+        header = yaml.safe_dump(front, allow_unicode=True, sort_keys=False, default_flow_style=False)
+        path.write_text(f"---\n{header}---\n\n{body}", encoding="utf-8")
+        updated += 1
+    return updated
 
 
 def _unique_path(base: Path, used: set[Path]) -> Path:
@@ -385,7 +471,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--force", action="store_true", help="PDF 갈래: 캐시 무시 재추출")
     parser.add_argument("--group-root", default=None,
                         help="--what <그룹> 하나일 때 원본 루트 덮어쓰기(기본: registry/landing 규칙)")
+    parser.add_argument("--enrich-metadata", action="store_true",
+                        help="기존 OKF에 생산일·광종·내용 키워드를 보강하고 종료")
+    parser.add_argument("--metadata-pattern", default=None,
+                        help="--enrich-metadata 대상의 경로 부분문자열")
     args = parser.parse_args(argv)
+
+    if args.enrich_metadata:
+        print(f"메타데이터 보강: {enrich_existing_okf_metadata(Path(args.out), args.metadata_pattern)}건", flush=True)
+        return 0
 
     configure_logging()
     with ingest_status.pipeline_run("okf.build_okf_documents", args=vars(args)) as run:

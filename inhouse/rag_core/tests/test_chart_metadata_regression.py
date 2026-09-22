@@ -6,7 +6,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from rag_core.ragkit.chatbot_events import chart_spec, extract_markdown_tables, recommend_chart
+from rag_core.ragkit.chatbot_events import aggregate_time_table, chart_spec, extract_markdown_tables, recommend_chart, table_block
 
 
 def _table(text: str) -> dict:
@@ -14,6 +14,34 @@ def _table(text: str) -> dict:
 
 
 class ChartMetadataRegressionTest(unittest.TestCase):
+    def test_daily_series_over_three_months_is_weekly_for_blocks(self):
+        rows = "\n".join(
+            f"| 2026{month:02d}{day:02d} | {month * 100 + day} |"
+            for month in range(1, 6) for day in (1, 2)
+        )
+        table = _table(
+            "| price_date(가격일자) | price(가격) |\n"
+            "| --- | --- |\n" + rows
+        )
+        aggregated, meta = aggregate_time_table(table)
+        assert meta is not None
+        self.assertTrue(meta["applied"])
+        self.assertEqual(meta["frequency"], "weekly")
+        self.assertLess(len(aggregated["rows"]), len(table["rows"]))
+        block = table_block(table, block_id="t", source_index=1, source_label="x")
+        self.assertEqual(block["meta"]["time_aggregation"]["frequency"], "weekly")
+
+    def test_monthly_source_is_not_upsampled_for_short_period(self):
+        table = _table(
+            "| month(월) | import_amount(수입금액(USD)) |\n"
+            "| --- | --- |\n| 2026-01 | 100 |\n| 2026-02 | 120 |"
+        )
+        aggregated, meta = aggregate_time_table(table)
+        self.assertEqual(aggregated["rows"], table["rows"])
+        assert meta is not None
+        self.assertEqual(meta["frequency"], "monthly")
+        self.assertFalse(meta["applied"])
+
     def test_trade_share_excludes_rank_code_count_and_amount(self):
         table = _table(
             "| rank(순위) | hs_cd(HS코드) | country(국가) | total(수입금액합계(USD)) | share_pct(비중(%)) | transaction_count(거래건수) | crtr_ymd(기준일자) |\n"
@@ -28,6 +56,16 @@ class ChartMetadataRegressionTest(unittest.TestCase):
         assert spec is not None
         self.assertEqual(spec["spec"]["y_unit"], "%")
         self.assertNotIn("rank", spec["spec"]["series"])
+
+    def test_presentation_table_hides_rank_and_record_counts(self):
+        table = _table(
+            "| rank(순위) | country(국가) | total(수입금액합계(USD)) | transaction_count(거래건수) | record_count(레코드건수) |\n"
+            "| --- | --- | --- | --- | --- |\n| 1 | A | 800 | 4 | 4 |\n| 2 | B | 200 | 2 | 2 |"
+        )
+        block = table_block(table, block_id="t", source_index=1, source_label="x")
+        self.assertEqual(block["columns"], ["country(국가)", "total(수입금액합계(USD))"])
+        self.assertEqual(block["meta"]["hidden_columns"], ["rank", "transaction_count", "record_count"])
+        self.assertNotIn("거래건수", block["markdown"])
 
     def test_production_and_reserve_use_tonnes(self):
         for label in ("생산량합계(톤)", "매장량합계(톤)"):

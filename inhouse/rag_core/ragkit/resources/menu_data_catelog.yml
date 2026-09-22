@@ -1,0 +1,79 @@
+# 챗봇·report_gen 공용 메뉴/데이터 카탈로그 1차본.
+# 범위는 report_gen이 지원하는 3개 주메뉴, 11개 page_id다.
+# 새로운 메뉴는 이 파일에 추가한 뒤 page_id·원천·표시 출처 검증을 통과해야 한다.
+schema_version: 1
+catalog_scope: report_gen_11_pages
+
+menus:
+  - menu_id: mineral_resource_price
+    label: 광물자원가격
+    items:
+      - page_id: price_base_metals
+        label: 비철금속
+        source_label: "KOMIS 광물자원가격 > 비철금속"
+        source_tables: [public.KO_MNRL_PRC, public.ai_prc_mnrl_map, public.KO_MNRL_PRC_CRTR]
+        period_frequency: daily
+      - page_id: price_minor_metals
+        label: 희소금속
+        source_label: "KOMIS 광물자원가격 > 희소금속"
+        source_tables: [public.KO_MNRL_PRC, public.ai_prc_mnrl_map, public.KO_MNRL_PRC_CRTR]
+        period_frequency: daily
+      - page_id: price_iron_energy
+        label: 철광석 및 에너지
+        source_label: "KOMIS 광물자원가격 > 철광석 및 에너지"
+        source_tables: [public.KO_MNRL_PRC, public.ai_prc_mnrl_map, public.KO_MNRL_PRC_CRTR]
+        period_frequency: daily
+      - page_id: price_other
+        label: 기타
+        source_label: "KOMIS 광물자원가격 > 기타"
+        source_tables: [public.KO_MNRL_PRC, public.ai_prc_mnrl_map, public.KO_MNRL_PRC_CRTR]
+        period_frequency: daily
+
+  - menu_id: mineral_outlook_indicator
+    label: 광물전망지표
+    items:
+      - page_id: indicator_composite
+        label: 광물종합지수
+        source_label: "KOMIS 광물전망지표 > 광물종합지수"
+        source_tables: [public.KO_MNRL_SNTHS_INDX]
+        period_frequency: daily
+      - page_id: indicator_market
+        label: 시장동향지표
+        source_label: "KOMIS 광물전망지표 > 시장동향지표"
+        source_tables: [public.KO_MRKT_PRSPECT_IDCT]
+        period_frequency: daily
+        access: private
+      - page_id: indicator_supply
+        label: 수급동향지표
+        source_label: "KOMIS 광물전망지표 > 수급동향지표"
+        source_tables: [public.KO_SPDM_STBT_INDX]
+        period_frequency: monthly
+        access: private
+      - page_id: forecast_price
+        label: 가격예측
+        source_label: "KOMIS 광물전망지표 > 광물가격예측 > 가격예측"
+        source_tables: [public.KO_MNRL_PRC_PREDC]
+        period_frequency: daily
+
+  - menu_id: critical_mineral_map
+    label: 핵심광물지도
+    items:
+      - page_id: map_korea
+        label: 대한민국 수급지도
+        source_label: "KOMIS 핵심광물지도 > 수급지도 > 대한민국"
+        source_tables: [public.KO_CSTM_CMMRC, public.ai_hs_mnrl_map]
+        period_frequency: daily
+      - page_id: map_global
+        label: 글로벌 수급지도
+        source_label: "KOMIS 핵심광물지도 > 수급지도 > 글로벌"
+        source_tables: [public.KO_UN_CMMRC]
+        period_frequency: daily
+      - page_id: map_mineral
+        label: 광물지도
+        source_label: "KOMIS 핵심광물지도 > 광물지도"
+        source_tables: [public.KO_RSRC_BURUDG_QUTY, public.KO_RSRC_PRDCTN_QUTY]
+        period_frequency: yearly
+
+# `price_group`은 실제 메뉴가 아닌 report_gen 내부 합성 뷰라 메뉴 출처 표시 대상에서 제외한다.
+excluded_page_ids: [price_group]
+next_step: "추가 주메뉴·서브메뉴 등록 후, 챗봇 데이터 블록과 인용의 source_label 표시를 연결한다."

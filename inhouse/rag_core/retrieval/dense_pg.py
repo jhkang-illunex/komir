@@ -146,7 +146,7 @@ def _vector_literal(vec) -> str:
 
 
 def dense_search_pg(
-    query: str, k: int = 8, *, exclude_src: frozenset[str] = frozenset()
+    query: str, k: int = 8, *, exclude_src: frozenset[str] = frozenset(), _allow_fallback: bool = True
 ) -> list[PgRetrievedChunk]:
     """pgvector 코사인 유사도 상위 k개 청크.
 
@@ -213,7 +213,7 @@ def dense_search_pg(
     # 두 분기(날짜부스트 유무) 모두 raw_dist(진짜 코사인 거리, score 표시용)가
     # 마지막 컬럼이라 음수 인덱스로 통일해 받는다 — ranking_dist(부스트 반영,
     # 정렬 전용)는 score에 안 쓴다(사용자에게 보여줄 유사도는 왜곡 없는 값이어야 함).
-    return [
+    results = [
         PgRetrievedChunk(
             chunk_id=r[0], doc_id=r[1], source_path=r[2] or "", week=r[3] or "",
             title=r[4] or "", section_heading=r[5] or "", text=r[6] or "",
@@ -221,6 +221,25 @@ def dense_search_pg(
         )
         for i, r in enumerate(rows)
     ]
+    # pgvector/HNSW가 "리튬 수급"처럼 짧은 복합 한글 질의에서 0건을 반환한
+    # 실측을 보완한다. 단어별 dense 후보를 합쳐 원 질의어가 본문에 더 많이
+    # 나타나는 청크를 앞세운다. 단일어 재귀는 막아 무한 호출하지 않는다.
+    terms = [term for term in re.findall(r"[A-Za-z0-9가-힣]{2,}", query) if term]
+    if not results and _allow_fallback and len(terms) >= 2:
+        candidates: dict[str, PgRetrievedChunk] = {}
+        for term in terms:
+            for chunk in dense_search_pg(term, k=k, exclude_src=exclude_src, _allow_fallback=False):
+                previous = candidates.get(chunk.chunk_id)
+                if previous is None or chunk.score > previous.score:
+                    candidates[chunk.chunk_id] = chunk
+        results = sorted(
+            candidates.values(),
+            key=lambda chunk: (-sum(term.casefold() in (chunk.title + "\n" + chunk.text).casefold() for term in terms),
+                               -chunk.score, chunk.chunk_id),
+        )[:k]
+        results = [PgRetrievedChunk(**{**chunk.__dict__, "dense_rank": index})
+                   for index, chunk in enumerate(results, 1)]
+    return results
 
 
 if __name__ == "__main__":

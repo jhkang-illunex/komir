@@ -84,6 +84,7 @@ import logging
 import re
 import threading
 from collections.abc import AsyncIterator, Iterator
+from contextvars import copy_context
 from datetime import date
 from pathlib import Path
 from typing import Literal
@@ -101,6 +102,8 @@ from .chatbot_events import ChatEvent, chart_spec, extract_markdown_tables, tabl
 from .chatbot_graph import retrieve_evidence
 from .chatbot_store import DEFAULT_DB_PATH as DEFAULT_STORE_DB_PATH
 from .chatbot_store import append_message, get_or_create_session, list_messages
+from .messages import chat_message
+from .menu_catalog import menu_source
 from . import source_contract as _source_contract
 from .source_contract import assess_source_request
 from .generate import ABSTAIN_TEXT, _cfg_from_env, _strip_uncited_sentences
@@ -480,7 +483,8 @@ async def _iter_async(sync_iter: Iterator[str]) -> AsyncIterator[str]:
         finally:
             loop.call_soon_threadsafe(queue.put_nowait, _DONE)
 
-    threading.Thread(target=_pump, daemon=True).start()
+    context = copy_context()
+    threading.Thread(target=context.run, args=(_pump,), daemon=True).start()
     while True:
         item = await queue.get()
         if item is _DONE:
@@ -516,7 +520,8 @@ async def _run_with_status(fn, *args, **kwargs) -> AsyncIterator[tuple[str, obje
         finally:
             loop.call_soon_threadsafe(queue.put_nowait, (_DONE, None, {}))
 
-    threading.Thread(target=_run, daemon=True).start()
+    context = copy_context()
+    threading.Thread(target=context.run, args=(_run,), daemon=True).start()
     while True:
         kind, payload, extra = await queue.get()
         if kind is _DONE:
@@ -668,10 +673,28 @@ def _citation_sources(cited_indices: set[int], evidence: list) -> list[dict]:
          "requirement_id": getattr(ev, "requirement_id", None),
          "action_id": getattr(ev, "action_id", None),
          "source_id": getattr(ev, "source_id", None),
-         "observed_period": getattr(ev, "observed_period", None)}
+         "observed_period": getattr(ev, "observed_period", None),
+         "menu_source": menu_source(getattr(ev, "menu_page_id", None))}
         for i, ev in enumerate(evidence, 1)
         if i in cited_indices
     ]
+
+
+def _retrieval_source_status(warnings: list[str]) -> list[dict[str, object]]:
+    """그래프가 남긴 원천 조회 감사값을 SSE 완료 이벤트 객체로 복원한다."""
+    statuses: list[dict[str, object]] = []
+    for warning in warnings:
+        if not warning.startswith("source_audit:"):
+            continue
+        parts = warning.split(":")
+        if len(parts) != 4:
+            continue
+        try:
+            count = int(parts[3])
+        except ValueError:
+            continue
+        statuses.append({"source": parts[1], "status": parts[2], "evidence_count": count})
+    return statuses
 
 
 def _source_footer(cited_indices: set[int], evidence: list) -> str:
@@ -1105,17 +1128,17 @@ def _resolve_abstain(message: str, warnings: list[str], llm: "KomirJsonLLM | Non
         return "ambiguous", "확인 가능한 문서에 여러 광산이 있어 하나의 위치로 답할 수 없습니다. 광산명을 지정해 다시 질문해 주세요."
     action_failure = next((w.split(":", 1)[1] for w in warnings if w.startswith("action_plan_failed:")), None)
     if action_failure == "source_unavailable":
-        return "source_unavailable", "요청하신 진단·예측·지정학 데이터는 새 DB 연계 전이라 현재 제공할 수 없습니다."
+        return "source_unavailable", chat_message("data_not_found")
     if any(w.startswith("source_unavailable:") for w in warnings):
-        return "source_unavailable", "요청한 범위와 비교 조건을 함께 충족하는 확인 가능한 원천 데이터가 없습니다."
+        return "source_unavailable", chat_message("data_not_found")
     if action_failure == "out_of_scope":
         return "off_topic", "광물 관련 정보만 조회할 수 있습니다."
     if action_failure == "slot_unresolved":
         return "slot_unresolved", "질문의 광종·기간·지표 조건을 확인할 수 없습니다. 조건을 지정해 다시 질문해 주세요."
     if action_failure in {"unsupported_combination", "unsupported_action", "adapter_unavailable"}:
-        return action_failure, "요청하신 정보 조합은 현재 확인된 데이터 계약으로 제공할 수 없습니다."
+        return action_failure, chat_message("action_unavailable")
     if "advisor_rejected" in warnings:
-        return "source_unavailable", "요청 내용을 직접 뒷받침하는 확인 가능한 출처가 없어 제공할 수 없습니다."
+        return "source_unavailable", chat_message("data_not_found")
     if "claim_not_supported" in warnings:
         return "claim_not_supported", "원자료 가격 비교 결과가 질문의 변동률 전제를 뒷받침하지 않습니다."
     if any(w.startswith(("dense_failed", "pageindex_failed", "structured_failed",
@@ -1127,8 +1150,7 @@ def _resolve_abstain(message: str, warnings: list[str], llm: "KomirJsonLLM | Non
         return "private_only_profile_access", _PRIVATE_ONLY_PROFILE_TEXT
     unsupported_match = next((m for w in warnings if (m := _UNSUPPORTED_MINERAL_RE.match(w))), None)
     if unsupported_match:
-        mineral_name = unsupported_match.group(1)
-        return "unsupported_mineral", f"{mineral_name}{_eun_neun(mineral_name)} 현재 지원 광종에 포함되어 있지 않습니다."
+        return "unsupported_mineral", chat_message("unsupported_commodity")
     # 2026-09-03(④-나) — komis_raw_lookup(_mcp_tools_common.py)이 이미 실제
     # DB 범위로 "조회 가능 기간은 ...입니다"를 정확히 만들어뒀다 — 이걸
     # _classify_abstain(LLM)에 넘겨 다시 일반화된 문구로 뭉개지 않고 그대로
@@ -1138,7 +1160,7 @@ def _resolve_abstain(message: str, warnings: list[str], llm: "KomirJsonLLM | Non
     if bounds_warning:
         return "no_data_for_period", f"질문하신 기간에는 조회 가능한 데이터가 없습니다. {bounds_warning}"
     if any(_NO_DATA_FOUND_MARKER in w for w in warnings):
-        return "no_data_for_period", _NO_DATA_FOUND_MARKER
+        return "no_data_for_period", chat_message("data_not_found")
     return _classify_abstain(message, warnings, llm)
 
 
@@ -1148,7 +1170,8 @@ def _evidence_source_label(ev) -> str:
     같은 문구를 쓰면 사용자가 번호(source_index)만 보고 아래로 스크롤해
     대조하지 않아도 표·차트 옆에서 바로 근거를 확인할 수 있다."""
 
-    label = f"{ev.source} · {ev.section}"
+    menu = menu_source(getattr(ev, "menu_page_id", None))
+    label = menu["source_label"] if menu else f"{ev.source} · {ev.section}"
     if ev.as_of:
         label += f" (기준시점 {ev.as_of})"
     return label
@@ -1173,19 +1196,26 @@ def _multimodal_events(cited_indices: set[int], evidence: list) -> list[ChatEven
     같은 계약을 쓴다. 표 블록엔 추천 차트 종류(`chart_hint`)가 같이 실린다."""
 
     events: list[ChatEvent] = []
+    emitted_tables: set[tuple[tuple[str, ...], tuple[tuple[str, ...], ...]]] = set()
     for i, ev in enumerate(evidence, 1):
         if i not in cited_indices:
             continue
         source_label = _evidence_source_label(ev)
         for t_idx, table in enumerate(extract_markdown_tables(ev.text), 1):
+            table_key = (tuple(table["columns"]), tuple(tuple(row) for row in table["rows"]))
+            if table_key in emitted_tables:
+                continue
+            emitted_tables.add(table_key)
             table_id = f"t{i}-{t_idx}"
             events.append(ChatEvent(type="table", data=table_block(
                 table, block_id=table_id, source_index=i, source_label=source_label,
                 as_of=ev.as_of, unit=ev.unit,
+                menu_source=menu_source(getattr(ev, "menu_page_id", None)),
             )))
             spec = chart_spec(
                 table, block_id=f"c{i}-{t_idx}", data_ref=table_id,
                 source_index=i, source_label=source_label, as_of=ev.as_of, unit=ev.unit,
+                menu_source=menu_source(getattr(ev, "menu_page_id", None)),
             )
             if spec is not None:
                 events.append(ChatEvent(type="chart", data=spec))
@@ -1570,6 +1600,7 @@ async def chat_turn(
         yield ChatEvent(type="delta", data={"delta": cleaned})
 
     citation_sources = _citation_sources(cited_indices, evidence)
+    retrieval_sources = _retrieval_source_status(route_warnings)
 
     # chatbot_rule.txt 공통 규칙(출처 표기)·유형5(주의 문구) — 인용 스트리퍼를
     # 통과한 뒤에만 코드로 덧붙인다(모델에게 시키면 인용 없는 문장으로 잘림,
@@ -1593,7 +1624,8 @@ async def chat_turn(
     )
     yield ChatEvent(
         type="done",
-        data={"done": True, "citations": citation_sources, "bogus_citations": bogus, "abstained": False},
+        data={"done": True, "citations": citation_sources, "retrieval_sources": retrieval_sources,
+              "bogus_citations": bogus, "abstained": False},
     )
 
 

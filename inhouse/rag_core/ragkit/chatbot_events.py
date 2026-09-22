@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import date, datetime, timedelta
 
 _TABLE_SEP_CELL_RE = re.compile(r"^:?-{2,}:?$")
 _NUM_RE = re.compile(r"^-?[\d,]+(\.\d+)?%?$")
@@ -98,6 +99,125 @@ _NON_MEASURE_KEYS = frozenset({
     "rank", "transaction_count", "record_count", "n", "count", "price_criterion_serial",
 })
 _PRICE_KEYS = frozenset({"lowst_prc", "hghst_prc", "cmerc_prc"})
+
+
+def _markdown_table(columns: list[str], rows: list[list[str]]) -> str:
+    return "\n".join([
+        "| " + " | ".join(columns) + " |",
+        "| " + " | ".join("---" for _ in columns) + " |",
+        *("| " + " | ".join(row) + " |" for row in rows),
+    ])
+
+
+def presentation_table(table: dict) -> tuple[dict, list[str]]:
+    """표·차트 블록에서 표시 가치가 없는 내부 열을 제거한다.
+
+    근거 Evidence의 원문은 바꾸지 않는다. 순번·거래/레코드 건수·내부 기준
+    일련번호는 검증·추적에는 남겨두되 사용자에게 보내는 표현 데이터에서만 뺀다.
+    """
+    keep: list[int] = []
+    hidden: list[str] = []
+    for idx, header in enumerate(table["columns"]):
+        key = header.split("(", 1)[0].strip().lower()
+        if key in _NON_MEASURE_KEYS:
+            hidden.append(key)
+        else:
+            keep.append(idx)
+    if not hidden:
+        return table, hidden
+    columns = [table["columns"][idx] for idx in keep]
+    rows = [[row[idx] for idx in keep] for row in table["rows"]]
+    return {**table, "columns": columns, "rows": rows,
+            "markdown": _markdown_table(columns, rows)}, hidden
+
+
+def _parse_table_date(value: str) -> date | None:
+    value = value.strip()
+    for fmt in ("%Y%m%d", "%Y-%m-%d", "%Y%m", "%Y-%m", "%Y"):
+        try:
+            return datetime.strptime(value, fmt).date()
+        except ValueError:
+            pass
+    return None
+
+
+def _source_frequency(values: list[str]) -> str | None:
+    if not values:
+        return None
+    if all(re.fullmatch(r"\d{4}", value) for value in values):
+        return "yearly"
+    if all(re.fullmatch(r"\d{6}|\d{4}-\d{2}", value) for value in values):
+        return "monthly"
+    return "daily" if all(_parse_table_date(value) for value in values) else None
+
+
+def _target_frequency(first: date, last: date) -> str:
+    days = (last - first).days + 1
+    if days <= 92:
+        return "daily"
+    if days < 365:
+        return "weekly"
+    if days <= 365 * 3:
+        return "monthly"
+    return "yearly"
+
+
+def aggregate_time_table(table: dict) -> tuple[dict, dict | None]:
+    """표·차트 블록에만 기간 길이별 시계열 집계를 적용한다.
+
+    일별 원천은 3개월 초과 시 주별, 1년 이상 시 월별, 3년 초과 시 연별로
+    낮춘다. 월·연 원천을 일·주 단위로 인위적으로 늘리지 않는다.
+    """
+    meta = _column_types(table)
+    date_idx = next((i for i, item in enumerate(meta) if item["type"] == "date"), None)
+    if date_idx is None or len(table["rows"]) < 2:
+        return table, None
+    parsed = [_parse_table_date(row[date_idx]) for row in table["rows"]]
+    if any(value is None for value in parsed):
+        return table, None
+    dates = [value for value in parsed if value is not None]
+    source = _source_frequency([row[date_idx] for row in table["rows"]])
+    target = _target_frequency(min(dates), max(dates))
+    order = {"daily": 0, "weekly": 1, "monthly": 2, "yearly": 3}
+    effective = target if source is None else (source if order[source] >= order[target] else target)
+    if effective == source:
+        return table, {"source_frequency": source, "frequency": effective, "applied": False}
+
+    numeric = {idx for idx, item in enumerate(meta) if item["type"] == "number"}
+    groups: dict[tuple[str, ...], list[list[str]]] = {}
+    for row, point in zip(table["rows"], dates):
+        if effective == "weekly":
+            bucket = point - timedelta(days=point.weekday())
+            label = bucket.isoformat()
+        elif effective == "monthly":
+            label = point.strftime("%Y-%m")
+        else:
+            label = str(point.year)
+        key = tuple(label if idx == date_idx else row[idx] for idx in range(len(row)) if idx not in numeric)
+        groups.setdefault(key, []).append(row)
+    rows: list[list[str]] = []
+    for key, members in groups.items():
+        out: list[str] = []
+        key_iter = iter(key)
+        for idx, item in enumerate(meta):
+            if idx not in numeric:
+                out.append(next(key_iter))
+                continue
+            values = [float(row[idx].replace(",", "").replace("%", "")) for row in members
+                      if row[idx].strip().lower() not in _NULL_CELLS]
+            if not values:
+                out.append("")
+            elif item["key"] in _PRICE_KEYS or "price" in item["key"] or "prc" in item["key"]:
+                out.append(str(round(sum(values) / len(values), 6)))
+            else:
+                out.append(str(round(sum(values), 6)))
+        rows.append(out)
+    rows.sort(key=lambda row: row[date_idx])
+    markdown = _markdown_table(table["columns"], rows)
+    return {**table, "rows": rows, "markdown": markdown}, {
+        "source_frequency": source, "frequency": effective, "applied": True,
+        "aggregation": "mean" if any(item["key"] in _PRICE_KEYS or "price" in item["key"] for item in meta) else "sum",
+    }
 
 
 def _unit_from_header(header: str) -> str | None:
@@ -350,12 +470,14 @@ def recommend_chart(table: dict, columns_meta: list[dict] | None = None) -> dict
 
 
 def table_block(table: dict, *, block_id: str, source_index: int | None, source_label: str | None,
-                as_of: str | None = None, unit: str | None = None) -> dict:
+                as_of: str | None = None, unit: str | None = None, menu_source: dict | None = None) -> dict:
     """`table` 이벤트 payload. 기존 키(columns·rows·source_index·source)는
     그대로 두고(구 클라이언트 호환) 구조화 필드를 덧붙인다. `chart_hint`
     (2026-09-16)는 이 표에 추천하는 차트 종류 — 같은 판정으로 만든 `chart`
     이벤트가 뒤따르므로 프론트는 둘 중 편한 쪽을 쓰면 된다."""
 
+    table, hidden_columns = presentation_table(table)
+    table, time_aggregation = aggregate_time_table(table)
     columns_meta = _column_types(table)
     typed_rows = []
     for row in table["rows"]:
@@ -382,18 +504,21 @@ def table_block(table: dict, *, block_id: str, source_index: int | None, source_
             "recommended": hint["recommended"], "alternatives": hint["alternatives"], "reason": hint["reason"],
         },
         "meta": {"source_index": source_index, "source": source_label, "row_count": len(table["rows"]),
-                 "as_of": as_of, "unit": unit},
+                 "as_of": as_of, "unit": unit, "time_aggregation": time_aggregation,
+                 "menu_source": menu_source, "hidden_columns": hidden_columns},
         "source_index": source_index,
         "source": source_label,
     }
 
 
 def chart_spec(table: dict, *, block_id: str, data_ref: str, source_index: int | None, source_label: str | None,
-               as_of: str | None = None, unit: str | None = None) -> dict | None:
+               as_of: str | None = None, unit: str | None = None, menu_source: dict | None = None) -> dict | None:
     """`chart` 이벤트 payload — `recommend_chart()` 판정을 선언적 스펙으로 낸다.
     데이터는 싣지 않고 `data_ref`가 가리키는 `table` 블록의 rows_typed/
     columns_meta를 쓴다. 추천 차트가 없으면 None(억지 차트 금지)."""
 
+    table, _ = presentation_table(table)
+    table, time_aggregation = aggregate_time_table(table)
     columns_meta = _column_types(table)
     hint = recommend_chart(table, columns_meta)
     if hint["recommended"] is None:
@@ -429,8 +554,9 @@ def chart_spec(table: dict, *, block_id: str, data_ref: str, source_index: int |
             "title": " · ".join(display[k] for k in hint["series"]),
             "y_unit": y_unit,
             "as_of": as_of,
+            "time_aggregation": time_aggregation,
         },
-        "meta": {"source_index": source_index, "source": source_label},
+        "meta": {"source_index": source_index, "source": source_label, "menu_source": menu_source},
         "source_index": source_index,
         "source": source_label,
     }

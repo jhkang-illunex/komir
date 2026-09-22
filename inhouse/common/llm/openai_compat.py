@@ -5,6 +5,7 @@
 import json, os, time
 import requests
 from .base import LLMResult
+from ..langfuse_tracing import llm_generation, update_observation
 
 
 class OpenAICompatChat:
@@ -25,7 +26,26 @@ class OpenAICompatChat:
         self._session.mount("http://", adapter)
         self._session.mount("https://", adapter)
 
-    def complete(self, system: str, user: str, max_tokens: int = 2048) -> LLMResult:
+    def complete(self, system: str, user: str, max_tokens: int = 2048,
+                 trace_name: str = "llm.complete") -> LLMResult:
+        with llm_generation(
+            name=trace_name, model=self.model, system=system, user=user,
+            max_tokens=max_tokens, temperature=self.temperature, stream=False,
+        ) as generation:
+            result = self._complete(system, user, max_tokens=max_tokens)
+            usage = result.usage or {}
+            update_observation(
+                generation,
+                output=result.text,
+                usage_details={
+                    "input_tokens": int(usage.get("prompt_tokens", 0) or 0),
+                    "output_tokens": int(usage.get("completion_tokens", 0) or 0),
+                    "total_tokens": int(usage.get("total_tokens", 0) or 0),
+                },
+            )
+            return result
+
+    def _complete(self, system: str, user: str, max_tokens: int = 2048) -> LLMResult:
         url = f"{self.base_url}/chat/completions"
         headers = {"Content-Type": "application/json"}
         if self.api_key:
@@ -58,7 +78,8 @@ class OpenAICompatChat:
                 time.sleep(2 * (a + 1))
         raise last if last else RuntimeError("LLM 호출 실패(원인 미상)")
 
-    def complete_stream(self, system: str, user: str, max_tokens: int = 2048):
+    def complete_stream(self, system: str, user: str, max_tokens: int = 2048,
+                        trace_name: str = "chat.answer"):
         """토큰 델타를 순서대로 yield(SSE 스트리밍, `data: {...}` 라인 파싱).
 
         2026-08-11 rag_chat 챗봇 스트리밍 요구사항(CLAUDE.md §0 산출물⑥) 때문에
@@ -67,28 +88,35 @@ class OpenAICompatChat:
         후 중간에 끊기면 부분 응답을 버리고 처음부터 다시 하기가 애매해, 상위
         호출자가 필요시 전체를 재시도하는 편이 낫다)."""
 
-        url = f"{self.base_url}/chat/completions"
-        headers = {"Content-Type": "application/json"}
-        if self.api_key:
-            headers["Authorization"] = f"Bearer {self.api_key}"
-        body = {
-            "model": self.model, "temperature": self.temperature,
-            "max_tokens": max_tokens, "stream": True,
-            "messages": [{"role": "system", "content": system},
-                         {"role": "user", "content": user}],
-        }
-        with self._session.post(url, headers=headers, json=body, timeout=self.timeout, stream=True) as r:
-            r.raise_for_status()
-            for line in r.iter_lines(decode_unicode=True):
-                if not line or not line.startswith("data:"):
-                    continue
-                data = line[len("data:"):].strip()
-                if data == "[DONE]":
-                    break
-                try:
-                    chunk = json.loads(data)
-                    delta = chunk["choices"][0].get("delta", {}).get("content")
-                except (ValueError, KeyError, IndexError):
-                    continue
-                if delta:
-                    yield delta
+        with llm_generation(
+            name=trace_name, model=self.model, system=system, user=user,
+            max_tokens=max_tokens, temperature=self.temperature, stream=True,
+        ) as generation:
+            parts = []
+            url = f"{self.base_url}/chat/completions"
+            headers = {"Content-Type": "application/json"}
+            if self.api_key:
+                headers["Authorization"] = f"Bearer {self.api_key}"
+            body = {
+                "model": self.model, "temperature": self.temperature,
+                "max_tokens": max_tokens, "stream": True,
+                "messages": [{"role": "system", "content": system},
+                             {"role": "user", "content": user}],
+            }
+            with self._session.post(url, headers=headers, json=body, timeout=self.timeout, stream=True) as r:
+                r.raise_for_status()
+                for line in r.iter_lines(decode_unicode=True):
+                    if not line or not line.startswith("data:"):
+                        continue
+                    data = line[len("data:"):].strip()
+                    if data == "[DONE]":
+                        break
+                    try:
+                        chunk = json.loads(data)
+                        delta = chunk["choices"][0].get("delta", {}).get("content")
+                    except (ValueError, KeyError, IndexError):
+                        continue
+                    if delta:
+                        parts.append(delta)
+                        yield delta
+            update_observation(generation, output="".join(parts))

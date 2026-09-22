@@ -100,9 +100,15 @@ def assess_requirement_plan(plan: RequirementPlan | None) -> SourceAssessment:
 
     if plan is None or not plan.requirements:
         return SourceAssessment(blocked=True, extraction_valid=False)
+    # 수요·지정학 "예측/실시간 지수"는 아직 미연결 수치 원천이지만, 같은
+    # 단어가 들어간 문서 동향 질의까지 막아서는 안 된다. 예를 들어 조달청
+    # 주간동향의 "배터리 설치량 증가"는 수요예측값이 아니라 확인 가능한 문서
+    # 사실이다. unavailable domain은 수치 결과를 요구할 때만 사전 차단하고,
+    # document_content는 OKF/PageIndex·벡터 검색 후 근거 충분성으로 판정한다.
     domains = tuple(dict.fromkeys(
         requirement.source_domain for requirement in plan.requirements
         if requirement.source_domain in _UNAVAILABLE_LABELS
+        and requirement.intent == "numeric_result"
     ))
     has_unknown = any(
         requirement.source_domain == "unknown" and requirement.intent == "numeric_result"

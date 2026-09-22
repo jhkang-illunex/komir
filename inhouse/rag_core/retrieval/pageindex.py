@@ -137,6 +137,10 @@ def _doc_meta(tree: dict[str, Any]) -> dict[str, Any]:
         "title": tree.get("title", ""),
         "doc_name": tree.get("doc_name", ""),
         "source_group": tree.get("source_group", ""),
+        "fmt": tree.get("fmt", ""),
+        "document_date": tree.get("document_date"),
+        "minerals": tree.get("minerals", []),
+        "content_keywords": tree.get("content_keywords", []),
         "resource": tree.get("resource", ""),
         "okf_path": tree.get("okf_path", ""),
         "node_count": count_nodes(tree.get("structure", [])),
@@ -173,8 +177,9 @@ def find_documents(
     for tree in trees:
         haystack = " ".join(
             str(tree.get(key, ""))
-            for key in ("title", "doc_name", "source_group", "okf_path", "resource")
+            for key in ("title", "doc_name", "source_group", "okf_path", "resource", "fmt", "document_date")
         )
+        haystack += " " + " ".join(tree.get("minerals", []) + tree.get("content_keywords", []))
         score = _score(query_tokens, haystack)
         if needle and (needle == tree.get("doc_id") or needle in tree.get("okf_path", "")):
             score = 1.0 + score  # 식별자 정확매칭은 항상 위로
@@ -214,11 +219,32 @@ def _explicit_document_tree(doc: str, body_query: str | None, *, trees_root: Pat
              if len(word) >= 3 and word not in {"보고서", "정리자료", "광산", "위치", "원문"}]
     if not words:
         return None
+    # 사용자는 "2026년 6월 16일"처럼 말하고, 조달청 파일은
+    # ``20260616_...``으로 저장된다. 날짜를 별도 강한 식별자로 정규화하지
+    # 않으면 공통 단어(주간·경제·비철금속)만으로 수백 문서가 동점이 된다.
+    requested_dates = {
+        f"{year}{int(month):02d}{int(day):02d}"
+        for year, month, day in re.findall(r"(20\d{2})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일", doc)
+    }
+    requested_dates.update(re.findall(r"(?<!\d)(20\d{2})[-._/]?(\d{2})[-._/]?(\d{2})(?!\d)", doc))
+    requested_dates = {
+        "".join(item) if isinstance(item, tuple) else item
+        for item in requested_dates
+    }
     scored = []
     for tree in trees:
         haystack = " ".join(str(tree.get(key, "")).replace("_", " ").replace("-", " ")
-                            for key in ("title", "doc_name", "okf_path", "resource")).casefold()
+                            for key in ("title", "doc_name", "okf_path", "resource", "fmt", "document_date")).casefold()
+        haystack += " " + " ".join(tree.get("minerals", []) + tree.get("content_keywords", [])).casefold()
         score = sum(word in haystack for word in words)
+        # 제목 축약어만 겹치는 여러 문서가 있어도, 사용자가 준 문서 식별자가
+        # 파일명/제목에 통째로 들어 있으면 그 문서를 결정적으로 선택한다.
+        compact_doc = re.sub(r"[^a-z0-9가-힣]", "", doc.casefold())
+        compact_haystack = re.sub(r"[^a-z0-9가-힣]", "", haystack)
+        if compact_doc and compact_doc in compact_haystack:
+            score += 100
+        if any(date_value in compact_haystack for date_value in requested_dates):
+            score += 10
         if score:
             scored.append((score, tree))
     scored.sort(key=lambda item: (-item[0], item[1].get("okf_path", "")))
@@ -432,7 +458,10 @@ def _document_body_fallback(
     scored = [(_score(query_tokens, line), index) for index, line in enumerate(lines)]
     # 동점은 문서 앞의 행을 고른다. 표의 "JV Inkai"와 "South Inkai"처럼
     # 같은 토큰 수가 겹칠 때 뒤 행을 택하면 다른 광산 사실을 섞을 수 있다.
-    score, index = max(scored, key=lambda item: item[0], default=(0.0, -1))
+    # 광종명 한 단어만으로 같은 점수인 행이 여럿이면, 단독 표기보다 실제
+    # 문맥이 있는 긴 원문 행을 선택한다. 광산 표는 아래 table_candidates가
+    # 별도로 우선하므로 행 혼합 위험이 없다.
+    score, index = max(scored, key=lambda item: (item[0], len(lines[item[1]]), -item[1]), default=(0.0, -1))
     selected_header: str | None = None
     selected_columns: tuple[int, int] | None = None
 

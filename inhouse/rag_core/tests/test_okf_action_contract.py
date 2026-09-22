@@ -21,7 +21,7 @@ from rag_core.retrieval.access import PRIVATE_ONLY_SOURCE_GROUPS
 
 
 class OkfActionContractTest(unittest.TestCase):
-    def test_document_lookup_preserves_original_query_and_restricts_document(self):
+    def test_document_lookup_preserves_original_query_for_document_selection_and_body(self):
         call = ActionCall(requirement_id="doc", action_id="document.lookup", slots=ActionSlots(
             topic="Kazatomprom 우라늄 광산 정리자료 JV Inkai"))
         self.assertTrue(validate_action_plan(ActionPlan(actions=[call])).approved)
@@ -29,7 +29,8 @@ class OkfActionContractTest(unittest.TestCase):
             call, "Kazatomprom 우라늄 광산 정리자료의 JV Inkai 위치는?",
         )
         self.assertEqual(route.resolved_query, "Kazatomprom 우라늄 광산 정리자료의 JV Inkai 위치는?")
-        self.assertEqual(route.pageindex_doc, call.slots.topic)
+        self.assertEqual(route.pageindex_doc, "Kazatomprom 우라늄 광산 정리자료의 JV Inkai 위치는?")
+        self.assertEqual(route.pageindex_body_query, "Kazatomprom 우라늄 광산 정리자료의 JV Inkai 위치는?")
         self.assertTrue(route.use_pageindex)
         self.assertFalse(route.use_dense)
 
@@ -120,6 +121,19 @@ class OkfActionContractTest(unittest.TestCase):
         self.assertIn("JV Inkai LLP", text)
         self.assertIn("45.281", text)
         self.assertIn("67.536", text)
+
+    def test_korean_written_date_selects_matching_weekly_document(self):
+        result = pageindex.lookup(
+            "리튬", doc="2026년 6월 16일 조달청 주간 경제 비철금속 시장 동향",
+            node_limit=3, with_text=True, body_fallback=True, body_query="리튬",
+        )
+        self.assertEqual(len(result["documents"]), 1)
+        self.assertEqual(
+            result["documents"][0]["okf_path"],
+            "조달청보고서/20260616_주간_경제_비철금속_시장_동향.md",
+        )
+        self.assertTrue(result["nodes"])
+        self.assertIn("LFP", result["nodes"][0]["text"])
 
     def test_explicit_document_fallback_keeps_public_source_group_filter(self):
         result = pageindex.lookup(

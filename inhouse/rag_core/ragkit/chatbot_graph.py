@@ -53,6 +53,7 @@ import logging
 import re
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
+from contextvars import copy_context
 from datetime import date
 from pathlib import Path
 from typing import Literal, TypedDict
@@ -558,6 +559,11 @@ class RetrievalRoute(BaseModel):
     # 명시 HS코드는 광종→HS 매핑보다 우선한다. 질문에 없는 코드를 추정해
     # 넣지 않도록 라우터가 실제 문자열을 보았을 때만 채우는 선택 필드다.
     komis_hs_code: str | None = None
+    use_komis_trade_indicator: bool = False
+    komis_trade_metric: Literal["tsi", "rca", "tii", "trade_growth", "country_dependency"] | None = None
+    komis_reporter_country: str | None = None
+    komis_partner_country: str | None = None
+    komis_trade_flow: Literal["import", "export"] | None = None
     use_komis_concentration: bool = False
     use_komis_monthly_trade: bool = False
     komis_monthly_trade_metric: Literal[
@@ -720,6 +726,33 @@ RETRIEVAL_ROUTE_MAX_TOKENS = 1280
 #: 않으면서도, 실제 행(hang)에서는 이 시간 안에 그 도구만 포기하고 나머지 근거로
 #: 계속 진행한다.
 RETRIEVE_JOB_TIMEOUT_SECONDS = 180.0
+_SOURCE_AUDIT_PREFIX = "source_audit:"
+
+
+def _source_audit_warnings(
+    jobs: dict[str, Future], results: dict[str, object], evidence: list[Evidence], warnings: list[str],
+) -> list[str]:
+    """세 조회소스와 OKF 원문 확인 상태를 근거 검증 결과로 남긴다.
+
+    OKF는 별도 검색기가 아니다. PageIndex가 ``with_text=True``로 읽은 원문과
+    Vector가 청킹한 원문이므로, 네 번째 후보 검색 대신 원문 확인 상태만 기록한다.
+    """
+    rdb_job_prefixes = ("structured", "komis_")
+    rdb_requested = any(name.startswith(rdb_job_prefixes) for name in jobs)
+    rdb_failed = any(name.startswith(rdb_job_prefixes) and f"{name}_failed" in warnings for name in jobs)
+    dense_requested, pageindex_requested = "dense" in jobs, "pageindex" in jobs
+    dense_count = sum(ev.kind == "dense" for ev in evidence)
+    pageindex_count = sum(ev.kind == "pageindex" for ev in evidence)
+    statuses = {
+        "rdb": ("failed" if rdb_failed else "queried") if rdb_requested else "not_selected",
+        "vector": ("failed" if "dense_failed" in warnings else "queried") if dense_requested else "not_selected",
+        "pageindex": ("failed" if "pageindex_failed" in warnings else "queried") if pageindex_requested else "not_selected",
+        "okf": "verified" if pageindex_count else ("unavailable" if pageindex_requested else "not_selected"),
+    }
+    counts = {"rdb": sum(ev.kind == "structured" for ev in evidence), "vector": dense_count,
+              "pageindex": pageindex_count, "okf": pageindex_count}
+    return [f"{_SOURCE_AUDIT_PREFIX}{name}:{statuses[name]}:{counts[name]}"
+            for name in ("rdb", "vector", "pageindex", "okf")]
 
 
 class RetrievalState(TypedDict, total=False):
@@ -793,6 +826,10 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
         return RetrievalRoute(**common, use_komis_concentration=True)
     if call.action_id == "trade.hs_summary":
         return RetrievalRoute(**common, use_komis_explicit_hs_summary=True)
+    if call.action_id == "trade.indicator":
+        return RetrievalRoute(**common, use_komis_trade_indicator=True,
+                              komis_trade_metric=s.trade_metric, komis_reporter_country=s.reporter_country,
+                              komis_partner_country=s.partner_country, komis_trade_flow=s.flow)
     if call.action_id == "resource.rank":
         return RetrievalRoute(**common, use_komis_mineral_ranking=True,
                               komis_mineral_ranking_metrics=[s.metric])
@@ -817,12 +854,18 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
     if call.action_id in {"menu.navigate", "dataset.navigate"}:
         return RetrievalRoute(**common)
     if call.action_id == "document.lookup":
-        # topic은 지정 문서/절 식별자다. 검색어는 원문 전체를 보존해 광종·기간·
-        # 요구 사실이 줄어들지 않게 하고, doc은 MCP의 접근 제약 안에서 후보를 좁힌다.
+        # topic은 planner가 압축한 문서/절 식별자라, 원 질문의 날짜·판본 같은
+        # 강한 식별자가 빠질 수 있다. 검색어뿐 아니라 doc 선택과 body fallback에도
+        # 원문을 보존해야 ``2026년 6월 16일``이 ``20260616_...`` 문서를 고른다.
+        # PageIndex는 이 문자열로 후보 하나를 결정한 뒤에만 본문을 읽으므로,
+        # 넓은 전수검색으로 문서 경계를 푸는 동작은 아니다.
         return RetrievalRoute(**{
             **common, "resolved_query": question, "use_dense": False, "use_pageindex": True,
-            "pageindex_doc": s.topic, "pageindex_body_fallback": True,
-            "pageindex_body_query": s.mine_name,
+            "pageindex_doc": question, "pageindex_body_fallback": True,
+            # 광종 슬롯은 명시 문서 안의 본문 행을 고르는 가장 좁은 검색어다.
+            # 원 질문 전체에는 날짜·보고서명 같은 식별어가 많아 한 행의 광종
+            # 사실과의 토큰 비율이 낮아질 수 있다.
+            "pageindex_body_query": s.mineral or question,
         })
     if call.action_id == "mine.profile":
         # 단건 광산 사실은 순위 집계가 아니라 OKF 본문과 dense를 병행 조회한다.
@@ -863,8 +906,16 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
             "pageindex_body_fallback": True, "pageindex_body_query": body_query,
         })
     # document.retrieve is source-first and has no structured substitute.
+    resolved_query = s.topic or question
+    # 조달청 주간동향은 리튬 수요를 "배터리 설치량"으로 서술한다. 사용자의
+    # 수요 이슈 표현만으로는 오래된 니켈 문서가 dense 상위를 차지하는 실측이
+    # 있어, 광종 슬롯이 리튬이고 수요를 명시한 경우에만 같은 뜻의 원문 표지를
+    # 보강한다. 다른 광종·문서 주제에는 적용하지 않는다.
+    if s.mineral == "리튬" and "수요" in resolved_query and "배터리 설치량" not in resolved_query:
+        resolved_query = f"{resolved_query} 배터리 설치량"
     return RetrievalRoute(**{
         **common,
+        "resolved_query": resolved_query,
         "use_dense": True,
         "use_pageindex": True,
     })
@@ -1200,6 +1251,25 @@ def _comparison_or_monthly_source_is_usable(evidence: list[Evidence], action_cal
         if not starts or min(starts) > expected_start:
             return False
     return True
+
+
+def _filter_document_evidence_to_trailing_period(evidence: list[Evidence], action_call) -> list[Evidence]:
+    """최근 N개월 문서 질의에는 파일명에서 확인한 발행일 근거만 남긴다."""
+
+    period = action_call.slots.period
+    if (action_call.action_id != "document.retrieve" or not period
+            or period.kind != "trailing_months" or not period.trailing_months):
+        return evidence
+    cutoff = _months_ago(date.today(), period.trailing_months)
+    filtered: list[Evidence] = []
+    for ev in evidence:
+        try:
+            observed = date.fromisoformat((ev.as_of or "")[:10])
+        except ValueError:
+            continue
+        if cutoff <= observed <= date.today():
+            filtered.append(ev)
+    return filtered
 
 
 def _okf_body_matches_profile(evidence: list[Evidence], mine_name: str | None) -> bool:
@@ -1696,7 +1766,7 @@ def _retrieve_node(
         # 아래에서 여전히 komis_raw 전용으로만 한다 — 랭킹은 route가 이미
         # page_id를 직접 고른다(komis_ranking_page).
         (route.use_komis_ranking or route.use_komis_mineral_ranking or route.use_komis_concentration
-         or route.use_komis_monthly_trade)
+         or route.use_komis_monthly_trade or route.use_komis_trade_indicator)
         and route.komis_mineral_name
     ):
         resolved = session.call_komis_resolve_mineral(route.komis_mineral_name)
@@ -1730,6 +1800,12 @@ def _retrieve_node(
     # 상한이 되게 한다(포기한 job의 스레드 자체는 백그라운드에서 계속 돌다
     # 알아서 끝난다 — 파이썬 스레드는 강제 종료가 안 되므로 이게 최선).
     pool = ThreadPoolExecutor(max_workers=4)
+
+    def submit(fn, *args, **kwargs):
+        """Langfuse/OpenTelemetry context를 각 병렬 조회 스레드에 복사한다."""
+
+        return pool.submit(copy_context().run, fn, *args, **kwargs)
+
     try:
         # STRUCTURED_ENABLED=False인 동안은 ROUTE_PROMPT가 use_structured를
         # 항상 false로 두도록 지시돼 있지만, LLM 출력이라 100% 보장은
@@ -1738,7 +1814,7 @@ def _retrieve_node(
         # 새 테이블로 교체 예정. 재연결 시 이 플래그만 True로 돌리면 된다).
         if STRUCTURED_ENABLED and route.use_structured and route.structured_template and route.commodity_code:
             call = getattr(session, _STRUCTURED_CALL_NAMES[route.structured_template])
-            jobs["structured"] = pool.submit(call, route.commodity_code, route.target, route.forecast_months)
+            jobs["structured"] = submit(call, route.commodity_code, route.target, route.forecast_months)
         # composite_index는 komis_raw_mineral_code가 None이어도(광종 미지정)
         # 조회한다 — 위에서 이미 그 경우만 komis_raw_page_id를 채워뒀다.
         # start_period/end_period: 명시적 기간(2026-09-03, ④-나)이 있으면
@@ -1747,7 +1823,7 @@ def _retrieve_node(
         # 없으면 여전히 None → 기존과 동일하게 최신 limit개가 조회된다.
         if komis_raw_page_id:
             start_period, end_period = _relative_period_bounds(route)
-            jobs["komis_raw"] = pool.submit(
+            jobs["komis_raw"] = submit(
                 session.call_komis_raw_lookup, komis_raw_page_id, mineral_code=komis_raw_mineral_code,
                 hs_code=route.komis_hs_code,
                 start_period=start_period, end_period=end_period,
@@ -1758,14 +1834,14 @@ def _retrieve_node(
         # 둘 다 필요로 할 수 있다(예: "가격 동향과 수입 상위국 같이").
         if route.use_komis_ranking and komis_raw_mineral_code and route.komis_ranking_page and route.komis_ranking_metric:
             rank_start, rank_end = _relative_period_bounds(route)
-            jobs["komis_ranking"] = pool.submit(
+            jobs["komis_ranking"] = submit(
                 session.call_komis_country_ranking, komis_raw_mineral_code, route.komis_ranking_page,
                 route.komis_ranking_metric, start_period=rank_start, end_period=rank_end,
                 top_n=route.komis_ranking_top_n or 5,
             )
         if route.use_komis_concentration and komis_raw_mineral_code:
             concentration_start, concentration_end = _relative_period_bounds(route)
-            jobs["komis_concentration"] = pool.submit(
+            jobs["komis_concentration"] = submit(
                 session.call_komis_country_concentration, komis_raw_mineral_code,
                 start_period=concentration_start, end_period=concentration_end,
             )
@@ -1779,12 +1855,23 @@ def _retrieve_node(
             # 기준을 지정한 경우에만 필터를 넘겨 두 metric Evidence가 섞이지 않는다.
             if route.komis_monthly_trade_metric is not None:
                 monthly_kwargs["metric"] = route.komis_monthly_trade_metric
-            jobs["komis_monthly_trade"] = pool.submit(
+            jobs["komis_monthly_trade"] = submit(
                 session.call_komis_monthly_trade_summary, **monthly_kwargs,
+            )
+        if (route.use_komis_trade_indicator and route.komis_trade_metric
+                and route.komis_reporter_country and route.komis_start_period
+                and len(route.komis_start_period) == 4):
+            jobs["komis_trade_indicator"] = submit(
+                session.call_komis_trade_indicator,
+                trade_metric=route.komis_trade_metric,
+                reporter_country=route.komis_reporter_country,
+                calendar_year=int(route.komis_start_period),
+                mineral_code=komis_raw_mineral_code, hs_code=route.komis_hs_code,
+                partner_country=route.komis_partner_country, flow=route.komis_trade_flow,
             )
         if route.use_komis_explicit_hs_summary and route.komis_hs_code:
             hs_start, hs_end = _relative_period_bounds(route)
-            jobs["komis_explicit_hs_summary"] = pool.submit(
+            jobs["komis_explicit_hs_summary"] = submit(
                 session.call_komis_explicit_hs_import_summary, route.komis_hs_code,
                 start_period=hs_start, end_period=hs_end,
             )
@@ -1794,13 +1881,13 @@ def _retrieve_node(
                     window = route.model_copy(update={"komis_relative_months": months,
                                                       "komis_start_period": None, "komis_end_period": None})
                     p_start, p_end = _relative_period_bounds(window)
-                    jobs[f"komis_price_comparison:{months}"] = pool.submit(
+                    jobs[f"komis_price_comparison:{months}"] = submit(
                         session.call_komis_price_comparison, route.komis_compare_mineral_names,
                         start_period=p_start, end_period=p_end, window_months=months,
                     )
             else:
                 p_start, p_end = _relative_period_bounds(route)
-                jobs["komis_price_comparison"] = pool.submit(
+                jobs["komis_price_comparison"] = submit(
                     session.call_komis_price_comparison, route.komis_compare_mineral_names,
                     start_period=p_start, end_period=p_end,
                 )
@@ -1818,7 +1905,7 @@ def _retrieve_node(
         if route.use_komis_mineral_ranking and komis_raw_mineral_code:
             share_comparison = "생산국비중" in re.sub(r"\s+", "", state.get("question", "")) and "수입국비중" in re.sub(r"\s+", "", state.get("question", ""))
             for metric in route.komis_mineral_ranking_metrics or []:
-                jobs[f"komis_mineral_ranking:{metric}"] = pool.submit(
+                jobs[f"komis_mineral_ranking:{metric}"] = submit(
                     session.call_komis_mineral_ranking, komis_raw_mineral_code, metric,
                     start_period=route.komis_start_period, end_period=route.komis_end_period,
                     top_n=route.komis_ranking_top_n or 5,
@@ -1832,14 +1919,14 @@ def _retrieve_node(
         # "최신값" 하나만 보므로 기간 자체가 필요 없다).
         if route.use_komis_price_volatility_ranking:
             vol_start, vol_end = _relative_period_bounds(route)
-            jobs["komis_price_volatility"] = pool.submit(
+            jobs["komis_price_volatility"] = submit(
                 session.call_komis_price_volatility_ranking,
                 mineral_names=route.komis_compare_mineral_names,
                 start_period=vol_start, end_period=vol_end,
                 top_n=route.komis_ranking_top_n or 5,
             )
         if route.use_komis_indicator_ranking and route.komis_indicator_ranking_page:
-            jobs["komis_indicator_ranking"] = pool.submit(
+            jobs["komis_indicator_ranking"] = submit(
                 session.call_komis_indicator_ranking, route.komis_indicator_ranking_page,
                 ascending=route.komis_indicator_ranking_ascending if route.komis_indicator_ranking_ascending is not None else True,
                 mineral_names=route.komis_compare_mineral_names, top_n=route.komis_ranking_top_n or 5,
@@ -1852,7 +1939,7 @@ def _retrieve_node(
         # 나가게 한다(_run_with_status의 콜백은 스레드에서 불려도 안전 —
         # chatbot.py::_run_with_status 참고).
         if route.use_mine_aggregate and route.mine_metric and route.mine_agg:
-            jobs["mine_aggregate"] = pool.submit(
+            jobs["mine_aggregate"] = submit(
                 mine_aggregate.aggregate_mine_metric,
                 route.komis_mineral_name or "", route.mine_metric, route.mine_agg,
                 year=route.mine_year, targets=route.mine_targets,
@@ -1880,14 +1967,14 @@ def _retrieve_node(
             route.use_komis_price_volatility_ranking, route.use_komis_indicator_ranking,
         )))
         if use_dense_effective:
-            jobs["dense"] = pool.submit(session.call_hybrid_search, query, dense_k)
+            jobs["dense"] = submit(session.call_hybrid_search, query, dense_k)
         if route.use_pageindex:
             if route.pageindex_mode == "agentic":
-                jobs["pageindex"] = pool.submit(
+                jobs["pageindex"] = submit(
                     session.call_pageindex_agentic, query, history=_recent_history(state),
                 )
             else:
-                jobs["pageindex"] = pool.submit(
+                jobs["pageindex"] = submit(
                     session.call_pageindex_lookup, query, doc=route.pageindex_doc,
                     node_limit=pageindex_k, with_text=True,
                     body_fallback=route.pageindex_body_fallback,
@@ -1936,6 +2023,10 @@ def _retrieve_node(
         concentration_evidence, concentration_warnings = results["komis_concentration"]
         evidence.extend(concentration_evidence)
         warnings.extend(concentration_warnings)
+    if "komis_trade_indicator" in results:
+        trade_evidence, trade_warnings = results["komis_trade_indicator"]
+        evidence.extend(trade_evidence)
+        warnings.extend(trade_warnings)
     for name, payload in results.items():
         if name.startswith(("komis_monthly_trade", "komis_explicit_hs_summary", "komis_price_comparison")):
             aggregate_evidence, aggregate_warnings = payload
@@ -1997,6 +2088,7 @@ def _retrieve_node(
             ev.source_id = ev.source
             ev.observed_period = ev.as_of
 
+    warnings.extend(_source_audit_warnings(jobs, results, deduped, warnings))
     return {"evidence": deduped, "warnings": warnings}
 
 
@@ -2129,6 +2221,13 @@ def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
         # adapter가 인용할 단일 문서를 결정적으로 만들었으므로, 원 질문의
         # 실수치 부재를 다시 요구하는 Advisor 판정으로 대체 응답을 지우지 않는다.
         if action_call.action_id == "stockpile.methodology":
+            return {"sufficient": True, "evidence": evidence, "warnings": state.get("warnings", [])}
+        # 명시 문서 lookup은 PageIndex가 하나의 허용 문서를 고르고 실제 OKF
+        # 본문 행을 반환한 뒤에만 이 지점에 온다. 이 계약을 다시 Advisor의
+        # 선택적 JSON 필드(reason=null) 오류에 맡기면 확인된 PDF/HWP/XLSX
+        # 본문도 기권되는 회귀가 생긴다.
+        if (action_call.action_id == "document.lookup"
+                and any(ev.kind == "pageindex" and ev.text.strip() for ev in evidence)):
             return {"sufficient": True, "evidence": evidence, "warnings": state.get("warnings", [])}
 
     # 복합 수치·문서 요청은 source_contract에서 검색 전에 차단된다. 여기에
@@ -2531,6 +2630,7 @@ def retrieve_evidence(
             )
             call_evidence = extracted.get("evidence", [])
             call_warnings = extracted.get("warnings", [])
+        call_evidence = _filter_document_evidence_to_trailing_period(call_evidence, call)
         for ev in call_evidence:
             ev.requirement_id, ev.action_id, ev.source_id, ev.observed_period = (
                 call.requirement_id, call.action_id, ev.source, ev.as_of)
@@ -2575,7 +2675,13 @@ def retrieve_evidence(
                 )
         if on_status:
             on_status("verifying", action_id=call.action_id)
-        if _is_rare_earth_nd_scope_request(call):
+        if call.action_id == "trade.indicator":
+            # 이 도구는 SQL 집계와 명시된 공식으로 결과를 이미 결정했다. Advisor가
+            # 계산식을 다시 해석하다 결정적 결과를 기권시키지 않도록 근거 존재를
+            # 충분성 기준으로 쓴다.
+            verified = {"sufficient": bool(call_evidence), "evidence": call_evidence,
+                        "warnings": call_warnings}
+        elif _is_rare_earth_nd_scope_request(call):
             # 이 경로는 `_q15_contextual_pageindex_evidence`가 실제 공개 USGS
             # 본문 표지·단위·표 머리·행을 모두 확인한 경우에만 여기까지 온다.
             # 동일 사실을 LLM Advisor의 축약 발췌에 다시 맡기면 비결정적 기권이

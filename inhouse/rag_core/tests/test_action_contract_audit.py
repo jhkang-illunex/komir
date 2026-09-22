@@ -9,7 +9,8 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from rag_core.ragkit.action_contract import (  # noqa: E402
-    ActionPlan, IntentCall, IntentPlan, ActionSlots, action_plan_from_intent, validate_action_plan,
+    ActionPlan, IntentCall, IntentPlan, ActionSlots, action_plan_from_intent,
+    missing_trade_indicator_slots, validate_action_plan,
 )
 from rag_core.ragkit.chatbot_graph import _route_from_action_plan, _route_from_action_call  # noqa: E402
 from rag_core.ragkit import chatbot_graph as graph  # noqa: E402
@@ -26,6 +27,26 @@ def call(requirement_id, action_id, **slots):
 
 
 class ActionContractAuditTest(unittest.TestCase):
+    def test_trade_indicator_missing_slots_is_hitl_only(self):
+        candidate = plan(call("r1", "trade.indicator", trade_metric="country_dependency"))
+        self.assertEqual(
+            missing_trade_indicator_slots(candidate.actions[0]),
+            ("reporter_country", "period", "mineral_or_hs_code", "flow", "partner_country"),
+        )
+        self.assertEqual(validate_action_plan(candidate).failure_reason, "slot_required")
+
+    def test_complete_trade_indicator_routes_to_dedicated_mcp_path(self):
+        candidate = plan(call(
+            "r1", "trade.indicator", trade_metric="country_dependency", mineral="리튬",
+            reporter_country="한국", partner_country="중국", flow="import",
+            period={"kind": "calendar_year", "calendar_year": 2025, "explicit": True},
+        ))
+        self.assertTrue(validate_action_plan(candidate).approved)
+        route = _route_from_action_plan(candidate, "2025년 한국의 중국산 리튬 수입 의존도")
+        self.assertTrue(route.use_komis_trade_indicator)
+        self.assertEqual(route.komis_trade_metric, "country_dependency")
+        self.assertEqual(route.komis_partner_country, "중국")
+
     @staticmethod
     def _verify_rejected_claim(action, evidence):
         class RejectingLLM:
@@ -86,6 +107,48 @@ class ActionContractAuditTest(unittest.TestCase):
         candidate = action_plan_from_intent(intents)
         self.assertEqual(candidate.actions[0].action_id, "document.retrieve")
         self.assertTrue(validate_action_plan(candidate).approved)
+
+    def test_non_geopolitical_issue_is_normalized_to_document_search(self):
+        intents = IntentPlan(requirements=[IntentCall(
+            requirement_id="issue", intent="geopolitics_articles", role="content",
+            slots=ActionSlots(mineral="리튬", topic="수요 관련 이슈"),
+        )])
+        candidate = action_plan_from_intent(intents)
+        self.assertEqual([item.action_id for item in candidate.actions], ["document.retrieve"])
+        self.assertTrue(validate_action_plan(candidate).approved)
+
+    def test_issue_report_is_document_search_but_dated_report_stays_explicit_lookup(self):
+        issue = IntentPlan(requirements=[IntentCall(
+            requirement_id="issue", intent="okf_lookup", role="content",
+            slots=ActionSlots(topic="리튬 수급 이슈 보고서"),
+        )])
+        self.assertEqual(action_plan_from_intent(issue).actions[0].action_id, "document.retrieve")
+        dated = IntentPlan(requirements=[IntentCall(
+            requirement_id="dated", intent="okf_lookup", role="content",
+            slots=ActionSlots(topic="2026년 6월 16일 조달청 주간 경제 비철금속 시장 동향 보고서"),
+        )])
+        self.assertEqual(action_plan_from_intent(dated).actions[0].action_id, "document.lookup")
+
+    def test_document_search_uses_original_question_when_topic_is_missing(self):
+        intents = IntentPlan(requirements=[IntentCall(
+            requirement_id="issue", intent="document", role="content",
+            slots=ActionSlots(mineral="리튬"),
+        )])
+        candidate = action_plan_from_intent(intents, "6개월 이내 리튬 수요 관련 이슈를 보여주세요")
+        self.assertEqual(candidate.actions[0].slots.topic, "6개월 이내 리튬 수요 관련 이슈를 보여주세요")
+        self.assertTrue(validate_action_plan(candidate).approved)
+
+    def test_recent_document_evidence_keeps_only_confirmed_file_dates_in_window(self):
+        action = plan(call("issue", "document.retrieve", topic="리튬 수요", mineral="리튬",
+                           period={"kind": "trailing_months", "trailing_months": 6,
+                                   "explicit": True})).actions[0]
+        recent = Evidence(kind="dense", source="20260616.pdf", section="리튬", text="배터리 설치량",
+                          as_of="2026-06-16")
+        old = Evidence(kind="dense", source="20230523.pdf", section="리튬", text="수요 전망",
+                       as_of="2023-05-23")
+        unknown = Evidence(kind="pageindex", source="unknown", section="리튬", text="수요")
+        self.assertEqual(graph._filter_document_evidence_to_trailing_period(
+            [recent, old, unknown], action), [recent])
 
     def test_document_action_builds_dense_and_pageindex_route(self):
         candidate = plan(call("concept", "document.retrieve", topic="핵심광물 재활용의 역할과 한계"))

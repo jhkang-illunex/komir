@@ -163,7 +163,9 @@ class KomirJsonLLM:
                 )
             attempt_record: dict[str, Any] = {"attempt": attempt + 1}
             try:
-                result = self._chat.complete(system_prompt, user_content, max_tokens=max_tokens)
+                result = self._chat.complete(
+                    system_prompt, user_content, max_tokens=max_tokens, trace_name=task,
+                )
                 raw_content = result.text
                 attempt_record["raw_content"] = raw_content
                 previous_content = raw_content

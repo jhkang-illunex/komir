@@ -86,6 +86,7 @@ import logging
 import sys
 import threading
 from contextlib import contextmanager
+from contextvars import copy_context
 from pathlib import Path
 from typing import Iterator, Literal
 from uuid import UUID
@@ -117,9 +118,14 @@ for _root in (
 from fastapi import APIRouter  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
 from sse_starlette.sse import EventSourceResponse  # noqa: E402
+from common.langfuse_tracing import chat_trace, update_observation  # noqa: E402
 
 from rag_core.ragkit.chatbot import STATUS_STAGES, chat_turn  # noqa: E402
-from rag_core.ragkit.action_contract import ActionPlan, extract_action_plan, validate_action_plan  # noqa: E402
+from rag_core.ragkit.action_contract import (  # noqa: E402
+    ActionPlan, extract_action_plan, missing_trade_indicator_slots, validate_action_plan,
+)
+from rag_core.ragkit.messages import chat_message  # noqa: E402
+from rag_core.ragkit import mcp_client  # noqa: E402
 from common.llm_client import KomirJsonLLM  # noqa: E402
 
 from common.config import get_settings  # noqa: E402
@@ -171,6 +177,48 @@ def _status_event(stage: int) -> dict:
 # 대화 저장소를 chat_session/chat_message 하나로 유지한다(page_recommend/service.py 주석).
 _PAGE_STATE_KEY = "page_recommend"
 _MINE_CLARIFICATION_KEY = "mine_country_clarification"
+_TRADE_CLARIFICATION_KEY = "trade_indicator_clarification"
+_KOMIS_MINERAL_ACTIONS = frozenset({
+    "price.series", "price.compare", "price.verify_claim", "trade.country_rank",
+    "trade.monthly", "trade.concentration", "trade.indicator", "resource.rank", "indicator.series",
+})
+
+
+def _unsupported_mineral_in_plan(plan: ActionPlan, profile: Literal["public", "private"], *, session=None) -> str | None:
+    """슬롯이 가리킨 광물이 실제 KOMIS 목록에 없으면 이름을 돌려준다.
+
+    문서 검색은 KOMIS 등록 광물 밖의 보고서도 근거가 될 수 있으므로 막지 않는다.
+    결정적 RDB action에 한해서만, 조회를 시작하기 전에 실제 resolver 결과로
+    지원 여부를 확인한다. MCP 장애는 미지원으로 오인하지 않고 기존 조회 오류
+    처리로 넘긴다.
+    """
+    resolver = session or (mcp_client.private if profile == "private" else mcp_client.public)
+    for call in plan.actions:
+        if call.action_id not in _KOMIS_MINERAL_ACTIONS:
+            continue
+        names = ([call.slots.mineral] if call.slots.mineral else []) + (call.slots.minerals or [])
+        for name in dict.fromkeys(name for name in names if name):
+            try:
+                resolved = resolver.call_komis_resolve_mineral(name)
+            except Exception:  # resolver 장애는 광물 미지원으로 바꾸지 않는다.
+                continue
+            if resolved.get("mineral_code") is None and any(
+                "KOMIS 광종 목록" in warning for warning in resolved.get("warnings", [])
+            ):
+                return name
+    return None
+
+
+def _unsupported_mineral_response(session_id: str, message: str):
+    answer = chat_message("unsupported_commodity")
+    session_store.append_message(session_id, "user", message)
+    session_store.append_message(session_id, "assistant", answer)
+    yield sse_event({"session_id": session_id})
+    yield sse_event({"stage": 1, "label": STATUS_STAGES[1], "status": "조회불가",
+                     "failure_reason": "unsupported_mineral"}, event="status")
+    yield sse_event({"delta": answer})
+    yield sse_event({"done": True, "abstained": True,
+                     "abstain_reason": "unsupported_mineral"}, event="done")
 
 
 def _pending_mine_clarification(session_id: str) -> dict | None:
@@ -183,6 +231,51 @@ def _pending_mine_clarification(session_id: str) -> dict | None:
         return None
     state = payload.get(_MINE_CLARIFICATION_KEY) if isinstance(payload, dict) else None
     return state if isinstance(state, dict) else None
+
+
+def _pending_trade_clarification(session_id: str) -> dict | None:
+    messages = session_store.list_messages(session_id, limit=1)
+    if not messages or messages[-1]["role"] != "assistant":
+        return None
+    try:
+        payload = json.loads(messages[-1].get("citations_json") or "")
+    except (TypeError, ValueError):
+        return None
+    state = payload.get(_TRADE_CLARIFICATION_KEY) if isinstance(payload, dict) else None
+    return state if isinstance(state, dict) else None
+
+
+def _trade_indicator_call(plan: ActionPlan):
+    calls = [call for call in plan.actions if call.action_id == "trade.indicator"]
+    return calls[0] if len(plan.actions) == 1 and len(calls) == 1 else None
+
+
+_TRADE_SLOT_LABELS = {
+    "trade_metric": "무역 지표(TSI, RCA, TII, 수출입증감률, 특정국 의존도)",
+    "reporter_country": "기준국", "partner_country": "상대국",
+    "period": "대상 연도 또는 기간", "mineral_or_hs_code": "광종 또는 HS 코드",
+    "flow": "수입 또는 수출 구분",
+}
+
+
+def _trade_clarification_response(session_id: str, message: str, plan: ActionPlan):
+    call = _trade_indicator_call(plan)
+    assert call is not None
+    missing = missing_trade_indicator_slots(call)
+    labels = ", ".join(_TRADE_SLOT_LABELS[name] for name in missing)
+    answer = f"무역 지표를 계산하려면 {labels}을(를) 알려주세요."
+    session_store.append_message(session_id, "user", message)
+    session_store.append_message(
+        session_id, "assistant", answer,
+        citations_json=json.dumps({_TRADE_CLARIFICATION_KEY: {
+            "question": message, "plan": plan.model_dump(mode="json"), "missing_slots": list(missing),
+        }}, ensure_ascii=False),
+    )
+    yield sse_event({"session_id": session_id})
+    yield _status_event(1)
+    yield sse_event({"delta": answer})
+    yield sse_event({"done": True, "needs_clarification": True,
+                     "clarification": {"action_id": "trade.indicator", "slots": list(missing)}}, event="done")
 
 
 def _mine_country_choice(message: str, country: str | None = None) -> str | None:
@@ -503,23 +596,14 @@ def _run_unverified_menu_path(request: ChatRequest, session_id: str):
     )
 
 
-def _run_chat(request: ChatRequest, profile: Literal["public", "private"]):
-    """제너레이터 — SSE로 그대로 넘긴다(테스트에서 list()로 직접 소비 가능).
-
-    `profile`은 page 경로엔 영향 없다(그 경로는 hybrid_search/pageindex_lookup을
-    안 씀) — document 경로에만 전달."""
-
-    requested_session_id = str(request.session_id) if request.session_id else None
-    try:
-        session_id = session_store.get_or_create_session(requested_session_id, request.user_id)
-    except session_store.SessionOwnershipError:
-        # Do not disclose whether another user's session ID exists.
-        yield sse_event({"code": "invalid_session"}, event="error")
-        yield sse_event({"done": True, "warnings": ["invalid_session"]}, event="done")
-        return
+def _run_chat_session(
+    request: ChatRequest, profile: Literal["public", "private"], session_id: str,
+):
+    """세션과 Langfuse trace가 확정된 뒤 실제 챗봇 턴을 실행한다."""
 
     with _session_turn_lock(session_id):
         pending = _pending_mine_clarification(session_id)
+        pending_trade = _pending_trade_clarification(session_id)
         try:
             pending_plan = ActionPlan.model_validate(pending["plan"]) if pending else None
         except (KeyError, TypeError, ValueError):
@@ -533,6 +617,13 @@ def _run_chat(request: ChatRequest, profile: Literal["public", "private"]):
             if pending_call and choice:
                 action_plan = pending_plan
                 resumed = True
+            elif pending_trade:
+                # 이전 질문의 typed action을 보존한 채, 사용자가 보완한 조건만
+                # 함께 다시 해석한다. 이 분기는 trade.indicator HITL에만 있다.
+                action_plan = extract_action_plan(
+                    f"{pending_trade['question']}\n추가 확인 조건: {request.message}",
+                    KomirJsonLLM(), history=_history_for_graph(session_id),
+                )
             else:
                 action_plan = extract_action_plan(
                     request.message, KomirJsonLLM(), history=_history_for_graph(session_id),
@@ -548,10 +639,14 @@ def _run_chat(request: ChatRequest, profile: Literal["public", "private"]):
             yield sse_event({"delta": failure_message})
             yield sse_event({"done": True, "abstained": True, "abstain_reason": "slot_unresolved"}, event="done")
             return
+        trade_call = _trade_indicator_call(action_plan)
+        if trade_call and missing_trade_indicator_slots(trade_call):
+            yield from _trade_clarification_response(session_id, request.message, action_plan)
+            return
         if not assessment.approved:
             failure_message = ("광물 관련 정보만 조회할 수 있습니다."
                                if assessment.failure_reason == "out_of_scope"
-                               else "요청하신 정보는 현재 확인된 데이터 계약으로 제공할 수 없습니다.")
+                               else chat_message("action_unavailable"))
             session_store.append_message(session_id, "user", request.message)
             session_store.append_message(session_id, "assistant", failure_message)
             yield sse_event({"session_id": session_id})
@@ -559,6 +654,9 @@ def _run_chat(request: ChatRequest, profile: Literal["public", "private"]):
                              "failure_reason": assessment.failure_reason}, event="status")
             yield sse_event({"delta": failure_message})
             yield sse_event({"done": True, "abstained": True, "abstain_reason": assessment.failure_reason}, event="done")
+            return
+        if _unsupported_mineral_in_plan(action_plan, profile):
+            yield from _unsupported_mineral_response(session_id, request.message)
             return
         mine_call = _mine_country_call(action_plan)
         if mine_call and request.mode != "page":
@@ -595,6 +693,45 @@ def _run_chat(request: ChatRequest, profile: Literal["public", "private"]):
                                            action_mineral=page_call.slots.mineral)
             return
         yield from _run_document_qa(request, session_id, profile, action_plan=action_plan)
+
+
+def _run_chat(request: ChatRequest, profile: Literal["public", "private"]):
+    """제너레이터 — 한 턴 전체를 Langfuse root trace로 감싸 SSE로 넘긴다."""
+
+    requested_session_id = str(request.session_id) if request.session_id else None
+    try:
+        session_id = session_store.get_or_create_session(requested_session_id, request.user_id)
+    except session_store.SessionOwnershipError:
+        # Do not disclose whether another user's session ID exists.
+        yield sse_event({"code": "invalid_session"}, event="error")
+        yield sse_event({"done": True, "warnings": ["invalid_session"]}, event="done")
+        return
+
+    def traced_turn():
+        with chat_trace(
+            user_id=request.user_id,
+            session_id=session_id,
+            message=request.message,
+            profile=profile,
+        ) as trace:
+            for event in _run_chat_session(request, profile, session_id):
+                if event.get("event") == "done":
+                    try:
+                        update_observation(trace, output=json.loads(event["data"]))
+                    except (KeyError, TypeError, ValueError):
+                        update_observation(trace, output={"done": True})
+                yield event
+
+    # SSE-Starlette는 동기 제너레이터를 이벤트마다 새 contextvars context에서
+    # 재개한다. Langfuse의 root trace는 enter와 exit가 같은 context여야 하므로,
+    # 이 턴 제너레이터만 하나의 캡처한 context에서 끝까지 재개한다.
+    turn = traced_turn()
+    trace_context = copy_context()
+    while True:
+        try:
+            yield trace_context.run(next, turn)
+        except StopIteration:
+            return
 
 
 @router.post("/pubchat")

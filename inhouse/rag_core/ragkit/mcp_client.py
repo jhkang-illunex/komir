@@ -350,6 +350,18 @@ class _ProfileSession:
         )
         return [Evidence(**d) for d in data["evidence"]], data["warnings"]
 
+    def call_komis_trade_indicator(
+        self, *, trade_metric: str, reporter_country: str, calendar_year: int,
+        mineral_code: str | None = None, hs_code: str | None = None,
+        partner_country: str | None = None, flow: str | None = None,
+    ) -> tuple[list[Evidence], list[str]]:
+        data = self._call("komis_trade_indicator", {
+            "trade_metric": trade_metric, "reporter_country": reporter_country,
+            "calendar_year": calendar_year, "mineral_code": mineral_code, "hs_code": hs_code,
+            "partner_country": partner_country, "flow": flow,
+        })
+        return [Evidence(**d) for d in data["evidence"]], data["warnings"]
+
     def call_komis_monthly_trade_summary(
         self, *, mineral_code: str | None = None, hs_code: str | None = None,
         start_period: str | None = None, end_period: str | None = None,

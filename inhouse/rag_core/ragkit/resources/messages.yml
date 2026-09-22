@@ -1,0 +1,4 @@
+chat:
+  unsupported_commodity: "지원하지 않는 광물에 대해서는 답변할수 없습니다."
+  data_not_found: "데이터를 찾을 수 없습니다."
+  action_unavailable: "요청하신 데이터를 조회할수 없습니다."

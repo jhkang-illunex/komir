@@ -15,6 +15,34 @@ Streamlit 요약보고서의 원본-KOMIS 변환 경로 11종도 실제 요청 �
 report_gen Pydantic 요청 모델에 대입해 모두 통과함을 확인했다. 이 확인에서는
 인자 불일치를 재현하지 못했으므로, 선택값 조합에서 발생하는 오류는 실제 화면의
 오류 문구와 함께 후속 재현이 필요하다.
+## 2026-09-22 (후속4) — rag_chat Langfuse 관측 연동 보완
+
+`rag_chat` 한 턴을 `rag-chat.turn` root chain으로 기록하고, 공용 OpenAI 호환
+클라이언트의 JSON 작업(route·verify·reformulate 등)과 답변 스트림을 하위
+generation으로 기록하도록 연결했다. 실제 챗봇 요청에서 시작되는 trace만
+활성화하므로 같은 공용 LLM 클라이언트를 쓰는 report_gen·ingest는 자동 수집하지
+않는다. 세 환경변수(`LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`,
+`LANGFUSE_BASE_URL`)가 모두 있을 때만 동작하며, 미설정·SDK 초기화·전송·속성
+전파 실패는 관측 없이 챗봇 요청을 계속 처리한다.
+
+비동기 답변 스트림과 병렬 retrieval/mine 추출 스레드에는 `copy_context()`를
+적용해 root trace context가 끊기지 않게 했다. root observation 전에
+user_id·session_id·profile 속성을 전파하도록 순서를 보정했고, 그 context manager
+자체의 예외도 서비스 오류로 전파되지 않게 했다. 처음 배포 시 SSE가 이벤트마다
+서로 다른 contextvars context에서 재개되어 root trace 종료가 실패하는 것을 실제
+로그로 확인했다. 고정 context에서 턴 제너레이터를 끝까지 재개하도록 수정하고
+`test_langfuse_tracing.py` 2건·`test_langfuse_chat_trace.py` 1건·기존 retrieval
+routing 10건·`compileall`·`git diff --check`를 통과했다.
+
+`komir-rag-chat:260922-langfuse` 이미지 빌드 및 컨테이너 내 Langfuse 공개 API
+import를 확인한 뒤, 배포 게이트 15+40+6+33+1건과 라우팅·페이지 스모크, 18002
+전체 라이브 수락 검사를 통과했다. 현재 `komir-rag-chat-test`는 새 이미지로
+실행 중이고 세 Langfuse 변수가 모두 주입된 상태이며, 수락 검사 중 Langfuse·
+OpenTelemetry 오류 로그는 없었다. 직전 컨테이너는
+`komir-rag-chat-test-pre-20260922-130055`로 보존했다. 별도로 전체
+`test_internal_knowledge_route`는 세 번째 테스트
+(`test_current_diagnosis_q08_stops_before_retrieval`)에서 15초 이상 대기하는
+기존 테스트 상태를 확인했다.
 
 ## 2026-09-22 (후속3) — Q01~Q30 intent-action 보완 및 배포
 

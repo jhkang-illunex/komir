@@ -35,6 +35,7 @@ import sys
 import threading
 from collections import defaultdict
 from collections.abc import Callable
+from contextvars import copy_context
 from dataclasses import dataclass, replace
 from datetime import date
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -501,7 +502,7 @@ def _run_extractions(
 
     results: list[tuple[dict, DocExtraction]] = []
     with ThreadPoolExecutor(max_workers=max(1, max_workers)) as pool:
-        futures = [pool.submit(_job, tree) for tree in trees]
+        futures = [pool.submit(copy_context().run, _job, tree) for tree in trees]
         for future in as_completed(futures):
             results.append(future.result())
     return results

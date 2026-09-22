@@ -197,6 +197,9 @@ def build_tree_for_okf(
         "source_group": front.get("source_group", ""),
         "resource": front.get("resource", ""),
         "fmt": front.get("fmt", ""),
+        "document_date": front.get("document_date"),
+        "minerals": front.get("minerals", []),
+        "content_keywords": front.get("content_keywords", []),
         "okf_path": okf_path.relative_to(okf_root).as_posix(),
         "body_line_offset": offset,
         "with_summary": with_summary,
@@ -211,6 +214,36 @@ def build_tree_for_okf(
 def _tree_path(okf_path: Path, trees_root: Path, okf_root: Path = OKF_DOCUMENTS_ROOT) -> Path:
     rel = okf_path.relative_to(okf_root)
     return trees_root / rel.with_suffix(".tree.json")
+
+
+def sync_tree_metadata(*, okf_root: Path = OKF_DOCUMENTS_ROOT,
+                       trees_root: Path = PAGEINDEX_TREES_ROOT) -> int:
+    """재요약 없이 OKF 프론트매터 검색 메타를 기존 PageIndex 트리에 반영한다."""
+
+    updated = 0
+    keys = ("title", "source_group", "resource", "fmt", "document_date", "minerals", "content_keywords")
+    for okf_path in sorted(okf_root.rglob("*.md")):
+        tree_path = _tree_path(okf_path, trees_root, okf_root)
+        if not tree_path.is_file():
+            continue
+        front, _, offset = split_frontmatter(okf_path.read_text(encoding="utf-8"))
+        try:
+            tree = json.loads(tree_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        changed = False
+        for key in keys:
+            value = front.get(key, [] if key in {"minerals", "content_keywords"} else None)
+            if tree.get(key) != value:
+                tree[key] = value
+                changed = True
+        if tree.get("body_line_offset") != offset:
+            tree["body_line_offset"] = offset
+            changed = True
+        if changed:
+            tree_path.write_text(json.dumps(tree, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            updated += 1
+    return updated
 
 
 def count_nodes(structure: list) -> int:
@@ -302,8 +335,14 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--pattern", default=None, help="경로 부분문자열 필터")
     parser.add_argument("--no-summary", action="store_true", help="LLM 노드요약 생략")
     parser.add_argument("--force", action="store_true", help="이미 만든 트리도 재생성")
+    parser.add_argument("--sync-metadata", action="store_true",
+                        help="기존 트리를 재요약하지 않고 OKF 검색 메타만 동기화")
     parser.add_argument("--model", default=None)
     args = parser.parse_args(argv)
+
+    if args.sync_metadata:
+        print(f"트리 메타데이터 동기화: {sync_tree_metadata()}건", flush=True)
+        return 0
 
     configure_logging()
     with ingest_status.pipeline_run("pageindex.build_pageindex_trees", args=vars(args)) as run:

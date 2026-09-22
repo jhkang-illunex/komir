@@ -17,7 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 ActionId = Literal[
     "price.series", "price.compare", "price.verify_claim",
-    "trade.country_rank", "trade.monthly", "trade.concentration", "trade.hs_summary",
+    "trade.country_rank", "trade.monthly", "trade.concentration", "trade.hs_summary", "trade.indicator",
     "resource.rank", "mine.rank", "mine.profile", "indicator.series", "document.retrieve", "document.lookup", "menu.navigate", "dataset.navigate",
     "diagnosis.rank", "diagnosis.series", "forecast.demand", "forecast.price", "forecast.quantity",
     "geopolitics.index", "geopolitics.articles", "stockpile.status", "stockpile.methodology", "scenario.assess", "synthesis.brief",
@@ -44,6 +44,9 @@ class ActionSlots(BaseModel):
     hs_code: str | None = None
     metric: Literal["production", "reserves", "import_amount", "import_weight", "export_amount", "export_weight"] | None = None
     flow: Literal["import", "export"] | None = None
+    trade_metric: Literal["tsi", "rca", "tii", "trade_growth", "country_dependency"] | None = None
+    reporter_country: str | None = None
+    partner_country: str | None = None
     period: Period | None = None
     top_n: int | None = Field(default=None, ge=1, le=100)
     indicator: Literal["supply_stability", "market_outlook", "composite_index"] | None = None
@@ -62,8 +65,8 @@ class ActionSlots(BaseModel):
     dataset: Literal["supply_stability", "market_outlook"] | None = None
     requested_outputs: set[Literal["text", "table", "chart", "menu", "raw_data"]] = {"text"}
 
-IntentId = Literal["price_series", "price_compare", "price_claim", "trade_rank", "trade_monthly", "trade_hs", "trade_concentration", "resource_rank", "mine_rank", "mine_profile", "indicator", "document", "okf_lookup", "concept", "stockpile_methodology", "menu", "dataset", "diagnosis", "forecast_demand", "forecast_price", "forecast_quantity", "geopolitics_index", "geopolitics_articles", "off_topic"]
-INTENT_TO_ACTION = {"price_series":"price.series", "price_compare":"price.compare", "price_claim":"price.verify_claim", "trade_rank":"trade.country_rank", "trade_monthly":"trade.monthly", "trade_hs":"trade.hs_summary", "trade_concentration":"trade.concentration", "resource_rank":"resource.rank", "mine_rank":"mine.rank", "mine_profile":"mine.profile", "indicator":"indicator.series", "document":"document.retrieve", "okf_lookup":"document.lookup", "concept":"document.retrieve", "stockpile_methodology":"stockpile.methodology", "menu":"menu.navigate", "dataset":"dataset.navigate", "diagnosis":"diagnosis.rank", "forecast_demand":"forecast.demand", "forecast_price":"forecast.price", "forecast_quantity":"forecast.quantity", "geopolitics_index":"geopolitics.index", "geopolitics_articles":"geopolitics.articles", "off_topic":"off_topic"}
+IntentId = Literal["price_series", "price_compare", "price_claim", "trade_rank", "trade_monthly", "trade_hs", "trade_concentration", "trade_indicator", "resource_rank", "mine_rank", "mine_profile", "indicator", "document", "okf_lookup", "concept", "stockpile_methodology", "menu", "dataset", "diagnosis", "forecast_demand", "forecast_price", "forecast_quantity", "geopolitics_index", "geopolitics_articles", "off_topic"]
+INTENT_TO_ACTION = {"price_series":"price.series", "price_compare":"price.compare", "price_claim":"price.verify_claim", "trade_rank":"trade.country_rank", "trade_monthly":"trade.monthly", "trade_hs":"trade.hs_summary", "trade_concentration":"trade.concentration", "trade_indicator":"trade.indicator", "resource_rank":"resource.rank", "mine_rank":"mine.rank", "mine_profile":"mine.profile", "indicator":"indicator.series", "document":"document.retrieve", "okf_lookup":"document.lookup", "concept":"document.retrieve", "stockpile_methodology":"stockpile.methodology", "menu":"menu.navigate", "dataset":"dataset.navigate", "diagnosis":"diagnosis.rank", "forecast_demand":"forecast.demand", "forecast_price":"forecast.price", "forecast_quantity":"forecast.quantity", "geopolitics_index":"geopolitics.index", "geopolitics_articles":"geopolitics.articles", "off_topic":"off_topic"}
 
 class IntentCall(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -118,7 +121,7 @@ class PlanAssessment(BaseModel):
 
 AVAILABLE = frozenset({
     "price.series", "price.compare", "price.verify_claim", "trade.country_rank", "trade.monthly",
-    "trade.concentration", "trade.hs_summary", "resource.rank", "mine.rank", "mine.profile", "indicator.series", "document.retrieve", "document.lookup", "stockpile.methodology", "menu.navigate", "dataset.navigate",
+    "trade.concentration", "trade.hs_summary", "trade.indicator", "resource.rank", "mine.rank", "mine.profile", "indicator.series", "document.retrieve", "document.lookup", "stockpile.methodology", "menu.navigate", "dataset.navigate",
 })
 OFF_TOPIC = "off_topic"
 MINERAL_ALIASES = {"nickel": "니켈", "cobalt": "코발트", "copper": "구리", "lithium": "리튬", "rare earth": "희토류"}
@@ -129,7 +132,7 @@ UNAVAILABLE = frozenset({
 CURRENT_PERIOD_ENDS = frozenset({"latest", "current", "now", "현재", "오늘"})
 REQUIRED: dict[str, tuple[str, ...]] = {
     "price.series": ("mineral",), "price.compare": ("minerals",), "price.verify_claim": ("mineral", "claimed_change_pct"),
-    "trade.country_rank": ("mineral", "metric"), "trade.monthly": (), "trade.concentration": ("mineral",),
+    "trade.country_rank": ("mineral", "metric"), "trade.monthly": (), "trade.concentration": ("mineral",), "trade.indicator": ("trade_metric",),
     "trade.hs_summary": ("hs_code",), "resource.rank": ("mineral", "metric"),
     "mine.rank": ("mine_metric", "mine_order"), "mine.profile": ("mine_name",),
     "indicator.series": ("indicator",), "document.retrieve": ("topic",), "document.lookup": ("topic",), "stockpile.methodology": (),
@@ -147,7 +150,7 @@ ALLOWED_MULTI = frozenset({
 
 ACTION_PLAN_PROMPT = """질문을 action 카탈로그의 ActionPlan JSON으로만 변환한다.
 action_id는 price.series, price.compare, price.verify_claim, trade.country_rank, trade.monthly,
-trade.concentration, trade.hs_summary, resource.rank, mine.rank, mine.profile, indicator.series, document.retrieve, document.lookup,
+trade.concentration, trade.hs_summary, trade.indicator, resource.rank, mine.rank, mine.profile, indicator.series, document.retrieve, document.lookup,
 menu.navigate, dataset.navigate, diagnosis.rank, diagnosis.series, forecast.demand, forecast.price,
 forecast.quantity, geopolitics.index, geopolitics.articles, stockpile.status, stockpile.methodology, scenario.assess,
 synthesis.brief 중 하나다. 원문과 확인된 대화에 있는 값만 slots에 넣고 추측하지 않는다.
@@ -160,6 +163,10 @@ synthesis.brief 중 하나다. 원문과 확인된 대화에 있는 값만 slots
 등록된 page_id/alias 또는 dataset ID(supply_stability, market_outlook)만 사용한다. 범위 밖 일반
 주제에는 menu action을 만들지 말고 complete=false로 둔다.
 수입액·수입중량·수출액·수출중량의 월별 추이는 trade.monthly이며 price action이 아니다.
+무역특화지수(TSI), 현시비교우위(RCA), 무역결합도(TII), 수출입증감률, 특정국 의존도는
+trade.indicator다. trade_metric은 tsi/rca/tii/trade_growth/country_dependency 중 하나이며,
+기준국은 reporter_country, 상대국은 partner_country에 넣는다. 질문에 없는 필수 조건은
+추측하지 않고 null로 둔다.
 개별 광산의 생산량·매장량 순위, 국가 안의 광산 1위, 기간 내 생산량 증가 순위는
 mine.rank다. 국가별 자원 순위 resource.rank와 구분한다. mine_metric은
 production/reserves, mine_order는 level/increase/yoy_increase/yoy_decrease다.
@@ -179,7 +186,7 @@ price.compare로 만들지 말고, 해당 설명의 출처를 찾는 document �
 
 INTENT_PLAN_PROMPT = """질문의 독립 정보요구를 빠짐없이 requirements IntentCall 목록으로 분해한 closed intent JSON을 출력한다.
 intent는 price_series, price_compare, price_claim, trade_rank, trade_monthly, trade_hs,
-trade_concentration, resource_rank, mine_rank, mine_profile, indicator, document, okf_lookup, concept, stockpile_methodology, menu, dataset, diagnosis, forecast_demand,
+trade_concentration, trade_indicator, resource_rank, mine_rank, mine_profile, indicator, document, okf_lookup, concept, stockpile_methodology, menu, dataset, diagnosis, forecast_demand,
 forecast_price, forecast_quantity, geopolitics_index, geopolitics_articles, off_topic 중 하나다.
 핵심광물 공급망·HHI·수입의존도·가격변동성의 정의와 개념은 concept이며 document.retrieve로
 직접 출처를 찾는다. off_topic은 날씨·음식처럼 광물·공급망과 무관한 주제에만 사용한다.
@@ -302,6 +309,37 @@ def action_plan_from_intent(intent_plan: IntentPlan, message: str = "") -> Actio
     )
     deferred_metadata_outputs: set[str] = set()
     for item in intent_plan.requirements:
+        # "수급 이슈 보고서"·"최근 동향 보고서"는 특정 파일명이 아니라
+        # 주제별 비정형 보고서를 찾는 탐색 요청이다. 날짜·발행문서명처럼 강한
+        # 식별자가 없는 이러한 표현을 document.lookup으로 두면 존재하지 않는
+        # 단일 제목을 강제해 OKF·PageIndex·벡터 검색 전에 기권한다.
+        topic = item.slots.topic or ""
+        is_report_search = (
+            "보고서" in topic
+            and any(marker in topic for marker in ("이슈", "동향", "최근", "관련"))
+            and not re.search(r"20\d{2}(?:\s*년|[-._/]?\d{2})", topic)
+        )
+        if item.intent == "okf_lookup" and is_report_search:
+            item.intent = "document"
+        # 일반적인 수요·시장 이슈는 문서에 기록된 관측 사실을 찾는 요구다.
+        # 지정학 기사 action은 지정학적 사건 자체가 주제일 때만 유효하다. 모델이
+        # ``수요 관련 이슈``를 그 action으로 잘못 분류하면 아직 미연결인 기사
+        # 원천에서 사전 차단되어, 이미 적재된 조달청·USGS 문서를 전혀 검색하지
+        # 못한다. topic이라는 typed 분류 결과 안에 지정학 표지가 없을 때만
+        # source-first document로 정정한다.
+        if (item.intent == "geopolitics_articles"
+                and not any(marker in (item.slots.topic or "")
+                            for marker in ("지정학", "전쟁", "분쟁", "제재", "정세"))):
+            item.intent = "document"
+        # source-first 문서 질의는 원 질문이 그대로 검색 가능한 topic이다.
+        # 모델이 광종·기간 슬롯만 남기고 topic을 비우면 document.retrieve의
+        # 필수 슬롯 검증에서 검색 전에 닫히므로, 이미 전달받은 질문을 보충한다.
+        if item.intent in {"document", "concept"} and not item.slots.topic:
+            item.slots.topic = message
+        if (item.intent in {"document", "concept"} and item.slots.period
+                and item.slots.period.kind == "trailing_months"
+                and item.slots.period.trailing_months):
+            item.slots.period.explicit = True
         if (item.intent == "trade_concentration" and item.role == "data"
                 and (item.slots.mineral, item.slots.flow) in trade_rank_pairs
                 and not item.slots.topic and not explicit_concentration):
@@ -398,7 +436,34 @@ def action_plan_from_intent(intent_plan: IntentPlan, message: str = "") -> Actio
         # 모든 data action에 적용해 복합 Q11류의 두 근거 표현이 갈라지지 않는다.
         for action in actions:
             action.requested_outputs |= deferred_metadata_outputs
+    _normalize_trade_indicator_slots(actions, message)
     return ActionPlan(actions=actions)
+
+
+def _normalize_trade_indicator_slots(actions: list[ActionCall], message: str) -> None:
+    """질문에 명시된 무역지표 조건만 typed 슬롯으로 정규화한다.
+
+    LLM이 연도나 수입·수출 같은 표면 조건을 누락해도 새 trade.indicator의
+    HITL이 불필요하게 반복되지 않게 한다. 국가·기간을 추정하지 않는다.
+    """
+    year = re.search(r"(20\d{2})\s*년", message)
+    compact = "".join(message.split())
+    partner = re.search(r"(?:^|\s)([가-힣]{2,})산", message)
+    for call in actions:
+        if call.action_id != "trade.indicator":
+            continue
+        slots = call.slots
+        if year and (slots.period is None or slots.period.kind != "calendar_year"):
+            slots.period = Period(kind="calendar_year", calendar_year=int(year.group(1)), explicit=True)
+        if slots.reporter_country is None and "한국" in compact:
+            slots.reporter_country = "한국"
+        if slots.flow is None:
+            if "수입" in compact:
+                slots.flow = "import"
+            elif "수출" in compact:
+                slots.flow = "export"
+        if slots.partner_country is None and partner:
+            slots.partner_country = partner.group(1)
 
 
 def _is_stockpile_methodology_topic(topic: str | None) -> bool:
@@ -504,6 +569,27 @@ def repair_action_plan(message: str, llm: Any, failure_reason: str, history: lis
                       output_model=ActionPlan, max_tokens=1100).output
 
 
+def missing_trade_indicator_slots(call: ActionCall) -> tuple[str, ...]:
+    """무역지표 action에만 적용하는 HITL 대상 슬롯을 결정한다."""
+    if call.action_id != "trade.indicator":
+        return ()
+    slots = call.slots
+    if slots.trade_metric is None:
+        return ("trade_metric",)
+    missing: list[str] = []
+    if slots.reporter_country is None:
+        missing.append("reporter_country")
+    if slots.period is None or slots.period.kind != "calendar_year":
+        missing.append("period")
+    if slots.trade_metric in {"tsi", "rca", "trade_growth", "country_dependency"} and not (slots.mineral or slots.hs_code):
+        missing.append("mineral_or_hs_code")
+    if slots.trade_metric in {"trade_growth", "country_dependency"} and slots.flow is None:
+        missing.append("flow")
+    if slots.trade_metric in {"tii", "country_dependency"} and slots.partner_country is None:
+        missing.append("partner_country")
+    return tuple(missing)
+
+
 def validate_action_plan(plan: ActionPlan | None) -> PlanAssessment:
     if not isinstance(plan, ActionPlan):
         return PlanAssessment(approved=False, failure_reason="slot_unresolved")
@@ -528,6 +614,8 @@ def validate_action_plan(plan: ActionPlan | None) -> PlanAssessment:
             call.slots.metric = "import_amount" if call.slots.flow != "export" else "export_amount"
         if call.action_id.startswith("price.") and call.slots.metric in {"import_amount", "import_weight", "export_amount", "export_weight"}:
             return PlanAssessment(approved=False, failure_reason="slot_unresolved")
+        if missing_trade_indicator_slots(call):
+            return PlanAssessment(approved=False, failure_reason="slot_required")
     # 미연결 원천을 쓰는 action은 그 action의 선택 자체로 제공 불가가 확정된다.
     # 다른 action의 후속 슬롯이나 의존성 오류가 이 원천 상태를 slot 오류로
     # 가리지 않게 먼저 분류한다.

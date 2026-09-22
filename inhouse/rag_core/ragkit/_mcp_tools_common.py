@@ -552,6 +552,45 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
         return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}
 
     @mcp.tool()
+    def komis_trade_indicator(
+        trade_metric: Literal["tsi", "rca", "tii", "trade_growth", "country_dependency"],
+        reporter_country: str, calendar_year: int, mineral_code: str | None = None,
+        hs_code: str | None = None, partner_country: str | None = None,
+        flow: Literal["import", "export"] | None = None,
+    ) -> dict[str, Any]:
+        """연간 무역지표를 원자료의 분자·분모와 함께 계산한다.
+
+        TSI·수출입증감률·특정국 의존도는 한국 관세청 원천으로 계산한다. RCA와
+        TII는 세계 전체 분모가 검증된 경우에만 허용하는 지표이며, 현재 적재된
+        UN 표본은 그 조건을 충족하지 않아 수치를 반환하지 않는다.
+        """
+        repo = KomisRawDataRepository()
+        try:
+            hs_codes = [hs_code] if hs_code else repo.resolve_hs_codes(mineral_code or "")
+            dataset = repo.fetch_trade_indicator(
+                trade_metric=trade_metric, hs_codes=hs_codes, reporter_country=reporter_country,
+                partner_country=partner_country, flow=flow, calendar_year=calendar_year,
+            )
+        except RawDataAccessError as exc:
+            return {"evidence": [], "warnings": [f"source_unavailable:{exc}"]}
+        if not dataset.rows:
+            return {"evidence": [], "warnings": [_NO_DATA_FOUND_MARKER]}
+        label = {
+            "tsi": "무역특화지수(TSI)", "rca": "현시비교우위지수(RCA)",
+            "tii": "무역결합도지수(TII)", "trade_growth": "수출입증감률",
+            "country_dependency": "특정국 의존도",
+        }[trade_metric]
+        mineral_name = mineral_code
+        if mineral_code:
+            try:
+                meta = repo.resolve_mineral_meta(mineral_code)
+                mineral_name = meta[0] if meta else mineral_code
+            except RawDataAccessError:
+                pass
+        evidence = from_komis_aggregate(dataset, label=label, mineral_name=mineral_name)
+        return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": []}
+
+    @mcp.tool()
     def komis_monthly_trade_summary(
         mineral_code: str | None = None, hs_code: str | None = None,
         start_period: str | None = None, end_period: str | None = None,

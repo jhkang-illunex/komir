@@ -16,18 +16,22 @@ CLAUDE.md §4 "최소·외과적 변경") 이 래퍼만 확장할 것."""
 from __future__ import annotations
 
 import os
+import re
 import sys
 from pathlib import Path
 
 
 # 2026-09-07 geo 패키지가 expired/로 이동하면서 추출기(구 geo/extractors.py)를
 # ingest/extractors.py로 흡수 — 같은 패키지 상대 import라 경로 부트스트랩 불필요.
-from ..extractors import extract_with_fallback, md_to_text, opendataloader_batch_convert
+from ..extractors import cached_ocr_pdf_text, extract_with_fallback, md_to_text, opendataloader_batch_convert
 
 from ..models import ContentUnit
 from . import ParseResult
 
 _MIN_USABLE_CHARS = 30
+_MIN_TEXT_WITH_IMAGES = 300
+_IMAGE_REFERENCE_SHARE_FOR_OCR = 0.25
+_IMAGE_REF_RE = re.compile(r"!\[[^\]]*\]\([^)]*\)", re.IGNORECASE)
 # OCR 캐시 기본 경로는 processing/_ocr_cache(ingest/paths.py, 레거시 기본값 =
 # data_lake/semi_structure/pdf_extract/_ocr_cache — 2026-09-16 이전과 동일 위치).
 from ..paths import get_paths
@@ -41,7 +45,7 @@ class PdfParser:
     name = "komir-opendataloader-ocr-fallback"
     # v2(2026-08-11): 산출 텍스트가 평문 → 마크다운 원형으로 바뀜(_raw_markdown 참고).
     # 산출물이 달라졌으므로 버전을 올려 이전 매니페스트의 재사용(_can_reuse)을 무효화한다.
-    parser_version = "2"
+    parser_version = "3"
     signature = f"{name}:{parser_version}:komis-pdf-v1"
 
     def __init__(self, cache_dir: str | None = None) -> None:
@@ -105,7 +109,23 @@ class PdfParser:
             else:
                 opendataloader_batch_convert([str(path)], out_dir=self._md_out_dir)
                 md_text = self._raw_markdown(str(path))
-            text, method = extract_with_fallback(str(path), data, md_text, self.cache_dir)
+            # 변환기가 이미지 참조 Markdown을 수백 줄 남기면 기존 글자 수 기준은
+            # 이를 "텍스트 있음"으로 오판했다. 이미지 참조를 제거한 실제 문자가
+            # 부족한 경우에만 OCR을 강제해, OCR 가능한 PDF를 빈 이미지 청크로
+            # 색인하지 않는다.
+            image_refs = _IMAGE_REF_RE.findall(md_text)
+            visible_text = _IMAGE_REF_RE.sub("", md_text)
+            image_dominant = (
+                len(image_refs) >= 3
+                and (
+                    len(md_to_text(visible_text).strip()) < _MIN_TEXT_WITH_IMAGES
+                    or sum(map(len, image_refs)) >= len(md_text) * _IMAGE_REFERENCE_SHARE_FOR_OCR
+                )
+            )
+            if image_dominant:
+                text, method = cached_ocr_pdf_text(str(path), data, self.cache_dir), "ocr"
+            else:
+                text, method = extract_with_fallback(str(path), data, md_text, self.cache_dir)
         except Exception as exc:  # noqa: BLE001 - 한 파일의 실패가 배치 전체를 막지 않게
             return ParseResult(status="parse_failed", error=f"{type(exc).__name__}: {exc}")
 

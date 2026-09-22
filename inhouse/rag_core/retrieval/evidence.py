@@ -16,6 +16,7 @@ pageindex.py)는 건드리지 않는다(재구현 금지).
 결과보다 완전한 숫자열이라 차트 재료로 더 낫다)."""
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -43,6 +44,9 @@ class Evidence:
     action_id: str | None = None
     source_id: str | None = None
     observed_period: str | None = None
+    # 실제 KOMIS 메뉴와 연결된 RDB 근거만 채운다. PDF·HWP·Excel 등 문서 근거는
+    # 이 값을 비워 실제 문서명을 출처로 유지한다.
+    menu_page_id: str | None = None
 
 
 def _forecast_month_label(base_date: Any, horizon: Any) -> str:
@@ -150,9 +154,15 @@ def from_structured(template: str, commodity_code: str, result: Any) -> Evidence
 def from_dense_chunk(chunk: Any) -> Evidence:
     """`dense_pg.PgRetrievedChunk` -> Evidence."""
 
+    # 원본 PDF 파일명에 있는 발행일은 pgvector의 week 컬럼보다 구체적이다.
+    # 주간동향처럼 ``week=조달청보고서``인 청크도 최근 N개월 조건을 실제 문서
+    # 날짜로 대조할 수 있게 한다. 없는 날짜를 보완 추정하지는 않는다.
+    source_path = str(chunk.source_path)
+    match = re.search(r"(?<!\d)(20\d{2})[-._/]?(\d{2})[-._/]?(\d{2})(?!\d)", source_path)
+    as_of = "-".join(match.groups()) if match else (chunk.week or None)
     return Evidence(
-        kind="dense", source=chunk.source_path, section=chunk.section_heading,
-        text=chunk.text, as_of=chunk.week or None,
+        kind="dense", source=source_path, section=chunk.section_heading,
+        text=chunk.text, as_of=as_of,
     )
 
 
@@ -160,10 +170,17 @@ def from_pageindex_hit(hit: dict[str, Any]) -> Evidence:
     """`pageindex.search_nodes()`/`lookup()`이 낸 노드 1건(text 채워진 상태) ->
     Evidence."""
 
+    # PageIndex 트리의 문서 제목/원본 resource에는 조달청 주간동향처럼 발행일이
+    # 들어가지만 노드 자체에는 관측일 필드가 없다. 명시 연도 질의가 제목이 맞는
+    # 문서를 골라도 Advisor의 기간 계약에서 탈락하지 않게, 확인 가능한 파일명
+    # 날짜만 ``as_of``로 옮긴다. 날짜가 없으면 추정하지 않는다.
+    metadata = " ".join(str(hit.get(key, "")) for key in ("doc_title", "resource", "okf_path"))
+    match = re.search(r"(?<!\d)(20\d{2})[-._/]?(\d{2})[-._/]?(\d{2})(?!\d)", metadata)
+    as_of = "-".join(match.groups()) if match else None
     return Evidence(
         kind="pageindex", source=hit.get("source_override") or hit.get("doc_title") or hit.get("okf_path", ""),
         section=hit.get("node_path") or hit.get("title", ""),
-        text=hit.get("text", ""),
+        text=hit.get("text", ""), as_of=as_of,
     )
 
 
@@ -301,6 +318,7 @@ def from_komis_raw(
                 kind="structured", source=f"public.{ds.source_table}", section=section,
                 text=text,
                 caveat=caveat, as_of=_period_span(ds), unit=getattr(ds, "unit", None),
+                menu_page_id=page_id,
             )
         )
     return evidence
