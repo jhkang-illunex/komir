@@ -88,44 +88,34 @@ class ReportContractTests(unittest.TestCase):
                     # 2026-09-16 사용자 지시 — "주요 지표" 표는 본문이 아니라 별도
                     # `table` 키로 나간다(`models.ReportTable`).
                     expected_table = build_key_metrics_table(self.response)
-                    # 같은 날 후속 지시 — `report`는 Markdown이 아니라 평문 포맷
-                    # (`render_plain_report`), Markdown 렌더러는 별도 유지.
+                    # `report`는 최상단 제목 없이 소제목·단락으로 렌더링한다.
                     self.assertEqual(result.json(), {
                         "status": "ok",
                         "report": render_plain_report(self.response),
                         "table": expected_table.model_dump(),
                     })
                     self.assertNotIn("주요 지표", result.json()["report"])
-                    self.assertNotIn("#", result.json()["report"])
+                    self.assertTrue(result.json()["report"].startswith("## "))
                     self.assertEqual(service.analyze.call_args.args[0].page_id, page)
                     invalid = client.post("/api/v1/analysis/" + route, json={"unknown": True})
                     self.assertEqual(invalid.status_code, 200)
                     self.assertEqual(invalid.json(), {"status": "NO_DATA", "report": None, "table": None})
 
     def test_plain_report_format(self):
-        """2026-09-16 사용자 지시 — heading 제거·문장별 줄·절별 단락·상승/하락 색 태그.
-        Markdown 렌더러와 문장 집합은 같아야 한다(포맷만 다름)."""
+        """API report는 소제목·단락 단위이며, 단락 안에서는 문장을 이어 쓴다."""
         plain = render_plain_report(self.response)
         markdown = render_markdown_report(self.response)
-        self.assertFalse(any(line.startswith("#") or line.startswith("- ") for line in plain.splitlines()))
+        self.assertFalse(any(line.startswith("# ") for line in plain.splitlines()))
+        self.assertTrue(any(line.startswith("## ") for line in plain.splitlines()))
         self.assertNotIn("**", plain)
-        paragraphs = [p for p in plain.strip().split("\n\n") if p]
         blocks = [line[3:] for line in markdown.splitlines() if line.startswith("## ")]
-        self.assertEqual(len(paragraphs), len(blocks), f"절 수가 다르다: {paragraphs} vs {blocks}")
-        # 절 하나 = 단락 하나, 문장 하나 = 한 줄: 평문의 모든 줄(태그 제거 후)이 Markdown
-        # 본문 문장에 그대로 있어야 한다.
-        import re as _re
-        untagged = _re.sub(r"</?font[^>]*>|</?b>", "", plain)
-        for line in untagged.strip().splitlines():
-            if line:
-                self.assertIn(line.rstrip(), markdown, line)
+        headings = [line[3:] for line in plain.splitlines() if line.startswith("## ")]
+        self.assertEqual(headings, blocks)
+        # 각 절은 소제목 다음 빈 줄과 하나의 본문 단락으로 이뤄진다.
+        for title in headings:
+            self.assertRegex(plain, rf"(?m)^## {title}\n\n[^\n]+$")
         self.assertRegex(plain, r"<font color='red'>[^<]*상승</font>")
-        # 2026-09-16 사용자 제보 — Markdown 렌더러가 단일 줄바꿈을 접지 않도록 문장 끝은
-        # 하드 브레이크("  \n"). 단락 사이는 빈 줄, 마지막 줄은 공백 없이 끝난다.
-        for paragraph in paragraphs:
-            for line in paragraph.split("\n")[:-1]:
-                self.assertTrue(line.endswith("  "), repr(line))
-            self.assertFalse(paragraph.endswith(" "), repr(paragraph[-20:]))
+        self.assertNotIn("  \n", plain)
 
     def test_colorize_tone(self):
         """2026-09-16 사용자 지시 — 어휘 바로 앞뒤 수치는 같은 font 영역에."""
@@ -187,13 +177,13 @@ class ReportContractTests(unittest.TestCase):
         plain = render_plain_report(response)
         self.assertNotIn("가격기준: LME CASH", plain)
         self.assertNotIn("비교광종:", plain)
-        self.assertTrue(plain.startswith("2026년"), plain[:40])
+        self.assertTrue(plain.startswith("## 가격 요약\n\n2026년"), plain[:40])
 
-    def test_plain_report_splits_joined_sentences(self):
-        from app.analysis.report_render import _plain_lines
-        self.assertEqual(_plain_lines("고가권에 속합니다. 조회기간 중 약 2.04억톤 하락했습니다."),
-                         ["고가권에 속합니다.", "조회기간 중 약 2.04억톤 하락했습니다."])
-        self.assertEqual(_plain_lines("2026년 9월 10일 기준 14,390달러입니다."), ["2026년 9월 10일 기준 14,390달러입니다."])
+    def test_plain_report_normalizes_sentence_newlines_to_spaces(self):
+        response = self.response.model_copy(deep=True)
+        response.summary.core_diagnosis[0].text = "첫 문장입니다.\n둘째 문장입니다."
+        rendered = render_plain_report(response)
+        self.assertIn("첫 문장입니다. 둘째 문장입니다.", rendered)
 
     def test_error_status_contract(self):
         service = Mock(uses_llm=False)

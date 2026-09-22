@@ -145,9 +145,8 @@ def run_summary(
         return AnalysisReportResponse(status="INTERNAL_ERROR")
 
     # 2026-09-16 사용자 지시 — "주요 지표" 표는 본문이 아니라 별도 `table` 키로
-    # 내고(`models.ReportTable`), `report`는 같은 날 후속 지시로 Markdown 대신 평문
-    # 포맷(`render_plain_report`: heading 없음·문장별 줄·절별 단락·상승/하락 색 태그).
-    # Markdown 렌더러(`render_markdown_report`)는 유지 — 스크립트·테스트가 계속 쓴다.
+    # 내고(`models.ReportTable`), `report`는 `render_plain_report`가 최상단 제목 없이
+    # 소제목·단락 단위 Markdown으로 렌더링한다(상승/하락 색 태그 포함).
     return AnalysisReportResponse(
         status="ok",
         report=render_plain_report(response),

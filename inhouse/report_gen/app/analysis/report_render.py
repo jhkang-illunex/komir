@@ -434,25 +434,13 @@ def emphasize_indicators(text: str) -> str:
     return _GRADE_RE.sub(lambda m: BOLD_TAG.format(word=m.group("grade")), text)
 
 
-#: 평문 보고서의 문장 줄 구분자 — Markdown 하드 브레이크(공백 2개+줄바꿈). 단락 구분은 "\n\n".
-PLAIN_LINE_BREAK = "  \n"
-
-
 def render_plain_report(response: AnalysisSummaryResponse) -> str:
-    """검증된 `AnalysisSummaryResponse` 1건을 **평문** 보고서로 렌더링한다 — 2026-09-16
-    사용자 지시("모든 보고서에서 report 안의 md에 새 포맷: ① heading 제거 ② 섹션 문자열은
-    줄 단위·단락 단위로 구분한 평문 ③ 상승/하락 등은 `<font color='red'>` 식 커스텀
-    색 지정"). `render_markdown_report`(Markdown, 제목·`##` 절 포함)는 그대로 두고 이
-    함수를 `routers/_common.py`가 `report`에 쓴다 — 둘 다 유지(사용자 지시).
+    """검증된 `AnalysisSummaryResponse` 1건을 API `report` 형식으로 렌더링한다.
 
-    형식: 제목·절 제목 없음. 절 하나가 단락 하나(빈 줄로 구분), 단락 안에서는 문장
-    하나가 한 줄(`_plain_lines` — 한 Sentence에 붙은 복수 문장도 나눔). 줄 구분자는
-    `PLAIN_LINE_BREAK`("  \n", Markdown 하드 브레이크) — 2026-09-16 사용자 제보("문장
-    단위로 줄바꿈이 되어 있어야 하는데 한 줄로 붙어 보인다"): 프론트가 `<font>` 태그를
-    그리려면 Markdown+HTML 렌더러인데 Markdown은 단일 "\n"을 공백으로 접는다. 문장 끝
-    공백 2개는 평문 뷰어에서는 보이지 않고 Markdown 뷰어에서는 줄바꿈이 된다. 상단 보조
-    정보(조회조건·현재 단계)는 내지 않는다(2026-09-16 후속 지시 — Markdown 렌더러에만
-    남는다). 문장 순서·내용·절 구성(분리 절·숨김 절)은 Markdown 렌더러와 동일
+    최상단 제목은 내지 않되 절마다 `## 소제목`을 둔다. 각 절의 문장들은 하나의
+    단락으로 공백 연결하고, 소제목·단락 사이와 절 사이에만 빈 줄을 둔다. 문장 안의
+    원본 줄바꿈도 공백으로 정규화한다. 상단 보조 정보(조회조건·현재 단계)는 내지 않는다.
+    문장 순서·내용·절 구성(분리 절·숨김 절)은 Markdown 렌더러와 동일
     (`_section_blocks` 공유), 문장 텍스트는 `emphasize_indicators`(지표 값·단계 명칭 볼드)
     → `colorize_tone`(상승/하락 색, 앞뒤 수치 포함 — 볼드된 값도 포함) → `_escape_tildes`
     (단일 `~`→`\\~`) 순으로만 거친다."""
@@ -460,15 +448,16 @@ def render_plain_report(response: AnalysisSummaryResponse) -> str:
     # 2026-09-16 사용자 지시("기존 첫 번째 heading은 표시 안 되게") — Markdown 렌더러의
     # 제목 자리에 있던 상단 보조 정보(조회조건 "가격기준: LME CASH · …"·"현재 단계: …")
     # 단락을 평문에서는 내지 않는다. 본문 절만 단락으로 나간다.
-    paragraphs: list[str] = []
-    for _title, sentences, _as_list in _section_blocks(response):
-        paragraphs.append(PLAIN_LINE_BREAK.join(
-            _escape_tildes(colorize_tone(emphasize_indicators(line)))
-            for sentence in sentences for line in _plain_lines(sentence.text)
-        ))
+    sections: list[str] = []
+    for title, sentences, _as_list in _section_blocks(response):
+        paragraph = " ".join(
+            _escape_tildes(colorize_tone(emphasize_indicators(" ".join(sentence.text.split()))))
+            for sentence in sentences
+        )
+        sections.append(f"## {title}\n\n{paragraph}")
 
     _log_diagnostics(response)
-    return "\n\n".join(paragraphs).strip() + "\n"
+    return "\n\n".join(sections).strip() + "\n"
 
 
 def render_markdown_report(response: AnalysisSummaryResponse) -> str:
@@ -576,7 +565,7 @@ def build_key_metrics_table(response: AnalysisSummaryResponse) -> ReportTable | 
 
 
 __all__ = [
-    "BOLD_TAG", "GRADE_LABELS", "INDICATOR_TERMS", "PLAIN_LINE_BREAK", "TONE_COLORS", "TONE_TAG",
+    "BOLD_TAG", "GRADE_LABELS", "INDICATOR_TERMS", "TONE_COLORS", "TONE_TAG",
     "build_key_metrics_table", "colorize_tone", "emphasize_indicators",
     "render_markdown_report", "render_plain_report",
 ]
