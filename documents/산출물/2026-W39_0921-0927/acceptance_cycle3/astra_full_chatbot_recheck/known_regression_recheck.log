@@ -1,0 +1,55 @@
+.......F.........                          [100%]
+=================================== FAILURES ===================================
+_ InternalKnowledgeTurnTest.test_q22_with_direct_evidence_buffers_until_citation_validation _
+
+self = <test_internal_knowledge_route.InternalKnowledgeTurnTest testMethod=test_q22_with_direct_evidence_buffers_until_citation_validation>
+
+    def test_q22_with_direct_evidence_buffers_until_citation_validation(self):
+        grounded_chat = _GroundedChat()
+        evidence = SimpleNamespace(
+            kind="dense", source="개념 문서", section="지표 정의", text="HHI의 정의", as_of=None,
+            unit=None, caveat=None,
+        )
+    
+        async def collect():
+            return [event async for event in chatbot.chat_turn(
+                session_id=None, user_id="test-user", message="HHI란 무엇인가요?",
+                store_db_path="unused", chat=grounded_chat, router_llm=_SupportLLM(True),
+            )]
+    
+        with patch.object(chatbot, "get_or_create_session", return_value="session-grounded"), \
+             patch.object(chatbot, "list_messages", return_value=[]), \
+             patch.object(chatbot, "append_message"), \
+             patch.object(chatbot, "_classify_pre_gate", return_value=None), \
+             patch.object(chatbot, "retrieve_evidence", return_value=([evidence], [])):
+            events = asyncio.run(collect())
+    
+        deltas = [event.data["delta"] for event in events if event.type == "delta"]
+        self.assertEqual(deltas[0], "근거에 있는 개념 설명입니다. [1]")
+>       self.assertEqual(events[-1].data["citations"], [{
+            "index": 1, "kind": "dense", "source": "개념 문서", "section": "지표 정의",
+            "as_of": None, "unit": None, "requirement_id": None, "action_id": None,
+            "source_id": None, "observed_period": None,
+        }])
+E       AssertionError: Lists differ: [{'in[139 chars]ource_id': None, 'observed_period': None, 'menu_source': None}] != [{'in[139 chars]ource_id': None, 'observed_period': None}]
+E       
+E       First differing element 0:
+E       {'ind[137 chars]source_id': None, 'observed_period': None, 'menu_source': None}
+E       {'ind[137 chars]source_id': None, 'observed_period': None}
+E       
+E         [{'action_id': None,
+E           'as_of': None,
+E           'index': 1,
+E           'kind': 'dense',
+E       -   'menu_source': None,
+E           'observed_period': None,
+E           'requirement_id': None,
+E           'section': '지표 정의',
+E           'source': '개념 문서',
+E           'source_id': None,
+E           'unit': None}]
+
+inhouse/rag_core/tests/test_internal_knowledge_route.py:271: AssertionError
+=========================== short test summary info ============================
+FAILED inhouse/rag_core/tests/test_internal_knowledge_route.py::InternalKnowledgeTurnTest::test_q22_with_direct_evidence_buffers_until_citation_validation
+1 failed, 16 passed, 30 subtests passed in 5.10s

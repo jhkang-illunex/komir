@@ -137,24 +137,107 @@ def _body_starts_with_heading(text: str) -> bool:
     return False
 
 
+def _contains_mineral_alias(haystack: str, alias: str) -> bool:
+    """광종 별칭만 OCR식 음절 사이 공백을 허용해 찾는다.
+
+    일반 본문 전체의 공백을 없애면 서로 다른 낱말이 합쳐지는 오탐이 생긴다.
+    한글로만 이뤄진, 이미 승인된 광종 별칭 내부에서만 공백·탭·줄바꿈을 허용한다.
+    영문 별칭과 공백을 포함한 ``rare earth``는 기존의 정확 부분문자열 규칙을 쓴다.
+    """
+
+    # 기존 연속 별칭은 화합물명·붙여쓴 가격표현(황산니켈, 니켈가격)도 잡았으므로
+    # 그대로 둔다. 경계 규칙은 새로 허용하는 공백 변형에만 적용한다.
+    if alias in haystack:
+        return True
+    if all("가" <= char <= "힣" for char in alias):
+        # 조사는 광종명 뒤에 붙을 수 있지만, 일반 낱말의 일부(아니 켈리, 누구 리더)는
+        # 광종으로 합치지 않는다. 별칭 자체에만 공백을 허용하고 앞뒤 한글 경계를 확인한다.
+        particles = r"(?:은|는|이|가|을|를|의|에|와|과|도|만|으로|로)"
+        spaced_alias = r"\s*".join(map(re.escape, alias))
+        pattern = rf"(?<![가-힣]){spaced_alias}(?=$|[^가-힣]|{particles}(?![가-힣]))"
+        return re.search(pattern, haystack) is not None
+    return False
+
+
+def _first_valid_full_date(text: str) -> str | None:
+    """텍스트에서 달력상 유효한 YYYY-MM-DD 후보 하나를 찾는다."""
+
+    for pattern in _DATE_PATTERNS:
+        for match in pattern.finditer(text):
+            year, month, day = match.groups()
+            try:
+                return datetime(int(year), int(month), int(day)).date().isoformat()
+            except ValueError:
+                continue
+    return None
+
+
+def _explicit_doc_date(value: object) -> str | None:
+    """추출 레코드가 제공한 날짜만 검증해 ISO 날짜로 돌린다."""
+
+    if value is None:
+        return None
+    raw = str(value).strip()
+    if re.fullmatch(r"\d{6}", raw):
+        raw = f"20{raw[:2]}-{raw[2:4]}-{raw[4:6]}"
+    try:
+        return datetime.fromisoformat(raw).date().isoformat()
+    except ValueError:
+        return None
+
+
+def _jodalcheong_header_date(resource: str, body: str) -> str | None:
+    """조달청 주간보고서의 첫머리 발행일만 본문에서 보완한다.
+
+    다른 본문 날짜는 사건·생산 시점일 수 있어 문서 날짜로 추정하지 않는다. 11.27·12.18·
+    주간 080225처럼 경로에 날짜가 없는 조달청 OCR 보고서는 제목 아래 초기 헤더에 발행일이
+    있어, 첫 여덟 개 비공백 줄로 범위를 제한한다.
+    """
+
+    if "조달청보고서" not in resource:
+        return None
+    nonempty_lines = [line.strip().lstrip("#").strip() for line in body.splitlines() if line.strip()]
+    for line in nonempty_lines[:8]:
+        # 숫자만 있는 헤더 행은 주간보고서의 발행일 표기다. 본문 문장 속 생산·사건
+        # 날짜를 문서 발행일로 오인하지 않도록 부분 일치를 허용하지 않는다.
+        if any(pattern.fullmatch(line) for pattern in _DATE_PATTERNS):
+            return _first_valid_full_date(line)
+    return None
+
+
+_PUBLICATION_DATE_LABEL_RE = re.compile(
+    r"(?:발행일|발간일|작성일|published(?:\s+on)?|publication\s+date|issued|release\s+date)",
+    re.IGNORECASE,
+)
+
+
+def _labeled_body_publication_date(body: str) -> str | None:
+    """명시 발행 표지와 같은 줄의 날짜만 본문에서 허용한다."""
+
+    for line in body.splitlines():
+        if _PUBLICATION_DATE_LABEL_RE.search(line):
+            date = _first_valid_full_date(line)
+            if date is not None:
+                return date
+    return None
+
+
 def extract_document_metadata(*, title: str, resource: str, body: str, doc_date: str | None = None) -> dict[str, object]:
     """원본 형식과 무관하게 OKF 본문·제목·파일명에서 검색 메타를 결정적으로 만든다."""
 
+    document_date = (
+        _explicit_doc_date(doc_date)
+        or _first_valid_full_date(title)
+        or _first_valid_full_date(resource)
+        or _labeled_body_publication_date(body)
+        or _jodalcheong_header_date(resource, body)
+    )
     haystack = "\n".join((title, resource, body[:20000]))
-    document_date = None
-    for pattern in _DATE_PATTERNS:
-        match = pattern.search(haystack)
-        if match:
-            year, month, day = match.groups()
-            try:
-                document_date = f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
-            except ValueError:
-                pass
-            break
-    if document_date is None and doc_date and re.fullmatch(r"\d{6}", str(doc_date)):
-        document_date = f"20{doc_date[:2]}-{doc_date[2:4]}-{doc_date[4:6]}"
     lowered = haystack.casefold()
-    minerals = [name for name, aliases in _MINERAL_TERMS.items() if any(alias.casefold() in lowered for alias in aliases)]
+    minerals = [
+        name for name, aliases in _MINERAL_TERMS.items()
+        if any(_contains_mineral_alias(lowered, alias.casefold()) for alias in aliases)
+    ]
     tokens = re.findall(r"[A-Za-z][A-Za-z0-9+./-]{2,}|[가-힣]{2,}", body.casefold())
     counts: dict[str, int] = {}
     for token in tokens:

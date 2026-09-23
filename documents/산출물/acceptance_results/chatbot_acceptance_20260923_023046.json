@@ -1,0 +1,32 @@
+{
+  "suite": "komir-chatbot-acceptance-260923",
+  "generated_at": "2026-09-23T02:30:46.244642",
+  "base_url": "http://127.0.0.1:18002",
+  "results": [
+    {
+      "id": "AC21",
+      "title": "무역 HITL 누락 슬롯",
+      "layer": "live",
+      "status": "PASS",
+      "errors": [],
+      "detail": {
+        "done": {
+          "done": true,
+          "needs_clarification": true,
+          "clarification": {
+            "action_id": "trade.indicator",
+            "slots": [
+              "reporter_country",
+              "period"
+            ]
+          }
+        },
+        "event_count": 4
+      },
+      "elapsed_seconds": 0.85
+    }
+  ],
+  "summary": {
+    "PASS": 1
+  }
+}

@@ -562,6 +562,35 @@ def _abstain_context(action_plan, reason: str) -> str:
     return json.dumps({"rag_turn": {"abstain_reason": reason, "action_ids": action_ids}}, ensure_ascii=False)
 
 
+def _abstain_done(
+    reason: str,
+    *,
+    citations: list | None = None,
+    bogus_citations: list | None = None,
+) -> ChatEvent:
+    """기권 경로의 종료 이벤트를 한 계약으로 만든다.
+
+    각 기권 분기는 사용자 문구와 상태 저장 방식이 다르지만, SSE 소비자가 의존하는
+    terminal ``done``의 필수 필드는 같다. 특히 action source가 없을 때는 화면의
+    문구와 별개로 resource key를 제공해 프런트가 실패 유형을 안정적으로 구분한다.
+    """
+
+    data = {
+        "done": True,
+        "citations": citations or [],
+        "bogus_citations": bogus_citations or [],
+        "abstained": True,
+        "abstain_reason": reason,
+    }
+    if reason == "source_unavailable":
+        data["message_key"] = "action_unavailable"
+    elif reason in {"unsupported_commodity", "unsupported_mineral"}:
+        data["message_key"] = "unsupported_commodity"
+    elif reason in {"unsupported_combination", "unsupported_action", "adapter_unavailable"}:
+        data["message_key"] = "action_unavailable"
+    return ChatEvent(type="done", data=data)
+
+
 #: 여러 광종의 pageindex 근거가 섞여 들어오는 턴(agentic 순회 결과)에서만
 #: 노출한다 — 실측 발견(2026-08-18, 4턴 체인 테스트): 근거에 "구리 상위5개국"
 #: 순위와 "니켈"(다른 광종) 표가 같이 있을 때, 생성 LLM이 "질문이 요구하는
@@ -660,6 +689,22 @@ def _build_evidence_prompt(question: str, evidence: list) -> str:
     return "\n".join(lines)
 
 
+_OPAQUE_PRICE_UNIT_CODE = re.compile(r"\b(?:PR|WT)\d+\b", re.IGNORECASE)
+
+
+def _user_visible_unit(unit: str | None) -> str | None:
+    """사용자 응답에서 원천 내부 가격 코드만 제외한다.
+
+    ``PR001``·``WT002``처럼 사람에게 의미가 확인되지 않은 코드에는 임의의
+    통화·중량 해석을 붙이지 않는다. 세미콜론으로 분리된 메타데이터 중 그 코드가
+    든 항목만 빼므로 ``LME CASH``와 확인된 ``USD/톤`` 같은 표기는 보존된다.
+    """
+    if not unit:
+        return None
+    visible = [part.strip() for part in unit.split(";") if not _OPAQUE_PRICE_UNIT_CODE.search(part)]
+    return "; ".join(part for part in visible if part) or None
+
+
 def _citation_sources(cited_indices: set[int], evidence: list) -> list[dict]:
     """done.citations(=streamlit_demo 등 프런트의 "[근거 데이터 보기]" 패널이
     그대로 렌더링하는 필드) — 검색된 evidence 전체가 아니라 답변 본문에 실제로
@@ -669,7 +714,7 @@ def _citation_sources(cited_indices: set[int], evidence: list) -> list[dict]:
 
     return [
         {"index": i, "kind": ev.kind, "source": ev.source, "section": ev.section,
-         "as_of": ev.as_of, "unit": ev.unit,
+         "as_of": ev.as_of, "unit": _user_visible_unit(ev.unit),
          "requirement_id": getattr(ev, "requirement_id", None),
          "action_id": getattr(ev, "action_id", None),
          "source_id": getattr(ev, "source_id", None),
@@ -777,10 +822,11 @@ def _price_unit_disclosure(text: str, evidence: list) -> str:
     """
 
     price_units = [
-        (index, ev.unit)
+        (index, ev.unit, visible_unit)
         for index, ev in enumerate(evidence, 1)
         if getattr(ev, "action_id", None) == "price.series"
         and (ev.unit or "").startswith("가격기준=")
+        and (visible_unit := _user_visible_unit(ev.unit))
     ]
     if not price_units:
         return text
@@ -796,6 +842,11 @@ def _price_unit_disclosure(text: str, evidence: list) -> str:
         "",
         text,
     ).rstrip()
+    # 생성 모델이 근거 메타데이터를 그대로 되풀이한 경우도 같은 사용자 표시
+    # 계약을 적용한다. 확인된 표기는 남기고 코드가 든 원문 조각만 교체한다.
+    for _index, raw_unit, visible_unit in price_units:
+        cleaned = cleaned.replace(raw_unit, visible_unit)
+    cleaned = _OPAQUE_PRICE_UNIT_CODE.sub("", cleaned)
     # 삭제된 bullet만 남거나, 인접한 출처 bullet과 한 줄로 합쳐진 경우의
     # Markdown 표식을 정리한다. 출처 내용은 보존한다.
     cleaned = re.sub(r"(?m)^[ \t]*[*+-][ \t]*$(?:\n|$)", "", cleaned)
@@ -827,9 +878,9 @@ def _price_unit_disclosure(text: str, evidence: list) -> str:
     )
     cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
     additions = [
-        f"선택 가격기준의 단위 표기는 {unit}입니다. [{index}]"
-        for index, unit in price_units
-        if unit not in cleaned
+        f"선택 가격기준의 단위 표기는 {visible_unit}입니다. [{index}]"
+        for index, _raw_unit, visible_unit in price_units
+        if visible_unit not in cleaned
     ]
     return cleaned + ("\n\n" if cleaned and additions else "") + "\n".join(additions)
 
@@ -855,12 +906,13 @@ def _price_series_scope_answer(evidence: list, action_plan) -> tuple[str, set[in
     if len(evidence) != 1 or len(selected) != 1:
         return None
     index, item = selected[0]
-    return (
+    answer = (
         f"조회된 가격 시계열의 실제 관측 기간은 {item.observed_period}입니다. "
-        f"아래 표와 차트는 해당 기간의 원자료를 표시합니다. [{index}]\n\n"
-        f"선택 가격기준의 단위 표기는 {item.unit}입니다. [{index}]",
-        {index},
+        f"아래 표와 차트는 해당 기간의 원자료를 표시합니다. [{index}]"
     )
+    if unit := _user_visible_unit(item.unit):
+        answer += f"\n\n선택 가격기준의 단위 표기는 {unit}입니다. [{index}]"
+    return answer, {index}
 
 
 def _q15_usgs_scope_answer(evidence: list) -> tuple[str, set[int]] | None:
@@ -1281,16 +1333,10 @@ async def chat_turn(
         abstain_text = _abstain_reason_text(_AbstainReason(reason=pre_gate_reason))
         await asyncio.to_thread(
             append_message, resolved_session_id, "assistant", abstain_text,
-            _abstain_context(action_plan, abstain_reason), store_db_path
+            _abstain_context(action_plan, pre_gate_reason), store_db_path
         )
         yield ChatEvent(type="delta", data={"delta": abstain_text})
-        yield ChatEvent(
-            type="done",
-            data={
-                "done": True, "citations": [], "bogus_citations": [], "abstained": True,
-                "abstain_reason": pre_gate_reason,
-            },
-        )
+        yield _abstain_done(pre_gate_reason)
         return
 
     concept_question = _is_internal_knowledge_question(message)
@@ -1332,13 +1378,7 @@ async def chat_turn(
             append_message, resolved_session_id, "assistant", abstain_text, None, store_db_path
         )
         yield ChatEvent(type="delta", data={"delta": abstain_text})
-        yield ChatEvent(
-            type="done",
-            data={
-                "done": True, "citations": [], "bogus_citations": [], "abstained": True,
-                "abstain_reason": "source_unavailable",
-            },
-        )
+        yield _abstain_done("source_unavailable")
         return
 
     if not evidence:
@@ -1366,13 +1406,7 @@ async def chat_turn(
             append_message, resolved_session_id, "assistant", abstain_text, None, store_db_path
         )
         yield ChatEvent(type="delta", data={"delta": abstain_text})
-        yield ChatEvent(
-            type="done",
-            data={
-                "done": True, "citations": [], "bogus_citations": [], "abstained": True,
-                "abstain_reason": abstain_reason,
-            },
-        )
+        yield _abstain_done(abstain_reason)
         return
 
     if (action_plan is not None and action_plan.actions
@@ -1469,15 +1503,9 @@ async def chat_turn(
         yield ChatEvent(type="delta", data={"delta": ("\n\n" + _GENERATION_ERROR_TEXT) if partial else _GENERATION_ERROR_TEXT})
         await asyncio.to_thread(
             append_message, resolved_session_id, "assistant", stored_text,
-            _abstain_context(action_plan, abstain_reason), store_db_path
+            _abstain_context(action_plan, "generation_error"), store_db_path
         )
-        yield ChatEvent(
-            type="done",
-            data={
-                "done": True, "citations": [], "bogus_citations": [], "abstained": True,
-                "abstain_reason": "generation_error",
-            },
-        )
+        yield _abstain_done("generation_error")
         return
 
     full_text = "".join(full_text_parts).strip()
@@ -1489,13 +1517,7 @@ async def chat_turn(
                 append_message, resolved_session_id, "assistant", abstain_text, None, store_db_path
             )
             yield ChatEvent(type="delta", data={"delta": abstain_text})
-            yield ChatEvent(
-                type="done",
-                data={
-                    "done": True, "citations": [], "bogus_citations": [], "abstained": True,
-                    "abstain_reason": "source_unavailable",
-                },
-            )
+            yield _abstain_done("source_unavailable")
             return
         # 2026-08-28(챗봇_룰준수_감사_260828.md §5) — 예전엔 이 경로가 무조건
         # abstain_reason="unknown"이었다. 실사용 감사로 이 경로가 evidence=0
@@ -1525,13 +1547,7 @@ async def chat_turn(
         await asyncio.to_thread(
             append_message, resolved_session_id, "assistant", stored_text, None, store_db_path
         )
-        yield ChatEvent(
-            type="done",
-            data={
-                "done": True, "citations": [], "bogus_citations": [], "abstained": True,
-                "abstain_reason": abstain_reason,
-            },
-        )
+        yield _abstain_done(abstain_reason)
         return
 
     cleaned, bogus = _strip_uncited_sentences(full_text, len(evidence))
@@ -1543,24 +1559,12 @@ async def chat_turn(
                 append_message, resolved_session_id, "assistant", abstain_text, None, store_db_path
             )
             yield ChatEvent(type="delta", data={"delta": abstain_text})
-            yield ChatEvent(
-                type="done",
-                data={
-                    "done": True, "citations": [], "bogus_citations": bogus, "abstained": True,
-                    "abstain_reason": "source_unavailable",
-                },
-            )
+            yield _abstain_done("source_unavailable", bogus_citations=bogus)
             return
         await asyncio.to_thread(
             append_message, resolved_session_id, "assistant", ABSTAIN_TEXT, None, store_db_path
         )
-        yield ChatEvent(
-            type="done",
-            data={
-                "done": True, "citations": [], "bogus_citations": bogus, "abstained": True,
-                "abstain_reason": "unknown",
-            },
-        )
+        yield _abstain_done("unknown", bogus_citations=bogus)
         return
 
     # 전년 동기간과 전년 연간액이 우연히 같으면 생성 모델이 동기간 행을
@@ -1586,13 +1590,7 @@ async def chat_turn(
             append_message, resolved_session_id, "assistant", abstain_text, None, store_db_path
         )
         yield ChatEvent(type="delta", data={"delta": abstain_text})
-        yield ChatEvent(
-            type="done",
-            data={
-                "done": True, "citations": [], "bogus_citations": bogus, "abstained": True,
-                "abstain_reason": "source_unavailable",
-            },
-        )
+        yield _abstain_done("source_unavailable", bogus_citations=bogus)
         return
 
     if concept_question or price_unit_guard:

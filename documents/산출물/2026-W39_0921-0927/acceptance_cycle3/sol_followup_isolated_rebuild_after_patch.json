@@ -1,0 +1,103 @@
+{
+  "shared_write": false,
+  "with_summary": false,
+  "cases": {
+    "AC29": {
+      "okf_body_sha256": "e6819d8d3dd9bd6c4acf25125d023185e90f4e36eaecd90fcf7673dd77d30a9a",
+      "fixture_body_sha256": "e6819d8d3dd9bd6c4acf25125d023185e90f4e36eaecd90fcf7673dd77d30a9a",
+      "hash_matches_fixture": true,
+      "minerals": [
+        "구리",
+        "니켈"
+      ],
+      "node_count": 1,
+      "hits": [
+        {
+          "rank": 1,
+          "node_id": "0000",
+          "line_num": 1,
+          "score": 0.833,
+          "fact_present": true,
+          "text_chars": 1540
+        }
+      ],
+      "fact_in_top_k": true
+    },
+    "AC30": {
+      "okf_body_sha256": "5f1da8d97c4b64dd8a814d901527464112b3c333e4017a504f78c4ddda46800b",
+      "fixture_body_sha256": "5f1da8d97c4b64dd8a814d901527464112b3c333e4017a504f78c4ddda46800b",
+      "hash_matches_fixture": true,
+      "minerals": [
+        "니켈"
+      ],
+      "node_count": 2,
+      "hits": [
+        {
+          "rank": 1,
+          "node_id": "0000",
+          "line_num": 1,
+          "score": 0.5,
+          "fact_present": true,
+          "text_chars": 489
+        }
+      ],
+      "fact_in_top_k": true
+    },
+    "AC40": {
+      "okf_body_sha256": "a9b0926766146426a0359f69dc596f44f84c4e25e9c2a9425191a8f6f404683c",
+      "fixture_body_sha256": "a9b0926766146426a0359f69dc596f44f84c4e25e9c2a9425191a8f6f404683c",
+      "hash_matches_fixture": true,
+      "minerals": [
+        "구리",
+        "니켈",
+        "코발트",
+        "리튬",
+        "희토류"
+      ],
+      "node_count": 195,
+      "hits": [
+        {
+          "rank": 1,
+          "node_id": "0007",
+          "line_num": 49,
+          "score": 1.0,
+          "fact_present": true,
+          "text_chars": 4000
+        },
+        {
+          "rank": 2,
+          "node_id": "0014",
+          "line_num": 175,
+          "score": 1.0,
+          "fact_present": false,
+          "text_chars": 4000
+        },
+        {
+          "rank": 3,
+          "node_id": "0017",
+          "line_num": 207,
+          "score": 1.0,
+          "fact_present": false,
+          "text_chars": 4000
+        },
+        {
+          "rank": 4,
+          "node_id": "0097",
+          "line_num": 5736,
+          "score": 1.0,
+          "fact_present": false,
+          "text_chars": 4000
+        },
+        {
+          "rank": 5,
+          "node_id": "0118",
+          "line_num": 6894,
+          "score": 1.0,
+          "fact_present": false,
+          "text_chars": 4000
+        }
+      ],
+      "fact_in_top_k": true
+    }
+  }
+}

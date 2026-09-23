@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """P1 Q03/Q12 차트 메타데이터 회귀 테스트."""
 import sys
+import json
 import unittest
 from pathlib import Path
 
@@ -30,6 +31,8 @@ class ChartMetadataRegressionTest(unittest.TestCase):
         self.assertLess(len(aggregated["rows"]), len(table["rows"]))
         block = table_block(table, block_id="t", source_index=1, source_label="x")
         self.assertEqual(block["meta"]["time_aggregation"]["frequency"], "weekly")
+        self.assertEqual(block["meta"]["time_aggregation"]["bucket_label"], "주 시작일(월)")
+        self.assertEqual(block["columns"][0], "price_date(주 시작일(월))")
 
     def test_monthly_source_is_not_upsampled_for_short_period(self):
         table = _table(
@@ -66,6 +69,19 @@ class ChartMetadataRegressionTest(unittest.TestCase):
         self.assertEqual(block["columns"], ["country(국가)", "total(수입금액합계(USD))"])
         self.assertEqual(block["meta"]["hidden_columns"], ["rank", "transaction_count", "record_count"])
         self.assertNotIn("거래건수", block["markdown"])
+        self.assertNotIn("row_count", block["meta"])
+
+    def test_price_criterion_serial_is_hidden_for_raw_price_table(self):
+        table = _table(
+            "| mnrl_prc_crtr_sn(가격기준일련번호) | crtr_ymd(기준일자) | cmerc_prc(통상가격(USD/t)) |\n"
+            "| --- | --- | --- |\n| 502 | 20260901 | 15000 |\n| 502 | 20260902 | 15100 |"
+        )
+        block = table_block(table, block_id="t", source_index=1, source_label="x")
+        self.assertNotIn("mnrl_prc_crtr_sn(가격기준일련번호)", block["columns"])
+        self.assertEqual(block["meta"]["hidden_columns"], ["mnrl_prc_crtr_sn"])
+        spec = chart_spec(table, block_id="c", data_ref="t", source_index=1, source_label="x")
+        assert spec is not None
+        self.assertEqual(spec["spec"]["y_unit"], "USD/t")
 
     def test_production_and_reserve_use_tonnes(self):
         for label in ("생산량합계(톤)", "매장량합계(톤)"):
@@ -141,6 +157,54 @@ class ChartMetadataRegressionTest(unittest.TestCase):
         spec = chart_spec(table, block_id="c", data_ref="t", source_index=1, source_label="x", unit="UNKNOWN")
         assert spec is not None
         self.assertIsNone(spec["spec"]["y_unit"])
+
+    def test_lme_internal_codes_are_removed_from_user_payload_but_basis_is_preserved(self):
+        table = _table(
+            "| mineral(광종) | price_date(가격일자) | price(가격) | price_criterion(가격기준) | price_currency_code(통화코드) | weight_unit_code(중량단위코드) |\n"
+            "| --- | --- | --- | --- | --- | --- |\n"
+            "| 니켈 | 20260901 | 100 | LME CASH | PR001 | WT002 |\n"
+            "| 니켈 | 20260902 | 105 | LME CASH | PR001 | WT002 |"
+        )
+        spec = chart_spec(table, block_id="c", data_ref="t", source_index=1, source_label="x", unit="PR001/WT002")
+        assert spec is not None
+        self.assertIsNone(spec["spec"]["y_unit"])
+        self.assertEqual(spec["spec"]["price_criterion"], "LME CASH")
+        self.assertNotIn("price_currency_code", spec["spec"])
+        self.assertNotIn("weight_unit_code", spec["spec"])
+        block = table_block(table, block_id="t", source_index=1, source_label="x",
+                            unit="가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002")
+        payload = json.dumps({"table": block, "chart": spec}, ensure_ascii=False)
+        self.assertNotIn("PR001", payload)
+        self.assertNotIn("WT002", payload)
+        self.assertIsNone(block["meta"]["unit"])
+        self.assertEqual(block["rows"][0][-2:], ["", ""])
+        self.assertEqual(spec["spec"]["price_criterion"], "LME CASH")
+
+    def test_verified_units_and_dimensionless_indicator_units_are_preserved(self):
+        cases = (
+            ("| price_date(가격일자) | price(가격(USD/kg)) |\n| --- | --- |\n| 20260901 | 10 |\n| 20260902 | 11 |", None, "USD/kg"),
+            ("| price_date(가격일자) | change(변동률(%)) |\n| --- | --- |\n| 20260901 | -1 |\n| 20260902 | 2 |", None, "%"),
+            ("| price_date(가격일자) | indicator(지수) |\n| --- | --- |\n| 20260901 | -1 |\n| 20260902 | 2 |", "지수", "지수"),
+            ("| price_date(가격일자) | tsi(무역특화지수(TSI)) |\n| --- | --- |\n| 20260901 | -0.5 |\n| 20260902 | 0.2 |", "무차원", "무차원"),
+            ("| price_date(가격일자) | price(가격) |\n| --- | --- |\n| 20260901 | 10 |\n| 20260902 | 11 |", "EUR/t", "EUR/톤"),
+        )
+        for markdown, dataset_unit, expected in cases:
+            with self.subTest(expected=expected):
+                spec = chart_spec(_table(markdown), block_id="c", data_ref="t", source_index=1,
+                                  source_label="x", unit=dataset_unit)
+                assert spec is not None
+                self.assertEqual(spec["spec"]["y_unit"], expected)
+
+    def test_table_block_sanitizes_compound_unit_but_keeps_verified_unit(self):
+        table = _table(
+            "| price_date(가격일자) | price(가격(USD/kg)) |\n"
+            "| --- | --- |\n| 20260901 | 10 |\n| 20260902 | 11 |"
+        )
+        opaque = table_block(table, block_id="a", source_index=1, source_label="x",
+                             unit="가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002")
+        verified = table_block(table, block_id="b", source_index=1, source_label="x", unit="USD/kg")
+        self.assertIsNone(opaque["meta"]["unit"])
+        self.assertEqual(verified["meta"]["unit"], "USD/kg")
 
     def test_month_period_uses_year_month_x_format(self):
         table = _table(

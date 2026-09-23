@@ -28,6 +28,7 @@ build_tree_from_markdown()`만 통해 호출한다(vendored `pageindex_lib` 직�
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import re
@@ -54,6 +55,11 @@ PAGEINDEX_TREES_ROOT = get_paths().pageindex_trees
 
 logger = logging.getLogger(__name__)
 
+# 트리가 실제로 참조하는 입력은 프론트매터를 제외한 본문이다. 프론트매터는
+# ``--sync-metadata``로 안전하게 별도 동기화할 수 있으므로, 본문 checksum만으로
+# 재생성 여부를 판정한다. OCR 재처리처럼 본문이 바뀐 경우에는 반드시 달라진다.
+_OKF_BODY_SHA256_KEY = "okf_body_sha256"
+
 
 def split_frontmatter(text: str) -> tuple[dict, str, int]:
     """OKF 마크다운 → (프론트매터 dict, 본문, 본문 시작 줄 offset).
@@ -76,6 +82,32 @@ def split_frontmatter(text: str) -> tuple[dict, str, int]:
     except yaml.YAMLError:
         front = {}
     return front, stripped, offset
+
+
+def okf_body_sha256(okf_path: Path) -> str:
+    """PageIndex 입력 본문의 SHA-256을 계산한다.
+
+    기존 트리에는 이 필드가 없을 수 있다. 그 경우 freshness 판정은 거짓으로
+    처리해 한 번 재생성하며, 조회부는 기존 JSON 구조를 그대로 읽을 수 있다.
+    """
+
+    _, body, _ = split_frontmatter(okf_path.read_text(encoding="utf-8"))
+    return hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
+def tree_is_fresh_for_okf(tree_path: Path, okf_path: Path) -> bool:
+    """트리가 현재 OKF 본문으로 만들어졌는지 확인한다.
+
+    손상된 JSON과 checksum 없는 이전 형식 트리는 stale로 보고 재생성한다.
+    """
+
+    try:
+        tree = json.loads(tree_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    if not isinstance(tree, dict) or not isinstance(tree.get("structure"), list):
+        return False
+    return tree.get(_OKF_BODY_SHA256_KEY) == okf_body_sha256(okf_path)
 
 
 _HEADING_RE = re.compile(r"^#{1,6}\s")
@@ -133,6 +165,26 @@ def demote_numeric_only_headings(text: str) -> str:
     return "\n".join(lines) + ("\n" if text.endswith("\n") else "")
 
 
+def restore_document_title_heading(text: str, title: str) -> str:
+    """수치형 문서 제목이 유일한 헤딩일 때 그 제목을 루트 노드로 복원한다.
+
+    OCR 문서 ``11.27.pdf``처럼 첫 줄의 ``# 11.27``가 유일한 구조 표식인 경우,
+    일반 수치 헤딩 강등 규칙이 적용되면 PageIndex에는 노드가 하나도 남지 않는다.
+    프론트매터 제목과 완전히 같은 첫 본문 줄만 다시 헤딩으로 바꿔 줄 수와 원문
+    내용을 보존한다. 제목과 다른 수치·단위 줄은 계속 평문으로 둔다.
+    """
+
+    clean_title = str(title or "").strip()
+    if not clean_title or _HEADING_RE.search(text):
+        return text
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
+        if line.strip() == clean_title:
+            lines[index] = f"# {clean_title}"
+            return "\n".join(lines) + ("\n" if text.endswith("\n") else "")
+    return text
+
+
 def fix_blank_heading_titles(text: str, *, max_title_len: int = 60) -> str:
     """헤딩 마커(`#`~`######`)는 살아있는데 제목 텍스트가 통째로 공백인 줄에
     본문 첫 줄 기반 폴백 제목을 채운다.
@@ -177,10 +229,12 @@ def build_tree_for_okf(
 
     text = okf_path.read_text(encoding="utf-8")
     front, body, offset = split_frontmatter(text)
+    body_sha256 = hashlib.sha256(body.encode("utf-8")).hexdigest()
     # 줄 수를 절대 안 바꾼다(헤딩 줄 하나를 그대로 교체만 함) — body_line_offset과
     # 트리 line_num이 그대로 OKF 파일 실제 줄 번호를 가리키게 유지하기 위해서다.
     body = fix_blank_heading_titles(body)
     body = demote_numeric_only_headings(body)
+    body = restore_document_title_heading(body, str(front.get("title", okf_path.stem)))
 
     # doc_name은 md 파일 basename에서 나오므로(page_index_md.md_to_tree) 임시
     # 파일도 원본과 같은 이름으로 만든다.
@@ -201,6 +255,7 @@ def build_tree_for_okf(
         "minerals": front.get("minerals", []),
         "content_keywords": front.get("content_keywords", []),
         "okf_path": okf_path.relative_to(okf_root).as_posix(),
+        _OKF_BODY_SHA256_KEY: body_sha256,
         "body_line_offset": offset,
         "with_summary": with_summary,
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -216,32 +271,45 @@ def _tree_path(okf_path: Path, trees_root: Path, okf_root: Path = OKF_DOCUMENTS_
     return trees_root / rel.with_suffix(".tree.json")
 
 
+def sync_tree_metadata_for_okf(okf_path: Path, tree_path: Path) -> bool:
+    """한 OKF의 프론트매터 검색 메타를 기존 트리에 반영한다.
+
+    트리 구조가 dict가 아니면 손상된 이전 산출물로 보고 건드리지 않는다. 호출부의
+    freshness 판정이 그 파일을 stale로 골라 재생성한다.
+    """
+
+    keys = ("title", "source_group", "resource", "fmt", "document_date", "minerals", "content_keywords")
+    front, _, offset = split_frontmatter(okf_path.read_text(encoding="utf-8"))
+    try:
+        tree = json.loads(tree_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    if not isinstance(tree, dict):
+        return False
+    changed = False
+    for key in keys:
+        value = front.get(key, [] if key in {"minerals", "content_keywords"} else None)
+        if tree.get(key) != value:
+            tree[key] = value
+            changed = True
+    if tree.get("body_line_offset") != offset:
+        tree["body_line_offset"] = offset
+        changed = True
+    if changed:
+        tree_path.write_text(json.dumps(tree, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return changed
+
+
 def sync_tree_metadata(*, okf_root: Path = OKF_DOCUMENTS_ROOT,
                        trees_root: Path = PAGEINDEX_TREES_ROOT) -> int:
     """재요약 없이 OKF 프론트매터 검색 메타를 기존 PageIndex 트리에 반영한다."""
 
     updated = 0
-    keys = ("title", "source_group", "resource", "fmt", "document_date", "minerals", "content_keywords")
     for okf_path in sorted(okf_root.rglob("*.md")):
         tree_path = _tree_path(okf_path, trees_root, okf_root)
         if not tree_path.is_file():
             continue
-        front, _, offset = split_frontmatter(okf_path.read_text(encoding="utf-8"))
-        try:
-            tree = json.loads(tree_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            continue
-        changed = False
-        for key in keys:
-            value = front.get(key, [] if key in {"minerals", "content_keywords"} else None)
-            if tree.get(key) != value:
-                tree[key] = value
-                changed = True
-        if tree.get("body_line_offset") != offset:
-            tree["body_line_offset"] = offset
-            changed = True
-        if changed:
-            tree_path.write_text(json.dumps(tree, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        if sync_tree_metadata_for_okf(okf_path, tree_path):
             updated += 1
     return updated
 
@@ -262,11 +330,26 @@ def build_all(
 ) -> dict:
     """okf_documents 전체(또는 일부)에 대해 트리를 만들어 저장한다."""
 
-    paths = sorted(p for p in okf_root.rglob("*.md") if p.is_file())
+    candidates = sorted(p for p in okf_root.rglob("*.md") if p.is_file())
     if pattern:
-        paths = [p for p in paths if pattern in p.as_posix()]
-    if not force:
-        paths = [p for p in paths if not _tree_path(p, trees_root, okf_root).exists()]
+        candidates = [p for p in candidates if pattern in p.as_posix()]
+
+    fresh_skipped = 0
+    metadata_synced = 0
+    stale_candidates = 0
+    if force:
+        paths = candidates
+    else:
+        paths = []
+        for okf_path in candidates:
+            tree_path = _tree_path(okf_path, trees_root, okf_root)
+            if tree_path.is_file() and tree_is_fresh_for_okf(tree_path, okf_path):
+                fresh_skipped += 1
+                metadata_synced += int(sync_tree_metadata_for_okf(okf_path, tree_path))
+                continue
+            if tree_path.exists():
+                stale_candidates += 1
+            paths.append(okf_path)
     if limit:
         paths = paths[:limit]
 
@@ -318,10 +401,14 @@ def build_all(
     finally:
         ingest_status.commit_close_safe(status_con)
     return {
+        "candidate_count": len(candidates),
         "target_count": len(paths),
         "done": done,
         "failed": failed,
         "skipped_no_heading": skipped,
+        "fresh_skipped": fresh_skipped,
+        "metadata_synced": metadata_synced,
+        "stale_candidates": stale_candidates,
         "elapsed_sec": round(elapsed_total, 1),
         "avg_sec": round(elapsed_total / done, 1) if done else 0.0,
     }
@@ -339,16 +426,22 @@ def main(argv: list[str] | None = None) -> int:
                         help="기존 트리를 재요약하지 않고 OKF 검색 메타만 동기화")
     parser.add_argument("--model", default=None)
     args = parser.parse_args(argv)
+    okf_root = Path(args.okf_root).expanduser().resolve()
+    trees_root = Path(args.trees_root).expanduser().resolve()
 
     if args.sync_metadata:
-        print(f"트리 메타데이터 동기화: {sync_tree_metadata()}건", flush=True)
+        print(
+            f"트리 메타데이터 동기화: "
+            f"{sync_tree_metadata(okf_root=okf_root, trees_root=trees_root)}건",
+            flush=True,
+        )
         return 0
 
     configure_logging()
     with ingest_status.pipeline_run("pageindex.build_pageindex_trees", args=vars(args)) as run:
         summary = build_all(
-            okf_root=Path(args.okf_root).expanduser().resolve(),
-            trees_root=Path(args.trees_root).expanduser().resolve(),
+            okf_root=okf_root,
+            trees_root=trees_root,
             with_summary=not args.no_summary,
             limit=args.limit,
             pattern=args.pattern,
@@ -357,6 +450,10 @@ def main(argv: list[str] | None = None) -> int:
         )
         run.metrics.update(summary)
         print(json.dumps(summary, ensure_ascii=False))
+        if summary["failed"]:
+            # 예외를 context 안에서 올려 pipeline_run을 failed로 갱신하고, 호출한
+            # ingest.run_chain에도 non-zero returncode를 전달한다.
+            raise SystemExit(1)
     return 0
 
 

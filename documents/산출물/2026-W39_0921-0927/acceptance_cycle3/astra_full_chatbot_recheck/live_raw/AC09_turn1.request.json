@@ -1,0 +1,10 @@
+{
+  "body": {
+    "user_id": "acceptance-suite",
+    "session_id": "8edc88bb-2759-47ed-b3d5-e52fa2be74ec",
+    "message": "2025년 한국의 구리 월별 수입금액 추이를 보여줘"
+  },
+  "url": "http://127.0.0.1:18002/pubchat",
+  "timeout_seconds": 180,
+  "started_at": "2026-09-23T12:19:20.508638+00:00"
+}

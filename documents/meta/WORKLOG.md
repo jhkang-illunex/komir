@@ -2,6 +2,112 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-24 — RCA/TII 계산 seam 배선(원천 연결 전 fail-closed 유지)
+
+RCA/TII 산식을 실제 세계 원천에 연결하지 않고, 향후 검증된 공급자를 주입할
+수 있는 `KomisRawDataRepository` adapter seam을 추가했다. 기본 `repo()` 경로는
+기존처럼 `source_unavailable`로 차단하며 `KO_UN_CMMRC` 자동 fallback이나
+부분표본 계산은 추가하지 않았다. provider가 주입된 경우에만 지정 kwargs,
+`RcaInputs`/`TiiInputs` 타입, 필수 HS·상대국 조건을 검증한 뒤 기존 산식을
+실행한다. provider 예외·잘못된 타입도 안전하게 차단한다.
+
+provider 없음·RCA/TII 주입 계산·metadata·잘못된 반환/예외·누락 입력 회귀와
+기존 산식 테스트는 8건 PASS했고, Sol 최소 감사에서 확인한 지수 단위 오류도
+`무차원`으로 수정해 assertion을 추가했다. `git diff --check`도 통과했다. 실제 세계
+분모 원천, DB 쓰기, 배포, 재색인, 커밋은 수행하지 않았다.
+
+후속 잔여 점검에서 RCA/TII adapter·산식, terminal SSE, 메뉴 출처, 가격 단위,
+광산 집계 회귀를 묶은 21건을 재실행해 모두 PASS했다. 실제 세계 분모 provider
+연결과 현재 컨테이너 반영 후 라이브 수락검사는 별도 잔여로 남아 있다.
+
+## 2026-09-24 — 잔여작업 iterative-audit: live baseline·RCA/TII 계약
+
+잔여 항목을 HIGH live 검증과 CRITICAL 데이터 계약 검증으로 분리해 최대
+3라운드 계획을 적용했다. 18002 healthz는 `{"status":"ok"}`이며 컨테이너는
+`komir-rag-chat:260923-trade-global-port-r1`, ID
+`855bf5d9ddacf1995621c10333298b5e65d6710d76f00624e837879cd6d8dd82`, 시작
+시각 `2026-09-22T17:15:06Z`로 기존 cycle3 live32 실행과 동일하다. 로컬 dirty
+수정은 이 이미지에 반영되지 않았다. 대화 요청은 session/message를 저장하므로
+strict read-only 감사에서는 기존 live32 원본 SSE·JSON 증거를 재사용했고, 새
+32건 요청은 실행하지 않았다.
+
+RCA/TII는 `KO_CSTM_CMMRC`가 한국 교역만 제공하고 `KO_UN_CMMRC`가 9개 HS
+부분 표본이라는 코드 계약에 따라 `fetch_global_trade_indicator_inputs()`가
+fail-closed한다. 세계 품목·총수출입 및 국가·연도·통화가 완전하게 맞는 원천이
+없어 현재 `source_unavailable` 기권은 정상 동작으로 판정했다. 이번 라운드에서
+배포·재시작·DB/색인 쓰기·커밋은 수행하지 않았다.
+
+## 2026-09-24 — 미체크 terminal SSE 항목 재확인
+
+미체크 항목 중 terminal SSE를 분리 실행했다. 기존 `asyncio.to_thread()` 기반
+fixture가 이 환경의 executor에서 장기 대기해, 운영 코드 변경 없이 AC22 core
+두 테스트를 즉시 실행 fixture로 격리했다. 이후 `TerminalEventCoreTest` 2건과
+`TerminalEventRouterTest` 3건이 모두 PASS했으며 AC22/31/33의 public reason·
+message_key·done 1회·동일 세션 후속 턴 계약을 확인했다. 가격·출처·차트 회귀는
+이전 실행 결과를 재사용했다.
+
+## 2026-09-24 — iterative-audit 중단 작업 재개 및 가격 단위 노출 보완
+
+세션 리밋으로 중단된 챗봇 후속 작업을 현재 워크트리에서 재개했다. 광산
+집계 출처 감사는 기존 `retrieval_sources` 4종 계약을 유지하면서 집계
+Evidence가 있을 때 `okf:verified`로 기록하도록 보완했고, 실패·timeout은
+`okf:unavailable`로 남겼다. 가격 차트뿐 아니라 답변 본문·가격 시계열
+scope 응답·citation의 `PR001`·`WT002` 내부 코드 노출도 차단하고 `LME CASH`,
+검증된 USD/kg·%·무차원 단위는 보존했다.
+
+전용·인접 회귀 19건과 action contract 30건은 PASS했다. `git diff --check`도
+통과했다. terminal SSE 전체 회귀는 기존 테스트의 장기 대기로 20초 제한을
+초과해 완료 판정을 내리지 않았다. 라이브 컨테이너 재시작·배포·DB 쓰기·커밋은
+수행하지 않았으며, 현재 변경은 로컬 워크트리에만 있다.
+
+## 2026-09-23 — 챗봇 수락 검사와 문서 메타데이터 후속 감사
+
+Astra 조정·독립 검증 아래 `gpt-5.6-sol`이 고정 통합 검사,
+`gpt-5.6-terra`가 ingest 메타데이터를 파일 소유권을 나누어 보완했다.
+Tree와 pgvector의 서로 다른 ID 규칙, 원본·OKF·Tree hash, node 경로·줄 범위,
+HWP 같은 광종 행과 Excel 같은 행·열 값, public filter, 필수 검사 실행 추적을
+검증하도록 수정했다. HWP 공백 광종 인식과 문서 날짜 유효성·근거 우선순위,
+OKF 날짜의 vector SQL pub_date 전달도 보완했다.
+
+독립 검사 결과는 acceptance 회귀 33건·ingest 회귀 46건·module 10건 PASS다.
+실제 integration 6건은 AC41 OCR 3문서 연결만 PASS, 나머지 5건은 FAIL이다.
+AC28~30 dense 문서 미회수, AC39 문서 1위지만 고정 사실 미회수, AC30·40의
+Tree hash 누락과 PageIndex 사실 미회수를 각각 구분했다. 정상 대조군 기반
+19개 오류 변형 및 HWP 다른 광종 행·Excel 열 교환·SQL 날짜 제거를 별도로
+재현해 차단을 확인했다. 이전 6건 FAIL에는 검사기 ID 비교 결함도 섞여 있었음을
+기존 수락검사 문서에서 정정했다.
+
+intent/action/router 핵심 3개 파일의 SHA-256은 작업 전후 동일하다.
+DB 쓰기·실제 저장물 재생성·재색인·배포·커밋과 live 32건 전체 실행은 하지
+않았다. 로컬 수정은 현재 18002 서비스에 반영된 것으로 주장하지 않는다.
+저장 메타·Tree freshness·vector 날짜 반영과 실제 검색 실패는 후속 잔여다.
+
+최종 보고: [챗봇_후속반복감사_최종결과_260923.md](../산출물/2026-W39_0921-0927/챗봇_후속반복감사_최종결과_260923.md).
+실행 JSON·원문 로그·독립 재현 스크립트·전후 해시는 같은 주차의
+`acceptance_cycle3/`에 영속 보존했다.
+
+### 같은 날 Sol follow-up — 제한 데이터 반영과 PASS 6
+
+위 PASS 1 / FAIL 5는 공유 저장물 반영 전 감사 스냅샷이다. 후속 단계에서
+변경 전 DB 776행과 AC29·30·40의 OKF·Tree 파일을
+`acceptance_cycle3/sol_backup_20260923_205629/`에 보존하고 DB backup table,
+CSV, 파일 SHA와 rollback 명령을 검증했다. AC29 공백 광종 메타를 보강하고
+AC29·30·40 Tree를 current builder로 재생성했다.
+
+pgvector는 네 doc ID만 트랜잭션 교체해 776행에서 1,654행이 됐다. 같은
+`indexed_at`의 비대상 doc ID는 0개였고 source_path·384차원·순서별 청크 본문을
+현재 OKF와 대조했다. title·section 임베딩 문맥, HWP 광종 행 경계, USGS 대용량
+문장 경계 청킹을 반영했다. HNSW `ef_search=40`이 직접 거리상 exact top-1인
+AC28·29를 누락하는 것을 재현해 query·fact·top-k를 유지한 채 탐색폭 하한을
+200으로 높였다.
+
+독립 subprocess의 같은 고정 integration은 최종 6건 모두 PASS했고 dense exact
+fact는 AC28·29·30 1위, AC39 2위였다. 회귀는 225건과 subtest 64건 PASS이며,
+소유 범위 밖 동시 dirty 변경의 citation `menu_source` 기대 불일치 1건만 남았다.
+DB·데이터 반영까지만 수행했고 배포와 커밋은 하지 않았다. 현재 결과는
+`acceptance_cycle3/sol_followup_apply_result.json`, PASS 6 상세는
+`acceptance_cycle3/sol_post_apply_acceptance_round2/`에 보존했다.
+
 ## 2026-09-23 — report_gen 소제목·단락 출력 형식 복원
 
 `AnalysisReportResponse.report`의 최상단 제목은 계속 숨기되, 본문 절의

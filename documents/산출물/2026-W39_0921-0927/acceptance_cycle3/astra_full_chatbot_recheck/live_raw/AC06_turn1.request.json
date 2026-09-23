@@ -1,0 +1,10 @@
+{
+  "body": {
+    "user_id": "acceptance-suite",
+    "session_id": "cf8fe464-5143-4681-9a71-2652b221b1d5",
+    "message": "구리와 니켈의 최근 3개월 가격 변동률을 비교해줘"
+  },
+  "url": "http://127.0.0.1:18002/pubchat",
+  "timeout_seconds": 180,
+  "started_at": "2026-09-23T12:19:09.619807+00:00"
+}

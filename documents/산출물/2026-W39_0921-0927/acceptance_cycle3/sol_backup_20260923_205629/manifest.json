@@ -1,0 +1,97 @@
+{
+  "stamp": "20260923_205629",
+  "schema": "mineral_risk",
+  "backup_table": "mineral_risk.doc_chunk_backup_acceptance_20260923_205629",
+  "target_ids": [
+    "e09bbbbdac2e3b3a",
+    "c5ba28f3421c6bb1",
+    "3b3b60baa05e7715",
+    "738ead83c52ecab7"
+  ],
+  "db_groups": [
+    {
+      "doc_id": "3b3b60baa05e7715",
+      "src": "광산자료",
+      "source_path": "nas_document/학습데이터/니켈/Ni_Weda Bay_2025_Prod_AR_260814.xlsx",
+      "count": 2,
+      "indexed_at_min": "2026-09-16T15:21:03.819468",
+      "indexed_at_max": "2026-09-16T15:21:03.819468"
+    },
+    {
+      "doc_id": "738ead83c52ecab7",
+      "src": "생산매장량_USGS",
+      "source_path": "documents/3. 생산매장량(USGS)/USGS_2026.pdf",
+      "count": 768,
+      "indexed_at_min": "2026-08-27T21:20:06.401610",
+      "indexed_at_max": "2026-08-27T21:20:06.401610"
+    },
+    {
+      "doc_id": "c5ba28f3421c6bb1",
+      "src": "조달청보고서",
+      "source_path": "documents/조달청보고서/1019_LME Seminar에서 발표한 품목별 동향 및 전망.hwp",
+      "count": 2,
+      "indexed_at_min": "2026-09-22T16:25:00.946295",
+      "indexed_at_max": "2026-09-22T16:25:00.946295"
+    },
+    {
+      "doc_id": "e09bbbbdac2e3b3a",
+      "src": "조달청보고서",
+      "source_path": "documents/조달청보고서/2009년 1월 로이터 비철금속 가격 전망 자료(2).pdf",
+      "count": 4,
+      "indexed_at_min": "2026-09-22T16:25:00.946295",
+      "indexed_at_max": "2026-09-22T16:25:00.946295"
+    }
+  ],
+  "db_total": 776,
+  "files": [
+    {
+      "case": "AC29",
+      "kind": "okf",
+      "source": "inhouse/data_lake/semi_structure/okf_documents/조달청보고서/1019_LME_Seminar에서_발표한_품목별_동향_및_전망.md",
+      "backup": "documents/산출물/2026-W39_0921-0927/acceptance_cycle3/sol_backup_20260923_205629/okf/조달청보고서/1019_LME_Seminar에서_발표한_품목별_동향_및_전망.md",
+      "sha256": "7240e000e5f0a0281cb19482dbfccd3c99e2d9d2107d9e7d7945b56d429e2544",
+      "bytes": 4251
+    },
+    {
+      "case": "AC29",
+      "kind": "tree",
+      "source": "inhouse/data_lake/semi_structure/pageindex_trees/조달청보고서/1019_LME_Seminar에서_발표한_품목별_동향_및_전망.tree.json",
+      "backup": "documents/산출물/2026-W39_0921-0927/acceptance_cycle3/sol_backup_20260923_205629/trees/조달청보고서/1019_LME_Seminar에서_발표한_품목별_동향_및_전망.tree.json",
+      "sha256": "da36b3379a6fb351a083ad7e0a806d0257cf663aa2e61b45aba430aaae59615c",
+      "bytes": 1220
+    },
+    {
+      "case": "AC30",
+      "kind": "okf",
+      "source": "inhouse/data_lake/semi_structure/okf_documents/광산자료/니켈/Ni_Weda_Bay_2025_Prod_AR_260814__2.md",
+      "backup": "documents/산출물/2026-W39_0921-0927/acceptance_cycle3/sol_backup_20260923_205629/okf/광산자료/니켈/Ni_Weda_Bay_2025_Prod_AR_260814__2.md",
+      "sha256": "e2769c3251b92a3cdb06996893ef467a35da47cd225749e815014e7a12ac5ae7",
+      "bytes": 1712
+    },
+    {
+      "case": "AC30",
+      "kind": "tree",
+      "source": "inhouse/data_lake/semi_structure/pageindex_trees/광산자료/니켈/Ni_Weda_Bay_2025_Prod_AR_260814__2.tree.json",
+      "backup": "documents/산출물/2026-W39_0921-0927/acceptance_cycle3/sol_backup_20260923_205629/trees/광산자료/니켈/Ni_Weda_Bay_2025_Prod_AR_260814__2.tree.json",
+      "sha256": "5cefc44be662889ea546748dcd2ae61b0cd5b7ac0777672576b8b754c089848f",
+      "bytes": 1077
+    },
+    {
+      "case": "AC40",
+      "kind": "okf",
+      "source": "inhouse/data_lake/semi_structure/okf_documents/생산매장량_USGS/USGS_2026.md",
+      "backup": "documents/산출물/2026-W39_0921-0927/acceptance_cycle3/sol_backup_20260923_205629/okf/생산매장량_USGS/USGS_2026.md",
+      "sha256": "7025651901ae83344e42dca0e786e4903f1854befa46f05bb68501cdf89d646f",
+      "bytes": 785130
+    },
+    {
+      "case": "AC40",
+      "kind": "tree",
+      "source": "inhouse/data_lake/semi_structure/pageindex_trees/생산매장량_USGS/USGS_2026.tree.json",
+      "backup": "documents/산출물/2026-W39_0921-0927/acceptance_cycle3/sol_backup_20260923_205629/trees/생산매장량_USGS/USGS_2026.tree.json",
+      "sha256": "16b11d1413e4d35e7d18861ca9b36e2a35a7e7c77e7eb6c2d58010c9cb81803c",
+      "bytes": 232909
+    }
+  ],
+  "csv_sha256": "679b768a32eeadb13ae592b98f96b34093bb6047b656010dd9af0454c9a42dd3"
+}

@@ -1,0 +1,183 @@
+{
+  "AC28": {
+    "metadata": {
+      "document_date": null,
+      "minerals": [
+        "니켈"
+      ],
+      "content_keywords": [
+        "가격",
+        "bank",
+        "capital",
+        "markets",
+        "group",
+        "intelligence",
+        "securities",
+        "standard",
+        "adams",
+        "admisi",
+        "antaike",
+        "anz",
+        "barclays",
+        "bmo",
+        "bnp",
+        "bulletin",
+        "bussan",
+        "calyon",
+        "canaccord",
+        "cash"
+      ]
+    },
+    "variants": {
+      "title_text": {
+        "score": 0.9396982789039612,
+        "rank_against_current": 1
+      },
+      "structured": {
+        "score": 0.9364614486694336,
+        "rank_against_current": 1
+      },
+      "structured_normalized": {
+        "score": 0.9364615082740784,
+        "rank_against_current": 1
+      }
+    }
+  },
+  "AC29": {
+    "metadata": {
+      "document_date": null,
+      "minerals": [
+        "구리",
+        "니켈"
+      ],
+      "content_keywords": [
+        "수요",
+        "공급",
+        "재고",
+        "생산",
+        "수출",
+        "가격",
+        "광산",
+        "전망",
+        "lme",
+        "최근",
+        "년초",
+        "단기",
+        "이는",
+        "하락",
+        "하락요인",
+        "가능",
+        "년도에는",
+        "상승요인",
+        "정광",
+        "제한"
+      ]
+    },
+    "variants": {
+      "title_text": {
+        "score": 0.897942841053009,
+        "rank_against_current": 89
+      },
+      "structured": {
+        "score": 0.9034331440925598,
+        "rank_against_current": 24
+      },
+      "structured_normalized": {
+        "score": 0.9054725170135498,
+        "rank_against_current": 14
+      }
+    }
+  },
+  "AC30": {
+    "metadata": {
+      "document_date": null,
+      "minerals": [
+        "니켈"
+      ],
+      "content_keywords": [
+        "생산",
+        "kwmt",
+        "saprolite",
+        "수분함량",
+        "품위",
+        "col1",
+        "limonite",
+        "saprolite+limonite",
+        "광석",
+        "금속량",
+        "col2",
+        "col4",
+        "mdmt",
+        "mwmt",
+        "사용량",
+        "산출결과",
+        "생산량",
+        "외부",
+        "자체",
+        "적용"
+      ]
+    },
+    "variants": {
+      "title_text": {
+        "score": 0.914824903011322,
+        "rank_against_current": 1
+      },
+      "structured": {
+        "score": 0.9180783033370972,
+        "rank_against_current": 1
+      },
+      "structured_normalized": {
+        "score": 0.9180783629417419,
+        "rank_against_current": 1
+      }
+    }
+  },
+  "AC39": {
+    "metadata": {
+      "document_date": null,
+      "minerals": [
+        "구리",
+        "니켈",
+        "코발트",
+        "리튬",
+        "희토류"
+      ],
+      "content_keywords": [
+        "생산",
+        "매장량",
+        "for",
+        "production",
+        "was",
+        "were",
+        "united",
+        "other",
+        "estimated",
+        "states",
+        "tons",
+        "are",
+        "world",
+        "imports",
+        "domestic",
+        "consumption",
+        "china",
+        "data",
+        "u.s.",
+        "that"
+      ]
+    },
+    "variants": {
+      "title_text": {
+        "score": 0.8874861598014832,
+        "rank_against_current": 84
+      },
+      "structured": {
+        "score": 0.8844411373138428,
+        "rank_against_current": 117
+      },
+      "structured_normalized": {
+        "score": 0.8844411373138428,
+        "rank_against_current": 117
+      }
+    }
+  }
+}

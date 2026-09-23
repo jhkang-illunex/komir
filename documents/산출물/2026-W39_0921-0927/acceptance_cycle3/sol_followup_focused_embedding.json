@@ -1,0 +1,50 @@
+{
+  "AC28": {
+    "focus": {
+      "score": 0.9344629049301147,
+      "rank_against_current": 1,
+      "text": "2009년 1월 로이터 비철금속 가격 전망 자료(2)\n로이터 2010년 비철금속 가격 전망자료($/ton, cash)\n값 1,984| |4,330|1,317|13,482|14,065|1,551|\n|중간값 1,951| |4,299|1,323|13,228|13,500|1,442|\n|최고치 3,200| |7,500|2,000|20,000|18,800|3,100|\n|최저치 1,323| |2,756|800 9,932| |9,921|1,058|\n|설문참여자수 41| |45|35|41|22|42|"
+    },
+    "natural": {
+      "score": 0.924307644367218,
+      "rank_against_current": 1,
+      "text": "2009년 1월 로이터 비철금속 가격 전망 자료(2)\n로이터 2010년 비철금속 가격 전망자료($/ton, cash)\n|설문참여자수 41| |45|35|41|22|42|"
+    }
+  },
+  "AC29": {
+    "focus": {
+      "score": 0.9169536828994751,
+      "rank_against_current": 1,
+      "text": "1019_LME Seminar에서 발표한 품목별 동향 및 전망\n1019_LME Seminar에서 발표한 품목별 동향 및 전망\n니켈 ▪ 추가 하락 전망 (LME Cash가 ‘93년초, ’98년초 한계생산비용보다 $2,000/t 가량 낮게 거래된 기록이 있어 추가하락도 가능) ▪ 재고는 급격히 증가하는데 이는 수요부진에 기인 ▪ 신규 광산의 생산증가로 광산 생산량 급증(‘09년도 지속) ▪ 스테인레스 스틸 수요 회복은 ‘09년 하반기 이후 가능 ▪ 상승요인 : 생산업체들의 감산 ▪ 하락요인 : 스테인레스 스틸 수요부진 가"
+    },
+    "natural": {
+      "score": 0.8825730085372925,
+      "rank_against_current": 1181,
+      "text": "1019_LME Seminar에서 발표한 품목별 동향 및 전망\n1019_LME Seminar에서 발표한 품목별 동향 및 전망\n니켈"
+    }
+  },
+  "AC30": {
+    "focus": {
+      "score": 0.9228636622428894,
+      "rank_against_current": 1,
+      "text": "Ni_Weda Bay_2025_Prod_AR_260814\n산출결과\n| col1 | col2 | 광석 | 수분함량 | 품위 | 금속량 | 회수율 | 최종 금속량 |\n|---|---|---|---|---|---|---|---|\n| 광석 생산량(kwmt) | Saprolite+Limonite | 41875 |  |  |  |  | 303.748134 |\n| 외부 판매량(kwmt) | Saprolite+Limonite | 38542 |  |  | 304.524994 |  | 267.948134 |\n|  | Limonite | 25481 | 0.382987 | 0.0116 | 182.376391 | 0.92 | 167.786279 |\n|  | Saprolite | 13061 | 0.331988 "
+    },
+    "natural": {
+      "score": 0.9195011258125305,
+      "rank_against_current": 1,
+      "text": "Ni_Weda Bay_2025_Prod_AR_260814\n산출결과\n| 광석 생산량(kwmt) | Saprolite+Limonite | 41875 |  |  |  |  | 303.748134 |"
+    }
+  },
+  "AC39": {
+    "focus": {
+      "score": 0.8667632341384888,
+      "rank_against_current": 558,
+      "text": "USGS_2026\nFOREWORD\ne 1996 MCS, before the first smartphone or hybrid car or lawnmower was powered by a lithium-ion battery, world lithium production outside the United States was 6,100 tons in 1994. Estimated world lithium production increased to 290,000 tons in 2025. In the 1996 MCS, a decade before the F–35 fighter plane first flew with rare-earth-element magnets in many components, world production of rare earth elements in 1994 was 64,500 tons. World production of rare earth ele"
+    },
+    "natural": {
+      "score": 0.9184829592704773,
+      "rank_against_current": 2,
+      "text": "USGS_2026\nFOREWORD\nEstimated world lithium production increased to 290,000 tons in 2025."
+    }
+  }
+}

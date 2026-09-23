@@ -215,10 +215,12 @@ def _unsupported_mineral_response(session_id: str, message: str):
     session_store.append_message(session_id, "assistant", answer)
     yield sse_event({"session_id": session_id})
     yield sse_event({"stage": 1, "label": STATUS_STAGES[1], "status": "조회불가",
-                     "failure_reason": "unsupported_mineral"}, event="status")
+                     "failure_reason": "unsupported_commodity",
+                     "message_key": "unsupported_commodity"}, event="status")
     yield sse_event({"delta": answer})
     yield sse_event({"done": True, "abstained": True,
-                     "abstain_reason": "unsupported_mineral"}, event="done")
+                     "abstain_reason": "unsupported_commodity",
+                     "message_key": "unsupported_commodity"}, event="done")
 
 
 def _pending_mine_clarification(session_id: str) -> dict | None:
@@ -332,6 +334,7 @@ def _unsupported_mine_ownership(session_id: str, message: str):
     yield sse_event({"delta": answer})
     yield sse_event({"done": True, "abstained": True,
                      "abstain_reason": "source_unavailable",
+                     "message_key": "action_unavailable",
                      "failure_reason": "mine_ownership_unavailable"}, event="done")
 
 
@@ -435,19 +438,39 @@ def _run_document_qa(request: ChatRequest, session_id: str, profile: Literal["pu
     # 이벤트 직전엔 보류분을 flush한다. 표 블록의 `markdown`(본문 안 표 원문)도
     # 본문과 같은 규칙을 거쳐야 프론트의 문자열 치환이 어긋나지 않는다.
     strike = StrikethroughFilter()
-    for event in _drain_sync(events):
-        if event.type == "delta":
-            text = strike.feed(event.data["delta"])
-            if text:
-                yield sse_event({"delta": text})
-            continue
-        pending = strike.flush()
-        if pending:
-            yield sse_event({"delta": pending})
-        data = event.data
-        if event.type == "table" and data.get("markdown"):
-            data = {**data, "markdown": strip_strikethrough(data["markdown"])}
-        yield sse_event(data, event=event.sse_name)
+    terminal_sent = False
+    try:
+        for event in _drain_sync(events):
+            if event.type == "delta":
+                text = strike.feed(event.data["delta"])
+                if text:
+                    yield sse_event({"delta": text})
+                continue
+            pending = strike.flush()
+            if pending:
+                yield sse_event({"delta": pending})
+            data = event.data
+            if event.type == "table" and data.get("markdown"):
+                data = {**data, "markdown": strip_strikethrough(data["markdown"])}
+            yield sse_event(data, event=event.sse_name)
+            if event.type == "done":
+                # 코어의 terminal event 뒤에는 어떠한 SSE도 내보내지 않는다.
+                # 따라서 코어 구현이 회귀해도 외부 계약은 done 정확히 1회다.
+                terminal_sent = True
+                return
+    except Exception:
+        _logger.exception("document Q&A stream failed for session %s", session_id)
+        if terminal_sent:
+            return
+        failure_message = chat_message("action_unavailable")
+        yield sse_event({"code": "document_qa_failed"}, event="error")
+        yield sse_event({"stage": 3, "label": STATUS_STAGES[3], "status": "조회실패",
+                         "failure_reason": "source_unavailable",
+                         "message_key": "action_unavailable"}, event="status")
+        yield sse_event({"delta": failure_message})
+        yield sse_event({"done": True, "abstained": True,
+                         "abstain_reason": "source_unavailable",
+                         "message_key": "action_unavailable"}, event="done")
 
 
 def _persistable_artifact(artifact: dict | None) -> dict | None:
@@ -647,13 +670,22 @@ def _run_chat_session(
             failure_message = ("광물 관련 정보만 조회할 수 있습니다."
                                if assessment.failure_reason == "out_of_scope"
                                else chat_message("action_unavailable"))
+            failure_message_key = (
+                None if assessment.failure_reason == "out_of_scope" else "action_unavailable"
+            )
             session_store.append_message(session_id, "user", request.message)
             session_store.append_message(session_id, "assistant", failure_message)
             yield sse_event({"session_id": session_id})
-            yield sse_event({"stage": 1, "label": STATUS_STAGES[1], "status": "조회실패",
-                             "failure_reason": assessment.failure_reason}, event="status")
+            status = {"stage": 1, "label": STATUS_STAGES[1], "status": "조회실패",
+                      "failure_reason": assessment.failure_reason}
+            if failure_message_key:
+                status["message_key"] = failure_message_key
+            yield sse_event(status, event="status")
             yield sse_event({"delta": failure_message})
-            yield sse_event({"done": True, "abstained": True, "abstain_reason": assessment.failure_reason}, event="done")
+            done = {"done": True, "abstained": True, "abstain_reason": assessment.failure_reason}
+            if failure_message_key:
+                done["message_key"] = failure_message_key
+            yield sse_event(done, event="done")
             return
         if _unsupported_mineral_in_plan(action_plan, profile):
             yield from _unsupported_mineral_response(session_id, request.message)

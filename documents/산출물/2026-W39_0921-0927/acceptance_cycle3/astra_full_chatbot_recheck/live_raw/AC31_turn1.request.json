@@ -1,0 +1,10 @@
+{
+  "body": {
+    "user_id": "acceptance-suite",
+    "session_id": "ee63febd-f83b-43dd-a618-fd36b8fca6b7",
+    "message": "언옵테이늄의 최근 가격을 보여줘"
+  },
+  "url": "http://127.0.0.1:18002/pubchat",
+  "timeout_seconds": 180,
+  "started_at": "2026-09-23T12:20:58.135586+00:00"
+}

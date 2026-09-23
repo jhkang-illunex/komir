@@ -1,0 +1,702 @@
+data: {"session_id": "483043e9-4277-43d6-a397-928f18baa2a2"}
+
+event: status
+data: {"stage": 1, "label": "질문 조건 확인"}
+
+event: status
+data: {"stage": 1, "label": "질문 조건 확인"}
+
+event: status
+data: {"stage": 2, "label": "답변 준비중", "action_id": "trade.hs_summary"}
+
+event: status
+data: {"stage": 3, "label": "데이터 분석 중", "action_id": "trade.hs_summary"}
+
+event: status
+data: {"stage": 4, "label": "답변 생성 중"}
+
+data: {"delta": "HS"}
+
+data: {"delta": "코드"}
+
+data: {"delta": " "}
+
+data: {"delta": "2"}
+
+data: {"delta": "6"}
+
+data: {"delta": "0"}
+
+data: {"delta": "3"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "의"}
+
+data: {"delta": " 품"}
+
+data: {"delta": "목"}
+
+data: {"delta": "명"}
+
+data: {"delta": "과"}
+
+data: {"delta": " 한국"}
+
+data: {"delta": " 수"}
+
+data: {"delta": "입"}
+
+data: {"delta": " 현"}
+
+data: {"delta": "황"}
+
+data: {"delta": "은"}
+
+data: {"delta": " 다음과"}
+
+data: {"delta": " 같습니다"}
+
+data: {"delta": "."}
+
+data: {"delta": "\n\n"}
+
+data: {"delta": "**"}
+
+data: {"delta": "1"}
+
+data: {"delta": "."}
+
+data: {"delta": " 품"}
+
+data: {"delta": "목"}
+
+data: {"delta": "명"}
+
+data: {"delta": "**"}
+
+data: {"delta": "\n"}
+
+data: {"delta": "*"}
+
+data: {"delta": "   "}
+
+data: {"delta": "구"}
+
+data: {"delta": "리"}
+
+data: {"delta": "광"}
+
+data: {"delta": "과"}
+
+data: {"delta": " 그"}
+
+data: {"delta": " 정"}
+
+data: {"delta": "광"}
+
+data: {"delta": "("}
+
+data: {"delta": "精"}
+
+data: {"delta": "鑛"}
+
+data: {"delta": ")"}
+
+data: {"delta": " ["}
+
+data: {"delta": "1"}
+
+data: {"delta": "]["}
+
+data: {"delta": "2"}
+
+data: {"delta": "]"}
+
+data: {"delta": "\n\n"}
+
+data: {"delta": "**"}
+
+data: {"delta": "2"}
+
+data: {"delta": "."}
+
+data: {"delta": " 한국"}
+
+data: {"delta": " 수"}
+
+data: {"delta": "입"}
+
+data: {"delta": " 현"}
+
+data: {"delta": "황"}
+
+data: {"delta": " ("}
+
+data: {"delta": "HS"}
+
+data: {"delta": " "}
+
+data: {"delta": "2"}
+
+data: {"delta": "6"}
+
+data: {"delta": "0"}
+
+data: {"delta": "3"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": ")**"}
+
+data: {"delta": "\n"}
+
+data: {"delta": "해"}
+
+data: {"delta": "당"}
+
+data: {"delta": " 품"}
+
+data: {"delta": "목"}
+
+data: {"delta": "의"}
+
+data: {"delta": " 수"}
+
+data: {"delta": "입"}
+
+data: {"delta": " 현"}
+
+data: {"delta": "황"}
+
+data: {"delta": "은"}
+
+data: {"delta": " "}
+
+data: {"delta": "2"}
+
+data: {"delta": "0"}
+
+data: {"delta": "1"}
+
+data: {"delta": "4"}
+
+data: {"delta": "-"}
+
+data: {"delta": "0"}
+
+data: {"delta": "1"}
+
+data: {"delta": "-"}
+
+data: {"delta": "0"}
+
+data: {"delta": "1"}
+
+data: {"delta": "부터"}
+
+data: {"delta": " "}
+
+data: {"delta": "2"}
+
+data: {"delta": "0"}
+
+data: {"delta": "2"}
+
+data: {"delta": "6"}
+
+data: {"delta": "-"}
+
+data: {"delta": "0"}
+
+data: {"delta": "7"}
+
+data: {"delta": "-"}
+
+data: {"delta": "0"}
+
+data: {"delta": "1"}
+
+data: {"delta": "까지"}
+
+data: {"delta": "의"}
+
+data: {"delta": " 데이터를"}
+
+data: {"delta": " 기준으로"}
+
+data: {"delta": " 합니다"}
+
+data: {"delta": " ["}
+
+data: {"delta": "1"}
+
+data: {"delta": "]["}
+
+data: {"delta": "2"}
+
+data: {"delta": "]."}
+
+data: {"delta": "\n\n"}
+
+data: {"delta": "|"}
+
+data: {"delta": " 구분"}
+
+data: {"delta": " |"}
+
+data: {"delta": " 수"}
+
+data: {"delta": "입"}
+
+data: {"delta": "금"}
+
+data: {"delta": "액"}
+
+data: {"delta": " ("}
+
+data: {"delta": "USD"}
+
+data: {"delta": ")"}
+
+data: {"delta": " |"}
+
+data: {"delta": " 수"}
+
+data: {"delta": "입"}
+
+data: {"delta": "중"}
+
+data: {"delta": "량"}
+
+data: {"delta": " ("}
+
+data: {"delta": "kg"}
+
+data: {"delta": ")"}
+
+data: {"delta": " |"}
+
+data: {"delta": "\n"}
+
+data: {"delta": "|"}
+
+data: {"delta": " :"}
+
+data: {"delta": "---"}
+
+data: {"delta": " |"}
+
+data: {"delta": " :"}
+
+data: {"delta": "---"}
+
+data: {"delta": " |"}
+
+data: {"delta": " :"}
+
+data: {"delta": "---"}
+
+data: {"delta": " |"}
+
+data: {"delta": "\n"}
+
+data: {"delta": "|"}
+
+data: {"delta": " **"}
+
+data: {"delta": "조"}
+
+data: {"delta": "회"}
+
+data: {"delta": " 기간"}
+
+data: {"delta": " 합"}
+
+data: {"delta": "계"}
+
+data: {"delta": "**"}
+
+data: {"delta": " |"}
+
+data: {"delta": " "}
+
+data: {"delta": "5"}
+
+data: {"delta": "8"}
+
+data: {"delta": ","}
+
+data: {"delta": "8"}
+
+data: {"delta": "9"}
+
+data: {"delta": "0"}
+
+data: {"delta": ","}
+
+data: {"delta": "4"}
+
+data: {"delta": "2"}
+
+data: {"delta": "6"}
+
+data: {"delta": ","}
+
+data: {"delta": "9"}
+
+data: {"delta": "3"}
+
+data: {"delta": "3"}
+
+data: {"delta": "."}
+
+data: {"delta": "0"}
+
+data: {"delta": " ["}
+
+data: {"delta": "1"}
+
+data: {"delta": "]"}
+
+data: {"delta": " |"}
+
+data: {"delta": " "}
+
+data: {"delta": "2"}
+
+data: {"delta": "3"}
+
+data: {"delta": ","}
+
+data: {"delta": "0"}
+
+data: {"delta": "8"}
+
+data: {"delta": "9"}
+
+data: {"delta": ","}
+
+data: {"delta": "2"}
+
+data: {"delta": "7"}
+
+data: {"delta": "7"}
+
+data: {"delta": ","}
+
+data: {"delta": "3"}
+
+data: {"delta": "7"}
+
+data: {"delta": "7"}
+
+data: {"delta": "."}
+
+data: {"delta": "0"}
+
+data: {"delta": " ["}
+
+data: {"delta": "2"}
+
+data: {"delta": "]"}
+
+data: {"delta": " |"}
+
+data: {"delta": "\n\n"}
+
+data: {"delta": "*"}
+
+data: {"delta": "   "}
+
+data: {"delta": "**"}
+
+data: {"delta": "참"}
+
+data: {"delta": "고사"}
+
+data: {"delta": "항"}
+
+data: {"delta": ":**"}
+
+data: {"delta": " 위"}
+
+data: {"delta": " 합"}
+
+data: {"delta": "계"}
+
+data: {"delta": "는"}
+
+data: {"delta": " HS"}
+
+data: {"delta": " "}
+
+data: {"delta": "2"}
+
+data: {"delta": "6"}
+
+data: {"delta": "0"}
+
+data: {"delta": "3"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": " 한"}
+
+data: {"delta": " 품"}
+
+data: {"delta": "목"}
+
+data: {"delta": "·"}
+
+data: {"delta": "전"}
+
+data: {"delta": "체"}
+
+data: {"delta": " 국가"}
+
+data: {"delta": "·"}
+
+data: {"delta": "해"}
+
+data: {"delta": "당"}
+
+data: {"delta": " 기간"}
+
+data: {"delta": "만"}
+
+data: {"delta": " 포함"}
+
+data: {"delta": "하며"}
+
+data: {"delta": ","}
+
+data: {"delta": " 광"}
+
+data: {"delta": "종"}
+
+data: {"delta": " 전체"}
+
+data: {"delta": " HS"}
+
+data: {"delta": " 품"}
+
+data: {"delta": "목"}
+
+data: {"delta": " 합"}
+
+data: {"delta": "계"}
+
+data: {"delta": "와"}
+
+data: {"delta": "는"}
+
+data: {"delta": " 다"}
+
+data: {"delta": "릅"}
+
+data: {"delta": "니다"}
+
+data: {"delta": " ["}
+
+data: {"delta": "1"}
+
+data: {"delta": "]["}
+
+data: {"delta": "2"}
+
+data: {"delta": "]."}
+
+data: {"delta": "\n\n"}
+
+data: {"delta": "**"}
+
+data: {"delta": "3"}
+
+data: {"delta": "."}
+
+data: {"delta": " 광"}
+
+data: {"delta": "종"}
+
+data: {"delta": " 전체"}
+
+data: {"delta": " 수"}
+
+data: {"delta": "치"}
+
+data: {"delta": "와의"}
+
+data: {"delta": " 비교"}
+
+data: {"delta": "**"}
+
+data: {"delta": "\n"}
+
+data: {"delta": "*"}
+
+data: {"delta": "   "}
+
+data: {"delta": "제"}
+
+data: {"delta": "공"}
+
+data: {"delta": "된"}
+
+data: {"delta": " 문서"}
+
+data: {"delta": "에서"}
+
+data: {"delta": " HS"}
+
+data: {"delta": " "}
+
+data: {"delta": "2"}
+
+data: {"delta": "6"}
+
+data: {"delta": "0"}
+
+data: {"delta": "3"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": " 품"}
+
+data: {"delta": "목"}
+
+data: {"delta": "의"}
+
+data: {"delta": " 수"}
+
+data: {"delta": "치는"}
+
+data: {"delta": " 명"}
+
+data: {"delta": "시"}
+
+data: {"delta": "되어"}
+
+data: {"delta": " 있으"}
+
+data: {"delta": "나"}
+
+data: {"delta": ","}
+
+data: {"delta": " 광"}
+
+data: {"delta": "종"}
+
+data: {"delta": " 전체"}
+
+data: {"delta": "의"}
+
+data: {"delta": " 수"}
+
+data: {"delta": "입"}
+
+data: {"delta": " 현"}
+
+data: {"delta": "황"}
+
+data: {"delta": "에"}
+
+data: {"delta": " 대한"}
+
+data: {"delta": " 데이터"}
+
+data: {"delta": "는"}
+
+data: {"delta": " 포함"}
+
+data: {"delta": "되어"}
+
+data: {"delta": " 있지"}
+
+data: {"delta": " 않습니다"}
+
+data: {"delta": " ["}
+
+data: {"delta": "1"}
+
+data: {"delta": "]["}
+
+data: {"delta": "2"}
+
+data: {"delta": "]."}
+
+data: {"delta": " 따라서"}
+
+data: {"delta": " 두"}
+
+data: {"delta": " 대"}
+
+data: {"delta": "상을"}
+
+data: {"delta": " 비교"}
+
+data: {"delta": "할"}
+
+data: {"delta": " 수"}
+
+data: {"delta": " 없습니다"}
+
+data: {"delta": "."}
+
+data: {"delta": "\n\n출처:\n- [1] public.KO_CSTM_CMMRC · KOMIS 원천 · KO_CSTM_CMMRC · HS 2603000000 수입금액 현황 (기준시점 2014-01-01\\~2026-07-01)\n- [2] public.KO_CSTM_CMMRC · KOMIS 원천 · KO_CSTM_CMMRC · HS 2603000000 수입중량 현황 (기준시점 2014-01-01\\~2026-07-01)"}
+
+event: table
+data: {"schema_version": 1, "block_id": "t1-1", "columns": ["month(월)", "import_amount(수입금액합계(USD))"], "rows": [["2014", "3636123653.0"], ["2015", "3501226819.0"], ["2016", "2831622690.0"], ["2017", "3579760394.0"], ["2018", "4053496027.0"], ["2019", "3447478239.0"], ["2020", "4249952834.0"], ["2021", "6017233387.0"], ["2022", "6578328407.0"], ["2023", "5826846824.0"], ["2024", "5145354946.0"], ["2025", "6089062327.0"], ["2026", "3933940386.0"]], "columns_meta": [{"key": "month", "label": "month(월)", "display": "월", "type": "date", "unit": null}, {"key": "import_amount", "label": "import_amount(수입금액합계(USD))", "display": "수입금액합계(USD)", "type": "number", "unit": "USD"}], "rows_typed": [["2014", 3636123653.0], ["2015", 3501226819.0], ["2016", 2831622690.0], ["2017", 3579760394.0], ["2018", 4053496027.0], ["2019", 3447478239.0], ["2020", 4249952834.0], ["2021", 6017233387.0], ["2022", 6578328407.0], ["2023", 5826846824.0], ["2024", 5145354946.0], ["2025", 6089062327.0], ["2026", 3933940386.0]], "markdown": "| month(월) | import_amount(수입금액합계(USD)) |\n| --- | --- |\n| 2014 | 3636123653.0 |\n| 2015 | 3501226819.0 |\n| 2016 | 2831622690.0 |\n| 2017 | 3579760394.0 |\n| 2018 | 4053496027.0 |\n| 2019 | 3447478239.0 |\n| 2020 | 4249952834.0 |\n| 2021 | 6017233387.0 |\n| 2022 | 6578328407.0 |\n| 2023 | 5826846824.0 |\n| 2024 | 5145354946.0 |\n| 2025 | 6089062327.0 |\n| 2026 | 3933940386.0 |", "chart_hint": {"recommended": "line", "alternatives": [], "reason": "시점당 1행인 시계열, 시점 13개"}, "meta": {"source_index": 1, "source": "public.KO_CSTM_CMMRC · KOMIS 원천 · KO_CSTM_CMMRC · HS 2603000000 수입금액 현황 (기준시점 2014-01-01~2026-07-01)", "row_count": 13, "as_of": "2014-01-01~2026-07-01", "unit": "USD", "time_aggregation": {"source_frequency": "monthly", "frequency": "yearly", "applied": true, "aggregation": "sum"}, "menu_source": null, "hidden_columns": []}, "source_index": 1, "source": "public.KO_CSTM_CMMRC · KOMIS 원천 · KO_CSTM_CMMRC · HS 2603000000 수입금액 현황 (기준시점 2014-01-01~2026-07-01)"}
+
+event: chart
+data: {"schema_version": 1, "block_id": "c1-1", "data_ref": "t1-1", "spec": {"kind": "line", "alternatives": [], "x": "month", "x_type": "date", "x_format": "YYYY", "series": ["import_amount"], "group": null, "sort_x_ascending": true, "title": "수입금액합계(USD)", "y_unit": "USD", "as_of": "2014-01-01~2026-07-01", "time_aggregation": {"source_frequency": "monthly", "frequency": "yearly", "applied": true, "aggregation": "sum"}}, "meta": {"source_index": 1, "source": "public.KO_CSTM_CMMRC · KOMIS 원천 · KO_CSTM_CMMRC · HS 2603000000 수입금액 현황 (기준시점 2014-01-01~2026-07-01)", "menu_source": null}, "source_index": 1, "source": "public.KO_CSTM_CMMRC · KOMIS 원천 · KO_CSTM_CMMRC · HS 2603000000 수입금액 현황 (기준시점 2014-01-01~2026-07-01)"}
+
+event: table
+data: {"schema_version": 1, "block_id": "t2-1", "columns": ["month(월)", "import_weight(수입중량합계(kg))"], "rows": [["2014", "1582100925.0"], ["2015", "1769482584.0"], ["2016", "1558597559.0"], ["2017", "1650674230.0"], ["2018", "1820973167.0"], ["2019", "1731067323.0"], ["2020", "2004688306.0"], ["2021", "2097948083.0"], ["2022", "2358818244.0"], ["2023", "2198210587.0"], ["2024", "1732186231.0"], ["2025", "1733220547.0"], ["2026", "851309591.0"]], "columns_meta": [{"key": "month", "label": "month(월)", "display": "월", "type": "date", "unit": null}, {"key": "import_weight", "label": "import_weight(수입중량합계(kg))", "display": "수입중량합계(kg)", "type": "number", "unit": "kg"}], "rows_typed": [["2014", 1582100925.0], ["2015", 1769482584.0], ["2016", 1558597559.0], ["2017", 1650674230.0], ["2018", 1820973167.0], ["2019", 1731067323.0], ["2020", 2004688306.0], ["2021", 2097948083.0], ["2022", 2358818244.0], ["2023", 2198210587.0], ["2024", 1732186231.0], ["2025", 1733220547.0], ["2026", 851309591.0]], "markdown": "| month(월) | import_weight(수입중량합계(kg)) |\n| --- | --- |\n| 2014 | 1582100925.0 |\n| 2015 | 1769482584.0 |\n| 2016 | 1558597559.0 |\n| 2017 | 1650674230.0 |\n| 2018 | 1820973167.0 |\n| 2019 | 1731067323.0 |\n| 2020 | 2004688306.0 |\n| 2021 | 2097948083.0 |\n| 2022 | 2358818244.0 |\n| 2023 | 2198210587.0 |\n| 2024 | 1732186231.0 |\n| 2025 | 1733220547.0 |\n| 2026 | 851309591.0 |", "chart_hint": {"recommended": "line", "alternatives": [], "reason": "시점당 1행인 시계열, 시점 13개"}, "meta": {"source_index": 2, "source": "public.KO_CSTM_CMMRC · KOMIS 원천 · KO_CSTM_CMMRC · HS 2603000000 수입중량 현황 (기준시점 2014-01-01~2026-07-01)", "row_count": 13, "as_of": "2014-01-01~2026-07-01", "unit": "kg", "time_aggregation": {"source_frequency": "monthly", "frequency": "yearly", "applied": true, "aggregation": "sum"}, "menu_source": null, "hidden_columns": []}, "source_index": 2, "source": "public.KO_CSTM_CMMRC · KOMIS 원천 · KO_CSTM_CMMRC · HS 2603000000 수입중량 현황 (기준시점 2014-01-01~2026-07-01)"}
+
+event: chart
+data: {"schema_version": 1, "block_id": "c2-1", "data_ref": "t2-1", "spec": {"kind": "line", "alternatives": [], "x": "month", "x_type": "date", "x_format": "YYYY", "series": ["import_weight"], "group": null, "sort_x_ascending": true, "title": "수입중량합계(kg)", "y_unit": "kg", "as_of": "2014-01-01~2026-07-01", "time_aggregation": {"source_frequency": "monthly", "frequency": "yearly", "applied": true, "aggregation": "sum"}}, "meta": {"source_index": 2, "source": "public.KO_CSTM_CMMRC · KOMIS 원천 · KO_CSTM_CMMRC · HS 2603000000 수입중량 현황 (기준시점 2014-01-01~2026-07-01)", "menu_source": null}, "source_index": 2, "source": "public.KO_CSTM_CMMRC · KOMIS 원천 · KO_CSTM_CMMRC · HS 2603000000 수입중량 현황 (기준시점 2014-01-01~2026-07-01)"}
+
+event: done
+data: {"done": true, "citations": [{"index": 1, "kind": "structured", "source": "public.KO_CSTM_CMMRC", "section": "KOMIS 원천 · KO_CSTM_CMMRC · HS 2603000000 수입금액 현황", "as_of": "2014-01-01~2026-07-01", "unit": "USD", "requirement_id": "req_1", "action_id": "trade.hs_summary", "source_id": "public.KO_CSTM_CMMRC", "observed_period": "2014-01-01~2026-07-01", "menu_source": null}, {"index": 2, "kind": "structured", "source": "public.KO_CSTM_CMMRC", "section": "KOMIS 원천 · KO_CSTM_CMMRC · HS 2603000000 수입중량 현황", "as_of": "2014-01-01~2026-07-01", "unit": "kg", "requirement_id": "req_1", "action_id": "trade.hs_summary", "source_id": "public.KO_CSTM_CMMRC", "observed_period": "2014-01-01~2026-07-01", "menu_source": null}], "retrieval_sources": [{"source": "rdb", "status": "queried", "evidence_count": 2}, {"source": "vector", "status": "not_selected", "evidence_count": 0}, {"source": "pageindex", "status": "not_selected", "evidence_count": 0}, {"source": "okf", "status": "not_selected", "evidence_count": 0}], "bogus_citations": [], "abstained": false}
+

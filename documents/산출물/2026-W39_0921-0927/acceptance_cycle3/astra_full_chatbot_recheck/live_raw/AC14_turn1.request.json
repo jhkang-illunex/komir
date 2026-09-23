@@ -1,0 +1,10 @@
+{
+  "body": {
+    "user_id": "acceptance-suite",
+    "session_id": "e4f027df-e0bd-4945-8208-816611a2e00d",
+    "message": "구리 광산 생산량 최근 YoY 증가 상위 5개를 보여줘"
+  },
+  "url": "http://127.0.0.1:18002/pubchat",
+  "timeout_seconds": 180,
+  "started_at": "2026-09-23T12:19:46.526647+00:00"
+}

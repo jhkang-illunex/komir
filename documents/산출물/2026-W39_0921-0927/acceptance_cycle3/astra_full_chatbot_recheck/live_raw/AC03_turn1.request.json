@@ -1,0 +1,10 @@
+{
+  "body": {
+    "user_id": "acceptance-suite",
+    "session_id": "1ee030be-606e-4cd1-8bf5-39a6c8ee7d58",
+    "message": "최근 1년간 코발트 가격 추이를 보여줘"
+  },
+  "url": "http://127.0.0.1:18002/pubchat",
+  "timeout_seconds": 180,
+  "started_at": "2026-09-23T12:19:04.656490+00:00"
+}

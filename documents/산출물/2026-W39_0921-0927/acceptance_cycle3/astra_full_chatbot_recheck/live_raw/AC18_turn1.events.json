@@ -1,0 +1,19 @@
+[
+  {
+    "session_id": "08b41d8b-681f-4a6f-ab04-b3d4852158de"
+  },
+  {
+    "stage": 1,
+    "label": "질문 조건 확인",
+    "status": "조회실패",
+    "failure_reason": "unsupported_combination"
+  },
+  {
+    "delta": "요청하신 데이터를 조회할수 없습니다."
+  },
+  {
+    "done": true,
+    "abstained": true,
+    "abstain_reason": "unsupported_combination"
+  }
+]

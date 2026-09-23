@@ -1,0 +1,446 @@
+data: {"session_id": "55b727fb-c516-4631-a71c-1f45eb62fb2c"}
+
+event: status
+data: {"stage": 1, "label": "질문 조건 확인"}
+
+event: status
+data: {"stage": 1, "label": "질문 조건 확인"}
+
+event: status
+data: {"stage": 2, "label": "답변 준비중", "action_id": "resource.rank"}
+
+event: status
+data: {"stage": 3, "label": "데이터 분석 중", "action_id": "resource.rank"}
+
+event: status
+data: {"stage": 4, "label": "답변 생성 중"}
+
+data: {"delta": "2"}
+
+data: {"delta": "0"}
+
+data: {"delta": "2"}
+
+data: {"delta": "6"}
+
+data: {"delta": "년"}
+
+data: {"delta": " 기준"}
+
+data: {"delta": " 리"}
+
+data: {"delta": "튬"}
+
+data: {"delta": " 매"}
+
+data: {"delta": "장"}
+
+data: {"delta": "량"}
+
+data: {"delta": " 상"}
+
+data: {"delta": "위"}
+
+data: {"delta": " "}
+
+data: {"delta": "5"}
+
+data: {"delta": "개"}
+
+data: {"delta": " 국"}
+
+data: {"delta": "가는"}
+
+data: {"delta": " 다음과"}
+
+data: {"delta": " 같습니다"}
+
+data: {"delta": " ["}
+
+data: {"delta": "1"}
+
+data: {"delta": "]."}
+
+data: {"delta": "\n\n"}
+
+data: {"delta": "|"}
+
+data: {"delta": " 순"}
+
+data: {"delta": "위"}
+
+data: {"delta": " |"}
+
+data: {"delta": " 국가"}
+
+data: {"delta": " |"}
+
+data: {"delta": " 매"}
+
+data: {"delta": "장"}
+
+data: {"delta": "량"}
+
+data: {"delta": " 합"}
+
+data: {"delta": "계"}
+
+data: {"delta": "("}
+
+data: {"delta": "톤"}
+
+data: {"delta": ")"}
+
+data: {"delta": " |"}
+
+data: {"delta": " 비"}
+
+data: {"delta": "중"}
+
+data: {"delta": "("}
+
+data: {"delta": "%)"}
+
+data: {"delta": " |"}
+
+data: {"delta": "\n"}
+
+data: {"delta": "|"}
+
+data: {"delta": " :"}
+
+data: {"delta": "---"}
+
+data: {"delta": " |"}
+
+data: {"delta": " :"}
+
+data: {"delta": "---"}
+
+data: {"delta": " |"}
+
+data: {"delta": " :"}
+
+data: {"delta": "---"}
+
+data: {"delta": " |"}
+
+data: {"delta": " :"}
+
+data: {"delta": "---"}
+
+data: {"delta": " |"}
+
+data: {"delta": "\n"}
+
+data: {"delta": "|"}
+
+data: {"delta": " "}
+
+data: {"delta": "1"}
+
+data: {"delta": " |"}
+
+data: {"delta": " 중국"}
+
+data: {"delta": " |"}
+
+data: {"delta": " "}
+
+data: {"delta": "1"}
+
+data: {"delta": "3"}
+
+data: {"delta": "6"}
+
+data: {"delta": ","}
+
+data: {"delta": "3"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "."}
+
+data: {"delta": "0"}
+
+data: {"delta": " |"}
+
+data: {"delta": " "}
+
+data: {"delta": "6"}
+
+data: {"delta": "2"}
+
+data: {"delta": "."}
+
+data: {"delta": "3"}
+
+data: {"delta": "7"}
+
+data: {"delta": " |"}
+
+data: {"delta": "\n"}
+
+data: {"delta": "|"}
+
+data: {"delta": " "}
+
+data: {"delta": "2"}
+
+data: {"delta": " |"}
+
+data: {"delta": " 호"}
+
+data: {"delta": "주"}
+
+data: {"delta": " |"}
+
+data: {"delta": " "}
+
+data: {"delta": "2"}
+
+data: {"delta": "8"}
+
+data: {"delta": ","}
+
+data: {"delta": "2"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "."}
+
+data: {"delta": "0"}
+
+data: {"delta": " |"}
+
+data: {"delta": " "}
+
+data: {"delta": "1"}
+
+data: {"delta": "2"}
+
+data: {"delta": "."}
+
+data: {"delta": "9"}
+
+data: {"delta": " |"}
+
+data: {"delta": "\n"}
+
+data: {"delta": "|"}
+
+data: {"delta": " "}
+
+data: {"delta": "3"}
+
+data: {"delta": " |"}
+
+data: {"delta": " 인도"}
+
+data: {"delta": "네"}
+
+data: {"delta": "시아"}
+
+data: {"delta": " |"}
+
+data: {"delta": " "}
+
+data: {"delta": "1"}
+
+data: {"delta": "8"}
+
+data: {"delta": ","}
+
+data: {"delta": "8"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "."}
+
+data: {"delta": "0"}
+
+data: {"delta": " |"}
+
+data: {"delta": " "}
+
+data: {"delta": "8"}
+
+data: {"delta": "."}
+
+data: {"delta": "6"}
+
+data: {"delta": " |"}
+
+data: {"delta": "\n"}
+
+data: {"delta": "|"}
+
+data: {"delta": " "}
+
+data: {"delta": "4"}
+
+data: {"delta": " |"}
+
+data: {"delta": " "}
+
+data: {"delta": "칠"}
+
+data: {"delta": "레"}
+
+data: {"delta": " |"}
+
+data: {"delta": " "}
+
+data: {"delta": "1"}
+
+data: {"delta": "4"}
+
+data: {"delta": ","}
+
+data: {"delta": "1"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "."}
+
+data: {"delta": "0"}
+
+data: {"delta": " |"}
+
+data: {"delta": " "}
+
+data: {"delta": "6"}
+
+data: {"delta": "."}
+
+data: {"delta": "4"}
+
+data: {"delta": "5"}
+
+data: {"delta": " |"}
+
+data: {"delta": "\n"}
+
+data: {"delta": "|"}
+
+data: {"delta": " "}
+
+data: {"delta": "5"}
+
+data: {"delta": " |"}
+
+data: {"delta": " "}
+
+data: {"delta": "콩"}
+
+data: {"delta": "고"}
+
+data: {"delta": "민"}
+
+data: {"delta": "주"}
+
+data: {"delta": "공"}
+
+data: {"delta": "화"}
+
+data: {"delta": "국"}
+
+data: {"delta": " |"}
+
+data: {"delta": " "}
+
+data: {"delta": "1"}
+
+data: {"delta": "1"}
+
+data: {"delta": ","}
+
+data: {"delta": "7"}
+
+data: {"delta": "5"}
+
+data: {"delta": "0"}
+
+data: {"delta": "."}
+
+data: {"delta": "0"}
+
+data: {"delta": " |"}
+
+data: {"delta": " "}
+
+data: {"delta": "5"}
+
+data: {"delta": "."}
+
+data: {"delta": "3"}
+
+data: {"delta": "8"}
+
+data: {"delta": " |"}
+
+data: {"delta": "\n\n"}
+
+data: {"delta": "해"}
+
+data: {"delta": "당"}
+
+data: {"delta": " 데이터"}
+
+data: {"delta": "의"}
+
+data: {"delta": " 실제"}
+
+data: {"delta": " 조회"}
+
+data: {"delta": "기간"}
+
+data: {"delta": "은"}
+
+data: {"delta": " "}
+
+data: {"delta": "2"}
+
+data: {"delta": "0"}
+
+data: {"delta": "2"}
+
+data: {"delta": "6"}
+
+data: {"delta": "\\~2"}
+
+data: {"delta": "0"}
+
+data: {"delta": "2"}
+
+data: {"delta": "6"}
+
+data: {"delta": "년"}
+
+data: {"delta": "입니다"}
+
+data: {"delta": " ["}
+
+data: {"delta": "1"}
+
+data: {"delta": "]."}
+
+data: {"delta": "\n\n⚠ 이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다.\n\n출처:\n- [1] public.KO_RSRC_BURUDG_QUTY · KOMIS 원천 · KO_RSRC_BURUDG_QUTY(리튬) · 국가별 매장량 상위 5개 (기준시점 2026\\~2026)"}
+
+event: table
+data: {"schema_version": 1, "block_id": "t1-1", "columns": ["country(국가)", "total(매장량합계(톤))", "share_pct(비중(%, 같은 기간·조건의 전체 국가 합계 대비))"], "rows": [["중국", "136300.0", "62.37"], ["호주", "28200.0", "12.9"], ["인도네시아", "18800.0", "8.6"], ["칠레", "14100.0", "6.45"], ["콩고민주공화국", "11750.0", "5.38"]], "columns_meta": [{"key": "country", "label": "country(국가)", "display": "국가", "type": "string", "unit": null}, {"key": "total", "label": "total(매장량합계(톤))", "display": "매장량합계(톤)", "type": "number", "unit": "톤"}, {"key": "share_pct", "label": "share_pct(비중(%, 같은 기간·조건의 전체 국가 합계 대비))", "display": "비중(%, 같은 기간·조건의 전체 국가 합계 대비)", "type": "number", "unit": "%"}], "rows_typed": [["중국", 136300.0, 62.37], ["호주", 28200.0, 12.9], ["인도네시아", 18800.0, 8.6], ["칠레", 14100.0, 6.45], ["콩고민주공화국", 11750.0, 5.38]], "markdown": "| country(국가) | total(매장량합계(톤)) | share_pct(비중(%, 같은 기간·조건의 전체 국가 합계 대비)) |\n| --- | --- | --- |\n| 중국 | 136300.0 | 62.37 |\n| 호주 | 28200.0 | 12.9 |\n| 인도네시아 | 18800.0 | 8.6 |\n| 칠레 | 14100.0 | 6.45 |\n| 콩고민주공화국 | 11750.0 | 5.38 |", "chart_hint": {"recommended": "bar", "alternatives": ["pie"], "reason": "날짜열 없음 — country별 비교"}, "meta": {"source_index": 1, "source": "public.KO_RSRC_BURUDG_QUTY · KOMIS 원천 · KO_RSRC_BURUDG_QUTY(리튬) · 국가별 매장량 상위 5개 (기준시점 2026~2026)", "row_count": 5, "as_of": "2026~2026", "unit": "톤", "time_aggregation": null, "menu_source": null, "hidden_columns": ["rank", "record_count"]}, "source_index": 1, "source": "public.KO_RSRC_BURUDG_QUTY · KOMIS 원천 · KO_RSRC_BURUDG_QUTY(리튬) · 국가별 매장량 상위 5개 (기준시점 2026~2026)"}
+
+event: chart
+data: {"schema_version": 1, "block_id": "c1-1", "data_ref": "t1-1", "spec": {"kind": "bar", "alternatives": ["pie"], "x": "country", "x_type": "category", "x_format": null, "series": ["total"], "group": null, "sort_x_ascending": false, "title": "매장량합계(톤)", "y_unit": "톤", "as_of": "2026~2026", "time_aggregation": null}, "meta": {"source_index": 1, "source": "public.KO_RSRC_BURUDG_QUTY · KOMIS 원천 · KO_RSRC_BURUDG_QUTY(리튬) · 국가별 매장량 상위 5개 (기준시점 2026~2026)", "menu_source": null}, "source_index": 1, "source": "public.KO_RSRC_BURUDG_QUTY · KOMIS 원천 · KO_RSRC_BURUDG_QUTY(리튬) · 국가별 매장량 상위 5개 (기준시점 2026~2026)"}
+
+event: done
+data: {"done": true, "citations": [{"index": 1, "kind": "structured", "source": "public.KO_RSRC_BURUDG_QUTY", "section": "KOMIS 원천 · KO_RSRC_BURUDG_QUTY(리튬) · 국가별 매장량 상위 5개", "as_of": "2026~2026", "unit": "톤", "requirement_id": "1", "action_id": "resource.rank", "source_id": "public.KO_RSRC_BURUDG_QUTY", "observed_period": "2026~2026", "menu_source": null}], "retrieval_sources": [{"source": "rdb", "status": "queried", "evidence_count": 1}, {"source": "vector", "status": "queried", "evidence_count": 6}, {"source": "pageindex", "status": "not_selected", "evidence_count": 0}, {"source": "okf", "status": "not_selected", "evidence_count": 0}], "bogus_citations": [], "abstained": false}
+

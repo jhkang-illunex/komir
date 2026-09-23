@@ -1,0 +1,10 @@
+data: {"session_id": "f468b574-0656-47b3-bb6a-4b4a59487cbb"}
+
+event: status
+data: {"stage": 1, "label": "질문 조건 확인", "status": "조회실패", "failure_reason": "unsupported_combination"}
+
+data: {"delta": "요청하신 데이터를 조회할수 없습니다."}
+
+event: done
+data: {"done": true, "abstained": true, "abstain_reason": "unsupported_combination"}
+

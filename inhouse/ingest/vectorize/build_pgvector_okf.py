@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import re
 import sys
 from collections import Counter
 from pathlib import Path
@@ -51,6 +52,55 @@ SOURCE_GROUPS = OKF_SOURCE_GROUPS
 #: 구분해 어느 파이프라인이 넣었는지 한눈에 알 수 있게 한다.
 SOURCE_TYPE = "okf_report"  # source_type VARCHAR(16) — 실측으로 발견(20자 값은 잘림 에러)
 
+_OCR_MINERAL_SPACING = {
+    "구 리": "구리",
+    "니 켈": "니켈",
+    "코 발 트": "코발트",
+    "리 튬": "리튬",
+    "희 토 류": "희토류",
+}
+
+
+def _embedding_text(doc: DocRecord, chunk: object) -> str:
+    """검색용 문맥을 더하되 DB에 보존하는 원문 청크는 바꾸지 않는다."""
+
+    text = str(getattr(chunk, "text", ""))
+    for spaced, compact in _OCR_MINERAL_SPACING.items():
+        text = re.sub(rf"(?<![가-힣]){re.escape(spaced)}(?![가-힣])", compact, text)
+    heading = str(getattr(chunk, "section_heading", "")).strip()
+    return "\n".join(part for part in (doc.title.strip(), heading, text) if part)
+
+
+def _validated_document_date(value: object) -> str:
+    """검증된 OKF ``document_date``만 ISO 형식으로 전달한다.
+
+    제목·파일명에서 새 날짜를 추정하지 않는다. ``document_date``가 ISO 날짜가 아니거나
+    달력상 유효하지 않으면 빈 문자열을 반환해 pgvector ``pub_date``도 NULL로 남긴다.
+    """
+
+    if not isinstance(value, str):
+        return ""
+    try:
+        return dt.date.fromisoformat(value).isoformat()
+    except ValueError:
+        return ""
+
+
+def _pub_date(doc_date: str) -> dt.date | None:
+    """ISO 날짜를 보존하고, 기존 YYMMDD DocRecord도 호환 처리한다."""
+
+    try:
+        return dt.date.fromisoformat(doc_date)
+    except ValueError:
+        pass
+
+    if len(doc_date) != 6 or not doc_date.isdigit():
+        return None
+    try:
+        return dt.date(2000 + int(doc_date[:2]), int(doc_date[2:4]), int(doc_date[4:6]))
+    except ValueError:
+        return None
+
 
 def _load_okf_record(path: Path) -> DocRecord:
     """OKF 마크다운 1건(YAML 프론트매터 + 본문) → DocRecord(본문만 raw_text에)."""
@@ -65,7 +115,7 @@ def _load_okf_record(path: Path) -> DocRecord:
         source_path=str(front.get("resource", "")),
         week=str(front.get("source_group", "")),
         series_key="",
-        doc_date="",
+        doc_date=_validated_document_date(front.get("document_date")),
         title=str(front.get("title", path.stem)),
         ext=str(front.get("fmt", "pdf")),
         raw_text=body,
@@ -75,6 +125,7 @@ def _load_okf_record(path: Path) -> DocRecord:
 def build(
     source_groups: tuple[str, ...] = SOURCE_GROUPS,
     run: "ingest_status.RunHandle | None" = None,
+    doc_ids: tuple[str, ...] = (),
 ) -> int:
     settings = get_settings()
     schema = settings.PG_SCHEMA  # mineral_risk — public엔 절대 안 씀
@@ -84,19 +135,27 @@ def build(
         paths.extend(sorted((OKF_DOCUMENTS_ROOT / group).rglob("*.md")))
     print(f"대상 문서 {len(paths)}건({', '.join(source_groups)})", flush=True)
 
+    requested_doc_ids = {value.removeprefix("doc_")[:16] for value in doc_ids if value.strip()}
     all_chunks = []
+    found_doc_ids: set[str] = set()
     for path in paths:
         doc = _load_okf_record(path)
+        if requested_doc_ids and doc.doc_id not in requested_doc_ids:
+            continue
+        found_doc_ids.add(doc.doc_id)
         all_chunks.extend((doc, c) for c in chunk_document(doc))
+    missing_doc_ids = requested_doc_ids - found_doc_ids
+    if missing_doc_ids:
+        raise ValueError(f"요청 doc_id를 OKF에서 찾지 못함: {sorted(missing_doc_ids)}")
     print(f"청크 {len(all_chunks)}개 — 임베딩 계산 중(e5-small, {DIM}차원)...", flush=True)
 
-    vectors = encode_passages([c.text for _, c in all_chunks])
+    vectors = encode_passages([_embedding_text(doc, chunk) for doc, chunk in all_chunks])
 
     now = dt.datetime.now()
     rows = []
     for (d, c), vec in zip(all_chunks, vectors):
         rows.append((
-            c.chunk_id, c.doc_id, None, d.week, None, c.chunk_order,
+            c.chunk_id, c.doc_id, None, d.week, _pub_date(d.doc_date), c.chunk_order,
             c.text, d.source_path, d.week, d.title, c.section_heading, len(c.text),
             SOURCE_TYPE, now, _vector_literal(vec),
         ))
@@ -125,19 +184,33 @@ def build(
         with con.cursor() as cur:
             # 전체 DELETE 금지(build_pgvector_index.py의 documents/산출물 적재분을
             # 지우게 됨) — src(=OKF source_group)로 이 스크립트가 넣은 행만 지운다.
-            cur.execute(
-                f"DELETE FROM {schema}.doc_chunk WHERE src = ANY(%s)",
-                (list(source_groups),),
-            )
+            if requested_doc_ids:
+                cur.execute(
+                    f"DELETE FROM {schema}.doc_chunk "
+                    "WHERE src = ANY(%s) AND doc_id = ANY(%s)",
+                    (list(source_groups), sorted(requested_doc_ids)),
+                )
+            else:
+                cur.execute(
+                    f"DELETE FROM {schema}.doc_chunk WHERE src = ANY(%s)",
+                    (list(source_groups),),
+                )
             deleted = cur.rowcount
             execute_values(
                 cur, f"INSERT INTO {schema}.doc_chunk ({collist}) VALUES %s",
                 rows, template=template, page_size=200,
             )
-            cur.execute(
-                f"SELECT count(*) FROM {schema}.doc_chunk WHERE src = ANY(%s)",
-                (list(source_groups),),
-            )
+            if requested_doc_ids:
+                cur.execute(
+                    f"SELECT count(*) FROM {schema}.doc_chunk "
+                    "WHERE src = ANY(%s) AND doc_id = ANY(%s)",
+                    (list(source_groups), sorted(requested_doc_ids)),
+                )
+            else:
+                cur.execute(
+                    f"SELECT count(*) FROM {schema}.doc_chunk WHERE src = ANY(%s)",
+                    (list(source_groups),),
+                )
             total = cur.fetchone()[0]
         con.commit()
     finally:
@@ -177,9 +250,17 @@ def build(
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--source-group", action="append", dest="groups", choices=SOURCE_GROUPS)
+    ap.add_argument(
+        "--doc-id", action="append", dest="doc_ids", default=[],
+        help="해당 OKF doc_id만 원자적으로 교체(반복 지정 가능; doc_ 접두사 허용)",
+    )
     ap.add_argument("--okf-root", default=None, help="okf_documents 루트 덮어쓰기(기본: 이 소스트리의 data_lake)")
     args = ap.parse_args()
     if args.okf_root:
         OKF_DOCUMENTS_ROOT = Path(args.okf_root).expanduser().resolve()  # noqa: F811
     with ingest_status.pipeline_run("vectorize.build_pgvector_okf", args=vars(args)) as run:
-        build(tuple(args.groups) if args.groups else SOURCE_GROUPS, run=run)
+        build(
+            tuple(args.groups) if args.groups else SOURCE_GROUPS,
+            run=run,
+            doc_ids=tuple(args.doc_ids),
+        )

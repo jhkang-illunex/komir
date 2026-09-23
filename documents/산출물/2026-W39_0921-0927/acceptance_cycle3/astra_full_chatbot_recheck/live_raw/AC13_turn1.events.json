@@ -1,0 +1,2370 @@
+[
+  {
+    "session_id": "d774965d-e30a-4f7a-88fd-edef11cdf9c4"
+  },
+  {
+    "stage": 1,
+    "label": "질문 조건 확인"
+  },
+  {
+    "stage": 1,
+    "label": "질문 조건 확인"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "action_id": "resource.rank"
+  },
+  {
+    "stage": 3,
+    "label": "데이터 분석 중",
+    "action_id": "resource.rank"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "action_id": "resource.rank"
+  },
+  {
+    "stage": 3,
+    "label": "데이터 분석 중",
+    "action_id": "resource.rank"
+  },
+  {
+    "stage": 4,
+    "label": "답변 생성 중"
+  },
+  {
+    "delta": "희"
+  },
+  {
+    "delta": "토"
+  },
+  {
+    "delta": "류"
+  },
+  {
+    "delta": " 생산"
+  },
+  {
+    "delta": "량"
+  },
+  {
+    "delta": "과"
+  },
+  {
+    "delta": " 매"
+  },
+  {
+    "delta": "장"
+  },
+  {
+    "delta": "량"
+  },
+  {
+    "delta": " 상"
+  },
+  {
+    "delta": "위"
+  },
+  {
+    "delta": " 국"
+  },
+  {
+    "delta": "가는"
+  },
+  {
+    "delta": " 다음과"
+  },
+  {
+    "delta": " 같습니다"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "\n\n"
+  },
+  {
+    "delta": "**"
+  },
+  {
+    "delta": "["
+  },
+  {
+    "delta": "희"
+  },
+  {
+    "delta": "토"
+  },
+  {
+    "delta": "류"
+  },
+  {
+    "delta": " 생산"
+  },
+  {
+    "delta": "량"
+  },
+  {
+    "delta": " 및"
+  },
+  {
+    "delta": " 매"
+  },
+  {
+    "delta": "장"
+  },
+  {
+    "delta": "량"
+  },
+  {
+    "delta": " 상"
+  },
+  {
+    "delta": "위"
+  },
+  {
+    "delta": " 국가"
+  },
+  {
+    "delta": " 비교"
+  },
+  {
+    "delta": "]"
+  },
+  {
+    "delta": "**"
+  },
+  {
+    "delta": "\n\n"
+  },
+  {
+    "delta": "|"
+  },
+  {
+    "delta": " 구분"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "위"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "위"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": "위"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": "위"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "위"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": "\n"
+  },
+  {
+    "delta": "|"
+  },
+  {
+    "delta": " :"
+  },
+  {
+    "delta": "---"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " :"
+  },
+  {
+    "delta": "---"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " :"
+  },
+  {
+    "delta": "---"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " :"
+  },
+  {
+    "delta": "---"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " :"
+  },
+  {
+    "delta": "---"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " :"
+  },
+  {
+    "delta": "---"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": "\n"
+  },
+  {
+    "delta": "|"
+  },
+  {
+    "delta": " **"
+  },
+  {
+    "delta": "생"
+  },
+  {
+    "delta": "산"
+  },
+  {
+    "delta": "량"
+  },
+  {
+    "delta": " 상"
+  },
+  {
+    "delta": "위"
+  },
+  {
+    "delta": " 국가"
+  },
+  {
+    "delta": " ("
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "6"
+  },
+  {
+    "delta": "년"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "톤"
+  },
+  {
+    "delta": ")**"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " 중국"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " 호"
+  },
+  {
+    "delta": "주"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " 인도"
+  },
+  {
+    "delta": "네"
+  },
+  {
+    "delta": "시아"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "칠"
+  },
+  {
+    "delta": "레"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "콩"
+  },
+  {
+    "delta": "고"
+  },
+  {
+    "delta": "민"
+  },
+  {
+    "delta": "주"
+  },
+  {
+    "delta": "공"
+  },
+  {
+    "delta": "화"
+  },
+  {
+    "delta": "국"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": "\n"
+  },
+  {
+    "delta": "|"
+  },
+  {
+    "delta": " **"
+  },
+  {
+    "delta": "매"
+  },
+  {
+    "delta": "장"
+  },
+  {
+    "delta": "량"
+  },
+  {
+    "delta": " 상"
+  },
+  {
+    "delta": "위"
+  },
+  {
+    "delta": " 국가"
+  },
+  {
+    "delta": " ("
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "6"
+  },
+  {
+    "delta": "년"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "톤"
+  },
+  {
+    "delta": ")**"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " 중국"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " 호"
+  },
+  {
+    "delta": "주"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " 인도"
+  },
+  {
+    "delta": "네"
+  },
+  {
+    "delta": "시아"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "칠"
+  },
+  {
+    "delta": "레"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "콩"
+  },
+  {
+    "delta": "고"
+  },
+  {
+    "delta": "민"
+  },
+  {
+    "delta": "주"
+  },
+  {
+    "delta": "공"
+  },
+  {
+    "delta": "화"
+  },
+  {
+    "delta": "국"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": "\n\n"
+  },
+  {
+    "delta": "**"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": " 희"
+  },
+  {
+    "delta": "토"
+  },
+  {
+    "delta": "류"
+  },
+  {
+    "delta": " 생산"
+  },
+  {
+    "delta": "량"
+  },
+  {
+    "delta": " 상"
+  },
+  {
+    "delta": "위"
+  },
+  {
+    "delta": " 국가"
+  },
+  {
+    "delta": "**"
+  },
+  {
+    "delta": "\n"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "6"
+  },
+  {
+    "delta": "년"
+  },
+  {
+    "delta": " 기준"
+  },
+  {
+    "delta": "("
+  },
+  {
+    "delta": "실"
+  },
+  {
+    "delta": "제"
+  },
+  {
+    "delta": " 조회"
+  },
+  {
+    "delta": "기간"
+  },
+  {
+    "delta": ":"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "6"
+  },
+  {
+    "delta": "\\~2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "6"
+  },
+  {
+    "delta": ")"
+  },
+  {
+    "delta": " 희"
+  },
+  {
+    "delta": "토"
+  },
+  {
+    "delta": "류"
+  },
+  {
+    "delta": " 생산"
+  },
+  {
+    "delta": "량"
+  },
+  {
+    "delta": " 상"
+  },
+  {
+    "delta": "위"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "개"
+  },
+  {
+    "delta": " 국"
+  },
+  {
+    "delta": "가는"
+  },
+  {
+    "delta": " 중국"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": " 호"
+  },
+  {
+    "delta": "주"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": " 인도"
+  },
+  {
+    "delta": "네"
+  },
+  {
+    "delta": "시아"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "칠"
+  },
+  {
+    "delta": "레"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "콩"
+  },
+  {
+    "delta": "고"
+  },
+  {
+    "delta": "민"
+  },
+  {
+    "delta": "주"
+  },
+  {
+    "delta": "공"
+  },
+  {
+    "delta": "화"
+  },
+  {
+    "delta": "국"
+  },
+  {
+    "delta": "입니다"
+  },
+  {
+    "delta": " ["
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "]."
+  },
+  {
+    "delta": " 전체"
+  },
+  {
+    "delta": " 국가"
+  },
+  {
+    "delta": " 합"
+  },
+  {
+    "delta": "계"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "8"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "톤"
+  },
+  {
+    "delta": "을"
+  },
+  {
+    "delta": " 기준으로"
+  },
+  {
+    "delta": " 한"
+  },
+  {
+    "delta": " 각"
+  },
+  {
+    "delta": " 국가"
+  },
+  {
+    "delta": "의"
+  },
+  {
+    "delta": " 비"
+  },
+  {
+    "delta": "중"
+  },
+  {
+    "delta": "은"
+  },
+  {
+    "delta": " 다음과"
+  },
+  {
+    "delta": " 같습니다"
+  },
+  {
+    "delta": " ["
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "]."
+  },
+  {
+    "delta": "\n"
+  },
+  {
+    "delta": "*"
+  },
+  {
+    "delta": "   "
+  },
+  {
+    "delta": "**"
+  },
+  {
+    "delta": "중"
+  },
+  {
+    "delta": "국"
+  },
+  {
+    "delta": "**:"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": "8"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "톤"
+  },
+  {
+    "delta": " ("
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": "6"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": "6"
+  },
+  {
+    "delta": "%)"
+  },
+  {
+    "delta": " ["
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "]"
+  },
+  {
+    "delta": "\n"
+  },
+  {
+    "delta": "*"
+  },
+  {
+    "delta": "   "
+  },
+  {
+    "delta": "**"
+  },
+  {
+    "delta": "호"
+  },
+  {
+    "delta": "주"
+  },
+  {
+    "delta": "**:"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "9"
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "톤"
+  },
+  {
+    "delta": " ("
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "%)"
+  },
+  {
+    "delta": " ["
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "]"
+  },
+  {
+    "delta": "\n"
+  },
+  {
+    "delta": "*"
+  },
+  {
+    "delta": "   "
+  },
+  {
+    "delta": "**"
+  },
+  {
+    "delta": "인"
+  },
+  {
+    "delta": "도"
+  },
+  {
+    "delta": "네"
+  },
+  {
+    "delta": "시아"
+  },
+  {
+    "delta": "**:"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "9"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "9"
+  },
+  {
+    "delta": "6"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "톤"
+  },
+  {
+    "delta": " ("
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "9"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "%)"
+  },
+  {
+    "delta": " ["
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "]"
+  },
+  {
+    "delta": "\n"
+  },
+  {
+    "delta": "*"
+  },
+  {
+    "delta": "   "
+  },
+  {
+    "delta": "**"
+  },
+  {
+    "delta": "칠"
+  },
+  {
+    "delta": "레"
+  },
+  {
+    "delta": "**:"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "6"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "6"
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "톤"
+  },
+  {
+    "delta": " ("
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": "6"
+  },
+  {
+    "delta": "%)"
+  },
+  {
+    "delta": " ["
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "]"
+  },
+  {
+    "delta": "\n"
+  },
+  {
+    "delta": "*"
+  },
+  {
+    "delta": "   "
+  },
+  {
+    "delta": "**"
+  },
+  {
+    "delta": "콩"
+  },
+  {
+    "delta": "고"
+  },
+  {
+    "delta": "민"
+  },
+  {
+    "delta": "주"
+  },
+  {
+    "delta": "공"
+  },
+  {
+    "delta": "화"
+  },
+  {
+    "delta": "국"
+  },
+  {
+    "delta": "**:"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "톤"
+  },
+  {
+    "delta": " ("
+  },
+  {
+    "delta": "9"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "9"
+  },
+  {
+    "delta": "%)"
+  },
+  {
+    "delta": " ["
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "]"
+  },
+  {
+    "delta": "\n\n"
+  },
+  {
+    "delta": "**"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": " 희"
+  },
+  {
+    "delta": "토"
+  },
+  {
+    "delta": "류"
+  },
+  {
+    "delta": " 매"
+  },
+  {
+    "delta": "장"
+  },
+  {
+    "delta": "량"
+  },
+  {
+    "delta": " 상"
+  },
+  {
+    "delta": "위"
+  },
+  {
+    "delta": " 국가"
+  },
+  {
+    "delta": "**"
+  },
+  {
+    "delta": "\n"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "6"
+  },
+  {
+    "delta": "년"
+  },
+  {
+    "delta": " 기준"
+  },
+  {
+    "delta": "("
+  },
+  {
+    "delta": "실"
+  },
+  {
+    "delta": "제"
+  },
+  {
+    "delta": " 조회"
+  },
+  {
+    "delta": "기간"
+  },
+  {
+    "delta": ":"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "6"
+  },
+  {
+    "delta": "\\~2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "6"
+  },
+  {
+    "delta": ")"
+  },
+  {
+    "delta": " 희"
+  },
+  {
+    "delta": "토"
+  },
+  {
+    "delta": "류"
+  },
+  {
+    "delta": " 매"
+  },
+  {
+    "delta": "장"
+  },
+  {
+    "delta": "량"
+  },
+  {
+    "delta": " 상"
+  },
+  {
+    "delta": "위"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "개"
+  },
+  {
+    "delta": " 국"
+  },
+  {
+    "delta": "가는"
+  },
+  {
+    "delta": " 중국"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": " 호"
+  },
+  {
+    "delta": "주"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": " 인도"
+  },
+  {
+    "delta": "네"
+  },
+  {
+    "delta": "시아"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "칠"
+  },
+  {
+    "delta": "레"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "콩"
+  },
+  {
+    "delta": "고"
+  },
+  {
+    "delta": "민"
+  },
+  {
+    "delta": "주"
+  },
+  {
+    "delta": "공"
+  },
+  {
+    "delta": "화"
+  },
+  {
+    "delta": "국"
+  },
+  {
+    "delta": "입니다"
+  },
+  {
+    "delta": " ["
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "]."
+  },
+  {
+    "delta": " 전체"
+  },
+  {
+    "delta": " 국가"
+  },
+  {
+    "delta": " 합"
+  },
+  {
+    "delta": "계"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": "6"
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "톤"
+  },
+  {
+    "delta": "을"
+  },
+  {
+    "delta": " 기준으로"
+  },
+  {
+    "delta": " 한"
+  },
+  {
+    "delta": " 각"
+  },
+  {
+    "delta": " 국가"
+  },
+  {
+    "delta": "의"
+  },
+  {
+    "delta": " 비"
+  },
+  {
+    "delta": "중"
+  },
+  {
+    "delta": "은"
+  },
+  {
+    "delta": " 다음과"
+  },
+  {
+    "delta": " 같습니다"
+  },
+  {
+    "delta": " ["
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "]."
+  },
+  {
+    "delta": "\n"
+  },
+  {
+    "delta": "*"
+  },
+  {
+    "delta": "   "
+  },
+  {
+    "delta": "**"
+  },
+  {
+    "delta": "중"
+  },
+  {
+    "delta": "국"
+  },
+  {
+    "delta": "**:"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "8"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "톤"
+  },
+  {
+    "delta": " ("
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": "6"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": "6"
+  },
+  {
+    "delta": "%)"
+  },
+  {
+    "delta": " ["
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "]"
+  },
+  {
+    "delta": "\n"
+  },
+  {
+    "delta": "*"
+  },
+  {
+    "delta": "   "
+  },
+  {
+    "delta": "**"
+  },
+  {
+    "delta": "호"
+  },
+  {
+    "delta": "주"
+  },
+  {
+    "delta": "**:"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "7"
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "7"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "톤"
+  },
+  {
+    "delta": " ("
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "%)"
+  },
+  {
+    "delta": " ["
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "]"
+  },
+  {
+    "delta": "\n"
+  },
+  {
+    "delta": "*"
+  },
+  {
+    "delta": "   "
+  },
+  {
+    "delta": "**"
+  },
+  {
+    "delta": "인"
+  },
+  {
+    "delta": "도"
+  },
+  {
+    "delta": "네"
+  },
+  {
+    "delta": "시아"
+  },
+  {
+    "delta": "**:"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "8"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "톤"
+  },
+  {
+    "delta": " ("
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "9"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "%)"
+  },
+  {
+    "delta": " ["
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "]"
+  },
+  {
+    "delta": "\n"
+  },
+  {
+    "delta": "*"
+  },
+  {
+    "delta": "   "
+  },
+  {
+    "delta": "**"
+  },
+  {
+    "delta": "칠"
+  },
+  {
+    "delta": "레"
+  },
+  {
+    "delta": "**:"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "톤"
+  },
+  {
+    "delta": " ("
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": "6"
+  },
+  {
+    "delta": "%)"
+  },
+  {
+    "delta": " ["
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "]"
+  },
+  {
+    "delta": "\n"
+  },
+  {
+    "delta": "*"
+  },
+  {
+    "delta": "   "
+  },
+  {
+    "delta": "**"
+  },
+  {
+    "delta": "콩"
+  },
+  {
+    "delta": "고"
+  },
+  {
+    "delta": "민"
+  },
+  {
+    "delta": "주"
+  },
+  {
+    "delta": "공"
+  },
+  {
+    "delta": "화"
+  },
+  {
+    "delta": "국"
+  },
+  {
+    "delta": "**:"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "톤"
+  },
+  {
+    "delta": " ("
+  },
+  {
+    "delta": "9"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "9"
+  },
+  {
+    "delta": "%)"
+  },
+  {
+    "delta": " ["
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "]"
+  },
+  {
+    "delta": "\n\n⚠ 이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다.\n\n출처:\n- [1] public.KO_RSRC_PRDCTN_QUTY · KOMIS 원천 · KO_RSRC_PRDCTN_QUTY(희토류) · 국가별 생산량 상위 5개 (기준시점 2026\\~2026)\n- [2] public.KO_RSRC_BURUDG_QUTY · KOMIS 원천 · KO_RSRC_BURUDG_QUTY(희토류) · 국가별 매장량 상위 5개 (기준시점 2026\\~2026)"
+  },
+  {
+    "schema_version": 1,
+    "block_id": "t1-1",
+    "columns": [
+      "country(국가)",
+      "total(생산량합계(톤))",
+      "share_pct(비중(%, 같은 기간·조건의 전체 국가 합계 대비))"
+    ],
+    "rows": [
+      [
+        "중국",
+        "21248.0",
+        "36.36"
+      ],
+      [
+        "호주",
+        "11952.0",
+        "20.45"
+      ],
+      [
+        "인도네시아",
+        "9296.0",
+        "15.91"
+      ],
+      [
+        "칠레",
+        "6640.0",
+        "11.36"
+      ],
+      [
+        "콩고민주공화국",
+        "5312.0",
+        "9.09"
+      ]
+    ],
+    "columns_meta": [
+      {
+        "key": "country",
+        "label": "country(국가)",
+        "display": "국가",
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "total",
+        "label": "total(생산량합계(톤))",
+        "display": "생산량합계(톤)",
+        "type": "number",
+        "unit": "톤"
+      },
+      {
+        "key": "share_pct",
+        "label": "share_pct(비중(%, 같은 기간·조건의 전체 국가 합계 대비))",
+        "display": "비중(%, 같은 기간·조건의 전체 국가 합계 대비)",
+        "type": "number",
+        "unit": "%"
+      }
+    ],
+    "rows_typed": [
+      [
+        "중국",
+        21248.0,
+        36.36
+      ],
+      [
+        "호주",
+        11952.0,
+        20.45
+      ],
+      [
+        "인도네시아",
+        9296.0,
+        15.91
+      ],
+      [
+        "칠레",
+        6640.0,
+        11.36
+      ],
+      [
+        "콩고민주공화국",
+        5312.0,
+        9.09
+      ]
+    ],
+    "markdown": "| country(국가) | total(생산량합계(톤)) | share_pct(비중(%, 같은 기간·조건의 전체 국가 합계 대비)) |\n| --- | --- | --- |\n| 중국 | 21248.0 | 36.36 |\n| 호주 | 11952.0 | 20.45 |\n| 인도네시아 | 9296.0 | 15.91 |\n| 칠레 | 6640.0 | 11.36 |\n| 콩고민주공화국 | 5312.0 | 9.09 |",
+    "chart_hint": {
+      "recommended": "bar",
+      "alternatives": [
+        "pie"
+      ],
+      "reason": "날짜열 없음 — country별 비교"
+    },
+    "meta": {
+      "source_index": 1,
+      "source": "public.KO_RSRC_PRDCTN_QUTY · KOMIS 원천 · KO_RSRC_PRDCTN_QUTY(희토류) · 국가별 생산량 상위 5개 (기준시점 2026~2026)",
+      "row_count": 5,
+      "as_of": "2026~2026",
+      "unit": "톤",
+      "time_aggregation": null,
+      "menu_source": null,
+      "hidden_columns": [
+        "rank",
+        "record_count"
+      ]
+    },
+    "source_index": 1,
+    "source": "public.KO_RSRC_PRDCTN_QUTY · KOMIS 원천 · KO_RSRC_PRDCTN_QUTY(희토류) · 국가별 생산량 상위 5개 (기준시점 2026~2026)"
+  },
+  {
+    "schema_version": 1,
+    "block_id": "c1-1",
+    "data_ref": "t1-1",
+    "spec": {
+      "kind": "bar",
+      "alternatives": [
+        "pie"
+      ],
+      "x": "country",
+      "x_type": "category",
+      "x_format": null,
+      "series": [
+        "total"
+      ],
+      "group": null,
+      "sort_x_ascending": false,
+      "title": "생산량합계(톤)",
+      "y_unit": "톤",
+      "as_of": "2026~2026",
+      "time_aggregation": null
+    },
+    "meta": {
+      "source_index": 1,
+      "source": "public.KO_RSRC_PRDCTN_QUTY · KOMIS 원천 · KO_RSRC_PRDCTN_QUTY(희토류) · 국가별 생산량 상위 5개 (기준시점 2026~2026)",
+      "menu_source": null
+    },
+    "source_index": 1,
+    "source": "public.KO_RSRC_PRDCTN_QUTY · KOMIS 원천 · KO_RSRC_PRDCTN_QUTY(희토류) · 국가별 생산량 상위 5개 (기준시점 2026~2026)"
+  },
+  {
+    "schema_version": 1,
+    "block_id": "t2-1",
+    "columns": [
+      "country(국가)",
+      "total(매장량합계(톤))",
+      "share_pct(비중(%, 같은 기간·조건의 전체 국가 합계 대비))"
+    ],
+    "rows": [
+      [
+        "중국",
+        "132800.0",
+        "36.36"
+      ],
+      [
+        "호주",
+        "74700.0",
+        "20.45"
+      ],
+      [
+        "인도네시아",
+        "58100.0",
+        "15.91"
+      ],
+      [
+        "칠레",
+        "41500.0",
+        "11.36"
+      ],
+      [
+        "콩고민주공화국",
+        "33200.0",
+        "9.09"
+      ]
+    ],
+    "columns_meta": [
+      {
+        "key": "country",
+        "label": "country(국가)",
+        "display": "국가",
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "total",
+        "label": "total(매장량합계(톤))",
+        "display": "매장량합계(톤)",
+        "type": "number",
+        "unit": "톤"
+      },
+      {
+        "key": "share_pct",
+        "label": "share_pct(비중(%, 같은 기간·조건의 전체 국가 합계 대비))",
+        "display": "비중(%, 같은 기간·조건의 전체 국가 합계 대비)",
+        "type": "number",
+        "unit": "%"
+      }
+    ],
+    "rows_typed": [
+      [
+        "중국",
+        132800.0,
+        36.36
+      ],
+      [
+        "호주",
+        74700.0,
+        20.45
+      ],
+      [
+        "인도네시아",
+        58100.0,
+        15.91
+      ],
+      [
+        "칠레",
+        41500.0,
+        11.36
+      ],
+      [
+        "콩고민주공화국",
+        33200.0,
+        9.09
+      ]
+    ],
+    "markdown": "| country(국가) | total(매장량합계(톤)) | share_pct(비중(%, 같은 기간·조건의 전체 국가 합계 대비)) |\n| --- | --- | --- |\n| 중국 | 132800.0 | 36.36 |\n| 호주 | 74700.0 | 20.45 |\n| 인도네시아 | 58100.0 | 15.91 |\n| 칠레 | 41500.0 | 11.36 |\n| 콩고민주공화국 | 33200.0 | 9.09 |",
+    "chart_hint": {
+      "recommended": "bar",
+      "alternatives": [
+        "pie"
+      ],
+      "reason": "날짜열 없음 — country별 비교"
+    },
+    "meta": {
+      "source_index": 2,
+      "source": "public.KO_RSRC_BURUDG_QUTY · KOMIS 원천 · KO_RSRC_BURUDG_QUTY(희토류) · 국가별 매장량 상위 5개 (기준시점 2026~2026)",
+      "row_count": 5,
+      "as_of": "2026~2026",
+      "unit": "톤",
+      "time_aggregation": null,
+      "menu_source": null,
+      "hidden_columns": [
+        "rank",
+        "record_count"
+      ]
+    },
+    "source_index": 2,
+    "source": "public.KO_RSRC_BURUDG_QUTY · KOMIS 원천 · KO_RSRC_BURUDG_QUTY(희토류) · 국가별 매장량 상위 5개 (기준시점 2026~2026)"
+  },
+  {
+    "schema_version": 1,
+    "block_id": "c2-1",
+    "data_ref": "t2-1",
+    "spec": {
+      "kind": "bar",
+      "alternatives": [
+        "pie"
+      ],
+      "x": "country",
+      "x_type": "category",
+      "x_format": null,
+      "series": [
+        "total"
+      ],
+      "group": null,
+      "sort_x_ascending": false,
+      "title": "매장량합계(톤)",
+      "y_unit": "톤",
+      "as_of": "2026~2026",
+      "time_aggregation": null
+    },
+    "meta": {
+      "source_index": 2,
+      "source": "public.KO_RSRC_BURUDG_QUTY · KOMIS 원천 · KO_RSRC_BURUDG_QUTY(희토류) · 국가별 매장량 상위 5개 (기준시점 2026~2026)",
+      "menu_source": null
+    },
+    "source_index": 2,
+    "source": "public.KO_RSRC_BURUDG_QUTY · KOMIS 원천 · KO_RSRC_BURUDG_QUTY(희토류) · 국가별 매장량 상위 5개 (기준시점 2026~2026)"
+  },
+  {
+    "done": true,
+    "citations": [
+      {
+        "index": 1,
+        "kind": "structured",
+        "source": "public.KO_RSRC_PRDCTN_QUTY",
+        "section": "KOMIS 원천 · KO_RSRC_PRDCTN_QUTY(희토류) · 국가별 생산량 상위 5개",
+        "as_of": "2026~2026",
+        "unit": "톤",
+        "requirement_id": "1",
+        "action_id": "resource.rank",
+        "source_id": "public.KO_RSRC_PRDCTN_QUTY",
+        "observed_period": "2026~2026",
+        "menu_source": null
+      },
+      {
+        "index": 2,
+        "kind": "structured",
+        "source": "public.KO_RSRC_BURUDG_QUTY",
+        "section": "KOMIS 원천 · KO_RSRC_BURUDG_QUTY(희토류) · 국가별 매장량 상위 5개",
+        "as_of": "2026~2026",
+        "unit": "톤",
+        "requirement_id": "2",
+        "action_id": "resource.rank",
+        "source_id": "public.KO_RSRC_BURUDG_QUTY",
+        "observed_period": "2026~2026",
+        "menu_source": null
+      }
+    ],
+    "retrieval_sources": [
+      {
+        "source": "rdb",
+        "status": "queried",
+        "evidence_count": 1
+      },
+      {
+        "source": "vector",
+        "status": "queried",
+        "evidence_count": 5
+      },
+      {
+        "source": "pageindex",
+        "status": "not_selected",
+        "evidence_count": 0
+      },
+      {
+        "source": "okf",
+        "status": "not_selected",
+        "evidence_count": 0
+      },
+      {
+        "source": "rdb",
+        "status": "queried",
+        "evidence_count": 1
+      },
+      {
+        "source": "vector",
+        "status": "queried",
+        "evidence_count": 6
+      },
+      {
+        "source": "pageindex",
+        "status": "not_selected",
+        "evidence_count": 0
+      },
+      {
+        "source": "okf",
+        "status": "not_selected",
+        "evidence_count": 0
+      }
+    ],
+    "bogus_citations": [],
+    "abstained": false
+  }
+]

@@ -1,0 +1,351 @@
+{
+  "scope": "질문별 기능과 관측된 제품/SSE 계약의 보충 판정. 고정 runner 원본을 대체하지 않음; 공통 UI 완전 수락을 뜻하지 않음",
+  "counts": {
+    "FAIL": 15,
+    "PASS": 14,
+    "BLOCKED_DATA": 3
+  },
+  "cases": [
+    {
+      "id": "AC01",
+      "question": "구리 가격 시계열",
+      "runner_status": "FAIL",
+      "audit_status": "FAIL",
+      "reason": "가격 원값 일치. 더미65일을 최근1년 답으로 선택하며 순번·건수 표시가 남음",
+      "raw_evidence": "live_raw/AC01_turn1.events.json",
+      "runner_errors": [
+        "필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"
+      ]
+    },
+    {
+      "id": "AC02",
+      "question": "니켈 가격 시계열",
+      "runner_status": "FAIL",
+      "audit_status": "FAIL",
+      "reason": "가격 원값 일치. 실제 LME 기준도 존재하나 더미 선택·순번·건수 표시",
+      "raw_evidence": "live_raw/AC02_turn1.events.json",
+      "runner_errors": [
+        "필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"
+      ]
+    },
+    {
+      "id": "AC03",
+      "question": "코발트 가격 시계열",
+      "runner_status": "FAIL",
+      "audit_status": "FAIL",
+      "reason": "가격 원값 일치. 더미 선택·순번·건수 표시",
+      "raw_evidence": "live_raw/AC03_turn1.events.json",
+      "runner_errors": [
+        "필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"
+      ]
+    },
+    {
+      "id": "AC04",
+      "question": "리튬 가격 시계열",
+      "runner_status": "FAIL",
+      "audit_status": "FAIL",
+      "reason": "가격 원값 일치. 더미 선택·순번·건수 표시",
+      "raw_evidence": "live_raw/AC04_turn1.events.json",
+      "runner_errors": [
+        "필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"
+      ]
+    },
+    {
+      "id": "AC05",
+      "question": "희토류 가격 시계열",
+      "runner_status": "FAIL",
+      "audit_status": "FAIL",
+      "reason": "가격 원값 일치. 더미 선택·순번·건수 표시",
+      "raw_evidence": "live_raw/AC05_turn1.events.json",
+      "runner_errors": [
+        "필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"
+      ]
+    },
+    {
+      "id": "AC06",
+      "question": "광종 간 가격 비교",
+      "runner_status": "FAIL",
+      "audit_status": "FAIL",
+      "reason": "가격3근거 조회 후 unverified_or_incomplete_observation. 결합 답변 미제공; 독립적으로 완전 부재는 입증되지 않음",
+      "raw_evidence": "live_raw/AC06_turn1.events.json",
+      "runner_errors": [
+        "source_unavailable에 대한 독립 사전조건 증거가 없음"
+      ]
+    },
+    {
+      "id": "AC07",
+      "question": "가격 주장 검증",
+      "runner_status": "FAIL",
+      "audit_status": "FAIL",
+      "reason": "NI -3.27% 독립 계산 일치. chart y_unit=null, 메뉴 출처 누락; 가격 코드의 사용자 단위 해석 미완",
+      "raw_evidence": "live_raw/AC07_turn1.events.json",
+      "runner_errors": [
+        "필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"
+      ]
+    },
+    {
+      "id": "AC08",
+      "question": "수입국 순위와 비중",
+      "runner_status": "FAIL",
+      "audit_status": "PASS",
+      "reason": "LI 수입상위5 금액·전체분모·비중 일치. 더미 고지 있음. 공통 표시 개선은 별도",
+      "raw_evidence": "live_raw/AC08_turn1.events.json",
+      "runner_errors": [
+        "필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"
+      ]
+    },
+    {
+      "id": "AC09",
+      "question": "월별 교역 추이",
+      "runner_status": "FAIL",
+      "audit_status": "BLOCKED_DATA",
+      "reason": "선택 광종 매핑에는 2025년7~9월 더미40행만 존재. 전체12개월 실제 월별 데이터 선행조건 미충족",
+      "raw_evidence": "live_raw/AC09_turn1.events.json",
+      "runner_errors": [
+        "source_unavailable에 대한 독립 사전조건 증거가 없음"
+      ]
+    },
+    {
+      "id": "AC10",
+      "question": "명시 HS 품목 조회",
+      "runner_status": "FAIL",
+      "audit_status": "PASS",
+      "reason": "HS2603000000 품목명·수입액·중량·조회기간이 독립SQL과 일치. 전체광종 합계로 확대하지 않음",
+      "raw_evidence": "live_raw/AC10_turn1.events.json",
+      "runner_errors": [
+        "필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"
+      ]
+    },
+    {
+      "id": "AC11",
+      "question": "HHI 전체 모집단",
+      "runner_status": "FAIL",
+      "audit_status": "BLOCKED_DATA",
+      "reason": "LI HHI는 dummy_trade_concentration으로 의도적 기권. 실제 관측 전체교역분모 확보 필요",
+      "raw_evidence": "live_raw/AC11_turn1.events.json",
+      "runner_errors": [
+        "source_unavailable에 대한 독립 사전조건 증거가 없음"
+      ]
+    },
+    {
+      "id": "AC12",
+      "question": "리튬 매장량",
+      "runner_status": "FAIL",
+      "audit_status": "PASS",
+      "reason": "2026 LI 상위5 매장량·전체분모 비중 일치. 더미 고지 있음",
+      "raw_evidence": "live_raw/AC12_turn1.events.json",
+      "runner_errors": [
+        "필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"
+      ]
+    },
+    {
+      "id": "AC13",
+      "question": "희토류 생산량·매장량",
+      "runner_status": "FAIL",
+      "audit_status": "PASS",
+      "reason": "2026 REE 생산·매장 상위5와 비중 일치. 더미 고지 있음",
+      "raw_evidence": "live_raw/AC13_turn1.events.json",
+      "runner_errors": [
+        "필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"
+      ]
+    },
+    {
+      "id": "AC14",
+      "question": "광산 생산량 YoY",
+      "runner_status": "FAIL",
+      "audit_status": "FAIL",
+      "reason": "광산20문서 집계 응답 존재. 실제 OKF 사용에도 done의 4소스 모두 not_selected. 전체광산 순위의 독립 원본 완전대조는 미완",
+      "raw_evidence": "live_raw/AC14_turn1.events.json",
+      "runner_errors": [
+        "기대 출처 인용 없음: OKF",
+        "필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"
+      ]
+    },
+    {
+      "id": "AC15",
+      "question": "단일 광산 원문",
+      "runner_status": "FAIL",
+      "audit_status": "PASS",
+      "reason": "PageIndex 인용과 OKF58행 Escondida in Chile 일치. source 이름 literal 비교는 검사기 오판",
+      "raw_evidence": "live_raw/AC15_turn1.events.json",
+      "runner_errors": [
+        "기대 출처 인용 없음: PageIndex",
+        "기대 출처 인용 없음: OKF",
+        "필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"
+      ]
+    },
+    {
+      "id": "AC16",
+      "question": "TSI",
+      "runner_status": "FAIL",
+      "audit_status": "FAIL",
+      "reason": "TSI -1.0 계산은 일치. 무차원 지표를 USD로 표시하고 더미·부분관측 고지 누락",
+      "raw_evidence": "live_raw/AC16_turn1.events.json",
+      "runner_errors": [
+        "필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"
+      ]
+    },
+    {
+      "id": "AC17",
+      "question": "수출입 증감률",
+      "runner_status": "FAIL",
+      "audit_status": "BLOCKED_DATA",
+      "reason": "2024 LI 수입행 없음. 2025 증감률 분모가 없어서 기권은 적절",
+      "raw_evidence": "live_raw/AC17_turn1.events.json",
+      "runner_errors": [
+        "source_unavailable에 대한 독립 사전조건 증거가 없음"
+      ]
+    },
+    {
+      "id": "AC18",
+      "question": "특정국 의존도",
+      "runner_status": "FAIL",
+      "audit_status": "FAIL",
+      "reason": "dependency 대신 unsupported_combination. 독립SQL상 중국28518400/전체108544000=26.2735849%; 더미 고지/실제자료 정책은 필요",
+      "raw_evidence": "live_raw/AC18_turn1.events.json",
+      "runner_errors": [
+        "기대 action 미확인: ['trade.indicator'] / 실제=[]",
+        "정상 답변 대신 기권 또는 HITL",
+        "기대 출처 인용 없음: public.KO_CSTM_CMMRC",
+        "필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"
+      ]
+    },
+    {
+      "id": "AC19",
+      "question": "RCA 미연결 경계",
+      "runner_status": "PASS",
+      "audit_status": "PASS",
+      "reason": "RCA 세계분모 미연결에 대한 정상 기권. 계산 완료를 뜻하지 않음",
+      "raw_evidence": "live_raw/AC19_turn1.events.json",
+      "runner_errors": []
+    },
+    {
+      "id": "AC20",
+      "question": "TII 미연결 경계",
+      "runner_status": "PASS",
+      "audit_status": "PASS",
+      "reason": "TII 정상 기권 계약 충족. 로그 실제 중단점은 빈 필터값 거절; 세계분모 adapter 도달은 미검증",
+      "raw_evidence": "live_raw/AC20_turn1.events.json",
+      "runner_errors": []
+    },
+    {
+      "id": "AC21",
+      "question": "무역 HITL 누락 슬롯",
+      "runner_status": "PASS",
+      "audit_status": "PASS",
+      "reason": "무역TSI에 기준국·기간만 추가 질문",
+      "raw_evidence": "live_raw/AC21_turn1.events.json",
+      "runner_errors": []
+    },
+    {
+      "id": "AC22",
+      "question": "무역 HITL 재개",
+      "runner_status": "FAIL",
+      "audit_status": "FAIL",
+      "reason": "같은 session 후속 요청에서 UnboundLocalError; done 없이 SSE 종료",
+      "raw_evidence": "live_raw/AC22_turn1.events.json",
+      "runner_errors": [
+        "done 이벤트 개수=0"
+      ]
+    },
+    {
+      "id": "AC23",
+      "question": "가격 메뉴 안내",
+      "runner_status": "PASS",
+      "audit_status": "PASS",
+      "reason": "공개 가격 메뉴 안내·로그인 불필요 계약 충족",
+      "raw_evidence": "live_raw/AC23_turn1.events.json",
+      "runner_errors": []
+    },
+    {
+      "id": "AC24",
+      "question": "교역 메뉴 안내",
+      "runner_status": "PASS",
+      "audit_status": "PASS",
+      "reason": "공개 수입 메뉴 안내·로그인 불필요 계약 충족",
+      "raw_evidence": "live_raw/AC24_turn1.events.json",
+      "runner_errors": []
+    },
+    {
+      "id": "AC25",
+      "question": "리튬 수급 보고서",
+      "runner_status": "FAIL",
+      "audit_status": "FAIL",
+      "reason": "관련성 부족으로 기권. dense 타광종·PageIndex0·OKF unavailable. 코퍼스가 없다고 입증된 것은 아님",
+      "raw_evidence": "live_raw/AC25_turn1.events.json",
+      "runner_errors": [
+        "source_unavailable에 대한 독립 사전조건 증거가 없음"
+      ]
+    },
+    {
+      "id": "AC26",
+      "question": "삼원계 배터리 보고서",
+      "runner_status": "FAIL",
+      "audit_status": "FAIL",
+      "reason": "삼원계 관계 근거 미회수로 기권. 최신 로컬 직접 검색에서도 무관한 큰 절이 상위에 존재",
+      "raw_evidence": "live_raw/AC26_turn1.events.json",
+      "runner_errors": [
+        "source_unavailable에 대한 독립 사전조건 증거가 없음"
+      ]
+    },
+    {
+      "id": "AC31",
+      "question": "지원하지 않는 광물",
+      "runner_status": "FAIL",
+      "audit_status": "FAIL",
+      "reason": "사용자 문구는 정확한 정상 기권. SSE reason unsupported_mineral 대 YAML unsupported_commodity 및 message_key 누락 계약 불일치",
+      "raw_evidence": "live_raw/AC31_turn1.events.json",
+      "runner_errors": [
+        "기권 사유 불일치: unsupported_mineral",
+        "메시지 키 불일치: None"
+      ]
+    },
+    {
+      "id": "AC32",
+      "question": "미래 실측 부재",
+      "runner_status": "PASS",
+      "audit_status": "PASS",
+      "reason": "2030 실측가격0행 독립 확인. 미래실측을 만들지 않고 기권",
+      "raw_evidence": "live_raw/AC32_turn1.events.json",
+      "runner_errors": []
+    },
+    {
+      "id": "AC33",
+      "question": "가동하지 않는 진단",
+      "runner_status": "FAIL",
+      "audit_status": "FAIL",
+      "reason": "미가동 진단 기능에 정상 기권하나 expected_message_key action_unavailable가 SSE에 없음",
+      "raw_evidence": "live_raw/AC33_turn1.events.json",
+      "runner_errors": [
+        "메시지 키 불일치: None"
+      ]
+    },
+    {
+      "id": "AC34",
+      "question": "업무 외 질문",
+      "runner_status": "PASS",
+      "audit_status": "PASS",
+      "reason": "날씨·점심 무관 질문 정상 기권",
+      "raw_evidence": "live_raw/AC34_turn1.events.json",
+      "runner_errors": []
+    },
+    {
+      "id": "AC35",
+      "question": "미검증 다중 action 조합",
+      "runner_status": "PASS",
+      "audit_status": "PASS",
+      "reason": "지원하지 않는 순위+HHI 조합 정상 기권",
+      "raw_evidence": "live_raw/AC35_turn1.events.json",
+      "runner_errors": []
+    },
+    {
+      "id": "AC36",
+      "question": "공개·비공개 지표 경계",
+      "runner_status": "PASS",
+      "audit_status": "PASS",
+      "reason": "공개 프로필에서 private 수급지표 제공하지 않음",
+      "raw_evidence": "live_raw/AC36_turn1.events.json",
+      "runner_errors": []
+    }
+  ]
+}

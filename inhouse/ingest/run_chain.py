@@ -20,7 +20,8 @@
 
 각 단계는 서브프로세스(`python -m ingest.<module>`)로 돌려 모듈별 `ingest.pipeline_run` 상태
 기록이 그대로 남는다. okf·pgvector_* 실패는 체인 중단(이후 단계가 빈 입력으로 지우는 일 방지),
-pageindex·backfill·prune 실패는 기록만 하고 계속. 동시 실행은 processing/_locks/chain.lock(flock)으로
+pageindex·backfill·prune 실패 뒤에도 독립적인 다음 단계를 계속 실행해 상태를 남긴다. 다만 하나라도
+실패하면 체인 자체는 실패 상태와 종료 코드 1을 남긴다. 동시 실행은 processing/_locks/chain.lock(flock)으로
 막고, 표준출력은 processing/_logs/chain_<시각>.log에 함께 남긴다(cron 환경에서 stdout이 사라져도
 추적 가능). `INGEST_TRIGGERED_BY`는 `--trigger`로 export(모듈들이 trigger='cron'|'manual' 기록).
 """
@@ -52,6 +53,10 @@ class Step:
     name: str
     argv: tuple[str, ...]
     critical: bool          # True면 실패 시 체인 중단
+
+
+class ChainStepFailure(RuntimeError):
+    """하나 이상의 단계가 실패해 `pipeline_run`도 실패로 기록해야 하는 상태."""
 
 
 def _llm_alive(timeout: float = 10.0) -> bool:
@@ -128,6 +133,18 @@ def run(steps: list[Step], *, log: _Tee, env: dict[str, str]) -> dict:
     return results
 
 
+def failed_steps(results: dict) -> tuple[str, ...]:
+    """단계 실행 결과에서 실패한 실제 단계를 반환한다.
+
+    ``aborted_at``은 단계 실행 결과가 아니라 중단 위치 표식이므로 제외한다.
+    """
+
+    return tuple(
+        name for name, result in results.items()
+        if isinstance(result, dict) and result.get("rc") not in (None, 0)
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="ingest 체인(landing → processing → data_lake → pgvector)")
     ap.add_argument("--trigger", choices=("cron", "manual"), default="manual")
@@ -176,12 +193,21 @@ def main(argv: list[str] | None = None) -> int:
     try:
         log.write(f"=== {datetime.now():%F %T} ingest 체인 시작 trigger={a.trigger}\n경로: {json.dumps(paths.as_dict(), ensure_ascii=False)}\n"
                   f"그룹: {json.dumps(describe(), ensure_ascii=False)}\n단계: {[s.name for s in steps]}\n")
-        with ingest_status.pipeline_run("chain.run_chain", args={"trigger": a.trigger, "steps": [s.name for s in steps],
-                                                             "prune_apply": a.prune_apply}) as run_handle:
-            results = run(steps, log=log, env=env)
-            run_handle.metrics.update(results)
+        try:
+            with ingest_status.pipeline_run("chain.run_chain", args={"trigger": a.trigger, "steps": [s.name for s in steps],
+                                                                 "prune_apply": a.prune_apply}) as run_handle:
+                results = run(steps, log=log, env=env)
+                failures = failed_steps(results)
+                run_handle.metrics.update(results)
+                run_handle.metrics["failed_steps"] = list(failures)
+                if failures:
+                    raise ChainStepFailure(f"실패 단계: {', '.join(failures)}")
+        except ChainStepFailure as exc:
+            log.write(f"!!! ingest 체인 실패 — {exc}\n")
+            log.write(f"=== {datetime.now():%F %T} 종료 — {json.dumps(results, ensure_ascii=False)}\n")
+            return 1
         log.write(f"=== {datetime.now():%F %T} 종료 — {json.dumps(results, ensure_ascii=False)}\n")
-        return 1 if "aborted_at" in results else 0
+        return 0
     finally:
         log.close()
         if lock_fh is not None:

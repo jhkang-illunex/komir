@@ -175,8 +175,10 @@ def dense_search_pg(
     con = pg_connect()
     try:
         with con.cursor() as cur:
-            # HNSW 탐색 폭 — 기본 40. k가 크면 재현율 확보를 위해 넉넉히 잡는다.
-            cur.execute("SET hnsw.ef_search = %s", (max(40, k * 4),))
+            # 14.5만 청크 실측(2026-09-23): 기본 폭 40~120은 새로 삽입한 실제
+            # exact top-1 두 건을 후보에서 누락했고, 200부터 Seq Scan 순위와
+            # 일치했다. query/k를 바꾸지 않고 ANN 후보 탐색폭만 확보한다.
+            cur.execute("SET hnsw.ef_search = %s", (max(200, k * 20),))
             if date_range:
                 # 날짜매칭 청크만 거리 보너스(=순위 상향), 나머지는 순수 코사인
                 # 그대로 — 하드 필터가 아니므로 매칭 0건이어도 결과가 비지 않는다.

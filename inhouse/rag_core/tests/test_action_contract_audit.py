@@ -47,6 +47,33 @@ class ActionContractAuditTest(unittest.TestCase):
         self.assertEqual(route.komis_trade_metric, "country_dependency")
         self.assertEqual(route.komis_partner_country, "중국")
 
+    def test_specific_country_dependency_normalizes_from_typed_concentration_to_indicator(self):
+        intents = IntentPlan(requirements=[IntentCall(
+            requirement_id="r1", intent="trade_concentration", role="data",
+            slots=ActionSlots(mineral="리튬"),
+        )])
+        candidate = action_plan_from_intent(
+            intents, "2025년 한국 리튬 수입의 중국 의존도를 계산해줘",
+        )
+        self.assertEqual(len(candidate.actions), 1)
+        call = candidate.actions[0]
+        self.assertEqual(call.action_id, "trade.indicator")
+        self.assertEqual(call.slots.trade_metric, "country_dependency")
+        self.assertEqual(call.slots.partner_country, "중국")
+        self.assertEqual(call.slots.flow, "import")
+        self.assertEqual(call.slots.reporter_country, "한국")
+        self.assertEqual(call.slots.period.calendar_year, 2025)
+        self.assertTrue(validate_action_plan(candidate).approved)
+
+    def test_hhi_concentration_without_partner_remains_concentration(self):
+        intents = IntentPlan(requirements=[IntentCall(
+            requirement_id="r1", intent="trade_concentration", role="data",
+            slots=ActionSlots(mineral="리튬", flow="import"),
+        )])
+        candidate = action_plan_from_intent(intents, "2025년 한국 리튬 수입 집중도 HHI를 계산해줘")
+        self.assertEqual(candidate.actions[0].action_id, "trade.concentration")
+        self.assertIsNone(candidate.actions[0].slots.partner_country)
+
     @staticmethod
     def _verify_rejected_claim(action, evidence):
         class RejectingLLM:

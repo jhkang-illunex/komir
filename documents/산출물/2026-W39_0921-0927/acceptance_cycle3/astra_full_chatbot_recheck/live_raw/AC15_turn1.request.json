@@ -1,0 +1,10 @@
+{
+  "body": {
+    "user_id": "acceptance-suite",
+    "session_id": "5e7d260d-2b6d-4903-adcf-9e2ea3b9212d",
+    "message": "BHP 보고서에서 Escondida 광산은 어느 나라에 있나?"
+  },
+  "url": "http://127.0.0.1:18002/pubchat",
+  "timeout_seconds": 180,
+  "started_at": "2026-09-23T12:20:33.456682+00:00"
+}

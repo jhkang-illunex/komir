@@ -1,0 +1,150 @@
+{
+  "suite": "komir-chatbot-acceptance-260923",
+  "generated_at": "2026-09-23T20:01:55.484849",
+  "base_url": "http://127.0.0.1:18002",
+  "evidence_jsonl": "documents/산출물/2026-W39_0921-0927/acceptance_cycle3/sol_AC41_smoke/chatbot_acceptance_20260923_200150.jsonl",
+  "results": [
+    {
+      "id": "AC41",
+      "title": "숫자 제목 OCR 3건 회귀",
+      "layer": "integration",
+      "status": "PASS",
+      "errors": [],
+      "detail": {
+        "required_checks": [
+          {
+            "id": "three_nonempty_bodies",
+            "status": "PASS",
+            "documents": [
+              {
+                "doc_id": "doc_51886c72704a2c9017503e3c",
+                "body_chars": 1355,
+                "fact_in_fixed_range": true
+              },
+              {
+                "doc_id": "doc_d623918d8502f6dc962570c0",
+                "body_chars": 1553,
+                "fact_in_fixed_range": true
+              },
+              {
+                "doc_id": "doc_c756024d734b611ff55d7b23",
+                "body_chars": 17737,
+                "fact_in_fixed_range": true
+              }
+            ]
+          },
+          {
+            "id": "three_tree_hashes_fresh",
+            "status": "PASS",
+            "documents": [
+              {
+                "doc_id": "doc_51886c72704a2c9017503e3c",
+                "fixture": "ae5ee66b71e7f85ac69b8fed01b9a8a58c00ccab2919cc019d072d231859bf23",
+                "current": "ae5ee66b71e7f85ac69b8fed01b9a8a58c00ccab2919cc019d072d231859bf23",
+                "tree": "ae5ee66b71e7f85ac69b8fed01b9a8a58c00ccab2919cc019d072d231859bf23",
+                "fresh": true
+              },
+              {
+                "doc_id": "doc_d623918d8502f6dc962570c0",
+                "fixture": "b4437d22b600f47fa3432f539e600d9a11703b8a5e68e1c1b47f923fbcdfb936",
+                "current": "b4437d22b600f47fa3432f539e600d9a11703b8a5e68e1c1b47f923fbcdfb936",
+                "tree": "b4437d22b600f47fa3432f539e600d9a11703b8a5e68e1c1b47f923fbcdfb936",
+                "fresh": true
+              },
+              {
+                "doc_id": "doc_c756024d734b611ff55d7b23",
+                "fixture": "26912ee5bd0ca6f324419c6b06db5bc7ab07f041779c17129cf19b74fcb2f128",
+                "current": "26912ee5bd0ca6f324419c6b06db5bc7ab07f041779c17129cf19b74fcb2f128",
+                "tree": "26912ee5bd0ca6f324419c6b06db5bc7ab07f041779c17129cf19b74fcb2f128",
+                "fresh": true
+              }
+            ]
+          },
+          {
+            "id": "three_valid_roots_and_node_text",
+            "status": "PASS",
+            "documents": [
+              {
+                "doc_id": "doc_51886c72704a2c9017503e3c",
+                "root_count": 1,
+                "valid_hits": [
+                  {
+                    "node_id": "0000",
+                    "line_start": 1,
+                    "line_end": 52,
+                    "text_chars": 1354
+                  }
+                ]
+              },
+              {
+                "doc_id": "doc_d623918d8502f6dc962570c0",
+                "root_count": 1,
+                "valid_hits": [
+                  {
+                    "node_id": "0000",
+                    "line_start": 1,
+                    "line_end": 52,
+                    "text_chars": 1552
+                  }
+                ]
+              },
+              {
+                "doc_id": "doc_c756024d734b611ff55d7b23",
+                "root_count": 1,
+                "valid_hits": [
+                  {
+                    "node_id": "0000",
+                    "line_start": 1,
+                    "line_end": 260,
+                    "text_chars": 4000
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "three_latest_chunk_texts",
+            "status": "PASS",
+            "documents": [
+              {
+                "doc_id": "doc_51886c72704a2c9017503e3c",
+                "vector_doc_id": "51886c72704a2c90",
+                "actual_count": 1,
+                "expected_count": 1,
+                "texts_equal_latest_okf": true,
+                "fact_chunk_count": 1
+              },
+              {
+                "doc_id": "doc_d623918d8502f6dc962570c0",
+                "vector_doc_id": "d623918d8502f6dc",
+                "actual_count": 2,
+                "expected_count": 2,
+                "texts_equal_latest_okf": true,
+                "fact_chunk_count": 1
+              },
+              {
+                "doc_id": "doc_c756024d734b611ff55d7b23",
+                "vector_doc_id": "c756024d734b611f",
+                "actual_count": 23,
+                "expected_count": 23,
+                "texts_equal_latest_okf": true,
+                "fact_chunk_count": 1
+              }
+            ]
+          },
+          {
+            "id": "all_three_atomic",
+            "status": "PASS",
+            "checked_documents": 3,
+            "expected_documents": 3
+          }
+        ]
+      },
+      "elapsed_seconds": 4.56,
+      "evidence_path": "documents/산출물/2026-W39_0921-0927/acceptance_cycle3/sol_AC41_smoke/chatbot_acceptance_20260923_200150.jsonl"
+    }
+  ],
+  "summary": {
+    "PASS": 1
+  }
+}

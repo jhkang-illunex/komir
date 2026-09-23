@@ -1,0 +1,10 @@
+{
+  "body": {
+    "user_id": "acceptance-suite",
+    "session_id": "6a5a0e25-4079-459b-a2b3-7fa85994d989",
+    "message": "2025년 한국 리튬의 무역특화지수 TSI를 계산해줘"
+  },
+  "url": "http://127.0.0.1:18002/pubchat",
+  "timeout_seconds": 180,
+  "started_at": "2026-09-23T12:20:35.950691+00:00"
+}

@@ -1,0 +1,1212 @@
+{
+  "suite": "komir-chatbot-acceptance-260923",
+  "generated_at": "2026-09-23T21:07:09.464942",
+  "base_url": "http://127.0.0.1:18002",
+  "evidence_jsonl": "documents/산출물/2026-W39_0921-0927/acceptance_cycle3/sol_post_apply_acceptance_round2/chatbot_acceptance_20260923_210655.jsonl",
+  "results": [
+    {
+      "id": "AC28",
+      "title": "PDF 문서 전 경로",
+      "layer": "integration",
+      "status": "PASS",
+      "errors": [],
+      "detail": {
+        "required_checks": [
+          {
+            "id": "original_metadata_provenance",
+            "status": "PASS",
+            "resource": "documents/조달청보고서/2009년 1월 로이터 비철금속 가격 전망 자료(2).pdf",
+            "expected_sha256": "a0c6de0f68488efc4d75ded4487f9169d33d7bddce11b75e9d2b6960fdabf32b",
+            "actual_sha256": "a0c6de0f68488efc4d75ded4487f9169d33d7bddce11b75e9d2b6960fdabf32b"
+          },
+          {
+            "id": "fixed_document_chain",
+            "status": "PASS",
+            "front_identity": {
+              "doc_id": "doc_e09bbbbdac2e3b3a0b95915f",
+              "resource": "documents/조달청보고서/2009년 1월 로이터 비철금속 가격 전망 자료(2).pdf",
+              "fmt": "pdf",
+              "content_sha256": "a0c6de0f68488efc4d75ded4487f9169d33d7bddce11b75e9d2b6960fdabf32b"
+            },
+            "metadata_equal_front_tree": true,
+            "metadata_gaps": [
+              "document_date"
+            ],
+            "fixture_body_sha256": "c2dce9a9e2d5ad2cc59670733b63d1f2f0ea25abba3ad068983ea7c18e3cadee",
+            "current_body_sha256": "c2dce9a9e2d5ad2cc59670733b63d1f2f0ea25abba3ad068983ea7c18e3cadee",
+            "tree_body_sha256": "c2dce9a9e2d5ad2cc59670733b63d1f2f0ea25abba3ad068983ea7c18e3cadee",
+            "vector_doc_id": "e09bbbbdac2e3b3a",
+            "pageindex_matches": [
+              {
+                "node_id": "0000",
+                "line_start": 1,
+                "line_end": 59,
+                "text_chars": 2730
+              }
+            ],
+            "doc_chunk_count": 4,
+            "expected_chunk_count": 4,
+            "chunk_texts_equal_latest_okf": true,
+            "one_chunk_contains_linked_facts": true,
+            "problems": []
+          },
+          {
+            "id": "dense_expected_document",
+            "status": "PASS",
+            "query": "로이터 비철금속 가격 전망",
+            "top_k": 10,
+            "expected_tree_doc_id": "doc_e09bbbbdac2e3b3a0b95915f",
+            "expected_vector_doc_id": "e09bbbbdac2e3b3a",
+            "expected_source_path": "documents/조달청보고서/2009년 1월 로이터 비철금속 가격 전망 자료(2).pdf",
+            "expected_doc_ranks": [
+              1
+            ],
+            "exact_fact_ranks": [
+              1
+            ],
+            "candidates": [
+              {
+                "rank": 1,
+                "chunk_id": "f94f0b2d744e523a",
+                "doc_id": "e09bbbbdac2e3b3a",
+                "source_path": "documents/조달청보고서/2009년 1월 로이터 비철금속 가격 전망 자료(2).pdf",
+                "source_group": "조달청보고서",
+                "title": "2009년 1월 로이터 비철금속 가격 전망 자료(2)",
+                "section_heading": "로이터 2010년 비철금속 가격 전망자료($/ton, cash)",
+                "text_chars": 268,
+                "score": 0.9396981632889428,
+                "fact_present": true
+              },
+              {
+                "rank": 2,
+                "chunk_id": "7ee777c87565603f",
+                "doc_id": "dc615292192024e3",
+                "source_path": "documents/조달청보고서/비철금속 시황 및 구매추천(2020.9.8).pdf",
+                "source_group": "조달청보고서",
+                "title": "비철금속 시황 및 구매추천(2020.9.8)",
+                "section_heading": "비철금속 시장동향 보고 및 구매검토의견",
+                "text_chars": 351,
+                "score": 0.9059052579515865,
+                "fact_present": false
+              },
+              {
+                "rank": 3,
+                "chunk_id": "2ba67beb3355f012",
+                "doc_id": "687719ee5b4e34b2",
+                "source_path": "documents/조달청보고서/비철금속시장동향(2016.4.26).pdf",
+                "source_group": "조달청보고서",
+                "title": "비철금속시장동향(2016.4.26)",
+                "section_heading": "<붙임 2> SHFE-LME 가격차이",
+                "text_chars": 387,
+                "score": 0.9041006679414907,
+                "fact_present": false
+              },
+              {
+                "rank": 4,
+                "chunk_id": "ea38ea735b926f1a",
+                "doc_id": "5980de9c8d6f8bfe",
+                "source_path": "documents/조달청보고서/비철금속시장동향(2016.3.22).pdf",
+                "source_group": "조달청보고서",
+                "title": "비철금속시장동향(2016.3.22)",
+                "section_heading": "<붙임 2> SHFE-LME 가격차이",
+                "text_chars": 387,
+                "score": 0.9040433282800522,
+                "fact_present": false
+              },
+              {
+                "rank": 5,
+                "chunk_id": "dbdc21a45e4983d7",
+                "doc_id": "01c83513474e51c1",
+                "source_path": "documents/조달청보고서/비철금속시장동향(2016.1.26).pdf",
+                "source_group": "조달청보고서",
+                "title": "비철금속시장동향(2016.1.26)",
+                "section_heading": "<붙임 2> SHFE-LME 가격차이",
+                "text_chars": 386,
+                "score": 0.9038267250267595,
+                "fact_present": false
+              },
+              {
+                "rank": 6,
+                "chunk_id": "a6efdfe53f5321b8",
+                "doc_id": "32ad03c4b1421486",
+                "source_path": "documents/조달청보고서/비철금속시장동향(2016.4.19).pdf",
+                "source_group": "조달청보고서",
+                "title": "비철금속시장동향(2016.4.19)",
+                "section_heading": "<붙임 2> SHFE-LME 가격차이",
+                "text_chars": 387,
+                "score": 0.9034109769218593,
+                "fact_present": false
+              },
+              {
+                "rank": 7,
+                "chunk_id": "f88acad70a569377",
+                "doc_id": "2be6e7b91c8bc473",
+                "source_path": "documents/조달청보고서/비철금속시장동향(2016.3.29).pdf",
+                "source_group": "조달청보고서",
+                "title": "비철금속시장동향(2016.3.29)",
+                "section_heading": "<붙임 2> SHFE-LME 가격차이",
+                "text_chars": 387,
+                "score": 0.9033858237632634,
+                "fact_present": false
+              },
+              {
+                "rank": 8,
+                "chunk_id": "c91c3c5e0213c628",
+                "doc_id": "d38f72315388fec1",
+                "source_path": "documents/조달청보고서/비철금속시장동향(2016.3.8).pdf",
+                "source_group": "조달청보고서",
+                "title": "비철금속시장동향(2016.3.8)",
+                "section_heading": "<붙임 2> SHFE-LME 가격차이",
+                "text_chars": 383,
+                "score": 0.9032659107567248,
+                "fact_present": false
+              },
+              {
+                "rank": 9,
+                "chunk_id": "16d531ef16a80e12",
+                "doc_id": "8e37be02a99456e6",
+                "source_path": "documents/조달청보고서/비철금속시장동향(2016.4.12).pdf",
+                "source_group": "조달청보고서",
+                "title": "비철금속시장동향(2016.4.12)",
+                "section_heading": "<붙임 2> SHFE-LME 가격차이",
+                "text_chars": 387,
+                "score": 0.9032414017175808,
+                "fact_present": false
+              },
+              {
+                "rank": 10,
+                "chunk_id": "7e62570c11e26570",
+                "doc_id": "f2844b23dbce4016",
+                "source_path": "documents/조달청보고서/비철금속시장동향(2016.1.19).pdf",
+                "source_group": "조달청보고서",
+                "title": "비철금속시장동향(2016.1.19)",
+                "section_heading": "<붙임 2> SHFE-LME 가격차이",
+                "text_chars": 386,
+                "score": 0.9031937237747045,
+                "fact_present": false
+              }
+            ],
+            "candidate_metadata_problems": []
+          },
+          {
+            "id": "format_sample_policy",
+            "status": "PASS",
+            "pinned_identity": {
+              "resource": "documents/조달청보고서/2009년 1월 로이터 비철금속 가격 전망 자료(2).pdf",
+              "doc_id": "doc_e09bbbbdac2e3b3a0b95915f",
+              "okf_path": "조달청보고서/2009년_1월_로이터_비철금속_가격_전망_자료_2.md",
+              "format": "pdf"
+            },
+            "exact_tree_matches": 1
+          }
+        ]
+      },
+      "elapsed_seconds": 12.17,
+      "evidence_path": "documents/산출물/2026-W39_0921-0927/acceptance_cycle3/sol_post_apply_acceptance_round2/chatbot_acceptance_20260923_210655.jsonl"
+    },
+    {
+      "id": "AC29",
+      "title": "HWP 문서 전 경로",
+      "layer": "integration",
+      "status": "PASS",
+      "errors": [],
+      "detail": {
+        "required_checks": [
+          {
+            "id": "original_metadata_provenance",
+            "status": "PASS",
+            "resource": "documents/조달청보고서/1019_LME Seminar에서 발표한 품목별 동향 및 전망.hwp",
+            "expected_sha256": "1347e6fc1140663aec67a35851ac325da6ef3c229f94f7e4728b12ff2c8af537",
+            "actual_sha256": "1347e6fc1140663aec67a35851ac325da6ef3c229f94f7e4728b12ff2c8af537",
+            "raw_context": {
+              "table_row_count": 8,
+              "matched_row_count": 1,
+              "matched_rows": [
+                "니   켈 ▪ 추가 하락 전망 (LME Cash 가 ‘93 년초, ’98 년초 한계생산비용보다 $2,000/ t 가량 낮게 거래 된 기록이 있어 추가하락도 가능) ▪ 재고는 급격히 증가하는데 이는 수요부진에 기인 ▪ 신규 광산의 생산증가로 광산 생산량 급증( ‘09 년도 지속) ▪ 스테인레스 스틸 수요 회복은 ‘09 년 하반기 이후 가능 ▪ 상승요인 : 생산업체들의 감산 ▪ 하락요인 : 스테인레스 스틸 수요부진 가격 추가 하락 가능성에 무게"
+              ],
+              "flattened_text_chars": 1537
+            }
+          },
+          {
+            "id": "fixed_document_chain",
+            "status": "PASS",
+            "front_identity": {
+              "doc_id": "doc_c5ba28f3421c6bb14b086a0b",
+              "resource": "documents/조달청보고서/1019_LME Seminar에서 발표한 품목별 동향 및 전망.hwp",
+              "fmt": "hwp",
+              "content_sha256": "1347e6fc1140663aec67a35851ac325da6ef3c229f94f7e4728b12ff2c8af537"
+            },
+            "metadata_equal_front_tree": true,
+            "metadata_gaps": [
+              "document_date"
+            ],
+            "fixture_body_sha256": "e6819d8d3dd9bd6c4acf25125d023185e90f4e36eaecd90fcf7673dd77d30a9a",
+            "current_body_sha256": "e6819d8d3dd9bd6c4acf25125d023185e90f4e36eaecd90fcf7673dd77d30a9a",
+            "tree_body_sha256": "e6819d8d3dd9bd6c4acf25125d023185e90f4e36eaecd90fcf7673dd77d30a9a",
+            "vector_doc_id": "c5ba28f3421c6bb1",
+            "okf_context": {
+              "matching_line_count": 1,
+              "matching_lines": [
+                "니 켈 ▪ 추가 하락 전망 (LME Cash가 ‘93년초, ’98년초 한계생산비용보다 $2,000/t 가량 낮게 거래된 기록이 있어 추가하락도 가능) ▪ 재고는 급격히 증가하는데 이는 수요부진에 기인 ▪ 신규 광산의 생산증가로 광산 생산량 급증(‘09년도 지속) ▪ 스테인레스 스틸 수요 회복은 ‘09년 하반기 이후 가능 ▪ 상승요인 : 생산업체들의 감산 ▪ 하락요인 : 스테인레스 스틸 수요부진 가격 추가 하락 가능성에 무게"
+              ]
+            },
+            "pageindex_matches": [
+              {
+                "node_id": "0000",
+                "line_start": 1,
+                "line_end": 13,
+                "text_chars": 1540
+              }
+            ],
+            "doc_chunk_count": 9,
+            "expected_chunk_count": 9,
+            "chunk_texts_equal_latest_okf": true,
+            "one_chunk_contains_linked_facts": true,
+            "problems": []
+          },
+          {
+            "id": "dense_expected_document",
+            "status": "PASS",
+            "query": "LME Seminar 니켈 추가 하락 전망",
+            "top_k": 10,
+            "expected_tree_doc_id": "doc_c5ba28f3421c6bb14b086a0b",
+            "expected_vector_doc_id": "c5ba28f3421c6bb1",
+            "expected_source_path": "documents/조달청보고서/1019_LME Seminar에서 발표한 품목별 동향 및 전망.hwp",
+            "expected_doc_ranks": [
+              1
+            ],
+            "exact_fact_ranks": [
+              1
+            ],
+            "candidates": [
+              {
+                "rank": 1,
+                "chunk_id": "b21f3c9646547281",
+                "doc_id": "c5ba28f3421c6bb1",
+                "source_path": "documents/조달청보고서/1019_LME Seminar에서 발표한 품목별 동향 및 전망.hwp",
+                "source_group": "조달청보고서",
+                "title": "1019_LME Seminar에서 발표한 품목별 동향 및 전망",
+                "section_heading": "1019_LME Seminar에서 발표한 품목별 동향 및 전망",
+                "text_chars": 238,
+                "score": 0.9159473927115112,
+                "fact_present": true
+              },
+              {
+                "rank": 2,
+                "chunk_id": "fc27ce534515384d",
+                "doc_id": "11c14fefedab4442",
+                "source_path": "documents/조달청보고서/비철금속 시장 동향(2024.7.9).pdf",
+                "source_group": "조달청보고서",
+                "title": "비철금속 시장 동향(2024.7.9)",
+                "section_heading": "6) 니켈",
+                "text_chars": 1300,
+                "score": 0.9153598051834339,
+                "fact_present": false
+              },
+              {
+                "rank": 3,
+                "chunk_id": "5ed6871fd25d0a01",
+                "doc_id": "b01e3b645d154572",
+                "source_path": "documents/조달청보고서/20250325_주간 경제  비철금속 시장 동향.pdf",
+                "source_group": "조달청보고서",
+                "title": "20250325_주간 경제  비철금속 시장 동향",
+                "section_heading": "□ 주간 동향",
+                "text_chars": 936,
+                "score": 0.9125991515756176,
+                "fact_present": false
+              },
+              {
+                "rank": 4,
+                "chunk_id": "612f29e0d09be002",
+                "doc_id": "bc5df85858c751cd",
+                "source_path": "documents/조달청보고서/비철금속 시장 동향(2017.11.28).pdf",
+                "source_group": "조달청보고서",
+                "title": "비철금속 시장 동향(2017.11.28)",
+                "section_heading": "□ 시장전망",
+                "text_chars": 344,
+                "score": 0.9112075024123505,
+                "fact_present": false
+              },
+              {
+                "rank": 5,
+                "chunk_id": "788ada875fa3a737",
+                "doc_id": "76ee1e33828d3ca7",
+                "source_path": "documents/조달청보고서/비철금속 시장 동향(2018.7.31).pdf",
+                "source_group": "조달청보고서",
+                "title": "비철금속 시장 동향(2018.7.31)",
+                "section_heading": "□ 주간 동향",
+                "text_chars": 596,
+                "score": 0.9095744544521316,
+                "fact_present": false
+              },
+              {
+                "rank": 6,
+                "chunk_id": "0002e1ba91ff771f",
+                "doc_id": "3a237c4282438980",
+                "source_path": "documents/조달청보고서/비철금속 시장 동향(2018.6.19).pdf",
+                "source_group": "조달청보고서",
+                "title": "비철금속 시장 동향(2018.6.19)",
+                "section_heading": "6) 니켈",
+                "text_chars": 1112,
+                "score": 0.9092576557840331,
+                "fact_present": false
+              },
+              {
+                "rank": 7,
+                "chunk_id": "362cc97bbbf9b970",
+                "doc_id": "02aea755a942aea5",
+                "source_path": "documents/조달청보고서/비철금속 시장 동향(2022.3.22).pdf",
+                "source_group": "조달청보고서",
+                "title": "비철금속 시장 동향(2022.3.22)",
+                "section_heading": "□ 주간 동향",
+                "text_chars": 660,
+                "score": 0.9085510427623382,
+                "fact_present": false
+              },
+              {
+                "rank": 8,
+                "chunk_id": "306c8cd8672b65c2",
+                "doc_id": "54b65dc10af8830d",
+                "source_path": "documents/조달청보고서/비철금속시장동향(2016.11.29).pdf",
+                "source_group": "조달청보고서",
+                "title": "비철금속시장동향(2016.11.29)",
+                "section_heading": "□ 주간 동향",
+                "text_chars": 473,
+                "score": 0.9084730257424085,
+                "fact_present": false
+              },
+              {
+                "rank": 9,
+                "chunk_id": "2910618c981f2d4a",
+                "doc_id": "7befb783f3c7d035",
+                "source_path": "documents/조달청보고서/비철금속시장동향(2015.12.1).pdf",
+                "source_group": "조달청보고서",
+                "title": "비철금속시장동향(2015.12.1)",
+                "section_heading": "□ 시장동향",
+                "text_chars": 900,
+                "score": 0.9084414894317709,
+                "fact_present": false
+              },
+              {
+                "rank": 10,
+                "chunk_id": "9607c00b8622e79e",
+                "doc_id": "02aea755a942aea5",
+                "source_path": "documents/조달청보고서/비철금속 시장 동향(2022.3.22).pdf",
+                "source_group": "조달청보고서",
+                "title": "비철금속 시장 동향(2022.3.22)",
+                "section_heading": "□ 가격 차트 및 주요 기관 가격 전망 <‘08~ 현재가격 동향> <주요 기관별 가격 전망치>",
+                "text_chars": 853,
+                "score": 0.9075024889405108,
+                "fact_present": false
+              }
+            ],
+            "candidate_metadata_problems": []
+          },
+          {
+            "id": "format_sample_policy",
+            "status": "PASS",
+            "pinned_identity": {
+              "resource": "documents/조달청보고서/1019_LME Seminar에서 발표한 품목별 동향 및 전망.hwp",
+              "doc_id": "doc_c5ba28f3421c6bb14b086a0b",
+              "okf_path": "조달청보고서/1019_LME_Seminar에서_발표한_품목별_동향_및_전망.md",
+              "format": "hwp"
+            },
+            "exact_tree_matches": 1
+          }
+        ]
+      },
+      "elapsed_seconds": 0.65,
+      "evidence_path": "documents/산출물/2026-W39_0921-0927/acceptance_cycle3/sol_post_apply_acceptance_round2/chatbot_acceptance_20260923_210655.jsonl"
+    },
+    {
+      "id": "AC30",
+      "title": "Excel 문서 전 경로",
+      "layer": "integration",
+      "status": "PASS",
+      "errors": [],
+      "detail": {
+        "required_checks": [
+          {
+            "id": "original_metadata_provenance",
+            "status": "PASS",
+            "resource": "nas_document/학습데이터/니켈/Ni_Weda Bay_2025_Prod_AR_260814.xlsx",
+            "expected_sha256": "4611849a9a443b2f0329afe419ab58071a9219b9b803fec864caeb599bb9a770",
+            "actual_sha256": "4611849a9a443b2f0329afe419ab58071a9219b9b803fec864caeb599bb9a770",
+            "raw_row_contract": {
+              "sheet": "산출결과",
+              "cells": {
+                "B4": "광석 생산량(kwmt)",
+                "D3": "광석",
+                "D4": 41875,
+                "L3": "최종 금속량",
+                "L4": 303.7481341598289
+              },
+              "row_contract": {
+                "unit_cell": "B4",
+                "unit": "광석 생산량(kwmt)",
+                "fields": [
+                  {
+                    "header_cell": "D3",
+                    "header": "광석",
+                    "value_cell": "D4",
+                    "value": 41875
+                  },
+                  {
+                    "header_cell": "L3",
+                    "header": "최종 금속량",
+                    "value_cell": "L4",
+                    "value": 303.7481341598289
+                  }
+                ]
+              },
+              "filename": "Ni_Weda Bay_2025_Prod_AR_260814.xlsx"
+            }
+          },
+          {
+            "id": "fixed_document_chain",
+            "status": "PASS",
+            "front_identity": {
+              "doc_id": "doc_3b3b60baa05e7715521b4901",
+              "resource": "nas_document/학습데이터/니켈/Ni_Weda Bay_2025_Prod_AR_260814.xlsx",
+              "fmt": "xlsx",
+              "content_sha256": "4611849a9a443b2f0329afe419ab58071a9219b9b803fec864caeb599bb9a770"
+            },
+            "metadata_equal_front_tree": true,
+            "metadata_gaps": [
+              "document_date"
+            ],
+            "fixture_body_sha256": "5f1da8d97c4b64dd8a814d901527464112b3c333e4017a504f78c4ddda46800b",
+            "current_body_sha256": "5f1da8d97c4b64dd8a814d901527464112b3c333e4017a504f78c4ddda46800b",
+            "tree_body_sha256": "5f1da8d97c4b64dd8a814d901527464112b3c333e4017a504f78c4ddda46800b",
+            "vector_doc_id": "3b3b60baa05e7715",
+            "excel_downstream_relation": {
+              "headers": [
+                "광석",
+                "최종 금속량"
+              ],
+              "unit": "광석 생산량(kwmt)",
+              "header_line": 3,
+              "unit_row": [
+                "광석 생산량(kwmt)",
+                "Saprolite+Limonite",
+                "41875",
+                "",
+                "",
+                "",
+                "",
+                "303.748134"
+              ],
+              "comparisons": [
+                {
+                  "header": "광석",
+                  "column": 2,
+                  "actual": "41875",
+                  "expected_source": 41875,
+                  "matched": true
+                },
+                {
+                  "header": "최종 금속량",
+                  "column": 7,
+                  "actual": "303.748134",
+                  "expected_source": 303.7481341598289,
+                  "matched": true
+                }
+              ]
+            },
+            "pageindex_matches": [
+              {
+                "node_id": "0000",
+                "line_start": 1,
+                "line_end": 11,
+                "text_chars": 489
+              }
+            ],
+            "doc_chunk_count": 2,
+            "expected_chunk_count": 2,
+            "chunk_texts_equal_latest_okf": true,
+            "one_chunk_contains_linked_facts": true,
+            "problems": []
+          },
+          {
+            "id": "dense_expected_document",
+            "status": "PASS",
+            "query": "Weda Bay 니켈 광석 생산량",
+            "top_k": 10,
+            "expected_tree_doc_id": "doc_3b3b60baa05e7715521b4901",
+            "expected_vector_doc_id": "3b3b60baa05e7715",
+            "expected_source_path": "nas_document/학습데이터/니켈/Ni_Weda Bay_2025_Prod_AR_260814.xlsx",
+            "expected_doc_ranks": [
+              1
+            ],
+            "exact_fact_ranks": [
+              1
+            ],
+            "candidates": [
+              {
+                "rank": 1,
+                "chunk_id": "523f338c59bf6da3",
+                "doc_id": "3b3b60baa05e7715",
+                "source_path": "nas_document/학습데이터/니켈/Ni_Weda Bay_2025_Prod_AR_260814.xlsx",
+                "source_group": "광산자료",
+                "title": "Ni_Weda Bay_2025_Prod_AR_260814",
+                "section_heading": "산출결과",
+                "text_chars": 480,
+                "score": 0.9148247343510706,
+                "fact_present": true
+              },
+              {
+                "rank": 2,
+                "chunk_id": "ff850c18f561023d",
+                "doc_id": "12e87b74d5cc2f8c",
+                "source_path": "documents/조달청보고서/비철금속시장동향(2014.10.27).pdf",
+                "source_group": "조달청보고서",
+                "title": "비철금속시장동향(2014.10.27)",
+                "section_heading": "6) 니켈",
+                "text_chars": 1027,
+                "score": 0.8907902966987733,
+                "fact_present": false
+              },
+              {
+                "rank": 3,
+                "chunk_id": "db7a5293c0afd000",
+                "doc_id": "4729fda5f99d8e93",
+                "source_path": "documents/조달청보고서/비철금속시장동향(2012.10.30).pdf",
+                "source_group": "조달청보고서",
+                "title": "비철금속시장동향(2012.10.30)",
+                "section_heading": "6) 니켈",
+                "text_chars": 1017,
+                "score": 0.8879810638439037,
+                "fact_present": false
+              },
+              {
+                "rank": 4,
+                "chunk_id": "b0ac2916b2681e93",
+                "doc_id": "9effbb7587d13968",
+                "source_path": "documents/조달청보고서/비철금속 시장 동향(2020.10.6).pdf",
+                "source_group": "조달청보고서",
+                "title": "비철금속 시장 동향(2020.10.6)",
+                "section_heading": "□ 주간 동향",
+                "text_chars": 984,
+                "score": 0.8879097304505608,
+                "fact_present": false
+              },
+              {
+                "rank": 5,
+                "chunk_id": "6efcd7fd8abd0634",
+                "doc_id": "4c8ff8e4ceaff380",
+                "source_path": "documents/조달청보고서/비철금속 시장 동향(2020.9.22).pdf",
+                "source_group": "조달청보고서",
+                "title": "비철금속 시장 동향(2020.9.22)",
+                "section_heading": "6) 니켈",
+                "text_chars": 1009,
+                "score": 0.887424118076319,
+                "fact_present": false
+              },
+              {
+                "rank": 6,
+                "chunk_id": "e23bf02abda9c951",
+                "doc_id": "11fc0d39ca88ea8e",
+                "source_path": "documents/조달청보고서/비철금속시장동향(2013.01.29).pdf",
+                "source_group": "조달청보고서",
+                "title": "비철금속시장동향(2013.01.29)",
+                "section_heading": "□ 생산동향",
+                "text_chars": 1300,
+                "score": 0.8858276077611696,
+                "fact_present": false
+              },
+              {
+                "rank": 7,
+                "chunk_id": "b9b0bb454bf5789e",
+                "doc_id": "bf13386de17143b2",
+                "source_path": "documents/조달청보고서/비철금속시장동향(2014.04.22).pdf",
+                "source_group": "조달청보고서",
+                "title": "비철금속시장동향(2014.04.22)",
+                "section_heading": "6) 니켈",
+                "text_chars": 994,
+                "score": 0.8853327700297389,
+                "fact_present": false
+              },
+              {
+                "rank": 8,
+                "chunk_id": "8462ffd3066b7c72",
+                "doc_id": "92747a20db6e287f",
+                "source_path": "documents/조달청보고서/비철금속시장동향(2012.11.27).pdf",
+                "source_group": "조달청보고서",
+                "title": "비철금속시장동향(2012.11.27)",
+                "section_heading": "□ 초과 공급이 지속될 것으로 전망",
+                "text_chars": 1334,
+                "score": 0.8852939742453129,
+                "fact_present": false
+              },
+              {
+                "rank": 9,
+                "chunk_id": "b30b945e66d9f262",
+                "doc_id": "0aefa0999fe58495",
+                "source_path": "documents/조달청보고서/비철금속시장동향(2013.02.05).pdf",
+                "source_group": "조달청보고서",
+                "title": "비철금속시장동향(2013.02.05)",
+                "section_heading": "6) 니켈",
+                "text_chars": 1346,
+                "score": 0.8850389191485111,
+                "fact_present": false
+              },
+              {
+                "rank": 10,
+                "chunk_id": "33d42d342a8b8ae8",
+                "doc_id": "fde14f06dc99c40d",
+                "source_path": "documents/조달청보고서/비철금속시장동향(2014.05.13).pdf",
+                "source_group": "조달청보고서",
+                "title": "비철금속시장동향(2014.05.13)",
+                "section_heading": "6) 니켈",
+                "text_chars": 1031,
+                "score": 0.8847758242621542,
+                "fact_present": false
+              }
+            ],
+            "candidate_metadata_problems": []
+          },
+          {
+            "id": "format_sample_policy",
+            "status": "PASS",
+            "pinned_identity": {
+              "resource": "nas_document/학습데이터/니켈/Ni_Weda Bay_2025_Prod_AR_260814.xlsx",
+              "doc_id": "doc_3b3b60baa05e7715521b4901",
+              "okf_path": "광산자료/니켈/Ni_Weda_Bay_2025_Prod_AR_260814__2.md",
+              "format": "xlsx"
+            },
+            "exact_tree_matches": 1
+          }
+        ]
+      },
+      "elapsed_seconds": 0.17,
+      "evidence_path": "documents/산출물/2026-W39_0921-0927/acceptance_cycle3/sol_post_apply_acceptance_round2/chatbot_acceptance_20260923_210655.jsonl"
+    },
+    {
+      "id": "AC39",
+      "title": "Vector 직접 검색",
+      "layer": "integration",
+      "status": "PASS",
+      "errors": [],
+      "detail": {
+        "required_checks": [
+          {
+            "id": "embedding_model_dimension",
+            "status": "PASS",
+            "expected": {
+              "embedding_model": "intfloat/multilingual-e5-small",
+              "embedding_dimension": 384,
+              "public_exclude_source_groups": [
+                "Argus_비철금속_일일"
+              ]
+            },
+            "model_constant": "intfloat/multilingual-e5-small",
+            "dimension_constant": 384,
+            "encoded_query_dimension": 384,
+            "db_dimensions": [
+              384
+            ],
+            "matched_chunk_count": 1639
+          },
+          {
+            "id": "dense_candidate_metadata",
+            "status": "PASS",
+            "candidates": [
+              {
+                "rank": 1,
+                "chunk_id": "5d05f2e0b6de671f",
+                "doc_id": "738ead83c52ecab7",
+                "source_path": "documents/3. 생산매장량(USGS)/USGS_2026.pdf",
+                "source_group": "생산매장량_USGS",
+                "title": "USGS_2026",
+                "section_heading": "Reserves7",
+                "text_chars": 774,
+                "score": 0.9279953880312825,
+                "fact_present": false
+              },
+              {
+                "rank": 2,
+                "chunk_id": "f3d8ff0097be938e",
+                "doc_id": "738ead83c52ecab7",
+                "source_path": "documents/3. 생산매장량(USGS)/USGS_2026.pdf",
+                "source_group": "생산매장량_USGS",
+                "title": "USGS_2026",
+                "section_heading": "FOREWORD",
+                "text_chars": 69,
+                "score": 0.9184829866434038,
+                "fact_present": true
+              },
+              {
+                "rank": 3,
+                "chunk_id": "995372f21dd74cd6",
+                "doc_id": "7d249f9a257f4d08",
+                "source_path": "nas_document/학습데이터/니켈/Ni_Weda Bay_2025_Resv, Resc_AR_260814.pdf",
+                "source_group": "광산자료",
+                "title": "Ni_Weda Bay_2025_Resv, Resc_AR_260814",
+                "section_heading": "▼ 2025 production of lithium by producer",
+                "text_chars": 673,
+                "score": 0.9114218407021872,
+                "fact_present": false
+              },
+              {
+                "rank": 4,
+                "chunk_id": "822fe2f5497ca7b0",
+                "doc_id": "d5b09e068b7a4969",
+                "source_path": "nas_document/학습데이터/리튬/Li_Atacama_Woodgina_SQM_2025 증권거래위원회.pdf",
+                "source_group": "광산자료",
+                "title": "Li_Atacama_Woodgina_SQM_2025 증권거래위원회",
+                "section_heading": "5.D. Trend Information",
+                "text_chars": 1175,
+                "score": 0.9111682719688594,
+                "fact_present": false
+              },
+              {
+                "rank": 5,
+                "chunk_id": "ae8454962904c991",
+                "doc_id": "d5b09e068b7a4969",
+                "source_path": "nas_document/학습데이터/리튬/Li_Atacama_Woodgina_SQM_2025 증권거래위원회.pdf",
+                "source_group": "광산자료",
+                "title": "Li_Atacama_Woodgina_SQM_2025 증권거래위원회",
+                "section_heading": "Lithium and its Derivatives",
+                "text_chars": 1052,
+                "score": 0.9109410153697776,
+                "fact_present": false
+              },
+              {
+                "rank": 6,
+                "chunk_id": "676824cbdef4c489",
+                "doc_id": "7d4a2e2d33655940",
+                "source_path": "nas_document/학습데이터/리튬/Li_Olaroz_Salar del Hombre Muerto(Fenix)_Rio tinto_26년 1분기 보고서.pdf",
+                "source_group": "광산자료",
+                "title": "Li_Olaroz_Salar del Hombre Muerto(Fenix)_Rio tinto_26년 1분기 보고서",
+                "section_heading": "Rio Tinto percentage interest shown above is at 31 March 2026. The data represents production and sales on a 100% basis unless otherwise stated.",
+                "text_chars": 694,
+                "score": 0.9102851694992302,
+                "fact_present": false
+              },
+              {
+                "rank": 7,
+                "chunk_id": "a08489e1a800ae53",
+                "doc_id": "3579fb357b259ef8",
+                "source_path": "nas_document/학습데이터/리튬/Li_North American Lithium_Sayona_2026043002396.pdf",
+                "source_group": "광산자료",
+                "title": "Li_North American Lithium_Sayona_2026043002396",
+                "section_heading": "Partner",
+                "text_chars": 100,
+                "score": 0.9089698195457458,
+                "fact_present": false
+              },
+              {
+                "rank": 8,
+                "chunk_id": "c3faffa319bf0c40",
+                "doc_id": "3e9be85f1380dc18",
+                "source_path": "nas_document/학습데이터/리튬/Li_Goulamina_Ganfeng_2026043002396.pdf",
+                "source_group": "광산자료",
+                "title": "Li_Goulamina_Ganfeng_2026043002396",
+                "section_heading": "2. Analysis of the lithium compound market",
+                "text_chars": 777,
+                "score": 0.9084964990615845,
+                "fact_present": false
+              },
+              {
+                "rank": 9,
+                "chunk_id": "7bf6526d438b96d2",
+                "doc_id": "69064d612b2f1dcd",
+                "source_path": "nas_document/학습데이터/리튬/Li_Kathleen valley_Liontown.pdf",
+                "source_group": "광산자료",
+                "title": "Li_Kathleen valley_Liontown",
+                "section_heading": "About us – where we operate",
+                "text_chars": 999,
+                "score": 0.907654345035553,
+                "fact_present": false
+              },
+              {
+                "rank": 10,
+                "chunk_id": "d978b0b58eeaca1b",
+                "doc_id": "d4db546c8ee52764",
+                "source_path": "nas_document/학습데이터/동(구리)/Cu_Oyu Tolgoi_Rio Tinto.pdf",
+                "source_group": "광산자료",
+                "title": "Cu_Oyu Tolgoi_Rio Tinto",
+                "section_heading": "Lithium",
+                "text_chars": 1137,
+                "score": 0.9071172746156838,
+                "fact_present": false
+              }
+            ],
+            "problems": [],
+            "private_source_ranks": [],
+            "public_exclude_source_groups": [
+              "Argus_비철금속_일일"
+            ]
+          },
+          {
+            "id": "dense_expected_document_topk",
+            "status": "PASS",
+            "query": "lithium production 2025",
+            "top_k": 10,
+            "expected_tree_doc_id": "doc_738ead83c52ecab761f68fb4",
+            "expected_vector_doc_id": "738ead83c52ecab7",
+            "expected_source_path": "documents/3. 생산매장량(USGS)/USGS_2026.pdf",
+            "expected_doc_ranks": [
+              1,
+              2
+            ],
+            "exact_fact_ranks": [
+              2
+            ],
+            "candidates": [
+              {
+                "rank": 1,
+                "chunk_id": "5d05f2e0b6de671f",
+                "doc_id": "738ead83c52ecab7",
+                "source_path": "documents/3. 생산매장량(USGS)/USGS_2026.pdf",
+                "source_group": "생산매장량_USGS",
+                "title": "USGS_2026",
+                "section_heading": "Reserves7",
+                "text_chars": 774,
+                "score": 0.9279953880312825,
+                "fact_present": false
+              },
+              {
+                "rank": 2,
+                "chunk_id": "f3d8ff0097be938e",
+                "doc_id": "738ead83c52ecab7",
+                "source_path": "documents/3. 생산매장량(USGS)/USGS_2026.pdf",
+                "source_group": "생산매장량_USGS",
+                "title": "USGS_2026",
+                "section_heading": "FOREWORD",
+                "text_chars": 69,
+                "score": 0.9184829866434038,
+                "fact_present": true
+              },
+              {
+                "rank": 3,
+                "chunk_id": "995372f21dd74cd6",
+                "doc_id": "7d249f9a257f4d08",
+                "source_path": "nas_document/학습데이터/니켈/Ni_Weda Bay_2025_Resv, Resc_AR_260814.pdf",
+                "source_group": "광산자료",
+                "title": "Ni_Weda Bay_2025_Resv, Resc_AR_260814",
+                "section_heading": "▼ 2025 production of lithium by producer",
+                "text_chars": 673,
+                "score": 0.9114218407021872,
+                "fact_present": false
+              },
+              {
+                "rank": 4,
+                "chunk_id": "822fe2f5497ca7b0",
+                "doc_id": "d5b09e068b7a4969",
+                "source_path": "nas_document/학습데이터/리튬/Li_Atacama_Woodgina_SQM_2025 증권거래위원회.pdf",
+                "source_group": "광산자료",
+                "title": "Li_Atacama_Woodgina_SQM_2025 증권거래위원회",
+                "section_heading": "5.D. Trend Information",
+                "text_chars": 1175,
+                "score": 0.9111682719688594,
+                "fact_present": false
+              },
+              {
+                "rank": 5,
+                "chunk_id": "ae8454962904c991",
+                "doc_id": "d5b09e068b7a4969",
+                "source_path": "nas_document/학습데이터/리튬/Li_Atacama_Woodgina_SQM_2025 증권거래위원회.pdf",
+                "source_group": "광산자료",
+                "title": "Li_Atacama_Woodgina_SQM_2025 증권거래위원회",
+                "section_heading": "Lithium and its Derivatives",
+                "text_chars": 1052,
+                "score": 0.9109410153697776,
+                "fact_present": false
+              },
+              {
+                "rank": 6,
+                "chunk_id": "676824cbdef4c489",
+                "doc_id": "7d4a2e2d33655940",
+                "source_path": "nas_document/학습데이터/리튬/Li_Olaroz_Salar del Hombre Muerto(Fenix)_Rio tinto_26년 1분기 보고서.pdf",
+                "source_group": "광산자료",
+                "title": "Li_Olaroz_Salar del Hombre Muerto(Fenix)_Rio tinto_26년 1분기 보고서",
+                "section_heading": "Rio Tinto percentage interest shown above is at 31 March 2026. The data represents production and sales on a 100% basis unless otherwise stated.",
+                "text_chars": 694,
+                "score": 0.9102851694992302,
+                "fact_present": false
+              },
+              {
+                "rank": 7,
+                "chunk_id": "a08489e1a800ae53",
+                "doc_id": "3579fb357b259ef8",
+                "source_path": "nas_document/학습데이터/리튬/Li_North American Lithium_Sayona_2026043002396.pdf",
+                "source_group": "광산자료",
+                "title": "Li_North American Lithium_Sayona_2026043002396",
+                "section_heading": "Partner",
+                "text_chars": 100,
+                "score": 0.9089698195457458,
+                "fact_present": false
+              },
+              {
+                "rank": 8,
+                "chunk_id": "c3faffa319bf0c40",
+                "doc_id": "3e9be85f1380dc18",
+                "source_path": "nas_document/학습데이터/리튬/Li_Goulamina_Ganfeng_2026043002396.pdf",
+                "source_group": "광산자료",
+                "title": "Li_Goulamina_Ganfeng_2026043002396",
+                "section_heading": "2. Analysis of the lithium compound market",
+                "text_chars": 777,
+                "score": 0.9084964990615845,
+                "fact_present": false
+              },
+              {
+                "rank": 9,
+                "chunk_id": "7bf6526d438b96d2",
+                "doc_id": "69064d612b2f1dcd",
+                "source_path": "nas_document/학습데이터/리튬/Li_Kathleen valley_Liontown.pdf",
+                "source_group": "광산자료",
+                "title": "Li_Kathleen valley_Liontown",
+                "section_heading": "About us – where we operate",
+                "text_chars": 999,
+                "score": 0.907654345035553,
+                "fact_present": false
+              },
+              {
+                "rank": 10,
+                "chunk_id": "d978b0b58eeaca1b",
+                "doc_id": "d4db546c8ee52764",
+                "source_path": "nas_document/학습데이터/동(구리)/Cu_Oyu Tolgoi_Rio Tinto.pdf",
+                "source_group": "광산자료",
+                "title": "Cu_Oyu Tolgoi_Rio Tinto",
+                "section_heading": "Lithium",
+                "text_chars": 1137,
+                "score": 0.9071172746156838,
+                "fact_present": false
+              }
+            ],
+            "expected_document_found": true,
+            "exact_fact_found": true
+          },
+          {
+            "id": "vector_only_no_fallback",
+            "status": "PASS",
+            "allow_fallback": false,
+            "requested_top_k": 10,
+            "returned_count": 10,
+            "query": "lithium production 2025"
+          }
+        ]
+      },
+      "elapsed_seconds": 1.2,
+      "evidence_path": "documents/산출물/2026-W39_0921-0927/acceptance_cycle3/sol_post_apply_acceptance_round2/chatbot_acceptance_20260923_210655.jsonl"
+    },
+    {
+      "id": "AC40",
+      "title": "PageIndex 직접 검색과 원문",
+      "layer": "integration",
+      "status": "PASS",
+      "errors": [],
+      "detail": {
+        "required_checks": [
+          {
+            "id": "fixed_doc_filter",
+            "status": "PASS",
+            "requested_doc_id": "doc_738ead83c52ecab761f68fb4",
+            "returned_count": 5,
+            "hit_identities": [
+              {
+                "doc_id": "doc_738ead83c52ecab761f68fb4",
+                "resource": "documents/3. 생산매장량(USGS)/USGS_2026.pdf",
+                "okf_path": "생산매장량_USGS/USGS_2026.md"
+              },
+              {
+                "doc_id": "doc_738ead83c52ecab761f68fb4",
+                "resource": "documents/3. 생산매장량(USGS)/USGS_2026.pdf",
+                "okf_path": "생산매장량_USGS/USGS_2026.md"
+              },
+              {
+                "doc_id": "doc_738ead83c52ecab761f68fb4",
+                "resource": "documents/3. 생산매장량(USGS)/USGS_2026.pdf",
+                "okf_path": "생산매장량_USGS/USGS_2026.md"
+              },
+              {
+                "doc_id": "doc_738ead83c52ecab761f68fb4",
+                "resource": "documents/3. 생산매장량(USGS)/USGS_2026.pdf",
+                "okf_path": "생산매장량_USGS/USGS_2026.md"
+              },
+              {
+                "doc_id": "doc_738ead83c52ecab761f68fb4",
+                "resource": "documents/3. 생산매장량(USGS)/USGS_2026.pdf",
+                "okf_path": "생산매장량_USGS/USGS_2026.md"
+              }
+            ]
+          },
+          {
+            "id": "node_okf_range_identity",
+            "status": "PASS",
+            "fixture_body_sha256": "a9b0926766146426a0359f69dc596f44f84c4e25e9c2a9425191a8f6f404683c",
+            "current_body_sha256": "a9b0926766146426a0359f69dc596f44f84c4e25e9c2a9425191a8f6f404683c",
+            "tree_body_sha256": "a9b0926766146426a0359f69dc596f44f84c4e25e9c2a9425191a8f6f404683c",
+            "hashes_fresh": true,
+            "matching_nodes": [
+              {
+                "node_id": "0007",
+                "line_start": 49,
+                "line_end": 66
+              }
+            ],
+            "problems": []
+          },
+          {
+            "id": "node_original_text",
+            "status": "PASS",
+            "nodes": [
+              {
+                "node_id": "0007",
+                "independent_chars": 4000,
+                "returned_chars": 4000,
+                "equal": true
+              }
+            ],
+            "problems": []
+          }
+        ]
+      },
+      "elapsed_seconds": 0.07,
+      "evidence_path": "documents/산출물/2026-W39_0921-0927/acceptance_cycle3/sol_post_apply_acceptance_round2/chatbot_acceptance_20260923_210655.jsonl"
+    },
+    {
+      "id": "AC41",
+      "title": "숫자 제목 OCR 3건 회귀",
+      "layer": "integration",
+      "status": "PASS",
+      "errors": [],
+      "detail": {
+        "required_checks": [
+          {
+            "id": "three_nonempty_bodies",
+            "status": "PASS",
+            "documents": [
+              {
+                "doc_id": "doc_51886c72704a2c9017503e3c",
+                "body_chars": 1355,
+                "fact_in_fixed_range": true
+              },
+              {
+                "doc_id": "doc_d623918d8502f6dc962570c0",
+                "body_chars": 1553,
+                "fact_in_fixed_range": true
+              },
+              {
+                "doc_id": "doc_c756024d734b611ff55d7b23",
+                "body_chars": 17737,
+                "fact_in_fixed_range": true
+              }
+            ]
+          },
+          {
+            "id": "three_tree_hashes_fresh",
+            "status": "PASS",
+            "documents": [
+              {
+                "doc_id": "doc_51886c72704a2c9017503e3c",
+                "fixture": "ae5ee66b71e7f85ac69b8fed01b9a8a58c00ccab2919cc019d072d231859bf23",
+                "current": "ae5ee66b71e7f85ac69b8fed01b9a8a58c00ccab2919cc019d072d231859bf23",
+                "tree": "ae5ee66b71e7f85ac69b8fed01b9a8a58c00ccab2919cc019d072d231859bf23",
+                "fresh": true
+              },
+              {
+                "doc_id": "doc_d623918d8502f6dc962570c0",
+                "fixture": "b4437d22b600f47fa3432f539e600d9a11703b8a5e68e1c1b47f923fbcdfb936",
+                "current": "b4437d22b600f47fa3432f539e600d9a11703b8a5e68e1c1b47f923fbcdfb936",
+                "tree": "b4437d22b600f47fa3432f539e600d9a11703b8a5e68e1c1b47f923fbcdfb936",
+                "fresh": true
+              },
+              {
+                "doc_id": "doc_c756024d734b611ff55d7b23",
+                "fixture": "26912ee5bd0ca6f324419c6b06db5bc7ab07f041779c17129cf19b74fcb2f128",
+                "current": "26912ee5bd0ca6f324419c6b06db5bc7ab07f041779c17129cf19b74fcb2f128",
+                "tree": "26912ee5bd0ca6f324419c6b06db5bc7ab07f041779c17129cf19b74fcb2f128",
+                "fresh": true
+              }
+            ]
+          },
+          {
+            "id": "three_valid_roots_and_node_text",
+            "status": "PASS",
+            "documents": [
+              {
+                "doc_id": "doc_51886c72704a2c9017503e3c",
+                "root_count": 1,
+                "valid_hits": [
+                  {
+                    "node_id": "0000",
+                    "line_start": 1,
+                    "line_end": 52,
+                    "text_chars": 1354
+                  }
+                ]
+              },
+              {
+                "doc_id": "doc_d623918d8502f6dc962570c0",
+                "root_count": 1,
+                "valid_hits": [
+                  {
+                    "node_id": "0000",
+                    "line_start": 1,
+                    "line_end": 52,
+                    "text_chars": 1552
+                  }
+                ]
+              },
+              {
+                "doc_id": "doc_c756024d734b611ff55d7b23",
+                "root_count": 1,
+                "valid_hits": [
+                  {
+                    "node_id": "0000",
+                    "line_start": 1,
+                    "line_end": 260,
+                    "text_chars": 4000
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "three_latest_chunk_texts",
+            "status": "PASS",
+            "documents": [
+              {
+                "doc_id": "doc_51886c72704a2c9017503e3c",
+                "vector_doc_id": "51886c72704a2c90",
+                "actual_count": 1,
+                "expected_count": 1,
+                "texts_equal_latest_okf": true,
+                "fact_chunk_count": 1
+              },
+              {
+                "doc_id": "doc_d623918d8502f6dc962570c0",
+                "vector_doc_id": "d623918d8502f6dc",
+                "actual_count": 2,
+                "expected_count": 2,
+                "texts_equal_latest_okf": true,
+                "fact_chunk_count": 1
+              },
+              {
+                "doc_id": "doc_c756024d734b611ff55d7b23",
+                "vector_doc_id": "c756024d734b611f",
+                "actual_count": 23,
+                "expected_count": 23,
+                "texts_equal_latest_okf": true,
+                "fact_chunk_count": 1
+              }
+            ]
+          },
+          {
+            "id": "all_three_atomic",
+            "status": "PASS",
+            "checked_documents": 3,
+            "expected_documents": 3
+          }
+        ]
+      },
+      "elapsed_seconds": 0.12,
+      "evidence_path": "documents/산출물/2026-W39_0921-0927/acceptance_cycle3/sol_post_apply_acceptance_round2/chatbot_acceptance_20260923_210655.jsonl"
+    }
+  ],
+  "summary": {
+    "PASS": 6
+  }
+}

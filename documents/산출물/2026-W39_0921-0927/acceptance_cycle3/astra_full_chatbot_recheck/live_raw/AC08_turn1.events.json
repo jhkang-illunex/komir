@@ -1,0 +1,1051 @@
+[
+  {
+    "session_id": "58f12e63-4048-4b1e-b677-7e253582a10b"
+  },
+  {
+    "stage": 1,
+    "label": "질문 조건 확인"
+  },
+  {
+    "stage": 1,
+    "label": "질문 조건 확인"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "action_id": "trade.country_rank"
+  },
+  {
+    "stage": 3,
+    "label": "데이터 분석 중",
+    "action_id": "trade.country_rank"
+  },
+  {
+    "stage": 4,
+    "label": "답변 생성 중"
+  },
+  {
+    "delta": "한국"
+  },
+  {
+    "delta": "의"
+  },
+  {
+    "delta": " 리"
+  },
+  {
+    "delta": "튬"
+  },
+  {
+    "delta": " 수"
+  },
+  {
+    "delta": "입"
+  },
+  {
+    "delta": " 상"
+  },
+  {
+    "delta": "위"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "개"
+  },
+  {
+    "delta": "국"
+  },
+  {
+    "delta": " 및"
+  },
+  {
+    "delta": " 비"
+  },
+  {
+    "delta": "중"
+  },
+  {
+    "delta": "은"
+  },
+  {
+    "delta": " 다음과"
+  },
+  {
+    "delta": " 같습니다"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "\n\n"
+  },
+  {
+    "delta": "|"
+  },
+  {
+    "delta": " 순"
+  },
+  {
+    "delta": "위"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " 국가"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " 수"
+  },
+  {
+    "delta": "입"
+  },
+  {
+    "delta": "금"
+  },
+  {
+    "delta": "액"
+  },
+  {
+    "delta": "합"
+  },
+  {
+    "delta": "계"
+  },
+  {
+    "delta": "("
+  },
+  {
+    "delta": "USD"
+  },
+  {
+    "delta": ")"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " 비"
+  },
+  {
+    "delta": "중"
+  },
+  {
+    "delta": "("
+  },
+  {
+    "delta": "%)"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": "\n"
+  },
+  {
+    "delta": "|"
+  },
+  {
+    "delta": " :"
+  },
+  {
+    "delta": "---"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " :"
+  },
+  {
+    "delta": "---"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " :"
+  },
+  {
+    "delta": "---"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " :"
+  },
+  {
+    "delta": "---"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": "\n"
+  },
+  {
+    "delta": "|"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " 호"
+  },
+  {
+    "delta": "주"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": "7"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "6"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": "\n"
+  },
+  {
+    "delta": "|"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " 중국"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "7"
+  },
+  {
+    "delta": "9"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "9"
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "6"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "7"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": "\n"
+  },
+  {
+    "delta": "|"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " 인도"
+  },
+  {
+    "delta": "네"
+  },
+  {
+    "delta": "시아"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "7"
+  },
+  {
+    "delta": "8"
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "6"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": "\n"
+  },
+  {
+    "delta": "|"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "칠"
+  },
+  {
+    "delta": "레"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "6"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "7"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": "\n"
+  },
+  {
+    "delta": "|"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "콩"
+  },
+  {
+    "delta": "고"
+  },
+  {
+    "delta": "민"
+  },
+  {
+    "delta": "주"
+  },
+  {
+    "delta": "공"
+  },
+  {
+    "delta": "화"
+  },
+  {
+    "delta": "국"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "6"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "7"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "7"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "6"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "6"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": "\n\n"
+  },
+  {
+    "delta": "상"
+  },
+  {
+    "delta": "기"
+  },
+  {
+    "delta": " 데이터"
+  },
+  {
+    "delta": "의"
+  },
+  {
+    "delta": " 기준"
+  },
+  {
+    "delta": " 기간"
+  },
+  {
+    "delta": "은"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "-"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "7"
+  },
+  {
+    "delta": "-"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "부터"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "6"
+  },
+  {
+    "delta": "-"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "9"
+  },
+  {
+    "delta": "-"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "9"
+  },
+  {
+    "delta": "까지"
+  },
+  {
+    "delta": "이며"
+  },
+  {
+    "delta": " ["
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "],"
+  },
+  {
+    "delta": " 비"
+  },
+  {
+    "delta": "중"
+  },
+  {
+    "delta": "은"
+  },
+  {
+    "delta": " 해당"
+  },
+  {
+    "delta": " 기간"
+  },
+  {
+    "delta": " 및"
+  },
+  {
+    "delta": " 조건"
+  },
+  {
+    "delta": "의"
+  },
+  {
+    "delta": " 전체"
+  },
+  {
+    "delta": " 국가"
+  },
+  {
+    "delta": " 합"
+  },
+  {
+    "delta": "계"
+  },
+  {
+    "delta": "인"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " USD"
+  },
+  {
+    "delta": "를"
+  },
+  {
+    "delta": " 분"
+  },
+  {
+    "delta": "모"
+  },
+  {
+    "delta": "로"
+  },
+  {
+    "delta": " 하여"
+  },
+  {
+    "delta": " 산"
+  },
+  {
+    "delta": "출"
+  },
+  {
+    "delta": "되었습니다"
+  },
+  {
+    "delta": " ["
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "]."
+  },
+  {
+    "delta": "\n\n⚠ 이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다.\n\n출처:\n- [1] public.KO_CSTM_CMMRC · KOMIS 원천 · KO_CSTM_CMMRC(리튬) · 국가별 수입금액 상위 5개 (기준시점 2025-07-01\\~2026-09-09)"
+  },
+  {
+    "schema_version": 1,
+    "block_id": "t1-1",
+    "columns": [
+      "country(국가)",
+      "total(수입금액합계(USD))",
+      "share_pct(비중(%, 같은 기간·조건의 전체 국가 합계 대비))"
+    ],
+    "rows": [
+      [
+        "호주",
+        "113202400.0",
+        "37.6"
+      ],
+      [
+        "중국",
+        "79094000.0",
+        "26.27"
+      ],
+      [
+        "인도네시아",
+        "30785600.0",
+        "10.23"
+      ],
+      [
+        "칠레",
+        "21413600.0",
+        "7.11"
+      ],
+      [
+        "콩고민주공화국",
+        "16727600.0",
+        "5.56"
+      ]
+    ],
+    "columns_meta": [
+      {
+        "key": "country",
+        "label": "country(국가)",
+        "display": "국가",
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "total",
+        "label": "total(수입금액합계(USD))",
+        "display": "수입금액합계(USD)",
+        "type": "number",
+        "unit": "USD"
+      },
+      {
+        "key": "share_pct",
+        "label": "share_pct(비중(%, 같은 기간·조건의 전체 국가 합계 대비))",
+        "display": "비중(%, 같은 기간·조건의 전체 국가 합계 대비)",
+        "type": "number",
+        "unit": "%"
+      }
+    ],
+    "rows_typed": [
+      [
+        "호주",
+        113202400.0,
+        37.6
+      ],
+      [
+        "중국",
+        79094000.0,
+        26.27
+      ],
+      [
+        "인도네시아",
+        30785600.0,
+        10.23
+      ],
+      [
+        "칠레",
+        21413600.0,
+        7.11
+      ],
+      [
+        "콩고민주공화국",
+        16727600.0,
+        5.56
+      ]
+    ],
+    "markdown": "| country(국가) | total(수입금액합계(USD)) | share_pct(비중(%, 같은 기간·조건의 전체 국가 합계 대비)) |\n| --- | --- | --- |\n| 호주 | 113202400.0 | 37.6 |\n| 중국 | 79094000.0 | 26.27 |\n| 인도네시아 | 30785600.0 | 10.23 |\n| 칠레 | 21413600.0 | 7.11 |\n| 콩고민주공화국 | 16727600.0 | 5.56 |",
+    "chart_hint": {
+      "recommended": "bar",
+      "alternatives": [
+        "pie"
+      ],
+      "reason": "날짜열 없음 — country별 비교"
+    },
+    "meta": {
+      "source_index": 1,
+      "source": "public.KO_CSTM_CMMRC · KOMIS 원천 · KO_CSTM_CMMRC(리튬) · 국가별 수입금액 상위 5개 (기준시점 2025-07-01~2026-09-09)",
+      "row_count": 5,
+      "as_of": "2025-07-01~2026-09-09",
+      "unit": "USD",
+      "time_aggregation": null,
+      "menu_source": null,
+      "hidden_columns": [
+        "rank",
+        "transaction_count"
+      ]
+    },
+    "source_index": 1,
+    "source": "public.KO_CSTM_CMMRC · KOMIS 원천 · KO_CSTM_CMMRC(리튬) · 국가별 수입금액 상위 5개 (기준시점 2025-07-01~2026-09-09)"
+  },
+  {
+    "schema_version": 1,
+    "block_id": "c1-1",
+    "data_ref": "t1-1",
+    "spec": {
+      "kind": "bar",
+      "alternatives": [
+        "pie"
+      ],
+      "x": "country",
+      "x_type": "category",
+      "x_format": null,
+      "series": [
+        "share_pct"
+      ],
+      "group": null,
+      "sort_x_ascending": false,
+      "title": "비중(%, 같은 기간·조건의 전체 국가 합계 대비)",
+      "y_unit": "%",
+      "as_of": "2025-07-01~2026-09-09",
+      "time_aggregation": null
+    },
+    "meta": {
+      "source_index": 1,
+      "source": "public.KO_CSTM_CMMRC · KOMIS 원천 · KO_CSTM_CMMRC(리튬) · 국가별 수입금액 상위 5개 (기준시점 2025-07-01~2026-09-09)",
+      "menu_source": null
+    },
+    "source_index": 1,
+    "source": "public.KO_CSTM_CMMRC · KOMIS 원천 · KO_CSTM_CMMRC(리튬) · 국가별 수입금액 상위 5개 (기준시점 2025-07-01~2026-09-09)"
+  },
+  {
+    "done": true,
+    "citations": [
+      {
+        "index": 1,
+        "kind": "structured",
+        "source": "public.KO_CSTM_CMMRC",
+        "section": "KOMIS 원천 · KO_CSTM_CMMRC(리튬) · 국가별 수입금액 상위 5개",
+        "as_of": "2025-07-01~2026-09-09",
+        "unit": "USD",
+        "requirement_id": "req_1",
+        "action_id": "trade.country_rank",
+        "source_id": "public.KO_CSTM_CMMRC",
+        "observed_period": "2025-07-01~2026-09-09",
+        "menu_source": null
+      }
+    ],
+    "retrieval_sources": [
+      {
+        "source": "rdb",
+        "status": "queried",
+        "evidence_count": 1
+      },
+      {
+        "source": "vector",
+        "status": "queried",
+        "evidence_count": 6
+      },
+      {
+        "source": "pageindex",
+        "status": "not_selected",
+        "evidence_count": 0
+      },
+      {
+        "source": "okf",
+        "status": "not_selected",
+        "evidence_count": 0
+      }
+    ],
+    "bogus_citations": [],
+    "abstained": false
+  }
+]

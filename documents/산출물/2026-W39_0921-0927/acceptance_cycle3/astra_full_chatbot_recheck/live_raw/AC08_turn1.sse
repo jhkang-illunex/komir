@@ -1,0 +1,588 @@
+data: {"session_id": "58f12e63-4048-4b1e-b677-7e253582a10b"}
+
+event: status
+data: {"stage": 1, "label": "질문 조건 확인"}
+
+event: status
+data: {"stage": 1, "label": "질문 조건 확인"}
+
+event: status
+data: {"stage": 2, "label": "답변 준비중", "action_id": "trade.country_rank"}
+
+event: status
+data: {"stage": 3, "label": "데이터 분석 중", "action_id": "trade.country_rank"}
+
+event: status
+data: {"stage": 4, "label": "답변 생성 중"}
+
+data: {"delta": "한국"}
+
+data: {"delta": "의"}
+
+data: {"delta": " 리"}
+
+data: {"delta": "튬"}
+
+data: {"delta": " 수"}
+
+data: {"delta": "입"}
+
+data: {"delta": " 상"}
+
+data: {"delta": "위"}
+
+data: {"delta": " "}
+
+data: {"delta": "5"}
+
+data: {"delta": "개"}
+
+data: {"delta": "국"}
+
+data: {"delta": " 및"}
+
+data: {"delta": " 비"}
+
+data: {"delta": "중"}
+
+data: {"delta": "은"}
+
+data: {"delta": " 다음과"}
+
+data: {"delta": " 같습니다"}
+
+data: {"delta": "."}
+
+data: {"delta": "\n\n"}
+
+data: {"delta": "|"}
+
+data: {"delta": " 순"}
+
+data: {"delta": "위"}
+
+data: {"delta": " |"}
+
+data: {"delta": " 국가"}
+
+data: {"delta": " |"}
+
+data: {"delta": " 수"}
+
+data: {"delta": "입"}
+
+data: {"delta": "금"}
+
+data: {"delta": "액"}
+
+data: {"delta": "합"}
+
+data: {"delta": "계"}
+
+data: {"delta": "("}
+
+data: {"delta": "USD"}
+
+data: {"delta": ")"}
+
+data: {"delta": " |"}
+
+data: {"delta": " 비"}
+
+data: {"delta": "중"}
+
+data: {"delta": "("}
+
+data: {"delta": "%)"}
+
+data: {"delta": " |"}
+
+data: {"delta": "\n"}
+
+data: {"delta": "|"}
+
+data: {"delta": " :"}
+
+data: {"delta": "---"}
+
+data: {"delta": " |"}
+
+data: {"delta": " :"}
+
+data: {"delta": "---"}
+
+data: {"delta": " |"}
+
+data: {"delta": " :"}
+
+data: {"delta": "---"}
+
+data: {"delta": " |"}
+
+data: {"delta": " :"}
+
+data: {"delta": "---"}
+
+data: {"delta": " |"}
+
+data: {"delta": "\n"}
+
+data: {"delta": "|"}
+
+data: {"delta": " "}
+
+data: {"delta": "1"}
+
+data: {"delta": " |"}
+
+data: {"delta": " 호"}
+
+data: {"delta": "주"}
+
+data: {"delta": " |"}
+
+data: {"delta": " "}
+
+data: {"delta": "1"}
+
+data: {"delta": "1"}
+
+data: {"delta": "3"}
+
+data: {"delta": ","}
+
+data: {"delta": "2"}
+
+data: {"delta": "0"}
+
+data: {"delta": "2"}
+
+data: {"delta": ","}
+
+data: {"delta": "4"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "."}
+
+data: {"delta": "0"}
+
+data: {"delta": " |"}
+
+data: {"delta": " "}
+
+data: {"delta": "3"}
+
+data: {"delta": "7"}
+
+data: {"delta": "."}
+
+data: {"delta": "6"}
+
+data: {"delta": " |"}
+
+data: {"delta": "\n"}
+
+data: {"delta": "|"}
+
+data: {"delta": " "}
+
+data: {"delta": "2"}
+
+data: {"delta": " |"}
+
+data: {"delta": " 중국"}
+
+data: {"delta": " |"}
+
+data: {"delta": " "}
+
+data: {"delta": "7"}
+
+data: {"delta": "9"}
+
+data: {"delta": ","}
+
+data: {"delta": "0"}
+
+data: {"delta": "9"}
+
+data: {"delta": "4"}
+
+data: {"delta": ","}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "."}
+
+data: {"delta": "0"}
+
+data: {"delta": " |"}
+
+data: {"delta": " "}
+
+data: {"delta": "2"}
+
+data: {"delta": "6"}
+
+data: {"delta": "."}
+
+data: {"delta": "2"}
+
+data: {"delta": "7"}
+
+data: {"delta": " |"}
+
+data: {"delta": "\n"}
+
+data: {"delta": "|"}
+
+data: {"delta": " "}
+
+data: {"delta": "3"}
+
+data: {"delta": " |"}
+
+data: {"delta": " 인도"}
+
+data: {"delta": "네"}
+
+data: {"delta": "시아"}
+
+data: {"delta": " |"}
+
+data: {"delta": " "}
+
+data: {"delta": "3"}
+
+data: {"delta": "0"}
+
+data: {"delta": ","}
+
+data: {"delta": "7"}
+
+data: {"delta": "8"}
+
+data: {"delta": "5"}
+
+data: {"delta": ","}
+
+data: {"delta": "6"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "."}
+
+data: {"delta": "0"}
+
+data: {"delta": " |"}
+
+data: {"delta": " "}
+
+data: {"delta": "1"}
+
+data: {"delta": "0"}
+
+data: {"delta": "."}
+
+data: {"delta": "2"}
+
+data: {"delta": "3"}
+
+data: {"delta": " |"}
+
+data: {"delta": "\n"}
+
+data: {"delta": "|"}
+
+data: {"delta": " "}
+
+data: {"delta": "4"}
+
+data: {"delta": " |"}
+
+data: {"delta": " "}
+
+data: {"delta": "칠"}
+
+data: {"delta": "레"}
+
+data: {"delta": " |"}
+
+data: {"delta": " "}
+
+data: {"delta": "2"}
+
+data: {"delta": "1"}
+
+data: {"delta": ","}
+
+data: {"delta": "4"}
+
+data: {"delta": "1"}
+
+data: {"delta": "3"}
+
+data: {"delta": ","}
+
+data: {"delta": "6"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "."}
+
+data: {"delta": "0"}
+
+data: {"delta": " |"}
+
+data: {"delta": " "}
+
+data: {"delta": "7"}
+
+data: {"delta": "."}
+
+data: {"delta": "1"}
+
+data: {"delta": "1"}
+
+data: {"delta": " |"}
+
+data: {"delta": "\n"}
+
+data: {"delta": "|"}
+
+data: {"delta": " "}
+
+data: {"delta": "5"}
+
+data: {"delta": " |"}
+
+data: {"delta": " "}
+
+data: {"delta": "콩"}
+
+data: {"delta": "고"}
+
+data: {"delta": "민"}
+
+data: {"delta": "주"}
+
+data: {"delta": "공"}
+
+data: {"delta": "화"}
+
+data: {"delta": "국"}
+
+data: {"delta": " |"}
+
+data: {"delta": " "}
+
+data: {"delta": "1"}
+
+data: {"delta": "6"}
+
+data: {"delta": ","}
+
+data: {"delta": "7"}
+
+data: {"delta": "2"}
+
+data: {"delta": "7"}
+
+data: {"delta": ","}
+
+data: {"delta": "6"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "."}
+
+data: {"delta": "0"}
+
+data: {"delta": " |"}
+
+data: {"delta": " "}
+
+data: {"delta": "5"}
+
+data: {"delta": "."}
+
+data: {"delta": "5"}
+
+data: {"delta": "6"}
+
+data: {"delta": " |"}
+
+data: {"delta": "\n\n"}
+
+data: {"delta": "상"}
+
+data: {"delta": "기"}
+
+data: {"delta": " 데이터"}
+
+data: {"delta": "의"}
+
+data: {"delta": " 기준"}
+
+data: {"delta": " 기간"}
+
+data: {"delta": "은"}
+
+data: {"delta": " "}
+
+data: {"delta": "2"}
+
+data: {"delta": "0"}
+
+data: {"delta": "2"}
+
+data: {"delta": "5"}
+
+data: {"delta": "-"}
+
+data: {"delta": "0"}
+
+data: {"delta": "7"}
+
+data: {"delta": "-"}
+
+data: {"delta": "0"}
+
+data: {"delta": "1"}
+
+data: {"delta": "부터"}
+
+data: {"delta": " "}
+
+data: {"delta": "2"}
+
+data: {"delta": "0"}
+
+data: {"delta": "2"}
+
+data: {"delta": "6"}
+
+data: {"delta": "-"}
+
+data: {"delta": "0"}
+
+data: {"delta": "9"}
+
+data: {"delta": "-"}
+
+data: {"delta": "0"}
+
+data: {"delta": "9"}
+
+data: {"delta": "까지"}
+
+data: {"delta": "이며"}
+
+data: {"delta": " ["}
+
+data: {"delta": "1"}
+
+data: {"delta": "],"}
+
+data: {"delta": " 비"}
+
+data: {"delta": "중"}
+
+data: {"delta": "은"}
+
+data: {"delta": " 해당"}
+
+data: {"delta": " 기간"}
+
+data: {"delta": " 및"}
+
+data: {"delta": " 조건"}
+
+data: {"delta": "의"}
+
+data: {"delta": " 전체"}
+
+data: {"delta": " 국가"}
+
+data: {"delta": " 합"}
+
+data: {"delta": "계"}
+
+data: {"delta": "인"}
+
+data: {"delta": " "}
+
+data: {"delta": "3"}
+
+data: {"delta": "0"}
+
+data: {"delta": "1"}
+
+data: {"delta": ","}
+
+data: {"delta": "0"}
+
+data: {"delta": "4"}
+
+data: {"delta": "0"}
+
+data: {"delta": ","}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "0"}
+
+data: {"delta": "."}
+
+data: {"delta": "0"}
+
+data: {"delta": " USD"}
+
+data: {"delta": "를"}
+
+data: {"delta": " 분"}
+
+data: {"delta": "모"}
+
+data: {"delta": "로"}
+
+data: {"delta": " 하여"}
+
+data: {"delta": " 산"}
+
+data: {"delta": "출"}
+
+data: {"delta": "되었습니다"}
+
+data: {"delta": " ["}
+
+data: {"delta": "1"}
+
+data: {"delta": "]."}
+
+data: {"delta": "\n\n⚠ 이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다.\n\n출처:\n- [1] public.KO_CSTM_CMMRC · KOMIS 원천 · KO_CSTM_CMMRC(리튬) · 국가별 수입금액 상위 5개 (기준시점 2025-07-01\\~2026-09-09)"}
+
+event: table
+data: {"schema_version": 1, "block_id": "t1-1", "columns": ["country(국가)", "total(수입금액합계(USD))", "share_pct(비중(%, 같은 기간·조건의 전체 국가 합계 대비))"], "rows": [["호주", "113202400.0", "37.6"], ["중국", "79094000.0", "26.27"], ["인도네시아", "30785600.0", "10.23"], ["칠레", "21413600.0", "7.11"], ["콩고민주공화국", "16727600.0", "5.56"]], "columns_meta": [{"key": "country", "label": "country(국가)", "display": "국가", "type": "string", "unit": null}, {"key": "total", "label": "total(수입금액합계(USD))", "display": "수입금액합계(USD)", "type": "number", "unit": "USD"}, {"key": "share_pct", "label": "share_pct(비중(%, 같은 기간·조건의 전체 국가 합계 대비))", "display": "비중(%, 같은 기간·조건의 전체 국가 합계 대비)", "type": "number", "unit": "%"}], "rows_typed": [["호주", 113202400.0, 37.6], ["중국", 79094000.0, 26.27], ["인도네시아", 30785600.0, 10.23], ["칠레", 21413600.0, 7.11], ["콩고민주공화국", 16727600.0, 5.56]], "markdown": "| country(국가) | total(수입금액합계(USD)) | share_pct(비중(%, 같은 기간·조건의 전체 국가 합계 대비)) |\n| --- | --- | --- |\n| 호주 | 113202400.0 | 37.6 |\n| 중국 | 79094000.0 | 26.27 |\n| 인도네시아 | 30785600.0 | 10.23 |\n| 칠레 | 21413600.0 | 7.11 |\n| 콩고민주공화국 | 16727600.0 | 5.56 |", "chart_hint": {"recommended": "bar", "alternatives": ["pie"], "reason": "날짜열 없음 — country별 비교"}, "meta": {"source_index": 1, "source": "public.KO_CSTM_CMMRC · KOMIS 원천 · KO_CSTM_CMMRC(리튬) · 국가별 수입금액 상위 5개 (기준시점 2025-07-01~2026-09-09)", "row_count": 5, "as_of": "2025-07-01~2026-09-09", "unit": "USD", "time_aggregation": null, "menu_source": null, "hidden_columns": ["rank", "transaction_count"]}, "source_index": 1, "source": "public.KO_CSTM_CMMRC · KOMIS 원천 · KO_CSTM_CMMRC(리튬) · 국가별 수입금액 상위 5개 (기준시점 2025-07-01~2026-09-09)"}
+
+event: chart
+data: {"schema_version": 1, "block_id": "c1-1", "data_ref": "t1-1", "spec": {"kind": "bar", "alternatives": ["pie"], "x": "country", "x_type": "category", "x_format": null, "series": ["share_pct"], "group": null, "sort_x_ascending": false, "title": "비중(%, 같은 기간·조건의 전체 국가 합계 대비)", "y_unit": "%", "as_of": "2025-07-01~2026-09-09", "time_aggregation": null}, "meta": {"source_index": 1, "source": "public.KO_CSTM_CMMRC · KOMIS 원천 · KO_CSTM_CMMRC(리튬) · 국가별 수입금액 상위 5개 (기준시점 2025-07-01~2026-09-09)", "menu_source": null}, "source_index": 1, "source": "public.KO_CSTM_CMMRC · KOMIS 원천 · KO_CSTM_CMMRC(리튬) · 국가별 수입금액 상위 5개 (기준시점 2025-07-01~2026-09-09)"}
+
+event: done
+data: {"done": true, "citations": [{"index": 1, "kind": "structured", "source": "public.KO_CSTM_CMMRC", "section": "KOMIS 원천 · KO_CSTM_CMMRC(리튬) · 국가별 수입금액 상위 5개", "as_of": "2025-07-01~2026-09-09", "unit": "USD", "requirement_id": "req_1", "action_id": "trade.country_rank", "source_id": "public.KO_CSTM_CMMRC", "observed_period": "2025-07-01~2026-09-09", "menu_source": null}], "retrieval_sources": [{"source": "rdb", "status": "queried", "evidence_count": 1}, {"source": "vector", "status": "queried", "evidence_count": 6}, {"source": "pageindex", "status": "not_selected", "evidence_count": 0}, {"source": "okf", "status": "not_selected", "evidence_count": 0}], "bogus_citations": [], "abstained": false}
+

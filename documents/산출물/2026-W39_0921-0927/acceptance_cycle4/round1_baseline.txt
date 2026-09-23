@@ -1,0 +1,54 @@
+2026-09-23T22:02:11+09:00
+ M documents/meta/WORKLOG.md
+ M "documents/\354\202\260\354\266\234\353\254\274/2026-W39_0921-0927/\354\261\227\353\264\207_\353\257\270\352\265\254\355\230\204\352\270\260\353\212\245_\352\265\254\355\230\204\352\263\204\355\232\215_260923.md"
+ M inhouse/common/komis_raw.py
+ M inhouse/ingest/okf/build_okf_documents.py
+ M inhouse/ingest/pageindex/build_pageindex_trees.py
+ M inhouse/ingest/run_chain.py
+ M inhouse/ingest/tests/test_build_pageindex_trees.py
+ M inhouse/ingest/vectorize/build_pgvector_okf.py
+ M inhouse/rag_core/ragkit/_mcp_tools_common.py
+ M inhouse/rag_core/ragkit/chunk.py
+ M inhouse/rag_core/retrieval/dense_pg.py
+ M inhouse/rag_core/retrieval/evidence.py
+ M inhouse/rag_core/retrieval/pageindex.py
+ M inhouse/rag_core/tests/test_menu_catalog.py
+ M inhouse/rag_core/tests/test_mine_ranking_action.py
+?? .agents/
+?? .codex/
+?? "1019_LME Seminar\354\227\220\354\204\234 \353\260\234\355\221\234\355\225\234 \355\222\210\353\252\251\353\263\204 \353\217\231\355\226\245 \353\260\217 \354\240\204\353\247\235.odt"
+?? "documents/\354\202\260\354\266\234\353\254\274/2026-W39_0921-0927/acceptance_cycle3/"
+?? "documents/\354\202\260\354\266\234\353\254\274/2026-W39_0921-0927/acceptance_cycle4/"
+?? "documents/\354\202\260\354\266\234\353\254\274/2026-W39_0921-0927/\354\261\227\353\264\207_\352\265\254\354\204\261\353\260\217\353\252\250\353\223\210_\353\263\264\354\231\204\352\262\200\355\206\240_260923.md"
+?? "documents/\354\202\260\354\266\234\353\254\274/2026-W39_0921-0927/\354\261\227\353\264\207_\354\213\234\354\212\244\355\205\234\352\265\254\354\204\261_\354\213\234\355\200\200\354\212\244_260923.drawio"
+?? "documents/\354\202\260\354\266\234\353\254\274/2026-W39_0921-0927/\354\261\227\353\264\207_\354\240\204\354\262\264\354\210\230\353\235\275\352\262\200\354\202\254_\354\274\200\354\235\264\354\212\244_260923.md"
+?? "documents/\354\202\260\354\266\234\353\254\274/2026-W39_0921-0927/\354\261\227\353\264\207_\354\266\224\354\266\234\353\251\224\355\203\200\353\215\260\354\235\264\355\204\260_\352\260\220\354\202\254_260923.md"
+?? "documents/\354\202\260\354\266\234\353\254\274/2026-W39_0921-0927/\354\261\227\353\264\207_\355\233\204\354\206\215\353\260\230\353\263\265\352\260\220\354\202\254_\354\265\234\354\242\205\352\262\260\352\263\274_260923.md"
+?? "documents/\354\202\260\354\266\234\353\254\274/acceptance_results/"
+?? inhouse/common/tests/test_trade_indicators.py
+?? inhouse/common/trade_indicators.py
+?? inhouse/ingest/tests/test_build_okf_documents.py
+?? inhouse/ingest/tests/test_build_pgvector_okf.py
+?? inhouse/ingest/tests/test_okf_retrieval_indexing.py
+?? inhouse/ingest/tests/test_run_chain.py
+?? inhouse/rag_chat/tests/acceptance_fixtures.json
+?? inhouse/rag_chat/tests/acceptance_integrations.py
+?? inhouse/rag_chat/tests/chatbot_acceptance_cases.yml
+?? inhouse/rag_chat/tests/run_acceptance_suite.py
+?? inhouse/rag_chat/tests/test_acceptance_integrations.py
+?? inhouse/rag_chat/tests/test_acceptance_module_boundaries.py
+?? inhouse/rag_chat/tests/test_acceptance_suite_runner.py
+?? inhouse/rag_core/tests/test_chunk_retrieval_boundaries.py
+?? inhouse/rag_core/tests/test_dense_pg_hnsw_recall.py
+?? inhouse/rag_core/tests/test_pageindex_body_search.py
+70bfab6d55389d1b2ca6d84319b6f555d4f7e2ca2039f9196b2aeea59c59845e  inhouse/rag_core/ragkit/chatbot.py
+5b123c1b4e762ae154c90627bc6856e6818d6d889313471f3efed67b6b92e728  inhouse/rag_chat/app/routers/chat.py
+e8c742d5d07c4f2add2544341bf4e1a9265d3fd8582ae85600b19ea4fde14322  inhouse/common/komis_raw.py
+07437bd7f64cf76b28b9c80b280c41a7a1132366bde31fd2fe7e7c89ca677eda  inhouse/rag_core/ragkit/_mcp_tools_common.py
+18337b648a306d9614b48bf58205c6bece70ed0f25ad698c0b9203558fb6ac69  inhouse/rag_core/ragkit/action_contract.py
+1242f4d883a877bebffe616ff2d6950dd7c6ed82932460fb256ab55516520bec  inhouse/rag_core/ragkit/chatbot_events.py
+d8fa993f3e882577a30c2b43ccf254d7a5d375ef9215fa6531261bd688f4267a  inhouse/rag_core/retrieval/evidence.py
+d96f7b7cbeca6c5828b1d2bd0d2fc8dc5d03769fa9d4f777de532807575e59da  inhouse/rag_core/ragkit/chatbot_graph.py
+4562edc1552265201e62a136f54aff4715a782295012dba1d86654f9a6498d1e  inhouse/rag_core/retrieval/pageindex.py
+edd12d8c29fbda5d5823b927d92b002204190c19ecbb63a1f476ece787d5cd80  inhouse/rag_core/retrieval/dense_pg.py
+komir-rag-chat:260923-trade-global-port-r1 sha256:2e5102c6e51dd5f6a2defe0420d49b08320c6a3d1ffece0411a416019defd3db 2026-09-22T17:15:06.805958531Z

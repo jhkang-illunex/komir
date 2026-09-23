@@ -1,0 +1,66 @@
+START AC01 최근 1년간 구리 가격 추이를 보여줘
+DONE AC01 FAIL 1.54 ["필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"]
+START AC02 최근 1년간 니켈 가격 추이를 보여줘
+DONE AC02 FAIL 1.45 ["필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"]
+START AC03 최근 1년간 코발트 가격 추이를 보여줘
+DONE AC03 FAIL 1.45 ["필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"]
+START AC04 최근 1년간 리튬 가격 추이를 보여줘
+DONE AC04 FAIL 2.05 ["필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"]
+START AC05 최근 1년간 희토류 가격 추이를 보여줘
+DONE AC05 FAIL 1.46 ["필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"]
+START AC06 구리와 니켈의 최근 3개월 가격 변동률을 비교해줘
+DONE AC06 FAIL 1.14 ["source_unavailable에 대한 독립 사전조건 증거가 없음"]
+START AC07 2025년 니켈 가격이 300% 이상 올랐어?
+DONE AC07 FAIL 4.88 ["필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"]
+START AC08 한국의 리튬 수입 상위 5개국과 국가별 비중을 차트로 보여줘
+DONE AC08 FAIL 4.86 ["필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"]
+START AC09 2025년 한국의 구리 월별 수입금액 추이를 보여줘
+DONE AC09 FAIL 1.85 ["source_unavailable에 대한 독립 사전조건 증거가 없음"]
+START AC10 HS코드 2603000000의 품목명과 한국 수입 현황을 알려줘. 광종 전체 수치와 구분해줘.
+DONE AC10 FAIL 8.08 ["필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"]
+START AC11 한국 리튬 수입의 국가 집중도 HHI를 계산해줘
+DONE AC11 FAIL 1.15 ["source_unavailable에 대한 독립 사전조건 증거가 없음"]
+START AC12 리튬 매장량 상위 5개 국가를 알려줘
+DONE AC12 FAIL 4.42 ["필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"]
+START AC13 희토류 생산량과 매장량 상위 국가를 알려줘
+DONE AC13 FAIL 10.53 ["필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"]
+START AC14 구리 광산 생산량 최근 YoY 증가 상위 5개를 보여줘
+DONE AC14 FAIL 46.93 ["기대 출처 인용 없음: OKF", "필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"]
+START AC15 BHP 보고서에서 Escondida 광산은 어느 나라에 있나?
+DONE AC15 FAIL 2.49 ["기대 출처 인용 없음: PageIndex", "기대 출처 인용 없음: OKF", "필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"]
+START AC16 2025년 한국 리튬의 무역특화지수 TSI를 계산해줘
+DONE AC16 FAIL 2.44 ["필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"]
+START AC17 2025년 한국 리튬 수입액의 전년 대비 증감률을 계산해줘
+DONE AC17 FAIL 4.07 ["source_unavailable에 대한 독립 사전조건 증거가 없음"]
+START AC18 2025년 한국 리튬 수입의 중국 의존도를 계산해줘
+DONE AC18 FAIL 2.1 ["기대 action 미확인: ['trade.indicator'] / 실제=[]", "정상 답변 대신 기권 또는 HITL", "기대 출처 인용 없음: public.KO_CSTM_CMMRC", "필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음"]
+START AC19 2025년 한국 리튬의 현시비교우위지수 RCA를 계산해줘
+DONE AC19 PASS 1.2 []
+START AC20 2025년 한국과 중국의 무역결합도지수 TII를 계산해줘
+DONE AC20 PASS 1.09 []
+START AC21 리튬의 TSI를 계산해줘
+DONE AC21 PASS 0.6 []
+START AC22 리튬의 TSI를 계산해줘
+DONE AC22 FAIL 1.66 ["done 이벤트 개수=0"]
+START AC23 니켈 가격 추이를 보려면 어느 페이지로 가야 돼?
+DONE AC23 PASS 1.99 []
+START AC24 한국의 리튬 수입 데이터를 보려면 어디로 가야 돼?
+DONE AC24 PASS 2.43 []
+START AC25 리튬 수급 이슈를 설명하는 보고서를 찾아줘
+DONE AC25 FAIL 2.57 ["source_unavailable에 대한 독립 사전조건 증거가 없음"]
+START AC26 삼원계 배터리와 니켈·코발트 수요의 관계를 설명하는 보고서를 찾아줘
+DONE AC26 FAIL 2.04 ["source_unavailable에 대한 독립 사전조건 증거가 없음"]
+START AC31 언옵테이늄의 최근 가격을 보여줘
+DONE AC31 FAIL 0.82 ["기권 사유 불일치: unsupported_mineral", "메시지 키 불일치: None"]
+START AC32 2030년 리튬 실제 월별 가격을 차트로 보여줘. 아직 없는 실측 자료라면 없다고 알려줘.
+DONE AC32 PASS 1.9 []
+START AC33 지금 리튬 수급위기 진단 점수를 알려줘
+DONE AC33 FAIL 0.92 ["메시지 키 불일치: None"]
+START AC34 오늘 서울 날씨와 점심 메뉴를 추천해줘
+DONE AC34 PASS 0.7 []
+START AC35 리튬 수입 상위 5개국과 국가별 비중, 그리고 국가 집중도 HHI를 계산해줘
+DONE AC35 PASS 3.73 []
+START AC36 리튬 수급동향지표의 최근 값을 보여줘
+DONE AC36 PASS 0.93 []
+{"FAIL": 23, "PASS": 9} 
+결과: /home/nuri/dev/git/ws/mine_ws/komir/documents/산출물/2026-W39_0921-0927/acceptance_cycle3/astra_full_chatbot_recheck/live/chatbot_acceptance_20260923_211901.json

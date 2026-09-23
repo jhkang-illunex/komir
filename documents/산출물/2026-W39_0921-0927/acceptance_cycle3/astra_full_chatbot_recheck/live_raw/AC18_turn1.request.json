@@ -1,0 +1,10 @@
+{
+  "body": {
+    "user_id": "acceptance-suite",
+    "session_id": "08b41d8b-681f-4a6f-ab04-b3d4852158de",
+    "message": "2025년 한국 리튬 수입의 중국 의존도를 계산해줘"
+  },
+  "url": "http://127.0.0.1:18002/pubchat",
+  "timeout_seconds": 180,
+  "started_at": "2026-09-23T12:20:42.454169+00:00"
+}

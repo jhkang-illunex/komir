@@ -1,0 +1,38 @@
+{
+  "rag_chat/app/routers/chat.py": {
+    "exists": false,
+    "sha256": null
+  },
+  "rag_core/ragkit/action_contract.py": {
+    "exists": true,
+    "sha256": "18337b648a306d9614b48bf58205c6bece70ed0f25ad698c0b9203558fb6ac69"
+  },
+  "rag_core/ragkit/chatbot_graph.py": {
+    "exists": true,
+    "sha256": "d96f7b7cbeca6c5828b1d2bd0d2fc8dc5d03769fa9d4f777de532807575e59da"
+  },
+  "rag_core/ragkit/chunk.py": {
+    "exists": true,
+    "sha256": "6ad80b6ae2edd52cecaa56255acae0a1ccd2f067dcf4d9b63ed28b631d061dc0"
+  },
+  "rag_core/ragkit/embed.py": {
+    "exists": true,
+    "sha256": "35f7d46cec714593dde9062b5c0da0f82b30fd87d7ddd553dcfe3b05fc431469"
+  },
+  "rag_core/retrieval/dense_pg.py": {
+    "exists": true,
+    "sha256": "55d3e91368c8b34ab42d8b4b5bc030b9657a956e1118a6bef1e9544038fde1cc"
+  },
+  "rag_core/retrieval/pageindex.py": {
+    "exists": true,
+    "sha256": "811d7fd2e59baa4425e1f12ed38fde8cead5c7b955fb688ba2f2896eefbacb6f"
+  },
+  "common/komis_raw.py": {
+    "exists": true,
+    "sha256": "e8c742d5d07c4f2add2544341bf4e1a9265d3fd8582ae85600b19ea4fde14322"
+  },
+  "rag_core/retrieval/evidence.py": {
+    "exists": true,
+    "sha256": "0c467c302d0bf6c04abc019affd56104187a23267dfd304c3f0c1a249b576840"
+  }
+}

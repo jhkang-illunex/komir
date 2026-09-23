@@ -1,0 +1,1135 @@
+{
+  "timestamp": "2026-09-23T12:26:12.905815+00:00",
+  "read_only_transaction": true,
+  "checks": {
+    "mineral_master": {
+      "sql": "SELECT mnrknd_unq_cd,mnrl_nm_ko FROM public.ai_mnrl_mst WHERE mnrl_nm_ko IN ('동','구리','니켈','코발트','리튬','희토류','네오디뮴') ORDER BY 1",
+      "params": [],
+      "rows": [
+        {
+          "mnrknd_unq_cd": "CO",
+          "mnrl_nm_ko": "코발트"
+        },
+        {
+          "mnrknd_unq_cd": "CU",
+          "mnrl_nm_ko": "동"
+        },
+        {
+          "mnrknd_unq_cd": "LI",
+          "mnrl_nm_ko": "리튬"
+        },
+        {
+          "mnrknd_unq_cd": "MNRL0001",
+          "mnrl_nm_ko": "리튬"
+        },
+        {
+          "mnrknd_unq_cd": "MNRL0002",
+          "mnrl_nm_ko": "니켈"
+        },
+        {
+          "mnrknd_unq_cd": "MNRL0003",
+          "mnrl_nm_ko": "코발트"
+        },
+        {
+          "mnrknd_unq_cd": "MNRL0006",
+          "mnrl_nm_ko": "희토류"
+        },
+        {
+          "mnrknd_unq_cd": "MNRL0008",
+          "mnrl_nm_ko": "동"
+        },
+        {
+          "mnrknd_unq_cd": "MNRL1001",
+          "mnrl_nm_ko": "네오디뮴"
+        },
+        {
+          "mnrknd_unq_cd": "ND",
+          "mnrl_nm_ko": "네오디뮴"
+        },
+        {
+          "mnrknd_unq_cd": "NI",
+          "mnrl_nm_ko": "니켈"
+        }
+      ]
+    },
+    "price_코발트_CO": {
+      "sql": "SELECT m.mnrl_prc_crtr_sn,c.prc_crtr,c.prc_unit_cd,c.weig_unit_cd,count(p.*) AS rows,min(p.crtr_ymd) AS first,max(p.crtr_ymd) AS last FROM public.ai_prc_mnrl_map m JOIN public.ko_mnrl_prc_crtr c USING(mnrl_prc_crtr_sn) LEFT JOIN public.ko_mnrl_prc p USING(mnrl_prc_crtr_sn) WHERE m.mnrknd_unq_cd=%s AND m.use_yn='Y' GROUP BY 1,2,3,4 ORDER BY 1",
+      "params": [
+        "CO"
+      ],
+      "rows": []
+    },
+    "hs_코발트_CO": {
+      "sql": "SELECT hs_cd FROM public.ai_hs_mnrl_map WHERE mnrknd_unq_cd=%s AND use_yn='Y' ORDER BY hs_cd",
+      "params": [
+        "CO"
+      ],
+      "rows": []
+    },
+    "reserves_코발트_CO": {
+      "sql": "SELECT crtr_yr,ntn_eng_cd,sum(burudg_quty_ton) AS amount FROM public.ko_rsrc_burudg_quty WHERE mnrknd_unq_cd=%s AND crtr_yr=(SELECT max(crtr_yr) FROM public.ko_rsrc_burudg_quty WHERE mnrknd_unq_cd=%s) GROUP BY 1,2 ORDER BY 3 DESC NULLS LAST LIMIT 6",
+      "params": [
+        "CO",
+        "CO"
+      ],
+      "rows": []
+    },
+    "production_코발트_CO": {
+      "sql": "SELECT crtr_yr,ntn_eng_cd,sum(prdctn_quty_ton) AS amount FROM public.ko_rsrc_prdctn_quty WHERE mnrknd_unq_cd=%s AND crtr_yr=(SELECT max(crtr_yr) FROM public.ko_rsrc_prdctn_quty WHERE mnrknd_unq_cd=%s) GROUP BY 1,2 ORDER BY 3 DESC NULLS LAST LIMIT 6",
+      "params": [
+        "CO",
+        "CO"
+      ],
+      "rows": []
+    },
+    "price_동_CU": {
+      "sql": "SELECT m.mnrl_prc_crtr_sn,c.prc_crtr,c.prc_unit_cd,c.weig_unit_cd,count(p.*) AS rows,min(p.crtr_ymd) AS first,max(p.crtr_ymd) AS last FROM public.ai_prc_mnrl_map m JOIN public.ko_mnrl_prc_crtr c USING(mnrl_prc_crtr_sn) LEFT JOIN public.ko_mnrl_prc p USING(mnrl_prc_crtr_sn) WHERE m.mnrknd_unq_cd=%s AND m.use_yn='Y' GROUP BY 1,2,3,4 ORDER BY 1",
+      "params": [
+        "CU"
+      ],
+      "rows": []
+    },
+    "hs_동_CU": {
+      "sql": "SELECT hs_cd FROM public.ai_hs_mnrl_map WHERE mnrknd_unq_cd=%s AND use_yn='Y' ORDER BY hs_cd",
+      "params": [
+        "CU"
+      ],
+      "rows": []
+    },
+    "reserves_동_CU": {
+      "sql": "SELECT crtr_yr,ntn_eng_cd,sum(burudg_quty_ton) AS amount FROM public.ko_rsrc_burudg_quty WHERE mnrknd_unq_cd=%s AND crtr_yr=(SELECT max(crtr_yr) FROM public.ko_rsrc_burudg_quty WHERE mnrknd_unq_cd=%s) GROUP BY 1,2 ORDER BY 3 DESC NULLS LAST LIMIT 6",
+      "params": [
+        "CU",
+        "CU"
+      ],
+      "rows": []
+    },
+    "production_동_CU": {
+      "sql": "SELECT crtr_yr,ntn_eng_cd,sum(prdctn_quty_ton) AS amount FROM public.ko_rsrc_prdctn_quty WHERE mnrknd_unq_cd=%s AND crtr_yr=(SELECT max(crtr_yr) FROM public.ko_rsrc_prdctn_quty WHERE mnrknd_unq_cd=%s) GROUP BY 1,2 ORDER BY 3 DESC NULLS LAST LIMIT 6",
+      "params": [
+        "CU",
+        "CU"
+      ],
+      "rows": []
+    },
+    "price_리튬_LI": {
+      "sql": "SELECT m.mnrl_prc_crtr_sn,c.prc_crtr,c.prc_unit_cd,c.weig_unit_cd,count(p.*) AS rows,min(p.crtr_ymd) AS first,max(p.crtr_ymd) AS last FROM public.ai_prc_mnrl_map m JOIN public.ko_mnrl_prc_crtr c USING(mnrl_prc_crtr_sn) LEFT JOIN public.ko_mnrl_prc p USING(mnrl_prc_crtr_sn) WHERE m.mnrknd_unq_cd=%s AND m.use_yn='Y' GROUP BY 1,2,3,4 ORDER BY 1",
+      "params": [
+        "LI"
+      ],
+      "rows": []
+    },
+    "hs_리튬_LI": {
+      "sql": "SELECT hs_cd FROM public.ai_hs_mnrl_map WHERE mnrknd_unq_cd=%s AND use_yn='Y' ORDER BY hs_cd",
+      "params": [
+        "LI"
+      ],
+      "rows": []
+    },
+    "reserves_리튬_LI": {
+      "sql": "SELECT crtr_yr,ntn_eng_cd,sum(burudg_quty_ton) AS amount FROM public.ko_rsrc_burudg_quty WHERE mnrknd_unq_cd=%s AND crtr_yr=(SELECT max(crtr_yr) FROM public.ko_rsrc_burudg_quty WHERE mnrknd_unq_cd=%s) GROUP BY 1,2 ORDER BY 3 DESC NULLS LAST LIMIT 6",
+      "params": [
+        "LI",
+        "LI"
+      ],
+      "rows": []
+    },
+    "production_리튬_LI": {
+      "sql": "SELECT crtr_yr,ntn_eng_cd,sum(prdctn_quty_ton) AS amount FROM public.ko_rsrc_prdctn_quty WHERE mnrknd_unq_cd=%s AND crtr_yr=(SELECT max(crtr_yr) FROM public.ko_rsrc_prdctn_quty WHERE mnrknd_unq_cd=%s) GROUP BY 1,2 ORDER BY 3 DESC NULLS LAST LIMIT 6",
+      "params": [
+        "LI",
+        "LI"
+      ],
+      "rows": []
+    },
+    "price_리튬_MNRL0001": {
+      "sql": "SELECT m.mnrl_prc_crtr_sn,c.prc_crtr,c.prc_unit_cd,c.weig_unit_cd,count(p.*) AS rows,min(p.crtr_ymd) AS first,max(p.crtr_ymd) AS last FROM public.ai_prc_mnrl_map m JOIN public.ko_mnrl_prc_crtr c USING(mnrl_prc_crtr_sn) LEFT JOIN public.ko_mnrl_prc p USING(mnrl_prc_crtr_sn) WHERE m.mnrknd_unq_cd=%s AND m.use_yn='Y' GROUP BY 1,2,3,4 ORDER BY 1",
+      "params": [
+        "MNRL0001"
+      ],
+      "rows": [
+        {
+          "mnrl_prc_crtr_sn": "900001",
+          "prc_crtr": "[DEV_DUMMY] spot",
+          "prc_unit_cd": "USD",
+          "weig_unit_cd": "TON",
+          "rows": 65,
+          "first": "20260707",
+          "last": "20260909"
+        }
+      ]
+    },
+    "hs_리튬_MNRL0001": {
+      "sql": "SELECT hs_cd FROM public.ai_hs_mnrl_map WHERE mnrknd_unq_cd=%s AND use_yn='Y' ORDER BY hs_cd",
+      "params": [
+        "MNRL0001"
+      ],
+      "rows": [
+        {
+          "hs_cd": "9900000101"
+        },
+        {
+          "hs_cd": "9900000102"
+        }
+      ]
+    },
+    "trade_2025_리튬_MNRL0001": {
+      "sql": "SELECT count(*) AS rows,min(crtr_ymd) AS first,max(crtr_ymd) AS last,sum(incm_amt) AS imports,sum(exp_amt) AS exports FROM public.ko_cstm_cmmrc WHERE hs_cd=ANY(%s) AND crtr_ymd BETWEEN '20250101' AND '20251231'",
+      "params": [
+        [
+          "9900000101",
+          "9900000102"
+        ]
+      ],
+      "rows": [
+        {
+          "rows": 40,
+          "first": "20250701",
+          "last": "20250909",
+          "imports": "108544000.00",
+          "exports": "0.00"
+        }
+      ]
+    },
+    "lithium_yearly_trade": {
+      "sql": "SELECT substring(crtr_ymd,1,4) AS year,sum(incm_amt) AS imports,sum(exp_amt) AS exports FROM public.ko_cstm_cmmrc WHERE hs_cd=ANY(%s) AND crtr_ymd BETWEEN '20240101' AND '20251231' GROUP BY 1 ORDER BY 1",
+      "params": [
+        [
+          "9900000101",
+          "9900000102"
+        ]
+      ],
+      "rows": [
+        {
+          "year": "2025",
+          "imports": "108544000.00",
+          "exports": "0.00"
+        }
+      ]
+    },
+    "lithium_china_2025": {
+      "sql": "SELECT trgt_ntn,trgt_ntn_cd,sum(incm_amt) AS imports FROM public.ko_cstm_cmmrc WHERE hs_cd=ANY(%s) AND crtr_ymd BETWEEN '20250101' AND '20251231' GROUP BY 1,2 ORDER BY imports DESC",
+      "params": [
+        [
+          "9900000101",
+          "9900000102"
+        ]
+      ],
+      "rows": [
+        {
+          "trgt_ntn": "호주",
+          "trgt_ntn_cd": "AU",
+          "imports": "40816640.00"
+        },
+        {
+          "trgt_ntn": "중국",
+          "trgt_ntn_cd": "CN",
+          "imports": "28518400.00"
+        },
+        {
+          "trgt_ntn": "인도네시아",
+          "trgt_ntn_cd": "ID",
+          "imports": "11100160.00"
+        },
+        {
+          "trgt_ntn": "칠레",
+          "trgt_ntn_cd": "CL",
+          "imports": "7720960.00"
+        },
+        {
+          "trgt_ntn": "콩고민주공화국",
+          "trgt_ntn_cd": "CD",
+          "imports": "6031360.00"
+        },
+        {
+          "trgt_ntn": "미국",
+          "trgt_ntn_cd": "US",
+          "imports": "4945920.00"
+        },
+        {
+          "trgt_ntn": "러시아",
+          "trgt_ntn_cd": "RU",
+          "imports": "3860480.00"
+        },
+        {
+          "trgt_ntn": "남아프리카공화국",
+          "trgt_ntn_cd": "ZA",
+          "imports": "2775040.00"
+        },
+        {
+          "trgt_ntn": "캐나다",
+          "trgt_ntn_cd": "CA",
+          "imports": "1689600.00"
+        },
+        {
+          "trgt_ntn": "브라질",
+          "trgt_ntn_cd": "BR",
+          "imports": "1085440.00"
+        }
+      ]
+    },
+    "lithium_rank_default": {
+      "sql": "SELECT trgt_ntn,sum(incm_amt) AS imports FROM public.ko_cstm_cmmrc WHERE hs_cd=ANY(%s) AND crtr_ymd BETWEEN '20250701' AND '20260909' GROUP BY 1 ORDER BY 2 DESC",
+      "params": [
+        [
+          "9900000101",
+          "9900000102"
+        ]
+      ],
+      "rows": [
+        {
+          "trgt_ntn": "호주",
+          "imports": "113202400.00"
+        },
+        {
+          "trgt_ntn": "중국",
+          "imports": "79094000.00"
+        },
+        {
+          "trgt_ntn": "인도네시아",
+          "imports": "30785600.00"
+        },
+        {
+          "trgt_ntn": "칠레",
+          "imports": "21413600.00"
+        },
+        {
+          "trgt_ntn": "콩고민주공화국",
+          "imports": "16727600.00"
+        },
+        {
+          "trgt_ntn": "미국",
+          "imports": "13717200.00"
+        },
+        {
+          "trgt_ntn": "러시아",
+          "imports": "10706800.00"
+        },
+        {
+          "trgt_ntn": "남아프리카공화국",
+          "imports": "7696400.00"
+        },
+        {
+          "trgt_ntn": "캐나다",
+          "imports": "4686000.00"
+        },
+        {
+          "trgt_ntn": "브라질",
+          "imports": "3010400.00"
+        }
+      ]
+    },
+    "reserves_리튬_MNRL0001": {
+      "sql": "SELECT crtr_yr,ntn_eng_cd,sum(burudg_quty_ton) AS amount FROM public.ko_rsrc_burudg_quty WHERE mnrknd_unq_cd=%s AND crtr_yr=(SELECT max(crtr_yr) FROM public.ko_rsrc_burudg_quty WHERE mnrknd_unq_cd=%s) GROUP BY 1,2 ORDER BY 3 DESC NULLS LAST LIMIT 6",
+      "params": [
+        "MNRL0001",
+        "MNRL0001"
+      ],
+      "rows": [
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CN",
+          "amount": "136300.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "AU",
+          "amount": "28200.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "ID",
+          "amount": "18800.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CL",
+          "amount": "14100.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CD",
+          "amount": "11750.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "US",
+          "amount": "9400.00"
+        }
+      ]
+    },
+    "production_리튬_MNRL0001": {
+      "sql": "SELECT crtr_yr,ntn_eng_cd,sum(prdctn_quty_ton) AS amount FROM public.ko_rsrc_prdctn_quty WHERE mnrknd_unq_cd=%s AND crtr_yr=(SELECT max(crtr_yr) FROM public.ko_rsrc_prdctn_quty WHERE mnrknd_unq_cd=%s) GROUP BY 1,2 ORDER BY 3 DESC NULLS LAST LIMIT 6",
+      "params": [
+        "MNRL0001",
+        "MNRL0001"
+      ],
+      "rows": [
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CN",
+          "amount": "21808.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "AU",
+          "amount": "4512.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "ID",
+          "amount": "3008.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CL",
+          "amount": "2256.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CD",
+          "amount": "1880.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "US",
+          "amount": "1504.00"
+        }
+      ]
+    },
+    "price_니켈_MNRL0002": {
+      "sql": "SELECT m.mnrl_prc_crtr_sn,c.prc_crtr,c.prc_unit_cd,c.weig_unit_cd,count(p.*) AS rows,min(p.crtr_ymd) AS first,max(p.crtr_ymd) AS last FROM public.ai_prc_mnrl_map m JOIN public.ko_mnrl_prc_crtr c USING(mnrl_prc_crtr_sn) LEFT JOIN public.ko_mnrl_prc p USING(mnrl_prc_crtr_sn) WHERE m.mnrknd_unq_cd=%s AND m.use_yn='Y' GROUP BY 1,2,3,4 ORDER BY 1",
+      "params": [
+        "MNRL0002"
+      ],
+      "rows": [
+        {
+          "mnrl_prc_crtr_sn": "502",
+          "prc_crtr": "LME CASH",
+          "prc_unit_cd": "PR001",
+          "weig_unit_cd": "WT002",
+          "rows": 6245,
+          "first": "20020102",
+          "last": "20270703"
+        },
+        {
+          "mnrl_prc_crtr_sn": "900002",
+          "prc_crtr": "[DEV_DUMMY] spot",
+          "prc_unit_cd": "USD",
+          "weig_unit_cd": "TON",
+          "rows": 65,
+          "first": "20260707",
+          "last": "20260909"
+        }
+      ]
+    },
+    "hs_니켈_MNRL0002": {
+      "sql": "SELECT hs_cd FROM public.ai_hs_mnrl_map WHERE mnrknd_unq_cd=%s AND use_yn='Y' ORDER BY hs_cd",
+      "params": [
+        "MNRL0002"
+      ],
+      "rows": [
+        {
+          "hs_cd": "9900000201"
+        },
+        {
+          "hs_cd": "9900000202"
+        }
+      ]
+    },
+    "trade_2025_니켈_MNRL0002": {
+      "sql": "SELECT count(*) AS rows,min(crtr_ymd) AS first,max(crtr_ymd) AS last,sum(incm_amt) AS imports,sum(exp_amt) AS exports FROM public.ko_cstm_cmmrc WHERE hs_cd=ANY(%s) AND crtr_ymd BETWEEN '20250101' AND '20251231'",
+      "params": [
+        [
+          "9900000201",
+          "9900000202"
+        ]
+      ],
+      "rows": [
+        {
+          "rows": 40,
+          "first": "20250701",
+          "last": "20250909",
+          "imports": "133120000.00",
+          "exports": "0.00"
+        }
+      ]
+    },
+    "reserves_니켈_MNRL0002": {
+      "sql": "SELECT crtr_yr,ntn_eng_cd,sum(burudg_quty_ton) AS amount FROM public.ko_rsrc_burudg_quty WHERE mnrknd_unq_cd=%s AND crtr_yr=(SELECT max(crtr_yr) FROM public.ko_rsrc_burudg_quty WHERE mnrknd_unq_cd=%s) GROUP BY 1,2 ORDER BY 3 DESC NULLS LAST LIMIT 6",
+      "params": [
+        "MNRL0002",
+        "MNRL0002"
+      ],
+      "rows": [
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CN",
+          "amount": "171100.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "AU",
+          "amount": "35400.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "ID",
+          "amount": "23600.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CL",
+          "amount": "17700.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CD",
+          "amount": "14750.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "US",
+          "amount": "11800.00"
+        }
+      ]
+    },
+    "production_니켈_MNRL0002": {
+      "sql": "SELECT crtr_yr,ntn_eng_cd,sum(prdctn_quty_ton) AS amount FROM public.ko_rsrc_prdctn_quty WHERE mnrknd_unq_cd=%s AND crtr_yr=(SELECT max(crtr_yr) FROM public.ko_rsrc_prdctn_quty WHERE mnrknd_unq_cd=%s) GROUP BY 1,2 ORDER BY 3 DESC NULLS LAST LIMIT 6",
+      "params": [
+        "MNRL0002",
+        "MNRL0002"
+      ],
+      "rows": [
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CN",
+          "amount": "27376.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "AU",
+          "amount": "5664.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "ID",
+          "amount": "3776.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CL",
+          "amount": "2832.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CD",
+          "amount": "2360.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "US",
+          "amount": "1888.00"
+        }
+      ]
+    },
+    "price_코발트_MNRL0003": {
+      "sql": "SELECT m.mnrl_prc_crtr_sn,c.prc_crtr,c.prc_unit_cd,c.weig_unit_cd,count(p.*) AS rows,min(p.crtr_ymd) AS first,max(p.crtr_ymd) AS last FROM public.ai_prc_mnrl_map m JOIN public.ko_mnrl_prc_crtr c USING(mnrl_prc_crtr_sn) LEFT JOIN public.ko_mnrl_prc p USING(mnrl_prc_crtr_sn) WHERE m.mnrknd_unq_cd=%s AND m.use_yn='Y' GROUP BY 1,2,3,4 ORDER BY 1",
+      "params": [
+        "MNRL0003"
+      ],
+      "rows": [
+        {
+          "mnrl_prc_crtr_sn": "900003",
+          "prc_crtr": "[DEV_DUMMY] spot",
+          "prc_unit_cd": "USD",
+          "weig_unit_cd": "TON",
+          "rows": 65,
+          "first": "20260707",
+          "last": "20260909"
+        }
+      ]
+    },
+    "hs_코발트_MNRL0003": {
+      "sql": "SELECT hs_cd FROM public.ai_hs_mnrl_map WHERE mnrknd_unq_cd=%s AND use_yn='Y' ORDER BY hs_cd",
+      "params": [
+        "MNRL0003"
+      ],
+      "rows": [
+        {
+          "hs_cd": "9900000301"
+        },
+        {
+          "hs_cd": "9900000302"
+        }
+      ]
+    },
+    "trade_2025_코발트_MNRL0003": {
+      "sql": "SELECT count(*) AS rows,min(crtr_ymd) AS first,max(crtr_ymd) AS last,sum(incm_amt) AS imports,sum(exp_amt) AS exports FROM public.ko_cstm_cmmrc WHERE hs_cd=ANY(%s) AND crtr_ymd BETWEEN '20250101' AND '20251231'",
+      "params": [
+        [
+          "9900000301",
+          "9900000302"
+        ]
+      ],
+      "rows": [
+        {
+          "rows": 40,
+          "first": "20250701",
+          "last": "20250909",
+          "imports": "157696000.00",
+          "exports": "0.00"
+        }
+      ]
+    },
+    "reserves_코발트_MNRL0003": {
+      "sql": "SELECT crtr_yr,ntn_eng_cd,sum(burudg_quty_ton) AS amount FROM public.ko_rsrc_burudg_quty WHERE mnrknd_unq_cd=%s AND crtr_yr=(SELECT max(crtr_yr) FROM public.ko_rsrc_burudg_quty WHERE mnrknd_unq_cd=%s) GROUP BY 1,2 ORDER BY 3 DESC NULLS LAST LIMIT 6",
+      "params": [
+        "MNRL0003",
+        "MNRL0003"
+      ],
+      "rows": [
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CN",
+          "amount": "113600.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "AU",
+          "amount": "63900.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "ID",
+          "amount": "49700.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CL",
+          "amount": "35500.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CD",
+          "amount": "28400.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "US",
+          "amount": "21300.00"
+        }
+      ]
+    },
+    "production_코발트_MNRL0003": {
+      "sql": "SELECT crtr_yr,ntn_eng_cd,sum(prdctn_quty_ton) AS amount FROM public.ko_rsrc_prdctn_quty WHERE mnrknd_unq_cd=%s AND crtr_yr=(SELECT max(crtr_yr) FROM public.ko_rsrc_prdctn_quty WHERE mnrknd_unq_cd=%s) GROUP BY 1,2 ORDER BY 3 DESC NULLS LAST LIMIT 6",
+      "params": [
+        "MNRL0003",
+        "MNRL0003"
+      ],
+      "rows": [
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CN",
+          "amount": "18176.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "AU",
+          "amount": "10224.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "ID",
+          "amount": "7952.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CL",
+          "amount": "5680.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CD",
+          "amount": "4544.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "US",
+          "amount": "3408.00"
+        }
+      ]
+    },
+    "price_희토류_MNRL0006": {
+      "sql": "SELECT m.mnrl_prc_crtr_sn,c.prc_crtr,c.prc_unit_cd,c.weig_unit_cd,count(p.*) AS rows,min(p.crtr_ymd) AS first,max(p.crtr_ymd) AS last FROM public.ai_prc_mnrl_map m JOIN public.ko_mnrl_prc_crtr c USING(mnrl_prc_crtr_sn) LEFT JOIN public.ko_mnrl_prc p USING(mnrl_prc_crtr_sn) WHERE m.mnrknd_unq_cd=%s AND m.use_yn='Y' GROUP BY 1,2,3,4 ORDER BY 1",
+      "params": [
+        "MNRL0006"
+      ],
+      "rows": [
+        {
+          "mnrl_prc_crtr_sn": "900006",
+          "prc_crtr": "[DEV_DUMMY] spot",
+          "prc_unit_cd": "USD",
+          "weig_unit_cd": "TON",
+          "rows": 65,
+          "first": "20260707",
+          "last": "20260909"
+        }
+      ]
+    },
+    "hs_희토류_MNRL0006": {
+      "sql": "SELECT hs_cd FROM public.ai_hs_mnrl_map WHERE mnrknd_unq_cd=%s AND use_yn='Y' ORDER BY hs_cd",
+      "params": [
+        "MNRL0006"
+      ],
+      "rows": [
+        {
+          "hs_cd": "9900000601"
+        },
+        {
+          "hs_cd": "9900000602"
+        }
+      ]
+    },
+    "trade_2025_희토류_MNRL0006": {
+      "sql": "SELECT count(*) AS rows,min(crtr_ymd) AS first,max(crtr_ymd) AS last,sum(incm_amt) AS imports,sum(exp_amt) AS exports FROM public.ko_cstm_cmmrc WHERE hs_cd=ANY(%s) AND crtr_ymd BETWEEN '20250101' AND '20251231'",
+      "params": [
+        [
+          "9900000601",
+          "9900000602"
+        ]
+      ],
+      "rows": [
+        {
+          "rows": 40,
+          "first": "20250701",
+          "last": "20250909",
+          "imports": "182272000.00",
+          "exports": "0.00"
+        }
+      ]
+    },
+    "reserves_희토류_MNRL0006": {
+      "sql": "SELECT crtr_yr,ntn_eng_cd,sum(burudg_quty_ton) AS amount FROM public.ko_rsrc_burudg_quty WHERE mnrknd_unq_cd=%s AND crtr_yr=(SELECT max(crtr_yr) FROM public.ko_rsrc_burudg_quty WHERE mnrknd_unq_cd=%s) GROUP BY 1,2 ORDER BY 3 DESC NULLS LAST LIMIT 6",
+      "params": [
+        "MNRL0006",
+        "MNRL0006"
+      ],
+      "rows": [
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CN",
+          "amount": "132800.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "AU",
+          "amount": "74700.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "ID",
+          "amount": "58100.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CL",
+          "amount": "41500.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CD",
+          "amount": "33200.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "US",
+          "amount": "24900.00"
+        }
+      ]
+    },
+    "production_희토류_MNRL0006": {
+      "sql": "SELECT crtr_yr,ntn_eng_cd,sum(prdctn_quty_ton) AS amount FROM public.ko_rsrc_prdctn_quty WHERE mnrknd_unq_cd=%s AND crtr_yr=(SELECT max(crtr_yr) FROM public.ko_rsrc_prdctn_quty WHERE mnrknd_unq_cd=%s) GROUP BY 1,2 ORDER BY 3 DESC NULLS LAST LIMIT 6",
+      "params": [
+        "MNRL0006",
+        "MNRL0006"
+      ],
+      "rows": [
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CN",
+          "amount": "21248.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "AU",
+          "amount": "11952.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "ID",
+          "amount": "9296.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CL",
+          "amount": "6640.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CD",
+          "amount": "5312.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "US",
+          "amount": "3984.00"
+        }
+      ]
+    },
+    "price_동_MNRL0008": {
+      "sql": "SELECT m.mnrl_prc_crtr_sn,c.prc_crtr,c.prc_unit_cd,c.weig_unit_cd,count(p.*) AS rows,min(p.crtr_ymd) AS first,max(p.crtr_ymd) AS last FROM public.ai_prc_mnrl_map m JOIN public.ko_mnrl_prc_crtr c USING(mnrl_prc_crtr_sn) LEFT JOIN public.ko_mnrl_prc p USING(mnrl_prc_crtr_sn) WHERE m.mnrknd_unq_cd=%s AND m.use_yn='Y' GROUP BY 1,2,3,4 ORDER BY 1",
+      "params": [
+        "MNRL0008"
+      ],
+      "rows": [
+        {
+          "mnrl_prc_crtr_sn": "900008",
+          "prc_crtr": "[DEV_DUMMY] spot",
+          "prc_unit_cd": "USD",
+          "weig_unit_cd": "TON",
+          "rows": 65,
+          "first": "20260707",
+          "last": "20260909"
+        }
+      ]
+    },
+    "hs_동_MNRL0008": {
+      "sql": "SELECT hs_cd FROM public.ai_hs_mnrl_map WHERE mnrknd_unq_cd=%s AND use_yn='Y' ORDER BY hs_cd",
+      "params": [
+        "MNRL0008"
+      ],
+      "rows": [
+        {
+          "hs_cd": "9900000801"
+        },
+        {
+          "hs_cd": "9900000802"
+        }
+      ]
+    },
+    "trade_2025_동_MNRL0008": {
+      "sql": "SELECT count(*) AS rows,min(crtr_ymd) AS first,max(crtr_ymd) AS last,sum(incm_amt) AS imports,sum(exp_amt) AS exports FROM public.ko_cstm_cmmrc WHERE hs_cd=ANY(%s) AND crtr_ymd BETWEEN '20250101' AND '20251231'",
+      "params": [
+        [
+          "9900000801",
+          "9900000802"
+        ]
+      ],
+      "rows": [
+        {
+          "rows": 40,
+          "first": "20250701",
+          "last": "20250909",
+          "imports": "96256000.00",
+          "exports": "0.00"
+        }
+      ]
+    },
+    "reserves_동_MNRL0008": {
+      "sql": "SELECT crtr_yr,ntn_eng_cd,sum(burudg_quty_ton) AS amount FROM public.ko_rsrc_burudg_quty WHERE mnrknd_unq_cd=%s AND crtr_yr=(SELECT max(crtr_yr) FROM public.ko_rsrc_burudg_quty WHERE mnrknd_unq_cd=%s) GROUP BY 1,2 ORDER BY 3 DESC NULLS LAST LIMIT 6",
+      "params": [
+        "MNRL0008",
+        "MNRL0008"
+      ],
+      "rows": [
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CN",
+          "amount": "136300.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "AU",
+          "amount": "28200.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "ID",
+          "amount": "18800.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CL",
+          "amount": "14100.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CD",
+          "amount": "11750.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "US",
+          "amount": "9400.00"
+        }
+      ]
+    },
+    "production_동_MNRL0008": {
+      "sql": "SELECT crtr_yr,ntn_eng_cd,sum(prdctn_quty_ton) AS amount FROM public.ko_rsrc_prdctn_quty WHERE mnrknd_unq_cd=%s AND crtr_yr=(SELECT max(crtr_yr) FROM public.ko_rsrc_prdctn_quty WHERE mnrknd_unq_cd=%s) GROUP BY 1,2 ORDER BY 3 DESC NULLS LAST LIMIT 6",
+      "params": [
+        "MNRL0008",
+        "MNRL0008"
+      ],
+      "rows": [
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CN",
+          "amount": "21808.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "AU",
+          "amount": "4512.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "ID",
+          "amount": "3008.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CL",
+          "amount": "2256.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CD",
+          "amount": "1880.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "US",
+          "amount": "1504.00"
+        }
+      ]
+    },
+    "price_네오디뮴_MNRL1001": {
+      "sql": "SELECT m.mnrl_prc_crtr_sn,c.prc_crtr,c.prc_unit_cd,c.weig_unit_cd,count(p.*) AS rows,min(p.crtr_ymd) AS first,max(p.crtr_ymd) AS last FROM public.ai_prc_mnrl_map m JOIN public.ko_mnrl_prc_crtr c USING(mnrl_prc_crtr_sn) LEFT JOIN public.ko_mnrl_prc p USING(mnrl_prc_crtr_sn) WHERE m.mnrknd_unq_cd=%s AND m.use_yn='Y' GROUP BY 1,2,3,4 ORDER BY 1",
+      "params": [
+        "MNRL1001"
+      ],
+      "rows": [
+        {
+          "mnrl_prc_crtr_sn": "757",
+          "prc_crtr": "[DEV_DUMMY] 산화네오디뮴",
+          "prc_unit_cd": "PR001",
+          "weig_unit_cd": "WT001",
+          "rows": 120,
+          "first": "20260508",
+          "last": "20260904"
+        },
+        {
+          "mnrl_prc_crtr_sn": "901001",
+          "prc_crtr": "[DEV_DUMMY] spot",
+          "prc_unit_cd": "USD",
+          "weig_unit_cd": "TON",
+          "rows": 65,
+          "first": "20260707",
+          "last": "20260909"
+        }
+      ]
+    },
+    "hs_네오디뮴_MNRL1001": {
+      "sql": "SELECT hs_cd FROM public.ai_hs_mnrl_map WHERE mnrknd_unq_cd=%s AND use_yn='Y' ORDER BY hs_cd",
+      "params": [
+        "MNRL1001"
+      ],
+      "rows": [
+        {
+          "hs_cd": "9900100101"
+        },
+        {
+          "hs_cd": "9900100102"
+        }
+      ]
+    },
+    "trade_2025_네오디뮴_MNRL1001": {
+      "sql": "SELECT count(*) AS rows,min(crtr_ymd) AS first,max(crtr_ymd) AS last,sum(incm_amt) AS imports,sum(exp_amt) AS exports FROM public.ko_cstm_cmmrc WHERE hs_cd=ANY(%s) AND crtr_ymd BETWEEN '20250101' AND '20251231'",
+      "params": [
+        [
+          "9900100101",
+          "9900100102"
+        ]
+      ],
+      "rows": [
+        {
+          "rows": 20,
+          "first": "20250909",
+          "last": "20250909",
+          "imports": "97280000.00",
+          "exports": "0.00"
+        }
+      ]
+    },
+    "reserves_네오디뮴_MNRL1001": {
+      "sql": "SELECT crtr_yr,ntn_eng_cd,sum(burudg_quty_ton) AS amount FROM public.ko_rsrc_burudg_quty WHERE mnrknd_unq_cd=%s AND crtr_yr=(SELECT max(crtr_yr) FROM public.ko_rsrc_burudg_quty WHERE mnrknd_unq_cd=%s) GROUP BY 1,2 ORDER BY 3 DESC NULLS LAST LIMIT 6",
+      "params": [
+        "MNRL1001",
+        "MNRL1001"
+      ],
+      "rows": [
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CN",
+          "amount": "275500.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "AU",
+          "amount": "57000.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "ID",
+          "amount": "38000.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CL",
+          "amount": "28500.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CD",
+          "amount": "23750.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "US",
+          "amount": "19000.00"
+        }
+      ]
+    },
+    "production_네오디뮴_MNRL1001": {
+      "sql": "SELECT crtr_yr,ntn_eng_cd,sum(prdctn_quty_ton) AS amount FROM public.ko_rsrc_prdctn_quty WHERE mnrknd_unq_cd=%s AND crtr_yr=(SELECT max(crtr_yr) FROM public.ko_rsrc_prdctn_quty WHERE mnrknd_unq_cd=%s) GROUP BY 1,2 ORDER BY 3 DESC NULLS LAST LIMIT 6",
+      "params": [
+        "MNRL1001",
+        "MNRL1001"
+      ],
+      "rows": [
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CN",
+          "amount": "44080.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "AU",
+          "amount": "9120.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "ID",
+          "amount": "6080.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CL",
+          "amount": "4560.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "CD",
+          "amount": "3800.00"
+        },
+        {
+          "crtr_yr": "2026",
+          "ntn_eng_cd": "US",
+          "amount": "3040.00"
+        }
+      ]
+    },
+    "price_네오디뮴_ND": {
+      "sql": "SELECT m.mnrl_prc_crtr_sn,c.prc_crtr,c.prc_unit_cd,c.weig_unit_cd,count(p.*) AS rows,min(p.crtr_ymd) AS first,max(p.crtr_ymd) AS last FROM public.ai_prc_mnrl_map m JOIN public.ko_mnrl_prc_crtr c USING(mnrl_prc_crtr_sn) LEFT JOIN public.ko_mnrl_prc p USING(mnrl_prc_crtr_sn) WHERE m.mnrknd_unq_cd=%s AND m.use_yn='Y' GROUP BY 1,2,3,4 ORDER BY 1",
+      "params": [
+        "ND"
+      ],
+      "rows": []
+    },
+    "hs_네오디뮴_ND": {
+      "sql": "SELECT hs_cd FROM public.ai_hs_mnrl_map WHERE mnrknd_unq_cd=%s AND use_yn='Y' ORDER BY hs_cd",
+      "params": [
+        "ND"
+      ],
+      "rows": []
+    },
+    "reserves_네오디뮴_ND": {
+      "sql": "SELECT crtr_yr,ntn_eng_cd,sum(burudg_quty_ton) AS amount FROM public.ko_rsrc_burudg_quty WHERE mnrknd_unq_cd=%s AND crtr_yr=(SELECT max(crtr_yr) FROM public.ko_rsrc_burudg_quty WHERE mnrknd_unq_cd=%s) GROUP BY 1,2 ORDER BY 3 DESC NULLS LAST LIMIT 6",
+      "params": [
+        "ND",
+        "ND"
+      ],
+      "rows": []
+    },
+    "production_네오디뮴_ND": {
+      "sql": "SELECT crtr_yr,ntn_eng_cd,sum(prdctn_quty_ton) AS amount FROM public.ko_rsrc_prdctn_quty WHERE mnrknd_unq_cd=%s AND crtr_yr=(SELECT max(crtr_yr) FROM public.ko_rsrc_prdctn_quty WHERE mnrknd_unq_cd=%s) GROUP BY 1,2 ORDER BY 3 DESC NULLS LAST LIMIT 6",
+      "params": [
+        "ND",
+        "ND"
+      ],
+      "rows": []
+    },
+    "price_니켈_NI": {
+      "sql": "SELECT m.mnrl_prc_crtr_sn,c.prc_crtr,c.prc_unit_cd,c.weig_unit_cd,count(p.*) AS rows,min(p.crtr_ymd) AS first,max(p.crtr_ymd) AS last FROM public.ai_prc_mnrl_map m JOIN public.ko_mnrl_prc_crtr c USING(mnrl_prc_crtr_sn) LEFT JOIN public.ko_mnrl_prc p USING(mnrl_prc_crtr_sn) WHERE m.mnrknd_unq_cd=%s AND m.use_yn='Y' GROUP BY 1,2,3,4 ORDER BY 1",
+      "params": [
+        "NI"
+      ],
+      "rows": []
+    },
+    "hs_니켈_NI": {
+      "sql": "SELECT hs_cd FROM public.ai_hs_mnrl_map WHERE mnrknd_unq_cd=%s AND use_yn='Y' ORDER BY hs_cd",
+      "params": [
+        "NI"
+      ],
+      "rows": []
+    },
+    "reserves_니켈_NI": {
+      "sql": "SELECT crtr_yr,ntn_eng_cd,sum(burudg_quty_ton) AS amount FROM public.ko_rsrc_burudg_quty WHERE mnrknd_unq_cd=%s AND crtr_yr=(SELECT max(crtr_yr) FROM public.ko_rsrc_burudg_quty WHERE mnrknd_unq_cd=%s) GROUP BY 1,2 ORDER BY 3 DESC NULLS LAST LIMIT 6",
+      "params": [
+        "NI",
+        "NI"
+      ],
+      "rows": []
+    },
+    "production_니켈_NI": {
+      "sql": "SELECT crtr_yr,ntn_eng_cd,sum(prdctn_quty_ton) AS amount FROM public.ko_rsrc_prdctn_quty WHERE mnrknd_unq_cd=%s AND crtr_yr=(SELECT max(crtr_yr) FROM public.ko_rsrc_prdctn_quty WHERE mnrknd_unq_cd=%s) GROUP BY 1,2 ORDER BY 3 DESC NULLS LAST LIMIT 6",
+      "params": [
+        "NI",
+        "NI"
+      ],
+      "rows": []
+    },
+    "hs2603000000": {
+      "sql": "SELECT min(crtr_ymd) AS first,max(crtr_ymd) AS last,sum(incm_amt) AS imports,sum(incm_weig) AS import_weight FROM public.ko_cstm_cmmrc WHERE hs_cd='2603000000'",
+      "params": [],
+      "rows": [
+        {
+          "first": "20140101",
+          "last": "20260701",
+          "imports": "58890426933.00",
+          "import_weight": "23089277377.00"
+        }
+      ]
+    },
+    "future_prices": {
+      "sql": "SELECT count(*) AS rows FROM public.ko_mnrl_prc WHERE crtr_ymd>='20300101'",
+      "params": [],
+      "rows": [
+        {
+          "rows": 0
+        }
+      ]
+    }
+  }
+}

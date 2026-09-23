@@ -1,0 +1,166 @@
+{
+  "suite": "komir-chatbot-acceptance-260923",
+  "generated_at": "2026-09-23T02:31:40.371031",
+  "base_url": "http://127.0.0.1:18002",
+  "results": [
+    {
+      "id": "AC19",
+      "title": "RCA 미연결 경계",
+      "layer": "live",
+      "status": "PASS",
+      "errors": [],
+      "detail": {
+        "done": {
+          "done": true,
+          "citations": [],
+          "bogus_citations": [],
+          "abstained": true,
+          "abstain_reason": "source_unavailable"
+        },
+        "event_count": 8
+      },
+      "elapsed_seconds": 1.18
+    },
+    {
+      "id": "AC21",
+      "title": "무역 HITL 누락 슬롯",
+      "layer": "live",
+      "status": "PASS",
+      "errors": [],
+      "detail": {
+        "done": {
+          "done": true,
+          "needs_clarification": true,
+          "clarification": {
+            "action_id": "trade.indicator",
+            "slots": [
+              "reporter_country",
+              "period"
+            ]
+          }
+        },
+        "event_count": 4
+      },
+      "elapsed_seconds": 0.6
+    },
+    {
+      "id": "AC23",
+      "title": "가격 메뉴 안내",
+      "layer": "live",
+      "status": "PASS",
+      "errors": [],
+      "detail": {
+        "done": {
+          "done": true,
+          "mode": "page",
+          "status": "recommended",
+          "relation": "first_turn",
+          "recommendations": [
+            {
+              "page_id": "price_base_metals",
+              "page_name": "비철금속",
+              "section": "광물자원가격",
+              "url": "https://www.komis.or.kr/Komis/RsrcPrice/BaseMetals",
+              "navigation_method": "GET",
+              "navigation_params": {},
+              "reason": "니켈·동·아연·알루미늄·연·주석의 LME 가격과 일부 재고 추이를 조회하는 페이지",
+              "suggested_filters": {
+                "mineral": "니켈",
+                "price_criterion": "site_default",
+                "granularity": "DAY",
+                "period_mode": "year",
+                "period": "site_default"
+              },
+              "defaulted_filters": {
+                "price_criterion": "site_default",
+                "granularity": "DAY",
+                "period_mode": "year",
+                "period": "site_default"
+              },
+              "filter_display": [
+                {
+                  "key": "mineral",
+                  "label": "광종",
+                  "value": "니켈",
+                  "display_value": "니켈",
+                  "defaulted": false
+                },
+                {
+                  "key": "price_criterion",
+                  "label": "가격기준",
+                  "value": "site_default",
+                  "display_value": "선택 광종의 화면 기본 가격기준",
+                  "defaulted": true
+                },
+                {
+                  "key": "granularity",
+                  "label": "평균 단위",
+                  "value": "DAY",
+                  "display_value": "일간",
+                  "defaulted": true
+                },
+                {
+                  "key": "period_mode",
+                  "label": "기간 입력 방식",
+                  "value": "year",
+                  "display_value": "연도별",
+                  "defaulted": true
+                },
+                {
+                  "key": "period",
+                  "label": "조회 기간",
+                  "value": "site_default",
+                  "display_value": "화면 기본 기간",
+                  "defaulted": true
+                }
+              ],
+              "missing_required_filters": [],
+              "missing_required_filter_labels": [],
+              "available_data": [
+                "기준일",
+                "기준가격",
+                "최저가",
+                "최고가",
+                "전일·전주·전월·전년 평균 대비 등락가와 등락률",
+                "LME 재고량과 재고 등락",
+                "가격·재고 시계열"
+              ],
+              "presentation_summary": "가격과 LME 재고를 같은 시간축의 이중축 선 그래프로 비교하고 최신 비교표와 상세 원자료 표를 함께 제공한다.",
+              "presentation": [
+                {
+                  "type": "dual_axis_line",
+                  "label": "가격·재고 추이",
+                  "description": "가격과 LME 재고를 서로 다른 y축에서 비교한다."
+                },
+                {
+                  "type": "summary_table",
+                  "label": "최신 가격 비교",
+                  "description": "최근값을 전일·전주·전월·전년 평균과 비교한다."
+                },
+                {
+                  "type": "table",
+                  "label": "상세 원자료",
+                  "description": "기준일별 정확한 가격과 등락을 확인한다."
+                }
+              ],
+              "screen_guidance": [],
+              "caveats": [
+                "가격기준은 광종에 종속되며 서로 다른 기준과 단위를 같은 시계열로 합치지 않는다.",
+                "이중축의 가격과 재고 높이를 같은 단위처럼 직접 비교하지 않는다."
+              ],
+              "login_required": false,
+              "external": false,
+              "mutation": "read_only"
+            }
+          ],
+          "warnings": []
+        },
+        "event_count": 5
+      },
+      "elapsed_seconds": 1.89
+    }
+  ],
+  "summary": {
+    "PASS": 3
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "body": {
+    "user_id": "acceptance-suite",
+    "session_id": "483043e9-4277-43d6-a397-928f18baa2a2",
+    "message": "HS코드 2603000000의 품목명과 한국 수입 현황을 알려줘. 광종 전체 수치와 구분해줘."
+  },
+  "url": "http://127.0.0.1:18002/pubchat",
+  "timeout_seconds": 180,
+  "started_at": "2026-09-23T12:19:22.355579+00:00"
+}

@@ -1,0 +1,23 @@
+[
+  {
+    "session_id": "02d698b7-79c2-4b1d-a80d-b7d530c1f2f8"
+  },
+  {
+    "stage": 1,
+    "label": "질문 조건 확인"
+  },
+  {
+    "delta": "무역 지표를 계산하려면 기준국, 대상 연도 또는 기간을(를) 알려주세요."
+  },
+  {
+    "done": true,
+    "needs_clarification": true,
+    "clarification": {
+      "action_id": "trade.indicator",
+      "slots": [
+        "reporter_country",
+        "period"
+      ]
+    }
+  }
+]

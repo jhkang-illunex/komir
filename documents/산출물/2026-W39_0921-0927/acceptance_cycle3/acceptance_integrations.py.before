@@ -1,0 +1,295 @@
+"""수락검사 고정 표본의 읽기 전용 원본·색인 연결 검사.
+
+원본·OKF·PageIndex·pgvector를 바꾸지 않는다. 원본/색인 불일치와 검색
+실패는 ``FAIL``이며, 실제 외부 파서·DB·임베딩을 호출할 수 없는 경우만
+근거를 남긴 ``BLOCKED_*``가 된다.
+"""
+from __future__ import annotations
+
+import hashlib
+import json
+import subprocess
+import tempfile
+import zipfile
+from pathlib import Path
+from typing import Any
+from xml.etree import ElementTree
+
+
+FIXTURES = Path(__file__).with_name("acceptance_fixtures.json")
+REPO_ROOT = Path(__file__).resolve().parents[3]
+
+
+def fixture(case_id: str) -> dict[str, Any]:
+    return json.loads(FIXTURES.read_text(encoding="utf-8")).get(case_id, {})
+
+
+def _check(detail: dict[str, Any], check_id: str, status: str, **evidence: Any) -> None:
+    detail.setdefault("required_checks", []).append({"id": check_id, "status": status, **evidence})
+
+
+def _tree_for_spec(trees: list[dict[str, Any]], spec: dict[str, Any]) -> dict[str, Any] | None:
+    """원본 인덱서가 보관한 resource/okf_path/doc_id 세 키를 모두 확인한다.
+
+    파일명 일부나 doc_id 접두어로 추측하지 않는다. 이 값들은 PageIndex tree와
+    pgvector ``doc_chunk.source_path``가 공유하는 인덱서 계약이다.
+    """
+    matches = [tree for tree in trees if tree.get("resource") == spec.get("resource")]
+    if spec.get("doc_id"):
+        matches = [tree for tree in matches if tree.get("doc_id") == spec["doc_id"]]
+    if spec.get("okf_path"):
+        matches = [tree for tree in matches if tree.get("okf_path") == spec["okf_path"]]
+    return matches[0] if len(matches) == 1 else None
+
+
+def _okf_for_tree(tree: dict[str, Any], okf_root: Path) -> Path:
+    return okf_root / str(tree.get("okf_path", ""))
+
+
+def _body_text(path: Path) -> str:
+    """PageIndex와 같은 OKF 본문 범위(프론트매터 제외)를 반환한다."""
+    text = path.read_text(encoding="utf-8")
+    if not text.startswith("---\n"):
+        return text
+    end = text.find("\n---\n", 3)
+    return text[end + len("\n---\n"):].lstrip("\n") if end >= 0 else text
+
+
+def _body_sha256(path: Path) -> str:
+    return hashlib.sha256(_body_text(path).encode("utf-8")).hexdigest()
+
+
+def _fact_in_line_range(path: Path, fact: str, start: int, end: int) -> bool:
+    lines = _body_text(path).splitlines()
+    return fact in "\n".join(lines[start - 1:end])
+
+
+def verify_dense_fixture(
+    case_id: str, *, tree: dict[str, Any], okf_root: Path,
+) -> tuple[str, list[str], dict[str, Any]]:
+    """고정 query의 실제 dense top-10을 인덱서 식별자 세 개로 대조한다."""
+    spec = fixture(case_id)
+    resource, query, fact = spec.get("resource"), spec.get("query"), spec.get("okf_fact")
+    if not all((resource, query, fact, tree.get("doc_id"), tree.get("okf_path"))):
+        return "FAIL", ["고정 integration fixture 또는 tree 식별자가 불완전함"], {"fixture": spec}
+    if tree.get("resource") != resource:
+        return "FAIL", ["tree resource가 고정 원본과 다름"], {"tree_resource": tree.get("resource"), "resource": resource}
+    okf = _okf_for_tree(tree, okf_root)
+    if not okf.is_file() or fact not in okf.read_text(encoding="utf-8"):
+        return "FAIL", ["고정 사실이 tree가 가리킨 OKF 본문에 없음"], {"okf": str(okf), "fact": fact}
+    try:
+        from rag_core.retrieval.dense_pg import dense_search_pg
+        # AC39는 재귀 fallback까지 차단한 실제 단일 질의 top-10이어야 한다.
+        hits = dense_search_pg(query, k=10, _allow_fallback=False)
+    except Exception as exc:
+        return "BLOCKED_ENV", [f"dense_search_pg 실행 불가: {type(exc).__name__}: {exc}"], {"query": query}
+    if not hits:
+        return "FAIL", ["dense_search_pg 실제 top-10 후보가 없음"], {"query": query}
+    matched = [
+        hit for hit in hits
+        if hit.doc_id == tree["doc_id"]
+        and hit.source_path == resource
+        and fact in hit.text
+    ]
+    if not matched:
+        return "FAIL", ["dense top-10의 doc_id·본문·source_path가 고정 인덱서 계약과 불일치"], {
+            "query": query, "expected_doc_id": tree["doc_id"], "expected_source_path": resource,
+            "candidate_doc_ids": [hit.doc_id for hit in hits],
+            "candidate_source_paths": [hit.source_path for hit in hits],
+        }
+    return "PASS", [], {
+        "query": query, "resource": resource, "okf_path": tree["okf_path"], "fact": fact,
+        "matched_doc_ids": [hit.doc_id for hit in matched],
+        "matched_source_paths": [hit.source_path for hit in matched],
+    }
+
+
+def _chunk_count(connect, settings, *, doc_id: str) -> tuple[str, int | None, str | None]:
+    try:
+        conn = connect()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"SELECT count(*) FROM {settings().PG_SCHEMA}.doc_chunk "
+                    "WHERE doc_id=%s AND embedding IS NOT NULL", (doc_id,),
+                )
+                return "PASS", int(cur.fetchone()[0]), None
+        finally:
+            conn.close()
+    except Exception as exc:
+        return "BLOCKED_ENV", None, f"pgvector 읽기 실패: {type(exc).__name__}: {exc}"
+
+
+def _hwp_text(original: Path) -> tuple[str, str | None]:
+    """HWP v5 원본의 표 셀까지 ODT XML로 읽는다. hwp5txt의 표 누락을 피한다."""
+    with tempfile.TemporaryDirectory(prefix="acceptance-hwp-") as temp_dir:
+        odt = Path(temp_dir) / "source.odt"
+        try:
+            result = subprocess.run(
+                ["hwp5odt", "--output", str(odt), str(original)],
+                text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30, check=False,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            return "", f"hwp5odt 호출 불가: {type(exc).__name__}: {exc}"
+        if result.returncode or not odt.is_file():
+            return "", f"hwp5odt 변환 실패: {result.stderr[-500:]}"
+        try:
+            with zipfile.ZipFile(odt) as archive:
+                root = ElementTree.fromstring(archive.read("content.xml"))
+            return " ".join(part.strip() for part in root.itertext() if part.strip()), None
+        except (OSError, KeyError, zipfile.BadZipFile, ElementTree.ParseError) as exc:
+            return "", f"hwp5odt 결과 읽기 실패: {type(exc).__name__}: {exc}"
+
+
+def _verify_hwp_original(original: Path, spec: dict[str, Any]) -> tuple[str, str | None]:
+    text, error = _hwp_text(original)
+    if error:
+        return "BLOCKED_ENV", error
+    facts = spec.get("original_facts", [])
+    missing = [fact for fact in facts if fact not in text]
+    return ("PASS", None) if not missing else ("FAIL", f"HWP 원본 사실 누락: {missing}")
+
+
+def _verify_excel_original(original: Path, spec: dict[str, Any]) -> tuple[str, str | None]:
+    try:
+        from openpyxl import load_workbook
+    except ImportError as exc:
+        return "BLOCKED_ENV", f"openpyxl 없음: {exc}"
+    try:
+        book = load_workbook(original, read_only=True, data_only=True)
+        sheet_name = spec["sheet"]
+        if sheet_name not in book.sheetnames:
+            return "FAIL", f"XLSX sheet 불일치: {sheet_name}"
+        values = [value for row in book[sheet_name].iter_rows(values_only=True) for value in row if value not in (None, "")]
+    except Exception as exc:
+        return "BLOCKED_ENV", f"XLSX 원본 읽기 실패: {type(exc).__name__}: {exc}"
+    normalized = {str(value).strip() for value in values}
+    required = [*spec.get("headers", []), spec.get("unit"), *map(str, spec.get("values", []))]
+    missing = [value for value in required if value and value not in normalized]
+    if str(spec.get("year", "")) not in original.name:
+        missing.append(f"filename year={spec.get('year')}")
+    return ("PASS", None) if not missing else ("FAIL", f"XLSX 원본 sheet/header/year/unit/value 누락: {missing}")
+
+
+def _require_chunk(detail: dict[str, Any], connect, settings, doc_id: str) -> tuple[str, list[str], int | None]:
+    status, count, error = _chunk_count(connect, settings, doc_id=doc_id)
+    _check(detail, "same_doc_chunk", "FAIL" if status == "PASS" and not count else status, doc_id=doc_id, count=count)
+    if status != "PASS":
+        return status, [error or "doc_chunk 확인 실패"], None
+    if not count:
+        return "FAIL", ["동일 doc_id의 embedding doc_chunk가 없음"], count
+    return "PASS", [], count
+
+
+def verify_case(case: dict[str, Any], *, trees: list[dict[str, Any]], pageindex, connect, settings) -> tuple[str, list[str], dict[str, Any]]:
+    """AC28~30/39~41의 read-only 고정 fixture verifier."""
+    case_id = case["id"]
+    spec = fixture(case_id)
+    detail: dict[str, Any] = {"required_checks": []}
+    if case_id in {"AC28", "AC29", "AC30", "AC39"}:
+        tree = _tree_for_spec(trees, spec)
+        if tree is None:
+            _check(detail, "tree_resource_doc_okf", "FAIL")
+            return "FAIL", ["고정 resource/doc_id/okf_path의 PageIndex tree가 없거나 중복됨"], detail
+        original = REPO_ROOT / spec["resource"]
+        okf = _okf_for_tree(tree, Path(pageindex.OKF_DOCUMENTS_ROOT))
+        if not original.is_file():
+            _check(detail, "original_file", "BLOCKED_DATA", resource=spec["resource"])
+            return "BLOCKED_DATA", ["고정 원본 표본이 없음"], detail
+        if not okf.is_file() or spec["okf_fact"] not in okf.read_text(encoding="utf-8"):
+            _check(detail, "tree_okf_fact", "FAIL", okf_path=tree.get("okf_path"))
+            return "FAIL", ["고정 사실이 tree 대응 OKF에 없음"], detail
+        _check(detail, "tree_resource_doc_okf", "PASS", doc_id=tree["doc_id"], okf_path=tree["okf_path"])
+        _check(detail, "original_okf_fact", "PASS", fact=spec["okf_fact"])
+        if case_id == "AC29":
+            status, error = _verify_hwp_original(original, spec)
+            _check(detail, "hwp_original_facts", status)
+            if status != "PASS":
+                return status, [error or "HWP 원본 대조 실패"], detail
+        if case_id == "AC30":
+            status, error = _verify_excel_original(original, spec)
+            _check(detail, "excel_sheet_header_year_unit_values", status)
+            if status != "PASS":
+                return status, [error or "XLSX 원본 대조 실패"], detail
+        dense_status, dense_errors, dense_detail = verify_dense_fixture(case_id, tree=tree, okf_root=Path(pageindex.OKF_DOCUMENTS_ROOT))
+        detail["dense"] = dense_detail
+        _check(detail, "dense_doc_text_source", dense_status)
+        if dense_status != "PASS":
+            return dense_status, dense_errors, detail
+        chunk_status, chunk_errors, count = _require_chunk(detail, connect, settings, tree["doc_id"])
+        if chunk_status != "PASS":
+            return chunk_status, chunk_errors, detail
+        detail.update({"doc_id": tree["doc_id"], "doc_chunk_count": count})
+        return "PASS", [], detail
+    if case_id == "AC40":
+        tree = _tree_for_spec(trees, spec)
+        if tree is None:
+            _check(detail, "fixed_tree_identity", "FAIL")
+            return "FAIL", ["AC40 고정 doc/resource/OKF tree가 없음"], detail
+        okf = _okf_for_tree(tree, Path(pageindex.OKF_DOCUMENTS_ROOT))
+        expected_hash = spec["body_sha256"]
+        if not okf.is_file() or _body_sha256(okf) != expected_hash:
+            _check(detail, "fixed_okf_body_hash", "FAIL", expected=expected_hash)
+            return "FAIL", ["AC40 OKF 본문 hash가 고정 표본과 다름"], detail
+        if not _fact_in_line_range(okf, spec["fact"], spec["line_start"], spec["line_end"]):
+            _check(detail, "fixed_fact_line_range", "FAIL")
+            return "FAIL", ["AC40 고정 사실이 OKF 지정 줄 범위에 없음"], detail
+        _check(detail, "fixed_tree_identity", "PASS", doc_id=tree["doc_id"], resource=tree["resource"])
+        _check(detail, "fixed_okf_body_hash", "PASS", body_sha256=expected_hash)
+        _check(detail, "fixed_fact_line_range", "PASS", line_start=spec["line_start"], line_end=spec["line_end"])
+        hits = pageindex.search_nodes(spec["query"], doc=spec["doc_id"], node_limit=5)
+        if not hits:
+            _check(detail, "pageindex_node_text", "FAIL")
+            return "FAIL", ["AC40 PageIndex search_nodes(doc=고정 doc_id) 결과가 없음"], detail
+        hit = next((item for item in hits if item.get("doc_id") == spec["doc_id"]), None)
+        text = pageindex.read_node_text(hit) if hit else ""
+        if not hit or spec["fact"] not in text:
+            _check(detail, "pageindex_node_text", "FAIL", hit=hit)
+            return "FAIL", ["AC40 node text가 고정 사실을 포함하지 않음"], detail
+        _check(detail, "pageindex_node_text", "PASS", node_id=hit["node_id"], line_num=hit["line_num"])
+        chunk_status, errors, count = _require_chunk(detail, connect, settings, spec["doc_id"])
+        if chunk_status != "PASS":
+            return chunk_status, errors, detail
+        return "PASS", [], {**detail, "hit": hit, "node_text_chars": len(text), "doc_chunk_count": count}
+    if case_id == "AC41":
+        failures, checked = [], []
+        for doc in spec.get("documents", []):
+            label = doc.get("doc_id", "unknown")
+            tree = _tree_for_spec(trees, doc)
+            if tree is None:
+                _check(detail, f"fixed_tree_identity:{label}", "FAIL")
+                failures.append(f"{doc.get('okf_path')} tree 식별 불일치")
+                continue
+            okf = _okf_for_tree(tree, Path(pageindex.OKF_DOCUMENTS_ROOT))
+            if not okf.is_file() or _body_sha256(okf) != doc["body_sha256"]:
+                _check(detail, f"fixed_okf_body_hash:{label}", "FAIL")
+                failures.append(f"{doc['okf_path']} body hash 불일치")
+                continue
+            if not _fact_in_line_range(okf, doc["fact"], doc["line_start"], doc["line_end"]):
+                _check(detail, f"fixed_fact_line_range:{label}", "FAIL")
+                failures.append(f"{doc['okf_path']} 고정 사실/줄 범위 불일치")
+                continue
+            _check(detail, f"fixed_tree_identity:{label}", "PASS", okf_path=doc["okf_path"])
+            _check(detail, f"fixed_okf_body_hash:{label}", "PASS", body_sha256=doc["body_sha256"])
+            _check(detail, f"fixed_fact_line_range:{label}", "PASS", line_start=doc["line_start"], line_end=doc["line_end"])
+            hits = pageindex.search_nodes(doc["query"], doc=doc["doc_id"], node_limit=3)
+            hit = next((item for item in hits if item.get("doc_id") == doc["doc_id"]), None)
+            text = pageindex.read_node_text(hit) if hit else ""
+            if not hit or doc["fact"] not in text:
+                _check(detail, f"pageindex_node_text:{label}", "FAIL")
+                failures.append(f"{doc['okf_path']} node text가 고정 사실을 포함하지 않음")
+            else:
+                _check(detail, f"pageindex_node_text:{label}", "PASS", node_id=hit["node_id"], line_num=hit["line_num"])
+            chunk_status, count, error = _chunk_count(connect, settings, doc_id=doc["doc_id"])
+            _check(detail, f"same_doc_chunk:{label}", "FAIL" if chunk_status == "PASS" and not count else chunk_status, count=count)
+            if chunk_status != "PASS":
+                failures.append(error or f"{doc['okf_path']} doc_chunk 확인 실패")
+            elif not count:
+                failures.append(f"{doc['okf_path']} 동일 doc_id embedding doc_chunk 없음")
+            checked.append({"doc_id": doc["doc_id"], "okf_path": doc["okf_path"],
+                            "node_id": hit.get("node_id") if hit else None,
+                            "node_text_chars": len(text), "doc_chunk_count": count})
+        status = "PASS" if not failures and len(checked) == 3 else "FAIL"
+        _check(detail, "three_fixed_hash_fact_node_chunk", status, checked=len(checked))
+        return ("PASS", [], {**detail, "checked": checked}) if status == "PASS" else ("FAIL", failures, {**detail, "checked": checked})
+    return "FAIL", ["지원하지 않는 integration fixture case"], detail

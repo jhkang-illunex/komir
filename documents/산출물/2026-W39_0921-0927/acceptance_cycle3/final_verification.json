@@ -1,0 +1,28 @@
+{
+  "core_unchanged": true,
+  "core_sha256": {
+    "inhouse/rag_chat/app/routers/chat.py": "5b123c1b4e762ae154c90627bc6856e6818d6d889313471f3efed67b6b92e728",
+    "inhouse/rag_core/ragkit/action_contract.py": "18337b648a306d9614b48bf58205c6bece70ed0f25ad698c0b9203558fb6ac69",
+    "inhouse/rag_core/ragkit/chatbot_graph.py": "d96f7b7cbeca6c5828b1d2bd0d2fc8dc5d03769fa9d4f777de532807575e59da"
+  },
+  "all_preexisting_fixture_fields_unchanged": true,
+  "final_source_sha256": {
+    "inhouse/ingest/okf/build_okf_documents.py": "83f244c763e88436855ba4bac9b045297c0ca6432e99922c5dc7232fbb47164f",
+    "inhouse/ingest/vectorize/build_pgvector_okf.py": "274357c8f71d6fb0a0c1b55bd8118f942be2d42a76d1a7016ff66622eb2ed81b",
+    "inhouse/ingest/tests/test_build_okf_documents.py": "2bc836c060556598d1a21b612512d66f04fea448f54d254f61816ebf33ccf887",
+    "inhouse/ingest/tests/test_build_pgvector_okf.py": "b472548b7c6187bc4a3c595c97ec17abb213e41eedf7cfca0d8cee18c151e1a9",
+    "inhouse/rag_chat/tests/acceptance_integrations.py": "01a519675a25ba66bab6e01e97d055cdb03f91e2e5c69c7d1cc1f294ff99549a",
+    "inhouse/rag_chat/tests/acceptance_fixtures.json": "4bdc3723db2d8570e04cd6c9510f0f9c82dfddeb64370e6be4af162f4bb0a0ae",
+    "inhouse/rag_chat/tests/test_acceptance_integrations.py": "00640f971672f160103f20bc4007b49dae385988e2aa22b3e5ba696d819dfc34"
+  },
+  "git_head": "14e60108c72e1844ec86ba673459865a1b81ebcc",
+  "excluded": [
+    "DB write",
+    "reindex",
+    "deploy",
+    "commit",
+    "live32"
+  ],
+  "module_result": "astra_module/chatbot_acceptance_20260923_195003.json",
+  "integration_result": "astra_integration_final/chatbot_acceptance_20260923_200341.json"
+}

@@ -1,0 +1,10 @@
+{
+  "body": {
+    "user_id": "acceptance-suite",
+    "session_id": "a3aea53c-8359-4c68-bd2f-4e3e1903a02d",
+    "message": "2025년 한국과 중국의 무역결합도지수 TII를 계산해줘"
+  },
+  "url": "http://127.0.0.1:18002/pubchat",
+  "timeout_seconds": 180,
+  "started_at": "2026-09-23T12:20:45.750595+00:00"
+}

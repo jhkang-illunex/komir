@@ -51,11 +51,12 @@ import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal, Mapping
+from typing import Any, Callable, Literal, Mapping
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .db import read_sql_pg
+from .trade_indicators import RcaInputs, TiiInputs, calculate_rca, calculate_tii
 
 AnalysisPreviewPageId = Literal[
     "price_base_metals",
@@ -494,6 +495,18 @@ class KomisRawDataRepository:
     만족한다. 커넥션을 들고 있지 않으므로(`read_sql_pg`가 매 호출 엔진 생성)
     `close()`는 no-op다.
     """
+
+    def __init__(
+        self,
+        global_trade_indicator_provider: Callable[..., RcaInputs | TiiInputs] | None = None,
+    ):
+        """RCA/TII 세계 분모 provider의 명시적 주입 지점.
+
+        기본 리포지토리는 현재 연결된 완전 세계 원천이 없으므로 provider 없이
+        생성된다. 이 seam은 원천 계약이 검증된 뒤에만 주입하며, KO_UN_CMMRC
+        부분 표본으로 자동 대체하지 않는다.
+        """
+        self._global_trade_indicator_provider = global_trade_indicator_provider
 
     def fetch(self, request: AnalysisPreviewRequest) -> list[RawDataset]:
         """limit이 걸린 미리보기용 데이터셋을 페이지 스펙 수만큼 읽는다."""
@@ -1075,7 +1088,40 @@ class KomisRawDataRepository:
         if reporter_country.casefold() not in {"한국", "korea", "south korea", "republic of korea"}:
             raise RawDataAccessError("현재 무역지표 원천은 한국 기준 교역만 제공합니다.")
         if trade_metric in {"rca", "tii"}:
-            raise RawDataAccessError("세계 전체 분모 원천이 검증되지 않아 RCA·TII는 현재 계산할 수 없습니다.")
+            # 현재 구현은 아래 입력 어댑터가 명시적으로 막는다. 세계 교역 원천이
+            # 준비되면 해당 메서드만 구현하면 되며 MCP·HITL·계산식은 바뀌지 않는다.
+            inputs = self.fetch_global_trade_indicator_inputs(
+                trade_metric=trade_metric, hs_codes=hs_codes, reporter_country=reporter_country,
+                partner_country=partner_country, calendar_year=calendar_year,
+            )
+            if trade_metric == "rca":
+                assert isinstance(inputs, RcaInputs)
+                value = calculate_rca(inputs)
+                rows = [{"year": calendar_year, "rca": value,
+                         "reporter_product_exports": inputs.reporter_product_exports,
+                         "reporter_total_exports": inputs.reporter_total_exports,
+                         "world_product_exports": inputs.world_product_exports,
+                         "world_total_exports": inputs.world_total_exports}]
+                labels = {"year": "연도", "rca": "현시비교우위지수(RCA)",
+                          "reporter_product_exports": "기준국 품목 수출액", "reporter_total_exports": "기준국 총수출액",
+                          "world_product_exports": "세계 품목 수출액", "world_total_exports": "세계 총수출액"}
+                formula = "(기준국 품목 수출액/기준국 총수출액)/(세계 품목 수출액/세계 총수출액)"
+            else:
+                assert isinstance(inputs, TiiInputs)
+                value = calculate_tii(inputs)
+                rows = [{"year": calendar_year, "tii": value,
+                         "reporter_partner_exports": inputs.reporter_partner_exports,
+                         "reporter_total_exports": inputs.reporter_total_exports,
+                         "world_partner_imports": inputs.world_partner_imports,
+                         "world_total_imports": inputs.world_total_imports}]
+                labels = {"year": "연도", "tii": "무역결합도지수(TII)",
+                          "reporter_partner_exports": "기준국의 상대국 수출액", "reporter_total_exports": "기준국 총수출액",
+                          "world_partner_imports": "세계의 상대국 수입액", "world_total_imports": "세계 총수입액"}
+                formula = "(기준국의 상대국 수출액/기준국 총수출액)/(세계의 상대국 수입액/세계 총수입액)"
+            return RawDataset(source_table="GLOBAL_TRADE_DENOMINATOR", columns=list(labels), column_labels=labels,
+                              row_count=1, rows=rows, as_of=str(calendar_year), unit="무차원",
+                              metadata={"trade_metric": trade_metric, "formula": formula,
+                                        "reporter_country": reporter_country, "hs_codes": hs_codes})
         if not hs_codes:
             raise RawDataAccessError("무역지표 계산에 필요한 HS 코드가 없습니다.")
         if trade_metric in {"trade_growth", "country_dependency"} and flow not in {"import", "export"}:
@@ -1088,7 +1134,9 @@ class KomisRawDataRepository:
         try:
             if trade_metric == "tsi":
                 frame = read_sql_pg(
-                    f"SELECT SUM(INCM_AMT) AS import_amount, SUM(EXP_AMT) AS export_amount "
+                    f"SELECT MIN(CRTR_YMD) AS available_start, MAX(CRTR_YMD) AS available_end, "
+                    "COUNT(*) AS observation_count, "
+                    f"SUM(INCM_AMT) AS import_amount, SUM(EXP_AMT) AS export_amount "
                     f"FROM {KOMIS_SCHEMA}.KO_CSTM_CMMRC WHERE {base}"
                 )
                 row = frame.iloc[0].to_dict() if not frame.empty else {}
@@ -1100,11 +1148,13 @@ class KomisRawDataRepository:
                 labels = {"year": "연도", "export_amount": "수출금액(USD)",
                           "import_amount": "수입금액(USD)", "tsi": "무역특화지수(TSI)"}
                 formula = "(수출금액-수입금액)/(수출금액+수입금액)"
+                unit = "무차원"
             elif trade_metric == "trade_growth":
                 column = "INCM_AMT" if flow == "import" else "EXP_AMT"
                 prior_start, prior_end = f"{calendar_year - 1}0101", f"{calendar_year - 1}1231"
                 frame = read_sql_pg(
                     f"SELECT CASE WHEN CRTR_YMD >= {_literal(start)} THEN 'current' ELSE 'prior' END AS period, "
+                    f"MIN(CRTR_YMD) AS available_start, MAX(CRTR_YMD) AS available_end, COUNT(*) AS observation_count, "
                     f"SUM({column}) AS amount FROM {KOMIS_SCHEMA}.KO_CSTM_CMMRC "
                     f"WHERE HS_CD IN ({hs_clause}) AND CRTR_YMD >= {_literal(prior_start)} "
                     f"AND CRTR_YMD <= {_literal(end)} GROUP BY 1"
@@ -1117,11 +1167,19 @@ class KomisRawDataRepository:
                 labels = {"year": "연도", "flow": "교역방향", "current_amount": "당해금액(USD)",
                           "prior_amount": "전년금액(USD)", "growth_pct": "수출입증감률(%)"}
                 formula = "(당해금액-전년금액)/전년금액×100"
+                unit = "%"
             elif trade_metric == "country_dependency":
                 column = "INCM_AMT" if flow == "import" else "EXP_AMT"
+                partner = _literal(partner_country or "")
                 frame = read_sql_pg(
-                    f"SELECT SUM({column}) AS total_amount, "
-                    f"SUM(CASE WHEN TRGT_NTN = {_literal(partner_country or '')} THEN {column} ELSE 0 END) AS partner_amount "
+                    f"SELECT MIN(CRTR_YMD) AS available_start, MAX(CRTR_YMD) AS available_end, "
+                    "COUNT(*) AS observation_count, "
+                    f"SUM({column}) AS total_amount, "
+                    f"SUM(CASE WHEN TRGT_NTN = {partner} OR TRGT_NTN_CD = {partner} THEN {column} ELSE 0 END) AS partner_amount, "
+                    f"STRING_AGG(DISTINCT CASE WHEN TRGT_NTN = {partner} OR TRGT_NTN_CD = {partner} THEN TRGT_NTN END, ', ' ORDER BY "
+                    f"CASE WHEN TRGT_NTN = {partner} OR TRGT_NTN_CD = {partner} THEN TRGT_NTN END) AS matched_partner_names, "
+                    f"STRING_AGG(DISTINCT CASE WHEN TRGT_NTN = {partner} OR TRGT_NTN_CD = {partner} THEN TRGT_NTN_CD END, ', ' ORDER BY "
+                    f"CASE WHEN TRGT_NTN = {partner} OR TRGT_NTN_CD = {partner} THEN TRGT_NTN_CD END) AS matched_partner_codes "
                     f"FROM {KOMIS_SCHEMA}.KO_CSTM_CMMRC WHERE {base}"
                 )
                 row = frame.iloc[0].to_dict() if not frame.empty else {}
@@ -1133,16 +1191,81 @@ class KomisRawDataRepository:
                           "partner_amount": "특정국 금액(USD)", "total_amount": "전체 금액(USD)",
                           "dependency_pct": "특정국 의존도(%)"}
                 formula = "특정국 금액/전체 금액×100"
+                unit = "%"
             else:
                 raise RawDataAccessError(f"지원하지 않는 무역지표입니다: {trade_metric}")
         except RawDataAccessError:
             raise
         except Exception as exc:  # noqa: BLE001
             raise RawDataAccessError("무역지표 원자료 집계에 실패했습니다.") from exc
+        # 집계 결과도 실제 관측일을 같이 보존한다. 연도 필터를 줬더라도 원천이
+        # 일부 기간만 적재됐을 수 있으므로, ``2025년``만 Evidence에 남기면
+        # 부분 관측을 연간 값처럼 오해하게 된다.
+        if trade_metric == "trade_growth":
+            current_row = next((item for item in frame.to_dict("records") if item["period"] == "current"), {})
+            available_start, available_end = current_row.get("available_start"), current_row.get("available_end")
+            observation_count = current_row.get("observation_count")
+        else:
+            available_start, available_end = row.get("available_start"), row.get("available_end")
+            observation_count = row.get("observation_count")
+        observed_period = (
+            f"{_format_period_value(available_start, 'day')}~{_format_period_value(available_end, 'day')}"
+            if available_start is not None and available_end is not None else None
+        )
+        requested_period = f"{_format_period_value(start, 'day')}~{_format_period_value(end, 'day')}"
+        metadata: dict[str, Any] = {
+            "trade_metric": trade_metric, "formula": formula,
+            "reporter_country": "한국", "hs_codes": hs_codes,
+            "requested_period": requested_period, "observed_period": observed_period,
+            "observation_count": _json_value(observation_count),
+            "period_coverage": "complete" if observed_period == requested_period else "partial",
+        }
+        if trade_metric == "country_dependency":
+            metadata.update({
+                "partner_country_input": partner_country,
+                "matched_partner_names": row.get("matched_partner_names"),
+                "matched_partner_codes": row.get("matched_partner_codes"),
+            })
         return RawDataset(source_table="KO_CSTM_CMMRC", columns=list(labels), column_labels=labels,
-                          row_count=len(rows), rows=rows, as_of=str(calendar_year), unit="USD",
-                          metadata={"trade_metric": trade_metric, "formula": formula,
-                                    "reporter_country": "한국", "hs_codes": hs_codes})
+                          row_count=len(rows), rows=rows, as_of=observed_period, unit=unit,
+                          metadata=metadata)
+
+    def fetch_global_trade_indicator_inputs(
+        self, *, trade_metric: str, hs_codes: list[str], reporter_country: str,
+        partner_country: str | None, calendar_year: int,
+    ) -> RcaInputs | TiiInputs:
+        """RCA·TII 세계 분모 원천 어댑터 경계.
+
+        후속 데이터 계약에서 세계 전체 HS·국가·기간이 완전한 테이블 또는 API를
+        provider로 주입한다. 현재 ``KO_UN_CMMRC`` 부분 표본을 이 계약에 억지로
+        넣지 않는다.
+        """
+        if self._global_trade_indicator_provider is None:
+            raise RawDataAccessError(
+                "세계 전체 분모 원천이 아직 연결되지 않아 RCA·TII는 현재 계산할 수 없습니다."
+            )
+        if trade_metric not in {"rca", "tii"} or not hs_codes or not all(isinstance(code, str) and code for code in hs_codes):
+            raise RawDataAccessError("RCA·TII 세계 분모 조회에 필요한 지표와 HS 코드가 없습니다.")
+        if not reporter_country or not isinstance(calendar_year, int) or isinstance(calendar_year, bool):
+            raise RawDataAccessError("RCA·TII 세계 분모 조회에 필요한 기준국 또는 연도가 없습니다.")
+        if trade_metric == "tii" and not partner_country:
+            raise RawDataAccessError("TII 세계 분모 조회에 필요한 상대국이 없습니다.")
+        try:
+            inputs = self._global_trade_indicator_provider(
+                trade_metric=trade_metric,
+                hs_codes=hs_codes,
+                reporter_country=reporter_country,
+                partner_country=partner_country,
+                calendar_year=calendar_year,
+            )
+        except RawDataAccessError:
+            raise
+        except Exception as exc:  # noqa: BLE001 -- provider 오류는 원천 가용성 오류로 닫는다.
+            raise RawDataAccessError("RCA·TII 세계 분모 원천 조회에 실패했습니다.") from exc
+        expected_type = RcaInputs if trade_metric == "rca" else TiiInputs
+        if not isinstance(inputs, expected_type):
+            raise RawDataAccessError("RCA·TII 세계 분모 원천이 필요한 입력 형식을 반환하지 않았습니다.")
+        return inputs
 
     def fetch_mineral_country_ranking(
         self, *, metric: str, mineral_code: str,

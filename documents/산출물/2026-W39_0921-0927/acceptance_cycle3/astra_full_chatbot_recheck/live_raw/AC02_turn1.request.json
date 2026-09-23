@@ -1,0 +1,10 @@
+{
+  "body": {
+    "user_id": "acceptance-suite",
+    "session_id": "4651a309-39ac-458a-b03b-93db0262c1ff",
+    "message": "최근 1년간 니켈 가격 추이를 보여줘"
+  },
+  "url": "http://127.0.0.1:18002/pubchat",
+  "timeout_seconds": 180,
+  "started_at": "2026-09-23T12:19:03.201875+00:00"
+}

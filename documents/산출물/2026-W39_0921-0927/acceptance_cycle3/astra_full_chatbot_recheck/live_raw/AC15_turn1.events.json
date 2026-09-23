@@ -1,0 +1,129 @@
+[
+  {
+    "session_id": "5e7d260d-2b6d-4903-adcf-9e2ea3b9212d"
+  },
+  {
+    "stage": 1,
+    "label": "질문 조건 확인"
+  },
+  {
+    "stage": 1,
+    "label": "질문 조건 확인"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "action_id": "mine.profile"
+  },
+  {
+    "stage": 3,
+    "label": "데이터 분석 중",
+    "action_id": "mine.profile"
+  },
+  {
+    "stage": 4,
+    "label": "답변 생성 중"
+  },
+  {
+    "delta": "B"
+  },
+  {
+    "delta": "HP"
+  },
+  {
+    "delta": " 보고"
+  },
+  {
+    "delta": "서"
+  },
+  {
+    "delta": "에"
+  },
+  {
+    "delta": " 따르면"
+  },
+  {
+    "delta": " Es"
+  },
+  {
+    "delta": "cond"
+  },
+  {
+    "delta": "ida"
+  },
+  {
+    "delta": " 광"
+  },
+  {
+    "delta": "산"
+  },
+  {
+    "delta": "은"
+  },
+  {
+    "delta": " Chile"
+  },
+  {
+    "delta": "에"
+  },
+  {
+    "delta": " 있습니다"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": " ["
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "]"
+  },
+  {
+    "delta": "\n\n출처:\n- [1] 광산자료/동_구리/Cu_Escondida_Pampa_Norte_BHP.md · 명시 문서 본문 58행 (동일 식별자 행 1개)"
+  },
+  {
+    "done": true,
+    "citations": [
+      {
+        "index": 1,
+        "kind": "pageindex",
+        "source": "광산자료/동_구리/Cu_Escondida_Pampa_Norte_BHP.md",
+        "section": "명시 문서 본문 58행 (동일 식별자 행 1개)",
+        "as_of": null,
+        "unit": null,
+        "requirement_id": "1",
+        "action_id": "mine.profile",
+        "source_id": "광산자료/동_구리/Cu_Escondida_Pampa_Norte_BHP.md",
+        "observed_period": null,
+        "menu_source": null
+      }
+    ],
+    "retrieval_sources": [
+      {
+        "source": "rdb",
+        "status": "not_selected",
+        "evidence_count": 0
+      },
+      {
+        "source": "vector",
+        "status": "queried",
+        "evidence_count": 6
+      },
+      {
+        "source": "pageindex",
+        "status": "queried",
+        "evidence_count": 2
+      },
+      {
+        "source": "okf",
+        "status": "verified",
+        "evidence_count": 2
+      }
+    ],
+    "bogus_citations": [],
+    "abstained": false
+  }
+]

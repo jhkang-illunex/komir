@@ -1,0 +1,60 @@
+data: {"session_id": "5e7d260d-2b6d-4903-adcf-9e2ea3b9212d"}
+
+event: status
+data: {"stage": 1, "label": "질문 조건 확인"}
+
+event: status
+data: {"stage": 1, "label": "질문 조건 확인"}
+
+event: status
+data: {"stage": 2, "label": "답변 준비중", "action_id": "mine.profile"}
+
+event: status
+data: {"stage": 3, "label": "데이터 분석 중", "action_id": "mine.profile"}
+
+event: status
+data: {"stage": 4, "label": "답변 생성 중"}
+
+data: {"delta": "B"}
+
+data: {"delta": "HP"}
+
+data: {"delta": " 보고"}
+
+data: {"delta": "서"}
+
+data: {"delta": "에"}
+
+data: {"delta": " 따르면"}
+
+data: {"delta": " Es"}
+
+data: {"delta": "cond"}
+
+data: {"delta": "ida"}
+
+data: {"delta": " 광"}
+
+data: {"delta": "산"}
+
+data: {"delta": "은"}
+
+data: {"delta": " Chile"}
+
+data: {"delta": "에"}
+
+data: {"delta": " 있습니다"}
+
+data: {"delta": "."}
+
+data: {"delta": " ["}
+
+data: {"delta": "1"}
+
+data: {"delta": "]"}
+
+data: {"delta": "\n\n출처:\n- [1] 광산자료/동_구리/Cu_Escondida_Pampa_Norte_BHP.md · 명시 문서 본문 58행 (동일 식별자 행 1개)"}
+
+event: done
+data: {"done": true, "citations": [{"index": 1, "kind": "pageindex", "source": "광산자료/동_구리/Cu_Escondida_Pampa_Norte_BHP.md", "section": "명시 문서 본문 58행 (동일 식별자 행 1개)", "as_of": null, "unit": null, "requirement_id": "1", "action_id": "mine.profile", "source_id": "광산자료/동_구리/Cu_Escondida_Pampa_Norte_BHP.md", "observed_period": null, "menu_source": null}], "retrieval_sources": [{"source": "rdb", "status": "not_selected", "evidence_count": 0}, {"source": "vector", "status": "queried", "evidence_count": 6}, {"source": "pageindex", "status": "queried", "evidence_count": 2}, {"source": "okf", "status": "verified", "evidence_count": 2}], "bogus_citations": [], "abstained": false}
+

@@ -1,0 +1,101 @@
+{
+  "mode": "isolated_no_summary",
+  "shared_db_write": false,
+  "shared_tree_write": false,
+  "cases": {
+    "AC30": {
+      "tree_hash": "5f1da8d97c4b64dd8a814d901527464112b3c333e4017a504f78c4ddda46800b",
+      "node_count": 2,
+      "hits": [],
+      "acceptance": {
+        "status": "FAIL",
+        "errors": [
+          "고정 doc 필터의 PageIndex 노드 범위/원문 사실 대조 실패",
+          "dense top-k에서 고정 문서의 exact fact를 회수하지 못함"
+        ],
+        "checks": [
+          [
+            "original_metadata_provenance",
+            "PASS"
+          ],
+          [
+            "fixed_document_chain",
+            "FAIL"
+          ],
+          [
+            "dense_expected_document",
+            "FAIL"
+          ],
+          [
+            "format_sample_policy",
+            "PASS"
+          ]
+        ]
+      }
+    },
+    "AC40": {
+      "tree_hash": "a9b0926766146426a0359f69dc596f44f84c4e25e9c2a9425191a8f6f404683c",
+      "node_count": 195,
+      "hits": [],
+      "acceptance": {
+        "status": "FAIL",
+        "errors": [
+          "top-5 node가 고정 사실의 실제 OKF 범위를 가리키지 않음"
+        ],
+        "checks": [
+          [
+            "fixed_doc_filter",
+            "PASS"
+          ],
+          [
+            "node_okf_range_identity",
+            "FAIL"
+          ],
+          [
+            "node_original_text",
+            "SKIPPED"
+          ]
+        ]
+      }
+    },
+    "AC29": {
+      "metadata_updated": 1,
+      "minerals_before": [],
+      "minerals_after": [
+        "구리",
+        "니켈"
+      ],
+      "tree_minerals": [
+        "구리",
+        "니켈"
+      ],
+      "fixture_query_hits": 0,
+      "metadata_query_rank": null,
+      "acceptance": {
+        "status": "FAIL",
+        "errors": [
+          "고정 doc 필터의 PageIndex 노드 범위/원문 사실 대조 실패",
+          "dense top-k에서 고정 문서의 exact fact를 회수하지 못함"
+        ],
+        "checks": [
+          [
+            "original_metadata_provenance",
+            "PASS"
+          ],
+          [
+            "fixed_document_chain",
+            "FAIL"
+          ],
+          [
+            "dense_expected_document",
+            "FAIL"
+          ],
+          [
+            "format_sample_policy",
+            "PASS"
+          ]
+        ]
+      }
+    }
+  }
+}

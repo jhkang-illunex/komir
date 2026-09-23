@@ -1,0 +1,197 @@
+[
+  [
+    "ko_cstm_cmmrc",
+    "hs_cd",
+    "character varying"
+  ],
+  [
+    "ko_cstm_cmmrc",
+    "crtr_ymd",
+    "character varying"
+  ],
+  [
+    "ko_cstm_cmmrc",
+    "trgt_ntn_cd",
+    "character varying"
+  ],
+  [
+    "ko_cstm_cmmrc",
+    "incm_weig",
+    "numeric"
+  ],
+  [
+    "ko_cstm_cmmrc",
+    "incm_amt",
+    "numeric"
+  ],
+  [
+    "ko_cstm_cmmrc",
+    "exp_weig",
+    "numeric"
+  ],
+  [
+    "ko_cstm_cmmrc",
+    "exp_amt",
+    "numeric"
+  ],
+  [
+    "ko_cstm_cmmrc",
+    "trgt_ntn",
+    "character varying"
+  ],
+  [
+    "ko_cstm_cmmrc",
+    "item_nm",
+    "character varying"
+  ],
+  [
+    "ko_mnrl_prc",
+    "mnrl_prc_crtr_sn",
+    "numeric"
+  ],
+  [
+    "ko_mnrl_prc",
+    "crtr_ymd",
+    "character varying"
+  ],
+  [
+    "ko_mnrl_prc",
+    "lowst_prc",
+    "numeric"
+  ],
+  [
+    "ko_mnrl_prc",
+    "hghst_prc",
+    "numeric"
+  ],
+  [
+    "ko_mnrl_prc",
+    "cmerc_prc",
+    "numeric"
+  ],
+  [
+    "ko_mnrl_prc",
+    "status",
+    "character varying"
+  ],
+  [
+    "ko_mnrl_prc",
+    "invt",
+    "numeric"
+  ],
+  [
+    "ko_mnrl_prc",
+    "frst_rgtr_id",
+    "character varying"
+  ],
+  [
+    "ko_mnrl_prc",
+    "frst_reg_dt",
+    "character varying"
+  ],
+  [
+    "ko_mnrl_prc",
+    "last_mdfr_id",
+    "character varying"
+  ],
+  [
+    "ko_mnrl_prc",
+    "last_mdfcn_dt",
+    "character varying"
+  ],
+  [
+    "ko_mnrl_prc",
+    "last_del_id",
+    "character varying"
+  ],
+  [
+    "ko_mnrl_prc",
+    "last_del_dt",
+    "character varying"
+  ],
+  [
+    "ko_mnrl_prc_crtr",
+    "mnrl_prc_crtr_sn",
+    "numeric"
+  ],
+  [
+    "ko_mnrl_prc_crtr",
+    "mnrknd_unq_cd",
+    "character varying"
+  ],
+  [
+    "ko_mnrl_prc_crtr",
+    "prc_unit_cd",
+    "character varying"
+  ],
+  [
+    "ko_mnrl_prc_crtr",
+    "prc_crtr",
+    "character varying"
+  ],
+  [
+    "ko_mnrl_prc_crtr",
+    "prc_crtr_kywd",
+    "character varying"
+  ],
+  [
+    "ko_mnrl_prc_crtr",
+    "prc_crtr_cnd",
+    "character varying"
+  ],
+  [
+    "ko_mnrl_prc_crtr",
+    "weig_unit_cd",
+    "character varying"
+  ],
+  [
+    "ko_mnrl_prc_crtr",
+    "arch_cd",
+    "character varying"
+  ],
+  [
+    "ko_mnrl_prc_crtr",
+    "etc",
+    "character varying"
+  ],
+  [
+    "ko_mnrl_prc_crtr",
+    "frst_rgtr_id",
+    "character varying"
+  ],
+  [
+    "ko_mnrl_prc_crtr",
+    "frst_reg_dt",
+    "character varying"
+  ],
+  [
+    "ko_mnrl_prc_crtr",
+    "last_mdfr_id",
+    "character varying"
+  ],
+  [
+    "ko_mnrl_prc_crtr",
+    "last_mdfcn_dt",
+    "character varying"
+  ],
+  [
+    "ko_mnrl_prc_crtr",
+    "last_del_id",
+    "character varying"
+  ],
+  [
+    "ko_mnrl_prc_crtr",
+    "last_del_dt",
+    "character varying"
+  ],
+  [
+    "ko_mnrl_prc_crtr",
+    "sort",
+    "numeric"
+  ],
+  [
+    "ko_mnrl_prc_crtr",
+    "spcfct",
+    "character varying"
+  ]
+]

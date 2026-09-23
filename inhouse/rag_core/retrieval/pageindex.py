@@ -96,6 +96,92 @@ def _score(query_tokens: set[str], text: str) -> float:
     return len(query_tokens & _tokens(text)) / len(query_tokens)
 
 
+# 보고서형 PDF는 PageIndex가 문서 전체를 최상위 제목 하나로만 만들기도 한다.
+# 이때 실제 사실은 수백 행 뒤에 있어 노드 제목·요약만으로 후보를 세 개 고르면
+# 도달할 수 없다. 메타데이터로 먼저 넓게 후보를 고른 뒤, 그 문서들의 OKF 본문
+# 행에서 직접 관계 표지를 찾는다. 전수 스캔으로 바꾸지 않는 이유는 1,600여
+# 원문 전체를 매 질의에 읽으면 대화 응답 시간이 과도하게 늘기 때문이다.
+_BODY_CANDIDATE_DOC_LIMIT = 64
+_BODY_MINERAL_TERMS = ("구리", "니켈", "코발트", "리튬", "희토류", "네오디뮴")
+
+
+def _body_span_text(lines: list[str], index: int, *, max_chars: int = 1600) -> str:
+    """본문 매칭 행을 사실 검증에 쓸 수 있는 작은 문맥으로 만든다.
+
+    트리 노드 범위가 잘못 넓거나 지나치게 짧어도, 실제 매칭 행과 가장 가까운
+    Markdown 제목을 함께 보존한다. 인접한 다른 광종 행을 합치지 않도록 앞뒤
+    한 행만 포함한다.
+    """
+
+    heading = next(
+        (line.strip() for line in reversed(lines[:index + 1]) if line.lstrip().startswith("#")),
+        "",
+    )
+    selected = [line for line in (heading, *lines[max(0, index - 1):index + 2]) if line.strip()]
+    return "\n".join(dict.fromkeys(selected))[:max_chars]
+
+
+def _body_span_hits(
+    query: str, query_tokens: set[str], candidates: list[dict[str, Any]], *,
+    okf_root: Path | str,
+) -> list[dict[str, Any]]:
+    """메타데이터 후보의 실제 OKF 행을 찾아 PageIndex hit로 만든다.
+
+    파일명이나 고정 질문을 기준으로 선택하지 않는다. 광종·주제·관계가 함께
+    있는 한 행의 토큰 점수로만 정렬하며, 제목/요약이 빈 트리에서도 원문 사실을
+    인용할 수 있게 한다.
+    """
+
+    required_minerals = {term for term in _BODY_MINERAL_TERMS if term in " ".join(query_tokens)}
+    # 슬롯 정규화가 보강한 "리튬 배터리 수요"처럼 세 단어 이상인 관계 표지는
+    # 원문에도 같은 연속 구가 있을 때만 보너스를 준다. 파일명·연도·수치 같은
+    # 수락검사 전용 식별자를 쓰지 않으면서 관계를 단순 광종 언급보다 앞세운다.
+    relation_words = re.findall(r"[가-힣A-Za-z0-9]+", query)
+    relation_phrases = [
+        " ".join(relation_words[index:index + 3])
+        for index in range(max(0, len(relation_words) - 2))
+    ]
+    hits: list[dict[str, Any]] = []
+    for tree in candidates:
+        okf_path = Path(okf_root) / str(tree.get("okf_path", ""))
+        try:
+            lines = okf_path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        candidates = [
+            (
+                len(query_tokens & _tokens(line)),
+                sum(phrase.casefold() in line.casefold() for phrase in relation_phrases),
+                index,
+                line,
+            )
+            for index, line in enumerate(lines)
+            if not required_minerals or all(term in line for term in required_minerals)
+        ]
+        matched_tokens, phrase_matches, best_index, _line = max(
+            candidates, default=(0, 0, -1, ""),
+            key=lambda item: (item[0] + item[1] * 4, item[0], -item[2]),
+        )
+        # 광종 하나만 겹치는 행은 관계 근거가 될 수 없다. 본문은 질문 전체의
+        # 조사·서술어가 아니라 핵심 표지 두 개 이상이 맞을 때만 채택한다.
+        minimum_matches = 1 if len(query_tokens) == 1 else 2
+        if matched_tokens < minimum_matches or best_index < 0:
+            continue
+        text = _body_span_text(lines, best_index)
+        if not text:
+            continue
+        hits.append({
+            # 본문에서 광종·주제·관계가 함께 맞았으므로 제목만 맞은 트리 노드보다
+            # 앞에 둔다. 아래 소수부는 같은 종류의 본문 span 사이 순위다.
+            "score": round(1.0 + phrase_matches + matched_tokens / min(len(query_tokens), 8), 3), "doc_id": tree.get("doc_id", ""),
+            "doc_title": tree.get("title", ""), "okf_path": tree.get("okf_path", ""),
+            "resource": tree.get("resource", ""), "node_id": f"body-span-{best_index + 1}",
+            "title": "OKF 본문 관련 구간", "node_path": f"OKF 본문 {best_index + 1}행",
+            "line_num": best_index + 1, "body_line_offset": 0, "text": text,
+        })
+    return hits
+
+
 @lru_cache(maxsize=1)
 def _load_trees(trees_root_str: str) -> list[dict[str, Any]]:
     """트리 JSON 전량 로드(프로세스당 1회). 문서 수백 건 규모까지는 이걸로 충분하다."""
@@ -214,7 +300,19 @@ def get_tree(
 def _explicit_document_tree(doc: str, body_query: str | None, *, trees_root: Path | str,
                             exclude_source_groups: frozenset[str]) -> dict[str, Any] | None:
     """명시 lookup 전용으로 파일명 구분자까지 풀어 문서 하나를 고른다."""
-    trees = [tree for tree in load_trees(trees_root) if tree.get("source_group") not in exclude_source_groups]
+    all_trees = load_trees(trees_root)
+    # 사용자가 명시한 경로/ID가 제외 소스라면 공개 문서로 퍼지 대체하지 않는다.
+    # 대체하면 비공개 문서 요청이 전혀 다른 공개 근거로 성공한 것처럼 보인다.
+    direct = next(
+        (
+            tree for tree in all_trees
+            if doc in (tree.get("doc_id"), tree.get("okf_path"), tree.get("doc_name"))
+        ),
+        None,
+    )
+    if direct is not None:
+        return None if direct.get("source_group") in exclude_source_groups else direct
+    trees = [tree for tree in all_trees if tree.get("source_group") not in exclude_source_groups]
     words = [word.casefold() for word in re.findall(r"[A-Za-z0-9가-힣]+", f"{doc} {body_query or ''}")
              if len(word) >= 3 and word not in {"보고서", "정리자료", "광산", "위치", "원문"}]
     if not words:
@@ -289,12 +387,15 @@ def search_nodes(
     doc_limit: int = 3,
     node_limit: int = 8,
     trees_root: Path | str = TREES_ROOT,
+    okf_root: Path | str = OKF_DOCUMENTS_ROOT,
+    search_body: bool = True,
     exclude_source_groups: frozenset[str] = frozenset(),
 ) -> list[dict[str, Any]]:
     """질의 → (관련 문서 선택 →) 트리 내 관련 노드 목록.
 
     `doc`을 주면 그 문서 안에서만, 없으면 `find_documents()` 상위 `doc_limit`건
-    안에서 노드를 찾는다. 노드 점수는 제목·요약·상위제목 경로 기준.
+    안에서 노드를 찾는다. 노드 점수는 제목·요약·상위제목 경로와 실제 노드
+    본문 기준이다. 따라서 요약 없이 만든 트리도 본문 사실로 검색할 수 있다.
 
     `exclude_source_groups`: `find_documents()`와 동일 규약(빈 집합이면 기존
     동작과 동일). `doc`을 명시해도 그 문서의 `source_group`이 이 집합에 있으면
@@ -308,10 +409,13 @@ def search_nodes(
             target = None
         candidates = [target] if target else []
     else:
+        # 목차가 빈약한 보고서도 본문 관련 행을 찾을 수 있도록 메타 후보 폭을
+        # 넓힌다. 실제 원문을 전부 읽지는 않고 아래 body span 단계가 이 후보만
+        # 검사한다.
         wanted = {
             meta["okf_path"]
             for meta in find_documents(
-                query, limit=doc_limit, trees_root=trees_root,
+                query, limit=max(doc_limit, _BODY_CANDIDATE_DOC_LIMIT), trees_root=trees_root,
                 exclude_source_groups=exclude_source_groups,
             )
         }
@@ -320,15 +424,25 @@ def search_nodes(
     query_tokens = _tokens(query)
     hits: list[dict[str, Any]] = []
     for tree in candidates:
+        okf_path = Path(okf_root) / str(tree.get("okf_path", ""))
+        try:
+            okf_lines = okf_path.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            okf_lines = []
         for node, path in iter_nodes(tree.get("structure", [])):
             # 2026-08-11 버그수정(실측): 노드 본문이 짧으면 pageindex_lib가 그 노드의
             # summary를 비워두고 대신 prefix_summary(상위 문맥을 물려받은 요약)만
             # 채운다 — 이 필드를 haystack에서 빼먹으면 그런 노드는 절대 안 걸린다
             # (실측 사례: "4. 검증 훅" 노드의 QWK 언급이 summary가 아니라
             # prefix_summary에만 있어 검색 0건이었음).
+            node_hit = {
+                "line_num": node.get("line_num", 0),
+                "body_line_offset": tree.get("body_line_offset", 0),
+            }
+            body = _node_text_from_lines(node_hit, okf_lines) if search_body and okf_lines else ""
             haystack = " ".join(
                 [*path, node.get("summary", "") or "", node.get("prefix_summary", "") or ""]
-            )
+            ) + " " + body
             score = _score(query_tokens, haystack)
             if score <= 0:
                 continue
@@ -347,6 +461,12 @@ def search_nodes(
                     "body_line_offset": tree.get("body_line_offset", 0),
                 }
             )
+    if search_body and not doc:
+        body_hits = _body_span_hits(query, query_tokens, candidates, okf_root=okf_root)
+        # 본문 사실을 찾았으면 제목 단어만 겹친 알루미늄·납 노드는 근거 후보에서
+        # 제외한다. 본문 span이 없을 때는 기존 트리 탐색 결과를 그대로 돌려준다.
+        if body_hits:
+            hits = body_hits
     hits.sort(key=lambda hit: (-hit["score"], hit["okf_path"], hit["node_id"]))
     return hits[:node_limit]
 
@@ -378,6 +498,17 @@ def read_node_text(
         )
         return ""
     lines = okf_path.read_text(encoding="utf-8").splitlines()
+    return _node_text_from_lines(hit, lines, max_chars=max_chars)
+
+
+def _node_text_from_lines(
+    hit: dict[str, Any],
+    lines: list[str],
+    *,
+    max_chars: int = 4000,
+) -> str:
+    """이미 읽은 OKF 줄에서 노드 범위를 복원한다."""
+
     start = hit.get("line_num", 1) + hit.get("body_line_offset", 0) - 1
     start = max(start, 0)
     heading = lines[start].strip() if start < len(lines) else ""
@@ -586,6 +717,7 @@ def lookup(
     body_fallback: bool = False,
     body_query: str | None = None,
     trees_root: Path | str = TREES_ROOT,
+    okf_root: Path | str = OKF_DOCUMENTS_ROOT,
     exclude_source_groups: frozenset[str] = frozenset(),
 ) -> dict[str, Any]:
     """도구 단일 진입점 — 질의 → {문서 후보, 관련 노드(+원문)}.
@@ -609,11 +741,16 @@ def lookup(
         )
     nodes = search_nodes(
         query, doc=(target.get("okf_path") if target is not None else doc), doc_limit=doc_limit, node_limit=node_limit, trees_root=trees_root,
+        okf_root=okf_root,
+        search_body=not body_fallback,
         exclude_source_groups=exclude_source_groups,
     )
     if with_text:
         for hit in nodes:
-            hit["text"] = read_node_text(hit)
+            # body-span hit은 이미 실제 행과 문맥을 담고 있다. 다시 트리 노드
+            # 범위로 읽으면 잘못 잘린 최상위 제목만 남아 사실을 잃는다.
+            if "text" not in hit:
+                hit["text"] = read_node_text(hit, okf_root=okf_root)
         # 2026-09-18(감사 후속): OKF 원문이 없어 본문이 빈 hit는 title/summary만
         # 있는 "가짜 근거"가 되므로 여기서 걸러낸다(read_node_text가 이미
         # 그 경우를 경고 로그로 남긴 뒤다 — 위 read_node_text 참고).
@@ -625,7 +762,7 @@ def lookup(
     if body_fallback and fallback_target is None and len(documents) == 1:
         fallback_target = get_tree(documents[0]["okf_path"], trees_root=trees_root)
     if body_fallback and with_text and fallback_target is not None:
-        fallback = _document_body_fallback(body_query or query, fallback_target)
+        fallback = _document_body_fallback(body_query or query, fallback_target, okf_root=okf_root)
         if fallback is not None and not any(hit.get("line_num") == fallback["line_num"] for hit in nodes):
             # 기존 목차 절도 보존하되, 특정 사실은 선택된 본문 행에서 먼저
             # 확인할 수 있도록 fallback을 첫 근거로 둔다.

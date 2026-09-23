@@ -172,8 +172,13 @@ class MineRankingActionTest(unittest.TestCase):
             "2024 Annual production 141.9; 2025 Annual production 227.8"
         ))
         rio = Path(mine_aggregate.pageindex.OKF_DOCUMENTS_ROOT) / "광산자료/동_구리/Cu_Oyu_Tolgoi_Rio_Tinto.md"
+        rio_lines = rio.read_text(encoding="utf-8").splitlines()
+        header_line = next(
+            index for index, line in enumerate(rio_lines)
+            if "Quarter Full Year" in line
+        )
         self.assertTrue(mine_aggregate._has_ambiguous_quarter_annual_header(
-            "\n".join(rio.read_text(encoding="utf-8").splitlines()[891:914])
+            "\n".join(rio_lines[header_line:header_line + 20])
         ))
 
     def test_china_filter_does_not_use_company_nationality_or_unknown_country(self):

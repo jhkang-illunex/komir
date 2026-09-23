@@ -1,0 +1,287 @@
+[
+  {
+    "session_id": "6a5a0e25-4079-459b-a2b3-7fa85994d989"
+  },
+  {
+    "stage": 1,
+    "label": "질문 조건 확인"
+  },
+  {
+    "stage": 1,
+    "label": "질문 조건 확인"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "action_id": "trade.indicator"
+  },
+  {
+    "stage": 3,
+    "label": "데이터 분석 중",
+    "action_id": "trade.indicator"
+  },
+  {
+    "stage": 4,
+    "label": "답변 생성 중"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "년"
+  },
+  {
+    "delta": " 한국"
+  },
+  {
+    "delta": " 리"
+  },
+  {
+    "delta": "튬"
+  },
+  {
+    "delta": "의"
+  },
+  {
+    "delta": " 무"
+  },
+  {
+    "delta": "역"
+  },
+  {
+    "delta": "특"
+  },
+  {
+    "delta": "화"
+  },
+  {
+    "delta": "지"
+  },
+  {
+    "delta": "수"
+  },
+  {
+    "delta": "("
+  },
+  {
+    "delta": "T"
+  },
+  {
+    "delta": "SI"
+  },
+  {
+    "delta": ")"
+  },
+  {
+    "delta": "는"
+  },
+  {
+    "delta": " -"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "입니다"
+  },
+  {
+    "delta": " ["
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "]."
+  },
+  {
+    "delta": " ("
+  },
+  {
+    "delta": "기준"
+  },
+  {
+    "delta": "시"
+  },
+  {
+    "delta": "점"
+  },
+  {
+    "delta": ":"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "년"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": " 단위"
+  },
+  {
+    "delta": ":"
+  },
+  {
+    "delta": " USD"
+  },
+  {
+    "delta": ")"
+  },
+  {
+    "delta": " ["
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "]"
+  },
+  {
+    "delta": "\n\n출처:\n- [1] public.KO_CSTM_CMMRC · KOMIS 원천 · KO_CSTM_CMMRC(리튬) · 무역특화지수(TSI) (기준시점 2025)"
+  },
+  {
+    "schema_version": 1,
+    "block_id": "t1-1",
+    "columns": [
+      "year(연도)",
+      "export_amount(수출금액(USD))",
+      "import_amount(수입금액(USD))",
+      "tsi(무역특화지수(TSI))"
+    ],
+    "rows": [
+      [
+        "2025",
+        "0.0",
+        "108544000.0",
+        "-1.0"
+      ]
+    ],
+    "columns_meta": [
+      {
+        "key": "year",
+        "label": "year(연도)",
+        "display": "연도",
+        "type": "number",
+        "unit": null
+      },
+      {
+        "key": "export_amount",
+        "label": "export_amount(수출금액(USD))",
+        "display": "수출금액(USD)",
+        "type": "number",
+        "unit": "USD"
+      },
+      {
+        "key": "import_amount",
+        "label": "import_amount(수입금액(USD))",
+        "display": "수입금액(USD)",
+        "type": "number",
+        "unit": "USD"
+      },
+      {
+        "key": "tsi",
+        "label": "tsi(무역특화지수(TSI))",
+        "display": "무역특화지수(TSI)",
+        "type": "number",
+        "unit": null
+      }
+    ],
+    "rows_typed": [
+      [
+        2025.0,
+        0.0,
+        108544000.0,
+        -1.0
+      ]
+    ],
+    "markdown": "| year(연도) | export_amount(수출금액(USD)) | import_amount(수입금액(USD)) | tsi(무역특화지수(TSI)) |\n| --- | --- | --- | --- |\n| 2025 | 0.0 | 108544000.0 | -1.0 |",
+    "chart_hint": {
+      "recommended": null,
+      "alternatives": [],
+      "reason": "행 2개 미만 또는 열 1개"
+    },
+    "meta": {
+      "source_index": 1,
+      "source": "public.KO_CSTM_CMMRC · KOMIS 원천 · KO_CSTM_CMMRC(리튬) · 무역특화지수(TSI) (기준시점 2025)",
+      "row_count": 1,
+      "as_of": "2025",
+      "unit": "USD",
+      "time_aggregation": null,
+      "menu_source": null,
+      "hidden_columns": []
+    },
+    "source_index": 1,
+    "source": "public.KO_CSTM_CMMRC · KOMIS 원천 · KO_CSTM_CMMRC(리튬) · 무역특화지수(TSI) (기준시점 2025)"
+  },
+  {
+    "done": true,
+    "citations": [
+      {
+        "index": 1,
+        "kind": "structured",
+        "source": "public.KO_CSTM_CMMRC",
+        "section": "KOMIS 원천 · KO_CSTM_CMMRC(리튬) · 무역특화지수(TSI)",
+        "as_of": "2025",
+        "unit": "USD",
+        "requirement_id": "req_1",
+        "action_id": "trade.indicator",
+        "source_id": "public.KO_CSTM_CMMRC",
+        "observed_period": "2025",
+        "menu_source": null
+      }
+    ],
+    "retrieval_sources": [
+      {
+        "source": "rdb",
+        "status": "queried",
+        "evidence_count": 1
+      },
+      {
+        "source": "vector",
+        "status": "not_selected",
+        "evidence_count": 0
+      },
+      {
+        "source": "pageindex",
+        "status": "not_selected",
+        "evidence_count": 0
+      },
+      {
+        "source": "okf",
+        "status": "not_selected",
+        "evidence_count": 0
+      }
+    ],
+    "bogus_citations": [],
+    "abstained": false
+  }
+]

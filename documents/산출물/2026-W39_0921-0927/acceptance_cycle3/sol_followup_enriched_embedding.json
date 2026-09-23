@@ -1,0 +1,58 @@
+{
+  "AC28": {
+    "chunks": 4,
+    "best": {
+      "score": 0.9396982192993164,
+      "estimated_current_corpus_rank": 1,
+      "text": "| |알루미늄 전기동|납 니켈|주석|아연| | |\n|---|---|---|---|---|---|---|\n|평균값 1,984| |4,330|1,317|13,482|14,065|1,551|\n|중간값 1,951| |4,299|1,323|13,228|13,500|1,442|\n|최고치 3,200| |7,500|2,000|20,000|18,800|3,100|\n|최저치 1,323| |2,756|800 9,932| |9,921|1,058|\n|설문참여자수 41| |45|35|41|22|42|"
+    },
+    "fact": {
+      "score": 0.9396982192993164,
+      "estimated_current_corpus_rank": 1,
+      "within_doc_rank": 1,
+      "text": "| |알루미늄 전기동|납 니켈|주석|아연| | |\n|---|---|---|---|---|---|---|\n|평균값 1,984| |4,330|1,317|13,482|14,065|1,551|\n|중간값 1,951| |4,299|1,323|13,228|13,500|1,442|\n|최고치 3,200| |7,500|2,000|20,000|18,800|3,100|\n|최저치 1,323| |2,756|800 9,932| |9,921|1,058|\n|설문참여자수 41| |45|35|41|22|42|"
+    }
+  },
+  "AC29": {
+    "chunks": 2,
+    "best": {
+      "score": 0.897942841053009,
+      "estimated_current_corpus_rank": 89,
+      "text": "니 켈 ▪ 추가 하락 전망 (LME Cash가 ‘93년초, ’98년초 한계생산비용보다 $2,000/t 가량 낮게 거래된 기록이 있어 추가하락도 가능) ▪ 재고는 급격히 증가하는데 이는 수요부진에 기인 ▪ 신규 광산의 생산증가로 광산 생산량 급증(‘09년도 지속) ▪ 스테인레스 스틸 수요 회복은 ‘09년 하반기 이후 가능 ▪ 상승요인 : 생산업체들의 감산 ▪ 하락요인 : 스테인레스 스틸 수요부진 가격 추가 하락 가능성에 무게\n주 석 -Gayle Berry (Barclays Capital, 상품담당 이사) ▪ 기타 품목대비 가격하락 위"
+    },
+    "fact": {
+      "score": 0.897942841053009,
+      "estimated_current_corpus_rank": 89,
+      "within_doc_rank": 1,
+      "text": "니 켈 ▪ 추가 하락 전망 (LME Cash가 ‘93년초, ’98년초 한계생산비용보다 $2,000/t 가량 낮게 거래된 기록이 있어 추가하락도 가능) ▪ 재고는 급격히 증가하는데 이는 수요부진에 기인 ▪ 신규 광산의 생산증가로 광산 생산량 급증(‘09년도 지속) ▪ 스테인레스 스틸 수요 회복은 ‘09년 하반기 이후 가능 ▪ 상승요인 : 생산업체들의 감산 ▪ 하락요인 : 스테인레스 스틸 수요부진 가격 추가 하락 가능성에 무게\n주 석 -Gayle Berry (Barclays Capital, 상품담당 이사) ▪ 기타 품목대비 가격하락 위"
+    }
+  },
+  "AC30": {
+    "chunks": 2,
+    "best": {
+      "score": 0.9148249626159668,
+      "estimated_current_corpus_rank": 1,
+      "text": "| col1 | col2 | 광석 | 수분함량 | 품위 | 금속량 | 회수율 | 최종 금속량 |\n|---|---|---|---|---|---|---|---|\n| 광석 생산량(kwmt) | Saprolite+Limonite | 41875 |  |  |  |  | 303.748134 |\n| 외부 판매량(kwmt) | Saprolite+Limonite | 38542 |  |  | 304.524994 |  | 267.948134 |\n|  | Limonite | 25481 | 0.382987 | 0.0116 | 182.376391 | 0.9"
+    },
+    "fact": {
+      "score": 0.9148249626159668,
+      "estimated_current_corpus_rank": 1,
+      "within_doc_rank": 1,
+      "text": "| col1 | col2 | 광석 | 수분함량 | 품위 | 금속량 | 회수율 | 최종 금속량 |\n|---|---|---|---|---|---|---|---|\n| 광석 생산량(kwmt) | Saprolite+Limonite | 41875 |  |  |  |  | 303.748134 |\n| 외부 판매량(kwmt) | Saprolite+Limonite | 38542 |  |  | 304.524994 |  | 267.948134 |\n|  | Limonite | 25481 | 0.382987 | 0.0116 | 182.376391 | 0.9"
+    }
+  },
+  "AC39": {
+    "chunks": 768,
+    "best": {
+      "score": 0.9203377962112427,
+      "estimated_current_corpus_rank": 2,
+      "text": "Depletion Allowance: 22% (domestic), 14% (foreign). Government Stockpile: Not available. Events, Trends, and Issues: Excluding U.S. production, worldwide lithium production in 2025 increased by 31% to approximately 290,000 tons from 222,000 tons in 2024 in response to strong demand from the lithium-"
+    },
+    "fact": {
+      "score": 0.8874862194061279,
+      "estimated_current_corpus_rank": 84,
+      "within_doc_rank": 5,
+      "text": "Because of this continuity, reviewing past volumes of the MCS tells some important stories very clearly. One is the increasing importance of minerals in our lives and the world economy. In the 1996 MCS, before the first smartphone or hybrid car or lawnmower was powered by a lithium-ion battery, worl"
+    }
+  }
+}

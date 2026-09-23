@@ -500,6 +500,7 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
         evidence = from_komis_ranking(
             dataset, mineral_code=mineral_label,
             metric_label=_RANKING_METRIC_LABELS.get(metric, metric), is_dummy=is_dummy,
+            menu_page_id=page_id,
         )
         return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}
 
@@ -542,6 +543,7 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
             dataset, mineral_code=mineral_label,
             metric_label=f"{_RANKING_METRIC_LABELS.get(metric, metric)} 집중도(HHI={hhi}, 전체합계={grand_total}, {formula})",
             is_dummy=is_dummy,
+            menu_page_id=page_id,
         )
         warnings = []
         if is_dummy:
@@ -581,13 +583,29 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
             "country_dependency": "특정국 의존도",
         }[trade_metric]
         mineral_name = mineral_code
+        data_source: str | None = None
         if mineral_code:
             try:
                 meta = repo.resolve_mineral_meta(mineral_code)
                 mineral_name = meta[0] if meta else mineral_code
+                data_source = meta[1] if meta else None
             except RawDataAccessError:
                 pass
-        evidence = from_komis_aggregate(dataset, label=label, mineral_name=mineral_name)
+        # 광종 마스터가 DEV_DUMMY로 확인된 경우, 지표값 자체가 아니라 원천
+        # 상태를 Evidence에 보존한다. ``from_komis_aggregate``의 caveat과
+        # metadata가 같은 사실을 가리키므로 답변·표·인용에서 누락되지 않는다.
+        is_dummy = data_source == "DEV_DUMMY"
+        dataset = dataset.model_copy(update={"metadata": {
+            **dataset.metadata,
+            "data_source": data_source or "unknown",
+            "source_state": "development_dummy" if is_dummy else "verified_or_unclassified",
+        }})
+        evidence = from_komis_aggregate(
+            dataset, label=label, mineral_name=mineral_name, is_dummy=is_dummy,
+            # 현재 제공하는 TSI·증감률·의존도는 한국 관세청 원천이다. 세계
+            # 분모가 연결된 뒤의 RCA·TII는 글로벌 메뉴 출처로 표시한다.
+            menu_page_id="map_global" if trade_metric in {"rca", "tii"} else "map_korea",
+        )
         return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": []}
 
     @mcp.tool()
@@ -633,7 +651,8 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
                 "unit": unit,
             })
             evidence.extend(from_komis_aggregate(view, label=label,
-                                                 mineral_name=mineral_name, is_dummy=is_dummy))
+                                                 mineral_name=mineral_name, is_dummy=is_dummy,
+                                                 menu_page_id="map_korea"))
         if compare_year and start_period and start_period[:4].isdigit():
             try:
                 prior = repo.fetch_monthly_trade_summary(
@@ -704,7 +723,8 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
             )
             evidence.extend(from_komis_aggregate(comparison_dataset,
                                                  label="현재 관측기간·전년 동일 날짜·전년 연간 3종 수입금액 비교",
-                                                 mineral_name=mineral_name, is_dummy=is_dummy))
+                                                 mineral_name=mineral_name, is_dummy=is_dummy,
+                                                 menu_page_id="map_korea"))
             if not prior.rows or prior_same_period is None or not prior_same_period.rows:
                 missing_columns.add("prior_year_data")
         return {"evidence": [dataclasses.asdict(e) for e in evidence],
@@ -737,7 +757,9 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
                 "rows": [{"month": row.get("month"), column: row.get(column)} for row in dataset.rows],
                 "unit": unit,
             })
-            evidence.extend(from_komis_aggregate(view, label=f"HS {hs_code} {label} 현황"))
+            evidence.extend(from_komis_aggregate(
+                view, label=f"HS {hs_code} {label} 현황", menu_page_id="map_korea",
+            ))
         return {"evidence": [dataclasses.asdict(e) for e in evidence],
                 "warnings": [] if evidence else [_NO_DATA_FOUND_MARKER]}
 
@@ -757,6 +779,22 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
         if not dataset.rows:
             return {"evidence": [], "warnings": [_NO_DATA_FOUND_MARKER]}
         is_dummy = _selected_price_series_dummy(repo, dataset)
+        # 광종 간 변동률은 가격기준·통화·중량단위가 모두 같은 실제 관측일 때만
+        # 산출한다. 더미 또는 행 단위 상태를 끝까지 확인하지 못한 경우에는
+        # 숫자·표를 내보내지 않아 안전 기권 경로가 근거 없이 비교값을 만들지
+        # 않는다.
+        basis_signatures = {
+            (row.get("price_criterion"), row.get("price_currency_code"), row.get("weight_unit_code"))
+            for row in dataset.rows
+        }
+        if is_dummy is not False:
+            return {"evidence": [], "warnings": [
+                "source_unavailable:price_comparison_requires_non_dummy_observations",
+            ]}
+        if len(basis_signatures) != 1 or None in next(iter(basis_signatures)):
+            return {"evidence": [], "warnings": [
+                "source_unavailable:price_comparison_requires_a_common_price_basis",
+            ]}
         grouped: dict[str, list[dict[str, Any]]] = {}
         for row in dataset.rows:
             grouped.setdefault(str(row["mineral"]), []).append(row)
@@ -779,7 +817,7 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
             })
             evidence.extend(from_komis_aggregate(
                 series_view, label=f"{window_label}{mineral} 가격 시계열(최대 40시점)",
-                mineral_name=mineral, is_dummy=is_dummy,
+                mineral_name=mineral, is_dummy=is_dummy, menu_page_id="price_base_metals",
             ))
         comparison = dataset.metadata.get("comparison") or []
         if comparison:
@@ -805,13 +843,7 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
                 metadata={key: value for key, value in dataset.metadata.items() if key != "comparison"},
             )
             evidence.extend(from_komis_aggregate(compare_dataset, label=f"{window_label}동일 기간 가격 변동률",
-                                                 is_dummy=is_dummy))
-        if is_dummy is None:
-            # 행 단위 더미 추적을 읽지 못하면 비교·전제 검증을 실측처럼
-            # 통과시키지 않는다. graph의 comparison contract가 이 caveat을
-            # source_unavailable로 닫고, 단일 가격 조회는 경고를 보존한다.
-            for ev in evidence:
-                ev.caveat = KOMIS_RAW_UNVERIFIED_CAVEAT
+                                                 is_dummy=is_dummy, menu_page_id="price_base_metals"))
         missing = dataset.metadata.get("missing_minerals") or []
         warnings = [f"aggregate_incomplete:missing_minerals:{','.join(missing)}"] if missing else []
         return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}
@@ -879,6 +911,7 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
         evidence = from_komis_ranking(
             dataset, mineral_code=mineral_label,
             metric_label=_RESERVES_PRODUCTION_METRIC_LABELS.get(metric, metric), is_dummy=is_dummy,
+            menu_page_id="map_mineral",
         )
         return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}
 
@@ -997,6 +1030,6 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
 
         evidence = from_komis_ranking(
             dataset, metric_label=_INDICATOR_RANKING_LABELS.get(page_id, page_id),
-            is_dummy=is_dummy, row_kind="광종",
+            is_dummy=is_dummy, row_kind="광종", menu_page_id=page_id,
         )
         return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}

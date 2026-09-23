@@ -1,0 +1,46 @@
+{
+  "rag_chat/app/routers/chat.py": {
+    "sha256": "5b123c1b4e762ae154c90627bc6856e6818d6d889313471f3efed67b6b92e728",
+    "unchanged_since_audit_start": true
+  },
+  "rag_core/ragkit/action_contract.py": {
+    "sha256": "18337b648a306d9614b48bf58205c6bece70ed0f25ad698c0b9203558fb6ac69",
+    "unchanged_since_audit_start": true
+  },
+  "rag_core/ragkit/chatbot_graph.py": {
+    "sha256": "d96f7b7cbeca6c5828b1d2bd0d2fc8dc5d03769fa9d4f777de532807575e59da",
+    "unchanged_since_audit_start": true
+  },
+  "rag_core/ragkit/chunk.py": {
+    "sha256": "e6b2ffc0288a5d45ec6a089a91f0a841f9b126396db4b29cbf3c8f3a82f70dbe",
+    "unchanged_since_audit_start": true
+  },
+  "rag_core/ragkit/embed.py": {
+    "sha256": "35f7d46cec714593dde9062b5c0da0f82b30fd87d7ddd553dcfe3b05fc431469",
+    "unchanged_since_audit_start": true
+  },
+  "rag_core/retrieval/dense_pg.py": {
+    "sha256": "edd12d8c29fbda5d5823b927d92b002204190c19ecbb63a1f476ece787d5cd80",
+    "unchanged_since_audit_start": true
+  },
+  "rag_core/retrieval/pageindex.py": {
+    "sha256": "4562edc1552265201e62a136f54aff4715a782295012dba1d86654f9a6498d1e",
+    "unchanged_since_audit_start": true
+  },
+  "common/komis_raw.py": {
+    "sha256": "e8c742d5d07c4f2add2544341bf4e1a9265d3fd8582ae85600b19ea4fde14322",
+    "unchanged_since_audit_start": true
+  },
+  "rag_core/retrieval/evidence.py": {
+    "sha256": "d8fa993f3e882577a30c2b43ccf254d7a5d375ef9215fa6531261bd688f4267a",
+    "unchanged_since_audit_start": true
+  },
+  "rag_core/ragkit/chatbot.py": {
+    "sha256": "70bfab6d55389d1b2ca6d84319b6f555d4f7e2ca2039f9196b2aeea59c59845e",
+    "unchanged_since_audit_start": true
+  },
+  "rag_core/ragkit/chatbot_events.py": {
+    "sha256": "1242f4d883a877bebffe616ff2d6950dd7c6ed82932460fb256ab55516520bec",
+    "unchanged_since_audit_start": true
+  }
+}

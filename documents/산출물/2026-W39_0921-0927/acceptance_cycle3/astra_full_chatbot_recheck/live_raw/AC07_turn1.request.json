@@ -1,0 +1,10 @@
+{
+  "body": {
+    "user_id": "acceptance-suite",
+    "session_id": "eff0e3e7-2827-4c13-8275-3e341d0a53f2",
+    "message": "2025년 니켈 가격이 300% 이상 올랐어?"
+  },
+  "url": "http://127.0.0.1:18002/pubchat",
+  "timeout_seconds": 180,
+  "started_at": "2026-09-23T12:19:10.762337+00:00"
+}

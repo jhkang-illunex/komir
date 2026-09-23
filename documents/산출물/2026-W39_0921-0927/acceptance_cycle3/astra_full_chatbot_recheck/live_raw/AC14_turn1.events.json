@@ -1,0 +1,1804 @@
+[
+  {
+    "session_id": "e4f027df-e0bd-4945-8208-816611a2e00d"
+  },
+  {
+    "stage": 1,
+    "label": "질문 조건 확인"
+  },
+  {
+    "stage": 1,
+    "label": "질문 조건 확인"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "action_id": "mine.rank"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "detail": "1/20 문서 확인 중"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "detail": "2/20 문서 확인 중"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "detail": "3/20 문서 확인 중"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "detail": "4/20 문서 확인 중"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "detail": "5/20 문서 확인 중"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "detail": "6/20 문서 확인 중"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "detail": "7/20 문서 확인 중"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "detail": "8/20 문서 확인 중"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "detail": "9/20 문서 확인 중"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "detail": "10/20 문서 확인 중"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "detail": "11/20 문서 확인 중"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "detail": "12/20 문서 확인 중"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "detail": "13/20 문서 확인 중"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "detail": "14/20 문서 확인 중"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "detail": "15/20 문서 확인 중"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "detail": "16/20 문서 확인 중"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "detail": "17/20 문서 확인 중"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "detail": "18/20 문서 확인 중"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "detail": "19/20 문서 확인 중"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "detail": "20/20 문서 확인 중"
+  },
+  {
+    "stage": 3,
+    "label": "데이터 분석 중",
+    "action_id": "mine.rank"
+  },
+  {
+    "stage": 4,
+    "label": "답변 생성 중"
+  },
+  {
+    "delta": "구"
+  },
+  {
+    "delta": "리"
+  },
+  {
+    "delta": " 광"
+  },
+  {
+    "delta": "산"
+  },
+  {
+    "delta": " 생산"
+  },
+  {
+    "delta": "량"
+  },
+  {
+    "delta": "의"
+  },
+  {
+    "delta": " 최근"
+  },
+  {
+    "delta": " YoY"
+  },
+  {
+    "delta": "("
+  },
+  {
+    "delta": "전"
+  },
+  {
+    "delta": "년"
+  },
+  {
+    "delta": " 대비"
+  },
+  {
+    "delta": ")"
+  },
+  {
+    "delta": " 증가"
+  },
+  {
+    "delta": "량"
+  },
+  {
+    "delta": " 상"
+  },
+  {
+    "delta": "위"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "개"
+  },
+  {
+    "delta": "는"
+  },
+  {
+    "delta": " 다음과"
+  },
+  {
+    "delta": " 같습니다"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "\n\n"
+  },
+  {
+    "delta": "|"
+  },
+  {
+    "delta": " 순"
+  },
+  {
+    "delta": "위"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " 광"
+  },
+  {
+    "delta": "산"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " 국가"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " 시작"
+  },
+  {
+    "delta": "연"
+  },
+  {
+    "delta": "도"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " 시작"
+  },
+  {
+    "delta": "값"
+  },
+  {
+    "delta": "("
+  },
+  {
+    "delta": "t"
+  },
+  {
+    "delta": ")"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " 끝"
+  },
+  {
+    "delta": "연"
+  },
+  {
+    "delta": "도"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " 끝"
+  },
+  {
+    "delta": "값"
+  },
+  {
+    "delta": "("
+  },
+  {
+    "delta": "t"
+  },
+  {
+    "delta": ")"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " 증가"
+  },
+  {
+    "delta": "량"
+  },
+  {
+    "delta": "("
+  },
+  {
+    "delta": "t"
+  },
+  {
+    "delta": ")"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " 기준"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": "\n"
+  },
+  {
+    "delta": "|"
+  },
+  {
+    "delta": "---|"
+  },
+  {
+    "delta": "---|"
+  },
+  {
+    "delta": "---|"
+  },
+  {
+    "delta": "---"
+  },
+  {
+    "delta": ":|"
+  },
+  {
+    "delta": "---"
+  },
+  {
+    "delta": ":|"
+  },
+  {
+    "delta": "---"
+  },
+  {
+    "delta": ":|"
+  },
+  {
+    "delta": "---"
+  },
+  {
+    "delta": ":|"
+  },
+  {
+    "delta": "---"
+  },
+  {
+    "delta": ":|"
+  },
+  {
+    "delta": "---|"
+  },
+  {
+    "delta": "\n"
+  },
+  {
+    "delta": "|"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " Es"
+  },
+  {
+    "delta": "cond"
+  },
+  {
+    "delta": "ida"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " Chile"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "8"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " metal"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": "\n"
+  },
+  {
+    "delta": "|"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " Ten"
+  },
+  {
+    "delta": "ke"
+  },
+  {
+    "delta": " Fung"
+  },
+  {
+    "delta": "ur"
+  },
+  {
+    "delta": "ume"
+  },
+  {
+    "delta": " Mine"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " DRC"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "9"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "9"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": "6"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "9"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "9"
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " metal"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": "\n"
+  },
+  {
+    "delta": "|"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " SAL"
+  },
+  {
+    "delta": "V"
+  },
+  {
+    "delta": "ADOR"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " Chile"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "7"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": "7"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " metal"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": "\n"
+  },
+  {
+    "delta": "|"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " RAD"
+  },
+  {
+    "delta": "OM"
+  },
+  {
+    "delta": "IRO"
+  },
+  {
+    "delta": " T"
+  },
+  {
+    "delta": "OMIC"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " Chile"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "7"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "9"
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "8"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " metal"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": "\n"
+  },
+  {
+    "delta": "|"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " Highland"
+  },
+  {
+    "delta": " Valley"
+  },
+  {
+    "delta": " Copper"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " Canada"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "7"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "7"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": " metal"
+  },
+  {
+    "delta": " |"
+  },
+  {
+    "delta": "\n\n"
+  },
+  {
+    "delta": "["
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "]"
+  },
+  {
+    "delta": " 구"
+  },
+  {
+    "delta": "리"
+  },
+  {
+    "delta": " 광"
+  },
+  {
+    "delta": "산"
+  },
+  {
+    "delta": "의"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": "년"
+  },
+  {
+    "delta": " 대비"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "년"
+  },
+  {
+    "delta": " metal"
+  },
+  {
+    "delta": " 기준"
+  },
+  {
+    "delta": " 생산"
+  },
+  {
+    "delta": "량"
+  },
+  {
+    "delta": " 증가"
+  },
+  {
+    "delta": "량"
+  },
+  {
+    "delta": " 상"
+  },
+  {
+    "delta": "위"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "개"
+  },
+  {
+    "delta": " 광"
+  },
+  {
+    "delta": "산"
+  },
+  {
+    "delta": "은"
+  },
+  {
+    "delta": " Es"
+  },
+  {
+    "delta": "cond"
+  },
+  {
+    "delta": "ida"
+  },
+  {
+    "delta": "("
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "8"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " t"
+  },
+  {
+    "delta": "),"
+  },
+  {
+    "delta": " Ten"
+  },
+  {
+    "delta": "ke"
+  },
+  {
+    "delta": " Fung"
+  },
+  {
+    "delta": "ur"
+  },
+  {
+    "delta": "ume"
+  },
+  {
+    "delta": " Mine"
+  },
+  {
+    "delta": "("
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "9"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "9"
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": " t"
+  },
+  {
+    "delta": "),"
+  },
+  {
+    "delta": " SAL"
+  },
+  {
+    "delta": "V"
+  },
+  {
+    "delta": "ADOR"
+  },
+  {
+    "delta": "("
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " t"
+  },
+  {
+    "delta": "),"
+  },
+  {
+    "delta": " RAD"
+  },
+  {
+    "delta": "OM"
+  },
+  {
+    "delta": "IRO"
+  },
+  {
+    "delta": " T"
+  },
+  {
+    "delta": "OMIC"
+  },
+  {
+    "delta": "("
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "8"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " t"
+  },
+  {
+    "delta": "),"
+  },
+  {
+    "delta": " Highland"
+  },
+  {
+    "delta": " Valley"
+  },
+  {
+    "delta": " Copper"
+  },
+  {
+    "delta": "("
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "7"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": " t"
+  },
+  {
+    "delta": ")"
+  },
+  {
+    "delta": " 순"
+  },
+  {
+    "delta": "입니다"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": " ["
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "]"
+  },
+  {
+    "delta": "\n\n출처:\n- [1] 광산자료/동_구리(광산문서 20건 실시간 집계) · 구리 생산량 rank (기준시점 광산별 최신 연도(표 참고))"
+  },
+  {
+    "schema_version": 1,
+    "block_id": "t1-1",
+    "columns": [
+      "순위",
+      "광산",
+      "광종",
+      "국가",
+      "시작연도",
+      "시작값(t)",
+      "끝연도",
+      "끝값(t)",
+      "증가량(t)",
+      "basis",
+      "출처"
+    ],
+    "rows": [
+      [
+        "1",
+        "Escondida",
+        "구리",
+        "Chile",
+        "2024",
+        "1,125,000",
+        "2025",
+        "1,305,000",
+        "180,000",
+        "metal",
+        "광산자료/동_구리/Cu_Escondida_Pampa_Norte_BHP.md"
+      ],
+      [
+        "2",
+        "Tenke Fungurume Mine",
+        "구리",
+        "DRC",
+        "2024",
+        "409,410",
+        "2025",
+        "519,361",
+        "109,951",
+        "metal",
+        "광산자료/동_구리/Cu_Kisanfu_CMOC.md"
+      ],
+      [
+        "3",
+        "SALVADOR",
+        "구리",
+        "Chile",
+        "2024",
+        "5,700",
+        "2025",
+        "47,000",
+        "41,300",
+        "metal",
+        "광산자료/동_구리/Cu_El_Teniente_Radomiro_Tomic_Chuquicamata_Andina_Codelco.md"
+      ],
+      [
+        "4",
+        "RADOMIRO TOMIC",
+        "구리",
+        "Chile",
+        "2024",
+        "270,500",
+        "2025",
+        "295,300",
+        "24,800",
+        "metal",
+        "광산자료/동_구리/Cu_El_Teniente_Radomiro_Tomic_Chuquicamata_Andina_Codelco.md"
+      ],
+      [
+        "5",
+        "Highland Valley Copper",
+        "구리",
+        "Canada",
+        "2024",
+        "102,400",
+        "2025",
+        "127,100",
+        "24,700",
+        "metal",
+        "광산자료/동_구리/Cu_Antamina_Quebrada_blaco_Teck_2025-Annual-Report.md"
+      ]
+    ],
+    "columns_meta": [
+      {
+        "key": "순위",
+        "label": "순위",
+        "display": "순위",
+        "type": "number",
+        "unit": null
+      },
+      {
+        "key": "광산",
+        "label": "광산",
+        "display": "광산",
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "광종",
+        "label": "광종",
+        "display": "광종",
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "국가",
+        "label": "국가",
+        "display": "국가",
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "시작연도",
+        "label": "시작연도",
+        "display": "시작연도",
+        "type": "number",
+        "unit": null
+      },
+      {
+        "key": "시작값",
+        "label": "시작값(t)",
+        "display": "t",
+        "type": "number",
+        "unit": null
+      },
+      {
+        "key": "끝연도",
+        "label": "끝연도",
+        "display": "끝연도",
+        "type": "number",
+        "unit": null
+      },
+      {
+        "key": "끝값",
+        "label": "끝값(t)",
+        "display": "t",
+        "type": "number",
+        "unit": null
+      },
+      {
+        "key": "증가량",
+        "label": "증가량(t)",
+        "display": "t",
+        "type": "number",
+        "unit": null
+      },
+      {
+        "key": "basis",
+        "label": "basis",
+        "display": "basis",
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "출처",
+        "label": "출처",
+        "display": "출처",
+        "type": "string",
+        "unit": null
+      }
+    ],
+    "rows_typed": [
+      [
+        1.0,
+        "Escondida",
+        "구리",
+        "Chile",
+        2024.0,
+        1125000.0,
+        2025.0,
+        1305000.0,
+        180000.0,
+        "metal",
+        "광산자료/동_구리/Cu_Escondida_Pampa_Norte_BHP.md"
+      ],
+      [
+        2.0,
+        "Tenke Fungurume Mine",
+        "구리",
+        "DRC",
+        2024.0,
+        409410.0,
+        2025.0,
+        519361.0,
+        109951.0,
+        "metal",
+        "광산자료/동_구리/Cu_Kisanfu_CMOC.md"
+      ],
+      [
+        3.0,
+        "SALVADOR",
+        "구리",
+        "Chile",
+        2024.0,
+        5700.0,
+        2025.0,
+        47000.0,
+        41300.0,
+        "metal",
+        "광산자료/동_구리/Cu_El_Teniente_Radomiro_Tomic_Chuquicamata_Andina_Codelco.md"
+      ],
+      [
+        4.0,
+        "RADOMIRO TOMIC",
+        "구리",
+        "Chile",
+        2024.0,
+        270500.0,
+        2025.0,
+        295300.0,
+        24800.0,
+        "metal",
+        "광산자료/동_구리/Cu_El_Teniente_Radomiro_Tomic_Chuquicamata_Andina_Codelco.md"
+      ],
+      [
+        5.0,
+        "Highland Valley Copper",
+        "구리",
+        "Canada",
+        2024.0,
+        102400.0,
+        2025.0,
+        127100.0,
+        24700.0,
+        "metal",
+        "광산자료/동_구리/Cu_Antamina_Quebrada_blaco_Teck_2025-Annual-Report.md"
+      ]
+    ],
+    "markdown": "| 순위 | 광산 | 광종 | 국가 | 시작연도 | 시작값(t) | 끝연도 | 끝값(t) | 증가량(t) | basis | 출처 |\n|---|---|---|---:|---:|---:|---:|---:|---:|---|---|\n| 1 | Escondida | 구리 | Chile | 2024 | 1,125,000 | 2025 | 1,305,000 | 180,000 | metal | 광산자료/동_구리/Cu_Escondida_Pampa_Norte_BHP.md |\n| 2 | Tenke Fungurume Mine | 구리 | DRC | 2024 | 409,410 | 2025 | 519,361 | 109,951 | metal | 광산자료/동_구리/Cu_Kisanfu_CMOC.md |\n| 3 | SALVADOR | 구리 | Chile | 2024 | 5,700 | 2025 | 47,000 | 41,300 | metal | 광산자료/동_구리/Cu_El_Teniente_Radomiro_Tomic_Chuquicamata_Andina_Codelco.md |\n| 4 | RADOMIRO TOMIC | 구리 | Chile | 2024 | 270,500 | 2025 | 295,300 | 24,800 | metal | 광산자료/동_구리/Cu_El_Teniente_Radomiro_Tomic_Chuquicamata_Andina_Codelco.md |\n| 5 | Highland Valley Copper | 구리 | Canada | 2024 | 102,400 | 2025 | 127,100 | 24,700 | metal | 광산자료/동_구리/Cu_Antamina_Quebrada_blaco_Teck_2025-Annual-Report.md |",
+    "chart_hint": {
+      "recommended": "bar",
+      "alternatives": [],
+      "reason": "날짜열 없음 — 광산별 비교"
+    },
+    "meta": {
+      "source_index": 1,
+      "source": "광산자료/동_구리(광산문서 20건 실시간 집계) · 구리 생산량 rank (기준시점 광산별 최신 연도(표 참고))",
+      "row_count": 5,
+      "as_of": "광산별 최신 연도(표 참고)",
+      "unit": "t",
+      "time_aggregation": null,
+      "menu_source": null,
+      "hidden_columns": []
+    },
+    "source_index": 1,
+    "source": "광산자료/동_구리(광산문서 20건 실시간 집계) · 구리 생산량 rank (기준시점 광산별 최신 연도(표 참고))"
+  },
+  {
+    "schema_version": 1,
+    "block_id": "c1-1",
+    "data_ref": "t1-1",
+    "spec": {
+      "kind": "bar",
+      "alternatives": [],
+      "x": "광산",
+      "x_type": "category",
+      "x_format": null,
+      "series": [
+        "순위",
+        "시작값",
+        "끝값",
+        "증가량"
+      ],
+      "group": null,
+      "sort_x_ascending": false,
+      "title": "순위 · t · t · t",
+      "y_unit": "t",
+      "as_of": "광산별 최신 연도(표 참고)",
+      "time_aggregation": null
+    },
+    "meta": {
+      "source_index": 1,
+      "source": "광산자료/동_구리(광산문서 20건 실시간 집계) · 구리 생산량 rank (기준시점 광산별 최신 연도(표 참고))",
+      "menu_source": null
+    },
+    "source_index": 1,
+    "source": "광산자료/동_구리(광산문서 20건 실시간 집계) · 구리 생산량 rank (기준시점 광산별 최신 연도(표 참고))"
+  },
+  {
+    "done": true,
+    "citations": [
+      {
+        "index": 1,
+        "kind": "aggregated",
+        "source": "광산자료/동_구리(광산문서 20건 실시간 집계)",
+        "section": "구리 생산량 rank",
+        "as_of": "광산별 최신 연도(표 참고)",
+        "unit": "t",
+        "requirement_id": "req_1",
+        "action_id": "mine.rank",
+        "source_id": "광산자료/동_구리(광산문서 20건 실시간 집계)",
+        "observed_period": "광산별 최신 연도(표 참고)",
+        "menu_source": null
+      }
+    ],
+    "retrieval_sources": [
+      {
+        "source": "rdb",
+        "status": "not_selected",
+        "evidence_count": 0
+      },
+      {
+        "source": "vector",
+        "status": "not_selected",
+        "evidence_count": 0
+      },
+      {
+        "source": "pageindex",
+        "status": "not_selected",
+        "evidence_count": 0
+      },
+      {
+        "source": "okf",
+        "status": "not_selected",
+        "evidence_count": 0
+      }
+    ],
+    "bogus_citations": [],
+    "abstained": false
+  }
+]

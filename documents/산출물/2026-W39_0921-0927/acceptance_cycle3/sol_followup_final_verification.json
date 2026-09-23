@@ -1,0 +1,175 @@
+{
+  "snapshot_kind": "post_apply_sol_followup",
+  "pre_apply_snapshot": "final_verification.json",
+  "core_unchanged": true,
+  "core_sha256": {
+    "inhouse/rag_chat/app/routers/chat.py": "5b123c1b4e762ae154c90627bc6856e6818d6d889313471f3efed67b6b92e728",
+    "inhouse/rag_core/ragkit/action_contract.py": "18337b648a306d9614b48bf58205c6bece70ed0f25ad698c0b9203558fb6ac69",
+    "inhouse/rag_core/ragkit/chatbot_graph.py": "d96f7b7cbeca6c5828b1d2bd0d2fc8dc5d03769fa9d4f777de532807575e59da"
+  },
+  "fixture_file_unchanged_from_pre_apply": true,
+  "pre_apply_fixture_sha256": "4bdc3723db2d8570e04cd6c9510f0f9c82dfddeb64370e6be4af162f4bb0a0ae",
+  "current_fixture_sha256": "4bdc3723db2d8570e04cd6c9510f0f9c82dfddeb64370e6be4af162f4bb0a0ae",
+  "fixed_query_fact_topk_unchanged": true,
+  "fixed_contracts": {
+    "AC28": {
+      "query": "로이터 비철금속 가격 전망",
+      "okf_fact": "설문참여자수 41",
+      "top_k": 10,
+      "node_top_k": 10
+    },
+    "AC29": {
+      "query": "LME Seminar 니켈 추가 하락 전망",
+      "okf_fact": "니 켈",
+      "top_k": 10,
+      "node_top_k": 10
+    },
+    "AC30": {
+      "query": "Weda Bay 니켈 광석 생산량",
+      "okf_fact": "41875",
+      "top_k": 10,
+      "node_top_k": 10
+    },
+    "AC39": {
+      "query": "lithium production 2025",
+      "okf_fact": "Estimated world lithium production increased to 290,000 tons in 2025",
+      "top_k": 10
+    },
+    "AC40": {
+      "query": "lithium production 2025",
+      "fact": "Estimated world lithium production increased to 290,000 tons in 2025",
+      "line_start": 49,
+      "line_end": 60
+    },
+    "AC41": {
+      "documents": [
+        {
+          "query": "11.27",
+          "fact": "Frecport McMoran사가",
+          "line_start": 10,
+          "line_end": 16
+        },
+        {
+          "query": "12.18",
+          "fact": "Market Review",
+          "line_start": 15,
+          "line_end": 22
+        },
+        {
+          "query": "주간 080225",
+          "fact": "런던금속거래소가격지수",
+          "line_start": 8,
+          "line_end": 14
+        }
+      ]
+    }
+  },
+  "db_write_performed": true,
+  "reindex_performed": true,
+  "targeted_transaction": {
+    "doc_ids": [
+      "e09bbbbdac2e3b3a",
+      "c5ba28f3421c6bb1",
+      "3b3b60baa05e7715",
+      "738ead83c52ecab7"
+    ],
+    "before_rows": 776,
+    "after_rows": 1654,
+    "non_target_rows_with_run_timestamp": 0,
+    "rows": [
+      {
+        "doc_id": "3b3b60baa05e7715",
+        "src": "광산자료",
+        "source_path": "nas_document/학습데이터/니켈/Ni_Weda Bay_2025_Prod_AR_260814.xlsx",
+        "count": 2,
+        "min_dimension": 384,
+        "max_dimension": 384
+      },
+      {
+        "doc_id": "738ead83c52ecab7",
+        "src": "생산매장량_USGS",
+        "source_path": "documents/3. 생산매장량(USGS)/USGS_2026.pdf",
+        "count": 1639,
+        "min_dimension": 384,
+        "max_dimension": 384
+      },
+      {
+        "doc_id": "c5ba28f3421c6bb1",
+        "src": "조달청보고서",
+        "source_path": "documents/조달청보고서/1019_LME Seminar에서 발표한 품목별 동향 및 전망.hwp",
+        "count": 9,
+        "min_dimension": 384,
+        "max_dimension": 384
+      },
+      {
+        "doc_id": "e09bbbbdac2e3b3a",
+        "src": "조달청보고서",
+        "source_path": "documents/조달청보고서/2009년 1월 로이터 비철금속 가격 전망 자료(2).pdf",
+        "count": 4,
+        "min_dimension": 384,
+        "max_dimension": 384
+      }
+    ]
+  },
+  "okf_metadata_write_performed": true,
+  "pageindex_tree_write_performed": true,
+  "trees": [
+    {
+      "case": "AC29",
+      "okf_path": "조달청보고서/1019_LME_Seminar에서_발표한_품목별_동향_및_전망.md",
+      "current_okf_body_sha256": "e6819d8d3dd9bd6c4acf25125d023185e90f4e36eaecd90fcf7673dd77d30a9a",
+      "tree_okf_body_sha256": "e6819d8d3dd9bd6c4acf25125d023185e90f4e36eaecd90fcf7673dd77d30a9a",
+      "fixture_body_sha256": "e6819d8d3dd9bd6c4acf25125d023185e90f4e36eaecd90fcf7673dd77d30a9a",
+      "hashes_equal": true,
+      "with_summary": false
+    },
+    {
+      "case": "AC30",
+      "okf_path": "광산자료/니켈/Ni_Weda_Bay_2025_Prod_AR_260814__2.md",
+      "current_okf_body_sha256": "5f1da8d97c4b64dd8a814d901527464112b3c333e4017a504f78c4ddda46800b",
+      "tree_okf_body_sha256": "5f1da8d97c4b64dd8a814d901527464112b3c333e4017a504f78c4ddda46800b",
+      "fixture_body_sha256": "5f1da8d97c4b64dd8a814d901527464112b3c333e4017a504f78c4ddda46800b",
+      "hashes_equal": true,
+      "with_summary": false
+    },
+    {
+      "case": "AC40",
+      "okf_path": "생산매장량_USGS/USGS_2026.md",
+      "current_okf_body_sha256": "a9b0926766146426a0359f69dc596f44f84c4e25e9c2a9425191a8f6f404683c",
+      "tree_okf_body_sha256": "a9b0926766146426a0359f69dc596f44f84c4e25e9c2a9425191a8f6f404683c",
+      "fixture_body_sha256": "a9b0926766146426a0359f69dc596f44f84c4e25e9c2a9425191a8f6f404683c",
+      "hashes_equal": true,
+      "with_summary": false
+    }
+  ],
+  "hnsw_ef_search_floor": 200,
+  "backup": {
+    "directory": "sol_backup_20260923_205629",
+    "table": "mineral_risk.doc_chunk_backup_acceptance_20260923_205629",
+    "table_rows": 776,
+    "rollback_sql": "sol_backup_20260923_205629/rollback.sql",
+    "rollback_files": "sol_backup_20260923_205629/rollback_files.sh"
+  },
+  "source_sha256": {
+    "inhouse/rag_core/ragkit/chunk.py": "e6b2ffc0288a5d45ec6a089a91f0a841f9b126396db4b29cbf3c8f3a82f70dbe",
+    "inhouse/rag_core/retrieval/pageindex.py": "4562edc1552265201e62a136f54aff4715a782295012dba1d86654f9a6498d1e",
+    "inhouse/rag_core/retrieval/dense_pg.py": "edd12d8c29fbda5d5823b927d92b002204190c19ecbb63a1f476ece787d5cd80",
+    "inhouse/ingest/vectorize/build_pgvector_okf.py": "677c88332c912f39e5972f02067cc7ac30ba0ff2d4155e3b2e9353aa4be52440",
+    "inhouse/rag_chat/tests/acceptance_integrations.py": "01a519675a25ba66bab6e01e97d055cdb03f91e2e5c69c7d1cc1f294ff99549a",
+    "inhouse/rag_chat/tests/acceptance_fixtures.json": "4bdc3723db2d8570e04cd6c9510f0f9c82dfddeb64370e6be4af162f4bb0a0ae"
+  },
+  "integration_result": "sol_post_apply_acceptance_round2/chatbot_acceptance_20260923_210655.json",
+  "integration_summary": {
+    "PASS": 6,
+    "FAIL": 0
+  },
+  "regression": {
+    "passed": 225,
+    "subtests_passed": 64,
+    "failed": 1,
+    "failure_scope": "소유 범위 밖 citation menu_source 기대 불일치"
+  },
+  "deploy_performed": false,
+  "commit_performed": false,
+  "git_head": "14e60108c72e1844ec86ba673459865a1b81ebcc"
+}

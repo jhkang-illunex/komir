@@ -1,0 +1,10 @@
+data: {"session_id": "6172a673-3d7b-4235-9b4b-716a6f647896"}
+
+event: status
+data: {"stage": 1, "label": "질문 조건 확인", "status": "조회실패", "failure_reason": "out_of_scope"}
+
+data: {"delta": "광물 관련 정보만 조회할 수 있습니다."}
+
+event: done
+data: {"done": true, "abstained": true, "abstain_reason": "out_of_scope"}
+

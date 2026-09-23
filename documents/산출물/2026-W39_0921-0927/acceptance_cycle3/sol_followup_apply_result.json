@@ -1,0 +1,68 @@
+{
+  "stage": "applied_and_verified",
+  "shared_db_write": true,
+  "deployed": false,
+  "backup_dir": "documents/산출물/2026-W39_0921-0927/acceptance_cycle3/sol_backup_20260923_205629",
+  "backup_table": "mineral_risk.doc_chunk_backup_acceptance_20260923_205629",
+  "before_target_rows": 776,
+  "after_target_rows": 1654,
+  "non_target_rows_with_run_timestamp": 0,
+  "updated_doc_ids": [
+    "e09bbbbdac2e3b3a",
+    "c5ba28f3421c6bb1",
+    "3b3b60baa05e7715",
+    "738ead83c52ecab7"
+  ],
+  "updated_trees": [
+    "AC29",
+    "AC30",
+    "AC40"
+  ],
+  "acceptance_report": "documents/산출물/2026-W39_0921-0927/acceptance_cycle3/sol_post_apply_acceptance_round2/chatbot_acceptance_20260923_210655.json",
+  "acceptance_summary": {
+    "PASS": 6
+  },
+  "dense_ranks": {
+    "AC28": {
+      "expected_doc_ranks": [
+        1
+      ],
+      "exact_fact_ranks": [
+        1
+      ]
+    },
+    "AC29": {
+      "expected_doc_ranks": [
+        1
+      ],
+      "exact_fact_ranks": [
+        1
+      ]
+    },
+    "AC30": {
+      "expected_doc_ranks": [
+        1
+      ],
+      "exact_fact_ranks": [
+        1
+      ]
+    },
+    "AC39": {
+      "expected_doc_ranks": [
+        1,
+        2
+      ],
+      "exact_fact_ranks": [
+        2
+      ]
+    }
+  },
+  "regression": {
+    "passed": 225,
+    "subtests_passed": 64,
+    "failed": 1,
+    "unrelated_failure": "test_internal_knowledge_route expects no menu_source field; concurrent dirty code emits menu_source=None"
+  },
+  "rollback_sql": "documents/산출물/2026-W39_0921-0927/acceptance_cycle3/sol_backup_20260923_205629/rollback.sql",
+  "rollback_files": "documents/산출물/2026-W39_0921-0927/acceptance_cycle3/sol_backup_20260923_205629/rollback_files.sh"
+}

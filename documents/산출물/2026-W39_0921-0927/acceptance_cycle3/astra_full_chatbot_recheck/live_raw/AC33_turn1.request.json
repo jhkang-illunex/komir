@@ -1,0 +1,10 @@
+{
+  "body": {
+    "user_id": "acceptance-suite",
+    "session_id": "88174f10-248e-47c6-91e2-ba1189c80e93",
+    "message": "지금 리튬 수급위기 진단 점수를 알려줘"
+  },
+  "url": "http://127.0.0.1:18002/pubchat",
+  "timeout_seconds": 180,
+  "started_at": "2026-09-23T12:21:00.855220+00:00"
+}

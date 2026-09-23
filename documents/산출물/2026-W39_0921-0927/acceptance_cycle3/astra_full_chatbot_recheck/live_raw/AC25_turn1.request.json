@@ -1,0 +1,10 @@
+{
+  "body": {
+    "user_id": "acceptance-suite",
+    "session_id": "8ee34e1b-383c-48ee-890e-decd7c37c599",
+    "message": "리튬 수급 이슈를 설명하는 보고서를 찾아줘"
+  },
+  "url": "http://127.0.0.1:18002/pubchat",
+  "timeout_seconds": 180,
+  "started_at": "2026-09-23T12:20:53.526884+00:00"
+}

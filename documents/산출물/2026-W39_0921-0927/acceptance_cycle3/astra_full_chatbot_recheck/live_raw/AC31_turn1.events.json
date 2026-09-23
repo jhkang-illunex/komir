@@ -1,0 +1,19 @@
+[
+  {
+    "session_id": "ee63febd-f83b-43dd-a618-fd36b8fca6b7"
+  },
+  {
+    "stage": 1,
+    "label": "질문 조건 확인",
+    "status": "조회불가",
+    "failure_reason": "unsupported_mineral"
+  },
+  {
+    "delta": "지원하지 않는 광물에 대해서는 답변할수 없습니다."
+  },
+  {
+    "done": true,
+    "abstained": true,
+    "abstain_reason": "unsupported_mineral"
+  }
+]

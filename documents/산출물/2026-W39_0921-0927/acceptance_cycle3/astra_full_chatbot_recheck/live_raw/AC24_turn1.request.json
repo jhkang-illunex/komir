@@ -1,0 +1,10 @@
+{
+  "body": {
+    "user_id": "acceptance-suite",
+    "session_id": "e07dacdf-806e-4a04-9c58-c6d524b8a44a",
+    "message": "한국의 리튬 수입 데이터를 보려면 어디로 가야 돼?"
+  },
+  "url": "http://127.0.0.1:18002/pubchat",
+  "timeout_seconds": 180,
+  "started_at": "2026-09-23T12:20:51.097630+00:00"
+}

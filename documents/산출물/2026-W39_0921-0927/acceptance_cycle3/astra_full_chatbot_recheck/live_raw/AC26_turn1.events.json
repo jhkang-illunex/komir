@@ -1,0 +1,39 @@
+[
+  {
+    "session_id": "718ebc4f-9c32-4f65-a984-63f55a1531e0"
+  },
+  {
+    "stage": 1,
+    "label": "질문 조건 확인"
+  },
+  {
+    "stage": 1,
+    "label": "질문 조건 확인"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "action_id": "document.retrieve"
+  },
+  {
+    "stage": 3,
+    "label": "데이터 분석 중",
+    "action_id": "document.retrieve"
+  },
+  {
+    "stage": 3,
+    "label": "데이터 분석 중",
+    "status": "조회실패",
+    "failure_reason": "source_unavailable"
+  },
+  {
+    "delta": "데이터를 찾을 수 없습니다."
+  },
+  {
+    "done": true,
+    "citations": [],
+    "bogus_citations": [],
+    "abstained": true,
+    "abstain_reason": "source_unavailable"
+  }
+]

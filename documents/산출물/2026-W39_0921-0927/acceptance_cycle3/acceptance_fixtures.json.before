@@ -1,0 +1,91 @@
+{
+  "AC28": {
+    "resource": "documents/조달청보고서/2009년 1월 로이터 비철금속 가격 전망 자료(2).pdf",
+    "query": "로이터 비철금속 가격 전망",
+    "okf_fact": "설문참여자수 41"
+  },
+  "AC29": {
+    "resource": "documents/조달청보고서/1019_LME Seminar에서 발표한 품목별 동향 및 전망.hwp",
+    "doc_id": "doc_c5ba28f3421c6bb14b086a0b",
+    "okf_path": "조달청보고서/1019_LME_Seminar에서_발표한_품목별_동향_및_전망.md",
+    "query": "LME Seminar 니켈 추가 하락 전망",
+    "okf_fact": "니 켈",
+    "original_facts": [
+      "추가 하락 전망",
+      "가격 추가 하락"
+    ]
+  },
+  "AC30": {
+    "resource": "nas_document/학습데이터/니켈/Ni_Weda Bay_2025_Prod_AR_260814.xlsx",
+    "doc_id": "doc_3b3b60baa05e7715521b4901",
+    "okf_path": "광산자료/니켈/Ni_Weda_Bay_2025_Prod_AR_260814__2.md",
+    "query": "Weda Bay 니켈 광석 생산량",
+    "okf_fact": "41875",
+    "sheet": "산출결과",
+    "headers": [
+      "광석",
+      "수분함량",
+      "품위",
+      "금속량",
+      "회수율",
+      "최종 금속량"
+    ],
+    "year": 2025,
+    "unit": "광석 생산량(kwmt)",
+    "values": [
+      41875,
+      303.7481341598289
+    ]
+  },
+  "AC39": {
+    "resource": "documents/3. 생산매장량(USGS)/USGS_2026.pdf",
+    "doc_id": "doc_738ead83c52ecab761f68fb4",
+    "okf_path": "생산매장량_USGS/USGS_2026.md",
+    "query": "lithium production 2025",
+    "okf_fact": "Estimated world lithium production increased to 290,000 tons in 2025"
+  },
+  "AC40": {
+    "resource": "documents/3. 생산매장량(USGS)/USGS_2026.pdf",
+    "doc_id": "doc_738ead83c52ecab761f68fb4",
+    "okf_path": "생산매장량_USGS/USGS_2026.md",
+    "query": "lithium production 2025",
+    "fact": "Estimated world lithium production increased to 290,000 tons in 2025",
+    "line_start": 49,
+    "line_end": 60,
+    "body_sha256": "a9b0926766146426a0359f69dc596f44f84c4e25e9c2a9425191a8f6f404683c"
+  },
+  "AC41": {
+    "documents": [
+      {
+        "resource": "documents/조달청보고서/11.27.pdf",
+        "doc_id": "doc_51886c72704a2c9017503e3c",
+        "okf_path": "조달청보고서/11.27.md",
+        "query": "11.27",
+        "fact": "Frecport McMoran사가",
+        "line_start": 10,
+        "line_end": 16,
+        "body_sha256": "ae5ee66b71e7f85ac69b8fed01b9a8a58c00ccab2919cc019d072d231859bf23"
+      },
+      {
+        "resource": "documents/조달청보고서/12.18.pdf",
+        "doc_id": "doc_d623918d8502f6dc962570c0",
+        "okf_path": "조달청보고서/12.18.md",
+        "query": "12.18",
+        "fact": "Market Review",
+        "line_start": 15,
+        "line_end": 22,
+        "body_sha256": "b4437d22b600f47fa3432f539e600d9a11703b8a5e68e1c1b47f923fbcdfb936"
+      },
+      {
+        "resource": "documents/조달청보고서/주간 080225.pdf",
+        "doc_id": "doc_c756024d734b611ff55d7b23",
+        "okf_path": "조달청보고서/주간_080225.md",
+        "query": "주간 080225",
+        "fact": "런던금속거래소가격지수",
+        "line_start": 8,
+        "line_end": 14,
+        "body_sha256": "26912ee5bd0ca6f324419c6b06db5bc7ab07f041779c17129cf19b74fcb2f128"
+      }
+    ]
+  }
+}

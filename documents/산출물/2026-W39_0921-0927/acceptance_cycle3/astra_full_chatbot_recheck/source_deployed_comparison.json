@@ -1,0 +1,67 @@
+{
+  "rag_chat/app/routers/chat.py": {
+    "exists": true,
+    "sha256": "5b123c1b4e762ae154c90627bc6856e6818d6d889313471f3efed67b6b92e728",
+    "local_sha256": "5b123c1b4e762ae154c90627bc6856e6818d6d889313471f3efed67b6b92e728",
+    "matches": true,
+    "container_path": "/app/app/routers/chat.py"
+  },
+  "rag_core/ragkit/action_contract.py": {
+    "exists": true,
+    "sha256": "18337b648a306d9614b48bf58205c6bece70ed0f25ad698c0b9203558fb6ac69",
+    "local_sha256": "18337b648a306d9614b48bf58205c6bece70ed0f25ad698c0b9203558fb6ac69",
+    "matches": true
+  },
+  "rag_core/ragkit/chatbot_graph.py": {
+    "exists": true,
+    "sha256": "d96f7b7cbeca6c5828b1d2bd0d2fc8dc5d03769fa9d4f777de532807575e59da",
+    "local_sha256": "d96f7b7cbeca6c5828b1d2bd0d2fc8dc5d03769fa9d4f777de532807575e59da",
+    "matches": true
+  },
+  "rag_core/ragkit/chunk.py": {
+    "exists": true,
+    "sha256": "6ad80b6ae2edd52cecaa56255acae0a1ccd2f067dcf4d9b63ed28b631d061dc0",
+    "local_sha256": "e6b2ffc0288a5d45ec6a089a91f0a841f9b126396db4b29cbf3c8f3a82f70dbe",
+    "matches": false
+  },
+  "rag_core/ragkit/embed.py": {
+    "exists": true,
+    "sha256": "35f7d46cec714593dde9062b5c0da0f82b30fd87d7ddd553dcfe3b05fc431469",
+    "local_sha256": "35f7d46cec714593dde9062b5c0da0f82b30fd87d7ddd553dcfe3b05fc431469",
+    "matches": true
+  },
+  "rag_core/retrieval/dense_pg.py": {
+    "exists": true,
+    "sha256": "55d3e91368c8b34ab42d8b4b5bc030b9657a956e1118a6bef1e9544038fde1cc",
+    "local_sha256": "edd12d8c29fbda5d5823b927d92b002204190c19ecbb63a1f476ece787d5cd80",
+    "matches": false
+  },
+  "rag_core/retrieval/pageindex.py": {
+    "exists": true,
+    "sha256": "811d7fd2e59baa4425e1f12ed38fde8cead5c7b955fb688ba2f2896eefbacb6f",
+    "local_sha256": "4562edc1552265201e62a136f54aff4715a782295012dba1d86654f9a6498d1e",
+    "matches": false
+  },
+  "common/komis_raw.py": {
+    "exists": true,
+    "sha256": "e8c742d5d07c4f2add2544341bf4e1a9265d3fd8582ae85600b19ea4fde14322",
+    "local_sha256": "e8c742d5d07c4f2add2544341bf4e1a9265d3fd8582ae85600b19ea4fde14322",
+    "matches": true
+  },
+  "rag_core/retrieval/evidence.py": {
+    "exists": true,
+    "sha256": "0c467c302d0bf6c04abc019affd56104187a23267dfd304c3f0c1a249b576840",
+    "local_sha256": "d8fa993f3e882577a30c2b43ccf254d7a5d375ef9215fa6531261bd688f4267a",
+    "matches": false
+  },
+  "rag_core/ragkit/chatbot.py": {
+    "sha256": "70bfab6d55389d1b2ca6d84319b6f555d4f7e2ca2039f9196b2aeea59c59845e",
+    "local_sha256": "70bfab6d55389d1b2ca6d84319b6f555d4f7e2ca2039f9196b2aeea59c59845e",
+    "matches": true
+  },
+  "rag_core/ragkit/chatbot_events.py": {
+    "sha256": "1242f4d883a877bebffe616ff2d6950dd7c6ed82932460fb256ab55516520bec",
+    "local_sha256": "1242f4d883a877bebffe616ff2d6950dd7c6ed82932460fb256ab55516520bec",
+    "matches": true
+  }
+}

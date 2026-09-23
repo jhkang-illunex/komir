@@ -1,0 +1,2 @@
+{"id": "AC21", "title": "무역 HITL 누락 슬롯", "layer": "live", "status": "NOT_RUN", "errors": ["dry-run"], "detail": {}, "elapsed_seconds": 0.0, "evidence_path": "/home/nuri/dev/git/ws/mine_ws/komir/documents/산출물/acceptance_results/chatbot_acceptance_20260923_200151.jsonl"}
+{"id": "AC22", "title": "무역 HITL 재개", "layer": "live", "status": "NOT_RUN", "errors": ["dry-run"], "detail": {}, "elapsed_seconds": 0.0, "evidence_path": "/home/nuri/dev/git/ws/mine_ws/komir/documents/산출물/acceptance_results/chatbot_acceptance_20260923_200151.jsonl"}

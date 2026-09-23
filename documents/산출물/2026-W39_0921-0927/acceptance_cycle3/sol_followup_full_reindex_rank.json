@@ -1,0 +1,390 @@
+{
+  "AC28": {
+    "candidate_chunk_count": 4,
+    "combined_exact_fact_rank": 1,
+    "combined_exact_fact_score": 0.9396981000900269,
+    "top10": [
+      {
+        "rank": 1,
+        "score": 0.9396981000900269,
+        "origin": "new",
+        "case": "AC28",
+        "chunk_order": 0,
+        "fact_present": true,
+        "text": "| |알루미늄 전기동|납 니켈|주석|아연| | |\n|---|---|---|---|---|---|---|\n|평균값 1,984| |4,330|1,317|13,482|14,065|1,551|\n|중간값 1,951| |4,299|1,323|13,228|13,500|1,442|\n|최고치 3,200| |7,500|2,000|20,000|18,800|3,100|\n|최저치 1,323| |2,756|800 9,932| |9,921|1,058|\n|설문참여자수 41| |45|35|41|22|42|"
+      },
+      {
+        "rank": 2,
+        "score": 0.9161548018455505,
+        "origin": "new",
+        "case": "AC28",
+        "chunk_order": 1,
+        "fact_present": false,
+        "text": "|Antaike 2,840| | | |13,000| |1,530|\n|---|---|---|---|---|---|---|\n|ANZ 1,951| |4,023|1,524|12,731| |1,615|\n|Barclays Capital 3,200| |7,500|2,000|13,000|15,000|3,100|\n|BMO Capital Markets|1,984|5,512|1,323|15,432| |1,874|\n|BNP Paribas 1,800| |3,200|800 12,500| | |2,000|\n|Calyon 1,600| |3,500|1,100|11,000|12,000|1,200|\n|Canaccord Adams|1,764|4,409|1,102|13,228|11,023|1,543|\n|China International 1,500| |4,500|1,100|12,000|11,000|1,300|\n|CIBC World Markets 1,654| |3,968|13,228| | |1,433|\n|Citigroup"
+      },
+      {
+        "rank": 3,
+        "score": 0.9125402569770813,
+        "origin": "new",
+        "case": "AC28",
+        "chunk_order": 3,
+        "fact_present": false,
+        "text": "0|1,850|\n|Metal Bulletin Resea 2,244| |6,025|1,238|13,500|15,500|1,300|\n|MF Global 1,500| |3,700|1,450| | | |\n|Midas Funds 4,189| | |14,500| |13,500|1,375|\n|Mitsui Bussan Commod|1,800|4,300|1,322|13,228| |1,433|\n|Morgan Stanley 2,094| |3,748|12,125| | |1,323|\n|National Bank Financ 3,527| | |1,323|13,228| |1,433|\n|RBC Capital Markets 1,984| |3,858|1,102|19,841| |1,543|\n|Royal Bank of Scotla 2,000| |4,500|1,550|13,250|15,000|1,850|\n|Scotiabank Group 1,543| |3,086|10,582| |- 1,323| |\n|Societe Gener"
+      },
+      {
+        "rank": 4,
+        "score": 0.9074345231056213,
+        "origin": "new",
+        "case": "AC28",
+        "chunk_order": 2,
+        "fact_present": false,
+        "text": "1,654|4,409| | | | |\n|Desjardins Securitie 2,866| |5,512| |15,432| |1,874|\n|Deutsche Bank 1,538| |4,712|1,251|9,932|12,649|1,450|\n|Economist Intelligence 1,472| |3,957|1,175|16,975|15,212|1,296|\n|Evolution Securities 1,631| |2,954|1,102|10,582| |1,323|\n|Fairfax IS 1,600| |4,000|1,500|12,000| |1,100|\n|Fox-Davies Capital 3,560| | |1,224|12,346|12,346|1,329|\n|HARBOR Intelligence|3,100| |11,023| | |1,764|\n|Haywood Securities I 5,071| | |1,543|13,757| |1,499|\n|HSBC 1,654| |3,086|1,433|14,330| |1,323|"
+      },
+      {
+        "rank": 5,
+        "score": 0.9041006679414907,
+        "origin": "current",
+        "doc_id": "687719ee5b4e34b2",
+        "chunk_order": 20,
+        "fact_present": false,
+        "text": "- 1. 알루미늄\n\n|![image 29](<비철금속시장동향(2016.4.26)_images/imageFile29.png>)|\n|---|\n\n\n- 2. 구리\n\n|![image 30](<비철금속시장동향(2016.4.26)_images/imageFile30.png>)|\n|---|\n\n\n- 3. 납\n\n|![image 31](<비철금속시장동향(2016.4.26)_images/imageFile31.png>)|\n|---|\n\n\n- 4. 아연\n\n\n|![image 32](<비철금속시장동향(2016.4.26)_images/imageFile32.png>)|\n|---|\n\n\n* 자료 : Reuters, 2013년 ~ 현재, 증치세(17%) 반영 후 상해거래소 가격에서 런던금속거래소 가격 차감,\n\n단위 US$/t"
+      },
+      {
+        "rank": 6,
+        "score": 0.9040433282800522,
+        "origin": "current",
+        "doc_id": "5980de9c8d6f8bfe",
+        "chunk_order": 23,
+        "fact_present": false,
+        "text": "- 1. 알루미늄\n\n|![image 29](<비철금속시장동향(2016.3.22)_images/imageFile29.png>)|\n|---|\n\n\n- 2. 구리\n\n|![image 30](<비철금속시장동향(2016.3.22)_images/imageFile30.png>)|\n|---|\n\n\n- 3. 납\n\n|![image 31](<비철금속시장동향(2016.3.22)_images/imageFile31.png>)|\n|---|\n\n\n- 4. 아연\n\n\n|![image 32](<비철금속시장동향(2016.3.22)_images/imageFile32.png>)|\n|---|\n\n\n* 자료 : Reuters, 2013년 ~ 현재, 증치세(17%) 반영 후 상해거래소 가격에서 런던금속거래소 가격 차감,\n\n단위 US$/t"
+      },
+      {
+        "rank": 7,
+        "score": 0.9038267250267595,
+        "origin": "current",
+        "doc_id": "01c83513474e51c1",
+        "chunk_order": 22,
+        "fact_present": false,
+        "text": "- 1. 알루미늄\n\n|![image 30](<비철금속시장동향(2016.1.26)_images/imageFile30.png>)|\n|---|\n\n\n- 2. 구리\n\n|![image 31](<비철금속시장동향(2016.1.26)_images/imageFile31.png>)|\n|---|\n\n\n- 3. 납\n\n|![image 32](<비철금속시장동향(2016.1.26)_images/imageFile32.png>)|\n|---|\n\n\n- 4. 아연\n\n\n|![image 33](<비철금속시장동향(2016.1.26)_images/imageFile33.png>)|\n|---|\n\n\n* 자료 : Reuters, 2013년 ~ 현재, 증치세(17%) 반영 후 상해거래소 가격에서 런던금속거래소 가격 차감, 단위 US$/t"
+      },
+      {
+        "rank": 8,
+        "score": 0.9034109769218593,
+        "origin": "current",
+        "doc_id": "32ad03c4b1421486",
+        "chunk_order": 21,
+        "fact_present": false,
+        "text": "- 1. 알루미늄\n\n|![image 29](<비철금속시장동향(2016.4.19)_images/imageFile29.png>)|\n|---|\n\n\n- 2. 구리\n\n|![image 30](<비철금속시장동향(2016.4.19)_images/imageFile30.png>)|\n|---|\n\n\n- 3. 납\n\n|![image 31](<비철금속시장동향(2016.4.19)_images/imageFile31.png>)|\n|---|\n\n\n- 4. 아연\n\n\n|![image 32](<비철금속시장동향(2016.4.19)_images/imageFile32.png>)|\n|---|\n\n\n* 자료 : Reuters, 2013년 ~ 현재, 증치세(17%) 반영 후 상해거래소 가격에서 런던금속거래소 가격 차감,\n\n단위 US$/t"
+      },
+      {
+        "rank": 9,
+        "score": 0.9033858237632634,
+        "origin": "current",
+        "doc_id": "2be6e7b91c8bc473",
+        "chunk_order": 19,
+        "fact_present": false,
+        "text": "- 1. 알루미늄\n\n|![image 29](<비철금속시장동향(2016.3.29)_images/imageFile29.png>)|\n|---|\n\n\n- 2. 구리\n\n|![image 30](<비철금속시장동향(2016.3.29)_images/imageFile30.png>)|\n|---|\n\n\n- 3. 납\n\n|![image 31](<비철금속시장동향(2016.3.29)_images/imageFile31.png>)|\n|---|\n\n\n- 4. 아연\n\n\n|![image 32](<비철금속시장동향(2016.3.29)_images/imageFile32.png>)|\n|---|\n\n\n* 자료 : Reuters, 2013년 ~ 현재, 증치세(17%) 반영 후 상해거래소 가격에서 런던금속거래소 가격 차감,\n\n단위 US$/t"
+      },
+      {
+        "rank": 10,
+        "score": 0.9032659107567248,
+        "origin": "current",
+        "doc_id": "d38f72315388fec1",
+        "chunk_order": 21,
+        "fact_present": false,
+        "text": "- 1. 알루미늄\n\n|![image 29](<비철금속시장동향(2016.3.8)_images/imageFile29.png>)|\n|---|\n\n\n- 2. 구리\n\n|![image 30](<비철금속시장동향(2016.3.8)_images/imageFile30.png>)|\n|---|\n\n\n- 3. 납\n\n|![image 31](<비철금속시장동향(2016.3.8)_images/imageFile31.png>)|\n|---|\n\n\n- 4. 아연\n\n\n|![image 32](<비철금속시장동향(2016.3.8)_images/imageFile32.png>)|\n|---|\n\n\n* 자료 : Reuters, 2013년 ~ 현재, 증치세(17%) 반영 후 상해거래소 가격에서 런던금속거래소 가격 차감,\n\n단위 US$/t"
+      }
+    ]
+  },
+  "AC29": {
+    "candidate_chunk_count": 9,
+    "combined_exact_fact_rank": 1,
+    "combined_exact_fact_score": 0.9159475564956665,
+    "top10": [
+      {
+        "rank": 1,
+        "score": 0.9159475564956665,
+        "origin": "new",
+        "case": "AC29",
+        "chunk_order": 5,
+        "fact_present": true,
+        "text": "니 켈 ▪ 추가 하락 전망 (LME Cash가 ‘93년초, ’98년초 한계생산비용보다 $2,000/t 가량 낮게 거래된 기록이 있어 추가하락도 가능) ▪ 재고는 급격히 증가하는데 이는 수요부진에 기인 ▪ 신규 광산의 생산증가로 광산 생산량 급증(‘09년도 지속) ▪ 스테인레스 스틸 수요 회복은 ‘09년 하반기 이후 가능 ▪ 상승요인 : 생산업체들의 감산 ▪ 하락요인 : 스테인레스 스틸 수요부진 가격 추가 하락 가능성에 무게"
+      },
+      {
+        "rank": 2,
+        "score": 0.9065994135618909,
+        "origin": "current",
+        "doc_id": "17dda1328be7da3e",
+        "chunk_order": 18,
+        "fact_present": false,
+        "text": "- ○ (가격 동향) 주간 상승(+6.0%)\n- ○ (재고 동향) LME(+1,542톤, 5.3만 톤), LME C.W.(+0.5%p, 12.1%)\n- ○ (시장 뉴스) (가격 상승 요인)\n\n\n- - (Goro 광산 이슈) 뉴칼레도니아는 세계 최대 니켈 매장지 중 하나인 Goro광산(2.5만 톤/년) 생산을 제한할 수 있는 규제를 부과. 당국은 폐기물 댐 수위가 특정 임계치를 초과할 경우 광 산생산을 제한하는 법령을 발표. 11월 중순 해당광산의 폐기물 댐 누출로 인한 생산량 감소로 가격이 폭등한 바 있음(삼성선물 재인용) (가격 하락 요인)\n- - (Nornickel社 전망) 메이저 클래스1 니켈 생산업체이며 유럽시장 주요 공급자인 Nornickel 社는 ‘23년 니켈시장 밸런스를 11만 톤 초과공급으로 전망. 인도네시아에서 NPI 등의 저 등급 (low grade)니켈공급 확대가 주요요인. 23년 인도네시아 NPI 생산은 전년비 13% 증가한 반면 중국의 NPI 생산은 18% 감"
+      },
+      {
+        "rank": 3,
+        "score": 0.9011359869756722,
+        "origin": "current",
+        "doc_id": "e17d6684c7a557fe",
+        "chunk_order": 18,
+        "fact_present": false,
+        "text": "- ○ (가격동향) 지난주 구리, 아연 움직임에 소외되며 강보합세(wow +0.4%).\n- ○ (재고동향) LME(+1,998톤, 36만톤), LME C.W(-0.96%p, 33.3%)\n- ○ (시장뉴스)\n\n\n- - Bloomberg社는 중국을 제외한 34곳의 글로벌 니켈생산업체를 조사한 결과, 향후 2 년간 니켈 공급 증가폭이 줄어들 것으로 전망. 2017년에는 1.6%, 2018년에는 0.33% 증가하는데 그칠 것으로 전망.\n- - 글렌코어社 올해 1~9월 Nickel 생산량 4만 8톤으로 전년비 20% 증가.\n- - Nornickel社 정광 생산량 부족으로 인해,‘16년 생산목표치 약 2~2.5만톤 축소."
+      },
+      {
+        "rank": 4,
+        "score": 0.8965645165275217,
+        "origin": "current",
+        "doc_id": "dfb7f84d52ad9e25",
+        "chunk_order": 21,
+        "fact_present": false,
+        "text": "- 니켈의 시장가격은 장기적으로 작년 5월에 도달한 $21,000 선을 올해 회복하느냐가 가장 중요 한 포인트임. 기본적으로 LME재고는 매우 높은 수준이지만 인도네시아 광물수출 금지 조치 가 니켈 펀더멘탈에 어떤 영향을 미치는 가의 구도라고 판단됨. 중ㆍ장기적으로 니켈은 세 계 최대 광석 보유국인 인도네시아의 광석수출 제한 조치가 니켈 가격 상승에 중요 변수로 영 향을 미칠 것이라고 기대됨. 칭다오 스캔들 이후, 파이낸싱 딜에 묶여 있던 보세창고 재고 들이 LME창고로 유입되며 LME 니켈가격 하락 압박이 지속되고 있음."
+      },
+      {
+        "rank": 5,
+        "score": 0.8949369254745901,
+        "origin": "current",
+        "doc_id": "3421eee60e8d455f",
+        "chunk_order": 17,
+        "fact_present": false,
+        "text": "- □ 주간 동향\n\n- ○ (가격 동향) 주간 강보합(+0.9%)\n- ○ (재고 동향) LME(+966톤, 16.0만 톤), LME C.W.(0.0%p, 5.7%)\n- ○ (시장 뉴스) (가격 상승 요인)\n\n- - (중국 황산니켈 수입 감소) 중국 10월 황산니켈 수입량이 10,299톤으로 전월비 53% 감소 함. 주요 수출국 인도네시아로부터의 수입이 전월비 58% 감소한 것이 주요 요인. 한국으로 부터의 수입량 1,503톤으로 전월비 33% 감소함 (Argus Metals) (가격 하락 요인)\n- - (LME브랜드 등록 신청) 중국 니켈 생산업체 Jien Nickel社가 11/25 LME에 패스트 트랙을 통한 신규 브랜드 등록을 신청함. 생산 품목은 니켈 캐소드 플레이트이며 브랜드명은 JIEN임. 등록이 허가되면 여섯 번째 중국산 브랜드 등록업체가 되며 등록된 업체들의 시설 규모는 연간 126,600 톤에 이르게 됨 (Argus Metals)\n- - (생산재개 계획) 뉴칼레도니아 "
+      },
+      {
+        "rank": 6,
+        "score": 0.8947282621750379,
+        "origin": "current",
+        "doc_id": "2b48856e51014b61",
+        "chunk_order": 20,
+        "fact_present": false,
+        "text": "- ○ 유럽 stainless 생산자들은 은행들로부터 자금조달이 어려워지고 있어 공장 폐쇄 가능성 증 가하고 있는 것으로 나타나고 있음\n- ○ 한편 미국지역의 stainless 수요는 유럽과 중국에 비해 상대적으로 견조한 것으로 알려지 고 있음. 그러나 공급과잉 상황이 유지되고 있음\n- ○ 바클레이즈의 예측에 따르면 2015~2019년 기간 동안의 니켈의 연평균 소비 성장이 4% 수준이라고 전망되고 있음. 또한 공급증가가 급격히 이뤄지지 않는 다는 가정하에 2015~2019년 기간 동안의 균형 니켈시장 가격은 U$18,000 수준이 되리라고 기대됨\n- ○ 글로벌 니켈시장의 주요 우려는 2014년 인도네시아의 광석 수출 규제에 대한 잠재 가 능성이라고 판단됨\n- ○ 작년에 감행한 감산과 예상 밖의 생산량 유실 등이 있었지만 니켈시장 초과공급을 상쇄시 키지 못했음. Metal Bulletin측에서는 니켈 초과공급이 향후 3년간 지속될 것으로 전망\n\n<LME 거래소 재고현황> <인출예정창"
+      },
+      {
+        "rank": 7,
+        "score": 0.8936540547815545,
+        "origin": "current",
+        "doc_id": "203c5a96ea951c9d",
+        "chunk_order": 17,
+        "fact_present": false,
+        "text": "- □ 주간 동향\n\n- ○ (가격 동향) 주간 상승(+5.7%)\n- ○ (재고 동향) LME(+1,644톤, 13.2만 톤), LME C.W.(-0.6%p, 6.1%)\n- ○ (시장 뉴스) (가격 상승 요인)\n\n- - (암바토비 관련) 마다카스카르 암바토비 플랜트에서 니켈 브리켓을 생산중인 일본 생산업체 Sumitomo社에 따르면 생산공정 장애로 인해 9/25 현재 생산이 중단된 상태임. 시장 관계자에 따르면 단기적으로 브리켓 공급 차질이 예상됨. 암바토비의 올해 2분기 브리켓 생산량은 8천여톤으로 전년동기대비 20% 감소함(Argus Metals)\n- - (니켈 수급 관련) 니켈 주요 공급국이 인도네시아, 중국 등 소수에 한정되어 있다는 게 문제임. 중국 칭산 社가 인도네시아 니켈광석 부족이슈로 생산을 줄일 수 있다는 뉴스로 가격 상승한 점이 단적인 예임. 클래스1 니켈은 초과공급이지만 클래스2 니켈에서는 초과공급 규모가 줄어들고 있음 (Morgan Stanley)\n- - (기술적"
+      },
+      {
+        "rank": 8,
+        "score": 0.8921219770835668,
+        "origin": "current",
+        "doc_id": "ebcbcdd214a55153",
+        "chunk_order": 17,
+        "fact_present": false,
+        "text": "- □ 주간 동향\n\n- ○ (가격동향) 주 중반 달러강세로 인한 차익실현 이후 추가 상승(+1.84%).\n- ○ (재고동향) LME(+1,944톤, 37만톤), LME C.W(-0.48%p, 34.2%)\n- ○ (시장뉴스)\n\n- - 중국 내 황산니켈(배터리 촉매제에 사용) 수요가 증가하기 시작. 황산니켈 가격의 지 속적인 상승으로 관련 수요업체들은 내년 1월 춘절에 대비해 재고비축을 시작 (Asian Metal)\n- - 중국 페로니켈 수입은 향후 증가할 것으로 시장은 전망. 스테인리스 분야의 안정 적인 니켈 수요와 LME 니켈 가격 상승세가 주 요인임(Asian Metal).\n- - Trafigura社는‘17년에도 니켈의 공급부족을 전망, 이에 따라 페로니켈과 라테라이 트의 트레이딩 볼륨을 증가시킬 것으로 계획 중(Metal Bulletin)\n- - 중국 페로니켈 및 스테인리스 생산자들은 상이한 2017년 니켈(NPI포함) 공급 전망 에 따라 각각 내년 프리미엄이 상승, 하락의 상반"
+      },
+      {
+        "rank": 9,
+        "score": 0.8903762828855177,
+        "origin": "current",
+        "doc_id": "01c83513474e51c1",
+        "chunk_order": 18,
+        "fact_present": false,
+        "text": "- □ 가격차트\n- □ 시장뉴스\n\n\n|![image 20](<비철금속시장동향(2016.1.26)_images/imageFile20.png>)|\n|---|\n\n\n- ○ Metal Bulletin에 따르면, 브라질 Votorantim Metals社는 오는 2월부터 primary 니켈 생산 을 중단할 계획임. 동사는 연간 4.4천톤의 생산능력을 갖고 있으며 글로벌 primary 니켈의 연간 생산량이 199만톤 임을 감안할 때 1개 업체에 의한 이번 감산규모는 글로벌 생산량의 약 2.2% 수준으로 의미 있는 감산임.\n- ○ Macquarie Research에 따르면, 니켈은 2011년부터 연속 공급과잉으로 현재 재고규모는 약 24일 분이며, 80년대 이후 최고치 수준임. 현재 LME재고에 미등록 재고 30만톤까지 감안하면 실제 재고는 70만톤을 상회할 것으로 추정. 톤당 $8,500수준에서 약 66%의 제 련업자가 손실을 볼 것으로 추정되며, NPI 생산업체들은 원광가격 및 유가 하락에도 불"
+      },
+      {
+        "rank": 10,
+        "score": 0.8902320396623564,
+        "origin": "current",
+        "doc_id": "fb662c935402c77a",
+        "chunk_order": 16,
+        "fact_present": false,
+        "text": "○ (가격동향) 약세(-2.0%). 기술적인 차익매도 유입에 하락. ○ (재고동향) LME(+186톤, 38만톤), LME C.W(-0.6%p, 26.6) ○ (시장뉴스)\n\n- - 작년 글로벌 니켈은 49,700톤 공급부족.‘15년 91,400톤 공급과잉에서 전환(INSG).\n- - 중국의 1월 페로니켈 수입은 인도네시아 생산증가 상황에서, 필리핀 광석 감소 영 향으로 전년동기 대비 92% 증가한 12만톤 수준(Bloomberg).\n- - 필리핀 광산규제 논란은 지속. 두테르테 대통령은 광산부 장관의 이번 조치를 지 지, 한편 필리핀 의회는 이번 광산폐쇄의 타당성 리뷰를 계획 중이며, Global Ferronickel Holding, Marcventure Holdings社 등 주요 업체 일부는 정부규제에도 불구하고 생산을 지속할 계획(Bloomberg, Platts)."
+      }
+    ]
+  },
+  "AC30": {
+    "candidate_chunk_count": 2,
+    "combined_exact_fact_rank": 1,
+    "combined_exact_fact_score": 0.9148248434066772,
+    "top10": [
+      {
+        "rank": 1,
+        "score": 0.9148248434066772,
+        "origin": "new",
+        "case": "AC30",
+        "chunk_order": 0,
+        "fact_present": true,
+        "text": "| col1 | col2 | 광석 | 수분함량 | 품위 | 금속량 | 회수율 | 최종 금속량 |\n|---|---|---|---|---|---|---|---|\n| 광석 생산량(kwmt) | Saprolite+Limonite | 41875 |  |  |  |  | 303.748134 |\n| 외부 판매량(kwmt) | Saprolite+Limonite | 38542 |  |  | 304.524994 |  | 267.948134 |\n|  | Limonite | 25481 | 0.382987 | 0.0116 | 182.376391 | 0.92 | 167.786279 |\n|  | Saprolite | 13061 | 0.331988 | 0.014 | 122.148603 | 0.82 | 100.161855 |\n| 자체 사용량(kwmt) | Saprolite | 3333 |  |  |  |  | 35.8 |\n|  |  |  |  |  |  | 최저값 적용 |  |"
+      },
+      {
+        "rank": 2,
+        "score": 0.8907902966987733,
+        "origin": "current",
+        "doc_id": "12e87b74d5cc2f8c",
+        "chunk_order": 20,
+        "fact_present": false,
+        "text": "- □ 가격차트\n- □ 시장뉴스\n\n\n|![image 20](<비철금속시장동향(2014.10.27)_images/imageFile20.png>)|\n|---|\n\n\n- ○ 프랑스의 니켈 생산업체인 PT Weda Bay Nickel사는 인도네시아 정부와 Contract of Work 수정안 동의서에 사인하였다고 전했음.\n- ○ Norilsk Nickel사는 2곳의 아프리카 니켈 광산 지분을 보츠와나 소재 구리 광산업체인 BCL에 $337milllions에 매각했음.\n- ○ 중국 Ningbo Zhenhai Tiandi Special Steel 사는, 장시성 주장시에 연간 2million mt의 니켈 판 스테인리스강판 생산이 가능한 생산 공장의 운영을 2016년부터 진행 할 계획이라고 전함.\n- ○ 최근 니켈가격 하락으로 인해 중국 니켈선철(NPI)의 감산이 이어지고 있음. 다만 수요가 증 가하지 않는 상황에서 이와 같은 감산은 시장가격에 큰 영향을 미치지 않는 것으로 보임.\n- ○ 니켈 광산"
+      },
+      {
+        "rank": 3,
+        "score": 0.8879810638439037,
+        "origin": "current",
+        "doc_id": "4729fda5f99d8e93",
+        "chunk_order": 19,
+        "fact_present": false,
+        "text": "- □ 가격차트\n- □ 시장뉴스\n\n\n|![image 26](<비철금속시장동향(2012.10.30)_images/imageFile26.png>)|\n|---|\n\n\n- ○ 지난 해 니켈 부족량은 3,200톤이었는데, 새로운 생산 지역 활성화에 힘입어 8월의 LME 재고량은 전년 동기대비 9,600톤 증가하는 등 1-8월간 7.7만천이 초과 생산되었다고 발표 (WBMS)\n\n- 니켈의 초과 생산량이 적어도 2015년까지 지속되면 트레이더들은 니켈을 알루미늄, 아연 등과 거래를 통해 가격 상승을 유인하겠다는 계획(Standard Bank Plc)\n\n- ○ 초과 생산 속에서 니켈 생산량 증가는 지속\n\n- - Anglo American의 3사분기 생산량은 9천톤으로 38% 증가했는데 9월 Loma de Niquel 제련소가 가동 중지되었음에도 불구, Barro Alto 제련소에서의 생산량 증가에 영향\n- - 뉴 칼레도니아에 소재한 Eramet사의 Doniambo 제련소에서 올해 1월부터 9월까지 "
+      },
+      {
+        "rank": 4,
+        "score": 0.8879097304505608,
+        "origin": "current",
+        "doc_id": "9effbb7587d13968",
+        "chunk_order": 16,
+        "fact_present": false,
+        "text": "- ○ (가격동향) 약보합(-0.1%)\n- ○ (재고동향) LME(-750톤, 23.6만 톤), LME C.W.(-0.2%p, 24.2%)\n- ○ (시장뉴스) (가격 상승 요인)\n\n- - (글로벌 공급과잉 감소) 7월 글로벌 니켈 시장은 8,900톤 공급과잉을 기록해 6월 14,700톤 공급과잉대비 수급이 타이트해짐(INSG)\n\n* 단, 1~7월은 91,200톤 공급과잉으로 전년대비(35,400톤 공급부족) 수급 완화\n\n- - (배터리 용 니켈 수요 이슈) 테슬라가 배터리용 니켈 확보를 위해 인도네시아 당국 과 투자 가능성을 협의 중임(Bloomberg)\n\n* 동사는 배터리용 원료 확보를 위해 캐나다 광산회사인 Giga Metals社의 Turnagain mine 투자 검토(9월), Glencore社와 코발트 구매 계약을 체결(6월)하기도 함\n\n(가격 하락 요인)\n\n- - (인도네시아 신규 공급) Weda Bay 산업공단 관계자에 따르면 내년까지 단지 내 4개 신규 니켈 제련소가 완공"
+      },
+      {
+        "rank": 5,
+        "score": 0.887424118076319,
+        "origin": "current",
+        "doc_id": "4c8ff8e4ceaff380",
+        "chunk_order": 15,
+        "fact_present": false,
+        "text": "□ 주간 동향\n\n- ○ (가격동향) 하락(-0.2%). 3주 연속 하락 조정세\n- ○ (재고동향) LME(-612톤, 23.7만 톤), LME C.W.(-0.2%p, 24.4%)\n- ○ (시장뉴스) (가격 상승 요인)\n\n- - (배터리 용 니켈 수요 이슈) 테슬라가 배터리용 니켈 확보를 위해 캐나다 광산회사 인 Giga Metals의 Turnagain mine 개발에 투자하는 것을 검토 중임(Bloomberg)\n\n- * 해당 광산은 약 20년 가채, 연간 니켈 40,000톤, 코발트 2,000톤을 생산 가능한 대형 광산임\n- ** 테슬라는 Glencore로부터 코발트 구매 계약을 체결하기도 함\n\n- - (9월 중국 생산 감소) 9월 중국 정련니켈(refined nickel) 생산이 업체들의 시설 점검 에 따라 전월비 약 3.6% 감소할 것으로 예상(Antaike, Platts) (가격 하락 요인)\n- - (인도네시아 신규 시설) 인도네시아 Weda Bay Industrical Par"
+      },
+      {
+        "rank": 6,
+        "score": 0.8858276077611696,
+        "origin": "current",
+        "doc_id": "11fc0d39ca88ea8e",
+        "chunk_order": 20,
+        "fact_present": false,
+        "text": "- ○ 일부 광물 및 제련 업체에서 지난해 하반기 생산 확대와 함께 올해 생산 목표를 늘리는 양상\n\n\n- - 호주의 Mirabela Nickel社는 2012년에 19,253톤을 생산하였다고 발표하면서 올해의 목표 생산량을 22~24천톤으로 전망\n- - Mincor Resources는 호주 서부 Kambalda 지역에서 지난해 하반기 계획하였던 4.5천톤을 크게 상회하는 5,063톤의 Nickel 광물을 생산하였다고 발표\n\n\n- ○ 한편, 대형 업체들은 가격 약세에 따라 생산량을 축소할 것임을 시사\n\n\n- - 세계 2위 니켈생산 기업인 Vale社는 캐나다 온타리오주 소재 Copper Cliff 니켈 용광로의 생산량을 줄일 계획임을 발표하는 등 자사 생산시설 일부에서 니켈 생산 중단을 결정\n- - BHP Billiton社는 호주 달러의 강세와 alumina, nickel 가격의 약세가 해당 지역의 생산에 악영향을 미치고 있다고 발표\n- - BHP Billiton社는 지난해 8월에 서부 "
+      },
+      {
+        "rank": 7,
+        "score": 0.8853327700297389,
+        "origin": "current",
+        "doc_id": "bf13386de17143b2",
+        "chunk_order": 17,
+        "fact_present": false,
+        "text": "- □ 가격차트\n- □ 시장뉴스\n\n\n|![image 20](<비철금속시장동향(2014.04.22)_images/imageFile20.png>)|\n|---|\n\n\n- ○ 호주 Queensland에 위치한 Clive Palmer사의 니켈 제련소가 잠시 운영 중지했음. 이는 Great Barrier Reef에 위치한 tailings dam들에서 독성 폐기물이 흘러 나왔기 때문인 것으로 알려졌음\n- ○ 로이터의 시장 조사치에 따르면, LME cash 니켈의 평균가는 올해 2014년에 $15,650, 내년인 2015년에 $17,395.80를 기록할 것으로 전망됨. 또한 올해 니켈 시장은 42,000톤 공급초과를 기록할 것으로 예상됨\n- ○ 필리핀 니켈 광석 생산업체 Nickel Asia사는 1분기에 선적량이 52% 증가하였음. 이는 인도네시아 광석 수출제한 규제의 영향과 필리핀의 Taganito 가공 플랜트의 영향으로 알려짐\n- ○ 핀란드 스테인리스강 제조업체 Outokumpu사는 1분기 경영"
+      },
+      {
+        "rank": 8,
+        "score": 0.8852939742453129,
+        "origin": "current",
+        "doc_id": "92747a20db6e287f",
+        "chunk_order": 20,
+        "fact_present": false,
+        "text": "- ○ INSG에 따르면 지난 9월, 정제 니켈 공급이 150,400톤으로 수요(135,200톤)를 초과, 5개월 연속 지속되면서 올해 9월까지 6만톤 공급초과였다고 발표\n\n- 한편, WBMS도 2012년 1월부터 9월까지 니켈은 8.9만톤이 초과공급 상태였다고 발표\n\n![image 31](<비철금속시장동향(2012.11.27)_images/imageFile31.png>)\n\n* 자료: LME, INSG, WBMS, Metal-Bulletine\n\n- ○ 초과공급 전망 속에 생산 시설에 대한 확보와 확장, 광석 생산량 증가 소식 지속\n\n\n- - 인도네시아 PT Aneka Tambang사는 2014년 수출제한조치 발효 이전에 내년의 생산량을 1,880만 톤까지 기존에 비해 두 배로 늘릴 계획을\n- - 뉴칼라도니아의 엑스트라타 Koniambo 니켈 프로젝트, 첫 번째 생산라인 완성을 발표\n- - Rusisian Platinu의 자회사인 Chernogorskaya Mining은 2016년 T"
+      },
+      {
+        "rank": 9,
+        "score": 0.8850389191485111,
+        "origin": "current",
+        "doc_id": "0aefa0999fe58495",
+        "chunk_order": 18,
+        "fact_present": false,
+        "text": "- □ 가격차트\n- □ 시장동향\n\n- ○ Anglo American의 12년 4분기 니켈 생산량은 전년 동기 대비 25% 하락한 7,400톤을 기록\n- ○ First Quantum Mineral은 잠비아 북서쪽에서 진행되는 프로젝트의 최초 니켈 생산이 내년 2분기 안에 이뤄질 것이라고 기대\n- ○ Norilsk사는 지난 해 약 5억 달러의 세금을 러시아 정부에 납부했는데, Norlisk사의 CEO가 러시아 푸틴 대통령에게 수출물량에 대한 세금 공제를 요청할 것으로 알려짐\n- ○ Norilsk사의 2012년 니켈 생산량은 300,340톤으로 ‘11년 대비 2% 상승했다고 밝힘\n- ○ Sumimoto사와 PT Vale사는 Joint Venture로 인도네시아에 니켈 공장을 건립 할 것이라고 밝힘\n\n- □ 생산동향\n\n|![image 22](<비철금속시장동향(2013.02.05)_images/imageFile22.png>)|\n|---|\n\n- ○ 일부 광물 및 제련 업체에서 지난해 하반기 생"
+      },
+      {
+        "rank": 10,
+        "score": 0.8847758242621542,
+        "origin": "current",
+        "doc_id": "fde14f06dc99c40d",
+        "chunk_order": 17,
+        "fact_present": false,
+        "text": "- □ 가격차트\n- □ 시장뉴스\n\n\n|![image 20](<비철금속시장동향(2014.05.13)_images/imageFile20.png>)|\n|---|\n\n\n- ○ Sheffield에 따르면 2013년 전체 crude stainless steel 생산량은 38.1 Mt를 기록하며 사 상최고치를 기록했으며 전년 대비로는 7.8% 상승한 수치임. 미국과 일본은 생산량이 확 대되는 추세로 바뀌었으며, 반면 EU는 2012년 보다 줄어든 것으로 파악되었음.\n- ○ Vale사는 브라질에서의 생산량 확대와 뉴칼레도니아의 plant 수리 후 1월부터 재개된 니 켈 생산으로 1분기 니켈 생산량이 전년 대비 3.7% 증가했다고 발표했음.\n- ○ 캐나다의 First Quantum은 올해 1분기 니켈 생산량이 전년 동기 대비 28% 증가했다고 발표했음.\n- ○ 글렌코어의 1분기 니켈 생산량은 전년 동기 대비 15% 하락한 22.3K mt를 기록했으며, XNA와 Falcondo 광산의 채굴 중단이 중단"
+      }
+    ]
+  },
+  "AC39": {
+    "candidate_chunk_count": 1639,
+    "combined_exact_fact_rank": 2,
+    "combined_exact_fact_score": 0.9184829592704773,
+    "top10": [
+      {
+        "rank": 1,
+        "score": 0.9279954433441162,
+        "origin": "new",
+        "case": "AC39",
+        "chunk_order": 859,
+        "fact_present": false,
+        "text": "Government Stockpile: Not available. Events, Trends, and Issues: Excluding U.S. production, worldwide lithium production in 2025 increased by 31% to approximately 290,000 tons from 222,000 tons in 2024 in response to strong demand from the lithium-ion battery market, high lithium prices from 2021 to early 2023, and an increase in global lithium production capacity. Global consumption of lithium in 2025 was estimated to be 263,000 tons, a 20% increase from consumption of 220,000 tons in 2024. Con"
+      },
+      {
+        "rank": 2,
+        "score": 0.9184829592704773,
+        "origin": "new",
+        "case": "AC39",
+        "chunk_order": 8,
+        "fact_present": true,
+        "text": "Estimated world lithium production increased to 290,000 tons in 2025."
+      },
+      {
+        "rank": 3,
+        "score": 0.9114218407021872,
+        "origin": "current",
+        "doc_id": "7d249f9a257f4d08",
+        "chunk_order": 162,
+        "fact_present": false,
+        "text": "![image 75](<Ni_Weda Bay_2025_Resv, Resc_AR_260814_images/imageFile75.png>)\n\nSource: Benchmark Minerals Intelligence, Eramet, December 2025.\n\nThe world's top ﬁve lithium producers (1) are SQM (Sociedad Química y Minera), Albemarle, PLS, Ganfeng, and Rio Tinto (following the acquisition of Arcadium Lithium), representing a total of 45% of the lithium supply in 2025.\n\nIn 2025, new spodumene mines were commissioned in Africa (Mali, Nigeria), as well as in China. The increase in brine production cam"
+      },
+      {
+        "rank": 4,
+        "score": 0.9111682719688594,
+        "origin": "current",
+        "doc_id": "d5b09e068b7a4969",
+        "chunk_order": 499,
+        "fact_present": false,
+        "text": "Our revenues increased 1.0% to US$4,576.2 million in 2025 from US$4,528.8 in 2024. Gross profit reached US$1,352.6 million (29.6% of revenues) in 2025, higher than US$1,327.1 million (29.3% of revenues) recorded in 2024. Profit attributable to controlling interests decreased to US$588.1 million in 2025 from US$685.1 million in 2024.\n\nRevenues for lithium and derivatives totaled US$2,288.2 million during the twelve months ended December 31, 2025, an increase of 2.1% compared to US$2,241.3 million"
+      },
+      {
+        "rank": 5,
+        "score": 0.9109410153697776,
+        "origin": "current",
+        "doc_id": "d5b09e068b7a4969",
+        "chunk_order": 221,
+        "fact_present": false,
+        "text": "In 2025, our consolidated revenues from lithium sales amounted to US$2,288.2 million, representing 50.0% of our total revenues and a 2.1% increase from US$2,241.3 million in 2024, due to significantly lower average prices partially offset by higher sales volumes during the year. The average price for 2025 was approximately 19.0% lower than the average price in 2024. Our sales volumes increased approximately 26.0% in 2025.\n\nWe believe we are one of the world’s largest producers of lithium carbona"
+      },
+      {
+        "rank": 6,
+        "score": 0.9102851694992302,
+        "origin": "current",
+        "doc_id": "7d4a2e2d33655940",
+        "chunk_order": 111,
+        "fact_present": false,
+        "text": "Rio Tinto interest\n\nQ1 2025\n\nQ2 2025\n\nQ3 2025\n\nQ4 2025\n\nQ1 2026\n\nLITHIUM Lithium production (‘000 tonnes)\n\nLithium carbonate (a) (a) 15.0 13.9 13.9 16.9 14.9 Lithium hydroxide 100 % 4.3 5.3 6.0 5.1 5.5 Spodumene 100 % 34.0 0.0 0.0 0.0 0.0 Other lithium specialities (LCE) 100 % 1.2 1.4 2.1 0.9 0.8 Total lithium carbonate equivalent (LCE) production (b) 20.0 (c) 14.7 15.2 18.4 15.3\n\nThird party shipments (‘000 tonnes) Lithium carbonate (a) (a) 9.6 6.2 11.5 14.9 9.8 Lithium hydroxide 100 % 2.7 4.9 "
+      },
+      {
+        "rank": 7,
+        "score": 0.9084964990615845,
+        "origin": "current",
+        "doc_id": "3e9be85f1380dc18",
+        "chunk_order": 75,
+        "fact_present": false,
+        "text": "ear-on-year increase of 39.3%; lithium hydroxide production capacity was 720,000 tons, with an output of 356,000 tons, a year-on-year decrease of 13.9%; and lithium chloride production capacity was 54,000 tons, with an output of 30,000 tons, a year-on-year increase of 25% in 2025. According to the data from Yangtze Securities Research Institute, the global demand for lithium resources is expected to reach 1.66 million tons of LCE in 2025, among which demand from new energy vehicles accounts for "
+      },
+      {
+        "rank": 8,
+        "score": 0.907654345035553,
+        "origin": "current",
+        "doc_id": "69064d612b2f1dcd",
+        "chunk_order": 9,
+        "fact_present": false,
+        "text": "Dear Shareholders, On behalf of the Board of Directors, I am pleased to present Liontown Resources’ 2025 Annual Report. FY25 marked a year of profound significance for Liontown and our shareholders, turning our vision into reality, with the successful commencement of lithium concentrate production from our Kathleen Valley mine in Western Australia. The past 18 months have been challenging for the lithium industry, with a prolonged down cycle impacting sentiment and pricing. Despite these headwin"
+      },
+      {
+        "rank": 9,
+        "score": 0.9071172746156838,
+        "origin": "current",
+        "doc_id": "d4db546c8ee52764",
+        "chunk_order": 31,
+        "fact_present": false,
+        "text": "vs Q3 2025 2025\n\nQ4 2025\n\nvs Q4 2024\n\nvs 2024\n\nRio Tinto share of production (‘000 tonnes)\n\nTotal lithium carbonate equivalent (LCE) production1,2 15 NA +23 % 57 NA\n\n1 LCE is derived from lithium carbonate, lithium chloride and spodumene concentrate. These compounds are used as feedstock in downstream production. 2 Q1 2025 LCE production from Arcadium was 17kt of which 6kt was produced since completion of the acquisition in March. Accordingly of the 57kt LCE production in 2025, 46kt was attribut"
+      },
+      {
+        "rank": 10,
+        "score": 0.9065830111503601,
+        "origin": "current",
+        "doc_id": "d4db546c8ee52764",
+        "chunk_order": 108,
+        "fact_present": false,
+        "text": "Rio Tinto interest\n\nQ4 2024\n\nQ1 2025\n\nQ2 2025\n\nQ3 2025\n\nQ4 2025 2024 2025\n\nLITHIUM Lithium production (‘000 tonnes)\n\nLithium carbonate (a) (a) NA 15 14 14 17 NA 60 Lithium hydroxide 100 % NA 4 5 6 5 NA 21 Spodumene 100 % NA 34 0 0 0 NA 34 Other lithium specialities (LCE) 100 % NA 1 1 2 1 NA 6 Total lithium carbonate equivalent (LCE) production (b) NA 20 (c) 15 15 18 NA 68\n\nThird party shipments (‘000 tonnes) Lithium carbonate (a) (a) NA 10 6 11 15 NA 42 Lithium hydroxide 100 % NA 3 5 5 6 NA 19 S"
+      }
+    ]
+  }
+}

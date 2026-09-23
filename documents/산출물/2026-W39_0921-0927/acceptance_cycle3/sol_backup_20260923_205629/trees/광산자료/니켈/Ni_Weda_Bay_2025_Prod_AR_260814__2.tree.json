@@ -1,0 +1,51 @@
+{
+  "doc_id": "doc_3b3b60baa05e7715521b4901",
+  "title": "Ni_Weda Bay_2025_Prod_AR_260814",
+  "source_group": "광산자료",
+  "resource": "nas_document/학습데이터/니켈/Ni_Weda Bay_2025_Prod_AR_260814.xlsx",
+  "fmt": "xlsx",
+  "okf_path": "광산자료/니켈/Ni_Weda_Bay_2025_Prod_AR_260814__2.md",
+  "body_line_offset": 46,
+  "with_summary": false,
+  "generated_at": "2026-09-17T09:23:18+00:00",
+  "elapsed_sec": 0.0,
+  "doc_name": "Ni_Weda_Bay_2025_Prod_AR_260814__2",
+  "line_count": 18,
+  "structure": [
+    {
+      "title": "산출결과",
+      "node_id": "0000",
+      "line_num": 1
+    },
+    {
+      "title": "수분함량, 품위",
+      "node_id": "0001",
+      "line_num": 12
+    }
+  ],
+  "minerals": [
+    "니켈"
+  ],
+  "content_keywords": [
+    "생산",
+    "kwmt",
+    "saprolite",
+    "수분함량",
+    "품위",
+    "col1",
+    "limonite",
+    "saprolite+limonite",
+    "광석",
+    "금속량",
+    "col2",
+    "col4",
+    "mdmt",
+    "mwmt",
+    "사용량",
+    "산출결과",
+    "생산량",
+    "외부",
+    "자체",
+    "적용"
+  ]
+}

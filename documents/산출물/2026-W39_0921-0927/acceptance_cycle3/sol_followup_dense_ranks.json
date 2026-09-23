@@ -1,0 +1,101 @@
+{
+  "AC28": {
+    "query": "로이터 비철금속 가격 전망",
+    "date_range": null,
+    "chunk_stats": [
+      4,
+      1,
+      268,
+      1000
+    ],
+    "best": {
+      "chunk_id": "f94f0b2d744e523a",
+      "score": 0.8498869121209488,
+      "ranking_distance": 0.1501130878790512,
+      "text": "| |알루미늄 전기동|납 니켈|주석|아연| | |\n|---|---|---|---|---|---|---|\n|평균값 1,984| |4,330|1,317|13,482|14,065|1,551|\n|중간값 1,951| |4,299|1,323|13,228|13,500|1,442|\n|최고치 3,200| |7,500|2,000|20,000|18,800|3,100|\n|최저치 1,323| |2,756|800 9,932| |9,921|1,058|\n|설문참여자수 41| |45|35|41|22|42|",
+      "rank": 12063
+    },
+    "fact": {
+      "chunk_id": "f94f0b2d744e523a",
+      "score": 0.8498869121209488,
+      "ranking_distance": 0.1501130878790512,
+      "text": "| |알루미늄 전기동|납 니켈|주석|아연| | |\n|---|---|---|---|---|---|---|\n|평균값 1,984| |4,330|1,317|13,482|14,065|1,551|\n|중간값 1,951| |4,299|1,323|13,228|13,500|1,442|\n|최고치 3,200| |7,500|2,000|20,000|18,800|3,100|\n|최저치 1,323| |2,756|800 9,932| |9,921|1,058|\n|설문참여자수 41| |45|35|41|22|42|",
+      "rank": 12063
+    }
+  },
+  "AC29": {
+    "query": "LME Seminar 니켈 추가 하락 전망",
+    "date_range": null,
+    "chunk_stats": [
+      2,
+      1,
+      618,
+      882
+    ],
+    "best": {
+      "chunk_id": "9ac76a0748ae3b4d",
+      "score": 0.8986964346532303,
+      "ranking_distance": 0.10130356534676965,
+      "text": "니 켈 ▪ 추가 하락 전망 (LME Cash가 ‘93년초, ’98년초 한계생산비용보다 $2,000/t 가량 낮게 거래된 기록이 있어 추가하락도 가능) ▪ 재고는 급격히 증가하는데 이는 수요부진에 기인 ▪ 신규 광산의 생산증가로 광산 생산량 급증(‘09년도 지속) ▪ 스테인레스 스틸 수요 회복은 ‘09년 하반기 이후 가능 ▪ 상승요인 : 생산업체들의 감산 ▪ 하락요인 : 스테인레스 스틸 수요부진 가격 추가 하락 가능성에 무게\n주 석 -Gayle Berry (Barclays Capital, 상품담당 이사) ▪ 기타 품목대비 가격하락 위험 상대적으로 낮음 ▪ 상승요인 : 공급차질, 중국 내수증가와 수출세 부과 및 생산량 감소 ▪ 하락요인 : 최근 가격대비 생산비 보다 높음. 수요측면에 서의 부진이 공급 이슈보다 부각 상승 vs. 하락요인 상존하여 가격 하락 제한 전망\n연 ▪ 가격 급등세 재현 어려움 ▪ 연 정광 공급 증가하고 있고 공급제한 요인이 약화 ▪ 연 축전지 교환(대체) 수요는 있",
+      "rank": 74
+    },
+    "fact": {
+      "chunk_id": "9ac76a0748ae3b4d",
+      "score": 0.8986964346532303,
+      "ranking_distance": 0.10130356534676965,
+      "text": "니 켈 ▪ 추가 하락 전망 (LME Cash가 ‘93년초, ’98년초 한계생산비용보다 $2,000/t 가량 낮게 거래된 기록이 있어 추가하락도 가능) ▪ 재고는 급격히 증가하는데 이는 수요부진에 기인 ▪ 신규 광산의 생산증가로 광산 생산량 급증(‘09년도 지속) ▪ 스테인레스 스틸 수요 회복은 ‘09년 하반기 이후 가능 ▪ 상승요인 : 생산업체들의 감산 ▪ 하락요인 : 스테인레스 스틸 수요부진 가격 추가 하락 가능성에 무게\n주 석 -Gayle Berry (Barclays Capital, 상품담당 이사) ▪ 기타 품목대비 가격하락 위험 상대적으로 낮음 ▪ 상승요인 : 공급차질, 중국 내수증가와 수출세 부과 및 생산량 감소 ▪ 하락요인 : 최근 가격대비 생산비 보다 높음. 수요측면에 서의 부진이 공급 이슈보다 부각 상승 vs. 하락요인 상존하여 가격 하락 제한 전망\n연 ▪ 가격 급등세 재현 어려움 ▪ 연 정광 공급 증가하고 있고 공급제한 요인이 약화 ▪ 연 축전지 교환(대체) 수요는 있",
+      "rank": 74
+    }
+  },
+  "AC30": {
+    "query": "Weda Bay 니켈 광석 생산량",
+    "date_range": null,
+    "chunk_stats": [
+      2,
+      1,
+      185,
+      480
+    ],
+    "best": {
+      "chunk_id": "523f338c59bf6da3",
+      "score": 0.8747373968675856,
+      "ranking_distance": 0.12526260313241444,
+      "text": "| col1 | col2 | 광석 | 수분함량 | 품위 | 금속량 | 회수율 | 최종 금속량 |\n|---|---|---|---|---|---|---|---|\n| 광석 생산량(kwmt) | Saprolite+Limonite | 41875 |  |  |  |  | 303.748134 |\n| 외부 판매량(kwmt) | Saprolite+Limonite | 38542 |  |  | 304.524994 |  | 267.948134 |\n|  | Limonite | 25481 | 0.382987 | 0.0116 | 182.376391 | 0.92 | 167.786279 |\n|  | Saprolite | 13061 | 0.331988 | 0.014 | 122.148603 | 0.82 | 100.161855 |\n| 자체 사용량(kwmt) | Saprolite | 3333 |  |  |  |  | 35.8 |\n|  |  |  |  |  |  | 최저값 적용 |  |",
+      "rank": 106
+    },
+    "fact": {
+      "chunk_id": "523f338c59bf6da3",
+      "score": 0.8747373968675856,
+      "ranking_distance": 0.12526260313241444,
+      "text": "| col1 | col2 | 광석 | 수분함량 | 품위 | 금속량 | 회수율 | 최종 금속량 |\n|---|---|---|---|---|---|---|---|\n| 광석 생산량(kwmt) | Saprolite+Limonite | 41875 |  |  |  |  | 303.748134 |\n| 외부 판매량(kwmt) | Saprolite+Limonite | 38542 |  |  | 304.524994 |  | 267.948134 |\n|  | Limonite | 25481 | 0.382987 | 0.0116 | 182.376391 | 0.92 | 167.786279 |\n|  | Saprolite | 13061 | 0.331988 | 0.014 | 122.148603 | 0.82 | 100.161855 |\n| 자체 사용량(kwmt) | Saprolite | 3333 |  |  |  |  | 35.8 |\n|  |  |  |  |  |  | 최저값 적용 |  |",
+      "rank": 106
+    }
+  },
+  "AC39": {
+    "query": "lithium production 2025",
+    "date_range": [
+      "2025-01-01",
+      "2026-01-01"
+    ],
+    "chunk_stats": [
+      768,
+      1,
+      45,
+      1422
+    ],
+    "best": {
+      "chunk_id": "14b89a0704225525",
+      "score": 0.921505331993103,
+      "ranking_distance": 0.07849466800689697,
+      "text": "Depletion Allowance: 22% (domestic), 14% (foreign). Government Stockpile: Not available. Events, Trends, and Issues: Excluding U.S. production, worldwide lithium production in 2025 increased by 31% to approximately 290,000 tons from 222,000 tons in 2024 in response to strong demand from the lithium-ion battery market, high lithium prices from 2021 to early 2023, and an increase in global lithium production capacity. Global consumption of lithium in 2025 was estimated to be 263,000 tons, a 20% in",
+      "rank": 1
+    },
+    "fact": {
+      "chunk_id": "e65e02aaadbbeea5",
+      "score": 0.8668212890625,
+      "ranking_distance": 0.1331787109375,
+      "text": "Because of this continuity, reviewing past volumes of the MCS tells some important stories very clearly. One is the increasing importance of minerals in our lives and the world economy. In the 1996 MCS, before the first smartphone or hybrid car or lawnmower was powered by a lithium-ion battery, world lithium production outside the United States was 6,100 tons in 1994. Estimated world lithium production increased to 290,000 tons in 2025. In the 1996 MCS, a decade before the F–35 fighter plane fir",
+      "rank": 555
+    }
+  }
+}

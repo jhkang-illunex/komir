@@ -1,0 +1,10 @@
+{
+  "body": {
+    "user_id": "acceptance-suite",
+    "session_id": "6172a673-3d7b-4235-9b4b-716a6f647896",
+    "message": "오늘 서울 날씨와 점심 메뉴를 추천해줘"
+  },
+  "url": "http://127.0.0.1:18002/pubchat",
+  "timeout_seconds": 180,
+  "started_at": "2026-09-23T12:21:01.774388+00:00"
+}

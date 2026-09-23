@@ -1,0 +1,10 @@
+{
+  "body": {
+    "user_id": "acceptance-suite",
+    "session_id": "379b4b64-4e35-4b55-8bcd-51d9f08de18a",
+    "message": "최근 1년간 구리 가격 추이를 보여줘"
+  },
+  "url": "http://127.0.0.1:18002/pubchat",
+  "timeout_seconds": 180,
+  "started_at": "2026-09-23T12:19:01.664327+00:00"
+}

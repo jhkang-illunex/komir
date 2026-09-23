@@ -1,0 +1,174 @@
+[
+  {
+    "session_id": "e07dacdf-806e-4a04-9c58-c6d524b8a44a"
+  },
+  {
+    "stage": 1,
+    "label": "질문 조건 확인"
+  },
+  {
+    "stage": 4,
+    "label": "답변 생성 중"
+  },
+  {
+    "delta": "추천 페이지는 `KOMIS > 핵심광물지도 > 대한민국 수급지도`입니다.\n한국의 광종별 국가별 수입·수출 금액과 중량을 HS 10자리 기준으로 보여주는 페이지\n페이지 주소: https://www.komis.or.kr/Komis/MnrlMap/Korea\n입력할 필터: 광종 `리튬` · 수입·수출 기준 `수입`\n별도 언급이 없어 적용한 기준: 생산품 유형 `생산품 유형 전체` · 물질흐름 세부 `세부 전체` · HS Code `HS Code 전체` · 국가 `국가 전체` · 기간 단위 `연도별` · 조회 시점 `최신 확정 시점` · 정렬 관점 `금액별` · 금액 표시 단위 `천USD`\n확인 가능한 데이터: 국가, 조회시점, 수입·수출 금액, 수입·수출 중량, 금액 점유율, HS Code, 국가별 Top 5, 기간별 교역규모 추이\n화면 구성: 교역국에서 한국으로 향하는 지도, 기간별 추이 선, 국가별 Top 5 막대와 상세 표를 함께 제공한다.\n- 대한민국 교역지도: 교역국과 한국 사이의 방향과 규모를 공간적으로 보여준다.\n- 수출입 규모 추이: 기간에 따른 수입·수출 규모 변화를 보여준다.\n- 국가별 Top 5: 상위 교역국의 규모와 점유율을 빠르게 비교한다.\n- 국가별 상세: 금액·중량·점유율과 HS Code의 정확한 값을 확인한다.\n화면 사용:\n- 광종 전체 또는 지원 광종을 선택할 수 있다.\n- HS Code 검색어로 후보를 찾은 뒤 실제 HS Code 항목을 선택한다.\n확인할 점:\n- 생산품 유형·물질흐름 세부·HS Code는 상위 필터에 종속되며 국내 교역은 HS 10자리 기준이다.\n- 월 자료와 연 자료의 확정 시점이 다르므로 최신은 동적 메타데이터로 해석한다.\n현재는 페이지 안내 단계이므로 실제 수치나 게시물 내용은 원 화면에서 확인해야 합니다.\n바로 이동하시겠어요? 위 페이지 주소를 눌러 이동하실 수 있습니다."
+  },
+  {
+    "done": true,
+    "mode": "page",
+    "status": "recommended",
+    "relation": "first_turn",
+    "recommendations": [
+      {
+        "page_id": "map_korea",
+        "page_name": "대한민국 수급지도",
+        "section": "핵심광물지도",
+        "url": "https://www.komis.or.kr/Komis/MnrlMap/Korea",
+        "navigation_method": "GET",
+        "navigation_params": {},
+        "reason": "한국의 광종별 국가별 수입·수출 금액과 중량을 HS 10자리 기준으로 보여주는 페이지",
+        "suggested_filters": {
+          "mineral": "리튬",
+          "trade_direction": "import",
+          "material_flow": "all",
+          "material_flow_detail": "all",
+          "hs_code": "all",
+          "country": "all",
+          "granularity": "year",
+          "period": "latest",
+          "measure": "amount",
+          "amount_unit": "thousand_usd"
+        },
+        "defaulted_filters": {
+          "material_flow": "all",
+          "material_flow_detail": "all",
+          "hs_code": "all",
+          "country": "all",
+          "granularity": "year",
+          "period": "latest",
+          "measure": "amount",
+          "amount_unit": "thousand_usd"
+        },
+        "filter_display": [
+          {
+            "key": "mineral",
+            "label": "광종",
+            "value": "리튬",
+            "display_value": "리튬",
+            "defaulted": false
+          },
+          {
+            "key": "material_flow",
+            "label": "생산품 유형",
+            "value": "all",
+            "display_value": "생산품 유형 전체",
+            "defaulted": true
+          },
+          {
+            "key": "material_flow_detail",
+            "label": "물질흐름 세부",
+            "value": "all",
+            "display_value": "세부 전체",
+            "defaulted": true
+          },
+          {
+            "key": "hs_code",
+            "label": "HS Code",
+            "value": "all",
+            "display_value": "HS Code 전체",
+            "defaulted": true
+          },
+          {
+            "key": "trade_direction",
+            "label": "수입·수출 기준",
+            "value": "import",
+            "display_value": "수입",
+            "defaulted": false
+          },
+          {
+            "key": "country",
+            "label": "국가",
+            "value": "all",
+            "display_value": "국가 전체",
+            "defaulted": true
+          },
+          {
+            "key": "granularity",
+            "label": "기간 단위",
+            "value": "year",
+            "display_value": "연도별",
+            "defaulted": true
+          },
+          {
+            "key": "period",
+            "label": "조회 시점",
+            "value": "latest",
+            "display_value": "최신 확정 시점",
+            "defaulted": true
+          },
+          {
+            "key": "measure",
+            "label": "정렬 관점",
+            "value": "amount",
+            "display_value": "금액별",
+            "defaulted": true
+          },
+          {
+            "key": "amount_unit",
+            "label": "금액 표시 단위",
+            "value": "thousand_usd",
+            "display_value": "천USD",
+            "defaulted": true
+          }
+        ],
+        "missing_required_filters": [],
+        "missing_required_filter_labels": [],
+        "available_data": [
+          "국가",
+          "조회시점",
+          "수입·수출 금액",
+          "수입·수출 중량",
+          "금액 점유율",
+          "HS Code",
+          "국가별 Top 5",
+          "기간별 교역규모 추이"
+        ],
+        "presentation_summary": "교역국에서 한국으로 향하는 지도, 기간별 추이 선, 국가별 Top 5 막대와 상세 표를 함께 제공한다.",
+        "presentation": [
+          {
+            "type": "flow_map",
+            "label": "대한민국 교역지도",
+            "description": "교역국과 한국 사이의 방향과 규모를 공간적으로 보여준다."
+          },
+          {
+            "type": "line",
+            "label": "수출입 규모 추이",
+            "description": "기간에 따른 수입·수출 규모 변화를 보여준다."
+          },
+          {
+            "type": "ranked_bar",
+            "label": "국가별 Top 5",
+            "description": "상위 교역국의 규모와 점유율을 빠르게 비교한다."
+          },
+          {
+            "type": "table",
+            "label": "국가별 상세",
+            "description": "금액·중량·점유율과 HS Code의 정확한 값을 확인한다."
+          }
+        ],
+        "screen_guidance": [
+          "광종 전체 또는 지원 광종을 선택할 수 있다.",
+          "HS Code 검색어로 후보를 찾은 뒤 실제 HS Code 항목을 선택한다."
+        ],
+        "caveats": [
+          "생산품 유형·물질흐름 세부·HS Code는 상위 필터에 종속되며 국내 교역은 HS 10자리 기준이다.",
+          "월 자료와 연 자료의 확정 시점이 다르므로 최신은 동적 메타데이터로 해석한다."
+        ],
+        "login_required": false,
+        "external": false,
+        "mutation": "read_only"
+      }
+    ],
+    "warnings": []
+  }
+]

@@ -1,0 +1,19 @@
+data: {"session_id": "3d99bd5c-632d-45f2-a777-a21e53efea93"}
+
+event: status
+data: {"stage": 1, "label": "질문 조건 확인"}
+
+event: status
+data: {"stage": 1, "label": "질문 조건 확인"}
+
+event: status
+data: {"stage": 2, "label": "답변 준비중", "action_id": "trade.concentration"}
+
+event: status
+data: {"stage": 3, "label": "데이터 분석 중", "status": "조회실패", "failure_reason": "source_unavailable"}
+
+data: {"delta": "데이터를 찾을 수 없습니다."}
+
+event: done
+data: {"done": true, "citations": [], "bogus_citations": [], "abstained": true, "abstain_reason": "source_unavailable"}
+

@@ -1,0 +1,1100 @@
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+[09/23/26 08:25:11] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 112.02it/s]
+[09/23/26 08:25:12] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 101.18it/s]
+2026-09-23 08:25:13,692 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ["⚠ 'MNRL0006' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.", 'source_audit:rdb:queried:1', 'source_audit:vector:queried:5', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0', "⚠ 'MNRL0006' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.", 'source_audit:rdb:queried:1', 'source_audit:vector:queried:6', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0']
+INFO:     172.30.1.101:57308 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 08:25:31] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+[09/23/26 08:25:32] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 115.21it/s]
+2026-09-23 08:25:33,509 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ["⚠ 'MNRL0001' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.", 'source_audit:rdb:queried:1', 'source_audit:vector:queried:6', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0']
+INFO:     172.30.1.101:53234 - "POST /pubchat HTTP/1.1" 200 OK
+2026-09-23 08:25:45,927 WARNING common.llm_client: intent_plan: 1차 출력 검증 실패, 복구 재시도(ValidationError: 2 validation errors for IntentPlan
+requirements.0.slots.role
+  Extra inputs are not permitted [type=extra_forbidden, input_value='data', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden
+requirements.1.slots.role
+  Extra inputs are not permitted [type=extra_forbidden, input_value='data', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden)
+INFO:     172.30.1.101:35178 - "POST /pubchat HTTP/1.1" 200 OK
+2026-09-23 08:26:01,102 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['private_only_profile_access', 'advisor_rejected']
+INFO:     172.30.1.101:34454 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.30.1.101:58722 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.30.1.101:49670 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.30.1.101:54388 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.30.1.101:34154 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 08:26:58] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+[09/23/26 08:26:59] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 08:26:59,357 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:queried:2', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0', 'source_unavailable:unverified_or_incomplete_observation']
+INFO:     172.30.1.101:34740 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 08:27:10] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 08:27:10,649 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:queried:2', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0']
+INFO:     172.30.1.101:57052 - "POST /pubchat HTTP/1.1" 200 OK
+2026-09-23 08:27:26,695 WARNING common.llm_client: intent_plan_repair: 1차 출력 검증 실패, 복구 재시도(ValidationError: 1 validation error for IntentPlan
+intent_plan_metadata
+  Extra inputs are not permitted [type=extra_forbidden, input_value={'description': '리튬...a)를 요청합니다.'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/extra_forbidden)
+INFO:     172.30.1.101:37674 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 08:27:39] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 08:27:39,532 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:queried:4', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0', 'source_unavailable:unverified_or_incomplete_observation']
+INFO:     172.30.1.101:60634 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.30.1.101:57828 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 08:28:04] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 08:28:04,880 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ["'MNRL0002'는 가격기준이 2개[502, 900002]라 그중 첫 번째(502)만 미리보기로 조회했습니다.", 'source_audit:rdb:queried:1', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0']
+INFO:     172.30.1.101:33460 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 08:28:15] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 08:28:16,076 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:queried:3', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0', 'source_unavailable:unverified_or_incomplete_observation']
+INFO:     172.30.1.101:43582 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 08:28:27] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 08:28:27,799 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:queried:3', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0', 'source_unavailable:unverified_or_incomplete_observation']
+INFO:     172.30.1.101:57108 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.30.1.101:34066 - "POST /pubchat HTTP/1.1" 200 OK
+ERROR:    Exception in ASGI application
+  + Exception Group Traceback (most recent call last):
+  |   File "/usr/local/lib/python3.12/site-packages/sse_starlette/_utils.py", line 26, in collapse_excgroups
+  |     yield
+  |   File "/usr/local/lib/python3.12/site-packages/sse_starlette/sse.py", line 506, in __call__
+  |     async with anyio.create_task_group() as task_group:
+  |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 847, in __aexit__
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/usr/local/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 422, in run_asgi
+    |     result = await app(  # type: ignore[func-returns-value]
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/usr/local/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    |     return await self.app(scope, receive, send)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/usr/local/lib/python3.12/site-packages/fastapi/applications.py", line 1163, in __call__
+    |     await super().__call__(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/applications.py", line 96, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    |     raise exc
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    |     await self.app(scope, receive, _send)
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    |     raise exc
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "/usr/local/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    |     await self.app(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 670, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 2734, in app
+    |     await route.handle(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 1780, in handle
+    |     await self.original_router.handle(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 2789, in handle
+    |     await included_router._handle_selected(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 1800, in _handle_selected
+    |     await original_route.handle(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 1279, in handle
+    |     await app(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 158, in app
+    |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    |     raise exc
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 145, in app
+    |     await response(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/sse_starlette/sse.py", line 505, in __call__
+    |     with collapse_excgroups():
+    |          ^^^^^^^^^^^^^^^^^^^^
+    |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+    |     self.gen.throw(value)
+    |   File "/usr/local/lib/python3.12/site-packages/sse_starlette/_utils.py", line 34, in collapse_excgroups
+    |     raise exc
+    |   File "/usr/local/lib/python3.12/site-packages/anyio/_core/_tasks.py", line 327, in _run_coro
+    |     retval = await self._coro
+    |              ^^^^^^^^^^^^^^^^
+    |   File "/usr/local/lib/python3.12/site-packages/sse_starlette/sse.py", line 509, in cancel_on_finish
+    |     await coro()
+    |   File "/usr/local/lib/python3.12/site-packages/sse_starlette/sse.py", line 369, in _stream_response
+    |     async for data in self.body_iterator:
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/concurrency.py", line 57, in iterate_in_threadpool
+    |     yield await anyio.to_thread.run_sync(_next, as_iterator)
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/usr/local/lib/python3.12/site-packages/anyio/to_thread.py", line 65, in run_sync
+    |     return await get_async_backend().run_sync_in_worker_thread(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2706, in run_sync_in_worker_thread
+    |     return await future
+    |            ^^^^^^^^^^^^
+    |   File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1100, in run
+    |     result = context.run(func, *args)
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/concurrency.py", line 46, in _next
+    |     return next(iterator)
+    |            ^^^^^^^^^^^^^^
+    |   File "/app/app/routers/chat.py", line 732, in _run_chat
+    |     yield trace_context.run(next, turn)
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/app/app/routers/chat.py", line 717, in traced_turn
+    |     for event in _run_chat_session(request, profile, session_id):
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/app/app/routers/chat.py", line 695, in _run_chat_session
+    |     yield from _run_document_qa(request, session_id, profile, action_plan=action_plan)
+    |   File "/app/app/routers/chat.py", line 438, in _run_document_qa
+    |     for event in _drain_sync(events):
+    |                  ^^^^^^^^^^^^^^^^^^^
+    |   File "/app/app/routers/chat.py", line 402, in _drain_sync
+    |     yield loop.run_until_complete(async_gen.__anext__())
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/usr/local/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    |     return future.result()
+    |            ^^^^^^^^^^^^^^^
+    |   File "/app/rag_core/ragkit/chatbot.py", line 1284, in chat_turn
+    |     _abstain_context(action_plan, abstain_reason), store_db_path
+    |                                   ^^^^^^^^^^^^^^
+    | UnboundLocalError: cannot access local variable 'abstain_reason' where it is not associated with a value
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 422, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/fastapi/applications.py", line 1163, in __call__
+    await super().__call__(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/starlette/applications.py", line 96, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/usr/local/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 670, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 2734, in app
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 1780, in handle
+    await self.original_router.handle(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 2789, in handle
+    await included_router._handle_selected(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 1800, in _handle_selected
+    await original_route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 1279, in handle
+    await app(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 158, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 145, in app
+    await response(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/sse_starlette/sse.py", line 505, in __call__
+    with collapse_excgroups():
+         ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/usr/local/lib/python3.12/site-packages/sse_starlette/_utils.py", line 34, in collapse_excgroups
+    raise exc
+  File "/usr/local/lib/python3.12/site-packages/anyio/_core/_tasks.py", line 327, in _run_coro
+    retval = await self._coro
+             ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sse_starlette/sse.py", line 509, in cancel_on_finish
+    await coro()
+  File "/usr/local/lib/python3.12/site-packages/sse_starlette/sse.py", line 369, in _stream_response
+    async for data in self.body_iterator:
+  File "/usr/local/lib/python3.12/site-packages/starlette/concurrency.py", line 57, in iterate_in_threadpool
+    yield await anyio.to_thread.run_sync(_next, as_iterator)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/anyio/to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2706, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1100, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/starlette/concurrency.py", line 46, in _next
+    return next(iterator)
+           ^^^^^^^^^^^^^^
+  File "/app/app/routers/chat.py", line 732, in _run_chat
+    yield trace_context.run(next, turn)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/routers/chat.py", line 717, in traced_turn
+    for event in _run_chat_session(request, profile, session_id):
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/routers/chat.py", line 695, in _run_chat_session
+    yield from _run_document_qa(request, session_id, profile, action_plan=action_plan)
+  File "/app/app/routers/chat.py", line 438, in _run_document_qa
+    for event in _drain_sync(events):
+                 ^^^^^^^^^^^^^^^^^^^
+  File "/app/app/routers/chat.py", line 402, in _drain_sync
+    yield loop.run_until_complete(async_gen.__anext__())
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/app/rag_core/ragkit/chatbot.py", line 1284, in chat_turn
+    _abstain_context(action_plan, abstain_reason), store_db_path
+                                  ^^^^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'abstain_reason' where it is not associated with a value
+INFO:     172.30.1.101:54734 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.30.1.101:47406 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 08:29:14] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 66.56it/s]
+[09/23/26 08:29:15] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 08:29:16,285 WARNING common.llm_client: retrieval_verify: 1차 출력 검증 실패, 복구 재시도(ValidationError: 1 validation error for GroundingCheck
+reason
+  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]
+    For further information visit https://errors.pydantic.dev/2.13/v/string_type)
+2026-09-23 08:29:16,823 WARNING common.llm_client: retrieval_verify: 1차 출력 검증 실패, 복구 재시도(ValidationError: 1 validation error for GroundingCheck
+reason
+  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]
+    For further information visit https://errors.pydantic.dev/2.13/v/string_type)
+2026-09-23 08:29:16,823 ERROR common.llm_client: retrieval_verify: 복구 재시도 후에도 유효한 JSON 출력 실패(ValidationError: 1 validation error for GroundingCheck
+reason
+  Input should be a valid string [type=string_type, input_value=None, input_type=NoneType]
+    For further information visit https://errors.pydantic.dev/2.13/v/string_type) — 호출부 폴백으로 처리됨
+2026-09-23 08:29:16,824 WARNING rag_core.ragkit.chatbot_graph: [rag_core/ragkit/chatbot_graph session=bf9a8c17] verify: sufficient=False (retrieval_verify_invalid_output:LLMOutputError)
+2026-09-23 08:29:16,824 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:not_selected:0', 'source_audit:vector:queried:6', 'source_audit:pageindex:queried:0', 'source_audit:okf:unavailable:0', 'retrieval_verify_invalid_output:LLMOutputError', 'advisor_rejected']
+INFO:     172.30.1.101:53152 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 08:29:28] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 08:29:28,137 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:not_selected:0', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:queried:0', 'source_audit:okf:unavailable:0', 'source_unavailable:okf_body_unavailable']
+INFO:     172.30.1.101:50376 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.30.1.101:58376 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.30.1.101:40244 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 08:30:02] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 68.12it/s]
+[09/23/26 08:30:03] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 08:30:05,201 WARNING rag_core.ragkit.chatbot_graph: [rag_core/ragkit/chatbot_graph session=b1b577d9] verify: sufficient=False (retrieval_insufficient:지정학 이슈를 날짜, 국가, 광종, 영향, 출처 컬럼의 표로 정리해달라는 요청에 대해, 근거 문서들이 개별적인 이슈(호주 아연 광산 보수, 러시)
+2026-09-23 08:30:05,202 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:not_selected:0', 'source_audit:vector:queried:6', 'source_audit:pageindex:queried:0', 'source_audit:okf:unavailable:0', 'retrieval_insufficient:지정학 이슈를 날짜, 국가, 광종, 영향, 출처 컬럼의 표로 정리해달라는 요청에 대해, 근거 문서들이 개별적인 이슈(호주 아연 광산 보수, 러시', 'advisor_rejected']
+INFO:     172.30.1.101:35658 - "POST /pubchat HTTP/1.1" 200 OK
+2026-09-23 08:30:16,108 WARNING common.llm_client: intent_plan: 1차 출력 검증 실패, 복구 재시도(ValidationError: 2 validation errors for IntentPlan
+requirements.0.slots.mineral
+  Input should be a valid string [type=string_type, input_value={'type': 'string'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/string_type
+requirements.1.slots.mineral
+  Input should be a valid string [type=string_type, input_value={'type': 'string'}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/string_type)
+INFO:     172.30.1.101:36812 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.30.1.101:39302 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 08:30:50] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 85.37it/s]
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 08:30:51,992 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:not_selected:0', 'source_audit:vector:queried:6', 'source_audit:pageindex:queried:3', 'source_audit:okf:verified:3']
+INFO:     172.30.1.101:48764 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.30.1.101:35728 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.30.1.101:54438 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.30.1.101:54516 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.30.1.101:51228 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.30.1.101:36578 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.30.1.101:37182 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.30.1.101:48004 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 08:32:25] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+INFO:     172.30.1.101:55090 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.30.1.101:55808 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.30.1.101:52442 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.30.1.101:41050 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.30.1.101:34326 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 08:33:25] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 100.72it/s]
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 08:33:26,945 WARNING rag_core.ragkit.chatbot_graph: [rag_core/ragkit/chatbot_graph session=f66294a7] verify: sufficient=False (retrieval_insufficient:질문이 '핵심광물'이라는 매우 포괄적인 주제를 던졌으나, 근거들은 특정 국가(몽골, 캐나다, 중국)의 광업 현황, 특정 광종(구리, 금, 주석,)
+2026-09-23 08:33:26,946 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:not_selected:0', 'source_audit:vector:queried:6', 'source_audit:pageindex:queried:0', 'source_audit:okf:unavailable:0', "retrieval_insufficient:질문이 '핵심광물'이라는 매우 포괄적인 주제를 던졌으나, 근거들은 특정 국가(몽골, 캐나다, 중국)의 광업 현황, 특정 광종(구리, 금, 주석,", 'advisor_rejected']
+INFO:     172.30.1.101:54338 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.30.1.101:36204 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 08:33:49] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 08:33:50,415 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ["⚠ 'MNRL0008' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.", 'source_audit:rdb:queried:1', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0']
+INFO:     172.30.1.101:37290 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 08:34:04] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+[09/23/26 08:34:05] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 111.57it/s]
+2026-09-23 08:34:05,595 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ["⚠ 'MNRL0001' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.", 'source_audit:rdb:queried:1', 'source_audit:vector:queried:6', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0']
+INFO:     172.30.1.101:43586 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 08:35:01] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+[09/23/26 08:35:02] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 08:35:02,484 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:queried:6', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0', 'source_unavailable:unverified_or_incomplete_observation']
+INFO:     172.30.1.101:42736 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 08:35:15] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 08:35:15,903 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:queried:1', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0', 'source_unavailable:unverified_or_incomplete_observation']
+INFO:     172.30.1.101:35022 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 08:35:27] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+[09/23/26 08:35:28] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 08:35:28,496 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ["⚠ 'MNRL0003' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 마세요.", 'source_audit:rdb:queried:1', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0', 'source_unavailable:dummy_trade_concentration']
+INFO:     172.30.1.101:57966 - "POST /pubchat HTTP/1.1" 200 OK
+2026-09-23 08:35:39,745 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['private_only_profile_access', 'advisor_rejected']
+INFO:     172.30.1.101:57564 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 08:35:50] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+[09/23/26 08:35:51] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 08:35:51,570 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ["'MNRL0002'는 가격기준이 2개[502, 900002]라 그중 첫 번째(502)만 미리보기로 조회했습니다.", 'source_audit:rdb:queried:1', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0']
+INFO:     172.30.1.101:35724 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 08:36:02] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 08:36:02,742 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:queried:3', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0', 'source_unavailable:unverified_or_incomplete_observation']
+INFO:     172.30.1.101:43682 - "POST /pubchat HTTP/1.1" 200 OK
+2026-09-23 08:36:13,982 WARNING common.llm_client: intent_plan: 1차 출력 검증 실패, 복구 재시도(ValidationError: 2 validation errors for IntentPlan
+requirements.0.slots.mineral
+  Input should be a valid string [type=string_type, input_value=['nickel', 'cobalt'], input_type=list]
+    For further information visit https://errors.pydantic.dev/2.13/v/string_type
+requirements.1.slots.mineral
+  Input should be a valid string [type=string_type, input_value=['nickel', 'cobalt'], input_type=list]
+    For further information visit https://errors.pydantic.dev/2.13/v/string_type)
+[09/23/26 08:36:16] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 08:36:17,783 WARNING rag_core.ragkit.chatbot_graph: [rag_core/ragkit/chatbot_graph session=f0817556] verify: sufficient=False (retrieval_insufficient:질문은 '니켈'과 '코발트'의 가격을 비교해달라는 요청이나, 근거에는 니켈의 가격 데이터만 존재하고 코발트의 가격 데이터는 전혀 포함되어 있지 )
+2026-09-23 08:36:17,784 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:queried:2', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0', "retrieval_insufficient:질문은 '니켈'과 '코발트'의 가격을 비교해달라는 요청이나, 근거에는 니켈의 가격 데이터만 존재하고 코발트의 가격 데이터는 전혀 포함되어 있지 ", 'advisor_rejected']
+INFO:     172.30.1.101:38454 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.30.1.101:34876 - "POST /pubchat HTTP/1.1" 200 OK
+ERROR:    Exception in ASGI application
+  + Exception Group Traceback (most recent call last):
+  |   File "/usr/local/lib/python3.12/site-packages/sse_starlette/_utils.py", line 26, in collapse_excgroups
+  |     yield
+  |   File "/usr/local/lib/python3.12/site-packages/sse_starlette/sse.py", line 506, in __call__
+  |     async with anyio.create_task_group() as task_group:
+  |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 847, in __aexit__
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/usr/local/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 422, in run_asgi
+    |     result = await app(  # type: ignore[func-returns-value]
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/usr/local/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    |     return await self.app(scope, receive, send)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/usr/local/lib/python3.12/site-packages/fastapi/applications.py", line 1163, in __call__
+    |     await super().__call__(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/applications.py", line 96, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    |     raise exc
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    |     await self.app(scope, receive, _send)
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    |     raise exc
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "/usr/local/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    |     await self.app(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 670, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 2734, in app
+    |     await route.handle(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 1780, in handle
+    |     await self.original_router.handle(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 2789, in handle
+    |     await included_router._handle_selected(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 1800, in _handle_selected
+    |     await original_route.handle(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 1279, in handle
+    |     await app(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 158, in app
+    |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    |     raise exc
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 145, in app
+    |     await response(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/sse_starlette/sse.py", line 505, in __call__
+    |     with collapse_excgroups():
+    |          ^^^^^^^^^^^^^^^^^^^^
+    |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+    |     self.gen.throw(value)
+    |   File "/usr/local/lib/python3.12/site-packages/sse_starlette/_utils.py", line 34, in collapse_excgroups
+    |     raise exc
+    |   File "/usr/local/lib/python3.12/site-packages/anyio/_core/_tasks.py", line 327, in _run_coro
+    |     retval = await self._coro
+    |              ^^^^^^^^^^^^^^^^
+    |   File "/usr/local/lib/python3.12/site-packages/sse_starlette/sse.py", line 509, in cancel_on_finish
+    |     await coro()
+    |   File "/usr/local/lib/python3.12/site-packages/sse_starlette/sse.py", line 369, in _stream_response
+    |     async for data in self.body_iterator:
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/concurrency.py", line 57, in iterate_in_threadpool
+    |     yield await anyio.to_thread.run_sync(_next, as_iterator)
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/usr/local/lib/python3.12/site-packages/anyio/to_thread.py", line 65, in run_sync
+    |     return await get_async_backend().run_sync_in_worker_thread(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2706, in run_sync_in_worker_thread
+    |     return await future
+    |            ^^^^^^^^^^^^
+    |   File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1100, in run
+    |     result = context.run(func, *args)
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/concurrency.py", line 46, in _next
+    |     return next(iterator)
+    |            ^^^^^^^^^^^^^^
+    |   File "/app/app/routers/chat.py", line 732, in _run_chat
+    |     yield trace_context.run(next, turn)
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/app/app/routers/chat.py", line 717, in traced_turn
+    |     for event in _run_chat_session(request, profile, session_id):
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/app/app/routers/chat.py", line 695, in _run_chat_session
+    |     yield from _run_document_qa(request, session_id, profile, action_plan=action_plan)
+    |   File "/app/app/routers/chat.py", line 438, in _run_document_qa
+    |     for event in _drain_sync(events):
+    |                  ^^^^^^^^^^^^^^^^^^^
+    |   File "/app/app/routers/chat.py", line 402, in _drain_sync
+    |     yield loop.run_until_complete(async_gen.__anext__())
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/usr/local/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    |     return future.result()
+    |            ^^^^^^^^^^^^^^^
+    |   File "/app/rag_core/ragkit/chatbot.py", line 1284, in chat_turn
+    |     _abstain_context(action_plan, abstain_reason), store_db_path
+    |                                   ^^^^^^^^^^^^^^
+    | UnboundLocalError: cannot access local variable 'abstain_reason' where it is not associated with a value
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 422, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/fastapi/applications.py", line 1163, in __call__
+    await super().__call__(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/starlette/applications.py", line 96, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/usr/local/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 670, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 2734, in app
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 1780, in handle
+    await self.original_router.handle(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 2789, in handle
+    await included_router._handle_selected(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 1800, in _handle_selected
+    await original_route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 1279, in handle
+    await app(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 158, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 145, in app
+    await response(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/sse_starlette/sse.py", line 505, in __call__
+    with collapse_excgroups():
+         ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/usr/local/lib/python3.12/site-packages/sse_starlette/_utils.py", line 34, in collapse_excgroups
+    raise exc
+  File "/usr/local/lib/python3.12/site-packages/anyio/_core/_tasks.py", line 327, in _run_coro
+    retval = await self._coro
+             ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sse_starlette/sse.py", line 509, in cancel_on_finish
+    await coro()
+  File "/usr/local/lib/python3.12/site-packages/sse_starlette/sse.py", line 369, in _stream_response
+    async for data in self.body_iterator:
+  File "/usr/local/lib/python3.12/site-packages/starlette/concurrency.py", line 57, in iterate_in_threadpool
+    yield await anyio.to_thread.run_sync(_next, as_iterator)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/anyio/to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2706, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1100, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/starlette/concurrency.py", line 46, in _next
+    return next(iterator)
+           ^^^^^^^^^^^^^^
+  File "/app/app/routers/chat.py", line 732, in _run_chat
+    yield trace_context.run(next, turn)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/routers/chat.py", line 717, in traced_turn
+    for event in _run_chat_session(request, profile, session_id):
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/routers/chat.py", line 695, in _run_chat_session
+    yield from _run_document_qa(request, session_id, profile, action_plan=action_plan)
+  File "/app/app/routers/chat.py", line 438, in _run_document_qa
+    for event in _drain_sync(events):
+                 ^^^^^^^^^^^^^^^^^^^
+  File "/app/app/routers/chat.py", line 402, in _drain_sync
+    yield loop.run_until_complete(async_gen.__anext__())
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/app/rag_core/ragkit/chatbot.py", line 1284, in chat_turn
+    _abstain_context(action_plan, abstain_reason), store_db_path
+                                  ^^^^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'abstain_reason' where it is not associated with a value
+INFO:     172.30.1.101:44358 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 08:36:54] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 85.51it/s]
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 08:36:56,567 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:not_selected:0', 'source_audit:vector:queried:6', 'source_audit:pageindex:queried:0', 'source_audit:okf:unavailable:0']
+INFO:     172.30.1.101:48728 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 08:37:15] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 114.78it/s]
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 08:37:17,456 WARNING rag_core.ragkit.chatbot_graph: [rag_core/ragkit/chatbot_graph session=57c1233d] verify: sufficient=False (retrieval_insufficient:질문이 '핵심광물'이라는 매우 포괄적인 주제를 던졌으나, 근거들은 특정 국가(몽골, 캐나다, 중국)의 광업 현황, 특정 광종(주석, 구리, 금))
+2026-09-23 08:37:17,457 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:not_selected:0', 'source_audit:vector:queried:6', 'source_audit:pageindex:queried:0', 'source_audit:okf:unavailable:0', "retrieval_insufficient:질문이 '핵심광물'이라는 매우 포괄적인 주제를 던졌으나, 근거들은 특정 국가(몽골, 캐나다, 중국)의 광업 현황, 특정 광종(주석, 구리, 금)", 'advisor_rejected']
+INFO:     172.30.1.101:48306 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.30.1.101:55856 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 08:38:06] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+[09/23/26 08:38:07] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 102.91it/s]
+2026-09-23 08:38:07,687 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ["⚠ 'MNRL0001' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.", 'source_audit:rdb:queried:1', 'source_audit:vector:queried:6', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0']
+INFO:     172.30.1.101:37974 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 08:38:23] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 08:38:23,475 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:queried:1', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0', 'source_unavailable:unverified_or_incomplete_observation']
+INFO:     172.30.1.101:49208 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 08:38:34] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+[09/23/26 08:38:35] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 08:38:35,373 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:queried:6', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0', 'source_unavailable:unverified_or_incomplete_observation']
+INFO:     172.30.1.101:42380 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.17.0.1:44604 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 12:19:02] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 12:19:03,148 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ["⚠ 'MNRL0008' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.", 'source_audit:rdb:queried:1', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0']
+INFO:     172.17.0.1:44616 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 12:19:03] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+[09/23/26 12:19:04] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 12:19:04,600 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ["'MNRL0002'는 가격기준이 2개[502, 900002]라 그중 첫 번째(502)만 미리보기로 조회했습니다.", 'source_audit:rdb:queried:1', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0']
+INFO:     172.17.0.1:44626 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 12:19:05] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 12:19:06,057 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ["⚠ 'MNRL0003' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.", 'source_audit:rdb:queried:1', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0']
+INFO:     172.17.0.1:56564 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 12:19:07] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 12:19:08,102 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ["⚠ 'MNRL0001' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.", 'source_audit:rdb:queried:1', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0']
+INFO:     172.17.0.1:56578 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 12:19:08] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+[09/23/26 12:19:09] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 12:19:09,551 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ["⚠ 'MNRL0006' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.", 'source_audit:rdb:queried:1', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0']
+INFO:     172.17.0.1:56594 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 12:19:10] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 12:19:10,716 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:queried:3', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0', 'source_unavailable:unverified_or_incomplete_observation']
+INFO:     172.17.0.1:56608 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 12:19:12] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 12:19:13,899 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:queried:2', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0']
+INFO:     172.17.0.1:51136 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 12:19:16] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+[09/23/26 12:19:17] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 96.00it/s]
+2026-09-23 12:19:17,506 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ["⚠ 'MNRL0001' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.", 'source_audit:rdb:queried:1', 'source_audit:vector:queried:6', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0']
+INFO:     172.17.0.1:51138 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 12:19:21] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+[09/23/26 12:19:22] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 12:19:22,299 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:queried:1', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0', 'source_unavailable:unverified_or_incomplete_observation']
+INFO:     172.17.0.1:51150 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 12:19:25] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 12:19:26,069 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:queried:2', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0']
+INFO:     172.17.0.1:33284 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 12:19:31] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 12:19:31,537 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ["⚠ 'MNRL0001' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 마세요.", 'source_audit:rdb:queried:1', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0', 'source_unavailable:dummy_trade_concentration']
+INFO:     172.17.0.1:33300 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 12:19:32] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 10.95it/s]
+2026-09-23 12:19:33,723 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ["⚠ 'MNRL0001' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.", 'source_audit:rdb:queried:1', 'source_audit:vector:queried:6', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0']
+INFO:     172.17.0.1:53150 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 12:19:36] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+[09/23/26 12:19:37] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 108.11it/s]
+[09/23/26 12:19:38] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 102.20it/s]
+2026-09-23 12:19:39,556 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ["⚠ 'MNRL0006' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.", 'source_audit:rdb:queried:1', 'source_audit:vector:queried:5', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0', "⚠ 'MNRL0006' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.", 'source_audit:rdb:queried:1', 'source_audit:vector:queried:6', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0']
+INFO:     172.17.0.1:38920 - "POST /pubchat HTTP/1.1" 200 OK
+2026-09-23 12:20:28,447 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:not_selected:0', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0']
+INFO:     172.17.0.1:45272 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 12:20:34] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  8.34it/s]Batches: 100%|██████████| 1/1 [00:00<00:00,  8.32it/s]
+[09/23/26 12:20:35] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 12:20:35,631 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:not_selected:0', 'source_audit:vector:queried:6', 'source_audit:pageindex:queried:2', 'source_audit:okf:verified:2']
+INFO:     172.17.0.1:41952 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 12:20:37] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 12:20:37,792 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:queried:1', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0']
+INFO:     172.17.0.1:41962 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 12:20:41] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+[09/23/26 12:20:42] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 12:20:42,410 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:queried:2', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0', 'source_unavailable:unverified_or_incomplete_observation']
+INFO:     172.17.0.1:41968 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.17.0.1:41978 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 12:20:45] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 12:20:45,706 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_unavailable:세계 전체 분모 원천이 아직 연결되지 않아 RCA·TII는 현재 계산할 수 없습니다.', 'source_audit:rdb:queried:0', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0', 'advisor_rejected']
+INFO:     172.17.0.1:41374 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 12:20:46] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 12:20:46,802 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ["source_unavailable:허용되지 않는 필터 값: ''", 'source_audit:rdb:queried:0', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0', 'advisor_rejected']
+INFO:     172.17.0.1:41386 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.17.0.1:41400 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.17.0.1:41410 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 12:20:48] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+ERROR:    Exception in ASGI application
+  + Exception Group Traceback (most recent call last):
+  |   File "/usr/local/lib/python3.12/site-packages/sse_starlette/_utils.py", line 26, in collapse_excgroups
+  |     yield
+  |   File "/usr/local/lib/python3.12/site-packages/sse_starlette/sse.py", line 506, in __call__
+  |     async with anyio.create_task_group() as task_group:
+  |                ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 847, in __aexit__
+  |     raise BaseExceptionGroup(
+  | ExceptionGroup: unhandled errors in a TaskGroup (1 sub-exception)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/usr/local/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 422, in run_asgi
+    |     result = await app(  # type: ignore[func-returns-value]
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/usr/local/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    |     return await self.app(scope, receive, send)
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/usr/local/lib/python3.12/site-packages/fastapi/applications.py", line 1163, in __call__
+    |     await super().__call__(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/applications.py", line 96, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    |     raise exc
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    |     await self.app(scope, receive, _send)
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    |     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    |     raise exc
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "/usr/local/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    |     await self.app(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 670, in __call__
+    |     await self.middleware_stack(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 2734, in app
+    |     await route.handle(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 1780, in handle
+    |     await self.original_router.handle(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 2789, in handle
+    |     await included_router._handle_selected(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 1800, in _handle_selected
+    |     await original_route.handle(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 1279, in handle
+    |     await app(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 158, in app
+    |     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    |     raise exc
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    |     await app(scope, receive, sender)
+    |   File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 145, in app
+    |     await response(scope, receive, send)
+    |   File "/usr/local/lib/python3.12/site-packages/sse_starlette/sse.py", line 505, in __call__
+    |     with collapse_excgroups():
+    |          ^^^^^^^^^^^^^^^^^^^^
+    |   File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+    |     self.gen.throw(value)
+    |   File "/usr/local/lib/python3.12/site-packages/sse_starlette/_utils.py", line 34, in collapse_excgroups
+    |     raise exc
+    |   File "/usr/local/lib/python3.12/site-packages/anyio/_core/_tasks.py", line 327, in _run_coro
+    |     retval = await self._coro
+    |              ^^^^^^^^^^^^^^^^
+    |   File "/usr/local/lib/python3.12/site-packages/sse_starlette/sse.py", line 509, in cancel_on_finish
+    |     await coro()
+    |   File "/usr/local/lib/python3.12/site-packages/sse_starlette/sse.py", line 369, in _stream_response
+    |     async for data in self.body_iterator:
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/concurrency.py", line 57, in iterate_in_threadpool
+    |     yield await anyio.to_thread.run_sync(_next, as_iterator)
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/usr/local/lib/python3.12/site-packages/anyio/to_thread.py", line 65, in run_sync
+    |     return await get_async_backend().run_sync_in_worker_thread(
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2706, in run_sync_in_worker_thread
+    |     return await future
+    |            ^^^^^^^^^^^^
+    |   File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1100, in run
+    |     result = context.run(func, *args)
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/usr/local/lib/python3.12/site-packages/starlette/concurrency.py", line 46, in _next
+    |     return next(iterator)
+    |            ^^^^^^^^^^^^^^
+    |   File "/app/app/routers/chat.py", line 732, in _run_chat
+    |     yield trace_context.run(next, turn)
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/app/app/routers/chat.py", line 717, in traced_turn
+    |     for event in _run_chat_session(request, profile, session_id):
+    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/app/app/routers/chat.py", line 695, in _run_chat_session
+    |     yield from _run_document_qa(request, session_id, profile, action_plan=action_plan)
+    |   File "/app/app/routers/chat.py", line 438, in _run_document_qa
+    |     for event in _drain_sync(events):
+    |                  ^^^^^^^^^^^^^^^^^^^
+    |   File "/app/app/routers/chat.py", line 402, in _drain_sync
+    |     yield loop.run_until_complete(async_gen.__anext__())
+    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |   File "/usr/local/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    |     return future.result()
+    |            ^^^^^^^^^^^^^^^
+    |   File "/app/rag_core/ragkit/chatbot.py", line 1284, in chat_turn
+    |     _abstain_context(action_plan, abstain_reason), store_db_path
+    |                                   ^^^^^^^^^^^^^^
+    | UnboundLocalError: cannot access local variable 'abstain_reason' where it is not associated with a value
+    +------------------------------------
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/site-packages/uvicorn/protocols/http/httptools_impl.py", line 422, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/uvicorn/middleware/proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/fastapi/applications.py", line 1163, in __call__
+    await super().__call__(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/starlette/applications.py", line 96, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 186, in __call__
+    raise exc
+  File "/usr/local/lib/python3.12/site-packages/starlette/middleware/errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "/usr/local/lib/python3.12/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/usr/local/lib/python3.12/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/starlette/routing.py", line 670, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 2734, in app
+    await route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 1780, in handle
+    await self.original_router.handle(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 2789, in handle
+    await included_router._handle_selected(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 1800, in _handle_selected
+    await original_route.handle(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 1279, in handle
+    await app(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 158, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "/usr/local/lib/python3.12/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "/usr/local/lib/python3.12/site-packages/fastapi/routing.py", line 145, in app
+    await response(scope, receive, send)
+  File "/usr/local/lib/python3.12/site-packages/sse_starlette/sse.py", line 505, in __call__
+    with collapse_excgroups():
+         ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/contextlib.py", line 158, in __exit__
+    self.gen.throw(value)
+  File "/usr/local/lib/python3.12/site-packages/sse_starlette/_utils.py", line 34, in collapse_excgroups
+    raise exc
+  File "/usr/local/lib/python3.12/site-packages/anyio/_core/_tasks.py", line 327, in _run_coro
+    retval = await self._coro
+             ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/sse_starlette/sse.py", line 509, in cancel_on_finish
+    await coro()
+  File "/usr/local/lib/python3.12/site-packages/sse_starlette/sse.py", line 369, in _stream_response
+    async for data in self.body_iterator:
+  File "/usr/local/lib/python3.12/site-packages/starlette/concurrency.py", line 57, in iterate_in_threadpool
+    yield await anyio.to_thread.run_sync(_next, as_iterator)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/anyio/to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 2706, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/anyio/_backends/_asyncio.py", line 1100, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/site-packages/starlette/concurrency.py", line 46, in _next
+    return next(iterator)
+           ^^^^^^^^^^^^^^
+  File "/app/app/routers/chat.py", line 732, in _run_chat
+    yield trace_context.run(next, turn)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/routers/chat.py", line 717, in traced_turn
+    for event in _run_chat_session(request, profile, session_id):
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/app/routers/chat.py", line 695, in _run_chat_session
+    yield from _run_document_qa(request, session_id, profile, action_plan=action_plan)
+  File "/app/app/routers/chat.py", line 438, in _run_document_qa
+    for event in _drain_sync(events):
+                 ^^^^^^^^^^^^^^^^^^^
+  File "/app/app/routers/chat.py", line 402, in _drain_sync
+    yield loop.run_until_complete(async_gen.__anext__())
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/asyncio/base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/app/rag_core/ragkit/chatbot.py", line 1284, in chat_turn
+    _abstain_context(action_plan, abstain_reason), store_db_path
+                                  ^^^^^^^^^^^^^^
+UnboundLocalError: cannot access local variable 'abstain_reason' where it is not associated with a value
+INFO:     172.17.0.1:41422 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.17.0.1:41436 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.17.0.1:41442 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 12:20:54] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 58.93it/s]
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 12:20:56,046 WARNING rag_core.ragkit.chatbot_graph: [rag_core/ragkit/chatbot_graph session=8ee34e1b] verify: sufficient=False (retrieval_insufficient:질문은 '리튬'의 수급 이슈를 묻고 있으나, 제공된 근거들은 알루미늄(index 1), 납/아연(index 4), 구리(index 5)의 수급 )
+2026-09-23 12:20:56,046 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:not_selected:0', 'source_audit:vector:queried:6', 'source_audit:pageindex:queried:0', 'source_audit:okf:unavailable:0', "retrieval_insufficient:질문은 '리튬'의 수급 이슈를 묻고 있으나, 제공된 근거들은 알루미늄(index 1), 납/아연(index 4), 구리(index 5)의 수급 ", 'advisor_rejected']
+INFO:     172.17.0.1:51484 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 12:20:56] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|██████████| 1/1 [00:00<00:00, 86.81it/s]
+[09/23/26 12:20:57] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 12:20:58,090 WARNING rag_core.ragkit.chatbot_graph: [rag_core/ragkit/chatbot_graph session=718ebc4f] verify: sufficient=False (retrieval_insufficient:니켈과 코발트의 수요 정보는 일부 있으나, '삼원계 배터리'와 이들의 수요 관계를 직접적으로 설명하는 근거가 없음)
+2026-09-23 12:20:58,091 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:not_selected:0', 'source_audit:vector:queried:6', 'source_audit:pageindex:queried:0', 'source_audit:okf:unavailable:0', "retrieval_insufficient:니켈과 코발트의 수요 정보는 일부 있으나, '삼원계 배터리'와 이들의 수요 관계를 직접적으로 설명하는 근거가 없음", 'advisor_rejected']
+INFO:     172.17.0.1:51496 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 12:20:58] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+INFO:     172.17.0.1:51512 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 12:21:00] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+                    INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 12:21:00,811 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['source_audit:rdb:queried:2', 'source_audit:vector:not_selected:0', 'source_audit:pageindex:not_selected:0', 'source_audit:okf:not_selected:0', 'source_unavailable:unverified_or_incomplete_observation']
+INFO:     172.17.0.1:51524 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.17.0.1:51540 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.17.0.1:51552 - "POST /pubchat HTTP/1.1" 200 OK
+INFO:     172.17.0.1:58124 - "POST /pubchat HTTP/1.1" 200 OK
+[09/23/26 12:21:06] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+[09/23/26 12:21:07] INFO     Processing request of type            server.py:733
+                             CallToolRequest                                    
+2026-09-23 12:21:07,092 WARNING rag_core.ragkit.chatbot: 근거 조회 경고: ['private_only_profile_access', 'advisor_rejected']

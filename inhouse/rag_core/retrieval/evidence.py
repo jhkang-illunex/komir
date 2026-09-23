@@ -238,8 +238,11 @@ def _period_span(ds: Any) -> str | None:
         return None
     oldest, newest = _format_ymd(values[-1]), _format_ymd(values[0])
     if getattr(ds, "metadata", {}).get("period_range_complete"):
-        return f"{oldest}~{newest}, 지정 기간 내 관측 {len(values)}건 전체"
-    return f"{oldest}~{newest}, 최신순 {len(values)}건만 제공됨(요청한 전체 기간이 아닐 수 있음)"
+        # 원시 행 수는 RawDataset.row_count에 보존한다. 이 필드는 답변 본문·
+        # 출처·표·차트에 노출되는 사용자용 조회기간이므로 내부 관측 건수는
+        # 섞지 않는다.
+        return f"{oldest}~{newest}, 지정 기간 전체"
+    return f"{oldest}~{newest}, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)"
 
 
 #: 2026-09-17(챗봇_대화형검색_피드백_PRD §1.2, 대화형검색시스템 예상질문
@@ -288,7 +291,13 @@ def from_komis_raw(
     for ds in datasets:
         if not ds.rows:
             continue
-        columns = ds.columns
+        # 가격기준 일련번호는 원천 조회의 필터·감사에는 필요하지만 답변 근거
+        # 표에는 의미가 없는 내부 식별자다. Evidence.text는 생성 모델의 요약
+        # 입력이기도 하므로, 여기서 제외해야 표 블록만 숨기고 본문 요약에는
+        # 다시 노출되는 불일치가 생기지 않는다. 원본 RawDataset.columns/rows와
+        # row_count는 변경하지 않는다.
+        hidden_presentation_columns = {"mnrl_prc_crtr_sn", "price_criterion_serial"}
+        columns = [c for c in ds.columns if c.casefold() not in hidden_presentation_columns]
         table_rows = [[str(row.get(c, "")) for c in columns] for row in ds.rows]
         # 2026-09-07(사용자 요청) — Postgres COMMENT ON COLUMN으로 이미 달려
         # 있는 한글 설명을 표 헤더에 같이 보여준다("lowst_prc(최저가격)"
@@ -326,7 +335,7 @@ def from_komis_raw(
 
 def from_komis_ranking(
     dataset: Any, *, mineral_code: str | None = None, metric_label: str, is_dummy: bool | None = None,
-    row_kind: str = "국가",
+    row_kind: str = "국가", menu_page_id: str | None = None,
 ) -> list[Evidence]:
     """`KomisRawDataRepository`의 각종 `fetch_*_ranking()`이 돌려준 RawDataset
     (순위 1건, 2026-09-18 신설) -> Evidence 1건. `from_komis_raw`와 달리 이미
@@ -366,12 +375,14 @@ def from_komis_ranking(
             kind="structured", source=f"public.{dataset.source_table}", section=section,
             text=text, caveat=caveat,
             as_of=getattr(dataset, "as_of", None), unit=getattr(dataset, "unit", None),
+            menu_page_id=menu_page_id,
         )
     ]
 
 
 def from_komis_aggregate(dataset: Any, *, label: str, mineral_name: str | None = None,
-                         is_dummy: bool | None = None) -> list[Evidence]:
+                         is_dummy: bool | None = None,
+                         menu_page_id: str | None = None) -> list[Evidence]:
     """결정적 집계 결과의 표와 모집단·기간 메타데이터를 함께 근거로 보낸다."""
     if not dataset.rows:
         return []
@@ -388,4 +399,5 @@ def from_komis_aggregate(dataset: Any, *, label: str, mineral_name: str | None =
         section=f"KOMIS 원천 · {dataset.source_table}{suffix} · {label}",
         text=text, caveat=KOMIS_RAW_DUMMY_CAVEAT if is_dummy else None,
         as_of=getattr(dataset, "as_of", None), unit=getattr(dataset, "unit", None),
+        menu_page_id=menu_page_id,
     )]

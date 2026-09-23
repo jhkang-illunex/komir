@@ -1,0 +1,6 @@
+.........................[rag_core/ragkit/chatbot_graph session=?] pageindex 조회 실패: RuntimeError: fixture pageindex failure
+........
+----------------------------------------------------------------------
+Ran 33 tests in 0.107s
+
+OK

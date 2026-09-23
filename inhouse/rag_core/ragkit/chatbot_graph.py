@@ -732,25 +732,36 @@ _SOURCE_AUDIT_PREFIX = "source_audit:"
 def _source_audit_warnings(
     jobs: dict[str, Future], results: dict[str, object], evidence: list[Evidence], warnings: list[str],
 ) -> list[str]:
-    """세 조회소스와 OKF 원문 확인 상태를 근거 검증 결과로 남긴다.
+    """조회소스와 OKF 원문 확인 상태를 근거 검증 결과로 남긴다.
 
     OKF는 별도 검색기가 아니다. PageIndex가 ``with_text=True``로 읽은 원문과
-    Vector가 청킹한 원문이므로, 네 번째 후보 검색 대신 원문 확인 상태만 기록한다.
+    Vector가 청킹한 원문이며, 광산 집계도 OKF 원문에서 값을 추출한다. 따라서
+    집계 Evidence가 실제로 반환된 경우에도 OKF 확인을 기록한다.
     """
     rdb_job_prefixes = ("structured", "komis_")
     rdb_requested = any(name.startswith(rdb_job_prefixes) for name in jobs)
     rdb_failed = any(name.startswith(rdb_job_prefixes) and f"{name}_failed" in warnings for name in jobs)
     dense_requested, pageindex_requested = "dense" in jobs, "pageindex" in jobs
+    mine_aggregate_requested = "mine_aggregate" in jobs
     dense_count = sum(ev.kind == "dense" for ev in evidence)
     pageindex_count = sum(ev.kind == "pageindex" for ev in evidence)
+    # kind="aggregated"는 다른 결정적 집계에도 쓰일 수 있다. 이 값은 광산
+    # 집계 job을 실제로 요청한 턴에서만 OKF provenance로 센다.
+    mine_aggregate_count = (
+        sum(ev.kind == "aggregated" for ev in evidence)
+        if mine_aggregate_requested else 0
+    )
+    okf_count = pageindex_count + mine_aggregate_count
     statuses = {
         "rdb": ("failed" if rdb_failed else "queried") if rdb_requested else "not_selected",
         "vector": ("failed" if "dense_failed" in warnings else "queried") if dense_requested else "not_selected",
         "pageindex": ("failed" if "pageindex_failed" in warnings else "queried") if pageindex_requested else "not_selected",
-        "okf": "verified" if pageindex_count else ("unavailable" if pageindex_requested else "not_selected"),
+        "okf": "verified" if okf_count else (
+            "unavailable" if pageindex_requested or mine_aggregate_requested else "not_selected"
+        ),
     }
     counts = {"rdb": sum(ev.kind == "structured" for ev in evidence), "vector": dense_count,
-              "pageindex": pageindex_count, "okf": pageindex_count}
+              "pageindex": pageindex_count, "okf": okf_count}
     return [f"{_SOURCE_AUDIT_PREFIX}{name}:{statuses[name]}:{counts[name]}"
             for name in ("rdb", "vector", "pageindex", "okf")]
 
@@ -906,19 +917,40 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
             "pageindex_body_fallback": True, "pageindex_body_query": body_query,
         })
     # document.retrieve is source-first and has no structured substitute.
-    resolved_query = s.topic or question
-    # 조달청 주간동향은 리튬 수요를 "배터리 설치량"으로 서술한다. 사용자의
-    # 수요 이슈 표현만으로는 오래된 니켈 문서가 dense 상위를 차지하는 실측이
-    # 있어, 광종 슬롯이 리튬이고 수요를 명시한 경우에만 같은 뜻의 원문 표지를
-    # 보강한다. 다른 광종·문서 주제에는 적용하지 않는다.
-    if s.mineral == "리튬" and "수요" in resolved_query and "배터리 설치량" not in resolved_query:
-        resolved_query = f"{resolved_query} 배터리 설치량"
+    resolved_query = _document_retrieval_query(s, question)
     return RetrievalRoute(**{
         **common,
         "resolved_query": resolved_query,
         "use_dense": True,
         "use_pageindex": True,
     })
+
+
+def _document_retrieval_query(slots, question: str) -> str:
+    """문서 action의 typed 광종·주제·관계 슬롯을 검색용 표지로 보존한다.
+
+    보고서마다 같은 개념을 수급/수요·공급, 삼원계/NCM처럼 다르게 표기한다.
+    아래는 파일명이나 수락 질문이 아닌 도메인 용어 동의어만 덧붙인다. 원 질문을
+    남기므로 좁은 슬롯이 빠져도 재구성된 검색어가 사실 범위를 넓혀 바꾸지 않는다.
+    """
+
+    # planner가 만든 topic이 있으면 원 질문의 조사·요청어는 본문 행 점수에서
+    # 잡음이 된다. topic과 광종 슬롯을 우선하고, topic이 비어 있을 때만 원문을
+    # 보충한다.
+    values = [slots.topic or question, slots.mineral or "", *(slots.minerals or [])]
+    query = " ".join(str(value) for value in values if value).strip()
+    folded = query.casefold()
+    aliases: list[str] = []
+    if "수급" in query:
+        aliases.extend(("수요", "공급", "전망"))
+    if "삼원계" in query or "ncm" in folded:
+        # 삼원계의 조성 표기는 NCM811/NCM622/NCM523 또는 8:1:1/6:2:2처럼
+        # 보고서마다 달라진다. 광종·조성 관계를 모두 원문에 있는 표지로
+        # 펼치되, 특정 보고서나 연도는 선택하지 않는다.
+        aliases.extend(("NCM", "니켈", "코발트", "망간", "양극재", "NCM811", "NCM622", "NCM523", "8:1:1", "6:2:2"))
+    if "리튬" in query and ("수요" in query or "수급" in query):
+        aliases.extend(("배터리", "리튬 배터리 수요"))
+    return " ".join(dict.fromkeys((query, *aliases)))
 
 
 def _is_rare_earth_nd_scope_request(call) -> bool:

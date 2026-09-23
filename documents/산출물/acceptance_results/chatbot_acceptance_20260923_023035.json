@@ -1,0 +1,127 @@
+{
+  "suite": "komir-chatbot-acceptance-260923",
+  "generated_at": "2026-09-23T02:30:35.557443",
+  "base_url": "http://127.0.0.1:18002",
+  "results": [
+    {
+      "id": "AC28",
+      "title": "PDF 문서 전 경로",
+      "layer": "integration",
+      "status": "PASS",
+      "errors": [],
+      "detail": {
+        "doc_id": "doc_dc87edf64a7ae7bb30dd1e27",
+        "resource": "documents/보고서_2/Argus Metal_비철금속_2023~2026_일일 (1)/Argus Non-Ferrous Markets (2023-09-21~2024-12/Argus Non-Ferrous Markets (2023-09-21) (1).pdf",
+        "vector_chunk_count": 135
+      },
+      "elapsed_seconds": 4.96
+    },
+    {
+      "id": "AC29",
+      "title": "HWP 문서 전 경로",
+      "layer": "integration",
+      "status": "PASS",
+      "errors": [],
+      "detail": {
+        "doc_id": "doc_c5ba28f3421c6bb14b086a0b",
+        "resource": "documents/조달청보고서/1019_LME Seminar에서 발표한 품목별 동향 및 전망.hwp",
+        "vector_chunk_count": 2
+      },
+      "elapsed_seconds": 0.2
+    },
+    {
+      "id": "AC30",
+      "title": "Excel 문서 전 경로",
+      "layer": "integration",
+      "status": "PASS",
+      "errors": [],
+      "detail": {
+        "doc_id": "doc_119967226c596a8076c27573",
+        "resource": "nas_document/학습데이터/니켈/Ni_Terrafame_2025_Prod_Other_260814.xlsx",
+        "vector_chunk_count": 2
+      },
+      "elapsed_seconds": 0.18
+    },
+    {
+      "id": "AC39",
+      "title": "Vector 직접 검색",
+      "layer": "integration",
+      "status": "PASS",
+      "errors": [],
+      "detail": {
+        "vector_chunk_count": 145057
+      },
+      "elapsed_seconds": 0.17
+    },
+    {
+      "id": "AC40",
+      "title": "PageIndex 직접 검색과 원문",
+      "layer": "integration",
+      "status": "PASS",
+      "errors": [],
+      "detail": {
+        "document": {
+          "doc_id": "doc_1e963bfab616fe5f8ba60714",
+          "title": "USGS_2019",
+          "doc_name": "USGS_2019",
+          "source_group": "생산매장량_USGS",
+          "fmt": "pdf",
+          "document_date": null,
+          "minerals": [
+            "구리",
+            "니켈",
+            "코발트",
+            "리튬",
+            "희토류"
+          ],
+          "content_keywords": [
+            "생산",
+            "매장량",
+            "for",
+            "production",
+            "was",
+            "other",
+            "are",
+            "united",
+            "states",
+            "consumption",
+            "were",
+            "world",
+            "imports",
+            "domestic",
+            "tons",
+            "china",
+            "u.s.",
+            "used",
+            "that",
+            "estimated"
+          ],
+          "resource": "documents/3. 생산매장량(USGS)/USGS_2019.pdf",
+          "okf_path": "생산매장량_USGS/USGS_2019.md",
+          "node_count": 199,
+          "score": 1.0
+        },
+        "node_count": 199
+      },
+      "elapsed_seconds": 0.07
+    },
+    {
+      "id": "AC41",
+      "title": "숫자 제목 OCR 3건 회귀",
+      "layer": "integration",
+      "status": "PASS",
+      "errors": [],
+      "detail": {
+        "checked": [
+          "조달청보고서/11.27.md",
+          "조달청보고서/12.18.md",
+          "조달청보고서/주간_080225.md"
+        ]
+      },
+      "elapsed_seconds": 0.02
+    }
+  ],
+  "summary": {
+    "PASS": 6
+  }
+}

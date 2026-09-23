@@ -270,6 +270,7 @@ def repair_intent_plan(
     return _normalize_mine_intent(plan, message)
 
 def action_plan_from_intent(intent_plan: IntentPlan, message: str = "") -> ActionPlan:
+    _normalize_trade_indicator_intents(intent_plan, message)
     actions: list[ActionCall] = []
     seen: dict[tuple[str, str], ActionCall] = {}
     # 명시 문서의 특정 광산 원문을 찾는 요구는 document.lookup 하나가
@@ -448,7 +449,7 @@ def _normalize_trade_indicator_slots(actions: list[ActionCall], message: str) ->
     """
     year = re.search(r"(20\d{2})\s*년", message)
     compact = "".join(message.split())
-    partner = re.search(r"(?:^|\s)([가-힣]{2,})산", message)
+    partner = _dependency_partner_from_message(message)
     for call in actions:
         if call.action_id != "trade.indicator":
             continue
@@ -463,7 +464,57 @@ def _normalize_trade_indicator_slots(actions: list[ActionCall], message: str) ->
             elif "수출" in compact:
                 slots.flow = "export"
         if slots.partner_country is None and partner:
-            slots.partner_country = partner.group(1)
+            slots.partner_country = partner
+
+
+def _dependency_partner_from_message(message: str) -> str | None:
+    """특정국 의존도 문맥에서만 질문에 명시된 상대국을 정규화한다.
+
+    ``trade.indicator``의 partner_country는 자유 국가명 추측 슬롯이 아니다.
+    수입·수출과 의존도 사이에 명시된 국가, 또는 ``국가산 수입 의존도``처럼
+    관계가 완결된 표기만 읽는다. HHI·일반 국가순위에는 적용하지 않는다.
+    """
+    compact = "".join(message.split())
+    patterns = (
+        r"(?:수입|수출)(?:의|에서|중)?([가-힣]{2,}|[A-Z]{2,3})(?:산)?(?:의)?(?:의존도|의존율|비중)",
+        r"([가-힣]{2,}|[A-Z]{2,3})산(?:[가-힣]{0,12})?(?:수입|수출)(?:의)?(?:의존도|의존율|비중)",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, compact)
+        if match:
+            return match.group(1)
+    return None
+
+
+def _normalize_trade_indicator_intents(intent_plan: IntentPlan, message: str) -> None:
+    """특정국 의존도라는 typed 관계를 ``trade.indicator``로 수렴시킨다.
+
+    집중도(HHI)와 의존도는 모두 국가 비중을 다루므로 모델이
+    ``trade_concentration``으로 분류할 수 있다. 상대국 슬롯이 확정된 경우에만
+    HHI action을 dependency action으로 바꿔, 질문별 예외 대신 action 계약
+    자체에서 단일 실행 경로를 보장한다.
+    """
+    year = re.search(r"(20\d{2})\s*년", message)
+    compact = "".join(message.split())
+    partner = _dependency_partner_from_message(message)
+    for item in intent_plan.requirements:
+        if item.intent not in {"trade_indicator", "trade_concentration"}:
+            continue
+        slots = item.slots
+        if slots.reporter_country is None and "한국" in compact:
+            slots.reporter_country = "한국"
+        if year and (slots.period is None or slots.period.kind != "calendar_year"):
+            slots.period = Period(kind="calendar_year", calendar_year=int(year.group(1)), explicit=True)
+        if slots.flow is None:
+            if "수입" in compact:
+                slots.flow = "import"
+            elif "수출" in compact:
+                slots.flow = "export"
+        if slots.partner_country is None and partner:
+            slots.partner_country = partner
+        if item.intent == "trade_concentration" and slots.partner_country:
+            item.intent = "trade_indicator"
+            slots.trade_metric = "country_dependency"
 
 
 def _is_stockpile_methodology_topic(topic: str | None) -> bool:

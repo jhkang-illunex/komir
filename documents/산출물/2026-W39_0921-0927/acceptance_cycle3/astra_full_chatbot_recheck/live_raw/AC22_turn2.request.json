@@ -1,0 +1,10 @@
+{
+  "body": {
+    "user_id": "acceptance-suite",
+    "session_id": "e7b767a6-afc3-43ac-87d7-9fa70b307c0d",
+    "message": "한국, 2025년 기준으로 계산해주세요."
+  },
+  "url": "http://127.0.0.1:18002/pubchat",
+  "timeout_seconds": 180,
+  "started_at": "2026-09-23T12:20:48.029899+00:00"
+}

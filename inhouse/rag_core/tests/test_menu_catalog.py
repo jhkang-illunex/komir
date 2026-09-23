@@ -1,8 +1,9 @@
 import unittest
+from types import SimpleNamespace
 
 from rag_core.ragkit.chatbot import _citation_sources, _evidence_source_label
 from rag_core.ragkit.menu_catalog import menu_catalog, menu_source
-from rag_core.retrieval.evidence import Evidence
+from rag_core.retrieval.evidence import Evidence, from_komis_aggregate, from_komis_ranking
 
 
 class MenuCatalogTest(unittest.TestCase):
@@ -19,6 +20,23 @@ class MenuCatalogTest(unittest.TestCase):
         citations = _citation_sources({1, 2}, [rdb, document])
         self.assertEqual(citations[0]["menu_source"]["page_id"], "map_korea")
         self.assertIsNone(citations[1]["menu_source"])
+
+    def test_deterministic_rdb_adapters_keep_menu_source(self):
+        dataset = SimpleNamespace(
+            rows=[{"country": "A", "amount": 100}], columns=["country", "amount"],
+            source_table="KO_CSTM_CMMRC", column_labels={}, metadata={},
+            as_of="2026", unit="USD",
+        )
+        ranking = from_komis_ranking(
+            dataset, metric_label="수입금액", menu_page_id="map_korea",
+        )[0]
+        aggregate = from_komis_aggregate(
+            dataset, label="월별 수입금액", menu_page_id="map_korea",
+        )[0]
+        self.assertEqual(ranking.menu_page_id, "map_korea")
+        self.assertEqual(aggregate.menu_page_id, "map_korea")
+        citations = _citation_sources({1, 2}, [ranking, aggregate])
+        self.assertTrue(all(item["menu_source"]["page_id"] == "map_korea" for item in citations))
 
 
 if __name__ == "__main__":

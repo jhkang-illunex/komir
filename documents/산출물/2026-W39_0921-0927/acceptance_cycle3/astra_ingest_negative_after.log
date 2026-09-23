@@ -1,0 +1,16 @@
+ordinary words []
+spaced minerals ["구리", "니켈"]
+compounds ["구리", "니켈", "리튬"]
+title first "2026-09-23"
+event only null
+publication label "2026-09-23"
+invalid date null
+pre2000 preserved
+대상 문서 1건(test)
+청크 1개 — 임베딩 계산 중(e5-small, 384차원)...
+적재 완료: test_schema.doc_chunk — 기존 0행 삭제, 1행 삽입, 대상갈래 현재 1행
+대상 문서 1건(test)
+청크 1개 — 임베딩 계산 중(e5-small, 384차원)...
+적재 완료: test_schema.doc_chunk — 기존 0행 삭제, 1행 삽입, 대상갈래 현재 1행
+SQL pub_date=None mutation BLOCKED by actual test 1 0
+[(<ingest.tests.test_build_pgvector_okf.OkfDocumentDateTest testMethod=test_build_passes_frontmatter_date_to_sql_row_without_db_write>, 'Traceback (most recent call last):\n  File "/home/nuri/dev/git/ws/mine_ws/komir/inhouse/ingest/tests/test_build_pgvector_okf.py", line 88, in test_build_passes_frontmatter_date_to_sql_row_without_db_write\n    self.assertEqual(captured[0][4], date(2006, 11, 27))\nAssertionError: None != datetime.date(2006, 11, 27)\n')]

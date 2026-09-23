@@ -1,0 +1,19 @@
+[
+  {
+    "session_id": "88174f10-248e-47c6-91e2-ba1189c80e93"
+  },
+  {
+    "stage": 1,
+    "label": "질문 조건 확인",
+    "status": "조회실패",
+    "failure_reason": "source_unavailable"
+  },
+  {
+    "delta": "요청하신 데이터를 조회할수 없습니다."
+  },
+  {
+    "done": true,
+    "abstained": true,
+    "abstain_reason": "source_unavailable"
+  }
+]

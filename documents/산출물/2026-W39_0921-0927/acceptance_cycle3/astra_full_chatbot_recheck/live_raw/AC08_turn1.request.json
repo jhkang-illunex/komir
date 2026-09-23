@@ -1,0 +1,10 @@
+{
+  "body": {
+    "user_id": "acceptance-suite",
+    "session_id": "58f12e63-4048-4b1e-b677-7e253582a10b",
+    "message": "한국의 리튬 수입 상위 5개국과 국가별 비중을 차트로 보여줘"
+  },
+  "url": "http://127.0.0.1:18002/pubchat",
+  "timeout_seconds": 180,
+  "started_at": "2026-09-23T12:19:15.644915+00:00"
+}

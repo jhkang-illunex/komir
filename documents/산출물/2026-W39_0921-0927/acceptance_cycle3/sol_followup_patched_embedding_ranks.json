@@ -1,0 +1,50 @@
+{
+  "AC28": {
+    "new_chunk_count": 4,
+    "fact_chunk_count": 1,
+    "fact_chunk_order": 0,
+    "fact_chunk_chars": 268,
+    "embedding_score": 0.9396981000900269,
+    "estimated_rank_against_current_public_corpus": 1,
+    "embedding_input": "2009년 1월 로이터 비철금속 가격 전망 자료(2)\n로이터 2010년 비철금속 가격 전망자료($/ton, cash)\n| |알루미늄 전기동|납 니켈|주석|아연| | |\n|---|---|---|---|---|---|---|\n|평균값 1,984| |4,330|1,317|13,482|14,065|1,551|\n|중간값 1,951| |4,299|1,323|13,228|13,500|1,442|\n|최고치 3,200| |7,500|2,000|20,000|18,800|3,100|\n|최저치 1,323| |2,756|800 9,932| |9,921|1,058|\n|설문참여자수 41| |45|35|41|22|42|",
+    "stored_text": "| |알루미늄 전기동|납 니켈|주석|아연| | |\n|---|---|---|---|---|---|---|\n|평균값 1,984| |4,330|1,317|13,482|14,065|1,551|\n|중간값 1,951| |4,299|1,323|13,228|13,500|1,442|\n|최고치 3,200| |7,500|2,000|20,000|18,800|3,100|\n|최저치 1,323| |2,756|800 9,932| |9,921|1,058|\n|설문참여자수 41| |45|35|41|22|42|",
+    "doc_date": "",
+    "date_boost": 0.0
+  },
+  "AC29": {
+    "new_chunk_count": 9,
+    "fact_chunk_count": 1,
+    "fact_chunk_order": 5,
+    "fact_chunk_chars": 238,
+    "embedding_score": 0.9159475564956665,
+    "estimated_rank_against_current_public_corpus": 1,
+    "embedding_input": "1019_LME Seminar에서 발표한 품목별 동향 및 전망\n1019_LME Seminar에서 발표한 품목별 동향 및 전망\n니켈 ▪ 추가 하락 전망 (LME Cash가 ‘93년초, ’98년초 한계생산비용보다 $2,000/t 가량 낮게 거래된 기록이 있어 추가하락도 가능) ▪ 재고는 급격히 증가하는데 이는 수요부진에 기인 ▪ 신규 광산의 생산증가로 광산 생산량 급증(‘09년도 지속) ▪ 스테인레스 스틸 수요 회복은 ‘09년 하반기 이후 가능 ▪ 상승요인 : 생산업체들의 감산 ▪ 하락요인 : 스테인레스 스틸 수요부진 가격 추가 하락 가능성에 무게",
+    "stored_text": "니 켈 ▪ 추가 하락 전망 (LME Cash가 ‘93년초, ’98년초 한계생산비용보다 $2,000/t 가량 낮게 거래된 기록이 있어 추가하락도 가능) ▪ 재고는 급격히 증가하는데 이는 수요부진에 기인 ▪ 신규 광산의 생산증가로 광산 생산량 급증(‘09년도 지속) ▪ 스테인레스 스틸 수요 회복은 ‘09년 하반기 이후 가능 ▪ 상승요인 : 생산업체들의 감산 ▪ 하락요인 : 스테인레스 스틸 수요부진 가격 추가 하락 가능성에 무게",
+    "doc_date": "",
+    "date_boost": 0.0
+  },
+  "AC30": {
+    "new_chunk_count": 2,
+    "fact_chunk_count": 1,
+    "fact_chunk_order": 0,
+    "fact_chunk_chars": 480,
+    "embedding_score": 0.9148248434066772,
+    "estimated_rank_against_current_public_corpus": 1,
+    "embedding_input": "Ni_Weda Bay_2025_Prod_AR_260814\n산출결과\n| col1 | col2 | 광석 | 수분함량 | 품위 | 금속량 | 회수율 | 최종 금속량 |\n|---|---|---|---|---|---|---|---|\n| 광석 생산량(kwmt) | Saprolite+Limonite | 41875 |  |  |  |  | 303.748134 |\n| 외부 판매량(kwmt) | Saprolite+Limonite | 38542 |  |  | 304.524994 |  | 267.948134 |\n|  | Limonite | 25481 | 0.382987 | 0.0116 | 182.376391 | 0.92 | 167.786279 |\n|  | Saprolite | 13061 | 0.331988 | 0.014 | 122.148603 | 0.82 | 100.161855 |\n| 자체 사용량(kwmt) | Saprolite | 3333 |  |  |  |  | 35.8 |\n|  |  |  |  |  |  | 최저값 적용 |  |",
+    "stored_text": "| col1 | col2 | 광석 | 수분함량 | 품위 | 금속량 | 회수율 | 최종 금속량 |\n|---|---|---|---|---|---|---|---|\n| 광석 생산량(kwmt) | Saprolite+Limonite | 41875 |  |  |  |  | 303.748134 |\n| 외부 판매량(kwmt) | Saprolite+Limonite | 38542 |  |  | 304.524994 |  | 267.948134 |\n|  | Limonite | 25481 | 0.382987 | 0.0116 | 182.376391 | 0.92 | 167.786279 |\n|  | Saprolite | 13061 | 0.331988 | 0.014 | 122.148603 | 0.82 | 100.161855 |\n| 자체 사용량(kwmt) | Saprolite | 3333 |  |  |  |  | 35.8 |\n|  |  |  |  |  |  | 최저값 적용 |  |",
+    "doc_date": "",
+    "date_boost": 0.0
+  },
+  "AC39": {
+    "new_chunk_count": 1639,
+    "fact_chunk_count": 1,
+    "fact_chunk_order": 8,
+    "fact_chunk_chars": 69,
+    "embedding_score": 0.9184830188751221,
+    "estimated_rank_against_current_public_corpus": 2,
+    "embedding_input": "USGS_2026\nFOREWORD\nEstimated world lithium production increased to 290,000 tons in 2025.",
+    "stored_text": "Estimated world lithium production increased to 290,000 tons in 2025.",
+    "doc_date": "",
+    "date_boost": 0.0
+  }
+}

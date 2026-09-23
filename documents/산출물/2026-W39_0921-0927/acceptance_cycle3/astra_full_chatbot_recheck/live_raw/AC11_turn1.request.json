@@ -1,0 +1,10 @@
+{
+  "body": {
+    "user_id": "acceptance-suite",
+    "session_id": "3d99bd5c-632d-45f2-a777-a21e53efea93",
+    "message": "한국 리튬 수입의 국가 집중도 HHI를 계산해줘"
+  },
+  "url": "http://127.0.0.1:18002/pubchat",
+  "timeout_seconds": 180,
+  "started_at": "2026-09-23T12:19:30.436333+00:00"
+}

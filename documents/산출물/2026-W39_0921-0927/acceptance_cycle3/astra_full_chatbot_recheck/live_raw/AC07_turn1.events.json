@@ -1,0 +1,1394 @@
+[
+  {
+    "session_id": "eff0e3e7-2827-4c13-8275-3e341d0a53f2"
+  },
+  {
+    "stage": 1,
+    "label": "질문 조건 확인"
+  },
+  {
+    "stage": 1,
+    "label": "질문 조건 확인"
+  },
+  {
+    "stage": 2,
+    "label": "답변 준비중",
+    "action_id": "price.verify_claim"
+  },
+  {
+    "stage": 3,
+    "label": "데이터 분석 중",
+    "action_id": "price.verify_claim"
+  },
+  {
+    "stage": 4,
+    "label": "답변 생성 중"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "년"
+  },
+  {
+    "delta": " 니"
+  },
+  {
+    "delta": "켈"
+  },
+  {
+    "delta": " 가격"
+  },
+  {
+    "delta": "은"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "%"
+  },
+  {
+    "delta": " 이상"
+  },
+  {
+    "delta": " 상승"
+  },
+  {
+    "delta": "하지"
+  },
+  {
+    "delta": " 않았"
+  },
+  {
+    "delta": "습니다"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": " ["
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "]["
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "]"
+  },
+  {
+    "delta": "\n\n"
+  },
+  {
+    "delta": "조"
+  },
+  {
+    "delta": "회"
+  },
+  {
+    "delta": "된"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "-"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "-"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "부터"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "-"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "-"
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "까지"
+  },
+  {
+    "delta": "의"
+  },
+  {
+    "delta": " 실제"
+  },
+  {
+    "delta": " 조회"
+  },
+  {
+    "delta": "기간"
+  },
+  {
+    "delta": " 동안"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": " 니"
+  },
+  {
+    "delta": "켈"
+  },
+  {
+    "delta": " 가격"
+  },
+  {
+    "delta": "은"
+  },
+  {
+    "delta": " 시작"
+  },
+  {
+    "delta": "일"
+  },
+  {
+    "delta": "인"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "-"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "-"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": " 기준"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "("
+  },
+  {
+    "delta": "L"
+  },
+  {
+    "delta": "ME"
+  },
+  {
+    "delta": " CASH"
+  },
+  {
+    "delta": ")"
+  },
+  {
+    "delta": "에서"
+  },
+  {
+    "delta": " 종료"
+  },
+  {
+    "delta": "일"
+  },
+  {
+    "delta": "인"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "-"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "-"
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": " 기준"
+  },
+  {
+    "delta": " "
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": ","
+  },
+  {
+    "delta": "5"
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "9"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "0"
+  },
+  {
+    "delta": "4"
+  },
+  {
+    "delta": "("
+  },
+  {
+    "delta": "L"
+  },
+  {
+    "delta": "ME"
+  },
+  {
+    "delta": " CASH"
+  },
+  {
+    "delta": ")"
+  },
+  {
+    "delta": "로"
+  },
+  {
+    "delta": " 변"
+  },
+  {
+    "delta": "동"
+  },
+  {
+    "delta": "률"
+  },
+  {
+    "delta": " -"
+  },
+  {
+    "delta": "3"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "7"
+  },
+  {
+    "delta": "%"
+  },
+  {
+    "delta": "를"
+  },
+  {
+    "delta": " 기록"
+  },
+  {
+    "delta": "하였습니다"
+  },
+  {
+    "delta": "."
+  },
+  {
+    "delta": " ["
+  },
+  {
+    "delta": "1"
+  },
+  {
+    "delta": "]["
+  },
+  {
+    "delta": "2"
+  },
+  {
+    "delta": "]"
+  },
+  {
+    "delta": "\n\n⚠ 가격 변동률 전제 greater_than 300.0%는 원자료 비교값으로 확인되지 않았습니다.\n\n출처:\n- [1] public.KO_MNRL_PRC · KOMIS 원천 · KO_MNRL_PRC(니켈) · 니켈 가격 시계열(최대 40시점) (기준시점 2025-01-02\\~2025-12-31)\n- [2] public.KO_MNRL_PRC · KOMIS 원천 · KO_MNRL_PRC · 동일 기간 가격 변동률 (기준시점 2025-01-02\\~2025-12-31)"
+  },
+  {
+    "schema_version": 1,
+    "block_id": "t1-1",
+    "columns": [
+      "mineral(광종)",
+      "price_date(가격일자)",
+      "price(통상가격)",
+      "price_criterion(가격기준)",
+      "price_currency_code(가격통화코드)",
+      "weight_unit_code(중량단위코드)"
+    ],
+    "rows": [
+      [
+        "니켈",
+        "2024-12-30",
+        "15010.0",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-01-13",
+        "15560.0",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-01-20",
+        "15850.0",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-01-27",
+        "15195.0",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-02-03",
+        "15575.0",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-02-17",
+        "15135.0",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-02-24",
+        "15450.0",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-03-03",
+        "16050.0",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-03-17",
+        "16310.0",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-03-24",
+        "15975.0",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-03-31",
+        "15650.0",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-04-14",
+        "15175.0",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-04-21",
+        "15625.0",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-05-05",
+        "15440.0",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-05-12",
+        "15725.0",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-05-19",
+        "15205.0",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-06-02",
+        "15200.0",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-06-09",
+        "14940.0",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-06-16",
+        "14770.0",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-06-30",
+        "14965.0",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-07-07",
+        "14825.0",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-07-14",
+        "14900.0",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-07-28",
+        "15050.0",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-08-04",
+        "14940.0",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-08-11",
+        "14880.0",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-08-25",
+        "14975.0",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-09-01",
+        "14654.07",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-09-08",
+        "14470.68",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-09-22",
+        "14258.02",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-09-29",
+        "14969.84",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-10-06",
+        "14839.34",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-10-20",
+        "13937.28",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-10-27",
+        "14269.47",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-11-03",
+        "14195.69",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-11-10",
+        "13796.13",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-11-24",
+        "14674.11",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-12-01",
+        "14047.46",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-12-08",
+        "14387.29",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-12-22",
+        "15064.39",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-12-29",
+        "14519.04",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ]
+    ],
+    "columns_meta": [
+      {
+        "key": "mineral",
+        "label": "mineral(광종)",
+        "display": "광종",
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "price_date",
+        "label": "price_date(가격일자)",
+        "display": "가격일자",
+        "type": "date",
+        "unit": null
+      },
+      {
+        "key": "price",
+        "label": "price(통상가격)",
+        "display": "통상가격",
+        "type": "number",
+        "unit": null
+      },
+      {
+        "key": "price_criterion",
+        "label": "price_criterion(가격기준)",
+        "display": "가격기준",
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "price_currency_code",
+        "label": "price_currency_code(가격통화코드)",
+        "display": "가격통화코드",
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "weight_unit_code",
+        "label": "weight_unit_code(중량단위코드)",
+        "display": "중량단위코드",
+        "type": "string",
+        "unit": null
+      }
+    ],
+    "rows_typed": [
+      [
+        "니켈",
+        "2024-12-30",
+        15010.0,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-01-13",
+        15560.0,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-01-20",
+        15850.0,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-01-27",
+        15195.0,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-02-03",
+        15575.0,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-02-17",
+        15135.0,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-02-24",
+        15450.0,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-03-03",
+        16050.0,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-03-17",
+        16310.0,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-03-24",
+        15975.0,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-03-31",
+        15650.0,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-04-14",
+        15175.0,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-04-21",
+        15625.0,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-05-05",
+        15440.0,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-05-12",
+        15725.0,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-05-19",
+        15205.0,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-06-02",
+        15200.0,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-06-09",
+        14940.0,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-06-16",
+        14770.0,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-06-30",
+        14965.0,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-07-07",
+        14825.0,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-07-14",
+        14900.0,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-07-28",
+        15050.0,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-08-04",
+        14940.0,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-08-11",
+        14880.0,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-08-25",
+        14975.0,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-09-01",
+        14654.07,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-09-08",
+        14470.68,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-09-22",
+        14258.02,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-09-29",
+        14969.84,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-10-06",
+        14839.34,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-10-20",
+        13937.28,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-10-27",
+        14269.47,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-11-03",
+        14195.69,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-11-10",
+        13796.13,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-11-24",
+        14674.11,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-12-01",
+        14047.46,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-12-08",
+        14387.29,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-12-22",
+        15064.39,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ],
+      [
+        "니켈",
+        "2025-12-29",
+        14519.04,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ]
+    ],
+    "markdown": "| mineral(광종) | price_date(가격일자) | price(통상가격) | price_criterion(가격기준) | price_currency_code(가격통화코드) | weight_unit_code(중량단위코드) |\n| --- | --- | --- | --- | --- | --- |\n| 니켈 | 2024-12-30 | 15010.0 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-01-13 | 15560.0 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-01-20 | 15850.0 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-01-27 | 15195.0 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-02-03 | 15575.0 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-02-17 | 15135.0 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-02-24 | 15450.0 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-03-03 | 16050.0 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-03-17 | 16310.0 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-03-24 | 15975.0 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-03-31 | 15650.0 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-04-14 | 15175.0 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-04-21 | 15625.0 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-05-05 | 15440.0 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-05-12 | 15725.0 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-05-19 | 15205.0 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-06-02 | 15200.0 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-06-09 | 14940.0 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-06-16 | 14770.0 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-06-30 | 14965.0 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-07-07 | 14825.0 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-07-14 | 14900.0 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-07-28 | 15050.0 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-08-04 | 14940.0 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-08-11 | 14880.0 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-08-25 | 14975.0 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-09-01 | 14654.07 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-09-08 | 14470.68 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-09-22 | 14258.02 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-09-29 | 14969.84 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-10-06 | 14839.34 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-10-20 | 13937.28 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-10-27 | 14269.47 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-11-03 | 14195.69 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-11-10 | 13796.13 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-11-24 | 14674.11 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-12-01 | 14047.46 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-12-08 | 14387.29 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-12-22 | 15064.39 | LME CASH | PR001 | WT002 |\n| 니켈 | 2025-12-29 | 14519.04 | LME CASH | PR001 | WT002 |",
+    "chart_hint": {
+      "recommended": "line",
+      "alternatives": [],
+      "reason": "시점당 1행인 시계열, 시점 40개"
+    },
+    "meta": {
+      "source_index": 1,
+      "source": "public.KO_MNRL_PRC · KOMIS 원천 · KO_MNRL_PRC(니켈) · 니켈 가격 시계열(최대 40시점) (기준시점 2025-01-02~2025-12-31)",
+      "row_count": 40,
+      "as_of": "2025-01-02~2025-12-31",
+      "unit": "가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002",
+      "time_aggregation": {
+        "source_frequency": "daily",
+        "frequency": "weekly",
+        "applied": true,
+        "aggregation": "mean"
+      },
+      "menu_source": null,
+      "hidden_columns": []
+    },
+    "source_index": 1,
+    "source": "public.KO_MNRL_PRC · KOMIS 원천 · KO_MNRL_PRC(니켈) · 니켈 가격 시계열(최대 40시점) (기준시점 2025-01-02~2025-12-31)"
+  },
+  {
+    "schema_version": 1,
+    "block_id": "c1-1",
+    "data_ref": "t1-1",
+    "spec": {
+      "kind": "line",
+      "alternatives": [],
+      "x": "price_date",
+      "x_type": "date",
+      "x_format": null,
+      "series": [
+        "price"
+      ],
+      "group": null,
+      "sort_x_ascending": true,
+      "title": "통상가격",
+      "y_unit": null,
+      "as_of": "2025-01-02~2025-12-31",
+      "time_aggregation": {
+        "source_frequency": "daily",
+        "frequency": "weekly",
+        "applied": true,
+        "aggregation": "mean"
+      },
+      "price_criterion": "LME CASH",
+      "price_currency_code": "PR001",
+      "weight_unit_code": "WT002"
+    },
+    "meta": {
+      "source_index": 1,
+      "source": "public.KO_MNRL_PRC · KOMIS 원천 · KO_MNRL_PRC(니켈) · 니켈 가격 시계열(최대 40시점) (기준시점 2025-01-02~2025-12-31)",
+      "menu_source": null
+    },
+    "source_index": 1,
+    "source": "public.KO_MNRL_PRC · KOMIS 원천 · KO_MNRL_PRC(니켈) · 니켈 가격 시계열(최대 40시점) (기준시점 2025-01-02~2025-12-31)"
+  },
+  {
+    "schema_version": 1,
+    "block_id": "t2-1",
+    "columns": [
+      "mineral(광종)",
+      "start_date(시작일)",
+      "start_price(시작가격)",
+      "end_date(종료일)",
+      "end_price(종료가격)",
+      "pct_change(변동률(%))",
+      "price_criterion(가격기준)",
+      "price_currency_code(통화코드)",
+      "weight_unit_code(중량단위코드)"
+    ],
+    "rows": [
+      [
+        "니켈",
+        "2025-01-02",
+        "15010.0",
+        "2025-12-31",
+        "14519.04",
+        "-3.27",
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ]
+    ],
+    "columns_meta": [
+      {
+        "key": "mineral",
+        "label": "mineral(광종)",
+        "display": "광종",
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "start_date",
+        "label": "start_date(시작일)",
+        "display": "시작일",
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "start_price",
+        "label": "start_price(시작가격)",
+        "display": "시작가격",
+        "type": "number",
+        "unit": null
+      },
+      {
+        "key": "end_date",
+        "label": "end_date(종료일)",
+        "display": "종료일",
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "end_price",
+        "label": "end_price(종료가격)",
+        "display": "종료가격",
+        "type": "number",
+        "unit": null
+      },
+      {
+        "key": "pct_change",
+        "label": "pct_change(변동률(%))",
+        "display": "변동률(%)",
+        "type": "number",
+        "unit": "%"
+      },
+      {
+        "key": "price_criterion",
+        "label": "price_criterion(가격기준)",
+        "display": "가격기준",
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "price_currency_code",
+        "label": "price_currency_code(통화코드)",
+        "display": "통화코드",
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "weight_unit_code",
+        "label": "weight_unit_code(중량단위코드)",
+        "display": "중량단위코드",
+        "type": "string",
+        "unit": null
+      }
+    ],
+    "rows_typed": [
+      [
+        "니켈",
+        "2025-01-02",
+        15010.0,
+        "2025-12-31",
+        14519.04,
+        -3.27,
+        "LME CASH",
+        "PR001",
+        "WT002"
+      ]
+    ],
+    "markdown": "| mineral(광종) | start_date(시작일) | start_price(시작가격) | end_date(종료일) | end_price(종료가격) | pct_change(변동률(%)) | price_criterion(가격기준) | price_currency_code(통화코드) | weight_unit_code(중량단위코드) |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| 니켈 | 2025-01-02 | 15010.0 | 2025-12-31 | 14519.04 | -3.27 | LME CASH | PR001 | WT002 |",
+    "chart_hint": {
+      "recommended": null,
+      "alternatives": [],
+      "reason": "행 2개 미만 또는 열 1개"
+    },
+    "meta": {
+      "source_index": 2,
+      "source": "public.KO_MNRL_PRC · KOMIS 원천 · KO_MNRL_PRC · 동일 기간 가격 변동률 (기준시점 2025-01-02~2025-12-31)",
+      "row_count": 1,
+      "as_of": "2025-01-02~2025-12-31",
+      "unit": "통화코드=PR001; 중량단위코드=WT002",
+      "time_aggregation": null,
+      "menu_source": null,
+      "hidden_columns": []
+    },
+    "source_index": 2,
+    "source": "public.KO_MNRL_PRC · KOMIS 원천 · KO_MNRL_PRC · 동일 기간 가격 변동률 (기준시점 2025-01-02~2025-12-31)"
+  },
+  {
+    "done": true,
+    "citations": [
+      {
+        "index": 1,
+        "kind": "structured",
+        "source": "public.KO_MNRL_PRC",
+        "section": "KOMIS 원천 · KO_MNRL_PRC(니켈) · 니켈 가격 시계열(최대 40시점)",
+        "as_of": "2025-01-02~2025-12-31",
+        "unit": "가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002",
+        "requirement_id": "req_1",
+        "action_id": "price.verify_claim",
+        "source_id": "public.KO_MNRL_PRC",
+        "observed_period": "2025-01-02~2025-12-31",
+        "menu_source": null
+      },
+      {
+        "index": 2,
+        "kind": "structured",
+        "source": "public.KO_MNRL_PRC",
+        "section": "KOMIS 원천 · KO_MNRL_PRC · 동일 기간 가격 변동률",
+        "as_of": "2025-01-02~2025-12-31",
+        "unit": "통화코드=PR001; 중량단위코드=WT002",
+        "requirement_id": "req_1",
+        "action_id": "price.verify_claim",
+        "source_id": "public.KO_MNRL_PRC",
+        "observed_period": "2025-01-02~2025-12-31",
+        "menu_source": null
+      }
+    ],
+    "retrieval_sources": [
+      {
+        "source": "rdb",
+        "status": "queried",
+        "evidence_count": 2
+      },
+      {
+        "source": "vector",
+        "status": "not_selected",
+        "evidence_count": 0
+      },
+      {
+        "source": "pageindex",
+        "status": "not_selected",
+        "evidence_count": 0
+      },
+      {
+        "source": "okf",
+        "status": "not_selected",
+        "evidence_count": 0
+      }
+    ],
+    "bogus_citations": [],
+    "abstained": false
+  }
+]

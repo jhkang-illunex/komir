@@ -1,0 +1,63 @@
+{
+  "stage": "targeted_vector_reindex_verified",
+  "before_target_rows": 776,
+  "after_target_rows": 1654,
+  "delta": 878,
+  "same_index_timestamp_non_target_rows": 0,
+  "backup_table_rows": 776,
+  "rows": [
+    {
+      "case": "AC28",
+      "doc_id": "e09bbbbdac2e3b3a",
+      "src": "조달청보고서",
+      "source_path": "documents/조달청보고서/2009년 1월 로이터 비철금속 가격 전망 자료(2).pdf",
+      "count": 4,
+      "dims": [
+        384,
+        384
+      ],
+      "indexed_at": "2026-09-23T21:00:42.060379",
+      "ordered_texts_equal_current_chunker": true
+    },
+    {
+      "case": "AC29",
+      "doc_id": "c5ba28f3421c6bb1",
+      "src": "조달청보고서",
+      "source_path": "documents/조달청보고서/1019_LME Seminar에서 발표한 품목별 동향 및 전망.hwp",
+      "count": 9,
+      "dims": [
+        384,
+        384
+      ],
+      "indexed_at": "2026-09-23T21:00:42.060379",
+      "ordered_texts_equal_current_chunker": true
+    },
+    {
+      "case": "AC30",
+      "doc_id": "3b3b60baa05e7715",
+      "src": "광산자료",
+      "source_path": "nas_document/학습데이터/니켈/Ni_Weda Bay_2025_Prod_AR_260814.xlsx",
+      "count": 2,
+      "dims": [
+        384,
+        384
+      ],
+      "indexed_at": "2026-09-23T21:00:42.060379",
+      "ordered_texts_equal_current_chunker": true
+    },
+    {
+      "case": "AC39",
+      "doc_id": "738ead83c52ecab7",
+      "src": "생산매장량_USGS",
+      "source_path": "documents/3. 생산매장량(USGS)/USGS_2026.pdf",
+      "count": 1639,
+      "dims": [
+        384,
+        384
+      ],
+      "indexed_at": "2026-09-23T21:00:42.060379",
+      "ordered_texts_equal_current_chunker": true
+    }
+  ],
+  "note": "prior verifier compared row count to unique text count; AC39 legitimately has 30 repeated text values. Ordered seq/text contract passes."
+}
