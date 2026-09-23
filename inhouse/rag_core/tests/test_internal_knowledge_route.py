@@ -358,7 +358,7 @@ class SourceFooterTest(unittest.TestCase):
                 self.assertNotIn("[1] 2.", answer)
                 self.assertNotIn("2025년 9월 22일 15,010", answer)
                 self.assertNotIn("[1] | 구분", answer)
-                self.assertIn("선택 가격기준의 단위 표기는 가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002입니다. [1]", answer)
+                self.assertIn("선택 가격기준의 단위 표기는 가격기준=LME CASH입니다. [1]", answer)
 
     def test_single_selected_price_series_uses_observed_period_only(self):
         evidence = Evidence(
@@ -390,7 +390,9 @@ class SourceFooterTest(unittest.TestCase):
         unit = "가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002"
         evidence = SimpleNamespace(action_id="price.series", unit=unit)
         answer = chatbot._price_unit_disclosure(f"가격 단위는 {unit}입니다. [1]", [evidence])
-        self.assertEqual(answer.count(unit), 1)
+        self.assertEqual(answer.count("가격기준=LME CASH"), 1)
+        self.assertNotIn("PR001", answer)
+        self.assertNotIn("WT002", answer)
 
     def test_footer_keeps_one_line_for_each_cited_evidence_index(self):
         same_source = SimpleNamespace(source="동일 문서", section="동일 절", as_of="2026-09-21")
