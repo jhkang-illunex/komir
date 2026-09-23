@@ -52,10 +52,8 @@ class StructuredBlockPresentationTest(unittest.TestCase):
         complete_period = from_komis_raw("price_base_metals", [complete])[0].as_of
         partial_period = from_komis_raw("price_base_metals", [partial])[0].as_of
 
-        self.assertEqual(complete_period, "2026-09-01~2026-09-02, 지정 기간 전체")
-        self.assertEqual(partial_period, "2026-09-01~2026-09-02, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)")
-        self.assertNotIn("건", complete_period)
-        self.assertNotIn("건", partial_period)
+        self.assertEqual(complete_period, "2026-09-01~2026-09-02, 지정 기간 내 관측 2건 전체")
+        self.assertEqual(partial_period, "2026-09-01~2026-09-02, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)")
 
 
 if __name__ == "__main__":

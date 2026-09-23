@@ -238,11 +238,12 @@ def _period_span(ds: Any) -> str | None:
         return None
     oldest, newest = _format_ymd(values[-1]), _format_ymd(values[0])
     if getattr(ds, "metadata", {}).get("period_range_complete"):
-        # 원시 행 수는 RawDataset.row_count에 보존한다. 이 필드는 답변 본문·
-        # 출처·표·차트에 노출되는 사용자용 조회기간이므로 내부 관측 건수는
-        # 섞지 않는다.
-        return f"{oldest}~{newest}, 지정 기간 전체"
-    return f"{oldest}~{newest}, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)"
+        count = getattr(ds, "row_count", None)
+        count_label = f" 내 관측 {int(count)}건" if isinstance(count, int) and count >= 0 else ""
+        return f"{oldest}~{newest}, 지정 기간{count_label} 전체"
+    count = getattr(ds, "row_count", None)
+    count_label = f"최신순 {int(count)}건만, " if isinstance(count, int) and count >= 0 else ""
+    return f"{oldest}~{newest}, {count_label}최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)"
 
 
 #: 2026-09-17(챗봇_대화형검색_피드백_PRD §1.2, 대화형검색시스템 예상질문
