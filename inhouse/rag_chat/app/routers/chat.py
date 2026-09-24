@@ -267,10 +267,18 @@ def _pending_trade_clarification(session_id: str) -> dict | None:
     return None
 
 
+def _is_trade_clarification_followup(message: str) -> bool:
+    """무역 clarification 보충 문장인지, 새 의도 전환인지 구분한다."""
+    compact = "".join(message.split()).casefold()
+    if any(marker in compact for marker in ("취소", "그만", "날씨", "페이지", "메뉴", "가격", "원문")):
+        return False
+    return "한국" in compact and bool(re.search(r"20\d{2}(?:년|$)", compact))
+
+
 def _recover_trade_followup(session_id: str, message: str) -> ActionPlan | None:
     """저장된 clarification metadata가 없어도 직전 trade 질문을 복원한다."""
     compact = "".join(message.split())
-    if not ("한국" in compact and any(re.search(pattern, compact) for pattern in (r"20\d{2}년", r"20\d{2}"))):
+    if not _is_trade_clarification_followup(message):
         return None
     history = session_store.list_messages(session_id, limit=10)
     previous = next(
@@ -687,7 +695,7 @@ def _run_chat_session(
             if pending_call and choice:
                 action_plan = pending_plan
                 resumed = True
-            elif pending_trade:
+            elif pending_trade and _is_trade_clarification_followup(request.message):
                 # 이전 질문의 typed action을 보존하고 후속 문장에 명시된
                 # reporter/period/flow 슬롯만 병합한다. 후속 문장만 LLM에
                 # 재분류하면 정상 보충 답변이 off_topic으로 바뀔 수 있다.

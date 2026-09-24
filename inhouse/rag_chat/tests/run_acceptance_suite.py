@@ -119,6 +119,25 @@ def _independent_numeric_errors(case_id: str, events: list[dict[str, Any]]) -> l
     """구조화 표의 핵심 수치를 응답과 별도로 재계산한다."""
     errors: list[str] = []
     tables = [event for event in events if event.get("rows") and event.get("columns")]
+    if case_id == "AC07":
+        for table in tables:
+            columns = [str(column).split("(", 1)[0] for column in table["columns"]]
+            if not {"start_price", "end_price", "pct_change"}.issubset(columns):
+                continue
+            indexes = {name: columns.index(name) for name in ("start_price", "end_price", "pct_change")}
+            for row in table["rows"]:
+                try:
+                    start = float(row[indexes["start_price"]])
+                    end = float(row[indexes["end_price"]])
+                    observed = float(row[indexes["pct_change"]])
+                except (TypeError, ValueError, IndexError):
+                    errors.append("AC07 가격 주장 구조화 수치 형식 오류")
+                    continue
+                expected = (end - start) / start * 100 if start else 0.0
+                if start <= 0 or abs(observed - expected) > 0.01:
+                    errors.append("AC07 가격 변동률 독립 산식 불일치")
+            return errors
+        return ["AC07 가격 변동률 구조화 표 없음"]
     if case_id == "AC18":
         for table in tables:
             columns = [str(column).split("(", 1)[0] for column in table["columns"]]
@@ -276,7 +295,7 @@ def verify_live(case: dict[str, Any], base_url: str, timeout: int) -> tuple[str,
                 return "BLOCKED_DATA", [f"사전 데이터 조건 미충족: {done.get('abstain_reason')}"], {"done": done, "precondition_evidence": evidence}
             return "FAIL", ["source_unavailable에 대한 독립 사전조건 증거가 없음"], {"done": done}
         errors.extend(_answer_errors(case, events, done))
-        if done.get("mode") != "page" and case.get("id") not in {"AC18", "AC22"}:
+        if done.get("mode") != "page" and case.get("id") not in {"AC07", "AC18", "AC22"}:
             errors.append("필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음")
     elif outcome == "abstain":
         if not done.get("abstained"):
