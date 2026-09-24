@@ -24,6 +24,34 @@ async def _collect_turn(**kwargs):
 
 
 class TerminalEventCoreTest(unittest.TestCase):
+    def test_verified_action_plan_skips_followup_pre_gate(self):
+        """복원된 typed action은 짧은 보충 문장으로 off_topic 처리하지 않는다."""
+        stored = []
+
+        async def immediate_to_thread(function, *args, **kwargs):
+            return function(*args, **kwargs)
+
+        async def retrieval_result(*_args, **_kwargs):
+            yield "result", ([], ["source_audit:rdb:queried:1"]), {}
+
+        plan = ActionPlan(actions=[ActionCall(
+            requirement_id="trade_followup", action_id="trade.indicator",
+            slots=ActionSlots(mineral="리튬", trade_metric="tsi",
+                              reporter_country="한국"),
+        )])
+        with patch.object(chatbot, "get_or_create_session", return_value="hitl-session"), \
+             patch.object(chatbot, "list_messages", return_value=[]), \
+             patch.object(chatbot, "append_message", side_effect=lambda *args: stored.append(args)), \
+             patch.object(chatbot, "_classify_pre_gate", side_effect=AssertionError("pre-gate 재분류 금지")), \
+             patch.object(chatbot.asyncio, "to_thread", side_effect=immediate_to_thread), \
+             patch.object(chatbot, "_run_with_status", side_effect=retrieval_result):
+            events = asyncio.run(_collect_turn(
+                message="한국, 2025년 기준으로 계산해주세요.", action_plan=plan,
+                session_id="hitl-session", user_id="user", store_db_path="unused",
+            ))
+
+        self.assertEqual(sum(event.type == "done" for event in events), 1)
+
     def test_second_turn_pre_gate_finishes_once_and_persists_its_reason(self):
         """AC22: 같은 세션의 후속 턴도 pre-gate에서 스트림이 끊기지 않는다."""
         stored = []

@@ -1332,7 +1332,18 @@ async def chat_turn(
     # retrieve_evidence()를 아예 안 부른다 — dense가 뭘 찾아오든 애초에
     # 답할 수 없는 질문이라 검색 자체가 낭비이자 near-miss로 새는 경로였다.
     yield _status_event(1)  # 질문 조건 확인
-    pre_gate_reason = await asyncio.to_thread(_classify_pre_gate, message, router_llm)
+    # 라우터가 typed action 계획을 확정한 후속 턴은 이미 범위 검증을
+    # 통과했다. 보충 문장만 다시 pre-gate에 넣으면 "한국, 2025년" 같은
+    # 짧은 문장이 off_topic으로 오분류되어 저장된 계획을 무시하게 된다.
+    # 계획이 없거나 명시적으로 off_topic인 경우에만 일반 분류를 수행한다.
+    has_verified_action = bool(
+        action_plan is not None
+        and getattr(action_plan, "actions", None)
+        and any(call.action_id != "off_topic" for call in action_plan.actions)
+    )
+    pre_gate_reason = None if has_verified_action else await asyncio.to_thread(
+        _classify_pre_gate, message, router_llm,
+    )
     if pre_gate_reason:
         abstain_text = _abstain_reason_text(_AbstainReason(reason=pre_gate_reason))
         await asyncio.to_thread(
