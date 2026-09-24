@@ -18,7 +18,8 @@
 `komir-rag-chat-test-pre-20260924-121515`로 보존했다.
 
 실제 RCA/TII 세계 분모 provider는 여전히 데이터 원천 연결 전 fail-closed이며,
-개인 `.codex/config.toml`은 커밋하지 않고 로컬에 남겼다.
+개인 `.codex/config.toml`은 커밋하지 않고 로컬에 남겼다. 상세 결과는
+[챗봇 배포 서버 테스트 결과](../산출물/2026-W39_0921-0927/챗봇_배포서버_테스트결과_260924.md)에 기록했다.
 
 ## 2026-09-24 — RCA/TII 계산 seam 배선(원천 연결 전 fail-closed 유지)
 
