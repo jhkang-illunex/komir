@@ -25,8 +25,13 @@ def ask(message):
 
 def require_citation(done, action_id, source):
     assert not done.get("abstained") and not done.get("needs_clarification"), done
+    expected_sources = {
+        source,
+        "KOMIS 공식 데이터" if source.startswith("public.") else source,
+        "USGS Mineral Commodity Summaries" if "USGS" in source else source,
+    }
     matches = [item for item in done.get("citations", [])
-               if item.get("action_id") == action_id and item.get("source") == source]
+               if item.get("action_id") == action_id and item.get("source") in expected_sources]
     assert matches, done
     return matches[0]
 

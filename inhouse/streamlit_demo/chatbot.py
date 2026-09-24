@@ -235,6 +235,7 @@ def _render_details(record: dict[str, Any]) -> None:
                 st.markdown(
                     f"**[{item.get('index')}]** `{item.get('kind')}` {item.get('source')} — "
                     f"{item.get('section')}{(' (' + meta + ')') if meta else ''}"
+                    + (f"\n\n공식 URL: {item['official_url']}" if item.get("official_url") else "")
                 )
     bogus = record.get("bogus_citations") or []
     if bogus:

@@ -42,14 +42,18 @@ class StructuredBlockTest(unittest.TestCase):
         self.assertTrue(table["markdown"].startswith("| mnrl_prc_crtr_sn"))
         block = table_block(table, block_id="t1-1", source_index=1, source_label="KOMIS · 가격")
         self.assertEqual(block["schema_version"], 1)
-        # "None" 셀이 있어도 숫자열은 number, 전부 None인 열은 string
-        self.assertEqual([c["type"] for c in block["columns_meta"]], ["number", "date", "number", "number", "string"])
-        self.assertEqual(block["columns_meta"][2]["display"], "최저가격")
-        self.assertEqual(block["rows_typed"][0][2], 16410.62)
-        self.assertIsNone(block["rows_typed"][1][2])
-        self.assertEqual(block["rows"], table["rows"])  # 구 클라이언트 호환 키 유지
+        # 내부 가격기준 순번은 표시에서 제거한다. "None" 셀이 있어도
+        # 숫자열은 number, 전부 None인 열은 string으로 유지한다.
+        self.assertEqual(
+            [c["type"] for c in block["columns_meta"]],
+            ["date", "number", "number", "string"],
+        )
+        self.assertEqual(block["columns_meta"][1]["display"], "최저가격")
+        self.assertEqual(block["rows_typed"][0][1], 16410.62)
+        self.assertIsNone(block["rows_typed"][1][1])
+        self.assertEqual(block["rows"], [row[1:] for row in table["rows"]])
         self.assertEqual(block["chart_hint"]["recommended"], "line")
-        self.assertEqual(block["meta"]["row_count"], 4)
+        self.assertNotIn("row_count", block["meta"])
 
     def test_time_series_line_spec(self):
         table = extract_markdown_tables(_PRICE_MD)[0]

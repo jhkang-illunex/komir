@@ -182,7 +182,7 @@ class ActionContractTest(unittest.TestCase):
         answer = chatbot._stockpile_methodology_answer(evidence)
         self.assertIn("실제 비축 현황, 부족량, 비축일수는 산출할 수 없습니다", answer)
         self.assertIn("max(목표재고 − 현재재고, 0)", answer)
-        self.assertIn("[1] rag_core/ragkit/static_docs/stockpile_calculation_methodology.md", answer)
+        self.assertIn("[1] 공식 문서 원문 · 입력값과 계산", answer)
 
     def test_claim_uses_adapter_calculated_change_not_question_text(self):
         evidence = Evidence(kind="aggregated", source="KOMIS", section="가격 비교",

@@ -99,6 +99,7 @@ ensure_shared_on_path(Path(__file__).resolve())
 from common.llm_client import LLM_TRANSIENT_ERRORS, KomirJsonLLM  # noqa: E402
 
 from .chatbot_events import ChatEvent, chart_spec, extract_markdown_tables, table_block
+from .official_sources import official_source, public_source_label
 from .chatbot_graph import retrieve_evidence
 from .chatbot_store import DEFAULT_DB_PATH as DEFAULT_STORE_DB_PATH
 from .chatbot_store import append_message, get_or_create_session, list_messages
@@ -713,13 +714,14 @@ def _citation_sources(cited_indices: set[int], evidence: list) -> list[dict]:
     안 쓰인 근거까지 "근거 N건"으로 노출됐다)."""
 
     return [
-        {"index": i, "kind": ev.kind, "source": ev.source, "section": ev.section,
+        {"index": i, "kind": ev.kind, "source": public_source_label(ev.source), "section": ev.section,
          "as_of": ev.as_of, "unit": _user_visible_unit(ev.unit),
          "requirement_id": getattr(ev, "requirement_id", None),
          "action_id": getattr(ev, "action_id", None),
-         "source_id": getattr(ev, "source_id", None),
          "observed_period": getattr(ev, "observed_period", None),
-         "menu_source": menu_source(getattr(ev, "menu_page_id", None))}
+         "menu_source": menu_source(getattr(ev, "menu_page_id", None)),
+         **({"official_url": official_source(ev.source).url}
+            if official_source(ev.source) else {})}
         for i, ev in enumerate(evidence, 1)
         if i in cited_indices
     ]
@@ -754,9 +756,11 @@ def _source_footer(cited_indices: set[int], evidence: list) -> str:
         if not (1 <= i <= len(evidence)):
             continue
         ev = evidence[i - 1]
-        line = f"[{i}] {ev.source} · {ev.section}"
+        line = f"[{i}] {public_source_label(ev.source)} · {ev.section}"
         if ev.as_of:
             line += f" (기준시점 {ev.as_of})"
+        if metadata := official_source(ev.source):
+            line += f" · 공식 URL: {metadata.url}"
         lines.append(line)
     if not lines:
         return ""
@@ -1223,7 +1227,7 @@ def _evidence_source_label(ev) -> str:
     대조하지 않아도 표·차트 옆에서 바로 근거를 확인할 수 있다."""
 
     menu = menu_source(getattr(ev, "menu_page_id", None))
-    label = menu["source_label"] if menu else f"{ev.source} · {ev.section}"
+    label = menu["source_label"] if menu else f"{public_source_label(ev.source)} · {ev.section}"
     if ev.as_of:
         label += f" (기준시점 {ev.as_of})"
     return label

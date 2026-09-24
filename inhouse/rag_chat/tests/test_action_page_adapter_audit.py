@@ -8,6 +8,11 @@ from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from rag_chat.app.page_recommend.registry import load_source_registry  # noqa: E402
+from rag_chat.app.page_recommend.renderer import (  # noqa: E402
+    build_recommendation,
+    render_ambiguous,
+    render_selected,
+)
 from rag_chat.app.page_recommend.service import PageRecommendService  # noqa: E402
 
 
@@ -36,6 +41,28 @@ class ActionPageAdapterAuditTest(unittest.TestCase):
         result = self.service.recommend_action_target("map_mineral", thread_id="audit-path")
         self.assertIn("KOMIS > 핵심광물지도 > 광물지도", result.response.answer)
         self.assertIn("바로 이동하시겠어요?", result.response.answer)
+
+    def test_selected_guidance_uses_common_section_order(self):
+        item = build_recommendation(self.service.registry.get("price_base_metals"))
+        answer = render_selected(item)
+        self.assertLess(answer.index("추천 페이지는"), answer.index("제공 정보:"))
+        self.assertLess(answer.index("제공 정보:"), answer.index("사용 방법 및 제약:"))
+        self.assertLess(answer.index("사용 방법 및 제약:"), answer.index("페이지 주소:"))
+
+    def test_post_navigation_hides_internal_parameters_but_keeps_typed_contract(self):
+        item = build_recommendation(self.service.registry.get("mypage_menu"))
+        answer = render_selected(item)
+        self.assertEqual(item.navigation_params, {"pageMode": "MY010"})
+        self.assertIn("이동 방법: KOMIS 마이페이지에서 `마이메뉴` 선택", answer)
+        self.assertNotIn("pageMode", answer)
+        self.assertNotIn("MY010", answer)
+
+    def test_ambiguous_post_navigation_hides_internal_parameters(self):
+        item = build_recommendation(self.service.registry.get("mypage_menu"))
+        answer = render_ambiguous([item])
+        self.assertIn("이동 방법: KOMIS 마이페이지에서 `마이메뉴` 선택", answer)
+        self.assertNotIn("pageMode", answer)
+        self.assertNotIn("MY010", answer)
 
 
 if __name__ == "__main__":

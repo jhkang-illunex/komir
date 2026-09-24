@@ -89,53 +89,80 @@ def build_recommendation(
 def render_selected(item: RecommendationItem) -> str:
     """Render a single selected page with filters and usage guidance."""
 
+    sections = [
+        _page_identity_lines(item),
+        _page_filter_lines(item),
+        _page_usage_lines(item),
+        [f"페이지 주소: {item.url}", "바로 이동하시겠어요? 위 페이지 주소를 눌러 이동하실 수 있습니다."],
+    ]
+    return "\n".join(line for section in sections for line in section)
+
+
+def _page_identity_lines(item: RecommendationItem) -> list[str]:
+    """Render the stable menu path and the human-facing page purpose."""
+
     lines = [
         f"추천 페이지는 `KOMIS > {item.section} > {item.page_name}`입니다.",
-        item.reason,
-        f"페이지 주소: {item.url}",
+        f"제공 정보: {item.reason}",
     ]
-    if item.navigation_method == "POST" and item.navigation_params:
-        params = " · ".join(f"{key}={value}" for key, value in item.navigation_params.items())
-        lines.append(f"이동 방법: KOMIS 마이페이지에서 `{item.page_name}` 선택 ({params})")
-    explicit_filters = [entry for entry in item.filter_display if not entry.defaulted]
-    if explicit_filters:
-        filters = " · ".join(f"{entry.label} `{entry.display_value}`" for entry in explicit_filters)
-        lines.append(f"입력할 필터: {filters}")
-    if any(entry.defaulted for entry in item.filter_display):
-        defaults = " · ".join(
-            f"{entry.label} `{entry.display_value}`"
-            for entry in item.filter_display
-            if entry.defaulted
-        )
-        lines.append(f"별도 언급이 없어 적용한 기준: {defaults}")
-    if item.missing_required_filter_labels:
-        lines.append(f"페이지에서 선택할 값: {', '.join(item.missing_required_filter_labels)}")
     if item.available_data:
         lines.append(f"확인 가능한 데이터: {', '.join(item.available_data)}")
+    return lines
+
+
+def _page_filter_lines(item: RecommendationItem) -> list[str]:
+    """Render natural-language filters without exposing registry field names."""
+
+    explicit = [entry for entry in item.filter_display if not entry.defaulted]
+    defaulted = [entry for entry in item.filter_display if entry.defaulted]
+    lines: list[str] = []
+    if explicit:
+        lines.append(
+            "조회 조건: "
+            + " · ".join(f"{entry.label} `{entry.display_value}`" for entry in explicit)
+        )
+    if defaulted:
+        lines.append(
+            "별도 언급이 없어 적용한 기준: "
+            + " · ".join(f"{entry.label} `{entry.display_value}`" for entry in defaulted)
+        )
+    if item.missing_required_filter_labels:
+        lines.append(f"페이지에서 선택할 값: {', '.join(item.missing_required_filter_labels)}")
+    return lines
+
+
+def _page_usage_lines(item: RecommendationItem) -> list[str]:
+    """Render screen controls, constraints, and navigation without POST internals."""
+
+    navigation = (
+        f"이동 방법: KOMIS 마이페이지에서 `{item.page_name}` 선택"
+        if item.navigation_method == "POST"
+        else "이동 방법: 페이지 주소 열기"
+    )
+    lines = ["사용 방법 및 제약:", navigation]
     if item.presentation_summary:
-        lines.append(f"화면 구성: {item.presentation_summary}")
-    for panel in item.presentation:
-        lines.append(f"- {panel.label}: {panel.description}")
-    if item.screen_guidance:
-        lines.append("화면 사용:")
-        lines.extend(f"- {guidance}" for guidance in item.screen_guidance)
-    if item.caveats:
-        lines.append("확인할 점:")
-        lines.extend(f"- {caveat}" for caveat in item.caveats)
+        lines.append(f"- 화면 구성: {item.presentation_summary}")
+    lines.extend(f"- {panel.label}: {panel.description}" for panel in item.presentation)
+    _append_bullets(lines, "- 화면 사용:", item.screen_guidance)
+    _append_bullets(lines, "- 확인할 점:", item.caveats)
     if item.login_required:
-        lines.append("이 페이지는 KOMIS 로그인 후 이용할 수 있습니다.")
+        lines.append("- 이 페이지는 KOMIS 로그인 후 이용할 수 있습니다.")
     if item.external:
-        lines.append("KOMIS에서 외부 사이트로 이동하는 서비스입니다.")
-    if item.mutation == "account_change":
-        lines.append(
-            "현재는 이동 경로만 안내하며, 계정 설정 변경은 로그인 후 직접 진행해야 합니다."
-        )
-    else:
-        lines.append(
-            "현재는 페이지 안내 단계이므로 실제 수치나 게시물 내용은 원 화면에서 확인해야 합니다."
-        )
-    lines.append("바로 이동하시겠어요? 위 페이지 주소를 눌러 이동하실 수 있습니다.")
-    return "\n".join(lines)
+        lines.append("- KOMIS에서 외부 사이트로 이동하는 서비스입니다.")
+    lines.append(
+        "- 현재는 이동 경로만 안내하며, 계정 설정 변경은 로그인 후 직접 진행해야 합니다."
+        if item.mutation == "account_change"
+        else "- 실제 수치나 게시물 내용은 원 화면에서 확인해야 합니다."
+    )
+    return lines
+
+
+def _append_bullets(lines: list[str], heading: str, values: list[str]) -> None:
+    """Append an optional labelled list while keeping section formatting uniform."""
+
+    if values:
+        lines.append(heading)
+        lines.extend(f"  - {value}" for value in values)
 
 
 def render_ambiguous(items: list[RecommendationItem]) -> str:
@@ -146,9 +173,8 @@ def render_ambiguous(items: list[RecommendationItem]) -> str:
         login = " 로그인 필요." if item.login_required else ""
         lines.append(f"- `KOMIS > {item.section} > {item.page_name}`: {item.reason}{login}")
         lines.append(f"  주소: {item.url}")
-        if item.navigation_method == "POST" and item.navigation_params:
-            params = " · ".join(f"{key}={value}" for key, value in item.navigation_params.items())
-            lines.append(f"  이동 파라미터: {params}")
+        if item.navigation_method == "POST":
+            lines.append(f"  이동 방법: KOMIS 마이페이지에서 `{item.page_name}` 선택")
     lines.append("설명을 비교한 뒤 원하는 관점의 페이지에서 직접 확인해 주세요.")
     return "\n".join(lines)
 
