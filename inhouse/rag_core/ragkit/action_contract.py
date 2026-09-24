@@ -438,6 +438,8 @@ def action_plan_from_intent(intent_plan: IntentPlan, message: str = "") -> Actio
         for action in actions:
             action.requested_outputs |= deferred_metadata_outputs
     _normalize_trade_indicator_slots(actions, message)
+    _normalize_price_claim_slots(actions, message)
+    _normalize_indicator_slots(actions, message)
     return ActionPlan(actions=actions)
 
 
@@ -454,6 +456,19 @@ def _normalize_trade_indicator_slots(actions: list[ActionCall], message: str) ->
         if call.action_id != "trade.indicator":
             continue
         slots = call.slots
+        if slots.trade_metric is None:
+            metric_markers = (
+                (("country_dependency", ("의존도", "의존율")),),
+                (("trade_growth", ("증감률", "증가율", "감소율")),),
+                (("tsi", ("무역특화", "tsi")),),
+                (("rca", ("현시비교우위", "rca")),),
+                (("tii", ("무역결합도", "tii")),),
+            )
+            compact_lower = compact.casefold()
+            for ((metric, markers),) in metric_markers:
+                if any(marker.casefold() in compact_lower for marker in markers):
+                    slots.trade_metric = metric
+                    break
         if year and (slots.period is None or slots.period.kind != "calendar_year"):
             slots.period = Period(kind="calendar_year", calendar_year=int(year.group(1)), explicit=True)
         if slots.reporter_country is None and "한국" in compact:
@@ -465,6 +480,56 @@ def _normalize_trade_indicator_slots(actions: list[ActionCall], message: str) ->
                 slots.flow = "export"
         if slots.partner_country is None and partner:
             slots.partner_country = partner
+
+
+def _normalize_price_claim_slots(actions: list[ActionCall], message: str) -> None:
+    """가격 주장 질문의 수치 전제와 비교 연산자를 typed 슬롯으로 보완한다.
+
+    LLM이 ``claimed_change_pct`` 또는 비교 연산자를 생략해도 질문에 실제로
+    적힌 백분율·비교어만 사용한다. 질문에 없는 임계값을 추정하지 않는다.
+    """
+    claim = re.search(r"(?<!\d)(\d+(?:\.\d+)?)\s*%", message)
+    compact = "".join(message.split()).casefold()
+    comparator = None
+    if any(token in compact for token in ("이상", "넘게", "초과", "상승했어", "올랐어")):
+        comparator = "greater_than"
+    elif any(token in compact for token in ("이하", "미만", "안올랐", "못올랐")):
+        comparator = "less_than"
+    for call in actions:
+        if call.action_id != "price.verify_claim":
+            continue
+        if call.slots.claimed_change_pct is None and claim:
+            call.slots.claimed_change_pct = float(claim.group(1))
+        if call.slots.comparator is None and comparator:
+            call.slots.comparator = comparator
+        if call.slots.mineral is None:
+            for alias, mineral in MINERAL_ALIASES.items():
+                if alias in compact:
+                    call.slots.mineral = mineral
+                    break
+
+
+def _normalize_indicator_slots(actions: list[ActionCall], message: str) -> None:
+    """표시명으로 요청된 지표를 공개 action의 typed indicator로 정규화한다."""
+    compact = "".join(message.split())
+    labels = (
+        ("supply_stability", ("수급동향지표", "수급동향")),
+        ("market_outlook", ("시장동향지표", "시장전망지표")),
+        ("composite_index", ("광물종합지표", "종합지표")),
+    )
+    for call in actions:
+        if call.action_id != "indicator.series" or call.slots.indicator is not None:
+            continue
+        for indicator, markers in labels:
+            if any(marker in compact for marker in markers):
+                call.slots.indicator = indicator
+                break
+
+
+def merge_trade_indicator_followup(plan: ActionPlan, message: str) -> ActionPlan:
+    """명확화 후속 턴의 명시 슬롯만 기존 typed 무역 계획에 병합한다."""
+    _normalize_trade_indicator_slots(plan.actions, message)
+    return plan
 
 
 def _dependency_partner_from_message(message: str) -> str | None:

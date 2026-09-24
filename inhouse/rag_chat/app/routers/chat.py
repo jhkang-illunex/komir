@@ -122,7 +122,8 @@ from common.langfuse_tracing import chat_trace, update_observation  # noqa: E402
 
 from rag_core.ragkit.chatbot import STATUS_STAGES, chat_turn  # noqa: E402
 from rag_core.ragkit.action_contract import (  # noqa: E402
-    ActionPlan, extract_action_plan, missing_trade_indicator_slots, validate_action_plan,
+    ActionPlan, extract_action_plan, merge_trade_indicator_followup,
+    missing_trade_indicator_slots, validate_action_plan,
 )
 from rag_core.ragkit.messages import chat_message  # noqa: E402
 from rag_core.ragkit import mcp_client  # noqa: E402
@@ -641,11 +642,11 @@ def _run_chat_session(
                 action_plan = pending_plan
                 resumed = True
             elif pending_trade:
-                # 이전 질문의 typed action을 보존한 채, 사용자가 보완한 조건만
-                # 함께 다시 해석한다. 이 분기는 trade.indicator HITL에만 있다.
-                action_plan = extract_action_plan(
-                    f"{pending_trade['question']}\n추가 확인 조건: {request.message}",
-                    KomirJsonLLM(), history=_history_for_graph(session_id),
+                # 이전 질문의 typed action을 보존하고 후속 문장에 명시된
+                # reporter/period/flow 슬롯만 병합한다. 후속 문장만 LLM에
+                # 재분류하면 정상 보충 답변이 off_topic으로 바뀔 수 있다.
+                action_plan = merge_trade_indicator_followup(
+                    ActionPlan.model_validate(pending_trade["plan"]), request.message,
                 )
             else:
                 action_plan = extract_action_plan(

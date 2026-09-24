@@ -1,0 +1,283 @@
+{
+  "suite": "komir-chatbot-acceptance-260923",
+  "generated_at": "2026-09-24T14:27:56.682113",
+  "base_url": "http://127.0.0.1:18002",
+  "evidence_jsonl": "/home/nuri/dev/git/ws/mine_ws/komir/documents/산출물/acceptance_results/chatbot_acceptance_20260924_142648.jsonl",
+  "results": [
+    {
+      "id": "AC27",
+      "title": "6개월 문서 날짜 필터",
+      "layer": "module",
+      "status": "PASS",
+      "errors": [],
+      "detail": {
+        "command": [
+          "/usr/bin/python3",
+          "-m",
+          "unittest",
+          "rag_core.tests.test_action_contract_audit.ActionContractAuditTest.test_recent_document_evidence_keeps_only_confirmed_file_dates_in_window"
+        ],
+        "stdout": "",
+        "stderr": ".\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nOK\n",
+        "required_checks": [],
+        "executed_test_count": 1
+      },
+      "elapsed_seconds": 0.91,
+      "evidence_path": "/home/nuri/dev/git/ws/mine_ws/komir/documents/산출물/acceptance_results/chatbot_acceptance_20260924_142648.jsonl"
+    },
+    {
+      "id": "AC37",
+      "title": "광종별 종합지표 계약",
+      "layer": "module",
+      "status": "PASS",
+      "errors": [],
+      "detail": {
+        "command": [
+          "/usr/bin/python3",
+          "-m",
+          "unittest",
+          "rag_core.tests.test_action_contract",
+          "rag_chat.tests.test_retrieval_routing"
+        ],
+        "stdout": "",
+        "stderr": "........................................\n----------------------------------------------------------------------\nRan 40 tests in 0.008s\n\nOK\n",
+        "required_checks": [],
+        "executed_test_count": 40
+      },
+      "elapsed_seconds": 5.93,
+      "evidence_path": "/home/nuri/dev/git/ws/mine_ws/komir/documents/산출물/acceptance_results/chatbot_acceptance_20260924_142648.jsonl"
+    },
+    {
+      "id": "AC38",
+      "title": "전체 메뉴·데이터셋 접근 계약",
+      "layer": "module",
+      "status": "FAIL",
+      "errors": [
+        "단위 테스트 실패 또는 실행 건수 0"
+      ],
+      "detail": {
+        "command": [
+          "/usr/bin/python3",
+          "-m",
+          "unittest",
+          "rag_core.tests.test_menu_catalog",
+          "rag_chat.tests.test_action_page_adapter_audit"
+        ],
+        "stdout": "",
+        "stderr": ".F........\n======================================================================\nFAIL: test_only_menu_bound_rdb_evidence_uses_menu_source (rag_core.tests.test_menu_catalog.MenuCatalogTest)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/nuri/dev/git/ws/mine_ws/komir/inhouse/rag_core/tests/test_menu_catalog.py\", line 19, in test_only_menu_bound_rdb_evidence_uses_menu_source\n    self.assertEqual(_evidence_source_label(document), \"보고서.pdf · 본문\")\nAssertionError: '공식 문서 원문 · 본문' != '보고서.pdf · 본문'\n- 공식 문서 원문 · 본문\n+ 보고서.pdf · 본문\n\n\n----------------------------------------------------------------------\nRan 10 tests in 0.398s\n\nFAILED (failures=1)\n",
+        "required_checks": [],
+        "executed_test_count": 10
+      },
+      "elapsed_seconds": 6.58,
+      "evidence_path": "/home/nuri/dev/git/ws/mine_ws/komir/documents/산출물/acceptance_results/chatbot_acceptance_20260924_142648.jsonl"
+    },
+    {
+      "id": "AC42",
+      "title": "병렬 조회·소스 상태",
+      "layer": "module",
+      "status": "PASS",
+      "errors": [],
+      "detail": {
+        "command": [
+          "/usr/bin/python3",
+          "-m",
+          "unittest",
+          "rag_core.tests.test_retrieval_source_audit",
+          "rag_core.tests.test_source_contract_graph",
+          "rag_chat.tests.test_acceptance_module_boundaries.AC42ParallelIsolationTest"
+        ],
+        "stdout": "",
+        "stderr": "..........[rag_core/ragkit/chatbot_graph session=?] pageindex 조회 실패: RuntimeError: fixture pageindex failure\n.\n----------------------------------------------------------------------\nRan 11 tests in 0.003s\n\nOK\n",
+        "required_checks": [
+          {
+            "id": "parallel_source_isolation",
+            "target": "rag_chat.tests.test_acceptance_module_boundaries.AC42ParallelIsolationTest",
+            "status": "PASS",
+            "executed_test_count": 1,
+            "stdout": "",
+            "stderr": "[rag_core/ragkit/chatbot_graph session=?] pageindex 조회 실패: RuntimeError: fixture pageindex failure\n.\n----------------------------------------------------------------------\nRan 1 test in 0.002s\n\nOK\n"
+          }
+        ],
+        "executed_test_count": 11
+      },
+      "elapsed_seconds": 11.69,
+      "evidence_path": "/home/nuri/dev/git/ws/mine_ws/komir/documents/산출물/acceptance_results/chatbot_acceptance_20260924_142648.jsonl"
+    },
+    {
+      "id": "AC43",
+      "title": "근거 검증 부정 조건",
+      "layer": "module",
+      "status": "PASS",
+      "errors": [],
+      "detail": {
+        "command": [
+          "/usr/bin/python3",
+          "-m",
+          "unittest",
+          "rag_core.tests.test_action_contract_audit",
+          "rag_core.tests.test_source_contract_graph"
+        ],
+        "stdout": "",
+        "stderr": "............[rag_core/ragkit/chatbot_graph session=?] verify: sufficient=False (retrieval_insufficient:주장과 관측값 불일치)\n..........................\n----------------------------------------------------------------------\nRan 38 tests in 0.008s\n\nOK\n",
+        "required_checks": [],
+        "executed_test_count": 38
+      },
+      "elapsed_seconds": 0.92,
+      "evidence_path": "/home/nuri/dev/git/ws/mine_ws/komir/documents/산출물/acceptance_results/chatbot_acceptance_20260924_142648.jsonl"
+    },
+    {
+      "id": "AC44",
+      "title": "기간 집계 표시",
+      "layer": "module",
+      "status": "PASS",
+      "errors": [],
+      "detail": {
+        "command": [
+          "/usr/bin/python3",
+          "-m",
+          "unittest",
+          "rag_core.tests.test_chart_metadata_regression",
+          "rag_chat.tests.test_acceptance_module_boundaries.AC44AggregationBoundaryTest"
+        ],
+        "stdout": "",
+        "stderr": "...............\n----------------------------------------------------------------------\nRan 15 tests in 0.073s\n\nOK\n",
+        "required_checks": [
+          {
+            "id": "time_aggregation_boundaries",
+            "target": "rag_chat.tests.test_acceptance_module_boundaries.AC44AggregationBoundaryTest",
+            "status": "PASS",
+            "executed_test_count": 1,
+            "stdout": "",
+            "stderr": ".\n----------------------------------------------------------------------\nRan 1 test in 0.071s\n\nOK\n"
+          }
+        ],
+        "executed_test_count": 15
+      },
+      "elapsed_seconds": 12.1,
+      "evidence_path": "/home/nuri/dev/git/ws/mine_ws/komir/documents/산출물/acceptance_results/chatbot_acceptance_20260924_142648.jsonl"
+    },
+    {
+      "id": "AC45",
+      "title": "표·차트 중복·단위",
+      "layer": "module",
+      "status": "PASS",
+      "errors": [],
+      "detail": {
+        "command": [
+          "/usr/bin/python3",
+          "-m",
+          "unittest",
+          "rag_core.tests.test_chart_metadata_regression",
+          "rag_chat.tests.test_structured_blocks"
+        ],
+        "stdout": "",
+        "stderr": "......................\n----------------------------------------------------------------------\nRan 22 tests in 0.010s\n\nOK\n",
+        "required_checks": [],
+        "executed_test_count": 22
+      },
+      "elapsed_seconds": 0.06,
+      "evidence_path": "/home/nuri/dev/git/ws/mine_ws/komir/documents/산출물/acceptance_results/chatbot_acceptance_20260924_142648.jsonl"
+    },
+    {
+      "id": "AC46",
+      "title": "메뉴 출처 일관성",
+      "layer": "module",
+      "status": "FAIL",
+      "errors": [
+        "단위 테스트 실패 또는 실행 건수 0"
+      ],
+      "detail": {
+        "command": [
+          "/usr/bin/python3",
+          "-m",
+          "unittest",
+          "rag_core.tests.test_menu_catalog"
+        ],
+        "stdout": "",
+        "stderr": ".F.\n======================================================================\nFAIL: test_only_menu_bound_rdb_evidence_uses_menu_source (rag_core.tests.test_menu_catalog.MenuCatalogTest)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/home/nuri/dev/git/ws/mine_ws/komir/inhouse/rag_core/tests/test_menu_catalog.py\", line 19, in test_only_menu_bound_rdb_evidence_uses_menu_source\n    self.assertEqual(_evidence_source_label(document), \"보고서.pdf · 본문\")\nAssertionError: '공식 문서 원문 · 본문' != '보고서.pdf · 본문'\n- 공식 문서 원문 · 본문\n+ 보고서.pdf · 본문\n\n\n----------------------------------------------------------------------\nRan 3 tests in 0.008s\n\nFAILED (failures=1)\n",
+        "required_checks": [],
+        "executed_test_count": 3
+      },
+      "elapsed_seconds": 5.67,
+      "evidence_path": "/home/nuri/dev/git/ws/mine_ws/komir/documents/산출물/acceptance_results/chatbot_acceptance_20260924_142648.jsonl"
+    },
+    {
+      "id": "AC47",
+      "title": "5개 무역지수 경계와 HITL 범위",
+      "layer": "module",
+      "status": "PASS",
+      "errors": [],
+      "detail": {
+        "command": [
+          "/usr/bin/python3",
+          "-m",
+          "unittest",
+          "common.tests.test_trade_indicators",
+          "common.tests.test_komis_raw_aggregation",
+          "rag_core.tests.test_action_contract_audit",
+          "rag_chat.tests.test_slot_mineral_validation",
+          "rag_chat.tests.test_acceptance_module_boundaries.AC47TradeIndicatorFormulaTest",
+          "rag_chat.tests.test_acceptance_module_boundaries.AC47TradeHitlSessionTest",
+          "rag_chat.tests.test_acceptance_module_boundaries.AC47MineClarificationTest"
+        ],
+        "stdout": "",
+        "stderr": "....................[rag_core/ragkit/chatbot_graph session=?] verify: sufficient=False (retrieval_insufficient:주장과 관측값 불일치)\n...........................\n----------------------------------------------------------------------\nRan 47 tests in 0.020s\n\nOK\n",
+        "required_checks": [
+          {
+            "id": "trade_indicator_formula_zero_denominator",
+            "target": "rag_chat.tests.test_acceptance_module_boundaries.AC47TradeIndicatorFormulaTest",
+            "status": "PASS",
+            "executed_test_count": 4,
+            "stdout": "",
+            "stderr": "....\n----------------------------------------------------------------------\nRan 4 tests in 0.005s\n\nOK\n"
+          },
+          {
+            "id": "trade_hitl_session_state",
+            "target": "rag_chat.tests.test_acceptance_module_boundaries.AC47TradeHitlSessionTest",
+            "status": "PASS",
+            "executed_test_count": 2,
+            "stdout": "",
+            "stderr": "..\n----------------------------------------------------------------------\nRan 2 tests in 0.002s\n\nOK\n"
+          },
+          {
+            "id": "mine_clarification_regression",
+            "target": "rag_chat.tests.test_acceptance_module_boundaries.AC47MineClarificationTest",
+            "status": "PASS",
+            "executed_test_count": 1,
+            "stdout": "",
+            "stderr": ".\n----------------------------------------------------------------------\nRan 1 test in 0.000s\n\nOK\n"
+          }
+        ],
+        "executed_test_count": 47
+      },
+      "elapsed_seconds": 23.63,
+      "evidence_path": "/home/nuri/dev/git/ws/mine_ws/komir/documents/산출물/acceptance_results/chatbot_acceptance_20260924_142648.jsonl"
+    },
+    {
+      "id": "AC48",
+      "title": "색인 최신성·실패 전파",
+      "layer": "module",
+      "status": "PASS",
+      "errors": [],
+      "detail": {
+        "command": [
+          "/usr/bin/python3",
+          "-m",
+          "unittest",
+          "ingest.tests.test_build_pageindex_trees",
+          "ingest.tests.test_run_chain"
+        ],
+        "stdout": "{\"failed\": 1, \"done\": 0}\n트리 메타데이터 동기화: 2건\n",
+        "stderr": "..............\n----------------------------------------------------------------------\nRan 14 tests in 0.015s\n\nOK\n",
+        "required_checks": [],
+        "executed_test_count": 14
+      },
+      "elapsed_seconds": 0.21,
+      "evidence_path": "/home/nuri/dev/git/ws/mine_ws/komir/documents/산출물/acceptance_results/chatbot_acceptance_20260924_142648.jsonl"
+    }
+  ],
+  "summary": {
+    "PASS": 8,
+    "FAIL": 2
+  }
+}

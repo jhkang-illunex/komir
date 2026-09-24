@@ -16,7 +16,8 @@ class MenuCatalogTest(unittest.TestCase):
         rdb = Evidence(kind="structured", source="public.KO_CSTM_CMMRC", section="원천", text="x", menu_page_id="map_korea")
         document = Evidence(kind="pageindex", source="보고서.pdf", section="본문", text="x")
         self.assertTrue(_evidence_source_label(rdb).startswith("KOMIS 핵심광물지도"))
-        self.assertEqual(_evidence_source_label(document), "보고서.pdf · 본문")
+        # 사용자 표시에서는 내부 원문 파일명을 노출하지 않는다.
+        self.assertEqual(_evidence_source_label(document), "공식 문서 원문 · 본문")
         citations = _citation_sources({1, 2}, [rdb, document])
         self.assertEqual(citations[0]["menu_source"]["page_id"], "map_korea")
         self.assertIsNone(citations[1]["menu_source"])

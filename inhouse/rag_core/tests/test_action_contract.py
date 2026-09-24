@@ -8,7 +8,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from rag_core.ragkit.action_contract import (
     ActionCall, ActionPlan, ActionSlots, IntentCall, IntentPlan, Period,
-    _has_source_unavailable_predecessor, _intent_plan_semantic_failure, action_plan_from_intent, validate_action_plan,
+    _has_source_unavailable_predecessor, _intent_plan_semantic_failure, action_plan_from_intent,
+    merge_trade_indicator_followup, validate_action_plan,
 )
 from rag_core.ragkit import chatbot_graph as graph
 from rag_core.ragkit import chatbot
@@ -16,6 +17,48 @@ from rag_core.retrieval.evidence import Evidence
 
 
 class ActionContractTest(unittest.TestCase):
+    def test_price_claim_fills_explicit_percent_and_comparator(self):
+        plan = action_plan_from_intent(IntentPlan(requirements=[IntentCall(
+            requirement_id="claim", intent="price_claim", role="data",
+            slots=ActionSlots(mineral="니켈"),
+        )]), "2025년 니켈 가격이 300% 이상 올랐어?")
+        call = plan.actions[0]
+        self.assertEqual(call.action_id, "price.verify_claim")
+        self.assertEqual(call.slots.claimed_change_pct, 300.0)
+        self.assertEqual(call.slots.comparator, "greater_than")
+        self.assertTrue(validate_action_plan(plan).approved)
+
+    def test_trade_dependency_and_private_indicator_labels_are_typed(self):
+        dependency = action_plan_from_intent(IntentPlan(requirements=[IntentCall(
+            requirement_id="dependency", intent="trade_indicator", role="data",
+            slots=ActionSlots(mineral="리튬"),
+        )]), "2025년 한국 리튬 수입의 중국 의존도를 계산해줘")
+        call = dependency.actions[0]
+        self.assertEqual(call.action_id, "trade.indicator")
+        self.assertEqual(call.slots.trade_metric, "country_dependency")
+        self.assertEqual(call.slots.partner_country, "중국")
+        self.assertTrue(validate_action_plan(dependency).approved)
+
+        indicator = action_plan_from_intent(IntentPlan(requirements=[IntentCall(
+            requirement_id="indicator", intent="indicator", role="data",
+            slots=ActionSlots(),
+        )]), "리튬 수급동향지표의 최근 값을 보여줘")
+        self.assertEqual(indicator.actions[0].slots.indicator, "supply_stability")
+
+    def test_trade_clarification_followup_merges_slots_without_reclassification(self):
+        pending = action_plan_from_intent(IntentPlan(requirements=[IntentCall(
+            requirement_id="trade", intent="trade_indicator", role="data",
+            slots=ActionSlots(mineral="리튬", trade_metric="tsi"),
+        )]), "리튬의 TSI를 계산해줘")
+        resumed = merge_trade_indicator_followup(
+            pending, "한국, 2025년 기준으로 계산해주세요.",
+        )
+        call = resumed.actions[0]
+        self.assertEqual(call.action_id, "trade.indicator")
+        self.assertEqual(call.slots.reporter_country, "한국")
+        self.assertEqual(call.slots.period.calendar_year, 2025)
+        self.assertTrue(validate_action_plan(resumed).approved)
+
     def test_price_slots_map_without_question_regex(self):
         plan = ActionPlan(actions=[ActionCall(requirement_id="r1", action_id="price.series",
             slots=ActionSlots(mineral="텅스텐", period=Period(kind="trailing_months", trailing_months=12),
