@@ -34,7 +34,12 @@ def is_unverified_import_demand_forecast_menu(message: str) -> bool:
     """
 
     normalized = "".join(message.casefold().split())
-    return "수입수요" in normalized and "예측" in normalized
+    menu_markers = ("메뉴", "어디", "페이지", "경로")
+    return (
+        "수입수요" in normalized
+        and "예측" in normalized
+        and any(marker in normalized for marker in menu_markers)
+    )
 
 #: 2026-08-28(챗봇_룰준수_감사_260828.md 라운드3) — 기존 기준("화면·메뉴·경로를
 #: 찾는 질문이면 page")은 "어디서 봐?"류처럼 화면 위치를 명시적으로 묻는

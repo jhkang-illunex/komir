@@ -685,6 +685,9 @@ def _run_chat_session(
     """세션과 Langfuse trace가 확정된 뒤 실제 챗봇 턴을 실행한다."""
 
     with _session_turn_lock(session_id):
+        if request.mode != "document" and is_unverified_import_demand_forecast_menu(request.message):
+            yield from _run_unverified_menu_path(request, session_id)
+            return
         pending = _pending_mine_clarification(session_id)
         pending_trade = _pending_trade_clarification(session_id)
         try:
