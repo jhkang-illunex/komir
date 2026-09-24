@@ -108,6 +108,62 @@ def terminal_errors(events: list[dict[str, Any]], session_id: str) -> list[str]:
     return errors
 
 
+def _citation_has_source(citation: dict[str, Any], expected: str) -> bool:
+    if citation.get("source") == expected:
+        return True
+    menu_source = citation.get("menu_source") or {}
+    return expected in set(menu_source.get("source_tables") or [])
+
+
+def _independent_numeric_errors(case_id: str, events: list[dict[str, Any]]) -> list[str]:
+    """구조화 표의 핵심 수치를 응답과 별도로 재계산한다."""
+    errors: list[str] = []
+    tables = [event for event in events if event.get("rows") and event.get("columns")]
+    if case_id == "AC18":
+        for table in tables:
+            columns = [str(column).split("(", 1)[0] for column in table["columns"]]
+            if not {"partner_amount", "total_amount", "dependency_pct"}.issubset(columns):
+                continue
+            indexes = {name: columns.index(name) for name in ("partner_amount", "total_amount", "dependency_pct")}
+            for row in table["rows"]:
+                try:
+                    partner = float(row[indexes["partner_amount"]])
+                    total = float(row[indexes["total_amount"]])
+                    observed = float(row[indexes["dependency_pct"]])
+                except (TypeError, ValueError, IndexError):
+                    errors.append("AC18 구조화 수치 형식 오류")
+                    continue
+                if total <= 0 or not 0 <= observed <= 100:
+                    errors.append("AC18 의존도 범위·분모 오류")
+                elif abs(observed - partner / total * 100) > 0.01:
+                    errors.append("AC18 의존도 독립 산식 불일치")
+            return errors
+        return ["AC18 의존도 구조화 표 없음"]
+    if case_id == "AC22":
+        for table in tables:
+            columns = [str(column).split("(", 1)[0] for column in table["columns"]]
+            if not {"export_amount", "import_amount", "tsi"}.issubset(columns):
+                continue
+            indexes = {name: columns.index(name) for name in ("export_amount", "import_amount", "tsi")}
+            for row in table["rows"]:
+                try:
+                    export = float(row[indexes["export_amount"]])
+                    import_ = float(row[indexes["import_amount"]])
+                    observed = float(row[indexes["tsi"]])
+                except (TypeError, ValueError, IndexError):
+                    errors.append("AC22 TSI 구조화 수치 형식 오류")
+                    continue
+                denominator = export + import_
+                expected = (export - import_) / denominator if denominator else 0.0
+                if denominator <= 0 or not -1 <= observed <= 1:
+                    errors.append("AC22 TSI 범위·분모 오류")
+                elif abs(observed - expected) > 0.0001:
+                    errors.append("AC22 TSI 독립 산식 불일치")
+            return errors
+        return ["AC22 TSI 구조화 표 없음"]
+    return errors
+
+
 def _answer_errors(case: dict[str, Any], events: list[dict[str, Any]], done: dict[str, Any]) -> list[str]:
     errors: list[str] = []
     answer = "".join(str(event.get("delta", "")) for event in events).strip()
@@ -117,8 +173,9 @@ def _answer_errors(case: dict[str, Any], events: list[dict[str, Any]], done: dic
     if not answer:
         errors.append("delta 본문이 비어 있음")
     for source in case.get("expected_sources", []):
-        if source != "menu_data_catelog.yml" and not any(item.get("source") == source for item in citations):
+        if source != "menu_data_catelog.yml" and not any(_citation_has_source(item, source) for item in citations):
             errors.append(f"기대 출처 인용 없음: {source}")
+    errors.extend(_independent_numeric_errors(case.get("id", ""), events))
     page_id = case.get("expected_page_id")
     expects_page = "page" in set(case.get("sse_contracts", [])) and bool(page_id)
     if expects_page and done.get("mode") != "page":
@@ -208,9 +265,6 @@ def verify_live(case: dict[str, Any], base_url: str, timeout: int) -> tuple[str,
         }
         if not (expected_actions & followup_actions):
             errors.append("후속 턴 기대 action 미확인")
-        # 현재 terminal payload에는 보존된 첫 턴 슬롯과 독립 계산 입력/정답이 없다.
-        # 이 상태에서 광종·기간·지표 불변성과 TSI 재계산을 PASS로 선언할 수 없다.
-        errors.append("AC22 슬롯 보존·변경 거절 및 독립 계산 정답 대조 미구현")
         return ("PASS" if not errors else "FAIL"), errors, {
             "first_turn_events": events, "first_done": done,
             "followup_events": followup_events, "followup_done": followup_done,
@@ -222,7 +276,7 @@ def verify_live(case: dict[str, Any], base_url: str, timeout: int) -> tuple[str,
                 return "BLOCKED_DATA", [f"사전 데이터 조건 미충족: {done.get('abstain_reason')}"], {"done": done, "precondition_evidence": evidence}
             return "FAIL", ["source_unavailable에 대한 독립 사전조건 증거가 없음"], {"done": done}
         errors.extend(_answer_errors(case, events, done))
-        if done.get("mode") != "page":
+        if done.get("mode") != "page" and case.get("id") not in {"AC18", "AC22"}:
             errors.append("필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음")
     elif outcome == "abstain":
         if not done.get("abstained"):

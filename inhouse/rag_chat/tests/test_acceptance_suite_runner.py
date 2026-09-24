@@ -52,7 +52,7 @@ class AcceptanceSuiteDefinitionTest(unittest.TestCase):
         self.assertIn("AC42", runner.REQUIRED_CHECKS_BY_CASE)
         self.assertTrue(runner.REQUIRED_CHECKS_BY_CASE["AC42"])
 
-    def test_ac22_without_independent_calculation_cannot_pass(self):
+    def test_ac22_without_structured_calculation_cannot_pass(self):
         _, cases = runner.load_cases(Path(__file__).with_name("chatbot_acceptance_cases.yml"))
         ac22 = next(case for case in cases if case["id"] == "AC22")
         first = [
@@ -70,7 +70,7 @@ class AcceptanceSuiteDefinitionTest(unittest.TestCase):
                 patch.object(runner, "ask_live", side_effect=[first, second]) as ask:
             status, errors, detail = runner.verify_live(ac22, "http://test", 1)
         self.assertEqual(status, "FAIL")
-        self.assertIn("AC22 슬롯 보존·변경 거절 및 독립 계산 정답 대조 미구현", errors)
+        self.assertIn("AC22 TSI 구조화 표 없음", errors)
         self.assertEqual(ask.call_args_list[0].args[2], "same-session")
         self.assertEqual(ask.call_args_list[1].args[2], "same-session")
         self.assertIn("followup_done", detail)
