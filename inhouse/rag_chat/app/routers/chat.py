@@ -281,6 +281,11 @@ def _recover_trade_followup(session_id: str, message: str) -> ActionPlan | None:
     if not _is_trade_clarification_followup(message):
         return None
     history = session_store.list_messages(session_id, limit=10)
+    latest_assistant = next((row for row in reversed(history)
+                             if row.get("role") == "assistant"), None)
+    if (latest_assistant is None
+            or "무역 지표를 계산하려면" not in (latest_assistant.get("content") or "")):
+        return None
     previous = next(
         (
             row.get("content") or ""
