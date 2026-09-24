@@ -237,15 +237,21 @@ def _pending_mine_clarification(session_id: str) -> dict | None:
 
 
 def _pending_trade_clarification(session_id: str) -> dict | None:
-    messages = session_store.list_messages(session_id, limit=1)
-    if not messages or messages[-1]["role"] != "assistant":
-        return None
-    try:
-        payload = json.loads(messages[-1].get("citations_json") or "")
-    except (TypeError, ValueError):
-        return None
-    state = payload.get(_TRADE_CLARIFICATION_KEY) if isinstance(payload, dict) else None
-    return state if isinstance(state, dict) else None
+    # 저장소의 created_at 정밀도가 낮은 경우 같은 시각에 기록된 user/assistant
+    # 행의 순서가 뒤집힐 수 있다. 최근 assistant 상태를 찾아 후속 턴이
+    # 재분류로 off_topic 처리되지 않도록 한다.
+    messages = session_store.list_messages(session_id, limit=10)
+    for message in reversed(messages):
+        if message.get("role") != "assistant":
+            continue
+        try:
+            payload = json.loads(message.get("citations_json") or "")
+        except (TypeError, ValueError):
+            continue
+        state = payload.get(_TRADE_CLARIFICATION_KEY) if isinstance(payload, dict) else None
+        if isinstance(state, dict):
+            return state
+    return None
 
 
 def _trade_indicator_call(plan: ActionPlan):

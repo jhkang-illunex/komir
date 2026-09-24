@@ -562,10 +562,16 @@ def _normalize_trade_indicator_intents(intent_plan: IntentPlan, message: str) ->
     year = re.search(r"(20\d{2})\s*년", message)
     compact = "".join(message.split())
     partner = _dependency_partner_from_message(message)
+    dependency_question = bool(partner and any(marker in compact for marker in ("의존도", "의존율")))
     for item in intent_plan.requirements:
         if item.intent not in {"trade_indicator", "trade_concentration"}:
             continue
         slots = item.slots
+        if dependency_question:
+            # 모델이 특정국 의존도를 HHI와 별도 요구로 과분해해도 질문의
+            # typed 관계를 하나의 country_dependency action으로 수렴한다.
+            item.intent = "trade_indicator"
+            slots.trade_metric = "country_dependency"
         if slots.reporter_country is None and "한국" in compact:
             slots.reporter_country = "한국"
         if year and (slots.period is None or slots.period.kind != "calendar_year"):
