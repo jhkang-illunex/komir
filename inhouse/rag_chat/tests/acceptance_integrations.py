@@ -295,6 +295,12 @@ def _fetch_chunks(connect, settings, *, doc_id: str, source_path: str):
 
 
 def _exception_status(exc: Exception) -> str:
+    # psycopg/async DB 클라이언트가 이미 닫힌 경우에는 데이터 계약 실패가
+    # 아니라 수락검사 실행 환경의 연결 수명 문제다. 이 메시지는 드라이버가
+    # RuntimeError로 감싸서 전달하므로 타입만으로는 환경 차단을 판별할 수 없다.
+    message = str(exc).casefold()
+    if "client has been closed" in message or "connection is closed" in message:
+        return "BLOCKED_ENV"
     try:
         from psycopg2 import InterfaceError, OperationalError
         environment_error = isinstance(exc, (InterfaceError, OperationalError, OSError, ConnectionError, ImportError))

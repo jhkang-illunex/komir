@@ -78,6 +78,11 @@ class RawFormatRelationshipTest(unittest.TestCase):
 
 
 class DenseContractTest(unittest.TestCase):
+    def test_closed_db_client_is_environment_block(self):
+        self.assertEqual(integration._exception_status(
+            RuntimeError("Cannot send a request, as the client has been closed.")),
+            "BLOCKED_ENV")
+
     def _hit(self, *, source_group="생산매장량_USGS"):
         spec = integration.fixture("AC39")
         return SimpleNamespace(
