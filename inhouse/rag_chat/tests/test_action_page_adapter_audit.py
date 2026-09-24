@@ -40,6 +40,8 @@ class ActionPageAdapterAuditTest(unittest.TestCase):
     def test_menu_answer_contains_full_path_and_navigation_prompt(self):
         result = self.service.recommend_action_target("map_mineral", thread_id="audit-path")
         self.assertIn("KOMIS > 핵심광물지도 > 광물지도", result.response.answer)
+        self.assertIn("제공 정보:", result.response.answer)
+        self.assertIn("사용 방법 및 제약:", result.response.answer)
         self.assertIn("바로 이동하시겠어요?", result.response.answer)
 
     def test_selected_guidance_uses_common_section_order(self):

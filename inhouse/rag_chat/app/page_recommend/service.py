@@ -32,7 +32,7 @@ from common.llm_client import KomirJsonLLM
 from .graph import SearchWorkflow, validate_response
 from .metadata import MetadataResolver, SnapshotMetadataResolver
 from .models import RecommendationItem, SearchResponse
-from .renderer import build_recommendation
+from .renderer import build_recommendation, render_selected
 from .registry import ServiceRegistry, load_source_registry
 from .temporal import build_request_context, utc_now
 
@@ -118,8 +118,17 @@ class PageRecommendService:
                 "url": page.identity.navigation.target,
                 "reason": "검증된 메뉴 action 대상",
             }))
-        response = SearchResponse(thread_id=thread_id, status="recommended", relation="first_turn",
-            answer="\n".join(f"KOMIS > {page.identity.section} > {page.identity.name} 메뉴입니다." for page in pages) + (f"\n광종 필터: {mineral}" if mineral else "") + "\n바로 이동하시겠어요?", recommendations=items)
+        # action 진입도 일반 페이지 추천과 같은 공통 렌더러를 사용한다.
+        # 그래야 동일 페이지가 자연어 추천과 typed action에서 서로 다른 안내
+        # 형식으로 노출되지 않고, 필터·사용법·제약·주소가 같은 순서를 따른다.
+        answer = "\n\n".join(render_selected(item) for item in items)
+        response = SearchResponse(
+            thread_id=thread_id,
+            status="recommended",
+            relation="first_turn",
+            answer=answer,
+            recommendations=items,
+        )
         return PageRecommendTurn(response=response, active_artifact=None, message_history=[])
 
 
