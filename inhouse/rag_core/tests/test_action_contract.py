@@ -28,6 +28,19 @@ class ActionContractTest(unittest.TestCase):
         self.assertEqual(call.slots.comparator, "greater_than")
         self.assertTrue(validate_action_plan(plan).approved)
 
+    def test_price_claim_data_content_duplicates_collapse(self):
+        plan = action_plan_from_intent(IntentPlan(requirements=[
+            IntentCall(requirement_id="data", intent="price_claim", role="data",
+                       slots=ActionSlots(mineral="니켈", claimed_change_pct=300,
+                                         comparator="greater_than")),
+            IntentCall(requirement_id="content", intent="price_claim", role="content",
+                       slots=ActionSlots(mineral="니켈")),
+        ]), "2025년 니켈 가격이 300% 이상 올랐어?")
+        self.assertEqual(len(plan.actions), 1)
+        self.assertEqual(plan.actions[0].action_id, "price.verify_claim")
+        self.assertEqual(plan.actions[0].slots.claimed_change_pct, 300)
+        self.assertEqual(plan.actions[0].role, "data")
+
     def test_trade_dependency_and_private_indicator_labels_are_typed(self):
         dependency = action_plan_from_intent(IntentPlan(requirements=[IntentCall(
             requirement_id="dependency", intent="trade_indicator", role="data",

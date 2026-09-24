@@ -455,6 +455,7 @@ def action_plan_from_intent(intent_plan: IntentPlan, message: str = "") -> Actio
     _normalize_trade_indicator_slots(actions, message)
     _normalize_price_claim_slots(actions, message)
     _normalize_indicator_slots(actions, message)
+    actions = _collapse_price_claim_actions(actions)
     return ActionPlan(actions=actions)
 
 
@@ -566,6 +567,24 @@ def _normalize_price_claim_slots(actions: list[ActionCall], message: str) -> Non
                 if alias in compact:
                     call.slots.mineral = mineral
                     break
+
+
+def _collapse_price_claim_actions(actions: list[ActionCall]) -> list[ActionCall]:
+    """동일 가격 주장에 대한 data/content 중복 requirement를 하나로 합친다."""
+    claims = [call for call in actions if call.action_id == "price.verify_claim"]
+    if len(claims) < 2:
+        return actions
+    primary = next((call for call in claims if call.role == "data"), claims[0])
+    for duplicate in claims:
+        if duplicate is primary:
+            continue
+        for field in ActionSlots.model_fields:
+            if getattr(primary.slots, field) is None:
+                value = getattr(duplicate.slots, field)
+                if value is not None:
+                    setattr(primary.slots, field, value)
+        primary.requested_outputs |= duplicate.requested_outputs
+    return [call for call in actions if call is primary or call.action_id != "price.verify_claim"]
 
 
 def _normalize_indicator_slots(actions: list[ActionCall], message: str) -> None:
