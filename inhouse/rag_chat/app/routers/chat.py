@@ -239,30 +239,31 @@ def _pending_mine_clarification(session_id: str) -> dict | None:
 
 
 def _pending_trade_clarification(session_id: str) -> dict | None:
-    # 저장소의 created_at 정밀도가 낮은 경우 같은 시각에 기록된 user/assistant
-    # 행의 순서가 뒤집힐 수 있다. 최근 assistant 상태를 찾아 후속 턴이
-    # 재분류로 off_topic 처리되지 않도록 한다.
+    # 현재 턴의 가장 최근 assistant 결과만 pending 후보로 삼는다. 완료된
+    # 답변 뒤에 과거 clarification metadata를 다시 찾으면 다음 독립 질문이
+    # 오래된 무역 계획으로 오염된다.
     messages = session_store.list_messages(session_id, limit=10)
-    for message in reversed(messages):
-        if message.get("role") != "assistant":
-            continue
-        try:
-            payload = json.loads(message.get("citations_json") or "")
-        except (TypeError, ValueError):
-            continue
-        state = payload.get(_TRADE_CLARIFICATION_KEY) if isinstance(payload, dict) else None
-        if isinstance(state, dict):
-            return state
+    latest_assistant = next((message for message in reversed(messages)
+                             if message.get("role") == "assistant"), None)
+    if latest_assistant is None:
+        return None
+    message = latest_assistant
+    try:
+        payload = json.loads(message.get("citations_json") or "")
+    except (TypeError, ValueError):
+        payload = None
+    state = payload.get(_TRADE_CLARIFICATION_KEY) if isinstance(payload, dict) else None
+    if isinstance(state, dict):
+        return state
     # 구버전 저장 행이나 DB driver가 citations_json을 비워 반환하는 경우에도
     # 바로 직전의 무역 명확화 문장을 typed 계획으로 복원한다.
-    for index in range(len(messages) - 1, -1, -1):
-        message = messages[index]
-        if message.get("role") != "assistant" or "무역 지표를 계산하려면" not in (message.get("content") or ""):
-            continue
-        previous = next((item for item in reversed(messages[:index]) if item.get("role") == "user"), None)
-        if previous:
-            plan = trade_indicator_plan_from_question(previous.get("content") or "")
-            return {"question": previous.get("content") or "", "plan": plan.model_dump(mode="json")}
+    if "무역 지표를 계산하려면" not in (message.get("content") or ""):
+        return None
+    index = messages.index(message)
+    previous = next((item for item in reversed(messages[:index]) if item.get("role") == "user"), None)
+    if previous:
+        plan = trade_indicator_plan_from_question(previous.get("content") or "")
+        return {"question": previous.get("content") or "", "plan": plan.model_dump(mode="json")}
     return None
 
 
