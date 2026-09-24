@@ -673,6 +673,12 @@ def _is_conditional_scenario_topic(topic: str | None) -> bool:
 
 
 def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | None = None) -> ActionPlan:
+    # 특정국 의존도는 HHI와의 경계가 명확한 typed 관계다. 모델이 HHI를
+    # 별도 requirement로 과분해하면 validation/repair 전에 실패할 수 있으므로
+    # 해당 문맥에서만 결정적 계획을 먼저 사용한다.
+    if (_dependency_partner_from_message(message)
+            and any(marker in "".join(message.split()) for marker in ("의존도", "의존율"))):
+        return trade_indicator_plan_from_question(message)
     intent_plan = extract_intent_plan(message, llm, history)
     semantic_failure = _intent_plan_semantic_failure(intent_plan)
     if semantic_failure:

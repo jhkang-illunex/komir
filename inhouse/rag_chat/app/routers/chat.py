@@ -83,6 +83,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import sys
 import threading
 from contextlib import contextmanager
@@ -263,6 +264,27 @@ def _pending_trade_clarification(session_id: str) -> dict | None:
             plan = trade_indicator_plan_from_question(previous.get("content") or "")
             return {"question": previous.get("content") or "", "plan": plan.model_dump(mode="json")}
     return None
+
+
+def _recover_trade_followup(session_id: str, message: str) -> ActionPlan | None:
+    """저장된 clarification metadata가 없어도 직전 trade 질문을 복원한다."""
+    compact = "".join(message.split())
+    if not ("한국" in compact and any(re.search(pattern, compact) for pattern in (r"20\d{2}년", r"20\d{2}"))):
+        return None
+    history = session_store.list_messages(session_id, limit=10)
+    assistant_asked = any(
+        row.get("role") == "assistant" and "무역 지표를 계산하려면" in (row.get("content") or "")
+        for row in history
+    )
+    if not assistant_asked:
+        return None
+    previous = next((row.get("content") or "" for row in reversed(history)
+                     if row.get("role") == "user"), "")
+    if not previous:
+        return None
+    return merge_trade_indicator_followup(
+        trade_indicator_plan_from_question(previous), message,
+    )
 
 
 def _trade_indicator_call(plan: ActionPlan):
@@ -666,7 +688,8 @@ def _run_chat_session(
                     ActionPlan.model_validate(pending_trade["plan"]), request.message,
                 )
             else:
-                action_plan = extract_action_plan(
+                recovered = _recover_trade_followup(session_id, request.message)
+                action_plan = recovered or extract_action_plan(
                     request.message, KomirJsonLLM(), history=_history_for_graph(session_id),
                 )
             assessment = validate_action_plan(action_plan)
