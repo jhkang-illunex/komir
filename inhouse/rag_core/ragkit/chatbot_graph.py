@@ -894,7 +894,7 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
             "use_dense": True, "use_pageindex": True, "pageindex_doc": pageindex_doc,
             "pageindex_body_fallback": True, "pageindex_body_query": s.mine_name,
         })
-    if call.action_id == "document.retrieve" and _is_rare_earth_nd_scope_request(call):
+    if call.action_id == "document.retrieve" and _is_rare_earth_nd_scope_request(call, question):
         # USGS 2026의 희토류 장은 총괄 생산·매장량과 Nd 산화물 가격을 같은
         # 문서의 서로 다른 본문 행에 둔다. 일반 topic만으로는 목차 제목만
         # 잡히므로, typed requirement별로 공개 OKF 원문의 해당 행을 읽는다.
@@ -953,16 +953,24 @@ def _document_retrieval_query(slots, question: str) -> str:
     return " ".join(dict.fromkeys((query, *aliases)))
 
 
-def _is_rare_earth_nd_scope_request(call) -> bool:
+def _is_rare_earth_nd_scope_request(call, question: str | None = None) -> bool:
     """희토류 총괄 통계와 Nd 가격의 범위 구분을 묻는 typed 문서 요구만 고른다."""
     if call is None:
         return False
     minerals = set(call.slots.minerals or [])
+    normalized_question = re.sub(r"\s+", "", question or "")
+    question_matches = (
+        "희토류" in normalized_question and "네오디뮴" in normalized_question
+        and any(marker in normalized_question for marker in ("범위", "가격", "생산통계"))
+    )
     return (
-        {"희토류", "네오디뮴"} <= minerals
+        ({"희토류", "네오디뮴"} <= minerals or question_matches)
         and call.intent == "concept"
         and call.role == "content"
-        and any(marker in (call.slots.topic or "") for marker in ("범위", "가격", "생산통계"))
+        and (
+            any(marker in (call.slots.topic or "") for marker in ("범위", "가격", "생산통계"))
+            or question_matches
+        )
     )
 
 
@@ -2089,7 +2097,7 @@ def _retrieve_node(
             warnings.extend(pi_warnings)
         else:
             pageindex_evidence = results["pageindex"]
-            if _is_rare_earth_nd_scope_request(state.get("action_call")):
+            if _is_rare_earth_nd_scope_request(state.get("action_call"), state.get("question")):
                 # Q15 typed route의 공개 원문 span만 남긴다. 필수 표지가 하나라도
                 # 빠지면 빈 결과로 Advisor가 source_unavailable을 판단하게 둔다.
                 pageindex_evidence = _q15_contextual_pageindex_evidence(pageindex_evidence)
@@ -2669,7 +2677,7 @@ def retrieve_evidence(
             # Q15의 완전한 공개 원문 span은 chat_turn에서 결정적 범위 설명으로
             # 렌더링할 수 있다. 이 표지는 프로세스 내부 추적값이며 MCP/API
             # 계약에는 추가하지 않는다.
-            if _is_rare_earth_nd_scope_request(call):
+            if _is_rare_earth_nd_scope_request(call, question):
                 ev.q15_usgs_scope = True
         if (call.action_id == "trade.concentration" and call_evidence
                 and all("개발용 더미" in (ev.caveat or "") for ev in call_evidence)):
@@ -2713,7 +2721,7 @@ def retrieve_evidence(
             # 충분성 기준으로 쓴다.
             verified = {"sufficient": bool(call_evidence), "evidence": call_evidence,
                         "warnings": call_warnings}
-        elif _is_rare_earth_nd_scope_request(call):
+        elif _is_rare_earth_nd_scope_request(call, question):
             # 이 경로는 `_q15_contextual_pageindex_evidence`가 실제 공개 USGS
             # 본문 표지·단위·표 머리·행을 모두 확인한 경우에만 여기까지 온다.
             # 동일 사실을 LLM Advisor의 축약 발췌에 다시 맡기면 비결정적 기권이
