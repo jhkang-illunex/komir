@@ -549,6 +549,7 @@ def _normalize_price_claim_slots(actions: list[ActionCall], message: str) -> Non
     적힌 백분율·비교어만 사용한다. 질문에 없는 임계값을 추정하지 않는다.
     """
     claim = re.search(r"(?<!\d)(\d+(?:\.\d+)?)\s*%", message)
+    year = re.search(r"(20\d{2})\s*년", message)
     compact = "".join(message.split()).casefold()
     comparator = None
     if any(token in compact for token in ("이상", "넘게", "초과", "상승했어", "올랐어")):
@@ -562,6 +563,8 @@ def _normalize_price_claim_slots(actions: list[ActionCall], message: str) -> Non
             call.slots.claimed_change_pct = float(claim.group(1))
         if call.slots.comparator is None and comparator:
             call.slots.comparator = comparator
+        if year and (call.slots.period is None or call.slots.period.kind != "calendar_year"):
+            call.slots.period = Period(kind="calendar_year", calendar_year=int(year.group(1)), explicit=True)
         if call.slots.mineral is None:
             for alias, mineral in MINERAL_ALIASES.items():
                 if alias in compact:

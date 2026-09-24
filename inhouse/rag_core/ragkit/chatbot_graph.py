@@ -2262,6 +2262,14 @@ def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
         # 실수치 부재를 다시 요구하는 Advisor 판정으로 대체 응답을 지우지 않는다.
         if action_call.action_id == "stockpile.methodology":
             return {"sufficient": True, "evidence": evidence, "warnings": state.get("warnings", [])}
+        # 가격 주장 비교표는 adapter가 실제 시작·종료값과 변동률을
+        # 결정적으로 계산한다. 구조화된 KO_MNRL_PRC 비교표가 있고 caveat가
+        # 없다면 짧은 질문의 의미만 보고 Advisor가 근거를 누락시키지 않게
+        # 해당 표를 그대로 통과시킨다.
+        if (action_call.action_id == "price.verify_claim"
+                and any(ev.kind == "structured" and "pct_change" in ev.text
+                        and ev.source.endswith("KO_MNRL_PRC") for ev in evidence)):
+            return {"sufficient": True, "evidence": evidence, "warnings": state.get("warnings", [])}
         # 명시 문서 lookup은 PageIndex가 하나의 허용 문서를 고르고 실제 OKF
         # 본문 행을 반환한 뒤에만 이 지점에 온다. 이 계약을 다시 Advisor의
         # 선택적 JSON 필드(reason=null) 오류에 맡기면 확인된 PDF/HWP/XLSX
