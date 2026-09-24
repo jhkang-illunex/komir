@@ -283,11 +283,10 @@ def _recover_trade_followup(session_id: str, message: str) -> ActionPlan | None:
         ),
         "",
     )
-    assistant_asked = any(
-        row.get("role") == "assistant" and "무역 지표를 계산하려면" in (row.get("content") or "")
-        for row in history
-    )
-    if not previous or not assistant_asked:
+    # assistant 본문 저장 여부는 DB driver마다 다를 수 있다. 직전 질문이
+    # typed 무역 지표 문맥이고 현재 턴이 한국·연도를 보충하면, 명확화
+    # metadata가 없어도 해당 계획을 복원할 수 있다.
+    if not previous:
         return None
     return merge_trade_indicator_followup(
         trade_indicator_plan_from_question(previous), message,
