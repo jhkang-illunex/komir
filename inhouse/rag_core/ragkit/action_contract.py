@@ -213,9 +213,23 @@ trade_rank data의 조합이다. 전기차 수요 둔화처럼 여러 광종의 
 표현하며 price_compare data를 추가하지 않는다. JSON 외 텍스트를 출력하지 않는다."""
 
 def extract_intent_plan(message: str, llm: Any, history: list[dict[str, str]] | None = None) -> IntentPlan:
-    plan = llm.invoke(task="intent_plan", instructions=INTENT_PLAN_PROMPT,
-                      payload={"question": message, "history": history or []}, output_model=IntentPlan,
-                      max_tokens=900).output
+    try:
+        plan = llm.invoke(task="intent_plan", instructions=INTENT_PLAN_PROMPT,
+                          payload={"question": message, "history": history or []}, output_model=IntentPlan,
+                          max_tokens=900).output
+    except Exception:
+        # 특정국 의존도는 모델이 HHI를 별도 요구로 과분해하면서 typed
+        # validation 전에 실패할 수 있다. 질문에 관계 슬롯이 명시된 경우에만
+        # deterministic typed 계획으로 복구하고, 다른 질문은 기존 예외 경로를
+        # 유지한다.
+        partner = _dependency_partner_from_message(message)
+        if not partner or not any(marker in "".join(message.split()) for marker in ("의존도", "의존율")):
+            raise
+        fallback = trade_indicator_plan_from_question(message)
+        call = fallback.actions[0]
+        plan = IntentPlan(requirements=[IntentCall(
+            requirement_id=call.requirement_id, intent="trade_indicator", role="data", slots=call.slots,
+        )])
     return _normalize_mine_intent(plan, message)
 
 
