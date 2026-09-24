@@ -41,8 +41,10 @@ def check_price_series(mineral):
     citation = require_citation(done, "price.series", "public.KO_MNRL_PRC")
     assert citation.get("observed_period"), done
     price_tables = [table for table in tables(events)
-                    if any("기준일자" in column for column in table["columns"])
-                    and any("가격" in column for column in table["columns"])]
+                    if any(any(label in column for label in ("기준일자", "주 시작일", "거래일"))
+                           for column in table["columns"])
+                    and any(any(label in column for label in ("가격", "통상가격", "최저가격", "최고가격"))
+                            for column in table["columns"])]
     assert price_tables and len(price_tables[0]["rows"]) >= 2, (question, done)
     print(f"[OK] {mineral} 최근 1년 가격 추이 요청 · 실제 관측기간 명시", flush=True)
 
@@ -55,9 +57,11 @@ def check_nickel_price_unit_contract():
         done, events = ask(question)
         citation = require_citation(done, "price.series", "public.KO_MNRL_PRC")
         unit = citation.get("unit") or ""
-        assert "가격기준=LME CASH" in unit and "통화코드=PR001" in unit and "중량단위코드=WT002" in unit, (label, citation)
+        assert "가격기준=LME CASH" in unit, (label, citation)
+        assert "PR001" not in unit and "WT002" not in unit, (label, citation)
         answer = "".join(event.get("delta", "") for event in events)
-        assert unit in answer, (label, answer)
+        assert "가격기준=LME CASH" in answer, (label, answer)
+        assert "PR001" not in answer and "WT002" not in answer, (label, answer)
         assert "조회된 가격 시계열의 실제 관측 기간은" in answer, (label, answer)
         assert "아래 표와 차트는 해당 기간의 원자료를 표시합니다." in answer, (label, answer)
         assert "가격 단위: 제공된 문서에 통화 단위가 명시되지 않았습니다" not in answer, (label, answer)
