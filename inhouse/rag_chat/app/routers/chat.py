@@ -123,6 +123,7 @@ from common.langfuse_tracing import chat_trace, update_observation  # noqa: E402
 from rag_core.ragkit.chatbot import STATUS_STAGES, chat_turn  # noqa: E402
 from rag_core.ragkit.action_contract import (  # noqa: E402
     ActionPlan, extract_action_plan, merge_trade_indicator_followup,
+    trade_indicator_plan_from_question,
     missing_trade_indicator_slots, validate_action_plan,
 )
 from rag_core.ragkit.messages import chat_message  # noqa: E402
@@ -251,6 +252,16 @@ def _pending_trade_clarification(session_id: str) -> dict | None:
         state = payload.get(_TRADE_CLARIFICATION_KEY) if isinstance(payload, dict) else None
         if isinstance(state, dict):
             return state
+    # 구버전 저장 행이나 DB driver가 citations_json을 비워 반환하는 경우에도
+    # 바로 직전의 무역 명확화 문장을 typed 계획으로 복원한다.
+    for index in range(len(messages) - 1, -1, -1):
+        message = messages[index]
+        if message.get("role") != "assistant" or "무역 지표를 계산하려면" not in (message.get("content") or ""):
+            continue
+        previous = next((item for item in reversed(messages[:index]) if item.get("role") == "user"), None)
+        if previous:
+            plan = trade_indicator_plan_from_question(previous.get("content") or "")
+            return {"question": previous.get("content") or "", "plan": plan.model_dump(mode="json")}
     return None
 
 

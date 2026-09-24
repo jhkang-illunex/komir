@@ -270,6 +270,7 @@ def repair_intent_plan(
     return _normalize_mine_intent(plan, message)
 
 def action_plan_from_intent(intent_plan: IntentPlan, message: str = "") -> ActionPlan:
+    _canonicalize_dependency_intent_plan(intent_plan, message)
     _normalize_trade_indicator_intents(intent_plan, message)
     actions: list[ActionCall] = []
     seen: dict[tuple[str, str], ActionCall] = {}
@@ -441,6 +442,50 @@ def action_plan_from_intent(intent_plan: IntentPlan, message: str = "") -> Actio
     _normalize_price_claim_slots(actions, message)
     _normalize_indicator_slots(actions, message)
     return ActionPlan(actions=actions)
+
+
+def _canonicalize_dependency_intent_plan(intent_plan: IntentPlan, message: str) -> None:
+    """특정국 의존도 단일 질문의 모델 과분해를 typed 관계 하나로 수렴한다."""
+    compact = "".join(message.split())
+    partner = _dependency_partner_from_message(message)
+    if not partner or not any(marker in compact for marker in ("의존도", "의존율")):
+        return
+    trade_items = [item for item in intent_plan.requirements
+                   if item.intent in {"trade_indicator", "trade_concentration"}]
+    if not trade_items:
+        return
+    primary = trade_items[0]
+    primary.intent = "trade_indicator"
+    primary.role = "data"
+    primary.slots.trade_metric = "country_dependency"
+    intent_plan.requirements = [primary] + [
+        item for item in intent_plan.requirements if item not in trade_items
+    ]
+
+
+def trade_indicator_plan_from_question(message: str) -> ActionPlan:
+    """저장된 무역 HITL 질문을 LLM 재분류 없이 복원하는 최소 typed 계획."""
+    compact = "".join(message.split()).casefold()
+    metric_markers = (
+        ("country_dependency", ("의존도", "의존율")),
+        ("trade_growth", ("증감률", "증가율", "감소율")),
+        ("tsi", ("무역특화", "tsi")),
+        ("rca", ("현시비교우위", "rca")),
+        ("tii", ("무역결합도", "tii")),
+    )
+    metric = next((value for value, markers in metric_markers
+                   if any(marker.casefold() in compact for marker in markers)), None)
+    mineral_markers = (("리튬", "리튬"), ("니켈", "니켈"), ("코발트", "코발트"),
+                       ("구리", "구리"), ("동", "동"), ("희토류", "희토류"))
+    mineral = next((value for marker, value in mineral_markers if marker in compact), None)
+    call = ActionCall(
+        requirement_id="trade_indicator_followup", action_id="trade.indicator",
+        slots=ActionSlots(mineral=mineral, trade_metric=metric),
+        intent="trade_indicator", role="data",
+    )
+    plan = ActionPlan(actions=[call])
+    _normalize_trade_indicator_slots(plan.actions, message)
+    return plan
 
 
 def _normalize_trade_indicator_slots(actions: list[ActionCall], message: str) -> None:

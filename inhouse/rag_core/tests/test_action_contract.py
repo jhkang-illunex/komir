@@ -45,6 +45,16 @@ class ActionContractTest(unittest.TestCase):
         )]), "리튬 수급동향지표의 최근 값을 보여줘")
         self.assertEqual(indicator.actions[0].slots.indicator, "supply_stability")
 
+    def test_dependency_question_collapses_model_hhi_overdecomposition(self):
+        plan = action_plan_from_intent(IntentPlan(requirements=[
+            IntentCall(requirement_id="dependency", intent="trade_indicator", role="data",
+                       slots=ActionSlots(mineral="리튬")),
+            IntentCall(requirement_id="hhi", intent="trade_concentration", role="data",
+                       slots=ActionSlots(mineral="리튬", topic="수입국 집중도")),
+        ]), "2025년 한국 리튬 수입의 중국 의존도를 계산해줘")
+        self.assertEqual([call.action_id for call in plan.actions], ["trade.indicator"])
+        self.assertEqual(plan.actions[0].slots.trade_metric, "country_dependency")
+
     def test_trade_clarification_followup_merges_slots_without_reclassification(self):
         pending = action_plan_from_intent(IntentPlan(requirements=[IntentCall(
             requirement_id="trade", intent="trade_indicator", role="data",
