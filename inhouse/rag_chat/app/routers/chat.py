@@ -272,15 +272,22 @@ def _recover_trade_followup(session_id: str, message: str) -> ActionPlan | None:
     if not ("한국" in compact and any(re.search(pattern, compact) for pattern in (r"20\d{2}년", r"20\d{2}"))):
         return None
     history = session_store.list_messages(session_id, limit=10)
+    previous = next(
+        (
+            row.get("content") or ""
+            for row in reversed(history)
+            if row.get("role") == "user"
+            and row.get("content") != message
+            and any(marker in (row.get("content") or "").casefold()
+                    for marker in ("tsi", "rca", "tii", "의존도", "증감률", "증가율", "감소율"))
+        ),
+        "",
+    )
     assistant_asked = any(
         row.get("role") == "assistant" and "무역 지표를 계산하려면" in (row.get("content") or "")
         for row in history
     )
-    if not assistant_asked:
-        return None
-    previous = next((row.get("content") or "" for row in reversed(history)
-                     if row.get("role") == "user"), "")
-    if not previous:
+    if not previous or not assistant_asked:
         return None
     return merge_trade_indicator_followup(
         trade_indicator_plan_from_question(previous), message,
