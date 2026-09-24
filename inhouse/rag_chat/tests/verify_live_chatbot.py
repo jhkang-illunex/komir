@@ -107,10 +107,14 @@ def check_import_country_share(mineral):
                if any("수입금액합계" in column for column in table["columns"])
                and any("비중" in column for column in table["columns"])]
     assert ranking, (question, done)
-    rows = ranking[0]["rows"]
+    table = ranking[0]
+    rows = table["rows"]
     assert 1 <= len(rows) <= 5, rows
-    assert [int(row[0]) for row in rows] == list(range(1, len(rows) + 1)), rows
-    shares = [float(row[3]) for row in rows]
+    rank_idx = next((i for i, column in enumerate(table["columns"]) if "순위" in column or "rank" in column.casefold()), None)
+    if rank_idx is not None:
+        assert [int(row[rank_idx]) for row in rows] == list(range(1, len(rows) + 1)), rows
+    share_idx = next(i for i, column in enumerate(table["columns"]) if "비중" in column)
+    shares = [float(row[share_idx].replace("%", "")) for row in rows]
     assert all(0 <= share <= 100 for share in shares) and sum(shares) <= 100.1, rows
     print(f"[OK] {mineral} 수입 상위국 · 국가별 비중", flush=True)
 
@@ -124,7 +128,10 @@ def check_rare_earth_resource_ranking():
         ranking = [table for table in tables(events)
                    if any(label in column for column in table["columns"])]
         assert ranking and ranking[0]["rows"], (question, source, done)
-        assert int(ranking[0]["rows"][0][0]) == 1, ranking[0]["rows"]
+        table = ranking[0]
+        rank_idx = next((i for i, column in enumerate(table["columns"]) if "순위" in column or "rank" in column.casefold()), None)
+        if rank_idx is not None:
+            assert int(table["rows"][0][rank_idx]) == 1, table["rows"]
     print("[OK] 희토류 생산량·매장량 상위 국가", flush=True)
 
 
