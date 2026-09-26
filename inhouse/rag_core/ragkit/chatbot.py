@@ -693,6 +693,10 @@ def _build_evidence_prompt(question: str, evidence: list) -> str:
 
 _OPAQUE_PRICE_UNIT_CODE = re.compile(r"\b(?:PR|WT)\d+\b", re.IGNORECASE)
 
+# KOMIS public.st_code_mst live code-table values (verified 2026-09-26):
+# PR000/PR001 -> USD, WT000/WT002 -> ton. Keep unknown codes undisclosed.
+_PRICE_CODE_VALUES = {"PR001": "USD", "WT002": "톤"}
+
 
 def _user_visible_unit(unit: str | None) -> str | None:
     """사용자 응답에서 원천 내부 가격 코드만 제외한다.
@@ -718,10 +722,26 @@ def _natural_price_basis(unit: str | None) -> str | None:
     if basis := values.get("가격기준"):
         clauses.append(f"가격 기준은 {basis}")
     if currency := values.get("통화코드"):
-        clauses.append(f"통화 코드는 {currency}")
+        display_currency = _PRICE_CODE_VALUES.get(currency.upper())
+        if display_currency:
+            clauses.append(f"통화는 {display_currency}")
     if weight := values.get("중량단위코드"):
-        clauses.append(f"단위 코드는 {weight}")
-    return (", ".join(clauses) + "입니다.") if clauses else None
+        display_weight = _PRICE_CODE_VALUES.get(weight.upper())
+        if display_weight:
+            clauses.append(f"중량 단위는 {display_weight}")
+    return ("이며, ".join(clauses) + "입니다.") if clauses else None
+
+
+def _price_display_unit(unit: str | None) -> str | None:
+    """Map verified KOMIS price codes to a compact value unit for chart metadata."""
+    values = {}
+    for part in (unit or "").split(";"):
+        key, separator, value = part.partition("=")
+        if separator and value.strip():
+            values[key.strip()] = value.strip()
+    currency = _PRICE_CODE_VALUES.get(values.get("통화코드", "").upper())
+    weight = _PRICE_CODE_VALUES.get(values.get("중량단위코드", "").upper())
+    return f"{currency}/{weight}" if currency and weight else currency
 
 
 def _citation_sources(cited_indices: set[int], evidence: list) -> list[dict]:
@@ -955,13 +975,15 @@ def _price_series_summary(item) -> str:
     if not observations:
         return "조회된 가격 표의 날짜·가격 열을 판독하지 못해 최고·최저와 추세를 계산하지 못했습니다."
     prices = [price for _, price in observations]
-    high, low = max(prices), min(prices)
+    high_date, high = max(observations, key=lambda point: point[1])
+    low_date, low = min(observations, key=lambda point: point[1])
     first, latest = prices[0], prices[-1]
     high_low_pct = ((high - low) / low * 100) if low else None
     period_change = latest - first
     period_change_pct = (period_change / first * 100) if first else None
 
-    clauses = [f"최고가는 {_format_price(high)}", f"최저가는 {_format_price(low)}"]
+    clauses = [f"최고가는 {_format_price(high)} ({high_date.isoformat()})",
+               f"최저가는 {_format_price(low)} ({low_date.isoformat()})"]
     range_text = f"고저 차는 {_format_price(high - low)}"
     if high_low_pct is not None:
         range_text += f"(최저가 대비 {high_low_pct:+.2f}%)"
@@ -1381,7 +1403,7 @@ def _multimodal_events(cited_indices: set[int], evidence: list) -> list[ChatEven
         source_label = None if hide_price_provenance else _evidence_source_label(ev)
         source_index = None if hide_price_provenance else i
         as_of = None if hide_price_provenance else ev.as_of
-        unit = None if hide_price_provenance else ev.unit
+        unit = _price_display_unit(ev.unit) if hide_price_provenance else ev.unit
         source_menu = None if hide_price_provenance else menu_source(getattr(ev, "menu_page_id", None))
         for t_idx, table in enumerate(extract_markdown_tables(ev.text), 1):
             if hide_price_provenance:

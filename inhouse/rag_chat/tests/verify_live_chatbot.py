@@ -61,9 +61,11 @@ def check_price_series(mineral):
     assert not done.get("citations"), done
     answer = "".join(event.get("delta", "") for event in events)
     assert "가격 기준은 LME CASH" in answer, answer
-    assert "통화 코드는 PR001" in answer and "단위 코드는 WT002" in answer, answer
+    assert "통화는 USD" in answer and "중량 단위는 톤" in answer, answer
     for label in ("최고가는", "최저가는", "고저 차는", "최근 가격 흐름은"):
         assert label in answer, answer
+    assert re.search(r"최고가는 .+ \(\d{4}-\d{2}(?:-\d{2})?\)", answer), answer
+    assert re.search(r"최저가는 .+ \(\d{4}-\d{2}(?:-\d{2})?\)", answer), answer
     for hidden in ("출처:", "KO_MNRL_PRC", "실제 관측 기간", "관측 251건", "지정 기간 내 관측"):
         assert hidden not in answer, answer
     for event in events:
@@ -96,8 +98,10 @@ def check_nickel_price_unit_contract():
         assert not done.get("citations"), (label, done)
         answer = "".join(event.get("delta", "") for event in events)
         assert "가격 기준은 LME CASH" in answer, (label, answer)
-        assert "통화 코드는 PR001" in answer and "단위 코드는 WT002" in answer, (label, answer)
+        assert "통화는 USD" in answer and "중량 단위는 톤" in answer, (label, answer)
         assert all(term in answer for term in ("최고가는", "최저가는", "고저 차는", "최근 가격 흐름은")), (label, answer)
+        assert re.search(r"최고가는 .+ \(\d{4}-\d{2}(?:-\d{2})?\)", answer), (label, answer)
+        assert re.search(r"최저가는 .+ \(\d{4}-\d{2}(?:-\d{2})?\)", answer), (label, answer)
         assert "출처:" not in answer and "실제 관측 기간" not in answer, (label, answer)
         assert "KO_MNRL_PRC" not in answer and "관측 251건" not in answer, (label, answer)
         print(f"[OK] {label} 니켈 가격 요약·단위 표기 계약", flush=True)

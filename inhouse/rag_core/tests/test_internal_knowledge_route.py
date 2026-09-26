@@ -376,9 +376,11 @@ class SourceFooterTest(unittest.TestCase):
         self.assertNotIn("2025-09-22~2026-09-08", answer)
         self.assertNotIn("관측 기간", answer)
         self.assertNotIn("public.KO_MNRL_PRC", answer)
-        self.assertIn("가격 기준은 LME CASH, 통화 코드는 PR001, 단위 코드는 WT002입니다.", answer)
+        self.assertIn("가격 기준은 LME CASH이며, 통화는 USD이며, 중량 단위는 톤입니다.", answer)
         self.assertIn("최고가는 19,954.39", answer)
+        self.assertIn("최고가는 19,954.39 (2026-04-30)", answer)
         self.assertIn("최저가는 19,954.39", answer)
+        self.assertIn("최저가는 19,954.39 (2026-04-30)", answer)
         self.assertIn("고저 차는 0", answer)
         self.assertIn("최근 가격 흐름은 표본이 부족", answer)
 
