@@ -1053,6 +1053,17 @@ PRICE_FORECAST_MAX_MONTHS = 120
 def _price_policy_faq_answer(message: str) -> str | None:
     """입력된 가격 정책 안내 문구를 유사 질문에도 그대로 반환한다."""
     normalized = re.sub(r"\s+", "", message.casefold())
+    # 희토류·네오디뮴의 범위/가격/생산통계 비교는 USGS 원문을 조회해야
+    # 하는 Q15 질의다. 자료원 변경 FAQ가 먼저 매칭되면 검색·인용 경로가
+    # 건너뛰어 Q15가 잘못된 정책 문구로 종료되므로 FAQ 단축 경로에서
+    # 제외한다. 이후 chat_turn()의 typed action/document.retrieve 경로가
+    # 근거를 조회하고 결정적 Q15 응답을 생성한다.
+    q15_scope_question = (
+        "희토류" in normalized and "네오디뮴" in normalized
+        and any(marker in normalized for marker in ("범위", "가격", "생산통계"))
+    )
+    if q15_scope_question:
+        return None
     if "광물종합지수" in normalized and any(x in normalized for x in ("뭐", "무엇", "정의", "란", "이란", "의미")):
         return faq_message("mineral_composite_index")
     if "전략광종" in normalized and any(x in normalized for x in ("뭐", "무엇", "정의", "란", "이란", "의미")):
