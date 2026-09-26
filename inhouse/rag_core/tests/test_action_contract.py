@@ -451,16 +451,19 @@ class ActionContractTest(unittest.TestCase):
         follow_up.predecessor_source_unavailable = True
         self.assertEqual(validate_action_plan(follow_up).failure_reason, "source_unavailable")
 
-    def test_dummy_or_incomplete_comparison_and_monthly_evidence_are_blocked(self):
+    def test_dummy_comparison_is_allowed_but_incomplete_comparison_is_blocked(self):
         dummy = Evidence(kind="aggregated", source="KOMIS", section="KO_MNRL_PRC(구리)",
                          text="| mineral | price |\n| --- | --- |\n| 구리 | 1 |",
                          as_of="2026-07-07~2026-09-08", caveat="개발용 더미 데이터")
         compare = ActionCall(requirement_id="prices", action_id="price.compare", slots=ActionSlots(
             minerals=["구리", "니켈", "코발트"], period=Period(kind="trailing_months", trailing_months=12)))
         self.assertFalse(graph._comparison_or_monthly_source_is_usable([dummy], compare))
+        compare_single = ActionCall(requirement_id="prices", action_id="price.compare", slots=ActionSlots(
+            minerals=["구리"]))
+        self.assertTrue(graph._comparison_or_monthly_source_is_usable([dummy], compare_single))
         monthly = ActionCall(requirement_id="trade", action_id="trade.monthly", slots=ActionSlots(
             mineral="리튬", metric="import_amount"))
-        self.assertFalse(graph._comparison_or_monthly_source_is_usable([dummy], monthly))
+        self.assertTrue(graph._comparison_or_monthly_source_is_usable([dummy], monthly))
 
     def test_unverified_price_comparison_cannot_verify_a_claim(self):
         unverified = Evidence(kind="aggregated", source="KOMIS", section="가격 비교",

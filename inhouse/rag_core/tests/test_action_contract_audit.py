@@ -68,7 +68,7 @@ class ActionContractAuditTest(unittest.TestCase):
             [evidence("2025-07-01~2025-09-30")], range_action,
         ))
 
-    def test_dummy_and_unverified_komis_evidence_are_fail_closed_before_generation(self):
+    def test_unverified_komis_evidence_is_fail_closed_but_dummy_is_returned(self):
         action = plan(call("r1", "price.series", mineral="니켈")).actions[0]
         for caveat in (graph.KOMIS_RAW_DUMMY_CAVEAT, graph.KOMIS_RAW_UNVERIFIED_CAVEAT):
             evidence = Evidence(kind="structured", source="public.KO_MNRL_PRC", section="가격",
@@ -76,12 +76,18 @@ class ActionContractAuditTest(unittest.TestCase):
                                 caveat=caveat, menu_page_id="price_base_metals")
             with self.subTest(caveat=caveat), patch.object(
                 graph, "_retrieve_node", return_value={"evidence": [evidence], "warnings": []},
+            ), patch.object(
+                graph, "_verify_node", return_value={"sufficient": True, "evidence": [evidence], "warnings": []},
             ):
                 retrieved, warnings = graph.retrieve_evidence(
                     "니켈 가격 알려줘", action_plan=plan(action), llm=object(),
                 )
-            self.assertEqual(retrieved, [])
-            self.assertIn("source_unavailable:komis_data_provenance_unverified", warnings)
+            if caveat == graph.KOMIS_RAW_DUMMY_CAVEAT:
+                self.assertTrue(retrieved)
+                self.assertNotIn("source_unavailable:komis_data_provenance_unverified", warnings)
+            else:
+                self.assertEqual(retrieved, [])
+                self.assertIn("source_unavailable:komis_data_provenance_unverified", warnings)
 
     def test_frequency_contract_accepts_finer_data_and_rejects_coarser_data(self):
         action = plan(call("r1", "price.series", mineral="리튬", period=Period(

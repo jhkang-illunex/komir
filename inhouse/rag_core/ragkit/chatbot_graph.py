@@ -1157,8 +1157,13 @@ def _evidence_matches_requested_frequency(evidence: list[Evidence], action_call)
 
 
 def _has_unverified_komis_evidence(evidence: list[Evidence]) -> bool:
-    """KOMIS 정형 근거의 개발용·출처 미확정 표본은 답변 생성 전에 막는다."""
-    unverified_caveats = {KOMIS_RAW_DUMMY_CAVEAT, KOMIS_RAW_UNVERIFIED_CAVEAT}
+    """KOMIS 정형 근거 중 출처 미확정 표본만 답변 전에 막는다.
+
+    개발용 더미는 결과·표·차트에 포함하되 Evidence.caveat를 통해
+    ``실제 값이 아님``을 표시한다. 피드백/화면 QA에서 더미 결과 자체가
+    필요하므로 더미와 출처 미확정을 같은 차단 상태로 취급하지 않는다.
+    """
+    unverified_caveats = {KOMIS_RAW_UNVERIFIED_CAVEAT}
     return any(
         ev.kind in {"structured", "aggregated"}
         and (ev.menu_page_id is not None or (ev.source or "").startswith("public.KO_"))
@@ -1355,8 +1360,7 @@ def _comparison_or_monthly_source_is_usable(evidence: list[Evidence], action_cal
     """비교·월별 관측은 실원천, 요청 광종, 요청 기간을 모두 충족해야 한다."""
     if action_call.action_id not in {"price.compare", "price.verify_claim", "trade.monthly"}:
         return True
-    if any(("개발용 더미" in (ev.caveat or "")
-            or "실제 표본 여부를 자동으로 확인할 수 없는" in (ev.caveat or "")) for ev in evidence):
+    if any("실제 표본 여부를 자동으로 확인할 수 없는" in (ev.caveat or "") for ev in evidence):
         return False
     if action_call.action_id == "trade.monthly":
         return True
@@ -2782,11 +2786,6 @@ def retrieve_evidence(
             return [], call_warnings + [
                 f"{_SOURCE_UNAVAILABLE_WARNING_PREFIX}komis_data_provenance_unverified",
             ]
-        if (call.action_id == "trade.concentration" and call_evidence
-                and all("개발용 더미" in (ev.caveat or "") for ev in call_evidence)):
-            # 전체 국가 모집단 HHI의 계산은 맞아도 입력 통관 원천이 전부
-            # DEV_DUMMY이면 실제 한국 집중도로 제시할 수 없다.
-            return [], call_warnings + [f"{_SOURCE_UNAVAILABLE_WARNING_PREFIX}dummy_trade_concentration"]
         if call.action_id in {"document.lookup", "mine.profile"}:
             # 파일명/후보 메타데이터는 사실 근거가 아니다. MCP가 with_text=True로
             # 읽은 PageIndex OKF 본문이 하나라도 있어야만 아래 Advisor로 넘긴다.

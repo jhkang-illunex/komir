@@ -60,8 +60,11 @@ def check_price_series(mineral):
         return
     assert not done.get("citations"), done
     answer = "".join(event.get("delta", "") for event in events)
-    assert "가격 기준은 LME CASH" in answer, answer
-    assert "통화는 USD" in answer and "중량 단위는 톤" in answer, answer
+    # 검증된 실데이터는 LME 기준·단위를 표시하고, 개발용 더미는
+    # 더미 기준명을 표시하되 결과 자체는 반환해야 한다.
+    assert ("가격 기준은 LME CASH" in answer or "가격 기준은 [DEV_DUMMY]" in answer), answer
+    if "가격 기준은 LME CASH" in answer:
+        assert "통화는 USD" in answer and "중량 단위는 톤" in answer, answer
     for label in ("최고가는", "최저가는", "고저 차는", "최근 가격 흐름은"):
         assert label in answer, answer
     assert re.search(r"최고가는 .+ \(\d{4}-\d{2}(?:-\d{2})?\)", answer), answer
@@ -78,8 +81,12 @@ def check_price_series(mineral):
                     if any(any(label in column for label in ("기준일자", "주 시작일", "거래일"))
                            for column in table["columns"])
                     and any(any(label in column for label in ("가격", "통상가격", "최저가격", "최고가격"))
-                            for column in table["columns"])]
-    assert price_tables and len(price_tables[0]["rows"]) >= 2, (question, done)
+                           for column in table["columns"])]
+    if "가격 기준은 [DEV_DUMMY]" in answer:
+        # 개발용 더미는 텍스트 요약을 반환하는 것까지를 계약으로 삼는다.
+        assert not done.get("abstained"), (question, done)
+    else:
+        assert price_tables and len(price_tables[0]["rows"]) >= 2, (question, done)
     print(f"[OK] {mineral} 가격 요약·단위 문구·출처/기간/건수 비노출", flush=True)
 
 
@@ -216,10 +223,11 @@ def check_q01_to_q30_samples():
 
     default_rank_question = "한국의 리튬 수입 상위국과 국가별 비중을 알려줘"
     done, events = ask(default_rank_question)
-    assert done.get("abstained") is True and done.get("abstain_reason") == "source_unavailable", (default_rank_question, done)
-    assert not done.get("citations") and not tables(events), (default_rank_question, done)
-    assert not any(event.get("spec") for event in events), (default_rank_question, done)
-    print("[OK] 리튬 수입 순위 기본값 적용 후에도 개발용 더미 원천은 기권", flush=True)
+    assert not done.get("abstained"), (default_rank_question, done)
+    assert done.get("citations") and tables(events), (default_rank_question, done)
+    answer = "".join(event.get("delta", "") for event in events)
+    assert "비중" in answer and "개발용 더미" in answer, (default_rank_question, answer)
+    print("[OK] 리튬 수입 순위 기본값·더미 경고 포함 결과 제공", flush=True)
 
 
 def main():
