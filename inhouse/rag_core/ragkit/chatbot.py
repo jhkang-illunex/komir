@@ -1035,11 +1035,19 @@ PRICE_SOURCE_CHANGE_MINERALS = (
     "리튬", "코발트", "희토류", "니켈", "구리", "아연", "알루미늄", "연", "주석",
     "철광석", "유연탄", "우라늄", "금", "은", "백금", "흑연",
 )
+PRICE_FORECAST_MINERALS = (
+    "니켈", "동", "리튬", "망간", "몰리브덴", "아연", "우라늄", "유연탄", "철", "코발트", "텅스텐",
+)
+PRICE_FORECAST_MAX_MONTHS = 120
 
 
 def _price_policy_faq_answer(message: str) -> str | None:
     """입력된 가격 정책 안내 문구를 유사 질문에도 그대로 반환한다."""
     normalized = re.sub(r"\s+", "", message.casefold())
+    if "가격예측" in normalized and any(x in normalized for x in ("제공되는광종", "제공광종", "광종은뭐", "광종이뭐")):
+        return f"가격예측 제공 광종은 {', '.join(PRICE_FORECAST_MINERALS)}입니다."
+    if "가격예측" in normalized and any(x in normalized for x in ("몇개월", "얼마나앞", "언제까지", "몇달")):
+        return f"가격예측은 {PRICE_FORECAST_MAX_MONTHS}개월 후까지 제공됩니다."
     if "광물가격" in normalized and any(x in normalized for x in ("업데이트", "갱신", "업데이트주기")):
         return "광물가격은 매일 오전 10시경 갱신됩니다."
     if (("자료원" in normalized and any(x in normalized for x in ("변경", "바뀌", "교체")))
