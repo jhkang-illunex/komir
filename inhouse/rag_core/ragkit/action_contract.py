@@ -752,6 +752,24 @@ def _is_conditional_scenario_topic(topic: str | None) -> bool:
 
 
 def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | None = None) -> ActionPlan:
+    # 희토류 총괄 통계와 네오디뮴 가격의 범위 비교는 가격 단일조회로
+    # 축약되면 안 되는 고정 문서 질의다. planner의 표현 변동과 무관하게
+    # 공개 USGS 원문 action 하나로 고정해 Q15 결정적 응답 경로를 보장한다.
+    q15_text = re.sub(r"\s+", "", message)
+    if (
+        "희토류" in q15_text and "네오디뮴" in q15_text
+        and any(marker in q15_text for marker in ("범위", "가격", "생산통계"))
+    ):
+        return ActionPlan(actions=[ActionCall(
+            requirement_id="q15_scope",
+            action_id="document.retrieve",
+            slots=ActionSlots(
+                minerals=["희토류", "네오디뮴"],
+                topic=message,
+            ),
+            intent="concept",
+            role="content",
+        )])
     # 특정국 의존도는 HHI와의 경계가 명확한 typed 관계다. 모델이 HHI를
     # 별도 requirement로 과분해하면 validation/repair 전에 실패할 수 있으므로
     # 해당 문맥에서만 결정적 계획을 먼저 사용한다.

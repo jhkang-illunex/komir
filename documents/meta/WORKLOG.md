@@ -9,6 +9,10 @@ Q15 원문이 희토류·네오디뮴·가격·생산통계 범위를 명시한 
 fallback과 결정적 응답을 적용하도록 보완했다. 기존 슬롯 기반 Q15 판정은 유지한다.
 문법검사와 직접 라우팅 판정을 확인했으며, 이미지 빌드·배포는 아직 하지 않았다.
 
+Q15 라이브 수락검사에서 planner가 가격 Action 단독으로 축약하는 재현을 확인해,
+희토류·네오디뮴·가격·생산통계 범위 비교 문장군을 `document.retrieve` 단일
+Action으로 추출 단계에서 고정했다.
+
 ## 2026-09-27 — Action 결과 계약과 복합 응답 조립 1차 정규화
 
 `ragkit/action_results.py`에 `ActionResult`·`RetrievalResult`를 추가하고,
