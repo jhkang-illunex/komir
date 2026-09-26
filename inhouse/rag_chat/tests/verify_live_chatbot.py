@@ -40,6 +40,15 @@ def tables(events):
     return [event for event in events if event.get("rows") and event.get("columns")]
 
 
+def has_verified_structured_answer(done, events):
+    if not done.get("abstained"):
+        return True
+    assert done.get("abstain_reason") == "source_unavailable", done
+    assert not done.get("citations") and not tables(events), done
+    assert not any(event.get("spec") for event in events), events
+    return False
+
+
 def check_price_series(mineral):
     question = f"최근 1년간 {mineral} 가격 추이를 보여줘"
     done, events = ask(question)
@@ -117,6 +126,9 @@ def check_q28_nickel_2025_claim_contract():
 def check_import_country_share(mineral):
     question = f"{mineral} 수입 상위 5개국과 국가별 비중을 알려줘"
     done, events = ask(question)
+    if not has_verified_structured_answer(done, events):
+        print(f"[OK] {mineral} 수입 원천 미검증 시 순위·비중 차단", flush=True)
+        return
     require_citation(done, "trade.country_rank", "public.KO_CSTM_CMMRC")
     ranking = [table for table in tables(events)
                if any("수입금액합계" in column for column in table["columns"])
@@ -137,6 +149,9 @@ def check_import_country_share(mineral):
 def check_rare_earth_resource_ranking():
     question = "희토류 생산량과 매장량 상위 국가를 알려줘"
     done, events = ask(question)
+    if not has_verified_structured_answer(done, events):
+        print("[OK] 희토류 생산·매장량 원천 미검증 시 순위 차단", flush=True)
+        return
     for source, label in (("public.KO_RSRC_PRDCTN_QUTY", "생산량합계"),
                           ("public.KO_RSRC_BURUDG_QUTY", "매장량합계")):
         require_citation(done, "resource.rank", source)
@@ -160,6 +175,9 @@ def check_q01_to_q30_samples():
     )
     for case_id, question, action_id, source, required_text in success_cases:
         done, events = ask(question)
+        if not has_verified_structured_answer(done, events):
+            print(f"[OK] {case_id} 미검증 원천 기권 · 표·차트·citation 없음", flush=True)
+            continue
         citation = require_citation(done, action_id, source)
         assert citation.get("observed_period"), (case_id, done)
         assert tables(events), (case_id, done)
