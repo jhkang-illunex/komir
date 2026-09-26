@@ -1031,6 +1031,12 @@ def _price_series_observations(text: str) -> list[tuple[date, float]]:
     return []
 
 
+PRICE_SOURCE_CHANGE_MINERALS = (
+    "리튬", "코발트", "희토류", "니켈", "구리", "아연", "알루미늄", "연", "주석",
+    "철광석", "유연탄", "우라늄", "금", "은", "백금", "흑연",
+)
+
+
 def _price_policy_faq_answer(message: str) -> str | None:
     """입력된 가격 정책 안내 문구를 유사 질문에도 그대로 반환한다."""
     normalized = re.sub(r"\s+", "", message.casefold())
@@ -1040,10 +1046,13 @@ def _price_policy_faq_answer(message: str) -> str | None:
             or "계약종료" in normalized):
         return ("기존 자료원과의 계약 종료로 2026년 1월 1일부터 희소금속, 철광석, 유연탄 및 기타 금속 가격의 자료원이 단계적으로 변경됩니다. "
                 "품목이 변경될 수 있고, 동일 품목·규격이라도 기존 가격과 차이가 있을 수 있습니다.")
-    if ("리튬" in normalized
+    changed_mineral = next((mineral for mineral in PRICE_SOURCE_CHANGE_MINERALS if mineral in message), None)
+    if (changed_mineral
             and any(x in normalized for x in ("작년", "올해", "2025년", "2026년", "주의"))
             and any(x in normalized for x in ("비교", "차이", "주의"))):
-        return ("리튬은 2026년 1월부터 자료원이 변경된 광종입니다. 2025년 이전 가격과 동일 규격이라도 차이가 있을 수 있어 단순 비교 시 해석에 주의가 필요합니다.")
+        return (f"{changed_mineral}{_eun_neun(changed_mineral)} 2026년 1월부터 자료원이 변경된 광종입니다. 2025년 이전 가격과 동일 규격이라도 차이가 있을 수 있어 단순 비교 시 해석에 주의가 필요합니다.")
+    if any(x in normalized for x in ("엑셀", "다운로드", "내려받")) and any(x in normalized for x in ("광물가격", "가격", "조회결과")):
+        return "광물가격 화면의 엑셀 다운로드 버튼으로 조회 결과를 내려받을 수 있습니다."
     return None
 
 
