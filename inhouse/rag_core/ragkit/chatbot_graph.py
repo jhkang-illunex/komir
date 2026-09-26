@@ -966,8 +966,14 @@ def _is_rare_earth_nd_scope_request(call, question: str | None = None) -> bool:
         "희토류" in normalized_question and "네오디뮴" in normalized_question
         and any(marker in normalized_question for marker in ("범위", "가격", "생산통계"))
     )
+    # Q15는 원 질문 자체가 희토류 총괄 통계와 Nd 가격의 범위 비교를
+    # 명시하므로, planner가 concept/document role을 흔들어도 typed 문서
+    # fallback을 유지한다. 질문 문구가 없는 후속 호출은 기존 typed 슬롯
+    # 조건을 그대로 적용한다.
+    if question_matches:
+        return call.action_id == "document.retrieve"
     return (
-        ({"희토류", "네오디뮴"} <= minerals or question_matches)
+        {"희토류", "네오디뮴"} <= minerals
         and call.intent == "concept"
         and call.role == "content"
         and (
