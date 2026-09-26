@@ -855,6 +855,71 @@ def _dummy_data_notice(cited_indices: set[int], evidence: list) -> str:
     return "\n\n" + "\n".join(f"⚠ {c}" for c in sorted(caveats))
 
 
+def _country_rank_summary(evidence: list, action_plan, question: str, answer_text: str = "") -> str:
+    """국가별 순위 표를 차트와 함께 보여줄 때 짧은 텍스트 요약을 만든다."""
+
+    actions = getattr(action_plan, "actions", ()) if action_plan is not None else ()
+    action = next((item for item in actions if getattr(item, "action_id", None) == "trade.country_rank"), None)
+    # 라우터가 action plan을 복구하지 못한 경우에도 질문과 표가 명확하면
+    # 순위 요약을 제공한다. 표의 country/share_pct 열이 최종 근거다.
+    rank_question = any(marker in question for marker in ("상위", "순위", "비중"))
+    if action is None and not rank_question and not answer_text:
+        return ""
+    slots = getattr(action, "slots", None)
+    minerals = (getattr(slots, "minerals", None) or []) if action is not None else []
+    mineral = minerals[0] if minerals else next(
+        (name for name in ("리튬", "니켈", "구리", "코발트", "희토류") if name in question),
+        "해당 광종",
+    )
+    period = getattr(slots, "period", None) if action is not None else None
+    if period is not None and getattr(period, "kind", None) == "trailing_months":
+        months = getattr(period, "trailing_months", None) or 12
+        period_label = f"최근 {months // 12}년간" if months % 12 == 0 else f"최근 {months}개월간"
+    else:
+        period_label = "해당 기간"
+
+    sources = [(index, getattr(item, "text", "")) for index, item in enumerate(evidence, 1)]
+    if answer_text:
+        sources.append((1, answer_text))
+    for index, source_text in sources:
+        for table in extract_markdown_tables(source_text):
+            keys = [column.split("(", 1)[0].strip().casefold() for column in table["columns"]]
+            country_index = next((i for i, key in enumerate(keys) if key in {"country", "국가"}), None)
+            share_index = next((i for i, key in enumerate(keys) if key == "share_pct" or key.startswith("비중")), None)
+            if country_index is None or share_index is None:
+                continue
+            parts = []
+            for rank, row in enumerate(table["rows"], 1):
+                if len(row) <= max(country_index, share_index):
+                    continue
+                country, share = row[country_index].strip(), row[share_index].strip()
+                if country and share:
+                    parts.append(f"{rank}위 [{country} {share}%]")
+            if parts:
+                return f"{period_label} {mineral} 상위 {len(parts)}개국은 " + ", ".join(parts) + f" 순입니다. [{index}]"
+    # 모델이 표를 완전한 Markdown으로 만들지 않은 경우의 최소 안전망.
+    raw_rows = re.findall(r"\|\s*(\d+)\s*\|\s*([^|]+?)\s*\|[^|]*\|\s*([0-9]+(?:\.[0-9]+)?)\s*\|", answer_text)
+    if raw_rows:
+        parts = [f"{rank}위 [{country.strip()} {share}%]" for rank, country, share in raw_rows]
+        return f"{period_label} {mineral} 상위 {len(parts)}개국은 " + ", ".join(parts) + " 순입니다. [1]"
+    return ""
+
+
+def _remove_rank_metadata_lines(text: str) -> str:
+    """순위 답변에서 사용자에게 불필요한 기간·집계 설명 라벨을 제거한다."""
+
+    lines = []
+    for line in text.splitlines():
+        compact = re.sub(r"\s+", "", line).casefold()
+        if any(label in compact for label in (
+            "조회기간:", "조회기간", "집계설명:", "집계설명", "실제조회기간",
+            "분모로하여계산", "분모로사용", "같은기간·조건의전체국가합계",
+        )):
+            continue
+        lines.append(line)
+    return "\n".join(lines).strip()
+
+
 def _price_unit_disclosure(text: str, evidence: list) -> str:
     """선택 가격기준의 단위 코드를 본문에 결정적으로 남긴다.
 
@@ -1647,6 +1712,7 @@ async def chat_turn(
         and (getattr(ev, "unit", None) or "").startswith("가격기준=")
         for ev in evidence
     )
+    rank_request_guard = any(marker in message for marker in ("상위", "순위", "비중"))
 
     yield _status_event(4)  # 답변 생성 중
     full_text_parts: list[str] = []
@@ -1655,7 +1721,7 @@ async def chat_turn(
             full_text_parts.append(delta)
             # 일반 RAG는 기존 스트리밍을 유지한다. 개념 질문은 인용 검증 전의
             # 모델 문장이 노출되지 않게 여기서 버퍼링한다.
-            if not concept_question and not price_unit_guard:
+            if not concept_question and not price_unit_guard and not rank_request_guard:
                 yield ChatEvent(type="delta", data={"delta": delta})
     except Exception:
         # 2026-09-08(skeptic-code SC-2) — complete_stream()은 재시도를 하지 않고
@@ -1720,6 +1786,12 @@ async def chat_turn(
         return
 
     cleaned, bogus = _strip_uncited_sentences(full_text, len(evidence))
+    # 인용 스트리퍼가 표 본문을 제거한 경우에도 원 스트림의 표에서 요약을 만든다.
+    rank_summary = _country_rank_summary(evidence, action_plan, message, full_text)
+    if rank_summary:
+        cleaned = _remove_rank_metadata_lines(cleaned)
+        if rank_summary not in cleaned:
+            cleaned = f"{cleaned}\n\n{rank_summary}".strip()
     cleaned = _price_unit_disclosure(cleaned, evidence)
     if not cleaned.strip():
         if concept_question:
@@ -1762,7 +1834,7 @@ async def chat_turn(
         yield _abstain_done("source_unavailable", bogus_citations=bogus)
         return
 
-    if concept_question or price_unit_guard:
+    if concept_question or price_unit_guard or rank_request_guard:
         # 인용 번호·문장 직접근거를 모두 검증한 뒤에만 모델 문장을 보낸다.
         yield ChatEvent(type="delta", data={"delta": cleaned})
 
@@ -1777,6 +1849,8 @@ async def chat_turn(
         + _caution_notice(cited_indices, evidence)
         + _source_footer(cited_indices, evidence)
     )
+    if rank_summary and rank_summary not in full_text:
+        extra = "\n\n" + rank_summary + extra
     if extra:
         yield ChatEvent(type="delta", data={"delta": extra})
     final_text = cleaned + extra

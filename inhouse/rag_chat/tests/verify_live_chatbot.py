@@ -160,6 +160,11 @@ def check_import_country_share(mineral):
     share_idx = next(i for i, column in enumerate(table["columns"]) if "비중" in column)
     shares = [float(row[share_idx].replace("%", "")) for row in rows]
     assert all(0 <= share <= 100 for share in shares) and sum(shares) <= 100.1, rows
+    answer = "".join(event.get("delta", "") for event in events)
+    assert f"{mineral} 상위 {len(rows)}개국은" in answer, answer
+    assert "순입니다." in answer, answer
+    assert "조회기간" not in answer.replace(" ", ""), answer
+    assert "집계설명" not in answer.replace(" ", ""), answer
     print(f"[OK] {mineral} 수입 상위국 · 국가별 비중", flush=True)
 
 
