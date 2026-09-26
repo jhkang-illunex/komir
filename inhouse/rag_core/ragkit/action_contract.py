@@ -160,7 +160,9 @@ synthesis.brief 중 하나다. 원문과 확인된 대화에 있는 값만 slots
 생산국과 수입국의 집중도·비중 비교는 resource.rank와 trade.country_rank의 검증된 조합이며,
 '취약점'이라는 단어만으로 diagnosis action을 선택하지 않는다. 명시 HS 코드의 품목 요약과
 수입 현황은 trade.hs_summary 하나로 표현한다. metric이 생략된 country rank는 공개 기본 표시
-기준을 슬롯에 명시한다. 메뉴 action은
+기준을 슬롯에 명시한다. 기간이 없는 한국 수입·수출 상위국 질의는 최근 12개월을
+기본 기간으로 사용한다. "국가별 비중/점유율"을 포함한 "수입 상위국" 질의도
+trade.country_rank이며 특정국 의존도나 TSI·HHI 요청과 구분한다. 메뉴 action은
 등록된 page_id/alias 또는 dataset ID(supply_stability, market_outlook)만 사용한다. 범위 밖 일반
 주제에는 menu action을 만들지 말고 complete=false로 둔다.
 수입액·수입중량·수출액·수출중량의 월별 추이는 trade.monthly이며 price action이 아니다.
@@ -739,16 +741,74 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
     if semantic_failure:
         intent_plan = repair_intent_plan(message, llm, semantic_failure, history)
     plan = action_plan_from_intent(intent_plan, message)
+    plan = normalize_country_rank_request(message, plan)
     assessment = validate_action_plan(plan)
     if assessment.approved or assessment.failure_reason not in {"slot_unresolved", "unsupported_combination"}:
         return plan
     # 모델 출력의 role/중복 오류만 한 번 고친다. 원천 미연결은 재시도로
     # available action처럼 바꾸지 않는다.
     repaired = action_plan_from_intent(repair_intent_plan(message, llm, assessment.failure_reason, history), message)
+    repaired = normalize_country_rank_request(message, repaired)
     if (validate_action_plan(repaired).failure_reason == "slot_unresolved"
             and _has_source_unavailable_predecessor(history or [], repaired)):
         repaired.predecessor_source_unavailable = True
     return repaired
+
+
+def normalize_country_rank_request(message: str, plan: ActionPlan) -> ActionPlan:
+    """Repair an unambiguous country-rank misclassification before HITL validation.
+
+    Country import shares across top countries are a ranking request, not a
+    trade-indicator/country-dependency calculation. Preserve unrelated
+    multi-action plans and explicit dependency questions.
+    """
+    normalized = re.sub(r"\s+", "", message).casefold()
+    has_rank = any(term in normalized for term in ("상위", "순위", "가장", "제일", "1위", "2위", "3위"))
+    has_country = any(term in normalized for term in ("국가", "나라", "개국", "상위국"))
+    has_flow = "수입" in normalized or "수출" in normalized
+    if not (has_rank and has_country and has_flow):
+        return plan
+    if any(term in normalized for term in (
+        "의존도", "의존율", "집중도", "hhi", "tsi", "rca", "tii", "증감률",
+        "무역특화", "무역결합도", "비교우위",
+    )):
+        return plan
+
+    candidates = [call for call in plan.actions if call.action_id == "trade.indicator"]
+    if not candidates:
+        return plan
+    call = candidates[0]
+    mineral = next((item.slots.mineral for item in candidates if item.slots.mineral), None)
+    if not mineral:
+        mineral = next((name for name in ("희토류", "코발트", "니켈", "리튬", "구리", "동")
+                        if name in normalized), None)
+    if not mineral:
+        return plan
+    if any(item.slots.mineral not in {None, mineral} for item in candidates):
+        return plan
+    # 이 명확한 단일 순위 질문에 planner가 share metadata를 별도
+    # concentration/rank action으로 중복 생성한 경우만 합친다.
+    if any(other.action_id not in {"trade.indicator", "trade.country_rank", "trade.concentration"}
+           or other.slots.mineral not in {None, mineral}
+           for other in plan.actions):
+        return plan
+    flow = "export" if "수출" in normalized and "수입" not in normalized else "import"
+    is_weight = any(term in normalized for term in ("물량", "중량", "톤"))
+    metric = call.slots.metric if call.slots.metric in {
+        "import_amount", "import_weight", "export_amount", "export_weight",
+    } else (
+        "export_weight" if flow == "export" and is_weight else
+        "import_weight" if flow == "import" and is_weight else
+        "export_amount" if flow == "export" else "import_amount"
+    )
+    slots = call.slots.model_copy(update={
+        "mineral": mineral, "metric": metric, "flow": flow, "trade_metric": None,
+        "partner_country": None,
+        "period": call.slots.period or Period(kind="trailing_months", trailing_months=12),
+        "top_n": call.slots.top_n or 5,
+    })
+    fixed_call = call.model_copy(update={"action_id": "trade.country_rank", "slots": slots})
+    return plan.model_copy(update={"actions": [fixed_call]})
 
 
 def _has_source_unavailable_predecessor(history: list[dict[str, Any]], plan: ActionPlan) -> bool:
@@ -854,6 +914,10 @@ def validate_action_plan(plan: ActionPlan | None) -> PlanAssessment:
             # 레지스트리의 public 기본 표시는 수입금액이다. planner가 기준을
             # 생략한 경우에만 명시적 기본을 기록한다.
             call.slots.metric = "import_amount" if call.slots.flow != "export" else "export_amount"
+        if call.action_id == "trade.country_rank" and call.slots.period is None:
+            call.slots.period = Period(kind="trailing_months", trailing_months=12)
+        if call.action_id == "trade.country_rank" and call.slots.top_n is None:
+            call.slots.top_n = 5
         if call.action_id.startswith("price.") and call.slots.metric in {"import_amount", "import_weight", "export_amount", "export_weight"}:
             return PlanAssessment(approved=False, failure_reason="slot_unresolved")
         if missing_trade_indicator_slots(call):

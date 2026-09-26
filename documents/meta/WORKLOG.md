@@ -2,6 +2,27 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-26 — 국가별 수입 순위 HITL 기본값 보완
+
+`한국의 리튬 수입 상위국과 국가별 비중` 라이브 질의는 `slot_required`로
+기권했다. 이는 자료 부재 응답이 아니라 planner가 ranking 대신 trade indicator를
+만들어 필수 지표 슬롯을 놓친 라우팅 결함이다. 명확한 단일 국가 수입·수출 상위
+질의가 `trade.indicator`로 잘못 분류되면 `trade.country_rank`로 결정적으로 보정하고,
+기간이 없을 때 최근 12개월, 기준은 수입/수출 금액, 상위 수는 5개를 기본 적용한다.
+수입 상위+국가별 비중은 국가 순위로 분류한다. 실제 LLM 계획을 추적해 보니 이
+문구는 정상 `trade.country_rank` 외에 `trade.indicator(country_dependency)`까지
+만들고 `partner_country=상위국과국가별`로 잘못 채웠다. 이 중복 indicator를 순위
+action에 흡수한다. 명시적인 의존도·HHI/TSI/RCA/TII 표현과 무관한 다중 의도는
+보정하지 않는다.
+
+현재 KOMIS 리튬 국가 순위는 개발용 더미 원천으로 판정되어 `source_unavailable`로
+계속 기권한다. 기본 기간·금액 기준은 조회 슬롯에 넣되, 더미 값은 실제 순위처럼
+보여주지 않는다. 회귀 37건과 배포 게이트 15·67·6·33·1건, 라우팅 스모크가
+통과했다. 같은 질문의 라이브 응답 action은 `trade.country_rank`, 기권 이유는
+`source_unavailable`이며 citation·표·차트는 없다. 테스트 이미지는
+`komir-rag-chat:20260926-222958`, 컨테이너 `komir-rag-chat-test`에 배포했고 이전
+컨테이너는 `komir-rag-chat-test-pre-20260926-222959`로 보존했다.
+
 ## 2026-09-26 — 가격 코드값 공개 및 최고·최저 관측일 추가 (테스트 서버 배포 완료)
 
 라이브 `public.st_code_mst`에서 `PR001 → USD`, `WT002 → ton`을 read-only로

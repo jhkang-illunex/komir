@@ -214,6 +214,13 @@ def check_q01_to_q30_samples():
         assert not any(event.get("spec") for event in events), (case_id, done)
         print(f"[OK] {case_id} 정상 기권 · {reason}", flush=True)
 
+    default_rank_question = "한국의 리튬 수입 상위국과 국가별 비중을 알려줘"
+    done, events = ask(default_rank_question)
+    assert done.get("abstained") is True and done.get("abstain_reason") == "source_unavailable", (default_rank_question, done)
+    assert not done.get("citations") and not tables(events), (default_rank_question, done)
+    assert not any(event.get("spec") for event in events), (default_rank_question, done)
+    print("[OK] 리튬 수입 순위 기본값 적용 후에도 개발용 더미 원천은 기권", flush=True)
+
 
 def main():
     for attempt in range(30):

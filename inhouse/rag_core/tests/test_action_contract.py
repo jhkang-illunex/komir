@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from rag_core.ragkit.action_contract import (
     ActionCall, ActionPlan, ActionSlots, IntentCall, IntentPlan, Period,
     _has_source_unavailable_predecessor, _intent_plan_semantic_failure, action_plan_from_intent,
-    merge_trade_indicator_followup, validate_action_plan,
+    merge_trade_indicator_followup, normalize_country_rank_request, validate_action_plan,
 )
 from rag_core.ragkit import chatbot_graph as graph
 from rag_core.ragkit import chatbot
@@ -270,6 +270,63 @@ class ActionContractTest(unittest.TestCase):
             slots=ActionSlots(mineral="리튬", flow="import"))])
         self.assertTrue(validate_action_plan(rank).approved)
         self.assertEqual(rank.actions[0].slots.metric, "import_amount")
+        self.assertEqual(rank.actions[0].slots.period.kind, "trailing_months")
+        self.assertEqual(rank.actions[0].slots.period.trailing_months, 12)
+        self.assertEqual(rank.actions[0].slots.top_n, 5)
+        route = graph._route_from_action_plan(rank, "리튬 수입 상위국")
+        self.assertEqual(route.komis_relative_months, 12)
+        self.assertEqual(route.komis_ranking_metric, "import_amount")
+
+    def test_country_import_share_question_repairs_indicator_misroute_without_hitl(self):
+        question = "한국의 리튬 수입 상위국과 국가별 비중을 알려줘"
+        for misrouted in (
+            ActionPlan(actions=[ActionCall(
+                requirement_id="r1", action_id="trade.indicator",
+                slots=ActionSlots(mineral="리튬", flow="import", trade_metric="country_dependency"),
+            )]),
+            ActionPlan(actions=[
+                ActionCall(requirement_id="rank", action_id="trade.concentration",
+                           slots=ActionSlots(mineral="리튬", flow="import")),
+                ActionCall(requirement_id="share", action_id="trade.indicator",
+                           slots=ActionSlots(mineral="리튬", flow="import", trade_metric="country_dependency")),
+            ]),
+            ActionPlan(actions=[ActionCall(
+                requirement_id="r1", action_id="trade.indicator",
+                slots=ActionSlots(trade_metric="trade_growth"),
+            )]),
+            ActionPlan(actions=[
+                ActionCall(requirement_id="r1", action_id="trade.indicator",
+                           slots=ActionSlots(mineral="리튬", trade_metric="country_dependency")),
+                ActionCall(requirement_id="r2", action_id="trade.indicator",
+                           slots=ActionSlots(flow="import", trade_metric="trade_growth")),
+            ]),
+            ActionPlan(actions=[
+                ActionCall(requirement_id="rank", action_id="trade.country_rank",
+                           slots=ActionSlots(mineral="리튬", flow="import")),
+                ActionCall(requirement_id="noise", action_id="trade.indicator",
+                           slots=ActionSlots(mineral="리튬", flow="import",
+                                             trade_metric="country_dependency",
+                                             partner_country="상위국과국가별")),
+            ]),
+        ):
+            with self.subTest(plan=misrouted.model_dump(mode="json")):
+                normalized = normalize_country_rank_request(question, misrouted)
+                self.assertEqual([call.action_id for call in normalized.actions], ["trade.country_rank"])
+                self.assertTrue(validate_action_plan(normalized).approved)
+                route = graph._route_from_action_plan(normalized, question)
+                self.assertTrue(route.use_komis_ranking)
+                self.assertEqual(route.komis_ranking_page, "map_korea")
+                self.assertEqual(route.komis_ranking_metric, "import_amount")
+                self.assertEqual(route.komis_relative_months, 12)
+
+    def test_explicit_import_dependency_question_keeps_trade_indicator(self):
+        indicator = ActionPlan(actions=[ActionCall(
+            requirement_id="r1", action_id="trade.indicator",
+            slots=ActionSlots(mineral="리튬", flow="import", trade_metric="country_dependency"),
+        )])
+        self.assertIs(normalize_country_rank_request(
+            "한국의 리튬 수입 의존도를 알려줘", indicator,
+        ), indicator)
 
     def test_price_metadata_and_diagnosis_content_do_not_become_unsupported_combinations(self):
         price_metadata = IntentPlan(requirements=[
