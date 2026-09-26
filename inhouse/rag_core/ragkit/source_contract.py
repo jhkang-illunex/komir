@@ -82,6 +82,9 @@ unavailable_quantity_forecast, unavailable_geopolitical_index, unavailable_geopo
 가격 보고서 요약처럼 지표가 문서 제목을 수식하면 document_content 하나다.
 가격 수치와 정책 문서 요약을 함께 요구하면 numeric_result와 document_content 두 개다.
 진단 점수·등급·순위, 수요/가격/물량 예측, 지정학 지수·사건·연계 기사는 각각 unavailable domain이다.
+예를 들어 "다음 달 구리 가격 전망"과 "니켈 가격 앞으로 오를까 내릴까"는
+unavailable_price_forecast로 분류하되, 실제 Intent/Action 연결은 forecast_price/forecast.price로
+보존한다. 가격예측이 연결되기 전에는 price.series나 price.compare로 대체하지 않는다.
 확신할 수 없는 절은 unknown으로 둔다."""
 
 

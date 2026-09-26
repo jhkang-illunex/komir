@@ -124,6 +124,15 @@ AVAILABLE = frozenset({
     "price.series", "price.compare", "price.verify_claim", "trade.country_rank", "trade.monthly",
     "trade.concentration", "trade.hs_summary", "trade.indicator", "resource.rank", "mine.rank", "mine.profile", "indicator.series", "document.retrieve", "document.lookup", "stockpile.methodology", "menu.navigate", "dataset.navigate",
 })
+# 독립 근거를 요구하는 수치·문서 action은 requirement_id별로 실행하고
+# 최종 생성 단계에서 묶을 수 있다. 메뉴 이동은 별도 page-recommend 경로가
+# 소유하므로 데이터 action과 섞지 않는다.
+COMPOSABLE_MULTI_ACTIONS = frozenset({
+    "price.series", "price.compare", "price.verify_claim",
+    "trade.country_rank", "trade.monthly", "trade.concentration", "trade.hs_summary", "trade.indicator",
+    "resource.rank", "mine.rank", "mine.profile", "indicator.series",
+    "document.retrieve", "document.lookup", "stockpile.methodology",
+})
 OFF_TOPIC = "off_topic"
 MINERAL_ALIASES = {"nickel": "니켈", "cobalt": "코발트", "copper": "구리", "lithium": "리튬", "rare earth": "희토류"}
 UNAVAILABLE = frozenset({
@@ -181,6 +190,19 @@ production/reserves, mine_order는 level/increase/yoy_increase/yoy_decrease다.
 stockpile.methodology다. 이 action은 실재고를 조회하거나 추정하지 않고 계산 정의만 제공한다.
 문서명·원문·특정 절의 직접 확인은 document.lookup이며 topic에 찾을 문서·절·사실을 보존한다.
 한 광산의 위치·소유자·개별 사실은 mine.profile이며 mine_name에 질문의 광산명을 넣는다.
+가격예측 수치 자체를 요청하는 "다음 달 구리 가격 전망"과 "니켈 가격 앞으로 오를까 내릴까"는
+각각 intent=forecast_price, action_id=forecast.price로 정규화한다. 예측 월·기간은
+slots.period.kind=future_horizon과 future_horizon(다음 달=1)으로 보존하고, 광종은
+slots.mineral에 넣는다. 가격예측 원천은 아직 연결되지 않았으므로 이 action은 실행 단계에서
+source_unavailable로 종료하며 price.series/price.compare로 대체하지 않는다.
+광물종합지수의 현재값·전일 변동(예: "오늘 광물종합지수 얼마야?")과 최근 N개월
+추세(예: "최근 3개월 광물종합지수 추세")는 intent=indicator, action_id=indicator.series,
+slots.indicator=composite_index로 정규화한다. 기간이 없으면 최신값, "최근 N개월"은
+trailing_months=N으로 보존하며 price action으로 대체하지 않는다.
+한국·세계 수입/수출 상위국과 점유율은 trade_rank/country_rank, CR3·CR5·집중도는
+trade_concentration, 생산량·매장량 국가순위는 resource_rank/resource.rank로 보존한다.
+월간동향·일일자원뉴스·주간자원뉴스·수출통제 뉴스의 제목·요약·최신 게시물 검색은
+document 또는 document.retrieve로 분류하고 가격·무역 수치 action으로 바꾸지 않는다.
 여러 기간 창의 가격 변화를 비교하면 price.compare 하나에 slots.windows=[3,6,12]처럼 모든
 개월 창을 넣고 period에는 임의의 단일 창을 넣지 않는다.
 광종을 여러 개 언급한 인과·시나리오·영향 설명은 가격·가격변화·가격비교를 명시하지 않는 한
@@ -1021,26 +1043,53 @@ def validate_action_plan(plan: ActionPlan | None) -> PlanAssessment:
         and any(call.action_id == "indicator.series" and call.slots.indicator == "market_outlook"
                 for call in plan.actions)
     )
-    if (len(plan.actions) > 1 and frozenset(action_ids) not in ALLOWED_MULTI
+    has_unbounded_price_compare = any(
+        call.action_id == "price.compare"
+        and call.slots.period is None
+        and not call.slots.windows
+        and call.slots.price_basis is None
+        and call.slots.currency is None
+        for call in plan.actions
+    )
+    has_independent_document = any(
+        call.action_id == "document.retrieve" and call.role == "content"
+        for call in plan.actions
+    )
+    has_document_action = any(call.action_id == "document.retrieve" for call in plan.actions)
+    if has_unbounded_price_compare and has_independent_document:
+        return PlanAssessment(approved=False, failure_reason="source_unavailable")
+    if has_independent_document and any(
+        call.action_id in {"price.compare", "price.verify_claim"} for call in plan.actions
+    ):
+        return PlanAssessment(approved=False, failure_reason="unsupported_combination")
+    # 가격 수치와 원인·영향 문서를 한 번에 묶는 과분해는 기존처럼 닫는다.
+    # 월간동향·광물정보·뉴스처럼 독립 문서 조회는 이 조건에 해당하지 않는다.
+    if (any(call.action_id == "price.series" for call in plan.actions)
+            and has_document_action
+            and any(any(marker in (call.slots.topic or "")
+                        for marker in ("원인", "영향", "메커니즘", "상관", "추론"))
+                    for call in plan.actions if call.action_id == "document.retrieve")):
+        return PlanAssessment(approved=False, failure_reason="unsupported_combination")
+    # 시장전망 관측+영향 문서만 허용한다. 수급안정·종합지수와 임의 문서의
+    # 조합은 기존 계약대로 닫아 문서 근거를 잘못된 지표에 귀속하지 않는다.
+    if (has_document_action
+            and any(call.action_id == "indicator.series" for call in plan.actions)
+            and not market_outlook_with_document):
+        return PlanAssessment(approved=False, failure_reason="unsupported_combination")
+    # 상위국 순위와 HHI를 한 번에 계산하는 조합은 전체 모집단 재집계가
+    # 필요하므로 기존처럼 독립 concentration action으로만 허용한다.
+    if (any(call.action_id == "trade.country_rank" for call in plan.actions)
+            and any(call.action_id == "trade.concentration" and not call.slots.topic
+                    for call in plan.actions)):
+        return PlanAssessment(approved=False, failure_reason="unsupported_combination")
+    if (len(plan.actions) > 1
+            and not action_ids <= COMPOSABLE_MULTI_ACTIONS
+            and frozenset(action_ids) not in ALLOWED_MULTI
             and not market_outlook_with_document):
         # 독립 문서 설명과 함께 기간·창·기준이 전혀 없는 가격 비교가 나온
         # 경우, 비교 관측을 요구한 것이 아니라 모델이 "데이터와 추론 구분"을
         # 가격 action으로 과잉 분해한 상태다. 이 슬롯에는 조회 가능한 비교
         # 조건이 없으므로 조합 미지원으로 숨기지 않고 원천 부족으로 종결한다.
         # 기간/창이 있는 정상 가격 비교와 다른 미지원 조합은 기존 계약을 따른다.
-        has_unbounded_price_compare = any(
-            call.action_id == "price.compare"
-            and call.slots.period is None
-            and not call.slots.windows
-            and call.slots.price_basis is None
-            and call.slots.currency is None
-            for call in plan.actions
-        )
-        has_independent_document = any(
-            call.action_id == "document.retrieve" and call.role == "content"
-            for call in plan.actions
-        )
-        if has_unbounded_price_compare and has_independent_document:
-            return PlanAssessment(approved=False, failure_reason="source_unavailable")
         return PlanAssessment(approved=False, failure_reason="unsupported_combination")
     return PlanAssessment(approved=True, plan=plan)

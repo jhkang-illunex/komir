@@ -102,9 +102,11 @@ from common.llm_client import LLM_TRANSIENT_ERRORS, KomirJsonLLM  # noqa: E402
 from .chatbot_events import ChatEvent, chart_spec, extract_markdown_tables, table_block
 from .official_sources import official_source, public_source_label
 from .chatbot_graph import retrieve_evidence
+from .action_results import RetrievalResult
+from .answer_composer import AnswerComposer
 from .chatbot_store import DEFAULT_DB_PATH as DEFAULT_STORE_DB_PATH
 from .chatbot_store import append_message, get_or_create_session, list_messages
-from .messages import chat_message
+from .messages import chat_message, faq_message
 from .menu_catalog import menu_source
 from . import source_contract as _source_contract
 from .source_contract import assess_source_request
@@ -855,6 +857,13 @@ def _dummy_data_notice(cited_indices: set[int], evidence: list) -> str:
     return "\n\n" + "\n".join(f"⚠ {c}" for c in sorted(caveats))
 
 
+def _partial_forecast_notice(warnings: list[str]) -> str:
+    """가격+가격예측 복합 질의에서 미연결 예측 부분만 명시한다."""
+    if "source_unavailable:price_forecast_partial" not in warnings:
+        return ""
+    return "\n\n※ 가격예측 데이터 원천이 아직 연결되지 않아 전망치와 현재가 비교는 제공하지 못했습니다."
+
+
 def _country_rank_summary(evidence: list, action_plan, question: str, answer_text: str = "") -> str:
     """국가별 순위 표를 차트와 함께 보여줄 때 짧은 텍스트 요약을 만든다."""
 
@@ -1044,6 +1053,15 @@ PRICE_FORECAST_MAX_MONTHS = 120
 def _price_policy_faq_answer(message: str) -> str | None:
     """입력된 가격 정책 안내 문구를 유사 질문에도 그대로 반환한다."""
     normalized = re.sub(r"\s+", "", message.casefold())
+    if "광물종합지수" in normalized and any(x in normalized for x in ("뭐", "무엇", "정의", "란", "이란", "의미")):
+        return faq_message("mineral_composite_index")
+    if "전략광종" in normalized and any(x in normalized for x in ("뭐", "무엇", "정의", "란", "이란", "의미")):
+        return faq_message("strategic_mineral")
+    if "원" in normalized and any(x in normalized for x in ("크기", "중심점", "지도")) and any(x in normalized for x in ("뜻", "의미", "뭐", "무엇", "나타내")):
+        return faq_message("map_circle_size")
+    if ("월간동향" in normalized and any(x in normalized for x in ("검색", "게시판"))
+            and any(x in normalized for x in ("어떻게", "방법", "사용"))):
+        return faq_message("monthly_board_search")
     if "가격예측" in normalized and any(x in normalized for x in ("제공되는광종", "제공광종", "광종은뭐", "광종이뭐")):
         return f"가격예측 제공 광종은 {', '.join(PRICE_FORECAST_MINERALS)}입니다."
     if "가격예측" in normalized and any(x in normalized for x in ("몇개월", "얼마나앞", "언제까지", "몇달")):
@@ -1422,7 +1440,8 @@ def _resolve_abstain(message: str, warnings: list[str], llm: "KomirJsonLLM | Non
     if "claim_not_supported" in warnings:
         return "claim_not_supported", "원자료 가격 비교 결과가 질문의 변동률 전제를 뒷받침하지 않습니다."
     if any(w.startswith(("dense_failed", "pageindex_failed", "structured_failed",
-                          "retrieve_evidence_crashed")) for w in warnings):
+                          "retrieve_evidence_crashed", "action_retrieve_failed",
+                          "action_verify_failed")) for w in warnings):
         return "retrieval_error", ABSTAIN_TEXT
     if _MINERAL_SPECIFIC_COMPOSITE_INDEX_WARNING in warnings:
         return "mineral_specific_composite_index", _MINERAL_SPECIFIC_COMPOSITE_INDEX_TEXT
@@ -1619,17 +1638,25 @@ async def chat_turn(
     concept_question = _is_internal_knowledge_question(message)
 
     evidence, route_warnings = [], []
+    retrieval_result: RetrievalResult | None = None
+    executed_plan = action_plan
     try:
         async for kind, payload, extra in _run_with_status(
             retrieve_evidence, message,
             session_id=resolved_session_id, history=history, llm=router_llm,
             dense_k=dense_k, pageindex_k=pageindex_k, profile=profile,
-            action_plan=action_plan,
+            action_plan=action_plan, include_action_results=True,
         ):
             if kind == "status":
                 yield _status_event(_GRAPH_STAGE_TO_STATUS.get(payload, 3), **extra)
             elif kind == "result":
-                evidence, route_warnings = payload
+                if isinstance(payload, RetrievalResult):
+                    retrieval_result = payload
+                    evidence, route_warnings = payload.legacy_pair()
+                    executed_plan = payload.action_plan or action_plan
+                else:
+                    # 외부 주입·기존 테스트 스텁의 (evidence, warnings) 계약.
+                    evidence, route_warnings = payload
     except Exception:
         # 정형/dense/PageIndex 셋 다 접속 자체가 안 되는 등 오케스트레이션 계층
         # 전체가 죽은 경우 — 조용히 삼키지 않고 로그는 남기되, 500으로 스트림을
@@ -1728,7 +1755,7 @@ async def chat_turn(
         citations = []
         # 단일 가격 조회는 답변·인용 패널·표·차트에서 원천/테이블명과 실제
         # 관측범위를 감춘다. 수치 요약은 위 결정적 표본 계산으로만 제공한다.
-        extra = ""
+        extra = _partial_forecast_notice(route_warnings)
         final_text = answer + extra
         yield _status_event(4)
         yield ChatEvent(type="delta", data={"delta": answer})
@@ -1747,7 +1774,13 @@ async def chat_turn(
 
     near_miss = "retrieval_near_miss" in route_warnings
     system_prompt = NEAR_MISS_SYSTEM_PROMPT if near_miss else CHATBOT_SYSTEM_PROMPT
-    user_prompt = _history_block(history) + _build_evidence_prompt(message, evidence)
+    composer = AnswerComposer()
+    composer_result = retrieval_result or RetrievalResult(
+        action_plan=executed_plan, evidence=evidence, warnings=route_warnings,
+    )
+    multi_action_instruction = composer.instruction(composer_result)
+    planned_actions = list(getattr(executed_plan, "actions", []) or [])
+    user_prompt = _history_block(history) + multi_action_instruction + _build_evidence_prompt(message, evidence)
     chat = chat or OpenAICompatChat(_cfg_from_env())
     # 선택 가격기준 단위는 citation과 본문이 반드시 같아야 한다. 이 좁은
     # 경로만 생성 완료 뒤에 보정해, LLM의 단위 누락·반대 서술을 화면에 먼저
@@ -1766,7 +1799,7 @@ async def chat_turn(
             full_text_parts.append(delta)
             # 일반 RAG는 기존 스트리밍을 유지한다. 개념 질문은 인용 검증 전의
             # 모델 문장이 노출되지 않게 여기서 버퍼링한다.
-            if not concept_question and not price_unit_guard and not rank_request_guard:
+            if not concept_question and not price_unit_guard and not rank_request_guard and len(planned_actions) < 2:
                 yield ChatEvent(type="delta", data={"delta": delta})
     except Exception:
         # 2026-09-08(skeptic-code SC-2) — complete_stream()은 재시도를 하지 않고
@@ -1879,7 +1912,7 @@ async def chat_turn(
         yield _abstain_done("source_unavailable", bogus_citations=bogus)
         return
 
-    if concept_question or price_unit_guard or rank_request_guard:
+    if concept_question or price_unit_guard or rank_request_guard or len(planned_actions) >= 2:
         # 인용 번호·문장 직접근거를 모두 검증한 뒤에만 모델 문장을 보낸다.
         yield ChatEvent(type="delta", data={"delta": cleaned})
 
@@ -1893,6 +1926,8 @@ async def chat_turn(
         _dummy_data_notice(cited_indices, evidence)
         + _caution_notice(cited_indices, evidence)
         + _source_footer(cited_indices, evidence)
+        + _partial_forecast_notice(route_warnings)
+        + composer.failure_notice(retrieval_result)
     )
     if rank_summary and rank_summary not in full_text:
         extra = "\n\n" + rank_summary + extra

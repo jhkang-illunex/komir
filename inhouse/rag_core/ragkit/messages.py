@@ -22,3 +22,11 @@ def chat_message(key: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise KeyError(f"missing chat message key: {key}")
     return value
+
+
+def faq_message(key: str) -> str:
+    """수정 가능한 FAQ 원문 resource를 반환한다."""
+    value = _messages().get("faq", {}).get(key)
+    if not isinstance(value, str) or not value.strip():
+        raise KeyError(f"missing FAQ message key: {key}")
+    return value

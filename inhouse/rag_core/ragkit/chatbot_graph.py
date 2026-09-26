@@ -79,6 +79,7 @@ from .source_contract import (  # noqa: E402
     RequirementPlan, SourceAssessment, assess_requirement_plan, extract_requirement_plan,
 )
 from .action_contract import ActionPlan, PlanAssessment, extract_action_plan, validate_action_plan  # noqa: E402
+from .action_results import ActionResult, RetrievalResult  # noqa: E402
 
 # 2026-08-26: 정형(structured)/hybrid(dense+BM25)/PageIndex 세 도구 직접호출을
 # MCP client 호출로 교체(public/private 두 프로필 — mcp_server_public.py·
@@ -2667,6 +2668,40 @@ def build_graph(
     return builder.compile(name="komir-rag-retrieval")
 
 
+def _is_partial_price_forecast_plan(plan: ActionPlan | None) -> bool:
+    """가격 관측과 미연결 가격예측을 독립 실행할 수 있는 복합 계획인지 판정한다."""
+    if not isinstance(plan, ActionPlan):
+        return False
+    ids = {call.action_id for call in plan.actions}
+    return (
+        "price.series" in ids
+        and "forecast.price" in ids
+        and "menu.navigate" not in ids
+        and "dataset.navigate" not in ids
+        and "off_topic" not in ids
+    )
+
+
+def _dependency_order(plan: ActionPlan) -> list:
+    """검증된 DAG를 의존 Action 먼저 실행하되 동순위는 원래 순서로 둔다."""
+    by_id = {call.requirement_id: call for call in plan.actions}
+    ordered = []
+    visited = set()
+
+    def visit(call):
+        if call.requirement_id in visited:
+            return
+        for predecessor in call.depends_on:
+            if predecessor in by_id:
+                visit(by_id[predecessor])
+        visited.add(call.requirement_id)
+        ordered.append(call)
+
+    for call in plan.actions:
+        visit(call)
+    return ordered
+
+
 def retrieve_evidence(
     question: str, *,
     session_id: str | None = None,
@@ -2678,41 +2713,15 @@ def retrieve_evidence(
     source_assessment: SourceAssessment | None = None,
     action_plan: ActionPlan | None = None,
     on_status: Callable[..., None] | None = None,
-) -> tuple[list[Evidence], list[str]]:
-    """`chat_turn()`이 부르는 단일 진입점 — question(+history) -> (근거 리스트,
-    경고 리스트). history는 대용어("그 나라" 등) 해소용으로만 라우팅 노드에
-    쓰이고, 실제 검색 질의는 route.resolved_query로 대체된다. session_id는
-    그래프 판단에 관여하지 않고 로그 추적용으로만 실린다(_log_prefix). 1차
-    검색이 0건이거나 verify가 "질문에 안 답한다"고 판정하면 검색어를 재구성해
-    1회 재시도한다(_reformulate_node).
+    include_action_results: bool = False,
+) -> tuple[list[Evidence], list[str]] | RetrievalResult:
+    """Action별 조회·검증 후 근거를 합친다.
 
-    `profile`도 session_id와 같은 패스스루 필드다(그래프 판단엔 관여 안 함) —
-    `_retrieve_node`가 mcp_client.public/private 중 어느 세션으로 hybrid_search·
-    pageindex_lookup을 호출할지만 정한다(2026-08-26, pubchat/prichat 분리).
-
-    `on_status(stage: str, **extra)`(2026-08-27)는 route/retrieve/verify/
-    reformulate 각 단계 진입 시점에 호출된다 — `chat_turn()`이 이걸로 SSE
-    `status` 이벤트를 낸다(`chatbot.py::_run_with_status` 참고). 이 함수는
-    여전히 동기라 `on_status`도 동기 콜백이어야 한다(스레드 안전한 브리징은
-    호출자 책임).
-
-    구현은 `graph.invoke()` 대신 `graph.stream(stream_mode=["updates",
-    "values"])`를 쓴다 — LangGraph가 "updates" 모드로 매 노드 **완료** 직후
-    그 노드명+반환 delta를, "values" 모드로 그 시점까지 누적된 전체 state를
-    내주므로(실측 확인, 2026-08-27), on_status를 노드 함수 4개+build_graph에
-    일일이 관통시키지 않고 여기 한 곳에서만 처리할 수 있다(skeptic-code
-    SC-001, 최초 구현은 노드마다 손으로 콜백을 심었었음). 그래프를 두 번
-    돌리는 게 아니다 — 같은 스트림의 "values" 마지막 항목이 `graph.invoke()`
-    반환값과 동일한 최종 state다.
-
-    ⚠ "updates"는 진입이 아니라 **완료** 시점이다(2차 감사 실측 — 첫 구현은
-    완료 시점에 그 노드 이름을 그대로 내서 모든 status가 한 단계씩 늦었고,
-    가장 긴 대기인 첫 route LLM 호출 동안엔 아무것도 안 나갔다). 그래서
-    "완료된 노드 → 다음에 실행될 노드"로 매핑한다: 시작 전 routing,
-    route/reformulate 완료 → retrieving, retrieve 완료 → verifying, verify
-    완료 → 재시도면 reformulating(재시도 판단은 엣지 함수 `_route_after_verify`
-    를 그대로 재사용). 이 매핑은 build_graph()의 엣지 구성과 짝이다 — 엣지를
-    바꾸면 여기도 같이 볼 것."""
+    기본 반환값은 기존 호출자용 ``(evidence, warnings)``이다.
+    ``include_action_results=True``이면 실제 계획과 Action별 상태를 담은
+    ``RetrievalResult``를 반환한다. ``on_status``는 동기 콜백이며 호출자가
+    SSE 스레드 브리지를 담당한다.
+    """
 
     llm = llm or KomirJsonLLM()
     if on_status:
@@ -2730,18 +2739,78 @@ def retrieve_evidence(
             action_plan = None
             action_assessment = PlanAssessment(approved=False, failure_reason="slot_unresolved")
 
+    partial_forecast_warning: list[str] = []
+    original_plan = action_plan
+    action_results: list[ActionResult] = []
+
+    def finish(evidence: list[Evidence], warnings: list[str]):
+        result = RetrievalResult(
+            action_plan=original_plan, action_results=action_results,
+            evidence=evidence, warnings=warnings,
+        )
+        return result if include_action_results else result.legacy_pair()
+
     if not action_assessment.approved or action_plan is None:
-        return [], [f"action_plan_failed:{action_assessment.failure_reason}"]
+        if action_plan is None or not _is_partial_price_forecast_plan(action_plan):
+            return finish([], [f"action_plan_failed:{action_assessment.failure_reason}"])
+    if action_plan is not None and _is_partial_price_forecast_plan(action_plan):
+        # forecast.price는 아직 원천이 없으므로 price.series만 실행한다.
+        # 기존의 다른 미지원 복합 action은 계속 전체 기권한다.
+        action_plan = action_plan.model_copy(update={
+            "actions": [call for call in action_plan.actions if call.action_id != "forecast.price"],
+        })
+        partial_forecast_warning = ["source_unavailable:price_forecast_partial"]
+        for call in original_plan.actions:
+            if call.action_id == "forecast.price":
+                action_results.append(ActionResult(
+                    requirement_id=call.requirement_id, action_id=call.action_id,
+                    slots=call.slots, status="source_unavailable",
+                    warnings=partial_forecast_warning.copy(), failure_reason="source_unavailable",
+                ))
+        action_assessment = validate_action_plan(action_plan)
+        if not action_assessment.approved:
+            return finish([], [f"action_plan_failed:{action_assessment.failure_reason}"])
 
     # 각 ActionCall은 독립 adapter와 Advisor를 통과한다. plan 전체를 하나의
     # 자유형 route로 압축하지 않아 Q04/Q11/Q29의 requirement 귀속이 섞이지 않는다.
     all_evidence: list[Evidence] = []
     all_warnings: list[str] = []
-    for call in action_plan.actions:
+    failed_requirements: set[str] = {
+        item.requirement_id for item in action_results if item.status != "success"
+    }
+
+    def record_failure(call, warnings: list[str], reason: str) -> None:
+        failed_requirements.add(call.requirement_id)
+        if reason.startswith("source_unavailable"):
+            status = "source_unavailable"
+        elif reason == "no_data":
+            status = "no_data"
+        elif reason == "blocked":
+            status = "blocked"
+        elif reason in {"advisor_rejected", "claim_not_supported"}:
+            status = "validation_failed"
+        else:
+            status = "failed"
+        action_results.append(ActionResult(
+            requirement_id=call.requirement_id, action_id=call.action_id,
+            slots=call.slots, status=status, warnings=warnings,
+            failure_reason=reason,
+        ))
+        # 단일 Action의 warning 계약은 보존한다. 복합 Action에서는 실패
+        # 경고를 해당 requirement에 묶어 성공한 다른 Action에 전파하지 않는다.
+        if len(original_plan.actions) == 1:
+            all_warnings.extend(warnings)
+        else:
+            all_warnings.append(f"action_failed:{call.requirement_id}:{call.action_id}:{reason}")
+
+    for call in _dependency_order(action_plan):
+        if set(call.depends_on) & failed_requirements:
+            record_failure(call, [], "blocked")
+            continue
         if call.action_id in {"menu.navigate", "dataset.navigate"}:
             # 메뉴 레지스트리는 app/page_recommend 어댑터 소관이다. 이 RAG core가
             # 링크를 추측하거나 문서 검색으로 대체하지 않는다.
-            return [], ["action_plan_failed:adapter_unavailable"]
+            return finish([], ["action_plan_failed:adapter_unavailable"])
         route = _route_from_action_call(call, question)
         if on_status:
             on_status("retrieving", action_id=call.action_id)
@@ -2766,10 +2835,17 @@ def retrieve_evidence(
         if static_evidence:
             call_evidence, call_warnings = static_evidence, []
         else:
-            extracted = _retrieve_node(
-                state_for_call, dense_k=dense_k, pageindex_k=pageindex_k,
-                llm=llm, on_status=on_status,
-            )
+            try:
+                extracted = _retrieve_node(
+                    state_for_call, dense_k=dense_k, pageindex_k=pageindex_k,
+                    llm=llm, on_status=on_status,
+                )
+            except Exception as exc:
+                if len(original_plan.actions) == 1:
+                    raise
+                _logger.exception("Action 조회 실패: %s/%s", call.requirement_id, call.action_id)
+                record_failure(call, [f"action_retrieve_failed:{type(exc).__name__}"], "retrieve_failed")
+                continue
             call_evidence = extracted.get("evidence", [])
             call_warnings = extracted.get("warnings", [])
         call_evidence = _filter_document_evidence_to_trailing_period(call_evidence, call)
@@ -2783,30 +2859,38 @@ def retrieve_evidence(
             if _is_rare_earth_nd_scope_request(call, question):
                 ev.q15_usgs_scope = True
         if _has_unverified_komis_evidence(call_evidence):
-            return [], call_warnings + [
-                f"{_SOURCE_UNAVAILABLE_WARNING_PREFIX}komis_data_provenance_unverified",
-            ]
+            reason = f"{_SOURCE_UNAVAILABLE_WARNING_PREFIX}komis_data_provenance_unverified"
+            record_failure(call, call_warnings + [reason], reason)
+            continue
         if call.action_id in {"document.lookup", "mine.profile"}:
             # 파일명/후보 메타데이터는 사실 근거가 아니다. MCP가 with_text=True로
             # 읽은 PageIndex OKF 본문이 하나라도 있어야만 아래 Advisor로 넘긴다.
             if not any(ev.kind == "pageindex" and ev.text.strip() for ev in call_evidence):
-                return [], call_warnings + [f"{_SOURCE_UNAVAILABLE_WARNING_PREFIX}okf_body_unavailable"]
+                reason = f"{_SOURCE_UNAVAILABLE_WARNING_PREFIX}okf_body_unavailable"
+                record_failure(call, call_warnings + [reason], reason)
+                continue
         if call.action_id == "mine.profile" and not _okf_body_matches_profile(call_evidence, call.slots.mine_name):
-            return [], call_warnings + [f"{_SOURCE_UNAVAILABLE_WARNING_PREFIX}okf_profile_mismatch"]
+            reason = f"{_SOURCE_UNAVAILABLE_WARNING_PREFIX}okf_profile_mismatch"
+            record_failure(call, call_warnings + [reason], reason)
+            continue
         if call.action_id == "mine.profile" and any(
                 (matched := re.search(r"동일 식별자 행 (\d+)개", ev.section)) and int(matched.group(1)) >= 2
                 for ev in call_evidence):
-            return [], call_warnings + ["ambiguous_mine_profile"]
+            record_failure(call, call_warnings + ["ambiguous_mine_profile"], "ambiguous_mine_profile")
+            continue
         if call.action_id in {"document.lookup", "mine.profile"}:
             # dense는 문서 후보 탐색 보조일 뿐, 명시 문서/단건 광산의 사실을
             # 인용할 근거가 아니다. 확인된 OKF 본문만 Advisor·생성에 남긴다.
             call_evidence = [ev for ev in call_evidence if ev.kind == "pageindex" and ev.text.strip()]
         if not _comparison_or_monthly_source_is_usable(call_evidence, call):
-            return [], call_warnings + [f"{_SOURCE_UNAVAILABLE_WARNING_PREFIX}unverified_or_incomplete_observation"]
+            reason = f"{_SOURCE_UNAVAILABLE_WARNING_PREFIX}unverified_or_incomplete_observation"
+            record_failure(call, call_warnings + [reason], reason)
+            continue
         if call.action_id == "price.verify_claim":
             threshold = call.slots.claimed_change_pct
             if threshold is None:
-                return [], call_warnings + ["claim_not_supported"]
+                record_failure(call, call_warnings + ["claim_not_supported"], "claim_not_supported")
+                continue
             matched = _claim_matches_comparison(
                 call_evidence, threshold, call.slots.comparator, call.slots.mineral,
             )
@@ -2831,61 +2915,48 @@ def retrieve_evidence(
             verified = {"sufficient": bool(call_evidence), "evidence": call_evidence,
                         "warnings": call_warnings}
         else:
-            verified = _verify_node({**state_for_call, "evidence": call_evidence, "warnings": call_warnings}, llm)
+            try:
+                verified = _verify_node(
+                    {**state_for_call, "evidence": call_evidence, "warnings": call_warnings}, llm,
+                )
+            except Exception as exc:
+                if len(original_plan.actions) == 1:
+                    raise
+                _logger.exception("Action 검증 실패: %s/%s", call.requirement_id, call.action_id)
+                record_failure(call, [f"action_verify_failed:{type(exc).__name__}"], "verify_failed")
+                continue
         if not verified.get("sufficient"):
-            return [], list(verified.get("warnings", call_warnings)) + ["advisor_rejected"]
-        all_evidence.extend(verified.get("evidence", []))
-        all_warnings.extend(verified.get("warnings", []))
-    return all_evidence, all_warnings
-
-    # Stage 1 compatibility source assessment remains for callers which pass
-    # only the earlier source-domain contract; action assessment is authoritative
-    # for tool execution below.
-    # this stage (chatbot entrypoint) passes the same assessment to avoid a
-    # second parse. Invalid extraction is intentionally fail-closed.
-    requirement_plan: RequirementPlan | None = None
-    if source_assessment is None:
-        try:
-            requirement_plan = extract_requirement_plan(question, llm)
-            source_assessment = assess_requirement_plan(requirement_plan)
-        except LLM_TRANSIENT_ERRORS:
-            source_assessment = SourceAssessment(blocked=True, extraction_valid=False)
-    graph = build_graph(llm, dense_k=dense_k, pageindex_k=pageindex_k, on_status=on_status)
-    state: dict = {
-        "question": question, "history": history or [], "session_id": session_id,
-        "profile": profile, "attempt": 1,
-        "requirement_plan": requirement_plan,
-        "source_assessment": source_assessment,
-        "action_plan": action_plan,
-        "action_assessment": action_assessment,
-    }
-    if on_status:
-        on_status("routing")  # 첫 노드(route)는 완료 이벤트가 오기 전에 알려야 한다
-    for mode, chunk in graph.stream(state, stream_mode=["updates", "values"]):
-        if mode == "values":
-            state = chunk
+            failure_warnings = list(verified.get("warnings", call_warnings)) + ["advisor_rejected"]
+            source_failure = next(
+                (warning for warning in failure_warnings if warning.startswith(_SOURCE_UNAVAILABLE_WARNING_PREFIX)),
+                None,
+            )
+            reason = source_failure or (
+                "no_data" if not call_evidence and not failure_warnings[:-1] else "advisor_rejected"
+            )
+            record_failure(call, failure_warnings, reason)
             continue
-        if not on_status:
+        verified_evidence = list(verified.get("evidence", []))
+        verified_warnings = list(verified.get("warnings", []))
+        if not verified_evidence:
+            record_failure(call, verified_warnings + ["advisor_rejected"], "no_data")
             continue
-        node_name, delta = next(iter(chunk.items()))
-        if node_name in ("route", "reformulate"):
-            # 두 노드 다 다음 엣지가 retrieve. 켜진 도구 목록은 이 노드가 방금
-            # 돌려준 delta의 route에서 읽는다 — 폴백 경로도 route를 항상 반환하고,
-            # values 청크와의 인터리빙 순서에 기대지 않아도 된다.
-            route = delta["route"]
-            tools = [
-                name for name, flag in (
-                    ("structured", route.use_structured), ("komis_raw", route.use_komis_raw),
-                    ("dense", route.use_dense), ("pageindex", route.use_pageindex),
-                ) if flag
-            ]
-            on_status("retrieving", tools=tools)
-        elif node_name == "retrieve":
-            on_status("verifying")
-        elif node_name == "verify" and _route_after_verify({**state, **delta}) == "retry":
-            # state는 아직 verify 반영 전(values 청크가 updates 뒤에 온다)이라 delta를 덧씌운다.
-            on_status("reformulating")
-    return state.get("evidence", []), state.get("warnings", [])
+        all_evidence.extend(verified_evidence)
+        all_warnings.extend(verified_warnings)
+        action_results.append(ActionResult(
+            requirement_id=call.requirement_id, action_id=call.action_id,
+            slots=call.slots, status="success", evidence=verified_evidence,
+            warnings=verified_warnings,
+        ))
+    # 원래 계획의 순서대로 반환해 생성기의 요구사항 순서가 실행 세부순서에
+    # 좌우되지 않게 한다. 가격예측 부분 결과도 이 순서 안에 포함된다.
+    order = {call.requirement_id: index for index, call in enumerate(original_plan.actions)}
+    action_results.sort(key=lambda item: order[item.requirement_id])
+    if not all_evidence and len(original_plan.actions) > 1 and action_results:
+        first_failure = next((item for item in action_results if item.status != "success"), None)
+        if first_failure:
+            all_warnings.extend(first_failure.warnings)
+    return finish(all_evidence, partial_forecast_warning + all_warnings)
 
 
 if __name__ == "__main__":  # 수동 점검용

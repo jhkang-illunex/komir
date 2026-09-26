@@ -2,6 +2,65 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-27 — Action 결과 계약과 복합 응답 조립 1차 정규화
+
+`ragkit/action_results.py`에 `ActionResult`·`RetrievalResult`를 추가하고,
+`retrieve_evidence()`의 기본 `(evidence, warnings)` 반환은 유지하면서
+`include_action_results=True`일 때 실제 ActionPlan과 요구사항별 상태·근거·실패
+사유를 반환하도록 했다. 독립 Action의 조회·검증 실패가 앞선 성공 근거를 버리지
+않게 했고, 의존 Action은 선행 결과가 실패하면 `blocked`로 기록한다. 기존의
+미지원 조합 차단(`price.verify_claim` + 독립 문서 포함)은 유지한다.
+
+`ragkit/answer_composer.py`는 검증된 근거 번호를 requirement_id/action_id에
+결속해 생성 프롬프트에 전달하고, 실패한 요구사항의 안내를 코드로 덧붙인다.
+복합 응답은 인용 검증 전 원시 스트림을 화면에 보내지 않도록 버퍼링한다.
+`chat_turn()`의 인수·SSE 이벤트·저장 진입점은 유지했고, 그래프의 도달 불가능한
+레거시 반환 블록을 제거했다. 변경 파일은 `action_results.py`,
+`answer_composer.py`, `chatbot_graph.py`, `chatbot.py`, `action_contract.py`,
+`tests/test_action_result_composition.py` 및 이 WORKLOG다.
+
+회귀 범위: `test_action_result_composition.py`, `test_action_contract_audit.py`,
+`test_okf_action_contract.py`, `test_internal_knowledge_route.py` 총 73건 통과;
+문법·diff 검사 통과.
+실제 DB/LLM 복합 질의 결과와 배포 컨테이너 응답은 아직 확인하지 않았다.
+ChatService 전체 이전과 복합 응답의 의미 검증은 후속 단계다. 이번 변경에서
+커밋·푸시·이미지 빌드·배포는 하지 않았다.
+
+## 2026-09-27 — multi action 허용 및 n개 결과 조립 지시 보완
+
+가격·지표·무역·자원·문서 등 독립 데이터 Action은 requirement별로 함께
+검증·실행할 수 있도록 허용 범위를 확장했다. 메뉴 이동과 기존에 차단하던
+가격 비교+독립 문서 조합은 유지했으며, n개 Action은 생성 단계에서 요구사항별
+섹션과 근거 분리를 지시한다. 가격+가격예측 조합의 예측 원천 미연결 부분 실행도
+유지한다. 단위 테스트 18건과 문법·diff 검사를 통과했으며 이미지 빌드·배포는 하지 않았다.
+
+## 2026-09-27 — 가격·가격예측 복합 질의 부분 실행 보완
+
+`price.series`와 `forecast.price`가 함께 선택된 경우 두 action을 독립적으로
+계획하되, 가격예측 원천이 미연결이면 `price.series`만 실행하도록 보완했다.
+예측 비교 불가 문구는 조회 가능한 가격 결과 뒤에 추가하며, 기존의 다른 미지원
+복합 action 전체 기권 규칙은 유지한다. 이미지 빌드·배포는 하지 않았다.
+
+## 2026-09-27 — FAQ·질의계약 1차 iterative-audit 보완
+
+17·18번 광물종합지수 질의를 `indicator.series`/`composite_index`로 명시하고,
+무역 순위·집중도·생산·매장량 순위·동향/뉴스 검색의 기존 Intent/Action 경계를
+계약 프롬프트에 보강했다. 32번 지도 원 크기와 40번 월간동향 검색 방법은
+수정 가능한 FAQ resource로 추가했다. 이미지 빌드·배포는 하지 않았다.
+
+## 2026-09-27 — 광물종합지수·전략광종 FAQ resource 추가
+
+18번 광물종합지수와 36번 전략광종 질의를 결정적으로 인식하도록 추가했다. 답변
+템플릿은 `inhouse/rag_core/ragkit/resources/messages.yml`의 `faq` 항목에 저장해
+정의 문구와 구성 광종을 코드 수정 없이 변경할 수 있게 했다. 이미지 빌드·배포는 하지 않았다.
+
+## 2026-09-27 — 가격예측 질의 Intent/Action 연결
+
+`다음 달 구리 가격 전망`, `니켈 가격 앞으로 오를까 내릴까`를
+`forecast_price`/`forecast.price`로 연결하는 계약 설명을 명시했다. 예측 원천이
+아직 연결되지 않은 상태에서는 `price.series`·`price.compare`로 대체하지 않고
+`source_unavailable`로 종료한다. 이미지 빌드·배포는 수행하지 않았다.
+
 ## 2026-09-27 — 가격예측 FAQ 추가
 
 가격예측 제공 광종 목록(11개)과 최대 제공 범위(120개월)를 FAQ 원문 응답으로
