@@ -29,9 +29,10 @@ class PriceUnitDisclosureTest(unittest.TestCase):
         self.assertNotIn("PR001", disclosure)
         self.assertNotIn("WT002", disclosure)
         assert scope is not None
-        self.assertIn("가격기준=LME CASH", scope[0])
-        self.assertNotIn("PR001", scope[0])
-        self.assertNotIn("WT002", scope[0])
+        self.assertIn("가격 기준은 LME CASH, 통화 코드는 PR001, 단위 코드는 WT002입니다.", scope[0])
+        self.assertNotIn("관측 기간", scope[0])
+        self.assertNotIn("PR001;", scope[0])
+        self.assertNotIn("WT002;", scope[0])
         self.assertEqual(citations[0]["unit"], "가격기준=LME CASH")
 
     def test_verified_human_units_are_preserved(self):

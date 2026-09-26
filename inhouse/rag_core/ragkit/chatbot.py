@@ -81,11 +81,12 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 import re
 import threading
 from collections.abc import AsyncIterator, Iterator
 from contextvars import copy_context
-from datetime import date
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Literal
 
@@ -706,6 +707,23 @@ def _user_visible_unit(unit: str | None) -> str | None:
     return "; ".join(part for part in visible if part) or None
 
 
+def _natural_price_basis(unit: str | None) -> str | None:
+    """가격기준과 원천 코드를 사용자 문장에 쓸 수 있는 순서로 풀어 쓴다."""
+    values = {}
+    for part in (unit or "").split(";"):
+        key, separator, value = part.partition("=")
+        if separator and value.strip():
+            values[key.strip()] = value.strip()
+    clauses = []
+    if basis := values.get("가격기준"):
+        clauses.append(f"가격 기준은 {basis}")
+    if currency := values.get("통화코드"):
+        clauses.append(f"통화 코드는 {currency}")
+    if weight := values.get("중량단위코드"):
+        clauses.append(f"단위 코드는 {weight}")
+    return (", ".join(clauses) + "입니다.") if clauses else None
+
+
 def _citation_sources(cited_indices: set[int], evidence: list) -> list[dict]:
     """done.citations(=streamlit_demo 등 프런트의 "[근거 데이터 보기]" 패널이
     그대로 렌더링하는 필드) — 검색된 evidence 전체가 아니라 답변 본문에 실제로
@@ -889,14 +907,91 @@ def _price_unit_disclosure(text: str, evidence: list) -> str:
     return cleaned + ("\n\n" if cleaned and additions else "") + "\n".join(additions)
 
 
-def _price_series_scope_answer(evidence: list, action_plan) -> tuple[str, set[int]] | None:
-    """선택 가격 시계열 1건의 본문을 원자료 메타데이터로만 구성한다.
+def _price_series_observations(text: str) -> list[tuple[date, float]]:
+    """가격 표에서 일자와 통상 가격을 추출해 날짜순 표본을 만든다."""
+    date_formats = ("%Y%m%d", "%Y-%m-%d", "%Y%m", "%Y-%m", "%Y")
+    for table in extract_markdown_tables(text):
+        keys = [column.split("(", 1)[0].strip().casefold() for column in table["columns"]]
+        date_idx = next((idx for idx, key in enumerate(keys)
+                         if key in {"crtr_ymd", "price_date", "date", "trd_dt"}), None)
+        price_idx = next((idx for idx, key in enumerate(keys)
+                          if key in {"cmerc_prc", "price", "avg_price", "average_price"}), None)
+        if date_idx is None:
+            date_idx = next((idx for idx, column in enumerate(table["columns"])
+                             if "일자" in column or column.strip().casefold() == "date"), None)
+        if price_idx is None:
+            price_idx = next((idx for idx, column in enumerate(table["columns"])
+                              if "가격" in column and not any(
+                                  term in column for term in ("최저", "최고", "하한", "상한"))), None)
+        if date_idx is None or price_idx is None:
+            continue
+        observations = []
+        for row in table["rows"]:
+            raw_date = row[date_idx].strip()
+            observed_date = None
+            for fmt in date_formats:
+                try:
+                    observed_date = datetime.strptime(raw_date, fmt).date()
+                    break
+                except ValueError:
+                    continue
+            try:
+                price = float(row[price_idx].replace(",", "").replace("%", "").strip())
+            except (ValueError, AttributeError):
+                continue
+            if observed_date is not None and math.isfinite(price):
+                observations.append((observed_date, price))
+        if observations:
+            return sorted(observations)
+    return []
 
-    시계열 표와 차트는 동일 Evidence에서 생성된다. 생성 모델에게 임의 날짜 행이나
-    고점·저점을 고르게 맡기면 실제 최대·최소와 다른 값을 전체 추이처럼 쓸 수
-    있다. 단일 ``price.series`` 조회는 실제 관측기간과 선택 기준만 본문에
-    표시하고, 가격 비교 등 여러 requirement가 섞인 답변에는 적용하지 않는다.
-    """
+
+def _format_price(value: float) -> str:
+    return f"{value:,.2f}".rstrip("0").rstrip(".")
+
+
+def _price_series_summary(item) -> str:
+    observations = _price_series_observations(item.text)
+    if not observations:
+        return "조회된 가격 표의 날짜·가격 열을 판독하지 못해 최고·최저와 추세를 계산하지 못했습니다."
+    prices = [price for _, price in observations]
+    high, low = max(prices), min(prices)
+    first, latest = prices[0], prices[-1]
+    high_low_pct = ((high - low) / low * 100) if low else None
+    period_change = latest - first
+    period_change_pct = (period_change / first * 100) if first else None
+
+    clauses = [f"최고가는 {_format_price(high)}", f"최저가는 {_format_price(low)}"]
+    range_text = f"고저 차는 {_format_price(high - low)}"
+    if high_low_pct is not None:
+        range_text += f"(최저가 대비 {high_low_pct:+.2f}%)"
+    clauses.append(range_text)
+    change_text = f"시작 값 대비 최신 값 변화는 {_format_price(abs(period_change))}"
+    if period_change < 0:
+        change_text = change_text.replace("변화는", "변화는 -")
+    elif period_change > 0:
+        change_text = change_text.replace("변화는", "변화는 +")
+    if period_change_pct is not None:
+        change_text += f" ({period_change_pct:+.2f}%)"
+    clauses.append(change_text)
+
+    # 최근 관측 표본과 직전 표본의 평균을 비교해 단기 흐름을 결정한다.
+    sample_size = min(30, len(prices) // 2)
+    if sample_size >= 2:
+        previous = prices[-2 * sample_size:-sample_size]
+        recent = prices[-sample_size:]
+        prior_mean = sum(previous) / len(previous)
+        recent_mean = sum(recent) / len(recent)
+        trend_pct = ((recent_mean - prior_mean) / prior_mean * 100) if prior_mean else 0.0
+        trend = "상승" if trend_pct > 0.5 else "하락" if trend_pct < -0.5 else "보합"
+        clauses.append(f"최근 가격 흐름은 {trend} 추세({trend_pct:+.2f}%)입니다")
+    else:
+        clauses.append("최근 가격 흐름은 표본이 부족해 판정하기 어렵습니다")
+    return ". ".join(clauses) + "."
+
+
+def _price_series_scope_answer(evidence: list, action_plan) -> tuple[str, set[int]] | None:
+    """단일 가격 조회의 기간 요약을 표본에서 결정론적으로 계산한다."""
     actions = getattr(action_plan, "actions", [])
     if len(actions) != 1 or getattr(actions[0], "action_id", None) != "price.series":
         return None
@@ -910,15 +1005,21 @@ def _price_series_scope_answer(evidence: list, action_plan) -> tuple[str, set[in
     if len(evidence) != 1 or len(selected) != 1:
         return None
     index, item = selected[0]
-    answer = (
-        f"조회된 가격 시계열의 실제 관측 기간은 {item.observed_period}입니다. "
-        f"아래 표와 차트는 조회된 관측값을 바탕으로 표시합니다. [{index}]"
-    )
-    frequency_labels = {"daily": "일별", "weekly": "주별", "monthly": "월별", "yearly": "연도별"}
-    if frequency_label := frequency_labels.get(getattr(item, "requested_frequency", None)):
-        answer += f" 요청하신 {frequency_label} 기준으로 집계했습니다. [{index}]"
-    if unit := _user_visible_unit(item.unit):
-        answer += f"\n\n선택 가격기준의 단위 표기는 {unit}입니다. [{index}]"
+    slots = getattr(actions[0], "slots", None)
+    period = getattr(slots, "period", None)
+    if period and period.kind == "trailing_months" and period.trailing_months:
+        duration = "1년" if period.trailing_months == 12 else f"{period.trailing_months}개월"
+        heading = f"최근 {duration} 가격 요약입니다."
+    elif period and period.kind == "calendar_year" and period.calendar_year:
+        heading = f"{period.calendar_year}년 가격 요약입니다."
+    else:
+        heading = "요청하신 기간의 가격 요약입니다."
+    basis = _natural_price_basis(item.unit)
+    answer = f"{heading} 조회된 값 기준입니다."
+    if basis:
+        answer += f" {basis}"
+    answer += f"\n\n{_price_series_summary(item)}"
+    answer += "\n\n표와 차트는 조회된 가격값으로 작성했습니다."
     return answer, {index}
 
 
@@ -1236,6 +1337,23 @@ def _evidence_source_label(ev) -> str:
     return label
 
 
+def _price_series_display_table(table: dict) -> dict:
+    """단일 가격 표에서 사용자에게 의미가 없는 내부 코드 열을 제거한다."""
+    hidden_keys = {"price_currency_code", "weight_unit_code", "price_criterion_serial", "mnrl_prc_crtr_sn"}
+    keep = [idx for idx, header in enumerate(table["columns"])
+            if header.split("(", 1)[0].strip().casefold() not in hidden_keys]
+    if len(keep) == len(table["columns"]):
+        return table
+    columns = [table["columns"][idx] for idx in keep]
+    rows = [[row[idx] for idx in keep] for row in table["rows"]]
+    markdown = "\n".join([
+        "| " + " | ".join(columns) + " |",
+        "| " + " | ".join("---" for _ in columns) + " |",
+        *("| " + " | ".join(row) + " |" for row in rows),
+    ])
+    return {**table, "columns": columns, "rows": rows, "markdown": markdown}
+
+
 def _multimodal_events(cited_indices: set[int], evidence: list) -> list[ChatEvent]:
     """인용된 근거에서 표를 뽑아 `table` 블록으로, 추천 차트가 있으면 `chart`
     스펙으로도 낸다. 인용 안 된 근거(조회는 됐지만 답변 근거로 안 쓰인 것)는
@@ -1259,23 +1377,30 @@ def _multimodal_events(cited_indices: set[int], evidence: list) -> list[ChatEven
     for i, ev in enumerate(evidence, 1):
         if i not in cited_indices:
             continue
-        source_label = _evidence_source_label(ev)
+        hide_price_provenance = getattr(ev, "action_id", None) == "price.series"
+        source_label = None if hide_price_provenance else _evidence_source_label(ev)
+        source_index = None if hide_price_provenance else i
+        as_of = None if hide_price_provenance else ev.as_of
+        unit = None if hide_price_provenance else ev.unit
+        source_menu = None if hide_price_provenance else menu_source(getattr(ev, "menu_page_id", None))
         for t_idx, table in enumerate(extract_markdown_tables(ev.text), 1):
+            if hide_price_provenance:
+                table = _price_series_display_table(table)
             table_key = (tuple(table["columns"]), tuple(tuple(row) for row in table["rows"]))
             if table_key in emitted_tables:
                 continue
             emitted_tables.add(table_key)
             table_id = f"t{i}-{t_idx}"
             events.append(ChatEvent(type="table", data=table_block(
-                table, block_id=table_id, source_index=i, source_label=source_label,
-                as_of=ev.as_of, unit=ev.unit,
-                menu_source=menu_source(getattr(ev, "menu_page_id", None)),
+                table, block_id=table_id, source_index=source_index, source_label=source_label,
+                as_of=as_of, unit=unit,
+                menu_source=source_menu,
                 requested_frequency=getattr(ev, "requested_frequency", None),
             )))
             spec = chart_spec(
                 table, block_id=f"c{i}-{t_idx}", data_ref=table_id,
-                source_index=i, source_label=source_label, as_of=ev.as_of, unit=ev.unit,
-                menu_source=menu_source(getattr(ev, "menu_page_id", None)),
+                source_index=source_index, source_label=source_label, as_of=as_of, unit=unit,
+                menu_source=source_menu,
                 requested_frequency=getattr(ev, "requested_frequency", None),
             )
             if spec is not None:
@@ -1468,8 +1593,10 @@ async def chat_turn(
     price_series_answer = _price_series_scope_answer(evidence, action_plan)
     if price_series_answer is not None:
         answer, cited_indices = price_series_answer
-        citations = _citation_sources(cited_indices, evidence)
-        extra = _dummy_data_notice(cited_indices, evidence) + _source_footer(cited_indices, evidence)
+        citations = []
+        # 단일 가격 조회는 답변·인용 패널·표·차트에서 원천/테이블명과 실제
+        # 관측범위를 감춘다. 수치 요약은 위 결정적 표본 계산으로만 제공한다.
+        extra = ""
         final_text = answer + extra
         yield _status_event(4)
         yield ChatEvent(type="delta", data={"delta": answer})

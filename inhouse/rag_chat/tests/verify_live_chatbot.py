@@ -58,15 +58,27 @@ def check_price_series(mineral):
         assert not any(event.get("spec") for event in events), (question, done)
         print(f"[OK] {mineral} 개발용/출처 미확정 가격 근거 차단", flush=True)
         return
-    citation = require_citation(done, "price.series", "public.KO_MNRL_PRC")
-    assert citation.get("observed_period"), done
+    assert not done.get("citations"), done
+    answer = "".join(event.get("delta", "") for event in events)
+    assert "가격 기준은 LME CASH" in answer, answer
+    assert "통화 코드는 PR001" in answer and "단위 코드는 WT002" in answer, answer
+    for label in ("최고가는", "최저가는", "고저 차는", "최근 가격 흐름은"):
+        assert label in answer, answer
+    for hidden in ("출처:", "KO_MNRL_PRC", "실제 관측 기간", "관측 251건", "지정 기간 내 관측"):
+        assert hidden not in answer, answer
+    for event in events:
+        if event.get("rows") or event.get("spec"):
+            meta = event.get("meta") or {}
+            spec = event.get("spec") or {}
+            assert not meta.get("source") and not meta.get("as_of"), event
+            assert not spec.get("as_of"), event
     price_tables = [table for table in tables(events)
                     if any(any(label in column for label in ("기준일자", "주 시작일", "거래일"))
                            for column in table["columns"])
                     and any(any(label in column for label in ("가격", "통상가격", "최저가격", "최고가격"))
                             for column in table["columns"])]
     assert price_tables and len(price_tables[0]["rows"]) >= 2, (question, done)
-    print(f"[OK] {mineral} 가격 응답은 근거 확인 후 관측기간 명시", flush=True)
+    print(f"[OK] {mineral} 가격 요약·단위 문구·출처/기간/건수 비노출", flush=True)
 
 
 def check_nickel_price_unit_contract():
@@ -81,20 +93,14 @@ def check_nickel_price_unit_contract():
             assert not any(event.get("spec") for event in events), (label, done)
             print(f"[OK] {label} 미검증 가격 근거 차단", flush=True)
             continue
-        citation = require_citation(done, "price.series", "public.KO_MNRL_PRC")
-        unit = citation.get("unit") or ""
-        assert "가격기준=LME CASH" in unit, (label, citation)
-        assert "PR001" not in unit and "WT002" not in unit, (label, citation)
+        assert not done.get("citations"), (label, done)
         answer = "".join(event.get("delta", "") for event in events)
-        assert "가격기준=LME CASH" in answer, (label, answer)
-        assert "PR001" not in answer and "WT002" not in answer, (label, answer)
-        assert "조회된 가격 시계열의 실제 관측 기간은" in answer, (label, answer)
-        assert "아래 표와 차트는 조회된 관측값을 바탕으로 표시합니다." in answer, (label, answer)
-        assert "개발용 더미" not in answer, (label, answer)
-        assert not re.search(r"\[\d+\][ \t]*\*|\[\d+\][ \t]*\d+\.\s+|\[\d+\]\s+\*\*\[|\[\d+\][ \t]*\|", answer), (label, answer)
-        assert not re.search(r"최고가|최저가|최고|최저|고점을\s*형성|저점을\s*형성", answer), (label, answer)
-        assert not re.search(r"\d{4}-\d{2}-\d{2}[ \t]+[\d,]+(?:\.\d+)?", answer), (label, answer)
-        print(f"[OK] {label} 니켈 선택 가격기준 단위·더미 경고 계약", flush=True)
+        assert "가격 기준은 LME CASH" in answer, (label, answer)
+        assert "통화 코드는 PR001" in answer and "단위 코드는 WT002" in answer, (label, answer)
+        assert all(term in answer for term in ("최고가는", "최저가는", "고저 차는", "최근 가격 흐름은")), (label, answer)
+        assert "출처:" not in answer and "실제 관측 기간" not in answer, (label, answer)
+        assert "KO_MNRL_PRC" not in answer and "관측 251건" not in answer, (label, answer)
+        print(f"[OK] {label} 니켈 가격 요약·단위 표기 계약", flush=True)
 
 
 def check_q15_usgs_scope_contract():

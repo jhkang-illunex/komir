@@ -360,7 +360,7 @@ class SourceFooterTest(unittest.TestCase):
                 self.assertNotIn("[1] | 구분", answer)
                 self.assertIn("선택 가격기준의 단위 표기는 가격기준=LME CASH입니다. [1]", answer)
 
-    def test_single_selected_price_series_uses_observed_period_only(self):
+    def test_single_selected_price_series_summarizes_values_without_source_or_period(self):
         evidence = Evidence(
             kind="aggregated", source="public.KO_MNRL_PRC", section="가격 시계열",
             text="| 기준일자 | 통상가격 |\n| --- | --- |\n| 2026-04-30 | 19954.39 |",
@@ -373,12 +373,14 @@ class SourceFooterTest(unittest.TestCase):
         self.assertIsNotNone(result)
         answer, citations = result
         self.assertEqual(citations, {1})
-        self.assertIn("2025-09-22~2026-09-08", answer)
-        self.assertIn("조회된 관측값을 바탕으로 표시합니다.", answer)
-        self.assertIn("요청하신 월별 기준으로 집계했습니다.", answer)
-        self.assertNotIn("원자료를 표시합니다", answer)
-        self.assertIn("가격기준=LME CASH", answer)
-        self.assertNotIn("19954.39", answer)
+        self.assertNotIn("2025-09-22~2026-09-08", answer)
+        self.assertNotIn("관측 기간", answer)
+        self.assertNotIn("public.KO_MNRL_PRC", answer)
+        self.assertIn("가격 기준은 LME CASH, 통화 코드는 PR001, 단위 코드는 WT002입니다.", answer)
+        self.assertIn("최고가는 19,954.39", answer)
+        self.assertIn("최저가는 19,954.39", answer)
+        self.assertIn("고저 차는 0", answer)
+        self.assertIn("최근 가격 흐름은 표본이 부족", answer)
 
     def test_price_scope_answer_does_not_override_price_only_evidence_from_mixed_plan(self):
         price = Evidence(kind="aggregated", source="public.KO_MNRL_PRC", section="가격",
