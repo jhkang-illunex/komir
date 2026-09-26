@@ -43,10 +43,21 @@ def tables(events):
 def check_price_series(mineral):
     question = f"최근 1년간 {mineral} 가격 추이를 보여줘"
     done, events = ask(question)
-    assert done.get("abstained") is True and done.get("abstain_reason") == "source_unavailable", done
-    assert not done.get("citations") and not tables(events), (question, done)
-    assert not any(event.get("spec") for event in events), (question, done)
-    print(f"[OK] {mineral} 개발용/출처 미확정 가격 근거 차단", flush=True)
+    if done.get("abstained"):
+        assert done.get("abstain_reason") == "source_unavailable", done
+        assert not done.get("citations") and not tables(events), (question, done)
+        assert not any(event.get("spec") for event in events), (question, done)
+        print(f"[OK] {mineral} 개발용/출처 미확정 가격 근거 차단", flush=True)
+        return
+    citation = require_citation(done, "price.series", "public.KO_MNRL_PRC")
+    assert citation.get("observed_period"), done
+    price_tables = [table for table in tables(events)
+                    if any(any(label in column for label in ("기준일자", "주 시작일", "거래일"))
+                           for column in table["columns"])
+                    and any(any(label in column for label in ("가격", "통상가격", "최저가격", "최고가격"))
+                            for column in table["columns"])]
+    assert price_tables and len(price_tables[0]["rows"]) >= 2, (question, done)
+    print(f"[OK] {mineral} 가격 응답은 근거 확인 후 관측기간 명시", flush=True)
 
 
 def check_nickel_price_unit_contract():
@@ -55,11 +66,25 @@ def check_nickel_price_unit_contract():
         ("Q23", "니켈 가격 추이를 알려줘"),
     ):
         done, events = ask(question)
-        assert done.get("abstained") is True and done.get("abstain_reason") == "source_unavailable", (label, done)
-        assert not done.get("citations") and not tables(events), (label, done)
-        assert not any(event.get("spec") for event in events), (label, done)
+        if done.get("abstained"):
+            assert done.get("abstain_reason") == "source_unavailable", (label, done)
+            assert not done.get("citations") and not tables(events), (label, done)
+            assert not any(event.get("spec") for event in events), (label, done)
+            print(f"[OK] {label} 미검증 가격 근거 차단", flush=True)
+            continue
+        citation = require_citation(done, "price.series", "public.KO_MNRL_PRC")
+        unit = citation.get("unit") or ""
+        assert "가격기준=LME CASH" in unit, (label, citation)
+        assert "PR001" not in unit and "WT002" not in unit, (label, citation)
         answer = "".join(event.get("delta", "") for event in events)
-        assert not re.search(r"\[\d+\]|가격기준=LME CASH|PR001|WT002|\d{4}-\d{2}-\d{2}", answer), (label, answer)
+        assert "가격기준=LME CASH" in answer, (label, answer)
+        assert "PR001" not in answer and "WT002" not in answer, (label, answer)
+        assert "조회된 가격 시계열의 실제 관측 기간은" in answer, (label, answer)
+        assert "아래 표와 차트는 조회된 관측값을 바탕으로 표시합니다." in answer, (label, answer)
+        assert "개발용 더미" not in answer, (label, answer)
+        assert not re.search(r"\[\d+\][ \t]*\*|\[\d+\][ \t]*\d+\.\s+|\[\d+\]\s+\*\*\[|\[\d+\][ \t]*\|", answer), (label, answer)
+        assert not re.search(r"최고가|최저가|최고|최저|고점을\s*형성|저점을\s*형성", answer), (label, answer)
+        assert not re.search(r"\d{4}-\d{2}-\d{2}[ \t]+[\d,]+(?:\.\d+)?", answer), (label, answer)
         print(f"[OK] {label} 니켈 선택 가격기준 단위·더미 경고 계약", flush=True)
 
 
@@ -75,12 +100,18 @@ def check_q15_usgs_scope_contract():
 
 def check_q28_nickel_2025_claim_contract():
     done, events = ask("2025년 니켈 가격이 300% 이상 올랐어?")
-    assert done.get("abstained") is True and done.get("abstain_reason") == "source_unavailable", done
-    assert not done.get("citations") and not tables(events), done
-    assert not any(event.get("spec") for event in events), events
+    if done.get("abstained"):
+        assert done.get("abstain_reason") == "source_unavailable", done
+        assert not done.get("citations") and not tables(events), done
+        assert not any(event.get("spec") for event in events), events
+        print("[OK] Q28 미검증 니켈 가격 주장 차단", flush=True)
+        return
+    require_citation(done, "price.verify_claim", "public.KO_MNRL_PRC")
     answer = "".join(event.get("delta", "") for event in events)
-    assert "300%" not in answer and "15010" not in answer and "14519.04" not in answer, answer
-    print("[OK] Q28 미검증 니켈 가격 주장 차단", flush=True)
+    compact = answer.replace(",", "").replace(" ", "")
+    assert "15010" in compact and "14519.04" in compact and "-3.27" in compact, answer
+    assert "300%" in answer and any(term in answer for term in ("아닙니다", "확인되지", "반박")), answer
+    print("[OK] Q28 검증된 니켈 가격 응답의 수치 대조", flush=True)
 
 
 def check_import_country_share(mineral):
