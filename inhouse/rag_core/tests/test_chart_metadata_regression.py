@@ -15,6 +15,31 @@ def _table(text: str) -> dict:
 
 
 class ChartMetadataRegressionTest(unittest.TestCase):
+    def test_explicit_monthly_frequency_aggregates_short_daily_span(self):
+        table = _table(
+            "| price_date(가격일자) | price(가격) |\n"
+            "| --- | --- |\n"
+            "| 2026-07-01 | 10 |\n| 2026-07-02 | 20 |\n"
+            "| 2026-08-01 | 30 |\n| 2026-08-02 | 50 |"
+        )
+        aggregated, meta = aggregate_time_table(table, requested_frequency="monthly")
+        assert meta is not None
+        self.assertTrue(meta["applied"])
+        self.assertEqual(meta["requested_frequency"], "monthly")
+        self.assertEqual(meta["frequency"], "monthly")
+        self.assertEqual(aggregated["rows"], [["2026-07", "15.0"], ["2026-08", "40.0"]])
+
+    def test_daily_request_does_not_upsample_monthly_source(self):
+        table = _table(
+            "| month(월) | price(가격) |\n| --- | --- |\n"
+            "| 2026-01 | 10 |\n| 2026-02 | 20 |"
+        )
+        aggregated, meta = aggregate_time_table(table, requested_frequency="daily")
+        assert meta is not None
+        self.assertEqual(meta["source_frequency"], "monthly")
+        self.assertEqual(meta["frequency"], "monthly")
+        self.assertEqual(aggregated["rows"], table["rows"])
+
     def test_daily_series_over_three_months_is_weekly_for_blocks(self):
         rows = "\n".join(
             f"| 2026{month:02d}{day:02d} | {month * 100 + day} |"

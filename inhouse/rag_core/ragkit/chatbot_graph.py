@@ -68,7 +68,9 @@ ensure_shared_on_path(Path(__file__).resolve())
 from common.llm_client import LLM_TRANSIENT_ERRORS, KomirJsonLLM  # noqa: E402
 from rag_core.retrieval.access import PRIVATE_ONLY_KOMIS_PAGES  # noqa: E402
 from rag_core.retrieval import mine_aggregate  # noqa: E402
-from rag_core.retrieval.evidence import Evidence  # noqa: E402
+from rag_core.retrieval.evidence import (  # noqa: E402
+    Evidence, KOMIS_RAW_DUMMY_CAVEAT, KOMIS_RAW_UNVERIFIED_CAVEAT,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -1064,19 +1066,105 @@ def _comparison_header_key(header: str) -> str:
 
 
 def _evidence_matches_required_period(evidence: list[Evidence], action_call) -> bool:
-    """명시 기간은 Advisor LLM 판단 전에 관측범위 메타데이터로 대조한다."""
+    """명시 기간은 Advisor LLM 판단 전에 관측범위 메타데이터로 대조한다.
+
+    기간 안의 부분 관측은 허용하되, 요청 경계 밖 데이터가 섞이거나 요청기간과
+    겹치지 않는 표본은 차단한다. 부분 관측 여부는 기존 as_of 문구로 공개한다.
+    """
     period = action_call.slots.period
     if not period or not period.explicit:
         return True
-    observed = [ev.observed_period or ev.as_of or "" for ev in evidence]
     if period.kind == "calendar_year" and period.calendar_year:
-        expected = str(period.calendar_year)
-        return bool(observed) and all(expected in value for value in observed)
-    if period.kind == "range" and period.start and period.end:
-        # 명시 범위보다 실제 관측범위가 짧으면 Evidence 메타데이터를 그대로
-        # 전달해 결측을 알린다. 다른 연도 자료로 바뀌는 경우만 차단한다.
-        return bool(observed) and all(period.start[:4] in value or period.end[:4] in value for value in observed)
-    return True
+        expected_start = date(period.calendar_year, 1, 1)
+        expected_end = date(period.calendar_year, 12, 31)
+    elif period.kind == "range" and period.start and period.end:
+        try:
+            expected_start = date.fromisoformat(period.start[:10])
+            expected_end = date.fromisoformat(period.end[:10])
+        except ValueError:
+            return False
+    elif period.kind == "trailing_months" and period.trailing_months:
+        expected_start = _months_ago(date.today(), period.trailing_months)
+        expected_end = date.today()
+    else:
+        return True
+    bounds = [_period_bounds(ev.observed_period or ev.as_of or "") for ev in evidence]
+    return bool(bounds) and all(
+        item is not None and expected_start <= item[0] <= item[1] <= expected_end
+        for item in bounds
+    )
+
+
+def _period_bounds(value: str) -> tuple[date, date] | None:
+    """기간 메타데이터에서 ISO 날짜 또는 연도 범위를 읽는다."""
+    dates = re.findall(r"(?<!\d)(\d{4}-\d{2}-\d{2})(?!\d)", value)
+    try:
+        if len(dates) >= 2:
+            return date.fromisoformat(dates[0]), date.fromisoformat(dates[1])
+        if len(dates) == 1:
+            point = date.fromisoformat(dates[0])
+            return point, point
+    except ValueError:
+        return None
+    years = re.findall(r"(?<!\d)(20\d{2})(?!\d)", value)
+    if not years:
+        return None
+    try:
+        start = date(int(years[0]), 1, 1)
+        end = date(int(years[-1]), 12, 31)
+        return start, end
+    except ValueError:
+        return None
+
+
+def _evidence_table_frequency(evidence: Evidence) -> str | None:
+    """Evidence의 날짜열 형식에서 원천 집계 주기를 결정적으로 읽는다."""
+    lines = [line for line in evidence.text.splitlines() if line.strip().startswith("|")]
+    if len(lines) < 3:
+        return None
+    split_row = lambda line: [cell.strip() for cell in line.strip().strip("|").split("|")]
+    headers = split_row(lines[0])
+    date_index = next((i for i, header in enumerate(headers)
+                       if re.search(r"date|ymd|year|month|일자|날짜|연도|년|월", header, re.I)), None)
+    if date_index is None:
+        return None
+    frequencies = []
+    for line in lines[2:]:
+        cells = split_row(line)
+        if date_index >= len(cells):
+            continue
+        value = cells[date_index].strip().strip("`")
+        if re.fullmatch(r"\d{4}", value):
+            frequencies.append("yearly")
+        elif re.fullmatch(r"\d{4}-\d{2}|\d{6}", value):
+            frequencies.append("monthly")
+        elif re.fullmatch(r"\d{4}-\d{2}-\d{2}|\d{8}", value):
+            frequencies.append("daily")
+    return min(frequencies, key={"daily": 0, "weekly": 1, "monthly": 2, "yearly": 3}.get) if frequencies else None
+
+
+def _evidence_matches_requested_frequency(evidence: list[Evidence], action_call) -> bool:
+    period = action_call.slots.period
+    requested = period.frequency if period else None
+    if requested is None:
+        return True
+    order = {"daily": 0, "weekly": 1, "monthly": 2, "yearly": 3}
+    frequencies = [_evidence_table_frequency(ev) for ev in evidence if ev.kind == "structured"]
+    return bool(frequencies) and all(
+        frequency is not None and order[frequency] <= order[requested]
+        for frequency in frequencies
+    )
+
+
+def _has_unverified_komis_evidence(evidence: list[Evidence]) -> bool:
+    """KOMIS 정형 근거의 개발용·출처 미확정 표본은 답변 생성 전에 막는다."""
+    unverified_caveats = {KOMIS_RAW_DUMMY_CAVEAT, KOMIS_RAW_UNVERIFIED_CAVEAT}
+    return any(
+        ev.kind in {"structured", "aggregated"}
+        and (ev.menu_page_id is not None or (ev.source or "").startswith("public.KO_"))
+        and ev.caveat in unverified_caveats
+        for ev in evidence
+    )
 
 
 def _evidence_matches_action_contract(evidence: list[Evidence], action_call) -> bool:
@@ -2251,6 +2339,8 @@ def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
             return {"sufficient": False, "evidence": [], "warnings": ["advisor_contract_mismatch"]}
         if not _evidence_matches_required_period(evidence, action_call):
             return {"sufficient": False, "evidence": [], "warnings": ["advisor_period_mismatch"]}
+        if not _evidence_matches_requested_frequency(evidence, action_call):
+            return {"sufficient": False, "evidence": [], "warnings": ["advisor_frequency_mismatch"]}
         if not _evidence_matches_action_contract(evidence, action_call):
             return {"sufficient": False, "evidence": [], "warnings": ["advisor_contract_mismatch"]}
         if (_is_complete_explicit_hs_summary(evidence, action_call)
@@ -2682,11 +2772,16 @@ def retrieve_evidence(
         for ev in call_evidence:
             ev.requirement_id, ev.action_id, ev.source_id, ev.observed_period = (
                 call.requirement_id, call.action_id, ev.source, ev.as_of)
+            ev.requested_frequency = call.slots.period.frequency if call.slots.period else None
             # Q15의 완전한 공개 원문 span은 chat_turn에서 결정적 범위 설명으로
             # 렌더링할 수 있다. 이 표지는 프로세스 내부 추적값이며 MCP/API
             # 계약에는 추가하지 않는다.
             if _is_rare_earth_nd_scope_request(call, question):
                 ev.q15_usgs_scope = True
+        if _has_unverified_komis_evidence(call_evidence):
+            return [], call_warnings + [
+                f"{_SOURCE_UNAVAILABLE_WARNING_PREFIX}komis_data_provenance_unverified",
+            ]
         if (call.action_id == "trade.concentration" and call_evidence
                 and all("개발용 더미" in (ev.caveat or "") for ev in call_evidence)):
             # 전체 국가 모집단 HHI의 계산은 맞아도 입력 통관 원천이 전부

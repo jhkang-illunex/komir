@@ -68,7 +68,7 @@ def check_nickel_price_unit_contract():
         assert "가격기준=LME CASH" in answer, (label, answer)
         assert "PR001" not in answer and "WT002" not in answer, (label, answer)
         assert "조회된 가격 시계열의 실제 관측 기간은" in answer, (label, answer)
-        assert "아래 표와 차트는 해당 기간의 원자료를 표시합니다." in answer, (label, answer)
+        assert "아래 표와 차트는 조회된 관측값을 바탕으로 표시합니다." in answer, (label, answer)
         assert "가격 단위: 제공된 문서에 통화 단위가 명시되지 않았습니다" not in answer, (label, answer)
         assert "개발용 더미" not in answer, (label, answer)
         # 인용 뒤 목록은 같은 줄에 붙으면 Markdown 구조가 깨진다. ``\\s``는

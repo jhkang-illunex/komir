@@ -912,8 +912,11 @@ def _price_series_scope_answer(evidence: list, action_plan) -> tuple[str, set[in
     index, item = selected[0]
     answer = (
         f"조회된 가격 시계열의 실제 관측 기간은 {item.observed_period}입니다. "
-        f"아래 표와 차트는 해당 기간의 원자료를 표시합니다. [{index}]"
+        f"아래 표와 차트는 조회된 관측값을 바탕으로 표시합니다. [{index}]"
     )
+    frequency_labels = {"daily": "일별", "weekly": "주별", "monthly": "월별", "yearly": "연도별"}
+    if frequency_label := frequency_labels.get(getattr(item, "requested_frequency", None)):
+        answer += f" 요청하신 {frequency_label} 기준으로 집계했습니다. [{index}]"
     if unit := _user_visible_unit(item.unit):
         answer += f"\n\n선택 가격기준의 단위 표기는 {unit}입니다. [{index}]"
     return answer, {index}
@@ -1267,11 +1270,13 @@ def _multimodal_events(cited_indices: set[int], evidence: list) -> list[ChatEven
                 table, block_id=table_id, source_index=i, source_label=source_label,
                 as_of=ev.as_of, unit=ev.unit,
                 menu_source=menu_source(getattr(ev, "menu_page_id", None)),
+                requested_frequency=getattr(ev, "requested_frequency", None),
             )))
             spec = chart_spec(
                 table, block_id=f"c{i}-{t_idx}", data_ref=table_id,
                 source_index=i, source_label=source_label, as_of=ev.as_of, unit=ev.unit,
                 menu_source=menu_source(getattr(ev, "menu_page_id", None)),
+                requested_frequency=getattr(ev, "requested_frequency", None),
             )
             if spec is not None:
                 events.append(ChatEvent(type="chart", data=spec))

@@ -44,6 +44,7 @@ class Evidence:
     action_id: str | None = None
     source_id: str | None = None
     observed_period: str | None = None
+    requested_frequency: str | None = None
     # 실제 KOMIS 메뉴와 연결된 RDB 근거만 채운다. PDF·HWP·Excel 등 문서 근거는
     # 이 값을 비워 실제 문서명을 출처로 유지한다.
     menu_page_id: str | None = None

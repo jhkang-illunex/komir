@@ -9,7 +9,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from rag_core.ragkit.action_contract import (  # noqa: E402
-    ActionPlan, IntentCall, IntentPlan, ActionSlots, action_plan_from_intent,
+    ActionPlan, IntentCall, IntentPlan, ActionSlots, Period, action_plan_from_intent,
     missing_trade_indicator_slots, validate_action_plan,
 )
 from rag_core.ragkit.chatbot_graph import _route_from_action_plan, _route_from_action_call  # noqa: E402
@@ -27,6 +27,74 @@ def call(requirement_id, action_id, **slots):
 
 
 class ActionContractAuditTest(unittest.TestCase):
+    def test_requested_monthly_frequency_is_preserved_without_misreading_monthly_news(self):
+        intent_plan = IntentPlan(requirements=[IntentCall(
+            requirement_id="r1", intent="price_series", role="data",
+            slots=ActionSlots(mineral="리튬", period=Period(
+                kind="trailing_months", trailing_months=12, explicit=True,
+            )),
+        )])
+        monthly = action_plan_from_intent(intent_plan, "최근 1년 리튬 가격 월별 추이")
+        self.assertEqual(monthly.actions[0].slots.period.frequency, "monthly")
+
+        news_plan = IntentPlan(requirements=[IntentCall(
+            requirement_id="r1", intent="price_series", role="data",
+            slots=ActionSlots(mineral="리튬", period=Period(
+                kind="trailing_months", trailing_months=12, explicit=True,
+            )),
+        )])
+        news = action_plan_from_intent(news_plan, "최근 월간동향에서 리튬 가격 관련 내용")
+        self.assertIsNone(news.actions[0].slots.period.frequency)
+
+    def test_requested_period_rejects_out_of_year_and_disjoint_same_year_evidence(self):
+        action = plan(call("r1", "price.series", mineral="니켈", period=Period(
+            kind="calendar_year", calendar_year=2025, explicit=True,
+        ))).actions[0]
+        def evidence(period):
+            return Evidence(kind="structured", source="public.KO_MNRL_PRC", section="니켈",
+                            text="| date | price |\n| --- | --- |\n| 2025-01-01 | 1 |",
+                            observed_period=period, requirement_id="r1", action_id="price.series")
+
+        self.assertTrue(graph._evidence_matches_required_period(
+            [evidence("2025-07-01~2025-12-31")], action,
+        ))
+        self.assertFalse(graph._evidence_matches_required_period(
+            [evidence("2025-07-01~2026-02-01")], action,
+        ))
+        range_action = plan(call("r1", "price.series", mineral="니켈", period=Period(
+            kind="range", start="2025-01-01", end="2025-03-31", explicit=True,
+        ))).actions[0]
+        self.assertFalse(graph._evidence_matches_required_period(
+            [evidence("2025-07-01~2025-09-30")], range_action,
+        ))
+
+    def test_dummy_and_unverified_komis_evidence_are_fail_closed_before_generation(self):
+        action = plan(call("r1", "price.series", mineral="니켈")).actions[0]
+        for caveat in (graph.KOMIS_RAW_DUMMY_CAVEAT, graph.KOMIS_RAW_UNVERIFIED_CAVEAT):
+            evidence = Evidence(kind="structured", source="public.KO_MNRL_PRC", section="가격",
+                                text="| date | price |\n| --- | --- |\n| 2026-01-01 | 1 |",
+                                caveat=caveat, menu_page_id="price_base_metals")
+            with self.subTest(caveat=caveat), patch.object(
+                graph, "_retrieve_node", return_value={"evidence": [evidence], "warnings": []},
+            ):
+                retrieved, warnings = graph.retrieve_evidence(
+                    "니켈 가격 알려줘", action_plan=plan(action), llm=object(),
+                )
+            self.assertEqual(retrieved, [])
+            self.assertIn("source_unavailable:komis_data_provenance_unverified", warnings)
+
+    def test_frequency_contract_accepts_finer_data_and_rejects_coarser_data(self):
+        action = plan(call("r1", "price.series", mineral="리튬", period=Period(
+            kind="trailing_months", trailing_months=12, frequency="monthly", explicit=True,
+        ))).actions[0]
+        daily = Evidence(kind="structured", source="public.KO_MNRL_PRC", section="리튬",
+                         text="| crtr_ymd(기준일자) | cmerc_prc(통상가격) |\n| --- | --- |\n"
+                              "| 20260701 | 1 |\n| 20260702 | 2 |")
+        yearly = Evidence(kind="structured", source="public.KO_MNRL_PRC", section="리튬",
+                          text="| year(연도) | cmerc_prc(통상가격) |\n| --- | --- |\n| 2025 | 1 |")
+        self.assertTrue(graph._evidence_matches_requested_frequency([daily], action))
+        self.assertFalse(graph._evidence_matches_requested_frequency([yearly], action))
+
     def test_trade_indicator_missing_slots_is_hitl_only(self):
         candidate = plan(call("r1", "trade.indicator", trade_metric="country_dependency"))
         self.assertEqual(

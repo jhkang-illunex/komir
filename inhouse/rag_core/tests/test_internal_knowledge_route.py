@@ -366,6 +366,7 @@ class SourceFooterTest(unittest.TestCase):
             text="| 기준일자 | 통상가격 |\n| --- | --- |\n| 2026-04-30 | 19954.39 |",
             unit="가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002",
             observed_period="2025-09-22~2026-09-08", action_id="price.series",
+            requested_frequency="monthly",
         )
         plan = ActionPlan(actions=[ActionCall(requirement_id="price", action_id="price.series", slots=ActionSlots())])
         result = chatbot._price_series_scope_answer([evidence], plan)
@@ -373,6 +374,9 @@ class SourceFooterTest(unittest.TestCase):
         answer, citations = result
         self.assertEqual(citations, {1})
         self.assertIn("2025-09-22~2026-09-08", answer)
+        self.assertIn("조회된 관측값을 바탕으로 표시합니다.", answer)
+        self.assertIn("요청하신 월별 기준으로 집계했습니다.", answer)
+        self.assertNotIn("원자료를 표시합니다", answer)
         self.assertIn("가격기준=LME CASH", answer)
         self.assertNotIn("19954.39", answer)
 

@@ -33,6 +33,7 @@ class Period(BaseModel):
     start: str | None = None
     end: str | None = None
     future_horizon: int | None = Field(default=None, ge=1, le=120)
+    frequency: Literal["daily", "weekly", "monthly", "yearly"] | None = None
     explicit: bool = False
 
 
@@ -182,7 +183,9 @@ stockpile.methodology다. 이 action은 실재고를 조회하거나 추정하�
 개월 창을 넣고 period에는 임의의 단일 창을 넣지 않는다.
 광종을 여러 개 언급한 인과·시나리오·영향 설명은 가격·가격변화·가격비교를 명시하지 않는 한
 price.compare로 만들지 말고, 해당 설명의 출처를 찾는 document 또는 concept으로 둔다.
-기간은 Period(kind, explicit, 필요한 값)으로 정규화한다. JSON 외 텍스트를 출력하지 않는다."""
+기간은 Period(kind, explicit, 필요한 값)으로 정규화한다. 사용자가 일별·주별·월별·연도별 집계를
+명시하면 period.frequency에 daily/weekly/monthly/yearly로 기록한다. 단순히 "이번 달" 또는
+"월간동향"이라고 한 것은 집계주기 요청이 아니다. JSON 외 텍스트를 출력하지 않는다."""
 
 INTENT_PLAN_PROMPT = """질문의 독립 정보요구를 빠짐없이 requirements IntentCall 목록으로 분해한 closed intent JSON을 출력한다.
 intent는 price_series, price_compare, price_claim, trade_rank, trade_monthly, trade_hs,
@@ -210,7 +213,9 @@ data와 metadata로 표현하며 HS가 없는 별도 광종 action이나 documen
 수입·수출 국가 집중도(HHI) 자체를 요청할 때만 쓰며, 생산국 비중과 수입국 비중의 비교는 resource_rank와
 trade_rank data의 조합이다. 전기차 수요 둔화처럼 여러 광종의 조건부 영향·상관·시나리오를 설명하는
 요청은 가격 수치·가격변화·기간별 가격 비교를 명시하지 않는 한 concept 또는 document content 하나 이상으로
-표현하며 price_compare data를 추가하지 않는다. JSON 외 텍스트를 출력하지 않는다."""
+표현하며 price_compare data를 추가하지 않는다. 시계열 집계주기가 명시되면 slots.period.frequency에
+daily/weekly/monthly/yearly로 기록한다. "이번 달"이나 "월간동향"은 집계주기가 아니다.
+JSON 외 텍스트를 출력하지 않는다."""
 
 def extract_intent_plan(message: str, llm: Any, history: list[dict[str, str]] | None = None) -> IntentPlan:
     try:
@@ -456,7 +461,35 @@ def action_plan_from_intent(intent_plan: IntentPlan, message: str = "") -> Actio
     _normalize_price_claim_slots(actions, message)
     _normalize_indicator_slots(actions, message)
     actions = _collapse_price_claim_actions(actions)
-    return ActionPlan(actions=actions)
+    result = ActionPlan(actions=actions)
+    _normalize_requested_frequency(result.actions, message)
+    return result
+
+
+def _normalize_requested_frequency(actions: list[ActionCall], message: str) -> None:
+    """질문에 명시된 시계열 집계주기를 typed Period에 보존한다."""
+    markers = (
+        ("daily", ("일별", "매일", "일 단위", "일간 추이")),
+        ("weekly", ("주별", "매주", "주 단위", "주간 추이")),
+        ("monthly", ("월별", "매월", "월 단위", "월간 추이")),
+        ("yearly", ("연도별", "매년", "연간 추이", "연 단위")),
+    )
+    compact = "".join(message.split()).casefold()
+    requested = next((frequency for frequency, terms in markers
+                      if any("".join(term.split()).casefold() in compact for term in terms)), None)
+    if requested is None:
+        return
+    time_series_actions = {
+        "price.series", "price.compare", "price.verify_claim", "trade.monthly",
+        "indicator.series", "resource.rank", "mine.rank",
+    }
+    for action in actions:
+        if action.action_id not in time_series_actions:
+            continue
+        if action.slots.period is None:
+            action.slots.period = Period(kind="latest", frequency=requested)
+        elif action.slots.period.frequency is None:
+            action.slots.period.frequency = requested
 
 
 def _canonicalize_dependency_intent_plan(intent_plan: IntentPlan, message: str) -> None:

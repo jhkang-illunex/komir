@@ -173,18 +173,23 @@ def _source_frequency(values: list[str]) -> str | None:
     return "daily" if all(_parse_table_date(value) for value in values) else None
 
 
-def _target_frequency(first: date, last: date) -> str:
+def _target_frequency(first: date, last: date, requested_frequency: str | None = None) -> str:
     days = (last - first).days + 1
     if days <= 92:
-        return "daily"
-    if days < 365:
-        return "weekly"
-    if days <= 365 * 3:
-        return "monthly"
-    return "yearly"
+        inferred = "daily"
+    elif days < 365:
+        inferred = "weekly"
+    elif days <= 365 * 3:
+        inferred = "monthly"
+    else:
+        inferred = "yearly"
+    order = {"daily": 0, "weekly": 1, "monthly": 2, "yearly": 3}
+    if requested_frequency not in order:
+        return inferred
+    return max((inferred, requested_frequency), key=order.__getitem__)
 
 
-def aggregate_time_table(table: dict) -> tuple[dict, dict | None]:
+def aggregate_time_table(table: dict, *, requested_frequency: str | None = None) -> tuple[dict, dict | None]:
     """표·차트 블록에만 기간 길이별 시계열 집계를 적용한다.
 
     일별 원천은 3개월 초과 시 주별, 1년 이상 시 월별, 3년 초과 시 연별로
@@ -199,11 +204,12 @@ def aggregate_time_table(table: dict) -> tuple[dict, dict | None]:
         return table, None
     dates = [value for value in parsed if value is not None]
     source = _source_frequency([row[date_idx] for row in table["rows"]])
-    target = _target_frequency(min(dates), max(dates))
+    target = _target_frequency(min(dates), max(dates), requested_frequency)
     order = {"daily": 0, "weekly": 1, "monthly": 2, "yearly": 3}
     effective = target if source is None else (source if order[source] >= order[target] else target)
     if effective == source:
-        return table, {"source_frequency": source, "frequency": effective, "applied": False}
+        return table, {"source_frequency": source, "frequency": effective, "applied": False,
+                       "requested_frequency": requested_frequency}
 
     numeric = {idx for idx, item in enumerate(meta) if item["type"] == "number"}
     groups: dict[tuple[str, ...], list[list[str]]] = {}
@@ -250,6 +256,7 @@ def aggregate_time_table(table: dict) -> tuple[dict, dict | None]:
     markdown = _markdown_table(columns, rows)
     return {**table, "columns": columns, "rows": rows, "markdown": markdown}, {
         "source_frequency": source, "frequency": effective, "applied": True,
+        "requested_frequency": requested_frequency,
         "bucket_column": date_key,
         "bucket_label": bucket_labels[effective],
         "aggregation": "mean" if any(item["key"] in _PRICE_KEYS or "price" in item["key"] for item in meta) else "sum",
@@ -535,14 +542,15 @@ def recommend_chart(table: dict, columns_meta: list[dict] | None = None) -> dict
 
 
 def table_block(table: dict, *, block_id: str, source_index: int | None, source_label: str | None,
-                as_of: str | None = None, unit: str | None = None, menu_source: dict | None = None) -> dict:
+                as_of: str | None = None, unit: str | None = None, menu_source: dict | None = None,
+                requested_frequency: str | None = None) -> dict:
     """`table` 이벤트 payload. 기존 키(columns·rows·source_index·source)는
     그대로 두고(구 클라이언트 호환) 구조화 필드를 덧붙인다. `chart_hint`
     (2026-09-16)는 이 표에 추천하는 차트 종류 — 같은 판정으로 만든 `chart`
     이벤트가 뒤따르므로 프론트는 둘 중 편한 쪽을 쓰면 된다."""
 
     table, hidden_columns = presentation_table(table)
-    table, time_aggregation = aggregate_time_table(table)
+    table, time_aggregation = aggregate_time_table(table, requested_frequency=requested_frequency)
     columns_meta = _column_types(table)
     typed_rows = []
     for row in table["rows"]:
@@ -579,13 +587,14 @@ def table_block(table: dict, *, block_id: str, source_index: int | None, source_
 
 
 def chart_spec(table: dict, *, block_id: str, data_ref: str, source_index: int | None, source_label: str | None,
-               as_of: str | None = None, unit: str | None = None, menu_source: dict | None = None) -> dict | None:
+               as_of: str | None = None, unit: str | None = None, menu_source: dict | None = None,
+               requested_frequency: str | None = None) -> dict | None:
     """`chart` 이벤트 payload — `recommend_chart()` 판정을 선언적 스펙으로 낸다.
     데이터는 싣지 않고 `data_ref`가 가리키는 `table` 블록의 rows_typed/
     columns_meta를 쓴다. 추천 차트가 없으면 None(억지 차트 금지)."""
 
     table, _ = presentation_table(table)
-    table, time_aggregation = aggregate_time_table(table)
+    table, time_aggregation = aggregate_time_table(table, requested_frequency=requested_frequency)
     columns_meta = _column_types(table)
     hint = recommend_chart(table, columns_meta)
     if hint["recommended"] is None:
