@@ -209,6 +209,57 @@ class ActionContractAuditTest(unittest.TestCase):
                     operation in {"monthly_streak", "yearly_average"},
                 )
 
+    def test_user_qa_price_and_geography_variants_bypass_planner(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("닫힌 사용자 Q&A 문형은 planner를 호출하면 안 됩니다")
+
+        cases = (
+            ("니켈 수입 상위국이랑 현재가격 알려줘", ["trade.country_rank", "price.series"]),
+            ("니켈은 어디에 쓰이고 지금 가격은 얼마야?", ["document.retrieve", "price.series"]),
+            ("최근 니켈 가격 얼마야?", ["price.series"]),
+            ("니켈 가격 년도별 평균 가격을 알려줘", ["price.series"]),
+            ("니켈 텅스텐 가격 같이 비교해줘", ["price.compare"]),
+        )
+        for question, action_ids in cases:
+            with self.subTest(question=question):
+                candidate = extract_action_plan(question, MustNotRun())
+                self.assertEqual([call.action_id for call in candidate.actions], action_ids)
+                self.assertTrue(validate_action_plan(candidate).approved)
+        latest = extract_action_plan("최근 니켈 가격 얼마야?", MustNotRun()).actions[0]
+        self.assertEqual((latest.slots.mineral, latest.slots.period.kind), ("니켈", "latest"))
+        yearly = extract_action_plan("니켈 가격 년도별 평균 가격을 알려줘", MustNotRun()).actions[0]
+        self.assertEqual(yearly.slots.price_operation, "yearly_average")
+        comparison = extract_action_plan("니켈 텅스텐 가격 같이 비교해줘", MustNotRun()).actions[0]
+        self.assertEqual(comparison.slots.minerals, ["니켈", "텅스텐"])
+
+    def test_price_volatility_route_does_not_duplicate_top_n(self):
+        candidate = extract_action_plan(
+            "이번 주 가격 변동 큰 광종이랑 관련 뉴스 보여줘",
+            type("MustNotRun", (), {"invoke": lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError())})(),
+        )
+        route = _route_from_action_call(candidate.actions[0], "이번 주 가격 변동 큰 광종이랑 관련 뉴스 보여줘")
+        self.assertTrue(route.use_komis_price_volatility_ranking)
+        self.assertEqual(route.komis_ranking_top_n, 5)
+
+    def test_user_qa_period_defaults_bypass_planner(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("기간이 닫힌 사용자 Q&A 문형은 planner를 호출하면 안 됩니다")
+
+        cases = (
+            ("이번 주 가격 변동 큰 광종이랑 관련 뉴스 보여줘", "price.volatility_rank", "range"),
+            ("이번달 희소금속 월간 동향에 나온 광종들 가격 어때?", "document.retrieve", "range"),
+            ("광물종합지수 구성 광종 중 상승 전망인 건 뭐야?", "document.retrieve", "trailing_months"),
+            ("수입 의존도 높은 광종들 가격 전망 알려줘", "document.retrieve", "trailing_months"),
+        )
+        for question, action_id, period_kind in cases:
+            with self.subTest(question=question):
+                candidate = extract_action_plan(question, MustNotRun())
+                self.assertEqual([call.action_id for call in candidate.actions], [action_id])
+                self.assertEqual(candidate.actions[0].slots.period.kind, period_kind)
+                self.assertTrue(validate_action_plan(candidate).approved)
+
     def test_price_operation_rejects_invalid_action_or_period(self):
         for action_id, operation, period in (
             ("price.compare", "monthly_streak", Period(kind="latest")),
@@ -286,7 +337,9 @@ class ActionContractAuditTest(unittest.TestCase):
         price_followup = extract_action_plan(
             "이번 달 희소금속 월간동향에 나온 광종들 가격 어때?", Planner(),
         )
-        self.assertEqual([call.action_id for call in price_followup.actions], ["price.series"])
+        # 월간동향에 실제로 언급된 광종을 원천에서 확인하기 전에는 "희소금속"을
+        # 단일 가격 광종으로 추정하지 않는다. 최신 월간 문서 Action이 먼저다.
+        self.assertEqual([call.action_id for call in price_followup.actions], ["document.retrieve"])
 
     def test_publication_shortcut_preserves_year_periods(self):
         class MustNotRun:

@@ -860,9 +860,13 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
         return RetrievalRoute(**common, use_komis_strategic_price_overview=True,
                               komis_strategic_price_groups=s.strategic_price_groups)
     if call.action_id == "price.volatility_rank":
-        return RetrievalRoute(**common, use_komis_price_volatility_ranking=True,
+        # common에도 top_n이 들어 있으므로 같은 keyword를 두 번 전달하지 않는다.
+        # "이번 주 가격 변동 큰 광종"처럼 이 Action이 결정 경로에서 호출될 때
+        # TypeError로 전체 turn이 retrieval_error가 되는 것을 막는다.
+        return RetrievalRoute(**{**common, "komis_ranking_top_n": s.top_n or 5},
+                              use_komis_price_volatility_ranking=True,
                               komis_compare_mineral_names=s.minerals,
-                              komis_ranking_top_n=s.top_n or 5)
+                              )
     if call.action_id == "forecast.price":
         return RetrievalRoute(**common, use_komis_raw=True, komis_topic="price_forecast")
     if call.action_id in {"price.compare", "price.verify_claim"}:

@@ -1005,6 +1005,44 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
             slots=ActionSlots(mineral=mineral, period=Period(kind="trailing_months", trailing_months=12)),
             intent="trade_concentration", role="data",
         )])
+    # 사용자 Q&A 계약의 ``수입 상위국 + 현재가``는 두 독립 원천을 요구한다.
+    # 조사("의")와 "현재" 유무가 달라도 같은 닫힌 문형으로 취급한다. LLM에
+    # 맡기면 광종 slot이 두 action 사이에서 누락되어 unsupported_commodity로
+    # 조기 종료될 수 있으므로 여기서 보존한다.
+    import_current_price = re.fullmatch(
+        r"(?P<mineral>[가-힣A-Za-z0-9]+?)(?:의)?수입(?:상위)?국(?:이랑|과|와|및)?(?:현재|최근)?가격(?:을)?(?:알려줘|알려주세요|보여줘|보여주세요)?[?.]?",
+        compact,
+    )
+    if import_current_price:
+        mineral = MINERAL_ALIASES.get(import_current_price.group("mineral").casefold(),
+                                      import_current_price.group("mineral"))
+        return ActionPlan(actions=[
+            ActionCall(requirement_id="import_countries", action_id="trade.country_rank",
+                       slots=ActionSlots(mineral=mineral, metric="import_amount", trade_scope="korea", top_n=5,
+                                         period=Period(kind="trailing_months", trailing_months=12)),
+                       intent="trade_rank", role="data"),
+            ActionCall(requirement_id="current_price", action_id="price.series",
+                       slots=ActionSlots(mineral=mineral, period=Period(kind="latest")),
+                       intent="price_series", role="data"),
+        ])
+    # ``어디에 쓰이고 지금 가격``은 용도 문서와 최신 관측값을 함께 요청한다.
+    # 단일 용도 질문과 달리 가격이 있으므로 위 단일-광물정보 shortcut에서는
+    # 의도적으로 제외됐고, 이 전용 plan이 그 공백을 메운다.
+    use_current_price = re.fullmatch(
+        r"(?P<mineral>[가-힣A-Za-z0-9]+?)(?:은|는|의)?(?:어디에)?(?:쓰이고|쓰여|사용되고)(?:현재|지금|최근)?가격(?:은|이|을|를)?(?:얼마야|얼마인가요|알려줘|알려주세요|보여줘|보여주세요)?[?.]?",
+        compact,
+    )
+    if use_current_price:
+        mineral = MINERAL_ALIASES.get(use_current_price.group("mineral").casefold(),
+                                      use_current_price.group("mineral"))
+        return ActionPlan(actions=[
+            ActionCall(requirement_id="mineral_info", action_id="document.retrieve",
+                       slots=ActionSlots(mineral=mineral, topic=f"{mineral} 용도"),
+                       intent="concept", role="content"),
+            ActionCall(requirement_id="current_price", action_id="price.series",
+                       slots=ActionSlots(mineral=mineral, period=Period(kind="latest")),
+                       intent="price_series", role="data"),
+        ])
     production_import_compare = re.fullmatch(
         r"(?P<mineral>[가-힣A-Za-z0-9]+?)(?:의)?세계생산(?:상위)?국(?:이랑|과|와|및)?우리나라수입(?:상위)?국(?:을)?(?:비교해줘|비교해주세요|알려줘|알려주세요)?[?.]?", compact,
     )
@@ -1161,6 +1199,33 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
     weekly_price_news = _weekly_price_news_plan(message)
     if weekly_price_news is not None:
         return weekly_price_news
+    # 다음 세 질문은 광종/구성 목록이 원천 조회 전에는 확정되지 않는다. 임의의
+    # 광종·예측값을 채우지 않고, 질문이 명시한 상대 기간만 고정한 문서 Action으로
+    # 시작한다. 적재된 원천이 없으면 source_unavailable로 닫히며 slot_unresolved
+    # (라우팅 오류)로 오인되지 않는다.
+    if re.fullmatch(r"이번달희소금속월간동향에나온광종들가격(?:은)?(?:어때|어떤가요)?[?.]?", compact):
+        today = date.today()
+        return ActionPlan(actions=[ActionCall(
+            requirement_id="monthly_rare_metals", action_id="document.retrieve",
+            slots=ActionSlots(topic="이번 달 희소금속 월간동향 광종별 가격",
+                              period=Period(kind="range", start=today.replace(day=1).isoformat(),
+                                            end=today.isoformat(), explicit=True)),
+            intent="document", role="content",
+        )])
+    if re.fullmatch(r"광물종합지수구성광종중상승전망인건뭐야?[?.]?", compact):
+        return ActionPlan(actions=[ActionCall(
+            requirement_id="composite_constituents_forecast", action_id="document.retrieve",
+            slots=ActionSlots(topic="광물종합지수 구성 광종 가격 전망",
+                              period=Period(kind="trailing_months", trailing_months=3, explicit=True)),
+            intent="document", role="content",
+        )])
+    if re.fullmatch(r"수입의존도높은광종들가격전망(?:을)?(?:알려줘|알려주세요|보여줘|보여주세요)?[?.]?", compact):
+        return ActionPlan(actions=[ActionCall(
+            requirement_id="import_dependency_forecast", action_id="document.retrieve",
+            slots=ActionSlots(topic="수입 의존도 높은 광종 가격 전망",
+                              period=Period(kind="trailing_months", trailing_months=12, explicit=True)),
+            intent="document", role="content",
+        )])
     if re.fullmatch(r"지난달광물종합지수변동이랑월간동향요약(?:을)?(?:같이)?(?:알려줘|알려주세요|보여줘|보여주세요)?[?.]?", compact):
         return ActionPlan(actions=[
             ActionCall(requirement_id="monthly_composite_index", action_id="indicator.series",
@@ -1509,14 +1574,21 @@ def _price_forecast_continuation_plan(message: str) -> ActionPlan | None:
 
 
 def _weekly_price_news_plan(message: str) -> ActionPlan | None:
-    """직전 완료 주의 가격 변동 상위 광종과 같은 주 뉴스만 결합한다."""
+    """완료 주 또는 진행 중인 이번 주의 가격 변동 상위 광종과 뉴스만 결합한다."""
     compact = re.sub(r"\s+", "", message)
-    if not re.fullmatch(r"지난주가격변동큰광종이랑관련뉴스(?:를)?(?:보여줘|알려줘|보여주세요|알려주세요)[?.]?", compact):
+    match = re.fullmatch(
+        r"(?P<which>지난|이번)주가격변동큰광종이랑관련뉴스(?:를)?(?:보여줘|알려줘|보여주세요|알려주세요)[?.]?",
+        compact,
+    )
+    if not match:
         return None
     today = date.today()
     this_monday = today - timedelta(days=today.weekday())
-    end = this_monday - timedelta(days=1)
-    start = end - timedelta(days=6)
+    if match.group("which") == "지난":
+        end = this_monday - timedelta(days=1)
+        start = end - timedelta(days=6)
+    else:
+        start, end = this_monday, today
     period = Period(kind="range", start=start.isoformat(), end=end.isoformat(), explicit=True)
     return ActionPlan(actions=[
         ActionCall(requirement_id="weekly_price_volatility", action_id="price.volatility_rank",
@@ -1602,7 +1674,7 @@ def _price_operation_plan(message: str) -> ActionPlan | None:
         )])
 
     yearly = re.fullmatch(
-        r"(?P<mineral>[가-힣A-Za-z0-9]+?)(?:의)?연도별평균가격(?:을)?(?:알려줘|알려주세요|보여줘|보여주세요)?[?.]?",
+        r"(?P<mineral>[가-힣A-Za-z0-9]+?)(?:의)?(?:가격)?(?:연도별|년도별)평균가격(?:을)?(?:알려줘|알려주세요|보여줘|보여주세요)?[?.]?",
         compact,
         flags=re.IGNORECASE,
     )
@@ -1629,6 +1701,25 @@ def _price_operation_plan(message: str) -> ActionPlan | None:
                 period=Period(kind="trailing_months", trailing_months=12),
                 requested_outputs={"text", "chart"},
             ), intent="price_compare", role="data", requested_outputs={"text", "chart"},
+        )])
+    # 조사 없이 "니켈 텅스텐 가격 같이 비교"처럼 두 광종을 나열한 문형은
+    # 비탐욕 일반 정규식으로 나누면 임의 문자열을 광종으로 오인할 수 있다.
+    # 등록 별칭 집합을 명시해 두 광종이 모두 식별될 때만 비교 Action을 만든다.
+    bare_comparison = re.fullmatch(
+        r"(?P<left>리튬|니켈|코발트|구리|동|망간|흑연|텅스텐|희토류|네오디뮴|아연|금)"
+        r"(?P<right>리튬|니켈|코발트|구리|동|망간|흑연|텅스텐|희토류|네오디뮴|아연|금)"
+        r"가격(?:을)?같이비교(?:해줘|해주세요|해|해봐)?[?.]?",
+        compact,
+        flags=re.IGNORECASE,
+    )
+    if bare_comparison:
+        minerals = [MINERAL_ALIASES.get(bare_comparison.group(key).casefold(), bare_comparison.group(key))
+                    for key in ("left", "right")]
+        return ActionPlan(actions=[ActionCall(
+            requirement_id="two_mineral_price_comparison", action_id="price.compare",
+            slots=ActionSlots(minerals=minerals, period=Period(kind="trailing_months", trailing_months=12),
+                              requested_outputs={"text", "chart"}),
+            intent="price_compare", role="data", requested_outputs={"text", "chart"},
         )])
     return None
 
@@ -1714,7 +1805,7 @@ def _latest_price_plan(message: str) -> ActionPlan | None:
     """
     compact = re.sub(r"\s+", "", message)
     match = re.fullmatch(
-        r"(?:(?:금일자?|오늘|현재|지금)(?:의)?)?(?P<mineral>[가-힣A-Za-z0-9]+?)(?:의)?"
+        r"(?:(?:금일자?|오늘|현재|지금|최근)(?:의)?)?(?P<mineral>[가-힣A-Za-z0-9]+?)(?:의)?"
         r"(?:가격|시세)(?:(?:은|는|이|을|를)?(?:얼마야|얼마인가요|알려줘|알려주세요|보여줘|보여주세요))?[?.]?",
         compact,
         flags=re.IGNORECASE,

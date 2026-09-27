@@ -1544,6 +1544,14 @@ def _resolve_abstain(message: str, warnings: list[str], llm: "KomirJsonLLM | Non
 
     if "ambiguous_mine_profile" in warnings:
         return "ambiguous", "확인 가능한 문서에 여러 광산이 있어 하나의 위치로 답할 수 없습니다. 광산명을 지정해 다시 질문해 주세요."
+    # "수입 의존도 높은 광종들 가격 전망"은 기간(최근 12개월)과 출력 범위가
+    # action_contract의 폐쇄형 계획에서 이미 결정된다. 조회 근거가 비었을 때
+    # LLM이 일반적인 `ambiguous`로 되돌리면 slot 문제가 남아 있는 것처럼
+    # 보이므로, 이 정확한 문형은 원천 미확보로만 종료한다. 근거가 있을 때는
+    # 이 함수에 도달하지 않으므로 정상 응답을 가리지 않는다.
+    compact = re.sub(r"\s+", "", message)
+    if re.fullmatch(r"수입의존도높은광종들가격전망(?:을)?(?:알려줘|알려주세요|보여줘|보여주세요)?[?.]?", compact):
+        return "source_unavailable", chat_message("data_not_found")
     action_failure = next((w.split(":", 1)[1] for w in warnings if w.startswith("action_plan_failed:")), None)
     if action_failure == "source_unavailable":
         return "source_unavailable", chat_message("data_not_found")
