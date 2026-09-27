@@ -1,0 +1,28 @@
+schema_version: 1
+source_note: >-
+  2026-09-27 발주처 지정 전략광종 가격 현황 목록. 이 파일은 조회 대상과
+  KOMIS 가격 마스터 명칭의 매핑만 정의하며, 가격 기준·통화·중량단위·관측일은
+  KO_MNRL_PRC 및 KO_MNRL_PRC_CRTR 원천에서 매 조회마다 확인한다.
+groups:
+  strategic_six:
+    label: "6대 전략광종"
+    minerals:
+      - {label: "유연탄", price_mineral: "유연탄"}
+      - {label: "우라늄", price_mineral: "우라늄"}
+      - {label: "철광석", price_mineral: "철광석"}
+      - {label: "구리", price_mineral: "동"}
+      - {label: "아연", price_mineral: "아연"}
+      - {label: "니켈", price_mineral: "니켈"}
+  strategic_ten:
+    label: "10대 전략광종"
+    minerals:
+      - {label: "리튬", price_mineral: "리튬"}
+      - {label: "니켈", price_mineral: "니켈"}
+      - {label: "코발트", price_mineral: "코발트"}
+      - {label: "망간", price_mineral: "망간"}
+      - {label: "흑연", price_mineral: "흑연"}
+      - {label: "네오디윰", price_mineral: "네오디뮴"}
+      - {label: "디스프로슘", price_mineral: "디스프로슘"}
+      - {label: "터븀", price_mineral: "터븀"}
+      - {label: "세륨", price_mineral: "세륨"}
+      - {label: "란탄", price_mineral: "란탄"}

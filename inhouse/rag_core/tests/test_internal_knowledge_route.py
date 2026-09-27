@@ -49,6 +49,21 @@ class _SupportLLM:
 
 
 class InternalKnowledgeEligibilityTest(unittest.TestCase):
+    def test_direct_faq_has_no_placeholder_and_does_not_capture_analysis(self):
+        for question in ("광물종합지수가 뭐야?", "전략광종이 뭐야?"):
+            with self.subTest(question=question):
+                answer = chatbot.direct_faq_answer(question)
+                self.assertIsNotNone(answer)
+                self.assertNotRegex(answer, r"\{[^{}]+\}")
+        self.assertIsNone(chatbot.direct_faq_answer(
+            "광물종합지수 구성 광종 중 상승 전망인 건 뭐야?",
+        ))
+        self.assertEqual(
+            chatbot.direct_faq_answer("광물가격 데이터 엑셀로 받을 수 있어?"),
+            "광물가격 화면의 엑셀 다운로드 버튼으로 조회 결과를 내려받을 수 있습니다.",
+        )
+        self.assertIn("기간", chatbot.direct_faq_answer("월간동향 게시판 검색은 어떻게 해?"))
+
     def test_allows_unseen_definition_and_general_supply_chain_phrasings(self):
         allowed = (
             "HHI란 무엇인가요?",

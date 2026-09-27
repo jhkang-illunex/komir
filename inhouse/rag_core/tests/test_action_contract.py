@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from rag_core.ragkit.action_contract import (
     ActionCall, ActionPlan, ActionSlots, IntentCall, IntentPlan, Period,
     _has_source_unavailable_predecessor, _intent_plan_semantic_failure, action_plan_from_intent,
-    merge_trade_indicator_followup, normalize_country_rank_request, validate_action_plan,
+    extract_action_plan, merge_trade_indicator_followup, normalize_country_rank_request, validate_action_plan,
 )
 from rag_core.ragkit import chatbot_graph as graph
 from rag_core.ragkit import chatbot
@@ -81,6 +81,30 @@ class ActionContractTest(unittest.TestCase):
         self.assertEqual(call.slots.reporter_country, "한국")
         self.assertEqual(call.slots.period.calendar_year, 2025)
         self.assertTrue(validate_action_plan(resumed).approved)
+
+    def test_trade_clarification_explicit_period_replaces_pending_period(self):
+        pending = ActionPlan(actions=[ActionCall(
+            requirement_id="trade", action_id="trade.indicator", slots=ActionSlots(
+                mineral="리튬", reporter_country="한국", partner_country="중국", flow="import",
+                trade_metric="country_dependency",
+                period=Period(kind="calendar_year", calendar_year=2024, explicit=True),
+            ),
+        )])
+        resumed = merge_trade_indicator_followup(pending, "한국 기준 2025년")
+        self.assertEqual(resumed.actions[0].slots.period.calendar_year, 2025)
+
+    def test_trade_clarification_recent_period_does_not_reuse_tsi_annual_value(self):
+        pending = ActionPlan(actions=[ActionCall(
+            requirement_id="trade", action_id="trade.indicator", slots=ActionSlots(
+                mineral="리튬", trade_metric="tsi",
+                period=Period(kind="calendar_year", calendar_year=2025, explicit=True),
+            ),
+        )])
+        resumed = merge_trade_indicator_followup(pending, "한국 최근 3개월")
+        call = resumed.actions[0]
+        self.assertEqual(call.slots.period.kind, "trailing_months")
+        self.assertEqual(call.slots.period.trailing_months, 3)
+        self.assertEqual(validate_action_plan(resumed).failure_reason, "slot_required")
 
     def test_price_slots_map_without_question_regex(self):
         plan = ActionPlan(actions=[ActionCall(requirement_id="r1", action_id="price.series",
@@ -327,6 +351,60 @@ class ActionContractTest(unittest.TestCase):
         self.assertIs(normalize_country_rank_request(
             "한국의 리튬 수입 의존도를 알려줘", indicator,
         ), indicator)
+
+    def test_country_dependency_defaults_korea_trailing_year_and_product_denominator(self):
+        question = "흑연 수입 중 중국 비중 얼마야?"
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("완결된 FBQ22 문형은 LLM을 호출하면 안 됩니다.")
+
+        plan = extract_action_plan(question, MustNotRun())
+        call = plan.actions[0]
+        self.assertEqual(call.action_id, "trade.indicator")
+        self.assertEqual(call.slots.trade_metric, "country_dependency")
+        self.assertEqual(call.slots.reporter_country, "한국")
+        self.assertEqual(call.slots.partner_country, "중국")
+        self.assertEqual(call.slots.flow, "import")
+        self.assertEqual(call.slots.period.kind, "trailing_months")
+        self.assertEqual(call.slots.period.trailing_months, 12)
+        self.assertFalse(call.slots.period.explicit)
+        self.assertEqual(call.slots.denominator_scope, "reporter_product_trade")
+        self.assertTrue(validate_action_plan(plan).approved)
+        route = graph._route_from_action_plan(plan, question)
+        self.assertEqual(route.komis_relative_months, 12)
+        self.assertEqual(route.komis_dependency_denominator, "reporter_product_trade")
+
+    def test_country_dependency_recent_period_and_explicit_range_are_preserved(self):
+        recent = action_plan_from_intent(IntentPlan(requirements=[IntentCall(
+            requirement_id="dependency", intent="trade_indicator", role="data",
+            slots=ActionSlots(mineral="리튬"),
+        )]), "리튬 수입 중 중국 비중 최근 3개월 알려줘")
+        self.assertEqual(recent.actions[0].slots.period.trailing_months, 3)
+        ranged = action_plan_from_intent(IntentPlan(requirements=[IntentCall(
+            requirement_id="dependency", intent="trade_indicator", role="data",
+            slots=ActionSlots(mineral="리튬", flow="import", trade_metric="country_dependency",
+                              partner_country="중국", reporter_country="한국",
+                              period=Period(kind="range", start="2025-01-01", end="2025-03-31", explicit=True)),
+        )]), "2025년 1월부터 3월까지 리튬 수입 중 중국 비중")
+        self.assertEqual(ranged.actions[0].slots.period.kind, "range")
+        self.assertEqual(ranged.actions[0].slots.period.start, "2025-01-01")
+
+    def test_compound_dependency_keeps_each_requirement_explicit_period(self):
+        candidate = action_plan_from_intent(IntentPlan(requirements=[
+            IntentCall(requirement_id="china", intent="trade_indicator", role="data", slots=ActionSlots(
+                mineral="흑연", reporter_country="한국", partner_country="중국", flow="import",
+                trade_metric="country_dependency",
+                period=Period(kind="calendar_year", calendar_year=2025, explicit=True),
+            )),
+            IntentCall(requirement_id="japan", intent="trade_indicator", role="data", slots=ActionSlots(
+                mineral="흑연", reporter_country="한국", partner_country="일본", flow="import",
+                trade_metric="country_dependency",
+                period=Period(kind="trailing_months", trailing_months=3, explicit=True),
+            )),
+        ]), "2025년 한국 흑연 수입 중 중국 비중과 최근 3개월 일본 비중을 각각 알려줘")
+        periods = {call.requirement_id: call.slots.period for call in candidate.actions}
+        self.assertEqual(periods["china"].calendar_year, 2025)
+        self.assertEqual(periods["japan"].trailing_months, 3)
 
     def test_price_metadata_and_diagnosis_content_do_not_become_unsupported_combinations(self):
         price_metadata = IntentPlan(requirements=[

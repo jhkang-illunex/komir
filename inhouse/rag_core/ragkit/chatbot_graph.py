@@ -567,6 +567,7 @@ class RetrievalRoute(BaseModel):
     komis_reporter_country: str | None = None
     komis_partner_country: str | None = None
     komis_trade_flow: Literal["import", "export"] | None = None
+    komis_dependency_denominator: Literal["reporter_product_trade"] | None = None
     use_komis_concentration: bool = False
     use_komis_monthly_trade: bool = False
     komis_monthly_trade_metric: Literal[
@@ -574,6 +575,8 @@ class RetrievalRoute(BaseModel):
     ] | None = None
     use_komis_explicit_hs_summary: bool = False
     use_komis_price_comparison: bool = False
+    use_komis_strategic_price_overview: bool = False
+    komis_strategic_price_groups: list[Literal["strategic_six", "strategic_ten"]] | None = None
     komis_price_windows_months: list[int] | None = None
     # price.verify_claim 전용: 비교 원자료와 분리하지 않고 같은 adapter 결과에
     # premise·연산자를 보존해 Advisor가 수치 전제를 확인한다.
@@ -590,6 +593,8 @@ class RetrievalRoute(BaseModel):
     komis_ranking_top_n: int | None = None
     # 2026-09-18(RDB 결정적쿼리 후보리스트 1순위 — 매장량/생산량 국가랭킹)
     use_komis_mineral_ranking: bool = False
+    use_komis_production_yoy: bool = False
+    komis_production_yoy_end_year: int | None = None
     # 2026-09-18: 단일값(Literal)이던 걸 리스트로 확장 — "생산량과 매장량"
     # 복합요청을 하나만 처리하던 결함 수정(ROUTE_PROMPT 참고).
     komis_mineral_ranking_metrics: list[Literal["production", "reserves"]] | None = None
@@ -824,6 +829,9 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
     }
     if call.action_id == "price.series":
         return RetrievalRoute(**common, use_komis_raw=True, komis_topic="price")
+    if call.action_id == "price.overview":
+        return RetrievalRoute(**common, use_komis_strategic_price_overview=True,
+                              komis_strategic_price_groups=s.strategic_price_groups)
     if call.action_id in {"price.compare", "price.verify_claim"}:
         return RetrievalRoute(**common, use_komis_price_comparison=True,
                               komis_compare_mineral_names=s.minerals or ([s.mineral] if s.mineral else None),
@@ -831,7 +839,8 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
                               komis_claimed_change_pct=s.claimed_change_pct,
                               komis_claim_comparator=s.comparator)
     if call.action_id == "trade.country_rank":
-        return RetrievalRoute(**common, use_komis_ranking=True, komis_ranking_page="map_korea",
+        return RetrievalRoute(**common, use_komis_ranking=True,
+                              komis_ranking_page=("map_global" if s.trade_scope == "global" else "map_korea"),
                               komis_ranking_metric=s.metric)
     if call.action_id == "trade.monthly":
         return RetrievalRoute(**common, use_komis_monthly_trade=True,
@@ -843,10 +852,14 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
     if call.action_id == "trade.indicator":
         return RetrievalRoute(**common, use_komis_trade_indicator=True,
                               komis_trade_metric=s.trade_metric, komis_reporter_country=s.reporter_country,
-                              komis_partner_country=s.partner_country, komis_trade_flow=s.flow)
+                              komis_partner_country=s.partner_country, komis_trade_flow=s.flow,
+                              komis_dependency_denominator=s.denominator_scope)
     if call.action_id == "resource.rank":
         return RetrievalRoute(**common, use_komis_mineral_ranking=True,
                               komis_mineral_ranking_metrics=[s.metric])
+    if call.action_id == "resource.yoy":
+        return RetrievalRoute(**common, use_komis_production_yoy=True,
+                              komis_production_yoy_end_year=period.calendar_year if period else None)
     if call.action_id == "mine.rank":
         since_year = None
         mine_year = None
@@ -1081,6 +1094,9 @@ def _evidence_matches_required_period(evidence: list[Evidence], action_call) -> 
     period = action_call.slots.period
     if not period or not period.explicit:
         return True
+    if action_call.action_id == "resource.yoy" and period.kind == "calendar_year" and period.calendar_year:
+        expected = f"{period.calendar_year - 1}~{period.calendar_year}"
+        return bool(evidence) and all((ev.observed_period or ev.as_of) == expected for ev in evidence)
     if period.kind == "calendar_year" and period.calendar_year:
         expected_start = date(period.calendar_year, 1, 1)
         expected_end = date(period.calendar_year, 12, 31)
@@ -1393,20 +1409,41 @@ def _comparison_or_monthly_source_is_usable(evidence: list[Evidence], action_cal
 
 
 def _filter_document_evidence_to_trailing_period(evidence: list[Evidence], action_call) -> list[Evidence]:
-    """최근 N개월 문서 질의에는 파일명에서 확인한 발행일 근거만 남긴다."""
+    """기간이 명시된 문서 질의에는 확인 가능한 발행일의 범위 내 근거만 남긴다."""
 
     period = action_call.slots.period
-    if (action_call.action_id != "document.retrieve" or not period
-            or period.kind != "trailing_months" or not period.trailing_months):
+    if action_call.action_id != "document.retrieve" or not period:
         return evidence
-    cutoff = _months_ago(date.today(), period.trailing_months)
+    today = date.today()
+    if period.kind == "trailing_months" and period.trailing_months:
+        start, end = _months_ago(today, period.trailing_months), today
+    elif period.kind in {"range", "calendar_year"}:
+        # range/calendar_year는 문서의 발행 기간을 명시한 월간동향·뉴스
+        # 검색에서만 발행일 필터로 해석한다. 일반 통계 질문의 2025년은
+        # 통계 대상연도일 수 있어 2026년 발행 보고서를 제거하면 안 된다.
+        topic = re.sub(r"\s+", "", action_call.slots.topic or "")
+        if not any(marker in topic for marker in (
+            "월간동향", "자원뉴스", "수출통제관련뉴스", "수출통제뉴스",
+        )):
+            return evidence
+        if period.kind == "range" and period.start and period.end:
+            try:
+                start, end = date.fromisoformat(period.start), date.fromisoformat(period.end)
+            except ValueError:
+                return []
+        elif period.kind == "calendar_year" and period.calendar_year:
+            start, end = date(period.calendar_year, 1, 1), date(period.calendar_year, 12, 31)
+        else:
+            return evidence
+    else:
+        return evidence
     filtered: list[Evidence] = []
     for ev in evidence:
         try:
             observed = date.fromisoformat((ev.as_of or "")[:10])
         except ValueError:
             continue
-        if cutoff <= observed <= date.today():
+        if start <= observed <= end:
             filtered.append(ev)
     return filtered
 
@@ -1904,7 +1941,7 @@ def _retrieve_node(
         # 수 있어 중복 DB 왕복을 피한다). page_id 결정(_komis_raw_page_id)은
         # 아래에서 여전히 komis_raw 전용으로만 한다 — 랭킹은 route가 이미
         # page_id를 직접 고른다(komis_ranking_page).
-        (route.use_komis_ranking or route.use_komis_mineral_ranking or route.use_komis_concentration
+        (route.use_komis_ranking or route.use_komis_mineral_ranking or route.use_komis_production_yoy or route.use_komis_concentration
          or route.use_komis_monthly_trade or route.use_komis_trade_indicator)
         and route.komis_mineral_name
     ):
@@ -1998,16 +2035,24 @@ def _retrieve_node(
                 session.call_komis_monthly_trade_summary, **monthly_kwargs,
             )
         if (route.use_komis_trade_indicator and route.komis_trade_metric
-                and route.komis_reporter_country and route.komis_start_period
-                and len(route.komis_start_period) == 4):
-            jobs["komis_trade_indicator"] = submit(
-                session.call_komis_trade_indicator,
-                trade_metric=route.komis_trade_metric,
-                reporter_country=route.komis_reporter_country,
-                calendar_year=int(route.komis_start_period),
-                mineral_code=komis_raw_mineral_code, hs_code=route.komis_hs_code,
-                partner_country=route.komis_partner_country, flow=route.komis_trade_flow,
-            )
+                and route.komis_reporter_country):
+            indicator_start, indicator_end = _relative_period_bounds(route)
+            if indicator_start and indicator_end:
+                indicator_kwargs: dict[str, object] = {
+                    "trade_metric": route.komis_trade_metric,
+                    "reporter_country": route.komis_reporter_country,
+                    "mineral_code": komis_raw_mineral_code, "hs_code": route.komis_hs_code,
+                    "partner_country": route.komis_partner_country, "flow": route.komis_trade_flow,
+                    "denominator_scope": route.komis_dependency_denominator,
+                }
+                if indicator_start == indicator_end and len(indicator_start) == 4:
+                    indicator_kwargs["calendar_year"] = int(indicator_start)
+                else:
+                    indicator_kwargs["start_period"] = indicator_start
+                    indicator_kwargs["end_period"] = indicator_end
+                jobs["komis_trade_indicator"] = submit(
+                    session.call_komis_trade_indicator, **indicator_kwargs,
+                )
         if route.use_komis_explicit_hs_summary and route.komis_hs_code:
             hs_start, hs_end = _relative_period_bounds(route)
             jobs["komis_explicit_hs_summary"] = submit(
@@ -2030,6 +2075,10 @@ def _retrieve_node(
                     session.call_komis_price_comparison, route.komis_compare_mineral_names,
                     start_period=p_start, end_period=p_end,
                 )
+        if route.use_komis_strategic_price_overview and route.komis_strategic_price_groups:
+            jobs["komis_strategic_price_overview"] = submit(
+                session.call_komis_strategic_price_overview, route.komis_strategic_price_groups,
+            )
         # 2026-09-18(RDB 결정적쿼리 후보리스트 1순위) — "{광종} 매장량/생산량
         # 국가랭킹" 전용. komis_ranking(교역)과 별도 job, mineral_code 해소는
         # 위에서 공유한다. 연도는 relative_months 계산을 거치지 않는다(연 단위
@@ -2050,6 +2099,11 @@ def _retrieve_node(
                     top_n=route.komis_ranking_top_n or 5,
                     share_only=share_comparison,
                 )
+        if route.use_komis_production_yoy and komis_raw_mineral_code:
+            jobs["komis_production_yoy"] = submit(
+                session.call_komis_production_yoy, komis_raw_mineral_code,
+                end_year=route.komis_production_yoy_end_year,
+            )
         # 2026-09-18(RDB 결정적쿼리 후보리스트 2순위) — 여러 광종을 가로지르는
         # 비교/랭킹 두 종. 이 둘은 mineral_code 해소가 필요 없다(광종명을
         # 그대로 SQL의 ai_mnrl_mst 조인 필터로 쓴다 — komis_compare_mineral_names
@@ -2131,7 +2185,7 @@ def _retrieve_node(
         pool.shutdown(wait=False)
 
     required_aggregate_jobs = [name for name in jobs if name.startswith((
-        "komis_monthly_trade", "komis_explicit_hs_summary", "komis_price_comparison",
+        "komis_monthly_trade", "komis_explicit_hs_summary", "komis_price_comparison", "komis_strategic_price_overview", "komis_production_yoy",
     ))]
     if route.use_komis_monthly_trade and "komis_monthly_trade" not in required_aggregate_jobs:
         required_aggregate_jobs.append("komis_monthly_trade")
@@ -2139,6 +2193,10 @@ def _retrieve_node(
         required_aggregate_jobs.append("komis_explicit_hs_summary")
     if route.use_komis_price_comparison and not any(name.startswith("komis_price_comparison") for name in required_aggregate_jobs):
         required_aggregate_jobs.append("komis_price_comparison")
+    if route.use_komis_strategic_price_overview and "komis_strategic_price_overview" not in required_aggregate_jobs:
+        required_aggregate_jobs.append("komis_strategic_price_overview")
+    if route.use_komis_production_yoy and "komis_production_yoy" not in required_aggregate_jobs:
+        required_aggregate_jobs.append("komis_production_yoy")
     compact_question = re.sub(r"\s+", "", state.get("question", route.resolved_query))
     if "생산국비중" in compact_question and "수입국비중" in compact_question:
         required_aggregate_jobs.extend(("komis_ranking", "komis_mineral_ranking:production"))
@@ -2167,7 +2225,7 @@ def _retrieve_node(
         evidence.extend(trade_evidence)
         warnings.extend(trade_warnings)
     for name, payload in results.items():
-        if name.startswith(("komis_monthly_trade", "komis_explicit_hs_summary", "komis_price_comparison")):
+        if name.startswith(("komis_monthly_trade", "komis_explicit_hs_summary", "komis_price_comparison", "komis_strategic_price_overview", "komis_production_yoy")):
             aggregate_evidence, aggregate_warnings = payload
             evidence.extend(aggregate_evidence)
             warnings.extend(aggregate_warnings)
@@ -2356,7 +2414,9 @@ def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
             return {"sufficient": False, "evidence": [], "warnings": ["advisor_contract_mismatch"]}
         if (_is_complete_explicit_hs_summary(evidence, action_call)
                 or _is_complete_mine_rank_increase(evidence, action_call)
-                or _is_complete_mine_rank_yoy(evidence, action_call)):
+                or _is_complete_mine_rank_yoy(evidence, action_call)
+                or (action_call.action_id == "resource.yoy" and len(evidence) == 1
+                    and evidence[0].kind == "aggregated" and "change_tonnes" in evidence[0].text)):
             return {"sufficient": True, "evidence": evidence, "warnings": state.get("warnings", [])}
         # stockpile.methodology는 실측 현황을 답하지 않는 정적 방법론 action이다.
         # adapter가 인용할 단일 문서를 결정적으로 만들었으므로, 원 질문의

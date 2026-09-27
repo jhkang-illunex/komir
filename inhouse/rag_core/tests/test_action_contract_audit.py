@@ -9,12 +9,13 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from rag_core.ragkit.action_contract import (  # noqa: E402
-    ActionPlan, IntentCall, IntentPlan, ActionSlots, Period, action_plan_from_intent,
-    missing_trade_indicator_slots, validate_action_plan,
+    ActionCall, ActionPlan, IntentCall, IntentPlan, ActionSlots, Period, action_plan_from_intent,
+    extract_action_plan, missing_trade_indicator_slots, validate_action_plan,
 )
 from rag_core.ragkit.chatbot_graph import _route_from_action_plan, _route_from_action_call  # noqa: E402
 from rag_core.ragkit import chatbot_graph as graph  # noqa: E402
 from rag_core.ragkit.mcp_client import _ProfileSession  # noqa: E402
+from rag_core.ragkit.source_contract import SourceAssessment  # noqa: E402
 from rag_core.retrieval.evidence import Evidence  # noqa: E402
 
 
@@ -27,6 +28,184 @@ def call(requirement_id, action_id, **slots):
 
 
 class ActionContractAuditTest(unittest.TestCase):
+    def test_world_trade_rank_routes_to_global_source_without_korea_substitution(self):
+        candidate = action_plan_from_intent(IntentPlan(requirements=[IntentCall(
+            requirement_id="rank", intent="trade_rank", role="data",
+            slots=ActionSlots(mineral="리튬", flow="export", metric="export_amount"),
+        )]), "세계 리튬 수출 상위국은 어디야?")
+        call = candidate.actions[0]
+        self.assertEqual(call.slots.trade_scope, "global")
+        route = _route_from_action_call(call, "세계 리튬 수출 상위국은 어디야?")
+        self.assertEqual(route.komis_ranking_page, "map_global")
+        self.assertEqual(route.komis_ranking_metric, "export_amount")
+
+    def test_korea_trade_rank_keeps_korea_source(self):
+        candidate = action_plan_from_intent(IntentPlan(requirements=[IntentCall(
+            requirement_id="rank", intent="trade_rank", role="data",
+            slots=ActionSlots(mineral="리튬", flow="import", metric="import_amount"),
+        )]), "우리나라 리튬 수입 상위국은 어디야?")
+        route = _route_from_action_call(candidate.actions[0], "우리나라 리튬 수입 상위국은 어디야?")
+        self.assertEqual(route.komis_ranking_page, "map_korea")
+
+    def test_country_share_without_world_overrides_planner_global_scope(self):
+        candidate = action_plan_from_intent(IntentPlan(requirements=[IntentCall(
+            requirement_id="rank", intent="trade_rank", role="data",
+            slots=ActionSlots(mineral="리튬", flow="import", metric="import_amount",
+                              trade_scope="global"),
+        )]), "리튬 수입 상위 5개국과 국가별 비중을 알려줘")
+        call = candidate.actions[0]
+        self.assertEqual(call.slots.trade_scope, "korea")
+        self.assertEqual(
+            _route_from_action_call(call, "리튬 수입 상위 5개국과 국가별 비중을 알려줘").komis_ranking_page,
+            "map_korea",
+        )
+
+    def test_trade_rank_followup_preserves_inherited_global_scope(self):
+        for question in (
+            "같은 순위를 최근 2년으로 다시 보여줘",
+            "최근 2년으로 바꿔줘",
+            "그럼 최근 6개월은?",
+            "표로 보여줘",
+        ):
+            with self.subTest(question=question):
+                candidate = action_plan_from_intent(IntentPlan(requirements=[IntentCall(
+                    requirement_id="rank", intent="trade_rank", role="data",
+                    slots=ActionSlots(mineral="리튬", flow="export", metric="export_amount",
+                                      trade_scope="global"),
+                )]), question)
+                self.assertEqual(candidate.actions[0].slots.trade_scope, "global")
+
+    def test_future_actual_price_is_deterministically_source_unavailable(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("future actual-price query must not call the planner")
+
+        candidate = extract_action_plan(
+            "2030년 리튬 실제 월별 가격을 차트로 보여줘. 아직 없는 실측 자료라면 없다고 알려줘.",
+            MustNotRun(),
+        )
+        self.assertEqual(candidate.actions[0].action_id, "price.series")
+        self.assertEqual(candidate.actions[0].slots.period.kind, "future_horizon")
+        self.assertEqual(validate_action_plan(candidate).failure_reason, "source_unavailable")
+
+    def test_standalone_monthly_and_news_queries_bypass_llm_as_document_actions(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("publication query must not call the planner")
+
+        cases = (
+            ("이번 달 전략광종 월간동향 요약해줘", "range"),
+            ("오늘 자원뉴스 뭐 있어?", "range"),
+            ("이번 주 주간자원뉴스 요약해줘", "range"),
+            ("최근 중국 수출통제 관련 뉴스 있어?", "trailing_months"),
+            ("최근 3개월 월간동향에서 리튬 관련 내용 찾아줘", "trailing_months"),
+        )
+        for question, period_kind in cases:
+            with self.subTest(question=question):
+                candidate = extract_action_plan(question, MustNotRun())
+                self.assertEqual([call.action_id for call in candidate.actions], ["document.retrieve"])
+                self.assertEqual(candidate.actions[0].slots.period.kind, period_kind)
+
+    def test_publication_shortcut_preserves_compound_and_navigation_requests(self):
+        class Planner:
+            def invoke(self, **kwargs):
+                return SimpleNamespace(output=IntentPlan(requirements=[IntentCall(
+                    requirement_id="price", intent="price_series", role="data",
+                    slots=ActionSlots(mineral="니켈"),
+                )]))
+
+        compound = extract_action_plan("월간동향 요약하고 니켈 현재 가격 알려줘", Planner())
+        self.assertEqual([call.action_id for call in compound.actions], ["price.series"])
+        navigation = extract_action_plan("월간동향 게시판으로 이동해줘", Planner())
+        self.assertEqual([call.action_id for call in navigation.actions], ["price.series"])
+        price_followup = extract_action_plan(
+            "이번 달 희소금속 월간동향에 나온 광종들 가격 어때?", Planner(),
+        )
+        self.assertEqual([call.action_id for call in price_followup.actions], ["price.series"])
+
+    def test_publication_shortcut_preserves_year_periods(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("publication query must not call the planner")
+
+        recent = extract_action_plan("최근 1년 월간동향 요약해줘", MustNotRun())
+        self.assertEqual(recent.actions[0].slots.period.trailing_months, 12)
+        annual = extract_action_plan("2025년 월간동향 요약해줘", MustNotRun())
+        self.assertEqual(annual.actions[0].slots.period.calendar_year, 2025)
+        latest = extract_action_plan("최근 희소금속 월간동향 보고서 제목 알려줘", MustNotRun())
+        self.assertIsNone(latest.actions[0].slots.period)
+
+    def test_mixed_world_resource_and_korea_trade_requires_requirement_scope(self):
+        candidate = action_plan_from_intent(IntentPlan(requirements=[
+            IntentCall(requirement_id="world", intent="resource_rank", role="data",
+                       slots=ActionSlots(mineral="코발트", metric="production")),
+            IntentCall(requirement_id="korea", intent="trade_rank", role="data",
+                       slots=ActionSlots(mineral="코발트", flow="import", metric="import_amount")),
+        ]), "코발트 세계 생산국이랑 우리나라 수입국 비교해줘")
+        trade = next(call for call in candidate.actions if call.action_id == "trade.country_rank")
+        self.assertIsNone(trade.slots.trade_scope)
+        self.assertEqual(validate_action_plan(candidate).failure_reason, "slot_unresolved")
+        trade.slots.trade_scope = "korea"
+        self.assertTrue(validate_action_plan(candidate).approved)
+        self.assertEqual(_route_from_action_call(trade, "질문").komis_ranking_page, "map_korea")
+
+    def test_mixed_korea_monthly_and_world_rank_does_not_inherit_korea(self):
+        candidate = action_plan_from_intent(IntentPlan(requirements=[
+            IntentCall(requirement_id="monthly", intent="trade_monthly", role="data",
+                       slots=ActionSlots(mineral="니켈", metric="import_amount")),
+            IntentCall(requirement_id="world", intent="trade_rank", role="data",
+                       slots=ActionSlots(mineral="리튬", flow="export", metric="export_amount")),
+        ]), "한국 니켈 수입금액 월별 추이와 세계 리튬 수출 상위국을 보여줘")
+        trade = next(call for call in candidate.actions if call.action_id == "trade.country_rank")
+        self.assertIsNone(trade.slots.trade_scope)
+        self.assertEqual(validate_action_plan(candidate).failure_reason, "slot_unresolved")
+
+    def test_two_trade_rank_requirements_need_requirement_level_scopes(self):
+        candidate = ActionPlan(actions=[
+            ActionCall(requirement_id="world", action_id="trade.country_rank",
+                       slots=ActionSlots(mineral="리튬", flow="export", metric="export_amount")),
+            ActionCall(requirement_id="korea", action_id="trade.country_rank",
+                       slots=ActionSlots(mineral="니켈", flow="import", metric="import_amount")),
+        ])
+        self.assertEqual(validate_action_plan(candidate).failure_reason, "slot_unresolved")
+
+    def test_complex_publication_periods_are_left_to_planner(self):
+        class Planner:
+            def invoke(self, **kwargs):
+                return SimpleNamespace(output=IntentPlan(requirements=[IntentCall(
+                    requirement_id="doc", intent="document", role="content",
+                    slots=ActionSlots(topic=kwargs["payload"]["question"]),
+                )]))
+
+        for question in (
+            "2025년 1월부터 3월까지 월간동향 요약해줘",
+            "지난달 전략광종 월간동향 요약해줘",
+        ):
+            with self.subTest(question=question):
+                candidate = extract_action_plan(question, Planner())
+                self.assertEqual(candidate.actions[0].slots.topic, question)
+
+    def test_explicit_document_range_filters_old_and_unknown_dates(self):
+        action = plan(call("news", "document.retrieve", topic="오늘 자원뉴스",
+                           period={"kind": "range", "start": "2026-09-27",
+                                   "end": "2026-09-27", "explicit": True})).actions[0]
+        today = Evidence(kind="pageindex", source="today", section="뉴스", text="내용",
+                         as_of="2026-09-27")
+        old = Evidence(kind="pageindex", source="old", section="뉴스", text="내용",
+                       as_of="2025-06-10")
+        unknown = Evidence(kind="pageindex", source="unknown", section="뉴스", text="내용")
+        self.assertEqual(graph._filter_document_evidence_to_trailing_period(
+            [today, old, unknown], action), [today])
+
+    def test_statistical_year_does_not_filter_by_document_publication_year(self):
+        action = plan(call("analysis", "document.retrieve", topic="2025년 리튬 생산량 설명",
+                           period={"kind": "calendar_year", "calendar_year": 2025,
+                                   "explicit": True})).actions[0]
+        published_later = Evidence(kind="pageindex", source="USGS_2026", section="리튬",
+                                   text="2025년 생산량", as_of="2026-01-31")
+        self.assertEqual(graph._filter_document_evidence_to_trailing_period(
+            [published_later], action), [published_later])
+
     def test_requested_monthly_frequency_is_preserved_without_misreading_monthly_news(self):
         intent_plan = IntentPlan(requirements=[IntentCall(
             requirement_id="r1", intent="price_series", role="data",
@@ -113,6 +292,7 @@ class ActionContractAuditTest(unittest.TestCase):
         candidate = plan(call(
             "r1", "trade.indicator", trade_metric="country_dependency", mineral="리튬",
             reporter_country="한국", partner_country="중국", flow="import",
+            denominator_scope="reporter_product_trade",
             period={"kind": "calendar_year", "calendar_year": 2025, "explicit": True},
         ))
         self.assertTrue(validate_action_plan(candidate).approved)
@@ -120,6 +300,128 @@ class ActionContractAuditTest(unittest.TestCase):
         self.assertTrue(route.use_komis_trade_indicator)
         self.assertEqual(route.komis_trade_metric, "country_dependency")
         self.assertEqual(route.komis_partner_country, "중국")
+
+    def test_trailing_country_dependency_forwards_range_and_denominator_to_mcp(self):
+        received: dict[str, object] = {}
+
+        class Session:
+            def call_komis_resolve_mineral(self, _name):
+                return {"mineral_code": "MNRL0005", "price_category": None, "warnings": []}
+
+            def call_komis_trade_indicator(self, **kwargs):
+                received.update(kwargs)
+                return [Evidence(kind="structured", source="KOMIS", section="의존도", text="근거")], []
+
+        route = graph.RetrievalRoute(
+            resolved_query="흑연 중국 수입 비중", use_structured=False, use_dense=False, use_pageindex=False,
+            use_komis_trade_indicator=True, komis_trade_metric="country_dependency",
+            komis_reporter_country="한국", komis_partner_country="중국", komis_trade_flow="import",
+            komis_dependency_denominator="reporter_product_trade", komis_mineral_name="흑연",
+            komis_relative_months=3,
+        )
+        with patch.object(graph.mcp_client, "public", Session()):
+            result = graph._retrieve_node({"route": route, "question": "흑연 수입 중 중국 비중 최근 3개월",
+                                           "profile": "public", "warnings": [],
+                                           "action_assessment": graph.PlanAssessment(approved=True),
+                                           "source_assessment": SourceAssessment()},
+                                          dense_k=1, pageindex_k=1)
+        self.assertEqual(len(result["evidence"]), 1)
+        self.assertEqual(received["denominator_scope"], "reporter_product_trade")
+        self.assertEqual(received["mineral_code"], "MNRL0005")
+        self.assertRegex(str(received["start_period"]), r"^\d{8}$")
+        self.assertRegex(str(received["end_period"]), r"^\d{8}$")
+        self.assertNotIn("calendar_year", received)
+
+    def test_fallback_country_share_question_fills_dependency_slots_without_llm(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("specific-country share must use deterministic trade plan")
+
+        candidate = extract_action_plan("흑연 수입 중 중국 비중 얼마야?", MustNotRun())
+        call = candidate.actions[0]
+        self.assertEqual(call.action_id, "trade.indicator")
+        self.assertEqual(call.slots.trade_metric, "country_dependency")
+        self.assertEqual(call.slots.reporter_country, "한국")
+        self.assertEqual(call.slots.partner_country, "중국")
+        self.assertEqual(call.slots.flow, "import")
+        self.assertEqual(call.slots.period.trailing_months, 12)
+        self.assertEqual(call.slots.denominator_scope, "reporter_product_trade")
+        self.assertTrue(validate_action_plan(candidate).approved)
+
+    def test_strategic_price_overview_uses_closed_yaml_group_action_without_llm(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("전략광종 단일 가격 현황은 LLM을 호출하면 안 됩니다.")
+
+        candidate = extract_action_plan("전략광종 가격 현황 한눈에 보여줘", MustNotRun())
+        call = candidate.actions[0]
+        self.assertEqual(call.action_id, "price.overview")
+        self.assertEqual(call.slots.strategic_price_groups, ["strategic_six", "strategic_ten"])
+        self.assertTrue(validate_action_plan(candidate).approved)
+        route = _route_from_action_plan(candidate, "전략광종 가격 현황 한눈에 보여줘")
+        self.assertTrue(route.use_komis_strategic_price_overview)
+        self.assertEqual(route.komis_strategic_price_groups, ["strategic_six", "strategic_ten"])
+
+    def test_strategic_price_overview_rejects_duplicate_or_mineral_override(self):
+        candidate = plan(call("overview", "price.overview", strategic_price_groups=["strategic_six", "strategic_six"]))
+        self.assertEqual(validate_action_plan(candidate).failure_reason, "slot_unresolved")
+        overridden = plan(call("overview", "price.overview", strategic_price_groups=["strategic_six"], mineral="니켈"))
+        self.assertEqual(validate_action_plan(overridden).failure_reason, "slot_unresolved")
+
+    def test_country_share_shortcut_does_not_capture_rank_or_compound_question(self):
+        class RecordingLlm:
+            def __init__(self):
+                self.calls = 0
+
+            def invoke(self, **kwargs):
+                self.calls += 1
+                return SimpleNamespace(output=IntentPlan(requirements=[IntentCall(
+                    requirement_id="rank", intent="trade_rank", role="data",
+                    slots=ActionSlots(mineral="리튬", flow="import"),
+                )]))
+
+        llm = RecordingLlm()
+        candidate = extract_action_plan("한국의 리튬 수입 상위국과 국가별 비중", llm)
+        self.assertEqual(llm.calls, 1)
+        self.assertEqual(candidate.actions[0].action_id, "trade.country_rank")
+
+    def test_country_share_shortcut_rejects_non_single_partner_tokens(self):
+        class RecordingLlm:
+            def __init__(self):
+                self.calls = 0
+
+            def invoke(self, **kwargs):
+                self.calls += 1
+                return SimpleNamespace(output=IntentPlan(requirements=[IntentCall(
+                    requirement_id="rank", intent="trade_rank", role="data",
+                    slots=ActionSlots(mineral="흑연", flow="import"),
+                )]))
+
+        llm = RecordingLlm()
+        for question in (
+            "흑연 수입 중 국가별 비중 알려줘",
+            "흑연 수입 중 중국과 미국 비중 알려줘",
+        ):
+            with self.subTest(question=question):
+                candidate = extract_action_plan(question, llm)
+                self.assertEqual(candidate.actions[0].action_id, "trade.country_rank")
+        self.assertEqual(llm.calls, 2)
+
+    def test_legacy_country_dependency_defaults_denominator_without_new_hitl(self):
+        candidate = plan(call(
+            "legacy", "trade.indicator", trade_metric="country_dependency", mineral="리튬",
+            reporter_country="한국", partner_country="중국", flow="import",
+            period={"kind": "calendar_year", "calendar_year": 2025, "explicit": True},
+        ))
+        self.assertTrue(validate_action_plan(candidate).approved)
+        self.assertEqual(candidate.actions[0].slots.denominator_scope, "reporter_product_trade")
+
+    def test_non_dependency_trailing_period_remains_hitl(self):
+        candidate = plan(call(
+            "tsi", "trade.indicator", trade_metric="tsi", mineral="리튬", reporter_country="한국",
+            period={"kind": "trailing_months", "trailing_months": 3, "explicit": True},
+        ))
+        self.assertEqual(validate_action_plan(candidate).failure_reason, "slot_required")
 
     def test_specific_country_dependency_normalizes_from_typed_concentration_to_indicator(self):
         intents = IntentPlan(requirements=[IntentCall(

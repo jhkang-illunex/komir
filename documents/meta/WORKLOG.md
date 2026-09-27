@@ -2,6 +2,87 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-27 — FBQ55 YAML 전략광종 가격 현황 구현 및 테스트 컨테이너 배포
+
+사용자가 제공한 YAML 구성으로 6대(유연탄·우라늄·철광석·구리·아연·니켈)와
+10대(리튬·니켈·코발트·망간·흑연·네오디윰·디스프로슘·터븀·세륨·란탄) 전략광종을
+읽는 `price.overview` 전용 Action을 추가했다. YAML은 집계 대상·표시 별칭만 정하며
+가격의 공식 정의나 수치 원천을 대체하지 않는다. 구리→동, 네오디윰→네오디뮴 별칭은
+원천 가격 광종에만 매핑했다.
+
+조회는 활성 가격 기준만 대상으로 실제 관측일 상한을 당일로 제한하고, 각 행의
+가격기준·통화·중량단위·KOMIS 메뉴·원천 상태를 보존한다. 가격 기준이 없거나
+비활성인 광종은 상태행으로 남기며 값을 만들지 않는다. provenance 판정이 실패하거나
+누락되면 가격을 숨기고, 전체가 미확인일 때는 `source_unavailable`로 닫는다. 그룹별
+join을 사용해 두 목록에 공통인 니켈이 교차 중복되지 않게 했다. 광종 간 기준·단위가
+달라 가격 비교·평균·순위·예측을 하지 않으며, 표의 차트 이벤트와 `chart_hint`도
+억제했다.
+
+회귀 75건, `py_compile`, `git diff --check`를 통과했다. Astra 차분 감사는 잔여
+HIGH/CRITICAL 없음으로 승인했다. 이미지
+`komir-rag-chat:20260927-strategic-overview-r6` (ID
+`sha256:3c6b3063e80e74789e00feda758a61204c2d6c991f62d78a60d74d6394df0c96`)을
+`komir-rag-chat-test` 포트 18002에 배포했다. 라이브 FBQ55는 HTTP 200/done 1회,
+`price.overview` 인용, 25개 표 행, 개발용 더미·미매핑 경고, LME CASH 실관측 행,
+차트·차트 힌트 부재를 확인했다. 이전 컨테이너는
+`komir-rag-chat-test-pre-strategic-overview-r6`로 보존했다. DB와 문서 색인은
+변경하지 않았다.
+
+## 2026-09-27 — FBQ22 특정국 의존도 기간·분모 계약 구현 및 테스트 컨테이너 배포
+
+FBQ22의 단일 문형(예: `흑연 수입 중 중국 비중 얼마야?`)에 한국 기준 최근
+12개월을 기본 적용하고, `최근 N개월/년` 및 명시 range를 `trade.indicator`까지
+전달하도록 확장했다. 분모는 `denominator_scope=reporter_product_trade` 하나로
+명시했으며, 같은 기준국·광종 HS·수출입 방향·요청 기간의 전체 상대국 금액을
+재집계한다. 다른 분모(한국 전체 품목/세계 전체)는 지원하지 않는다.
+
+완결된 단일국 문형만 결정 경로로 처리한다. 국가별·복수국·순위·가격 결합·명시
+분모 등 복합 질문은 planner에 남긴다. 허용 국가/코드가 아닌 문구, 원천에서
+상대국을 찾지 못한 경우는 0%를 만들어 내지 않고 `source_unavailable`으로 닫는다.
+기존 연간 ActionPlan은 새 분모 슬롯 없이도 같은 공개 기본 분모를 적용해 호환된다.
+TSI/RCA/TII/증감률에는 calendar year만 허용하며, 명확화 후속의 최근 기간은
+먼저 슬롯에 반영한 뒤 `slot_required`로 차단해 과거 연간 값을 조용히 재사용하지
+않는다.
+
+`test_action_contract`, `test_action_contract_audit`,
+`test_acceptance_module_boundaries` 109건, `py_compile`, `git diff --check`를
+통과했다. Astra 차분 감사는 잔여 HIGH/CRITICAL 없음으로 승인했다. 이미지
+`komir-rag-chat:20260927-trade-indicator-r4` (ID
+`sha256:cda2c917586c876f3951fd4b4d50ae15c4e3145f4a266f5b93d08cb972ddc2f6`)을
+`komir-rag-chat-test` 포트 18002에 배포했고, 이전 컨테이너는
+`komir-rag-chat-test-pre-trade-indicator-r4`로 보존했다. 라이브 FBQ22는
+HTTP 200/done 1회, `trade.indicator` 인용, 6.0%, 실제 관측기간
+2026-06-01~2026-09-09 및 DEV_DUMMY 경고를 확인했다. DB·색인 데이터는
+변경하지 않았다.
+
+## 2026-09-27 — 피드백 Q&A 분류·코드 보완 및 테스트 컨테이너 배포
+
+2026-W39 피드백 83문항·멀티홉 결과를 코드, 라이브 DB/문서 원천, Action 계약으로
+재분류했다. 가격예측·광물종합지수는 DB 행 자체는 존재하지만 provenance와 실행
+adapter가 연결되지 않아 계속 fail-closed로 유지했다. `DEV_DUMMY` 결과를 경고와
+함께 반환하는 2026-09-26 정책도 변경하지 않았다. 상세 분류와 보류 사유는
+`documents/산출물/2026-W39_0921-0927/iterative_audit_feedback_qa_260927.md`에 기록했다.
+
+이번 배포에서는 FAQ shortcut을 문서 QA 앞에 배치하고 미치환 `{...}` 템플릿을
+차단했으며, 정의 근거가 없는 광물종합지수·전략광종 답변은 임의 내용을 만들지
+않는 안전 문구로 교체했다. 단일 월간동향·뉴스 질의는 `document.retrieve`로
+결정적으로 라우팅하고 명시 기간에는 게시일 필터를 적용했다. 무역 국가순위에
+`trade_scope`를 추가해 세계 순위를 한국 지도 더미로 대체하지 않게 했고, 완결된
+국내 기본 질의와 범위 생략 후속질의를 구분해 후속 `global` 범위를 보존했다.
+미래 실측 가격 요구는 `source_unavailable`로 결정적으로 닫았다.
+
+Iterative audit는 HIGH 위험으로 진행했다. Astra 차분 감사에서 문서 shortcut 과잉
+선점, 무역 범위 전파·후속 범위 덮어쓰기 문제를 반복 수정했고 최종 HIGH/CRITICAL
+없음 승인을 받았다. 최종 단위 회귀 48건과 `git diff --check`, 후보/배포 후 전체
+`verify_live_chatbot.py`를 통과했다. 후보 피드백 10문항은 모두 HTTP 200·done 1회였고,
+FBQ12/18/36/40은 직접 FAQ, FBQ25/37/38/39/43/60은 허위 대체 없이 안전 기권했다.
+
+이미지 `komir-rag-chat:20260927-feedback-audit-r1` (이미지 ID
+`sha256:a5ec2c12ea40b476f933290e8073ab84917a87f0d584f8f00034b21c05558086`)을
+`komir-rag-chat-test` 포트 18002에 배포했다. 이전 컨테이너는
+`komir-rag-chat-test-pre-feedback-20260927`로 보존했다. 후보 컨테이너
+`komir-rag-chat-feedback-r1`은 배포 후 중지했다. DB·색인 데이터는 변경하지 않았다.
+
 ## 2026-09-27 — Q15 USGS 범위 질의 라우팅 보완
 
 Q15 원문이 희토류·네오디뮴·가격·생산통계 범위를 명시한 경우 planner가

@@ -92,6 +92,35 @@ class PeriodLimitTest(unittest.TestCase):
             session.call_komis_raw_lookup("price_base_metals")
         self.assertNotIn("limit", call.call_args.args[1])
 
+    def test_strategic_overview_hides_price_when_provenance_lookup_fails(self):
+        """원천 상태를 증명할 수 없는 가격을 실제/더미 값으로 노출하지 않는다."""
+        class ProvenanceUnavailableRepository:
+            def fetch_strategic_price_overview(self, *, members, as_of_date):
+                return RawDataset(
+                    source_table="KO_MNRL_PRC", columns=["mineral", "price"], row_count=1,
+                    rows=[{
+                        "strategic_group": "strategic_six", "mineral": "니켈",
+                        "price_criterion_serial": 502, "price_date": "20260908", "price": 15000,
+                        "price_criterion": "LME CASH", "price_currency_code": "PR001",
+                        "weight_unit_code": "WT002", "source_menu": "price_base_metals",
+                        "row_status": "available",
+                    }], metadata={"missing_minerals": []},
+                )
+
+            def price_criteria_have_dummy_rows(self, _serials):
+                raise tools.RawDataAccessError("fixture provenance unavailable")
+
+        registry = _Registry()
+        members = [SimpleNamespace(group="strategic_six", group_label="6대 전략광종",
+                                   label="니켈", price_mineral="니켈")]
+        with patch.object(tools, "KomisRawDataRepository", ProvenanceUnavailableRepository), \
+             patch.object(tools, "load_strategic_price_members", return_value=members):
+            tools.register_common_tools(registry)
+            result = registry.functions["komis_strategic_price_overview"](["strategic_six"])
+
+        self.assertEqual(result["warnings"], ["source_unavailable:strategic_price_provenance_unverified"])
+        self.assertEqual(result["evidence"], [])
+
 
 if __name__ == "__main__":
     unittest.main()

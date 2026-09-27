@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+import re
 
 import yaml
 
@@ -29,4 +30,6 @@ def faq_message(key: str) -> str:
     value = _messages().get("faq", {}).get(key)
     if not isinstance(value, str) or not value.strip():
         raise KeyError(f"missing FAQ message key: {key}")
+    if re.search(r"\{[^{}]+\}", value):
+        raise ValueError(f"unresolved FAQ placeholder: {key}")
     return value

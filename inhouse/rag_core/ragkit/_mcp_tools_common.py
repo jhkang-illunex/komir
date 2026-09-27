@@ -60,10 +60,33 @@ from rag_core.retrieval.evidence import (
     Evidence, KOMIS_RAW_UNVERIFIED_CAVEAT, from_komis_raw, from_komis_ranking,
     from_komis_aggregate, from_structured,
 )
+from .data_source_policy import DataSourcePolicy, policy_for_data_source
+from .strategic_price_groups import load_strategic_price_members
 
 
 def _evidence_dict(ev: Evidence | None) -> dict[str, Any] | None:
     return dataclasses.asdict(ev) if ev is not None else None
+
+
+def _source_policy_state(data_source: str | None) -> tuple[bool, bool, DataSourcePolicy]:
+    """원천 출처를 명시 정책으로 바꾼다.
+
+    ``DEV_DUMMY``만 ALLOW_DUMMY로 반환 가능하며, 그 외 미확인 출처는 더미로
+    단정하지 않고 unverified 상태로 보존한다.
+    """
+
+    policy = policy_for_data_source(data_source)
+    return (
+        policy is DataSourcePolicy.ALLOW_DUMMY,
+        policy is DataSourcePolicy.SOURCE_UNAVAILABLE,
+        policy,
+    )
+
+
+def _unavailable_source_warning(data_source: str | None) -> str:
+    """명시적으로 허용되지 않은 출처는 결과를 노출하지 않는다."""
+
+    return f"source_unavailable:unverified_data_source:{data_source or 'unknown'}"
 
 
 # 2026-08-31 skeptic 발견(advisor) — komis_raw._PAGE_DATASETS의 price_* 4종은
@@ -387,8 +410,10 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
             if resolved_meta:
                 mineral_label = resolved_meta[0]
             data_source = resolved_meta[1] if resolved_meta else None
-            is_dummy = (selected_price_dummy if page_id in _PRICE_PAGES
-                        else data_source != "KOMIS_SAMPLE")
+            source_dummy, source_unverified, _ = _source_policy_state(data_source)
+            is_dummy = (selected_price_dummy if page_id in _PRICE_PAGES else source_dummy)
+            if page_id not in _PRICE_PAGES and source_unverified:
+                return {"evidence": [], "warnings": [_unavailable_source_warning(data_source)]}
             if page_id in _PRICE_PAGES and selected_price_dummy is None:
                 # 행 단위 추적키를 확인하지 못했을 때 광종 단위 DEV_DUMMY로
                 # 실가격 기준까지 확정 더미라고 단정하지 않는다.
@@ -489,7 +514,9 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
             resolved_meta = None
         mineral_label = resolved_meta[0] if resolved_meta else mineral_code
         data_source = resolved_meta[1] if resolved_meta else None
-        is_dummy = data_source != "KOMIS_SAMPLE"
+        is_dummy, unverified, _ = _source_policy_state(data_source)
+        if unverified and dataset.rows:
+            return {"evidence": [], "warnings": [_unavailable_source_warning(data_source)]}
         if is_dummy and dataset.rows:
             warnings.append(
                 f"⚠ '{mineral_code}' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미"
@@ -535,7 +562,9 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
             resolved_meta = None
         mineral_label = resolved_meta[0] if resolved_meta else mineral_code
         data_source = resolved_meta[1] if resolved_meta else None
-        is_dummy = data_source != "KOMIS_SAMPLE"
+        is_dummy, unverified, _ = _source_policy_state(data_source)
+        if unverified:
+            return {"evidence": [], "warnings": [_unavailable_source_warning(data_source)]}
         hhi = dataset.metadata.get("hhi")
         grand_total = dataset.metadata.get("grand_total")
         formula = dataset.metadata.get("formula")
@@ -556,15 +585,19 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
     @mcp.tool()
     def komis_trade_indicator(
         trade_metric: Literal["tsi", "rca", "tii", "trade_growth", "country_dependency"],
-        reporter_country: str, calendar_year: int, mineral_code: str | None = None,
-        hs_code: str | None = None, partner_country: str | None = None,
+        reporter_country: str, calendar_year: int | None = None,
+        start_period: str | None = None, end_period: str | None = None,
+        mineral_code: str | None = None, hs_code: str | None = None, partner_country: str | None = None,
         flow: Literal["import", "export"] | None = None,
+        denominator_scope: Literal["reporter_product_trade"] | None = None,
     ) -> dict[str, Any]:
-        """연간 무역지표를 원자료의 분자·분모와 함께 계산한다.
+        """무역지표를 원자료의 분자·분모와 함께 계산한다.
 
         TSI·수출입증감률·특정국 의존도는 한국 관세청 원천으로 계산한다. RCA와
         TII는 세계 전체 분모가 검증된 경우에만 허용하는 지표이며, 현재 적재된
-        UN 표본은 그 조건을 충족하지 않아 수치를 반환하지 않는다.
+        UN 표본은 그 조건을 충족하지 않아 수치를 반환하지 않는다. 최근 기간 범위는
+        특정국 의존도에만 지원하며, 분모는 같은 기준국·광종·방향·기간의 전체 상대국
+        교역액(`reporter_product_trade`)이다.
         """
         repo = KomisRawDataRepository()
         try:
@@ -572,6 +605,8 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
             dataset = repo.fetch_trade_indicator(
                 trade_metric=trade_metric, hs_codes=hs_codes, reporter_country=reporter_country,
                 partner_country=partner_country, flow=flow, calendar_year=calendar_year,
+                start_period=start_period, end_period=end_period,
+                denominator_scope=denominator_scope,
             )
         except RawDataAccessError as exc:
             return {"evidence": [], "warnings": [f"source_unavailable:{exc}"]}
@@ -594,11 +629,14 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
         # 광종 마스터가 DEV_DUMMY로 확인된 경우, 지표값 자체가 아니라 원천
         # 상태를 Evidence에 보존한다. ``from_komis_aggregate``의 caveat과
         # metadata가 같은 사실을 가리키므로 답변·표·인용에서 누락되지 않는다.
-        is_dummy = data_source == "DEV_DUMMY"
+        is_dummy, unverified, source_policy = _source_policy_state(data_source)
+        if unverified:
+            return {"evidence": [], "warnings": [_unavailable_source_warning(data_source)]}
         dataset = dataset.model_copy(update={"metadata": {
             **dataset.metadata,
             "data_source": data_source or "unknown",
-            "source_state": "development_dummy" if is_dummy else "verified_or_unclassified",
+            "source_policy": source_policy.value,
+            "source_state": "development_dummy" if is_dummy else "verified",
         }})
         evidence = from_komis_aggregate(
             dataset, label=label, mineral_name=mineral_name, is_dummy=is_dummy,
@@ -632,9 +670,11 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
             try:
                 meta = repo.resolve_mineral_meta(mineral_code)
                 mineral_name = meta[0] if meta else mineral_code
-                is_dummy = bool(meta and meta[1] != "KOMIS_SAMPLE")
+                is_dummy, unverified, _ = _source_policy_state(meta[1] if meta else None)
+                if unverified:
+                    return {"evidence": [], "warnings": [_unavailable_source_warning(meta[1] if meta else None)]}
             except RawDataAccessError:
-                mineral_name = mineral_code
+                return {"evidence": [], "warnings": [_unavailable_source_warning(None)]}
         evidence = []
         missing_columns = {"import_amount", "import_weight"} - set(dataset.columns)
         for column, label, unit in (
@@ -848,6 +888,99 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
         warnings = [f"aggregate_incomplete:missing_minerals:{','.join(missing)}"] if missing else []
         return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}
 
+    @mcp.tool()
+    def komis_strategic_price_overview(
+        groups: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """YAML에 등록된 6대/10대 전략광종의 광종별 최신 가격 현황을 조회한다.
+
+        각 행의 가격기준·통화·중량단위·실제 관측일을 함께 보존한다. 서로 다른
+        행의 가격을 비교·평균·순위화하지 않으며, 가격 기준이 없는 광종도 상태행으로
+        남긴다. groups는 strategic_six/strategic_ten만 허용한다.
+        """
+        requested = tuple(groups or ["strategic_six", "strategic_ten"])
+        allowed = {"strategic_six", "strategic_ten"}
+        if not requested or any(group not in allowed for group in requested) or len(set(requested)) != len(requested):
+            return {"evidence": [], "warnings": ["전략광종 가격 그룹 설정이 올바르지 않습니다."]}
+        try:
+            members = load_strategic_price_members(requested)  # type: ignore[arg-type]
+            today = datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y%m%d")
+            dataset = KomisRawDataRepository().fetch_strategic_price_overview(
+                members=[{"label": member.label, "price_mineral": member.price_mineral,
+                          "group": member.group} for member in members],
+                as_of_date=today,
+            )
+        except (RawDataAccessError, RuntimeError) as exc:
+            return {"evidence": [], "warnings": [str(exc)]}
+        repo = KomisRawDataRepository()
+        serials = [int(row["price_criterion_serial"]) for row in dataset.rows
+                   if row.get("price_criterion_serial") is not None]
+        try:
+            dummy_by_serial = repo.price_criteria_have_dummy_rows(serials)
+        except RawDataAccessError:
+            dummy_by_serial = None
+        rows: list[dict[str, Any]] = []
+        group_labels = {member.group: member.group_label for member in members}
+        dummy_labels: list[str] = []
+        for row in dataset.rows:
+            copied = dict(row)
+            copied["strategic_group"] = group_labels.get(copied["strategic_group"], copied["strategic_group"])
+            serial = copied.get("price_criterion_serial")
+            if copied["row_status"] != "available":
+                copied["source_status"] = "unavailable"
+            elif dummy_by_serial is None or serial is None or int(serial) not in dummy_by_serial:
+                copied["source_status"] = "provenance_unverified"
+                copied["row_status"] = "provenance_unverified"
+                copied["price"] = None
+            elif serial is not None and dummy_by_serial.get(int(serial), False):
+                copied["source_status"] = "dev_dummy"
+                dummy_labels.append(str(copied["mineral"]))
+            else:
+                copied["source_status"] = "observed"
+            copied["currency"] = {"PR001": "USD", "USD": "USD"}.get(copied.get("price_currency_code"))
+            copied["weight_unit"] = {
+                "WT001": "kg", "WT002": "톤", "WT007": "mt", "TON": "톤",
+            }.get(copied.get("weight_unit_code"))
+            for field in ("price_date", "price", "price_criterion", "price_currency_code",
+                          "weight_unit_code", "source_menu", "currency", "weight_unit"):
+                value = copied.get(field)
+                if value is None or str(value).strip().casefold() in {"nan", "none"}:
+                    copied[field] = ""
+            rows.append(copied)
+        available = [row for row in rows if row["row_status"] == "available"]
+        if not available:
+            if any(row["row_status"] == "provenance_unverified" for row in rows):
+                return {"evidence": [], "warnings": ["source_unavailable:strategic_price_provenance_unverified"]}
+            return {"evidence": [], "warnings": [_NO_DATA_FOUND_MARKER]}
+        view = dataset.model_copy(update={
+            "columns": [*dataset.columns, "currency", "weight_unit", "source_status"], "rows": rows,
+            "column_labels": {**dataset.column_labels, "currency": "통화", "weight_unit": "중량단위",
+                              "source_status": "원천 상태"},
+            "metadata": {**dataset.metadata, "source_status_by_row": True},
+        })
+        evidence = from_komis_aggregate(view, label="전략광종 가격 현황(광종별 최신 관측)")
+        warnings: list[str] = []
+        if dummy_labels:
+            warnings.append("⚠ 다음 가격 행은 KOMIS 실제 표본이 아닌 개발용 더미입니다: "
+                            + ", ".join(sorted(set(dummy_labels))))
+        missing = view.metadata.get("missing_minerals") or []
+        if missing:
+            warnings.append("가격 기준 또는 관측값이 없는 전략광종: " + ", ".join(missing))
+        if dummy_by_serial is None:
+            warnings.append("가격 원천의 더미 여부를 확인하지 못해 해당 가격 수치를 표시하지 않았습니다.")
+        # 생성 결과가 긴 표를 요약하면서 경고를 생략해도, 인용된 Evidence의
+        # caveat은 chatbot이 후처리로 강제 첨부한다.
+        caveat_parts: list[str] = []
+        if dummy_labels:
+            caveat_parts.append("표의 원천 상태가 dev_dummy인 행은 개발용 예시 데이터이며 실제 가격이 아닙니다")
+        if missing:
+            caveat_parts.append("가격 기준 또는 관측값이 없는 광종은 가격을 생성하지 않았습니다: " + ", ".join(missing))
+        if dummy_by_serial is None:
+            caveat_parts.append("가격 원천 상태를 확인하지 못한 행은 가격 수치를 표시하지 않았습니다")
+        if evidence and caveat_parts:
+            evidence[0].caveat = "; ".join(caveat_parts) + "."
+        return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}
+
     _RESERVES_PRODUCTION_METRIC_LABELS = {"production": "생산량", "reserves": "매장량"}
 
     @mcp.tool()
@@ -891,7 +1024,9 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
             resolved_meta = None
         mineral_label = resolved_meta[0] if resolved_meta else mineral_code
         data_source = resolved_meta[1] if resolved_meta else None
-        is_dummy = data_source != "KOMIS_SAMPLE"
+        is_dummy, unverified, _ = _source_policy_state(data_source)
+        if unverified and dataset.rows:
+            return {"evidence": [], "warnings": [_unavailable_source_warning(data_source)]}
         if is_dummy and dataset.rows:
             warnings.append(
                 f"⚠ '{mineral_code}' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미"
@@ -913,6 +1048,31 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
             metric_label=_RESERVES_PRODUCTION_METRIC_LABELS.get(metric, metric), is_dummy=is_dummy,
             menu_page_id="map_mineral",
         )
+        return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}
+
+    @mcp.tool()
+    def komis_production_yoy(mineral_code: str, end_year: int | None = None) -> dict[str, Any]:
+        """공식 세계 총계(SU)만으로 광종 생산량의 연속 연도 YoY를 계산한다."""
+        repo = KomisRawDataRepository()
+        try:
+            dataset = repo.fetch_production_yoy(
+                mineral_code=mineral_code, end_year=end_year,
+                current_year=datetime.now(ZoneInfo("Asia/Seoul")).year,
+            )
+        except RawDataAccessError as exc:
+            return {"evidence": [], "warnings": [f"source_unavailable:{exc}"]}
+        if not dataset.rows:
+            return {"evidence": [], "warnings": ["source_unavailable:world_production_yoy_unavailable"]}
+        data_source = dataset.metadata.get("data_source")
+        is_dummy, unverified, _ = _source_policy_state(data_source)
+        if unverified:
+            return {"evidence": [], "warnings": [_unavailable_source_warning(str(data_source) if data_source else None)]}
+        is_dummy = is_dummy or bool(dataset.metadata.get("dummy_source"))
+        evidence = from_komis_aggregate(dataset, label="세계 생산량 전년 대비(SU 세계 총계)",
+                                        is_dummy=is_dummy, menu_page_id="map_mineral")
+        warnings = ["⚠ 세계 총계는 시스템 DB의 SU 행으로 계산했으며 연간 완결·발행판 메타데이터는 현재 확인되지 않았습니다."]
+        if is_dummy:
+            warnings.append("⚠ 이 생산량은 개발용 더미 또는 원천 상태 미확인 데이터입니다. 공식 통계로 사용하지 마세요.")
         return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}
 
     def _selected_price_series_dummy(repo: KomisRawDataRepository, dataset) -> bool | None:

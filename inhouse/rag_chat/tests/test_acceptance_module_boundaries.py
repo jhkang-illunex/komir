@@ -108,7 +108,10 @@ class AC47TradeIndicatorFormulaTest(unittest.TestCase):
             if "GROUP BY 1" in query:
                 return pd.DataFrame([{"period": "prior", "amount": 150}, {"period": "current", "amount": 300}])
             if "partner_amount" in query:
-                return pd.DataFrame([{"total_amount": 200, "partner_amount": 50}])
+                return pd.DataFrame([{
+                    "total_amount": 200, "partner_amount": 50,
+                    "matched_partner_names": "중국", "matched_partner_codes": "CN",
+                }])
             raise AssertionError(query)
         with patch("common.komis_raw.read_sql_pg", side_effect=sql_result) as sql:
             tsi = repo.fetch_trade_indicator(trade_metric="tsi", hs_codes=["2603000000"], reporter_country="한국", calendar_year=2025)
@@ -135,7 +138,10 @@ class AC47TradeIndicatorFormulaTest(unittest.TestCase):
         with patch("common.komis_raw.read_sql_pg", side_effect=[
             pd.DataFrame([{"import_amount": 0, "export_amount": 0}]),
             pd.DataFrame([{"period": "current", "amount": 300}]),
-            pd.DataFrame([{"total_amount": 0, "partner_amount": 0}]),
+            pd.DataFrame([{
+                "total_amount": 0, "partner_amount": 0,
+                "matched_partner_names": "중국", "matched_partner_codes": "CN",
+            }]),
         ]):
             tsi = repo.fetch_trade_indicator(trade_metric="tsi", hs_codes=["2603000000"], reporter_country="한국", calendar_year=2025)
             growth = repo.fetch_trade_indicator(trade_metric="trade_growth", hs_codes=["2603000000"], reporter_country="한국", calendar_year=2025, flow="export")
@@ -159,6 +165,122 @@ class AC47TradeIndicatorFormulaTest(unittest.TestCase):
         self.assertEqual(dataset.metadata["period_coverage"], "partial")
         self.assertEqual(dataset.metadata["matched_partner_codes"], "CN")
         self.assertAlmostEqual(dataset.rows[0]["dependency_pct"], 26.2736, places=4)
+
+    def test_country_dependency_reaggregates_same_period_all_partner_denominator(self):
+        repo = KomisRawDataRepository()
+        queries: list[str] = []
+
+        def sql_result(query: str):
+            queries.append(query)
+            return pd.DataFrame([{
+                "available_start": "20250927", "available_end": "20260927", "observation_count": 365,
+                "total_amount": 200, "partner_amount": 50,
+                "matched_partner_names": "중국", "matched_partner_codes": "CN",
+            }])
+
+        with patch("common.komis_raw.read_sql_pg", side_effect=sql_result):
+            dataset = repo.fetch_trade_indicator(
+                trade_metric="country_dependency", hs_codes=["2603000000"], reporter_country="한국",
+                start_period="2025-09-27", end_period="2026-09-27", flow="import",
+                partner_country="중국", denominator_scope="reporter_product_trade",
+            )
+        self.assertEqual(dataset.rows[0]["period"], "2025-09-27~2026-09-27")
+        self.assertEqual(dataset.rows[0]["dependency_pct"], 25.0)
+        self.assertEqual(dataset.metadata["denominator_scope"], "reporter_product_trade")
+        self.assertEqual(dataset.metadata["requested_period"], "2025-09-27~2026-09-27")
+        self.assertEqual(dataset.metadata["period_coverage"], "boundary_matched")
+        self.assertIn("CRTR_YMD >= '20250927'", queries[0])
+        self.assertIn("CRTR_YMD <= '20260927'", queries[0])
+        self.assertIn("SUM(INCM_AMT) AS total_amount", queries[0])
+
+    def test_trade_indicator_range_and_year_cannot_be_mixed(self):
+        repo = KomisRawDataRepository()
+        with self.assertRaises(Exception):
+            repo.fetch_trade_indicator(
+                trade_metric="country_dependency", hs_codes=["2603000000"], reporter_country="한국",
+                calendar_year=2025, start_period="20250101", end_period="20251231",
+                flow="import", partner_country="중국", denominator_scope="reporter_product_trade",
+            )
+
+    def test_trade_indicator_range_rejects_non_dates_before_sql(self):
+        repo = KomisRawDataRepository()
+        with patch("common.komis_raw.read_sql_pg") as read_sql:
+            with self.assertRaises(Exception):
+                repo.fetch_trade_indicator(
+                    trade_metric="country_dependency", hs_codes=["2603000000"], reporter_country="한국",
+                    start_period="garbage", end_period="2026-09-27", flow="import",
+                    partner_country="중국", denominator_scope="reporter_product_trade",
+                )
+        read_sql.assert_not_called()
+
+    def test_trade_indicator_rejects_unmatched_partner_instead_of_returning_zero_share(self):
+        repo = KomisRawDataRepository()
+        with patch("common.komis_raw.read_sql_pg", return_value=pd.DataFrame([{
+            "available_start": "20250101", "available_end": "20251231", "observation_count": 3,
+            "total_amount": 200, "partner_amount": 0,
+            "matched_partner_names": None, "matched_partner_codes": None,
+        }])):
+            with self.assertRaises(Exception):
+                repo.fetch_trade_indicator(
+                    trade_metric="country_dependency", hs_codes=["2603000000"], reporter_country="한국",
+                    calendar_year=2025, flow="import", partner_country="존재하지않는국가",
+                    denominator_scope="reporter_product_trade",
+                )
+
+    def test_strategic_price_overview_keeps_member_dates_units_and_unmapped_row(self):
+        repo = KomisRawDataRepository()
+        rows = pd.DataFrame([
+            {"label": "니켈", "price_mineral": "니켈", "group_label": "strategic_six", "serial": 502,
+             "prc_cat_cd": "HP001", "price_criterion": "LME CASH", "price_currency_code": "USD",
+             "weight_unit_code": "TON", "price_date": "20260908", "price": 15000},
+            {"label": "유연탄", "price_mineral": "유연탄", "group_label": "strategic_six", "serial": None,
+             "prc_cat_cd": None, "price_criterion": None, "price_currency_code": None,
+             "weight_unit_code": None, "price_date": None, "price": None},
+        ])
+        with patch("common.komis_raw.read_sql_pg", return_value=rows) as read_sql:
+            dataset = repo.fetch_strategic_price_overview(
+                members=[
+                    {"label": "니켈", "price_mineral": "니켈", "group": "strategic_six"},
+                    {"label": "유연탄", "price_mineral": "유연탄", "group": "strategic_six"},
+                ], as_of_date="20260927",
+            )
+        self.assertEqual(dataset.metadata["available_count"], 1)
+        self.assertEqual(dataset.rows[0]["price_date"], "2026-09-08")
+        self.assertEqual(dataset.rows[0]["source_menu"], "price_base_metals")
+        self.assertEqual(dataset.rows[1]["row_status"], "price_criterion_unmapped")
+        self.assertIn("crtr_ymd <= '20260927'", read_sql.call_args.args[0])
+        self.assertIn("s.group_label = r.group_label", read_sql.call_args.args[0])
+
+    def test_world_production_yoy_uses_su_two_years_and_never_sums_countries(self):
+        repo = KomisRawDataRepository()
+        frame = pd.DataFrame([
+            {"crtr_yr": 2024, "prdctn_quty_ton": 82000, "mass_unit_cd": "WT002", "se_cd": "-",
+             "mnrl_nm_ko": "텅스텐", "ko_data_src_cd": "KOMIS_SAMPLE", "dummy_src": None},
+            {"crtr_yr": 2025, "prdctn_quty_ton": 85000, "mass_unit_cd": "WT002", "se_cd": "-",
+             "mnrl_nm_ko": "텅스텐", "ko_data_src_cd": "KOMIS_SAMPLE", "dummy_src": None},
+        ])
+        with patch("common.komis_raw.read_sql_pg", return_value=frame) as sql:
+            dataset = repo.fetch_production_yoy(mineral_code="MNRL0018", end_year=2025, current_year=2026)
+        self.assertEqual(dataset.rows[0]["change_tonnes"], 3000)
+        self.assertEqual(dataset.rows[0]["change_pct"], round(3000 / 82000 * 100, 4))
+        self.assertIn("ntn_eng_cd='SU'", sql.call_args.args[0])
+        self.assertNotIn("SUM(", sql.call_args.args[0])
+
+    def test_world_production_yoy_rejects_dummy_or_missing_prior_year(self):
+        repo = KomisRawDataRepository()
+        dummy = pd.DataFrame([
+            {"crtr_yr": 2024, "prdctn_quty_ton": 222000, "mass_unit_cd": "WT002", "se_cd": "-",
+             "mnrl_nm_ko": "리튬", "ko_data_src_cd": "DEV_DUMMY", "dummy_src": None},
+            {"crtr_yr": 2025, "prdctn_quty_ton": 290000, "mass_unit_cd": "WT002", "se_cd": "-",
+             "mnrl_nm_ko": "리튬", "ko_data_src_cd": "DEV_DUMMY", "dummy_src": None},
+        ])
+        with patch("common.komis_raw.read_sql_pg", return_value=dummy):
+            provisional = repo.fetch_production_yoy(mineral_code="MNRL0001", end_year=2025, current_year=2026)
+        self.assertEqual(provisional.rows[0]["change_tonnes"], 68000)
+        self.assertEqual(provisional.metadata["data_source"], "DEV_DUMMY")
+        with patch("common.komis_raw.read_sql_pg", return_value=dummy.iloc[:1]):
+            missing = repo.fetch_production_yoy(mineral_code="MNRL0001", end_year=2025, current_year=2026)
+        self.assertEqual(missing.rows, [])
 
     def test_trade_hitl_missing_and_completed_slots_are_distinct(self):
         missing = ActionCall(requirement_id="r1", action_id="trade.indicator", slots=ActionSlots(trade_metric="tsi", mineral="리튬"))

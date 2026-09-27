@@ -121,7 +121,7 @@ from pydantic import BaseModel, Field  # noqa: E402
 from sse_starlette.sse import EventSourceResponse  # noqa: E402
 from common.langfuse_tracing import chat_trace, update_observation  # noqa: E402
 
-from rag_core.ragkit.chatbot import STATUS_STAGES, chat_turn  # noqa: E402
+from rag_core.ragkit.chatbot import STATUS_STAGES, chat_turn, direct_faq_answer  # noqa: E402
 from rag_core.ragkit.action_contract import (  # noqa: E402
     ActionPlan, extract_action_plan, merge_trade_indicator_followup,
     trade_indicator_plan_from_question,
@@ -269,10 +269,15 @@ def _pending_trade_clarification(session_id: str) -> dict | None:
 
 def _is_trade_clarification_followup(message: str) -> bool:
     """무역 clarification 보충 문장인지, 새 의도 전환인지 구분한다."""
-    compact = "".join(message.split()).casefold()
+    compact = re.sub(r"\s+", "", message).casefold()
     if any(marker in compact for marker in ("취소", "그만", "날씨", "페이지", "메뉴", "가격", "원문")):
         return False
-    return "한국" in compact and bool(re.search(r"20\d{2}(?:년|$)", compact))
+    # 저장된 무역 명확화가 있더라도 새 광종·지표 요구를 기존 계획에 병합하면
+    # 안 된다. 기준국과 기간만 보충하는 완결 짧은 문장만 허용한다.
+    return bool(re.fullmatch(
+        r"(?:한국(?:기준)?[,]?)?(?:20\d{2}년|최근\d+(?:개월|년))(?:기준|으로)?[?.]?",
+        compact,
+    ))
 
 
 def _recover_trade_followup(session_id: str, message: str) -> ActionPlan | None:
@@ -316,7 +321,7 @@ _TRADE_SLOT_LABELS = {
     "trade_metric": "무역 지표(TSI, RCA, TII, 수출입증감률, 특정국 의존도)",
     "reporter_country": "기준국", "partner_country": "상대국",
     "period": "대상 연도 또는 기간", "mineral_or_hs_code": "광종 또는 HS 코드",
-    "flow": "수입 또는 수출 구분",
+    "flow": "수입 또는 수출 구분", "denominator_scope": "특정국 의존도 분모 범위",
 }
 
 
@@ -687,6 +692,12 @@ def _run_chat_session(
     with _session_turn_lock(session_id):
         if request.mode != "document" and is_unverified_import_demand_forecast_menu(request.message):
             yield from _run_unverified_menu_path(request, session_id)
+            return
+        # FAQ는 ragkit.chatbot이 결정적 원문을 소유한다. auto/document 요청을
+        # 먼저 LLM action/page 분류에 넣으면 FBQ12·40처럼 페이지 안내로 새거나,
+        # 정의 질문이 slot 오류로 끝나 내부 FAQ 단축 경로에 도달하지 못한다.
+        if request.mode != "page" and direct_faq_answer(request.message) is not None:
+            yield from _run_document_qa(request, session_id, profile, action_plan=None)
             return
         pending = _pending_mine_clarification(session_id)
         pending_trade = _pending_trade_clarification(session_id)
