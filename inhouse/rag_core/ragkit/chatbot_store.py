@@ -28,7 +28,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-_PG_SCHEMA = os.environ.get("PG_SCHEMA", "mineral_risk")
+_PG_SCHEMA = os.environ.get("CHATBOT_SCHEMA", "ai_chatbot")
 _QMARK_RE = re.compile(r"\?")
 
 # rag_core/ragkit이 표준 실행 관례(CLAUDE.md §2: `cd inhouse && python -m rag_core ...`)로
@@ -78,7 +78,7 @@ def _connect(db_path: str):
 
 def _tbl(db_path: str, name: str) -> str:
     """테이블명 앞에 스키마를 붙일지 여부 — URL(postgres) 타깃일 때만
-    `PG_SCHEMA`로 한정한다("public" 하드코딩 금지 규약, 그 외 DuckDB는 그대로)."""
+    `CHATBOT_SCHEMA`로 한정한다("public" 하드코딩 금지 규약, 그 외 DuckDB는 그대로)."""
 
     return f"{_PG_SCHEMA}.{name}" if _is_url(db_path) else name
 

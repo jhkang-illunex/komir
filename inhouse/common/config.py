@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     # ── 정형 DB(현재 DuckDB, PG_* 이관 진행 중 — MSR_DB가 정본, cutover 전) ──
     MSR_DB: str = str(_INHOUSE_ROOT / "data_lake/db/minerals.duckdb")
     MSR_PUBLISH_SCHEMA: str = ""
+    CHATBOT_SCHEMA: str = "ai_chatbot"
 
     # ── PostgreSQL(komis_demo, 2026-08-10) — mineral_risk 스키마만 사용,
     #    public(ko_*·ai_*)은 타 팀 소유라 이 프로젝트 코드가 건드리지 않는다 ──

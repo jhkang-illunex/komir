@@ -1,0 +1,7 @@
+schema_version: 1
+source: "KOMIS 핵심광물 분류 운영 계약"
+source_verified: true
+groups:
+  secondary_battery:
+    label: "2차전지 원료 광종"
+    minerals: ["리튬", "니켈", "코발트", "망간", "흑연"]

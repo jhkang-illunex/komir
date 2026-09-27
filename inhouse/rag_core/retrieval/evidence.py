@@ -293,14 +293,28 @@ def from_komis_raw(
     for ds in datasets:
         if not ds.rows:
             continue
+        # 가격예측 renderer의 입력 계약은 원천 대문자 컬럼명이 아니라
+        # 예측일·현재가·예측가·단위의 의미로 고정한다. 원천의 PRC_UNIT_CD는
+        # 아직 사람이 읽는 단위 사전이 확인되지 않았으므로 코드값을 그대로
+        # 보존하며, 임의 통화·중량 해석을 붙이지 않는다.
+        if page_id == "forecast_price":
+            columns = ["forecast_date", "current_price", "predicted_price", "unit"]
+            table_rows = [[
+                str(row.get("CRTR_YMD", "")),
+                str(row.get("CMERC_PRC", "")),
+                str(row.get("PREDC_PRC", "")),
+                str(row.get("PRC_UNIT_CD", "")),
+            ] for row in ds.rows]
+            display_columns = columns
+        else:
         # 가격기준 일련번호는 원천 조회의 필터·감사에는 필요하지만 답변 근거
         # 표에는 의미가 없는 내부 식별자다. Evidence.text는 생성 모델의 요약
         # 입력이기도 하므로, 여기서 제외해야 표 블록만 숨기고 본문 요약에는
         # 다시 노출되는 불일치가 생기지 않는다. 원본 RawDataset.columns/rows와
         # row_count는 변경하지 않는다.
-        hidden_presentation_columns = {"mnrl_prc_crtr_sn", "price_criterion_serial"}
-        columns = [c for c in ds.columns if c.casefold() not in hidden_presentation_columns]
-        table_rows = [[str(row.get(c, "")) for c in columns] for row in ds.rows]
+            hidden_presentation_columns = {"mnrl_prc_crtr_sn", "price_criterion_serial"}
+            columns = [c for c in ds.columns if c.casefold() not in hidden_presentation_columns]
+            table_rows = [[str(row.get(c, "")) for c in columns] for row in ds.rows]
         # 2026-09-07(사용자 요청) — Postgres COMMENT ON COLUMN으로 이미 달려
         # 있는 한글 설명을 표 헤더에 같이 보여준다("lowst_prc(최저가격)"
         # 형식, 설명이 없는 컬럼은 원본 컬럼명만). LLM이 지금까지 "최저가격
@@ -309,10 +323,10 @@ def from_komis_raw(
         # 유지한다(chatbot_events.py의 날짜열 판정 등 원본 컬럼명에 의존하는
         # 코드가 안 깨지게, _is_date_column이 "컬럼명(...)" 접두 매칭도
         # 허용하도록 같이 수정함).
-        column_labels = getattr(ds, "column_labels", None) or {}
-        display_columns = [
-            f"{c}({column_labels[c]})" if c in column_labels else c for c in columns
-        ]
+            column_labels = getattr(ds, "column_labels", None) or {}
+            display_columns = [
+                f"{c}({column_labels[c]})" if c in column_labels else c for c in columns
+            ]
         suffix = f"({mineral_code})" if mineral_code else ""
         section = f"KOMIS 원천 · {ds.source_table}{suffix}"
         if is_dummy:
