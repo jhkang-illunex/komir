@@ -1134,7 +1134,7 @@ def _latest_price_plan(message: str) -> ActionPlan | None:
     """
     compact = re.sub(r"\s+", "", message)
     match = re.fullmatch(
-        r"(?:금일자?|오늘|현재|지금)(?:의)?(?P<mineral>[가-힣A-Za-z0-9]+?)(?:의)?"
+        r"(?:(?:금일자?|오늘|현재|지금)(?:의)?)?(?P<mineral>[가-힣A-Za-z0-9]+?)(?:의)?"
         r"(?:가격|시세)(?:(?:은|는|이|을|를)?(?:얼마야|얼마인가요|알려줘|알려주세요|보여줘|보여주세요))?[?.]?",
         compact,
         flags=re.IGNORECASE,
@@ -1150,8 +1150,9 @@ def _latest_price_plan(message: str) -> ActionPlan | None:
     return ActionPlan(actions=[ActionCall(
         requirement_id="latest_price",
         action_id="price.series",
-        # ``latest``는 "기간 미지정"과 다르다. adapter가 최신 1건만
-        # 요청하도록 하는 typed 표현이며, 기본 시계열 상한(60건)을 쓰지 않는다.
+        # ``latest``는 "기간 미지정"과 다르다. adapter가 최신·직전 보유
+        # 관측 2건만 요청하도록 하는 typed 표현이며, 기본 시계열 상한(60건)을
+        # 쓰지 않는다. 화면 표는 최신 1건만 표시하고 직전값은 등락 계산에만 쓴다.
         slots=ActionSlots(mineral=mineral, period=Period(kind="latest")),
         intent="price_series",
         role="data",

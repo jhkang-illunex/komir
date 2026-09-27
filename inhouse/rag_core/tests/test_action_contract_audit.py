@@ -100,6 +100,7 @@ class ActionContractAuditTest(unittest.TestCase):
             ("현재 텅스텐 가격은 얼마야?", "텅스텐"),
             ("지금 금 시세 알려줘", "금"),
             ("현재 아연 가격 알려줘", "아연"),
+            ("니켈 가격 얼마야?", "니켈"),
         ):
             with self.subTest(question=question, mineral=mineral):
                 candidate = extract_action_plan(question, MustNotRun())
@@ -109,7 +110,7 @@ class ActionContractAuditTest(unittest.TestCase):
                 route = _route_from_action_call(call, question)
                 self.assertIsNone(route.komis_start_period)
                 self.assertIsNone(route.komis_end_period)
-                self.assertEqual(route.komis_raw_limit, 1)
+                self.assertEqual(route.komis_raw_limit, 2)
 
     def test_current_price_shortcut_does_not_capture_multi_mineral_request(self):
         class Planner:

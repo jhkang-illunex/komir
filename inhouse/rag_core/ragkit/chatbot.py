@@ -1253,6 +1253,31 @@ def _price_series_summary(item) -> str:
     return ". ".join(clauses) + "."
 
 
+def _latest_price_answer(item, mineral: str | None) -> str:
+    """최신·직전 보유 관측값으로 사용자 요청의 가격 문장을 결정적으로 만든다."""
+    observations = _price_series_observations(item.text)
+    if not observations:
+        return "조회된 가격 표의 날짜·가격 열을 판독하지 못했습니다."
+    latest_date, latest_price = observations[-1]
+    label = mineral or "요청 광종"
+    unit = _price_display_unit(item.unit)
+    # 원천이 단위를 주지 않은 DEV_DUMMY 행에도 값의 차원을 추정하지 않는다.
+    # 대신 문장 형식은 유지하고, 사용자가 단위 부재를 즉시 알 수 있게 한다.
+    price_with_unit = f"{_format_price(latest_price)} {unit or '(원천 단위 미확인)'}"
+    if len(observations) < 2:
+        return f"{latest_date.isoformat()} 기준 {label} 가격은 {price_with_unit}입니다. 직전 보유 관측값이 없어 등락은 계산하지 않았습니다."
+    previous_date, previous_price = observations[-2]
+    change = latest_price - previous_price
+    change_pct = (change / previous_price * 100) if previous_price else None
+    comparison = "전일" if (latest_date - previous_date).days == 1 else f"직전 관측일({previous_date.isoformat()})"
+    change_text = _format_price(abs(change))
+    sign = "+" if change > 0 else "-" if change < 0 else ""
+    if change_pct is None:
+        return f"{latest_date.isoformat()} 기준 {label} 가격은 {price_with_unit}입니다. {comparison} 대비 {sign}{change_text} 변동했습니다."
+    return (f"{latest_date.isoformat()} 기준 {label} 가격은 {price_with_unit}입니다. "
+            f"{comparison} 대비 {sign}{change_text}({change_pct:+.2f}%) 변동했습니다.")
+
+
 def _price_series_scope_answer(evidence: list, action_plan) -> tuple[str, set[int]] | None:
     """단일 가격 조회의 기간 요약을 표본에서 결정론적으로 계산한다."""
     actions = getattr(action_plan, "actions", [])
@@ -1270,6 +1295,8 @@ def _price_series_scope_answer(evidence: list, action_plan) -> tuple[str, set[in
     index, item = selected[0]
     slots = getattr(actions[0], "slots", None)
     period = getattr(slots, "period", None)
+    if period and period.kind == "latest":
+        return _latest_price_answer(item, getattr(slots, "mineral", None)), {index}
     if period and period.kind == "trailing_months" and period.trailing_months:
         duration = "1년" if period.trailing_months == 12 else f"{period.trailing_months}개월"
         heading = f"최근 {duration} 가격 요약입니다."
@@ -1645,6 +1672,36 @@ def _price_series_display_table(table: dict) -> dict:
     return {**table, "columns": columns, "rows": rows, "markdown": markdown}
 
 
+def _latest_price_display_table(table: dict) -> dict:
+    """직전값은 등락 계산에만 쓰고 최신 가격 표에는 최신 행 하나만 남긴다."""
+    observations = _price_series_observations(table["markdown"])
+    if not observations:
+        return table
+    date_index = next((index for index, column in enumerate(table["columns"])
+                       if column.split("(", 1)[0].strip().casefold() in {"crtr_ymd", "price_date", "date", "trd_dt"}
+                       or "일자" in column), None)
+    if date_index is None:
+        return table
+    parsed_rows: list[tuple[date, list[str]]] = []
+    for row in table["rows"]:
+        raw_date = str(row[date_index]).strip()
+        for fmt in ("%Y%m%d", "%Y-%m-%d", "%Y%m", "%Y-%m", "%Y"):
+            try:
+                parsed_rows.append((datetime.strptime(raw_date, fmt).date(), row))
+                break
+            except ValueError:
+                continue
+    if not parsed_rows:
+        return table
+    rows = [max(parsed_rows, key=lambda item: item[0])[1]]
+    markdown = "\n".join([
+        "| " + " | ".join(table["columns"]) + " |",
+        "| " + " | ".join("---" for _ in table["columns"]) + " |",
+        "| " + " | ".join(rows[0]) + " |",
+    ])
+    return {**table, "rows": rows, "markdown": markdown}
+
+
 def _multimodal_events(cited_indices: set[int], evidence: list, *, include_charts: bool = True) -> list[ChatEvent]:
     """인용된 근거에서 표를 뽑아 `table` 블록으로, 추천 차트가 있으면 `chart`
     스펙으로도 낸다. 인용 안 된 근거(조회는 됐지만 답변 근거로 안 쓰인 것)는
@@ -1680,6 +1737,8 @@ def _multimodal_events(cited_indices: set[int], evidence: list, *, include_chart
         for t_idx, table in enumerate(extract_markdown_tables(ev.text), 1):
             if hide_price_provenance:
                 table = _price_series_display_table(table)
+            if getattr(ev, "latest_price_display", False):
+                table = _latest_price_display_table(table)
             table_key = (tuple(table["columns"]), tuple(tuple(row) for row in table["rows"]))
             if table_key in emitted_tables:
                 continue

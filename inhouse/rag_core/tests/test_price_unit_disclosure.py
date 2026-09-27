@@ -4,7 +4,7 @@ import unittest
 from types import SimpleNamespace
 
 from rag_core.ragkit import chatbot
-from rag_core.ragkit.action_contract import ActionCall, ActionPlan, ActionSlots
+from rag_core.ragkit.action_contract import ActionCall, ActionPlan, ActionSlots, Period
 from rag_core.retrieval.evidence import Evidence
 
 
@@ -104,6 +104,42 @@ class PriceUnitDisclosureTest(unittest.TestCase):
         self.assertIn("표에는 최신 관측값 1건", scope[0])
         self.assertNotIn("차트", scope[0])
         self.assertNotIn("추세", scope[0])
+
+    def test_latest_price_uses_requested_date_price_unit_and_prior_change(self):
+        evidence = Evidence(
+            kind="aggregated", source="public.KO_MNRL_PRC", section="가격 시계열",
+            text="| date | price |\n| --- | --- |\n| 2026-09-07 | 100 |\n| 2026-09-08 | 105 |",
+            unit="가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002",
+            observed_period="2026-09-07~2026-09-08", action_id="price.series",
+        )
+        plan = ActionPlan(actions=[ActionCall(
+            requirement_id="price", action_id="price.series",
+            slots=ActionSlots(mineral="니켈", period=Period(kind="latest")),
+        )])
+        scope = chatbot._price_series_scope_answer([evidence], plan)
+        assert scope is not None
+        self.assertEqual(scope[0], "2026-09-08 기준 니켈 가격은 105 USD/톤입니다. 전일 대비 +5(+5.00%) 변동했습니다.")
+
+    def test_latest_price_table_hides_prior_observation_used_for_change(self):
+        table = chatbot.extract_markdown_tables(
+            "| crtr_ymd | price |\n| --- | --- |\n| 20260907 | 100 |\n| 20260908 | 105 |",
+        )[0]
+        displayed = chatbot._latest_price_display_table(table)
+        self.assertEqual(displayed["rows"], [["20260908", "105"]])
+
+    def test_latest_price_marks_missing_source_unit_without_guessing(self):
+        evidence = Evidence(
+            kind="aggregated", source="public.KO_MNRL_PRC", section="가격 시계열",
+            text="| date | price |\n| --- | --- |\n| 2026-09-07 | 100 |\n| 2026-09-08 | 105 |",
+            unit="가격기준=[DEV_DUMMY]", observed_period="2026-09-07~2026-09-08", action_id="price.series",
+        )
+        plan = ActionPlan(actions=[ActionCall(
+            requirement_id="price", action_id="price.series",
+            slots=ActionSlots(mineral="구리", period=Period(kind="latest")),
+        )])
+        scope = chatbot._price_series_scope_answer([evidence], plan)
+        assert scope is not None
+        self.assertEqual(scope[0], "2026-09-08 기준 구리 가격은 105 (원천 단위 미확인)입니다. 전일 대비 +5(+5.00%) 변동했습니다.")
 
     def test_verified_human_units_are_preserved(self):
         unit = "가격기준=LME CASH; 통화=USD; 중량=톤"

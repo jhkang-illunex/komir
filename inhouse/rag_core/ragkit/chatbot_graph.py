@@ -829,7 +829,9 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
         "komis_relative_months": period.trailing_months if period and period.kind == "trailing_months" else None,
         "komis_start_period": period.start if period and period.kind == "range" else (str(period.calendar_year) if period and period.kind == "calendar_year" else None),
         "komis_end_period": period.end if period and period.kind == "range" else (str(period.calendar_year) if period and period.kind == "calendar_year" else None),
-        "komis_raw_limit": 1 if period and period.kind == "latest" else None,
+        # 최신 가격 문장은 기준일·전일 대비를 함께 보여준다. 최신/직전 보유
+        # 관측 2건만 가져오며, 렌더러는 최신 행만 표로 표시한다.
+        "komis_raw_limit": 2 if period and period.kind == "latest" else None,
     }
     if call.action_id == "price.series":
         return RetrievalRoute(**common, use_komis_raw=True, komis_topic="price")
@@ -2943,6 +2945,7 @@ def retrieve_evidence(
             ev.requirement_id, ev.action_id, ev.source_id, ev.observed_period = (
                 call.requirement_id, call.action_id, ev.source, ev.as_of)
             ev.requested_frequency = call.slots.period.frequency if call.slots.period else None
+            ev.latest_price_display = bool(call.slots.period and call.slots.period.kind == "latest")
             # Q15의 완전한 공개 원문 span은 chat_turn에서 결정적 범위 설명으로
             # 렌더링할 수 있다. 이 표지는 프로세스 내부 추적값이며 MCP/API
             # 계약에는 추가하지 않는다.
