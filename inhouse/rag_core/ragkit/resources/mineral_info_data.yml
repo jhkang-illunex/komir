@@ -1,0 +1,57 @@
+# 광물정보 편집 데이터.
+#
+# 값은 출처를 확인한 뒤에만 추가한다. source_verified=true가 아닌 행은
+# adapter가 무시하므로 빈 상태에서도 모델이 내용을 추정하지 않는다.
+schema_version: 1
+accessed_at: "2026-09-27"
+source_policy: "Royal Society of Chemistry Periodic Table element pages"
+minerals:
+  구리:
+    source_verified: true
+    source_url: "https://periodic-table.rsc.org/element/29/copper"
+    element_symbol: "Cu"
+    atomic_number: 29
+    atomic_weight: 63.546
+    uses: ["전기 배선·모터", "건설(지붕·배관)", "열교환기·산업기계"]
+    characteristics: ["적갈색 금속", "열과 전기를 잘 전도", "가늘게 뽑아 전선으로 가공 가능"]
+  니켈:
+    source_verified: true
+    source_url: "https://periodic-table.rsc.org/element/28/"
+    element_symbol: "Ni"
+    atomic_number: 28
+    atomic_weight: 58.693
+    uses: ["스테인리스강·합금", "금속 도금", "충전식 배터리"]
+    characteristics: ["은백색 금속", "고온에서도 부식에 강함"]
+  코발트:
+    source_verified: true
+    source_url: "https://periodic-table.rsc.org/element/27/"
+    element_symbol: "Co"
+    atomic_number: 27
+    atomic_weight: 58.933
+    uses: ["고온 합금·제트터빈", "자석", "배터리·안료"]
+    characteristics: ["은청색 금속", "자성을 가짐", "고온에서 강도 유지"]
+  리튬:
+    source_verified: true
+    source_url: "https://periodic-table.rsc.org/element/3/lithium"
+    element_symbol: "Li"
+    atomic_number: 3
+    atomic_weight: 6.94
+    uses: ["휴대기기·전기차용 충전식 배터리", "알루미늄·마그네슘 경량 합금", "특수 유리·유리 세라믹"]
+    characteristics: ["은백색의 연한 금속", "금속 중 밀도가 가장 낮음", "물과 격렬하게 반응"]
+  네오디뮴:
+    source_verified: true
+    source_url: "https://periodic-table.rsc.org/element/60/Neodymium"
+    element_symbol: "Nd"
+    atomic_number: 60
+    atomic_weight: 144.242
+    uses: ["네오디뮴·철·붕소 영구자석", "특수 유리·용접용 보안경", "레이저"]
+    characteristics: ["은백색 금속", "공기 중에서 빠르게 변색", "란타넘족 원소"]
+  희토류:
+    source_verified: true
+    representative_element: "네오디뮴(Nd)"
+    source_url: "https://periodic-table.rsc.org/element/60/Neodymium"
+    element_symbol: "Nd"
+    atomic_number: 60
+    atomic_weight: 144.242
+    uses: ["희토류 영구자석(대표: 네오디뮴 자석)", "특수 유리", "레이저·전자기기"]
+    characteristics: ["희토류 전체가 아닌 대표 원소 네오디뮴 기준", "란타넘족 금속"]

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from .action_results import RetrievalResult
+from .answer_contracts import matching_contracts
 
 
 _ACTION_LABELS = {
@@ -9,6 +10,8 @@ _ACTION_LABELS = {
     "forecast.price": "가격예측", "indicator.series": "광물지표",
     "trade.country_rank": "수출입 국가 순위", "trade.monthly": "수출입 현황",
     "trade.concentration": "수출입 집중도", "resource.rank": "생산·매장량 순위",
+    "trade.price_cross_rank": "수입 비중·가격 교차분석",
+    "resource.price_cross_rank": "생산 1위국 비중·가격 교차분석",
     "document.retrieve": "문서 내용", "document.lookup": "문서 원문",
     "mine.profile": "광산 정보", "mine.rank": "광산 순위",
 }
@@ -17,7 +20,7 @@ _ACTION_LABELS = {
 class AnswerComposer:
     """수치 계산 없이 검증된 Action 결과만 생성 모델에 전달한다."""
 
-    def instruction(self, result: RetrievalResult | None) -> str:
+    def instruction(self, result: RetrievalResult | None, question: str | None = None) -> str:
         if result is None or result.action_plan is None or len(result.action_plan.actions) < 2:
             return ""
         evidence_indices: dict[str, list[int]] = {}
@@ -30,6 +33,16 @@ class AnswerComposer:
             "아래 요구사항별 근거 번호만 사용해 각각 별도 절로 답하십시오. "
             "다른 요구사항의 수치·기간·광종·출처를 섞지 마십시오.",
         ]
+        contracts = matching_contracts(
+            [call.action_id for call in result.action_plan.actions], question,
+        )
+        if contracts:
+            lines.extend([
+                "출력 계약(계약에 없는 필드는 근거가 있을 때만 채움):",
+                *[f"- {contract.contract_id}: {contract.format_rule}" for contract in contracts],
+                "같은 Action 집합에 계약이 여러 개면 질문의 표현(전망 결합·비교·상위국)에 "
+                "맞는 계약 하나만 선택하고, 섹션 순서와 라벨은 그대로 유지하십시오.",
+            ])
         for call in result.action_plan.actions:
             outcome = outcomes.get(call.requirement_id)
             indices = evidence_indices.get(call.requirement_id, [])

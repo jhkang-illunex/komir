@@ -1741,6 +1741,126 @@ class KomisRawDataRepository:
             row_count=len(rows), rows=rows,
         )
 
+    def fetch_country_import_mineral_shares(
+        self, *, country: str, metric: str, start_period: str,
+        end_period: str, top_n: int = 5, mineral_names: list[str] | None = None,
+    ) -> RawDataset:
+        """같은 기간·광종 HS 모집단에서 특정국 수입 비중 상위 광종을 조회한다."""
+        if metric not in {"import_amount", "import_weight"}:
+            raise RawDataAccessError("교차 순위는 수입액 또는 수입중량만 지원합니다.")
+        column = _RANKING_SPECS["map_korea"]["metrics"][metric]
+        partner = _literal(country)
+        start = _literal(_coerce_period(start_period, "day", False))
+        end = _literal(_coerce_period(end_period, "day", True))
+        names = ("AND m.mnrl_nm_ko IN (" + ", ".join(
+            _literal(_MINERAL_SYNONYMS.get(name, name)) for name in mineral_names) + ")") if mineral_names else ""
+        if start > end:
+            raise RawDataAccessError("수입 조회 기간의 시작일이 종료일보다 늦습니다.")
+        try:
+            frame = read_sql_pg(f"""
+                WITH mapping AS (
+                    SELECT DISTINCT mnrknd_unq_cd, hs_cd
+                    FROM {KOMIS_SCHEMA}.ai_hs_mnrl_map WHERE use_yn='Y'
+                ), totals AS (
+                    SELECT m.mnrknd_unq_cd, m.mnrl_nm_ko AS mineral,
+                           m.ko_data_src_cd AS data_source,
+                           SUM(t.{column}) AS total,
+                           SUM(CASE WHEN t.trgt_ntn={partner} OR t.trgt_ntn_cd={partner}
+                                    THEN t.{column} ELSE 0 END) AS partner_total,
+                           MIN(t.crtr_ymd) AS first_date, MAX(t.crtr_ymd) AS last_date
+                    FROM mapping h
+                    JOIN {KOMIS_SCHEMA}.ai_mnrl_mst m ON m.mnrknd_unq_cd=h.mnrknd_unq_cd
+                    JOIN {KOMIS_SCHEMA}.ko_cstm_cmmrc t ON t.hs_cd=h.hs_cd
+                    WHERE m.use_yn='Y' {names} AND t.crtr_ymd >= {start} AND t.crtr_ymd <= {end}
+                      AND t.{column} IS NOT NULL AND t.{column} >= 0
+                    GROUP BY m.mnrknd_unq_cd, m.mnrl_nm_ko, m.ko_data_src_cd
+                )
+                SELECT mnrknd_unq_cd AS mineral_code, mineral, data_source,
+                       total, partner_total, first_date, last_date,
+                       partner_total * 100.0 / NULLIF(total, 0) AS share_pct
+                FROM totals WHERE total > 0 AND partner_total > 0
+                ORDER BY share_pct DESC, partner_total DESC, mineral_code
+                LIMIT {int(top_n)}
+            """)
+        except Exception as exc:  # noqa: BLE001
+            raise RawDataAccessError("특정국 수입 비중의 광종별 조회에 실패했습니다.") from exc
+        rows = [
+            {"rank": rank, "mineral_code": str(row.mineral_code), "mineral": str(row.mineral),
+             "data_source": row.data_source, "country": country,
+             "total": _json_value(row.total), "partner_total": _json_value(row.partner_total),
+             "share_pct": round(float(row.share_pct), 2),
+             "first_date": _format_period_value(row.first_date, "day"),
+             "last_date": _format_period_value(row.last_date, "day")}
+            for rank, row in enumerate(frame.itertuples(index=False), 1)
+        ]
+        return RawDataset(source_table="KO_CSTM_CMMRC", columns=list(rows[0]) if rows else [],
+                          rows=rows, row_count=len(rows), unit=_RANKING_METRIC_LABELS[metric][1],
+                          metadata={"metric": metric, "country": country,
+                                    "requested_start": start_period, "requested_end": end_period})
+
+    def fetch_top_producer_mineral_shares(
+        self, *, year: int | None = None, top_n: int = 5,
+        mineral_names: list[str] | None = None,
+    ) -> RawDataset:
+        """공식 세계 총계(SU)를 분모로 광종별 1위 생산국 비중을 비교한다."""
+        year_filter = f"AND p.crtr_yr={_literal(str(year))}" if year is not None else ""
+        names = ("AND m.mnrl_nm_ko IN (" + ", ".join(
+            _literal(_MINERAL_SYNONYMS.get(name, name)) for name in mineral_names) + ")") if mineral_names else ""
+        try:
+            frame = read_sql_pg(f"""
+                WITH base AS (
+                    SELECT p.mnrknd_unq_cd AS mineral_code, m.mnrl_nm_ko AS mineral,
+                           m.ko_data_src_cd AS data_source, p.crtr_yr AS year,
+                           p.ntn_eng_cd AS country_code, p.prdctn_quty_ton AS tonnes
+                    FROM {KOMIS_SCHEMA}.ko_rsrc_prdctn_quty p
+                    JOIN {KOMIS_SCHEMA}.ai_mnrl_mst m ON m.mnrknd_unq_cd=p.mnrknd_unq_cd
+                    WHERE m.use_yn='Y' {names} AND p.se_cd='-' AND p.prdctn_quty_ton IS NOT NULL
+                      AND p.prdctn_quty_ton >= 0 {year_filter}
+                ), latest_year AS (
+                    SELECT mineral_code, MAX(year) AS year FROM base
+                    WHERE country_code='SU' GROUP BY mineral_code
+                ), world AS (
+                    SELECT b.mineral_code, b.year, SUM(b.tonnes) AS world_tonnes
+                    FROM base b JOIN latest_year y USING (mineral_code, year)
+                    WHERE b.country_code='SU' GROUP BY b.mineral_code, b.year
+                ), countries AS (
+                    SELECT b.mineral_code, b.mineral, b.data_source, b.year,
+                           b.country_code, SUM(b.tonnes) AS country_tonnes
+                    FROM base b JOIN latest_year y USING (mineral_code, year)
+                    WHERE b.country_code NOT IN ('SU','OT')
+                    GROUP BY b.mineral_code, b.mineral, b.data_source, b.year, b.country_code
+                ), ranked AS (
+                    SELECT c.*, w.world_tonnes,
+                           ROW_NUMBER() OVER (PARTITION BY c.mineral_code
+                                              ORDER BY c.country_tonnes DESC, c.country_code) AS country_rank
+                    FROM countries c JOIN world w USING (mineral_code, year)
+                    WHERE w.world_tonnes > 0 AND c.country_tonnes <= w.world_tonnes
+                )
+                SELECT r.mineral_code, r.mineral, r.data_source, r.year,
+                       r.country_code, COALESCE(n.ntn_nm_ko, r.country_code) AS country,
+                       r.country_tonnes, r.world_tonnes,
+                       r.country_tonnes * 100.0 / r.world_tonnes AS share_pct
+                FROM ranked r LEFT JOIN {KOMIS_SCHEMA}.ai_ntn_mst n ON n.ntn_cd=r.country_code
+                WHERE r.country_rank=1
+                ORDER BY share_pct DESC, r.country_tonnes DESC, r.mineral_code
+                LIMIT {int(top_n)}
+            """)
+        except Exception as exc:  # noqa: BLE001
+            raise RawDataAccessError("광종별 생산 1위국 비중 조회에 실패했습니다.") from exc
+        rows = [
+            {"rank": rank, "mineral_code": str(row.mineral_code), "mineral": str(row.mineral),
+             "data_source": row.data_source, "year": int(row.year),
+             "country": str(row.country), "country_code": str(row.country_code),
+             "country_tonnes": _json_value(row.country_tonnes),
+             "world_tonnes": _json_value(row.world_tonnes),
+             "share_pct": round(float(row.share_pct), 2)}
+            for rank, row in enumerate(frame.itertuples(index=False), 1)
+        ]
+        return RawDataset(source_table="KO_RSRC_PRDCTN_QUTY", columns=list(rows[0]) if rows else [],
+                          rows=rows, row_count=len(rows), unit="톤",
+                          metadata={"metric": "production", "world_total_code": "SU",
+                                    "requested_year": year})
+
     #: 2026-09-18(RDB 결정적쿼리 후보리스트 2순위) — 광종 간 지표 비교/랭킹
     #: 대상 두 page_id. 값이 클수록 좋은/나쁜 방향이 지표마다 달라(수급동향
     #: 지표는 낮을수록 위험 쪽, 시장전망지표는 방향성이 문서에 명시 안 돼

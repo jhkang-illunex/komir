@@ -67,7 +67,7 @@ ensure_shared_on_path(Path(__file__).resolve())
 
 from common.llm_client import LLM_TRANSIENT_ERRORS, KomirJsonLLM  # noqa: E402
 from rag_core.retrieval.access import PRIVATE_ONLY_KOMIS_PAGES  # noqa: E402
-from rag_core.retrieval import mine_aggregate, weekly_trend  # noqa: E402
+from rag_core.retrieval import mine_aggregate, weekly_trend, mineral_info, monthly_trend, cross_rank, news, battery_minerals, production_concentration  # noqa: E402
 from rag_core.retrieval.evidence import (  # noqa: E402
     Evidence, KOMIS_RAW_DUMMY_CAVEAT, KOMIS_RAW_UNVERIFIED_CAVEAT,
 )
@@ -539,6 +539,13 @@ class RetrievalRoute(BaseModel):
     use_structured: bool
     use_komis_raw: bool = False  # 2026-08-31 신설(komis_raw_lookup MCP tool)
     use_weekly_trend: bool = False
+    use_mineral_info: bool = False
+    use_monthly_trend: bool = False
+    use_news: bool = False
+    use_battery_minerals: bool = False
+    use_production_concentration: bool = False
+    use_cross_rank: bool = False
+    cross_rank_action_id: Literal["trade.price_cross_rank", "resource.price_cross_rank"] | None = None
     use_dense: bool
     use_pageindex: bool
     pageindex_mode: Literal["simple", "agentic"] = "simple"
@@ -870,6 +877,8 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
                               komis_partner_country=s.partner_country, komis_trade_flow=s.flow,
                               komis_dependency_denominator=s.denominator_scope)
     if call.action_id == "resource.rank":
+        if "생산집중도" in question.replace(" ", ""):
+            return RetrievalRoute(**common, use_production_concentration=True)
         return RetrievalRoute(**common, use_komis_mineral_ranking=True,
                               komis_mineral_ranking_metrics=[s.metric])
     if call.action_id == "resource.yoy":
@@ -897,8 +906,18 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
         }.get(s.indicator_variant) if topic == "composite_index" else None
         return RetrievalRoute(**common, use_komis_raw=True, komis_topic=topic,
                               komis_index_type_code=composite_code)
+    if call.action_id in {"trade.price_cross_rank", "resource.price_cross_rank"}:
+        return RetrievalRoute(**common, use_cross_rank=True, cross_rank_action_id=call.action_id)
     if call.action_id == "document.retrieve" and "주간" in (s.topic or question) and "동향" in (s.topic or question):
         return RetrievalRoute(**common, use_weekly_trend=True)
+    if call.action_id == "document.retrieve" and any(token in (s.topic or question) for token in ("용도", "원소기호", "원자량", "원자번호", "주요 특성")):
+        return RetrievalRoute(**common, use_mineral_info=True)
+    if call.action_id == "document.retrieve" and any(token in (s.topic or question) for token in ("월간동향", "희소금속 동향", "전략광종 동향")):
+        return RetrievalRoute(**common, use_monthly_trend=True)
+    if call.action_id == "document.retrieve" and any(token in (s.topic or question) for token in ("뉴스", "기사", "수출통제")):
+        return RetrievalRoute(**common, use_news=True)
+    if call.action_id == "document.retrieve" and "2차전지" in (s.topic or question):
+        return RetrievalRoute(**common, use_battery_minerals=True)
     if call.action_id in {"menu.navigate", "dataset.navigate"}:
         return RetrievalRoute(**common)
     if call.action_id == "document.lookup":
@@ -2198,6 +2217,28 @@ def _retrieve_node(
             jobs["weekly_trend"] = submit(
                 weekly_trend.fetch_weekly_trend_evidence, start=start, end=end,
             )
+        if route.use_mineral_info and route.komis_mineral_name:
+            jobs["mineral_info"] = submit(
+                mineral_info.fetch_mineral_info_evidence, route.komis_mineral_name,
+            )
+        if route.use_monthly_trend:
+            jobs["monthly_trend"] = submit(
+                monthly_trend.fetch_monthly_trend_evidence, route.resolved_query or state["question"],
+            )
+        if route.use_news:
+            jobs["news"] = submit(news.fetch_news_evidence, route.resolved_query or state["question"])
+        if route.use_battery_minerals:
+            jobs["battery_minerals"] = submit(battery_minerals.fetch_battery_minerals_evidence)
+        if route.use_production_concentration and route.komis_mineral_name:
+            jobs["production_concentration"] = submit(
+                production_concentration.fetch_production_concentration_evidence,
+                route.komis_mineral_name,
+                year=route.komis_start_period and int(route.komis_start_period[:4]),
+            )
+        if route.use_cross_rank and state.get("action_call") is not None:
+            jobs["cross_rank"] = submit(
+                cross_rank.fetch_cross_rank_evidence, state["action_call"],
+            )
         query = route.resolved_query or state["question"]
         # 2026-09-18(사용자 지시 "안전망 보강") — komis_ranking 계열 4종(교역·
         # 매장량/생산량·가격변동률·지표 비교)은 komis_raw와 달리 ROUTE_PROMPT의
@@ -2306,6 +2347,27 @@ def _retrieve_node(
         weekly_evidence, weekly_warnings = results["weekly_trend"]
         evidence.extend(weekly_evidence)
         warnings.extend(weekly_warnings)
+    for name in ("mineral_info", "monthly_trend"):
+        if name in results:
+            structured_evidence, structured_warnings = results[name]
+            evidence.extend(structured_evidence)
+            warnings.extend(structured_warnings)
+    if "news" in results:
+        news_evidence, news_warnings = results["news"]
+        evidence.extend(news_evidence)
+        warnings.extend(news_warnings)
+    if "battery_minerals" in results:
+        battery_evidence, battery_warnings = results["battery_minerals"]
+        evidence.extend(battery_evidence)
+        warnings.extend(battery_warnings)
+    if "production_concentration" in results:
+        concentration_evidence, concentration_warnings = results["production_concentration"]
+        evidence.extend(concentration_evidence)
+        warnings.extend(concentration_warnings)
+    if "cross_rank" in results:
+        cross_evidence, cross_warnings = results["cross_rank"]
+        evidence.extend(cross_evidence)
+        warnings.extend(cross_warnings)
     evidence.extend(results.get("dense", []))
     if "mine_aggregate" in results:
         ma_evidence, ma_warnings = results["mine_aggregate"]
@@ -2962,7 +3024,9 @@ def retrieve_evidence(
         # 문서 자체를 근거로 쓴다. 그 밖의 document.retrieve는
         # 기존 검색·Advisor 경로를 그대로 거친다.
         static_evidence = _internal_methodology_evidence(call)
-        if static_evidence:
+        if call.action_id in {"trade.price_cross_rank", "resource.price_cross_rank"}:
+            call_evidence, call_warnings = cross_rank.fetch_cross_rank_evidence(call)
+        elif static_evidence:
             call_evidence, call_warnings = static_evidence, []
         else:
             try:
@@ -3037,7 +3101,7 @@ def retrieve_evidence(
                 )
         if on_status:
             on_status("verifying", action_id=call.action_id)
-        if call.action_id == "trade.indicator":
+        if call.action_id in {"trade.indicator", "trade.price_cross_rank", "resource.price_cross_rank"}:
             # 이 도구는 SQL 집계와 명시된 공식으로 결과를 이미 결정했다. Advisor가
             # 계산식을 다시 해석하다 결정적 결과를 기권시키지 않도록 근거 존재를
             # 충분성 기준으로 쓴다.

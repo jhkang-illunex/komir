@@ -3,6 +3,7 @@
 # 파일 자체는 출처 없는 광물 특성·용도 값을 제공하지 않는다.
 schema_version: 1
 status: catalog_populated_properties_pending
+data_resource: inhouse/rag_core/ragkit/resources/mineral_info_data.yml
 source_page: mineral_info
 source_registry: inhouse/rag_chat/app/page_recommend/resources/registry/pages/mineral_info.yaml
 supported_questions:
