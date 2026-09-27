@@ -1,0 +1,2963 @@
+{
+  "generated_at": "20260928_010158",
+  "base_url": "http://127.0.0.1:18002",
+  "summary": {
+    "PASS": 18,
+    "BLOCKED_DATA": 19,
+    "PARTIAL": 8,
+    "FAIL": 11
+  },
+  "results": [
+    {
+      "id": "MI01",
+      "question": "니켈은 어디에 쓰여?",
+      "expected_markers": [
+        "용도"
+      ],
+      "status": "PASS",
+      "notes": [],
+      "elapsed_seconds": 0.6,
+      "answer": "니켈의 주요 용도는 스테인리스강·합금, 금속 도금, 충전식 배터리입니다.",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "Royal Society of Chemistry",
+            "section": "광물정보",
+            "as_of": null,
+            "unit": null,
+            "data_status": null,
+            "warnings": [],
+            "requirement_id": "mineral_info",
+            "action_id": "document.retrieve",
+            "observed_period": null,
+            "menu_source": null
+          }
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "document.retrieve"
+      ],
+      "sources": [
+        "Royal Society of Chemistry"
+      ],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "MI02",
+      "question": "니켈은 어떤 금속이야?",
+      "expected_markers": [
+        "원소",
+        "특성"
+      ],
+      "status": "BLOCKED_DATA",
+      "notes": [
+        "abstain_reason=source_unavailable"
+      ],
+      "elapsed_seconds": 2.18,
+      "answer": "데이터를 찾을 수 없습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [],
+        "bogus_citations": [],
+        "abstained": true,
+        "abstain_reason": "source_unavailable",
+        "message_key": "action_unavailable"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "MI03",
+      "question": "구리 기본 특성을 알려줘",
+      "expected_markers": [
+        "원소",
+        "특성"
+      ],
+      "status": "BLOCKED_DATA",
+      "notes": [
+        "abstain_reason=source_unavailable"
+      ],
+      "elapsed_seconds": 5.6,
+      "answer": "데이터를 찾을 수 없습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [],
+        "bogus_citations": [],
+        "abstained": true,
+        "abstain_reason": "source_unavailable",
+        "message_key": "action_unavailable"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "MI04",
+      "question": "망간 주요 광석 종류는?",
+      "expected_markers": [
+        "광석"
+      ],
+      "status": "BLOCKED_DATA",
+      "notes": [
+        "abstain_reason=source_unavailable"
+      ],
+      "elapsed_seconds": 4.44,
+      "answer": "데이터를 찾을 수 없습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [],
+        "bogus_citations": [],
+        "abstained": true,
+        "abstain_reason": "source_unavailable",
+        "message_key": "action_unavailable"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "DOC01",
+      "question": "이번달 전략 광종 월간 동향 요약해줘",
+      "expected_markers": [
+        "월간",
+        "요약"
+      ],
+      "status": "BLOCKED_DATA",
+      "notes": [
+        "abstain_reason=source_unavailable"
+      ],
+      "elapsed_seconds": 1.63,
+      "answer": "데이터를 찾을 수 없습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [],
+        "bogus_citations": [],
+        "abstained": true,
+        "abstain_reason": "source_unavailable",
+        "message_key": "action_unavailable"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "DOC02",
+      "question": "최근 월간동향 제목 알려줘",
+      "expected_markers": [
+        "최신",
+        "제목"
+      ],
+      "status": "BLOCKED_DATA",
+      "notes": [
+        "abstain_reason=source_unavailable"
+      ],
+      "elapsed_seconds": 2.08,
+      "answer": "데이터를 찾을 수 없습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [],
+        "bogus_citations": [],
+        "abstained": true,
+        "abstain_reason": "source_unavailable",
+        "message_key": "action_unavailable"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "DOC03",
+      "question": "최근 3개월 월간 동향에서 니켈 관련 내용 찾아줘",
+      "expected_markers": [
+        "니켈",
+        "게시"
+      ],
+      "status": "BLOCKED_DATA",
+      "notes": [
+        "abstain_reason=source_unavailable"
+      ],
+      "elapsed_seconds": 1.56,
+      "answer": "데이터를 찾을 수 없습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [],
+        "bogus_citations": [],
+        "abstained": true,
+        "abstain_reason": "source_unavailable",
+        "message_key": "action_unavailable"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "DOC04",
+      "question": "월간 동향 게시판 검색은 어떻게 해?",
+      "expected_markers": [
+        "검색",
+        "개월"
+      ],
+      "status": "PASS",
+      "notes": [],
+      "elapsed_seconds": 0.28,
+      "answer": "기간(전체, 1/3/6/12개월 또는 직접입력)과 검색어(제목+내용, 제목, 내용)로 검색할 수 있습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "NEWS01",
+      "question": "최근 자원 뉴스 뭐 있어?",
+      "expected_markers": [
+        "뉴스",
+        "기사"
+      ],
+      "status": "BLOCKED_DATA",
+      "notes": [
+        "abstain_reason=source_unavailable"
+      ],
+      "elapsed_seconds": 0.75,
+      "answer": "데이터를 찾을 수 없습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [],
+        "bogus_citations": [],
+        "abstained": true,
+        "abstain_reason": "source_unavailable",
+        "message_key": "action_unavailable"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "NEWS02",
+      "question": "이번주 주간 자원뉴스 요약해줘",
+      "expected_markers": [
+        "주간",
+        "뉴스"
+      ],
+      "status": "BLOCKED_DATA",
+      "notes": [
+        "abstain_reason=source_unavailable"
+      ],
+      "elapsed_seconds": 0.39,
+      "answer": "데이터를 찾을 수 없습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [],
+        "bogus_citations": [],
+        "abstained": true,
+        "abstain_reason": "source_unavailable",
+        "message_key": "action_unavailable"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "NEWS03",
+      "question": "최근 중국 수출통제 관련 뉴스 있어?",
+      "expected_markers": [
+        "기사",
+        "뉴스"
+      ],
+      "status": "BLOCKED_DATA",
+      "notes": [
+        "abstain_reason=source_unavailable"
+      ],
+      "elapsed_seconds": 0.27,
+      "answer": "데이터를 찾을 수 없습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [],
+        "bogus_citations": [],
+        "abstained": true,
+        "abstain_reason": "source_unavailable",
+        "message_key": "action_unavailable"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "PF01",
+      "question": "니켈 현재 가격이랑 다음달 전망 같이 알려줘",
+      "expected_markers": [
+        "가격",
+        "전망"
+      ],
+      "status": "PARTIAL",
+      "notes": [
+        "기대 표지 미검출: 전망"
+      ],
+      "elapsed_seconds": 2.36,
+      "answer": "선택 가격기준의 단위 표기는 가격기준=LME CASH입니다. [1]\n\n출처:\n- [1] KOMIS 공식 데이터 · KOMIS 원천 · KO_MNRL_PRC(니켈) (기준시점 2026-09-07\\~2026-09-08, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음))",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_MNRL_PRC(니켈)",
+            "as_of": "2026-09-07~2026-09-08, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "unit": "가격기준=LME CASH",
+            "data_status": null,
+            "warnings": [],
+            "requirement_id": "current_price",
+            "action_id": "price.series",
+            "observed_period": "2026-09-07~2026-09-08, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "menu_source": {
+              "page_id": "price_base_metals",
+              "label": "비철금속",
+              "source_label": "KOMIS 광물자원가격 > 비철금속",
+              "source_tables": [
+                "public.KO_MNRL_PRC",
+                "public.ai_prc_mnrl_map",
+                "public.KO_MNRL_PRC_CRTR"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          }
+        ],
+        "retrieval_sources": [
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          }
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "price.series"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 1,
+      "chart_count": 0
+    },
+    {
+      "id": "PF02",
+      "question": "니켈 지난 6개월 가격이랑 향후 전망 이어서 보여줘",
+      "expected_markers": [
+        "가격",
+        "전망"
+      ],
+      "status": "PASS",
+      "notes": [],
+      "elapsed_seconds": 3.31,
+      "answer": "- OC02: 니켈 가격 : 2026-03-27\\~2026-09-08 실적 추이\n가격 예측 : 제공된 문서에서 전망치에 관한 근거를 찾지 못했습니다. [1]\n\n선택 가격기준의 단위 표기는 가격기준=LME CASH입니다. [1]\n\n출처:\n- [1] KOMIS 공식 데이터 · KOMIS 원천 · KO_MNRL_PRC(니켈) (기준시점 2026-03-27\\~2026-09-08, 지정 기간 내 관측 118건 전체)",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_MNRL_PRC(니켈)",
+            "as_of": "2026-03-27~2026-09-08, 지정 기간 내 관측 118건 전체",
+            "unit": "가격기준=LME CASH",
+            "data_status": null,
+            "warnings": [],
+            "requirement_id": "actual_trend",
+            "action_id": "price.series",
+            "observed_period": "2026-03-27~2026-09-08, 지정 기간 내 관측 118건 전체",
+            "menu_source": {
+              "page_id": "price_base_metals",
+              "label": "비철금속",
+              "source_label": "KOMIS 광물자원가격 > 비철금속",
+              "source_tables": [
+                "public.KO_MNRL_PRC",
+                "public.ai_prc_mnrl_map",
+                "public.KO_MNRL_PRC_CRTR"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          }
+        ],
+        "retrieval_sources": [
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          }
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "price.series"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 1,
+      "chart_count": 1
+    },
+    {
+      "id": "PF03",
+      "question": "니켈 지금 가격이 전망치 보다 높은 편이야?",
+      "expected_markers": [
+        "현재",
+        "전망"
+      ],
+      "status": "PARTIAL",
+      "notes": [
+        "기대 표지 미검출: 현재, 전망"
+      ],
+      "elapsed_seconds": 2.23,
+      "answer": "선택 가격기준의 단위 표기는 가격기준=LME CASH입니다. [1]\n\n출처:\n- [1] KOMIS 공식 데이터 · KOMIS 원천 · KO_MNRL_PRC(니켈) (기준시점 2026-09-07\\~2026-09-08, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음))",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_MNRL_PRC(니켈)",
+            "as_of": "2026-09-07~2026-09-08, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "unit": "가격기준=LME CASH",
+            "data_status": null,
+            "warnings": [],
+            "requirement_id": "current_price",
+            "action_id": "price.series",
+            "observed_period": "2026-09-07~2026-09-08, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "menu_source": {
+              "page_id": "price_base_metals",
+              "label": "비철금속",
+              "source_label": "KOMIS 광물자원가격 > 비철금속",
+              "source_tables": [
+                "public.KO_MNRL_PRC",
+                "public.ai_prc_mnrl_map",
+                "public.KO_MNRL_PRC_CRTR"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          }
+        ],
+        "retrieval_sources": [
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          }
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "price.series"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 1,
+      "chart_count": 0
+    },
+    {
+      "id": "IX01",
+      "question": "광물지수 오를때 같이 오른 광종은 뭐야?",
+      "expected_markers": [
+        "광물종합지수",
+        "가격"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "abstain_reason=ambiguous"
+      ],
+      "elapsed_seconds": 3.36,
+      "answer": "제공된 문서에서 근거를 찾지 못했습니다.\n\n요청 범위가 넓습니다. 기간·정보 유형(가격/수입·수출/생산·매장/지표)을 지정해 주십시오.",
+      "terminal": {
+        "done": true,
+        "citations": [],
+        "bogus_citations": [],
+        "abstained": true,
+        "abstain_reason": "ambiguous"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "IX02",
+      "question": "니켈 가격 추세랑 광물 종합지수 추세 비교해주세요",
+      "expected_markers": [
+        "니켈",
+        "광물"
+      ],
+      "status": "PASS",
+      "notes": [],
+      "elapsed_seconds": 3.06,
+      "answer": "- OC04: 광물종합지수 : 조회 불가\n\n선택 가격기준의 단위 표기는 가격기준=LME CASH입니다. [1]\n\n출처:\n- [1] KOMIS 공식 데이터 · KOMIS 원천 · KO_MNRL_PRC(니켈) (기준시점 2025-09-29\\~2026-09-08, 지정 기간 내 관측 247건 전체)\n\n광물지표: 확인 가능한 자료가 없어 답변할 수 없습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_MNRL_PRC(니켈)",
+            "as_of": "2025-09-29~2026-09-08, 지정 기간 내 관측 247건 전체",
+            "unit": "가격기준=LME CASH",
+            "data_status": null,
+            "warnings": [],
+            "requirement_id": "mineral_price_trend",
+            "action_id": "price.series",
+            "observed_period": "2025-09-29~2026-09-08, 지정 기간 내 관측 247건 전체",
+            "menu_source": {
+              "page_id": "price_base_metals",
+              "label": "비철금속",
+              "source_label": "KOMIS 광물자원가격 > 비철금속",
+              "source_tables": [
+                "public.KO_MNRL_PRC",
+                "public.ai_prc_mnrl_map",
+                "public.KO_MNRL_PRC_CRTR"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          }
+        ],
+        "retrieval_sources": [
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          }
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "price.series"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 1,
+      "chart_count": 1
+    },
+    {
+      "id": "MP01",
+      "question": "니켈 가격 추이랑 우리나라 수입국 구성 같이 보여줘",
+      "expected_markers": [
+        "가격",
+        "수입"
+      ],
+      "status": "PASS",
+      "notes": [],
+      "elapsed_seconds": 6.31,
+      "answer": "- OC06: 광물가격 : 2026-09-07\\~2026-09-08 니켈 가격 2.07% 변동 고점 17080.44(2026-09-08) [1] - 수급지도 : 2026-06-01\\~2026-09-09 수입국 상위 국가와 점유율을 표시한다.\n| 순위 | 국가 | 비중(%) |\n| --- | --- | --- |\n| 1 | 인도네시아 | 37.12 |\n| 2 | 호주 | 26.87 |\n| 3 | 칠레 | 10.18 |\n| 4 | 콩고민주공화국 | 7.09 |\n| 5 | 미국 | 5.55 | [2]\n\n최근 1년간 니켈 상위 5개국은 1위 [인도네시아 37.12%], 2위 [호주 26.87%], 3위 [칠레 10.18%], 4위 [콩고민주공화국 7.09%], 5위 [미국 5.55%] 순입니다. [2]\n\n선택 가격기준의 단위 표기는 가격기준=LME CASH입니다. [1]\n\n최근 1년간 니켈 상위 5개국은 1위 [인도네시아 37.12%], 2위 [호주 26.87%], 3위 [칠레 10.18%], 4위 [콩고민주공화국 7.09%], 5위 [미국 5.55%] 순입니다. [2]\n\n⚠ 이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다.\n\n출처:\n- [1] KOMIS 공식 데이터 · KOMIS 원천 · KO_MNRL_PRC(니켈) (기준시점 2026-09-07\\~2026-09-08, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음))\n- [2] KOMIS 공식 데이터 · KOMIS 원천 · KO_CSTM_CMMRC(니켈) · 국가별 수입금액 상위 5개 (기준시점 2026-06-01\\~2026-09-09)",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_MNRL_PRC(니켈)",
+            "as_of": "2026-09-07~2026-09-08, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "unit": "가격기준=LME CASH",
+            "data_status": null,
+            "warnings": [],
+            "requirement_id": "req_001",
+            "action_id": "price.series",
+            "observed_period": "2026-09-07~2026-09-08, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "menu_source": {
+              "page_id": "price_base_metals",
+              "label": "비철금속",
+              "source_label": "KOMIS 광물자원가격 > 비철금속",
+              "source_tables": [
+                "public.KO_MNRL_PRC",
+                "public.ai_prc_mnrl_map",
+                "public.KO_MNRL_PRC_CRTR"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          },
+          {
+            "index": 2,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_CSTM_CMMRC(니켈) · 국가별 수입금액 상위 5개",
+            "as_of": "2026-06-01~2026-09-09",
+            "unit": "USD",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "req_002",
+            "action_id": "trade.country_rank",
+            "observed_period": "2026-06-01~2026-09-09",
+            "menu_source": {
+              "page_id": "map_korea",
+              "label": "대한민국 수급지도",
+              "source_label": "KOMIS 핵심광물지도 > 수급지도 > 대한민국",
+              "source_tables": [
+                "public.KO_CSTM_CMMRC",
+                "public.ai_hs_mnrl_map"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          }
+        ],
+        "retrieval_sources": [
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "queried",
+            "evidence_count": 6
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          }
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "price.series",
+        "trade.country_rank"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 2,
+      "chart_count": 1
+    },
+    {
+      "id": "MP02",
+      "question": "중국 수입 비중 높은 광종 중 최근 가격 오른건 뭐야?",
+      "expected_markers": [
+        "점유율",
+        "가격"
+      ],
+      "status": "PARTIAL",
+      "notes": [
+        "기대 표지 미검출: 점유율"
+      ],
+      "elapsed_seconds": 1.01,
+      "answer": "수급지도 : 2025-10-01\\~2026-07-01 중국 수입금액 비중 상위 광종: 텅스텐(57.86%), 동(32%), 인듐(32%), 리튬(26.27%), 백금(22.62%)\n광물가격 : 이 중 요청기간 내 실제 관측일 기준 상승 광종: 텅스텐(+90.18%) [2025-09-30\\~2026-01-08], 동(+45.56%) [2026-07-07\\~2026-09-09], 인듐(+10.12%) [2026-05-08\\~2026-09-04], 백금(+9.11%) [2026-05-08\\~2026-09-04]\n\n⚠ 이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다.",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "중국 수입 비중 상위 광종과 동일 기간 가격 변동",
+            "as_of": null,
+            "unit": null,
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "country_import_price_cross",
+            "action_id": "trade.price_cross_rank",
+            "observed_period": null,
+            "menu_source": null
+          }
+        ],
+        "data_warnings": [
+          "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "trade.price_cross_rank"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 1,
+      "chart_count": 1
+    },
+    {
+      "id": "MP03",
+      "question": "니켈 수입 상위국이랑 현재가격 알려줘",
+      "expected_markers": [
+        "수입",
+        "가격"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "abstain_reason=unsupported_commodity"
+      ],
+      "elapsed_seconds": 0.24,
+      "answer": "지원하지 않는 광물에 대해서는 답변할수 없습니다.",
+      "terminal": {
+        "done": true,
+        "abstained": true,
+        "abstain_reason": "unsupported_commodity",
+        "message_key": "unsupported_commodity"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "MP04",
+      "question": "니켈 가격이랑 세계 생산량 변화 같이 보여줘",
+      "expected_markers": [
+        "가격",
+        "생산"
+      ],
+      "status": "PASS",
+      "notes": [],
+      "elapsed_seconds": 6.59,
+      "answer": "[req_001]\n니켈 가격(LME CASH, 단위 미표기)의 실제 조회기간은 2026-09-07부터 2026-09-08까지입니다. [1] - 2026-09-07: 통상가격 16,405.16 [1] - 2026-09-08: 통상가격 16,745.53 [1] [req_002]\n\n| 순위 | 국가 | 생산량 합계(톤) | 비중(%) |\n| --- | --- | --- | --- |\n| 1 | 중국 | 27,376.0 | 62.37 |\n| 2 | 호주 | 5,664.0 | 12.9 |\n| 3 | 인도네시아 | 3,776.0 | 8.6 |\n| 4 | 칠레 | 2,832.0 | 6.45 |\n| 5 | 콩고민주공화국 | 2,360.0 | 5.38 | [2]\n\n선택 가격기준의 단위 표기는 가격기준=LME CASH입니다. [1]\n\n⚠ 이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다.\n\n출처:\n- [1] KOMIS 공식 데이터 · KOMIS 원천 · KO_MNRL_PRC(니켈) (기준시점 2026-09-07\\~2026-09-08, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음))\n- [2] KOMIS 공식 데이터 · KOMIS 원천 · KO_RSRC_PRDCTN_QUTY(니켈) · 국가별 생산량 상위 5개 (기준시점 2026\\~2026)",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_MNRL_PRC(니켈)",
+            "as_of": "2026-09-07~2026-09-08, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "unit": "가격기준=LME CASH",
+            "data_status": null,
+            "warnings": [],
+            "requirement_id": "req_001",
+            "action_id": "price.series",
+            "observed_period": "2026-09-07~2026-09-08, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "menu_source": {
+              "page_id": "price_base_metals",
+              "label": "비철금속",
+              "source_label": "KOMIS 광물자원가격 > 비철금속",
+              "source_tables": [
+                "public.KO_MNRL_PRC",
+                "public.ai_prc_mnrl_map",
+                "public.KO_MNRL_PRC_CRTR"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          },
+          {
+            "index": 2,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_RSRC_PRDCTN_QUTY(니켈) · 국가별 생산량 상위 5개",
+            "as_of": "2026~2026",
+            "unit": "톤",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "req_002",
+            "action_id": "resource.rank",
+            "observed_period": "2026~2026",
+            "menu_source": {
+              "page_id": "map_mineral",
+              "label": "광물지도",
+              "source_label": "KOMIS 핵심광물지도 > 광물지도",
+              "source_tables": [
+                "public.KO_RSRC_BURUDG_QUTY",
+                "public.KO_RSRC_PRDCTN_QUTY"
+              ],
+              "period_frequency": "yearly",
+              "access": "public"
+            }
+          }
+        ],
+        "retrieval_sources": [
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "queried",
+            "evidence_count": 6
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          }
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "price.series",
+        "resource.rank"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 2,
+      "chart_count": 1
+    },
+    {
+      "id": "MP05",
+      "question": "생산 1위국 비중이 높은 광종들 가격 변동 어때?",
+      "expected_markers": [
+        "생산",
+        "가격"
+      ],
+      "status": "PASS",
+      "notes": [],
+      "elapsed_seconds": 0.88,
+      "answer": "광물지도 : 생산 1위국 비중 상위 광종: 텅스텐(중국 78.82%, 2025년), 동(페루 11.74%, 2025년), 아연(페루 11.54%, 2025년), 리튬(ZW 9.66%, 2025년), 니켈(필리핀 6.92%, 2025년)\n광물가격 : 같은 광종 각 광종 실제 관측기간 기준 가격 변동률: 텅스텐(+90.18%) [2025-09-30\\~2026-01-08], 동(+45.56%) [2026-07-07\\~2026-09-09], 아연(-33.79%) [2026-07-07\\~2026-09-09], 리튬(-4.77%) [2026-07-07\\~2026-09-09], 니켈(+13.57%) [2025-09-29\\~2026-09-08]\n\n⚠ 이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다.",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "공식 세계 생산량 대비 1위국 비중 상위 광종과 가격 변동",
+            "as_of": null,
+            "unit": null,
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "producer_price_cross",
+            "action_id": "resource.price_cross_rank",
+            "observed_period": null,
+            "menu_source": null
+          }
+        ],
+        "data_warnings": [
+          "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "resource.price_cross_rank"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 1,
+      "chart_count": 1
+    },
+    {
+      "id": "MP06",
+      "question": "니켈은 어디에 쓰이고 지금 가격은 얼마야?",
+      "expected_markers": [
+        "용도",
+        "가격"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "abstain_reason=unsupported_commodity"
+      ],
+      "elapsed_seconds": 0.36,
+      "answer": "지원하지 않는 광물에 대해서는 답변할수 없습니다.",
+      "terminal": {
+        "done": true,
+        "abstained": true,
+        "abstain_reason": "unsupported_commodity",
+        "message_key": "unsupported_commodity"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "MP07",
+      "question": "전략광종 가격 현황 한눈에 보여줘",
+      "expected_markers": [
+        "전략",
+        "가격"
+      ],
+      "status": "PASS",
+      "notes": [],
+      "elapsed_seconds": 0.64,
+      "answer": "광물정보 : 전략광종 목록 기준\n광물가격 : 기준일 기준 광종별 가격·전월 평균 대비 등락률 표입니다. [1]\n\n⚠ 표의 원천 상태가 dev_dummy인 행은 개발용 예시 데이터이며 실제 가격이 아닙니다; 가격 기준 또는 관측값이 없는 광종은 가격을 생성하지 않았습니다: 유연탄, 우라늄, 철광석.\n\n출처:\n- [1] KOMIS 공식 데이터 · KOMIS 원천 · KO_MNRL_PRC · 전략광종 가격 현황(광종별 최신 관측)",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_MNRL_PRC · 전략광종 가격 현황(광종별 최신 관측)",
+            "as_of": null,
+            "unit": "행별 가격기준·통화·중량단위 참조(광종 간 절대가격 비교 금지)",
+            "data_status": null,
+            "warnings": [
+              "표의 원천 상태가 dev_dummy인 행은 개발용 예시 데이터이며 실제 가격이 아닙니다; 가격 기준 또는 관측값이 없는 광종은 가격을 생성하지 않았습니다: 유연탄, 우라늄, 철광석."
+            ],
+            "requirement_id": "strategic_price_overview",
+            "action_id": "price.overview",
+            "observed_period": null,
+            "menu_source": null
+          }
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "price.overview"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 1,
+      "chart_count": 0
+    },
+    {
+      "id": "MP08",
+      "question": "이번달 희소금속 월간 동향에 나온 광종들 가격 어때?",
+      "expected_markers": [
+        "월간",
+        "가격"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "abstain_reason=slot_unresolved"
+      ],
+      "elapsed_seconds": 1.77,
+      "answer": "요청하신 데이터를 조회할수 없습니다.",
+      "terminal": {
+        "done": true,
+        "abstained": true,
+        "abstain_reason": "slot_unresolved",
+        "message_key": "action_unavailable"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "MP09",
+      "question": "니켈 가격 추이랑 최근 월간 동향 내용 같이 알려줘",
+      "expected_markers": [
+        "가격",
+        "월간"
+      ],
+      "status": "PARTIAL",
+      "notes": [
+        "기대 표지 미검출: 월간"
+      ],
+      "elapsed_seconds": 5.66,
+      "answer": "- OC11: 광물정보 : 주요 용도 제공된 문서에서 근거를 찾지 못했습니다.\n\n선택 가격기준의 단위 표기는 가격기준=LME CASH입니다. [1]\n\n출처:\n- [1] KOMIS 공식 데이터 · KOMIS 원천 · KO_MNRL_PRC(니켈) (기준시점 2026-09-07\\~2026-09-08, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음))\n\n문서 내용: 확인 가능한 자료가 없어 답변할 수 없습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_MNRL_PRC(니켈)",
+            "as_of": "2026-09-07~2026-09-08, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "unit": "가격기준=LME CASH",
+            "data_status": null,
+            "warnings": [],
+            "requirement_id": "req_1",
+            "action_id": "price.series",
+            "observed_period": "2026-09-07~2026-09-08, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "menu_source": {
+              "page_id": "price_base_metals",
+              "label": "비철금속",
+              "source_label": "KOMIS 광물자원가격 > 비철금속",
+              "source_tables": [
+                "public.KO_MNRL_PRC",
+                "public.ai_prc_mnrl_map",
+                "public.KO_MNRL_PRC_CRTR"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          }
+        ],
+        "retrieval_sources": [
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          }
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "price.series"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 1,
+      "chart_count": 0
+    },
+    {
+      "id": "CN01",
+      "question": "니켈 가격 크게 오른 날 관련 뉴스 있어?",
+      "expected_markers": [
+        "가격",
+        "뉴스"
+      ],
+      "status": "PARTIAL",
+      "notes": [
+        "기대 표지 미검출: 가격, 뉴스"
+      ],
+      "elapsed_seconds": 0.85,
+      "answer": "전일 대비 5% 이상 상승한 관측일을 최근 조회기간에서 찾지 못했습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [],
+        "data_warnings": [],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "CN02",
+      "question": "이번 주 가격 변동 큰 광종이랑 관련 뉴스 보여줘",
+      "expected_markers": [
+        "가격",
+        "뉴스"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "abstain_reason=slot_unresolved"
+      ],
+      "elapsed_seconds": 2.97,
+      "answer": "요청하신 데이터를 조회할수 없습니다.",
+      "terminal": {
+        "done": true,
+        "abstained": true,
+        "abstain_reason": "slot_unresolved",
+        "message_key": "action_unavailable"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "CN03",
+      "question": "광물종합지수 구성 광종 중 상승 전망인 건 뭐야?",
+      "expected_markers": [
+        "광물종합지수",
+        "전망"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "abstain_reason=slot_unresolved"
+      ],
+      "elapsed_seconds": 3.15,
+      "answer": "요청하신 데이터를 조회할수 없습니다.",
+      "terminal": {
+        "done": true,
+        "abstained": true,
+        "abstain_reason": "slot_unresolved",
+        "message_key": "action_unavailable"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "CN04",
+      "question": "수입 의존도 높은 광종들 가격 전망 알려줘",
+      "expected_markers": [
+        "수입",
+        "전망"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "abstain_reason=slot_unresolved"
+      ],
+      "elapsed_seconds": 4.47,
+      "answer": "요청하신 데이터를 조회할수 없습니다.",
+      "terminal": {
+        "done": true,
+        "abstained": true,
+        "abstain_reason": "slot_unresolved",
+        "message_key": "action_unavailable"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "CN05",
+      "question": "리튬 주요 수입국이랑 가격 전망 같이 보여줘",
+      "expected_markers": [
+        "수입",
+        "전망"
+      ],
+      "status": "PARTIAL",
+      "notes": [
+        "기대 표지 미검출: 전망"
+      ],
+      "elapsed_seconds": 6.32,
+      "answer": "### 리튬 주요 수입국\n| :--- | :--- | :--- | :--- | :--- |\n| 1 | 호주 | 72,385,760.0 | 37.6 | 6 |\n| 2 | 중국 | 50,575,600.0 | 26.27 | 6 |\n| 3 | 인도네시아 | 19,685,440.0 | 10.23 | 6 |\n| 4 | 칠레 | 13,692,640.0 | 7.11 | 6 |\n\n최근 1년간 리튬 상위 5개국은 1위 [호주 37.6%], 2위 [중국 26.27%], 3위 [인도네시아 10.23%], 4위 [칠레 7.11%], 5위 [콩고민주공화국 5.56%] 순입니다. [1]\n\n최근 1년간 리튬 상위 5개국은 1위 [호주 37.6%], 2위 [중국 26.27%], 3위 [인도네시아 10.23%], 4위 [칠레 7.11%], 5위 [콩고민주공화국 5.56%] 순입니다. [1]\n\n⚠ 이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다.\n\n출처:\n- [1] KOMIS 공식 데이터 · KOMIS 원천 · KO_CSTM_CMMRC(리튬) · 국가별 수입금액 상위 5개 (기준시점 2026-06-01\\~2026-09-09)",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_CSTM_CMMRC(리튬) · 국가별 수입금액 상위 5개",
+            "as_of": "2026-06-01~2026-09-09",
+            "unit": "USD",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "import_countries",
+            "action_id": "trade.country_rank",
+            "observed_period": "2026-06-01~2026-09-09",
+            "menu_source": {
+              "page_id": "map_korea",
+              "label": "대한민국 수급지도",
+              "source_label": "KOMIS 핵심광물지도 > 수급지도 > 대한민국",
+              "source_tables": [
+                "public.KO_CSTM_CMMRC",
+                "public.ai_hs_mnrl_map"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          }
+        ],
+        "retrieval_sources": [
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "queried",
+            "evidence_count": 6
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          }
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "trade.country_rank"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 1,
+      "chart_count": 1
+    },
+    {
+      "id": "CN06",
+      "question": "구리 가격 전망이랑 월간동향 시장 전망 내용 비교해줘",
+      "expected_markers": [
+        "전망",
+        "월간"
+      ],
+      "status": "BLOCKED_DATA",
+      "notes": [
+        "abstain_reason=source_unavailable"
+      ],
+      "elapsed_seconds": 2.08,
+      "answer": "데이터를 찾을 수 없습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [],
+        "bogus_citations": [],
+        "abstained": true,
+        "abstain_reason": "source_unavailable",
+        "message_key": "action_unavailable"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "CN07",
+      "question": "리튬 가격 전망이랑 최근 관련 뉴스 같이 알려줘",
+      "expected_markers": [
+        "전망",
+        "뉴스"
+      ],
+      "status": "BLOCKED_DATA",
+      "notes": [
+        "abstain_reason=source_unavailable"
+      ],
+      "elapsed_seconds": 1.15,
+      "answer": "데이터를 찾을 수 없습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [],
+        "bogus_citations": [],
+        "abstained": true,
+        "abstain_reason": "source_unavailable",
+        "message_key": "action_unavailable"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "CN08",
+      "question": "지난달 광물종합지수 변동이랑 월간동향 요약 같이 보여줘",
+      "expected_markers": [
+        "광물종합지수",
+        "월간"
+      ],
+      "status": "BLOCKED_DATA",
+      "notes": [
+        "abstain_reason=source_unavailable"
+      ],
+      "elapsed_seconds": 1.15,
+      "answer": "데이터를 찾을 수 없습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [],
+        "bogus_citations": [],
+        "abstained": true,
+        "abstain_reason": "source_unavailable",
+        "message_key": "action_unavailable"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "CN09",
+      "question": "광물종합지수 떨어진 주에 주요 뉴스 뭐 있었어?",
+      "expected_markers": [
+        "광물종합지수",
+        "뉴스"
+      ],
+      "status": "BLOCKED_DATA",
+      "notes": [
+        "abstain_reason=source_unavailable"
+      ],
+      "elapsed_seconds": 0.23,
+      "answer": "데이터를 찾을 수 없습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [],
+        "bogus_citations": [],
+        "abstained": true,
+        "abstain_reason": "source_unavailable",
+        "message_key": "action_unavailable"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "GM01",
+      "question": "코발트 세계 생산국이랑 우리나라 수입국 비교해줘",
+      "expected_markers": [
+        "생산",
+        "수입"
+      ],
+      "status": "PASS",
+      "notes": [],
+      "elapsed_seconds": 2.3,
+      "answer": "광물지도 : 생산 상위국 중국, 호주, 인도네시아, 칠레, 콩고민주공화국\n핵심광물 수급지도 : 수입 상위국 칠레, 콩고민주공화국, 인도네시아, 미국, 러시아\n비교결과 : 공통 국가 인도네시아, 칠레, 콩고민주공화국\n\n⚠ 이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다.",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_RSRC_PRDCTN_QUTY(코발트) · 국가별 생산량 상위 5개",
+            "as_of": "2026~2026",
+            "unit": "톤",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "world_production",
+            "action_id": "resource.rank",
+            "observed_period": "2026~2026",
+            "menu_source": {
+              "page_id": "map_mineral",
+              "label": "광물지도",
+              "source_label": "KOMIS 핵심광물지도 > 광물지도",
+              "source_tables": [
+                "public.KO_RSRC_BURUDG_QUTY",
+                "public.KO_RSRC_PRDCTN_QUTY"
+              ],
+              "period_frequency": "yearly",
+              "access": "public"
+            }
+          },
+          {
+            "index": 2,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_CSTM_CMMRC(코발트) · 국가별 수입금액 상위 5개",
+            "as_of": "2026-06-01~2026-09-09",
+            "unit": "USD",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "korea_import",
+            "action_id": "trade.country_rank",
+            "observed_period": "2026-06-01~2026-09-09",
+            "menu_source": {
+              "page_id": "map_korea",
+              "label": "대한민국 수급지도",
+              "source_label": "KOMIS 핵심광물지도 > 수급지도 > 대한민국",
+              "source_tables": [
+                "public.KO_CSTM_CMMRC",
+                "public.ai_hs_mnrl_map"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          }
+        ],
+        "data_warnings": [
+          "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "resource.rank",
+        "trade.country_rank"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 2,
+      "chart_count": 2
+    },
+    {
+      "id": "GM02",
+      "question": "리튬 세계 생산 상위국 중 우리 수입 상위국에 들어가는 나라는?",
+      "expected_markers": [
+        "생산",
+        "수입"
+      ],
+      "status": "PASS",
+      "notes": [],
+      "elapsed_seconds": 2.19,
+      "answer": "광물지도 : 생산 상위국 중국, 호주, 인도네시아, 칠레, 콩고민주공화국\n핵심광물 수급지도 : 수입 상위국 호주, 중국, 인도네시아, 칠레, 콩고민주공화국\n비교결과 : 공통 국가 중국, 호주, 인도네시아, 칠레, 콩고민주공화국\n\n⚠ 이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다.",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_RSRC_PRDCTN_QUTY(리튬) · 국가별 생산량 상위 5개",
+            "as_of": "2026~2026",
+            "unit": "톤",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "world_production",
+            "action_id": "resource.rank",
+            "observed_period": "2026~2026",
+            "menu_source": {
+              "page_id": "map_mineral",
+              "label": "광물지도",
+              "source_label": "KOMIS 핵심광물지도 > 광물지도",
+              "source_tables": [
+                "public.KO_RSRC_BURUDG_QUTY",
+                "public.KO_RSRC_PRDCTN_QUTY"
+              ],
+              "period_frequency": "yearly",
+              "access": "public"
+            }
+          },
+          {
+            "index": 2,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_CSTM_CMMRC(리튬) · 국가별 수입금액 상위 5개",
+            "as_of": "2026-06-01~2026-09-09",
+            "unit": "USD",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "korea_import",
+            "action_id": "trade.country_rank",
+            "observed_period": "2026-06-01~2026-09-09",
+            "menu_source": {
+              "page_id": "map_korea",
+              "label": "대한민국 수급지도",
+              "source_label": "KOMIS 핵심광물지도 > 수급지도 > 대한민국",
+              "source_tables": [
+                "public.KO_CSTM_CMMRC",
+                "public.ai_hs_mnrl_map"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          }
+        ],
+        "data_warnings": [
+          "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "resource.rank",
+        "trade.country_rank"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 2,
+      "chart_count": 2
+    },
+    {
+      "id": "GM03",
+      "question": "흑연 생산 집중도랑 수입 집중도 비교해줘",
+      "expected_markers": [
+        "생산",
+        "수입"
+      ],
+      "status": "PASS",
+      "notes": [],
+      "elapsed_seconds": 3.49,
+      "answer": "QA06: 광물지도 : 생산 1위국 비중 조회 불가\n핵심광물 수급지도 : 수입 CR3 52.0%, 1위국 점유율 21.0% [1] 흑연 수입 집중도 비교 결과는 다음과 같습니다.\n\n| 구분 | 수입 CR3 | 1위국 점유율 |\n| :--- | :--- | :--- |\n| 흑연 | 52.0% [1] | 21.0% [1] |\n\n수입 집중도 요약: 2026-06-01부터 2026-09-09까지의 기간 동안, 전체 국가 합계 수입금액 127,120,000.0 USD를 분모로 했을 때, 상위 3개국(러시아, 칠레, 남아프리카공화국)의 수입 비중 합계인 CR3는 52.0%이며 [1] , 1위국인 러시아의 점유율은 21.0%입니다 [1]\n\n⚠ 이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다.\n\n출처:\n- [1] KOMIS 공식 데이터 · KOMIS 원천 · KO_CSTM_CMMRC(흑연) · 국가별 수입금액 집중도(HHI=1307.5, 전체합계=127120000.0, Σ(국가별 비중[%]^2)) 상위 10개 (기준시점 2026-06-01\\~2026-09-09)\n\n생산·매장량 순위: 확인 가능한 자료가 없어 답변할 수 없습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_CSTM_CMMRC(흑연) · 국가별 수입금액 집중도(HHI=1307.5, 전체합계=127120000.0, Σ(국가별 비중[%]^2)) 상위 10개",
+            "as_of": "2026-06-01~2026-09-09",
+            "unit": "USD",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "import_concentration",
+            "action_id": "trade.concentration",
+            "observed_period": "2026-06-01~2026-09-09",
+            "menu_source": {
+              "page_id": "map_korea",
+              "label": "대한민국 수급지도",
+              "source_label": "KOMIS 핵심광물지도 > 수급지도 > 대한민국",
+              "source_tables": [
+                "public.KO_CSTM_CMMRC",
+                "public.ai_hs_mnrl_map"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          }
+        ],
+        "retrieval_sources": [
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          }
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "trade.concentration"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 1,
+      "chart_count": 1
+    },
+    {
+      "id": "GM04",
+      "question": "2차전지 광물 수입국 구성 알려줘",
+      "expected_markers": [
+        "리튬",
+        "수입"
+      ],
+      "status": "PASS",
+      "notes": [],
+      "elapsed_seconds": 4.77,
+      "answer": "광물정보 : 2차전지 원료 광종 리튬, 니켈, 코발트, 망간, 흑연\n핵심광물 수급지도 : 최근 12개월 수입 1위국\n리튬 : 호주 (37.6%)\n니켈 : 인도네시아 (37.12%)\n코발트 : 칠레 (25.55%)\n망간 : 미국 (21%)\n흑연 : 러시아 (21%)\n\n⚠ 이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다.",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_CSTM_CMMRC(리튬) · 국가별 수입금액 상위 1개",
+            "as_of": "2026-06-01~2026-09-09",
+            "unit": "USD",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "battery_import_리튬",
+            "action_id": "trade.country_rank",
+            "observed_period": "2026-06-01~2026-09-09",
+            "menu_source": {
+              "page_id": "map_korea",
+              "label": "대한민국 수급지도",
+              "source_label": "KOMIS 핵심광물지도 > 수급지도 > 대한민국",
+              "source_tables": [
+                "public.KO_CSTM_CMMRC",
+                "public.ai_hs_mnrl_map"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          },
+          {
+            "index": 2,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_CSTM_CMMRC(니켈) · 국가별 수입금액 상위 1개",
+            "as_of": "2026-06-01~2026-09-09",
+            "unit": "USD",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "battery_import_니켈",
+            "action_id": "trade.country_rank",
+            "observed_period": "2026-06-01~2026-09-09",
+            "menu_source": {
+              "page_id": "map_korea",
+              "label": "대한민국 수급지도",
+              "source_label": "KOMIS 핵심광물지도 > 수급지도 > 대한민국",
+              "source_tables": [
+                "public.KO_CSTM_CMMRC",
+                "public.ai_hs_mnrl_map"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          },
+          {
+            "index": 3,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_CSTM_CMMRC(코발트) · 국가별 수입금액 상위 1개",
+            "as_of": "2026-06-01~2026-09-09",
+            "unit": "USD",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "battery_import_코발트",
+            "action_id": "trade.country_rank",
+            "observed_period": "2026-06-01~2026-09-09",
+            "menu_source": {
+              "page_id": "map_korea",
+              "label": "대한민국 수급지도",
+              "source_label": "KOMIS 핵심광물지도 > 수급지도 > 대한민국",
+              "source_tables": [
+                "public.KO_CSTM_CMMRC",
+                "public.ai_hs_mnrl_map"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          },
+          {
+            "index": 4,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_CSTM_CMMRC(망간) · 국가별 수입금액 상위 1개",
+            "as_of": "2026-06-01~2026-09-09",
+            "unit": "USD",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "battery_import_망간",
+            "action_id": "trade.country_rank",
+            "observed_period": "2026-06-01~2026-09-09",
+            "menu_source": {
+              "page_id": "map_korea",
+              "label": "대한민국 수급지도",
+              "source_label": "KOMIS 핵심광물지도 > 수급지도 > 대한민국",
+              "source_tables": [
+                "public.KO_CSTM_CMMRC",
+                "public.ai_hs_mnrl_map"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          },
+          {
+            "index": 5,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_CSTM_CMMRC(흑연) · 국가별 수입금액 상위 1개",
+            "as_of": "2026-06-01~2026-09-09",
+            "unit": "USD",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "battery_import_흑연",
+            "action_id": "trade.country_rank",
+            "observed_period": "2026-06-01~2026-09-09",
+            "menu_source": {
+              "page_id": "map_korea",
+              "label": "대한민국 수급지도",
+              "source_label": "KOMIS 핵심광물지도 > 수급지도 > 대한민국",
+              "source_tables": [
+                "public.KO_CSTM_CMMRC",
+                "public.ai_hs_mnrl_map"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          }
+        ],
+        "data_warnings": [
+          "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "trade.country_rank"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 5,
+      "chart_count": 0
+    },
+    {
+      "id": "GM05",
+      "question": "망간 용도랑 주요 수입국 알려줘",
+      "expected_markers": [
+        "용도",
+        "수입"
+      ],
+      "status": "PARTIAL",
+      "notes": [
+        "기대 표지 미검출: 용도"
+      ],
+      "elapsed_seconds": 4.05,
+      "answer": "QA07: 망간\n\n핵심광물 수급지도: 망간 2026년 수입 상위국·점유율\n| 순위 | 국가 | 점유율(%) |\n| :--- | :--- | :--- |\n| 1 | 미국 | 21.0 |\n| 2 | 인도네시아 | 18.0 |\n| 3 | 러시아 | 13.0 |\n| 4 | 남아프리카공화국 | 10.0 |\n| 5 | 칠레 | 10.0 |\n\n최근 1년간 해당 광종 상위 5개국은 1위 [미국 21.0%], 2위 [인도네시아 18.0%], 3위 [러시아 13.0%], 4위 [남아프리카공화국 10.0%], 5위 [칠레 10.0%] 순입니다. [1]\n\n최근 1년간 해당 광종 상위 5개국은 1위 [미국 21.0%], 2위 [인도네시아 18.0%], 3위 [러시아 13.0%], 4위 [남아프리카공화국 10.0%], 5위 [칠레 10.0%] 순입니다. [1]\n\n⚠ 이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다.\n\n출처:\n- [1] KOMIS 공식 데이터 · KOMIS 원천 · KO_CSTM_CMMRC(망간) · 국가별 수입금액 상위 5개 (기준시점 2026-06-01\\~2026-09-09)\n\n문서 내용: 확인 가능한 자료가 없어 답변할 수 없습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_CSTM_CMMRC(망간) · 국가별 수입금액 상위 5개",
+            "as_of": "2026-06-01~2026-09-09",
+            "unit": "USD",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "import_countries",
+            "action_id": "trade.country_rank",
+            "observed_period": "2026-06-01~2026-09-09",
+            "menu_source": {
+              "page_id": "map_korea",
+              "label": "대한민국 수급지도",
+              "source_label": "KOMIS 핵심광물지도 > 수급지도 > 대한민국",
+              "source_tables": [
+                "public.KO_CSTM_CMMRC",
+                "public.ai_hs_mnrl_map"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          }
+        ],
+        "retrieval_sources": [
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "queried",
+            "evidence_count": 6
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          }
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "trade.country_rank"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 1,
+      "chart_count": 1
+    },
+    {
+      "id": "GM06",
+      "question": "이번 달 전략광종 월간동향에 나온 광종들 우리 수입 구조 어때?",
+      "expected_markers": [
+        "월간",
+        "수입"
+      ],
+      "status": "BLOCKED_DATA",
+      "notes": [
+        "abstain_reason=source_unavailable"
+      ],
+      "elapsed_seconds": 1.15,
+      "answer": "데이터를 찾을 수 없습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [],
+        "bogus_citations": [],
+        "abstained": true,
+        "abstain_reason": "source_unavailable",
+        "message_key": "action_unavailable"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "GM07",
+      "question": "중국 수출통제 뉴스에 나온 광종 중국 수입 비중 알려줘",
+      "expected_markers": [
+        "뉴스",
+        "중국"
+      ],
+      "status": "BLOCKED_DATA",
+      "notes": [
+        "abstain_reason=source_unavailable"
+      ],
+      "elapsed_seconds": 0.27,
+      "answer": "데이터를 찾을 수 없습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [],
+        "bogus_citations": [],
+        "abstained": true,
+        "abstain_reason": "source_unavailable",
+        "message_key": "action_unavailable"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "GM08",
+      "question": "텅스텐 용도랑 세계 생산국 알려줘",
+      "expected_markers": [
+        "용도",
+        "생산"
+      ],
+      "status": "PASS",
+      "notes": [],
+      "elapsed_seconds": 2.27,
+      "answer": "광물정보 : 주요 용도 : 제공된 문서에서 근거를 찾지 못했습니다.\n광물지도 : 2025년 생산 상위국 SU, 중국, 베트남, OT, 카자흐스탄 [1]\n\n출처:\n- [1] KOMIS 공식 데이터 · KOMIS 원천 · KO_RSRC_PRDCTN_QUTY(텅스텐) · 국가별 생산량 상위 5개 (기준시점 2025\\~2025)\n\n문서 내용: 확인 가능한 자료가 없어 답변할 수 없습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_RSRC_PRDCTN_QUTY(텅스텐) · 국가별 생산량 상위 5개",
+            "as_of": "2025~2025",
+            "unit": "톤",
+            "data_status": null,
+            "warnings": [],
+            "requirement_id": "production_countries",
+            "action_id": "resource.rank",
+            "observed_period": "2025~2025",
+            "menu_source": {
+              "page_id": "map_mineral",
+              "label": "광물지도",
+              "source_label": "KOMIS 핵심광물지도 > 광물지도",
+              "source_tables": [
+                "public.KO_RSRC_BURUDG_QUTY",
+                "public.KO_RSRC_PRDCTN_QUTY"
+              ],
+              "period_frequency": "yearly",
+              "access": "public"
+            }
+          }
+        ],
+        "retrieval_sources": [
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "queried",
+            "evidence_count": 5
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          }
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "resource.rank"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 1,
+      "chart_count": 1
+    },
+    {
+      "id": "GM09",
+      "question": "이번 달 전략광종 월간동향에서 다룬 광종 기본 정보 알려줘",
+      "expected_markers": [
+        "월간",
+        "광물"
+      ],
+      "status": "BLOCKED_DATA",
+      "notes": [
+        "abstain_reason=source_unavailable"
+      ],
+      "elapsed_seconds": 2.01,
+      "answer": "데이터를 찾을 수 없습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [],
+        "bogus_citations": [],
+        "abstained": true,
+        "abstain_reason": "source_unavailable",
+        "message_key": "action_unavailable"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "GM10",
+      "question": "이번 달 월간동향이랑 이번 주 뉴스에 공통으로 나온 이슈는?",
+      "expected_markers": [
+        "월간",
+        "뉴스"
+      ],
+      "status": "BLOCKED_DATA",
+      "notes": [
+        "abstain_reason=source_unavailable"
+      ],
+      "elapsed_seconds": 1.15,
+      "answer": "데이터를 찾을 수 없습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [],
+        "bogus_citations": [],
+        "abstained": true,
+        "abstain_reason": "source_unavailable",
+        "message_key": "action_unavailable"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "GM11",
+      "question": "흑연 공급 현황 종합해서 알려줘",
+      "expected_markers": [
+        "생산",
+        "수입"
+      ],
+      "status": "PASS",
+      "notes": [],
+      "elapsed_seconds": 11.73,
+      "answer": "[production]\n2026년 기준 흑연의 세계 생산량 현황은 다음과 같습니다. [1] - 세계 생산량 합계: 24,640.0 톤 (집계 기준) [1] - 상위 생산국: 중국은 8,960.0 톤을 생산하였으며, 이는 전체 국가 합계 대비 36.36%의 비중을 차지합니다. [1] [imports]\n2026-06-01부터 2026-09-09까지의 흑연 수입금액 집중도 현황은 다음과 같습니다. [2] - 전체 수입금액 합계: 127,120,000.0 USD (집계 기준) [2] - 주요 수입국 비중:\n| 국가 | 수입금액합계(USD) | 비중(%) |\n| --- | --- | --- |\n| 러시아 | 26,695,200.0 | 21.0 |\n| 칠레 | 22,881,600.0 | 18.0 |\n| 남아프리카공화국 | 16,525,600.0 | 13.0 |\n| 캐나다 | 12,712,000.0 | 10.0 |\n| 콩고민주공화국 | 12,712,000.0 | 10.0 |\n| 브라질 | 9,534,000.0 | 7.5 |\n| 미국 | 9,534,000.0 | 7.5 |\n| 중국 | 7,627,200.0 | 6.0 |\n| 호주 | 5,084,800.0 | 4.0 |\n| 인도네시아 | 3,813,600.0 | 3.0 | [2] 상기 국가들은 2026-06-01부터 2026-09-09까지의 기간 동안 한국의 흑연 수입을 담당하였습니다. [2] [price]\n\n선택 가격기준의 단위 표기는 가격기준=흑연 -194 FOB입니다. [3]\n\n⚠ 이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다.\n\n출처:\n- [1] KOMIS 공식 데이터 · KOMIS 원천 · KO_RSRC_PRDCTN_QUTY(흑연) · 국가별 생산량 상위 1개 (기준시점 2026\\~2026)\n- [2] KOMIS 공식 데이터 · KOMIS 원천 · KO_CSTM_CMMRC(흑연) · 국가별 수입금액 집중도(HHI=1307.5, 전체합계=127120000.0, Σ(국가별 비중[%]^2)) 상위 10개 (기준시점 2026-06-01\\~2026-09-09)\n- [3] KOMIS 공식 데이터 · KOMIS 원천 · KO_MNRL_PRC(흑연) (기준시점 2026-08-27\\~2026-09-04, 지정 기간 내 관측 9건 전체)\n\n문서 내용: 확인 가능한 자료가 없어 답변할 수 없습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_RSRC_PRDCTN_QUTY(흑연) · 국가별 생산량 상위 1개",
+            "as_of": "2026~2026",
+            "unit": "톤",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "production",
+            "action_id": "resource.rank",
+            "observed_period": "2026~2026",
+            "menu_source": {
+              "page_id": "map_mineral",
+              "label": "광물지도",
+              "source_label": "KOMIS 핵심광물지도 > 광물지도",
+              "source_tables": [
+                "public.KO_RSRC_BURUDG_QUTY",
+                "public.KO_RSRC_PRDCTN_QUTY"
+              ],
+              "period_frequency": "yearly",
+              "access": "public"
+            }
+          },
+          {
+            "index": 2,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_CSTM_CMMRC(흑연) · 국가별 수입금액 집중도(HHI=1307.5, 전체합계=127120000.0, Σ(국가별 비중[%]^2)) 상위 10개",
+            "as_of": "2026-06-01~2026-09-09",
+            "unit": "USD",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "imports",
+            "action_id": "trade.concentration",
+            "observed_period": "2026-06-01~2026-09-09",
+            "menu_source": {
+              "page_id": "map_korea",
+              "label": "대한민국 수급지도",
+              "source_label": "KOMIS 핵심광물지도 > 수급지도 > 대한민국",
+              "source_tables": [
+                "public.KO_CSTM_CMMRC",
+                "public.ai_hs_mnrl_map"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          },
+          {
+            "index": 3,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_MNRL_PRC(흑연)",
+            "as_of": "2026-08-27~2026-09-04, 지정 기간 내 관측 9건 전체",
+            "unit": "가격기준=흑연 -194 FOB",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "price",
+            "action_id": "price.series",
+            "observed_period": "2026-08-27~2026-09-04, 지정 기간 내 관측 9건 전체",
+            "menu_source": {
+              "page_id": "price_other",
+              "label": "기타",
+              "source_label": "KOMIS 광물자원가격 > 기타",
+              "source_tables": [
+                "public.KO_MNRL_PRC",
+                "public.ai_prc_mnrl_map",
+                "public.KO_MNRL_PRC_CRTR"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          }
+        ],
+        "retrieval_sources": [
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "queried",
+            "evidence_count": 5
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          }
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "price.series",
+        "resource.rank",
+        "trade.concentration"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 3,
+      "chart_count": 2
+    },
+    {
+      "id": "GM12",
+      "question": "2차전지 광물 5종 가격이랑 전망 한 번에 보여줘",
+      "expected_markers": [
+        "리튬",
+        "전망"
+      ],
+      "status": "PARTIAL",
+      "notes": [
+        "기대 표지 미검출: 전망"
+      ],
+      "elapsed_seconds": 10.02,
+      "answer": "선택 가격기준의 단위 표기는 가격기준=spot; 통화코드=USD; 중량단위코드=TON입니다. [1]\n선택 가격기준의 단위 표기는 가격기준=LME CASH입니다. [2]\n선택 가격기준의 단위 표기는 가격기준=spot; 통화코드=USD; 중량단위코드=TON입니다. [3]\n선택 가격기준의 단위 표기는 가격기준=페로망간입니다. [4]\n선택 가격기준의 단위 표기는 가격기준=흑연 -194 FOB입니다. [5]\n\n⚠ 이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다.\n\n출처:\n- [1] KOMIS 공식 데이터 · KOMIS 원천 · KO_MNRL_PRC(리튬) (기준시점 2026-09-08\\~2026-09-09, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음))\n- [2] KOMIS 공식 데이터 · KOMIS 원천 · KO_MNRL_PRC(니켈) (기준시점 2026-09-07\\~2026-09-08, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음))\n- [3] KOMIS 공식 데이터 · KOMIS 원천 · KO_MNRL_PRC(코발트) (기준시점 2026-09-08\\~2026-09-09, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음))\n- [4] KOMIS 공식 데이터 · KOMIS 원천 · KO_MNRL_PRC(망간) (기준시점 2026-09-03\\~2026-09-04, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음))\n- [5] KOMIS 공식 데이터 · KOMIS 원천 · KO_MNRL_PRC(흑연) (기준시점 2026-09-03\\~2026-09-04, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음))",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_MNRL_PRC(리튬)",
+            "as_of": "2026-09-08~2026-09-09, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "unit": "가격기준=spot; 통화코드=USD; 중량단위코드=TON",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "battery_price_리튬",
+            "action_id": "price.series",
+            "observed_period": "2026-09-08~2026-09-09, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "menu_source": {
+              "page_id": "price_minor_metals",
+              "label": "희소금속",
+              "source_label": "KOMIS 광물자원가격 > 희소금속",
+              "source_tables": [
+                "public.KO_MNRL_PRC",
+                "public.ai_prc_mnrl_map",
+                "public.KO_MNRL_PRC_CRTR"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          },
+          {
+            "index": 2,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_MNRL_PRC(니켈)",
+            "as_of": "2026-09-07~2026-09-08, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "unit": "가격기준=LME CASH",
+            "data_status": null,
+            "warnings": [],
+            "requirement_id": "battery_price_니켈",
+            "action_id": "price.series",
+            "observed_period": "2026-09-07~2026-09-08, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "menu_source": {
+              "page_id": "price_base_metals",
+              "label": "비철금속",
+              "source_label": "KOMIS 광물자원가격 > 비철금속",
+              "source_tables": [
+                "public.KO_MNRL_PRC",
+                "public.ai_prc_mnrl_map",
+                "public.KO_MNRL_PRC_CRTR"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          },
+          {
+            "index": 3,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_MNRL_PRC(코발트)",
+            "as_of": "2026-09-08~2026-09-09, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "unit": "가격기준=spot; 통화코드=USD; 중량단위코드=TON",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "battery_price_코발트",
+            "action_id": "price.series",
+            "observed_period": "2026-09-08~2026-09-09, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "menu_source": {
+              "page_id": "price_minor_metals",
+              "label": "희소금속",
+              "source_label": "KOMIS 광물자원가격 > 희소금속",
+              "source_tables": [
+                "public.KO_MNRL_PRC",
+                "public.ai_prc_mnrl_map",
+                "public.KO_MNRL_PRC_CRTR"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          },
+          {
+            "index": 4,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_MNRL_PRC(망간)",
+            "as_of": "2026-09-03~2026-09-04, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "unit": "가격기준=페로망간",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "battery_price_망간",
+            "action_id": "price.series",
+            "observed_period": "2026-09-03~2026-09-04, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "menu_source": {
+              "page_id": "price_minor_metals",
+              "label": "희소금속",
+              "source_label": "KOMIS 광물자원가격 > 희소금속",
+              "source_tables": [
+                "public.KO_MNRL_PRC",
+                "public.ai_prc_mnrl_map",
+                "public.KO_MNRL_PRC_CRTR"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          },
+          {
+            "index": 5,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_MNRL_PRC(흑연)",
+            "as_of": "2026-09-03~2026-09-04, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "unit": "가격기준=흑연 -194 FOB",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "battery_price_흑연",
+            "action_id": "price.series",
+            "observed_period": "2026-09-03~2026-09-04, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "menu_source": {
+              "page_id": "price_other",
+              "label": "기타",
+              "source_label": "KOMIS 광물자원가격 > 기타",
+              "source_tables": [
+                "public.KO_MNRL_PRC",
+                "public.ai_prc_mnrl_map",
+                "public.KO_MNRL_PRC_CRTR"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          }
+        ],
+        "retrieval_sources": [
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          }
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "price.series"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 5,
+      "chart_count": 0
+    },
+    {
+      "id": "GM13",
+      "question": "코발트 현황 브리핑해줘",
+      "expected_markers": [
+        "가격",
+        "생산"
+      ],
+      "status": "PASS",
+      "notes": [],
+      "elapsed_seconds": 8.15,
+      "answer": "[current_price]\n\n[production]\n\n- 1위 국가는 중국이며, 생산량은 18,176.0 톤으로 전체 국가 합계 대비 36.36%의 비중을 차지합니다 [2] .\n\n[imports]\n- 1위 국가는 칠레이며, 수입금액은 71,441,440.0 USD로 전체 국가 합계 대비 25.55%의 비중을 차지합니다 [3]\n\n최근 1년간 코발트 상위 1개국은 1위 [중국 36.36%] 순입니다. [2]\n\n선택 가격기준의 단위 표기는 가격기준=spot; 통화코드=USD; 중량단위코드=TON입니다. [1]\n\n최근 1년간 코발트 상위 1개국은 1위 [중국 36.36%] 순입니다. [2]\n\n⚠ 이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다.\n\n출처:\n- [1] KOMIS 공식 데이터 · KOMIS 원천 · KO_MNRL_PRC(코발트) (기준시점 2026-09-08\\~2026-09-09, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음))\n- [2] KOMIS 공식 데이터 · KOMIS 원천 · KO_RSRC_PRDCTN_QUTY(코발트) · 국가별 생산량 상위 1개 (기준시점 2026\\~2026)\n- [3] KOMIS 공식 데이터 · KOMIS 원천 · KO_CSTM_CMMRC(코발트) · 국가별 수입금액 상위 1개 (기준시점 2026-06-01\\~2026-09-09)",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_MNRL_PRC(코발트)",
+            "as_of": "2026-09-08~2026-09-09, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "unit": "가격기준=spot; 통화코드=USD; 중량단위코드=TON",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "current_price",
+            "action_id": "price.series",
+            "observed_period": "2026-09-08~2026-09-09, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "menu_source": {
+              "page_id": "price_minor_metals",
+              "label": "희소금속",
+              "source_label": "KOMIS 광물자원가격 > 희소금속",
+              "source_tables": [
+                "public.KO_MNRL_PRC",
+                "public.ai_prc_mnrl_map",
+                "public.KO_MNRL_PRC_CRTR"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          },
+          {
+            "index": 2,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_RSRC_PRDCTN_QUTY(코발트) · 국가별 생산량 상위 1개",
+            "as_of": "2026~2026",
+            "unit": "톤",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "production",
+            "action_id": "resource.rank",
+            "observed_period": "2026~2026",
+            "menu_source": {
+              "page_id": "map_mineral",
+              "label": "광물지도",
+              "source_label": "KOMIS 핵심광물지도 > 광물지도",
+              "source_tables": [
+                "public.KO_RSRC_BURUDG_QUTY",
+                "public.KO_RSRC_PRDCTN_QUTY"
+              ],
+              "period_frequency": "yearly",
+              "access": "public"
+            }
+          },
+          {
+            "index": 3,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_CSTM_CMMRC(코발트) · 국가별 수입금액 상위 1개",
+            "as_of": "2026-06-01~2026-09-09",
+            "unit": "USD",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "imports",
+            "action_id": "trade.country_rank",
+            "observed_period": "2026-06-01~2026-09-09",
+            "menu_source": {
+              "page_id": "map_korea",
+              "label": "대한민국 수급지도",
+              "source_label": "KOMIS 핵심광물지도 > 수급지도 > 대한민국",
+              "source_tables": [
+                "public.KO_CSTM_CMMRC",
+                "public.ai_hs_mnrl_map"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          }
+        ],
+        "retrieval_sources": [
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "queried",
+            "evidence_count": 5
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "queried",
+            "evidence_count": 6
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          }
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "price.series",
+        "resource.rank",
+        "trade.country_rank"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 3,
+      "chart_count": 0
+    },
+    {
+      "id": "GM14",
+      "question": "중국 수출통제 대상 광종 가격이랑 수입 비중 같이 보여줘",
+      "expected_markers": [
+        "뉴스",
+        "수입"
+      ],
+      "status": "BLOCKED_DATA",
+      "notes": [
+        "abstain_reason=source_unavailable"
+      ],
+      "elapsed_seconds": 0.28,
+      "answer": "데이터를 찾을 수 없습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [],
+        "bogus_citations": [],
+        "abstained": true,
+        "abstain_reason": "source_unavailable",
+        "message_key": "action_unavailable"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "REG01",
+      "question": "리튬 주요 수출국을 알려줘",
+      "expected_markers": [
+        "수출"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "abstain_reason=no_data_for_period"
+      ],
+      "elapsed_seconds": 2.55,
+      "answer": "제공된 문서에서 근거를 찾지 못했습니다.\n\n데이터를 찾을 수 없습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [],
+        "bogus_citations": [],
+        "abstained": true,
+        "abstain_reason": "no_data_for_period"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "REG02",
+      "question": "오늘 니켈 가격 얼마야?",
+      "expected_markers": [
+        "니켈",
+        "가격"
+      ],
+      "status": "PASS",
+      "notes": [],
+      "elapsed_seconds": 0.9,
+      "answer": "2026-09-08 기준 니켈 가격은 16,745.53 USD/톤입니다. 전일 대비 +340.37(+2.07%) 변동했습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [],
+        "data_warnings": [],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 1,
+      "chart_count": 0
+    },
+    {
+      "id": "REG03",
+      "question": "최근 니켈 가격 얼마야?",
+      "expected_markers": [
+        "니켈",
+        "가격"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "abstain_reason=unsupported_commodity"
+      ],
+      "elapsed_seconds": 0.35,
+      "answer": "지원하지 않는 광물에 대해서는 답변할수 없습니다.",
+      "terminal": {
+        "done": true,
+        "abstained": true,
+        "abstain_reason": "unsupported_commodity",
+        "message_key": "unsupported_commodity"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "REG04",
+      "question": "니켈 가격 년도별 평균 가격을 알려줘",
+      "expected_markers": [
+        "가격"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "abstain_reason=unsupported_commodity"
+      ],
+      "elapsed_seconds": 0.25,
+      "answer": "지원하지 않는 광물에 대해서는 답변할수 없습니다.",
+      "terminal": {
+        "done": true,
+        "abstained": true,
+        "abstain_reason": "unsupported_commodity",
+        "message_key": "unsupported_commodity"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "REG05",
+      "question": "니켈 LME 재고량 알려줘",
+      "expected_markers": [
+        "LME"
+      ],
+      "status": "PASS",
+      "notes": [],
+      "elapsed_seconds": 1.68,
+      "answer": "최신 보유 관측일(2026-09-08) 가격 요약입니다. 조회된 값 기준입니다. 가격 기준은 LME CASH이며, 통화는 USD이며, 중량 단위는 톤입니다.\n\n최신 가격은 16,745.53 (2026-09-08). 최고가는 17,395.01 (2026-08-04). 최저가는 16,135.56 (2026-09-02). 고저 차는 1,259.45(최저가 대비 +7.81%). 시작 값 대비 최신 값 변화는 - 517.1 (-3.00%). 최근 가격 흐름은 하락 추세(-1.04%)입니다.\n\n표와 차트는 조회된 가격값으로 작성했습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [],
+        "data_warnings": [],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 1,
+      "chart_count": 1
+    },
+    {
+      "id": "REG06",
+      "question": "니켈 텅스텐 가격 같이 비교해줘",
+      "expected_markers": [
+        "니켈",
+        "텅스텐"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "abstain_reason=unsupported_commodity"
+      ],
+      "elapsed_seconds": 0.82,
+      "answer": "지원하지 않는 광물에 대해서는 답변할수 없습니다.",
+      "terminal": {
+        "done": true,
+        "abstained": true,
+        "abstain_reason": "unsupported_commodity",
+        "message_key": "unsupported_commodity"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "REG07",
+      "question": "니켈 다음달 가격 전망 알려줘",
+      "expected_markers": [
+        "니켈",
+        "전망"
+      ],
+      "status": "BLOCKED_DATA",
+      "notes": [
+        "abstain_reason=source_unavailable"
+      ],
+      "elapsed_seconds": 1.22,
+      "answer": "데이터를 찾을 수 없습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [],
+        "bogus_citations": [],
+        "abstained": true,
+        "abstain_reason": "source_unavailable",
+        "message_key": "action_unavailable"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0
+    },
+    {
+      "id": "REG08",
+      "question": "니켈 수입 집중도를 알려줘요",
+      "expected_markers": [
+        "니켈",
+        "수입"
+      ],
+      "status": "PASS",
+      "notes": [],
+      "elapsed_seconds": 2.55,
+      "answer": "니켈 수입 집중도에 관한 정보는 다음과 같습니다.\n\n조회 기간은 2026-06-01부터 2026-09-09까지입니다. [1]\n\n| 구분 | 수치 |\n| :--- | :--- |\n| HHI (허핀달-허쉬만 지수) | 2327.98 [1] |\n| 전체 수입금액 합계 | 236,080,000.0 USD [1] |\n\n니켈 수입은 인도네시아(37.1231%)와 호주(26.8692%)를 포함한 상위 10개국에 집중되어 있습니다. [1]\n\n⚠ 이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다.\n\n출처:\n- [1] KOMIS 공식 데이터 · KOMIS 원천 · KO_CSTM_CMMRC(니켈) · 국가별 수입금액 집중도(HHI=2327.98, 전체합계=236080000.0, Σ(국가별 비중[%]^2)) 상위 10개 (기준시점 2026-06-01\\~2026-09-09)",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_CSTM_CMMRC(니켈) · 국가별 수입금액 집중도(HHI=2327.98, 전체합계=236080000.0, Σ(국가별 비중[%]^2)) 상위 10개",
+            "as_of": "2026-06-01~2026-09-09",
+            "unit": "USD",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "import_concentration",
+            "action_id": "trade.concentration",
+            "observed_period": "2026-06-01~2026-09-09",
+            "menu_source": {
+              "page_id": "map_korea",
+              "label": "대한민국 수급지도",
+              "source_label": "KOMIS 핵심광물지도 > 수급지도 > 대한민국",
+              "source_tables": [
+                "public.KO_CSTM_CMMRC",
+                "public.ai_hs_mnrl_map"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          }
+        ],
+        "retrieval_sources": [
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          }
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "trade.concentration"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 1,
+      "chart_count": 1
+    }
+  ]
+}

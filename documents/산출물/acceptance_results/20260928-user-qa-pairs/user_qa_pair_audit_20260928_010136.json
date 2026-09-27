@@ -1,0 +1,732 @@
+{
+  "generated_at": "20260928_010136",
+  "base_url": "http://127.0.0.1:18002",
+  "summary": {
+    "FAIL": 56
+  },
+  "results": [
+    {
+      "id": "MI01",
+      "question": "니켈은 어디에 쓰여?",
+      "expected_markers": [
+        "용도"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.01
+    },
+    {
+      "id": "MI02",
+      "question": "니켈은 어떤 금속이야?",
+      "expected_markers": [
+        "원소",
+        "특성"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "MI03",
+      "question": "구리 기본 특성을 알려줘",
+      "expected_markers": [
+        "원소",
+        "특성"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "MI04",
+      "question": "망간 주요 광석 종류는?",
+      "expected_markers": [
+        "광석"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "DOC01",
+      "question": "이번달 전략 광종 월간 동향 요약해줘",
+      "expected_markers": [
+        "월간",
+        "요약"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "DOC02",
+      "question": "최근 월간동향 제목 알려줘",
+      "expected_markers": [
+        "최신",
+        "제목"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "DOC03",
+      "question": "최근 3개월 월간 동향에서 니켈 관련 내용 찾아줘",
+      "expected_markers": [
+        "니켈",
+        "게시"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "DOC04",
+      "question": "월간 동향 게시판 검색은 어떻게 해?",
+      "expected_markers": [
+        "검색",
+        "개월"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "NEWS01",
+      "question": "최근 자원 뉴스 뭐 있어?",
+      "expected_markers": [
+        "뉴스",
+        "기사"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "NEWS02",
+      "question": "이번주 주간 자원뉴스 요약해줘",
+      "expected_markers": [
+        "주간",
+        "뉴스"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "NEWS03",
+      "question": "최근 중국 수출통제 관련 뉴스 있어?",
+      "expected_markers": [
+        "기사",
+        "뉴스"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "PF01",
+      "question": "니켈 현재 가격이랑 다음달 전망 같이 알려줘",
+      "expected_markers": [
+        "가격",
+        "전망"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "PF02",
+      "question": "니켈 지난 6개월 가격이랑 향후 전망 이어서 보여줘",
+      "expected_markers": [
+        "가격",
+        "전망"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "PF03",
+      "question": "니켈 지금 가격이 전망치 보다 높은 편이야?",
+      "expected_markers": [
+        "현재",
+        "전망"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "IX01",
+      "question": "광물지수 오를때 같이 오른 광종은 뭐야?",
+      "expected_markers": [
+        "광물종합지수",
+        "가격"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "IX02",
+      "question": "니켈 가격 추세랑 광물 종합지수 추세 비교해주세요",
+      "expected_markers": [
+        "니켈",
+        "광물"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "MP01",
+      "question": "니켈 가격 추이랑 우리나라 수입국 구성 같이 보여줘",
+      "expected_markers": [
+        "가격",
+        "수입"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "MP02",
+      "question": "중국 수입 비중 높은 광종 중 최근 가격 오른건 뭐야?",
+      "expected_markers": [
+        "점유율",
+        "가격"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "MP03",
+      "question": "니켈 수입 상위국이랑 현재가격 알려줘",
+      "expected_markers": [
+        "수입",
+        "가격"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "MP04",
+      "question": "니켈 가격이랑 세계 생산량 변화 같이 보여줘",
+      "expected_markers": [
+        "가격",
+        "생산"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "MP05",
+      "question": "생산 1위국 비중이 높은 광종들 가격 변동 어때?",
+      "expected_markers": [
+        "생산",
+        "가격"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "MP06",
+      "question": "니켈은 어디에 쓰이고 지금 가격은 얼마야?",
+      "expected_markers": [
+        "용도",
+        "가격"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "MP07",
+      "question": "전략광종 가격 현황 한눈에 보여줘",
+      "expected_markers": [
+        "전략",
+        "가격"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "MP08",
+      "question": "이번달 희소금속 월간 동향에 나온 광종들 가격 어때?",
+      "expected_markers": [
+        "월간",
+        "가격"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "MP09",
+      "question": "니켈 가격 추이랑 최근 월간 동향 내용 같이 알려줘",
+      "expected_markers": [
+        "가격",
+        "월간"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "CN01",
+      "question": "니켈 가격 크게 오른 날 관련 뉴스 있어?",
+      "expected_markers": [
+        "가격",
+        "뉴스"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "CN02",
+      "question": "이번 주 가격 변동 큰 광종이랑 관련 뉴스 보여줘",
+      "expected_markers": [
+        "가격",
+        "뉴스"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "CN03",
+      "question": "광물종합지수 구성 광종 중 상승 전망인 건 뭐야?",
+      "expected_markers": [
+        "광물종합지수",
+        "전망"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "CN04",
+      "question": "수입 의존도 높은 광종들 가격 전망 알려줘",
+      "expected_markers": [
+        "수입",
+        "전망"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "CN05",
+      "question": "리튬 주요 수입국이랑 가격 전망 같이 보여줘",
+      "expected_markers": [
+        "수입",
+        "전망"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "CN06",
+      "question": "구리 가격 전망이랑 월간동향 시장 전망 내용 비교해줘",
+      "expected_markers": [
+        "전망",
+        "월간"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "CN07",
+      "question": "리튬 가격 전망이랑 최근 관련 뉴스 같이 알려줘",
+      "expected_markers": [
+        "전망",
+        "뉴스"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "CN08",
+      "question": "지난달 광물종합지수 변동이랑 월간동향 요약 같이 보여줘",
+      "expected_markers": [
+        "광물종합지수",
+        "월간"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "CN09",
+      "question": "광물종합지수 떨어진 주에 주요 뉴스 뭐 있었어?",
+      "expected_markers": [
+        "광물종합지수",
+        "뉴스"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "GM01",
+      "question": "코발트 세계 생산국이랑 우리나라 수입국 비교해줘",
+      "expected_markers": [
+        "생산",
+        "수입"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "GM02",
+      "question": "리튬 세계 생산 상위국 중 우리 수입 상위국에 들어가는 나라는?",
+      "expected_markers": [
+        "생산",
+        "수입"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "GM03",
+      "question": "흑연 생산 집중도랑 수입 집중도 비교해줘",
+      "expected_markers": [
+        "생산",
+        "수입"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "GM04",
+      "question": "2차전지 광물 수입국 구성 알려줘",
+      "expected_markers": [
+        "리튬",
+        "수입"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "GM05",
+      "question": "망간 용도랑 주요 수입국 알려줘",
+      "expected_markers": [
+        "용도",
+        "수입"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "GM06",
+      "question": "이번 달 전략광종 월간동향에 나온 광종들 우리 수입 구조 어때?",
+      "expected_markers": [
+        "월간",
+        "수입"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "GM07",
+      "question": "중국 수출통제 뉴스에 나온 광종 중국 수입 비중 알려줘",
+      "expected_markers": [
+        "뉴스",
+        "중국"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "GM08",
+      "question": "텅스텐 용도랑 세계 생산국 알려줘",
+      "expected_markers": [
+        "용도",
+        "생산"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "GM09",
+      "question": "이번 달 전략광종 월간동향에서 다룬 광종 기본 정보 알려줘",
+      "expected_markers": [
+        "월간",
+        "광물"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "GM10",
+      "question": "이번 달 월간동향이랑 이번 주 뉴스에 공통으로 나온 이슈는?",
+      "expected_markers": [
+        "월간",
+        "뉴스"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "GM11",
+      "question": "흑연 공급 현황 종합해서 알려줘",
+      "expected_markers": [
+        "생산",
+        "수입"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "GM12",
+      "question": "2차전지 광물 5종 가격이랑 전망 한 번에 보여줘",
+      "expected_markers": [
+        "리튬",
+        "전망"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "GM13",
+      "question": "코발트 현황 브리핑해줘",
+      "expected_markers": [
+        "가격",
+        "생산"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "GM14",
+      "question": "중국 수출통제 대상 광종 가격이랑 수입 비중 같이 보여줘",
+      "expected_markers": [
+        "뉴스",
+        "수입"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "REG01",
+      "question": "리튬 주요 수출국을 알려줘",
+      "expected_markers": [
+        "수출"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "REG02",
+      "question": "오늘 니켈 가격 얼마야?",
+      "expected_markers": [
+        "니켈",
+        "가격"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "REG03",
+      "question": "최근 니켈 가격 얼마야?",
+      "expected_markers": [
+        "니켈",
+        "가격"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "REG04",
+      "question": "니켈 가격 년도별 평균 가격을 알려줘",
+      "expected_markers": [
+        "가격"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "REG05",
+      "question": "니켈 LME 재고량 알려줘",
+      "expected_markers": [
+        "LME"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "REG06",
+      "question": "니켈 텅스텐 가격 같이 비교해줘",
+      "expected_markers": [
+        "니켈",
+        "텅스텐"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "REG07",
+      "question": "니켈 다음달 가격 전망 알려줘",
+      "expected_markers": [
+        "니켈",
+        "전망"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    },
+    {
+      "id": "REG08",
+      "question": "니켈 수입 집중도를 알려줘요",
+      "expected_markers": [
+        "니켈",
+        "수입"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "request_error=HTTPError: HTTP Error 422: Unprocessable Entity"
+      ],
+      "elapsed_seconds": 0.0
+    }
+  ]
+}

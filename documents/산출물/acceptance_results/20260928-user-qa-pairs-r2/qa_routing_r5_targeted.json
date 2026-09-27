@@ -1,0 +1,80 @@
+[
+  {
+    "id": "MP03",
+    "question": "니켈 수입 상위국이랑 현재가격 알려줘",
+    "abstained": false,
+    "reason": null,
+    "actions": [
+      "price.series",
+      "trade.country_rank"
+    ],
+    "answer": "최근 1년간 니켈 상위 5개국은 1위 [인도네시아 37.12%], 2위 [호주 26.87%], 3위 [칠레 10.18%], 4위 [콩고민주공화국 7.09%], 5위 [미국 5.55%] 순입니다. [1]\n\n선택 가격기준의 단위 표기는 가격기준=LME CASH입니다. [2]\n\n최근 1년간 니켈 상위 5개국은 1위 [인도네시아 37.12%], 2위 [호주 26.87%], 3위 [칠레 10.18%], 4위 [콩고민주공화국 7.09%], 5위 [미국 5.55%] 순입니다. [1]\n\n⚠ 이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다.\n\n출처:\n- [1] KOMIS 공식 데이터 · KOMIS 원천 · KO_CSTM_CMMRC(니켈) · 국가별 수입금액 상위 5개 (기준시점 2026-06-01\\~2026-09-09)\n- [2] KOMIS 공식 데이터 · KOMIS 원천 · KO_MNRL_PRC(니켈) (기준시점 2026-09-07\\~2026-09-08, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음))"
+  },
+  {
+    "id": "MP06",
+    "question": "니켈은 어디에 쓰이고 지금 가격은 얼마야?",
+    "abstained": false,
+    "reason": null,
+    "actions": [
+      "document.retrieve",
+      "price.series"
+    ],
+    "answer": "광물정보 : 주요 용도 : 스테인리스강·합금, 금속 도금, 충전식 배터리\n광물가격 : 2026-09-08 니켈 가격 16,745.53 가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002, 전일 대비 +2.07%"
+  },
+  {
+    "id": "REG03",
+    "question": "최근 니켈 가격 얼마야?",
+    "abstained": false,
+    "reason": null,
+    "actions": [],
+    "answer": "2026-09-08 기준 니켈 가격은 16,745.53 USD/톤입니다. 전일 대비 +340.37(+2.07%) 변동했습니다."
+  },
+  {
+    "id": "REG04",
+    "question": "니켈 가격 년도별 평균 가격을 알려줘",
+    "abstained": true,
+    "reason": "source_unavailable",
+    "actions": [],
+    "answer": "데이터를 찾을 수 없습니다."
+  },
+  {
+    "id": "REG06",
+    "question": "니켈 텅스텐 가격 같이 비교해줘",
+    "abstained": true,
+    "reason": "source_unavailable",
+    "actions": [],
+    "answer": "데이터를 찾을 수 없습니다."
+  },
+  {
+    "id": "MP08",
+    "question": "이번달 희소금속 월간 동향에 나온 광종들 가격 어때?",
+    "abstained": true,
+    "reason": "source_unavailable",
+    "actions": [],
+    "answer": "데이터를 찾을 수 없습니다."
+  },
+  {
+    "id": "CN02",
+    "question": "이번 주 가격 변동 큰 광종이랑 관련 뉴스 보여줘",
+    "abstained": true,
+    "reason": "source_unavailable",
+    "actions": [],
+    "answer": "데이터를 찾을 수 없습니다."
+  },
+  {
+    "id": "CN03",
+    "question": "광물종합지수 구성 광종 중 상승 전망인 건 뭐야?",
+    "abstained": true,
+    "reason": "source_unavailable",
+    "actions": [],
+    "answer": "데이터를 찾을 수 없습니다."
+  },
+  {
+    "id": "CN04",
+    "question": "수입 의존도 높은 광종들 가격 전망 알려줘",
+    "abstained": true,
+    "reason": "ambiguous",
+    "actions": [],
+    "answer": "제공된 문서에서 근거를 찾지 못했습니다.\n\n요청 범위가 넓습니다. 기간·정보 유형(가격/수입·수출/생산·매장/지표)을 지정해 주십시오."
+  }
+]
