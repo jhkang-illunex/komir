@@ -107,7 +107,14 @@ from .multi_action_state import encode_citation_envelope, state_from_action_resu
 from .answer_composer import AnswerComposer
 from .composite_renderer import render_composite
 from .renderers.mineral_info import render_mineral_info
-from .renderers.price import render_price_comparison, render_price_series
+from .renderers.price import (
+    format_price as _format_price,
+    natural_price_basis as _natural_price_basis,
+    price_display_unit as _price_display_unit,
+    price_series_observations as _price_series_observations,
+    render_price_comparison,
+    render_price_series,
+)
 from .chatbot_store import DEFAULT_DB_PATH as DEFAULT_STORE_DB_PATH
 from .chatbot_store import append_message, get_or_create_session, list_messages
 from .messages import chat_message, faq_message
@@ -699,11 +706,6 @@ def _build_evidence_prompt(question: str, evidence: list) -> str:
 
 _OPAQUE_PRICE_UNIT_CODE = re.compile(r"\b(?:PR|WT)\d+\b", re.IGNORECASE)
 
-# KOMIS public.st_code_mst live code-table values (verified 2026-09-26):
-# PR000/PR001 -> USD, WT000/WT002 -> ton. Keep unknown codes undisclosed.
-_PRICE_CODE_VALUES = {"PR001": "USD", "WT002": "톤"}
-
-
 def _user_visible_unit(unit: str | None) -> str | None:
     """사용자 응답에서 원천 내부 가격 코드만 제외한다.
 
@@ -724,40 +726,6 @@ def _user_visible_unit(unit: str | None) -> str | None:
         if normalized:
             visible.append(normalized)
     return "; ".join(part for part in visible if part) or None
-
-
-def _natural_price_basis(unit: str | None) -> str | None:
-    """가격기준과 원천 코드를 사용자 문장에 쓸 수 있는 순서로 풀어 쓴다."""
-    values = {}
-    for part in (unit or "").split(";"):
-        key, separator, value = part.partition("=")
-        if separator and value.strip():
-            values[key.strip()] = value.strip()
-    clauses = []
-    basis = re.sub(r"\[dev_dummy\]\s*", "", values.get("가격기준", ""), flags=re.IGNORECASE).strip()
-    if basis:
-        clauses.append(f"가격 기준은 {basis}")
-    if currency := values.get("통화코드"):
-        display_currency = _PRICE_CODE_VALUES.get(currency.upper())
-        if display_currency:
-            clauses.append(f"통화는 {display_currency}")
-    if weight := values.get("중량단위코드"):
-        display_weight = _PRICE_CODE_VALUES.get(weight.upper())
-        if display_weight:
-            clauses.append(f"중량 단위는 {display_weight}")
-    return ("이며, ".join(clauses) + "입니다.") if clauses else None
-
-
-def _price_display_unit(unit: str | None) -> str | None:
-    """Map verified KOMIS price codes to a compact value unit for chart metadata."""
-    values = {}
-    for part in (unit or "").split(";"):
-        key, separator, value = part.partition("=")
-        if separator and value.strip():
-            values[key.strip()] = value.strip()
-    currency = _PRICE_CODE_VALUES.get(values.get("통화코드", "").upper())
-    weight = _PRICE_CODE_VALUES.get(values.get("중량단위코드", "").upper())
-    return f"{currency}/{weight}" if currency and weight else currency
 
 
 def _citation_sources(cited_indices: set[int], evidence: list) -> list[dict]:
@@ -1095,45 +1063,6 @@ def _price_unit_disclosure(text: str, evidence: list) -> str:
     return cleaned + ("\n\n" if cleaned and additions else "") + "\n".join(additions)
 
 
-def _price_series_observations(text: str) -> list[tuple[date, float]]:
-    """가격 표에서 일자와 통상 가격을 추출해 날짜순 표본을 만든다."""
-    date_formats = ("%Y%m%d", "%Y-%m-%d", "%Y%m", "%Y-%m", "%Y")
-    for table in extract_markdown_tables(text):
-        keys = [column.split("(", 1)[0].strip().casefold() for column in table["columns"]]
-        date_idx = next((idx for idx, key in enumerate(keys)
-                         if key in {"crtr_ymd", "price_date", "date", "trd_dt"}), None)
-        price_idx = next((idx for idx, key in enumerate(keys)
-                          if key in {"cmerc_prc", "price", "avg_price", "average_price"}), None)
-        if date_idx is None:
-            date_idx = next((idx for idx, column in enumerate(table["columns"])
-                             if "일자" in column or column.strip().casefold() == "date"), None)
-        if price_idx is None:
-            price_idx = next((idx for idx, column in enumerate(table["columns"])
-                              if "가격" in column and not any(
-                                  term in column for term in ("최저", "최고", "하한", "상한"))), None)
-        if date_idx is None or price_idx is None:
-            continue
-        observations = []
-        for row in table["rows"]:
-            raw_date = row[date_idx].strip()
-            observed_date = None
-            for fmt in date_formats:
-                try:
-                    observed_date = datetime.strptime(raw_date, fmt).date()
-                    break
-                except ValueError:
-                    continue
-            try:
-                price = float(row[price_idx].replace(",", "").replace("%", "").strip())
-            except (ValueError, AttributeError):
-                continue
-            if observed_date is not None and math.isfinite(price):
-                observations.append((observed_date, price))
-        if observations:
-            return sorted(observations)
-    return []
-
-
 PRICE_SOURCE_CHANGE_MINERALS = (
     "리튬", "코발트", "희토류", "니켈", "구리", "아연", "알루미늄", "연", "주석",
     "철광석", "유연탄", "우라늄", "금", "은", "백금", "흑연",
@@ -1203,187 +1132,6 @@ def _price_policy_faq_answer(message: str) -> str | None:
 # HTTP 라우터가 action/page 분류 전에 동일한 결정적 FAQ 여부를 확인한다.
 # 답변 본문 생성은 계속 chat_turn() 한 곳이 담당한다.
 direct_faq_answer = _price_policy_faq_answer
-
-
-def _format_price(value: float) -> str:
-    return f"{value:,.2f}".rstrip("0").rstrip(".")
-
-
-def _price_series_summary(item) -> str:
-    observations = _price_series_observations(item.text)
-    if not observations:
-        return "조회된 가격 표의 날짜·가격 열을 판독하지 못해 최고·최저와 추세를 계산하지 못했습니다."
-    if len(observations) == 1:
-        observed_date, price = observations[0]
-        return f"최신 가격은 {_format_price(price)} ({observed_date.isoformat()})입니다."
-    prices = [price for _, price in observations]
-    high_date, high = max(observations, key=lambda point: point[1])
-    low_date, low = min(observations, key=lambda point: point[1])
-    first, latest = prices[0], prices[-1]
-    latest_date = observations[-1][0]
-    high_low_pct = ((high - low) / low * 100) if low else None
-    period_change = latest - first
-    period_change_pct = (period_change / first * 100) if first else None
-
-    clauses = [f"최신 가격은 {_format_price(latest)} ({latest_date.isoformat()})",
-               f"최고가는 {_format_price(high)} ({high_date.isoformat()})",
-               f"최저가는 {_format_price(low)} ({low_date.isoformat()})"]
-    range_text = f"고저 차는 {_format_price(high - low)}"
-    if high_low_pct is not None:
-        range_text += f"(최저가 대비 {high_low_pct:+.2f}%)"
-    clauses.append(range_text)
-    change_text = f"시작 값 대비 최신 값 변화는 {_format_price(abs(period_change))}"
-    if period_change < 0:
-        change_text = change_text.replace("변화는", "변화는 -")
-    elif period_change > 0:
-        change_text = change_text.replace("변화는", "변화는 +")
-    if period_change_pct is not None:
-        change_text += f" ({period_change_pct:+.2f}%)"
-    clauses.append(change_text)
-
-    # 최근 관측 표본과 직전 표본의 평균을 비교해 단기 흐름을 결정한다.
-    sample_size = min(30, len(prices) // 2)
-    if sample_size >= 2:
-        previous = prices[-2 * sample_size:-sample_size]
-        recent = prices[-sample_size:]
-        prior_mean = sum(previous) / len(previous)
-        recent_mean = sum(recent) / len(recent)
-        trend_pct = ((recent_mean - prior_mean) / prior_mean * 100) if prior_mean else 0.0
-        trend = "상승" if trend_pct > 0.5 else "하락" if trend_pct < -0.5 else "보합"
-        clauses.append(f"최근 가격 흐름은 {trend} 추세({trend_pct:+.2f}%)입니다")
-    else:
-        clauses.append("최근 가격 흐름은 표본이 부족해 판정하기 어렵습니다")
-    return ". ".join(clauses) + "."
-
-
-def _latest_price_answer(item, mineral: str | None) -> str:
-    """최신·직전 보유 관측값으로 사용자 요청의 가격 문장을 결정적으로 만든다."""
-    observations = _price_series_observations(item.text)
-    if not observations:
-        return "조회된 가격 표의 날짜·가격 열을 판독하지 못했습니다."
-    latest_date, latest_price = observations[-1]
-    label = mineral or "요청 광종"
-    unit = _price_display_unit(item.unit)
-    # 원천이 단위를 주지 않은 DEV_DUMMY 행에도 값의 차원을 추정하지 않는다.
-    # 대신 문장 형식은 유지하고, 사용자가 단위 부재를 즉시 알 수 있게 한다.
-    price_with_unit = f"{_format_price(latest_price)} {unit or '(원천 단위 미확인)'}"
-    if len(observations) < 2:
-        return f"{latest_date.isoformat()} 기준 {label} 가격은 {price_with_unit}입니다. 직전 보유 관측값이 없어 등락은 계산하지 않았습니다."
-    previous_date, previous_price = observations[-2]
-    change = latest_price - previous_price
-    change_pct = (change / previous_price * 100) if previous_price else None
-    comparison = "전일" if (latest_date - previous_date).days == 1 else f"직전 관측일({previous_date.isoformat()})"
-    change_text = _format_price(abs(change))
-    sign = "+" if change > 0 else "-" if change < 0 else ""
-    if change_pct is None:
-        return f"{latest_date.isoformat()} 기준 {label} 가격은 {price_with_unit}입니다. {comparison} 대비 {sign}{change_text} 변동했습니다."
-    return (f"{latest_date.isoformat()} 기준 {label} 가격은 {price_with_unit}입니다. "
-            f"{comparison} 대비 {sign}{change_text}({change_pct:+.2f}%) 변동했습니다.")
-
-
-def _monthly_price_observations(observations: list[tuple[date, float]]) -> list[tuple[date, float]]:
-    """일별 관측을 달력월별 산술평균으로 집계한다. 결측월은 만들지 않는다."""
-    buckets: dict[tuple[int, int], list[float]] = {}
-    for observed_date, price in observations:
-        buckets.setdefault((observed_date.year, observed_date.month), []).append(price)
-    return [(date(year, month, 1), sum(values) / len(values))
-            for (year, month), values in sorted(buckets.items())]
-
-
-def _yearly_observation_months(text: str) -> dict[int, int]:
-    """연도 집계 adapter가 보낸 실제 관측 월 수를 읽는다."""
-    for table in extract_markdown_tables(text):
-        keys = [column.split("(", 1)[0].strip().casefold() for column in table["columns"]]
-        try:
-            date_index = keys.index("price_date")
-            count_index = keys.index("observation_months")
-        except ValueError:
-            continue
-        result = {}
-        for row in table["rows"]:
-            try:
-                result[int(row[date_index][:4])] = int(float(row[count_index]))
-            except (ValueError, TypeError):
-                continue
-        return result
-    return {}
-
-
-def _months_before(value: date, months: int) -> date:
-    ordinal = value.year * 12 + value.month - 1 - months
-    return date(ordinal // 12, ordinal % 12 + 1, 1)
-
-
-def _price_operation_answer(item, mineral: str | None, operation: str, period) -> str:
-    """LLM이 아닌 관측 표본으로 가격 집계 문형의 수치와 문장을 고정한다."""
-    observations = _price_series_observations(item.text)
-    label = mineral or "요청 광종"
-    unit = _price_display_unit(item.unit) or "(원천 단위 미확인)"
-    if operation == "period_average_delta":
-        if not observations:
-            return "계산 불가: 조회된 가격 표의 날짜·가격 열을 판독하지 못했습니다."
-        latest_date, latest_price = observations[-1]
-        average = sum(value for _, value in observations) / len(observations)
-        if not average:
-            return "계산 불가: 비교기간 평균 가격이 0이어서 변동률을 계산할 수 없습니다."
-        months = getattr(period, "trailing_months", None)
-        expected_start = _months_before(latest_date, months - 1) if months else None
-        if (expected_start and observations[0][0].year * 12 + observations[0][0].month
-                > expected_start.year * 12 + expected_start.month):
-            return f"계산 불가: 최근 {months}개월 평균을 계산할 전체 관측기간이 확보되지 않았습니다."
-        period_label = (f"최근 {months // 12}년" if months and months % 12 == 0
-                        else f"최근 {months}개월" if months else "조회 기간")
-        pct = (latest_price - average) / average * 100
-        return (f"{latest_date.isoformat()} 기준 {label} 가격은 {_format_price(latest_price)} {unit}입니다. "
-                f"{period_label} 평균 대비 {pct:+.2f}%입니다.")
-
-    monthly = _monthly_price_observations(observations)
-    if operation == "monthly_streak":
-        if len(monthly) < 2:
-            return "계산 불가: 월별 연속 추세를 계산하려면 최소 2개월의 가격 관측값이 필요합니다."
-        latest_month, latest_average = monthly[-1]
-        previous_month, previous_average = monthly[-2]
-        if latest_month.year * 12 + latest_month.month != previous_month.year * 12 + previous_month.month + 1:
-            return "계산 불가: 최신 두 관측월이 연속하지 않아 월별 연속 추세를 계산할 수 없습니다."
-        delta = latest_average - previous_average
-        direction = "상승" if delta > 0 else "하락" if delta < 0 else "보합"
-        index = len(monthly) - 1
-        while index > 0:
-            current_month, current_value = monthly[index]
-            prior_month, prior_value = monthly[index - 1]
-            if (current_month.year * 12 + current_month.month
-                    != prior_month.year * 12 + prior_month.month + 1):
-                break
-            current_direction = "상승" if current_value > prior_value else "하락" if current_value < prior_value else "보합"
-            if current_direction != direction:
-                break
-            index -= 1
-        start_month, start_average = monthly[index]
-        # "N개월째"는 같은 방향으로 이어진 월간 변화의 횟수다. 시작월은
-        # 첫 변화 직전의 비교 기준월로 남겨 구간 변동률의 분모와 일치시킨다.
-        months = len(monthly) - 1 - index
-        pct = ((latest_average - start_average) / start_average * 100) if start_average else None
-        pct_text = f"{pct:+.2f}%" if pct is not None else "계산 불가"
-        return (f"{latest_month.strftime('%Y-%m')} 기준 {label} 월평균 가격은 {_format_price(latest_average)} {unit}입니다. "
-                f"{months}개월째 {direction}세이며, {direction} 구간 시작은 "
-                f"{start_month.strftime('%Y-%m')}입니다. 현재 월평균 가격은 "
-                f"{_format_price(latest_average)} {unit}({pct_text})입니다.")
-
-    if operation == "yearly_average":
-        if not monthly:
-            return "계산 불가: 연도별 평균을 계산할 가격 관측값이 없습니다."
-        years: dict[int, list[float]] = {}
-        for observed_date, value in observations:
-            years.setdefault(observed_date.year, []).append(value)
-        current_year = date.today().year
-        observed_months = _yearly_observation_months(item.text)
-        values = [
-            f"{year}{' YTD' if year == current_year or observed_months.get(year, 12) < 12 else ''} "
-            f"{_format_price(sum(points) / len(points))}"
-            for year, points in sorted(years.items(), reverse=True)
-        ]
-        return f"{label} 연도별 평균 가격은 [{', '.join(values)}]입니다. 단위: {unit}"
-    return "지원하지 않는 가격 집계 요청입니다."
 
 
 def _composite_index_observations(text: str) -> list[tuple[date, float]]:
@@ -2302,15 +2050,7 @@ async def chat_turn(
         })
         return
 
-    price_series_answer = render_price_series(
-        evidence,
-        action_plan,
-        operation_answer=_price_operation_answer,
-        latest_answer=_latest_price_answer,
-        summary=_price_series_summary,
-        observations=_price_series_observations,
-        natural_basis=_natural_price_basis,
-    )
+    price_series_answer = render_price_series(evidence, action_plan)
     if price_series_answer is not None:
         answer, cited_indices = price_series_answer
         if answer.startswith("계산 불가:"):

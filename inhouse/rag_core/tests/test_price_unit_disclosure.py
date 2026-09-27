@@ -10,15 +10,7 @@ from rag_core.retrieval.evidence import Evidence
 
 
 def _render_price_series(evidence, action_plan):
-    return render_price_series(
-        evidence,
-        action_plan,
-        operation_answer=chatbot._price_operation_answer,
-        latest_answer=chatbot._latest_price_answer,
-        summary=chatbot._price_series_summary,
-        observations=chatbot._price_series_observations,
-        natural_basis=chatbot._natural_price_basis,
-    )
+    return render_price_series(evidence, action_plan)
 
 
 class PriceUnitDisclosureTest(unittest.TestCase):
