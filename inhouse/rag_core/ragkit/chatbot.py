@@ -1064,9 +1064,19 @@ def _price_policy_faq_answer(message: str) -> str | None:
     )
     if q15_scope_question:
         return None
-    if "광물종합지수" in normalized and any(x in normalized for x in ("뭐", "무엇", "정의", "란", "이란", "의미")):
+    composite_definition_questions = {
+        "광물종합지수가뭐야?", "광물종합지수가뭐야", "광물종합지수는뭐야?", "광물종합지수는뭐야",
+        "광물종합지수가무엇이야?", "광물종합지수가무엇이야", "광물종합지수란?", "광물종합지수란",
+        "광물종합지수의정의는?", "광물종합지수의정의는", "광물종합지수의미는?", "광물종합지수의미는",
+    }
+    strategic_definition_questions = {
+        "전략광종이뭐야?", "전략광종이뭐야", "전략광종은뭐야?", "전략광종은뭐야",
+        "전략광종이무엇이야?", "전략광종이무엇이야", "전략광종이란?", "전략광종이란",
+        "전략광종의정의는?", "전략광종의정의는", "전략광종의미는?", "전략광종의미는",
+    }
+    if normalized in composite_definition_questions:
         return faq_message("mineral_composite_index")
-    if "전략광종" in normalized and any(x in normalized for x in ("뭐", "무엇", "정의", "란", "이란", "의미")):
+    if normalized in strategic_definition_questions:
         return faq_message("strategic_mineral")
     if "원" in normalized and any(x in normalized for x in ("크기", "중심점", "지도")) and any(x in normalized for x in ("뜻", "의미", "뭐", "무엇", "나타내")):
         return faq_message("map_circle_size")
@@ -1091,6 +1101,11 @@ def _price_policy_faq_answer(message: str) -> str | None:
     if any(x in normalized for x in ("엑셀", "다운로드", "내려받")) and any(x in normalized for x in ("광물가격", "가격", "조회결과")):
         return "광물가격 화면의 엑셀 다운로드 버튼으로 조회 결과를 내려받을 수 있습니다."
     return None
+
+
+# HTTP 라우터가 action/page 분류 전에 동일한 결정적 FAQ 여부를 확인한다.
+# 답변 본문 생성은 계속 chat_turn() 한 곳이 담당한다.
+direct_faq_answer = _price_policy_faq_answer
 
 
 def _format_price(value: float) -> str:
@@ -1170,6 +1185,22 @@ def _price_series_scope_answer(evidence: list, action_plan) -> tuple[str, set[in
     answer += f"\n\n{_price_series_summary(item)}"
     answer += "\n\n표와 차트는 조회된 가격값으로 작성했습니다."
     return answer, {index}
+
+
+def _strategic_price_overview_answer(evidence: list, action_plan) -> tuple[str, set[int]] | None:
+    """다기준 전략광종 표를 LLM이 재작성해 인용을 잃지 않게 한다."""
+    actions = getattr(action_plan, "actions", [])
+    if len(actions) != 1 or getattr(actions[0], "action_id", None) != "price.overview":
+        return None
+    selected = [(index, item) for index, item in enumerate(evidence, 1)
+                if getattr(item, "action_id", None) == "price.overview"]
+    if len(selected) != 1:
+        return None
+    return (
+        "요청한 6대·10대 전략광종의 가격기준별 최신 보유 행을 표로 제공합니다 [1]. "
+        "광종마다 실제 관측일·가격기준·통화·중량단위가 다르므로 가격을 서로 비교하거나 평균내지 않았습니다.",
+        {selected[0][0]},
+    )
 
 
 def _q15_usgs_scope_answer(evidence: list) -> tuple[str, set[int]] | None:
@@ -1504,7 +1535,7 @@ def _price_series_display_table(table: dict) -> dict:
     return {**table, "columns": columns, "rows": rows, "markdown": markdown}
 
 
-def _multimodal_events(cited_indices: set[int], evidence: list) -> list[ChatEvent]:
+def _multimodal_events(cited_indices: set[int], evidence: list, *, include_charts: bool = True) -> list[ChatEvent]:
     """인용된 근거에서 표를 뽑아 `table` 블록으로, 추천 차트가 있으면 `chart`
     스펙으로도 낸다. 인용 안 된 근거(조회는 됐지만 답변 근거로 안 쓰인 것)는
     건너뛴다 — 표시되는 표/차트도 텍스트 답변과 같은 인용 규율을 따라야 하므로.
@@ -1528,6 +1559,9 @@ def _multimodal_events(cited_indices: set[int], evidence: list) -> list[ChatEven
         if i not in cited_indices:
             continue
         hide_price_provenance = getattr(ev, "action_id", None) == "price.series"
+        # 전략광종 현황은 같은 표 안에서도 가격기준·통화·중량단위가 달라,
+        # 차트 이벤트뿐 아니라 프런트가 사용할 수 있는 chart_hint도 금지한다.
+        suppress_chart = not include_charts or getattr(ev, "action_id", None) == "price.overview"
         source_label = None if hide_price_provenance else _evidence_source_label(ev)
         source_index = None if hide_price_provenance else i
         as_of = None if hide_price_provenance else ev.as_of
@@ -1541,12 +1575,18 @@ def _multimodal_events(cited_indices: set[int], evidence: list) -> list[ChatEven
                 continue
             emitted_tables.add(table_key)
             table_id = f"t{i}-{t_idx}"
-            events.append(ChatEvent(type="table", data=table_block(
+            block = table_block(
                 table, block_id=table_id, source_index=source_index, source_label=source_label,
                 as_of=as_of, unit=unit,
                 menu_source=source_menu,
                 requested_frequency=getattr(ev, "requested_frequency", None),
-            )))
+            )
+            if suppress_chart:
+                block["chart_hint"] = {"recommended": None, "alternatives": [],
+                                       "reason": "광종별 가격기준·통화·중량단위가 달라 비교 차트를 제공하지 않음"}
+            events.append(ChatEvent(type="table", data=block))
+            if suppress_chart:
+                continue
             spec = chart_spec(
                 table, block_id=f"c{i}-{t_idx}", data_ref=table_id,
                 source_index=source_index, source_label=source_label, as_of=as_of, unit=unit,
@@ -1751,6 +1791,29 @@ async def chat_turn(
         yield ChatEvent(type="delta", data={"delta": answer})
         if extra:
             yield ChatEvent(type="delta", data={"delta": extra})
+        await asyncio.to_thread(
+            append_message, resolved_session_id, "assistant", final_text,
+            json.dumps(citations, ensure_ascii=False), store_db_path,
+        )
+        yield ChatEvent(type="done", data={
+            "done": True, "citations": citations, "bogus_citations": [], "abstained": False,
+        })
+        return
+
+    strategic_overview_answer = _strategic_price_overview_answer(evidence, action_plan)
+    if strategic_overview_answer is not None:
+        answer, cited_indices = strategic_overview_answer
+        citations = _citation_sources(cited_indices, evidence)
+        extra = _dummy_data_notice(cited_indices, evidence) + _source_footer(cited_indices, evidence)
+        final_text = answer + extra
+        yield _status_event(4)
+        yield ChatEvent(type="delta", data={"delta": answer})
+        if extra:
+            yield ChatEvent(type="delta", data={"delta": extra})
+        # 전략광종 현황은 광종·가격기준·통화·중량단위가 행마다 달라 차트 자체가
+        # 비교를 암시한다. 표만 내고 시각화는 만들지 않는다.
+        for event in _multimodal_events(cited_indices, evidence, include_charts=False):
+            yield event
         await asyncio.to_thread(
             append_message, resolved_session_id, "assistant", final_text,
             json.dumps(citations, ensure_ascii=False), store_db_path,

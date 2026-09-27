@@ -351,14 +351,17 @@ class _ProfileSession:
         return [Evidence(**d) for d in data["evidence"]], data["warnings"]
 
     def call_komis_trade_indicator(
-        self, *, trade_metric: str, reporter_country: str, calendar_year: int,
+        self, *, trade_metric: str, reporter_country: str, calendar_year: int | None = None,
+        start_period: str | None = None, end_period: str | None = None,
         mineral_code: str | None = None, hs_code: str | None = None,
         partner_country: str | None = None, flow: str | None = None,
+        denominator_scope: str | None = None,
     ) -> tuple[list[Evidence], list[str]]:
         data = self._call("komis_trade_indicator", {
             "trade_metric": trade_metric, "reporter_country": reporter_country,
-            "calendar_year": calendar_year, "mineral_code": mineral_code, "hs_code": hs_code,
-            "partner_country": partner_country, "flow": flow,
+            "calendar_year": calendar_year, "start_period": start_period, "end_period": end_period,
+            "mineral_code": mineral_code, "hs_code": hs_code, "partner_country": partner_country,
+            "flow": flow, "denominator_scope": denominator_scope,
         })
         return [Evidence(**d) for d in data["evidence"]], data["warnings"]
 
@@ -400,6 +403,17 @@ class _ProfileSession:
             "start_period": tool_period(start_period), "end_period": tool_period(end_period),
             "window_months": window_months,
         })
+        return [Evidence(**d) for d in data["evidence"]], data["warnings"]
+
+    def call_komis_strategic_price_overview(
+        self, groups: list[str] | None = None,
+    ) -> tuple[list[Evidence], list[str]]:
+        """YAML 정본의 전략광종별 최신 가격 현황(행별 기준·단위 보존)을 조회한다."""
+        data = self._call("komis_strategic_price_overview", {"groups": groups})
+        return [Evidence(**d) for d in data["evidence"]], data["warnings"]
+
+    def call_komis_production_yoy(self, mineral_code: str, *, end_year: int | None = None) -> tuple[list[Evidence], list[str]]:
+        data = self._call("komis_production_yoy", {"mineral_code": mineral_code, "end_year": end_year})
         return [Evidence(**d) for d in data["evidence"]], data["warnings"]
 
     def call_komis_mineral_ranking(
