@@ -93,16 +93,35 @@ class ActionContractAuditTest(unittest.TestCase):
             def invoke(self, **kwargs):
                 raise AssertionError("금일 가격 질의는 planner를 호출하면 안 됩니다")
 
-        for question in ("금일 니켈 가격 알려줘", "금일자 니켈 시세는 얼마야?", "오늘 니켈 가격"):
-            with self.subTest(question=question):
+        for question, mineral in (
+            ("금일 니켈 가격 알려줘", "니켈"),
+            ("금일자 니켈 시세는 얼마야?", "니켈"),
+            ("오늘 니켈 가격", "니켈"),
+            ("현재 텅스텐 가격은 얼마야?", "텅스텐"),
+            ("지금 금 시세 알려줘", "금"),
+            ("현재 아연 가격 알려줘", "아연"),
+        ):
+            with self.subTest(question=question, mineral=mineral):
                 candidate = extract_action_plan(question, MustNotRun())
                 call = candidate.actions[0]
-                self.assertEqual((call.action_id, call.slots.mineral), ("price.series", "니켈"))
+                self.assertEqual((call.action_id, call.slots.mineral), ("price.series", mineral))
                 self.assertEqual(call.slots.period.kind, "latest")
                 route = _route_from_action_call(call, question)
                 self.assertIsNone(route.komis_start_period)
                 self.assertIsNone(route.komis_end_period)
                 self.assertEqual(route.komis_raw_limit, 1)
+
+    def test_current_price_shortcut_does_not_capture_multi_mineral_request(self):
+        class Planner:
+            def invoke(self, **kwargs):
+                return SimpleNamespace(output=IntentPlan(requirements=[IntentCall(
+                    requirement_id="compare", intent="price_compare", role="data",
+                    slots=ActionSlots(minerals=["니켈", "리튬"]),
+                )]))
+
+        candidate = extract_action_plan("현재 니켈과 리튬 가격 알려줘", Planner())
+
+        self.assertEqual(candidate.actions[0].action_id, "price.compare")
 
     def test_mine_yoy_rank_is_deterministic_before_planner(self):
         class MustNotRun:

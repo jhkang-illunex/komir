@@ -1034,23 +1034,29 @@ def _latest_price_plan(message: str) -> ActionPlan | None:
 
     가격 원천은 당일 장 마감·적재 시차 때문에 달력상의 오늘 행이 없을 수 있다.
     이 좁은 문형은 planner가 ``금일``을 YYYY-MM-DD 범위로 바꾸는 변동을 막고,
-    기간 슬롯을 비워 어댑터가 최신 실제 관측 행을 선택하게 한다.
+    ``Period(kind=latest)``로 어댑터가 최신 실제 관측 한 행을 선택하게 한다.
     """
     compact = re.sub(r"\s+", "", message)
     match = re.fullmatch(
-        r"(?:금일자?|오늘|현재|지금)(?:의)?(?P<mineral>구리|니켈|코발트|리튬|희토류|Nd)(?:의)?"
+        r"(?:금일자?|오늘|현재|지금)(?:의)?(?P<mineral>[가-힣A-Za-z0-9]+?)(?:의)?"
         r"(?:가격|시세)(?:(?:은|는|이|을|를)?(?:얼마야|얼마인가요|알려줘|알려주세요|보여줘|보여주세요))?[?.]?",
         compact,
         flags=re.IGNORECASE,
     )
     if not match:
         return None
+    mineral = match.group("mineral")
+    # 단일 광종 현재값 요청만 닫는다. 복수 광종은 price.compare/복합 계약이
+    # 소유하므로 여기서 "니켈과리튬"을 하나의 광종으로 조회하지 않는다.
+    if any(marker in mineral for marker in ("과", "와", "및", "그리고")):
+        return None
+    mineral = MINERAL_ALIASES.get(mineral.casefold(), mineral)
     return ActionPlan(actions=[ActionCall(
         requirement_id="latest_price",
         action_id="price.series",
         # ``latest``는 "기간 미지정"과 다르다. adapter가 최신 1건만
         # 요청하도록 하는 typed 표현이며, 기본 시계열 상한(60건)을 쓰지 않는다.
-        slots=ActionSlots(mineral=match.group("mineral"), period=Period(kind="latest")),
+        slots=ActionSlots(mineral=mineral, period=Period(kind="latest")),
         intent="price_series",
         role="data",
     )])
