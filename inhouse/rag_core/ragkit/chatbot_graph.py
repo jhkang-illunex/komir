@@ -854,6 +854,8 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
     if call.action_id == "price.overview":
         return RetrievalRoute(**common, use_komis_strategic_price_overview=True,
                               komis_strategic_price_groups=s.strategic_price_groups)
+    if call.action_id == "forecast.price":
+        return RetrievalRoute(**common, use_komis_raw=True, komis_topic="price_forecast")
     if call.action_id in {"price.compare", "price.verify_claim"}:
         return RetrievalRoute(**common, use_komis_price_comparison=True,
                               komis_compare_mineral_names=s.minerals or ([s.mineral] if s.mineral else None),
@@ -2945,24 +2947,6 @@ def retrieve_evidence(
     if not action_assessment.approved or action_plan is None:
         if action_plan is None or not _is_partial_price_forecast_plan(action_plan):
             return finish([], [f"action_plan_failed:{action_assessment.failure_reason}"])
-    if action_plan is not None and _is_partial_price_forecast_plan(action_plan):
-        # forecast.price는 아직 원천이 없으므로 price.series만 실행한다.
-        # 기존의 다른 미지원 복합 action은 계속 전체 기권한다.
-        action_plan = action_plan.model_copy(update={
-            "actions": [call for call in action_plan.actions if call.action_id != "forecast.price"],
-        })
-        partial_forecast_warning = ["source_unavailable:price_forecast_partial"]
-        for call in original_plan.actions:
-            if call.action_id == "forecast.price":
-                action_results.append(ActionResult(
-                    requirement_id=call.requirement_id, action_id=call.action_id,
-                    slots=call.slots, status="source_unavailable",
-                    warnings=partial_forecast_warning.copy(), failure_reason="source_unavailable",
-                ))
-        action_assessment = validate_action_plan(action_plan)
-        if not action_assessment.approved:
-            return finish([], [f"action_plan_failed:{action_assessment.failure_reason}"])
-
     # 각 ActionCall은 독립 adapter와 Advisor를 통과한다. plan 전체를 하나의
     # 자유형 route로 압축하지 않아 Q04/Q11/Q29의 requirement 귀속이 섞이지 않는다.
     all_evidence: list[Evidence] = []
