@@ -111,7 +111,9 @@ from .renderers.price import (
     format_price as _format_price,
     natural_price_basis as _natural_price_basis,
     price_display_unit as _price_display_unit,
+    price_series_display_table as _price_series_display_table,
     price_series_observations as _price_series_observations,
+    latest_price_display_table as _latest_price_display_table,
     render_price_comparison,
     render_price_series,
 )
@@ -1590,53 +1592,6 @@ def _evidence_source_label(ev) -> str:
     if ev.as_of:
         label += f" (기준시점 {ev.as_of})"
     return label
-
-
-def _price_series_display_table(table: dict) -> dict:
-    """단일 가격 표에서 사용자에게 의미가 없는 내부 코드 열을 제거한다."""
-    hidden_keys = {"price_currency_code", "weight_unit_code", "price_criterion_serial", "mnrl_prc_crtr_sn"}
-    keep = [idx for idx, header in enumerate(table["columns"])
-            if header.split("(", 1)[0].strip().casefold() not in hidden_keys]
-    if len(keep) == len(table["columns"]):
-        return table
-    columns = [table["columns"][idx] for idx in keep]
-    rows = [[row[idx] for idx in keep] for row in table["rows"]]
-    markdown = "\n".join([
-        "| " + " | ".join(columns) + " |",
-        "| " + " | ".join("---" for _ in columns) + " |",
-        *("| " + " | ".join(row) + " |" for row in rows),
-    ])
-    return {**table, "columns": columns, "rows": rows, "markdown": markdown}
-
-
-def _latest_price_display_table(table: dict) -> dict:
-    """직전값은 등락 계산에만 쓰고 최신 가격 표에는 최신 행 하나만 남긴다."""
-    observations = _price_series_observations(table["markdown"])
-    if not observations:
-        return table
-    date_index = next((index for index, column in enumerate(table["columns"])
-                       if column.split("(", 1)[0].strip().casefold() in {"crtr_ymd", "price_date", "date", "trd_dt"}
-                       or "일자" in column), None)
-    if date_index is None:
-        return table
-    parsed_rows: list[tuple[date, list[str]]] = []
-    for row in table["rows"]:
-        raw_date = str(row[date_index]).strip()
-        for fmt in ("%Y%m%d", "%Y-%m-%d", "%Y%m", "%Y-%m", "%Y"):
-            try:
-                parsed_rows.append((datetime.strptime(raw_date, fmt).date(), row))
-                break
-            except ValueError:
-                continue
-    if not parsed_rows:
-        return table
-    rows = [max(parsed_rows, key=lambda item: item[0])[1]]
-    markdown = "\n".join([
-        "| " + " | ".join(table["columns"]) + " |",
-        "| " + " | ".join("---" for _ in table["columns"]) + " |",
-        "| " + " | ".join(rows[0]) + " |",
-    ])
-    return {**table, "rows": rows, "markdown": markdown}
 
 
 def _multimodal_events(cited_indices: set[int], evidence: list, *, include_charts: bool = True) -> list[ChatEvent]:

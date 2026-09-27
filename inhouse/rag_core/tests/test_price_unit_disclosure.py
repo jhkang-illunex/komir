@@ -4,7 +4,11 @@ import unittest
 from types import SimpleNamespace
 
 from rag_core.ragkit import chatbot
-from rag_core.ragkit.renderers.price import render_price_comparison, render_price_series
+from rag_core.ragkit.renderers.price import (
+    latest_price_display_table,
+    render_price_comparison,
+    render_price_series,
+)
 from rag_core.ragkit.action_contract import ActionCall, ActionPlan, ActionSlots, Period
 from rag_core.retrieval.evidence import Evidence
 
@@ -129,7 +133,7 @@ class PriceUnitDisclosureTest(unittest.TestCase):
         table = chatbot.extract_markdown_tables(
             "| crtr_ymd | price |\n| --- | --- |\n| 20260907 | 100 |\n| 20260908 | 105 |",
         )[0]
-        displayed = chatbot._latest_price_display_table(table)
+        displayed = latest_price_display_table(table)
         self.assertEqual(displayed["rows"], [["20260908", "105"]])
 
     def test_latest_price_marks_missing_source_unit_without_guessing(self):
