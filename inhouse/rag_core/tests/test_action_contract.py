@@ -361,6 +361,22 @@ class ActionContractTest(unittest.TestCase):
             "한국의 리튬 수입 의존도를 알려줘", indicator,
         ), indicator)
 
+    def test_country_rank_and_share_duplicate_requirements_collapse(self):
+        """상위국과 국가별 비중은 동일한 수입국 순위 표 하나로 답한다."""
+        plan = ActionPlan(actions=[
+            ActionCall(requirement_id="countries", action_id="trade.country_rank",
+                       slots=ActionSlots(mineral="리튬", metric="import_amount", flow="import")),
+            ActionCall(requirement_id="shares", action_id="trade.country_rank",
+                       slots=ActionSlots(mineral="리튬", metric="import_amount", flow="import")),
+        ])
+        normalized = normalize_country_rank_request(
+            "한국의 리튬 수입 상위국과 국가별 비중을 알려줘", plan,
+        )
+        self.assertEqual(len(normalized.actions), 1)
+        self.assertEqual(normalized.actions[0].action_id, "trade.country_rank")
+        self.assertEqual(normalized.actions[0].slots.mineral, "리튬")
+        self.assertEqual(normalized.actions[0].slots.metric, "import_amount")
+
     def test_country_dependency_defaults_korea_trailing_year_and_product_denominator(self):
         question = "흑연 수입 중 중국 비중 얼마야?"
         class MustNotRun:

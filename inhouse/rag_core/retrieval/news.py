@@ -47,7 +47,13 @@ def _query_terms(topic: str) -> list[str]:
 def fetch_news_evidence(topic: str = "", *, start: str | None = None, end: str | None = None,
                         limit: int = 5) -> tuple[list[Evidence], list[str]]:
     """ai_news 제목·헤드라인과 doc_chunk의 검증 가능한 관련 발췌를 함께 조회한다."""
-    schema = get_settings().PG_SCHEMA.replace('"', '')
+    # KOMIS 원천 테이블(ai_news·ai_mnrl_mst)은 public 소유이고, 이 프로젝트가
+    # 적재한 반정형 문서 청크는 VECTOR_SCHEMA(현재 mineral_risk)에 있다. 둘을 같은
+    # 스키마로 조회하면 한쪽은 반드시 UndefinedTable이 된다. 조회 전용 adapter
+    # 에서 실제 소유 스키마를 명시하되, public에 DDL/DML을 수행하지 않는다.
+    komis_schema = "public"
+    settings = get_settings()
+    document_schema = getattr(settings, "VECTOR_SCHEMA", settings.PG_SCHEMA).replace('"', '')
     con = None
     try:
         con = pg_connect()
@@ -64,7 +70,7 @@ def fetch_news_evidence(topic: str = "", *, start: str | None = None, end: str |
                 patterns = [f"%{term.replace('%', '')}%" for term in terms]
                 cur.execute(
                     f"SELECT n.base_ymd, m.mnrl_nm_ko, n.title, n.headline, n.sort_ordr "
-                    f"FROM {schema}.ai_news n LEFT JOIN {schema}.ai_mnrl_mst m "
+                    f"FROM {komis_schema}.ai_news n LEFT JOIN {komis_schema}.ai_mnrl_mst m "
                     "ON m.mnrknd_unq_cd=n.mnrknd_unq_cd "
                     "WHERE (COALESCE(n.title, '') ILIKE ANY(%s) "
                     "OR COALESCE(n.headline, '') ILIKE ANY(%s))" + date_sql +
@@ -74,14 +80,14 @@ def fetch_news_evidence(topic: str = "", *, start: str | None = None, end: str |
             else:
                 cur.execute(
                     f"SELECT n.base_ymd, m.mnrl_nm_ko, n.title, n.headline, n.sort_ordr "
-                    f"FROM {schema}.ai_news n LEFT JOIN {schema}.ai_mnrl_mst m "
+                    f"FROM {komis_schema}.ai_news n LEFT JOIN {komis_schema}.ai_mnrl_mst m "
                     "ON m.mnrknd_unq_cd=n.mnrknd_unq_cd "
                     "WHERE 1=1" + date_sql + " ORDER BY n.base_ymd DESC, n.sort_ordr ASC LIMIT %s",
                     (*date_params, int(limit)))
             news = cur.fetchall()
             patterns = [f"%{term.replace('%', '')}%" for term in terms] or ["%자원뉴스%"]
             cur.execute(
-                f"SELECT title, source_path, pub_date, txt FROM {schema}.doc_chunk WHERE txt ILIKE ANY(%s) "
+                f"SELECT title, source_path, pub_date, txt FROM {document_schema}.doc_chunk WHERE txt ILIKE ANY(%s) "
                 "ORDER BY pub_date DESC NULLS LAST, doc_id DESC, seq ASC LIMIT %s", (patterns, int(limit)))
             reports = cur.fetchall()
     except Exception as exc:  # noqa: BLE001

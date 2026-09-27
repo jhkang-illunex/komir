@@ -925,7 +925,7 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
         return RetrievalRoute(**common, use_cross_rank=True, cross_rank_action_id=call.action_id)
     if call.action_id == "document.retrieve" and "주간" in (s.topic or question) and "동향" in (s.topic or question):
         return RetrievalRoute(**common, use_weekly_trend=True)
-    if call.action_id == "document.retrieve" and any(token in (s.topic or question) for token in ("용도", "어디에 쓰", "어디쓰", "쓰여", "사용처", "활용처", "원소기호", "원자량", "원자번호", "주요 특성", "기본 특성", "특성이", "어떤 광물", "어떤 금속", "무슨 광물", "무슨 금속")):
+    if call.action_id == "document.retrieve" and any(token in (s.topic or question) for token in ("용도", "어디에 쓰", "어디쓰", "쓰여", "사용처", "활용처", "원소기호", "원자량", "원자번호", "주요 특성", "기본 특성", "특성이", "어떤 광물", "어떤 금속", "무슨 광물", "무슨 금속", "광석", "ore")):
         return RetrievalRoute(**common, use_mineral_info=True)
     if call.action_id == "document.retrieve" and any(token in (s.topic or question) for token in ("월간동향", "희소금속 동향", "전략광종 동향")):
         return RetrievalRoute(**common, use_monthly_trend=True)

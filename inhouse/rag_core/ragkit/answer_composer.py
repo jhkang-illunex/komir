@@ -34,7 +34,7 @@ class AnswerComposer:
             "다른 요구사항의 수치·기간·광종·출처를 섞지 마십시오.",
         ]
         contracts = matching_contracts(
-            [call.action_id for call in result.action_plan.actions], question,
+            [call.action_id for call in result.action_plan.actions],
         )
         if contracts:
             lines.extend([

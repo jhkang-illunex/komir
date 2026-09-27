@@ -1101,6 +1101,13 @@ class KomisRawDataRepository:
         if not hs_codes:
             raise RawDataAccessError("국가 랭킹 조회에는 hs_codes가 최소 1개 필요합니다.")
 
+        # 관세청 매핑은 HSK 10자리지만 UN Comtrade 원천은 HS 6자리다. 글로벌
+        # 수출입국 순위에서 그대로 비교하면 실제 UN 행이 있어도 0건이 된다.
+        # 반대로 한국 관세청 경로는 10자리 기준을 그대로 유지한다.
+        if page_id == "map_global":
+            hs_codes = sorted({str(code)[:6] for code in hs_codes if len(str(code)) >= 6})
+        if not hs_codes:
+            raise RawDataAccessError("UN 무역 국가 랭킹 조회에 사용할 HS 6자리 코드가 없습니다.")
         conditions = [f"HS_CD IN ({', '.join(_literal(c) for c in hs_codes)})"]
         direction_column = spec["direction_column"]
         if direction_column:

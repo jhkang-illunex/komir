@@ -10,6 +10,24 @@ from rag_core.retrieval.evidence import Evidence  # noqa: E402
 
 
 class CompositeRendererTest(unittest.TestCase):
+    def test_single_news_document_is_rendered_without_generation(self):
+        """확인된 ai_news 표는 생성 기권으로 버리지 않는다."""
+        plan = ActionPlan(actions=[
+            ActionCall(requirement_id="news", action_id="document.retrieve",
+                       slots=ActionSlots(topic="최근 자원 뉴스")),
+        ])
+        evidence = [
+            Evidence(kind="structured", source="public.ai_news", section="자원뉴스",
+                     text=("| 날짜 | 광종 | 제목 | 요약 |\n|---|---|---|---|\n"
+                           "| 2026-09-28 | 니켈 | 니켈 자원 뉴스 | 시장 동향 |"),
+                     action_id="document.retrieve"),
+        ]
+        result = render_composite(evidence, plan)
+        self.assertIsNotNone(result)
+        self.assertIn("최근 자원뉴스", result[0])
+        self.assertIn("니켈 자원 뉴스", result[0])
+        self.assertEqual(result[1], {1})
+
     def test_price_index_comparison(self):
         plan = ActionPlan(actions=[
             ActionCall(requirement_id="p", action_id="price.series", slots=ActionSlots(

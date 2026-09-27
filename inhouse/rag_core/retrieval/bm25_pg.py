@@ -57,7 +57,8 @@ def bm25_search_pg(
     `exclude_src`: `dense_search_pg`와 동일 규약 — `doc_chunk.src`가 이 집합에
     있으면 SQL 단에서 제외(기본값 빈 집합이면 기존 동작과 동일)."""
 
-    schema = get_settings().PG_SCHEMA
+    settings = get_settings()
+    schema = getattr(settings, "VECTOR_SCHEMA", settings.PG_SCHEMA)
     # to_tsquery는 &/|/!/():()가 연산자라 원문 토큰에 구두점("LME," "(2026)")이
     # 섞이면 구문에러가 난다 — 영숫자·한글만 남기고 나머지는 제거(의미상 손실은
     # 없다, 어차피 'simple' config가 구두점을 토큰 경계로 봐서 색인 시에도

@@ -1,0 +1,1502 @@
+{
+  "generated_at": "20260928_043800",
+  "base_url": "http://127.0.0.1:18002",
+  "summary": {
+    "PASS": 7,
+    "PARTIAL": 1,
+    "FAIL": 1
+  },
+  "results": [
+    {
+      "id": "MP01",
+      "question": "니켈 가격 추이랑 우리나라 수입국 구성 같이 보여줘",
+      "expected_markers": [
+        "가격",
+        "수입"
+      ],
+      "status": "PASS",
+      "notes": [],
+      "elapsed_seconds": 6.7,
+      "answer": "- OC06: 광물가격 : 2026-09-07\\~2026-09-08 니켈 가격 2.06% 변동 고점 17080.44(2026-09-08) [1] 수급지도 : 2026-06-01\\~2026-09-09 수입국 상위 국가와 점유율을 표시한다.\n| 순위 | 국가 | 비중(%) |\n| --- | --- | --- |\n| 1 | 인도네시아 | 37.12 |\n| 2 | 호주 | 26.87 |\n| 3 | 칠레 | 10.18 |\n| 4 | 콩고민주공화국 | 7.09 |\n\n최근 1년간 니켈 상위 5개국은 1위 [인도네시아 37.12%], 2위 [호주 26.87%], 3위 [칠레 10.18%], 4위 [콩고민주공화국 7.09%], 5위 [미국 5.55%] 순입니다. [2]\n\n선택 가격기준의 단위 표기는 가격기준=LME CASH입니다. [1]\n\n최근 1년간 니켈 상위 5개국은 1위 [인도네시아 37.12%], 2위 [호주 26.87%], 3위 [칠레 10.18%], 4위 [콩고민주공화국 7.09%], 5위 [미국 5.55%] 순입니다. [2]\n\n⚠ 이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다.\n\n출처:\n- [1] KOMIS 공식 데이터 · KOMIS 원천 · KO_MNRL_PRC(니켈) (기준시점 2026-09-07\\~2026-09-08, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음))\n- [2] KOMIS 공식 데이터 · KOMIS 원천 · KO_CSTM_CMMRC(니켈) · 국가별 수입금액 상위 5개 (기준시점 2026-06-01\\~2026-09-09)",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_MNRL_PRC(니켈)",
+            "as_of": "2026-09-07~2026-09-08, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "unit": "가격기준=LME CASH",
+            "data_status": null,
+            "warnings": [],
+            "requirement_id": "req_1",
+            "action_id": "price.series",
+            "observed_period": "2026-09-07~2026-09-08, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "menu_source": {
+              "page_id": "price_base_metals",
+              "label": "비철금속",
+              "source_label": "KOMIS 광물자원가격 > 비철금속",
+              "source_tables": [
+                "public.KO_MNRL_PRC",
+                "public.ai_prc_mnrl_map",
+                "public.KO_MNRL_PRC_CRTR"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          },
+          {
+            "index": 2,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_CSTM_CMMRC(니켈) · 국가별 수입금액 상위 5개",
+            "as_of": "2026-06-01~2026-09-09",
+            "unit": "USD",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "req_2",
+            "action_id": "trade.country_rank",
+            "observed_period": "2026-06-01~2026-09-09",
+            "menu_source": {
+              "page_id": "map_korea",
+              "label": "대한민국 수급지도",
+              "source_label": "KOMIS 핵심광물지도 > 수급지도 > 대한민국",
+              "source_tables": [
+                "public.KO_CSTM_CMMRC",
+                "public.ai_hs_mnrl_map"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          }
+        ],
+        "retrieval_sources": [
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "queried",
+            "evidence_count": 6
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          }
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "price.series",
+        "trade.country_rank"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 2,
+      "chart_count": 1,
+      "debug": [
+        {
+          "enabled": true,
+          "action_plan": [
+            {
+              "requirement_id": "req_1",
+              "action_id": "price.series"
+            },
+            {
+              "requirement_id": "req_2",
+              "action_id": "trade.country_rank"
+            }
+          ],
+          "action_results": [
+            {
+              "requirement_id": "req_1",
+              "action_id": "price.series",
+              "status": "success",
+              "failure_reason": null,
+              "warnings": [
+                "'MNRL0002'는 가격기준이 2개[502, 900002]라 그중 첫 번째(502)만 미리보기로 조회했습니다.",
+                "source_audit:rdb:queried:1",
+                "source_audit:vector:not_selected:0",
+                "source_audit:pageindex:not_selected:0",
+                "source_audit:okf:not_selected:0"
+              ]
+            },
+            {
+              "requirement_id": "req_2",
+              "action_id": "trade.country_rank",
+              "status": "success",
+              "failure_reason": null,
+              "warnings": [
+                "⚠ 'MNRL0002' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+                "source_audit:rdb:queried:1",
+                "source_audit:vector:queried:6",
+                "source_audit:pageindex:not_selected:0",
+                "source_audit:okf:not_selected:0"
+              ]
+            }
+          ],
+          "warnings": [
+            "'MNRL0002'는 가격기준이 2개[502, 900002]라 그중 첫 번째(502)만 미리보기로 조회했습니다.",
+            "source_audit:rdb:queried:1",
+            "source_audit:vector:not_selected:0",
+            "source_audit:pageindex:not_selected:0",
+            "source_audit:okf:not_selected:0",
+            "⚠ 'MNRL0002' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+            "source_audit:rdb:queried:1",
+            "source_audit:vector:queried:6",
+            "source_audit:pageindex:not_selected:0",
+            "source_audit:okf:not_selected:0"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "MP03",
+      "question": "니켈 수입 상위국이랑 현재가격 알려줘",
+      "expected_markers": [
+        "수입",
+        "가격"
+      ],
+      "status": "PASS",
+      "notes": [],
+      "elapsed_seconds": 4.26,
+      "answer": "최근 1년간 니켈 상위 5개국은 1위 [인도네시아 37.12%], 2위 [호주 26.87%], 3위 [칠레 10.18%], 4위 [콩고민주공화국 7.09%], 5위 [미국 5.55%] 순입니다. [1]\n\n선택 가격기준의 단위 표기는 가격기준=LME CASH입니다. [2]\n\n최근 1년간 니켈 상위 5개국은 1위 [인도네시아 37.12%], 2위 [호주 26.87%], 3위 [칠레 10.18%], 4위 [콩고민주공화국 7.09%], 5위 [미국 5.55%] 순입니다. [1]\n\n⚠ 이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다.\n\n출처:\n- [1] KOMIS 공식 데이터 · KOMIS 원천 · KO_CSTM_CMMRC(니켈) · 국가별 수입금액 상위 5개 (기준시점 2026-06-01\\~2026-09-09)\n- [2] KOMIS 공식 데이터 · KOMIS 원천 · KO_MNRL_PRC(니켈) (기준시점 2026-09-07\\~2026-09-08, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음))",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_CSTM_CMMRC(니켈) · 국가별 수입금액 상위 5개",
+            "as_of": "2026-06-01~2026-09-09",
+            "unit": "USD",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "import_countries",
+            "action_id": "trade.country_rank",
+            "observed_period": "2026-06-01~2026-09-09",
+            "menu_source": {
+              "page_id": "map_korea",
+              "label": "대한민국 수급지도",
+              "source_label": "KOMIS 핵심광물지도 > 수급지도 > 대한민국",
+              "source_tables": [
+                "public.KO_CSTM_CMMRC",
+                "public.ai_hs_mnrl_map"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          },
+          {
+            "index": 2,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_MNRL_PRC(니켈)",
+            "as_of": "2026-09-07~2026-09-08, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "unit": "가격기준=LME CASH",
+            "data_status": null,
+            "warnings": [],
+            "requirement_id": "current_price",
+            "action_id": "price.series",
+            "observed_period": "2026-09-07~2026-09-08, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "menu_source": {
+              "page_id": "price_base_metals",
+              "label": "비철금속",
+              "source_label": "KOMIS 광물자원가격 > 비철금속",
+              "source_tables": [
+                "public.KO_MNRL_PRC",
+                "public.ai_prc_mnrl_map",
+                "public.KO_MNRL_PRC_CRTR"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          }
+        ],
+        "retrieval_sources": [
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "queried",
+            "evidence_count": 6
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          }
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "price.series",
+        "trade.country_rank"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 2,
+      "chart_count": 1,
+      "debug": [
+        {
+          "enabled": true,
+          "action_plan": [
+            {
+              "requirement_id": "import_countries",
+              "action_id": "trade.country_rank"
+            },
+            {
+              "requirement_id": "current_price",
+              "action_id": "price.series"
+            }
+          ],
+          "action_results": [
+            {
+              "requirement_id": "import_countries",
+              "action_id": "trade.country_rank",
+              "status": "success",
+              "failure_reason": null,
+              "warnings": [
+                "⚠ 'MNRL0002' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+                "source_audit:rdb:queried:1",
+                "source_audit:vector:queried:6",
+                "source_audit:pageindex:not_selected:0",
+                "source_audit:okf:not_selected:0"
+              ]
+            },
+            {
+              "requirement_id": "current_price",
+              "action_id": "price.series",
+              "status": "success",
+              "failure_reason": null,
+              "warnings": [
+                "'MNRL0002'는 가격기준이 2개[502, 900002]라 그중 첫 번째(502)만 미리보기로 조회했습니다.",
+                "source_audit:rdb:queried:1",
+                "source_audit:vector:not_selected:0",
+                "source_audit:pageindex:not_selected:0",
+                "source_audit:okf:not_selected:0"
+              ]
+            }
+          ],
+          "warnings": [
+            "⚠ 'MNRL0002' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+            "source_audit:rdb:queried:1",
+            "source_audit:vector:queried:6",
+            "source_audit:pageindex:not_selected:0",
+            "source_audit:okf:not_selected:0",
+            "'MNRL0002'는 가격기준이 2개[502, 900002]라 그중 첫 번째(502)만 미리보기로 조회했습니다.",
+            "source_audit:rdb:queried:1",
+            "source_audit:vector:not_selected:0",
+            "source_audit:pageindex:not_selected:0",
+            "source_audit:okf:not_selected:0"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "CN05",
+      "question": "리튬 주요 수입국이랑 가격 전망 같이 보여줘",
+      "expected_markers": [
+        "수입",
+        "전망"
+      ],
+      "status": "PARTIAL",
+      "notes": [
+        "기대 표지 미검출: 전망",
+        "DEBUG 처리 실패: forecast/forecast.price (advisor_rejected)",
+        "DEBUG 경고: action_failed:forecast:forecast.price:advisor_rejected"
+      ],
+      "elapsed_seconds": 4.67,
+      "answer": "### 리튬 주요 수입국\n| :--- | :--- | :--- | :--- | :--- |\n| 1 | 호주 | 72,385,760.0 | 37.6 | 6 |\n| 2 | 중국 | 50,575,600.0 | 26.27 | 6 |\n| 3 | 인도네시아 | 19,685,440.0 | 10.23 | 6 |\n| 4 | 칠레 | 13,692,640.0 | 7.11 | 6 |\n| 5 | 콩고민주공화국 | 10,696,240.0 | 5.56 | 6 |\n\n해당 기간의 전체 국가 합계 수입금액은 192,496,000.0 USD입니다. [1]\n\n최근 1년간 리튬 상위 5개국은 1위 [호주 37.6%], 2위 [중국 26.27%], 3위 [인도네시아 10.23%], 4위 [칠레 7.11%], 5위 [콩고민주공화국 5.56%] 순입니다. [1]\n\n최근 1년간 리튬 상위 5개국은 1위 [호주 37.6%], 2위 [중국 26.27%], 3위 [인도네시아 10.23%], 4위 [칠레 7.11%], 5위 [콩고민주공화국 5.56%] 순입니다. [1]\n\n⚠ 이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다.\n\n출처:\n- [1] KOMIS 공식 데이터 · KOMIS 원천 · KO_CSTM_CMMRC(리튬) · 국가별 수입금액 상위 5개 (기준시점 2026-06-01\\~2026-09-09)",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_CSTM_CMMRC(리튬) · 국가별 수입금액 상위 5개",
+            "as_of": "2026-06-01~2026-09-09",
+            "unit": "USD",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "import_countries",
+            "action_id": "trade.country_rank",
+            "observed_period": "2026-06-01~2026-09-09",
+            "menu_source": {
+              "page_id": "map_korea",
+              "label": "대한민국 수급지도",
+              "source_label": "KOMIS 핵심광물지도 > 수급지도 > 대한민국",
+              "source_tables": [
+                "public.KO_CSTM_CMMRC",
+                "public.ai_hs_mnrl_map"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          }
+        ],
+        "retrieval_sources": [
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "queried",
+            "evidence_count": 6
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          }
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "trade.country_rank"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 1,
+      "chart_count": 1,
+      "debug": [
+        {
+          "enabled": true,
+          "action_plan": [
+            {
+              "requirement_id": "import_countries",
+              "action_id": "trade.country_rank"
+            },
+            {
+              "requirement_id": "forecast",
+              "action_id": "forecast.price"
+            }
+          ],
+          "action_results": [
+            {
+              "requirement_id": "import_countries",
+              "action_id": "trade.country_rank",
+              "status": "success",
+              "failure_reason": null,
+              "warnings": [
+                "⚠ 'MNRL0001' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+                "source_audit:rdb:queried:1",
+                "source_audit:vector:queried:6",
+                "source_audit:pageindex:not_selected:0",
+                "source_audit:okf:not_selected:0"
+              ]
+            },
+            {
+              "requirement_id": "forecast",
+              "action_id": "forecast.price",
+              "status": "validation_failed",
+              "failure_reason": "advisor_rejected",
+              "warnings": [
+                "⚠ 'MNRL0001' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+                "source_audit:rdb:queried:0",
+                "source_audit:vector:not_selected:0",
+                "source_audit:pageindex:not_selected:0",
+                "source_audit:okf:not_selected:0",
+                "advisor_rejected"
+              ]
+            }
+          ],
+          "warnings": [
+            "⚠ 'MNRL0001' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+            "source_audit:rdb:queried:1",
+            "source_audit:vector:queried:6",
+            "source_audit:pageindex:not_selected:0",
+            "source_audit:okf:not_selected:0",
+            "action_failed:forecast:forecast.price:advisor_rejected"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "GM01",
+      "question": "코발트 세계 생산국이랑 우리나라 수입국 비교해줘",
+      "expected_markers": [
+        "생산",
+        "수입"
+      ],
+      "status": "PASS",
+      "notes": [],
+      "elapsed_seconds": 2.05,
+      "answer": "광물지도 : 생산 상위국 중국, 호주, 인도네시아, 칠레, 콩고민주공화국\n핵심광물 수급지도 : 수입 상위국 칠레, 콩고민주공화국, 인도네시아, 미국, 러시아\n비교결과 : 공통 국가 인도네시아, 칠레, 콩고민주공화국\n\n⚠ 이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다.",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_RSRC_PRDCTN_QUTY(코발트) · 국가별 생산량 상위 5개",
+            "as_of": "2026~2026",
+            "unit": "톤",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "world_production",
+            "action_id": "resource.rank",
+            "observed_period": "2026~2026",
+            "menu_source": {
+              "page_id": "map_mineral",
+              "label": "광물지도",
+              "source_label": "KOMIS 핵심광물지도 > 광물지도",
+              "source_tables": [
+                "public.KO_RSRC_BURUDG_QUTY",
+                "public.KO_RSRC_PRDCTN_QUTY"
+              ],
+              "period_frequency": "yearly",
+              "access": "public"
+            }
+          },
+          {
+            "index": 2,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_CSTM_CMMRC(코발트) · 국가별 수입금액 상위 5개",
+            "as_of": "2026-06-01~2026-09-09",
+            "unit": "USD",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "korea_import",
+            "action_id": "trade.country_rank",
+            "observed_period": "2026-06-01~2026-09-09",
+            "menu_source": {
+              "page_id": "map_korea",
+              "label": "대한민국 수급지도",
+              "source_label": "KOMIS 핵심광물지도 > 수급지도 > 대한민국",
+              "source_tables": [
+                "public.KO_CSTM_CMMRC",
+                "public.ai_hs_mnrl_map"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          }
+        ],
+        "data_warnings": [
+          "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "resource.rank",
+        "trade.country_rank"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 2,
+      "chart_count": 2,
+      "debug": [
+        {
+          "enabled": true,
+          "action_plan": [
+            {
+              "requirement_id": "world_production",
+              "action_id": "resource.rank"
+            },
+            {
+              "requirement_id": "korea_import",
+              "action_id": "trade.country_rank"
+            }
+          ],
+          "action_results": [
+            {
+              "requirement_id": "world_production",
+              "action_id": "resource.rank",
+              "status": "success",
+              "failure_reason": null,
+              "warnings": [
+                "⚠ 'MNRL0003' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+                "source_audit:rdb:queried:1",
+                "source_audit:vector:queried:5",
+                "source_audit:pageindex:not_selected:0",
+                "source_audit:okf:not_selected:0"
+              ]
+            },
+            {
+              "requirement_id": "korea_import",
+              "action_id": "trade.country_rank",
+              "status": "success",
+              "failure_reason": null,
+              "warnings": [
+                "⚠ 'MNRL0003' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+                "source_audit:rdb:queried:1",
+                "source_audit:vector:queried:6",
+                "source_audit:pageindex:not_selected:0",
+                "source_audit:okf:not_selected:0"
+              ]
+            }
+          ],
+          "warnings": [
+            "⚠ 'MNRL0003' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+            "source_audit:rdb:queried:1",
+            "source_audit:vector:queried:5",
+            "source_audit:pageindex:not_selected:0",
+            "source_audit:okf:not_selected:0",
+            "⚠ 'MNRL0003' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+            "source_audit:rdb:queried:1",
+            "source_audit:vector:queried:6",
+            "source_audit:pageindex:not_selected:0",
+            "source_audit:okf:not_selected:0"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "GM02",
+      "question": "리튬 세계 생산 상위국 중 우리 수입 상위국에 들어가는 나라는?",
+      "expected_markers": [
+        "생산",
+        "수입"
+      ],
+      "status": "PASS",
+      "notes": [],
+      "elapsed_seconds": 2.29,
+      "answer": "광물지도 : 생산 상위국 중국, 호주, 인도네시아, 칠레, 콩고민주공화국\n핵심광물 수급지도 : 수입 상위국 호주, 중국, 인도네시아, 칠레, 콩고민주공화국\n비교결과 : 공통 국가 중국, 호주, 인도네시아, 칠레, 콩고민주공화국\n\n⚠ 이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다.",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_RSRC_PRDCTN_QUTY(리튬) · 국가별 생산량 상위 5개",
+            "as_of": "2026~2026",
+            "unit": "톤",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "world_production",
+            "action_id": "resource.rank",
+            "observed_period": "2026~2026",
+            "menu_source": {
+              "page_id": "map_mineral",
+              "label": "광물지도",
+              "source_label": "KOMIS 핵심광물지도 > 광물지도",
+              "source_tables": [
+                "public.KO_RSRC_BURUDG_QUTY",
+                "public.KO_RSRC_PRDCTN_QUTY"
+              ],
+              "period_frequency": "yearly",
+              "access": "public"
+            }
+          },
+          {
+            "index": 2,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_CSTM_CMMRC(리튬) · 국가별 수입금액 상위 5개",
+            "as_of": "2026-06-01~2026-09-09",
+            "unit": "USD",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "korea_import",
+            "action_id": "trade.country_rank",
+            "observed_period": "2026-06-01~2026-09-09",
+            "menu_source": {
+              "page_id": "map_korea",
+              "label": "대한민국 수급지도",
+              "source_label": "KOMIS 핵심광물지도 > 수급지도 > 대한민국",
+              "source_tables": [
+                "public.KO_CSTM_CMMRC",
+                "public.ai_hs_mnrl_map"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          }
+        ],
+        "data_warnings": [
+          "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "resource.rank",
+        "trade.country_rank"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 2,
+      "chart_count": 2,
+      "debug": [
+        {
+          "enabled": true,
+          "action_plan": [
+            {
+              "requirement_id": "world_production",
+              "action_id": "resource.rank"
+            },
+            {
+              "requirement_id": "korea_import",
+              "action_id": "trade.country_rank"
+            }
+          ],
+          "action_results": [
+            {
+              "requirement_id": "world_production",
+              "action_id": "resource.rank",
+              "status": "success",
+              "failure_reason": null,
+              "warnings": [
+                "⚠ 'MNRL0001' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+                "source_audit:rdb:queried:1",
+                "source_audit:vector:queried:5",
+                "source_audit:pageindex:not_selected:0",
+                "source_audit:okf:not_selected:0"
+              ]
+            },
+            {
+              "requirement_id": "korea_import",
+              "action_id": "trade.country_rank",
+              "status": "success",
+              "failure_reason": null,
+              "warnings": [
+                "⚠ 'MNRL0001' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+                "source_audit:rdb:queried:1",
+                "source_audit:vector:queried:6",
+                "source_audit:pageindex:not_selected:0",
+                "source_audit:okf:not_selected:0"
+              ]
+            }
+          ],
+          "warnings": [
+            "⚠ 'MNRL0001' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+            "source_audit:rdb:queried:1",
+            "source_audit:vector:queried:5",
+            "source_audit:pageindex:not_selected:0",
+            "source_audit:okf:not_selected:0",
+            "⚠ 'MNRL0001' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+            "source_audit:rdb:queried:1",
+            "source_audit:vector:queried:6",
+            "source_audit:pageindex:not_selected:0",
+            "source_audit:okf:not_selected:0"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "GM04",
+      "question": "2차전지 광물 수입국 구성 알려줘",
+      "expected_markers": [
+        "리튬",
+        "수입"
+      ],
+      "status": "PASS",
+      "notes": [],
+      "elapsed_seconds": 4.21,
+      "answer": "광물정보 : 2차전지 원료 광종 리튬, 니켈, 코발트, 망간, 흑연\n핵심광물 수급지도 : 최근 12개월 수입 1위국\n리튬 : 호주 (37.6%)\n니켈 : 인도네시아 (37.12%)\n코발트 : 칠레 (25.55%)\n망간 : 미국 (21%)\n흑연 : 러시아 (21%)\n\n⚠ 이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다.",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_CSTM_CMMRC(리튬) · 국가별 수입금액 상위 1개",
+            "as_of": "2026-06-01~2026-09-09",
+            "unit": "USD",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "battery_import_리튬",
+            "action_id": "trade.country_rank",
+            "observed_period": "2026-06-01~2026-09-09",
+            "menu_source": {
+              "page_id": "map_korea",
+              "label": "대한민국 수급지도",
+              "source_label": "KOMIS 핵심광물지도 > 수급지도 > 대한민국",
+              "source_tables": [
+                "public.KO_CSTM_CMMRC",
+                "public.ai_hs_mnrl_map"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          },
+          {
+            "index": 2,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_CSTM_CMMRC(니켈) · 국가별 수입금액 상위 1개",
+            "as_of": "2026-06-01~2026-09-09",
+            "unit": "USD",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "battery_import_니켈",
+            "action_id": "trade.country_rank",
+            "observed_period": "2026-06-01~2026-09-09",
+            "menu_source": {
+              "page_id": "map_korea",
+              "label": "대한민국 수급지도",
+              "source_label": "KOMIS 핵심광물지도 > 수급지도 > 대한민국",
+              "source_tables": [
+                "public.KO_CSTM_CMMRC",
+                "public.ai_hs_mnrl_map"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          },
+          {
+            "index": 3,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_CSTM_CMMRC(코발트) · 국가별 수입금액 상위 1개",
+            "as_of": "2026-06-01~2026-09-09",
+            "unit": "USD",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "battery_import_코발트",
+            "action_id": "trade.country_rank",
+            "observed_period": "2026-06-01~2026-09-09",
+            "menu_source": {
+              "page_id": "map_korea",
+              "label": "대한민국 수급지도",
+              "source_label": "KOMIS 핵심광물지도 > 수급지도 > 대한민국",
+              "source_tables": [
+                "public.KO_CSTM_CMMRC",
+                "public.ai_hs_mnrl_map"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          },
+          {
+            "index": 4,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_CSTM_CMMRC(망간) · 국가별 수입금액 상위 1개",
+            "as_of": "2026-06-01~2026-09-09",
+            "unit": "USD",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "battery_import_망간",
+            "action_id": "trade.country_rank",
+            "observed_period": "2026-06-01~2026-09-09",
+            "menu_source": {
+              "page_id": "map_korea",
+              "label": "대한민국 수급지도",
+              "source_label": "KOMIS 핵심광물지도 > 수급지도 > 대한민국",
+              "source_tables": [
+                "public.KO_CSTM_CMMRC",
+                "public.ai_hs_mnrl_map"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          },
+          {
+            "index": 5,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_CSTM_CMMRC(흑연) · 국가별 수입금액 상위 1개",
+            "as_of": "2026-06-01~2026-09-09",
+            "unit": "USD",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "battery_import_흑연",
+            "action_id": "trade.country_rank",
+            "observed_period": "2026-06-01~2026-09-09",
+            "menu_source": {
+              "page_id": "map_korea",
+              "label": "대한민국 수급지도",
+              "source_label": "KOMIS 핵심광물지도 > 수급지도 > 대한민국",
+              "source_tables": [
+                "public.KO_CSTM_CMMRC",
+                "public.ai_hs_mnrl_map"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          }
+        ],
+        "data_warnings": [
+          "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "trade.country_rank"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 5,
+      "chart_count": 0,
+      "debug": [
+        {
+          "enabled": true,
+          "action_plan": [
+            {
+              "requirement_id": "battery_import_리튬",
+              "action_id": "trade.country_rank"
+            },
+            {
+              "requirement_id": "battery_import_니켈",
+              "action_id": "trade.country_rank"
+            },
+            {
+              "requirement_id": "battery_import_코발트",
+              "action_id": "trade.country_rank"
+            },
+            {
+              "requirement_id": "battery_import_망간",
+              "action_id": "trade.country_rank"
+            },
+            {
+              "requirement_id": "battery_import_흑연",
+              "action_id": "trade.country_rank"
+            }
+          ],
+          "action_results": [
+            {
+              "requirement_id": "battery_import_리튬",
+              "action_id": "trade.country_rank",
+              "status": "success",
+              "failure_reason": null,
+              "warnings": [
+                "⚠ 'MNRL0001' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+                "source_audit:rdb:queried:1",
+                "source_audit:vector:queried:6",
+                "source_audit:pageindex:not_selected:0",
+                "source_audit:okf:not_selected:0"
+              ]
+            },
+            {
+              "requirement_id": "battery_import_니켈",
+              "action_id": "trade.country_rank",
+              "status": "success",
+              "failure_reason": null,
+              "warnings": [
+                "⚠ 'MNRL0002' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+                "source_audit:rdb:queried:1",
+                "source_audit:vector:queried:6",
+                "source_audit:pageindex:not_selected:0",
+                "source_audit:okf:not_selected:0"
+              ]
+            },
+            {
+              "requirement_id": "battery_import_코발트",
+              "action_id": "trade.country_rank",
+              "status": "success",
+              "failure_reason": null,
+              "warnings": [
+                "⚠ 'MNRL0003' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+                "source_audit:rdb:queried:1",
+                "source_audit:vector:queried:6",
+                "source_audit:pageindex:not_selected:0",
+                "source_audit:okf:not_selected:0"
+              ]
+            },
+            {
+              "requirement_id": "battery_import_망간",
+              "action_id": "trade.country_rank",
+              "status": "success",
+              "failure_reason": null,
+              "warnings": [
+                "⚠ 'MNRL0004' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+                "source_audit:rdb:queried:1",
+                "source_audit:vector:queried:6",
+                "source_audit:pageindex:not_selected:0",
+                "source_audit:okf:not_selected:0"
+              ]
+            },
+            {
+              "requirement_id": "battery_import_흑연",
+              "action_id": "trade.country_rank",
+              "status": "success",
+              "failure_reason": null,
+              "warnings": [
+                "⚠ 'MNRL0005' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+                "source_audit:rdb:queried:1",
+                "source_audit:vector:queried:6",
+                "source_audit:pageindex:not_selected:0",
+                "source_audit:okf:not_selected:0"
+              ]
+            }
+          ],
+          "warnings": [
+            "⚠ 'MNRL0001' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+            "source_audit:rdb:queried:1",
+            "source_audit:vector:queried:6",
+            "source_audit:pageindex:not_selected:0",
+            "source_audit:okf:not_selected:0",
+            "⚠ 'MNRL0002' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+            "source_audit:rdb:queried:1",
+            "source_audit:vector:queried:6",
+            "source_audit:pageindex:not_selected:0",
+            "source_audit:okf:not_selected:0",
+            "⚠ 'MNRL0003' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+            "source_audit:rdb:queried:1",
+            "source_audit:vector:queried:6",
+            "source_audit:pageindex:not_selected:0",
+            "source_audit:okf:not_selected:0",
+            "⚠ 'MNRL0004' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+            "source_audit:rdb:queried:1",
+            "source_audit:vector:queried:6",
+            "source_audit:pageindex:not_selected:0",
+            "source_audit:okf:not_selected:0",
+            "⚠ 'MNRL0005' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+            "source_audit:rdb:queried:1",
+            "source_audit:vector:queried:6",
+            "source_audit:pageindex:not_selected:0",
+            "source_audit:okf:not_selected:0"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "GM05",
+      "question": "망간 용도랑 주요 수입국 알려줘",
+      "expected_markers": [
+        "용도",
+        "수입"
+      ],
+      "status": "PASS",
+      "notes": [],
+      "elapsed_seconds": 0.86,
+      "answer": "광물정보 : 주요 용도 : 강철·합금의 강도·내마모성 향상, 철도 레일·금고·공구용 망간강, 배터리·유리·비료·세라믹\n핵심광물 수급지도 : 수입 상위국 미국(21%), 인도네시아(18%), 러시아(13%), 남아프리카공화국(10%), 칠레(10%)\n\n⚠ 이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다.",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "Royal Society of Chemistry",
+            "section": "광물정보",
+            "as_of": null,
+            "unit": null,
+            "data_status": null,
+            "warnings": [],
+            "requirement_id": "mineral_info",
+            "action_id": "document.retrieve",
+            "observed_period": null,
+            "menu_source": null
+          },
+          {
+            "index": 2,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_CSTM_CMMRC(망간) · 국가별 수입금액 상위 5개",
+            "as_of": "2026-06-01~2026-09-09",
+            "unit": "USD",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "import_countries",
+            "action_id": "trade.country_rank",
+            "observed_period": "2026-06-01~2026-09-09",
+            "menu_source": {
+              "page_id": "map_korea",
+              "label": "대한민국 수급지도",
+              "source_label": "KOMIS 핵심광물지도 > 수급지도 > 대한민국",
+              "source_tables": [
+                "public.KO_CSTM_CMMRC",
+                "public.ai_hs_mnrl_map"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          }
+        ],
+        "data_warnings": [
+          "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "document.retrieve",
+        "trade.country_rank"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터",
+        "Royal Society of Chemistry"
+      ],
+      "table_count": 2,
+      "chart_count": 1,
+      "debug": [
+        {
+          "enabled": true,
+          "action_plan": [
+            {
+              "requirement_id": "mineral_info",
+              "action_id": "document.retrieve"
+            },
+            {
+              "requirement_id": "import_countries",
+              "action_id": "trade.country_rank"
+            }
+          ],
+          "action_results": [
+            {
+              "requirement_id": "mineral_info",
+              "action_id": "document.retrieve",
+              "status": "success",
+              "failure_reason": null,
+              "warnings": [
+                "source_audit:rdb:not_selected:1",
+                "source_audit:vector:not_selected:0",
+                "source_audit:pageindex:not_selected:0",
+                "source_audit:okf:not_selected:0"
+              ]
+            },
+            {
+              "requirement_id": "import_countries",
+              "action_id": "trade.country_rank",
+              "status": "success",
+              "failure_reason": null,
+              "warnings": [
+                "⚠ 'MNRL0004' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+                "source_audit:rdb:queried:1",
+                "source_audit:vector:queried:6",
+                "source_audit:pageindex:not_selected:0",
+                "source_audit:okf:not_selected:0"
+              ]
+            }
+          ],
+          "warnings": [
+            "source_audit:rdb:not_selected:1",
+            "source_audit:vector:not_selected:0",
+            "source_audit:pageindex:not_selected:0",
+            "source_audit:okf:not_selected:0",
+            "⚠ 'MNRL0004' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+            "source_audit:rdb:queried:1",
+            "source_audit:vector:queried:6",
+            "source_audit:pageindex:not_selected:0",
+            "source_audit:okf:not_selected:0"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "GM13",
+      "question": "코발트 현황 브리핑해줘",
+      "expected_markers": [
+        "가격",
+        "생산"
+      ],
+      "status": "PASS",
+      "notes": [
+        "DEBUG 처리 실패: forecast/forecast.price (advisor_rejected)",
+        "DEBUG 경고: action_failed:forecast:forecast.price:advisor_rejected"
+      ],
+      "elapsed_seconds": 9.27,
+      "answer": "[current_price]\n\n| 기준일자 | 최저가격 (USD/TON) | 최고가격 (USD/TON) | 통상가격 (USD/TON) |\n| --- | --- | --- | --- |\n| 2026-09-09 | 14112.0 | 14688.0 | 14400.0 |\n| 2026-09-08 | 14177.03 | 14755.69 | 14466.36 |\n\n[forecast]\n제공된 문서에서 근거를 찾지 못했습니다.\n\n[production]\n\n| 순위 | 국가 | 생산량합계 (톤) | 비중 (%) |\n| --- | --- | --- | --- |\n| 1 | 중국 | 18176.0 | 36.36 |\n\n[imports]\n\n| 순위 | 국가 | 수입금액합계 (USD) | 비중 (%) |\n| --- | --- | --- | --- |\n| 1 | 칠레 | 71441440.0 | 25.55 |\n\n최근 1년간 코발트 상위 1개국은 1위 [중국 36.36%] 순입니다. [2]\n\n선택 가격기준의 단위 표기는 가격기준=spot; 통화코드=USD; 중량단위코드=TON입니다. [1]\n\n최근 1년간 코발트 상위 1개국은 1위 [중국 36.36%] 순입니다. [2]\n\n⚠ 이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다.\n\n출처:\n- [1] KOMIS 공식 데이터 · KOMIS 원천 · KO_MNRL_PRC(코발트) (기준시점 2026-09-08\\~2026-09-09, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음))\n- [2] KOMIS 공식 데이터 · KOMIS 원천 · KO_RSRC_PRDCTN_QUTY(코발트) · 국가별 생산량 상위 1개 (기준시점 2026\\~2026)\n- [3] KOMIS 공식 데이터 · KOMIS 원천 · KO_CSTM_CMMRC(코발트) · 국가별 수입금액 상위 1개 (기준시점 2026-06-01\\~2026-09-09)",
+      "terminal": {
+        "done": true,
+        "citations": [
+          {
+            "index": 1,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_MNRL_PRC(코발트)",
+            "as_of": "2026-09-08~2026-09-09, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "unit": "가격기준=spot; 통화코드=USD; 중량단위코드=TON",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "current_price",
+            "action_id": "price.series",
+            "observed_period": "2026-09-08~2026-09-09, 최신순 2건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)",
+            "menu_source": {
+              "page_id": "price_minor_metals",
+              "label": "희소금속",
+              "source_label": "KOMIS 광물자원가격 > 희소금속",
+              "source_tables": [
+                "public.KO_MNRL_PRC",
+                "public.ai_prc_mnrl_map",
+                "public.KO_MNRL_PRC_CRTR"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          },
+          {
+            "index": 2,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_RSRC_PRDCTN_QUTY(코발트) · 국가별 생산량 상위 1개",
+            "as_of": "2026~2026",
+            "unit": "톤",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "production",
+            "action_id": "resource.rank",
+            "observed_period": "2026~2026",
+            "menu_source": {
+              "page_id": "map_mineral",
+              "label": "광물지도",
+              "source_label": "KOMIS 핵심광물지도 > 광물지도",
+              "source_tables": [
+                "public.KO_RSRC_BURUDG_QUTY",
+                "public.KO_RSRC_PRDCTN_QUTY"
+              ],
+              "period_frequency": "yearly",
+              "access": "public"
+            }
+          },
+          {
+            "index": 3,
+            "kind": "structured",
+            "source": "KOMIS 공식 데이터",
+            "section": "KOMIS 원천 · KO_CSTM_CMMRC(코발트) · 국가별 수입금액 상위 1개",
+            "as_of": "2026-06-01~2026-09-09",
+            "unit": "USD",
+            "data_status": "DEV_DUMMY",
+            "warnings": [
+              "이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다 — 실제 값이 아닙니다."
+            ],
+            "requirement_id": "imports",
+            "action_id": "trade.country_rank",
+            "observed_period": "2026-06-01~2026-09-09",
+            "menu_source": {
+              "page_id": "map_korea",
+              "label": "대한민국 수급지도",
+              "source_label": "KOMIS 핵심광물지도 > 수급지도 > 대한민국",
+              "source_tables": [
+                "public.KO_CSTM_CMMRC",
+                "public.ai_hs_mnrl_map"
+              ],
+              "period_frequency": "daily",
+              "access": "public"
+            }
+          }
+        ],
+        "retrieval_sources": [
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "queried",
+            "evidence_count": 5
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "rdb",
+            "status": "queried",
+            "evidence_count": 1
+          },
+          {
+            "source": "vector",
+            "status": "queried",
+            "evidence_count": 6
+          },
+          {
+            "source": "pageindex",
+            "status": "not_selected",
+            "evidence_count": 0
+          },
+          {
+            "source": "okf",
+            "status": "not_selected",
+            "evidence_count": 0
+          }
+        ],
+        "bogus_citations": [],
+        "abstained": false
+      },
+      "actions": [
+        "price.series",
+        "resource.rank",
+        "trade.country_rank"
+      ],
+      "sources": [
+        "KOMIS 공식 데이터"
+      ],
+      "table_count": 3,
+      "chart_count": 0,
+      "debug": [
+        {
+          "enabled": true,
+          "action_plan": [
+            {
+              "requirement_id": "current_price",
+              "action_id": "price.series"
+            },
+            {
+              "requirement_id": "forecast",
+              "action_id": "forecast.price"
+            },
+            {
+              "requirement_id": "production",
+              "action_id": "resource.rank"
+            },
+            {
+              "requirement_id": "imports",
+              "action_id": "trade.country_rank"
+            }
+          ],
+          "action_results": [
+            {
+              "requirement_id": "current_price",
+              "action_id": "price.series",
+              "status": "success",
+              "failure_reason": null,
+              "warnings": [
+                "⚠ 'MNRL0003' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+                "source_audit:rdb:queried:1",
+                "source_audit:vector:not_selected:0",
+                "source_audit:pageindex:not_selected:0",
+                "source_audit:okf:not_selected:0"
+              ]
+            },
+            {
+              "requirement_id": "forecast",
+              "action_id": "forecast.price",
+              "status": "validation_failed",
+              "failure_reason": "advisor_rejected",
+              "warnings": [
+                "⚠ 'MNRL0003' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+                "source_audit:rdb:queried:0",
+                "source_audit:vector:not_selected:0",
+                "source_audit:pageindex:not_selected:0",
+                "source_audit:okf:not_selected:0",
+                "advisor_rejected"
+              ]
+            },
+            {
+              "requirement_id": "production",
+              "action_id": "resource.rank",
+              "status": "success",
+              "failure_reason": null,
+              "warnings": [
+                "⚠ 'MNRL0003' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+                "source_audit:rdb:queried:1",
+                "source_audit:vector:queried:5",
+                "source_audit:pageindex:not_selected:0",
+                "source_audit:okf:not_selected:0"
+              ]
+            },
+            {
+              "requirement_id": "imports",
+              "action_id": "trade.country_rank",
+              "status": "success",
+              "failure_reason": null,
+              "warnings": [
+                "⚠ 'MNRL0003' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+                "source_audit:rdb:queried:1",
+                "source_audit:vector:queried:6",
+                "source_audit:pageindex:not_selected:0",
+                "source_audit:okf:not_selected:0"
+              ]
+            }
+          ],
+          "warnings": [
+            "⚠ 'MNRL0003' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+            "source_audit:rdb:queried:1",
+            "source_audit:vector:not_selected:0",
+            "source_audit:pageindex:not_selected:0",
+            "source_audit:okf:not_selected:0",
+            "action_failed:forecast:forecast.price:advisor_rejected",
+            "⚠ 'MNRL0003' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+            "source_audit:rdb:queried:1",
+            "source_audit:vector:queried:5",
+            "source_audit:pageindex:not_selected:0",
+            "source_audit:okf:not_selected:0",
+            "⚠ 'MNRL0003' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미(ko_data_src_cd=DEV_DUMMY)일 수 있습니다 — 실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요.",
+            "source_audit:rdb:queried:1",
+            "source_audit:vector:queried:6",
+            "source_audit:pageindex:not_selected:0",
+            "source_audit:okf:not_selected:0"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "REG01",
+      "question": "리튬 주요 수출국을 알려줘",
+      "expected_markers": [
+        "수출"
+      ],
+      "status": "FAIL",
+      "notes": [
+        "abstain_reason=no_data_for_period"
+      ],
+      "elapsed_seconds": 2.16,
+      "answer": "제공된 문서에서 근거를 찾지 못했습니다.\n\n데이터를 찾을 수 없습니다.",
+      "terminal": {
+        "done": true,
+        "citations": [],
+        "bogus_citations": [],
+        "abstained": true,
+        "abstain_reason": "no_data_for_period"
+      },
+      "actions": [],
+      "sources": [],
+      "table_count": 0,
+      "chart_count": 0,
+      "debug": [
+        {
+          "enabled": true,
+          "action_plan": [
+            {
+              "requirement_id": "global_export_countries",
+              "action_id": "trade.country_rank"
+            }
+          ],
+          "action_results": [
+            {
+              "requirement_id": "global_export_countries",
+              "action_id": "trade.country_rank",
+              "status": "success",
+              "failure_reason": null,
+              "warnings": [
+                "조회하신 조건에 해당하는 데이터를 찾지 못했습니다.",
+                "source_audit:rdb:queried:0",
+                "source_audit:vector:queried:6",
+                "source_audit:pageindex:not_selected:0",
+                "source_audit:okf:not_selected:0"
+              ]
+            }
+          ],
+          "warnings": [
+            "조회하신 조건에 해당하는 데이터를 찾지 못했습니다.",
+            "source_audit:rdb:queried:0",
+            "source_audit:vector:queried:6",
+            "source_audit:pageindex:not_selected:0",
+            "source_audit:okf:not_selected:0"
+          ]
+        }
+      ]
+    }
+  ]
+}

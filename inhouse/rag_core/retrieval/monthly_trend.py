@@ -12,7 +12,8 @@ _MINERALS = ("리튬", "니켈", "코발트", "구리", "동", "아연", "망간
 
 
 def fetch_monthly_trend_evidence(topic: str = "", *, limit_chunks: int = 12) -> tuple[list[Evidence], list[str]]:
-    schema = get_settings().PG_SCHEMA.replace('"', "")
+    settings = get_settings()
+    schema = getattr(settings, "VECTOR_SCHEMA", settings.PG_SCHEMA).replace('"', "")
     con = pg_connect()
     try:
         with con.cursor() as cur:

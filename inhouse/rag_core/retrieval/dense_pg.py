@@ -166,7 +166,8 @@ def dense_search_pg(
     라이선스 제한 소스(`shared.retrieval.access.PRIVATE_ONLY_SOURCE_GROUPS`)를
     걸러내는 유일한 지점. 기본값(빈 집합)이면 기존 동작과 완전히 동일하다."""
 
-    schema = get_settings().PG_SCHEMA
+    settings = get_settings()
+    schema = getattr(settings, "VECTOR_SCHEMA", settings.PG_SCHEMA)
     qvec = _vector_literal(encode_query(query))
     date_range = extract_date_range(query)
     exclude_clause = " AND src <> ALL(%s)" if exclude_src else ""

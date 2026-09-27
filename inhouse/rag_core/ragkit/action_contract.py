@@ -1979,7 +1979,14 @@ def normalize_country_rank_request(message: str, plan: ActionPlan) -> ActionPlan
     )):
         return plan
 
-    candidates = [call for call in plan.actions if call.action_id == "trade.indicator"]
+    # 순위와 국가별 비중은 같은 country-rank 표의 열이다. planner가 둘을
+    # 별도 requirement로 과분해하면, 기본 metric 보정 뒤 동일한
+    # ``trade.country_rank``가 두 번 실행될 수 있다. 이 완결된 단일 순위
+    # 문형에서는 한 번의 조회로 충분하므로 기존 rank call을 우선 사용한다.
+    rank_candidates = [call for call in plan.actions if call.action_id == "trade.country_rank"]
+    candidates = rank_candidates or [
+        call for call in plan.actions if call.action_id == "trade.indicator"
+    ]
     if not candidates:
         return plan
     call = candidates[0]

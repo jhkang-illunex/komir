@@ -33,7 +33,8 @@ def fetch_weekly_trend_evidence(
     *, start: date | None = None, end: date | None = None, limit: int = 5,
 ) -> tuple[list[Evidence], list[str]]:
     """기간 내 날짜가 확인된 조달청 주간동향 문서만 최신순으로 반환한다."""
-    schema = get_settings().PG_SCHEMA
+    settings = get_settings()
+    schema = getattr(settings, "VECTOR_SCHEMA", settings.PG_SCHEMA)
     con = pg_connect()
     try:
         with con.cursor() as cur:

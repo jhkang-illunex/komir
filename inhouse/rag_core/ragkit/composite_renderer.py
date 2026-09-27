@@ -192,6 +192,28 @@ def render_composite(evidence: list, action_plan) -> tuple[str, set[int]] | None
     for index, item in enumerate(evidence, 1):
         by_action.setdefault(getattr(item, "action_id", None), []).append((index, item))
 
+    # 자원뉴스의 최신 목록은 ``ai_news`` adapter가 날짜·제목·요약을 이미
+    # 구조화해 확인한 결과다. 이를 일반 생성 모델에 다시 맡기면, 정상 근거가
+    # 있어도 모델이 빈 기권문을 반환해 ``off_topic``으로 오분류될 수 있다.
+    # 단일 뉴스 조회는 표에 실제 제목이 있을 때만 결정적으로 출력하고, 제목이
+    # 없으면 기존 일반 문서 응답 경로를 유지한다.
+    if ids == ["document.retrieve"]:
+        docs = by_action.get("document.retrieve", [])
+        if len(docs) == 1:
+            evidence_index, document = docs[0]
+            action = actions[0]
+            topic = str(getattr(action.slots, "topic", "") or "")
+            is_news_request = (
+                "뉴스" in topic or "기사" in topic
+                or str(getattr(document, "section", "") or "") == "자원뉴스"
+            )
+            titles = _news_titles(document, limit=5)
+            if is_news_request and titles:
+                return (
+                    "최근 자원뉴스 : 확인된 기사\n" + "\n".join(f"- {title}" for title in titles),
+                    {evidence_index},
+                )
+
     if ids and all(action_id == "trade.country_rank" for action_id in ids) and len(ids) == 5:
         matches = by_action.get("trade.country_rank", [])
         if len(matches) == 5:
@@ -466,7 +488,11 @@ def render_composite(evidence: list, action_plan) -> tuple[str, set[int]] | None
         rank_id = "trade.country_rank" if "trade.country_rank" in ids else "resource.rank"
         ranks = by_action.get(rank_id, [])
         if len(docs) == 1 and len(ranks) == 1:
-            uses = _mineral_info_uses(docs[0][1])
+            # YAML 광종정보와 일반 문서 모두에서 용도 행을 읽는 공용 추출기다.
+            # `_mineral_info_uses`라는 과거 이름은 구현돼 있지 않아, 복합 질의가
+            # 근거를 확보한 뒤에도 렌더링 단계에서 중단될 수 있었다.
+            # Markdown 표의 행 경계를 보존해야 `uses` 속성만 추출할 수 있다.
+            uses = _usage_sentence(getattr(docs[0][1], "text", ""))
             countries = _country_rows(ranks[0][1])
             if uses and countries:
                 country_text = ", ".join(f"{name}({_fmt(share)}%)" for name, share in countries[:5])
@@ -572,7 +598,7 @@ def render_composite(evidence: list, action_plan) -> tuple[str, set[int]] | None
             if not mineral_prices:
                 return None
             if len(mineral_prices) == 1 and not any(token in doc_text for token in ("월간동향", "동향", "월호")):
-                usage = _usage_sentence(doc_text)
+                usage = _usage_sentence(getattr(doc, "text", ""))
                 if usage is None:
                     return None
                 name, observed, latest, pct = mineral_prices[0]
@@ -583,7 +609,7 @@ def render_composite(evidence: list, action_plan) -> tuple[str, set[int]] | None
                 if unit := price_display_unit(getattr(prices[0][1], "unit", None)):
                     price_line += f" {unit}"
                 price_line += f", 전일 대비 {pct:+.2f}%" if pct is not None else ", 전일 대비 계산 불가"
-                return f"광물정보 : 주요 용도 {usage}\n{price_line}", cited
+                return f"광물정보 : 주요 용도 : {usage}\n{price_line}", cited
             if len(mineral_prices) > 1 and any(token in doc_text for token in ("월간동향", "동향", "월호")):
                 names = ", ".join(name for name, *_ in mineral_prices)
                 rows = "; ".join(
@@ -597,7 +623,7 @@ def render_composite(evidence: list, action_plan) -> tuple[str, set[int]] | None
             if len(mineral_prices) == 1 and any(token in doc_text for token in ("월간동향", "동향", "월호")):
                 name, observed, latest, pct = mineral_prices[0]
                 change = f"{pct:+.2f}%" if pct is not None else "계산 불가"
-                summary = _usage_sentence(doc_text) or doc_text[:300]
+                summary = _usage_sentence(getattr(doc, "text", "")) or doc_text[:300]
                 return (f"광물정보 : 가격 기간 {observed.isoformat()} 기준 {name} {change} 변동\n"
                         f"월간동향 : {getattr(doc, 'section', None) or '확인된 월간동향'} {name} 관련 서술 요약 : {summary}", cited)
 

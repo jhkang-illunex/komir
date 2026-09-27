@@ -54,10 +54,13 @@ class Settings(BaseSettings):
     MSR_PUBLISH_SCHEMA: str = ""
     CHATBOT_SCHEMA: str = "ai_chatbot"
 
-    # ── PostgreSQL(komis_demo, 2026-08-10) — mineral_risk 스키마만 사용,
-    #    public(ko_*·ai_*)은 타 팀 소유라 이 프로젝트 코드가 건드리지 않는다 ──
+    # ── PostgreSQL 스키마 역할 분리 ───────────────────────────────────
+    # PG_SCHEMA는 기존 내부 분석 산출물의 호환 설정으로 유지한다. RAG의
+    # doc_chunk/pgvector는 VECTOR_SCHEMA, KOMIS 정형 원천은 public(komis_raw
+    # 상수)로 각각 조회한다. 세션은 CHATBOT_SCHEMA를 사용한다.
     PG_DSN: str = ""
     PG_SCHEMA: str = "mineral_risk"
+    VECTOR_SCHEMA: str = "mineral_risk"
 
     # ── LLM(chat, geo/llm/openai_compat.py가 이미 쓰는 규약 그대로) ──
     LLM_PROVIDER: str = "openai_compat"

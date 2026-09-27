@@ -187,14 +187,33 @@ def main() -> int:
     parser.add_argument("--base-url", default="http://127.0.0.1:18002")
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--timeout", type=int, default=180)
+    parser.add_argument(
+        "--case-ids", default="",
+        help="쉼표로 구분한 점검 ID만 실행한다(예: YOY,MI02,MP06,GM05).",
+    )
+    parser.add_argument(
+        "--exclude-case-ids", default="",
+        help="쉼표로 구분한 점검 ID는 제외한다(기존 증적과 병합하는 재실행용).",
+    )
     args = parser.parse_args()
     debug = debug_enabled()
+
+    requested_ids = {item.strip() for item in args.case_ids.split(",") if item.strip()}
+    excluded_ids = {item.strip() for item in args.exclude_case_ids.split(",") if item.strip()}
+    known_ids = {case[0] for case in CASES}
+    if requested_ids & excluded_ids:
+        raise ValueError("동일 점검 ID를 --case-ids와 --exclude-case-ids에 함께 지정할 수 없습니다.")
+    cases = tuple(case for case in CASES if (not requested_ids or case[0] in requested_ids)
+                  and case[0] not in excluded_ids)
+    unknown_ids = (requested_ids | excluded_ids) - known_ids
+    if unknown_ids:
+        raise ValueError(f"알 수 없는 점검 ID: {', '.join(sorted(unknown_ids))}")
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now(timezone.utc).astimezone().strftime("%Y%m%d_%H%M%S")
     results: list[dict] = []
-    for number, (case_id, question, expected) in enumerate(CASES, start=1):
+    for number, (case_id, question, expected) in enumerate(cases, start=1):
         started = time.monotonic()
         record = {"id": case_id, "question": question, "expected_markers": list(expected)}
         try:
@@ -216,7 +235,7 @@ def main() -> int:
             record.update({"status": "FAIL", "notes": [f"request_error={type(exc).__name__}: {exc}"],
                            "elapsed_seconds": round(time.monotonic() - started, 2)})
         results.append(record)
-        print(f"[{number:02d}/{len(CASES)}] {case_id} {record['status']} {record['elapsed_seconds']}s", flush=True)
+        print(f"[{number:02d}/{len(cases)}] {case_id} {record['status']} {record['elapsed_seconds']}s", flush=True)
 
     summary = Counter(item["status"] for item in results)
     raw_path = output_dir / f"user_qa_pair_audit_{timestamp}.json"

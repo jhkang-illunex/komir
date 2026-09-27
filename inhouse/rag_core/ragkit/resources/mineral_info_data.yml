@@ -22,6 +22,16 @@ minerals:
     atomic_weight: 58.693
     uses: ["스테인리스강·합금", "금속 도금", "충전식 배터리"]
     characteristics: ["은백색 금속", "고온에서도 부식에 강함"]
+  망간:
+    source_verified: true
+    source_url: "https://periodic-table.rsc.org/element/25/"
+    source_accessed_at: "2026-09-28"
+    element_symbol: "Mn"
+    atomic_number: 25
+    atomic_weight: 54.938
+    uses: ["강철·합금", "알루미늄 합금", "산화망간 기반 촉매·유리 탈색"]
+    characteristics: ["단단하고 취성이 있는 은백색 금속", "순금속 상태보다 합금에 주로 사용"]
+    major_ores: ["파이롤루사이트(pyrolusite, MnO₂)", "로도크로사이트(rhodochrosite, MnCO₃)"]
   코발트:
     source_verified: true
     source_url: "https://periodic-table.rsc.org/element/27/"
@@ -38,15 +48,6 @@ minerals:
     atomic_weight: 6.94
     uses: ["휴대기기·전기차용 충전식 배터리", "알루미늄·마그네슘 경량 합금", "특수 유리·유리 세라믹"]
     characteristics: ["은백색의 연한 금속", "금속 중 밀도가 가장 낮음", "물과 격렬하게 반응"]
-  망간:
-    source_verified: true
-    source_url: "https://periodic-table.rsc.org/element/25/manganese"
-    element_symbol: "Mn"
-    atomic_number: 25
-    atomic_weight: 54.938
-    uses: ["강철·합금의 강도·내마모성 향상", "철도 레일·금고·공구용 망간강", "배터리·유리·비료·세라믹"]
-    characteristics: ["단단하고 취성인 은백색 금속", "순금속보다 합금으로 주로 사용", "여러 산화 상태를 가짐"]
-    major_ores: ["파이롤루사이트(이산화망간)", "능망간석(탄산망간)"]
   텅스텐:
     source_verified: true
     source_url: "https://periodic-table.rsc.org/element/74/tungsten"
