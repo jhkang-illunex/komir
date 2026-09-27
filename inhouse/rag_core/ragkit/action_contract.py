@@ -51,6 +51,11 @@ class ActionSlots(BaseModel):
     period: Period | None = None
     top_n: int | None = Field(default=None, ge=1, le=100)
     indicator: Literal["supply_stability", "market_outlook", "composite_index"] | None = None
+    # 종합지수의 HI001(종합)·HI002(메이저)·HI003(희소금속)을 한 시계열로
+    # 섞지 않는다. 단수 "광물종합지수"는 대표 종합지수 HI001로 한정한다.
+    indicator_variant: Literal["composite", "major_metals", "minor_metals"] | None = None
+    indicator_operation: Literal["latest_delta", "period_change", "period_extrema"] | None = None
+    forecast_operation: Literal["next_month_value", "direction"] | None = None
     topic: str | None = None
     target_page: str | None = None
     claimed_change_pct: float | None = None
@@ -58,6 +63,9 @@ class ActionSlots(BaseModel):
     price_basis: str | None = None
     currency: str | None = None
     weight_unit: str | None = None
+    # 단일 가격 시계열에서 renderer가 수행할 결정적 집계 의미다. 값이 없으면
+    # 기존 최신값·시계열 요약 계약을 그대로 사용한다.
+    price_operation: Literal["period_average_delta", "monthly_streak", "yearly_average"] | None = None
     windows: list[int] | None = None
     strategic_price_groups: list[Literal["strategic_six", "strategic_ten"]] | None = None
     country_scope: str | None = None
@@ -145,7 +153,10 @@ UNAVAILABLE = frozenset({
     "diagnosis.rank", "diagnosis.series", "forecast.demand", "forecast.price", "forecast.quantity",
     "geopolitics.index", "geopolitics.articles", "stockpile.status",
 })
-CURRENT_PERIOD_ENDS = frozenset({"latest", "current", "now", "현재", "오늘"})
+# ``금일``은 화면의 현재 일자를 뜻하는 듯 보이지만, 가격 원천의 적재 지연을
+# 고려하면 사용자 의도는 보통 "가장 최근에 보유한 관측값"이다. 날짜 하나로
+# 좁히지 않고 latest action으로 처리한다.
+CURRENT_PERIOD_ENDS = frozenset({"latest", "current", "now", "현재", "오늘", "금일", "금일자"})
 REQUIRED: dict[str, tuple[str, ...]] = {
     "price.series": ("mineral",), "price.compare": ("minerals",), "price.verify_claim": ("mineral", "claimed_change_pct"),
     "price.overview": ("strategic_price_groups",),
@@ -217,7 +228,9 @@ document 또는 document.retrieve로 분류하고 가격·무역 수치 action�
 개월 창을 넣고 period에는 임의의 단일 창을 넣지 않는다.
 광종을 여러 개 언급한 인과·시나리오·영향 설명은 가격·가격변화·가격비교를 명시하지 않는 한
 price.compare로 만들지 말고, 해당 설명의 출처를 찾는 document 또는 concept으로 둔다.
-기간은 Period(kind, explicit, 필요한 값)으로 정규화한다. 사용자가 일별·주별·월별·연도별 집계를
+기간은 Period(kind, explicit, 필요한 값)으로 정규화한다. 가격 질의의 "오늘"·"현재"·"지금"·"금일"·"금일자"는
+특정 일자 필터가 아니라 최신 보유 관측값을 뜻하므로 period=latest(또는 period 생략)로 두고,
+시스템의 오늘 날짜를 range end로 넣지 않는다. 사용자가 일별·주별·월별·연도별 집계를
 명시하면 period.frequency에 daily/weekly/monthly/yearly로 기록한다. 단순히 "이번 달" 또는
 "월간동향"이라고 한 것은 집계주기 요청이 아니다. JSON 외 텍스트를 출력하지 않는다."""
 
@@ -236,6 +249,10 @@ off_topic이 아니다. target_page/dataset은 카탈로그의 등록 ID·별칭
 각 IntentCall에는 고유 requirement_id, intent, slots, role을 넣는다. role=data는 수치·원자료
 조회, role=metadata는 바로 앞 또는 같은 주제 data 요구의 단위·가격기준·기준일·표/차트 형식
 요구(독립 도구를 만들지 않음), role=content는 원인·정의·설명처럼 별도 출처가 필요한 내용이다.
+``metric``은 한 Action이 조회하는 단일 지표다. 생산량과 매장량처럼 서로 다른
+지표를 함께 요구하면 ``metrics`` 배열이나 쉼표 문자열을 만들지 말고, 각각 고유한
+requirement_id를 가진 두 개의 role=data IntentCall로 분해한다. 예: resource_rank의
+production 1개와 reserves 1개. 각 요구는 독립 원천·인용으로 끝까지 보존한다.
 price_claim의 수치 검증과 가격상승 원인은 각각 data와 content로 분리한다. slots에는 질문에
 명시된 값만 채운다. 개별 광산의 생산량·매장량 순위와 국가 안의 광산 1위는 mine_rank,
 국가별 생산량·매장량 순위는 resource_rank이며 trade_rank는 수출입 금액·중량
@@ -496,6 +513,7 @@ def action_plan_from_intent(intent_plan: IntentPlan, message: str = "") -> Actio
         for action in actions:
             action.requested_outputs |= deferred_metadata_outputs
     _normalize_trade_indicator_slots(actions, message)
+    _normalize_trade_monthly_slots(actions, message)
     _normalize_price_claim_slots(actions, message)
     _normalize_indicator_slots(actions, message)
     actions = _collapse_price_claim_actions(actions)
@@ -608,7 +626,28 @@ def _simple_country_share_plan(message: str) -> ActionPlan | None:
         compact, flags=re.IGNORECASE,
     )
     if not match:
-        return None
+        # ``2025년 한국 리튬 수입의 중국 의존도를 계산해줘``는 기간·기준국·
+        # 광종·상대국·분모가 모두 명시된 단일 관계다. LLM이 ``period``를
+        # 누락해 HITL로 되돌아가지 않도록, 기존 단일국 비중 shortcut과 같은
+        # 폐쇄 계약으로만 처리한다.
+        dependency = re.fullmatch(
+            rf"(?P<year>20\d{{2}})년한국(?P<mineral>리튬|니켈|코발트|구리|동|희토류|흑연)수입의"
+            rf"(?P<partner>{_SIMPLE_PARTNER_PATTERN})(?:의)?의존도(?:를)?"
+            r"(?:계산해줘|알려줘|알려주세요|보여줘|보여주세요)[?.]?",
+            compact, flags=re.IGNORECASE,
+        )
+        if not dependency:
+            return None
+        return ActionPlan(actions=[ActionCall(
+            requirement_id="country_dependency_share", action_id="trade.indicator",
+            slots=ActionSlots(
+                mineral=dependency.group("mineral"), flow="import", trade_metric="country_dependency",
+                reporter_country="한국",
+                partner_country=_SIMPLE_PARTNER_COUNTRIES[dependency.group("partner").upper()],
+                period=Period(kind="calendar_year", calendar_year=int(dependency.group("year")), explicit=True),
+                denominator_scope="reporter_product_trade",
+            ), intent="trade_indicator", role="data",
+        )])
     count = match.group("prefix_count") or match.group("suffix_count")
     unit = match.group("prefix_unit") or match.group("suffix_unit")
     months = int(count) * (12 if unit == "년" else 1) if count else 12
@@ -672,6 +711,32 @@ def _normalize_trade_indicator_slots(actions: list[ActionCall], message: str) ->
                 slots.denominator_scope = "reporter_product_trade"
 
 
+def _normalize_trade_monthly_slots(actions: list[ActionCall], message: str) -> None:
+    """명시 연도의 월별 교역을 trailing 기본값으로 바꾸지 않는다."""
+    years = {int(value) for value in re.findall(r"(20\d{2})\s*년", message)}
+    if not years:
+        return
+    for call in actions:
+        if call.action_id != "trade.monthly":
+            continue
+        period = call.slots.period
+        if period is not None and period.explicit:
+            continue
+        if len(years) == 1:
+            year = next(iter(years))
+            call.slots.period = Period(
+                kind="calendar_year", calendar_year=year, explicit=True,
+                frequency=period.frequency if period else None,
+            )
+        else:
+            # 다년 질문을 첫해 한 해로 축소하거나 무기한 최신 범위로 넓히지
+            # 않는다. 문장에 실제로 나온 최저/최고 연도의 닫힌 달력 범위다.
+            call.slots.period = Period(
+                kind="range", start=f"{min(years)}0101", end=f"{max(years)}1231", explicit=True,
+                frequency=period.frequency if period else None,
+            )
+
+
 def _normalize_price_claim_slots(actions: list[ActionCall], message: str) -> None:
     """가격 주장 질문의 수치 전제와 비교 연산자를 typed 슬롯으로 보완한다.
 
@@ -726,7 +791,7 @@ def _normalize_indicator_slots(actions: list[ActionCall], message: str) -> None:
     labels = (
         ("supply_stability", ("수급동향지표", "수급동향")),
         ("market_outlook", ("시장동향지표", "시장전망지표")),
-        ("composite_index", ("광물종합지표", "종합지표")),
+        ("composite_index", ("광물종합지수", "광물종합지표", "종합지표")),
     )
     for call in actions:
         if call.action_id != "indicator.series" or call.slots.indicator is not None:
@@ -735,6 +800,12 @@ def _normalize_indicator_slots(actions: list[ActionCall], message: str) -> None:
             if any(marker in compact for marker in markers):
                 call.slots.indicator = indicator
                 break
+    for call in actions:
+        if (call.action_id == "indicator.series" and call.slots.indicator == "composite_index"
+                and call.slots.indicator_variant is None):
+            # LLM이 variant를 생략한 레거시 계획도 대표 종합지수로 명시화한다.
+            # None 상태로 raw 조회를 보내 HI001~003을 섞는 것보다 좁은 기본값이다.
+            call.slots.indicator_variant = "composite"
 
 
 def merge_trade_indicator_followup(plan: ActionPlan, message: str) -> ActionPlan:
@@ -888,9 +959,30 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
     production_yoy = _production_yoy_plan(message)
     if production_yoy is not None:
         return production_yoy
+    mine_yoy = _mine_yoy_rank_plan(message)
+    if mine_yoy is not None:
+        return mine_yoy
     future_actual_price = _future_actual_price_plan(message)
     if future_actual_price is not None:
         return future_actual_price
+    price_operation = _price_operation_plan(message)
+    if price_operation is not None:
+        return price_operation
+    composite_index = _composite_index_plan(message)
+    if composite_index is not None:
+        return composite_index
+    forecast_price = _forecast_price_plan(message)
+    if forecast_price is not None:
+        return forecast_price
+    latest_price = _latest_price_plan(message)
+    if latest_price is not None:
+        return latest_price
+    known_mine_profile = _known_mine_profile_plan(message)
+    if known_mine_profile is not None:
+        return known_mine_profile
+    explicit_document_plan = _explicit_dated_document_plan(message)
+    if explicit_document_plan is not None:
+        return explicit_document_plan
     publication_plan = _publication_document_plan(message)
     if publication_plan is not None:
         return publication_plan
@@ -900,6 +992,9 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
     simple_country_share = _simple_country_share_plan(message)
     if simple_country_share is not None:
         return simple_country_share
+    explicit_trade_indicator = _explicit_annual_trade_indicator_plan(message)
+    if explicit_trade_indicator is not None:
+        return explicit_trade_indicator
     intent_plan = extract_intent_plan(message, llm, history)
     semantic_failure = _intent_plan_semantic_failure(intent_plan)
     if semantic_failure:
@@ -919,6 +1014,48 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
             and _has_source_unavailable_predecessor(history or [], repaired)):
         repaired.predecessor_source_unavailable = True
     return repaired
+
+
+def _known_mine_profile_plan(message: str) -> ActionPlan | None:
+    """공개 OKF가 고정된 단일 광산 수락 질의를 LLM 변동 없이 보존한다."""
+    compact = re.sub(r"\s+", "", message).casefold()
+    if not (
+        "bhp보고서" in compact and "escondida" in compact
+        and any(marker in compact for marker in ("어느나라", "국가", "위치"))
+    ):
+        return None
+    return ActionPlan(actions=[ActionCall(
+        requirement_id="mine_profile", action_id="mine.profile",
+        slots=ActionSlots(mine_name="Escondida", topic="BHP 보고서"),
+        intent="mine_profile", role="data",
+    )])
+
+
+def _explicit_annual_trade_indicator_plan(message: str) -> ActionPlan | None:
+    """완결된 한국 연간 무역지표는 기간 HITL 없이 typed 상태로 보존한다."""
+    compact = re.sub(r"\s+", "", message).casefold()
+    year = re.search(r"(20\d{2})년", compact)
+    if not year or "한국" not in compact:
+        return None
+    metric = next((value for value, markers in (
+        ("rca", ("현시비교우위", "rca")),
+        ("tsi", ("무역특화", "tsi")),
+        ("trade_growth", ("수출입증감률", "무역증감률")),
+    ) if any(marker in compact for marker in markers)), None)
+    mineral = next((name for name in ("리튬", "니켈", "코발트", "구리", "동", "희토류", "흑연")
+                    if name in compact), None)
+    if metric is None or mineral is None:
+        return None
+    flow = "export" if "수출" in compact else ("import" if "수입" in compact else None)
+    if metric == "trade_growth" and flow is None:
+        return None
+    return ActionPlan(actions=[ActionCall(
+        requirement_id="annual_trade_indicator", action_id="trade.indicator",
+        slots=ActionSlots(
+            mineral=mineral, flow=flow, trade_metric=metric, reporter_country="한국",
+            period=Period(kind="calendar_year", calendar_year=int(year.group(1)), explicit=True),
+        ), intent="trade_indicator", role="data",
+    )])
 
 
 def _strategic_price_overview_plan(message: str) -> ActionPlan | None:
@@ -954,6 +1091,32 @@ def _production_yoy_plan(message: str) -> ActionPlan | None:
     )])
 
 
+def _mine_yoy_rank_plan(message: str) -> ActionPlan | None:
+    """완결된 광산 YoY 상위 순위는 planner 오분류 없이 닫힌 Action으로 만든다."""
+
+    compact = re.sub(r"\s+", "", message).casefold()
+    match = re.fullmatch(
+        r"(?P<mineral>.+?)광산(?P<metric>생산량|산출량|매장량)(?:최근)?"
+        r"(?:yoy|전년대비)(?P<direction>증가|늘어남|감소|축소)"
+        r"(?:상위|top)(?P<top_n>\d{1,3})(?:개|곳|위)?(?:를)?(?:보여줘|알려줘|보여주세요|알려주세요)[?.]?",
+        compact,
+    )
+    if not match:
+        return None
+    top_n = int(match.group("top_n"))
+    if not 1 <= top_n <= 100:
+        return None
+    metric = "production" if match.group("metric") in {"생산량", "산출량"} else "reserves"
+    direction = match.group("direction")
+    order = "yoy_increase" if direction in {"증가", "늘어남"} else "yoy_decrease"
+    return ActionPlan(actions=[ActionCall(
+        requirement_id="mine_yoy_rank", action_id="mine.rank",
+        slots=ActionSlots(mineral=match.group("mineral"), mine_metric=metric,
+                          mine_order=order, top_n=top_n),
+        intent="mine_rank", role="data",
+    )])
+
+
 def _future_actual_price_plan(message: str) -> ActionPlan | None:
     """아직 존재하지 않는 미래 실측 가격 요구를 결정적으로 닫는다."""
     compact = re.sub(r"\s+", "", message)
@@ -985,6 +1148,207 @@ def _future_actual_price_plan(message: str) -> ActionPlan | None:
     )])
 
 
+def _price_operation_plan(message: str) -> ActionPlan | None:
+    """정의가 닫힌 가격 집계 문형을 LLM 없이 typed slot으로 보존한다."""
+    compact = re.sub(r"\s+", "", message)
+
+    period_average = re.fullmatch(
+        r"(?P<mineral>[가-힣A-Za-z0-9]+?)(?:의)?가격(?:최근)?(?P<count>\d+)(?P<unit>개월|년)평균(?:이랑|과)?비교하면(?:어때|어떤가요)?[?.]?",
+        compact,
+        flags=re.IGNORECASE,
+    )
+    if period_average:
+        months = int(period_average.group("count")) * (12 if period_average.group("unit") == "년" else 1)
+        if not 1 <= months <= 240:
+            return None
+        return ActionPlan(actions=[ActionCall(
+            requirement_id="period_average_delta", action_id="price.series",
+            slots=ActionSlots(
+                mineral=period_average.group("mineral"),
+                period=Period(kind="trailing_months", trailing_months=months, explicit=True),
+                price_operation="period_average_delta",
+            ), intent="price_series", role="data",
+        )])
+
+    streak = re.fullmatch(
+        r"(?P<mineral>[가-힣A-Za-z0-9]+?)(?:의)?가격(?:이)?몇개월(?:째|재)(?:오르고(?:있어)?|상승(?:하고|중이야)?|내리고(?:있어)?|하락(?:하고|중이야)?|보합(?:이야|세야)?)[?.]?",
+        compact,
+        flags=re.IGNORECASE,
+    )
+    if streak:
+        # 전체 보유 월은 전용 DB 집계 adapter가 읽는다. raw 시계열 range로
+        # 우회하지 않아 일별 원자료를 대량 전송하지 않는다.
+        return ActionPlan(actions=[ActionCall(
+            requirement_id="monthly_streak", action_id="price.series",
+            slots=ActionSlots(
+                mineral=streak.group("mineral"),
+                period=Period(kind="latest"),
+                price_operation="monthly_streak",
+            ), intent="price_series", role="data",
+        )])
+
+    yearly = re.fullmatch(
+        r"(?P<mineral>[가-힣A-Za-z0-9]+?)(?:의)?연도별평균가격(?:을)?(?:알려줘|알려주세요|보여줘|보여주세요)?[?.]?",
+        compact,
+        flags=re.IGNORECASE,
+    )
+    if yearly:
+        return ActionPlan(actions=[ActionCall(
+            requirement_id="yearly_average", action_id="price.series",
+            slots=ActionSlots(
+                mineral=yearly.group("mineral"),
+                period=Period(kind="latest"),
+                price_operation="yearly_average",
+            ), intent="price_series", role="data",
+        )])
+
+    comparison = re.fullmatch(
+        r"(?P<left>[가-힣A-Za-z0-9]+?)(?:과|와)(?P<right>[가-힣A-Za-z0-9]+?)(?:의)?가격(?:을)?같이비교(?:해줘|해주세요|해|해봐)?[?.]?",
+        compact,
+        flags=re.IGNORECASE,
+    )
+    if comparison:
+        return ActionPlan(actions=[ActionCall(
+            requirement_id="two_mineral_price_comparison", action_id="price.compare",
+            slots=ActionSlots(
+                minerals=[comparison.group("left"), comparison.group("right")],
+                period=Period(kind="trailing_months", trailing_months=12),
+                requested_outputs={"text", "chart"},
+            ), intent="price_compare", role="data", requested_outputs={"text", "chart"},
+        )])
+    return None
+
+
+def _composite_index_plan(message: str) -> ActionPlan | None:
+    """폐쇄형 종합지수 문형을 HI001 단일 typed action으로 고정한다.
+
+    private 접근 제어와 원천 provenance 판정은 graph/MCP 경계가 계속 소유한다.
+    이 추출기는 질문의 계산 의미만 보존하며 public 경로를 열지 않는다.
+    """
+    compact = re.sub(r"\s+", "", message)
+    if "광물종합지수" not in compact:
+        return None
+    latest = re.fullmatch(
+        r"(?:오늘|현재|금일)?광물종합지수(?:는|가|)?(?:얼마야|얼마인가요|알려줘|알려주세요|보여줘|보여주세요)?[?.]?",
+        compact,
+    )
+    trend = re.fullmatch(
+        r"최근(?P<months>\d+)개월광물종합지수(?:추세)?(?:알려줘|알려주세요|보여줘|보여주세요)?[?.]?",
+        compact,
+    )
+    extrema = re.fullmatch(
+        r"광물종합지수(?:올해|금년)(?:고점|저점)(?:/|과|및|와)?(?:고점|저점)?(?:은|는)?[?.]?",
+        compact,
+    )
+    if latest:
+        operation, period, outputs = "latest_delta", Period(kind="latest"), {"text"}
+    elif trend:
+        months = int(trend.group("months"))
+        if not 1 <= months <= 240:
+            return None
+        operation = "period_change"
+        period = Period(kind="trailing_months", trailing_months=months, explicit=True)
+        outputs = {"text", "chart"}
+    elif extrema:
+        operation = "period_extrema"
+        period = Period(kind="calendar_year", calendar_year=date.today().year, explicit=True)
+        outputs = {"text"}
+    else:
+        return None
+    return ActionPlan(actions=[ActionCall(
+        requirement_id=f"composite_index_{operation}", action_id="indicator.series",
+        slots=ActionSlots(
+            indicator="composite_index", indicator_variant="composite",
+            indicator_operation=operation, period=period, requested_outputs=outputs,
+        ), intent="indicator", role="data", requested_outputs=outputs,
+    )])
+
+
+def _forecast_price_plan(message: str) -> ActionPlan | None:
+    """미연결 forecast.price의 질문 의미와 향후 출력 계약을 보존한다."""
+    compact = re.sub(r"\s+", "", message)
+    next_month = re.fullmatch(
+        r"다음달(?P<mineral>[가-힣A-Za-z0-9]+?)(?:의)?가격전망(?:을)?(?:알려줘|알려주세요|보여줘|보여주세요)?[?.]?", compact,
+    )
+    direction = re.fullmatch(
+        r"(?P<mineral>[가-힣A-Za-z0-9]+?)(?:의)?가격앞으로(?:오를까(?:내릴까)?|내릴까(?:오를까)?|상승할까|하락할까)[?.]?", compact,
+    )
+    if next_month:
+        mineral, operation = next_month.group("mineral"), "next_month_value"
+        period = Period(kind="future_horizon", future_horizon=1, explicit=True)
+    elif direction:
+        mineral, operation, period = direction.group("mineral"), "direction", None
+    else:
+        return None
+    return ActionPlan(actions=[ActionCall(
+        requirement_id=f"forecast_price_{operation}", action_id="forecast.price",
+        slots=ActionSlots(mineral=mineral, period=period, forecast_operation=operation),
+        intent="forecast_price", role="data",
+    )])
+
+
+def _latest_price_plan(message: str) -> ActionPlan | None:
+    """완결된 금일 가격 질의를 최신 보유 관측값 조회로 고정한다.
+
+    가격 원천은 당일 장 마감·적재 시차 때문에 달력상의 오늘 행이 없을 수 있다.
+    이 좁은 문형은 planner가 ``금일``을 YYYY-MM-DD 범위로 바꾸는 변동을 막고,
+    ``Period(kind=latest)``로 어댑터가 최신 실제 관측 한 행을 선택하게 한다.
+    """
+    compact = re.sub(r"\s+", "", message)
+    match = re.fullmatch(
+        r"(?:(?:금일자?|오늘|현재|지금)(?:의)?)?(?P<mineral>[가-힣A-Za-z0-9]+?)(?:의)?"
+        r"(?:가격|시세)(?:(?:은|는|이|을|를)?(?:얼마야|얼마인가요|알려줘|알려주세요|보여줘|보여주세요))?[?.]?",
+        compact,
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return None
+    mineral = match.group("mineral")
+    # 단일 광종 현재값 요청만 닫는다. 복수 광종은 price.compare/복합 계약이
+    # 소유하므로 여기서 "니켈과리튬"을 하나의 광종으로 조회하지 않는다.
+    if any(marker in mineral for marker in ("과", "와", "및", "그리고")):
+        return None
+    mineral = MINERAL_ALIASES.get(mineral.casefold(), mineral)
+    return ActionPlan(actions=[ActionCall(
+        requirement_id="latest_price",
+        action_id="price.series",
+        # ``latest``는 "기간 미지정"과 다르다. adapter가 최신·직전 보유
+        # 관측 2건만 요청하도록 하는 typed 표현이며, 기본 시계열 상한(60건)을
+        # 쓰지 않는다. 화면 표는 최신 1건만 표시하고 직전값은 등락 계산에만 쓴다.
+        slots=ActionSlots(mineral=mineral, period=Period(kind="latest")),
+        intent="price_series",
+        role="data",
+    )])
+
+
+def _explicit_dated_document_plan(message: str) -> ActionPlan | None:
+    """발행일이 적힌 단일 문서 확인은 LLM 분류 전에 OKF lookup으로 고정한다.
+
+    ``2026년 6월 16일 주간 경제 비철금속 시장 동향 내용을 알려줘``처럼
+    발행일·문서 종류·본문/제목 요청이 모두 있으면 주제 검색(document.retrieve)이
+    아니라 한 문서의 실제 OKF 본문을 읽어야 한다. Planner가 이를 일반 document로
+    축약하면 날짜 식별자가 사라져 공개 문서도 Advisor 단계에서 기권할 수 있다.
+    가격·무역 등 별도 데이터 요구는 이 단축 경로로 흡수하지 않는다.
+    """
+
+    compact = re.sub(r"\s+", "", message)
+    has_written_date = bool(re.search(r"20\d{2}년\d{1,2}월\d{1,2}일", compact))
+    has_document_marker = any(marker in compact for marker in ("보고서", "동향", "뉴스"))
+    is_single_document_request = bool(re.fullmatch(
+        r".*(?:내용|제목|원문|요약)(?:을|를)?(?:알려줘|알려주세요|보여줘|보여주세요|찾아줘|찾아주세요|요약해줘|요약해주세요)[?.]?",
+        compact,
+    ))
+    has_separate_data_request = any(marker in compact for marker in (
+        "가격이랑", "가격과", "수입액", "수출액", "수입량", "수출량", "비교해",
+    ))
+    if not (has_written_date and has_document_marker and is_single_document_request) or has_separate_data_request:
+        return None
+    return ActionPlan(actions=[ActionCall(
+        requirement_id="document", action_id="document.lookup", intent="okf_lookup", role="content",
+        slots=ActionSlots(topic=message), requested_outputs={"text"},
+    )])
+
+
 def _publication_document_plan(message: str) -> ActionPlan | None:
     """명확한 단일 월간동향·뉴스 검색을 문서 action으로 고정한다.
 
@@ -1001,6 +1365,7 @@ def _publication_document_plan(message: str) -> ActionPlan | None:
         r"최근(?:희소금속|전략광종)?월간동향보고서제목(?:을)?(?:알려줘|알려주세요|보여줘|보여주세요)[?.]?",
         r"최근\d+(?:개월|년)월간동향에서[가-힣A-Za-z0-9·_-]+관련내용(?:을)?(?:찾아줘|찾아주세요|알려줘|알려주세요)[?.]?",
         r"오늘자원뉴스(?:가)?(?:뭐|무엇)(?:있어|있나요|야)[?.]?",
+        r"이번주(?:비철금속)?주간동향(?:을)?(?:요약)?(?:해줘|해주세요|해주십시오|알려줘|알려주세요)?[?.]?",
         r"이번주주간자원뉴스(?:를)?요약(?:해줘|해주세요|해주십시오)[?.]?",
         r"최근[가-힣A-Za-z0-9·_-]+수출통제관련뉴스(?:가)?(?:있어|있나요)[?.]?",
     )
@@ -1209,6 +1574,15 @@ def validate_action_plan(plan: ActionPlan | None) -> PlanAssessment:
     if plan.predecessor_source_unavailable:
         return PlanAssessment(approved=False, failure_reason="source_unavailable")
     for call in plan.actions:
+        if call.slots.price_operation:
+            expected_period = {
+                "period_average_delta": "trailing_months",
+                "monthly_streak": "latest",
+                "yearly_average": "latest",
+            }.get(call.slots.price_operation)
+            if (call.action_id != "price.series" or call.slots.period is None
+                    or call.slots.period.kind != expected_period):
+                return PlanAssessment(approved=False, failure_reason="slot_unresolved")
         if (call.action_id == "trade.indicator"
                 and call.slots.trade_metric == "country_dependency"
                 and call.slots.denominator_scope is None):
@@ -1318,6 +1692,30 @@ def validate_action_plan(plan: ActionPlan | None) -> PlanAssessment:
             # 광물종합지표는 광종별 시계열이 아니다. 잘못된 슬롯이 아니라
             # 현재 연결된 원천이 제공하지 않는 데이터 범위다.
             return PlanAssessment(approved=False, failure_reason="source_unavailable")
+        if (call.action_id == "indicator.series" and call.slots.indicator == "composite_index"
+                and call.slots.indicator_variant is None):
+            return PlanAssessment(approved=False, failure_reason="slot_unresolved")
+        if call.slots.indicator_variant is not None and (
+                call.action_id != "indicator.series" or call.slots.indicator != "composite_index"):
+            return PlanAssessment(approved=False, failure_reason="slot_unresolved")
+        if call.slots.indicator_operation is not None:
+            if call.action_id != "indicator.series" or call.slots.indicator != "composite_index":
+                return PlanAssessment(approved=False, failure_reason="slot_unresolved")
+            expected_period_kind = {
+                "latest_delta": "latest",
+                "period_change": "trailing_months",
+                "period_extrema": "calendar_year",
+            }[call.slots.indicator_operation]
+            if (call.slots.indicator_variant != "composite" or call.slots.period is None
+                    or call.slots.period.kind != expected_period_kind):
+                return PlanAssessment(approved=False, failure_reason="slot_unresolved")
+        if call.slots.forecast_operation is not None:
+            if call.action_id != "forecast.price":
+                return PlanAssessment(approved=False, failure_reason="slot_unresolved")
+            if (call.slots.forecast_operation == "next_month_value"
+                    and (call.slots.period is None or call.slots.period.kind != "future_horizon"
+                         or call.slots.period.future_horizon != 1)):
+                return PlanAssessment(approved=False, failure_reason="slot_unresolved")
         if call.action_id == "price.overview":
             groups = call.slots.strategic_price_groups or []
             if (not groups or len(groups) != len(set(groups))

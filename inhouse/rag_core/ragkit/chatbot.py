@@ -103,6 +103,7 @@ from .chatbot_events import ChatEvent, chart_spec, extract_markdown_tables, tabl
 from .official_sources import official_source, public_source_label
 from .chatbot_graph import retrieve_evidence
 from .action_results import RetrievalResult
+from .multi_action_state import encode_citation_envelope, state_from_action_results
 from .answer_composer import AnswerComposer
 from .chatbot_store import DEFAULT_DB_PATH as DEFAULT_STORE_DB_PATH
 from .chatbot_store import append_message, get_or_create_session, list_messages
@@ -709,7 +710,16 @@ def _user_visible_unit(unit: str | None) -> str | None:
     """
     if not unit:
         return None
-    visible = [part.strip() for part in unit.split(";") if not _OPAQUE_PRICE_UNIT_CODE.search(part)]
+    visible = []
+    for part in unit.split(";"):
+        if _OPAQUE_PRICE_UNIT_CODE.search(part):
+            continue
+        normalized = re.sub(r"\[dev_dummy\]\s*", "", part, flags=re.IGNORECASE).strip()
+        # 상태 토큰만 있던 가격기준은 사용자 단위가 아니다.
+        if normalized.rstrip().endswith("="):
+            continue
+        if normalized:
+            visible.append(normalized)
     return "; ".join(part for part in visible if part) or None
 
 
@@ -721,7 +731,8 @@ def _natural_price_basis(unit: str | None) -> str | None:
         if separator and value.strip():
             values[key.strip()] = value.strip()
     clauses = []
-    if basis := values.get("가격기준"):
+    basis = re.sub(r"\[dev_dummy\]\s*", "", values.get("가격기준", ""), flags=re.IGNORECASE).strip()
+    if basis:
         clauses.append(f"가격 기준은 {basis}")
     if currency := values.get("통화코드"):
         display_currency = _PRICE_CODE_VALUES.get(currency.upper())
@@ -756,6 +767,10 @@ def _citation_sources(cited_indices: set[int], evidence: list) -> list[dict]:
     return [
         {"index": i, "kind": ev.kind, "source": public_source_label(ev.source), "section": ev.section,
          "as_of": ev.as_of, "unit": _user_visible_unit(ev.unit),
+         # 출처명은 실제 원천(public.KO_*·공식 문서)만 나타낸다. DEV_DUMMY는
+         # 원천명이 아니라 데이터 상태이므로 별도 필드와 경고로 전송한다.
+         "data_status": _data_status(ev),
+         "warnings": [getattr(ev, "caveat", None)] if getattr(ev, "caveat", None) else [],
          "requirement_id": getattr(ev, "requirement_id", None),
          "action_id": getattr(ev, "action_id", None),
          "observed_period": getattr(ev, "observed_period", None),
@@ -765,6 +780,43 @@ def _citation_sources(cited_indices: set[int], evidence: list) -> list[dict]:
         for i, ev in enumerate(evidence, 1)
         if i in cited_indices
     ]
+
+
+def _data_status(ev) -> str | None:
+    """원천 라벨과 독립적인 데이터 상태를 SSE 계약에 제공한다."""
+
+    caveat = getattr(ev, "caveat", None) or ""
+    return "DEV_DUMMY" if "개발용 더미" in caveat else None
+
+
+def _successful_action_citation_indices(
+    result: RetrievalResult | None, evidence: list, existing_cited: set[int],
+) -> set[int]:
+    """복합 턴에서 성공한 각 Action의 근거를 결정적으로 인용한다.
+
+    생성 모델의 본문 인용은 문장 단위 정리에만 쓴다. 성공 requirement에 이미
+    본문 인용이 있으면 그 선택을 보존하고, 없을 때만 해당 requirement의 첫 번째
+    검증 근거 한 건을 보충한다. 따라서 미사용 발췌를 전부 인용으로 승격하지 않으면서
+    다른 성공 Action의 출처가 사라지는 문제를 막는다.
+    """
+
+    if result is None:
+        return set()
+    succeeded = {
+        item.requirement_id for item in result.action_results
+        if item.status == "success"
+    }
+    if not succeeded:
+        return set()
+    selected: set[int] = set()
+    for requirement_id in succeeded:
+        indices = [
+            index for index, ev in enumerate(evidence, 1)
+            if getattr(ev, "requirement_id", None) == requirement_id
+        ]
+        if indices and not any(index in existing_cited for index in indices):
+            selected.add(indices[0])
+    return selected
 
 
 def _retrieval_source_status(warnings: list[str]) -> list[dict[str, object]]:
@@ -850,11 +902,19 @@ def _dummy_data_notice(cited_indices: set[int], evidence: list) -> str:
     이 기능 전체가 막으려던 바로 그 사고가 난다 — 안전에 직결되므로
     캐시(같은 문구 중복 방지) 없이 인용될 때마다 매번 명시한다."""
 
-    cited = [evidence[i - 1] for i in cited_indices if 1 <= i <= len(evidence)]
-    caveats = {ev.caveat for ev in cited if ev.caveat}
-    if not caveats:
+    warnings = _data_warnings(cited_indices, evidence)
+    if not warnings:
         return ""
-    return "\n\n" + "\n".join(f"⚠ {c}" for c in sorted(caveats))
+    return "\n\n" + "\n".join(f"⚠ {warning}" for warning in warnings)
+
+
+def _data_warnings(cited_indices: set[int], evidence: list) -> list[str]:
+    """인용된 근거의 데이터 상태 경고를 출처 라벨과 별도로 정규화한다."""
+
+    return sorted({
+        getattr(ev, "caveat", None) for index, ev in enumerate(evidence, 1)
+        if index in cited_indices and getattr(ev, "caveat", None)
+    })
 
 
 def _partial_forecast_notice(warnings: list[str]) -> str:
@@ -872,8 +932,11 @@ def _country_rank_summary(evidence: list, action_plan, question: str, answer_tex
     # 라우터가 action plan을 복구하지 못한 경우에도 질문과 표가 명확하면
     # 순위 요약을 제공한다. 표의 country/share_pct 열이 최종 근거다.
     rank_question = any(marker in question for marker in ("상위", "순위", "비중"))
-    if action is None and not rank_question and not answer_text:
-        return ""
+    if action is None:
+        # 복구된 계획이 있는데 trade.country_rank가 없다면(예: resource.rank
+        # 복합 질문) 다른 action 표를 국가순위 요약으로 재사용하면 안 된다.
+        if action_plan is not None or (not rank_question and not answer_text):
+            return ""
     slots = getattr(action, "slots", None)
     minerals = (getattr(slots, "minerals", None) or []) if action is not None else []
     mineral = minerals[0] if minerals else next(
@@ -1123,6 +1186,9 @@ def _price_policy_faq_answer(message: str) -> str | None:
                 "품목이 변경될 수 있고, 동일 품목·규격이라도 기존 가격과 차이가 있을 수 있습니다.")
     changed_mineral = next((mineral for mineral in PRICE_SOURCE_CHANGE_MINERALS if mineral in message), None)
     if (changed_mineral
+            # ``현시비교우위``처럼 가격과 무관한 무역지표에도 ``비교``가
+            # 들어간다. 이 FAQ는 가격의 과거/현재 비교 주의에만 한정한다.
+            and any(x in normalized for x in ("가격", "시세"))
             and any(x in normalized for x in ("작년", "올해", "2025년", "2026년", "주의"))
             and any(x in normalized for x in ("비교", "차이", "주의"))):
         return (f"{changed_mineral}{_eun_neun(changed_mineral)} 2026년 1월부터 자료원이 변경된 광종입니다. 2025년 이전 가격과 동일 규격이라도 차이가 있을 수 있어 단순 비교 시 해석에 주의가 필요합니다.")
@@ -1144,15 +1210,20 @@ def _price_series_summary(item) -> str:
     observations = _price_series_observations(item.text)
     if not observations:
         return "조회된 가격 표의 날짜·가격 열을 판독하지 못해 최고·최저와 추세를 계산하지 못했습니다."
+    if len(observations) == 1:
+        observed_date, price = observations[0]
+        return f"최신 가격은 {_format_price(price)} ({observed_date.isoformat()})입니다."
     prices = [price for _, price in observations]
     high_date, high = max(observations, key=lambda point: point[1])
     low_date, low = min(observations, key=lambda point: point[1])
     first, latest = prices[0], prices[-1]
+    latest_date = observations[-1][0]
     high_low_pct = ((high - low) / low * 100) if low else None
     period_change = latest - first
     period_change_pct = (period_change / first * 100) if first else None
 
-    clauses = [f"최고가는 {_format_price(high)} ({high_date.isoformat()})",
+    clauses = [f"최신 가격은 {_format_price(latest)} ({latest_date.isoformat()})",
+               f"최고가는 {_format_price(high)} ({high_date.isoformat()})",
                f"최저가는 {_format_price(low)} ({low_date.isoformat()})"]
     range_text = f"고저 차는 {_format_price(high - low)}"
     if high_low_pct is not None:
@@ -1182,6 +1253,174 @@ def _price_series_summary(item) -> str:
     return ". ".join(clauses) + "."
 
 
+def _latest_price_answer(item, mineral: str | None) -> str:
+    """최신·직전 보유 관측값으로 사용자 요청의 가격 문장을 결정적으로 만든다."""
+    observations = _price_series_observations(item.text)
+    if not observations:
+        return "조회된 가격 표의 날짜·가격 열을 판독하지 못했습니다."
+    latest_date, latest_price = observations[-1]
+    label = mineral or "요청 광종"
+    unit = _price_display_unit(item.unit)
+    # 원천이 단위를 주지 않은 DEV_DUMMY 행에도 값의 차원을 추정하지 않는다.
+    # 대신 문장 형식은 유지하고, 사용자가 단위 부재를 즉시 알 수 있게 한다.
+    price_with_unit = f"{_format_price(latest_price)} {unit or '(원천 단위 미확인)'}"
+    if len(observations) < 2:
+        return f"{latest_date.isoformat()} 기준 {label} 가격은 {price_with_unit}입니다. 직전 보유 관측값이 없어 등락은 계산하지 않았습니다."
+    previous_date, previous_price = observations[-2]
+    change = latest_price - previous_price
+    change_pct = (change / previous_price * 100) if previous_price else None
+    comparison = "전일" if (latest_date - previous_date).days == 1 else f"직전 관측일({previous_date.isoformat()})"
+    change_text = _format_price(abs(change))
+    sign = "+" if change > 0 else "-" if change < 0 else ""
+    if change_pct is None:
+        return f"{latest_date.isoformat()} 기준 {label} 가격은 {price_with_unit}입니다. {comparison} 대비 {sign}{change_text} 변동했습니다."
+    return (f"{latest_date.isoformat()} 기준 {label} 가격은 {price_with_unit}입니다. "
+            f"{comparison} 대비 {sign}{change_text}({change_pct:+.2f}%) 변동했습니다.")
+
+
+def _monthly_price_observations(observations: list[tuple[date, float]]) -> list[tuple[date, float]]:
+    """일별 관측을 달력월별 산술평균으로 집계한다. 결측월은 만들지 않는다."""
+    buckets: dict[tuple[int, int], list[float]] = {}
+    for observed_date, price in observations:
+        buckets.setdefault((observed_date.year, observed_date.month), []).append(price)
+    return [(date(year, month, 1), sum(values) / len(values))
+            for (year, month), values in sorted(buckets.items())]
+
+
+def _yearly_observation_months(text: str) -> dict[int, int]:
+    """연도 집계 adapter가 보낸 실제 관측 월 수를 읽는다."""
+    for table in extract_markdown_tables(text):
+        keys = [column.split("(", 1)[0].strip().casefold() for column in table["columns"]]
+        try:
+            date_index = keys.index("price_date")
+            count_index = keys.index("observation_months")
+        except ValueError:
+            continue
+        result = {}
+        for row in table["rows"]:
+            try:
+                result[int(row[date_index][:4])] = int(float(row[count_index]))
+            except (ValueError, TypeError):
+                continue
+        return result
+    return {}
+
+
+def _months_before(value: date, months: int) -> date:
+    ordinal = value.year * 12 + value.month - 1 - months
+    return date(ordinal // 12, ordinal % 12 + 1, 1)
+
+
+def _price_operation_answer(item, mineral: str | None, operation: str, period) -> str:
+    """LLM이 아닌 관측 표본으로 가격 집계 문형의 수치와 문장을 고정한다."""
+    observations = _price_series_observations(item.text)
+    label = mineral or "요청 광종"
+    unit = _price_display_unit(item.unit) or "(원천 단위 미확인)"
+    if operation == "period_average_delta":
+        if not observations:
+            return "계산 불가: 조회된 가격 표의 날짜·가격 열을 판독하지 못했습니다."
+        latest_date, latest_price = observations[-1]
+        average = sum(value for _, value in observations) / len(observations)
+        if not average:
+            return "계산 불가: 비교기간 평균 가격이 0이어서 변동률을 계산할 수 없습니다."
+        months = getattr(period, "trailing_months", None)
+        expected_start = _months_before(latest_date, months - 1) if months else None
+        if (expected_start and observations[0][0].year * 12 + observations[0][0].month
+                > expected_start.year * 12 + expected_start.month):
+            return f"계산 불가: 최근 {months}개월 평균을 계산할 전체 관측기간이 확보되지 않았습니다."
+        period_label = (f"최근 {months // 12}년" if months and months % 12 == 0
+                        else f"최근 {months}개월" if months else "조회 기간")
+        pct = (latest_price - average) / average * 100
+        return (f"{latest_date.isoformat()} 기준 {label} 가격은 {_format_price(latest_price)} {unit}입니다. "
+                f"{period_label} 평균 대비 {pct:+.2f}%입니다.")
+
+    monthly = _monthly_price_observations(observations)
+    if operation == "monthly_streak":
+        if len(monthly) < 2:
+            return "계산 불가: 월별 연속 추세를 계산하려면 최소 2개월의 가격 관측값이 필요합니다."
+        latest_month, latest_average = monthly[-1]
+        previous_month, previous_average = monthly[-2]
+        if latest_month.year * 12 + latest_month.month != previous_month.year * 12 + previous_month.month + 1:
+            return "계산 불가: 최신 두 관측월이 연속하지 않아 월별 연속 추세를 계산할 수 없습니다."
+        delta = latest_average - previous_average
+        direction = "상승" if delta > 0 else "하락" if delta < 0 else "보합"
+        index = len(monthly) - 1
+        while index > 0:
+            current_month, current_value = monthly[index]
+            prior_month, prior_value = monthly[index - 1]
+            if (current_month.year * 12 + current_month.month
+                    != prior_month.year * 12 + prior_month.month + 1):
+                break
+            current_direction = "상승" if current_value > prior_value else "하락" if current_value < prior_value else "보합"
+            if current_direction != direction:
+                break
+            index -= 1
+        start_month, start_average = monthly[index]
+        # "N개월째"는 같은 방향으로 이어진 월간 변화의 횟수다. 시작월은
+        # 첫 변화 직전의 비교 기준월로 남겨 구간 변동률의 분모와 일치시킨다.
+        months = len(monthly) - 1 - index
+        pct = ((latest_average - start_average) / start_average * 100) if start_average else None
+        pct_text = f"{pct:+.2f}%" if pct is not None else "계산 불가"
+        return (f"{latest_month.strftime('%Y-%m')} 기준 {label} 월평균 가격은 {_format_price(latest_average)} {unit}입니다. "
+                f"{months}개월째 {direction}세이며, {direction} 구간 시작은 "
+                f"{start_month.strftime('%Y-%m')}입니다. 현재 월평균 가격은 "
+                f"{_format_price(latest_average)} {unit}({pct_text})입니다.")
+
+    if operation == "yearly_average":
+        if not monthly:
+            return "계산 불가: 연도별 평균을 계산할 가격 관측값이 없습니다."
+        years: dict[int, list[float]] = {}
+        for observed_date, value in observations:
+            years.setdefault(observed_date.year, []).append(value)
+        current_year = date.today().year
+        observed_months = _yearly_observation_months(item.text)
+        values = [
+            f"{year}{' YTD' if year == current_year or observed_months.get(year, 12) < 12 else ''} "
+            f"{_format_price(sum(points) / len(points))}"
+            for year, points in sorted(years.items(), reverse=True)
+        ]
+        return f"{label} 연도별 평균 가격은 [{', '.join(values)}]입니다. 단위: {unit}"
+    return "지원하지 않는 가격 집계 요청입니다."
+
+
+def _price_compare_scope_answer(evidence: list, action_plan) -> tuple[str, set[int]] | None:
+    """두 광종의 공통 기간 변동률 집계를 요청 순서대로 고정 렌더링한다."""
+    actions = getattr(action_plan, "actions", [])
+    if len(actions) != 1 or getattr(actions[0], "action_id", None) != "price.compare":
+        return None
+    action = actions[0]
+    requested = list(getattr(action.slots, "minerals", None) or [])
+    rows: dict[str, float] = {}
+    cited: set[int] = set()
+    for index, item in enumerate(evidence, 1):
+        if getattr(item, "action_id", None) != "price.compare":
+            continue
+        # 변동률 요약뿐 아니라 동일 기준·공통 기간 검증을 통과한 두 시계열도
+        # chart 이벤트 대상으로 남긴다.
+        cited.add(index)
+        for table in extract_markdown_tables(item.text):
+            keys = [column.split("(", 1)[0].strip().casefold() for column in table["columns"]]
+            try:
+                mineral_index = keys.index("mineral")
+                pct_index = keys.index("pct_change")
+            except ValueError:
+                continue
+            for row in table["rows"]:
+                try:
+                    rows[row[mineral_index]] = float(row[pct_index].replace(",", "").replace("%", ""))
+                except (ValueError, AttributeError):
+                    continue
+    if len(requested) != 2 or any(name not in rows for name in requested):
+        return None
+    period = getattr(action.slots, "period", None)
+    months = getattr(period, "trailing_months", None)
+    period_label = (f"최근 {months // 12}년" if months and months % 12 == 0
+                    else f"최근 {months}개월" if months else "공통 관측기간")
+    return (f"{period_label} {requested[0]}·{requested[1]} 가격 비교입니다. "
+            f"비교 차트는 아래에 표시합니다. 같은 기간 {requested[0]} {rows[requested[0]]:+.2f}%, "
+            f"{requested[1]} {rows[requested[1]]:+.2f}%입니다."), cited
+
+
 def _price_series_scope_answer(evidence: list, action_plan) -> tuple[str, set[int]] | None:
     """단일 가격 조회의 기간 요약을 표본에서 결정론적으로 계산한다."""
     actions = getattr(action_plan, "actions", [])
@@ -1199,20 +1438,162 @@ def _price_series_scope_answer(evidence: list, action_plan) -> tuple[str, set[in
     index, item = selected[0]
     slots = getattr(actions[0], "slots", None)
     period = getattr(slots, "period", None)
+    if getattr(slots, "price_operation", None):
+        return _price_operation_answer(item, getattr(slots, "mineral", None), slots.price_operation, period), {index}
+    if period and period.kind == "latest":
+        return _latest_price_answer(item, getattr(slots, "mineral", None)), {index}
     if period and period.kind == "trailing_months" and period.trailing_months:
         duration = "1년" if period.trailing_months == 12 else f"{period.trailing_months}개월"
         heading = f"최근 {duration} 가격 요약입니다."
     elif period and period.kind == "calendar_year" and period.calendar_year:
         heading = f"{period.calendar_year}년 가격 요약입니다."
     else:
-        heading = "요청하신 기간의 가격 요약입니다."
+        observations = _price_series_observations(item.text)
+        # ``observed_period``에는 "최신순 N건만" 같은 범위 상태가 붙을 수
+        # 있으므로, 화면의 최신 관측일은 실제 가격 표의 마지막 날짜만 쓴다.
+        # 표를 판독하지 못한 예외에만 범위 문자열의 ISO 날짜를 보수적으로 쓴다.
+        observed_dates = re.findall(r"\d{4}-\d{2}-\d{2}", item.observed_period)
+        latest_observation = (observations[-1][0].isoformat() if observations
+                              else (observed_dates[-1] if observed_dates else item.observed_period))
+        heading = f"최신 보유 관측일({latest_observation}) 가격 요약입니다."
     basis = _natural_price_basis(item.unit)
     answer = f"{heading} 조회된 값 기준입니다."
     if basis:
         answer += f" {basis}"
     answer += f"\n\n{_price_series_summary(item)}"
-    answer += "\n\n표와 차트는 조회된 가격값으로 작성했습니다."
+    observations = _price_series_observations(item.text)
+    if len(observations) == 1:
+        answer += "\n\n표에는 최신 관측값 1건을 표시했습니다."
+    else:
+        answer += "\n\n표와 차트는 조회된 가격값으로 작성했습니다."
     return answer, {index}
+
+
+def _composite_index_observations(text: str) -> list[tuple[date, float]]:
+    """검증된 HI001 표에서 날짜·지수만 읽는다. 다른 하위지수 혼입은 거부한다."""
+    for table in extract_markdown_tables(text):
+        keys = [column.split("(", 1)[0].strip().casefold() for column in table["columns"]]
+        date_index = next((i for i, key in enumerate(keys)
+                           if key in {"crtr_ymd", "date", "index_date", "기준일"}), None)
+        value_index = next((i for i, key in enumerate(keys)
+                            if key in {"indx", "index", "index_value", "지수"}), None)
+        type_index = next((i for i, key in enumerate(keys)
+                           if key in {"indx_se_cd", "index_type_code", "index_type"}), None)
+        if date_index is None or value_index is None:
+            continue
+        observations: list[tuple[date, float]] = []
+        for row in table["rows"]:
+            if max(date_index, value_index) >= len(row):
+                continue
+            if type_index is not None and (type_index >= len(row) or row[type_index].strip() != "HI001"):
+                # typed route가 거른 뒤에도 원천 표에 다른 행이 있으면 계산하지 않는다.
+                return []
+            raw_date = row[date_index].strip()
+            try:
+                observed = (date.fromisoformat(raw_date) if "-" in raw_date
+                            else datetime.strptime(raw_date, "%Y%m%d").date())
+                value = float(row[value_index].replace(",", "").strip())
+            except (TypeError, ValueError):
+                continue
+            if math.isfinite(value):
+                observations.append((observed, value))
+        if observations:
+            return sorted(set(observations))
+    return []
+
+
+def _composite_index_scope_answer(evidence: list, action_plan) -> tuple[str, set[int]] | None:
+    """private 종합지수의 세 승인 문형을 LLM 없이 지정 문장으로 렌더링한다."""
+    actions = getattr(action_plan, "actions", [])
+    if len(actions) != 1 or getattr(actions[0], "action_id", None) != "indicator.series":
+        return None
+    slots = actions[0].slots
+    if (getattr(slots, "indicator", None) != "composite_index"
+            or getattr(slots, "indicator_variant", None) != "composite"
+            or not getattr(slots, "indicator_operation", None)):
+        return None
+    selected = [(index, item) for index, item in enumerate(evidence, 1)
+                if getattr(item, "action_id", None) == "indicator.series"]
+    if len(selected) != 1:
+        return "계산 불가: 광물종합지수의 검증된 단일 HI001 근거가 필요합니다.", set()
+    index, item = selected[0]
+    points = _composite_index_observations(item.text)
+    operation = slots.indicator_operation
+    if operation == "latest_delta":
+        if len(points) < 2:
+            return "계산 불가: 전일 대비를 계산할 직전 광물종합지수 관측값이 없습니다.", {index}
+        observed, value = points[-1]
+        _, previous = points[-2]
+        delta = value - previous
+        if previous == 0:
+            return "계산 불가: 직전 광물종합지수가 0이어서 변동률을 계산할 수 없습니다.", {index}
+        return (f"{observed.isoformat()} 광물종합지수는 {_format_price(value)}으로 전일 대비 "
+                f"{delta:+.2f}({delta / previous * 100:+.2f}%) 변동했습니다."), {index}
+    if operation == "period_change":
+        if len(points) < 2 or points[0][1] == 0:
+            return "계산 불가: 기간 추세를 계산할 광물종합지수 관측값이 부족합니다.", {index}
+        start_date, start_value = points[0]
+        end_date, end_value = points[-1]
+        change_pct = (end_value - start_value) / start_value * 100
+        direction = "상승" if change_pct > 0 else "하락" if change_pct < 0 else "보합"
+        return (f"{start_date.isoformat()}~{end_date.isoformat()} 광물종합지수는 "
+                f"{_format_price(start_value)}에서 {_format_price(end_value)}으로 "
+                f"{change_pct:+.2f}% {direction}했습니다."), {index}
+    if operation == "period_extrema":
+        year = getattr(getattr(slots, "period", None), "calendar_year", None)
+        year_points = [point for point in points if year is not None and point[0].year == year]
+        if not year_points:
+            return "계산 불가: 해당 연도의 광물종합지수 관측값이 없습니다.", {index}
+        # 동률이면 가장 최근 관측일을 쓴다. 같은 입력은 같은 문장을 만든다.
+        high_date, high_value = max(year_points, key=lambda point: (point[1], point[0]))
+        low_date, low_value = min(year_points, key=lambda point: (point[1], -point[0].toordinal()))
+        return (f"올해 고점은 {high_date.isoformat()} {_format_price(high_value)}, "
+                f"저점은 {low_date.isoformat()} {_format_price(low_value)}입니다."), {index}
+    return None
+
+
+def _forecast_price_scope_answer(evidence: list, action_plan) -> tuple[str, set[int]] | None:
+    """향후 예측 adapter가 제공할 정규화 표의 출력 계약이다.
+
+    현재 ``forecast.price``는 원천 미연결로 실행 전에 source_unavailable 처리된다.
+    따라서 이 함수는 미래 adapter의 ``forecast_date``, ``predicted_price``,
+    ``current_price``, ``unit`` 정규화 열 외에는 해석하지 않는다.
+    """
+    actions = getattr(action_plan, "actions", [])
+    if len(actions) != 1 or getattr(actions[0], "action_id", None) != "forecast.price":
+        return None
+    selected = [(index, item) for index, item in enumerate(evidence, 1)
+                if getattr(item, "action_id", None) == "forecast.price"]
+    if len(selected) != 1:
+        return None
+    index, item = selected[0]
+    for table in extract_markdown_tables(item.text):
+        keys = [column.split("(", 1)[0].strip().casefold() for column in table["columns"]]
+        required = {"forecast_date", "predicted_price", "current_price", "unit"}
+        if not required <= set(keys) or not table["rows"]:
+            continue
+        row = table["rows"][0]
+        try:
+            values = {key: row[keys.index(key)].strip() for key in required}
+            predicted = float(values["predicted_price"].replace(",", ""))
+            current = float(values["current_price"].replace(",", ""))
+        except (IndexError, ValueError):
+            continue
+        mineral = getattr(actions[0].slots, "mineral", None) or "요청 광종"
+        if current == 0:
+            return "계산 불가: 현재가가 0이어서 예측 변동률을 계산할 수 없습니다.", {index}
+        pct = (predicted - current) / current * 100
+        direction = "상승" if pct > 0 else "하락" if pct < 0 else "보합"
+        if getattr(actions[0].slots, "forecast_operation", None) == "direction":
+            period_index = keys.index("forecast_period") if "forecast_period" in keys else None
+            if period_index is None or period_index >= len(row) or not row[period_index].strip():
+                return "계산 불가: 예측기간이 확인되지 않아 전망 방향을 안내할 수 없습니다.", {index}
+            return (f"{row[period_index].strip()} {mineral} 가격 전망 방향은 {direction}입니다. "
+                    f"현재가 {_format_price(current)} {values['unit']}, 전망치는 "
+                    f"{_format_price(predicted)} {values['unit']} 기준입니다."), {index}
+        return (f"{values['forecast_date']} {mineral} 가격 전망치는 {_format_price(predicted)} "
+                f"{values['unit']}로, 현재 대비 {pct:+.2f}% {direction} 전망입니다. 전망치는 참고용입니다."), {index}
+    return None
 
 
 def _strategic_price_overview_answer(evidence: list, action_plan) -> tuple[str, set[int]] | None:
@@ -1563,6 +1944,36 @@ def _price_series_display_table(table: dict) -> dict:
     return {**table, "columns": columns, "rows": rows, "markdown": markdown}
 
 
+def _latest_price_display_table(table: dict) -> dict:
+    """직전값은 등락 계산에만 쓰고 최신 가격 표에는 최신 행 하나만 남긴다."""
+    observations = _price_series_observations(table["markdown"])
+    if not observations:
+        return table
+    date_index = next((index for index, column in enumerate(table["columns"])
+                       if column.split("(", 1)[0].strip().casefold() in {"crtr_ymd", "price_date", "date", "trd_dt"}
+                       or "일자" in column), None)
+    if date_index is None:
+        return table
+    parsed_rows: list[tuple[date, list[str]]] = []
+    for row in table["rows"]:
+        raw_date = str(row[date_index]).strip()
+        for fmt in ("%Y%m%d", "%Y-%m-%d", "%Y%m", "%Y-%m", "%Y"):
+            try:
+                parsed_rows.append((datetime.strptime(raw_date, fmt).date(), row))
+                break
+            except ValueError:
+                continue
+    if not parsed_rows:
+        return table
+    rows = [max(parsed_rows, key=lambda item: item[0])[1]]
+    markdown = "\n".join([
+        "| " + " | ".join(table["columns"]) + " |",
+        "| " + " | ".join("---" for _ in table["columns"]) + " |",
+        "| " + " | ".join(rows[0]) + " |",
+    ])
+    return {**table, "rows": rows, "markdown": markdown}
+
+
 def _multimodal_events(cited_indices: set[int], evidence: list, *, include_charts: bool = True) -> list[ChatEvent]:
     """인용된 근거에서 표를 뽑아 `table` 블록으로, 추천 차트가 있으면 `chart`
     스펙으로도 낸다. 인용 안 된 근거(조회는 됐지만 답변 근거로 안 쓰인 것)는
@@ -1586,6 +1997,8 @@ def _multimodal_events(cited_indices: set[int], evidence: list, *, include_chart
     for i, ev in enumerate(evidence, 1):
         if i not in cited_indices:
             continue
+        if getattr(ev, "suppress_price_table", False):
+            continue
         hide_price_provenance = getattr(ev, "action_id", None) == "price.series"
         # 전략광종 현황은 같은 표 안에서도 가격기준·통화·중량단위가 달라,
         # 차트 이벤트뿐 아니라 프런트가 사용할 수 있는 chart_hint도 금지한다.
@@ -1598,6 +2011,8 @@ def _multimodal_events(cited_indices: set[int], evidence: list, *, include_chart
         for t_idx, table in enumerate(extract_markdown_tables(ev.text), 1):
             if hide_price_provenance:
                 table = _price_series_display_table(table)
+            if getattr(ev, "latest_price_display", False):
+                table = _latest_price_display_table(table)
             table_key = (tuple(table["columns"]), tuple(tuple(row) for row in table["rows"]))
             if table_key in emitted_tables:
                 continue
@@ -1609,6 +2024,8 @@ def _multimodal_events(cited_indices: set[int], evidence: list, *, include_chart
                 menu_source=source_menu,
                 requested_frequency=getattr(ev, "requested_frequency", None),
             )
+            block["data_status"] = _data_status(ev)
+            block["warnings"] = [ev.caveat] if ev.caveat else []
             if suppress_chart:
                 block["chart_hint"] = {"recommended": None, "alternatives": [],
                                        "reason": "광종별 가격기준·통화·중량단위가 달라 비교 차트를 제공하지 않음"}
@@ -1622,6 +2039,8 @@ def _multimodal_events(cited_indices: set[int], evidence: list, *, include_chart
                 requested_frequency=getattr(ev, "requested_frequency", None),
             )
             if spec is not None:
+                spec["data_status"] = _data_status(ev)
+                spec["warnings"] = [ev.caveat] if ev.caveat else []
                 events.append(ChatEvent(type="chart", data=spec))
     return events
 
@@ -1851,13 +2270,63 @@ async def chat_turn(
         })
         return
 
-    price_series_answer = _price_series_scope_answer(evidence, action_plan)
-    if price_series_answer is not None:
-        answer, cited_indices = price_series_answer
+    composite_index_answer = _composite_index_scope_answer(evidence, action_plan)
+    if composite_index_answer is not None:
+        answer, cited_indices = composite_index_answer
+        if answer.startswith("계산 불가:"):
+            await asyncio.to_thread(
+                append_message, resolved_session_id, "assistant", answer,
+                _abstain_context(action_plan, "source_unavailable"), store_db_path,
+            )
+            yield _status_event(3, status="조회실패", failure_reason="source_unavailable")
+            yield ChatEvent(type="delta", data={"delta": answer})
+            yield _abstain_done("source_unavailable")
+            return
+        citations = _citation_sources(cited_indices, evidence)
+        yield _status_event(4)
+        yield ChatEvent(type="delta", data={"delta": answer})
+        for event in _multimodal_events(cited_indices, evidence):
+            yield event
+        await asyncio.to_thread(
+            append_message, resolved_session_id, "assistant", answer,
+            json.dumps(citations, ensure_ascii=False), store_db_path,
+        )
+        yield ChatEvent(type="done", data={
+            "done": True, "citations": citations, "bogus_citations": [], "abstained": False,
+        })
+        return
+
+    forecast_price_answer = _forecast_price_scope_answer(evidence, action_plan)
+    if forecast_price_answer is not None:
+        answer, cited_indices = forecast_price_answer
+        # 미래 adapter가 불완전한 행을 넘기면 LLM으로 형식을 메우지 않는다.
+        if answer.startswith("계산 불가:"):
+            await asyncio.to_thread(
+                append_message, resolved_session_id, "assistant", answer,
+                _abstain_context(action_plan, "source_unavailable"), store_db_path,
+            )
+            yield _status_event(3, status="조회실패", failure_reason="source_unavailable")
+            yield ChatEvent(type="delta", data={"delta": answer})
+            yield _abstain_done("source_unavailable")
+            return
+        citations = _citation_sources(cited_indices, evidence)
+        yield _status_event(4)
+        yield ChatEvent(type="delta", data={"delta": answer})
+        await asyncio.to_thread(
+            append_message, resolved_session_id, "assistant", answer,
+            json.dumps(citations, ensure_ascii=False), store_db_path,
+        )
+        yield ChatEvent(type="done", data={
+            "done": True, "citations": citations, "bogus_citations": [], "abstained": False,
+        })
+        return
+
+    price_compare_answer = _price_compare_scope_answer(evidence, action_plan)
+    if price_compare_answer is not None:
+        answer, cited_indices = price_compare_answer
         citations = []
-        # 단일 가격 조회는 답변·인용 패널·표·차트에서 원천/테이블명과 실제
-        # 관측범위를 감춘다. 수치 요약은 위 결정적 표본 계산으로만 제공한다.
-        extra = _partial_forecast_notice(route_warnings)
+        data_warnings = _data_warnings(cited_indices, evidence)
+        extra = _dummy_data_notice(cited_indices, evidence) + _partial_forecast_notice(route_warnings)
         final_text = answer + extra
         yield _status_event(4)
         yield ChatEvent(type="delta", data={"delta": answer})
@@ -1870,7 +2339,44 @@ async def chat_turn(
             json.dumps(citations, ensure_ascii=False), store_db_path,
         )
         yield ChatEvent(type="done", data={
-            "done": True, "citations": citations, "bogus_citations": [], "abstained": False,
+            "done": True, "citations": citations, "data_warnings": data_warnings,
+            "bogus_citations": [], "abstained": False,
+        })
+        return
+
+    price_series_answer = _price_series_scope_answer(evidence, action_plan)
+    if price_series_answer is not None:
+        answer, cited_indices = price_series_answer
+        if answer.startswith("계산 불가:"):
+            await asyncio.to_thread(
+                append_message, resolved_session_id, "assistant", answer,
+                _abstain_context(action_plan, "source_unavailable"), store_db_path,
+            )
+            yield _status_event(3, status="조회실패", failure_reason="source_unavailable")
+            yield ChatEvent(type="delta", data={"delta": answer})
+            yield _abstain_done("source_unavailable")
+            return
+        citations = []
+        # 단일 가격 조회는 답변·인용 패널·표·차트에서 원천/테이블명과 실제
+        # 관측범위를 감춘다. 수치 요약은 위 결정적 표본 계산으로만 제공한다.
+        # 가격 원천의 공개 라벨·관측기간은 이 전용 화면 정책대로 숨기되,
+        # DEV_DUMMY 상태 경고는 결과 신뢰성 정보이므로 별도 노출한다.
+        data_warnings = _data_warnings(cited_indices, evidence)
+        extra = _dummy_data_notice(cited_indices, evidence) + _partial_forecast_notice(route_warnings)
+        final_text = answer + extra
+        yield _status_event(4)
+        yield ChatEvent(type="delta", data={"delta": answer})
+        if extra:
+            yield ChatEvent(type="delta", data={"delta": extra})
+        for event in _multimodal_events(cited_indices, evidence):
+            yield event
+        await asyncio.to_thread(
+            append_message, resolved_session_id, "assistant", final_text,
+            json.dumps(citations, ensure_ascii=False), store_db_path,
+        )
+        yield ChatEvent(type="done", data={
+            "done": True, "citations": citations, "data_warnings": data_warnings,
+            "bogus_citations": [], "abstained": False,
         })
         return
 
@@ -2003,6 +2509,10 @@ async def chat_turn(
         break
 
     cited_indices = {int(n) for n in _CITE_NUM_RE.findall(cleaned)}
+    # 복합 Action의 citation/footer는 모델이 어떤 [n]을 출력했는지가 아니라
+    # 실행 성공 requirement와 Evidence의 귀속으로 완결한다.
+    if len(planned_actions) >= 2:
+        cited_indices.update(_successful_action_citation_indices(composer_result, evidence, cited_indices))
     # 생산량·매장량 복합 순위는 모델이 한 표만 인용해도 두 정형 원천을
     # 모두 화면에 노출해야 한다. 해당 질문에서 식별된 원천만 합쳐 다른
     # 순위·문서 질의의 인용 규율은 그대로 유지한다.
@@ -2047,7 +2557,13 @@ async def chat_turn(
     await asyncio.to_thread(
         append_message,
         resolved_session_id, "assistant", final_text,
-        json.dumps(citation_sources, ensure_ascii=False), store_db_path,
+        encode_citation_envelope(
+            citation_sources,
+            state_from_action_results(
+                executed_plan, retrieval_result.action_results if retrieval_result else [], profile=profile,
+            ),
+        ),
+        store_db_path,
     )
     yield ChatEvent(
         type="done",

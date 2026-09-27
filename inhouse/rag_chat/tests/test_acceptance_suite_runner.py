@@ -46,6 +46,40 @@ class AcceptanceSuiteDefinitionTest(unittest.TestCase):
         selected = runner.select_cases(cases, {"AC21"}, {"module", "integration"})
         self.assertEqual([case["id"] for case in selected], ["AC21"])
 
+    def test_document_provenance_accepts_pageindex_citation_and_verified_okf_without_restoring_citations(self):
+        citations = [{"kind": "pageindex", "source": "공식 문서 원문"}]
+        done = {"retrieval_sources": [{"source": "okf", "status": "verified", "evidence_count": 1}]}
+        self.assertTrue(runner._expected_source_present("PageIndex", citations, done))
+        self.assertTrue(runner._expected_source_present("OKF", citations, done))
+        self.assertFalse(runner._expected_source_present("KOMIS", citations, done))
+
+    def test_ac09_period_check_rejects_out_of_year_rows(self):
+        events = [{"columns": ["month(월)", "import_amount(수입금액합계(USD))"],
+                   "rows": [["2025-09", "1"], ["2026-01", "2"]]}]
+        self.assertIn("AC09 명시 2025년 밖의 월별 교역 행이 포함됨",
+                      runner._independent_numeric_errors("AC09", events))
+
+    def test_country_rank_checks_recalculate_shared_denominator_and_order(self):
+        events = [{"columns": ["country(국가)", "total(수입금액합계)", "share_pct(비중)"],
+                   "rows": [["A", "60", "60"], ["B", "40", "40"]]}]
+        self.assertEqual(runner._independent_numeric_errors("AC08", events), ["국가별 순위 행 수 불일치: 2"])
+        events[0]["rows"] = [["A", "60", "60"], ["B", "40", "40"], ["C", "30", "30"],
+                              ["D", "20", "20"], ["E", "10", "10"]]
+        self.assertEqual(runner._independent_numeric_errors("AC08", events), [])
+
+    def test_ac14_yoy_check_recalculates_increase(self):
+        events = [{"columns": ["순위", "시작연도", "시작값(t)", "끝연도", "끝값(t)", "증가량(t)"],
+                   "rows": [["1", "2024", "10", "2025", "15", "5"]] * 5}]
+        self.assertEqual(runner._independent_numeric_errors("AC14", events), [])
+        events[0]["rows"][0][-1] = "4"
+        self.assertIn("AC14 광산 YoY 증가량 독립 산식 불일치",
+                      runner._independent_numeric_errors("AC14", events))
+
+    def test_ac16_tsi_check_recalculates_formula(self):
+        events = [{"columns": ["year(연도)", "export_amount(수출금액)", "import_amount(수입금액)", "tsi(TSI)"],
+                   "rows": [["2025", "25", "75", "-0.5"]]}]
+        self.assertEqual(runner._independent_numeric_errors("AC16", events), [])
+
     def test_module_required_checks_are_mapped_to_executable_targets(self):
         _, cases = runner.load_cases(Path(__file__).with_name("chatbot_acceptance_cases.yml"))
         ac42 = next(case for case in cases if case["id"] == "AC42")

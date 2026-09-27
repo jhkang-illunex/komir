@@ -939,6 +939,50 @@ class KomisRawDataRepository:
             },
         )
 
+    def fetch_price_time_aggregate(
+        self, *, mineral_code: str, operation: Literal["monthly_streak", "yearly_average"],
+    ) -> RawDataset:
+        """대표 가격기준 하나를 DB에서 월/연 단위로 집계해 원 일별 행을 내보내지 않는다."""
+        serials = self.resolve_price_criterion_serials(mineral_code)
+        if not serials:
+            return RawDataset(source_table="KO_MNRL_PRC", columns=[], rows=[], row_count=0)
+        serial = serials[0]
+        criterion = self.resolve_price_criterion_metadata(serial)
+        criterion_name, currency, weight = criterion or (None, None, None)
+        if operation == "monthly_streak":
+            date_expression = "SUBSTRING(p.crtr_ymd, 1, 6) || '01'"
+            extra = "COUNT(*) AS observation_count"
+        else:
+            date_expression = "SUBSTRING(p.crtr_ymd, 1, 4) || '0101'"
+            extra = "COUNT(DISTINCT SUBSTRING(p.crtr_ymd, 1, 6)) AS observation_months"
+        try:
+            frame = read_sql_pg(f"""
+                SELECT {date_expression} AS price_date, AVG(p.cmerc_prc) AS price, {extra}
+                FROM {KOMIS_SCHEMA}.KO_MNRL_PRC p
+                WHERE p.mnrl_prc_crtr_sn = {_literal(serial)}
+                  AND p.status = 'Y' AND p.last_del_dt IS NULL AND p.cmerc_prc IS NOT NULL
+                GROUP BY {date_expression}
+                ORDER BY {date_expression}
+            """)
+        except Exception as exc:  # noqa: BLE001
+            raise RawDataAccessError("가격 월·연 집계 조회에 실패했습니다.") from exc
+        columns = ["price_date", "price", "observation_count" if operation == "monthly_streak" else "observation_months"]
+        rows = [
+            {key: _json_value(value) for key, value in record.items()}
+            for record in frame.to_dict("records")
+        ]
+        as_of = (f"{rows[0]['price_date']}~{rows[-1]['price_date']}") if rows else None
+        return RawDataset(
+            source_table="KO_MNRL_PRC", columns=columns, row_count=len(rows), rows=rows, as_of=as_of,
+            column_labels={"price_date": "기준일자", "price": "평균가격", columns[-1]: "관측수"},
+            unit="; ".join(part for part in (
+                f"가격기준={criterion_name}" if criterion_name else None,
+                f"통화코드={currency}" if currency else None,
+                f"중량단위코드={weight}" if weight else None,
+            ) if part) or None,
+            metadata={"price_criterion_serial": serial, "operation": operation},
+        )
+
     def fetch_strategic_price_overview(
         self, *, members: list[Mapping[str, str]], as_of_date: str,
     ) -> RawDataset:

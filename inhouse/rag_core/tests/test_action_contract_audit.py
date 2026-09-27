@@ -14,6 +14,7 @@ from rag_core.ragkit.action_contract import (  # noqa: E402
 )
 from rag_core.ragkit.chatbot_graph import _route_from_action_plan, _route_from_action_call  # noqa: E402
 from rag_core.ragkit import chatbot_graph as graph  # noqa: E402
+from rag_core.retrieval.weekly_trend import _publication_date  # noqa: E402
 from rag_core.ragkit.mcp_client import _ProfileSession  # noqa: E402
 from rag_core.ragkit.source_contract import SourceAssessment  # noqa: E402
 from rag_core.retrieval.evidence import Evidence  # noqa: E402
@@ -88,6 +89,158 @@ class ActionContractAuditTest(unittest.TestCase):
         self.assertEqual(candidate.actions[0].slots.period.kind, "future_horizon")
         self.assertEqual(validate_action_plan(candidate).failure_reason, "source_unavailable")
 
+    def test_current_price_words_bypass_planner_as_latest_observation(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("금일 가격 질의는 planner를 호출하면 안 됩니다")
+
+        for question, mineral in (
+            ("금일 니켈 가격 알려줘", "니켈"),
+            ("금일자 니켈 시세는 얼마야?", "니켈"),
+            ("오늘 니켈 가격", "니켈"),
+            ("현재 텅스텐 가격은 얼마야?", "텅스텐"),
+            ("지금 금 시세 알려줘", "금"),
+            ("현재 아연 가격 알려줘", "아연"),
+            ("니켈 가격 얼마야?", "니켈"),
+        ):
+            with self.subTest(question=question, mineral=mineral):
+                candidate = extract_action_plan(question, MustNotRun())
+                call = candidate.actions[0]
+                self.assertEqual((call.action_id, call.slots.mineral), ("price.series", mineral))
+                self.assertEqual(call.slots.period.kind, "latest")
+                route = _route_from_action_call(call, question)
+                self.assertIsNone(route.komis_start_period)
+                self.assertIsNone(route.komis_end_period)
+                self.assertEqual(route.komis_raw_limit, 2)
+
+    def test_current_price_shortcut_does_not_capture_multi_mineral_request(self):
+        class Planner:
+            def invoke(self, **kwargs):
+                return SimpleNamespace(output=IntentPlan(requirements=[IntentCall(
+                    requirement_id="compare", intent="price_compare", role="data",
+                    slots=ActionSlots(minerals=["니켈", "리튬"]),
+                )]))
+
+        candidate = extract_action_plan("현재 니켈과 리튬 가격 알려줘", Planner())
+
+        self.assertEqual(candidate.actions[0].action_id, "price.compare")
+
+    def test_composite_index_closed_forms_keep_hi001_and_typed_operation(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("닫힌 종합지수 문형은 planner를 호출하면 안 됩니다")
+
+        cases = (
+            ("오늘 광물 종합지수 얼마야?", "latest_delta", "latest"),
+            ("최근 3개월 광물종합지수 추세 알려줘", "period_change", "trailing_months"),
+            ("광물 종합지수 올해 고점/저점은?", "period_extrema", "calendar_year"),
+        )
+        for question, operation, period_kind in cases:
+            with self.subTest(question=question):
+                candidate = extract_action_plan(question, MustNotRun())
+                call = candidate.actions[0]
+                self.assertEqual(call.action_id, "indicator.series")
+                self.assertEqual(call.slots.indicator, "composite_index")
+                self.assertEqual(call.slots.indicator_variant, "composite")
+                self.assertEqual(call.slots.indicator_operation, operation)
+                self.assertEqual(call.slots.period.kind, period_kind)
+                self.assertTrue(validate_action_plan(candidate).approved)
+                route = _route_from_action_call(call, question)
+                self.assertEqual(route.komis_index_type_code, "HI001")
+
+    def test_composite_index_operation_rejects_mixed_or_missing_variant(self):
+        candidate = plan(ActionCall(
+            requirement_id="bad", action_id="indicator.series",
+            slots=ActionSlots(indicator="composite_index", indicator_operation="latest_delta",
+                              period=Period(kind="latest")),
+        ))
+        self.assertEqual(validate_action_plan(candidate).failure_reason, "slot_unresolved")
+
+    def test_forecast_closed_forms_preserve_output_operation_but_remain_unavailable(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("가격예측 문형은 planner를 호출하면 안 됩니다")
+
+        for question, operation in (
+            ("다음달 구리 가격 전망을 알려줘", "next_month_value"),
+            ("니켈 가격 앞으로 오를까 내릴까?", "direction"),
+        ):
+            with self.subTest(question=question):
+                candidate = extract_action_plan(question, MustNotRun())
+                self.assertEqual(candidate.actions[0].action_id, "forecast.price")
+                self.assertEqual(candidate.actions[0].slots.forecast_operation, operation)
+                self.assertEqual(validate_action_plan(candidate).failure_reason, "source_unavailable")
+
+    def test_weekly_trend_document_plan_uses_dated_publication_adapter(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("주간동향 단일 문형은 planner를 호출하면 안 됩니다")
+
+        candidate = extract_action_plan("이번주 비철금속 주간 동향 요약해줘", MustNotRun())
+        self.assertEqual(candidate.actions[0].action_id, "document.retrieve")
+        route = _route_from_action_call(candidate.actions[0], "이번주 비철금속 주간 동향 요약해줘")
+        self.assertTrue(route.use_weekly_trend)
+        self.assertEqual(_publication_date("20260616_주간 경제 비철금속 시장 동향.pdf").isoformat(), "2026-06-16")
+        self.assertIsNone(_publication_date("주간 경제 비철금속 시장 동향.pdf"))
+
+    def test_price_operation_questions_keep_typed_period_and_operation(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("닫힌 가격 집계 문형은 planner를 호출하면 안 됩니다")
+
+        cases = (
+            ("니켈 가격 최근 3개월 평균이랑 비교하면 어때?", "price.series", "니켈", "period_average_delta", "trailing_months", 3),
+            ("니켈 가격 몇 개월째 오르고 있어?", "price.series", "니켈", "monthly_streak", "latest", None),
+            ("니켈 연도별 평균 가격 알려줘", "price.series", "니켈", "yearly_average", "latest", None),
+            ("니켈과 리튬 가격 같이 비교해줘", "price.compare", None, None, "trailing_months", 12),
+        )
+        for question, action_id, mineral, operation, period_kind, months in cases:
+            with self.subTest(question=question):
+                candidate = extract_action_plan(question, MustNotRun())
+                action = candidate.actions[0]
+                self.assertEqual(action.action_id, action_id)
+                self.assertEqual(action.slots.mineral, mineral)
+                self.assertEqual(action.slots.price_operation, operation)
+                self.assertEqual(action.slots.period.kind, period_kind)
+                self.assertEqual(action.slots.period.trailing_months, months)
+                route = _route_from_action_call(action, question)
+                self.assertEqual(
+                    route.use_komis_price_time_aggregate,
+                    operation in {"monthly_streak", "yearly_average"},
+                )
+
+    def test_price_operation_rejects_invalid_action_or_period(self):
+        for action_id, operation, period in (
+            ("price.compare", "monthly_streak", Period(kind="latest")),
+            ("price.series", "monthly_streak", Period(kind="trailing_months", trailing_months=3)),
+            ("price.series", "period_average_delta", Period(kind="latest")),
+        ):
+            with self.subTest(action_id=action_id, operation=operation):
+                candidate = ActionPlan(actions=[ActionCall(
+                    requirement_id="price", action_id=action_id,
+                    slots=ActionSlots(mineral="니켈", period=period, price_operation=operation),
+                )])
+                self.assertFalse(validate_action_plan(candidate).approved)
+
+    def test_raw_lookup_converts_iso_action_range_only_at_mcp_boundary(self):
+        session = object.__new__(_ProfileSession)
+        captured = {}
+        session._call = lambda _name, args: (captured.update(args) or {"evidence": [], "warnings": []})
+        session.call_komis_raw_lookup("price_base_metals", start_period="1900-01-01", end_period="2026-09-27")
+        self.assertEqual((captured["start_period"], captured["end_period"]), ("19000101", "20260927"))
+
+    def test_mine_yoy_rank_is_deterministic_before_planner(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("완결된 광산 YoY 순위는 planner를 호출하면 안 됩니다")
+
+        candidate = extract_action_plan("구리 광산 생산량 최근 YoY 증가 상위 5개를 보여줘", MustNotRun())
+        call = candidate.actions[0]
+        self.assertEqual((call.action_id, call.slots.mineral, call.slots.mine_metric,
+                          call.slots.mine_order, call.slots.top_n),
+                         ("mine.rank", "구리", "production", "yoy_increase", 5))
+        self.assertTrue(validate_action_plan(candidate).approved)
+
     def test_standalone_monthly_and_news_queries_bypass_llm_as_document_actions(self):
         class MustNotRun:
             def invoke(self, **kwargs):
@@ -105,6 +258,18 @@ class ActionContractAuditTest(unittest.TestCase):
                 candidate = extract_action_plan(question, MustNotRun())
                 self.assertEqual([call.action_id for call in candidate.actions], ["document.retrieve"])
                 self.assertEqual(candidate.actions[0].slots.period.kind, period_kind)
+
+    def test_dated_publication_content_bypasses_planner_as_explicit_lookup(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("발행일이 적힌 단일 문서 확인은 planner를 호출하면 안 됩니다")
+
+        candidate = extract_action_plan(
+            "2026년 6월 16일 주간 경제 비철금속 시장 동향 내용을 알려줘", MustNotRun(),
+        )
+        self.assertEqual([call.action_id for call in candidate.actions], ["document.lookup"])
+        self.assertEqual(candidate.actions[0].slots.topic,
+                         "2026년 6월 16일 주간 경제 비철금속 시장 동향 내용을 알려줘")
 
     def test_publication_shortcut_preserves_compound_and_navigation_requests(self):
         class Planner:
@@ -348,6 +513,59 @@ class ActionContractAuditTest(unittest.TestCase):
         self.assertEqual(call.slots.denominator_scope, "reporter_product_trade")
         self.assertTrue(validate_action_plan(candidate).approved)
 
+    def test_explicit_year_country_dependency_does_not_request_period_clarification(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("명시 연도·국가 의존도는 planner를 호출하면 안 됩니다")
+
+        candidate = extract_action_plan("2025년 한국 리튬 수입의 중국 의존도를 계산해줘", MustNotRun())
+        call = candidate.actions[0]
+        self.assertEqual(call.action_id, "trade.indicator")
+        self.assertEqual(call.slots.period.kind, "calendar_year")
+        self.assertEqual(call.slots.period.calendar_year, 2025)
+        self.assertTrue(validate_action_plan(candidate).approved)
+
+    def test_explicit_year_rca_preserves_all_required_slots_without_llm(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("명시 연도 RCA는 planner를 호출하면 안 됩니다")
+
+        candidate = extract_action_plan("2025년 한국 리튬의 현시비교우위지수 RCA를 계산해줘", MustNotRun())
+        call = candidate.actions[0]
+        self.assertEqual((call.action_id, call.slots.trade_metric), ("trade.indicator", "rca"))
+        self.assertEqual(call.slots.reporter_country, "한국")
+        self.assertEqual(call.slots.period.calendar_year, 2025)
+        self.assertEqual(missing_trade_indicator_slots(call), ())
+
+    def test_explicit_year_monthly_trade_overrides_untyped_trailing_period(self):
+        candidate = action_plan_from_intent(IntentPlan(requirements=[IntentCall(
+            requirement_id="monthly", intent="trade_monthly", role="data",
+            slots=ActionSlots(mineral="리튬", period=Period(kind="trailing_months", trailing_months=12)),
+        )]), "2025년 한국 리튬 수입금액 월별 추이")
+        call = candidate.actions[0]
+        self.assertEqual(call.action_id, "trade.monthly")
+        self.assertEqual(call.slots.period.kind, "calendar_year")
+        self.assertEqual(call.slots.period.calendar_year, 2025)
+        route = _route_from_action_call(call, "2025년 한국 리튬 수입금액 월별 추이")
+        self.assertEqual((route.komis_start_period, route.komis_end_period), ("2025", "2025"))
+
+    def test_multi_year_monthly_trade_uses_closed_explicit_range(self):
+        candidate = action_plan_from_intent(IntentPlan(requirements=[IntentCall(
+            requirement_id="monthly", intent="trade_monthly", role="data",
+            slots=ActionSlots(mineral="리튬"),
+        )]), "2024년과 2025년 한국 리튬 수입금액 월별 추이")
+        period = candidate.actions[0].slots.period
+        self.assertEqual((period.kind, period.start, period.end), ("range", "20240101", "20251231"))
+        self.assertTrue(period.explicit)
+
+    def test_explicit_monthly_trade_range_is_preserved(self):
+        period = Period(kind="range", start="20250101", end="20251231", explicit=True)
+        candidate = action_plan_from_intent(IntentPlan(requirements=[IntentCall(
+            requirement_id="monthly", intent="trade_monthly", role="data",
+            slots=ActionSlots(mineral="리튬", period=period),
+        )]), "2025년 한국 리튬 수입금액 월별 추이")
+        self.assertEqual(candidate.actions[0].slots.period, period)
+
     def test_strategic_price_overview_uses_closed_yaml_group_action_without_llm(self):
         class MustNotRun:
             def invoke(self, **kwargs):
@@ -498,6 +716,22 @@ class ActionContractAuditTest(unittest.TestCase):
                        slots=ActionSlots(mineral="희토류", metric="reserves", top_n=5)),
         ])
         candidate = action_plan_from_intent(intents)
+        self.assertEqual([item.requirement_id for item in candidate.actions], ["production", "reserves"])
+        self.assertEqual([item.slots.metric for item in candidate.actions], ["production", "reserves"])
+        self.assertTrue(validate_action_plan(candidate).approved)
+
+    def test_composite_metric_contract_uses_two_scalar_actions(self):
+        """metrics[]가 아니라 requirement별 scalar metric이 공개 계약이다."""
+        class Planner:
+            def invoke(self, **kwargs):
+                return SimpleNamespace(output=IntentPlan(requirements=[
+                    IntentCall(requirement_id="production", intent="resource_rank", role="data",
+                               slots=ActionSlots(mineral="희토류", metric="production", top_n=5)),
+                    IntentCall(requirement_id="reserves", intent="resource_rank", role="data",
+                               slots=ActionSlots(mineral="희토류", metric="reserves", top_n=5)),
+                ]))
+
+        candidate = extract_action_plan("희토류 생산량과 매장량 상위 5개국을 알려줘", Planner())
         self.assertEqual([item.requirement_id for item in candidate.actions], ["production", "reserves"])
         self.assertEqual([item.slots.metric for item in candidate.actions], ["production", "reserves"])
         self.assertTrue(validate_action_plan(candidate).approved)

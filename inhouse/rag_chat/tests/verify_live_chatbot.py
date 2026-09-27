@@ -19,8 +19,8 @@ def ask(message):
         events = [json.loads(line[6:]) for line in response.read().decode().splitlines()
                   if line.startswith("data: ")]
     done = [event for event in events if event.get("done")]
-    assert done, (message, events)
-    return done[-1], events
+    assert len(done) == 1 and events[-1].get("done"), (message, events)
+    return done[0], events
 
 
 def require_citation(done, action_id, source):
@@ -60,9 +60,11 @@ def check_price_series(mineral):
         return
     assert not done.get("citations"), done
     answer = "".join(event.get("delta", "") for event in events)
-    # 검증된 실데이터는 LME 기준·단위를 표시하고, 개발용 더미는
-    # 더미 기준명을 표시하되 결과 자체는 반환해야 한다.
-    assert ("가격 기준은 LME CASH" in answer or "가격 기준은 [DEV_DUMMY]" in answer), answer
+    # DEV_DUMMY는 가격기준이 아니라 별도 데이터 상태/경고다.
+    assert "가격 기준은 [DEV_DUMMY]" not in answer, answer
+    assert ("가격 기준은 LME CASH" in answer
+            or "개발용 더미" in answer
+            or done.get("data_warnings")), answer
     if "가격 기준은 LME CASH" in answer:
         assert "통화는 USD" in answer and "중량 단위는 톤" in answer, answer
     for label in ("최고가는", "최저가는", "고저 차는", "최근 가격 흐름은"):
@@ -82,7 +84,7 @@ def check_price_series(mineral):
                            for column in table["columns"])
                     and any(any(label in column for label in ("가격", "통상가격", "최저가격", "최고가격"))
                            for column in table["columns"])]
-    if "가격 기준은 [DEV_DUMMY]" in answer:
+    if "개발용 더미" in answer or done.get("data_warnings"):
         # 개발용 더미는 텍스트 요약을 반환하는 것까지를 계약으로 삼는다.
         assert not done.get("abstained"), (question, done)
     else:

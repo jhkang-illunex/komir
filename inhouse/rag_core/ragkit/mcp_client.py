@@ -304,7 +304,11 @@ class _ProfileSession:
         arguments = {
             "page_id": page_id, "mineral_code": mineral_code, "hs_code": hs_code,
             "index_type_code": index_type_code, "price_criterion_serial": price_criterion_serial,
-            "start_period": start_period, "end_period": end_period,
+            # ActionPlan은 ISO 날짜를 보존하지만 komis_raw_lookup은 YYYY[MM[DD]]
+            # 만 허용한다. range 가격 집계도 일반 시계열과 같은 MCP 경계에서만
+            # 변환해 typed 계약 내부 값은 바꾸지 않는다.
+            "start_period": start_period.replace("-", "") if start_period else None,
+            "end_period": end_period.replace("-", "") if end_period else None,
         }
         if limit is not None:
             arguments["limit"] = limit
@@ -402,6 +406,14 @@ class _ProfileSession:
             "mineral_names": mineral_names,
             "start_period": tool_period(start_period), "end_period": tool_period(end_period),
             "window_months": window_months,
+        })
+        return [Evidence(**d) for d in data["evidence"]], data["warnings"]
+
+    def call_komis_price_time_aggregate(
+        self, mineral_code: str, operation: str,
+    ) -> tuple[list[Evidence], list[str]]:
+        data = self._call("komis_price_time_aggregate", {
+            "mineral_code": mineral_code, "operation": operation,
         })
         return [Evidence(**d) for d in data["evidence"]], data["warnings"]
 

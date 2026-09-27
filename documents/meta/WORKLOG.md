@@ -2,6 +2,80 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-27 — 광종정보·월간동향·자원뉴스 출력 계약 및 미배선 작업목록 기록
+
+광종 용도·기본 특성·망간 주요 광석의 답변 형식과 필수 원천 필드를
+`inhouse/rag_core/ragkit/resources/mineral_info_contract.yml`에 기록했다.
+현재 광종정보 화면 adapter(`get_mineral_info`)는 planned 상태이므로 출처 없는
+값을 만들지 않는다. 월간동향과 일일·주간 자원뉴스는 문서 검색 경로는 있으나
+게시일·제목·링크·검증 요약을 보장하는 게시물 index adapter가 없어, 요구된
+목록·요약 형식의 렌더링은 보류했다. 가격예측의 정규화 adapter 배선 조건도 함께
+`inhouse/rag_core/ragkit/OUTPUT_CONTRACT_TASKS.md`에 P1로 기록했다.
+
+월간동향 게시판 검색 FAQ는 요청 문구대로
+`기간(전체, 1/3/6/12개월 또는 직접입력)과 검색어(제목+내용, 제목, 내용)`로
+갱신했다. 이미지 빌드·배포·DB·문서 색인 변경은 하지 않았다.
+
+## 2026-09-27 — 조달청 주간동향 adapter 및 광종정보 DB catalog 반영
+
+`weekly_trend` adapter는 `mineral_risk.doc_chunk`의 `src=조달청보고서` 문서에서
+파일명 `YYYYMMDD`가 검증되는 문서만 게시일로 사용한다. `pub_date`는 해당
+868개 문서에서 모두 비어 있으므로 추정 날짜·현재 주차를 만들지 않는다. 확인된
+가장 최신 문서는 2026-06-16이며, 정확한 개별 게시물 URL과 검증 요약은 코퍼스에
+없어 게시판 URL로만 안내한다.
+
+`public.ai_mnrl_mst`의 활성 46종 코드·국문/영문명을
+`resources/mineral_info_contract.yml` catalog에 반영했다. 용도·원자번호·특성·망간
+광석의 원천인 `public.ai_mnrl_sect`는 조회 시 0행이어서 값을 채우지 않았다.
+이미지 빌드·배포·DB 변경은 하지 않았다.
+
+## 2026-09-27 — 단일 최신 가격 응답 형식·전일 대비 구현 및 테스트 컨테이너 재배포
+
+`{광종} 가격 얼마야?`와 `현재/오늘 {광종} 가격`을 모두 `latest` typed Action으로
+결정해, 최신값과 직전 보유 관측값 두 건만 내부 조회한다. 답변은
+`{기준일} 기준 {광종} 가격은 {가격} {단위}입니다. 전일 대비 {등락가}({등락율})
+변동했습니다.` 형식으로 renderer가 결정적으로 생성하며, 날짜가 연속하지 않으면
+전일이라고 꾸미지 않고 직전 관측일을 명시한다. 직전값이 없으면 등락을 만들지 않는다.
+
+직전값은 등락 계산에만 쓰고, 표와 차트 후보에는 최신 관측 행 하나만 남긴다. 단위 코드가
+검증되면 사람이 읽는 단위(예: `USD/톤`)로 표시한다. DEV_DUMMY처럼 원천 단위가 비어 있는
+행은 단위를 추정하지 않고 `(원천 단위 미확인)`과 기존 더미 경고를 분리해 표시한다.
+
+가격 단위·Action 계약·내부 지식 회귀 94건, `py_compile`, `git diff --check`를 통과했다.
+이미지 `komir-rag-chat:20260927-latest-price-template-r3` (ID
+`sha256:7485c13b5e95ebfce0432bdf5cba9c2f094babceb538bb2e2f5be1308c544f95`)를
+`komir-rag-chat-test` 포트 18002에 배포했다. 라이브 니켈은
+`2026-09-08 기준 니켈 가격은 16,745.53 USD/톤입니다. 전일 대비
++340.37(+2.07%) 변동했습니다.`와 최신 표 1행을 반환했다. 구리 DEV_DUMMY도 최신 표
+1행, 단위 미확인 표기 및 더미 경고를 반환했다. 컨테이너에는 LLM 호스트 연결을 위해
+`host.docker.internal:host-gateway`와 `LLM_BASE_URL=http://host.docker.internal:52302/v1`
+설정을 적용했다. DB와 문서 색인은 변경하지 않았다.
+
+## 2026-09-27 — 기대결과물 라이브 QA iterative-audit 보완 및 테스트 컨테이너 재배포
+
+라이브 QA에서 확정된 네 건을 최소 범위로 수정했다. 가격 자료원 변경 FAQ는 가격/시세
+표지가 있는 비교에만 적용해 RCA의 `비교` 토큰을 오인하지 않게 했고, 명시된 단일·다년
+월별 교역 기간을 `calendar_year`/닫힌 range typed slot으로 보존했다. 명시 연도 한국
+특정국 의존도 및 RCA는 planner가 기간을 누락해 HITL을 반복하지 않도록 결정적 ActionPlan을
+만든다. BHP/Escondida 단일 원문 질의는 `mine.profile`로 고정해 PageIndex OKF 본문 행을
+사용한다.
+
+수락 runner는 문서의 PageIndex 인용과 OKF 검증 provenance를 구분하도록 수정했다.
+이는 인용 미기록을 복원하거나 요구하지 않으며, `citations=[]`가 허용된 기존 정책은
+변경하지 않았다. 회귀 121건, `py_compile`, `git diff --check`를 통과했고 Sol 읽기 전용
+설계 감사의 다년 기간 축소 위험도 함께 반영했다. 이미지
+`komir-rag-chat:20260927-qa-contract-r2` (ID
+`sha256:244a8708967aa1f642c8501ec3f3ba22c59ef982b70dc214bbe2aaedfabe53dc`)를
+`komir-rag-chat-test` 포트 18002에 배포했다. 라이브 AC09·AC15·AC18·AC19가 모두 PASS였고,
+직전 컨테이너는 `komir-rag-chat-test-pre-qa-contract-r2`로 보존했다. DB·문서 색인은
+변경하지 않았다.
+
+같은 QA의 잔여 7건(AC08·AC10~14·AC16)은 데이터 부재가 아닌 수락 runner의 독립
+검증 공백이었으므로, 구조화 표의 순위·공통분모·시계열 기간·HHI·YoY·TSI 불변식을
+재계산하도록 runner를 보완했다. AC08·10~13·16 라이브 재실행은 PASS했고, AC14는
+광산 OKF fan-out이 30초 실행창을 초과했으나 서버 HTTP 200 완료와 기존 SSE 표의
+YoY 재계산을 확인했다. 서비스 이미지·DB·색인은 변경하지 않았다.
+
 ## 2026-09-27 — FBQ55 YAML 전략광종 가격 현황 구현 및 테스트 컨테이너 배포
 
 사용자가 제공한 YAML 구성으로 6대(유연탄·우라늄·철광석·구리·아연·니켈)와
