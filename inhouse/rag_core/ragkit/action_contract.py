@@ -236,6 +236,10 @@ off_topic이 아니다. target_page/dataset은 카탈로그의 등록 ID·별칭
 각 IntentCall에는 고유 requirement_id, intent, slots, role을 넣는다. role=data는 수치·원자료
 조회, role=metadata는 바로 앞 또는 같은 주제 data 요구의 단위·가격기준·기준일·표/차트 형식
 요구(독립 도구를 만들지 않음), role=content는 원인·정의·설명처럼 별도 출처가 필요한 내용이다.
+``metric``은 한 Action이 조회하는 단일 지표다. 생산량과 매장량처럼 서로 다른
+지표를 함께 요구하면 ``metrics`` 배열이나 쉼표 문자열을 만들지 말고, 각각 고유한
+requirement_id를 가진 두 개의 role=data IntentCall로 분해한다. 예: resource_rank의
+production 1개와 reserves 1개. 각 요구는 독립 원천·인용으로 끝까지 보존한다.
 price_claim의 수치 검증과 가격상승 원인은 각각 data와 content로 분리한다. slots에는 질문에
 명시된 값만 채운다. 개별 광산의 생산량·매장량 순위와 국가 안의 광산 1위는 mine_rank,
 국가별 생산량·매장량 순위는 resource_rank이며 trade_rank는 수출입 금액·중량

@@ -9,6 +9,21 @@ from rag_core.retrieval.evidence import Evidence
 
 
 class PriceUnitDisclosureTest(unittest.TestCase):
+    def test_dummy_price_status_is_not_rendered_as_price_basis(self):
+        evidence = Evidence(
+            kind="structured", source="public.KO_MNRL_PRC", section="가격",
+            text="| date | price |\n| --- | --- |\n| 2026-01-01 | 1 |",
+            unit="가격기준=[DEV_DUMMY]", observed_period="2026-01-01~2026-01-02",
+            action_id="price.series", caveat="개발용 더미 데이터이며 실제 값이 아닙니다.",
+        )
+        plan = ActionPlan(actions=[ActionCall(
+            requirement_id="price", action_id="price.series", slots=ActionSlots(mineral="니켈"),
+        )])
+        scope = chatbot._price_series_scope_answer([evidence], plan)
+        assert scope is not None
+        answer, cited = scope
+        self.assertNotIn("가격 기준은 [DEV_DUMMY]", answer)
+        self.assertIn("개발용 더미", chatbot._dummy_data_notice(cited, [evidence]))
     def test_compound_raw_unit_keeps_criterion_and_hides_opaque_codes(self):
         unit = "가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002"
         evidence = Evidence(

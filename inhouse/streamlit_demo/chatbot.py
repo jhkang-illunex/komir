@@ -150,6 +150,7 @@ def _apply_event(event: ChatEvent, record: dict[str, Any], *, status_box, text_b
     elif event.event == "done":
         text_box.markdown(record["content"] or "_(응답 없음)_")
         record["citations"] = data.get("citations", [])
+        record["data_warnings"] = data.get("data_warnings", [])
         record["bogus_citations"] = data.get("bogus_citations", [])
         record["recommendations"] = data.get("recommendations", [])
         record["warnings"] = data.get("warnings", [])
@@ -237,6 +238,12 @@ def _render_details(record: dict[str, Any]) -> None:
                     f"{item.get('section')}{(' (' + meta + ')') if meta else ''}"
                     + (f"\n\n공식 URL: {item['official_url']}" if item.get("official_url") else "")
                 )
+                if item.get("data_status"):
+                    st.caption(f"데이터 상태: {item['data_status']}")
+                for warning in item.get("warnings") or []:
+                    st.warning(warning)
+    for warning in record.get("data_warnings") or []:
+        st.warning(warning)
     bogus = record.get("bogus_citations") or []
     if bogus:
         st.warning(f"근거 범위를 벗어난 인용번호가 제거됐습니다: {bogus}")

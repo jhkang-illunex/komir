@@ -502,6 +502,22 @@ class ActionContractAuditTest(unittest.TestCase):
         self.assertEqual([item.slots.metric for item in candidate.actions], ["production", "reserves"])
         self.assertTrue(validate_action_plan(candidate).approved)
 
+    def test_composite_metric_contract_uses_two_scalar_actions(self):
+        """metrics[]가 아니라 requirement별 scalar metric이 공개 계약이다."""
+        class Planner:
+            def invoke(self, **kwargs):
+                return SimpleNamespace(output=IntentPlan(requirements=[
+                    IntentCall(requirement_id="production", intent="resource_rank", role="data",
+                               slots=ActionSlots(mineral="희토류", metric="production", top_n=5)),
+                    IntentCall(requirement_id="reserves", intent="resource_rank", role="data",
+                               slots=ActionSlots(mineral="희토류", metric="reserves", top_n=5)),
+                ]))
+
+        candidate = extract_action_plan("희토류 생산량과 매장량 상위 5개국을 알려줘", Planner())
+        self.assertEqual([item.requirement_id for item in candidate.actions], ["production", "reserves"])
+        self.assertEqual([item.slots.metric for item in candidate.actions], ["production", "reserves"])
+        self.assertTrue(validate_action_plan(candidate).approved)
+
     def test_mineral_concept_is_document_action(self):
         intents = IntentPlan(requirements=[IntentCall(
             requirement_id="concept", intent="concept",

@@ -721,7 +721,7 @@ def _natural_price_basis(unit: str | None) -> str | None:
         if separator and value.strip():
             values[key.strip()] = value.strip()
     clauses = []
-    if basis := values.get("가격기준"):
+    if (basis := values.get("가격기준")) and basis != "[DEV_DUMMY]":
         clauses.append(f"가격 기준은 {basis}")
     if currency := values.get("통화코드"):
         display_currency = _PRICE_CODE_VALUES.get(currency.upper())
@@ -756,6 +756,10 @@ def _citation_sources(cited_indices: set[int], evidence: list) -> list[dict]:
     return [
         {"index": i, "kind": ev.kind, "source": public_source_label(ev.source), "section": ev.section,
          "as_of": ev.as_of, "unit": _user_visible_unit(ev.unit),
+         # 출처명은 실제 원천(public.KO_*·공식 문서)만 나타낸다. DEV_DUMMY는
+         # 원천명이 아니라 데이터 상태이므로 별도 필드와 경고로 전송한다.
+         "data_status": _data_status(ev),
+         "warnings": [getattr(ev, "caveat", None)] if getattr(ev, "caveat", None) else [],
          "requirement_id": getattr(ev, "requirement_id", None),
          "action_id": getattr(ev, "action_id", None),
          "observed_period": getattr(ev, "observed_period", None),
@@ -765,6 +769,43 @@ def _citation_sources(cited_indices: set[int], evidence: list) -> list[dict]:
         for i, ev in enumerate(evidence, 1)
         if i in cited_indices
     ]
+
+
+def _data_status(ev) -> str | None:
+    """원천 라벨과 독립적인 데이터 상태를 SSE 계약에 제공한다."""
+
+    caveat = getattr(ev, "caveat", None) or ""
+    return "DEV_DUMMY" if "개발용 더미" in caveat else None
+
+
+def _successful_action_citation_indices(
+    result: RetrievalResult | None, evidence: list, existing_cited: set[int],
+) -> set[int]:
+    """복합 턴에서 성공한 각 Action의 근거를 결정적으로 인용한다.
+
+    생성 모델의 본문 인용은 문장 단위 정리에만 쓴다. 성공 requirement에 이미
+    본문 인용이 있으면 그 선택을 보존하고, 없을 때만 해당 requirement의 첫 번째
+    검증 근거 한 건을 보충한다. 따라서 미사용 발췌를 전부 인용으로 승격하지 않으면서
+    다른 성공 Action의 출처가 사라지는 문제를 막는다.
+    """
+
+    if result is None:
+        return set()
+    succeeded = {
+        item.requirement_id for item in result.action_results
+        if item.status == "success"
+    }
+    if not succeeded:
+        return set()
+    selected: set[int] = set()
+    for requirement_id in succeeded:
+        indices = [
+            index for index, ev in enumerate(evidence, 1)
+            if getattr(ev, "requirement_id", None) == requirement_id
+        ]
+        if indices and not any(index in existing_cited for index in indices):
+            selected.add(indices[0])
+    return selected
 
 
 def _retrieval_source_status(warnings: list[str]) -> list[dict[str, object]]:
@@ -850,11 +891,19 @@ def _dummy_data_notice(cited_indices: set[int], evidence: list) -> str:
     이 기능 전체가 막으려던 바로 그 사고가 난다 — 안전에 직결되므로
     캐시(같은 문구 중복 방지) 없이 인용될 때마다 매번 명시한다."""
 
-    cited = [evidence[i - 1] for i in cited_indices if 1 <= i <= len(evidence)]
-    caveats = {ev.caveat for ev in cited if ev.caveat}
-    if not caveats:
+    warnings = _data_warnings(cited_indices, evidence)
+    if not warnings:
         return ""
-    return "\n\n" + "\n".join(f"⚠ {c}" for c in sorted(caveats))
+    return "\n\n" + "\n".join(f"⚠ {warning}" for warning in warnings)
+
+
+def _data_warnings(cited_indices: set[int], evidence: list) -> list[str]:
+    """인용된 근거의 데이터 상태 경고를 출처 라벨과 별도로 정규화한다."""
+
+    return sorted({
+        getattr(ev, "caveat", None) for index, ev in enumerate(evidence, 1)
+        if index in cited_indices and getattr(ev, "caveat", None)
+    })
 
 
 def _partial_forecast_notice(warnings: list[str]) -> str:
@@ -1609,6 +1658,8 @@ def _multimodal_events(cited_indices: set[int], evidence: list, *, include_chart
                 menu_source=source_menu,
                 requested_frequency=getattr(ev, "requested_frequency", None),
             )
+            block["data_status"] = _data_status(ev)
+            block["warnings"] = [ev.caveat] if ev.caveat else []
             if suppress_chart:
                 block["chart_hint"] = {"recommended": None, "alternatives": [],
                                        "reason": "광종별 가격기준·통화·중량단위가 달라 비교 차트를 제공하지 않음"}
@@ -1622,6 +1673,8 @@ def _multimodal_events(cited_indices: set[int], evidence: list, *, include_chart
                 requested_frequency=getattr(ev, "requested_frequency", None),
             )
             if spec is not None:
+                spec["data_status"] = _data_status(ev)
+                spec["warnings"] = [ev.caveat] if ev.caveat else []
                 events.append(ChatEvent(type="chart", data=spec))
     return events
 
@@ -1857,7 +1910,10 @@ async def chat_turn(
         citations = []
         # 단일 가격 조회는 답변·인용 패널·표·차트에서 원천/테이블명과 실제
         # 관측범위를 감춘다. 수치 요약은 위 결정적 표본 계산으로만 제공한다.
-        extra = _partial_forecast_notice(route_warnings)
+        # 가격 원천의 공개 라벨·관측기간은 이 전용 화면 정책대로 숨기되,
+        # DEV_DUMMY 상태 경고는 결과 신뢰성 정보이므로 별도 노출한다.
+        data_warnings = _data_warnings(cited_indices, evidence)
+        extra = _dummy_data_notice(cited_indices, evidence) + _partial_forecast_notice(route_warnings)
         final_text = answer + extra
         yield _status_event(4)
         yield ChatEvent(type="delta", data={"delta": answer})
@@ -1870,7 +1926,8 @@ async def chat_turn(
             json.dumps(citations, ensure_ascii=False), store_db_path,
         )
         yield ChatEvent(type="done", data={
-            "done": True, "citations": citations, "bogus_citations": [], "abstained": False,
+            "done": True, "citations": citations, "data_warnings": data_warnings,
+            "bogus_citations": [], "abstained": False,
         })
         return
 
@@ -2003,6 +2060,10 @@ async def chat_turn(
         break
 
     cited_indices = {int(n) for n in _CITE_NUM_RE.findall(cleaned)}
+    # 복합 Action의 citation/footer는 모델이 어떤 [n]을 출력했는지가 아니라
+    # 실행 성공 requirement와 Evidence의 귀속으로 완결한다.
+    if len(planned_actions) >= 2:
+        cited_indices.update(_successful_action_citation_indices(composer_result, evidence, cited_indices))
     # 생산량·매장량 복합 순위는 모델이 한 표만 인용해도 두 정형 원천을
     # 모두 화면에 노출해야 한다. 해당 질문에서 식별된 원천만 합쳐 다른
     # 순위·문서 질의의 인용 규율은 그대로 유지한다.
