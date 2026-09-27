@@ -98,10 +98,11 @@ class ActionContractAuditTest(unittest.TestCase):
                 candidate = extract_action_plan(question, MustNotRun())
                 call = candidate.actions[0]
                 self.assertEqual((call.action_id, call.slots.mineral), ("price.series", "니켈"))
-                self.assertIsNone(call.slots.period)
+                self.assertEqual(call.slots.period.kind, "latest")
                 route = _route_from_action_call(call, question)
                 self.assertIsNone(route.komis_start_period)
                 self.assertIsNone(route.komis_end_period)
+                self.assertEqual(route.komis_raw_limit, 1)
 
     def test_mine_yoy_rank_is_deterministic_before_planner(self):
         class MustNotRun:

@@ -393,12 +393,10 @@ class SourceFooterTest(unittest.TestCase):
         self.assertNotIn("관측 기간", answer)
         self.assertNotIn("public.KO_MNRL_PRC", answer)
         self.assertIn("가격 기준은 LME CASH이며, 통화는 USD이며, 중량 단위는 톤입니다.", answer)
-        self.assertIn("최고가는 19,954.39", answer)
-        self.assertIn("최고가는 19,954.39 (2026-04-30)", answer)
-        self.assertIn("최저가는 19,954.39", answer)
-        self.assertIn("최저가는 19,954.39 (2026-04-30)", answer)
-        self.assertIn("고저 차는 0", answer)
-        self.assertIn("최근 가격 흐름은 표본이 부족", answer)
+        self.assertIn("최신 가격은 19,954.39 (2026-04-30)입니다.", answer)
+        self.assertIn("표에는 최신 관측값 1건", answer)
+        self.assertNotIn("최고가", answer)
+        self.assertNotIn("차트", answer)
 
     def test_price_scope_answer_does_not_override_price_only_evidence_from_mixed_plan(self):
         price = Evidence(kind="aggregated", source="public.KO_MNRL_PRC", section="가격",

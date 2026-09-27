@@ -618,6 +618,9 @@ class RetrievalRoute(BaseModel):
     # 정규식이 2차 방어선으로 이미 있음).
     komis_start_period: str | None = None
     komis_end_period: str | None = None
+    # 단일 최신값 Action은 일반 시계열 기본 상한(60건)이 아니라 최신 행 하나만
+    # 조회한다. 이 값은 ActionPlan의 Period(kind=latest)에서만 결정적으로 온다.
+    komis_raw_limit: int | None = None
     # 2026-09-07 — "최근 N개월"류 상대 기간 표현 전용(사용자 지시로 09-03엔
     # 미루고 null 처리만 하다가, verify 날짜그라운딩 버그를 고치고 나니 바로
     # 이 갭이 "니켈 최근 6개월 가격"에서 실제로 걸리는 걸 확인해 이번에
@@ -826,6 +829,7 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
         "komis_relative_months": period.trailing_months if period and period.kind == "trailing_months" else None,
         "komis_start_period": period.start if period and period.kind == "range" else (str(period.calendar_year) if period and period.kind == "calendar_year" else None),
         "komis_end_period": period.end if period and period.kind == "range" else (str(period.calendar_year) if period and period.kind == "calendar_year" else None),
+        "komis_raw_limit": 1 if period and period.kind == "latest" else None,
     }
     if call.action_id == "price.series":
         return RetrievalRoute(**common, use_komis_raw=True, komis_topic="price")
@@ -2022,6 +2026,7 @@ def _retrieve_node(
                 session.call_komis_raw_lookup, komis_raw_page_id, mineral_code=komis_raw_mineral_code,
                 hs_code=route.komis_hs_code,
                 start_period=start_period, end_period=end_period,
+                limit=route.komis_raw_limit,
             )
         # 2026-09-18(B2 후속) — "{광종} 수입 상위 5개국" 같은 순위형 질문 전용
         # 결정적 집계 조회(common/komis_raw.py::fetch_country_ranking, GROUP

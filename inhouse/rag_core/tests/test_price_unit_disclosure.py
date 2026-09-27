@@ -86,6 +86,25 @@ class PriceUnitDisclosureTest(unittest.TestCase):
         self.assertIn("최신 보유 관측일(2026-09-09) 가격 요약입니다.", scope[0])
         self.assertNotIn("최신순 2건", scope[0])
 
+    def test_single_latest_price_is_not_described_as_a_chart_or_trend(self):
+        evidence = Evidence(
+            kind="aggregated", source="public.KO_MNRL_PRC", section="가격 시계열",
+            text="| date | price |\n| --- | --- |\n| 2026-09-08 | 16745.53 |",
+            unit="가격기준=LME CASH; 통화=USD; 중량=톤", observed_period="2026-09-08",
+            action_id="price.series",
+        )
+        plan = ActionPlan(actions=[ActionCall(
+            requirement_id="price", action_id="price.series", slots=ActionSlots(mineral="니켈"),
+        )])
+
+        scope = chatbot._price_series_scope_answer([evidence], plan)
+
+        assert scope is not None
+        self.assertIn("최신 가격은 16,745.53 (2026-09-08)입니다.", scope[0])
+        self.assertIn("표에는 최신 관측값 1건", scope[0])
+        self.assertNotIn("차트", scope[0])
+        self.assertNotIn("추세", scope[0])
+
     def test_verified_human_units_are_preserved(self):
         unit = "가격기준=LME CASH; 통화=USD; 중량=톤"
         evidence = SimpleNamespace(

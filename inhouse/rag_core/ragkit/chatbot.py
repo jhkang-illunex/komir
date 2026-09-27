@@ -1207,6 +1207,9 @@ def _price_series_summary(item) -> str:
     observations = _price_series_observations(item.text)
     if not observations:
         return "조회된 가격 표의 날짜·가격 열을 판독하지 못해 최고·최저와 추세를 계산하지 못했습니다."
+    if len(observations) == 1:
+        observed_date, price = observations[0]
+        return f"최신 가격은 {_format_price(price)} ({observed_date.isoformat()})입니다."
     prices = [price for _, price in observations]
     high_date, high = max(observations, key=lambda point: point[1])
     low_date, low = min(observations, key=lambda point: point[1])
@@ -1283,7 +1286,11 @@ def _price_series_scope_answer(evidence: list, action_plan) -> tuple[str, set[in
     if basis:
         answer += f" {basis}"
     answer += f"\n\n{_price_series_summary(item)}"
-    answer += "\n\n표와 차트는 조회된 가격값으로 작성했습니다."
+    observations = _price_series_observations(item.text)
+    if len(observations) == 1:
+        answer += "\n\n표에는 최신 관측값 1건을 표시했습니다."
+    else:
+        answer += "\n\n표와 차트는 조회된 가격값으로 작성했습니다."
     return answer, {index}
 
 

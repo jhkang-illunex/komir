@@ -1048,7 +1048,9 @@ def _latest_price_plan(message: str) -> ActionPlan | None:
     return ActionPlan(actions=[ActionCall(
         requirement_id="latest_price",
         action_id="price.series",
-        slots=ActionSlots(mineral=match.group("mineral")),
+        # ``latest``는 "기간 미지정"과 다르다. adapter가 최신 1건만
+        # 요청하도록 하는 typed 표현이며, 기본 시계열 상한(60건)을 쓰지 않는다.
+        slots=ActionSlots(mineral=match.group("mineral"), period=Period(kind="latest")),
         intent="price_series",
         role="data",
     )])
