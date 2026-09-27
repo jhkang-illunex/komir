@@ -151,7 +151,7 @@ COMPOSABLE_MULTI_ACTIONS = frozenset({
 OFF_TOPIC = "off_topic"
 MINERAL_ALIASES = {"nickel": "니켈", "cobalt": "코발트", "copper": "구리", "lithium": "리튬", "rare earth": "희토류"}
 UNAVAILABLE = frozenset({
-    "diagnosis.rank", "diagnosis.series", "forecast.demand", "forecast.price", "forecast.quantity",
+    "diagnosis.rank", "diagnosis.series", "forecast.demand", "forecast.quantity",
     "geopolitics.index", "geopolitics.articles", "stockpile.status",
 })
 # ``금일``은 화면의 현재 일자를 뜻하는 듯 보이지만, 가격 원천의 적재 지연을

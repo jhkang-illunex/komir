@@ -298,13 +298,22 @@ def from_komis_raw(
         # 아직 사람이 읽는 단위 사전이 확인되지 않았으므로 코드값을 그대로
         # 보존하며, 임의 통화·중량 해석을 붙이지 않는다.
         if page_id == "forecast_price":
-            columns = ["forecast_date", "current_price", "predicted_price", "unit"]
+            # 가격예측 주기 코드: PE001=연, PE002=월, PE003=주, PE004=일,
+            # PE005=분기, PE201~204=각 분기. 다음 달 값은 월별(PE002)만
+            # 허용한다. 다른 주기의 값을 월간 전망으로 바꾸어 표시하지 않는다.
+            period_labels = {"PE001": "연간", "PE002": "월별", "PE003": "주별", "PE004": "일별", "PE005": "분기",
+                             "PE201": "1분기", "PE202": "2분기", "PE203": "3분기", "PE204": "4분기"}
+            forecast_rows = [row for row in ds.rows if str(row.get("PRD_SE_CD", "")) == "PE002"]
+            columns = ["forecast_date", "forecast_period", "current_price", "predicted_price", "unit"]
             table_rows = [[
                 str(row.get("CRTR_YMD", "")),
+                period_labels.get(str(row.get("PRD_SE_CD", "")), str(row.get("PRD_SE_CD", ""))),
                 str(row.get("CMERC_PRC", "")),
                 str(row.get("PREDC_PRC", "")),
                 str(row.get("PRC_UNIT_CD", "")),
-            ] for row in ds.rows]
+            ] for row in forecast_rows]
+            if not table_rows:
+                continue
             display_columns = columns
         else:
         # 가격기준 일련번호는 원천 조회의 필터·감사에는 필요하지만 답변 근거
