@@ -88,6 +88,21 @@ class ActionContractAuditTest(unittest.TestCase):
         self.assertEqual(candidate.actions[0].slots.period.kind, "future_horizon")
         self.assertEqual(validate_action_plan(candidate).failure_reason, "source_unavailable")
 
+    def test_current_price_words_bypass_planner_as_latest_observation(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("금일 가격 질의는 planner를 호출하면 안 됩니다")
+
+        for question in ("금일 니켈 가격 알려줘", "금일자 니켈 시세는 얼마야?", "오늘 니켈 가격"):
+            with self.subTest(question=question):
+                candidate = extract_action_plan(question, MustNotRun())
+                call = candidate.actions[0]
+                self.assertEqual((call.action_id, call.slots.mineral), ("price.series", "니켈"))
+                self.assertIsNone(call.slots.period)
+                route = _route_from_action_call(call, question)
+                self.assertIsNone(route.komis_start_period)
+                self.assertIsNone(route.komis_end_period)
+
     def test_mine_yoy_rank_is_deterministic_before_planner(self):
         class MustNotRun:
             def invoke(self, **kwargs):

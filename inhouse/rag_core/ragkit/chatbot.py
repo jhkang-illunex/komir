@@ -1211,11 +1211,13 @@ def _price_series_summary(item) -> str:
     high_date, high = max(observations, key=lambda point: point[1])
     low_date, low = min(observations, key=lambda point: point[1])
     first, latest = prices[0], prices[-1]
+    latest_date = observations[-1][0]
     high_low_pct = ((high - low) / low * 100) if low else None
     period_change = latest - first
     period_change_pct = (period_change / first * 100) if first else None
 
-    clauses = [f"최고가는 {_format_price(high)} ({high_date.isoformat()})",
+    clauses = [f"최신 가격은 {_format_price(latest)} ({latest_date.isoformat()})",
+               f"최고가는 {_format_price(high)} ({high_date.isoformat()})",
                f"최저가는 {_format_price(low)} ({low_date.isoformat()})"]
     range_text = f"고저 차는 {_format_price(high - low)}"
     if high_low_pct is not None:
@@ -1268,7 +1270,14 @@ def _price_series_scope_answer(evidence: list, action_plan) -> tuple[str, set[in
     elif period and period.kind == "calendar_year" and period.calendar_year:
         heading = f"{period.calendar_year}년 가격 요약입니다."
     else:
-        heading = "요청하신 기간의 가격 요약입니다."
+        observations = _price_series_observations(item.text)
+        # ``observed_period``에는 "최신순 N건만" 같은 범위 상태가 붙을 수
+        # 있으므로, 화면의 최신 관측일은 실제 가격 표의 마지막 날짜만 쓴다.
+        # 표를 판독하지 못한 예외에만 범위 문자열의 ISO 날짜를 보수적으로 쓴다.
+        observed_dates = re.findall(r"\d{4}-\d{2}-\d{2}", item.observed_period)
+        latest_observation = (observations[-1][0].isoformat() if observations
+                              else (observed_dates[-1] if observed_dates else item.observed_period))
+        heading = f"최신 보유 관측일({latest_observation}) 가격 요약입니다."
     basis = _natural_price_basis(item.unit)
     answer = f"{heading} 조회된 값 기준입니다."
     if basis:

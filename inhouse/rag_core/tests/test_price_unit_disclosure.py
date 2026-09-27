@@ -40,7 +40,8 @@ class PriceUnitDisclosureTest(unittest.TestCase):
     def test_compound_raw_unit_keeps_criterion_and_hides_opaque_codes(self):
         unit = "가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002"
         evidence = Evidence(
-            kind="aggregated", source="public.KO_MNRL_PRC", section="가격 시계열", text="표",
+            kind="aggregated", source="public.KO_MNRL_PRC", section="가격 시계열",
+            text="| date | price |\n| --- | --- |\n| 2025-12-31 | 100 |",
             unit=unit, observed_period="2025-01-01~2025-12-31", action_id="price.series",
         )
         plan = ActionPlan(actions=[ActionCall(
@@ -58,11 +59,32 @@ class PriceUnitDisclosureTest(unittest.TestCase):
         self.assertNotIn("WT002", disclosure)
         assert scope is not None
         self.assertIn("가격 기준은 LME CASH이며, 통화는 USD이며, 중량 단위는 톤입니다.", scope[0])
+        self.assertIn("최신 보유 관측일(2025-12-31) 가격 요약입니다.", scope[0])
+        self.assertIn("최신 가격은 100 (2025-12-31)", scope[0])
         self.assertNotIn("관측 기간", scope[0])
         self.assertNotIn("PR001;", scope[0])
         self.assertNotIn("WT002;", scope[0])
         self.assertEqual(citations[0]["unit"], "가격기준=LME CASH")
         self.assertEqual(chatbot._price_display_unit(unit), "USD/톤")
+
+    def test_latest_observation_heading_uses_table_date_not_range_status(self):
+        evidence = Evidence(
+            kind="aggregated", source="public.KO_MNRL_PRC", section="가격 시계열",
+            text="| date | price |\n| --- | --- |\n| 2026-09-08 | 10 |\n| 2026-09-09 | 11 |",
+            unit="가격기준=LME CASH; 통화=USD; 중량=톤",
+            observed_period=("2026-09-08~2026-09-09, 최신순 2건만, "
+                             "최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)"),
+            action_id="price.series",
+        )
+        plan = ActionPlan(actions=[ActionCall(
+            requirement_id="price", action_id="price.series", slots=ActionSlots(mineral="니켈"),
+        )])
+
+        scope = chatbot._price_series_scope_answer([evidence], plan)
+
+        assert scope is not None
+        self.assertIn("최신 보유 관측일(2026-09-09) 가격 요약입니다.", scope[0])
+        self.assertNotIn("최신순 2건", scope[0])
 
     def test_verified_human_units_are_preserved(self):
         unit = "가격기준=LME CASH; 통화=USD; 중량=톤"

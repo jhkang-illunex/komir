@@ -145,7 +145,10 @@ UNAVAILABLE = frozenset({
     "diagnosis.rank", "diagnosis.series", "forecast.demand", "forecast.price", "forecast.quantity",
     "geopolitics.index", "geopolitics.articles", "stockpile.status",
 })
-CURRENT_PERIOD_ENDS = frozenset({"latest", "current", "now", "현재", "오늘"})
+# ``금일``은 화면의 현재 일자를 뜻하는 듯 보이지만, 가격 원천의 적재 지연을
+# 고려하면 사용자 의도는 보통 "가장 최근에 보유한 관측값"이다. 날짜 하나로
+# 좁히지 않고 latest action으로 처리한다.
+CURRENT_PERIOD_ENDS = frozenset({"latest", "current", "now", "현재", "오늘", "금일", "금일자"})
 REQUIRED: dict[str, tuple[str, ...]] = {
     "price.series": ("mineral",), "price.compare": ("minerals",), "price.verify_claim": ("mineral", "claimed_change_pct"),
     "price.overview": ("strategic_price_groups",),
@@ -217,7 +220,9 @@ document 또는 document.retrieve로 분류하고 가격·무역 수치 action�
 개월 창을 넣고 period에는 임의의 단일 창을 넣지 않는다.
 광종을 여러 개 언급한 인과·시나리오·영향 설명은 가격·가격변화·가격비교를 명시하지 않는 한
 price.compare로 만들지 말고, 해당 설명의 출처를 찾는 document 또는 concept으로 둔다.
-기간은 Period(kind, explicit, 필요한 값)으로 정규화한다. 사용자가 일별·주별·월별·연도별 집계를
+기간은 Period(kind, explicit, 필요한 값)으로 정규화한다. 가격 질의의 "오늘"·"현재"·"지금"·"금일"·"금일자"는
+특정 일자 필터가 아니라 최신 보유 관측값을 뜻하므로 period=latest(또는 period 생략)로 두고,
+시스템의 오늘 날짜를 range end로 넣지 않는다. 사용자가 일별·주별·월별·연도별 집계를
 명시하면 period.frequency에 daily/weekly/monthly/yearly로 기록한다. 단순히 "이번 달" 또는
 "월간동향"이라고 한 것은 집계주기 요청이 아니다. JSON 외 텍스트를 출력하지 않는다."""
 
@@ -898,6 +903,9 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
     future_actual_price = _future_actual_price_plan(message)
     if future_actual_price is not None:
         return future_actual_price
+    latest_price = _latest_price_plan(message)
+    if latest_price is not None:
+        return latest_price
     explicit_document_plan = _explicit_dated_document_plan(message)
     if explicit_document_plan is not None:
         return explicit_document_plan
@@ -1018,6 +1026,31 @@ def _future_actual_price_plan(message: str) -> ActionPlan | None:
         intent="price_series",
         role="data",
         requested_outputs={"text", "chart"},
+    )])
+
+
+def _latest_price_plan(message: str) -> ActionPlan | None:
+    """완결된 금일 가격 질의를 최신 보유 관측값 조회로 고정한다.
+
+    가격 원천은 당일 장 마감·적재 시차 때문에 달력상의 오늘 행이 없을 수 있다.
+    이 좁은 문형은 planner가 ``금일``을 YYYY-MM-DD 범위로 바꾸는 변동을 막고,
+    기간 슬롯을 비워 어댑터가 최신 실제 관측 행을 선택하게 한다.
+    """
+    compact = re.sub(r"\s+", "", message)
+    match = re.fullmatch(
+        r"(?:금일자?|오늘|현재|지금)(?:의)?(?P<mineral>구리|니켈|코발트|리튬|희토류|Nd)(?:의)?"
+        r"(?:가격|시세)(?:(?:은|는|이|을|를)?(?:얼마야|얼마인가요|알려줘|알려주세요|보여줘|보여주세요))?[?.]?",
+        compact,
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return None
+    return ActionPlan(actions=[ActionCall(
+        requirement_id="latest_price",
+        action_id="price.series",
+        slots=ActionSlots(mineral=match.group("mineral")),
+        intent="price_series",
+        role="data",
     )])
 
 
