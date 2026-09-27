@@ -192,6 +192,7 @@ class ActionContractAuditTest(unittest.TestCase):
             ("니켈 가격 최근 3개월 평균이랑 비교하면 어때?", "price.series", "니켈", "period_average_delta", "trailing_months", 3),
             ("니켈 가격 몇 개월째 오르고 있어?", "price.series", "니켈", "monthly_streak", "latest", None),
             ("니켈 연도별 평균 가격 알려줘", "price.series", "니켈", "yearly_average", "latest", None),
+            ("니켈 가격 년도별 평균 가격을 알려줘", "price.series", "니켈", "yearly_average", "latest", None),
             ("니켈과 리튬 가격 같이 비교해줘", "price.compare", None, None, "trailing_months", 12),
         )
         for question, action_id, mineral, operation, period_kind, months in cases:
@@ -208,6 +209,47 @@ class ActionContractAuditTest(unittest.TestCase):
                     route.use_komis_price_time_aggregate,
                     operation in {"monthly_streak", "yearly_average"},
                 )
+
+    def test_mineral_info_and_lme_inventory_do_not_fall_through_to_price(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("닫힌 문형은 planner를 호출하면 안 됩니다")
+
+        for question in ("니켈은 어떤 광물인가요?", "니켈은 어떤 특성이 있나요?", "구리 기본 특성을 알려줘"):
+            with self.subTest(question=question):
+                candidate = extract_action_plan(question, MustNotRun())
+                self.assertEqual(candidate.actions[0].action_id, "document.retrieve")
+                self.assertTrue(_route_from_action_call(candidate.actions[0], question).use_mineral_info)
+
+        inventory = extract_action_plan("니켈 LME 재고량 알려줘", MustNotRun())
+        self.assertEqual(inventory.actions[0].action_id, "stockpile.status")
+        self.assertEqual(validate_action_plan(inventory).failure_reason, "source_unavailable")
+
+    def test_single_trade_country_and_concentration_questions_keep_flow(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("닫힌 무역 문형은 planner를 호출하면 안 됩니다")
+
+        exports = extract_action_plan("리튬 주요 수출국을 알려줘", MustNotRun())
+        export = exports.actions[0]
+        self.assertEqual((export.action_id, export.slots.mineral, export.slots.flow, export.slots.metric),
+                         ("trade.country_rank", "리튬", "export", "export_weight"))
+        self.assertTrue(validate_action_plan(exports).approved)
+
+        concentration = extract_action_plan("니켈 수입 집중도를 알려줘요", MustNotRun())
+        self.assertEqual(concentration.actions[0].action_id, "trade.concentration")
+        self.assertEqual(concentration.actions[0].slots.mineral, "니켈")
+        self.assertTrue(validate_action_plan(concentration).approved)
+
+    def test_mineral_news_question_routes_to_news_adapter(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("닫힌 뉴스 문형은 planner를 호출하면 안 됩니다")
+
+        candidate = extract_action_plan("니켈 가격 크게 오른 날 관련 뉴스 있어?", MustNotRun())
+        self.assertEqual(candidate.actions[0].action_id, "document.retrieve")
+        self.assertEqual(candidate.actions[0].slots.mineral, "니켈")
+        self.assertTrue(_route_from_action_call(candidate.actions[0], "니켈 가격 크게 오른 날 관련 뉴스 있어?").use_news)
 
     def test_price_operation_rejects_invalid_action_or_period(self):
         for action_id, operation, period in (

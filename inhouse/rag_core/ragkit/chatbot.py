@@ -1987,7 +1987,7 @@ async def chat_turn(
     price_compare_answer = render_price_comparison(evidence, action_plan)
     if price_compare_answer is not None:
         answer, cited_indices = price_compare_answer
-        citations = []
+        citations = _citation_sources(cited_indices, evidence)
         data_warnings = _data_warnings(cited_indices, evidence)
         extra = _dummy_data_notice(cited_indices, evidence) + _partial_forecast_notice(route_warnings)
         final_text = answer + extra
@@ -2019,7 +2019,7 @@ async def chat_turn(
             yield ChatEvent(type="delta", data={"delta": answer})
             yield _abstain_done("source_unavailable")
             return
-        citations = []
+        citations = _citation_sources(cited_indices, evidence)
         # 단일 가격 조회는 답변·인용 패널·표·차트에서 원천/테이블명과 실제
         # 관측범위를 감춘다. 수치 요약은 위 결정적 표본 계산으로만 제공한다.
         # 가격 원천의 공개 라벨·관측기간은 이 전용 화면 정책대로 숨기되,
@@ -2194,8 +2194,10 @@ async def chat_turn(
     if concept_question or price_unit_guard or rank_request_guard or len(planned_actions) >= 2:
         # 인용 번호·문장 직접근거를 모두 검증한 뒤에만 모델 문장을 보낸다.
         yield ChatEvent(type="delta", data={"delta": cleaned})
-
-        citation_sources = build_citation_sources(cited_indices, evidence)
+    # 스트리밍 여부와 무관하게 저장/done 계약에는 항상 인용 배열이 필요하다.
+    # 이전 코드가 위 조건문 안에서만 이 값을 만들면서 일반 수출입 질문이
+    # UnboundLocalError로 끝났다.
+    citation_sources = build_citation_sources(cited_indices, evidence)
     retrieval_sources = _retrieval_source_status(route_warnings)
 
     # chatbot_rule.txt 공통 규칙(출처 표기)·유형5(주의 문구) — 인용 스트리퍼를

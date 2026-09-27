@@ -934,12 +934,61 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
     mineral_info_match = next((name for name in (
         "리튬", "니켈", "코발트", "구리", "동", "망간", "흑연", "텅스텐", "희토류", "네오디뮴",
     ) if name in compact), None)
+    # 광종의 용도뿐 아니라 "어떤 광물/금속인가", "기본 특성"처럼 YAML에
+    # 검증된 원소·특성 필드를 묻는 완결 문형도 concept으로 고정한다. 이 경우
+    # planner의 일반 document 분류에 맡기면 route가 mineral_info adapter를
+    # 선택하지 못해, 자료가 있어도 source_unavailable로 끝날 수 있다.
     if mineral_info_match and any(marker in compact for marker in (
-            "용도", "어디에쓰", "어디쓰", "쓰여", "사용처", "활용처")):
+            "용도", "어디에쓰", "어디쓰", "쓰여", "사용처", "활용처",
+            "어떤광물", "어떤금속", "무슨광물", "무슨금속", "기본특성", "특성이")):
         mineral = "구리" if mineral_info_match == "동" else mineral_info_match
         return ActionPlan(actions=[ActionCall(
             requirement_id="mineral_info", action_id="document.retrieve",
             slots=ActionSlots(mineral=mineral, topic=message), intent="concept", role="content",
+        )])
+    # LME 재고는 가격 시계열과 다른 원천·필드가 필요하다. 현재 배선된 RDB
+    # 목록에는 재고 테이블이 없으므로 price.series로 대체하면 안 된다.
+    # unavailable action으로 명시해 검증 단계에서 데이터 미연결로 종료한다.
+    if "lme" in compact.casefold() and "재고" in compact:
+        mineral = "구리" if mineral_info_match == "동" else mineral_info_match
+        return ActionPlan(actions=[ActionCall(
+            requirement_id="lme_inventory",
+            action_id="stockpile.status",
+            slots=ActionSlots(mineral=mineral, topic=message),
+            intent="stockpile_methodology",
+            role="data",
+        )])
+    # 단일 광종의 한국 수출입 상대국 순위와 수입 집중도는 모두 공개 RDB
+    # adapter가 있다. 이 완결 문형을 planner에 맡기면 수출을 수입 기본값으로
+    # 바꾸거나 HHI slot을 누락하는 사례가 있어 typed action으로 고정한다.
+    if mineral_info_match and any(marker in compact for marker in (
+            "주요수출국", "주요수입국", "수출국을알려", "수출국알려", "수입국을알려", "수입국알려")):
+        mineral = "구리" if mineral_info_match == "동" else mineral_info_match
+        flow = "export" if "수출" in compact and "수입" not in compact else "import"
+        metric = "export_weight" if flow == "export" else "import_weight"
+        return ActionPlan(actions=[ActionCall(
+            requirement_id=f"{flow}_country_rank",
+            action_id="trade.country_rank",
+            slots=ActionSlots(mineral=mineral, flow=flow, metric=metric,
+                              trade_scope="korea", period=Period(kind="trailing_months", trailing_months=12), top_n=5),
+            intent="trade_rank", role="data",
+        )])
+    if mineral_info_match and "수입집중도" in compact:
+        mineral = "구리" if mineral_info_match == "동" else mineral_info_match
+        return ActionPlan(actions=[ActionCall(
+            requirement_id="import_concentration",
+            action_id="trade.concentration",
+            slots=ActionSlots(mineral=mineral, flow="import",
+                              period=Period(kind="trailing_months", trailing_months=12)),
+            intent="trade_concentration", role="data",
+        )])
+    # 단일 광종 뉴스는 ai_news와 반정형 보고서 adapter가 동일 광종명으로
+    # 조회한다. 가격 action으로 오인해 기사 요구가 사라지지 않게 한다.
+    if mineral_info_match and any(marker in compact for marker in ("뉴스", "기사", "수출통제")):
+        mineral = "구리" if mineral_info_match == "동" else mineral_info_match
+        return ActionPlan(actions=[ActionCall(
+            requirement_id="mineral_news", action_id="document.retrieve",
+            slots=ActionSlots(mineral=mineral, topic=message), intent="document", role="content",
         )])
     months_match = re.search(r"최근(\d+)(개월|년)", compact)
     months = int(months_match.group(1)) * (12 if months_match and months_match.group(2) == "년" else 1) if months_match else 12
@@ -1243,7 +1292,7 @@ def _price_operation_plan(message: str) -> ActionPlan | None:
         )])
 
     yearly = re.fullmatch(
-        r"(?P<mineral>[가-힣A-Za-z0-9]+?)(?:의)?연도별평균가격(?:을)?(?:알려줘|알려주세요|보여줘|보여주세요)?[?.]?",
+        r"(?P<mineral>[가-힣A-Za-z0-9]+?)(?:의)?(?:가격)?(?:연도별|년도별)평균가격(?:을)?(?:알려줘|알려주세요|보여줘|보여주세요)?[?.]?",
         compact,
         flags=re.IGNORECASE,
     )
@@ -1350,6 +1399,22 @@ def _latest_price_plan(message: str) -> ActionPlan | None:
     ``Period(kind=latest)``로 어댑터가 최신 실제 관측 한 행을 선택하게 한다.
     """
     compact = re.sub(r"\s+", "", message)
+    # "최근 니켈 가격"은 optional 접두어를 둔 일반식에 맡기면 lazy 광종
+    # 그룹이 '최근니켈'을 하나의 광종으로 잡을 수 있다. 시간 접두어를 먼저
+    # 분리해 실제 광종 슬롯을 보존한다.
+    recent = re.fullmatch(
+        r"최근(?P<mineral>[가-힣A-Za-z0-9]+?)(?:의)?(?:가격|시세)"
+        r"(?:(?:은|는|이|을|를)?(?:얼마야|얼마인가요|알려줘|알려주세요|보여줘|보여주세요))?[?.]?",
+        compact,
+        flags=re.IGNORECASE,
+    )
+    if recent:
+        mineral = MINERAL_ALIASES.get(recent.group("mineral").casefold(), recent.group("mineral"))
+        return ActionPlan(actions=[ActionCall(
+            requirement_id="latest_price", action_id="price.series",
+            slots=ActionSlots(mineral=mineral, period=Period(kind="latest")),
+            intent="price_series", role="data",
+        )])
     match = re.fullmatch(
         r"(?:(?:금일자?|오늘|현재|지금)(?:의)?)?(?P<mineral>[가-힣A-Za-z0-9]+?)(?:의)?"
         r"(?:가격|시세)(?:(?:은|는|이|을|를)?(?:얼마야|얼마인가요|알려줘|알려주세요|보여줘|보여주세요))?[?.]?",
