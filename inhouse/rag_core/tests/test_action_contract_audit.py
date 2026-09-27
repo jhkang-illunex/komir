@@ -156,7 +156,7 @@ class ActionContractAuditTest(unittest.TestCase):
         ))
         self.assertEqual(validate_action_plan(candidate).failure_reason, "slot_unresolved")
 
-    def test_forecast_closed_forms_preserve_output_operation_but_remain_unavailable(self):
+    def test_forecast_closed_forms_preserve_output_operation(self):
         class MustNotRun:
             def invoke(self, **kwargs):
                 raise AssertionError("가격예측 문형은 planner를 호출하면 안 됩니다")
@@ -169,7 +169,7 @@ class ActionContractAuditTest(unittest.TestCase):
                 candidate = extract_action_plan(question, MustNotRun())
                 self.assertEqual(candidate.actions[0].action_id, "forecast.price")
                 self.assertEqual(candidate.actions[0].slots.forecast_operation, operation)
-                self.assertEqual(validate_action_plan(candidate).failure_reason, "source_unavailable")
+                self.assertTrue(validate_action_plan(candidate).approved)
 
     def test_weekly_trend_document_plan_uses_dated_publication_adapter(self):
         class MustNotRun:

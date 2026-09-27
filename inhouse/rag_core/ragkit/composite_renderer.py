@@ -321,6 +321,19 @@ def render_composite(evidence: list, action_plan) -> tuple[str, set[int]] | None
                     return (f"광물가격 : {pp[0][0].isoformat()}~{pp[-1][0].isoformat()} 가격 {change:+.2f}% 변동, 고점 {_fmt(high)}({high_date.strftime('%Y-%m')})\n"
                             f"수급지도 : 수입국 {country_text}", {price[0][0], trade[0][0]})
 
+    if ids and all(action_id == "trade.country_rank" for action_id in ids) and len(ids) == 5:
+        ranks = by_action.get("trade.country_rank", [])
+        if len(ranks) == 5:
+            rows, cited = [], set()
+            for action, (index, item) in zip(actions, ranks):
+                countries = _country_rows(item)
+                if not countries:
+                    return None
+                country, share = countries[0]
+                rows.append(f"{action.slots.mineral} {country}({_fmt(share)}%)")
+                cited.add(index)
+            return "광물정보 : 2차전지 원료 광종 리튬, 니켈, 코발트, 망간, 흑연\n핵심광물 수급지도 : " + ", ".join(rows), cited
+
     # 세계 생산국과 한국 수입국의 목록/교집합. 같은 국가명이 두 원천에 실제로
     # 있을 때만 공통국으로 표시해 모델이 국가를 추정하지 못하게 한다.
     if ids.count("resource.rank") == 1 and ids.count("trade.country_rank") == 1:

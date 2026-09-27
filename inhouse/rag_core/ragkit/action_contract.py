@@ -137,7 +137,7 @@ class PlanAssessment(BaseModel):
 
 AVAILABLE = frozenset({
     "price.series", "price.compare", "price.verify_claim", "price.overview", "trade.country_rank", "trade.price_cross_rank", "trade.monthly",
-    "trade.concentration", "trade.hs_summary", "trade.indicator", "resource.rank", "resource.price_cross_rank", "resource.yoy", "mine.rank", "mine.profile", "indicator.series", "document.retrieve", "document.lookup", "stockpile.methodology", "menu.navigate", "dataset.navigate",
+    "trade.concentration", "trade.hs_summary", "trade.indicator", "resource.rank", "resource.price_cross_rank", "resource.yoy", "mine.rank", "mine.profile", "indicator.series", "document.retrieve", "document.lookup", "stockpile.methodology", "forecast.price", "menu.navigate", "dataset.navigate",
 })
 # 독립 근거를 요구하는 수치·문서 action은 requirement_id별로 실행하고
 # 최종 생성 단계에서 묶을 수 있다. 메뉴 이동은 별도 page-recommend 경로가
@@ -164,7 +164,7 @@ REQUIRED: dict[str, tuple[str, ...]] = {
     "trade.country_rank": ("mineral", "metric"), "trade.price_cross_rank": ("partner_country", "metric"), "trade.monthly": (), "trade.concentration": ("mineral",), "trade.indicator": ("trade_metric",),
     "trade.hs_summary": ("hs_code",), "resource.rank": ("mineral", "metric"), "resource.price_cross_rank": ("metric",), "resource.yoy": ("mineral",),
     "mine.rank": ("mine_metric", "mine_order"), "mine.profile": ("mine_name",),
-    "indicator.series": ("indicator",), "document.retrieve": ("topic",), "document.lookup": ("topic",), "stockpile.methodology": (),
+    "indicator.series": ("indicator",), "document.retrieve": ("topic",), "document.lookup": ("topic",), "stockpile.methodology": (), "forecast.price": ("mineral",),
     "menu.navigate": ("target_page",), "dataset.navigate": ("dataset",),
 }
 # 검증 완료된 수치 조합만 연다. 문서+수치/미연결 조합은 전체 기권이다.
@@ -939,6 +939,14 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
             requirement_id="battery_five_price_overview", action_id="price.overview",
             slots=ActionSlots(strategic_price_groups=["battery_five"]), intent="price_series", role="data",
         )])
+    if "2차전지광물수입국구성" in compact:
+        minerals = ("리튬", "니켈", "코발트", "망간", "흑연")
+        return ActionPlan(actions=[ActionCall(
+            requirement_id=f"battery_import_{mineral}", action_id="trade.country_rank",
+            slots=ActionSlots(mineral=mineral, flow="import", metric="import_amount", trade_scope="korea",
+                              period=Period(kind="trailing_months", trailing_months=12), top_n=1),
+            intent="trade_rank", role="data",
+        ) for mineral in minerals])
     mineral = "구리" if mineral_info_match == "동" else mineral_info_match
     has_usage = any(marker in compact for marker in ("용도", "어디에쓰", "어디쓰", "쓰여", "사용처", "활용처"))
     has_current_price = any(marker in compact for marker in ("가격", "시세")) and any(
