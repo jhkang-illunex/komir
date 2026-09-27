@@ -7,6 +7,7 @@ from .evidence import Evidence, KOMIS_RAW_DUMMY_CAVEAT
 
 
 _MINERAL_NAMES = ("리튬", "니켈", "코발트", "구리", "동", "망간", "흑연", "텅스텐", "희토류", "네오디뮴")
+_COUNTRY_NAMES = ("중국", "한국", "미국", "일본", "러시아", "호주", "칠레", "캐나다", "인도네시아", "콩고")
 
 
 def mentioned_minerals(text: str) -> list[str]:
@@ -18,6 +19,11 @@ def mentioned_minerals(text: str) -> list[str]:
         if mineral in normalized and label not in result:
             result.append(label)
     return result
+
+
+def mentioned_countries(text: str) -> list[str]:
+    """기사 제목·요약에 실제 표기된 국가만 원문 순서로 반환한다."""
+    return [country for country in _COUNTRY_NAMES if country in (text or "")]
 
 
 def _query_term(topic: str) -> str:
@@ -78,8 +84,11 @@ def fetch_news_evidence(topic: str = "", *, limit: int = 5) -> tuple[list[Eviden
     for day, mineral, title, headline, _order in news:
         title, headline = str(title or ''), str(headline or '')
         dummy = dummy or '[DEV_DUMMY]' in title or '[DEV_DUMMY]' in headline
-        mentioned = ", ".join(mentioned_minerals(f"{title} {headline}"))
-        lines.append(f"| {day or ''} | {mineral or mentioned} | {title} | {headline} |")
+        source_text = f"{title} {headline}"
+        mentioned = ", ".join(mentioned_minerals(source_text))
+        countries = ", ".join(mentioned_countries(source_text))
+        suffix = f" [언급 국가: {countries}]" if countries else ""
+        lines.append(f"| {day or ''} | {mineral or mentioned} | {title} | {headline}{suffix} |")
     for title, text, published_at in reports:
         excerpt = ' '.join(str(text or '').split())[:300]
         if excerpt:
