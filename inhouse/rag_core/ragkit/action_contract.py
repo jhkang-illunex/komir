@@ -1108,7 +1108,10 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
             ActionCall(requirement_id="monthly", action_id="document.retrieve", slots=ActionSlots(mineral="흑연", topic="흑연 월간동향"), intent="document", role="content"),
         ])
     if mineral_info_match and any(marker in compact for marker in (
-            "어떤광물", "어떤금속", "기본특성", "특성이", "특성알려", "원소기호", "원자번호")):
+            "용도", "어디에쓰", "어디쓰", "쓰여", "사용처", "활용처",
+            "어떤광물", "어떤금속", "무슨광물", "무슨금속", "기본특성", "특성이",
+            "특성알려", "원소기호", "원자번호", "광석", "ore")) and not any(
+                marker in compact for marker in ("수입", "생산국", "세계생산", "가격")):
         mineral = "구리" if mineral_info_match == "동" else mineral_info_match
         return ActionPlan(actions=[ActionCall(
             requirement_id="mineral_info", action_id="document.retrieve",
