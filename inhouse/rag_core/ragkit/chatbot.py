@@ -108,6 +108,7 @@ from .answer_composer import AnswerComposer
 from .composite_renderer import render_composite
 from .renderers.mineral_info import render_mineral_info
 from .renderers.deterministic import render_q15_usgs_scope, render_strategic_price_overview
+from .renderers.citation import citation_sources as build_citation_sources
 from .renderers.price import (
     format_price as _format_price,
     natural_price_basis as _natural_price_basis,
@@ -1838,7 +1839,7 @@ async def chat_turn(
         # 허용된 입력값·계산식 대안을 정적 방법론 근거로 렌더링한다. 생성 모델이
         # 원 질문의 "현황" 부분만 보고 모호성 기권으로 대안을 버리지 않게 한다.
         answer = _stockpile_methodology_answer(evidence)
-        citations = _citation_sources({1}, evidence)
+        citations = build_citation_sources({1}, evidence)
         yield ChatEvent(type="delta", data={"delta": answer})
         await asyncio.to_thread(
             append_message, resolved_session_id, "assistant", answer,
@@ -1852,7 +1853,7 @@ async def chat_turn(
     q15_answer = render_q15_usgs_scope(evidence)
     if q15_answer is not None:
         answer, cited_indices = q15_answer
-        citations = _citation_sources(cited_indices, evidence)
+        citations = build_citation_sources(cited_indices, evidence)
         extra = _source_footer(cited_indices, evidence)
         final_text = answer + extra
         yield _status_event(4)
@@ -1871,7 +1872,7 @@ async def chat_turn(
     strategic_overview_answer = render_strategic_price_overview(evidence, action_plan)
     if strategic_overview_answer is not None:
         answer, cited_indices = strategic_overview_answer
-        citations = _citation_sources(cited_indices, evidence)
+        citations = build_citation_sources(cited_indices, evidence)
         extra = _dummy_data_notice(cited_indices, evidence) + _source_footer(cited_indices, evidence)
         final_text = answer + extra
         yield _status_event(4)
@@ -1894,7 +1895,7 @@ async def chat_turn(
     mineral_info_answer = render_mineral_info(evidence, action_plan)
     if mineral_info_answer is not None:
         answer, cited_indices = mineral_info_answer
-        citations = _citation_sources(cited_indices, evidence)
+        citations = build_citation_sources(cited_indices, evidence)
         yield _status_event(4)
         yield ChatEvent(type="delta", data={"delta": answer})
         await asyncio.to_thread(
@@ -1918,7 +1919,7 @@ async def chat_turn(
             yield ChatEvent(type="delta", data={"delta": answer})
             yield _abstain_done("source_unavailable")
             return
-        citations = _citation_sources(cited_indices, evidence)
+        citations = build_citation_sources(cited_indices, evidence)
         yield _status_event(4)
         yield ChatEvent(type="delta", data={"delta": answer})
         for event in _multimodal_events(cited_indices, evidence):
@@ -2194,7 +2195,7 @@ async def chat_turn(
         # 인용 번호·문장 직접근거를 모두 검증한 뒤에만 모델 문장을 보낸다.
         yield ChatEvent(type="delta", data={"delta": cleaned})
 
-    citation_sources = _citation_sources(cited_indices, evidence)
+        citation_sources = build_citation_sources(cited_indices, evidence)
     retrieval_sources = _retrieval_source_status(route_warnings)
 
     # chatbot_rule.txt 공통 규칙(출처 표기)·유형5(주의 문구) — 인용 스트리퍼를
