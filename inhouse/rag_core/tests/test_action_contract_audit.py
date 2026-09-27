@@ -251,6 +251,39 @@ class ActionContractAuditTest(unittest.TestCase):
         self.assertEqual(candidate.actions[0].slots.mineral, "니켈")
         self.assertTrue(_route_from_action_call(candidate.actions[0], "니켈 가격 크게 오른 날 관련 뉴스 있어?").use_news)
 
+    def test_usage_and_import_price_composites_keep_both_actions(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("완결 복합 문형은 planner를 호출하면 안 됩니다")
+
+        usage_price = extract_action_plan("니켈은 어디에 쓰이고 지금 가격은 얼마야?", MustNotRun())
+        self.assertEqual([call.action_id for call in usage_price.actions], ["document.retrieve", "price.series"])
+        self.assertTrue(validate_action_plan(usage_price).approved)
+
+        import_price = extract_action_plan("니켈 수입 상위국이랑 현재가격 알려줘", MustNotRun())
+        self.assertEqual([call.action_id for call in import_price.actions], ["trade.country_rank", "price.series"])
+        self.assertTrue(validate_action_plan(import_price).approved)
+
+    def test_world_production_and_korea_import_comparison_keeps_populations(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("완결 복합 문형은 planner를 호출하면 안 됩니다")
+
+        candidate = extract_action_plan("리튬 세계 생산 상위국 중 우리 수입 상위국에 들어가는 나라는?", MustNotRun())
+        self.assertEqual([call.action_id for call in candidate.actions], ["resource.rank", "trade.country_rank"])
+        self.assertEqual(candidate.actions[0].slots.country_scope, "world")
+        self.assertEqual(candidate.actions[1].slots.trade_scope, "korea")
+        self.assertTrue(validate_action_plan(candidate).approved)
+
+    def test_production_and_import_concentration_are_independent_actions(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("완결 복합 문형은 planner를 호출하면 안 됩니다")
+
+        candidate = extract_action_plan("흑연 생산 집중도랑 수입 집중도 비교해줘", MustNotRun())
+        self.assertEqual([call.action_id for call in candidate.actions], ["resource.rank", "trade.concentration"])
+        self.assertTrue(validate_action_plan(candidate).approved)
+
     def test_price_operation_rejects_invalid_action_or_period(self):
         for action_id, operation, period in (
             ("price.compare", "monthly_streak", Period(kind="latest")),

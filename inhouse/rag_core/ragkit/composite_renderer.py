@@ -126,6 +126,16 @@ def _document_text(item):
 
 def _usage_sentence(text):
     """문서 근거에 명시된 용도 문장만 반환한다."""
+    # mineral_info YAML adapter의 구조화 표는 자유문장이 아니라 uses 속성에
+    # 검증값을 담는다. 같은 evidence 계약에서 용도만 읽어 OC11에 사용한다.
+    for table in extract_markdown_tables(text):
+        keys = _keys(table)
+        if not {"속성", "값"} <= set(keys):
+            continue
+        key_i, value_i = keys.index("속성"), keys.index("값")
+        for row in table["rows"]:
+            if len(row) > max(key_i, value_i) and row[key_i].strip() == "uses":
+                return row[value_i].strip()
     for sentence in re.split(r"(?<=[.!?。])\s+|\n+", text):
         if any(token in sentence for token in ("용도", "사용", "쓰입", "활용")):
             return sentence.strip(" -:;")
@@ -310,6 +320,46 @@ def render_composite(evidence: list, action_plan) -> tuple[str, set[int]] | None
                     country_text = ", ".join(f"{name}({_fmt(share)}%)" for name, share in countries[:3])
                     return (f"광물가격 : {pp[0][0].isoformat()}~{pp[-1][0].isoformat()} 가격 {change:+.2f}% 변동, 고점 {_fmt(high)}({high_date.strftime('%Y-%m')})\n"
                             f"수급지도 : 수입국 {country_text}", {price[0][0], trade[0][0]})
+
+    # 세계 생산국과 한국 수입국의 목록/교집합. 같은 국가명이 두 원천에 실제로
+    # 있을 때만 공통국으로 표시해 모델이 국가를 추정하지 못하게 한다.
+    if ids.count("resource.rank") == 1 and ids.count("trade.country_rank") == 1:
+        production = by_action.get("resource.rank", [])
+        trade = by_action.get("trade.country_rank", [])
+        if len(production) == 1 and len(trade) == 1:
+            producers, importers = _country_rows(production[0][1]), _country_rows(trade[0][1])
+            if producers and importers:
+                production_text = ", ".join(f"{country}({_fmt(share)}%)" for country, share in producers)
+                import_text = ", ".join(f"{country}({_fmt(share)}%)" for country, share in importers)
+                shared = [country for country, _share in producers if country in {name for name, _ in importers}]
+                return (f"광물지도 : 세계 생산 상위국 {production_text}\n"
+                        f"핵심광물 수급지도 : 우리나라 수입 상위국 {import_text}\n"
+                        f"비교결과 : 공통 국가 {', '.join(shared) if shared else '없음'}",
+                        {production[0][0], trade[0][0]})
+
+    # 생산 1위국 비중과 수입 HHI/1위국 비중은 각각의 집계 adapter가 계산한
+    # 값만 표시한다. 상위 N개 표만으로 HHI를 재계산하지 않는다.
+    if ids.count("resource.rank") == 1 and ids.count("trade.concentration") == 1:
+        production = by_action.get("resource.rank", [])
+        trade = by_action.get("trade.concentration", [])
+        if len(production) == 1 and len(trade) == 1:
+            producer_rows = []
+            for table in extract_markdown_tables(production[0][1].text):
+                if {"생산 1위국", "생산 1위국 비중"} <= set(table["columns"]) and table["rows"]:
+                    country_i, share_i = table["columns"].index("생산 1위국"), table["columns"].index("생산 1위국 비중")
+                    row = table["rows"][0]
+                    share = _number(row[share_i])
+                    if share is not None:
+                        producer_rows.append((row[country_i], share))
+            import_rows = _country_rows(trade[0][1])
+            hhi_match = re.search(r"HHI=([0-9.]+)", getattr(trade[0][1], "section", ""))
+            if producer_rows and import_rows and hhi_match:
+                country, share = producer_rows[0]
+                import_country, import_share = import_rows[0]
+                return (f"광물지도 : 생산 1위국 {country}({_fmt(share)}%)\n"
+                        f"핵심광물 수급지도 : 수입 CR3는 원천이 제공하지 않아 표시하지 않습니다. "
+                        f"HHI {_fmt(_number(hhi_match.group(1)))}, 1위국 {import_country}({_fmt(import_share)}%)",
+                        {production[0][0], trade[0][0]})
 
     # OC09: 가격 연도별 평균과 세계 생산량 YoY.
     if ids.count("price.series") == 1 and ids.count("resource.yoy") == 1:

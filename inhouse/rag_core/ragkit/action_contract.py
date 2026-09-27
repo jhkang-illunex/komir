@@ -934,6 +934,53 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
     mineral_info_match = next((name for name in (
         "리튬", "니켈", "코발트", "구리", "동", "망간", "흑연", "텅스텐", "희토류", "네오디뮴",
     ) if name in compact), None)
+    mineral = "구리" if mineral_info_match == "동" else mineral_info_match
+    has_usage = any(marker in compact for marker in ("용도", "어디에쓰", "어디쓰", "쓰여", "사용처", "활용처"))
+    has_current_price = any(marker in compact for marker in ("가격", "시세")) and any(
+        marker in compact for marker in ("현재", "지금", "오늘", "얼마"))
+    # 사용처와 현재 가격은 서로 독립된 검증 원천을 요구한다. 용도 shortcut이
+    # 가격 요구를 삼키지 않도록 두 action을 명시해 OC11 renderer로 넘긴다.
+    if mineral and has_usage and has_current_price:
+        return ActionPlan(actions=[
+            ActionCall(requirement_id="mineral_info", action_id="document.retrieve",
+                       slots=ActionSlots(mineral=mineral, topic=message), intent="concept", role="content"),
+            ActionCall(requirement_id="latest_price", action_id="price.series",
+                       slots=ActionSlots(mineral=mineral, period=Period(kind="latest")), intent="price_series", role="data"),
+        ])
+    # 수입 상위국과 현재 가격도 두 원천을 보존한다. 기간 없는 상위국은 공개
+    # 기본인 최근 12개월, 수입금액 기준으로 고정한다.
+    if mineral and has_current_price and "수입" in compact and any(marker in compact for marker in ("상위국", "수입국")):
+        return ActionPlan(actions=[
+            ActionCall(requirement_id="import_country_rank", action_id="trade.country_rank",
+                       slots=ActionSlots(mineral=mineral, flow="import", metric="import_amount", trade_scope="korea",
+                                         period=Period(kind="trailing_months", trailing_months=12), top_n=5),
+                       intent="trade_rank", role="data"),
+            ActionCall(requirement_id="latest_price", action_id="price.series",
+                       slots=ActionSlots(mineral=mineral, period=Period(kind="latest")), intent="price_series", role="data"),
+        ])
+    # 세계 생산국과 한국 수입국의 비교/교집합은 서로 다른 지도 원천을 같은
+    # 광종으로 조회해야 한다. planner가 document로 축약하지 않게 고정한다.
+    if mineral and any(marker in compact for marker in ("세계생산", "세계생산국", "생산상위")) and any(
+            marker in compact for marker in ("수입국", "우리수입", "우리나라수입", "한국수입")):
+        return ActionPlan(actions=[
+            ActionCall(requirement_id="world_production_rank", action_id="resource.rank",
+                       slots=ActionSlots(mineral=mineral, metric="production", country_scope="world", top_n=5),
+                       intent="resource_rank", role="data"),
+            ActionCall(requirement_id="korea_import_rank", action_id="trade.country_rank",
+                       slots=ActionSlots(mineral=mineral, flow="import", metric="import_amount", trade_scope="korea",
+                                         period=Period(kind="trailing_months", trailing_months=12), top_n=5),
+                       intent="trade_rank", role="data"),
+        ])
+    if mineral and "생산집중도" in compact and "수입집중도" in compact:
+        return ActionPlan(actions=[
+            ActionCall(requirement_id="production_concentration", action_id="resource.rank",
+                       slots=ActionSlots(mineral=mineral, metric="production", country_scope="world", top_n=1),
+                       intent="resource_rank", role="data"),
+            ActionCall(requirement_id="import_concentration", action_id="trade.concentration",
+                       slots=ActionSlots(mineral=mineral, flow="import",
+                                         period=Period(kind="trailing_months", trailing_months=12)),
+                       intent="trade_concentration", role="data"),
+        ])
     # 광종의 용도뿐 아니라 "어떤 광물/금속인가", "기본 특성"처럼 YAML에
     # 검증된 원소·특성 필드를 묻는 완결 문형도 concept으로 고정한다. 이 경우
     # planner의 일반 document 분류에 맡기면 route가 mineral_info adapter를
@@ -941,7 +988,6 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
     if mineral_info_match and any(marker in compact for marker in (
             "용도", "어디에쓰", "어디쓰", "쓰여", "사용처", "활용처",
             "어떤광물", "어떤금속", "무슨광물", "무슨금속", "기본특성", "특성이")):
-        mineral = "구리" if mineral_info_match == "동" else mineral_info_match
         return ActionPlan(actions=[ActionCall(
             requirement_id="mineral_info", action_id="document.retrieve",
             slots=ActionSlots(mineral=mineral, topic=message), intent="concept", role="content",
