@@ -130,13 +130,58 @@ def _expected_source_present(expected: str, citations: list[dict[str, Any]], don
     )
 
 
-def _independent_numeric_errors(case_id: str, events: list[dict[str, Any]]) -> list[str]:
+def _table_columns(table: dict[str, Any]) -> list[str]:
+    return [str(column).split("(", 1)[0] for column in table["columns"]]
+
+
+def _number(value: Any) -> float:
+    return float(str(value).replace(",", "").replace("%", "").strip())
+
+
+def _country_rank_errors(tables: list[dict[str, Any]], *, expected_count: int | None,
+                         required_labels: set[str] | None = None) -> list[str]:
+    """국가별 순위의 순서·양수성·비중 분모를 표 자체로 재검산한다."""
+    matching = []
+    for table in tables:
+        columns = _table_columns(table)
+        if {"country", "total", "share_pct"}.issubset(columns):
+            matching.append((table, columns))
+    if required_labels:
+        matching = [item for item in matching if any(label in " ".join(item[0]["columns"])
+                                                      for label in required_labels)]
+    if not matching:
+        return ["국가별 순위 구조화 표 없음"]
+    errors: list[str] = []
+    for table, columns in matching:
+        rows = table["rows"]
+        if expected_count is not None and len(rows) != expected_count:
+            errors.append(f"국가별 순위 행 수 불일치: {len(rows)}")
+            continue
+        indexes = {name: columns.index(name) for name in ("total", "share_pct")}
+        try:
+            totals = [_number(row[indexes["total"]]) for row in rows]
+            shares = [_number(row[indexes["share_pct"]]) for row in rows]
+        except (TypeError, ValueError, IndexError):
+            errors.append("국가별 순위 수치 형식 오류")
+            continue
+        if any(total <= 0 for total in totals) or any(not 0 < share <= 100 for share in shares):
+            errors.append("국가별 순위 양수·비중 범위 오류")
+        if any(left < right for left, right in zip(totals, totals[1:])):
+            errors.append("국가별 순위 금액 내림차순 오류")
+        # 상위 N만 표출해도 각 행의 total/share가 복원하는 전체 분모는 같아야 한다.
+        denominators = [total / (share / 100) for total, share in zip(totals, shares) if share]
+        if denominators and max(denominators) - min(denominators) > max(denominators) * 0.01:
+            errors.append("국가별 비중 분모 재계산 불일치")
+    return errors
+
+
+def _independent_numeric_errors(case_id: str, events: list[dict[str, Any]], done: dict[str, Any] | None = None) -> list[str]:
     """구조화 표의 핵심 수치를 응답과 별도로 재계산한다."""
     errors: list[str] = []
     tables = [event for event in events if event.get("rows") and event.get("columns")]
     if case_id == "AC07":
         for table in tables:
-            columns = [str(column).split("(", 1)[0] for column in table["columns"]]
+            columns = _table_columns(table)
             if not {"start_price", "end_price", "pct_change"}.issubset(columns):
                 continue
             indexes = {name: columns.index(name) for name in ("start_price", "end_price", "pct_change")}
@@ -155,7 +200,7 @@ def _independent_numeric_errors(case_id: str, events: list[dict[str, Any]]) -> l
         return ["AC07 가격 변동률 구조화 표 없음"]
     if case_id == "AC18":
         for table in tables:
-            columns = [str(column).split("(", 1)[0] for column in table["columns"]]
+            columns = _table_columns(table)
             if not {"partner_amount", "total_amount", "dependency_pct"}.issubset(columns):
                 continue
             indexes = {name: columns.index(name) for name in ("partner_amount", "total_amount", "dependency_pct")}
@@ -173,6 +218,71 @@ def _independent_numeric_errors(case_id: str, events: list[dict[str, Any]]) -> l
                     errors.append("AC18 의존도 독립 산식 불일치")
             return errors
         return ["AC18 의존도 구조화 표 없음"]
+    if case_id == "AC08":
+        return _country_rank_errors(tables, expected_count=5)
+    if case_id in {"AC12", "AC13"}:
+        expected = {"AC12": {"매장량"}, "AC13": {"생산량", "매장량"}}[case_id]
+        errors = _country_rank_errors(tables, expected_count=5, required_labels=expected)
+        if case_id == "AC13" and len([table for table in tables if {"country", "total", "share_pct"}.issubset(_table_columns(table))]) != 2:
+            errors.append("AC13 생산량·매장량 두 구조화 표가 필요함")
+        return errors
+    if case_id == "AC10":
+        series = []
+        for table in tables:
+            columns = _table_columns(table)
+            if "month" in columns and ({"import_amount", "import_weight"} & set(columns)):
+                series.append((table, columns))
+        if len(series) != 2:
+            return ["AC10 수입금액·수입중량 구조화 시계열이 모두 필요함"]
+        years: list[list[str]] = []
+        for table, columns in series:
+            value_column = "import_amount" if "import_amount" in columns else "import_weight"
+            try:
+                period = [str(row[columns.index("month")]) for row in table["rows"]]
+                values = [_number(row[columns.index(value_column)]) for row in table["rows"]]
+            except (TypeError, ValueError, IndexError):
+                return ["AC10 HS 시계열 수치 형식 오류"]
+            if not period or period != sorted(period) or len(period) != len(set(period)) or any(value < 0 for value in values):
+                return ["AC10 HS 시계열 기간·수치 불변식 오류"]
+            years.append(period)
+        return [] if years[0] == years[1] else ["AC10 금액·중량 시계열 기간 불일치"]
+    if case_id == "AC11":
+        errors = _country_rank_errors(tables, expected_count=None)
+        if errors:
+            return errors
+        table = next(table for table in tables if {"country", "total", "share_pct"}.issubset(_table_columns(table)))
+        columns = _table_columns(table)
+        shares = [_number(row[columns.index("share_pct")]) for row in table["rows"]]
+        computed = sum(share ** 2 for share in shares)
+        section = " ".join(str(item.get("section", "")) for item in (done or {}).get("citations") or [])
+        observed = re.search(r"HHI=([-+0-9.]+)", section)
+        if observed is None:
+            return ["AC11 HHI 관측값 인용 메타데이터 없음"]
+        if abs(float(observed.group(1)) - computed) > 0.05:
+            return ["AC11 HHI 독립 산식 불일치"]
+        return []
+    if case_id == "AC14":
+        for table in tables:
+            columns = _table_columns(table)
+            required = {"순위", "시작연도", "시작값", "끝연도", "끝값", "증가량"}
+            if not required.issubset(set(columns)):
+                continue
+            try:
+                start_year = [int(_number(row[columns.index("시작연도")])) for row in table["rows"]]
+                end_year = [int(_number(row[columns.index("끝연도")])) for row in table["rows"]]
+                start = [_number(row[columns.index("시작값")]) for row in table["rows"]]
+                end = [_number(row[columns.index("끝값")]) for row in table["rows"]]
+                increase = [_number(row[columns.index("증가량")]) for row in table["rows"]]
+            except (TypeError, ValueError, IndexError):
+                return ["AC14 광산 YoY 수치 형식 오류"]
+            if len(increase) != 5 or any(last != first + 1 for first, last in zip(start_year, end_year)):
+                return ["AC14 광산 YoY 연도·행 수 계약 오류"]
+            if any(abs(last - first - delta) > 0.01 for first, last, delta in zip(start, end, increase)):
+                return ["AC14 광산 YoY 증가량 독립 산식 불일치"]
+            if any(left < right for left, right in zip(increase, increase[1:])):
+                return ["AC14 광산 YoY 증가량 정렬 오류"]
+            return []
+        return ["AC14 광산 YoY 구조화 표 없음"]
     if case_id == "AC09":
         for table in tables:
             columns = [str(column).split("(", 1)[0] for column in table["columns"]]
@@ -185,7 +295,7 @@ def _independent_numeric_errors(case_id: str, events: list[dict[str, Any]]) -> l
                 return ["AC09 명시 2025년 밖의 월별 교역 행이 포함됨"]
             return errors
         return ["AC09 월별 교역 구조화 표 없음"]
-    if case_id == "AC22":
+    if case_id in {"AC16", "AC22"}:
         for table in tables:
             columns = [str(column).split("(", 1)[0] for column in table["columns"]]
             if not {"export_amount", "import_amount", "tsi"}.issubset(columns):
@@ -197,16 +307,16 @@ def _independent_numeric_errors(case_id: str, events: list[dict[str, Any]]) -> l
                     import_ = float(row[indexes["import_amount"]])
                     observed = float(row[indexes["tsi"]])
                 except (TypeError, ValueError, IndexError):
-                    errors.append("AC22 TSI 구조화 수치 형식 오류")
+                    errors.append(f"{case_id} TSI 구조화 수치 형식 오류")
                     continue
                 denominator = export + import_
                 expected = (export - import_) / denominator if denominator else 0.0
                 if denominator <= 0 or not -1 <= observed <= 1:
-                    errors.append("AC22 TSI 범위·분모 오류")
+                    errors.append(f"{case_id} TSI 범위·분모 오류")
                 elif abs(observed - expected) > 0.0001:
-                    errors.append("AC22 TSI 독립 산식 불일치")
+                    errors.append(f"{case_id} TSI 독립 산식 불일치")
             return errors
-        return ["AC22 TSI 구조화 표 없음"]
+        return [f"{case_id} TSI 구조화 표 없음"]
     return errors
 
 
@@ -221,7 +331,7 @@ def _answer_errors(case: dict[str, Any], events: list[dict[str, Any]], done: dic
     for source in case.get("expected_sources", []):
         if source != "menu_data_catelog.yml" and not _expected_source_present(source, citations, done):
             errors.append(f"기대 출처 근거 없음: {source}")
-    errors.extend(_independent_numeric_errors(case.get("id", ""), events))
+    errors.extend(_independent_numeric_errors(case.get("id", ""), events, done))
     page_id = case.get("expected_page_id")
     expects_page = "page" in set(case.get("sse_contracts", [])) and bool(page_id)
     if expects_page and done.get("mode") != "page":
@@ -322,7 +432,7 @@ def verify_live(case: dict[str, Any], base_url: str, timeout: int) -> tuple[str,
                 return "BLOCKED_DATA", [f"사전 데이터 조건 미충족: {done.get('abstain_reason')}"], {"done": done, "precondition_evidence": evidence}
             return "FAIL", ["source_unavailable에 대한 독립 사전조건 증거가 없음"], {"done": done}
         errors.extend(_answer_errors(case, events, done))
-        if done.get("mode") != "page" and case.get("id") not in {"AC07", "AC09", "AC18", "AC22", "AC15"}:
+        if done.get("mode") != "page" and case.get("id") not in {"AC07", "AC08", "AC09", "AC10", "AC11", "AC12", "AC13", "AC14", "AC15", "AC16", "AC18", "AC22"}:
             errors.append("필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음")
     elif outcome == "abstain":
         if not done.get("abstained"):
