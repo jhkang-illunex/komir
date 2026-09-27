@@ -1186,6 +1186,9 @@ def _price_policy_faq_answer(message: str) -> str | None:
                 "품목이 변경될 수 있고, 동일 품목·규격이라도 기존 가격과 차이가 있을 수 있습니다.")
     changed_mineral = next((mineral for mineral in PRICE_SOURCE_CHANGE_MINERALS if mineral in message), None)
     if (changed_mineral
+            # ``현시비교우위``처럼 가격과 무관한 무역지표에도 ``비교``가
+            # 들어간다. 이 FAQ는 가격의 과거/현재 비교 주의에만 한정한다.
+            and any(x in normalized for x in ("가격", "시세"))
             and any(x in normalized for x in ("작년", "올해", "2025년", "2026년", "주의"))
             and any(x in normalized for x in ("비교", "차이", "주의"))):
         return (f"{changed_mineral}{_eun_neun(changed_mineral)} 2026년 1월부터 자료원이 변경된 광종입니다. 2025년 이전 가격과 동일 규격이라도 차이가 있을 수 있어 단순 비교 시 해석에 주의가 필요합니다.")

@@ -407,6 +407,59 @@ class ActionContractAuditTest(unittest.TestCase):
         self.assertEqual(call.slots.denominator_scope, "reporter_product_trade")
         self.assertTrue(validate_action_plan(candidate).approved)
 
+    def test_explicit_year_country_dependency_does_not_request_period_clarification(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("명시 연도·국가 의존도는 planner를 호출하면 안 됩니다")
+
+        candidate = extract_action_plan("2025년 한국 리튬 수입의 중국 의존도를 계산해줘", MustNotRun())
+        call = candidate.actions[0]
+        self.assertEqual(call.action_id, "trade.indicator")
+        self.assertEqual(call.slots.period.kind, "calendar_year")
+        self.assertEqual(call.slots.period.calendar_year, 2025)
+        self.assertTrue(validate_action_plan(candidate).approved)
+
+    def test_explicit_year_rca_preserves_all_required_slots_without_llm(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("명시 연도 RCA는 planner를 호출하면 안 됩니다")
+
+        candidate = extract_action_plan("2025년 한국 리튬의 현시비교우위지수 RCA를 계산해줘", MustNotRun())
+        call = candidate.actions[0]
+        self.assertEqual((call.action_id, call.slots.trade_metric), ("trade.indicator", "rca"))
+        self.assertEqual(call.slots.reporter_country, "한국")
+        self.assertEqual(call.slots.period.calendar_year, 2025)
+        self.assertEqual(missing_trade_indicator_slots(call), ())
+
+    def test_explicit_year_monthly_trade_overrides_untyped_trailing_period(self):
+        candidate = action_plan_from_intent(IntentPlan(requirements=[IntentCall(
+            requirement_id="monthly", intent="trade_monthly", role="data",
+            slots=ActionSlots(mineral="리튬", period=Period(kind="trailing_months", trailing_months=12)),
+        )]), "2025년 한국 리튬 수입금액 월별 추이")
+        call = candidate.actions[0]
+        self.assertEqual(call.action_id, "trade.monthly")
+        self.assertEqual(call.slots.period.kind, "calendar_year")
+        self.assertEqual(call.slots.period.calendar_year, 2025)
+        route = _route_from_action_call(call, "2025년 한국 리튬 수입금액 월별 추이")
+        self.assertEqual((route.komis_start_period, route.komis_end_period), ("2025", "2025"))
+
+    def test_multi_year_monthly_trade_uses_closed_explicit_range(self):
+        candidate = action_plan_from_intent(IntentPlan(requirements=[IntentCall(
+            requirement_id="monthly", intent="trade_monthly", role="data",
+            slots=ActionSlots(mineral="리튬"),
+        )]), "2024년과 2025년 한국 리튬 수입금액 월별 추이")
+        period = candidate.actions[0].slots.period
+        self.assertEqual((period.kind, period.start, period.end), ("range", "20240101", "20251231"))
+        self.assertTrue(period.explicit)
+
+    def test_explicit_monthly_trade_range_is_preserved(self):
+        period = Period(kind="range", start="20250101", end="20251231", explicit=True)
+        candidate = action_plan_from_intent(IntentPlan(requirements=[IntentCall(
+            requirement_id="monthly", intent="trade_monthly", role="data",
+            slots=ActionSlots(mineral="리튬", period=period),
+        )]), "2025년 한국 리튬 수입금액 월별 추이")
+        self.assertEqual(candidate.actions[0].slots.period, period)
+
     def test_strategic_price_overview_uses_closed_yaml_group_action_without_llm(self):
         class MustNotRun:
             def invoke(self, **kwargs):

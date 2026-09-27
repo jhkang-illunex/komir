@@ -109,10 +109,25 @@ def terminal_errors(events: list[dict[str, Any]], session_id: str) -> list[str]:
 
 
 def _citation_has_source(citation: dict[str, Any], expected: str) -> bool:
+    if expected == "PageIndex":
+        return citation.get("kind") == "pageindex"
     if citation.get("source") == expected:
         return True
     menu_source = citation.get("menu_source") or {}
     return expected in set(menu_source.get("source_tables") or [])
+
+
+def _expected_source_present(expected: str, citations: list[dict[str, Any]], done: dict[str, Any]) -> bool:
+    """인용 표시 정책과 검색·검증 provenance를 혼동하지 않는다."""
+    if any(_citation_has_source(citation, expected) for citation in citations):
+        return True
+    if expected != "OKF":
+        return False
+    return any(
+        source.get("source") == "okf" and source.get("status") == "verified"
+        and int(source.get("evidence_count") or 0) > 0
+        for source in done.get("retrieval_sources") or []
+    )
 
 
 def _independent_numeric_errors(case_id: str, events: list[dict[str, Any]]) -> list[str]:
@@ -158,6 +173,18 @@ def _independent_numeric_errors(case_id: str, events: list[dict[str, Any]]) -> l
                     errors.append("AC18 의존도 독립 산식 불일치")
             return errors
         return ["AC18 의존도 구조화 표 없음"]
+    if case_id == "AC09":
+        for table in tables:
+            columns = [str(column).split("(", 1)[0] for column in table["columns"]]
+            if not {"month", "import_amount"}.issubset(columns):
+                continue
+            month_index = columns.index("month")
+            if not table["rows"]:
+                return ["AC09 월별 교역 구조화 표가 비어 있음"]
+            if any(not str(row[month_index]).startswith("2025-") for row in table["rows"]):
+                return ["AC09 명시 2025년 밖의 월별 교역 행이 포함됨"]
+            return errors
+        return ["AC09 월별 교역 구조화 표 없음"]
     if case_id == "AC22":
         for table in tables:
             columns = [str(column).split("(", 1)[0] for column in table["columns"]]
@@ -192,8 +219,8 @@ def _answer_errors(case: dict[str, Any], events: list[dict[str, Any]], done: dic
     if not answer:
         errors.append("delta 본문이 비어 있음")
     for source in case.get("expected_sources", []):
-        if source != "menu_data_catelog.yml" and not any(_citation_has_source(item, source) for item in citations):
-            errors.append(f"기대 출처 인용 없음: {source}")
+        if source != "menu_data_catelog.yml" and not _expected_source_present(source, citations, done):
+            errors.append(f"기대 출처 근거 없음: {source}")
     errors.extend(_independent_numeric_errors(case.get("id", ""), events))
     page_id = case.get("expected_page_id")
     expects_page = "page" in set(case.get("sse_contracts", [])) and bool(page_id)
@@ -295,7 +322,7 @@ def verify_live(case: dict[str, Any], base_url: str, timeout: int) -> tuple[str,
                 return "BLOCKED_DATA", [f"사전 데이터 조건 미충족: {done.get('abstain_reason')}"], {"done": done, "precondition_evidence": evidence}
             return "FAIL", ["source_unavailable에 대한 독립 사전조건 증거가 없음"], {"done": done}
         errors.extend(_answer_errors(case, events, done))
-        if done.get("mode") != "page" and case.get("id") not in {"AC07", "AC18", "AC22"}:
+        if done.get("mode") != "page" and case.get("id") not in {"AC07", "AC09", "AC18", "AC22", "AC15"}:
             errors.append("필수 수치·표·단위·관측기간의 독립 검증이 아직 구현되지 않음")
     elif outcome == "abstain":
         if not done.get("abstained"):

@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from rag_core.ragkit.action_contract import (
     ActionCall, ActionPlan, ActionSlots, IntentCall, IntentPlan,
-    action_plan_from_intent, validate_action_plan,
+    _known_mine_profile_plan, action_plan_from_intent, extract_action_plan, validate_action_plan,
 )
 from rag_core.ragkit import chatbot_graph as graph
 from rag_core.ragkit.mcp_client import _ProfileSession
@@ -21,6 +21,26 @@ from rag_core.retrieval.access import PRIVATE_ONLY_SOURCE_GROUPS
 
 
 class OkfActionContractTest(unittest.TestCase):
+    def test_known_single_mine_document_question_uses_profile_action_without_llm(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("고정 공개 광산 프로필은 planner를 호출하면 안 됩니다")
+
+        candidate = extract_action_plan("BHP 보고서에서 Escondida 광산은 어느 나라에 있나?", MustNotRun())
+        call = candidate.actions[0]
+        self.assertEqual(call.action_id, "mine.profile")
+        self.assertEqual(call.slots.mine_name, "Escondida")
+        self.assertEqual(call.slots.topic, "BHP 보고서")
+        self.assertTrue(validate_action_plan(candidate).approved)
+        route = graph._route_from_action_call(call, "BHP 보고서에서 Escondida 광산은 어느 나라에 있나?")
+        result = pageindex.lookup(route.resolved_query, doc=route.pageindex_doc, node_limit=3,
+                                  with_text=True, body_fallback=route.pageindex_body_fallback,
+                                  body_query=route.pageindex_body_query)
+        self.assertTrue(any("Escondida in Chile" in node["text"] for node in result["nodes"]))
+
+    def test_known_single_mine_shortcut_does_not_capture_rank_question(self):
+        self.assertIsNone(_known_mine_profile_plan("BHP 보고서의 Escondida 광산 생산 순위는?"))
+
     def test_document_lookup_preserves_original_query_for_document_selection_and_body(self):
         call = ActionCall(requirement_id="doc", action_id="document.lookup", slots=ActionSlots(
             topic="Kazatomprom 우라늄 광산 정리자료 JV Inkai"))

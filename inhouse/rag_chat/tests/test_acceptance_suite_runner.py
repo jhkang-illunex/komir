@@ -46,6 +46,19 @@ class AcceptanceSuiteDefinitionTest(unittest.TestCase):
         selected = runner.select_cases(cases, {"AC21"}, {"module", "integration"})
         self.assertEqual([case["id"] for case in selected], ["AC21"])
 
+    def test_document_provenance_accepts_pageindex_citation_and_verified_okf_without_restoring_citations(self):
+        citations = [{"kind": "pageindex", "source": "공식 문서 원문"}]
+        done = {"retrieval_sources": [{"source": "okf", "status": "verified", "evidence_count": 1}]}
+        self.assertTrue(runner._expected_source_present("PageIndex", citations, done))
+        self.assertTrue(runner._expected_source_present("OKF", citations, done))
+        self.assertFalse(runner._expected_source_present("KOMIS", citations, done))
+
+    def test_ac09_period_check_rejects_out_of_year_rows(self):
+        events = [{"columns": ["month(월)", "import_amount(수입금액합계(USD))"],
+                   "rows": [["2025-09", "1"], ["2026-01", "2"]]}]
+        self.assertIn("AC09 명시 2025년 밖의 월별 교역 행이 포함됨",
+                      runner._independent_numeric_errors("AC09", events))
+
     def test_module_required_checks_are_mapped_to_executable_targets(self):
         _, cases = runner.load_cases(Path(__file__).with_name("chatbot_acceptance_cases.yml"))
         ac42 = next(case for case in cases if case["id"] == "AC42")

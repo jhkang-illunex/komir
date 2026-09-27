@@ -2,6 +2,25 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-27 — 기대결과물 라이브 QA iterative-audit 보완 및 테스트 컨테이너 재배포
+
+라이브 QA에서 확정된 네 건을 최소 범위로 수정했다. 가격 자료원 변경 FAQ는 가격/시세
+표지가 있는 비교에만 적용해 RCA의 `비교` 토큰을 오인하지 않게 했고, 명시된 단일·다년
+월별 교역 기간을 `calendar_year`/닫힌 range typed slot으로 보존했다. 명시 연도 한국
+특정국 의존도 및 RCA는 planner가 기간을 누락해 HITL을 반복하지 않도록 결정적 ActionPlan을
+만든다. BHP/Escondida 단일 원문 질의는 `mine.profile`로 고정해 PageIndex OKF 본문 행을
+사용한다.
+
+수락 runner는 문서의 PageIndex 인용과 OKF 검증 provenance를 구분하도록 수정했다.
+이는 인용 미기록을 복원하거나 요구하지 않으며, `citations=[]`가 허용된 기존 정책은
+변경하지 않았다. 회귀 121건, `py_compile`, `git diff --check`를 통과했고 Sol 읽기 전용
+설계 감사의 다년 기간 축소 위험도 함께 반영했다. 이미지
+`komir-rag-chat:20260927-qa-contract-r2` (ID
+`sha256:244a8708967aa1f642c8501ec3f3ba22c59ef982b70dc214bbe2aaedfabe53dc`)를
+`komir-rag-chat-test` 포트 18002에 배포했다. 라이브 AC09·AC15·AC18·AC19가 모두 PASS였고,
+직전 컨테이너는 `komir-rag-chat-test-pre-qa-contract-r2`로 보존했다. DB·문서 색인은
+변경하지 않았다.
+
 ## 2026-09-27 — FBQ55 YAML 전략광종 가격 현황 구현 및 테스트 컨테이너 배포
 
 사용자가 제공한 YAML 구성으로 6대(유연탄·우라늄·철광석·구리·아연·니켈)와
