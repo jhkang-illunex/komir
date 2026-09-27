@@ -4,6 +4,7 @@ import unittest
 from types import SimpleNamespace
 
 from rag_core.ragkit import chatbot
+from rag_core.ragkit.renderers.price import render_price_comparison
 from rag_core.ragkit.action_contract import ActionCall, ActionPlan, ActionSlots, Period
 from rag_core.retrieval.evidence import Evidence
 
@@ -179,7 +180,7 @@ class PriceUnitDisclosureTest(unittest.TestCase):
             requirement_id="compare", action_id="price.compare",
             slots=ActionSlots(minerals=["니켈", "리튬"], period=Period(kind="trailing_months", trailing_months=12)),
         )])
-        scope = chatbot._price_compare_scope_answer([evidence], plan)
+        scope = render_price_comparison([evidence], plan)
         assert scope is not None
         self.assertEqual(scope[0], "최근 1년 니켈·리튬 가격 비교입니다. 비교 차트는 아래에 표시합니다. 같은 기간 니켈 +10.25%, 리튬 -3.50%입니다.")
 

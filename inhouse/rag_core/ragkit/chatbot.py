@@ -107,6 +107,7 @@ from .multi_action_state import encode_citation_envelope, state_from_action_resu
 from .answer_composer import AnswerComposer
 from .composite_renderer import render_composite
 from .renderers.mineral_info import render_mineral_info
+from .renderers.price import render_price_comparison
 from .chatbot_store import DEFAULT_DB_PATH as DEFAULT_STORE_DB_PATH
 from .chatbot_store import append_message, get_or_create_session, list_messages
 from .messages import chat_message, faq_message
@@ -1385,44 +1386,6 @@ def _price_operation_answer(item, mineral: str | None, operation: str, period) -
     return "지원하지 않는 가격 집계 요청입니다."
 
 
-def _price_compare_scope_answer(evidence: list, action_plan) -> tuple[str, set[int]] | None:
-    """두 광종의 공통 기간 변동률 집계를 요청 순서대로 고정 렌더링한다."""
-    actions = getattr(action_plan, "actions", [])
-    if len(actions) != 1 or getattr(actions[0], "action_id", None) != "price.compare":
-        return None
-    action = actions[0]
-    requested = list(getattr(action.slots, "minerals", None) or [])
-    rows: dict[str, float] = {}
-    cited: set[int] = set()
-    for index, item in enumerate(evidence, 1):
-        if getattr(item, "action_id", None) != "price.compare":
-            continue
-        # 변동률 요약뿐 아니라 동일 기준·공통 기간 검증을 통과한 두 시계열도
-        # chart 이벤트 대상으로 남긴다.
-        cited.add(index)
-        for table in extract_markdown_tables(item.text):
-            keys = [column.split("(", 1)[0].strip().casefold() for column in table["columns"]]
-            try:
-                mineral_index = keys.index("mineral")
-                pct_index = keys.index("pct_change")
-            except ValueError:
-                continue
-            for row in table["rows"]:
-                try:
-                    rows[row[mineral_index]] = float(row[pct_index].replace(",", "").replace("%", ""))
-                except (ValueError, AttributeError):
-                    continue
-    if len(requested) != 2 or any(name not in rows for name in requested):
-        return None
-    period = getattr(action.slots, "period", None)
-    months = getattr(period, "trailing_months", None)
-    period_label = (f"최근 {months // 12}년" if months and months % 12 == 0
-                    else f"최근 {months}개월" if months else "공통 관측기간")
-    return (f"{period_label} {requested[0]}·{requested[1]} 가격 비교입니다. "
-            f"비교 차트는 아래에 표시합니다. 같은 기간 {requested[0]} {rows[requested[0]]:+.2f}%, "
-            f"{requested[1]} {rows[requested[1]]:+.2f}%입니다."), cited
-
-
 def _price_series_scope_answer(evidence: list, action_plan) -> tuple[str, set[int]] | None:
     """단일 가격 조회의 기간 요약을 표본에서 결정론적으로 계산한다."""
     actions = getattr(action_plan, "actions", [])
@@ -2364,7 +2327,7 @@ async def chat_turn(
         })
         return
 
-    price_compare_answer = _price_compare_scope_answer(evidence, action_plan)
+    price_compare_answer = render_price_comparison(evidence, action_plan)
     if price_compare_answer is not None:
         answer, cited_indices = price_compare_answer
         citations = []
