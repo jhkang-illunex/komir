@@ -118,6 +118,18 @@ class ActionContractAuditTest(unittest.TestCase):
                 self.assertEqual([call.action_id for call in candidate.actions], ["document.retrieve"])
                 self.assertEqual(candidate.actions[0].slots.period.kind, period_kind)
 
+    def test_dated_publication_content_bypasses_planner_as_explicit_lookup(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("발행일이 적힌 단일 문서 확인은 planner를 호출하면 안 됩니다")
+
+        candidate = extract_action_plan(
+            "2026년 6월 16일 주간 경제 비철금속 시장 동향 내용을 알려줘", MustNotRun(),
+        )
+        self.assertEqual([call.action_id for call in candidate.actions], ["document.lookup"])
+        self.assertEqual(candidate.actions[0].slots.topic,
+                         "2026년 6월 16일 주간 경제 비철금속 시장 동향 내용을 알려줘")
+
     def test_publication_shortcut_preserves_compound_and_navigation_requests(self):
         class Planner:
             def invoke(self, **kwargs):

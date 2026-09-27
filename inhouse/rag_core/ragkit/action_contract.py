@@ -898,6 +898,9 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
     future_actual_price = _future_actual_price_plan(message)
     if future_actual_price is not None:
         return future_actual_price
+    explicit_document_plan = _explicit_dated_document_plan(message)
+    if explicit_document_plan is not None:
+        return explicit_document_plan
     publication_plan = _publication_document_plan(message)
     if publication_plan is not None:
         return publication_plan
@@ -1015,6 +1018,34 @@ def _future_actual_price_plan(message: str) -> ActionPlan | None:
         intent="price_series",
         role="data",
         requested_outputs={"text", "chart"},
+    )])
+
+
+def _explicit_dated_document_plan(message: str) -> ActionPlan | None:
+    """발행일이 적힌 단일 문서 확인은 LLM 분류 전에 OKF lookup으로 고정한다.
+
+    ``2026년 6월 16일 주간 경제 비철금속 시장 동향 내용을 알려줘``처럼
+    발행일·문서 종류·본문/제목 요청이 모두 있으면 주제 검색(document.retrieve)이
+    아니라 한 문서의 실제 OKF 본문을 읽어야 한다. Planner가 이를 일반 document로
+    축약하면 날짜 식별자가 사라져 공개 문서도 Advisor 단계에서 기권할 수 있다.
+    가격·무역 등 별도 데이터 요구는 이 단축 경로로 흡수하지 않는다.
+    """
+
+    compact = re.sub(r"\s+", "", message)
+    has_written_date = bool(re.search(r"20\d{2}년\d{1,2}월\d{1,2}일", compact))
+    has_document_marker = any(marker in compact for marker in ("보고서", "동향", "뉴스"))
+    is_single_document_request = bool(re.fullmatch(
+        r".*(?:내용|제목|원문|요약)(?:을|를)?(?:알려줘|알려주세요|보여줘|보여주세요|찾아줘|찾아주세요|요약해줘|요약해주세요)[?.]?",
+        compact,
+    ))
+    has_separate_data_request = any(marker in compact for marker in (
+        "가격이랑", "가격과", "수입액", "수출액", "수입량", "수출량", "비교해",
+    ))
+    if not (has_written_date and has_document_marker and is_single_document_request) or has_separate_data_request:
+        return None
+    return ActionPlan(actions=[ActionCall(
+        requirement_id="document", action_id="document.lookup", intent="okf_lookup", role="content",
+        slots=ActionSlots(topic=message), requested_outputs={"text"},
     )])
 
 
