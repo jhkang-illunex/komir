@@ -914,6 +914,34 @@ def _country_rank_summary(evidence: list, action_plan, question: str, answer_tex
     return ""
 
 
+def _resource_rank_citation_indices(evidence: list, question: str) -> set[int]:
+    """생산량·매장량 복합 순위 질의의 두 원천을 모두 인용 대상으로 고정한다.
+
+    생성 모델이 표 하나만 인용하면 두 번째 정형 근거가 ``table`` 이벤트와
+    ``done.citations``에서 빠진다. 두 지표를 함께 물은 경우에 한해 원천 표의
+    존재를 확인하고 두 인덱스를 강제로 포함해, 응답 텍스트의 인용 선택에
+    따라 데이터가 누락되지 않도록 한다.
+    """
+
+    compact = re.sub(r"\s+", "", question or "")
+    if "생산량" not in compact or "매장량" not in compact:
+        return set()
+    indices: set[int] = set()
+    for index, item in enumerate(evidence, 1):
+        source = str(getattr(item, "source", ""))
+        section = str(getattr(item, "section", ""))
+        text = str(getattr(item, "text", ""))
+        haystack = " ".join((source, section, text))
+        if (
+            "KO_RSRC_PRDCTN_QUTY" in haystack
+            or "생산량합계" in haystack
+            or "KO_RSRC_BURUDG_QUTY" in haystack
+            or "매장량합계" in haystack
+        ):
+            indices.add(index)
+    return indices
+
+
 def _remove_rank_metadata_lines(text: str) -> str:
     """순위 답변에서 사용자에게 불필요한 기간·집계 설명 라벨을 제거한다."""
 
@@ -1975,6 +2003,10 @@ async def chat_turn(
         break
 
     cited_indices = {int(n) for n in _CITE_NUM_RE.findall(cleaned)}
+    # 생산량·매장량 복합 순위는 모델이 한 표만 인용해도 두 정형 원천을
+    # 모두 화면에 노출해야 한다. 해당 질문에서 식별된 원천만 합쳐 다른
+    # 순위·문서 질의의 인용 규율은 그대로 유지한다.
+    cited_indices.update(_resource_rank_citation_indices(evidence, message))
     if concept_question and not _concept_answer_is_directly_supported(
         cleaned, cited_indices, evidence, router_llm,
     ):
