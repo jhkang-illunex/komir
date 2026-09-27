@@ -38,6 +38,24 @@ minerals:
     atomic_weight: 6.94
     uses: ["휴대기기·전기차용 충전식 배터리", "알루미늄·마그네슘 경량 합금", "특수 유리·유리 세라믹"]
     characteristics: ["은백색의 연한 금속", "금속 중 밀도가 가장 낮음", "물과 격렬하게 반응"]
+  망간:
+    source_verified: true
+    source_url: "https://periodic-table.rsc.org/element/25/manganese"
+    element_symbol: "Mn"
+    atomic_number: 25
+    atomic_weight: 54.938
+    uses: ["강철·합금의 강도·내마모성 향상", "철도 레일·금고·공구용 망간강", "배터리·유리·비료·세라믹"]
+    characteristics: ["단단하고 취성인 은백색 금속", "순금속보다 합금으로 주로 사용", "여러 산화 상태를 가짐"]
+    major_ores: ["파이롤루사이트(이산화망간)", "능망간석(탄산망간)"]
+  텅스텐:
+    source_verified: true
+    source_url: "https://periodic-table.rsc.org/element/74/tungsten"
+    element_symbol: "W"
+    atomic_number: 74
+    atomic_weight: 183.84
+    uses: ["고온 합금·용접 전극·고온로 발열체", "절삭·천공 공구용 텅스텐 카바이드", "조명용 필라멘트·형광등"]
+    characteristics: ["광택 있는 은백색 금속", "금속 중 녹는점이 가장 높음", "매우 단단하고 고밀도"]
+    major_ores: ["회중석(scheelite)", "철망간중석(wolframite)"]
   네오디뮴:
     source_verified: true
     source_url: "https://periodic-table.rsc.org/element/60/Neodymium"

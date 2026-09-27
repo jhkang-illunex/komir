@@ -31,6 +31,16 @@ class SourceContractTest(unittest.TestCase):
         self.assertTrue(assessment.blocked)
         self.assertEqual(assessment.unavailable_domains, ("unavailable_demand_forecast",))
 
+    def test_legacy_price_forecast_domain_is_no_longer_preblocked(self):
+        assessment = assess_requirement_plan(RequirementPlan(requirements=[
+            RequestRequirement(
+                clause="다음 달 니켈 가격 전망", intent="numeric_result",
+                source_domain="unavailable_price_forecast", mineral="니켈",
+            ),
+        ]))
+        self.assertFalse(assessment.blocked)
+        self.assertEqual(assessment.unavailable_domains, ())
+
 
 if __name__ == "__main__":
     unittest.main()

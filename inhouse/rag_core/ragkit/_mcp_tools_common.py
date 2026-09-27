@@ -919,10 +919,10 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
 
         각 행의 가격기준·통화·중량단위·실제 관측일을 함께 보존한다. 서로 다른
         행의 가격을 비교·평균·순위화하지 않으며, 가격 기준이 없는 광종도 상태행으로
-        남긴다. groups는 strategic_six/strategic_ten만 허용한다.
+        남긴다. groups는 strategic_six/strategic_ten/battery_five만 허용한다.
         """
         requested = tuple(groups or ["strategic_six", "strategic_ten"])
-        allowed = {"strategic_six", "strategic_ten"}
+        allowed = {"strategic_six", "strategic_ten", "battery_five"}
         if not requested or any(group not in allowed for group in requested) or len(set(requested)) != len(requested):
             return {"evidence": [], "warnings": ["전략광종 가격 그룹 설정이 올바르지 않습니다."]}
         try:

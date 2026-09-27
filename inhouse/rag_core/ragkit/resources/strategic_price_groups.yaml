@@ -34,3 +34,11 @@ groups:
       - {label: "터븀", price_mineral: "터븀"}
       - {label: "세륨", price_mineral: "세륨"}
       - {label: "란탄", price_mineral: "란탄"}
+  battery_five:
+    label: "2차전지 광물 5종"
+    minerals:
+      - {label: "리튬", price_mineral: "리튬"}
+      - {label: "니켈", price_mineral: "니켈"}
+      - {label: "코발트", price_mineral: "코발트"}
+      - {label: "망간", price_mineral: "망간"}
+      - {label: "흑연", price_mineral: "흑연"}

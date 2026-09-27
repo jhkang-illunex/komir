@@ -60,6 +60,30 @@ class MonthlyTradeAggregationTest(unittest.TestCase):
         self.assertNotIn("ai_hs_mnrl_map", queries[0])
 
 
+class MineralCountryRankingTest(unittest.TestCase):
+    def test_world_total_is_share_denominator_and_aggregate_rows_are_excluded(self):
+        country_rows = pd.DataFrame(
+            [("중국", 67000, 1), ("베트남", 3000, 1), ("카자흐스탄", 2400, 1)],
+            columns=["country", "total", "n"],
+        )
+        country_total = pd.DataFrame(
+            [(72400, "2025", "2025")], columns=["grand_total", "period_start", "period_end"],
+        )
+        world_total = pd.DataFrame([(85000,)], columns=["world_total"])
+        queries: list[str] = []
+        with patch("common.komis_raw.read_sql_pg", side_effect=lambda query: (
+                queries.append(query), [country_rows, country_total, world_total][len(queries) - 1])[1]):
+            data = KomisRawDataRepository().fetch_mineral_country_ranking(
+                metric="production", mineral_code="MNRL0018", start_period="2025", end_period="2025",
+            )
+
+        self.assertEqual([row["country"] for row in data.rows], ["중국", "베트남", "카자흐스탄"])
+        self.assertEqual(data.rows[0]["share_pct"], 78.82)
+        self.assertEqual(data.metadata["share_denominator"], "world_total_su")
+        self.assertIn("NOT IN ('SU', 'OT')", queries[0])
+        self.assertIn("= 'SU'", queries[2])
+
+
 class PriceComparisonAggregationTest(unittest.TestCase):
     def test_price_dummy_status_uses_selected_criterion_not_mineral_master(self):
         captured: list[str] = []

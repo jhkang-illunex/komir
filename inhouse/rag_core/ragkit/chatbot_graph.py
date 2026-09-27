@@ -54,7 +54,7 @@ import re
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
 from contextvars import copy_context
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Literal, TypedDict
 
@@ -78,8 +78,13 @@ from . import mcp_client  # noqa: E402
 from .source_contract import (  # noqa: E402
     RequirementPlan, SourceAssessment, assess_requirement_plan, extract_requirement_plan,
 )
-from .action_contract import ActionPlan, PlanAssessment, extract_action_plan, validate_action_plan  # noqa: E402
+from .action_contract import (  # noqa: E402
+    ActionCall, ActionPlan, ActionSlots, Period, PlanAssessment,
+    extract_action_plan, validate_action_plan,
+)
 from .action_results import ActionResult, RetrievalResult  # noqa: E402
+from .renderers.price import price_series_observations  # noqa: E402
+from .chatbot_events import extract_markdown_tables  # noqa: E402
 
 # 2026-08-26: 정형(structured)/hybrid(dense+BM25)/PageIndex 세 도구 직접호출을
 # MCP client 호출로 교체(public/private 두 프로필 — mcp_server_public.py·
@@ -589,7 +594,7 @@ class RetrievalRoute(BaseModel):
     use_komis_price_time_aggregate: bool = False
     komis_price_operation: Literal["monthly_streak", "yearly_average"] | None = None
     use_komis_strategic_price_overview: bool = False
-    komis_strategic_price_groups: list[Literal["strategic_six", "strategic_ten"]] | None = None
+    komis_strategic_price_groups: list[Literal["strategic_six", "strategic_ten", "battery_five"]] | None = None
     komis_price_windows_months: list[int] | None = None
     # price.verify_claim 전용: 비교 원자료와 분리하지 않고 같은 adapter 결과에
     # premise·연산자를 보존해 Advisor가 수치 전제를 확인한다.
@@ -854,6 +859,14 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
     if call.action_id == "price.overview":
         return RetrievalRoute(**common, use_komis_strategic_price_overview=True,
                               komis_strategic_price_groups=s.strategic_price_groups)
+    if call.action_id == "price.volatility_rank":
+        # common에도 top_n이 들어 있으므로 같은 keyword를 두 번 전달하지 않는다.
+        # "이번 주 가격 변동 큰 광종"처럼 이 Action이 결정 경로에서 호출될 때
+        # TypeError로 전체 turn이 retrieval_error가 되는 것을 막는다.
+        return RetrievalRoute(**{**common, "komis_ranking_top_n": s.top_n or 5},
+                              use_komis_price_volatility_ranking=True,
+                              komis_compare_mineral_names=s.minerals,
+                              )
     if call.action_id == "forecast.price":
         return RetrievalRoute(**common, use_komis_raw=True, komis_topic="price_forecast")
     if call.action_id in {"price.compare", "price.verify_claim"}:
@@ -2006,7 +2019,8 @@ def _retrieve_node(
         # 아래에서 여전히 komis_raw 전용으로만 한다 — 랭킹은 route가 이미
         # page_id를 직접 고른다(komis_ranking_page).
         (route.use_komis_ranking or route.use_komis_mineral_ranking or route.use_komis_production_yoy or route.use_komis_concentration
-         or route.use_komis_monthly_trade or route.use_komis_trade_indicator)
+         or route.use_komis_monthly_trade or route.use_komis_trade_indicator
+         or route.use_komis_price_time_aggregate)
         and route.komis_mineral_name
     ):
         resolved = session.call_komis_resolve_mineral(route.komis_mineral_name)
@@ -2231,7 +2245,11 @@ def _retrieve_node(
                 monthly_trend.fetch_monthly_trend_evidence, route.resolved_query or state["question"],
             )
         if route.use_news:
-            jobs["news"] = submit(news.fetch_news_evidence, route.resolved_query or state["question"])
+            news_start, news_end = _relative_period_bounds(route)
+            jobs["news"] = submit(
+                news.fetch_news_evidence, route.resolved_query or state["question"],
+                start=news_start, end=news_end,
+            )
         if route.use_battery_minerals:
             jobs["battery_minerals"] = submit(battery_minerals.fetch_battery_minerals_evidence)
         if route.use_production_concentration and route.komis_mineral_name:
@@ -2899,6 +2917,77 @@ def _dependency_order(plan: ActionPlan) -> list:
     return ordered
 
 
+def _significant_rise_date(evidence: list[Evidence], threshold: float) -> str | None:
+    """검증된 가격 관측값에서 기준 이상 상승일 하나를 결정한다.
+
+    뉴스는 가격 변동일이 확정된 뒤에만 같은 날짜로 조회한다. 날짜를 질문이나
+    현재 시각으로 추정하지 않으며, 가격 renderer와 같은 관측 간격 규칙을 쓴다.
+    """
+    rises: list[tuple[date, float]] = []
+    for item in evidence:
+        points = price_series_observations(item.text)
+        for (prior_date, prior), (observed, value) in zip(points, points[1:]):
+            if prior and observed.toordinal() - prior_date.toordinal() <= 7:
+                pct = (value - prior) / prior * 100
+                if pct >= threshold:
+                    rises.append((observed, pct))
+    return max(rises, key=lambda item: item[1])[0].isoformat() if rises else None
+
+
+def _largest_weekly_index_decline(evidence: list[Evidence]) -> date | None:
+    """연속 7일 이내 관측쌍만으로 가장 큰 종합지수 하락 주를 고른다."""
+    changes: list[tuple[date, float]] = []
+    for item in evidence:
+        for table in extract_markdown_tables(item.text):
+            keys = [column.split("(", 1)[0].strip().casefold() for column in table["columns"]]
+            date_i = next((i for i, key in enumerate(keys)
+                           if key in {"date", "crtr_ymd", "index_date"}), None)
+            value_i = next((i for i, key in enumerate(keys)
+                            if key in {"index", "indx", "index_value", "지수"}), None)
+            if date_i is None or value_i is None:
+                continue
+            points: list[tuple[date, float]] = []
+            for row in table["rows"]:
+                if max(date_i, value_i) >= len(row):
+                    continue
+                raw_date = row[date_i].strip()
+                try:
+                    observed = next(datetime.strptime(raw_date, fmt).date()
+                                    for fmt in ("%Y-%m-%d", "%Y%m%d"))
+                    value = float(row[value_i].replace(",", "").strip())
+                except (StopIteration, ValueError):
+                    continue
+                points.append((observed, value))
+            points.sort()
+            for (prior_day, prior), (observed, value) in zip(points, points[1:]):
+                if prior and 1 <= (observed - prior_day).days <= 7:
+                    change = (value - prior) / prior * 100
+                    if change < 0:
+                        changes.append((observed, change))
+    return min(changes, key=lambda item: item[1])[0] if changes else None
+
+
+def _volatility_ranked_minerals(evidence: list[Evidence], limit: int = 2) -> list[str]:
+    """가격 변동 순위 표에 명시된 상위 광종만 뉴스 검색어로 쓴다."""
+    minerals: list[str] = []
+    for item in evidence:
+        for table in extract_markdown_tables(item.text):
+            keys = [column.split("(", 1)[0].strip().casefold() for column in table["columns"]]
+            try:
+                mineral_i = keys.index("mineral")
+            except ValueError:
+                continue
+            for row in table["rows"]:
+                if mineral_i >= len(row):
+                    continue
+                mineral = row[mineral_i].strip()
+                if mineral and mineral not in minerals:
+                    minerals.append(mineral)
+            if minerals:
+                return minerals[:limit]
+    return []
+
+
 def retrieve_evidence(
     question: str, *,
     session_id: str | None = None,
@@ -2982,7 +3071,15 @@ def retrieve_evidence(
         else:
             all_warnings.append(f"action_failed:{call.requirement_id}:{call.action_id}:{reason}")
 
-    for call in _dependency_order(action_plan):
+    # 기사에서 확인한 광종을 뒤따르는 교역 Action으로 확장할 수 있다. 정적
+    # dependency order의 복사본을 순회하면 추가 Action이 실행되지 않으므로
+    # 작은 worklist로 처리한다. 확장은 수출통제+중국 수입비중이라는 닫힌 문형에
+    # 한정하며, 기사 표에 명시된 광종만 사용한다.
+    scheduled_calls = list(_dependency_order(action_plan))
+    scheduled_index = 0
+    while scheduled_index < len(scheduled_calls):
+        call = scheduled_calls[scheduled_index]
+        scheduled_index += 1
         if set(call.depends_on) & failed_requirements:
             record_failure(call, [], "blocked")
             continue
@@ -3094,6 +3191,18 @@ def retrieve_evidence(
             # 충분성 기준으로 쓴다.
             verified = {"sufficient": bool(call_evidence), "evidence": call_evidence,
                         "warnings": call_warnings}
+        elif (
+            route.use_mineral_info
+            and call.action_id == "document.retrieve"
+            and any(ev.source == "Royal Society of Chemistry" for ev in call_evidence)
+        ):
+            # 광종 용도·특성은 RSC 원문 URL과 확인일을 함께 가진 편집형 YAML에서
+            # 이미 검증해 구조화한 값이다. 일반 문서 충분성 Advisor에 다시 맡기면
+            # 복합 질문의 다른 요구(예: 현재 가격)가 이 Action에 섞여 기각될 수
+            # 있다. 해당 YAML 근거만 독립적으로 성공 처리해 뒤의 결정적 복합
+            # renderer가 용도와 가격을 각각의 Action 결과로 조합하게 한다.
+            verified = {"sufficient": True, "evidence": call_evidence,
+                        "warnings": call_warnings}
         elif _is_rare_earth_nd_scope_request(call, question):
             # 이 경로는 `_q15_contextual_pageindex_evidence`가 실제 공개 USGS
             # 본문 표지·단위·표 머리·행을 모두 확인한 경우에만 여기까지 온다.
@@ -3135,6 +3244,115 @@ def retrieve_evidence(
             slots=call.slots, status="success", evidence=verified_evidence,
             warnings=verified_warnings,
         ))
+        if (call.action_id == "price.series"
+                and call.slots.price_operation == "significant_daily_rise"
+                and "뉴스" in question):
+            threshold = call.slots.significant_change_pct or 5.0
+            observed = _significant_rise_date(verified_evidence, threshold)
+            if observed:
+                same_day_news = ActionCall(
+                    requirement_id="same_day_mineral_news", action_id="document.retrieve",
+                    slots=ActionSlots(
+                        mineral=call.slots.mineral,
+                        topic=f"{call.slots.mineral} 자원뉴스",
+                        period=Period(kind="range", start=observed, end=observed, explicit=True),
+                    ),
+                    intent="document", role="content", depends_on=[call.requirement_id],
+                )
+                if validate_action_plan(ActionPlan(actions=[same_day_news])).approved:
+                    original_plan.actions.append(same_day_news)
+                    scheduled_calls.append(same_day_news)
+        if (call.requirement_id == "weekly_index"
+                and call.action_id == "indicator.series"
+                and "광물종합지수떨어진주" in question.replace(" ", "")):
+            observed = _largest_weekly_index_decline(verified_evidence)
+            if observed:
+                start = observed - timedelta(days=observed.weekday())
+                weekly_news = ActionCall(
+                    requirement_id="weekly_index_news", action_id="document.retrieve",
+                    slots=ActionSlots(
+                        topic="광물종합지수 하락 주간 자원뉴스",
+                        period=Period(kind="range", start=start.isoformat(),
+                                      end=(start + timedelta(days=6)).isoformat(), explicit=True),
+                    ),
+                    intent="document", role="content", depends_on=[call.requirement_id],
+                )
+                if validate_action_plan(ActionPlan(actions=[weekly_news])).approved:
+                    original_plan.actions.append(weekly_news)
+                    scheduled_calls.append(weekly_news)
+        if (call.requirement_id == "weekly_price_volatility"
+                and call.action_id == "price.volatility_rank"):
+            minerals = _volatility_ranked_minerals(verified_evidence)
+            period = call.slots.period
+            if minerals and period and period.kind == "range":
+                weekly_news = ActionCall(
+                    requirement_id="weekly_ranked_mineral_news", action_id="document.retrieve",
+                    slots=ActionSlots(
+                        minerals=minerals,
+                        topic=f"{', '.join(minerals)} 자원뉴스",
+                        period=Period(kind="range", start=period.start, end=period.end, explicit=True),
+                    ),
+                    intent="document", role="content", depends_on=[call.requirement_id],
+                )
+                if validate_action_plan(ActionPlan(actions=[weekly_news])).approved:
+                    original_plan.actions.append(weekly_news)
+                    scheduled_calls.append(weekly_news)
+        if (call.requirement_id == "export_control_news"
+                and call.action_id == "document.retrieve"
+                and "중국" in question and "수출통제" in question.replace(" ", "")
+                and any(token in question.replace(" ", "") for token in ("수입비중", "수입의존", "점유율"))):
+            article_minerals: list[str] = []
+            for evidence in verified_evidence:
+                for mineral in news.mentioned_minerals(evidence.text):
+                    if mineral not in article_minerals:
+                        article_minerals.append(mineral)
+            for mineral in article_minerals[:5]:
+                dependent = ActionCall(
+                    requirement_id=f"china_import_share_{mineral}", action_id="trade.indicator",
+                    slots=ActionSlots(
+                        mineral=mineral, trade_metric="country_dependency",
+                        reporter_country="한국", partner_country="중국", flow="import",
+                        denominator_scope="reporter_product_trade",
+                        period=Period(kind="trailing_months", trailing_months=12),
+                    ),
+                    intent="trade_indicator", role="data", depends_on=[call.requirement_id],
+                )
+                # 동적으로 생긴 Action도 독립 계약을 만족할 때만 실행한다.
+                if not validate_action_plan(ActionPlan(actions=[dependent])).approved:
+                    continue
+                original_plan.actions.append(dependent)
+                scheduled_calls.append(dependent)
+                if "가격" in question:
+                    price_call = ActionCall(
+                        requirement_id=f"export_control_price_{mineral}", action_id="price.series",
+                        slots=ActionSlots(mineral=mineral, period=Period(kind="trailing_months", trailing_months=1)),
+                        intent="price_series", role="data", depends_on=[call.requirement_id],
+                    )
+                    if validate_action_plan(ActionPlan(actions=[price_call])).approved:
+                        original_plan.actions.append(price_call)
+                        scheduled_calls.append(price_call)
+        if (call.requirement_id == "monthly_trend" and "월간동향" in question
+                and "수입" in question):
+            monthly_minerals = []
+            for mineral in ("리튬", "니켈", "코발트", "망간", "흑연", "텅스텐", "희토류", "구리", "아연"):
+                if any(mineral in evidence.text for evidence in verified_evidence):
+                    monthly_minerals.append(mineral)
+            for mineral in monthly_minerals[:5]:
+                rank = ActionCall(
+                    requirement_id=f"monthly_import_{mineral}", action_id="trade.country_rank",
+                    slots=ActionSlots(mineral=mineral, metric="import_amount", trade_scope="korea", top_n=1,
+                                      period=Period(kind="trailing_months", trailing_months=12)),
+                    intent="trade_rank", role="data", depends_on=[call.requirement_id],
+                )
+                concentration = ActionCall(
+                    requirement_id=f"monthly_import_concentration_{mineral}", action_id="trade.concentration",
+                    slots=ActionSlots(mineral=mineral, period=Period(kind="trailing_months", trailing_months=12)),
+                    intent="trade_concentration", role="data", depends_on=[call.requirement_id],
+                )
+                for dependent in (rank, concentration):
+                    if validate_action_plan(ActionPlan(actions=[dependent])).approved:
+                        original_plan.actions.append(dependent)
+                        scheduled_calls.append(dependent)
     # 원래 계획의 순서대로 반환해 생성기의 요구사항 순서가 실행 세부순서에
     # 좌우되지 않게 한다. 가격예측 부분 결과도 이 순서 안에 포함된다.
     order = {call.requirement_id: index for index, call in enumerate(original_plan.actions)}

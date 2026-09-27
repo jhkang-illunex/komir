@@ -21,3 +21,7 @@ class ChatMessagesTest(unittest.TestCase):
             _resolve_abstain("리튬", ["조회하신 조건에 해당하는 데이터를 찾지 못했습니다."], None),
             ("no_data_for_period", chat_message("data_not_found")),
         )
+        self.assertEqual(
+            _resolve_abstain("수입 의존도 높은 광종들 가격 전망 알려줘", [], None),
+            ("source_unavailable", chat_message("data_not_found")),
+        )
