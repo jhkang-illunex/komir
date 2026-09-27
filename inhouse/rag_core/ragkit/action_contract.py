@@ -931,6 +931,16 @@ def _is_conditional_scenario_topic(topic: str | None) -> bool:
 
 def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | None = None) -> ActionPlan:
     compact = re.sub(r"\s+", "", message)
+    mineral_info_match = next((name for name in (
+        "리튬", "니켈", "코발트", "구리", "동", "망간", "흑연", "텅스텐", "희토류", "네오디뮴",
+    ) if name in compact), None)
+    if mineral_info_match and any(marker in compact for marker in (
+            "용도", "어디에쓰", "어디쓰", "쓰여", "사용처", "활용처")):
+        mineral = "구리" if mineral_info_match == "동" else mineral_info_match
+        return ActionPlan(actions=[ActionCall(
+            requirement_id="mineral_info", action_id="document.retrieve",
+            slots=ActionSlots(mineral=mineral, topic=message), intent="concept", role="content",
+        )])
     months_match = re.search(r"최근(\d+)(개월|년)", compact)
     months = int(months_match.group(1)) * (12 if months_match and months_match.group(2) == "년" else 1) if months_match else 12
     year_match = re.search(r"(20\d{2})년", compact)
