@@ -1,0 +1,90 @@
+# 광종정보 정규화 resource 계약. 값은 get_mineral_info adapter가 검증한 뒤에만
+# 채운다. 화면 레지스트리의 mineral_info는 현재 recommendation_only이며, 이
+# 파일 자체는 출처 없는 광물 특성·용도 값을 제공하지 않는다.
+schema_version: 1
+status: catalog_populated_properties_pending
+source_page: mineral_info
+source_registry: inhouse/rag_chat/app/page_recommend/resources/registry/pages/mineral_info.yaml
+supported_questions:
+  uses:
+    output: "{광물}의 용도는 {용도1}, {용도2}, {용도3} 등에 사용됩니다."
+    required_fields: [mineral, uses]
+    rules:
+      - uses must contain 1..3 source-verified values
+      - preserve source ordering
+  basic_properties:
+    output: "{광물}의 원소 기호는 {원소기호}, 원자번호는 {원자번호}이며, 주요 특성은 {주요특성}입니다."
+    required_fields: [mineral, element_symbol, atomic_number, characteristics]
+    rules:
+      - element_symbol and atomic_number must be source-verified
+      - characteristics must be source-verified text, not model inference
+  manganese_ore:
+    output: "망간의 주요 광석은 {광석명}입니다."
+    required_fields: [mineral, major_ores]
+    rules:
+      - only answer when mineral is 망간 and one or more source-verified ores exist
+adapter_output:
+  mineral: string
+  uses: [string]
+  element_symbol: string
+  atomic_number: integer
+  characteristics: [string]
+  major_ores: [string]
+  source_url: string
+  source_published_at: date
+fail_closed:
+  - missing required field
+  - unsupported mineral
+  - unverified or DEV_DUMMY source
+catalog_provenance:
+  table: public.ai_mnrl_mst
+  queried_at: "2026-09-27"
+  property_table: public.ai_mnrl_sect
+  property_rows_at_query: 0
+catalog:
+  - {code: MNRL0008, ko: 동, en: Copper}
+  - {code: MNRL0022, ko: 연, en: Lead}
+  - {code: MNRL0036, ko: 인, en: Phosphorus}
+  - {code: MNRL0030, ko: 철, en: Iron}
+  - {code: MNRL0024, ko: 갈륨, en: Gallium}
+  - {code: MNRL0010, ko: 규소, en: Silicon}
+  - {code: MNRL0002, ko: 니켈, en: Nickel}
+  - {code: MNRL1003, ko: 란탄, en: Lanthanum}
+  - {code: MNRL1071, ko: 로듐, en: Rhodium}
+  - {code: MNRL0001, ko: 리튬, en: Lithium}
+  - {code: MNRL0004, ko: 망간, en: Manganese}
+  - {code: MNRL0037, ko: 바륨, en: Barium}
+  - {code: MNRL0014, ko: 백금, en: Platinum}
+  - {code: MNRL0033, ko: 붕소, en: Boron}
+  - {code: MNRL0034, ko: 비소, en: Arsenic}
+  - {code: MNRL1002, ko: 세륨, en: Cerium}
+  - {code: MNRL0023, ko: 아연, en: Zinc}
+  - {code: MNRL0025, ko: 인듐, en: Indium}
+  - {code: MNRL0016, ko: 주석, en: Tin}
+  - {code: MNRL0021, ko: 크롬, en: Chromium}
+  - {code: MNRL1005, ko: 터븀, en: Terbium}
+  - {code: MNRL0005, ko: 흑연, en: Graphite}
+  - {code: MNRL0007, ko: 니오븀, en: Niobium}
+  - {code: MNRL1070, ko: 루테늄, en: Ruthenium}
+  - {code: MNRL0013, ko: 바나듐, en: Vanadium}
+  - {code: MNRL0038, ko: 베릴륨, en: Beryllium}
+  - {code: MNRL0029, ko: 셀레늄, en: Selenium}
+  - {code: MNRL1053, ko: 스칸듐, en: Scandium}
+  - {code: MNRL1072, ko: 이리듐, en: Iridium}
+  - {code: MNRL1054, ko: 이트륨, en: Yttrium}
+  - {code: MNRL0003, ko: 코발트, en: Cobalt}
+  - {code: MNRL0026, ko: 탄탈륨, en: Tantalum}
+  - {code: MNRL0018, ko: 텅스텐, en: Tungsten}
+  - {code: MNRL0017, ko: 티타늄, en: Titanium}
+  - {code: MNRL0015, ko: 팔라듐, en: Palladium}
+  - {code: MNRL0006, ko: 희토류, en: Rare Earths}
+  - {code: MNRL0035, ko: 게르마늄, en: Germanium}
+  - {code: MNRL1001, ko: 네오디뮴, en: Neodymium}
+  - {code: MNRL0011, ko: 마그네슘, en: Magnesium}
+  - {code: MNRL0012, ko: 몰리브덴, en: Molybdenum}
+  - {code: MNRL0020, ko: 비스무스, en: Bismuth}
+  - {code: MNRL0028, ko: 스트론튬, en: Strontium}
+  - {code: MNRL0019, ko: 안티모니, en: Antimony}
+  - {code: MNRL0009, ko: 알루미늄, en: Aluminium}
+  - {code: MNRL0027, ko: 지르코늄, en: Zirconium}
+  - {code: MNRL1004, ko: 디스프로슘, en: Dysprosium}

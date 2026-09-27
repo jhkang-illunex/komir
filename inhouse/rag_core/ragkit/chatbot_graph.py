@@ -54,7 +54,7 @@ import re
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
 from contextvars import copy_context
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import Literal, TypedDict
 
@@ -67,7 +67,7 @@ ensure_shared_on_path(Path(__file__).resolve())
 
 from common.llm_client import LLM_TRANSIENT_ERRORS, KomirJsonLLM  # noqa: E402
 from rag_core.retrieval.access import PRIVATE_ONLY_KOMIS_PAGES  # noqa: E402
-from rag_core.retrieval import mine_aggregate  # noqa: E402
+from rag_core.retrieval import mine_aggregate, weekly_trend  # noqa: E402
 from rag_core.retrieval.evidence import (  # noqa: E402
     Evidence, KOMIS_RAW_DUMMY_CAVEAT, KOMIS_RAW_UNVERIFIED_CAVEAT,
 )
@@ -538,6 +538,7 @@ class RetrievalRoute(BaseModel):
     is_mineral_specific_composite_index: bool = False
     use_structured: bool
     use_komis_raw: bool = False  # 2026-08-31 신설(komis_raw_lookup MCP tool)
+    use_weekly_trend: bool = False
     use_dense: bool
     use_pageindex: bool
     pageindex_mode: Literal["simple", "agentic"] = "simple"
@@ -551,6 +552,9 @@ class RetrievalRoute(BaseModel):
         "price", "domestic_trade", "global_trade", "reserves_production",
         "market_outlook", "supply_stability", "price_forecast", "composite_index",
     ] | None = None
+    # indicator_composite은 INDX_SE_CD 하나로 조회해야 한다. None이면 HI001~003
+    # 행을 섞어 대표 종합지수처럼 보일 수 있으므로 typed composite 문형은 금지한다.
+    komis_index_type_code: Literal["HI001", "HI002", "HI003"] | None = None
     # 2026-09-01: komis_raw 전용 광종명 필드 신설(자유형, 5광종 제한 없음) —
     # commodity_code(바로 아래)는 structured(komir 자체 산출물, latest_diagnosis
     # 등)가 실제로 5광종만 계산하기 때문에 그대로 5개로 제한한다. komis_raw는
@@ -575,6 +579,8 @@ class RetrievalRoute(BaseModel):
     ] | None = None
     use_komis_explicit_hs_summary: bool = False
     use_komis_price_comparison: bool = False
+    use_komis_price_time_aggregate: bool = False
+    komis_price_operation: Literal["monthly_streak", "yearly_average"] | None = None
     use_komis_strategic_price_overview: bool = False
     komis_strategic_price_groups: list[Literal["strategic_six", "strategic_ten"]] | None = None
     komis_price_windows_months: list[int] | None = None
@@ -834,6 +840,9 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
         "komis_raw_limit": 2 if period and period.kind == "latest" else None,
     }
     if call.action_id == "price.series":
+        if s.price_operation in {"monthly_streak", "yearly_average"}:
+            return RetrievalRoute(**common, use_komis_price_time_aggregate=True,
+                                  komis_price_operation=s.price_operation)
         return RetrievalRoute(**common, use_komis_raw=True, komis_topic="price")
     if call.action_id == "price.overview":
         return RetrievalRoute(**common, use_komis_strategic_price_overview=True,
@@ -883,7 +892,13 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
         )
     if call.action_id == "indicator.series":
         topic = s.indicator
-        return RetrievalRoute(**common, use_komis_raw=True, komis_topic=topic)
+        composite_code = {
+            "composite": "HI001", "major_metals": "HI002", "minor_metals": "HI003",
+        }.get(s.indicator_variant) if topic == "composite_index" else None
+        return RetrievalRoute(**common, use_komis_raw=True, komis_topic=topic,
+                              komis_index_type_code=composite_code)
+    if call.action_id == "document.retrieve" and "주간" in (s.topic or question) and "동향" in (s.topic or question):
+        return RetrievalRoute(**common, use_weekly_trend=True)
     if call.action_id in {"menu.navigate", "dataset.navigate"}:
         return RetrievalRoute(**common)
     if call.action_id == "document.lookup":
@@ -2027,6 +2042,7 @@ def _retrieve_node(
             jobs["komis_raw"] = submit(
                 session.call_komis_raw_lookup, komis_raw_page_id, mineral_code=komis_raw_mineral_code,
                 hs_code=route.komis_hs_code,
+                index_type_code=route.komis_index_type_code,
                 start_period=start_period, end_period=end_period,
                 limit=route.komis_raw_limit,
             )
@@ -2101,6 +2117,10 @@ def _retrieve_node(
                     session.call_komis_price_comparison, route.komis_compare_mineral_names,
                     start_period=p_start, end_period=p_end,
                 )
+        if route.use_komis_price_time_aggregate and route.komis_price_operation and komis_raw_mineral_code:
+            jobs["komis_price_time_aggregate"] = submit(
+                session.call_komis_price_time_aggregate, komis_raw_mineral_code, route.komis_price_operation,
+            )
         if route.use_komis_strategic_price_overview and route.komis_strategic_price_groups:
             jobs["komis_strategic_price_overview"] = submit(
                 session.call_komis_strategic_price_overview, route.komis_strategic_price_groups,
@@ -2166,6 +2186,18 @@ def _retrieve_node(
                 order=route.mine_order, top_n=route.mine_top_n,
                 llm=llm, on_status=on_status,
             )
+        if route.use_weekly_trend:
+            start_text, end_text = _relative_period_bounds(route)
+            try:
+                start = (date.fromisoformat(start_text) if start_text and "-" in start_text
+                         else datetime.strptime(start_text, "%Y%m%d").date() if start_text else None)
+                end = (date.fromisoformat(end_text) if end_text and "-" in end_text
+                       else datetime.strptime(end_text, "%Y%m%d").date() if end_text else None)
+            except ValueError:
+                start = end = None
+            jobs["weekly_trend"] = submit(
+                weekly_trend.fetch_weekly_trend_evidence, start=start, end=end,
+            )
         query = route.resolved_query or state["question"]
         # 2026-09-18(사용자 지시 "안전망 보강") — komis_ranking 계열 4종(교역·
         # 매장량/생산량·가격변동률·지표 비교)은 komis_raw와 달리 ROUTE_PROMPT의
@@ -2180,7 +2212,7 @@ def _retrieve_node(
         paired_population = route.use_komis_ranking and route.use_komis_mineral_ranking
         strict_aggregate = any((route.use_komis_monthly_trade,
                                 route.use_komis_explicit_hs_summary,
-                                route.use_komis_price_comparison, paired_population))
+                                route.use_komis_price_comparison, route.use_komis_price_time_aggregate, paired_population))
         use_dense_effective = not strict_aggregate and (route.use_dense or any((
             route.use_komis_ranking, route.use_komis_mineral_ranking,
             route.use_komis_price_volatility_ranking, route.use_komis_indicator_ranking,
@@ -2211,7 +2243,7 @@ def _retrieve_node(
         pool.shutdown(wait=False)
 
     required_aggregate_jobs = [name for name in jobs if name.startswith((
-        "komis_monthly_trade", "komis_explicit_hs_summary", "komis_price_comparison", "komis_strategic_price_overview", "komis_production_yoy",
+        "komis_monthly_trade", "komis_explicit_hs_summary", "komis_price_comparison", "komis_price_time_aggregate", "komis_strategic_price_overview", "komis_production_yoy",
     ))]
     if route.use_komis_monthly_trade and "komis_monthly_trade" not in required_aggregate_jobs:
         required_aggregate_jobs.append("komis_monthly_trade")
@@ -2219,6 +2251,8 @@ def _retrieve_node(
         required_aggregate_jobs.append("komis_explicit_hs_summary")
     if route.use_komis_price_comparison and not any(name.startswith("komis_price_comparison") for name in required_aggregate_jobs):
         required_aggregate_jobs.append("komis_price_comparison")
+    if route.use_komis_price_time_aggregate and "komis_price_time_aggregate" not in required_aggregate_jobs:
+        required_aggregate_jobs.append("komis_price_time_aggregate")
     if route.use_komis_strategic_price_overview and "komis_strategic_price_overview" not in required_aggregate_jobs:
         required_aggregate_jobs.append("komis_strategic_price_overview")
     if route.use_komis_production_yoy and "komis_production_yoy" not in required_aggregate_jobs:
@@ -2251,7 +2285,7 @@ def _retrieve_node(
         evidence.extend(trade_evidence)
         warnings.extend(trade_warnings)
     for name, payload in results.items():
-        if name.startswith(("komis_monthly_trade", "komis_explicit_hs_summary", "komis_price_comparison", "komis_strategic_price_overview", "komis_production_yoy")):
+        if name.startswith(("komis_monthly_trade", "komis_explicit_hs_summary", "komis_price_comparison", "komis_price_time_aggregate", "komis_strategic_price_overview", "komis_production_yoy")):
             aggregate_evidence, aggregate_warnings = payload
             evidence.extend(aggregate_evidence)
             warnings.extend(aggregate_warnings)
@@ -2268,6 +2302,10 @@ def _retrieve_node(
         ind_evidence, ind_warnings = results["komis_indicator_ranking"]
         evidence.extend(ind_evidence)
         warnings.extend(ind_warnings)
+    if "weekly_trend" in results:
+        weekly_evidence, weekly_warnings = results["weekly_trend"]
+        evidence.extend(weekly_evidence)
+        warnings.extend(weekly_warnings)
     evidence.extend(results.get("dense", []))
     if "mine_aggregate" in results:
         ma_evidence, ma_warnings = results["mine_aggregate"]
@@ -2714,7 +2752,7 @@ def _route_after_verify(state: RetrievalState) -> str:
         return "done"
     route = state.get("route")
     if route and any((route.use_komis_monthly_trade, route.use_komis_explicit_hs_summary,
-                      route.use_komis_price_comparison,
+                      route.use_komis_price_comparison, route.use_komis_price_time_aggregate,
                       route.use_komis_ranking and route.use_komis_mineral_ranking)):
         return "done"
     if not state.get("sufficient", True) and state.get("attempt", 1) < MAX_ATTEMPTS:
@@ -2946,6 +2984,11 @@ def retrieve_evidence(
                 call.requirement_id, call.action_id, ev.source, ev.as_of)
             ev.requested_frequency = call.slots.period.frequency if call.slots.period else None
             ev.latest_price_display = bool(call.slots.period and call.slots.period.kind == "latest")
+            ev.price_operation = call.slots.price_operation
+            # 기간/월/연 집계는 결정적 문장으로만 표시한다. 집계 입력인 긴 원
+            # 시계열 표를 다시 내보내면 사용자가 표본 행을 평균값으로 오해할 수
+            # 있고, 불필요하게 큰 SSE 응답도 만든다.
+            ev.suppress_price_table = bool(call.slots.price_operation)
             # Q15의 완전한 공개 원문 span은 chat_turn에서 결정적 범위 설명으로
             # 렌더링할 수 있다. 이 표지는 프로세스 내부 추적값이며 MCP/API
             # 계약에는 추가하지 않는다.

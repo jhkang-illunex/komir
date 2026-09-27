@@ -2,6 +2,33 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-27 — 광종정보·월간동향·자원뉴스 출력 계약 및 미배선 작업목록 기록
+
+광종 용도·기본 특성·망간 주요 광석의 답변 형식과 필수 원천 필드를
+`inhouse/rag_core/ragkit/resources/mineral_info_contract.yml`에 기록했다.
+현재 광종정보 화면 adapter(`get_mineral_info`)는 planned 상태이므로 출처 없는
+값을 만들지 않는다. 월간동향과 일일·주간 자원뉴스는 문서 검색 경로는 있으나
+게시일·제목·링크·검증 요약을 보장하는 게시물 index adapter가 없어, 요구된
+목록·요약 형식의 렌더링은 보류했다. 가격예측의 정규화 adapter 배선 조건도 함께
+`inhouse/rag_core/ragkit/OUTPUT_CONTRACT_TASKS.md`에 P1로 기록했다.
+
+월간동향 게시판 검색 FAQ는 요청 문구대로
+`기간(전체, 1/3/6/12개월 또는 직접입력)과 검색어(제목+내용, 제목, 내용)`로
+갱신했다. 이미지 빌드·배포·DB·문서 색인 변경은 하지 않았다.
+
+## 2026-09-27 — 조달청 주간동향 adapter 및 광종정보 DB catalog 반영
+
+`weekly_trend` adapter는 `mineral_risk.doc_chunk`의 `src=조달청보고서` 문서에서
+파일명 `YYYYMMDD`가 검증되는 문서만 게시일로 사용한다. `pub_date`는 해당
+868개 문서에서 모두 비어 있으므로 추정 날짜·현재 주차를 만들지 않는다. 확인된
+가장 최신 문서는 2026-06-16이며, 정확한 개별 게시물 URL과 검증 요약은 코퍼스에
+없어 게시판 URL로만 안내한다.
+
+`public.ai_mnrl_mst`의 활성 46종 코드·국문/영문명을
+`resources/mineral_info_contract.yml` catalog에 반영했다. 용도·원자번호·특성·망간
+광석의 원천인 `public.ai_mnrl_sect`는 조회 시 0행이어서 값을 채우지 않았다.
+이미지 빌드·배포·DB 변경은 하지 않았다.
+
 ## 2026-09-27 — 단일 최신 가격 응답 형식·전일 대비 구현 및 테스트 컨테이너 재배포
 
 `{광종} 가격 얼마야?`와 `현재/오늘 {광종} 가격`을 모두 `latest` typed Action으로

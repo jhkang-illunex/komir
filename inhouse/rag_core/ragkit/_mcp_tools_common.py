@@ -804,6 +804,29 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
                 "warnings": [] if evidence else [_NO_DATA_FOUND_MARKER]}
 
     @mcp.tool()
+    def komis_price_time_aggregate(
+        mineral_code: str, operation: Literal["monthly_streak", "yearly_average"],
+    ) -> dict[str, Any]:
+        """가격 원시 일별 행 대신 월/연 산술평균만 반환하는 결정적 집계 도구."""
+        repo = KomisRawDataRepository()
+        try:
+            dataset = repo.fetch_price_time_aggregate(mineral_code=mineral_code, operation=operation)
+            label = repo.resolve_mineral(mineral_code)[1]
+            serial = int((dataset.metadata or {}).get("price_criterion_serial"))
+            dummy = repo.price_criteria_have_dummy_rows([serial]).get(serial)
+        except (RawDataAccessError, TypeError, ValueError) as exc:
+            return {"evidence": [], "warnings": [str(exc)]}
+        if not dataset.rows:
+            return {"evidence": [], "warnings": [_NO_DATA_FOUND_MARKER]}
+        if dummy is None:
+            return {"evidence": [], "warnings": ["source_unavailable:unverified_price_criterion"]}
+        evidence = from_komis_aggregate(
+            dataset, label=("월별 평균 가격" if operation == "monthly_streak" else "연도별 평균 가격"),
+            mineral_name=label, is_dummy=dummy, menu_page_id="price_base_metals",
+        )
+        return {"evidence": [dataclasses.asdict(item) for item in evidence], "warnings": []}
+
+    @mcp.tool()
     def komis_price_comparison(
         mineral_names: list[str], start_period: str | None = None,
         end_period: str | None = None, window_months: int | None = None,
