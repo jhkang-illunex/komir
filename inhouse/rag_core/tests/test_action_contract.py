@@ -17,6 +17,15 @@ from rag_core.retrieval.evidence import Evidence
 
 
 class ActionContractTest(unittest.TestCase):
+    def test_korea_import_menu_question_targets_domestic_supply_map(self):
+        plan = extract_action_plan("한국의 리튬 수입 데이터를 보려면 어디로 가야 돼?", None)
+        self.assertEqual(len(plan.actions), 1)
+        call = plan.actions[0]
+        self.assertEqual(call.action_id, "menu.navigate")
+        self.assertEqual(call.slots.target_page, "map_korea")
+        self.assertEqual(call.slots.mineral, "리튬")
+        self.assertTrue(validate_action_plan(plan).approved)
+
     def test_price_claim_fills_explicit_percent_and_comparator(self):
         plan = action_plan_from_intent(IntentPlan(requirements=[IntentCall(
             requirement_id="claim", intent="price_claim", role="data",

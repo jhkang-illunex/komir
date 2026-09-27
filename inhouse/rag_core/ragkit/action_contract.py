@@ -846,6 +846,24 @@ def _is_conditional_scenario_topic(topic: str | None) -> bool:
 
 
 def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | None = None) -> ActionPlan:
+    # 한국 수입 데이터의 조회 메뉴를 묻는 질문은 생산·매장량(resource.rank)과
+    # 혼동되기 쉽다. 질문에 ``한국``과 ``수입``이 함께 있고 메뉴 위치를 묻는
+    # 표현이면 대한민국 수급지도(menu.navigate)로 고정한다. 이 보정은 실제
+    # 수치 조회가 아니라 페이지 안내에만 적용해 LLM의 광물지도 오분류를
+    # 막는다.
+    menu_text = re.sub(r"\s+", "", message)
+    if (
+        "한국" in menu_text and "수입" in menu_text
+        and any(marker in menu_text for marker in ("어디", "페이지", "보려면", "메뉴", "가야"))
+    ):
+        mineral = next((name for name in ("리튬", "니켈", "코발트", "구리", "흑연", "망간") if name in menu_text), None)
+        return ActionPlan(actions=[ActionCall(
+            requirement_id="korea_import_menu",
+            action_id="menu.navigate",
+            slots=ActionSlots(target_page="map_korea", mineral=mineral),
+            intent="menu",
+            role="metadata",
+        )])
     # 희토류 총괄 통계와 네오디뮴 가격의 범위 비교는 가격 단일조회로
     # 축약되면 안 되는 고정 문서 질의다. planner의 표현 변동과 무관하게
     # 공개 USGS 원문 action 하나로 고정해 Q15 결정적 응답 경로를 보장한다.
