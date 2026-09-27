@@ -107,6 +107,7 @@ from .multi_action_state import encode_citation_envelope, state_from_action_resu
 from .answer_composer import AnswerComposer
 from .composite_renderer import render_composite
 from .renderers.mineral_info import render_mineral_info
+from .renderers.deterministic import render_q15_usgs_scope, render_strategic_price_overview
 from .renderers.price import (
     format_price as _format_price,
     natural_price_basis as _natural_price_basis,
@@ -1848,7 +1849,7 @@ async def chat_turn(
         })
         return
 
-    q15_answer = _q15_usgs_scope_answer(evidence)
+    q15_answer = render_q15_usgs_scope(evidence)
     if q15_answer is not None:
         answer, cited_indices = q15_answer
         citations = _citation_sources(cited_indices, evidence)
@@ -1867,7 +1868,7 @@ async def chat_turn(
         })
         return
 
-    strategic_overview_answer = _strategic_price_overview_answer(evidence, action_plan)
+    strategic_overview_answer = render_strategic_price_overview(evidence, action_plan)
     if strategic_overview_answer is not None:
         answer, cited_indices = strategic_overview_answer
         citations = _citation_sources(cited_indices, evidence)

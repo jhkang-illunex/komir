@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from rag_core.ragkit import chatbot  # noqa: E402
+from rag_core.ragkit.renderers.price import render_price_series  # noqa: E402
 from rag_core.ragkit import chatbot_graph as graph  # noqa: E402
 from rag_core.ragkit.action_contract import ActionCall, ActionPlan, ActionSlots, validate_action_plan  # noqa: E402
 from rag_core.retrieval import pageindex  # noqa: E402
@@ -388,7 +389,7 @@ class SourceFooterTest(unittest.TestCase):
             requested_frequency="monthly",
         )
         plan = ActionPlan(actions=[ActionCall(requirement_id="price", action_id="price.series", slots=ActionSlots())])
-        result = chatbot._price_series_scope_answer([evidence], plan)
+        result = render_price_series([evidence], plan)
         self.assertIsNotNone(result)
         answer, citations = result
         self.assertEqual(citations, {1})
@@ -409,7 +410,7 @@ class SourceFooterTest(unittest.TestCase):
             ActionCall(requirement_id="price", action_id="price.series", slots=ActionSlots()),
             ActionCall(requirement_id="trade", action_id="trade.monthly", slots=ActionSlots()),
         ])
-        self.assertIsNone(chatbot._price_series_scope_answer([price], plan))
+        self.assertIsNone(render_price_series([price], plan))
 
     def test_selected_price_unit_is_not_duplicated_when_generator_includes_it(self):
         unit = "가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002"
