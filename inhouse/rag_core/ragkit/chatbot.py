@@ -105,6 +105,7 @@ from .chatbot_graph import retrieve_evidence
 from .action_results import RetrievalResult
 from .multi_action_state import encode_citation_envelope, state_from_action_results
 from .answer_composer import AnswerComposer
+from .composite_renderer import render_composite
 from .chatbot_store import DEFAULT_DB_PATH as DEFAULT_STORE_DB_PATH
 from .chatbot_store import append_message, get_or_create_session, list_messages
 from .messages import chat_message, faq_message
@@ -1606,8 +1607,8 @@ def _strategic_price_overview_answer(evidence: list, action_plan) -> tuple[str, 
     if len(selected) != 1:
         return None
     return (
-        "요청한 6대·10대 전략광종의 가격기준별 최신 보유 행을 표로 제공합니다 [1]. "
-        "광종마다 실제 관측일·가격기준·통화·중량단위가 다르므로 가격을 서로 비교하거나 평균내지 않았습니다.",
+        "광물정보 : 전략광종 목록 기준\n"
+        "광물가격 : 기준일 기준 광종별 가격·전월 평균 대비 등락률 표입니다. [1]",
         {selected[0][0]},
     )
 
@@ -2293,6 +2294,32 @@ async def chat_turn(
         )
         yield ChatEvent(type="done", data={
             "done": True, "citations": citations, "bogus_citations": [], "abstained": False,
+        })
+        return
+
+    # 연결된 복수 Action은 LLM이 수치를 재조합하지 않도록 표 근거에서
+    # 결정적으로 계산한다. 원천 표가 계약 열을 충족하지 않으면 일반
+    # multi-action 안내/기권 경로로 내려간다.
+    composite_answer = render_composite(evidence, action_plan)
+    if composite_answer is not None:
+        answer, cited_indices = composite_answer
+        citations = _citation_sources(cited_indices, evidence)
+        data_warnings = _data_warnings(cited_indices, evidence)
+        extra = _dummy_data_notice(cited_indices, evidence)
+        final_text = answer + extra
+        yield _status_event(4)
+        yield ChatEvent(type="delta", data={"delta": answer})
+        if extra:
+            yield ChatEvent(type="delta", data={"delta": extra})
+        for event in _multimodal_events(cited_indices, evidence):
+            yield event
+        await asyncio.to_thread(
+            append_message, resolved_session_id, "assistant", final_text,
+            json.dumps(citations, ensure_ascii=False), store_db_path,
+        )
+        yield ChatEvent(type="done", data={
+            "done": True, "citations": citations, "data_warnings": data_warnings,
+            "bogus_citations": [], "abstained": False,
         })
         return
 

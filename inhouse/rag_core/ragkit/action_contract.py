@@ -17,8 +17,8 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 ActionId = Literal[
     "price.series", "price.compare", "price.verify_claim", "price.overview",
-    "trade.country_rank", "trade.monthly", "trade.concentration", "trade.hs_summary", "trade.indicator",
-    "resource.rank", "resource.yoy", "mine.rank", "mine.profile", "indicator.series", "document.retrieve", "document.lookup", "menu.navigate", "dataset.navigate",
+    "trade.country_rank", "trade.price_cross_rank", "trade.monthly", "trade.concentration", "trade.hs_summary", "trade.indicator",
+    "resource.rank", "resource.price_cross_rank", "resource.yoy", "mine.rank", "mine.profile", "indicator.series", "document.retrieve", "document.lookup", "menu.navigate", "dataset.navigate",
     "diagnosis.rank", "diagnosis.series", "forecast.demand", "forecast.price", "forecast.quantity",
     "geopolitics.index", "geopolitics.articles", "stockpile.status", "stockpile.methodology", "scenario.assess", "synthesis.brief",
     "off_topic",
@@ -50,6 +50,7 @@ class ActionSlots(BaseModel):
     partner_country: str | None = None
     period: Period | None = None
     top_n: int | None = Field(default=None, ge=1, le=100)
+    reference_year: int | None = Field(default=None, ge=1900, le=2200)
     indicator: Literal["supply_stability", "market_outlook", "composite_index"] | None = None
     # 종합지수의 HI001(종합)·HI002(메이저)·HI003(희소금속)을 한 시계열로
     # 섞지 않는다. 단수 "광물종합지수"는 대표 종합지수 HI001로 한정한다.
@@ -80,8 +81,8 @@ class ActionSlots(BaseModel):
     dataset: Literal["supply_stability", "market_outlook"] | None = None
     requested_outputs: set[Literal["text", "table", "chart", "menu", "raw_data"]] = {"text"}
 
-IntentId = Literal["price_series", "price_compare", "price_claim", "trade_rank", "trade_monthly", "trade_hs", "trade_concentration", "trade_indicator", "resource_rank", "resource_yoy", "mine_rank", "mine_profile", "indicator", "document", "okf_lookup", "concept", "stockpile_methodology", "menu", "dataset", "diagnosis", "forecast_demand", "forecast_price", "forecast_quantity", "geopolitics_index", "geopolitics_articles", "off_topic"]
-INTENT_TO_ACTION = {"price_series":"price.series", "price_compare":"price.compare", "price_claim":"price.verify_claim", "trade_rank":"trade.country_rank", "trade_monthly":"trade.monthly", "trade_hs":"trade.hs_summary", "trade_concentration":"trade.concentration", "trade_indicator":"trade.indicator", "resource_rank":"resource.rank", "resource_yoy":"resource.yoy", "mine_rank":"mine.rank", "mine_profile":"mine.profile", "indicator":"indicator.series", "document":"document.retrieve", "okf_lookup":"document.lookup", "concept":"document.retrieve", "stockpile_methodology":"stockpile.methodology", "menu":"menu.navigate", "dataset":"dataset.navigate", "diagnosis":"diagnosis.rank", "forecast_demand":"forecast.demand", "forecast_price":"forecast.price", "forecast_quantity":"forecast.quantity", "geopolitics_index":"geopolitics.index", "geopolitics_articles":"geopolitics.articles", "off_topic":"off_topic"}
+IntentId = Literal["price_series", "price_compare", "price_claim", "trade_rank", "trade_price_cross_rank", "trade_monthly", "trade_hs", "trade_concentration", "trade_indicator", "resource_rank", "resource_price_cross_rank", "resource_yoy", "mine_rank", "mine_profile", "indicator", "document", "okf_lookup", "concept", "stockpile_methodology", "menu", "dataset", "diagnosis", "forecast_demand", "forecast_price", "forecast_quantity", "geopolitics_index", "geopolitics_articles", "off_topic"]
+INTENT_TO_ACTION = {"price_series":"price.series", "price_compare":"price.compare", "price_claim":"price.verify_claim", "trade_rank":"trade.country_rank", "trade_price_cross_rank":"trade.price_cross_rank", "trade_monthly":"trade.monthly", "trade_hs":"trade.hs_summary", "trade_concentration":"trade.concentration", "trade_indicator":"trade.indicator", "resource_rank":"resource.rank", "resource_price_cross_rank":"resource.price_cross_rank", "resource_yoy":"resource.yoy", "mine_rank":"mine.rank", "mine_profile":"mine.profile", "indicator":"indicator.series", "document":"document.retrieve", "okf_lookup":"document.lookup", "concept":"document.retrieve", "stockpile_methodology":"stockpile.methodology", "menu":"menu.navigate", "dataset":"dataset.navigate", "diagnosis":"diagnosis.rank", "forecast_demand":"forecast.demand", "forecast_price":"forecast.price", "forecast_quantity":"forecast.quantity", "geopolitics_index":"geopolitics.index", "geopolitics_articles":"geopolitics.articles", "off_topic":"off_topic"}
 
 class IntentCall(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -135,8 +136,8 @@ class PlanAssessment(BaseModel):
 
 
 AVAILABLE = frozenset({
-    "price.series", "price.compare", "price.verify_claim", "price.overview", "trade.country_rank", "trade.monthly",
-    "trade.concentration", "trade.hs_summary", "trade.indicator", "resource.rank", "resource.yoy", "mine.rank", "mine.profile", "indicator.series", "document.retrieve", "document.lookup", "stockpile.methodology", "menu.navigate", "dataset.navigate",
+    "price.series", "price.compare", "price.verify_claim", "price.overview", "trade.country_rank", "trade.price_cross_rank", "trade.monthly",
+    "trade.concentration", "trade.hs_summary", "trade.indicator", "resource.rank", "resource.price_cross_rank", "resource.yoy", "mine.rank", "mine.profile", "indicator.series", "document.retrieve", "document.lookup", "stockpile.methodology", "menu.navigate", "dataset.navigate",
 })
 # 독립 근거를 요구하는 수치·문서 action은 requirement_id별로 실행하고
 # 최종 생성 단계에서 묶을 수 있다. 메뉴 이동은 별도 page-recommend 경로가
@@ -160,8 +161,8 @@ CURRENT_PERIOD_ENDS = frozenset({"latest", "current", "now", "현재", "오늘",
 REQUIRED: dict[str, tuple[str, ...]] = {
     "price.series": ("mineral",), "price.compare": ("minerals",), "price.verify_claim": ("mineral", "claimed_change_pct"),
     "price.overview": ("strategic_price_groups",),
-    "trade.country_rank": ("mineral", "metric"), "trade.monthly": (), "trade.concentration": ("mineral",), "trade.indicator": ("trade_metric",),
-    "trade.hs_summary": ("hs_code",), "resource.rank": ("mineral", "metric"), "resource.yoy": ("mineral",),
+    "trade.country_rank": ("mineral", "metric"), "trade.price_cross_rank": ("partner_country", "metric"), "trade.monthly": (), "trade.concentration": ("mineral",), "trade.indicator": ("trade_metric",),
+    "trade.hs_summary": ("hs_code",), "resource.rank": ("mineral", "metric"), "resource.price_cross_rank": ("metric",), "resource.yoy": ("mineral",),
     "mine.rank": ("mine_metric", "mine_order"), "mine.profile": ("mine_name",),
     "indicator.series": ("indicator",), "document.retrieve": ("topic",), "document.lookup": ("topic",), "stockpile.methodology": (),
     "menu.navigate": ("target_page",), "dataset.navigate": ("dataset",),
@@ -173,12 +174,19 @@ ALLOWED_MULTI = frozenset({
     # 복수의 독립 source-first 문서 요구는 각각의 requirement ID와 출처를
     # 보존한 채 실행한다. 같은 개념의 중복 여부를 질문 문자열로 추정하지 않는다.
     frozenset({"document.retrieve"}),
+    # 복합 출력 계약의 현재 연결된 데이터 조합. 각 Action은 독립 근거를
+    # 유지하며 최종 형식은 answer_contracts.py/AnswerComposer가 안내한다.
+    frozenset({"price.series", "indicator.series"}),
+    frozenset({"price.series", "trade.country_rank"}),
+    frozenset({"price.series", "resource.yoy"}),
+    frozenset({"price.series", "resource.rank"}),
+    frozenset({"price.series", "document.retrieve"}),
 })
 
 
 ACTION_PLAN_PROMPT = """질문을 action 카탈로그의 ActionPlan JSON으로만 변환한다.
-action_id는 price.series, price.compare, price.verify_claim, price.overview, trade.country_rank, trade.monthly,
-trade.concentration, trade.hs_summary, trade.indicator, resource.rank, resource.yoy, mine.rank, mine.profile, indicator.series, document.retrieve, document.lookup,
+action_id는 price.series, price.compare, price.verify_claim, price.overview, trade.country_rank, trade.price_cross_rank, trade.monthly,
+trade.concentration, trade.hs_summary, trade.indicator, resource.rank, resource.price_cross_rank, resource.yoy, mine.rank, mine.profile, indicator.series, document.retrieve, document.lookup,
 menu.navigate, dataset.navigate, diagnosis.rank, diagnosis.series, forecast.demand, forecast.price,
 forecast.quantity, geopolitics.index, geopolitics.articles, stockpile.status, stockpile.methodology, scenario.assess,
 synthesis.brief 중 하나다. 원문과 확인된 대화에 있는 값만 slots에 넣고 추측하지 않는다.
@@ -222,6 +230,11 @@ slots.indicator=composite_index로 정규화한다. 기간이 없으면 최신�
 trailing_months=N으로 보존하며 price action으로 대체하지 않는다.
 한국·세계 수입/수출 상위국과 점유율은 trade_rank/country_rank, CR3·CR5·집중도는
 trade_concentration, 생산량·매장량 국가순위는 resource_rank/resource.rank로 보존한다.
+특정 국가의 한국 수입 비중이 높은 광종 중 가격이 상승한 광종을 찾는 교차 질문은
+trade.price_cross_rank 하나로 표현한다. partner_country는 필수, metric은
+import_amount(기본) 또는 import_weight, period는 가격과 수입에 공통 적용할 기간이다.
+생산 1위국 비중이 높은 광종들의 가격 변동은 resource.price_cross_rank 하나로 표현한다.
+metric=production, 생산 기준연도가 명시되면 reference_year에, 가격 기간은 period에 둔다.
 월간동향·일일자원뉴스·주간자원뉴스·수출통제 뉴스의 제목·요약·최신 게시물 검색은
 document 또는 document.retrieve로 분류하고 가격·무역 수치 action으로 바꾸지 않는다.
 여러 기간 창의 가격 변화를 비교하면 price.compare 하나에 slots.windows=[3,6,12]처럼 모든
@@ -235,8 +248,8 @@ price.compare로 만들지 말고, 해당 설명의 출처를 찾는 document �
 "월간동향"이라고 한 것은 집계주기 요청이 아니다. JSON 외 텍스트를 출력하지 않는다."""
 
 INTENT_PLAN_PROMPT = """질문의 독립 정보요구를 빠짐없이 requirements IntentCall 목록으로 분해한 closed intent JSON을 출력한다.
-intent는 price_series, price_compare, price_claim, trade_rank, trade_monthly, trade_hs,
-trade_concentration, trade_indicator, resource_rank, resource_yoy, mine_rank, mine_profile, indicator, document, okf_lookup, concept, stockpile_methodology, menu, dataset, diagnosis, forecast_demand,
+intent는 price_series, price_compare, price_claim, trade_rank, trade_price_cross_rank, trade_monthly, trade_hs,
+trade_concentration, trade_indicator, resource_rank, resource_price_cross_rank, resource_yoy, mine_rank, mine_profile, indicator, document, okf_lookup, concept, stockpile_methodology, menu, dataset, diagnosis, forecast_demand,
 forecast_price, forecast_quantity, geopolitics_index, geopolitics_articles, off_topic 중 하나다.
 핵심광물 공급망·HHI·수입의존도·가격변동성의 정의와 개념은 concept이며 document.retrieve로
 직접 출처를 찾는다. off_topic은 날씨·음식처럼 광물·공급망과 무관한 주제에만 사용한다.
@@ -917,6 +930,38 @@ def _is_conditional_scenario_topic(topic: str | None) -> bool:
 
 
 def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | None = None) -> ActionPlan:
+    compact = re.sub(r"\s+", "", message)
+    months_match = re.search(r"최근(\d+)(개월|년)", compact)
+    months = int(months_match.group(1)) * (12 if months_match and months_match.group(2) == "년" else 1) if months_match else 12
+    year_match = re.search(r"(20\d{2})년", compact)
+    top_match = re.search(r"상위(\d+)(?:개|종)?", compact)
+    top_n = int(top_match.group(1)) if top_match else 5
+    price_period = (Period(kind="latest") if not 1 <= months <= 240 else
+                    Period(kind="trailing_months", trailing_months=months)
+                    if months_match or not year_match else
+                    Period(kind="calendar_year", calendar_year=int(year_match.group(1))))
+    if all(marker in compact for marker in ("수입", "비중", "광종", "가격")) and any(
+            marker in compact for marker in ("오른", "상승", "올랐")):
+        country_match = re.search(r"([가-힣]{2,15})수입비중", compact)
+        if country_match:
+            country = country_match.group(1)
+            if country.endswith("의"):
+                country = country[:-1]
+            return ActionPlan(actions=[ActionCall(
+                requirement_id="country_import_price_cross", action_id="trade.price_cross_rank",
+                slots=ActionSlots(partner_country=country,
+                                  metric="import_weight" if any(t in compact for t in ("중량", "물량", "무게")) else "import_amount",
+                                  period=price_period, top_n=top_n if 1 <= top_n <= 100 else None),
+                intent="trade_price_cross_rank", role="data",
+            )])
+    if all(marker in compact for marker in ("생산", "1위국", "비중", "광종", "가격")):
+        return ActionPlan(actions=[ActionCall(
+            requirement_id="producer_price_cross", action_id="resource.price_cross_rank",
+            slots=ActionSlots(metric="production", period=price_period,
+                              reference_year=int(year_match.group(1)) if year_match else None,
+                              top_n=top_n if 1 <= top_n <= 100 else None),
+            intent="resource_price_cross_rank", role="data",
+        )])
     # 한국 수입 데이터의 조회 메뉴를 묻는 질문은 생산·매장량(resource.rank)과
     # 혼동되기 쉽다. 질문에 ``한국``과 ``수입``이 함께 있고 메뉴 위치를 묻는
     # 표현이면 대한민국 수급지도(menu.navigate)로 고정한다. 이 보정은 실제
@@ -1605,6 +1650,15 @@ def validate_action_plan(plan: ActionPlan | None) -> PlanAssessment:
             # 레지스트리의 public 기본 표시는 수입금액이다. planner가 기준을
             # 생략한 경우에만 명시적 기본을 기록한다.
             call.slots.metric = "import_amount" if call.slots.flow != "export" else "export_amount"
+        if call.action_id == "trade.price_cross_rank" and call.slots.metric is None:
+            call.slots.metric = "import_amount"
+        if call.action_id == "resource.price_cross_rank" and call.slots.metric is None:
+            call.slots.metric = "production"
+        if call.action_id in {"trade.price_cross_rank", "resource.price_cross_rank"}:
+            if call.slots.period is None:
+                call.slots.period = Period(kind="trailing_months", trailing_months=12)
+            if call.slots.top_n is None:
+                call.slots.top_n = 5
         if call.action_id == "trade.country_rank" and call.slots.period is None:
             call.slots.period = Period(kind="trailing_months", trailing_months=12)
         if call.action_id == "trade.country_rank" and call.slots.top_n is None:
@@ -1657,6 +1711,8 @@ def validate_action_plan(plan: ActionPlan | None) -> PlanAssessment:
     if any(has_cycle(node) for node in edges):
         return PlanAssessment(approved=False, failure_reason="slot_unresolved")
     action_ids = {call.action_id for call in plan.actions}
+    if len(plan.actions) > 1 and action_ids & {"trade.price_cross_rank", "resource.price_cross_rank"}:
+        return PlanAssessment(approved=False, failure_reason="unsupported_combination")
     trade_ranks = [call for call in plan.actions if call.action_id == "trade.country_rank"]
     if ((len(trade_ranks) > 1 or (len(plan.actions) > 1 and trade_ranks))
             and any(call.slots.trade_scope is None for call in trade_ranks)):
@@ -1679,6 +1735,18 @@ def validate_action_plan(plan: ActionPlan | None) -> PlanAssessment:
                 return PlanAssessment(approved=False, failure_reason="slot_unresolved")
         if call.action_id == "resource.rank" and call.slots.metric not in {"production", "reserves"}:
             return PlanAssessment(approved=False, failure_reason="slot_unresolved")
+        if call.action_id in {"trade.price_cross_rank", "resource.price_cross_rank"}:
+            if (call.slots.period is None or call.slots.period.kind not in
+                    {"trailing_months", "calendar_year", "range"}):
+                return PlanAssessment(approved=False, failure_reason="slot_unresolved")
+            if (call.action_id == "trade.price_cross_rank" and
+                    (call.slots.metric not in {"import_amount", "import_weight"}
+                     or call.slots.trade_scope == "global" or call.slots.reference_year is not None)):
+                return PlanAssessment(approved=False, failure_reason="slot_unresolved")
+            if (call.action_id == "resource.price_cross_rank" and
+                    (call.slots.metric != "production" or call.slots.partner_country is not None
+                     or (call.slots.reference_year or 0) > date.today().year)):
+                return PlanAssessment(approved=False, failure_reason="slot_unresolved")
         if call.action_id == "resource.yoy":
             if (call.slots.metric != "production" or call.slots.country_scope != "world"
                     or (call.slots.period and call.slots.period.kind != "calendar_year")):

@@ -1,0 +1,10 @@
+{
+  "run_id": "feedback_live_20260927_023026",
+  "endpoint": "http://127.0.0.1:18002/pubchat",
+  "started_at": "2026-09-27T02:30:26.183759+09:00",
+  "question_count": 83,
+  "container_image_from_docker_ps": "komir-rag-chat:260926-live-qa-8a873378b",
+  "retry_count": 0,
+  "timeout_seconds": 180,
+  "finished_at": "2026-09-27T02:35:10.960622+09:00"
+}

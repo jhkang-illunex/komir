@@ -1,0 +1,31 @@
+{
+  "suite": "komir-chatbot-acceptance-260923",
+  "generated_at": "2026-09-24T22:13:05.540559",
+  "base_url": "http://127.0.0.1:18002",
+  "evidence_jsonl": "/home/nuri/dev/git/ws/mine_ws/komir/documents/산출물/acceptance_results/chatbot_acceptance_20260924_221300.jsonl",
+  "results": [
+    {
+      "id": "AC07",
+      "title": "가격 주장 검증",
+      "layer": "live",
+      "status": "FAIL",
+      "errors": [
+        "source_unavailable에 대한 독립 사전조건 증거가 없음"
+      ],
+      "detail": {
+        "done": {
+          "done": true,
+          "citations": [],
+          "bogus_citations": [],
+          "abstained": true,
+          "abstain_reason": "no_data_for_period"
+        }
+      },
+      "elapsed_seconds": 4.76,
+      "evidence_path": "/home/nuri/dev/git/ws/mine_ws/komir/documents/산출물/acceptance_results/chatbot_acceptance_20260924_221300.jsonl"
+    }
+  ],
+  "summary": {
+    "FAIL": 1
+  }
+}
