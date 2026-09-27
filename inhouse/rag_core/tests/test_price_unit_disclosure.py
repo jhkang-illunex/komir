@@ -4,9 +4,21 @@ import unittest
 from types import SimpleNamespace
 
 from rag_core.ragkit import chatbot
-from rag_core.ragkit.renderers.price import render_price_comparison
+from rag_core.ragkit.renderers.price import render_price_comparison, render_price_series
 from rag_core.ragkit.action_contract import ActionCall, ActionPlan, ActionSlots, Period
 from rag_core.retrieval.evidence import Evidence
+
+
+def _render_price_series(evidence, action_plan):
+    return render_price_series(
+        evidence,
+        action_plan,
+        operation_answer=chatbot._price_operation_answer,
+        latest_answer=chatbot._latest_price_answer,
+        summary=chatbot._price_series_summary,
+        observations=chatbot._price_series_observations,
+        natural_basis=chatbot._natural_price_basis,
+    )
 
 
 class PriceUnitDisclosureTest(unittest.TestCase):
@@ -20,7 +32,7 @@ class PriceUnitDisclosureTest(unittest.TestCase):
         plan = ActionPlan(actions=[ActionCall(
             requirement_id="price", action_id="price.series", slots=ActionSlots(mineral="니켈"),
         )])
-        scope = chatbot._price_series_scope_answer([evidence], plan)
+        scope = _render_price_series([evidence], plan)
         assert scope is not None
         answer, cited = scope
         self.assertNotIn("가격 기준은 [DEV_DUMMY]", answer)
@@ -52,7 +64,7 @@ class PriceUnitDisclosureTest(unittest.TestCase):
         disclosure = chatbot._price_unit_disclosure(
             f"가격 흐름입니다. 단위는 {unit}입니다. [1]", [evidence],
         )
-        scope = chatbot._price_series_scope_answer([evidence], plan)
+        scope = _render_price_series([evidence], plan)
         citations = chatbot._citation_sources({1}, [evidence])
 
         self.assertIn("가격기준=LME CASH", disclosure)
@@ -81,7 +93,7 @@ class PriceUnitDisclosureTest(unittest.TestCase):
             requirement_id="price", action_id="price.series", slots=ActionSlots(mineral="니켈"),
         )])
 
-        scope = chatbot._price_series_scope_answer([evidence], plan)
+        scope = _render_price_series([evidence], plan)
 
         assert scope is not None
         self.assertIn("최신 보유 관측일(2026-09-09) 가격 요약입니다.", scope[0])
@@ -98,7 +110,7 @@ class PriceUnitDisclosureTest(unittest.TestCase):
             requirement_id="price", action_id="price.series", slots=ActionSlots(mineral="니켈"),
         )])
 
-        scope = chatbot._price_series_scope_answer([evidence], plan)
+        scope = _render_price_series([evidence], plan)
 
         assert scope is not None
         self.assertIn("최신 가격은 16,745.53 (2026-09-08)입니다.", scope[0])
@@ -117,7 +129,7 @@ class PriceUnitDisclosureTest(unittest.TestCase):
             requirement_id="price", action_id="price.series",
             slots=ActionSlots(mineral="니켈", period=Period(kind="latest")),
         )])
-        scope = chatbot._price_series_scope_answer([evidence], plan)
+        scope = _render_price_series([evidence], plan)
         assert scope is not None
         self.assertEqual(scope[0], "2026-09-08 기준 니켈 가격은 105 USD/톤입니다. 전일 대비 +5(+5.00%) 변동했습니다.")
 
@@ -138,7 +150,7 @@ class PriceUnitDisclosureTest(unittest.TestCase):
             requirement_id="price", action_id="price.series",
             slots=ActionSlots(mineral="구리", period=Period(kind="latest")),
         )])
-        scope = chatbot._price_series_scope_answer([evidence], plan)
+        scope = _render_price_series([evidence], plan)
         assert scope is not None
         self.assertEqual(scope[0], "2026-09-08 기준 구리 가격은 105 (원천 단위 미확인)입니다. 전일 대비 +5(+5.00%) 변동했습니다.")
 
@@ -164,7 +176,7 @@ class PriceUnitDisclosureTest(unittest.TestCase):
                     requirement_id="price", action_id="price.series",
                     slots=ActionSlots(mineral="니켈", period=period, price_operation=operation),
                 )])
-                scope = chatbot._price_series_scope_answer([evidence], plan)
+                scope = _render_price_series([evidence], plan)
                 assert scope is not None
                 self.assertEqual(scope[0], expected)
 
@@ -195,7 +207,7 @@ class PriceUnitDisclosureTest(unittest.TestCase):
             requirement_id="price", action_id="price.series",
             slots=ActionSlots(mineral="니켈", period=Period(kind="latest"), price_operation="yearly_average"),
         )])
-        scope = chatbot._price_series_scope_answer([evidence], plan)
+        scope = _render_price_series([evidence], plan)
         assert scope is not None
         self.assertEqual(scope[0], "니켈 연도별 평균 가격은 [2025 YTD 110]입니다. 단위: USD/톤")
 

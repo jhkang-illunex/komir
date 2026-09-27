@@ -107,7 +107,7 @@ from .multi_action_state import encode_citation_envelope, state_from_action_resu
 from .answer_composer import AnswerComposer
 from .composite_renderer import render_composite
 from .renderers.mineral_info import render_mineral_info
-from .renderers.price import render_price_comparison
+from .renderers.price import render_price_comparison, render_price_series
 from .chatbot_store import DEFAULT_DB_PATH as DEFAULT_STORE_DB_PATH
 from .chatbot_store import append_message, get_or_create_session, list_messages
 from .messages import chat_message, faq_message
@@ -1386,54 +1386,6 @@ def _price_operation_answer(item, mineral: str | None, operation: str, period) -
     return "지원하지 않는 가격 집계 요청입니다."
 
 
-def _price_series_scope_answer(evidence: list, action_plan) -> tuple[str, set[int]] | None:
-    """단일 가격 조회의 기간 요약을 표본에서 결정론적으로 계산한다."""
-    actions = getattr(action_plan, "actions", [])
-    if len(actions) != 1 or getattr(actions[0], "action_id", None) != "price.series":
-        return None
-    selected = [
-        (index, item)
-        for index, item in enumerate(evidence, 1)
-        if getattr(item, "action_id", None) == "price.series"
-        and (getattr(item, "unit", None) or "").startswith("가격기준=")
-        and getattr(item, "observed_period", None)
-    ]
-    if len(evidence) != 1 or len(selected) != 1:
-        return None
-    index, item = selected[0]
-    slots = getattr(actions[0], "slots", None)
-    period = getattr(slots, "period", None)
-    if getattr(slots, "price_operation", None):
-        return _price_operation_answer(item, getattr(slots, "mineral", None), slots.price_operation, period), {index}
-    if period and period.kind == "latest":
-        return _latest_price_answer(item, getattr(slots, "mineral", None)), {index}
-    if period and period.kind == "trailing_months" and period.trailing_months:
-        duration = "1년" if period.trailing_months == 12 else f"{period.trailing_months}개월"
-        heading = f"최근 {duration} 가격 요약입니다."
-    elif period and period.kind == "calendar_year" and period.calendar_year:
-        heading = f"{period.calendar_year}년 가격 요약입니다."
-    else:
-        observations = _price_series_observations(item.text)
-        # ``observed_period``에는 "최신순 N건만" 같은 범위 상태가 붙을 수
-        # 있으므로, 화면의 최신 관측일은 실제 가격 표의 마지막 날짜만 쓴다.
-        # 표를 판독하지 못한 예외에만 범위 문자열의 ISO 날짜를 보수적으로 쓴다.
-        observed_dates = re.findall(r"\d{4}-\d{2}-\d{2}", item.observed_period)
-        latest_observation = (observations[-1][0].isoformat() if observations
-                              else (observed_dates[-1] if observed_dates else item.observed_period))
-        heading = f"최신 보유 관측일({latest_observation}) 가격 요약입니다."
-    basis = _natural_price_basis(item.unit)
-    answer = f"{heading} 조회된 값 기준입니다."
-    if basis:
-        answer += f" {basis}"
-    answer += f"\n\n{_price_series_summary(item)}"
-    observations = _price_series_observations(item.text)
-    if len(observations) == 1:
-        answer += "\n\n표에는 최신 관측값 1건을 표시했습니다."
-    else:
-        answer += "\n\n표와 차트는 조회된 가격값으로 작성했습니다."
-    return answer, {index}
-
-
 def _composite_index_observations(text: str) -> list[tuple[date, float]]:
     """검증된 HI001 표에서 날짜·지수만 읽는다. 다른 하위지수 혼입은 거부한다."""
     for table in extract_markdown_tables(text):
@@ -2350,7 +2302,15 @@ async def chat_turn(
         })
         return
 
-    price_series_answer = _price_series_scope_answer(evidence, action_plan)
+    price_series_answer = render_price_series(
+        evidence,
+        action_plan,
+        operation_answer=_price_operation_answer,
+        latest_answer=_latest_price_answer,
+        summary=_price_series_summary,
+        observations=_price_series_observations,
+        natural_basis=_natural_price_basis,
+    )
     if price_series_answer is not None:
         answer, cited_indices = price_series_answer
         if answer.startswith("계산 불가:"):
