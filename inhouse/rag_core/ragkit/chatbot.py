@@ -98,6 +98,7 @@ from ._shared_root import ensure_shared_on_path
 ensure_shared_on_path(Path(__file__).resolve())
 
 from common.llm_client import LLM_TRANSIENT_ERRORS, KomirJsonLLM  # noqa: E402
+from common.config import get_settings  # noqa: E402
 
 from .chatbot_events import ChatEvent, chart_spec, extract_markdown_tables, table_block
 from .official_sources import official_source, public_source_label
@@ -864,6 +865,29 @@ def _caution_notice(cited_indices: set[int], evidence: list) -> str:
             "직접적인 인과관계를 단정하는 내용이 아닙니다."
         )
     return ""
+
+
+def _debug_retrieval_trace(result: RetrievalResult | None, warnings: list[str], action_plan) -> dict:
+    """DEBUG 모드에서만 내보낼 조회·검증 추적 정보.
+
+    사용자 본문이나 저장되는 대화 내용에는 포함하지 않는다. QA 감사가 Action별
+    미배선·검증기각·원천부재를 비고로 남길 수 있도록 SSE 보조 이벤트로만 쓴다.
+    """
+    planned = [
+        {"requirement_id": call.requirement_id, "action_id": call.action_id}
+        for call in getattr(action_plan, "actions", ()) or ()
+    ]
+    outcomes = []
+    for item in (getattr(result, "action_results", ()) or ()):
+        outcomes.append({
+            "requirement_id": item.requirement_id,
+            "action_id": item.action_id,
+            "status": item.status,
+            "failure_reason": item.failure_reason,
+            "warnings": list(item.warnings or ()),
+        })
+    return {"enabled": True, "action_plan": planned, "action_results": outcomes,
+            "warnings": list(warnings or ())}
 
 
 def _dummy_data_notice(cited_indices: set[int], evidence: list) -> str:
@@ -1794,6 +1818,10 @@ async def chat_turn(
         evidence, route_warnings = [], ["retrieve_evidence_crashed"]
     if route_warnings:
         _logger.warning("근거 조회 경고: %s", route_warnings)
+    if get_settings().DEBUG:
+        yield ChatEvent(type="debug", data=_debug_retrieval_trace(
+            retrieval_result, route_warnings, executed_plan,
+        ))
 
     # 일반 개념 질문도 직접 출처가 있어야 답한다. 근접 자료는 질문을 뒷받침하지
     # 않으며, 검증기 출력 오류는 충분성 자체를 신뢰할 수 없으므로 생성하지 않는다.

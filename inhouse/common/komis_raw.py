@@ -1507,6 +1507,12 @@ class KomisRawDataRepository:
                 conditions.append(f"{period_column} <= {_literal(_coerce_period(end_period, 'year', True))}")
 
         where_clause = " AND ".join(f"t.{c}" for c in conditions)
+        # ``SU``는 국가가 아니라 KOMIS의 세계 합계 행이고, ``OT``는 기타
+        # 집계 행이다. 국가 순위에 포함하면 세계 합계가 1위가 되고 국가 행과
+        # 함께 더해져 점유율 분모도 이중 집계된다. 둘은 목록에서 제외한다.
+        country_where_clause = (
+            f"{where_clause} AND t.{country_column} NOT IN ('SU', 'OT')"
+        )
         # 2026-09-18: NTN_ENG_CD는 "CN"·"AU" 같은 2자리 코드뿐이라(컬럼명은
         # eng_cd지만 실제 값은 국가명이 아니다) `ai_ntn_mst`(25개국 코드↔한글/
         # 영문명 마스터, 다른 테이블과 같은 원리)로 조인해 한글명을 붙인다.
@@ -1518,19 +1524,29 @@ class KomisRawDataRepository:
                 f" SUM(t.{metric_column}) AS total, COUNT(*) AS n"
                 f" FROM {KOMIS_SCHEMA}.{table} t"
                 f" LEFT JOIN {KOMIS_SCHEMA}.ai_ntn_mst m ON m.ntn_cd = t.{country_column}"
-                f" WHERE {where_clause}"
+                f" WHERE {country_where_clause}"
                 f" GROUP BY COALESCE(m.ntn_nm_ko, t.{country_column})"
                 f" ORDER BY total DESC NULLS LAST LIMIT {int(top_n)}"
             )
             total_frame = read_sql_pg(
                 f"SELECT SUM(t.{metric_column}) AS grand_total, "
                 f"MIN(t.{period_column}) AS period_start, MAX(t.{period_column}) AS period_end "
-                f"FROM {KOMIS_SCHEMA}.{table} t WHERE {where_clause}"
+                f"FROM {KOMIS_SCHEMA}.{table} t WHERE {country_where_clause}"
+            )
+            world_total_frame = read_sql_pg(
+                f"SELECT SUM(t.{metric_column}) AS world_total "
+                f"FROM {KOMIS_SCHEMA}.{table} t WHERE {where_clause} "
+                f"AND t.{country_column} = 'SU'"
             )
         except Exception as exc:  # noqa: BLE001 — 원본과 같은 사용자 노출 메시지
             raise RawDataAccessError("매장량/생산량 국가별 랭킹 조회에 실패했습니다.") from exc
 
-        grand_total_value = total_frame["grand_total"].iloc[0] if not total_frame.empty else None
+        country_total_value = total_frame["grand_total"].iloc[0] if not total_frame.empty else None
+        world_total_value = (world_total_frame["world_total"].iloc[0]
+                             if not world_total_frame.empty else None)
+        # 공식 세계 합계(SU)가 있으면 그것을 분모로 쓴다. 없는 원천만 국가
+        # 합계로 열화하며, 그 경우에도 SU/OT는 국가 행에 포함하지 않는다.
+        grand_total_value = world_total_value if world_total_value is not None else country_total_value
         grand_total = float(grand_total_value) if grand_total_value is not None else 0.0
         period_start = total_frame["period_start"].iloc[0] if not total_frame.empty else None
         period_end = total_frame["period_end"].iloc[0] if not total_frame.empty else None
@@ -1558,7 +1574,8 @@ class KomisRawDataRepository:
                    f"{_format_period_value(period_end, 'year')}"
                    if period_start is not None and period_end is not None else None),
             unit="톤",
-            metadata={"grand_total": _json_value(grand_total_value), "metric": metric},
+            metadata={"grand_total": _json_value(grand_total_value), "metric": metric,
+                      "share_denominator": "world_total_su" if world_total_value is not None else "country_sum"},
         )
 
     def fetch_production_yoy(self, *, mineral_code: str, end_year: int | None,

@@ -70,6 +70,25 @@ class CompositeRendererTest(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertIn("광물정보 : 주요 용도 : 스테인리스강·합금, 충전식 배터리", result[0])
 
+    def test_mineral_usage_and_price_displays_human_price_unit(self):
+        plan = ActionPlan(actions=[
+            ActionCall(requirement_id="info", action_id="document.retrieve", slots=ActionSlots(topic="니켈 용도")),
+            ActionCall(requirement_id="price", action_id="price.series", slots=ActionSlots(mineral="니켈")),
+        ])
+        evidence = [
+            Evidence(kind="structured", source="RSC", section="광물정보",
+                     text="| 광종 | 속성 | 값 |\n|---|---|---|\n| 니켈 | uses | 스테인리스강 |",
+                     action_id="document.retrieve"),
+            Evidence(kind="table", source="price", section="price",
+                     text="| date | price |\n|---|---|\n| 2026-09-25 | 100 |\n| 2026-09-26 | 110 |",
+                     action_id="price.series",
+                     unit="가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002"),
+        ]
+        result = render_composite(evidence, plan)
+        self.assertIsNotNone(result)
+        self.assertIn("가격 110 USD/톤", result[0])
+        self.assertNotIn("통화코드", result[0])
+
     def test_monthly_trend_and_prices(self):
         plan = ActionPlan(actions=[
             ActionCall(requirement_id="trend", action_id="document.retrieve", slots=ActionSlots(topic="희소금속 월간동향")),

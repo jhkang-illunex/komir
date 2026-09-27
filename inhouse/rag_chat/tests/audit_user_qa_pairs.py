@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import time
 import urllib.error
@@ -87,6 +88,45 @@ CASES = (
     ("REG08", "니켈 수입 집중도를 알려줘요", ("니켈", "수입")),
 )
 
+# 단순 키워드 존재만으로는 "용도 근거를 찾지 못했습니다" 같은 실패 문장을
+# 정상 답변으로 오판한다. 복합 질의의 각 필수 절은 실제 성공 Action 인용도
+# 함께 확인한다. 이 계약은 이번 수락 세트의 해당 복합 질문에만 적용한다.
+REQUIRED_ACTIONS = {
+    "GM05": {"document.retrieve", "trade.country_rank"},
+    "GM08": {"document.retrieve", "resource.rank"},
+}
+_MISSING_MINERAL_INFO = "제공된 문서에서 근거를 찾지 못했습니다"
+
+
+def debug_enabled() -> bool:
+    """호스트 실행 감사도 inhouse/.env의 DEBUG 설정을 따른다."""
+    value = os.environ.get("DEBUG")
+    if value is None:
+        env_path = Path(__file__).resolve().parents[2] / ".env"
+        if env_path.exists():
+            for line in env_path.read_text(encoding="utf-8").splitlines():
+                if line.startswith("DEBUG="):
+                    value = line.split("=", 1)[1]
+                    break
+    return str(value or "").strip().casefold() in {"1", "true", "yes", "on"}
+
+
+def debug_notes(events: list[dict]) -> list[str]:
+    """DEBUG SSE의 실패한 Action만 사람이 읽는 감사 비고로 바꾼다."""
+    notes: list[str] = []
+    for event in events:
+        for item in event.get("action_results", []) or []:
+            if item.get("status") == "success":
+                continue
+            requirement = item.get("requirement_id") or "unknown"
+            action = item.get("action_id") or "unknown"
+            reason = item.get("failure_reason") or item.get("status") or "unknown"
+            notes.append(f"DEBUG 처리 실패: {requirement}/{action} ({reason})")
+        for warning in event.get("warnings", []) or []:
+            if str(warning).startswith(("action_failed:", "aggregate_incomplete:", "source_unavailable:")):
+                notes.append(f"DEBUG 경고: {warning}")
+    return list(dict.fromkeys(notes))
+
 
 def ask(base_url: str, question: str, timeout: int) -> tuple[list[dict], dict]:
     body = json.dumps({
@@ -115,7 +155,7 @@ def answer(events: list[dict]) -> str:
     return "".join(str(event.get("delta", "")) for event in events).strip()
 
 
-def classify(events: list[dict], terminal: dict, expected: tuple[str, ...]) -> tuple[str, list[str]]:
+def classify(events: list[dict], terminal: dict, expected: tuple[str, ...], case_id: str) -> tuple[str, list[str]]:
     text = answer(events)
     if terminal.get("needs_clarification"):
         return "NEEDS_CLARIFICATION", ["필수 슬롯 확인 필요"]
@@ -123,6 +163,15 @@ def classify(events: list[dict], terminal: dict, expected: tuple[str, ...]) -> t
         reason = str(terminal.get("abstain_reason") or "unknown")
         return ("BLOCKED_DATA" if reason == "source_unavailable" else "FAIL"), [f"abstain_reason={reason}"]
     missing = [token for token in expected if token.casefold() not in text.casefold()]
+    actions = {str(item.get("action_id")) for item in terminal.get("citations", []) if item.get("action_id")}
+    required_actions = REQUIRED_ACTIONS.get(case_id, set())
+    missing_actions = sorted(required_actions - actions)
+    if _MISSING_MINERAL_INFO in text and "document.retrieve" in required_actions:
+        missing.append("용도(광물정보 근거 없음)")
+    if missing_actions:
+        missing.extend(f"필수 Action 미성공: {action}" for action in missing_actions)
+    if case_id == "GM08" and re.search(r"\b(?:SU|OT)\b", text):
+        missing.append("생산국 코드 미정규화")
     if missing:
         return "PARTIAL", [f"기대 표지 미검출: {', '.join(missing)}"]
     return "PASS", []
@@ -139,6 +188,7 @@ def main() -> int:
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--timeout", type=int, default=180)
     args = parser.parse_args()
+    debug = debug_enabled()
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -149,7 +199,9 @@ def main() -> int:
         record = {"id": case_id, "question": question, "expected_markers": list(expected)}
         try:
             events, terminal = ask(args.base_url, question, args.timeout)
-            status, notes = classify(events, terminal, expected)
+            status, notes = classify(events, terminal, expected, case_id)
+            if debug:
+                notes.extend(note for note in debug_notes(events) if note not in notes)
             record.update({
                 "status": status, "notes": notes,
                 "elapsed_seconds": round(time.monotonic() - started, 2),
@@ -158,6 +210,7 @@ def main() -> int:
                 "sources": sorted({str(item.get("source")) for item in terminal.get("citations", []) if item.get("source")}),
                 "table_count": sum(bool(item.get("columns") and item.get("rows")) for item in events),
                 "chart_count": sum(bool(item.get("spec")) for item in events),
+                "debug": [item for item in events if item.get("enabled") is True] if debug else [],
             })
         except (OSError, ValueError, RuntimeError, urllib.error.HTTPError) as exc:
             record.update({"status": "FAIL", "notes": [f"request_error={type(exc).__name__}: {exc}"],
@@ -174,6 +227,7 @@ def main() -> int:
         "# 사용자 제공 Q&A 쌍 라이브 점검 결과", "",
         f"- 실행 시각: {timestamp} (Asia/Seoul)",
         f"- 대상: `{args.base_url}/pubchat`", f"- 질문 수: {len(results)}",
+        f"- DEBUG 처리 진단 기록: {'활성' if debug else '비활성'}",
         f"- 집계: " + ", ".join(f"{key} {value}" for key, value in sorted(summary.items())), "",
         "판정: `PASS`는 SSE 종료 계약과 질문별 기대 표지가 확인된 응답, `PARTIAL`은 응답은 있으나 "
         "기대 표지 일부가 없는 경우, `BLOCKED_DATA`는 `source_unavailable` 안전 종료, `FAIL`은 "

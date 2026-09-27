@@ -2016,7 +2016,8 @@ def _retrieve_node(
         # 아래에서 여전히 komis_raw 전용으로만 한다 — 랭킹은 route가 이미
         # page_id를 직접 고른다(komis_ranking_page).
         (route.use_komis_ranking or route.use_komis_mineral_ranking or route.use_komis_production_yoy or route.use_komis_concentration
-         or route.use_komis_monthly_trade or route.use_komis_trade_indicator)
+         or route.use_komis_monthly_trade or route.use_komis_trade_indicator
+         or route.use_komis_price_time_aggregate)
         and route.komis_mineral_name
     ):
         resolved = session.call_komis_resolve_mineral(route.komis_mineral_name)
@@ -3186,6 +3187,18 @@ def retrieve_evidence(
             # 계산식을 다시 해석하다 결정적 결과를 기권시키지 않도록 근거 존재를
             # 충분성 기준으로 쓴다.
             verified = {"sufficient": bool(call_evidence), "evidence": call_evidence,
+                        "warnings": call_warnings}
+        elif (
+            route.use_mineral_info
+            and call.action_id == "document.retrieve"
+            and any(ev.source == "Royal Society of Chemistry" for ev in call_evidence)
+        ):
+            # 광종 용도·특성은 RSC 원문 URL과 확인일을 함께 가진 편집형 YAML에서
+            # 이미 검증해 구조화한 값이다. 일반 문서 충분성 Advisor에 다시 맡기면
+            # 복합 질문의 다른 요구(예: 현재 가격)가 이 Action에 섞여 기각될 수
+            # 있다. 해당 YAML 근거만 독립적으로 성공 처리해 뒤의 결정적 복합
+            # renderer가 용도와 가격을 각각의 Action 결과로 조합하게 한다.
+            verified = {"sufficient": True, "evidence": call_evidence,
                         "warnings": call_warnings}
         elif _is_rare_earth_nd_scope_request(call, question):
             # 이 경로는 `_q15_contextual_pageindex_evidence`가 실제 공개 USGS

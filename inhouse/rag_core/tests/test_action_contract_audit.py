@@ -550,6 +550,35 @@ class ActionContractAuditTest(unittest.TestCase):
         self.assertRegex(str(received["end_period"]), r"^\d{8}$")
         self.assertNotIn("calendar_year", received)
 
+    def test_price_time_aggregate_resolves_every_requested_mineral_before_mcp_call(self):
+        received: list[tuple[str, str]] = []
+
+        class Session:
+            def call_komis_resolve_mineral(self, name):
+                return {"mineral_code": {"니켈": "MNRL0002", "구리": "MNRL0003"}[name],
+                        "price_category": None, "warnings": []}
+
+            def call_komis_price_time_aggregate(self, mineral_code, operation):
+                received.append((mineral_code, operation))
+                return [Evidence(kind="structured", source="KOMIS", section="연도별 평균 가격",
+                                 text="| price_date | price | observation_months |\n|---|---|---|\n| 20250101 | 1 | 12 |")], []
+
+        for mineral, expected_code in (("니켈", "MNRL0002"), ("구리", "MNRL0003")):
+            with self.subTest(mineral=mineral):
+                route = graph.RetrievalRoute(
+                    resolved_query=f"{mineral} 연도별 평균 가격", use_structured=False,
+                    use_dense=False, use_pageindex=False, use_komis_price_time_aggregate=True,
+                    komis_price_operation="yearly_average", komis_mineral_name=mineral,
+                )
+                with patch.object(graph.mcp_client, "public", Session()):
+                    result = graph._retrieve_node(
+                        {"route": route, "question": route.resolved_query, "profile": "public", "warnings": [],
+                         "action_assessment": graph.PlanAssessment(approved=True),
+                         "source_assessment": SourceAssessment()}, dense_k=1, pageindex_k=1,
+                    )
+                self.assertEqual(len(result["evidence"]), 1)
+                self.assertIn((expected_code, "yearly_average"), received)
+
     def test_fallback_country_share_question_fills_dependency_slots_without_llm(self):
         class MustNotRun:
             def invoke(self, **kwargs):

@@ -79,6 +79,7 @@ class Settings(BaseSettings):
     QDRANT_COLLECTION: str = "doc_chunks"
 
     # ── 챗봇 서비스 ──
+    DEBUG: bool = False
     CHAT_SESSION_TTL_DAYS: int = 90
     CHAT_STREAM_CHUNK_MS: int = 50
 

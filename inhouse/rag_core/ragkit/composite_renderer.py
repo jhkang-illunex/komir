@@ -6,6 +6,7 @@ import math
 import re
 
 from .chatbot_events import extract_markdown_tables
+from .renderers.price import price_display_unit
 
 
 def _keys(table):
@@ -586,8 +587,11 @@ def render_composite(evidence: list, action_plan) -> tuple[str, set[int]] | None
                     return None
                 name, observed, latest, pct = mineral_prices[0]
                 price_line = f"광물가격 : {observed.isoformat()} {name} 가격 {_fmt(latest)}"
-                if getattr(prices[0][1], "unit", None):
-                    price_line += f" {prices[0][1].unit}"
+                # Evidence.unit에는 가격 기준과 코드가 보존된다. 사용자 문장에는
+                # 그 전체 메타데이터를 그대로 붙이지 않고, 검증된 통화/중량 코드가
+                # 모두 있는 경우에만 사람이 읽는 가격 단위로 표시한다.
+                if unit := price_display_unit(getattr(prices[0][1], "unit", None)):
+                    price_line += f" {unit}"
                 price_line += f", 전일 대비 {pct:+.2f}%" if pct is not None else ", 전일 대비 계산 불가"
                 return f"광물정보 : 주요 용도 : {usage}\n{price_line}", cited
             if len(mineral_prices) > 1 and any(token in doc_text for token in ("월간동향", "동향", "월호")):
