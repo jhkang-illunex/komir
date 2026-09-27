@@ -1,7 +1,6 @@
-"""자원뉴스의 RDB 목록과 반정형 보고서 근거를 함께 반환한다."""
+"""허용된 public.ai_news 원천에서 자원뉴스를 반환한다."""
 from __future__ import annotations
 
-from common.config import get_settings
 from common.db import pg_connect
 from .evidence import Evidence, KOMIS_RAW_DUMMY_CAVEAT
 
@@ -17,11 +16,12 @@ def _query_term(topic: str) -> str:
 
 
 def fetch_news_evidence(topic: str = "", *, limit: int = 5) -> tuple[list[Evidence], list[str]]:
-    """ai_news 제목·헤드라인과 doc_chunk의 검증 가능한 관련 발췌를 함께 조회한다."""
-    # 자원뉴스와 광종 마스터는 타 팀 소유 public 원천이고, 반정형 보고서만
-    # KOMIR 소유 PG_SCHEMA(mineral_risk)에 있다. 채팅 세션 스키마(ai_chatbot)
-    # 변경과 혼동해 한 스키마로 묶으면 ai_news가 없어 조회 전체가 실패한다.
-    document_schema = get_settings().PG_SCHEMA.replace('"', '')
+    """ai_news 제목·헤드라인만 조회한다.
+
+    mineral_risk.doc_chunk의 반정형 보고서는 사용자 제약상 이 adapter에서
+    사용하지 않는다. 허용 원천에 같은 보고서가 제공되기 전에는 기사 목록만
+    반환하며, 보고서 요약을 추정하지 않는다.
+    """
     source_schema = "public"
     con = None
     try:
@@ -43,24 +43,12 @@ def fetch_news_evidence(topic: str = "", *, limit: int = 5) -> tuple[list[Eviden
                     "ON m.mnrknd_unq_cd=n.mnrknd_unq_cd "
                     "ORDER BY n.base_ymd DESC, n.sort_ordr ASC LIMIT %s", (int(limit),))
             news = cur.fetchall()
-            if term:
-                pattern = '%' + term.replace('%', '') + '%'
-                cur.execute(
-                    f"SELECT title, txt, pub_date FROM {document_schema}.doc_chunk "
-                    "WHERE txt ILIKE %s OR title ILIKE %s "
-                    "ORDER BY pub_date DESC NULLS LAST, doc_id DESC, seq ASC LIMIT %s", (pattern, pattern, int(limit)))
-            else:
-                reports = []
-                # 광종 없는 주간 종합 질의는 ai_news의 실제 기사 목록만 사용한다.
-                # 무관한 반정형 보고서를 최신순으로 섞어 넣지 않는다.
-            if term:
-                reports = cur.fetchall()
     except Exception as exc:  # noqa: BLE001
         return [], [f"news_query_failed:{type(exc).__name__}"]
     finally:
         if con is not None:
             con.close()
-    if not news and not reports:
+    if not news:
         return [], ["news_not_found"]
     lines = ["| 날짜 | 광종 | 제목 | 요약 |", "|---|---|---|---|"]
     dummy = False
@@ -68,9 +56,5 @@ def fetch_news_evidence(topic: str = "", *, limit: int = 5) -> tuple[list[Eviden
         title, headline = str(title or ''), str(headline or '')
         dummy = dummy or '[DEV_DUMMY]' in title or '[DEV_DUMMY]' in headline
         lines.append(f"| {day or ''} | {mineral or ''} | {title} | {headline} |")
-    for title, text, published_at in reports:
-        excerpt = ' '.join(str(text or '').split())[:300]
-        if excerpt:
-            lines.append(f"| {published_at or '반정형 보고서'} |  | {str(title or '')} | {excerpt} |")
-    return [Evidence(kind="structured", source="public.ai_news + 반정형 보고서", section="자원뉴스",
+    return [Evidence(kind="structured", source="public.ai_news", section="자원뉴스",
                      text='\n'.join(lines), caveat=KOMIS_RAW_DUMMY_CAVEAT if dummy else None)], []
