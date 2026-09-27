@@ -67,7 +67,7 @@ ensure_shared_on_path(Path(__file__).resolve())
 
 from common.llm_client import LLM_TRANSIENT_ERRORS, KomirJsonLLM  # noqa: E402
 from rag_core.retrieval.access import PRIVATE_ONLY_KOMIS_PAGES  # noqa: E402
-from rag_core.retrieval import mine_aggregate, weekly_trend, mineral_info, monthly_trend, cross_rank  # noqa: E402
+from rag_core.retrieval import mine_aggregate, weekly_trend, mineral_info, monthly_trend, cross_rank, news, battery_minerals, production_concentration  # noqa: E402
 from rag_core.retrieval.evidence import (  # noqa: E402
     Evidence, KOMIS_RAW_DUMMY_CAVEAT, KOMIS_RAW_UNVERIFIED_CAVEAT,
 )
@@ -541,6 +541,9 @@ class RetrievalRoute(BaseModel):
     use_weekly_trend: bool = False
     use_mineral_info: bool = False
     use_monthly_trend: bool = False
+    use_news: bool = False
+    use_battery_minerals: bool = False
+    use_production_concentration: bool = False
     use_cross_rank: bool = False
     cross_rank_action_id: Literal["trade.price_cross_rank", "resource.price_cross_rank"] | None = None
     use_dense: bool
@@ -851,6 +854,8 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
     if call.action_id == "price.overview":
         return RetrievalRoute(**common, use_komis_strategic_price_overview=True,
                               komis_strategic_price_groups=s.strategic_price_groups)
+    if call.action_id == "forecast.price":
+        return RetrievalRoute(**common, use_komis_raw=True, komis_topic="price_forecast")
     if call.action_id in {"price.compare", "price.verify_claim"}:
         return RetrievalRoute(**common, use_komis_price_comparison=True,
                               komis_compare_mineral_names=s.minerals or ([s.mineral] if s.mineral else None),
@@ -874,6 +879,8 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
                               komis_partner_country=s.partner_country, komis_trade_flow=s.flow,
                               komis_dependency_denominator=s.denominator_scope)
     if call.action_id == "resource.rank":
+        if "생산집중도" in question.replace(" ", ""):
+            return RetrievalRoute(**common, use_production_concentration=True)
         return RetrievalRoute(**common, use_komis_mineral_ranking=True,
                               komis_mineral_ranking_metrics=[s.metric])
     if call.action_id == "resource.yoy":
@@ -905,10 +912,14 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
         return RetrievalRoute(**common, use_cross_rank=True, cross_rank_action_id=call.action_id)
     if call.action_id == "document.retrieve" and "주간" in (s.topic or question) and "동향" in (s.topic or question):
         return RetrievalRoute(**common, use_weekly_trend=True)
-    if call.action_id == "document.retrieve" and any(token in (s.topic or question) for token in ("용도", "원소기호", "원자량", "원자번호", "주요 특성")):
+    if call.action_id == "document.retrieve" and any(token in (s.topic or question) for token in ("용도", "어디에 쓰", "어디쓰", "쓰여", "사용처", "활용처", "원소기호", "원자량", "원자번호", "주요 특성")):
         return RetrievalRoute(**common, use_mineral_info=True)
     if call.action_id == "document.retrieve" and any(token in (s.topic or question) for token in ("월간동향", "희소금속 동향", "전략광종 동향")):
         return RetrievalRoute(**common, use_monthly_trend=True)
+    if call.action_id == "document.retrieve" and any(token in (s.topic or question) for token in ("뉴스", "기사", "수출통제")):
+        return RetrievalRoute(**common, use_news=True)
+    if call.action_id == "document.retrieve" and "2차전지" in (s.topic or question):
+        return RetrievalRoute(**common, use_battery_minerals=True)
     if call.action_id in {"menu.navigate", "dataset.navigate"}:
         return RetrievalRoute(**common)
     if call.action_id == "document.lookup":
@@ -2216,6 +2227,16 @@ def _retrieve_node(
             jobs["monthly_trend"] = submit(
                 monthly_trend.fetch_monthly_trend_evidence, route.resolved_query or state["question"],
             )
+        if route.use_news:
+            jobs["news"] = submit(news.fetch_news_evidence, route.resolved_query or state["question"])
+        if route.use_battery_minerals:
+            jobs["battery_minerals"] = submit(battery_minerals.fetch_battery_minerals_evidence)
+        if route.use_production_concentration and route.komis_mineral_name:
+            jobs["production_concentration"] = submit(
+                production_concentration.fetch_production_concentration_evidence,
+                route.komis_mineral_name,
+                year=route.komis_start_period and int(route.komis_start_period[:4]),
+            )
         if route.use_cross_rank and state.get("action_call") is not None:
             jobs["cross_rank"] = submit(
                 cross_rank.fetch_cross_rank_evidence, state["action_call"],
@@ -2333,6 +2354,18 @@ def _retrieve_node(
             structured_evidence, structured_warnings = results[name]
             evidence.extend(structured_evidence)
             warnings.extend(structured_warnings)
+    if "news" in results:
+        news_evidence, news_warnings = results["news"]
+        evidence.extend(news_evidence)
+        warnings.extend(news_warnings)
+    if "battery_minerals" in results:
+        battery_evidence, battery_warnings = results["battery_minerals"]
+        evidence.extend(battery_evidence)
+        warnings.extend(battery_warnings)
+    if "production_concentration" in results:
+        concentration_evidence, concentration_warnings = results["production_concentration"]
+        evidence.extend(concentration_evidence)
+        warnings.extend(concentration_warnings)
     if "cross_rank" in results:
         cross_evidence, cross_warnings = results["cross_rank"]
         evidence.extend(cross_evidence)
@@ -2914,24 +2947,6 @@ def retrieve_evidence(
     if not action_assessment.approved or action_plan is None:
         if action_plan is None or not _is_partial_price_forecast_plan(action_plan):
             return finish([], [f"action_plan_failed:{action_assessment.failure_reason}"])
-    if action_plan is not None and _is_partial_price_forecast_plan(action_plan):
-        # forecast.price는 아직 원천이 없으므로 price.series만 실행한다.
-        # 기존의 다른 미지원 복합 action은 계속 전체 기권한다.
-        action_plan = action_plan.model_copy(update={
-            "actions": [call for call in action_plan.actions if call.action_id != "forecast.price"],
-        })
-        partial_forecast_warning = ["source_unavailable:price_forecast_partial"]
-        for call in original_plan.actions:
-            if call.action_id == "forecast.price":
-                action_results.append(ActionResult(
-                    requirement_id=call.requirement_id, action_id=call.action_id,
-                    slots=call.slots, status="source_unavailable",
-                    warnings=partial_forecast_warning.copy(), failure_reason="source_unavailable",
-                ))
-        action_assessment = validate_action_plan(action_plan)
-        if not action_assessment.approved:
-            return finish([], [f"action_plan_failed:{action_assessment.failure_reason}"])
-
     # 각 ActionCall은 독립 adapter와 Advisor를 통과한다. plan 전체를 하나의
     # 자유형 route로 압축하지 않아 Q04/Q11/Q29의 requirement 귀속이 섞이지 않는다.
     all_evidence: list[Evidence] = []

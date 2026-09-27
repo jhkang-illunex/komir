@@ -20,7 +20,7 @@ _ACTION_LABELS = {
 class AnswerComposer:
     """수치 계산 없이 검증된 Action 결과만 생성 모델에 전달한다."""
 
-    def instruction(self, result: RetrievalResult | None) -> str:
+    def instruction(self, result: RetrievalResult | None, question: str | None = None) -> str:
         if result is None or result.action_plan is None or len(result.action_plan.actions) < 2:
             return ""
         evidence_indices: dict[str, list[int]] = {}
@@ -33,9 +33,9 @@ class AnswerComposer:
             "아래 요구사항별 근거 번호만 사용해 각각 별도 절로 답하십시오. "
             "다른 요구사항의 수치·기간·광종·출처를 섞지 마십시오.",
         ]
-        contracts = matching_contracts([
-            call.action_id for call in result.action_plan.actions
-        ])
+        contracts = matching_contracts(
+            [call.action_id for call in result.action_plan.actions], question,
+        )
         if contracts:
             lines.extend([
                 "출력 계약(계약에 없는 필드는 근거가 있을 때만 채움):",
