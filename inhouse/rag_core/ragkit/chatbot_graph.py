@@ -911,15 +911,11 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
     if call.action_id in {"trade.price_cross_rank", "resource.price_cross_rank"}:
         return RetrievalRoute(**common, use_cross_rank=True, cross_rank_action_id=call.action_id)
     if call.action_id == "document.retrieve" and "주간" in (s.topic or question) and "동향" in (s.topic or question):
-        # weekly_trend adapter는 mineral_risk.doc_chunk를 읽으므로 사용하지
-        # 않는다. 마운트된 공개 PageIndex 문서가 있을 때만 검색한다.
-        return RetrievalRoute(**{**common, "use_pageindex": True})
+        return RetrievalRoute(**common, use_weekly_trend=True)
     if call.action_id == "document.retrieve" and any(token in (s.topic or question) for token in ("용도", "어디에 쓰", "어디쓰", "쓰여", "사용처", "활용처", "원소기호", "원자량", "원자번호", "주요 특성", "기본 특성", "특성이", "어떤 광물", "어떤 금속", "무슨 광물", "무슨 금속")):
         return RetrievalRoute(**common, use_mineral_info=True)
     if call.action_id == "document.retrieve" and any(token in (s.topic or question) for token in ("월간동향", "희소금속 동향", "전략광종 동향")):
-        # monthly_trend 역시 mineral_risk.doc_chunk를 원천으로 삼으므로
-        # 공개 PageIndex 경로로만 제한한다.
-        return RetrievalRoute(**{**common, "use_pageindex": True})
+        return RetrievalRoute(**common, use_monthly_trend=True)
     if call.action_id == "document.retrieve" and any(token in (s.topic or question) for token in ("뉴스", "기사", "수출통제")):
         return RetrievalRoute(**common, use_news=True)
     if call.action_id == "document.retrieve" and "2차전지" in (s.topic or question):
@@ -953,7 +949,7 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
             # dense에 넘기면 같은 광종의 다른 광산(Cigar Lake 등)이 상위에 올라
             # 단건 사실을 오귀속할 수 있다.
             "resolved_query": " ".join(value for value in (s.mine_name, s.topic) if value),
-            "use_dense": False, "use_pageindex": True, "pageindex_doc": pageindex_doc,
+            "use_dense": True, "use_pageindex": True, "pageindex_doc": pageindex_doc,
             "pageindex_body_fallback": True, "pageindex_body_query": s.mine_name,
         })
     if call.action_id == "document.retrieve" and _is_rare_earth_nd_scope_request(call, question):
@@ -983,9 +979,7 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
     return RetrievalRoute(**{
         **common,
         "resolved_query": resolved_query,
-        # dense_pg/bm25_pg는 mineral_risk.doc_chunk를 조회한다. 현재 원천
-        # 제약에서는 공개 PageIndex만 허용한다.
-        "use_dense": False,
+        "use_dense": True,
         "use_pageindex": True,
     })
 

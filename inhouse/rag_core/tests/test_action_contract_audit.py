@@ -179,8 +179,7 @@ class ActionContractAuditTest(unittest.TestCase):
         candidate = extract_action_plan("이번주 비철금속 주간 동향 요약해줘", MustNotRun())
         self.assertEqual(candidate.actions[0].action_id, "document.retrieve")
         route = _route_from_action_call(candidate.actions[0], "이번주 비철금속 주간 동향 요약해줘")
-        self.assertFalse(route.use_weekly_trend)
-        self.assertTrue(route.use_pageindex)
+        self.assertTrue(route.use_weekly_trend)
         self.assertEqual(_publication_date("20260616_주간 경제 비철금속 시장 동향.pdf").isoformat(), "2026-06-16")
         self.assertIsNone(_publication_date("주간 경제 비철금속 시장 동향.pdf"))
 
@@ -830,12 +829,12 @@ class ActionContractAuditTest(unittest.TestCase):
         self.assertEqual(graph._filter_document_evidence_to_trailing_period(
             [recent, old, unknown], action), [recent])
 
-    def test_document_action_builds_pageindex_only_route_when_pg_source_is_disabled(self):
+    def test_document_action_builds_dense_and_pageindex_route(self):
         candidate = plan(call("concept", "document.retrieve", topic="핵심광물 재활용의 역할과 한계"))
         self.assertTrue(validate_action_plan(candidate).approved)
         route = _route_from_action_call(candidate.actions[0], "개념 질문")
         self.assertEqual(route.resolved_query, "핵심광물 재활용의 역할과 한계")
-        self.assertFalse(route.use_dense)
+        self.assertTrue(route.use_dense)
         self.assertTrue(route.use_pageindex)
         self.assertFalse(route.use_komis_raw)
 
