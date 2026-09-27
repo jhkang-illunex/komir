@@ -286,7 +286,8 @@ class InternalKnowledgeTurnTest(unittest.TestCase):
         self.assertEqual(events[-1].data["citations"], [{
             "index": 1, "kind": "dense", "source": "개념 문서", "section": "지표 정의",
             "as_of": None, "unit": None, "requirement_id": None, "action_id": None,
-            "observed_period": None, "menu_source": None,
+            "observed_period": None, "menu_source": None, "data_status": None,
+            "warnings": [],
         }])
         self.assertEqual(len(grounded_chat.calls), 1)
 
