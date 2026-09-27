@@ -976,6 +976,12 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
             ActionCall(requirement_id="latest_price", action_id="price.series",
                        slots=ActionSlots(mineral=mineral, period=Period(kind="latest")), intent="price_series", role="data"),
         ])
+    if mineral and "현황브리핑" in compact:
+        return ActionPlan(actions=[
+            ActionCall(requirement_id="latest_price", action_id="price.series", slots=ActionSlots(mineral=mineral, period=Period(kind="latest")), intent="price_series", role="data"),
+            ActionCall(requirement_id="production_rank", action_id="resource.rank", slots=ActionSlots(mineral=mineral, metric="production", country_scope="world", top_n=1), intent="resource_rank", role="data"),
+            ActionCall(requirement_id="import_rank", action_id="trade.country_rank", slots=ActionSlots(mineral=mineral, flow="import", metric="import_amount", trade_scope="korea", period=Period(kind="trailing_months", trailing_months=12), top_n=1), intent="trade_rank", role="data"),
+        ])
     # 수입 상위국과 현재 가격도 두 원천을 보존한다. 기간 없는 상위국은 공개
     # 기본인 최근 12개월, 수입금액 기준으로 고정한다.
     if mineral and has_current_price and "수입" in compact and any(marker in compact for marker in ("상위국", "수입국")):

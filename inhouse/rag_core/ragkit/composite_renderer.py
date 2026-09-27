@@ -350,6 +350,14 @@ def render_composite(evidence: list, action_plan) -> tuple[str, set[int]] | None
                         f"비교결과 : 공통 국가 {', '.join(shared) if shared else '없음'}",
                         {production[0][0], trade[0][0]})
 
+    if ids.count("price.series") == 1 and ids.count("resource.rank") == 1 and ids.count("trade.country_rank") == 1:
+        price, production, trade = by_action.get("price.series", []), by_action.get("resource.rank", []), by_action.get("trade.country_rank", [])
+        if len(price) == len(production) == len(trade) == 1:
+            points, producers, importers = _price_points(price[0][1]), _country_rows(production[0][1]), _country_rows(trade[0][1])
+            if points and producers and importers:
+                observed, value = points[-1]
+                return (f"광물가격 : 현재가 {_fmt(value)} ({observed.isoformat()})\n광물지도 : 생산 1위 {producers[0][0]}({_fmt(producers[0][1])}%)\n핵심광물 수급지도 : 수입 1위 {importers[0][0]}({_fmt(importers[0][1])}%)", {price[0][0], production[0][0], trade[0][0]})
+
     # 생산 1위국 비중과 수입 HHI/1위국 비중은 각각의 집계 adapter가 계산한
     # 값만 표시한다. 상위 N개 표만으로 HHI를 재계산하지 않는다.
     if ids.count("resource.rank") == 1 and ids.count("trade.concentration") == 1:
