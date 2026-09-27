@@ -1624,6 +1624,25 @@ def _apply_aggregate_route(state: RetrievalState, route: RetrievalRoute) -> Retr
     relative_months = _relative_months_in_question(question)
     if relative_months and not (route.komis_start_period or route.komis_end_period):
         updates["komis_relative_months"] = relative_months
+    # 생산량과 매장량을 함께 묻는 국가 순위는 planner가 resource.rank 하나의
+    # metric만 채우는 경우가 있다. 두 지표가 모두 명시된 질문에서는 typed
+    # route를 두 개의 결정적 RDB 집계 job으로 확장해 어느 한 표가 누락되지
+    # 않게 한다. 국가 순위·광종이 없는 일반 문서 질문에는 적용하지 않는다.
+    if (
+        "생산량" in compact and "매장량" in compact
+        and route.komis_mineral_name
+        and (route.use_komis_mineral_ranking or route.komis_mineral_ranking_metrics)
+    ):
+        updates.update(
+            use_komis_mineral_ranking=True,
+            komis_mineral_ranking_metrics=["production", "reserves"],
+            use_komis_ranking=False,
+            use_komis_raw=False,
+            use_dense=False,
+            use_pageindex=False,
+            use_komis_price_comparison=False,
+            use_komis_concentration=False,
+        )
     hs_match = re.search(r"(?<!\d)\d{10}(?!\d)", question)
     if hs_match and "수입" in compact and ("품목" in compact or "현황" in compact):
         updates.update(use_komis_explicit_hs_summary=True, komis_hs_code=hs_match.group(),

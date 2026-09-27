@@ -43,6 +43,15 @@ class PublicAggregateRouteTest(unittest.TestCase):
         self.assertEqual(result.komis_mineral_ranking_metrics, ["production"])
         self.assertEqual(result.komis_ranking_page, "map_korea")
 
+    def test_production_and_reserves_rankings_use_two_metrics(self):
+        route = _base(komis_mineral_name="희토류", use_komis_mineral_ranking=True,
+                      komis_mineral_ranking_metrics=["production"])
+        result = graph._apply_aggregate_route(
+            {"question": "희토류 생산량과 매장량 상위 국가를 알려줘", "history": []}, route)
+        self.assertEqual(result.komis_mineral_ranking_metrics, ["production", "reserves"])
+        self.assertFalse(result.use_komis_ranking)
+        self.assertFalse(result.use_komis_raw)
+
     def test_price_window_comparison_keeps_all_windows(self):
         route = _base(komis_mineral_name="리튬")
         result = graph._apply_aggregate_route(
