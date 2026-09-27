@@ -917,6 +917,9 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
     if call.action_id == "document.retrieve" and any(token in (s.topic or question) for token in ("월간동향", "희소금속 동향", "전략광종 동향")):
         return RetrievalRoute(**common, use_monthly_trend=True)
     if call.action_id == "document.retrieve" and any(token in (s.topic or question) for token in ("뉴스", "기사", "수출통제")):
+        if "가격변동큰광종" in question.replace(" ", ""):
+            return RetrievalRoute(**common, use_news=True, use_komis_price_volatility_ranking=True,
+                                  komis_relative_months=1, komis_ranking_top_n=5)
         return RetrievalRoute(**common, use_news=True)
     if call.action_id == "document.retrieve" and "2차전지" in (s.topic or question):
         return RetrievalRoute(**common, use_battery_minerals=True)

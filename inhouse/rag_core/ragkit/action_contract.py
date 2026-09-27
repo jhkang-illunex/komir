@@ -948,7 +948,23 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
             intent="trade_rank", role="data",
         ) for mineral in minerals])
     mineral = "구리" if mineral_info_match == "동" else mineral_info_match
+    if "이번주가격변동큰광종" in compact and "뉴스" in compact:
+        return ActionPlan(actions=[ActionCall(
+            requirement_id="weekly_price_news", action_id="document.retrieve",
+            slots=ActionSlots(topic=message, period=Period(kind="trailing_months", trailing_months=1)),
+            intent="document", role="content",
+        )])
     has_usage = any(marker in compact for marker in ("용도", "어디에쓰", "어디쓰", "쓰여", "사용처", "활용처"))
+    if mineral and has_usage and any(marker in compact for marker in ("수입국", "생산국", "세계생산")):
+        is_production = any(marker in compact for marker in ("생산국", "세계생산"))
+        secondary = ActionCall(
+            requirement_id="production_rank" if is_production else "import_rank",
+            action_id="resource.rank" if is_production else "trade.country_rank",
+            slots=(ActionSlots(mineral=mineral, metric="production", country_scope="world", top_n=5)
+                   if is_production else ActionSlots(mineral=mineral, flow="import", metric="import_amount", trade_scope="korea", period=Period(kind="trailing_months", trailing_months=12), top_n=5)),
+            intent="resource_rank" if is_production else "trade_rank", role="data")
+        return ActionPlan(actions=[
+            ActionCall(requirement_id="mineral_info", action_id="document.retrieve", slots=ActionSlots(mineral=mineral, topic=message), intent="concept", role="content"), secondary])
     has_current_price = any(marker in compact for marker in ("가격", "시세")) and any(
         marker in compact for marker in ("현재", "지금", "오늘", "얼마"))
     # 사용처와 현재 가격은 서로 독립된 검증 원천을 요구한다. 용도 shortcut이
