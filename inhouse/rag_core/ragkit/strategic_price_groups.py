@@ -8,7 +8,7 @@ from typing import Literal
 import yaml
 
 
-StrategicPriceGroup = Literal["strategic_six", "strategic_ten"]
+StrategicPriceGroup = Literal["strategic_six", "strategic_ten", "battery_five"]
 _RESOURCE = Path(__file__).with_name("resources") / "strategic_price_groups.yaml"
 
 

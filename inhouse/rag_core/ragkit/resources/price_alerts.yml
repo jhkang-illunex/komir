@@ -1,0 +1,3 @@
+schema_version: 1
+significant_daily_rise_pct: 5.0
+description: "'크게 오른 날'은 동일 가격 기준의 연속 관측일 전일 대비 상승률이 5% 이상인 날로 정의한다."

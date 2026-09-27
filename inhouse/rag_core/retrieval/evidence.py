@@ -298,13 +298,20 @@ def from_komis_raw(
         # 아직 사람이 읽는 단위 사전이 확인되지 않았으므로 코드값을 그대로
         # 보존하며, 임의 통화·중량 해석을 붙이지 않는다.
         if page_id == "forecast_price":
-            columns = ["forecast_date", "current_price", "predicted_price", "unit"]
-            table_rows = [[
-                str(row.get("CRTR_YMD", "")),
-                str(row.get("CMERC_PRC", "")),
-                str(row.get("PREDC_PRC", "")),
-                str(row.get("PRC_UNIT_CD", "")),
-            ] for row in ds.rows]
+            columns = ["forecast_date", "forecast_period", "current_price", "predicted_price", "unit"]
+            table_rows = []
+            for row in ds.rows:
+                period_code = str(row.get("PRD_SE_CD", "")).strip()
+                period_label = {
+                    "PE001": "연간", "PE002": "월간", "PE003": "주간",
+                    "PE004": "일간", "PE005": "분기",
+                    "PE201": "1분기", "PE202": "2분기", "PE203": "3분기", "PE204": "4분기",
+                }.get(period_code, period_code)
+                table_rows.append([
+                    str(row.get("CRTR_YMD", "")), period_label,
+                    str(row.get("CMERC_PRC", "")), str(row.get("PREDC_PRC", "")),
+                    str(row.get("PRC_UNIT_CD", "")),
+                ])
             display_columns = columns
         else:
         # 가격기준 일련번호는 원천 조회의 필터·감사에는 필요하지만 답변 근거

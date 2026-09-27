@@ -1224,9 +1224,9 @@ def _composite_index_scope_answer(evidence: list, action_plan) -> tuple[str, set
 def _forecast_price_scope_answer(evidence: list, action_plan) -> tuple[str, set[int]] | None:
     """향후 예측 adapter가 제공할 정규화 표의 출력 계약이다.
 
-    현재 ``forecast.price``는 원천 미연결로 실행 전에 source_unavailable 처리된다.
-    따라서 이 함수는 미래 adapter의 ``forecast_date``, ``predicted_price``,
-    ``current_price``, ``unit`` 정규화 열 외에는 해석하지 않는다.
+    ``forecast.price``는 정규화된 예측 원천을 사용한다. 이 함수는
+    ``forecast_date``, ``predicted_price``, ``current_price``, ``unit`` 열 외에는
+    해석하지 않는다.
     """
     actions = getattr(action_plan, "actions", [])
     if len(actions) != 1 or getattr(actions[0], "action_id", None) != "forecast.price":
@@ -2191,11 +2191,14 @@ async def chat_turn(
         yield _abstain_done("source_unavailable", bogus_citations=bogus)
         return
 
+    # 단일 문서 질의도 완료 이벤트·저장 레코드에 동일한 인용 envelope를
+    # 남긴다. 아래 분기는 delta를 즉시 내보낼지의 정책일 뿐 인용 생성 여부를
+    # 바꾸지 않는다.
+    citation_sources = build_citation_sources(cited_indices, evidence)
     if concept_question or price_unit_guard or rank_request_guard or len(planned_actions) >= 2:
         # 인용 번호·문장 직접근거를 모두 검증한 뒤에만 모델 문장을 보낸다.
         yield ChatEvent(type="delta", data={"delta": cleaned})
 
-        citation_sources = build_citation_sources(cited_indices, evidence)
     retrieval_sources = _retrieval_source_status(route_warnings)
 
     # chatbot_rule.txt 공통 규칙(출처 표기)·유형5(주의 문구) — 인용 스트리퍼를

@@ -156,7 +156,7 @@ class ActionContractAuditTest(unittest.TestCase):
         ))
         self.assertEqual(validate_action_plan(candidate).failure_reason, "slot_unresolved")
 
-    def test_forecast_closed_forms_preserve_output_operation_but_remain_unavailable(self):
+    def test_forecast_closed_forms_preserve_output_operation_and_are_available(self):
         class MustNotRun:
             def invoke(self, **kwargs):
                 raise AssertionError("가격예측 문형은 planner를 호출하면 안 됩니다")
@@ -169,7 +169,7 @@ class ActionContractAuditTest(unittest.TestCase):
                 candidate = extract_action_plan(question, MustNotRun())
                 self.assertEqual(candidate.actions[0].action_id, "forecast.price")
                 self.assertEqual(candidate.actions[0].slots.forecast_operation, operation)
-                self.assertEqual(validate_action_plan(candidate).failure_reason, "source_unavailable")
+                self.assertTrue(validate_action_plan(candidate).approved)
 
     def test_weekly_trend_document_plan_uses_dated_publication_adapter(self):
         class MustNotRun:
@@ -734,6 +734,132 @@ class ActionContractAuditTest(unittest.TestCase):
         candidate = extract_action_plan("희토류 생산량과 매장량 상위 5개국을 알려줘", Planner())
         self.assertEqual([item.requirement_id for item in candidate.actions], ["production", "reserves"])
         self.assertEqual([item.slots.metric for item in candidate.actions], ["production", "reserves"])
+        self.assertTrue(validate_action_plan(candidate).approved)
+
+    def test_price_trend_and_composite_index_are_routed_as_same_period_actions(self):
+        class UnexpectedPlanner:
+            def invoke(self, **_kwargs):
+                raise AssertionError("닫힌 복합 문형은 planner를 호출하면 안 됩니다")
+
+        candidate = extract_action_plan(
+            "최근 6개월 니켈 가격 추이랑 광물 종합지수 추세 비교해주세요", UnexpectedPlanner())
+        self.assertEqual([item.action_id for item in candidate.actions], ["price.series", "indicator.series"])
+        self.assertEqual(candidate.actions[0].slots.mineral, "니켈")
+        self.assertEqual(candidate.actions[0].slots.period.trailing_months, 6)
+        self.assertEqual(candidate.actions[1].slots.indicator, "composite_index")
+        self.assertEqual(candidate.actions[1].slots.indicator_variant, "composite")
+        self.assertEqual(candidate.actions[1].slots.indicator_operation, "period_change")
+        self.assertEqual(candidate.actions[1].slots.period.trailing_months, 6)
+        self.assertTrue(validate_action_plan(candidate).approved)
+
+    def test_export_control_country_share_starts_with_verified_news_only(self):
+        class UnexpectedPlanner:
+            def invoke(self, **_kwargs):
+                raise AssertionError("기사 광종은 뉴스 근거에서 확인해야 합니다")
+
+        candidate = extract_action_plan(
+            "중국 수출통제 뉴스에 나온 광종 중국 수입 비중 알려줘", UnexpectedPlanner())
+        self.assertEqual(len(candidate.actions), 1)
+        self.assertEqual(candidate.actions[0].requirement_id, "export_control_news")
+        self.assertEqual(candidate.actions[0].action_id, "document.retrieve")
+        self.assertTrue(validate_action_plan(candidate).approved)
+
+    def test_mineral_use_and_import_countries_are_two_actions(self):
+        class UnexpectedPlanner:
+            def invoke(self, **_kwargs):
+                raise AssertionError("닫힌 복합 문형은 planner를 호출하면 안 됩니다")
+
+        candidate = extract_action_plan("망간 용도랑 주요 수입국 알려줘", UnexpectedPlanner())
+        self.assertEqual([item.action_id for item in candidate.actions], ["document.retrieve", "trade.country_rank"])
+        self.assertEqual(candidate.actions[1].slots.trade_scope, "korea")
+        self.assertTrue(validate_action_plan(candidate).approved)
+
+    def test_current_price_and_next_month_forecast_are_two_actions(self):
+        class UnexpectedPlanner:
+            def invoke(self, **_kwargs):
+                raise AssertionError("닫힌 복합 문형은 planner를 호출하면 안 됩니다")
+
+        candidate = extract_action_plan("니켈 현재 가격이랑 다음달 전망 같이 알려줘", UnexpectedPlanner())
+        self.assertEqual([item.action_id for item in candidate.actions], ["price.series", "forecast.price"])
+        self.assertTrue(validate_action_plan(candidate).approved)
+
+    def test_forecast_and_recent_mineral_news_are_two_actions(self):
+        class UnexpectedPlanner:
+            def invoke(self, **_kwargs):
+                raise AssertionError("닫힌 복합 문형은 planner를 호출하면 안 됩니다")
+
+        candidate = extract_action_plan(
+            "리튬 가격 전망이랑 최근 관련 뉴스 같이 알려줘", UnexpectedPlanner())
+        self.assertEqual([item.action_id for item in candidate.actions],
+                         ["forecast.price", "document.retrieve"])
+        self.assertEqual(candidate.actions[0].slots.mineral, "리튬")
+        self.assertEqual(candidate.actions[1].slots.topic, "최근 리튬 자원뉴스")
+        self.assertEqual(candidate.actions[1].slots.period.trailing_months, 3)
+        self.assertTrue(validate_action_plan(candidate).approved)
+
+    def test_significant_price_news_uses_configured_or_explicit_threshold(self):
+        class UnexpectedPlanner:
+            def invoke(self, **_kwargs):
+                raise AssertionError("닫힌 가격 변동 문형은 planner를 호출하면 안 됩니다")
+
+        configured = extract_action_plan("니켈 가격 크게 오른 날 관련 뉴스 있어?", UnexpectedPlanner())
+        self.assertEqual(configured.actions[0].slots.price_operation, "significant_daily_rise")
+        self.assertEqual(configured.actions[0].slots.significant_change_pct, 5.0)
+        explicit = extract_action_plan("니켈 가격 8% 이상 오른 날 관련 뉴스 있어?", UnexpectedPlanner())
+        self.assertEqual(explicit.actions[0].slots.significant_change_pct, 8.0)
+
+    def test_composite_index_down_week_starts_with_index_observations(self):
+        class UnexpectedPlanner:
+            def invoke(self, **_kwargs):
+                raise AssertionError("닫힌 지수 문형은 planner를 호출하면 안 됩니다")
+
+        candidate = extract_action_plan("광물종합지수 떨어진 주에 주요 뉴스 뭐 있었어?", UnexpectedPlanner())
+        self.assertEqual([item.action_id for item in candidate.actions], ["indicator.series"])
+        self.assertEqual(candidate.actions[0].slots.period.trailing_months, 3)
+        self.assertTrue(validate_action_plan(candidate).approved)
+
+    def test_weekly_price_news_starts_with_volatility_rank(self):
+        class UnexpectedPlanner:
+            def invoke(self, **_kwargs):
+                raise AssertionError("닫힌 가격 변동 문형은 planner를 호출하면 안 됩니다")
+
+        candidate = extract_action_plan("지난 주 가격 변동 큰 광종이랑 관련 뉴스 보여줘", UnexpectedPlanner())
+        self.assertEqual([item.action_id for item in candidate.actions], ["price.volatility_rank"])
+        self.assertEqual(candidate.actions[0].slots.period.kind, "range")
+        self.assertTrue(validate_action_plan(candidate).approved)
+
+    def test_import_countries_and_price_forecast_are_two_actions(self):
+        class UnexpectedPlanner:
+            def invoke(self, **_kwargs):
+                raise AssertionError("닫힌 수입국·예측 문형은 planner를 호출하면 안 됩니다")
+
+        candidate = extract_action_plan("리튬 주요 수입국이랑 가격 전망 같이 보여줘", UnexpectedPlanner())
+        self.assertEqual([item.action_id for item in candidate.actions], ["trade.country_rank", "forecast.price"])
+        self.assertEqual(candidate.actions[0].slots.trade_scope, "korea")
+        self.assertTrue(validate_action_plan(candidate).approved)
+
+    def test_price_forecast_timeline_and_current_comparison_are_closed_plans(self):
+        class UnexpectedPlanner:
+            def invoke(self, **_kwargs):
+                raise AssertionError("닫힌 가격·예측 문형은 planner를 호출하면 안 됩니다")
+
+        timeline = extract_action_plan("니켈 지난 6개월 가격이랑 향후 전망 이어서 보여줘", UnexpectedPlanner())
+        self.assertEqual([item.action_id for item in timeline.actions], ["price.series", "forecast.price"])
+        self.assertEqual(timeline.actions[0].slots.period.trailing_months, 6)
+        self.assertEqual(timeline.actions[1].slots.forecast_operation, "timeline")
+        comparison = extract_action_plan("니켈 지금 가격이 전망치 보다 높은 편이야?", UnexpectedPlanner())
+        self.assertEqual(comparison.actions[1].slots.forecast_operation, "compare_current")
+        self.assertTrue(validate_action_plan(timeline).approved)
+        self.assertTrue(validate_action_plan(comparison).approved)
+
+    def test_battery_five_price_overview_uses_yaml_group(self):
+        class UnexpectedPlanner:
+            def invoke(self, **_kwargs):
+                raise AssertionError("YAML 가격 그룹 문형은 planner를 호출하면 안 됩니다")
+
+        candidate = extract_action_plan("2차전지 광물 5종 가격이랑 현황 한 번에 보여줘", UnexpectedPlanner())
+        self.assertEqual(candidate.actions[0].action_id, "price.overview")
+        self.assertEqual(candidate.actions[0].slots.strategic_price_groups, ["battery_five"])
         self.assertTrue(validate_action_plan(candidate).approved)
 
     def test_mineral_concept_is_document_action(self):

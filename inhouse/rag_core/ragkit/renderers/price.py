@@ -184,7 +184,7 @@ def _months_before(value: date, months: int) -> date:
     return date(ordinal // 12, ordinal % 12 + 1, 1)
 
 
-def _price_operation_answer(item, mineral: str | None, operation: str, period) -> str:
+def _price_operation_answer(item, mineral: str | None, operation: str, period, threshold: float | None = None) -> str:
     points = price_series_observations(item.text)
     label = mineral or "요청 광종"
     unit = price_display_unit(item.unit) or "(원천 단위 미확인)"
@@ -205,6 +205,20 @@ def _price_operation_answer(item, mineral: str | None, operation: str, period) -
         pct = (latest_price - average) / average * 100
         return (f"{latest_date.isoformat()} 기준 {label} 가격은 {format_price(latest_price)} {unit}입니다. "
                 f"{period_label} 평균 대비 {pct:+.2f}%입니다.")
+
+    if operation == "significant_daily_rise":
+        threshold = threshold or 5.0
+        rises = []
+        for (prior_date, prior), (observed, value) in zip(points, points[1:]):
+            if prior and observed.toordinal() - prior_date.toordinal() <= 7:
+                pct = (value - prior) / prior * 100
+                if pct >= threshold:
+                    rises.append((observed, value, pct))
+        if not rises:
+            return f"전일 대비 {threshold:g}% 이상 상승한 관측일을 최근 조회기간에서 찾지 못했습니다."
+        observed, value, pct = max(rises, key=lambda row: row[2])
+        return (f"광물가격 : {observed.isoformat()} {label} 가격은 전일 대비 {pct:+.2f}% 상승했습니다 "
+                f"({format_price(value)} {unit}). '크게 상승'은 전일 대비 {threshold:g}% 이상 기준으로 판정했습니다.")
 
     monthly = _monthly_price_observations(points)
     if operation == "monthly_streak":
@@ -300,7 +314,8 @@ def render_price_series(evidence: list, action_plan) -> tuple[str, set[int]] | N
     slots = actions[0].slots
     period = getattr(slots, "period", None)
     if getattr(slots, "price_operation", None):
-        return _price_operation_answer(item, getattr(slots, "mineral", None), slots.price_operation, period), {index}
+        return _price_operation_answer(item, getattr(slots, "mineral", None), slots.price_operation, period,
+                                       getattr(slots, "significant_change_pct", None)), {index}
     if period and period.kind == "latest":
         return _latest_price_answer(item, getattr(slots, "mineral", None)), {index}
     if period and period.kind == "trailing_months" and period.trailing_months:

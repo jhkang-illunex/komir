@@ -11,7 +11,7 @@
 | P1 | `weekly_trend` | adapter 구현 | 조달청보고서 `doc_chunk`에서 파일명 YYYYMMDD가 확인된 문서만 최신순으로 선택한다. 현재 최신 보유 문서는 2026-06-16이며, 정확한 게시물 URL·검증 요약은 코퍼스에 없으므로 게시판 URL만 제공하고 현재 주차를 과장하지 않는다. |
 | P1 | `document.retrieve` 월간동향 | adapter 연결·부분 데이터 | `retrieval/monthly_trend.py`가 `doc_chunk`에서 최신 월간동향 문서와 본문을 묶고 본문에 실제 등장한 광종만 태그한다. 게시일·원문 URL·검증 bullet을 가진 게시물 index 보강이 필요하다. |
 | P1 | `document.retrieve` 자원뉴스 | 부분 연결 | 일일·주간·테마별 뉴스의 게시일/주차, 제목, URL, 검증된 요약 bullet을 구조화해 반환한다. 그 뒤에만 일일 3건 제목, 주간 3개 요약, 최근 테마 기사 수·최대 3건 목록을 렌더링한다. |
-| P1 | `forecast.price` | 미배선 | 미래 예측 adapter가 `forecast_date`, `forecast_period`, `predicted_price`, `current_price`, `unit` 및 provenance를 정규화해 반환한다. 구현된 다음 달 전망치·방향 renderer를 활성화한다. 현 KOMIS 과거 예측 테이블은 대체 원천으로 사용하지 않는다. |
+| P1 | `forecast.price` | 연결 | `public.KO_MNRL_PRC_PREDC`의 `forecast_date`, `forecast_period`, `predicted_price`, `current_price`, `unit`을 정규화해 반환한다. 원천에 없는 기간·광종은 값을 만들지 않고 조회 불가로 종료한다. |
 
 ## 요청된 복합 Q&A 출력 계약
 
@@ -21,7 +21,7 @@
 
 | 계약 | 질문 요지 | 예상 Action | 상태 | 미배선 모듈/보완 사항 |
 |---|---|---|---|---|
-| OC01 | 현재 가격 + 다음 달 전망 | `price.series` + `forecast.price` | 미배선 | `forecast.price` adapter 및 결합 renderer |
+| OC01 | 현재 가격 + 다음 달 전망 | `price.series` + `forecast.price` | 연결 | 각 원천의 기준일·단위를 보존해 현재 실측값과 전망치를 함께 표시한다. |
 | OC02 | 지난 6개월 실적 + 향후 전망 차트 | `price.series` + `forecast.price` | 미배선 | 실적/전망 시계열 정규화·구간 구분 chart adapter |
 | OC03 | 현재가와 전망치 비교 | `price.series` + `forecast.price` | 미배선 | 동일 기준일·단위의 forecast join 및 차이 계산 |
 | OC04 | 지수 상승 동반 광종 | `indicator.series` + 복수 `price.series` | 연결 | `composite_renderer`가 동일 기간 변동률과 동반상승·동반하락 여부를 계산한다. |
@@ -36,8 +36,8 @@
 | OC13 | 월간동향 광종별 가격 현황 | `document.retrieve` + 복수 `price.series` | 부분 연결 | 게시물의 광종 목록·월호 구조화 index가 필요하다. 현재는 문서와 가격 표가 모두 검증될 때만 표시한다. |
 | OC14 | 가격 추이 + 월간동향 서술 | `price.series` + `document.retrieve` | 부분 연결 | 게시물의 광종 태그·요약 bullet·월호 adapter가 필요하다. 원문이 없으면 요약하지 않는다. |
 
-`forecast.price`는 원천 미연결 상태이므로 OC01~OC03은 계획 단계에서
-대체 조회하지 않고 `source_unavailable`로 처리한다. OC07·OC10은 광종별 모집단과
+예측 원천에 해당 광종·기간 관측값이 없으면 대체 조회하지 않고 `source_unavailable`로
+처리한다. OC07·OC10은 광종별 모집단과
 요청기간 내 가격 실측 구간을 검증하는 교차 Action으로 연결했다. 광종별 가격 결측 또는
 출처 미확인 시 다른 광종으로 조용히 순위를 바꾸지 않고 조회 불가로 종료한다.
 
