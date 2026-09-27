@@ -103,6 +103,7 @@ from .chatbot_events import ChatEvent, chart_spec, extract_markdown_tables, tabl
 from .official_sources import official_source, public_source_label
 from .chatbot_graph import retrieve_evidence
 from .action_results import RetrievalResult
+from .multi_action_state import encode_citation_envelope, state_from_action_results
 from .answer_composer import AnswerComposer
 from .chatbot_store import DEFAULT_DB_PATH as DEFAULT_STORE_DB_PATH
 from .chatbot_store import append_message, get_or_create_session, list_messages
@@ -709,7 +710,16 @@ def _user_visible_unit(unit: str | None) -> str | None:
     """
     if not unit:
         return None
-    visible = [part.strip() for part in unit.split(";") if not _OPAQUE_PRICE_UNIT_CODE.search(part)]
+    visible = []
+    for part in unit.split(";"):
+        if _OPAQUE_PRICE_UNIT_CODE.search(part):
+            continue
+        normalized = re.sub(r"\[dev_dummy\]\s*", "", part, flags=re.IGNORECASE).strip()
+        # 상태 토큰만 있던 가격기준은 사용자 단위가 아니다.
+        if normalized.rstrip().endswith("="):
+            continue
+        if normalized:
+            visible.append(normalized)
     return "; ".join(part for part in visible if part) or None
 
 
@@ -721,7 +731,8 @@ def _natural_price_basis(unit: str | None) -> str | None:
         if separator and value.strip():
             values[key.strip()] = value.strip()
     clauses = []
-    if (basis := values.get("가격기준")) and basis != "[DEV_DUMMY]":
+    basis = re.sub(r"\[dev_dummy\]\s*", "", values.get("가격기준", ""), flags=re.IGNORECASE).strip()
+    if basis:
         clauses.append(f"가격 기준은 {basis}")
     if currency := values.get("통화코드"):
         display_currency = _PRICE_CODE_VALUES.get(currency.upper())
@@ -921,8 +932,11 @@ def _country_rank_summary(evidence: list, action_plan, question: str, answer_tex
     # 라우터가 action plan을 복구하지 못한 경우에도 질문과 표가 명확하면
     # 순위 요약을 제공한다. 표의 country/share_pct 열이 최종 근거다.
     rank_question = any(marker in question for marker in ("상위", "순위", "비중"))
-    if action is None and not rank_question and not answer_text:
-        return ""
+    if action is None:
+        # 복구된 계획이 있는데 trade.country_rank가 없다면(예: resource.rank
+        # 복합 질문) 다른 action 표를 국가순위 요약으로 재사용하면 안 된다.
+        if action_plan is not None or (not rank_question and not answer_text):
+            return ""
     slots = getattr(action, "slots", None)
     minerals = (getattr(slots, "minerals", None) or []) if action is not None else []
     mineral = minerals[0] if minerals else next(
@@ -2108,7 +2122,13 @@ async def chat_turn(
     await asyncio.to_thread(
         append_message,
         resolved_session_id, "assistant", final_text,
-        json.dumps(citation_sources, ensure_ascii=False), store_db_path,
+        encode_citation_envelope(
+            citation_sources,
+            state_from_action_results(
+                executed_plan, retrieval_result.action_results if retrieval_result else [], profile=profile,
+            ),
+        ),
+        store_db_path,
     )
     yield ChatEvent(
         type="done",

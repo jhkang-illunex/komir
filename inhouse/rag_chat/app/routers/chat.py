@@ -127,6 +127,9 @@ from rag_core.ragkit.action_contract import (  # noqa: E402
     trade_indicator_plan_from_question,
     missing_trade_indicator_slots, validate_action_plan,
 )
+from rag_core.ragkit.multi_action_state import (  # noqa: E402
+    decode_multi_action_state, is_non_carry_payload, is_reference_message, merge_multi_action_followup,
+)
 from rag_core.ragkit.messages import chat_message  # noqa: E402
 from rag_core.ragkit import mcp_client  # noqa: E402
 from common.llm_client import KomirJsonLLM  # noqa: E402
@@ -431,6 +434,34 @@ def _history_for_graph(session_id: str) -> list[dict]:
     return history
 
 
+def _load_multi_action_state(session_id: str, profile: Literal["public", "private"]):
+    """가장 최근 완료 응답의 검증된 복합 조회 상태만 읽는다.
+
+    답변 문장·기존 list citation·페이지/명확화 metadata를 상태로 추정하지 않는다.
+    """
+
+    messages = session_store.list_messages(session_id, limit=1)
+    if not messages or messages[-1].get("role") != "assistant":
+        return None, False
+    try:
+        payload = json.loads(messages[-1].get("citations_json") or "")
+    except (TypeError, ValueError):
+        return None, False
+    return (decode_multi_action_state(payload, profile=profile),
+            is_non_carry_payload(payload, profile=profile))
+
+
+def _multi_action_clarification(session_id: str, message: str):
+    answer = "이전 복합 조회에서 어느 대상·지표를 바꿀지 명확히 알려주세요."
+    session_store.append_message(session_id, "user", message)
+    session_store.append_message(session_id, "assistant", answer)
+    yield sse_event({"session_id": session_id})
+    yield _status_event(1)
+    yield sse_event({"delta": answer})
+    yield sse_event({"done": True, "needs_clarification": True,
+                     "clarification": {"reason": "context_ambiguous"}}, event="done")
+
+
 def _load_page_state(session_id: str) -> dict | None:
     """마지막 assistant 메시지에 실린 페이지추천 상태(active_artifact)를 복원한다.
 
@@ -723,9 +754,22 @@ def _run_chat_session(
                 )
             else:
                 recovered = _recover_trade_followup(session_id, request.message)
-                action_plan = recovered or extract_action_plan(
-                    request.message, KomirJsonLLM(), history=_history_for_graph(session_id),
-                )
+                if recovered:
+                    action_plan = recovered
+                else:
+                    continuation, non_carry = _load_multi_action_state(session_id, profile)
+                    merged = (merge_multi_action_followup(continuation, request.message)
+                              if continuation is not None else None)
+                    if non_carry and is_reference_message(request.message):
+                        yield from _multi_action_clarification(session_id, request.message)
+                        return
+                    if merged is not None and merged.status == "ambiguous":
+                        yield from _multi_action_clarification(session_id, request.message)
+                        return
+                    action_plan = (merged.plan if merged is not None and merged.status == "merged" else
+                                   extract_action_plan(
+                                       request.message, KomirJsonLLM(), history=_history_for_graph(session_id),
+                                   ))
             assessment = validate_action_plan(action_plan)
         except Exception:
             failure_message = "질문의 조건을 확인할 수 없어 현재 제공할 수 없습니다."

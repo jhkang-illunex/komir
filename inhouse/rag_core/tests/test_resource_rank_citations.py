@@ -8,7 +8,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from rag_core.ragkit.action_contract import ActionCall, ActionPlan, ActionSlots
 from rag_core.ragkit.action_results import ActionResult, RetrievalResult
-from rag_core.ragkit.chatbot import _citation_sources, _resource_rank_citation_indices, _successful_action_citation_indices
+from rag_core.ragkit.chatbot import _citation_sources, _country_rank_summary, _resource_rank_citation_indices, _successful_action_citation_indices
 from rag_core.retrieval.evidence import Evidence
 
 
@@ -78,6 +78,18 @@ class ResourceRankCitationTest(unittest.TestCase):
         self.assertNotIn("DEV_DUMMY", citation["source"])
         self.assertEqual(citation["data_status"], "DEV_DUMMY")
         self.assertEqual(citation["warnings"], [dummy.caveat])
+
+    def test_resource_rank_does_not_receive_trade_rank_summary(self):
+        plan = ActionPlan(actions=[ActionCall(
+            requirement_id="production", action_id="resource.rank",
+            slots=ActionSlots(mineral="희토류", metric="production"),
+        )])
+        evidence = [Evidence(
+            kind="structured", source="public.KO_RSRC_PRDCTN_QUTY", section="생산량", text=(
+                "| country | share_pct |\n| --- | --- |\n| 중국 | 36.36 |"
+            ), requirement_id="production", action_id="resource.rank",
+        )]
+        self.assertEqual(_country_rank_summary(evidence, plan, "희토류 생산량 상위 국가"), "")
 
 
 if __name__ == "__main__":

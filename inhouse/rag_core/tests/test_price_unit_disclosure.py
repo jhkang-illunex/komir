@@ -24,6 +24,19 @@ class PriceUnitDisclosureTest(unittest.TestCase):
         answer, cited = scope
         self.assertNotIn("가격 기준은 [DEV_DUMMY]", answer)
         self.assertIn("개발용 더미", chatbot._dummy_data_notice(cited, [evidence]))
+
+    def test_dummy_prefix_is_removed_but_actual_basis_is_kept(self):
+        self.assertEqual(
+            chatbot._natural_price_basis("가격기준=[DEV_DUMMY] spot"),
+            "가격 기준은 spot입니다.",
+        )
+
+    def test_dummy_prefix_is_also_removed_from_citation_unit(self):
+        evidence = Evidence(kind="structured", source="public.KO_MNRL_PRC", section="가격", text="x",
+                            unit="가격기준=[DEV_DUMMY] spot", caveat="개발용 더미 데이터")
+        citation = chatbot._citation_sources({1}, [evidence])[0]
+        self.assertEqual(citation["unit"], "가격기준=spot")
+        self.assertNotIn("DEV_DUMMY", citation["unit"])
     def test_compound_raw_unit_keeps_criterion_and_hides_opaque_codes(self):
         unit = "가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002"
         evidence = Evidence(

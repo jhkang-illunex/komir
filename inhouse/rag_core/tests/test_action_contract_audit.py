@@ -88,6 +88,18 @@ class ActionContractAuditTest(unittest.TestCase):
         self.assertEqual(candidate.actions[0].slots.period.kind, "future_horizon")
         self.assertEqual(validate_action_plan(candidate).failure_reason, "source_unavailable")
 
+    def test_mine_yoy_rank_is_deterministic_before_planner(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("완결된 광산 YoY 순위는 planner를 호출하면 안 됩니다")
+
+        candidate = extract_action_plan("구리 광산 생산량 최근 YoY 증가 상위 5개를 보여줘", MustNotRun())
+        call = candidate.actions[0]
+        self.assertEqual((call.action_id, call.slots.mineral, call.slots.mine_metric,
+                          call.slots.mine_order, call.slots.top_n),
+                         ("mine.rank", "구리", "production", "yoy_increase", 5))
+        self.assertTrue(validate_action_plan(candidate).approved)
+
     def test_standalone_monthly_and_news_queries_bypass_llm_as_document_actions(self):
         class MustNotRun:
             def invoke(self, **kwargs):

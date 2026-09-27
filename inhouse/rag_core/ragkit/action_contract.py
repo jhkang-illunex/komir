@@ -892,6 +892,9 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
     production_yoy = _production_yoy_plan(message)
     if production_yoy is not None:
         return production_yoy
+    mine_yoy = _mine_yoy_rank_plan(message)
+    if mine_yoy is not None:
+        return mine_yoy
     future_actual_price = _future_actual_price_plan(message)
     if future_actual_price is not None:
         return future_actual_price
@@ -955,6 +958,32 @@ def _production_yoy_plan(message: str) -> ActionPlan | None:
         slots=ActionSlots(mineral=mineral, metric="production", country_scope="world",
                           period=Period(kind="calendar_year", calendar_year=int(year), explicit=True) if year else None),
         intent="resource_yoy", role="data",
+    )])
+
+
+def _mine_yoy_rank_plan(message: str) -> ActionPlan | None:
+    """완결된 광산 YoY 상위 순위는 planner 오분류 없이 닫힌 Action으로 만든다."""
+
+    compact = re.sub(r"\s+", "", message).casefold()
+    match = re.fullmatch(
+        r"(?P<mineral>.+?)광산(?P<metric>생산량|산출량|매장량)(?:최근)?"
+        r"(?:yoy|전년대비)(?P<direction>증가|늘어남|감소|축소)"
+        r"(?:상위|top)(?P<top_n>\d{1,3})(?:개|곳|위)?(?:를)?(?:보여줘|알려줘|보여주세요|알려주세요)[?.]?",
+        compact,
+    )
+    if not match:
+        return None
+    top_n = int(match.group("top_n"))
+    if not 1 <= top_n <= 100:
+        return None
+    metric = "production" if match.group("metric") in {"생산량", "산출량"} else "reserves"
+    direction = match.group("direction")
+    order = "yoy_increase" if direction in {"증가", "늘어남"} else "yoy_decrease"
+    return ActionPlan(actions=[ActionCall(
+        requirement_id="mine_yoy_rank", action_id="mine.rank",
+        slots=ActionSlots(mineral=match.group("mineral"), mine_metric=metric,
+                          mine_order=order, top_n=top_n),
+        intent="mine_rank", role="data",
     )])
 
 
