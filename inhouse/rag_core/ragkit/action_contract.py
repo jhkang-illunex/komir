@@ -68,7 +68,7 @@ class ActionSlots(BaseModel):
     # 기존 최신값·시계열 요약 계약을 그대로 사용한다.
     price_operation: Literal["period_average_delta", "monthly_streak", "yearly_average"] | None = None
     windows: list[int] | None = None
-    strategic_price_groups: list[Literal["strategic_six", "strategic_ten"]] | None = None
+    strategic_price_groups: list[Literal["battery_five", "strategic_six", "strategic_ten"]] | None = None
     country_scope: str | None = None
     trade_scope: Literal["korea", "global"] | None = None
     # 특정국 의존도는 같은 광종·방향·기간의 전체 상대국 합계만 분모로 쓴다.
@@ -934,6 +934,11 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
     mineral_info_match = next((name for name in (
         "리튬", "니켈", "코발트", "구리", "동", "망간", "흑연", "텅스텐", "희토류", "네오디뮴",
     ) if name in compact), None)
+    if "2차전지광물5종가격" in compact:
+        return ActionPlan(actions=[ActionCall(
+            requirement_id="battery_five_price_overview", action_id="price.overview",
+            slots=ActionSlots(strategic_price_groups=["battery_five"]), intent="price_series", role="data",
+        )])
     mineral = "구리" if mineral_info_match == "동" else mineral_info_match
     has_usage = any(marker in compact for marker in ("용도", "어디에쓰", "어디쓰", "쓰여", "사용처", "활용처"))
     has_current_price = any(marker in compact for marker in ("가격", "시세")) and any(
@@ -1908,7 +1913,7 @@ def validate_action_plan(plan: ActionPlan | None) -> PlanAssessment:
         if call.action_id == "price.overview":
             groups = call.slots.strategic_price_groups or []
             if (not groups or len(groups) != len(set(groups))
-                    or not set(groups) <= {"strategic_six", "strategic_ten"}
+                    or not set(groups) <= {"battery_five", "strategic_six", "strategic_ten"}
                     or call.slots.mineral is not None or call.slots.minerals is not None
                     or call.slots.period is not None):
                 return PlanAssessment(approved=False, failure_reason="slot_unresolved")

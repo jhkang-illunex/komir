@@ -4,6 +4,14 @@ source_note: >-
   KOMIS 가격 마스터 명칭의 매핑만 정의하며, 가격 기준·통화·중량단위·관측일은
   KO_MNRL_PRC 및 KO_MNRL_PRC_CRTR 원천에서 매 조회마다 확인한다.
 groups:
+  battery_five:
+    label: "2차전지 원료 5종"
+    minerals:
+      - {label: "리튬", price_mineral: "리튬"}
+      - {label: "니켈", price_mineral: "니켈"}
+      - {label: "코발트", price_mineral: "코발트"}
+      - {label: "망간", price_mineral: "망간"}
+      - {label: "흑연", price_mineral: "흑연"}
   strategic_six:
     label: "6대 전략광종"
     minerals:
