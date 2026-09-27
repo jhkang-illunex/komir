@@ -106,6 +106,7 @@ from .action_results import RetrievalResult
 from .multi_action_state import encode_citation_envelope, state_from_action_results
 from .answer_composer import AnswerComposer
 from .composite_renderer import render_composite
+from .renderers.mineral_info import render_mineral_info
 from .chatbot_store import DEFAULT_DB_PATH as DEFAULT_STORE_DB_PATH
 from .chatbot_store import append_message, get_or_create_session, list_messages
 from .messages import chat_message, faq_message
@@ -1384,33 +1385,6 @@ def _price_operation_answer(item, mineral: str | None, operation: str, period) -
     return "지원하지 않는 가격 집계 요청입니다."
 
 
-def _mineral_info_scope_answer(evidence: list, action_plan) -> tuple[str, set[int]] | None:
-    """검증된 광종정보 표를 질문 의도별 문장으로 제한해 렌더링한다."""
-    actions = list(getattr(action_plan, "actions", ()) or ())
-    if len(actions) != 1 or actions[0].action_id != "document.retrieve":
-        return None
-    topic = (getattr(actions[0].slots, "topic", "") or "").replace(" ", "")
-    is_usage = any(token in topic for token in ("용도", "어디에쓰", "어디쓰", "쓰여", "사용처", "활용처"))
-    for index, item in enumerate(evidence, 1):
-        if getattr(item, "action_id", None) != "document.retrieve":
-            continue
-        for table in extract_markdown_tables(getattr(item, "text", "")):
-            keys = [column.strip() for column in table["columns"]]
-            if not {"광종", "속성", "값"} <= set(keys):
-                continue
-            mineral_i, key_i, value_i = keys.index("광종"), keys.index("속성"), keys.index("값")
-            values = {row[key_i]: row[value_i] for row in table["rows"] if len(row) > value_i}
-            mineral = next((row[mineral_i] for row in table["rows"] if len(row) > mineral_i), None)
-            if not mineral:
-                continue
-            if is_usage and values.get("uses"):
-                return f"{mineral}의 주요 용도는 {values['uses']}입니다.", {index}
-            if not is_usage and values.get("element_symbol") and values.get("atomic_number") and values.get("characteristics"):
-                return (f"{mineral}은(는) 원소기호 {values['element_symbol']}, 원자번호 {values['atomic_number']}의 금속이며, "
-                        f"주요 특성은 {values['characteristics']}입니다."), {index}
-    return None
-
-
 def _price_compare_scope_answer(evidence: list, action_plan) -> tuple[str, set[int]] | None:
     """두 광종의 공통 기간 변동률 집계를 요청 순서대로 고정 렌더링한다."""
     actions = getattr(action_plan, "actions", [])
@@ -2298,7 +2272,7 @@ async def chat_turn(
         })
         return
 
-    mineral_info_answer = _mineral_info_scope_answer(evidence, action_plan)
+    mineral_info_answer = render_mineral_info(evidence, action_plan)
     if mineral_info_answer is not None:
         answer, cited_indices = mineral_info_answer
         citations = _citation_sources(cited_indices, evidence)
