@@ -52,6 +52,27 @@ class _Repository:
 
 
 class PeriodLimitTest(unittest.TestCase):
+    def test_private_composite_trust_requires_exact_table_columns_and_codes(self):
+        registry = _Registry()
+
+        class CompositeRepository:
+            def fetch(self, _request):
+                return [RawDataset(
+                    source_table="KO_MNRL_SNTHS_INDX",
+                    columns=["indx_se_cd", "crtr_ymd", "indx"], row_count=1,
+                    rows=[{"indx_se_cd": "HI001", "crtr_ymd": "20260905", "indx": 3651.45}],
+                )]
+
+        with patch.object(tools, "KomisRawDataRepository", CompositeRepository):
+            tools.register_common_tools(
+                registry, trusted_private_pages=frozenset({"indicator_composite"}),
+            )
+            result = registry.functions["komis_raw_lookup"](
+                "indicator_composite", index_type_code="HI001",
+            )
+        self.assertEqual(result["warnings"], [])
+        self.assertIsNone(result["evidence"][0]["caveat"])
+
     def test_explicit_period_returns_every_row_and_no_period_uses_env_cap(self):
         registry = _Registry()
         _Repository.requests = []

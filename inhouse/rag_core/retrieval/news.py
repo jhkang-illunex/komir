@@ -1,5 +1,8 @@
-"""자원뉴스의 RDB 목록과 반정형 보고서 근거를 함께 반환한다."""
+"""일일 자원뉴스 원천과 반정형 보고서 근거를 함께 반환한다."""
 from __future__ import annotations
+
+from html import unescape
+import re
 
 from common.config import get_settings
 from common.db import pg_connect
@@ -17,6 +20,12 @@ _COUNTRY_NAMES = (
     "대한민국", "한국", "중국", "미국", "일본", "호주", "캐나다", "칠레",
     "인도네시아", "콩고", "러시아", "브라질", "아르헨티나", "페루", "필리핀",
 )
+_COUNTRY_CODES = {
+    "대한민국": "KR", "한국": "KR", "중국": "CN", "미국": "US", "일본": "JP",
+    "호주": "AU", "캐나다": "CA", "칠레": "CL", "인도네시아": "ID", "콩고": "CD",
+    "러시아": "RU", "브라질": "BR", "아르헨티나": "AR", "페루": "PE", "필리핀": "PH",
+}
+_COUNTRY_LABELS = {code: name for name, code in _COUNTRY_CODES.items() if name != "한국"}
 
 
 def mentioned_minerals(text: str) -> list[str]:
@@ -44,10 +53,23 @@ def _query_terms(topic: str) -> list[str]:
     return list(dict.fromkeys(terms))
 
 
+def _plain_text(value: object) -> str:
+    """일일뉴스 본문의 HTML을 검색·표시 가능한 짧은 평문으로 정리한다."""
+    text = unescape(str(value or ""))
+    text = re.sub(r"<[^>]+>", " ", text)
+    return " ".join(text.split())
+
+
+def _country_codes_for_topic(topic: str) -> list[str]:
+    return list(dict.fromkeys(
+        code for name, code in _COUNTRY_CODES.items() if name in str(topic or "")
+    ))
+
+
 def fetch_news_evidence(topic: str = "", *, start: str | None = None, end: str | None = None,
                         limit: int = 5) -> tuple[list[Evidence], list[str]]:
-    """ai_news 제목·헤드라인과 doc_chunk의 검증 가능한 관련 발췌를 함께 조회한다."""
-    # KOMIS 원천 테이블(ai_news·ai_mnrl_mst)은 public 소유이고, 이 프로젝트가
+    """ko_daynews_raw와 doc_chunk의 검증 가능한 관련 발췌를 함께 조회한다."""
+    # 일일 뉴스 원천(ko_daynews_raw)은 public 소유이고, 이 프로젝트가
     # 적재한 반정형 문서 청크는 VECTOR_SCHEMA(현재 mineral_risk)에 있다. 둘을 같은
     # 스키마로 조회하면 한쪽은 반드시 UndefinedTable이 된다. 조회 전용 adapter
     # 에서 실제 소유 스키마를 명시하되, public에 DDL/DML을 수행하지 않는다.
@@ -62,33 +84,54 @@ def fetch_news_evidence(topic: str = "", *, start: str | None = None, end: str |
             date_sql = ""
             date_params: list[str] = []
             if start and end:
-                # base_ymd는 YYYYMMDD 문자열/숫자 어느 쪽이어도 비교할 수 있게
-                # 문자화한 뒤 닫힌 범위로 제한한다.
-                date_sql = " AND CAST(n.base_ymd AS TEXT) BETWEEN %s AND %s"
+                # regDate는 YYYYMMDDHHMMSS 문자열이다. 기사 발행일(앞 8자리)만
+                # 닫힌 범위로 비교해 시각에 따른 누락을 막는다.
+                date_sql = " AND LEFT(COALESCE(n.\"regDate\", ''), 8) BETWEEN %s AND %s"
                 date_params = [start.replace("-", ""), end.replace("-", "")]
+            country_codes = _country_codes_for_topic(topic)
+            country_sql = ""
+            country_params: list[object] = []
+            if country_codes:
+                # countryCodes는 수집 단계가 채운 ISO 3166-1 alpha-2 배열이다.
+                # 2026-09-28 실측 적재본은 전부 NULL이므로, NULL 행만 제목·본문
+                # 명시 언급으로 보완한다. 코드가 채워진 행은 반드시 코드로 필터한다.
+                country_terms = [f"%{name}%" for name in mentioned_countries(topic)]
+                country_sql = (
+                    " AND ((n.\"countryCodes\" && %s::varchar[]) OR "
+                    "(n.\"countryCodes\" IS NULL AND "
+                    "(COALESCE(n.ttl, '') ILIKE ANY(%s) OR COALESCE(n.cnts, '') ILIKE ANY(%s))))"
+                )
+                country_params = [country_codes, country_terms, country_terms]
+            select_sql = (
+                "SELECT LEFT(COALESCE(n.\"regDate\", ''), 8), n.\"typeCdNm\", n.ttl, n.cnts, "
+                "n.\"countryCodes\", n.seq FROM public.ko_daynews_raw n "
+                "WHERE n.\"pubStatusNm\" = '발행'"
+            )
             if terms:
                 patterns = [f"%{term.replace('%', '')}%" for term in terms]
                 cur.execute(
-                    f"SELECT n.base_ymd, m.mnrl_nm_ko, n.title, n.headline, n.sort_ordr "
-                    f"FROM {komis_schema}.ai_news n LEFT JOIN {komis_schema}.ai_mnrl_mst m "
-                    "ON m.mnrknd_unq_cd=n.mnrknd_unq_cd "
-                    "WHERE (COALESCE(n.title, '') ILIKE ANY(%s) "
-                    "OR COALESCE(n.headline, '') ILIKE ANY(%s))" + date_sql +
-                    " ORDER BY n.base_ymd DESC, n.sort_ordr ASC LIMIT %s",
-                    (patterns, patterns, *date_params, int(limit)),
+                    select_sql +
+                    " AND (COALESCE(n.ttl, '') ILIKE ANY(%s) OR COALESCE(n.cnts, '') ILIKE ANY(%s))" +
+                    date_sql + country_sql + " ORDER BY n.\"regDate\" DESC, n.seq DESC LIMIT %s",
+                    (patterns, patterns, *date_params, *country_params, int(limit)),
                 )
             else:
                 cur.execute(
-                    f"SELECT n.base_ymd, m.mnrl_nm_ko, n.title, n.headline, n.sort_ordr "
-                    f"FROM {komis_schema}.ai_news n LEFT JOIN {komis_schema}.ai_mnrl_mst m "
-                    "ON m.mnrknd_unq_cd=n.mnrknd_unq_cd "
-                    "WHERE 1=1" + date_sql + " ORDER BY n.base_ymd DESC, n.sort_ordr ASC LIMIT %s",
-                    (*date_params, int(limit)))
+                    select_sql + date_sql + country_sql + " ORDER BY n.\"regDate\" DESC, n.seq DESC LIMIT %s",
+                    (*date_params, *country_params, int(limit)))
             news = cur.fetchall()
             patterns = [f"%{term.replace('%', '')}%" for term in terms] or ["%자원뉴스%"]
+            report_date_sql = ""
+            report_date_params: list[str] = []
+            if start and end:
+                # 보조 반정형 문서도 일일뉴스와 같은 질문 기간 안에서만 쓴다.
+                # 게시일이 없는 문서를 최근 기사인 것처럼 섞지 않는다.
+                report_date_sql = " AND pub_date::date BETWEEN %s::date AND %s::date"
+                report_date_params = [start, end]
             cur.execute(
                 f"SELECT title, source_path, pub_date, txt FROM {document_schema}.doc_chunk WHERE txt ILIKE ANY(%s) "
-                "ORDER BY pub_date DESC NULLS LAST, doc_id DESC, seq ASC LIMIT %s", (patterns, int(limit)))
+                + report_date_sql + " ORDER BY pub_date DESC NULLS LAST, doc_id DESC, seq ASC LIMIT %s",
+                (patterns, *report_date_params, int(limit)))
             reports = cur.fetchall()
     except Exception as exc:  # noqa: BLE001
         return [], [f"news_query_failed:{type(exc).__name__}"]
@@ -99,8 +142,8 @@ def fetch_news_evidence(topic: str = "", *, start: str | None = None, end: str |
         return [], ["news_not_found"]
     lines = ["| 날짜 | 광종 | 제목 | 요약 | 원문 |", "|---|---|---|---|---|"]
     dummy = False
-    for day, mineral, title, headline, _order in news:
-        title, headline = str(title or ''), str(headline or '')
+    for day, mineral, title, body, country_codes, _seq in news:
+        title, headline = _plain_text(title), _plain_text(body)
         dummy = dummy or '[DEV_DUMMY]' in title or '[DEV_DUMMY]' in headline
         text = f"{title} {headline}"
         article_minerals = mentioned_minerals(text)
@@ -111,13 +154,35 @@ def fetch_news_evidence(topic: str = "", *, start: str | None = None, end: str |
             metadata.append(f"언급 광종: {', '.join(article_minerals)}")
         if article_countries:
             metadata.append(f"언급 국가: {', '.join(article_countries)}")
-        summary = headline + (f" ({'; '.join(metadata)})" if metadata else "")
-        lines.append(f"| {day or ''} | {label} | {title} | {summary} | 원문 링크 미확인 |")
+        structured_countries = [
+            _COUNTRY_LABELS.get(str(code).upper(), str(code).upper())
+            for code in (country_codes or [])
+        ]
+        if structured_countries:
+            metadata.append(f"국가 코드: {', '.join(structured_countries)}")
+        summary = headline[:600] + (f" ({'; '.join(metadata)})" if metadata else "")
+        day_text = str(day or "")
+        if len(day_text) == 8 and day_text.isdigit():
+            day_text = f"{day_text[:4]}-{day_text[4:6]}-{day_text[6:]}"
+        lines.append(f"| {day_text} | {label} | {title} | {summary} | 원문 링크 미확인 |")
     for title, source_path, published, text in reports:
         excerpt = ' '.join(str(text or '').split())[:300]
         if excerpt:
             original = str(source_path or '').strip()
             original = original if original.startswith(("https://", "http://")) else (original or "원문 경로 미확인")
             lines.append(f"| {published or '게시일 미확인'} |  | {str(title or '')} | {excerpt} | {original} |")
-    return [Evidence(kind="structured", source="public.ai_news + 반정형 보고서", section="자원뉴스",
-                     text='\n'.join(lines), caveat=KOMIS_RAW_DUMMY_CAVEAT if dummy else None)], []
+    # 기사 SQL에는 이미 질문 기간과 ``발행`` 상태가 적용됐다. 그 실제 기사
+    # 기간을 Evidence 계약에 남겨야, 뒤의 공통 문서 기간 필터가 뉴스 근거를
+    # 날짜 미상으로 잘못 제거하지 않는다.
+    article_days = sorted({str(day or "") for day, *_rest in news if re.fullmatch(r"\d{8}", str(day or ""))})
+    observed_period = None
+    if article_days:
+        normalized_days = [f"{day[:4]}-{day[4:6]}-{day[6:]}" for day in article_days]
+        observed_period = (normalized_days[0] if len(normalized_days) == 1
+                           else f"{normalized_days[0]}~{normalized_days[-1]}")
+    sources = " + ".join(part for part, present in (
+        ("public.ko_daynews_raw", bool(news)), ("반정형 보고서", bool(reports)),
+    ) if present)
+    return [Evidence(kind="structured", source=sources, section="일일 자원뉴스",
+                     text='\n'.join(lines), as_of=observed_period,
+                     caveat=KOMIS_RAW_DUMMY_CAVEAT if dummy else None)], []

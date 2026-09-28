@@ -67,7 +67,7 @@ ensure_shared_on_path(Path(__file__).resolve())
 
 from common.llm_client import LLM_TRANSIENT_ERRORS, KomirJsonLLM  # noqa: E402
 from rag_core.retrieval.access import PRIVATE_ONLY_KOMIS_PAGES  # noqa: E402
-from rag_core.retrieval import mine_aggregate, weekly_trend, mineral_info, monthly_trend, cross_rank, news, battery_minerals, production_concentration  # noqa: E402
+from rag_core.retrieval import mine_aggregate, weekly_trend, mineral_info, monthly_trend, cross_rank, news, battery_minerals, production_concentration, inventory  # noqa: E402
 from rag_core.retrieval.evidence import (  # noqa: E402
     Evidence, KOMIS_RAW_DUMMY_CAVEAT, KOMIS_RAW_UNVERIFIED_CAVEAT,
 )
@@ -547,6 +547,7 @@ class RetrievalRoute(BaseModel):
     use_mineral_info: bool = False
     use_monthly_trend: bool = False
     use_news: bool = False
+    use_inventory: bool = False
     use_battery_minerals: bool = False
     use_production_concentration: bool = False
     use_cross_rank: bool = False
@@ -856,6 +857,8 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
             return RetrievalRoute(**common, use_komis_price_time_aggregate=True,
                                   komis_price_operation=s.price_operation)
         return RetrievalRoute(**common, use_komis_raw=True, komis_topic="price")
+    if call.action_id == "inventory.latest":
+        return RetrievalRoute(**common, use_inventory=True)
     if call.action_id == "price.overview":
         return RetrievalRoute(**common, use_komis_strategic_price_overview=True,
                               komis_strategic_price_groups=s.strategic_price_groups)
@@ -923,9 +926,11 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
                               komis_index_type_code=composite_code)
     if call.action_id in {"trade.price_cross_rank", "resource.price_cross_rank"}:
         return RetrievalRoute(**common, use_cross_rank=True, cross_rank_action_id=call.action_id)
-    if call.action_id == "document.retrieve" and "주간" in (s.topic or question) and "동향" in (s.topic or question):
+    if call.action_id == "document.retrieve" and "주간" in (s.topic or question) and any(
+            token in (s.topic or question) for token in ("동향", "뉴스")):
         return RetrievalRoute(**common, use_weekly_trend=True)
-    if call.action_id == "document.retrieve" and any(token in (s.topic or question) for token in ("용도", "어디에 쓰", "어디쓰", "쓰여", "사용처", "활용처", "원소기호", "원자량", "원자번호", "주요 특성", "기본 특성", "특성이", "어떤 광물", "어떤 금속", "무슨 광물", "무슨 금속", "광석", "ore")):
+    if (call.action_id == "document.retrieve" and "월간동향" not in (s.topic or question)
+            and any(token in (s.topic or question) for token in ("용도", "어디에 쓰", "어디쓰", "쓰여", "사용처", "활용처", "원소기호", "원자량", "원자번호", "주요 특성", "기본 특성", "기본 정보", "특성이", "어떤 광물", "어떤 금속", "무슨 광물", "무슨 금속", "광석", "ore"))):
         return RetrievalRoute(**common, use_mineral_info=True)
     if call.action_id == "document.retrieve" and any(token in (s.topic or question) for token in ("월간동향", "희소금속 동향", "전략광종 동향")):
         return RetrievalRoute(**common, use_monthly_trend=True)
@@ -1481,7 +1486,10 @@ def _filter_document_evidence_to_trailing_period(evidence: list[Evidence], actio
         # 통계 대상연도일 수 있어 2026년 발행 보고서를 제거하면 안 된다.
         topic = re.sub(r"\s+", "", action_call.slots.topic or "")
         if not any(marker in topic for marker in (
-            "월간동향", "자원뉴스", "수출통제관련뉴스", "수출통제뉴스",
+            # 주간동향은 별도 게시물 adapter가 파일명에서 검증한 발행일을
+            # Evidence.as_of로 제공한다. 이를 누락하면 adapter가 정확한 날짜의
+            # 문서를 찾아도 여기서 전부 버려져 ``no_data``가 된다.
+            "월간동향", "주간동향", "자원뉴스", "수출통제관련뉴스", "수출통제뉴스",
         )):
             return evidence
         if period.kind == "range" and period.start and period.end:
@@ -1497,11 +1505,11 @@ def _filter_document_evidence_to_trailing_period(evidence: list[Evidence], actio
         return evidence
     filtered: list[Evidence] = []
     for ev in evidence:
-        try:
-            observed = date.fromisoformat((ev.as_of or "")[:10])
-        except ValueError:
+        observed_bounds = _period_bounds(ev.observed_period or ev.as_of or "")
+        if observed_bounds is None:
             continue
-        if start <= observed <= end:
+        observed_start, observed_end = observed_bounds
+        if start <= observed_start <= observed_end <= end:
             filtered.append(ev)
     return filtered
 
@@ -2250,6 +2258,11 @@ def _retrieve_node(
                 news.fetch_news_evidence, route.resolved_query or state["question"],
                 start=news_start, end=news_end,
             )
+        if route.use_inventory and route.komis_mineral_name:
+            jobs["inventory"] = submit(
+                inventory.fetch_inventory_evidence, route.komis_mineral_name,
+                basis=(state.get("action_call").slots.price_basis if state.get("action_call") else None),
+            )
         if route.use_battery_minerals:
             jobs["battery_minerals"] = submit(battery_minerals.fetch_battery_minerals_evidence)
         if route.use_production_concentration and route.komis_mineral_name:
@@ -2379,6 +2392,10 @@ def _retrieve_node(
         news_evidence, news_warnings = results["news"]
         evidence.extend(news_evidence)
         warnings.extend(news_warnings)
+    if "inventory" in results:
+        inventory_evidence, inventory_warnings = results["inventory"]
+        evidence.extend(inventory_evidence)
+        warnings.extend(inventory_warnings)
     if "battery_minerals" in results:
         battery_evidence, battery_warnings = results["battery_minerals"]
         evidence.extend(battery_evidence)
@@ -2586,6 +2603,37 @@ def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
         # 본문도 기권되는 회귀가 생긴다.
         if (action_call.action_id == "document.lookup"
                 and any(ev.kind == "pageindex" and ev.text.strip() for ev in evidence)):
+            return {"sufficient": True, "evidence": evidence, "warnings": state.get("warnings", [])}
+        # 월간·주간 게시물 adapter는 기간·문서군을 코드로 확정하고 해당 문서의
+        # 구조화 발췌만 반환한다. 이후 동적 수입/광물정보 action을 붙여야 하는
+        # 복합 질문에서 Advisor가 '문서만으로 수입/정보를 답할 수 없다'고 먼저
+        # 막으면 후속 action 자체가 실행되지 않는다. 게시물 선택의 충분성만
+        # 여기서 확정하고, 후속 수치/정보 action은 각각 별도 검증한다.
+        if (action_call.requirement_id in {"monthly_trend", "weekly_news"}
+                and action_call.action_id == "document.retrieve"
+                and any(ev.kind == "structured" and ev.text.strip() for ev in evidence)):
+            return {"sufficient": True, "evidence": evidence, "warnings": state.get("warnings", [])}
+        # 일일 자원뉴스는 발행 상태·기간·핵심 검색어를 adapter의 SQL에서
+        # 결정적으로 대조한 기사 표다. 실제 기사 행과 기간 메타데이터가 있는
+        # 경우에만 일반 Advisor를 건너뛴다. 반정형 보고서만 검색된 경우에는
+        # 이 조건에 해당하지 않아 기존 검증을 계속 적용한다.
+        route = state.get("route")
+        if (getattr(route, "use_news", False)
+                and action_call.action_id == "document.retrieve"
+                and any(
+                    ev.kind == "structured"
+                    and "public.ko_daynews_raw" in ev.source
+                    and _period_bounds(ev.observed_period or ev.as_of or "") is not None
+                    and re.search(r"\|\s*20\d{2}-\d{2}-\d{2}\s*\|", ev.text)
+                    for ev in evidence
+                )):
+            return {"sufficient": True, "evidence": evidence, "warnings": state.get("warnings", [])}
+        # 전략광종 현황은 adapter가 YAML 목록의 모든 행(관측·미매핑·더미 상태)을
+        # 하나의 결정적 표로 만든다. 검증기가 긴 표의 마지막 광종만 보고 '일부
+        # 란탄 자료'로 오인하지 않게 표 전체를 renderer에 전달한다.
+        if (action_call.action_id == "price.overview"
+                and len(evidence) == 1 and evidence[0].kind == "structured"
+                and "strategic_group" in evidence[0].text and "source_status" in evidence[0].text):
             return {"sufficient": True, "evidence": evidence, "warnings": state.get("warnings", [])}
 
     # 복합 수치·문서 요청은 source_contract에서 검색 전에 차단된다. 여기에
@@ -3350,9 +3398,27 @@ def retrieve_evidence(
                     intent="trade_concentration", role="data", depends_on=[call.requirement_id],
                 )
                 for dependent in (rank, concentration):
-                    if validate_action_plan(ActionPlan(actions=[dependent])).approved:
+                    # 이 후속 Action은 월간동향이 확인된 뒤에만 허용한다.
+                    # depends_on이 있는 action을 단독 계획으로 검증하면 선행
+                    # requirement가 없다는 이유로 거절되어 영원히 실행되지 않는다.
+                    if validate_action_plan(ActionPlan(actions=[call, dependent])).approved:
                         original_plan.actions.append(dependent)
                         scheduled_calls.append(dependent)
+        if (call.requirement_id == "monthly_trend" and "월간동향" in question
+                and "기본정보" in question.replace(" ", "")):
+            monthly_minerals = []
+            for mineral in ("리튬", "니켈", "코발트", "망간", "흑연", "텅스텐", "희토류", "구리", "아연"):
+                if mineral in " ".join(evidence.text for evidence in verified_evidence):
+                    monthly_minerals.append(mineral)
+            for mineral in monthly_minerals[:5]:
+                info = ActionCall(
+                    requirement_id=f"monthly_info_{mineral}", action_id="document.retrieve",
+                    slots=ActionSlots(mineral=mineral, topic=f"{mineral} 기본 정보"),
+                    intent="document", role="content", depends_on=[call.requirement_id],
+                )
+                if validate_action_plan(ActionPlan(actions=[call, info])).approved:
+                    original_plan.actions.append(info)
+                    scheduled_calls.append(info)
     # 원래 계획의 순서대로 반환해 생성기의 요구사항 순서가 실행 세부순서에
     # 좌우되지 않게 한다. 가격예측 부분 결과도 이 순서 안에 포함된다.
     order = {call.requirement_id: index for index, call in enumerate(original_plan.actions)}

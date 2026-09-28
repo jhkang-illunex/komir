@@ -41,7 +41,9 @@ from rag_core.retrieval.evidence import from_dense_chunk, from_pageindex_hit  # 
 from ._mcp_tools_common import register_common_tools  # noqa: E402
 
 mcp = FastMCP("komir-ragkit-private")
-register_common_tools(mcp)
+# KO_MNRL_SNTHS_INDX의 테이블·지수코드·필수 열을 DB에서 확인한 private 전용
+# 신뢰 선언이다. public 서버에는 이 인자를 전달하지 않아 접근 경계가 유지된다.
+register_common_tools(mcp, trusted_private_pages=frozenset({"indicator_composite"}))
 
 
 @mcp.tool()

@@ -195,6 +195,10 @@ def main() -> int:
         "--exclude-case-ids", default="",
         help="쉼표로 구분한 점검 ID는 제외한다(기존 증적과 병합하는 재실행용).",
     )
+    parser.add_argument(
+        "--case-overrides", type=Path,
+        help="보유 데이터 기준으로 질문을 보정한 JSON 파일. {ID: {question, note}} 형식.",
+    )
     args = parser.parse_args()
     debug = debug_enabled()
 
@@ -203,6 +207,24 @@ def main() -> int:
     known_ids = {case[0] for case in CASES}
     if requested_ids & excluded_ids:
         raise ValueError("동일 점검 ID를 --case-ids와 --exclude-case-ids에 함께 지정할 수 없습니다.")
+    overrides: dict[str, dict[str, str]] = {}
+    if args.case_overrides:
+        loaded = json.loads(args.case_overrides.read_text(encoding="utf-8"))
+        if not isinstance(loaded, dict):
+            raise ValueError("case-overrides는 ID별 객체여야 합니다.")
+        for case_id, item in loaded.items():
+            if not isinstance(item, dict) or not isinstance(item.get("question"), str):
+                raise ValueError(f"case-overrides의 {case_id}에는 question 문자열이 필요합니다.")
+            markers = item.get("expected_markers")
+            if markers is not None and (not isinstance(markers, list) or not all(isinstance(value, str) for value in markers)):
+                raise ValueError(f"case-overrides의 {case_id}.expected_markers는 문자열 배열이어야 합니다.")
+            overrides[str(case_id)] = {
+                "question": item["question"], "note": str(item.get("note") or ""),
+                "expected_markers": markers,
+            }
+    unknown_override_ids = set(overrides) - known_ids
+    if unknown_override_ids:
+        raise ValueError(f"case-overrides에 알 수 없는 ID가 있습니다: {', '.join(sorted(unknown_override_ids))}")
     cases = tuple(case for case in CASES if (not requested_ids or case[0] in requested_ids)
                   and case[0] not in excluded_ids)
     unknown_ids = (requested_ids | excluded_ids) - known_ids
@@ -213,9 +235,15 @@ def main() -> int:
     output_dir.mkdir(parents=True, exist_ok=True)
     timestamp = datetime.now(timezone.utc).astimezone().strftime("%Y%m%d_%H%M%S")
     results: list[dict] = []
-    for number, (case_id, question, expected) in enumerate(cases, start=1):
+    for number, (case_id, original_question, expected) in enumerate(cases, start=1):
+        override = overrides.get(case_id, {})
+        question = override.get("question", original_question)
+        expected = tuple(override.get("expected_markers") or expected)
         started = time.monotonic()
         record = {"id": case_id, "question": question, "expected_markers": list(expected)}
+        if question != original_question:
+            record["original_question"] = original_question
+            record["qa_adjustment"] = override.get("note") or "보유 데이터 기준 날짜 보정"
         try:
             events, terminal = ask(args.base_url, question, args.timeout)
             status, notes = classify(events, terminal, expected, case_id)
@@ -240,6 +268,7 @@ def main() -> int:
     summary = Counter(item["status"] for item in results)
     raw_path = output_dir / f"user_qa_pair_audit_{timestamp}.json"
     raw_path.write_text(json.dumps({"generated_at": timestamp, "base_url": args.base_url,
+                                    "case_overrides": str(args.case_overrides) if args.case_overrides else None,
                                     "summary": dict(summary), "results": results}, ensure_ascii=False, indent=2), encoding="utf-8")
     report_path = output_dir / f"user_qa_pair_audit_{timestamp}.md"
     lines = [
@@ -258,6 +287,8 @@ def main() -> int:
         visual = f"표 {item.get('table_count', 0)} / 차트 {item.get('chart_count', 0)}"
         notes = "; ".join(item.get("notes", [])) or "-"
         question = item["question"].replace("|", "\\|")
+        if item.get("original_question"):
+            question += "<br>원문: " + item["original_question"].replace("|", "\\|")
         lines.append(f"|{item['id']}|{item['status']}|{question}|{compact(action_source, 220)}|{visual}|{notes}|")
     lines += ["", "## 응답 원문 발췌", ""]
     for item in results:

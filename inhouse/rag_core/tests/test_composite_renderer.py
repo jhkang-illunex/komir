@@ -10,6 +10,58 @@ from rag_core.retrieval.evidence import Evidence  # noqa: E402
 
 
 class CompositeRendererTest(unittest.TestCase):
+    def test_single_weekly_report_is_rendered_without_generation(self):
+        plan = ActionPlan(actions=[
+            ActionCall(requirement_id="weekly_news", action_id="document.retrieve",
+                       slots=ActionSlots(topic="2026년 6월 16일 주간동향")),
+        ])
+        evidence = [Evidence(
+            kind="structured", source="KOMIS·조달청 주간 광물동향", section="주간 광물동향 게시물",
+            text=("| 게시일 | 출처 | 보고서 제목 | 원문 |\n| --- | --- | --- | --- |\n"
+                  "| 2026-06-16 | 조달청 주간시장동향 | 주간 경제 비철금속 시장 동향 | 게시판 |"),
+            action_id="document.retrieve",
+        )]
+        result = render_composite(evidence, plan)
+        self.assertIsNotNone(result)
+        self.assertIn("주간 자원뉴스", result[0])
+        self.assertIn("2026-06-16", result[0])
+
+    def test_monthly_minerals_and_info_are_rendered_from_separate_adapters(self):
+        plan = ActionPlan(actions=[
+            ActionCall(requirement_id="monthly_trend", action_id="document.retrieve",
+                       slots=ActionSlots(topic="2026년 6월 전략광종 월간동향")),
+            ActionCall(requirement_id="monthly_info_니켈", action_id="document.retrieve",
+                       slots=ActionSlots(mineral="니켈", topic="니켈 기본 정보")),
+        ])
+        evidence = [
+            Evidence(kind="structured", source="전략광종 월간동향", section="2026년 6월호",
+                     text="| 월호 | 광종목록 |\n|---|---|\n| 2026년 6월호 | 니켈 |", action_id="document.retrieve"),
+            Evidence(kind="structured", source="Royal Society of Chemistry", section="광물정보",
+                     text="| 광종 | 속성 | 값 |\n|---|---|---|\n| 니켈 | uses | 합금 |\n| 니켈 | characteristics | 내식성 |",
+                     action_id="document.retrieve"),
+        ]
+        result = render_composite(evidence, plan)
+        self.assertIsNotNone(result)
+        self.assertIn("광물정보", result[0])
+        self.assertIn("니켈: uses: 합금", result[0])
+
+    def test_monthly_minerals_and_import_ranks_are_rendered_from_separate_adapters(self):
+        plan = ActionPlan(actions=[
+            ActionCall(requirement_id="monthly_trend", action_id="document.retrieve",
+                       slots=ActionSlots(topic="2026년 6월 전략광종 월간동향")),
+            ActionCall(requirement_id="monthly_import_니켈", action_id="trade.country_rank",
+                       slots=ActionSlots(mineral="니켈")),
+        ])
+        evidence = [
+            Evidence(kind="structured", source="전략광종 월간동향", section="2026년 6월호",
+                     text="| 월호 | 광종목록 |\n|---|---|\n| 2026년 6월호 | 니켈 |", action_id="document.retrieve"),
+            Evidence(kind="structured", source="수급지도", section="한국 수입",
+                     text="| country | share_pct |\n|---|---|\n| 인도네시아 | 61.2 |", action_id="trade.country_rank"),
+        ]
+        result = render_composite(evidence, plan)
+        self.assertIsNotNone(result)
+        self.assertIn("한국 수입 1위국", result[0])
+        self.assertIn("니켈: 인도네시아 (61.2%)", result[0])
     def test_single_news_document_is_rendered_without_generation(self):
         """확인된 ai_news 표는 생성 기권으로 버리지 않는다."""
         plan = ActionPlan(actions=[
@@ -44,6 +96,25 @@ class CompositeRendererTest(unittest.TestCase):
         self.assertIn("니켈 가격 +10.00%", result[0])
         self.assertIn("광물 종합지수 -5.00%", result[0])
         self.assertEqual(result[1], {1, 2})
+
+    def test_index_co_rise_renders_only_same_direction_minerals(self):
+        plan = ActionPlan(actions=[
+            ActionCall(requirement_id="index", action_id="indicator.series", slots=ActionSlots()),
+            ActionCall(requirement_id="cu", action_id="price.series", slots=ActionSlots(mineral="구리")),
+            ActionCall(requirement_id="ni", action_id="price.series", slots=ActionSlots(mineral="니켈")),
+        ])
+        evidence = [
+            Evidence(kind="structured", source="index", section="지수",
+                     text="| date | index |\n|---|---|\n| 2026-07-02 | 100 |\n| 2026-08-30 | 110 |", action_id="indicator.series"),
+            Evidence(kind="structured", source="price", section="가격",
+                     text="| date | price |\n|---|---|\n| 2026-07-02 | 100 |\n| 2026-08-30 | 108 |", action_id="price.series"),
+            Evidence(kind="structured", source="price", section="가격",
+                     text="| date | price |\n|---|---|\n| 2026-07-02 | 100 |\n| 2026-08-30 | 90 |", action_id="price.series"),
+        ]
+        result = render_composite(evidence, plan)
+        self.assertIsNotNone(result)
+        self.assertIn("구리(+8.00%)", result[0])
+        self.assertNotIn("니켈(-10.00%)", result[0])
 
     def test_latest_trade_requires_previous_month(self):
         plan = ActionPlan(actions=[

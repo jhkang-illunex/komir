@@ -141,12 +141,17 @@ def _format_period_bound(value: str, precision: str) -> str:
     return value[:4]
 
 
-def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = frozenset()) -> None:
+def register_common_tools(
+    mcp: FastMCP, *, private_only_pages: frozenset[str] = frozenset(),
+    trusted_private_pages: frozenset[str] = frozenset(),
+) -> None:
     """호출자(mcp_server_public.py·mcp_server_private.py)가 자기 `FastMCP`
     인스턴스를 넘겨 이 6개 tool을 등록한다. `private_only_pages`는
     komis_raw_lookup에서 거부할 `page_id` 집합 — public.py만 소스코드로
     `PRIVATE_ONLY_KOMIS_PAGES`를 박아 넣어 넘기고, private.py는 기본값(빈
-    집합=제한 없음) 그대로 둔다. 모든 tool은 top-level에서 항상
+    집합=제한 없음) 그대로 둔다. `trusted_private_pages`는 private 서버만
+    코드로 선언하는 내부 원천 신뢰 목록이며 public 서버에는 전달하지 않는다.
+    모든 tool은 top-level에서 항상
     `dict[str, Any]`(Optional도 list도 아닌 순수 object)를 반환한다 — FastMCP가
     반환 타입이 이미 object 스키마면 `structuredContent`에 그대로 싣고,
     `dict | None`/`list[...]`처럼 top-level이 object가 아니면 `{"result": ...}`
@@ -437,12 +442,23 @@ def register_common_tools(mcp: FastMCP, *, private_only_pages: frozenset[str] = 
             # KOMIS_RAW_DUMMY_CAVEAT의 "실제 값이 아닙니다"가 그대로 붙어
             # 판정 불가를 확정 더미로 잘못 단정하게 된다(main-agent 결과감사
             # 지적) — 별도의 "판정 불가" caveat(`unverified=True`)로 처리한다.
-            unverified = True
-            warnings.append(
-                "⚠ 광물종합지수(KO_MNRL_SNTHS_INDX)는 광종과 무관한 지표라 KOMIS "
-                "실제 표본인지 자동으로 확인할 방법이 없습니다 — 실제 수치인 "
-                "것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요."
+            # 단, private 서버가 명시적으로 신뢰한 내부 원천은 정확한 테이블,
+            # 필수 열, 허용 지수 코드까지 현재 조회 결과에서 재확인한 경우에만
+            # 이 fail-closed 상태를 해제한다. public 서버는 이 선언을 받지 않는다.
+            trusted_composite = (
+                page_id in trusted_private_pages
+                and all(ds.source_table == "KO_MNRL_SNTHS_INDX" for ds in datasets)
+                and all({"indx_se_cd", "crtr_ymd", "indx"} <= set(ds.columns) for ds in datasets)
+                and all(row.get("indx_se_cd") in {"HI001", "HI002", "HI003"}
+                        for ds in datasets for row in ds.rows)
             )
+            if not trusted_composite:
+                unverified = True
+                warnings.append(
+                    "⚠ 광물종합지수(KO_MNRL_SNTHS_INDX)는 광종과 무관한 지표라 KOMIS "
+                    "실제 표본인지 자동으로 확인할 방법이 없습니다 — 실제 수치인 "
+                    "것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요."
+                )
 
         # is_dummy/unverified를 Evidence.caveat에도 심는다(위 warnings는 도구
         # 호출 로그·기권사유 분류용, caveat는 이 근거가 실제로 인용됐을 때

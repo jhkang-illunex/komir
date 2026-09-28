@@ -29,6 +29,39 @@ def call(requirement_id, action_id, **slots):
 
 
 class ActionContractAuditTest(unittest.TestCase):
+    def test_verified_daily_news_bypasses_general_advisor(self):
+        """발행·기간·검색조건을 SQL로 확정한 뉴스 표를 LLM 기권으로 버리지 않는다."""
+        action = ActionCall(
+            requirement_id="publication_search", action_id="document.retrieve",
+            slots=ActionSlots(topic="중국 수출통제 뉴스", period=Period(
+                kind="range", start="2026-07-01", end="2026-08-31", explicit=True,
+            )), intent="document", role="content",
+        )
+        evidence = Evidence(
+            kind="structured", source="public.ko_daynews_raw + 반정형 보고서",
+            section="일일 자원뉴스",
+            text=("| 날짜 | 제목 | 요약 |\n|---|---|---|\n"
+                  "| 2026-07-28 | 중국 수출통제 | 발행 기사 |"),
+            as_of="2026-07-28~2026-08-24", requirement_id="publication_search",
+            action_id="document.retrieve", source_id="public.ko_daynews_raw + 반정형 보고서",
+            observed_period="2026-07-28~2026-08-24",
+        )
+        route = graph.RetrievalRoute(resolved_query="중국 수출통제 뉴스", use_structured=False,
+                                     use_dense=False, use_pageindex=False, use_news=True)
+        result = graph._verify_node({
+            "evidence": [evidence], "warnings": [], "action_call": action,
+            "route": route, "history": [],
+        }, None)
+        self.assertTrue(result["sufficient"])
+
+    def test_monthly_document_mineral_absence_has_specific_user_message(self):
+        from rag_core.ragkit.chatbot import _resolve_abstain
+        reason, text = _resolve_abstain(
+            "2026년 5월 희소금속 월간동향에서 니켈 관련 내용 찾아줘",
+            ["monthly_trend_mineral_not_mentioned:니켈", "advisor_rejected"], None,
+        )
+        self.assertEqual(reason, "content_not_mentioned")
+        self.assertEqual(text, "해당 월간동향 문서에는 니켈에 대한 언급이 없습니다.")
     def test_world_trade_rank_routes_to_global_source_without_korea_substitution(self):
         candidate = action_plan_from_intent(IntentPlan(requirements=[IntentCall(
             requirement_id="rank", intent="trade_rank", role="data",
@@ -181,7 +214,72 @@ class ActionContractAuditTest(unittest.TestCase):
         route = _route_from_action_call(candidate.actions[0], "이번주 비철금속 주간 동향 요약해줘")
         self.assertTrue(route.use_weekly_trend)
         self.assertEqual(_publication_date("20260616_주간 경제 비철금속 시장 동향.pdf").isoformat(), "2026-06-16")
+        self.assertEqual(_publication_date("2026-06-16_주간광물동향_KOMIS.hwp").isoformat(), "2026-06-16")
         self.assertIsNone(_publication_date("주간 경제 비철금속 시장 동향.pdf"))
+
+    def test_dated_weekly_trend_evidence_is_not_removed_by_period_filter(self):
+        call = extract_action_plan("2026년 6월 16일 주간 자원뉴스 요약해줘", type("No", (), {
+            "invoke": lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("planner called")),
+        })()).actions[0]
+        evidence = [Evidence(kind="structured", source="KOMIS", section="주간 광물동향 게시물",
+                             text="| 게시일 | 보고서 제목 |\n|---|---|\n| 2026-06-16 | 주간동향 |",
+                             as_of="2026-06-16")]
+        self.assertEqual(graph._filter_document_evidence_to_trailing_period(evidence, call), evidence)
+
+    def test_monthly_followup_validation_keeps_its_confirmed_parent_requirement(self):
+        parent = ActionCall(requirement_id="monthly_trend", action_id="document.retrieve",
+                            slots=ActionSlots(topic="2026년 6월 전략광종 월간동향"),
+                            intent="document", role="content")
+        followup = ActionCall(requirement_id="monthly_info_니켈", action_id="document.retrieve",
+                              slots=ActionSlots(mineral="니켈", topic="니켈 기본 정보"),
+                              intent="document", role="content", depends_on=["monthly_trend"])
+        self.assertTrue(validate_action_plan(ActionPlan(actions=[parent, followup])).approved)
+
+    def test_mineral_basic_info_route_uses_structured_adapter(self):
+        call = ActionCall(requirement_id="info", action_id="document.retrieve",
+                          slots=ActionSlots(mineral="니켈", topic="니켈 기본 정보"),
+                          intent="document", role="content")
+        self.assertTrue(_route_from_action_call(call, "니켈 기본 정보").use_mineral_info)
+
+    def test_index_co_rise_plan_keeps_index_and_five_price_series(self):
+        candidate = extract_action_plan("광물지수 오를때 같이 오른 광종은 뭐야?", type("No", (), {
+            "invoke": lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("planner called")),
+        })())
+        self.assertEqual([call.action_id for call in candidate.actions],
+                         ["indicator.series", "price.series", "price.series", "price.series", "price.series", "price.series"])
+        self.assertEqual([call.slots.mineral for call in candidate.actions[1:]],
+                         ["구리", "니켈", "코발트", "리튬", "희토류"])
+        self.assertTrue(all(call.depends_on == ["composite_index_trend"] for call in candidate.actions[1:]))
+
+    def test_yearly_monthly_document_content_query_keeps_calendar_year(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("연도 지정 월간동향 문형은 planner를 호출하면 안 됩니다")
+
+        candidate = extract_action_plan("2026년 희소금속 월간동향에서 리튬 관련 내용 찾아줘", MustNotRun())
+        call = candidate.actions[0]
+        self.assertEqual(call.action_id, "document.retrieve")
+        self.assertEqual(call.slots.period.calendar_year, 2026)
+        self.assertTrue(_route_from_action_call(call, "2026년 희소금속 월간동향에서 리튬 관련 내용 찾아줘").use_monthly_trend)
+
+    def test_year_month_monthly_document_query_keeps_single_month_range(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("연월 지정 월간동향 문형은 planner를 호출하면 안 됩니다")
+
+        candidate = extract_action_plan("2026년 5월 희소금속 월간동향에서 리튬 관련 내용 찾아줘", MustNotRun())
+        period = candidate.actions[0].slots.period
+        self.assertEqual((period.start, period.end), ("2026-05-01", "2026-05-31"))
+
+    def test_year_month_rare_monthly_prices_keeps_single_month_range(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("연월 지정 희소금속 월간동향 가격 문형은 planner를 호출하면 안 됩니다")
+
+        candidate = extract_action_plan("2026년 5월 희소금속 월간동향에 나온 광종들 가격 어때?", MustNotRun())
+        call = candidate.actions[0]
+        self.assertEqual(call.requirement_id, "monthly_rare_metals")
+        self.assertEqual((call.slots.period.start, call.slots.period.end), ("2026-05-01", "2026-05-31"))
 
     def test_price_operation_questions_keep_typed_period_and_operation(self):
         class MustNotRun:

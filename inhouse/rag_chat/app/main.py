@@ -79,7 +79,7 @@ async def _lifespan(_app: FastAPI):
         await asyncio.to_thread(mcp_client.stop_all)
 
 
-app = FastAPI(title="komir rag_chat", lifespan=_lifespan, docs_url=None, redoc_url=None)
+app = FastAPI(title="komir rag_chat", version="0.2", lifespan=_lifespan, docs_url=None, redoc_url=None)
 app.include_router(chat_router)
 
 # 2026-09-03: report_gen과 동일 이유(§shared/docs_static.py 모듈 docstring)

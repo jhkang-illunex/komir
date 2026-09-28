@@ -108,6 +108,7 @@ from .multi_action_state import encode_citation_envelope, state_from_action_resu
 from .answer_composer import AnswerComposer
 from .composite_renderer import render_composite
 from .renderers.mineral_info import render_mineral_info
+from .renderers.inventory import render_latest_inventory
 from .renderers.deterministic import render_q15_usgs_scope, render_strategic_price_overview
 from .renderers.citation import citation_sources as build_citation_sources
 from .renderers.price import (
@@ -1565,6 +1566,12 @@ def _resolve_abstain(message: str, warnings: list[str], llm: "KomirJsonLLM | Non
     if "ambiguous_mine_profile" in warnings:
         return "ambiguous", "확인 가능한 문서에 여러 광산이 있어 하나의 위치로 답할 수 없습니다. 광산명을 지정해 다시 질문해 주세요."
     action_failure = next((w.split(":", 1)[1] for w in warnings if w.startswith("action_plan_failed:")), None)
+    mineral_not_mentioned = next((warning.split(":", 1)[1] for warning in warnings
+                                  if warning.startswith("monthly_trend_mineral_not_mentioned:")), None)
+    if mineral_not_mentioned:
+        return "content_not_mentioned", (
+            f"해당 월간동향 문서에는 {mineral_not_mentioned}에 대한 언급이 없습니다."
+        )
     if action_failure == "source_unavailable":
         return "source_unavailable", chat_message("data_not_found")
     if any(w.startswith("source_unavailable:") for w in warnings):
@@ -1893,7 +1900,10 @@ async def chat_turn(
         })
         return
 
-    strategic_overview_answer = render_strategic_price_overview(evidence, action_plan)
+    # API 경로는 action_plan을 미리 넘기지 않을 수 있다. retrieval이 실제 실행한
+    # typed plan을 기준으로 renderer를 선택해야 복합 Action이 일반 생성 경로로
+    # 빠지지 않는다.
+    strategic_overview_answer = render_strategic_price_overview(evidence, executed_plan)
     if strategic_overview_answer is not None:
         answer, cited_indices = strategic_overview_answer
         citations = build_citation_sources(cited_indices, evidence)
@@ -1916,7 +1926,7 @@ async def chat_turn(
         })
         return
 
-    mineral_info_answer = render_mineral_info(evidence, action_plan)
+    mineral_info_answer = render_mineral_info(evidence, executed_plan)
     if mineral_info_answer is not None:
         answer, cited_indices = mineral_info_answer
         citations = build_citation_sources(cited_indices, evidence)
@@ -1931,7 +1941,7 @@ async def chat_turn(
         })
         return
 
-    composite_index_answer = _composite_index_scope_answer(evidence, action_plan)
+    composite_index_answer = _composite_index_scope_answer(evidence, executed_plan)
     if composite_index_answer is not None:
         answer, cited_indices = composite_index_answer
         if answer.startswith("계산 불가:"):
@@ -1960,7 +1970,7 @@ async def chat_turn(
     # 연결된 복수 Action은 LLM이 수치를 재조합하지 않도록 표 근거에서
     # 결정적으로 계산한다. 원천 표가 계약 열을 충족하지 않으면 일반
     # multi-action 안내/기권 경로로 내려간다.
-    composite_answer = render_composite(evidence, action_plan)
+    composite_answer = render_composite(evidence, executed_plan)
     if composite_answer is not None:
         answer, cited_indices = composite_answer
         citations = _citation_sources(cited_indices, evidence)
@@ -1996,6 +2006,21 @@ async def chat_turn(
             yield ChatEvent(type="delta", data={"delta": answer})
             yield _abstain_done("source_unavailable")
             return
+        citations = _citation_sources(cited_indices, evidence)
+        yield _status_event(4)
+        yield ChatEvent(type="delta", data={"delta": answer})
+        await asyncio.to_thread(
+            append_message, resolved_session_id, "assistant", answer,
+            json.dumps(citations, ensure_ascii=False), store_db_path,
+        )
+        yield ChatEvent(type="done", data={
+            "done": True, "citations": citations, "bogus_citations": [], "abstained": False,
+        })
+        return
+
+    inventory_answer = render_latest_inventory(evidence, action_plan)
+    if inventory_answer is not None:
+        answer, cited_indices = inventory_answer
         citations = _citation_sources(cited_indices, evidence)
         yield _status_event(4)
         yield ChatEvent(type="delta", data={"delta": answer})

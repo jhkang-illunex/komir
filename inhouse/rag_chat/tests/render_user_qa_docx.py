@@ -84,7 +84,10 @@ def main() -> None:
         notes = "; ".join(row.get("notes", [])) or "-"
         answer = row.get("answer") or "(응답 없음)"
         debug = _debug_text(row)
-        for cell, text in zip(cells, (row["id"], _status_label(row["status"]), row["question"], answer, source, notes, debug)):
+        question = row["question"]
+        if row.get("original_question"):
+            question += f"\n원문: {row['original_question']}\n날짜 보정: {row.get('qa_adjustment') or '-'}"
+        for cell, text in zip(cells, (row["id"], _status_label(row["status"]), question, answer, source, notes, debug)):
             _set_cell_text(cell, text)
 
     args.output_docx.parent.mkdir(parents=True, exist_ok=True)

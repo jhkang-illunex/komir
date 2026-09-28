@@ -18,6 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 ActionId = Literal[
     "price.series", "price.compare", "price.verify_claim", "price.overview", "price.volatility_rank",
+    "inventory.latest",
     "trade.country_rank", "trade.price_cross_rank", "trade.monthly", "trade.concentration", "trade.hs_summary", "trade.indicator",
     "resource.rank", "resource.price_cross_rank", "resource.yoy", "mine.rank", "mine.profile", "indicator.series", "document.retrieve", "document.lookup", "menu.navigate", "dataset.navigate",
     "diagnosis.rank", "diagnosis.series", "forecast.demand", "forecast.price", "forecast.quantity",
@@ -139,6 +140,7 @@ class PlanAssessment(BaseModel):
 
 AVAILABLE = frozenset({
     "price.series", "price.compare", "price.verify_claim", "price.overview", "price.volatility_rank", "trade.country_rank", "trade.price_cross_rank", "trade.monthly",
+    "inventory.latest",
     "trade.concentration", "trade.hs_summary", "trade.indicator", "resource.rank", "resource.price_cross_rank", "resource.yoy", "mine.rank", "mine.profile", "indicator.series", "document.retrieve", "document.lookup", "stockpile.methodology", "menu.navigate", "dataset.navigate",
     "forecast.price",
 })
@@ -147,6 +149,7 @@ AVAILABLE = frozenset({
 # 소유하므로 데이터 action과 섞지 않는다.
 COMPOSABLE_MULTI_ACTIONS = frozenset({
     "price.series", "price.compare", "price.verify_claim", "price.overview", "price.volatility_rank",
+    "inventory.latest",
     "trade.country_rank", "trade.monthly", "trade.concentration", "trade.hs_summary", "trade.indicator",
     "resource.rank", "resource.yoy", "mine.rank", "mine.profile", "indicator.series",
     "document.retrieve", "document.lookup", "stockpile.methodology",
@@ -163,6 +166,7 @@ UNAVAILABLE = frozenset({
 CURRENT_PERIOD_ENDS = frozenset({"latest", "current", "now", "현재", "오늘", "금일", "금일자"})
 REQUIRED: dict[str, tuple[str, ...]] = {
     "price.series": ("mineral",), "price.compare": ("minerals",), "price.verify_claim": ("mineral", "claimed_change_pct"), "price.volatility_rank": (),
+    "inventory.latest": ("mineral",),
     "price.overview": ("strategic_price_groups",),
     "trade.country_rank": ("mineral", "metric"), "trade.price_cross_rank": ("partner_country", "metric"), "trade.monthly": (), "trade.concentration": ("mineral",), "trade.indicator": ("trade_metric",),
     "trade.hs_summary": ("hs_code",), "resource.rank": ("mineral", "metric"), "resource.price_cross_rank": ("metric",), "resource.yoy": ("mineral",),
@@ -1202,17 +1206,32 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
     weekly_price_news = _weekly_price_news_plan(message)
     if weekly_price_news is not None:
         return weekly_price_news
+    weekly_news_summary = _weekly_news_summary_plan(message)
+    if weekly_news_summary is not None:
+        return weekly_news_summary
     # 다음 세 질문은 광종/구성 목록이 원천 조회 전에는 확정되지 않는다. 임의의
     # 광종·예측값을 채우지 않고, 질문이 명시한 상대 기간만 고정한 문서 Action으로
     # 시작한다. 적재된 원천이 없으면 source_unavailable로 닫히며 slot_unresolved
     # (라우팅 오류)로 오인되지 않는다.
-    if re.fullmatch(r"이번달희소금속월간동향에나온광종들가격(?:은)?(?:어때|어떤가요)?[?.]?", compact):
-        today = date.today()
+    rare_monthly_prices = re.fullmatch(
+        r"(?P<period>이번달|20\d{2}년\d{1,2}월)희소금속월간동향에나온광종들가격(?:은)?(?:어때|어떤가요)?[?.]?",
+        compact,
+    )
+    if rare_monthly_prices:
+        period_text = rare_monthly_prices.group("period")
+        if period_text == "이번달":
+            today = date.today()
+            period = Period(kind="range", start=today.replace(day=1).isoformat(), end=today.isoformat(), explicit=True)
+        else:
+            match = re.fullmatch(r"(20\d{2})년(\d{1,2})월", period_text)
+            assert match is not None
+            year, month = int(match.group(1)), int(match.group(2))
+            month_start = date(year, month, 1)
+            next_month = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
+            period = Period(kind="range", start=month_start.isoformat(), end=(next_month - timedelta(days=1)).isoformat(), explicit=True)
         return ActionPlan(actions=[ActionCall(
             requirement_id="monthly_rare_metals", action_id="document.retrieve",
-            slots=ActionSlots(topic="이번 달 희소금속 월간동향 광종별 가격",
-                              period=Period(kind="range", start=today.replace(day=1).isoformat(),
-                                            end=today.isoformat(), explicit=True)),
+            slots=ActionSlots(topic=message, period=period),
             intent="document", role="content",
         )])
     if re.fullmatch(r"광물종합지수구성광종중상승전망인건뭐야?[?.]?", compact):
@@ -1239,14 +1258,67 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
             ActionCall(requirement_id="monthly_trend", action_id="document.retrieve",
                        slots=ActionSlots(topic="월간동향"), intent="document", role="content"),
         ])
-    if re.fullmatch(r"이번달월간동향이랑이번주뉴스에공통으로나온이슈(?:는)?[?.]?", compact):
+    common_monthly_weekly = re.fullmatch(
+        r"(?P<monthly>이번달|20\d{2}년\d{1,2}월)(?:전략광종)?월간동향이랑"
+        r"(?P<weekly>이번주|20\d{2}년\d{1,2}월\d{1,2}일)(?:주간)?뉴스에공통으로나온이슈(?:는)?[?.]?",
+        compact,
+    )
+    if common_monthly_weekly is None:
+        common_monthly_weekly = re.fullmatch(
+            r"(?P<monthly>이번달|20\d{2}년\d{1,2}월)(?:전략광종)?월간동향(?:과|와|및)"
+            r"(?P<weekly>이번주|20\d{2}년\d{1,2}월\d{1,2}일)(?:주간)?뉴스에공통으로나온이슈(?:는)?[?.]?",
+            compact,
+        )
+    if common_monthly_weekly:
         today = date.today()
+        monthly_text, weekly_text = common_monthly_weekly.group("monthly"), common_monthly_weekly.group("weekly")
+        monthly_period = _written_month_period(monthly_text, today)
+        weekly_period = _written_week_period(weekly_text, today)
         return ActionPlan(actions=[
             ActionCall(requirement_id="monthly_trend", action_id="document.retrieve",
-                       slots=ActionSlots(topic="이번 달 월간동향", period=Period(kind="range", start=today.replace(day=1).isoformat(), end=today.isoformat(), explicit=True)), intent="document", role="content"),
+                       slots=ActionSlots(topic=f"{monthly_text} 전략광종 월간동향", period=monthly_period), intent="document", role="content"),
             ActionCall(requirement_id="weekly_news", action_id="document.retrieve",
-                       slots=ActionSlots(topic="이번 주 자원뉴스", period=Period(kind="range", start=(today-timedelta(days=today.weekday())).isoformat(), end=today.isoformat(), explicit=True)), intent="document", role="content"),
+                       slots=ActionSlots(topic=f"{weekly_text} 주간동향", period=weekly_period), intent="document", role="content"),
         ])
+    monthly_import_structure = re.fullmatch(
+        r"(?P<period>이번달|20\d{2}년\d{1,2}월)전략광종월간동향에나온광종들우리수입구조(?:어때)?[?.]?",
+        compact,
+    )
+    if monthly_import_structure:
+        period_text = monthly_import_structure.group("period")
+        return ActionPlan(actions=[ActionCall(
+            requirement_id="monthly_trend", action_id="document.retrieve",
+            slots=ActionSlots(topic=f"{period_text} 전략광종 월간동향", period=_written_month_period(period_text, date.today())),
+            intent="document", role="content",
+        )])
+    monthly_mineral_info = re.fullmatch(
+        r"(?P<period>이번달|20\d{2}년\d{1,2}월)전략광종월간동향에서다룬광종기본정보(?:를)?(?:알려줘)?[?.]?",
+        compact,
+    )
+    if monthly_mineral_info:
+        period_text = monthly_mineral_info.group("period")
+        return ActionPlan(actions=[ActionCall(
+            requirement_id="monthly_trend", action_id="document.retrieve",
+            slots=ActionSlots(topic=f"{period_text} 전략광종 월간동향 광종 기본 정보", period=_written_month_period(period_text, date.today())),
+            intent="document", role="content",
+        )])
+    if re.fullmatch(r"광물지수오를때같이오른광종은뭐야?[?.]?", compact):
+        period = Period(kind="trailing_months", trailing_months=3, explicit=True)
+        actions = [ActionCall(
+            requirement_id="composite_index_trend", action_id="indicator.series",
+            slots=ActionSlots(indicator="composite_index", indicator_variant="composite",
+                              indicator_operation="period_change", period=period),
+            intent="indicator", role="data",
+        )]
+        # 광물종합지수 원천은 전체/하위지수만 제공하므로, "같이 오른 광종"은
+        # 시스템 대상 5광종(CU·NI·CO·LI·REE)의 같은 보유기간 가격 시계열로
+        # 별도 검증한다. 지수 구성광종이라고 단정하지 않는다.
+        actions.extend(ActionCall(
+            requirement_id=f"index_co_rise_{mineral}", action_id="price.series",
+            slots=ActionSlots(mineral=mineral, period=period), intent="price_series", role="data",
+            depends_on=["composite_index_trend"],
+        ) for mineral in ("구리", "니켈", "코발트", "리튬", "희토류"))
+        return ActionPlan(actions=actions)
     if re.fullmatch(r"광물종합지수떨어진주에주요뉴스뭐있었어?[?.]?", compact):
         return ActionPlan(actions=[
             ActionCall(requirement_id="weekly_index", action_id="indicator.series",
@@ -1300,6 +1372,9 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
     forecast_price = _forecast_price_plan(message)
     if forecast_price is not None:
         return forecast_price
+    latest_inventory = _latest_inventory_plan(message)
+    if latest_inventory is not None:
+        return latest_inventory
     latest_price = _latest_price_plan(message)
     if latest_price is not None:
         return latest_price
@@ -1599,6 +1674,46 @@ def _weekly_price_news_plan(message: str) -> ActionPlan | None:
     ])
 
 
+def _written_month_period(value: str, today: date) -> Period:
+    """이번달 또는 YYYY년 M월을 문서 월호에 맞는 닫힌 기간으로 바꾼다."""
+    if value == "이번달":
+        return Period(kind="range", start=today.replace(day=1).isoformat(), end=today.isoformat(), explicit=True)
+    match = re.fullmatch(r"(20\d{2})년(\d{1,2})월", value)
+    if not match:
+        raise ValueError(f"유효하지 않은 월 표현: {value}")
+    start = date(int(match.group(1)), int(match.group(2)), 1)
+    end = (start.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+    return Period(kind="range", start=start.isoformat(), end=end.isoformat(), explicit=True)
+
+
+def _written_week_period(value: str, today: date) -> Period:
+    """이번주 또는 YYYY년 M월 D일을 주간 보고서 발행일의 닫힌 기간으로 바꾼다."""
+    if value == "이번주":
+        return Period(kind="range", start=(today - timedelta(days=today.weekday())).isoformat(), end=today.isoformat(), explicit=True)
+    match = re.fullmatch(r"(20\d{2})년(\d{1,2})월(\d{1,2})일", value)
+    if not match:
+        raise ValueError(f"유효하지 않은 주간 발행일 표현: {value}")
+    published = date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+    return Period(kind="range", start=published.isoformat(), end=published.isoformat(), explicit=True)
+
+
+def _weekly_news_summary_plan(message: str) -> ActionPlan | None:
+    """'주간 자원뉴스'를 보유 주간동향 게시물 adapter의 동의어로 고정한다."""
+    compact = re.sub(r"\s+", "", message)
+    match = re.fullmatch(
+        r"(?P<period>이번주|20\d{2}년\d{1,2}월\d{1,2}일)주간(?:자원)?뉴스요약(?:해줘)?[?.]?",
+        compact,
+    )
+    if not match:
+        return None
+    period_text = match.group("period")
+    return ActionPlan(actions=[ActionCall(
+        requirement_id="weekly_news", action_id="document.retrieve",
+        slots=ActionSlots(topic=f"{period_text} 주간동향", period=_written_week_period(period_text, date.today())),
+        intent="document", role="content",
+    )])
+
+
 def _price_index_comparison_plan(message: str) -> ActionPlan | None:
     """광종 가격과 HI001의 같은 기간 추세 비교를 두 typed action으로 보존한다.
 
@@ -1799,6 +1914,28 @@ def _forecast_price_plan(message: str) -> ActionPlan | None:
     )])
 
 
+def _latest_inventory_plan(message: str) -> ActionPlan | None:
+    """재고 질문을 가격 action으로 오인하지 않도록 최신 재고 action으로 고정한다."""
+    compact = re.sub(r"\s+", "", message)
+    match = re.fullmatch(
+        r"(?:(?:금일자?|오늘|현재|지금|최근)(?:의)?)?(?P<mineral>[가-힣A-Za-z0-9]+?)(?:의)?"
+        r"(?P<basis>LME)?(?:재고량|재고)(?:(?:은|는|이|을|를)?(?:얼마야|얼마인가요|알려줘|알려주세요|보여줘|보여주세요))?[?.]?",
+        compact,
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return None
+    mineral = match.group("mineral")
+    if any(marker in mineral for marker in ("과", "와", "및", "그리고")):
+        return None
+    mineral = MINERAL_ALIASES.get(mineral.casefold(), mineral)
+    return ActionPlan(actions=[ActionCall(
+        requirement_id="latest_inventory", action_id="inventory.latest",
+        slots=ActionSlots(mineral=mineral, price_basis=match.group("basis")),
+        intent="price_series", role="data",
+    )])
+
+
 def _latest_price_plan(message: str) -> ActionPlan | None:
     """완결된 금일 가격 질의를 최신 보유 관측값 조회로 고정한다.
 
@@ -1894,8 +2031,11 @@ def _publication_document_plan(message: str) -> ActionPlan | None:
         r"이번달(?:전략광종|희소금속)?월간동향(?:을)?요약(?:해줘|해주세요|해주십시오)[?.]?",
         r"최근\d+(?:개월|년)(?:전략광종|희소금속)?월간동향(?:을)?요약(?:해줘|해주세요|해주십시오)[?.]?",
         r"20\d{2}년(?:전략광종|희소금속)?월간동향(?:을)?요약(?:해줘|해주세요|해주십시오)[?.]?",
+        r"20\d{2}년\d{1,2}월(?:전략광종|희소금속)?월간동향(?:을)?요약(?:해줘|해주세요|해주십시오)[?.]?",
         r"최근(?:희소금속|전략광종)?월간동향보고서제목(?:을)?(?:알려줘|알려주세요|보여줘|보여주세요)[?.]?",
         r"최근\d+(?:개월|년)월간동향에서[가-힣A-Za-z0-9·_-]+관련내용(?:을)?(?:찾아줘|찾아주세요|알려줘|알려주세요)[?.]?",
+        r"20\d{2}년(?:전략광종|희소금속)?월간동향에서[가-힣A-Za-z0-9·_-]+관련내용(?:을)?(?:찾아줘|찾아주세요|알려줘|알려주세요)[?.]?",
+        r"20\d{2}년\d{1,2}월(?:전략광종|희소금속)?월간동향에서[가-힣A-Za-z0-9·_-]+관련내용(?:을)?(?:찾아줘|찾아주세요|알려줘|알려주세요)[?.]?",
         r"오늘자원뉴스(?:가)?(?:뭐|무엇)(?:있어|있나요|야)[?.]?",
         r"이번주(?:비철금속)?주간동향(?:을)?(?:요약)?(?:해줘|해주세요|해주십시오|알려줘|알려주세요)?[?.]?",
         r"이번주주간자원뉴스(?:를)?요약(?:해줘|해주세요|해주십시오)[?.]?",
@@ -1906,10 +2046,16 @@ def _publication_document_plan(message: str) -> ActionPlan | None:
     today = date.today()
     period: Period | None = None
     recent = re.search(r"최근(\d+)(개월|년)", compact)
+    year_month = re.search(r"(20\d{2})년(\d{1,2})월", compact)
     calendar_year = re.search(r"(20\d{2})년", compact)
     if recent:
         months = int(recent.group(1)) * (12 if recent.group(2) == "년" else 1)
         period = Period(kind="trailing_months", trailing_months=months, explicit=True)
+    elif year_month and 1 <= int(year_month.group(2)) <= 12:
+        year, month = int(year_month.group(1)), int(year_month.group(2))
+        month_start = date(year, month, 1)
+        next_month = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
+        period = Period(kind="range", start=month_start.isoformat(), end=(next_month - timedelta(days=1)).isoformat(), explicit=True)
     elif calendar_year:
         period = Period(kind="calendar_year", calendar_year=int(calendar_year.group(1)), explicit=True)
     elif "이번달" in compact:

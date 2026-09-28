@@ -166,6 +166,57 @@ def _news_titles(item, *, limit: int = 3):
     return []
 
 
+def _weekly_report_rows(item, *, limit: int = 5):
+    """주간동향 adapter의 게시일·제목 행을 보존해 읽는다.
+
+    이 표는 뉴스 기사 표와 열 이름이 다르므로 `_news_titles`에 섞지 않는다.
+    발행일은 adapter가 파일명에서 확인한 값이며, renderer가 날짜를 추정하지 않는다.
+    """
+    for table in extract_markdown_tables(getattr(item, "text", "")):
+        keys = _keys(table)
+        title_i = next((i for i, key in enumerate(keys) if key in {"보고서 제목", "title", "제목"}), None)
+        date_i = next((i for i, key in enumerate(keys) if key in {"게시일", "date", "published_at"}), None)
+        source_i = next((i for i, key in enumerate(keys) if key in {"출처", "source"}), None)
+        if title_i is None:
+            continue
+        rows = []
+        for row in table["rows"]:
+            if title_i >= len(row) or not row[title_i].strip():
+                continue
+            published = row[date_i].strip() if date_i is not None and date_i < len(row) else ""
+            source = row[source_i].strip() if source_i is not None and source_i < len(row) else ""
+            label = row[title_i].strip()
+            if published:
+                label += f" ({published})"
+            if source:
+                label += f" — {source}"
+            rows.append(label)
+        if rows:
+            return rows[:limit]
+    return []
+
+
+def _mineral_info_rows(item):
+    """RSC/KOMIS 광물정보 표에서 검증된 속성만 읽는다."""
+    for table in extract_markdown_tables(getattr(item, "text", "")):
+        keys = _keys(table)
+        mineral_i = next((i for i, key in enumerate(keys) if key in {"광종", "mineral"}), None)
+        attribute_i = next((i for i, key in enumerate(keys) if key in {"속성", "attribute"}), None)
+        value_i = next((i for i, key in enumerate(keys) if key in {"값", "value"}), None)
+        if None in {mineral_i, attribute_i, value_i}:
+            continue
+        rows = []
+        for row in table["rows"]:
+            if max(mineral_i, attribute_i, value_i) >= len(row):
+                continue
+            mineral, attribute, value = (row[mineral_i].strip(), row[attribute_i].strip(), row[value_i].strip())
+            if mineral and attribute in {"uses", "characteristics", "element_symbol", "atomic_number"} and value:
+                rows.append((mineral, attribute, value))
+        if rows:
+            return rows
+    return []
+
+
 def _usage_sentence(text):
     """문서 근거에 명시된 용도 문장만 반환한다."""
     # mineral_info YAML adapter의 구조화 표는 자유문장이 아니라 uses 속성에
@@ -213,6 +264,12 @@ def render_composite(evidence: list, action_plan) -> tuple[str, set[int]] | None
                     "최근 자원뉴스 : 확인된 기사\n" + "\n".join(f"- {title}" for title in titles),
                     {evidence_index},
                 )
+            weekly_rows = _weekly_report_rows(document)
+            if "주간동향" in topic and weekly_rows:
+                return (
+                    "주간 자원뉴스 : 확인된 주간동향 보고서\n" + "\n".join(f"- {row}" for row in weekly_rows),
+                    {evidence_index},
+                )
 
     if ids and all(action_id == "trade.country_rank" for action_id in ids) and len(ids) == 5:
         matches = by_action.get("trade.country_rank", [])
@@ -227,16 +284,74 @@ def render_composite(evidence: list, action_plan) -> tuple[str, set[int]] | None
                 cited.add(index)
             return "광물정보 : 2차전지 원료 광종 리튬, 니켈, 코발트, 망간, 흑연\n핵심광물 수급지도 : 최근 12개월 수입 1위국\n" + "\n".join(rows), cited
 
-    if ids == ["document.retrieve", "document.retrieve"]:
+    if (ids == ["document.retrieve", "document.retrieve"]
+            and all(not getattr(actions[evidence_index - 1].slots, "mineral", None)
+                    for evidence_index, _item in by_action.get("document.retrieve", []))):
         docs = by_action.get("document.retrieve", [])
         if len(docs) == 2:
             left, right = _document_text(docs[0][1]), _document_text(docs[1][1])
-            common = [term for term in ("리튬", "니켈", "코발트", "망간", "흑연", "희토류", "중국", "수출통제")
-                      if term in left and term in right]
+            # 월간동향은 ``동``, 주간 비철금속 보고서는 ``구리``처럼 같은
+            # 광종의 표기를 달리 쓴다. 이 작은 동의어 표만 정규화하며, 이외
+            # 키워드는 두 원문에 동일 문자열이 실제 있을 때만 공통으로 표시한다.
+            common = [label for label, aliases in (
+                ("리튬", ("리튬",)), ("니켈", ("니켈",)), ("코발트", ("코발트",)),
+                ("망간", ("망간",)), ("흑연", ("흑연",)), ("희토류", ("희토류",)),
+                ("구리", ("구리", "동")), ("아연", ("아연",)), ("철광석", ("철광석",)),
+                ("중국", ("중국",)), ("수출통제", ("수출통제",)),
+            ) if any(alias in left for alias in aliases) and any(alias in right for alias in aliases)]
             if common:
                 return (f"월간동향 : {getattr(docs[0][1], 'section', None) or '확인된 월간동향'} 주요 이슈\n"
                         f"자원뉴스 : {getattr(docs[1][1], 'section', None) or '확인된 주간 뉴스'} 주요 기사\n"
                         f"공통 이슈 : {', '.join(common)}", {docs[0][0], docs[1][0]})
+
+    # 월간동향에 등장한 광종의 기본 정보는 월간 문서가 광종 범위를, RSC/KOMIS
+    # adapter가 속성 값을 각각 책임진다. 둘 중 하나라도 빠지면 일반 경로로
+    # 내려가며, 여기서 빈 특성을 채우지 않는다.
+    monthly_docs = [pair for pair in by_action.get("document.retrieve", [])
+                    if "월간동향" in str(getattr(actions[pair[0] - 1].slots, "topic", "") or "")]
+    info_docs = [pair for pair in by_action.get("document.retrieve", [])
+                 if pair not in monthly_docs]
+    rank_docs = by_action.get("trade.country_rank", [])
+    concentration_docs = by_action.get("trade.concentration", [])
+    if len(monthly_docs) == 1 and info_docs and not rank_docs:
+        monthly_index, monthly = monthly_docs[0]
+        lines, cited = [], {monthly_index}
+        for evidence_index, item in info_docs:
+            info = _mineral_info_rows(item)
+            if not info:
+                continue
+            mineral = info[0][0]
+            selected = [f"{attribute}: {value}" for _name, attribute, value in info[:2]]
+            lines.append(f"- {mineral}: " + "; ".join(selected))
+            cited.add(evidence_index)
+        if lines:
+            return (f"월간동향 : {getattr(monthly, 'section', None) or '확인된 월간동향'}에 나온 광종\n"
+                    "광물정보 : 검증된 기본 특성\n" + "\n".join(lines), cited)
+
+    # 월간동향으로 대상 광종을 확정한 뒤에만 각 광종의 한국 수입 순위/집중도를
+    # 결합한다. 순위 표의 비중과 concentration adapter의 HHI만 그대로 표시한다.
+    if len(monthly_docs) == 1 and rank_docs:
+        monthly_index, monthly = monthly_docs[0]
+        lines, cited = [], {monthly_index}
+        rank_actions = [action for action in actions if action.action_id == "trade.country_rank"]
+        for action, (evidence_index, item) in zip(rank_actions, rank_docs):
+            countries = _country_rows(item)
+            if not countries:
+                continue
+            country, share = countries[0]
+            lines.append(f"- {action.slots.mineral}: {country} ({_fmt(share)}%)")
+            cited.add(evidence_index)
+        hhis = []
+        for evidence_index, item in concentration_docs:
+            match = re.search(r"HHI=([0-9.]+)", str(getattr(item, "section", "")))
+            if match:
+                hhis.append(_fmt(_number(match.group(1))))
+                cited.add(evidence_index)
+        if lines:
+            concentration = f"\n수입 집중도 : HHI {', '.join(hhis)}" if hhis else ""
+            return (f"월간동향 : {getattr(monthly, 'section', None) or '확인된 월간동향'}에 나온 광종\n"
+                    "핵심광물 수급지도 : 최근 12개월 한국 수입 1위국\n" + "\n".join(lines) + concentration,
+                    cited)
 
     if ids.count("price.series") == 5 and ids.count("forecast.price") == 5 and len(ids) == 10:
         prices, forecasts = by_action.get("price.series", []), by_action.get("forecast.price", [])
@@ -638,18 +753,32 @@ def render_composite(evidence: list, action_plan) -> tuple[str, set[int]] | None
             for action, (evidence_index, item) in zip(
                     [a for a in actions if a.action_id == "price.series"], price_items):
                 pp = _price_points(item)
-                if len(pp) < 2 or not pp[0][1]:
+                if len(pp) < 2:
+                    continue
+                # 지수와 가격의 시작·끝 보유일이 다를 수 있으므로, 두 시계열의
+                # 실제 겹침 구간 안에서만 각각 첫/마지막 관측값을 택한다.
+                overlap_start, overlap_end = max(ip[0][0], pp[0][0]), min(ip[-1][0], pp[-1][0])
+                aligned = [point for point in pp if overlap_start <= point[0] <= overlap_end]
+                index_aligned = [point for point in ip if overlap_start <= point[0] <= overlap_end]
+                if len(aligned) < 2 or len(index_aligned) < 2 or not aligned[0][1]:
                     continue
                 changes.append((getattr(action.slots, "mineral", None) or "요청 광종",
-                                (pp[-1][1] - pp[0][1]) / pp[0][1] * 100))
+                                (aligned[-1][1] - aligned[0][1]) / aligned[0][1] * 100))
                 cited.add(evidence_index)
             if len(ip) >= 2 and ip[0][1] and changes:
+                # 모든 가격 series가 같은 시작일을 갖지 않을 수 있으므로, 지수
+                # 변화는 각 가격에 공통인 전체 겹침 범위를 보장하지 않는 일반
+                # 표시로 두고, 동반상승 판정은 방향만 사용한다.
                 index_pct = (ip[-1][1] - ip[0][1]) / ip[0][1] * 100
                 direction = "상승" if index_pct > 0 else "하락" if index_pct < 0 else "보합"
-                detail = " ".join(f"{name}({pct:+.2f}%)" for name, pct in changes)
+                same_direction = [(name, pct) for name, pct in changes
+                                  if (index_pct > 0 and pct > 0) or (index_pct < 0 and pct < 0)]
+                detail = " ".join(f"{name}({pct:+.2f}%)" for name, pct in same_direction)
+                if not detail:
+                    detail = "없음"
                 return (f"광물종합지수 : {ip[0][0].isoformat()}~{ip[-1][0].isoformat()} {index_pct:+.2f}% {direction}\n"
-                        f"광물가격 : 동 기간 {detail} "
-                        f"{'동반상승' if index_pct > 0 and all(p > 0 for _, p in changes) else '동반하락' if index_pct < 0 and all(p < 0 for _, p in changes) else '변화내역을 위와 같이 표시합니다.'}", cited)
+                        f"광물가격 : 지수와 같은 방향으로 움직인 시스템 대상 광종 {detail}\n"
+                        "※ 각 광종은 지수와 실제로 겹치는 보유기간의 가격 변동률로 비교했으며, 지수 구성광종 또는 인과관계를 뜻하지 않습니다.", cited)
 
     # OC05: 단일 가격 시계열과 종합지수의 동일 기간 변동률 비교.
     if ids.count("price.series") == 1 and ids.count("indicator.series") == 1:
