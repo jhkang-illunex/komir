@@ -932,7 +932,8 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
     if (call.action_id == "document.retrieve" and "월간동향" not in (s.topic or question)
             and any(token in (s.topic or question) for token in ("용도", "어디에 쓰", "어디쓰", "쓰여", "사용처", "활용처", "원소기호", "원자량", "원자번호", "주요 특성", "기본 특성", "기본 정보", "특성이", "어떤 광물", "어떤 금속", "무슨 광물", "무슨 금속", "광석", "ore"))):
         return RetrievalRoute(**common, use_mineral_info=True)
-    if call.action_id == "document.retrieve" and any(token in (s.topic or question) for token in ("월간동향", "희소금속 동향", "전략광종 동향")):
+    document_topic = re.sub(r"\s+", "", s.topic or question)
+    if call.action_id == "document.retrieve" and any(token in document_topic for token in ("월간동향", "희소금속동향", "전략광종동향")):
         return RetrievalRoute(**common, use_monthly_trend=True)
     if call.action_id == "document.retrieve" and any(token in (s.topic or question) for token in ("뉴스", "기사", "수출통제")):
         if "가격변동큰광종" in question.replace(" ", ""):
@@ -3233,10 +3234,11 @@ def retrieve_evidence(
                 )
         if on_status:
             on_status("verifying", action_id=call.action_id)
-        if call.action_id in {"trade.indicator", "trade.price_cross_rank", "resource.price_cross_rank"}:
-            # 이 도구는 SQL 집계와 명시된 공식으로 결과를 이미 결정했다. Advisor가
-            # 계산식을 다시 해석하다 결정적 결과를 기권시키지 않도록 근거 존재를
-            # 충분성 기준으로 쓴다.
+        if call.action_id in {"trade.indicator", "trade.country_rank", "trade.price_cross_rank", "resource.price_cross_rank"}:
+            # 이 도구들은 SQL 집계와 명시된 공식으로 결과를 이미 결정했다. Advisor가
+            # 기간 적재 범위나 import_amount를 다시 해석하다 결정적 결과를
+            # 기권시키지 않도록 근거 존재를 충분성 기준으로 쓴다. 실제 관측기간은
+            # Evidence.as_of/observed_period에 보존돼 전체 기간인 것처럼 표시되지 않는다.
             verified = {"sufficient": bool(call_evidence), "evidence": call_evidence,
                         "warnings": call_warnings}
         elif (
@@ -3365,8 +3367,10 @@ def retrieve_evidence(
                     ),
                     intent="trade_indicator", role="data", depends_on=[call.requirement_id],
                 )
-                # 동적으로 생긴 Action도 독립 계약을 만족할 때만 실행한다.
-                if not validate_action_plan(ActionPlan(actions=[dependent])).approved:
+                # ``depends_on``이 있는 동적 Action은 선행 뉴스 Action과 함께
+                # 계약을 검증해야 한다. 단독 검증하면 선행 requirement가 없다고
+                # 판정되어 가격·수입비중 조회가 영원히 추가되지 않는다.
+                if not validate_action_plan(ActionPlan(actions=[call, dependent])).approved:
                     continue
                 original_plan.actions.append(dependent)
                 scheduled_calls.append(dependent)
@@ -3376,7 +3380,7 @@ def retrieve_evidence(
                         slots=ActionSlots(mineral=mineral, period=Period(kind="trailing_months", trailing_months=1)),
                         intent="price_series", role="data", depends_on=[call.requirement_id],
                     )
-                    if validate_action_plan(ActionPlan(actions=[price_call])).approved:
+                    if validate_action_plan(ActionPlan(actions=[call, price_call])).approved:
                         original_plan.actions.append(price_call)
                         scheduled_calls.append(price_call)
         if (call.requirement_id == "monthly_trend" and "월간동향" in question

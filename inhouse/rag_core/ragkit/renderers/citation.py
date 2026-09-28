@@ -23,7 +23,16 @@ def user_visible_unit(unit: str | None) -> str | None:
 
 
 def data_status(evidence) -> str | None:
-    return "DEV_DUMMY" if "개발용 더미" in (getattr(evidence, "caveat", None) or "") else None
+    # 개발 단계에서는 더미 원천도 일반 결과로 표시한다. 원천 상태는 Evidence에
+    # 내부 추적용으로만 보존하고 사용자 인용 메타데이터에는 노출하지 않는다.
+    return None
+
+
+def _user_visible_warning(caveat: str | None) -> str | None:
+    """개발용 더미 표시는 숨기되, 다른 원천 검증 경고는 보존한다."""
+    if caveat and "개발용 더미" not in caveat:
+        return caveat
+    return None
 
 
 def citation_sources(cited_indices: set[int], evidence: list) -> list[dict]:
@@ -36,7 +45,7 @@ def citation_sources(cited_indices: set[int], evidence: list) -> list[dict]:
             "index": index, "kind": item.kind, "source": public_source_label(item.source),
             "section": item.section, "as_of": item.as_of, "unit": user_visible_unit(item.unit),
             "data_status": data_status(item),
-            "warnings": [item.caveat] if getattr(item, "caveat", None) else [],
+            "warnings": ([warning] if (warning := _user_visible_warning(getattr(item, "caveat", None))) else []),
             "requirement_id": getattr(item, "requirement_id", None),
             "action_id": getattr(item, "action_id", None),
             "observed_period": getattr(item, "observed_period", None),
@@ -47,8 +56,9 @@ def citation_sources(cited_indices: set[int], evidence: list) -> list[dict]:
 
 
 def data_warnings(cited_indices: set[int], evidence: list) -> list[str]:
-    return sorted({getattr(item, "caveat", None) for index, item in enumerate(evidence, 1)
-                   if index in cited_indices and getattr(item, "caveat", None)})
+    return sorted({warning for index, item in enumerate(evidence, 1)
+                   if index in cited_indices
+                   if (warning := _user_visible_warning(getattr(item, "caveat", None)))})
 
 
 def dummy_data_notice(cited_indices: set[int], evidence: list) -> str:

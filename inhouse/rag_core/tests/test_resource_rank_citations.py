@@ -71,13 +71,13 @@ class ResourceRankCitationTest(unittest.TestCase):
         )
         self.assertEqual(_successful_action_citation_indices(result, evidence, {1}), {3})
 
-    def test_dummy_status_and_warning_are_separate_from_source_label(self):
+    def test_dummy_status_and_warning_are_hidden_from_source_label(self):
         dummy = Evidence(kind="structured", source="public.KO_RSRC_PRDCTN_QUTY", section="생산량", text="x",
                          caveat="이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다.")
         citation = _citation_sources({1}, [dummy])[0]
         self.assertNotIn("DEV_DUMMY", citation["source"])
-        self.assertEqual(citation["data_status"], "DEV_DUMMY")
-        self.assertEqual(citation["warnings"], [dummy.caveat])
+        self.assertIsNone(citation["data_status"])
+        self.assertEqual(citation["warnings"], [])
 
     def test_resource_rank_does_not_receive_trade_rank_summary(self):
         plan = ActionPlan(actions=[ActionCall(

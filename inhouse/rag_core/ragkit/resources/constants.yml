@@ -1,0 +1,5 @@
+schema_version: 1
+significant_daily_rise_pct: 5.0
+import_dependency_high_pct: 27.0
+description:
+  "일간 가격 상승률이 5% 이상이면 '크게 오른 날'로 본다. 수입의존도 높음은 같은 기간·조건의 전체 수입 중 특정 수입상대국 비중이 27%를 초과하는 경우로 정의한다."

@@ -32,7 +32,7 @@ class PriceUnitDisclosureTest(unittest.TestCase):
         assert scope is not None
         answer, cited = scope
         self.assertNotIn("가격 기준은 [DEV_DUMMY]", answer)
-        self.assertIn("개발용 더미", chatbot._dummy_data_notice(cited, [evidence]))
+        self.assertEqual(chatbot._dummy_data_notice(cited, [evidence]), "")
 
     def test_dummy_prefix_is_removed_but_actual_basis_is_kept(self):
         self.assertEqual(
@@ -176,12 +176,14 @@ class PriceUnitDisclosureTest(unittest.TestCase):
                 assert scope is not None
                 self.assertEqual(scope[0], expected)
 
-    def test_two_mineral_comparison_renderer_uses_common_period_percentages(self):
+    def test_two_mineral_comparison_renderer_discloses_different_price_bases(self):
         evidence = Evidence(
             kind="aggregated", source="public.KO_MNRL_PRC", section="동일 기간 가격 변동률",
-            text=("| mineral | start_date | pct_change |\n| --- | --- | --- |\n"
-                  "| 니켈 | 2025-09-01 | 10.25 |\n| 리튬 | 2025-09-01 | -3.5 |"),
-            unit="가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002",
+            text=("| mineral | start_date | pct_change | price_criterion | price_currency_code | weight_unit_code |\n"
+                  "| --- | --- | --- | --- | --- | --- |\n"
+                  "| 니켈 | 2025-09-01 | 10.25 | LME CASH | PR001 | WT002 |\n"
+                  "| 리튬 | 2025-09-01 | -3.5 | 탄산리튬 | PR001 | WT001 |"),
+            unit=None,
             observed_period="2025-09-01~2026-09-01", action_id="price.compare",
         )
         plan = ActionPlan(actions=[ActionCall(
@@ -190,7 +192,10 @@ class PriceUnitDisclosureTest(unittest.TestCase):
         )])
         scope = render_price_comparison([evidence], plan)
         assert scope is not None
-        self.assertEqual(scope[0], "최근 1년 니켈·리튬 가격 비교입니다. 비교 차트는 아래에 표시합니다. 같은 기간 니켈 +10.25%, 리튬 -3.50%입니다.")
+        self.assertIn("니켈 +10.25%", scope[0])
+        self.assertIn("리튬 -3.50%", scope[0])
+        self.assertIn("가격기준=LME CASH", scope[0])
+        self.assertIn("단순 비교", scope[0])
 
     def test_yearly_average_marks_partial_historical_year_as_ytd(self):
         evidence = Evidence(

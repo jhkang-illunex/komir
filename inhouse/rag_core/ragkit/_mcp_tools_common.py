@@ -858,21 +858,13 @@ def register_common_tools(
         if not dataset.rows:
             return {"evidence": [], "warnings": [_NO_DATA_FOUND_MARKER]}
         is_dummy = _selected_price_series_dummy(repo, dataset)
-        # 광종 간 변동률은 가격기준·통화·중량단위가 모두 같은 실제 관측일 때만
-        # 산출한다. 더미 또는 행 단위 상태를 끝까지 확인하지 못한 경우에는
-        # 숫자·표를 내보내지 않아 안전 기권 경로가 근거 없이 비교값을 만들지
-        # 않는다.
-        basis_signatures = {
-            (row.get("price_criterion"), row.get("price_currency_code"), row.get("weight_unit_code"))
-            for row in dataset.rows
-        }
+        # 더미 관측은 여전히 비교 대상에서 제외한다. 다만 실제 관측이라면 광종별
+        # 가격기준·통화·중량단위가 달라도 각 시계열의 변동률 자체는 제시할 수
+        # 있다. 절대 가격의 우열·동일 시장성으로 해석하지 않도록 모든 기준값을
+        # Evidence에 보존하고 renderer가 주의문을 강제한다.
         if is_dummy is not False:
             return {"evidence": [], "warnings": [
                 "source_unavailable:price_comparison_requires_non_dummy_observations",
-            ]}
-        if len(basis_signatures) != 1 or None in next(iter(basis_signatures)):
-            return {"evidence": [], "warnings": [
-                "source_unavailable:price_comparison_requires_a_common_price_basis",
             ]}
         grouped: dict[str, list[dict[str, Any]]] = {}
         for row in dataset.rows:

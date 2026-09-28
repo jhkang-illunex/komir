@@ -200,6 +200,9 @@ ALLOWED_MULTI = frozenset({
     frozenset({"price.volatility_rank", "document.retrieve"}),
     frozenset({"document.retrieve", "trade.country_rank"}),
     frozenset({"document.retrieve", "resource.rank"}),
+    # 수출통제 기사에서 실제 언급된 광종을 읽은 뒤, 한국의 특정국 수입의존도를
+    # 별도 Action으로 계산하는 폐쇄형 후속 경로다.
+    frozenset({"document.retrieve", "trade.indicator"}),
 })
 
 
@@ -948,17 +951,31 @@ def _is_conditional_scenario_topic(topic: str | None) -> bool:
             )))
 
 
-def _significant_daily_rise_threshold() -> float:
-    """리소스에 기록된 기본 '크게' 기준. 없으면 질문을 열지 않는다."""
+def _load_numeric_constant(name: str) -> float:
+    """운영 상수를 읽고 값 범위를 검증한다.
+
+    상수 파일이 손상됐을 때 임의의 기본값으로 질의 의미가 바뀌지 않도록 호출자가
+    기권할 수 있게 ValueError를 낸다.
+    """
     try:
         import yaml
-        payload = yaml.safe_load((Path(__file__).with_name("resources") / "price_alerts.yml").read_text(encoding="utf-8"))
-        value = float(payload["significant_daily_rise_pct"])
+        payload = yaml.safe_load((Path(__file__).with_name("resources") / "constants.yml").read_text(encoding="utf-8"))
+        value = float(payload[name])
         if 0 < value <= 100:
             return value
     except (OSError, TypeError, ValueError, KeyError, yaml.YAMLError):
         pass
-    raise ValueError("significant daily rise threshold resource is invalid")
+    raise ValueError(f"numeric constant is invalid: {name}")
+
+
+def _significant_daily_rise_threshold() -> float:
+    """리소스에 기록된 기본 '크게' 기준. 없으면 질문을 열지 않는다."""
+    return _load_numeric_constant("significant_daily_rise_pct")
+
+
+def import_dependency_high_threshold() -> float:
+    """특정 수입상대국 비중이 '높음'으로 분류되는 엄격한 하한값."""
+    return _load_numeric_constant("import_dependency_high_pct")
 
 
 def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | None = None) -> ActionPlan:
@@ -1242,12 +1259,17 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
             intent="document", role="content",
         )])
     if re.fullmatch(r"수입의존도높은광종들가격전망(?:을)?(?:알려줘|알려주세요|보여줘|보여주세요)?[?.]?", compact):
+        # ``수입의존도 높음``은 특정국을 임의로 가정하지 않고, 각 광종의 1위
+        # 수입상대국 비중이 운영 상수(엄격히 50% 초과)를 넘는지로 판정한다.
+        # 가격 예측 원천은 아직 연결되지 않았으므로 현재 연결된 수입 원천으로
+        # 대상만 확정하고, renderer가 전망 부재를 명확히 안내한다.
+        minerals = ("구리", "니켈", "코발트", "리튬", "희토류")
         return ActionPlan(actions=[ActionCall(
-            requirement_id="import_dependency_forecast", action_id="document.retrieve",
-            slots=ActionSlots(topic="수입 의존도 높은 광종 가격 전망",
+            requirement_id=f"import_dependency_{mineral}", action_id="trade.country_rank",
+            slots=ActionSlots(mineral=mineral, metric="import_amount", trade_scope="korea", top_n=1,
                               period=Period(kind="trailing_months", trailing_months=12, explicit=True)),
-            intent="document", role="content",
-        )])
+            intent="trade_rank", role="data",
+        ) for mineral in minerals])
     if re.fullmatch(r"지난달광물종합지수변동이랑월간동향요약(?:을)?(?:같이)?(?:알려줘|알려주세요|보여줘|보여주세요)?[?.]?", compact):
         return ActionPlan(actions=[
             ActionCall(requirement_id="monthly_composite_index", action_id="indicator.series",
@@ -1816,7 +1838,6 @@ def _price_operation_plan(message: str) -> ActionPlan | None:
             requirement_id="two_mineral_price_comparison", action_id="price.compare",
             slots=ActionSlots(
                 minerals=[comparison.group("left"), comparison.group("right")],
-                period=Period(kind="trailing_months", trailing_months=12),
                 requested_outputs={"text", "chart"},
             ), intent="price_compare", role="data", requested_outputs={"text", "chart"},
         )])
@@ -1835,7 +1856,7 @@ def _price_operation_plan(message: str) -> ActionPlan | None:
                     for key in ("left", "right")]
         return ActionPlan(actions=[ActionCall(
             requirement_id="two_mineral_price_comparison", action_id="price.compare",
-            slots=ActionSlots(minerals=minerals, period=Period(kind="trailing_months", trailing_months=12),
+            slots=ActionSlots(minerals=minerals,
                               requested_outputs={"text", "chart"}),
             intent="price_compare", role="data", requested_outputs={"text", "chart"},
         )])

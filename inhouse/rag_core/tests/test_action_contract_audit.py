@@ -62,6 +62,50 @@ class ActionContractAuditTest(unittest.TestCase):
         )
         self.assertEqual(reason, "content_not_mentioned")
         self.assertEqual(text, "해당 월간동향 문서에는 니켈에 대한 언급이 없습니다.")
+
+    def test_abstain_keeps_monthly_period_and_private_access_reasons(self):
+        from rag_core.ragkit.chatbot import _resolve_abstain
+        reason, text = _resolve_abstain("최근 3개월 월간동향", ["monthly_trend_not_found", "advisor_rejected"], None)
+        self.assertEqual(reason, "no_data_for_period")
+        self.assertIn("요청하신 기간", text)
+        reason, text = _resolve_abstain("광물종합지수", ["private_only_profile_access", "advisor_rejected"], None)
+        self.assertEqual(reason, "private_only_profile_access")
+        self.assertNotEqual(text, "데이터를 찾을 수 없습니다.")
+
+    def test_import_dependency_high_threshold_is_strict_majority(self):
+        from rag_core.ragkit.action_contract import import_dependency_high_threshold
+        self.assertEqual(import_dependency_high_threshold(), 27.0)
+
+    def test_import_dependency_forecast_query_uses_top_import_partner_shares(self):
+        candidate = extract_action_plan("수입 의존도 높은 광종들 가격 전망 알려줘", object())
+        self.assertTrue(validate_action_plan(candidate).approved)
+        self.assertEqual([call.action_id for call in candidate.actions], ["trade.country_rank"] * 5)
+        self.assertTrue(all(call.slots.top_n == 1 for call in candidate.actions))
+
+    def test_spaced_monthly_trend_query_uses_monthly_adapter(self):
+        call = ActionCall(
+            requirement_id="publication_search", action_id="document.retrieve",
+            slots=ActionSlots(topic="최근 3개월 월간 동향에서 니켈 관련 내용 찾아줘"),
+            intent="document", role="content",
+        )
+        route = _route_from_action_call(call, "최근 3개월 월간 동향에서 니켈 관련 내용 찾아줘")
+        self.assertTrue(route.use_monthly_trend)
+
+    def test_export_control_dependents_require_their_parent_in_contract(self):
+        parent = ActionCall(
+            requirement_id="export_control_news", action_id="document.retrieve",
+            slots=ActionSlots(topic="중국 수출통제 뉴스"), intent="document", role="content",
+        )
+        dependent = ActionCall(
+            requirement_id="china_import_share_희토류", action_id="trade.indicator",
+            slots=ActionSlots(mineral="희토류", trade_metric="country_dependency",
+                              reporter_country="한국", partner_country="중국", flow="import",
+                              denominator_scope="reporter_product_trade",
+                              period=Period(kind="trailing_months", trailing_months=12)),
+            intent="trade_indicator", role="data", depends_on=["export_control_news"],
+        )
+        self.assertFalse(validate_action_plan(ActionPlan(actions=[dependent])).approved)
+        self.assertTrue(validate_action_plan(ActionPlan(actions=[parent, dependent])).approved)
     def test_world_trade_rank_routes_to_global_source_without_korea_substitution(self):
         candidate = action_plan_from_intent(IntentPlan(requirements=[IntentCall(
             requirement_id="rank", intent="trade_rank", role="data",
@@ -290,7 +334,7 @@ class ActionContractAuditTest(unittest.TestCase):
             ("니켈 가격 최근 3개월 평균이랑 비교하면 어때?", "price.series", "니켈", "period_average_delta", "trailing_months", 3),
             ("니켈 가격 몇 개월째 오르고 있어?", "price.series", "니켈", "monthly_streak", "latest", None),
             ("니켈 연도별 평균 가격 알려줘", "price.series", "니켈", "yearly_average", "latest", None),
-            ("니켈과 리튬 가격 같이 비교해줘", "price.compare", None, None, "trailing_months", 12),
+            ("니켈과 리튬 가격 같이 비교해줘", "price.compare", None, None, None, None),
         )
         for question, action_id, mineral, operation, period_kind, months in cases:
             with self.subTest(question=question):
@@ -299,8 +343,8 @@ class ActionContractAuditTest(unittest.TestCase):
                 self.assertEqual(action.action_id, action_id)
                 self.assertEqual(action.slots.mineral, mineral)
                 self.assertEqual(action.slots.price_operation, operation)
-                self.assertEqual(action.slots.period.kind, period_kind)
-                self.assertEqual(action.slots.period.trailing_months, months)
+                self.assertEqual(action.slots.period.kind if action.slots.period else None, period_kind)
+                self.assertEqual(action.slots.period.trailing_months if action.slots.period else None, months)
                 route = _route_from_action_call(action, question)
                 self.assertEqual(
                     route.use_komis_price_time_aggregate,
@@ -349,12 +393,13 @@ class ActionContractAuditTest(unittest.TestCase):
             ("이번 주 가격 변동 큰 광종이랑 관련 뉴스 보여줘", "price.volatility_rank", "range"),
             ("이번달 희소금속 월간 동향에 나온 광종들 가격 어때?", "document.retrieve", "range"),
             ("광물종합지수 구성 광종 중 상승 전망인 건 뭐야?", "document.retrieve", "trailing_months"),
-            ("수입 의존도 높은 광종들 가격 전망 알려줘", "document.retrieve", "trailing_months"),
+            ("수입 의존도 높은 광종들 가격 전망 알려줘", "trade.country_rank", "trailing_months"),
         )
         for question, action_id, period_kind in cases:
             with self.subTest(question=question):
                 candidate = extract_action_plan(question, MustNotRun())
-                self.assertEqual([call.action_id for call in candidate.actions], [action_id])
+                expected_count = 5 if question.startswith("수입 의존도 높은") else 1
+                self.assertEqual([call.action_id for call in candidate.actions], [action_id] * expected_count)
                 self.assertEqual(candidate.actions[0].slots.period.kind, period_kind)
                 self.assertTrue(validate_action_plan(candidate).approved)
 

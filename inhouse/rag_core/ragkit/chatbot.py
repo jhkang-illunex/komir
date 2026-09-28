@@ -109,6 +109,7 @@ from .answer_composer import AnswerComposer
 from .composite_renderer import render_composite
 from .renderers.mineral_info import render_mineral_info
 from .renderers.inventory import render_latest_inventory
+from .renderers.trade import render_import_dependency_high
 from .renderers.deterministic import render_q15_usgs_scope, render_strategic_price_overview
 from .renderers.citation import citation_sources as build_citation_sources
 from .renderers.price import (
@@ -744,10 +745,10 @@ def _citation_sources(cited_indices: set[int], evidence: list) -> list[dict]:
     return [
         {"index": i, "kind": ev.kind, "source": public_source_label(ev.source), "section": ev.section,
          "as_of": ev.as_of, "unit": _user_visible_unit(ev.unit),
-         # 출처명은 실제 원천(public.KO_*·공식 문서)만 나타낸다. DEV_DUMMY는
-         # 원천명이 아니라 데이터 상태이므로 별도 필드와 경고로 전송한다.
+         # 출처명은 실제 원천(public.KO_*·공식 문서)만 나타낸다. 개발용 더미
+         # 상태는 내부 Evidence에만 보존하고 사용자 메타데이터에는 노출하지 않는다.
          "data_status": _data_status(ev),
-         "warnings": [getattr(ev, "caveat", None)] if getattr(ev, "caveat", None) else [],
+         "warnings": ([warning] if (warning := _user_visible_caveat(getattr(ev, "caveat", None))) else []),
          "requirement_id": getattr(ev, "requirement_id", None),
          "action_id": getattr(ev, "action_id", None),
          "observed_period": getattr(ev, "observed_period", None),
@@ -761,9 +762,14 @@ def _citation_sources(cited_indices: set[int], evidence: list) -> list[dict]:
 
 def _data_status(ev) -> str | None:
     """원천 라벨과 독립적인 데이터 상태를 SSE 계약에 제공한다."""
+    return None
 
-    caveat = getattr(ev, "caveat", None) or ""
-    return "DEV_DUMMY" if "개발용 더미" in caveat else None
+
+def _user_visible_caveat(caveat: str | None) -> str | None:
+    """개발용 더미 상태는 숨기고 그 밖의 검증 경고만 사용자에게 전달한다."""
+    if caveat and "개발용 더미" not in caveat:
+        return caveat
+    return None
 
 
 def _successful_action_citation_indices(
@@ -898,18 +904,16 @@ def _dummy_data_notice(cited_indices: set[int], evidence: list) -> str:
     이 기능 전체가 막으려던 바로 그 사고가 난다 — 안전에 직결되므로
     캐시(같은 문구 중복 방지) 없이 인용될 때마다 매번 명시한다."""
 
-    warnings = _data_warnings(cited_indices, evidence)
-    if not warnings:
-        return ""
-    return "\n\n" + "\n".join(f"⚠ {warning}" for warning in warnings)
+    return ""
 
 
 def _data_warnings(cited_indices: set[int], evidence: list) -> list[str]:
     """인용된 근거의 데이터 상태 경고를 출처 라벨과 별도로 정규화한다."""
 
     return sorted({
-        getattr(ev, "caveat", None) for index, ev in enumerate(evidence, 1)
-        if index in cited_indices and getattr(ev, "caveat", None)
+        warning for index, ev in enumerate(evidence, 1)
+        if index in cited_indices
+        if (warning := _user_visible_caveat(getattr(ev, "caveat", None)))
     })
 
 
@@ -1572,6 +1576,14 @@ def _resolve_abstain(message: str, warnings: list[str], llm: "KomirJsonLLM | Non
         return "content_not_mentioned", (
             f"해당 월간동향 문서에는 {mineral_not_mentioned}에 대한 언급이 없습니다."
         )
+    if "monthly_trend_not_found" in warnings:
+        return "no_data_for_period", "요청하신 기간에 조회 가능한 월간동향 문서가 없습니다."
+    if any("price_comparison_requires_a_common_price_basis" in warning for warning in warnings):
+        return "incompatible_price_basis", (
+            "두 광종의 가격 기준이 달라 직접 비교할 수 없습니다. 각 가격 기준을 확인해 다시 질문해 주세요."
+        )
+    if _PRIVATE_ONLY_PROFILE_WARNING in warnings:
+        return "private_only_profile_access", _PRIVATE_ONLY_PROFILE_TEXT
     if action_failure == "source_unavailable":
         return "source_unavailable", chat_message("data_not_found")
     if any(w.startswith("source_unavailable:") for w in warnings):
@@ -1592,8 +1604,6 @@ def _resolve_abstain(message: str, warnings: list[str], llm: "KomirJsonLLM | Non
         return "retrieval_error", ABSTAIN_TEXT
     if _MINERAL_SPECIFIC_COMPOSITE_INDEX_WARNING in warnings:
         return "mineral_specific_composite_index", _MINERAL_SPECIFIC_COMPOSITE_INDEX_TEXT
-    if _PRIVATE_ONLY_PROFILE_WARNING in warnings:
-        return "private_only_profile_access", _PRIVATE_ONLY_PROFILE_TEXT
     unsupported_match = next((m for w in warnings if (m := _UNSUPPORTED_MINERAL_RE.match(w))), None)
     if unsupported_match:
         return "unsupported_mineral", chat_message("unsupported_commodity")
@@ -1674,7 +1684,7 @@ def _multimodal_events(cited_indices: set[int], evidence: list, *, include_chart
                 requested_frequency=getattr(ev, "requested_frequency", None),
             )
             block["data_status"] = _data_status(ev)
-            block["warnings"] = [ev.caveat] if ev.caveat else []
+            block["warnings"] = ([warning] if (warning := _user_visible_caveat(ev.caveat)) else [])
             if suppress_chart:
                 block["chart_hint"] = {"recommended": None, "alternatives": [],
                                        "reason": "광종별 가격기준·통화·중량단위가 달라 비교 차트를 제공하지 않음"}
@@ -1689,7 +1699,7 @@ def _multimodal_events(cited_indices: set[int], evidence: list, *, include_chart
             )
             if spec is not None:
                 spec["data_status"] = _data_status(ev)
-                spec["warnings"] = [ev.caveat] if ev.caveat else []
+                spec["warnings"] = ([warning] if (warning := _user_visible_caveat(ev.caveat)) else [])
                 events.append(ChatEvent(type="chart", data=spec))
     return events
 
@@ -2026,6 +2036,27 @@ async def chat_turn(
         yield ChatEvent(type="delta", data={"delta": answer})
         await asyncio.to_thread(
             append_message, resolved_session_id, "assistant", answer,
+            json.dumps(citations, ensure_ascii=False), store_db_path,
+        )
+        yield ChatEvent(type="done", data={
+            "done": True, "citations": citations, "bogus_citations": [], "abstained": False,
+        })
+        return
+
+    import_dependency_answer = render_import_dependency_high(evidence, action_plan)
+    if import_dependency_answer is not None:
+        answer, cited_indices = import_dependency_answer
+        citations = _citation_sources(cited_indices, evidence)
+        extra = _dummy_data_notice(cited_indices, evidence)
+        final_text = answer + extra
+        yield _status_event(4)
+        yield ChatEvent(type="delta", data={"delta": answer})
+        if extra:
+            yield ChatEvent(type="delta", data={"delta": extra})
+        for event in _multimodal_events(cited_indices, evidence):
+            yield event
+        await asyncio.to_thread(
+            append_message, resolved_session_id, "assistant", final_text,
             json.dumps(citations, ensure_ascii=False), store_db_path,
         )
         yield ChatEvent(type="done", data={
