@@ -8,6 +8,7 @@ import re
 from .chatbot_events import extract_markdown_tables
 from .action_contract import COMPOSITE_INDEX_VARIANTS
 from .renderers.price import price_display_unit
+from .renderers.price_blocks import render_price_forecast_blocks, render_price_rank_yoy_blocks
 from .renderers.resource_rank import render_production_reserves_pair
 
 
@@ -205,6 +206,40 @@ def _news_titles(item, *, limit: int = 3, expected_date: str | None = None):
     return []
 
 
+def _news_summary_rows(item, *, limit: int = 5):
+    """자원뉴스 표의 날짜·제목·요약 셀을 사용자용 행으로 반환한다.
+
+    제목만 요구한 질의와 요약을 요구한 질의를 같은 결정형 renderer에서
+    구분하기 위해 사용한다. 요약 셀은 adapter가 원천 본문에서 만든 값만
+    사용하며, 표에 요약이 없으면 빈 결과를 돌려 생성 모델의 추정을 막는다.
+    """
+    for table in extract_markdown_tables(getattr(item, "text", "")):
+        keys = _keys(table)
+        title_i = next((i for i, key in enumerate(keys)
+                        if key in {"title", "headline", "제목", "기사제목"}), None)
+        summary_i = next((i for i, key in enumerate(keys)
+                          if key in {"요약", "summary", "주요내용", "내용요약", "본문요약"}), None)
+        date_i = next((i for i, key in enumerate(keys)
+                       if key in {"date", "published_at", "pub_date", "날짜", "게시일"}), None)
+        if title_i is None or summary_i is None:
+            continue
+        rows = []
+        for row in table["rows"]:
+            if max(title_i, summary_i) >= len(row):
+                continue
+            title = re.sub(r"\s+", " ", row[title_i]).strip()
+            summary = re.sub(r"\s+", " ", row[summary_i]).strip()
+            if len(summary) > 300:
+                summary = summary[:300].rsplit(" ", 1)[0].rstrip() + "…"
+            if not title or not summary:
+                continue
+            published = row[date_i].strip() if date_i is not None and date_i < len(row) else ""
+            rows.append((published, title, summary))
+        if rows:
+            return rows[:limit]
+    return []
+
+
 def _weekly_report_rows(item, *, limit: int = 5):
     """주간동향 adapter의 게시일·제목 행을 보존해 읽는다.
 
@@ -292,6 +327,18 @@ def render_composite(evidence: list, action_plan, action_results=None) -> tuple[
     resource_rank_pair = render_production_reserves_pair(evidence, action_plan, action_results)
     if resource_rank_pair is not None:
         return resource_rank_pair
+
+    # MP03(price+rank)·MP04(price+YoY)는 공통 블록 조립기가 처리한다.
+    # 다른 Action 조합은 이 진입점에서 매칭되지 않아 기존 분기를 유지한다.
+    price_metric_pair = render_price_rank_yoy_blocks(evidence, action_plan, action_results)
+    if price_metric_pair is not None:
+        return price_metric_pair
+
+    # FBQ81(2차전지 5종 가격+전망)은 가격 공통 코어를 재사용하되, 광종별
+    # price.series·forecast.price 근거를 requirement_id로 매칭한다.
+    price_forecast_group = render_price_forecast_blocks(evidence, action_plan, action_results)
+    if price_forecast_group is not None:
+        return price_forecast_group
 
     # 종합지수의 명시 연도 범위는 실제 반환된 HI001 관측점으로만 계산한다.
     # 요청 구간 일부만 적재된 경우에도 전체를 조회 불가로 버리지 않고 실제
@@ -450,6 +497,17 @@ def render_composite(evidence: list, action_plan, action_results=None) -> tuple[
                 "뉴스" in topic or "기사" in topic
                 or str(getattr(document, "section", "") or "") == "자원뉴스"
             )
+            wants_summary = "요약" in topic or "정리" in topic
+            summary_rows = _news_summary_rows(document) if is_news_request and wants_summary else []
+            if summary_rows:
+                return (
+                    "최근 자원뉴스 요약 : 확인된 핵심 내용\n"
+                    + "\n".join(
+                        f"- {published + ' ' if published else ''}{title}: {summary}"
+                        for published, title, summary in summary_rows
+                    ),
+                    {evidence_index},
+                )
             titles = _news_titles(document, limit=5)
             if is_news_request and titles:
                 return (

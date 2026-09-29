@@ -29,7 +29,7 @@
 | OC06 | 가격 추이 + 한국 수입국 구성 | `price.series` + `trade.country_rank` | 연결 | `composite_renderer`가 가격 변동·고점 월·수입국 상위 3개를 결합한다. |
 | OC07 | 특정국 수입 비중 상위 광종 중 가격 상승 | `trade.price_cross_rank` | 연결 | 같은 기간·HS 묶음별 전체 수입을 분모로 특정국 비중을 집계하고, 비중 상위 광종의 요청기간 내 실제 가격 관측일을 광종별로 표시한다. 출처 불명·가격 결측은 기권한다. |
 | OC08 | 수입 상위국 + 현재 가격 | `trade.country_rank` + `price.series` | 연결 | `composite_renderer`가 최신가와 실제 전월 평균을 계산한다. 전월 관측이 없으면 기권한다. |
-| OC09 | 가격 + 세계 생산량 변화 | `price.series` + `resource.yoy` | 연결 | `composite_renderer`가 같은 연도의 가격 평균과 생산량 YoY를 정렬하고 인과관계 주의 문구를 붙인다. |
+| OC09 | 가격 + 세계 생산량 변화 | `price.series` + `resource.yoy` | 연결 | `renderers/price_blocks.py`가 같은 연도의 가격 평균과 생산량 YoY를 정렬하고 인과관계 주의 문구를 붙인다. |
 | OC10 | 생산 1위국 비중 상위 광종 가격 변동 | `resource.price_cross_rank` | 연결 | 광종별 공식 세계 총계 `SU` 대비 실제 1위 생산국 비중을 집계하고 요청기간 내 가격 변동을 결합한다. 가격 관측일과 생산 기준연도를 광종별로 표시한다. |
 | OC11 | 광물 용도 + 현재 가격 | `document.retrieve` + `price.series` | 부분 연결 | 문서에 검증된 용도 문장이 있고 가격 표가 있을 때만 결합 renderer가 응답한다. 광물정보 구조화 adapter는 계속 필요하다. |
 | OC12 | 전략광종 가격 현황 | `price.overview` | 연결 | 기존 전략광종 가격 adapter와 결정적 안내 문구를 사용한다. 가격기준이 광종별로 다르면 비교하지 않는다. |

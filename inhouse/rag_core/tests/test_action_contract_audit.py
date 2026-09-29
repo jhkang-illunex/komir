@@ -191,6 +191,27 @@ class ActionContractAuditTest(unittest.TestCase):
                 self.assertIsNone(route.komis_end_period)
                 self.assertEqual(route.komis_raw_limit, 2)
 
+    def test_price_world_production_pair_is_closed_and_typed(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("가격·세계 생산량 복합 문형은 planner를 호출하면 안 됩니다")
+
+        for question in (
+            "니켈 가격이랑 세계 생산량 변화 같이 보여줘",
+            "세계 생산량 변화랑 니켈 가격 같이 보여줘",
+        ):
+            with self.subTest(question=question):
+                candidate = extract_action_plan(question, MustNotRun())
+                self.assertEqual(
+                    [item.action_id for item in candidate.actions],
+                    ["price.series", "resource.yoy"],
+                )
+                self.assertEqual(candidate.actions[0].slots.period.kind, "latest")
+                self.assertEqual(candidate.actions[0].slots.price_operation, "yearly_average")
+                self.assertEqual(candidate.actions[1].slots.metric, "production")
+                self.assertEqual(candidate.actions[1].slots.country_scope, "world")
+                self.assertTrue(validate_action_plan(candidate).approved)
+
     def test_current_price_shortcut_does_not_capture_multi_mineral_request(self):
         class Planner:
             def invoke(self, **kwargs):
@@ -502,12 +523,15 @@ class ActionContractAuditTest(unittest.TestCase):
             ("오늘 자원뉴스 뭐 있어?", "range"),
             ("최근 중국 수출통제 관련 뉴스 있어?", "trailing_months"),
             ("최근 3개월 월간동향에서 리튬 관련 내용 찾아줘", "trailing_months"),
+            ("최근 자원뉴스를 보여주세요", "trailing_months"),
+            ("최근 자원 뉴스를 요약해주세요", "trailing_months"),
         )
         for question, period_kind in cases:
             with self.subTest(question=question):
                 candidate = extract_action_plan(question, MustNotRun())
                 self.assertEqual([call.action_id for call in candidate.actions], ["document.retrieve"])
                 self.assertEqual(candidate.actions[0].slots.period.kind, period_kind)
+                self.assertEqual(candidate.actions[0].slots.topic, question)
 
     def test_weekly_news_request_endings_are_classified_by_intent_planner(self):
         class Planner:
@@ -1201,6 +1225,20 @@ class ActionContractAuditTest(unittest.TestCase):
         candidate = extract_action_plan("2차전지 광물 5종 가격이랑 현황 한 번에 보여줘", UnexpectedPlanner())
         self.assertEqual(candidate.actions[0].action_id, "price.overview")
         self.assertEqual(candidate.actions[0].slots.strategic_price_groups, ["battery_five"])
+        self.assertTrue(validate_action_plan(candidate).approved)
+
+    def test_battery_five_price_forecast_is_available_typed_plan(self):
+        class UnexpectedPlanner:
+            def invoke(self, **_kwargs):
+                raise AssertionError("2차전지 5종 가격·전망 문형은 planner를 호출하면 안 됩니다")
+
+        candidate = extract_action_plan(
+            "2차전지 광물 5종 가격이랑 전망 한 번에 보여줘", UnexpectedPlanner())
+        self.assertEqual(len(candidate.actions), 10)
+        self.assertEqual(
+            [item.action_id for item in candidate.actions].count("price.series"), 5)
+        self.assertEqual(
+            [item.action_id for item in candidate.actions].count("forecast.price"), 5)
         self.assertTrue(validate_action_plan(candidate).approved)
 
     def test_mineral_concept_is_document_action(self):

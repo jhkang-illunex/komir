@@ -254,8 +254,9 @@ stockpile.methodology다. 이 action은 실재고를 조회하거나 추정하�
 가격예측 수치 자체를 요청하는 "다음 달 구리 가격 전망"과 "니켈 가격 앞으로 오를까 내릴까"는
 각각 intent=forecast_price, action_id=forecast.price로 정규화한다. 예측 월·기간은
 slots.period.kind=future_horizon과 future_horizon(다음 달=1)으로 보존하고, 광종은
-slots.mineral에 넣는다. 가격예측 원천은 아직 연결되지 않았으므로 이 action은 실행 단계에서
-source_unavailable로 종료하며 price.series/price.compare로 대체하지 않는다.
+slots.mineral에 넣는다. 가격예측은 KO_MNRL_PRC_PREDC 정규화 adapter를 통해 조회하며,
+원천에 해당 광종·기간 행이 없을 때만 source_unavailable로 종료한다. price.series/price.compare로
+대체하지 않는다.
 광물종합지수의 현재값·전일 변동(예: "오늘 광물종합지수 얼마야?")과 최근 N개월
 추세(예: "최근 3개월 광물종합지수 추세")는 intent=indicator, action_id=indicator.series,
 slots.indicator=composite_index로 정규화한다. 기간이 없으면 최신값, "최근 N개월"은
@@ -1273,6 +1274,9 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
     strategic_overview = _strategic_price_overview_plan(message)
     if strategic_overview is not None:
         return strategic_overview
+    price_world_production = _price_world_production_plan(message)
+    if price_world_production is not None:
+        return price_world_production
     production_yoy = _production_yoy_plan(message)
     if production_yoy is not None:
         return production_yoy
@@ -1588,6 +1592,46 @@ def _production_yoy_plan(message: str) -> ActionPlan | None:
                           period=Period(kind="calendar_year", calendar_year=int(year), explicit=True) if year else None),
         intent="resource_yoy", role="data",
     )])
+
+
+def _price_world_production_plan(message: str) -> ActionPlan | None:
+    """가격과 세계 생산량 YoY를 함께 묻는 닫힌 복합 문형을 고정한다.
+
+    ``세계 생산량 변화``는 국가별 최신 순위가 아니라 세계 총계의 연속 연도
+    증감률이다. 가격은 같은 연도 평균 집계 Action으로 고정해 두 결과의 시간
+    단위를 맞추고, 명시적 전년 대비 문형은 단일 ``resource.yoy`` 계획으로
+    계속 처리한다.
+    """
+    compact = re.sub(r"\s+", "", message)
+    mineral = r"(?:리튬|니켈|코발트|구리|동|망간|흑연|텅스텐|희토류|네오디뮴)"
+    patterns = (
+        rf"(?P<mineral>{mineral})(?:의)?가격(?:이랑|과|와|및)(?:세계)?생산량"
+        r"(?:변화|추이)(?:같이|함께)?(?:보여줘|보여주세요|알려줘|알려주세요|표시해줘|표시해주세요)?[?.]?",
+        rf"(?:세계)?생산량(?:변화|추이)(?:이랑|랑|과|와|및)(?P<mineral>{mineral})"
+        r"(?:의)?가격(?:을|를)?(?:같이|함께)?(?:보여줘|보여주세요|알려줘|알려주세요|표시해줘|표시해주세요)?[?.]?",
+    )
+    match = next(
+        (candidate for pattern in patterns
+         if (candidate := re.fullmatch(pattern, compact, flags=re.IGNORECASE))),
+        None,
+    )
+    if not match:
+        return None
+    mineral = MINERAL_ALIASES.get(match.group("mineral").casefold(), match.group("mineral"))
+    return ActionPlan(actions=[
+        ActionCall(
+            requirement_id="mineral_price", action_id="price.series",
+            slots=ActionSlots(mineral=mineral, period=Period(kind="latest"), price_operation="yearly_average",
+                              requested_outputs={"text", "chart"}),
+            intent="price_series", role="data", requested_outputs={"text", "chart"},
+        ),
+        ActionCall(
+            requirement_id="world_production_yoy", action_id="resource.yoy",
+            slots=ActionSlots(mineral=mineral, metric="production", country_scope="world",
+                              requested_outputs={"text", "chart"}),
+            intent="resource_yoy", role="data", requested_outputs={"text", "chart"},
+        ),
+    ])
 
 
 def _mine_yoy_rank_plan(message: str) -> ActionPlan | None:
@@ -2191,6 +2235,7 @@ def _publication_document_plan(message: str) -> ActionPlan | None:
     # 포함어/제외어 휴리스틱은 복합 데이터 요구를 계속 삼킬 수 있다. 아래
     # 단일 문서 검색 문형으로 질문 전체가 완결될 때만 이 경로가 소유한다.
     single_publication_patterns = (
+        r"최근자원뉴스(?:를)?(?:요약|정리|보여)(?:해줘|해주세요|해주십시오|줘|주세요|주십시오)?[?.]?",
         r"이번달(?:전략광종|희소금속)?월간동향(?:을)?요약(?:해줘|해주세요|해주십시오)[?.]?",
         r"최근\d+(?:개월|년)(?:전략광종|희소금속)?월간동향(?:을)?요약(?:해줘|해주세요|해주십시오)[?.]?",
         r"20\d{2}년(?:전략광종|희소금속)?월간동향(?:을)?요약(?:해줘|해주세요|해주십시오)[?.]?",

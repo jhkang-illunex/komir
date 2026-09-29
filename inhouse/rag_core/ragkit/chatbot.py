@@ -1314,9 +1314,9 @@ def _composite_index_scope_answer(evidence: list, action_plan) -> tuple[str, set
 def _forecast_price_scope_answer(evidence: list, action_plan) -> tuple[str, set[int]] | None:
     """향후 예측 adapter가 제공할 정규화 표의 출력 계약이다.
 
-    현재 ``forecast.price``는 원천 미연결로 실행 전에 source_unavailable 처리된다.
-    따라서 이 함수는 미래 adapter의 ``forecast_date``, ``predicted_price``,
-    ``current_price``, ``unit`` 정규화 열 외에는 해석하지 않는다.
+    ``forecast.price``는 ``KO_MNRL_PRC_PREDC`` 정규화 표를 사용한다. 이 함수는
+    ``forecast_date``, ``predicted_price``, ``current_price``, ``unit`` 정규화 열
+    외에는 해석하지 않는다.
     """
     actions = getattr(action_plan, "actions", [])
     if len(actions) != 1 or getattr(actions[0], "action_id", None) != "forecast.price":

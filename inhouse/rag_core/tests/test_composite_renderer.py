@@ -397,6 +397,29 @@ class CompositeRendererTest(unittest.TestCase):
         self.assertIn("니켈 자원 뉴스", result[0])
         self.assertEqual(result[1], {1})
 
+    def test_single_news_summary_request_renders_summary_cells(self):
+        plan = ActionPlan(actions=[
+            ActionCall(requirement_id="news", action_id="document.retrieve",
+                       slots=ActionSlots(topic="최근 자원 뉴스를 요약해주세요")),
+        ])
+        evidence = [
+            Evidence(kind="structured", source="public.ai_news", section="자원뉴스",
+                     text=("| 날짜 | 광종 | 제목 | 요약 |\n|---|---|---|---|\n"
+                           "| 2026-09-28 | 니켈 | 니켈 생산 감축 | 가뭄으로 생산량이 줄었습니다. |\n"
+                           "| 2026-09-22 | 동 | 구리 가격 재상승 | 공급부족과 재고 감소가 겹쳤습니다. |"),
+                     action_id="document.retrieve"),
+        ]
+
+        result = render_composite(evidence, plan)
+
+        self.assertIsNotNone(result)
+        answer, cited = result
+        self.assertIn("최근 자원뉴스 요약", answer)
+        self.assertIn("니켈 생산 감축: 가뭄으로 생산량이 줄었습니다.", answer)
+        self.assertIn("구리 가격 재상승: 공급부족과 재고 감소가 겹쳤습니다.", answer)
+        self.assertNotIn("최근 자원뉴스 : 확인된 기사", answer)
+        self.assertEqual(cited, {1})
+
     def test_price_index_comparison(self):
         plan = ActionPlan(actions=[
             ActionCall(requirement_id="p", action_id="price.series", slots=ActionSlots(
@@ -458,6 +481,53 @@ class CompositeRendererTest(unittest.TestCase):
         result = render_composite(evidence, plan)
         self.assertIn("광물정보 : 주요 용도", result[0])
         self.assertIn("광물가격 : 2026-09-26", result[0])
+
+    def test_price_trade_rank_block_joins_reversed_requirement_order(self):
+        plan = ActionPlan(actions=[
+            ActionCall(requirement_id="imports", action_id="trade.country_rank",
+                       slots=ActionSlots(mineral="니켈", metric="import_amount", top_n=5)),
+            ActionCall(requirement_id="mineral_price", action_id="price.series",
+                       slots=ActionSlots(mineral="니켈", period=Period(kind="latest"))),
+        ])
+        evidence = [
+            Evidence(kind="structured", source="KOMIS", section="수입", action_id="trade.country_rank",
+                     requirement_id="imports", text="| country | share_pct |\n|---|---:|\n| 인도네시아 | 37.12 |"),
+            Evidence(kind="structured", source="KOMIS", section="가격", action_id="price.series",
+                     requirement_id="mineral_price", unit="가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002",
+                     text=("| date | price |\n|---|---:|\n| 2026-09-07 | 16405.16 |\n"
+                           "| 2026-09-08 | 16745.53 |")),
+        ]
+
+        result = render_composite(evidence, plan)
+
+        self.assertIsNotNone(result)
+        answer, cited = result
+        self.assertIn("수입 상위국 인도네시아(37.12%)", answer)
+        self.assertEqual(cited, {1, 2})
+
+    def test_price_world_yoy_block_aligns_same_year_and_joins_requirements(self):
+        plan = ActionPlan(actions=[
+            ActionCall(requirement_id="mineral_price", action_id="price.series",
+                       slots=ActionSlots(mineral="니켈", period=Period(kind="latest"), price_operation="yearly_average")),
+            ActionCall(requirement_id="world_production_yoy", action_id="resource.yoy",
+                       slots=ActionSlots(mineral="니켈", metric="production", country_scope="world")),
+        ])
+        evidence = [
+            Evidence(kind="structured", source="KOMIS", section="생산량 YoY", action_id="resource.yoy",
+                     requirement_id="world_production_yoy",
+                     text=("| year | pct_change |\n|---|---:|\n| 2025 | 12.5 |\n| 2026 | -3.2 |")),
+            Evidence(kind="aggregated", source="KOMIS", section="연도별 평균 가격", action_id="price.series",
+                     requirement_id="mineral_price", unit="가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002",
+                     text=("| price_date | price | observation_months |\n|---|---:|---:|\n"
+                           "| 2025-01-01 | 15000 | 12 |\n| 2026-01-01 | 16000 | 9 |")),
+        ]
+
+        result = render_composite(evidence, plan)
+
+        self.assertIsNotNone(result)
+        self.assertIn("연도별 평균 가격 2025 15,000; 생산량 +12.50%", result[0])
+        self.assertIn("2026 16,000; 생산량 -3.20%", result[0])
+        self.assertEqual(result[1], {1, 2})
 
     def test_yaml_mineral_info_uses_and_price(self):
         plan = ActionPlan(actions=[
@@ -562,6 +632,36 @@ class CompositeRendererTest(unittest.TestCase):
         result = render_composite(evidence, plan)
         self.assertIsNotNone(result)
         self.assertIn("가격예측 : 2026-10-01 월간 전망치 110 USD/톤", result[0])
+
+    def test_battery_five_price_forecast_blocks_pair_by_mineral_not_evidence_order(self):
+        minerals = ["리튬", "니켈", "코발트", "망간", "흑연"]
+        actions = []
+        evidence = []
+        for index, mineral in enumerate(minerals, 1):
+            price_req = f"battery_price_{mineral}"
+            forecast_req = f"battery_forecast_{mineral}"
+            actions.extend([
+                ActionCall(requirement_id=price_req, action_id="price.series",
+                           slots=ActionSlots(mineral=mineral, period=Period(kind="latest"))),
+                ActionCall(requirement_id=forecast_req, action_id="forecast.price",
+                           slots=ActionSlots(mineral=mineral, forecast_operation="direction")),
+            ])
+            evidence.extend([
+                Evidence(kind="table", source="forecast", section="예측",
+                         requirement_id=forecast_req, action_id="forecast.price",
+                         text=("| forecast_date | forecast_period | current_price | predicted_price | unit |\n"
+                               "|---|---|---|---|---|\n"
+                               f"| 2026-10-01 | 월간 | {100 + index} | {110 + index} | USD/톤 |")),
+                Evidence(kind="table", source="price", section="가격",
+                         requirement_id=price_req, action_id="price.series",
+                         unit="USD/톤",
+                         text=f"| date | price |\n|---|---|\n| 2026-09-08 | {100 + index} |"),
+            ])
+        result = render_composite(evidence, ActionPlan(actions=actions))
+        self.assertIsNotNone(result)
+        for index, mineral in enumerate(minerals, 1):
+            self.assertIn(f"{mineral} : 현재가 {100 + index} USD/톤 (2026-09-08), 월간 전망 {110 + index} USD/톤", result[0])
+        self.assertEqual(len(result[1]), 10)
 
     def test_forecast_and_recent_news(self):
         plan = ActionPlan(actions=[

@@ -2,6 +2,84 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-29 — FBQ81 2차전지 5종 가격·전망 price block 연결 (iterative-audit)
+
+`KO_MNRL_PRC_PREDC` 정규화 adapter가 연결된 현재 계약을 기준으로, FBQ81의 10개
+Action(`price.series` 5개 + `forecast.price` 5개)을 기존 가격 블록의 공통 파서와
+분리된 `render_price_forecast_blocks`에서 조립하도록 연결했다. 가격과 전망은 실행·근거
+순서가 아니라 광종별 `requirement_id`와 슬롯으로 매칭하며, 일부 광종의 전망 행이 없을
+때는 다른 광종 값을 대체하지 않고 해당 광종만 미제공으로 표시한다. 가격예측 계약의
+stale한 “원천 미연결” 지침도 `KO_MNRL_PRC_PREDC` 조회 계약으로 정정했다.
+
+검증: 관련 테스트 177건(기존 174건+FBQ81 Action/renderer 회귀 3건), 관련 모듈
+`py_compile`, `git diff --check`, 배포 전 게이트 15+85+6+33+1건 통과. 현재 실행 중인
+컨테이너는 기존 `komir-rag-chat:20260929-mp03-mp04-block-r1`이며 이번 변경 이미지는
+아직 빌드·배포하지 않았다. 다음 단계는 새 이미지에서 FBQ81 실질의와 광종별
+`KO_MNRL_PRC_PREDC` 근거·단위 확인이다.
+
+## 2026-09-29 — MP03·MP04 블록화 이미지 배포 및 질문 순서 반전 라이브 검증
+
+배포 전 게이트(15+85+6+33+1건), 라우팅·페이지 추천 스모크, 관련 테스트 174건과
+72개 서브테스트를 통과한 뒤 `komir-rag-chat:20260929-mp03-mp04-block-r1` 이미지
+(digest `sha256:7627e49610730ff3e98964d4198b6b047757e8471b4b1506f29805a48f97e646`)를
+`komir-rag-chat-test`에 배포했다. 현재 컨테이너 ID는
+`0c7f2aa862bc61b37c6177c14f7537073823959b1dbb0157f57a62b42270ec11`이며, 이전 이미지는
+`komir-rag-chat-test-pre-20260929-210439`로 보존했다. 배포 후 라이브 검증 게이트도
+통과했다.
+
+독립 세션으로 MP03·MP04를 각각 원문 순서와 역순으로 질의했다. MP03은 두 순서 모두
+`price.series`와 `trade.country_rank`가 성공했고, 니켈 수입 상위국·가격의 근거와
+수치가 동일했다(수입 기간 2026-06-01~2026-09-09, 가격 기준 LME CASH). MP04는 두
+순서 모두 `price.series`와 `resource.yoy`가 성공했으며, 동일한 결정적 결합 결과
+`2025년 평균 가격 15,003.51`, `세계 생산량 전년 대비 +5.12%`를 반환했다. 생산량
+근거는 2024년 3,710,000톤에서 2025년 3,900,000톤으로의 변화(2024~2025)다.
+두 조합 모두 질문 순서에 따른 실패·경고·근거 교차 사용이 없었다.
+
+## 2026-09-29 — MP04 가격·세계 생산량 복합 질의 보정 (소스 검증 완료)
+
+저장 QA에서 `니켈 가격이랑 세계 생산량 변화 같이 보여줘`가 `slot_unresolved`로
+종료된 원인은 직전 뉴스 renderer 수정이 아니라, 해당 문형에 닫힌 ActionPlan이 없어
+LLM 계획 검증으로 넘어간 것이었다. 문형을 `price.series + resource.yoy`로 결정화하고
+가격 연도별 평균과 세계 총생산량 YoY를 각각의 requirement 근거로 보존했다.
+MP03의 `price.series + trade.country_rank`와 MP04의 `price.series + resource.yoy`는
+`inhouse/rag_core/ragkit/renderers/price_blocks.py`의 공통 조립 진입점에서 처리하며,
+기존 뉴스·지수 조합과 분기 소유권을 분리했다. 가격→보조지표와 보조지표→가격의
+질문 순서도 같은 계획으로 정규화한다. 명시적 전년 대비 질의는 기존
+`resource.yoy` 경로를 그대로 유지한다.
+
+검증: `test_action_contract_audit.py`, `test_composite_renderer.py`,
+`test_cross_rank_wiring.py`, `test_answer_contracts.py`, `test_price_unit_disclosure.py`
+총 174건 및 72개 서브테스트 통과, 관련 3개 모듈 `py_compile` 통과. 아직 서버
+재배포는 하지 않았다. 배포 전 로컬 게이트도 15+85+6+33+1건과 라우팅·페이지
+추천 스모크를 통과했다.
+
+## 2026-09-29 — 뉴스 요약 수정 배포 후 저장 QA 56건 재실행
+
+현행 `komir-rag-chat-test`에 저장된 사용자 QA 56건을 독립 세션으로 재질의했다. 기계
+판정은 PASS 36, PARTIAL 7, FAIL 7, BLOCKED_DATA 6이었다. 결과는
+`documents/산출물/2026-W40_0928-1004/chatbot_live_qa_260929_news_summary_r3/`의
+`user_qa_pair_audit_20260929_202951.{json,md}`에 보존했다. FAIL/PARTIAL은 주로 현재
+기간의 월간동향·예측 원천 부재 또는 advisor 거절이며, BLOCKED_DATA는 `source_unavailable`
+안전 종료다. 이번 QA에서는 코드·DB·이미지를 변경하지 않았다.
+
+## 2026-09-29 — 자원뉴스 목록·요약 응답 분리 (소스 검증 완료)
+
+`최근 자원뉴스를 보여주세요`와 `최근 자원 뉴스를 요약해주세요`가 같은 제목 목록을
+반환하던 문제를 수정했다. `document.retrieve`의 구조화 뉴스 표에서 요약 요청은 날짜·
+제목·검증된 요약 셀을 결정적으로 렌더링하고, 목록 요청은 기존 제목 목록을 유지한다.
+planner가 요약 어미를 topic에서 누락시키는 경우를 막기 위해 두 문형을 결정적 문서
+계획으로 고정했다. 기사별 요약은 최대 300자로 제한하고 단어 경계에서 말줄임표를 붙이며,
+요약 셀이 없는 근거는 추정하지 않고 기존 경로를 유지한다.
+
+검증: `test_composite_renderer.py` 및 `test_action_contract_audit.py` 142개 테스트와
+60개 서브테스트 통과, 관련 모듈 `py_compile`, `git diff --check` 통과. `rag_core` 전체
+테스트는 외부 의존 경로에서 38% 진행 후 장시간 무응답으로 중단했다. 이후 배포 게이트
+15+85+6+33+1건과 라이브 QA를 통과해 `komir-rag-chat:20260929-news-summary-r3`로
+`komir-rag-chat-test`를 교체했다. 컨테이너 ID는
+`27c84092b8f6e30b5c27155e702b118bbf487e72926b83860abbe6d6ec7a265d`이며 이전 컨테이너는
+`komir-rag-chat-test-pre-20260929-202512`로 보존했다. `/healthz`는 `{"status":"ok"}`를
+반환했고 두 문장 라이브 재질의에서 목록·요약 응답 분리를 확인했다.
+
 ## 2026-09-29 — 뉴스 필터·기간별 보고서 검색 배포
 
 최근 자원뉴스의 보조 문서 검색에서 동향 보고서와 게시일 미확인 문서가 섞이지 않도록
