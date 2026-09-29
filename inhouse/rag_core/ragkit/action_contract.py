@@ -20,7 +20,7 @@ ActionId = Literal[
     "price.series", "price.compare", "price.verify_claim", "price.overview", "price.volatility_rank",
     "inventory.latest",
     "trade.country_rank", "trade.price_cross_rank", "trade.monthly", "trade.concentration", "trade.hs_summary", "trade.indicator",
-    "resource.rank", "resource.price_cross_rank", "resource.yoy", "mine.rank", "mine.profile", "indicator.series", "document.retrieve", "document.lookup", "menu.navigate", "dataset.navigate",
+    "resource.rank", "resource.price_cross_rank", "resource.yoy", "mine.rank", "mine.profile", "indicator.series", "document.retrieve", "document.lookup", "document.facts.retrieve", "menu.navigate", "dataset.navigate",
     "diagnosis.rank", "diagnosis.series", "forecast.demand", "forecast.price", "forecast.quantity",
     "geopolitics.index", "geopolitics.articles", "stockpile.status", "stockpile.methodology", "scenario.assess", "synthesis.brief",
     "off_topic",
@@ -147,7 +147,7 @@ class PlanAssessment(BaseModel):
 AVAILABLE = frozenset({
     "price.series", "price.compare", "price.verify_claim", "price.overview", "price.volatility_rank", "trade.country_rank", "trade.price_cross_rank", "trade.monthly",
     "inventory.latest",
-    "trade.concentration", "trade.hs_summary", "trade.indicator", "resource.rank", "resource.price_cross_rank", "resource.yoy", "mine.rank", "mine.profile", "indicator.series", "document.retrieve", "document.lookup", "stockpile.methodology", "menu.navigate", "dataset.navigate",
+    "trade.concentration", "trade.hs_summary", "trade.indicator", "resource.rank", "resource.price_cross_rank", "resource.yoy", "mine.rank", "mine.profile", "indicator.series", "document.retrieve", "document.lookup", "document.facts.retrieve", "stockpile.methodology", "menu.navigate", "dataset.navigate",
     "forecast.price",
 })
 # 독립 근거를 요구하는 수치·문서 action은 requirement_id별로 실행하고
@@ -177,7 +177,7 @@ REQUIRED: dict[str, tuple[str, ...]] = {
     "trade.country_rank": ("mineral", "metric"), "trade.price_cross_rank": ("partner_country", "metric"), "trade.monthly": (), "trade.concentration": ("mineral",), "trade.indicator": ("trade_metric",),
     "trade.hs_summary": ("hs_code",), "resource.rank": ("mineral", "metric"), "resource.price_cross_rank": ("metric",), "resource.yoy": ("mineral",),
     "mine.rank": ("mine_metric", "mine_order"), "mine.profile": ("mine_name",),
-    "indicator.series": ("indicator",), "document.retrieve": ("topic",), "document.lookup": ("topic",), "stockpile.methodology": (),
+    "indicator.series": ("indicator",), "document.retrieve": ("topic",), "document.lookup": ("topic",), "document.facts.retrieve": ("topic",), "stockpile.methodology": (),
     "forecast.price": ("mineral",),
     "menu.navigate": ("target_page",), "dataset.navigate": ("dataset",),
 }
@@ -191,6 +191,7 @@ ALLOWED_MULTI = frozenset({
     # 복수의 독립 source-first 문서 요구는 각각의 requirement ID와 출처를
     # 보존한 채 실행한다. 같은 개념의 중복 여부를 질문 문자열로 추정하지 않는다.
     frozenset({"document.retrieve"}),
+    frozenset({"document.facts.retrieve"}),
     # 복합 출력 계약의 현재 연결된 데이터 조합. 각 Action은 독립 근거를
     # 유지하며 최종 형식은 answer_contracts.py/AnswerComposer가 안내한다.
     frozenset({"price.series", "indicator.series"}),
@@ -214,7 +215,7 @@ ALLOWED_MULTI = frozenset({
 
 ACTION_PLAN_PROMPT = """질문을 action 카탈로그의 ActionPlan JSON으로만 변환한다.
 action_id는 price.series, price.compare, price.verify_claim, price.overview, trade.country_rank, trade.price_cross_rank, trade.monthly,
-trade.concentration, trade.hs_summary, trade.indicator, resource.rank, resource.price_cross_rank, resource.yoy, mine.rank, mine.profile, indicator.series, document.retrieve, document.lookup,
+trade.concentration, trade.hs_summary, trade.indicator, resource.rank, resource.price_cross_rank, resource.yoy, mine.rank, mine.profile, indicator.series, document.retrieve, document.lookup, document.facts.retrieve,
 menu.navigate, dataset.navigate, diagnosis.rank, diagnosis.series, forecast.demand, forecast.price,
 forecast.quantity, geopolitics.index, geopolitics.articles, stockpile.status, stockpile.methodology, scenario.assess,
 synthesis.brief 중 하나다. 원문과 확인된 대화에 있는 값만 slots에 넣고 추측하지 않는다.
@@ -1293,7 +1294,7 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
     if weekly_price_news is not None:
         return weekly_price_news
     rare_monthly_mineral_list = re.fullmatch(
-        r"(?P<period>최근|가장최근|이번달|20\d{2}년\d{1,2}월)?(?:희소|회소)금속월간동향(?:더?프라임)?에나온광종(?:들이)?(?:뭐뭐|목록|어떤)(?:을)?(?:인가요|있나요|알려줘|알려주세요|인지|보여줘|보여주세요)?[?.]?",
+        r"(?P<period>최근|가장최근|이번달|20\d{2}년\d{1,2}월)?(?:희소|회소)금속월간동향(?:더?프라임)?(?:에나온|에서|의)?광종(?:들이)?(?:뭐뭐|목록|어떤)(?:을)?(?:인가요|있나요|알려줘|알려주세요|인지|보여줘|보여주세요)?[?.]?",
         compact,
     )
     if rare_monthly_mineral_list:
@@ -1311,7 +1312,31 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
             next_month = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
             period = Period(kind="range", start=month_start.isoformat(), end=(next_month - timedelta(days=1)).isoformat(), explicit=True)
         return ActionPlan(actions=[ActionCall(
-            requirement_id="monthly_rare_metals", action_id="document.retrieve",
+            requirement_id="monthly_rare_metals", action_id="document.facts.retrieve",
+            slots=ActionSlots(topic=topic, period=period),
+            intent="document", role="content",
+        )])
+    rare_monthly_facts = re.fullmatch(
+        r"(?P<period>최근|가장최근|이번달|20\d{2}년\d{1,2}월)?(?:희소|회소)금속월간동향(?:더?프라임)?"
+        r"(?:의|에대한)?(?:내용|문서내용|요약본)?(?:을|를)?요약(?:해줘|해주세요|해|하라)?[?.]?",
+        compact,
+    )
+    if rare_monthly_facts:
+        period_text = rare_monthly_facts.group("period")
+        topic = message.replace("회소금속", "희소금속")
+        period = None
+        if period_text == "이번달":
+            today = date.today()
+            period = Period(kind="range", start=today.replace(day=1).isoformat(), end=today.isoformat(), explicit=True)
+        elif period_text and period_text not in {"최근", "가장최근"}:
+            match = re.fullmatch(r"(20\d{2})년(\d{1,2})월", period_text)
+            assert match is not None
+            year, month = int(match.group(1)), int(match.group(2))
+            month_start = date(year, month, 1)
+            next_month = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
+            period = Period(kind="range", start=month_start.isoformat(), end=(next_month - timedelta(days=1)).isoformat(), explicit=True)
+        return ActionPlan(actions=[ActionCall(
+            requirement_id="monthly_rare_metals_facts", action_id="document.facts.retrieve",
             slots=ActionSlots(topic=topic, period=period),
             intent="document", role="content",
         )])

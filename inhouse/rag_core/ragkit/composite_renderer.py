@@ -502,6 +502,28 @@ def render_composite(evidence: list, action_plan, action_results=None) -> tuple[
                     {price_index, production_index, imports_index},
                 )
 
+    # PageIndex ingest가 만든 문서 파생 사실은 문서 선택과 광종 목록·요약을
+    # 한 sidecar에서 가져온다. 목록과 요약을 LLM이 다시 조립하지 않도록
+    # 요청 유형에 맞는 필드만 결정적으로 표시한다.
+    if ids == ["document.facts.retrieve"]:
+        facts = by_action.get("document.facts.retrieve", [])
+        if len(facts) == 1:
+            evidence_index, document = facts[0]
+            text = str(getattr(document, "text", "") or "")
+            rows = [line.strip().strip("|") for line in text.splitlines() if line.strip().startswith("|")]
+            values = [part.strip() for part in rows[-1].split("|")] if rows else []
+            if len(values) >= 4:
+                action = actions[0]
+                topic = re.sub(r"\s+", "", str(getattr(action.slots, "topic", "") or ""))
+                title, month, minerals, summary = values[:4]
+                wants_list = "광종" in topic and any(marker in topic for marker in ("목록", "뭐뭐", "어떤"))
+                wants_summary = "요약" in topic or "내용" in topic or "요약본" in topic
+                if wants_list and not wants_summary:
+                    return (f"월간동향 : {title}({month})에 나온 광종 목록\n- {minerals}", {evidence_index})
+                if wants_summary and not wants_list:
+                    return (f"월간동향 : {title}({month}) 문서 요약\n{summary}", {evidence_index})
+                return (f"월간동향 : {title}({month})\n광종 목록 : {minerals}\n문서 요약 : {summary}", {evidence_index})
+
     # 자원뉴스의 최신 목록은 ``ai_news`` adapter가 날짜·제목·요약을 이미
     # 구조화해 확인한 결과다. 이를 일반 생성 모델에 다시 맡기면, 정상 근거가
     # 있어도 모델이 빈 기권문을 반환해 ``off_topic``으로 오분류될 수 있다.

@@ -67,7 +67,7 @@ ensure_shared_on_path(Path(__file__).resolve())
 
 from common.llm_client import LLM_TRANSIENT_ERRORS, KomirJsonLLM  # noqa: E402
 from rag_core.retrieval.access import PRIVATE_ONLY_KOMIS_PAGES  # noqa: E402
-from rag_core.retrieval import mine_aggregate, weekly_trend, mineral_info, monthly_trend, reports, cross_rank, news, battery_minerals, production_concentration, inventory  # noqa: E402
+from rag_core.retrieval import mine_aggregate, weekly_trend, mineral_info, monthly_trend, document_facts, reports, cross_rank, news, battery_minerals, production_concentration, inventory  # noqa: E402
 from rag_core.retrieval.evidence import (  # noqa: E402
     Evidence, KOMIS_RAW_DUMMY_CAVEAT, KOMIS_RAW_UNVERIFIED_CAVEAT,
 )
@@ -2050,6 +2050,15 @@ def _retrieve_node(
         return {"evidence": [], "warnings": warnings}
     route = state["route"]
     warnings = list(state.get("warnings", []))
+    # 문서 원문을 매 턴 재해석하지 않고, ingest가 PageIndex 옆에 만든
+    # ``*.facts.json`` sidecar를 직접 조회한다. 이 Action은 일반 dense/PageIndex
+    # 검색으로 폴백하지 않아 목록·요약이 서로 다른 문서에서 조립되는 일을
+    # 막는다. 원문 checksum·source span은 sidecar 자체에 보존된다.
+    action_call = state.get("action_call")
+    if action_call is not None and action_call.action_id == "document.facts.retrieve":
+        topic = action_call.slots.topic or state.get("question", "")
+        evidence, facts_warnings = document_facts.fetch_document_facts_evidence(topic)
+        return {"evidence": evidence, "warnings": warnings + facts_warnings}
     if route.is_mineral_specific_composite_index:
         # KO_MNRL_SNTHS_INDX는 전체/메이저/희소 하위지수만 제공하며 광종별
         # series가 없다. 코발트 등 특정 광종을 붙인 질문에 전체 지수를 재검색
@@ -3407,6 +3416,12 @@ def retrieve_evidence(
             # 기간 적재 범위나 import_amount를 다시 해석하다 결정적 결과를
             # 기권시키지 않도록 근거 존재를 충분성 기준으로 쓴다. 실제 관측기간은
             # Evidence.as_of/observed_period에 보존돼 전체 기간인 것처럼 표시되지 않는다.
+            verified = {"sufficient": bool(call_evidence), "evidence": call_evidence,
+                        "warnings": call_warnings}
+        elif call.action_id == "document.facts.retrieve":
+            # ingest가 원문 checksum·source span과 함께 만든 sidecar는 이미
+            # 결정적으로 검증된 파생 사실이다. 일반 문서 Advisor에 다시
+            # 맡기면 같은 문서를 요약할지 여부가 LLM 출력에 흔들린다.
             verified = {"sufficient": bool(call_evidence), "evidence": call_evidence,
                         "warnings": call_warnings}
         elif (

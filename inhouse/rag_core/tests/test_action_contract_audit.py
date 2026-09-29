@@ -458,7 +458,7 @@ class ActionContractAuditTest(unittest.TestCase):
             "가장 최근 희소금속 월간 동향에 나온 광종들이 뭐뭐 있나요?", MustNotRun(),
         )
         call = candidate.actions[0]
-        self.assertEqual(call.action_id, "document.retrieve")
+        self.assertEqual(call.action_id, "document.facts.retrieve")
         self.assertEqual(call.requirement_id, "monthly_rare_metals")
         self.assertIsNone(call.slots.period)
 

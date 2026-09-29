@@ -12,7 +12,7 @@ _ACTION_LABELS = {
     "trade.concentration": "수출입 집중도", "resource.rank": "생산·매장량 순위",
     "trade.price_cross_rank": "수입 비중·가격 교차분석",
     "resource.price_cross_rank": "생산 1위국 비중·가격 교차분석",
-    "document.retrieve": "문서 내용", "document.lookup": "문서 원문",
+    "document.retrieve": "문서 내용", "document.lookup": "문서 원문", "document.facts.retrieve": "문서 파생 사실",
     "mine.profile": "광산 정보", "mine.rank": "광산 순위",
 }
 
