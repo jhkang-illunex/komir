@@ -38,12 +38,12 @@ class ActionContractAuditTest(unittest.TestCase):
             )), intent="document", role="content",
         )
         evidence = Evidence(
-            kind="structured", source="public.ko_daynews_raw + 반정형 보고서",
+            kind="structured", source="public.ai_daynews_raw + 반정형 보고서",
             section="일일 자원뉴스",
             text=("| 날짜 | 제목 | 요약 |\n|---|---|---|\n"
                   "| 2026-07-28 | 중국 수출통제 | 발행 기사 |"),
             as_of="2026-07-28~2026-08-24", requirement_id="publication_search",
-            action_id="document.retrieve", source_id="public.ko_daynews_raw + 반정형 보고서",
+            action_id="document.retrieve", source_id="public.ai_daynews_raw + 반정형 보고서",
             observed_period="2026-07-28~2026-08-24",
         )
         route = graph.RetrievalRoute(resolved_query="중국 수출통제 뉴스", use_structured=False,
@@ -208,22 +208,30 @@ class ActionContractAuditTest(unittest.TestCase):
                 raise AssertionError("닫힌 종합지수 문형은 planner를 호출하면 안 됩니다")
 
         cases = (
-            ("오늘 광물 종합지수 얼마야?", "latest_delta", "latest"),
-            ("최근 3개월 광물종합지수 추세 알려줘", "period_change", "trailing_months"),
-            ("광물 종합지수 올해 고점/저점은?", "period_extrema", "calendar_year"),
+            ("오늘 광물 종합지수 얼마야?", "latest_delta", "latest", "composite", "HI001"),
+            ("최근 3개월 광물종합지수 추세 알려줘", "period_change", "trailing_months", "composite", "HI001"),
+            ("광물종합지수 2010~2011 변화 보여줘", "period_change", "range", "composite", "HI001"),
+            ("메이저금속지수 2010~2011 변화 보여줘", "period_change", "range", "major_metals", "HI002"),
+            ("광물종합지수(HI003) 2010~2011 변화 보여줘", "period_change", "range", "minor_metals", "HI003"),
+            ("HI002 2010~2011 변화 보여줘", "period_change", "range", "major_metals", "HI002"),
+            ("희소금속지수 올해 고점/저점은?", "period_extrema", "calendar_year", "minor_metals", "HI003"),
         )
-        for question, operation, period_kind in cases:
+        for question, operation, period_kind, variant, index_code in cases:
             with self.subTest(question=question):
                 candidate = extract_action_plan(question, MustNotRun())
                 call = candidate.actions[0]
                 self.assertEqual(call.action_id, "indicator.series")
                 self.assertEqual(call.slots.indicator, "composite_index")
-                self.assertEqual(call.slots.indicator_variant, "composite")
+                self.assertEqual(call.slots.indicator_variant, variant)
                 self.assertEqual(call.slots.indicator_operation, operation)
                 self.assertEqual(call.slots.period.kind, period_kind)
                 self.assertTrue(validate_action_plan(candidate).approved)
                 route = _route_from_action_call(call, question)
-                self.assertEqual(route.komis_index_type_code, "HI001")
+                self.assertEqual(route.komis_index_type_code, index_code)
+                if period_kind == "range":
+                    self.assertEqual(route.komis_start_period, "20100101")
+                    self.assertEqual(route.komis_end_period, "20111231")
+                    self.assertEqual(call.requested_outputs, {"text", "chart"})
 
     def test_composite_index_operation_rejects_mixed_or_missing_variant(self):
         candidate = plan(ActionCall(

@@ -2,6 +2,7 @@ import unittest
 
 from rag_core.ragkit.chatbot import _citation_sources, _source_footer
 from rag_core.ragkit.official_sources import official_source_url
+from rag_core.ragkit.renderers.citation import citation_sources
 from rag_core.retrieval.evidence import Evidence
 
 
@@ -46,6 +47,39 @@ class OfficialSourceUrlTest(unittest.TestCase):
         from rag_core.ragkit.chatbot import _evidence_source_label
         evidence = Evidence(kind="structured", source="public.KO_MNRL_PRC", section="가격", text="표")
         self.assertEqual(_evidence_source_label(evidence), "KOMIS 공식 데이터 · 가격")
+
+    def test_menu_citation_uses_public_label_without_source_table_names(self):
+        evidence = Evidence(
+            kind="structured", source="public.KO_MNRL_PRC",
+            section="KOMIS 원천 · KO_MNRL_PRC(니켈)", text="표",
+            menu_page_id="price_base_metals",
+        )
+        citation = _citation_sources({1}, [evidence])[0]
+        self.assertIn("광물자원가격", citation["section"])
+        self.assertNotIn("source_tables", citation["menu_source"])
+        self.assertNotIn("KO_MNRL_PRC", str(citation))
+        self.assertNotIn("KO_MNRL_PRC", _source_footer({1}, [evidence]))
+
+    def test_price_citation_uses_menu_and_hides_observation_period(self):
+        evidence = [Evidence(
+            kind="aggregated", source="public.KO_MNRL_PRC",
+            section="KOMIS 원천 · KO_MNRL_PRC(니켈)", text="표",
+            menu_page_id="price_base_metals", action_id="price.series",
+            as_of="2025-09-29~2026-09-08, 지정 기간 내 관측 247건 전체",
+            observed_period="2025-09-29~2026-09-08",
+        )]
+        citation = _citation_sources({1}, evidence)[0]
+        shared_citation = citation_sources({1}, evidence)[0]
+        self.assertIn("KOMIS 광물자원가격 > 비철금속", citation["section"])
+        self.assertIsNone(citation["as_of"])
+        self.assertIsNone(citation["observed_period"])
+        self.assertEqual(shared_citation["section"], citation["section"])
+        self.assertIsNone(shared_citation["as_of"])
+        self.assertIsNone(shared_citation["observed_period"])
+        self.assertNotIn("KO_MNRL_PRC", str(citation))
+        self.assertNotIn("247건", str(citation))
+        self.assertIn("KOMIS 광물자원가격 > 비철금속", _source_footer({1}, evidence))
+        self.assertNotIn("247건", _source_footer({1}, evidence))
 
 
 if __name__ == "__main__":

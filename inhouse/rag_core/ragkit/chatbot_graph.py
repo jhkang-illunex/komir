@@ -79,7 +79,7 @@ from .source_contract import (  # noqa: E402
     RequirementPlan, SourceAssessment, assess_requirement_plan, extract_requirement_plan,
 )
 from .action_contract import (  # noqa: E402
-    ActionCall, ActionPlan, ActionSlots, Period, PlanAssessment,
+    ActionCall, ActionPlan, ActionSlots, COMPOSITE_INDEX_VARIANTS, Period, PlanAssessment,
     extract_action_plan, validate_action_plan,
 )
 from .action_results import ActionResult, RetrievalResult  # noqa: E402
@@ -840,14 +840,22 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
     s = call.slots
     period = s.period
     requirement_query = " ".join(str(value) for value in (s.mineral, s.minerals, s.metric, s.indicator, s.mine_name, s.topic) if value)
+    if period and period.kind == "range":
+        # ActionPlan은 ISO 날짜로 정규화하지만 raw MCP 요청 계약은 숫자 날짜다.
+        komis_start_period = re.sub(r"\D", "", period.start or "")
+        komis_end_period = re.sub(r"\D", "", period.end or "")
+    elif period and period.kind == "calendar_year":
+        komis_start_period = komis_end_period = str(period.calendar_year)
+    else:
+        komis_start_period = komis_end_period = None
     common = {
         "resolved_query": requirement_query or question, "use_structured": False, "use_dense": False, "use_pageindex": False,
         "komis_mineral_name": s.mineral,
         "komis_hs_code": s.hs_code,
         "komis_ranking_top_n": s.top_n,
         "komis_relative_months": period.trailing_months if period and period.kind == "trailing_months" else None,
-        "komis_start_period": period.start if period and period.kind == "range" else (str(period.calendar_year) if period and period.kind == "calendar_year" else None),
-        "komis_end_period": period.end if period and period.kind == "range" else (str(period.calendar_year) if period and period.kind == "calendar_year" else None),
+        "komis_start_period": komis_start_period,
+        "komis_end_period": komis_end_period,
         # 최신 가격 문장은 기준일·전일 대비를 함께 보여준다. 최신/직전 보유
         # 관측 2건만 가져오며, 렌더러는 최신 행만 표로 표시한다.
         "komis_raw_limit": 2 if period and period.kind == "latest" else None,
@@ -919,9 +927,8 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
         )
     if call.action_id == "indicator.series":
         topic = s.indicator
-        composite_code = {
-            "composite": "HI001", "major_metals": "HI002", "minor_metals": "HI003",
-        }.get(s.indicator_variant) if topic == "composite_index" else None
+        composite_code = (COMPOSITE_INDEX_VARIANTS.get(s.indicator_variant, (None, None))[0]
+                          if topic == "composite_index" and s.indicator_variant else None)
         return RetrievalRoute(**common, use_komis_raw=True, komis_topic=topic,
                               komis_index_type_code=composite_code)
     if call.action_id in {"trade.price_cross_rank", "resource.price_cross_rank"}:
@@ -2623,7 +2630,7 @@ def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
                 and action_call.action_id == "document.retrieve"
                 and any(
                     ev.kind == "structured"
-                    and "public.ko_daynews_raw" in ev.source
+                    and "public.ai_daynews_raw" in ev.source
                     and _period_bounds(ev.observed_period or ev.as_of or "") is not None
                     and re.search(r"\|\s*20\d{2}-\d{2}-\d{2}\s*\|", ev.text)
                     for ev in evidence
@@ -3219,6 +3226,31 @@ def retrieve_evidence(
             reason = f"{_SOURCE_UNAVAILABLE_WARNING_PREFIX}unverified_or_incomplete_observation"
             record_failure(call, call_warnings + [reason], reason)
             continue
+        # 세계 수출국 순위는 한국 수입국·품목별 문서 표로 대체할 수 없다.
+        # dense 결과에 수입 비중이나 일반 시장동향 문장이 남아 있으면
+        # Advisor의 ``bool(evidence)`` 패스트패스가 이를 수출 근거로 승인할
+        # 수 있으므로, global export 요청은 정형 수출 집계 근거만 허용한다.
+        if (
+            call.action_id == "trade.country_rank"
+            and call.slots.trade_scope == "global"
+            and call.slots.metric in {
+                "export_amount", "export_weight", "import_amount", "import_weight",
+            }
+        ):
+            trade_direction = "export" if call.slots.metric.startswith("export") else "import"
+            structured_trade = [ev for ev in call_evidence if ev.kind == "structured"]
+            if not structured_trade:
+                reason = f"{_SOURCE_UNAVAILABLE_WARNING_PREFIX}global_{trade_direction}_data"
+                record_failure(
+                    call,
+                    call_warnings + [
+                        f"global_{trade_direction}_requires_structured_evidence",
+                        reason,
+                    ],
+                    reason,
+                )
+                continue
+            call_evidence = structured_trade
         if call.action_id == "price.verify_claim":
             threshold = call.slots.claimed_change_pct
             if threshold is None:
@@ -3252,6 +3284,16 @@ def retrieve_evidence(
             # 있다. 해당 YAML 근거만 독립적으로 성공 처리해 뒤의 결정적 복합
             # renderer가 용도와 가격을 각각의 Action 결과로 조합하게 한다.
             verified = {"sufficient": True, "evidence": call_evidence,
+                        "warnings": call_warnings}
+        elif (
+            route.use_production_concentration
+            and call.action_id == "resource.rank"
+            and call.slots.metric == "production"
+        ):
+            # 생산 1위국 점유율은 전용 KOMIS adapter가 공식 집계 열을 조회해
+            # 만든 구조화 근거다. 일반 문서 Advisor에 다시 맡기면 정형 데이터
+            # Action을 거절하는 회귀가 있어, 근거 존재 여부만 충분성 기준으로 쓴다.
+            verified = {"sufficient": bool(call_evidence), "evidence": call_evidence,
                         "warnings": call_warnings}
         elif _is_rare_earth_nd_scope_request(call, question):
             # 이 경로는 `_q15_contextual_pageindex_evidence`가 실제 공개 USGS

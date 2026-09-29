@@ -7,6 +7,24 @@ from ..menu_catalog import menu_source
 from ..official_sources import official_source, public_source_label
 
 _OPAQUE_PRICE_UNIT_CODE = re.compile(r"\b(?:PR|WT)\d+\b", re.IGNORECASE)
+_ACTION_SECTIONS = {
+    "price.series": "광물가격", "price.compare": "광물가격 비교",
+    "forecast.price": "가격예측", "inventory.latest": "광물 재고량",
+    "trade.country_rank": "수출입 국가 순위", "trade.monthly": "수출입 현황",
+    "trade.concentration": "수출입 집중도", "resource.rank": "광물 생산·매장량",
+    "indicator.series": "광물 지표",
+}
+
+
+def public_section(item) -> str:
+    """내부 테이블·SQL 식별자를 숨긴 사용자용 근거 구간 이름."""
+    catalog_source = menu_source(getattr(item, "menu_page_id", None))
+    if catalog_source:
+        return catalog_source.get("source_label") or catalog_source.get("label") or ""
+    section = str(getattr(item, "section", "") or "")
+    if re.search(r"\b(?:KO|AI)_[A-Z0-9_]+\b|\bpublic\.[a-zA-Z0-9_]+", section):
+        return _ACTION_SECTIONS.get(getattr(item, "action_id", None), "구조화 데이터")
+    return section
 
 
 def user_visible_unit(unit: str | None) -> str | None:
@@ -40,16 +58,21 @@ def citation_sources(cited_indices: set[int], evidence: list) -> list[dict]:
     for index, item in enumerate(evidence, 1):
         if index not in cited_indices:
             continue
+        hide_price_period = getattr(item, "action_id", None) == "price.series"
         official = official_source(item.source)
+        catalog_source = menu_source(getattr(item, "menu_page_id", None))
+        public_menu_source = ({key: value for key, value in catalog_source.items()
+                              if key != "source_tables"} if catalog_source else None)
         result.append({
             "index": index, "kind": item.kind, "source": public_source_label(item.source),
-            "section": item.section, "as_of": item.as_of, "unit": user_visible_unit(item.unit),
+            "section": public_section(item),
+            "as_of": None if hide_price_period else item.as_of, "unit": user_visible_unit(item.unit),
             "data_status": data_status(item),
             "warnings": ([warning] if (warning := _user_visible_warning(getattr(item, "caveat", None))) else []),
             "requirement_id": getattr(item, "requirement_id", None),
             "action_id": getattr(item, "action_id", None),
-            "observed_period": getattr(item, "observed_period", None),
-            "menu_source": menu_source(getattr(item, "menu_page_id", None)),
+            "observed_period": None if hide_price_period else getattr(item, "observed_period", None),
+            "menu_source": public_menu_source,
             **({"official_url": official.url} if official else {}),
         })
     return result

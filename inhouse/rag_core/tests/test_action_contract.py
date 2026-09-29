@@ -181,6 +181,14 @@ class ActionContractTest(unittest.TestCase):
         self.assertEqual([call.action_id for call in plan.actions], ["trade.concentration"])
         self.assertTrue(validate_action_plan(plan).approved)
 
+    def test_mineral_import_concentration_synonyms_are_routed_deterministically(self):
+        for question in ("리튬의 편중도가 어때?", "리튬 수입 집중도 알려줘"):
+            with self.subTest(question=question):
+                plan = extract_action_plan(question, None)
+                self.assertEqual([call.action_id for call in plan.actions], ["trade.concentration"])
+                self.assertEqual(plan.actions[0].slots.mineral, "리튬")
+                self.assertEqual(plan.actions[0].slots.period.trailing_months, 12)
+
     def test_nonempty_trade_concentration_topic_is_not_absorbed_by_rank(self):
         plan = action_plan_from_intent(IntentPlan(requirements=[
             IntentCall(requirement_id="rank", intent="trade_rank", role="data", slots=ActionSlots(

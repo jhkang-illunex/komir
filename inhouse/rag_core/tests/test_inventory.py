@@ -25,3 +25,13 @@ class InventoryContractTests(unittest.TestCase):
         self.assertIsNotNone(answer)
         self.assertIn("LME CASH", answer[0])
         self.assertIn("272380", answer[0])
+        coded = Evidence(
+            kind="structured", source="KOMIS", section="inventory", as_of="20260908",
+            unit="재고기준=LME CASH",
+            text=("| 기준일 | 광종 | 재고 종류 | 재고량 | 원시 단위 코드 |\n"
+                  "|---|---|---|---:|---|\n| 20260908 | 니켈 | LME CASH | 272380 | WT002 |"),
+            action_id="inventory.latest",
+        )
+        safe = render_latest_inventory([coded], plan)
+        self.assertIn("2026-09-08 기준 니켈 LME CASH 재고량은 272380 톤입니다.", safe[0])
+        self.assertNotIn("WT002", safe[0])

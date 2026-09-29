@@ -6,6 +6,7 @@ import re
 
 from common.config import get_settings
 from common.db import pg_connect
+from common.data_catalog import source_table
 from .evidence import Evidence, KOMIS_RAW_DUMMY_CAVEAT
 
 
@@ -68,12 +69,12 @@ def _country_codes_for_topic(topic: str) -> list[str]:
 
 def fetch_news_evidence(topic: str = "", *, start: str | None = None, end: str | None = None,
                         limit: int = 5) -> tuple[list[Evidence], list[str]]:
-    """ko_daynews_raw와 doc_chunk의 검증 가능한 관련 발췌를 함께 조회한다."""
-    # 일일 뉴스 원천(ko_daynews_raw)은 public 소유이고, 이 프로젝트가
+    """ai_daynews_raw와 doc_chunk의 검증 가능한 관련 발췌를 함께 조회한다."""
+    # 일일 뉴스 원천의 schema/table은 공용 정형 원천 카탈로그에서 읽는다. 이 프로젝트가
     # 적재한 반정형 문서 청크는 VECTOR_SCHEMA(현재 mineral_risk)에 있다. 둘을 같은
     # 스키마로 조회하면 한쪽은 반드시 UndefinedTable이 된다. 조회 전용 adapter
     # 에서 실제 소유 스키마를 명시하되, public에 DDL/DML을 수행하지 않는다.
-    komis_schema = "public"
+    news_table = source_table("daily_news")
     settings = get_settings()
     document_schema = getattr(settings, "VECTOR_SCHEMA", settings.PG_SCHEMA).replace('"', '')
     con = None
@@ -104,7 +105,7 @@ def fetch_news_evidence(topic: str = "", *, start: str | None = None, end: str |
                 country_params = [country_codes, country_terms, country_terms]
             select_sql = (
                 "SELECT LEFT(COALESCE(n.\"regDate\", ''), 8), n.\"typeCdNm\", n.ttl, n.cnts, "
-                "n.\"countryCodes\", n.seq FROM public.ko_daynews_raw n "
+                f"n.\"countryCodes\", n.seq FROM {news_table} n "
                 "WHERE n.\"pubStatusNm\" = '발행'"
             )
             if terms:
@@ -181,7 +182,7 @@ def fetch_news_evidence(topic: str = "", *, start: str | None = None, end: str |
         observed_period = (normalized_days[0] if len(normalized_days) == 1
                            else f"{normalized_days[0]}~{normalized_days[-1]}")
     sources = " + ".join(part for part, present in (
-        ("public.ko_daynews_raw", bool(news)), ("반정형 보고서", bool(reports)),
+        (news_table, bool(news)), ("반정형 보고서", bool(reports)),
     ) if present)
     return [Evidence(kind="structured", source=sources, section="일일 자원뉴스",
                      text='\n'.join(lines), as_of=observed_period,

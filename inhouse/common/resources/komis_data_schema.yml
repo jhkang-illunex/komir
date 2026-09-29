@@ -1,0 +1,104 @@
+# KOMIS 정형 데이터 조회 스키마 카탈로그
+# SQL은 코드에서 조립하고, 식별자와 페이지별 필드 매핑은 여기서 관리한다.
+# value/fixed_conditions는 허용된 비교 연산만 사용하며 임의 SQL 조각을 넣지 않는다.
+schema_version: 1
+schema: public
+
+sources:
+  daily_news:
+    schema: public
+    table: ai_daynews_raw
+
+datasets:
+  price_base_metals: &price
+    - table: KO_MNRL_PRC
+      columns: [MNRL_PRC_CRTR_SN, CRTR_YMD, LOWST_PRC, HGHST_PRC, CMERC_PRC, INVT]
+      period_column: CRTR_YMD
+      period_precision: day
+      filter_columns: {price_criterion_serial: MNRL_PRC_CRTR_SN}
+      fixed_conditions:
+        - {column: STATUS, operator: '=', value: Y}
+        - {column: LAST_DEL_DT, operator: IS NULL}
+  price_minor_metals: *price
+  price_iron_energy: *price
+  price_other: *price
+
+  indicator_composite:
+    - table: KO_MNRL_SNTHS_INDX
+      columns: [INDX_SE_CD, CRTR_YMD, INDX, PRVDY_CPRS, UPLMT, LWLMT, CENTER]
+      period_column: CRTR_YMD
+      period_precision: day
+      filter_columns: {index_type_code: INDX_SE_CD}
+  indicator_market:
+    - table: KO_MRKT_PRSPECT_IDCT
+      columns: [MNRKND_UNQ_CD, CRTR_YMD, MRKT_PRSPECT_IDCT, REAL_PRC, PRVMM_CPRS]
+      period_column: CRTR_YMD
+      period_precision: day
+      filter_columns: {mineral_code: MNRKND_UNQ_CD}
+  indicator_supply:
+    - table: KO_SPDM_STBT_INDX
+      columns: [MNRKND_UNQ_CD, CRTR_YMD, SPDM_STBT_INDX, REAL_PRC, PRVMM_CPRS, PRC, INCM_WEIG, INCM_AMT]
+      period_column: CRTR_YMD
+      period_precision: month
+      filter_columns: {mineral_code: MNRKND_UNQ_CD}
+  forecast_price:
+    - table: KO_MNRL_PRC_PREDC
+      columns: [MNRL_PRC_PREDC_SN, MNRKND_UNQ_CD, CRTR_YMD, PRD_SE_CD, PRC_UNIT_CD, CMERC_PRC, PREDC_PRC]
+      period_column: CRTR_YMD
+      period_precision: day
+      filter_columns: {mineral_code: MNRKND_UNQ_CD}
+  map_korea:
+    - table: KO_CSTM_CMMRC
+      columns: [HS_CD, CRTR_YMD, TRGT_NTN_CD, INCM_WEIG, INCM_AMT, EXP_WEIG, EXP_AMT, TRGT_NTN, ITEM_NM]
+      period_column: CRTR_YMD
+      period_precision: day
+      filter_columns: {hs_code: HS_CD}
+  map_global:
+    - table: KO_UN_CMMRC
+      columns: [HS_CD, CRTR_YMD, INCM_NTN_CD, EXP_NTN_CD, IMXPRT_SE_CD, CRTR_NTN_NM, TRGT_NTN_NM, WEIG, AMT, MNRKND_UNQ_CD]
+      period_column: CRTR_YMD
+      period_precision: day
+      # MNRKND_UNQ_CD는 기존 원천에서 전 행 NULL인 것으로 실측됨. 해당 페이지에서
+      # 광종 필터 대신 HS_CD를 사용하도록 기존 동작을 보존한다.
+      filter_columns: {mineral_code: MNRKND_UNQ_CD, hs_code: HS_CD}
+  map_mineral:
+    - table: KO_RSRC_BURUDG_QUTY
+      columns: [MNRKND_UNQ_CD, CRTR_YR, NTN_ENG_CD, MASS_UNIT_CD, RSRC_INVT_CD, BURUDG_QUTY, SE_CD, BURUDG_QUTY_TON]
+      period_column: CRTR_YR
+      period_precision: year
+      filter_columns: {mineral_code: MNRKND_UNQ_CD}
+    - table: KO_RSRC_PRDCTN_QUTY
+      columns: [MNRKND_UNQ_CD, CRTR_YR, NTN_ENG_CD, MASS_UNIT_CD, PRDCTN_QUTY, SE_CD, PRDCTN_QUTY_TON]
+      period_column: CRTR_YR
+      period_precision: year
+      filter_columns: {mineral_code: MNRKND_UNQ_CD}
+
+rankings:
+  map_korea:
+    table: KO_CSTM_CMMRC
+    country_column: TRGT_NTN
+    period_column: CRTR_YMD
+    period_precision: day
+    metrics: {import_amount: INCM_AMT, import_weight: INCM_WEIG, export_amount: EXP_AMT, export_weight: EXP_WEIG}
+  map_global:
+    table: KO_UN_CMMRC
+    country_column: CRTR_NTN_NM
+    period_column: CRTR_YMD
+    period_precision: day
+    metrics: {import_amount: AMT, import_weight: WEIG, export_amount: AMT, export_weight: WEIG}
+    direction_column: IMXPRT_SE_CD
+    direction_values: {import_amount: I, import_weight: I, export_amount: O, export_weight: O}
+
+reserves_production_rankings:
+  production: {table: KO_RSRC_PRDCTN_QUTY, country_column: NTN_ENG_CD, metric_column: PRDCTN_QUTY_TON, period_column: CRTR_YR, metric_label: 생산량}
+  reserves: {table: KO_RSRC_BURUDG_QUTY, country_column: NTN_ENG_CD, metric_column: BURUDG_QUTY_TON, period_column: CRTR_YR, metric_label: 매장량}
+
+latest_indicator_rankings:
+  indicator_supply: {table: KO_SPDM_STBT_INDX, value_column: SPDM_STBT_INDX, period_column: CRTR_YMD, value_label: 수급동향지표}
+  indicator_market: {table: KO_MRKT_PRSPECT_IDCT, value_column: MRKT_PRSPECT_IDCT, period_column: CRTR_YMD, value_label: 시장전망지표}
+
+ranking_metric_labels:
+  import_amount: {label: 수입금액, unit: USD}
+  import_weight: {label: 수입중량, unit: kg}
+  export_amount: {label: 수출금액, unit: USD}
+  export_weight: {label: 수출중량, unit: kg}

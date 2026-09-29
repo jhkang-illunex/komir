@@ -26,6 +26,13 @@ ActionId = Literal[
     "off_topic",
 ]
 
+# KOMIS 종합지수 계열 코드와 사용자 표시명. 각 요청은 한 계열만 조회한다.
+COMPOSITE_INDEX_VARIANTS: dict[str, tuple[str, str]] = {
+    "composite": ("HI001", "광물종합지수"),
+    "major_metals": ("HI002", "메이저금속지수"),
+    "minor_metals": ("HI003", "희소금속지수"),
+}
+
 
 class Period(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -54,8 +61,7 @@ class ActionSlots(BaseModel):
     top_n: int | None = Field(default=None, ge=1, le=100)
     reference_year: int | None = Field(default=None, ge=1900, le=2200)
     indicator: Literal["supply_stability", "market_outlook", "composite_index"] | None = None
-    # 종합지수의 HI001(종합)·HI002(메이저)·HI003(희소금속)을 한 시계열로
-    # 섞지 않는다. 단수 "광물종합지수"는 대표 종합지수 HI001로 한정한다.
+    # 종합지수의 HI001(종합)·HI002(메이저)·HI003(희소금속)을 한 시계열로 섞지 않는다.
     indicator_variant: Literal["composite", "major_metals", "minor_metals"] | None = None
     indicator_operation: Literal["latest_delta", "period_change", "period_extrema"] | None = None
     forecast_operation: Literal["next_month_value", "direction", "timeline", "compare_current"] | None = None
@@ -822,11 +828,13 @@ def _collapse_price_claim_actions(actions: list[ActionCall]) -> list[ActionCall]
 
 def _normalize_indicator_slots(actions: list[ActionCall], message: str) -> None:
     """표시명으로 요청된 지표를 공개 action의 typed indicator로 정규화한다."""
-    compact = "".join(message.split())
+    compact = "".join(message.split()).upper()
     labels = (
         ("supply_stability", ("수급동향지표", "수급동향")),
         ("market_outlook", ("시장동향지표", "시장전망지표")),
-        ("composite_index", ("광물종합지수", "광물종합지표", "종합지표")),
+        ("composite_index", ("광물종합지수", "광물종합지표", "종합지수", "종합지표",
+                              "HI001", "HI002", "HI003", "메이저금속지수", "메이저지수",
+                              "희소금속지수", "희유금속지수")),
     )
     for call in actions:
         if call.action_id != "indicator.series" or call.slots.indicator is not None:
@@ -836,10 +844,33 @@ def _normalize_indicator_slots(actions: list[ActionCall], message: str) -> None:
                 call.slots.indicator = indicator
                 break
     for call in actions:
-        if (call.action_id == "indicator.series" and call.slots.indicator == "composite_index"
-                and call.slots.indicator_variant is None):
-            # LLM이 variant를 생략한 레거시 계획도 대표 종합지수로 명시화한다.
-            # None 상태로 raw 조회를 보내 HI001~003을 섞는 것보다 좁은 기본값이다.
+        if call.action_id != "indicator.series" or call.slots.indicator != "composite_index":
+            continue
+        variant_markers = (
+            ("major_metals", ("HI002", "메이저금속지수", "메이저지수")),
+            ("minor_metals", ("HI003", "희소금속지수", "희유금속지수")),
+            ("composite", ("HI001", "광물종합지수", "광물종합지표", "종합지수", "종합지표")),
+        )
+        matched = [variant for variant, markers in variant_markers
+                   if any(marker in compact for marker in markers)]
+        specific = [variant for variant in matched if variant in {"major_metals", "minor_metals"}]
+        if len(set(specific)) == 1:
+            explicit_code = "HI002" in compact or "HI003" in compact
+            generic_name = any(marker in compact for marker in (
+                "광물종합지수", "광물종합지표", "종합지수", "종합지표",
+            ))
+            if len(set(matched)) > 1 and generic_name and not explicit_code:
+                # 두 계열명이 함께 쓰인 비교 질의는 한 계열로 축약하지 않는다.
+                continue
+            if "HI001" in compact:
+                continue
+            # 질문에 명시된 계열은 planner가 실수로 기본 계열을 채워도 우선한다.
+            call.slots.indicator_variant = specific[0]
+        elif len(set(specific)) > 1:
+            continue
+        elif "composite" in matched:
+            call.slots.indicator_variant = "composite"
+        elif call.slots.indicator_variant is None:
             call.slots.indicator_variant = "composite"
 
 
@@ -1016,8 +1047,21 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
                               period=Period(kind="trailing_months", trailing_months=12)),
             intent="trade_rank", role="data",
         )])
+    global_import_rank = re.fullmatch(
+        r"(?:세계|글로벌)(?P<mineral>[가-힣A-Za-z0-9]+?)(?:의)?주요?수입국(?:을)?(?:알려줘|알려주세요|보여줘|보여주세요)?[?.]?",
+        compact,
+    )
+    if global_import_rank:
+        mineral = MINERAL_ALIASES.get(global_import_rank.group("mineral").casefold(), global_import_rank.group("mineral"))
+        return ActionPlan(actions=[ActionCall(
+            requirement_id="global_import_countries", action_id="trade.country_rank",
+            slots=ActionSlots(mineral=mineral, metric="import_amount", trade_scope="global", top_n=5,
+                              period=Period(kind="trailing_months", trailing_months=12)),
+            intent="trade_rank", role="data",
+        )])
     import_concentration = re.fullmatch(
-        r"(?P<mineral>[가-힣A-Za-z0-9]+?)(?:의)?수입집중도(?:를)?(?:알려줘요|알려줘|알려주세요|보여줘|보여주세요)?[?.]?", compact,
+        r"(?P<mineral>[가-힣A-Za-z0-9]+?)(?:의)?(?:수입)?(?:집중도|편중도)(?:가|는|를)?"
+        r"(?:어때요?|알려줘요?|알려주세요|보여줘요?|보여주세요|얼마야)?[?.]?", compact,
     )
     if import_concentration:
         mineral = MINERAL_ALIASES.get(import_concentration.group("mineral").casefold(), import_concentration.group("mineral"))
@@ -1864,24 +1908,47 @@ def _price_operation_plan(message: str) -> ActionPlan | None:
 
 
 def _composite_index_plan(message: str) -> ActionPlan | None:
-    """폐쇄형 종합지수 문형을 HI001 단일 typed action으로 고정한다.
+    """폐쇄형 종합지수 문형을 요청 계열의 단일 typed action으로 고정한다.
 
     private 접근 제어와 원천 provenance 판정은 graph/MCP 경계가 계속 소유한다.
     이 추출기는 질문의 계산 의미만 보존하며 public 경로를 열지 않는다.
     """
-    compact = re.sub(r"\s+", "", message)
-    if "광물종합지수" not in compact:
+    compact = re.sub(r"[\s()（）\[\]{}]", "", message).upper()
+    compact_upper = compact
+    variant_markers = (
+        ("major_metals", ("HI002", "메이저금속지수", "메이저지수")),
+        ("minor_metals", ("HI003", "희소금속지수", "희유금속지수")),
+    )
+    explicit_subindices = [variant for variant, markers in variant_markers[:2]
+                           if any(marker.upper() in compact_upper for marker in markers)]
+    has_hi001 = "HI001" in compact_upper
+    has_generic_composite = any(marker in compact_upper for marker in ("광물종합지수", "광물종합지표", "종합지수", "종합지표"))
+    if len(explicit_subindices) > 1 or (explicit_subindices and has_hi001):
         return None
+    if explicit_subindices:
+        variant = explicit_subindices[0]
+    elif has_hi001 or has_generic_composite:
+        variant = "composite"
+    else:
+        return None
+    subject = (r"(?:광물종합지수|광물종합지표|종합지수|종합지표|메이저금속지수|메이저지수|"
+               r"희소금속지수|희유금속지수|HI001|HI002|HI003)(?:HI001|HI002|HI003)?")
     latest = re.fullmatch(
-        r"(?:오늘|현재|금일)?광물종합지수(?:는|가|)?(?:얼마야|얼마인가요|알려줘|알려주세요|보여줘|보여주세요)?[?.]?",
+        rf"(?:오늘|현재|금일)?{subject}(?:는|가|)?(?:얼마야|얼마인가요|알려줘|알려주세요|보여줘|보여주세요)?[?.]?",
         compact,
     )
     trend = re.fullmatch(
-        r"최근(?P<months>\d+)개월광물종합지수(?:추세)?(?:알려줘|알려주세요|보여줘|보여주세요)?[?.]?",
+        rf"최근(?P<months>\d+)개월{subject}(?:추세)?(?:알려줘|알려주세요|보여줘|보여주세요)?[?.]?",
         compact,
     )
     extrema = re.fullmatch(
-        r"광물종합지수(?:올해|금년)(?:고점|저점)(?:/|과|및|와)?(?:고점|저점)?(?:은|는)?[?.]?",
+        rf"{subject}(?:올해|금년)(?:고점|저점)(?:/|과|및|와)?(?:고점|저점)?(?:은|는)?[?.]?",
+        compact,
+    )
+    year_range = re.fullmatch(
+        rf"{subject}(?P<start>\d{{4}})년?(?:~|∼|〜|부터|[-–—])"
+        r"(?P<end>\d{4})년?(?:까지)?(?:기간)?"
+        r"(?:변화|추이|추세|비교|흐름)?(?:보여줘|보여주세요|알려줘|알려주세요)?[?.]?",
         compact,
     )
     if latest:
@@ -1893,6 +1960,15 @@ def _composite_index_plan(message: str) -> ActionPlan | None:
         operation = "period_change"
         period = Period(kind="trailing_months", trailing_months=months, explicit=True)
         outputs = {"text", "chart"}
+    elif year_range:
+        start_year, end_year = int(year_range.group("start")), int(year_range.group("end"))
+        if not 1900 <= start_year <= end_year <= 2200:
+            return None
+        operation = "period_change"
+        period = Period(
+            kind="range", start=f"{start_year}-01-01", end=f"{end_year}-12-31", explicit=True,
+        )
+        outputs = {"text", "chart"}
     elif extrema:
         operation = "period_extrema"
         period = Period(kind="calendar_year", calendar_year=date.today().year, explicit=True)
@@ -1902,7 +1978,7 @@ def _composite_index_plan(message: str) -> ActionPlan | None:
     return ActionPlan(actions=[ActionCall(
         requirement_id=f"composite_index_{operation}", action_id="indicator.series",
         slots=ActionSlots(
-            indicator="composite_index", indicator_variant="composite",
+            indicator="composite_index", indicator_variant=variant,
             indicator_operation=operation, period=period, requested_outputs=outputs,
         ), intent="indicator", role="data", requested_outputs=outputs,
     )])
@@ -2424,8 +2500,8 @@ def validate_action_plan(plan: ActionPlan | None) -> PlanAssessment:
             return PlanAssessment(approved=False, failure_reason="source_unavailable")
         if (call.action_id == "indicator.series" and call.slots.indicator == "composite_index"
                 and call.slots.indicator_variant is None):
-            # 단수 "광물종합지수"의 공개 기본은 HI001이다. legacy ActionPlan과
-            # 단일 지수 질의가 private/public 원천 경계까지 도달하도록 명시한다.
+            # legacy 비-operation call만 HI001 기본값으로 보완한다. 계산 operation은
+            # 질문 정규화가 실제 요청 계열을 할당하지 못하면 fail closed 한다.
             if call.slots.indicator_operation is None:
                 call.slots.indicator_variant = "composite"
             else:
@@ -2438,11 +2514,14 @@ def validate_action_plan(plan: ActionPlan | None) -> PlanAssessment:
                 return PlanAssessment(approved=False, failure_reason="slot_unresolved")
             expected_period_kind = {
                 "latest_delta": "latest",
-                "period_change": "trailing_months",
+                # 기간 변화는 상대기간과 사용자가 직접 지정한 연도 범위를 모두 받는다.
+                "period_change": {"trailing_months", "range"},
                 "period_extrema": "calendar_year",
             }[call.slots.indicator_operation]
-            if (call.slots.indicator_variant != "composite" or call.slots.period is None
-                    or call.slots.period.kind != expected_period_kind):
+            if (call.slots.indicator_variant not in COMPOSITE_INDEX_VARIANTS or call.slots.period is None
+                    or (call.slots.period.kind not in expected_period_kind
+                        if isinstance(expected_period_kind, set)
+                        else call.slots.period.kind != expected_period_kind)):
                 return PlanAssessment(approved=False, failure_reason="slot_unresolved")
         if call.slots.forecast_operation is not None:
             if call.action_id != "forecast.price":

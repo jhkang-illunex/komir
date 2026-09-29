@@ -15,7 +15,8 @@
    직접 임포트하지 않는다는 원칙). 그 대신 원본이 커넥션 옵션으로 걸던
    `default_transaction_read_only=on`이 사라지므로, **SELECT 외의 SQL을 이
    모듈에서 만들지 않는 것**으로 읽기 전용을 보장한다 — 아래 쿼리 조립부는
-   정적 스펙(`_PAGE_DATASETS`)의 테이블·컬럼명과 검증된 리터럴만 조합한다.
+   `resources/komis_data_schema.yml`에서 로드·검증한 테이블·컬럼명과 검증된
+   리터럴만 조합한다.
 
 2. **파라미터 바인딩 → 검증 후 리터럴 삽입**: 원본은 `%s` 플레이스홀더를 썼다.
    `read_sql_pg`는 `pandas.read_sql(str, engine)` → `exec_driver_sql` 경로라
@@ -53,7 +54,9 @@ from dataclasses import dataclass
 from datetime import datetime
 import math
 from pathlib import Path
-from typing import Any, Callable, Literal, Mapping
+from typing import Any, Callable, Literal, Mapping, get_args
+
+import yaml
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -203,233 +206,172 @@ class _DatasetSpec:
     period_column: str
     period_precision: Period
     filter_columns: Mapping[str, str]
-    fixed_conditions: tuple[str, ...] = ()
+    fixed_conditions: tuple[Mapping[str, str | None], ...] = ()
 
 
-_PRICE_SPEC = _DatasetSpec(
-    table="KO_MNRL_PRC",
-    columns=(
-        "MNRL_PRC_CRTR_SN",
-        "CRTR_YMD",
-        "LOWST_PRC",
-        "HGHST_PRC",
-        "CMERC_PRC",
-        "INVT",
-    ),
-    period_column="CRTR_YMD",
-    period_precision="day",
-    filter_columns={"price_criterion_serial": "MNRL_PRC_CRTR_SN"},
-    # 2026-09-16 실측: STATUS='Y'인데 LAST_DEL_DT(최종삭제일시)가 채워진 소프트삭제
-    # 행 11건이 있고 전부 기준일자 20270703(미래)·최저/최고가 NULL이다 — 최신순
-    # 조회에서 맨 앞에 와 "니켈 최신 가격 2027-07-03 15,250"처럼 답변·차트를
-    # 오염시켰다. 삭제된 행은 KOMIS 원천 어디서도 살아있는 데이터가 아니므로 뺀다.
-    fixed_conditions=("STATUS = 'Y'", "LAST_DEL_DT IS NULL"),
-)
+_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_FILTER_NAMES = {"mineral_code", "hs_code", "index_type_code", "price_criterion_serial"}
+_CATALOG_PATH = Path(__file__).with_name("resources") / "komis_data_schema.yml"
 
-_PAGE_DATASETS: dict[str, tuple[_DatasetSpec, ...]] = {
-    "price_base_metals": (_PRICE_SPEC,),
-    "price_minor_metals": (_PRICE_SPEC,),
-    "price_iron_energy": (_PRICE_SPEC,),
-    "price_other": (_PRICE_SPEC,),
-    "indicator_composite": (
-        _DatasetSpec(
-            table="KO_MNRL_SNTHS_INDX",
-            columns=("INDX_SE_CD", "CRTR_YMD", "INDX", "PRVDY_CPRS", "UPLMT", "LWLMT", "CENTER"),
-            period_column="CRTR_YMD",
-            period_precision="day",
-            filter_columns={"index_type_code": "INDX_SE_CD"},
-        ),
-    ),
-    "indicator_market": (
-        _DatasetSpec(
-            table="KO_MRKT_PRSPECT_IDCT",
-            columns=("MNRKND_UNQ_CD", "CRTR_YMD", "MRKT_PRSPECT_IDCT", "REAL_PRC", "PRVMM_CPRS"),
-            period_column="CRTR_YMD",
-            # 실측: 이 테이블의 crtr_ymd는 8자리(YYYYMMDD, 예 20250201)라 day가 맞다.
-            period_precision="day",
-            filter_columns={"mineral_code": "MNRKND_UNQ_CD"},
-        ),
-    ),
-    "indicator_supply": (
-        _DatasetSpec(
-            table="KO_SPDM_STBT_INDX",
-            columns=(
-                "MNRKND_UNQ_CD",
-                "CRTR_YMD",
-                "SPDM_STBT_INDX",
-                "REAL_PRC",
-                "PRVMM_CPRS",
-                "PRC",
-                "INCM_WEIG",
-                "INCM_AMT",
-            ),
-            period_column="CRTR_YMD",
-            # 실측: 이 테이블만 crtr_ymd가 6자리(YYYYMM, 예 202502) — month가 맞다.
-            period_precision="month",
-            filter_columns={"mineral_code": "MNRKND_UNQ_CD"},
-        ),
-    ),
-    "forecast_price": (
-        _DatasetSpec(
-            table="KO_MNRL_PRC_PREDC",
-            columns=(
-                "MNRL_PRC_PREDC_SN",
-                "MNRKND_UNQ_CD",
-                "CRTR_YMD",
-                "PRD_SE_CD",
-                "PRC_UNIT_CD",
-                "CMERC_PRC",
-                "PREDC_PRC",
-            ),
-            period_column="CRTR_YMD",
-            period_precision="day",
-            filter_columns={"mineral_code": "MNRKND_UNQ_CD"},
-        ),
-    ),
-    "map_korea": (
-        _DatasetSpec(
-            table="KO_CSTM_CMMRC",
-            columns=(
-                "HS_CD",
-                "CRTR_YMD",
-                "TRGT_NTN_CD",
-                "INCM_WEIG",
-                "INCM_AMT",
-                "EXP_WEIG",
-                "EXP_AMT",
-                "TRGT_NTN",
-                "ITEM_NM",
-            ),
-            period_column="CRTR_YMD",
-            period_precision="day",
-            filter_columns={"hs_code": "HS_CD"},
-        ),
-    ),
-    "map_global": (
-        _DatasetSpec(
-            table="KO_UN_CMMRC",
-            columns=(
-                "HS_CD",
-                "CRTR_YMD",
-                "INCM_NTN_CD",
-                "EXP_NTN_CD",
-                "IMXPRT_SE_CD",
-                "CRTR_NTN_NM",
-                "TRGT_NTN_NM",
-                "WEIG",
-                "AMT",
-                "MNRKND_UNQ_CD",
-            ),
-            period_column="CRTR_YMD",
-            period_precision="day",
-            # ⚠ 2026-08-11 실측: MNRKND_UNQ_CD는 25,342행 전부 NULL이다 —
-            #   mineral_code 필터를 주면 항상 0행. hs_code로 거를 것.
-            filter_columns={"mineral_code": "MNRKND_UNQ_CD", "hs_code": "HS_CD"},
-        ),
-    ),
-    "map_mineral": (
-        _DatasetSpec(
-            table="KO_RSRC_BURUDG_QUTY",
-            columns=(
-                "MNRKND_UNQ_CD",
-                "CRTR_YR",
-                "NTN_ENG_CD",
-                "MASS_UNIT_CD",
-                "RSRC_INVT_CD",
-                "BURUDG_QUTY",
-                "SE_CD",
-                "BURUDG_QUTY_TON",
-            ),
-            period_column="CRTR_YR",
-            period_precision="year",
-            filter_columns={"mineral_code": "MNRKND_UNQ_CD"},
-        ),
-        _DatasetSpec(
-            table="KO_RSRC_PRDCTN_QUTY",
-            columns=(
-                "MNRKND_UNQ_CD",
-                "CRTR_YR",
-                "NTN_ENG_CD",
-                "MASS_UNIT_CD",
-                "PRDCTN_QUTY",
-                "SE_CD",
-                "PRDCTN_QUTY_TON",
-            ),
-            period_column="CRTR_YR",
-            period_precision="year",
-            filter_columns={"mineral_code": "MNRKND_UNQ_CD"},
-        ),
-    ),
-}
 
-#: 2026-09-18(챗봇 피드백통합 QA B2 후속) — 국가별 랭킹(GROUP BY+ORDER+LIMIT)
-#: 전용 스펙. `_PAGE_DATASETS`(필터+정렬+LIMIT만, 집계 없음)와 별개 경로다 —
-#: "리튬 수입 상위 5개국" 같은 질문이 komis_raw로 라우팅돼도 기존
-#: `_fetch_dataset`은 "최근 N건" 원자료만 돌려줘 순위를 만들 수 없었다(실측
-#: 확인: `KO_CSTM_CMMRC.trgt_ntn`(대상국가)이 28만행 전부 채워져 있어 집계
-#: 자체는 가능한데 도구가 안 했을 뿐). map_korea(관세청, 한국↔상대국)·
-#: map_global(UN Comtrade, 임의 두 나라 간 교역 — `imxprt_se_cd`로 수입/수출
-#: 관점을 가른다, 'I'=수입국 관점 crtr_ntn_nm이 수입국·'O'=수출국 관점
-#: crtr_ntn_nm이 수출국) 두 페이지만 국가 컬럼이 있어 대상이다. map_mineral
-#: (매장량·생산량)은 국가 컬럼(`ntn_eng_cd`)이 있지만 이번 범위 밖(§리스트업
-#: 참고 — 후속 후보로만 기록).
-_RANKING_SPECS: dict[str, dict[str, Any]] = {
-    "map_korea": {
-        "table": "KO_CSTM_CMMRC",
-        "country_column": "TRGT_NTN",
-        "period_column": "CRTR_YMD",
-        "period_precision": "day",
-        "metrics": {
-            "import_amount": "INCM_AMT", "import_weight": "INCM_WEIG",
-            "export_amount": "EXP_AMT", "export_weight": "EXP_WEIG",
-        },
-        "direction_column": None,
-        "direction_values": {},
-    },
-    "map_global": {
-        "table": "KO_UN_CMMRC",
-        "country_column": "CRTR_NTN_NM",
-        "period_column": "CRTR_YMD",
-        "period_precision": "day",
-        "metrics": {
-            "import_amount": "AMT", "import_weight": "WEIG",
-            "export_amount": "AMT", "export_weight": "WEIG",
-        },
-        "direction_column": "IMXPRT_SE_CD",
-        "direction_values": {
-            "import_amount": "I", "import_weight": "I",
-            "export_amount": "O", "export_weight": "O",
-        },
-    },
-}
+def _identifier(value: Any, *, context: str) -> str:
+    if not isinstance(value, str) or not _IDENTIFIER.fullmatch(value):
+        raise ValueError(f"invalid SQL identifier in {_CATALOG_PATH}: {context}={value!r}")
+    return value
 
-#: metric -> (한글 라벨, 단위) — Evidence 표 헤더·section 문구에 재사용.
-_RANKING_METRIC_LABELS = {
-    "import_amount": ("수입금액", "USD"),
-    "import_weight": ("수입중량", "kg"),
-    "export_amount": ("수출금액", "USD"),
-    "export_weight": ("수출중량", "kg"),
-}
 
-#: 2026-09-18(챗봇 RDB 결정적쿼리 후보리스트 1순위) — 매장량·생산량 국가
-#: 랭킹. `_RANKING_SPECS`(교역, HS코드 번역 필요)와 달리 이 두 테이블은
-#: map_mineral의 기존 필터(mnrknd_unq_cd)로 광종을 바로 거른다 — HS코드
-#: 매핑을 거치지 않는다. `*_ton` 컬럼은 KOMIS가 이미 톤 단위로 환산해둔
-#: 값이라(컬럼 코멘트 "[샘플확장] 생산량/매장량(톤환산)") mine_aggregate처럼
-#: 별도 단위정규화 로직을 새로 만들 필요가 없다(2026-09-18 실측 확인 —
-#: WT002 단위 행도 prdctn_quty==prdctn_quty_ton으로 이미 톤 기준이었음).
-_RESERVES_PRODUCTION_RANKING_SPECS: dict[str, dict[str, str]] = {
-    "production": {
-        "table": "KO_RSRC_PRDCTN_QUTY", "country_column": "NTN_ENG_CD",
-        "metric_column": "PRDCTN_QUTY_TON", "period_column": "CRTR_YR",
-        "metric_label": "생산량",
-    },
-    "reserves": {
-        "table": "KO_RSRC_BURUDG_QUTY", "country_column": "NTN_ENG_CD",
-        "metric_column": "BURUDG_QUTY_TON", "period_column": "CRTR_YR",
-        "metric_label": "매장량",
-    },
-}
+def _load_data_schema_catalog() -> tuple[
+    str, dict[str, tuple[_DatasetSpec, ...]], dict[str, dict[str, Any]],
+    dict[str, dict[str, str]], dict[str, dict[str, str]], dict[str, tuple[str, str]],
+]:
+    """SQL 식별자 카탈로그를 읽고, 안전한 정적 스펙인지 시작 시 검증한다."""
+    raw = yaml.safe_load(_CATALOG_PATH.read_text(encoding="utf-8")) or {}
+    if not isinstance(raw, dict) or raw.get("schema_version") != 1:
+        raise ValueError(f"invalid KOMIS data schema catalog: {_CATALOG_PATH}")
+    schema = _identifier(raw.get("schema"), context="schema")
+
+    raw_pages = raw.get("datasets")
+    expected_pages = set(get_args(AnalysisPreviewPageId))
+    if not isinstance(raw_pages, dict) or set(raw_pages) != expected_pages:
+        raise ValueError(
+            f"KOMIS catalog page_id mismatch: expected={sorted(expected_pages)}, "
+            f"actual={sorted(raw_pages) if isinstance(raw_pages, dict) else type(raw_pages).__name__}"
+        )
+
+    pages: dict[str, tuple[_DatasetSpec, ...]] = {}
+    for page_id, entries in raw_pages.items():
+        if not isinstance(entries, list) or not entries:
+            raise ValueError(f"KOMIS catalog dataset must be a non-empty list: {page_id}")
+        specs: list[_DatasetSpec] = []
+        for entry in entries:
+            if not isinstance(entry, dict):
+                raise ValueError(f"invalid dataset definition: {page_id}")
+            table = _identifier(entry.get("table"), context=f"{page_id}.table")
+            columns_raw = entry.get("columns")
+            if not isinstance(columns_raw, list) or not columns_raw:
+                raise ValueError(f"dataset columns must be a non-empty list: {page_id}.{table}")
+            columns = tuple(_identifier(col, context=f"{page_id}.{table}.columns") for col in columns_raw)
+            period_column = _identifier(entry.get("period_column"), context=f"{page_id}.{table}.period_column")
+            if period_column not in columns:
+                raise ValueError(f"period column missing from selected columns: {page_id}.{table}.{period_column}")
+            precision = entry.get("period_precision")
+            if precision not in {"day", "month", "year"}:
+                raise ValueError(f"invalid period precision: {page_id}.{table}={precision!r}")
+            filters = entry.get("filter_columns", {})
+            if not isinstance(filters, dict) or set(filters) - _FILTER_NAMES:
+                raise ValueError(f"invalid filters in KOMIS catalog: {page_id}.{table}")
+            filter_columns = {
+                str(name): _identifier(column, context=f"{page_id}.{table}.filter_columns.{name}")
+                for name, column in filters.items()
+            }
+            if set(filter_columns.values()) - set(columns):
+                raise ValueError(f"filter column missing from selected columns: {page_id}.{table}")
+            fixed_raw = entry.get("fixed_conditions", [])
+            fixed: list[dict[str, str | None]] = []
+            if not isinstance(fixed_raw, list):
+                raise ValueError(f"invalid fixed conditions: {page_id}.{table}")
+            for condition in fixed_raw:
+                if not isinstance(condition, dict) or condition.get("operator") not in {"=", "IS NULL"}:
+                    raise ValueError(f"unsupported fixed condition: {page_id}.{table}")
+                column = _identifier(condition.get("column"), context=f"{page_id}.{table}.condition.column")
+                operator = str(condition["operator"])
+                value = condition.get("value")
+                if operator == "=" and not isinstance(value, str):
+                    raise ValueError(f"fixed equality requires a string value: {page_id}.{table}.{column}")
+                if operator == "=" and not re.fullmatch(r"[A-Za-z0-9_가-힣]{1,32}", value):
+                    raise ValueError(f"unsafe fixed condition value: {page_id}.{table}.{column}")
+                if operator == "IS NULL" and value is not None:
+                    raise ValueError(f"IS NULL condition cannot set a value: {page_id}.{table}.{column}")
+                fixed.append({"column": column, "operator": operator, "value": value})
+            specs.append(_DatasetSpec(
+                table=table, columns=columns, period_column=period_column,
+                period_precision=precision, filter_columns=filter_columns,
+                fixed_conditions=tuple(fixed),
+            ))
+        pages[str(page_id)] = tuple(specs)
+
+    columns_by_table: dict[str, set[str]] = {}
+    for specs in pages.values():
+        for spec in specs:
+            columns_by_table.setdefault(spec.table, set()).update(spec.columns)
+
+    rankings: dict[str, dict[str, Any]] = {}
+    for page_id, item in (raw.get("rankings") or {}).items():
+        if page_id not in pages or not isinstance(item, dict):
+            raise ValueError(f"invalid ranking page in KOMIS catalog: {page_id}")
+        table = _identifier(item.get("table"), context=f"rankings.{page_id}.table")
+        country = _identifier(item.get("country_column"), context=f"rankings.{page_id}.country_column")
+        period = _identifier(item.get("period_column"), context=f"rankings.{page_id}.period_column")
+        metrics = item.get("metrics")
+        if not isinstance(metrics, dict) or not metrics:
+            raise ValueError(f"ranking metrics must be a non-empty mapping: {page_id}")
+        metrics = {str(k): _identifier(v, context=f"rankings.{page_id}.metrics.{k}") for k, v in metrics.items()}
+        direction_column = item.get("direction_column")
+        if direction_column is not None:
+            direction_column = _identifier(direction_column, context=f"rankings.{page_id}.direction_column")
+        direction_values = item.get("direction_values", {})
+        if set(direction_values) - set(metrics):
+            raise ValueError(f"ranking direction values do not match metrics: {page_id}")
+        if item.get("period_precision") not in {"day", "month", "year"}:
+            raise ValueError(f"invalid ranking period precision: {page_id}")
+        required_columns = {country, period, *metrics.values()}
+        if direction_column:
+            required_columns.add(direction_column)
+        if table not in columns_by_table or required_columns - columns_by_table[table]:
+            raise ValueError(f"ranking columns are not declared in datasets: {page_id}.{table}")
+        if any(not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9_가-힣]{1,32}", value)
+               for value in direction_values.values()):
+            raise ValueError(f"unsafe ranking direction value: {page_id}")
+        rankings[str(page_id)] = {
+            "table": table, "country_column": country, "period_column": period,
+            "period_precision": item.get("period_precision"), "metrics": metrics,
+            "direction_column": direction_column, "direction_values": dict(direction_values),
+        }
+
+    reserves: dict[str, dict[str, str]] = {}
+    for metric, item in (raw.get("reserves_production_rankings") or {}).items():
+        if not isinstance(item, dict):
+            raise ValueError(f"invalid reserves/production ranking: {metric}")
+        spec = {
+            key: _identifier(item[key], context=f"reserves_production_rankings.{metric}.{key}")
+            for key in ("table", "country_column", "metric_column", "period_column")
+        } | {"metric_label": str(item.get("metric_label", metric))}
+        if spec["table"] not in columns_by_table or {
+            spec["country_column"], spec["metric_column"], spec["period_column"]
+        } - columns_by_table[spec["table"]]:
+            raise ValueError(f"reserve/production columns are not declared in datasets: {metric}")
+        reserves[str(metric)] = spec
+
+    latest_indicators: dict[str, dict[str, str]] = {}
+    for page_id, item in (raw.get("latest_indicator_rankings") or {}).items():
+        if page_id not in pages or not isinstance(item, dict):
+            raise ValueError(f"invalid latest indicator ranking: {page_id}")
+        spec = {
+            key: _identifier(item[key], context=f"latest_indicator_rankings.{page_id}.{key}")
+            for key in ("table", "value_column", "period_column")
+        } | {"value_label": str(item.get("value_label", page_id))}
+        if spec["table"] not in columns_by_table or {
+            spec["value_column"], spec["period_column"], "MNRKND_UNQ_CD"
+        } - columns_by_table[spec["table"]]:
+            raise ValueError(f"latest indicator columns are not declared in datasets: {page_id}")
+        latest_indicators[str(page_id)] = spec
+
+    labels_raw = raw.get("ranking_metric_labels") or {}
+    labels: dict[str, tuple[str, str]] = {}
+    for metric, item in labels_raw.items():
+        if not isinstance(item, dict) or not item.get("label") or not item.get("unit"):
+            raise ValueError(f"invalid ranking metric label: {metric}")
+        labels[str(metric)] = (str(item["label"]), str(item["unit"]))
+    if set(labels) != {metric for ranking in rankings.values() for metric in ranking["metrics"]}:
+        raise ValueError("ranking labels and ranking metrics do not match")
+    return schema, pages, rankings, reserves, latest_indicators, labels
+
+
+(
+    KOMIS_SCHEMA, _PAGE_DATASETS, _RANKING_SPECS,
+    _RESERVES_PRODUCTION_RANKING_SPECS, _LATEST_INDICATOR_RANKING_SPECS,
+    _RANKING_METRIC_LABELS,
+) = _load_data_schema_catalog()
 
 #: 흔한 광종 동의어 -> `ai_mnrl_mst.mnrl_nm_ko`에 실제로 저장된 정본 명칭.
 #: 그 컬럼엔 동의어 컬럼이 따로 없어(정본 하나만) `resolve_mineral_full()`이
@@ -574,7 +516,15 @@ class KomisRawDataRepository:
     ) -> RawDataset:
         """정적 스펙 + 검증된 리터럴만으로 SELECT 한 문장을 조립·실행한다."""
 
-        conditions = list(spec.fixed_conditions)
+        conditions = []
+        for fixed in spec.fixed_conditions:
+            column, operator, value = fixed["column"], fixed["operator"], fixed["value"]
+            if operator == "IS NULL":
+                conditions.append(f"{column} IS NULL")
+            elif operator == "=":
+                conditions.append(f"{column} = {_literal(str(value))}")
+            else:  # loader에서도 차단하지만, 모델이 직접 생성되는 경로도 fail closed
+                raise RawDataAccessError(f"허용되지 않는 고정 조건 연산자: {operator!r}")
         requested_filters = request.requested_filters()
         for filter_name, column in spec.filter_columns.items():
             if filter_name not in requested_filters:
@@ -1153,17 +1103,21 @@ class KomisRawDataRepository:
             })
 
         metric_label, unit = _RANKING_METRIC_LABELS[metric]
+        observed_period = (
+            f"{_format_period_value(period_start, period_precision)}~"
+            f"{_format_period_value(period_end, period_precision)}"
+            if period_start is not None and period_end is not None else "조회 기간 미확인"
+        )
         return RawDataset(
             source_table=table,
             columns=["rank", "country", "total", "share_pct", "transaction_count"],
             column_labels={
                 "rank": "순위", "country": "국가", "total": f"{metric_label}합계({unit})",
-                "share_pct": "비중(%, 같은 기간·조건의 전체 국가 합계 대비)", "transaction_count": "거래건수",
+                "share_pct": f"{metric_label} 비중(%, {observed_period} 조회 품목 전체 국가 합계 대비)",
+                "transaction_count": "거래건수",
             },
             row_count=len(rows), rows=rows,
-            as_of=(f"{_format_period_value(period_start, period_precision)}~"
-                   f"{_format_period_value(period_end, period_precision)}"
-                   if period_start is not None and period_end is not None else None),
+            as_of=observed_period if period_start is not None and period_end is not None else None,
             unit=unit,
             metadata={"grand_total": _json_value(grand_total_value), "metric": metric},
         )
@@ -1885,22 +1839,6 @@ class KomisRawDataRepository:
                           metadata={"metric": "production", "world_total_code": "SU",
                                     "requested_year": year})
 
-    #: 2026-09-18(RDB 결정적쿼리 후보리스트 2순위) — 광종 간 지표 비교/랭킹
-    #: 대상 두 page_id. 값이 클수록 좋은/나쁜 방향이 지표마다 달라(수급동향
-    #: 지표는 낮을수록 위험 쪽, 시장전망지표는 방향성이 문서에 명시 안 돼
-    #: 있음) 정렬 방향(ascending)은 호출측(ROUTE_PROMPT 판단)이 고른다 —
-    #: 여기서 임의로 "좋다/나쁘다"를 단정하지 않는다.
-    _LATEST_INDICATOR_RANKING_SPECS: dict[str, dict[str, str]] = {
-        "indicator_supply": {
-            "table": "KO_SPDM_STBT_INDX", "value_column": "SPDM_STBT_INDX",
-            "period_column": "CRTR_YMD", "value_label": "수급동향지표",
-        },
-        "indicator_market": {
-            "table": "KO_MRKT_PRSPECT_IDCT", "value_column": "MRKT_PRSPECT_IDCT",
-            "period_column": "CRTR_YMD", "value_label": "시장전망지표",
-        },
-    }
-
     def fetch_latest_indicator_ranking(
         self, *, page_id: str, ascending: bool, mineral_names: list[str] | None, top_n: int = 5,
     ) -> RawDataset:
@@ -1909,7 +1847,7 @@ class KomisRawDataRepository:
         `mineral_names`가 있으면 그 광종들만, 없으면 지표가 있는 전 광종
         대상 상위 N개."""
 
-        spec = self._LATEST_INDICATOR_RANKING_SPECS.get(page_id)
+        spec = _LATEST_INDICATOR_RANKING_SPECS.get(page_id)
         if spec is None:
             raise RawDataAccessError(f"'{page_id}'는 광종 간 지표 랭킹을 지원하지 않습니다.")
         table, value_column, period_column = spec["table"], spec["value_column"], spec["period_column"]

@@ -88,6 +88,7 @@ from collections.abc import AsyncIterator, Iterator
 from contextvars import copy_context
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from .action_contract import COMPOSITE_INDEX_VARIANTS
 from typing import Literal
 
 from common.llm.openai_compat import OpenAICompatChat
@@ -111,7 +112,7 @@ from .renderers.mineral_info import render_mineral_info
 from .renderers.inventory import render_latest_inventory
 from .renderers.trade import render_import_dependency_high
 from .renderers.deterministic import render_q15_usgs_scope, render_strategic_price_overview
-from .renderers.citation import citation_sources as build_citation_sources
+from .renderers.citation import citation_sources as build_citation_sources, public_section
 from .renderers.price import (
     format_price as _format_price,
     natural_price_basis as _natural_price_basis,
@@ -743,16 +744,20 @@ def _citation_sources(cited_indices: set[int], evidence: list) -> list[dict]:
     안 쓰인 근거까지 "근거 N건"으로 노출됐다)."""
 
     return [
-        {"index": i, "kind": ev.kind, "source": public_source_label(ev.source), "section": ev.section,
-         "as_of": ev.as_of, "unit": _user_visible_unit(ev.unit),
+        {"index": i, "kind": ev.kind, "source": public_source_label(ev.source),
+         "section": public_section(ev),
+         "as_of": None if getattr(ev, "action_id", None) == "price.series" else ev.as_of,
+         "unit": _user_visible_unit(ev.unit),
          # 출처명은 실제 원천(public.KO_*·공식 문서)만 나타낸다. 개발용 더미
          # 상태는 내부 Evidence에만 보존하고 사용자 메타데이터에는 노출하지 않는다.
          "data_status": _data_status(ev),
          "warnings": ([warning] if (warning := _user_visible_caveat(getattr(ev, "caveat", None))) else []),
          "requirement_id": getattr(ev, "requirement_id", None),
          "action_id": getattr(ev, "action_id", None),
-         "observed_period": getattr(ev, "observed_period", None),
-         "menu_source": menu_source(getattr(ev, "menu_page_id", None)),
+         "observed_period": (None if getattr(ev, "action_id", None) == "price.series"
+                             else getattr(ev, "observed_period", None)),
+         "menu_source": ({key: value for key, value in menu_source(getattr(ev, "menu_page_id", None)).items()
+                          if key != "source_tables"} if menu_source(getattr(ev, "menu_page_id", None)) else None),
          **({"official_url": official_source(ev.source).url}
             if official_source(ev.source) else {})}
         for i, ev in enumerate(evidence, 1)
@@ -766,9 +771,7 @@ def _data_status(ev) -> str | None:
 
 
 def _user_visible_caveat(caveat: str | None) -> str | None:
-    """개발용 더미 상태는 숨기고 그 밖의 검증 경고만 사용자에게 전달한다."""
-    if caveat and "개발용 더미" not in caveat:
-        return caveat
+    """검증 경고는 로그에만 남기고 사용자 출력에는 노출하지 않는다."""
     return None
 
 
@@ -831,8 +834,8 @@ def _source_footer(cited_indices: set[int], evidence: list) -> str:
         if not (1 <= i <= len(evidence)):
             continue
         ev = evidence[i - 1]
-        line = f"[{i}] {public_source_label(ev.source)} · {ev.section}"
-        if ev.as_of:
+        line = f"[{i}] {public_source_label(ev.source)} · {public_section(ev)}"
+        if ev.as_of and getattr(ev, "action_id", None) != "price.series":
             line += f" (기준시점 {ev.as_of})"
         if metadata := official_source(ev.source):
             line += f" · 공식 URL: {metadata.url}"
@@ -875,7 +878,7 @@ def _caution_notice(cited_indices: set[int], evidence: list) -> str:
 
 
 def _debug_retrieval_trace(result: RetrievalResult | None, warnings: list[str], action_plan) -> dict:
-    """DEBUG 모드에서만 내보낼 조회·검증 추적 정보."""
+    """DEBUG 모드에서 내보내되 경고 원문은 로그에만 남긴다."""
     planned = [
         {"requirement_id": call.requirement_id, "action_id": call.action_id}
         for call in getattr(action_plan, "actions", ()) or ()
@@ -887,34 +890,22 @@ def _debug_retrieval_trace(result: RetrievalResult | None, warnings: list[str], 
             "action_id": item.action_id,
             "status": item.status,
             "failure_reason": item.failure_reason,
-            "warnings": list(item.warnings or ()),
+            "warnings": [],
         })
     return {"enabled": True, "action_plan": planned, "action_results": outcomes,
-            "warnings": list(warnings or ())}
+            "warnings": []}
 
 
 def _dummy_data_notice(cited_indices: set[int], evidence: list) -> str:
-    """2026-08-31(komis_raw_lookup 신설) — 인용된 근거 중 `Evidence.caveat`가
-    채워진 게 있으면(현재는 komis_raw_lookup의 "KOMIS 실제 표본이 아니라
-    개발용 더미" 경고뿐) 강제로 붙인다. `_caution_notice`·`_source_footer`와
-    같은 이유로 코드에서 붙인다 — LLM이 [근거] 텍스트를 읽고 스스로 이 사실을
-    문장으로 옮겨 적을 거라 기대하면 인용 스트리퍼가 그 문장을 지워버릴 수
-    있다(그 문장에 [n] 인용이 없으면). 발주 5광종 데이터가 대부분 더미인
-    현재 상태에서 이 경고를 놓치면 "가짜 수치를 실제 값처럼 안내"하는,
-    이 기능 전체가 막으려던 바로 그 사고가 난다 — 안전에 직결되므로
-    캐시(같은 문구 중복 방지) 없이 인용될 때마다 매번 명시한다."""
+    """개발용 데이터 경고는 운영 로그 전용으로 유지하고 사용자 출력에는 붙이지 않는다."""
 
     return ""
 
 
 def _data_warnings(cited_indices: set[int], evidence: list) -> list[str]:
-    """인용된 근거의 데이터 상태 경고를 출처 라벨과 별도로 정규화한다."""
+    """검증 경고는 로그 전용이므로 사용자 이벤트에는 반환하지 않는다."""
 
-    return sorted({
-        warning for index, ev in enumerate(evidence, 1)
-        if index in cited_indices
-        if (warning := _user_visible_caveat(getattr(ev, "caveat", None)))
-    })
+    return []
 
 
 def _partial_forecast_notice(warnings: list[str]) -> str:
@@ -922,6 +913,40 @@ def _partial_forecast_notice(warnings: list[str]) -> str:
     if "source_unavailable:price_forecast_partial" not in warnings:
         return ""
     return "\n\n※ 가격예측 데이터 원천이 아직 연결되지 않아 전망치와 현재가 비교는 제공하지 못했습니다."
+
+
+def _is_single_korea_import_rank(action_plan) -> bool:
+    """한국 수입금액 국가순위 단독 질의의 사용자 표시 규칙을 판별한다."""
+    actions = list(getattr(action_plan, "actions", ()) or ())
+    if len(actions) != 1 or getattr(actions[0], "action_id", None) != "trade.country_rank":
+        return False
+    slots = getattr(actions[0], "slots", None)
+    return (
+        getattr(slots, "trade_scope", None) == "korea"
+        and getattr(slots, "flow", None) in (None, "import")
+        and getattr(slots, "metric", None) in (None, "import_amount")
+    )
+
+
+def _clean_korea_import_rank_answer(text: str) -> str:
+    """한국 수입순위 본문에서 경고·출처 문구와 화면용 각주 번호를 제거한다.
+
+    citation 배열은 이 정리 전에 계산하므로 출처 메타데이터와 표 이벤트는
+    유지하면서 사용자에게 보이는 문구만 간결하게 만든다.
+    """
+    lines = []
+    for line in (text or "").splitlines():
+        source_match = re.search(r"출처\s*:", line)
+        if source_match:
+            line = line[:source_match.start()]
+        warning_match = re.search(r"개발용\s*더미|실제\s*표본이\s*아니라", line)
+        if warning_match:
+            warning_start = line.rfind("⚠", 0, warning_match.start())
+            line = line[:warning_start if warning_start >= 0 else warning_match.start()]
+        if not line.strip():
+            continue
+        lines.append(line)
+    return _CITE_NUM_RE.sub("", "\n".join(lines)).strip()
 
 
 def _country_rank_summary(evidence: list, action_plan, question: str, answer_text: str = "") -> str:
@@ -938,6 +963,7 @@ def _country_rank_summary(evidence: list, action_plan, question: str, answer_tex
         if action_plan is not None or (not rank_question and not answer_text):
             return ""
     slots = getattr(action, "slots", None)
+    requirement_id = getattr(action, "requirement_id", None)
     minerals = (getattr(slots, "minerals", None) or []) if action is not None else []
     mineral = minerals[0] if minerals else next(
         (name for name in ("리튬", "니켈", "구리", "코발트", "희토류") if name in question),
@@ -950,9 +976,21 @@ def _country_rank_summary(evidence: list, action_plan, question: str, answer_tex
     else:
         period_label = "해당 기간"
 
-    sources = [(index, getattr(item, "text", "")) for index, item in enumerate(evidence, 1)]
-    if answer_text:
-        sources.append((1, answer_text))
+    matching = [
+        (index, item) for index, item in enumerate(evidence, 1)
+        if getattr(item, "action_id", None) == "trade.country_rank"
+        and (requirement_id is None or getattr(item, "requirement_id", None) == requirement_id)
+    ]
+    # 요청 기간이 실제 반환 범위보다 길면 요청한 기간 전체를 조회한 것처럼
+    # 쓰지 않는다. Evidence의 observed_period는 adapter가 확인한 실측 범위다.
+    observed = next((str(getattr(item, "observed_period", "") or getattr(item, "as_of", ""))
+                     for _index, item in matching
+                     if getattr(item, "observed_period", None) or getattr(item, "as_of", None)), "")
+    dates = re.findall(r"\d{4}-\d{2}-\d{2}", observed)
+    if len(dates) >= 2:
+        period_label = f"{dates[0]}~{dates[-1]}"
+
+    sources = [(index, getattr(item, "text", "")) for index, item in matching]
     for index, source_text in sources:
         for table in extract_markdown_tables(source_text):
             keys = [column.split("(", 1)[0].strip().casefold() for column in table["columns"]]
@@ -966,14 +1004,24 @@ def _country_rank_summary(evidence: list, action_plan, question: str, answer_tex
                     continue
                 country, share = row[country_index].strip(), row[share_index].strip()
                 if country and share:
-                    parts.append(f"{rank}위 [{country} {share}%]")
+                    parts.append(f"{rank}위 {country}({share}%)")
             if parts:
-                return f"{period_label} {mineral} 상위 {len(parts)}개국은 " + ", ".join(parts) + f" 순입니다. [{index}]"
-    # 모델이 표를 완전한 Markdown으로 만들지 않은 경우의 최소 안전망.
-    raw_rows = re.findall(r"\|\s*(\d+)\s*\|\s*([^|]+?)\s*\|[^|]*\|\s*([0-9]+(?:\.[0-9]+)?)\s*\|", answer_text)
-    if raw_rows:
-        parts = [f"{rank}위 [{country.strip()} {share}%]" for rank, country, share in raw_rows]
-        return f"{period_label} {mineral} 상위 {len(parts)}개국은 " + ", ".join(parts) + " 순입니다. [1]"
+                slots_metric = getattr(slots, "metric", None)
+                metric_label = {
+                    "import_amount": "금액(USD)", "import_weight": "중량(kg)",
+                    "export_amount": "금액(USD)", "export_weight": "중량(kg)",
+                }.get(slots_metric, "금액(USD)")
+                trade_scope = getattr(slots, "trade_scope", None)
+                reporter = "한국" if trade_scope != "global" else "세계"
+                flow = "수입" if getattr(slots, "flow", None) != "export" else "수출"
+                criteria = f"{reporter} {mineral} {flow}{metric_label}"
+                period_text = f"집계 기간 {period_label}의 " if dates else ""
+                return (
+                    f"{period_text}{criteria} 기준 상위 {len(parts)}개국은 "
+                    + ", ".join(parts) + " 순입니다. "
+                    + f"국가별 비중은 {period_label} 조회 대상 {mineral} HS 품목의 "
+                    + f"{reporter} {flow}{metric_label} 합계에서 각 국가가 차지하는 비율입니다."
+                )
     return ""
 
 
@@ -1035,10 +1083,38 @@ def _price_unit_disclosure(text: str, evidence: list) -> str:
         and (ev.unit or "").startswith("가격기준=")
         and (visible_unit := _user_visible_unit(ev.unit))
     ]
-    if not price_units:
+    price_evidence = [ev for ev in evidence
+                      if getattr(ev, "action_id", None) in {"price.series", "price.compare"}]
+    if not price_evidence:
         return text
+    # 모델이 비교 표의 원천 단위 코드를 본문에 복사한 경우도 확인된 코드만
+    # 사람이 읽는 값으로 바꾸고, 미확인 코드는 코드 문자열째로 숨긴다.
+    cleaned = text
+    for ev in price_evidence:
+        unit = getattr(ev, "unit", None) or ""
+        for part in unit.split(";"):
+            key, separator, raw_value = part.partition("=")
+            if not separator:
+                continue
+            raw_value = raw_value.strip()
+            if key.strip() == "통화코드" and raw_value.upper() in {"PR001"}:
+                cleaned = re.sub(r"통화코드\s*=\s*PR001", "통화=USD", cleaned, flags=re.IGNORECASE)
+            elif key.strip() == "중량단위코드":
+                display = {"WT002": "톤"}.get(raw_value.upper(), "단위 미확인")
+                cleaned = re.sub(rf"중량단위코드\s*=\s*{re.escape(raw_value)}", f"단위={display}",
+                                 cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bPR001\b", "USD", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bWT002\b", "톤", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"\bWT\d+\b", "단위 미확인", cleaned, flags=re.IGNORECASE)
+    cleaned = re.sub(r"통화코드\s*=\s*(USD|KRW|EUR|CNY|JPY|GBP)", r"통화=\1", cleaned,
+                     flags=re.IGNORECASE)
+    cleaned = re.sub(r"중량단위코드\s*=\s*(톤|kg|g|t|lb|oz|단위 미확인)", r"단위=\1", cleaned,
+                     flags=re.IGNORECASE)
+    if not price_units:
+        return cleaned
     # 선택 기준 코드가 있는 근거에 대해 "단위 미명시"라고 한 문장만 지운다.
-    # 다른 정보의 부재 주장은 건드리지 않는다.
+    # 날짜·가격·극값이 포함된 문장을 정규식으로 지우면 실제 질문 답까지
+    # 사라질 수 있으므로, 답변의 수치 문장은 수정하지 않는다.
     cleaned = re.sub(
         # ``_strip_uncited_sentences``는 bullet을 앞 문장과 한 줄로 합칠 수
         # 있다. 줄 전체를 삭제하지 않고, 인용 번호까지 포함한 "단위 미명시"
@@ -1047,48 +1123,21 @@ def _price_unit_disclosure(text: str, evidence: list) -> str:
         r"(?:명시(?:되어)?\s*있지\s*않습니다|명시되지\s*않았습니다|"
         r"확인할\s*수\s*없습니다|제공되지\s*않았습니다)\s*[.。]?\s*\[\d+\]",
         "",
-        text,
+        cleaned,
     ).rstrip()
     # 생성 모델이 근거 메타데이터를 그대로 되풀이한 경우도 같은 사용자 표시
     # 계약을 적용한다. 확인된 표기는 남기고 코드가 든 원문 조각만 교체한다.
     for _index, raw_unit, visible_unit in price_units:
         cleaned = cleaned.replace(raw_unit, visible_unit)
     cleaned = _OPAQUE_PRICE_UNIT_CODE.sub("", cleaned)
-    # 삭제된 bullet만 남거나, 인접한 출처 bullet과 한 줄로 합쳐진 경우의
-    # Markdown 표식을 정리한다. 출처 내용은 보존한다.
-    cleaned = re.sub(r"(?m)^[ \t]*[*+-][ \t]*$(?:\n|$)", "", cleaned)
-    cleaned = re.sub(
-        r"(?m)^[ \t]*[*+-][ \t]*(?=[*+-][ \t]*(?:\*\*)?출처\s*:)",
-        "",
-        cleaned,
-    ).rstrip()
-    cleaned = re.sub(r"\*[ \t]+\*[ \t]+(?=(?:\*\*)?출처\s*:)", "* ", cleaned)
-    cleaned = re.sub(r"(\[\d+\])[ \t]+\*[ \t]+(?=\*\*출처\s*:)", r"\1\n\n* ", cleaned)
-    cleaned = re.sub(r"(\[\d+\])[ \t]+(?=\*\*\d+\.\s*)", r"\1\n\n", cleaned)
-    cleaned = re.sub(r"(\[\d+\])[ \t]+(?=\*\*\[)", r"\1\n\n", cleaned)
-    # 가격 응답의 항목은 citation 뒤에 다음 bullet이 이어지면 한 줄로 합쳐져
-    # 읽기 어려워진다. 선택 가격근거가 있는 이 좁은 경로에서만 경계를 복원한다.
-    cleaned = re.sub(r"(\[\d+\])[ \t]+\*[ \t]+(?=\*\*)", r"\1\n\n* ", cleaned)
-    cleaned = re.sub(r"(\[\d+\])[ \t]+\*[ \t]+(?=\S)", r"\1\n\n* ", cleaned)
-    cleaned = re.sub(r"(\[\d+\])[ \t]+(?=\d+\.\s+)", r"\1\n\n", cleaned)
-    cleaned = re.sub(r"(\[\d+\])[ \t]+(?=\|)", r"\1\n\n", cleaned)
-    # 최고·최저는 원자료 행 전체를 결정적으로 집계하지 않은 생성 모델이
-    # 임의의 관측값을 고를 수 있다. 선택 가격기준의 단위 보정 경로에서는
-    # 검증되지 않은 극값 문장을 제거하고, 근거 표·차트 이벤트만 남긴다.
-    cleaned = re.sub(r"(?m)^.*?(?:최고가|최저가|최고|최저).*?\[\d+\][ \t]*[.。]?[ \t]*$", "", cleaned)
-    # 선택 시리즈의 개별 날짜·가격 행은 SSE 표·차트가 원자료로 전달한다.
-    # 생성 본문의 임의 표본 수치가 전체 시계열의 대표값처럼 보이지 않게
-    # 날짜와 가격을 함께 주장하는 문장은 제거한다.
-    cleaned = re.sub(
-        r"(?m)^.*?(?:\d{4}-\d{2}-\d{2}|\d{4}년).*?\[\d+\][ \t]*[.。]?[ \t]*$",
-        "", cleaned,
-    )
     cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
-    additions = [
-        f"선택 가격기준의 단위 표기는 {visible_unit}입니다. [{index}]"
-        for index, _raw_unit, visible_unit in price_units
-        if visible_unit not in cleaned
-    ]
+    additions = []
+    for index, raw_unit, visible_unit in price_units:
+        basis = _natural_price_basis(raw_unit)
+        if basis and basis not in cleaned:
+            additions.append(f"{basis} [{index}]")
+        elif visible_unit not in cleaned:
+            additions.append(f"선택 가격기준의 단위 표기는 {visible_unit}입니다. [{index}]")
     return cleaned + ("\n\n" if cleaned and additions else "") + "\n".join(additions)
 
 
@@ -1163,8 +1212,8 @@ def _price_policy_faq_answer(message: str) -> str | None:
 direct_faq_answer = _price_policy_faq_answer
 
 
-def _composite_index_observations(text: str) -> list[tuple[date, float]]:
-    """검증된 HI001 표에서 날짜·지수만 읽는다. 다른 하위지수 혼입은 거부한다."""
+def _composite_index_observations(text: str, expected_code: str = "HI001") -> list[tuple[date, float]]:
+    """요청한 HI001~003 계열 코드와 일치하는 표에서 날짜·지수만 읽는다."""
     for table in extract_markdown_tables(text):
         keys = [column.split("(", 1)[0].strip().casefold() for column in table["columns"]]
         date_index = next((i for i, key in enumerate(keys)
@@ -1179,7 +1228,7 @@ def _composite_index_observations(text: str) -> list[tuple[date, float]]:
         for row in table["rows"]:
             if max(date_index, value_index) >= len(row):
                 continue
-            if type_index is not None and (type_index >= len(row) or row[type_index].strip() != "HI001"):
+            if type_index is not None and (type_index >= len(row) or row[type_index].strip() != expected_code):
                 # typed route가 거른 뒤에도 원천 표에 다른 행이 있으면 계산하지 않는다.
                 return []
             raw_date = row[date_index].strip()
@@ -1197,51 +1246,56 @@ def _composite_index_observations(text: str) -> list[tuple[date, float]]:
 
 
 def _composite_index_scope_answer(evidence: list, action_plan) -> tuple[str, set[int]] | None:
-    """private 종합지수의 세 승인 문형을 LLM 없이 지정 문장으로 렌더링한다."""
+    """private 종합지수 계열별 승인 문형을 LLM 없이 지정 문장으로 렌더링한다."""
     actions = getattr(action_plan, "actions", [])
     if len(actions) != 1 or getattr(actions[0], "action_id", None) != "indicator.series":
         return None
     slots = actions[0].slots
+    variant = getattr(slots, "indicator_variant", None) or "composite"
     if (getattr(slots, "indicator", None) != "composite_index"
-            or getattr(slots, "indicator_variant", None) != "composite"
+            or variant not in COMPOSITE_INDEX_VARIANTS
             or not getattr(slots, "indicator_operation", None)):
         return None
+    expected_code, display_name = COMPOSITE_INDEX_VARIANTS[variant]
     selected = [(index, item) for index, item in enumerate(evidence, 1)
                 if getattr(item, "action_id", None) == "indicator.series"]
     if len(selected) != 1:
-        return "계산 불가: 광물종합지수의 검증된 단일 HI001 근거가 필요합니다.", set()
+        return f"계산 불가: {display_name}({expected_code})의 검증된 단일 근거가 필요합니다.", set()
     index, item = selected[0]
-    points = _composite_index_observations(item.text)
+    points = _composite_index_observations(item.text, expected_code)
     operation = slots.indicator_operation
     if operation == "latest_delta":
         if len(points) < 2:
-            return "계산 불가: 전일 대비를 계산할 직전 광물종합지수 관측값이 없습니다.", {index}
+            return f"계산 불가: 전일 대비를 계산할 직전 {display_name} 관측값이 없습니다.", {index}
         observed, value = points[-1]
         _, previous = points[-2]
         delta = value - previous
         if previous == 0:
-            return "계산 불가: 직전 광물종합지수가 0이어서 변동률을 계산할 수 없습니다.", {index}
-        return (f"{observed.isoformat()} 광물종합지수는 {_format_price(value)}으로 전일 대비 "
+            return f"계산 불가: 직전 {display_name}가 0이어서 변동률을 계산할 수 없습니다.", {index}
+        return (f"{observed.isoformat()} {display_name}는 {_format_price(value)}으로 전일 대비 "
                 f"{delta:+.2f}({delta / previous * 100:+.2f}%) 변동했습니다."), {index}
     if operation == "period_change":
         if len(points) < 2 or points[0][1] == 0:
-            return "계산 불가: 기간 추세를 계산할 광물종합지수 관측값이 부족합니다.", {index}
+            return f"계산 불가: 기간 추세를 계산할 {display_name} 관측값이 부족합니다.", {index}
         start_date, start_value = points[0]
         end_date, end_value = points[-1]
         change_pct = (end_value - start_value) / start_value * 100
         direction = "상승" if change_pct > 0 else "하락" if change_pct < 0 else "보합"
-        return (f"{start_date.isoformat()}~{end_date.isoformat()} 광물종합지수는 "
+        period = getattr(slots, "period", None)
+        requested = (f"요청하신 {period.start[:4]}~{period.end[:4]}년 중 확인된 자료 "
+                     if period is not None and period.kind == "range" else "")
+        return (f"{requested}{start_date.isoformat()}~{end_date.isoformat()} {display_name}는 "
                 f"{_format_price(start_value)}에서 {_format_price(end_value)}으로 "
                 f"{change_pct:+.2f}% {direction}했습니다."), {index}
     if operation == "period_extrema":
         year = getattr(getattr(slots, "period", None), "calendar_year", None)
         year_points = [point for point in points if year is not None and point[0].year == year]
         if not year_points:
-            return "계산 불가: 해당 연도의 광물종합지수 관측값이 없습니다.", {index}
+            return f"계산 불가: 해당 연도의 {display_name} 관측값이 없습니다.", {index}
         # 동률이면 가장 최근 관측일을 쓴다. 같은 입력은 같은 문장을 만든다.
         high_date, high_value = max(year_points, key=lambda point: (point[1], point[0]))
         low_date, low_value = min(year_points, key=lambda point: (point[1], -point[0].toordinal()))
-        return (f"올해 고점은 {high_date.isoformat()} {_format_price(high_value)}, "
+        return (f"{display_name} 올해 고점은 {high_date.isoformat()} {_format_price(high_value)}, "
                 f"저점은 {low_date.isoformat()} {_format_price(low_value)}입니다."), {index}
     return None
 
@@ -1626,9 +1680,8 @@ def _evidence_source_label(ev) -> str:
     같은 문구를 쓰면 사용자가 번호(source_index)만 보고 아래로 스크롤해
     대조하지 않아도 표·차트 옆에서 바로 근거를 확인할 수 있다."""
 
-    menu = menu_source(getattr(ev, "menu_page_id", None))
-    label = menu["source_label"] if menu else f"{public_source_label(ev.source)} · {ev.section}"
-    if ev.as_of:
+    label = f"{public_source_label(ev.source)} · {public_section(ev)}"
+    if ev.as_of and getattr(ev, "action_id", None) != "price.series":
         label += f" (기준시점 {ev.as_of})"
     return label
 
@@ -1658,17 +1711,19 @@ def _multimodal_events(cited_indices: set[int], evidence: list, *, include_chart
             continue
         if getattr(ev, "suppress_price_table", False):
             continue
-        hide_price_provenance = getattr(ev, "action_id", None) == "price.series"
+        is_price_series = getattr(ev, "action_id", None) == "price.series"
         # 전략광종 현황은 같은 표 안에서도 가격기준·통화·중량단위가 달라,
         # 차트 이벤트뿐 아니라 프런트가 사용할 수 있는 chart_hint도 금지한다.
         suppress_chart = not include_charts or getattr(ev, "action_id", None) == "price.overview"
-        source_label = None if hide_price_provenance else _evidence_source_label(ev)
-        source_index = None if hide_price_provenance else i
-        as_of = None if hide_price_provenance else ev.as_of
-        unit = _price_display_unit(ev.unit) if hide_price_provenance else ev.unit
-        source_menu = None if hide_price_provenance else menu_source(getattr(ev, "menu_page_id", None))
+        source_label = _evidence_source_label(ev)
+        source_index = i
+        as_of = None if is_price_series else ev.as_of
+        unit = _price_display_unit(ev.unit) if is_price_series else ev.unit
+        catalog_menu = menu_source(getattr(ev, "menu_page_id", None))
+        source_menu = ({key: value for key, value in catalog_menu.items() if key != "source_tables"}
+                       if catalog_menu else None)
         for t_idx, table in enumerate(extract_markdown_tables(ev.text), 1):
-            if hide_price_provenance:
+            if is_price_series:
                 table = _price_series_display_table(table)
             if getattr(ev, "latest_price_display", False):
                 table = _latest_price_display_table(table)
@@ -1980,7 +2035,10 @@ async def chat_turn(
     # 연결된 복수 Action은 LLM이 수치를 재조합하지 않도록 표 근거에서
     # 결정적으로 계산한다. 원천 표가 계약 열을 충족하지 않으면 일반
     # multi-action 안내/기권 경로로 내려간다.
-    composite_answer = render_composite(evidence, executed_plan)
+    composite_answer = render_composite(
+        evidence, executed_plan,
+        getattr(retrieval_result, "action_results", None),
+    )
     if composite_answer is not None:
         answer, cited_indices = composite_answer
         citations = _citation_sources(cited_indices, evidence)
@@ -2131,6 +2189,7 @@ async def chat_turn(
     )
     multi_action_instruction = composer.instruction(composer_result, message)
     planned_actions = list(getattr(executed_plan, "actions", []) or [])
+    single_korea_import_rank = _is_single_korea_import_rank(executed_plan)
     user_prompt = _history_block(history) + multi_action_instruction + _build_evidence_prompt(message, evidence)
     chat = chat or OpenAICompatChat(_cfg_from_env())
     # 선택 가격기준 단위는 citation과 본문이 반드시 같아야 한다. 이 좁은
@@ -2260,6 +2319,10 @@ async def chat_turn(
     # 모두 화면에 노출해야 한다. 해당 질문에서 식별된 원천만 합쳐 다른
     # 순위·문서 질의의 인용 규율은 그대로 유지한다.
     cited_indices.update(_resource_rank_citation_indices(evidence, message))
+    if single_korea_import_rank:
+        # 사용자 요청대로 Q3 화면 문구에서는 더미 경고·출처 표식·[n]을 숨긴다.
+        # cited_indices는 위에서 먼저 보존했으므로 done.citations는 그대로 유지된다.
+        cleaned = _clean_korea_import_rank_answer(cleaned)
     if concept_question and not _concept_answer_is_directly_supported(
         cleaned, cited_indices, evidence, router_llm,
     ):
@@ -2283,15 +2346,17 @@ async def chat_turn(
     # chatbot_rule.txt 공통 규칙(출처 표기)·유형5(주의 문구) — 인용 스트리퍼를
     # 통과한 뒤에만 코드로 덧붙인다(모델에게 시키면 인용 없는 문장으로 잘림,
     # 위 CHATBOT_SYSTEM_PROMPT·_source_footer·_caution_notice 독스트링 참고).
+    failure_notice = composer.failure_notice(retrieval_result)
+    partial_forecast_notice = (
+        "" if "가격예측:" in failure_notice else _partial_forecast_notice(route_warnings)
+    )
     extra = (
         _dummy_data_notice(cited_indices, evidence)
         + _caution_notice(cited_indices, evidence)
-        + _source_footer(cited_indices, evidence)
-        + _partial_forecast_notice(route_warnings)
-        + composer.failure_notice(retrieval_result)
+        + ("" if single_korea_import_rank else _source_footer(cited_indices, evidence))
+        + partial_forecast_notice
+        + failure_notice
     )
-    if rank_summary and rank_summary not in full_text:
-        extra = "\n\n" + rank_summary + extra
     if extra:
         yield ChatEvent(type="delta", data={"delta": extra})
     final_text = cleaned + extra

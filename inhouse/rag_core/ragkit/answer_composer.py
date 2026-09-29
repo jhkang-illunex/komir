@@ -68,8 +68,7 @@ class AnswerComposer:
             return ""
         notices = []
         for item in result.action_results:
-            if item.status == "success" or item.action_id == "forecast.price":
-                # 가격예측 부분 응답은 기존 _partial_forecast_notice가 담당한다.
+            if item.status == "success":
                 continue
             label = _ACTION_LABELS.get(item.action_id, "요청 정보")
             if item.status == "blocked":
@@ -78,5 +77,10 @@ class AnswerComposer:
                 detail = "조회한 조건에 해당하는 데이터를 찾지 못했습니다."
             else:
                 detail = "확인 가능한 자료가 없어 답변할 수 없습니다."
+            if item.action_id == "forecast.price":
+                detail = detail.replace("조회한 조건에 해당하는 데이터를 찾지 못했습니다.",
+                                        "해당 조건의 전망 데이터를 찾지 못했습니다.")
+                detail = detail.replace("앞선 조회 결과가 없어 처리할 수 없습니다.",
+                                        "전망 데이터가 없어 현재가와 비교할 수 없습니다.")
             notices.append(f"{label}: {detail}")
         return ("\n\n" + "\n".join(notices)) if notices else ""

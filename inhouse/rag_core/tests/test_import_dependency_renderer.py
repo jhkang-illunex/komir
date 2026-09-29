@@ -25,6 +25,8 @@ class ImportDependencyRendererTest(unittest.TestCase):
         assert result is not None
         self.assertNotIn("니켈(인도네시아", result[0])
         self.assertIn("리튬(중국 27.01%)", result[0])
+        self.assertIn("확인된 수입 자료 기준", result[0])
+        self.assertNotIn("최근 12개월", result[0])
         self.assertIn("가격 전망 원천", result[0])
 
 

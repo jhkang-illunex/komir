@@ -6,7 +6,9 @@ import math
 import re
 
 from .chatbot_events import extract_markdown_tables
+from .action_contract import COMPOSITE_INDEX_VARIANTS
 from .renderers.price import price_display_unit
+from .renderers.resource_rank import render_production_reserves_pair
 
 
 def _keys(table):
@@ -19,6 +21,17 @@ def _number(value):
         return value if math.isfinite(value) else None
     except (TypeError, ValueError):
         return None
+
+
+def _hhi_risk_label(value):
+    hhi = _number(value)
+    if hhi is None or not 0 <= hhi <= 10_000:
+        return None
+    if hhi >= 8_000:
+        return "매우 높은 위험"
+    if hhi >= 6_000:
+        return "높은 위험"
+    return "주의 필요"
 
 
 def _date(value):
@@ -235,13 +248,166 @@ def _usage_sentence(text):
     return None
 
 
-def render_composite(evidence: list, action_plan) -> tuple[str, set[int]] | None:
-    """현재 연결된 표로 계산 가능한 복합 계약만 렌더링한다."""
+def render_composite(evidence: list, action_plan, action_results=None) -> tuple[str, set[int]] | None:
+    """현재 연결된 표로 계산 가능한 복합 계약만 렌더링한다.
+
+    ``action_results``가 주어지면 일부 Action의 조회 실패를 반영해 성공한
+    근거만 결정적으로 조립한다. 실패한 Action의 값을 LLM이 추정하거나 다른
+    Action의 수치로 대체하지 않도록, 현재 지원하는 부분 응답 계약을 먼저
+    처리한다.
+    """
     actions = list(getattr(action_plan, "actions", ()) or ())
     ids = [getattr(action, "action_id", None) for action in actions]
     by_action = {}
     for index, item in enumerate(evidence, 1):
         by_action.setdefault(getattr(item, "action_id", None), []).append((index, item))
+
+    # 이 조합은 별도 renderer가 응답을 담당한다. 기존 조합별 응답 계약은 아래에 유지한다.
+    resource_rank_pair = render_production_reserves_pair(evidence, action_plan, action_results)
+    if resource_rank_pair is not None:
+        return resource_rank_pair
+
+    # 종합지수의 명시 연도 범위는 실제 반환된 HI001 관측점으로만 계산한다.
+    # 요청 구간 일부만 적재된 경우에도 전체를 조회 불가로 버리지 않고 실제
+    # 관측 범위를 함께 밝혀, 누락된 연도를 데이터가 있는 것처럼 표현하지 않는다.
+    if ids == ["indicator.series"]:
+        action = actions[0]
+        variant = getattr(action.slots, "indicator_variant", None) or "composite"
+        if (getattr(action.slots, "indicator", None) == "composite_index"
+                and variant in COMPOSITE_INDEX_VARIANTS
+                and getattr(action.slots, "indicator_operation", None) == "period_change"):
+            rows = by_action.get("indicator.series", [])
+            for evidence_index, item in rows:
+                points = _index_points(item)
+                if len(points) < 2 or not points[0][1]:
+                    continue
+                start_date, start_value = points[0]
+                end_date, end_value = points[-1]
+                change = (end_value - start_value) / start_value * 100
+                direction = "상승" if change > 0 else "하락" if change < 0 else "보합"
+                _index_code, display_name = COMPOSITE_INDEX_VARIANTS[variant]
+                period = getattr(action.slots, "period", None)
+                requested = ""
+                if period is not None and getattr(period, "kind", None) == "range":
+                    requested_start = str(period.start or "")[:4]
+                    requested_end = str(period.end or "")[:4]
+                    requested = f"요청하신 {requested_start}~{requested_end}년 중 확인된 자료 "
+                return (
+                    f"{display_name} : {requested}{start_date.isoformat()}~{end_date.isoformat()} "
+                    f"{_fmt(start_value)}에서 {_fmt(end_value)}까지 {_fmt(change)}% {direction}했습니다.",
+                    {evidence_index},
+                )
+
+    # 수입 편중도 질의는 전체 국가 표에서 상위 비중과 HHI를 함께 요약한다.
+    # HHI가 최소 수입액 기준 미달로 adapter에서 제거된 경우에도 원 수치를
+    # 추론하거나 출력하지 않고, 기준 미달 상태만 안내한다.
+    if ids == ["trade.concentration"]:
+        rows = by_action.get("trade.concentration", [])
+        if len(rows) == 1:
+            evidence_index, item = rows[0]
+            countries = _country_rows(item)
+            if countries:
+                action = actions[0]
+                mineral = getattr(action.slots, "mineral", None) or "요청 광종"
+                leaders = countries[:2]
+                leader_text = "와 ".join(
+                    f"{country}({_fmt(share)}%)" for country, share in leaders
+                )
+                combined = sum(share for _country, share in leaders)
+                prefix = f"{mineral} 수입은 {leader_text}이 전체의 {_fmt(combined)}%를 차지합니다."
+                hhi_match = re.search(r"HHI=([0-9,.]+)", str(getattr(item, "section", "")))
+                if hhi_match:
+                    hhi = _number(hhi_match.group(1))
+                    level = _hhi_risk_label(hhi)
+                    if level is None:
+                        return None
+                    return (
+                        f"{prefix} HHI {_fmt(hhi)}은 국가별 수입 비중을 제곱해 합산한 집중도 지수이며, "
+                        f"'{level}' 구간입니다. 값이 클수록 수입이 일부 국가에 더 집중돼 있음을 뜻합니다. "
+                        "이는 지정학적 위험 자체를 직접 측정하는 값은 아닙니다.",
+                        {evidence_index},
+                    )
+                if "HHI 미표시: 수입액 100만 USD 기준 미달" in str(getattr(item, "section", "")):
+                    return (
+                        f"{prefix} 수입액이 100만 USD 기준에 미달해 HHI 수치와 집중도 등급은 표시하지 않습니다.",
+                        {evidence_index},
+                    )
+
+    # 가격 실적은 조회됐지만 전망만 아직 없는 단순 결합 질문은 실적 값을
+    # 남기고 전망 부재를 명시한다. 실패한 forecast 결과를 가격 응답까지
+    # 덮어쓰거나 LLM이 전망을 추정하지 않게 한다.
+    if action_results and len(actions) == 2 and set(ids) == {"price.series", "forecast.price"}:
+        outcomes = {getattr(item, "requirement_id", None): item for item in action_results}
+        price_action = next(action for action in actions if action.action_id == "price.series")
+        forecast_action = next(action for action in actions if action.action_id == "forecast.price")
+        price_outcome = outcomes.get(getattr(price_action, "requirement_id", None))
+        forecast_outcome = outcomes.get(getattr(forecast_action, "requirement_id", None))
+        if (price_outcome is not None and price_outcome.status == "success"
+                and forecast_outcome is not None and forecast_outcome.status != "success"):
+            matches = [(index, item) for index, item in by_action.get("price.series", [])
+                       if getattr(item, "requirement_id", None) == price_action.requirement_id]
+            for price_index, price in matches:
+                points = _price_points(price)
+                if not points:
+                    continue
+                observed, value = points[-1]
+                mineral = getattr(price_action.slots, "mineral", None) or "요청 광종"
+                unit = price_display_unit(getattr(price, "unit", None))
+                suffix = f" {unit}" if unit else ""
+                if getattr(forecast_action.slots, "forecast_operation", None) == "timeline" and len(points) >= 2:
+                    return (
+                        f"광물가격 : 실제 관측 구간 {points[0][0].isoformat()}~{observed.isoformat()} "
+                        f"{mineral} 실적 가격 추이입니다.\n"
+                        "가격예측 : 전망 데이터가 없어 전망 구간은 표시하지 않습니다.",
+                        {price_index},
+                    )
+                return (
+                    f"광물가격 : {observed.isoformat()} {mineral} 가격 {value:,.2f}{suffix}\n"
+                    f"가격예측 : 전망 자료가 없어 예측값은 제공하지 못했습니다.",
+                    {price_index},
+                )
+
+    # 현황 브리핑처럼 가격·전망·생산·수입을 함께 계획했을 때 전망 원천만
+    # 비어 있을 수 있다. 성공한 세 Action을 그대로 표시하고 전망만 명시적으로
+    # 미제공 처리한다. 성공한 Action의 의미를 섞는 일반 LLM 조립은 금지한다.
+    if action_results and set(ids) == {
+        "price.series", "forecast.price", "resource.rank", "trade.country_rank",
+    } and len(ids) == 4:
+        outcomes = {getattr(item, "requirement_id", None): item for item in action_results}
+        failed_ids = {
+            getattr(call, "action_id", None)
+            for call in actions
+            if (outcomes.get(getattr(call, "requirement_id", None)) is not None
+                and getattr(outcomes[getattr(call, "requirement_id", None)], "status", None) != "success")
+        }
+        if "forecast.price" in failed_ids:
+            price = by_action.get("price.series", [])
+            production = by_action.get("resource.rank", [])
+            imports = by_action.get("trade.country_rank", [])
+            def first_rows(items, parser):
+                for index, item in items:
+                    rows = parser(item)
+                    if rows:
+                        return index, rows
+                return None, None
+
+            price_index, points = first_rows(price, _price_points)
+            production_index, producers = first_rows(production, _country_rows)
+            imports_index, importers = first_rows(imports, _country_rows)
+            if points and producers and importers:
+                observed, value = points[-1]
+                mineral = next(
+                    (getattr(call.slots, "mineral", None) for call in actions
+                     if getattr(call, "action_id", None) == "price.series"),
+                    "요청 광종",
+                )
+                return (
+                    f"광물가격 : {observed.isoformat()} {mineral} 현재가 {_fmt(value)}\n"
+                    f"가격예측 : 현재 {mineral}의 가격 전망 데이터가 없어 표시할 수 없습니다.\n"
+                    f"광물지도 : 생산 1위 {producers[0][0]} ({_fmt(producers[0][1])}%)\n"
+                    f"핵심광물 수급지도 : 수입 1위 {importers[0][0]} ({_fmt(importers[0][1])}%)",
+                    {price_index, production_index, imports_index},
+                )
 
     # 자원뉴스의 최신 목록은 ``ai_news`` adapter가 날짜·제목·요약을 이미
     # 구조화해 확인한 결과다. 이를 일반 생성 모델에 다시 맡기면, 정상 근거가
@@ -272,17 +438,29 @@ def render_composite(evidence: list, action_plan) -> tuple[str, set[int]] | None
                 )
 
     if ids and all(action_id == "trade.country_rank" for action_id in ids) and len(ids) == 5:
-        matches = by_action.get("trade.country_rank", [])
-        if len(matches) == 5:
-            rows, cited = [], set()
-            for action, (index, item) in zip(actions, matches):
-                countries = _country_rows(item)
-                if not countries:
-                    return None
-                country, share = countries[0]
-                rows.append(f"{action.slots.mineral} : {country} ({_fmt(share)}%)")
-                cited.add(index)
-            return "광물정보 : 2차전지 원료 광종 리튬, 니켈, 코발트, 망간, 흑연\n핵심광물 수급지도 : 최근 12개월 수입 1위국\n" + "\n".join(rows), cited
+        rows, cited, periods = [], set(), []
+        for action in actions:
+            matches = [(index, item) for index, item in by_action.get("trade.country_rank", [])
+                       if getattr(item, "requirement_id", None) == action.requirement_id]
+            selected = next(((index, item, _country_rows(item)) for index, item in matches
+                             if _country_rows(item)), None)
+            if selected is None:
+                rows = []
+                break
+            index, item, countries = selected
+            country, share = countries[0]
+            rows.append(f"{action.slots.mineral} : {country} ({_fmt(share)}%)")
+            cited.add(index)
+            observed = str(getattr(item, "observed_period", None) or getattr(item, "as_of", None) or "")
+            dates = re.findall(r"\d{4}-\d{2}-\d{2}", observed)
+            if len(dates) >= 2:
+                periods.append(f"{dates[0]}~{dates[-1]}")
+        if len(rows) == len(actions):
+            period_label = "확인된 수입 자료 기준"
+            if periods and len(set(periods)) == 1:
+                period_label = f"실제 확인된 자료 기간 {periods[0]} 기준"
+            return ("광물정보 : 2차전지 원료 광종 리튬, 니켈, 코발트, 망간, 흑연\n"
+                    f"핵심광물 수급지도 : {period_label} 광종별 수입 1위국\n" + "\n".join(rows), cited)
 
     if (ids == ["document.retrieve", "document.retrieve"]
             and all(not getattr(actions[evidence_index - 1].slots, "mineral", None)
@@ -796,13 +974,21 @@ def render_composite(evidence: list, action_plan) -> tuple[str, set[int]] | None
 
     # OC06/OC08: 가격 시계열 + 수입국 순위. latest는 OC08, 기간 조회는 OC06.
     if ids.count("price.series") == 1 and ids.count("trade.country_rank") == 1:
-        price = by_action.get("price.series", [])
-        trade = by_action.get("trade.country_rank", [])
-        if len(price) == 1 and len(trade) == 1:
-            pp, countries = _price_points(price[0][1]), _country_rows(trade[0][1])
+        price_action = next(action for action in actions if action.action_id == "price.series")
+        trade_action = next(action for action in actions if action.action_id == "trade.country_rank")
+        price_matches = [(index, item) for index, item in by_action.get("price.series", [])
+                         if getattr(item, "requirement_id", None) == price_action.requirement_id]
+        trade_matches = [(index, item) for index, item in by_action.get("trade.country_rank", [])
+                         if getattr(item, "requirement_id", None) == trade_action.requirement_id]
+        price = next(((index, item, _price_points(item)) for index, item in price_matches
+                      if _price_points(item)), None)
+        trade = next(((index, item, _country_rows(item)) for index, item in trade_matches
+                      if _country_rows(item)), None)
+        if price and trade:
+            pidx, _pitem, pp = price
+            tidx, _titem, countries = trade
             if pp and countries:
-                p_action = next(action for action in actions if action.action_id == "price.series")
-                period = getattr(getattr(p_action.slots, "period", None), "kind", None)
+                period = getattr(getattr(price_action.slots, "period", None), "kind", None)
                 if period == "latest":
                     latest = pp[-1]
                     previous_month = [value for observed, value in pp
@@ -815,26 +1001,13 @@ def render_composite(evidence: list, action_plan) -> tuple[str, set[int]] | None
                         return None
                     country_text = ", ".join(f"{name}({_fmt(share)}%)" for name, share in countries[:3])
                     return (f"수급지도 : 수입 상위국 {country_text}\n광물가격 : {latest[0].isoformat()} 가격 {_fmt(latest[1])}, 전월 평균 대비 {pct:+.2f}%",
-                            {price[0][0], trade[0][0]})
+                            {pidx, tidx})
                 if len(pp) >= 2 and pp[0][1]:
                     change = (pp[-1][1] - pp[0][1]) / pp[0][1] * 100
                     high_date, high = max(pp, key=lambda point: point[1])
                     country_text = ", ".join(f"{name}({_fmt(share)}%)" for name, share in countries[:3])
                     return (f"광물가격 : {pp[0][0].isoformat()}~{pp[-1][0].isoformat()} 가격 {change:+.2f}% 변동, 고점 {_fmt(high)}({high_date.strftime('%Y-%m')})\n"
-                            f"수급지도 : 수입국 {country_text}", {price[0][0], trade[0][0]})
-
-    if ids and all(action_id == "trade.country_rank" for action_id in ids) and len(ids) == 5:
-        ranks = by_action.get("trade.country_rank", [])
-        if len(ranks) == 5:
-            rows, cited = [], set()
-            for action, (index, item) in zip(actions, ranks):
-                countries = _country_rows(item)
-                if not countries:
-                    return None
-                country, share = countries[0]
-                rows.append(f"{action.slots.mineral} {country}({_fmt(share)}%)")
-                cited.add(index)
-            return "광물정보 : 2차전지 원료 광종 리튬, 니켈, 코발트, 망간, 흑연\n핵심광물 수급지도 : " + ", ".join(rows), cited
+                            f"수급지도 : 수입국 {country_text}", {pidx, tidx})
 
     # 세계 생산국과 한국 수입국의 목록/교집합. 같은 국가명이 두 원천에 실제로
     # 있을 때만 공통국으로 표시해 모델이 국가를 추정하지 못하게 한다.

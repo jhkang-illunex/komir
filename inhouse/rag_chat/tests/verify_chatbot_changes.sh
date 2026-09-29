@@ -13,7 +13,7 @@ python3 -m unittest \
   inhouse/rag_core/tests/test_source_contract.py \
   inhouse/rag_core/tests/test_okf_action_contract.py
 python3 -m unittest \
-  inhouse.rag_core.tests.test_internal_knowledge_route.SourceFooterTest.test_selected_price_unit_is_added_and_false_missing_unit_sentence_is_removed \
+  inhouse.rag_core.tests.test_internal_knowledge_route.SourceFooterTest.test_price_unit_disclosure_normalizes_codes_without_dropping_price_facts \
   inhouse.rag_core.tests.test_internal_knowledge_route.SourceFooterTest.test_selected_price_unit_is_not_duplicated_when_generator_includes_it \
   inhouse.rag_core.tests.test_internal_knowledge_route.SourceFooterTest.test_single_selected_price_series_summarizes_values_without_source_or_period \
   inhouse.rag_core.tests.test_internal_knowledge_route.SourceFooterTest.test_price_scope_answer_does_not_override_price_only_evidence_from_mixed_plan \

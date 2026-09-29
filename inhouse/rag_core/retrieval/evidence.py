@@ -388,11 +388,18 @@ def from_komis_ranking(
     metadata = getattr(dataset, "metadata", None) or {}
     grand_total = metadata.get("grand_total")
     if grand_total is not None:
-        # 이 값은 상위 N행 합이 아니라 동일 조건의 전체 국가 모집단 합계다.
-        # 생성 모델이 상위 표만 다시 더해 분모를 바꾸지 않도록 근거 자체에 고정한다.
+        # 국가별 순위의 비중은 공식 세계 총계(SU)를 쓸 수도 있고, 원천에 따라
+        # 국가 행 합계를 쓸 수도 있다. 실제 분모 의미를 보존해 설명한다.
+        denominator_basis = metadata.get("share_denominator")
+        if denominator_basis == "world_total_su":
+            denominator_label = "공식 세계 합계"
+        elif denominator_basis == "country_sum":
+            denominator_label = "조회 대상 국가별 합계"
+        else:
+            denominator_label = f"동일 조회 조건의 전체 {row_kind} 합계"
         text = (
-            f"집계 기준: 같은 기간·조건의 전체 {row_kind} 합계 {grand_total}"
-            f"{(' ' + str(getattr(dataset, 'unit', None))) if getattr(dataset, 'unit', None) else ''}를 분모로 사용.\n\n"
+            f"집계 기준: 분모는 {denominator_label} {grand_total}"
+            f"{(' ' + str(getattr(dataset, 'unit', None))) if getattr(dataset, 'unit', None) else ''}입니다.\n\n"
             + text
         )
     return [

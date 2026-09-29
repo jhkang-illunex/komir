@@ -292,15 +292,23 @@ def render_price_comparison(evidence: list, action_plan) -> tuple[str, set[int]]
             ]
             basis_labels = {
                 "price_criterion": "가격기준",
-                "price_currency_code": "통화코드",
-                "weight_unit_code": "중량단위코드",
+                "price_currency_code": "통화",
+                "weight_unit_code": "단위",
             }
             for row in table["rows"]:
                 try:
-                    basis = ", ".join(
-                        f"{basis_labels[keys[basis_index]]}={row[basis_index]}"
-                        for basis_index in basis_indexes if row[basis_index]
-                    )
+                    basis_parts = []
+                    for basis_index in basis_indexes:
+                        raw_value = row[basis_index].strip()
+                        if not raw_value:
+                            continue
+                        key = keys[basis_index]
+                        display_value = (_PRICE_CODE_VALUES.get(raw_value.upper())
+                                         if key in {"price_currency_code", "weight_unit_code"}
+                                         else raw_value)
+                        if display_value:
+                            basis_parts.append(f"{basis_labels[key]}={display_value}")
+                    basis = ", ".join(basis_parts)
                     rows[row[mineral_index]] = (
                         float(row[pct_index].replace(",", "").replace("%", "")), basis,
                     )
@@ -355,10 +363,6 @@ def render_price_series(evidence: list, action_plan) -> tuple[str, set[int]] | N
     if basis:
         answer += f" {basis}"
     answer += f"\n\n{_price_series_summary(item)}"
-    suffix = ("표에는 최신 관측값 1건을 표시했습니다."
-              if len(price_series_observations(item.text)) == 1
-              else "표와 차트는 조회된 가격값으로 작성했습니다.")
-    answer += f"\n\n{suffix}"
     return answer, {index}
 
 

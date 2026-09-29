@@ -5,11 +5,235 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from rag_core.ragkit.action_contract import ActionCall, ActionPlan, ActionSlots, Period  # noqa: E402
-from rag_core.ragkit.composite_renderer import render_composite  # noqa: E402
+from rag_core.ragkit.composite_renderer import _hhi_risk_label, render_composite  # noqa: E402
+from rag_core.ragkit.action_results import ActionResult  # noqa: E402
 from rag_core.retrieval.evidence import Evidence  # noqa: E402
 
 
 class CompositeRendererTest(unittest.TestCase):
+    def test_production_and_reserves_rankings_get_a_grounded_joint_summary(self):
+        plan = ActionPlan(actions=[
+            ActionCall(requirement_id="production_req", action_id="resource.rank",
+                       slots=ActionSlots(mineral="희토류", metric="production", top_n=5)),
+            ActionCall(requirement_id="reserves_req", action_id="resource.rank",
+                       slots=ActionSlots(mineral="희토류", metric="reserves", top_n=5)),
+        ])
+        # Evidence 순서를 뒤집어도 requirement_id로 각 지표를 정확히 결합해야 한다.
+        evidence = [
+            Evidence(kind="structured", source="KOMIS", section="희토류 매장량", action_id="resource.rank",
+                     requirement_id="reserves_req", as_of="2025~2025",
+                     text=("집계 기준: 분모는 공식 세계 합계 1000 톤입니다.\n\n"
+                           "| country | share_pct |\n|---|---:|\n| 중국 | 36.4 |\n| 베트남 | 21.6 |")),
+            Evidence(kind="structured", source="KOMIS", section="희토류 생산량", action_id="resource.rank",
+                     requirement_id="production_req", as_of="2026~2026",
+                     text=("집계 기준: 분모는 공식 세계 합계 1000 톤입니다.\n\n"
+                           "| country | share_pct |\n|---|---:|\n| 중국 | 60.5 |\n| 호주 | 20.5 |")),
+        ]
+
+        result = render_composite(evidence, plan)
+
+        self.assertIsNotNone(result)
+        answer, cited = result
+        self.assertIn("희토류 생산량은 2026년 기준 1위 중국(60.5%), 2위 호주(20.5%)", answer)
+        self.assertIn("분모는 공식 세계 생산량 총량입니다", answer)
+        self.assertIn("희토류 매장량은 2025년 기준 상위 2개국이 중국(36.4%) 및 베트남(21.6%)", answer)
+        self.assertIn("합산 비중은 58%", answer)
+        self.assertNotIn("req_001", answer)
+        self.assertNotIn("다음과 같습니다", answer)
+        self.assertEqual(cited, {1, 2})
+
+    def test_production_reserves_pair_reports_only_the_successful_metric(self):
+        production = ActionCall(requirement_id="production_req", action_id="resource.rank",
+                                slots=ActionSlots(mineral="희토류", metric="production"))
+        reserves = ActionCall(requirement_id="reserves_req", action_id="resource.rank",
+                              slots=ActionSlots(mineral="희토류", metric="reserves"))
+        plan = ActionPlan(actions=[production, reserves])
+        evidence = [Evidence(
+            kind="structured", source="KOMIS", section="희토류 생산량", action_id="resource.rank",
+            requirement_id="production_req", as_of="2026~2026",
+            text=("집계 기준: 분모는 조회 대상 국가별 합계 1000 톤입니다.\n\n"
+                  "| country | share_pct |\n|---|---:|\n| 중국 | 60.5 |")),
+        ]
+        outcomes = [
+            ActionResult("production_req", "resource.rank", production.slots, "success", evidence),
+            ActionResult("reserves_req", "resource.rank", reserves.slots, "no_data"),
+        ]
+
+        result = render_composite(evidence, plan, outcomes)
+
+        self.assertIsNotNone(result)
+        self.assertIn("1위가 중국(60.5%)", result[0])
+        self.assertIn("분모는 조회된 국가별 생산량 합계입니다", result[0])
+        self.assertNotIn("공식 세계 생산량 총량입니다", result[0])
+        self.assertIn("매장량 자료는 확인되지 않았습니다", result[0])
+        self.assertEqual(result[1], {1})
+
+        no_data = render_composite([], plan, [
+            ActionResult("production_req", "resource.rank", production.slots, "no_data"),
+            ActionResult("reserves_req", "resource.rank", reserves.slots, "no_data"),
+        ])
+        self.assertEqual(no_data[0], "희토류 생산량·매장량 상위 국가 자료를 확인하지 못했습니다.")
+        self.assertEqual(no_data[1], set())
+
+    def test_composite_index_year_range_reports_actual_partial_coverage(self):
+        plan = ActionPlan(actions=[ActionCall(
+            requirement_id="index", action_id="indicator.series",
+            slots=ActionSlots(
+                indicator="composite_index", indicator_variant="composite",
+                indicator_operation="period_change",
+                period=Period(kind="range", start="2010-01-01", end="2011-12-31", explicit=True),
+            ),
+        )])
+        evidence = [Evidence(
+            kind="structured", source="KOMIS", section="광물종합지수", action_id="indicator.series",
+            text=("| date | index |\n|---|---:|\n"
+                  "| 2011-01-03 | 100 |\n| 2011-12-30 | 110 |"),
+        )]
+
+        result = render_composite(evidence, plan)
+
+        self.assertIsNotNone(result)
+        self.assertIn("요청하신 2010~2011년 중 확인된 자료 2011-01-03~2011-12-30", result[0])
+        self.assertIn("100에서 110까지 10% 상승", result[0])
+        self.assertEqual(result[1], {1})
+
+    def test_hhi_risk_threshold_boundaries(self):
+        self.assertEqual(_hhi_risk_label(5999.99), "주의 필요")
+        self.assertEqual(_hhi_risk_label(6000), "높은 위험")
+        self.assertEqual(_hhi_risk_label(7999.99), "높은 위험")
+        self.assertEqual(_hhi_risk_label(8000), "매우 높은 위험")
+        self.assertEqual(_hhi_risk_label(10000), "매우 높은 위험")
+        self.assertIsNone(_hhi_risk_label(10000.01))
+
+    def test_import_concentration_has_summary_and_hhi_interpretation(self):
+        plan = ActionPlan(actions=[ActionCall(
+            requirement_id="hhi", action_id="trade.concentration",
+            slots=ActionSlots(mineral="리튬"),
+        )])
+        evidence = [Evidence(
+            kind="structured", source="public.KO_CSTM_CMMRC",
+            section="수입금액 집중도(HHI=2333.77, 전체합계=2500000, formula)",
+            action_id="trade.concentration",
+            text=("집계 기준: 같은 기간·조건의 전체 국가 합계 2500000 USD를 분모로 사용.\n\n"
+                  "| country | total | share_pct |\n|---|---:|---:|\n"
+                  "| 호주 | 940000 | 37.6 |\n| 중국 | 657500 | 26.3 |"),
+        )]
+        result = render_composite(evidence, plan)
+        self.assertIsNotNone(result)
+        self.assertIn("호주(37.6%)와 중국(26.3%)이 전체의 63.9%", result[0])
+        self.assertIn("HHI 2,333.77은 국가별 수입 비중을 제곱해 합산한 집중도 지수", result[0])
+        self.assertIn("'주의 필요' 구간입니다", result[0])
+        self.assertIn("지정학적 위험 자체를 직접 측정하는 값은 아닙니다", result[0])
+
+    def test_import_concentration_suppresses_hhi_below_amount_floor(self):
+        plan = ActionPlan(actions=[ActionCall(
+            requirement_id="hhi", action_id="trade.concentration",
+            slots=ActionSlots(mineral="리튬"),
+        )])
+        evidence = [Evidence(
+            kind="structured", source="public.KO_CSTM_CMMRC",
+            section="수입금액 집중도(HHI 미표시: 수입액 100만 USD 기준 미달)",
+            action_id="trade.concentration",
+            text=("집계 기준: 전체 국가 합계 800000 USD를 분모로 사용.\n\n"
+                  "| country | total | share_pct |\n|---|---:|---:|\n"
+                  "| 호주 | 300800 | 37.6 |\n| 중국 | 210400 | 26.3 |"),
+        )]
+        result = render_composite(evidence, plan)
+        self.assertIsNotNone(result)
+        self.assertIn("HHI 수치와 집중도 등급은 표시하지 않습니다", result[0])
+        self.assertNotIn("2,333.77", result[0])
+
+    def test_price_is_retained_when_forecast_action_has_no_data(self):
+        price_call = ActionCall(requirement_id="price", action_id="price.series",
+                                slots=ActionSlots(mineral="리튬"))
+        forecast_call = ActionCall(requirement_id="forecast", action_id="forecast.price",
+                                   slots=ActionSlots(mineral="리튬"))
+        plan = ActionPlan(actions=[price_call, forecast_call])
+        evidence = [Evidence(
+            kind="table", source="price", section="price", requirement_id="price",
+            action_id="price.series", unit="가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002",
+            text="| date | price |\n|---|---|\n| 2026-09-08 | 100 |",
+        )]
+        outcomes = [
+            ActionResult("price", "price.series", price_call.slots, "success", evidence),
+            ActionResult("forecast", "forecast.price", forecast_call.slots, "no_data"),
+        ]
+        result = render_composite(evidence, plan, outcomes)
+        self.assertIsNotNone(result)
+        self.assertIn("2026-09-08 리튬 가격 100.00 USD/톤", result[0])
+        self.assertIn("전망 자료가 없어", result[0])
+        self.assertEqual(result[1], {1})
+
+    def test_five_battery_mineral_ranks_are_joined_by_requirement_not_evidence_position(self):
+        minerals = [("li", "리튬", "호주"), ("ni", "니켈", "인도네시아"),
+                    ("co", "코발트", "콩고민주공화국"), ("mn", "망간", "미국"),
+                    ("gr", "흑연", "중국")]
+        actions = [ActionCall(requirement_id=req, action_id="trade.country_rank",
+                              slots=ActionSlots(mineral=mineral))
+                   for req, mineral, _country in minerals]
+        plan = ActionPlan(actions=actions)
+        evidence = []
+        for req, _mineral, country in minerals:
+            for _ in range(2):
+                evidence.append(Evidence(
+                    kind="table", source="KOMIS", section="수입 순위", requirement_id=req,
+                    action_id="trade.country_rank", observed_period="2026-06-01~2026-09-09",
+                    text=f"| country | share_pct |\n|---|---|\n| {country} | 25 |",
+                ))
+        result = render_composite(evidence, plan)
+        self.assertIsNotNone(result)
+        for _req, mineral, country in minerals:
+            self.assertIn(f"{mineral} : {country} (25%)", result[0])
+        self.assertIn("2026-06-01~2026-09-09", result[0])
+        self.assertEqual(len(result[1]), 5)
+
+    def test_latest_price_and_import_rank_select_evidence_by_requirement(self):
+        plan = ActionPlan(actions=[
+            ActionCall(requirement_id="price", action_id="price.series", slots=ActionSlots(
+                mineral="니켈", period=Period(kind="latest"))),
+            ActionCall(requirement_id="imports", action_id="trade.country_rank", slots=ActionSlots(
+                mineral="니켈", metric="import_amount", top_n=5)),
+        ])
+        evidence = [
+            Evidence(kind="table", source="price", section="price", requirement_id="price",
+                     action_id="price.series",
+                     text="| date | price |\n|---|---|\n| 2026-08-01 | 100 |\n| 2026-09-01 | 110 |"),
+            Evidence(kind="table", source="KOMIS", section="unrelated", requirement_id="other",
+                     action_id="trade.country_rank",
+                     text="| country | share_pct |\n|---|---|\n| 중국 | 99 |"),
+            Evidence(kind="table", source="KOMIS", section="imports", requirement_id="imports",
+                     action_id="trade.country_rank",
+                     text="| country | share_pct |\n|---|---|\n| 인도네시아 | 37.1 |"),
+        ]
+        result = render_composite(evidence, plan)
+        self.assertIsNotNone(result)
+        self.assertIn("인도네시아(37.1%)", result[0])
+        self.assertIn("2026-09-01 가격 110", result[0])
+        self.assertNotIn("중국", result[0])
+        self.assertEqual(result[1], {1, 3})
+
+    def test_price_timeline_keeps_actual_range_when_forecast_is_missing(self):
+        price_call = ActionCall(requirement_id="price", action_id="price.series",
+                                slots=ActionSlots(mineral="니켈"))
+        forecast_call = ActionCall(requirement_id="forecast", action_id="forecast.price",
+                                   slots=ActionSlots(mineral="니켈", forecast_operation="timeline"))
+        plan = ActionPlan(actions=[price_call, forecast_call])
+        evidence = [Evidence(
+            kind="table", source="price", section="price", requirement_id="price",
+            action_id="price.series",
+            text=("| date | price |\n|---|---|\n| 2026-03-01 | 100 |\n"
+                  "| 2026-09-01 | 110 |"),
+        )]
+        outcomes = [
+            ActionResult("price", "price.series", price_call.slots, "success", evidence),
+            ActionResult("forecast", "forecast.price", forecast_call.slots, "source_unavailable"),
+        ]
+        result = render_composite(evidence, plan, outcomes)
+        self.assertIsNotNone(result)
+        self.assertIn("실제 관측 구간 2026-03-01~2026-09-01", result[0])
+        self.assertIn("전망 구간은 표시하지 않습니다", result[0])
+        self.assertEqual(result[1], {1})
+
     def test_single_weekly_report_is_rendered_without_generation(self):
         plan = ActionPlan(actions=[
             ActionCall(requirement_id="weekly_news", action_id="document.retrieve",

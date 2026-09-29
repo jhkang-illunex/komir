@@ -52,6 +52,15 @@ class _Repository:
 
 
 class PeriodLimitTest(unittest.TestCase):
+    def test_hhi_number_is_hidden_below_import_amount_floor(self):
+        below = tools._concentration_metric_label("import_amount", 999_999.99, 2333.77, "formula")
+        at_floor = tools._concentration_metric_label("import_amount", 1_000_000, 2333.77, "formula")
+        missing_total = tools._concentration_metric_label("import_amount", None, 2333.77, "formula")
+        self.assertNotIn("2333.77", below)
+        self.assertIn("기준 미달", below)
+        self.assertIn("HHI=2333.77", at_floor)
+        self.assertNotIn("2333.77", missing_total)
+
     def test_private_composite_trust_requires_exact_table_columns_and_codes(self):
         registry = _Registry()
 
@@ -72,6 +81,45 @@ class PeriodLimitTest(unittest.TestCase):
             )
         self.assertEqual(result["warnings"], [])
         self.assertIsNone(result["evidence"][0]["caveat"])
+
+    def test_empty_composite_query_reports_hi001_available_period(self):
+        registry = _Registry()
+
+        class EmptyCompositeRepository:
+            seen_bounds_filters = []
+
+            def fetch(self, _request):
+                return [RawDataset(
+                    source_table="KO_MNRL_SNTHS_INDX",
+                    columns=["indx_se_cd", "crtr_ymd", "indx"], row_count=0, rows=[],
+                )]
+
+            def fetch_complete(self, request):
+                return self.fetch(request)
+
+            def resolve_period_bounds(self, page_id, *, index_type_code=None, **_kwargs):
+                self.seen_bounds_filters.append((page_id, index_type_code))
+                return "20110103", "20260925", "day"
+
+        with patch.object(tools, "KomisRawDataRepository", EmptyCompositeRepository):
+            tools.register_common_tools(
+                registry, trusted_private_pages=frozenset({"indicator_composite"}),
+            )
+            for index_code in ("HI001", "HI002", "HI003"):
+                result = registry.functions["komis_raw_lookup"](
+                    "indicator_composite", index_type_code=index_code,
+                    start_period="20100101", end_period="20101231",
+                )
+                self.assertEqual(result["evidence"], [])
+                self.assertEqual(
+                    result["warnings"],
+                    ["지표 산출 가능 기간은 2011.01.03~2026.09.25입니다."],
+                )
+
+        self.assertEqual(
+            EmptyCompositeRepository.seen_bounds_filters,
+            [("indicator_composite", code) for code in ("HI001", "HI002", "HI003")],
+        )
 
     def test_explicit_period_returns_every_row_and_no_period_uses_env_cap(self):
         registry = _Registry()

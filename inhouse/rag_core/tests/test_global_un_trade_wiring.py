@@ -36,6 +36,22 @@ class GlobalUnTradeWiringTest(unittest.TestCase):
         self.assertIn("'750110'", captured[0])
         self.assertNotIn("'7501100000'", captured[0])
 
+    def test_country_rank_share_label_names_the_metric(self):
+        import pandas as pd
+        with patch("common.komis_raw.read_sql_pg", side_effect=[
+            pd.DataFrame([["Australia", 100, 2]], columns=["country", "total", "n"]),
+            pd.DataFrame([[100, "20260601", "20260909"]],
+                         columns=["grand_total", "period_start", "period_end"]),
+        ]):
+            result = KomisRawDataRepository().fetch_country_ranking(
+                page_id="map_korea", hs_codes=["2836910000"], metric="import_amount",
+                start_period="20260601", end_period="20260909",
+            )
+        self.assertEqual(
+            result.column_labels["share_pct"],
+            "수입금액 비중(%, 2026-06-01~2026-09-09 조회 품목 전체 국가 합계 대비)",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

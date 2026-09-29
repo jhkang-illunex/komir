@@ -346,7 +346,7 @@ class InternalKnowledgeTurnTest(unittest.TestCase):
 
 
 class SourceFooterTest(unittest.TestCase):
-    def test_selected_price_unit_is_added_and_false_missing_unit_sentence_is_removed(self):
+    def test_price_unit_disclosure_normalizes_codes_without_dropping_price_facts(self):
         evidence = SimpleNamespace(action_id="price.series", unit="가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002")
         for generated in (
             "가격 단위는 제공된 문서에 통화 단위가 명시되지 않았습니다. [1]",
@@ -366,19 +366,13 @@ class SourceFooterTest(unittest.TestCase):
                 answer = chatbot._price_unit_disclosure(generated, [evidence])
                 self.assertNotIn("명시되지 않았습니다", answer)
                 self.assertNotIn("명시되어 있지 않습니다", answer)
-                self.assertNotIn("*    *", answer)
-                self.assertNotIn("[1] * **출처:**", answer)
-                self.assertNotIn("[1] **2. 가격 추이", answer)
-                self.assertNotIn("[1] *   **가격 기준:", answer)
-                self.assertNotIn("[1] **[니켈 가격 추이 요약]", answer)
-                self.assertNotIn("[1] **[가격 변동 흐름]", answer)
-                self.assertNotIn("18,786.7", answer)
-                self.assertNotIn("19,954.39", answer)
-                self.assertNotIn("[1] * 2025년", answer)
-                self.assertNotIn("[1] 2.", answer)
-                self.assertNotIn("2025년 9월 22일 15,010", answer)
-                self.assertNotIn("[1] | 구분", answer)
-                self.assertIn("선택 가격기준의 단위 표기는 가격기준=LME CASH입니다. [1]", answer)
+                self.assertNotRegex(answer, r"\b(?:PR|WT)\d+\b")
+                self.assertIn("가격 기준은 LME CASH이며, 통화는 USD이며, 중량 단위는 톤입니다.", answer)
+                # 단위 문구를 고치는 과정에서 가격·날짜가 든 사용자 답변을
+                # 정규식으로 통째 삭제하지 않는다.
+                for fact in ("18,786.7", "19,954.39", "2025년 9월 22일 15,010"):
+                    if fact in generated:
+                        self.assertIn(fact, answer)
 
     def test_single_selected_price_series_summarizes_values_without_source_or_period(self):
         evidence = Evidence(
@@ -398,7 +392,8 @@ class SourceFooterTest(unittest.TestCase):
         self.assertNotIn("public.KO_MNRL_PRC", answer)
         self.assertIn("가격 기준은 LME CASH이며, 통화는 USD이며, 중량 단위는 톤입니다.", answer)
         self.assertIn("최신 가격은 19,954.39 (2026-04-30)입니다.", answer)
-        self.assertIn("표에는 최신 관측값 1건", answer)
+        self.assertNotIn("표에는 최신 관측값 1건", answer)
+        self.assertNotIn("표와 차트는 조회된 가격값으로 작성했습니다", answer)
         self.assertNotIn("최고가", answer)
         self.assertNotIn("차트", answer)
 

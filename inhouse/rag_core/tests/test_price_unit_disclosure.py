@@ -110,9 +110,34 @@ class PriceUnitDisclosureTest(unittest.TestCase):
 
         assert scope is not None
         self.assertIn("최신 가격은 16,745.53 (2026-09-08)입니다.", scope[0])
-        self.assertIn("표에는 최신 관측값 1건", scope[0])
+        self.assertNotIn("표에는 최신 관측값 1건", scope[0])
+        self.assertNotIn("표와 차트는 조회된 가격값으로 작성했습니다", scope[0])
         self.assertNotIn("차트", scope[0])
         self.assertNotIn("추세", scope[0])
+
+    def test_price_table_and_chart_show_menu_source_without_period_or_table_name(self):
+        evidence = Evidence(
+            kind="aggregated", source="public.KO_MNRL_PRC",
+            section="KOMIS 원천 · KO_MNRL_PRC(니켈)",
+            text=("| price_date(가격일자) | price(가격(USD/톤)) |\n|---|---:|\n"
+                  "| 2025-09-29 | 100 |\n| 2026-09-08 | 120 |"),
+            unit="가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002",
+            menu_page_id="price_base_metals", action_id="price.series",
+            as_of="2025-09-29~2026-09-08, 지정 기간 내 관측 247건 전체",
+            observed_period="2025-09-29~2026-09-08",
+        )
+        events = chatbot._multimodal_events({1}, [evidence])
+        table = next(event.data for event in events if event.type == "table")
+        chart = next(event.data for event in events if event.type == "chart")
+        expected_source = "KOMIS 공식 데이터 · KOMIS 광물자원가격 > 비철금속"
+        self.assertEqual(table["meta"]["source"], expected_source)
+        self.assertEqual(chart["meta"]["source"], expected_source)
+        self.assertEqual(table["meta"]["source_index"], 1)
+        self.assertIsNone(table["meta"]["as_of"])
+        self.assertNotIn("source_tables", table["meta"]["menu_source"])
+        self.assertNotIn("KO_MNRL_PRC", str(table))
+        self.assertNotIn("247건", str(table))
+        self.assertNotIn("247건", str(chart))
 
     def test_latest_price_uses_requested_date_price_unit_and_prior_change(self):
         evidence = Evidence(
@@ -222,8 +247,36 @@ class PriceUnitDisclosureTest(unittest.TestCase):
         disclosure = chatbot._price_unit_disclosure("가격 흐름입니다. [1]", [evidence])
         citations = chatbot._citation_sources({1}, [evidence])
 
-        self.assertIn(unit, disclosure)
+        self.assertIn("가격 기준은 LME CASH입니다.", disclosure)
+        self.assertIn("가격 흐름입니다.", disclosure)
         self.assertEqual(citations[0]["unit"], unit)
+
+    def test_dated_price_answer_is_not_removed_by_unit_disclosure(self):
+        evidence = Evidence(
+            kind="aggregated", source="price", section="series", text="표",
+            unit="가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002",
+            action_id="price.series",
+        )
+        answer = chatbot._price_unit_disclosure(
+            "2026-09-08 기준 니켈 가격은 16,745.53입니다. [1]", [evidence],
+        )
+        self.assertIn("2026-09-08", answer)
+        self.assertIn("16,745.53", answer)
+        self.assertNotIn("PR001", answer)
+        self.assertNotIn("WT002", answer)
+
+    def test_price_comparison_codes_are_humanized_and_unknown_code_is_hidden(self):
+        evidence = Evidence(
+            kind="aggregated", source="price", section="comparison", text="표",
+            unit="통화코드=PR001; 중량단위코드=WT001", action_id="price.compare",
+        )
+        answer = chatbot._price_unit_disclosure(
+            "니켈 통화코드=PR001 중량단위코드=WT001입니다.", [evidence],
+        )
+        self.assertIn("통화=USD", answer)
+        self.assertIn("단위=단위 미확인", answer)
+        self.assertNotIn("PR001", answer)
+        self.assertNotIn("WT001", answer)
 
     def test_composite_index_answers_follow_private_output_contract(self):
         evidence = Evidence(
@@ -251,6 +304,51 @@ class PriceUnitDisclosureTest(unittest.TestCase):
             chatbot._composite_index_scope_answer([evidence], trend)[0],
             "2026-09-25~2026-09-26 광물종합지수는 120에서 123으로 +2.50% 상승했습니다.",
         )
+
+    def test_composite_index_subseries_use_matching_code_and_display_name(self):
+        for variant, code, display_name in (
+            ("major_metals", "HI002", "메이저금속지수"),
+            ("minor_metals", "HI003", "희소금속지수"),
+        ):
+            with self.subTest(code=code):
+                evidence = Evidence(
+                    kind="structured", source="private.KO_MNRL_SNTHS_INDX", section=display_name,
+                    text=("| INDX_SE_CD | CRTR_YMD | INDX |\n| --- | --- | --- |\n"
+                          f"| {code} | 20110103 | 100 |\n| {code} | 20111230 | 110 |"),
+                    observed_period="2011-01-03~2011-12-30", action_id="indicator.series",
+                )
+                plan = ActionPlan(actions=[ActionCall(
+                    requirement_id="index", action_id="indicator.series",
+                    slots=ActionSlots(
+                        indicator="composite_index", indicator_variant=variant,
+                        indicator_operation="period_change",
+                        period=Period(kind="range", start="2010-01-01", end="2011-12-31"),
+                    ),
+                )])
+
+                answer, cited = chatbot._composite_index_scope_answer([evidence], plan)
+
+                self.assertIn("요청하신 2010~2011년 중 확인된 자료 2011-01-03~2011-12-30", answer)
+                self.assertIn(f"{display_name}는 100에서 110으로 +10.00% 상승", answer)
+                self.assertEqual(cited, {1})
+
+        wrong_code_evidence = Evidence(
+            kind="structured", source="private.KO_MNRL_SNTHS_INDX", section="메이저금속지수",
+            text=("| INDX_SE_CD | CRTR_YMD | INDX |\n| --- | --- | --- |\n"
+                  "| HI001 | 20110103 | 100 |\n| HI001 | 20111230 | 110 |"),
+            action_id="indicator.series",
+        )
+        mismatched_plan = ActionPlan(actions=[ActionCall(
+            requirement_id="index", action_id="indicator.series",
+            slots=ActionSlots(
+                indicator="composite_index", indicator_variant="major_metals",
+                indicator_operation="period_change",
+                period=Period(kind="trailing_months", trailing_months=3),
+            ),
+        )])
+        mismatch = chatbot._composite_index_scope_answer([wrong_code_evidence], mismatched_plan)
+        self.assertTrue(mismatch[0].startswith("계산 불가:"))
+        self.assertIn("메이저금속지수", mismatch[0])
 
     def test_future_forecast_output_contract_requires_normalized_adapter_columns(self):
         evidence = Evidence(

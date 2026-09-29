@@ -97,6 +97,7 @@ _DATE_COLUMN_NAMES = {
 }
 _NON_MEASURE_KEYS = frozenset({
     "rank", "transaction_count", "record_count", "n", "count", "price_criterion_serial",
+    "raw_unit_code", "원시 단위 코드",
     # KO_MNRL_PRC 원천의 가격기준 내부 일련번호. 전용 가격 비교 경로는
     # price_criterion_serial로, 원천 미리보기는 mnrl_prc_crtr_sn으로 들어올 수
     # 있으므로 둘 다 사용자 표에서 숨긴다.
@@ -104,8 +105,13 @@ _NON_MEASURE_KEYS = frozenset({
 })
 _PRICE_KEYS = frozenset({"lowst_prc", "hghst_prc", "cmerc_prc"})
 _PRICE_CURRENCIES = frozenset({"USD", "KRW", "EUR", "CNY", "JPY", "GBP"})
-_PRICE_WEIGHTS = {"KG": "kg", "G": "g", "T": "톤", "TON": "톤", "MT": "톤",
+_PRICE_WEIGHTS = {"KG": "kg", "G": "g", "T": "톤", "TON": "톤", "MT": "톤", "톤": "톤",
                   "LB": "lb", "OZ": "oz"}
+_PRICE_CURRENCY_CODES = {"PR001": "USD", **{code: code for code in _PRICE_CURRENCIES}}
+_PRICE_WEIGHT_CODES = {
+    "WT002": "톤", "KG": "kg", "G": "g", "T": "톤", "TON": "톤", "MT": "톤",
+    "LB": "lb", "OZ": "oz", "kg": "kg", "g": "g", "톤": "톤",
+}
 
 
 def _markdown_table(columns: list[str], rows: list[list[str]]) -> str:
@@ -138,15 +144,16 @@ def presentation_table(table: dict) -> tuple[dict, list[str]]:
     # 남기지 않는다. 가격 기준 자체는 별도 price_criterion 열에 보존한다.
     for idx, header in enumerate(columns):
         key = header.split("(", 1)[0].strip().lower()
-        allowed = _PRICE_CURRENCIES if key == "price_currency_code" else (
-            frozenset(_PRICE_WEIGHTS) if key == "weight_unit_code" else None
+        code_values = _PRICE_CURRENCY_CODES if key == "price_currency_code" else (
+            _PRICE_WEIGHT_CODES if key == "weight_unit_code" else None
         )
-        if allowed is None:
+        if code_values is None:
             continue
         sanitized_codes = True
         for row in rows:
             value = row[idx].strip().upper()
-            row[idx] = value if value in allowed else ""
+            row[idx] = code_values.get(value, "")
+        columns[idx] = "통화" if key == "price_currency_code" else "단위"
     if not hidden and not sanitized_codes:
         return table, hidden
     return {**table, "columns": columns, "rows": rows,
@@ -390,11 +397,13 @@ def _price_unit_from_codes(currency_codes: list[str], weight_codes: list[str]) -
     weights = _PRICE_WEIGHTS
     currency = currency_codes[0].upper() if len(currency_codes) == 1 else None
     weight = weight_codes[0].upper() if len(weight_codes) == 1 else None
+    currency = _PRICE_CURRENCY_CODES.get(currency, currency)
+    weight = _PRICE_WEIGHT_CODES.get(weight, weight)
     if currency not in currencies:
         return None
     if weight is None:
         return currency
-    normalized_weight = weights.get(weight)
+    normalized_weight = weights.get(weight.upper())
     return f"{currency}/{normalized_weight}" if normalized_weight else None
 
 
@@ -605,12 +614,13 @@ def chart_spec(table: dict, *, block_id: str, data_ref: str, source_index: int |
     # 프론트가 동일한 가격 기준을 범례/축 설명에 표시할 수 있게 한다.
     price_criteria = _distinct_text_values(table, "price_criterion")
     price_units = _distinct_text_values(table, "price_unit")
-    currency_codes = _distinct_text_values(table, "price_currency_code")
-    weight_codes = _distinct_text_values(table, "weight_unit_code")
+    currency_codes = _distinct_text_values(table, "price_currency_code") or _distinct_text_values(table, "통화")
+    weight_codes = _distinct_text_values(table, "weight_unit_code") or _distinct_text_values(table, "단위")
     inferred_unit = next((m["unit"] for m in columns_meta
                           if m["key"] == hint["series"][0] and m["unit"]), None)
     coded_unit = _price_unit_from_codes(currency_codes, weight_codes)
-    has_code_columns = any(m["key"] in {"price_currency_code", "weight_unit_code"} for m in columns_meta)
+    has_code_columns = any(m["key"] in {"price_currency_code", "weight_unit_code", "통화", "단위"}
+                           for m in columns_meta)
     y_unit = _verified_display_unit(inferred_unit) or _verified_display_unit(coded_unit)
     if not has_code_columns:
         y_unit = (y_unit or _verified_display_unit(unit)
@@ -643,7 +653,7 @@ def chart_spec(table: dict, *, block_id: str, data_ref: str, source_index: int |
     if safe_price_units:
         spec["spec"]["price_unit"] = safe_price_units[0] if len(safe_price_units) == 1 else safe_price_units
     if currency_codes:
-        spec["spec"]["price_currency_code"] = currency_codes[0] if len(currency_codes) == 1 else currency_codes
+        spec["spec"]["price_currency"] = currency_codes[0] if len(currency_codes) == 1 else currency_codes
     if weight_codes:
-        spec["spec"]["weight_unit_code"] = weight_codes[0] if len(weight_codes) == 1 else weight_codes
+        spec["spec"]["weight_unit"] = weight_codes[0] if len(weight_codes) == 1 else weight_codes
     return spec

@@ -89,6 +89,25 @@ def _unavailable_source_warning(data_source: str | None) -> str:
     return f"source_unavailable:unverified_data_source:{data_source or 'unknown'}"
 
 
+_MINIMUM_IMPORT_AMOUNT_FOR_HHI_USD = 1_000_000
+
+
+def _concentration_metric_label(metric: str, grand_total: Any, hhi: Any, formula: Any) -> str:
+    """수입액이 기준 미만이면 HHI 자체를 근거·인용에 노출하지 않는다."""
+    label = {
+        "import_amount": "수입금액", "import_weight": "수입중량",
+        "export_amount": "수출금액", "export_weight": "수출중량",
+    }.get(metric, metric)
+    if metric == "import_amount":
+        try:
+            eligible = grand_total is not None and float(grand_total) >= _MINIMUM_IMPORT_AMOUNT_FOR_HHI_USD
+        except (TypeError, ValueError):
+            eligible = False
+        if not eligible:
+            return f"{label} 집중도(HHI 미표시: 수입액 100만 USD 기준 미달)"
+    return f"{label} 집중도(HHI={hhi}, 전체합계={grand_total}, {formula})"
+
+
 # 2026-08-31 skeptic 발견(advisor) — komis_raw._PAGE_DATASETS의 price_* 4종은
 # filter_columns에 mineral_code가 없다(price_criterion_serial만 있음). map_korea도
 # hs_code만 있고, map_global의 mineral_code 컬럼(MNRKND_UNQ_CD)은 실측상 전 행
@@ -130,6 +149,7 @@ _PERIOD_BOUNDS_LEAD: dict[str, str] = {
     "price_other": "조회 가능 기간",
     "indicator_market": "지표 산출 가능 기간",
     "indicator_supply": "지표 산출 가능 기간",
+    "indicator_composite": "지표 산출 가능 기간",
 }
 
 
@@ -586,7 +606,7 @@ def register_common_tools(
         formula = dataset.metadata.get("formula")
         evidence = from_komis_ranking(
             dataset, mineral_code=mineral_label,
-            metric_label=f"{_RANKING_METRIC_LABELS.get(metric, metric)} 집중도(HHI={hhi}, 전체합계={grand_total}, {formula})",
+            metric_label=_concentration_metric_label(metric, grand_total, hhi, formula),
             is_dummy=is_dummy,
             menu_page_id=page_id,
         )

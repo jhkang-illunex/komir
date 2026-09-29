@@ -169,8 +169,8 @@ class ChartMetadataRegressionTest(unittest.TestCase):
         spec = chart_spec(table, block_id="c", data_ref="t", source_index=1, source_label="x", unit="UNKNOWN")
         assert spec is not None
         self.assertEqual(spec["spec"]["y_unit"], "USD/kg")
-        self.assertEqual(spec["spec"]["price_currency_code"], "USD")
-        self.assertEqual(spec["spec"]["weight_unit_code"], "KG")
+        self.assertEqual(spec["spec"]["price_currency"], "USD")
+        self.assertEqual(spec["spec"]["weight_unit"], "kg")
 
     def test_unknown_price_codes_do_not_invent_y_unit(self):
         table = _table(
@@ -192,7 +192,7 @@ class ChartMetadataRegressionTest(unittest.TestCase):
         )
         spec = chart_spec(table, block_id="c", data_ref="t", source_index=1, source_label="x", unit="PR001/WT002")
         assert spec is not None
-        self.assertIsNone(spec["spec"]["y_unit"])
+        self.assertEqual(spec["spec"]["y_unit"], "USD/톤")
         self.assertEqual(spec["spec"]["price_criterion"], "LME CASH")
         self.assertNotIn("price_currency_code", spec["spec"])
         self.assertNotIn("weight_unit_code", spec["spec"])
@@ -202,7 +202,9 @@ class ChartMetadataRegressionTest(unittest.TestCase):
         self.assertNotIn("PR001", payload)
         self.assertNotIn("WT002", payload)
         self.assertIsNone(block["meta"]["unit"])
-        self.assertEqual(block["rows"][0][-2:], ["", ""])
+        self.assertEqual(block["rows"][0][-2:], ["USD", "톤"])
+        self.assertEqual(spec["spec"]["price_currency"], "USD")
+        self.assertEqual(spec["spec"]["weight_unit"], "톤")
         self.assertEqual(spec["spec"]["price_criterion"], "LME CASH")
 
     def test_verified_units_and_dimensionless_indicator_units_are_preserved(self):
@@ -230,6 +232,17 @@ class ChartMetadataRegressionTest(unittest.TestCase):
         verified = table_block(table, block_id="b", source_index=1, source_label="x", unit="USD/kg")
         self.assertIsNone(opaque["meta"]["unit"])
         self.assertEqual(verified["meta"]["unit"], "USD/kg")
+
+    def test_presentation_table_humanizes_verified_price_codes_and_hides_unknowns(self):
+        from rag_core.ragkit.chatbot_events import presentation_table
+        table = _table(
+            "| mineral | price_currency_code | weight_unit_code | raw_unit_code |\n"
+            "|---|---|---|---|\n| 니켈 | PR001 | WT002 | WT001 |"
+        )
+        safe, hidden = presentation_table(table)
+        self.assertEqual(safe["columns"], ["mineral", "통화", "단위"])
+        self.assertEqual(safe["rows"], [["니켈", "USD", "톤"]])
+        self.assertIn("raw_unit_code", hidden)
 
     def test_month_period_uses_year_month_x_format(self):
         table = _table(
