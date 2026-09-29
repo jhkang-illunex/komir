@@ -212,6 +212,85 @@ class CompositeRendererTest(unittest.TestCase):
         self.assertNotIn("중국", result[0])
         self.assertEqual(result[1], {1, 3})
 
+    def test_latest_price_and_import_rank_survive_missing_previous_month_average(self):
+        price_call = ActionCall(requirement_id="price", action_id="price.series", slots=ActionSlots(
+            mineral="니켈", period=Period(kind="latest")))
+        import_call = ActionCall(requirement_id="imports", action_id="trade.country_rank", slots=ActionSlots(
+            mineral="니켈", metric="import_amount", top_n=5))
+        plan = ActionPlan(actions=[import_call, price_call])
+        evidence = [
+            Evidence(kind="table", source="KOMIS", section="imports", requirement_id="imports", action_id="trade.country_rank",
+                     text="| country | share_pct |\n|---|---:|\n| 인도네시아 | 37.12 |"),
+            Evidence(kind="table", source="KOMIS", section="price", requirement_id="price", action_id="price.series",
+                     unit="가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002",
+                     text="| crtr_ymd | cmerc_prc |\n|---|---:|\n| 20260908 | 16745.53 |"),
+        ]
+
+        result = render_composite(evidence, plan)
+
+        self.assertIsNotNone(result)
+        answer, cited = result
+        self.assertIn("2026-09-08 기준 최근 가격 16,745.53 USD/톤", answer)
+        self.assertIn("전월 평균 비교 자료는 확인되지 않았습니다", answer)
+        self.assertIn("수입 상위국 인도네시아(37.12%)", answer)
+        self.assertNotIn("데이터 없음", answer)
+        self.assertEqual(cited, {1, 2})
+
+    def test_price_trend_and_import_rank_report_single_observation_without_fake_change(self):
+        plan = ActionPlan(actions=[
+            ActionCall(requirement_id="price", action_id="price.series", slots=ActionSlots(
+                mineral="니켈", period=Period(kind="range", start="2025-09-29", end="2026-09-29"))),
+            ActionCall(requirement_id="imports", action_id="trade.country_rank", slots=ActionSlots(
+                mineral="니켈", metric="import_amount", top_n=5)),
+        ])
+        evidence = [
+            Evidence(kind="table", source="KOMIS", section="price", requirement_id="price", action_id="price.series",
+                     unit="가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002",
+                     text="| crtr_ymd | cmerc_prc |\n|---|---:|\n| 20260908 | 16745.53 |"),
+            Evidence(kind="table", source="KOMIS", section="imports", requirement_id="imports", action_id="trade.country_rank",
+                     text="| country | share_pct |\n|---|---:|\n| 인도네시아 | 37.12 |"),
+        ]
+
+        result = render_composite(evidence, plan)
+
+        self.assertIsNotNone(result)
+        answer, cited = result
+        self.assertIn("2026-09-08 기준 최근 확인 가격 16,745.53 USD/톤", answer)
+        self.assertIn("가격 관측치가 1건이라 기간 변동률과 추세는 계산할 수 없습니다", answer)
+        self.assertIn("인도네시아(37.12%)", answer)
+        self.assertNotIn("데이터 없음", answer)
+        self.assertEqual(cited, {1, 2})
+
+    def test_monthly_summary_is_rendered_without_internal_ids_when_index_action_fails(self):
+        index_call = ActionCall(requirement_id="monthly_composite_index", action_id="indicator.series",
+                                slots=ActionSlots(indicator="composite_index", indicator_variant="composite",
+                                                  indicator_operation="period_change"))
+        document_call = ActionCall(requirement_id="monthly_trend", action_id="document.retrieve",
+                                   slots=ActionSlots(topic="월간동향"))
+        plan = ActionPlan(actions=[index_call, document_call])
+        evidence = [Evidence(
+            kind="document", source="전략광종 월간동향", section="2026년 6월호 전략광종 월간동향",
+            requirement_id="monthly_trend", action_id="document.retrieve",
+            text="2026년 6월호 주요 내용은 동과 니켈의 시장 동향입니다.",
+        )]
+        outcomes = [
+            ActionResult("monthly_composite_index", "indicator.series", index_call.slots,
+                         "validation_failed", failure_reason="advisor_rejected"),
+            ActionResult("monthly_trend", "document.retrieve", document_call.slots, "success", evidence),
+        ]
+
+        result = render_composite(evidence, plan, outcomes)
+
+        self.assertIsNotNone(result)
+        answer, cited = result
+        self.assertIn("광물종합지수 : 요청 기간의 변동 자료를 확인하지 못했습니다", answer)
+        self.assertIn("월간동향 : 2026년 6월호 전략광종 월간동향 주요 내용", answer)
+        self.assertIn("동과 니켈의 시장 동향", answer)
+        self.assertNotIn("monthly_composite_index", answer)
+        self.assertNotIn("monthly_trend", answer)
+        self.assertNotIn("advisor_rejected", answer)
+        self.assertEqual(cited, {1})
+
     def test_price_timeline_keeps_actual_range_when_forecast_is_missing(self):
         price_call = ActionCall(requirement_id="price", action_id="price.series",
                                 slots=ActionSlots(mineral="니켈"))

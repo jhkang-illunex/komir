@@ -548,6 +548,49 @@ def render_composite(evidence: list, action_plan, action_results=None) -> tuple[
 
     if ids.count("indicator.series") == 1 and ids.count("document.retrieve") == 1 and len(ids) == 2:
         indices, docs = by_action.get("indicator.series", []), by_action.get("document.retrieve", [])
+        if action_results:
+            outcomes = {getattr(item, "requirement_id", None): item for item in action_results}
+            index_action = next(action for action in actions if action.action_id == "indicator.series")
+            document_action = next(action for action in actions if action.action_id == "document.retrieve")
+            index_outcome = outcomes.get(index_action.requirement_id)
+            document_outcome = outcomes.get(document_action.requirement_id)
+            index_match = next(((index, item) for index, item in indices
+                                if getattr(item, "requirement_id", None) == index_action.requirement_id), None)
+            document_match = next(((index, item) for index, item in docs
+                                   if getattr(item, "requirement_id", None) == document_action.requirement_id), None)
+            index_points = _index_points(index_match[1]) if index_match else []
+            document_text = _document_text(document_match[1]) if document_match else ""
+            index_available = bool(
+                index_outcome is not None and index_outcome.status == "success"
+                and len(index_points) >= 2 and index_points[0][1]
+            )
+            document_available = bool(
+                document_outcome is not None and document_outcome.status == "success"
+                and document_text
+            )
+            # 한쪽 Action이 실패해도 성공한 내용은 살리되 내부 requirement_id는
+            # 사용자 답변에 섞이지 않도록 이 조합의 부분 응답을 결정적으로 만든다.
+            if not (index_available and document_available):
+                lines, cited = [], set()
+                if index_available:
+                    start_date, start_value = index_points[0]
+                    end_date, end_value = index_points[-1]
+                    change = (end_value - start_value) / start_value * 100
+                    direction = "상승" if change > 0 else "하락" if change < 0 else "보합"
+                    lines.append(
+                        f"광물종합지수 : {start_date.isoformat()}~{end_date.isoformat()} "
+                        f"{_fmt(change)}% {direction}했습니다."
+                    )
+                    cited.add(index_match[0])
+                else:
+                    lines.append("광물종합지수 : 요청 기간의 변동 자료를 확인하지 못했습니다.")
+                if document_available:
+                    title = getattr(document_match[1], "section", None) or "확인된 월간동향"
+                    lines.append(f"월간동향 : {title} 주요 내용 : {document_text[:300]}")
+                    cited.add(document_match[0])
+                else:
+                    lines.append("월간동향 : 확인 가능한 요약 자료를 찾지 못했습니다.")
+                return "\n".join(lines), cited
         if len(indices) == 1 and len(docs) == 1:
             points = _index_points(indices[0][1])
             document_action = next(action for action in actions if action.action_id == "document.retrieve")
@@ -988,26 +1031,41 @@ def render_composite(evidence: list, action_plan, action_results=None) -> tuple[
             pidx, _pitem, pp = price
             tidx, _titem, countries = trade
             if pp and countries:
+                unit = price_display_unit(getattr(_pitem, "unit", None))
+                unit_text = f" {unit}" if unit else ""
                 period = getattr(getattr(price_action.slots, "period", None), "kind", None)
                 if period == "latest":
                     latest = pp[-1]
                     previous_month = [value for observed, value in pp
                                       if observed.year * 12 + observed.month == latest[0].year * 12 + latest[0].month - 1]
-                    if not previous_month:
-                        return None
-                    average = sum(previous_month) / len(previous_month)
-                    pct = (latest[1] - average) / average * 100 if average else None
-                    if pct is None:
-                        return None
                     country_text = ", ".join(f"{name}({_fmt(share)}%)" for name, share in countries[:3])
-                    return (f"수급지도 : 수입 상위국 {country_text}\n광물가격 : {latest[0].isoformat()} 가격 {_fmt(latest[1])}, 전월 평균 대비 {pct:+.2f}%",
-                            {pidx, tidx})
+                    if previous_month:
+                        average = sum(previous_month) / len(previous_month)
+                        pct = (latest[1] - average) / average * 100 if average else None
+                    else:
+                        pct = None
+                    if pct is not None:
+                        price_line = (f"광물가격 : {latest[0].isoformat()} 가격 "
+                                      f"{_fmt(latest[1])}{unit_text}, 전월 평균 대비 {pct:+.2f}%")
+                    else:
+                        price_line = (f"광물가격 : {latest[0].isoformat()} 기준 최근 가격 "
+                                      f"{_fmt(latest[1])}{unit_text}. 전월 평균 비교 자료는 확인되지 않았습니다")
+                    return (f"수급지도 : 수입 상위국 {country_text}\n{price_line}", {pidx, tidx})
                 if len(pp) >= 2 and pp[0][1]:
                     change = (pp[-1][1] - pp[0][1]) / pp[0][1] * 100
                     high_date, high = max(pp, key=lambda point: point[1])
                     country_text = ", ".join(f"{name}({_fmt(share)}%)" for name, share in countries[:3])
-                    return (f"광물가격 : {pp[0][0].isoformat()}~{pp[-1][0].isoformat()} 가격 {change:+.2f}% 변동, 고점 {_fmt(high)}({high_date.strftime('%Y-%m')})\n"
+                    return (f"광물가격 : {pp[0][0].isoformat()}~{pp[-1][0].isoformat()} 가격 {change:+.2f}% 변동, 고점 {_fmt(high)}{unit_text}({high_date.strftime('%Y-%m')})\n"
                             f"수급지도 : 수입국 {country_text}", {pidx, tidx})
+                if len(pp) == 1:
+                    observed, value = pp[0]
+                    country_text = ", ".join(f"{name}({_fmt(share)}%)" for name, share in countries[:3])
+                    return (
+                        f"광물가격 : {observed.isoformat()} 기준 최근 확인 가격 {_fmt(value)}{unit_text}. "
+                        "조회된 가격 관측치가 1건이라 기간 변동률과 추세는 계산할 수 없습니다.\n"
+                        f"수급지도 : 수입 상위국 {country_text}",
+                        {pidx, tidx},
+                    )
 
     # 세계 생산국과 한국 수입국의 목록/교집합. 같은 국가명이 두 원천에 실제로
     # 있을 때만 공통국으로 표시해 모델이 국가를 추정하지 못하게 한다.
