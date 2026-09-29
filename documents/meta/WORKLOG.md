@@ -2,6 +2,28 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-29 — 니켈 가격·수입 상위국 세션 순서 회귀 보정 및 재배포
+
+같은 세션에서 `니켈 현재가격과 수입 상위국이랑 알려줘`와
+`니켈 수입 상위국이랑 현재가격 알려줘`를 순서대로 질의하면 두 번째 가격
+`price.series`만 `advisor_rejected`로 탈락하던 문제를 확인했다. 원인은 정형
+`public.KO_MNRL_PRC` 가격 근거가 직전 대화 history가 포함된 일반 Advisor 검증을
+거치며 다른 요구와 혼동된 것이었다. 기간·광물·열·출처 계약을 이미 통과한 단일
+KOMIS 가격 시계열은 history와 무관하게 adapter 근거를 통과시키도록 보정하고,
+동일 회귀 테스트를 추가했다.
+
+검증: 관련 테스트 178건, 배포 전 게이트 15+85+6+33+1건 통과. 커밋
+`d686a6556`(`fix(rag-chat): isolate price verification from chat history`)을
+`komir-rag-chat:20260929-nickel-order-fix-r1`로 빌드·재배포했다. 이미지 digest는
+`sha256:0a3035e9ec185e221b5c181356aae4ed48cff84abf3f9aacdb3714d3f404ebd9`,
+컨테이너 ID는 `52ed4a31770de49c82ce8aef64bb1dea90e8088cb7d6405811cd4e1eb1a16bf7`,
+이전 이미지는 `komir-rag-chat-test-pre-20260929-215606`으로 보존했다.
+
+배포 후 양방향 질문 순서와 같은 세션의 연속 질의를 모두 재검증했다. 두 경우 모두
+`price.series`와 `trade.country_rank`가 성공하고, 최근 가격 `16,745.53 USD/톤`과
+수입 상위국 인도네시아 37.12%·호주 26.87%·칠레 10.18%가 함께 반환됐다. 표·차트의
+표시 순서는 Action 실행 순서에 따라 달라질 수 있으나, 값 누락은 재현되지 않았다.
+
 ## 2026-09-29 — FBQ81 price·forecast 블록 이미지 커밋 및 재배포
 
 코드 커밋 `a4b95d986`(`feat(rag-chat): add battery price forecast block`)을 생성하고,
