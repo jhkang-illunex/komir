@@ -513,6 +513,7 @@ def render_composite(evidence: list, action_plan, action_results=None) -> tuple[
             evidence_index, document = docs[0]
             action = actions[0]
             topic = str(getattr(action.slots, "topic", "") or "")
+            topic_compact = re.sub(r"\s+", "", topic)
             is_news_request = (
                 "뉴스" in topic or "기사" in topic
                 or str(getattr(document, "section", "") or "") == "자원뉴스"
@@ -541,8 +542,8 @@ def render_composite(evidence: list, action_plan, action_results=None) -> tuple[
                     {evidence_index},
                 )
             wants_mineral_list = (
-                "월간동향" in topic and "광종" in topic
-                and any(marker in topic for marker in ("뭐뭐", "목록", "어떤"))
+                "월간동향" in topic_compact and "광종" in topic_compact
+                and any(marker in topic_compact for marker in ("뭐뭐", "목록", "어떤"))
             )
             if wants_mineral_list:
                 minerals = _monthly_mineral_list(document)

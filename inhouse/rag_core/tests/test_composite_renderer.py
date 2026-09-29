@@ -28,7 +28,7 @@ class CompositeRendererTest(unittest.TestCase):
     def test_monthly_mineral_list_uses_structured_mineral_column(self):
         plan = ActionPlan(actions=[ActionCall(
             requirement_id="monthly_rare_metals", action_id="document.retrieve",
-            slots=ActionSlots(topic="가장 최근 희소금속 월간동향에 나온 광종들이 뭐뭐 있나요?"),
+            slots=ActionSlots(topic="가장 최근 희소금속 월간 동향에 나온 광종들이 뭐뭐 있나요?"),
         )])
         evidence = [Evidence(
             kind="structured", source="희소금속 월간동향", section="2026-05호",
