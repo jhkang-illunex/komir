@@ -2,6 +2,35 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-29 — 복합 응답 수정 배포 및 기존 QA 56건 재점검
+
+MP01·MP03의 단일 가격 관측/전월 평균 부재 처리와 CN08의 부분 Action 응답을
+`f3131a5fd`로 커밋해 origin/main에 push한 뒤, `inhouse/rag_chat/deploy_test.sh`로
+이미지 `komir-rag-chat:20260929-174510`(sha256
+`52b6aa9a578c65bf2b40e46d334fa4b621ceac95dad76c1df3f9977a288917f3`)를 빌드·배포했다.
+새 `komir-rag-chat-test` 컨테이너 ID는
+`7bc0216a23ca4b6f0cc035af26bd8465402287e17a9edfb0a2b0f1e2a138ff59`이며 실행 상태를
+재확인했다. 이전 컨테이너는 `komir-rag-chat-test-pre-20260929-174512`로 보존했다.
+배포 전 정적 게이트 15+83+6+33+1개 테스트 및 라우팅/페이지 안내 smoke가 통과했고,
+배포 후 라이브 gate의 가격, 단위, 수입 순위, Q15/Q28, YAML 광물정보 및 기권 사례가
+통과했다.
+
+같은 기존 QA 질문 56건을 새 이미지에 실행했다. 자동 분류는 PASS 34, PARTIAL 8,
+FAIL 8, BLOCKED_DATA 6이다. 직전 실행(33/9/8/6) 대비 CN08만 PARTIAL에서 PASS로
+바뀌었다. MP01과 MP03은 자동 분류는 이전에도 PASS였으나, 이번 원문 응답에서 두 질의
+모두 `2026-09-08` 니켈 가격 `16,745.53 USD/톤`과 전월 비교 데이터 부재 안내가 실제로
+포함됨을 확인했다. CN08은 광물종합지수 조회 불가와 2026년 6월 월간동향을 각각 안내하고
+내부 Action ID를 출력하지 않았다. 다만 월간동향 요약은 표 전체를 풀어 보여주며 원문 파일
+경로도 포함해 표출 정리가 남았다. 결과 보고서와 원문 JSON은
+`documents/산출물/2026-W40_0928-1004/chatbot_live_qa_260929_postdeploy_f3131/`에 보존했다.
+
+남은 자동 FAIL 8건은 월간 문서 기간 검색/Advisor 거절 6건(DOC01, DOC03, MP08, GM06,
+GM09, GM10)과 public 프로필의 private-only 접근 차단 2건(IX01, CN09)이다. PARTIAL 8건은
+월간/뉴스/복합 응답의 기대 항목 일부 누락(DOC02, MP02, MP09, CN01), 예측 Action 미제공
+(PF03, CN04, CN05, GM12)이다. BLOCKED_DATA 6건은 주간 뉴스/가격 변동·예측과 세계 수출
+자료 조회 부재다. 따라서 배포·수정 대상 3건은 재검증됐지만 전체 56건 QA는 여전히
+미수락이다. PASS 표시는 문자열·SSE 판정이므로 의미 정확성 전부를 승인하지 않는다.
+
 ## 2026-09-29 — 라이브 QA 재검토 항목 3건 수정
 
 이전 라이브 QA에서 확인한 MP01·MP03·CN08 응답 결함을 `ragkit/composite_renderer.py`에서
