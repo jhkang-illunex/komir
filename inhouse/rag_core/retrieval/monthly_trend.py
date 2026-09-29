@@ -13,6 +13,9 @@ from .evidence import Evidence
 _MINERALS = ("리튬", "니켈", "코발트", "구리", "동", "아연", "망간", "텅스텐", "몰리브덴", "희토류", "흑연", "알루미늄", "철광석")
 _MONTHLY_SOURCES = ("전략광종 월간동향", "희소금속 월간동향")
 _MONTH_RE = re.compile(r"(?<!\d)(20\d{2})[-._/](0[1-9]|1[0-2])(?!\d)")
+_COMPACT_MONTH_RE = re.compile(r"(?<!\d)(20\d{2})(0[1-9]|1[0-2])(?!\d)")
+_KOREAN_MONTH_RE = re.compile(r"(?<!\d)(20\d{2})년\s*(0?[1-9]|1[0-2])월")
+_DAY_RE = re.compile(r"(?<!\d)(20\d{2})[-._/]?(0[1-9]|1[0-2])[-._/]?(0[1-9]|[12]\d|3[01])(?!\d)")
 _MINERAL_NOT_MENTIONED_WARNING = "monthly_trend_mineral_not_mentioned:"
 
 
@@ -38,7 +41,14 @@ def _publication_month(pub_date: object, source_path: str, title: str) -> date |
     if isinstance(pub_date, date):
         return date(pub_date.year, pub_date.month, 1)
     for value in (source_path, title):
-        match = _MONTH_RE.search(value or "")
+        day_match = _DAY_RE.search(value or "")
+        if day_match:
+            try:
+                return date(int(day_match.group(1)), int(day_match.group(2)), 1)
+            except ValueError:
+                pass
+        match = (_MONTH_RE.search(value or "") or _COMPACT_MONTH_RE.search(value or "")
+                 or _KOREAN_MONTH_RE.search(value or ""))
         if match:
             return date(int(match.group(1)), int(match.group(2)), 1)
     return None

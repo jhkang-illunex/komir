@@ -163,14 +163,15 @@ def _format_period_bound(value: str, precision: str) -> str:
 
 def register_common_tools(
     mcp: FastMCP, *, private_only_pages: frozenset[str] = frozenset(),
-    trusted_private_pages: frozenset[str] = frozenset(),
+    trusted_komis_pages: frozenset[str] = frozenset(),
 ) -> None:
     """호출자(mcp_server_public.py·mcp_server_private.py)가 자기 `FastMCP`
     인스턴스를 넘겨 이 6개 tool을 등록한다. `private_only_pages`는
     komis_raw_lookup에서 거부할 `page_id` 집합 — public.py만 소스코드로
     `PRIVATE_ONLY_KOMIS_PAGES`를 박아 넣어 넘기고, private.py는 기본값(빈
-    집합=제한 없음) 그대로 둔다. `trusted_private_pages`는 private 서버만
-    코드로 선언하는 내부 원천 신뢰 목록이며 public 서버에는 전달하지 않는다.
+    집합=제한 없음) 그대로 둔다. `trusted_komis_pages`는 KOMIS 원천의 구조
+    검증을 통과하면 더미/미검증 caveat를 생략할 page 목록이다. 이는 프로필
+    접근 허용 여부와 독립이며, 테이블·열·코드 검증은 조회 때마다 수행한다.
     모든 tool은 top-level에서 항상
     `dict[str, Any]`(Optional도 list도 아닌 순수 object)를 반환한다 — FastMCP가
     반환 타입이 이미 object 스키마면 `structuredContent`에 그대로 싣고,
@@ -274,12 +275,12 @@ def register_common_tools(
         매핑되면 그중 첫 번째(오름차순)만 미리보기로 쓰고 `warnings`에 명시한다
         (전부 합쳐 보려면 `price_criterion_serial`/`hs_code`를 직접 지정할 것).
 
-        ⚠ 2026-09-01 사용자 지시로 `indicator_market`(시장동향지표,
-        KO_MRKT_PRSPECT_IDCT)·`indicator_supply`(수급동향지표,
-        KO_SPDM_STBT_INDX)·`indicator_composite`(광물종합지수,
-        KO_MNRL_SNTHS_INDX) 3개 page_id는 private 프로필 전용이다 — public
-        프로필에서 호출하면 조회 없이 거부되고 warnings에만 사유가 담긴다
-        (`shared.retrieval.access.PRIVATE_ONLY_KOMIS_PAGES`).
+        `indicator_market`(시장동향지표, KO_MRKT_PRSPECT_IDCT)와
+        `indicator_supply`(수급동향지표, KO_SPDM_STBT_INDX)는 private 전용이다.
+        `indicator_composite`(광물종합지수, KO_MNRL_SNTHS_INDX)는 2026-09-29부터
+        public 허용이며, 지정한 신뢰 목록에 있더라도 테이블·필수 열·코드를
+        매 요청 검증한다. private 전용 page를 public에서 요청하면 조회 없이
+        거부하고 warnings에만 사유를 담는다.
 
         2026-09-01 실사용 버그 발견·수정 — 근거(Evidence)의 `section`에
         `mineral_code`(예: "MNRL0018")가 그대로 노출돼 있었다. 실측으로
@@ -464,9 +465,10 @@ def register_common_tools(
             # 지적) — 별도의 "판정 불가" caveat(`unverified=True`)로 처리한다.
             # 단, private 서버가 명시적으로 신뢰한 내부 원천은 정확한 테이블,
             # 필수 열, 허용 지수 코드까지 현재 조회 결과에서 재확인한 경우에만
-            # 이 fail-closed 상태를 해제한다. public 서버는 이 선언을 받지 않는다.
+            # 이 fail-closed 상태를 해제한다. public 공개도 동일한 엄격한 원천
+            # 구조 검증을 통과해야만 허용한다.
             trusted_composite = (
-                page_id in trusted_private_pages
+                page_id in trusted_komis_pages
                 and all(ds.source_table == "KO_MNRL_SNTHS_INDX" for ds in datasets)
                 and all({"indx_se_cd", "crtr_ymd", "indx"} <= set(ds.columns) for ds in datasets)
                 and all(row.get("indx_se_cd") in {"HI001", "HI002", "HI003"}

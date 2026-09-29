@@ -123,6 +123,7 @@ from .renderers.price import (
     render_price_comparison,
     render_price_series,
 )
+from .renderers.report_search import render_period_report_search
 from .chatbot_store import DEFAULT_DB_PATH as DEFAULT_STORE_DB_PATH
 from .chatbot_store import append_message, get_or_create_session, list_messages
 from .messages import chat_message, faq_message
@@ -1142,6 +1143,15 @@ def _price_unit_disclosure(text: str, evidence: list) -> str:
     return cleaned + ("\n\n" if cleaned and additions else "") + "\n".join(additions)
 
 
+def _needs_price_unit_buffer(evidence: list) -> bool:
+    """가격 단위 코드가 정리되기 전 모델 델타가 노출되지 않게 버퍼링한다."""
+    return any(
+        getattr(ev, "action_id", None) in {"price.series", "price.compare", "price.verify_claim"}
+        and (getattr(ev, "unit", None) or "").startswith("가격기준=")
+        for ev in evidence
+    )
+
+
 PRICE_SOURCE_CHANGE_MINERALS = (
     "리튬", "코발트", "희토류", "니켈", "구리", "아연", "알루미늄", "연", "주석",
     "철광석", "유연탄", "우라늄", "금", "은", "백금", "흑연",
@@ -2007,6 +2017,25 @@ async def chat_turn(
         })
         return
 
+    report_search_answer = render_period_report_search(evidence, executed_plan)
+    if report_search_answer is not None:
+        answer, cited_indices = report_search_answer
+        citations = build_citation_sources(cited_indices, evidence)
+        extra = _source_footer(cited_indices, evidence)
+        final_text = answer + extra
+        yield _status_event(4)
+        yield ChatEvent(type="delta", data={"delta": answer})
+        if extra:
+            yield ChatEvent(type="delta", data={"delta": extra})
+        await asyncio.to_thread(
+            append_message, resolved_session_id, "assistant", final_text,
+            json.dumps(citations, ensure_ascii=False), store_db_path,
+        )
+        yield ChatEvent(type="done", data={
+            "done": True, "citations": citations, "bogus_citations": [], "abstained": False,
+        })
+        return
+
     composite_index_answer = _composite_index_scope_answer(evidence, executed_plan)
     if composite_index_answer is not None:
         answer, cited_indices = composite_index_answer
@@ -2196,11 +2225,7 @@ async def chat_turn(
     # 선택 가격기준 단위는 citation과 본문이 반드시 같아야 한다. 이 좁은
     # 경로만 생성 완료 뒤에 보정해, LLM의 단위 누락·반대 서술을 화면에 먼저
     # 흘리지 않는다. 그 밖의 일반 RAG 스트리밍은 기존대로 유지한다.
-    price_unit_guard = any(
-        getattr(ev, "action_id", None) == "price.series"
-        and (getattr(ev, "unit", None) or "").startswith("가격기준=")
-        for ev in evidence
-    )
+    price_unit_guard = _needs_price_unit_buffer(evidence)
     rank_request_guard = any(marker in message for marker in ("상위", "순위", "비중"))
 
     yield _status_event(4)  # 답변 생성 중

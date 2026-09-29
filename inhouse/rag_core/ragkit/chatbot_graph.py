@@ -67,7 +67,7 @@ ensure_shared_on_path(Path(__file__).resolve())
 
 from common.llm_client import LLM_TRANSIENT_ERRORS, KomirJsonLLM  # noqa: E402
 from rag_core.retrieval.access import PRIVATE_ONLY_KOMIS_PAGES  # noqa: E402
-from rag_core.retrieval import mine_aggregate, weekly_trend, mineral_info, monthly_trend, cross_rank, news, battery_minerals, production_concentration, inventory  # noqa: E402
+from rag_core.retrieval import mine_aggregate, weekly_trend, mineral_info, monthly_trend, reports, cross_rank, news, battery_minerals, production_concentration, inventory  # noqa: E402
 from rag_core.retrieval.evidence import (  # noqa: E402
     Evidence, KOMIS_RAW_DUMMY_CAVEAT, KOMIS_RAW_UNVERIFIED_CAVEAT,
 )
@@ -544,6 +544,9 @@ class RetrievalRoute(BaseModel):
     use_structured: bool
     use_komis_raw: bool = False  # 2026-08-31 신설(komis_raw_lookup MCP tool)
     use_weekly_trend: bool = False
+    use_report_search: bool = False
+    report_search_start: str | None = None
+    report_search_end: str | None = None
     use_mineral_info: bool = False
     use_monthly_trend: bool = False
     use_news: bool = False
@@ -860,6 +863,23 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
         # 관측 2건만 가져오며, 렌더러는 최신 행만 표로 표시한다.
         "komis_raw_limit": 2 if period and period.kind == "latest" else None,
     }
+    document_topic = re.sub(r"\s+", "", s.topic or question)
+    if (call.action_id == "document.retrieve" and "보고서" in document_topic and period
+            and period.kind in {"range", "calendar_year", "trailing_months"}):
+        today = date.today()
+        if period.kind == "range" and period.start and period.end:
+            report_start, report_end = period.start, period.end
+        elif period.kind == "calendar_year" and period.calendar_year:
+            report_start = date(period.calendar_year, 1, 1).isoformat()
+            report_end = date(period.calendar_year, 12, 31).isoformat()
+        elif period.kind == "trailing_months" and period.trailing_months:
+            report_start = _months_ago(today, period.trailing_months).isoformat()
+            report_end = today.isoformat()
+        else:
+            report_start = report_end = None
+        if report_start and report_end:
+            return RetrievalRoute(**common, use_report_search=True,
+                                  report_search_start=report_start, report_search_end=report_end)
     if call.action_id == "price.series":
         if s.price_operation in {"monthly_streak", "yearly_average"}:
             return RetrievalRoute(**common, use_komis_price_time_aggregate=True,
@@ -1190,7 +1210,7 @@ def _evidence_matches_required_period(evidence: list[Evidence], action_call) -> 
 
 
 def _period_bounds(value: str) -> tuple[date, date] | None:
-    """기간 메타데이터에서 ISO 날짜 또는 연도 범위를 읽는다."""
+    """기간 메타데이터에서 ISO 날짜, 월 또는 연도 범위를 읽는다."""
     dates = re.findall(r"(?<!\d)(\d{4}-\d{2}-\d{2})(?!\d)", value)
     try:
         if len(dates) >= 2:
@@ -1200,6 +1220,17 @@ def _period_bounds(value: str) -> tuple[date, date] | None:
             return point, point
     except ValueError:
         return None
+    months = re.findall(r"(?<!\d)(20\d{2})[-./](0?[1-9]|1[0-2])(?![-./]?\d)", value)
+    if months:
+        try:
+            first_year, first_month = map(int, months[0])
+            last_year, last_month = map(int, months[-1])
+            start = date(first_year, first_month, 1)
+            last_month_start = date(last_year, last_month, 1)
+            end = (last_month_start.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+            return start, end
+        except ValueError:
+            return None
     years = re.findall(r"(?<!\d)(20\d{2})(?!\d)", value)
     if not years:
         return None
@@ -1497,7 +1528,7 @@ def _filter_document_evidence_to_trailing_period(evidence: list[Evidence], actio
             # 주간동향은 별도 게시물 adapter가 파일명에서 검증한 발행일을
             # Evidence.as_of로 제공한다. 이를 누락하면 adapter가 정확한 날짜의
             # 문서를 찾아도 여기서 전부 버려져 ``no_data``가 된다.
-            "월간동향", "주간동향", "자원뉴스", "수출통제관련뉴스", "수출통제뉴스",
+            "월간동향", "주간동향", "자원뉴스", "수출통제관련뉴스", "수출통제뉴스", "보고서",
         )):
             return evidence
         if period.kind == "range" and period.start and period.end:
@@ -1517,7 +1548,9 @@ def _filter_document_evidence_to_trailing_period(evidence: list[Evidence], actio
         if observed_bounds is None:
             continue
         observed_start, observed_end = observed_bounds
-        if start <= observed_start <= observed_end <= end:
+        # YYYY-MM 발행 정보는 그 달 전체와 요청 구간의 겹침으로 판정한다.
+        # 일 단위 발행일에도 동일한 겹침 규칙은 기존의 기간 포함 동작과 같다.
+        if observed_start <= end and start <= observed_end:
             filtered.append(ev)
     return filtered
 
@@ -2252,6 +2285,17 @@ def _retrieve_node(
             jobs["weekly_trend"] = submit(
                 weekly_trend.fetch_weekly_trend_evidence, start=start, end=end,
             )
+        if route.use_report_search and route.report_search_start and route.report_search_end:
+            try:
+                report_start = date.fromisoformat(route.report_search_start)
+                report_end = date.fromisoformat(route.report_search_end)
+            except ValueError:
+                report_start = report_end = None
+            if report_start and report_end:
+                jobs["report_search"] = submit(
+                    reports.fetch_report_evidence,
+                    route.resolved_query or state["question"], start=report_start, end=report_end,
+                )
         if route.use_mineral_info and route.komis_mineral_name:
             jobs["mineral_info"] = submit(
                 mineral_info.fetch_mineral_info_evidence, route.komis_mineral_name,
@@ -2391,7 +2435,7 @@ def _retrieve_node(
         weekly_evidence, weekly_warnings = results["weekly_trend"]
         evidence.extend(weekly_evidence)
         warnings.extend(weekly_warnings)
-    for name in ("mineral_info", "monthly_trend"):
+    for name in ("mineral_info", "monthly_trend", "report_search"):
         if name in results:
             structured_evidence, structured_warnings = results[name]
             evidence.extend(structured_evidence)
@@ -2531,6 +2575,33 @@ def _verify_excerpt(text: str, head: int = 300, tail: int = 300) -> str:
 _VERIFY_SKIP_AMBIGUOUS_MARKERS = ("가격기준이", "HS코드가", "komis_raw_unmapped_topic")
 
 
+def _is_verified_composite_index_evidence(evidence: list[Evidence], action_call: ActionCall) -> bool:
+    """엄격한 KOMIS 지수 원천 표만 Advisor 패스트패스 대상으로 인정한다."""
+    variant = action_call.slots.indicator_variant
+    expected_code = COMPOSITE_INDEX_VARIANTS.get(variant, (None, None))[0]
+    if not expected_code or not evidence:
+        return False
+    for item in evidence:
+        if (item.kind != "structured" or item.source != "public.KO_MNRL_SNTHS_INDX"
+                or item.menu_page_id != "indicator_composite" or item.caveat):
+            return False
+        matched = False
+        for table in extract_markdown_tables(item.text):
+            keys = [column.split("(", 1)[0].strip().casefold() for column in table["columns"]]
+            required = {"indx_se_cd", "crtr_ymd", "indx"}
+            if not required <= set(keys):
+                continue
+            code_i = keys.index("indx_se_cd")
+            if not table["rows"] or any(code_i >= len(row) or row[code_i].strip() != expected_code
+                                         for row in table["rows"]):
+                continue
+            matched = True
+            break
+        if not matched:
+            return False
+    return True
+
+
 def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
     """"correct 체크"(사용자 요청, 2026-08-13) — 근거가 실제로 질문에 답이
     되는지 확인한다. evidence가 애초에 비어있으면 LLM을 부를 필요도 없이
@@ -2586,6 +2657,23 @@ def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
             return {"sufficient": False, "evidence": [], "warnings": ["advisor_frequency_mismatch"]}
         if not _evidence_matches_action_contract(evidence, action_call):
             return {"sufficient": False, "evidence": [], "warnings": ["advisor_contract_mismatch"]}
+        # 광물종합지수는 KOMIS adapter가 페이지 접근·원천 테이블·필수 열·허용
+        # 지수 코드를 확인한 구조화 결과다. 기간 계약도 위에서 검증됐으므로,
+        # 단순 추세 요청을 일반 LLM Advisor의 추정으로 다시 기각하지 않는다.
+        if (action_call.action_id == "indicator.series"
+                and action_call.slots.indicator == "composite_index"
+                and _is_verified_composite_index_evidence(evidence, action_call)):
+            return {"sufficient": True, "evidence": evidence, "warnings": state.get("warnings", [])}
+        # 가격 상승일 판정은 가격 Action의 역할이고 뉴스 검색은 상승일을
+        # 확인한 뒤 별도 Action으로 붙는다. 검증기에게 아직 조회하지 않은
+        # 뉴스까지 현재 가격 표가 증명하라고 요구하지 않도록, KOMIS 가격표의
+        # 날짜·가격 열을 확인한 결과는 해당 Action만 성공 처리한다.
+        if (action_call.action_id == "price.series"
+                and action_call.slots.price_operation == "significant_daily_rise"
+                and len(evidence) == 1 and evidence[0].kind == "structured"
+                and (evidence[0].source or "").endswith("KO_MNRL_PRC")
+                and price_series_observations(evidence[0].text)):
+            return {"sufficient": True, "evidence": evidence, "warnings": state.get("warnings", [])}
         if (_is_complete_explicit_hs_summary(evidence, action_call)
                 or _is_complete_mine_rank_increase(evidence, action_call)
                 or _is_complete_mine_rank_yoy(evidence, action_call)
@@ -2617,7 +2705,8 @@ def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
         # 복합 질문에서 Advisor가 '문서만으로 수입/정보를 답할 수 없다'고 먼저
         # 막으면 후속 action 자체가 실행되지 않는다. 게시물 선택의 충분성만
         # 여기서 확정하고, 후속 수치/정보 action은 각각 별도 검증한다.
-        if (action_call.requirement_id in {"monthly_trend", "weekly_news"}
+        if ((action_call.requirement_id in {"monthly_trend", "weekly_news", "report_search"}
+             or getattr(state.get("route"), "use_report_search", False))
                 and action_call.action_id == "document.retrieve"
                 and any(ev.kind == "structured" and ev.text.strip() for ev in evidence)):
             return {"sufficient": True, "evidence": evidence, "warnings": state.get("warnings", [])}

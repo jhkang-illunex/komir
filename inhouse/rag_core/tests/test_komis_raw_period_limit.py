@@ -12,6 +12,7 @@ from common.komis_raw import RawDataset  # noqa: E402
 from rag_core.ragkit import _mcp_tools_common as tools  # noqa: E402
 from rag_core.ragkit import chatbot_graph as graph  # noqa: E402
 from rag_core.ragkit import mcp_client  # noqa: E402
+from rag_core.retrieval.access import PRIVATE_ONLY_KOMIS_PAGES  # noqa: E402
 
 
 class _Registry:
@@ -52,6 +53,26 @@ class _Repository:
 
 
 class PeriodLimitTest(unittest.TestCase):
+    def test_composite_index_is_public_but_market_and_supply_indicators_remain_private(self):
+        self.assertNotIn("indicator_composite", PRIVATE_ONLY_KOMIS_PAGES)
+        self.assertEqual(PRIVATE_ONLY_KOMIS_PAGES, {"indicator_market", "indicator_supply"})
+
+    def test_verified_public_composite_index_evidence_matches_requested_variant(self):
+        call = graph.ActionCall(
+            requirement_id="index", action_id="indicator.series",
+            slots=graph.ActionSlots(indicator="composite_index", indicator_variant="composite"),
+        )
+        evidence = graph.Evidence(
+            kind="structured", source="public.KO_MNRL_SNTHS_INDX", section="KOMIS 원천",
+            menu_page_id="indicator_composite", caveat=None,
+            text="| indx_se_cd | crtr_ymd | indx |\n|---|---|---:|\n| HI001 | 2026-09-08 | 3651.45 |",
+        )
+
+        self.assertTrue(graph._is_verified_composite_index_evidence([evidence], call))
+        self.assertFalse(graph._is_verified_composite_index_evidence(
+            [graph.Evidence(**{**evidence.__dict__, "text": evidence.text.replace("HI001", "HI002")})], call,
+        ))
+
     def test_hhi_number_is_hidden_below_import_amount_floor(self):
         below = tools._concentration_metric_label("import_amount", 999_999.99, 2333.77, "formula")
         at_floor = tools._concentration_metric_label("import_amount", 1_000_000, 2333.77, "formula")
@@ -61,7 +82,7 @@ class PeriodLimitTest(unittest.TestCase):
         self.assertIn("HHI=2333.77", at_floor)
         self.assertNotIn("2333.77", missing_total)
 
-    def test_private_composite_trust_requires_exact_table_columns_and_codes(self):
+    def test_composite_trust_requires_exact_table_columns_and_codes(self):
         registry = _Registry()
 
         class CompositeRepository:
@@ -74,13 +95,18 @@ class PeriodLimitTest(unittest.TestCase):
 
         with patch.object(tools, "KomisRawDataRepository", CompositeRepository):
             tools.register_common_tools(
-                registry, trusted_private_pages=frozenset({"indicator_composite"}),
+                registry, private_only_pages=PRIVATE_ONLY_KOMIS_PAGES,
+                trusted_komis_pages=frozenset({"indicator_composite"}),
             )
             result = registry.functions["komis_raw_lookup"](
                 "indicator_composite", index_type_code="HI001",
             )
         self.assertEqual(result["warnings"], [])
         self.assertIsNone(result["evidence"][0]["caveat"])
+
+        blocked = registry.functions["komis_raw_lookup"]("indicator_market")
+        self.assertEqual(blocked["evidence"], [])
+        self.assertIn("private 전용", blocked["warnings"][0])
 
     def test_empty_composite_query_reports_hi001_available_period(self):
         registry = _Registry()
@@ -103,7 +129,7 @@ class PeriodLimitTest(unittest.TestCase):
 
         with patch.object(tools, "KomisRawDataRepository", EmptyCompositeRepository):
             tools.register_common_tools(
-                registry, trusted_private_pages=frozenset({"indicator_composite"}),
+                registry, trusted_komis_pages=frozenset({"indicator_composite"}),
             )
             for index_code in ("HI001", "HI002", "HI003"):
                 result = registry.functions["komis_raw_lookup"](

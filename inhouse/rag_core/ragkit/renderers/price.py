@@ -208,6 +208,9 @@ def _price_operation_answer(item, mineral: str | None, operation: str, period, t
 
     if operation == "significant_daily_rise":
         threshold = threshold or 5.0
+        if len(points) < 2:
+            return (f"최근 조회기간에 가격 관측값이 {len(points)}건뿐이라 전일 대비 {threshold:g}% 이상 "
+                    "상승 여부를 판정할 수 없어 같은 날 관련 뉴스는 조회하지 않았습니다.")
         rises = []
         for (prior_date, prior), (observed, value) in zip(points, points[1:]):
             if prior and observed.toordinal() - prior_date.toordinal() <= 7:
@@ -215,7 +218,8 @@ def _price_operation_answer(item, mineral: str | None, operation: str, period, t
                 if pct >= threshold:
                     rises.append((observed, value, pct))
         if not rises:
-            return f"전일 대비 {threshold:g}% 이상 상승한 관측일을 최근 조회기간에서 찾지 못했습니다."
+            return (f"연속 가격 관측 구간에서 전일 대비 {threshold:g}% 이상 상승한 날을 찾지 못해 "
+                    "같은 날 관련 뉴스는 조회하지 않았습니다.")
         observed, value, pct = max(rises, key=lambda row: row[2])
         return (f"광물가격 : {observed.isoformat()} {label} 가격은 전일 대비 {pct:+.2f}% 상승했습니다 "
                 f"({format_price(value)} {unit}). '크게 상승'은 전일 대비 {threshold:g}% 이상 기준으로 판정했습니다.")

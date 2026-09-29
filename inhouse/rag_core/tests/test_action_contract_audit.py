@@ -2,6 +2,7 @@
 """설계 문서와 기존 챗봇 요구를 기준으로 한 독립 action 계약 검수."""
 import sys
 import unittest
+from datetime import date
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -14,7 +15,7 @@ from rag_core.ragkit.action_contract import (  # noqa: E402
 )
 from rag_core.ragkit.chatbot_graph import _route_from_action_plan, _route_from_action_call  # noqa: E402
 from rag_core.ragkit import chatbot_graph as graph  # noqa: E402
-from rag_core.retrieval.weekly_trend import _publication_date  # noqa: E402
+from rag_core.retrieval.weekly_trend import _publication_date, _publication_period  # noqa: E402
 from rag_core.ragkit.mcp_client import _ProfileSession  # noqa: E402
 from rag_core.ragkit.source_contract import SourceAssessment  # noqa: E402
 from rag_core.retrieval.evidence import Evidence  # noqa: E402
@@ -257,26 +258,74 @@ class ActionContractAuditTest(unittest.TestCase):
                 self.assertTrue(validate_action_plan(candidate).approved)
 
     def test_weekly_trend_document_plan_uses_dated_publication_adapter(self):
-        class MustNotRun:
+        class Planner:
             def invoke(self, **kwargs):
-                raise AssertionError("주간동향 단일 문형은 planner를 호출하면 안 됩니다")
+                self.task = kwargs["task"]
+                question = kwargs["payload"]["question"]
+                return SimpleNamespace(output=IntentPlan(requirements=[IntentCall(
+                    requirement_id="weekly_news", intent="document", role="content",
+                    slots=ActionSlots(topic=question),
+                )]))
 
-        candidate = extract_action_plan("이번주 비철금속 주간 동향 요약해줘", MustNotRun())
+        planner = Planner()
+        question = "이번주 비철금속 주간 동향 요약해줘"
+        candidate = extract_action_plan(question, planner)
+        self.assertEqual(planner.task, "intent_plan")
         self.assertEqual(candidate.actions[0].action_id, "document.retrieve")
-        route = _route_from_action_call(candidate.actions[0], "이번주 비철금속 주간 동향 요약해줘")
+        self.assertEqual(candidate.actions[0].slots.period.kind, "range")
+        route = _route_from_action_call(candidate.actions[0], question)
         self.assertTrue(route.use_weekly_trend)
         self.assertEqual(_publication_date("20260616_주간 경제 비철금속 시장 동향.pdf").isoformat(), "2026-06-16")
         self.assertEqual(_publication_date("2026-06-16_주간광물동향_KOMIS.hwp").isoformat(), "2026-06-16")
         self.assertIsNone(_publication_date("주간 경제 비철금속 시장 동향.pdf"))
+        self.assertEqual(_publication_period("2026-06_주간광물동향.pdf"),
+                         (date(2026, 6, 1), date(2026, 6, 30), "2026-06"))
+        self.assertEqual(_publication_period("2026년 6월 주간광물동향.pdf"),
+                         (date(2026, 6, 1), date(2026, 6, 30), "2026-06"))
+        self.assertEqual(_publication_period("202606_주간광물동향.pdf"),
+                         (date(2026, 6, 1), date(2026, 6, 30), "2026-06"))
+        self.assertEqual(_publication_period("2026-06-16_주간광물동향.pdf"),
+                         (date(2026, 6, 16), date(2026, 6, 16), "2026-06-16"))
 
     def test_dated_weekly_trend_evidence_is_not_removed_by_period_filter(self):
-        call = extract_action_plan("2026년 6월 16일 주간 자원뉴스 요약해줘", type("No", (), {
-            "invoke": lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("planner called")),
-        })()).actions[0]
+        question = "2026년 6월 16일 주간 자원뉴스 요약해줘"
+
+        class Planner:
+            def invoke(self, **_kwargs):
+                return SimpleNamespace(output=IntentPlan(requirements=[IntentCall(
+                    requirement_id="weekly_news", intent="document", role="content",
+                    slots=ActionSlots(topic=question, period=Period(
+                        kind="range", start="2026-06-16", end="2026-06-16", explicit=True,
+                    )),
+                )]))
+
+        call = extract_action_plan(question, Planner()).actions[0]
         evidence = [Evidence(kind="structured", source="KOMIS", section="주간 광물동향 게시물",
                              text="| 게시일 | 보고서 제목 |\n|---|---|\n| 2026-06-16 | 주간동향 |",
                              as_of="2026-06-16")]
         self.assertEqual(graph._filter_document_evidence_to_trailing_period(evidence, call), evidence)
+
+    def test_month_precision_weekly_report_is_compared_by_month(self):
+        action = ActionCall(
+            requirement_id="weekly_news", action_id="document.retrieve",
+            slots=ActionSlots(topic="이번주 주간동향", period=Period(
+                kind="range", start="2026-09-21", end="2026-09-29", explicit=True,
+            )), intent="document", role="content",
+        )
+        current_month = Evidence(kind="structured", source="weekly", section="보고서",
+                                 text="| 게시일 | 제목 |\n|---|---|\n| 2026-09 | 9월 보고서 |",
+                                 as_of="2026-09")
+        old_month = Evidence(kind="structured", source="weekly", section="보고서",
+                             text="| 게시일 | 제목 |\n|---|---|\n| 2026-08 | 8월 보고서 |",
+                             as_of="2026-08")
+        self.assertEqual(graph._period_bounds("2026-09"), (date(2026, 9, 1), date(2026, 9, 30)))
+        self.assertEqual(graph._filter_document_evidence_to_trailing_period(
+            [current_month, old_month], action), [current_month])
+        from rag_core.ragkit.composite_renderer import _weekly_report_rows
+        rendered = _weekly_report_rows(SimpleNamespace(
+            text="| 게시일 | 출처 | 보고서 제목 |\n|---|---|---|\n| 2026-09 | KOMIS | 9월 보고서 |",
+        ))
+        self.assertEqual(rendered, ["9월 보고서 (2026-09) — KOMIS"])
 
     def test_monthly_followup_validation_keeps_its_confirmed_parent_requirement(self):
         parent = ActionCall(requirement_id="monthly_trend", action_id="document.retrieve",
@@ -451,7 +500,6 @@ class ActionContractAuditTest(unittest.TestCase):
         cases = (
             ("이번 달 전략광종 월간동향 요약해줘", "range"),
             ("오늘 자원뉴스 뭐 있어?", "range"),
-            ("이번 주 주간자원뉴스 요약해줘", "range"),
             ("최근 중국 수출통제 관련 뉴스 있어?", "trailing_months"),
             ("최근 3개월 월간동향에서 리튬 관련 내용 찾아줘", "trailing_months"),
         )
@@ -460,6 +508,35 @@ class ActionContractAuditTest(unittest.TestCase):
                 candidate = extract_action_plan(question, MustNotRun())
                 self.assertEqual([call.action_id for call in candidate.actions], ["document.retrieve"])
                 self.assertEqual(candidate.actions[0].slots.period.kind, period_kind)
+
+    def test_weekly_news_request_endings_are_classified_by_intent_planner(self):
+        class Planner:
+            def __init__(self):
+                self.calls = 0
+
+            def invoke(self, **kwargs):
+                self.calls += 1
+                question = kwargs["payload"]["question"]
+                return SimpleNamespace(output=IntentPlan(requirements=[IntentCall(
+                    requirement_id="weekly_news", intent="document", role="content",
+                    slots=ActionSlots(topic=question),
+                )]))
+
+        for question in (
+            "이번주 자원뉴스 요약해",
+            "이번주 자원뉴스 요약해줘",
+            "이번주 자원뉴스 요약해주세요",
+            "이번주 자원뉴스 요약해서 표시해줘요",
+        ):
+            with self.subTest(question=question):
+                planner = Planner()
+                candidate = extract_action_plan(question, planner)
+                action = candidate.actions[0]
+                self.assertEqual(planner.calls, 1)
+                self.assertEqual(action.action_id, "document.retrieve")
+                self.assertEqual(action.slots.period.kind, "range")
+                self.assertIn("주간", action.slots.topic)
+                self.assertTrue(_route_from_action_call(action, question).use_weekly_trend)
 
     def test_dated_publication_content_bypasses_planner_as_explicit_lookup(self):
         class MustNotRun:
@@ -1038,8 +1115,39 @@ class ActionContractAuditTest(unittest.TestCase):
         configured = extract_action_plan("니켈 가격 크게 오른 날 관련 뉴스 있어?", UnexpectedPlanner())
         self.assertEqual(configured.actions[0].slots.price_operation, "significant_daily_rise")
         self.assertEqual(configured.actions[0].slots.significant_change_pct, 5.0)
+        natural = extract_action_plan("니켈 가격이 크게 오른날 뉴스가 뭐 있나요?", UnexpectedPlanner())
+        self.assertEqual([call.action_id for call in natural.actions], ["price.series"])
+        self.assertEqual(natural.actions[0].slots.mineral, "니켈")
+        self.assertEqual(natural.actions[0].slots.significant_change_pct, 5.0)
+        self.assertTrue(validate_action_plan(natural).approved)
         explicit = extract_action_plan("니켈 가격 8% 이상 오른 날 관련 뉴스 있어?", UnexpectedPlanner())
         self.assertEqual(explicit.actions[0].slots.significant_change_pct, 8.0)
+
+    def test_significant_price_evidence_is_verified_before_the_dynamic_news_action(self):
+        class UnexpectedAdvisor:
+            def invoke(self, **_kwargs):
+                raise AssertionError("가격 adapter 표는 다음 뉴스 Action과 분리해 검증해야 합니다")
+
+        call = ActionCall(
+            requirement_id="significant_price_rise", action_id="price.series",
+            slots=ActionSlots(mineral="니켈", period=Period(kind="trailing_months", trailing_months=1),
+                              price_operation="significant_daily_rise", significant_change_pct=5.0),
+        )
+        evidence = Evidence(
+            kind="structured", source="public.KO_MNRL_PRC", section="니켈 가격",
+            text="| date | price |\n|---|---:|\n| 2026-09-20 | 100 |\n| 2026-09-21 | 108 |",
+            unit="가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002",
+            requirement_id=call.requirement_id, action_id=call.action_id,
+            source_id="public.KO_MNRL_PRC", observed_period="2026-09-20~2026-09-21",
+        )
+
+        result = graph._verify_node({
+            "evidence": [evidence], "warnings": [], "action_call": call,
+            "route": SimpleNamespace(resolved_query="니켈 가격이 크게 오른날 뉴스가 뭐 있나요?"),
+        }, UnexpectedAdvisor())
+
+        self.assertTrue(result["sufficient"])
+        self.assertEqual(result["evidence"], [evidence])
 
     def test_composite_index_down_week_starts_with_index_observations(self):
         class UnexpectedPlanner:

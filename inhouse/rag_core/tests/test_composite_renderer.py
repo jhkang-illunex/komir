@@ -5,12 +5,26 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from rag_core.ragkit.action_contract import ActionCall, ActionPlan, ActionSlots, Period  # noqa: E402
-from rag_core.ragkit.composite_renderer import _hhi_risk_label, render_composite  # noqa: E402
+from rag_core.ragkit.composite_renderer import _document_summary_text, _hhi_risk_label, render_composite  # noqa: E402
 from rag_core.ragkit.action_results import ActionResult  # noqa: E402
 from rag_core.retrieval.evidence import Evidence  # noqa: E402
 
 
 class CompositeRendererTest(unittest.TestCase):
+    def test_monthly_summary_uses_summary_cell_without_source_path_or_metadata(self):
+        item = Evidence(
+            kind="structured", source="전략광종 월간동향", section="2026년 6월호",
+            text=("| 월호 | 게시월 | 원문 | 광종목록 | 요약 |\n|---|---|---|---|---|\n"
+                  "| 6월호 | 2026-06 | /srv/private/monthly/file.md | 구리, 니켈 | "
+                  "구리와 니켈의 시장 동향을 다룹니다. |"),
+        )
+
+        summary = _document_summary_text(item)
+
+        self.assertEqual(summary, "구리와 니켈의 시장 동향을 다룹니다.")
+        self.assertNotIn("/srv/private", summary)
+        self.assertNotIn("file.md", summary)
+
     def test_production_and_reserves_rankings_get_a_grounded_joint_summary(self):
         plan = ActionPlan(actions=[
             ActionCall(requirement_id="production_req", action_id="resource.rank",
@@ -587,6 +601,40 @@ class CompositeRendererTest(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertIn("2026-09-21 니켈 전일 대비 +8.00% 상승", result[0])
         self.assertIn("- 니켈 시장 동향 (2026-09-21)", result[0])
+
+    def test_significant_price_rise_keeps_price_when_same_day_news_is_missing(self):
+        price_call = ActionCall(requirement_id="rise", action_id="price.series", slots=ActionSlots(
+            mineral="니켈", price_operation="significant_daily_rise", significant_change_pct=5.0,
+        ))
+        news_call = ActionCall(requirement_id="news", action_id="document.retrieve", slots=ActionSlots(
+            mineral="니켈", topic="니켈 자원뉴스",
+        ), depends_on=["rise"])
+        plan = ActionPlan(actions=[price_call, news_call])
+        evidence = [Evidence(
+            kind="structured", source="KOMIS", section="니켈 가격",
+            text="| date | price |\n|---|---:|\n| 2026-09-20 | 100 |\n| 2026-09-21 | 108 |",
+            action_id="price.series", requirement_id="rise",
+        )]
+        results = [
+            ActionResult("rise", "price.series", price_call.slots, "success", evidence),
+            ActionResult("news", "document.retrieve", news_call.slots, "no_data"),
+        ]
+
+        rendered = render_composite(evidence, plan, results)
+
+        self.assertIsNotNone(rendered)
+        self.assertIn("2026-09-21 니켈 전일 대비 +8.00% 상승", rendered[0])
+        self.assertIn("해당 날짜의 관련 뉴스를 찾지 못했습니다", rendered[0])
+        self.assertEqual(rendered[1], {1})
+
+    def test_significant_price_rise_rejects_news_from_a_different_date(self):
+        news = Evidence(
+            kind="structured", source="news", section="자원뉴스",
+            text="| 날짜 | 제목 |\n|---|---|\n| 2026-09-20 | 전날 기사 |",
+            action_id="document.retrieve",
+        )
+        from rag_core.ragkit.composite_renderer import _news_titles
+        self.assertEqual(_news_titles(news, expected_date="2026-09-21"), [])
 
     def test_composite_index_decline_week_and_news(self):
         plan = ActionPlan(actions=[

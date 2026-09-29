@@ -219,6 +219,10 @@ menu.navigate, dataset.navigate, diagnosis.rank, diagnosis.series, forecast.dema
 forecast.quantity, geopolitics.index, geopolitics.articles, stockpile.status, stockpile.methodology, scenario.assess,
 synthesis.brief 중 하나다. 원문과 확인된 대화에 있는 값만 slots에 넣고 추측하지 않는다.
 범위 밖 일반 주제에는 actions=[] 대신 action_id=off_topic 한 개를 사용한다.
+질문의 핵심 의도는 요청 어미와 관계없이 판단한다. "해", "해줘", "해줘요", "해주세요",
+"보여줘", "표시해 줘" 같은 말끝·공손 표현·띄어쓰기 차이는 같은 intent/Action이다.
+이번주 자원뉴스 요약은 document.retrieve이며 광물명 미포함을 이유로 off_topic으로 분류하지 않는다.
+실제 주간 날짜 경계는 시스템 코드가 확정한다.
 수급위기 진단/예측/지정학 지수·기사에는 해당 unavailable action을 사용한다.
 생산국과 수입국의 집중도·비중 비교는 resource.rank와 trade.country_rank의 검증된 조합이며,
 '취약점'이라는 단어만으로 diagnosis action을 선택하지 않는다. 명시 HS 코드의 품목 요약과
@@ -265,6 +269,9 @@ import_amount(기본) 또는 import_weight, period는 가격과 수입에 공통
 metric=production, 생산 기준연도가 명시되면 reference_year에, 가격 기간은 period에 둔다.
 월간동향·일일자원뉴스·주간자원뉴스·수출통제 뉴스의 제목·요약·최신 게시물 검색은
 document 또는 document.retrieve로 분류하고 가격·무역 수치 action으로 바꾸지 않는다.
+보고서 검색에서 "2025년", "최근 3개월", "지난달", "2025년 5월"처럼 기간이 지정되면
+document.retrieve의 period에 보존한다. 기간 안에 발행일이 확인되는 보고서를 검색하고,
+제목뿐 아니라 실제 문서 본문 발췌도 결과로 포함한다.
 여러 기간 창의 가격 변화를 비교하면 price.compare 하나에 slots.windows=[3,6,12]처럼 모든
 개월 창을 넣고 period에는 임의의 단일 창을 넣지 않는다.
 광종을 여러 개 언급한 인과·시나리오·영향 설명은 가격·가격변화·가격비교를 명시하지 않는 한
@@ -281,6 +288,13 @@ trade_concentration, trade_indicator, resource_rank, resource_price_cross_rank, 
 forecast_price, forecast_quantity, geopolitics_index, geopolitics_articles, off_topic 중 하나다.
 핵심광물 공급망·HHI·수입의존도·가격변동성의 정의와 개념은 concept이며 document.retrieve로
 직접 출처를 찾는다. off_topic은 날씨·음식처럼 광물·공급망과 무관한 주제에만 사용한다.
+의도는 핵심 내용으로 판단한다. "해", "해줘", "해줘요", "해주세요", "보여줘",
+"표시해 줘" 같은 요청 어미·공손 표현·띄어쓰기 차이는 intent를 바꾸지 않는다.
+같은 정보요구는 말끝이 달라도 같은 intent와 Action으로 계획한다. "이번주 자원뉴스 요약"은
+document content 검색이며 off_topic이 아니다. 이번 주의 실제 일자 경계는 시스템 코드가
+확정하므로 topic에 이번 주 조건을 보존하고 날짜를 임의 계산하지 않는다.
+기간이 지정된 보고서 검색은 document intent로 분류하고, 연도·최근 N개월·지난달·연월을
+slots.period에 보존한다. 보고서 제목만 찾지 말고 발행일이 확인된 문서 본문 내용도 요구한다.
 문서명·원문·특정 절을 찾아 사실을 확인하는 요청은 okf_lookup이고, 한 광산의 위치·소유자·개별
 사실은 mine_profile이다. 둘 다 topic 또는 mine_name의 식별자를 생략하지 않는다.
 비축 실측이 없을 때 필요한 입력값과 계산식을 요청한 경우는 stockpile_methodology다. 이는
@@ -311,6 +325,9 @@ trade_rank data의 조합이다. 전기차 수요 둔화처럼 여러 광종의 
 daily/weekly/monthly/yearly로 기록한다. "이번 달"이나 "월간동향"은 집계주기가 아니다.
 월간동향·일일자원뉴스·주간자원뉴스·수출통제 뉴스의 제목·요약·최신 게시물 검색은
 document content이며, 전략광종·희소금속을 단일 광종 mineral 슬롯으로 만들지 않는다.
+광물종합지수 또는 코발트 등 광종명이 앞에 붙은 광물종합지수 시계열은
+intent=indicator, indicator=composite_index로 분류한다. 이를 private market_outlook나
+concept 문서 질의로 바꾸지 않는다.
 JSON 외 텍스트를 출력하지 않는다."""
 
 def extract_intent_plan(message: str, llm: Any, history: list[dict[str, str]] | None = None) -> IntentPlan:
@@ -1023,7 +1040,11 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
             slots=ActionSlots(mineral=mineral, topic=message), intent="concept", role="content",
         )])
     significant_news = re.fullmatch(
-        r"(?P<mineral>[가-힣A-Za-z0-9]+?)가격(?:(?P<threshold>\d+(?:\.\d+)?)%이상)?(?:크게)?오른날관련뉴스(?:가)?(?:있어|있나요)?[?.]?",
+        r"(?P<mineral>[가-힣A-Za-z0-9]+?)(?:의)?가격(?:이|은|가)?"
+        r"(?:(?P<threshold>\d+(?:\.\d+)?)%이상)?"
+        r"(?:크게|많이|급격히|상당히)?(?:오른|상승한|급등한)(?:날|날짜)(?:에)?"
+        r"(?:관련)?뉴스(?:가)?(?:(?:뭐|무엇|무슨|어떤)?"
+        r"(?:있어|있나요|있었어|있었나요|알려줘|알려주세요|보여줘|보여주세요))?[?.]?",
         compact,
     )
     if significant_news:
@@ -1267,10 +1288,8 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
     weekly_price_news = _weekly_price_news_plan(message)
     if weekly_price_news is not None:
         return weekly_price_news
-    weekly_news_summary = _weekly_news_summary_plan(message)
-    if weekly_news_summary is not None:
-        return weekly_news_summary
-    # 다음 세 질문은 광종/구성 목록이 원천 조회 전에는 확정되지 않는다. 임의의
+    # 주간뉴스 표현의 종결형은 intent planner가 처리한다. 다음 세 질문은
+    # 광종/구성 목록이 원천 조회 전에는 확정되지 않는다. 임의의
     # 광종·예측값을 채우지 않고, 질문이 명시한 상대 기간만 고정한 문서 Action으로
     # 시작한다. 적재된 원천이 없으면 source_unavailable로 닫히며 slot_unresolved
     # (라우팅 오류)로 오인되지 않는다.
@@ -1475,6 +1494,8 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
     if semantic_failure:
         intent_plan = repair_intent_plan(message, llm, semantic_failure, history)
     plan = action_plan_from_intent(intent_plan, message)
+    plan = _normalize_report_search_period(message, plan)
+    plan = _normalize_weekly_document_period(message, plan)
     plan = normalize_country_rank_request(message, plan)
     _normalize_trade_rank_scope(plan.actions, message)
     assessment = validate_action_plan(plan)
@@ -1483,6 +1504,7 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
     # 모델 출력의 role/중복 오류만 한 번 고친다. 원천 미연결은 재시도로
     # available action처럼 바꾸지 않는다.
     repaired = action_plan_from_intent(repair_intent_plan(message, llm, assessment.failure_reason, history), message)
+    repaired = _normalize_report_search_period(message, repaired)
     repaired = normalize_country_rank_request(message, repaired)
     _normalize_trade_rank_scope(repaired.actions, message)
     if (validate_action_plan(repaired).failure_reason == "slot_unresolved"
@@ -1763,21 +1785,65 @@ def _written_week_period(value: str, today: date) -> Period:
     return Period(kind="range", start=published.isoformat(), end=published.isoformat(), explicit=True)
 
 
-def _weekly_news_summary_plan(message: str) -> ActionPlan | None:
-    """'주간 자원뉴스'를 보유 주간동향 게시물 adapter의 동의어로 고정한다."""
+def _normalize_weekly_document_period(message: str, plan: ActionPlan) -> ActionPlan:
+    """LLM이 주간 문서 질의로 분류한 뒤 '이번주'의 날짜 경계만 확정한다."""
     compact = re.sub(r"\s+", "", message)
-    match = re.fullmatch(
-        r"(?P<period>이번주|20\d{2}년\d{1,2}월\d{1,2}일)주간(?:자원)?뉴스요약(?:해줘)?[?.]?",
-        compact,
-    )
-    if not match:
-        return None
-    period_text = match.group("period")
-    return ActionPlan(actions=[ActionCall(
-        requirement_id="weekly_news", action_id="document.retrieve",
-        slots=ActionSlots(topic=f"{period_text} 주간동향", period=_written_week_period(period_text, date.today())),
-        intent="document", role="content",
-    )])
+    if "이번주" not in compact or not any(marker in compact for marker in ("자원뉴스", "주간뉴스", "주간동향")):
+        return plan
+    documents = [call for call in plan.actions if call.action_id == "document.retrieve"]
+    if len(documents) != 1:
+        return plan
+    call = documents[0]
+    period = _written_week_period("이번주", date.today())
+    topic = call.slots.topic or message
+    if "주간" not in re.sub(r"\s+", "", topic):
+        topic = f"{topic} 주간동향"
+    slots = call.slots.model_copy(update={"topic": topic, "period": period})
+    updated = call.model_copy(update={"slots": slots})
+    return plan.model_copy(update={"actions": [updated if item is call else item for item in plan.actions]})
+
+
+def _normalize_report_search_period(message: str, plan: ActionPlan, *, today: date | None = None) -> ActionPlan:
+    """기간이 명시된 보고서 검색은 planner 누락과 무관하게 날짜 슬롯을 보존한다."""
+    compact = re.sub(r"\s+", "", message)
+    if "보고서" not in compact:
+        return plan
+    calls = [call for call in plan.actions if call.action_id == "document.retrieve"]
+    if len(calls) != 1:
+        return plan
+    today = today or date.today()
+    period = None
+    recent = re.search(r"최근(\d+)(개월|년)", compact)
+    year_month = re.search(r"(20\d{2})년(\d{1,2})월", compact)
+    year = re.search(r"(20\d{2})년", compact)
+    if recent:
+        months = int(recent.group(1)) * (12 if recent.group(2) == "년" else 1)
+        if 1 <= months <= 240:
+            period = Period(kind="trailing_months", trailing_months=months, explicit=True)
+    elif year_month and 1 <= int(year_month.group(2)) <= 12:
+        start = date(int(year_month.group(1)), int(year_month.group(2)), 1)
+        end = (start.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+        period = Period(kind="range", start=start.isoformat(), end=end.isoformat(), explicit=True)
+    elif "지난달" in compact:
+        start = (today.replace(day=1) - timedelta(days=1)).replace(day=1)
+        end = today.replace(day=1) - timedelta(days=1)
+        period = Period(kind="range", start=start.isoformat(), end=end.isoformat(), explicit=True)
+    elif year:
+        period = Period(kind="calendar_year", calendar_year=int(year.group(1)), explicit=True)
+    elif "작년" in compact:
+        period = Period(kind="calendar_year", calendar_year=today.year - 1, explicit=True)
+    elif "올해" in compact:
+        period = Period(kind="calendar_year", calendar_year=today.year, explicit=True)
+    if period is None:
+        return plan
+    call = calls[0]
+    topic = call.slots.topic or message
+    if "보고서" not in re.sub(r"\s+", "", topic):
+        topic = f"{topic} 보고서"
+    updated = call.model_copy(update={"slots": call.slots.model_copy(update={
+        "topic": topic, "period": period,
+    })})
+    return plan.model_copy(update={"actions": [updated if item is call else item for item in plan.actions]})
 
 
 def _price_index_comparison_plan(message: str) -> ActionPlan | None:
@@ -2134,8 +2200,6 @@ def _publication_document_plan(message: str) -> ActionPlan | None:
         r"20\d{2}년(?:전략광종|희소금속)?월간동향에서[가-힣A-Za-z0-9·_-]+관련내용(?:을)?(?:찾아줘|찾아주세요|알려줘|알려주세요)[?.]?",
         r"20\d{2}년\d{1,2}월(?:전략광종|희소금속)?월간동향에서[가-힣A-Za-z0-9·_-]+관련내용(?:을)?(?:찾아줘|찾아주세요|알려줘|알려주세요)[?.]?",
         r"오늘자원뉴스(?:가)?(?:뭐|무엇)(?:있어|있나요|야)[?.]?",
-        r"이번주(?:비철금속)?주간동향(?:을)?(?:요약)?(?:해줘|해주세요|해주십시오|알려줘|알려주세요)?[?.]?",
-        r"이번주주간자원뉴스(?:를)?요약(?:해줘|해주세요|해주십시오)[?.]?",
         r"최근[가-힣A-Za-z0-9·_-]+수출통제관련뉴스(?:가)?(?:있어|있나요)[?.]?",
     )
     if not any(re.fullmatch(pattern, compact) for pattern in single_publication_patterns):

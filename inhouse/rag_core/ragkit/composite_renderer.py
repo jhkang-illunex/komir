@@ -155,7 +155,29 @@ def _document_text(item):
     return re.sub(r"\s+", " ", str(getattr(item, "text", ""))).strip()
 
 
-def _news_titles(item, *, limit: int = 3):
+def _document_summary_text(item, *, limit: int = 300):
+    """월간동향 표에서 요약 셀만 골라 사용자용 문장으로 반환한다."""
+    raw = str(getattr(item, "text", ""))
+    for table in extract_markdown_tables(raw):
+        keys = _keys(table)
+        summary_i = next((i for i, key in enumerate(keys)
+                          if key in {"요약", "summary", "주요내용", "내용요약", "본문요약"}), None)
+        if summary_i is None:
+            continue
+        summaries = [row[summary_i].strip() for row in table["rows"]
+                     if summary_i < len(row) and row[summary_i].strip()]
+        if summaries:
+            return re.sub(r"\s+", " ", " ".join(summaries))[:limit]
+
+    # 일반 문서형 근거는 표 외의 prose만 보존한다. 표만 있는 경우 전체 행을
+    # fallback으로 내보내지 않아 원문 경로·메타데이터 덤프를 방지한다.
+    prose = "\n".join(line for line in raw.splitlines()
+                      if not line.strip().startswith("|")
+                      and not re.search(r"(?:원문\s*:|(?:^|\s)(?:[A-Za-z]:)?[/\\][^\s]+|\.(?:md|pdf|hwp|hwpx|xlsx?)(?:\s|$))", line, re.I))
+    return re.sub(r"\s+", " ", prose).strip()[:limit]
+
+
+def _news_titles(item, *, limit: int = 3, expected_date: str | None = None):
     """자원뉴스 adapter의 구조화 표에서 제목만 보존해 읽는다."""
     for table in extract_markdown_tables(getattr(item, "text", "")):
         keys = _keys(table)
@@ -165,6 +187,8 @@ def _news_titles(item, *, limit: int = 3):
                        if key in {"date", "published_at", "pub_date", "날짜", "게시일"}), None)
         if title_i is None:
             continue
+        if expected_date and date_i is None:
+            continue
         titles = []
         for row in table["rows"]:
             if title_i >= len(row):
@@ -173,6 +197,8 @@ def _news_titles(item, *, limit: int = 3):
             if not title:
                 continue
             published = row[date_i].strip() if date_i is not None and date_i < len(row) else ""
+            if expected_date and re.sub(r"\D", "", published)[:8] != expected_date.replace("-", ""):
+                continue
             titles.append(f"{title} ({published})" if published else title)
         if titles:
             return titles[:limit]
@@ -559,7 +585,7 @@ def render_composite(evidence: list, action_plan, action_results=None) -> tuple[
             document_match = next(((index, item) for index, item in docs
                                    if getattr(item, "requirement_id", None) == document_action.requirement_id), None)
             index_points = _index_points(index_match[1]) if index_match else []
-            document_text = _document_text(document_match[1]) if document_match else ""
+            document_text = _document_summary_text(document_match[1]) if document_match else ""
             index_available = bool(
                 index_outcome is not None and index_outcome.status == "success"
                 and len(index_points) >= 2 and index_points[0][1]
@@ -610,7 +636,7 @@ def render_composite(evidence: list, action_plan, action_results=None) -> tuple[
                             {indices[0][0], docs[0][0]})
             if len(points) >= 2 and points[0][1]:
                 change = (points[-1][1] - points[0][1]) / points[0][1] * 100
-                summary = _document_text(docs[0][1])[:300]
+                summary = _document_summary_text(docs[0][1])
                 return (f"광물종합지수 : {points[-1][0].strftime('%Y-%m')} {change:+.2f}% 변동\n"
                         f"월간동향 : {getattr(docs[0][1], 'section', None) or '월간동향'} 주요 내용 : {summary}",
                         {indices[0][0], docs[0][0]})
@@ -632,7 +658,7 @@ def render_composite(evidence: list, action_plan, action_results=None) -> tuple[
                             "자원뉴스 : 최근 관련 기사\n" + "\n".join(f"- {title}" for title in titles),
                             {forecasts[0][0], docs[0][0]})
                 return (f"가격예측 : {period} {mineral} 전망 방향 {direction} ({(predicted-base)/base*100:+.2f}%)\n"
-                        f"월간동향 : {getattr(docs[0][1], 'section', None) or '월간동향'} {mineral} 전망 서술 요약 : {_document_text(docs[0][1])[:300]}",
+                        f"월간동향 : {getattr(docs[0][1], 'section', None) or '월간동향'} {mineral} 전망 서술 요약 : {_document_summary_text(docs[0][1])}",
                         {forecasts[0][0], docs[0][0]})
 
     if ids.count("trade.country_rank") == 1 and ids.count("forecast.price") == 1 and len(ids) == 2:
@@ -674,7 +700,7 @@ def render_composite(evidence: list, action_plan, action_results=None) -> tuple[
                 return (f"광물지도 : 생산 1위 {producers[0][0]} ({_fmt(producers[0][1])}%)\n"
                         f"핵심광물 수급지도 : 수입 집중도는 조회 표 참조\n"
                         f"광물가격 : 최근 1개월 가격 {change:+.2f}% 변동\n"
-                        f"월간동향 : 흑연 관련 요약 : {_document_text(docs[0][1])[:300]}",
+                        f"월간동향 : 흑연 관련 요약 : {_document_summary_text(docs[0][1])}",
                         {price[0][0], production[0][0], imports[0][0], docs[0][0]})
 
     # OC07/OC10: 모집단·가격을 한 adapter에서 이미 공통 기간으로 검증한 단일 Action.
@@ -894,7 +920,7 @@ def render_composite(evidence: list, action_plan, action_results=None) -> tuple[
         price_action = next(action for action in actions if action.action_id == "price.series")
         if price_action.slots.price_operation == "significant_daily_rise":
             prices, docs = by_action.get("price.series", []), by_action.get("document.retrieve", [])
-            if len(prices) == 1 and len(docs) == 1:
+            if len(prices) == 1:
                 threshold = price_action.slots.significant_change_pct or 5.0
                 points = _price_points(prices[0][1])
                 rises = [
@@ -903,14 +929,34 @@ def render_composite(evidence: list, action_plan, action_results=None) -> tuple[
                     if prior and observed.toordinal() - prior_date.toordinal() <= 7
                     and (value - prior) / prior * 100 >= threshold
                 ]
-                titles = _news_titles(docs[0][1])
-                if rises and titles:
+                if rises:
                     observed, pct = max(rises, key=lambda item: item[1])
                     mineral = price_action.slots.mineral or "요청 광종"
-                    return (f"광물가격 : {observed.isoformat()} {mineral} 전일 대비 {pct:+.2f}% 상승\n"
-                            "자원뉴스 : 같은 날 관련 기사\n" + "\n".join(f"- {title}" for title in titles) +
-                            f"\n※ '크게 상승'은 전일 대비 {threshold:g}% 이상 기준으로 판정했으며, 동반 관측 정보로 가격 변동 원인으로 단정하지 않습니다.",
-                            {prices[0][0], docs[0][0]})
+                    titles = (_news_titles(docs[0][1], expected_date=observed.isoformat())
+                              if len(docs) == 1 else [])
+                    price_line = f"광물가격 : {observed.isoformat()} {mineral} 전일 대비 {pct:+.2f}% 상승"
+                    if titles:
+                        return (price_line + "\n자원뉴스 : 같은 날 관련 기사\n"
+                                + "\n".join(f"- {title}" for title in titles)
+                                + f"\n※ '크게 상승'은 전일 대비 {threshold:g}% 이상 기준으로 판정했으며, "
+                                  "동반 관측 정보로 가격 변동 원인으로 단정하지 않습니다.",
+                                {prices[0][0], docs[0][0]})
+                    if action_results:
+                        outcomes = {getattr(item, "requirement_id", None): item for item in action_results}
+                        news_action = next(action for action in actions if action.action_id == "document.retrieve")
+                        news_outcome = outcomes.get(news_action.requirement_id)
+                        status = getattr(news_outcome, "status", None)
+                        failure_note = {
+                            "no_data": "해당 날짜의 관련 뉴스를 찾지 못했습니다.",
+                            "source_unavailable": "해당 날짜의 뉴스 자료원을 사용할 수 없습니다.",
+                            "validation_failed": "해당 날짜의 뉴스 자료를 검증하지 못했습니다.",
+                            "failed": "해당 날짜의 뉴스 조회에 실패했습니다.",
+                            "blocked": "선행 조회가 완료되지 않아 해당 날짜의 뉴스를 조회하지 못했습니다.",
+                        }.get(status, "조회된 뉴스에서 같은 날짜의 관련 기사 제목을 확인하지 못했습니다.")
+                        return (price_line + f"\n자원뉴스 : {failure_note} "
+                                f"※ '크게 상승'은 전일 대비 {threshold:g}% 이상 기준이며, "
+                                "동반 관측 정보로 가격 변동 원인으로 단정하지 않습니다.",
+                                {prices[0][0]})
 
     if ids.count("document.retrieve") == 1 and ids.count("price.series") >= 1:
         docs = by_action.get("document.retrieve", [])

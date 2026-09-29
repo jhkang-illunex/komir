@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 """KOMIS·조달청 주간 광물동향의 게시물 목록 adapter.
 
-문서 청크를 의미검색 결과 순위로 섞지 않고, `doc_chunk`의 원문 파일명에 있는
-YYYYMMDD만 발행일로 인정한다. `pub_date`가 비어 있는 현재 조달청 코퍼스에서
-"최근"을 추정하지 않기 위한 좁은 읽기 전용 adapter다.
+문서 청크를 의미검색 결과 순위로 섞지 않고, 원문 파일명·제목에서 확인한
+YYYYMMDD 또는 YYYY-MM 발행 정보를 사용한다. `pub_date`가 비어 있는 현재
+조달청 코퍼스에서 "최근"을 추정하지 않기 위한 좁은 읽기 전용 adapter다.
 """
 from __future__ import annotations
 
 import re
+import calendar
 from datetime import date
 
 from common.config import get_settings
@@ -15,6 +16,9 @@ from common.db import pg_connect
 from .evidence import Evidence
 
 _DATE_RE = re.compile(r"(?<!\d)(20\d{2})[-._/]?(\d{2})[-._/]?(\d{2})(?!\d)")
+_MONTH_RE = re.compile(r"(?<!\d)(20\d{2})[-._/](0?[1-9]|1[0-2])(?![-._/]?\d)")
+_COMPACT_MONTH_RE = re.compile(r"(?<!\d)(20\d{2})(0[1-9]|1[0-2])(?!\d)")
+_KOREAN_MONTH_RE = re.compile(r"(?<!\d)(20\d{2})년\s*(0?[1-9]|1[0-2])월")
 _SOURCES = ("주간광물동향", "조달청보고서")
 _SOURCE_LABELS = {
     "주간광물동향": "KOMIS 주간광물동향",
@@ -29,6 +33,24 @@ def _publication_date(source_path: str) -> date | None:
         return None
     try:
         return date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+    except ValueError:
+        return None
+
+
+def _publication_period(source_path: str) -> tuple[date, date, str] | None:
+    """파일명·제목에서 발행일 또는 발행월을 읽고 비교 구간과 표기값을 돌려준다."""
+    exact = _publication_date(source_path)
+    if exact:
+        return exact, exact, exact.isoformat()
+    match = (_MONTH_RE.search(source_path) or _COMPACT_MONTH_RE.search(source_path)
+             or _KOREAN_MONTH_RE.search(source_path))
+    if not match:
+        return None
+    try:
+        year, month = int(match.group(1)), int(match.group(2))
+        start = date(year, month, 1)
+        end = date(year, month, calendar.monthrange(year, month)[1])
+        return start, end, f"{year:04d}-{month:02d}"
     except ValueError:
         return None
 
@@ -56,16 +78,20 @@ def fetch_weekly_trend_evidence(
         con.close()
     documents = []
     for _doc_id, source_group, title, source_path, text in rows:
-        published = _publication_date(str(source_path or ""))
-        if published is None:
+        publication = _publication_period(f"{source_path or ''} {title or ''}")
+        if publication is None:
             continue
-        if start and published < start:
+        published_start, published_end, published_label = publication
+        # 월까지만 확인되는 문서는 그 달 전체로 비교한다. 해당 월과 검색 기간이
+        # 겹치면 포함하고, 앞선 월의 보고서는 주간 결과에서 제외한다.
+        if start and published_end < start:
             continue
-        if end and published > end:
+        if end and published_start > end:
             continue
         group = str(source_group or "")
         original = _BOARD_URL if group == "조달청보고서" else str(source_path or "원문 경로 미확인")
-        documents.append((str(_doc_id), published, _SOURCE_LABELS.get(group, group or "주간동향"), str(title or ""), original, str(text or "")))
+        documents.append((str(_doc_id), published_start, published_label,
+                          _SOURCE_LABELS.get(group, group or "주간동향"), str(title or ""), original, str(text or "")))
     documents.sort(reverse=True)
     selected = documents[:limit]
     if not selected:
@@ -95,10 +121,10 @@ def fetch_weekly_trend_evidence(
     table = [
         "| 게시일 | 출처 | 보고서 제목 | 원문 | 요약 |",
         "| --- | --- | --- | --- | --- |",
-        *[f"| {published.isoformat()} | {source} | {title} | {original} | {summaries.get(doc_id, '')} |"
-          for doc_id, published, source, title, original, _first_text in selected],
+        *[f"| {published_label} | {source} | {title} | {original} | {summaries.get(doc_id, '')} |"
+          for doc_id, _sort_date, published_label, source, title, original, _first_text in selected],
     ]
     return [Evidence(
         kind="structured", source="KOMIS·조달청 주간 광물동향", section="주간 광물동향 게시물",
-        text="\n".join(table), as_of=selected[0][1].isoformat(),
+        text="\n".join(table), as_of=selected[0][2],
     )], []

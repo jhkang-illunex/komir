@@ -172,6 +172,32 @@ def check_q28_nickel_2025_claim_contract():
     print("[OK] Q28 검증된 니켈 가격 응답의 수치 대조", flush=True)
 
 
+def check_significant_price_day_news():
+    question = "니켈 가격이 크게 오른날 뉴스가 뭐 있나요?"
+    done, events = ask(question)
+    if done.get("abstained"):
+        assert done.get("abstain_reason") == "source_unavailable", done
+        assert not done.get("citations") and not tables(events), done
+        print("[OK] 큰 상승일 뉴스: 가격 원천 미확정으로 안전 기권", flush=True)
+        return
+    require_citation(done, "price.series", "public.KO_MNRL_PRC")
+    answer = "".join(event.get("delta", "") for event in events)
+    assert "slot_unresolved" not in json.dumps(events, ensure_ascii=False), events
+    assert "요청하신 데이터를 조회할수 없습니다" not in answer, answer
+    if "같은 날 관련 뉴스는 조회하지 않았습니다" in answer:
+        assert any(term in answer for term in (
+            "상승 여부를 판정할 수 없어", "상승한 날을 찾지 못해",
+        )), answer
+    else:
+        assert "광물가격 :" in answer and "자원뉴스 :" in answer, answer
+        assert any(term in answer for term in (
+            "관련 기사를 확인하지 못했습니다", "관련 뉴스를 찾지 못했습니다",
+            "뉴스 자료원을 사용할 수 없습니다", "뉴스 자료를 검증하지 못했습니다",
+            "뉴스 조회에 실패했습니다", "뉴스를 조회하지 못했습니다",
+        )) or re.search(r"자원뉴스 : 같은 날 관련 기사\s+- ", answer), answer
+    print("[OK] 니켈 가격 큰 상승일 문형·당일 뉴스 부분 응답", flush=True)
+
+
 def check_import_country_share(mineral):
     question = f"{mineral} 수입 상위 5개국과 국가별 비중을 알려줘"
     done, events = ask(question)
@@ -302,6 +328,7 @@ def main():
     check_mineral_info_yaml_contract()
     check_q15_usgs_scope_contract()
     check_q28_nickel_2025_claim_contract()
+    check_significant_price_day_news()
     check_import_country_share("리튬")
     check_rare_earth_resource_ranking()
     check_q01_to_q30_samples()

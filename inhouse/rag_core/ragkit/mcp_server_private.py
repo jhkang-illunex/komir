@@ -14,7 +14,7 @@
 `_mcp_tools_common.py`에 한 번만 구현돼 있고 여기서는 등록만 한다(재구현
 금지). `register_common_tools(mcp)`를 인자 없이 호출해 `private_only_pages`가
 기본값(빈 집합)인 채로 남는다 — `PRIVATE_ONLY_KOMIS_PAGES`
-(indicator_market·indicator_supply·indicator_composite, 2026-09-01)를 이
+(indicator_market·indicator_supply, 광물종합지수 public 허용은 2026-09-29)를 이
 파일이 아예 import하지 않으므로 komis_raw_lookup의 11개 page_id 전부가
 제한 없이 조회된다. 나머지 넷(정형 3종·komis_resolve_mineral·
 pageindex_agentic)은 애초에 라이선스/접근 축이 없어 public과 결과가
@@ -41,9 +41,9 @@ from rag_core.retrieval.evidence import from_dense_chunk, from_pageindex_hit  # 
 from ._mcp_tools_common import register_common_tools  # noqa: E402
 
 mcp = FastMCP("komir-ragkit-private")
-# KO_MNRL_SNTHS_INDX의 테이블·지수코드·필수 열을 DB에서 확인한 private 전용
-# 신뢰 선언이다. public 서버에는 이 인자를 전달하지 않아 접근 경계가 유지된다.
-register_common_tools(mcp, trusted_private_pages=frozenset({"indicator_composite"}))
+# KO_MNRL_SNTHS_INDX의 테이블·지수코드·필수 열을 DB에서 확인한 원천 신뢰
+# 선언이다. 접근 정책은 별도로 적용되므로 public/private 경계를 바꾸지 않는다.
+register_common_tools(mcp, trusted_komis_pages=frozenset({"indicator_composite"}))
 
 
 @mcp.tool()

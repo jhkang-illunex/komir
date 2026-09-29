@@ -122,13 +122,31 @@ def fetch_news_evidence(topic: str = "", *, start: str | None = None, end: str |
                     (*date_params, *country_params, int(limit)))
             news = cur.fetchall()
             patterns = [f"%{term.replace('%', '')}%" for term in terms] or ["%자원뉴스%"]
-            report_date_sql = ""
-            report_date_params: list[str] = []
+            # 반정형 코퍼스에는 월간동향과 조달청·KOMIS 주간보고서도 들어 있다.
+            # 이들은 자원뉴스 검색어를 본문에서 언급할 수 있어 일반 뉴스 검색과
+            # 혼동된다. 주간 보고서는 별도 weekly_trend adapter에서만 제공하고,
+            # 이 보조 뉴스 검색에는 게시일 확인된 비동향 문서만 허용한다.
+            report_date_sql = (
+                " AND pub_date IS NOT NULL"
+                " AND NOT (COALESCE(title, '') ILIKE ANY(%s))"
+                " AND NOT (COALESCE(source_path, '') ILIKE ANY(%s))"
+                " AND COALESCE(src, '') <> ALL(%s)"
+            )
+            report_date_params: list[object] = [
+                ["%전략광종%월간동향%", "%희소금속%월간동향%", "%월간동향%"],
+                ["%전략광종%월간동향%", "%희소금속%월간동향%", "%월간동향%"],
+                ["주간광물동향", "조달청보고서"],
+            ]
             if start and end:
                 # 보조 반정형 문서도 일일뉴스와 같은 질문 기간 안에서만 쓴다.
-                # 게시일이 없는 문서를 최근 기사인 것처럼 섞지 않는다.
-                report_date_sql = " AND pub_date::date BETWEEN %s::date AND %s::date"
-                report_date_params = [start, end]
+                report_date_sql = (
+                    " AND pub_date IS NOT NULL"
+                    " AND NOT (COALESCE(title, '') ILIKE ANY(%s))"
+                    " AND NOT (COALESCE(source_path, '') ILIKE ANY(%s))"
+                    " AND COALESCE(src, '') <> ALL(%s)"
+                    " AND pub_date::date BETWEEN %s::date AND %s::date"
+                )
+                report_date_params.extend([start, end])
             cur.execute(
                 f"SELECT title, source_path, pub_date, txt FROM {document_schema}.doc_chunk WHERE txt ILIKE ANY(%s) "
                 + report_date_sql + " ORDER BY pub_date DESC NULLS LAST, doc_id DESC, seq ASC LIMIT %s",

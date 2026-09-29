@@ -18,6 +18,19 @@ def _render_price_series(evidence, action_plan):
 
 
 class PriceUnitDisclosureTest(unittest.TestCase):
+    def test_claim_and_comparison_price_units_are_buffered_before_streaming(self):
+        for action_id in ("price.series", "price.compare", "price.verify_claim"):
+            with self.subTest(action_id=action_id):
+                evidence = Evidence(
+                    kind="structured", source="public.KO_MNRL_PRC", section="가격",
+                    text="가격 자료", unit="가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002",
+                    action_id=action_id,
+                )
+                self.assertTrue(chatbot._needs_price_unit_buffer([evidence]))
+
+        non_price = Evidence(kind="pageindex", source="doc", section="보고서", text="내용", action_id="document.retrieve")
+        self.assertFalse(chatbot._needs_price_unit_buffer([non_price]))
+
     def test_dummy_price_status_is_not_rendered_as_price_basis(self):
         evidence = Evidence(
             kind="structured", source="public.KO_MNRL_PRC", section="가격",
@@ -200,6 +213,42 @@ class PriceUnitDisclosureTest(unittest.TestCase):
                 scope = _render_price_series([evidence], plan)
                 assert scope is not None
                 self.assertEqual(scope[0], expected)
+
+    def test_no_qualifying_rise_explains_that_news_was_not_queried(self):
+        evidence = Evidence(
+            kind="aggregated", source="public.KO_MNRL_PRC", section="가격 시계열",
+            text="| date | price |\n|---|---:|\n| 2026-09-01 | 100 |\n| 2026-09-02 | 101 |",
+            unit="가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002",
+            observed_period="2026-09-01~2026-09-02", action_id="price.series",
+        )
+        plan = ActionPlan(actions=[ActionCall(
+            requirement_id="price", action_id="price.series",
+            slots=ActionSlots(mineral="니켈", period=Period(kind="trailing_months", trailing_months=1),
+                              price_operation="significant_daily_rise", significant_change_pct=5.0),
+        )])
+
+        answer, _cited = render_price_series([evidence], plan)
+
+        self.assertIn("5% 이상 상승한 날을 찾지 못해", answer)
+        self.assertIn("같은 날 관련 뉴스는 조회하지 않았습니다", answer)
+
+    def test_one_price_observation_is_reported_as_insufficient_not_no_rise(self):
+        evidence = Evidence(
+            kind="aggregated", source="public.KO_MNRL_PRC", section="가격 시계열",
+            text="| date | price |\n|---|---:|\n| 2026-09-02 | 100 |",
+            unit="가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002",
+            observed_period="2026-09-02~2026-09-02", action_id="price.series",
+        )
+        plan = ActionPlan(actions=[ActionCall(
+            requirement_id="price", action_id="price.series",
+            slots=ActionSlots(mineral="니켈", period=Period(kind="trailing_months", trailing_months=1),
+                              price_operation="significant_daily_rise", significant_change_pct=5.0),
+        )])
+
+        answer, _cited = render_price_series([evidence], plan)
+
+        self.assertIn("가격 관측값이 1건뿐이라", answer)
+        self.assertIn("상승 여부를 판정할 수 없어", answer)
 
     def test_two_mineral_comparison_renderer_discloses_different_price_bases(self):
         evidence = Evidence(

@@ -15,8 +15,8 @@ hybrid_search_pg`/`pageindex.lookup`)에 넘긴다. 조건문·환경변수 분�
 정형 3종·komis_raw_lookup·komis_resolve_mineral·pageindex_agentic은
 `_mcp_tools_common.py`에 한 번만 구현돼 있고 여기서는 등록만 한다(재구현
 금지). 이 중 komis_raw_lookup만 예외적으로 `PRIVATE_ONLY_KOMIS_PAGES`
-(indicator_market·indicator_supply·indicator_composite, 2026-09-01)를
-`private_only_pages`로 넘겨 세 page_id를 거부시킨다 — 나머지 다섯은 결과가
+(indicator_market·indicator_supply, 광물종합지수 public 허용은 2026-09-29)를
+`private_only_pages`로 넘겨 두 page_id를 거부시킨다 — 나머지 페이지는 결과가
 완전히 같다.
 
 실행(직접 점검용, 실제로는 mcp_client.py가 서브프로세스로 띄운다):
@@ -41,7 +41,12 @@ from rag_core.retrieval.evidence import from_dense_chunk, from_pageindex_hit  # 
 from ._mcp_tools_common import register_common_tools  # noqa: E402
 
 mcp = FastMCP("komir-ragkit-public")
-register_common_tools(mcp, private_only_pages=PRIVATE_ONLY_KOMIS_PAGES)
+# 광물종합지수는 사용자가 public 공개를 승인했다. 신뢰 목록은 원천 테이블·필수
+# 열·허용 지수 코드를 런타임 재검증하는 경우에만 caveat를 생략한다.
+register_common_tools(
+    mcp, private_only_pages=PRIVATE_ONLY_KOMIS_PAGES,
+    trusted_komis_pages=frozenset({"indicator_composite"}),
+)
 
 
 @mcp.tool()
