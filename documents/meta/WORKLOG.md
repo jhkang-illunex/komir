@@ -2,6 +2,25 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-29 — “가장 최근” 희소금속 월간동향 가격 문형 라우팅 보정
+
+`가장 최근 희소금속 월간 동향에 나온 광종들 가격 어때?`가 광종을 특정하지
+않았다는 이유로 LLM 라우팅 단계에서 `unsupported_commodity`로 종료되던 문제를
+재현했다. `최근`·`가장 최근`을 `monthly_rare_metals` 닫힌 문형에 추가하고, 현재
+월로 임의 제한하지 않은 채 월간동향 adapter가 보유한 최신 월호를 선택하도록
+수정했다. 문서에서 확인한 광종만 후속 `price.series`로 확장한다.
+
+검증: 회귀 테스트 2건, 배포 전 게이트 15+85+6+33+1건, 이미지 라이브 회귀를
+통과했다. 커밋 `2fceb36bb`(`fix(rag-chat): route latest rare monthly price query`)를
+`komir-rag-chat:20260929-monthly-latest-price-r1`로 재배포했다. 이미지 ID는
+`sha256:507a8dce67fa2a992360ec14ebe9d0e3e244fed5a5bf2d3bc1e24dcbc1822872`,
+컨테이너 ID는 `d1954ad4a43aee5acc98b12c74879cb029dd2c7aa6854c766bab16861d9e3105`,
+이전 컨테이너는 `komir-rag-chat-test-pre-20260929-222227`으로 보존했다.
+
+배포 후 동일 질의를 독립 세션에서 재검증했다. `monthly_rare_metals/document.retrieve`
+성공 뒤 코발트·구리·망간·희토류 `price.series` 4개가 모두 성공했고,
+`unsupported_commodity` 없이 월간동향과 가격 결과를 함께 반환했다.
+
 ## 2026-09-29 — 희소금속 월간동향 광종별 가격 확장 및 요약 분리 재배포
 
 `이번달/연월 희소금속 월간동향에 나온 광종들 가격 어때?` 문형이 월간동향
