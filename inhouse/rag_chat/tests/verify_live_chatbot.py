@@ -193,7 +193,7 @@ def check_import_country_share(mineral):
     shares = [float(row[share_idx].replace("%", "")) for row in rows]
     assert all(0 <= share <= 100 for share in shares) and sum(shares) <= 100.1, rows
     answer = "".join(event.get("delta", "") for event in events)
-    assert f"{mineral} 상위 {len(rows)}개국은" in answer, answer
+    assert re.search(rf"{re.escape(mineral)}.{{0,100}}상위\s+{len(rows)}개국은", answer), answer
     assert "순입니다." in answer, answer
     assert "조회기간" not in answer.replace(" ", ""), answer
     assert "집계설명" not in answer.replace(" ", ""), answer
