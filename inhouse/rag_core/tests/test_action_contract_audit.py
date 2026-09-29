@@ -30,6 +30,38 @@ def call(requirement_id, action_id, **slots):
 
 
 class ActionContractAuditTest(unittest.TestCase):
+    def test_standard_price_adapter_is_not_rejected_by_prior_turn_history(self):
+        """복합 질의의 순서·직전 대화가 가격 근거 검증을 오염시키지 않아야 한다."""
+        action = ActionCall(
+            requirement_id="current_price", action_id="price.series",
+            slots=ActionSlots(mineral="니켈"),
+        )
+        evidence = Evidence(
+            kind="structured", source="public.KO_MNRL_PRC", source_id="public.KO_MNRL_PRC",
+            section="니켈 가격", requirement_id="current_price", action_id="price.series",
+            unit="USD/톤",
+            text=("| crtr_ymd(기준일자) | cmerc_prc(통상가격) |\n|---|---:|\n"
+                  "| 20260908 | 16745.53 |"),
+        )
+
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("정형 가격 adapter 근거는 Advisor를 호출하지 않아야 함")
+
+        result = graph._verify_node({
+            "evidence": [evidence], "warnings": [], "action_call": action,
+            "route": graph.RetrievalRoute(resolved_query="니켈 현재가격과 수입 상위국",
+                                           use_structured=True, use_dense=True,
+                                           use_pageindex=False),
+            "history": [
+                {"role": "user", "content": "니켈 수입 상위국이랑 현재가격 알려줘"},
+                {"role": "assistant", "content": "수입 상위국만 확인됨"},
+            ],
+        }, MustNotRun())
+
+        self.assertTrue(result["sufficient"])
+        self.assertEqual(result["evidence"], [evidence])
+
     def test_verified_daily_news_bypasses_general_advisor(self):
         """발행·기간·검색조건을 SQL로 확정한 뉴스 표를 LLM 기권으로 버리지 않는다."""
         action = ActionCall(

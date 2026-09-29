@@ -2674,6 +2674,16 @@ def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
                 and (evidence[0].source or "").endswith("KO_MNRL_PRC")
                 and price_series_observations(evidence[0].text)):
             return {"sufficient": True, "evidence": evidence, "warnings": state.get("warnings", [])}
+        # KOMIS 가격 adapter가 반환한 구조화 시계열은 날짜·가격 열과 광물/기간
+        # 계약을 위에서 이미 결정적으로 확인했다. 복합 질문의 다른 Action이나
+        # 직전 대화가 history에 포함되면 일반 Advisor가 이 가격 근거를 다른
+        # 요구와 혼동해 기각할 수 있으므로, 표준 가격 조회도 history와 무관하게
+        # adapter 근거를 그대로 통과시킨다.
+        if (action_call.action_id == "price.series"
+                and len(evidence) == 1 and evidence[0].kind == "structured"
+                and (evidence[0].source or "").endswith("KO_MNRL_PRC")
+                and price_series_observations(evidence[0].text)):
+            return {"sufficient": True, "evidence": evidence, "warnings": state.get("warnings", [])}
         if (_is_complete_explicit_hs_summary(evidence, action_call)
                 or _is_complete_mine_rank_increase(evidence, action_call)
                 or _is_complete_mine_rank_yoy(evidence, action_call)
