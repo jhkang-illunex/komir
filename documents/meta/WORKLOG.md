@@ -2,6 +2,23 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-29 — FBQ81 price·forecast 블록 이미지 커밋 및 재배포
+
+코드 커밋 `a4b95d986`(`feat(rag-chat): add battery price forecast block`)을 생성하고,
+배포 전 게이트 15+85+6+33+1건과 이미지 빌드를 통과한
+`komir-rag-chat:20260929-fbq81-price-forecast-r1`을 `komir-rag-chat-test`에 재배포했다.
+이미지 digest는 `sha256:f1e534962d95196affd89c009de046730807612ffd124fee0f8d2dc545abec94`,
+컨테이너 ID는 `da21057d0f5f97c9d48c89b11e6ee879a10b413c906d9704a2fa3edf8c08d029`이며,
+이전 컨테이너는 `komir-rag-chat-test-pre-20260929-213223`으로 보존했다.
+배포 스크립트의 라이브 회귀도 통과했다.
+
+배포 후 `2차전지 광물 5종 가격이랑 전망 한 번에 보여줘`를 독립 세션으로 직접 검증했다.
+10개 Action(`price.series` 5개 + `forecast.price` 5개)이 광종별 requirement로 생성됐고,
+가격 5건은 모두 성공했다. 다만 현재 실행 환경의 5개 `forecast.price` 결과는 모두
+`validation_failed / advisor_rejected`여서 renderer가 광종 간 대체 없이 전망을
+`전망 자료 없음`으로 표시했다. 따라서 이미지·라우팅·가격 블록 배포는 확인됐고,
+전망 데이터 제공 여부는 advisor 거절 원인과 운영 데이터 상태를 별도 점검해야 한다.
+
 ## 2026-09-29 — FBQ81 2차전지 5종 가격·전망 price block 연결 (iterative-audit)
 
 `KO_MNRL_PRC_PREDC` 정규화 adapter가 연결된 현재 계약을 기준으로, FBQ81의 10개
