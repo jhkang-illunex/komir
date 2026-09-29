@@ -435,6 +435,47 @@ class ActionContractAuditTest(unittest.TestCase):
         self.assertEqual(call.requirement_id, "monthly_rare_metals")
         self.assertEqual((call.slots.period.start, call.slots.period.end), ("2026-05-01", "2026-05-31"))
 
+    def test_rare_monthly_price_query_expands_document_minerals_to_price_actions(self):
+        plan = extract_action_plan(
+            "2026년 5월 희소금속 월간동향에 나온 광종들 가격 어때?", object(),
+        )
+        document = Evidence(
+            kind="structured", source="희소금속 월간동향", section="2026년 5월호",
+            as_of="2026-05-01", text=(
+                "| 월호 | 게시월 | 광종목록 | 요약 |\n|---|---|---|---|\n"
+                "| 2026년 5월호 | 2026-05-01 | 코발트, 동, 망간, 희토류, 철광석 | 가격 동향 |"
+            ),
+        )
+
+        def retrieve(state, **_kwargs):
+            call = state["action_call"]
+            if call.action_id == "document.retrieve":
+                return {"evidence": [document], "warnings": []}
+            return {"evidence": [Evidence(
+                kind="structured", source="public.KO_MNRL_PRC", section=f"{call.slots.mineral} 가격",
+                text="| crtr_ymd(기준일자) | cmerc_prc(통상가격) |\n|---|---:|\n| 20260908 | 100 |",
+            )], "warnings": []}
+
+        def verify(state, _llm):
+            return {"sufficient": True, "evidence": state["evidence"], "warnings": []}
+
+        with patch.object(graph, "_retrieve_node", side_effect=retrieve), patch.object(
+            graph, "_verify_node", side_effect=verify,
+        ):
+            result = graph.retrieve_evidence(
+                "2026년 5월 희소금속 월간동향에 나온 광종들 가격 어때?",
+                action_plan=plan, llm=object(), include_action_results=True,
+            )
+
+        self.assertEqual(
+            [item.action_id for item in result.action_results],
+            ["document.retrieve", "price.series", "price.series", "price.series", "price.series", "price.series"],
+        )
+        self.assertEqual(
+            [item.slots.mineral for item in result.action_results[1:]],
+            ["코발트", "구리", "망간", "희토류", "철광석"],
+        )
+
     def test_price_operation_questions_keep_typed_period_and_operation(self):
         class MustNotRun:
             def invoke(self, **kwargs):

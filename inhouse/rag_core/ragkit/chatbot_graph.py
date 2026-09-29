@@ -1566,6 +1566,43 @@ def _okf_body_matches_profile(evidence: list[Evidence], mine_name: str | None) -
     )
 
 
+_MONTHLY_PRICE_MINERALS = (
+    "리튬", "니켈", "코발트", "구리", "동", "아연", "망간", "텅스텐", "몰리브덴", "희토류", "흑연",
+    "알루미늄", "철광석",
+)
+
+
+def _monthly_document_minerals(evidence: list[Evidence]) -> list[str]:
+    """월간동향 근거의 ``광종목록``을 가격 Action용 광종명으로 정규화한다."""
+
+    found: list[str] = []
+    for item in evidence:
+        for table in extract_markdown_tables(item.text):
+            keys = [str(column).split("(", 1)[0].strip() for column in table["columns"]]
+            try:
+                mineral_index = keys.index("광종목록")
+            except ValueError:
+                continue
+            for row in table["rows"]:
+                if mineral_index >= len(row):
+                    continue
+                for token in re.split(r"[,、;/|]+", str(row[mineral_index])):
+                    mineral = token.strip()
+                    if mineral == "동":
+                        mineral = "구리"
+                    if mineral in _MONTHLY_PRICE_MINERALS and mineral not in found:
+                        found.append(mineral)
+    if found:
+        return found
+    # 구형/비정형 월간 근거에 광종목록 열이 없을 때만 본문을 보조한다.
+    body = "\n".join(item.text for item in evidence).replace("동향", "")
+    for mineral in _MONTHLY_PRICE_MINERALS:
+        normalized = "구리" if mineral == "동" else mineral
+        if mineral in body and normalized not in found:
+            found.append(normalized)
+    return found
+
+
 # JSON 라우터가 일시적으로 무효 출력을 낼 때에만 쓰는 좁은 안전망이다. 정상
 # 라우팅은 `komis_resolve_mineral`의 실제 광종 목록을 쓰므로 이 목록은 지원
 # 광종 화이트리스트가 아니다. 이 안전망이 확실히 판별할 수 있는 고정 검증
@@ -3564,6 +3601,25 @@ def retrieve_evidence(
                 if validate_action_plan(ActionPlan(actions=[call, info])).approved:
                     original_plan.actions.append(info)
                     scheduled_calls.append(info)
+        # ``monthly_rare_metals`` 가격 문형만 문서의 광종목록을 확인한 뒤
+        # 실제 등장 광종별 최신 가격 Action으로 확장한다. 일반 월간동향
+        # 요약·내용 조회(monthly_trend)는 문서 Action 하나로 종료한다.
+        if (call.requirement_id == "monthly_rare_metals"
+                and call.action_id == "document.retrieve"
+                and "가격" in question
+                and not any(action.action_id == "price.series" for action in original_plan.actions)):
+            for mineral in _monthly_document_minerals(verified_evidence)[:5]:
+                price = ActionCall(
+                    requirement_id=f"monthly_price_{mineral}", action_id="price.series",
+                    slots=ActionSlots(
+                        mineral=mineral, period=Period(kind="latest"),
+                        requested_outputs={"text", "table", "chart"},
+                    ),
+                    intent="price_series", role="data", depends_on=[call.requirement_id],
+                )
+                if validate_action_plan(ActionPlan(actions=[call, price])).approved:
+                    original_plan.actions.append(price)
+                    scheduled_calls.append(price)
     # 원래 계획의 순서대로 반환해 생성기의 요구사항 순서가 실행 세부순서에
     # 좌우되지 않게 한다. 가격예측 부분 결과도 이 순서 안에 포함된다.
     order = {call.requirement_id: index for index, call in enumerate(original_plan.actions)}
