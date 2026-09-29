@@ -2,6 +2,27 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-30 — PageIndex 파생 사실 생성·조회 액션 이미지 배포
+
+OKF 원문에서 광종 목록·문서 요약·원문 SHA-256·source span을 생성하는
+`ingest.pageindex.build_derived_facts`를 추가하고, 전체 OKF 2,604건의
+`*.facts.json` sidecar를 생성했다. `document.facts.retrieve` Action과 결정적
+렌더러를 추가해 문서 원문을 매 질의마다 재해석하지 않고 PageIndex 파생 사실을
+조회하도록 연결했다. 코드 커밋은 `6ddeebfb3`이며 `origin/main`에 push했다.
+
+관련 테스트 156건, `py_compile`, `git diff --check`를 통과했다. 이미지
+`komir-rag-chat:20260930-pageindex-derived-facts-r1`(digest
+`sha256:da3c9cbfd024a2e1a9b2b6ee0560a379cf2756854d5ec362ab6258c18722d421`)를
+`komir-rag-chat-test`에 배포했으며 컨테이너 ID는
+`b6eae3d9a722e615ed7f0b97d600bd88701db93e9778e55491990d6d43bfd9cc`, 이전
+컨테이너는 `komir-rag-chat-test-pre-20260930-pageindex`로 보존했다.
+
+배포 후 `/healthz` 200을 확인했고, 2026년 4월 희소금속 월간동향 광종 목록,
+가장 최근 희소금속 월간동향 요약, 니켈 가격·수입 상위국, 가장 최근 희소금속
+광종별 가격 질의를 독립 세션으로 검증했다. 신규 질의는
+`document.facts.retrieve`와 PageIndex 파생 사실 출처를 반환했으며 기존
+가격·수입 복합 Action도 모두 성공했다.
+
 ## 2026-09-29 — 최신 희소금속 월간동향 광종목록 결정적 응답 재배포
 
 `가장 최근 희소금속 월간 동향에 나온 광종들이 뭐뭐 있나요?`가 일반 LLM 생성
