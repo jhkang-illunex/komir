@@ -2312,9 +2312,9 @@ async def chat_turn(
         break
 
     cited_indices = {int(n) for n in _CITE_NUM_RE.findall(cleaned)}
-    # 복합 Action의 citation/footer는 모델이 어떤 [n]을 출력했는지가 아니라
-    # 실행 성공 requirement와 Evidence의 귀속으로 완결한다.
-    if len(planned_actions) >= 2:
+    # 복합 Action과 화면 각주를 숨기는 한국 수입순위의 citation은 모델이
+    # 어떤 [n]을 출력했는지가 아니라 성공 requirement와 Evidence 귀속으로 완결한다.
+    if len(planned_actions) >= 2 or single_korea_import_rank:
         cited_indices.update(_successful_action_citation_indices(composer_result, evidence, cited_indices))
     # 생산량·매장량 복합 순위는 모델이 한 표만 인용해도 두 정형 원천을
     # 모두 화면에 노출해야 한다. 해당 질문에서 식별된 원천만 합쳐 다른

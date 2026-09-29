@@ -77,6 +77,25 @@ class ResourceRankCitationTest(unittest.TestCase):
         )
         self.assertEqual(_successful_action_citation_indices(result, evidence, {1}), {3})
 
+    def test_single_korea_import_rank_keeps_structured_citation_without_inline_marker(self):
+        evidence = [Evidence(
+            kind="structured", source="public.KO_CSTM_CMMRC", section="수입 순위", text="표",
+            requirement_id="imports", action_id="trade.country_rank",
+        )]
+        result = RetrievalResult(
+            action_plan=ActionPlan(actions=[ActionCall(
+                requirement_id="imports", action_id="trade.country_rank",
+                slots=ActionSlots(mineral="리튬", metric="import_amount", flow="import",
+                                  trade_scope="korea"),
+            )]),
+            evidence=evidence,
+            action_results=[ActionResult(
+                "imports", "trade.country_rank", ActionSlots(metric="import_amount"), "success",
+            )],
+        )
+
+        self.assertEqual(_successful_action_citation_indices(result, evidence, set()), {1})
+
     def test_dummy_status_and_warning_are_hidden_from_source_label(self):
         dummy = Evidence(kind="structured", source="public.KO_RSRC_PRDCTN_QUTY", section="생산량", text="x",
                          caveat="이 수치는 KOMIS 실제 표본이 아니라 개발용 더미(예시) 데이터입니다.")
