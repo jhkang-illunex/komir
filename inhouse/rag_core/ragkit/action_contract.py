@@ -1298,7 +1298,7 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
     # 시작한다. 적재된 원천이 없으면 source_unavailable로 닫히며 slot_unresolved
     # (라우팅 오류)로 오인되지 않는다.
     rare_monthly_prices = re.fullmatch(
-        r"(?P<period>이번달|20\d{2}년\d{1,2}월)희소금속월간동향에나온광종들가격(?:은)?(?:어때|어떤가요)?[?.]?",
+        r"(?P<period>이번달|최근|가장최근|20\d{2}년\d{1,2}월)희소금속월간동향에나온광종들가격(?:은)?(?:어때|어떤가요)?[?.]?",
         compact,
     )
     if rare_monthly_prices:
@@ -1306,6 +1306,10 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
         if period_text == "이번달":
             today = date.today()
             period = Period(kind="range", start=today.replace(day=1).isoformat(), end=today.isoformat(), explicit=True)
+        elif period_text in {"최근", "가장최근"}:
+            # 최근/가장 최근은 현재 월로 임의 제한하지 않고, adapter가 보유한
+            # 최신 월호를 선택하게 한다.
+            period = None
         else:
             match = re.fullmatch(r"(20\d{2})년(\d{1,2})월", period_text)
             assert match is not None
