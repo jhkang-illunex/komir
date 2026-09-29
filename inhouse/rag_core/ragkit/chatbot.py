@@ -1079,12 +1079,13 @@ def _price_unit_disclosure(text: str, evidence: list) -> str:
     price_units = [
         (index, ev.unit, visible_unit)
         for index, ev in enumerate(evidence, 1)
-        if getattr(ev, "action_id", None) == "price.series"
+        if getattr(ev, "action_id", None) in {"price.series", "price.verify_claim"}
         and (ev.unit or "").startswith("가격기준=")
         and (visible_unit := _user_visible_unit(ev.unit))
     ]
     price_evidence = [ev for ev in evidence
-                      if getattr(ev, "action_id", None) in {"price.series", "price.compare"}]
+                      if getattr(ev, "action_id", None)
+                      in {"price.series", "price.compare", "price.verify_claim"}]
     if not price_evidence:
         return text
     # 모델이 비교 표의 원천 단위 코드를 본문에 복사한 경우도 확인된 코드만

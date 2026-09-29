@@ -251,6 +251,23 @@ class PriceUnitDisclosureTest(unittest.TestCase):
         self.assertIn("가격 흐름입니다.", disclosure)
         self.assertEqual(citations[0]["unit"], unit)
 
+    def test_price_claim_unit_codes_are_normalized_in_generated_answer(self):
+        evidence = Evidence(
+            kind="aggregated", source="public.KO_MNRL_PRC", section="가격 검증",
+            text="2025년 니켈 가격은 300% 이상 오르지 않았습니다.",
+            unit="가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002",
+            action_id="price.verify_claim",
+        )
+        answer = chatbot._price_unit_disclosure(
+            "시작가격 15,010.0 (LME CASH, PR001, WT002), 종료가격 14,519.04 (LME CASH, PR001, WT002) [1]",
+            [evidence],
+        )
+
+        self.assertIn("LME CASH, USD, 톤", answer)
+        self.assertNotIn("PR001", answer)
+        self.assertNotIn("WT002", answer)
+        self.assertIn("가격 기준은 LME CASH이며, 통화는 USD이며, 중량 단위는 톤입니다.", answer)
+
     def test_dated_price_answer_is_not_removed_by_unit_disclosure(self):
         evidence = Evidence(
             kind="aggregated", source="price", section="series", text="표",

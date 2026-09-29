@@ -64,9 +64,8 @@ def check_price_series(mineral):
     answer = "".join(event.get("delta", "") for event in events)
     # DEV_DUMMY는 가격기준이 아니라 별도 데이터 상태/경고다.
     assert "가격 기준은 [DEV_DUMMY]" not in answer, answer
-    assert ("가격 기준은 LME CASH" in answer
-            or "개발용 더미" in answer
-            or done.get("data_warnings")), answer
+    assert "개발용 더미" not in answer, answer
+    assert "가격 기준은" in answer or done.get("data_warnings"), answer
     if "가격 기준은 LME CASH" in answer:
         assert "통화는 USD" in answer and "중량 단위는 톤" in answer, answer
     for label in ("최고가는", "최저가는", "고저 차는", "최근 가격 흐름은"):
@@ -79,8 +78,12 @@ def check_price_series(mineral):
         if event.get("rows") or event.get("spec"):
             meta = event.get("meta") or {}
             spec = event.get("spec") or {}
-            assert not meta.get("source") and not meta.get("as_of"), event
+            assert not meta.get("as_of"), event
+            assert "KO_MNRL_PRC" not in json.dumps(meta, ensure_ascii=False), event
+            if meta.get("source"):
+                assert "KOMIS 광물자원가격" in meta["source"], event
             assert not spec.get("as_of"), event
+            assert "KO_MNRL_PRC" not in json.dumps(spec, ensure_ascii=False), event
     price_tables = [table for table in tables(events)
                     if any(any(label in column for label in ("기준일자", "주 시작일", "거래일"))
                            for column in table["columns"])
@@ -162,7 +165,10 @@ def check_q28_nickel_2025_claim_contract():
     answer = "".join(event.get("delta", "") for event in events)
     compact = answer.replace(",", "").replace(" ", "")
     assert "15010" in compact and "14519.04" in compact and "-3.27" in compact, answer
-    assert "300%" in answer and any(term in answer for term in ("아닙니다", "확인되지", "반박")), answer
+    assert "300%" in answer and any(term in answer for term in (
+        "아닙니다", "확인되지", "반박", "오르지 않았습니다",
+    )), answer
+    assert "PR001" not in answer and "WT002" not in answer, answer
     print("[OK] Q28 검증된 니켈 가격 응답의 수치 대조", flush=True)
 
 
@@ -210,6 +216,9 @@ def check_rare_earth_resource_ranking():
         rank_idx = next((i for i, column in enumerate(table["columns"]) if "순위" in column or "rank" in column.casefold()), None)
         if rank_idx is not None:
             assert int(table["rows"][0][rank_idx]) == 1, table["rows"]
+    answer = "".join(event.get("delta", "") for event in events)
+    assert "희토류 생산량은" in answer and "희토류 매장량은" in answer, answer
+    assert "다음과 같습니다" not in answer and "req_" not in answer, answer
     print("[OK] 희토류 생산량·매장량 상위 국가", flush=True)
 
 
@@ -257,8 +266,9 @@ def check_q01_to_q30_samples():
     assert not done.get("abstained"), (default_rank_question, done)
     assert done.get("citations") and tables(events), (default_rank_question, done)
     answer = "".join(event.get("delta", "") for event in events)
-    assert "비중" in answer and "개발용 더미" in answer, (default_rank_question, answer)
-    print("[OK] 리튬 수입 순위 기본값·더미 경고 포함 결과 제공", flush=True)
+    assert "비중" in answer and "개발용 더미" not in answer, (default_rank_question, answer)
+    assert "출처:" not in answer and "KO_CSTM_CMMRC" not in answer and "[1]" not in answer, (default_rank_question, answer)
+    print("[OK] 리튬 수입 순위 기본값·경고 및 내부 출처 비노출", flush=True)
 
 
 def main():
