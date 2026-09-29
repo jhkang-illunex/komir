@@ -1465,7 +1465,8 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
         return ActionPlan(actions=[
             ActionCall(requirement_id="weekly_index", action_id="indicator.series",
                        slots=ActionSlots(indicator="composite_index", indicator_variant="composite",
-                                         indicator_operation="period_change", period=Period(kind="trailing_months", trailing_months=3, explicit=True)), intent="indicator", role="data"),
+                                         indicator_operation="period_change", period=Period(kind="trailing_months", trailing_months=3, explicit=True),
+                                         topic="광물종합지수 하락 주간 주요 뉴스"), intent="indicator", role="data"),
         ])
     forecast_monthly = re.fullmatch(r"(?P<mineral>[가-힣A-Za-z0-9]+?)가격전망이랑월간동향시장전망내용(?:을)?(?:비교해줘|비교해주세요|알려줘|알려주세요)?[?.]?", compact)
     if forecast_monthly:
@@ -1675,14 +1676,14 @@ def _price_world_production_plan(message: str) -> ActionPlan | None:
         ActionCall(
             requirement_id="mineral_price", action_id="price.series",
             slots=ActionSlots(mineral=mineral, period=Period(kind="latest"), price_operation="yearly_average",
-                              requested_outputs={"text", "chart"}),
-            intent="price_series", role="data", requested_outputs={"text", "chart"},
+                              requested_outputs={"text"}),
+            intent="price_series", role="data", requested_outputs={"text"},
         ),
         ActionCall(
             requirement_id="world_production_yoy", action_id="resource.yoy",
             slots=ActionSlots(mineral=mineral, metric="production", country_scope="world",
-                              requested_outputs={"text", "chart"}),
-            intent="resource_yoy", role="data", requested_outputs={"text", "chart"},
+                              requested_outputs={"text"}),
+            intent="resource_yoy", role="data", requested_outputs={"text"},
         ),
     ])
 
@@ -2741,7 +2742,20 @@ def validate_action_plan(plan: ActionPlan | None) -> PlanAssessment:
         and any(call.action_id == "document.retrieve" and "월간동향" in (call.slots.topic or "")
                 for call in plan.actions)
     )
-    permitted_indicator_document = market_outlook_with_document or composite_index_with_monthly_document
+    composite_index_with_news = (
+        frozenset(action_ids) == frozenset({"indicator.series", "document.retrieve"})
+        and any(call.action_id == "indicator.series" and call.slots.indicator == "composite_index"
+                for call in plan.actions)
+        and any(call.action_id == "document.retrieve"
+                and "자원뉴스" in (call.slots.topic or "")
+                and "하락 주간" in (call.slots.topic or "")
+                for call in plan.actions)
+    )
+    permitted_indicator_document = (
+        market_outlook_with_document
+        or composite_index_with_monthly_document
+        or composite_index_with_news
+    )
     has_unbounded_price_compare = any(
         call.action_id == "price.compare"
         and call.slots.period is None

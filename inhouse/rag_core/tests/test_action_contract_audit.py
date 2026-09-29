@@ -1294,7 +1294,18 @@ class ActionContractAuditTest(unittest.TestCase):
         candidate = extract_action_plan("광물종합지수 떨어진 주에 주요 뉴스 뭐 있었어?", UnexpectedPlanner())
         self.assertEqual([item.action_id for item in candidate.actions], ["indicator.series"])
         self.assertEqual(candidate.actions[0].slots.period.trailing_months, 3)
+        self.assertEqual(candidate.actions[0].slots.topic, "광물종합지수 하락 주간 주요 뉴스")
         self.assertTrue(validate_action_plan(candidate).approved)
+
+    def test_composite_index_decline_week_news_pair_is_allowed(self):
+        candidate = extract_action_plan("광물종합지수 떨어진 주에 주요 뉴스 뭐 있었어?", object())
+        news = ActionCall(
+            requirement_id="weekly_index_news", action_id="document.retrieve",
+            slots=ActionSlots(topic="광물종합지수 하락 주간 자원뉴스"),
+            intent="document", role="content", depends_on=["weekly_index"],
+        )
+        assessment = validate_action_plan(ActionPlan(actions=[candidate.actions[0], news]))
+        self.assertTrue(assessment.approved)
 
     def test_weekly_price_news_starts_with_volatility_rank(self):
         class UnexpectedPlanner:

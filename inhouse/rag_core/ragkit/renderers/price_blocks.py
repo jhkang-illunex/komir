@@ -47,28 +47,62 @@ def _country_rows(item):
     return []
 
 
-def _yoy_rows(item):
+def _yoy_records(item):
+    """세계 생산량 YoY 표에서 전년·당년 물량과 증감률을 함께 읽는다."""
     for table in extract_markdown_tables(getattr(item, "text", "")):
         keys = _keys(table)
-        year_i = next((i for i, key in enumerate(keys) if key in {"year", "calendar_year", "연도"}), None)
-        pct_i = next((i for i, key in enumerate(keys)
-                      if key in {"pct_change", "change_pct", "yoy_pct", "증감률"}), None)
-        if year_i is None or pct_i is None:
+        find = lambda *names: next((i for i, key in enumerate(keys) if key in names), None)
+        mineral_i = find("mineral", "광종")
+        prior_year_i = find("prior_year", "previous_year", "전년")
+        prior_tonnes_i = find("prior_tonnes", "prior_ton", "previous_tonnes", "전년생산량")
+        year_i = find("year", "calendar_year", "연도")
+        tonnes_i = find("tonnes", "ton", "production_tonnes", "생산량")
+        change_tonnes_i = find("change_tonnes", "delta_tonnes", "증감량")
+        pct_i = find("pct_change", "change_pct", "yoy_pct", "증감률")
+        if (prior_year_i is None or prior_tonnes_i is None or year_i is None
+                or tonnes_i is None or pct_i is None):
             continue
-        rows = []
+        records = []
         for row in table["rows"]:
-            if max(year_i, pct_i) >= len(row):
+            required_indices = [prior_year_i, prior_tonnes_i, year_i, tonnes_i, pct_i]
+            if max(required_indices) >= len(row):
                 continue
             try:
+                prior_year = int(str(row[prior_year_i]).strip()[:4])
                 year = int(str(row[year_i]).strip()[:4])
+                prior_tonnes = _number(row[prior_tonnes_i])
+                tonnes = _number(row[tonnes_i])
+                pct = _number(row[pct_i])
             except (TypeError, ValueError):
                 continue
-            pct = _number(row[pct_i])
-            if pct is not None:
-                rows.append((year, pct))
-        if rows:
-            return rows
+            if prior_tonnes is None or tonnes is None or pct is None:
+                continue
+            change_tonnes = (
+                _number(row[change_tonnes_i])
+                if change_tonnes_i is not None and change_tonnes_i < len(row)
+                else tonnes - prior_tonnes
+            )
+            records.append({
+                "mineral": row[mineral_i].strip() if mineral_i is not None and mineral_i < len(row) else None,
+                "prior_year": prior_year, "prior_tonnes": prior_tonnes,
+                "year": year, "tonnes": tonnes,
+                "change_tonnes": change_tonnes, "pct": pct,
+            })
+        if records:
+            return records
     return []
+
+
+def _yoy_rows(item):
+    """하위 호환용 YoY 연도·증감률 추출기."""
+    return [(record["year"], record["pct"]) for record in _yoy_records(item)]
+
+
+def _signed(value):
+    number = _number(value)
+    if number is None or number == 0:
+        return "0"
+    return ("+" if number > 0 else "-") + _fmt(abs(number))
 
 
 def _forecast_row(item):
@@ -143,19 +177,44 @@ def render_price_rank_yoy_blocks(evidence: list, action_plan, action_results=Non
     cidx, companion_item = companion
 
     if companion_action.action_id == "resource.yoy":
-        yoy = _yoy_rows(companion_item)
+        yoy = _yoy_records(companion_item)
         if not yoy:
             return None
         yearly = {}
         for observed, value in points:
             yearly.setdefault(observed.year, []).append(value)
-        rows = [f"{year} {_fmt(sum(yearly[year]) / len(yearly[year]))}; 생산량 {pct:+.2f}%"
-                for year, pct in yoy if year in yearly]
-        if not rows:
+        price_unit = price_display_unit(getattr(price_item, "unit", None))
+        price_sentences = []
+        production_sentences = []
+        for record in yoy:
+            year = record["year"]
+            if year not in yearly:
+                continue
+            average = sum(yearly[year]) / len(yearly[year])
+            price_suffix = f" {price_unit}" if price_unit else ""
+            price_sentences.append(f"{year}년 평균 가격은 {_fmt(average)}{price_suffix}입니다.")
+            unit = str(getattr(companion_item, "unit", None) or "").strip()
+            if not unit:
+                return None
+            delta = _signed(record["change_tonnes"])
+            pct = float(record["pct"])
+            direction = "증가" if pct > 0 else "감소" if pct < 0 else "변동이 없습니다"
+            if direction == "변동이 없습니다":
+                production_sentences.append(
+                    f"{mineral}의 세계 생산량은 {record['prior_year']}년 {_fmt(record['prior_tonnes'])}{unit}에서 "
+                    f"{record['year']}년 {_fmt(record['tonnes'])}{unit}으로 변동이 없었습니다({pct:+.2f}%)."
+                )
+            else:
+                production_sentences.append(
+                    f"{mineral}의 세계 생산량은 {record['prior_year']}년 {_fmt(record['prior_tonnes'])}{unit}에서 "
+                    f"{record['year']}년 {_fmt(record['tonnes'])}{unit}으로 {delta}{unit} "
+                    f"({pct:+.2f}%) {direction}했습니다."
+                )
+        if not price_sentences or not production_sentences:
             return None
         return (
-            "광물가격 : 연도별 평균 가격 " + ", ".join(rows)
-            + "\n광물지도 : 같은 연도 생산량 전년 대비 위 값을 표시했습니다.\n"
+            f"광물가격 : {mineral}의 " + " ".join(price_sentences)
+            + "\n세계 생산량 : " + " ".join(production_sentences) + "\n"
             "※ 두 지표를 나란히 제시하며 상호 인과관계로 해석하지 않습니다.",
             {pidx, cidx},
         )

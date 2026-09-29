@@ -97,6 +97,21 @@ REQUIRED_ACTIONS = {
 }
 _MISSING_MINERAL_INFO = "제공된 문서에서 근거를 찾지 못했습니다"
 
+# 라이브 QA의 기대 표지는 답변의 핵심 의미를 빠르게 확인하기 위한 보조
+# 계약이다. 같은 의미를 가진 표기(최근/최신, 점유율/수입금액 비중)를
+# 서로 다른 실패로 세지 않도록 여기서만 정규화한다. 챗봇 답변 문구를
+# 억지로 바꾸지 않고, QA 판정의 거짓 PARTIAL을 줄이는 목적이다.
+_MARKER_ALIASES = {
+    "최신": ("최신", "최근"),
+    "점유율": ("점유율", "수입비중", "수입금액비중"),
+}
+
+
+def _has_expected_marker(text: str, marker: str) -> bool:
+    normalized = re.sub(r"\s+", "", text).casefold()
+    aliases = _MARKER_ALIASES.get(marker, (marker,))
+    return any(re.sub(r"\s+", "", alias).casefold() in normalized for alias in aliases)
+
 
 def debug_enabled() -> bool:
     """호스트 실행 감사도 inhouse/.env의 DEBUG 설정을 따른다."""
@@ -162,7 +177,7 @@ def classify(events: list[dict], terminal: dict, expected: tuple[str, ...], case
     if terminal.get("abstained"):
         reason = str(terminal.get("abstain_reason") or "unknown")
         return ("BLOCKED_DATA" if reason == "source_unavailable" else "FAIL"), [f"abstain_reason={reason}"]
-    missing = [token for token in expected if token.casefold() not in text.casefold()]
+    missing = [token for token in expected if not _has_expected_marker(text, token)]
     actions = {str(item.get("action_id")) for item in terminal.get("citations", []) if item.get("action_id")}
     required_actions = REQUIRED_ACTIONS.get(case_id, set())
     missing_actions = sorted(required_actions - actions)

@@ -535,7 +535,10 @@ class CompositeRendererTest(unittest.TestCase):
         evidence = [
             Evidence(kind="structured", source="KOMIS", section="생산량 YoY", action_id="resource.yoy",
                      requirement_id="world_production_yoy",
-                     text=("| year | pct_change |\n|---|---:|\n| 2025 | 12.5 |\n| 2026 | -3.2 |")),
+                     unit="톤",
+                     text=("| mineral | prior_year | prior_tonnes | year | tonnes | change_tonnes | change_pct |\n"
+                           "|---|---:|---:|---:|---:|---:|---:|\n"
+                           "| 니켈 | 2024 | 3710000 | 2025 | 3900000 | 190000 | 5.12 |")),
             Evidence(kind="aggregated", source="KOMIS", section="연도별 평균 가격", action_id="price.series",
                      requirement_id="mineral_price", unit="가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002",
                      text=("| price_date | price | observation_months |\n|---|---:|---:|\n"
@@ -545,8 +548,9 @@ class CompositeRendererTest(unittest.TestCase):
         result = render_composite(evidence, plan)
 
         self.assertIsNotNone(result)
-        self.assertIn("연도별 평균 가격 2025 15,000; 생산량 +12.50%", result[0])
-        self.assertIn("2026 16,000; 생산량 -3.20%", result[0])
+        self.assertIn("니켈의 2025년 평균 가격은 15,000 USD/톤입니다.", result[0])
+        self.assertIn("니켈의 세계 생산량은 2024년 3,710,000톤에서 2025년 3,900,000톤으로 +190,000톤 (+5.12%) 증가했습니다.", result[0])
+        self.assertNotIn("|", result[0])
         self.assertEqual(result[1], {1, 2})
 
     def test_yaml_mineral_info_uses_and_price(self):
@@ -775,6 +779,21 @@ class CompositeRendererTest(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertIn("2026-09-14 주 -6.00% 하락", result[0])
         self.assertIn("- 주요 광물 동향 (2026-09-17)", result[0])
+
+    def test_composite_index_decline_week_without_decline_states_news_unavailable(self):
+        plan = ActionPlan(actions=[
+            ActionCall(requirement_id="index", action_id="indicator.series", slots=ActionSlots(
+                indicator="composite_index", indicator_variant="composite",
+                indicator_operation="period_change", topic="광물종합지수 하락 주간 주요 뉴스")),
+        ])
+        evidence = [Evidence(
+            kind="structured", source="index", section="광물종합지수",
+            text="| date | index |\n|---|---|\n| 2026-09-14 | 100 |\n| 2026-09-18 | 104 |",
+            action_id="indicator.series",
+        )]
+        result = render_composite(evidence, plan)
+        self.assertIsNotNone(result)
+        self.assertIn("자원뉴스 : 확인된 기간에 하락한 주가 없어 관련 뉴스를 조회하지 않았습니다.", result[0])
 
     def test_weekly_volatility_and_ranked_mineral_news(self):
         plan = ActionPlan(actions=[

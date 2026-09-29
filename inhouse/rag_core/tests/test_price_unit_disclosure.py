@@ -152,6 +152,17 @@ class PriceUnitDisclosureTest(unittest.TestCase):
         self.assertNotIn("247건", str(table))
         self.assertNotIn("247건", str(chart))
 
+    def test_suppressed_yoy_evidence_does_not_emit_a_table_block(self):
+        evidence = Evidence(
+            kind="structured", source="public.KO_RSRC_PRDCTN_QUTY", section="세계 생산량 YoY",
+            text=("| mineral | prior_year | prior_tonnes | year | tonnes | change_tonnes | change_pct |\n"
+                  "|---|---:|---:|---:|---:|---:|---:|\n"
+                  "| 니켈 | 2024 | 3710000 | 2025 | 3900000 | 190000 | 5.12 |"),
+            unit="톤", action_id="resource.yoy",
+        )
+        evidence.suppress_price_table = True
+        self.assertEqual(chatbot._multimodal_events({1}, [evidence]), [])
+
     def test_latest_price_uses_requested_date_price_unit_and_prior_change(self):
         evidence = Evidence(
             kind="aggregated", source="public.KO_MNRL_PRC", section="가격 시계열",

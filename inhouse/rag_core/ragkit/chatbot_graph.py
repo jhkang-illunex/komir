@@ -3337,7 +3337,12 @@ def retrieve_evidence(
             # 기간/월/연 집계는 결정적 문장으로만 표시한다. 집계 입력인 긴 원
             # 시계열 표를 다시 내보내면 사용자가 표본 행을 평균값으로 오해할 수
             # 있고, 불필요하게 큰 SSE 응답도 만든다.
-            ev.suppress_price_table = bool(call.slots.price_operation)
+            is_price_yoy_pair = (
+                len(original_plan.actions) == 2
+                and {item.action_id for item in original_plan.actions} == {"price.series", "resource.yoy"}
+                and call.action_id == "resource.yoy"
+            )
+            ev.suppress_price_table = bool(call.slots.price_operation or is_price_yoy_pair)
             # Q15의 완전한 공개 원문 span은 chat_turn에서 결정적 범위 설명으로
             # 렌더링할 수 있다. 이 표지는 프로세스 내부 추적값이며 MCP/API
             # 계약에는 추가하지 않는다.

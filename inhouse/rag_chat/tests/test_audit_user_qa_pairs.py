@@ -42,6 +42,19 @@ class AuditUserQaPairsTest(unittest.TestCase):
         with patch.dict("os.environ", {"DEBUG": "True"}, clear=False):
             self.assertTrue(debug_enabled())
 
+    def test_semantic_marker_aliases_do_not_create_false_partial(self):
+        events = [{"delta": "최근 월간동향의 제목은 전략광종 인사이트 2026년 6월호입니다."}]
+        terminal = {"done": True, "citations": [{"action_id": "document.retrieve"}]}
+        status, notes = classify(events, terminal, ("최신", "제목"), "DOC02")
+        self.assertEqual(status, "PASS")
+        self.assertEqual(notes, [])
+
+        events = [{"delta": "수입금액 비중 상위 광종과 가격 상승 광종을 확인했습니다."}]
+        terminal = {"done": True, "citations": [{"action_id": "trade.price_cross_rank"}]}
+        status, notes = classify(events, terminal, ("점유율", "가격"), "MP02")
+        self.assertEqual(status, "PASS")
+        self.assertEqual(notes, [])
+
 
 if __name__ == "__main__":
     unittest.main()

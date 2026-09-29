@@ -379,17 +379,28 @@ def render_composite(evidence: list, action_plan, action_results=None) -> tuple[
                 change = (end_value - start_value) / start_value * 100
                 direction = "상승" if change > 0 else "하락" if change < 0 else "보합"
                 _index_code, display_name = COMPOSITE_INDEX_VARIANTS[variant]
+                topic = str(getattr(action.slots, "topic", "") or "")
                 period = getattr(action.slots, "period", None)
                 requested = ""
                 if period is not None and getattr(period, "kind", None) == "range":
                     requested_start = str(period.start or "")[:4]
                     requested_end = str(period.end or "")[:4]
                     requested = f"요청하신 {requested_start}~{requested_end}년 중 확인된 자료 "
-                return (
+                answer = (
                     f"{display_name} : {requested}{start_date.isoformat()}~{end_date.isoformat()} "
-                    f"{_fmt(start_value)}에서 {_fmt(end_value)}까지 {_fmt(change)}% {direction}했습니다.",
-                    {evidence_index},
+                    f"{_fmt(start_value)}에서 {_fmt(end_value)}까지 {_fmt(change)}% {direction}했습니다."
                 )
+                if "하락 주간" in topic and "뉴스" in topic:
+                    declines = [
+                        (observed, (value - prior) / prior * 100)
+                        for (prior_date, prior), (observed, value) in zip(points, points[1:])
+                        if prior and 1 <= (observed - prior_date).days <= 7 and value < prior
+                    ]
+                    if declines:
+                        answer += "\n자원뉴스 : 하락 주간 관련 뉴스 조회를 시도했으나 확인되지 않았습니다."
+                    else:
+                        answer += "\n자원뉴스 : 확인된 기간에 하락한 주가 없어 관련 뉴스를 조회하지 않았습니다."
+                return answer, {evidence_index}
 
     # 수입 편중도 질의는 전체 국가 표에서 상위 비중과 HHI를 함께 요약한다.
     # HHI가 최소 수입액 기준 미달로 adapter에서 제거된 경우에도 원 수치를
@@ -1271,23 +1282,4 @@ def render_composite(evidence: list, action_plan, action_results=None) -> tuple[
                         f"HHI {_fmt(_number(hhi_match.group(1)))}, 1위국 {import_country}({_fmt(import_share)}%)",
                         {production[0][0], trade[0][0]})
 
-    # OC09: 가격 연도별 평균과 세계 생산량 YoY.
-    if ids.count("price.series") == 1 and ids.count("resource.yoy") == 1:
-        price = by_action.get("price.series", [])
-        yoy = by_action.get("resource.yoy", [])
-        if len(price) == 1 and len(yoy) == 1:
-            pp, yy = _price_points(price[0][1]), _yoy_rows(yoy[0][1])
-            if pp and yy:
-                yearly = {}
-                for observed, value in pp:
-                    yearly.setdefault(observed.year, []).append(value)
-                rows = []
-                for year, pct in yy:
-                    if year in yearly:
-                        rows.append(f"{year} {_fmt(sum(yearly[year]) / len(yearly[year]))}; 생산량 {pct:+.2f}%")
-                if rows:
-                    return ("광물가격 : 연도별 평균 가격 " + ", ".join(rows) +
-                            "\n광물지도 : 같은 연도 생산량 전년 대비 위 값을 표시했습니다.\n"
-                            "※ 두 지표를 나란히 제시하며 상호 인과관계로 해석하지 않습니다.",
-                            {price[0][0], yoy[0][0]})
     return None
