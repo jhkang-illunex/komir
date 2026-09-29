@@ -1293,11 +1293,12 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
     if weekly_price_news is not None:
         return weekly_price_news
     rare_monthly_mineral_list = re.fullmatch(
-        r"(?P<period>최근|가장최근|이번달|20\d{2}년\d{1,2}월)?희소금속월간동향에나온광종(?:들이)?(?:뭐뭐|목록|어떤)(?:인가요|있나요|알려줘|알려주세요|인지)?[?.]?",
+        r"(?P<period>최근|가장최근|이번달|20\d{2}년\d{1,2}월)?(?:희소|회소)금속월간동향(?:더?프라임)?에나온광종(?:들이)?(?:뭐뭐|목록|어떤)(?:을)?(?:인가요|있나요|알려줘|알려주세요|인지|보여줘|보여주세요)?[?.]?",
         compact,
     )
     if rare_monthly_mineral_list:
         period_text = rare_monthly_mineral_list.group("period")
+        topic = message.replace("회소금속", "희소금속")
         period = None
         if period_text == "이번달":
             today = date.today()
@@ -1311,7 +1312,7 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
             period = Period(kind="range", start=month_start.isoformat(), end=(next_month - timedelta(days=1)).isoformat(), explicit=True)
         return ActionPlan(actions=[ActionCall(
             requirement_id="monthly_rare_metals", action_id="document.retrieve",
-            slots=ActionSlots(topic=message, period=period),
+            slots=ActionSlots(topic=topic, period=period),
             intent="document", role="content",
         )])
     # 주간뉴스 표현의 종결형은 intent planner가 처리한다. 다음 세 질문은
@@ -1320,11 +1321,12 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
     # 시작한다. 적재된 원천이 없으면 source_unavailable로 닫히며 slot_unresolved
     # (라우팅 오류)로 오인되지 않는다.
     rare_monthly_prices = re.fullmatch(
-        r"(?P<period>이번달|최근|가장최근|20\d{2}년\d{1,2}월)희소금속월간동향에나온광종들가격(?:은)?(?:어때|어떤가요)?[?.]?",
+        r"(?P<period>이번달|최근|가장최근|20\d{2}년\d{1,2}월)(?:희소|회소)금속월간동향(?:더?프라임)?에나온광종들가격(?:은)?(?:어때|어떤가요)?[?.]?",
         compact,
     )
     if rare_monthly_prices:
         period_text = rare_monthly_prices.group("period")
+        topic = message.replace("회소금속", "희소금속")
         if period_text == "이번달":
             today = date.today()
             period = Period(kind="range", start=today.replace(day=1).isoformat(), end=today.isoformat(), explicit=True)
@@ -1341,7 +1343,7 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
             period = Period(kind="range", start=month_start.isoformat(), end=(next_month - timedelta(days=1)).isoformat(), explicit=True)
         return ActionPlan(actions=[ActionCall(
             requirement_id="monthly_rare_metals", action_id="document.retrieve",
-            slots=ActionSlots(topic=message, period=period),
+            slots=ActionSlots(topic=topic, period=period),
             intent="document", role="content",
         )])
     if re.fullmatch(r"광물종합지수구성광종중상승전망인건뭐야?[?.]?", compact):

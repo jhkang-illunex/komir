@@ -462,6 +462,19 @@ class ActionContractAuditTest(unittest.TestCase):
         self.assertEqual(call.requirement_id, "monthly_rare_metals")
         self.assertIsNone(call.slots.period)
 
+    def test_dated_prime_rare_monthly_mineral_list_preserves_month_and_normalizes_typo(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("연월 지정 프라임 월간동향 광종 문형은 planner를 호출하면 안 됩니다")
+
+        candidate = extract_action_plan(
+            "2026년 4월 회소금속월간 동향 프라임에 나온 광종 목록을 보여주세요", MustNotRun(),
+        )
+        call = candidate.actions[0]
+        self.assertEqual(call.requirement_id, "monthly_rare_metals")
+        self.assertEqual(call.slots.topic, "2026년 4월 희소금속월간 동향 프라임에 나온 광종 목록을 보여주세요")
+        self.assertEqual((call.slots.period.start, call.slots.period.end), ("2026-04-01", "2026-04-30"))
+
     def test_rare_monthly_price_query_expands_document_minerals_to_price_actions(self):
         plan = extract_action_plan(
             "2026년 5월 희소금속 월간동향에 나온 광종들 가격 어때?", object(),
