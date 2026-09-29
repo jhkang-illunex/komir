@@ -123,10 +123,11 @@ from common.langfuse_tracing import chat_trace, update_observation  # noqa: E402
 
 from rag_core.ragkit.chatbot import STATUS_STAGES, chat_turn, direct_faq_answer  # noqa: E402
 from rag_core.ragkit.action_contract import (  # noqa: E402
-    ActionPlan, extract_action_plan, merge_trade_indicator_followup,
+    ActionPlan, extract_action_plan, extract_legacy_action_plan, merge_trade_indicator_followup,
     trade_indicator_plan_from_question,
     missing_trade_indicator_slots, validate_action_plan,
 )
+from rag_core.ragkit.semantic_intent import semantic_mode  # noqa: E402
 from rag_core.ragkit.multi_action_state import (  # noqa: E402
     decode_multi_action_state, is_non_carry_payload, is_reference_message, merge_multi_action_followup,
 )
@@ -227,6 +228,21 @@ def _unsupported_mineral_response(session_id: str, message: str):
     yield sse_event({"done": True, "abstained": True,
                      "abstain_reason": "unsupported_commodity",
                      "message_key": "unsupported_commodity"}, event="done")
+
+
+def _source_unavailable_response(session_id: str, message: str):
+    """Emit the same safe abstention used by legacy unavailable actions."""
+    answer = chat_message("action_unavailable")
+    session_store.append_message(session_id, "user", message)
+    session_store.append_message(session_id, "assistant", answer)
+    yield sse_event({"session_id": session_id})
+    yield sse_event({"stage": 1, "label": STATUS_STAGES[1], "status": "조회실패",
+                     "failure_reason": "source_unavailable",
+                     "message_key": "action_unavailable"}, event="status")
+    yield sse_event({"delta": answer})
+    yield sse_event({"done": True, "abstained": True,
+                     "abstain_reason": "source_unavailable",
+                     "message_key": "action_unavailable"}, event="done")
 
 
 def _pending_mine_clarification(session_id: str) -> dict | None:
@@ -807,8 +823,29 @@ def _run_chat_session(
             yield sse_event(done, event="done")
             return
         if _unsupported_mineral_in_plan(action_plan, profile):
-            yield from _unsupported_mineral_response(session_id, request.message)
-            return
+            # Semantic parsing must not turn an unknown value into a new
+            # unsupported-commodity behavior when the unchanged legacy parser
+            # already has a safe response (often source_unavailable).  Retry
+            # only this runtime validation failure; all other enabled-mode
+            # resolution and validation behavior remains unchanged.
+            if semantic_mode() == "enabled":
+                legacy_plan = extract_legacy_action_plan(
+                    request.message,
+                    KomirJsonLLM(),
+                    history=_history_for_graph(session_id),
+                )
+                legacy_assessment = validate_action_plan(legacy_plan)
+                if legacy_assessment.failure_reason == "source_unavailable":
+                    yield from _source_unavailable_response(session_id, request.message)
+                    return
+                if legacy_assessment.approved and not _unsupported_mineral_in_plan(legacy_plan, profile):
+                    action_plan = legacy_plan
+                else:
+                    yield from _unsupported_mineral_response(session_id, request.message)
+                    return
+            else:
+                yield from _unsupported_mineral_response(session_id, request.message)
+                return
         mine_call = _mine_country_call(action_plan)
         if mine_call and request.mode != "page":
             if resumed:

@@ -90,8 +90,8 @@ class ActionSlots(BaseModel):
     dataset: Literal["supply_stability", "market_outlook"] | None = None
     requested_outputs: set[Literal["text", "table", "chart", "menu", "raw_data"]] = {"text"}
 
-IntentId = Literal["price_series", "price_compare", "price_claim", "trade_rank", "trade_price_cross_rank", "trade_monthly", "trade_hs", "trade_concentration", "trade_indicator", "resource_rank", "resource_price_cross_rank", "resource_yoy", "mine_rank", "mine_profile", "indicator", "document", "okf_lookup", "concept", "stockpile_methodology", "menu", "dataset", "diagnosis", "forecast_demand", "forecast_price", "forecast_quantity", "geopolitics_index", "geopolitics_articles", "off_topic"]
-INTENT_TO_ACTION = {"price_series":"price.series", "price_compare":"price.compare", "price_claim":"price.verify_claim", "trade_rank":"trade.country_rank", "trade_price_cross_rank":"trade.price_cross_rank", "trade_monthly":"trade.monthly", "trade_hs":"trade.hs_summary", "trade_concentration":"trade.concentration", "trade_indicator":"trade.indicator", "resource_rank":"resource.rank", "resource_price_cross_rank":"resource.price_cross_rank", "resource_yoy":"resource.yoy", "mine_rank":"mine.rank", "mine_profile":"mine.profile", "indicator":"indicator.series", "document":"document.retrieve", "okf_lookup":"document.lookup", "concept":"document.retrieve", "stockpile_methodology":"stockpile.methodology", "menu":"menu.navigate", "dataset":"dataset.navigate", "diagnosis":"diagnosis.rank", "forecast_demand":"forecast.demand", "forecast_price":"forecast.price", "forecast_quantity":"forecast.quantity", "geopolitics_index":"geopolitics.index", "geopolitics_articles":"geopolitics.articles", "off_topic":"off_topic"}
+IntentId = Literal["price_series", "price_compare", "price_claim", "trade_rank", "trade_price_cross_rank", "trade_monthly", "trade_hs", "trade_concentration", "trade_indicator", "resource_rank", "resource_price_cross_rank", "resource_yoy", "mine_rank", "mine_profile", "inventory_latest", "indicator", "document", "document_facts", "okf_lookup", "concept", "stockpile_methodology", "menu", "dataset", "diagnosis", "forecast_demand", "forecast_price", "forecast_quantity", "geopolitics_index", "geopolitics_articles", "off_topic"]
+INTENT_TO_ACTION = {"price_series":"price.series", "price_compare":"price.compare", "price_claim":"price.verify_claim", "trade_rank":"trade.country_rank", "trade_price_cross_rank":"trade.price_cross_rank", "trade_monthly":"trade.monthly", "trade_hs":"trade.hs_summary", "trade_concentration":"trade.concentration", "trade_indicator":"trade.indicator", "resource_rank":"resource.rank", "resource_price_cross_rank":"resource.price_cross_rank", "resource_yoy":"resource.yoy", "mine_rank":"mine.rank", "mine_profile":"mine.profile", "inventory_latest":"inventory.latest", "indicator":"indicator.series", "document":"document.retrieve", "document_facts":"document.facts.retrieve", "okf_lookup":"document.lookup", "concept":"document.retrieve", "stockpile_methodology":"stockpile.methodology", "menu":"menu.navigate", "dataset":"dataset.navigate", "diagnosis":"diagnosis.rank", "forecast_demand":"forecast.demand", "forecast_price":"forecast.price", "forecast_quantity":"forecast.quantity", "geopolitics_index":"geopolitics.index", "geopolitics_articles":"geopolitics.articles", "off_topic":"off_topic"}
 
 class IntentCall(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -286,7 +286,7 @@ price.compare로 만들지 말고, 해당 설명의 출처를 찾는 document �
 
 INTENT_PLAN_PROMPT = """질문의 독립 정보요구를 빠짐없이 requirements IntentCall 목록으로 분해한 closed intent JSON을 출력한다.
 intent는 price_series, price_compare, price_claim, trade_rank, trade_price_cross_rank, trade_monthly, trade_hs,
-trade_concentration, trade_indicator, resource_rank, resource_price_cross_rank, resource_yoy, mine_rank, mine_profile, indicator, document, okf_lookup, concept, stockpile_methodology, menu, dataset, diagnosis, forecast_demand,
+trade_concentration, trade_indicator, resource_rank, resource_price_cross_rank, resource_yoy, mine_rank, mine_profile, inventory_latest, indicator, document, document_facts, okf_lookup, concept, stockpile_methodology, menu, dataset, diagnosis, forecast_demand,
 forecast_price, forecast_quantity, geopolitics_index, geopolitics_articles, off_topic 중 하나다.
 핵심광물 공급망·HHI·수입의존도·가격변동성의 정의와 개념은 concept이며 document.retrieve로
 직접 출처를 찾는다. off_topic은 날씨·음식처럼 광물·공급망과 무관한 주제에만 사용한다.
@@ -1029,6 +1029,62 @@ def import_dependency_high_threshold() -> float:
 
 
 def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | None = None) -> ActionPlan:
+    """Resolve a question while preserving the legacy parser as a fallback.
+
+    ``SEMANTIC_INTENT_MODE=off`` is byte-for-byte equivalent to the previous
+    entry point.  In ``shadow`` mode the typed semantic parser runs in parallel
+    for audit logging but the legacy plan is always returned.  ``enabled``
+    gives validated semantic capabilities precedence only after deterministic
+    legacy shortcuts miss; an unresolved semantic result falls back to the
+    existing LLM IntentPlan path.
+    """
+    from .semantic_intent import parse_and_resolve, record_shadow_audit, semantic_mode
+
+    mode = semantic_mode()
+    if mode == "off":
+        return _extract_action_plan_legacy(message, llm, history, allow_llm=True)
+    if mode == "shadow":
+        legacy_plan = _extract_action_plan_legacy(message, llm, history, allow_llm=True)
+        result = parse_and_resolve(message, llm, history)
+        record_shadow_audit(message, legacy_plan, result)
+        return legacy_plan
+
+    # Enabled mode deliberately keeps the ordering deterministic shortcut ->
+    # semantic parser -> legacy LLM fallback.  This prevents a new parser from
+    # changing already verified lexical routes while still generalizing misses.
+    legacy_shortcut = _extract_action_plan_legacy(message, llm, history, allow_llm=False)
+    if legacy_shortcut is not None:
+        return legacy_shortcut
+    result = parse_and_resolve(message, llm, history)
+    if result.action_plan is not None:
+        return result.action_plan
+    return _extract_action_plan_legacy(message, llm, history, allow_llm=True)
+
+
+def extract_legacy_action_plan(
+    message: str,
+    llm: Any,
+    history: list[dict[str, str]] | None = None,
+) -> ActionPlan:
+    """Return the pre-semantic parser result for a targeted safety fallback.
+
+    The public entry point normally applies the semantic feature flag.  Runtime
+    validation can still discover a value (for example an unknown mineral) that
+    the semantic layer must not force into an existing action.  Callers use this
+    narrow helper to retry the unchanged legacy path without recursively
+    invoking semantic parsing.
+    """
+
+    return _extract_action_plan_legacy(message, llm, history, allow_llm=True)
+
+
+def _extract_action_plan_legacy(
+    message: str,
+    llm: Any,
+    history: list[dict[str, str]] | None = None,
+    *,
+    allow_llm: bool = True,
+) -> ActionPlan | None:
     compact = re.sub(r"\s+", "", message)
     mineral_info_match = next((name for name in (
         "리튬", "니켈", "코발트", "구리", "동", "망간", "흑연", "텅스텐", "희토류", "네오디뮴",
@@ -1547,6 +1603,8 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
     explicit_trade_indicator = _explicit_annual_trade_indicator_plan(message)
     if explicit_trade_indicator is not None:
         return explicit_trade_indicator
+    if not allow_llm:
+        return None
     intent_plan = extract_intent_plan(message, llm, history)
     semantic_failure = _intent_plan_semantic_failure(intent_plan)
     if semantic_failure:

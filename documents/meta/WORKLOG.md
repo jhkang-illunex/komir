@@ -2,6 +2,77 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-30 — 생산량·매장량 복합 semantic 회귀 계약 고정
+
+단일 생산량 최댓값은 `resource_rank/operation=argmax` 한 개 요구사항으로,
+생산량·매장량 복합 질의는 Parser에서 두 `resource_rank` 요구사항으로 남고
+Resolver에서 `production`·`reserves` 두 `resource.rank` 액션으로 유지되는지
+경계를 분리해 확인했다. `생산량 상위 국가와 매장량 상위 국가를 각각` 변형도
+동일한 metric 집합을 생성한다. 액션 개수뿐 아니라 metric 집합과 operation을
+검증하는 semantic 회귀 테스트 19건이 통과했다. 실행 중인
+`komir-rag-chat:20260930-argmax-r3`에서 세 문형의 Parser/Resolver 결과도
+동일 조건으로 확인했다.
+
+## 2026-09-30 — 생산량 최댓값·매장량 국가순위 semantic 보정 재배포
+
+`제일·가장·최대·1위` 표현을 semantic `operation=argmax`로 정규화해
+`resource.rank.top_n=1`로 연결했다. `생산량과 매장량 상위 국가`는
+`resource/resource_rank` 두 요구사항으로 분해하고, 매장량은
+`operation=reserves`·`metric=reserves`로 연결하도록 보정했다. 첫 보정 이미지에서
+매장량을 `mine_profile`로 오해하는 회귀가 라이브 검사에서 발견되어 자동 복구했고,
+ontology 예시를 보강한 후 재검증했다.
+
+최종 이미지 `komir-rag-chat:20260930-argmax-r3`(digest
+`sha256:2d042ed68852df8da6579e4640adac801d4775a40131b51165780a36680a9604`)를
+`komir-rag-chat-test`에 배포했다. `SEMANTIC_INTENT_MODE=enable`, 포트
+`18002->8002`, `/healthz` 200이며, 배포 전 semantic 테스트 16건과 기존 라이브
+수락 게이트(Q01~Q30 샘플·희토류 생산/매장량 복합 포함)를 통과했다. 실제 질의에서도
+코발트 최댓값은 중국 1개 행으로, 희토류 생산·매장량은 각각 상위 5개 행으로 확인했다.
+이전 이미지는 `komir-rag-chat-test-pre-20260930-025111`으로 보존했다.
+
+## 2026-09-30 — Semantic enabled 이미지 재배포 및 legacy 안전 fallback 보정
+
+활성 semantic 모드에서 미지원 광종 질의가 semantic action으로 먼저 확정되어
+`unsupported_commodity`로 끝나던 라이브 회귀를 확인했다. 실제 KOMIS 광종 검증에서
+미지원 값이 발견되면 기존 legacy parser를 한 번 재시도하고, legacy 계획이
+`source_unavailable`이면 기존 `action_unavailable` 응답 계약으로 닫도록 보정했다.
+관련 단위·라우팅 테스트 77건과 13개 subtests를 통과했다.
+
+이미지 `komir-rag-chat:20260930-023320`(digest
+`sha256:a0c1e9d18a136d2ba24f9690220c1a7338510378366af9ef95d92055ffc57c3c`)를
+`komir-rag-chat-test`에 배포했다. 컨테이너는 `0.0.0.0:18002->8002`로 실행 중이며
+`SEMANTIC_INTENT_MODE=enable`을 사용한다. `/healthz` 200과 라이브 수락 검사(Q01~Q30
+샘플, Q27 미지원 광종 포함)를 통과했고, 이전 이미지는
+`komir-rag-chat-test-pre-20260930-023321`으로 보존했다.
+
+## 2026-09-30 — Semantic 1st-order coverage 감사 2차
+
+초기 semantic comparison의 fallback 40건을 A(독립 resolver 누락) 16건, B(parser 해석 오류)
+7건, C(slot/validation 변환 오류) 1건, D(문서·조건·결과 기반 후속 의존) 12건,
+E(legacy 유지가 안전한 FAQ·종합 질의) 4건으로 분류했다. REG07 가격예측,
+REG05 LME 재고, REG04 연도별 가격평균, GM01 생산국/수입국 분리와 concept·전략/배터리
+가격군·알려진 5종 bounded expansion을 semantic resolver에 보완했다. Adapter·Renderer·
+DB·PageIndex/ingest·chatbot execution contract는 수정하지 않았다. 최종 동일 56건 비교는
+semantic resolve 43건, fallback 13건(D/E만 잔존), Action ID regression 0건, C 유형 0건이다.
+단위·Action contract 172건 + 71 subtests 통과. 전체 rag_core는 416 passed, 기존 환경 의존
+실패 2건(`test_menu_catalog`, `test_messages`)이 남았다. 비교·분류·capability inventory는
+`documents/산출물/2026-W40_0928-1004/semantic_mode_compare_260930/`에 기록했다.
+
+## 2026-09-30 — Typed Semantic Intent Layer 1차 구현
+
+기존 `extract_action_plan()` 앞단에 `SEMANTIC_INTENT_MODE`(`off`·`shadow`·`enabled`, 운영 기본값 `shadow`)
+분기와 typed `SemanticPlan`/`SemanticRequirement` parser를 추가했다. Semantic parser는
+physical Action ID를 출력하지 않고 `domain`·primitive `metric`·`flow`·`scope`·광종 등
+WHAT만 표현하며, 기존 `IntentPlan` → `ActionPlan` → `validate_action_plan()`을 재사용한다.
+결정적 legacy shortcut은 보존하고, shadow 로그에는 question·legacy/semantic 계획·canonical
+signature·diff·fallback 사유를 기록한다. `trade + concentration + import` 5개 paraphrase를
+로컬 vLLM에서 모두 동일 canonical signature(`trade/concentration/import/니켈/KR`)와
+`trade.concentration`으로 확인했다. 관련 테스트 166건(semantic 8건 포함)+71 subtests,
+`py_compile`·`git diff --check` 통과. 전체 rag_core 399건 중 기존 환경 의존 실패 2건
+(`test_menu_catalog`, `test_messages`)은 semantic 변경과 무관하며, rag_chat 라우팅 회귀의
+기존 public/private indicator 경계 테스트 1건도 동일하게 실패했다. Adapter·Renderer·DB·
+PageIndex/ingest·배포 이미지는 변경하지 않았다.
+
 ## 2026-09-30 — PageIndex 파생 사실 생성·조회 액션 이미지 배포
 
 OKF 원문에서 광종 목록·문서 요약·원문 SHA-256·source span을 생성하는
