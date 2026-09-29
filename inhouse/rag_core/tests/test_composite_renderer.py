@@ -25,6 +25,26 @@ class CompositeRendererTest(unittest.TestCase):
         self.assertNotIn("/srv/private", summary)
         self.assertNotIn("file.md", summary)
 
+    def test_monthly_mineral_list_uses_structured_mineral_column(self):
+        plan = ActionPlan(actions=[ActionCall(
+            requirement_id="monthly_rare_metals", action_id="document.retrieve",
+            slots=ActionSlots(topic="가장 최근 희소금속 월간동향에 나온 광종들이 뭐뭐 있나요?"),
+        )])
+        evidence = [Evidence(
+            kind="structured", source="희소금속 월간동향", section="2026-05호",
+            action_id="document.retrieve", requirement_id="monthly_rare_metals",
+            text=("| 월호 | 게시월 | 원문 | 광종목록 | 요약 |\n|---|---|---|---|---|\n"
+                  "| 2026-05호 | 2026-05-01 | report.pdf | 코발트, 동, 망간, 희토류 | OCR 본문 |"),
+        )]
+
+        result = render_composite(evidence, plan)
+
+        self.assertIsNotNone(result)
+        self.assertIn("광종 목록", result[0])
+        self.assertIn("코발트, 동, 망간, 희토류", result[0])
+        self.assertNotIn("OCR 본문", result[0])
+        self.assertEqual(result[1], {1})
+
     def test_production_and_reserves_rankings_get_a_grounded_joint_summary(self):
         plan = ActionPlan(actions=[
             ActionCall(requirement_id="production_req", action_id="resource.rank",

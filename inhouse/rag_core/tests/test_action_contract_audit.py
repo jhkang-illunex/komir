@@ -449,6 +449,19 @@ class ActionContractAuditTest(unittest.TestCase):
             self.assertEqual(call.requirement_id, "monthly_rare_metals")
             self.assertIsNone(call.slots.period)
 
+    def test_latest_rare_monthly_mineral_list_is_document_only(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("최신 희소금속 월간동향 광종목록 문형은 planner를 호출하면 안 됩니다")
+
+        candidate = extract_action_plan(
+            "가장 최근 희소금속 월간 동향에 나온 광종들이 뭐뭐 있나요?", MustNotRun(),
+        )
+        call = candidate.actions[0]
+        self.assertEqual(call.action_id, "document.retrieve")
+        self.assertEqual(call.requirement_id, "monthly_rare_metals")
+        self.assertIsNone(call.slots.period)
+
     def test_rare_monthly_price_query_expands_document_minerals_to_price_actions(self):
         plan = extract_action_plan(
             "2026년 5월 희소금속 월간동향에 나온 광종들 가격 어때?", object(),

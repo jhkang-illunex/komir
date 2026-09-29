@@ -1292,6 +1292,28 @@ def extract_action_plan(message: str, llm: Any, history: list[dict[str, str]] | 
     weekly_price_news = _weekly_price_news_plan(message)
     if weekly_price_news is not None:
         return weekly_price_news
+    rare_monthly_mineral_list = re.fullmatch(
+        r"(?P<period>최근|가장최근|이번달|20\d{2}년\d{1,2}월)?희소금속월간동향에나온광종(?:들이)?(?:뭐뭐|목록|어떤)(?:인가요|있나요|알려줘|알려주세요|인지)?[?.]?",
+        compact,
+    )
+    if rare_monthly_mineral_list:
+        period_text = rare_monthly_mineral_list.group("period")
+        period = None
+        if period_text == "이번달":
+            today = date.today()
+            period = Period(kind="range", start=today.replace(day=1).isoformat(), end=today.isoformat(), explicit=True)
+        elif period_text and period_text not in {"최근", "가장최근"}:
+            match = re.fullmatch(r"(20\d{2})년(\d{1,2})월", period_text)
+            assert match is not None
+            year, month = int(match.group(1)), int(match.group(2))
+            month_start = date(year, month, 1)
+            next_month = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
+            period = Period(kind="range", start=month_start.isoformat(), end=(next_month - timedelta(days=1)).isoformat(), explicit=True)
+        return ActionPlan(actions=[ActionCall(
+            requirement_id="monthly_rare_metals", action_id="document.retrieve",
+            slots=ActionSlots(topic=message, period=period),
+            intent="document", role="content",
+        )])
     # 주간뉴스 표현의 종결형은 intent planner가 처리한다. 다음 세 질문은
     # 광종/구성 목록이 원천 조회 전에는 확정되지 않는다. 임의의
     # 광종·예측값을 채우지 않고, 질문이 명시한 상대 기간만 고정한 문서 Action으로

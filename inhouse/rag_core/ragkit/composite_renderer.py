@@ -178,6 +178,26 @@ def _document_summary_text(item, *, limit: int = 300):
     return re.sub(r"\s+", " ", prose).strip()[:limit]
 
 
+def _monthly_mineral_list(item):
+    """월간동향 구조화 표의 ``광종목록`` 셀만 읽는다."""
+    for table in extract_markdown_tables(getattr(item, "text", "")):
+        keys = _keys(table)
+        mineral_i = next((i for i, key in enumerate(keys) if key in {"광종목록", "광종목록".casefold()}), None)
+        if mineral_i is None:
+            continue
+        names = []
+        for row in table["rows"]:
+            if mineral_i >= len(row):
+                continue
+            for name in re.split(r"[,、;/|]+", str(row[mineral_i])):
+                name = name.strip()
+                if name and name not in names:
+                    names.append(name)
+        if names:
+            return names
+    return []
+
+
 def _news_titles(item, *, limit: int = 3, expected_date: str | None = None):
     """자원뉴스 adapter의 구조화 표에서 제목만 보존해 읽는다."""
     for table in extract_markdown_tables(getattr(item, "text", "")):
@@ -520,6 +540,15 @@ def render_composite(evidence: list, action_plan, action_results=None) -> tuple[
                     "주간 자원뉴스 : 확인된 주간동향 보고서\n" + "\n".join(f"- {row}" for row in weekly_rows),
                     {evidence_index},
                 )
+            wants_mineral_list = (
+                "월간동향" in topic and "광종" in topic
+                and any(marker in topic for marker in ("뭐뭐", "목록", "어떤"))
+            )
+            if wants_mineral_list:
+                minerals = _monthly_mineral_list(document)
+                if minerals:
+                    heading = getattr(document, "section", None) or "확인된 월간동향"
+                    return (f"월간동향 : {heading}에 나온 광종 목록\n- {', '.join(minerals)}", {evidence_index})
 
     if ids and all(action_id == "trade.country_rank" for action_id in ids) and len(ids) == 5:
         rows, cited, periods = [], set(), []
