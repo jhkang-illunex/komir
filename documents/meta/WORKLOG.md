@@ -2,6 +2,28 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-29 — 최신 희소금속 월간동향 광종목록 결정적 응답 재배포
+
+`가장 최근 희소금속 월간 동향에 나온 광종들이 뭐뭐 있나요?`가 일반 LLM 생성
+경로로 처리되어 간헐적으로 `데이터를 찾을 수 없습니다`가 반환되거나, OCR 본문에
+등장한 광물명을 광종목록으로 잘못 확장하던 문제를 확인했다. 해당 문형을
+`monthly_rare_metals/document.retrieve`로 고정하고, 문서의 구조화된
+`광종목록` 열만 결정적으로 렌더링하도록 수정했다. 띄어쓰기 변형(`월간 동향`)도
+동일하게 인식한다.
+
+검증: 관련 테스트 182건, `py_compile`·`git diff --check`, 배포 전 게이트
+15+85+6+33+1건 및 이미지 라이브 회귀를 통과했다. 커밋
+`4fa6602c8`(`fix(rag-chat): render rare monthly mineral list`)와
+`2c8d0190e`(`fix(rag-chat): normalize monthly list query spacing`)을
+`komir-rag-chat:20260929-monthly-mineral-list-r2`로 재배포했다. 이미지 ID는
+`sha256:5f252321f4e10408a41ab77803bd2be1e88c1b3716677679a25b26449608c156`,
+컨테이너 ID는 `0dcf0009b9c91cfc9552acc897b3f0b2b9c5b2a330cde6c0498fc881a8cc3fa7`,
+이전 컨테이너는 `komir-rag-chat-test-pre-20260929-223517`으로 보존했다.
+
+배포 후 동일 질의는 `monthly_rare_metals/document.retrieve` 성공 후
+`월간동향 : 2026-05_희소금속월간동향_더프라임에 나온 광종 목록`과
+`코발트, 동, 망간, 희토류`를 반환했으며 기권하지 않았다.
+
 ## 2026-09-29 — “가장 최근” 희소금속 월간동향 가격 문형 라우팅 보정
 
 `가장 최근 희소금속 월간 동향에 나온 광종들 가격 어때?`가 광종을 특정하지
