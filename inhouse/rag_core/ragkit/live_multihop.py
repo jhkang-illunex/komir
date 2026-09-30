@@ -87,7 +87,10 @@ validate_evidence.
 - selector=index일 때 selector_value는 0부터 시작하는 정수이고, field일 때는
   실제 upstream 행의 필드명이다. selector=all이면 selector_value를 생략한다.
 - 이전 turn 결과를 참조해야 하면 semantic_history에 표시된 정확한
-  `history:<turn_id>:<step_id>` node_id를 사용한다.
+  `history:<turn_id>:<step_id>` node_id를 사용한다. 저장된 결과를 직접
+  참조해야 하면 semantic_history의 `result_id`를 `result:<result_id>` 형태로
+  node_id에 사용한다. 현재 질문이 새 조회를 요구하지 않는 한 저장 결과를
+  다시 조회하지 말고 filter/project 입력으로 사용한다.
 - 가격 상승 광물 순위는 rank 또는 sort → top_k로 표현한다.
 - top_k 결과를 다시 조회할 때 downstream retrieve node의 input으로 연결한다.
 - 독립적인 국가비중·생산량 조회는 각각 node로 만들고 dependency가 없으면 병렬 가능하게 한다.
@@ -155,6 +158,15 @@ def _semantic_context_payload(context: ConversationContext) -> list[dict[str, An
         program = turn.semantic_program
         payload.append({
             "turn_id": turn.turn_id,
+            "result_id": turn.result_id,
+            "result_outputs": [
+                {
+                    "mineral_id": item.get("mineral_id"),
+                    "output_id": item.get("output_id"),
+                    "status": item.get("status"),
+                }
+                for item in turn.result_snapshots
+            ],
             "ast": {
                 "operators": [node.operator.value for node in program.nodes] if program else [],
                 "roots": list(program.roots) if program else [],
@@ -302,6 +314,8 @@ def _resolve_history_references(program: SemanticProgram, context: ConversationC
             continue
         for step_id, result in turn.result.results.items():
             history_results[f"history:{turn.turn_id}:{step_id}"] = result
+            if turn.result_id:
+                history_results.setdefault(f"result:{turn.result_id}", result)
     if not history_results:
         return program
 

@@ -409,7 +409,7 @@ class PostgresHistoryStore:
                     INSERT INTO {self._table}
                     (session_id, turn_id, utterance, created_at, program_json, pipe_id,
                      pipe_summary_json, result_json, result_id, result_snapshots_json, evidence_json, expires_at)
-                    VALUES (%s, %s, %s, %s, %s::jsonb, %s, %s::jsonb, %s::jsonb, %s, %s::jsonb, %s)
+                    VALUES (%s, %s, %s, %s, %s::jsonb, %s, %s::jsonb, %s::jsonb, %s, %s::jsonb, %s::jsonb, %s)
                     ON CONFLICT (session_id, turn_id) DO UPDATE SET
                       utterance=EXCLUDED.utterance, created_at=EXCLUDED.created_at,
                       program_json=EXCLUDED.program_json, pipe_id=EXCLUDED.pipe_id,
