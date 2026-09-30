@@ -94,6 +94,17 @@ class SemanticProgram:
 
     @classmethod
     def from_dict(cls, payload: Mapping[str, Any]) -> "SemanticProgram":
+        def value_type(raw: Any) -> ValueType:
+            candidate = str(raw)
+            try:
+                return ValueType(candidate)
+            except ValueError:
+                # The parser may use a model-local synonym such as "list" or
+                # "float". Unknown output is intentionally not treated as a
+                # stronger type; it is normalized to unknown and must still
+                # pass downstream operator/evidence validation.
+                return ValueType.UNKNOWN
+
         nodes = tuple(
             RequirementNode(
                 node_id=str(item["node_id"]),
@@ -107,13 +118,37 @@ class SemanticProgram:
                     for ref in item.get("inputs", [])
                 ),
                 args=dict(item.get("args", {})),
-                expected_type=ValueType(str(item.get("expected_type", ValueType.UNKNOWN.value))),
+                expected_type=value_type(item.get("expected_type", ValueType.UNKNOWN.value)),
                 constraints=dict(item.get("constraints", {})),
                 evidence_required=bool(item.get("evidence_required", True)),
             )
             for item in payload.get("nodes", [])
         )
-        return cls(nodes=nodes, roots=tuple(str(root) for root in payload.get("roots", [])))
+        roots = tuple(str(root) for root in payload.get("roots", []))
+        # Models occasionally emit the first node as ``roots`` even when a
+        # downstream node is the actual result. Keep the explicit roots when
+        # they are already graph sinks; otherwise normalize within the same
+        # dependency component to the terminal nodes. This is a structural
+        # contract repair, not a query-specific execution branch.
+        node_ids = {node.node_id for node in nodes}
+        children: dict[str, list[str]] = {node.node_id: [] for node in nodes}
+        for node in nodes:
+            for ref in node.inputs:
+                children.setdefault(ref.node_id, []).append(node.node_id)
+        sinks = {node_id for node_id, downstream in children.items() if not downstream}
+        if roots and any(root not in sinks for root in roots):
+            reachable: set[str] = set()
+            frontier = [root for root in roots if root in node_ids]
+            while frontier:
+                current = frontier.pop()
+                if current in reachable:
+                    continue
+                reachable.add(current)
+                frontier.extend(children.get(current, ()))
+            normalized = tuple(node_id for node_id in (node.node_id for node in nodes) if node_id in sinks and node_id in reachable)
+            if normalized:
+                roots = normalized
+        return cls(nodes=nodes, roots=roots)
 
     def to_dict(self) -> dict[str, Any]:
         return {

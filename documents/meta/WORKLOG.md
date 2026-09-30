@@ -2,6 +2,26 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-30 — Gemma/LangGraph multi-hop 실서비스 shadow·enabled 통합 검증
+
+`komir-rag-chat:multihop-work` 이미지를 별도 컨테이너로 빌드하고 Gemma endpoint와
+기존 Action/MCP/RDB/PageIndex bridge를 실제 호출했다. 신규 경로는
+`MULTIHOP_ORCHESTRATOR_MODE=shadow`에서 legacy 결과와 비교하고, `enabled`에서
+canonical result를 기존 SSE로 encode한다. 기존 서비스 컨테이너와 PostgreSQL,
+PageIndex, OKF, Frontend wire contract는 수정하지 않았다.
+
+AST root/metric/mineral alias/history binding 정규화, legacy 단순 조회의 typed history
+저장, multi-input LangGraph barrier, 기간 Filter, invalid selector의 deterministic
+Pipe failure 처리를 추가했다. 동일 session 4턴에서 `그중`/기간/수입 비교/두 번째
+결과 문서 reference를 실행했고, `status/table/chart/done` SSE와 evidence 부족
+abstain을 확인했다.
+
+실제 데이터 blocker는 기존 계층을 우회하지 않고 기록했다. PageIndex tree mount 부재,
+`public.ai_hs_mnrl_map` 부재, 기존 가격 volatility tool의 `_any_dummy` 오류 때문에
+가격 ranking·무역 단계는 근거 부족으로 abstain했다. 현재 semantic history backend는
+프로세스 메모리 구현이므로 재시작·다중 worker 영속성은 후속 작업이다. Docker build는
+성공했으며 최종 회귀·QA fixture 검증 결과는 아래 테스트 기록과 함께 보존한다.
+
 ## 2026-09-30 — multihop orchestration architecture foundation
 
 `MULTIHOP_ARCHITECTURE_AUDIT.md`에 현재 Natural Language→Answer 경로, 2nd/3rd-order

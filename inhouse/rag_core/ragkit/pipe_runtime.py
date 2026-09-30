@@ -245,15 +245,15 @@ class PipeRuntime:
                     result = TypedResult.failed(f"upstream step failed: {', '.join(sorted(input_ids))}")
                     return {"results": {current_step.step_id: result}, "events": [PipeEvent("step_skipped", pipe.pipe_id, current_step.step_id, result.status.value)]}
                 try:
-                    if current_step.bindings:
-                        inputs = {name: _select(results[b.source_step_id], b.selector, b.selector_value) for name, b in current_step.bindings.items()}
-                    else:
-                        inputs = {item: results[item] for item in current_step.dependencies}
                     self._tracer.event("step_started", {"pipe_id": pipe.pipe_id, "step_id": current_step.step_id, "operation": current_step.operation})
                     started_event = PipeEvent("step_started", pipe.pipe_id, current_step.step_id, "running", metadata={"operation": current_step.operation})
                     last_error: Exception | None = None
                     for attempt in range(current_step.max_retries + 1):
                         try:
+                            if current_step.bindings:
+                                inputs = {name: _select(results[b.source_step_id], b.selector, b.selector_value) for name, b in current_step.bindings.items()}
+                            else:
+                                inputs = {item: results[item] for item in current_step.dependencies}
                             context.check_cancelled()
                             call = current_step.execute(context, inputs)
                             result = await call if current_step.timeout_seconds is None else await asyncio.wait_for(call, current_step.timeout_seconds)
@@ -283,8 +283,11 @@ class PipeRuntime:
             if not dependencies:
                 builder.add_edge(START, step.step_id)
             else:
-                for dependency in sorted(dependencies):
-                    builder.add_edge(dependency, step.step_id)
+                # A multi-input step is a barrier: LangGraph must wait for
+                # every upstream result before evaluating its bindings. A
+                # separate edge per dependency would permit any one branch
+                # to trigger the downstream node prematurely.
+                builder.add_edge(sorted(dependencies), step.step_id)
         for step in pipe.steps:
             if step.step_id not in downstream:
                 builder.add_edge(step.step_id, END)

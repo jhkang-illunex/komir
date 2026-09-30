@@ -128,6 +128,7 @@ from rag_core.ragkit.action_contract import (  # noqa: E402
     missing_trade_indicator_slots, validate_action_plan,
 )
 from rag_core.ragkit.semantic_intent import semantic_mode  # noqa: E402
+from rag_core.ragkit.live_multihop import multihop_mode  # noqa: E402
 from rag_core.ragkit.multi_action_state import (  # noqa: E402
     decode_multi_action_state, decode_price_context, is_non_carry_payload, is_reference_message,
     merge_multi_action_followup,
@@ -817,6 +818,13 @@ def _run_chat_session(
             yield from _trade_clarification_response(session_id, request.message, action_plan)
             return
         if not assessment.approved:
+            # The legacy catalog is intentionally closed. In explicit shadow or
+            # enabled mode, let the new semantic AST path inspect a rejected
+            # legacy composition instead of adding another action exception.
+            # Security/out-of-scope failures remain owned by this gate.
+            if multihop_mode() != "off" and assessment.failure_reason not in {"out_of_scope", "access_denied"}:
+                yield from _run_document_qa(request, session_id, profile, action_plan=None)
+                return
             failure_message = ("광물 관련 정보만 조회할 수 있습니다."
                                if assessment.failure_reason == "out_of_scope"
                                else chat_message("action_unavailable"))

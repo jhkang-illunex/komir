@@ -86,6 +86,25 @@ class MultiHopRuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(failure_result.results["next"].status, ResultStatus.FAILED)
         self.assertIn("upstream step failed", failure_result.results["next"].failure_reason)
 
+    async def test_invalid_typed_selector_becomes_step_failure(self):
+        pipe = Pipe(
+            "invalid-selector",
+            (
+                FunctionStep("source", "retrieve", lambda _c, _i: TypedResult.success(ValueType.MINERAL_SET, ["Ni"])),
+                FunctionStep(
+                    "select",
+                    "resolve_reference",
+                    lambda _c, _i: TypedResult.success(ValueType.SCALAR_METRIC, "unreachable"),
+                    bindings={"item": InputBinding("source", "index", 1)},
+                ),
+            ),
+        )
+
+        result = await PipeRuntime().execute(pipe)
+
+        self.assertEqual(result.results["select"].status, ResultStatus.FAILED)
+        self.assertIn("index out of range", result.results["select"].failure_reason)
+
 
 class SemanticIRTests(unittest.TestCase):
     def test_program_is_inspectable_and_rejects_cycles(self):
@@ -116,4 +135,3 @@ class SemanticHistoryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(context.latest.utterance.text, "가격 상승률 상위 3개")
         await store.save_result("s1", "t1", await PipeRuntime().execute(Pipe("p", ())))
         self.assertIsNotNone((await store.get_context("s1")).latest.result)
-

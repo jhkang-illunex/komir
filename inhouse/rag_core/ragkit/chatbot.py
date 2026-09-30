@@ -133,6 +133,8 @@ from .menu_catalog import menu_source
 from . import source_contract as _source_contract
 from .source_contract import assess_source_request
 from .generate import ABSTAIN_TEXT, _cfg_from_env, _strip_uncited_sentences
+from .live_multihop import live_run_events, multihop_mode, record_legacy_comparison, run_live_multihop
+from .pipe_runtime import ResultStatus
 
 #: chatbot_graph._finalize_node가 "근거는 찾았지만 질문이 요구한 지표와는 다르다"고
 #: 표시(retrieval_near_miss 경고)했을 때만 쓰는 대체 프롬프트(2026-08-27, 사용자
@@ -1932,6 +1934,44 @@ async def chat_turn(
         yield _abstain_done(pre_gate_reason)
         return
 
+    # New LangGraph multi-hop orchestration is opt-in. Shadow mode executes the
+    # real Gemma→AST→Pipe→existing Action/Tool path and records a comparison,
+    # while the established retrieval/render/SSE path remains authoritative.
+    live_run = None
+    if multihop_mode() != "off":
+        try:
+            live_run = await run_live_multihop(
+                message=message,
+                session_id=resolved_session_id,
+                profile=profile,
+                llm=router_llm or KomirJsonLLM(),
+                history=history,
+                legacy_action_ids=[call.action_id for call in getattr(action_plan, "actions", [])],
+            )
+            if multihop_mode() == "enabled" and not live_run.skipped:
+                root = live_run.orchestration.root_result
+                yield _status_event(3, status="데이터 분석 중")
+                if root.status in {ResultStatus.ABSTAINED, ResultStatus.EMPTY, ResultStatus.FAILED}:
+                    yield _status_event(3, status="조회실패", failure_reason=root.failure_reason)
+                else:
+                    yield _status_event(4)
+                emitted = live_run_events(live_run)
+                response_text = "".join(event.data.get("delta", "") for event in emitted if event.type == "delta")
+                done = next((event.data for event in emitted if event.type == "done"), {"done": True, "abstained": True, "abstain_reason": "source_unavailable", "citations": []})
+                for event in emitted:
+                    yield event
+                await asyncio.to_thread(
+                    append_message,
+                    resolved_session_id,
+                    "assistant",
+                    response_text,
+                    json.dumps(done.get("citations", []), ensure_ascii=False),
+                    store_db_path,
+                )
+                return
+        except Exception:
+            _logger.exception("live multihop orchestration failed; legacy path continues")
+
     concept_question = _is_internal_knowledge_question(message)
 
     evidence, route_warnings = [], []
@@ -1967,6 +2007,8 @@ async def chat_turn(
         yield ChatEvent(type="debug", data=_debug_retrieval_trace(
             retrieval_result, route_warnings, executed_plan,
         ))
+    if live_run is not None:
+        await record_legacy_comparison(live_run, retrieval_result)
 
     # 일반 개념 질문도 직접 출처가 있어야 답한다. 근접 자료는 질문을 뒷받침하지
     # 않으며, 검증기 출력 오류는 충분성 자체를 신뢰할 수 없으므로 생성하지 않는다.

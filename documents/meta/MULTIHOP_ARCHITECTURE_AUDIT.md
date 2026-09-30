@@ -294,3 +294,35 @@ encode한다. 내부 event와 외부 wire event는 동일시하지 않는다.
 - Pipe/Step 결과는 모든 단계에서 provenance와 evidence를 유지한다.
 - 이번 라운드에는 사용자 질문별 if/else, 새 physical intent, 기존 검증 우회,
   destructive DB migration을 추가하지 않는다.
+
+## 13. 실제 서비스 통합 감사 결과 (2026-09-30)
+
+`MULTIHOP_ORCHESTRATOR_MODE=shadow` 별도 컨테이너에서 Gemma 4 계열의
+schema-constrained AST를 실제 호출하고, AST→LangGraph Pipe→기존 `ActionCall`/
+`retrieve_evidence` bridge를 실행했다. `price_change_rate`/`import_value`처럼
+domain이 생략된 model metric, 영문 광종 alias, 잘못 생성된 root, 비정규 history alias를
+기존 IR/Binding contract 안에서 정규화했다. 단순 질의는 기존 경로를 유지하고 legacy
+ActionResult를 typed semantic history에 기록한다.
+
+실제 SSE에서는 기존 `status`, `table`, `chart`, `done` event와 citation/abstain payload가
+그대로 유지되는 것을 확인했다. `enabled` 모드에서도 신규 Pipe 결과는 기존 ChatEvent
+경계로 전달되며, 근거 부족 결과는 숫자를 생성하지 않고 `abstained=true`로 종료한다.
+
+동일 session 4턴 검증에서는 1턴 legacy price 결과가 typed history에 저장되고, 2턴의
+`그중`/기간 filter가 해당 binding을 사용했으며, 3턴은 price history와 수입 조회를
+병렬 dependency로 구성한 뒤 수입 데이터 부족을 abstain했다. 4턴의 ordinal/document
+reference도 typed binding으로 resolve되며 대상 row가 없을 때 selector failure가
+Pipe `FAILED`로 변환되어 기존 SSE abstain 경로로 내려간다.
+
+실서비스 검증 blocker는 orchestration에서 우회하지 않았다.
+
+- PageIndex tree mount가 없는 이미지에서는 PageIndex retrieval이 실패한다.
+- 현재 연결 DB에는 `public.ai_hs_mnrl_map`이 없어 무역 조회가 실패한다.
+- 기존 `komis_price_volatility_ranking` tool은 `_any_dummy` NameError를 반환한다.
+- application history는 현재 `InMemoryHistoryStore`이므로 단일 프로세스 검증용이며,
+  재시작·다중 worker 영속성은 후속 HistoryStore backend 작업으로 남아 있다.
+
+위 blocker 때문에 가격 ranking→TopK→수입 ArgMax의 실제 수치 성공을 주장하지 않는다.
+다만 AST, dependency, 기존 tool 호출, evidence validation, deterministic abstain 및
+기존 SSE까지의 서비스 경로는 확인했다. PostgreSQL/PageIndex/OKF/Frontend protocol은
+이번 통합에서 수정하지 않았다.
