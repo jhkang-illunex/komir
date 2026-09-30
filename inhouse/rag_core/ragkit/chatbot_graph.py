@@ -3828,18 +3828,23 @@ def retrieve_evidence(
                 and "가격" in question
                 and not any(action.action_id == "price.series" for action in original_plan.actions)):
             monthly_minerals = _monthly_document_minerals(verified_evidence)
+            wants_three_months = "3개월" in question.replace(" ", "")
             for mineral in monthly_minerals:
-                price = ActionCall(
-                    requirement_id=f"monthly_price_{mineral}", action_id="price.series",
-                    slots=ActionSlots(
-                        mineral=mineral, period=Period(kind="latest"),
-                        requested_outputs={"text", "table", "chart"},
-                    ),
-                    intent="price_series", role="data", depends_on=[call.requirement_id],
-                )
-                if validate_action_plan(ActionPlan(actions=[call, price])).approved:
-                    original_plan.actions.append(price)
-                    scheduled_calls.append(price)
+                periods = [("latest", Period(kind="latest"))]
+                if wants_three_months:
+                    periods.append(("trailing_3_month_price_series", Period(kind="trailing_months", trailing_months=3)))
+                for output_id, period in periods:
+                    price = ActionCall(
+                        requirement_id=f"monthly_price_{mineral}_{output_id}", action_id="price.series",
+                        slots=ActionSlots(
+                            mineral=mineral, period=period,
+                            requested_outputs={"text", "table", "chart"},
+                        ),
+                        intent="price_series", role="data", depends_on=[call.requirement_id],
+                    )
+                    if validate_action_plan(ActionPlan(actions=[call, price])).approved:
+                        original_plan.actions.append(price)
+                        scheduled_calls.append(price)
         # 보고서에서 확인된 광종을 무역 지표 후속 Action으로 연결한다. 보고서
         # 원문에서 추출된 광종만 입력으로 사용하고, TSI/집중도는 각각 별도
         # capability로 실행한다. 데이터가 없는 광종은 후속 결과에서 개별

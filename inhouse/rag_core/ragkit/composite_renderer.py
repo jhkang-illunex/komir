@@ -830,9 +830,18 @@ def render_composite(evidence: list, action_plan, action_results=None, *, trace:
             if outcome is not None and outcome.status == "success" and pair:
                 points = _price_points(pair[1])
                 if points:
+                    period = getattr(action.slots, "period", None)
+                    if period and period.kind == "trailing_months":
+                        lines.append(
+                            f"- {mineral} [trailing_{period.trailing_months}_month_price_series]: "
+                            f"{points[0][0].isoformat()}~{points[-1][0].isoformat()} "
+                            f"{len(points)}건 (성공)"
+                        )
+                        cited.add(pair[0])
+                        continue
                     observed, value = points[-1]
                     cited.add(pair[0])
-                    lines.append(f"- {mineral}: {observed.isoformat()} {_fmt(value)} (성공)")
+                    lines.append(f"- {mineral} [latest_price]: {observed.isoformat()} {_fmt(value)} (성공)")
                     continue
             reason = getattr(outcome, "failure_reason", None) if outcome else "not_executed"
             status = "NEEDS_SELECTION" if reason in {"ambiguous", "advisor_rejected"} else (
