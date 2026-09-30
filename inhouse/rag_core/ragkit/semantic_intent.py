@@ -105,6 +105,7 @@ class SemanticRequirement(BaseModel):
     comparison: Literal["same_month_previous_year"] | None = None
     aggregation: Literal["monthly_average", "monthly_latest"] | None = None
     topic: str | None = None
+    document_type: Literal["resource_news", "report", "concept"] | None = None
     hs_code: str | None = None
     trade_metric: Literal["tsi", "rca", "tii", "trade_growth", "country_dependency"] | None = None
     # A percentage change can exceed 100% (for example, a price that triples
@@ -192,8 +193,9 @@ requested_outputs와 requirements의 output coverage가 맞지 않으면 불완�
   indicator_variant=composite, operation=period_change. 가격 추세와 함께 요청되면
   price/price_series requirement와 indicator/series requirement를 각각 만든다.
 - 월간동향·자원뉴스 내용 조회(가격 추이와 함께인 경우 포함)는 domain=document,
-  metric=retrieve로 표현한다. document 내용 요청을 trade/monthly 또는 price/monthly로
-  바꾸지 않는다.
+  metric=retrieve로 표현한다. 자원뉴스는 document_type=resource_news를 함께 기록하고
+  topic에는 광종·기간 등 검색 조건을 보존한다. document 내용 요청을 trade/monthly 또는
+  price/monthly로 바꾸지 않는다.
 - "월간동향 게시판 검색은 어떻게 해?"처럼 사용 방법을 묻는 FAQ는 semantic data/content로
   재해석하지 말고 unresolved로 닫아 기존 FAQ/menu legacy 경로를 사용한다.
 - 용도·기본특성·광석 종류 같은 개념/사실 설명은 domain=concept, metric=retrieve,
@@ -305,6 +307,7 @@ def canonical_signature(plan: SemanticPlan | None) -> tuple[dict[str, Any], ...]
             "comparison": item.comparison,
             "aggregation": item.aggregation,
             "topic": item.topic,
+            "document_type": item.document_type,
             "hs_code": item.hs_code,
             "trade_metric": item.trade_metric,
             "claimed_change_pct": item.claimed_change_pct,
@@ -800,12 +803,17 @@ def _to_intent_call(item: SemanticRequirement, index: int) -> Any:
                           slots=ActionSlots(mineral=mineral, period=_period(item.period),
                                             forecast_operation=forecast_operation))
     if item.domain == "document" and item.metric in {"retrieve", "lookup", "facts"}:
-        if not item.topic:
+        topic = item.topic
+        if item.document_type == "resource_news":
+            topic = "일일 자원뉴스" + (f" {mineral}" if mineral else "")
+        if not topic:
             raise SemanticResolutionError("document retrieval requires topic")
         intent = "okf_lookup" if item.metric == "lookup" else ("document_facts" if item.metric == "facts" else "document")
+        selection = _selection(item)
+        top_n = (selection.limit if selection is not None and selection.mode == "rank" else item.top_n)
         return IntentCall(requirement_id=_requirement_id(item, index), intent=intent, role="content",
-                          slots=ActionSlots(mineral=mineral, topic=item.topic, hs_code=item.hs_code,
-                                            period=_period(item.period)))
+                          slots=ActionSlots(mineral=mineral, topic=topic, hs_code=item.hs_code,
+                                            period=_period(item.period), top_n=top_n))
     if item.domain == "concept" and item.metric in {"retrieve", "lookup", "facts"}:
         if not item.topic:
             raise SemanticResolutionError("concept retrieval requires topic")

@@ -2,6 +2,16 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-30 — 일일 자원뉴스 typed 광종 필터 보존
+
+실제 질의 `일일 자원뉴스에서 광종이 니켈인 것만 최신것으로 표시해주세요`에서 Gemma가
+광종 `니켈`은 보존했지만 뉴스 문서 유형을 topic에서 탈락시켜 일반 document route로
+내려갔고, 최종적으로 `ambiguous` 기권했다.
+
+`SemanticRequirement.document_type=resource_news`를 추가해 뉴스 capability를 AST에
+명시하고, lowering 시 `일일 자원뉴스 니켈` typed topic으로 기존 news adapter에 연결한다.
+정규식이나 원문 phrase 보정은 추가하지 않았다.
+
 ## 2026-09-30 — 최근 3개월 가격 extrema output coverage 수정
 
 실제 `18005`에서 `니켈 최근 3개월 가격중에서 최고가가 가장 높은 날짜가 언제인가요?`를
