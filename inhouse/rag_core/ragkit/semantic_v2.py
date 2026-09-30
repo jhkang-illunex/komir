@@ -115,21 +115,35 @@ class RequestedOutput(BaseModel):
         }.get(str(value), value)
 
 
+class RelationshipSpec(BaseModel):
+    """Semantic relation between requirements; contains no physical action."""
+    model_config = ConfigDict(extra="forbid")
+    kind: Literal["filter", "compare", "join"]
+    inputs: list[str] = Field(min_length=1)
+    join_key: str | None = None
+    predicate: dict[str, Any] | None = None
+    fields: list[str] = Field(default_factory=list)
+
+
 class SemanticRequirementPlanV2(BaseModel):
     model_config = ConfigDict(extra="forbid")
     schema_version: str = "semantic-requirement-v2"
     requirements: list[SemanticRequirementV2] = Field(min_length=1)
     requested_outputs: list[RequestedOutput] = Field(default_factory=list)
     presentation: dict[str, Any] = Field(default_factory=dict)
+    relationships: list[RelationshipSpec] = Field(default_factory=list)
 
 
 V2_SEMANTIC_PROMPT = """자연어 BI 질문을 semantic-requirement-v2 JSON으로 변환한다.
 사용자가 무엇을 원하는지만 표현하며 실행 방법은 표현하지 않는다.
-반드시 다음만 사용한다: entities, requirements, requested_outputs, presentation.
+반드시 다음만 사용한다: entities, requirements, requested_outputs, presentation,
+relationships.
 requirements.metric은 usage, price, price_change, import_value, import_change,
 production, reserves, country_share, concentration, document_evidence 중 하나다.
 requirements에는 entity, metric, time_range, flow, scope, constraints,
 requested_outputs, selection을 사용할 수 있다.
+requirement 사이의 filter/compare/join 관계가 명시되면 relationships에 기록한다.
+relationships의 inputs는 requirements의 requirement_id만 사용한다.
 
 절대 출력하지 말 것: ActionId, IntentCall, ActionCall, actor, tool, SQL, table,
 physical route. 복합 요구는 requirement를 여러 개 생성하고 requested_outputs를
@@ -269,83 +283,150 @@ class LogicalProgramV2(BaseModel):
         return self.model_dump(mode="json")
 
 
-def logical_program_from_requirements(plan: SemanticRequirementPlanV2) -> LogicalProgramV2:
-    """Compile requirements into a small logical AST without physical names."""
-    nodes: list[LogicalNodeV2] = []
-    roots: list[str] = []
-    for req in plan.requirements:
-        entity = req.entity.model_dump(mode="json") if req.entity else None
-        node_id = req.requirement_id
-        if req.metric == Metric.USAGE or req.metric == Metric.DOCUMENT_EVIDENCE:
-            op = Primitive.RETRIEVE
-            output_type = "DocumentEvidence"
-        elif req.metric == Metric.PRICE:
-            op = Primitive.RETRIEVE
-            output_type = "TimeSeries<PriceObservation>"
-        elif req.metric in {Metric.PRICE_CHANGE, Metric.IMPORT_CHANGE}:
-            op = Primitive.CALCULATE
-            output_type = "FactSet"
-        else:
-            op = Primitive.RETRIEVE
-            output_type = "FactSet"
-        args = {"entity": entity, "metric": req.metric.value}
+class DeterministicLogicalPlanner:
+    """Build a logical DAG from typed requirements, never from raw language."""
+
+    _BASE_METRIC: dict[Metric, Metric] = {
+        Metric.PRICE_CHANGE: Metric.PRICE,
+        Metric.IMPORT_CHANGE: Metric.IMPORT_VALUE,
+    }
+
+    def plan(self, plan: SemanticRequirementPlanV2) -> LogicalProgramV2:
+        plan_nodes: list[LogicalNodeV2] = []
+        roots: list[str] = []
+        requirement_roots: dict[str, str] = {}
+        for req in plan.requirements:
+            entity = req.entity.model_dump(mode="json") if req.entity else None
+            base_metric = self._BASE_METRIC.get(req.metric)
+            if base_metric is not None:
+                retrieve_id = f"{req.requirement_id}_retrieve"
+                plan_nodes.append(LogicalNodeV2(
+                    node_id=retrieve_id,
+                    op=Primitive.RETRIEVE,
+                    arguments=self._arguments(req, base_metric, entity),
+                    output_type="TimeSeries" if base_metric == Metric.PRICE else "FactSet",
+                ))
+                node_id = req.requirement_id
+                plan_nodes.append(LogicalNodeV2(
+                    node_id=node_id,
+                    op=Primitive.CALCULATE,
+                    inputs=[InputRefV2(node_id=retrieve_id)],
+                    arguments={"metric": req.metric.value},
+                    output_type="FactSet",
+                ))
+            else:
+                node_id = req.requirement_id
+                plan_nodes.append(LogicalNodeV2(
+                    node_id=node_id,
+                    op=Primitive.RETRIEVE,
+                    arguments=self._arguments(req, req.metric, entity),
+                    output_type="DocumentEvidence" if req.metric in {Metric.USAGE, Metric.DOCUMENT_EVIDENCE} else "FactSet",
+                ))
+
+            if req.selection:
+                node_id = self._add_selection(plan_nodes, node_id, req)
+            if req.limit and not req.selection:
+                sort_id = f"{node_id}_sort"
+                plan_nodes.append(LogicalNodeV2(
+                    node_id=sort_id,
+                    op=Primitive.SORT,
+                    inputs=[InputRefV2(node_id=node_id)],
+                    arguments={"field": req.metric.value, "order": "desc"},
+                    output_type="FactSet",
+                ))
+                node_id = f"{node_id}_topk"
+                plan_nodes.append(LogicalNodeV2(
+                    node_id=node_id,
+                    op=Primitive.TOP_K,
+                    inputs=[InputRefV2(node_id=sort_id)],
+                    arguments={"k": req.limit},
+                    output_type="EntitySet",
+                ))
+            requirement_roots[req.requirement_id] = node_id
+            roots.append(node_id)
+
+        relation_roots: list[str] = []
+        for relation in plan.relationships:
+            inputs = [requirement_roots[item] for item in relation.inputs if item in requirement_roots]
+            if len(inputs) != len(relation.inputs):
+                raise ValueError(f"relationship references unknown requirement: {relation.inputs}")
+            if relation.kind == "filter":
+                node_id = f"relation_filter_{len(relation_roots)}"
+                node = LogicalNodeV2(node_id=node_id, op=Primitive.FILTER,
+                    inputs=[InputRefV2(node_id=item) for item in inputs],
+                    arguments={"predicate": relation.predicate or {}}, output_type="FactSet", requested=True)
+            elif relation.kind == "compare":
+                node_id = f"relation_compare_{len(relation_roots)}"
+                node = LogicalNodeV2(node_id=node_id, op=Primitive.COMPARE,
+                    inputs=[InputRefV2(node_id=item) for item in inputs],
+                    arguments={"join_key": relation.join_key, "fields": relation.fields}, output_type="Comparison", requested=True)
+            else:
+                node_id = f"relation_join_{len(relation_roots)}"
+                node = LogicalNodeV2(node_id=node_id, op=Primitive.JOIN,
+                    inputs=[InputRefV2(node_id=item) for item in inputs],
+                    arguments={"join_key": relation.join_key}, output_type="FactSet", requested=True)
+            plan_nodes.append(node)
+            relation_roots.append(node_id)
+        if relation_roots:
+            roots = relation_roots
+
+        requested_names = {item.name for item in plan.requested_outputs}
+        if len(roots) > 1 and (plan.presentation.get("type") == "comparison" or "price_comparison" in requested_names):
+            compare_id = "comparison_root"
+            plan_nodes.append(LogicalNodeV2(
+                node_id=compare_id, op=Primitive.COMPARE,
+                inputs=[InputRefV2(node_id=node_id) for node_id in roots],
+                arguments={"fields": list(requested_names)}, output_type="Comparison", requested=True,
+            ))
+            roots = [compare_id]
+        if len(roots) > 1:
+            composite_id = "composite_root"
+            plan_nodes.append(LogicalNodeV2(
+                node_id=composite_id, op=Primitive.COMPOSITE,
+                inputs=[InputRefV2(node_id=node_id) for node_id in roots],
+                arguments={"requested_outputs": [item.name for item in plan.requested_outputs]},
+                output_type="CompositeResult", requested=True,
+            ))
+            roots = [composite_id]
+        program = LogicalProgramV2(nodes=plan_nodes, roots=roots)
+        program.validate_structure()
+        return program
+
+    @staticmethod
+    def _arguments(req: SemanticRequirementV2, metric: Metric, entity: dict[str, Any] | None) -> dict[str, Any]:
+        args: dict[str, Any] = {"entity": entity, "metric": metric.value}
         if req.time_range:
             args["time_range"] = req.time_range.model_dump(mode="json")
         if req.flow:
             args["flow"] = req.flow
         if req.scope:
             args["scope"] = req.scope
-        if req.selection:
-            args["selection"] = req.selection
-        nodes.append(LogicalNodeV2(
-            node_id=node_id,
-            op=op,
-            arguments=args,
-            output_type=output_type,
-            requested=bool(req.requested_outputs),
-        ))
-        roots.append(node_id)
-        if req.selection and req.metric == Metric.PRICE:
-            select_id = f"{node_id}_select"
-            nodes.append(LogicalNodeV2(
-                node_id=select_id,
-                op=Primitive.SELECT,
-                inputs=[InputRefV2(node_id=node_id)],
-                arguments=dict(req.selection),
-                output_type="PriceObservation",
-                requested=bool(req.requested_outputs),
-            ))
-            roots[-1] = select_id
-    requested_names = {item.name for item in plan.requested_outputs}
-    if len(roots) > 1 and (
-        plan.presentation.get("type") == "comparison" or "price_comparison" in requested_names
-    ):
-        price_requirements = [req for req in plan.requirements if req.metric == Metric.PRICE]
-        if len(price_requirements) == 2:
-            compare_id = "comparison_root"
-            nodes.append(LogicalNodeV2(
-                node_id=compare_id,
-                op=Primitive.COMPARE,
-                inputs=[InputRefV2(node_id=node_id) for node_id in roots],
-                arguments={"entities": [req.entity.value for req in price_requirements if req.entity and req.entity.value]},
-                output_type="Comparison",
-                requested=True,
-            ))
-            roots = [compare_id]
-    if len(roots) > 1:
-        composite_id = "composite_root"
-        nodes.append(LogicalNodeV2(
-            node_id=composite_id,
-            op=Primitive.COMPOSITE,
-            inputs=[InputRefV2(node_id=node_id) for node_id in roots],
-            arguments={"requested_outputs": [item.name for item in plan.requested_outputs]},
-            output_type="CompositeResult",
-            requested=True,
-        ))
-        roots = [composite_id]
-    program = LogicalProgramV2(nodes=nodes, roots=roots)
-    program.validate_structure()
-    return program
+        return args
+
+    @staticmethod
+    def _add_selection(nodes: list[LogicalNodeV2], source_id: str, req: SemanticRequirementV2) -> str:
+        selection = req.selection or {}
+        mode = str(selection.get("mode", ""))
+        if mode in {"rank", "sort", "desc", "asc"} or req.limit:
+            sort_id = f"{source_id}_sort"
+            nodes.append(LogicalNodeV2(node_id=sort_id, op=Primitive.SORT,
+                inputs=[InputRefV2(node_id=source_id)], arguments=dict(selection), output_type="FactSet"))
+            if req.limit:
+                top_id = f"{source_id}_topk"
+                nodes.append(LogicalNodeV2(node_id=top_id, op=Primitive.TOP_K,
+                    inputs=[InputRefV2(node_id=sort_id)], arguments={"k": req.limit}, output_type="EntitySet"))
+                return top_id
+            return sort_id
+        select_id = f"{source_id}_select"
+        nodes.append(LogicalNodeV2(node_id=select_id, op=Primitive.SELECT,
+            inputs=[InputRefV2(node_id=source_id)], arguments=dict(selection),
+            output_type="PriceObservation", requested=bool(req.requested_outputs)))
+        return select_id
+
+
+def logical_program_from_requirements(plan: SemanticRequirementPlanV2) -> LogicalProgramV2:
+    """Compatibility wrapper for callers of the pre-planner API."""
+    return DeterministicLogicalPlanner().plan(plan)
 
 
 def validate_output_coverage(
@@ -421,9 +502,9 @@ class LegacyActionLowerer:
 
 
 __all__ = [
-    "CAPABILITIES", "Capability", "EntityRef", "InputRefV2", "LegacyActionLowerer",
+    "CAPABILITIES", "Capability", "DeterministicLogicalPlanner", "EntityRef", "InputRefV2", "LegacyActionLowerer",
     "LogicalNodeV2", "LogicalProgramV2", "Metric", "Primitive", "RequestedOutput",
-    "SemanticRequirementPlanV2", "SemanticRequirementV2", "TimeRange", "V2_SEMANTIC_PROMPT",
+    "RelationshipSpec", "SemanticRequirementPlanV2", "SemanticRequirementV2", "TimeRange", "V2_SEMANTIC_PROMPT",
     "V2ShadowTrace", "logical_program_from_requirements", "parse_v2_shadow", "record_v2_shadow",
     "validate_output_coverage",
 ]

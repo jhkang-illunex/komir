@@ -20,6 +20,8 @@ from rag_core.ragkit.semantic_v2 import (  # noqa: E402
     logical_program_from_requirements,
     validate_output_coverage,
     parse_v2_shadow,
+    RelationshipSpec,
+    DeterministicLogicalPlanner,
 )
 
 
@@ -119,3 +121,31 @@ def test_v2_shadow_adapter_accepts_gemma_structured_plan_and_never_changes_produ
     assert {item["action_id"] for item in trace.lowering} == {"document.retrieve", "price.series"}
     assert all("action_id" not in node for node in trace.logical_program["nodes"])
     assert llm.calls[0]["task"] == "semantic_requirement_v2"
+
+
+def test_deterministic_planner_expands_change_metric_into_retrieve_and_calculate():
+    plan = _plan(
+        SemanticRequirementV2(requirement_id="r", entity=EntityRef(value="리튬"), metric=Metric.PRICE_CHANGE, limit=5),
+        outputs=("mineral_info",),
+    )
+    logical = DeterministicLogicalPlanner().plan(plan)
+    assert [node.op for node in logical.nodes] == [Primitive.RETRIEVE, Primitive.CALCULATE, Primitive.SORT, Primitive.TOP_K]
+    assert logical.roots == ["r_topk"]
+
+
+def test_relationship_spec_builds_filter_and_compare_without_physical_action_names():
+    plan = SemanticRequirementPlanV2(
+        requirements=[
+            SemanticRequirementV2(requirement_id="imports", entity=EntityRef(value="리튬"), metric=Metric.IMPORT_CHANGE),
+            SemanticRequirementV2(requirement_id="price", entity=EntityRef(value="리튬"), metric=Metric.PRICE),
+        ],
+        requested_outputs=[RequestedOutput(name="price_comparison")],
+        relationships=[RelationshipSpec(
+            kind="compare", inputs=["imports", "price"], join_key="entity",
+            fields=["import_change", "price"],
+        )],
+    )
+    logical = DeterministicLogicalPlanner().plan(plan)
+    relation = next(node for node in logical.nodes if node.node_id == "relation_compare_0")
+    assert relation.op == Primitive.COMPARE
+    assert all("action_id" not in node.model_dump() for node in logical.nodes)
