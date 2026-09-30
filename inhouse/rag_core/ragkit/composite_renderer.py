@@ -9,7 +9,7 @@ from .chatbot_events import extract_markdown_tables
 from .action_contract import COMPOSITE_INDEX_VARIANTS
 from .renderers.price import price_display_unit
 from .renderers.price_blocks import render_price_forecast_blocks, render_price_rank_yoy_blocks
-from .renderers.resource_rank import render_production_reserves_pair
+from .renderers.resource_rank import render_production_reserves_pair, render_resource_operation
 
 
 def _keys(table):
@@ -379,7 +379,7 @@ def _usage_sentence(text):
     return None
 
 
-def render_composite(evidence: list, action_plan, action_results=None) -> tuple[str, set[int]] | None:
+def render_composite(evidence: list, action_plan, action_results=None, *, trace: dict | None = None) -> tuple[str, set[int]] | None:
     """현재 연결된 표로 계산 가능한 복합 계약만 렌더링한다.
 
     ``action_results``가 주어지면 일부 Action의 조회 실패를 반영해 성공한
@@ -387,6 +387,8 @@ def render_composite(evidence: list, action_plan, action_results=None) -> tuple[
     Action의 수치로 대체하지 않도록, 현재 지원하는 부분 응답 계약을 먼저
     처리한다.
     """
+    if trace is not None:
+        trace.update({"entered": True, "selected_renderer": None, "attempts": []})
     actions = list(getattr(action_plan, "actions", ()) or ())
     ids = [getattr(action, "action_id", None) for action in actions]
     by_action = {}
@@ -396,7 +398,14 @@ def render_composite(evidence: list, action_plan, action_results=None) -> tuple[
     # 이 조합은 별도 renderer가 응답을 담당한다. 기존 조합별 응답 계약은 아래에 유지한다.
     resource_rank_pair = render_production_reserves_pair(evidence, action_plan, action_results)
     if resource_rank_pair is not None:
+        if trace is not None:
+            trace["selected_renderer"] = "production_reserves_pair"
         return resource_rank_pair
+    resource_operation = render_resource_operation(evidence, action_plan, action_results, trace=trace)
+    if resource_operation is not None:
+        if trace is not None:
+            trace["selected_renderer"] = "resource_operation"
+        return resource_operation
 
     # MP03(price+rank)·MP04(price+YoY)는 공통 블록 조립기가 처리한다.
     # 다른 Action 조합은 이 진입점에서 매칭되지 않아 기존 분기를 유지한다.

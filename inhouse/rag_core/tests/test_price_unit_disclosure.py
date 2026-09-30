@@ -46,7 +46,17 @@ class PriceUnitDisclosureTest(unittest.TestCase):
         assert scope is not None
         answer, cited = scope
         self.assertNotIn("가격 기준은 [DEV_DUMMY]", answer)
-        self.assertEqual(chatbot._dummy_data_notice(cited, [evidence]), "")
+        self.assertIn("개발용 더미", chatbot._dummy_data_notice(cited, [evidence]))
+        self.assertEqual(chatbot._data_warnings(cited, [evidence]),
+                         ["confirmed_dev_dummy:actual_price_not_supported"])
+
+    def test_non_price_dummy_caveat_does_not_become_price_warning(self):
+        evidence = Evidence(
+            kind="structured", source="public.KO_RSRC_PRDCTN_QUTY", section="생산량",
+            text="생산량 자료", action_id="resource.rank", caveat="개발용 더미 데이터",
+        )
+        self.assertEqual(chatbot._dummy_data_notice({1}, [evidence]), "")
+        self.assertEqual(chatbot._data_warnings({1}, [evidence]), [])
 
     def test_dummy_prefix_is_removed_but_actual_basis_is_kept(self):
         self.assertEqual(

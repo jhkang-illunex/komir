@@ -7,7 +7,8 @@ from common.db import pg_connect
 from .evidence import Evidence
 
 
-def fetch_inventory_evidence(mineral: str, *, basis: str | None = None) -> tuple[list[Evidence], list[str]]:
+def fetch_inventory_evidence(mineral: str | None, *, basis: str | None = None,
+                             price_criterion_serial: int | None = None) -> tuple[list[Evidence], list[str]]:
     """`ko_mnrl_prc.invt`만 재고로 반환하고 가격 값과 섞지 않는다.
 
     광종은 매핑 테이블에서 가격기준 일련번호로 해소하고, 그 일련번호를
@@ -18,7 +19,10 @@ def fetch_inventory_evidence(mineral: str, *, basis: str | None = None) -> tuple
         con = pg_connect()
         with con.cursor() as cur:
             criterion_filter = ""
-            params: list[object] = [mineral]
+            params: list[object] = [mineral] if mineral else []
+            mineral_filter = "m.mnrl_nm_ko = %s" if mineral else "pm.mnrl_prc_crtr_sn = %s"
+            if not mineral:
+                params = [price_criterion_serial]
             if basis:
                 criterion_filter = " AND c.prc_crtr ILIKE %s"
             params.append(date.today().strftime("%Y%m%d"))
@@ -32,7 +36,7 @@ def fetch_inventory_evidence(mineral: str, *, basis: str | None = None) -> tuple
                 "JOIN public.ai_mnrl_mst m ON m.mnrknd_unq_cd = pm.mnrknd_unq_cd "
                 "JOIN public.ko_mnrl_prc_crtr c ON c.mnrl_prc_crtr_sn = pm.mnrl_prc_crtr_sn "
                 "JOIN public.ko_mnrl_prc p ON p.mnrl_prc_crtr_sn = c.mnrl_prc_crtr_sn "
-                "WHERE m.mnrl_nm_ko = %s AND pm.use_yn = 'Y' "
+                "WHERE " + mineral_filter + " AND pm.use_yn = 'Y' "
                 "AND p.status = 'Y' AND p.last_del_dt IS NULL "
                 "AND p.invt IS NOT NULL AND p.invt <> 0 AND p.crtr_ymd <= %s" + criterion_filter +
                 " ORDER BY p.crtr_ymd DESC, p.mnrl_prc_crtr_sn ASC LIMIT %s",

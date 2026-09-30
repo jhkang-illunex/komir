@@ -55,6 +55,12 @@ class _Repository:
 
 
 class PeriodLimitTest(unittest.TestCase):
+    def test_raw_lookup_warning_labels_accept_metadata_dicts(self):
+        # 일부 원천/집계 metadata가 label 대신 행 dict를 전달해도 public tool이
+        # str.join 타입 오류로 실패하지 않아야 한다.
+        rendered = tools._display_labels([{"mineral": "니켈"}, "구리"])
+        self.assertEqual(rendered, "{'mineral': '니켈'}, 구리")
+
     def test_composite_index_is_public_but_market_and_supply_indicators_remain_private(self):
         self.assertNotIn("indicator_composite", PRIVATE_ONLY_KOMIS_PAGES)
         self.assertEqual(PRIVATE_ONLY_KOMIS_PAGES, {"indicator_market", "indicator_supply"})

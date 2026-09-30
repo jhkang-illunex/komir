@@ -62,6 +62,19 @@ from .data_source_policy import DataSourcePolicy, policy_for_data_source
 from .strategic_price_groups import load_strategic_price_members
 
 
+def _display_labels(values: Any, *, separator: str = ", ") -> str:
+    """경고/메타데이터용 label을 안전하게 문자열로 직렬화한다.
+
+    원천 metadata는 정상적으로는 문자열 목록이지만, 일부 조회 경로에서는
+    행/상태 dict가 그대로 전달될 수 있다. 이를 ``str.join``에 넘기면 MCP
+    tool 전체가 ``expected str instance, dict found``로 실패하므로, 표시용
+    경계에서만 문자열화한다. 실행 인자나 데이터 값은 변경하지 않는다.
+    """
+    if values is None:
+        return ""
+    return separator.join(str(value) for value in values)
+
+
 def _evidence_dict(ev: Evidence | None) -> dict[str, Any] | None:
     return dataclasses.asdict(ev) if ev is not None else None
 
@@ -321,6 +334,37 @@ def register_common_tools(
         repo = KomisRawDataRepository()
         warnings: list[str] = []
 
+        if mineral_code and page_id in _PRICE_PAGES and price_criterion_serial is not None:
+            # DEV_DUMMY 가격기준은 일반 챗봇의 후보·기본값·실행 대상에서
+            # 제외한다. 광종 마스터의 출처가 아니라 선택한 기준의 관측
+            # provenance를 판정하므로, 광종 전체를 일괄 차단하지 않는다.
+            try:
+                dummy_status = repo.price_criteria_have_dummy_rows([price_criterion_serial])
+            except RawDataAccessError as exc:
+                return {"evidence": [], "warnings": [str(exc)]}
+            if dummy_status.get(price_criterion_serial) is True:
+                return {
+                    "evidence": [],
+                    "warnings": [
+                        f"가격기준 {price_criterion_serial}은 DEV_DUMMY 관측 기준이라 "
+                        "일반 챗봇 가격 조회 대상에서 제외됩니다."
+                    ],
+                }
+            try:
+                belongs = repo.price_criterion_belongs_to_mineral(
+                    price_criterion_serial, mineral_code,
+                )
+            except RawDataAccessError as exc:
+                return {"evidence": [], "warnings": [str(exc)]}
+            if not belongs:
+                return {
+                    "evidence": [],
+                    "warnings": [
+                        f"가격기준 {price_criterion_serial}은 광종 {mineral_code}에 "
+                        "매핑되어 있지 않아 조회를 거부했습니다."
+                    ],
+                }
+
         if mineral_code and page_id in _PRICE_PAGES and price_criterion_serial is None:
             try:
                 serials = repo.resolve_price_criterion_serials(mineral_code)
@@ -331,12 +375,34 @@ def register_common_tools(
                     "evidence": [],
                     "warnings": [f"'{mineral_code}'에 대응하는 가격기준을 ai_prc_mnrl_map에서 찾지 못했습니다."],
                 }
-            request = request.model_copy(update={"price_criterion_serial": serials[0]})
+            try:
+                dummy_status = repo.price_criteria_have_dummy_rows(serials)
+            except RawDataAccessError as exc:
+                return {"evidence": [], "warnings": [str(exc)]}
+            serials = [serial for serial in serials if dummy_status.get(serial) is not True]
+            if not serials:
+                return {
+                    "evidence": [],
+                    "warnings": [
+                        f"'{mineral_code}'에 비더미 가격기준이 없어 일반 챗봇 가격 조회를 제공할 수 없습니다."
+                    ],
+                }
             if len(serials) > 1:
-                warnings.append(
-                    f"'{mineral_code}'는 가격기준이 {len(serials)}개{serials}라 "
-                    f"그중 첫 번째({serials[0]})만 미리보기로 조회했습니다."
-                )
+                options: list[str] = []
+                for serial in serials:
+                    metadata = repo.resolve_price_criterion_metadata(serial)
+                    label = metadata[0] if metadata and metadata[0] else "설명 없음"
+                    currency = metadata[1] if metadata and metadata[1] else "통화 미상"
+                    weight = metadata[2] if metadata and metadata[2] else "중량단위 미상"
+                    options.append(f"{serial}={label} ({currency}/{weight})")
+                return {
+                    "evidence": [],
+                    "warnings": [
+                        f"price_criterion_selection_required:{mineral_code}:"
+                        + "; ".join(options)
+                    ],
+                }
+            request = request.model_copy(update={"price_criterion_serial": serials[0]})
         elif mineral_code and page_id in _HS_TRANSLATE_PAGES and hs_code is None:
             try:
                 hs_codes = repo.resolve_hs_codes(mineral_code)
@@ -812,7 +878,7 @@ def register_common_tools(
             if not prior.rows or prior_same_period is None or not prior_same_period.rows:
                 missing_columns.add("prior_year_data")
         return {"evidence": [dataclasses.asdict(e) for e in evidence],
-                "warnings": [f"aggregate_incomplete:missing_columns:{','.join(sorted(missing_columns))}"]
+                "warnings": [f"aggregate_incomplete:missing_columns:{_display_labels(sorted(map(str, missing_columns)), separator=',')}" ]
                 if missing_columns else []}
 
     @mcp.tool()
@@ -944,7 +1010,7 @@ def register_common_tools(
             evidence.extend(from_komis_aggregate(compare_dataset, label=f"{window_label}동일 기간 가격 변동률",
                                                  is_dummy=is_dummy, menu_page_id="price_base_metals"))
         missing = dataset.metadata.get("missing_minerals") or []
-        warnings = [f"aggregate_incomplete:missing_minerals:{','.join(missing)}"] if missing else []
+        warnings = [f"aggregate_incomplete:missing_minerals:{_display_labels(missing, separator=',')}"] if missing else []
         return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}
 
     @mcp.tool()
@@ -1021,10 +1087,10 @@ def register_common_tools(
         warnings: list[str] = []
         if dummy_labels:
             warnings.append("⚠ 다음 가격 행은 KOMIS 실제 표본이 아닌 개발용 더미입니다: "
-                            + ", ".join(sorted(set(dummy_labels))))
+                            + _display_labels(sorted(set(map(str, dummy_labels)))))
         missing = view.metadata.get("missing_minerals") or []
         if missing:
-            warnings.append("가격 기준 또는 관측값이 없는 전략광종: " + ", ".join(missing))
+            warnings.append("가격 기준 또는 관측값이 없는 전략광종: " + _display_labels(missing))
         if dummy_by_serial is None:
             warnings.append("가격 원천의 더미 여부를 확인하지 못해 해당 가격 수치를 표시하지 않았습니다.")
         # 생성 결과가 긴 표를 요약하면서 경고를 생략해도, 인용된 Evidence의
@@ -1033,7 +1099,7 @@ def register_common_tools(
         if dummy_labels:
             caveat_parts.append("표의 원천 상태가 dev_dummy인 행은 개발용 예시 데이터이며 실제 가격이 아닙니다")
         if missing:
-            caveat_parts.append("가격 기준 또는 관측값이 없는 광종은 가격을 생성하지 않았습니다: " + ", ".join(missing))
+            caveat_parts.append("가격 기준 또는 관측값이 없는 광종은 가격을 생성하지 않았습니다: " + _display_labels(missing))
         if dummy_by_serial is None:
             caveat_parts.append("가격 원천 상태를 확인하지 못한 행은 가격 수치를 표시하지 않았습니다")
         if evidence and caveat_parts:

@@ -1,0 +1,2596 @@
+{
+  "source": "documents/komis_ast_qa.json",
+  "validated_at": "2026-09-30",
+  "read_only": true,
+  "binding_rechecks": {
+    "price_criterion_101": {
+      "replacement": 501,
+      "db_evidence": "KO_MNRL_PRC_CRTR: MNRL_PRC_CRTR_SN=501, MNRKND_UNQ_CD=MNRL0008(동), PRC_CRTR=LME CASH; KO_MNRL_PRC 2024-01 rows=22",
+      "semantic_query_used": "구리의 최신 관측일 가격과 재고는?",
+      "result": "price.series success; inventory.latest advisor_rejected/source unavailable",
+      "note": "원문 '가격기준 101'을 정상값으로 덮어쓰지 않았고, 유효 DB binding을 별도 재검증함. 운영 DB 변경 없음."
+    },
+    "placeholder_policy": "hs10/hs6/horizon/index 및 의도적 결손 조건은 정상값으로 치환하지 않음"
+  },
+  "counts": {
+    "total": 184,
+    "executed": 28,
+    "pass": 0,
+    "fail": 16,
+    "blocked": 168
+  },
+  "notes": [
+    "QA JSON expected_behavior는 조건부 기대값이며 정답으로 사용하지 않음.",
+    "가격기준 101은 실제 DB에 없어 BLOCKED 유지. 유효한 실제 기준 501→동 binding을 별도 실행했으며 질문 결과는 binding_rechecks에 기록.",
+    "의도적인 UNANSWERABLE 결손 조건은 정상 데이터로 치환하지 않음.",
+    "실행된 0024~0039는 독립 SQL과 SSE 결과가 불일치하여 FAIL."
+  ],
+  "questions": [
+    {
+      "id": "QA-0001",
+      "question": "가격기준 101의 2024년 1월 2일 통상가격을 보여줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "PRICE_STATUS_AND_CRITERION"
+      ],
+      "executed": true,
+      "status": "BLOCKED",
+      "reason": "실제 DB에 가격기준 101이 존재하지 않음; KO_MNRL_PRC/KO_MNRL_PRC_CRTR read-only 조회에서 0건. QA fixture binding 미충족.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0002",
+      "question": "가격기준 101에서 가장 오래된 관측일의 가격은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "PRICE_STATUS_AND_CRITERION"
+      ],
+      "executed": true,
+      "status": "BLOCKED",
+      "reason": "실제 DB에 가격기준 101이 존재하지 않음; KO_MNRL_PRC/KO_MNRL_PRC_CRTR read-only 조회에서 0건. QA fixture binding 미충족.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0003",
+      "question": "가격기준 101의 최신 관측일 가격과 재고는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "PRICE_STATUS_AND_CRITERION"
+      ],
+      "executed": true,
+      "status": "BLOCKED",
+      "reason": "실제 DB에 가격기준 101이 존재하지 않음; KO_MNRL_PRC/KO_MNRL_PRC_CRTR read-only 조회에서 0건. QA fixture binding 미충족.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0004",
+      "question": "가격기준 101의 최근 관측 5개를 날짜순으로 보여줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "PRICE_STATUS_AND_CRITERION"
+      ],
+      "executed": true,
+      "status": "BLOCKED",
+      "reason": "실제 DB에 가격기준 101이 존재하지 않음; KO_MNRL_PRC/KO_MNRL_PRC_CRTR read-only 조회에서 0건. QA fixture binding 미충족.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0005",
+      "question": "가격기준 101의 최초 관측 3개를 보여줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "PRICE_STATUS_AND_CRITERION"
+      ],
+      "executed": true,
+      "status": "BLOCKED",
+      "reason": "실제 DB에 가격기준 101이 존재하지 않음; KO_MNRL_PRC/KO_MNRL_PRC_CRTR read-only 조회에서 0건. QA fixture binding 미충족.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0006",
+      "question": "가격기준 101의 2024년 1월 통상가격 최솟값은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "PRICE_STATUS_AND_CRITERION"
+      ],
+      "executed": true,
+      "status": "BLOCKED",
+      "reason": "실제 DB에 가격기준 101이 존재하지 않음; KO_MNRL_PRC/KO_MNRL_PRC_CRTR read-only 조회에서 0건. QA fixture binding 미충족.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0007",
+      "question": "가격기준 101의 2024년 1월 최고가격 필드의 최댓값은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "PRICE_STATUS_AND_CRITERION"
+      ],
+      "executed": true,
+      "status": "BLOCKED",
+      "reason": "실제 DB에 가격기준 101이 존재하지 않음; KO_MNRL_PRC/KO_MNRL_PRC_CRTR read-only 조회에서 0건. QA fixture binding 미충족.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0008",
+      "question": "가격기준 101의 2024년 1월 통상가격 산술평균은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "PRICE_STATUS_AND_CRITERION"
+      ],
+      "executed": true,
+      "status": "BLOCKED",
+      "reason": "실제 DB에 가격기준 101이 존재하지 않음; KO_MNRL_PRC/KO_MNRL_PRC_CRTR read-only 조회에서 0건. QA fixture binding 미충족.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0009",
+      "question": "가격기준 101의 2024년 1월 관측 행 수와 통상가격이 있는 행 수는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "PRICE_STATUS_AND_CRITERION"
+      ],
+      "executed": true,
+      "status": "BLOCKED",
+      "reason": "실제 DB에 가격기준 101이 존재하지 않음; KO_MNRL_PRC/KO_MNRL_PRC_CRTR read-only 조회에서 0건. QA fixture binding 미충족.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0010",
+      "question": "가격기준 101의 2024년 1월 최저가격 필드의 최솟값은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "PRICE_STATUS_AND_CRITERION"
+      ],
+      "executed": true,
+      "status": "BLOCKED",
+      "reason": "실제 DB에 가격기준 101이 존재하지 않음; KO_MNRL_PRC/KO_MNRL_PRC_CRTR read-only 조회에서 0건. QA fixture binding 미충족.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0011",
+      "question": "가격기준 101의 2024년 마지막 관측일 재고를 보여줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "PRICE_STATUS_AND_CRITERION"
+      ],
+      "executed": true,
+      "status": "BLOCKED",
+      "reason": "실제 DB에 가격기준 101이 존재하지 않음; KO_MNRL_PRC/KO_MNRL_PRC_CRTR read-only 조회에서 0건. QA fixture binding 미충족.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0012",
+      "question": "가격기준 101의 통상가격이 100을 초과한 날짜를 보여줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "PRICE_STATUS_AND_CRITERION"
+      ],
+      "executed": true,
+      "status": "BLOCKED",
+      "reason": "실제 DB에 가격기준 101이 존재하지 않음; KO_MNRL_PRC/KO_MNRL_PRC_CRTR read-only 조회에서 0건. QA fixture binding 미충족.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0013",
+      "question": "관세청에서 HS코드 {hs10}의 2024년 중국 수입금액 합계는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "FIXTURE_REQUIRED",
+      "required_contracts": [],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "QA placeholder 미바인딩: fixture에 필요한 hs10/hs6/horizon/index 또는 명시된 격리 결손 조건이 실제 운영 DB에 없음. 정상값 치환 금지.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0014",
+      "question": "관세청에서 HS코드 {hs10}의 2024년 중국 수입중량 합계는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "FIXTURE_REQUIRED",
+      "required_contracts": [],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "QA placeholder 미바인딩: fixture에 필요한 hs10/hs6/horizon/index 또는 명시된 격리 결손 조건이 실제 운영 DB에 없음. 정상값 치환 금지.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0015",
+      "question": "관세청에서 HS코드 {hs10}의 2024년 수출금액과 수입금액을 각각 보여줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "FIXTURE_REQUIRED",
+      "required_contracts": [],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "QA placeholder 미바인딩: fixture에 필요한 hs10/hs6/horizon/index 또는 명시된 격리 결손 조건이 실제 운영 DB에 없음. 정상값 치환 금지.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0016",
+      "question": "관세청에서 HS코드 {hs10}의 가장 이른 기준일은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "FIXTURE_REQUIRED",
+      "required_contracts": [],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "QA placeholder 미바인딩: fixture에 필요한 hs10/hs6/horizon/index 또는 명시된 격리 결손 조건이 실제 운영 DB에 없음. 정상값 치환 금지.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0017",
+      "question": "관세청에서 HS코드 {hs10}의 중국 거래 최신 6개 관측을 보여줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "FIXTURE_REQUIRED",
+      "required_contracts": [],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "QA placeholder 미바인딩: fixture에 필요한 hs10/hs6/horizon/index 또는 명시된 격리 결손 조건이 실제 운영 DB에 없음. 정상값 치환 금지.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0018",
+      "question": "관세청에서 HS코드 {hs10}의 2024년 수입 상대국 수는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "FIXTURE_REQUIRED",
+      "required_contracts": [],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "QA placeholder 미바인딩: fixture에 필요한 hs10/hs6/horizon/index 또는 명시된 격리 결손 조건이 실제 운영 DB에 없음. 정상값 치환 금지.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0019",
+      "question": "관세청에서 HS코드 {hs10}의 2024년 수입금액이 없는 행 수는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "FIXTURE_REQUIRED",
+      "required_contracts": [],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "QA placeholder 미바인딩: fixture에 필요한 hs10/hs6/horizon/index 또는 명시된 격리 결손 조건이 실제 운영 DB에 없음. 정상값 치환 금지.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0020",
+      "question": "UN에서 HS코드 {hs6}의 2024년 한국 수입금액을 보여줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "UN_REPORTER_FLOW_GRAIN"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0021",
+      "question": "UN에서 HS코드 {hs6}의 2024년 한국 수출중량을 보여줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "UN_REPORTER_FLOW_GRAIN"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0022",
+      "question": "UN에서 HS코드 {hs6}의 한국 수입이 기록된 최초 기준일은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "UN_REPORTER_FLOW_GRAIN"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0023",
+      "question": "UN에서 HS코드 {hs6}의 2024년 중국에서 한국으로 수입한 관측 수는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "UN_REPORTER_FLOW_GRAIN"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0024",
+      "question": "구리 생산량에서 2024년 칠레 값은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "TON_NORMALIZATION"
+      ],
+      "executed": true,
+      "status": "FAIL",
+      "reason": "실제 /pubchat SSE 실행 완료. resource.rank로 fallback되어 요청한 국가/기간/집계/필드가 보존되지 않음. 독립 SQL과 결과 불일치.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0025",
+      "question": "구리 생산량에서 칠레의 최초 기준연도와 값은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "TON_NORMALIZATION"
+      ],
+      "executed": true,
+      "status": "FAIL",
+      "reason": "실제 /pubchat SSE 실행 완료. resource.rank로 fallback되어 요청한 국가/기간/집계/필드가 보존되지 않음. 독립 SQL과 결과 불일치.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0026",
+      "question": "구리 생산량에서 칠레의 최신 기준연도와 값은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "TON_NORMALIZATION"
+      ],
+      "executed": true,
+      "status": "FAIL",
+      "reason": "실제 /pubchat SSE 실행 완료. resource.rank로 fallback되어 요청한 국가/기간/집계/필드가 보존되지 않음. 독립 SQL과 결과 불일치.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0027",
+      "question": "구리 생산량에서 칠레의 최근 관측연도 3개를 보여줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "TON_NORMALIZATION"
+      ],
+      "executed": true,
+      "status": "FAIL",
+      "reason": "실제 /pubchat SSE 실행 완료. resource.rank로 fallback되어 요청한 국가/기간/집계/필드가 보존되지 않음. 독립 SQL과 결과 불일치.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0028",
+      "question": "구리 생산량에서 2024년 국가별 최솟값과 최댓값은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "TON_NORMALIZATION"
+      ],
+      "executed": true,
+      "status": "FAIL",
+      "reason": "실제 /pubchat SSE 실행 완료. resource.rank로 fallback되어 요청한 국가/기간/집계/필드가 보존되지 않음. 독립 SQL과 결과 불일치.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0029",
+      "question": "구리 생산량에서 2024년 값이 있는 국가들의 산술평균은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "TON_NORMALIZATION"
+      ],
+      "executed": true,
+      "status": "FAIL",
+      "reason": "실제 /pubchat SSE 실행 완료. resource.rank로 fallback되어 요청한 국가/기간/집계/필드가 보존되지 않음. 독립 SQL과 결과 불일치.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0030",
+      "question": "구리 생산량에서 2024년 등록 국가들의 합계는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "TON_NORMALIZATION"
+      ],
+      "executed": true,
+      "status": "FAIL",
+      "reason": "실제 /pubchat SSE 실행 완료. resource.rank로 fallback되어 요청한 국가/기간/집계/필드가 보존되지 않음. 독립 SQL과 결과 불일치.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0031",
+      "question": "구리 생산량에서 2024년 값이 있는 국가 수는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "TON_NORMALIZATION"
+      ],
+      "executed": true,
+      "status": "FAIL",
+      "reason": "실제 /pubchat SSE 실행 완료. resource.rank로 fallback되어 요청한 국가/기간/집계/필드가 보존되지 않음. 독립 SQL과 결과 불일치.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0032",
+      "question": "구리 매장량에서 2024년 칠레 값은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "RESERVE_CATEGORY",
+        "TON_NORMALIZATION"
+      ],
+      "executed": true,
+      "status": "FAIL",
+      "reason": "실제 /pubchat SSE 실행 완료. resource.rank로 fallback되어 요청한 국가/기간/집계/필드가 보존되지 않음. 독립 SQL과 결과 불일치.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0033",
+      "question": "구리 매장량에서 칠레의 최초 기준연도와 값은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "RESERVE_CATEGORY",
+        "TON_NORMALIZATION"
+      ],
+      "executed": true,
+      "status": "FAIL",
+      "reason": "실제 /pubchat SSE 실행 완료. resource.rank로 fallback되어 요청한 국가/기간/집계/필드가 보존되지 않음. 독립 SQL과 결과 불일치.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0034",
+      "question": "구리 매장량에서 칠레의 최신 기준연도와 값은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "RESERVE_CATEGORY",
+        "TON_NORMALIZATION"
+      ],
+      "executed": true,
+      "status": "FAIL",
+      "reason": "실제 /pubchat SSE 실행 완료. resource.rank로 fallback되어 요청한 국가/기간/집계/필드가 보존되지 않음. 독립 SQL과 결과 불일치.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0035",
+      "question": "구리 매장량에서 칠레의 최근 관측연도 3개를 보여줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "RESERVE_CATEGORY",
+        "TON_NORMALIZATION"
+      ],
+      "executed": true,
+      "status": "FAIL",
+      "reason": "실제 /pubchat SSE 실행 완료. resource.rank로 fallback되어 요청한 국가/기간/집계/필드가 보존되지 않음. 독립 SQL과 결과 불일치.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0036",
+      "question": "구리 매장량에서 2024년 국가별 최솟값과 최댓값은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "RESERVE_CATEGORY",
+        "TON_NORMALIZATION"
+      ],
+      "executed": true,
+      "status": "FAIL",
+      "reason": "실제 /pubchat SSE 실행 완료. resource.rank로 fallback되어 요청한 국가/기간/집계/필드가 보존되지 않음. 독립 SQL과 결과 불일치.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0037",
+      "question": "구리 매장량에서 2024년 값이 있는 국가들의 산술평균은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "RESERVE_CATEGORY",
+        "TON_NORMALIZATION"
+      ],
+      "executed": true,
+      "status": "FAIL",
+      "reason": "실제 /pubchat SSE 실행 완료. resource.rank로 fallback되어 요청한 국가/기간/집계/필드가 보존되지 않음. 독립 SQL과 결과 불일치.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0038",
+      "question": "구리 매장량에서 2024년 등록 국가들의 합계는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "RESERVE_CATEGORY",
+        "TON_NORMALIZATION"
+      ],
+      "executed": true,
+      "status": "FAIL",
+      "reason": "실제 /pubchat SSE 실행 완료. resource.rank로 fallback되어 요청한 국가/기간/집계/필드가 보존되지 않음. 독립 SQL과 결과 불일치.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0039",
+      "question": "구리 매장량에서 2024년 값이 있는 국가 수는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "RESERVE_CATEGORY",
+        "TON_NORMALIZATION"
+      ],
+      "executed": true,
+      "status": "FAIL",
+      "reason": "실제 /pubchat SSE 실행 완료. resource.rank로 fallback되어 요청한 국가/기간/집계/필드가 보존되지 않음. 독립 SQL과 결과 불일치.",
+      "ast_observation": "SSE에 전체 AST가 노출되지 않아 내부 trace 보강 전에는 미관측"
+    },
+    {
+      "id": "QA-0040",
+      "question": "구리 가격예측의 최신 기준일과 예측가격을 예측기간별로 보여줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "FORECAST_HORIZON_UNIT"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0041",
+      "question": "구리의 지정 예측기간 {horizon_code}에 대한 최초 예측가격은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "FORECAST_HORIZON_UNIT"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "QA placeholder 미바인딩: fixture에 필요한 hs10/hs6/horizon/index 또는 명시된 격리 결손 조건이 실제 운영 DB에 없음. 정상값 치환 금지.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0042",
+      "question": "구리의 지정 예측기간 {horizon_code} 최근 예측 관측 3개는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "FORECAST_HORIZON_UNIT"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "QA placeholder 미바인딩: fixture에 필요한 hs10/hs6/horizon/index 또는 명시된 격리 결손 조건이 실제 운영 DB에 없음. 정상값 치환 금지.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0043",
+      "question": "2024년 구리의 지정 예측기간 {horizon_code} 예측가격 평균은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "FORECAST_HORIZON_UNIT"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "QA placeholder 미바인딩: fixture에 필요한 hs10/hs6/horizon/index 또는 명시된 격리 결손 조건이 실제 운영 DB에 없음. 정상값 치환 금지.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0044",
+      "question": "구리 최신 예측 행의 통상가격과 예측가격 차이는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "FORECAST_HORIZON_UNIT"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0045",
+      "question": "구리 최신 예측 행의 통상가격 대비 예측가격 증감률은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "FORECAST_HORIZON_UNIT"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0046",
+      "question": "지수종류 {index_code}의 최신 광물종합지수는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "INDEX_ACCESS_POLICY"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0047",
+      "question": "지수종류 {index_code}의 최초 관측값은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "INDEX_ACCESS_POLICY"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0048",
+      "question": "지수종류 {index_code}의 최근 관측 10개는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "INDEX_ACCESS_POLICY"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0049",
+      "question": "지수종류 {index_code}의 2024년 평균·최소·최대는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "INDEX_ACCESS_POLICY"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0050",
+      "question": "지수종류 {index_code}의 최신 전일대비 저장값을 보여줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "INDEX_ACCESS_POLICY"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0051",
+      "question": "지수종류 {index_code}가 같은 행의 상한보다 높은 날짜는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "INDEX_ACCESS_POLICY"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0052",
+      "question": "2024년 구리 생산량 상위 5개국은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "TON_NORMALIZATION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0053",
+      "question": "2024년 구리 생산량 하위 5개국은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "TON_NORMALIZATION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0054",
+      "question": "2024년 구리 매장량 상위 3개국과 각각의 비중은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "TON_NORMALIZATION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0055",
+      "question": "2024년 구리 매장량이 두 번째로 큰 국가는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "TON_NORMALIZATION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0056",
+      "question": "관세청 기준 2024년 구리 수입금액 상위 5개 상대국은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0057",
+      "question": "관세청 기준 2024년 구리 수입중량 하위 3개 상대국은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0058",
+      "question": "UN 기준 2024년 한국의 구리 수입금액 상위 3개 상대국은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "UN_HS_SYSTEM_ALIGNMENT",
+        "UN_REPORTER_FLOW_GRAIN"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0059",
+      "question": "가격기준 101의 2024년 통상가격이 가장 높았던 날짜 3개는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "PRICE_STATUS_AND_CRITERION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0060",
+      "question": "가격기준 101의 2024년 통상가격이 가장 낮았던 날짜 3개는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "PRICE_STATUS_AND_CRITERION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0061",
+      "question": "2024년 구리 생산량이 등록국가 평균보다 높은 국가들은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "TON_NORMALIZATION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0062",
+      "question": "관세청 기준 2024년 수입금액 상위 5개 광종은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0063",
+      "question": "지정한 동일 예측기간·단위에서 통상가격 대비 예측 상승률 상위 3개 광종은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "FIXTURE_REQUIRED",
+      "required_contracts": [],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "QA placeholder 미바인딩: fixture에 필요한 hs10/hs6/horizon/index 또는 명시된 격리 결손 조건이 실제 운영 DB에 없음. 정상값 치환 금지.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0064",
+      "question": "가격기준 101의 2024년 최초 관측 대비 마지막 관측 가격 증감과 증감률은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "PRICE_STATUS_AND_CRITERION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0065",
+      "question": "가격기준 101의 2024년 2월 평균가격을 1월과 비교해줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "PRICE_STATUS_AND_CRITERION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0066",
+      "question": "가격기준 101의 2024년 1월 평균가격을 전년 동월과 비교해줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "PRICE_STATUS_AND_CRITERION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0067",
+      "question": "가격기준 101의 2024년 1월 8일 가격을 직전 관측일과 비교해줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "PRICE_STATUS_AND_CRITERION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0068",
+      "question": "관세청 기준 2024년 상반기 구리 수입금액을 2023년 상반기와 비교해줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0069",
+      "question": "관세청 기준 2024년 2월 구리 수입중량의 전월 대비 증가율은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0070",
+      "question": "2024년 칠레 구리 생산량은 2023년보다 얼마나 늘었어?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "TON_NORMALIZATION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0071",
+      "question": "2024년 칠레 구리 매장량은 2023년보다 얼마나 줄었어?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "TON_NORMALIZATION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0072",
+      "question": "지수종류 {index_code}의 2024년 2월 말 마지막 관측값을 1월 말과 비교해줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "INDEX_ACCESS_POLICY"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0073",
+      "question": "지수종류 {index_code}의 2024년 12월 평균을 전년 동월과 비교해줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "INDEX_ACCESS_POLICY"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0074",
+      "question": "가격기준 101에서 직전 관측 대비 가격이 3회 연속 상승한 구간은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "PRICE_STATUS_AND_CRITERION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0075",
+      "question": "관세청 기준 2024년 월별 구리 수입금액이 3개월 연속 감소한 구간은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0076",
+      "question": "관세청 기준 2024년 구리 수입금액의 상대국 HHI는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0077",
+      "question": "관세청 기준 2024년 구리 수입중량의 상대국 HHI는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0078",
+      "question": "2024년 관세청 수입금액 HHI 상위 5개 광종은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0079",
+      "question": "구리 수입금액 HHI의 2023년 대비 2024년 변화는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0080",
+      "question": "관세청 기준 2024년 구리 금액 기준 TSI는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0081",
+      "question": "UN 기준 2024년 한국 구리의 금액 기준 TSI는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "UN_HS_SYSTEM_ALIGNMENT",
+        "UN_REPORTER_FLOW_GRAIN"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0082",
+      "question": "관세청 기준 2024년 TSI가 가장 낮은 광종 3개는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0083",
+      "question": "관세청 기준 구리 TSI의 2023년 대비 2024년 변화는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0084",
+      "question": "UN 기준 2024년 한국 구리의 수출 RCA는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "UN_HS_SYSTEM_ALIGNMENT",
+        "UN_REPORTER_FLOW_GRAIN",
+        "WORLD_ALL_PRODUCTS_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0085",
+      "question": "UN 기준 2024년 칠레 구리의 수출 RCA는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "UN_HS_SYSTEM_ALIGNMENT",
+        "UN_REPORTER_FLOW_GRAIN",
+        "WORLD_ALL_PRODUCTS_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0086",
+      "question": "UN 기준 2024년 한국 수출 RCA 상위 5개 광종은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "UN_HS_SYSTEM_ALIGNMENT",
+        "UN_REPORTER_FLOW_GRAIN",
+        "WORLD_ALL_PRODUCTS_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0087",
+      "question": "UN 기준 한국 구리 수출 RCA의 2023년 대비 2024년 변화는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "UN_HS_SYSTEM_ALIGNMENT",
+        "UN_REPORTER_FLOW_GRAIN",
+        "WORLD_ALL_PRODUCTS_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0088",
+      "question": "UN 기준 2024년 한국에서 중국으로의 교역 TII는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "UN_REPORTER_FLOW_GRAIN",
+        "WORLD_ALL_PRODUCTS_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0089",
+      "question": "UN 기준 2024년 한국에서 칠레로의 교역 TII는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "UN_REPORTER_FLOW_GRAIN",
+        "WORLD_ALL_PRODUCTS_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0090",
+      "question": "UN 기준 2024년 한국의 TII 상위 5개 상대국은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "UN_REPORTER_FLOW_GRAIN",
+        "WORLD_ALL_PRODUCTS_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0091",
+      "question": "UN 기준 한국에서 중국으로의 TII의 2023년 대비 2024년 변화는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "UN_REPORTER_FLOW_GRAIN",
+        "WORLD_ALL_PRODUCTS_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0092",
+      "question": "관세청 기준 구리 수입금액의 2023년 대비 2024년 증가율은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0093",
+      "question": "관세청 기준 구리 수출중량의 2023년 대비 2024년 증가율은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0094",
+      "question": "관세청 기준 2024년 수입금액 전년 대비 증가율 상위 5개 광종은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0095",
+      "question": "구리의 관세청 수입금액 증가율을 2023/2022년과 2024/2023년 사이에서 비교해줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0096",
+      "question": "관세청 기준 2024년 구리 수입금액의 중국 의존도는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0097",
+      "question": "관세청 기준 2024년 구리 수입중량의 중국 의존도는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0098",
+      "question": "관세청 기준 2024년 중국 수입금액 의존도가 가장 높은 광종 5개는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0099",
+      "question": "구리 중국 수입금액 의존도의 2023년 대비 2024년 변화는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0100",
+      "question": "UN 기준 2024년 한국 구리의 hhi와 tsi를 함께 보여줘. 각 지표의 분모와 단위를 표시해줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "UN_HS_SYSTEM_ALIGNMENT",
+        "UN_REPORTER_FLOW_GRAIN"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0101",
+      "question": "UN 기준 2024년 한국 구리의 hhi와 rca를 함께 보여줘. 각 지표의 분모와 단위를 표시해줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "UN_HS_SYSTEM_ALIGNMENT",
+        "UN_REPORTER_FLOW_GRAIN",
+        "WORLD_ALL_PRODUCTS_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0102",
+      "question": "UN 기준 2024년 한국→중국 교역 TII와 한국 구리의 hhi를 함께 보여줘. 각 지표의 품목 범위와 분모도 표시해줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "UN_HS_SYSTEM_ALIGNMENT",
+        "UN_REPORTER_FLOW_GRAIN",
+        "WORLD_ALL_PRODUCTS_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0103",
+      "question": "UN 기준 2024년 한국 구리의 hhi와 trade_growth_rate를 함께 보여줘. 각 지표의 분모와 단위를 표시해줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "UN_HS_SYSTEM_ALIGNMENT",
+        "UN_REPORTER_FLOW_GRAIN"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0104",
+      "question": "UN 기준 2024년 한국 구리의 hhi와 country_dependency를 함께 보여줘. 각 지표의 분모와 단위를 표시해줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "UN_HS_SYSTEM_ALIGNMENT",
+        "UN_REPORTER_FLOW_GRAIN"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0105",
+      "question": "UN 기준 2024년 한국 구리의 tsi와 rca를 함께 보여줘. 각 지표의 분모와 단위를 표시해줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "UN_HS_SYSTEM_ALIGNMENT",
+        "UN_REPORTER_FLOW_GRAIN",
+        "WORLD_ALL_PRODUCTS_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0106",
+      "question": "UN 기준 2024년 한국→중국 교역 TII와 한국 구리의 tsi를 함께 보여줘. 각 지표의 품목 범위와 분모도 표시해줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "UN_HS_SYSTEM_ALIGNMENT",
+        "UN_REPORTER_FLOW_GRAIN",
+        "WORLD_ALL_PRODUCTS_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0107",
+      "question": "UN 기준 2024년 한국 구리의 tsi와 trade_growth_rate를 함께 보여줘. 각 지표의 분모와 단위를 표시해줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "UN_HS_SYSTEM_ALIGNMENT",
+        "UN_REPORTER_FLOW_GRAIN"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0108",
+      "question": "UN 기준 2024년 한국 구리의 tsi와 country_dependency를 함께 보여줘. 각 지표의 분모와 단위를 표시해줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "UN_HS_SYSTEM_ALIGNMENT",
+        "UN_REPORTER_FLOW_GRAIN"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0109",
+      "question": "UN 기준 2024년 한국→중국 교역 TII와 한국 구리의 rca를 함께 보여줘. 각 지표의 품목 범위와 분모도 표시해줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "UN_HS_SYSTEM_ALIGNMENT",
+        "UN_REPORTER_FLOW_GRAIN",
+        "WORLD_ALL_PRODUCTS_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0110",
+      "question": "UN 기준 2024년 한국 구리의 rca와 trade_growth_rate를 함께 보여줘. 각 지표의 분모와 단위를 표시해줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "UN_HS_SYSTEM_ALIGNMENT",
+        "UN_REPORTER_FLOW_GRAIN",
+        "WORLD_ALL_PRODUCTS_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0111",
+      "question": "UN 기준 2024년 한국 구리의 rca와 country_dependency를 함께 보여줘. 각 지표의 분모와 단위를 표시해줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "UN_HS_SYSTEM_ALIGNMENT",
+        "UN_REPORTER_FLOW_GRAIN",
+        "WORLD_ALL_PRODUCTS_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0112",
+      "question": "UN 기준 2024년 한국→중국 교역 TII와 한국 구리의 trade_growth_rate를 함께 보여줘. 각 지표의 품목 범위와 분모도 표시해줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "UN_HS_SYSTEM_ALIGNMENT",
+        "UN_REPORTER_FLOW_GRAIN",
+        "WORLD_ALL_PRODUCTS_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0113",
+      "question": "UN 기준 2024년 한국→중국 교역 TII와 한국 구리의 country_dependency를 함께 보여줘. 각 지표의 품목 범위와 분모도 표시해줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "UN_HS_SYSTEM_ALIGNMENT",
+        "UN_REPORTER_FLOW_GRAIN",
+        "WORLD_ALL_PRODUCTS_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0114",
+      "question": "UN 기준 2024년 한국 구리의 trade_growth_rate와 country_dependency를 함께 보여줘. 각 지표의 분모와 단위를 표시해줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "UN_HS_SYSTEM_ALIGNMENT",
+        "UN_REPORTER_FLOW_GRAIN"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0115",
+      "question": "관세청 기준 2024년 수입금액 상위 5개 광종 중 HHI가 가장 높은 광종은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0116",
+      "question": "관세청 기준 2024년 구리 수입 상위 3개국의 의존도와 HHI를 보여줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0117",
+      "question": "관세청 기준 전년보다 수입금액이 늘고 HHI도 오른 광종 중 증가율 상위 3개는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0118",
+      "question": "관세청 기준 2024년 TSI가 음수이고 중국 수입의존도가 50% 이상인 광종은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0119",
+      "question": "UN 기준 2024년 수출 RCA가 1보다 큰 광종 중 수입 HHI 상위 3개는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "UN_HS_SYSTEM_ALIGNMENT",
+        "UN_REPORTER_FLOW_GRAIN"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0120",
+      "question": "UN 기준 2024년 한국의 TII 상위 3개 상대국에 대한 구리 수입의존도는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "UN_HS_SYSTEM_ALIGNMENT",
+        "UN_REPORTER_FLOW_GRAIN"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0121",
+      "question": "구리 생산량이 2023년 대비 가장 많이 증가한 국가의 2024년 매장량은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "TON_NORMALIZATION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0122",
+      "question": "2024년 구리 매장량 상위 3개국의 같은 해 생산량을 비교해줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "TON_NORMALIZATION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0123",
+      "question": "2024년 구리 생산량 상위 5개국과 매장량 상위 5개국에 공통으로 드는 국가는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "TON_NORMALIZATION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0124",
+      "question": "2024년 구리의 국가별 매장량을 같은 해 생산량으로 나눈 비율 상위 3개국은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "TON_NORMALIZATION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0125",
+      "question": "2024년 구리 최대 생산국에서 한국이 수입한 구리 금액은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "TON_NORMALIZATION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0126",
+      "question": "2024년 한국의 구리 최대 수입 상대국의 같은 해 구리 매장량은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "TON_NORMALIZATION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0127",
+      "question": "2023년 대비 2024년 연평균 가격 상승률 상위 3개 광종의 2024년 생산량은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "PRICE_STATUS_AND_CRITERION",
+        "REPRESENTATIVE_PRICE_CRITERION",
+        "TON_NORMALIZATION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0128",
+      "question": "2024년 연평균 가격은 상승했지만 한국 수입중량은 감소한 광종은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "PRICE_STATUS_AND_CRITERION",
+        "REPRESENTATIVE_PRICE_CRITERION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0129",
+      "question": "가격기준 101의 2024년 월평균 가격과 지수종류 {index_code}의 월평균 지수를 나란히 보여줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "INDEX_ACCESS_POLICY",
+        "PRICE_STATUS_AND_CRITERION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0130",
+      "question": "관세청과 UN의 2024년 한국 구리 수입금액을 같은 범위로 맞춰 차이를 보여줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "UN_HS_SYSTEM_ALIGNMENT",
+        "UN_REPORTER_FLOW_GRAIN"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0131",
+      "question": "지정한 동일 예측기간에서 예상 상승률 상위 3개 광종의 최신 관측 가격은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "PRICE_STATUS_AND_CRITERION",
+        "REPRESENTATIVE_PRICE_CRITERION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0132",
+      "question": "2024년 생산량 상위 3개 광종의 한국 수입 HHI와 중국 의존도를 보여줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "TON_NORMALIZATION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0133",
+      "question": "없는 HS코드 {unknown_hs}의 2024년 관세청 관측 목록은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "FIXTURE_REQUIRED",
+      "required_contracts": [],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0134",
+      "question": "없는 HS코드 {unknown_hs}의 관세청 관측 건수는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "FIXTURE_REQUIRED",
+      "required_contracts": [],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0135",
+      "question": "가격기준 101의 가격 관측이 3개뿐일 때 최근 5개를 보여줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "PRICE_STATUS_AND_CRITERION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0136",
+      "question": "2024년 구리 생산량 1위와 동률인 모든 국가를 보여줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "TON_NORMALIZATION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0137",
+      "question": "2024년 구리 생산량 상위 정확히 3개국을 보여줘. 동률이면 국가코드 순으로 해줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "TON_NORMALIZATION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0138",
+      "question": "가격기준 101의 NULL이 섞인 2024년 1월 통상가격 평균은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "PRICE_STATUS_AND_CRITERION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0139",
+      "question": "가격기준 101의 값이 전부 NULL인 달의 통상가격 평균은?",
+      "expected_behavior": "UNANSWERABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "PRICE_STATUS_AND_CRITERION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0140",
+      "question": "전년도 구리 수입금액이 0일 때 올해 수입 증가율은?",
+      "expected_behavior": "UNANSWERABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0141",
+      "question": "수입과 수출이 모두 0인 구리의 TSI는?",
+      "expected_behavior": "UNANSWERABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0142",
+      "question": "구리 전체 수입금액이 0인 해의 HHI는?",
+      "expected_behavior": "UNANSWERABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0143",
+      "question": "전체 구리 수입금액이 0인 해의 중국 수입의존도는?",
+      "expected_behavior": "UNANSWERABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0144",
+      "question": "구리만 적재되어 있고 전체 품목 수출 총계가 없는 DB로 표준 전체교역 기준 RCA를 계산해줘.",
+      "expected_behavior": "UNANSWERABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "UN_HS_SYSTEM_ALIGNMENT",
+        "UN_REPORTER_FLOW_GRAIN"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0145",
+      "question": "세계 교역 총계가 없는 상태에서 전체교역 기준 한국-중국 TII를 계산해줘.",
+      "expected_behavior": "UNANSWERABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "UN_REPORTER_FLOW_GRAIN"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0146",
+      "question": "2023년 생산량이 누락된 국가의 2024년 생산량 전년 증감률은?",
+      "expected_behavior": "UNANSWERABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "TON_NORMALIZATION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0147",
+      "question": "2024년 월별 구리 생산량을 알려줘.",
+      "expected_behavior": "UNANSWERABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "TON_NORMALIZATION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0148",
+      "question": "2024년 6월 1일 구리 매장량 실측값은?",
+      "expected_behavior": "UNANSWERABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "TON_NORMALIZATION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0149",
+      "question": "2027년 구리 실제 수입금액을 알려줘.",
+      "expected_behavior": "UNANSWERABLE",
+      "readiness": "FIXTURE_REQUIRED",
+      "required_contracts": [],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "QA placeholder 미바인딩: fixture에 필요한 hs10/hs6/horizon/index 또는 명시된 격리 결손 조건이 실제 운영 DB에 없음. 정상값 치환 금지.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0150",
+      "question": "구리 가격예측값을 확정된 미래 실거래가격으로 알려줘.",
+      "expected_behavior": "UNANSWERABLE",
+      "readiness": "FIXTURE_REQUIRED",
+      "required_contracts": [],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "QA placeholder 미바인딩: fixture에 필요한 hs10/hs6/horizon/index 또는 명시된 격리 결손 조건이 실제 운영 DB에 없음. 정상값 치환 금지.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0151",
+      "question": "정의되지 않은 예측기간 {unknown_horizon}의 구리 예측가격은?",
+      "expected_behavior": "UNANSWERABLE",
+      "readiness": "FIXTURE_REQUIRED",
+      "required_contracts": [],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "QA placeholder 미바인딩: fixture에 필요한 hs10/hs6/horizon/index 또는 명시된 격리 결손 조건이 실제 운영 DB에 없음. 정상값 치환 금지.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0152",
+      "question": "통화 환산표 없이 달러 기준 가격과 원화 기준 가격을 더해줘.",
+      "expected_behavior": "UNANSWERABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "PRICE_STATUS_AND_CRITERION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0153",
+      "question": "변환계수가 없는 수량 단위를 톤으로 환산해 생산량 순위를 매겨줘.",
+      "expected_behavior": "UNANSWERABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "TON_NORMALIZATION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0154",
+      "question": "매장량 구분별 중복관계가 미정인 상태에서 모든 구분을 더해 실제 총매장량을 알려줘.",
+      "expected_behavior": "UNANSWERABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "TON_NORMALIZATION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0155",
+      "question": "공개 사용자에게 비공개로 지정된 기간의 광물종합지수 값을 보여줘.",
+      "expected_behavior": "UNANSWERABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "INDEX_ACCESS_POLICY"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0156",
+      "question": "해당 기간 조회가 허용된 사용자에게 광물종합지수 값을 보여줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "INDEX_ACCESS_POLICY"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0157",
+      "question": "2024년 구리 소비량을 알려줘.",
+      "expected_behavior": "UNANSWERABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "TON_NORMALIZATION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0158",
+      "question": "HS코드 매핑이 전혀 없는 광종의 관세청 수입액은?",
+      "expected_behavior": "UNANSWERABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0159",
+      "question": "HS 하나가 두 광종에 연결된 fixture에서 지정 귀속규칙으로 광종별 수입액을 집계해줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0160",
+      "question": "예측과 실제가격의 기준 및 단위가 서로 매칭되지 않을 때 예측 오차율을 계산해줘.",
+      "expected_behavior": "UNANSWERABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "PRICE_STATUS_AND_CRITERION"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0161",
+      "question": "2026년 구리의 사용 중인 기초원료 HS코드를 보여줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "FIXTURE_REQUIRED",
+      "required_contracts": [],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "QA placeholder 미바인딩: fixture에 필요한 hs10/hs6/horizon/index 또는 명시된 격리 결손 조건이 실제 운영 DB에 없음. 정상값 치환 금지.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0162",
+      "question": "2026년 구리의 4개 물질흐름별 고유 HS코드 수는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "FIXTURE_REQUIRED",
+      "required_contracts": [],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "QA placeholder 미바인딩: fixture에 필요한 hs10/hs6/horizon/index 또는 명시된 격리 결손 조건이 실제 운영 DB에 없음. 정상값 치환 금지.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0163",
+      "question": "2026년 구리 스크랩 품목을 표시 순서대로 처음 5개 보여줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "FIXTURE_REQUIRED",
+      "required_contracts": [],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "QA placeholder 미바인딩: fixture에 필요한 hs10/hs6/horizon/index 또는 명시된 격리 결손 조건이 실제 운영 DB에 없음. 정상값 치환 금지.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0164",
+      "question": "2026년 구리 매핑 중 신뢰도 상인 HS코드와 매핑 근거는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "FIXTURE_REQUIRED",
+      "required_contracts": [],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "QA placeholder 미바인딩: fixture에 필요한 hs10/hs6/horizon/index 또는 명시된 격리 결손 조건이 실제 운영 DB에 없음. 정상값 치환 금지.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0165",
+      "question": "2026년 광종코드가 NULL인 원문 광종명과 HS 목록은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "FIXTURE_REQUIRED",
+      "required_contracts": [],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "QA placeholder 미바인딩: fixture에 필요한 hs10/hs6/horizon/index 또는 명시된 격리 결손 조건이 실제 운영 DB에 없음. 정상값 치환 금지.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0166",
+      "question": "2026년 물질흐름 세부코드가 없는 매핑 수는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "FIXTURE_REQUIRED",
+      "required_contracts": [],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "QA placeholder 미바인딩: fixture에 필요한 hs10/hs6/horizon/index 또는 명시된 격리 결손 조건이 실제 운영 DB에 없음. 정상값 치환 금지.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0167",
+      "question": "2026년 매핑 중 RAW인데 공단 대분류가 002인 행을 찾아줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "FIXTURE_REQUIRED",
+      "required_contracts": [],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "QA placeholder 미바인딩: fixture에 필요한 hs10/hs6/horizon/index 또는 명시된 격리 결손 조건이 실제 운영 DB에 없음. 정상값 치환 금지.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0168",
+      "question": "2026년 구리 매핑의 원문 품목명과 데이터 판은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "FIXTURE_REQUIRED",
+      "required_contracts": [],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "QA placeholder 미바인딩: fixture에 필요한 hs10/hs6/horizon/index 또는 명시된 격리 결손 조건이 실제 운영 DB에 없음. 정상값 치환 금지.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0169",
+      "question": "관세청 기준 2024년 구리 기초금속 수입금액은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0170",
+      "question": "관세청 기준 2024년 구리의 물질흐름별 수입금액과 비중은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0171",
+      "question": "2024년 구리 스크랩 수입금액 상위 3개 상대국은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0172",
+      "question": "2024년 구리 가공금속 수입금액의 중국 의존도는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0173",
+      "question": "2024년 구리 기초원료 수입금액의 HHI는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0174",
+      "question": "2024년 구리 스크랩의 금액 기준 TSI는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0175",
+      "question": "구리 기초금속 수입금액의 2023년 대비 2024년 증가율은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0176",
+      "question": "2024년 구리 물질흐름 중 수입금액 1위 흐름의 HHI와 중국 의존도는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "BI_IMPLEMENTATION_CONTRACT",
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0177",
+      "question": "2026년 매핑만 있는 DB에서 2024년 코드체계 기준 구리 수입액은?",
+      "expected_behavior": "UNANSWERABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0178",
+      "question": "광종코드 NULL 매핑을 근거 없이 구리로 간주해 수입액에 합쳐줘.",
+      "expected_behavior": "UNANSWERABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0179",
+      "question": "2026년 실데이터와 DEV_DUMMY가 섞인 fixture에서 구리 실제 수입액을 집계해줘.",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0180",
+      "question": "2026년 구리의 사용 중지 매핑과 사용 중 매핑이 섞여 있을 때 활성 매핑 수입액은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0181",
+      "question": "같은 연도·HS가 두 광종에 속할 때 두 광종 전체의 중복 없는 수입액은?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0182",
+      "question": "같은 HS가 여러 광종에 매핑됐지만 배분규칙은 없을 때 광종별 배타적 기여액은?",
+      "expected_behavior": "UNANSWERABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0183",
+      "question": "UN HS6와 매핑 HS10의 변환 규칙이 없는데 정확한 광종별 수입액을 알려줘.",
+      "expected_behavior": "UNANSWERABLE",
+      "readiness": "CONTRACT_REQUIRED",
+      "required_contracts": [
+        "MAPPING_SOURCE_USE_POLICY",
+        "MAPPING_YEAR_COVERAGE",
+        "UN_HS_SYSTEM_ALIGNMENT",
+        "UN_REPORTER_FLOW_GRAIN"
+      ],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "required_contracts가 코드·설정·실제 데이터에서 완전히 확정되지 않음(수식/분모/단위/상태/권한/fixture 조건 중 하나 이상). QA JSON도 CONTRACT_REQUIRED로 표시.",
+      "ast_observation": null
+    },
+    {
+      "id": "QA-0184",
+      "question": "2026년 같은 HS의 광종코드 NULL 매핑이 여러 행이면 미매핑 고유 HS 수는?",
+      "expected_behavior": "EXECUTABLE",
+      "readiness": "FIXTURE_REQUIRED",
+      "required_contracts": [],
+      "executed": false,
+      "status": "BLOCKED",
+      "reason": "QA placeholder 미바인딩: fixture에 필요한 hs10/hs6/horizon/index 또는 명시된 격리 결손 조건이 실제 운영 DB에 없음. 정상값 치환 금지.",
+      "ast_observation": null
+    }
+  ]
+}

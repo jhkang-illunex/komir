@@ -611,6 +611,16 @@ class KomisRawDataRepository:
         )
         return [int(value) for value in frame["mnrl_prc_crtr_sn"]]
 
+    def price_criterion_belongs_to_mineral(self, serial: int, mineral_code: str) -> bool:
+        """가격기준 serial이 명시 광종에 실제로 매핑되어 있는지 확인한다."""
+
+        frame = read_sql_pg(
+            f"SELECT 1 FROM {KOMIS_SCHEMA}.ai_prc_mnrl_map "
+            f"WHERE mnrl_prc_crtr_sn = {_literal(serial)} "
+            f"AND mnrknd_unq_cd = {_literal(mineral_code)} AND use_yn = 'Y' LIMIT 1"
+        )
+        return not frame.empty
+
     def resolve_price_criterion_metadata(self, serial: int) -> tuple[str | None, str | None, str | None] | None:
         """선택 가격기준의 표시명과 원시 단위 코드를 돌려준다."""
 

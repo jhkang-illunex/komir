@@ -132,3 +132,106 @@ def render_production_reserves_pair(
         missing_labels = "·".join("생산량" if metric == "production" else "매장량" for metric in missing)
         lines.append(f"{missing_labels} 자료는 확인되지 않았습니다.")
     return "\n\n".join(lines), cited
+
+
+def render_resource_operation(evidence: list, action_plan, action_results=None, *, trace: dict | None = None) -> tuple[str, set[int]] | None:
+    """Render typed resource filter/aggregate requests from the full ranking table.
+
+    ``resource.rank`` remains the physical action.  This renderer applies only
+    the semantic operation carried in typed slots; it never inspects the raw
+    question and never invents a value when the requested row/field is absent.
+    """
+    def fail(reason: str):
+        if trace is not None:
+            trace.setdefault("attempts", []).append({"renderer": "resource_operation", "status": "not_selected", "reason": reason})
+        return None
+
+    actions = list(getattr(action_plan, "actions", ()) or ())
+    if not actions or any(getattr(a, "action_id", None) != "resource.rank" for a in actions):
+        return fail("action_contract_not_resource_rank")
+    # Multiple resource operations share the same typed population.  Compute
+    # their scalar outputs from each structured evidence table and keep the
+    # derived values in the deterministic renderer; never send them back to
+    # the generative answer model.
+    if len(actions) > 1:
+        values = {}
+        for action in actions:
+            op = getattr(action.slots, "resource_operation", None)
+            if op not in {"average", "sum", "count", "min", "max"}:
+                return fail(f"unsupported_or_missing_operation:{op}")
+            req = getattr(action, "requirement_id", None)
+            item = next((e for e in evidence if getattr(e, "requirement_id", None) == req), None)
+            if item is None:
+                item = next((e for e in evidence if getattr(e, "action_id", None) == "resource.rank"), None)
+            if item is None:
+                return fail(f"missing_structured_evidence:{req}")
+            tables = extract_markdown_tables(getattr(item, "text", ""))
+            if not tables:
+                return fail("structured_evidence_has_no_table")
+            table = tables[0]
+            keys = [c.split("(", 1)[0].strip().casefold() for c in table["columns"]]
+            if "total" not in keys:
+                return fail("structured_table_missing_total")
+            ti = keys.index("total")
+            nums = [_number(row[ti]) for row in table["rows"] if ti < len(row)]
+            nums = [n for n in nums if n is not None]
+            if not nums:
+                return fail("structured_table_has_no_numeric_total")
+            values[op] = {"average": sum(nums) / len(nums), "sum": sum(nums),
+                          "count": len(nums), "min": min(nums), "max": max(nums)}[op]
+        if "average" in values and "sum" in values:
+            values["difference"] = values["sum"] - values["average"]
+        parts = []
+        if "average" in values: parts.append(f"생산량 평균: {values['average']:,.2f}톤")
+        if "sum" in values: parts.append(f"생산량 합계: {values['sum']:,.2f}톤")
+        if "difference" in values: parts.append(f"합계와 평균의 차이: {values['difference']:,.2f}톤")
+        if parts:
+            cited = {
+                i for i, item in enumerate(evidence, 1)
+                if getattr(item, "action_id", None) == "resource.rank"
+                and getattr(item, "kind", None) == "structured"
+            }
+            return "구조화된 자원 집계 결과입니다. " + " / ".join(parts), cited
+        return fail("no_supported_aggregate_output")
+    action = actions[0]
+    operation = getattr(action.slots, "resource_operation", None)
+    if operation in {None, "level", "first", "latest"}:
+        return fail(f"unsupported_or_missing_operation:{operation}")
+    outcomes = list(action_results or [])
+    if outcomes and getattr(outcomes[0], "status", None) != "success":
+        return fail("action_result_not_success")
+    for index, item in enumerate(evidence, 1):
+        tables = extract_markdown_tables(getattr(item, "text", ""))
+        if not tables:
+            continue
+        table = tables[0]
+        keys = [column.split("(", 1)[0].strip().casefold() for column in table["columns"]]
+        try:
+            country_i, total_i = keys.index("country"), keys.index("total")
+        except ValueError:
+            continue
+        rows = []
+        for row in table["rows"]:
+            if max(country_i, total_i) >= len(row):
+                continue
+            value = _number(row[total_i])
+            if value is not None:
+                rows.append((str(row[country_i]).strip(), value))
+        if not rows:
+            continue
+        country = getattr(action.slots, "resource_country", None)
+        if country:
+            wanted = country.casefold()
+            selected = next((value for name, value in rows if name.casefold() == wanted), None)
+            if selected is None:
+                return f"요청한 국가의 {action.slots.metric} 자료를 확인하지 못했습니다.", {index}
+            return f"{country}의 {action.slots.metric} 값은 {selected:,.2f}톤입니다.", {index}
+        if operation == "average": value = sum(v for _, v in rows) / len(rows)
+        elif operation == "sum": value = sum(v for _, v in rows)
+        elif operation == "count": return f"값이 있는 국가 수는 {len(rows)}개입니다.", {index}
+        elif operation == "min": value = min(v for _, v in rows)
+        elif operation == "max": value = max(v for _, v in rows)
+        else: return None
+        labels = {"average": "산술평균", "sum": "합계", "min": "최솟값", "max": "최댓값"}
+        return f"{action.slots.metric} {labels[operation]}은 {value:,.2f}톤입니다.", {index}
+    return fail("structured_table_not_renderable")

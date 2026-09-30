@@ -49,6 +49,7 @@ asyncio.to_thread로 감싼다. MCP/tool로 향후 노출할 걸 염두에 두�
 from __future__ import annotations
 
 import calendar
+import json
 import logging
 import re
 from collections.abc import Callable
@@ -654,6 +655,7 @@ class RetrievalRoute(BaseModel):
     # 단일 최신값 Action은 일반 시계열 기본 상한(60건)이 아니라 최신 행 하나만
     # 조회한다. 이 값은 ActionPlan의 Period(kind=latest)에서만 결정적으로 온다.
     komis_raw_limit: int | None = None
+    price_criterion_serial: int | None = None
     # 2026-09-07 — "최근 N개월"류 상대 기간 표현 전용(사용자 지시로 09-03엔
     # 미루고 null 처리만 하다가, verify 날짜그라운딩 버그를 고치고 나니 바로
     # 이 갭이 "니켈 최근 6개월 가격"에서 실제로 걸리는 걸 확인해 이번에
@@ -854,6 +856,21 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
     s = call.slots
     period = s.period
     requirement_query = " ".join(str(value) for value in (s.mineral, s.minerals, s.metric, s.indicator, s.mine_name, s.topic) if value)
+    # Numeric price-criterion identifiers are lexical source identifiers.  Keep
+    # them typed through the bridge; do not infer a semantic intent from them.
+    # 가격기준 serial은 자연어 의미가 아니라 원천 식별자다. 명시적인
+    # ``가격 기준 502``뿐 아니라 ``니켈 502 최근 가격``처럼 serial이
+    # 광종과 기간 사이에 놓인 표현도 typed slot으로 보존한다. 연도·기간
+    # 숫자를 serial로 오인하지 않도록 가격/최근/시세 문맥에 한정한다.
+    criterion_match = re.search(
+        r"가격\s*기준\s*(\d+)"
+        r"|(?<!\d)(\d{3,6})(?=\s*(?:최근|현재|가격|시세))",
+        question,
+    )
+    criterion_serial = s.price_criterion_serial or (
+        int(criterion_match.group(1) or criterion_match.group(2))
+        if criterion_match else None
+    )
     if period and period.kind == "range":
         # ActionPlan은 ISO 날짜로 정규화하지만 raw MCP 요청 계약은 숫자 날짜다.
         komis_start_period = re.sub(r"\D", "", period.start or "")
@@ -873,6 +890,7 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
         # 최신 가격 문장은 기준일·전일 대비를 함께 보여준다. 최신/직전 보유
         # 관측 2건만 가져오며, 렌더러는 최신 행만 표로 표시한다.
         "komis_raw_limit": 2 if period and period.kind == "latest" else None,
+        "price_criterion_serial": criterion_serial,
     }
     document_topic = re.sub(r"\s+", "", s.topic or question)
     if (call.action_id == "document.retrieve" and "보고서" in document_topic and period
@@ -936,7 +954,10 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
     if call.action_id == "resource.rank":
         if "생산집중도" in question.replace(" ", ""):
             return RetrievalRoute(**common, use_production_concentration=True)
-        return RetrievalRoute(**common, use_komis_mineral_ranking=True,
+        ranking_top_n = s.top_n
+        if s.resource_operation not in {None, "level", "first", "latest"}:
+            ranking_top_n = max(ranking_top_n or 0, 100)
+        return RetrievalRoute(**{**common, "komis_ranking_top_n": ranking_top_n}, use_komis_mineral_ranking=True,
                               komis_mineral_ranking_metrics=[s.metric])
     if call.action_id == "resource.yoy":
         return RetrievalRoute(**common, use_komis_production_yoy=True,
@@ -1779,6 +1800,16 @@ def _apply_aggregate_route(state: RetrievalState, route: RetrievalRoute) -> Retr
     relative_months = _relative_months_in_question(question)
     if relative_months and not (route.komis_start_period or route.komis_end_period):
         updates["komis_relative_months"] = relative_months
+    # A typed route occasionally omits an explicit calendar year even though
+    # the lexical date field is unambiguous.  Normalize the year once at the
+    # adapter boundary; never replace it with the current/latest year.
+    if (route.use_komis_mineral_ranking
+            and not route.komis_start_period
+            and not route.komis_end_period):
+        year_match = re.search(r"(?<!\d)(20\d{2})\s*년", question)
+        if year_match:
+            updates["komis_start_period"] = year_match.group(1)
+            updates["komis_end_period"] = year_match.group(1)
     # 생산량과 매장량을 함께 묻는 국가 순위는 planner가 resource.rank 하나의
     # metric만 채우는 경우가 있다. 두 지표가 모두 명시된 질문에서는 typed
     # route를 두 개의 결정적 RDB 집계 job으로 확장해 어느 한 표가 누락되지
@@ -2201,6 +2232,7 @@ def _retrieve_node(
                 session.call_komis_raw_lookup, komis_raw_page_id, mineral_code=komis_raw_mineral_code,
                 hs_code=route.komis_hs_code,
                 index_type_code=route.komis_index_type_code,
+                price_criterion_serial=route.price_criterion_serial,
                 start_period=start_period, end_period=end_period,
                 limit=route.komis_raw_limit,
             )
@@ -2381,10 +2413,11 @@ def _retrieve_node(
                 news.fetch_news_evidence, route.resolved_query or state["question"],
                 start=news_start, end=news_end, limit=route.komis_ranking_top_n or 5,
             )
-        if route.use_inventory and route.komis_mineral_name:
+        if route.use_inventory and (route.komis_mineral_name or route.price_criterion_serial):
             jobs["inventory"] = submit(
                 inventory.fetch_inventory_evidence, route.komis_mineral_name,
                 basis=(state.get("action_call").slots.price_basis if state.get("action_call") else None),
+                price_criterion_serial=route.price_criterion_serial,
             )
         if route.use_battery_minerals:
             jobs["battery_minerals"] = submit(battery_minerals.fetch_battery_minerals_evidence)
@@ -2734,6 +2767,16 @@ def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
         if (action_call.action_id == "indicator.series"
                 and action_call.slots.indicator == "composite_index"
                 and _is_verified_composite_index_evidence(evidence, action_call)):
+            return {"sufficient": True, "evidence": evidence, "warnings": state.get("warnings", [])}
+        if action_call.action_id == "inventory.latest" and all(ev.kind == "structured" for ev in evidence):
+            return {"sufficient": True, "evidence": evidence, "warnings": state.get("warnings", [])}
+        # 원천 조회가 부여한 provenance caveat(예: 기준별 DEV_DUMMY)는
+        # 자유형 Advisor가 재구성하는 과정에서 소실되면 안 된다. 가격값의
+        # 의미 검증과 provenance 보존을 분리하고, caveat이 있는 구조화 가격
+        # 결과는 원 evidence와 경고를 그대로 통과시킨다.
+        if (action_call.action_id == "price.series"
+                and all(ev.kind == "structured" for ev in evidence)
+                and any(ev.caveat for ev in evidence)):
             return {"sufficient": True, "evidence": evidence, "warnings": state.get("warnings", [])}
         # 가격 상승일 판정은 가격 Action의 역할이고 뉴스 검색은 상승일을
         # 확인한 뒤 별도 Action으로 붙는다. 검증기에게 아직 조회하지 않은
@@ -3144,6 +3187,52 @@ def _dependency_order(plan: ActionPlan) -> list:
     return ordered
 
 
+def _resolve_input_bindings(call: ActionCall, action_results: list[ActionResult]) -> tuple[bool, str | None, dict]:
+    """선행 structured 표에서 국가를 결정적으로 선택해 후속 슬롯에 넣는다."""
+    trace = {"bindings": [], "status": "not_required"}
+    if not call.input_bindings:
+        return True, None, trace
+    trace["status"] = "resolving"
+    by_req = {item.requirement_id: item for item in action_results}
+    for binding in call.input_bindings:
+        predecessor = by_req.get(binding.source_requirement_id)
+        if predecessor is None or predecessor.status != "success":
+            return False, "predecessor_result_unavailable", trace
+        rows = []
+        for ev in predecessor.evidence:
+            for table in extract_markdown_tables(getattr(ev, "text", "")):
+                keys = [str(col).split("(", 1)[0].strip().casefold() for col in table["columns"]]
+                if "country" not in keys or "share_pct" not in keys:
+                    continue
+                country_i, share_i = keys.index("country"), keys.index("share_pct")
+                for row in table["rows"]:
+                    if max(country_i, share_i) >= len(row):
+                        continue
+                    try:
+                        share = float(str(row[share_i]).replace(",", ""))
+                    except (TypeError, ValueError):
+                        continue
+                    country = str(row[country_i]).strip()
+                    if country:
+                        rows.append({"country": country, "share_pct": share})
+        if not rows:
+            return False, "predecessor_country_distribution_missing", trace
+        maximum = max(row["share_pct"] for row in rows)
+        winners = [row for row in rows if abs(row["share_pct"] - maximum) <= 1e-9]
+        trace["source_requirement_id"] = binding.source_requirement_id
+        trace["country_distribution"] = rows
+        if len(winners) != 1:
+            trace["status"] = "tie"
+            trace["ties"] = winners
+            return False, "argmax_country_tie", trace
+        selected = winners[0]
+        setattr(call.slots, binding.target_slot, selected["country"])
+        trace["selected_country"] = selected
+        trace["target_slot"] = binding.target_slot
+    trace["status"] = "resolved"
+    return True, None, trace
+
+
 def _significant_rise_date(evidence: list[Evidence], threshold: float) -> str | None:
     """검증된 가격 관측값에서 기준 이상 상승일 하나를 결정한다.
 
@@ -3315,6 +3404,10 @@ def retrieve_evidence(
         scheduled_index += 1
         if set(call.depends_on) & failed_requirements:
             record_failure(call, [], "blocked")
+            continue
+        bound, binding_reason, binding_trace = _resolve_input_bindings(call, action_results)
+        if not bound:
+            record_failure(call, [f"typed_binding:{binding_reason}", json.dumps(binding_trace, ensure_ascii=False)], binding_reason or "binding_failed")
             continue
         if call.action_id in {"menu.navigate", "dataset.navigate"}:
             # 메뉴 레지스트리는 app/page_recommend 어댑터 소관이다. 이 RAG core가
@@ -3490,6 +3583,16 @@ def retrieve_evidence(
             # 생산 1위국 점유율은 전용 KOMIS adapter가 공식 집계 열을 조회해
             # 만든 구조화 근거다. 일반 문서 Advisor에 다시 맡기면 정형 데이터
             # Action을 거절하는 회귀가 있어, 근거 존재 여부만 충분성 기준으로 쓴다.
+            verified = {"sufficient": bool(call_evidence), "evidence": call_evidence,
+                        "warnings": call_warnings}
+        elif (
+            call.action_id == "resource.rank"
+            and call.slots.resource_operation not in {None, "level", "first", "latest"}
+        ):
+            # Aggregate/country-value operations are deterministic typed
+            # projections over the structured ranking evidence.  Re-sending
+            # them to the free-form advisor caused valid sum/average plans to
+            # be rejected before the renderer could consume the result.
             verified = {"sufficient": bool(call_evidence), "evidence": call_evidence,
                         "warnings": call_warnings}
         elif _is_rare_earth_nd_scope_request(call, question):

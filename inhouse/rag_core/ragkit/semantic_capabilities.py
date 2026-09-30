@@ -13,10 +13,11 @@ from typing import Final
 CAPABILITY_OUTPUTS: Final[dict[tuple[str, str], frozenset[str]]] = {
     ("concept", "retrieve"): frozenset({"usage", "concept"}),
     ("document", "retrieve"): frozenset({"document_evidence", "resource_news"}),
-    ("price", "current"): frozenset({"latest_price"}),
+    ("price", "current"): frozenset({"latest_price", "current_price"}),
     ("price", "price_series"): frozenset({"price_series"}),
     ("trade", "country_rank"): frozenset({"country_rank"}),
-    ("resource", "resource_rank"): frozenset({"resource_rank"}),
+    ("resource", "resource_rank"): frozenset({"resource_rank", "production", "reserves", "value", "country", "period", "unit"}),
+    ("inventory", "latest"): frozenset({"latest_inventory", "inventory"}),
     ("resource", "resource_yoy"): frozenset({"resource_change"}),
     ("indicator", "series"): frozenset({"indicator_series"}),
 }
@@ -33,6 +34,27 @@ def produced_outputs(requirements: list[object]) -> frozenset[str]:
     for requirement in requirements:
         key = (getattr(requirement, "domain", ""), getattr(requirement, "metric", ""))
         outputs.update(CAPABILITY_OUTPUTS.get(key, ()))
+        if key == ("resource", "resource_rank"):
+            operation = getattr(requirement, "resource_operation", None)
+            outputs.update({"production", "reserves", "value", "country", "period", "unit"})
+            if operation:
+                outputs.add(operation)
+                metric_name = getattr(requirement, "operation", None) or getattr(requirement, "metric", "resource")
+                outputs.add(f"{metric_name}_{operation}")
+                domain_metric = "reserves" if getattr(requirement, "operation", None) == "reserves" else "production"
+                outputs.update({
+                    f"{operation}_{domain_metric}", f"{domain_metric}_{operation}",
+                    f"{operation}_of_{domain_metric}", f"{domain_metric}_value",
+                    f"{domain_metric}_country", f"{operation}_{domain_metric}_country",
+                })
+                if operation == "country_value":
+                    outputs.update({"country", "value"})
+    resource_ops = {
+        getattr(r, "resource_operation", None) for r in requirements
+        if (getattr(r, "domain", ""), getattr(r, "metric", "")) == ("resource", "resource_rank")
+    }
+    if {"average", "sum"}.issubset(resource_ops):
+        outputs.update({"difference_between_average_and_total", "total_production", "average_production"})
         # A selected price observation is a scalar value plus its selected
         # date, not merely an unprojected time series.  This is derived from
         # the typed AST selection, never from the raw utterance.

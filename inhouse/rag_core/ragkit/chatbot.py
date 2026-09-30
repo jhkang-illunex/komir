@@ -884,34 +884,69 @@ def _caution_notice(cited_indices: set[int], evidence: list) -> str:
     return ""
 
 
-def _debug_retrieval_trace(result: RetrievalResult | None, warnings: list[str], action_plan) -> dict:
+def _debug_retrieval_trace(result: RetrievalResult | None, warnings: list[str], action_plan, *, render_trace=None) -> dict:
     """DEBUG 모드에서 내보내되 경고 원문은 로그에만 남긴다."""
-    planned = [
-        {"requirement_id": call.requirement_id, "action_id": call.action_id}
-        for call in getattr(action_plan, "actions", ()) or ()
-    ]
+    def json_value(value):
+        if value is None or isinstance(value, (str, int, float, bool)):
+            return value
+        if isinstance(value, dict):
+            return {str(k): json_value(v) for k, v in value.items()}
+        if isinstance(value, (list, tuple, set)):
+            return [json_value(v) for v in value]
+        if hasattr(value, "model_dump"):
+            return json_value(value.model_dump(mode="json"))
+        return str(value)
+
+    planned = []
+    for call in getattr(action_plan, "actions", ()) or ():
+        slots = getattr(call, "slots", None)
+        planned.append({
+            "requirement_id": call.requirement_id,
+            "action_id": call.action_id,
+            "slots": json_value(slots),
+        })
     outcomes = []
+    evidence_by_req = {}
+    for ev in (getattr(result, "evidence", ()) or ()):
+        evidence_by_req.setdefault(getattr(ev, "requirement_id", None), []).append(ev)
     for item in (getattr(result, "action_results", ()) or ()):
+        item_evidence = evidence_by_req.get(getattr(item, "requirement_id", None), [])
         outcomes.append({
             "requirement_id": item.requirement_id,
             "action_id": item.action_id,
             "status": item.status,
             "failure_reason": item.failure_reason,
             "warnings": [],
+            "result_type": json_value(getattr(item, "result_type", None)) or (
+                "structured" if any(getattr(ev, "kind", None) == "structured" for ev in item_evidence)
+                else ("document" if item_evidence else None)
+            ),
+            "evidence_success": bool(item_evidence),
         })
     return {"enabled": True, "action_plan": planned, "action_results": outcomes,
-            "warnings": []}
+            "warnings": [], "composite_renderer": render_trace or {
+                "entered": False, "selected_renderer": None,
+                "attempts": [{"status": "not_called", "reason": "before_render_phase"}],
+            }}
 
 
 def _dummy_data_notice(cited_indices: set[int], evidence: list) -> str:
-    """개발용 데이터 경고는 운영 로그 전용으로 유지하고 사용자 출력에는 붙이지 않는다."""
+    """인용된 확정 더미는 실제 시세로 오인되지 않도록 답변에 표시한다."""
 
+    if any(i in cited_indices and getattr(ev, "caveat", None)
+           and getattr(ev, "action_id", None) in {"price.series", "price.verify_claim"}
+           for i, ev in enumerate(evidence, 1)):
+        return "\n\n※ 이 가격은 개발용 더미 데이터이며 실제 시세로 사용할 수 없습니다."
     return ""
 
 
 def _data_warnings(cited_indices: set[int], evidence: list) -> list[str]:
-    """검증 경고는 로그 전용이므로 사용자 이벤트에는 반환하지 않는다."""
+    """구조화 결과에도 인용 근거의 확정 더미 상태를 보존한다."""
 
+    if any(i in cited_indices and getattr(ev, "caveat", None)
+           and getattr(ev, "action_id", None) in {"price.series", "price.verify_claim"}
+           for i, ev in enumerate(evidence, 1)):
+        return ["confirmed_dev_dummy:actual_price_not_supported"]
     return []
 
 
@@ -1702,6 +1737,21 @@ def _resolve_abstain(message: str, warnings: list[str], llm: "KomirJsonLLM | Non
         return "private_only_profile_access", _PRIVATE_ONLY_PROFILE_TEXT
     if _ACCESS_DENIED_WARNING in warnings:
         return "access_denied", _ACCESS_DENIED_TEXT
+    criterion_choice = next(
+        (warning.split(":", 2)[2] for warning in warnings
+         if warning.startswith("price_criterion_selection_required:")),
+        None,
+    )
+    if criterion_choice:
+        return "ambiguous", (
+            "해당 광종에 여러 가격기준이 연결되어 있습니다. 원하는 기준을 지정해 주세요: "
+            + criterion_choice
+        )
+    if any(w.startswith("가격기준 ") and "DEV_DUMMY" in w and "제외" in w for w in warnings):
+        return "source_unavailable", (
+            "요청한 가격기준은 DEV_DUMMY 기준이라 일반 챗봇 가격 조회 대상에서 제외됩니다. "
+            "실제 가격기준을 지정해 다시 질문해 주세요."
+        )
     if action_failure == "source_unavailable":
         return "source_unavailable", chat_message("data_not_found")
     if any(w.startswith("source_unavailable:") for w in warnings):
@@ -2015,9 +2065,11 @@ async def chat_turn(
         evidence, route_warnings = [], ["retrieve_evidence_crashed"]
     if route_warnings:
         _logger.warning("근거 조회 경고: %s", route_warnings)
+    render_trace = {"entered": False, "selected_renderer": None, "attempts": []}
     if get_settings().DEBUG:
         yield ChatEvent(type="debug", data=_debug_retrieval_trace(
             retrieval_result, route_warnings, executed_plan,
+            render_trace=render_trace,
         ))
     if live_run is not None:
         await record_legacy_comparison(live_run, retrieval_result)
@@ -2196,7 +2248,30 @@ async def chat_turn(
     composite_answer = render_composite(
         evidence, executed_plan,
         getattr(retrieval_result, "action_results", None),
+        trace=render_trace,
     )
+    if composite_answer is not None:
+        render_trace["final"] = {
+            "status": "success",
+            "value_source_action_ids": sorted({
+                getattr(item, "action_id", None)
+                for index, item in enumerate(evidence, 1)
+                if index in composite_answer[1] and getattr(item, "action_id", None)
+            }),
+            "citation_indices": sorted(composite_answer[1]),
+        }
+        render_trace["fallback"] = {"generic_llm": False, "reason": "typed_composite_selected"}
+    else:
+        render_trace["final"] = {"status": "not_rendered"}
+        render_trace["fallback"] = {
+            "generic_llm": True,
+            "reason": "no_typed_composite_renderer_result",
+        }
+    if get_settings().DEBUG:
+        yield ChatEvent(type="debug", data=_debug_retrieval_trace(
+            retrieval_result, route_warnings, executed_plan,
+            render_trace=render_trace,
+        ))
     if composite_answer is not None:
         answer, cited_indices = composite_answer
         citations = _citation_sources(cited_indices, evidence)

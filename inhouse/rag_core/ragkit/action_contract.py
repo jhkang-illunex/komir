@@ -70,6 +70,9 @@ class ActionSlots(BaseModel):
     claimed_change_pct: float | None = None
     comparator: Literal["greater_than", "less_than", "equals"] | None = None
     price_basis: str | None = None
+    # DB-backed price criterion serial.  This is a typed source identifier,
+    # not an intent selector; lowering passes it to the existing raw lookup.
+    price_criterion_serial: int | None = Field(default=None, ge=1)
     currency: str | None = None
     weight_unit: str | None = None
     # 단일 가격 시계열에서 renderer가 수행할 결정적 집계 의미다. 값이 없으면
@@ -90,6 +93,12 @@ class ActionSlots(BaseModel):
     windows: list[int] | None = None
     strategic_price_groups: list[Literal["strategic_six", "strategic_ten", "battery_five"]] | None = None
     country_scope: str | None = None
+    # resource.rank의 결과에 적용하는 범용 typed operation. 물리 Action은
+    # 그대로 유지하고, 국가 필터·집계·projection 의미만 보존한다.
+    resource_operation: Literal[
+        "level", "first", "latest", "average", "sum", "count", "min", "max", "country_value"
+    ] | None = None
+    resource_country: str | None = None
     trade_scope: Literal["korea", "global"] | None = None
     # 특정국 의존도는 같은 광종·방향·기간의 전체 상대국 합계만 분모로 쓴다.
     # 한국 전체 품목·세계 전체 무역 같은 다른 모집단은 별도 원천 검증 없이는
@@ -126,6 +135,15 @@ class IntentPlan(BaseModel):
     requirements: list[IntentCall] = Field(min_length=1)
 
 
+class InputBinding(BaseModel):
+    """선행 typed 결과를 후속 Action 슬롯에 materialize하는 계약."""
+    model_config = ConfigDict(extra="forbid")
+    source_requirement_id: str = Field(min_length=1, max_length=80)
+    source_field: Literal["country", "country_code", "share_pct"]
+    selector: Literal["argmax"]
+    target_slot: Literal["reporter_country", "partner_country"]
+
+
 class ActionCall(BaseModel):
     model_config = ConfigDict(extra="forbid")
     requirement_id: str = Field(min_length=1, max_length=80)
@@ -136,6 +154,7 @@ class ActionCall(BaseModel):
     intent: IntentId | None = None
     role: Literal["data", "metadata", "content"] | None = None
     depends_on: list[str] = []
+    input_bindings: list[InputBinding] = []
     requested_outputs: set[Literal["text", "table", "chart", "menu", "raw_data"]] = {"text"}
 
 
@@ -309,6 +328,13 @@ price.compare로 만들지 말고, 해당 설명의 출처를 찾는 document �
 intent=price_series, slots.price_operation=year_over_year,
 slots.price_yoy_basis=monthly_average로 두고 period.trailing_months=13을 사용한다.
 "월 최신 관측값"·"월말 기준"을 명시하면 price_yoy_basis=monthly_latest로 둔다.
+후속 Action이 선행 결과에서 국가를 받아야 하면 depends_on과 input_bindings를 사용한다. 예를 들어
+수입 집중도에서 비중이 가장 높은 국가를 골라 그 국가의 수출을 조회하는 경우 선행
+trade.concentration을 실행하고, 후속 trade.country_rank의 metric=export_amount,
+trade_scope=korea 또는 global을 질문 의미대로 보존한다. 선행 결과의 country를
+selector=argmax, source_field=country로 선택하고, 수출국을 조회하는 후속 Action이면
+target_slot=reporter_country, 특정 상대국을 조회하는 후속 Action이면
+target_slot=partner_country로 명시한다. 국가 슬롯을 임의 기본값으로 채우지 않는다.
 JSON 외 텍스트를 출력하지 않는다."""
 
 INTENT_PLAN_PROMPT = """질문의 독립 정보요구를 빠짐없이 requirements IntentCall 목록으로 분해한 closed intent JSON을 출력한다.
@@ -3022,6 +3048,14 @@ def validate_action_plan(plan: ActionPlan | None) -> PlanAssessment:
     known_ids = set(ids)
     if any(not set(call.depends_on) <= known_ids - {call.requirement_id} for call in plan.actions):
         return PlanAssessment(approved=False, failure_reason="slot_unresolved")
+    for call in plan.actions:
+        for binding in call.input_bindings:
+            if binding.source_requirement_id not in set(call.depends_on):
+                return PlanAssessment(approved=False, failure_reason="slot_unresolved")
+            if call.action_id != "trade.country_rank":
+                return PlanAssessment(approved=False, failure_reason="slot_unresolved")
+            if binding.target_slot == "reporter_country" and call.slots.trade_scope not in {"korea", "global"}:
+                return PlanAssessment(approved=False, failure_reason="slot_unresolved")
     edges = {call.requirement_id: set(call.depends_on) for call in plan.actions}
     visiting, visited = set(), set()
     def has_cycle(node: str) -> bool:

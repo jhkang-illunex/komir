@@ -1,0 +1,43 @@
+{
+  "validation_container": {
+    "port": 18006,
+    "image_used_for_success_evidence": "komir-rag-chat:qa-resource-fix-check-3",
+    "image_used_for_replay": "komir-rag-chat:qa-resource-fix-check-3",
+    "operational_container_untouched": "komir-rag-chat-18005"
+  },
+  "probes": [
+    {
+      "id": "PROBE-CHILE-OUTSIDE-TOP5",
+      "execution": "previous successful SSE response",
+      "question": "구리 생산량에서 2024년 칠레 값은?",
+      "result": "PASS",
+      "sse_evidence": "resource.rank structured result contained 17 countries; delta=칠레의 production 값은 2,098.10톤입니다.",
+      "independent_sql": "production 2024 population 17; Chile=2,098.10톤",
+      "note": "칠레는 Top-5 밖이며 구조화 결과에 포함됨"
+    },
+    {
+      "id": "PROBE-FULL-SUM",
+      "execution": "previous successful SSE response",
+      "question": "구리 생산량에서 2024년 등록 국가들의 합계는?",
+      "result": "FAIL",
+      "sse_evidence": "SSE structured result observed 2026 data and delta=34,968.00톤",
+      "independent_sql": "2024 production sum=6,998,520.20톤, population=17",
+      "failure_stage": "period binding / semantic resolution",
+      "note": "수정 후 성공 PASS가 아니라 기간 보존 실패로 기록"
+    },
+    {
+      "id": "PROBE-COMBO-STRUCTURED-FOLLOWUP",
+      "execution": "not_run_successfully",
+      "question": "2024년 구리 생산량의 전체 합계와 평균을 계산하고, 합계에서 평균을 뺀 값도 알려줘",
+      "result": "NOT_RUN",
+      "sse_replay": "slot_unresolved; abstained=true",
+      "note": "화면 표시값만으로 구조화 후속 사용을 주장하지 않음"
+    }
+  ],
+  "population_change": {
+    "production_2024": "독립 SQL에서 SU/OT 제외 및 실제 값이 있는 국가 기준 17개국",
+    "excluded_rows": "SU/OT 집계 행과 국가 매핑 대상이 아닌 행",
+    "filter_basis": "country code NOT IN ('SU','OT'), mineral=구리, period=2024; 0 값 국가는 모집단에 포함",
+    "warning": "19개국에서 17개국으로의 변경은 전체 DB 행 수와 국가 모집단을 혼동하지 않도록 별도 확인 필요"
+  }
+}

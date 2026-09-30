@@ -13,6 +13,8 @@ import json
 import logging
 import os
 import re
+import json
+import os
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -98,6 +100,7 @@ class SemanticRequirement(BaseModel):
         "yearly_average", "significant_daily_rise", "latest_delta", "period_change",
         "period_extrema", "level", "increase", "decrease", "yoy_increase",
         "yoy_decrease", "argmin", "argmax", "ordinal", "reserves",
+        "first", "latest", "average", "sum", "count", "min", "max", "country_value",
     ] | None = None
     selection: SemanticSelection | None = None
     relation: Literal["independent", "refine_previous"] = "independent"
@@ -114,6 +117,10 @@ class SemanticRequirement(BaseModel):
     # before the resolver can verify it against observations.
     claimed_change_pct: float | None = Field(default=None, ge=-10000, le=10000)
     comparator: Literal["greater_than", "less_than", "equals"] | None = None
+    resource_operation: Literal[
+        "level", "first", "latest", "average", "sum", "count", "min", "max", "country_value"
+    ] | None = None
+    resource_country: str | None = None
     indicator: Literal["supply_stability", "market_outlook", "composite_index"] | None = None
     indicator_variant: Literal["composite", "major_metals", "minor_metals"] | None = None
     mine_name: str | None = None
@@ -208,6 +215,10 @@ requested_outputs와 requirements의 output coverage가 맞지 않으면 불완�
 - "최근 3개월 월간동향에서 니켈 내용"은 document/retrieve(topic에 질문과 광종 보존)이며
   trade/monthly가 아니다. "니켈 가격 추이와 최근 월간동향"도 같은 두 requirement다.
 - 세계 생산량 변화·전년 대비는 resource/resource_yoy이며 resource/series로 만들지 않는다.
+- 생산량·매장량의 단일 국가값, 최초/최신값, 평균·합계·건수·최소·최대는
+  resource/resource_rank에 resource_operation을 보존한다. 국가가 명시되면
+  resource_country에 넣고, 평균·합계·건수·최소·최대는 결과 국가 모집단 전체를
+  대상으로 한다. 이 필드는 실행 Action 이름이 아니다.
 - 현재 가격: domain=price, metric=current
 - 가격 추이: domain=price, metric=price_series
 - 기간 표현은 의미 단위로 보존한다. "최근 1주일/7일/한 주"은
@@ -508,6 +519,14 @@ def _normalize_semantic_plan(plan: SemanticPlan, message: str = "") -> SemanticP
     compact = re.sub(r"\s+", "", message)
     requirements = []
     for item in plan.requirements:
+        # Calendar years are lexical date fields. Preserve an explicit year
+        # when the model omits period; never replace it with latest.
+        if item.domain == "resource" and item.period is None:
+            year_match = re.search(r"(?<!\d)(20\d{2})\s*년", message)
+            if year_match:
+                item = item.model_copy(update={
+                    "period": SemanticPeriod(kind="calendar_year", calendar_year=int(year_match.group(1)), explicit=True)
+                })
         if item.domain == "concept" and item.metric in {"retrieve", "lookup", "facts"} and not item.mineral:
             mineral = _infer_topic_mineral(item.topic)
             if mineral:
@@ -683,8 +702,12 @@ def _to_intent_call(item: SemanticRequirement, index: int) -> Any:
                                             denominator_scope="reporter_product_trade" if item.trade_metric == "country_dependency" else None,
                                             period=_period_default(item.period)))
     if item.domain == "inventory" and item.metric in {"latest", "current"}:
-        if not mineral:
-            raise SemanticResolutionError("inventory requires mineral")
+        criterion_serial = int(mineral) if mineral and mineral.isdigit() else None
+        if not mineral or criterion_serial is not None:
+            if criterion_serial is None:
+                raise SemanticResolutionError("inventory requires mineral or criterion")
+            return IntentCall(requirement_id=_requirement_id(item, index), intent="inventory_latest", role="data",
+                              slots=ActionSlots(mineral=None, price_criterion_serial=criterion_serial))
         return IntentCall(requirement_id=_requirement_id(item, index), intent="inventory_latest", role="data",
                           slots=ActionSlots(mineral=mineral))
     if item.domain == "price" and item.metric == "current" and item.price_group and not mineral:
@@ -728,7 +751,7 @@ def _to_intent_call(item: SemanticRequirement, index: int) -> Any:
         slots = ActionSlots(
             mineral=mineral, period=price_period, price_operation=price_operation,
             price_yoy_basis=(item.aggregation or "monthly_average") if is_yoy else None,
-            price_basis=item.price_basis, currency=item.currency,
+            price_basis=item.price_basis, price_criterion_serial=(int(item.price_basis) if item.price_basis and item.price_basis.isdigit() else None), currency=item.currency,
             selection_mode=selection.mode if selection is not None else None,
             selection_direction=selection.direction if selection is not None else None,
             selection_position=selection.position if selection is not None else None,
@@ -758,15 +781,27 @@ def _to_intent_call(item: SemanticRequirement, index: int) -> Any:
             raise SemanticResolutionError("resource ordinal selection requires a ranked-result binding")
         if selection is not None and selection.mode == "rank" and selection.direction not in {None, "max"}:
             raise SemanticResolutionError("resource rank currently supports descending rank only")
+        operation = item.resource_operation or (
+            "level" if item.operation in {None, "reserves", "argmax", "argmin"} else item.operation
+        )
         top_n = (
             1 if selection is not None and selection.mode == "extremum" else
             selection.limit if selection is not None and selection.mode == "rank" and selection.limit else
-            1 if item.operation == "argmax" else item.top_n or 5
+            1 if item.operation == "argmax" else (100 if operation not in {"level", "first", "latest"} else item.top_n or 5)
         )
-        metric = "reserves" if item.operation == "reserves" else "production"
+        # Gemma may preserve the requested resource kind in ``measure`` while
+        # using ``operation`` for the aggregate (average/sum/etc.).  The
+        # physical lowering must retain that semantic distinction; otherwise
+        # a reserves aggregate silently becomes a production aggregate.
+        is_reserves = item.operation == "reserves" or (
+            item.selection is not None and item.selection.measure == "reserves"
+        )
+        metric = "reserves" if is_reserves else "production"
         return IntentCall(requirement_id=_requirement_id(item, index), intent="resource_rank", role="data",
                           slots=ActionSlots(mineral=mineral, metric=metric, country_scope="world",
-                                            top_n=top_n, period=_period(item.period)))
+                                            top_n=top_n, period=_period(item.period),
+                                            resource_operation=operation,
+                                            resource_country=item.resource_country))
     if item.domain == "resource" and item.metric == "resource_yoy":
         if not mineral or scope != "WORLD":
             raise SemanticResolutionError("resource yoy requires world scope and mineral")
@@ -893,6 +928,11 @@ def parse_and_resolve(
     if llm is None or not hasattr(llm, "invoke"):
         return SemanticResolution(None, None, None, "semantic_llm_unavailable")
     semantic_plan: SemanticPlan | None = None
+    trace_record: dict[str, Any] = {
+        "question": message,
+        "model": os.getenv("LLM_MODEL"),
+        "mode": semantic_mode(),
+    }
     try:
         invocation = llm.invoke(
             task="semantic_intent",
@@ -905,6 +945,7 @@ def parse_and_resolve(
             output_model=SemanticPlan,
             max_tokens=1000,
         )
+        trace_record["llm_record"] = getattr(invocation, "record", None)
         candidate = invocation.output
         # Some test doubles and legacy wrappers ignore ``output_model`` and
         # return an IntentPlan.  Never let that bypass the typed boundary or
@@ -918,10 +959,31 @@ def parse_and_resolve(
             raise SemanticResolutionError(output_error)
         semantic_plan = _bind_price_context(semantic_plan, semantic_context)
         intent_plan, action_plan = resolve_semantic_plan(semantic_plan, message)
-        return SemanticResolution(semantic_plan, intent_plan, action_plan, None)
+        result = SemanticResolution(semantic_plan, intent_plan, action_plan, None)
+        trace_record["semantic_plan"] = semantic_plan.model_dump(mode="json")
+        trace_record["action_plan"] = action_plan.model_dump(mode="json")
+        trace_record["outcome"] = "success"
+        _write_parser_trace(trace_record)
+        return result
     except Exception as exc:
         _logger.info("semantic parser fallback: %s: %s", type(exc).__name__, exc)
-        return SemanticResolution(semantic_plan, None, None, f"{type(exc).__name__}:{exc}")
+        trace_record["semantic_plan"] = semantic_plan.model_dump(mode="json") if semantic_plan else None
+        trace_record["error"] = f"{type(exc).__name__}:{exc}"
+        trace_record["outcome"] = "failed"
+        _write_parser_trace(trace_record)
+        return SemanticResolution(semantic_plan, None, None, trace_record["error"])
+
+
+def _write_parser_trace(record: dict[str, Any]) -> None:
+    """검증 환경 전용 parser trace; 공개 SSE에는 노출하지 않는다."""
+    path = os.getenv("RAG_PARSER_TRACE_PATH")
+    if not path:
+        return
+    try:
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
+    except OSError:
+        _logger.warning("parser trace write failed", exc_info=True)
 
 
 def _action_signature(plan: Any | None) -> tuple[dict[str, Any], ...] | None:
