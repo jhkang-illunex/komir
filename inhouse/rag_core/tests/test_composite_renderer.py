@@ -5,7 +5,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from rag_core.ragkit.action_contract import ActionCall, ActionPlan, ActionSlots, Period  # noqa: E402
-from rag_core.ragkit.composite_renderer import _document_summary_text, _hhi_risk_label, render_composite  # noqa: E402
+from rag_core.ragkit.composite_renderer import _document_summary_text, _hhi_risk_label, _weekly_mineral_list, render_composite  # noqa: E402
 from rag_core.ragkit.action_results import ActionResult  # noqa: E402
 from rag_core.retrieval.evidence import Evidence  # noqa: E402
 
@@ -44,6 +44,23 @@ class CompositeRendererTest(unittest.TestCase):
         self.assertIn("코발트, 동, 망간, 희토류", result[0])
         self.assertNotIn("OCR 본문", result[0])
         self.assertEqual(result[1], {1})
+
+    def test_weekly_mineral_list_uses_structured_mineral_column(self):
+        plan = ActionPlan(actions=[ActionCall(
+            requirement_id="weekly_news", action_id="document.retrieve",
+            slots=ActionSlots(topic="최근 주간광물동향 보고서에 언급된 광물은?"),
+        )])
+        evidence = [Evidence(
+            kind="structured", source="KOMIS 주간광물동향", section="주간 광물동향 게시물",
+            action_id="document.retrieve", requirement_id="weekly_news",
+            text=("| 게시일 | 출처 | 보고서 제목 | 원문 | 광종목록 | 요약 |\n|---|---|---|---|---|---|\n"
+                  "| 2026-09-08 | KOMIS | 주간 보고서 | report.pdf | 니켈, 구리, 코발트 | 가격 동향 |"),
+        )]
+        self.assertEqual(_weekly_mineral_list(evidence[0]), ["니켈", "구리", "코발트"])
+        result = render_composite(evidence, plan)
+        self.assertIsNotNone(result)
+        self.assertIn("언급된 광물", result[0])
+        self.assertIn("니켈, 구리, 코발트", result[0])
 
     def test_production_and_reserves_rankings_get_a_grounded_joint_summary(self):
         plan = ActionPlan(actions=[

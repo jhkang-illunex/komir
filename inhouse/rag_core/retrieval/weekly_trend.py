@@ -25,6 +25,28 @@ _SOURCE_LABELS = {
     "조달청보고서": "조달청 주간시장동향",
 }
 _BOARD_URL = "https://www.pps.go.kr/bichuk/bbs/list.do?key=00826"
+_MINERAL_ALIASES = (
+    ("희토류", ("희토류", "rare earth")),
+    ("네오디뮴", ("네오디뮴", "neodymium")),
+    ("코발트", ("코발트", "cobalt")),
+    ("리튬", ("리튬", "lithium")),
+    ("니켈", ("니켈", "nickel")),
+    ("구리", ("구리", "동", "copper")),
+    ("망간", ("망간", "manganese")),
+    ("흑연", ("흑연", "graphite")),
+    ("텅스텐", ("텅스텐", "tungsten")),
+    ("몰리브덴", ("몰리브덴", "molybdenum")),
+    ("안티모니", ("안티모니", "antimony")),
+    ("인듐", ("인듐", "indium")),
+    ("갈륨", ("갈륨", "gallium")),
+    ("티타늄", ("티타늄", "titanium")),
+)
+
+
+def _mentioned_minerals(text: str) -> list[str]:
+    """Return only canonical minerals explicitly present in the source text."""
+    folded = re.sub(r"\s+", " ", str(text or "")).casefold()
+    return [canonical for canonical, aliases in _MINERAL_ALIASES if any(alias in folded for alias in aliases)]
 
 
 def _publication_date(source_path: str) -> date | None:
@@ -100,6 +122,7 @@ def fetch_weekly_trend_evidence(
     # 안에서만 후속 청크를 읽어 ``가격 동향``·``시장 뉴스``가 실제로 있는 발췌를
     # 사용한다. 문서 경계를 넘거나 생성으로 요약하지 않는다.
     summaries: dict[str, str] = {}
+    minerals: dict[str, list[str]] = {}
     con = pg_connect()
     try:
         with con.cursor() as cur:
@@ -116,12 +139,13 @@ def fetch_weekly_trend_evidence(
                 preferred = [chunk for chunk in chunks.get(doc_id, [])
                              if any(marker in chunk for marker in ("가격 동향", "시장 뉴스", "주간 동향", "재고 동향"))]
                 summaries[doc_id] = " ".join((preferred or [first_text])[:2])[:1200]
+                minerals[doc_id] = _mentioned_minerals(" ".join(chunks.get(doc_id, [])))
     finally:
         con.close()
     table = [
-        "| 게시일 | 출처 | 보고서 제목 | 원문 | 요약 |",
-        "| --- | --- | --- | --- | --- |",
-        *[f"| {published_label} | {source} | {title} | {original} | {summaries.get(doc_id, '')} |"
+        "| 게시일 | 출처 | 보고서 제목 | 원문 | 광종목록 | 요약 |",
+        "| --- | --- | --- | --- | --- | --- |",
+        *[f"| {published_label} | {source} | {title} | {original} | {', '.join(minerals.get(doc_id, []))} | {summaries.get(doc_id, '')} |"
           for doc_id, _sort_date, published_label, source, title, original, _first_text in selected],
     ]
     return [Evidence(

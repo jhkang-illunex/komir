@@ -228,6 +228,26 @@ def _monthly_mineral_list(item):
     return []
 
 
+def _weekly_mineral_list(item):
+    """주간동향 adapter가 원문에서 확인한 광종 목록만 읽는다."""
+    for table in extract_markdown_tables(getattr(item, "text", "")):
+        keys = _keys(table)
+        mineral_i = next((i for i, key in enumerate(keys) if key in {"광종목록", "mentioned_minerals"}), None)
+        if mineral_i is None:
+            continue
+        names = []
+        for row in table["rows"]:
+            if mineral_i >= len(row):
+                continue
+            for name in re.split(r"[,、;/|]+", str(row[mineral_i])):
+                name = name.strip()
+                if name and name not in names:
+                    names.append(name)
+        if names:
+            return names
+    return []
+
+
 def _news_titles(item, *, limit: int = 3, expected_date: str | None = None):
     """자원뉴스 adapter의 구조화 표에서 제목만 보존해 읽는다."""
     for table in extract_markdown_tables(getattr(item, "text", "")):
@@ -657,14 +677,23 @@ def render_composite(evidence: list, action_plan, action_results=None) -> tuple[
                     {evidence_index},
                 )
             weekly_rows = _weekly_report_rows(document)
+            wants_weekly_mineral_list = (
+                "주간" in topic_compact and "광물" in topic_compact
+                and any(marker in topic_compact for marker in ("언급", "나온", "목록", "어떤"))
+            )
+            if wants_weekly_mineral_list:
+                minerals = _weekly_mineral_list(document)
+                if minerals:
+                    heading = getattr(document, "section", None) or "확인된 주간동향"
+                    return (f"주간동향 : {heading}에 언급된 광물\n- {', '.join(minerals)}", {evidence_index})
             if "주간동향" in topic and weekly_rows:
                 return (
                     "주간 자원뉴스 : 확인된 주간동향 보고서\n" + "\n".join(f"- {row}" for row in weekly_rows),
                     {evidence_index},
                 )
             wants_mineral_list = (
-                "월간동향" in topic_compact and "광종" in topic_compact
-                and any(marker in topic_compact for marker in ("뭐뭐", "목록", "어떤"))
+                "월간동향" in topic_compact and any(label in topic_compact for label in ("광종", "광물"))
+                and any(marker in topic_compact for marker in ("뭐뭐", "목록", "어떤", "언급", "나온"))
             )
             if wants_mineral_list:
                 minerals = _monthly_mineral_list(document)
