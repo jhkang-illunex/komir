@@ -2,6 +2,18 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-30 — Semantic AST output contract와 regex 경계 감사
+
+신규 semantic/multi-hop 경로의 regex·contains·prefix/suffix 후보를 감사했다. 관련 핵심
+파일 기준 후보 라인은 260개이며, 신규 semantic regex는 추가하지 않았다. 기존
+`action_contract.py` deterministic shortcut과 legacy route heuristic은 회귀 보호를 위해
+legacy 영역으로 분류하고 별도 제거 대상으로 기록했다.
+
+Gemma가 생성하는 `SemanticPlan.requested_outputs`와 typed capability registry를 추가하고,
+AST requirement가 실제로 해당 output을 생성하는지 raw query 재해석 없이 검증하도록 했다.
+coverage가 없으면 `requested_output_not_produced`로 닫힌다. 상세 분류와 남은 legacy debt는
+`documents/meta/SEMANTIC_REGEX_AUDIT.md`에 기록했다.
+
 ## 2026-09-30 — 용도 질문의 현재 가격 생략 표현 보강
 
 실제 `18005`에서 `니켈은 어디에 쓰이고 지금은 얼마야`를 재현했다. 기존 정규화 문형은

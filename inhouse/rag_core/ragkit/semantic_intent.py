@@ -126,6 +126,9 @@ class SemanticPlan(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     requirements: list[SemanticRequirement] = Field(min_length=1)
+    # Gemma declares the semantic outputs requested by the user.  Validation
+    # compares this set with capability outputs; it never reparses the query.
+    requested_outputs: set[str] = Field(default_factory=set)
     status: Literal["resolved", "unresolved"] = "resolved"
     unresolved_reason: str | None = None
 
@@ -822,6 +825,10 @@ def resolve_semantic_plan(plan: SemanticPlan, message: str = "") -> tuple[Any, A
     """Resolve semantic WHAT into the existing IntentPlan/ActionPlan contract."""
 
     plan = _normalize_semantic_plan(plan, message)
+    from .semantic_capabilities import validate_requested_outputs
+    output_error = validate_requested_outputs(plan.requirements, plan.requested_outputs)
+    if output_error:
+        raise SemanticResolutionError(output_error)
     if plan.status != "resolved" or any(item.unresolved_reason for item in plan.requirements):
         raise SemanticResolutionError(plan.unresolved_reason or "semantic plan unresolved")
     from .action_contract import IntentPlan, action_plan_from_intent, validate_action_plan
@@ -888,6 +895,10 @@ def parse_and_resolve(
         if not isinstance(candidate, SemanticPlan):
             raise SemanticResolutionError("semantic_output_schema_invalid")
         semantic_plan = _normalize_semantic_plan(candidate, message)
+        from .semantic_capabilities import validate_requested_outputs
+        output_error = validate_requested_outputs(semantic_plan.requirements, semantic_plan.requested_outputs)
+        if output_error:
+            raise SemanticResolutionError(output_error)
         semantic_plan = _bind_price_context(semantic_plan, semantic_context)
         intent_plan, action_plan = resolve_semantic_plan(semantic_plan, message)
         return SemanticResolution(semantic_plan, intent_plan, action_plan, None)
