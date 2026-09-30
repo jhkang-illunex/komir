@@ -1,4 +1,5 @@
 import unittest
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 from inhouse.rag_core.ragkit import live_multihop
@@ -11,6 +12,9 @@ from inhouse.rag_core.retrieval.evidence import Evidence
 
 
 class LiveMultiHopBridgeTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        live_multihop.clear_semantic_cache()
+
     def test_history_alias_is_materialized_from_latest_typed_root(self):
         typed = TypedResult.success(ValueType.MINERAL_SET, [{"광종": "니켈"}], entity=("니켈",))
         previous = Turn(
@@ -86,6 +90,85 @@ class LiveMultiHopBridgeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(live_multihop._action_slots(imports).metric, "import_amount")
         self.assertEqual(live_multihop._action_slots(price, mineral="nickel").mineral, "니켈")
         self.assertIsNone(live_multihop._action_slots(RequirementNode("price_query", Operator.RETRIEVE, args={"metric": "price"})).metric)
+
+    def test_country_share_scope_normalizes_to_global_trade_scope(self):
+        node = RequirementNode("country", Operator.RETRIEVE, args={"metric": "import_value", "scope": "country_share"})
+        self.assertEqual(live_multihop._action_slots(node).trade_scope, "global")
+
+    def test_filter_accepts_compact_string_predicate_without_runtime_error(self):
+        factory = live_multihop.LiveOperatorFactory(
+            message="가격 상승 광물", session_id="filter-test", profile="public",
+            llm=object(), history=[],
+        )
+        source = TypedResult.success(
+            ValueType.MINERAL_RANKING,
+            [{"광종": "니켈", "pct_change": "12.5"}, {"광종": "리튬", "pct_change": "-2.0"}],
+            entity=("니켈", "리튬"),
+        )
+        node = RequirementNode(
+            "filtered", Operator.FILTER,
+            args={"metric": "price_change_rate", "predicate": "greater_than", "value": 0},
+        )
+
+        result = factory._derive(node, {"rank": source})
+
+        self.assertEqual(result.status.value, "success")
+        self.assertEqual(result.value, [{"광종": "니켈", "pct_change": "12.5"}])
+
+    def test_sort_keeps_rows_with_missing_metric_at_the_end(self):
+        factory = live_multihop.LiveOperatorFactory(
+            message="국가 순위", session_id="sort-test", profile="public", llm=object(), history=[],
+        )
+        source = TypedResult.success(
+            ValueType.FACT_SET,
+            [{"국가": "중국", "import_amount": None}, {"국가": "호주", "import_amount": 10}],
+        )
+        node = RequirementNode("sorted", Operator.SORT, args={"field": "import_amount", "order": "desc"})
+        result = factory._derive(node, {"source": source})
+        self.assertEqual([row["국가"] for row in result.value], ["호주", "중국"])
+
+    def test_semantic_history_is_bounded_and_excludes_raw_result_payload(self):
+        typed = TypedResult.success(
+            ValueType.TRADE_SERIES,
+            [{"월": "2026-01", "수입액": "999999999999999999999999"}],
+            entity=("니켈",), metric="import_amount", provenance=("trade:fixture",),
+        )
+        turns = tuple(
+            Turn(
+                f"turn-{index}", "compact-session", UserUtterance("이전 질문"),
+                semantic_program=SemanticProgram(
+                    (RequirementNode("root", Operator.RETRIEVE, args={"metric": "import_amount"}),),
+                    ("root",),
+                ),
+                result=ExecutionResult(f"pipe-{index}", ResultStatus.SUCCESS, {"root": typed}, ()),
+            )
+            for index in range(12)
+        )
+        payload = live_multihop._semantic_context_payload(ConversationContext("compact-session", turns))
+        self.assertEqual(len(payload), 8)
+        self.assertNotIn("수입액", str(payload))
+        self.assertIn("operators", payload[-1]["ast"])
+        self.assertIn("provenance", payload[-1]["results"][0])
+
+    async def test_semantic_ast_cache_reuses_same_typed_context(self):
+        class FakeLLM:
+            model = "fake-gemma"
+            calls = 0
+
+            def invoke(self, **_kwargs):
+                self.calls += 1
+                return SimpleNamespace(output=live_multihop.ASTProgramModel.model_validate({
+                    "nodes": [{"node_id": "root", "operator": "entity", "args": {"values": ["니켈"]}}],
+                    "roots": ["root"],
+                }))
+
+        llm = FakeLLM()
+        context = ConversationContext("cache-session")
+        first = await live_multihop._parse_ast(llm, "니켈", context)
+        second = await live_multihop._parse_ast(llm, "니켈", context)
+        self.assertEqual(first.to_dict(), second.to_dict())
+        self.assertEqual(llm.calls, 1)
+        self.assertEqual(live_multihop.semantic_cache_stats(), {"size": 1, "hits": 1, "misses": 1})
 
     async def test_real_bridge_uses_existing_action_executor_and_sse_blocks(self):
         program = SemanticProgram(

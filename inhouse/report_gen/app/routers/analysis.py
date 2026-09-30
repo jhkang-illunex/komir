@@ -40,7 +40,7 @@ grep으로 확인, 그 근거로 미사용 별칭 라우터까지 제거한 이�
 2026-08-13까지는 "외부repo도 501 스텁이라 참고할 구현이 없다"는 이유로 이 3종을
 만들지 않았었다. `KO_MNRL_PRC`(광물자원가격)·`KO_CSTM_CMMRC`(국내 수급지도)·
 `KO_UN_CMMRC`(글로벌 수급지도) + 광종 매핑 테이블(`ai_prc_mnrl_map`/
-`ai_hs_mnrl_map`)을 근거로 komir가 새로 짰다(계산은 `analysis/komir_summary.py`,
+`ai_hs_mtrl_flow`)을 근거로 komir가 새로 짰다(계산은 `analysis/komir_summary.py`,
 5종의 `additional_summary.py`와는 분리). 요청 스키마는 5종과 같은 패턴
 (`AnalysisEndpointRequest` 상속)이되, 광종+일자 범위만 받는다 — 상세는 각 스키마
 docstring 참고.

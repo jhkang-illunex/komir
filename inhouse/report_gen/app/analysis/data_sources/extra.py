@@ -11,8 +11,8 @@
 
 광종 코드 해석은 기존 5종처럼 `resources/komis-metadata.subset.json`의 정적
 스냅샷(별칭 매칭)을 쓰지 않는다 — 이 3종이 쓰는 `ai_mnrl_mst`·`ai_prc_mnrl_map`·
-`ai_hs_mnrl_map`은 스냅샷보다 최신인 라이브 매핑 테이블이라(2026-08-19에 KOMIS가
-채움) `KomisRawDataRepository.resolve_*()`로 DB에서 직접 조회한다 — 정확한
+`ai_hs_mtrl_flow`는 물질흐름·적용연도별 반복행을 가진 스냅샷보다 최신인 라이브
+매핑 테이블이라 `KomisRawDataRepository.resolve_*()`로 DB에서 직접 조회한다 — 정확한
 `MNRKND_UNQ_CD`만 받는다(별칭 매칭 없음).
 """
 from __future__ import annotations
@@ -250,7 +250,7 @@ class DatabaseGlobalTradeDataSource(_TradeMapDataSource):
     묶는다(텅스텐 실데이터로 검증).
 
     ⚠ **HS코드 자릿수가 `KO_CSTM_CMMRC`와 다르다**(2026-08-19 실측) —
-    `ai_hs_mnrl_map`은 관세청 HSK 10자리(예: `8101100000`)인데 `KO_UN_CMMRC`는
+    `ai_hs_mtrl_flow.hs_cd`는 관세청 HSK 10자리(예: `8101100000`)인데 `KO_UN_CMMRC`는
     UN Comtrade 국제표준 HS **6자리**(예: `810110`)를 쓴다. 10자리 그대로
     필터하면 텅스텐(실데이터 있는 광종)도 0행이 나온다 — 앞 6자리로 잘라
     중복제거한 뒤 조회한다.

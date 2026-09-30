@@ -2,6 +2,37 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-30 — 실제 데이터 E2E blocker·Q30·10턴 검증 후속
+
+최신 소스 기준 `komir-rag-chat:multihop-work-r10`을 별도 Docker 컨테이너로 빌드·기동하고,
+운영과 동일한 PageIndex tree 2,604개 및 OKF 문서 2,604개 mount, 외부 PostgreSQL 경로,
+Gemma endpoint를 사용해 enabled E2E를 검증했다. 단순 수입 조회는 기존 SSE의 text/table/chart/
+done과 `KOMIS 공식 데이터`, USD, 관측기간, RDB source metadata를 반환했고, 3-hop
+가격순위→TopK→수입액도 table/chart/done과 `public.KO_CSTM_CMMRC` citation으로 완료했다.
+
+실제 Q01~Q30은 enabled 컨테이너에서 30/30 done, `PASS 8`, `ABSTAIN_VALID 22`,
+`PARSER_FAILURE/RESOLVE_FAILURE/PIPE_FAILURE/TOOL_FAILURE/PROTOCOL_FAILURE 0`으로 종료했다.
+Trace의 AST·Pipe·Step·실패 원인을 session ID로 결합해 근거 부족과 contract 실패를 분리했다.
+근거 없는 가격·공급망·문서 질문은 숫자를 만들지 않고 abstain했으며, Q23→Q24→Q25 동일
+session도 typed history binding을 사용했다. 10턴 동일 session은 전부 done으로 종료했고
+semantic context는 8턴/약 4,043자에서 증가가 멈췄다.
+
+수정은 기존 contract 내부로 제한했다. `country_share`/`south_korea` trade scope alias,
+단위가 붙은 표 컬럼(`import_amount(USD)`) field resolution, 누락값 sort, list-of-row field
+binding, compact FILTER predicate를 bridge/Pipe에 반영했다. AST cache는 근거 없는 tool 결과가
+아니라 schema-validated AST만 bounded(128) 재사용하며 hit/miss를 로그로 남긴다. live Pipe는
+기존 `LangfuseEventTracer`를 `PipeRuntime`에 연결했고, Langfuse 미설정/장애 시 NoOp 경로를
+유지한다. tool/data-result cache는 correctness와 provenance를 위해 이번 라운드에 추가하지 않았다.
+
+## 2026-09-30 — HS 매핑 원천 `ai_hs_mtrl_flow` 교체 연계
+
+기존 `public.ai_hs_mnrl_map` 참조를 실제 DB의 `public.ai_hs_mtrl_flow`로 교체했다.
+실측 스키마에서 `mnrknd_unq_cd`→광종 코드, `hs_cd`→관세청 HSK, `use_yn='Y'`→활성
+행으로 매핑하고, 물질흐름·적용연도별 반복행은 `DISTINCT`로 제거했다. 공용
+`KomisRawDataRepository.resolve_hs_codes`, 광종별 국가수입비중 집계, 통합보고서 관세청
+집계를 같은 논리 계약으로 맞췄으며 PostgreSQL 원천 테이블 자체는 수정하지 않았다.
+관련 MCP 경고·메뉴 출처·현재 스키마 문서도 새 테이블명과 컬럼 연계로 갱신했다.
+
 ## 2026-09-30 — Gemma/LangGraph multi-hop 실서비스 shadow·enabled 통합 검증
 
 `komir-rag-chat:multihop-work` 이미지를 별도 컨테이너로 빌드하고 Gemma endpoint와

@@ -326,3 +326,38 @@ Pipe `FAILED`로 변환되어 기존 SSE abstain 경로로 내려간다.
 다만 AST, dependency, 기존 tool 호출, evidence validation, deterministic abstain 및
 기존 SSE까지의 서비스 경로는 확인했다. PostgreSQL/PageIndex/OKF/Frontend protocol은
 이번 통합에서 수정하지 않았다.
+
+위 목록은 초기 shadow 검증 시점의 blocker 기록이다. 후속 라운드에서 HS 매핑은
+`ai_hs_mtrl_flow` adapter로 교체하고, `_any_dummy`는 기존 volatility tool 계층에 정의했으며,
+검증 Docker에는 운영 PageIndex/OKF mount를 적용했다. 따라서 현재 남은 제한은 원천 데이터가
+실제로 제공하지 않는 지표의 정상 abstain, 프로세스 메모리 HistoryStore, retrieval/tool
+결과 cache 미구현이다.
+
+### 2026-09-30 데이터 매핑 교체 후속
+
+PostgreSQL의 HS 매핑 원천은 이후 `public.ai_hs_mtrl_flow`로 교체되었다. 이 테이블은
+`mnrknd_unq_cd`(광종 코드), `hs_cd`(관세청 HSK), `use_yn`(활성 여부) 외에
+물질흐름·적용연도 컬럼을 가지며 같은 광종·HS 쌍이 반복된다. 따라서 orchestration이나
+데이터 원천을 재설계하지 않고, 공용 조회 어댑터에서 활성 행을
+`DISTINCT (mnrknd_unq_cd, hs_cd)`로 투영하도록 연계했다. 보고서 쿼리도 동일한 투영을
+사용해 거래 합계가 흐름·연도 반복 수만큼 부풀지 않게 했다.
+
+### 14. 실제 데이터 검증 후속 (2026-09-30)
+
+최신 이미지의 enabled 경로에서 Gemma→Semantic AST→LangGraph Pipe→기존 Action/MCP/RDB→
+evidence→기존 SSE를 확인했다. Q01~Q30은 30건 모두 terminal `done`에 도달했고 PASS 8,
+ABSTAIN_VALID 22였다. `public.ai_hs_mtrl_flow` DISTINCT mapping을 타는 월별 수입 조회는
+실제 USD table/chart/citation을 반환했다. 가격순위→TopK→수입액의 3-hop도 실제
+`public.KO_CSTM_CMMRC` evidence와 함께 SSE table/chart로 완료했다.
+
+Q03의 국가별 리튬 수입 순위, Q24의 코발트 비교 등 일부 질문은 현재 원천 근거가 부족해
+evidence validation에서 abstain했다. 이는 legacy 성공을 모방하거나 더미 수치를 만들지 않은
+결과다. Q25의 후속 ordinal/field binding은 typed history로 resolve되지만, upstream 비교
+데이터에 요청된 계산 필드가 없으면 deterministic Pipe failure로 종료한다.
+
+Semantic history는 raw assistant answer/table을 재주입하지 않고 최근 8개 turn의 AST shape,
+typed result metadata, provenance만 parser context로 보낸다. 10-turn 실제 session에서
+context log가 8 turn·약 4,043자에서 bounded했고, AST cache hit/miss와 Langfuse child
+Pipe/Step tracer 경계를 확인했다. Langfuse가 미설정된 환경에서도 business execution은
+NoOp tracer로 정상 완료했다. 영속 HistoryStore와 retrieval/tool result cache는 이번
+라운드의 correctness/provenance 보존 원칙상 미구현 blocker로 남긴다.

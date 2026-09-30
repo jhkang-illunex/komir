@@ -35,8 +35,9 @@ from .history_context import ConversationContext, InMemoryHistoryStore, Turn, Us
 from .legacy_bridge import LegacyOperatorFactory
 from .lowering import PipeLowerer
 from .multihop_orchestrator import MultiHopOrchestrator
-from .pipe_runtime import ExecutionContext, ExecutionResult, FunctionStep, ResultStatus, TypedResult
+from .pipe_runtime import ExecutionContext, ExecutionResult, FunctionStep, PipeRuntime, ResultStatus, TypedResult
 from .semantic_ir import Operator, SemanticProgram, ValueType
+from common.langfuse_tracing import LangfuseEventTracer
 
 _logger = logging.getLogger(__name__)
 
@@ -102,9 +103,19 @@ rank(price_change) → top_k(3) → retrieve(import_value, input=top_k) → arg_
 
 
 _HISTORY = InMemoryHistoryStore()
+_AST_CACHE: dict[str, SemanticProgram] = {}
+_AST_CACHE_MAX = 128
+_AST_CACHE_HITS = 0
+_AST_CACHE_MISSES = 0
 
 
 def _semantic_context_payload(context: ConversationContext) -> list[dict[str, Any]]:
+    """Return bounded typed history, excluding raw answer/table payloads.
+
+    The parser receives binding metadata and the latest AST shape, not prior
+    assistant prose.  This keeps reference resolution possible while making
+    prompt growth independent of the size of prior results.
+    """
     payload: list[dict[str, Any]] = []
     for turn in context.turns[-8:]:
         result = turn.result
@@ -122,21 +133,68 @@ def _semantic_context_payload(context: ConversationContext) -> list[dict[str, An
                     "source": list(typed.source),
                     "provenance": list(typed.provenance),
                 })
-        payload.append({"turn_id": turn.turn_id, "utterance": turn.utterance.text, "results": roots})
+        program = turn.semantic_program
+        payload.append({
+            "turn_id": turn.turn_id,
+            "ast": {
+                "operators": [node.operator.value for node in program.nodes] if program else [],
+                "roots": list(program.roots) if program else [],
+            },
+            "results": roots,
+        })
     return payload
 
 
+def semantic_cache_stats() -> dict[str, int]:
+    return {"size": len(_AST_CACHE), "hits": _AST_CACHE_HITS, "misses": _AST_CACHE_MISSES}
+
+
+def clear_semantic_cache() -> None:
+    global _AST_CACHE_HITS, _AST_CACHE_MISSES
+    _AST_CACHE.clear()
+    _AST_CACHE_HITS = 0
+    _AST_CACHE_MISSES = 0
+
+
+def _ast_cache_key(llm: KomirJsonLLM, message: str, context_payload: list[dict[str, Any]]) -> str:
+    return json.dumps({
+        "model": getattr(llm, "model", None),
+        "question": message,
+        "semantic_history": context_payload,
+    }, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
 async def _parse_ast(llm: KomirJsonLLM, message: str, context: ConversationContext) -> SemanticProgram:
+    global _AST_CACHE_HITS, _AST_CACHE_MISSES
+    context_payload = _semantic_context_payload(context)
+    cache_key = _ast_cache_key(llm, message, context_payload)
+    cached = _AST_CACHE.get(cache_key)
+    if cached is not None:
+        _AST_CACHE_HITS += 1
+        _logger.info(
+            "multihop_cache hit kind=semantic_ast context_turns=%d context_chars=%d",
+            len(context_payload), len(json.dumps(context_payload, ensure_ascii=False, separators=(",", ":"))),
+        )
+        return cached
+    _AST_CACHE_MISSES += 1
     invocation = await asyncio.to_thread(
         llm.invoke,
         task="semantic_ast",
         instructions=AST_PROMPT,
-        payload={"question": message, "semantic_history": _semantic_context_payload(context)},
+        payload={"question": message, "semantic_history": context_payload},
         output_model=ASTProgramModel,
         max_tokens=1400,
     )
     payload = invocation.output.model_dump(mode="json")
-    return SemanticProgram.from_dict(_normalize_history_aliases(payload, context))
+    program = SemanticProgram.from_dict(_normalize_history_aliases(payload, context))
+    if len(_AST_CACHE) >= _AST_CACHE_MAX:
+        _AST_CACHE.pop(next(iter(_AST_CACHE)))
+    _AST_CACHE[cache_key] = program
+    _logger.info(
+        "multihop_cache miss kind=semantic_ast context_turns=%d context_chars=%d cache_size=%d",
+        len(context_payload), len(json.dumps(context_payload, ensure_ascii=False, separators=(",", ":"))), len(_AST_CACHE),
+    )
+    return program
 
 
 def _latest_history_binding(context: ConversationContext) -> tuple[str, TypedResult] | None:
@@ -273,6 +331,24 @@ def _numeric(value: Any) -> float | None:
         return None
 
 
+def _resolve_row_field(rows: list[Any], requested: str | None) -> str | None:
+    """Resolve a semantic field to the concrete table column, including units."""
+    if not requested:
+        return None
+    mappings = [row for row in rows if isinstance(row, Mapping)]
+    if not mappings:
+        return None
+    keys = list(dict.fromkeys(str(key) for row in mappings for key in row))
+    if requested in keys:
+        return requested
+    normalized = re.sub(r"[^a-z0-9가-힣]+", "", requested.casefold())
+    for key in keys:
+        key_normalized = re.sub(r"[^a-z0-9가-힣]+", "", key.casefold())
+        if key_normalized.startswith(normalized) or normalized in key_normalized:
+            return key
+    return None
+
+
 def _rows(evidence: list[Any]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for item in evidence:
@@ -405,7 +481,7 @@ def _action_id(node: Any) -> str:
         return "trade.monthly"
     if metric in trade_rank_metrics or domain == "trade":
         return "trade.country_rank"
-    if domain == "resource" or metric in {"production", "reserves", "production_change"}:
+    if domain == "resource" or metric in {"production", "production_volume", "reserves", "reserves_volume", "production_change"}:
         return "resource.rank"
     if domain == "inventory":
         return "inventory.latest"
@@ -427,12 +503,16 @@ def _action_slots(node: Any, mineral: str | None = None, minerals: list[str] | N
     resolved_minerals = [item for item in resolved_minerals if item]
     if metric in {"import_value", "import_share", "country_share", "country_rank"} or domain == "trade":
         metric = metric if metric in {"import_amount", "import_weight", "export_amount", "export_weight"} else "import_amount"
+    if domain == "resource" or metric in {"production_volume", "reserves_volume", "production_change"}:
+        metric = {"production_volume": "production", "reserves_volume": "reserves", "production_change": "production"}.get(metric, metric)
     if domain == "resource" and metric not in {"production", "reserves"}:
         metric = "production"
     if domain == "price" or metric in {"price", "price_change", "price_change_rate", "price_growth_rate", "change", "volatility", "rank"}:
         metric = None
-    scope = args.get("scope") or args.get("trade_scope")
-    if scope in {"KR", "korea", "국내", "한국"}:
+    scope = args.get("scope") or args.get("trade_scope") or args.get("country")
+    if scope in {"country", "country_share", "world", "worldwide", "all"}:
+        scope = "global"
+    if scope in {"KR", "KOR", "korea", "south_korea", "south-korea", "국내", "한국", "대한민국"}:
         scope = "korea"
     if scope in {"WORLD", "GLOBAL", "global", "세계"}:
         scope = "global"
@@ -488,14 +568,54 @@ class LiveOperatorFactory:
             field = args.get("field") or args.get("metric_field")
             if field is None and rows and isinstance(rows[0], Mapping):
                 field = next((key for key, item in rows[0].items() if _numeric(item) is not None), None)
+            field = _resolve_row_field(rows, field) or field
             reverse = str(args.get("order", "desc")).casefold() in {"desc", "decreasing", "decrease"}
-            rows = sorted(rows, key=lambda row: _numeric(row.get(field)) if isinstance(row, Mapping) and field else float("-inf"), reverse=reverse)
+            rows = sorted(
+                rows,
+                key=lambda row: (
+                    _numeric(row.get(field))
+                    if isinstance(row, Mapping) and field and _numeric(row.get(field)) is not None
+                    else float("-inf")
+                ),
+                reverse=reverse,
+            )
         elif node.operator == Operator.FILTER.value:
             predicate = args.get("predicate") or {}
-            field, operator, expected = predicate.get("field"), predicate.get("operator", "equals"), predicate.get("value")
+            if isinstance(predicate, Mapping):
+                field = predicate.get("field") or args.get("field") or args.get("metric_field")
+                operator = predicate.get("operator", "equals")
+                expected = predicate.get("value")
+            else:
+                # Gemma's compact AST may emit predicate="greater_than" and
+                # keep the compared metric/value beside it. Normalize that
+                # representation at the Pipe boundary; never call .get on a
+                # model-local scalar.
+                field = args.get("field") or args.get("metric_field")
+                operator = {"increase": "greater_than", "decrease": "less_than"}.get(str(predicate), str(predicate))
+                expected = args.get("value")
+            if not field and args.get("metric"):
+                metric_aliases = {
+                    "import_value_change": ("import_value_change", "import_amount_change", "change_pct"),
+                    "import_amount_change": ("import_amount_change", "import_value_change", "change_pct"),
+                    "price_change": ("price_change", "pct_change", "change_pct"),
+                    "price_change_rate": ("price_change_rate", "pct_change", "change_pct"),
+                }
+                candidates = metric_aliases.get(str(args["metric"]), (str(args["metric"]),))
+                field = next((candidate for candidate in candidates if any(
+                    isinstance(row, Mapping) and candidate in row for row in rows
+                )), None)
+                field = _resolve_row_field(rows, field)
             if not field:
                 rows = _filter_period(rows, args.get("period"))
-                field = None
+                if args.get("metric") and rows:
+                    return TypedResult.empty(
+                        source.result_type if source else ValueType.FACT_SET,
+                        f"filter field unavailable: {args['metric']}",
+                        evidence=source.evidence if source else (),
+                        source=source.source if source else (),
+                        provenance=source.provenance if source else (),
+                        upstream_step_ids=source.upstream_step_ids if source else (),
+                    )
             def keep(row: Any) -> bool:
                 actual = row.get(field) if isinstance(row, Mapping) else None
                 expected_value = expected
@@ -508,13 +628,31 @@ class LiveOperatorFactory:
             rows = [row for row in rows if keep(row)]
         elif node.operator in {Operator.ARG_MAX.value, Operator.ARG_MIN.value}:
             field = args.get("field") or args.get("metric_field")
+            field = _resolve_row_field(rows, field) or field
             if rows and field:
-                rows = [max(rows, key=lambda row: _numeric(row.get(field)) or float("-inf")) if node.operator == Operator.ARG_MAX.value else min(rows, key=lambda row: _numeric(row.get(field)) or float("inf"))]
+                if not any(isinstance(row, Mapping) and _numeric(row.get(field)) is not None for row in rows):
+                    return TypedResult.empty(
+                        source.result_type if source else ValueType.FACT_SET,
+                        f"arg field unavailable: {field}",
+                        evidence=source.evidence if source else (),
+                        source=source.source if source else (),
+                        provenance=source.provenance if source else (),
+                        upstream_step_ids=source.upstream_step_ids if source else (),
+                    )
+                if node.operator == Operator.ARG_MAX.value:
+                    rows = [max(rows, key=lambda row: _numeric(row.get(field)) if isinstance(row, Mapping) and _numeric(row.get(field)) is not None else float("-inf"))]
+                else:
+                    rows = [min(rows, key=lambda row: _numeric(row.get(field)) if isinstance(row, Mapping) and _numeric(row.get(field)) is not None else float("inf"))]
         elif node.operator == Operator.PROJECT.value:
             fields = args.get("fields") or []
             rows = [{field: row.get(field) for field in fields} for row in rows if isinstance(row, Mapping)]
         elif node.operator == Operator.COMPARE.value or node.operator == Operator.JOIN.value:
-            rows = [item.value for item in inputs.values()]
+            rows = []
+            for item in inputs.values():
+                if isinstance(item.value, list):
+                    rows.extend(row for row in item.value if row is not None)
+                elif item.value is not None:
+                    rows.append(item.value)
         elif node.operator == Operator.CALCULATE.value:
             calculation = args.get("calculation")
             if calculation in {"change_pct", "percent_change"} and isinstance(value, Mapping):
@@ -566,9 +704,24 @@ class LiveOperatorFactory:
             slots = slots.model_copy(update={"topic": self.message})
         call = ActionCall(requirement_id=node.node_id, action_id=action_id, slots=slots, requested_outputs={"text", "table", "chart"})
         plan = ActionPlan(actions=[call])
+        # Each hop is an independent primitive contract. Passing the complete
+        # multi-hop user sentence to the legacy advisor makes it judge an
+        # upstream result against downstream requirements and reject valid
+        # evidence. Use a compact operation-local question for structured
+        # Actions; document retrieval keeps the original topic because its
+        # lexical search needs the user's wording.
+        primitive_question = self.message
+        if action_id == "price.volatility_rank":
+            primitive_question = "광종별 가격 변동률 순위를 조회해줘"
+        elif action_id == "trade.monthly":
+            primitive_question = f"{mineral or '해당 광종'}의 수입액 월별 현황을 조회해줘"
+        elif action_id == "trade.country_rank":
+            primitive_question = f"{mineral or '해당 광종'}의 국가별 수입 비중을 조회해줘"
+        elif action_id == "resource.rank":
+            primitive_question = f"{mineral or '해당 광종'}의 생산량 국가별 순위를 조회해줘"
         result = await asyncio.to_thread(
             retrieve_evidence,
-            self.message,
+            primitive_question,
             session_id=self.session_id,
             history=self.history,
             llm=self.llm,
@@ -613,7 +766,10 @@ async def run_live_multihop(
     factory = LiveOperatorFactory(message=message, session_id=session_id, profile=profile, llm=llm, history=history)
     lowerer = PipeLowerer(LegacyOperatorFactory({node.operator.value: factory.build for node in program.nodes}))
     pipe_id = f"pipe-{uuid4().hex[:12]}"
-    orchestration = await MultiHopOrchestrator(lowerer).execute(
+    orchestration = await MultiHopOrchestrator(
+        lowerer,
+        runtime=PipeRuntime(tracer=LangfuseEventTracer()),
+    ).execute(
         program,
         session_id=session_id,
         turn_id=turn_id,

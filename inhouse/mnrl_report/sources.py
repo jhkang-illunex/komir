@@ -155,7 +155,10 @@ def customs(code: str, base: date, cfg: ReportConfig, ntn: dict[str, str]) -> di
     rows = db.fetch_all(
         """select substr(c.crtr_ymd,1,6) ym, c.trgt_ntn_cd, c.trgt_ntn,
                   sum(c.incm_weig) w, sum(c.incm_amt) a, sum(c.exp_amt) ea
-           from public.ko_cstm_cmmrc c join public.ai_hs_mnrl_map h on h.hs_cd=c.hs_cd and h.use_yn='Y'
+           from public.ko_cstm_cmmrc c
+           join (select distinct mnrknd_unq_cd, hs_cd
+                 from public.ai_hs_mtrl_flow where use_yn='Y') h
+             on h.hs_cd=c.hs_cd
            where h.mnrknd_unq_cd=:c and c.crtr_ymd<=:b
            group by 1,2,3""",
         {"c": code, "b": to_ymd(base)})

@@ -115,7 +115,7 @@ def _concentration_metric_label(metric: str, grand_total: Any, hhi: Any, formula
 # 지금은 전부 5광종 개발용 더미라, "텅스텐을 요청했는데 더미가 텅스텐인 것처럼
 # 나오고 더미 경고도 안 붙는" 최악의 조합이 실제로 재현됐다(실측 확인). 그래서
 # komis_raw_lookup은 이 페이지들에 한해 mineral_code를 매핑 테이블
-# (ai_prc_mnrl_map/ai_hs_mnrl_map)로 먼저 실제 필터값으로 번역한 뒤 조회한다.
+# (ai_prc_mnrl_map/ai_hs_mtrl_flow)로 먼저 실제 필터값으로 번역한 뒤 조회한다.
 _PRICE_PAGES = frozenset({"price_base_metals", "price_minor_metals", "price_iron_energy", "price_other"})
 _HS_TRANSLATE_PAGES = frozenset({"map_korea", "map_global"})
 
@@ -272,7 +272,8 @@ def register_common_tools(
 
         `page_id`가 price_*·map_korea·map_global 중 하나면 `mineral_code`는
         테이블에 직접 없어(가격기준일련번호·HS코드로만 연결) `ai_prc_mnrl_map`/
-        `ai_hs_mnrl_map`으로 먼저 번역해서 조회한다 — 한 광종이 여러 값에
+        `ai_hs_mtrl_flow`으로 먼저 번역해서 조회한다 — 물질흐름·적용연도별
+        반복행은 중복 제거된 HS 키로 투영하고, 한 광종이 여러 값에
         매핑되면 그중 첫 번째(오름차순)만 미리보기로 쓰고 `warnings`에 명시한다
         (전부 합쳐 보려면 `price_criterion_serial`/`hs_code`를 직접 지정할 것).
 
@@ -344,7 +345,7 @@ def register_common_tools(
             if not hs_codes:
                 return {
                     "evidence": [],
-                    "warnings": [f"'{mineral_code}'에 대응하는 HS코드를 ai_hs_mnrl_map에서 찾지 못했습니다."],
+                    "warnings": [f"'{mineral_code}'에 대응하는 HS코드를 ai_hs_mtrl_flow에서 찾지 못했습니다."],
                 }
             request = request.model_copy(update={"hs_code": hs_codes[0]})
             if len(hs_codes) > 1:
@@ -522,7 +523,7 @@ def register_common_tools(
         page_id: "map_korea"(관세청, 한국 기준 상대국 수입/수출)만 현재 실제
         데이터가 있다. "map_global"(UN Comtrade)은 코드는 동작하지만
         2026-09-18 실측 확인 결과 dev-dummy KO_UN_CMMRC의 HS코드가
-        `ai_hs_mnrl_map` 매핑과 겹치지 않아 광종 어느 것을 조회해도 0건이다
+        `ai_hs_mtrl_flow` 매핑과 겹치지 않아 광종 어느 것을 조회해도 0건이다
         (데이터가 채워지면 별도 코드 변경 없이 그대로 동작).
         metric: "import_amount"|"import_weight"|"export_amount"|"export_weight".
         mineral_code는 `komis_resolve_mineral`로 먼저 얻은 값(예: "MNRL0001").
@@ -536,7 +537,7 @@ def register_common_tools(
         if not hs_codes:
             return {
                 "evidence": [],
-                "warnings": [f"'{mineral_code}'에 대응하는 HS코드를 ai_hs_mnrl_map에서 찾지 못했습니다."],
+                "warnings": [f"'{mineral_code}'에 대응하는 HS코드를 ai_hs_mtrl_flow에서 찾지 못했습니다."],
             }
 
         try:
@@ -1150,6 +1151,26 @@ def register_common_tools(
         if set(status) != set(serials):
             return None
         return any(status.values())
+
+    def _any_dummy(repo: KomisRawDataRepository, mineral_names: list[str]) -> bool:
+        """광종명 목록 중 ``ai_mnrl_mst``가 개발용 원천으로 표시한 행이 있는지 확인한다.
+
+        가격 변동성·지표 랭킹은 결과 행에 광종명만 남기므로, 기존 광종 코드→메타
+        조회 계약을 재사용해 출처 상태를 복원한다. 메타 조회 실패는 더미로
+        단정하지 않고 기존 evidence 정책에 맡긴다.
+        """
+
+        for mineral_name in mineral_names:
+            try:
+                resolved = repo.resolve_mineral_full(str(mineral_name))
+                if not resolved:
+                    continue
+                metadata = repo.resolve_mineral_meta(resolved[0])
+            except RawDataAccessError:
+                continue
+            if metadata and _source_policy_state(metadata[1])[0]:
+                return True
+        return False
 
     @mcp.tool()
     def komis_price_volatility_ranking(

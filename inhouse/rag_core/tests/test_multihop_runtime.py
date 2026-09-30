@@ -105,6 +105,28 @@ class MultiHopRuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.results["select"].status, ResultStatus.FAILED)
         self.assertIn("index out of range", result.results["select"].failure_reason)
 
+    async def test_field_binding_projects_a_sequence_of_typed_rows(self):
+        pipe = Pipe(
+            "field-sequence",
+            (
+                FunctionStep(
+                    "source", "retrieve",
+                    lambda _c, _i: TypedResult.success(
+                        ValueType.TRADE_SERIES,
+                        [{"price_change_rate": -3.0}, {"price_change_rate": 1.5}],
+                    ),
+                ),
+                FunctionStep(
+                    "project", "project",
+                    lambda _c, inputs: TypedResult.success(ValueType.SCALAR_METRIC, inputs["rates"].value),
+                    bindings={"rates": InputBinding("source", "field", "price_change_rate")},
+                ),
+            ),
+        )
+        result = await PipeRuntime().execute(pipe)
+        self.assertEqual(result.status, ResultStatus.SUCCESS)
+        self.assertEqual(result.results["project"].value, [-3.0, 1.5])
+
 
 class SemanticIRTests(unittest.TestCase):
     def test_program_is_inspectable_and_rejects_cycles(self):

@@ -60,6 +60,42 @@ class MonthlyTradeAggregationTest(unittest.TestCase):
         self.assertNotIn("ai_hs_mnrl_map", queries[0])
 
 
+class HsMaterialFlowMappingTest(unittest.TestCase):
+    def test_resolve_hs_codes_projects_distinct_active_flow_keys(self):
+        frame = pd.DataFrame(
+            [("2825201000",), ("2836910000",)],
+            columns=["hs_cd"],
+        )
+        queries: list[str] = []
+        with patch("common.komis_raw.read_sql_pg", side_effect=lambda query: (queries.append(query), frame)[1]):
+            codes = KomisRawDataRepository().resolve_hs_codes("MNRL0001")
+
+        self.assertEqual(codes, ["2825201000", "2836910000"])
+        # DISTINCT must be part of the SQL contract because the physical table
+        # repeats a pair for each application year.
+        self.assertIn("SELECT DISTINCT hs_cd", queries[0])
+        self.assertIn("public.ai_hs_mtrl_flow", queries[0])
+        self.assertIn("mnrknd_unq_cd = 'MNRL0001'", queries[0])
+        self.assertIn("use_yn = 'Y'", queries[0])
+
+    def test_cross_mineral_share_uses_logical_mapping_aliases(self):
+        frame = pd.DataFrame(
+            [("MNRL0001", "리튬", "KOMIS_SAMPLE", 1000, 600, "20260101", "20260131", 60.0)],
+            columns=["mineral_code", "mineral", "data_source", "total", "partner_total", "first_date", "last_date", "share_pct"],
+        )
+        queries: list[str] = []
+        with patch("common.komis_raw.read_sql_pg", side_effect=lambda query: (queries.append(query), frame)[1]):
+            data = KomisRawDataRepository().fetch_country_import_mineral_shares(
+                country="중국", metric="import_amount", start_period="20260101", end_period="20260131",
+            )
+
+        self.assertEqual(data.rows[0]["mineral_code"], "MNRL0001")
+        self.assertIn("SELECT DISTINCT mnrknd_unq_cd AS mineral_code, hs_cd AS hs_code", queries[0])
+        self.assertIn("public.ai_hs_mtrl_flow", queries[0])
+        self.assertIn("h.mineral_code", queries[0])
+        self.assertIn("h.hs_code", queries[0])
+
+
 class MineralCountryRankingTest(unittest.TestCase):
     def test_world_total_is_share_denominator_and_aggregate_rows_are_excluded(self):
         country_rows = pd.DataFrame(

@@ -132,7 +132,7 @@ MNRL0002·코발트 MNRL0003·리튬 MNRL0001·희토류=네오디뮴 MNRL1001(`
 |---|---|---|---|
 | price | `ko_wkly_mnrl_prc`(주간 기준가·전주비·4주전·52주전) | 동·니켈·알루미늄·주석·연·아연 | price_wow_pct, smry_quant_txt(가격 문장), price_foot_txt, overall.risk2_quant_txt(가격) |
 | diag | `ai_mnrl_diag`(비더미만) | 없음(전부 DEV_DUMMY) | grade_*, score*, grade_streak_wk, smry_quant_txt(지수 문장), diag_result_txt, overall A3/A4/A5 |
-| customs | `ko_cstm_cmmrc`×`ai_hs_mnrl_map` | 텅스텐 | import_* 5컬럼, import_struct_txt, risk_quant_txt(수입), overall.risk4_quant_txt |
+| customs | `ko_cstm_cmmrc`×`ai_hs_mtrl_flow` | 텅스텐 | import_* 5컬럼, import_struct_txt, risk_quant_txt(수입), overall.risk4_quant_txt |
 | production/reserve | `ko_rsrc_prdctn_quty`/`ko_rsrc_burudg_quty`(SU=세계합계, OT=기타) | 텅스텐 | production_txt, reserve_txt, risk_quant_txt(생산), overall.risk2_quant_txt(USGS) |
 | overall / gscpi / gpr | `ai_dash_diag` / `ai_macro_indc(GSCPI·GPR)` (비더미만; 4주 전·52주 전 차이 포함) | 없음 | overall_score/wow/level; MANUAL 시드 gscpi_val/mom/yoy·geo_risk_idx/wow_pct(원천 있을 때만) |
 

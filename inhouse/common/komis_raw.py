@@ -580,7 +580,7 @@ class KomisRawDataRepository:
     # 아래 3개 메서드는 외부repo 이식이 아니다(komir 자체 추가, 2026-08-19) —
     # `/prices`·`/domestic-trade`·`/global-trade`는 원본도 501 스텁이라 참고할
     # 원본 구현이 없다. `ai_mnrl_mst`(광종 마스터)·`ai_prc_mnrl_map`(광종→가격
-    # 기준일련번호)·`ai_hs_mnrl_map`(광종→HS코드)은 KOMIS가 이 3개 신규 엔드포인트를
+    # 기준일련번호)·`ai_hs_mtrl_flow`(광종→HS코드·물질흐름)은 KOMIS가 이 3개 신규 엔드포인트를
     # 위해 최근 채운 매핑 테이블이라 `_PAGE_DATASETS`(고정 스펙 1건당 필터 1종)
     # 방식으로는 못 담는다 — 광종 하나가 가격기준·HS코드 여러 건에 매핑되기 때문에
     # 별도 조회로 분리했다. 위 SELECT 조립부와 동일하게 `_literal()` 화이트리스트를
@@ -651,11 +651,16 @@ class KomisRawDataRepository:
         return {int(serial): int(serial) in found for serial in serials}
 
     def resolve_hs_codes(self, mineral_code: str) -> list[str]:
-        """`ai_hs_mnrl_map`에서 광종의 HS코드(들)를 찾는다(오름차순)."""
+        """`ai_hs_mtrl_flow`에서 활성 광종의 중복 제거된 HS코드를 찾는다.
+
+        신규 테이블은 물질흐름·적용연도별로 같은 ``(mnrknd_unq_cd, hs_cd)``가
+        반복된다. 조회 계층이 흐름 행을 거래 행으로 오인하지 않도록 필요한
+        논리 키만 ``DISTINCT``로 투영한다.
+        """
 
         code = _literal(mineral_code)
         frame = read_sql_pg(
-            f"SELECT hs_cd FROM {KOMIS_SCHEMA}.ai_hs_mnrl_map"
+            f"SELECT DISTINCT hs_cd FROM {KOMIS_SCHEMA}.ai_hs_mtrl_flow"
             f" WHERE mnrknd_unq_cd = {code} AND use_yn = 'Y'"
             f" ORDER BY hs_cd"
         )
@@ -1747,8 +1752,8 @@ class KomisRawDataRepository:
         try:
             frame = read_sql_pg(f"""
                 WITH mapping AS (
-                    SELECT DISTINCT mnrknd_unq_cd, hs_cd
-                    FROM {KOMIS_SCHEMA}.ai_hs_mnrl_map WHERE use_yn='Y'
+                    SELECT DISTINCT mnrknd_unq_cd AS mineral_code, hs_cd AS hs_code
+                    FROM {KOMIS_SCHEMA}.ai_hs_mtrl_flow WHERE use_yn='Y'
                 ), totals AS (
                     SELECT m.mnrknd_unq_cd, m.mnrl_nm_ko AS mineral,
                            m.ko_data_src_cd AS data_source,
@@ -1757,8 +1762,8 @@ class KomisRawDataRepository:
                                     THEN t.{column} ELSE 0 END) AS partner_total,
                            MIN(t.crtr_ymd) AS first_date, MAX(t.crtr_ymd) AS last_date
                     FROM mapping h
-                    JOIN {KOMIS_SCHEMA}.ai_mnrl_mst m ON m.mnrknd_unq_cd=h.mnrknd_unq_cd
-                    JOIN {KOMIS_SCHEMA}.ko_cstm_cmmrc t ON t.hs_cd=h.hs_cd
+                    JOIN {KOMIS_SCHEMA}.ai_mnrl_mst m ON m.mnrknd_unq_cd=h.mineral_code
+                    JOIN {KOMIS_SCHEMA}.ko_cstm_cmmrc t ON t.hs_cd=h.hs_code
                     WHERE m.use_yn='Y' {names} AND t.crtr_ymd >= {start} AND t.crtr_ymd <= {end}
                       AND t.{column} IS NOT NULL AND t.{column} >= 0
                     GROUP BY m.mnrknd_unq_cd, m.mnrl_nm_ko, m.ko_data_src_cd

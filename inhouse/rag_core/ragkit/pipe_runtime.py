@@ -214,11 +214,20 @@ def _select(result: TypedResult, selector: str, selector_value: str | int | None
             raise ValueError(f"result index out of range: {selector_value}") from exc
         return TypedResult(result_type=result.result_type, value=value, status=result.status, entity=result.entity, metric=result.metric, period=result.period, unit=result.unit, source=result.source, evidence=result.evidence, provenance=result.provenance, confidence=result.confidence, sufficient=result.sufficient, upstream_step_ids=result.upstream_step_ids, warnings=result.warnings, failure_reason=result.failure_reason)
     if selector == "field":
-        if not isinstance(selector_value, str) or not isinstance(result.value, Mapping):
-            raise TypeError("field binding requires a mapping result and field name")
-        if selector_value not in result.value:
-            raise ValueError(f"result field not found: {selector_value}")
-        return TypedResult(result_type=result.result_type, value=result.value[selector_value], upstream_step_ids=result.upstream_step_ids)
+        if not isinstance(selector_value, str):
+            raise TypeError("field binding requires a field name")
+        if isinstance(result.value, Mapping):
+            if selector_value not in result.value:
+                raise ValueError(f"result field not found: {selector_value}")
+            value = result.value[selector_value]
+        elif isinstance(result.value, (list, tuple)):
+            rows = [row for row in result.value if isinstance(row, Mapping)]
+            if not rows or any(selector_value not in row for row in rows):
+                raise ValueError(f"result field not found in sequence: {selector_value}")
+            value = [row[selector_value] for row in rows]
+        else:
+            raise TypeError("field binding requires a mapping or sequence of mappings")
+        return TypedResult(result_type=result.result_type, value=value, upstream_step_ids=result.upstream_step_ids)
     if selector == "predicate":
         raise ValueError("predicate bindings must be lowered to deterministic code")
     raise ValueError(f"unsupported input selector: {selector}")
