@@ -1764,7 +1764,8 @@ def _evidence_source_label(ev) -> str:
     return label
 
 
-def _multimodal_events(cited_indices: set[int], evidence: list, *, include_charts: bool = True) -> list[ChatEvent]:
+def _multimodal_events(cited_indices: set[int], evidence: list, *, include_charts: bool = True,
+                       action_plan=None) -> list[ChatEvent]:
     """인용된 근거에서 표를 뽑아 `table` 블록으로, 추천 차트가 있으면 `chart`
     스펙으로도 낸다. 인용 안 된 근거(조회는 됐지만 답변 근거로 안 쓰인 것)는
     건너뛴다 — 표시되는 표/차트도 텍스트 답변과 같은 인용 규율을 따라야 하므로.
@@ -1783,6 +1784,15 @@ def _multimodal_events(cited_indices: set[int], evidence: list, *, include_chart
     같은 계약을 쓴다. 표 블록엔 추천 차트 종류(`chart_hint`)가 같이 실린다."""
 
     events: list[ChatEvent] = []
+    actions = list(getattr(action_plan, "actions", []) or [])
+    selected_only = any(
+        getattr(call.slots, "price_operation", None) == "period_extrema"
+        and not ({"table", "raw_data"} & (
+            set(getattr(call, "requested_outputs", set()))
+            | set(getattr(call.slots, "requested_outputs", set()))
+        ))
+        for call in actions
+    )
     emitted_tables: set[tuple[tuple[str, ...], tuple[tuple[str, ...], ...]]] = set()
     for i, ev in enumerate(evidence, 1):
         if i not in cited_indices:
@@ -1790,6 +1800,8 @@ def _multimodal_events(cited_indices: set[int], evidence: list, *, include_chart
         if getattr(ev, "suppress_price_table", False):
             continue
         is_price_series = getattr(ev, "action_id", None) == "price.series"
+        if selected_only and is_price_series:
+            continue
         # 전략광종 현황은 같은 표 안에서도 가격기준·통화·중량단위가 달라,
         # 차트 이벤트뿐 아니라 프런트가 사용할 수 있는 chart_hint도 금지한다.
         suppress_chart = not include_charts or getattr(ev, "action_id", None) == "price.overview"
@@ -2257,7 +2269,7 @@ async def chat_turn(
         yield ChatEvent(type="delta", data={"delta": answer})
         if extra:
             yield ChatEvent(type="delta", data={"delta": extra})
-        for event in _multimodal_events(cited_indices, evidence):
+        for event in _multimodal_events(cited_indices, evidence, action_plan=executed_plan):
             yield event
         await asyncio.to_thread(
             append_message, resolved_session_id, "assistant", final_text,
@@ -2315,7 +2327,7 @@ async def chat_turn(
         yield ChatEvent(type="delta", data={"delta": answer})
         if extra:
             yield ChatEvent(type="delta", data={"delta": extra})
-        for event in _multimodal_events(cited_indices, evidence):
+        for event in _multimodal_events(cited_indices, evidence, action_plan=executed_plan):
             yield event
         await asyncio.to_thread(
             append_message, resolved_session_id, "assistant", final_text,

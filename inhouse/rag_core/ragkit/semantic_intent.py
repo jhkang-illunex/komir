@@ -696,7 +696,7 @@ def _to_intent_call(item: SemanticRequirement, index: int) -> Any:
         if selection is not None and selection.mode == "rank":
             raise SemanticResolutionError("price rank selection is not an existing Action capability")
         if selection is not None and selection.mode == "extremum":
-            if selection.direction not in {"min", "max"} or price_period.kind != "range":
+            if selection.direction not in {"min", "max"} or price_period.kind not in {"range", "trailing_months"}:
                 raise SemanticResolutionError("price extrema requires a ranged period and direction")
         # The existing price adapter's yearly-average contract is encoded by
         # price_operation; it deliberately uses a latest period sentinel while

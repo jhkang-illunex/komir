@@ -2,6 +2,26 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-30 — 가격 시계열 intermediate 결과와 최종 selection 분리
+
+실제 질의 `최근 3개월 니켈 가격을 조회하고, 그중 가격이 가장 높았던 시점은 언제인가?`를
+재현했다. 기존 경로는 `semantic parser fallback: price extrema requires a ranged period and
+direction`으로 selection 계획을 만들지 못해 `price.series` 전체 시계열을 최종 table/chart로
+노출했다. 기존 `ArgMax` Pipe operator·root result 선택 구현은 존재했지만, 해당 표현이
+typed selection 계획으로 정규화되지 않은 것이 1차 원인이었다.
+
+`trailing_months`를 가격 extrema의 유효 기간으로 확장하고, 최근 N개월 가격에서 최고·최저
+시점을 요청하는 표현을 `price_operation=period_extrema`, 방향, typed period로 정규화했다.
+선택 결과는 deterministic renderer가 날짜·값만 반환하며, `table/raw_data`가 명시되지 않은
+경우 upstream 가격 시계열의 table/chart를 억제한다. 반대로 `전체도 보여줘`가 명시되면
+requested presentation을 보존해 summary와 table/chart를 함께 반환한다. suppression 판단은
+ActionCall과 ActionSlots 양쪽의 output contract를 확인한다.
+
+실제 Docker `18005`에서 최고·최저 질의와 전체 출력 변형을 검증했다. 선택 질의는
+`17,395.01 USD/톤, 2026-08-04` 및 citation만, 전체 출력 변형은 table/chart/done까지
+정상 반환했다. 기존 AST/Pipe/Renderer 구조, SSE contract, 데이터 계층은 재설계하지 않았고
+새 Intent/Action도 추가하지 않았다.
+
 ## 2026-09-30 — Deployment Bootstrap·Capability Discovery·Migration 검증
 
 기준선 `e314af4ad`의 Agent architecture와 기존 데이터/SSE contract를 변경하지 않고,

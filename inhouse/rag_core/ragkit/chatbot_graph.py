@@ -3375,7 +3375,15 @@ def retrieve_evidence(
                 and {item.action_id for item in original_plan.actions} == {"price.series", "resource.yoy"}
                 and call.action_id == "resource.yoy"
             )
-            ev.suppress_price_table = bool(call.slots.price_operation or is_price_yoy_pair)
+            requested_outputs = (
+                set(getattr(call, "requested_outputs", set()))
+                | set(getattr(call.slots, "requested_outputs", set()))
+            )
+            ev.suppress_price_table = bool(
+                (call.slots.price_operation
+                 and not {"table", "raw_data"}.intersection(requested_outputs))
+                or is_price_yoy_pair
+            )
             # Q15의 완전한 공개 원문 span은 chat_turn에서 결정적 범위 설명으로
             # 렌더링할 수 있다. 이 표지는 프로세스 내부 추적값이며 MCP/API
             # 계약에는 추가하지 않는다.

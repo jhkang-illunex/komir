@@ -528,6 +528,8 @@ class ActionContractAuditTest(unittest.TestCase):
             ("니켈 가격 전년 동월 대비 변화율은?", "price.series", "니켈", "year_over_year", "trailing_months", 13),
             ("니켈 가격 전년 동월 대비 변화율은 월 최신 관측값 기준으로 알려줘", "price.series", "니켈", "year_over_year", "trailing_months", 13),
             ("아연 가격 2010년 이후 최고가와 그 날짜 알려줘", "price.series", "아연", "period_extrema", "range", None),
+            ("최근 3개월 니켈 가격을 조회하고, 그중 가격이 가장 높았던 시점은 언제인가?", "price.series", "니켈", "period_extrema", "trailing_months", 3),
+            ("3개월치 니켈 가격을 조회하고 그중 최저였던 날짜 알려줘", "price.series", "니켈", "period_extrema", "trailing_months", 3),
             ("니켈과 리튬 가격 같이 비교해줘", "price.compare", None, None, None, None),
         )
         for question, action_id, mineral, operation, period_kind, months in cases:
@@ -549,7 +551,8 @@ class ActionContractAuditTest(unittest.TestCase):
                     self.assertEqual(route.komis_relative_months, 13)
                 if operation == "period_extrema":
                     self.assertTrue(route.use_komis_raw)
-                    self.assertEqual(route.komis_start_period, "20100101")
+                    if period_kind == "range":
+                        self.assertEqual(route.komis_start_period, "20100101")
 
     def test_user_qa_price_and_geography_variants_bypass_planner(self):
         class MustNotRun:

@@ -703,7 +703,7 @@ def _simple_country_share_plan(message: str) -> ActionPlan | None:
     ``국가별 비중``, 순위, 다른 데이터 요구가 섞인 질문은 여기서 처리하지
     않는다. 그런 질문은 planner가 독립 requirement와 분모 의미를 보존해야 한다.
     """
-    compact = re.sub(r"\s+", "", message)
+    compact = re.sub(r"[\s,]", "", message)
     match = re.fullmatch(
         r"(?:(?:최근)(?P<prefix_count>\d+)(?P<prefix_unit>개월|년))?"
         r"(?P<mineral>리튬|니켈|코발트|구리|동|희토류|흑연)"
@@ -2330,7 +2330,31 @@ def _hs_code_lookup_plan(message: str) -> ActionPlan | None:
 
 def _price_operation_plan(message: str) -> ActionPlan | None:
     """정의가 닫힌 가격 집계 문형을 LLM 없이 typed slot으로 보존한다."""
-    compact = re.sub(r"\s+", "", message)
+    compact = re.sub(r"[\s,]", "", message)
+
+    extrema = re.fullmatch(
+        r"(?:최근)?(?P<count>\d+)(?P<unit>개월|년)(?:치)?(?P<mineral>[가-힣A-Za-z0-9]+?)(?:의)?가격"
+        r"(?:을)?(?:조회하고|기준으로|중에서|중)(?:그중)?(?:가격이|가격)?"
+        r"(?P<direction>가장높|최고|가장낮|최저)(?:았던|였던|인)?(?:시점|날짜|일자)(?:은|는)?"
+        r"(?:(?:와|과)?전체(?:도)?(?:함께)?(?:보여줘|보여주세요|알려줘|알려주세요)?)?"
+        r"(?:언제|언제인가요?|어디야|무엇이야|알려줘|알려주세요|보여줘|보여주세요)?[?.]?",
+        compact,
+        flags=re.IGNORECASE,
+    )
+    if extrema:
+        months = int(extrema.group("count")) * (12 if extrema.group("unit") == "년" else 1)
+        if not 1 <= months <= 240:
+            return None
+        direction = "min" if extrema.group("direction") in {"가장낮", "최저"} else "max"
+        requested_outputs = {"text", "table", "chart"} if "전체" in compact else {"text"}
+        return ActionPlan(actions=[ActionCall(
+            requirement_id="price_extrema", action_id="price.series",
+            slots=ActionSlots(
+                mineral=extrema.group("mineral"),
+                period=Period(kind="trailing_months", trailing_months=months, explicit=True),
+                price_operation="period_extrema", selection_direction=direction,
+            ), intent="price_series", role="data", requested_outputs=requested_outputs,
+        )])
 
     yoy = re.fullmatch(
         r"(?P<mineral>[가-힣A-Za-z0-9]+?)(?:의)?가격(?:이)?전년동월대비(?:변화율|변동률)(?:은|는|이|을|를)?"
@@ -2910,11 +2934,13 @@ def validate_action_plan(plan: ActionPlan | None) -> PlanAssessment:
                 "monthly_streak": "latest",
                 "yearly_average": "latest",
                 "year_over_year": "trailing_months",
-                "period_extrema": "range",
+                "period_extrema": {"range", "trailing_months"},
                 "significant_daily_rise": "trailing_months",
             }.get(call.slots.price_operation)
             if (call.action_id != "price.series" or call.slots.period is None
-                    or call.slots.period.kind != expected_period):
+                    or (call.slots.period.kind not in expected_period
+                        if isinstance(expected_period, set)
+                        else call.slots.period.kind != expected_period)):
                 return PlanAssessment(approved=False, failure_reason="slot_unresolved")
             if (call.slots.price_operation == "year_over_year"
                     and (call.slots.period.trailing_months or 0) < 13):
