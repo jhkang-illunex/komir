@@ -214,6 +214,16 @@ requested_outputs와 requirements의 output coverage가 맞지 않으면 불완�
   문서 요약이 함께 있으면 document/retrieve를 별도 requirement로 만든다.
 - "최근 3개월 월간동향에서 니켈 내용"은 document/retrieve(topic에 질문과 광종 보존)이며
   trade/monthly가 아니다. "니켈 가격 추이와 최근 월간동향"도 같은 두 requirement다.
+- 보고서에서 특정 광종을 먼저 찾은 뒤 그 광종들의 정형 지표를 묻는 경우에는
+  document/retrieve requirement를 반드시 선행으로 보존하고, 후속 요구를 하나의
+  광종 목록으로 축약하지 않는다. 예를 들어 "니켈이 언급된 희소금속 월간동향에서
+  같이 언급된 광종의 현재 가격·최근 가격·수입 집중도·HHI·TSI"는
+  document/retrieve(희소금속 월간동향, 니켈 조건)와 price/current,
+  price/price_series, trade/concentration, trade/indicator(metric=tsi)를
+  각각 독립 requirement로 표현한다. 보고서 결과에서 확정된 광종 목록은
+  runtime binding이 각 후속 requirement의 mineral 입력으로 materialize한다.
+  문서 조회가 실패하면 후속 정형 조회를 실행하지 않으며, 특정 광종의 지표가
+  없으면 다른 지표나 다른 광종 결과로 대체하지 않는다.
 - 세계 생산량 변화·전년 대비는 resource/resource_yoy이며 resource/series로 만들지 않는다.
 - 생산량·매장량의 단일 국가값, 최초/최신값, 평균·합계·건수·최소·최대는
   resource/resource_rank에 resource_operation을 보존한다. 국가가 명시되면
@@ -517,8 +527,31 @@ def _normalize_semantic_plan(plan: SemanticPlan, message: str = "") -> SemanticP
     plan = _normalize_price_claim(plan, message)
     plan = _normalize_price_claim_cause(plan, message)
     compact = re.sub(r"\s+", "", message)
+    # 가격 비교 결과를 다시 평균과 비교하는 것은 새 물리 Action이 아니라
+    # 기존 price.compare 결과에 대한 결정적 후처리다. Gemma가 평균/방향
+    # 필드를 생략해도 이미 확정된 price.compare requirement의 typed slots만
+    # 보완한다.
+    price_mean_filter = (
+        any(token in compact for token in ("평균보다", "평균이상", "평균이하", "평균보다큰", "평균보다작은"))
+        and any(token in compact for token in ("가격", "시세"))
+        and any(token in compact for token in ("전년", "yoy", "YoY"))
+    )
+    mentioned_minerals = [name for name in (
+        "구리", "니켈", "코발트", "리튬", "망간", "흑연", "텅스텐", "희토류", "아연", "몰리브덴"
+    ) if name in message]
     requirements = []
     for item in plan.requirements:
+        if item.domain == "price" and item.metric == "price_compare" and price_mean_filter:
+            updates = {
+                "operation": "average",
+                "comparator": (
+                    "less_than" if any(token in compact for token in ("평균보다작", "평균이하"))
+                    else "greater_than"
+                ),
+            }
+            if len(item.minerals or []) < 2 and len(mentioned_minerals) >= 2:
+                updates["minerals"] = mentioned_minerals
+            item = item.model_copy(update=updates)
         # Calendar years are lexical date fields. Preserve an explicit year
         # when the model omits period; never replace it with latest.
         if item.domain == "resource" and item.period is None:
@@ -764,7 +797,9 @@ def _to_intent_call(item: SemanticRequirement, index: int) -> Any:
             raise SemanticResolutionError("price comparison requires at least two minerals")
         return IntentCall(requirement_id=_requirement_id(item, index), intent="price_compare", role="data",
                           slots=ActionSlots(minerals=[_mineral(value) for value in item.minerals],
-                                             period=_period(item.period), windows=None))
+                                             period=_period(item.period), windows=None,
+                                             comparison_operation=("mean_threshold" if item.operation == "average" and item.comparator else None),
+                                             comparison_comparator=item.comparator))
     if item.domain == "price" and item.metric == "price_claim":
         if not mineral or item.claimed_change_pct is None:
             raise SemanticResolutionError("price claim requires mineral and claimed_change_pct")

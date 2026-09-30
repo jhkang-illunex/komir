@@ -53,6 +53,7 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime
 import math
+from datetime import date
 from pathlib import Path
 from typing import Any, Callable, Literal, Mapping, get_args
 
@@ -546,6 +547,14 @@ class KomisRawDataRepository:
         if request.end_period:
             bound = _coerce_period(request.end_period, spec.period_precision, True)
             conditions.append(f"{spec.period_column} <= {_literal(bound)}")
+        elif spec.table == "KO_MNRL_PRC":
+            # '최신'은 오늘 날짜와의 근접도가 아니라 오늘까지 확인된
+            # 가장 최근 유효 관측값이다. 미래에 적재된 행은 최신값으로
+            # 노출하지 않는다. 명시적인 과거/미래 기간 요청은 위 조건을
+            # 그대로 따른다.
+            conditions.append(
+                f"{spec.period_column} <= {_literal(date.today().strftime('%Y%m%d'))}"
+            )
 
         where_clause = f" WHERE {' AND '.join(conditions)}" if conditions else ""
         columns = ", ".join(spec.columns)

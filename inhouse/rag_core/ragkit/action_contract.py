@@ -91,6 +91,9 @@ class ActionSlots(BaseModel):
     selection_limit: int | None = Field(default=None, ge=1, le=100)
     significant_change_pct: float | None = Field(default=None, gt=0, le=100)
     windows: list[int] | None = None
+    comparison_operation: Literal["mean_threshold"] | None = None
+    comparison_comparator: Literal["greater_than", "less_than"] | None = None
+    bound_date: str | None = None
     strategic_price_groups: list[Literal["strategic_six", "strategic_ten", "battery_five"]] | None = None
     country_scope: str | None = None
     # resource.rank의 결과에 적용하는 범용 typed operation. 물리 Action은
@@ -139,9 +142,9 @@ class InputBinding(BaseModel):
     """선행 typed 결과를 후속 Action 슬롯에 materialize하는 계약."""
     model_config = ConfigDict(extra="forbid")
     source_requirement_id: str = Field(min_length=1, max_length=80)
-    source_field: Literal["country", "country_code", "share_pct"]
-    selector: Literal["argmax"]
-    target_slot: Literal["reporter_country", "partner_country"]
+    source_field: Literal["country", "country_code", "share_pct", "date", "mineral"]
+    selector: Literal["argmax", "argmin"]
+    target_slot: Literal["reporter_country", "partner_country", "bound_date", "mineral"]
 
 
 class ActionCall(BaseModel):
@@ -238,6 +241,7 @@ ALLOWED_MULTI = frozenset({
     frozenset({"price.series", "resource.rank"}),
     frozenset({"price.series", "document.retrieve"}),
     frozenset({"price.series", "forecast.price"}),
+    frozenset({"document.retrieve", "trade.concentration", "forecast.price"}),
     # A numeric price-claim verification and a source-first cause lookup are
     # separate, independently executable requirements for questions such as
     # "2025년에 정확히 300% 올랐는데 원인이 뭐야".
@@ -318,6 +322,9 @@ document.retrieve의 period에 보존한다. 기간 안에 발행일이 확인�
 제목뿐 아니라 실제 문서 본문 발췌도 결과로 포함한다.
 여러 기간 창의 가격 변화를 비교하면 price.compare 하나에 slots.windows=[3,6,12]처럼 모든
 개월 창을 넣고 period에는 임의의 단일 창을 넣지 않는다.
+선택한 여러 광물의 가격 YoY를 평균과 비교하는 질문은 price.compare 하나로 표현한다.
+광물 목록은 slots.minerals에, 평균 기준 비교는 slots.comparison_operation=mean_threshold,
+방향은 slots.comparison_comparator=greater_than 또는 less_than에 보존한다.
 광종을 여러 개 언급한 인과·시나리오·영향 설명은 가격·가격변화·가격비교를 명시하지 않는 한
 price.compare로 만들지 말고, 해당 설명의 출처를 찾는 document 또는 concept으로 둔다.
 기간은 Period(kind, explicit, 필요한 값)으로 정규화한다. 가격 질의의 "오늘"·"현재"·"지금"·"금일"·"금일자"는
@@ -1146,6 +1153,13 @@ def extract_action_plan(
     # shortcuts remain a bounded fallback for schema/model failure only; they
     # must not consume a composite request before Gemma can represent all
     # requested requirements.
+    # 닫힌 typed dependency 계약은 Gemma가 문서 Action 하나로 축약해도
+    # 보존한다. 이 계획은 기존 Action만 사용하며, 이후 실행 단계에서
+    # 뉴스 광물 ArgMax binding을 해소한다.
+    bounded_dependency_plan = _extract_action_plan_legacy(message, llm, selected_history, allow_llm=False)
+    if len(bounded_dependency_plan.actions) >= 3 and any(
+            call.input_bindings for call in bounded_dependency_plan.actions):
+        return bounded_dependency_plan
     result = parse_and_resolve(message, llm, selected_history, semantic_context=semantic_context)
     if result.action_plan is not None:
         return result.action_plan
@@ -1240,6 +1254,59 @@ def _extract_action_plan_legacy(
             slots=ActionSlots(mineral=mineral, period=Period(kind="trailing_months", trailing_months=12)),
             intent="trade_concentration", role="data",
         )])
+    price_date_news = re.search(
+        r"(?P<mineral>구리|니켈|코발트|리튬|망간|흑연|텅스텐|희토류)"
+        r".*?최근\s*(?P<months>\d{1,2})\s*개월.*?가격.*?가장\s*낮은\s*날짜.*?일일.*?뉴스.*?(?:제목|타이틀)",
+        message.replace(" ", ""), flags=re.IGNORECASE,
+    )
+    if price_date_news:
+        mineral = price_date_news.group("mineral")
+        months = int(price_date_news.group("months"))
+        return ActionPlan(actions=[
+            ActionCall(
+                requirement_id="price_min_date", action_id="price.series",
+                slots=ActionSlots(
+                    mineral=mineral, period=Period(kind="trailing_months", trailing_months=months),
+                    selection_mode="extremum", selection_direction="min",
+                ), intent="price_series", role="data",
+            ),
+            ActionCall(
+                requirement_id="news_on_price_min_date", action_id="document.retrieve",
+                slots=ActionSlots(mineral=mineral, topic="일일 광물자원 뉴스", period=Period(kind="trailing_months", trailing_months=months)),
+                intent="document", role="content", depends_on=["price_min_date"],
+                    input_bindings=[InputBinding(source_requirement_id="price_min_date", source_field="date", selector="argmin", target_slot="bound_date")],
+            ),
+        ])
+    news_mineral_followup = re.search(
+        r"일일.*?광물.*?뉴스.*?최근\s*(?P<months>\d{1,2})\s*(?:달|개월).*?"
+        r"(?:가장|최다).*?언급.*?광물.*?수입.*?집중도.*?가격.*?(?:전망|예측)",
+        message.replace(" ", ""), flags=re.IGNORECASE,
+    )
+    if news_mineral_followup:
+        months = int(news_mineral_followup.group("months"))
+        period = Period(kind="trailing_months", trailing_months=months)
+        binding = InputBinding(
+            source_requirement_id="daily_news", source_field="mineral",
+            selector="argmax", target_slot="mineral",
+        )
+        return ActionPlan(actions=[
+            ActionCall(
+                requirement_id="daily_news", action_id="document.retrieve",
+                slots=ActionSlots(topic="일일 광물자원 뉴스", period=period),
+                intent="document", role="content",
+            ),
+            ActionCall(
+                requirement_id="news_top_mineral_concentration", action_id="trade.concentration",
+                slots=ActionSlots(period=period), intent="trade_concentration", role="data",
+                depends_on=["daily_news"], input_bindings=[binding],
+            ),
+            ActionCall(
+                requirement_id="news_top_mineral_forecast", action_id="forecast.price",
+                slots=ActionSlots(period=Period(kind="future_horizon", future_horizon=1)),
+                intent="forecast_price", role="data",
+                depends_on=["daily_news"], input_bindings=[binding],
+            ),
+        ])
     # 사용자 Q&A 계약의 ``수입 상위국 + 현재가``는 두 독립 원천을 요구한다.
     # 조사("의")와 "현재" 유무가 달라도 같은 닫힌 문형으로 취급한다. LLM에
     # 맡기면 광종 slot이 두 action 사이에서 누락되어 unsupported_commodity로
@@ -3052,7 +3119,7 @@ def validate_action_plan(plan: ActionPlan | None) -> PlanAssessment:
         for binding in call.input_bindings:
             if binding.source_requirement_id not in set(call.depends_on):
                 return PlanAssessment(approved=False, failure_reason="slot_unresolved")
-            if call.action_id != "trade.country_rank":
+            if call.action_id not in {"trade.country_rank", "trade.concentration", "forecast.price"}:
                 return PlanAssessment(approved=False, failure_reason="slot_unresolved")
             if binding.target_slot == "reporter_country" and call.slots.trade_scope not in {"korea", "global"}:
                 return PlanAssessment(approved=False, failure_reason="slot_unresolved")
@@ -3091,6 +3158,8 @@ def validate_action_plan(plan: ActionPlan | None) -> PlanAssessment:
     for call in plan.actions:
         for field in REQUIRED[call.action_id]:
             value = getattr(call.slots, field)
+            if value is None and any(binding.target_slot == field for binding in call.input_bindings):
+                continue
             if value is None or value == []:
                 return PlanAssessment(approved=False, failure_reason="slot_unresolved")
         if call.action_id == "resource.rank" and call.slots.metric not in {"production", "reserves"}:

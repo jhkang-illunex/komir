@@ -392,6 +392,28 @@ def render_price_comparison(evidence: list, action_plan) -> tuple[str, set[int]]
                 except (ValueError, AttributeError):
                     continue
     windows = sorted(set(getattr(action.slots, "windows", None) or []))
+    if getattr(action.slots, "comparison_operation", None) == "mean_threshold":
+        if not requested or any(name not in rows for name in requested):
+            return None
+        values = [(name, rows[name][0], rows[name][1]) for name in requested]
+        mean = sum(value for _, value, _ in values) / len(values)
+        comparator = getattr(action.slots, "comparison_comparator", None)
+        if comparator == "greater_than":
+            selected = [(name, value, basis) for name, value, basis in values if value > mean]
+            symbol, label = ">", "큰"
+        elif comparator == "less_than":
+            selected = [(name, value, basis) for name, value, basis in values if value < mean]
+            symbol, label = "<", "작은"
+        else:
+            return None
+        lines = ["| 광물 | YoY 변동률(%) | 가격기준 |", "|---|---:|---|"]
+        lines.extend(f"| {name} | {value:+.2f} | {basis or '-'} |" for name, value, basis in selected)
+        if not selected:
+            lines.append("| 해당 없음 | - | - |")
+        return (
+            f"선택한 광물의 평균 YoY 변동률은 {mean:+.2f}%입니다. "
+            f"평균보다 {label} 광물({symbol} 평균)은 다음과 같습니다.\n" + "\n".join(lines)
+        ), cited
     if windows:
         if not window_rows or not requested:
             return None

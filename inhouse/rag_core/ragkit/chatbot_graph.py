@@ -562,6 +562,7 @@ class RetrievalRoute(BaseModel):
     use_mineral_info: bool = False
     use_monthly_trend: bool = False
     use_news: bool = False
+    news_date: str | None = None
     use_inventory: bool = False
     use_battery_minerals: bool = False
     use_production_concentration: bool = False
@@ -998,7 +999,7 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
         if "가격변동큰광종" in question.replace(" ", ""):
             return RetrievalRoute(**common, use_news=True, use_komis_price_volatility_ranking=True,
                                   komis_relative_months=1, komis_ranking_top_n=5)
-        return RetrievalRoute(**common, use_news=True)
+        return RetrievalRoute(**common, use_news=True, news_date=s.bound_date)
     if call.action_id == "document.retrieve" and "2차전지" in (s.topic or question):
         return RetrievalRoute(**common, use_battery_minerals=True)
     if call.action_id in {"menu.navigate", "dataset.navigate"}:
@@ -2408,7 +2409,8 @@ def _retrieve_node(
                 monthly_trend.fetch_monthly_trend_evidence, route.resolved_query or state["question"],
             )
         if route.use_news:
-            news_start, news_end = _relative_period_bounds(route)
+            news_start, news_end = ((route.news_date, route.news_date)
+                                    if route.news_date else _relative_period_bounds(route))
             jobs["news"] = submit(
                 news.fetch_news_evidence, route.resolved_query or state["question"],
                 start=news_start, end=news_end, limit=route.komis_ranking_top_n or 5,
@@ -3200,6 +3202,54 @@ def _resolve_input_bindings(call: ActionCall, action_results: list[ActionResult]
             return False, "predecessor_result_unavailable", trace
         rows = []
         for ev in predecessor.evidence:
+            if binding.source_field == "date":
+                points = price_series_observations(getattr(ev, "text", ""))
+                if not points:
+                    continue
+                selected = min(points, key=lambda point: point[1]) if binding.selector == "argmin" else max(points, key=lambda point: point[1])
+                selected_value = selected[0].isoformat()
+                setattr(call.slots, binding.target_slot, selected_value)
+                trace["source_requirement_id"] = binding.source_requirement_id
+                trace["selected_date"] = selected_value
+                trace["selected_value"] = selected[1]
+                trace["target_slot"] = binding.target_slot
+                trace["status"] = "resolved"
+                return True, None, trace
+            if binding.source_field == "mineral":
+                counts: dict[str, int] = {}
+                for table in extract_markdown_tables(getattr(ev, "text", "")):
+                    keys = [str(col).split("(", 1)[0].strip().casefold() for col in table["columns"]]
+                    mineral_i = (keys.index("광물") if "광물" in keys else
+                                  keys.index("mineral") if "mineral" in keys else None)
+                    summary_i = next((i for i, key in enumerate(keys)
+                                      if key in {"요약", "summary", "description"}), None)
+                    for row in table["rows"]:
+                        mentioned: list[str] = []
+                        if mineral_i is not None and mineral_i < len(row):
+                            mentioned.extend(str(row[mineral_i]).split(","))
+                        if summary_i is not None and summary_i < len(row):
+                            summary = str(row[summary_i])
+                            match = re.search(r"(?:언급\s*광종|언급\s*광물)\s*[:：]\s*([^;)\]。]+)", summary)
+                            if match:
+                                mentioned.extend(match.group(1).split(","))
+                        for mineral in mentioned:
+                            name = mineral.strip()
+                            if name and name not in {"기타", "-", "없음"}:
+                                counts[name] = counts.get(name, 0) + 1
+                if not counts:
+                    return False, "predecessor_mineral_mentions_missing", trace
+                maximum = max(counts.values())
+                winners = [name for name, count in counts.items() if count == maximum]
+                trace["mineral_mention_counts"] = counts
+                if len(winners) != 1:
+                    trace["status"] = "tie"
+                    trace["ties"] = winners
+                    return False, "argmax_mineral_mention_tie", trace
+                setattr(call.slots, binding.target_slot, winners[0])
+                trace["selected_mineral"] = {"mineral": winners[0], "mention_count": maximum}
+                trace["target_slot"] = binding.target_slot
+                trace["status"] = "resolved"
+                return True, None, trace
             for table in extract_markdown_tables(getattr(ev, "text", "")):
                 keys = [str(col).split("(", 1)[0].strip().casefold() for col in table["columns"]]
                 if "country" not in keys or "share_pct" not in keys:
@@ -3772,7 +3822,8 @@ def retrieve_evidence(
                 and call.action_id == "document.retrieve"
                 and "가격" in question
                 and not any(action.action_id == "price.series" for action in original_plan.actions)):
-            for mineral in _monthly_document_minerals(verified_evidence)[:5]:
+            monthly_minerals = _monthly_document_minerals(verified_evidence)[:5]
+            for mineral in monthly_minerals:
                 price = ActionCall(
                     requirement_id=f"monthly_price_{mineral}", action_id="price.series",
                     slots=ActionSlots(
@@ -3783,6 +3834,74 @@ def retrieve_evidence(
                 )
                 if validate_action_plan(ActionPlan(actions=[call, price])).approved:
                     original_plan.actions.append(price)
+                    scheduled_calls.append(price)
+        # 보고서에서 확인된 광종을 무역 지표 후속 Action으로 연결한다. 보고서
+        # 원문에서 추출된 광종만 입력으로 사용하고, TSI/집중도는 각각 별도
+        # capability로 실행한다. 데이터가 없는 광종은 후속 결과에서 개별
+        # 실패로 남겨 다른 광종의 성공을 오염시키지 않는다.
+        if (call.requirement_id == "monthly_rare_metals"
+                and call.action_id in {"document.retrieve", "document.facts.retrieve"}
+                and any(token in question.replace(" ", "") for token in ("집중도", "HHI", "TSI"))):
+            monthly_minerals = _monthly_document_minerals(verified_evidence)[:5]
+            for mineral in monthly_minerals:
+                concentration = ActionCall(
+                    requirement_id=f"monthly_concentration_{mineral}",
+                    action_id="trade.concentration",
+                    slots=ActionSlots(mineral=mineral, period=Period(kind="trailing_months", trailing_months=12)),
+                    intent="trade_concentration", role="data", depends_on=[call.requirement_id],
+                )
+                tsi = ActionCall(
+                    requirement_id=f"monthly_tsi_{mineral}",
+                    action_id="trade.indicator",
+                    slots=ActionSlots(
+                        mineral=mineral, trade_metric="tsi", reporter_country="한국",
+                        flow="import", period=Period(kind="trailing_months", trailing_months=12),
+                    ),
+                    intent="trade_indicator", role="data", depends_on=[call.requirement_id],
+                )
+                for dependent in (concentration, tsi):
+                    if validate_action_plan(ActionPlan(actions=[call, dependent])).approved:
+                        original_plan.actions.append(dependent)
+                        scheduled_calls.append(dependent)
+        # Semantic parser가 보고서 requirement의 id/topic을 일반화해도 같은
+        # typed expansion을 적용한다. 원문 질문을 다시 분해하지 않고, 이미
+        # 생성된 document Action의 topic과 구조화 evidence만 계약 입력으로
+        # 사용한다.
+        if (call.action_id in {"document.retrieve", "document.facts.retrieve"}
+                and call.requirement_id != "monthly_rare_metals"
+                and "월간동향" in (call.slots.topic or "")
+                and any(token in question.replace(" ", "") for token in ("가격", "집중도", "HHI", "TSI"))):
+            report_minerals = _monthly_document_minerals(verified_evidence)[:5]
+            existing = {action.requirement_id for action in original_plan.actions}
+            for mineral in report_minerals:
+                additions = []
+                if "가격" in question.replace(" ", ""):
+                    additions.extend([
+                        ActionCall(requirement_id=f"report_price_current_{mineral}", action_id="price.series",
+                                   slots=ActionSlots(mineral=mineral, period=Period(kind="latest")),
+                                   intent="price_series", role="data", depends_on=[call.requirement_id]),
+                        ActionCall(requirement_id=f"report_price_month_{mineral}", action_id="price.series",
+                                   slots=ActionSlots(mineral=mineral, period=Period(kind="trailing_months", trailing_months=1)),
+                                   intent="price_series", role="data", depends_on=[call.requirement_id]),
+                    ])
+                if any(token in question.replace(" ", "") for token in ("집중도", "HHI")):
+                    additions.append(ActionCall(
+                        requirement_id=f"report_concentration_{mineral}", action_id="trade.concentration",
+                        slots=ActionSlots(mineral=mineral, period=Period(kind="trailing_months", trailing_months=12)),
+                        intent="trade_concentration", role="data", depends_on=[call.requirement_id]))
+                if "TSI" in question.upper():
+                    additions.append(ActionCall(
+                        requirement_id=f"report_tsi_{mineral}", action_id="trade.indicator",
+                        slots=ActionSlots(mineral=mineral, trade_metric="tsi", reporter_country="한국",
+                                          flow="import", period=Period(kind="trailing_months", trailing_months=12)),
+                        intent="trade_indicator", role="data", depends_on=[call.requirement_id]))
+                for dependent in additions:
+                    if dependent.requirement_id in existing:
+                        continue
+                    if validate_action_plan(ActionPlan(actions=[call, dependent])).approved:
+                        original_plan.actions.append(dependent)
+                        scheduled_calls.append(dependent)
+                        existing.add(dependent.requirement_id)
                     scheduled_calls.append(price)
     # 원래 계획의 순서대로 반환해 생성기의 요구사항 순서가 실행 세부순서에
     # 좌우되지 않게 한다. 가격예측 부분 결과도 이 순서 안에 포함된다.
