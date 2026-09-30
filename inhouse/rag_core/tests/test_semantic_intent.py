@@ -85,12 +85,12 @@ class SemanticIntentTest(unittest.TestCase):
         self.assertEqual(plan.actions[0].requirement_id, "import_concentration")
         self.assertEqual(llm.tasks, ["semantic_intent"])
 
-    def test_enabled_mode_preserves_deterministic_legacy_shortcut(self):
+    def test_enabled_mode_prefers_typed_semantic_parser_over_legacy_shortcut(self):
         llm = SemanticLLM(_concentration_plan())
         with patch.dict(os.environ, {"SEMANTIC_INTENT_MODE": "enabled"}, clear=False):
             plan = extract_action_plan("니켈 수입 집중도를 알려줘", llm)
         self.assertEqual(plan.actions[0].action_id, "trade.concentration")
-        self.assertEqual(llm.tasks, [])
+        self.assertEqual(llm.tasks, ["semantic_intent"])
 
     def test_latest_price_shortcut_does_not_swallow_suffix_or_date_into_mineral(self):
         # The deterministic shortcut must miss these forms so that the typed

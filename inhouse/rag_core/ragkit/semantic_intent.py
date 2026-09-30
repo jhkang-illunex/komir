@@ -136,6 +136,10 @@ class SemanticPlan(BaseModel):
 SEMANTIC_PROMPT = """사용자 질문을 물리적 Action 이름이 없는 typed semantic requirement로 정규화한다.
 반드시 SemanticPlan JSON Schema만 따른다. requirements의 각 항목은 WHAT만 표현하고,
 trade.concentration, price.series 같은 action_id를 만들지 않는다.
+사용자가 요구한 의미 출력은 requested_outputs에 capability output 이름으로 명시한다.
+예: 용도와 최신 가격을 함께 요구하면 requested_outputs=["usage","latest_price"]로
+기록하고, requirements에도 concept/retrieve와 price/current를 각각 만든다.
+requested_outputs와 requirements의 output coverage가 맞지 않으면 불완전한 계획이다.
 
 의미 요소는 조합 가능한 primitive로 분리한다.
 - 수입 집중도: domain=trade, metric=concentration, flow=import, scope=KR

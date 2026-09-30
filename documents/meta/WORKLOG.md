@@ -2,6 +2,20 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-30 — enabled semantic parser 우선순위 및 복합 질의 E2E 추적
+
+기존 enabled 경로가 deterministic legacy shortcut을 Gemma보다 먼저 실행하는 것을 실제
+18005에서 확인했다. 이 경계에서는 Gemma raw AST와 `requested_outputs`가 생성되지 않았다.
+enabled 모드에서 typed semantic parser를 먼저 실행하고, schema/validation 실패 때만 legacy
+fallback하도록 순서를 변경했다. 질문 원문 기반 보정 regex는 추가하지 않았다.
+
+컨테이너 내부 Gemma raw output은 concept/retrieve(니켈 용도)와 price/current(니켈)를
+생성했고 `requested_outputs=["latest_price", "usage"]`, output coverage는 통과했다.
+기존 action bridge는 각각 `document.retrieve`, `price.series(latest)`로 lowering했으며 두
+action 모두 success, 가격 TypedResult, 최종 usage+latest price presentation과 SSE citation을
+확인했다. paraphrase 4건도 모두 두 semantic requirement를 생성했다. 한 표현에서 발견된
+renderer source index 오류는 유효 범위 검사로 수정했다.
+
 ## 2026-09-30 — Semantic AST output contract와 regex 경계 감사
 
 신규 semantic/multi-hop 경로의 regex·contains·prefix/suffix 후보를 감사했다. 관련 핵심

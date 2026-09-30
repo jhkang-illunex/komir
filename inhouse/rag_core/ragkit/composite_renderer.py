@@ -750,7 +750,8 @@ def render_composite(evidence: list, action_plan, action_results=None) -> tuple[
     # adapter가 속성 값을 각각 책임진다. 둘 중 하나라도 빠지면 일반 경로로
     # 내려가며, 여기서 빈 특성을 채우지 않는다.
     monthly_docs = [pair for pair in by_action.get("document.retrieve", [])
-                    if "월간동향" in str(getattr(actions[pair[0] - 1].slots, "topic", "") or "")]
+                    if 0 < pair[0] <= len(actions)
+                    and "월간동향" in str(getattr(actions[pair[0] - 1].slots, "topic", "") or "")]
     info_docs = [pair for pair in by_action.get("document.retrieve", [])
                  if pair not in monthly_docs]
     rank_docs = by_action.get("trade.country_rank", [])

@@ -1112,12 +1112,10 @@ def extract_action_plan(
         record_shadow_audit(message, legacy_plan, result)
         return legacy_plan
 
-    # Enabled mode deliberately keeps the ordering deterministic shortcut ->
-    # semantic parser -> legacy LLM fallback.  This prevents a new parser from
-    # changing already verified lexical routes while still generalizing misses.
-    legacy_shortcut = _extract_action_plan_legacy(message, llm, selected_history, allow_llm=False)
-    if legacy_shortcut is not None:
-        return legacy_shortcut
+    # Enabled mode makes the typed semantic parser authoritative.  Legacy
+    # shortcuts remain a bounded fallback for schema/model failure only; they
+    # must not consume a composite request before Gemma can represent all
+    # requested requirements.
     result = parse_and_resolve(message, llm, selected_history, semantic_context=semantic_context)
     if result.action_plan is not None:
         return result.action_plan
