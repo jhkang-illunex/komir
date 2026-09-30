@@ -178,3 +178,26 @@ def update_observation(observation: Any | None, **kwargs: Any) -> None:
         observation.update(**kwargs)
     except Exception:
         _logger.warning("Langfuse observation 업데이트 실패", exc_info=True)
+
+
+class LangfuseEventTracer:
+    """Pipe/Step event adapter.
+
+    Business execution depends only on the small ``Tracer.event`` contract in the
+    orchestration layer.  This adapter records best-effort child observations under
+    the active chat trace; absent or failing Langfuse never raises to the caller.
+    """
+
+    def event(self, name: str, metadata: dict[str, Any]) -> None:
+        if not _chat_trace_active.get():
+            return
+        try:
+            with _observation(
+                as_type="chain",
+                name=f"rag-chat.{name}",
+                input=metadata,
+                metadata={"layer": "orchestration", **metadata},
+            ):
+                return
+        except Exception:
+            _logger.warning("Langfuse execution event 기록 실패; 업무 경로는 계속합니다", exc_info=True)

@@ -2,6 +2,18 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-30 — multihop orchestration architecture foundation
+
+`MULTIHOP_ARCHITECTURE_AUDIT.md`에 현재 Natural Language→Answer 경로, 2nd/3rd-order
+실패 지점, 기존 action/tool 재사용 범위와 단계별 migration plan을 기록했다. 데이터 계층과
+Frontend SSE contract는 수정하지 않았다. Semantic IR, typed result/binding, semantic
+history contract, LangGraph 기반 async Pipe runtime, AST→Pipe lowering, 기존 Action/Tool
+adapter, evidence validation→presentation boundary와 Langfuse no-op/event adapter를
+추가했다. 새 경로는 기존 1st-order route에 아직 연결하지 않고 독립 contract로 검증했다.
+
+신규 multihop unit/lowering/orchestrator 8건과 기존 semantic/action/state/evidence/terminal
+회귀 109건이 통과했다. Docker 재빌드·서비스 재시작·공유 DB 변경·커밋은 수행하지 않았다.
+
 ## 2026-09-30 — semantic-independent-r4 전체 QA 검수
 
 배포된 `komir-rag-chat:20260930-semantic-independent-r4`(`127.0.0.1:18002`)에 저장된
