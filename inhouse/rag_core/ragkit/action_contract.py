@@ -1157,8 +1157,8 @@ def extract_action_plan(
     # 보존한다. 이 계획은 기존 Action만 사용하며, 이후 실행 단계에서
     # 뉴스 광물 ArgMax binding을 해소한다.
     bounded_dependency_plan = _extract_action_plan_legacy(message, llm, selected_history, allow_llm=False)
-    if len(bounded_dependency_plan.actions) >= 3 and any(
-            call.input_bindings for call in bounded_dependency_plan.actions):
+    if (len(bounded_dependency_plan.actions) >= 3
+            and any(call.input_bindings for call in bounded_dependency_plan.actions)):
         return bounded_dependency_plan
     result = parse_and_resolve(message, llm, selected_history, semantic_context=semantic_context)
     if result.action_plan is not None:
@@ -1509,6 +1509,17 @@ def _extract_action_plan_legacy(
     weekly_price_news = _weekly_price_news_plan(message)
     if weekly_price_news is not None:
         return weekly_price_news
+    # 보고서의 특정 광종을 기준으로 함께 언급된 광종 목록을 추출하는
+    # 문서 요구는 월간동향 Action으로 보존한다. 실제 목록은 원문 evidence의
+    # 구조화 광종목록을 renderer가 읽으며, 질문에 광종을 임의로 추가하지 않는다.
+    if ("희소금속월간동향" in compact and "언급" in compact
+            and any(token in compact for token in ("광종", "광물"))
+            and any(token in compact for token in ("리스트", "목록", "같이"))):
+        return ActionPlan(actions=[ActionCall(
+            requirement_id="monthly_rare_metals", action_id="document.retrieve",
+            slots=ActionSlots(topic=message.replace("회소금속", "희소금속")),
+            intent="document", role="content",
+        )])
     rare_monthly_mineral_list = re.fullmatch(
         r"(?P<period>최근|가장최근|이번달|20\d{2}년\d{1,2}월)?(?:희소|회소)금속월간동향(?:더?프라임)?(?:에나온|에서|의)?광종(?:들이)?(?:뭐뭐|목록|어떤)(?:을)?(?:인가요|있나요|알려줘|알려주세요|인지|보여줘|보여주세요)?[?.]?",
         compact,

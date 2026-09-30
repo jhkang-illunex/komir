@@ -255,7 +255,14 @@ def _select(result: TypedResult, selector: str, selector_value: str | int | None
             value = [row[key] for row, key in zip(rows, keys) if key is not None]
         else:
             raise TypeError("field binding requires a mapping or sequence of mappings")
-        return TypedResult(result_type=result.result_type, value=value, upstream_step_ids=result.upstream_step_ids)
+        return TypedResult(
+            result_type=result.result_type, value=value, status=result.status,
+            entity=result.entity, metric=result.metric, period=result.period,
+            unit=result.unit, source=result.source, evidence=result.evidence,
+            provenance=result.provenance, confidence=result.confidence,
+            sufficient=result.sufficient, upstream_step_ids=result.upstream_step_ids,
+            warnings=result.warnings, failure_reason=result.failure_reason,
+        )
     if selector == "predicate":
         raise ValueError("predicate bindings must be lowered to deterministic code")
     raise ValueError(f"unsupported input selector: {selector}")

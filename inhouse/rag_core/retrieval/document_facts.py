@@ -81,6 +81,15 @@ def _topic_period(topic: str) -> tuple[str, str] | None:
     return None
 
 
+def _topic_minerals(topic: str) -> tuple[str, ...]:
+    """문서 fact 후보를 좁히는 명시 광종만 추출한다."""
+    compact = re.sub(r"\s+", "", topic or "")
+    terms = ("희토류", "네오디뮴", "몰리브덴", "안티모니", "마그네슘", "티타늄",
+             "텅스텐", "니오븀", "셀레늄", "갈륨", "크롬", "인듐", "망간",
+             "코발트", "리튬", "니켈", "아연", "흑연", "구리")
+    return tuple(term for term in terms if term in compact)
+
+
 def _render(payload: dict[str, Any]) -> str:
     minerals = payload.get("mineral_list") or []
     summary = str(payload.get("summary") or "").strip()
@@ -107,6 +116,12 @@ def fetch_document_facts_evidence(
     if period:
         start, end = period
         rows = [row for row in rows if start <= str(row.get("document_month") or "") <= end]
+    minerals = _topic_minerals(topic)
+    if minerals:
+        rows = [row for row in rows if any(
+            mineral in {str(value).strip() for value in (row.get("mineral_list") or [])}
+            for mineral in minerals
+        )]
     if not rows:
         return [], ["document_facts_not_found"]
     rows.sort(key=lambda row: (str(row.get("document_month") or ""), str(row.get("okf_path") or "")), reverse=True)

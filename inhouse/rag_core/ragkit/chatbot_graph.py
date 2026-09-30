@@ -561,6 +561,7 @@ class RetrievalRoute(BaseModel):
     report_search_end: str | None = None
     use_mineral_info: bool = False
     use_monthly_trend: bool = False
+    use_document_facts: bool = False
     use_news: bool = False
     news_date: str | None = None
     use_inventory: bool = False
@@ -993,8 +994,8 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
             and any(token in (s.topic or question) for token in ("용도", "어디에 쓰", "어디쓰", "쓰여", "사용처", "활용처", "원소기호", "원자량", "원자번호", "주요 특성", "기본 특성", "기본 정보", "특성이", "성질", "어떤 광물", "어떤 금속", "무슨 광물", "무슨 금속", "광석", "ore"))):
         return RetrievalRoute(**common, use_mineral_info=True)
     document_topic = re.sub(r"\s+", "", s.topic or question)
-    if call.action_id == "document.retrieve" and any(token in document_topic for token in ("월간동향", "희소금속동향", "전략광종동향")):
-        return RetrievalRoute(**common, use_monthly_trend=True)
+    if call.action_id in {"document.retrieve", "document.lookup", "document.facts.retrieve"} and any(token in document_topic for token in ("월간동향", "희소금속동향", "전략광종동향")):
+        return RetrievalRoute(**common, use_monthly_trend=True, use_document_facts=True)
     if call.action_id == "document.retrieve" and any(token in (s.topic or question) for token in ("뉴스", "기사", "수출통제")):
         if "가격변동큰광종" in question.replace(" ", ""):
             return RetrievalRoute(**common, use_news=True, use_komis_price_volatility_ranking=True,
@@ -2098,7 +2099,8 @@ def _retrieve_node(
     # 검색으로 폴백하지 않아 목록·요약이 서로 다른 문서에서 조립되는 일을
     # 막는다. 원문 checksum·source span은 sidecar 자체에 보존된다.
     action_call = state.get("action_call")
-    if action_call is not None and action_call.action_id == "document.facts.retrieve":
+    if action_call is not None and (
+            action_call.action_id == "document.facts.retrieve" or route.use_document_facts):
         topic = action_call.slots.topic or state.get("question", "")
         evidence, facts_warnings = document_facts.fetch_document_facts_evidence(topic)
         return {"evidence": evidence, "warnings": warnings + facts_warnings}

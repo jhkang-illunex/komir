@@ -26,6 +26,7 @@ class Operator(str, Enum):
     ARG_MIN = "arg_min"
     JOIN = "join"
     CALCULATE = "calculate"
+    FOR_EACH = "for_each"
     RESOLVE_REFERENCE = "resolve_reference"
     VALIDATE_EVIDENCE = "validate_evidence"
 

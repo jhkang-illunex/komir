@@ -157,15 +157,17 @@ def fetch_monthly_trend_evidence(topic: str = "", *, limit_chunks: int = 12) -> 
             selected = _select_document(documents, topic, matching_mineral_doc_ids=matching_mineral_doc_ids)
             if selected is None:
                 return [], ["monthly_trend_not_found"]
+            # 후보 문서 선택은 전체 doc_chunk에서 수행한다. 선택이 끝난 뒤
+            # 광종 목록/니켈 언급을 검증하는 evidence는 앞부분 미리보기만
+            # 사용하면 안 되므로 문서 전체 chunk를 확보한다.
             cur.execute(
                 f"""
                 SELECT title, source_path, pub_date, txt
                 FROM {schema}.doc_chunk
                 WHERE doc_id = %s
                 ORDER BY seq ASC
-                LIMIT %s
                 """,
-                (selected.doc_id, int(limit_chunks)),
+                (selected.doc_id,),
             )
             rows = cur.fetchall()
     except Exception as exc:  # noqa: BLE001
