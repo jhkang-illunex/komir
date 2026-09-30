@@ -194,7 +194,8 @@ requested_outputs와 requirements의 output coverage가 맞지 않으면 불완�
   price/price_series requirement와 indicator/series requirement를 각각 만든다.
 - 월간동향·자원뉴스 내용 조회(가격 추이와 함께인 경우 포함)는 domain=document,
   metric=retrieve로 표현한다. 자원뉴스는 document_type=resource_news를 함께 기록하고
-  topic에는 광종·기간 등 검색 조건을 보존한다. document 내용 요청을 trade/monthly 또는
+  광종 필터가 있으면 mineral을 반드시 채우며, topic에는 광종·기간 등 검색 조건을 보존한다.
+  document 내용 요청을 trade/monthly 또는
   price/monthly로 바꾸지 않는다.
 - "월간동향 게시판 검색은 어떻게 해?"처럼 사용 방법을 묻는 FAQ는 semantic data/content로
   재해석하지 말고 unresolved로 닫아 기존 FAQ/menu legacy 경로를 사용한다.
@@ -804,6 +805,10 @@ def _to_intent_call(item: SemanticRequirement, index: int) -> Any:
                                             forecast_operation=forecast_operation))
     if item.domain == "document" and item.metric in {"retrieve", "lookup", "facts"}:
         topic = item.topic
+        if item.document_type == "resource_news" and mineral is None:
+            # Preserve an entity that Gemma placed in the typed topic field.
+            # This is AST normalization, not a second parse of the raw query.
+            mineral = _infer_topic_mineral(topic)
         if item.document_type == "resource_news":
             topic = "일일 자원뉴스" + (f" {mineral}" if mineral else "")
         if not topic:

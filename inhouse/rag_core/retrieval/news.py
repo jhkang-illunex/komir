@@ -82,6 +82,9 @@ def fetch_news_evidence(topic: str = "", *, start: str | None = None, end: str |
         con = pg_connect()
         with con.cursor() as cur:
             terms = _query_terms(topic)
+            requested_minerals = [name for name in _MINERAL_NAMES if name in str(topic or "")]
+            mineral_sql = ' AND n."typeCdNm" = ANY(%s)' if requested_minerals else ""
+            mineral_params: list[object] = [requested_minerals] if requested_minerals else []
             date_sql = ""
             date_params: list[str] = []
             if start and end:
@@ -113,13 +116,13 @@ def fetch_news_evidence(topic: str = "", *, start: str | None = None, end: str |
                 cur.execute(
                     select_sql +
                     " AND (COALESCE(n.ttl, '') ILIKE ANY(%s) OR COALESCE(n.cnts, '') ILIKE ANY(%s))" +
-                    date_sql + country_sql + " ORDER BY n.\"regDate\" DESC, n.seq DESC LIMIT %s",
-                    (patterns, patterns, *date_params, *country_params, int(limit)),
+                    date_sql + country_sql + mineral_sql + " ORDER BY n.\"regDate\" DESC, n.seq DESC LIMIT %s",
+                    (patterns, patterns, *date_params, *country_params, *mineral_params, int(limit)),
                 )
             else:
                 cur.execute(
-                    select_sql + date_sql + country_sql + " ORDER BY n.\"regDate\" DESC, n.seq DESC LIMIT %s",
-                    (*date_params, *country_params, int(limit)))
+                    select_sql + date_sql + country_sql + mineral_sql + " ORDER BY n.\"regDate\" DESC, n.seq DESC LIMIT %s",
+                    (*date_params, *country_params, *mineral_params, int(limit)))
             news = cur.fetchall()
             patterns = [f"%{term.replace('%', '')}%" for term in terms] or ["%자원뉴스%"]
             # 반정형 코퍼스에는 월간동향과 조달청·KOMIS 주간보고서도 들어 있다.
@@ -147,11 +150,14 @@ def fetch_news_evidence(topic: str = "", *, start: str | None = None, end: str |
                     " AND pub_date::date BETWEEN %s::date AND %s::date"
                 )
                 report_date_params.extend([start, end])
-            cur.execute(
-                f"SELECT title, source_path, pub_date, txt FROM {document_schema}.doc_chunk WHERE txt ILIKE ANY(%s) "
-                + report_date_sql + " ORDER BY pub_date DESC NULLS LAST, doc_id DESC, seq ASC LIMIT %s",
-                (patterns, *report_date_params, int(limit)))
-            reports = cur.fetchall()
+            if requested_minerals:
+                reports = []
+            else:
+                cur.execute(
+                    f"SELECT title, source_path, pub_date, txt FROM {document_schema}.doc_chunk WHERE txt ILIKE ANY(%s) "
+                    + report_date_sql + " ORDER BY pub_date DESC NULLS LAST, doc_id DESC, seq ASC LIMIT %s",
+                    (patterns, *report_date_params, int(limit)))
+                reports = cur.fetchall()
     except Exception as exc:  # noqa: BLE001
         return [], [f"news_query_failed:{type(exc).__name__}"]
     finally:

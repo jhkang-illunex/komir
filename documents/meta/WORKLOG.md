@@ -2,6 +2,16 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-30 — 일일 자원뉴스 광종 필터 실제 배포 검증
+
+기존 r15는 `니켈`을 제목·본문 검색어로만 사용해 다른 광종 기사에 니켈이 언급된
+경우까지 포함했다. 또한 Gemma가 광종을 topic에만 보존하는 경우를 고려해
+`resource_news` typed topic에서 canonical entity를 안전하게 binding했다.
+
+뉴스 adapter가 typed `typeCdNm` 광종 조건을 SQL에 적용하고, 광종 필터 시 반정형 문서
+보조 검색을 섞지 않도록 수정했다. r17 Docker에서 실제 결과는 니켈 기사 5건만 반환했고
+`abstained=false`, citation 및 기존 SSE 완료 이벤트를 확인했다.
+
 ## 2026-09-30 — 일일 자원뉴스 typed 광종 필터 보존
 
 실제 질의 `일일 자원뉴스에서 광종이 니켈인 것만 최신것으로 표시해주세요`에서 Gemma가
