@@ -12,7 +12,7 @@ from typing import Final
 # still choose text/table/chart for a produced output later.
 CAPABILITY_OUTPUTS: Final[dict[tuple[str, str], frozenset[str]]] = {
     ("concept", "retrieve"): frozenset({"usage", "concept"}),
-    ("document", "retrieve"): frozenset({"document_evidence"}),
+    ("document", "retrieve"): frozenset({"document_evidence", "resource_news"}),
     ("price", "current"): frozenset({"latest_price"}),
     ("price", "price_series"): frozenset({"price_series"}),
     ("trade", "country_rank"): frozenset({"country_rank"}),

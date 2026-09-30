@@ -660,7 +660,9 @@ def render_composite(evidence: list, action_plan, action_results=None) -> tuple[
                 or str(getattr(document, "section", "") or "") == "자원뉴스"
             )
             wants_summary = "요약" in topic or "정리" in topic
-            summary_rows = _news_summary_rows(document) if is_news_request and wants_summary else []
+            requested_limit = getattr(action.slots, "top_n", None) or 5
+            summary_rows = (_news_summary_rows(document, limit=requested_limit)
+                            if is_news_request and wants_summary else [])
             if summary_rows:
                 return (
                     "최근 자원뉴스 요약 : 확인된 핵심 내용\n"
@@ -670,7 +672,7 @@ def render_composite(evidence: list, action_plan, action_results=None) -> tuple[
                     ),
                     {evidence_index},
                 )
-            titles = _news_titles(document, limit=5)
+            titles = _news_titles(document, limit=requested_limit)
             if is_news_request and titles:
                 return (
                     "최근 자원뉴스 : 확인된 기사\n" + "\n".join(f"- {title}" for title in titles),

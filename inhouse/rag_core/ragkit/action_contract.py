@@ -2914,7 +2914,9 @@ def validate_action_plan(plan: ActionPlan | None) -> PlanAssessment:
             # Selection is a typed refinement, not a shortcut around the
             # existing Action contract.  Only price.series has a local
             # observation set that can currently be selected deterministically.
-            if call.action_id != "price.series":
+            if (call.action_id not in {"price.series", "document.retrieve"}
+                    or call.action_id == "document.retrieve"
+                    and call.slots.selection_mode != "rank"):
                 return PlanAssessment(approved=False, failure_reason="slot_unresolved")
             if call.slots.selection_mode == "extremum":
                 if (call.slots.selection_direction not in {"min", "max"}
@@ -2927,7 +2929,8 @@ def validate_action_plan(plan: ActionPlan | None) -> PlanAssessment:
                         or call.slots.period.kind != "range"):
                     return PlanAssessment(approved=False, failure_reason="slot_unresolved")
             elif call.slots.selection_mode == "rank":
-                return PlanAssessment(approved=False, failure_reason="slot_unresolved")
+                if call.slots.selection_limit is None:
+                    return PlanAssessment(approved=False, failure_reason="slot_unresolved")
         if call.slots.price_operation:
             expected_period = {
                 "period_average_delta": "trailing_months",

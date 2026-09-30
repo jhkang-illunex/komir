@@ -2379,7 +2379,7 @@ def _retrieve_node(
             news_start, news_end = _relative_period_bounds(route)
             jobs["news"] = submit(
                 news.fetch_news_evidence, route.resolved_query or state["question"],
-                start=news_start, end=news_end,
+                start=news_start, end=news_end, limit=route.komis_ranking_top_n or 5,
             )
         if route.use_inventory and route.komis_mineral_name:
             jobs["inventory"] = submit(
