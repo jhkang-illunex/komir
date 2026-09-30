@@ -1110,6 +1110,10 @@ def extract_action_plan(
         legacy_plan = _extract_action_plan_legacy(message, llm, selected_history, allow_llm=True)
         result = parse_and_resolve(message, llm, selected_history, semantic_context=semantic_context)
         record_shadow_audit(message, legacy_plan, result)
+        # V2 is an independent observation path.  It never supplies or
+        # replaces the production ActionPlan returned by this function.
+        from .semantic_v2 import parse_v2_shadow, record_v2_shadow
+        record_v2_shadow(parse_v2_shadow(message, llm, semantic_context=semantic_context))
         return legacy_plan
 
     # Enabled mode makes the typed semantic parser authoritative.  Legacy

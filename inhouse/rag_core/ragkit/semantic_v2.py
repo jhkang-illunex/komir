@@ -8,11 +8,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Mapping
+import logging
+from typing import Any, Literal, Mapping
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .action_contract import ActionCall, ActionSlots, Period
+
+_logger = logging.getLogger(__name__)
 
 
 class Metric(str, Enum):
@@ -57,6 +60,13 @@ class TimeRange(BaseModel):
     start: str | None = None
     end: str | None = None
 
+    @classmethod
+    def model_validate(cls, obj: Any, **kwargs: Any) -> "TimeRange":  # type: ignore[override]
+        if isinstance(obj, dict) and obj.get("kind") == "relative" and obj.get("value"):
+            # Structured synonym normalization only; no raw-query inspection.
+            obj = {**obj, "kind": "trailing_months"}
+        return super().model_validate(obj, **kwargs)
+
     def to_period(self) -> Period:
         if self.kind == "trailing_months":
             return Period(kind="trailing_months", trailing_months=self.value)
@@ -85,9 +95,24 @@ class SemanticRequirementV2(BaseModel):
 
 class RequestedOutput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    name: str
+    name: Literal[
+        "usage", "current_price", "date", "value", "price", "mineral_info",
+        "price_comparison", "concentration", "price_output", "usage_output",
+    ]
     source_node: str | None = None
     fields: list[str] = Field(default_factory=list)
+
+    @field_validator("name", mode="before")
+    @classmethod
+    def canonicalize(cls, value: Any) -> Any:
+        return {
+            "usage_info": "usage",
+            "usage_details": "usage",
+            "usage_field": "usage",
+            "usage_output": "usage",
+            "latest_nickel_price": "current_price",
+            "price_field": "price",
+        }.get(str(value), value)
 
 
 class SemanticRequirementPlanV2(BaseModel):
@@ -96,6 +121,94 @@ class SemanticRequirementPlanV2(BaseModel):
     requirements: list[SemanticRequirementV2] = Field(min_length=1)
     requested_outputs: list[RequestedOutput] = Field(default_factory=list)
     presentation: dict[str, Any] = Field(default_factory=dict)
+
+
+V2_SEMANTIC_PROMPT = """자연어 BI 질문을 semantic-requirement-v2 JSON으로 변환한다.
+사용자가 무엇을 원하는지만 표현하며 실행 방법은 표현하지 않는다.
+반드시 다음만 사용한다: entities, requirements, requested_outputs, presentation.
+requirements.metric은 usage, price, price_change, import_value, import_change,
+production, reserves, country_share, concentration, document_evidence 중 하나다.
+requirements에는 entity, metric, time_range, flow, scope, constraints,
+requested_outputs, selection을 사용할 수 있다.
+
+절대 출력하지 말 것: ActionId, IntentCall, ActionCall, actor, tool, SQL, table,
+physical route. 복합 요구는 requirement를 여러 개 생성하고 requested_outputs를
+모두 보존한다. 최근/현재 가격은 metric=price와 time_range.kind=latest로 표현한다.
+최고·최저 시점은 selection={"mode":"argmax"|"argmin","field":"value"}로
+표현한다. 결과 전체가 아니라 선택 결과만 요구되면 requested_outputs에 date/value를
+기록한다. JSON 외 설명은 출력하지 않는다."""
+
+
+class V2ShadowTrace(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    question: str
+    raw_output: dict[str, Any] | None = None
+    semantic_plan: dict[str, Any] | None = None
+    logical_program: dict[str, Any] | None = None
+    lowering: list[dict[str, Any]] = Field(default_factory=list)
+    requested_outputs: list[str] = Field(default_factory=list)
+    roots: list[str] = Field(default_factory=list)
+    intermediate_nodes: list[str] = Field(default_factory=list)
+    failure_class: str | None = None
+    failure_reason: str | None = None
+
+
+def parse_v2_shadow(
+    question: str,
+    llm: Any,
+    *,
+    semantic_context: Any | None = None,
+) -> V2ShadowTrace:
+    """Run the independent V2 parser; never raises into production routing."""
+    trace = V2ShadowTrace(question=question)
+    if llm is None or not hasattr(llm, "invoke"):
+        return trace.model_copy(update={"failure_class": "PARSER_MISSING_OUTPUT", "failure_reason": "llm_unavailable"})
+    try:
+        invocation = llm.invoke(
+            task="semantic_requirement_v2",
+            instructions=V2_SEMANTIC_PROMPT,
+            payload={"question": question, "semantic_context": (
+                semantic_context.model_dump(mode="json") if hasattr(semantic_context, "model_dump") else semantic_context
+            )},
+            output_model=SemanticRequirementPlanV2,
+            max_tokens=1200,
+        )
+        candidate = invocation.output
+        if not isinstance(candidate, SemanticRequirementPlanV2):
+            return trace.model_copy(update={"failure_class": "PARSER_MISSING_OUTPUT", "failure_reason": "schema_invalid"})
+        raw = candidate.model_dump(mode="json")
+        updated = trace.model_copy(update={
+            "raw_output": raw,
+            "semantic_plan": raw,
+            "requested_outputs": [item.name for item in candidate.requested_outputs],
+        })
+        try:
+            logical = logical_program_from_requirements(candidate)
+        except ValueError as exc:
+            return updated.model_copy(update={"failure_class": "LOGICAL_PLAN_INCOMPLETE", "failure_reason": str(exc)})
+        try:
+            calls = LegacyActionLowerer().lower(logical)
+        except ValueError as exc:
+            return updated.model_copy(update={
+                "logical_program": logical.to_dict(),
+                "roots": logical.roots,
+                "intermediate_nodes": [node.node_id for node in logical.nodes if node.node_id not in logical.roots],
+                "failure_class": "LOWERING_FAILURE",
+                "failure_reason": str(exc),
+            })
+        return updated.model_copy(update={
+            "logical_program": logical.to_dict(),
+            "roots": logical.roots,
+            "intermediate_nodes": [node.node_id for node in logical.nodes if node.node_id not in logical.roots],
+            "lowering": [call.model_dump(mode="json") for call in calls],
+        })
+    except Exception as exc:
+        return trace.model_copy(update={"failure_class": "PARSER_MISSING_OUTPUT", "failure_reason": f"{type(exc).__name__}:{exc}"})
+
+
+def record_v2_shadow(trace: V2ShadowTrace) -> None:
+    """Emit an inspectable shadow record without coupling runtime behavior."""
+    _logger.info("semantic_v2_shadow=%s", trace.model_dump(mode="json"))
 
 
 class InputRefV2(BaseModel):
@@ -133,6 +246,8 @@ class LogicalProgramV2(BaseModel):
                     raise ValueError(f"{node.node_id} references unknown node {ref.node_id}")
                 if ref.selector not in {"all", "field", "index"}:
                     raise ValueError(f"unsupported semantic selector: {ref.selector}")
+            if node.op == Primitive.CALCULATE and not node.inputs:
+                raise ValueError(f"calculate node has no upstream input: {node.node_id}")
         state: dict[str, int] = {}
         by_id = {node.node_id: node for node in self.nodes}
 
@@ -201,6 +316,22 @@ def logical_program_from_requirements(plan: SemanticRequirementPlanV2) -> Logica
                 requested=bool(req.requested_outputs),
             ))
             roots[-1] = select_id
+    requested_names = {item.name for item in plan.requested_outputs}
+    if len(roots) > 1 and (
+        plan.presentation.get("type") == "comparison" or "price_comparison" in requested_names
+    ):
+        price_requirements = [req for req in plan.requirements if req.metric == Metric.PRICE]
+        if len(price_requirements) == 2:
+            compare_id = "comparison_root"
+            nodes.append(LogicalNodeV2(
+                node_id=compare_id,
+                op=Primitive.COMPARE,
+                inputs=[InputRefV2(node_id=node_id) for node_id in roots],
+                arguments={"entities": [req.entity.value for req in price_requirements if req.entity and req.entity.value]},
+                output_type="Comparison",
+                requested=True,
+            ))
+            roots = [compare_id]
     if len(roots) > 1:
         composite_id = "composite_root"
         nodes.append(LogicalNodeV2(
@@ -292,6 +423,7 @@ class LegacyActionLowerer:
 __all__ = [
     "CAPABILITIES", "Capability", "EntityRef", "InputRefV2", "LegacyActionLowerer",
     "LogicalNodeV2", "LogicalProgramV2", "Metric", "Primitive", "RequestedOutput",
-    "SemanticRequirementPlanV2", "SemanticRequirementV2", "TimeRange",
-    "logical_program_from_requirements", "validate_output_coverage",
+    "SemanticRequirementPlanV2", "SemanticRequirementV2", "TimeRange", "V2_SEMANTIC_PROMPT",
+    "V2ShadowTrace", "logical_program_from_requirements", "parse_v2_shadow", "record_v2_shadow",
+    "validate_output_coverage",
 ]

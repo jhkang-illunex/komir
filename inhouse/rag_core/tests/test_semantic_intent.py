@@ -285,7 +285,7 @@ class SemanticIntentTest(unittest.TestCase):
             with patch.dict(os.environ, {"SEMANTIC_INTENT_MODE": "shadow"}, clear=False):
                 plan = extract_action_plan("니켈 수입 집중도를 알려줘", llm)
         self.assertEqual(plan.actions[0].requirement_id, "import_concentration")
-        self.assertEqual(llm.tasks, ["semantic_intent"])
+        self.assertEqual(llm.tasks, ["semantic_intent", "semantic_requirement_v2"])
         self.assertIn("semantic_canonical_signature", "\n".join(logs.output))
         self.assertIn("semantic_resolved_action_plan", "\n".join(logs.output))
         self.assertIn("semantic_fallback_reason", "\n".join(logs.output))

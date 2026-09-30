@@ -19,6 +19,7 @@ from rag_core.ragkit.semantic_v2 import (  # noqa: E402
     TimeRange,
     logical_program_from_requirements,
     validate_output_coverage,
+    parse_v2_shadow,
 )
 
 
@@ -93,3 +94,28 @@ def test_e_concentration_and_price_are_two_logical_branches():
     calls = LegacyActionLowerer().lower(logical)
     assert [call.action_id for call in calls] == ["trade.concentration", "price.series"]
     assert logical.roots == ["root"]
+
+
+def test_v2_shadow_adapter_accepts_gemma_structured_plan_and_never_changes_production():
+    class Invocation:
+        output = _plan(
+            SemanticRequirementV2(requirement_id="usage", entity=EntityRef(value="니켈"), metric=Metric.USAGE, requested_outputs=["usage"]),
+            SemanticRequirementV2(requirement_id="price", entity=EntityRef(value="니켈"), metric=Metric.PRICE, time_range=TimeRange(kind="latest"), requested_outputs=["current_price"]),
+            outputs=("usage", "current_price"),
+        )
+
+    class FakeGemma:
+        def __init__(self):
+            self.calls = []
+
+        def invoke(self, **kwargs):
+            self.calls.append(kwargs)
+            return Invocation()
+
+    llm = FakeGemma()
+    trace = parse_v2_shadow("니켈은 어디에 쓰이고 지금은 얼마야?", llm)
+    assert trace.failure_class is None
+    assert trace.requested_outputs == ["usage", "current_price"]
+    assert {item["action_id"] for item in trace.lowering} == {"document.retrieve", "price.series"}
+    assert all("action_id" not in node for node in trace.logical_program["nodes"])
+    assert llm.calls[0]["task"] == "semantic_requirement_v2"
