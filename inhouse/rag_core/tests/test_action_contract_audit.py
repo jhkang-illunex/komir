@@ -562,6 +562,7 @@ class ActionContractAuditTest(unittest.TestCase):
         cases = (
             ("니켈 수입 상위국이랑 현재가격 알려줘", ["trade.country_rank", "price.series"]),
             ("니켈은 어디에 쓰이고 지금 가격은 얼마야?", ["document.retrieve", "price.series"]),
+            ("니켈은 어디에 쓰이고 지금은 얼마야?", ["document.retrieve", "price.series"]),
             ("최근 니켈 가격 얼마야?", ["price.series"]),
             ("니켈 가격 년도별 평균 가격을 알려줘", ["price.series"]),
             ("니켈 텅스텐 가격 같이 비교해줘", ["price.compare"]),

@@ -1154,7 +1154,7 @@ def _extract_action_plan_legacy(
     ) if name in compact), None)
     if mineral_info_match and any(marker in compact for marker in (
             "용도", "어디에쓰", "어디쓰", "쓰여", "사용처", "활용처")) and not any(
-                marker in compact for marker in ("수입", "생산국", "생산상위", "가격")):
+                marker in compact for marker in ("수입", "생산국", "생산상위", "가격", "얼마")):
         mineral = "구리" if mineral_info_match == "동" else mineral_info_match
         return ActionPlan(actions=[ActionCall(
             requirement_id="mineral_info", action_id="document.retrieve",
@@ -1236,7 +1236,9 @@ def _extract_action_plan_legacy(
     # 단일 용도 질문과 달리 가격이 있으므로 위 단일-광물정보 shortcut에서는
     # 의도적으로 제외됐고, 이 전용 plan이 그 공백을 메운다.
     use_current_price = re.fullmatch(
-        r"(?P<mineral>[가-힣A-Za-z0-9]+?)(?:은|는|의)?(?:어디에)?(?:쓰이고|쓰여|사용되고)(?:현재|지금|최근)?가격(?:은|이|을|를)?(?:얼마야|얼마인가요|알려줘|알려주세요|보여줘|보여주세요)?[?.]?",
+        r"(?P<mineral>[가-힣A-Za-z0-9]+?)(?:은|는|의)?(?:어디에)?(?:쓰이고|쓰여|사용되고)"
+        r"(?:현재|지금|최근)?(?:가격)?(?:은|이|을|를)?"
+        r"(?:얼마야|얼마인가요|알려줘|알려주세요|보여줘|보여주세요)?[?.]?",
         compact,
     )
     if use_current_price:
