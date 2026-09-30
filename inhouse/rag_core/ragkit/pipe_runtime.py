@@ -21,6 +21,7 @@ class ResultStatus(str, Enum):
     EMPTY = "empty"
     FAILED = "failed"
     ABSTAINED = "abstained"
+    DEPENDENCY_FAILED = "dependency_failed"
 
 
 @dataclass(frozen=True, slots=True)
@@ -284,9 +285,12 @@ class PipeRuntime:
                 context.check_cancelled()
                 results = state.get("results", {})
                 input_ids = set(current_step.dependencies) | {b.source_step_id for b in current_step.bindings.values()}
-                failed = [results[item] for item in input_ids if results[item].status in {ResultStatus.FAILED, ResultStatus.ABSTAINED}]
+                failed = [results[item] for item in input_ids if results[item].status in {ResultStatus.FAILED, ResultStatus.ABSTAINED, ResultStatus.DEPENDENCY_FAILED}]
                 if failed:
-                    result = TypedResult.failed(f"upstream step failed: {', '.join(sorted(input_ids))}")
+                    result = TypedResult(result_type=ValueType.UNKNOWN, status=ResultStatus.DEPENDENCY_FAILED,
+                                         sufficient=False,
+                                         failure_reason=f"upstream step failed: {', '.join(sorted(input_ids))}",
+                                         upstream_step_ids=tuple(sorted(input_ids)))
                     return {"results": {current_step.step_id: result}, "events": [PipeEvent("step_skipped", pipe.pipe_id, current_step.step_id, result.status.value)]}
                 try:
                     self._tracer.event("step_started", {"pipe_id": pipe.pipe_id, "step_id": current_step.step_id, "operation": current_step.operation})
@@ -360,6 +364,8 @@ class PipeRuntime:
                 status = ResultStatus.ABSTAINED
             elif any(result.status == ResultStatus.FAILED for result in context.results.values()):
                 status = ResultStatus.FAILED
+            elif any(result.status == ResultStatus.DEPENDENCY_FAILED for result in context.results.values()):
+                status = ResultStatus.DEPENDENCY_FAILED
             yield PipeEvent("pipe_completed", pipe.pipe_id, status=status.value)
         except asyncio.CancelledError:
             context.cancel()

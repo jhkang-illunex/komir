@@ -923,7 +923,15 @@ def _debug_retrieval_trace(result: RetrievalResult | None, warnings: list[str], 
             ),
             "evidence_success": bool(item_evidence),
         })
+    item_outcomes = []
+    for key, item in (getattr(result, "item_results", {}) or {}).items():
+        item_outcomes.append({
+            "key": list(key), "value": json_value(item.value),
+            "status": item.status, "reason": item.reason,
+            "evidence_count": len(item.evidence),
+        })
     return {"enabled": True, "action_plan": planned, "action_results": outcomes,
+            "item_results": item_outcomes,
             "warnings": [], "composite_renderer": render_trace or {
                 "entered": False, "selected_renderer": None,
                 "attempts": [{"status": "not_called", "reason": "before_render_phase"}],
@@ -948,6 +956,25 @@ def _data_warnings(cited_indices: set[int], evidence: list) -> list[str]:
            for i, ev in enumerate(evidence, 1)):
         return ["confirmed_dev_dummy:actual_price_not_supported"]
     return []
+
+
+def _item_result_events(result: RetrievalResult | None) -> list[ChatEvent]:
+    """부분 ForEach 결과를 기존 table SSE 계약으로 보존한다."""
+    items = getattr(result, "item_results", {}) if result else {}
+    if not items or getattr(result, "outcome", None) != "PARTIAL":
+        return []
+    rows = []
+    for (mineral, metric), item in items.items():
+        value = item.value if item.status == "success" else ""
+        if isinstance(value, (list, tuple, dict)):
+            value = "구조화 결과 있음"
+        rows.append([mineral, metric, item.status, value, item.reason or "", len(item.evidence)])
+    block = table_block(
+        {"columns": ["광종", "지표", "status", "value", "reason", "evidence_count"], "rows": rows},
+        block_id="t-item-results", source_index=0, source_label="항목별 실행 결과",
+    )
+    block["data_status"] = "PARTIAL"
+    return [ChatEvent(type="table", data=block)]
 
 
 def _partial_forecast_notice(warnings: list[str]) -> str:
@@ -2232,6 +2259,8 @@ async def chat_turn(
         yield _status_event(4)
         yield ChatEvent(type="delta", data={"delta": answer})
         for event in _multimodal_events(cited_indices, evidence):
+            yield event
+        for event in _item_result_events(retrieval_result):
             yield event
         await asyncio.to_thread(
             append_message, resolved_session_id, "assistant", answer,
