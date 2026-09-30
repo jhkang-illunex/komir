@@ -2,6 +2,31 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-30 — Deployment Bootstrap·Capability Discovery·Migration 검증
+
+기준선 `e314af4ad`의 Agent architecture와 기존 데이터/SSE contract를 변경하지 않고,
+`app.deployment_bootstrap`을 추가했다. `--check`는 실제 환경을 읽기 전용으로 검사하고,
+`--migrate`만 application-owned HistoryStore migration을 명시적으로 적용한다. 결과는
+machine-readable capability manifest와 `READY`/`DEGRADED`/`NOT_READY`로 판정한다.
+
+검사 범위는 필수 환경변수, PostgreSQL 연결·schema·table/column·row·기간 coverage,
+HistoryStore migration version, PageIndex/OKF mount·대표 문서, entity binding mismatch,
+embedding metadata/index compatibility, optional service·SSE smoke QA다. vector metadata가
+없거나 model/revision/preprocessing/normalization이 다르면 dimension이 같아도
+`REINDEX_REQUIRED`로 판정하며 기존 index를 덮어쓰지 않는다. HistoryStore에는
+agent-owned `schema_migration` version 1을 추가했고 business schema는 변경하지 않았다.
+
+격리 PostgreSQL에서 최초 check의 migration 미적용 상태, 명시적 migrate 후 version 1,
+동일 migrate 재실행의 idempotence를 확인했다. 격리 Docker 서비스에서도 실제 mount를
+검사하여 PageIndex 2,604개·OKF 2,604개를 발견했으며, vector metadata 부재는
+`REINDEX_REQUIRED`로 보고했다. 해당 수치는 기대값으로 하드코딩하지 않고 manifest에
+실측값으로 기록한다. 현재 Docker 환경은 HistoryStore migration과 LLM endpoint가 없어
+`NOT_READY`이며, 이는 bootstrap이 숨기지 않고 critical reason으로 출력한다.
+
+신규 테스트 4개와 기존 common 18, rag_core 476, rag_chat 130 회귀 및 compile/diff 검사를
+유지한다. 새 Action/Intent, Agent orchestration, PostgreSQL business table, PageIndex/OKF
+구조, frontend SSE protocol은 추가·변경하지 않았다.
+
 ## 2026-09-30 — AST completeness·persistent semantic history·unseen QA 감사
 
 기준선 `5fc00a92e` 이후 통과 regression과 현재 LangGraph/Pipe/TypedResult 구조를

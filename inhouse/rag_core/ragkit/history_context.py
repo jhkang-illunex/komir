@@ -17,6 +17,10 @@ from .pipe_runtime import ExecutionResult, Pipe, TypedResult
 from .semantic_ir import SemanticProgram
 
 
+HISTORY_MIGRATION_COMPONENT = "multihop_history"
+HISTORY_MIGRATION_VERSION = 1
+
+
 @dataclass(frozen=True, slots=True)
 class UserUtterance:
     text: str
@@ -273,6 +277,13 @@ class PostgresHistoryStore:
             with con.cursor() as cur:
                 cur.execute(f'CREATE SCHEMA IF NOT EXISTS "{self.schema}"')
                 cur.execute(f"""
+                    CREATE TABLE IF NOT EXISTS "{self.schema}"."schema_migration" (
+                        component VARCHAR(128) PRIMARY KEY,
+                        version INTEGER NOT NULL,
+                        applied_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                cur.execute(f"""
                     CREATE TABLE IF NOT EXISTS {self._table} (
                         session_id VARCHAR(128) NOT NULL,
                         turn_id VARCHAR(128) NOT NULL,
@@ -289,6 +300,13 @@ class PostgresHistoryStore:
                 """)
                 cur.execute(f"CREATE INDEX IF NOT EXISTS idx_multihop_history_expiry ON {self._table} (expires_at)")
                 cur.execute(f"CREATE INDEX IF NOT EXISTS idx_multihop_history_session ON {self._table} (session_id, created_at DESC)")
+                cur.execute(
+                    f"""INSERT INTO "{self.schema}"."schema_migration" (component, version)
+                    VALUES (%s, %s)
+                    ON CONFLICT (component) DO UPDATE SET version=EXCLUDED.version,
+                    applied_at=CURRENT_TIMESTAMP""",
+                    (HISTORY_MIGRATION_COMPONENT, HISTORY_MIGRATION_VERSION),
+                )
             con.commit()
         finally:
             con.close()

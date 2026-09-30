@@ -4,6 +4,12 @@
 
 CREATE SCHEMA IF NOT EXISTS ai_chatbot;
 
+CREATE TABLE IF NOT EXISTS ai_chatbot.schema_migration (
+  component   VARCHAR(128) PRIMARY KEY,
+  version     INTEGER NOT NULL,
+  applied_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS ai_chatbot.multihop_semantic_turn (
   session_id          VARCHAR(128) NOT NULL,
   turn_id             VARCHAR(128) NOT NULL,
@@ -23,3 +29,9 @@ CREATE INDEX IF NOT EXISTS idx_multihop_history_expiry
 
 CREATE INDEX IF NOT EXISTS idx_multihop_history_session
   ON ai_chatbot.multihop_semantic_turn (session_id, created_at DESC);
+
+INSERT INTO ai_chatbot.schema_migration (component, version)
+VALUES ('multihop_history', 1)
+ON CONFLICT (component) DO UPDATE SET
+  version = EXCLUDED.version,
+  applied_at = CURRENT_TIMESTAMP;
