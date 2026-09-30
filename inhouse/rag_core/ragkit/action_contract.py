@@ -2919,7 +2919,7 @@ def validate_action_plan(plan: ActionPlan | None) -> PlanAssessment:
             if call.slots.selection_mode == "extremum":
                 if (call.slots.selection_direction not in {"min", "max"}
                         or call.slots.period is None
-                        or call.slots.period.kind != "range"):
+                        or call.slots.period.kind not in {"range", "trailing_months"}):
                     return PlanAssessment(approved=False, failure_reason="slot_unresolved")
             elif call.slots.selection_mode == "ordinal":
                 if (call.slots.selection_position is None

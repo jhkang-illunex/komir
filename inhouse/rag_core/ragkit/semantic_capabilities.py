@@ -33,6 +33,13 @@ def produced_outputs(requirements: list[object]) -> frozenset[str]:
     for requirement in requirements:
         key = (getattr(requirement, "domain", ""), getattr(requirement, "metric", ""))
         outputs.update(CAPABILITY_OUTPUTS.get(key, ()))
+        # A selected price observation is a scalar value plus its selected
+        # date, not merely an unprojected time series.  This is derived from
+        # the typed AST selection, never from the raw utterance.
+        selection = getattr(requirement, "selection", None)
+        if (key == ("price", "price_series") and selection is not None
+                and getattr(selection, "mode", None) == "extremum"):
+            outputs.update({"latest_price", "date"})
     return frozenset(outputs)
 
 

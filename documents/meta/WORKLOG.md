@@ -2,6 +2,21 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-30 — 최근 3개월 가격 extrema output coverage 수정
+
+실제 `18005`에서 `니켈 최근 3개월 가격중에서 최고가가 가장 높은 날짜가 언제인가요?`를
+재현했다. Gemma AST는 `price_series(니켈, trailing_months=3)`와
+`selection=extremum/max/return_fields=[value,date]`를 정확히 생성했지만, capability
+registry가 선택된 가격 시계열의 `latest_price`·`date` 출력을 선언하지 않아
+`requested_output_not_produced`가 발생했고, 이후 validator가 `slot_unresolved`로 종료했다.
+
+선택 연산을 raw query로 보정하지 않고 typed selection에서 `latest_price`와 `date`를
+생성하도록 registry를 수정했다. 기존 validator의 extrema 기간 계약도 이미 지원되는
+`trailing_months`를 허용하도록 맞췄다.
+
+실제 Docker r13 결과: `price.series` success, 최고가 `17,395.01 USD/톤`, 관측일
+`2026-08-04`, citation 포함 SSE `done`, `abstained=false`.
+
 ## 2026-09-30 — enabled semantic parser 우선순위 및 복합 질의 E2E 추적
 
 기존 enabled 경로가 deterministic legacy shortcut을 Gemma보다 먼저 실행하는 것을 실제
