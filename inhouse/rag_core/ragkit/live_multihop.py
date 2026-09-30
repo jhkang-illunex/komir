@@ -31,7 +31,7 @@ from common.llm_client import KomirJsonLLM
 from .action_contract import ActionCall, ActionPlan, ActionSlots, MINERAL_ALIASES, Period
 from .chatbot_events import ChatEvent, chart_spec, extract_markdown_tables, table_block
 from .chatbot_graph import retrieve_evidence
-from .history_context import ConversationContext, InMemoryHistoryStore, Turn, UserUtterance
+from .history_context import ConversationContext, InMemoryHistoryStore, PostgresHistoryStore, Turn, UserUtterance
 from .legacy_bridge import LegacyOperatorFactory
 from .lowering import PipeLowerer
 from .multihop_orchestrator import MultiHopOrchestrator
@@ -102,7 +102,26 @@ rank(price_change) → top_k(3) → retrieve(import_value, input=top_k) → arg_
 """
 
 
-_HISTORY = InMemoryHistoryStore()
+def _history_store_from_env():
+    backend = os.getenv("MULTIHOP_HISTORY_BACKEND", "memory").strip().casefold()
+    if backend != "postgres":
+        return InMemoryHistoryStore()
+    dsn = (os.getenv("MULTIHOP_HISTORY_DSN") or os.getenv("PG_DSN") or "").strip()
+    if not dsn:
+        _logger.warning("MULTIHOP_HISTORY_BACKEND=postgres but no DSN; using in-memory history")
+        return InMemoryHistoryStore()
+    try:
+        ttl_days = int(os.getenv("MULTIHOP_HISTORY_TTL_DAYS", "30"))
+    except ValueError:
+        ttl_days = 30
+    return PostgresHistoryStore(
+        dsn,
+        schema=os.getenv("MULTIHOP_HISTORY_SCHEMA", "ai_chatbot"),
+        ttl_days=ttl_days,
+    )
+
+
+_HISTORY = _history_store_from_env()
 _AST_CACHE: dict[str, SemanticProgram] = {}
 _AST_CACHE_MAX = 128
 _AST_CACHE_HITS = 0
@@ -186,7 +205,11 @@ async def _parse_ast(llm: KomirJsonLLM, message: str, context: ConversationConte
         max_tokens=1400,
     )
     payload = invocation.output.model_dump(mode="json")
-    program = SemanticProgram.from_dict(_normalize_history_aliases(payload, context))
+    try:
+        program = SemanticProgram.from_dict(_normalize_history_aliases(payload, context))
+    except ValueError as exc:
+        _logger.warning("multihop_ast_validation_failure reason=%s", exc)
+        raise
     if len(_AST_CACHE) >= _AST_CACHE_MAX:
         _AST_CACHE.pop(next(iter(_AST_CACHE)))
     _AST_CACHE[cache_key] = program
@@ -341,6 +364,18 @@ def _resolve_row_field(rows: list[Any], requested: str | None) -> str | None:
     keys = list(dict.fromkeys(str(key) for row in mappings for key in row))
     if requested in keys:
         return requested
+    aliases = {
+        "country": {"country", "국가", "국가명", "수입국", "상대국"},
+        "share_percentage": {"share_percentage", "비중", "점유율", "수입비중", "수입 비중"},
+        "import_amount": {"import_amount", "수입액", "수입금액", "금액"},
+        "import_value": {"import_value", "수입액", "수입금액", "금액"},
+        "period": {"period", "기간", "대상기간", "기준기간", "기준연도"},
+        "unit": {"unit", "단위"},
+    }
+    requested_names = aliases.get(requested.casefold(), {requested})
+    for key in keys:
+        if key in requested_names:
+            return key
     normalized = re.sub(r"[^a-z0-9가-힣]+", "", requested.casefold())
     for key in keys:
         key_normalized = re.sub(r"[^a-z0-9가-힣]+", "", key.casefold())
@@ -645,7 +680,14 @@ class LiveOperatorFactory:
                     rows = [min(rows, key=lambda row: _numeric(row.get(field)) if isinstance(row, Mapping) and _numeric(row.get(field)) is not None else float("inf"))]
         elif node.operator == Operator.PROJECT.value:
             fields = args.get("fields") or []
-            rows = [{field: row.get(field) for field in fields} for row in rows if isinstance(row, Mapping)]
+            rows = [
+                {
+                    field: row.get(_resolve_row_field([row], str(field)) or str(field))
+                    for field in fields
+                }
+                for row in rows
+                if isinstance(row, Mapping)
+            ]
         elif node.operator == Operator.COMPARE.value or node.operator == Operator.JOIN.value:
             rows = []
             for item in inputs.values():

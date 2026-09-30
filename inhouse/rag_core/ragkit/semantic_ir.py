@@ -45,6 +45,34 @@ class ValueType(str, Enum):
     COMPOSITE = "composite"
 
 
+_METRIC_FIELDS: dict[str, set[str]] = {
+    "price": {"price", "cmerc_prc", "value"},
+    "price_change": {"price_change", "price_change_rate", "pct_change", "change_pct"},
+    "price_change_rate": {"price_change", "price_change_rate", "pct_change", "change_pct"},
+    "price_volatility": {"price_volatility", "price_change", "pct_change", "change_pct"},
+    # Trade rows carry the dimensional metadata needed by downstream share,
+    # period and unit projections.  Declaring it here keeps the AST contract
+    # aligned with the existing RDB/tool result rather than allowing a later
+    # project/filter node to discover the dependency at runtime.
+    "import_value": {"import_value", "import_amount", "import_amount_change", "value", "country", "period", "unit"},
+    "import_amount": {"import_value", "import_amount", "import_amount_change", "value", "country", "period", "unit"},
+    "import_change": {"import_change", "import_value_change", "import_amount_change", "change_pct", "country", "period", "unit"},
+    "import_value_change": {"import_change", "import_value_change", "import_amount_change", "change_pct", "country", "period", "unit"},
+    "import_share": {"import_share", "share_percentage", "import_amount", "import_value", "country", "period", "unit"},
+    "country_share": {"country_share", "share_percentage", "import_amount", "import_value", "country", "period", "unit"},
+    "country_rank": {"country", "country_share", "share_percentage", "import_amount", "import_value", "period", "unit"},
+    "production": {"production", "production_volume", "value", "country", "period", "unit"},
+    "production_volume": {"production", "production_volume", "value", "country", "period", "unit"},
+    "reserves": {"reserves", "reserves_volume", "value", "country", "period", "unit"},
+    "reserves_volume": {"reserves", "reserves_volume", "value", "country", "period", "unit"},
+}
+
+_FIELD_ALIASES: dict[str, set[str]] = {
+    "mineral": {"mineral", "광종", "광물", "원소", "entity"},
+    "entity": {"mineral", "광종", "광물", "원소", "entity"},
+}
+
+
 @dataclass(frozen=True, slots=True)
 class InputRef:
     """A typed edge in the semantic dependency graph."""
@@ -192,3 +220,138 @@ class SemanticProgram:
 
         for node in self.nodes:
             visit(node.node_id)
+
+        issues = self.completeness_issues()
+        if issues:
+            raise ValueError(f"ast_incomplete: {issues[0]}")
+
+    def completeness_issues(self) -> tuple[str, ...]:
+        """Return deterministic downstream field/dependency contract violations.
+
+        This is intentionally conservative: it validates fields explicitly
+        requested by downstream operators only when the upstream contract is
+        known. It never invents a field or a physical tool capability.
+        """
+        node_map = {node.node_id: node for node in self.nodes}
+        provided: dict[str, set[str] | None] = {}
+
+        def aliases(field: str) -> set[str]:
+            return _FIELD_ALIASES.get(field.casefold(), {field}) | {field}
+
+        def metric_fields(metric: Any) -> set[str]:
+            return set(_METRIC_FIELDS.get(str(metric).casefold(), {str(metric)})) if metric else set()
+
+        def fields_from_value(value: Any) -> set[str]:
+            if isinstance(value, Mapping):
+                return {str(key) for key in value}
+            if isinstance(value, (list, tuple)):
+                result: set[str] = set()
+                for item in value:
+                    result.update(fields_from_value(item))
+                return result
+            return set()
+
+        def upstream_fields(ref: InputRef) -> set[str] | None:
+            source = provided.get(ref.node_id)
+            if source is None:
+                return None
+            if ref.selector == "field" and ref.selector_value:
+                return {str(ref.selector_value)}
+            return set(source)
+
+        def requested_fields(node: RequirementNode) -> set[str]:
+            args = node.args
+            if node.operator == Operator.FILTER.value:
+                predicate = args.get("predicate")
+                if isinstance(predicate, Mapping):
+                    field = predicate.get("field")
+                else:
+                    field = args.get("field") or args.get("metric_field")
+                return set(aliases(str(field))) if field else metric_fields(args.get("metric"))
+            if node.operator in {Operator.SORT.value, Operator.RANK.value, Operator.ARG_MAX.value, Operator.ARG_MIN.value}:
+                field = args.get("field") or args.get("metric_field") or args.get("metric")
+                return set(aliases(str(field))) | metric_fields(field) if field else set()
+            if node.operator == Operator.PROJECT.value:
+                return {str(field) for field in (args.get("fields") or [])}
+            if node.operator == Operator.CALCULATE.value:
+                calculation = str(args.get("calculation", ""))
+                return {"start", "end"} if calculation in {"change_pct", "percent_change"} else set()
+            return set()
+
+        issues: list[str] = []
+        ordered: list[RequirementNode] = []
+        visited: set[str] = set()
+
+        def order(node_id: str) -> None:
+            if node_id in visited:
+                return
+            visited.add(node_id)
+            node = node_map[node_id]
+            for ref in node.inputs:
+                order(ref.node_id)
+            ordered.append(node)
+
+        for node in self.nodes:
+            order(node.node_id)
+
+        for node in ordered:
+            args = node.args
+            if node.operator == Operator.TOP_K.value:
+                limit = args.get("k", args.get("top_n", args.get("limit")))
+                if limit is not None:
+                    try:
+                        if int(limit) <= 0:
+                            raise ValueError
+                    except (TypeError, ValueError):
+                        issues.append(f"{node.node_id} has invalid top_k limit {limit!r}")
+                if not node.inputs:
+                    issues.append(f"{node.node_id} requires an upstream result")
+            # Calculate may be a valid leaf handled by an existing primitive
+            # (for example a deterministic KPI handler).  Missing upstream
+            # data is therefore checked when a calculation declares inputs,
+            # while the field/dependency checks below remain strict for
+            # downstream operators consuming an upstream result.
+            if node.operator in {Operator.FILTER.value, Operator.SORT.value, Operator.PROJECT.value, Operator.ARG_MAX.value, Operator.ARG_MIN.value} and not node.inputs:
+                issues.append(f"{node.node_id} requires an upstream result")
+            if node.operator in {Operator.COMPARE.value, Operator.JOIN.value} and len(node.inputs) < 2:
+                issues.append(f"{node.node_id} requires at least two upstream results")
+            if node.operator == Operator.FILTER.value and not isinstance(args.get("predicate"), Mapping) and not (args.get("field") or args.get("metric") or args.get("metric_field")):
+                issues.append(f"{node.node_id} requires a filter field or metric")
+            if node.operator == Operator.ENTITY.value:
+                fields = fields_from_value(args.get("values") or args.get("minerals") or args.get("mineral"))
+                provided[node.node_id] = fields | ({"entity", "mineral", "광종"} if fields else set())
+            elif node.operator == Operator.RETRIEVE.value:
+                # Every retrieval carries an entity dimension even when the
+                # model did not spell it out in args.
+                provided[node.node_id] = {"entity", "mineral", "광종"} | metric_fields(args.get("metric"))
+            elif node.operator == Operator.RETRIEVE_DOCUMENT.value:
+                provided[node.node_id] = {"document", "evidence", "entity", "mineral", "광종"}
+            elif node.inputs:
+                input_sets = [upstream_fields(ref) for ref in node.inputs]
+                if any(item is None for item in input_sets):
+                    provided[node.node_id] = None
+                else:
+                    merged = set().union(*(item or set() for item in input_sets))
+                    if node.operator == Operator.PROJECT.value:
+                        provided[node.node_id] = requested_fields(node)
+                    elif node.operator == Operator.CALCULATE.value:
+                        provided[node.node_id] = merged | ({"change_pct"} if args.get("calculation") in {"change_pct", "percent_change"} else set())
+                    else:
+                        provided[node.node_id] = merged
+            else:
+                provided[node.node_id] = None
+
+            required = requested_fields(node)
+            if not required or not node.inputs:
+                continue
+            available = set().union(*(upstream_fields(ref) or set() for ref in node.inputs))
+            if not any(available.intersection(aliases(field)) for field in required for _ in (0,)):
+                issues.append(f"{node.node_id} requires field(s) {sorted(required)} not produced by upstream")
+
+            for ref in node.inputs:
+                if ref.selector != "field" or ref.selector_value is None:
+                    continue
+                source_fields = provided.get(ref.node_id)
+                if source_fields is not None and not source_fields.intersection(aliases(str(ref.selector_value))):
+                    issues.append(f"{node.node_id} selects field {ref.selector_value!r} absent from {ref.node_id}")
+        return tuple(dict.fromkeys(issues))

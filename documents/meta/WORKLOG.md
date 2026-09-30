@@ -2,6 +2,47 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-30 — AST completeness·persistent semantic history·unseen QA 감사
+
+기준선 `5fc00a92e` 이후 통과 regression과 현재 LangGraph/Pipe/TypedResult 구조를
+확장하지 않고, 실제 실패 원인만 contract 범위에서 보강했다. Q01~Q30 기준
+`ABSTAIN_VALID 22`는 `DATA_UNAVAILABLE 6`, `AST_INCOMPLETE 2`,
+`BINDING_FAILURE 1`, `TOOL_CAPABILITY_MISSING 7`, `EVIDENCE_INSUFFICIENT 5`,
+`기타(OUT_OF_SCOPE) 1`로 분류했다. 데이터 부족 6건과 근거 불충분 5건은 정상
+abstain으로 유지하고, AST·binding·tool 한계 10건은 실행 가능성/물리 capability의
+architecture 원인으로 별도 기록했다.
+
+`SemanticProgram.completeness_issues()`에 downstream field contract 검증을 추가했다.
+Filter/Sort/Rank/ArgMax/Project의 요구 field와 field selector가 upstream retrieve/entity
+result에서 생성되지 않으면 `ast_incomplete`로 실행 전에 닫는다. `top_k`의 비정상 limit,
+잘못된 dependency도 같은 경계에서 검출한다. 기존 leaf Calculate handler contract는
+회귀를 깨지 않도록 보존했다. 무역 metric(`import_amount/import_value`)이 실제 결과에
+제공하는 `country/period/unit` metadata와 한국어 표 컬럼 alias(`국가/비중/기간/단위/수입액`)를
+공통 binding에 반영해 volatility 후속의 `field reference` 및 list-row projection을
+질문별 분기 없이 수정했다.
+
+`PostgresHistoryStore`와 명시적 migration SQL을 추가했다. application-owned
+`ai_chatbot.multihop_semantic_turn`에 AST, Pipe 요약, TypedResult, evidence, TTL을
+저장하고 매 operation마다 새 connection을 사용해 multi-worker/restart에 안전하게 했다.
+semantic context는 기존 정책대로 최대 8턴이며, `cleanup_expired()`를 제공한다.
+애플리케이션 startup에서 기존 DB schema를 자동 변경하지 않고 `ensure_schema()`/migration을
+명시 호출하도록 했다. 격리 PostgreSQL에서 persistence→container restart→recovery와 TTL
+cleanup을 검증했으며 공유 KOMIS DB에는 DDL을 실행하지 않았다.
+
+실제 Docker enabled r13에서 Q01~Q30은 모두 terminal `done`에 도달했고 해당 실행은
+`PASS 7 / ABSTAIN_VALID 23`이었다. r5 기준선 `PASS 8 / ABSTAIN_VALID 22`보다 PASS가
+늘지 않았으며, Gemma parsing과 실제 evidence 변동으로 Q03/Q04 결과가 교대된 실행이다.
+이는 정상 abstain을 PASS로 승격하지 않은 결과로 기록한다. 별도 unseen U01~U06 및
+volatility 후속은 실제 SSE에서 terminal 완료/근거 기권을 확인했고, field selector 오류
+`result field not found in sequence: mineral`는 재현되지 않았다. Raw assistant answer를
+context 원천으로 사용하지 않고 semantic history만 전달하며, retrieval/tool result cache는
+이번 라운드에도 추가하지 않았다.
+
+검증: common 18, rag_core 476, rag_chat 130, targeted AST/history 17, compileall,
+`git diff --check`, isolated PostgreSQL restart/TTL, Docker `/openapi.json` 및 실제 SSE.
+새 Action/Intent와 질문별 special-case는 추가하지 않았다. Langfuse는 credential이 없는
+환경의 NoOp fallback을 유지한다.
+
 ## 2026-09-30 — 실제 데이터 E2E blocker·Q30·10턴 검증 후속
 
 최신 소스 기준 `komir-rag-chat:multihop-work-r10`을 별도 Docker 컨테이너로 빌드·기동하고,

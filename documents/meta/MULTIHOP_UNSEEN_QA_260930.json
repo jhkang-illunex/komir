@@ -1,0 +1,36 @@
+{
+  "suite_id": "multihop-unseen-paraphrase-260930",
+  "purpose": "Q01-Q30 의미 보존형 표현 변경 검증; phrase-specific rule 금지",
+  "cases": [
+    {
+      "id": "U01",
+      "turns": ["지난 1년 가격이 가장 많이 오른 광종 세 개만 추려줘", "그중 두 번째 광물의 수입액을 확인해줘"],
+      "checks": ["rank", "top_k", "retrieve", "ordinal_reference"]
+    },
+    {
+      "id": "U02",
+      "turns": ["가격 변동률이 큰 광물 다섯 가지를 골라", "그 가운데 수입액도 늘어난 것만 남겨줘", "남은 광물들의 국가별 수입 비중을 비교해줘"],
+      "checks": ["rank", "filter", "metric_replacement", "parallel_or_compare"]
+    },
+    {
+      "id": "U03",
+      "turns": ["최근 12개월 가격 상승 광종 상위 5개를 알려줘", "방금 목록의 네 번째 것만 생산량으로 다시 보여줘", "기간은 작년으로 바꿔줘"],
+      "checks": ["list_projection", "ordinal_reference", "metric_replacement", "period_replacement"]
+    },
+    {
+      "id": "U04",
+      "turns": ["리튬 수입 상위 국가를 보여줘", "그 결과에서 첫 번째 국가를 빼고 비교해줘", "중국은 다시 포함해줘"],
+      "checks": ["result_subset", "context_mutation", "filter_add_remove"]
+    },
+    {
+      "id": "U05",
+      "turns": ["최근 1년간 가격이 오른 광물 중 수입액도 증가한 광물을 찾아줘", "그 광물의 생산량과 국가별 비중을 함께 보여줘"],
+      "checks": ["multi_hop", "parallel_retrieve", "compare"]
+    },
+    {
+      "id": "U06",
+      "turns": ["니켈 가격 추이를 알려줘", "그것과 같은 기간 코발트를 대조해줘", "둘 중 두 번째 항목의 근거 문서를 보여줘"],
+      "checks": ["entity_carry_over", "compare", "ordinal_reference", "document_retrieval"]
+    }
+  ]
+}

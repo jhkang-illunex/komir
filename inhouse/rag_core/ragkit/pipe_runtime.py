@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
@@ -202,6 +203,31 @@ class GraphState(TypedDict, total=False):
     events: Annotated[list[PipeEvent], _append_events]
 
 
+def _field_key(value: Mapping[str, Any], requested: str) -> str | None:
+    if requested in value:
+        return requested
+    aliases = {
+        "mineral": {"mineral", "광종", "광물", "원소", "entity"},
+        "entity": {"mineral", "광종", "광물", "원소", "entity"},
+        "country": {"country", "국가", "국가명", "수입국", "상대국"},
+        "share_percentage": {"share_percentage", "비중", "점유율", "수입비중", "수입 비중"},
+        "import_amount": {"import_amount", "수입액", "수입금액", "금액"},
+        "import_value": {"import_value", "수입액", "수입금액", "금액"},
+        "period": {"period", "기간", "대상기간", "기준기간", "기준연도"},
+        "unit": {"unit", "단위"},
+    }
+    requested_names = aliases.get(requested.casefold(), {requested})
+    for key in value:
+        if key in requested_names:
+            return key
+    normalized = re.sub(r"[^a-z0-9가-힣]+", "", requested.casefold())
+    for key in value:
+        key_normalized = re.sub(r"[^a-z0-9가-힣]+", "", str(key).casefold())
+        if key_normalized.startswith(normalized) or normalized in key_normalized:
+            return str(key)
+    return None
+
+
 def _select(result: TypedResult, selector: str, selector_value: str | int | None) -> TypedResult:
     if selector == "all":
         return result
@@ -217,14 +243,16 @@ def _select(result: TypedResult, selector: str, selector_value: str | int | None
         if not isinstance(selector_value, str):
             raise TypeError("field binding requires a field name")
         if isinstance(result.value, Mapping):
-            if selector_value not in result.value:
+            key = _field_key(result.value, selector_value)
+            if key is None:
                 raise ValueError(f"result field not found: {selector_value}")
-            value = result.value[selector_value]
+            value = result.value[key]
         elif isinstance(result.value, (list, tuple)):
             rows = [row for row in result.value if isinstance(row, Mapping)]
-            if not rows or any(selector_value not in row for row in rows):
+            keys = [_field_key(row, selector_value) for row in rows]
+            if not rows or any(key is None for key in keys):
                 raise ValueError(f"result field not found in sequence: {selector_value}")
-            value = [row[selector_value] for row in rows]
+            value = [row[key] for row, key in zip(rows, keys) if key is not None]
         else:
             raise TypeError("field binding requires a mapping or sequence of mappings")
         return TypedResult(result_type=result.result_type, value=value, upstream_step_ids=result.upstream_step_ids)

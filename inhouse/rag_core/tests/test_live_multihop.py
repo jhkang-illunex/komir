@@ -51,6 +51,58 @@ class LiveMultiHopBridgeTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(program.roots, ("answer",))
 
+    def test_ast_rejects_downstream_filter_field_missing_from_upstream(self):
+        with self.assertRaisesRegex(ValueError, "ast_incomplete:.*import"):
+            SemanticProgram.from_dict({
+                "nodes": [
+                    {"node_id": "entities", "operator": "entity", "args": {"values": ["니켈"]}},
+                    {
+                        "node_id": "filtered", "operator": "filter",
+                        "inputs": [{"node_id": "entities"}],
+                        "args": {"metric": "import_change", "predicate": "greater_than", "value": 0},
+                    },
+                ],
+                "roots": ["filtered"],
+            })
+
+    def test_volatility_document_field_reference_is_complete(self):
+        program = SemanticProgram.from_dict({
+            "nodes": [
+                {"node_id": "prices", "operator": "retrieve", "args": {"metric": "price_change"}},
+                {"node_id": "ranked", "operator": "sort", "inputs": [{"node_id": "prices"}], "args": {"field": "price_change"}},
+                {"node_id": "news", "operator": "retrieve_document", "inputs": [{"node_id": "ranked", "selector": "field", "selector_value": "mineral"}], "args": {"topic": "news"}},
+            ],
+            "roots": ["news"],
+        })
+        self.assertEqual(program.completeness_issues(), ())
+
+    def test_trade_metadata_fields_are_available_to_downstream_projection(self):
+        program = SemanticProgram.from_dict({
+            "nodes": [
+                {"node_id": "imports", "operator": "retrieve", "args": {"metric": "import_amount"}},
+                {
+                    "node_id": "country_share", "operator": "project",
+                    "inputs": [{"node_id": "imports"}],
+                    "args": {"fields": ["country", "period", "unit", "import_amount"]},
+                },
+            ],
+            "roots": ["country_share"],
+        })
+
+        self.assertEqual(program.completeness_issues(), ())
+
+    def test_ast_rejects_non_numeric_top_k_but_preserves_leaf_calculation_contract(self):
+        with self.assertRaisesRegex(ValueError, "invalid top_k limit"):
+            SemanticProgram.from_dict({
+                "nodes": [{"node_id": "top", "operator": "top_k", "args": {"top_n": "unknown"}}],
+                "roots": ["top"],
+            })
+        program = SemanticProgram.from_dict({
+            "nodes": [{"node_id": "change", "operator": "calculate", "args": {"metric": "import_change"}}],
+            "roots": ["change"],
+        })
+        self.assertEqual(program.roots, ("change",))
+
     def test_source_unavailable_result_maps_to_empty_without_contract_error(self):
         call = live_multihop.ActionCall(
             requirement_id="r1",
@@ -126,6 +178,23 @@ class LiveMultiHopBridgeTests(unittest.IsolatedAsyncioTestCase):
         node = RequirementNode("sorted", Operator.SORT, args={"field": "import_amount", "order": "desc"})
         result = factory._derive(node, {"source": source})
         self.assertEqual([row["국가"] for row in result.value], ["호주", "중국"])
+
+    def test_projection_binds_existing_korean_trade_columns_to_typed_fields(self):
+        factory = live_multihop.LiveOperatorFactory(
+            message="국가별 수입 비중", session_id="project-test", profile="public", llm=object(), history=[],
+        )
+        source = TypedResult.success(
+            ValueType.COUNTRY_SHARE,
+            [{"국가": "중국", "수입액": "90", "비중": "45.0", "기간": "2025", "단위": "USD"}],
+        )
+        node = RequirementNode(
+            "projected", Operator.PROJECT,
+            args={"fields": ["country", "share_percentage", "period", "unit"]},
+        )
+
+        result = factory._derive(node, {"source": source})
+
+        self.assertEqual(result.value, [{"country": "중국", "share_percentage": "45.0", "period": "2025", "unit": "USD"}])
 
     def test_semantic_history_is_bounded_and_excludes_raw_result_payload(self):
         typed = TypedResult.success(

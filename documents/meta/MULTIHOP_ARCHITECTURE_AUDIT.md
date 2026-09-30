@@ -359,5 +359,60 @@ Semantic history는 raw assistant answer/table을 재주입하지 않고 최근 
 typed result metadata, provenance만 parser context로 보낸다. 10-turn 실제 session에서
 context log가 8 turn·약 4,043자에서 bounded했고, AST cache hit/miss와 Langfuse child
 Pipe/Step tracer 경계를 확인했다. Langfuse가 미설정된 환경에서도 business execution은
-NoOp tracer로 정상 완료했다. 영속 HistoryStore와 retrieval/tool result cache는 이번
-라운드의 correctness/provenance 보존 원칙상 미구현 blocker로 남긴다.
+NoOp tracer로 정상 완료했다. retrieval/tool result cache는 이번 라운드의
+correctness/provenance 보존 원칙상 미구현으로 유지했다.
+
+### 15. AST completeness·history persistence·unseen QA 감사 (2026-09-30)
+
+이번 라운드는 새 runtime/action을 추가하지 않고 기존 AST/Pipe/Binding contract의
+실패를 분해했다. 기준 Q01~Q30의 `ABSTAIN_VALID 22` 원인은 다음과 같다.
+
+| 원인 | 건수 | 문항 |
+|---|---:|---|
+| DATA_UNAVAILABLE | 6 | Q05, Q17, Q21, Q24, Q26, Q27 |
+| AST_INCOMPLETE | 2 | Q07, Q18 |
+| BINDING_FAILURE | 1 | Q25 |
+| TOOL_CAPABILITY_MISSING | 7 | Q02, Q08, Q09, Q10, Q14, Q20, Q22 |
+| EVIDENCE_INSUFFICIENT | 5 | Q03, Q13, Q15, Q19, Q28 |
+| 기타(OUT_OF_SCOPE) | 1 | Q30 |
+
+DATA_UNAVAILABLE 6건과 EVIDENCE_INSUFFICIENT 5건은 실제 원천/직접 근거 부족으로
+정상 abstain이다. 나머지 AST·binding·tool 계열 10건은 architecture 또는 물리
+capability의 개선 후보이지만, 현재 Action/Tool이 제공하지 않는 지표를 추론해 PASS로
+바꾸지 않았다.
+
+`SemanticProgram.completeness_issues()`는 topological order로 upstream field set을
+계산한다. downstream Filter/Sort/Rank/ArgMax/Project의 `field/metric/fields`와
+`selector=field`가 upstream contract에 없으면 `ast_incomplete`를 반환한다. `top_k`
+limit과 unknown dependency도 실행 전 닫는다. 기존 leaf Calculate handler는 합법적인
+custom primitive일 수 있으므로 입력이 없는 leaf 자체를 invalid로 만들지 않았다. 실제
+무역 결과의 `country/period/unit` metadata와 한국어 컬럼 alias는 canonical binding으로
+정규화했다. 따라서 volatility 후속의 `광종`→`mineral` selector 오류가 더 이상
+binding failure로 나타나지 않는다.
+
+`PostgresHistoryStore`는 기존 `InMemoryHistoryStore` protocol을 유지하는 선택적 adapter다.
+`ai_chatbot.multihop_semantic_turn`에 session/turn/AST/Pipe summary/TypedResult/evidence와
+expires_at을 저장하고 semantic context를 최대 8턴으로 제한한다. Step 객체 자체는
+프로세스 로컬이므로 executable object가 아니라 inspectable Pipe summary를 저장한다.
+operation마다 새 connection을 만들고 `asyncio.to_thread`로 감싸 multi-worker와 async
+runtime을 분리했으며, `cleanup_expired()`를 제공한다. migration은
+`inhouse/data_lake/db/schema_multihop_history.sql`에 두고 startup 자동 DDL은 하지 않았다.
+격리 PostgreSQL에서 append/recovery, DB container restart 후 recovery, 만료 row cleanup을
+실제 검증했다. 공유 KOMIS schema에는 변경을 적용하지 않았다.
+
+unseen U01~U06은 기존 문구를 복사하지 않은 paraphrase/multi-turn 묶음이다. 실제
+SSE에서 모든 turn이 terminal done에 도달했으며, rank→top_k→retrieve, ordinal,
+metric/period replacement, context mutation, document reference를 각각 실행했다.
+동시에 일부 후속은 실제 원천/근거 부족으로 abstain하거나 parser가 unsupported metric을
+fail-closed했다. 이를 PASS로 세지 않았으며, U04의 `top_n=unknown`과 U05의 input 없는
+calculation은 새 AST validation이 실행 전에 검출하도록 수정했다.
+
+Q30 실제 재실행은 r13에서 30/30 terminal done, PASS 7, ABSTAIN_VALID 23이었다.
+기준 r5의 PASS 8, ABSTAIN_VALID 22와 비교해 PASS 증가는 없었다. Gemma의 동일 질문
+계획 변동으로 Q03/Q04가 교대했고, 근거가 부족한 결과를 성공으로 승격하지 않았다.
+이 수치는 품질 개선 점수가 아니라 deterministic abstain 정책을 검증한 관측값이다.
+
+회귀는 common 18, rag_core 476, rag_chat 130, 신규 AST/history targeted 17건이
+통과했다. 새 Action/Intent, QA별 if/else, 기존 PostgreSQL/PageIndex/OKF 변경 및
+Frontend SSE protocol 변경은 없다. Langfuse credential이 없는 환경에서는 기존 NoOp
+fallback을 유지한다.
