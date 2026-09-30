@@ -763,6 +763,10 @@ def render_composite(evidence: list, action_plan, action_results=None, *, trace:
     monthly_docs = [pair for pair in by_action.get("document.retrieve", [])
                     if 0 < pair[0] <= len(actions)
                     and "월간동향" in str(getattr(actions[pair[0] - 1].slots, "topic", "") or "")]
+    if not monthly_docs:
+        monthly_docs = [pair for pair in by_action.get("document.retrieve", [])
+                        if 0 < pair[0] <= len(actions)
+                        and getattr(actions[pair[0] - 1], "requirement_id", None) == "monthly_rare_metals"]
     info_docs = [pair for pair in by_action.get("document.retrieve", [])
                  if pair not in monthly_docs]
     rank_docs = by_action.get("trade.country_rank", [])
@@ -806,6 +810,40 @@ def render_composite(evidence: list, action_plan, action_results=None, *, trace:
             return (f"월간동향 : {getattr(monthly, 'section', None) or '확인된 월간동향'}에 나온 광종\n"
                     "핵심광물 수급지도 : 최근 12개월 한국 수입 1위국\n" + "\n".join(lines) + concentration,
                     cited)
+
+    # 월간동향에서 추출한 광종별 최신 가격은 독립 조회다. 일부 가격만
+    # 성공해도 성공 행만으로 전체 성공처럼 만들지 않고 실패 Action도
+    # 상태 행으로 보존한다.
+    monthly_price_actions = [action for action in actions if action.action_id == "price.series"]
+    if len(monthly_docs) == 1 and monthly_price_actions and action_results:
+        monthly_index, monthly = monthly_docs[0]
+        outcomes = {getattr(item, "requirement_id", None): item for item in action_results}
+        evidence_by_req = {
+            getattr(item, "requirement_id", None): (index, item)
+            for index, item in by_action.get("price.series", [])
+        }
+        lines, cited = [], {monthly_index}
+        for action in monthly_price_actions:
+            mineral = getattr(action.slots, "mineral", None) or "요청 광종"
+            outcome = outcomes.get(getattr(action, "requirement_id", None))
+            pair = evidence_by_req.get(getattr(action, "requirement_id", None))
+            if outcome is not None and outcome.status == "success" and pair:
+                points = _price_points(pair[1])
+                if points:
+                    observed, value = points[-1]
+                    cited.add(pair[0])
+                    lines.append(f"- {mineral}: {observed.isoformat()} {_fmt(value)} (성공)")
+                    continue
+            reason = getattr(outcome, "failure_reason", None) if outcome else "not_executed"
+            status = "NEEDS_SELECTION" if reason in {"ambiguous", "advisor_rejected"} else (
+                "DATA_UNAVAILABLE" if reason in {"no_data", "source_unavailable"} else "EXECUTION_FAILED"
+            )
+            lines.append(f"- {mineral}: {status} ({reason or '조회되지 않음'})")
+        if lines:
+            return (
+                f"월간동향 : {getattr(monthly, 'section', None) or '확인된 월간동향'}에 언급된 광종별 최근 가격\n"
+                + "\n".join(lines), cited,
+            )
 
     if ids.count("price.series") == 5 and ids.count("forecast.price") == 5 and len(ids) == 10:
         prices, forecasts = by_action.get("price.series", []), by_action.get("forecast.price", [])

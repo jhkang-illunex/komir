@@ -1612,7 +1612,7 @@ def _monthly_document_minerals(evidence: list[Evidence]) -> list[str]:
     found: list[str] = []
     for item in evidence:
         for table in extract_markdown_tables(item.text):
-            keys = [str(column).split("(", 1)[0].strip() for column in table["columns"]]
+            keys = [str(column).split("(", 1)[0].replace(" ", "").strip() for column in table["columns"]]
             try:
                 mineral_index = keys.index("광종목록")
             except ValueError:
@@ -1624,7 +1624,10 @@ def _monthly_document_minerals(evidence: list[Evidence]) -> list[str]:
                     mineral = token.strip()
                     if mineral == "동":
                         mineral = "구리"
-                    if mineral in _MONTHLY_PRICE_MINERALS and mineral not in found:
+                    # 문서의 mineral_list를 capability 화이트리스트로 잘라내지
+                    # 않는다. 가격 capability가 없거나 기준이 모호한 항목은
+                    # 후속 Action의 개별 상태로 남겨 다른 광종을 가리지 않는다.
+                    if mineral and mineral not in found:
                         found.append(mineral)
     if found:
         return found
@@ -2833,10 +2836,10 @@ def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
         # 복합 질문에서 Advisor가 '문서만으로 수입/정보를 답할 수 없다'고 먼저
         # 막으면 후속 action 자체가 실행되지 않는다. 게시물 선택의 충분성만
         # 여기서 확정하고, 후속 수치/정보 action은 각각 별도 검증한다.
-        if ((action_call.requirement_id in {"monthly_trend", "weekly_news", "report_search"}
+        if ((action_call.requirement_id in {"monthly_trend", "monthly_rare_metals", "weekly_news", "report_search"}
              or getattr(state.get("route"), "use_report_search", False))
                 and action_call.action_id == "document.retrieve"
-                and any(ev.kind == "structured" and ev.text.strip() for ev in evidence)):
+                and any(ev.kind in {"structured", "pageindex"} and ev.text.strip() for ev in evidence)):
             return {"sufficient": True, "evidence": evidence, "warnings": state.get("warnings", [])}
         # 일일 자원뉴스는 발행 상태·기간·핵심 검색어를 adapter의 SQL에서
         # 결정적으로 대조한 기사 표다. 실제 기사 행과 기간 메타데이터가 있는
@@ -3824,7 +3827,7 @@ def retrieve_evidence(
                 and call.action_id == "document.retrieve"
                 and "가격" in question
                 and not any(action.action_id == "price.series" for action in original_plan.actions)):
-            monthly_minerals = _monthly_document_minerals(verified_evidence)[:5]
+            monthly_minerals = _monthly_document_minerals(verified_evidence)
             for mineral in monthly_minerals:
                 price = ActionCall(
                     requirement_id=f"monthly_price_{mineral}", action_id="price.series",
