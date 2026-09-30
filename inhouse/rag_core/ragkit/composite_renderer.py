@@ -66,6 +66,36 @@ def _price_points(item):
     return []
 
 
+def _claim_rows(item):
+    """Read a typed claim-verification result without inferring missing values."""
+    for table in extract_markdown_tables(getattr(item, "text", "")):
+        keys = _keys(table)
+        pct_i = next((i for i, key in enumerate(keys)
+                      if key in {"pct_change", "change_pct", "yoy_pct", "증감률", "변동률"}), None)
+        if pct_i is None:
+            continue
+        year_i = next((i for i, key in enumerate(keys)
+                       if key in {"year", "calendar_year", "연도"}), None)
+        date_i = next((i for i, key in enumerate(keys)
+                       if key in {"date", "price_date", "crtr_ymd", "trd_dt"}), None)
+        rows = []
+        for row in table["rows"]:
+            if pct_i >= len(row):
+                continue
+            pct = _number(row[pct_i])
+            if pct is None:
+                continue
+            observed = None
+            if year_i is not None and year_i < len(row):
+                observed = str(row[year_i]).strip()
+            elif date_i is not None and date_i < len(row):
+                observed = str(row[date_i]).strip()
+            rows.append({"pct": pct, "period": observed})
+        if rows:
+            return rows
+    return []
+
+
 def _index_points(item):
     for table in extract_markdown_tables(getattr(item, "text", "")):
         keys = _keys(table)
@@ -360,6 +390,57 @@ def render_composite(evidence: list, action_plan, action_results=None) -> tuple[
     if price_forecast_group is not None:
         return price_forecast_group
 
+    # 가격 주장 검증과 원인 문서는 각각의 원천을 분리해 제시한다. 문서
+    # 내용을 관측 변동률의 원인으로 단정하지 않고, 두 Action의 근거만
+    # 조립하는 폐쇄형 계약이다.
+    if ids == ["price.verify_claim"]:
+        claim_rows = by_action.get("price.verify_claim", [])
+        if claim_rows:
+            claim_index, claim_item = claim_rows[0]
+            observed = _claim_rows(claim_item)
+            claim_action = actions[0]
+            expected = getattr(claim_action.slots, "claimed_change_pct", None)
+            mineral = getattr(claim_action.slots, "mineral", None) or "요청 광종"
+            period = observed[0].get("period") if observed else None
+            if observed and expected is not None:
+                actual = observed[0]["pct"]
+                matches = abs(actual - float(expected)) <= 0.01
+                verdict = "확인되었습니다" if matches else "확인되지 않았습니다"
+                period_text = f"{period}년" if period and re.fullmatch(r"20\d{2}", period) else (period or "조회 기간")
+                return (
+                    f"가격 주장 검증 : {period_text} {mineral} 가격의 실제 변동률은 "
+                    f"{actual:+.2f}%로, {float(expected):g}% 상승 전제는 {verdict}.",
+                    {claim_index},
+                )
+
+    if (ids.count("price.verify_claim") == 1
+            and ids.count("document.retrieve") == 1 and len(ids) == 2):
+        claim_rows = by_action.get("price.verify_claim", [])
+        documents = by_action.get("document.retrieve", [])
+        if claim_rows:
+            claim_index, claim_item = claim_rows[0]
+            observed = _claim_rows(claim_item)
+            claim_action = next(action for action in actions if action.action_id == "price.verify_claim")
+            expected = getattr(claim_action.slots, "claimed_change_pct", None)
+            mineral = getattr(claim_action.slots, "mineral", None) or "요청 광종"
+            period = observed[0].get("period") if observed else None
+            if observed and expected is not None:
+                actual = observed[0]["pct"]
+                matches = abs(actual - float(expected)) <= 0.01
+                verdict = "확인되었습니다" if matches else "확인되지 않았습니다"
+                period_text = f"{period}년" if period and re.fullmatch(r"20\d{2}", period) else (period or "조회 기간")
+                answer = (f"가격 주장 검증 : {period_text} {mineral} 가격의 실제 변동률은 "
+                          f"{actual:+.2f}%로, {float(expected):g}% 상승 전제는 {verdict}." )
+                cited = {claim_index}
+                if documents:
+                    doc_index, doc_item = documents[0]
+                    summary = _document_summary_text(doc_item)
+                    if summary:
+                        answer += f"\n원인 근거 : {summary}"
+                        cited.add(doc_index)
+                answer += "\n※ 문서에 기재된 요인과 관측 변동을 함께 제시한 것이며 인과관계를 단정하지 않습니다."
+                return answer, cited
+
     # 종합지수의 명시 연도 범위는 실제 반환된 HI001 관측점으로만 계산한다.
     # 요청 구간 일부만 적재된 경우에도 전체를 조회 불가로 버리지 않고 실제
     # 관측 범위를 함께 밝혀, 누락된 연도를 데이터가 있는 것처럼 표현하지 않는다.
@@ -425,10 +506,17 @@ def render_composite(evidence: list, action_plan, action_results=None) -> tuple[
                     level = _hhi_risk_label(hhi)
                     if level is None:
                         return None
+                    observed = str(getattr(item, "observed_period", None)
+                                   or getattr(item, "as_of", None) or "")
+                    period_match = re.search(r"(\d{4}(?:-\d{2}-\d{2})?)\s*[~부터]\s*"
+                                             r"(\d{4}(?:-\d{2}-\d{2})?)", observed)
+                    period_text = (f" 대상 기간: {period_match.group(1)}~{period_match.group(2)}."
+                                   if period_match else "")
                     return (
                         f"{prefix} HHI {_fmt(hhi)}은 국가별 수입 비중을 제곱해 합산한 집중도 지수이며, "
                         f"'{level}' 구간입니다. 값이 클수록 수입이 일부 국가에 더 집중돼 있음을 뜻합니다. "
-                        "이는 지정학적 위험 자체를 직접 측정하는 값은 아닙니다.",
+                        f"이는 지정학적 위험 자체를 직접 측정하는 값은 아닙니다.{period_text} "
+                        "계산식: HHI = 국가별 수입 비중(%)²의 합(전체 국가 모집단 기준).",
                         {evidence_index},
                     )
                 if "HHI 미표시: 수입액 100만 USD 기준 미달" in str(getattr(item, "section", "")):
@@ -908,7 +996,9 @@ def render_composite(evidence: list, action_plan, action_results=None) -> tuple[
                 prod_text = ", ".join(name for name, _ in producers[:5])
                 import_text = ", ".join(name for name, _ in importers[:5])
                 common = [name for name, _ in producers if name in {country for country, _ in importers}]
-                result = (f"광물지도 : 생산 상위국 {prod_text}\n핵심광물 수급지도 : 수입 상위국 {import_text}")
+                result = (f"광물지도 : 생산 상위국 {prod_text}\n핵심광물 수급지도 : 수입 상위국 {import_text}\n"
+                          "공급망 취약성 해석 : 생산·수입이 일부 국가에 집중될수록 대체 공급원 부족으로 공급 차질 위험이 커질 수 있습니다. "
+                          "이 결과는 생산·수입 집중 구조를 보여주며 취약성 점수 자체를 산출한 것은 아닙니다.")
                 if common:
                     result += f"\n비교결과 : 공통 국가 {', '.join(common)}"
                 return result, {production[0][0], imports[0][0]}
@@ -924,8 +1014,15 @@ def render_composite(evidence: list, action_plan, action_results=None) -> tuple[
                                                      f"HHI {hhi.group(1)}" if hhi else None]))
                 if import_text:
                     name, share = producers[0]
+                    observed = str(getattr(imports[0][1], "observed_period", None)
+                                   or getattr(imports[0][1], "as_of", None) or "")
+                    period_match = re.search(r"(\d{4}(?:-\d{2}-\d{2})?)\s*[~부터]\s*"
+                                             r"(\d{4}(?:-\d{2}-\d{2})?)", observed)
+                    period_text = (f"대상 기간: {period_match.group(1)}~{period_match.group(2)}\n"
+                                   if period_match else "")
                     return (f"광물지도 : 생산 1위국 비중 {name} {_fmt(share)}%\n"
-                            f"핵심광물 수급지도 : 수입 집중도 {import_text}",
+                            f"핵심광물 수급지도 : 수입 집중도 {import_text}\n"
+                            f"{period_text}계산식: HHI = 국가별 수입 비중(%)²의 합(전체 국가 모집단 기준)",
                             {production[0][0], imports[0][0]})
 
     # 현재 실측 가격과 예측가격은 각각의 원천 기준·단위를 그대로 보여 준다.
@@ -1247,7 +1344,9 @@ def render_composite(evidence: list, action_plan, action_results=None) -> tuple[
                 shared = [country for country, _share in producers if country in {name for name, _ in importers}]
                 return (f"광물지도 : 세계 생산 상위국 {production_text}\n"
                         f"핵심광물 수급지도 : 우리나라 수입 상위국 {import_text}\n"
-                        f"비교결과 : 공통 국가 {', '.join(shared) if shared else '없음'}",
+                        f"비교결과 : 공통 국가 {', '.join(shared) if shared else '없음'}\n"
+                        "공급망 취약성 해석 : 생산·수입이 일부 국가에 집중될수록 대체 공급원 부족으로 공급 차질 위험이 커질 수 있습니다. "
+                        "이 결과는 생산·수입 집중 구조를 보여주며 취약성 점수 자체를 산출한 것은 아닙니다.",
                         {production[0][0], trade[0][0]})
 
     if ids.count("price.series") == 1 and ids.count("resource.rank") == 1 and ids.count("trade.country_rank") == 1:

@@ -129,7 +129,8 @@ from rag_core.ragkit.action_contract import (  # noqa: E402
 )
 from rag_core.ragkit.semantic_intent import semantic_mode  # noqa: E402
 from rag_core.ragkit.multi_action_state import (  # noqa: E402
-    decode_multi_action_state, is_non_carry_payload, is_reference_message, merge_multi_action_followup,
+    decode_multi_action_state, decode_price_context, is_non_carry_payload, is_reference_message,
+    merge_multi_action_followup,
 )
 from rag_core.ragkit.messages import chat_message  # noqa: E402
 from rag_core.ragkit import mcp_client  # noqa: E402
@@ -467,6 +468,18 @@ def _load_multi_action_state(session_id: str, profile: Literal["public", "privat
             is_non_carry_payload(payload, profile=profile))
 
 
+def _load_price_context(session_id: str, profile: Literal["public", "private"]):
+    """마지막 성공 price.series의 1-hop typed 문맥만 읽는다."""
+    messages = session_store.list_messages(session_id, limit=1)
+    if not messages or messages[-1].get("role") != "assistant":
+        return None
+    try:
+        payload = json.loads(messages[-1].get("citations_json") or "")
+    except (TypeError, ValueError):
+        return None
+    return decode_price_context(payload, profile=profile)
+
+
 def _multi_action_clarification(session_id: str, message: str):
     answer = "이전 복합 조회에서 어느 대상·지표를 바꿀지 명확히 알려주세요."
     session_store.append_message(session_id, "user", message)
@@ -773,6 +786,7 @@ def _run_chat_session(
                 if recovered:
                     action_plan = recovered
                 else:
+                    price_context = _load_price_context(session_id, profile)
                     continuation, non_carry = _load_multi_action_state(session_id, profile)
                     merged = (merge_multi_action_followup(continuation, request.message)
                               if continuation is not None else None)
@@ -785,6 +799,7 @@ def _run_chat_session(
                     action_plan = (merged.plan if merged is not None and merged.status == "merged" else
                                    extract_action_plan(
                                        request.message, KomirJsonLLM(), history=_history_for_graph(session_id),
+                                       semantic_context=(price_context if semantic_mode() == "enabled" else None),
                                    ))
             assessment = validate_action_plan(action_plan)
         except Exception:

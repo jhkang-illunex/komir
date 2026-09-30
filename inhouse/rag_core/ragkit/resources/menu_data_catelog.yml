@@ -1,5 +1,5 @@
 # 챗봇·report_gen 공용 메뉴/데이터 카탈로그 1차본.
-# 범위는 report_gen이 지원하는 3개 주메뉴, 11개 page_id다.
+# 범위는 report_gen이 지원하는 3개 주메뉴, RDB 접근 가능한 9개 page_id다.
 # 새로운 메뉴는 이 파일에 추가한 뒤 page_id·원천·표시 출처 검증을 통과해야 한다.
 schema_version: 1
 catalog_scope: report_gen_11_pages
@@ -37,18 +37,6 @@ menus:
         source_label: "KOMIS 광물전망지표 > 광물종합지수"
         source_tables: [public.KO_MNRL_SNTHS_INDX]
         period_frequency: daily
-      - page_id: indicator_market
-        label: 시장동향지표
-        source_label: "KOMIS 광물전망지표 > 시장동향지표"
-        source_tables: [public.KO_MRKT_PRSPECT_IDCT]
-        period_frequency: daily
-        access: private
-      - page_id: indicator_supply
-        label: 수급동향지표
-        source_label: "KOMIS 광물전망지표 > 수급동향지표"
-        source_tables: [public.KO_SPDM_STBT_INDX]
-        period_frequency: monthly
-        access: private
       - page_id: forecast_price
         label: 가격예측
         source_label: "KOMIS 광물전망지표 > 광물가격예측 > 가격예측"

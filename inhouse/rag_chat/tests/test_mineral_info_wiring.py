@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from rag_core.ragkit.action_contract import extract_action_plan  # noqa: E402
 from rag_core.ragkit.chatbot_graph import _route_from_action_call  # noqa: E402
 from rag_core.ragkit.renderers.mineral_info import render_mineral_info  # noqa: E402
+from rag_core.ragkit.semantic_intent import SemanticPlan, SemanticRequirement, resolve_semantic_plan  # noqa: E402
 from rag_core.retrieval.mineral_info import fetch_mineral_info_evidence  # noqa: E402
 
 
@@ -26,6 +27,15 @@ class MineralInfoWiringTest(unittest.TestCase):
                 plan = self._plan(question)
                 self.assertEqual(plan.actions[0].slots.mineral, mineral)
                 self.assertTrue(_route_from_action_call(plan.actions[0], question).use_mineral_info)
+
+    def test_semantic_basic_property_topic_routes_to_mineral_info_adapter(self):
+        semantic = SemanticPlan(requirements=[SemanticRequirement(
+            domain="concept", metric="retrieve", topic="구리의 기본적인 성질",
+        )])
+        _, plan = resolve_semantic_plan(semantic, "구리의 기본적인 성질을 설명해 주세요")
+        action = plan.actions[0]
+        self.assertEqual(action.slots.mineral, "구리")
+        self.assertTrue(_route_from_action_call(action, "구리의 기본적인 성질을 설명해 주세요").use_mineral_info)
 
     def test_manganese_yaml_has_uses_properties_and_ores(self):
         evidence, warnings = fetch_mineral_info_evidence("망간")

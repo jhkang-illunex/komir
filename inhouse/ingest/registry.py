@@ -10,7 +10,7 @@
 - `legacy_root`: `INGEST_LANDING_DIR` 미설정(레거시)일 때의 원본 위치 — 기존 호스트 동작 보존.
 - `out_dirname`: 문서-OKF 출력 폴더 = `doc_chunk.src` = PageIndex `source_group`. **불변**(바꾸면
   기존 색인과 어긋난다).
-- `allow_paid`: source_policy.py 유료출처 차단을 이 그룹만 우회(Argus, 2026-08-12 사용자 확인).
+- `allow_paid`: source_policy.py 유료출처 차단을 이 그룹만 우회(발행처별 private 색인으로 제한).
 - `private_only`: public 프로필 노출 금지 — 정본은 `rag_core/retrieval/access.py`의
   `PRIVATE_ONLY_SOURCE_GROUPS`이고 여기 값과 일치해야 한다(tests/test_paths_registry.py가 검사).
 - `in_all`: `--what all`(주간 체인)에 포함. 원본 루트가 없으면 예외가 아니라 건너뛴다(경고).
@@ -76,6 +76,40 @@ GROUPS: tuple[SourceGroup, ...] = (
         description="Argus Non-Ferrous Markets(비철금속 일일 시황, 유료구독 원문 — 내부 전용)",
         tags=("document-source", "Argus", "유료구독-내부전용"),
         allow_paid=True, private_only=True,
+    ),
+    # 외부 발행처는 수집용 분류 폴더가 아니라 실제 발행처명으로 독립 색인한다.
+    # 전체 주간 체인에는 넣지 않고, 검토 후 --what <key>로 선택 실행한다.
+    SourceGroup(
+        key="woodmackenzie", landing_subdir="wood_mackenzie",
+        legacy_root=_REPO / "income_data" / "02. Wood Mackenzie",
+        out_dirname="WoodMackenzie",
+        description="Wood Mackenzie 광물 시장 보고서(해외·private)",
+        tags=("document-source", "Wood Mackenzie", "private"),
+        allow_paid=True, private_only=True, in_all=False, subdir_from_path=True,
+    ),
+    SourceGroup(
+        key="asianmetal", landing_subdir="asian_metal",
+        legacy_root=_REPO / "documents" / "보고서_2" / "Asian Metal_리튬_2013~2026_주간",
+        out_dirname="AsianMetal",
+        description="Asian Metal 리튬 주간 자료(해외·private)",
+        tags=("document-source", "Asian Metal", "private"),
+        allow_paid=True, private_only=True, in_all=False, subdir_from_path=True,
+    ),
+    SourceGroup(
+        key="cru", landing_subdir="cru",
+        legacy_root=_REPO / "income_data" / "02. CRU 리포트",
+        out_dirname="CRU",
+        description="CRU 광물 시장 보고서(해외·private)",
+        tags=("document-source", "CRU", "private"),
+        private_only=True, in_all=False, subdir_from_path=True,
+    ),
+    SourceGroup(
+        key="iea", landing_subdir="iea",
+        legacy_root=_REPO / "income_data" / "IEA",
+        out_dirname="IEA",
+        description="IEA 핵심광물 보고서(해외·private)",
+        tags=("document-source", "IEA", "private"),
+        private_only=True, in_all=False,
     ),
     SourceGroup(
         key="mines", landing_subdir="mines", legacy_root=_REPO / "nas_document" / "학습데이터",

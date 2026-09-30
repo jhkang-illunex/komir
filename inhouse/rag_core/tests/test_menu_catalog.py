@@ -7,9 +7,9 @@ from rag_core.retrieval.evidence import Evidence, from_komis_aggregate, from_kom
 
 
 class MenuCatalogTest(unittest.TestCase):
-    def test_report_gen_catalog_has_three_menus_and_eleven_pages(self):
+    def test_report_gen_catalog_has_three_menus_and_nine_public_pages(self):
         catalog = menu_catalog()
-        self.assertEqual(len(catalog), 11)
+        self.assertEqual(len(catalog), 9)
         self.assertEqual(menu_source("map_korea")["source_label"], "KOMIS 핵심광물지도 > 수급지도 > 대한민국")
 
     def test_only_menu_bound_rdb_evidence_uses_menu_source(self):

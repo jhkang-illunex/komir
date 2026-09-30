@@ -156,8 +156,78 @@ class CompositeRendererTest(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertIn("호주(37.6%)와 중국(26.3%)이 전체의 63.9%", result[0])
         self.assertIn("HHI 2,333.77은 국가별 수입 비중을 제곱해 합산한 집중도 지수", result[0])
+        self.assertIn("계산식: HHI = 국가별 수입 비중(%)²의 합", result[0])
         self.assertIn("'주의 필요' 구간입니다", result[0])
         self.assertIn("지정학적 위험 자체를 직접 측정하는 값은 아닙니다", result[0])
+
+    def test_price_claim_and_cause_document_are_rendered_as_separate_evidence(self):
+        claim = ActionCall(
+            requirement_id="claim", action_id="price.verify_claim",
+            slots=ActionSlots(mineral="니켈", claimed_change_pct=300,
+                              period=Period(kind="calendar_year", calendar_year=2025)),
+        )
+        cause = ActionCall(
+            requirement_id="cause", action_id="document.retrieve",
+            slots=ActionSlots(mineral="니켈", topic="2025년 니켈 가격 상승 원인"),
+        )
+        plan = ActionPlan(actions=[claim, cause])
+        evidence = [
+            Evidence(kind="structured", source="KO_MNRL_PRC", section="2025 가격 검증",
+                     action_id="price.verify_claim", requirement_id="claim",
+                     text="| year | pct_change |\n|---|---:|\n| 2025 | 42.5 |"),
+            Evidence(kind="document", source="OKF", section="니켈 가격 동향",
+                     action_id="document.retrieve", requirement_id="cause",
+                     text="공급 조정과 수요 변화가 함께 관측되었습니다."),
+        ]
+        result = render_composite(evidence, plan)
+        self.assertIsNotNone(result)
+        answer, cited = result
+        self.assertIn("가격 주장 검증", answer)
+        self.assertIn("42.50%", answer)
+        self.assertIn("300% 상승 전제는 확인되지 않았습니다", answer)
+        self.assertIn("원인 근거 : 공급 조정과 수요 변화", answer)
+        self.assertIn("인과관계를 단정하지 않습니다", answer)
+        self.assertEqual(cited, {1, 2})
+
+    def test_single_price_claim_keeps_claimed_threshold_in_deterministic_answer(self):
+        claim = ActionCall(
+            requirement_id="claim", action_id="price.verify_claim",
+            slots=ActionSlots(mineral="니켈", claimed_change_pct=300,
+                              period=Period(kind="calendar_year", calendar_year=2025)),
+        )
+        plan = ActionPlan(actions=[claim])
+        evidence = [Evidence(
+            kind="structured", source="KO_MNRL_PRC", section="2025 가격 검증",
+            action_id="price.verify_claim", requirement_id="claim",
+            text="| year | pct_change |\n|---|---:|\n| 2025 | -3.27 |",
+        )]
+        result = render_composite(evidence, plan)
+        self.assertIsNotNone(result)
+        answer, cited = result
+        self.assertIn("300% 상승 전제는 확인되지 않았습니다", answer)
+        self.assertIn("-3.27%", answer)
+        self.assertEqual(cited, {1})
+
+    def test_production_import_pair_includes_cautious_vulnerability_interpretation(self):
+        plan = ActionPlan(actions=[
+            ActionCall(requirement_id="production", action_id="resource.rank",
+                       slots=ActionSlots(mineral="코발트", metric="production")),
+            ActionCall(requirement_id="imports", action_id="trade.country_rank",
+                       slots=ActionSlots(mineral="코발트", metric="import_amount")),
+        ])
+        evidence = [
+            Evidence(kind="structured", source="KOMIS", section="세계 생산",
+                     action_id="resource.rank", requirement_id="production",
+                     text="| country | share_pct |\n|---|---:|\n| 콩고민주공화국 | 74 |"),
+            Evidence(kind="structured", source="KOMIS", section="한국 수입",
+                     action_id="trade.country_rank", requirement_id="imports",
+                     text="| country | share_pct |\n|---|---:|\n| 중국 | 61 |"),
+        ]
+        result = render_composite(evidence, plan)
+        self.assertIsNotNone(result)
+        self.assertIn("공급망 취약성 해석", result[0])
+        self.assertIn("취약성 점수 자체를 산출한 것은 아닙니다", result[0])
+        self.assertEqual(result[1], {1, 2})
 
     def test_import_concentration_suppresses_hhi_below_amount_floor(self):
         plan = ActionPlan(actions=[ActionCall(

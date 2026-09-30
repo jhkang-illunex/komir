@@ -230,11 +230,21 @@ def _load_data_schema_catalog() -> tuple[
         raise ValueError(f"invalid KOMIS data schema catalog: {_CATALOG_PATH}")
     schema = _identifier(raw.get("schema"), context="schema")
 
-    raw_pages = raw.get("datasets")
+    disabled_raw = raw.get("disabled_pages", [])
+    if not isinstance(disabled_raw, list) or not all(isinstance(page_id, str) for page_id in disabled_raw):
+        raise ValueError(f"invalid disabled_pages in KOMIS catalog: {_CATALOG_PATH}")
+    disabled_pages = set(disabled_raw)
     expected_pages = set(get_args(AnalysisPreviewPageId))
-    if not isinstance(raw_pages, dict) or set(raw_pages) != expected_pages:
+    if disabled_pages - expected_pages:
         raise ValueError(
-            f"KOMIS catalog page_id mismatch: expected={sorted(expected_pages)}, "
+            f"KOMIS catalog disabled page_id mismatch: {sorted(disabled_pages - expected_pages)}"
+        )
+
+    raw_pages = raw.get("datasets")
+    active_pages = expected_pages - disabled_pages
+    if not isinstance(raw_pages, dict) or set(raw_pages) != active_pages:
+        raise ValueError(
+            f"KOMIS catalog page_id mismatch: expected={sorted(active_pages)}, "
             f"actual={sorted(raw_pages) if isinstance(raw_pages, dict) else type(raw_pages).__name__}"
         )
 

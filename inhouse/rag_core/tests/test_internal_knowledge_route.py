@@ -51,11 +51,14 @@ class _SupportLLM:
 
 class InternalKnowledgeEligibilityTest(unittest.TestCase):
     def test_direct_faq_has_no_placeholder_and_does_not_capture_analysis(self):
-        for question in ("광물종합지수가 뭐야?", "전략광종이 뭐야?"):
+        for question in ("광물종합지수가 뭐야?", "전략광종이 뭐야?", "핵심광물이 뭐야? 왜 중요해?"):
             with self.subTest(question=question):
                 answer = chatbot.direct_faq_answer(question)
                 self.assertIsNotNone(answer)
                 self.assertNotRegex(answer, r"\{[^{}]+\}")
+        critical_answer = chatbot.direct_faq_answer("핵심광물이 뭐야? 왜 중요해?")
+        self.assertIn("공급 리스크", critical_answer)
+        self.assertIn("월간 통상", critical_answer)
         self.assertIsNone(chatbot.direct_faq_answer(
             "광물종합지수 구성 광종 중 상승 전망인 건 뭐야?",
         ))
@@ -63,6 +66,7 @@ class InternalKnowledgeEligibilityTest(unittest.TestCase):
             chatbot.direct_faq_answer("광물가격 데이터 엑셀로 받을 수 있어?"),
             "광물가격 화면의 엑셀 다운로드 버튼으로 조회 결과를 내려받을 수 있습니다.",
         )
+        self.assertIn("가격", chatbot.direct_faq_answer("여기서 뭘 물어볼 수 있어?"))
         self.assertIn("기간", chatbot.direct_faq_answer("월간동향 게시판 검색은 어떻게 해?"))
         self.assertIsNone(chatbot.direct_faq_answer(
             "2025년 한국 리튬의 현시비교우위지수 RCA를 계산해줘",

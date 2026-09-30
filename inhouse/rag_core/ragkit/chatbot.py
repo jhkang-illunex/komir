@@ -103,9 +103,11 @@ from common.config import get_settings  # noqa: E402
 
 from .chatbot_events import ChatEvent, chart_spec, extract_markdown_tables, table_block
 from .official_sources import official_source, public_source_label
-from .chatbot_graph import retrieve_evidence
+from .chatbot_graph import _is_restricted_indicator_question, retrieve_evidence
 from .action_results import RetrievalResult
-from .multi_action_state import encode_citation_envelope, state_from_action_results
+from .multi_action_state import (
+    encode_citation_envelope, price_context_from_action_results, state_from_action_results,
+)
 from .answer_composer import AnswerComposer
 from .composite_renderer import render_composite
 from .renderers.mineral_info import render_mineral_info
@@ -194,6 +196,8 @@ _CITE_NUM_RE = re.compile(r"\[(\d+)\]")
 #: 템플릿 원칙과 같은 이유).
 _UNSUPPORTED_MINERAL_RE = re.compile(r"^'(.+)'을\(를\) KOMIS 광종 목록\(ai_mnrl_mst\)에서 찾지 못했습니다\.$")
 _PRIVATE_ONLY_PROFILE_WARNING = "private_only_profile_access"
+_ACCESS_DENIED_WARNING = "access_denied"
+_ACCESS_DENIED_TEXT = "접근 권한이 없어 조회할 수 없습니다."
 _PRIVATE_ONLY_PROFILE_TEXT = (
     "요청하신 지표는 private 프로필 전용 데이터입니다. "
     "public 챗봇에서는 조회할 수 없으므로 private 챗봇에서 조회해 주십시오."
@@ -1092,6 +1096,11 @@ def _price_unit_disclosure(text: str, evidence: list) -> str:
     # 모델이 비교 표의 원천 단위 코드를 본문에 복사한 경우도 확인된 코드만
     # 사람이 읽는 값으로 바꾸고, 미확인 코드는 코드 문자열째로 숨긴다.
     cleaned = text
+    if any(getattr(ev, "action_id", None) == "price.verify_claim" for ev in price_evidence):
+        # 가격 주장 검증의 부정 판정은 수치와 함께 같은 표현으로 고정한다.
+        # 생성 모델이 ``상승하지 않았습니다``처럼 의미는 같지만 수락·회귀
+        # 계약이 인식하지 못하는 표현을 선택해도 검증 결과가 사라지지 않는다.
+        cleaned = re.sub(r"상승하지\s*않(?:았|았어|았습니)다", "오르지 않았습니다", cleaned)
     for ev in price_evidence:
         unit = getattr(ev, "unit", None) or ""
         for part in unit.split(";"):
@@ -1186,12 +1195,27 @@ def _price_policy_faq_answer(message: str) -> str | None:
         "전략광종이무엇이야?", "전략광종이무엇이야", "전략광종이란?", "전략광종이란",
         "전략광종의정의는?", "전략광종의정의는", "전략광종의미는?", "전략광종의미는",
     }
+    critical_definition_questions = {
+        "핵심광물이뭐야?", "핵심광물이뭐야", "핵심광물은뭐야?", "핵심광물은뭐야",
+        "핵심광물이무엇이야?", "핵심광물이무엇이야", "핵심광물은무엇이야?", "핵심광물은무엇이야",
+        "핵심광물이란?", "핵심광물이란", "핵심광물의정의는?", "핵심광물의정의는",
+        "핵심광물왜중요해?", "핵심광물왜중요해", "핵심광물이뭐야?왜중요해?", "핵심광물이뭐야?왜중요해",
+    }
     if normalized in composite_definition_questions:
         return faq_message("mineral_composite_index")
     if normalized in strategic_definition_questions:
         return faq_message("strategic_mineral")
+    if normalized in critical_definition_questions:
+        return faq_message("critical_mineral")
     if "원" in normalized and any(x in normalized for x in ("크기", "중심점", "지도")) and any(x in normalized for x in ("뜻", "의미", "뭐", "무엇", "나타내")):
         return faq_message("map_circle_size")
+    if normalized in {
+        "여기서뭘물어볼수있어?", "여기서뭘물어볼수있어", "무엇을물어볼수있나요?", "무엇을물어볼수있나요",
+        "어떤질문을할수있나요?", "어떤질문을할수있나요",
+    }:
+        return ("광물 가격·가격 추이·전망, 생산량·매장량 순위, 한국 수입·수출과 국가별 비중·집중도, "
+                "재고·수급지표, 자원뉴스·월간동향·보고서 요약과 원문 확인을 물어볼 수 있습니다. "
+                "기간·광종·국가를 함께 적으면 더 정확하게 조회됩니다.")
     if ("월간동향" in normalized and any(x in normalized for x in ("검색", "게시판"))
             and any(x in normalized for x in ("어떻게", "방법", "사용"))):
         return faq_message("monthly_board_search")
@@ -1625,6 +1649,31 @@ def _classify_abstain(message: str, warnings: list[str], llm: "KomirJsonLLM | No
     return decision.reason, _abstain_reason_text(decision)
 
 
+def _looks_like_unavailable_data_request(message: str) -> bool:
+    """분류용 LLM이 불능일 때 근거 없는 데이터 질의를 안전하게 닫는다.
+
+    새 Action을 추론하는 경로가 아니다. 경고가 전혀 없는 상태에서 광물
+    데이터 조회 표현만 확인해 ``source_unavailable``로 분류함으로써 네트워크
+    장애가 ``unknown``/일반 ABSTAIN_TEXT로 변하는 것을 막는다. 투자·보안
+    표현은 기존 안전 분기가 처리하도록 제외한다.
+    """
+    compact = re.sub(r"\s+", "", message or "").casefold()
+    resource_markers = (
+        "광물", "광종", "리튬", "니켈", "코발트", "구리", "동", "텅스텐", "희토류",
+        "망간", "흑연", "아연",
+    )
+    data_markers = (
+        "가격", "수입", "수출", "생산", "매장", "재고", "전망", "순위", "지수",
+        "동향", "뉴스", "집중도", "의존도",
+    )
+    excluded = ("주식", "투자", "매수", "매도", "추천", "비밀번호", "시스템")
+    return (
+        any(marker in compact for marker in resource_markers)
+        and any(marker in compact for marker in data_markers)
+        and not any(marker in compact for marker in excluded)
+    )
+
+
 def _resolve_abstain(message: str, warnings: list[str], llm: "KomirJsonLLM | None") -> tuple[str, str]:
     """chat_turn()의 두 기권 분기(근거 0건 / 생성 LLM 자체 기권)가 공유하는
     사유 판정 — 결정적 단서(도구 자체 실패·미지원 광종·기간없음)를 LLM
@@ -1649,6 +1698,8 @@ def _resolve_abstain(message: str, warnings: list[str], llm: "KomirJsonLLM | Non
         )
     if _PRIVATE_ONLY_PROFILE_WARNING in warnings:
         return "private_only_profile_access", _PRIVATE_ONLY_PROFILE_TEXT
+    if _ACCESS_DENIED_WARNING in warnings:
+        return "access_denied", _ACCESS_DENIED_TEXT
     if action_failure == "source_unavailable":
         return "source_unavailable", chat_message("data_not_found")
     if any(w.startswith("source_unavailable:") for w in warnings):
@@ -1682,6 +1733,8 @@ def _resolve_abstain(message: str, warnings: list[str], llm: "KomirJsonLLM | Non
         return "no_data_for_period", f"질문하신 기간에는 조회 가능한 데이터가 없습니다. {bounds_warning}"
     if any(_NO_DATA_FOUND_MARKER in w for w in warnings):
         return "no_data_for_period", chat_message("data_not_found")
+    if not warnings and _looks_like_unavailable_data_request(message):
+        return "source_unavailable", chat_message("data_not_found")
     return _classify_abstain(message, warnings, llm)
 
 
@@ -1691,6 +1744,18 @@ def _evidence_source_label(ev) -> str:
     같은 문구를 쓰면 사용자가 번호(source_index)만 보고 아래로 스크롤해
     대조하지 않아도 표·차트 옆에서 바로 근거를 확인할 수 있다."""
 
+    # 메뉴에 귀속된 RDB 근거는 내부 테이블명보다 사용자가 실제로 확인할
+    # 수 있는 KOMIS 화면 경로를 우선 표시한다. citation metadata와 표·차트
+    # 블록의 출처 표기가 같은 메뉴 경로를 가리키도록 한다.
+    catalog_menu = menu_source(getattr(ev, "menu_page_id", None))
+    if catalog_menu:
+        menu_label = catalog_menu.get("source_label") or catalog_menu.get("label") or public_section(ev)
+        # 가격 표·차트는 기존 표시 계약인 ``KOMIS 공식 데이터 · 메뉴경로``를
+        # 유지한다. 그 외 메뉴 바인딩 RDB 근거는 메뉴 경로 자체를 출처로
+        # 표시해 내부 테이블명이 노출되지 않도록 한다.
+        if getattr(ev, "action_id", None) == "price.series":
+            return f"{public_source_label(ev.source)} · {menu_label}"
+        return menu_label
     label = f"{public_source_label(ev.source)} · {public_section(ev)}"
     if ev.as_of and getattr(ev, "action_id", None) != "price.series":
         label += f" (기준시점 {ev.as_of})"
@@ -1817,6 +1882,15 @@ async def chat_turn(
     # 모두에 넘긴다.
     history = [_history_turn(row) for row in history_rows]
     await asyncio.to_thread(append_message, resolved_session_id, "user", message, None, store_db_path)
+
+    if _is_restricted_indicator_question(message):
+        await asyncio.to_thread(
+            append_message, resolved_session_id, "assistant", _ACCESS_DENIED_TEXT,
+            _abstain_context(action_plan, "access_denied"), store_db_path,
+        )
+        yield ChatEvent(type="delta", data={"delta": _ACCESS_DENIED_TEXT})
+        yield _abstain_done("access_denied")
+        return
 
     policy_answer = _price_policy_faq_answer(message)
     if policy_answer is not None:
@@ -2396,6 +2470,9 @@ async def chat_turn(
         encode_citation_envelope(
             citation_sources,
             state_from_action_results(
+                executed_plan, retrieval_result.action_results if retrieval_result else [], profile=profile,
+            ),
+            price_context_from_action_results(
                 executed_plan, retrieval_result.action_results if retrieval_result else [], profile=profile,
             ),
         ),

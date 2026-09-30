@@ -14,10 +14,8 @@ hybrid_search_pg`/`pageindex.lookup`)에 넘긴다. 조건문·환경변수 분�
 
 정형 3종·komis_raw_lookup·komis_resolve_mineral·pageindex_agentic은
 `_mcp_tools_common.py`에 한 번만 구현돼 있고 여기서는 등록만 한다(재구현
-금지). 이 중 komis_raw_lookup만 예외적으로 `PRIVATE_ONLY_KOMIS_PAGES`
-(indicator_market·indicator_supply, 광물종합지수 public 허용은 2026-09-29)를
-`private_only_pages`로 넘겨 두 page_id를 거부시킨다 — 나머지 페이지는 결과가
-완전히 같다.
+금지). RDB 자원 목록에서 제외된 시장동향지표·수급동향지표는 모든 프로필에서
+접근 거부되며, 나머지 페이지는 기존 공개/비공개 정책을 따른다.
 
 실행(직접 점검용, 실제로는 mcp_client.py가 서브프로세스로 띄운다):
     cd inhouse && python -m rag_core.ragkit.mcp_server_public
@@ -35,7 +33,9 @@ from ._shared_root import ensure_shared_on_path
 ensure_shared_on_path(Path(__file__).resolve())
 
 from rag_core.retrieval import hybrid_pg, pageindex  # noqa: E402
-from rag_core.retrieval.access import PRIVATE_ONLY_KOMIS_PAGES, PRIVATE_ONLY_SOURCE_GROUPS  # noqa: E402
+from rag_core.retrieval.access import (  # noqa: E402
+    PRIVATE_ONLY_KOMIS_PAGES, PRIVATE_ONLY_SOURCE_GROUPS, RESTRICTED_KOMIS_PAGES,
+)
 from rag_core.retrieval.evidence import from_dense_chunk, from_pageindex_hit  # noqa: E402
 
 from ._mcp_tools_common import register_common_tools  # noqa: E402
@@ -45,6 +45,7 @@ mcp = FastMCP("komir-ragkit-public")
 # 열·허용 지수 코드를 런타임 재검증하는 경우에만 caveat를 생략한다.
 register_common_tools(
     mcp, private_only_pages=PRIVATE_ONLY_KOMIS_PAGES,
+    restricted_pages=RESTRICTED_KOMIS_PAGES,
     trusted_komis_pages=frozenset({"indicator_composite"}),
 )
 

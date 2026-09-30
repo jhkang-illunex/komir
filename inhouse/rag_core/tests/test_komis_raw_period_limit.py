@@ -8,11 +8,13 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from common.komis_raw import RawDataset  # noqa: E402
+from common.komis_raw import RawDataset, _PAGE_DATASETS  # noqa: E402
 from rag_core.ragkit import _mcp_tools_common as tools  # noqa: E402
 from rag_core.ragkit import chatbot_graph as graph  # noqa: E402
 from rag_core.ragkit import mcp_client  # noqa: E402
-from rag_core.retrieval.access import PRIVATE_ONLY_KOMIS_PAGES  # noqa: E402
+from rag_core.retrieval.access import (  # noqa: E402
+    PRIVATE_ONLY_KOMIS_PAGES, RESTRICTED_KOMIS_PAGES,
+)
 
 
 class _Registry:
@@ -56,6 +58,24 @@ class PeriodLimitTest(unittest.TestCase):
     def test_composite_index_is_public_but_market_and_supply_indicators_remain_private(self):
         self.assertNotIn("indicator_composite", PRIVATE_ONLY_KOMIS_PAGES)
         self.assertEqual(PRIVATE_ONLY_KOMIS_PAGES, {"indicator_market", "indicator_supply"})
+
+    def test_restricted_indicator_tables_are_removed_from_rdb_catalog(self):
+        self.assertEqual(RESTRICTED_KOMIS_PAGES, {"indicator_market", "indicator_supply"})
+        self.assertNotIn("indicator_market", _PAGE_DATASETS)
+        self.assertNotIn("indicator_supply", _PAGE_DATASETS)
+        tables = {spec.table for specs in _PAGE_DATASETS.values() for spec in specs}
+        self.assertNotIn("KO_MRKT_PRSPECT_IDCT", tables)
+        self.assertNotIn("KO_SPDM_STBT_INDX", tables)
+
+    def test_restricted_indicator_tools_deny_both_raw_and_ranking_access(self):
+        registry = _Registry()
+        tools.register_common_tools(registry, restricted_pages=RESTRICTED_KOMIS_PAGES)
+        raw = registry.functions["komis_raw_lookup"]("indicator_market")
+        ranking = registry.functions["komis_indicator_ranking"]("indicator_supply")
+        self.assertEqual(raw["evidence"], [])
+        self.assertEqual(ranking["evidence"], [])
+        self.assertIn("접근 권한이 없어", raw["warnings"][0])
+        self.assertIn("접근 권한이 없어", ranking["warnings"][0])
 
     def test_verified_public_composite_index_evidence_matches_requested_variant(self):
         call = graph.ActionCall(

@@ -2,6 +2,138 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-09-30 — semantic-independent-r4 전체 QA 검수
+
+배포된 `komir-rag-chat:20260930-semantic-independent-r4`(`127.0.0.1:18002`)에 저장된
+106건 QA 세트를 독립 session으로 재실행했다. 집계는 `PASS 59`, `PARTIAL 10`,
+`BLOCKED_DATA 24`, `FAIL 13`이다. 기존 56건 baseline과 비교하면 MP09가
+`BLOCKED_DATA → PASS`로 개선됐고 나머지 56건의 상태는 유지됐다.
+
+결과 원본은 `documents/산출물/2026-W40_0928-1004/chatbot_live_qa_260930_semantic_independent_r4/`
+아래 JSON·Markdown으로 보존했다. FAIL은 주로 월간동향 원천·기간 부재, 슬롯 미해결,
+접근 제한이며 BLOCKED_DATA는 원천 미연결/미확보 안전 종료로 분리했다.
+
+## 2026-09-30 — semantic 독립 비교 보강 이미지 배포
+
+독립 requirement 보존 검사와 단일 가격 주장(`price_claim`) 정규화, 주장 검증 부정
+문구 안정화(`오르지 않았습니다`)를 포함한 `komir-rag-chat:20260930-semantic-independent-r4`
+이미지를 빌드·기동했다. 로컬 배포 게이트와 live chatbot 수락 검증을 통과했으며,
+Q28 가격 주장 검증을 포함한 페이지·가격·광물정보·수입순위·기권·HHI+순위 조합
+검사를 모두 통과했다. 현재 `komir-rag-chat-test`가 `127.0.0.1:18002`에서 실행 중이고,
+이전 컨테이너는 `komir-rag-chat-test-pre-20260930-113337`으로 롤백용 보존 중이다.
+
+배포 과정 중 r1~r3의 live Q28 계약 실패는 자동 롤백됐으며, 원인 수정 후 r4에서
+재검증했다. 소스 변경은 커밋하지 않았다.
+
+## 2026-09-30 — 독립형 semantic 비교 requirement 보존 감사
+
+Semantic Layer의 범위를 독립형 복합질의·비교로 한정하고, follow-up 문맥 연쇄·결과
+기반 binding·Requirement DAG는 제외했다. `resolve_semantic_plan()`에 typed
+requirement 보존 검사를 추가해 여러 독립 data/content requirement 중 하나라도
+ActionPlan에서 조용히 탈락하면 `independent_requirement_dropped`로 닫고 기존
+legacy 경로로 fallback하도록 했다. 기존에 공급망 취약성 설명을 data Action의
+metadata로 흡수하는 동작은 예외로 보존했다.
+
+생산량·매장량·수입국의 3개 독립 요구와 중복 requirement fail-closed 회귀를 추가했다.
+대상 semantic/action/composite audit는 241건과 76개 subtests, `rag_core` 회귀는
+444건과 140개 subtests가 통과했으며 compileall·`git diff --check`도 통과했다.
+소스만 반영했고 실행 중인 컨테이너는 재빌드·재배포하지 않았다.
+
+## 2026-09-30 — 우선 QA 가격 출력 보강(ADD03·ADD05·ADD06·ADD13·ADD38)
+
+ADD05의 `price.compare`가 창별 Evidence를 마지막 행으로 덮어쓰지 않고
+`slots.windows=[3,6,12]` 각각을 비교기간·광종·시작일·종료일·변동률·가격기준 표로
+조립하도록 보강했다. ADD13의 HHI 응답에는 원천 전체 모집단 기준의 대상 기간과
+`HHI = 국가별 수입 비중(%)²의 합` 계산식을 명시했다. ADD03은 최고가 날짜를
+명시적으로 표시하고, ADD38의 전략광종 가격 응답은 Evidence 표에서 광종·기준일·가격·
+가격기준·단위·출처 메뉴를 결정적으로 렌더링한다. ADD06의 기존 YoY(월평균 기본,
+월 최신 관측값 선택)를 변경하지 않고 회귀로 고정했다.
+
+관련 테스트 282건과 87개 subtests, `rag_core` 회귀 442건과 140개 subtests가
+통과했다(메뉴·메시지 테스트 2개는 기존 환경 의존 항목이라 제외). 소스만 반영했으며
+실행 중인 컨테이너는 재빌드·재배포하지 않았다.
+
+## 2026-09-30 — ADD17·ADD44 semantic/action 보강
+
+ADD17의 세계 생산국·한국 수입국 비교는 기존 `resource.rank`와
+`trade.country_rank` 두 Action을 유지하면서 결정적 composite renderer에 공급망
+취약성 해석(집중 구조에 대한 주의 문구)을 추가했다. 취약성 점수나 미연결 진단
+데이터를 추정하지 않는다. ADD44는 `price_claim`의 100% 초과 수치를 typed schema에서
+보존하고, 가격 주장 검증(`price.verify_claim`)과 원인 문서(`document.retrieve`)를
+독립 Action으로 검증·조립하도록 `OC15` 계약을 추가했다. 문서 요인을 가격 변동의
+인과로 단정하지 않는다.
+
+변경 영역 테스트는 194건과 69개 subtests가 통과했다. 관련 공개 라우팅 및 rag_core
+회귀는 460건과 140개 subtests 중 459건이 통과했으며,
+`test_public_private_only_indicator_stops_before_fallback_search` 1건은 이번 변경과
+무관한 기존 public/private indicator 경계 기대 불일치로 실패했다. 소스만 반영했으며
+실행 중인 컨테이너는 재빌드·재배포하지 않았다.
+
+## 2026-09-30 — 핵심광물 정의 FAQ 리소스 및 라우팅 연결
+
+ADD47("핵심광물이 뭐야? 왜 중요해?")에 사용할 정의를
+`inhouse/rag_core/ragkit/resources/messages.yml`의 수정 가능한 FAQ 리소스에
+추가했다. 정의 출처는 『월간 통상』 2023년 4월호로 표시하고, 국가·기관별 선정
+기준과 목록이 다를 수 있다는 주의 문구를 포함했다. 기존 direct FAQ 경로에서
+핵심광물 정의 문형을 인식해 검색·LLM 생성 없이 동일 원문을 반환하도록 연결했으며,
+개념 FAQ 회귀 테스트를 추가했다.
+
+## 2026-09-30 — 시장·수급동향지표 RDB 자원 제거 및 접근 거부
+
+`KO_MRKT_PRSPECT_IDCT`와 `KO_SPDM_STBT_INDX`를 `komis_data_schema.yml`의 활성
+RDB dataset/latest-ranking 목록에서 제거하고, 메뉴 출처 카탈로그에서도 제외했다.
+`indicator_market`·`indicator_supply` page_id는 하위 호환 타입에 남기되
+`RESTRICTED_KOMIS_PAGES`로 public/private MCP와 챗봇 조회를 모두 차단한다.
+chat_turn/retrieve_evidence 입구에서도 관련 표현을 선차단해 Action/LLM·검색을
+호출하지 않고 `접근 권한이 없어 조회할 수 없습니다.`로 종료한다.
+광물종합지수(`indicator_composite`)는 기존 public 계약을 유지한다.
+
+카탈로그·MCP·챗봇 접근 테스트(5건)와 `rag_core` 회귀(435건, 139 subtests)를
+실행했으며, 변경 영역은 신규 제한 테스트를 포함해 통과했다. 기존
+`test_menu_catalog`의 source-label 불일치는
+선행 기술부채로 남아 있고, 메뉴 page 수 assertion만 11→9로 갱신했다. 실행 중인
+컨테이너에는 아직 재배포하지 않았다.
+
+## 2026-09-30 — 추가 50건 QA 라이브 재검증
+
+실행 중인 `komir-rag-chat:20260930-semantic-add50-r1`(`127.0.0.1:18002`)에 ADD01~ADD50
+을 독립 세션으로 재질의했다. 결과는 `PASS 18`, `BLOCKED_DATA 21`, `PARTIAL 4`,
+`FAIL 7`이다. 직전 50건 결과 대비 ADD09는 `FAIL → PASS`, ADD17은
+`FAIL → PARTIAL`로 개선되었고, 나머지 변화는 없었다.
+
+현재 이미지에는 아직 작업 트리의 ADD03 `period_extrema`, ADD38 다중 최신가격 표,
+ADD06 YoY 보강이 포함되지 않았다. 따라서 ADD03·ADD06·ADD38 라이브 결과는 배포 전
+결과로 보존하며, 소스 기준 결정적 테스트는 별도로 통과한 상태다. 원본 응답과 집계는
+`documents/산출물/2026-W40_0928-1004/chatbot_live_qa_260930_add50_rerun2/`에 보존했다.
+
+## 2026-09-30 — 저위험 가격 액션 보강: 기간 최고가·다중 최신가격 표
+
+기존 물리 Action을 추가하지 않고 `price.series`의 typed 연산과 bounded fan-out을
+보강했다. `아연 가격 2010년 이후 최고가와 그 날짜`는
+`price_operation=period_extrema`와 닫힌 기간으로 연결되어 기간 내 최고값·관측일을
+표시한다. `7개 광종의 최신 가격·기준일·단위·출처`는 질문에 명시된 고정 집합
+리튬·니켈·코발트·희토류·구리·텅스텐·아연을 각각 독립 `price.series`로 분해하며,
+결과 기반 광종 확장이나 Adapter/DB/Renderer 계약 변경은 없다.
+
+집중 검증은 173건과 80개 subtests, `rag_core` 회귀는 기존 환경 의존 테스트 2개를
+제외하고 433건과 139개 subtests가 통과했다. 소스만 반영했으며 실행 중인 컨테이너는
+변경 전 이미지이므로 재빌드·재배포하지 않았다.
+
+## 2026-09-30 — ADD06 가격 전년 동월 YoY 연산 추가
+
+기존 물리 Action `price.series`를 유지한 채 `year_over_year` 가격 연산을
+추가했다. 기본 비교 기준은 일별 가격의 월평균이며, `월 최신 관측값·월말 기준`을
+명시하면 `monthly_latest`로 각 월의 마지막 관측값을 비교한다. 두 방식 모두 최신
+보유월과 전년 동월을 위해 최소 13개월 원시 가격 시계열을 조회하고, Renderer가
+동일 월을 결정적으로 비교한다. Semantic 표현은
+`domain=price, metric=price_series, operation=period_change,
+comparison=same_month_previous_year`이며 기존 `price.series`로 해석된다.
+
+관련 검증은 가격 계약·Semantic resolver·Renderer 171건과 77개 subtests가
+통과했고, `rag_core` 회귀에서 기존 환경 의존 실패 2건을 제외한 431건과
+136개 subtests가 통과했다. 현재 실행 중인 컨테이너는 변경 전 이미지이므로
+재빌드·재배포는 수행하지 않았다.
+
 ## 2026-09-30 — 생산량·매장량 복합 semantic 회귀 계약 고정
 
 단일 생산량 최댓값은 `resource_rank/operation=argmax` 한 개 요구사항으로,

@@ -8,18 +8,16 @@
 다섯(정형 3종·komis_resolve_mineral·pageindex_agentic)은 타 팀 소유이거나
 라이선스 제한 콘텐츠(Argus)가 아니라 public/private 결과가 완전히 같다
 (2026-08-26 smoke_mcp_access.py 실측 확인). **komis_raw_lookup만 예외**다 —
-2026-09-01 사용자 지시로 `page_id` 11개 중 `indicator_market`(시장동향지표)·
-`indicator_supply`(수급동향지표)·`indicator_composite`(광물종합지수) 3개는
-private 프로필 전용이 됐다(`shared.retrieval.access.PRIVATE_ONLY_KOMIS_PAGES`,
-`indicator_composite`는 같은 날 사용자 정정으로 뒤늦게 추가됨). `register_common_tools()`가
+2026-09-30 사용자 지시로 `indicator_market`(시장동향지표)·
+`indicator_supply`(수급동향지표)는 RDB 자원 목록에서 제외되어 모든 프로필에서
+접근 거부된다. `register_common_tools()`가
 호출자로부터 `private_only_pages`를 받아 komis_raw_lookup 안에서 검사한다 —
 hybrid_search·pageindex_lookup처럼 서버 파일 자체를 물리적으로 나누지 않은
 이유는 이 도구가 다단계 번역 로직(가격기준/HS코드 자동매핑, 150줄)을 갖고
 있어 파일을 통째로 복제하면 그 로직이 두 곳에서 갈라질 위험이 더 커서다 —
 대신 `private_only_pages` 인자는 **호출 시점에 각 서버 파일이 소스코드로
 직접 박아 넣는 값**이라(런타임 env var 아님) 신뢰 경계는 여전히 "어느 파일을
-실행했는가"에 있다(mcp_server_public.py만 이 상수를 넘긴다, private.py는
-아예 import하지 않고 기본값 빈 집합 그대로 쓴다).
+실행했는가"에 있다.
 
 **라이선스 제한 소스(Argus)가 갈리는 hybrid_search·pageindex_lookup 두
 도구는 여기 없다** — 그 둘은 `mcp_server_public.py`/`mcp_server_private.py`
@@ -163,13 +161,16 @@ def _format_period_bound(value: str, precision: str) -> str:
 
 def register_common_tools(
     mcp: FastMCP, *, private_only_pages: frozenset[str] = frozenset(),
+    restricted_pages: frozenset[str] = frozenset(),
     trusted_komis_pages: frozenset[str] = frozenset(),
 ) -> None:
     """호출자(mcp_server_public.py·mcp_server_private.py)가 자기 `FastMCP`
     인스턴스를 넘겨 이 6개 tool을 등록한다. `private_only_pages`는
     komis_raw_lookup에서 거부할 `page_id` 집합 — public.py만 소스코드로
     `PRIVATE_ONLY_KOMIS_PAGES`를 박아 넣어 넘기고, private.py는 기본값(빈
-    집합=제한 없음) 그대로 둔다. `trusted_komis_pages`는 KOMIS 원천의 구조
+    집합=제한 없음) 그대로 둔다. `restricted_pages`는 프로필과 무관하게
+    RDB 자원 목록에서 제외되어 항상 접근 거부할 page_id 집합이다.
+    `trusted_komis_pages`는 KOMIS 원천의 구조
     검증을 통과하면 더미/미검증 caveat를 생략할 page 목록이다. 이는 프로필
     접근 허용 여부와 독립이며, 테이블·열·코드 검증은 조회 때마다 수행한다.
     모든 tool은 top-level에서 항상
@@ -255,7 +256,7 @@ def register_common_tools(
     ) -> dict[str, Any]:
         """KOMIS 공개원천(public.KO_*, 타 팀 소유·읽기전용) 정형 데이터 조회 —
         가격(price_*)·교역(map_korea/map_global)·매장량·생산량(map_mineral)·
-        종합지수/시장전망/수급안정(indicator_*)·가격예측(forecast_price) 11개
+        종합지수·가격예측(forecast_price) 등 9개 공개
         page_id별로 정해진 테이블만 조회한다. 자유형 SQL을 생성하지 않는다 —
         page_id가 고르는 건 코드에 고정된 정적 스펙(테이블·컬럼)뿐이고, 필터
         값은 화이트리스트 정규식(영문자·숫자·`_`만)을 통과해야 SQL에 들어간다
@@ -275,12 +276,11 @@ def register_common_tools(
         매핑되면 그중 첫 번째(오름차순)만 미리보기로 쓰고 `warnings`에 명시한다
         (전부 합쳐 보려면 `price_criterion_serial`/`hs_code`를 직접 지정할 것).
 
-        `indicator_market`(시장동향지표, KO_MRKT_PRSPECT_IDCT)와
-        `indicator_supply`(수급동향지표, KO_SPDM_STBT_INDX)는 private 전용이다.
-        `indicator_composite`(광물종합지수, KO_MNRL_SNTHS_INDX)는 2026-09-29부터
-        public 허용이며, 지정한 신뢰 목록에 있더라도 테이블·필수 열·코드를
-        매 요청 검증한다. private 전용 page를 public에서 요청하면 조회 없이
-        거부하고 warnings에만 사유를 담는다.
+        `indicator_market`(시장동향지표)와 `indicator_supply`(수급동향지표)는
+        RDB 자원 목록에서 제외된 접근 제한 page다. `indicator_composite`
+        (광물종합지수)는 2026-09-29부터 public 허용이며, 지정한 신뢰 목록에
+        있더라도 테이블·필수 열·코드를 매 요청 검증한다. 제한 page를 요청하면
+        조회 없이 거부하고 warnings에만 사유를 담는다.
 
         2026-09-01 실사용 버그 발견·수정 — 근거(Evidence)의 `section`에
         `mineral_code`(예: "MNRL0018")가 그대로 노출돼 있었다. 실측으로
@@ -297,6 +297,11 @@ def register_common_tools(
         여전히 `mineral_code`만 넘기면 된다, API 단순화).
         {"evidence": [...], "warnings": [...]}."""
 
+        if page_id in restricted_pages:
+            return {
+                "evidence": [],
+                "warnings": [f"'{page_id}'는 접근 권한이 없어 조회할 수 없습니다."],
+            }
         if page_id in private_only_pages:
             return {
                 "evidence": [],
@@ -1215,6 +1220,11 @@ def register_common_tools(
         mineral_names: 비교할 광종 한글명 리스트, 없으면 지표가 있는 전
         광종 대상. {"evidence": [...], "warnings": [...]}."""
 
+        if page_id in restricted_pages:
+            return {
+                "evidence": [],
+                "warnings": [f"'{page_id}'는 접근 권한이 없어 조회할 수 없습니다."],
+            }
         if page_id in private_only_pages:
             return {
                 "evidence": [],

@@ -4,6 +4,11 @@
 schema_version: 1
 schema: public
 
+# 사용자 요청(2026-09-30): 시장동향지표·수급동향지표 원천은 RDB 자원 목록과
+# 조회 계약에서 제외한다. page_id는 하위 호환을 위해 타입에 남기되, 챗봇/MCP
+# 접근 경계에서 항상 권한 없음으로 종료한다.
+disabled_pages: [indicator_market, indicator_supply]
+
 sources:
   daily_news:
     schema: public
@@ -29,18 +34,6 @@ datasets:
       period_column: CRTR_YMD
       period_precision: day
       filter_columns: {index_type_code: INDX_SE_CD}
-  indicator_market:
-    - table: KO_MRKT_PRSPECT_IDCT
-      columns: [MNRKND_UNQ_CD, CRTR_YMD, MRKT_PRSPECT_IDCT, REAL_PRC, PRVMM_CPRS]
-      period_column: CRTR_YMD
-      period_precision: day
-      filter_columns: {mineral_code: MNRKND_UNQ_CD}
-  indicator_supply:
-    - table: KO_SPDM_STBT_INDX
-      columns: [MNRKND_UNQ_CD, CRTR_YMD, SPDM_STBT_INDX, REAL_PRC, PRVMM_CPRS, PRC, INCM_WEIG, INCM_AMT]
-      period_column: CRTR_YMD
-      period_precision: month
-      filter_columns: {mineral_code: MNRKND_UNQ_CD}
   forecast_price:
     - table: KO_MNRL_PRC_PREDC
       columns: [MNRL_PRC_PREDC_SN, MNRKND_UNQ_CD, CRTR_YMD, PRD_SE_CD, PRC_UNIT_CD, CMERC_PRC, PREDC_PRC]
@@ -93,9 +86,7 @@ reserves_production_rankings:
   production: {table: KO_RSRC_PRDCTN_QUTY, country_column: NTN_ENG_CD, metric_column: PRDCTN_QUTY_TON, period_column: CRTR_YR, metric_label: 생산량}
   reserves: {table: KO_RSRC_BURUDG_QUTY, country_column: NTN_ENG_CD, metric_column: BURUDG_QUTY_TON, period_column: CRTR_YR, metric_label: 매장량}
 
-latest_indicator_rankings:
-  indicator_supply: {table: KO_SPDM_STBT_INDX, value_column: SPDM_STBT_INDX, period_column: CRTR_YMD, value_label: 수급동향지표}
-  indicator_market: {table: KO_MRKT_PRSPECT_IDCT, value_column: MRKT_PRSPECT_IDCT, period_column: CRTR_YMD, value_label: 시장전망지표}
+latest_indicator_rankings: {}
 
 ranking_metric_labels:
   import_amount: {label: 수입금액, unit: USD}

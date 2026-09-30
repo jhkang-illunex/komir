@@ -89,7 +89,7 @@ class MineralSpecificCompositeIndexTest(unittest.TestCase):
 
 
 class PublicPrivateBoundaryTest(unittest.TestCase):
-    def test_public_private_only_indicator_stops_before_fallback_search(self):
+    def test_composite_index_is_publicly_allowed(self):
         route = graph.RetrievalRoute(
             resolved_query="광물종합지수 알려줘",
             use_structured=False, use_dense=True, use_pageindex=True,
@@ -100,12 +100,64 @@ class PublicPrivateBoundaryTest(unittest.TestCase):
              "source_assessment": SourceAssessment(),
              "action_assessment": _action_assessment("indicator.series", indicator="composite_index")}, dense_k=1, pageindex_k=1,
         )
-        self.assertEqual(result["evidence"], [])
-        self.assertIn(graph._PRIVATE_ONLY_PROFILE_WARNING, result["warnings"])
+        self.assertTrue(result["evidence"])
+        self.assertNotIn(graph._PRIVATE_ONLY_PROFILE_WARNING, result["warnings"])
+        self.assertNotIn("access_denied", result["warnings"])
         self.assertEqual(graph._route_after_verify({"warnings": result["warnings"]}), "done")
-        reason, text = chatbot._resolve_abstain("광물종합지수 알려줘", result["warnings"], None)
-        self.assertEqual(reason, "private_only_profile_access")
-        self.assertIn("private 프로필 전용", text)
+
+    def test_restricted_market_and_supply_indicators_stop_for_all_profiles(self):
+        for page_id, question in (
+            ("indicator_market", "리튬 시장동향지표 알려줘"),
+            ("indicator_supply", "리튬 수급동향지표 알려줘"),
+        ):
+            route = graph.RetrievalRoute(
+                resolved_query=question, use_structured=False, use_dense=True,
+                use_pageindex=True, use_komis_indicator_ranking=True,
+                komis_indicator_ranking_page=page_id,
+            )
+            for profile in ("public", "private"):
+                result = graph._retrieve_node(
+                    {"route": route, "profile": profile, "warnings": [],
+                     "source_assessment": SourceAssessment(),
+                     "action_assessment": _action_assessment(
+                         "indicator.series", indicator=(
+                             "market_outlook" if page_id == "indicator_market"
+                             else "supply_stability"
+                         ),
+                     )},
+                    dense_k=1, pageindex_k=1,
+                )
+                self.assertEqual(result["evidence"], [])
+                self.assertIn("access_denied", result["warnings"])
+                self.assertEqual(graph._route_after_verify({"warnings": result["warnings"]}), "done")
+                reason, text = chatbot._resolve_abstain(question, result["warnings"], None)
+                self.assertEqual(reason, "access_denied")
+                self.assertEqual(text, "접근 권한이 없어 조회할 수 없습니다.")
+
+    def test_restricted_indicator_without_mineral_cannot_fall_back_to_documents(self):
+        route = graph.RetrievalRoute(
+            resolved_query="시장동향지표 알려줘", use_structured=False,
+            use_dense=True, use_pageindex=True, use_komis_raw=True,
+            komis_topic="market_outlook",
+        )
+        result = graph._retrieve_node(
+            {"route": route, "profile": "public", "warnings": [],
+             "source_assessment": SourceAssessment()}, dense_k=1, pageindex_k=1,
+        )
+        self.assertEqual(result["evidence"], [])
+        self.assertIn("access_denied", result["warnings"])
+
+    def test_restricted_indicator_is_rejected_before_action_llm_or_retrieval(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("접근 제한 지표는 Action/검색 LLM을 호출하면 안 됨")
+
+        result = graph.retrieve_evidence(
+            "수급동향지표와 가격을 같이 보여줘",
+            llm=MustNotRun(), include_action_results=True,
+        )
+        self.assertEqual(result.evidence, [])
+        self.assertEqual(result.warnings, ["access_denied"])
 
 
 class ExplicitHsCodeTest(unittest.TestCase):

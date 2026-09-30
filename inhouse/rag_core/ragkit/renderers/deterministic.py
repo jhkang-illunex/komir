@@ -1,6 +1,16 @@
 """근거만으로 확정할 수 있는 단일 Action 응답 renderer."""
 from __future__ import annotations
 
+from ..chatbot_events import extract_markdown_tables
+
+
+def _overview_table(item) -> tuple[list[str], list[list[str]]] | None:
+    for table in extract_markdown_tables(getattr(item, "text", "")):
+        keys = [column.split("(", 1)[0].strip().casefold() for column in table["columns"]]
+        if {"mineral", "price_date", "price"} <= set(keys):
+            return keys, table["rows"]
+    return None
+
 
 def render_strategic_price_overview(evidence: list, action_plan) -> tuple[str, set[int]] | None:
     actions = getattr(action_plan, "actions", [])
@@ -10,10 +20,38 @@ def render_strategic_price_overview(evidence: list, action_plan) -> tuple[str, s
                 if getattr(item, "action_id", None) == "price.overview"]
     if len(selected) != 1:
         return None
+    index, item = selected[0]
+    parsed = _overview_table(item)
+    if parsed is not None:
+        keys, rows = parsed
+        def value(row, key, default="-"):
+            if key not in keys:
+                return default
+            position = keys.index(key)
+            return row[position].strip() if position < len(row) and row[position].strip() else default
+
+        rendered = [
+            "| 광종 | 기준일 | 가격 | 가격기준 | 단위 | 출처 |",
+            "|---|---|---:|---|---|---|",
+        ]
+        for row in rows:
+            currency = value(row, "currency", value(row, "price_currency_code"))
+            weight = value(row, "weight_unit", value(row, "weight_unit_code"))
+            unit = f"{currency}/{weight}" if currency != "-" and weight != "-" else currency
+            rendered.append(
+                f"| {value(row, 'mineral')} | {value(row, 'price_date')} | {value(row, 'price')} | "
+                f"{value(row, 'price_criterion')} | {unit} | {value(row, 'source_menu')} |"
+            )
+        return (
+            "광물정보 : 전략광종 목록 기준\n"
+            "광물가격 : 광종별 최신 가격·기준일·단위·출처\n" + "\n".join(rendered) +
+            "\n※ 광종별 가격기준과 관측일이 다르므로 절대가격을 서로 직접 비교하지 않습니다.",
+            {index},
+        )
     return (
         "광물정보 : 전략광종 목록 기준\n"
         "광물가격 : 기준일 기준 광종별 가격·전월 평균 대비 등락률 표입니다. [1]",
-        {selected[0][0]},
+        {index},
     )
 
 

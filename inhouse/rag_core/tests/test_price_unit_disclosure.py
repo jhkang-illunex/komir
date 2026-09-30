@@ -9,6 +9,7 @@ from rag_core.ragkit.renderers.price import (
     render_price_comparison,
     render_price_series,
 )
+from rag_core.ragkit.renderers.deterministic import render_strategic_price_overview
 from rag_core.ragkit.action_contract import ActionCall, ActionPlan, ActionSlots, Period
 from rag_core.retrieval.evidence import Evidence
 
@@ -214,6 +215,8 @@ class PriceUnitDisclosureTest(unittest.TestCase):
              "2026-03 기준 니켈 월평균 가격은 121 USD/톤입니다. 2개월째 상승세이며, 상승 구간 시작은 2026-01입니다. 현재 월평균 가격은 121 USD/톤(+21.00%)입니다."),
             ("yearly_average", Period(kind="range", start="1900-01-01", end="2026-03-02"),
              "니켈 연도별 평균 가격은 [2026 YTD 110.33]입니다. 단위: USD/톤"),
+            ("period_extrema", Period(kind="range", start="1900-01-01", end="2026-03-02"),
+             "지정 기간 내 니켈 최고가는 121 USD/톤이며, 최고가 날짜(관측일)는 2026-03-02입니다."),
         )
         for operation, period, expected in cases:
             with self.subTest(operation=operation):
@@ -224,6 +227,60 @@ class PriceUnitDisclosureTest(unittest.TestCase):
                 scope = _render_price_series([evidence], plan)
                 assert scope is not None
                 self.assertEqual(scope[0], expected)
+
+    def test_price_selection_renderer_supports_minimum_and_ordinal(self):
+        evidence = Evidence(
+            kind="aggregated", source="public.KO_MNRL_PRC", section="가격 시계열",
+            text=("| date | price |\n| --- | --- |\n| 2026-01-02 | 100 |\n"
+                  "| 2026-01-03 | 90 |\n| 2026-01-04 | 110 |"),
+            unit="가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002",
+            observed_period="2026-01-02~2026-01-04", action_id="price.series",
+        )
+        minimum = ActionPlan(actions=[ActionCall(
+            requirement_id="price", action_id="price.series",
+            slots=ActionSlots(mineral="니켈", period=Period(kind="range", start="2026-01-01", end="2026-01-04"),
+                              price_operation="period_extrema", selection_mode="extremum",
+                              selection_direction="min"),
+        )])
+        scope = _render_price_series([evidence], minimum)
+        assert scope is not None
+        self.assertIn("최저가는 90 USD/톤", scope[0])
+        self.assertIn("최저가 날짜(관측일)는 2026-01-03", scope[0])
+
+        ordinal = ActionPlan(actions=[ActionCall(
+            requirement_id="price", action_id="price.series",
+            slots=ActionSlots(mineral="니켈", period=Period(kind="range", start="2026-01-01", end="2026-01-04"),
+                              selection_mode="ordinal", selection_position=2),
+        )])
+        scope = _render_price_series([evidence], ordinal)
+        assert scope is not None
+        self.assertIn("2번째 니켈 가격 관측값은 90 USD/톤", scope[0])
+
+    def test_price_year_over_year_uses_monthly_average_by_default_and_latest_option(self):
+        text = ("| date | price |\n| --- | ---: |\n"
+                "| 2025-08-01 | 100 |\n| 2025-08-15 | 120 |\n"
+                "| 2025-09-01 | 110 |\n| 2026-08-01 | 130 |\n"
+                "| 2026-08-15 | 150 |\n| 2026-09-01 | 121 |")
+        for basis, expected in (
+            ("monthly_average", "전년 동월(2025-09) 110 USD/톤 대비 +10.00% 변동했습니다. 비교 기준: 일별 가격의 월평균."),
+            ("monthly_latest", "전년 동월(2025-09) 110 USD/톤 대비 +10.00% 변동했습니다. 비교 기준: 월 최신 관측값."),
+        ):
+            with self.subTest(basis=basis):
+                evidence = Evidence(
+                    kind="aggregated", source="public.KO_MNRL_PRC", section="가격 시계열",
+                    text=text, unit="가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002",
+                    observed_period="2025-08-01~2026-09-01", action_id="price.series",
+                )
+                plan = ActionPlan(actions=[ActionCall(
+                    requirement_id="price_yoy", action_id="price.series",
+                    slots=ActionSlots(
+                        mineral="니켈", period=Period(kind="trailing_months", trailing_months=13),
+                        price_operation="year_over_year", price_yoy_basis=basis,
+                    ),
+                )])
+                rendered = _render_price_series([evidence], plan)
+                assert rendered is not None
+                self.assertIn(expected, rendered[0])
 
     def test_no_qualifying_rise_explains_that_news_was_not_queried(self):
         evidence = Evidence(
@@ -282,6 +339,62 @@ class PriceUnitDisclosureTest(unittest.TestCase):
         self.assertIn("가격기준=LME CASH", scope[0])
         self.assertIn("단순 비교", scope[0])
 
+    def test_multi_window_price_comparison_keeps_each_requested_window(self):
+        evidence = [
+            Evidence(
+                kind="aggregated", source="public.KO_MNRL_PRC",
+                section="최근 3개월 요청 · 동일 기간 가격 변동률",
+                text=("| mineral | start_date | end_date | pct_change | price_criterion |\n"
+                      "|---|---|---|---:|---|\n"
+                      "| 리튬 | 2026-06-01 | 2026-09-01 | 3.2 | 탄산리튬 |\n"
+                      "| 니켈 | 2026-06-01 | 2026-09-01 | -1.1 | LME CASH |"),
+                action_id="price.compare",
+            ),
+            Evidence(
+                kind="aggregated", source="public.KO_MNRL_PRC",
+                section="최근 6개월 요청 · 동일 기간 가격 변동률",
+                text=("| mineral | start_date | end_date | pct_change | price_criterion |\n"
+                      "|---|---|---|---:|---|\n"
+                      "| 리튬 | 2026-03-01 | 2026-09-01 | 8.4 | 탄산리튬 |\n"
+                      "| 니켈 | 2026-03-01 | 2026-09-01 | -4.5 | LME CASH |"),
+                action_id="price.compare",
+            ),
+        ]
+        plan = ActionPlan(actions=[ActionCall(
+            requirement_id="windows", action_id="price.compare",
+            slots=ActionSlots(minerals=["리튬", "니켈"], windows=[3, 6, 12]),
+        )])
+        scope = render_price_comparison(evidence, plan)
+        self.assertIsNotNone(scope)
+        answer, cited = scope
+        self.assertIn("최근 3개월", answer)
+        self.assertIn("최근 6개월", answer)
+        self.assertIn("최근 12개월", answer)
+        self.assertIn("리튬", answer)
+        self.assertIn("니켈", answer)
+        self.assertIn("자료 없음", answer)
+        self.assertEqual(cited, {1, 2})
+
+    def test_strategic_price_overview_renders_latest_date_unit_and_source(self):
+        evidence = Evidence(
+            kind="structured", source="public.KO_MNRL_PRC", section="전략광종 가격 현황",
+            action_id="price.overview",
+            text=("| strategic_group | mineral | price_date | price | price_criterion | currency | weight_unit | source_menu |\n"
+                  "|---|---|---|---:|---|---|---|---|\n"
+                  "| strategic_six | 리튬 | 2026-09-09 | 12800 | 탄산리튬 | USD | kg | price_minor_metals |"),
+        )
+        plan = ActionPlan(actions=[ActionCall(
+            requirement_id="overview", action_id="price.overview",
+            slots=ActionSlots(strategic_price_groups=["strategic_six"]),
+        )])
+        scope = render_strategic_price_overview([evidence], plan)
+        self.assertIsNotNone(scope)
+        answer, cited = scope
+        self.assertIn("2026-09-09", answer)
+        self.assertIn("USD/kg", answer)
+        self.assertIn("price_minor_metals", answer)
+        self.assertEqual(cited, {1})
+
     def test_yearly_average_marks_partial_historical_year_as_ytd(self):
         evidence = Evidence(
             kind="aggregated", source="public.KO_MNRL_PRC", section="연도별 평균",
@@ -327,6 +440,20 @@ class PriceUnitDisclosureTest(unittest.TestCase):
         self.assertNotIn("PR001", answer)
         self.assertNotIn("WT002", answer)
         self.assertIn("가격 기준은 LME CASH이며, 통화는 USD이며, 중량 단위는 톤입니다.", answer)
+
+    def test_price_claim_negative_verdict_uses_stable_contract_wording(self):
+        evidence = Evidence(
+            kind="aggregated", source="public.KO_MNRL_PRC", section="가격 검증",
+            text="2025년 니켈 가격은 300% 이상 상승하지 않았습니다.",
+            unit="가격기준=LME CASH; 통화코드=PR001; 중량단위코드=WT002",
+            action_id="price.verify_claim",
+        )
+        answer = chatbot._price_unit_disclosure(
+            "2025년 니켈 가격은 300% 이상 상승하지 않았습니다. [1]",
+            [evidence],
+        )
+        self.assertIn("300%", answer)
+        self.assertIn("오르지 않았습니다", answer)
 
     def test_dated_price_answer_is_not_removed_by_unit_disclosure(self):
         evidence = Evidence(

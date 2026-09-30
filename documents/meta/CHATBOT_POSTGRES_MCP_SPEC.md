@@ -109,9 +109,11 @@ Vector DB 중 여러 개를 동시에 근거로 삼을 수 있다(예: "니켈 �
 | `ko_un_cmmrc` | 세계(UN Comtrade) 교역 | 25,342 | `map_global` | public |
 | `ko_rsrc_burudg_quty` | 국가별 매장량 | 272 | `map_mineral` | public |
 | `ko_rsrc_prdctn_quty` | 국가별 생산량 | 279 | `map_mineral` | public |
-| `ko_mnrl_snths_indx` | 광물종합지수 | 10,899 | `indicator_composite` | **private 전용** |
-| `ko_mrkt_prspect_idct` | 시장동향지표(시장전망지표) | 170 | `indicator_market` | **private 전용** |
-| `ko_spdm_stbt_indx` | 수급동향지표(수급안정지수) | 98 | `indicator_supply` | **private 전용** |
+| `ko_mnrl_snths_indx` | 광물종합지수 | 10,899 | `indicator_composite` | public |
+
+> `ko_mrkt_prspect_idct`(시장동향지표)와 `ko_spdm_stbt_indx`(수급동향지표)는
+> 2026-09-30부터 RDB 자원 목록 및 챗봇 조회 대상에서 제외했다. 관련 질문은
+> 데이터 검색 없이 접근 권한 없음으로 종료한다.
 
 **C. RDB — Postgres `public` 스키마, `ai_*` 공통 메타(코드↔광종 변환 전용, §2-2)**
 
@@ -227,7 +229,7 @@ komir의 진단·예측·지수 모델이 애초에 이 5광종만 계산해 발
   것'은 *komir 자신의 산출물*에 대한 규칙이지, 타 팀 테이블을 읽는 경우가
   아니다."
 - **2단계 화이트리스트 SQL 안전장치**(자유형 SQL 생성 절대 금지):
-  1) `AnalysisPreviewRequest`(pydantic) — page_id는 11개 값 `Literal`,
+  1) `AnalysisPreviewRequest`(pydantic) — page_id는 기존 호환용 값 `Literal`,
      `start_period`/`end_period`는 숫자 4/6/8자리 정규식으로 1차 검증.
   2) `_literal()` — SQL 리터럴로 삽입되기 직전, `_SAFE_VALUE` 정규식
      (`^[A-Za-z0-9_가-힣]{1,32}$` — 2026-09-01 한글 음절 허용 추가, 아래
@@ -239,7 +241,7 @@ komir의 진단·예측·지수 모델이 애초에 이 5광종만 계산해 발
 
 ### 2-2. 테이블(37개 전수, `public` 스키마)
 
-**`ko_*`(9개, KOMIS 원천 데이터)** — 2026-08-31 스키마매핑 실측
+**`ko_*`(7개, 챗봇 RDB 공개 자원)** — 2026-08-31 스키마매핑 실측
 (`documents/산출물/2026-W36_0831-0906/KOMIS_public_ko테이블_스키마매핑_260831.md`
 참고, 이하 요약). **MCP 프로필 접근**(2026-09-01 사용자 지시,
 `shared.retrieval.access.PRIVATE_ONLY_KOMIS_PAGES`) 열은 이 테이블이
@@ -250,9 +252,7 @@ komir의 진단·예측·지수 모델이 애초에 이 5광종만 계산해 발
 |---|---|---|---|
 | `ko_mnrl_prc` | 광종별 일별 가격(최저/최고/실거래가) | `price_base_metals`/`price_minor_metals`/`price_iron_energy`/`price_other` | public+private |
 | `ko_mnrl_prc_predc` | KOMIS 자체 가격예측(komir의 `out_import_forecast`와 다름) | `forecast_price` | public+private |
-| `ko_mnrl_snths_indx` | 종합지수(HI001~003, 구성 의미 미확인, 광물종합지수) | `indicator_composite` | **private 전용**(2026-09-01 최초 public 지정 후 같은 날 정정) |
-| `ko_mrkt_prspect_idct` | 시장전망지표(시장동향지표) | `indicator_market` | **private 전용** |
-| `ko_spdm_stbt_indx` | 수급안정지수(수급동향지표) | `indicator_supply` | **private 전용** |
+| `ko_mnrl_snths_indx` | 종합지수(HI001~003, 구성 의미 미확인, 광물종합지수) | `indicator_composite` | public |
 | `ko_cstm_cmmrc` | 국내(관세청) 수출입 | `map_korea` | public+private |
 | `ko_un_cmmrc` | 세계(UN Comtrade) 교역 | `map_global` | public+private |
 | `ko_rsrc_burudg_quty` | 국가별 매장량 | `map_mineral` | public+private |
@@ -284,9 +284,9 @@ KOMIS 표본 아님)다. 유일한 실샘플은 텅스텐(`MNRL0018`,
 ### 2-3. MCP 도구 (`komis_resolve_mineral`은 public/private 프로필 결과
 동일. `komis_raw_lookup`은 2026-09-01부터 **일부 page_id만** 예외 —
 아래 참고. 둘 다 "타 팀 소유"일 뿐 원래는 제3자 재배포 제한 콘텐츠가
-아니었으나, 2026-09-01 사용자가 `indicator_market`/`indicator_supply`/
-`indicator_composite` 3개 page_id만 private 프로필 전용으로 지정했다 —
-`indicator_composite`는 최초엔 public으로 지정됐다가 같은 날 정정됨)
+아니었으나, 2026-09-30 사용자 지시로 `indicator_market`/`indicator_supply`
+두 page_id는 RDB 자원 목록과 챗봇 조회 대상에서 제외했고,
+`indicator_composite`만 public 조회 대상으로 남겼다.
 
 - `komis_resolve_mineral(korean_name)` — 한글 광종명(자유형, "텅스텐"처럼
   질문에 쓰인 그대로) → `{mineral_code, price_category, warnings}`.
@@ -294,8 +294,8 @@ KOMIS 표본 아님)다. 유일한 실샘플은 텅스텐(`MNRL0018`,
   광종을 추가해도 코드 수정 불필요). 흔한 동의어(구리→동, 납→연,
   희토류→네오디뮴) 3쌍만 코드에 보정 목록으로 남아 있다(`ai_mnrl_mst`엔
   동의어 컬럼이 없어서).
-- `komis_raw_lookup(page_id, mineral_code, ...)` — 11개 `page_id`(가격
-  4종·교역 2종·매장량생산량·시장전망·수급안정·가격예측·종합지수)별로
+- `komis_raw_lookup(page_id, mineral_code, ...)` — 공개 자원 `page_id`(가격
+  4종·교역 2종·매장량생산량·가격예측·종합지수)별로
   정해진 테이블만 조회. `mineral_code`만 주면 내부에서 `ai_mnrl_mst`를
   다시 조회해 근거(Evidence) 라벨을 한글명으로 채운다(예: "KOMIS 원천 ·
   KO_MNRL_PRC(텅스텐)") — 2026-09-01 실사용 버그로 발견: 라벨이 코드
@@ -308,16 +308,10 @@ KOMIS 표본 아님)다. 유일한 실샘플은 텅스텐(`MNRL0018`,
   `KOMIS_SAMPLE`이 아니면 `Evidence.caveat`에 강제 경고 문구를 심고,
   `chatbot.py::_dummy_data_notice()`가 인용 스트리퍼 통과 후 코드로
   화면에 무조건 노출한다(LLM이 알아서 옮겨 적을 거라 기대하지 않음).
-  **private 전용 page_id 거부**(2026-09-01): `page_id`가
-  `indicator_market`/`indicator_supply`/`indicator_composite`면 public
-  프로필에서는 DB 조회 자체를 하지 않고 `{"evidence": [], "warnings": ["'...'는 private
-  전용 데이터입니다..."]}`를 즉시 반환한다(`_mcp_tools_common.py::
-  register_common_tools`의 `private_only_pages` 인자,
-  `mcp_server_public.py`만 `PRIVATE_ONLY_KOMIS_PAGES`를 소스코드로 넘김 —
-  hybrid_search/pageindex_lookup과 같은 원칙으로 신뢰 경계가 "어느 파일을
-  실행했는가"에 있음, 런타임 플래그 아님). `chatbot_graph.py::_retrieve_node`는
-  이 경우를 별도 분기 없이 그대로 처리한다 — evidence가 비면 인용이 안
-  붙고 warnings는 기존 기권사유 분류 경로를 그대로 탄다.
+  **접근 제한 page_id 거부**(2026-09-30): `indicator_market`·
+  `indicator_supply`는 프로필과 무관하게 DB 조회 자체를 하지 않고
+  `{"evidence": [], "warnings": ["접근 권한이 없어 조회할 수 없습니다."]}`를
+  반환한다. `indicator_composite`는 public 조회 대상이다.
 
 ### 2-4. 안전장치 변경 이력
 

@@ -184,10 +184,66 @@ def _months_before(value: date, months: int) -> date:
     return date(ordinal // 12, ordinal % 12 + 1, 1)
 
 
-def _price_operation_answer(item, mineral: str | None, operation: str, period, threshold: float | None = None) -> str:
+def _price_year_over_year_answer(
+    points: list[tuple[date, float]], mineral: str, unit: str, basis: str,
+) -> str:
+    """최신 보유월과 전년 동월의 가격 변화율을 계산한다.
+
+    기본은 일별 관측값의 월평균이며, ``monthly_latest``는 각 월의 마지막
+    관측값을 사용한다. 월을 건너뛰는 데이터는 조용히 다른 월과 비교하지 않고
+    계산 불가로 닫는다.
+    """
+    if not points:
+        return "계산 불가: 전년 동월 비교에 필요한 가격 관측값이 없습니다."
+    buckets: dict[tuple[int, int], list[tuple[date, float]]] = {}
+    for observed_date, value in points:
+        buckets.setdefault((observed_date.year, observed_date.month), []).append((observed_date, value))
+    latest_key = max(buckets)
+    previous_key = (latest_key[0] - 1, latest_key[1])
+    if previous_key not in buckets:
+        return (f"계산 불가: 최신 보유월 {latest_key[0]:04d}-{latest_key[1]:02d}와 "
+                "비교할 전년 동월 가격 관측값이 없습니다.")
+
+    def monthly_value(values: list[tuple[date, float]]) -> float:
+        if basis == "monthly_latest":
+            return max(values, key=lambda row: row[0])[1]
+        return sum(value for _, value in values) / len(values)
+
+    current = monthly_value(buckets[latest_key])
+    previous = monthly_value(buckets[previous_key])
+    if previous == 0:
+        return "계산 불가: 전년 동월 가격이 0이어서 변화율을 계산할 수 없습니다."
+    change = current - previous
+    pct = change / previous * 100
+    basis_label = "월 최신 관측값" if basis == "monthly_latest" else "일별 가격의 월평균"
+    return (f"{latest_key[0]:04d}-{latest_key[1]:02d} 기준 {mineral} 가격은 "
+            f"{format_price(current)} {unit}이며, 전년 동월({previous_key[0]:04d}-{previous_key[1]:02d}) "
+            f"{format_price(previous)} {unit} 대비 {pct:+.2f}% 변동했습니다. "
+            f"비교 기준: {basis_label}.")
+
+
+def _price_operation_answer(
+    item, mineral: str | None, operation: str, period,
+    threshold: float | None = None, yoy_basis: str | None = None,
+    extrema_direction: str | None = None,
+) -> str:
     points = price_series_observations(item.text)
     label = mineral or "요청 광종"
     unit = price_display_unit(item.unit) or "(원천 단위 미확인)"
+    if operation == "year_over_year":
+        return _price_year_over_year_answer(
+            points, label, unit,
+            yoy_basis or getattr(item, "price_yoy_basis", None) or "monthly_average",
+        )
+    if operation == "period_extrema":
+        if not points:
+            return "계산 불가: 지정 기간의 가격 관측값이 없습니다."
+        direction = extrema_direction or "max"
+        observed, value = (min(points, key=lambda row: row[1])
+                           if direction == "min" else max(points, key=lambda row: row[1]))
+        word = "최저가" if direction == "min" else "최고가"
+        return (f"지정 기간 내 {label} {word}는 {format_price(value)} {unit}이며, "
+                f"{word} 날짜(관측일)는 {observed.isoformat()}입니다.")
     if operation == "period_average_delta":
         if not points:
             return "계산 불가: 조회된 가격 표의 날짜·가격 열을 판독하지 못했습니다."
@@ -272,13 +328,19 @@ def _price_operation_answer(item, mineral: str | None, operation: str, period, t
 
 
 def render_price_comparison(evidence: list, action_plan) -> tuple[str, set[int]] | None:
-    """두 광종의 동일 기간 변동률과 각 가격기준을 요청 순서대로 렌더링한다."""
+    """두 광종의 동일 기간 변동률과 각 가격기준을 렌더링한다.
+
+    ``slots.windows``가 있으면 MCP가 창별로 반환한 비교 Evidence를 하나의
+    표로 조립한다. 창별 행을 마지막 값으로 덮어쓰지 않아 3·6·12개월 요청이
+    모두 보존된다.
+    """
     actions = getattr(action_plan, "actions", [])
     if len(actions) != 1 or getattr(actions[0], "action_id", None) != "price.compare":
         return None
     action = actions[0]
     requested = list(getattr(action.slots, "minerals", None) or [])
     rows: dict[str, tuple[float, str]] = {}
+    window_rows: dict[tuple[int, str], tuple[str, str, str, float, str]] = {}
     cited: set[int] = set()
     for index, item in enumerate(evidence, 1):
         if getattr(item, "action_id", None) != "price.compare":
@@ -313,11 +375,38 @@ def render_price_comparison(evidence: list, action_plan) -> tuple[str, set[int]]
                         if display_value:
                             basis_parts.append(f"{basis_labels[key]}={display_value}")
                     basis = ", ".join(basis_parts)
-                    rows[row[mineral_index]] = (
-                        float(row[pct_index].replace(",", "").replace("%", "")), basis,
-                    )
+                    mineral = row[mineral_index]
+                    pct = float(row[pct_index].replace(",", "").replace("%", ""))
+                    rows[mineral] = (pct, basis)
+                    windows = list(getattr(action.slots, "windows", None) or [])
+                    if windows:
+                        section = str(getattr(item, "section", ""))
+                        match = re.search(r"최근\s*(\d+)\s*개월", section)
+                        if match:
+                            window = int(match.group(1))
+                            start_key = keys.index("start_date") if "start_date" in keys else None
+                            end_key = keys.index("end_date") if "end_date" in keys else None
+                            start = row[start_key] if start_key is not None and start_key < len(row) else ""
+                            end = row[end_key] if end_key is not None and end_key < len(row) else ""
+                            window_rows[(window, mineral)] = (start, end, basis, pct, section)
                 except (ValueError, AttributeError):
                     continue
+    windows = sorted(set(getattr(action.slots, "windows", None) or []))
+    if windows:
+        if not window_rows or not requested:
+            return None
+        lines = ["| 비교기간 | 광종 | 시작일 | 종료일 | 변동률(%) | 가격기준 |"]
+        lines.append("|---|---|---|---|---:|---|")
+        for window in windows:
+            for mineral in requested:
+                record = window_rows.get((window, mineral))
+                if record is None:
+                    lines.append(f"| 최근 {window}개월 | {mineral} | - | - | 자료 없음 | - |")
+                    continue
+                start, end, basis, pct, _section = record
+                lines.append(f"| 최근 {window}개월 | {mineral} | {start or '-'} | {end or '-'} | {pct:+.2f} | {basis or '가격기준 정보 없음'} |")
+        return ("가격 변화율 비교\n" + "\n".join(lines) +
+                "\n※ 광종별 가격기준·통화·중량단위가 다를 수 있어 변동률만 비교하며 절대가격의 우열로 해석하지 않습니다."), cited
     if len(requested) != 2 or any(name not in rows for name in requested):
         return None
     months = getattr(getattr(action.slots, "period", None), "trailing_months", None)
@@ -349,7 +438,19 @@ def render_price_series(evidence: list, action_plan) -> tuple[str, set[int]] | N
     period = getattr(slots, "period", None)
     if getattr(slots, "price_operation", None):
         return _price_operation_answer(item, getattr(slots, "mineral", None), slots.price_operation, period,
-                                       getattr(slots, "significant_change_pct", None)), {index}
+                                       getattr(slots, "significant_change_pct", None),
+                                       getattr(slots, "price_yoy_basis", None),
+                                       getattr(slots, "selection_direction", None)), {index}
+    if getattr(slots, "selection_mode", None) == "ordinal":
+        points = price_series_observations(item.text)
+        position = getattr(slots, "selection_position", None)
+        if not position or len(points) < position:
+            return "계산 불가: 지정 기간에 요청한 순번의 가격 관측값이 없습니다.", {index}
+        observed, value = sorted(points, key=lambda row: row[0])[position - 1]
+        unit = price_display_unit(item.unit) or "(원천 단위 미확인)"
+        label = getattr(slots, "mineral", None) or "요청 광종"
+        return (f"지정 기간의 {position}번째 {label} 가격 관측값은 "
+                f"{format_price(value)} {unit}이며, 관측일은 {observed.isoformat()}입니다."), {index}
     if period and period.kind == "latest":
         return _latest_price_answer(item, getattr(slots, "mineral", None)), {index}
     if period and period.kind == "trailing_months" and period.trailing_months:

@@ -17,6 +17,7 @@ from .action_results import ActionResult
 
 RAG_TURN_KEY = "rag_turn"
 MULTI_ACTION_KEY = "multi_action_v1"
+PRICE_CONTEXT_KEY = "price_context_v1"
 NON_CARRY_KEY = "multi_action_non_carry_v1"
 _MAX_ACTIONS = 4
 _MAX_ENVELOPE_BYTES = 3800
@@ -43,6 +44,17 @@ class CarrySlotsV1(BaseModel):
     mine_order: Literal["level", "increase", "yoy_increase", "yoy_decrease"] | None = None
     mine_name: str | None = None
     top_n: int | None = Field(default=None, ge=1, le=100)
+    price_basis: str | None = None
+    currency: str | None = None
+    price_operation: Literal[
+        "period_average_delta", "monthly_streak", "yearly_average",
+        "year_over_year", "period_extrema", "significant_daily_rise",
+    ] | None = None
+    price_yoy_basis: Literal["monthly_average", "monthly_latest"] | None = None
+    selection_mode: Literal["extremum", "rank", "ordinal"] | None = None
+    selection_direction: Literal["min", "max"] | None = None
+    selection_position: int | None = Field(default=None, ge=1, le=100)
+    selection_limit: int | None = Field(default=None, ge=1, le=100)
 
 
 class CarryActionV1(BaseModel):
@@ -66,6 +78,43 @@ class RagTurnStateV1(BaseModel):
         if len({item.action_id for item in self.actions}) != 1:
             raise ValueError("cross_family_multi_action_state")
         return self
+
+
+class PriceContextV1(BaseModel):
+    """한 개의 성공한 price.series를 위한 1-hop 후속 문맥 계약.
+
+    원문 표·가격값은 저장하지 않고, 후속 선택 연산에 필요한 typed 슬롯만
+    보존한다. 복합 Action 상태(RagTurnStateV1)의 min_length=2 계약은 그대로
+    유지한다.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+    schema_version: Literal[1] = 1
+    profile: Literal["public", "private"]
+    action: CarryActionV1
+
+
+def price_context_from_action_results(
+    plan: ActionPlan | None,
+    results: list[ActionResult],
+    *,
+    profile: Literal["public", "private"],
+) -> PriceContextV1 | None:
+    """성공한 단일 price.series의 다음 턴 상속 문맥을 만든다."""
+
+    if plan is None or not validate_action_plan(plan).approved or len(plan.actions) != 1:
+        return None
+    call = plan.actions[0]
+    if call.action_id != "price.series":
+        return None
+    if not any(item.requirement_id == call.requirement_id and item.status == "success" for item in results):
+        return None
+    result = next((item for item in results if item.requirement_id == call.requirement_id), None)
+    return PriceContextV1(profile=profile, action=CarryActionV1(
+        requirement_id=call.requirement_id, action_id=call.action_id,
+        slots=_carry_slots(call.slots),
+        observed_period=_single_observed_period(result) if result is not None else None,
+    ))
 
 
 class FollowupBindingV1(BaseModel):
@@ -136,12 +185,15 @@ def _bounded_citations(citations: list[dict]) -> list[dict]:
     return bounded
 
 
-def encode_citation_envelope(citations: list[dict], state: RagTurnStateV1 | None) -> str:
+def encode_citation_envelope(
+    citations: list[dict], state: RagTurnStateV1 | None,
+    price_context: PriceContextV1 | None = None,
+) -> str:
     """기존 list 저장을 보존하고, 크기 제한을 넘지 않는 경우에만 상태를 덧붙인다."""
 
     import json
 
-    if state is None:
+    if state is None and price_context is None:
         encoded = json.dumps(citations, ensure_ascii=False)
         if len(encoded.encode("utf-8")) <= _MAX_ENVELOPE_BYTES:
             return encoded
@@ -152,14 +204,20 @@ def encode_citation_envelope(citations: list[dict], state: RagTurnStateV1 | None
             return encoded
         return json.dumps({"schema_version": 1, "citations": [], "citations_truncated": True},
                           ensure_ascii=False, separators=(",", ":"))
+    turn: dict[str, object] = {}
+    if state is not None:
+        turn[MULTI_ACTION_KEY] = state.model_dump(mode="json")
+    if price_context is not None:
+        turn[PRICE_CONTEXT_KEY] = price_context.model_dump(mode="json")
     envelope = {"schema_version": 1, "citations": _bounded_citations(citations),
-                RAG_TURN_KEY: {MULTI_ACTION_KEY: state.model_dump(mode="json")}}
+                RAG_TURN_KEY: turn}
     encoded = json.dumps(envelope, ensure_ascii=False, separators=(",", ":"))
     if len(encoded.encode("utf-8")) <= _MAX_ENVELOPE_BYTES:
         return encoded
     # 슬롯 문자열 자체가 비정상적으로 커도 raw history fallback으로 되돌아가지 않는다.
+    profile = state.profile if state is not None else price_context.profile
     return json.dumps({"schema_version": 1, "citations": [], "citations_truncated": True,
-                       RAG_TURN_KEY: {NON_CARRY_KEY: {"profile": state.profile}}},
+                       RAG_TURN_KEY: {NON_CARRY_KEY: {"profile": profile}}},
                       ensure_ascii=False, separators=(",", ":"))
 
 
@@ -174,6 +232,20 @@ def decode_multi_action_state(payload: object, *, profile: Literal["public", "pr
     except (TypeError, ValueError):
         return None
     return state if state.profile == profile else None
+
+
+def decode_price_context(payload: object, *, profile: Literal["public", "private"]) -> PriceContextV1 | None:
+    """알 수 없거나 다른 프로필의 단일 가격 문맥은 폐기한다."""
+
+    if not isinstance(payload, dict):
+        return None
+    try:
+        turn = payload.get(RAG_TURN_KEY, {})
+        raw = turn.get(PRICE_CONTEXT_KEY) if isinstance(turn, dict) else None
+        context = PriceContextV1.model_validate(raw)
+    except (TypeError, ValueError):
+        return None
+    return context if context.profile == profile else None
 
 
 def is_non_carry_payload(payload: object, *, profile: Literal["public", "private"]) -> bool:

@@ -67,15 +67,21 @@ class RegistryTest(unittest.TestCase):
         names = [g.out_dirname for g in R.GROUPS]
         self.assertEqual(len(names), len(set(names)))
         # doc_chunk.src·PageIndex source_group과 맞물린 불변 이름
-        self.assertEqual(set(R.OKF_SOURCE_GROUPS), {"생산매장량_USGS", "조달청보고서", "Argus_비철금속_일일", "광산자료"})
+        self.assertEqual(set(R.OKF_SOURCE_GROUPS), {
+            "생산매장량_USGS", "조달청보고서", "Argus_비철금속_일일", "광산자료",
+            "WoodMackenzie", "AsianMetal", "CRU", "IEA",
+        })
         self.assertEqual(tuple(PGV_GROUPS), R.OKF_SOURCE_GROUPS)
 
     def test_private_only_matches_access_policy(self):
         """public 프로필 제외 목록(rag_core/retrieval/access.py)과 레지스트리가 어긋나면 안 됨."""
         self.assertEqual(R.PRIVATE_ONLY_OUT_DIRNAMES, PRIVATE_ONLY_SOURCE_GROUPS)
 
-    def test_paid_only_argus(self):
-        self.assertEqual([g.key for g in R.GROUPS if g.allow_paid], ["argus"])
+    def test_paid_source_opt_in_groups(self):
+        self.assertEqual(
+            {g.key for g in R.GROUPS if g.allow_paid},
+            {"argus", "woodmackenzie", "asianmetal"},
+        )
 
     def test_landing_subdirs_are_simple(self):
         for g in R.GROUPS:

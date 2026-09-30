@@ -525,6 +525,9 @@ class ActionContractAuditTest(unittest.TestCase):
             ("니켈 가격 최근 3개월 평균이랑 비교하면 어때?", "price.series", "니켈", "period_average_delta", "trailing_months", 3),
             ("니켈 가격 몇 개월째 오르고 있어?", "price.series", "니켈", "monthly_streak", "latest", None),
             ("니켈 연도별 평균 가격 알려줘", "price.series", "니켈", "yearly_average", "latest", None),
+            ("니켈 가격 전년 동월 대비 변화율은?", "price.series", "니켈", "year_over_year", "trailing_months", 13),
+            ("니켈 가격 전년 동월 대비 변화율은 월 최신 관측값 기준으로 알려줘", "price.series", "니켈", "year_over_year", "trailing_months", 13),
+            ("아연 가격 2010년 이후 최고가와 그 날짜 알려줘", "price.series", "아연", "period_extrema", "range", None),
             ("니켈과 리튬 가격 같이 비교해줘", "price.compare", None, None, None, None),
         )
         for question, action_id, mineral, operation, period_kind, months in cases:
@@ -541,6 +544,12 @@ class ActionContractAuditTest(unittest.TestCase):
                     route.use_komis_price_time_aggregate,
                     operation in {"monthly_streak", "yearly_average"},
                 )
+                if operation == "year_over_year":
+                    self.assertTrue(route.use_komis_raw)
+                    self.assertEqual(route.komis_relative_months, 13)
+                if operation == "period_extrema":
+                    self.assertTrue(route.use_komis_raw)
+                    self.assertEqual(route.komis_start_period, "20100101")
 
     def test_user_qa_price_and_geography_variants_bypass_planner(self):
         class MustNotRun:
@@ -599,6 +608,8 @@ class ActionContractAuditTest(unittest.TestCase):
             ("price.compare", "monthly_streak", Period(kind="latest")),
             ("price.series", "monthly_streak", Period(kind="trailing_months", trailing_months=3)),
             ("price.series", "period_average_delta", Period(kind="latest")),
+            ("price.series", "year_over_year", Period(kind="trailing_months", trailing_months=12)),
+            ("price.series", "period_extrema", Period(kind="latest")),
         ):
             with self.subTest(action_id=action_id, operation=operation):
                 candidate = ActionPlan(actions=[ActionCall(
@@ -606,6 +617,21 @@ class ActionContractAuditTest(unittest.TestCase):
                     slots=ActionSlots(mineral="니켈", period=period, price_operation=operation),
                 )])
                 self.assertFalse(validate_action_plan(candidate).approved)
+
+    def test_multi_latest_price_table_keeps_each_price_series_action(self):
+        class MustNotRun:
+            def invoke(self, **kwargs):
+                raise AssertionError("닫힌 복수 최신가격 문형은 planner를 호출하면 안 됩니다")
+
+        plan = extract_action_plan(
+            "7개 광종의 최신 가격, 기준일, 단위, 출처를 한 표로 정리해줘", MustNotRun(),
+        )
+        self.assertEqual([call.action_id for call in plan.actions], ["price.series"] * 7)
+        self.assertEqual(
+            [call.slots.mineral for call in plan.actions],
+            ["리튬", "니켈", "코발트", "희토류", "구리", "텅스텐", "아연"],
+        )
+        self.assertTrue(validate_action_plan(plan).approved)
 
     def test_raw_lookup_converts_iso_action_range_only_at_mcp_boundary(self):
         session = object.__new__(_ProfileSession)
@@ -1447,7 +1473,7 @@ class ActionContractAuditTest(unittest.TestCase):
         candidate = action_plan_from_intent(intents)
         self.assertEqual([item.action_id for item in candidate.actions],
                          ["price.verify_claim", "document.retrieve"])
-        self.assertEqual(validate_action_plan(candidate).failure_reason, "unsupported_combination")
+        self.assertTrue(validate_action_plan(candidate).approved)
 
     def test_diagnosis_content_is_not_dropped_from_price_result(self):
         intents = IntentPlan(requirements=[

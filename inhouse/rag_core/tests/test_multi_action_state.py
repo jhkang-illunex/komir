@@ -10,8 +10,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from rag_core.ragkit.action_contract import ActionCall, ActionPlan, ActionSlots, Period
 from rag_core.ragkit.action_results import ActionResult
 from rag_core.ragkit.multi_action_state import (
-    decode_multi_action_state, encode_citation_envelope, merge_multi_action_followup,
-    state_from_action_results, is_non_carry_payload,
+    decode_multi_action_state, decode_price_context, encode_citation_envelope,
+    merge_multi_action_followup, price_context_from_action_results, state_from_action_results,
+    is_non_carry_payload,
 )
 from rag_core.retrieval.evidence import Evidence
 from rag_chat.app.routers import chat as chat_router
@@ -111,6 +112,21 @@ class MultiActionStateTest(unittest.TestCase):
     def test_oversized_citations_without_state_are_always_bounded(self):
         encoded = encode_citation_envelope([{"source": "x" * 1000} for _ in range(100)], None)
         self.assertLessEqual(len(encoded.encode("utf-8")), 3800)
+
+    def test_single_price_context_round_trip_is_separate_from_multi_state(self):
+        plan = ActionPlan(actions=[ActionCall(
+            requirement_id="price_니켈", action_id="price.series",
+            slots=ActionSlots(mineral="니켈", period=Period(kind="range", start="2026-09-24", end="2026-09-30")),
+        )])
+        context = price_context_from_action_results(
+            plan, [ActionResult("price_니켈", "price.series", plan.actions[0].slots, "success")],
+            profile="public",
+        )
+        self.assertIsNotNone(context)
+        payload = json.loads(encode_citation_envelope([], None, context))
+        restored = decode_price_context(payload, profile="public")
+        self.assertEqual(restored.action.slots.mineral, "니켈")
+        self.assertIsNone(decode_multi_action_state(payload, profile="public"))
 
     def test_router_uses_typed_state_without_replanning(self):
         stored = {"role": "assistant", "citations_json": encode_citation_envelope([], self.state)}

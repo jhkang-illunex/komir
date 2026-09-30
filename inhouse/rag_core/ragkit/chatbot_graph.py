@@ -66,7 +66,9 @@ from ._shared_root import ensure_shared_on_path
 ensure_shared_on_path(Path(__file__).resolve())
 
 from common.llm_client import LLM_TRANSIENT_ERRORS, KomirJsonLLM  # noqa: E402
-from rag_core.retrieval.access import PRIVATE_ONLY_KOMIS_PAGES  # noqa: E402
+from rag_core.retrieval.access import (  # noqa: E402
+    PRIVATE_ONLY_KOMIS_PAGES, RESTRICTED_KOMIS_PAGES,
+)
 from rag_core.retrieval import mine_aggregate, weekly_trend, mineral_info, monthly_trend, document_facts, reports, cross_rank, news, battery_minerals, production_concentration, inventory  # noqa: E402
 from rag_core.retrieval.evidence import (  # noqa: E402
     Evidence, KOMIS_RAW_DUMMY_CAVEAT, KOMIS_RAW_UNVERIFIED_CAVEAT,
@@ -105,8 +107,17 @@ STRUCTURED_ENABLED = False
 #: 중단 표식. 원천 MCP의 거부 경고만 기다리면 dense/PageIndex 안전망이 무관한
 #: 문서를 찾아 "정상 답변"처럼 보이게 하므로, 도구 실행 전에 종료한다.
 _PRIVATE_ONLY_PROFILE_WARNING = "private_only_profile_access"
+_ACCESS_DENIED_WARNING = "access_denied"
 _AGGREGATE_INCOMPLETE_WARNING = "aggregate_incomplete"
 _SOURCE_UNAVAILABLE_WARNING_PREFIX = "source_unavailable:"
+
+
+def _is_restricted_indicator_question(question: str) -> bool:
+    """접근 제한 지표 질의를 LLM·검색 전에 결정적으로 식별한다."""
+    compact = re.sub(r"\s+", "", question)
+    return any(marker in compact for marker in (
+        "시장동향지표", "시장전망지표", "수급동향지표", "수급안정지수",
+    ))
 
 ROUTE_PROMPT = """당신은 핵심광물 수급위기 진단·수요예측 챗봇의 검색 라우터다.
 직전 대화(history, 있으면)와 이번 질문(question)을 보고 정확히 하나의 JSON
@@ -957,7 +968,7 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
             token in (s.topic or question) for token in ("동향", "뉴스")):
         return RetrievalRoute(**common, use_weekly_trend=True)
     if (call.action_id == "document.retrieve" and "월간동향" not in (s.topic or question)
-            and any(token in (s.topic or question) for token in ("용도", "어디에 쓰", "어디쓰", "쓰여", "사용처", "활용처", "원소기호", "원자량", "원자번호", "주요 특성", "기본 특성", "기본 정보", "특성이", "어떤 광물", "어떤 금속", "무슨 광물", "무슨 금속", "광석", "ore"))):
+            and any(token in (s.topic or question) for token in ("용도", "어디에 쓰", "어디쓰", "쓰여", "사용처", "활용처", "원소기호", "원자량", "원자번호", "주요 특성", "기본 특성", "기본 정보", "특성이", "성질", "어떤 광물", "어떤 금속", "무슨 광물", "무슨 금속", "광석", "ore"))):
         return RetrievalRoute(**common, use_mineral_info=True)
     document_topic = re.sub(r"\s+", "", s.topic or question)
     if call.action_id == "document.retrieve" and any(token in document_topic for token in ("월간동향", "희소금속동향", "전략광종동향")):
@@ -2097,7 +2108,11 @@ def _retrieve_node(
     # 아예 넘기지 않는다 — 필터에 안 쓰이는 값을 넘겨 오표기를 만들 이유가 없다.
     komis_raw_page_id: str | None = None
     komis_raw_mineral_code: str | None = None
-    if route.use_komis_raw and route.komis_topic == "composite_index":
+    if route.use_komis_raw and route.komis_topic in {"market_outlook", "supply_stability"}:
+        # 접근 제한 지표는 광종 유무와 무관하게 먼저 차단한다. 광종이 없을 때
+        # page_id를 늦게 정하면 dense/PageIndex 안전망으로 우회할 수 있다.
+        komis_raw_page_id = _komis_raw_page_id(route.komis_topic, None)
+    elif route.use_komis_raw and route.komis_topic == "composite_index":
         komis_raw_page_id = "indicator_composite"
     elif route.use_komis_raw and route.komis_topic and route.komis_hs_code:
         # HS가 질문에 명시된 교역 질의는 광종 해석을 거치지 않는다. 예전에는
@@ -2131,12 +2146,22 @@ def _retrieve_node(
     # public 챗봇은 private 전용 지표를 다른 검색 도구로 우회해 답하면 안 된다.
     # 특히 원천 MCP가 거부한 뒤 dense/PageIndex가 오래된 PDF를 반환하면 접근
     # 제어는 지켰어도 사용자에게는 해당 지표를 조회한 것처럼 보이는 문제가 생긴다.
-    requested_private_pages = {
+    requested_pages = {
         page_id for page_id in (
             komis_raw_page_id,
             route.komis_indicator_ranking_page if route.use_komis_indicator_ranking else None,
-        ) if page_id in PRIVATE_ONLY_KOMIS_PAGES
+        ) if page_id
     }
+    requested_private_pages = {
+        page_id for page_id in requested_pages if page_id in PRIVATE_ONLY_KOMIS_PAGES
+    }
+    requested_restricted_pages = {
+        page_id for page_id in requested_pages
+        if page_id in RESTRICTED_KOMIS_PAGES
+    }
+    if requested_restricted_pages:
+        warnings.append(_ACCESS_DENIED_WARNING)
+        return {"evidence": [], "warnings": warnings}
     if state.get("profile") != "private" and requested_private_pages:
         warnings.append(_PRIVATE_ONLY_PROFILE_WARNING)
         return {"evidence": [], "warnings": warnings}
@@ -2900,6 +2925,7 @@ def _has_deterministic_abstain_signal(warnings: list[str]) -> bool:
     return any(
         _UNSUPPORTED_MINERAL_MARKER in w or _PERIOD_BOUNDS_MARKER in w
         or _NO_DATA_FOUND_MARKER in w or _PRIVATE_ONLY_PROFILE_WARNING in w
+        or _ACCESS_DENIED_WARNING in w
         or _AGGREGATE_INCOMPLETE_WARNING in w
         or w.startswith(_SOURCE_UNAVAILABLE_WARNING_PREFIX)
         for w in warnings
@@ -3031,7 +3057,7 @@ def _route_after_verify(state: RetrievalState) -> str:
     # 재시도 사이클 하나를 그대로 낭비하지 않고 바로 finalize로 보낸다.
     if any(marker in state.get("warnings", []) for marker in (
         "route_ambiguous_question", _COMPOSITE_INDEX_ABORT_WARNING,
-        _PRIVATE_ONLY_PROFILE_WARNING,
+        _PRIVATE_ONLY_PROFILE_WARNING, _ACCESS_DENIED_WARNING,
     )):
         return "done"
     if any(warning.startswith(_SOURCE_UNAVAILABLE_WARNING_PREFIX) for warning in state.get("warnings", [])):
@@ -3211,6 +3237,12 @@ def retrieve_evidence(
     """
 
     llm = llm or KomirJsonLLM()
+    if _is_restricted_indicator_question(question):
+        restricted_result = RetrievalResult(
+            action_plan=None, action_results=[], evidence=[],
+            warnings=[_ACCESS_DENIED_WARNING],
+        )
+        return restricted_result if include_action_results else restricted_result.legacy_pair()
     if on_status:
         on_status("routing")
     # Stage 1: typed intent/action/slot extraction. It is deliberately before
@@ -3334,6 +3366,7 @@ def retrieve_evidence(
             ev.requested_frequency = call.slots.period.frequency if call.slots.period else None
             ev.latest_price_display = bool(call.slots.period and call.slots.period.kind == "latest")
             ev.price_operation = call.slots.price_operation
+            ev.price_yoy_basis = call.slots.price_yoy_basis
             # 기간/월/연 집계는 결정적 문장으로만 표시한다. 집계 입력인 긴 원
             # 시계열 표를 다시 내보내면 사용자가 표본 행을 평균값으로 오해할 수
             # 있고, 불필요하게 큰 SSE 응답도 만든다.
