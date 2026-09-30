@@ -39,12 +39,15 @@ class Turn:
     bindings: Mapping[str, TypedResult] = field(default_factory=dict)
     evidence: tuple[Any, ...] = ()
     rendered_response: Mapping[str, Any] | None = None
+    result_id: str | None = None
+    result_snapshots: tuple[Mapping[str, Any], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
 class ConversationContext:
     session_id: str
     turns: tuple[Turn, ...] = ()
+    result_index: tuple[Mapping[str, Any], ...] = ()
 
     @property
     def latest(self) -> Turn | None:
@@ -53,6 +56,38 @@ class ConversationContext:
     def result(self, turn_id: str | None = None) -> ExecutionResult | None:
         turn = self.latest if turn_id is None else next((item for item in self.turns if item.turn_id == turn_id), None)
         return turn.result if turn else None
+
+    def project_snapshots(self, *, output_id: str, status: str = "success") -> tuple[Mapping[str, Any], ...]:
+        """현재 세션의 최신 구조화 결과만 InputRef 후속 projection에 제공한다."""
+        turn = self.latest
+        if turn is None:
+            return ()
+        return tuple(item for item in turn.result_snapshots
+                     if item.get("output_id") == output_id and item.get("status") == status)
+
+    def active_result_index(self) -> tuple[Mapping[str, Any], ...]:
+        """압축용 색인. 값/evidence는 복사하지 않고 참조 메타데이터만 유지한다."""
+        result: list[Mapping[str, Any]] = []
+        for turn in self.turns:
+            if not turn.result_id:
+                continue
+            grouped: dict[tuple[str, str], int] = {}
+            for snapshot in turn.result_snapshots:
+                key = (str(snapshot.get("mineral_id", "")), str(snapshot.get("output_id", "")))
+                grouped[key] = grouped.get(key, 0) + 1
+            result.append({"turn_id": turn.turn_id, "result_id": turn.result_id,
+                           "items": [{"mineral_id": mineral, "output_id": output, "count": count}
+                                     for (mineral, output), count in grouped.items()]})
+        return tuple(result)
+
+    def compact(self, *, keep_turns: int = 2) -> "ConversationContext":
+        """요약문과 구조화 결과를 분리한 결정적 압축.
+
+        오래된 Turn의 원문 표현만 제외할 수 있지만 snapshot과 식별자는
+        보존한다. 저장소의 실제 row/TTL에는 영향을 주지 않는다.
+        """
+        kept = self.turns[-max(1, keep_turns):]
+        return ConversationContext(self.session_id, kept, self.active_result_index())
 
 
 class HistoryStore(Protocol):
@@ -73,6 +108,8 @@ class HistoryStore(Protocol):
     async def save_evidence(self, session_id: str, turn_id: str, evidence: tuple[Any, ...]) -> None: ...
 
     async def cleanup_expired(self) -> int: ...
+    async def save_result_snapshots(self, session_id: str, turn_id: str, result_id: str, snapshots: tuple[Mapping[str, Any], ...]) -> None: ...
+    async def get_result_snapshots(self, session_id: str, turn_id: str | None = None, *, output_id: str | None = None, status: str | None = None) -> tuple[Mapping[str, Any], ...]: ...
 
 
 class InMemoryHistoryStore:
@@ -129,6 +166,23 @@ class InMemoryHistoryStore:
 
     async def cleanup_expired(self) -> int:
         return 0
+
+    async def save_result_snapshots(self, session_id: str, turn_id: str, result_id: str, snapshots: tuple[Mapping[str, Any], ...]) -> None:
+        turns = self._sessions.setdefault(session_id, [])
+        for index, turn in enumerate(turns):
+            if turn.turn_id == turn_id:
+                turns[index] = replace(turn, result_id=result_id, result_snapshots=snapshots)
+                return
+        raise KeyError(turn_id)
+
+    async def get_result_snapshots(self, session_id: str, turn_id: str | None = None, *, output_id: str | None = None, status: str | None = None) -> tuple[Mapping[str, Any], ...]:
+        context = await self.get_context(session_id)
+        turn = next((item for item in context.turns if item.turn_id == turn_id), context.latest) if turn_id else context.latest
+        if not turn:
+            return ()
+        return tuple(item for item in turn.result_snapshots
+                     if (output_id is None or item.get("output_id") == output_id)
+                     and (status is None or item.get("status") == status))
 
 
 def _json_default(value: Any) -> Any:
@@ -293,6 +347,8 @@ class PostgresHistoryStore:
                         pipe_id VARCHAR(128),
                         pipe_summary_json JSONB,
                         result_json JSONB,
+                        result_id VARCHAR(160),
+                        result_snapshots_json JSONB,
                         evidence_json JSONB,
                         expires_at TIMESTAMPTZ NOT NULL,
                         PRIMARY KEY (session_id, turn_id)
@@ -300,6 +356,8 @@ class PostgresHistoryStore:
                 """)
                 cur.execute(f"CREATE INDEX IF NOT EXISTS idx_multihop_history_expiry ON {self._table} (expires_at)")
                 cur.execute(f"CREATE INDEX IF NOT EXISTS idx_multihop_history_session ON {self._table} (session_id, created_at DESC)")
+                cur.execute(f"ALTER TABLE {self._table} ADD COLUMN IF NOT EXISTS result_id VARCHAR(160)")
+                cur.execute(f"ALTER TABLE {self._table} ADD COLUMN IF NOT EXISTS result_snapshots_json JSONB")
                 cur.execute(
                     f"""INSERT INTO "{self.schema}"."schema_migration" (component, version)
                     VALUES (%s, %s)
@@ -350,19 +408,21 @@ class PostgresHistoryStore:
                 cur.execute(f"""
                     INSERT INTO {self._table}
                     (session_id, turn_id, utterance, created_at, program_json, pipe_id,
-                     pipe_summary_json, result_json, evidence_json, expires_at)
-                    VALUES (%s, %s, %s, %s, %s::jsonb, %s, %s::jsonb, %s::jsonb, %s::jsonb, %s)
+                     pipe_summary_json, result_json, result_id, result_snapshots_json, evidence_json, expires_at)
+                    VALUES (%s, %s, %s, %s, %s::jsonb, %s, %s::jsonb, %s::jsonb, %s, %s::jsonb, %s)
                     ON CONFLICT (session_id, turn_id) DO UPDATE SET
                       utterance=EXCLUDED.utterance, created_at=EXCLUDED.created_at,
                       program_json=EXCLUDED.program_json, pipe_id=EXCLUDED.pipe_id,
                       pipe_summary_json=EXCLUDED.pipe_summary_json, result_json=EXCLUDED.result_json,
+                      result_id=EXCLUDED.result_id, result_snapshots_json=EXCLUDED.result_snapshots_json,
                       evidence_json=EXCLUDED.evidence_json, expires_at=EXCLUDED.expires_at
                 """, (
                     turn.session_id, turn.turn_id, turn.utterance.text, created_at,
                     _json_dump(turn.semantic_program.to_dict() if turn.semantic_program else None),
                     turn.pipe_id,
                     _json_dump(self._pipe_summary(turn.pipe) if turn.pipe else None),
-                    _json_dump(result), _json_dump(turn.evidence), expires_at,
+                    _json_dump(result), turn.result_id,
+                    _json_dump(turn.result_snapshots), _json_dump(turn.evidence), expires_at,
                 ))
             con.commit()
         finally:
@@ -377,7 +437,7 @@ class PostgresHistoryStore:
             with con.cursor() as cur:
                 cur.execute(f"""
                     SELECT turn_id, utterance, created_at, program_json, pipe_id,
-                           result_json, evidence_json
+                           result_json, result_id, result_snapshots_json, evidence_json
                     FROM {self._table}
                     WHERE session_id = %s AND expires_at > CURRENT_TIMESTAMP
                     ORDER BY created_at DESC, turn_id DESC
@@ -391,7 +451,7 @@ class PostgresHistoryStore:
     def _turn_from_row(session_id: str, row: tuple[Any, ...]) -> Turn:
         from .semantic_ir import SemanticProgram
 
-        turn_id, utterance, created_at, program_json, pipe_id, result_json, evidence_json = row
+        turn_id, utterance, created_at, program_json, pipe_id, result_json, result_id, snapshots_json, evidence_json = row
         if created_at.tzinfo is None:
             created_at = created_at.replace(tzinfo=timezone.utc)
         program = None
@@ -411,6 +471,8 @@ class PostgresHistoryStore:
             result=result,
             bindings=result.results if result else {},
             evidence=evidence,
+            result_id=result_id,
+            result_snapshots=tuple(_json_load(snapshots_json) or ()),
         )
 
     async def create_session(self, session_id: str) -> None:
@@ -466,6 +528,30 @@ class PostgresHistoryStore:
 
     async def cleanup_expired(self) -> int:
         return await self._call(self._cleanup_sync)
+
+    async def save_result_snapshots(self, session_id: str, turn_id: str, result_id: str, snapshots: tuple[Mapping[str, Any], ...]) -> None:
+        await self._call(self._update_snapshot_sync, session_id, turn_id, result_id, snapshots)
+
+    def _update_snapshot_sync(self, session_id: str, turn_id: str, result_id: str, snapshots: tuple[Mapping[str, Any], ...]) -> None:
+        con = self._connection_factory()
+        try:
+            with con.cursor() as cur:
+                cur.execute(f"UPDATE {self._table} SET result_id=%s, result_snapshots_json=%s::jsonb WHERE session_id=%s AND turn_id=%s",
+                            (result_id, _json_dump(snapshots), session_id, turn_id))
+                if cur.rowcount == 0:
+                    raise KeyError(turn_id)
+            con.commit()
+        finally:
+            con.close()
+
+    async def get_result_snapshots(self, session_id: str, turn_id: str | None = None, *, output_id: str | None = None, status: str | None = None) -> tuple[Mapping[str, Any], ...]:
+        context = await self.get_context(session_id)
+        turn = next((item for item in context.turns if item.turn_id == turn_id), context.latest) if turn_id else context.latest
+        if not turn:
+            return ()
+        return tuple(item for item in turn.result_snapshots
+                     if (output_id is None or item.get("output_id") == output_id)
+                     and (status is None or item.get("status") == status))
 
 
 def _execution_dump(result: ExecutionResult | None) -> dict[str, Any] | None:

@@ -103,7 +103,7 @@ rank(price_change) → top_k(3) → retrieve(import_value, input=top_k) → arg_
 
 
 def _history_store_from_env():
-    backend = os.getenv("MULTIHOP_HISTORY_BACKEND", "memory").strip().casefold()
+    backend = os.getenv("MULTIHOP_HISTORY_BACKEND", "postgres" if os.getenv("PG_DSN") else "memory").strip().casefold()
     if backend != "postgres":
         return InMemoryHistoryStore()
     dsn = (os.getenv("MULTIHOP_HISTORY_DSN") or os.getenv("PG_DSN") or "").strip()
@@ -792,6 +792,8 @@ async def run_live_multihop(
     history: list[dict[str, str]],
     legacy_action_ids: list[str] | None = None,
 ) -> LiveRun:
+    if isinstance(_HISTORY, PostgresHistoryStore):
+        await _HISTORY.ensure_schema()
     context = await _HISTORY.get_context(session_id)
     program = await _parse_ast(llm, message, context)
     program = _resolve_history_references(program, context)
@@ -873,6 +875,12 @@ async def record_legacy_comparison(run: LiveRun, retrieval_result: Any | None) -
                 failure_reason=None if status == ResultStatus.SUCCESS else "legacy result unavailable",
             )
             await _HISTORY.save_result(run.session_id, run.turn_id, result)
+            if hasattr(retrieval_result, "snapshots"):
+                result_id = f"{run.turn_id}:legacy"
+                await _HISTORY.save_result_snapshots(
+                    run.session_id, run.turn_id, result_id,
+                    retrieval_result.snapshots(turn_id=run.turn_id, result_id=result_id),
+                )
     if run.skipped or run.orchestration is None:
         return
     _logger.info(

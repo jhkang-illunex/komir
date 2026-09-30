@@ -822,9 +822,15 @@ def render_composite(evidence: list, action_plan, action_results=None, *, trace:
             getattr(item, "requirement_id", None): (index, item)
             for index, item in by_action.get("price.series", [])
         }
-        lines, cited = [], {monthly_index}
+        grouped: dict[str, dict[str, str]] = {}
+        cited = {monthly_index}
         for action in monthly_price_actions:
             mineral = getattr(action.slots, "mineral", None) or "요청 광종"
+            output_id = "trailing_3_month_price_series" if (
+                getattr(action.slots, "period", None)
+                and action.slots.period.kind == "trailing_months"
+            ) else "latest_price"
+            grouped.setdefault(mineral, {})
             outcome = outcomes.get(getattr(action, "requirement_id", None))
             pair = evidence_by_req.get(getattr(action, "requirement_id", None))
             if outcome is not None and outcome.status == "success" and pair:
@@ -832,22 +838,31 @@ def render_composite(evidence: list, action_plan, action_results=None, *, trace:
                 if points:
                     period = getattr(action.slots, "period", None)
                     if period and period.kind == "trailing_months":
-                        lines.append(
-                            f"- {mineral} [trailing_{period.trailing_months}_month_price_series]: "
+                        grouped[mineral][output_id] = (
                             f"{points[0][0].isoformat()}~{points[-1][0].isoformat()} "
                             f"{len(points)}건 (성공)"
                         )
                         cited.add(pair[0])
                         continue
                     observed, value = points[-1]
+                    grouped[mineral][output_id] = f"{observed.isoformat()} {_fmt(value)} (성공)"
                     cited.add(pair[0])
-                    lines.append(f"- {mineral} [latest_price]: {observed.isoformat()} {_fmt(value)} (성공)")
                     continue
             reason = getattr(outcome, "failure_reason", None) if outcome else "not_executed"
             status = "NEEDS_SELECTION" if reason in {"ambiguous", "advisor_rejected"} else (
                 "DATA_UNAVAILABLE" if reason in {"no_data", "source_unavailable"} else "EXECUTION_FAILED"
             )
-            lines.append(f"- {mineral}: {status} ({reason or '조회되지 않음'})")
+            grouped[mineral][output_id] = f"{status} ({reason or '조회되지 않음'})"
+        lines = []
+        for mineral, outputs in grouped.items():
+            values = list(outputs.values())
+            if len(values) == 2 and all(value.startswith("NEEDS_SELECTION") for value in values):
+                details = "가격 기준 확인 필요 (최근·3개월)"
+            elif len(values) == 2 and all(value.startswith("DATA_UNAVAILABLE") for value in values):
+                details = "가격 정보가 없습니다 (최근·3개월)"
+            else:
+                details = "; ".join(f"{name}={value}" for name, value in outputs.items())
+            lines.append(f"- {mineral}: {details}")
         if lines:
             return (
                 f"월간동향 : {getattr(monthly, 'section', None) or '확인된 월간동향'}에 언급된 광종별 최근 가격\n"

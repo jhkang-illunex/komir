@@ -32,6 +32,14 @@ class ItemResult:
     reason: str | None = None
     evidence: list[Evidence] = field(default_factory=list)
 
+    def snapshot(self, *, turn_id: str, result_id: str) -> dict[str, object]:
+        return {
+            "turn_id": turn_id, "result_id": result_id,
+            "mineral_id": self.key[0], "output_id": self.key[1],
+            "status": self.status, "value": self.value,
+            "reason": self.reason, "evidence": list(self.evidence),
+        }
+
 
 def classify_item(*, key: tuple[str, str] = ("", ""), value: Any = None, evidence: list[Evidence] | None = None,
                   failure_reason: str | None = None,
@@ -105,6 +113,10 @@ class RetrievalResult:
         if "success" in statuses:
             return "PARTIAL"
         return "FAILED"
+
+    def snapshots(self, *, turn_id: str, result_id: str) -> tuple[dict[str, object], ...]:
+        return tuple(item.snapshot(turn_id=turn_id, result_id=result_id)
+                     for item in self.item_results.values())
 
     def legacy_pair(self) -> tuple[list[Evidence], list[str]]:
         """기존 retrieve_evidence() 호출자에게 반환하던 정확한 2개 값을 만든다."""
