@@ -122,6 +122,26 @@ def _markdown_table(columns: list[str], rows: list[list[str]]) -> str:
     ])
 
 
+def _unique_display_columns(columns: list[str]) -> list[str]:
+    """Make malformed source headers safe for dataframe/front-end adapters.
+
+    Some document tables contain blank or repeated header cells.  Preserve their
+    positional meaning, but do not expose duplicate dataframe labels.
+    """
+    used: set[str] = set()
+    result: list[str] = []
+    for index, value in enumerate(columns, start=1):
+        base = str(value).strip() or f"열 {index}"
+        candidate = base
+        suffix = 2
+        while candidate in used:
+            candidate = f"{base} ({suffix})"
+            suffix += 1
+        used.add(candidate)
+        result.append(candidate)
+    return result
+
+
 def presentation_table(table: dict) -> tuple[dict, list[str]]:
     """표·차트 블록에서 표시 가치가 없는 내부 열을 제거한다.
 
@@ -136,7 +156,7 @@ def presentation_table(table: dict) -> tuple[dict, list[str]]:
             hidden.append(key)
         else:
             keep.append(idx)
-    columns = [table["columns"][idx] for idx in keep]
+    columns = _unique_display_columns([table["columns"][idx] for idx in keep])
     rows = [[row[idx] for idx in keep] for row in table["rows"]]
     sanitized_codes = False
     # 가격 API 코드 열은 공식 매핑이 확인된 표준 코드만 사람이 읽을 수 있는
@@ -154,7 +174,7 @@ def presentation_table(table: dict) -> tuple[dict, list[str]]:
             value = row[idx].strip().upper()
             row[idx] = code_values.get(value, "")
         columns[idx] = "통화" if key == "price_currency_code" else "단위"
-    if not hidden and not sanitized_codes:
+    if not hidden and not sanitized_codes and columns == [table["columns"][idx] for idx in keep]:
         return table, hidden
     return {**table, "columns": columns, "rows": rows,
             "markdown": _markdown_table(columns, rows)}, hidden

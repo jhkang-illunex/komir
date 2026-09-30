@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.streaming import StrikethroughFilter, strip_strikethrough  # noqa: E402
 from rag_core.ragkit.chatbot_events import (  # noqa: E402
-    chart_spec, extract_markdown_tables, recommend_chart, table_block,
+    chart_spec, extract_markdown_tables, presentation_table, recommend_chart, table_block,
 )
 
 _PRICE_MD = """설명 문장.
@@ -37,6 +37,14 @@ _RESERVE_2Y_MD = """| crtr_yr(기준년도) | ntn_eng_cd(국가코드 영문) | 
 
 
 class StructuredBlockTest(unittest.TestCase):
+    def test_duplicate_or_blank_headers_are_safe_for_dataframe_adapters(self):
+        table = {"columns": ["광종", "품목", "", "단위", "기준", "", ""],
+                 "rows": [["니켈", "용도", "x", "톤", "기준", "y", "z"]]}
+        displayed, _ = presentation_table(table)
+        self.assertEqual(displayed["columns"], ["광종", "품목", "열 3", "단위", "기준", "열 6", "열 7"])
+        self.assertEqual(len(displayed["columns"]), len(set(displayed["columns"])))
+        self.assertEqual(displayed["rows"][0], table["rows"][0])
+
     def test_table_block_types_nulls_and_hint(self):
         table = extract_markdown_tables(_PRICE_MD)[0]
         self.assertTrue(table["markdown"].startswith("| mnrl_prc_crtr_sn"))
