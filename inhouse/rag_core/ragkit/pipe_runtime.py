@@ -278,6 +278,9 @@ class PipeRuntime:
     def _compile(self, pipe: Pipe):
         pipe.validate()
         builder = StateGraph(GraphState)
+        # Semantic IDs are opaque references. LangGraph's reserved characters
+        # and sentinels must not restrict them or alter persisted result keys.
+        graph_ids = {step.step_id: f"step_{index}" for index, step in enumerate(pipe.steps)}
 
         for step in pipe.steps:
             async def run_node(state: GraphState, current_step: Step = step) -> dict[str, Any]:
@@ -322,23 +325,23 @@ class PipeRuntime:
                 except asyncio.CancelledError:
                     raise
 
-            builder.add_node(step.step_id, run_node)
+            builder.add_node(graph_ids[step.step_id], run_node)
 
         downstream: set[str] = set()
         for step in pipe.steps:
             dependencies = set(step.dependencies) | {b.source_step_id for b in step.bindings.values()}
             downstream.update(dependencies)
             if not dependencies:
-                builder.add_edge(START, step.step_id)
+                builder.add_edge(START, graph_ids[step.step_id])
             else:
                 # A multi-input step is a barrier: LangGraph must wait for
                 # every upstream result before evaluating its bindings. A
                 # separate edge per dependency would permit any one branch
                 # to trigger the downstream node prematurely.
-                builder.add_edge(sorted(dependencies), step.step_id)
+                builder.add_edge([graph_ids[dep] for dep in sorted(dependencies)], graph_ids[step.step_id])
         for step in pipe.steps:
             if step.step_id not in downstream:
-                builder.add_edge(step.step_id, END)
+                builder.add_edge(graph_ids[step.step_id], END)
         return builder.compile(name=f"pipe:{pipe.pipe_id}")
 
     async def execute_stream(self, pipe: Pipe, context: ExecutionContext | None = None) -> AsyncIterator[PipeEvent]:

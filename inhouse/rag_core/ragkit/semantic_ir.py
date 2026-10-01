@@ -47,7 +47,7 @@ class ValueType(str, Enum):
 
 
 _METRIC_FIELDS: dict[str, set[str]] = {
-    "price": {"price", "cmerc_prc", "value"},
+    "price": {"price", "cmerc_prc", "value", "date"},
     "price_change": {"price_change", "price_change_rate", "pct_change", "change_pct"},
     "price_change_rate": {"price_change", "price_change_rate", "pct_change", "change_pct"},
     "price_volatility": {"price_volatility", "price_change", "pct_change", "change_pct"},
@@ -314,8 +314,21 @@ class SemanticProgram:
             # downstream operators consuming an upstream result.
             if node.operator in {Operator.FILTER.value, Operator.SORT.value, Operator.PROJECT.value, Operator.ARG_MAX.value, Operator.ARG_MIN.value} and not node.inputs:
                 issues.append(f"{node.node_id} requires an upstream result")
-            if node.operator in {Operator.COMPARE.value, Operator.JOIN.value} and len(node.inputs) < 2:
-                issues.append(f"{node.node_id} requires at least two upstream results")
+            if node.operator in {Operator.COMPARE.value, Operator.JOIN.value}:
+                if len(node.inputs) != 2:
+                    issues.append(f"{node.node_id} requires exactly two upstream results")
+                common_key = args.get("join_key", args.get("on"))
+                if node.operator == Operator.JOIN and not common_key and not (args.get("left_on") and args.get("right_on")):
+                    issues.append(f"{node.node_id} requires explicit join keys")
+                fields = args.get("fields") or []
+                if node.operator == Operator.COMPARE and not args.get("field") and not (
+                    args.get("left_field") and args.get("right_field")
+                ) and not fields:
+                    issues.append(f"{node.node_id} requires comparison field or left_field/right_field")
+                for ref in node.inputs:
+                    upstream = node_map[ref.node_id]
+                    if upstream.operator == Operator.ENTITY and not fields_from_value(upstream.args.get("values")):
+                        issues.append(f"{node.node_id} requires retrieved rows, not an entity identifier: {ref.node_id}")
             if node.operator == Operator.FILTER.value and not isinstance(args.get("predicate"), Mapping) and not (args.get("field") or args.get("metric") or args.get("metric_field")):
                 issues.append(f"{node.node_id} requires a filter field or metric")
             if node.operator == Operator.ENTITY.value:
@@ -337,6 +350,19 @@ class SemanticProgram:
                         provided[node.node_id] = requested_fields(node)
                     elif node.operator == Operator.CALCULATE.value:
                         provided[node.node_id] = merged | ({"change_pct"} if args.get("calculation") in {"change_pct", "percent_change"} else set())
+                    elif node.operator in {Operator.JOIN, Operator.COMPARE}:
+                        keys = args.get("left_on", args.get("join_key", args.get("on"))) or []
+                        keys = [keys] if isinstance(keys, str) else keys
+                        produced = {f"{side}.{field}" for side, fields in zip(("left", "right"), input_sets) for field in fields or ()}
+                        produced.update(keys if isinstance(keys, list) else ())
+                        produced.update({"left_unit", "right_unit", "left_period", "right_period", "left_entity", "right_entity", "left_source", "right_source"})
+                        if node.operator == Operator.COMPARE:
+                            produced.update({"left_value", "right_value", "status", "reason"})
+                            if args.get("operation") in {"difference", "ratio", "percent_change"}:
+                                produced.add(args["operation"])
+                        else:
+                            produced.update({"match_status", "status", "reason"})
+                        provided[node.node_id] = produced
                     else:
                         provided[node.node_id] = merged
             else:

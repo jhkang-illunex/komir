@@ -37,6 +37,7 @@ from .lowering import PipeLowerer
 from .multihop_orchestrator import MultiHopOrchestrator
 from .pipe_runtime import ExecutionContext, ExecutionResult, FunctionStep, PipeRuntime, ResultStatus, TypedResult
 from .semantic_ir import Operator, RequirementNode, SemanticProgram, ValueType
+from .relational_ops import execute_relation
 from common.langfuse_tracing import LangfuseEventTracer
 
 _logger = logging.getLogger(__name__)
@@ -106,8 +107,23 @@ validate_evidence.
 - 가격 상승 광물 순위는 rank 또는 sort → top_k로 표현한다.
 - top_k 결과를 다시 조회할 때 downstream retrieve node의 input으로 연결한다.
 - 독립적인 국가비중·생산량 조회는 각각 node로 만들고 dependency가 없으면 병렬 가능하게 한다.
+- join/compare는 순서가 있는 두 inputs만 사용한다(첫 입력=left, 둘째=right).
+  entity는 광종 식별자일 뿐 가격/무역 데이터가 아니다. 각 입력의 retrieve를 먼저 생성한다.
+  join은 join_key(공통 키 또는 키 목록), 필요하면 left_on/right_on과 how=inner/left/full을 명시한다.
+  compare는 field 또는 left_field/right_field와 operation=side_by_side/difference/ratio/percent_change를 명시한다.
+  여러 행은 join_key로 대응시키며 행 순서로 짝짓지 않는다. 스칼라 1행씩만 키 생략이 가능하다.
+  difference=left-right, ratio=left/right, percent_change=(left-right)/abs(right)*100이다.
+  시계열 비교는 날짜 키, 국가별 비교는 국가 키를 유지한다. 서로 다른 단위는 계산하지 않는다.
+  join 출력은 left.<field>/right.<field>, compare는 left_value/right_value 및 연산명 필드를 만든다.
 - 질문에 없는 광물·기간·단위·수치를 추정하지 않는다.
 - source, metric, period, unit 조건을 args에 보존한다.
+- 사용자가 지정한 가격기준 번호는 args.price_criterion_serial 정수로 보존한다.
+  기준국 reporter_country와 상대국 partner_country를 서로 바꾸지 않는다.
+  통화 currency, 중량단위 weight_unit, 가격기준 price_basis는 명시한 경우 보존한다.
+  최신값은 output=latest_value, 시계열은 output=time_series로 구분한다.
+  period는 문자열이 아니라 구조화된 기간 객체 또는 null이다.
+  기간 객체는 kind=trailing_months와 trailing_months 정수,
+  kind=calendar_year와 calendar_year 정수, 또는 kind=range와 start/end(ISO 날짜)를 쓴다.
 - operator args에는 domain, metric, flow, scope, mineral, minerals, period,
   top_n, order, field, predicate, topic, calculation을 사용할 수 있다.
 - unsupported data는 AST에 억지로 만들지 말고 validate_evidence 단계에서 기권할 수 있게 한다.
@@ -255,6 +271,9 @@ async def _parse_ast(llm: KomirJsonLLM, message: str, context: ConversationConte
         payload = invocation.output.model_dump(mode="json")
         try:
             program = SemanticProgram.from_dict(_normalize_history_aliases(payload, context))
+            for node in program.nodes:
+                if node.operator in {Operator.RETRIEVE, Operator.RETRIEVE_DOCUMENT, Operator.FOR_EACH}:
+                    _action_slots(node)
         except ValueError as exc:
             parse_error = exc
             _logger.warning("multihop_ast_validation_failure attempt=%d reason=%s", attempt + 1, exc)
@@ -360,8 +379,10 @@ def _resolve_history_references(program: SemanticProgram, context: ConversationC
             continue
         for step_id, result in turn.result.results.items():
             history_results[f"history:{turn.turn_id}:{step_id}"] = result
-            if turn.result_id:
-                history_results.setdefault(f"result:{turn.result_id}", result)
+        if turn.result_id and turn.semantic_program:
+            roots = {key: turn.result.results[key] for key in turn.semantic_program.roots if key in turn.result.results}
+            if len(roots) == 1:
+                history_results[f"result:{turn.result_id}"] = next(iter(roots.values()))
     if not history_results:
         return program
 
@@ -402,7 +423,7 @@ def _period(value: Any) -> Period | None:
         return value
     if isinstance(value, Mapping):
         return Period.model_validate(dict(value))
-    return None
+    raise ValueError("invalid_period_contract")
 
 
 def _numeric(value: Any) -> float | None:
@@ -414,7 +435,7 @@ def _numeric(value: Any) -> float | None:
         return None
 
 
-def _resolve_row_field(rows: list[Any], requested: str | None) -> str | None:
+def _resolve_row_field(rows: list[Any], requested: str | None, *, strict: bool = False) -> str | None:
     """Resolve a semantic field to the concrete table column, including units."""
     if not requested:
         return None
@@ -425,6 +446,8 @@ def _resolve_row_field(rows: list[Any], requested: str | None) -> str | None:
     if requested in keys:
         return requested
     aliases = {
+        "date": {"date", "crtr_ymd", "기준일자", "기준일", "observed_date"},
+        "price": {"price", "cmerc_prc", "통상가격", "latest_price"},
         "country": {"country", "국가", "국가명", "수입국", "상대국"},
         "share_percentage": {"share_percentage", "비중", "점유율", "수입비중", "수입 비중"},
         "import_amount": {"import_amount", "수입액", "수입금액", "금액"},
@@ -433,8 +456,11 @@ def _resolve_row_field(rows: list[Any], requested: str | None) -> str | None:
         "unit": {"unit", "단위"},
     }
     requested_names = aliases.get(requested.casefold(), {requested})
+    if strict:
+        matches = [key for key in keys if key in requested_names or any(key.startswith(alias + "(") for alias in requested_names)]
+        return matches[0] if len(matches) == 1 else None
     for key in keys:
-        if key in requested_names:
+        if key in requested_names or any(key.startswith(alias + "(") for alias in requested_names):
             return key
     normalized = re.sub(r"[^a-z0-9가-힣]+", "", requested.casefold())
     for key in keys:
@@ -451,6 +477,17 @@ def _rows(evidence: list[Any]) -> list[dict[str, Any]]:
             for row in table["rows"]:
                 rows.append(dict(zip(table["columns"], row)))
     return rows
+
+
+def _typed_unit(raw: str | None) -> str | None:
+    """Decode registered source unit codes; keep raw provenance in Evidence."""
+    unit = _verified_display_unit(raw)
+    if not unit and isinstance(raw, str):
+        fields = dict(part.strip().split("=", 1) for part in raw.split(";") if "=" in part)
+        currency, weight = fields.get("통화코드"), fields.get("중량단위코드")
+        if currency and weight:
+            unit = _price_unit_from_codes([currency.strip()], [weight.strip()])
+    return {"USD/mt": "USD/톤", "USD/t": "USD/톤", "USD/ton": "USD/톤", "t": "톤"}.get(unit, unit)
 
 
 def _entity_values(value: Any) -> list[str]:
@@ -555,7 +592,7 @@ def _typed_from_retrieval(result: Any, action: ActionCall, *, input_entities: li
         entity=tuple(entities),
         metric=action.slots.metric or action.slots.trade_metric,
         period=action.slots.period.model_dump(mode="json") if action.slots.period else None,
-        unit=next((getattr(item, "unit", None) for item in evidence if getattr(item, "unit", None)), None),
+        unit=_typed_unit(next((getattr(item, "unit", None) for item in evidence if getattr(item, "unit", None)), None)),
         source=sources,
         evidence=evidence,
         provenance=provenance,
@@ -574,7 +611,7 @@ def _action_id(node: Any) -> str:
     trade_rank_metrics = {"import_share", "country_share", "country_rank"}
     if metric in price_metrics or (node.operator == Operator.RANK.value and domain == "price"):
         return "price.volatility_rank"
-    if domain == "price":
+    if domain == "price" or metric == "price":
         return "price.series"
     if metric in trade_series_metrics:
         return "trade.monthly"
@@ -615,7 +652,7 @@ def _action_slots(node: Any, mineral: str | None = None, minerals: list[str] | N
         scope = "korea"
     if scope in {"WORLD", "GLOBAL", "global", "세계"}:
         scope = "global"
-    return ActionSlots(
+    slots = dict(
         mineral=resolved_mineral,
         minerals=resolved_minerals or None,
         metric=metric,
@@ -626,15 +663,34 @@ def _action_slots(node: Any, mineral: str | None = None, minerals: list[str] | N
         topic=args.get("topic") or args.get("question"),
         requested_outputs={"text", "table", "chart"},
     )
+    # Preserve registered typed constraints, without admitting arbitrary tool
+    # arguments or letting raw args overwrite normalized entity/period fields.
+    for name in ActionSlots.model_fields:
+        if name not in slots and name in args:
+            slots[name] = args[name]
+    return ActionSlots.model_validate(slots)
 
 
 class LiveOperatorFactory:
-    def __init__(self, *, message: str, session_id: str, profile: str, llm: KomirJsonLLM, history: list[dict[str, str]]):
+    def __init__(self, *, message: str, session_id: str, profile: str, llm: KomirJsonLLM, history: list[dict[str, str]], context: ConversationContext | None = None):
         self.message = message
         self.session_id = session_id
         self.profile = profile
         self.llm = llm
         self.history = history
+        self.saved_results: dict[str, TypedResult] = {}
+        if context is not None:
+            for turn in context.turns:
+                if turn.result is None:
+                    continue
+                for step_id, result in turn.result.results.items():
+                    ref = f"history:{turn.turn_id}:{step_id}"
+                    self.saved_results["ctx_" + re.sub(r"[^A-Za-z0-9_]+", "_", ref).strip("_")] = result
+                if turn.result_id and turn.semantic_program and len(turn.semantic_program.roots) == 1:
+                    root = turn.result.results.get(turn.semantic_program.roots[0])
+                    if root is not None:
+                        ref = f"result:{turn.result_id}"
+                        self.saved_results["ctx_" + re.sub(r"[^A-Za-z0-9_]+", "_", ref).strip("_")] = root
 
     def build(self, *, node: Any, dependencies: tuple[str, ...], bindings: Mapping[str, Any]):
         if node.operator == Operator.ENTITY.value:
@@ -647,8 +703,13 @@ class LiveOperatorFactory:
             return FunctionStep(node.node_id, node.operator.value, lambda _c, inputs: self._validate(inputs), dependencies=dependencies, bindings=bindings)
         return FunctionStep(node.node_id, node.operator.value, lambda _c, inputs: self._retrieve(node, inputs), dependencies=dependencies, bindings=bindings)
 
-    @staticmethod
-    def _entity(node: Any) -> TypedResult:
+    def _entity(self, node: Any) -> TypedResult:
+        if node.node_id in self.saved_results:
+            # The session-owned snapshot, not model-supplied args, is the
+            # authority for values, types, evidence and partial state.
+            return self.saved_results[node.node_id]
+        if node.node_id.startswith("ctx_"):
+            return TypedResult.failed("unresolved_history_reference")
         values = node.args.get("values") or node.args.get("minerals") or node.args.get("mineral") or []
         if isinstance(values, str):
             values = [values]
@@ -659,6 +720,8 @@ class LiveOperatorFactory:
         return next(iter(inputs.values())).value if inputs else None
 
     def _derive(self, node: Any, inputs: Mapping[str, TypedResult]) -> TypedResult:
+        if node.operator in {Operator.JOIN, Operator.COMPARE}:
+            return execute_relation(node, inputs, lambda rows, field: _resolve_row_field(rows, field, strict=True))
         if any(result.status == ResultStatus.PARTIAL for result in inputs.values()) and node.operator in {
             Operator.AGGREGATE, Operator.CALCULATE, Operator.RANK, Operator.TOP_K,
             Operator.ARG_MAX, Operator.ARG_MIN, Operator.COMPARE,
@@ -668,7 +731,23 @@ class LiveOperatorFactory:
         value = source.value if source else None
         rows = value if isinstance(value, list) else ([value] if isinstance(value, Mapping) else [])
         args = node.args
-        if node.operator == Operator.TOP_K.value:
+        if node.operator == Operator.AGGREGATE.value:
+            field = _resolve_row_field(rows, args.get("field") or args.get("metric_field"))
+            aggregation = args.get("aggregation")
+            if not field or aggregation not in {"sum", "average", "mean", "count", "min", "max"} or args.get("group_by"):
+                return TypedResult.abstain("unsupported_aggregate_contract")
+            values = [_numeric(row.get(field)) for row in rows if isinstance(row, Mapping)]
+            if not values or any(value is None for value in values):
+                return TypedResult.abstain("aggregate_input_incomplete")
+            units = {row.get("unit") for row in rows if isinstance(row, Mapping) and row.get("unit")}
+            if len(units) > 1:
+                return TypedResult.abstain("unit_mismatch")
+            operations = {"sum": sum, "average": lambda v: sum(v) / len(v),
+                          "mean": lambda v: sum(v) / len(v), "count": len, "min": min, "max": max}
+            return replace(source, result_type=ValueType.SCALAR_METRIC,
+                           value=[{field: operations[aggregation](values)}],
+                           unit=None if aggregation == "count" else source.unit)
+        elif node.operator == Operator.TOP_K.value:
             rows = rows[: int(args.get("k") or args.get("top_n") or 5)]
         elif node.operator in {Operator.SORT.value, Operator.RANK.value}:
             field = args.get("field") or args.get("metric_field")
@@ -728,9 +807,21 @@ class LiveOperatorFactory:
                 left, right = _numeric(actual), _numeric(expected_value)
                 if left is not None and right is not None:
                     actual, expected_value = left, right
-                return {"equals": actual == expected_value, "greater_than": actual > expected_value, "less_than": actual < expected_value, "gte": actual >= expected_value, "lte": actual <= expected_value}.get(operator, False)
+                if operator == "equals":
+                    return actual == expected_value
+                if actual is None or expected_value is None:
+                    return False
+                if operator == "greater_than":
+                    return actual > expected_value
+                if operator == "less_than":
+                    return actual < expected_value
+                if operator == "gte":
+                    return actual >= expected_value
+                if operator == "lte":
+                    return actual <= expected_value
+                raise ValueError(f"unsupported filter operator: {operator}")
             if not field:
-                return TypedResult.success(ValueType.FACT_SET, rows, entity=tuple(_entity_values(rows)), evidence=source.evidence if source else (), source=source.source if source else (), provenance=source.provenance if source else (), sufficient=source.sufficient if source else False, upstream_step_ids=source.upstream_step_ids if source else ())
+                return replace(source, value=rows) if source else TypedResult.failed("missing_input")
             rows = [row for row in rows if keep(row)]
         elif node.operator in {Operator.ARG_MAX.value, Operator.ARG_MIN.value}:
             field = args.get("field") or args.get("metric_field")
@@ -764,22 +855,21 @@ class LiveOperatorFactory:
                 for row in rows
                 if isinstance(row, Mapping)
             ]
-        elif node.operator == Operator.COMPARE.value or node.operator == Operator.JOIN.value:
-            rows = []
-            for item in inputs.values():
-                if isinstance(item.value, list):
-                    rows.extend(row for row in item.value if row is not None)
-                elif item.value is not None:
-                    rows.append(item.value)
         elif node.operator == Operator.CALCULATE.value:
             calculation = args.get("calculation")
             if calculation in {"change_pct", "percent_change"} and isinstance(value, Mapping):
                 start, end = _numeric(value.get("start")), _numeric(value.get("end"))
                 if start is not None and start != 0 and end is not None:
                     rows = [{**value, "change_pct": (end - start) / abs(start) * 100}]
+                else:
+                    return TypedResult.abstain("invalid_calculation_operands")
+            else:
+                return TypedResult.abstain("unsupported_calculation_contract")
         entities = _entity_values(rows) or (list(source.entity) if source else [])
         result_type = ValueType.MINERAL_SET if node.operator == Operator.TOP_K.value else (source.result_type if source else ValueType.FACT_SET)
-        return TypedResult.success(result_type, rows, entity=tuple(entities), evidence=source.evidence if source else (), source=source.source if source else (), provenance=source.provenance if source else (), sufficient=source.sufficient if source else False, upstream_step_ids=source.upstream_step_ids if source else ())
+        if source is None:
+            return TypedResult.failed("missing_input")
+        return replace(source, result_type=result_type, value=rows, entity=tuple(entities))
 
     def _validate(self, inputs: Mapping[str, TypedResult]) -> TypedResult:
         source = next(iter(inputs.values()), None)
@@ -796,21 +886,34 @@ class LiveOperatorFactory:
         if not minerals and node.args.get("mineral"):
             minerals = [str(node.args["mineral"])]
         if action_id in {"trade.country_rank", "trade.monthly", "resource.rank"} and len(minerals) > 1:
-            results = await asyncio.gather(*(self._call_action(node, action_id, mineral=minerals[0] if action_id == "trade.monthly" else mineral) for mineral in minerals))
+            async def retrieve_item(mineral: str) -> TypedResult:
+                try:
+                    return await self._call_action(node, action_id, mineral=mineral)
+                except Exception:
+                    return TypedResult.failed("execution_failed")
+            results = await asyncio.gather(*(retrieve_item(mineral) for mineral in minerals))
             merged = TypedResult.empty(ValueType.FACT_SET, "no data")
             merged_rows: list[dict[str, Any]] = []
             evidences: list[Any] = []
             sources: list[str] = []
             provenance: list[str] = []
-            for item in results:
-                if item.status == ResultStatus.SUCCESS:
+            failed_items = []
+            for mineral, item in zip(minerals, results):
+                if item.status == ResultStatus.SUCCESS and item.sufficient:
                     if isinstance(item.value, list):
-                        merged_rows.extend(item.value)
+                        merged_rows.extend({**row, "mineral": mineral} if isinstance(row, Mapping) else row for row in item.value)
                     evidences.extend(item.evidence)
                     sources.extend(item.source)
                     provenance.extend(item.provenance)
+                else:
+                    failed_items.append({"mineral": mineral, "status": item.status.value, "reason": item.failure_reason})
             if evidences:
-                merged = TypedResult.success(ValueType.FACT_SET, merged_rows, entity=tuple(dict.fromkeys(minerals)), evidence=tuple(evidences), source=tuple(dict.fromkeys(sources)), provenance=tuple(dict.fromkeys(provenance)))
+                merged = TypedResult(ValueType.FACT_SET, merged_rows + failed_items,
+                    status=ResultStatus.PARTIAL if failed_items else ResultStatus.SUCCESS,
+                    entity=tuple(dict.fromkeys(minerals)), evidence=tuple(evidences), source=tuple(dict.fromkeys(sources)), provenance=tuple(dict.fromkeys(provenance)))
+            elif failed_items:
+                merged = TypedResult(ValueType.FACT_SET, failed_items, status=ResultStatus.FAILED,
+                                    sufficient=False, failure_reason="all_items_failed")
             return merged
         return await self._call_action(node, action_id, mineral=minerals[0] if minerals else None, minerals=minerals or None)
 
@@ -847,6 +950,9 @@ class LiveOperatorFactory:
         for mineral, result in zip(minerals, results):
             rows.append({"mineral": mineral, "status": result.status.value,
                          "value": result.value, "reason": result.failure_reason,
+                         "result_type": result.result_type.value,
+                         "metric": node.args.get("metric") or node.args.get("domain"),
+                         "output": node.args.get("output") or ("time_series" if node.args.get("period") else "latest_value"),
                          "evidence": list(result.evidence), "unit": result.unit,
                          "period": result.period, "source": list(result.source),
                          "provenance": list(result.provenance)})
@@ -904,7 +1010,16 @@ class LiveOperatorFactory:
             action_plan=plan,
             include_action_results=True,
         )
-        return _typed_from_retrieval(result, call, input_entities=[mineral] if mineral else [])
+        typed = _typed_from_retrieval(result, call, input_entities=[mineral] if mineral else [])
+        if action_id == "price.series" and node.args.get("output") == "latest_value" and typed.status == ResultStatus.SUCCESS:
+            as_of = date.fromisoformat(str(node.args["as_of"])) if node.args.get("as_of") else date.today()
+            observations = [row for row in typed.value if isinstance(row, Mapping)
+                            and _row_date(row) is not None and _row_date(row) <= as_of] if isinstance(typed.value, list) else []
+            if not observations:
+                return replace(typed, value=[], status=ResultStatus.EMPTY, sufficient=False,
+                               failure_reason="no_observation_at_or_before_as_of")
+            typed = replace(typed, value=[max(observations, key=_row_date)])
+        return typed
 
 
 @dataclass(frozen=True)
@@ -940,7 +1055,7 @@ async def run_live_multihop(
             semantic_program=program,
         ))
         return LiveRun(program, None, skipped=True, session_id=session_id, turn_id=turn_id)
-    factory = LiveOperatorFactory(message=message, session_id=session_id, profile=profile, llm=llm, history=history)
+    factory = LiveOperatorFactory(message=message, session_id=session_id, profile=profile, llm=llm, history=history, context=context)
     lowerer = PipeLowerer(LegacyOperatorFactory({node.operator.value: factory.build for node in program.nodes}))
     pipe_id = f"pipe-{uuid4().hex[:12]}"
     orchestration = await MultiHopOrchestrator(
@@ -1030,13 +1145,60 @@ def live_run_events(run: LiveRun) -> list[ChatEvent]:
     """Encode validated canonical results using the existing ChatEvent contract."""
     if run.orchestration is None:
         return []
-    result = run.orchestration.root_result
+    return _result_events(run.orchestration.root_result)
+
+
+def _result_events(result: TypedResult) -> list[ChatEvent]:
     if result.status in {ResultStatus.ABSTAINED, ResultStatus.EMPTY, ResultStatus.FAILED, ResultStatus.DEPENDENCY_FAILED}:
         return [
             ChatEvent("delta", {"delta": result.failure_reason or "확인 가능한 근거가 없어 답변할 수 없습니다."}),
             ChatEvent("done", {"done": True, "abstained": True, "abstain_reason": result.failure_reason or "source_unavailable", "citations": []}),
         ]
     events: list[ChatEvent] = []
+    if result.result_type == ValueType.COMPOSITE and isinstance(result.value, list) and any(
+        isinstance(item, Mapping) and (item.get("output") == "time_series" or item.get("metric") not in {None, "price"})
+        for item in result.value
+    ):
+        children = {}
+        for index, item in enumerate(result.value):
+            if not isinstance(item, Mapping):
+                continue
+            key = f"{item.get('mineral', index)}:{item.get('output', 'result')}"
+            children[key] = TypedResult(
+                ValueType(item.get("result_type", "fact_set")), item.get("value"),
+                status=ResultStatus(item.get("status", "failed")),
+                sufficient=item.get("status") in {"success", "partial"},
+                unit=item.get("unit"), period=item.get("period"),
+                evidence=tuple(item.get("evidence") or ()), source=tuple(item.get("source") or ()),
+                provenance=tuple(item.get("provenance") or ()), failure_reason=item.get("reason"))
+        return _result_events(replace(result, value=children))
+    if result.result_type == ValueType.COMPOSITE and isinstance(result.value, Mapping):
+        sources = list(dict.fromkeys(source for child in result.value.values()
+                       if isinstance(child, TypedResult) for source in child.source))
+        citations = [{"index": index, "source": source} for index, source in enumerate(sources, 1)]
+        completed = 0
+        for output_id, child in result.value.items():
+            if not isinstance(child, TypedResult):
+                continue
+            events.append(ChatEvent("delta", {"delta": f"\n{output_id}\n"}))
+            for event in _result_events(child):
+                if event.type == "done":
+                    completed += not event.data.get("abstained", True)
+                else:
+                    data = dict(event.data)
+                    source_index = data.get("source_index")
+                    if isinstance(source_index, int) and 0 < source_index <= len(child.source):
+                        data["source_index"] = sources.index(child.source[source_index - 1]) + 1
+                    if "block_id" in data:
+                        data["block_id"] = f"{output_id}-{data['block_id']}"
+                    if "data_ref" in data:
+                        data["data_ref"] = f"{output_id}-{data['data_ref']}"
+                    events.append(ChatEvent(event.type, data))
+        if result.status == ResultStatus.PARTIAL or completed < len(result.value):
+            events.append(ChatEvent("delta", {"delta": "\n일부 요청 결과만 확인되었습니다."}))
+        events.append(ChatEvent("done", {"done": True, "abstained": not bool(completed),
+            "citations": citations, "bogus_citations": []}))
+        return events
     # A document→ForEach→price query is a per-entity latest-value request.
     # Do not promote failed items or raw retrieval rows to the final table: the
     # composite result is an execution snapshot, while presentation selects
@@ -1095,7 +1257,18 @@ def live_run_events(run: LiveRun) -> list[ChatEvent]:
         citations = [{"index": index, "source": source} for index, source in enumerate(result.source, 1)]
         events.append(ChatEvent("done", {"done": True, "abstained": False, "citations": citations, "bogus_citations": []}))
         return events
-    events.append(ChatEvent("delta", {"delta": "요청하신 조건을 기존 데이터 원천에서 단계적으로 확인했습니다."}))
+    if isinstance(result.value, Mapping):
+        result = replace(result, value=[result.value])
+    if result.result_type == ValueType.DOCUMENT_EVIDENCE and isinstance(result.value, list):
+        texts = [getattr(item, "text", "") for item in result.value]
+        if texts and all(texts):
+            result = replace(result, value="\n\n".join(texts))
+    if not result.value:
+        return _result_events(TypedResult.abstain("presentation_unavailable"))
+    if isinstance(result.value, str):
+        events.append(ChatEvent("delta", {"delta": result.value}))
+    elif isinstance(result.value, list) and all(isinstance(row, str) for row in result.value):
+        events.append(ChatEvent("delta", {"delta": "\n".join(result.value)}))
     if isinstance(result.value, list) and result.value and all(isinstance(row, Mapping) for row in result.value):
         columns = list(dict.fromkeys(key for row in result.value for key in row.keys()))
         table = {
@@ -1108,10 +1281,23 @@ def live_run_events(run: LiveRun) -> list[ChatEvent]:
             "| " + " | ".join("---" for _ in columns) + " |",
             *["| " + " | ".join(row) + " |" for row in table["rows"]],
         ])
+        events.append(ChatEvent("delta", {"delta": table["markdown"]}))
         events.append(ChatEvent("table", table_block(table, block_id="multihop-table", source_index=1, source_label=(result.source[0] if result.source else None), unit=result.unit)))
         chart = chart_spec(table, block_id="multihop-chart", data_ref="multihop-table", source_index=1, source_label=(result.source[0] if result.source else None), unit=result.unit)
         if chart:
             events.append(ChatEvent("chart", chart))
+    if result.status == ResultStatus.PARTIAL and events:
+        rows = result.value if isinstance(result.value, list) else []
+        if rows and all(isinstance(row, Mapping) and "status" in row for row in rows):
+            completed = sum(row["status"] == "SUCCESS" for row in rows)
+            summary = f"표시된 {len(rows)}개 항목 중 {completed}개 처리 완료, {len(rows) - completed}개 처리 불가."
+            if "incomplete_population" in result.warnings:
+                summary += " 선행 결과가 불완전하여 전체 모집단 결과는 아닙니다."
+        else:
+            summary = "일부 결과만 확인되었습니다. 전체 모집단 결과는 아닙니다."
+        events.insert(0, ChatEvent("delta", {"delta": summary + "\n"}))
+    if not events:
+        return _result_events(TypedResult.abstain("unsupported_presentation_type"))
     citations = [{"index": index, "source": source} for index, source in enumerate(result.source, 1)]
     events.append(ChatEvent("done", {"done": True, "abstained": False, "citations": citations, "bogus_citations": []}))
     return events

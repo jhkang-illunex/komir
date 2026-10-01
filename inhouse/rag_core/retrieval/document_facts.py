@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import os
 import re
 from datetime import date
@@ -105,6 +106,7 @@ def _render(payload: dict[str, Any]) -> str:
 
 def fetch_document_facts_evidence(
     topic: str = "", *, root: Path | str = FACTS_ROOT, limit: int = 1,
+    okf_root: Path | str | None = None,
 ) -> tuple[list[Evidence], list[str]]:
     """월간동향 파생 사실을 기간·문서군으로 좁혀 최신 1건 반환."""
 
@@ -116,19 +118,49 @@ def fetch_document_facts_evidence(
     if period:
         start, end = period
         rows = [row for row in rows if start <= str(row.get("document_month") or "") <= end]
+    from .pageindex import OKF_DOCUMENTS_ROOT
+    source_root = Path(okf_root if okf_root is not None else OKF_DOCUMENTS_ROOT).resolve()
+    verified = []
+    warnings = []
+    for row in rows:
+        path = (source_root / str(row.get("okf_path") or "")).resolve()
+        if not path.is_relative_to(source_root) or not path.is_file() or not row.get("okf_body_sha256"):
+            warnings.append("document_facts_source_unverified")
+            continue
+        try:
+            body = path.read_text(encoding="utf-8")
+            # Same byte-level OKF body boundary as the sidecar hash contract;
+            # retrieval must not import the ingest application to read it.
+            if body.startswith("---\n"):
+                header_end = body.find("\n---\n", 3)
+                if header_end != -1:
+                    body = body[header_end + len("\n---\n"):].lstrip("\n")
+        except (OSError, UnicodeError):
+            warnings.append("document_facts_source_unverified")
+            continue
+        if hashlib.sha256(body.encode("utf-8")).hexdigest() != row["okf_body_sha256"]:
+            warnings.append("document_facts_stale")
+            continue
+        verified.append(row)
+    rows = verified
     minerals = _topic_minerals(topic)
     if minerals:
+        # Current extraction scans a bounded body region. A non-match is not
+        # proof of absence from the entire document.
+        if any(not row.get("extraction_complete", False) for row in rows):
+            warnings.append("document_mineral_coverage_unverified")
         rows = [row for row in rows if any(
             mineral in {str(value).strip() for value in (row.get("mineral_list") or [])}
             for mineral in minerals
         )]
     if not rows:
-        return [], ["document_facts_not_found"]
+        return [], list(dict.fromkeys(warnings)) or ["document_facts_not_found"]
     rows.sort(key=lambda row: (str(row.get("document_month") or ""), str(row.get("okf_path") or "")), reverse=True)
     selected = rows[: max(1, limit)]
     evidence = [Evidence(
         kind="pageindex", source=f"PageIndex 파생 사실 · {row.get('source_group') or '문서'}",
         section=str(row.get("title") or row.get("okf_path") or "문서 파생 사실"),
         text=_render(row), as_of=str(row.get("document_month") or "") or None,
+        source_id=f"{row.get('doc_id') or row.get('okf_path')}:{row['okf_body_sha256']}",
     ) for row in selected]
-    return evidence, []
+    return evidence, list(dict.fromkeys(warnings))

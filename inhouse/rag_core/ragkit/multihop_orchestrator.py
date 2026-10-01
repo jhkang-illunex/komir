@@ -82,9 +82,15 @@ class MultiHopOrchestrator:
         if len(root_values) == 1:
             root_result = root_values[0]
         elif root_values:
-            root_result = TypedResult.success(
+            successful = sum(item.status == ResultStatus.SUCCESS and item.sufficient for item in root_values)
+            usable = any(item.status in {ResultStatus.SUCCESS, ResultStatus.PARTIAL} and item.sufficient for item in root_values)
+            root_result = TypedResult(
                 ValueType.COMPOSITE,
                 {root: execution.results[root] for root in program.roots if root in execution.results},
+                status=ResultStatus.SUCCESS if successful == len(program.roots) else ResultStatus.PARTIAL if usable else ResultStatus.FAILED,
+                sufficient=usable,
+                failure_reason=None if usable else "all_roots_failed",
+                source=tuple(dict.fromkeys(source for item in root_values for source in item.source)),
                 evidence=tuple(evidence for item in root_values for evidence in item.evidence),
                 provenance=tuple(source for item in root_values for source in item.provenance),
                 upstream_step_ids=tuple(program.roots),

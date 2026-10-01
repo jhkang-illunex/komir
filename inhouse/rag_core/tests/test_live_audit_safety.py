@@ -13,6 +13,120 @@ from inhouse.rag_core.retrieval.evidence import Evidence
 
 
 class LiveAuditSafetyTests(unittest.IsolatedAsyncioTestCase):
+    def factory(self):
+        return live.LiveOperatorFactory(message="", session_id="fixture", profile="public", llm=None, history=[])
+
+    def test_price_metric_without_redundant_domain_is_not_document_lookup(self):
+        self.assertEqual(live._action_id(RequirementNode("price", Operator.RETRIEVE,
+            args={"metric": "price", "price_criterion_serial": 502})), "price.series")
+
+    def test_document_root_renders_validated_evidence_text(self):
+        ev = Evidence("pageindex", "fixture", "usage", "Synthetic usage fact")
+        root = TypedResult.success(ValueType.DOCUMENT_EVIDENCE, [ev], evidence=(ev,))
+        events = live.live_run_events(SimpleNamespace(orchestration=SimpleNamespace(root_result=root)))
+        self.assertIn("Synthetic usage fact", str([e.data for e in events]))
+        self.assertFalse(events[-1].data["abstained"])
+
+    async def test_runtime_keeps_semantic_ids_with_langgraph_reserved_characters(self):
+        from inhouse.rag_core.ragkit.pipe_runtime import Pipe, PipeRuntime, FunctionStep
+        first = FunctionStep("entity:nickel", "entity", lambda c, i: TypedResult.success(ValueType.MINERAL_SET, ["nickel"]))
+        second = FunctionStep("price:latest", "project", lambda c, i: i["entity:nickel"], dependencies=("entity:nickel",))
+        result = await PipeRuntime().execute(Pipe("reserved-ids", (first, second)))
+        self.assertEqual(result.results["price:latest"].value, ["nickel"])
+
+    def test_history_materialization_preserves_original_typed_snapshot(self):
+        source = TypedResult(ValueType.TIME_SERIES, [{"price": 10}], status=ResultStatus.PARTIAL,
+            entity=("nickel",), period={"year": 2024}, unit="USD/t",
+            evidence=(Evidence("structured", "fixture", "fixture", "price=10"),))
+        turn = Turn("old", "fixture", UserUtterance("previous"),
+            semantic_program=SemanticProgram((RequirementNode("root", Operator.ENTITY),), ("root",)),
+            result=ExecutionResult("pipe", ResultStatus.PARTIAL, {"root": source}, ()))
+        context = ConversationContext("fixture", (turn,))
+        factory = live.LiveOperatorFactory(message="", session_id="fixture", profile="public", llm=None,
+                                          history=[], context=context)
+        payload = {"nodes": [{"node_id": "next", "operator": "project",
+            "inputs": [{"node_id": "previous"}], "args": {"fields": ["price"]}}], "roots": ["next"]}
+        program = SemanticProgram.from_dict(live._normalize_history_aliases(payload, context))
+        restored = factory._entity(program.nodes[0])
+        self.assertIs(restored, source)
+        self.assertEqual(factory._derive(program.nodes[1], {"previous": restored}).status, ResultStatus.PARTIAL)
+
+    def test_simple_legacy_delegation_does_not_construct_empty_plan(self):
+        from unittest.mock import patch
+        from inhouse.rag_core.ragkit import action_contract
+        sentinel = object()
+        with patch.dict("os.environ", {"MULTIHOP_ORCHESTRATOR_MODE": "enabled", "SEMANTIC_INTENT_MODE": "off"}), \
+             patch.object(action_contract, "_extract_action_plan_legacy", return_value=sentinel):
+            self.assertIs(action_contract.extract_action_plan("query", None), sentinel)
+
+    def test_aggregate_executes_instead_of_returning_input_rows(self):
+        source = TypedResult.success(ValueType.FACT_SET, [{"price": 10}, {"price": 20}], unit="USD/t")
+        result = self.factory()._derive(RequirementNode("sum", Operator.AGGREGATE,
+            args={"field": "price", "aggregation": "sum"}), {"source": source})
+        self.assertEqual(result.value, [{"price": 30}])
+        self.assertEqual(result.unit, "USD/t")
+
+    def test_unimplemented_calculation_does_not_claim_success(self):
+        source = TypedResult.success(ValueType.FACT_SET, [{"price": 10}])
+        for operator in (Operator.CALCULATE, Operator.JOIN, Operator.COMPARE):
+            with self.subTest(operator=operator):
+                result = self.factory()._derive(RequirementNode("op", operator), {"source": source})
+                self.assertNotEqual(result.status, ResultStatus.SUCCESS)
+
+    def test_multi_root_sse_contains_values_and_one_completion(self):
+        price = TypedResult.success(ValueType.TIME_SERIES, [{"price": 20}], source=("price-source",))
+        root = TypedResult(ValueType.COMPOSITE, {"price": price,
+            "usage": TypedResult.empty(ValueType.DOCUMENT_EVIDENCE, "no_data")}, status=ResultStatus.PARTIAL)
+        events = live.live_run_events(SimpleNamespace(orchestration=SimpleNamespace(root_result=root)))
+        self.assertEqual(sum(e.type == "done" for e in events), 1)
+        self.assertTrue(any(e.type == "table" and "20" in str(e.data) for e in events))
+        self.assertIn("no_data", str([e.data for e in events]))
+
+    def test_explicit_series_composite_keeps_all_observations(self):
+        root = TypedResult.success(ValueType.COMPOSITE, [{"mineral": "nickel", "status": "success",
+            "output": "time_series", "result_type": "time_series", "metric": "price",
+            "value": [{"date": "2020-01-01", "price": 10}, {"date": "2020-02-01", "price": 20}]}])
+        events = live.live_run_events(SimpleNamespace(orchestration=SimpleNamespace(root_result=root)))
+        tables = [event.data for event in events if event.type == "table"]
+        self.assertEqual(len(tables), 1)
+        self.assertEqual(len(tables[0]["rows"]), 2)
+
+
+    def test_action_slots_preserve_explicit_typed_constraints(self):
+        node = RequirementNode("price", Operator.RETRIEVE, args={
+            "domain": "price", "mineral": "nickel", "price_criterion_serial": 502,
+            "reporter_country": "KR", "partner_country": "CL"})
+        slots = live._action_slots(node)
+        self.assertEqual(slots.price_criterion_serial, 502)
+        self.assertEqual(slots.reporter_country, "KR")
+        self.assertEqual(slots.partner_country, "CL")
+
+    def test_null_equality_filter_does_not_evaluate_ordering(self):
+        source = TypedResult.success(ValueType.FACT_SET, [{"value": None}, {"value": 10}])
+        node = RequirementNode("filter", Operator.FILTER, args={
+            "predicate": {"field": "value", "operator": "equals", "value": None}})
+        self.assertEqual(self.factory()._derive(node, {"source": source}).value, [{"value": None}])
+
+    def test_projection_preserves_partial_metadata_and_blocks_aggregate(self):
+        source = TypedResult(ValueType.FACT_SET, [{"price": 10}], status=ResultStatus.PARTIAL,
+                            period={"year": 2024}, unit="USD/t", warnings=("missing entity",))
+        projected = self.factory()._derive(RequirementNode("project", Operator.PROJECT,
+            args={"fields": ["price"]}), {"source": source})
+        self.assertEqual(projected.status, ResultStatus.PARTIAL)
+        self.assertEqual(projected.period, source.period)
+        self.assertEqual(projected.unit, source.unit)
+        self.assertEqual(projected.warnings, source.warnings)
+        total = self.factory()._derive(RequirementNode("sum", Operator.AGGREGATE), {"source": projected})
+        self.assertEqual(total.failure_reason, "incomplete_population")
+
+    async def test_multi_mineral_trade_binds_each_entity(self):
+        factory = self.factory()
+        factory._call_action = AsyncMock(return_value=TypedResult.empty(ValueType.FACT_SET, "no_data"))
+        await factory._retrieve(RequirementNode("trade", Operator.RETRIEVE,
+            args={"domain": "trade", "metric": "import_amount", "minerals": ["nickel", "lithium"]}), {})
+        self.assertEqual([call.kwargs["mineral"] for call in factory._call_action.call_args_list],
+                         ["nickel", "lithium"])
+
     def test_history_does_not_retarget_unknown_reference_or_remove_validation(self):
         previous = Turn("old", "session", UserUtterance("previous"),
                         semantic_program=SemanticProgram((RequirementNode("root", Operator.ENTITY),), ("root",)),

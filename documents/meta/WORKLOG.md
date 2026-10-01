@@ -2,6 +2,53 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-10-01 — PARTIAL 관계 연산만 제한 보완 (미배포)
+
+iterative-audit HIGH 범위로 PARTIAL 입력의 Join/Compare 일괄 기권을 보완했다.
+수정 전 신규 회귀 4 FAIL을 확인했다. 충분한 evidence와 명시적인 행별 status가
+있는 입력만 허용하며 실패 행의 잔존 숫자는 출력/후속 계산에서 제거한다.
+inner join이나 projection으로 실패 행이 사라져도 PARTIAL과 incomplete_population
+경고를 유지한다. 합계·평균·순위·TopK의 불완전 모집단 기권 정책은 유지한다.
+전체 실패 행은 EMPTY이며 성공으로 표시하지 않는다. SSE 이벤트 생성 경로에는
+처리/실패 건수와 전체 모집단이 아니라는 안내를 추가했다. wire schema 변경 없음.
+
+변경 범위: relational_ops.py, semantic_ir.py(Join 상태 필드 계약),
+live_multihop.py(PARTIAL 표시), test_live_relations.py.
+신규 회귀 7개: 행별 재사용/실패 payload 차단, projection 후 집계 차단,
+근거 불충분 거절, 전부 실패, SSE 표·안내, Join→Compare 상태 전파.
+관계 회귀 36 PASS, 전체 rag_core 746 PASS / 146 subtests PASS / 0 FAIL.
+기존 PASS→FAIL 0. compileall/git diff --check 통과.
+로그: /tmp/komir-partial-regression.log. 별도 외부 모델 감사는 미실시.
+
+이번 라운드는 결정론적 runtime 및 SSE 이벤트 생성 회귀 검증이다.
+새 이미지 빌드/HTTP SSE E2E/운영 배포를 수행했다고 주장하지 않는다.
+18002(audit-safety22), 18011(audit-relations30) 모두 재시작하지 않았으며
+이번 PARTIAL 변경은 해당 실행 이미지에 아직 포함되지 않았다.
+
+## 2026-10-01 — typed Join/Compare 구현 및 실제 SSE 검증 (운영 유지)
+
+live SemanticProgram의 Join/Compare를 typed 두 입력·명시 키·필드 계약으로 연결했다.
+inner/left/full join, 차이/비율/변화율, 양쪽 provenance, 결손 PARTIAL을 보존한다.
+동일 단위·키 중복·NULL·필수 피연산자·거절된 upstream evidence를 검증한다.
+전체 회귀 739 PASS / 146 subtests PASS / 0 FAIL, 기존 PASS→FAIL 0.
+18011 audit-relations30에서 날짜 join 22행과 비교 22성공+2결손을 실제 SSE로 확인했다.
+별도 Decimal 산술 대조 일치. Gemma field 누락 실패, 구리 가격기준 매핑 부재,
+legacy FAQ 선점과 자동 chart 표현 한계는 별도로 기록했고 전체 해결로 간주하지 않는다.
+운영 18002는 재시작/교체하지 않았다. 상세: `JOIN_COMPARE_AUDIT_20261001.md`.
+
+## 2026-10-01 — live contract 재현 및 iterative audit 수정 (운영 유지)
+
+가격기준/국가 슬롯 소실, 복수 광종 trade.monthly 첫 광종 반복, NULL 필터 예외,
+PARTIAL projection 후 성공 승격, 집계 no-op, 다중 root/문서 결과 SSE 누락을 재현·수정했다.
+미지원 Join/Compare는 거짓 성공 대신 명시 기권한다. 저장 snapshot의 타입·근거를 보존하고,
+메시지 저장을 SSE 완료보다 앞당겼다. 문서 fact SHA256 검사와 명시 page 모드 회귀도 추가했다.
+실제 Gemma가 생성한 node ID의 예약문자 오류를 발견해 LangGraph 내부 이름과 분리했다.
+최종 전체 회귀 710 PASS / 146 subtests PASS / 0 FAIL, routing smoke 통과.
+18011 `audit-contract26`에서 복합/502/문서 광종 가격/page SSE 4건을 확인했다.
+문서 광종 가격은 PARTIAL이며, 모든 자연어 의미가 검증된 것은 아니다.
+운영 18002(audit-safety22)는 재시작/교체하지 않았다. 변경 코드는 미커밋 상태.
+이미지·세션·전후 결과·미해결 계약은 `LIVE_CONTRACT_REPRO_AUDIT_20261001.md` 참조.
+
 ## 2026-10-01 — audit-safety22 운영 18002 반영
 
 사용자 요청으로 `komir-rag-chat-18002`를 검증 이미지 `komir-rag-chat:audit-safety22`

@@ -46,11 +46,33 @@ def test_build_and_fetch_document_facts_sidecar(tmp_path):
     result = build_all(okf_root=okf_root, trees_root=trees_root)
     assert result == {"candidate_count": 1, "done": 1, "skipped": 0, "stale": 0, "failed": 0}
     evidence, warnings = document_facts.fetch_document_facts_evidence(
-        "2026년 4월 희소금속 월간동향 광종 목록", root=trees_root,
+        "2026년 4월 희소금속 월간동향 광종 목록", root=trees_root, okf_root=okf_root,
     )
     assert not warnings
     assert len(evidence) == 1
     assert "리튬" in evidence[0].text and "희토류" in evidence[0].text
+
+
+def test_stale_fact_cannot_be_used_as_current_document_evidence(tmp_path):
+    okf_root, trees_root = tmp_path / "okf", tmp_path / "trees"
+    path = _write_okf(okf_root)
+    build_all(okf_root=okf_root, trees_root=trees_root)
+    path.write_text(path.read_text(encoding="utf-8") + "\nChanged synthetic body\n", encoding="utf-8")
+    evidence, warnings = document_facts.fetch_document_facts_evidence(
+        "희소금속 월간동향", root=trees_root, okf_root=okf_root)
+    assert not evidence
+    assert "document_facts_stale" in warnings
+
+
+def test_partial_extraction_cannot_establish_mineral_absence(tmp_path):
+    okf_root, trees_root = tmp_path / "okf", tmp_path / "trees"
+    _write_okf(okf_root)
+    build_all(okf_root=okf_root, trees_root=trees_root)
+    evidence, warnings = document_facts.fetch_document_facts_evidence(
+        "니켈 희소금속 월간동향", root=trees_root, okf_root=okf_root)
+    assert not evidence
+    assert "document_mineral_coverage_unverified" in warnings
+    assert "document_facts_not_found" not in warnings
 
 
 def test_monthly_summary_uses_facts_action():

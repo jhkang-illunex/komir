@@ -1138,12 +1138,8 @@ def extract_action_plan(
 
     selected_history = _history_for_action_query(message, history)
     mode = semantic_mode()
-    # enabled live-multihop is the authoritative parser/runtime path. Running
-    # the legacy semantic parser first causes a self-contained document→entity
-    # query to be judged as a static commodity request before its derived
-    # MineralSet exists, and also duplicates an expensive LLM call.
-    if os.getenv("MULTIHOP_ORCHESTRATOR_MODE", "off").strip().casefold() == "enabled":
-        return ActionPlan(actions=[])
+    # The caller owns live-vs-legacy routing. If it delegates a simple query
+    # here, return a valid plan; an empty ActionPlan violates its own schema.
     if mode == "off":
         return _extract_action_plan_legacy(message, llm, selected_history, allow_llm=True)
     if mode == "shadow":

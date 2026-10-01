@@ -2052,8 +2052,6 @@ async def chat_turn(
                 emitted = live_run_events(live_run)
                 response_text = "".join(event.data.get("delta", "") for event in emitted if event.type == "delta")
                 done = next((event.data for event in emitted if event.type == "done"), {"done": True, "abstained": True, "abstain_reason": "source_unavailable", "citations": []})
-                for event in emitted:
-                    yield event
                 await asyncio.to_thread(
                     append_message,
                     resolved_session_id,
@@ -2062,9 +2060,16 @@ async def chat_turn(
                     json.dumps(done.get("citations", []), ensure_ascii=False),
                     store_db_path,
                 )
+                for event in emitted:
+                    yield event
                 return
         except Exception:
-            _logger.exception("live multihop orchestration failed; legacy path continues")
+            _logger.exception("live multihop orchestration failed")
+            if multihop_mode() == "enabled":
+                yield ChatEvent(type="delta", data={"delta": "요청 처리 또는 결과 저장에 실패했습니다."})
+                yield ChatEvent(type="done", data={"done": True, "abstained": True,
+                    "abstain_reason": "execution_failed", "citations": []})
+                return
 
     concept_question = _is_internal_knowledge_question(message)
 

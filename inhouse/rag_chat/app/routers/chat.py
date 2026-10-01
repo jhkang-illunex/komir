@@ -801,7 +801,7 @@ def _run_chat_session(
                 recovered = _recover_trade_followup(session_id, request.message)
                 if recovered:
                     action_plan = recovered
-                elif multihop_mode() == "enabled":
+                elif multihop_mode() == "enabled" and request.mode != "page":
                     # Live AST is the first planner in enabled mode. Do not run
                     # the legacy semantic parser as a pre-gate; a self-contained
                     # document→MineralSet query has no static mineral slot yet.

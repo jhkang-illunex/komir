@@ -55,6 +55,13 @@ def _plan(action_id: str, **slots) -> ActionPlan:
 
 def main() -> int:
     page_plan = _plan("menu.navigate", target_page="map_korea", mineral="리튬")
+    with (patch.dict(os.environ, {"MULTIHOP_ORCHESTRATOR_MODE": "enabled"}),
+          patch.object(chat_router, "extract_action_plan", return_value=page_plan)):
+        enabled_page = _events(chat_router.ChatRequest(
+            user_id="enabled-page", message="한국 리튬 교역지도 메뉴", mode="page"))
+        assert enabled_page[-1].get("mode") == "page", enabled_page
+        assert enabled_page[-1]["status"] == "recommended", enabled_page
+        print("[OK] enabled에서도 명시 page 요청의 검증된 navigation 계획 유지")
     with patch.object(chat_router, "extract_action_plan", return_value=page_plan) as planner:
         first = _events(chat_router.ChatRequest(
             user_id="smoke", message="한국 리튬 교역지도 메뉴", mode="page",
