@@ -1,0 +1,140 @@
+{
+  "generated_at": "2026-09-30T17:04:16.492903+09:00",
+  "scope": "소스 QA: ActionPlan·route·다중 HS SQL·운영 매핑 smoke",
+  "source": "inhouse/rag_chat/tests/chatbot_acceptance_cases.yml (AC08/ADD11 문형) + 현재 소스",
+  "results": [
+    {
+      "id": "AC08",
+      "question": "한국의 리튬 수입 상위 5개국과 국가별 비중을 차트로 보여줘",
+      "status": "PASS",
+      "action": "trade.country_rank",
+      "slots": {
+        "mineral": "리튬",
+        "metric": "import_amount",
+        "flow": "import",
+        "period": {
+          "kind": "trailing_months",
+          "trailing_months": 12,
+          "explicit": false
+        },
+        "top_n": 5,
+        "trade_scope": "korea",
+        "requested_outputs": "{'text'}"
+      },
+      "route": {
+        "page": "map_korea",
+        "metric": "import_amount",
+        "months": 12,
+        "top_n": 5
+      },
+      "note": "LLM 미호출 deterministic plan",
+      "answer": "최근 1년(운영 DB 최신 관측일 기준) 한국 리튬 수입금액 상위국은 중국(70.80%), 칠레(12.48%), 인도네시아(8.35%), 호주(3.55%), 아르헨티나(1.67%) 순입니다. 국가별 비중은 ai_hs_mtrl_flow에서 리튬에 매핑된 전체 HS 품목의 수입금액 합계 기준입니다."
+    },
+    {
+      "id": "ADD11",
+      "question": "리튬 수입 상위 5개국과 국가별 비중을 차트로 보여줘",
+      "status": "PASS",
+      "action": "trade.country_rank",
+      "slots": {
+        "mineral": "리튬",
+        "metric": "import_amount",
+        "flow": "import",
+        "period": {
+          "kind": "trailing_months",
+          "trailing_months": 12,
+          "explicit": false
+        },
+        "top_n": 5,
+        "trade_scope": "korea",
+        "requested_outputs": "{'text'}"
+      },
+      "route": {
+        "page": "map_korea",
+        "metric": "import_amount",
+        "months": 12,
+        "top_n": 5
+      },
+      "note": "LLM 미호출 deterministic plan",
+      "answer": "최근 1년 기준 리튬 수입 상위 5개국은 중국(70.80%), 칠레(12.48%), 인도네시아(8.35%), 호주(3.55%), 아르헨티나(1.67%) 순입니다. 차트는 전체 매핑 HS 품목을 합산해 작성합니다."
+    },
+    {
+      "id": "WORLD01",
+      "question": "세계 리튬 수입 상위국을 알려줘",
+      "status": "PASS",
+      "action": "trade.country_rank",
+      "slots": {
+        "mineral": "리튬",
+        "metric": "import_amount",
+        "flow": "import",
+        "period": {
+          "kind": "trailing_months",
+          "trailing_months": 12,
+          "explicit": false
+        },
+        "top_n": 5,
+        "trade_scope": "global",
+        "requested_outputs": "{'text'}"
+      },
+      "route": {
+        "page": "map_global",
+        "metric": "import_amount",
+        "months": 12,
+        "top_n": 5
+      },
+      "note": "LLM 미호출 deterministic plan",
+      "answer": "세계 리튬 수입 상위국은 현재 연결된 세계 교역 원천에서 해당 HS 매핑 데이터가 확인되지 않아 조회할 수 없습니다."
+    },
+    {
+      "id": "MULTI01",
+      "question": "한국의 니켈 수입 상위국과 국가별 비중을 알려줘",
+      "status": "PASS",
+      "action": "trade.country_rank",
+      "slots": {
+        "mineral": "니켈",
+        "metric": "import_amount",
+        "flow": "import",
+        "period": {
+          "kind": "trailing_months",
+          "trailing_months": 12,
+          "explicit": false
+        },
+        "top_n": 5,
+        "trade_scope": "korea",
+        "requested_outputs": "{'text'}"
+      },
+      "route": {
+        "page": "map_korea",
+        "metric": "import_amount",
+        "months": 12,
+        "top_n": 5
+      },
+      "note": "LLM 미호출 deterministic plan",
+      "answer": "최근 1년 기준 한국 니켈 수입금액 상위국은 중국(53.67%), 인도네시아(12.66%), 일본(7.67%), 뉴칼레도니아(6.18%), 캐나다(2.94%) 순입니다. 전체 니켈 HS 매핑 품목을 합산한 결과입니다."
+    },
+    {
+      "id": "SQL01",
+      "question": "다중 HS 코드가 원천 조회에 모두 전달되는지",
+      "status": "PASS",
+      "action": "raw.map_korea",
+      "slots": {
+        "hs_codes": [
+          "2530909099",
+          "2845300000"
+        ]
+      },
+      "route": {},
+      "note": "SELECT HS_CD, CRTR_YMD, TRGT_NTN_CD, INCM_WEIG, INCM_AMT, EXP_WEIG, EXP_AMT, TRGT_NTN, ITEM_NM FROM public.KO_CSTM_CMMRC WHERE HS_CD IN ('2530909099', '2845300000') ORDER BY CRTR_YMD DESC LIMIT 5",
+      "answer": "광종에 연결된 HS 코드 2530909099와 2845300000을 모두 KO_CSTM_CMMRC 조회의 IN 조건으로 전달했습니다. 중복 HS 코드는 제거했습니다."
+    },
+    {
+      "id": "DB01",
+      "question": "ai_hs_mtrl_flow 실제 다중 매핑 건수",
+      "status": "PASS",
+      "action": "resolve_hs_codes",
+      "slots": {},
+      "route": {},
+      "note": "MNRL0001=10개; MNRL0002=43개; MNRL0018=22개",
+      "answer": "운영 DB의 ai_hs_mtrl_flow에서 리튬 10개, 니켈 43개, 텅스텐 22개의 고유 HS 코드가 확인되었습니다."
+    }
+  ]
+}

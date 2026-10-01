@@ -142,6 +142,7 @@ class AnalysisPreviewRequest(StrictModel):
     page_id: AnalysisPreviewPageId
     mineral_code: str | None = Field(default=None, min_length=1, max_length=32)
     hs_code: str | None = Field(default=None, min_length=1, max_length=32)
+    hs_codes: list[str] | None = None
     index_type_code: str | None = Field(default=None, min_length=1, max_length=32)
     price_criterion_serial: int | None = Field(default=None, ge=1)
     start_period: str | None = Field(default=None, pattern=r"^\d{4}(?:\d{2}(?:\d{2})?)?$")
@@ -159,10 +160,19 @@ class AnalysisPreviewRequest(StrictModel):
                 raise ValueError("start_period must not be after end_period")
         return self
 
+    @model_validator(mode="after")
+    def validate_hs_codes(self) -> "AnalysisPreviewRequest":
+        if self.hs_codes is not None:
+            if not self.hs_codes or any(not re.fullmatch(r"[A-Za-z0-9_]+", code) for code in self.hs_codes):
+                raise ValueError("hs_codes must contain at least one safe code")
+            if self.hs_code is not None:
+                raise ValueError("hs_code and hs_codes are mutually exclusive")
+        return self
+
     def requested_filters(self) -> dict[str, str | int]:
         """호출자가 명시적으로 준 필터만 돌려준다."""
 
-        return {
+        filters = {
             key: value
             for key, value in {
                 "mineral_code": self.mineral_code,
@@ -174,6 +184,9 @@ class AnalysisPreviewRequest(StrictModel):
             }.items()
             if value is not None
         }
+        if self.hs_codes:
+            filters["hs_code"] = "__multiple__"
+        return filters
 
 
 class RawDataset(StrictModel):
@@ -539,7 +552,11 @@ class KomisRawDataRepository:
         for filter_name, column in spec.filter_columns.items():
             if filter_name not in requested_filters:
                 continue
-            conditions.append(f"{column} = {_literal(requested_filters[filter_name])}")
+            if filter_name == "hs_code" and request.hs_codes:
+                values = ", ".join(_literal(code) for code in request.hs_codes)
+                conditions.append(f"{column} IN ({values})")
+            else:
+                conditions.append(f"{column} = {_literal(requested_filters[filter_name])}")
         if request.start_period:
             bound = _coerce_period(request.start_period, spec.period_precision, False)
             conditions.append(f"{spec.period_column} >= {_literal(bound)}")
@@ -580,7 +597,7 @@ class KomisRawDataRepository:
     # 아래 3개 메서드는 외부repo 이식이 아니다(komir 자체 추가, 2026-08-19) —
     # `/prices`·`/domestic-trade`·`/global-trade`는 원본도 501 스텁이라 참고할
     # 원본 구현이 없다. `ai_mnrl_mst`(광종 마스터)·`ai_prc_mnrl_map`(광종→가격
-    # 기준일련번호)·`ai_hs_mnrl_map`(광종→HS코드)은 KOMIS가 이 3개 신규 엔드포인트를
+    # 기준일련번호)·`ai_hs_mtrl_flow`(광종→HS코드)은 KOMIS가 이 3개 신규 엔드포인트를
     # 위해 최근 채운 매핑 테이블이라 `_PAGE_DATASETS`(고정 스펙 1건당 필터 1종)
     # 방식으로는 못 담는다 — 광종 하나가 가격기준·HS코드 여러 건에 매핑되기 때문에
     # 별도 조회로 분리했다. 위 SELECT 조립부와 동일하게 `_literal()` 화이트리스트를
@@ -651,15 +668,20 @@ class KomisRawDataRepository:
         return {int(serial): int(serial) in found for serial in serials}
 
     def resolve_hs_codes(self, mineral_code: str) -> list[str]:
-        """`ai_hs_mnrl_map`에서 광종의 HS코드(들)를 찾는다(오름차순)."""
+        """`ai_hs_mtrl_flow`에서 광종의 HS코드(들)를 찾는다(오름차순).
+
+        품목·연도·수출입 흐름별로 같은 HS코드가 여러 행에 있을 수 있으므로
+        ``DISTINCT hs_cd``만 반환한다. 호출자는 반환된 전체 목록을 원천 조회의
+        ``IN`` 조건에 전달해야 하며 첫 코드만 선택해서는 안 된다.
+        """
 
         code = _literal(mineral_code)
         frame = read_sql_pg(
-            f"SELECT hs_cd FROM {KOMIS_SCHEMA}.ai_hs_mnrl_map"
+            f"SELECT DISTINCT hs_cd FROM {KOMIS_SCHEMA}.ai_hs_mtrl_flow"
             f" WHERE mnrknd_unq_cd = {code} AND use_yn = 'Y'"
             f" ORDER BY hs_cd"
         )
-        return [str(value) for value in frame["hs_cd"]]
+        return list(dict.fromkeys(str(value) for value in frame["hs_cd"]))
 
     def fetch_monthly_trade_summary(
         self, *, hs_codes: list[str], start_period: str | None, end_period: str | None,
@@ -1748,7 +1770,7 @@ class KomisRawDataRepository:
             frame = read_sql_pg(f"""
                 WITH mapping AS (
                     SELECT DISTINCT mnrknd_unq_cd, hs_cd
-                    FROM {KOMIS_SCHEMA}.ai_hs_mnrl_map WHERE use_yn='Y'
+                    FROM {KOMIS_SCHEMA}.ai_hs_mtrl_flow WHERE use_yn='Y'
                 ), totals AS (
                     SELECT m.mnrknd_unq_cd, m.mnrl_nm_ko AS mineral,
                            m.ko_data_src_cd AS data_source,

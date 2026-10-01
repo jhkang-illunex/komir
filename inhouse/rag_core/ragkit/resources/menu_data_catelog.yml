@@ -49,7 +49,7 @@ menus:
       - page_id: map_korea
         label: 대한민국 수급지도
         source_label: "KOMIS 핵심광물지도 > 수급지도 > 대한민국"
-        source_tables: [public.KO_CSTM_CMMRC, public.ai_hs_mnrl_map]
+        source_tables: [public.KO_CSTM_CMMRC, public.ai_hs_mtrl_flow]
         period_frequency: daily
       - page_id: map_global
         label: 글로벌 수급지도

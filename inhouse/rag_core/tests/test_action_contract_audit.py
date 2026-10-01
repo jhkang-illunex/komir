@@ -1059,7 +1059,7 @@ class ActionContractAuditTest(unittest.TestCase):
         overridden = plan(call("overview", "price.overview", strategic_price_groups=["strategic_six"], mineral="니켈"))
         self.assertEqual(validate_action_plan(overridden).failure_reason, "slot_unresolved")
 
-    def test_country_share_shortcut_does_not_capture_rank_or_compound_question(self):
+    def test_country_rank_preparser_captures_rank_and_share_question(self):
         class RecordingLlm:
             def __init__(self):
                 self.calls = 0
@@ -1073,8 +1073,10 @@ class ActionContractAuditTest(unittest.TestCase):
 
         llm = RecordingLlm()
         candidate = extract_action_plan("한국의 리튬 수입 상위국과 국가별 비중", llm)
-        self.assertEqual(llm.calls, 1)
+        self.assertEqual(llm.calls, 0)
         self.assertEqual(candidate.actions[0].action_id, "trade.country_rank")
+        self.assertEqual(candidate.actions[0].slots.period.trailing_months, 12)
+        self.assertEqual(candidate.actions[0].slots.top_n, 5)
 
     def test_country_share_shortcut_rejects_non_single_partner_tokens(self):
         class RecordingLlm:
@@ -1096,7 +1098,7 @@ class ActionContractAuditTest(unittest.TestCase):
             with self.subTest(question=question):
                 candidate = extract_action_plan(question, llm)
                 self.assertEqual(candidate.actions[0].action_id, "trade.country_rank")
-        self.assertEqual(llm.calls, 2)
+        self.assertEqual(llm.calls, 1)
 
     def test_legacy_country_dependency_defaults_denominator_without_new_hitl(self):
         candidate = plan(call(

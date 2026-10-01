@@ -749,6 +749,35 @@ def _simple_country_share_plan(message: str) -> ActionPlan | None:
     )])
 
 
+def _country_rank_request_plan(message: str) -> ActionPlan | None:
+    """명확한 수입 상위국 문형을 LLM 전에 단일 country-rank로 고정한다.
+
+    국가별 비중은 별도 의존도 지표가 아니라 순위 표의 열이다. 이 좁은
+    보정은 광종·수입·순위가 모두 문장에 있고 HHI/의존도·가격 같은 별도
+    요구가 없는 경우에만 적용한다.
+    """
+    compact = re.sub(r"\s+", "", message)
+    if "수입" not in compact or not any(marker in compact for marker in ("상위", "주요", "수입국", "국가별비중", "점유율")):
+        return None
+    if any(marker in compact for marker in ("HHI", "집중도", "의존도", "의존율", "가격", "전망")):
+        return None
+    minerals = ("희토류", "네오디뮴", "리튬", "니켈", "코발트", "구리", "동", "흑연", "망간", "아연", "텅스텐", "몰리브덴", "주석")
+    found = [name for name in minerals if name.casefold() in compact.casefold()]
+    if len(found) != 1:
+        return None
+    top_match = re.search(r"상위(\d+)(?:개국|국)", compact)
+    top_n = int(top_match.group(1)) if top_match else 5
+    scope = "global" if "세계" in compact else "korea"
+    return ActionPlan(actions=[ActionCall(
+        requirement_id="import_countries", action_id="trade.country_rank",
+        slots=ActionSlots(
+            mineral=found[0], metric="import_amount", flow="import",
+            trade_scope=scope, top_n=top_n,
+            period=Period(kind="trailing_months", trailing_months=12),
+        ), intent="trade_rank", role="data",
+    )])
+
+
 def _normalize_trade_indicator_slots(actions: list[ActionCall], message: str) -> None:
     """질문에 명시된 무역지표 조건만 typed 슬롯으로 정규화한다.
 
@@ -1684,6 +1713,9 @@ def _extract_action_plan_legacy(
     # 특정국 의존도는 HHI와의 경계가 명확한 typed 관계다. 모델이 HHI를
     # 별도 requirement로 과분해하면 validation/repair 전에 실패할 수 있으므로
     # 해당 문맥에서만 결정적 계획을 먼저 사용한다.
+    country_rank = _country_rank_request_plan(message)
+    if country_rank is not None:
+        return country_rank
     simple_country_share = _simple_country_share_plan(message)
     if simple_country_share is not None:
         return simple_country_share

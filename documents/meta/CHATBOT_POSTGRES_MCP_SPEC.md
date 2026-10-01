@@ -121,7 +121,7 @@ Vector DB 중 여러 개를 동시에 근거로 삼을 수 있다(예: "니켈 �
 |---|---|---|---|
 | `ai_mnrl_mst` | 광종 마스터(코드↔한글명↔가격분류↔데이터출처) | 28 | common |
 | `ai_prc_mnrl_map` | 광종→가격기준일련번호("SN-광종간 매핑정보") | 25 | common |
-| `ai_hs_mnrl_map` | 광종→HS코드("HS코드-광종간 매핑 정보") | 56 | common |
+| `ai_hs_mtrl_flow` | 광종·품목·흐름별 HS코드 매핑(중복 HS는 DISTINCT로 통합) | 다수 | common |
 
 ⚠ 이 3개는 어느 `page_id`로도 직접 노출되지 않고 `komis_raw_lookup`
 내부에서 코드→필터값 번역에만 쓰인다 — public 전용/private 전용
@@ -267,7 +267,7 @@ public+private 공통**):
 |---|---|
 | `ai_mnrl_mst` | 광종 마스터 — 코드(`mnrknd_unq_cd`)·한글명(`mnrl_nm_ko`)·가격분류(`prc_cat_cd`, HP001~004)·데이터출처(`ko_data_src_cd`) |
 | `ai_prc_mnrl_map` | 광종 → 가격기준일련번호(`ko_mnrl_prc.mnrl_prc_crtr_sn`) 매핑(1:N, "SN-광종간 매핑정보") |
-| `ai_hs_mnrl_map` | 광종 → HS코드(`ko_cstm_cmmrc`/`ko_un_cmmrc.hs_cd`) 매핑(1:N, "HS코드-광종간 매핑 정보") |
+| `ai_hs_mtrl_flow` | 광종 → HS코드(`ko_cstm_cmmrc`/`ko_un_cmmrc.hs_cd`) 매핑(1:N; 품목·연도·흐름별 복수 행) |
 
 나머지 25개 `ai_*`는 미조사(범위 밖 — `ai_mnrl_diag`·`ai_dash_diag`·
 `ai_report`·`ai_evid`·`ai_news` 등, 이름으로 미루어 KOMIS 사이트 자체
@@ -302,7 +302,7 @@ KOMIS 표본 아님)다. 유일한 실샘플은 텅스텐(`MNRL0018`,
   그대로 노출되면 검증(verify) LLM이 광종을 못 알아보고 근거를 버리는
   사고가 실측됐다.
   `mineral_code`가 가격/국내교역/세계교역 페이지에 직접 없으면(가격기준
-  일련번호·HS코드로만 연결) `ai_prc_mnrl_map`/`ai_hs_mnrl_map`으로
+  일련번호·HS코드로만 연결) `ai_prc_mnrl_map`/`ai_hs_mtrl_flow`으로
   자동 번역한다(1:N이면 첫 값만, `warnings`에 명시).
   더미데이터 경고: `mineral_code`의 `ai_mnrl_mst.ko_data_src_cd`가
   `KOMIS_SAMPLE`이 아니면 `Evidence.caveat`에 강제 경고 문구를 심고,

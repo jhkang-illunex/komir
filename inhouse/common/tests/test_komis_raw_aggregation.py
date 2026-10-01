@@ -15,6 +15,15 @@ from common.komis_raw import KomisRawDataRepository  # noqa: E402
 
 
 class MonthlyTradeAggregationTest(unittest.TestCase):
+    def test_resolve_hs_codes_reads_new_flow_mapping_and_deduplicates(self):
+        captured = []
+        mapping = pd.DataFrame([("2530909099",), ("2836910000",), ("2530909099",)], columns=["hs_cd"])
+        with patch("common.komis_raw.read_sql_pg", side_effect=lambda query: (captured.append(query), mapping)[1]):
+            codes = KomisRawDataRepository().resolve_hs_codes("MNRL0001")
+        self.assertEqual(codes, ["2530909099", "2836910000"])
+        self.assertIn("ai_hs_mtrl_flow", captured[0])
+        self.assertIn("SELECT DISTINCT hs_cd", captured[0])
+
     def test_monthly_trade_uses_actual_months_and_keeps_amount_weight_separate(self):
         responses = [
             pd.DataFrame([
@@ -57,7 +66,7 @@ class MonthlyTradeAggregationTest(unittest.TestCase):
         self.assertEqual(data.metadata["scope"], "explicit_hs_only")
         self.assertEqual(data.metadata["hs_code"], "2603000000")
         self.assertIn("HS_CD IN ('2603000000')", queries[0])
-        self.assertNotIn("ai_hs_mnrl_map", queries[0])
+        self.assertNotIn("ai_hs_mtrl_flow", queries[0])
 
 
 class MineralCountryRankingTest(unittest.TestCase):
