@@ -123,7 +123,7 @@ from common.langfuse_tracing import chat_trace, update_observation  # noqa: E402
 
 from rag_core.ragkit.chatbot import STATUS_STAGES, chat_turn, direct_faq_answer  # noqa: E402
 from rag_core.ragkit.action_contract import (  # noqa: E402
-    ActionPlan, extract_action_plan, extract_legacy_action_plan, merge_trade_indicator_followup,
+    ActionPlan, PlanAssessment, extract_action_plan, extract_legacy_action_plan, merge_trade_indicator_followup,
     trade_indicator_plan_from_question,
     missing_trade_indicator_slots, validate_action_plan,
 )
@@ -201,9 +201,23 @@ def _unsupported_mineral_in_plan(plan: ActionPlan, profile: Literal["public", "p
     지원 여부를 확인한다. MCP 장애는 미지원으로 오인하지 않고 기존 조회 오류
     처리로 넘긴다.
     """
+    if plan is None:
+        return None
     resolver = session or (mcp_client.private if profile == "private" else mcp_client.public)
+    # 문서에서 추출한 광종은 아직 실행 전인 derived value다. 정적 광종처럼
+    # KOMIS master resolver에 즉시 넣으면 DocumentResult→MineralSet→ForEach
+    # 계획이 unsupported_commodity로 잘못 종료된다. 이 경우 검증은
+    # downstream InputBinding/output type 계약과 실제 각 항목 조회가 맡는다.
+    derived_requirements = {
+        requirement_id
+        for call in plan.actions
+        if call.action_id in {"document.retrieve", "document.lookup", "document.facts.retrieve"}
+        for requirement_id in [call.requirement_id]
+    }
     for call in plan.actions:
         if call.action_id not in _KOMIS_MINERAL_ACTIONS:
+            continue
+        if call.input_bindings or any(dep in derived_requirements for dep in call.depends_on):
             continue
         names = ([call.slots.mineral] if call.slots.mineral else []) + (call.slots.minerals or [])
         for name in dict.fromkeys(name for name in names if name):
@@ -771,6 +785,7 @@ def _run_chat_session(
             request.message, pending_call.slots.country_scope if pending_call else None,
         )
         resumed = False
+        action_plan = None
         try:
             if pending_call and choice:
                 action_plan = pending_plan
@@ -786,6 +801,11 @@ def _run_chat_session(
                 recovered = _recover_trade_followup(session_id, request.message)
                 if recovered:
                     action_plan = recovered
+                elif multihop_mode() == "enabled":
+                    # Live AST is the first planner in enabled mode. Do not run
+                    # the legacy semantic parser as a pre-gate; a self-contained
+                    # document→MineralSet query has no static mineral slot yet.
+                    action_plan = None
                 else:
                     price_context = _load_price_context(session_id, profile)
                     continuation, non_carry = _load_multi_action_state(session_id, profile)
@@ -802,7 +822,9 @@ def _run_chat_session(
                                        request.message, KomirJsonLLM(), history=_history_for_graph(session_id),
                                        semantic_context=(price_context if semantic_mode() == "enabled" else None),
                                    ))
-            assessment = validate_action_plan(action_plan)
+            assessment = (PlanAssessment(approved=True, failure_reason=None)
+                          if multihop_mode() == "enabled" and action_plan is None
+                          else validate_action_plan(action_plan))
         except Exception:
             failure_message = "질문의 조건을 확인할 수 없어 현재 제공할 수 없습니다."
             session_store.append_message(session_id, "user", request.message)
@@ -813,7 +835,7 @@ def _run_chat_session(
             yield sse_event({"delta": failure_message})
             yield sse_event({"done": True, "abstained": True, "abstain_reason": "slot_unresolved"}, event="done")
             return
-        trade_call = _trade_indicator_call(action_plan)
+        trade_call = _trade_indicator_call(action_plan) if action_plan is not None else None
         if trade_call and missing_trade_indicator_slots(trade_call):
             yield from _trade_clarification_response(session_id, request.message, action_plan)
             return
@@ -869,7 +891,7 @@ def _run_chat_session(
             else:
                 yield from _unsupported_mineral_response(session_id, request.message)
                 return
-        mine_call = _mine_country_call(action_plan)
+        mine_call = _mine_country_call(action_plan) if action_plan is not None else None
         if mine_call and request.mode != "page":
             if resumed:
                 if choice == "ownership":
@@ -886,7 +908,10 @@ def _run_chat_session(
                 if choice is None:
                     yield from _mine_clarification_response(session_id, request.message, action_plan)
                     return
-        action_page = any(call.action_id in {"menu.navigate", "dataset.navigate"} for call in action_plan.actions)
+        action_page = bool(action_plan) and any(
+            call.action_id in {"menu.navigate", "dataset.navigate"}
+            for call in action_plan.actions
+        )
         if request.mode in {"document", "page"} and (request.mode == "page") != action_page:
             message = "요청 mode와 검증된 action 유형이 일치하지 않습니다."
             session_store.append_message(session_id, "user", request.message)

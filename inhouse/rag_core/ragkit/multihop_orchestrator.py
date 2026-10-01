@@ -92,7 +92,7 @@ class MultiHopOrchestrator:
         else:
             root_result = TypedResult.failed("semantic program produced no root result")
 
-        if root_result.status in {ResultStatus.SUCCESS, ResultStatus.PARTIAL, ResultStatus.EMPTY}:
+        if root_result.status in {ResultStatus.SUCCESS, ResultStatus.PARTIAL}:
             validation = evidence_validator(root_result)
             if inspect.isawaitable(validation):
                 validation = await validation
@@ -102,4 +102,3 @@ class MultiHopOrchestrator:
                 root_result = TypedResult.abstain("evidence validation failed", root_result.result_type)
         presentation = self._renderer.render(root_result)
         return OrchestrationResult(execution, presentation, root_result)
-

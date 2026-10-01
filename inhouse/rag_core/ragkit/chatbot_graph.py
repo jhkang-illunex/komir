@@ -51,6 +51,7 @@ from __future__ import annotations
 import calendar
 import json
 import logging
+import os
 import re
 from collections.abc import Callable
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -534,7 +535,10 @@ section·표 컬럼·unit이 이 ID와 일치하면 금액을 중량으로 바�
 
 class GroundingCheck(BaseModel):
     sufficient: bool
-    reason: str = ""
+    # 일부 모델이 충분성 판단의 설명을 null로 반환한다. 이는 검증 결과의
+    # 내용 오류가 아니라 선택 필드 누락이므로 구조화 검증 자체를 실패시키지
+    # 않는다. 호출부에서는 빈 문자열로 정규화한다.
+    reason: str | None = ""
     supported_evidence_indices: list[int] = []
 
 
@@ -773,7 +777,7 @@ RETRIEVAL_ROUTE_MAX_TOKENS = 1280
 #: 넉넉히 잡아 정상적인 mine_aggregate fan-out(여러 LLM 호출의 합)을 잘못 끊지
 #: 않으면서도, 실제 행(hang)에서는 이 시간 안에 그 도구만 포기하고 나머지 근거로
 #: 계속 진행한다.
-RETRIEVE_JOB_TIMEOUT_SECONDS = 180.0
+RETRIEVE_JOB_TIMEOUT_SECONDS = float(os.getenv("RETRIEVE_JOB_TIMEOUT_SECONDS", "240"))
 _SOURCE_AUDIT_PREFIX = "source_audit:"
 
 
@@ -994,7 +998,7 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
             and any(token in (s.topic or question) for token in ("용도", "어디에 쓰", "어디쓰", "쓰여", "사용처", "활용처", "원소기호", "원자량", "원자번호", "주요 특성", "기본 특성", "기본 정보", "특성이", "성질", "어떤 광물", "어떤 금속", "무슨 광물", "무슨 금속", "광석", "ore"))):
         return RetrievalRoute(**common, use_mineral_info=True)
     document_topic = re.sub(r"\s+", "", s.topic or question)
-    if call.action_id in {"document.retrieve", "document.lookup", "document.facts.retrieve"} and any(token in document_topic for token in ("월간동향", "희소금속동향", "전략광종동향")):
+    if call.action_id in {"document.retrieve", "document.lookup", "document.facts.retrieve"} and document_facts._topic_groups(s.topic or question):
         return RetrievalRoute(**common, use_monthly_trend=True, use_document_facts=True)
     if call.action_id == "document.retrieve" and any(token in (s.topic or question) for token in ("뉴스", "기사", "수출통제")):
         if "가격변동큰광종" in question.replace(" ", ""):
@@ -2932,7 +2936,8 @@ def _verify_node(state: RetrievalState, llm: KomirJsonLLM) -> RetrievalState:
             # 부족 사유만으로 폐기하지 않는다.
             evidence = state.get("evidence", [])
             sufficient = bool(evidence)
-        warning = None if sufficient else f"retrieval_insufficient:{invocation.output.reason[:80]}"
+        reason = invocation.output.reason or ""
+        warning = None if sufficient else f"retrieval_insufficient:{reason[:80]}"
     except LLM_TRANSIENT_ERRORS as exc:
         # 검증 결과가 없으면 근거를 보존하지 않는다. 재시도 뒤에도 검증이
         # 실패하면 출처 없는 응답으로 기권한다.

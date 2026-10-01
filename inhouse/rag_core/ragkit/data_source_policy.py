@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 from enum import Enum
+import os
 
 
 class DataSourcePolicy(str, Enum):
@@ -17,6 +18,12 @@ class DataSourcePolicy(str, Enum):
     ALLOW = "ALLOW"
     ALLOW_DUMMY = "ALLOW_DUMMY"
     SOURCE_UNAVAILABLE = "SOURCE_UNAVAILABLE"
+
+
+def allow_dummy_data() -> bool:
+    """개발 환경에서만 DEV_DUMMY 관측을 노출할지 결정한다."""
+
+    return os.getenv("RAG_ALLOW_DUMMY", "0").strip().lower() in {"1", "true", "yes"}
 
 
 def policy_for_data_source(data_source: str | None) -> DataSourcePolicy:

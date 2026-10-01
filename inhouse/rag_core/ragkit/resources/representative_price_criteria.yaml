@@ -1,0 +1,42 @@
+# 사용자가 가격기준을 생략했을 때 적용하는 대표 기준.
+# serial은 환경별 DB 매핑을 사용하므로 저장하지 않는다.
+criteria:
+  니켈: {criterion: "LME CASH", unit: "USD/mt"}
+  탄산리튬: {criterion: "99.5%min CIF China", unit: "USD/kg"}
+  코발트: {criterion: "LME CASH", unit: "USD/mt"}
+  페로망간: {criterion: "Mn 75%min, C 2%max EXW China", unit: "USD/mt"}
+  흑연: {criterion: "-194 FOB China", unit: "USD/mt"}
+  산화네오디뮴: {criterion: "99.5%min FOB China", unit: "USD/mt"}
+  산화란탄: {criterion: "99.9%min FOB China", unit: "USD/mt"}
+  산화디스프로슘: {criterion: "99.5%min FOB China", unit: "USD/mt"}
+  산화터븀: {criterion: "99.99%min FOB China", unit: "USD/mt"}
+  산화세륨: {criterion: "99%min FOB China", unit: "USD/mt"}
+  갈륨: {criterion: "99.99%min FOB China", unit: "USD/mt"}
+  페로니오븀: {criterion: "Brazilian 66% Delivered China", unit: "USD/mt"}
+  동: {criterion: "LME CASH", unit: "USD/mt"}
+  구리: {criterion: "LME CASH", unit: "USD/mt"}
+  알루미늄: {criterion: "LME CASH", unit: "USD/mt"}
+  실리콘: {criterion: "5-5-3 FOB China", unit: "USD/mt"}
+  마그네슘: {criterion: "99.9%min FOB China", unit: "USD/mt"}
+  페로몰리브덴: {criterion: "60%min EXW China", unit: "USD/mt"}
+  오산화바나듐: {criterion: "Flake 98%min EXW China", unit: "USD/mt"}
+  백금: {criterion: "Johnson Matthey London", unit: "USD/troy oz"}
+  팔라듐: {criterion: "Johnson Matthey London", unit: "USD/troy oz"}
+  주석: {criterion: "LME CASH", unit: "USD/mt"}
+  티타늄 스폰지: {criterion: "99.7%min EXW China", unit: "USD/mt"}
+  텅스텐 APT: {criterion: "88.5%min EXW China", unit: "USD/kg"}
+  안티몬: {criterion: "99.65%min FOB China", unit: "USD/mt"}
+  비스무스: {criterion: "99.99%min EXW China", unit: "USD/mt"}
+  페로크롬: {criterion: "Cr 60%min, C 0.1%max In warehouse Rotterdam", unit: "USD/kg"}
+  연: {criterion: "LME CASH", unit: "USD/mt"}
+  아연: {criterion: "LME CASH", unit: "USD/mt"}
+  인듐: {criterion: "99.995%min EXW China", unit: "USD/kg"}
+  탄탈럼: {criterion: "99.95%min FOB China", unit: "USD/kg"}
+  지르코늄: {criterion: "Zr+Hf 99.4%min EXW China", unit: "USD/kg"}
+  스트론튬: {criterion: "99%min FOB China", unit: "USD/mt"}
+  셀레늄: {criterion: "99.9%min Delivered China", unit: "USD/kg"}
+  산화이트륨: {criterion: "99.999%min FOB China", unit: "USD/kg"}
+  산화스칸듐: {criterion: "99.99%min EXW China", unit: "USD/kg"}
+  루테늄: {criterion: "min 99.9% Johnson Matthey London", unit: "USD/troy oz"}
+  이리듐: {criterion: "Johnson Matthey London", unit: "USD/troy oz"}
+  로듐: {criterion: "Johnson Matthey London", unit: "USD/troy oz"}

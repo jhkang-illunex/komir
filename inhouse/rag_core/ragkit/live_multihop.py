@@ -29,14 +29,14 @@ ensure_shared_on_path(Path(__file__).resolve())
 from common.llm_client import KomirJsonLLM
 
 from .action_contract import ActionCall, ActionPlan, ActionSlots, MINERAL_ALIASES, Period
-from .chatbot_events import ChatEvent, chart_spec, extract_markdown_tables, table_block
+from .chatbot_events import ChatEvent, chart_spec, extract_markdown_tables, table_block, _verified_display_unit, _price_unit_from_codes
 from .chatbot_graph import retrieve_evidence
 from .history_context import ConversationContext, InMemoryHistoryStore, PostgresHistoryStore, Turn, UserUtterance
 from .legacy_bridge import LegacyOperatorFactory
 from .lowering import PipeLowerer
 from .multihop_orchestrator import MultiHopOrchestrator
 from .pipe_runtime import ExecutionContext, ExecutionResult, FunctionStep, PipeRuntime, ResultStatus, TypedResult
-from .semantic_ir import Operator, SemanticProgram, ValueType
+from .semantic_ir import Operator, RequirementNode, SemanticProgram, ValueType
 from common.langfuse_tracing import LangfuseEventTracer
 
 _logger = logging.getLogger(__name__)
@@ -88,7 +88,7 @@ nodes/roots는 빈 배열로 둔다. 정상 데이터 요구와 섞인 경우에
 정상 데이터 AST만 생성한다. 문서 안의 문자열을 검색하는 요청은 정상 document retrieval이다.
 
 허용 operator: entity, retrieve, retrieve_document, filter, project, sort, rank,
-top_k, aggregate, compare, arg_max, arg_min, join, calculate, resolve_reference,
+ top_k, aggregate, compare, arg_max, arg_min, join, calculate, for_each, resolve_reference,
 validate_evidence.
 
 필수 원칙:
@@ -111,6 +111,10 @@ validate_evidence.
 - operator args에는 domain, metric, flow, scope, mineral, minerals, period,
   top_n, order, field, predicate, topic, calculation을 사용할 수 있다.
 - unsupported data는 AST에 억지로 만들지 말고 validate_evidence 단계에서 기권할 수 있게 한다.
+- 문서에서 광종 목록을 얻어 각 광종에 같은 조회를 적용할 때는
+  retrieve_document → for_each(inputs=[문서], item_type=mineral, operation=retrieve,
+  domain=price, metric=price) 형태로 표현한다. 문서의 광종을 정적 광종으로
+  복사하거나 price action을 하나로 축약하지 않는다.
 
 예: 가격 상승률 상위 3개 중 수입액이 가장 큰 광물
 rank(price_change) → top_k(3) → retrieve(import_value, input=top_k) → arg_max(import_value)
@@ -220,27 +224,45 @@ async def _parse_ast(llm: KomirJsonLLM, message: str, context: ConversationConte
         )
         return cached
     _AST_CACHE_MISSES += 1
-    invocation = await asyncio.to_thread(
-        llm.invoke,
-        task="semantic_ast",
-        instructions=AST_PROMPT,
-        payload={"question": message, "semantic_history": context_payload},
-        output_model=ASTProgramModel,
-        max_tokens=1400,
-    )
-    if invocation.output.request_class == "UNSUPPORTED_REQUEST":
-        reason = invocation.output.unsupported_reason or "UNKNOWN_CAPABILITY"
-        if invocation.output.nodes or invocation.output.roots:
-            raise ValueError("unsupported_request_with_ast")
-        raise ValueError(f"unsupported_request:{reason}")
-    if not invocation.output.nodes or not invocation.output.roots:
-        raise ValueError("semantic_requirements_empty")
-    payload = invocation.output.model_dump(mode="json")
-    try:
-        program = SemanticProgram.from_dict(_normalize_history_aliases(payload, context))
-    except ValueError as exc:
-        _logger.warning("multihop_ast_validation_failure reason=%s", exc)
-        raise
+    invocation = None
+    parse_error: ValueError | None = None
+    for attempt in range(3):
+        instructions = AST_PROMPT
+        if attempt:
+            instructions += (
+                f"\n이전 출력은 AST 검증에 실패했다: {parse_error}. "
+                "원문 의미를 유지하되, "
+                "입력 node가 실제로 존재하고 upstream output type이 downstream 요구 field를 "
+                "생성하는 완전한 AST만 다시 출력한다. 물리 Action이나 정적 광종 슬롯으로 "
+                "대체하지 않는다."
+            )
+        invocation = await asyncio.to_thread(
+            llm.invoke,
+            task="semantic_ast",
+            instructions=instructions,
+            payload={"question": message, "semantic_history": context_payload},
+            output_model=ASTProgramModel,
+            max_tokens=1400,
+        )
+        if invocation.output.request_class == "UNSUPPORTED_REQUEST":
+            reason = invocation.output.unsupported_reason or "UNKNOWN_CAPABILITY"
+            if invocation.output.nodes or invocation.output.roots:
+                raise ValueError("unsupported_request_with_ast")
+            raise ValueError(f"unsupported_request:{reason}")
+        if not invocation.output.nodes or not invocation.output.roots:
+            parse_error = ValueError("semantic_requirements_empty")
+            continue
+        payload = invocation.output.model_dump(mode="json")
+        try:
+            program = SemanticProgram.from_dict(_normalize_history_aliases(payload, context))
+        except ValueError as exc:
+            parse_error = exc
+            _logger.warning("multihop_ast_validation_failure attempt=%d reason=%s", attempt + 1, exc)
+            continue
+        break
+    else:
+        assert parse_error is not None
+        raise parse_error
     if len(_AST_CACHE) >= _AST_CACHE_MAX:
         _AST_CACHE.pop(next(iter(_AST_CACHE)))
     _AST_CACHE[cache_key] = program
@@ -276,10 +298,15 @@ def _normalize_history_aliases(payload: Mapping[str, Any], context: Conversation
     synthetic_id = "ctx_" + re.sub(r"[^A-Za-z0-9_]+", "_", canonical_ref).strip("_")
     aliases = {"previous", "previous_turn", "latest", "latest_result", "history:0:0", "history:latest"}
     aliases.update({canonical_ref})
+    # Gemma may use the latest root step as a local result alias instead of
+    # repeating the opaque persisted result_id. Resolve only that latest-root
+    # alias; arbitrary result references remain strict and cannot cross turns.
+    latest_roots = context.latest.semantic_program.roots if context.latest and context.latest.semantic_program else ()
+    aliases.update(f"result:{root}" for root in latest_roots)
 
     def is_alias(value: Any) -> bool:
         text = str(value)
-        return text in aliases or text.startswith("history:") and text != canonical_ref
+        return text in aliases
 
     # A model may emit the alias as a pseudo-node and even point that node to
     # itself. Materialize it as a typed entity binding before graph validation.
@@ -306,7 +333,7 @@ def _normalize_history_aliases(payload: Mapping[str, Any], context: Conversation
         for raw_ref in node.get("inputs", []) or []:
             ref = dict(raw_ref)
             ref_id = str(ref.get("node_id"))
-            if is_alias(ref_id) or ref_id == node.get("node_id"):
+            if is_alias(ref_id):
                 ref["node_id"] = synthetic_id
             inputs.append(ref)
         node["inputs"] = inputs
@@ -439,8 +466,11 @@ def _entity_values(value: Any) -> list[str]:
             elif isinstance(item, Mapping):
                 for key, candidate in item.items():
                     if any(token in str(key).casefold() for token in ("광종", "광물", "mineral", "원소")):
-                        if candidate and str(candidate) not in values:
-                            values.append(str(candidate))
+                        candidates = (candidate if isinstance(candidate, (list, tuple)) else
+                                      str(candidate).split(",") if str(key) in {"광종 목록", "mineral_list", "minerals"} else [candidate])
+                        for name in candidates:
+                            if name and str(name).strip() not in values:
+                                values.append(str(name).strip())
                         break
     return values
 
@@ -529,6 +559,7 @@ def _typed_from_retrieval(result: Any, action: ActionCall, *, input_entities: li
         source=sources,
         evidence=evidence,
         provenance=provenance,
+        warnings=tuple(getattr(action_result, "warnings", []) or []),
     )
 
 
@@ -608,6 +639,8 @@ class LiveOperatorFactory:
     def build(self, *, node: Any, dependencies: tuple[str, ...], bindings: Mapping[str, Any]):
         if node.operator == Operator.ENTITY.value:
             return FunctionStep(node.node_id, node.operator.value, lambda _c, _i: self._entity(node), dependencies=dependencies, bindings=bindings)
+        if node.operator == Operator.FOR_EACH.value:
+            return FunctionStep(node.node_id, node.operator.value, lambda _c, inputs: self._foreach(node, inputs), dependencies=dependencies, bindings=bindings)
         if node.operator in {Operator.TOP_K.value, Operator.FILTER.value, Operator.SORT.value, Operator.RANK.value, Operator.ARG_MAX.value, Operator.ARG_MIN.value, Operator.PROJECT.value, Operator.CALCULATE.value, Operator.AGGREGATE.value, Operator.COMPARE.value, Operator.JOIN.value} and (dependencies or node.operator != Operator.RANK.value):
             return FunctionStep(node.node_id, node.operator.value, lambda _c, inputs: self._derive(node, inputs), dependencies=dependencies, bindings=bindings)
         if node.operator == Operator.VALIDATE_EVIDENCE.value:
@@ -626,6 +659,11 @@ class LiveOperatorFactory:
         return next(iter(inputs.values())).value if inputs else None
 
     def _derive(self, node: Any, inputs: Mapping[str, TypedResult]) -> TypedResult:
+        if any(result.status == ResultStatus.PARTIAL for result in inputs.values()) and node.operator in {
+            Operator.AGGREGATE, Operator.CALCULATE, Operator.RANK, Operator.TOP_K,
+            Operator.ARG_MAX, Operator.ARG_MIN, Operator.COMPARE,
+        }:
+            return TypedResult.abstain("incomplete_population")
         source = next(iter(inputs.values()), None)
         value = source.value if source else None
         rows = value if isinstance(value, list) else ([value] if isinstance(value, Mapping) else [])
@@ -712,7 +750,12 @@ class LiveOperatorFactory:
                 else:
                     rows = [min(rows, key=lambda row: _numeric(row.get(field)) if isinstance(row, Mapping) and _numeric(row.get(field)) is not None else float("inf"))]
         elif node.operator == Operator.PROJECT.value:
-            fields = args.get("fields") or []
+            fields = args.get("fields") or ([args["field"]] if args.get("field") else [])
+            if source and source.result_type == ValueType.DOCUMENT_EVIDENCE and fields in (["minerals"], ["mineral_list"]):
+                entities = _entity_values(rows) or _entity_values(_rows(list(source.evidence)))
+                if not entities:
+                    return TypedResult.empty(ValueType.MINERAL_SET, "document_mineral_list_unavailable")
+                return replace(source, result_type=ValueType.MINERAL_SET, value=entities, entity=tuple(entities))
             rows = [
                 {
                     field: row.get(_resolve_row_field([row], str(field)) or str(field))
@@ -771,6 +814,55 @@ class LiveOperatorFactory:
             return merged
         return await self._call_action(node, action_id, mineral=minerals[0] if minerals else None, minerals=minerals or None)
 
+    async def _foreach(self, node: Any, inputs: Mapping[str, TypedResult]) -> TypedResult:
+        """Execute one typed operation per upstream mineral, preserving item status."""
+        source = next(iter(inputs.values()), None)
+        minerals = list(source.entity if source else ()) or _entity_values(source.value if source else None)
+        if not minerals and source and source.result_type == ValueType.DOCUMENT_EVIDENCE:
+            # Only an explicit mineral column is a list contract. An alias in
+            # a title/summary (e.g. '동' in '동향') does not establish membership.
+            minerals = _entity_values(_rows(list(source.evidence)))
+        if not minerals:
+            return TypedResult.empty(ValueType.COMPOSITE, "upstream MineralSet is empty")
+        operation_args = dict(node.args)
+        operation_args.pop("item_type", None)
+        operation_args.pop("operation", None)
+        operation = type(node)(node_id=node.node_id, operator=Operator.RETRIEVE.value,
+                               inputs=node.inputs, args=operation_args,
+                               expected_type=node.expected_type, constraints=node.constraints,
+                               evidence_required=node.evidence_required)
+        async def execute_item(mineral: str) -> TypedResult:
+            try:
+                return await self._call_action(operation, _action_id(operation), mineral=mineral, minerals=[mineral])
+            except Exception as exc:
+                _logger.warning("foreach execution failed step=%s mineral=%s error=%s", node.node_id, mineral, type(exc).__name__)
+                return TypedResult.failed("execution_failed")
+
+        results = await asyncio.gather(*(execute_item(mineral) for mineral in dict.fromkeys(minerals)))
+        minerals = list(dict.fromkeys(minerals))
+        rows = []
+        evidence = []
+        sources = []
+        provenance = []
+        for mineral, result in zip(minerals, results):
+            rows.append({"mineral": mineral, "status": result.status.value,
+                         "value": result.value, "reason": result.failure_reason,
+                         "evidence": list(result.evidence), "unit": result.unit,
+                         "period": result.period, "source": list(result.source),
+                         "provenance": list(result.provenance)})
+            if result.status == ResultStatus.SUCCESS and result.sufficient:
+                evidence.extend(result.evidence)
+                sources.extend(result.source)
+                provenance.extend(result.provenance)
+        successful = sum(item.status == ResultStatus.SUCCESS and item.sufficient for item in results)
+        status = (ResultStatus.SUCCESS if successful == len(results) else
+                  ResultStatus.PARTIAL if successful else ResultStatus.FAILED)
+        return TypedResult(ValueType.COMPOSITE, rows, status=status, sufficient=bool(successful),
+                                   failure_reason=None if successful else "all_items_failed",
+                                   entity=tuple(minerals),
+                                   evidence=tuple(evidence), source=tuple(dict.fromkeys(sources)),
+                                   provenance=tuple(dict.fromkeys(provenance)))
+
     async def _call_action(self, node: Any, action_id: str, *, mineral: str | None = None, minerals: list[str] | None = None) -> TypedResult:
         slots = _action_slots(node, mineral=mineral, minerals=minerals)
         if action_id == "price.volatility_rank":
@@ -783,10 +875,13 @@ class LiveOperatorFactory:
         # multi-hop user sentence to the legacy advisor makes it judge an
         # upstream result against downstream requirements and reject valid
         # evidence. Use a compact operation-local question for structured
-        # Actions; document retrieval keeps the original topic because its
-        # lexical search needs the user's wording.
+        # Actions. Document retrieval receives only its semantic topic;
+        # passing the downstream price question makes document verification
+        # incorrectly require numeric price evidence at the extraction step.
         primitive_question = self.message
-        if action_id == "price.volatility_rank":
+        if action_id == "document.retrieve":
+            primitive_question = slots.topic or self.message
+        elif action_id == "price.volatility_rank":
             primitive_question = "광종별 가격 변동률 순위를 조회해줘"
         elif action_id == "trade.monthly":
             primitive_question = f"{mineral or '해당 광종'}의 수입액 월별 현황을 조회해줘"
@@ -798,7 +893,12 @@ class LiveOperatorFactory:
             retrieve_evidence,
             primitive_question,
             session_id=self.session_id,
-            history=self.history,
+            # A self-contained document-selection hop must not inherit raw
+            # prior turns: an earlier price request can make the verifier
+            # demand price evidence from a document whose only role is to
+            # produce MineralSet. Typed semantic references are materialized
+            # before this hop and do not rely on this raw-history argument.
+            history=[] if action_id == "document.retrieve" else self.history,
             llm=self.llm,
             profile=self.profile,
             action_plan=plan,
@@ -931,12 +1031,71 @@ def live_run_events(run: LiveRun) -> list[ChatEvent]:
     if run.orchestration is None:
         return []
     result = run.orchestration.root_result
-    if result.status in {ResultStatus.ABSTAINED, ResultStatus.EMPTY, ResultStatus.FAILED}:
+    if result.status in {ResultStatus.ABSTAINED, ResultStatus.EMPTY, ResultStatus.FAILED, ResultStatus.DEPENDENCY_FAILED}:
         return [
             ChatEvent("delta", {"delta": result.failure_reason or "확인 가능한 근거가 없어 답변할 수 없습니다."}),
             ChatEvent("done", {"done": True, "abstained": True, "abstain_reason": result.failure_reason or "source_unavailable", "citations": []}),
         ]
-    events = [ChatEvent("delta", {"delta": "요청하신 조건을 기존 데이터 원천에서 단계적으로 확인했습니다."})]
+    events: list[ChatEvent] = []
+    # A document→ForEach→price query is a per-entity latest-value request.
+    # Do not promote failed items or raw retrieval rows to the final table: the
+    # composite result is an execution snapshot, while presentation selects
+    # only successful latest observations.
+    if result.result_type == ValueType.COMPOSITE and isinstance(result.value, list):
+        lines: list[str] = []
+        latest_rows: list[tuple[str, Any, Any, str | None, str | None]] = []
+        for item in result.value:
+            if not isinstance(item, Mapping) or str(item.get("status", "")).casefold() != "success":
+                continue
+            mineral = str(item.get("mineral") or "").strip()
+            value = item.get("value")
+            dated_rows = [row for row in value if isinstance(row, Mapping) and _row_date(row) is not None and _row_date(row) <= date.today()] if isinstance(value, list) else []
+            if isinstance(value, list) and not dated_rows and any(isinstance(row, Mapping) and _row_date(row) is not None for row in value):
+                continue
+            row = max(dated_rows, key=_row_date) if dated_rows else (value[0] if isinstance(value, list) and value and isinstance(value[0], Mapping) else value)
+            if not mineral or not isinstance(row, Mapping):
+                continue
+            date_key = next((key for key in row if "기준일" in str(key) or str(key).casefold() in {"date", "observed_date", "crtr_ymd"}), None)
+            price_key = next((key for key in row if "통상가격" in str(key)), None)
+            price_key = price_key or next((key for key in row if str(key).casefold() in {"price", "value", "latest_price"}), None)
+            if price_key is None or row.get(price_key) in (None, "None", ""):
+                continue
+            observed = f" ({row[date_key]} 기준)" if date_key and row.get(date_key) not in (None, "") else ""
+            raw_unit = item.get("unit") or row.get("단위")
+            unit = _verified_display_unit(raw_unit)
+            if not unit and isinstance(raw_unit, str):
+                unit_fields = dict(part.strip().split("=", 1) for part in raw_unit.split(";") if "=" in part)
+                currency, weight = unit_fields.get("통화코드"), unit_fields.get("중량단위코드")
+                if currency and weight:
+                    unit = _price_unit_from_codes([currency.strip()], [weight.strip()])
+            item_source = next(iter(item.get("source") or []), None)
+            lines.append(f"{mineral}: {row[price_key]}{(' ' + str(unit)) if unit else ''}{observed}")
+            latest_rows.append((mineral, row[price_key], row.get(date_key) if date_key else None, unit, item_source))
+        if lines:
+            events.append(ChatEvent("delta", {"delta": "\n".join(lines)}))
+            for index, (mineral, price, observed_date, unit, item_source) in enumerate(latest_rows, 1):
+                table = {
+                    "columns": ["광종", "최근 가격", "기준일"],
+                    "rows": [[mineral, str(price), str(observed_date or "")]],
+                    "markdown": f"| 광종 | 최근 가격 | 기준일 |\n| --- | --- | --- |\n| {mineral} | {price} | {observed_date or ''} |",
+                }
+                events.append(ChatEvent("table", table_block(
+                    table,
+                    block_id=f"multihop-price-{index}",
+                    source_index=(result.source.index(item_source) + 1 if item_source in result.source else None),
+                    source_label=item_source,
+                    unit=unit,
+                )))
+        if not lines:
+            return [ChatEvent("delta", {"delta": "표시할 수 있는 검증된 결과가 없습니다."}),
+                    ChatEvent("done", {"done": True, "abstained": True,
+                                      "abstain_reason": "presentation_unavailable", "citations": []})]
+        if result.status == ResultStatus.PARTIAL:
+            events.append(ChatEvent("delta", {"delta": "\n일부 항목은 조회하지 못했습니다."}))
+        citations = [{"index": index, "source": source} for index, source in enumerate(result.source, 1)]
+        events.append(ChatEvent("done", {"done": True, "abstained": False, "citations": citations, "bogus_citations": []}))
+        return events
+    events.append(ChatEvent("delta", {"delta": "요청하신 조건을 기존 데이터 원천에서 단계적으로 확인했습니다."}))
     if isinstance(result.value, list) and result.value and all(isinstance(row, Mapping) for row in result.value):
         columns = list(dict.fromkeys(key for row in result.value for key in row.keys()))
         table = {

@@ -58,8 +58,9 @@ from rag_core.retrieval.evidence import (
     Evidence, KOMIS_RAW_UNVERIFIED_CAVEAT, from_komis_raw, from_komis_ranking,
     from_komis_aggregate, from_structured,
 )
-from .data_source_policy import DataSourcePolicy, policy_for_data_source
+from .data_source_policy import DataSourcePolicy, allow_dummy_data, policy_for_data_source
 from .strategic_price_groups import load_strategic_price_members
+from .representative_price_criteria import representative_price_criterion
 
 
 def _display_labels(values: Any, *, separator: str = ", ") -> str:
@@ -342,7 +343,7 @@ def register_common_tools(
                 dummy_status = repo.price_criteria_have_dummy_rows([price_criterion_serial])
             except RawDataAccessError as exc:
                 return {"evidence": [], "warnings": [str(exc)]}
-            if dummy_status.get(price_criterion_serial) is True:
+            if dummy_status.get(price_criterion_serial) is True and not allow_dummy_data():
                 return {
                     "evidence": [],
                     "warnings": [
@@ -379,7 +380,8 @@ def register_common_tools(
                 dummy_status = repo.price_criteria_have_dummy_rows(serials)
             except RawDataAccessError as exc:
                 return {"evidence": [], "warnings": [str(exc)]}
-            serials = [serial for serial in serials if dummy_status.get(serial) is not True]
+            if not allow_dummy_data():
+                serials = [serial for serial in serials if dummy_status.get(serial) is not True]
             if not serials:
                 return {
                     "evidence": [],
@@ -387,6 +389,28 @@ def register_common_tools(
                         f"'{mineral_code}'에 비더미 가격기준이 없어 일반 챗봇 가격 조회를 제공할 수 없습니다."
                     ],
                 }
+            # 기준을 생략한 경우에만 환경 독립적인 대표 기준 registry를 적용한다.
+            # registry에 있지만 DB 광종 매핑에 없는 기준으로 조용히 대체하지 않는다.
+            mineral_meta = repo.resolve_mineral_meta(mineral_code)
+            representative = representative_price_criterion(
+                mineral_meta[0] if mineral_meta else mineral_code
+            )
+            if representative:
+                expected = representative["criterion"].strip().casefold()
+                matched = []
+                for serial in serials:
+                    metadata = repo.resolve_price_criterion_metadata(serial)
+                    if metadata and (metadata[0] or "").strip().casefold() == expected:
+                        matched.append(serial)
+                if not matched:
+                    return {
+                        "evidence": [],
+                        "warnings": [
+                            f"대표 가격기준 '{representative['criterion']}'이 "
+                            f"광종 {mineral_code}에 매핑되어 있지 않습니다."
+                        ],
+                    }
+                serials = matched
             if len(serials) > 1:
                 options: list[str] = []
                 for serial in serials:
@@ -516,7 +540,7 @@ def register_common_tools(
                 # 행 단위 추적키를 확인하지 못했을 때 광종 단위 DEV_DUMMY로
                 # 실가격 기준까지 확정 더미라고 단정하지 않는다.
                 unverified = True
-            if is_dummy:
+            if is_dummy and not allow_dummy_data():
                 warnings.append(
                     f"⚠ '{mineral_code}' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미"
                     f"(ko_data_src_cd={data_source or '확인불가'})일 수 있습니다 — "
@@ -627,7 +651,7 @@ def register_common_tools(
         is_dummy, unverified, _ = _source_policy_state(data_source)
         if unverified and dataset.rows:
             return {"evidence": [], "warnings": [_unavailable_source_warning(data_source)]}
-        if is_dummy and dataset.rows:
+        if is_dummy and dataset.rows and not allow_dummy_data():
             warnings.append(
                 f"⚠ '{mineral_code}' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미"
                 f"(ko_data_src_cd={data_source or '확인불가'})일 수 있습니다 — "
@@ -685,7 +709,7 @@ def register_common_tools(
             menu_page_id=page_id,
         )
         warnings = []
-        if is_dummy:
+        if is_dummy and not allow_dummy_data():
             warnings.append(
                 f"⚠ '{mineral_code}' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미"
                 f"(ko_data_src_cd={data_source or '확인불가'})일 수 있습니다 — 실제 수치인 것처럼 안내하지 마세요."
@@ -1152,7 +1176,7 @@ def register_common_tools(
         is_dummy, unverified, _ = _source_policy_state(data_source)
         if unverified and dataset.rows:
             return {"evidence": [], "warnings": [_unavailable_source_warning(data_source)]}
-        if is_dummy and dataset.rows:
+        if is_dummy and dataset.rows and not allow_dummy_data():
             warnings.append(
                 f"⚠ '{mineral_code}' 데이터는 KOMIS 실제 표본이 아니라 개발용 더미"
                 f"(ko_data_src_cd={data_source or '확인불가'})일 수 있습니다 — "
@@ -1196,7 +1220,7 @@ def register_common_tools(
         evidence = from_komis_aggregate(dataset, label="세계 생산량 전년 대비(SU 세계 총계)",
                                         is_dummy=is_dummy, menu_page_id="map_mineral")
         warnings = ["⚠ 세계 총계는 시스템 DB의 SU 행으로 계산했으며 연간 완결·발행판 메타데이터는 현재 확인되지 않았습니다."]
-        if is_dummy:
+        if is_dummy and not allow_dummy_data():
             warnings.append("⚠ 이 생산량은 개발용 더미 또는 원천 상태 미확인 데이터입니다. 공식 통계로 사용하지 마세요.")
         return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}
 
@@ -1274,7 +1298,7 @@ def register_common_tools(
             return {"evidence": [], "warnings": warnings}
 
         is_dummy = _any_dummy(repo, [row["mineral"] for row in dataset.rows])
-        if is_dummy:
+        if is_dummy and not allow_dummy_data():
             warnings.append(
                 "⚠ 비교 대상 광종 중 일부는 KOMIS 실제 표본이 아니라 개발용 더미일 수 있습니다 — "
                 "실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요."
@@ -1332,7 +1356,7 @@ def register_common_tools(
             return {"evidence": [], "warnings": warnings}
 
         is_dummy = _any_dummy(repo, [row["mineral"] for row in dataset.rows])
-        if is_dummy:
+        if is_dummy and not allow_dummy_data():
             warnings.append(
                 "⚠ 비교 대상 광종 중 일부는 KOMIS 실제 표본이 아니라 개발용 더미일 수 있습니다 — "
                 "실제 수치인 것처럼 안내하지 말고 반드시 이 사실을 함께 밝히세요."

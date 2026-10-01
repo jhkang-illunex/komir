@@ -129,6 +129,7 @@ from .renderers.report_search import render_period_report_search
 from .chatbot_store import DEFAULT_DB_PATH as DEFAULT_STORE_DB_PATH
 from .chatbot_store import append_message, get_or_create_session, list_messages
 from .messages import chat_message, faq_message
+from .data_source_policy import allow_dummy_data
 from .menu_catalog import menu_source
 from . import source_contract as _source_contract
 from .source_contract import assess_source_request
@@ -941,6 +942,8 @@ def _debug_retrieval_trace(result: RetrievalResult | None, warnings: list[str], 
 def _dummy_data_notice(cited_indices: set[int], evidence: list) -> str:
     """인용된 확정 더미는 실제 시세로 오인되지 않도록 답변에 표시한다."""
 
+    if allow_dummy_data():
+        return ""
     if any(i in cited_indices and getattr(ev, "caveat", None)
            and getattr(ev, "action_id", None) in {"price.series", "price.verify_claim"}
            for i, ev in enumerate(evidence, 1)):
@@ -951,6 +954,8 @@ def _dummy_data_notice(cited_indices: set[int], evidence: list) -> str:
 def _data_warnings(cited_indices: set[int], evidence: list) -> list[str]:
     """구조화 결과에도 인용 근거의 확정 더미 상태를 보존한다."""
 
+    if allow_dummy_data():
+        return []
     if any(i in cited_indices and getattr(ev, "caveat", None)
            and getattr(ev, "action_id", None) in {"price.series", "price.verify_claim"}
            for i, ev in enumerate(evidence, 1)):

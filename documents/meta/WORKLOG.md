@@ -2,6 +2,28 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-10-01 — audit-safety22 운영 18002 반영
+
+사용자 요청으로 `komir-rag-chat-18002`를 검증 이미지 `komir-rag-chat:audit-safety22`
+(sha256:31b7ed55fded35d8e4a7f172e5882fc394c05bded47075417e85894bc468e9e9)로 교체했다.
+주요 수정 소스의 이미지 내 SHA256 일치, 기존 환경변수 실효값·포트·마운트 유지 확인.
+이전 컨테이너는 `komir-rag-chat-18002-pre-audit22-20261001210249`로 정지 보존했다.
+healthz 정상. 실제 운영 /pubchat에서 fresh, 같은 세션 동일 질문, 월간 보고서 표현을
+연속 실행: 7.14/8.38/8.13초, 리튬·희토류 가격과 개별 표·citation·done 반환.
+세 요청 모두 root PARTIAL과 일부 실패 안내를 유지. 세션 c0204267-e193-4b93-864c-e86eab4936ee.
+SSE 원본 `/tmp/komir-deployed22-{fresh,existing,monthly}.sse`.
+
+## 2026-10-01 — live multihop 직전 변경 iterative audit
+
+거절된 문서 evidence를 성공으로 승격하는 bypass, ForEach 예외 전파/전체 실패의
+성공 처리, 빈 composite SSE 성공, history 검증 노드 삭제/잘못된 참조 치환을 수정했다.
+문서군 discovery를 기존 document_facts와 일치시키고 명시적인 광종 목록 projection을
+연결했다. 본문 substring 광종 추측을 제거하고 가격기준 번호/최신 관측행/단위·출처
+표시 오류도 수정했다. 신규 회귀 13개, 전체 695 PASS / 143 subtests PASS.
+`audit-safety22` 이미지(18011)에서 실제 Gemma fresh/동일 세션/월간 표현 3건이
+가격·표·citation을 반환했고 root PARTIAL을 보존했다. 운영 18002(self-contained16)는 유지.
+상세 근거와 한계는 `LIVE_MULTIHOP_AUDIT_20261001.md` 참조.
+
 ## 2026-09-30 — 일일 자원뉴스 광종 필터 실제 배포 검증
 
 기존 r15는 `니켈`을 제목·본문 검색어로만 사용해 다른 광종 기사에 니켈이 언급된

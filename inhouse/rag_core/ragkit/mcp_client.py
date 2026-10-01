@@ -75,7 +75,7 @@ _MODULE_BY_PROFILE: dict[str, str] = {
 }
 
 _START_TIMEOUT = 30.0
-_CALL_TIMEOUT = 90.0  # pageindex_agentic이 최대 MAX_AGENT_STEPS(5)회 LLM 왕복 — 여유 있게
+_CALL_TIMEOUT = float(os.getenv("MCP_CALL_TIMEOUT_SECONDS", "180"))
 
 
 def _loop_worker(loop: asyncio.AbstractEventLoop) -> None:
