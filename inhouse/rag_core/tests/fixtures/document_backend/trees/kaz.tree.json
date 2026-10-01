@@ -1,0 +1,18 @@
+{
+  "doc_id": "fixture_kaz",
+  "title": "Kazatomprom uranium mine profile",
+  "doc_name": "Kazatomprom",
+  "source_group": "public",
+  "okf_path": "광산자료/우라늄/Kazatomprom_우라늄_광산_정리자료.md",
+  "resource": "kaz.pdf",
+  "minerals": [
+    "우라늄"
+  ],
+  "content_keywords": [
+    "Kazatomprom",
+    "JV",
+    "Inkai",
+    "위치"
+  ],
+  "structure": []
+}

@@ -123,6 +123,26 @@ def test_v2_shadow_adapter_accepts_gemma_structured_plan_and_never_changes_produ
     assert llm.calls[0]["task"] == "semantic_requirement_v2"
 
 
+def test_v2_contract_normalizes_structured_outputs_and_preserves_orthogonal_fields():
+    plan = SemanticRequirementPlanV2.model_validate({
+        "requirements": [{
+            "requirement_id": "share",
+            "metric": "import_value",
+            "dimension": "country",
+            "operation": "share",
+            "scope": {"country": "한국"},
+            "requested_outputs": [{"name": "country_share", "fields": ["country", "share"]}],
+        }],
+        "requested_outputs": [{"name": "country_share", "fields": ["country", "share"]}],
+    })
+    req = plan.requirements[0]
+    assert req.dimension == "country"
+    assert req.operation == "share"
+    assert req.scope == {"country": "한국"}
+    assert req.requested_outputs == ["country_share"]
+    assert plan.requested_outputs[0].name == "country_share"
+
+
 def test_deterministic_planner_expands_change_metric_into_retrieve_and_calculate():
     plan = _plan(
         SemanticRequirementV2(requirement_id="r", entity=EntityRef(value="리튬"), metric=Metric.PRICE_CHANGE, limit=5),

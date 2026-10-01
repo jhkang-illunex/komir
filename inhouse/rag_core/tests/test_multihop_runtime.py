@@ -83,7 +83,7 @@ class MultiHopRuntimeTests(unittest.IsolatedAsyncioTestCase):
         )
         failure_result = await PipeRuntime().execute(failing_pipe)
         self.assertEqual(failure_result.status, ResultStatus.FAILED)
-        self.assertEqual(failure_result.results["next"].status, ResultStatus.FAILED)
+        self.assertEqual(failure_result.results["next"].status, ResultStatus.DEPENDENCY_FAILED)
         self.assertIn("upstream step failed", failure_result.results["next"].failure_reason)
 
     async def test_invalid_typed_selector_becomes_step_failure(self):

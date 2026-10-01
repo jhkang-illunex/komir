@@ -1157,7 +1157,8 @@ def extract_action_plan(
     # 보존한다. 이 계획은 기존 Action만 사용하며, 이후 실행 단계에서
     # 뉴스 광물 ArgMax binding을 해소한다.
     bounded_dependency_plan = _extract_action_plan_legacy(message, llm, selected_history, allow_llm=False)
-    if (len(bounded_dependency_plan.actions) >= 3
+    if (bounded_dependency_plan is not None
+            and len(bounded_dependency_plan.actions) >= 3
             and any(call.input_bindings for call in bounded_dependency_plan.actions)):
         return bounded_dependency_plan
     result = parse_and_resolve(message, llm, selected_history, semantic_context=semantic_context)

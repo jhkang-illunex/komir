@@ -1,0 +1,28 @@
+{
+  "doc_id": "fixture_rio",
+  "title": "Oyu Tolgoi",
+  "doc_name": "Cu_Oyu_Tolgoi_Rio_Tinto",
+  "source_group": "public",
+  "okf_path": "광산자료/동_구리/Cu_Oyu_Tolgoi_Rio_Tinto.md",
+  "resource": "rio.pdf",
+  "minerals": [
+    "구리"
+  ],
+  "content_keywords": [
+    "Quarter",
+    "Full",
+    "Year",
+    "Annual",
+    "production",
+    "2024",
+    "2025"
+  ],
+  "structure": [
+    {
+      "node_id": "rio-root",
+      "title": "Oyu Tolgoi production",
+      "line_num": 1,
+      "nodes": []
+    }
+  ]
+}

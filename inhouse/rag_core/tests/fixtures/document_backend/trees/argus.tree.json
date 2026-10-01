@@ -1,0 +1,23 @@
+{
+  "doc_id": "fixture_argus",
+  "title": "Argus",
+  "doc_name": "Argus_Non-Ferrous_Markets_2025-10-29",
+  "source_group": "Argus_비철금속_일일",
+  "okf_path": "Argus_비철금속_일일/Argus_Non-Ferrous_Markets_2025-10-29.md",
+  "resource": "argus.pdf",
+  "minerals": [
+    "구리"
+  ],
+  "content_keywords": [
+    "copper",
+    "price"
+  ],
+  "structure": [
+    {
+      "node_id": "argus-root",
+      "title": "Argus private-source fixture",
+      "line_num": 1,
+      "nodes": []
+    }
+  ]
+}

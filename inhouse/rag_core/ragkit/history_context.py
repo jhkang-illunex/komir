@@ -451,7 +451,16 @@ class PostgresHistoryStore:
     def _turn_from_row(session_id: str, row: tuple[Any, ...]) -> Turn:
         from .semantic_ir import SemanticProgram
 
-        turn_id, utterance, created_at, program_json, pipe_id, result_json, result_id, snapshots_json, evidence_json = row
+        if len(row) == 7:
+            # Compatibility with the pre-snapshot persistence contract used by
+            # existing fixtures and rows captured before result bindings were
+            # added. New rows always use the 9-column shape below.
+            turn_id, utterance, created_at, program_json, pipe_id, result_json, evidence_json = row
+            result_id, snapshots_json = None, None
+        elif len(row) == 9:
+            turn_id, utterance, created_at, program_json, pipe_id, result_json, result_id, snapshots_json, evidence_json = row
+        else:
+            raise ValueError(f"unexpected history row shape: {len(row)}")
         if created_at.tzinfo is None:
             created_at = created_at.replace(tzinfo=timezone.utc)
         program = None

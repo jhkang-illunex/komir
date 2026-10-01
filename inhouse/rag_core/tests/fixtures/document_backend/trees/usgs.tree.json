@@ -1,0 +1,25 @@
+{
+  "doc_id": "fixture_usgs",
+  "title": "USGS 2026",
+  "doc_name": "USGS_2026",
+  "source_group": "public",
+  "okf_path": "생산매장량_USGS/USGS_2026.md",
+  "resource": "USGS_2026.pdf",
+  "document_date": "2026-01-01",
+  "minerals": [
+    "희토류",
+    "네오디뮴"
+  ],
+  "content_keywords": [
+    "World",
+    "Mine",
+    "Production",
+    "Reserves",
+    "RARE",
+    "EARTHS",
+    "Neodymium",
+    "oxide",
+    "Price"
+  ],
+  "structure": []
+}

@@ -13,7 +13,7 @@ from typing import Final
 CAPABILITY_OUTPUTS: Final[dict[tuple[str, str], frozenset[str]]] = {
     ("concept", "retrieve"): frozenset({"usage", "concept"}),
     ("document", "retrieve"): frozenset({"document_evidence", "resource_news"}),
-    ("price", "current"): frozenset({"latest_price", "current_price"}),
+    ("price", "current"): frozenset({"latest_price"}),
     ("price", "price_series"): frozenset({"price_series"}),
     ("trade", "country_rank"): frozenset({"country_rank"}),
     ("resource", "resource_rank"): frozenset({"resource_rank", "production", "reserves", "value", "country", "period", "unit"}),
@@ -55,9 +55,11 @@ def produced_outputs(requirements: list[object]) -> frozenset[str]:
     }
     if {"average", "sum"}.issubset(resource_ops):
         outputs.update({"difference_between_average_and_total", "total_production", "average_production"})
-        # A selected price observation is a scalar value plus its selected
-        # date, not merely an unprojected time series.  This is derived from
-        # the typed AST selection, never from the raw utterance.
+    # A selected price observation is a scalar value plus its selected date,
+    # not merely an unprojected time series. This is derived from the typed AST
+    # selection, never from the raw utterance.
+    for requirement in requirements:
+        key = (getattr(requirement, "domain", ""), getattr(requirement, "metric", ""))
         selection = getattr(requirement, "selection", None)
         if (key == ("price", "price_series") and selection is not None
                 and getattr(selection, "mode", None) == "extremum"):
@@ -68,7 +70,9 @@ def produced_outputs(requirements: list[object]) -> frozenset[str]:
 def validate_requested_outputs(requirements: list[object], requested: set[str] | frozenset[str]) -> str | None:
     """Validate AST output coverage without inspecting raw natural language."""
 
-    missing = sorted(set(requested) - produced_outputs(requirements))
+    aliases = {"current_price": "latest_price"}
+    normalized_requested = {aliases.get(str(item), str(item)) for item in requested}
+    missing = sorted(normalized_requested - produced_outputs(requirements))
     return "requested_output_not_produced:" + ",".join(missing) if missing else None
 
 

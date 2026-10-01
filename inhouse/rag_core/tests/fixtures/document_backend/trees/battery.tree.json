@@ -1,0 +1,11 @@
+{
+  "doc_id": "fixture_battery",
+  "title": "Battery demand relations",
+  "doc_name": "battery",
+  "source_group": "public",
+  "okf_path": "배터리/배터리_수요_관계.md",
+  "resource": "battery.pdf",
+  "minerals": ["리튬", "니켈", "코발트"],
+  "content_keywords": ["리튬", "배터리", "수요", "NCM", "니켈", "코발트"],
+  "structure": [{"node_id":"battery-root","title":"Battery demand relations","line_num":1,"nodes":[]}]
+}

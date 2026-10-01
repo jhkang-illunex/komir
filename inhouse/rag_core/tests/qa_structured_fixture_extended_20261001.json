@@ -1,0 +1,1466 @@
+{
+  "schema_version": 1,
+  "purpose": "common deterministic structured fixture extension; test-only",
+  "source": "synthetic",
+  "tables": {
+    "fact_price": [
+      {
+        "commodity_code": "NI",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-01-15",
+        "val": 100,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "NI",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-02-15",
+        "val": 107,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "NI",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-03-15",
+        "val": 114,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "CU",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-01-15",
+        "val": 111,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "CU",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-02-15",
+        "val": 118,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "CU",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-03-15",
+        "val": 125,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "LI",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-01-15",
+        "val": 122,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "LI",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-02-15",
+        "val": 129,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "LI",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-03-15",
+        "val": 136,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "CO",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-01-15",
+        "val": 133,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "CO",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-02-15",
+        "val": 140,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "CO",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-03-15",
+        "val": 147,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "W",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-01-15",
+        "val": 144,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "W",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-02-15",
+        "val": 151,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "W",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-03-15",
+        "val": 158,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "GR",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-01-15",
+        "val": 155,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "GR",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-02-15",
+        "val": 162,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "GR",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-03-15",
+        "val": 169,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "MN",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-01-15",
+        "val": 166,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "MN",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-02-15",
+        "val": 173,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "MN",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-03-15",
+        "val": 180,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "ZN",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-01-15",
+        "val": 177,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "ZN",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-02-15",
+        "val": 184,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "ZN",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-03-15",
+        "val": 191,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "REE",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-01-15",
+        "val": 188,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "REE",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-02-15",
+        "val": 195,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "REE",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-03-15",
+        "val": 202,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "ND",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-01-15",
+        "val": 199,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "ND",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-02-15",
+        "val": 206,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "ND",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-03-15",
+        "val": 213,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "DONG",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-01-15",
+        "val": 210,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "DONG",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-02-15",
+        "val": 217,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "DONG",
+        "price_type": "SYNTHETIC_CASH",
+        "freq": "D",
+        "obs_date": "2026-03-15",
+        "val": 224,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      }
+    ],
+    "fact_trade_annual": [
+      {
+        "yr": 2025,
+        "hs10": "HSNI",
+        "commodity_code": "NI",
+        "country": "A",
+        "imp_usd": 100,
+        "imp_wgt": 10,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSNI",
+        "commodity_code": "NI",
+        "country": "B",
+        "imp_usd": 200,
+        "imp_wgt": 20,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSNI",
+        "commodity_code": "NI",
+        "country": "C",
+        "imp_usd": 300,
+        "imp_wgt": 30,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSCU",
+        "commodity_code": "CU",
+        "country": "A",
+        "imp_usd": 200,
+        "imp_wgt": 20,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSCU",
+        "commodity_code": "CU",
+        "country": "B",
+        "imp_usd": 400,
+        "imp_wgt": 40,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSCU",
+        "commodity_code": "CU",
+        "country": "C",
+        "imp_usd": 600,
+        "imp_wgt": 60,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSLI",
+        "commodity_code": "LI",
+        "country": "A",
+        "imp_usd": 300,
+        "imp_wgt": 30,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSLI",
+        "commodity_code": "LI",
+        "country": "B",
+        "imp_usd": 600,
+        "imp_wgt": 60,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSLI",
+        "commodity_code": "LI",
+        "country": "C",
+        "imp_usd": 900,
+        "imp_wgt": 90,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSCO",
+        "commodity_code": "CO",
+        "country": "A",
+        "imp_usd": 400,
+        "imp_wgt": 40,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSCO",
+        "commodity_code": "CO",
+        "country": "B",
+        "imp_usd": 800,
+        "imp_wgt": 80,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSCO",
+        "commodity_code": "CO",
+        "country": "C",
+        "imp_usd": 1200,
+        "imp_wgt": 120,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSW",
+        "commodity_code": "W",
+        "country": "A",
+        "imp_usd": 500,
+        "imp_wgt": 50,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSW",
+        "commodity_code": "W",
+        "country": "B",
+        "imp_usd": 1000,
+        "imp_wgt": 100,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSW",
+        "commodity_code": "W",
+        "country": "C",
+        "imp_usd": 1500,
+        "imp_wgt": 150,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSGR",
+        "commodity_code": "GR",
+        "country": "A",
+        "imp_usd": 600,
+        "imp_wgt": 60,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSGR",
+        "commodity_code": "GR",
+        "country": "B",
+        "imp_usd": 1200,
+        "imp_wgt": 120,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSGR",
+        "commodity_code": "GR",
+        "country": "C",
+        "imp_usd": 1800,
+        "imp_wgt": 180,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSMN",
+        "commodity_code": "MN",
+        "country": "A",
+        "imp_usd": 700,
+        "imp_wgt": 70,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSMN",
+        "commodity_code": "MN",
+        "country": "B",
+        "imp_usd": 1400,
+        "imp_wgt": 140,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSMN",
+        "commodity_code": "MN",
+        "country": "C",
+        "imp_usd": 2100,
+        "imp_wgt": 210,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSZN",
+        "commodity_code": "ZN",
+        "country": "A",
+        "imp_usd": 800,
+        "imp_wgt": 80,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSZN",
+        "commodity_code": "ZN",
+        "country": "B",
+        "imp_usd": 1600,
+        "imp_wgt": 160,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSZN",
+        "commodity_code": "ZN",
+        "country": "C",
+        "imp_usd": 2400,
+        "imp_wgt": 240,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSREE",
+        "commodity_code": "REE",
+        "country": "A",
+        "imp_usd": 900,
+        "imp_wgt": 90,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSREE",
+        "commodity_code": "REE",
+        "country": "B",
+        "imp_usd": 1800,
+        "imp_wgt": 180,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSREE",
+        "commodity_code": "REE",
+        "country": "C",
+        "imp_usd": 2700,
+        "imp_wgt": 270,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSND",
+        "commodity_code": "ND",
+        "country": "A",
+        "imp_usd": 1000,
+        "imp_wgt": 100,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSND",
+        "commodity_code": "ND",
+        "country": "B",
+        "imp_usd": 2000,
+        "imp_wgt": 200,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSND",
+        "commodity_code": "ND",
+        "country": "C",
+        "imp_usd": 3000,
+        "imp_wgt": 300,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSDONG",
+        "commodity_code": "DONG",
+        "country": "A",
+        "imp_usd": 1100,
+        "imp_wgt": 110,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSDONG",
+        "commodity_code": "DONG",
+        "country": "B",
+        "imp_usd": 2200,
+        "imp_wgt": 220,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      },
+      {
+        "yr": 2025,
+        "hs10": "HSDONG",
+        "commodity_code": "DONG",
+        "country": "C",
+        "imp_usd": 3300,
+        "imp_wgt": 330,
+        "exp_usd": 0,
+        "exp_wgt": 0,
+        "src": "qa-fixture"
+      }
+    ],
+    "fact_production_reserve": [
+      {
+        "commodity_code": "NI",
+        "country": "A",
+        "year": 2025,
+        "metric": "production",
+        "val": 10,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "NI",
+        "country": "B",
+        "year": 2025,
+        "metric": "production",
+        "val": 20,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "NI",
+        "country": "C",
+        "year": 2025,
+        "metric": "production",
+        "val": 30,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "NI",
+        "country": "A",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 30,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "NI",
+        "country": "B",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 60,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "NI",
+        "country": "C",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 90,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "CU",
+        "country": "A",
+        "year": 2025,
+        "metric": "production",
+        "val": 20,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "CU",
+        "country": "B",
+        "year": 2025,
+        "metric": "production",
+        "val": 40,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "CU",
+        "country": "C",
+        "year": 2025,
+        "metric": "production",
+        "val": 60,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "CU",
+        "country": "A",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 60,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "CU",
+        "country": "B",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 120,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "CU",
+        "country": "C",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 180,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "LI",
+        "country": "A",
+        "year": 2025,
+        "metric": "production",
+        "val": 30,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "LI",
+        "country": "B",
+        "year": 2025,
+        "metric": "production",
+        "val": 60,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "LI",
+        "country": "C",
+        "year": 2025,
+        "metric": "production",
+        "val": 90,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "LI",
+        "country": "A",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 90,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "LI",
+        "country": "B",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 180,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "LI",
+        "country": "C",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 270,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "CO",
+        "country": "A",
+        "year": 2025,
+        "metric": "production",
+        "val": 40,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "CO",
+        "country": "B",
+        "year": 2025,
+        "metric": "production",
+        "val": 80,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "CO",
+        "country": "C",
+        "year": 2025,
+        "metric": "production",
+        "val": 120,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "CO",
+        "country": "A",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 120,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "CO",
+        "country": "B",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 240,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "CO",
+        "country": "C",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 360,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "W",
+        "country": "A",
+        "year": 2025,
+        "metric": "production",
+        "val": 50,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "W",
+        "country": "B",
+        "year": 2025,
+        "metric": "production",
+        "val": 100,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "W",
+        "country": "C",
+        "year": 2025,
+        "metric": "production",
+        "val": 150,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "W",
+        "country": "A",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 150,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "W",
+        "country": "B",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 300,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "W",
+        "country": "C",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 450,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "GR",
+        "country": "A",
+        "year": 2025,
+        "metric": "production",
+        "val": 60,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "GR",
+        "country": "B",
+        "year": 2025,
+        "metric": "production",
+        "val": 120,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "GR",
+        "country": "C",
+        "year": 2025,
+        "metric": "production",
+        "val": 180,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "GR",
+        "country": "A",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 180,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "GR",
+        "country": "B",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 360,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "GR",
+        "country": "C",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 540,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "MN",
+        "country": "A",
+        "year": 2025,
+        "metric": "production",
+        "val": 70,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "MN",
+        "country": "B",
+        "year": 2025,
+        "metric": "production",
+        "val": 140,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "MN",
+        "country": "C",
+        "year": 2025,
+        "metric": "production",
+        "val": 210,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "MN",
+        "country": "A",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 210,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "MN",
+        "country": "B",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 420,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "MN",
+        "country": "C",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 630,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "ZN",
+        "country": "A",
+        "year": 2025,
+        "metric": "production",
+        "val": 80,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "ZN",
+        "country": "B",
+        "year": 2025,
+        "metric": "production",
+        "val": 160,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "ZN",
+        "country": "C",
+        "year": 2025,
+        "metric": "production",
+        "val": 240,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "ZN",
+        "country": "A",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 240,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "ZN",
+        "country": "B",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 480,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "ZN",
+        "country": "C",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 720,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "REE",
+        "country": "A",
+        "year": 2025,
+        "metric": "production",
+        "val": 90,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "REE",
+        "country": "B",
+        "year": 2025,
+        "metric": "production",
+        "val": 180,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "REE",
+        "country": "C",
+        "year": 2025,
+        "metric": "production",
+        "val": 270,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "REE",
+        "country": "A",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 270,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "REE",
+        "country": "B",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 540,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "REE",
+        "country": "C",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 810,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "ND",
+        "country": "A",
+        "year": 2025,
+        "metric": "production",
+        "val": 100,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "ND",
+        "country": "B",
+        "year": 2025,
+        "metric": "production",
+        "val": 200,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "ND",
+        "country": "C",
+        "year": 2025,
+        "metric": "production",
+        "val": 300,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "ND",
+        "country": "A",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 300,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "ND",
+        "country": "B",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 600,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "ND",
+        "country": "C",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 900,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "DONG",
+        "country": "A",
+        "year": 2025,
+        "metric": "production",
+        "val": 110,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "DONG",
+        "country": "B",
+        "year": 2025,
+        "metric": "production",
+        "val": 220,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "DONG",
+        "country": "C",
+        "year": 2025,
+        "metric": "production",
+        "val": 330,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "DONG",
+        "country": "A",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 330,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "DONG",
+        "country": "B",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 660,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "DONG",
+        "country": "C",
+        "year": 2025,
+        "metric": "reserves",
+        "val": 990,
+        "src": "qa-fixture"
+      }
+    ],
+    "fact_inventory": [
+      {
+        "commodity_code": "NI",
+        "obs_date": "2026-03-15",
+        "val": 100,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "CU",
+        "obs_date": "2026-03-15",
+        "val": 200,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "LI",
+        "obs_date": "2026-03-15",
+        "val": 300,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "CO",
+        "obs_date": "2026-03-15",
+        "val": 400,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "W",
+        "obs_date": "2026-03-15",
+        "val": 500,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "GR",
+        "obs_date": "2026-03-15",
+        "val": 600,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "MN",
+        "obs_date": "2026-03-15",
+        "val": 700,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "ZN",
+        "obs_date": "2026-03-15",
+        "val": 800,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "REE",
+        "obs_date": "2026-03-15",
+        "val": 900,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "ND",
+        "obs_date": "2026-03-15",
+        "val": 1000,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "DONG",
+        "obs_date": "2026-03-15",
+        "val": 1100,
+        "unit": "SYNTHETIC_UNIT",
+        "src": "qa-fixture"
+      }
+    ],
+    "fact_indicator": [
+      {
+        "commodity_code": "NI",
+        "indicator": "SUPPLY_STABILITY",
+        "freq": "M",
+        "obs_date": "2026-02-15",
+        "val": 0.2,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "NI",
+        "indicator": "SUPPLY_STABILITY",
+        "freq": "M",
+        "obs_date": "2026-03-15",
+        "val": 0.25,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "CU",
+        "indicator": "SUPPLY_STABILITY",
+        "freq": "M",
+        "obs_date": "2026-02-15",
+        "val": 0.25,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "CU",
+        "indicator": "SUPPLY_STABILITY",
+        "freq": "M",
+        "obs_date": "2026-03-15",
+        "val": 0.30000000000000004,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "LI",
+        "indicator": "SUPPLY_STABILITY",
+        "freq": "M",
+        "obs_date": "2026-02-15",
+        "val": 0.30000000000000004,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "LI",
+        "indicator": "SUPPLY_STABILITY",
+        "freq": "M",
+        "obs_date": "2026-03-15",
+        "val": 0.35000000000000003,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "CO",
+        "indicator": "SUPPLY_STABILITY",
+        "freq": "M",
+        "obs_date": "2026-02-15",
+        "val": 0.35000000000000003,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "CO",
+        "indicator": "SUPPLY_STABILITY",
+        "freq": "M",
+        "obs_date": "2026-03-15",
+        "val": 0.4,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "W",
+        "indicator": "SUPPLY_STABILITY",
+        "freq": "M",
+        "obs_date": "2026-02-15",
+        "val": 0.4,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "W",
+        "indicator": "SUPPLY_STABILITY",
+        "freq": "M",
+        "obs_date": "2026-03-15",
+        "val": 0.45,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "GR",
+        "indicator": "SUPPLY_STABILITY",
+        "freq": "M",
+        "obs_date": "2026-02-15",
+        "val": 0.45,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "GR",
+        "indicator": "SUPPLY_STABILITY",
+        "freq": "M",
+        "obs_date": "2026-03-15",
+        "val": 0.5,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "MN",
+        "indicator": "SUPPLY_STABILITY",
+        "freq": "M",
+        "obs_date": "2026-02-15",
+        "val": 0.5,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "MN",
+        "indicator": "SUPPLY_STABILITY",
+        "freq": "M",
+        "obs_date": "2026-03-15",
+        "val": 0.55,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "ZN",
+        "indicator": "SUPPLY_STABILITY",
+        "freq": "M",
+        "obs_date": "2026-02-15",
+        "val": 0.55,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "ZN",
+        "indicator": "SUPPLY_STABILITY",
+        "freq": "M",
+        "obs_date": "2026-03-15",
+        "val": 0.6000000000000001,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "REE",
+        "indicator": "SUPPLY_STABILITY",
+        "freq": "M",
+        "obs_date": "2026-02-15",
+        "val": 0.6000000000000001,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "REE",
+        "indicator": "SUPPLY_STABILITY",
+        "freq": "M",
+        "obs_date": "2026-03-15",
+        "val": 0.65,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "ND",
+        "indicator": "SUPPLY_STABILITY",
+        "freq": "M",
+        "obs_date": "2026-02-15",
+        "val": 0.65,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "ND",
+        "indicator": "SUPPLY_STABILITY",
+        "freq": "M",
+        "obs_date": "2026-03-15",
+        "val": 0.7,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "DONG",
+        "indicator": "SUPPLY_STABILITY",
+        "freq": "M",
+        "obs_date": "2026-02-15",
+        "val": 0.7,
+        "src": "qa-fixture"
+      },
+      {
+        "commodity_code": "DONG",
+        "indicator": "SUPPLY_STABILITY",
+        "freq": "M",
+        "obs_date": "2026-03-15",
+        "val": 0.75,
+        "src": "qa-fixture"
+      }
+    ]
+  },
+  "boundaries": [
+    "tie via equal adjacent price values",
+    "null preserved in base fixture",
+    "zero preserved in base fixture",
+    "period_boundary",
+    "multiple_country",
+    "metric_separation"
+  ]
+}

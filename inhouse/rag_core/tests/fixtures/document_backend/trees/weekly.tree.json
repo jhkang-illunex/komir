@@ -1,0 +1,27 @@
+{
+  "doc_id": "fixture_weekly",
+  "title": "2026년 6월 16일 조달청 주간 경제 비철금속 시장 동향",
+  "doc_name": "weekly",
+  "source_group": "public",
+  "okf_path": "조달청보고서/20260616_주간_경제_비철금속_시장_동향.md",
+  "resource": "weekly.pdf",
+  "document_date": "2026-06-16",
+  "minerals": [
+    "리튬"
+  ],
+  "content_keywords": [
+    "리튬",
+    "LFP",
+    "주간",
+    "시장",
+    "동향"
+  ],
+  "structure": [
+    {
+      "node_id": "weekly-root",
+      "title": "Weekly metals market 리튬 LFP",
+      "line_num": 1,
+      "nodes": []
+    }
+  ]
+}

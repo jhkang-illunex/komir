@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "purpose": "deterministic structured-data QA fixture; never used by production runtime",
+  "source": "synthetic",
+  "tables": {
+    "fact_price": [
+      {"commodity_code":"NI","price_type":"LME_CASH","freq":"D","obs_date":"2026-01-15","val":100,"unit":"USD/ton","src":"fixture"},
+      {"commodity_code":"NI","price_type":"LME_CASH","freq":"D","obs_date":"2026-02-15","val":120,"unit":"USD/ton","src":"fixture"},
+      {"commodity_code":"NI","price_type":"LME_CASH","freq":"D","obs_date":"2026-03-15","val":110,"unit":"USD/ton","src":"fixture"},
+      {"commodity_code":"CU","price_type":"LME_CASH","freq":"D","obs_date":"2026-01-15","val":200,"unit":"USD/ton","src":"fixture"},
+      {"commodity_code":"CU","price_type":"LME_CASH","freq":"D","obs_date":"2026-02-15","val":220,"unit":"USD/ton","src":"fixture"},
+      {"commodity_code":"CU","price_type":"LME_CASH","freq":"D","obs_date":"2026-03-15","val":220,"unit":"USD/ton","src":"fixture"},
+      {"commodity_code":"LI","price_type":"LITHIUM_CARBONATE","freq":"D","obs_date":"2026-02-15","val":50,"unit":"USD/ton","src":"fixture"},
+      {"commodity_code":"LI","price_type":"LITHIUM_CARBONATE","freq":"D","obs_date":"2026-03-15","val":null,"unit":"USD/ton","src":"fixture"}
+    ],
+    "fact_trade_annual": [
+      {"yr":2025,"hs10":"HNI","commodity_code":"NI","country":"A","imp_usd":600,"imp_wgt":60,"exp_usd":0,"exp_wgt":0,"src":"fixture"},
+      {"yr":2025,"hs10":"HNI","commodity_code":"NI","country":"B","imp_usd":300,"imp_wgt":30,"exp_usd":0,"exp_wgt":0,"src":"fixture"},
+      {"yr":2025,"hs10":"HNI","commodity_code":"NI","country":"C","imp_usd":100,"imp_wgt":10,"exp_usd":0,"exp_wgt":0,"src":"fixture"},
+      {"yr":2025,"hs10":"HCU","commodity_code":"CU","country":"A","imp_usd":500,"imp_wgt":50,"exp_usd":0,"exp_wgt":0,"src":"fixture"},
+      {"yr":2025,"hs10":"HCU","commodity_code":"CU","country":"B","imp_usd":500,"imp_wgt":50,"exp_usd":0,"exp_wgt":0,"src":"fixture"},
+      {"yr":2025,"hs10":"HLI","commodity_code":"LI","country":"A","imp_usd":null,"imp_wgt":20,"exp_usd":0,"exp_wgt":0,"src":"fixture"}
+    ],
+    "fact_production_reserve": [
+      {"commodity_code":"NI","country":"A","year":2025,"metric":"production","val":60,"src":"fixture"},
+      {"commodity_code":"NI","country":"B","year":2025,"metric":"production","val":30,"src":"fixture"},
+      {"commodity_code":"NI","country":"C","year":2025,"metric":"production","val":null,"src":"fixture"},
+      {"commodity_code":"NI","country":"A","year":2025,"metric":"reserves","val":100,"src":"fixture"},
+      {"commodity_code":"NI","country":"B","year":2025,"metric":"reserves","val":200,"src":"fixture"},
+      {"commodity_code":"NI","country":"C","year":2025,"metric":"reserves","val":0,"src":"fixture"}
+    ],
+    "fact_inventory": [
+      {"commodity_code":"NI","obs_date":"2026-03-15","val":700,"unit":"ton","src":"fixture"},
+      {"commodity_code":"CU","obs_date":"2026-03-15","val":900,"unit":"ton","src":"fixture"}
+    ],
+    "fact_indicator": [
+      {"commodity_code":"NI","indicator":"SUPPLY_STABILITY","freq":"M","obs_date":"2026-02-15","val":0.4,"src":"fixture"},
+      {"commodity_code":"NI","indicator":"SUPPLY_STABILITY","freq":"M","obs_date":"2026-03-15","val":0.6,"src":"fixture"}
+    ]
+  },
+  "boundaries": ["tie", "null", "zero", "single_period", "multiple_country", "period_boundary"],
+  "expected_results": {
+    "inventory.latest:NI": {"obs_date":"2026-03-15", "value":700, "unit":"ton"},
+    "indicator.series:NI:SUPPLY_STABILITY": {"latest":0.6, "latest_date":"2026-03-15"}
+  }
+}

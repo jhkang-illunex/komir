@@ -1,0 +1,24 @@
+{
+  "doc_id": "fixture_bhp",
+  "title": "BHP report",
+  "doc_name": "BHP 보고서",
+  "source_group": "public",
+  "okf_path": "광산자료/동_구리/BHP_Escondida.md",
+  "resource": "bhp.pdf",
+  "minerals": [
+    "구리"
+  ],
+  "content_keywords": [
+    "BHP",
+    "Escondida",
+    "Chile"
+  ],
+  "structure": [
+    {
+      "node_id": "bhp-root",
+      "title": "BHP mine profile",
+      "line_num": 1,
+      "nodes": []
+    }
+  ]
+}

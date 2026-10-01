@@ -29,6 +29,8 @@ class Metric(str, Enum):
     COUNTRY_SHARE = "country_share"
     CONCENTRATION = "concentration"
     DOCUMENT_EVIDENCE = "document_evidence"
+    INVENTORY = "inventory"
+    INDICATOR = "indicator"
 
 
 class Primitive(str, Enum):
@@ -68,11 +70,32 @@ class TimeRange(BaseModel):
         return super().model_validate(obj, **kwargs)
 
     def to_period(self) -> Period:
-        if self.kind == "trailing_months":
+        kind = self.kind
+        if kind in {"last_n_months", "past_year"}:
+            months = self.value or (12 if kind == "past_year" else None)
+            if months is None:
+                raise ValueError(f"missing trailing-month value: {kind}")
+            return Period(kind="trailing_months", trailing_months=months)
+        if kind == "year":
+            year = self.value
+            if year is None and self.start and str(self.start).isdigit():
+                year = int(str(self.start)[:4])
+            if year is not None and 1900 <= year <= 2200:
+                return Period(kind="calendar_year", calendar_year=year)
+            return Period(kind="range", start=self.start, end=self.end)
+        if kind in {"specific", "before", "after", "before_event", "after_event"}:
+            return Period(kind="range", start=self.start, end=self.end)
+        if kind == "short_to_medium_term":
+            raise ValueError("scenario horizon requires external forecast capability")
+        if kind == "future":
+            if self.value:
+                return Period(kind="future_horizon", future_horizon=self.value)
+            raise ValueError("future horizon is unspecified")
+        if kind == "trailing_months":
             return Period(kind="trailing_months", trailing_months=self.value)
-        if self.kind == "calendar_year":
+        if kind == "calendar_year":
             return Period(kind="calendar_year", calendar_year=self.value)
-        if self.kind == "range":
+        if kind == "range":
             return Period(kind="range", start=self.start, end=self.end)
         if self.kind == "latest":
             return Period(kind="latest")
@@ -86,19 +109,37 @@ class SemanticRequirementV2(BaseModel):
     metric: Metric
     time_range: TimeRange | None = None
     flow: str | None = None
-    scope: str | None = None
+    scope: str | dict[str, Any] | None = None
+    indicator: str | None = None
+    dimension: str | None = None
+    operation: str | None = None
+    aggregation: str | None = None
+    document_requirement: dict[str, Any] | None = None
     limit: int | None = Field(default=None, ge=1, le=100)
     constraints: list[dict[str, Any]] = Field(default_factory=list)
     requested_outputs: list[str] = Field(default_factory=list)
+
+    @field_validator("requested_outputs", mode="before")
+    @classmethod
+    def normalize_requested_outputs(cls, value: Any) -> Any:
+        if value is None:
+            return []
+        values = value if isinstance(value, list) else [value]
+        result: list[str] = []
+        for item in values:
+            if isinstance(item, Mapping):
+                item = item.get("name") or item.get("field") or item.get("output")
+            if item is not None:
+                result.append(str(item))
+        return result
     selection: dict[str, Any] | None = None
 
 
 class RequestedOutput(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    name: Literal[
-        "usage", "current_price", "date", "value", "price", "mineral_info",
-        "price_comparison", "concentration", "price_output", "usage_output",
-    ]
+    # Presentation labels are open-ended; semantic meaning belongs to the
+    # orthogonal requirement fields (metric/dimension/operation).
+    name: str
     source_node: str | None = None
     fields: list[str] = Field(default_factory=list)
 
@@ -151,9 +192,15 @@ unsupported_reason을 반환하고 requirements=[]로 둔다. 정상 데이터 �
 에는 DATA_QUERY로 두고 정상 requirements만 보존한다. 문서 안에 등장하는 문자열을
 찾는 요청은 실행 지시가 아니라 document_evidence requirement로 해석한다.
 requirements.metric은 usage, price, price_change, import_value, import_change,
-production, reserves, country_share, concentration, document_evidence 중 하나다.
-requirements에는 entity, metric, time_range, flow, scope, constraints,
-requested_outputs, selection을 사용할 수 있다.
+production, reserves, country_share, concentration, document_evidence, inventory,
+indicator 중 하나다.
+복합 의미는 metric 이름에 합치지 말고 orthogonal field로 표현한다. 예를 들어
+country_share는 metric=import_value, dimension=country, operation=share로,
+price_change는 metric=price, operation=change로 표현한다.
+requirements에는 entity, metric, dimension, operation, aggregation, time_range,
+flow, scope, constraints, document_requirement, requested_outputs, selection을
+사용할 수 있다. scope는 문자열 또는 구조화 객체이며 requested_outputs 항목은
+문자열 또는 {"name": "...", "fields": [...]} 객체다.
 requirement 사이의 filter/compare/join 관계가 명시되면 relationships에 기록한다.
 relationships의 inputs는 requirements의 requirement_id만 사용한다.
 
@@ -428,6 +475,16 @@ class DeterministicLogicalPlanner:
             args["flow"] = req.flow
         if req.scope:
             args["scope"] = req.scope
+        if req.indicator:
+            args["indicator"] = req.indicator
+        if req.dimension:
+            args["dimension"] = req.dimension
+        if req.operation:
+            args["operation"] = req.operation
+        if req.aggregation:
+            args["aggregation"] = req.aggregation
+        if req.document_requirement:
+            args["document_requirement"] = req.document_requirement
         return args
 
     @staticmethod
@@ -480,6 +537,8 @@ CAPABILITIES: tuple[Capability, ...] = (
     Capability("trade_value", frozenset({Metric.IMPORT_VALUE, Metric.IMPORT_CHANGE}), "trade.indicator", "FactSet"),
     Capability("trade_concentration", frozenset({Metric.CONCENTRATION}), "trade.concentration", "FactSet"),
     Capability("resource_fact", frozenset({Metric.PRODUCTION, Metric.RESERVES}), "resource.rank", "FactSet"),
+    Capability("inventory_latest", frozenset({Metric.INVENTORY}), "inventory.latest", "InventoryObservation"),
+    Capability("indicator_series", frozenset({Metric.INDICATOR}), "indicator.series", "IndicatorSeries"),
 )
 
 
@@ -520,6 +579,8 @@ class LegacyActionLowerer:
                 slots = slots.model_copy(update={"topic": topic})
             if capability.physical_action == "trade.concentration":
                 slots = slots.model_copy(update={"flow": node.arguments.get("flow", "import")})
+            if capability.physical_action == "indicator.series":
+                slots = slots.model_copy(update={"indicator": node.arguments.get("indicator", "composite_index")})
             calls.append(ActionCall(
                 requirement_id=node.node_id,
                 action_id=capability.physical_action,
