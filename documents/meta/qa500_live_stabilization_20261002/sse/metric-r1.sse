@@ -1,0 +1,15 @@
+data: {"session_id": "000104a9-46ff-4da6-9198-85676f1f5c8d"}
+
+event: status
+data: {"stage": 1, "label": "질문 조건 확인"}
+
+event: status
+data: {"stage": 3, "label": "데이터 분석 중", "status": "데이터 분석 중"}
+
+event: status
+data: {"stage": 4, "label": "답변 생성 중"}
+
+data: {"delta": "upstream step failed: node_2, node_3"}
+
+event: done
+data: {"done": true, "abstained": true, "abstain_reason": "upstream step failed: node_2, node_3", "citations": []}

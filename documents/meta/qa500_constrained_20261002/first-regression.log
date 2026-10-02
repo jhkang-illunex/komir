@@ -1,0 +1,42 @@
+............................................................................................................................................................................................................ [ 15%]
+........................................................................................................... [ 24%]
+..................................................................... [ 29%]
+................................................................... [ 34%]
+............................................................................................. [ 41%]
+........................................................................ [ 47%]
+........................................................................ [ 53%]
+...................................................F.................... [ 58%]
+........................................................................ [ 64%]
+........................................................................ [ 69%]
+........................................................................ [ 75%]
+........................................................................ [ 81%]
+........................................................................ [ 86%]
+........................................................................ [ 92%]
+........................................................................ [ 97%]
+............................                                          [100%]
+=================================== FAILURES ===================================
+_ test_missing_contract_fails_without_adapter_invention[compare-kwargs1-requires comparison field] _
+
+db = <sqlite3.Connection object at 0x7f0ff5134e40>, kind = 'compare'
+kwargs = {'join_key': 'month'}, error = 'requires comparison field'
+
+    @pytest.mark.parametrize("kind,kwargs,error", [
+        ("join", {}, "requires explicit join keys"),
+        ("compare", {"join_key": "month"}, "requires comparison field"),
+        ("join", {"inputs": ["left"], "join_key": "month"}, "requires exactly two"),
+        ("compare", {"inputs": ["left"], "fields": ["value"]}, "requires exactly two"),
+    ])
+    def test_missing_contract_fails_without_adapter_invention(db, kind, kwargs, error):
+        plan = requirement_plan(kind)
+        relation = plan.relationships[0].model_copy(update=kwargs)
+        plan.relationships[0] = relation
+        before = plan.model_dump()
+        trace, program, results = asyncio.run(run_program(logical_program_from_requirements(plan), db))
+>       assert error in str(trace["adapter_gaps"])
+E       AssertionError: assert 'requires comparison field' in '{}'
+E        +  where '{}' = str({})
+
+inhouse/rag_core/tests/test_qa500_contract_matrix.py:68: AssertionError
+=========================== short test summary info ============================
+FAILED inhouse/rag_core/tests/test_qa500_contract_matrix.py::test_missing_contract_fails_without_adapter_invention[compare-kwargs1-requires comparison field]
+1 failed, 1287 passed, 687 subtests passed in 38.19s

@@ -1,0 +1,126 @@
+{
+  "created_at": "2026-10-01T15:59:33.146694+00:00",
+  "as_of": "2026-10-01",
+  "source_count": 500,
+  "gemma_runs": [
+    {
+      "file": "qa500-gemma-before.jsonl.gz",
+      "sha256": "2a58655e56b75bc6631210b09708cacd743ba9d92ffbe35b166c0cf78908e14b",
+      "questions": 500,
+      "utterances": 580,
+      "stage_statuses": {
+        "SCHEMA_VALID_NOT_SEMANTIC_PASS": 465,
+        "LOWERING_FAILURE": 112,
+        "PARSER_OR_SCHEMA_FAIL": 3
+      }
+    },
+    {
+      "file": "qa500-gemma-after.jsonl.gz",
+      "sha256": "c4871a01702135f14c6a4a180ad85344c7c890cf910a9389940aadc64e61c664",
+      "questions": 125,
+      "utterances": 145,
+      "stage_statuses": {
+        "SCHEMA_VALID_NOT_SEMANTIC_PASS": 132,
+        "LOWERING_FAILURE": 12,
+        "PARSER_OR_SCHEMA_FAIL": 1
+      }
+    },
+    {
+      "file": "qa500-gemma-after2.jsonl.gz",
+      "sha256": "5a86a3b23775adaf0e42d43d3487a6eb22c3b670f03c0c8e86da7059373e0d73",
+      "questions": 24,
+      "utterances": 24,
+      "stage_statuses": {
+        "SCHEMA_VALID_NOT_SEMANTIC_PASS": 23,
+        "LOWERING_FAILURE": 1
+      }
+    },
+    {
+      "file": "qa500-gemma-recovered.jsonl.gz",
+      "sha256": "98ed2df584cf049941ac1116815cac58a48470f45b027d143352e608afa96e18",
+      "questions": 2,
+      "utterances": 2,
+      "stage_statuses": {
+        "LOWERING_FAILURE": 1,
+        "SCHEMA_VALID_NOT_SEMANTIC_PASS": 1
+      }
+    }
+  ],
+  "synthetic_fixture": {
+    "observations": 20412,
+    "documents": 924,
+    "by_domain": {
+      "indicator": 3024,
+      "inventory": 1512,
+      "price": 1512,
+      "production": 378,
+      "reserves": 378,
+      "trade": 13608
+    },
+    "minerals": 9,
+    "countries": 6,
+    "year_range": [
+      2019,
+      2025
+    ]
+  },
+  "gold_backend": {
+    "BACKEND_PASS": 172
+  },
+  "gold_series": {
+    "COMPONENT_PASS_CONTRACT_GAP": 8,
+    "BACKEND_PASS": 24
+  },
+  "gold_multiturn": {
+    "PASS": 36,
+    "FAILED": 0,
+    "CAPABILITY_GAP": 4,
+    "UNSUPPORTED": 0,
+    "BLOCKED": 0,
+    "PENDING": 0
+  },
+  "scope": "Gold backend and real Gemma shadow are separate measurements. No PostgreSQL, HTTP SSE or production deployment is implied.",
+  "implementation_sha256": {
+    "semantic_v2.py": "ef9a475c36822725b889f53c332ec0c76510e478efb7523bb421d129824b11bf",
+    "semantic_ir.py": "1f0fe439414ed004008e962d8142f4da9e89e3f82a68c7f4c1eb609670fceea7",
+    "live_multihop.py": "aae98325e536c278a1691103ef28f8bf6572354a3408d3fa072f913d675ba81b",
+    "relational_ops.py": "3492593707200c3033a1e6531cd7f23bedb2e2c26940f4e7c322e50660d8a8a5",
+    "analytical_aggregate.py": "5f71ee2373d74cbfc5364678c8c60be8670a860911bf0c3b11ad7d445944fffa",
+    "analytical_share.py": "84a1b0c9ce038e466155af4b2572ad412b0e671de76b0f4eff115455b93422af",
+    "analytical_series.py": "daea4210266dbd54596ac1fb27a451c7ec507cd942844e89a0403d42797d84ac"
+  },
+  "additional_evidence": [
+    {
+      "file": "qa500-actual-execution-v2-final.json.gz",
+      "sha256": "e8ab59cc75eb576d1e0fe2e6b8991796dad783ffa90aa3ecb2f60d37bf098c71"
+    },
+    {
+      "file": "qa500-actual-execution-v3-final.json.gz",
+      "sha256": "a63dd689c7335b52e656a69993912426f9fff336504a861c4e97222f61963199"
+    },
+    {
+      "file": "qa500-actual-execution-v4-final.json.gz",
+      "sha256": "c42f8250d94c40d32f988a57b28b30d7d5679f6d9c9076a91c511f4a474d774c"
+    },
+    {
+      "file": "qa500-semantic-current.json.gz",
+      "sha256": "2e311c69ff535049a5bb1cc1ed64fc9aa6673ba008e2cfeb1a1636f14d58d91e"
+    },
+    {
+      "file": "qa500-manual-runtime-audit.json.gz",
+      "sha256": "c2f43264924f1abd3f5a15bd403e78c093a6b99952b613b736527cd9b456c90a"
+    },
+    {
+      "file": "qa500-semantic-audit.json.gz",
+      "sha256": "c1bb372b87e38623832638a1e056efe123d1bb617f4b48fc1b2e8789de022381"
+    },
+    {
+      "file": "qa500-baseline.log.gz",
+      "sha256": "07ad83a9c8b18437abc2c7f229b7baf4e650ca7d4c47276c49b846321920fc8e"
+    },
+    {
+      "file": "qa500-final-regression.log.gz",
+      "sha256": "c1829cc2d27fcc275ecd835266332c5682530d498987b66b87a7de535a09f234"
+    }
+  ]
+}

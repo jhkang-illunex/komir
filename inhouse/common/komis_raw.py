@@ -452,6 +452,24 @@ def _format_period_value(value: Any, precision: Period) -> str:
     return raw[:4] if precision == "year" and len(raw) >= 4 else raw
 
 
+def _is_known_development_resource_row(row: Mapping[str, Any], metric: str) -> bool:
+    """Return whether a row belongs to the explicit development slice.
+
+    Authoritative resource rows use ``se_cd='-'`` and WT002/WT003. The
+    development slice is marked by ``se_cd='DEV'`` and ``mass_unit_cd='TON'``;
+    reserves also carries ``rsrc_invt_cd='DEV'``. Only this fully identified
+    marker is excluded. Unknown non-authoritative combinations remain
+    fail-closed in the population adapter.
+    """
+    if str(row.get("se_cd") or "").strip().upper() != "DEV":
+        return False
+    if str(row.get("mass_unit_cd") or "").strip().upper() != "TON":
+        return False
+    if metric == "reserves":
+        return str(row.get("rsrc_invt_cd") or "").strip().upper() == "DEV"
+    return True
+
+
 class KomisRawDataRepository:
     """`public.KO_*` 페이지 단위 원천 데이터셋 읽기 전용 리포지토리.
 
@@ -477,12 +495,125 @@ class KomisRawDataRepository:
     def fetch(self, request: AnalysisPreviewRequest) -> list[RawDataset]:
         """limit이 걸린 미리보기용 데이터셋을 페이지 스펙 수만큼 읽는다."""
 
+        if request.page_id == "forecast_price":
+            return [self.fetch_forecast_price(request)]
         return self._fetch_page(request, apply_limit=True)
 
     def fetch_complete(self, request: AnalysisPreviewRequest) -> list[RawDataset]:
         """미리보기 limit 없이 요청 조건의 전 행을 읽는다."""
 
+        if request.page_id == "forecast_price":
+            return [self.fetch_forecast_price(request)]
         return self._fetch_page(request, apply_limit=False)
+
+    @staticmethod
+    def _forecast_month_bound(value: str | None, *, upper: bool) -> str | None:
+        """예측 원천의 YYYYMM target 월 경계를 정규화한다."""
+
+        if not value:
+            return None
+        digits = re.sub(r"\D", "", str(value))
+        if len(digits) < 6 or not digits[:6].isdigit():
+            raise RawDataAccessError("예측 기간은 YYYYMM 또는 YYYYMMDD여야 합니다.")
+        return digits[:6]
+
+    @staticmethod
+    def _forecast_display_unit(currency_code: str | None, weight_code: str | None) -> str | None:
+        """가격 기준의 공통 단위 코드를 예측 TypedResult 표시 단위로 정규화한다."""
+
+        currency = {"PR001": "USD", "USD": "USD"}.get(str(currency_code or "").upper())
+        weight = {
+            "WT001": "kg", "WT002": "톤", "WT003": "톤", "WT007": "mt",
+            "KG": "kg", "TON": "톤", "MT": "mt",
+        }.get(str(weight_code or "").upper())
+        return f"{currency}/{weight}" if currency and weight else None
+
+    def fetch_forecast_price(self, request: AnalysisPreviewRequest) -> RawDataset:
+        """가격예측의 최신 정규화 원천을 canonical forecast 행으로 반환한다.
+
+        ``KO_MNRL_PRC_PREDC``는 과거 호환 원천으로 유지하지만, 현재 가격예측
+        데이터는 ``AI_MNRL_PRC_FRCST``에 광종·기준·시나리오·target 월을
+        구조화해 보유한다. 여기서 BASE 시나리오, 예측 기준에 연결된 최신 실측
+        가격, 사람에게 표시할 단위까지 한 번 정규화해 downstream이 두 원천의
+        물리 컬럼을 재해석하지 않게 한다. 해당 원천에 행이 없으면 기존 원천으로
+        열화하여 텅스텐 등 호환 데이터도 보존한다.
+        """
+
+        if not request.mineral_code:
+            raise RawDataAccessError("가격예측에는 광종 코드가 필요합니다.")
+        start_month = self._forecast_month_bound(request.start_period, upper=False)
+        end_month = self._forecast_month_bound(request.end_period, upper=True)
+        code = _literal(request.mineral_code)
+        conditions = [f"f.mnrknd_unq_cd = {code}", "f.scnr_cd = 'BASE'"]
+        if start_month:
+            conditions.append(f"f.trgt_ym >= {_literal(start_month)}")
+        if end_month:
+            conditions.append(f"f.trgt_ym <= {_literal(end_month)}")
+        query = f"""
+            SELECT f.mnrknd_unq_cd, f.base_ym, f.trgt_ym, f.scnr_cd,
+                   f.mnrl_prc_crtr_sn, f.predc_prc, f.model_ver,
+                   c.prc_crtr, c.prc_unit_cd, c.weig_unit_cd,
+                   p.cmerc_prc AS current_price
+            FROM public.ai_mnrl_prc_frcst f
+            LEFT JOIN public.ko_mnrl_prc_crtr c
+              ON c.mnrl_prc_crtr_sn = f.mnrl_prc_crtr_sn
+            LEFT JOIN LATERAL (
+                SELECT p.cmerc_prc
+                FROM public.ko_mnrl_prc p
+                WHERE p.mnrl_prc_crtr_sn = f.mnrl_prc_crtr_sn
+                  AND p.status = 'Y' AND p.last_del_dt IS NULL
+                  AND p.cmerc_prc IS NOT NULL
+                  AND p.crtr_ymd <= f.base_ym || '99'
+                ORDER BY p.crtr_ymd DESC
+                LIMIT 1
+            ) p ON TRUE
+            WHERE {' AND '.join(conditions)}
+            ORDER BY f.trgt_ym ASC
+        """
+        try:
+            frame = read_sql_pg(query)
+        except Exception as exc:  # noqa: BLE001 — 호환 원천으로 열화
+            frame = None
+
+        if frame is not None and not frame.empty:
+            rows: list[dict[str, Any]] = []
+            for record in frame.to_dict("records"):
+                target = str(record.get("trgt_ym") or "")
+                currency = record.get("prc_unit_cd")
+                weight = record.get("weig_unit_cd")
+                rows.append({
+                    "forecast_date": f"{target[:4]}-{target[4:6]}-01" if len(target) >= 6 else target,
+                    "forecast_period": "월별",
+                    "current_price": _json_value(record.get("current_price")),
+                    "predicted_price": _json_value(record.get("predc_prc")),
+                    "unit": self._forecast_display_unit(currency, weight),
+                    "price_criterion": record.get("prc_crtr"),
+                    "price_criterion_serial": _json_value(record.get("mnrl_prc_crtr_sn")),
+                    "source_scenario": record.get("scnr_cd"),
+                    "source_model": record.get("model_ver"),
+                })
+            criterion = next((row.get("price_criterion") for row in rows if row.get("price_criterion")), None)
+            return RawDataset(
+                source_table="AI_MNRL_PRC_FRCST",
+                columns=["forecast_date", "forecast_period", "current_price", "predicted_price", "unit",
+                         "price_criterion", "price_criterion_serial", "source_scenario", "source_model"],
+                column_labels={
+                    "forecast_date": "예측일", "forecast_period": "예측주기", "current_price": "현재가격",
+                    "predicted_price": "예측가격", "unit": "단위", "price_criterion": "가격기준",
+                    "price_criterion_serial": "가격기준일련번호", "source_scenario": "시나리오",
+                    "source_model": "예측모델",
+                }, row_count=len(rows), rows=rows,
+                as_of=f"{rows[0]['forecast_date']}~{rows[-1]['forecast_date']}",
+                unit=rows[0].get("unit"),
+                metadata={"source_scenario": "BASE", "criterion": criterion, "period_precision": "month"},
+            )
+
+        # 과거 호환 원천은 기존 컬럼/기간 계약을 그대로 사용한다.
+        legacy_request = request.model_copy(update={
+            "start_period": request.start_period,
+            "end_period": request.end_period,
+        })
+        return self._fetch_page(legacy_request, apply_limit=bool(start_month or end_month))[0]
 
     def fetch_indicator_dataset(
         self,
@@ -1452,7 +1583,7 @@ class KomisRawDataRepository:
 
     def fetch_mineral_country_ranking(
         self, *, metric: str, mineral_code: str,
-        start_period: str | None, end_period: str | None, top_n: int = 5,
+        start_period: str | None, end_period: str | None, top_n: int | None = 5,
     ) -> RawDataset:
         """매장량/생산량 국가별 상위 N(결정적 GROUP BY, 2026-09-18 신설,
         `fetch_country_ranking`(교역)과 같은 원칙). metric: "production"|
@@ -1476,7 +1607,13 @@ class KomisRawDataRepository:
         metric_column = spec["metric_column"]
         period_column = spec["period_column"]
         code = _literal(mineral_code)
-        conditions = [f"mnrknd_unq_cd = {code}"]
+        # Population is defined by the authoritative source marker, not by
+        # the latest physical row. The DB also carries a DEV/TON slice with a
+        # later year, so an unbounded request must not select that year and
+        # then return an empty official population after filtering it out.
+        conditions = [f"mnrknd_unq_cd = {code}", "se_cd = '-'" ]
+        if metric == "reserves":
+            conditions.append("rsrc_invt_cd = 'RI001'")
 
         single_year_only = metric == "reserves" or not (start_period or end_period)
         if single_year_only:
@@ -1485,7 +1622,7 @@ class KomisRawDataRepository:
             else:
                 latest = read_sql_pg(
                     f"SELECT MAX({period_column}) AS latest_year FROM {KOMIS_SCHEMA}.{table}"
-                    f" WHERE mnrknd_unq_cd = {code}"
+                    f" WHERE {' AND '.join(conditions)}"
                 )
                 latest_year_value = latest["latest_year"].iloc[0] if not latest.empty else None
                 if latest_year_value is None:
@@ -1501,6 +1638,78 @@ class KomisRawDataRepository:
             if end_period:
                 conditions.append(f"{period_column} <= {_literal(_coerce_period(end_period, 'year', True))}")
 
+        if top_n is None:
+            # Reuse the complete dataset reader, not a larger ranking limit.
+            dataset_spec = next(s for s in _PAGE_DATASETS["map_mineral"] if s.table == table)
+            request = AnalysisPreviewRequest(
+                page_id="map_mineral", mineral_code=mineral_code,
+                start_period=target_year if single_year_only else start_period,
+                end_period=target_year if single_year_only else end_period,
+            )
+            data = self._fetch_dataset(dataset_spec, request, apply_limit=False)
+            # Same master/key as the ranking LEFT JOIN; keep the raw code for
+            # identity and retain unmapped countries instead of dropping rows.
+            try:
+                names = read_sql_pg(f"SELECT ntn_cd, ntn_nm_ko, ntn_nm_en FROM {KOMIS_SCHEMA}.ai_ntn_mst")
+            except Exception as exc:
+                raise RawDataAccessError("resource_population_country_master_unavailable") from exc
+            country_names: dict[str, str] = {}
+            country_names_en: dict[str, str] = {}
+            for code_value, name_value, english_value in names.itertuples(index=False, name=None):
+                code_key = str(code_value)
+                for mapping, raw_name in ((country_names, name_value), (country_names_en, english_value)):
+                    name = _json_value(raw_name)
+                    if name is None or not str(name).strip():
+                        continue
+                    if code_key in mapping and mapping[code_key] != str(name):
+                        raise RawDataAccessError("resource_population_ambiguous_country_master")
+                    mapping[code_key] = str(name)
+            rows, seen = [], set()
+            excluded = {"SU": 0, "OT": 0}
+            for row in data.rows:
+                country = row.get(country_column.lower())
+                if country in excluded:
+                    excluded[country] += 1
+                    continue
+                year = row.get(period_column.lower())
+                if not country or year is None:
+                    raise RawDataAccessError("resource_population_invalid_country_or_year")
+                # Exclude only the source's explicit development slice. Any
+                # other non-authoritative combination remains fail-closed.
+                if _is_known_development_resource_row(row, metric):
+                    continue
+                if str(row.get("se_cd") or "").strip() != "-":
+                    raise RawDataAccessError("resource_population_unresolved_category")
+                if metric == "reserves" and str(row.get("rsrc_invt_cd") or "").strip() != "RI001":
+                    raise RawDataAccessError("resource_population_unresolved_category")
+                key = (country, str(year))
+                if key in seen:
+                    raise RawDataAccessError("resource_population_duplicate_country_year")
+                seen.add(key)
+                value = row.get(metric_column.lower())
+                # *_TON is the catalogue's normalized mass column. Never fall
+                # back to raw quantity, whose MASS_UNIT_CD may differ by row.
+                if (str(row.get("mass_unit_cd") or "").strip().upper() not in {"WT002", "WT003"}
+                        or metric_column.upper().endswith("_TON") is False):
+                    raise RawDataAccessError("resource_population_unit_unverified")
+                if value is not None and (not math.isfinite(float(value)) or float(value) < 0):
+                    raise RawDataAccessError("resource_population_invalid_normalized_tonnes")
+                rows.append({"country": country_names.get(str(country), country),
+                             "country_code": country, "country_name_en": country_names_en.get(str(country)),
+                             "year": str(year), "total": value,
+                             "unit": "톤", "source_mass_unit_cd": row["mass_unit_cd"]})
+            return RawDataset(
+                source_table=table, columns=["country", "country_code", "country_name_en", "year", "total", "unit", "source_mass_unit_cd"],
+                row_count=len(rows), rows=rows, unit="톤",
+                as_of=f"{request.start_period or 'latest'}~{request.end_period or 'latest'}",
+                metadata={"resource_population": "all", "population_complete": True,
+                          "period_range_complete": True, "metric": metric,
+                          "population_basis": "available named-country rows, not official world total",
+                          "excluded_summary_codes": excluded, "unit_basis": metric_column,
+                          "null_policy": "preserved; not replaced by zero"},
+            )
+        if isinstance(top_n, bool) or not isinstance(top_n, int) or top_n < 1:
+            raise RawDataAccessError("resource_population_invalid_top_n")
         where_clause = " AND ".join(f"t.{c}" for c in conditions)
         # ``SU``는 국가가 아니라 KOMIS의 세계 합계 행이고, ``OT``는 기타
         # 집계 행이다. 국가 순위에 포함하면 세계 합계가 1위가 되고 국가 행과

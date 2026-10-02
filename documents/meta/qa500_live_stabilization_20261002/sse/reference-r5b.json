@@ -1,0 +1,200 @@
+{
+  "id": "reference-r5b",
+  "port": 18012,
+  "request": {
+    "user_id": "qa-sse31",
+    "session_id": "5867d8d6-5abd-442f-9032-883146279664",
+    "message": "위 결과에서 최신 가격 조회에 성공한 광종만 알려줘",
+    "mode": "auto"
+  },
+  "started_at": "2026-10-02T02:36:09.577502+00:00",
+  "events": [
+    {
+      "event": "message",
+      "data": {
+        "session_id": "5867d8d6-5abd-442f-9032-883146279664"
+      },
+      "elapsed": 0.037
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 1,
+        "label": "질문 조건 확인"
+      },
+      "elapsed": 0.062
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 3,
+        "label": "데이터 분석 중",
+        "status": "데이터 분석 중"
+      },
+      "elapsed": 1.512
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 4,
+        "label": "답변 생성 중"
+      },
+      "elapsed": 1.512
+    },
+    {
+      "event": "message",
+      "data": {
+        "delta": "일부 결과만 확인되었습니다. 전체 모집단 결과는 아닙니다.\n"
+      },
+      "elapsed": 1.529
+    },
+    {
+      "event": "message",
+      "data": {
+        "delta": "| mineral |\n| --- |\n| 망간 |\n| 크롬 |\n| 티타늄 |\n| 안티모니 |\n| 몰리브덴 |\n| 니오븀 |\n| 네오디뮴 |"
+      },
+      "elapsed": 1.53
+    },
+    {
+      "event": "table",
+      "data": {
+        "schema_version": 1,
+        "block_id": "multihop-table",
+        "columns": [
+          "mineral"
+        ],
+        "rows": [
+          [
+            "망간"
+          ],
+          [
+            "크롬"
+          ],
+          [
+            "티타늄"
+          ],
+          [
+            "안티모니"
+          ],
+          [
+            "몰리브덴"
+          ],
+          [
+            "니오븀"
+          ],
+          [
+            "네오디뮴"
+          ]
+        ],
+        "columns_meta": [
+          {
+            "key": "mineral",
+            "label": "mineral",
+            "display": "mineral",
+            "type": "string",
+            "unit": null
+          }
+        ],
+        "rows_typed": [
+          [
+            "망간"
+          ],
+          [
+            "크롬"
+          ],
+          [
+            "티타늄"
+          ],
+          [
+            "안티모니"
+          ],
+          [
+            "몰리브덴"
+          ],
+          [
+            "니오븀"
+          ],
+          [
+            "네오디뮴"
+          ]
+        ],
+        "markdown": "| mineral |\n| --- |\n| 망간 |\n| 크롬 |\n| 티타늄 |\n| 안티모니 |\n| 몰리브덴 |\n| 니오븀 |\n| 네오디뮴 |",
+        "chart_hint": {
+          "recommended": null,
+          "alternatives": [],
+          "reason": "행 2개 미만 또는 열 1개"
+        },
+        "meta": {
+          "source_index": 1,
+          "source": "PageIndex 파생 사실 · 희소금속 월간동향",
+          "as_of": null,
+          "unit": null,
+          "time_aggregation": null,
+          "menu_source": null,
+          "hidden_columns": []
+        },
+        "source_index": 1,
+        "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+      },
+      "elapsed": 1.531
+    },
+    {
+      "event": "done",
+      "data": {
+        "done": true,
+        "abstained": false,
+        "citations": [
+          {
+            "index": 1,
+            "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+          },
+          {
+            "index": 2,
+            "source": "public.KO_MNRL_PRC"
+          }
+        ],
+        "bogus_citations": []
+      },
+      "elapsed": 1.531
+    }
+  ],
+  "http_status": 200,
+  "content_type": "text/event-stream; charset=utf-8",
+  "elapsed": 1.532,
+  "text": "일부 결과만 확인되었습니다. 전체 모집단 결과는 아닙니다.\n| mineral |\n| --- |\n| 망간 |\n| 크롬 |\n| 티타늄 |\n| 안티모니 |\n| 몰리브덴 |\n| 니오븀 |\n| 네오디뮴 |",
+  "event_counts": {
+    "message": 3,
+    "status": 3,
+    "table": 1,
+    "done": 1
+  },
+  "done": {
+    "done": true,
+    "abstained": false,
+    "citations": [
+      {
+        "index": 1,
+        "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+      },
+      {
+        "index": 2,
+        "source": "public.KO_MNRL_PRC"
+      }
+    ],
+    "bogus_citations": []
+  },
+  "protocol_errors": [],
+  "deployment": {
+    "container_id": "851e2e79bf1ec477fdc998086e89c052e061de422adb08a39f2148e0e3ca4139",
+    "port": 18012,
+    "image_tag": "komir-rag-chat:qa-live-stability33-r5",
+    "image_id": "sha256:58c638418fc7368085b34832f97bb85d4952d858c9089d1432226fc5f6112cdb",
+    "source_hashes": {
+      "inhouse/rag_core/ragkit/live_multihop.py": "c22ba6373b49fdd2b591c639203689cb76f8853ad9edc71de69194c76690a5de",
+      "inhouse/rag_core/ragkit/chatbot.py": "71f5b2e77e6fd95a5df336190b0bfd532709b016e896d527560f13ea88557553",
+      "inhouse/rag_core/ragkit/chatbot_graph.py": "adaaacae8d021345abbbbc3b96d90318d6da98db933e3b42def50f7fee5caf8a",
+      "inhouse/rag_core/ragkit/chatbot_events.py": "0e6bb9e37b18913aac8ab97f95d6d3e772a992da7cba8bbc43738f7b7fcf03c5",
+      "inhouse/rag_core/ragkit/_mcp_tools_common.py": "96a7b909688af872bdab7f77ee186501ddb2206b00cc511d71f3a7bc11a3c4d6"
+    }
+  }
+}

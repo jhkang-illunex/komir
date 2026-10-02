@@ -1,0 +1,48 @@
+{
+  "question": "2024년 구리 가격의 월평균과 관측 건수를 알려줘.",
+  "raw_output": null,
+  "semantic_plan": null,
+  "logical_program": null,
+  "lowering": [],
+  "requested_outputs": [],
+  "roots": [],
+  "intermediate_nodes": [],
+  "failure_class": "PARSER_MISSING_OUTPUT",
+  "failure_reason": "LLMOutputError:semantic_requirement_v2 returned invalid JSON after one repair attempt: JSONDecodeError: Unterminated string starting at: line 4 column 3 (char 84)",
+  "attempts": [
+    {
+      "attempt": 1,
+      "outcome": "invalid_output",
+      "model_attempts": [
+        {
+          "attempt": 1,
+          "raw_content": "{\n  \"schema_version\": \"semantic-requirement-v2\",\n  \"request_class\": \"DATA_QUERY\",\n  \"requirements",
+          "finish_reason": "length",
+          "model": "gemma-4-26b-a4b",
+          "usage": {
+            "prompt_tokens": 2711,
+            "total_tokens": 2743,
+            "completion_tokens": 32,
+            "prompt_tokens_details": null
+          },
+          "error": "JSONDecodeError: Unterminated string starting at: line 4 column 3 (char 84)",
+          "error_kind": "OUTPUT_TRUNCATED"
+        },
+        {
+          "attempt": 2,
+          "raw_content": "{\n  \"schema_version\": \"semantic-requirement-v2\",\n  \"request_class\": \"DATA_QUERY\",\n  \"requirements",
+          "finish_reason": "length",
+          "model": "gemma-4-26b-a4b",
+          "usage": {
+            "prompt_tokens": 2786,
+            "total_tokens": 2818,
+            "completion_tokens": 32,
+            "prompt_tokens_details": null
+          },
+          "error": "JSONDecodeError: Unterminated string starting at: line 4 column 3 (char 84)",
+          "error_kind": "OUTPUT_TRUNCATED"
+        }
+      ]
+    }
+  ]
+}

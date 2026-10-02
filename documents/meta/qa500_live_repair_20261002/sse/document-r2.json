@@ -1,0 +1,471 @@
+{
+  "id": "document-r2",
+  "port": 18012,
+  "request": {
+    "user_id": "qa-sse31",
+    "session_id": "6e6ec43b-aeea-41c3-abeb-8f1f1641fe74",
+    "message": "희소금속 보고서에 언급된 광종 가격 보여줘",
+    "mode": "auto"
+  },
+  "started_at": "2026-10-02T01:38:01.146655+00:00",
+  "events": [
+    {
+      "event": "message",
+      "data": {
+        "session_id": "6e6ec43b-aeea-41c3-abeb-8f1f1641fe74"
+      },
+      "elapsed": 0.051
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 1,
+        "label": "질문 조건 확인"
+      },
+      "elapsed": 0.072
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 3,
+        "label": "데이터 분석 중",
+        "status": "데이터 분석 중"
+      },
+      "elapsed": 7.723
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 4,
+        "label": "답변 생성 중"
+      },
+      "elapsed": 7.723
+    },
+    {
+      "event": "message",
+      "data": {
+        "delta": "리튬: 13335.89 USD/톤 (20260930 기준)\n희토류: 15541.34 USD/톤 (20260930 기준)"
+      },
+      "elapsed": 7.744
+    },
+    {
+      "event": "table",
+      "data": {
+        "schema_version": 1,
+        "block_id": "multihop-price-1",
+        "columns": [
+          "광종",
+          "최근 가격",
+          "기준일"
+        ],
+        "rows": [
+          [
+            "리튬",
+            "13335.89",
+            "20260930"
+          ]
+        ],
+        "columns_meta": [
+          {
+            "key": "광종",
+            "label": "광종",
+            "display": "광종",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "최근 가격",
+            "label": "최근 가격",
+            "display": "최근 가격",
+            "type": "number",
+            "unit": null
+          },
+          {
+            "key": "기준일",
+            "label": "기준일",
+            "display": "기준일",
+            "type": "number",
+            "unit": null
+          }
+        ],
+        "rows_typed": [
+          [
+            "리튬",
+            13335.89,
+            20260930.0
+          ]
+        ],
+        "markdown": "| 광종 | 최근 가격 | 기준일 |\n| --- | --- | --- |\n| 리튬 | 13335.89 | 20260930 |",
+        "chart_hint": {
+          "recommended": null,
+          "alternatives": [],
+          "reason": "행 2개 미만 또는 열 1개"
+        },
+        "meta": {
+          "source_index": 1,
+          "source": "PageIndex 파생 사실 · 희소금속 월간동향",
+          "as_of": null,
+          "unit": "USD/톤",
+          "time_aggregation": null,
+          "menu_source": null,
+          "hidden_columns": []
+        },
+        "source_index": 1,
+        "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+      },
+      "elapsed": 7.745
+    },
+    {
+      "event": "table",
+      "data": {
+        "schema_version": 1,
+        "block_id": "multihop-price-2",
+        "columns": [
+          "광종",
+          "최근 가격",
+          "기준일"
+        ],
+        "rows": [
+          [
+            "희토류",
+            "15541.34",
+            "20260930"
+          ]
+        ],
+        "columns_meta": [
+          {
+            "key": "광종",
+            "label": "광종",
+            "display": "광종",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "최근 가격",
+            "label": "최근 가격",
+            "display": "최근 가격",
+            "type": "number",
+            "unit": null
+          },
+          {
+            "key": "기준일",
+            "label": "기준일",
+            "display": "기준일",
+            "type": "number",
+            "unit": null
+          }
+        ],
+        "rows_typed": [
+          [
+            "희토류",
+            15541.34,
+            20260930.0
+          ]
+        ],
+        "markdown": "| 광종 | 최근 가격 | 기준일 |\n| --- | --- | --- |\n| 희토류 | 15541.34 | 20260930 |",
+        "chart_hint": {
+          "recommended": null,
+          "alternatives": [],
+          "reason": "행 2개 미만 또는 열 1개"
+        },
+        "meta": {
+          "source_index": 1,
+          "source": "PageIndex 파생 사실 · 희소금속 월간동향",
+          "as_of": null,
+          "unit": "USD/톤",
+          "time_aggregation": null,
+          "menu_source": null,
+          "hidden_columns": []
+        },
+        "source_index": 1,
+        "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+      },
+      "elapsed": 7.745
+    },
+    {
+      "event": "message",
+      "data": {
+        "delta": "\n일부 항목은 조회하지 못했습니다."
+      },
+      "elapsed": 7.745
+    },
+    {
+      "event": "table",
+      "data": {
+        "schema_version": 1,
+        "block_id": "multihop-item-outcomes",
+        "columns": [
+          "광종",
+          "요청 결과",
+          "상태",
+          "사유"
+        ],
+        "rows": [
+          [
+            "망간",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ],
+          [
+            "코발트",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ],
+          [
+            "크롬",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ],
+          [
+            "티타늄",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ],
+          [
+            "텅스텐",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ],
+          [
+            "마그네슘",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ],
+          [
+            "안티모니",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ],
+          [
+            "몰리브덴",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ],
+          [
+            "니오븀",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ],
+          [
+            "인듐",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ],
+          [
+            "셀레늄",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ],
+          [
+            "갈륨",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ],
+          [
+            "네오디뮴",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ],
+          [
+            "동",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ]
+        ],
+        "columns_meta": [
+          {
+            "key": "광종",
+            "label": "광종",
+            "display": "광종",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "요청 결과",
+            "label": "요청 결과",
+            "display": "요청 결과",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "상태",
+            "label": "상태",
+            "display": "상태",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "사유",
+            "label": "사유",
+            "display": "사유",
+            "type": "string",
+            "unit": null
+          }
+        ],
+        "rows_typed": [
+          [
+            "망간",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ],
+          [
+            "코발트",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ],
+          [
+            "크롬",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ],
+          [
+            "티타늄",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ],
+          [
+            "텅스텐",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ],
+          [
+            "마그네슘",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ],
+          [
+            "안티모니",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ],
+          [
+            "몰리브덴",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ],
+          [
+            "니오븀",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ],
+          [
+            "인듐",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ],
+          [
+            "셀레늄",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ],
+          [
+            "갈륨",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ],
+          [
+            "네오디뮴",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ],
+          [
+            "동",
+            "latest_value",
+            "empty",
+            "retrieval unavailable: validation_failed"
+          ]
+        ],
+        "markdown": "",
+        "chart_hint": {
+          "recommended": null,
+          "alternatives": [],
+          "reason": "값이 갈리는 숫자 계열 없음"
+        },
+        "meta": {
+          "source_index": null,
+          "source": null,
+          "as_of": null,
+          "unit": null,
+          "time_aggregation": null,
+          "menu_source": null,
+          "hidden_columns": []
+        },
+        "source_index": null,
+        "source": null
+      },
+      "elapsed": 7.746
+    },
+    {
+      "event": "done",
+      "data": {
+        "done": true,
+        "abstained": false,
+        "citations": [
+          {
+            "index": 1,
+            "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+          },
+          {
+            "index": 2,
+            "source": "public.KO_MNRL_PRC"
+          }
+        ],
+        "bogus_citations": []
+      },
+      "elapsed": 7.746
+    }
+  ],
+  "http_status": 200,
+  "content_type": "text/event-stream; charset=utf-8",
+  "elapsed": 7.747,
+  "text": "리튬: 13335.89 USD/톤 (20260930 기준)\n희토류: 15541.34 USD/톤 (20260930 기준)\n일부 항목은 조회하지 못했습니다.",
+  "event_counts": {
+    "message": 3,
+    "status": 3,
+    "table": 3,
+    "done": 1
+  },
+  "done": {
+    "done": true,
+    "abstained": false,
+    "citations": [
+      {
+        "index": 1,
+        "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+      },
+      {
+        "index": 2,
+        "source": "public.KO_MNRL_PRC"
+      }
+    ],
+    "bogus_citations": []
+  },
+  "protocol_errors": []
+}

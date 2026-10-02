@@ -1,0 +1,40 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from qa_live_repair.Containerfile
+#1 transferring dockerfile: 236B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/komir-rag-chat:qa-live-repair32
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [1/6] FROM docker.io/library/komir-rag-chat:qa-live-repair32
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 21.28kB 0.0s done
+#5 DONE 0.0s
+
+#6 [2/6] WORKDIR /app
+#6 CACHED
+
+#7 [3/6] COPY common ./common
+#7 CACHED
+
+#8 [4/6] COPY rag_core/ragkit ./rag_core/ragkit
+#8 DONE 0.0s
+
+#9 [5/6] COPY rag_core/retrieval ./rag_core/retrieval
+#9 DONE 0.0s
+
+#10 [6/6] COPY rag_chat/app ./app
+#10 DONE 0.0s
+
+#11 exporting to image
+#11 exporting layers 0.0s done
+#11 writing image sha256:96caedaf488e6a302ce80b14854380538f72109725621b6d9ff704d9e312d61d done
+#11 naming to docker.io/library/komir-rag-chat:qa-live-repair32-final done
+#11 DONE 0.0s

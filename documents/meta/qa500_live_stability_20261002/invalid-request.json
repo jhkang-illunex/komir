@@ -1,0 +1,20 @@
+{
+  "http_status": 422,
+  "body": {
+    "detail": [
+      {
+        "type": "string_too_short",
+        "loc": [
+          "body",
+          "message"
+        ],
+        "msg": "String should have at least 1 character",
+        "input": "",
+        "ctx": {
+          "min_length": 1
+        }
+      }
+    ]
+  },
+  "expected_status": 422
+}

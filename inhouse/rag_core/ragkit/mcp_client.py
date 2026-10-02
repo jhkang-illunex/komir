@@ -291,6 +291,7 @@ class _ProfileSession:
         hs_code: str | None = None,
         index_type_code: str | None = None,
         price_criterion_serial: int | None = None,
+        criterion_mode: str = "REPRESENTATIVE",
         start_period: str | None = None,
         end_period: str | None = None,
         limit: int | None = None,
@@ -304,6 +305,7 @@ class _ProfileSession:
         arguments = {
             "page_id": page_id, "mineral_code": mineral_code, "hs_code": hs_code,
             "index_type_code": index_type_code, "price_criterion_serial": price_criterion_serial,
+            "criterion_mode": criterion_mode,
             # ActionPlan은 ISO 날짜를 보존하지만 komis_raw_lookup은 YYYY[MM[DD]]
             # 만 허용한다. range 가격 집계도 일반 시계열과 같은 MCP 경계에서만
             # 변환해 typed 계약 내부 값은 바꾸지 않는다.

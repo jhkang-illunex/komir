@@ -1,0 +1,18 @@
+data: {"session_id": "12f7d420-641b-407b-a54f-74c478334df4"}
+
+event: status
+data: {"stage": 1, "label": "질문 조건 확인"}
+
+event: status
+data: {"stage": 3, "label": "데이터 분석 중", "status": "데이터 분석 중"}
+
+event: status
+data: {"stage": 4, "label": "답변 생성 중"}
+
+data: {"delta": "| total_production_volume |\n| --- |\n| 6998520.2 |"}
+
+event: table
+data: {"schema_version": 1, "block_id": "multihop-table", "columns": ["total_production_volume"], "rows": [["6998520.2"]], "columns_meta": [{"key": "total_production_volume", "label": "total_production_volume", "display": "total_production_volume", "type": "number", "unit": null}], "rows_typed": [[6998520.2]], "markdown": "| total_production_volume |\n| --- |\n| 6998520.2 |", "chart_hint": {"recommended": null, "alternatives": [], "reason": "행 2개 미만 또는 열 1개"}, "meta": {"source_index": 1, "source": "public.KO_RSRC_PRDCTN_QUTY", "as_of": null, "unit": "톤", "time_aggregation": null, "menu_source": null, "hidden_columns": []}, "source_index": 1, "source": "public.KO_RSRC_PRDCTN_QUTY"}
+
+event: done
+data: {"done": true, "abstained": false, "citations": [{"index": 1, "source": "public.KO_RSRC_PRDCTN_QUTY"}], "bogus_citations": []}

@@ -1,0 +1,148 @@
+FFF.FFFFFFF                                                              [100%]
+=================================== FAILURES ===================================
+___ test_projection_resolves_entity_dimension_without_new_retrieval[mineral] ___
+
+field = 'mineral'
+
+    @pytest.mark.parametrize("field", ["mineral", "entity"])
+    def test_projection_resolves_entity_dimension_without_new_retrieval(field):
+        source = TypedResult.success(ValueType.TIME_SERIES, [{"date": "2024-01-01", "price": 10}], entity=("A",))
+        result = factory()._derive(RequirementNode("project", Operator.PROJECT, args={"fields": [field]}), {"in": source})
+>       assert result.status == ResultStatus.SUCCESS
+E       AssertionError: assert <ResultStatus...: 'abstained'> == <ResultStatus...SS: 'success'>
+E         
+E         - success
+E         + abstained
+
+inhouse/rag_core/tests/test_live_contract_repair.py:27: AssertionError
+___ test_projection_resolves_entity_dimension_without_new_retrieval[entity] ____
+
+field = 'entity'
+
+    @pytest.mark.parametrize("field", ["mineral", "entity"])
+    def test_projection_resolves_entity_dimension_without_new_retrieval(field):
+        source = TypedResult.success(ValueType.TIME_SERIES, [{"date": "2024-01-01", "price": 10}], entity=("A",))
+        result = factory()._derive(RequirementNode("project", Operator.PROJECT, args={"fields": [field]}), {"in": source})
+>       assert result.status == ResultStatus.SUCCESS
+E       AssertionError: assert <ResultStatus...: 'abstained'> == <ResultStatus...SS: 'success'>
+E         
+E         - success
+E         + abstained
+
+inhouse/rag_core/tests/test_live_contract_repair.py:27: AssertionError
+________ test_entity_alias_uses_filtered_row_not_all_snapshot_entities _________
+
+    def test_entity_alias_uses_filtered_row_not_all_snapshot_entities():
+        source = TypedResult(ValueType.COMPOSITE, [{"mineral": "B", "status": "success"}],
+                             status=ResultStatus.PARTIAL, entity=("A", "B", "C"))
+        result = factory()._derive(RequirementNode("project", Operator.PROJECT, args={"fields": ["entity"]}), {"in": source})
+>       assert result.value == [{"entity": "B"}]
+E       AssertionError: assert None == [{'entity': 'B'}]
+E        +  where None = TypedResult(result_type=<ValueType.UNKNOWN: 'unknown'>, value=None, status=<ResultStatus.ABSTAINED: 'abstained'>, enti...idence=None, sufficient=False, upstream_step_ids=(), warnings=(), failure_reason='projection_field_unavailable:entity').value
+
+inhouse/rag_core/tests/test_live_contract_repair.py:35: AssertionError
+________________ test_history_prompt_exposes_fields_not_values _________________
+
+    def test_history_prompt_exposes_fields_not_values():
+        source = TypedResult.success(ValueType.COMPOSITE, [{"mineral": "A", "output": "latest_value", "status": "success", "value": 987654321}])
+        result = live._semantic_context_payload(context(source))[0]["results"][0]
+>       assert set(result["fields"]) >= {"mineral", "output", "status"}
+E       KeyError: 'fields'
+
+inhouse/rag_core/tests/test_live_contract_repair.py:49: KeyError
+________ test_live_aggregate_requires_upstream_before_execution[args0] _________
+
+args = {'calculation': 'sum', 'field': 'price'}
+
+    @pytest.mark.parametrize("args", [{"calculation": "sum", "field": "price"}, {"aggregation": "sum", "field": "price"}])
+    def test_live_aggregate_requires_upstream_before_execution(args):
+        model = live.ASTProgramModel.model_validate({"nodes": [{"node_id": "sum", "operator": "aggregate", "args": args}], "roots": ["sum"]})
+        program = SemanticProgram.from_dict(model.model_dump())
+        with pytest.raises(ValueError, match="upstream"):
+>           live._validate_live_contract(program, model)
+E           AttributeError: module 'inhouse.rag_core.ragkit.live_multihop' has no attribute '_validate_live_contract'
+
+inhouse/rag_core/tests/test_live_contract_repair.py:59: AttributeError
+________ test_live_aggregate_requires_upstream_before_execution[args1] _________
+
+args = {'aggregation': 'sum', 'field': 'price'}
+
+    @pytest.mark.parametrize("args", [{"calculation": "sum", "field": "price"}, {"aggregation": "sum", "field": "price"}])
+    def test_live_aggregate_requires_upstream_before_execution(args):
+        model = live.ASTProgramModel.model_validate({"nodes": [{"node_id": "sum", "operator": "aggregate", "args": args}], "roots": ["sum"]})
+        program = SemanticProgram.from_dict(model.model_dump())
+        with pytest.raises(ValueError, match="upstream"):
+>           live._validate_live_contract(program, model)
+E           AttributeError: module 'inhouse.rag_core.ragkit.live_multihop' has no attribute '_validate_live_contract'
+
+inhouse/rag_core/tests/test_live_contract_repair.py:59: AttributeError
+________ test_reference_contract_rejects_requery_but_refresh_allows_it _________
+
+    def test_reference_contract_rejects_requery_but_refresh_allows_it():
+        program = SemanticProgram((RequirementNode("r", Operator.RETRIEVE, args={"metric": "price"}),), ("r",))
+        with pytest.raises(ValueError, match="reference.*retriev"):
+>           live._validate_live_contract(program, live.ASTProgramModel(result_access="reference"))
+E           AttributeError: module 'inhouse.rag_core.ragkit.live_multihop' has no attribute '_validate_live_contract'
+
+inhouse/rag_core/tests/test_live_contract_repair.py:65: AttributeError
+_________ test_composite_sse_preserves_failed_items_and_reasons[False] _________
+
+all_failed = False
+
+    @pytest.mark.parametrize("all_failed", [False, True])
+    def test_composite_sse_preserves_failed_items_and_reasons(all_failed):
+        rows = [{"mineral": "B", "metric": "price", "output": "latest_value", "status": "empty", "reason": "advisor_rejected", "value": []},
+                {"mineral": "C", "metric": "price", "output": "latest_value", "status": "failed", "reason": "execution_failed", "value": None}]
+        if not all_failed:
+            rows.insert(0, {"mineral": "A", "metric": "price", "output": "latest_value", "status": "success", "value": [{"price": 10}]})
+        source = TypedResult(ValueType.COMPOSITE, rows, status=ResultStatus.FAILED if all_failed else ResultStatus.PARTIAL,
+                             sufficient=not all_failed, failure_reason="all_items_failed" if all_failed else None)
+        events = live._result_events(source)
+        tables = [e.data for e in events if e.type == "table"]
+>       assert "advisor_rejected" in str(tables) and "execution_failed" in str(tables)
+E       assert ('advisor_rejected' in "[{'schema_version': 1, 'block_id': 'multihop-price-1', 'columns': ['광종', '최근 가격', '기준일'], 'rows': [['A', '10', '']], ...t': None, 'time_aggregation': None, 'menu_source': None, 'hidden_columns': []}, 'source_index': None, 'source': None}]")
+E        +  where "[{'schema_version': 1, 'block_id': 'multihop-price-1', 'columns': ['광종', '최근 가격', '기준일'], 'rows': [['A', '10', '']], ...t': None, 'time_aggregation': None, 'menu_source': None, 'hidden_columns': []}, 'source_index': None, 'source': None}]" = str([{'schema_version': 1, 'block_id': 'multihop-price-1', 'columns': ['광종', '최근 가격', '기준일'], 'rows': [['A', '10', '']], ...}])
+
+inhouse/rag_core/tests/test_live_contract_repair.py:79: AssertionError
+_________ test_composite_sse_preserves_failed_items_and_reasons[True] __________
+
+all_failed = True
+
+    @pytest.mark.parametrize("all_failed", [False, True])
+    def test_composite_sse_preserves_failed_items_and_reasons(all_failed):
+        rows = [{"mineral": "B", "metric": "price", "output": "latest_value", "status": "empty", "reason": "advisor_rejected", "value": []},
+                {"mineral": "C", "metric": "price", "output": "latest_value", "status": "failed", "reason": "execution_failed", "value": None}]
+        if not all_failed:
+            rows.insert(0, {"mineral": "A", "metric": "price", "output": "latest_value", "status": "success", "value": [{"price": 10}]})
+        source = TypedResult(ValueType.COMPOSITE, rows, status=ResultStatus.FAILED if all_failed else ResultStatus.PARTIAL,
+                             sufficient=not all_failed, failure_reason="all_items_failed" if all_failed else None)
+        events = live._result_events(source)
+        tables = [e.data for e in events if e.type == "table"]
+>       assert "advisor_rejected" in str(tables) and "execution_failed" in str(tables)
+E       AssertionError: assert ('advisor_rejected' in '[]')
+E        +  where '[]' = str([])
+
+inhouse/rag_core/tests/test_live_contract_repair.py:79: AssertionError
+_______ test_production_column_alias_preserves_units_and_aggregate_value _______
+
+    def test_production_column_alias_preserves_units_and_aggregate_value():
+        source = TypedResult.success(ValueType.FACT_SET, [{"국가": "A", "생산량(톤)": "7"}, {"국가": "B", "생산량(톤)": "11"}], unit="톤")
+        out = factory()._derive(RequirementNode("s", Operator.AGGREGATE,
+            args={"aggregation": "sum", "field": "production_volume"}), {"in": source})
+>       assert out.value == [{"생산량(톤)": 18}]
+E       AssertionError: assert None == [{'생산량(톤)': 18}]
+E        +  where None = TypedResult(result_type=<ValueType.UNKNOWN: 'unknown'>, value=None, status=<ResultStatus.ABSTAINED: 'abstained'>, enti... confidence=None, sufficient=False, upstream_step_ids=(), warnings=(), failure_reason='unsupported_aggregate_contract').value
+
+inhouse/rag_core/tests/test_live_contract_repair.py:89: AssertionError
+=========================== short test summary info ============================
+FAILED inhouse/rag_core/tests/test_live_contract_repair.py::test_projection_resolves_entity_dimension_without_new_retrieval[mineral]
+FAILED inhouse/rag_core/tests/test_live_contract_repair.py::test_projection_resolves_entity_dimension_without_new_retrieval[entity]
+FAILED inhouse/rag_core/tests/test_live_contract_repair.py::test_entity_alias_uses_filtered_row_not_all_snapshot_entities
+FAILED inhouse/rag_core/tests/test_live_contract_repair.py::test_history_prompt_exposes_fields_not_values
+FAILED inhouse/rag_core/tests/test_live_contract_repair.py::test_live_aggregate_requires_upstream_before_execution[args0]
+FAILED inhouse/rag_core/tests/test_live_contract_repair.py::test_live_aggregate_requires_upstream_before_execution[args1]
+FAILED inhouse/rag_core/tests/test_live_contract_repair.py::test_reference_contract_rejects_requery_but_refresh_allows_it
+FAILED inhouse/rag_core/tests/test_live_contract_repair.py::test_composite_sse_preserves_failed_items_and_reasons[False]
+FAILED inhouse/rag_core/tests/test_live_contract_repair.py::test_composite_sse_preserves_failed_items_and_reasons[True]
+FAILED inhouse/rag_core/tests/test_live_contract_repair.py::test_production_column_alias_preserves_units_and_aggregate_value
+10 failed, 1 passed in 0.61s

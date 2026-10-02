@@ -1,0 +1,28 @@
+EXT500-039 1 PASS
+H3 1 LOGICAL_PLAN_INCOMPLETE
+M1 1 PASS
+semantic_requirement_v2: 1차 출력 검증 실패, 복구 재시도(ValidationError: 1 validation error for SemanticRequirementPlanV2
+requirements.2.relationships
+  Extra inputs are not permitted [type=extra_forbidden, input_value=[{'kind': 'compare', 'rel...x_price', 'min_price']}], input_type=list]
+    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden)
+R4 1 PASS
+EXT500-037 1 RESULT_MISMATCH
+H4 1 PASS
+semantic_requirement_v2: 1차 출력 검증 실패, 복구 재시도(ValidationError: 1 validation error for SemanticRequirementPlanV2
+requirements.2.relationships
+  Extra inputs are not permitted [type=extra_forbidden, input_value=[{'kind': 'compare', 'rel...s': ['value', 'value']}], input_type=list]
+    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden)
+V2 1 PASS
+H3 2 PASS
+M1 2 PASS
+semantic_requirement_v2: 1차 출력 검증 실패, 복구 재시도(JSONDecodeError: Expecting ',' delimiter: line 1 column 311 (char 310))
+EXT500-039 2 PASS
+R4 2 LOGICAL_PLAN_INCOMPLETE
+EXT500-037 2 PASS
+semantic_requirement_v2: 1차 출력 검증 실패, 복구 재시도(ValidationError: 1 validation error for SemanticRequirementPlanV2
+requirements.2.relationships
+  Extra inputs are not permitted [type=extra_forbidden, input_value=[{'kind': 'compare', 'rel...s': ['value', 'value']}], input_type=list]
+    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden)
+H4 2 PASS
+V2 2 PASS
+{"total_questions": 7, "model_requests": 14, "question_counts": {"VARIABLE": 3, "STABLE_PASS": 4}, "request_counts": {"PASS": 11, "LOGICAL_PLAN_INCOMPLETE": 2, "RESULT_MISMATCH": 1}, "questions": {"EXT500-037": {"verdict": "VARIABLE", "runs": {"1": "RESULT_MISMATCH", "2": "PASS"}}, "EXT500-039": {"verdict": "STABLE_PASS", "runs": {"1": "PASS", "2": "PASS"}}, "H3": {"verdict": "VARIABLE", "runs": {"1": "LOGICAL_PLAN_INCOMPLETE", "2": "PASS"}}, "H4": {"verdict": "STABLE_PASS", "runs": {"1": "PASS", "2": "PASS"}}, "M1": {"verdict": "STABLE_PASS", "runs": {"1": "PASS", "2": "PASS"}}, "R4": {"verdict": "VARIABLE", "runs": {"1": "PASS", "2": "LOGICAL_PLAN_INCOMPLETE"}}, "V2": {"verdict": "STABLE_PASS", "runs": {"1": "PASS", "2": "PASS"}}}}

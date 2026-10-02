@@ -1,0 +1,5 @@
+sum-paraphrase-r3 200 3.579 {'message': 2, 'status': 3, 'table': 1, 'done': 1} None []
+composition-paraphrase-r3 200 11.206 {'message': 2, 'status': 1, 'done': 1} execution_failed []
+reserves-r3 200 3.615 {'message': 2, 'status': 3, 'done': 1} aggregate_input_incomplete []
+negative-r3 200 0.24 {'message': 2, 'status': 1, 'done': 1} security_privacy []
+series-r3 200 2.995 {'message': 2, 'status': 3, 'table': 1, 'chart': 1, 'done': 1} None []

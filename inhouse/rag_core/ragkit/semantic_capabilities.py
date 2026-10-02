@@ -18,6 +18,8 @@ CAPABILITY_OUTPUTS: Final[dict[tuple[str, str], frozenset[str]]] = {
     ("trade", "country_rank"): frozenset({"country_rank"}),
     ("resource", "resource_rank"): frozenset({"resource_rank", "production", "reserves", "value", "country", "period", "unit"}),
     ("inventory", "latest"): frozenset({"latest_inventory", "inventory"}),
+    ("inventory", "series"): frozenset({"inventory_series", "inventory", "date", "period", "unit"}),
+    ("inventory", "inventory_series"): frozenset({"inventory_series", "inventory", "date", "period", "unit"}),
     ("resource", "resource_yoy"): frozenset({"resource_change"}),
     ("indicator", "series"): frozenset({"indicator_series"}),
 }
@@ -34,6 +36,17 @@ def produced_outputs(requirements: list[object]) -> frozenset[str]:
     for requirement in requirements:
         key = (getattr(requirement, "domain", ""), getattr(requirement, "metric", ""))
         outputs.update(CAPABILITY_OUTPUTS.get(key, ()))
+        if key == ("inventory", "latest"):
+            # Gemma may call a bounded inventory trend ``latest`` while
+            # retaining the requested period.  At the semantic boundary that
+            # is the series output contract; do not force the parser into a
+            # failure merely because the surface metric used the legacy label.
+            period = getattr(requirement, "period", None)
+            period_kind = getattr(period, "kind", None)
+            if isinstance(period, dict):
+                period_kind = period.get("kind")
+            if period_kind in {"trailing_months", "range", "calendar_year"}:
+                outputs.update({"inventory_series", "inventory", "date", "period", "unit"})
         if key == ("resource", "resource_rank"):
             operation = getattr(requirement, "resource_operation", None)
             outputs.update({"production", "reserves", "value", "country", "period", "unit"})

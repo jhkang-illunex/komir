@@ -1,0 +1,370 @@
+{
+  "accounting": {
+    "TOTAL_CORPUS": 36,
+    "REGISTERED": 36,
+    "PASS": 27,
+    "FAILED": 7,
+    "CAPABILITY_GAP": 0,
+    "UNSUPPORTED": 2,
+    "BLOCKED": 0,
+    "PENDING": 0
+  },
+  "cohorts": {
+    "core": {
+      "total_questions": 28,
+      "model_requests": 56,
+      "question_counts": {
+        "STABLE_PASS": 20,
+        "VARIABLE": 5,
+        "STABLE_UNSUPPORTED": 2,
+        "FAILED_ALL_REPEATS": 1
+      },
+      "request_counts": {
+        "PASS": 45,
+        "RESULT_MISMATCH": 2,
+        "LOGICAL_PLAN_INCOMPLETE": 5,
+        "UNSUPPORTED_CORRECT": 4
+      },
+      "questions": {
+        "EXT500-009": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "EXT500-010": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "EXT500-011": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "EXT500-012": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "EXT500-037": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "RESULT_MISMATCH"
+          }
+        },
+        "EXT500-038": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "EXT500-039": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "RESULT_MISMATCH",
+            "2": "PASS"
+          }
+        },
+        "EXT500-040": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "H1": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "H2": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "H3": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "LOGICAL_PLAN_INCOMPLETE",
+            "2": "PASS"
+          }
+        },
+        "H4": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "LOGICAL_PLAN_INCOMPLETE"
+          }
+        },
+        "M1": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "LOGICAL_PLAN_INCOMPLETE",
+            "2": "PASS"
+          }
+        },
+        "M2": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "N1": {
+          "verdict": "STABLE_UNSUPPORTED",
+          "runs": {
+            "1": "UNSUPPORTED_CORRECT",
+            "2": "UNSUPPORTED_CORRECT"
+          }
+        },
+        "N2": {
+          "verdict": "STABLE_UNSUPPORTED",
+          "runs": {
+            "1": "UNSUPPORTED_CORRECT",
+            "2": "UNSUPPORTED_CORRECT"
+          }
+        },
+        "R1": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "R2": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "R3": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "R4": {
+          "verdict": "FAILED_ALL_REPEATS",
+          "runs": {
+            "1": "LOGICAL_PLAN_INCOMPLETE",
+            "2": "LOGICAL_PLAN_INCOMPLETE"
+          }
+        },
+        "R5": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "R6": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "Z1": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "Z2": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "Z3": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "Z4": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "Z5": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "Z6": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        }
+      }
+    },
+    "u": {
+      "total_questions": 4,
+      "model_requests": 8,
+      "question_counts": {
+        "STABLE_PASS": 4
+      },
+      "request_counts": {
+        "PASS": 8
+      },
+      "questions": {
+        "U1": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "U2": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "U3": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "U4": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        }
+      }
+    },
+    "v": {
+      "total_questions": 4,
+      "model_requests": 12,
+      "question_counts": {
+        "STABLE_PASS": 3,
+        "VARIABLE": 1
+      },
+      "request_counts": {
+        "PASS": 11,
+        "LOGICAL_PLAN_INCOMPLETE": 1
+      },
+      "questions": {
+        "V1": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS",
+            "3": "PASS"
+          }
+        },
+        "V2": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS",
+            "3": "LOGICAL_PLAN_INCOMPLETE"
+          }
+        },
+        "V3": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS",
+            "3": "PASS"
+          }
+        },
+        "V4": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS",
+            "3": "PASS"
+          }
+        }
+      }
+    }
+  },
+  "model_diagnostic_errors": {
+    "SCHEMA_VALIDATION_ERROR": 7,
+    "OUTPUT_TRUNCATED": 1
+  },
+  "oracle_rejudgment_changes": [],
+  "replay_counts": {
+    "archived": {
+      "PASS": 156,
+      "LOGICAL_PLAN_INCOMPLETE": 27,
+      "RESULT_MISMATCH": 3,
+      "UNSUPPORTED_CORRECT": 12,
+      "OUTPUT_CONTRACT_FAIL": 7,
+      "PARSER_MISSING_OUTPUT": 3
+    },
+    "oracle_only": {
+      "PASS": 163,
+      "LOGICAL_PLAN_INCOMPLETE": 27,
+      "RESULT_MISMATCH": 3,
+      "UNSUPPORTED_CORRECT": 12,
+      "PARSER_MISSING_OUTPUT": 3
+    },
+    "compiler_replay": {
+      "PASS": 165,
+      "LOGICAL_PLAN_INCOMPLETE": 25,
+      "RESULT_MISMATCH": 3,
+      "UNSUPPORTED_CORRECT": 12,
+      "PARSER_MISSING_OUTPUT": 3
+    }
+  },
+  "compiler_replay_recoveries": [
+    {
+      "source": "object",
+      "id": "H1",
+      "repeat": 1
+    },
+    {
+      "source": "schema",
+      "id": "H1",
+      "repeat": 3
+    }
+  ],
+  "compiler_replay_regressions": [],
+  "source_sha256": {
+    "inhouse/common/llm/base.py": "485fe825991ab837c6c9dbdeb667c5c7d6a7cd62fe7b0efa3e3861e3413aaa40",
+    "inhouse/common/llm/openai_compat.py": "23ccba6e7de379f4cabc92c39aa8b66620d853ab189bb3040ff2d003258bc626",
+    "inhouse/common/llm_client.py": "ca0b94f2f2fb3b96583920738d65dfff207582827ce9abecbd4830c5fda93189",
+    "inhouse/rag_core/ragkit/semantic_v2.py": "a4ae5b472a46fc2a777ef36e0e8ae6be25549c5eb0013fa45bccb2beabee1674",
+    "inhouse/rag_core/tests/qa500_linkage_eval.py": "eece4e8d2f67766b669812424aaeced3ebfbd0879d79d583644ff598f5795e75"
+  },
+  "notes": [
+    "76 real QA attempts; raw completions may include bounded repair.",
+    "208 offline replay records use the same captured requirements; no model retry.",
+    "Earlier evaluator/oracle outputs retained; final scores are all rejudged by one oracle.",
+    "Observed semantic source hash differs from final only by malformed diagnostic record guard; no planning/request change.",
+    "No production restart/deployment/DB changes."
+  ]
+}

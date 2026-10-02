@@ -1,0 +1,168 @@
+{
+  "id": "document-followup-r2",
+  "port": 18012,
+  "request": {
+    "user_id": "qa-sse31",
+    "session_id": "6e6ec43b-aeea-41c3-abeb-8f1f1641fe74",
+    "message": "위 결과에서 최신 가격 조회에 성공한 광종만 알려줘",
+    "mode": "auto"
+  },
+  "started_at": "2026-10-02T01:38:08.895276+00:00",
+  "events": [
+    {
+      "event": "message",
+      "data": {
+        "session_id": "6e6ec43b-aeea-41c3-abeb-8f1f1641fe74"
+      },
+      "elapsed": 0.038
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 1,
+        "label": "질문 조건 확인"
+      },
+      "elapsed": 0.07
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 3,
+        "label": "데이터 분석 중",
+        "status": "데이터 분석 중"
+      },
+      "elapsed": 3.385
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 4,
+        "label": "답변 생성 중"
+      },
+      "elapsed": 3.385
+    },
+    {
+      "event": "table",
+      "data": {
+        "schema_version": 1,
+        "block_id": "multihop-item-outcomes",
+        "columns": [
+          "광종",
+          "요청 결과",
+          "상태",
+          "사유"
+        ],
+        "rows": [
+          [
+            "리튬",
+            "",
+            "unknown",
+            "unspecified_failure"
+          ],
+          [
+            "희토류",
+            "",
+            "unknown",
+            "unspecified_failure"
+          ]
+        ],
+        "columns_meta": [
+          {
+            "key": "광종",
+            "label": "광종",
+            "display": "광종",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "요청 결과",
+            "label": "요청 결과",
+            "display": "요청 결과",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "상태",
+            "label": "상태",
+            "display": "상태",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "사유",
+            "label": "사유",
+            "display": "사유",
+            "type": "string",
+            "unit": null
+          }
+        ],
+        "rows_typed": [
+          [
+            "리튬",
+            null,
+            "unknown",
+            "unspecified_failure"
+          ],
+          [
+            "희토류",
+            null,
+            "unknown",
+            "unspecified_failure"
+          ]
+        ],
+        "markdown": "",
+        "chart_hint": {
+          "recommended": null,
+          "alternatives": [],
+          "reason": "값이 갈리는 숫자 계열 없음"
+        },
+        "meta": {
+          "source_index": null,
+          "source": null,
+          "as_of": null,
+          "unit": null,
+          "time_aggregation": null,
+          "menu_source": null,
+          "hidden_columns": []
+        },
+        "source_index": null,
+        "source": null
+      },
+      "elapsed": 3.402
+    },
+    {
+      "event": "message",
+      "data": {
+        "delta": "표시할 수 있는 검증된 결과가 없습니다."
+      },
+      "elapsed": 3.402
+    },
+    {
+      "event": "done",
+      "data": {
+        "done": true,
+        "abstained": true,
+        "abstain_reason": "presentation_unavailable",
+        "citations": []
+      },
+      "elapsed": 3.403
+    }
+  ],
+  "http_status": 200,
+  "content_type": "text/event-stream; charset=utf-8",
+  "elapsed": 3.404,
+  "text": "표시할 수 있는 검증된 결과가 없습니다.",
+  "event_counts": {
+    "message": 2,
+    "status": 3,
+    "table": 1,
+    "done": 1
+  },
+  "done": {
+    "done": true,
+    "abstained": true,
+    "abstain_reason": "presentation_unavailable",
+    "citations": []
+  },
+  "protocol_errors": []
+}

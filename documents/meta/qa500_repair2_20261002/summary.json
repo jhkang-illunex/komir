@@ -1,0 +1,279 @@
+{
+  "scope": "Gemma V2 shadow + synthetic SQLite runtime, NOT production SSE",
+  "runs": {
+    "round1": {
+      "total": 16,
+      "counts": {
+        "PASS": 12,
+        "SEMANTIC_MISMATCH": 1,
+        "LOGICAL_PLAN_INCOMPLETE": 1,
+        "UNSUPPORTED_CORRECT": 2
+      }
+    },
+    "previous-holdout": {
+      "total": 6,
+      "counts": {
+        "PASS": 5,
+        "LOGICAL_PLAN_INCOMPLETE": 1
+      }
+    },
+    "unseen": {
+      "total": 6,
+      "counts": {
+        "PASS": 5,
+        "LOGICAL_PLAN_INCOMPLETE": 1
+      }
+    },
+    "round2": {
+      "total": 16,
+      "counts": {
+        "PASS": 13,
+        "LOGICAL_PLAN_INCOMPLETE": 1,
+        "UNSUPPORTED_CORRECT": 2
+      }
+    },
+    "previous-holdout2": {
+      "total": 6,
+      "counts": {
+        "PASS": 5,
+        "LOGICAL_PLAN_INCOMPLETE": 1
+      }
+    },
+    "confirm": {
+      "total": 5,
+      "counts": {
+        "PASS": 4,
+        "LOGICAL_PLAN_INCOMPLETE": 1
+      }
+    }
+  },
+  "latest_by_id": {
+    "EXT500-009": {
+      "status": "PASS",
+      "errors": [],
+      "run": "round2",
+      "model_capture_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa",
+      "evaluation_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa"
+    },
+    "EXT500-010": {
+      "status": "PASS",
+      "errors": [],
+      "run": "round2",
+      "model_capture_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa",
+      "evaluation_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa"
+    },
+    "EXT500-012": {
+      "status": "PASS",
+      "errors": [],
+      "run": "round2",
+      "model_capture_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa",
+      "evaluation_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa"
+    },
+    "EXT500-011": {
+      "status": "PASS",
+      "errors": [],
+      "run": "round2",
+      "model_capture_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa",
+      "evaluation_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa"
+    },
+    "EXT500-037": {
+      "status": "PASS",
+      "errors": [],
+      "run": "round2",
+      "model_capture_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa",
+      "evaluation_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa"
+    },
+    "EXT500-038": {
+      "status": "PASS",
+      "errors": [],
+      "run": "round2",
+      "model_capture_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa",
+      "evaluation_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa"
+    },
+    "EXT500-039": {
+      "status": "PASS",
+      "errors": [],
+      "run": "round2",
+      "model_capture_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa",
+      "evaluation_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa"
+    },
+    "EXT500-040": {
+      "status": "PASS",
+      "errors": [],
+      "run": "round2",
+      "model_capture_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa",
+      "evaluation_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa"
+    },
+    "H1": {
+      "status": "LOGICAL_PLAN_INCOMPLETE",
+      "errors": [
+        "rel_monthly_stats: one or two comparison fields required"
+      ],
+      "run": "confirm",
+      "model_capture_code_sha256": "465cbb0b272256b8d79c7f2c050c57d0caeaf6ec3ef265bee6ee1aed6684c999",
+      "evaluation_code_sha256": "465cbb0b272256b8d79c7f2c050c57d0caeaf6ec3ef265bee6ee1aed6684c999"
+    },
+    "H2": {
+      "status": "PASS",
+      "errors": [],
+      "run": "round2",
+      "model_capture_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa",
+      "evaluation_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa"
+    },
+    "H3": {
+      "status": "PASS",
+      "errors": [],
+      "run": "round2",
+      "model_capture_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa",
+      "evaluation_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa"
+    },
+    "H4": {
+      "status": "PASS",
+      "errors": [],
+      "run": "confirm",
+      "model_capture_code_sha256": "465cbb0b272256b8d79c7f2c050c57d0caeaf6ec3ef265bee6ee1aed6684c999",
+      "evaluation_code_sha256": "465cbb0b272256b8d79c7f2c050c57d0caeaf6ec3ef265bee6ee1aed6684c999"
+    },
+    "M1": {
+      "status": "PASS",
+      "errors": [],
+      "run": "confirm",
+      "model_capture_code_sha256": "465cbb0b272256b8d79c7f2c050c57d0caeaf6ec3ef265bee6ee1aed6684c999",
+      "evaluation_code_sha256": "465cbb0b272256b8d79c7f2c050c57d0caeaf6ec3ef265bee6ee1aed6684c999"
+    },
+    "N1": {
+      "status": "UNSUPPORTED_CORRECT",
+      "errors": [],
+      "run": "round2",
+      "model_capture_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa",
+      "evaluation_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa"
+    },
+    "N2": {
+      "status": "UNSUPPORTED_CORRECT",
+      "errors": [],
+      "run": "round2",
+      "model_capture_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa",
+      "evaluation_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa"
+    },
+    "M2": {
+      "status": "PASS",
+      "errors": [],
+      "run": "round2",
+      "model_capture_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa",
+      "evaluation_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa"
+    },
+    "Z2": {
+      "status": "PASS",
+      "errors": [],
+      "run": "previous-holdout2",
+      "model_capture_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa",
+      "evaluation_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa"
+    },
+    "Z1": {
+      "status": "PASS",
+      "errors": [],
+      "run": "previous-holdout2",
+      "model_capture_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa",
+      "evaluation_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa"
+    },
+    "Z3": {
+      "status": "PASS",
+      "errors": [],
+      "run": "previous-holdout2",
+      "model_capture_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa",
+      "evaluation_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa"
+    },
+    "Z4": {
+      "status": "PASS",
+      "errors": [],
+      "run": "previous-holdout2",
+      "model_capture_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa",
+      "evaluation_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa"
+    },
+    "Z5": {
+      "status": "PASS",
+      "errors": [],
+      "run": "confirm",
+      "model_capture_code_sha256": "465cbb0b272256b8d79c7f2c050c57d0caeaf6ec3ef265bee6ee1aed6684c999",
+      "evaluation_code_sha256": "465cbb0b272256b8d79c7f2c050c57d0caeaf6ec3ef265bee6ee1aed6684c999"
+    },
+    "Z6": {
+      "status": "PASS",
+      "errors": [],
+      "run": "confirm",
+      "model_capture_code_sha256": "465cbb0b272256b8d79c7f2c050c57d0caeaf6ec3ef265bee6ee1aed6684c999",
+      "evaluation_code_sha256": "465cbb0b272256b8d79c7f2c050c57d0caeaf6ec3ef265bee6ee1aed6684c999"
+    },
+    "R2": {
+      "status": "PASS",
+      "errors": [],
+      "run": "unseen",
+      "model_capture_code_sha256": "783e86e6026e5da4290c6c32dc069e24193026548fd6757ac86a5e853e6aee8a",
+      "evaluation_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa"
+    },
+    "R1": {
+      "status": "PASS",
+      "errors": [],
+      "run": "unseen",
+      "model_capture_code_sha256": "783e86e6026e5da4290c6c32dc069e24193026548fd6757ac86a5e853e6aee8a",
+      "evaluation_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa"
+    },
+    "R4": {
+      "status": "PASS",
+      "errors": [],
+      "run": "unseen",
+      "model_capture_code_sha256": "783e86e6026e5da4290c6c32dc069e24193026548fd6757ac86a5e853e6aee8a",
+      "evaluation_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa"
+    },
+    "R5": {
+      "status": "PASS",
+      "errors": [],
+      "run": "unseen",
+      "model_capture_code_sha256": "783e86e6026e5da4290c6c32dc069e24193026548fd6757ac86a5e853e6aee8a",
+      "evaluation_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa"
+    },
+    "R3": {
+      "status": "PASS",
+      "errors": [],
+      "run": "unseen",
+      "model_capture_code_sha256": "783e86e6026e5da4290c6c32dc069e24193026548fd6757ac86a5e853e6aee8a",
+      "evaluation_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa"
+    },
+    "R6": {
+      "status": "LOGICAL_PLAN_INCOMPLETE",
+      "errors": [
+        "requested_output_source_unknown: join_result"
+      ],
+      "run": "unseen",
+      "model_capture_code_sha256": "783e86e6026e5da4290c6c32dc069e24193026548fd6757ac86a5e853e6aee8a",
+      "evaluation_code_sha256": "99898064a034881320344a125ac926a736e0bc32651adac8be7f86a4cd2c30fa"
+    }
+  },
+  "captures": {
+    "qa500-repair2-round1.jsonl.gz": "6d6cc900c1dcf6dccda6040315a5e154ccbf425fcb61b685ac665f6f666c4e85",
+    "qa500-repair2-previous-holdout.jsonl.gz": "7b6fa2e4ef14478d646052e70fe26eb1674c33b22addef4a6f49ba0968f17c00",
+    "qa500-repair2-unseen.jsonl.gz": "5cc4bf943a48a46d3d706ba038ce6854e3d0c04efd2667b14e5cdeb1626fc2a9",
+    "qa500-repair2-round2.jsonl.gz": "18db38d99460a489bee09cd0b7d8020c0017534a098d5ab670621fcc887d8a44",
+    "qa500-repair2-previous-holdout2.jsonl.gz": "5bcbcbc276752d143d56114b281773fa952d83ae8e76d689d6e3e88f55a24f1b",
+    "qa500-repair2-confirm.jsonl.gz": "3f8f5f6156beece50bf7f148a953c39fe3a360e99821c3e51e33422100a6e7f8"
+  },
+  "model_requests": 55,
+  "latest_counts": {
+    "PASS": 24,
+    "LOGICAL_PLAN_INCOMPLETE": 2,
+    "UNSUPPORTED_CORRECT": 2
+  },
+  "total_unique": 28,
+  "pending": 0,
+  "regression": {
+    "before": 1250,
+    "after": 1265,
+    "fail": 0,
+    "subtests": 687
+  },
+  "warnings": [
+    "latest QA observations span code hashes and are NOT stability or live SSE proof",
+    "all failed runs retained; confirm is not cherry-picked as all-22 rerun"
+  ],
+  "final_source_sha256": "465cbb0b272256b8d79c7f2c050c57d0caeaf6ec3ef265bee6ee1aed6684c999"
+}

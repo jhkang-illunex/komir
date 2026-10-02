@@ -11,7 +11,7 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from common.komis_raw import KomisRawDataRepository  # noqa: E402
+from common.komis_raw import AnalysisPreviewRequest, KomisRawDataRepository  # noqa: E402
 
 
 class MonthlyTradeAggregationTest(unittest.TestCase):
@@ -170,6 +170,57 @@ class PriceComparisonAggregationTest(unittest.TestCase):
         self.assertIn("KO_MNRL_PRC_CRTR", queries[0])
         self.assertIn("'동'", queries[0])
         self.assertEqual(data.metadata["missing_minerals"], [])
+
+
+class ForecastSourceContractTest(unittest.TestCase):
+    def test_forecast_uses_current_ai_source_and_normalizes_base_month(self):
+        frame = pd.DataFrame([
+            ("MNRL0002", "202609", "202610", "BASE", 502, 20563.75, "DEV_DUMMY",
+             "LME CASH", "PR001", "WT002", 22916.73),
+        ], columns=[
+            "mnrknd_unq_cd", "base_ym", "trgt_ym", "scnr_cd", "mnrl_prc_crtr_sn",
+            "predc_prc", "model_ver", "prc_crtr", "prc_unit_cd", "weig_unit_cd",
+            "current_price",
+        ])
+        with patch("common.komis_raw.read_sql_pg", return_value=frame) as read:
+            data = KomisRawDataRepository().fetch_forecast_price(
+                request=AnalysisPreviewRequest(
+                    page_id="forecast_price", mineral_code="MNRL0002",
+                    start_period="20261001", end_period="20261031",
+                )
+            )
+
+        self.assertEqual(data.source_table, "AI_MNRL_PRC_FRCST")
+        self.assertEqual(data.rows[0]["forecast_date"], "2026-10-01")
+        self.assertEqual(data.rows[0]["forecast_period"], "월별")
+        self.assertEqual(data.rows[0]["unit"], "USD/톤")
+        self.assertEqual(data.rows[0]["current_price"], 22916.73)
+        self.assertIn("ai_mnrl_prc_frcst", read.call_args.args[0])
+        self.assertIn("f.scnr_cd = 'BASE'", read.call_args.args[0])
+
+    def test_forecast_falls_back_to_legacy_source_when_ai_source_is_empty(self):
+        empty = pd.DataFrame(columns=[
+            "mnrknd_unq_cd", "base_ym", "trgt_ym", "scnr_cd", "mnrl_prc_crtr_sn",
+            "predc_prc", "model_ver", "prc_crtr", "prc_unit_cd", "weig_unit_cd",
+            "current_price",
+        ])
+        legacy = pd.DataFrame([
+            (1, "MNRL0018", "20261001", "PE002", "PR001", 100.0, 110.0),
+        ], columns=[
+            "mnrl_prc_predc_sn", "mnrknd_unq_cd", "crtr_ymd", "prd_se_cd", "prc_unit_cd",
+            "cmerc_prc", "predc_prc",
+        ])
+        responses = [empty, legacy]
+        with patch("common.komis_raw.read_sql_pg", side_effect=lambda query: responses.pop(0)):
+            data = KomisRawDataRepository().fetch_forecast_price(
+                request=AnalysisPreviewRequest(
+                    page_id="forecast_price", mineral_code="MNRL0018",
+                    start_period="20261001", end_period="20261031",
+                )
+            )
+
+        self.assertEqual(data.source_table, "KO_MNRL_PRC_PREDC")
+        self.assertEqual(data.rows[0]["prd_se_cd"], "PE002")
 
 
 if __name__ == "__main__":

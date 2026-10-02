@@ -201,7 +201,7 @@ KOMIS_RAW_UNVERIFIED_CAVEAT = "이 수치는 KOMIS 실제 표본 여부를 자�
 #: chatbot_events.py::_DATE_COLUMN_NAMES와 같은 KOMIS 날짜열 이름(그쪽은 차트축
 #: 판정용으로 더 넓게 매칭하지만, 여기는 min/max만 뽑으면 되니 단순 포함 검사로
 #: 충분하다 — 두 파일이 갈라지지 않게 이름 자체는 그대로 맞춤).
-_KOMIS_DATE_COLUMNS = ("crtr_ymd", "crtr_yr")
+_KOMIS_DATE_COLUMNS = ("crtr_ymd", "crtr_yr", "forecast_date", "trgt_ym")
 
 
 def _format_ymd(raw: str) -> str:
@@ -237,7 +237,7 @@ def _period_span(ds: Any) -> str | None:
     values = [str(row[date_col]) for row in ds.rows if row.get(date_col) is not None]
     if not values:
         return None
-    oldest, newest = _format_ymd(values[-1]), _format_ymd(values[0])
+    oldest, newest = _format_ymd(min(values)), _format_ymd(max(values))
     if getattr(ds, "metadata", {}).get("period_range_complete"):
         count = getattr(ds, "row_count", None)
         count_label = f" 내 관측 {int(count)}건" if isinstance(count, int) and count >= 0 else ""
@@ -303,15 +303,25 @@ def from_komis_raw(
             # 허용한다. 다른 주기의 값을 월간 전망으로 바꾸어 표시하지 않는다.
             period_labels = {"PE001": "연간", "PE002": "월별", "PE003": "주별", "PE004": "일별", "PE005": "분기",
                              "PE201": "1분기", "PE202": "2분기", "PE203": "3분기", "PE204": "4분기"}
-            forecast_rows = [row for row in ds.rows if str(row.get("PRD_SE_CD", "")) == "PE002"]
-            columns = ["forecast_date", "forecast_period", "current_price", "predicted_price", "unit"]
-            table_rows = [[
-                str(row.get("CRTR_YMD", "")),
-                period_labels.get(str(row.get("PRD_SE_CD", "")), str(row.get("PRD_SE_CD", ""))),
-                str(row.get("CMERC_PRC", "")),
-                str(row.get("PREDC_PRC", "")),
-                str(row.get("PRC_UNIT_CD", "")),
-            ] for row in forecast_rows]
+            # 최신 AI forecast adapter는 이미 canonical key로 정규화한다.
+            # 과거 KO_MNRL_PRC_PREDC 행도 lower-case RawDataset key로 읽어
+            # 동일한 TypedResult에 수렴시킨다. 원천 컬럼 대소문자에 의존해
+            # 행을 전부 버리던 오류를 막는다.
+            canonical = "forecast_date" in ds.columns
+            if canonical:
+                forecast_rows = ds.rows
+                columns = ["forecast_date", "forecast_period", "current_price", "predicted_price", "unit"]
+                table_rows = [[str(row.get(column, "")) for column in columns] for row in forecast_rows]
+            else:
+                forecast_rows = [row for row in ds.rows if str(row.get("prd_se_cd", "")) == "PE002"]
+                columns = ["forecast_date", "forecast_period", "current_price", "predicted_price", "unit"]
+                table_rows = [[
+                    str(row.get("crtr_ymd", "")),
+                    period_labels.get(str(row.get("prd_se_cd", "")), str(row.get("prd_se_cd", ""))),
+                    str(row.get("cmerc_prc", "")),
+                    str(row.get("predc_prc", "")),
+                    str(row.get("prc_unit_cd", "")),
+                ] for row in forecast_rows]
             if not table_rows:
                 continue
             display_columns = columns
@@ -321,7 +331,12 @@ def from_komis_raw(
         # 입력이기도 하므로, 여기서 제외해야 표 블록만 숨기고 본문 요약에는
         # 다시 노출되는 불일치가 생기지 않는다. 원본 RawDataset.columns/rows와
         # row_count는 변경하지 않는다.
-            hidden_presentation_columns = {"mnrl_prc_crtr_sn", "price_criterion_serial"}
+            preserve_criterion_identity = bool(
+                (getattr(ds, "metadata", None) or {}).get("preserve_price_criterion_identity")
+            )
+            hidden_presentation_columns = {"mnrl_prc_crtr_sn"}
+            if not preserve_criterion_identity:
+                hidden_presentation_columns.add("price_criterion_serial")
             columns = [c for c in ds.columns if c.casefold() not in hidden_presentation_columns]
             table_rows = [[str(row.get(c, "")) for c in columns] for row in ds.rows]
         # 2026-09-07(사용자 요청) — Postgres COMMENT ON COLUMN으로 이미 달려

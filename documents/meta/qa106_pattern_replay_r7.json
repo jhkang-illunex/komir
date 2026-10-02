@@ -1,0 +1,67 @@
+[
+  {
+    "qa_id": "NEWS03",
+    "abstained": false,
+    "reason": null
+  },
+  {
+    "qa_id": "IX01",
+    "abstained": true,
+    "reason": "semantic_plan_incomplete"
+  },
+  {
+    "qa_id": "MP05",
+    "abstained": true,
+    "reason": "semantic_plan_incomplete"
+  },
+  {
+    "qa_id": "CN05",
+    "abstained": true,
+    "reason": "all_roots_failed"
+  },
+  {
+    "qa_id": "CN08",
+    "abstained": true,
+    "reason": "all_roots_failed"
+  },
+  {
+    "qa_id": "CN09",
+    "abstained": true,
+    "reason": "retrieval unavailable: validation_failed"
+  },
+  {
+    "qa_id": "GM05",
+    "abstained": false,
+    "reason": null
+  },
+  {
+    "qa_id": "GM11",
+    "abstained": true,
+    "reason": "all_roots_failed"
+  },
+  {
+    "qa_id": "GM13",
+    "abstained": false,
+    "reason": null
+  },
+  {
+    "qa_id": "ADD15",
+    "abstained": true,
+    "reason": "all_roots_failed"
+  },
+  {
+    "qa_id": "ADD38",
+    "abstained": true,
+    "reason": "retrieval unavailable: no_data"
+  },
+  {
+    "qa_id": "ADD45",
+    "abstained": true,
+    "reason": "adapter_unavailable"
+  },
+  {
+    "qa_id": "ADD46",
+    "abstained": true,
+    "reason": "semantic_plan_incomplete"
+  }
+]

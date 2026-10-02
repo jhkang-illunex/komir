@@ -1,0 +1,759 @@
+{
+  "id": "document-r5b",
+  "port": 18012,
+  "request": {
+    "user_id": "qa-sse31",
+    "session_id": "5867d8d6-5abd-442f-9032-883146279664",
+    "message": "희소금속 보고서에 언급된 광종 가격 보여줘",
+    "mode": "auto"
+  },
+  "started_at": "2026-10-02T02:36:02.440158+00:00",
+  "events": [
+    {
+      "event": "message",
+      "data": {
+        "session_id": "5867d8d6-5abd-442f-9032-883146279664"
+      },
+      "elapsed": 0.052
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 1,
+        "label": "질문 조건 확인"
+      },
+      "elapsed": 0.075
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 3,
+        "label": "데이터 분석 중",
+        "status": "데이터 분석 중"
+      },
+      "elapsed": 7.104
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 4,
+        "label": "답변 생성 중"
+      },
+      "elapsed": 7.105
+    },
+    {
+      "event": "message",
+      "data": {
+        "delta": "망간: 945.37 USD/톤 (20260930 기준)\n크롬: 2162.91 USD/톤 (20260930 기준)\n티타늄: 7305.68 USD/톤 (20260930 기준)\n안티모니: 17286.85 USD/톤 (20260930 기준)\n몰리브덴: 16474.73 USD/톤 (20260930 기준)\n니오븀: 46445.9 USD/톤 (20260930 기준)\n네오디뮴: 91.32 USD/kg (20260930 기준)"
+      },
+      "elapsed": 7.129
+    },
+    {
+      "event": "table",
+      "data": {
+        "schema_version": 1,
+        "block_id": "multihop-price-1",
+        "columns": [
+          "광종",
+          "최근 가격",
+          "기준일"
+        ],
+        "rows": [
+          [
+            "망간",
+            "945.37",
+            "20260930"
+          ]
+        ],
+        "columns_meta": [
+          {
+            "key": "광종",
+            "label": "광종",
+            "display": "광종",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "최근 가격",
+            "label": "최근 가격",
+            "display": "최근 가격",
+            "type": "number",
+            "unit": null
+          },
+          {
+            "key": "기준일",
+            "label": "기준일",
+            "display": "기준일",
+            "type": "number",
+            "unit": null
+          }
+        ],
+        "rows_typed": [
+          [
+            "망간",
+            945.37,
+            20260930.0
+          ]
+        ],
+        "markdown": "| 광종 | 최근 가격 | 기준일 |\n| --- | --- | --- |\n| 망간 | 945.37 | 20260930 |",
+        "chart_hint": {
+          "recommended": null,
+          "alternatives": [],
+          "reason": "행 2개 미만 또는 열 1개"
+        },
+        "meta": {
+          "source_index": 1,
+          "source": "PageIndex 파생 사실 · 희소금속 월간동향",
+          "as_of": null,
+          "unit": "USD/톤",
+          "time_aggregation": null,
+          "menu_source": null,
+          "hidden_columns": []
+        },
+        "source_index": 1,
+        "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+      },
+      "elapsed": 7.13
+    },
+    {
+      "event": "table",
+      "data": {
+        "schema_version": 1,
+        "block_id": "multihop-price-2",
+        "columns": [
+          "광종",
+          "최근 가격",
+          "기준일"
+        ],
+        "rows": [
+          [
+            "크롬",
+            "2162.91",
+            "20260930"
+          ]
+        ],
+        "columns_meta": [
+          {
+            "key": "광종",
+            "label": "광종",
+            "display": "광종",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "최근 가격",
+            "label": "최근 가격",
+            "display": "최근 가격",
+            "type": "number",
+            "unit": null
+          },
+          {
+            "key": "기준일",
+            "label": "기준일",
+            "display": "기준일",
+            "type": "number",
+            "unit": null
+          }
+        ],
+        "rows_typed": [
+          [
+            "크롬",
+            2162.91,
+            20260930.0
+          ]
+        ],
+        "markdown": "| 광종 | 최근 가격 | 기준일 |\n| --- | --- | --- |\n| 크롬 | 2162.91 | 20260930 |",
+        "chart_hint": {
+          "recommended": null,
+          "alternatives": [],
+          "reason": "행 2개 미만 또는 열 1개"
+        },
+        "meta": {
+          "source_index": 1,
+          "source": "PageIndex 파생 사실 · 희소금속 월간동향",
+          "as_of": null,
+          "unit": "USD/톤",
+          "time_aggregation": null,
+          "menu_source": null,
+          "hidden_columns": []
+        },
+        "source_index": 1,
+        "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+      },
+      "elapsed": 7.131
+    },
+    {
+      "event": "table",
+      "data": {
+        "schema_version": 1,
+        "block_id": "multihop-price-3",
+        "columns": [
+          "광종",
+          "최근 가격",
+          "기준일"
+        ],
+        "rows": [
+          [
+            "티타늄",
+            "7305.68",
+            "20260930"
+          ]
+        ],
+        "columns_meta": [
+          {
+            "key": "광종",
+            "label": "광종",
+            "display": "광종",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "최근 가격",
+            "label": "최근 가격",
+            "display": "최근 가격",
+            "type": "number",
+            "unit": null
+          },
+          {
+            "key": "기준일",
+            "label": "기준일",
+            "display": "기준일",
+            "type": "number",
+            "unit": null
+          }
+        ],
+        "rows_typed": [
+          [
+            "티타늄",
+            7305.68,
+            20260930.0
+          ]
+        ],
+        "markdown": "| 광종 | 최근 가격 | 기준일 |\n| --- | --- | --- |\n| 티타늄 | 7305.68 | 20260930 |",
+        "chart_hint": {
+          "recommended": null,
+          "alternatives": [],
+          "reason": "행 2개 미만 또는 열 1개"
+        },
+        "meta": {
+          "source_index": 1,
+          "source": "PageIndex 파생 사실 · 희소금속 월간동향",
+          "as_of": null,
+          "unit": "USD/톤",
+          "time_aggregation": null,
+          "menu_source": null,
+          "hidden_columns": []
+        },
+        "source_index": 1,
+        "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+      },
+      "elapsed": 7.131
+    },
+    {
+      "event": "table",
+      "data": {
+        "schema_version": 1,
+        "block_id": "multihop-price-4",
+        "columns": [
+          "광종",
+          "최근 가격",
+          "기준일"
+        ],
+        "rows": [
+          [
+            "안티모니",
+            "17286.85",
+            "20260930"
+          ]
+        ],
+        "columns_meta": [
+          {
+            "key": "광종",
+            "label": "광종",
+            "display": "광종",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "최근 가격",
+            "label": "최근 가격",
+            "display": "최근 가격",
+            "type": "number",
+            "unit": null
+          },
+          {
+            "key": "기준일",
+            "label": "기준일",
+            "display": "기준일",
+            "type": "number",
+            "unit": null
+          }
+        ],
+        "rows_typed": [
+          [
+            "안티모니",
+            17286.85,
+            20260930.0
+          ]
+        ],
+        "markdown": "| 광종 | 최근 가격 | 기준일 |\n| --- | --- | --- |\n| 안티모니 | 17286.85 | 20260930 |",
+        "chart_hint": {
+          "recommended": null,
+          "alternatives": [],
+          "reason": "행 2개 미만 또는 열 1개"
+        },
+        "meta": {
+          "source_index": 1,
+          "source": "PageIndex 파생 사실 · 희소금속 월간동향",
+          "as_of": null,
+          "unit": "USD/톤",
+          "time_aggregation": null,
+          "menu_source": null,
+          "hidden_columns": []
+        },
+        "source_index": 1,
+        "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+      },
+      "elapsed": 7.132
+    },
+    {
+      "event": "table",
+      "data": {
+        "schema_version": 1,
+        "block_id": "multihop-price-5",
+        "columns": [
+          "광종",
+          "최근 가격",
+          "기준일"
+        ],
+        "rows": [
+          [
+            "몰리브덴",
+            "16474.73",
+            "20260930"
+          ]
+        ],
+        "columns_meta": [
+          {
+            "key": "광종",
+            "label": "광종",
+            "display": "광종",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "최근 가격",
+            "label": "최근 가격",
+            "display": "최근 가격",
+            "type": "number",
+            "unit": null
+          },
+          {
+            "key": "기준일",
+            "label": "기준일",
+            "display": "기준일",
+            "type": "number",
+            "unit": null
+          }
+        ],
+        "rows_typed": [
+          [
+            "몰리브덴",
+            16474.73,
+            20260930.0
+          ]
+        ],
+        "markdown": "| 광종 | 최근 가격 | 기준일 |\n| --- | --- | --- |\n| 몰리브덴 | 16474.73 | 20260930 |",
+        "chart_hint": {
+          "recommended": null,
+          "alternatives": [],
+          "reason": "행 2개 미만 또는 열 1개"
+        },
+        "meta": {
+          "source_index": 1,
+          "source": "PageIndex 파생 사실 · 희소금속 월간동향",
+          "as_of": null,
+          "unit": "USD/톤",
+          "time_aggregation": null,
+          "menu_source": null,
+          "hidden_columns": []
+        },
+        "source_index": 1,
+        "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+      },
+      "elapsed": 7.132
+    },
+    {
+      "event": "table",
+      "data": {
+        "schema_version": 1,
+        "block_id": "multihop-price-6",
+        "columns": [
+          "광종",
+          "최근 가격",
+          "기준일"
+        ],
+        "rows": [
+          [
+            "니오븀",
+            "46445.9",
+            "20260930"
+          ]
+        ],
+        "columns_meta": [
+          {
+            "key": "광종",
+            "label": "광종",
+            "display": "광종",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "최근 가격",
+            "label": "최근 가격",
+            "display": "최근 가격",
+            "type": "number",
+            "unit": null
+          },
+          {
+            "key": "기준일",
+            "label": "기준일",
+            "display": "기준일",
+            "type": "number",
+            "unit": null
+          }
+        ],
+        "rows_typed": [
+          [
+            "니오븀",
+            46445.9,
+            20260930.0
+          ]
+        ],
+        "markdown": "| 광종 | 최근 가격 | 기준일 |\n| --- | --- | --- |\n| 니오븀 | 46445.9 | 20260930 |",
+        "chart_hint": {
+          "recommended": null,
+          "alternatives": [],
+          "reason": "행 2개 미만 또는 열 1개"
+        },
+        "meta": {
+          "source_index": 1,
+          "source": "PageIndex 파생 사실 · 희소금속 월간동향",
+          "as_of": null,
+          "unit": "USD/톤",
+          "time_aggregation": null,
+          "menu_source": null,
+          "hidden_columns": []
+        },
+        "source_index": 1,
+        "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+      },
+      "elapsed": 7.132
+    },
+    {
+      "event": "table",
+      "data": {
+        "schema_version": 1,
+        "block_id": "multihop-price-7",
+        "columns": [
+          "광종",
+          "최근 가격",
+          "기준일"
+        ],
+        "rows": [
+          [
+            "네오디뮴",
+            "91.32",
+            "20260930"
+          ]
+        ],
+        "columns_meta": [
+          {
+            "key": "광종",
+            "label": "광종",
+            "display": "광종",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "최근 가격",
+            "label": "최근 가격",
+            "display": "최근 가격",
+            "type": "number",
+            "unit": null
+          },
+          {
+            "key": "기준일",
+            "label": "기준일",
+            "display": "기준일",
+            "type": "number",
+            "unit": null
+          }
+        ],
+        "rows_typed": [
+          [
+            "네오디뮴",
+            91.32,
+            20260930.0
+          ]
+        ],
+        "markdown": "| 광종 | 최근 가격 | 기준일 |\n| --- | --- | --- |\n| 네오디뮴 | 91.32 | 20260930 |",
+        "chart_hint": {
+          "recommended": null,
+          "alternatives": [],
+          "reason": "행 2개 미만 또는 열 1개"
+        },
+        "meta": {
+          "source_index": 1,
+          "source": "PageIndex 파생 사실 · 희소금속 월간동향",
+          "as_of": null,
+          "unit": "USD/kg",
+          "time_aggregation": null,
+          "menu_source": null,
+          "hidden_columns": []
+        },
+        "source_index": 1,
+        "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+      },
+      "elapsed": 7.133
+    },
+    {
+      "event": "message",
+      "data": {
+        "delta": "\n일부 항목은 조회하지 못했습니다."
+      },
+      "elapsed": 7.133
+    },
+    {
+      "event": "table",
+      "data": {
+        "schema_version": 1,
+        "block_id": "multihop-item-outcomes",
+        "columns": [
+          "광종",
+          "요청 결과",
+          "상태",
+          "사유"
+        ],
+        "rows": [
+          [
+            "리튬",
+            "latest_value",
+            "empty",
+            "price_criterion_mapping_missing"
+          ],
+          [
+            "희토류",
+            "latest_value",
+            "empty",
+            "price_criterion_mapping_missing"
+          ],
+          [
+            "코발트",
+            "latest_value",
+            "empty",
+            "price_criterion_mapping_missing"
+          ],
+          [
+            "텅스텐",
+            "latest_value",
+            "empty",
+            "price_criterion_selection_required"
+          ],
+          [
+            "마그네슘",
+            "latest_value",
+            "empty",
+            "price_criterion_mapping_missing"
+          ],
+          [
+            "인듐",
+            "latest_value",
+            "empty",
+            "price_criterion_mapping_missing"
+          ],
+          [
+            "셀레늄",
+            "latest_value",
+            "empty",
+            "price_criterion_mapping_missing"
+          ],
+          [
+            "갈륨",
+            "latest_value",
+            "empty",
+            "price_criterion_mapping_missing"
+          ],
+          [
+            "동",
+            "latest_value",
+            "empty",
+            "price_criterion_mapping_missing"
+          ]
+        ],
+        "columns_meta": [
+          {
+            "key": "광종",
+            "label": "광종",
+            "display": "광종",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "요청 결과",
+            "label": "요청 결과",
+            "display": "요청 결과",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "상태",
+            "label": "상태",
+            "display": "상태",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "사유",
+            "label": "사유",
+            "display": "사유",
+            "type": "string",
+            "unit": null
+          }
+        ],
+        "rows_typed": [
+          [
+            "리튬",
+            "latest_value",
+            "empty",
+            "price_criterion_mapping_missing"
+          ],
+          [
+            "희토류",
+            "latest_value",
+            "empty",
+            "price_criterion_mapping_missing"
+          ],
+          [
+            "코발트",
+            "latest_value",
+            "empty",
+            "price_criterion_mapping_missing"
+          ],
+          [
+            "텅스텐",
+            "latest_value",
+            "empty",
+            "price_criterion_selection_required"
+          ],
+          [
+            "마그네슘",
+            "latest_value",
+            "empty",
+            "price_criterion_mapping_missing"
+          ],
+          [
+            "인듐",
+            "latest_value",
+            "empty",
+            "price_criterion_mapping_missing"
+          ],
+          [
+            "셀레늄",
+            "latest_value",
+            "empty",
+            "price_criterion_mapping_missing"
+          ],
+          [
+            "갈륨",
+            "latest_value",
+            "empty",
+            "price_criterion_mapping_missing"
+          ],
+          [
+            "동",
+            "latest_value",
+            "empty",
+            "price_criterion_mapping_missing"
+          ]
+        ],
+        "markdown": "",
+        "chart_hint": {
+          "recommended": null,
+          "alternatives": [],
+          "reason": "값이 갈리는 숫자 계열 없음"
+        },
+        "meta": {
+          "source_index": null,
+          "source": null,
+          "as_of": null,
+          "unit": null,
+          "time_aggregation": null,
+          "menu_source": null,
+          "hidden_columns": []
+        },
+        "source_index": null,
+        "source": null
+      },
+      "elapsed": 7.134
+    },
+    {
+      "event": "done",
+      "data": {
+        "done": true,
+        "abstained": false,
+        "citations": [
+          {
+            "index": 1,
+            "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+          },
+          {
+            "index": 2,
+            "source": "public.KO_MNRL_PRC"
+          }
+        ],
+        "bogus_citations": []
+      },
+      "elapsed": 7.134
+    }
+  ],
+  "http_status": 200,
+  "content_type": "text/event-stream; charset=utf-8",
+  "elapsed": 7.134,
+  "text": "망간: 945.37 USD/톤 (20260930 기준)\n크롬: 2162.91 USD/톤 (20260930 기준)\n티타늄: 7305.68 USD/톤 (20260930 기준)\n안티모니: 17286.85 USD/톤 (20260930 기준)\n몰리브덴: 16474.73 USD/톤 (20260930 기준)\n니오븀: 46445.9 USD/톤 (20260930 기준)\n네오디뮴: 91.32 USD/kg (20260930 기준)\n일부 항목은 조회하지 못했습니다.",
+  "event_counts": {
+    "message": 3,
+    "status": 3,
+    "table": 8,
+    "done": 1
+  },
+  "done": {
+    "done": true,
+    "abstained": false,
+    "citations": [
+      {
+        "index": 1,
+        "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+      },
+      {
+        "index": 2,
+        "source": "public.KO_MNRL_PRC"
+      }
+    ],
+    "bogus_citations": []
+  },
+  "protocol_errors": [],
+  "deployment": {
+    "container_id": "851e2e79bf1ec477fdc998086e89c052e061de422adb08a39f2148e0e3ca4139",
+    "port": 18012,
+    "image_tag": "komir-rag-chat:qa-live-stability33-r5",
+    "image_id": "sha256:58c638418fc7368085b34832f97bb85d4952d858c9089d1432226fc5f6112cdb",
+    "source_hashes": {
+      "inhouse/rag_core/ragkit/live_multihop.py": "c22ba6373b49fdd2b591c639203689cb76f8853ad9edc71de69194c76690a5de",
+      "inhouse/rag_core/ragkit/chatbot.py": "71f5b2e77e6fd95a5df336190b0bfd532709b016e896d527560f13ea88557553",
+      "inhouse/rag_core/ragkit/chatbot_graph.py": "adaaacae8d021345abbbbc3b96d90318d6da98db933e3b42def50f7fee5caf8a",
+      "inhouse/rag_core/ragkit/chatbot_events.py": "0e6bb9e37b18913aac8ab97f95d6d3e772a992da7cba8bbc43738f7b7fcf03c5",
+      "inhouse/rag_core/ragkit/_mcp_tools_common.py": "96a7b909688af872bdab7f77ee186501ddb2206b00cc511d71f3a7bc11a3c4d6"
+    }
+  }
+}

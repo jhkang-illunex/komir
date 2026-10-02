@@ -1,0 +1,6 @@
+difference-r5 200 5.691 {'message': 2, 'status': 3, 'table': 1, 'done': 1} None []
+sum-r5 200 3.079 {'message': 2, 'status': 3, 'table': 1, 'done': 1} None []
+chile-r5 200 3.695 {'message': 2, 'status': 3, 'table': 1, 'done': 1} None []
+ranking-r5 200 4.754 {'message': 2, 'status': 3, 'table': 1, 'chart': 1, 'done': 1} None []
+price-r5 200 3.941 {'message': 2, 'status': 3, 'table': 1, 'done': 1} None []
+reserves-r5 200 3.155 {'message': 2, 'status': 3, 'done': 1} aggregate_input_incomplete []

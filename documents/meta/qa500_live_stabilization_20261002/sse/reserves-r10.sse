@@ -1,0 +1,17 @@
+data: {"session_id": "37ce348b-0a49-4dc5-8e65-5eee809a68e6"}
+
+event: status
+data: {"stage": 1, "label": "질문 조건 확인"}
+
+: ping - 2026-10-02 02:49:30.863914+00:00
+
+event: status
+data: {"stage": 3, "label": "데이터 분석 중", "status": "데이터 분석 중"}
+
+event: status
+data: {"stage": 4, "label": "답변 생성 중"}
+
+data: {"delta": "upstream step failed: node_2"}
+
+event: done
+data: {"done": true, "abstained": true, "abstain_reason": "upstream step failed: node_2", "citations": []}

@@ -1,0 +1,221 @@
+FFFFFFFFFF                                                               [100%]
+=================================== FAILURES ===================================
+_ test_stage_feedback_is_generic_and_does_not_repair_explicit_field[max-argmax-price-date] _
+
+metric = 'price', dimension = 'date', aggregation = 'max', mode = 'argmax'
+
+    @pytest.mark.parametrize("metric,dimension", [("price", "date"), ("production", "country"), ("import_value", "country")])
+    @pytest.mark.parametrize("aggregation,mode", [("max", "argmax"), ("min", "argmin"), ("mean", "argmax")])
+    def test_stage_feedback_is_generic_and_does_not_repair_explicit_field(metric, dimension, aggregation, mode):
+        raw = monthly_plan()
+        raw["relationships"] = []
+        raw["requested_outputs"] = []
+        raw["requirements"] = [raw["requirements"][0]]
+        req = raw["requirements"][0]
+        req.update(metric=metric, dimension=dimension, aggregation=aggregation,
+                   output_field="opaque_measure", selection={"mode": mode, "field": "value"})
+        plan = SemanticRequirementPlanV2.model_validate(raw)
+        before = copy.deepcopy(plan.model_dump())
+        errors = " ".join(requirement_contract_issues(plan))
+>       assert "stage_contract=" in errors
+E       assert 'stage_contract=' in "mean_price: selection field not produced by aggregate; available=['date', 'opaque_measure', 'unit']"
+
+inhouse/rag_core/tests/test_semantic_stage_diagnostics.py:23: AssertionError
+_ test_stage_feedback_is_generic_and_does_not_repair_explicit_field[max-argmax-production-country] _
+
+metric = 'production', dimension = 'country', aggregation = 'max'
+mode = 'argmax'
+
+    @pytest.mark.parametrize("metric,dimension", [("price", "date"), ("production", "country"), ("import_value", "country")])
+    @pytest.mark.parametrize("aggregation,mode", [("max", "argmax"), ("min", "argmin"), ("mean", "argmax")])
+    def test_stage_feedback_is_generic_and_does_not_repair_explicit_field(metric, dimension, aggregation, mode):
+        raw = monthly_plan()
+        raw["relationships"] = []
+        raw["requested_outputs"] = []
+        raw["requirements"] = [raw["requirements"][0]]
+        req = raw["requirements"][0]
+        req.update(metric=metric, dimension=dimension, aggregation=aggregation,
+                   output_field="opaque_measure", selection={"mode": mode, "field": "value"})
+        plan = SemanticRequirementPlanV2.model_validate(raw)
+        before = copy.deepcopy(plan.model_dump())
+        errors = " ".join(requirement_contract_issues(plan))
+>       assert "stage_contract=" in errors
+E       assert 'stage_contract=' in "mean_price: selection field not produced by aggregate; available=['country', 'opaque_measure', 'unit']"
+
+inhouse/rag_core/tests/test_semantic_stage_diagnostics.py:23: AssertionError
+_ test_stage_feedback_is_generic_and_does_not_repair_explicit_field[max-argmax-import_value-country] _
+
+metric = 'import_value', dimension = 'country', aggregation = 'max'
+mode = 'argmax'
+
+    @pytest.mark.parametrize("metric,dimension", [("price", "date"), ("production", "country"), ("import_value", "country")])
+    @pytest.mark.parametrize("aggregation,mode", [("max", "argmax"), ("min", "argmin"), ("mean", "argmax")])
+    def test_stage_feedback_is_generic_and_does_not_repair_explicit_field(metric, dimension, aggregation, mode):
+        raw = monthly_plan()
+        raw["relationships"] = []
+        raw["requested_outputs"] = []
+        raw["requirements"] = [raw["requirements"][0]]
+        req = raw["requirements"][0]
+        req.update(metric=metric, dimension=dimension, aggregation=aggregation,
+                   output_field="opaque_measure", selection={"mode": mode, "field": "value"})
+        plan = SemanticRequirementPlanV2.model_validate(raw)
+        before = copy.deepcopy(plan.model_dump())
+        errors = " ".join(requirement_contract_issues(plan))
+>       assert "stage_contract=" in errors
+E       assert 'stage_contract=' in "mean_price: selection field not produced by aggregate; available=['country', 'opaque_measure', 'unit']"
+
+inhouse/rag_core/tests/test_semantic_stage_diagnostics.py:23: AssertionError
+_ test_stage_feedback_is_generic_and_does_not_repair_explicit_field[min-argmin-price-date] _
+
+metric = 'price', dimension = 'date', aggregation = 'min', mode = 'argmin'
+
+    @pytest.mark.parametrize("metric,dimension", [("price", "date"), ("production", "country"), ("import_value", "country")])
+    @pytest.mark.parametrize("aggregation,mode", [("max", "argmax"), ("min", "argmin"), ("mean", "argmax")])
+    def test_stage_feedback_is_generic_and_does_not_repair_explicit_field(metric, dimension, aggregation, mode):
+        raw = monthly_plan()
+        raw["relationships"] = []
+        raw["requested_outputs"] = []
+        raw["requirements"] = [raw["requirements"][0]]
+        req = raw["requirements"][0]
+        req.update(metric=metric, dimension=dimension, aggregation=aggregation,
+                   output_field="opaque_measure", selection={"mode": mode, "field": "value"})
+        plan = SemanticRequirementPlanV2.model_validate(raw)
+        before = copy.deepcopy(plan.model_dump())
+        errors = " ".join(requirement_contract_issues(plan))
+>       assert "stage_contract=" in errors
+E       assert 'stage_contract=' in "mean_price: selection field not produced by aggregate; available=['date', 'opaque_measure', 'unit']"
+
+inhouse/rag_core/tests/test_semantic_stage_diagnostics.py:23: AssertionError
+_ test_stage_feedback_is_generic_and_does_not_repair_explicit_field[min-argmin-production-country] _
+
+metric = 'production', dimension = 'country', aggregation = 'min'
+mode = 'argmin'
+
+    @pytest.mark.parametrize("metric,dimension", [("price", "date"), ("production", "country"), ("import_value", "country")])
+    @pytest.mark.parametrize("aggregation,mode", [("max", "argmax"), ("min", "argmin"), ("mean", "argmax")])
+    def test_stage_feedback_is_generic_and_does_not_repair_explicit_field(metric, dimension, aggregation, mode):
+        raw = monthly_plan()
+        raw["relationships"] = []
+        raw["requested_outputs"] = []
+        raw["requirements"] = [raw["requirements"][0]]
+        req = raw["requirements"][0]
+        req.update(metric=metric, dimension=dimension, aggregation=aggregation,
+                   output_field="opaque_measure", selection={"mode": mode, "field": "value"})
+        plan = SemanticRequirementPlanV2.model_validate(raw)
+        before = copy.deepcopy(plan.model_dump())
+        errors = " ".join(requirement_contract_issues(plan))
+>       assert "stage_contract=" in errors
+E       assert 'stage_contract=' in "mean_price: selection field not produced by aggregate; available=['country', 'opaque_measure', 'unit']"
+
+inhouse/rag_core/tests/test_semantic_stage_diagnostics.py:23: AssertionError
+_ test_stage_feedback_is_generic_and_does_not_repair_explicit_field[min-argmin-import_value-country] _
+
+metric = 'import_value', dimension = 'country', aggregation = 'min'
+mode = 'argmin'
+
+    @pytest.mark.parametrize("metric,dimension", [("price", "date"), ("production", "country"), ("import_value", "country")])
+    @pytest.mark.parametrize("aggregation,mode", [("max", "argmax"), ("min", "argmin"), ("mean", "argmax")])
+    def test_stage_feedback_is_generic_and_does_not_repair_explicit_field(metric, dimension, aggregation, mode):
+        raw = monthly_plan()
+        raw["relationships"] = []
+        raw["requested_outputs"] = []
+        raw["requirements"] = [raw["requirements"][0]]
+        req = raw["requirements"][0]
+        req.update(metric=metric, dimension=dimension, aggregation=aggregation,
+                   output_field="opaque_measure", selection={"mode": mode, "field": "value"})
+        plan = SemanticRequirementPlanV2.model_validate(raw)
+        before = copy.deepcopy(plan.model_dump())
+        errors = " ".join(requirement_contract_issues(plan))
+>       assert "stage_contract=" in errors
+E       assert 'stage_contract=' in "mean_price: selection field not produced by aggregate; available=['country', 'opaque_measure', 'unit']"
+
+inhouse/rag_core/tests/test_semantic_stage_diagnostics.py:23: AssertionError
+_ test_stage_feedback_is_generic_and_does_not_repair_explicit_field[mean-argmax-price-date] _
+
+metric = 'price', dimension = 'date', aggregation = 'mean', mode = 'argmax'
+
+    @pytest.mark.parametrize("metric,dimension", [("price", "date"), ("production", "country"), ("import_value", "country")])
+    @pytest.mark.parametrize("aggregation,mode", [("max", "argmax"), ("min", "argmin"), ("mean", "argmax")])
+    def test_stage_feedback_is_generic_and_does_not_repair_explicit_field(metric, dimension, aggregation, mode):
+        raw = monthly_plan()
+        raw["relationships"] = []
+        raw["requested_outputs"] = []
+        raw["requirements"] = [raw["requirements"][0]]
+        req = raw["requirements"][0]
+        req.update(metric=metric, dimension=dimension, aggregation=aggregation,
+                   output_field="opaque_measure", selection={"mode": mode, "field": "value"})
+        plan = SemanticRequirementPlanV2.model_validate(raw)
+        before = copy.deepcopy(plan.model_dump())
+        errors = " ".join(requirement_contract_issues(plan))
+>       assert "stage_contract=" in errors
+E       assert 'stage_contract=' in "mean_price: selection field not produced by aggregate; available=['date', 'opaque_measure', 'unit']"
+
+inhouse/rag_core/tests/test_semantic_stage_diagnostics.py:23: AssertionError
+_ test_stage_feedback_is_generic_and_does_not_repair_explicit_field[mean-argmax-production-country] _
+
+metric = 'production', dimension = 'country', aggregation = 'mean'
+mode = 'argmax'
+
+    @pytest.mark.parametrize("metric,dimension", [("price", "date"), ("production", "country"), ("import_value", "country")])
+    @pytest.mark.parametrize("aggregation,mode", [("max", "argmax"), ("min", "argmin"), ("mean", "argmax")])
+    def test_stage_feedback_is_generic_and_does_not_repair_explicit_field(metric, dimension, aggregation, mode):
+        raw = monthly_plan()
+        raw["relationships"] = []
+        raw["requested_outputs"] = []
+        raw["requirements"] = [raw["requirements"][0]]
+        req = raw["requirements"][0]
+        req.update(metric=metric, dimension=dimension, aggregation=aggregation,
+                   output_field="opaque_measure", selection={"mode": mode, "field": "value"})
+        plan = SemanticRequirementPlanV2.model_validate(raw)
+        before = copy.deepcopy(plan.model_dump())
+        errors = " ".join(requirement_contract_issues(plan))
+>       assert "stage_contract=" in errors
+E       assert 'stage_contract=' in "mean_price: selection field not produced by aggregate; available=['country', 'opaque_measure', 'unit']"
+
+inhouse/rag_core/tests/test_semantic_stage_diagnostics.py:23: AssertionError
+_ test_stage_feedback_is_generic_and_does_not_repair_explicit_field[mean-argmax-import_value-country] _
+
+metric = 'import_value', dimension = 'country', aggregation = 'mean'
+mode = 'argmax'
+
+    @pytest.mark.parametrize("metric,dimension", [("price", "date"), ("production", "country"), ("import_value", "country")])
+    @pytest.mark.parametrize("aggregation,mode", [("max", "argmax"), ("min", "argmin"), ("mean", "argmax")])
+    def test_stage_feedback_is_generic_and_does_not_repair_explicit_field(metric, dimension, aggregation, mode):
+        raw = monthly_plan()
+        raw["relationships"] = []
+        raw["requested_outputs"] = []
+        raw["requirements"] = [raw["requirements"][0]]
+        req = raw["requirements"][0]
+        req.update(metric=metric, dimension=dimension, aggregation=aggregation,
+                   output_field="opaque_measure", selection={"mode": mode, "field": "value"})
+        plan = SemanticRequirementPlanV2.model_validate(raw)
+        before = copy.deepcopy(plan.model_dump())
+        errors = " ".join(requirement_contract_issues(plan))
+>       assert "stage_contract=" in errors
+E       assert 'stage_contract=' in "mean_price: selection field not produced by aggregate; available=['country', 'opaque_measure', 'unit']"
+
+inhouse/rag_core/tests/test_semantic_stage_diagnostics.py:23: AssertionError
+________ test_projection_diagnostic_exposes_sources_without_redirecting ________
+
+    def test_projection_diagnostic_exposes_sources_without_redirecting():
+        raw = monthly_plan()
+        raw["requested_outputs"][0].update(source_node=raw["requirements"][0]["requirement_id"],
+                                           fields=["observations"], aliases={})
+        payload = rejected_payload(raw)
+        errors = " ".join(payload["contract_errors"])
+>       assert "defined_sources=" in errors
+E       assert 'defined_sources=' in "requested_output_field_unresolved: observations; available=['mean_price', 'month']"
+
+inhouse/rag_core/tests/test_semantic_stage_diagnostics.py:37: AssertionError
+=========================== short test summary info ============================
+FAILED inhouse/rag_core/tests/test_semantic_stage_diagnostics.py::test_stage_feedback_is_generic_and_does_not_repair_explicit_field[max-argmax-price-date]
+FAILED inhouse/rag_core/tests/test_semantic_stage_diagnostics.py::test_stage_feedback_is_generic_and_does_not_repair_explicit_field[max-argmax-production-country]
+FAILED inhouse/rag_core/tests/test_semantic_stage_diagnostics.py::test_stage_feedback_is_generic_and_does_not_repair_explicit_field[max-argmax-import_value-country]
+FAILED inhouse/rag_core/tests/test_semantic_stage_diagnostics.py::test_stage_feedback_is_generic_and_does_not_repair_explicit_field[min-argmin-price-date]
+FAILED inhouse/rag_core/tests/test_semantic_stage_diagnostics.py::test_stage_feedback_is_generic_and_does_not_repair_explicit_field[min-argmin-production-country]
+FAILED inhouse/rag_core/tests/test_semantic_stage_diagnostics.py::test_stage_feedback_is_generic_and_does_not_repair_explicit_field[min-argmin-import_value-country]
+FAILED inhouse/rag_core/tests/test_semantic_stage_diagnostics.py::test_stage_feedback_is_generic_and_does_not_repair_explicit_field[mean-argmax-price-date]
+FAILED inhouse/rag_core/tests/test_semantic_stage_diagnostics.py::test_stage_feedback_is_generic_and_does_not_repair_explicit_field[mean-argmax-production-country]
+FAILED inhouse/rag_core/tests/test_semantic_stage_diagnostics.py::test_stage_feedback_is_generic_and_does_not_repair_explicit_field[mean-argmax-import_value-country]
+FAILED inhouse/rag_core/tests/test_semantic_stage_diagnostics.py::test_projection_diagnostic_exposes_sources_without_redirecting
+10 failed in 0.61s

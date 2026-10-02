@@ -55,6 +55,6 @@ def test_each_structured_gold_case_reaches_v2_ast_and_lowering(index):
     calls = LegacyActionLowerer().lower(program)
     assert calls
     assert all(call.action_id in {
-        "price.series", "trade.indicator", "trade.concentration",
+        "price.series", "trade.monthly", "trade.indicator", "trade.concentration",
         "resource.rank", "inventory.latest", "indicator.series",
     } for call in calls)

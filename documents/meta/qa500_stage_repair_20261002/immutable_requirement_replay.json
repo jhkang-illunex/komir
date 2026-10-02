@@ -1,0 +1,550 @@
+[
+  {
+    "id": "EXT500-010",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "EXT500-009",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "EXT500-012",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "EXT500-011",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "EXT500-037",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "EXT500-038",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "EXT500-039",
+    "repeat": 1,
+    "before": "RESULT_MISMATCH",
+    "after": "RESULT_MISMATCH",
+    "errors": [
+      "independent_sql_difference"
+    ]
+  },
+  {
+    "id": "EXT500-040",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "H1",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "H2",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "H3",
+    "repeat": 1,
+    "before": "LOGICAL_PLAN_INCOMPLETE",
+    "after": "LOGICAL_PLAN_INCOMPLETE",
+    "errors": [
+      "req_max_price: selection field not produced by aggregate; available=['date', 'max_price', 'unit']; stage_contract={'Aggregate': {'input_field': 'value', 'aggregation': 'max', 'group_by': ['date'], 'output_field': 'max_price'}, 'Select': {'mode': 'argmax', 'field': 'value'}}; execution order is Aggregate then Select. The raw input field is not an alias for the aggregate output. Re-express the requested semantics using produced columns, or row selection without aggregation if original rows were requested. Do not drop requested grouping, reduction, measure, or outputs merely to validate.; req_min_price: selection field not produced by aggregate; available=['date', 'min_price', 'unit']; stage_contract={'Aggregate': {'input_field': 'value', 'aggregation': 'min', 'group_by': ['date'], 'output_field': 'min_price'}, 'Select': {'mode': 'argmin', 'field': 'value'}}; execution order is Aggregate then Select. The raw input field is not an alias for the aggregate output. Re-express the requested semantics using produced columns, or row selection without aggregation if original rows were requested. Do not drop requested grouping, reduction, measure, or outputs merely to validate."
+    ]
+  },
+  {
+    "id": "M1",
+    "repeat": 1,
+    "before": "LOGICAL_PLAN_INCOMPLETE",
+    "after": "LOGICAL_PLAN_INCOMPLETE",
+    "errors": [
+      "requested_output_field_unresolved: observation_count; available=['avg_price', 'month']; defined_sources={'req_1': ['avg_price', 'month'], 'req_2': ['month', 'observation_count'], 'rel_1': ['left.avg_price', 'left.month', 'month', 'right.month', 'right.observation_count']}; preserve requested output semantics and bind to its declared producing source; do not invent a missing column or silently remove the output. Null fields mean unknown schema."
+    ]
+  },
+  {
+    "id": "H4",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "N1",
+    "repeat": 1,
+    "before": "UNSUPPORTED_CORRECT",
+    "after": "UNSUPPORTED_CORRECT",
+    "errors": null
+  },
+  {
+    "id": "N2",
+    "repeat": 1,
+    "before": "UNSUPPORTED_CORRECT",
+    "after": "UNSUPPORTED_CORRECT",
+    "errors": null
+  },
+  {
+    "id": "Z1",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "M2",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "Z2",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "Z4",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "Z3",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "Z5",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "R1",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "Z6",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "R2",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "R3",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "R4",
+    "repeat": 1,
+    "before": "LOGICAL_PLAN_INCOMPLETE",
+    "after": "LOGICAL_PLAN_INCOMPLETE",
+    "errors": [
+      "req_max_price: selection field not produced by aggregate; available=['date', 'max_price', 'unit']; stage_contract={'Aggregate': {'input_field': 'value', 'aggregation': 'max', 'group_by': ['date'], 'output_field': 'max_price'}, 'Select': {'mode': 'argmax', 'field': 'value'}}; execution order is Aggregate then Select. The raw input field is not an alias for the aggregate output. Re-express the requested semantics using produced columns, or row selection without aggregation if original rows were requested. Do not drop requested grouping, reduction, measure, or outputs merely to validate.; req_min_price: selection field not produced by aggregate; available=['date', 'min_price', 'unit']; stage_contract={'Aggregate': {'input_field': 'value', 'aggregation': 'min', 'group_by': ['date'], 'output_field': 'min_price'}, 'Select': {'mode': 'argmin', 'field': 'value'}}; execution order is Aggregate then Select. The raw input field is not an alias for the aggregate output. Re-express the requested semantics using produced columns, or row selection without aggregation if original rows were requested. Do not drop requested grouping, reduction, measure, or outputs merely to validate."
+    ]
+  },
+  {
+    "id": "R5",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "EXT500-009",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "R6",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "EXT500-010",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "EXT500-011",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "EXT500-012",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "EXT500-038",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "EXT500-037",
+    "repeat": 2,
+    "before": "RESULT_MISMATCH",
+    "after": "RESULT_MISMATCH",
+    "errors": [
+      "independent_sql_difference"
+    ]
+  },
+  {
+    "id": "EXT500-040",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "H1",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "H2",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "EXT500-039",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "H3",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "H4",
+    "repeat": 2,
+    "before": "LOGICAL_PLAN_INCOMPLETE",
+    "after": "LOGICAL_PLAN_INCOMPLETE",
+    "errors": [
+      "req_max_price: selection field not produced by aggregate; available=['date', 'max_price', 'unit']; stage_contract={'Aggregate': {'input_field': 'value', 'aggregation': 'max', 'group_by': ['date'], 'output_field': 'max_price'}, 'Select': {'mode': 'argmax', 'field': 'value'}}; execution order is Aggregate then Select. The raw input field is not an alias for the aggregate output. Re-express the requested semantics using produced columns, or row selection without aggregation if original rows were requested. Do not drop requested grouping, reduction, measure, or outputs merely to validate.; req_min_price: selection field not produced by aggregate; available=['date', 'min_price', 'unit']; stage_contract={'Aggregate': {'input_field': 'value', 'aggregation': 'min', 'group_by': ['date'], 'output_field': 'min_price'}, 'Select': {'mode': 'argmin', 'field': 'value'}}; execution order is Aggregate then Select. The raw input field is not an alias for the aggregate output. Re-express the requested semantics using produced columns, or row selection without aggregation if original rows were requested. Do not drop requested grouping, reduction, measure, or outputs merely to validate."
+    ]
+  },
+  {
+    "id": "M1",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "N1",
+    "repeat": 2,
+    "before": "UNSUPPORTED_CORRECT",
+    "after": "UNSUPPORTED_CORRECT",
+    "errors": null
+  },
+  {
+    "id": "N2",
+    "repeat": 2,
+    "before": "UNSUPPORTED_CORRECT",
+    "after": "UNSUPPORTED_CORRECT",
+    "errors": null
+  },
+  {
+    "id": "M2",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "Z1",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "Z2",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "Z3",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "Z4",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "Z5",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "R1",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "R2",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "Z6",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "R3",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "R4",
+    "repeat": 2,
+    "before": "LOGICAL_PLAN_INCOMPLETE",
+    "after": "LOGICAL_PLAN_INCOMPLETE",
+    "errors": [
+      "req_max_price: selection field not produced by aggregate; available=['date', 'max_price', 'unit']; stage_contract={'Aggregate': {'input_field': 'value', 'aggregation': 'max', 'group_by': ['date'], 'output_field': 'max_price'}, 'Select': {'mode': 'argmax', 'field': 'value'}}; execution order is Aggregate then Select. The raw input field is not an alias for the aggregate output. Re-express the requested semantics using produced columns, or row selection without aggregation if original rows were requested. Do not drop requested grouping, reduction, measure, or outputs merely to validate.; req_min_price: selection field not produced by aggregate; available=['date', 'min_price', 'unit']; stage_contract={'Aggregate': {'input_field': 'value', 'aggregation': 'min', 'group_by': ['date'], 'output_field': 'min_price'}, 'Select': {'mode': 'argmin', 'field': 'value'}}; execution order is Aggregate then Select. The raw input field is not an alias for the aggregate output. Re-express the requested semantics using produced columns, or row selection without aggregation if original rows were requested. Do not drop requested grouping, reduction, measure, or outputs merely to validate."
+    ]
+  },
+  {
+    "id": "R5",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "R6",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "U1",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "U2",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "U3",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "U4",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "U1",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "U3",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "U4",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "U2",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "V1",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "V2",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "V4",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "V3",
+    "repeat": 1,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "V1",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "V3",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "V2",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "V4",
+    "repeat": 2,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "V1",
+    "repeat": 3,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "V3",
+    "repeat": 3,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  },
+  {
+    "id": "V2",
+    "repeat": 3,
+    "before": "LOGICAL_PLAN_INCOMPLETE",
+    "after": "LOGICAL_PLAN_INCOMPLETE",
+    "errors": [
+      "req_max_price: selection field not produced by aggregate; available=['date', 'max_price', 'unit']; stage_contract={'Aggregate': {'input_field': 'value', 'aggregation': 'max', 'group_by': ['date'], 'output_field': 'max_price'}, 'Select': {'mode': 'argmax', 'field': 'value'}}; execution order is Aggregate then Select. The raw input field is not an alias for the aggregate output. Re-express the requested semantics using produced columns, or row selection without aggregation if original rows were requested. Do not drop requested grouping, reduction, measure, or outputs merely to validate.; req_min_price: selection field not produced by aggregate; available=['date', 'min_price', 'unit']; stage_contract={'Aggregate': {'input_field': 'value', 'aggregation': 'min', 'group_by': ['date'], 'output_field': 'min_price'}, 'Select': {'mode': 'argmin', 'field': 'value'}}; execution order is Aggregate then Select. The raw input field is not an alias for the aggregate output. Re-express the requested semantics using produced columns, or row selection without aggregation if original rows were requested. Do not drop requested grouping, reduction, measure, or outputs merely to validate."
+    ]
+  },
+  {
+    "id": "V4",
+    "repeat": 3,
+    "before": "PASS",
+    "after": "PASS",
+    "errors": []
+  }
+]

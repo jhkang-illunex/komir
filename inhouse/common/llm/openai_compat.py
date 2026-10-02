@@ -27,12 +27,13 @@ class OpenAICompatChat:
         self._session.mount("https://", adapter)
 
     def complete(self, system: str, user: str, max_tokens: int = 2048,
-                 trace_name: str = "llm.complete") -> LLMResult:
+                 trace_name: str = "llm.complete", *, json_schema: dict | None = None) -> LLMResult:
         with llm_generation(
             name=trace_name, model=self.model, system=system, user=user,
             max_tokens=max_tokens, temperature=self.temperature, stream=False,
         ) as generation:
-            result = self._complete(system, user, max_tokens=max_tokens)
+            kwargs = {"json_schema": json_schema} if json_schema is not None else {}
+            result = self._complete(system, user, max_tokens=max_tokens, **kwargs)
             usage = result.usage or {}
             update_observation(
                 generation,
@@ -45,7 +46,8 @@ class OpenAICompatChat:
             )
             return result
 
-    def _complete(self, system: str, user: str, max_tokens: int = 2048) -> LLMResult:
+    def _complete(self, system: str, user: str, max_tokens: int = 2048,
+                  *, json_schema: dict | None = None) -> LLMResult:
         url = f"{self.base_url}/chat/completions"
         headers = {"Content-Type": "application/json"}
         if self.api_key:
@@ -58,10 +60,18 @@ class OpenAICompatChat:
         last = None
         for a in range(self.retries):
             b = dict(body)
-            if use_rf:
+            if json_schema is not None:
+                b["response_format"] = {"type": "json_schema", "json_schema": {
+                    "name": "structured_response", "strict": True, "schema": json_schema,
+                }}
+            elif use_rf:
                 b["response_format"] = {"type": "json_object"}
             try:
                 r = self._session.post(url, headers=headers, json=b, timeout=self.timeout)
+                if json_schema is not None and 400 <= r.status_code < 500 and r.status_code != 429:
+                    # Explicit constrained mode must not silently downgrade or
+                    # retry a deterministic schema/configuration rejection.
+                    raise RuntimeError(f"structured_output_request_rejected: HTTP {r.status_code}")
                 if r.status_code == 400 and use_rf:
                     # 서버가 response_format 미지원(ollama/구버전 vLLM 등) → 제거 후 즉시 재시도
                     use_rf = False
@@ -72,7 +82,8 @@ class OpenAICompatChat:
                 r.raise_for_status()
                 j = r.json()
                 text = j["choices"][0]["message"]["content"]
-                return LLMResult(text=text, usage=j.get("usage", {}), model=self.model)
+                return LLMResult(text=text, usage=j.get("usage", {}), model=j.get("model") or self.model,
+                                 finish_reason=j["choices"][0].get("finish_reason"))
             except requests.RequestException as e:     # 타임아웃/커넥션 오류
                 last = e
                 time.sleep(2 * (a + 1))

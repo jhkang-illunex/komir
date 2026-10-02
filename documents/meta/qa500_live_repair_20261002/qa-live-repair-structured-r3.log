@@ -1,0 +1,6 @@
+price-r3 200 7.457 {'message': 2, 'status': 3, 'table': 1, 'done': 1} None []
+price-followup-r3 200 1.301 {'message': 2, 'status': 3, 'table': 1, 'done': 1} None []
+sum-r3 200 3.335 {'message': 2, 'status': 3, 'table': 1, 'done': 1} None []
+calculation-r3 200 9.31 {'message': 2, 'status': 3, 'table': 1, 'done': 1} None []
+chile-r3 200 4.354 {'message': 2, 'status': 3, 'table': 1, 'done': 1} None []
+ranking-r3 200 4.38 {'message': 2, 'status': 3, 'table': 1, 'chart': 1, 'done': 1} None []

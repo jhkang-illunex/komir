@@ -1,0 +1,61 @@
+{
+  "id": "document-followup-r1",
+  "port": 18012,
+  "request": {
+    "user_id": "qa-sse31",
+    "session_id": "b07771a1-64e6-49d6-b78d-1aa59bdc1cc8",
+    "message": "위 결과에서 최신 가격 조회에 성공한 광종만 알려줘",
+    "mode": "auto"
+  },
+  "started_at": "2026-10-02T01:35:17.660161+00:00",
+  "events": [
+    {
+      "event": "message",
+      "data": {
+        "session_id": "b07771a1-64e6-49d6-b78d-1aa59bdc1cc8"
+      },
+      "elapsed": 0.041
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 1,
+        "label": "질문 조건 확인"
+      },
+      "elapsed": 0.066
+    },
+    {
+      "event": "message",
+      "data": {
+        "delta": "요청 처리 또는 결과 저장에 실패했습니다."
+      },
+      "elapsed": 7.538
+    },
+    {
+      "event": "done",
+      "data": {
+        "done": true,
+        "abstained": true,
+        "abstain_reason": "execution_failed",
+        "citations": []
+      },
+      "elapsed": 7.538
+    }
+  ],
+  "http_status": 200,
+  "content_type": "text/event-stream; charset=utf-8",
+  "elapsed": 7.539,
+  "text": "요청 처리 또는 결과 저장에 실패했습니다.",
+  "event_counts": {
+    "message": 2,
+    "status": 1,
+    "done": 1
+  },
+  "done": {
+    "done": true,
+    "abstained": true,
+    "abstain_reason": "execution_failed",
+    "citations": []
+  },
+  "protocol_errors": []
+}

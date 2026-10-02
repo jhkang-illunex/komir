@@ -1,0 +1,9 @@
+data: {"session_id": "056e6335-f511-4d71-89aa-558df152191a"}
+
+event: status
+data: {"stage": 1, "label": "질문 조건 확인"}
+
+data: {"delta": "질문을 처리할 실행 계획을 생성하지 못했습니다. 데이터가 없다는 의미는 아닙니다."}
+
+event: done
+data: {"done": true, "abstained": true, "abstain_reason": "semantic_plan_incomplete", "citations": []}

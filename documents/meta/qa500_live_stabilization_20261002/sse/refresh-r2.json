@@ -1,0 +1,362 @@
+{
+  "id": "refresh-r2",
+  "port": 18012,
+  "request": {
+    "user_id": "qa-sse31",
+    "session_id": "8045e69b-aea9-4764-8b48-a16674e45bbd",
+    "message": "그 광종들의 가격을 지금 다시 조회해줘",
+    "mode": "auto"
+  },
+  "started_at": "2026-10-02T02:20:27.690808+00:00",
+  "events": [
+    {
+      "event": "message",
+      "data": {
+        "session_id": "8045e69b-aea9-4764-8b48-a16674e45bbd"
+      },
+      "elapsed": 0.04
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 1,
+        "label": "질문 조건 확인"
+      },
+      "elapsed": 0.066
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 3,
+        "label": "데이터 분석 중",
+        "status": "데이터 분석 중"
+      },
+      "elapsed": 3.562
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 4,
+        "label": "답변 생성 중"
+      },
+      "elapsed": 3.562
+    },
+    {
+      "event": "message",
+      "data": {
+        "delta": "| crtr_ymd(기준일자) | lowst_prc(최저가격) | hghst_prc(최고가격) | cmerc_prc(통상가격) | invt(재고) | mineral | unit |\n| --- | --- | --- | --- | --- | --- | --- |\n| 20260930 | 943.82 | 946.93 | 945.37 | None | 망간 | USD/톤 |\n| 20260930 | 2159.25 | 2166.58 | 2162.91 | None | 크롬 | USD/톤 |\n| 20260930 | 7254.02 | 7357.34 | 7305.68 | None | 티타늄 | USD/톤 |\n| 20260930 | 17038.37 | 17535.33 | 17286.85 | None | 안티모니 | USD/톤 |\n| 20260930 | 16365.0 | 16584.47 | 16474.73 | None | 몰리브덴 | USD/톤 |\n| 20260930 | 45842.19 | 47049.61 | 46445.9 | None | 니오븀 | USD/톤 |\n| 20260930 | 90.93 | 91.7 | 91.32 | None | 네오디뮴 | USD/kg |"
+      },
+      "elapsed": 3.584
+    },
+    {
+      "event": "table",
+      "data": {
+        "schema_version": 1,
+        "block_id": "multihop-table",
+        "columns": [
+          "crtr_ymd(기준일자)",
+          "lowst_prc(최저가격)",
+          "hghst_prc(최고가격)",
+          "cmerc_prc(통상가격)",
+          "invt(재고)",
+          "mineral",
+          "unit"
+        ],
+        "rows": [
+          [
+            "20260930",
+            "943.82",
+            "946.93",
+            "945.37",
+            "None",
+            "망간",
+            "USD/톤"
+          ],
+          [
+            "20260930",
+            "2159.25",
+            "2166.58",
+            "2162.91",
+            "None",
+            "크롬",
+            "USD/톤"
+          ],
+          [
+            "20260930",
+            "7254.02",
+            "7357.34",
+            "7305.68",
+            "None",
+            "티타늄",
+            "USD/톤"
+          ],
+          [
+            "20260930",
+            "17038.37",
+            "17535.33",
+            "17286.85",
+            "None",
+            "안티모니",
+            "USD/톤"
+          ],
+          [
+            "20260930",
+            "16365.0",
+            "16584.47",
+            "16474.73",
+            "None",
+            "몰리브덴",
+            "USD/톤"
+          ],
+          [
+            "20260930",
+            "45842.19",
+            "47049.61",
+            "46445.9",
+            "None",
+            "니오븀",
+            "USD/톤"
+          ],
+          [
+            "20260930",
+            "90.93",
+            "91.7",
+            "91.32",
+            "None",
+            "네오디뮴",
+            "USD/kg"
+          ]
+        ],
+        "columns_meta": [
+          {
+            "key": "crtr_ymd",
+            "label": "crtr_ymd(기준일자)",
+            "display": "기준일자",
+            "type": "date",
+            "unit": null
+          },
+          {
+            "key": "lowst_prc",
+            "label": "lowst_prc(최저가격)",
+            "display": "최저가격",
+            "type": "number",
+            "unit": null
+          },
+          {
+            "key": "hghst_prc",
+            "label": "hghst_prc(최고가격)",
+            "display": "최고가격",
+            "type": "number",
+            "unit": null
+          },
+          {
+            "key": "cmerc_prc",
+            "label": "cmerc_prc(통상가격)",
+            "display": "통상가격",
+            "type": "number",
+            "unit": null
+          },
+          {
+            "key": "invt",
+            "label": "invt(재고)",
+            "display": "재고",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "mineral",
+            "label": "mineral",
+            "display": "mineral",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "unit",
+            "label": "unit",
+            "display": "unit",
+            "type": "string",
+            "unit": null
+          }
+        ],
+        "rows_typed": [
+          [
+            "20260930",
+            943.82,
+            946.93,
+            945.37,
+            null,
+            "망간",
+            "USD/톤"
+          ],
+          [
+            "20260930",
+            2159.25,
+            2166.58,
+            2162.91,
+            null,
+            "크롬",
+            "USD/톤"
+          ],
+          [
+            "20260930",
+            7254.02,
+            7357.34,
+            7305.68,
+            null,
+            "티타늄",
+            "USD/톤"
+          ],
+          [
+            "20260930",
+            17038.37,
+            17535.33,
+            17286.85,
+            null,
+            "안티모니",
+            "USD/톤"
+          ],
+          [
+            "20260930",
+            16365.0,
+            16584.47,
+            16474.73,
+            null,
+            "몰리브덴",
+            "USD/톤"
+          ],
+          [
+            "20260930",
+            45842.19,
+            47049.61,
+            46445.9,
+            null,
+            "니오븀",
+            "USD/톤"
+          ],
+          [
+            "20260930",
+            90.93,
+            91.7,
+            91.32,
+            null,
+            "네오디뮴",
+            "USD/kg"
+          ]
+        ],
+        "markdown": "| crtr_ymd(기준일자) | lowst_prc(최저가격) | hghst_prc(최고가격) | cmerc_prc(통상가격) | invt(재고) | mineral | unit |\n| --- | --- | --- | --- | --- | --- | --- |\n| 20260930 | 943.82 | 946.93 | 945.37 | None | 망간 | USD/톤 |\n| 20260930 | 2159.25 | 2166.58 | 2162.91 | None | 크롬 | USD/톤 |\n| 20260930 | 7254.02 | 7357.34 | 7305.68 | None | 티타늄 | USD/톤 |\n| 20260930 | 17038.37 | 17535.33 | 17286.85 | None | 안티모니 | USD/톤 |\n| 20260930 | 16365.0 | 16584.47 | 16474.73 | None | 몰리브덴 | USD/톤 |\n| 20260930 | 45842.19 | 47049.61 | 46445.9 | None | 니오븀 | USD/톤 |\n| 20260930 | 90.93 | 91.7 | 91.32 | None | 네오디뮴 | USD/kg |",
+        "chart_hint": {
+          "recommended": "bar",
+          "alternatives": [],
+          "reason": "단일 시점(20260930) 스냅샷 — mineral별 비교"
+        },
+        "meta": {
+          "source_index": 1,
+          "source": "public.KO_MNRL_PRC",
+          "as_of": null,
+          "unit": null,
+          "time_aggregation": {
+            "source_frequency": "daily",
+            "frequency": "daily",
+            "applied": false,
+            "requested_frequency": null
+          },
+          "menu_source": null,
+          "hidden_columns": []
+        },
+        "source_index": 1,
+        "source": "public.KO_MNRL_PRC"
+      },
+      "elapsed": 3.585
+    },
+    {
+      "event": "chart",
+      "data": {
+        "schema_version": 1,
+        "block_id": "multihop-chart",
+        "data_ref": "multihop-table",
+        "spec": {
+          "kind": "bar",
+          "alternatives": [],
+          "x": "mineral",
+          "x_type": "category",
+          "x_format": null,
+          "series": [
+            "lowst_prc",
+            "hghst_prc",
+            "cmerc_prc"
+          ],
+          "group": null,
+          "sort_x_ascending": false,
+          "title": "최저가격 · 최고가격 · 통상가격",
+          "y_unit": null,
+          "as_of": null,
+          "time_aggregation": {
+            "source_frequency": "daily",
+            "frequency": "daily",
+            "applied": false,
+            "requested_frequency": null
+          }
+        },
+        "meta": {
+          "source_index": 1,
+          "source": "public.KO_MNRL_PRC",
+          "menu_source": null
+        },
+        "source_index": 1,
+        "source": "public.KO_MNRL_PRC"
+      },
+      "elapsed": 3.585
+    },
+    {
+      "event": "done",
+      "data": {
+        "done": true,
+        "abstained": false,
+        "citations": [
+          {
+            "index": 1,
+            "source": "public.KO_MNRL_PRC"
+          }
+        ],
+        "bogus_citations": []
+      },
+      "elapsed": 3.586
+    }
+  ],
+  "http_status": 200,
+  "content_type": "text/event-stream; charset=utf-8",
+  "elapsed": 3.587,
+  "text": "| crtr_ymd(기준일자) | lowst_prc(최저가격) | hghst_prc(최고가격) | cmerc_prc(통상가격) | invt(재고) | mineral | unit |\n| --- | --- | --- | --- | --- | --- | --- |\n| 20260930 | 943.82 | 946.93 | 945.37 | None | 망간 | USD/톤 |\n| 20260930 | 2159.25 | 2166.58 | 2162.91 | None | 크롬 | USD/톤 |\n| 20260930 | 7254.02 | 7357.34 | 7305.68 | None | 티타늄 | USD/톤 |\n| 20260930 | 17038.37 | 17535.33 | 17286.85 | None | 안티모니 | USD/톤 |\n| 20260930 | 16365.0 | 16584.47 | 16474.73 | None | 몰리브덴 | USD/톤 |\n| 20260930 | 45842.19 | 47049.61 | 46445.9 | None | 니오븀 | USD/톤 |\n| 20260930 | 90.93 | 91.7 | 91.32 | None | 네오디뮴 | USD/kg |",
+  "event_counts": {
+    "message": 2,
+    "status": 3,
+    "table": 1,
+    "chart": 1,
+    "done": 1
+  },
+  "done": {
+    "done": true,
+    "abstained": false,
+    "citations": [
+      {
+        "index": 1,
+        "source": "public.KO_MNRL_PRC"
+      }
+    ],
+    "bogus_citations": []
+  },
+  "protocol_errors": [],
+  "deployment": {
+    "container_id": "c6652bce285aa0f7a629fea863cc2a4fe2e0fce8ab6f4cb6f5bbee2603de2d50",
+    "port": 18012,
+    "image_tag": "komir-rag-chat:qa-live-stability33-r2",
+    "image_id": "sha256:934d0f8e608de94a08b5724e189ecdaafb92108a496b7d0c10a8eb88135532a2",
+    "source_hashes": {
+      "inhouse/rag_core/ragkit/live_multihop.py": "627522ba89ce367c477e19cf764317796ab21995b927dcc5b042705e245f96cf",
+      "inhouse/rag_core/ragkit/chatbot.py": "71f5b2e77e6fd95a5df336190b0bfd532709b016e896d527560f13ea88557553",
+      "inhouse/rag_core/ragkit/chatbot_graph.py": "adaaacae8d021345abbbbc3b96d90318d6da98db933e3b42def50f7fee5caf8a",
+      "inhouse/rag_core/ragkit/chatbot_events.py": "0e6bb9e37b18913aac8ab97f95d6d3e772a992da7cba8bbc43738f7b7fcf03c5",
+      "inhouse/rag_core/ragkit/_mcp_tools_common.py": "96a7b909688af872bdab7f77ee186501ddb2206b00cc511d71f3a7bc11a3c4d6"
+    }
+  }
+}

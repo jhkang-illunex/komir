@@ -1,0 +1,73 @@
+{
+  "id": "composition-paraphrase-r3",
+  "port": 18012,
+  "request": {
+    "user_id": "qa-sse31",
+    "session_id": "e439683d-b071-4712-a3e3-c46214c8a4b2",
+    "message": "2024년 구리 생산량의 합계와 평균을 계산하고 합계에서 평균을 빼줘",
+    "mode": "auto"
+  },
+  "started_at": "2026-10-02T01:43:52.113823+00:00",
+  "events": [
+    {
+      "event": "message",
+      "data": {
+        "session_id": "e439683d-b071-4712-a3e3-c46214c8a4b2"
+      },
+      "elapsed": 0.044
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 1,
+        "label": "질문 조건 확인"
+      },
+      "elapsed": 0.068
+    },
+    {
+      "event": "message",
+      "data": {
+        "delta": "요청 처리 또는 결과 저장에 실패했습니다."
+      },
+      "elapsed": 11.204
+    },
+    {
+      "event": "done",
+      "data": {
+        "done": true,
+        "abstained": true,
+        "abstain_reason": "execution_failed",
+        "citations": []
+      },
+      "elapsed": 11.205
+    }
+  ],
+  "http_status": 200,
+  "content_type": "text/event-stream; charset=utf-8",
+  "elapsed": 11.206,
+  "text": "요청 처리 또는 결과 저장에 실패했습니다.",
+  "event_counts": {
+    "message": 2,
+    "status": 1,
+    "done": 1
+  },
+  "done": {
+    "done": true,
+    "abstained": true,
+    "abstain_reason": "execution_failed",
+    "citations": []
+  },
+  "protocol_errors": [],
+  "deployment": {
+    "container_id": "89dda028e07d903aa21b0f58af3d6a206c0d624de95228452f9489b390e43e2b",
+    "port": 18012,
+    "image": "sha256:4a02a58fb2b2cfbf8458e20e78f466a69a69c756fa26c788bbff43c4f0e0dcd1",
+    "source_hashes": {
+      "inhouse/rag_core/ragkit/live_multihop.py": "00f04f5c02982621b5ab2fd185c99eebd1ba07f6c5bc1b24f23a444dfb791185",
+      "inhouse/rag_core/ragkit/chatbot_graph.py": "954846efd91e01815fbad0f98629ea0098c124f52180eb862b6e0d3eccf3c0ef",
+      "inhouse/rag_chat/app/routers/chat.py": "77563fd496d98f62713c45237af6d72f0d30390399a7f9c035612e0bf8ebc666",
+      "inhouse/rag_chat/app/streaming.py": "e60c058d15238f058f71f8643f989d51e8432ff08f68d2ab7919351fc8e3b949",
+      "inhouse/common/komis_raw.py": "ee4fe7b7ac98d7c584d6e50721c3a62f0216d68a0e42c7d1dfbe266f2c1488a7"
+    }
+  }
+}

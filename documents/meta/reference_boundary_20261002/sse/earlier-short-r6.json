@@ -1,0 +1,408 @@
+{
+  "id": "earlier-short",
+  "port": 18012,
+  "request": {
+    "user_id": "qa-sse31",
+    "session_id": "095f3a2e-6114-43b9-aea9-62987c804fa1",
+    "message": "첫 번째 보고서에서 얻은 전체 광종 목록을 다시 보여줘. 직전 성공 목록이 아닌 원래 전체 목록이야.",
+    "mode": "auto"
+  },
+  "started_at": "2026-10-02T03:33:12.071659+00:00",
+  "events": [
+    {
+      "event": "message",
+      "data": {
+        "session_id": "095f3a2e-6114-43b9-aea9-62987c804fa1"
+      },
+      "elapsed": 0.04
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 1,
+        "label": "질문 조건 확인"
+      },
+      "elapsed": 0.063
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 3,
+        "label": "데이터 분석 중",
+        "status": "데이터 분석 중"
+      },
+      "elapsed": 1.282
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 4,
+        "label": "답변 생성 중"
+      },
+      "elapsed": 1.283
+    },
+    {
+      "event": "message",
+      "data": {
+        "delta": "표시된 16개 항목 중 7개 처리 완료, 9개 처리 불가.\n"
+      },
+      "elapsed": 1.299
+    },
+    {
+      "event": "message",
+      "data": {
+        "delta": "| mineral | status | reason | output | unit |\n| --- | --- | --- | --- | --- |\n| 리튬 | empty | price_criterion_mapping_missing | latest_value | None |\n| 희토류 | empty | price_criterion_mapping_missing | latest_value | None |\n| 망간 | success | None | latest_value | USD/톤 |\n| 코발트 | empty | price_criterion_mapping_missing | latest_value | None |\n| 크롬 | success | None | latest_value | USD/톤 |\n| 티타늄 | success | None | latest_value | USD/톤 |\n| 텅스텐 | empty | price_criterion_selection_required | latest_value | None |\n| 마그네슘 | empty | price_criterion_mapping_missing | latest_value | None |\n| 안티모니 | success | None | latest_value | USD/톤 |\n| 몰리브덴 | success | None | latest_value | USD/톤 |\n| 니오븀 | success | None | latest_value | USD/톤 |\n| 인듐 | empty | price_criterion_mapping_missing | latest_value | None |\n| 셀레늄 | empty | price_criterion_mapping_missing | latest_value | None |\n| 갈륨 | empty | price_criterion_mapping_missing | latest_value | None |\n| 네오디뮴 | success | None | latest_value | USD/kg |\n| 동 | empty | price_criterion_mapping_missing | latest_value | None |"
+      },
+      "elapsed": 1.3
+    },
+    {
+      "event": "table",
+      "data": {
+        "schema_version": 1,
+        "block_id": "multihop-table",
+        "columns": [
+          "mineral",
+          "status",
+          "reason",
+          "output",
+          "unit"
+        ],
+        "rows": [
+          [
+            "리튬",
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value",
+            "None"
+          ],
+          [
+            "희토류",
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value",
+            "None"
+          ],
+          [
+            "망간",
+            "success",
+            "None",
+            "latest_value",
+            "USD/톤"
+          ],
+          [
+            "코발트",
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value",
+            "None"
+          ],
+          [
+            "크롬",
+            "success",
+            "None",
+            "latest_value",
+            "USD/톤"
+          ],
+          [
+            "티타늄",
+            "success",
+            "None",
+            "latest_value",
+            "USD/톤"
+          ],
+          [
+            "텅스텐",
+            "empty",
+            "price_criterion_selection_required",
+            "latest_value",
+            "None"
+          ],
+          [
+            "마그네슘",
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value",
+            "None"
+          ],
+          [
+            "안티모니",
+            "success",
+            "None",
+            "latest_value",
+            "USD/톤"
+          ],
+          [
+            "몰리브덴",
+            "success",
+            "None",
+            "latest_value",
+            "USD/톤"
+          ],
+          [
+            "니오븀",
+            "success",
+            "None",
+            "latest_value",
+            "USD/톤"
+          ],
+          [
+            "인듐",
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value",
+            "None"
+          ],
+          [
+            "셀레늄",
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value",
+            "None"
+          ],
+          [
+            "갈륨",
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value",
+            "None"
+          ],
+          [
+            "네오디뮴",
+            "success",
+            "None",
+            "latest_value",
+            "USD/kg"
+          ],
+          [
+            "동",
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value",
+            "None"
+          ]
+        ],
+        "columns_meta": [
+          {
+            "key": "mineral",
+            "label": "mineral",
+            "display": "mineral",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "status",
+            "label": "status",
+            "display": "status",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "reason",
+            "label": "reason",
+            "display": "reason",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "output",
+            "label": "output",
+            "display": "output",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "unit",
+            "label": "unit",
+            "display": "unit",
+            "type": "string",
+            "unit": null
+          }
+        ],
+        "rows_typed": [
+          [
+            "리튬",
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value",
+            null
+          ],
+          [
+            "희토류",
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value",
+            null
+          ],
+          [
+            "망간",
+            "success",
+            null,
+            "latest_value",
+            "USD/톤"
+          ],
+          [
+            "코발트",
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value",
+            null
+          ],
+          [
+            "크롬",
+            "success",
+            null,
+            "latest_value",
+            "USD/톤"
+          ],
+          [
+            "티타늄",
+            "success",
+            null,
+            "latest_value",
+            "USD/톤"
+          ],
+          [
+            "텅스텐",
+            "empty",
+            "price_criterion_selection_required",
+            "latest_value",
+            null
+          ],
+          [
+            "마그네슘",
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value",
+            null
+          ],
+          [
+            "안티모니",
+            "success",
+            null,
+            "latest_value",
+            "USD/톤"
+          ],
+          [
+            "몰리브덴",
+            "success",
+            null,
+            "latest_value",
+            "USD/톤"
+          ],
+          [
+            "니오븀",
+            "success",
+            null,
+            "latest_value",
+            "USD/톤"
+          ],
+          [
+            "인듐",
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value",
+            null
+          ],
+          [
+            "셀레늄",
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value",
+            null
+          ],
+          [
+            "갈륨",
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value",
+            null
+          ],
+          [
+            "네오디뮴",
+            "success",
+            null,
+            "latest_value",
+            "USD/kg"
+          ],
+          [
+            "동",
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value",
+            null
+          ]
+        ],
+        "markdown": "| mineral | status | reason | output | unit |\n| --- | --- | --- | --- | --- |\n| 리튬 | empty | price_criterion_mapping_missing | latest_value | None |\n| 희토류 | empty | price_criterion_mapping_missing | latest_value | None |\n| 망간 | success | None | latest_value | USD/톤 |\n| 코발트 | empty | price_criterion_mapping_missing | latest_value | None |\n| 크롬 | success | None | latest_value | USD/톤 |\n| 티타늄 | success | None | latest_value | USD/톤 |\n| 텅스텐 | empty | price_criterion_selection_required | latest_value | None |\n| 마그네슘 | empty | price_criterion_mapping_missing | latest_value | None |\n| 안티모니 | success | None | latest_value | USD/톤 |\n| 몰리브덴 | success | None | latest_value | USD/톤 |\n| 니오븀 | success | None | latest_value | USD/톤 |\n| 인듐 | empty | price_criterion_mapping_missing | latest_value | None |\n| 셀레늄 | empty | price_criterion_mapping_missing | latest_value | None |\n| 갈륨 | empty | price_criterion_mapping_missing | latest_value | None |\n| 네오디뮴 | success | None | latest_value | USD/kg |\n| 동 | empty | price_criterion_mapping_missing | latest_value | None |",
+        "chart_hint": {
+          "recommended": null,
+          "alternatives": [],
+          "reason": "값이 갈리는 숫자 계열 없음"
+        },
+        "meta": {
+          "source_index": 1,
+          "source": "PageIndex 파생 사실 · 희소금속 월간동향",
+          "as_of": null,
+          "unit": null,
+          "time_aggregation": null,
+          "menu_source": null,
+          "hidden_columns": []
+        },
+        "source_index": 1,
+        "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+      },
+      "elapsed": 1.301
+    },
+    {
+      "event": "done",
+      "data": {
+        "done": true,
+        "abstained": false,
+        "citations": [
+          {
+            "index": 1,
+            "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+          },
+          {
+            "index": 2,
+            "source": "public.KO_MNRL_PRC"
+          }
+        ],
+        "bogus_citations": []
+      },
+      "elapsed": 1.301
+    }
+  ],
+  "http_status": 200,
+  "content_type": "text/event-stream; charset=utf-8",
+  "elapsed": 1.302,
+  "text": "표시된 16개 항목 중 7개 처리 완료, 9개 처리 불가.\n| mineral | status | reason | output | unit |\n| --- | --- | --- | --- | --- |\n| 리튬 | empty | price_criterion_mapping_missing | latest_value | None |\n| 희토류 | empty | price_criterion_mapping_missing | latest_value | None |\n| 망간 | success | None | latest_value | USD/톤 |\n| 코발트 | empty | price_criterion_mapping_missing | latest_value | None |\n| 크롬 | success | None | latest_value | USD/톤 |\n| 티타늄 | success | None | latest_value | USD/톤 |\n| 텅스텐 | empty | price_criterion_selection_required | latest_value | None |\n| 마그네슘 | empty | price_criterion_mapping_missing | latest_value | None |\n| 안티모니 | success | None | latest_value | USD/톤 |\n| 몰리브덴 | success | None | latest_value | USD/톤 |\n| 니오븀 | success | None | latest_value | USD/톤 |\n| 인듐 | empty | price_criterion_mapping_missing | latest_value | None |\n| 셀레늄 | empty | price_criterion_mapping_missing | latest_value | None |\n| 갈륨 | empty | price_criterion_mapping_missing | latest_value | None |\n| 네오디뮴 | success | None | latest_value | USD/kg |\n| 동 | empty | price_criterion_mapping_missing | latest_value | None |",
+  "event_counts": {
+    "message": 3,
+    "status": 3,
+    "table": 1,
+    "done": 1
+  },
+  "done": {
+    "done": true,
+    "abstained": false,
+    "citations": [
+      {
+        "index": 1,
+        "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+      },
+      {
+        "index": 2,
+        "source": "public.KO_MNRL_PRC"
+      }
+    ],
+    "bogus_citations": []
+  },
+  "protocol_errors": [],
+  "deployment": {
+    "container_id": "e2d6b9910dec42adef443a5b75c031c18a35312160af8f4e24efb70360d40bdf",
+    "port": 18012,
+    "image_tag": "komir-rag-chat:qa-reference-boundary34-r3",
+    "image_id": "sha256:8caffeb62dd5e72073080b86cd2a03d20e13cf0ba27d5f52453a03b53299b3f3",
+    "source_sha256": "fc3e2556d10c7e649ecbc04eab488e0724077ddacfb87b3cfeae6d0c6d177347"
+  }
+}

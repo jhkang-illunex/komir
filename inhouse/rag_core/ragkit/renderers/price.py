@@ -5,11 +5,11 @@ import re
 import math
 from datetime import date, datetime
 
-from ..chatbot_events import extract_markdown_tables
+from ..chatbot_events import extract_markdown_tables, _PRICE_CURRENCY_CODES, _PRICE_WEIGHT_CODES, _price_unit_from_codes
 
 
-# KOMIS public.st_code_mst live code-table values (verified 2026-09-26).
-_PRICE_CODE_VALUES = {"PR001": "USD", "WT002": "톤"}
+# One verified source-code registry is shared by text, typed results and charts.
+_PRICE_CODE_VALUES = {**_PRICE_CURRENCY_CODES, **_PRICE_WEIGHT_CODES}
 
 
 def natural_price_basis(unit: str | None) -> str | None:
@@ -39,9 +39,9 @@ def price_display_unit(unit: str | None) -> str | None:
         key, separator, value = part.partition("=")
         if separator and value.strip():
             values[key.strip()] = value.strip()
-    currency = _PRICE_CODE_VALUES.get(values.get("통화코드", "").upper())
-    weight = _PRICE_CODE_VALUES.get(values.get("중량단위코드", "").upper())
-    return f"{currency}/{weight}" if currency and weight else currency
+    currency = values.get("통화코드")
+    weight = values.get("중량단위코드")
+    return _price_unit_from_codes([currency] if currency else [], [weight] if weight else [])
 
 
 def format_price(value: float) -> str:

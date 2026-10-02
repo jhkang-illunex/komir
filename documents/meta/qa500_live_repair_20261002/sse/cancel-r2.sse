@@ -1,0 +1,4 @@
+data: {"session_id": "7fe78c6c-be18-4c77-88d7-3c6a5c275bf7"}
+
+event: status
+data: {"stage": 1, "label": "질문 조건 확인"}

@@ -1,0 +1,18 @@
+data: {"session_id": "39a7e3c1-6a36-4a75-af08-c1a733d6089d"}
+
+event: status
+data: {"stage": 1, "label": "질문 조건 확인"}
+
+event: status
+data: {"stage": 3, "label": "데이터 분석 중", "status": "데이터 분석 중"}
+
+event: status
+data: {"stage": 4, "label": "답변 생성 중"}
+
+data: {"delta": "| mineral | value | unit | date |\n| --- | --- | --- | --- |\n| 망간 | 945.37 | USD/톤 | 20260930 |\n| 크롬 | 2162.91 | USD/톤 | 20260930 |\n| 티타늄 | 7305.68 | USD/톤 | 20260930 |\n| 안티모니 | 17286.85 | USD/톤 | 20260930 |\n| 몰리브덴 | 16474.73 | USD/톤 | 20260930 |\n| 니오븀 | 46445.9 | USD/톤 | 20260930 |\n| 네오디뮴 | 91.32 | USD/kg | 20260930 |"}
+
+event: table
+data: {"schema_version": 1, "block_id": "multihop-table", "columns": ["mineral", "value", "unit", "date"], "rows": [["망간", "945.37", "USD/톤", "20260930"], ["크롬", "2162.91", "USD/톤", "20260930"], ["티타늄", "7305.68", "USD/톤", "20260930"], ["안티모니", "17286.85", "USD/톤", "20260930"], ["몰리브덴", "16474.73", "USD/톤", "20260930"], ["니오븀", "46445.9", "USD/톤", "20260930"], ["네오디뮴", "91.32", "USD/kg", "20260930"]], "columns_meta": [{"key": "mineral", "label": "mineral", "display": "mineral", "type": "string", "unit": null}, {"key": "value", "label": "value", "display": "value", "type": "number", "unit": null}, {"key": "unit", "label": "unit", "display": "unit", "type": "string", "unit": null}, {"key": "date", "label": "date", "display": "date", "type": "number", "unit": null}], "rows_typed": [["망간", 945.37, "USD/톤", 20260930.0], ["크롬", 2162.91, "USD/톤", 20260930.0], ["티타늄", 7305.68, "USD/톤", 20260930.0], ["안티모니", 17286.85, "USD/톤", 20260930.0], ["몰리브덴", 16474.73, "USD/톤", 20260930.0], ["니오븀", 46445.9, "USD/톤", 20260930.0], ["네오디뮴", 91.32, "USD/kg", 20260930.0]], "markdown": "| mineral | value | unit | date |\n| --- | --- | --- | --- |\n| 망간 | 945.37 | USD/톤 | 20260930 |\n| 크롬 | 2162.91 | USD/톤 | 20260930 |\n| 티타늄 | 7305.68 | USD/톤 | 20260930 |\n| 안티모니 | 17286.85 | USD/톤 | 20260930 |\n| 몰리브덴 | 16474.73 | USD/톤 | 20260930 |\n| 니오븀 | 46445.9 | USD/톤 | 20260930 |\n| 네오디뮴 | 91.32 | USD/kg | 20260930 |", "chart_hint": {"recommended": "bar", "alternatives": ["pie"], "reason": "날짜열 없음 — mineral별 비교"}, "meta": {"source_index": 1, "source": "public.KO_MNRL_PRC", "as_of": null, "unit": null, "time_aggregation": null, "menu_source": null, "hidden_columns": []}, "source_index": 1, "source": "public.KO_MNRL_PRC"}
+
+event: done
+data: {"done": true, "abstained": false, "citations": [{"index": 1, "source": "public.KO_MNRL_PRC"}], "bogus_citations": []}

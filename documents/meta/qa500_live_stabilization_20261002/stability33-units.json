@@ -1,0 +1,55 @@
+{
+  "checked_at": "2026-10-02T02:10:10.965091+00:00",
+  "source": "public.st_code_mst",
+  "verification_container": "komir-rag-chat-qa-sse32",
+  "transaction_read_only": "on",
+  "query": "SELECT cd_grp, cd_key, cd_val, del_date FROM public.st_code_mst WHERE del_date IS NULL AND ((cd_grp = %s AND cd_key = %s) OR (cd_grp = %s AND cd_key IN (%s, %s, %s, %s, %s))) ORDER BY cd_grp, cd_key",
+  "bindings": [
+    "PR000",
+    "PR001",
+    "WT000",
+    "WT001",
+    "WT002",
+    "WT006",
+    "WT007",
+    "WT008"
+  ],
+  "rows": [
+    {
+      "cd_grp": "PR000",
+      "cd_key": "PR001",
+      "cd_val": "USD",
+      "del_date": null
+    },
+    {
+      "cd_grp": "WT000",
+      "cd_key": "WT001",
+      "cd_val": "kg",
+      "del_date": null
+    },
+    {
+      "cd_grp": "WT000",
+      "cd_key": "WT002",
+      "cd_val": "ton",
+      "del_date": null
+    },
+    {
+      "cd_grp": "WT000",
+      "cd_key": "WT006",
+      "cd_val": "lb",
+      "del_date": null
+    },
+    {
+      "cd_grp": "WT000",
+      "cd_key": "WT007",
+      "cd_val": "mt",
+      "del_date": null
+    },
+    {
+      "cd_grp": "WT000",
+      "cd_key": "WT008",
+      "cd_val": "mtu",
+      "del_date": null
+    }
+  ]
+}

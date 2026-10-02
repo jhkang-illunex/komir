@@ -66,6 +66,15 @@ class ActionPageAdapterAuditTest(unittest.TestCase):
         self.assertNotIn("pageMode", answer)
         self.assertNotIn("MY010", answer)
 
+    def test_ambiguous_board_keeps_registered_search_contract(self):
+        items = [
+            build_recommendation(self.service.registry.get("resource_trend_strategy_monthly")),
+            build_recommendation(self.service.registry.get("resource_trend_rare_monthly")),
+        ]
+        answer = render_ambiguous(items)
+        self.assertIn("검색 대상: 제목+내용·제목·내용", answer)
+        self.assertIn("검색어를 입력할 수 있다.", answer)
+
 
 if __name__ == "__main__":
     unittest.main()

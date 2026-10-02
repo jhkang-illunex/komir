@@ -86,7 +86,7 @@ import logging
 import re
 import sys
 import threading
-from contextlib import contextmanager
+from contextlib import closing, contextmanager, nullcontext
 from contextvars import copy_context
 from pathlib import Path
 from typing import Iterator, Literal
@@ -127,6 +127,9 @@ from rag_core.ragkit.action_contract import (  # noqa: E402
     trade_indicator_plan_from_question,
     missing_trade_indicator_slots, validate_action_plan,
 )
+from rag_core.ragkit.direct_capability import (  # noqa: E402
+    DirectCapabilityDecision, validate_direct_capability,
+)
 from rag_core.ragkit.semantic_intent import semantic_mode  # noqa: E402
 from rag_core.ragkit.live_multihop import multihop_mode  # noqa: E402
 from rag_core.ragkit.multi_action_state import (  # noqa: E402
@@ -144,7 +147,8 @@ from .. import session_store  # noqa: E402
 from ..intent import classify_intent, is_unverified_import_demand_forecast_menu  # noqa: E402
 from ..page_recommend.service import get_service as get_page_recommend_service  # noqa: E402
 from ..page_recommend.registry import RegistryError  # noqa: E402
-from ..streaming import StrikethroughFilter, sse_event, strip_strikethrough  # noqa: E402
+from ..query_gate import classify_query_gate, gate_enabled, navigation_fast_path_applicable  # noqa: E402
+from ..streaming import StrikethroughFilter, sse_event, strip_strikethrough, ChatEventSourceResponse, stream_cancellation  # noqa: E402
 
 router = APIRouter()
 _logger = logging.getLogger(__name__)
@@ -163,11 +167,19 @@ def _session_turn_lock(session_id: str) -> Iterator[None]:
     with _session_locks_guard:
         lock = _session_locks.setdefault(session_id, threading.Lock())
         _session_lock_counts[session_id] = _session_lock_counts.get(session_id, 0) + 1
-    lock.acquire()
+    acquired = False
     try:
+        cancellation = stream_cancellation.get()
+        while not acquired:
+            if cancellation is not None:
+                cancellation.check()
+            acquired = lock.acquire(timeout=0.05)
+        if cancellation is not None:
+            cancellation.check()
         yield
     finally:
-        lock.release()
+        if acquired:
+            lock.release()
         with _session_locks_guard:
             _session_lock_counts[session_id] -= 1
             if _session_lock_counts[session_id] == 0:
@@ -539,17 +551,39 @@ def _drain_sync(async_gen):
     계약을 요구하기 때문일 뿐(async def로 바꾸면 두 곳 다 깨진다)."""
 
     loop = asyncio.new_event_loop()
+    cancellation = stream_cancellation.get()
     try:
         while True:
             try:
-                yield loop.run_until_complete(async_gen.__anext__())
+                if cancellation is not None:
+                    cancellation.check()
+                task = loop.create_task(async_gen.__anext__())
+                with cancellation.running(loop, task) if cancellation is not None else nullcontext():
+                    event = loop.run_until_complete(task)
+                yield event
             except StopAsyncIteration:
                 return
     finally:
-        loop.close()
+        try:
+            pending = asyncio.all_tasks(loop)
+            for task in pending:
+                task.cancel()
+            if pending:
+                loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+            loop.run_until_complete(async_gen.aclose())
+            loop.run_until_complete(loop.shutdown_asyncgens())
+        finally:
+            loop.close()
 
 
-def _run_document_qa(request: ChatRequest, session_id: str, profile: Literal["public", "private"], action_plan=None):
+def _run_document_qa(
+    request: ChatRequest,
+    session_id: str,
+    profile: Literal["public", "private"],
+    action_plan=None,
+    *,
+    execution_mode: Literal["default", "direct"] = "default",
+):
     """비정형+정형 혼합 문서 Q&A 경로 — 코어 로직(정형·dense·PageIndex 도구 선택+
     병렬조회를 위한 LangGraph 오케스트레이션·멀티턴 프롬프트·인용강제·표/차트
     다중매체 이벤트·세션저장)은 rag.ragkit.chatbot.chat_turn()에 있다(2026-08-13
@@ -572,6 +606,7 @@ def _run_document_qa(request: ChatRequest, session_id: str, profile: Literal["pu
         chat=get_chat_client(),
         profile=profile,
         action_plan=action_plan,
+        execution_mode=execution_mode,
     )
     # 2026-09-16(사용자 지시) — SSE로 나가기 직전 취소선 제거(streaming.py 주석
     # 참고). delta는 청크 경계를 넘어 판정해야 해서 상태 유지 필터, 비-delta
@@ -580,24 +615,10 @@ def _run_document_qa(request: ChatRequest, session_id: str, profile: Literal["pu
     strike = StrikethroughFilter()
     terminal_sent = False
     try:
-        for event in _drain_sync(events):
-            if event.type == "delta":
-                text = strike.feed(event.data["delta"])
-                if text:
-                    yield sse_event({"delta": text})
-                continue
-            pending = strike.flush()
-            if pending:
-                yield sse_event({"delta": pending})
-            data = event.data
-            if event.type == "table" and data.get("markdown"):
-                data = {**data, "markdown": strip_strikethrough(data["markdown"])}
-            yield sse_event(data, event=event.sse_name)
-            if event.type == "done":
-                # 코어의 terminal event 뒤에는 어떠한 SSE도 내보내지 않는다.
-                # 따라서 코어 구현이 회귀해도 외부 계약은 done 정확히 1회다.
-                terminal_sent = True
-                return
+        with closing(_drain_sync(events)) as stream:
+            for frame in _format_document_events(stream, strike):
+                terminal_sent = frame.get('event') == 'done'
+                yield frame
     except Exception:
         _logger.exception("document Q&A stream failed for session %s", session_id)
         if terminal_sent:
@@ -611,6 +632,25 @@ def _run_document_qa(request: ChatRequest, session_id: str, profile: Literal["pu
         yield sse_event({"done": True, "abstained": True,
                          "abstain_reason": "source_unavailable",
                          "message_key": "action_unavailable"}, event="done")
+
+
+def _format_document_events(stream, strike):
+    for event in stream:
+        if event.type == "delta":
+            text = strike.feed(event.data["delta"])
+            if text:
+                yield sse_event({"delta": text})
+            continue
+        pending = strike.flush()
+        if pending:
+            yield sse_event({"delta": pending})
+        data = event.data
+        if event.type == "table" and data.get("markdown"):
+            data = {**data, "markdown": strip_strikethrough(data["markdown"])}
+        yield sse_event(data, event=event.sse_name)
+        if event.type == "done":
+            # Keep the wire's single terminal event even if core yields more.
+            return
 
 
 def _persistable_artifact(artifact: dict | None) -> dict | None:
@@ -768,9 +808,90 @@ def _run_chat_session(
         if request.mode != "document" and is_unverified_import_demand_forecast_menu(request.message):
             yield from _run_unverified_menu_path(request, session_id)
             return
-        # FAQ는 ragkit.chatbot이 결정적 원문을 소유한다. auto/document 요청을
-        # 먼저 LLM action/page 분류에 넣으면 FBQ12·40처럼 페이지 안내로 새거나,
-        # 정의 질문이 slot 오류로 끝나 내부 FAQ 단축 경로에 도달하지 못한다.
+        # AST 앞단의 저비용 gate. Gate는 route/dependency만 판정하고 실행계획을
+        # 만들지 않는다. FAQ는 기존 결정적 답변, navigation은 기존 페이지
+        # registry 경로로 종료하며, 그 밖에는 기존 action/AST 경로로 승격한다.
+        if gate_enabled() and request.mode == "auto":
+            gate_history = _history_for_graph(session_id)
+            gate_decision = classify_query_gate(
+                request.message,
+                llm=KomirJsonLLM(),
+                history=gate_history,
+                session_id=session_id,
+            )
+            if gate_decision.route == "FAQ_CONCEPT" and direct_faq_answer(request.message) is not None:
+                _logger.info(
+                    "query_gate handler=direct_faq escalated_to_ast=false session=%s",
+                    session_id,
+                )
+                yield from _run_document_qa(request, session_id, profile, action_plan=None)
+                return
+            if navigation_fast_path_applicable(gate_decision, request_mode=request.mode):
+                _logger.info(
+                    "query_gate handler=page_recommend escalated_to_ast=false session=%s",
+                    session_id,
+                )
+                yield from _run_page_recommend(request, session_id)
+                return
+            # The gate only selects a cheap candidate route.  A typed ActionPlan
+            # is still required before direct execution; no raw-query shortcut
+            # or gate confidence is trusted here.  If parsing/validation does
+            # not produce one complete capability, the original AAST path owns
+            # the request.
+            if not gate_decision.dependency.required:
+                direct_candidate = None
+                direct_decision = DirectCapabilityDecision("ast", None, reason="NOT_APPLICABLE")
+                try:
+                    direct_candidate = extract_action_plan(
+                        request.message,
+                        KomirJsonLLM(),
+                        history=gate_history,
+                    )
+                    direct_decision = validate_direct_capability(direct_candidate)
+                except Exception as exc:
+                    _logger.info(
+                        "direct_capability candidate unavailable session=%s error=%s",
+                        session_id, type(exc).__name__,
+                    )
+                _logger.info(
+                    "direct_capability candidate=%s capability=%s map_count=%s reason=%s session=%s",
+                    direct_decision.mode,
+                    direct_decision.capability,
+                    direct_decision.map_count,
+                    direct_decision.reason,
+                    session_id,
+                )
+                if direct_decision.valid and direct_candidate is not None:
+                    _logger.info(
+                        "direct_capability execution_mode=%s capability=%s session=%s",
+                        direct_decision.mode, direct_decision.capability, session_id,
+                    )
+                    yield from _run_document_qa(
+                        request,
+                        session_id,
+                        profile,
+                        action_plan=direct_candidate,
+                        execution_mode="direct",
+                    )
+                    return
+                _logger.info(
+                    "direct_capability escalated_to_ast=true reason=%s session=%s",
+                    direct_decision.reason or "NOT_APPLICABLE",
+                    session_id,
+                )
+            _logger.info(
+                "query_gate handler=%s history_resolution=%s escalated_to_ast=%s session=%s",
+                (
+                    "existing_ast"
+                    if gate_decision.route == "COMPLEX" or gate_decision.dependency.required
+                    else "existing_pipeline"
+                ),
+                "typed_history_resolver_deferred" if gate_decision.dependency.required else "none",
+                True,
+                session_id,
+            )
+        # Gate가 비활성화된 환경과, Gate가 FAQ로 분류하지 않았지만 기존 FAQ
+        # registry가 안전하게 소유하는 질문 모두 기존 단축 경로를 유지한다.
         if request.mode != "page" and direct_faq_answer(request.message) is not None:
             yield from _run_document_qa(request, session_id, profile, action_plan=None)
             return
@@ -950,38 +1071,50 @@ def _run_chat(request: ChatRequest, profile: Literal["public", "private"]):
             message=request.message,
             profile=profile,
         ) as trace:
-            for event in _run_chat_session(request, profile, session_id):
+            yield from traced_events(trace)
+
+    def traced_events(trace):
+        session_events = _run_chat_session(request, profile, session_id)
+        try:
+            for event in session_events:
                 if event.get("event") == "done":
                     try:
                         update_observation(trace, output=json.loads(event["data"]))
                     except (KeyError, TypeError, ValueError):
                         update_observation(trace, output={"done": True})
                 yield event
+        finally:
+            close = getattr(session_events, 'close', None)
+            if close is not None:
+                close()
 
     # SSE-Starlette는 동기 제너레이터를 이벤트마다 새 contextvars context에서
     # 재개한다. Langfuse의 root trace는 enter와 exit가 같은 context여야 하므로,
     # 이 턴 제너레이터만 하나의 캡처한 context에서 끝까지 재개한다.
     turn = traced_turn()
     trace_context = copy_context()
-    while True:
-        try:
-            yield trace_context.run(next, turn)
-        except StopIteration:
-            return
+    try:
+        while True:
+            try:
+                yield trace_context.run(next, turn)
+            except StopIteration:
+                return
+    finally:
+        trace_context.run(turn.close)
 
 
 @router.post("/pubchat")
 def pubchat(request: ChatRequest) -> EventSourceResponse:
     """SSE 스트림 응답 — public MCP 프로필(라이선스 제한 제3자 문서 제외)."""
 
-    return EventSourceResponse(_run_chat(request, "public"))
+    return ChatEventSourceResponse(_run_chat(request, "public"))
 
 
 @router.post("/prichat")
 def prichat(request: ChatRequest) -> EventSourceResponse:
     """SSE 스트림 응답 — private MCP 프로필(라이선스 제한 제3자 문서 포함)."""
 
-    return EventSourceResponse(_run_chat(request, "private"))
+    return ChatEventSourceResponse(_run_chat(request, "private"))
 
 
 def chat(request: ChatRequest) -> EventSourceResponse:
@@ -991,4 +1124,4 @@ def chat(request: ChatRequest) -> EventSourceResponse:
     노출은 막아달라" — `/chat` 하위호환 별칭을 외부 API 표면에서 제거).
     필요해지면 `@router.post("/chat")`만 다시 붙이면 된다."""
 
-    return EventSourceResponse(_run_chat(request, "public"))
+    return ChatEventSourceResponse(_run_chat(request, "public"))

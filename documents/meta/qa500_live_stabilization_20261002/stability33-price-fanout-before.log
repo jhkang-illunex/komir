@@ -1,0 +1,66 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+_________ test_multi_price_retrieval_materializes_each_entity_and_unit _________
+
+    def test_multi_price_retrieval_materializes_each_entity_and_unit():
+>       factory,result=run()
+
+inhouse/rag_core/tests/test_live_price_fanout.py:25: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+inhouse/rag_core/tests/test_live_price_fanout.py:20: in run
+    result=asyncio.run(factory._retrieve(node,{'saved':source}))
+/usr/lib/python3.10/asyncio/runners.py:44: in run
+    return loop.run_until_complete(main)
+/usr/lib/python3.10/asyncio/base_events.py:649: in run_until_complete
+    return future.result()
+inhouse/rag_core/ragkit/live_multihop.py:1237: in _retrieve
+    return await self._call_action(node, action_id, mineral=minerals[0] if minerals else None, minerals=minerals or None)
+/usr/lib/python3.10/unittest/mock.py:2245: in _execute_mock_call
+    result = await effect(*args, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+node = RequirementNode(node_id='retrieve', operator=<Operator.RETRIEVE: 'retrieve'>, inputs=(), args={'domain': 'price', 'metric': 'price'}, expected_type=<ValueType.UNKNOWN: 'unknown'>, constraints={}, evidence_required=True)
+action_id = 'price.series', mineral = 'A', minerals = ['A', 'B']
+
+    async def action(node,action_id,*,mineral=None,minerals=None):
+>       assert minerals==[mineral]
+E       AssertionError: assert ['A', 'B'] == ['A']
+E         
+E         Left contains one more item: 'B'
+E         Use -v to get more diff
+
+inhouse/rag_core/tests/test_live_price_fanout.py:13: AssertionError
+_____________ test_failed_price_entity_is_not_erased_by_projection _____________
+
+    def test_failed_price_entity_is_not_erased_by_projection():
+>       factory,result=run(True)
+
+inhouse/rag_core/tests/test_live_price_fanout.py:36: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+inhouse/rag_core/tests/test_live_price_fanout.py:20: in run
+    result=asyncio.run(factory._retrieve(node,{'saved':source}))
+/usr/lib/python3.10/asyncio/runners.py:44: in run
+    return loop.run_until_complete(main)
+/usr/lib/python3.10/asyncio/base_events.py:649: in run_until_complete
+    return future.result()
+inhouse/rag_core/ragkit/live_multihop.py:1237: in _retrieve
+    return await self._call_action(node, action_id, mineral=minerals[0] if minerals else None, minerals=minerals or None)
+/usr/lib/python3.10/unittest/mock.py:2245: in _execute_mock_call
+    result = await effect(*args, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+node = RequirementNode(node_id='retrieve', operator=<Operator.RETRIEVE: 'retrieve'>, inputs=(), args={'domain': 'price', 'metric': 'price'}, expected_type=<ValueType.UNKNOWN: 'unknown'>, constraints={}, evidence_required=True)
+action_id = 'price.series', mineral = 'A', minerals = ['A', 'B']
+
+    async def action(node,action_id,*,mineral=None,minerals=None):
+>       assert minerals==[mineral]
+E       AssertionError: assert ['A', 'B'] == ['A']
+E         
+E         Left contains one more item: 'B'
+E         Use -v to get more diff
+
+inhouse/rag_core/tests/test_live_price_fanout.py:13: AssertionError
+=========================== short test summary info ============================
+FAILED inhouse/rag_core/tests/test_live_price_fanout.py::test_multi_price_retrieval_materializes_each_entity_and_unit
+FAILED inhouse/rag_core/tests/test_live_price_fanout.py::test_failed_price_entity_is_not_erased_by_projection
+2 failed in 0.79s

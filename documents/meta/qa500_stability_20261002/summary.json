@@ -1,0 +1,1672 @@
+{
+  "created_at": "2026-10-01T18:00:34.846267+00:00",
+  "scope": "Gemma V2 shadow + synthetic SQLite, NOT live SSE",
+  "captures": {
+    "qa500-stability-before.jsonl": {
+      "sha256": "4244279748a97a6b7511659d728e9f763abe3bc7c9249cc8fc86603b395c8a4e",
+      "rows": 10
+    },
+    "qa500-stability-after.jsonl": {
+      "sha256": "533f7300fb4b8f073a16472dd560c09a176b70d88b8acf7ac991abd57bf5fc02",
+      "rows": 56
+    },
+    "qa500-stability-holdout.jsonl": {
+      "sha256": "a0d4555e63c24252568a24daa54a303368a8547fec1bdbab502bdf1d46928236",
+      "rows": 8
+    },
+    "qa500-stability-isolated.jsonl": {
+      "sha256": "cb1b9ca256329420e31164c26dcedca02a2a0ab1a91afe7c33b54090552b0886",
+      "rows": 56
+    },
+    "qa500-stability-holdout-isolated.jsonl": {
+      "sha256": "1665636c539bfa7ce8e48d29f4e088a7fb67ed4da14cc6568a3f8ff54e9e794f",
+      "rows": 8
+    },
+    "qa500-stability-clarified.jsonl": {
+      "sha256": "2d6f29eddd470af0f98c71e6ad72187187debbc410f9f8ef87f8141e26d89c32",
+      "rows": 56
+    },
+    "qa500-stability-final-holdout.jsonl": {
+      "sha256": "ef771d8146a3ebf9257045e9035b4610fce2192769985b9e1ea43beeb97ea3ef",
+      "rows": 8
+    },
+    "qa500-stability-holdout-final-version.jsonl": {
+      "sha256": "43346df7898ad541693406a748364069ee9b212bf8e53ad6ff8e2e24929b2770",
+      "rows": 8
+    },
+    "qa500-stability-final-holdout-retained.jsonl": {
+      "sha256": "aebe87003300e800708554ed71a28adf0908aea5deabb8628dd489ba0003cbab",
+      "rows": 8
+    },
+    "qa500-stability-final-core.jsonl": {
+      "sha256": "34276655530f694994dccca66b1e0f1654f11955e6a1647c1960eec0b9a634c7",
+      "rows": 56
+    },
+    "qa500-stability-final-s.jsonl": {
+      "sha256": "6d9e146bebc95dbb8a58e111e0f26c4a111d270ff6e11768d44ac18df48cd985",
+      "rows": 8
+    },
+    "qa500-stability-final-t.jsonl": {
+      "sha256": "5b54c1624979a5402b8f52fa66eff2a27f5cf245f4b568bdcc1c448dccdf7bd6",
+      "rows": 8
+    }
+  },
+  "runs": {
+    "before": {
+      "total_questions": 5,
+      "model_requests": 10,
+      "question_counts": {
+        "VARIABLE": 1,
+        "FAILED_ALL_REPEATS": 2,
+        "STABLE_UNSUPPORTED": 1,
+        "STABLE_PASS": 1
+      },
+      "request_counts": {
+        "LOGICAL_PLAN_INCOMPLETE": 5,
+        "UNSUPPORTED_CORRECT": 2,
+        "PASS": 3
+      },
+      "questions": {
+        "H1": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "LOGICAL_PLAN_INCOMPLETE",
+            "2": "PASS"
+          }
+        },
+        "H4": {
+          "verdict": "FAILED_ALL_REPEATS",
+          "runs": {
+            "1": "LOGICAL_PLAN_INCOMPLETE",
+            "2": "LOGICAL_PLAN_INCOMPLETE"
+          }
+        },
+        "N1": {
+          "verdict": "STABLE_UNSUPPORTED",
+          "runs": {
+            "1": "UNSUPPORTED_CORRECT",
+            "2": "UNSUPPORTED_CORRECT"
+          }
+        },
+        "R6": {
+          "verdict": "FAILED_ALL_REPEATS",
+          "runs": {
+            "1": "LOGICAL_PLAN_INCOMPLETE",
+            "2": "LOGICAL_PLAN_INCOMPLETE"
+          }
+        },
+        "Z5": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        }
+      }
+    },
+    "after": {
+      "total_questions": 28,
+      "model_requests": 56,
+      "question_counts": {
+        "VARIABLE": 16,
+        "FAILED_ALL_REPEATS": 12
+      },
+      "request_counts": {
+        "PASS": 14,
+        "LOGICAL_PLAN_INCOMPLETE": 1,
+        "UNSUPPORTED_CORRECT": 2,
+        "HARNESS_FAILURE": 39
+      },
+      "questions": {
+        "EXT500-009": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "HARNESS_FAILURE"
+          }
+        },
+        "EXT500-010": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "HARNESS_FAILURE"
+          }
+        },
+        "EXT500-011": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "HARNESS_FAILURE"
+          }
+        },
+        "EXT500-012": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "HARNESS_FAILURE"
+          }
+        },
+        "EXT500-037": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "HARNESS_FAILURE"
+          }
+        },
+        "EXT500-038": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "HARNESS_FAILURE"
+          }
+        },
+        "EXT500-039": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "HARNESS_FAILURE"
+          }
+        },
+        "EXT500-040": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "HARNESS_FAILURE"
+          }
+        },
+        "H1": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "HARNESS_FAILURE"
+          }
+        },
+        "H2": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "HARNESS_FAILURE"
+          }
+        },
+        "H3": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "HARNESS_FAILURE"
+          }
+        },
+        "H4": {
+          "verdict": "FAILED_ALL_REPEATS",
+          "runs": {
+            "1": "LOGICAL_PLAN_INCOMPLETE",
+            "2": "HARNESS_FAILURE"
+          }
+        },
+        "M1": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "HARNESS_FAILURE"
+          }
+        },
+        "M2": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "2": "HARNESS_FAILURE",
+            "1": "PASS"
+          }
+        },
+        "N1": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "UNSUPPORTED_CORRECT",
+            "2": "HARNESS_FAILURE"
+          }
+        },
+        "N2": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "UNSUPPORTED_CORRECT",
+            "2": "HARNESS_FAILURE"
+          }
+        },
+        "R1": {
+          "verdict": "FAILED_ALL_REPEATS",
+          "runs": {
+            "1": "HARNESS_FAILURE",
+            "2": "HARNESS_FAILURE"
+          }
+        },
+        "R2": {
+          "verdict": "FAILED_ALL_REPEATS",
+          "runs": {
+            "1": "HARNESS_FAILURE",
+            "2": "HARNESS_FAILURE"
+          }
+        },
+        "R3": {
+          "verdict": "FAILED_ALL_REPEATS",
+          "runs": {
+            "1": "HARNESS_FAILURE",
+            "2": "HARNESS_FAILURE"
+          }
+        },
+        "R4": {
+          "verdict": "FAILED_ALL_REPEATS",
+          "runs": {
+            "1": "HARNESS_FAILURE",
+            "2": "HARNESS_FAILURE"
+          }
+        },
+        "R5": {
+          "verdict": "FAILED_ALL_REPEATS",
+          "runs": {
+            "1": "HARNESS_FAILURE",
+            "2": "HARNESS_FAILURE"
+          }
+        },
+        "R6": {
+          "verdict": "FAILED_ALL_REPEATS",
+          "runs": {
+            "1": "HARNESS_FAILURE",
+            "2": "HARNESS_FAILURE"
+          }
+        },
+        "Z1": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "HARNESS_FAILURE"
+          }
+        },
+        "Z2": {
+          "verdict": "FAILED_ALL_REPEATS",
+          "runs": {
+            "1": "HARNESS_FAILURE",
+            "2": "HARNESS_FAILURE"
+          }
+        },
+        "Z3": {
+          "verdict": "FAILED_ALL_REPEATS",
+          "runs": {
+            "1": "HARNESS_FAILURE",
+            "2": "HARNESS_FAILURE"
+          }
+        },
+        "Z4": {
+          "verdict": "FAILED_ALL_REPEATS",
+          "runs": {
+            "1": "HARNESS_FAILURE",
+            "2": "HARNESS_FAILURE"
+          }
+        },
+        "Z5": {
+          "verdict": "FAILED_ALL_REPEATS",
+          "runs": {
+            "1": "HARNESS_FAILURE",
+            "2": "HARNESS_FAILURE"
+          }
+        },
+        "Z6": {
+          "verdict": "FAILED_ALL_REPEATS",
+          "runs": {
+            "1": "HARNESS_FAILURE",
+            "2": "HARNESS_FAILURE"
+          }
+        }
+      }
+    },
+    "holdout": {
+      "total_questions": 4,
+      "model_requests": 8,
+      "question_counts": {
+        "VARIABLE": 1,
+        "STABLE_PASS": 3
+      },
+      "request_counts": {
+        "PASS": 7,
+        "SEMANTIC_MISMATCH": 1
+      },
+      "questions": {
+        "S1": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "SEMANTIC_MISMATCH"
+          }
+        },
+        "S2": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "S3": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "S4": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        }
+      }
+    },
+    "isolated": {
+      "total_questions": 28,
+      "model_requests": 56,
+      "question_counts": {
+        "STABLE_PASS": 19,
+        "VARIABLE": 7,
+        "STABLE_UNSUPPORTED": 2
+      },
+      "request_counts": {
+        "PASS": 45,
+        "LOGICAL_PLAN_INCOMPLETE": 7,
+        "UNSUPPORTED_CORRECT": 4
+      },
+      "questions": {
+        "EXT500-009": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "EXT500-010": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "EXT500-011": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "EXT500-012": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "EXT500-037": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "EXT500-038": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "LOGICAL_PLAN_INCOMPLETE",
+            "2": "PASS"
+          }
+        },
+        "EXT500-039": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "EXT500-040": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "H1": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "H2": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "H3": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "LOGICAL_PLAN_INCOMPLETE",
+            "2": "PASS"
+          }
+        },
+        "H4": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "LOGICAL_PLAN_INCOMPLETE",
+            "2": "PASS"
+          }
+        },
+        "M1": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "M2": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "N1": {
+          "verdict": "STABLE_UNSUPPORTED",
+          "runs": {
+            "1": "UNSUPPORTED_CORRECT",
+            "2": "UNSUPPORTED_CORRECT"
+          }
+        },
+        "N2": {
+          "verdict": "STABLE_UNSUPPORTED",
+          "runs": {
+            "1": "UNSUPPORTED_CORRECT",
+            "2": "UNSUPPORTED_CORRECT"
+          }
+        },
+        "R1": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "R2": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "R3": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "R4": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "LOGICAL_PLAN_INCOMPLETE"
+          }
+        },
+        "R5": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "R6": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "LOGICAL_PLAN_INCOMPLETE"
+          }
+        },
+        "Z1": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "Z2": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "Z3": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "Z4": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "Z5": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "LOGICAL_PLAN_INCOMPLETE"
+          }
+        },
+        "Z6": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "LOGICAL_PLAN_INCOMPLETE",
+            "2": "PASS"
+          }
+        }
+      }
+    },
+    "holdout-isolated": {
+      "total_questions": 4,
+      "model_requests": 8,
+      "question_counts": {
+        "VARIABLE": 2,
+        "STABLE_PASS": 2
+      },
+      "request_counts": {
+        "LOGICAL_PLAN_INCOMPLETE": 2,
+        "PASS": 6
+      },
+      "questions": {
+        "S1": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "LOGICAL_PLAN_INCOMPLETE",
+            "2": "PASS"
+          }
+        },
+        "S2": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "LOGICAL_PLAN_INCOMPLETE",
+            "2": "PASS"
+          }
+        },
+        "S3": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "S4": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        }
+      }
+    },
+    "clarified": {
+      "total_questions": 28,
+      "model_requests": 56,
+      "question_counts": {
+        "STABLE_PASS": 19,
+        "VARIABLE": 4,
+        "FAILED_ALL_REPEATS": 3,
+        "STABLE_UNSUPPORTED": 2
+      },
+      "request_counts": {
+        "PASS": 42,
+        "LOGICAL_PLAN_INCOMPLETE": 8,
+        "RESULT_MISMATCH": 2,
+        "UNSUPPORTED_CORRECT": 4
+      },
+      "questions": {
+        "EXT500-009": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "EXT500-010": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "EXT500-011": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "EXT500-012": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "EXT500-037": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "LOGICAL_PLAN_INCOMPLETE",
+            "2": "PASS"
+          }
+        },
+        "EXT500-038": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "EXT500-039": {
+          "verdict": "FAILED_ALL_REPEATS",
+          "runs": {
+            "1": "RESULT_MISMATCH",
+            "2": "RESULT_MISMATCH"
+          }
+        },
+        "EXT500-040": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "H1": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "H2": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "H3": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "H4": {
+          "verdict": "FAILED_ALL_REPEATS",
+          "runs": {
+            "1": "LOGICAL_PLAN_INCOMPLETE",
+            "2": "LOGICAL_PLAN_INCOMPLETE"
+          }
+        },
+        "M1": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "LOGICAL_PLAN_INCOMPLETE",
+            "2": "PASS"
+          }
+        },
+        "M2": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "LOGICAL_PLAN_INCOMPLETE"
+          }
+        },
+        "N1": {
+          "verdict": "STABLE_UNSUPPORTED",
+          "runs": {
+            "1": "UNSUPPORTED_CORRECT",
+            "2": "UNSUPPORTED_CORRECT"
+          }
+        },
+        "N2": {
+          "verdict": "STABLE_UNSUPPORTED",
+          "runs": {
+            "1": "UNSUPPORTED_CORRECT",
+            "2": "UNSUPPORTED_CORRECT"
+          }
+        },
+        "R1": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "R2": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "R3": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "R4": {
+          "verdict": "FAILED_ALL_REPEATS",
+          "runs": {
+            "1": "LOGICAL_PLAN_INCOMPLETE",
+            "2": "LOGICAL_PLAN_INCOMPLETE"
+          }
+        },
+        "R5": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "R6": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "Z1": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "Z2": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "Z3": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "LOGICAL_PLAN_INCOMPLETE",
+            "2": "PASS"
+          }
+        },
+        "Z4": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "Z5": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "Z6": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        }
+      }
+    },
+    "final-holdout": {
+      "total_questions": 4,
+      "model_requests": 8,
+      "question_counts": {
+        "STABLE_PASS": 3,
+        "FAILED_ALL_REPEATS": 1
+      },
+      "request_counts": {
+        "PASS": 6,
+        "OUTPUT_CONTRACT_FAIL": 1,
+        "LOGICAL_PLAN_INCOMPLETE": 1
+      },
+      "questions": {
+        "T1": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "T2": {
+          "verdict": "FAILED_ALL_REPEATS",
+          "runs": {
+            "1": "OUTPUT_CONTRACT_FAIL",
+            "2": "LOGICAL_PLAN_INCOMPLETE"
+          }
+        },
+        "T3": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "T4": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        }
+      }
+    },
+    "holdout-final-version": {
+      "total_questions": 4,
+      "model_requests": 8,
+      "question_counts": {
+        "STABLE_PASS": 4
+      },
+      "request_counts": {
+        "PASS": 8
+      },
+      "questions": {
+        "S1": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "S2": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "S3": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "S4": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        }
+      }
+    },
+    "final-holdout-retained": {
+      "total_questions": 4,
+      "model_requests": 8,
+      "question_counts": {
+        "STABLE_PASS": 2,
+        "FAILED_ALL_REPEATS": 1,
+        "VARIABLE": 1
+      },
+      "request_counts": {
+        "PASS": 5,
+        "RUNTIME_FAIL": 2,
+        "LOGICAL_PLAN_INCOMPLETE": 1
+      },
+      "questions": {
+        "T1": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "T2": {
+          "verdict": "FAILED_ALL_REPEATS",
+          "runs": {
+            "1": "RUNTIME_FAIL",
+            "2": "RUNTIME_FAIL"
+          }
+        },
+        "T3": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "T4": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "LOGICAL_PLAN_INCOMPLETE"
+          }
+        }
+      }
+    },
+    "final-core": {
+      "total_questions": 28,
+      "model_requests": 56,
+      "question_counts": {
+        "VARIABLE": 7,
+        "STABLE_PASS": 16,
+        "FAILED_ALL_REPEATS": 3,
+        "STABLE_UNSUPPORTED": 2
+      },
+      "request_counts": {
+        "PASS": 39,
+        "LOGICAL_PLAN_INCOMPLETE": 11,
+        "UNSUPPORTED_CORRECT": 4,
+        "RESULT_MISMATCH": 1,
+        "OUTPUT_CONTRACT_FAIL": 1
+      },
+      "questions": {
+        "EXT500-009": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "LOGICAL_PLAN_INCOMPLETE"
+          }
+        },
+        "EXT500-010": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "EXT500-011": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "EXT500-012": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "EXT500-037": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "RESULT_MISMATCH"
+          }
+        },
+        "EXT500-038": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "EXT500-039": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "EXT500-040": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "H1": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "LOGICAL_PLAN_INCOMPLETE"
+          }
+        },
+        "H2": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "H3": {
+          "verdict": "FAILED_ALL_REPEATS",
+          "runs": {
+            "1": "LOGICAL_PLAN_INCOMPLETE",
+            "2": "LOGICAL_PLAN_INCOMPLETE"
+          }
+        },
+        "H4": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "LOGICAL_PLAN_INCOMPLETE",
+            "2": "PASS"
+          }
+        },
+        "M1": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "LOGICAL_PLAN_INCOMPLETE"
+          }
+        },
+        "M2": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "N1": {
+          "verdict": "STABLE_UNSUPPORTED",
+          "runs": {
+            "1": "UNSUPPORTED_CORRECT",
+            "2": "UNSUPPORTED_CORRECT"
+          }
+        },
+        "N2": {
+          "verdict": "STABLE_UNSUPPORTED",
+          "runs": {
+            "1": "UNSUPPORTED_CORRECT",
+            "2": "UNSUPPORTED_CORRECT"
+          }
+        },
+        "R1": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "R2": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "R3": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "R4": {
+          "verdict": "FAILED_ALL_REPEATS",
+          "runs": {
+            "1": "LOGICAL_PLAN_INCOMPLETE",
+            "2": "LOGICAL_PLAN_INCOMPLETE"
+          }
+        },
+        "R5": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "R6": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "LOGICAL_PLAN_INCOMPLETE"
+          }
+        },
+        "Z1": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "Z2": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "Z3": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "LOGICAL_PLAN_INCOMPLETE",
+            "2": "PASS"
+          }
+        },
+        "Z4": {
+          "verdict": "FAILED_ALL_REPEATS",
+          "runs": {
+            "1": "LOGICAL_PLAN_INCOMPLETE",
+            "2": "OUTPUT_CONTRACT_FAIL"
+          }
+        },
+        "Z5": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "Z6": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        }
+      }
+    },
+    "final-s": {
+      "total_questions": 4,
+      "model_requests": 8,
+      "question_counts": {
+        "STABLE_PASS": 4
+      },
+      "request_counts": {
+        "PASS": 8
+      },
+      "questions": {
+        "S1": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "S2": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "S3": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "S4": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        }
+      }
+    },
+    "final-t": {
+      "total_questions": 4,
+      "model_requests": 8,
+      "question_counts": {
+        "STABLE_PASS": 3,
+        "FAILED_ALL_REPEATS": 1
+      },
+      "request_counts": {
+        "PASS": 6,
+        "LOGICAL_PLAN_INCOMPLETE": 2
+      },
+      "questions": {
+        "T1": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "T2": {
+          "verdict": "FAILED_ALL_REPEATS",
+          "runs": {
+            "1": "LOGICAL_PLAN_INCOMPLETE",
+            "2": "LOGICAL_PLAN_INCOMPLETE"
+          }
+        },
+        "T3": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "T4": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        }
+      }
+    }
+  },
+  "final": {
+    "total_questions": 36,
+    "model_requests": 72,
+    "question_counts": {
+      "VARIABLE": 7,
+      "STABLE_PASS": 23,
+      "FAILED_ALL_REPEATS": 4,
+      "STABLE_UNSUPPORTED": 2
+    },
+    "request_counts": {
+      "PASS": 53,
+      "LOGICAL_PLAN_INCOMPLETE": 13,
+      "UNSUPPORTED_CORRECT": 4,
+      "RESULT_MISMATCH": 1,
+      "OUTPUT_CONTRACT_FAIL": 1
+    },
+    "questions": {
+      "EXT500-009": {
+        "verdict": "VARIABLE",
+        "runs": {
+          "1": "PASS",
+          "2": "LOGICAL_PLAN_INCOMPLETE"
+        }
+      },
+      "EXT500-010": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS"
+        }
+      },
+      "EXT500-011": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS"
+        }
+      },
+      "EXT500-012": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS"
+        }
+      },
+      "EXT500-037": {
+        "verdict": "VARIABLE",
+        "runs": {
+          "1": "PASS",
+          "2": "RESULT_MISMATCH"
+        }
+      },
+      "EXT500-038": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS"
+        }
+      },
+      "EXT500-039": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS"
+        }
+      },
+      "EXT500-040": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS"
+        }
+      },
+      "H1": {
+        "verdict": "VARIABLE",
+        "runs": {
+          "1": "PASS",
+          "2": "LOGICAL_PLAN_INCOMPLETE"
+        }
+      },
+      "H2": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS"
+        }
+      },
+      "H3": {
+        "verdict": "FAILED_ALL_REPEATS",
+        "runs": {
+          "1": "LOGICAL_PLAN_INCOMPLETE",
+          "2": "LOGICAL_PLAN_INCOMPLETE"
+        }
+      },
+      "H4": {
+        "verdict": "VARIABLE",
+        "runs": {
+          "1": "LOGICAL_PLAN_INCOMPLETE",
+          "2": "PASS"
+        }
+      },
+      "M1": {
+        "verdict": "VARIABLE",
+        "runs": {
+          "1": "PASS",
+          "2": "LOGICAL_PLAN_INCOMPLETE"
+        }
+      },
+      "M2": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS"
+        }
+      },
+      "N1": {
+        "verdict": "STABLE_UNSUPPORTED",
+        "runs": {
+          "1": "UNSUPPORTED_CORRECT",
+          "2": "UNSUPPORTED_CORRECT"
+        }
+      },
+      "N2": {
+        "verdict": "STABLE_UNSUPPORTED",
+        "runs": {
+          "1": "UNSUPPORTED_CORRECT",
+          "2": "UNSUPPORTED_CORRECT"
+        }
+      },
+      "R1": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS"
+        }
+      },
+      "R2": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS"
+        }
+      },
+      "R3": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS"
+        }
+      },
+      "R4": {
+        "verdict": "FAILED_ALL_REPEATS",
+        "runs": {
+          "1": "LOGICAL_PLAN_INCOMPLETE",
+          "2": "LOGICAL_PLAN_INCOMPLETE"
+        }
+      },
+      "R5": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS"
+        }
+      },
+      "R6": {
+        "verdict": "VARIABLE",
+        "runs": {
+          "1": "PASS",
+          "2": "LOGICAL_PLAN_INCOMPLETE"
+        }
+      },
+      "S1": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS"
+        }
+      },
+      "S2": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS"
+        }
+      },
+      "S3": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS"
+        }
+      },
+      "S4": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS"
+        }
+      },
+      "T1": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS"
+        }
+      },
+      "T2": {
+        "verdict": "FAILED_ALL_REPEATS",
+        "runs": {
+          "1": "LOGICAL_PLAN_INCOMPLETE",
+          "2": "LOGICAL_PLAN_INCOMPLETE"
+        }
+      },
+      "T3": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS"
+        }
+      },
+      "T4": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS"
+        }
+      },
+      "Z1": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS"
+        }
+      },
+      "Z2": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS"
+        }
+      },
+      "Z3": {
+        "verdict": "VARIABLE",
+        "runs": {
+          "1": "LOGICAL_PLAN_INCOMPLETE",
+          "2": "PASS"
+        }
+      },
+      "Z4": {
+        "verdict": "FAILED_ALL_REPEATS",
+        "runs": {
+          "1": "LOGICAL_PLAN_INCOMPLETE",
+          "2": "OUTPUT_CONTRACT_FAIL"
+        }
+      },
+      "Z5": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS"
+        }
+      },
+      "Z6": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS"
+        }
+      }
+    },
+    "accounting": {
+      "TOTAL_CORPUS": 36,
+      "REGISTERED": 36,
+      "PASS": 23,
+      "FAILED": 11,
+      "CAPABILITY_GAP": 0,
+      "UNSUPPORTED": 2,
+      "BLOCKED": 0,
+      "PENDING": 0
+    }
+  },
+  "retained_source_hashes": {
+    "inhouse/rag_core/ragkit/semantic_v2.py": "6bdbc44c75a9fa7393c44a872c5e139e42684ba304dcdbb7e93c2a4da5881908",
+    "inhouse/rag_core/ragkit/analytical_aggregate.py": "aecd99cfe64ec1526ab5640d47cc64ac92fbb8ee3832c23bbc8531f9251d961d",
+    "inhouse/rag_core/tests/qa500_linkage_eval.py": "7c3bbbd01ae23ee5d902d6811f2b2ad4af995b349f464cb5d73d15d7198dfb41",
+    "inhouse/rag_core/tests/qa500_stability_eval.py": "f5d0022045895ae1a88459c5ac5267d6cc9c614dde2659989deaf7fa613be324"
+  },
+  "final_failures": [
+    {
+      "id": "H3",
+      "repeat": 1,
+      "status": "LOGICAL_PLAN_INCOMPLETE",
+      "errors": [
+        "req_max_price: selection field not produced by aggregate; available=['date', 'max_price', 'unit']; req_min_price: selection field not produced by aggregate; available=['date', 'min_price', 'unit']"
+      ]
+    },
+    {
+      "id": "H4",
+      "repeat": 1,
+      "status": "LOGICAL_PLAN_INCOMPLETE",
+      "errors": [
+        "req_max_price: selection field not produced by aggregate; available=['date', 'max_price', 'unit']; req_min_price: selection field not produced by aggregate; available=['date', 'min_price', 'unit']"
+      ]
+    },
+    {
+      "id": "Z3",
+      "repeat": 1,
+      "status": "LOGICAL_PLAN_INCOMPLETE",
+      "errors": [
+        "req_max_price: selection field not produced by aggregate; available=['date', 'max_price', 'unit']; req_min_price: selection field not produced by aggregate; available=['date', 'min_price', 'unit']"
+      ]
+    },
+    {
+      "id": "Z4",
+      "repeat": 1,
+      "status": "LOGICAL_PLAN_INCOMPLETE",
+      "errors": [
+        "req_max_price: output_field names an aggregate result; use requested_outputs.aliases for presentation; req_min_price: output_field names an aggregate result; use requested_outputs.aliases for presentation"
+      ]
+    },
+    {
+      "id": "R4",
+      "repeat": 1,
+      "status": "LOGICAL_PLAN_INCOMPLETE",
+      "errors": [
+        "req_max_price: selection field not produced by aggregate; available=['date', 'max_price', 'unit']; req_min_price: selection field not produced by aggregate; available=['date', 'min_price', 'unit']; requested_output_field_unresolved: operation; available=['difference', 'left.date', 'left.max_price', 'left_value', 'right.date', 'right.min_price', 'right_value', 'unit']"
+      ]
+    },
+    {
+      "id": "EXT500-009",
+      "repeat": 2,
+      "status": "LOGICAL_PLAN_INCOMPLETE",
+      "errors": [
+        "req_nickel_obs_count: indicator selector required; do not substitute a default series for an unspecified metric"
+      ]
+    },
+    {
+      "id": "EXT500-037",
+      "repeat": 2,
+      "status": "RESULT_MISMATCH",
+      "errors": [
+        "independent_sql_difference"
+      ]
+    },
+    {
+      "id": "H1",
+      "repeat": 2,
+      "status": "LOGICAL_PLAN_INCOMPLETE",
+      "errors": [
+        "rel_monthly_stats: non-scalar comparison requires explicit join_key alignment; requested_output_field_unresolved: month; available=['left.avg_price', 'left.month', 'left_value', 'right.month', 'right.observation_count', 'right_value', 'side_by_side', 'unit']"
+      ]
+    },
+    {
+      "id": "H3",
+      "repeat": 2,
+      "status": "LOGICAL_PLAN_INCOMPLETE",
+      "errors": [
+        "req_max_price: selection field not produced by aggregate; available=['date', 'max_price', 'unit']; req_min_price: selection field not produced by aggregate; available=['date', 'min_price', 'unit']"
+      ]
+    },
+    {
+      "id": "M1",
+      "repeat": 2,
+      "status": "LOGICAL_PLAN_INCOMPLETE",
+      "errors": [
+        "requested_output_field_unresolved: observation_count; available=['avg_price', 'month']"
+      ]
+    },
+    {
+      "id": "Z4",
+      "repeat": 2,
+      "status": "OUTPUT_CONTRACT_FAIL",
+      "errors": [
+        "extremum_dates_missing_or_wrong"
+      ]
+    },
+    {
+      "id": "R4",
+      "repeat": 2,
+      "status": "LOGICAL_PLAN_INCOMPLETE",
+      "errors": [
+        "req_max_price: selection field not produced by aggregate; available=['date', 'max_price', 'unit']; req_min_price: selection field not produced by aggregate; available=['date', 'min_price', 'unit']"
+      ]
+    },
+    {
+      "id": "R6",
+      "repeat": 2,
+      "status": "LOGICAL_PLAN_INCOMPLETE",
+      "errors": [
+        "requested_output_field_unresolved: observation_count; available=['avg_import_value', 'country']"
+      ]
+    },
+    {
+      "id": "T2",
+      "repeat": 1,
+      "status": "LOGICAL_PLAN_INCOMPLETE",
+      "errors": [
+        "req_max_price: output_field names an aggregate result; use requested_outputs.aliases for presentation; req_min_price: output_field names an aggregate result; use requested_outputs.aliases for presentation"
+      ]
+    },
+    {
+      "id": "T2",
+      "repeat": 2,
+      "status": "LOGICAL_PLAN_INCOMPLETE",
+      "errors": [
+        "req_max_price: output_field names an aggregate result; use requested_outputs.aliases for presentation; req_min_price: output_field names an aggregate result; use requested_outputs.aliases for presentation"
+      ]
+    }
+  ],
+  "regression": {
+    "before": 1265,
+    "after": 1276,
+    "subtests": 687,
+    "fail": 0,
+    "existing_pass_to_fail": 0
+  },
+  "semantic_regex_added": 0,
+  "question_specific_production_branches_added": 0
+}

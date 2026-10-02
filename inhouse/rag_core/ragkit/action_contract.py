@@ -14,12 +14,12 @@ import os
 import re
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr, model_validator
 
 
 ActionId = Literal[
     "price.series", "price.compare", "price.verify_claim", "price.overview", "price.volatility_rank",
-    "inventory.latest",
+    "inventory.latest", "inventory.series",
     "trade.country_rank", "trade.price_cross_rank", "trade.monthly", "trade.concentration", "trade.hs_summary", "trade.indicator",
     "resource.rank", "resource.price_cross_rank", "resource.yoy", "mine.rank", "mine.profile", "indicator.series", "document.retrieve", "document.lookup", "document.facts.retrieve", "menu.navigate", "dataset.navigate",
     "diagnosis.rank", "diagnosis.series", "forecast.demand", "forecast.price", "forecast.quantity",
@@ -45,6 +45,60 @@ class Period(BaseModel):
     future_horizon: int | None = Field(default=None, ge=1, le=120)
     frequency: Literal["daily", "weekly", "monthly", "yearly"] | None = None
     explicit: bool = False
+
+
+class ForecastCapabilityInput(BaseModel):
+    """Typed input accepted by the existing ``forecast.price`` executor."""
+    model_config = ConfigDict(extra="forbid")
+    mineral: str = Field(min_length=1)
+    metric: Literal["price_forecast"] = "price_forecast"
+    period: Period
+    operation: Literal["next_month_value", "direction", "timeline", "compare_current"] = "timeline"
+
+    @model_validator(mode="after")
+    def validate_forecast_period(self):
+        if self.period.kind != "future_horizon":
+            raise ValueError("forecast period must be future_horizon")
+        if not self.period.future_horizon:
+            raise ValueError("forecast future_horizon is required")
+        if self.operation == "next_month_value" and self.period.future_horizon != 1:
+            raise ValueError("next_month_value requires future_horizon=1")
+        return self
+
+
+class IndicatorSeriesInput(BaseModel):
+    """Typed input/output selector for the existing ``indicator.series`` action."""
+    model_config = ConfigDict(extra="forbid")
+    indicator: Literal["supply_stability", "market_outlook", "composite_index"]
+    period: Period | None = None
+    variant: Literal["composite", "major_metals", "minor_metals"] | None = None
+    operation: Literal["latest_delta", "period_change", "period_extrema"] | None = None
+
+    @model_validator(mode="after")
+    def validate_indicator_contract(self):
+        if self.indicator == "composite_index":
+            if self.variant is None and self.operation is not None:
+                raise ValueError("composite indicator variant is required for an operation")
+            if self.operation == "latest_delta" and (self.period is None or self.period.kind != "latest"):
+                raise ValueError("latest_delta requires latest period")
+            if self.operation == "period_change" and (
+                self.period is None or self.period.kind not in {"trailing_months", "range"}
+            ):
+                raise ValueError("period_change requires trailing_months or range period")
+            if self.operation == "period_extrema" and (
+                self.period is None or self.period.kind != "calendar_year"
+            ):
+                raise ValueError("period_extrema requires calendar_year period")
+        return self
+
+
+class IndicatorSeriesRow(BaseModel):
+    """Canonical row exposed by ``indicator.series`` to downstream projection."""
+    model_config = ConfigDict(extra="allow")
+    indicator: str = Field(min_length=1)
+    value: float
+    date: str
+    unit: str | None = None
 
 
 class ActionSlots(BaseModel):
@@ -74,6 +128,9 @@ class ActionSlots(BaseModel):
     # DB-backed price criterion serial.  This is a typed source identifier,
     # not an intent selector; lowering passes it to the existing raw lookup.
     price_criterion_serial: int | None = Field(default=None, ge=1)
+    # Price criterion cardinality: default representative, one explicit
+    # criterion, or every valid mapped criterion for one mineral.
+    criterion_mode: Literal["REPRESENTATIVE", "EXPLICIT", "ALL"] = "REPRESENTATIVE"
     currency: str | None = None
     weight_unit: str | None = None
     # 단일 가격 시계열에서 renderer가 수행할 결정적 집계 의미다. 값이 없으면
@@ -103,6 +160,14 @@ class ActionSlots(BaseModel):
         "level", "first", "latest", "average", "sum", "count", "min", "max", "country_value"
     ] | None = None
     resource_country: str | None = None
+    resource_population: Literal["all"] | None = None
+
+    @model_validator(mode="after")
+    def validate_resource_population(self):
+        if self.resource_population == "all" and self.top_n is not None:
+            raise ValueError("resource_population_conflict: all and explicit top_n")
+        return self
+
     trade_scope: Literal["korea", "global"] | None = None
     # 특정국 의존도는 같은 광종·방향·기간의 전체 상대국 합계만 분모로 쓴다.
     # 한국 전체 품목·세계 전체 무역 같은 다른 모집단은 별도 원천 검증 없이는
@@ -114,8 +179,8 @@ class ActionSlots(BaseModel):
     dataset: Literal["supply_stability", "market_outlook"] | None = None
     requested_outputs: set[Literal["text", "table", "chart", "menu", "raw_data"]] = {"text"}
 
-IntentId = Literal["price_series", "price_compare", "price_claim", "trade_rank", "trade_price_cross_rank", "trade_monthly", "trade_hs", "trade_concentration", "trade_indicator", "resource_rank", "resource_price_cross_rank", "resource_yoy", "mine_rank", "mine_profile", "inventory_latest", "indicator", "document", "document_facts", "okf_lookup", "concept", "stockpile_methodology", "menu", "dataset", "diagnosis", "forecast_demand", "forecast_price", "forecast_quantity", "geopolitics_index", "geopolitics_articles", "off_topic"]
-INTENT_TO_ACTION = {"price_series":"price.series", "price_compare":"price.compare", "price_claim":"price.verify_claim", "trade_rank":"trade.country_rank", "trade_price_cross_rank":"trade.price_cross_rank", "trade_monthly":"trade.monthly", "trade_hs":"trade.hs_summary", "trade_concentration":"trade.concentration", "trade_indicator":"trade.indicator", "resource_rank":"resource.rank", "resource_price_cross_rank":"resource.price_cross_rank", "resource_yoy":"resource.yoy", "mine_rank":"mine.rank", "mine_profile":"mine.profile", "inventory_latest":"inventory.latest", "indicator":"indicator.series", "document":"document.retrieve", "document_facts":"document.facts.retrieve", "okf_lookup":"document.lookup", "concept":"document.retrieve", "stockpile_methodology":"stockpile.methodology", "menu":"menu.navigate", "dataset":"dataset.navigate", "diagnosis":"diagnosis.rank", "forecast_demand":"forecast.demand", "forecast_price":"forecast.price", "forecast_quantity":"forecast.quantity", "geopolitics_index":"geopolitics.index", "geopolitics_articles":"geopolitics.articles", "off_topic":"off_topic"}
+IntentId = Literal["price_series", "price_compare", "price_claim", "trade_rank", "trade_price_cross_rank", "trade_monthly", "trade_hs", "trade_concentration", "trade_indicator", "resource_rank", "resource_price_cross_rank", "resource_yoy", "mine_rank", "mine_profile", "inventory_latest", "inventory_series", "indicator", "document", "document_facts", "okf_lookup", "concept", "stockpile_methodology", "menu", "dataset", "diagnosis", "forecast_demand", "forecast_price", "forecast_quantity", "geopolitics_index", "geopolitics_articles", "off_topic"]
+INTENT_TO_ACTION = {"price_series":"price.series", "price_compare":"price.compare", "price_claim":"price.verify_claim", "trade_rank":"trade.country_rank", "trade_price_cross_rank":"trade.price_cross_rank", "trade_monthly":"trade.monthly", "trade_hs":"trade.hs_summary", "trade_concentration":"trade.concentration", "trade_indicator":"trade.indicator", "resource_rank":"resource.rank", "resource_price_cross_rank":"resource.price_cross_rank", "resource_yoy":"resource.yoy", "mine_rank":"mine.rank", "mine_profile":"mine.profile", "inventory_latest":"inventory.latest", "inventory_series":"inventory.series", "indicator":"indicator.series", "document":"document.retrieve", "document_facts":"document.facts.retrieve", "okf_lookup":"document.lookup", "concept":"document.retrieve", "stockpile_methodology":"stockpile.methodology", "menu":"menu.navigate", "dataset":"dataset.navigate", "diagnosis":"diagnosis.rank", "forecast_demand":"forecast.demand", "forecast_price":"forecast.price", "forecast_quantity":"forecast.quantity", "geopolitics_index":"geopolitics.index", "geopolitics_articles":"geopolitics.articles", "off_topic":"off_topic"}
 
 class IntentCall(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -169,6 +234,11 @@ class ActionPlan(BaseModel):
     complete: bool = True
     predecessor_source_unavailable: bool = False
     actions: list[ActionCall] = Field(min_length=1)
+    # Internal semantic snapshot for the AAST coverage boundary.  It is not
+    # serialized into the public ActionPlan contract and never selects an
+    # action; it preserves the already parsed WHAT for deterministic audit.
+    _semantic_requirements: list[dict[str, Any]] | None = PrivateAttr(default=None)
+    _semantic_resolution_error: str | None = PrivateAttr(default=None)
 
 
 class PlanAssessment(BaseModel):
@@ -180,7 +250,7 @@ class PlanAssessment(BaseModel):
 
 AVAILABLE = frozenset({
     "price.series", "price.compare", "price.verify_claim", "price.overview", "price.volatility_rank", "trade.country_rank", "trade.price_cross_rank", "trade.monthly",
-    "inventory.latest",
+    "inventory.latest", "inventory.series",
     "trade.concentration", "trade.hs_summary", "trade.indicator", "resource.rank", "resource.price_cross_rank", "resource.yoy", "mine.rank", "mine.profile", "indicator.series", "document.retrieve", "document.lookup", "document.facts.retrieve", "stockpile.methodology", "menu.navigate", "dataset.navigate",
     "forecast.price",
 })
@@ -189,7 +259,7 @@ AVAILABLE = frozenset({
 # 소유하므로 데이터 action과 섞지 않는다.
 COMPOSABLE_MULTI_ACTIONS = frozenset({
     "price.series", "price.compare", "price.verify_claim", "price.overview", "price.volatility_rank",
-    "inventory.latest",
+    "inventory.latest", "inventory.series",
     "trade.country_rank", "trade.monthly", "trade.concentration", "trade.hs_summary", "trade.indicator",
     "resource.rank", "resource.yoy", "mine.rank", "mine.profile", "indicator.series",
     "document.retrieve", "document.lookup", "stockpile.methodology",
@@ -214,7 +284,7 @@ UNAVAILABLE = frozenset({
 CURRENT_PERIOD_ENDS = frozenset({"latest", "current", "now", "현재", "오늘", "금일", "금일자"})
 REQUIRED: dict[str, tuple[str, ...]] = {
     "price.series": ("mineral",), "price.compare": ("minerals",), "price.verify_claim": ("mineral", "claimed_change_pct"), "price.volatility_rank": (),
-    "inventory.latest": ("mineral",),
+    "inventory.latest": ("mineral",), "inventory.series": ("mineral", "period"),
     "price.overview": ("strategic_price_groups",),
     "trade.country_rank": ("mineral", "metric"), "trade.price_cross_rank": ("partner_country", "metric"), "trade.monthly": (), "trade.concentration": ("mineral",), "trade.indicator": ("trade_metric",),
     "trade.hs_summary": ("hs_code",), "resource.rank": ("mineral", "metric"), "resource.price_cross_rank": ("metric",), "resource.yoy": ("mineral",),
@@ -227,7 +297,7 @@ REQUIRED: dict[str, tuple[str, ...]] = {
 ALLOWED_MULTI = frozenset({
     frozenset({"resource.rank"}), frozenset({"resource.yoy"}), frozenset({"mine.rank"}), frozenset({"price.compare"}), frozenset({"price.verify_claim"}),
     frozenset({"resource.rank", "trade.country_rank"}), frozenset({"trade.monthly"}),
-    frozenset({"trade.concentration"}),
+    frozenset({"trade.concentration"}), frozenset({"inventory.series"}),
     frozenset({"trade.country_rank"}),
     frozenset({"resource.rank", "trade.concentration"}),
     # 복수의 독립 source-first 문서 요구는 각각의 requirement ID와 출처를
@@ -347,7 +417,7 @@ JSON 외 텍스트를 출력하지 않는다."""
 
 INTENT_PLAN_PROMPT = """질문의 독립 정보요구를 빠짐없이 requirements IntentCall 목록으로 분해한 closed intent JSON을 출력한다.
 intent는 price_series, price_compare, price_claim, trade_rank, trade_price_cross_rank, trade_monthly, trade_hs,
-trade_concentration, trade_indicator, resource_rank, resource_price_cross_rank, resource_yoy, mine_rank, mine_profile, inventory_latest, indicator, document, document_facts, okf_lookup, concept, stockpile_methodology, menu, dataset, diagnosis, forecast_demand,
+trade_concentration, trade_indicator, resource_rank, resource_price_cross_rank, resource_yoy, mine_rank, mine_profile, inventory_latest, inventory_series, indicator, document, document_facts, okf_lookup, concept, stockpile_methodology, menu, dataset, diagnosis, forecast_demand,
 forecast_price, forecast_quantity, geopolitics_index, geopolitics_articles, off_topic 중 하나다.
 핵심광물 공급망·HHI·수입의존도·가격변동성의 정의와 개념은 concept이며 document.retrieve로
 직접 출처를 찾는다. off_topic은 날씨·음식처럼 광물·공급망과 무관한 주제에만 사용한다.
@@ -1145,6 +1215,8 @@ def extract_action_plan(
     if mode == "shadow":
         legacy_plan = _extract_action_plan_legacy(message, llm, selected_history, allow_llm=True)
         result = parse_and_resolve(message, llm, selected_history, semantic_context=semantic_context)
+        if result.semantic_plan is not None:
+            legacy_plan._semantic_requirements = [item.model_dump(mode="json", exclude_none=True) for item in result.semantic_plan.requirements]
         record_shadow_audit(message, legacy_plan, result)
         # V2 is an independent observation path.  It never supplies or
         # replaces the production ActionPlan returned by this function.
@@ -1166,8 +1238,21 @@ def extract_action_plan(
         return bounded_dependency_plan
     result = parse_and_resolve(message, llm, selected_history, semantic_context=semantic_context)
     if result.action_plan is not None:
+        if result.semantic_plan is not None:
+            result.action_plan._semantic_requirements = [item.model_dump(mode="json", exclude_none=True) for item in result.semantic_plan.requirements]
         return result.action_plan
-    return _extract_action_plan_legacy(message, llm, selected_history, allow_llm=True)
+    legacy_plan = _extract_action_plan_legacy(message, llm, selected_history, allow_llm=True)
+    # Preserve a successfully structured semantic snapshot even when its
+    # lowering/validation failed.  The direct-capability boundary must be
+    # able to detect a partial legacy plan and escalate it to AAST rather than
+    # executing only the branch that happened to lower successfully.
+    if result.semantic_plan is not None:
+        legacy_plan._semantic_requirements = [
+            item.model_dump(mode="json", exclude_none=True)
+            for item in result.semantic_plan.requirements
+        ]
+    legacy_plan._semantic_resolution_error = result.reason
+    return legacy_plan
 
 
 def extract_legacy_action_plan(

@@ -15,12 +15,113 @@ sse_starlette.EventSourceResponse가 자체적으로 SSE 프레이밍을 하므�
 2026-08-13: 토큰 스트림 → SSE 이벤트 조립 로직(멀티턴 프롬프트·인용강제·
 표/차트 다중매체 판단 포함) 자체는 rag.ragkit.chatbot.chat_turn()으로
 이관했다(routers/chat.py가 그 async generator를 소비해 이 sse_event()로
-감싼다) — 이 모듈에는 순수 프레이밍 함수만 남는다(구 stream_answer()는
-chat_turn()이 대체해 제거)."""
+감싼다). 요청별 취소 브리지는 SSE 종료를 worker의 async 실행까지 전달한다.
+구 stream_answer()는 chat_turn()이 대체해 제거했다."""
 from __future__ import annotations
 
 import json
 import re
+import asyncio
+import threading
+from contextlib import contextmanager
+from contextvars import ContextVar
+
+import anyio
+from sse_starlette.sse import EventSourceResponse
+
+
+class ChatEventSourceResponse(EventSourceResponse):
+    """Close a suspended body too (disconnect during send, not only next())."""
+
+    def __init__(self, iterator, **kwargs):
+        super().__init__(cancellable_stream(iterator), **kwargs)
+
+    async def __call__(self, scope, receive, send):
+        try:
+            await super().__call__(scope, receive, send)
+        finally:
+            with anyio.CancelScope(shield=True):
+                await self.body_iterator.aclose()
+
+
+class StreamCancellation:
+    """Request-local cancellation across SSE worker and private asyncio loop."""
+
+    def __init__(self):
+        self.stopped = threading.Event()
+        self._lock = threading.Lock()
+        self._active = None
+
+    def check(self):
+        if self.stopped.is_set():
+            raise asyncio.CancelledError
+
+    def cancel(self):
+        with self._lock:
+            self.stopped.set()
+            if self._active is not None:
+                loop, task = self._active
+                loop.call_soon_threadsafe(task.cancel)
+
+    @contextmanager
+    def running(self, loop, task):
+        with self._lock:
+            self._active = (loop, task)
+            if self.stopped.is_set():
+                task.cancel()
+        try:
+            yield
+        finally:
+            with self._lock:
+                self._active = None
+
+
+stream_cancellation = ContextVar('chat_stream_cancellation', default=None)
+
+
+async def cancellable_stream(iterator):
+    """Retain synchronous routing, but let SSE disconnect cancel its async work.
+
+    Generator close must run in the worker owning next(), never concurrently.
+    Blocking synchronous I/O cannot be killed; its worker closes on return.
+    """
+    cancellation = StreamCancellation()
+    iterator = iter(iterator)
+    owner = threading.Lock()
+    exhausted = object()
+
+    def advance():
+        with owner:
+            token = stream_cancellation.set(cancellation)
+            try:
+                cancellation.check()
+                return next(iterator, exhausted)
+            finally:
+                try:
+                    if cancellation.stopped.is_set():
+                        iterator.close()
+                finally:
+                    stream_cancellation.reset(token)
+
+    def close_if_idle():
+        if owner.acquire(blocking=False):
+            try:
+                iterator.close()
+            finally:
+                owner.release()
+
+    try:
+        while True:
+            event = await anyio.to_thread.run_sync(advance, abandon_on_cancel=True)
+            if event is exhausted:
+                return
+            yield event
+    finally:
+        cancellation.cancel()
+        # If next() is active, its finally owns closing. Otherwise close a
+        # suspended generator, including its trace and session lock, here.
+        with anyio.CancelScope(shield=True):
+            await anyio.to_thread.run_sync(close_if_idle)
 
 
 def sse_event(data: dict, event: str | None = None) -> dict:

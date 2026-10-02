@@ -8,12 +8,36 @@ from inhouse.rag_core.ragkit.action_results import ActionResult, RetrievalResult
 from inhouse.rag_core.ragkit.history_context import ConversationContext, Turn, UserUtterance
 from inhouse.rag_core.ragkit.pipe_runtime import ExecutionResult, ResultStatus, TypedResult
 from inhouse.rag_core.ragkit.semantic_ir import InputRef, Operator, RequirementNode, SemanticProgram, ValueType
+from inhouse.rag_core.ragkit.aast_coverage import CoverageReport, CoverageViolation
 from inhouse.rag_core.retrieval.evidence import Evidence
 
 
 class LiveMultiHopBridgeTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         live_multihop.clear_semantic_cache()
+
+    def test_trade_rank_total_column_is_normalized_to_declared_measure(self):
+        rows = live_multihop._canonicalize_trade_rank_rows(
+            [{"country": "중국", "total(수입금액합계(USD))": 12.5}],
+            "import_amount",
+        )
+        self.assertEqual(rows[0]["import_amount"], 12.5)
+        self.assertEqual(rows[0]["total(수입금액합계(USD))"], 12.5)
+
+    def test_indicator_rows_normalize_source_date_to_canonical_date(self):
+        action = SimpleNamespace(slots=SimpleNamespace(indicator="composite_index"))
+        rows = live_multihop._canonical_indicator_rows(
+            [{"crtr_ymd": "20261001", "indx": "123.4"}], action
+        )
+        self.assertEqual(rows[0]["date"], "2026-10-01")
+        self.assertEqual(rows[0]["value"], 123.4)
+
+    def test_trade_rank_does_not_guess_from_multiple_total_columns(self):
+        rows = live_multihop._canonicalize_trade_rank_rows(
+            [{"country": "중국", "total(import)": 12.5, "total(weight)": 2.0}],
+            "import_amount",
+        )
+        self.assertNotIn("import_amount", rows[0])
 
     def test_history_alias_is_materialized_from_latest_typed_root(self):
         typed = TypedResult.success(ValueType.MINERAL_SET, [{"광종": "니켈"}], entity=("니켈",))
@@ -76,6 +100,29 @@ class LiveMultiHopBridgeTests(unittest.IsolatedAsyncioTestCase):
         })
 
         self.assertEqual(program.roots, ("answer",))
+
+    def test_bounded_repair_promotes_trade_series_to_country_rank(self):
+        payload = {
+            "nodes": [
+                {"node_id": "imports", "operator": "retrieve", "inputs": [],
+                 "args": {"domain": "trade", "metric": "import_value", "flow": "import", "scope": "KR", "mineral": "리튬"}},
+                {"node_id": "rank", "operator": "rank", "inputs": [{"node_id": "imports"}],
+                 "args": {"field": "import_value"}},
+            ],
+            "roots": ["rank"],
+        }
+        requirements = [{"requirement_id": "imports", "domain": "trade",
+                         "action_id": "trade.country_rank", "metric": "country_rank",
+                         "scope": "KR", "mineral": "리튬"}]
+        report = live_multihop.validate_aast(requirements, live_multihop.SemanticProgram.from_dict(payload))
+        self.assertFalse(report.valid)
+        repaired = live_multihop._deterministic_coverage_repair(payload, report, requirements)
+        self.assertIsNotNone(repaired)
+        retrieve = next(node for node in repaired.nodes if node.node_id == "imports")
+        rank = next(node for node in repaired.nodes if node.node_id == "rank")
+        self.assertEqual(retrieve.args["metric"], "import_amount")
+        self.assertEqual(retrieve.args["operation"], "country_rank")
+        self.assertEqual(rank.args["field"], "import_amount")
 
     def test_ast_rejects_downstream_filter_field_missing_from_upstream(self):
         with self.assertRaisesRegex(ValueError, "ast_incomplete:.*import"):
@@ -202,6 +249,117 @@ class LiveMultiHopBridgeTests(unittest.IsolatedAsyncioTestCase):
         })
         self.assertEqual(program.completeness_issues(), ())
 
+    def test_trade_scope_filter_is_bound_to_query_input_and_share_output_capability(self):
+        payload = {
+            "nodes": [
+                {"node_id": "imports", "operator": "retrieve",
+                 "args": {"domain": "trade", "metric": "import_value", "mineral": "lithium"}},
+                {"node_id": "scope", "operator": "filter", "inputs": [{"node_id": "imports"}],
+                 "args": {"predicate": {"field": "reporter_country", "operator": "equals", "value": "South Korea"}}},
+                {"node_id": "top", "operator": "top_k", "inputs": [{"node_id": "scope"}],
+                 "args": {"top_n": 10}},
+                {"node_id": "table", "operator": "project", "inputs": [{"node_id": "top"}],
+                 "args": {"fields": ["country", "value", "import_share"],
+                          "aliases": {"country": "country", "value": "value", "import_share": "import_share"}}},
+            ],
+            "roots": ["table"],
+        }
+        normalized = live_multihop._normalize_relation_contract(payload)
+        self.assertNotIn("scope", {node["node_id"] for node in normalized["nodes"]})
+        retrieve = next(node for node in normalized["nodes"] if node["node_id"] == "imports")
+        self.assertEqual(retrieve["args"]["reporter_country"], "South Korea")
+        self.assertEqual(retrieve["args"]["metric"], "import_share")
+        program = SemanticProgram.from_dict(normalized)
+        self.assertEqual(program.completeness_issues(), ())
+        self.assertEqual(live_multihop._action_id(program.nodes[0]), "trade.country_rank")
+
+    def test_resource_yoy_graph_uses_existing_typed_capability(self):
+        payload = {
+            "nodes": [
+                {"node_id": "production", "operator": "retrieve",
+                 "args": {"domain": "resource", "metric": "production_volume",
+                          "mineral": "니켈"}},
+                {"node_id": "yoy", "operator": "calculate",
+                 "inputs": [{"node_id": "production"}],
+                 "args": {"calculation": "yoy"}},
+                {"node_id": "project", "operator": "project",
+                 "inputs": [{"node_id": "yoy"}],
+                 "args": {"fields": ["year", "value"]}},
+            ],
+            "roots": ["project"],
+        }
+        normalized = live_multihop._normalize_relation_contract(payload)
+        ids = {node["node_id"] for node in normalized["nodes"]}
+        self.assertNotIn("yoy", ids)
+        resource = next(node for node in normalized["nodes"] if node["node_id"] == "production")
+        self.assertEqual(resource["args"]["calculation"], "yoy")
+        resource_node = RequirementNode(
+            resource["node_id"], Operator.RETRIEVE, args=resource["args"],
+        )
+        self.assertEqual(live_multihop._action_id(resource_node), "resource.yoy")
+        project = next(node for node in normalized["nodes"] if node["node_id"] == "project")
+        self.assertEqual(project["inputs"][0]["node_id"], "production")
+
+    def test_resource_yoy_normalizes_through_presentation_projection(self):
+        normalized = live_multihop._normalize_relation_contract({
+            "nodes": [
+                {"node_id": "production", "operator": "retrieve",
+                 "args": {"domain": "resource", "metric": "production_volume",
+                          "mineral": "니켈"}},
+                {"node_id": "base", "operator": "project",
+                 "inputs": [{"node_id": "production"}],
+                 "args": {"fields": ["year", "production_volume", "value"]}},
+                {"node_id": "yoy", "operator": "calculate",
+                 "inputs": [{"node_id": "base"}],
+                 "args": {"calculation": "yoy"}},
+                {"node_id": "result", "operator": "project",
+                 "inputs": [{"node_id": "yoy"}],
+                 "args": {"fields": ["year", "value"]}},
+            ],
+            "roots": ["result"],
+        })
+        ids = {node["node_id"] for node in normalized["nodes"]}
+        self.assertNotIn("base", ids)
+        self.assertNotIn("yoy", ids)
+        self.assertEqual(next(node for node in normalized["nodes"] if node["node_id"] == "result")["inputs"][0]["node_id"], "production")
+        resource = next(node for node in normalized["nodes"] if node["node_id"] == "production")
+        self.assertEqual(resource["args"]["calculation"], "yoy")
+
+    def test_scope_repair_preserves_typed_trade_dimension(self):
+        program = {
+            "nodes": [{"node_id": "imports", "operator": "retrieve",
+                       "args": {"domain": "trade", "metric": "import_amount",
+                                "flow": "import", "mineral": "리튬"}}],
+            "roots": ["imports"],
+        }
+        repaired = live_multihop._deterministic_coverage_repair(
+            program,
+            CoverageReport(False, (CoverageViolation(
+                "ENTITY_PRESERVATION_FAILED", "required_scope=KR, planned=['global']",
+                requirement_id="requirement_1"),)),
+            [{"domain": "trade", "metric": "country_rank", "scope": "KR"}],
+        )
+        self.assertIsNotNone(repaired)
+        self.assertEqual(repaired.nodes[0].args["scope"], "KR")
+        self.assertNotIn("partner_country", repaired.nodes[0].args)
+
+    def test_trade_country_rank_preserves_export_metric_contract(self):
+        normalized = live_multihop._normalize_relation_contract({
+            "nodes": [{
+                "node_id": "exports", "operator": "retrieve",
+                "args": {"domain": "trade", "flow": "export",
+                         "metric": "country_rank", "mineral": "코발트"},
+            }],
+            "roots": ["exports"],
+        })
+        node = normalized["nodes"][0]
+        self.assertEqual(node["args"]["metric"], "export_amount")
+        self.assertEqual(node["args"]["operation"], "country_rank")
+        self.assertEqual(live_multihop._action_id(RequirementNode(
+            "exports", Operator.RETRIEVE, args=node["args"],
+        )), "trade.country_rank")
+        self.assertIn("export_share", live_multihop._METRIC_FIELDS["country_rank"])
+
     def test_concentration_metric_uses_existing_concentration_capability(self):
         node = RequirementNode(
             "concentration", Operator.RETRIEVE,
@@ -231,6 +389,132 @@ class LiveMultiHopBridgeTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaisesRegex(ValueError, "forecast period"):
             live_multihop._action_slots(node, mineral="nickel")
 
+    def test_compare_infers_fields_through_project_and_yoy(self):
+        normalized = live_multihop._normalize_relation_contract({
+            "nodes": [
+                {"node_id": "price", "operator": "retrieve",
+                 "args": {"domain": "price", "metric": "price", "mineral": "니켈"}},
+                {"node_id": "price_view", "operator": "project",
+                 "inputs": [{"node_id": "price"}], "args": {"fields": ["date", "value"]}},
+                {"node_id": "production", "operator": "retrieve",
+                 "args": {"domain": "resource", "metric": "production_volume", "mineral": "니켈"}},
+                {"node_id": "yoy", "operator": "calculate",
+                 "inputs": [{"node_id": "production"}], "args": {"calculation": "yoy"}},
+                {"node_id": "compare", "operator": "compare",
+                 "inputs": [{"node_id": "price_view"}, {"node_id": "yoy"}],
+                 "args": {"operation": "side_by_side"}},
+            ], "roots": ["compare"],
+        })
+        compare = next(node for node in normalized["nodes"] if node["node_id"] == "compare")
+        self.assertEqual(compare["args"]["left_field"], "value")
+        self.assertEqual(compare["args"]["right_field"], "change_pct")
+
+    def test_forecast_metric_is_restored_from_typed_requirement_only(self):
+        normalized = live_multihop._normalize_relation_contract({
+            "nodes": [{"node_id": "forecast", "operator": "retrieve",
+                       "args": {"domain": "price", "mineral": "니켈",
+                                "period": {"kind": "future_horizon", "future_horizon": 1},
+                                "output": "time_series"}}],
+            "roots": ["forecast"],
+        }, [{"domain": "price", "metric": "price_forecast", "mineral": "니켈",
+             "period": {"kind": "future_horizon", "future_horizon": 1}}])
+        self.assertEqual(normalized["nodes"][0]["args"]["metric"], "price_forecast")
+
+    def test_historical_series_is_not_rewritten_as_forecast(self):
+        normalized = live_multihop._normalize_relation_contract({
+            "nodes": [{"node_id": "history", "operator": "retrieve",
+                       "args": {"domain": "price", "mineral": "니켈",
+                                "period": {"kind": "trailing_months", "trailing_months": 6},
+                                "output": "time_series"}}],
+            "roots": ["history"],
+        }, [{"domain": "price", "metric": "price_forecast", "mineral": "니켈",
+             "period": {"kind": "future_horizon", "future_horizon": 1}}])
+        self.assertNotIn("metric", normalized["nodes"][0]["args"])
+
+    def test_compare_uses_forecast_predicted_price_field(self):
+        normalized = live_multihop._normalize_relation_contract({
+            "nodes": [
+                {"node_id": "history", "operator": "retrieve",
+                 "args": {"domain": "price", "metric": "price", "mineral": "니켈",
+                          "period": {"kind": "trailing_months", "trailing_months": 6}}},
+                {"node_id": "forecast", "operator": "retrieve",
+                 "args": {"domain": "price", "metric": "price_forecast", "mineral": "니켈",
+                          "period": {"kind": "future_horizon", "future_horizon": 1}}},
+                {"node_id": "compare", "operator": "compare",
+                 "inputs": [{"node_id": "history"}, {"node_id": "forecast"}],
+                 "args": {"operation": "side_by_side", "left_field": "value", "right_field": "value"}},
+            ], "roots": ["compare"],
+        })
+        compare = next(node for node in normalized["nodes"] if node["node_id"] == "compare")
+        self.assertEqual(compare["args"]["right_field"], "predicted_price")
+
+    def test_historical_forecast_join_normalizes_to_temporal_continuation(self):
+        normalized = live_multihop._normalize_relation_contract({
+            "nodes": [
+                {"node_id": "history", "operator": "retrieve",
+                 "args": {"domain": "price", "metric": "price", "mineral": "니켈",
+                          "period": {"kind": "trailing_months", "trailing_months": 6}}},
+                {"node_id": "forecast", "operator": "retrieve",
+                 "args": {"domain": "price", "metric": "price_forecast", "mineral": "니켈",
+                          "period": {"kind": "future_horizon", "future_horizon": 1}}},
+                {"node_id": "joined", "operator": "join",
+                 "inputs": [{"node_id": "history"}, {"node_id": "forecast"}],
+                 "args": {"join_key": ["date"], "how": "full"}},
+            ], "roots": ["joined"],
+        }, [
+            {"domain": "price", "metric": "price_series", "mineral": "니켈",
+             "period": {"kind": "trailing_months", "trailing_months": 6}},
+            {"domain": "price", "metric": "price_forecast", "mineral": "니켈",
+             "period": {"kind": "future_horizon", "future_horizon": 1}},
+        ])
+        joined = next(node for node in normalized["nodes"] if node["node_id"] == "joined")
+        self.assertEqual(joined["operator"], "compare")
+        self.assertEqual(joined["args"]["operation"], "temporal_continuation")
+
+    def test_historical_forecast_side_by_side_compare_normalizes_to_continuation(self):
+        normalized = live_multihop._normalize_relation_contract({
+            "nodes": [
+                {"node_id": "history", "operator": "retrieve",
+                 "args": {"domain": "price", "metric": "price", "mineral": "니켈",
+                          "period": {"kind": "trailing_months", "trailing_months": 6}}},
+                {"node_id": "forecast", "operator": "retrieve",
+                 "args": {"domain": "price", "metric": "price_forecast", "mineral": "니켈",
+                          "period": {"kind": "future_horizon", "future_horizon": 1}}},
+                {"node_id": "combined", "operator": "compare",
+                 "inputs": [{"node_id": "history"}, {"node_id": "forecast"}],
+                 "args": {"operation": "side_by_side"}},
+            ], "roots": ["combined"],
+        }, [
+            {"domain": "price", "metric": "price_series", "mineral": "니켈",
+             "period": {"kind": "trailing_months", "trailing_months": 6}},
+            {"domain": "price", "metric": "price_forecast", "mineral": "니켈",
+             "period": {"kind": "future_horizon", "future_horizon": 1}},
+        ])
+        combined = next(node for node in normalized["nodes"] if node["node_id"] == "combined")
+        self.assertEqual(combined["args"]["operation"], "temporal_continuation")
+
+    def test_explicit_comparison_is_not_normalized_to_continuation(self):
+        normalized = live_multihop._normalize_relation_contract({
+            "nodes": [
+                {"node_id": "history", "operator": "retrieve",
+                 "args": {"domain": "price", "metric": "price", "mineral": "니켈",
+                          "period": {"kind": "trailing_months", "trailing_months": 6}}},
+                {"node_id": "forecast", "operator": "retrieve",
+                 "args": {"domain": "price", "metric": "price_forecast", "mineral": "니켈",
+                          "period": {"kind": "future_horizon", "future_horizon": 1}}},
+                {"node_id": "combined", "operator": "compare",
+                 "inputs": [{"node_id": "history"}, {"node_id": "forecast"}],
+                 "args": {"operation": "side_by_side"}},
+            ], "roots": ["combined"],
+        }, [
+            {"domain": "price", "metric": "price_series", "mineral": "니켈",
+             "period": {"kind": "trailing_months", "trailing_months": 6},
+             "comparison_operation": "same_period"},
+            {"domain": "price", "metric": "price_forecast", "mineral": "니켈",
+             "period": {"kind": "future_horizon", "future_horizon": 1}},
+        ])
+        combined = next(node for node in normalized["nodes"] if node["node_id"] == "combined")
+        self.assertEqual(combined["args"]["operation"], "side_by_side")
     def test_indicator_boundary_preserves_selector_and_period(self):
         node = RequirementNode(
             "indicator", Operator.RETRIEVE,

@@ -1,0 +1,18 @@
+data: {"session_id": "1f23eadd-170c-4b33-96c1-8464de08e23e"}
+
+event: status
+data: {"stage": 1, "label": "질문 조건 확인"}
+
+event: status
+data: {"stage": 3, "label": "데이터 분석 중", "status": "데이터 분석 중"}
+
+event: status
+data: {"stage": 4, "label": "답변 생성 중"}
+
+data: {"delta": "| mineral | value | unit | output | reason | status |\n| --- | --- | --- | --- | --- | --- |\n| 망간 | 945.37 | USD/톤 | latest_value | None | success |\n| 크롬 | 2162.91 | USD/톤 | latest_value | None | success |\n| 티타늄 | 7305.68 | USD/톤 | latest_value | None | success |\n| 안티모니 | 17286.85 | USD/톤 | latest_value | None | success |\n| 몰리브덴 | 16474.73 | USD/톤 | latest_value | None | success |\n| 니오븀 | 46445.9 | USD/톤 | latest_value | None | success |\n| 네오디뮴 | 91.32 | USD/kg | latest_value | None | success |"}
+
+event: table
+data: {"schema_version": 1, "block_id": "multihop-table", "columns": ["mineral", "value", "unit", "output", "reason", "status"], "rows": [["망간", "945.37", "USD/톤", "latest_value", "None", "success"], ["크롬", "2162.91", "USD/톤", "latest_value", "None", "success"], ["티타늄", "7305.68", "USD/톤", "latest_value", "None", "success"], ["안티모니", "17286.85", "USD/톤", "latest_value", "None", "success"], ["몰리브덴", "16474.73", "USD/톤", "latest_value", "None", "success"], ["니오븀", "46445.9", "USD/톤", "latest_value", "None", "success"], ["네오디뮴", "91.32", "USD/kg", "latest_value", "None", "success"]], "columns_meta": [{"key": "mineral", "label": "mineral", "display": "mineral", "type": "string", "unit": null}, {"key": "value", "label": "value", "display": "value", "type": "number", "unit": null}, {"key": "unit", "label": "unit", "display": "unit", "type": "string", "unit": null}, {"key": "output", "label": "output", "display": "output", "type": "string", "unit": null}, {"key": "reason", "label": "reason", "display": "reason", "type": "string", "unit": null}, {"key": "status", "label": "status", "display": "status", "type": "string", "unit": null}], "rows_typed": [["망간", 945.37, "USD/톤", "latest_value", null, "success"], ["크롬", 2162.91, "USD/톤", "latest_value", null, "success"], ["티타늄", 7305.68, "USD/톤", "latest_value", null, "success"], ["안티모니", 17286.85, "USD/톤", "latest_value", null, "success"], ["몰리브덴", 16474.73, "USD/톤", "latest_value", null, "success"], ["니오븀", 46445.9, "USD/톤", "latest_value", null, "success"], ["네오디뮴", 91.32, "USD/kg", "latest_value", null, "success"]], "markdown": "| mineral | value | unit | output | reason | status |\n| --- | --- | --- | --- | --- | --- |\n| 망간 | 945.37 | USD/톤 | latest_value | None | success |\n| 크롬 | 2162.91 | USD/톤 | latest_value | None | success |\n| 티타늄 | 7305.68 | USD/톤 | latest_value | None | success |\n| 안티모니 | 17286.85 | USD/톤 | latest_value | None | success |\n| 몰리브덴 | 16474.73 | USD/톤 | latest_value | None | success |\n| 니오븀 | 46445.9 | USD/톤 | latest_value | None | success |\n| 네오디뮴 | 91.32 | USD/kg | latest_value | None | success |", "chart_hint": {"recommended": "bar", "alternatives": ["pie"], "reason": "날짜열 없음 — mineral별 비교"}, "meta": {"source_index": 1, "source": "public.KO_MNRL_PRC", "as_of": null, "unit": null, "time_aggregation": null, "menu_source": null, "hidden_columns": []}, "source_index": 1, "source": "public.KO_MNRL_PRC"}
+
+event: done
+data: {"done": true, "abstained": false, "citations": [{"index": 1, "source": "public.KO_MNRL_PRC"}], "bogus_citations": []}

@@ -35,6 +35,7 @@ class LLMResult:
     parsed: object = None
     usage: dict = field(default_factory=dict)
     model: str = ""
+    finish_reason: str | None = None
 
 
 class Extractor(Protocol):

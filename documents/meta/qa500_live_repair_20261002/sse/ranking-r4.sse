@@ -1,0 +1,21 @@
+data: {"session_id": "76d39655-a324-4dea-8c1d-3ce3b38f91d8"}
+
+event: status
+data: {"stage": 1, "label": "질문 조건 확인"}
+
+event: status
+data: {"stage": 3, "label": "데이터 분석 중", "status": "데이터 분석 중"}
+
+event: status
+data: {"stage": 4, "label": "답변 생성 중"}
+
+data: {"delta": "| country | production_volume |\n| --- | --- |\n| 페루 | 2740000.0 |\n| 러시아 | 1020000.0 |\n| 잠비아 | 823000.0 |\n| 카자흐스탄 | 724000.0 |\n| 멕시코 | 717000.0 |"}
+
+event: table
+data: {"schema_version": 1, "block_id": "multihop-table", "columns": ["country", "production_volume"], "rows": [["페루", "2740000.0"], ["러시아", "1020000.0"], ["잠비아", "823000.0"], ["카자흐스탄", "724000.0"], ["멕시코", "717000.0"]], "columns_meta": [{"key": "country", "label": "country", "display": "country", "type": "string", "unit": null}, {"key": "production_volume", "label": "production_volume", "display": "production_volume", "type": "number", "unit": null}], "rows_typed": [["페루", 2740000.0], ["러시아", 1020000.0], ["잠비아", 823000.0], ["카자흐스탄", 724000.0], ["멕시코", 717000.0]], "markdown": "| country | production_volume |\n| --- | --- |\n| 페루 | 2740000.0 |\n| 러시아 | 1020000.0 |\n| 잠비아 | 823000.0 |\n| 카자흐스탄 | 724000.0 |\n| 멕시코 | 717000.0 |", "chart_hint": {"recommended": "bar", "alternatives": ["pie"], "reason": "날짜열 없음 — country별 비교"}, "meta": {"source_index": 1, "source": "public.KO_RSRC_PRDCTN_QUTY", "as_of": null, "unit": "톤", "time_aggregation": null, "menu_source": null, "hidden_columns": []}, "source_index": 1, "source": "public.KO_RSRC_PRDCTN_QUTY"}
+
+event: chart
+data: {"schema_version": 1, "block_id": "multihop-chart", "data_ref": "multihop-table", "spec": {"kind": "bar", "alternatives": ["pie"], "x": "country", "x_type": "category", "x_format": null, "series": ["production_volume"], "group": null, "sort_x_ascending": false, "title": "production_volume", "y_unit": "톤", "as_of": null, "time_aggregation": null}, "meta": {"source_index": 1, "source": "public.KO_RSRC_PRDCTN_QUTY", "menu_source": null}, "source_index": 1, "source": "public.KO_RSRC_PRDCTN_QUTY"}
+
+event: done
+data: {"done": true, "abstained": false, "citations": [{"index": 1, "source": "public.KO_RSRC_PRDCTN_QUTY"}], "bogus_citations": []}

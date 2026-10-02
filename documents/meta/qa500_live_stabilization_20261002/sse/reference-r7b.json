@@ -1,0 +1,266 @@
+{
+  "id": "reference-r7b",
+  "port": 18012,
+  "request": {
+    "user_id": "qa-sse31",
+    "session_id": "056e6335-f511-4d71-89aa-558df152191a",
+    "message": "위 결과에서 최신 가격 조회에 성공한 광종만 알려줘",
+    "mode": "auto"
+  },
+  "started_at": "2026-10-02T02:40:50.685950+00:00",
+  "events": [
+    {
+      "event": "message",
+      "data": {
+        "session_id": "056e6335-f511-4d71-89aa-558df152191a"
+      },
+      "elapsed": 0.042
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 1,
+        "label": "질문 조건 확인"
+      },
+      "elapsed": 0.068
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 3,
+        "label": "데이터 분석 중",
+        "status": "데이터 분석 중"
+      },
+      "elapsed": 2.859
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 4,
+        "label": "답변 생성 중"
+      },
+      "elapsed": 2.86
+    },
+    {
+      "event": "message",
+      "data": {
+        "delta": "표시된 7개 항목 중 7개 처리 완료, 0개 처리 불가.\n"
+      },
+      "elapsed": 2.881
+    },
+    {
+      "event": "message",
+      "data": {
+        "delta": "| mineral | status | reason | output |\n| --- | --- | --- | --- |\n| 망간 | success | None | latest_value |\n| 크롬 | success | None | latest_value |\n| 티타늄 | success | None | latest_value |\n| 안티모니 | success | None | latest_value |\n| 몰리브덴 | success | None | latest_value |\n| 니오븀 | success | None | latest_value |\n| 네오디뮴 | success | None | latest_value |"
+      },
+      "elapsed": 2.881
+    },
+    {
+      "event": "table",
+      "data": {
+        "schema_version": 1,
+        "block_id": "multihop-table",
+        "columns": [
+          "mineral",
+          "status",
+          "reason",
+          "output"
+        ],
+        "rows": [
+          [
+            "망간",
+            "success",
+            "None",
+            "latest_value"
+          ],
+          [
+            "크롬",
+            "success",
+            "None",
+            "latest_value"
+          ],
+          [
+            "티타늄",
+            "success",
+            "None",
+            "latest_value"
+          ],
+          [
+            "안티모니",
+            "success",
+            "None",
+            "latest_value"
+          ],
+          [
+            "몰리브덴",
+            "success",
+            "None",
+            "latest_value"
+          ],
+          [
+            "니오븀",
+            "success",
+            "None",
+            "latest_value"
+          ],
+          [
+            "네오디뮴",
+            "success",
+            "None",
+            "latest_value"
+          ]
+        ],
+        "columns_meta": [
+          {
+            "key": "mineral",
+            "label": "mineral",
+            "display": "mineral",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "status",
+            "label": "status",
+            "display": "status",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "reason",
+            "label": "reason",
+            "display": "reason",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "output",
+            "label": "output",
+            "display": "output",
+            "type": "string",
+            "unit": null
+          }
+        ],
+        "rows_typed": [
+          [
+            "망간",
+            "success",
+            null,
+            "latest_value"
+          ],
+          [
+            "크롬",
+            "success",
+            null,
+            "latest_value"
+          ],
+          [
+            "티타늄",
+            "success",
+            null,
+            "latest_value"
+          ],
+          [
+            "안티모니",
+            "success",
+            null,
+            "latest_value"
+          ],
+          [
+            "몰리브덴",
+            "success",
+            null,
+            "latest_value"
+          ],
+          [
+            "니오븀",
+            "success",
+            null,
+            "latest_value"
+          ],
+          [
+            "네오디뮴",
+            "success",
+            null,
+            "latest_value"
+          ]
+        ],
+        "markdown": "| mineral | status | reason | output |\n| --- | --- | --- | --- |\n| 망간 | success | None | latest_value |\n| 크롬 | success | None | latest_value |\n| 티타늄 | success | None | latest_value |\n| 안티모니 | success | None | latest_value |\n| 몰리브덴 | success | None | latest_value |\n| 니오븀 | success | None | latest_value |\n| 네오디뮴 | success | None | latest_value |",
+        "chart_hint": {
+          "recommended": null,
+          "alternatives": [],
+          "reason": "값이 갈리는 숫자 계열 없음"
+        },
+        "meta": {
+          "source_index": 1,
+          "source": "PageIndex 파생 사실 · 희소금속 월간동향",
+          "as_of": null,
+          "unit": null,
+          "time_aggregation": null,
+          "menu_source": null,
+          "hidden_columns": []
+        },
+        "source_index": 1,
+        "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+      },
+      "elapsed": 2.881
+    },
+    {
+      "event": "done",
+      "data": {
+        "done": true,
+        "abstained": false,
+        "citations": [
+          {
+            "index": 1,
+            "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+          },
+          {
+            "index": 2,
+            "source": "public.KO_MNRL_PRC"
+          }
+        ],
+        "bogus_citations": []
+      },
+      "elapsed": 2.882
+    }
+  ],
+  "http_status": 200,
+  "content_type": "text/event-stream; charset=utf-8",
+  "elapsed": 2.882,
+  "text": "표시된 7개 항목 중 7개 처리 완료, 0개 처리 불가.\n| mineral | status | reason | output |\n| --- | --- | --- | --- |\n| 망간 | success | None | latest_value |\n| 크롬 | success | None | latest_value |\n| 티타늄 | success | None | latest_value |\n| 안티모니 | success | None | latest_value |\n| 몰리브덴 | success | None | latest_value |\n| 니오븀 | success | None | latest_value |\n| 네오디뮴 | success | None | latest_value |",
+  "event_counts": {
+    "message": 3,
+    "status": 3,
+    "table": 1,
+    "done": 1
+  },
+  "done": {
+    "done": true,
+    "abstained": false,
+    "citations": [
+      {
+        "index": 1,
+        "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+      },
+      {
+        "index": 2,
+        "source": "public.KO_MNRL_PRC"
+      }
+    ],
+    "bogus_citations": []
+  },
+  "protocol_errors": [],
+  "deployment": {
+    "container_id": "fe905fd14968e24b6466b60c947e0cdc3768b1c77675bc9c702c34c45fa7f031",
+    "port": 18012,
+    "image_tag": "komir-rag-chat:qa-live-stability33-r7",
+    "image_id": "sha256:7a1139a6fd34c124b1168201fe03c9ed864921b35f9c5f4b38ba4ded1a283abc",
+    "source_hashes": {
+      "inhouse/rag_core/ragkit/live_multihop.py": "fa2592ca28c6bd9695d734ca6dc9c8eca33cfc918853134f2e592350f74a96dd",
+      "inhouse/rag_core/ragkit/chatbot.py": "71f5b2e77e6fd95a5df336190b0bfd532709b016e896d527560f13ea88557553",
+      "inhouse/rag_core/ragkit/chatbot_graph.py": "adaaacae8d021345abbbbc3b96d90318d6da98db933e3b42def50f7fee5caf8a",
+      "inhouse/rag_core/ragkit/chatbot_events.py": "0e6bb9e37b18913aac8ab97f95d6d3e772a992da7cba8bbc43738f7b7fcf03c5",
+      "inhouse/rag_core/ragkit/_mcp_tools_common.py": "96a7b909688af872bdab7f77ee186501ddb2206b00cc511d71f3a7bc11a3c4d6"
+    }
+  }
+}

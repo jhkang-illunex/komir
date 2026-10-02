@@ -1,0 +1,520 @@
+{
+  "image": "komir-rag-chat:qa106-contract-r7",
+  "port": 18012,
+  "count": 57,
+  "results": [
+    {
+      "qa_id": "ADD01",
+      "question": "리튬 최신 가격 얼마야?",
+      "session_id": "18d0277f-5448-49e7-8ac1-5e284051c308",
+      "http": 200,
+      "abstained": true,
+      "reason": "projection_field_unavailable:value",
+      "elapsed": 4.98
+    },
+    {
+      "qa_id": "ADD03",
+      "question": "아연 가격 2010년 이후 최고가와 그 날짜 알려줘",
+      "session_id": "3ea2761c-0421-4881-9e5a-d47e5173936f",
+      "http": 200,
+      "abstained": true,
+      "reason": "retrieval unavailable: validation_failed",
+      "elapsed": 9.02
+    },
+    {
+      "qa_id": "ADD06",
+      "question": "니켈 가격 전년 동월 대비 변화율은?",
+      "session_id": "ea6f667b-e06b-45bd-b81a-94c151df40a8",
+      "http": 200,
+      "abstained": false,
+      "reason": null,
+      "elapsed": 11.3
+    },
+    {
+      "qa_id": "ADD12",
+      "question": "방금 답변 원본 데이터는 KOMIS 어디서 확인해?",
+      "session_id": "484a3aa8-74f3-4ec1-a442-6332a3681167",
+      "http": 200,
+      "abstained": true,
+      "reason": "adapter_unavailable",
+      "elapsed": 4.39
+    },
+    {
+      "qa_id": "ADD15",
+      "question": "희토류 생산량과 매장량 상위 5개국을 각각 차트로 보여줘",
+      "session_id": "f0bcb357-ee7a-4efd-9e90-4664c8701839",
+      "http": 200,
+      "abstained": true,
+      "reason": "all_roots_failed",
+      "elapsed": 0.64
+    },
+    {
+      "qa_id": "ADD16",
+      "question": "세계 리튬 매장량 중 칠레 비중은?",
+      "session_id": "00e5984c-bb99-48b3-959d-ec53f1488e68",
+      "http": 200,
+      "abstained": true,
+      "reason": "dependency_unavailable",
+      "elapsed": 8.0
+    },
+    {
+      "qa_id": "ADD18",
+      "question": "광물종합지수 최근 12개월 추이 보여줘",
+      "session_id": "f6e290d0-4cfa-40e6-9589-48fbf71c4e07",
+      "http": 200,
+      "abstained": true,
+      "reason": "projection_field_unavailable:date",
+      "elapsed": 4.9
+    },
+    {
+      "qa_id": "ADD25",
+      "question": "구리, 니켈, 코발트 최근 1년 가격 추이 비교해줘",
+      "session_id": "0153a7b6-532d-4a01-8591-717d1c8f0a60",
+      "http": 200,
+      "abstained": true,
+      "reason": "projection_field_unavailable:date",
+      "elapsed": 19.41
+    },
+    {
+      "qa_id": "ADD27",
+      "question": "니켈 가격 추이 좀 보여줘",
+      "session_id": "02ef13fa-7baf-4c08-8b13-72b07cfda10c",
+      "http": 200,
+      "abstained": false,
+      "reason": null,
+      "elapsed": 17.88
+    },
+    {
+      "qa_id": "ADD32",
+      "question": "중국 희토류 수출통제 관련 최신 내용 요약하고 출처 달아줘",
+      "session_id": "e8f90025-81e5-4af1-8934-c6644a94464f",
+      "http": 200,
+      "abstained": true,
+      "reason": "projection_field_unavailable:document",
+      "elapsed": 16.67
+    },
+    {
+      "qa_id": "ADD38",
+      "question": "7개 광종의 최신 가격, 기준일, 단위, 출처를 한 표로 정리해줘",
+      "session_id": "4b8c0e9a-4061-449f-9c6d-4c7761707227",
+      "http": 200,
+      "abstained": true,
+      "reason": "retrieval unavailable: no_data",
+      "elapsed": 0.53
+    },
+    {
+      "qa_id": "ADD40",
+      "question": "우드맥킨지 보고서 기준 리튬 전망 알려줘",
+      "session_id": "6d4a86c9-b8e0-4f82-b38c-00d369642eb4",
+      "http": 200,
+      "abstained": false,
+      "reason": null,
+      "elapsed": 23.37
+    },
+    {
+      "qa_id": "ADD45",
+      "question": "리튬 가격 화면으로 가줘",
+      "session_id": "59486bef-262d-47a2-b81e-eb14c1cb8268",
+      "http": 200,
+      "abstained": true,
+      "reason": "execution_failed",
+      "elapsed": 0.4
+    },
+    {
+      "qa_id": "ADD46",
+      "question": "수급지도 대한민국 페이지 어디서 봐?",
+      "session_id": "b1be6d4e-2ca0-4f28-933e-aa66aab5302d",
+      "http": 200,
+      "abstained": true,
+      "reason": "semantic_plan_incomplete",
+      "elapsed": 2.6
+    },
+    {
+      "qa_id": "ADD47",
+      "question": "핵심광물이 뭐야? 왜 중요해?",
+      "session_id": "450c8531-cbe6-40c0-a8c6-5f2a8c38c281",
+      "http": 200,
+      "abstained": false,
+      "reason": null,
+      "elapsed": 0.19
+    },
+    {
+      "qa_id": "ADD48",
+      "question": "여기서 뭘 물어볼 수 있어?",
+      "session_id": "d8a65a64-aaa6-4572-8bb8-694c845a09d6",
+      "http": 200,
+      "abstained": false,
+      "reason": null,
+      "elapsed": 0.19
+    },
+    {
+      "qa_id": "ADD49",
+      "question": "구리 가격 알려줘",
+      "session_id": "efa9c1a8-a7a3-4018-bd37-5101713708ef",
+      "http": 200,
+      "abstained": true,
+      "reason": "projection_field_unavailable:price",
+      "elapsed": 4.58
+    },
+    {
+      "qa_id": "CN01",
+      "question": "니켈 가격 크게 오른 날 관련 뉴스 있어?",
+      "session_id": "0958c603-e080-4c00-b338-e0998ccd1e65",
+      "http": 200,
+      "abstained": false,
+      "reason": null,
+      "elapsed": 6.19
+    },
+    {
+      "qa_id": "CN04",
+      "question": "수입 의존도 높은 광종들 가격 전망 알려줘",
+      "session_id": "4ba3260f-b1e8-4dc6-8b5d-f2e80af8db22",
+      "http": 200,
+      "abstained": true,
+      "reason": "projection_field_unavailable:mineral",
+      "elapsed": 24.0
+    },
+    {
+      "qa_id": "CN05",
+      "question": "리튬 주요 수입국이랑 가격 전망 같이 보여줘",
+      "session_id": "81bb0b3a-fe8f-432b-9073-e93f72ece9f6",
+      "http": 200,
+      "abstained": true,
+      "reason": "all_roots_failed",
+      "elapsed": 1.2
+    },
+    {
+      "qa_id": "CN07",
+      "question": "리튬 가격 전망이랑 최근 관련 뉴스 같이 알려줘",
+      "session_id": "094b34dd-184e-4b3b-9ec7-d41e096b3021",
+      "http": 200,
+      "abstained": false,
+      "reason": null,
+      "elapsed": 7.29
+    },
+    {
+      "qa_id": "CN08",
+      "question": "지난달 광물종합지수 변동이랑 월간동향 요약 같이 보여줘",
+      "session_id": "4794e144-b97c-4ad8-b4a7-5b781ba632fc",
+      "http": 200,
+      "abstained": true,
+      "reason": "all_roots_failed",
+      "elapsed": 0.65
+    },
+    {
+      "qa_id": "CN09",
+      "question": "광물종합지수 떨어진 주에 주요 뉴스 뭐 있었어?",
+      "session_id": "5fe500f5-b643-4cbe-bb33-69f0d6427ec5",
+      "http": 200,
+      "abstained": true,
+      "reason": "retrieval unavailable: validation_failed",
+      "elapsed": 2.96
+    },
+    {
+      "qa_id": "DOC02",
+      "question": "최근 월간동향 제목 알려줘",
+      "session_id": "d720b42a-ceb5-46c3-9042-966b7bdefda1",
+      "http": 200,
+      "abstained": true,
+      "reason": "source_unavailable",
+      "elapsed": 4.64
+    },
+    {
+      "qa_id": "DOC04",
+      "question": "월간 동향 게시판 검색은 어떻게 해?",
+      "session_id": "196a62c2-c6d9-4be0-be58-c53c9ef43eec",
+      "http": 200,
+      "abstained": false,
+      "reason": null,
+      "elapsed": 0.19
+    },
+    {
+      "qa_id": "GM01",
+      "question": "코발트 세계 생산국이랑 우리나라 수입국 비교해줘",
+      "session_id": "1d4068b6-405d-4785-8a96-78eae1a2f2f7",
+      "http": 200,
+      "abstained": true,
+      "reason": "dependency_unavailable",
+      "elapsed": 21.79
+    },
+    {
+      "qa_id": "GM02",
+      "question": "리튬 세계 생산 상위국 중 우리 수입 상위국에 들어가는 나라는?",
+      "session_id": "20185680-03aa-42c0-bf15-f696293fbfdd",
+      "http": 200,
+      "abstained": true,
+      "reason": "projection_field_unavailable:country",
+      "elapsed": 12.94
+    },
+    {
+      "qa_id": "GM04",
+      "question": "2차전지 광물 수입국 구성 알려줘",
+      "session_id": "b3bd0ad8-551a-4fe5-a138-13386e0e2365",
+      "http": 200,
+      "abstained": true,
+      "reason": "semantic_plan_incomplete",
+      "elapsed": 19.62
+    },
+    {
+      "qa_id": "GM05",
+      "question": "망간 용도랑 주요 수입국 알려줘",
+      "session_id": "b6c1e8dd-7df2-44db-8fbc-ca5a561ecca2",
+      "http": 200,
+      "abstained": false,
+      "reason": null,
+      "elapsed": 1.77
+    },
+    {
+      "qa_id": "GM08",
+      "question": "텅스텐 용도랑 세계 생산국 알려줘",
+      "session_id": "1a33aa41-c021-49c5-9c83-c2bd7fd3a302",
+      "http": 200,
+      "abstained": false,
+      "reason": null,
+      "elapsed": 7.13
+    },
+    {
+      "qa_id": "GM11",
+      "question": "흑연 공급 현황 종합해서 알려줘",
+      "session_id": "2b094034-6a6a-4438-a8a9-bd6bcb32cd1f",
+      "http": 200,
+      "abstained": true,
+      "reason": "all_roots_failed",
+      "elapsed": 0.61
+    },
+    {
+      "qa_id": "GM12",
+      "question": "2차전지 광물 5종 가격이랑 전망 한 번에 보여줘",
+      "session_id": "2a4fda85-0e8b-48f9-8217-3deb7e627d53",
+      "http": 200,
+      "abstained": true,
+      "reason": "semantic_plan_incomplete",
+      "elapsed": 24.74
+    },
+    {
+      "qa_id": "GM13",
+      "question": "코발트 현황 브리핑해줘",
+      "session_id": "232d1f06-cf55-45e9-bfb1-8631638c82ef",
+      "http": 200,
+      "abstained": false,
+      "reason": null,
+      "elapsed": 7.22
+    },
+    {
+      "qa_id": "GM14",
+      "question": "중국 수출통제 대상 광종 가격이랑 수입 비중 같이 보여줘",
+      "session_id": "52f1afc4-30ac-48ed-a648-4a03ad850dfc",
+      "http": 200,
+      "abstained": true,
+      "reason": "upstream step failed: final_join",
+      "elapsed": 28.3
+    },
+    {
+      "qa_id": "IX01",
+      "question": "광물지수 오를때 같이 오른 광종은 뭐야?",
+      "session_id": "2696e52b-1da7-4d12-8d75-b7279545b049",
+      "http": 200,
+      "abstained": true,
+      "reason": "dependency_unavailable",
+      "elapsed": 38.02
+    },
+    {
+      "qa_id": "IX02",
+      "question": "니켈 가격 추세랑 광물 종합지수 추세 비교해주세요",
+      "session_id": "87179504-d5ff-43ff-ad66-a1a75d3a05ba",
+      "http": 200,
+      "abstained": true,
+      "reason": "execution_failed",
+      "elapsed": 0.39
+    },
+    {
+      "qa_id": "MI01",
+      "question": "니켈은 어디에 쓰여?",
+      "session_id": "ed9ee895-e739-4a35-b9da-32ae0eb73584",
+      "http": 200,
+      "abstained": true,
+      "reason": "projection_field_unavailable:document",
+      "elapsed": 10.05
+    },
+    {
+      "qa_id": "MI02",
+      "question": "니켈은 어떤 금속이야?",
+      "session_id": "c5dc11e8-0eb4-468a-bec4-e57f4d467b83",
+      "http": 200,
+      "abstained": false,
+      "reason": null,
+      "elapsed": 15.35
+    },
+    {
+      "qa_id": "MI03",
+      "question": "구리 기본 특성을 알려줘",
+      "session_id": "957742ed-8977-43d4-8683-2fdfffbd76f7",
+      "http": 200,
+      "abstained": true,
+      "reason": "execution_failed",
+      "elapsed": 0.45
+    },
+    {
+      "qa_id": "MI04",
+      "question": "망간 주요 광석 종류는?",
+      "session_id": "9f0683e8-4302-42d2-8f79-85a5470d0707",
+      "http": 200,
+      "abstained": true,
+      "reason": "execution_failed",
+      "elapsed": 0.46
+    },
+    {
+      "qa_id": "MP01",
+      "question": "니켈 가격 추이랑 우리나라 수입국 구성 같이 보여줘",
+      "session_id": "b9cbdd26-bfe1-4e67-95d5-3482de5a2fbc",
+      "http": 200,
+      "abstained": false,
+      "reason": null,
+      "elapsed": 8.99
+    },
+    {
+      "qa_id": "MP03",
+      "question": "니켈 수입 상위국이랑 현재가격 알려줘",
+      "session_id": "87a6df1c-b37f-4224-bbc8-b91075513d6c",
+      "http": 200,
+      "abstained": false,
+      "reason": null,
+      "elapsed": 9.87
+    },
+    {
+      "qa_id": "MP04",
+      "question": "니켈 가격이랑 세계 생산량 변화 같이 보여줘",
+      "session_id": "63e5c284-e2b2-4f8a-a15f-2ee5472be663",
+      "http": 200,
+      "abstained": false,
+      "reason": null,
+      "elapsed": 7.49
+    },
+    {
+      "qa_id": "MP05",
+      "question": "생산 1위국 비중이 높은 광종들 가격 변동 어때?",
+      "session_id": "68605b20-fe96-4607-ab21-6a1a37cbce82",
+      "http": 200,
+      "abstained": true,
+      "reason": "semantic_plan_incomplete",
+      "elapsed": 69.43
+    },
+    {
+      "qa_id": "MP06",
+      "question": "니켈은 어디에 쓰이고 지금 가격은 얼마야?",
+      "session_id": "9e19fdb8-4432-47d2-95fd-2ae8f454b1f2",
+      "http": 200,
+      "abstained": false,
+      "reason": null,
+      "elapsed": 23.66
+    },
+    {
+      "qa_id": "MP07",
+      "question": "전략광종 가격 현황 한눈에 보여줘",
+      "session_id": "b50da2a5-bbf5-43c8-a5ea-d106bc2fbc15",
+      "http": 200,
+      "abstained": false,
+      "reason": null,
+      "elapsed": 21.45
+    },
+    {
+      "qa_id": "MP09",
+      "question": "니켈 가격 추이랑 최근 월간 동향 내용 같이 알려줘",
+      "session_id": "f483f246-0b78-4c95-8e31-186547a86e98",
+      "http": 200,
+      "abstained": false,
+      "reason": null,
+      "elapsed": 6.26
+    },
+    {
+      "qa_id": "NEWS01",
+      "question": "최근 자원 뉴스 뭐 있어?",
+      "session_id": "82461d37-aa26-4aa8-8533-4e3f067e0e0f",
+      "http": 200,
+      "abstained": false,
+      "reason": null,
+      "elapsed": 2.54
+    },
+    {
+      "qa_id": "NEWS03",
+      "question": "최근 중국 수출통제 관련 뉴스 있어?",
+      "session_id": "c4dd3aaa-9e2d-458f-abbe-5d4d7b383e49",
+      "http": 200,
+      "abstained": false,
+      "reason": null,
+      "elapsed": 1.65
+    },
+    {
+      "qa_id": "PF01",
+      "question": "니켈 현재 가격이랑 다음달 전망 같이 알려줘",
+      "session_id": "e87e3a8b-1bb4-4853-8b1e-c12bdda7b0e5",
+      "http": 200,
+      "abstained": false,
+      "reason": null,
+      "elapsed": 6.19
+    },
+    {
+      "qa_id": "PF02",
+      "question": "니켈 지난 6개월 가격이랑 향후 전망 이어서 보여줘",
+      "session_id": "320f6afb-db31-448b-8c25-58871f206ad0",
+      "http": 200,
+      "abstained": false,
+      "reason": null,
+      "elapsed": 5.95
+    },
+    {
+      "qa_id": "PF03",
+      "question": "니켈 지금 가격이 전망치 보다 높은 편이야?",
+      "session_id": "cb5c887e-5ce4-4c1f-8ba6-390f189ccace",
+      "http": 200,
+      "abstained": true,
+      "reason": "no_comparable_rows",
+      "elapsed": 9.63
+    },
+    {
+      "qa_id": "REG02",
+      "question": "오늘 니켈 가격 얼마야?",
+      "session_id": "030914ca-827f-492a-888c-615c59965d30",
+      "http": 200,
+      "abstained": true,
+      "reason": "ambiguous",
+      "elapsed": 3.37
+    },
+    {
+      "qa_id": "REG03",
+      "question": "최근 니켈 가격 얼마야?",
+      "session_id": "23c42fb2-4702-4448-a921-986223511e0a",
+      "http": 200,
+      "abstained": false,
+      "reason": null,
+      "elapsed": 5.57
+    },
+    {
+      "qa_id": "REG04",
+      "question": "니켈 가격 년도별 평균 가격을 알려줘",
+      "session_id": "8858616b-1df9-4129-9779-d405cb90508a",
+      "http": 200,
+      "abstained": false,
+      "reason": null,
+      "elapsed": 7.09
+    },
+    {
+      "qa_id": "REG05",
+      "question": "니켈 LME 재고량 알려줘",
+      "session_id": "b078424a-ab80-4da0-87a3-66ebdf9ad177",
+      "http": 200,
+      "abstained": false,
+      "reason": null,
+      "elapsed": 5.04
+    },
+    {
+      "qa_id": "REG06",
+      "question": "니켈 텅스텐 가격 같이 비교해줘",
+      "session_id": "291faae2-480d-49da-ac0a-570ccd2ba0eb",
+      "http": 200,
+      "abstained": true,
+      "reason": "dependency_unavailable",
+      "elapsed": 8.24
+    }
+  ]
+}

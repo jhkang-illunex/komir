@@ -1,0 +1,15 @@
+{
+  "container": "4f3d6186a2154aac2102efc86aa8b24d1804cfddeed72fcfab3f85238355ecc1",
+  "name": "komir-rag-chat-qa-sse31",
+  "port": 18012,
+  "history": "isolated PostgreSQL, no exposed port",
+  "business_pg": "read-only connection option",
+  "environment_overrides": [
+    "PG_DSN.options",
+    "MSR_DB",
+    "MULTIHOP_HISTORY_DSN",
+    "MULTIHOP_HISTORY_BACKEND"
+  ],
+  "production_unchanged_image": "sha256:31b7ed55fded35d8e4a7f172e5882fc394c05bded47075417e85894bc468e9e9",
+  "production_started": "2026-10-01T12:02:54.490338051Z"
+}

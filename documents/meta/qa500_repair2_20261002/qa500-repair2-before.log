@@ -1,0 +1,118 @@
+FFFFFF..FF                                                               [100%]
+=================================== FAILURES ===================================
+_________ test_captured_group_identity_loss_rejected_before_execution __________
+
+    def test_captured_group_identity_loss_rejected_before_execution():
+        plan = SemanticRequirementPlanV2.model_validate(captured("after4", "H1"))
+>       with pytest.raises(ValueError, match="group_identity_missing"):
+E       Failed: DID NOT RAISE ValueError
+
+inhouse/rag_core/tests/test_semantic_v2_repair_contracts.py:27: Failed
+____ test_captured_double_reduction_requires_scope_not_silent_deduplication ____
+
+    def test_captured_double_reduction_requires_scope_not_silent_deduplication():
+        plan = SemanticRequirementPlanV2.model_validate(captured("fresh-holdout", "Z5"))
+>       assert any("reduction_scope_ambiguous" in e for e in requirement_contract_issues(plan))
+E       assert False
+E        +  where False = any(<generator object test_captured_double_reduction_requires_scope_not_silent_deduplication.<locals>.<genexpr> at 0x7f5f30580510>)
+
+inhouse/rag_core/tests/test_semantic_v2_repair_contracts.py:33: AssertionError
+____ test_captured_unbound_unused_requirement_repair_explains_relation_role ____
+
+    def test_captured_unbound_unused_requirement_repair_explains_relation_role():
+        plan = SemanticRequirementPlanV2.model_validate(captured("after4", "H4"))
+>       assert any("unbound_unreferenced_requirement" in e for e in requirement_contract_issues(plan))
+E       assert False
+E        +  where False = any(<generator object test_captured_unbound_unused_requirement_repair_explains_relation_role.<locals>.<genexpr> at 0x7f5f305809e0>)
+
+inhouse/rag_core/tests/test_semantic_v2_repair_contracts.py:41: AssertionError
+_ test_group_identity_contract_generalizes_and_preserves_aliases[price-month] __
+
+metric = 'price', dimension = 'month'
+
+    @pytest.mark.parametrize("metric,dimension", [("price", "month"), ("production", "country"), ("import_value", "country")])
+    def test_group_identity_contract_generalizes_and_preserves_aliases(metric, dimension):
+        raw = monthly_plan()
+        for req in raw["requirements"]:
+            req.update(metric=metric, dimension=dimension)
+        raw["relationships"][0]["join_key"] = dimension
+        output = raw["requested_outputs"][0]
+        output.update(fields=[dimension, "left.mean_price", "right.observations"], aliases={dimension: "group"})
+        program = logical_program_from_requirements(SemanticRequirementPlanV2.model_validate(raw))
+        assert program.nodes[-1].arguments["aliases"][dimension] == "group"
+        output["fields"].remove(dimension); output["aliases"] = {}
+>       with pytest.raises(ValueError, match="group_identity_missing"):
+E       Failed: DID NOT RAISE ValueError
+
+inhouse/rag_core/tests/test_semantic_v2_repair_contracts.py:55: Failed
+_ test_group_identity_contract_generalizes_and_preserves_aliases[production-country] _
+
+metric = 'production', dimension = 'country'
+
+    @pytest.mark.parametrize("metric,dimension", [("price", "month"), ("production", "country"), ("import_value", "country")])
+    def test_group_identity_contract_generalizes_and_preserves_aliases(metric, dimension):
+        raw = monthly_plan()
+        for req in raw["requirements"]:
+            req.update(metric=metric, dimension=dimension)
+        raw["relationships"][0]["join_key"] = dimension
+        output = raw["requested_outputs"][0]
+        output.update(fields=[dimension, "left.mean_price", "right.observations"], aliases={dimension: "group"})
+        program = logical_program_from_requirements(SemanticRequirementPlanV2.model_validate(raw))
+        assert program.nodes[-1].arguments["aliases"][dimension] == "group"
+        output["fields"].remove(dimension); output["aliases"] = {}
+>       with pytest.raises(ValueError, match="group_identity_missing"):
+E       Failed: DID NOT RAISE ValueError
+
+inhouse/rag_core/tests/test_semantic_v2_repair_contracts.py:55: Failed
+_ test_group_identity_contract_generalizes_and_preserves_aliases[import_value-country] _
+
+metric = 'import_value', dimension = 'country'
+
+    @pytest.mark.parametrize("metric,dimension", [("price", "month"), ("production", "country"), ("import_value", "country")])
+    def test_group_identity_contract_generalizes_and_preserves_aliases(metric, dimension):
+        raw = monthly_plan()
+        for req in raw["requirements"]:
+            req.update(metric=metric, dimension=dimension)
+        raw["relationships"][0]["join_key"] = dimension
+        output = raw["requested_outputs"][0]
+        output.update(fields=[dimension, "left.mean_price", "right.observations"], aliases={dimension: "group"})
+        program = logical_program_from_requirements(SemanticRequirementPlanV2.model_validate(raw))
+        assert program.nodes[-1].arguments["aliases"][dimension] == "group"
+        output["fields"].remove(dimension); output["aliases"] = {}
+>       with pytest.raises(ValueError, match="group_identity_missing"):
+E       Failed: DID NOT RAISE ValueError
+
+inhouse/rag_core/tests/test_semantic_v2_repair_contracts.py:55: Failed
+_______ test_renamed_aggregate_is_not_fed_to_implicit_value_calculation ________
+
+    def test_renamed_aggregate_is_not_fed_to_implicit_value_calculation():
+        raw = monthly_plan()
+        raw["requirements"][0]["operation"] = "share"
+>       with pytest.raises(ValueError, match="calculation_input_missing"):
+E       Failed: DID NOT RAISE ValueError
+
+inhouse/rag_core/tests/test_semantic_v2_repair_contracts.py:82: Failed
+_______ test_group_projection_reparse_uses_contract_only_and_is_bounded ________
+
+    def test_group_projection_reparse_uses_contract_only_and_is_bounded():
+        raw = monthly_plan(); raw["requested_outputs"][0]["fields"].remove("month")
+        calls = []
+        def invoke(**kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(output=SemanticRequirementPlanV2.model_validate(raw))
+        trace = parse_v2_shadow("arbitrary input", SimpleNamespace(invoke=invoke))
+>       assert len(calls) == 2
+E       AssertionError: assert 1 == 2
+E        +  where 1 = len([{'task': 'semantic_requirement_v2', 'instructions': '자연어 BI 질문을 semantic-requirement-v2 JSON으로 변환한다.\n사용자가 무엇을 원하는지만 ...emantic_context': None}, 'output_model': <class 'inhouse.rag_core.ragkit.semantic_v2.SemanticRequirementPlanV2'>, ...}])
+
+inhouse/rag_core/tests/test_semantic_v2_repair_contracts.py:93: AssertionError
+=========================== short test summary info ============================
+FAILED inhouse/rag_core/tests/test_semantic_v2_repair_contracts.py::test_captured_group_identity_loss_rejected_before_execution
+FAILED inhouse/rag_core/tests/test_semantic_v2_repair_contracts.py::test_captured_double_reduction_requires_scope_not_silent_deduplication
+FAILED inhouse/rag_core/tests/test_semantic_v2_repair_contracts.py::test_captured_unbound_unused_requirement_repair_explains_relation_role
+FAILED inhouse/rag_core/tests/test_semantic_v2_repair_contracts.py::test_group_identity_contract_generalizes_and_preserves_aliases[price-month]
+FAILED inhouse/rag_core/tests/test_semantic_v2_repair_contracts.py::test_group_identity_contract_generalizes_and_preserves_aliases[production-country]
+FAILED inhouse/rag_core/tests/test_semantic_v2_repair_contracts.py::test_group_identity_contract_generalizes_and_preserves_aliases[import_value-country]
+FAILED inhouse/rag_core/tests/test_semantic_v2_repair_contracts.py::test_renamed_aggregate_is_not_fed_to_implicit_value_calculation
+FAILED inhouse/rag_core/tests/test_semantic_v2_repair_contracts.py::test_group_projection_reparse_uses_contract_only_and_is_bounded
+8 failed, 2 passed in 0.62s

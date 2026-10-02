@@ -1,0 +1,12 @@
+{
+  "container_id": "744803090eacc1bba0ae77bbbb4f10cc7194fa0a6edfb70ed90203bdaca76c25",
+  "port": 18012,
+  "image": "sha256:ba3301e856a917774d3ffcb6c3b6bea887d381cd41c6d129bc46b241dfa731d1",
+  "source_hashes": {
+    "inhouse/rag_core/ragkit/live_multihop.py": "67ae78a43d13411e1c9bda8fa3ff8c19fcfd0699ae5d753c32f8cbe353618c24",
+    "inhouse/rag_core/ragkit/chatbot_graph.py": "954846efd91e01815fbad0f98629ea0098c124f52180eb862b6e0d3eccf3c0ef",
+    "inhouse/rag_chat/app/routers/chat.py": "77563fd496d98f62713c45237af6d72f0d30390399a7f9c035612e0bf8ebc666",
+    "inhouse/rag_chat/app/streaming.py": "e60c058d15238f058f71f8643f989d51e8432ff08f68d2ab7919351fc8e3b949",
+    "inhouse/common/komis_raw.py": "953671a72be2c86b3179594665fa019fe3e8174da8bef741e2bdd268d17c835b"
+  }
+}

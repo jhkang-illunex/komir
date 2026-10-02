@@ -1,0 +1,179 @@
+{
+  "cohorts": {
+    "focused": {
+      "total_questions": 7,
+      "model_requests": 14,
+      "question_counts": {
+        "VARIABLE": 3,
+        "STABLE_PASS": 4
+      },
+      "request_counts": {
+        "PASS": 11,
+        "LOGICAL_PLAN_INCOMPLETE": 2,
+        "RESULT_MISMATCH": 1
+      },
+      "questions": {
+        "EXT500-037": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "RESULT_MISMATCH",
+            "2": "PASS"
+          }
+        },
+        "EXT500-039": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "H3": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "LOGICAL_PLAN_INCOMPLETE",
+            "2": "PASS"
+          }
+        },
+        "H4": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "M1": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "R4": {
+          "verdict": "VARIABLE",
+          "runs": {
+            "1": "PASS",
+            "2": "LOGICAL_PLAN_INCOMPLETE"
+          }
+        },
+        "V2": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        }
+      }
+    },
+    "holdout": {
+      "total_questions": 4,
+      "model_requests": 8,
+      "question_counts": {
+        "STABLE_PASS": 4
+      },
+      "request_counts": {
+        "PASS": 8
+      },
+      "questions": {
+        "W1": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "W2": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "W3": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        },
+        "W4": {
+          "verdict": "STABLE_PASS",
+          "runs": {
+            "1": "PASS",
+            "2": "PASS"
+          }
+        }
+      }
+    }
+  },
+  "accounting": {
+    "TOTAL_CORPUS": 11,
+    "REGISTERED": 11,
+    "PASS": 8,
+    "FAILED": 3,
+    "CAPABILITY_GAP": 0,
+    "UNSUPPORTED": 0,
+    "BLOCKED": 0,
+    "PENDING": 0
+  },
+  "request_counts": {
+    "PASS": 19,
+    "LOGICAL_PLAN_INCOMPLETE": 2,
+    "RESULT_MISMATCH": 1
+  },
+  "saved_requirement_replay": {
+    "total": 76,
+    "classification_changes": 0
+  },
+  "before_focused_request_counts": {
+    "PASS": 7,
+    "RESULT_MISMATCH": 2,
+    "LOGICAL_PLAN_INCOMPLETE": 6
+  },
+  "baseline_regression": {
+    "pass": 1325,
+    "fail": 0,
+    "subtests": 687
+  },
+  "final_regression": {
+    "pass": 1335,
+    "fail": 0,
+    "subtests": 687
+  },
+  "source_sha256": {
+    "inhouse/rag_core/ragkit/semantic_v2.py": "53271c131b345b64244fe8ae723ada2aac5caa9d6072681a150ca19b2d62be16",
+    "inhouse/rag_core/tests/qa500_stage_eval.py": "7fcf87b28138212967d555cf058563ec9bb9b1e664ebf893b6caf24fc4ad1dbd",
+    "inhouse/rag_core/tests/test_semantic_stage_diagnostics.py": "e4964d6d0d3c26208da29f742de2f468cec11cbefa9b8b399dcf79d69834de68"
+  },
+  "remaining_failures": [
+    {
+      "id": "H3",
+      "repeat": 1,
+      "status": "LOGICAL_PLAN_INCOMPLETE",
+      "errors": [
+        "rel_diff: non-scalar comparison requires explicit join_key alignment; group_identity_missing: ['left.date', 'right.date']; grouped output must identify its rows; preserve keys in fields (aliases allowed), or model an explicit scalar selection/reduction"
+      ]
+    },
+    {
+      "id": "EXT500-037",
+      "repeat": 1,
+      "status": "RESULT_MISMATCH",
+      "errors": [
+        "independent_sql_difference"
+      ]
+    },
+    {
+      "id": "R4",
+      "repeat": 2,
+      "status": "LOGICAL_PLAN_INCOMPLETE",
+      "errors": [
+        "rel_diff: non-scalar comparison requires explicit join_key alignment; group_identity_missing: ['left.date', 'right.date']; grouped output must identify its rows; preserve keys in fields (aliases allowed), or model an explicit scalar selection/reduction"
+      ]
+    }
+  ],
+  "notes": [
+    "No deployment/SSE/whole-system stability verification.",
+    "EXT500-037/039 high_low versus ordinary price semantics remain ambiguous; strict existing oracle preserved.",
+    "Focused before uses 15 attempts (V2 three), after 14; no causal accuracy claim.",
+    "Holdout frozen before invocation; no prompt/Gold/acceptance modification."
+  ]
+}

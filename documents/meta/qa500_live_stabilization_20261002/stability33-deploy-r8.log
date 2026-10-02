@@ -1,0 +1,13 @@
+{
+  "container_id": "48d0acd7e68676db0c21dfe50920e1428f33f4c65d7b5d1bb4f22e1ccb7f6ee2",
+  "port": 18012,
+  "image_tag": "komir-rag-chat:qa-live-stability33-r8",
+  "image_id": "sha256:130e55e404163e73dd038ce3b7d429df76251ba7ff611d028f090a61223c114f",
+  "source_hashes": {
+    "inhouse/rag_core/ragkit/live_multihop.py": "5d0f2d36c262274074e6880b4bafbdbd5dff4dc133dd839e48b9bf6677bd6d76",
+    "inhouse/rag_core/ragkit/chatbot.py": "71f5b2e77e6fd95a5df336190b0bfd532709b016e896d527560f13ea88557553",
+    "inhouse/rag_core/ragkit/chatbot_graph.py": "adaaacae8d021345abbbbc3b96d90318d6da98db933e3b42def50f7fee5caf8a",
+    "inhouse/rag_core/ragkit/chatbot_events.py": "0e6bb9e37b18913aac8ab97f95d6d3e772a992da7cba8bbc43738f7b7fcf03c5",
+    "inhouse/rag_core/ragkit/_mcp_tools_common.py": "96a7b909688af872bdab7f77ee186501ddb2206b00cc511d71f3a7bc11a3c4d6"
+  }
+}

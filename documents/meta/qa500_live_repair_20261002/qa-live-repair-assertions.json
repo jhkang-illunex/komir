@@ -1,0 +1,214 @@
+[
+  {
+    "check": "sum_sql",
+    "pass": true,
+    "detail": {
+      "actual": {
+        "total_production_volume": 6998520.2
+      },
+      "sql": 6998520.2
+    }
+  },
+  {
+    "check": "chile_sql",
+    "pass": true,
+    "detail": {
+      "actual": [
+        {
+          "production_volume": "2098.1"
+        }
+      ],
+      "sql": {
+        "ntn_eng_cd": "CL",
+        "mass_unit_cd": "WT003",
+        "se_cd": "-",
+        "prdctn_quty": "2098.10",
+        "prdctn_quty_ton": "2098.10"
+      }
+    }
+  },
+  {
+    "check": "calculation_structured_operands",
+    "pass": true,
+    "detail": {
+      "actual": {
+        "reason": null,
+        "status": "SUCCESS",
+        "left_unit": "톤",
+        "difference": -6586842.541176471,
+        "left_value": 411677.65882352943,
+        "right_unit": "톤",
+        "left_entity": [
+          "구리"
+        ],
+        "left_period": {
+          "end": null,
+          "kind": "calendar_year",
+          "start": null,
+          "explicit": false,
+          "frequency": null,
+          "calendar_year": 2024,
+          "future_horizon": null,
+          "trailing_months": null
+        },
+        "left_source": [
+          "public.KO_RSRC_PRDCTN_QUTY"
+        ],
+        "right_value": 6998520.2,
+        "right_entity": [
+          "구리"
+        ],
+        "right_period": {
+          "end": null,
+          "kind": "calendar_year",
+          "start": null,
+          "explicit": false,
+          "frequency": null,
+          "calendar_year": 2024,
+          "future_horizon": null,
+          "trailing_months": null
+        },
+        "right_source": [
+          "public.KO_RSRC_PRDCTN_QUTY"
+        ],
+        "left.avg_production": 411677.65882352943,
+        "right.sum_production": 6998520.2
+      },
+      "note": "average-minus-sum; natural-language difference order remains ambiguous across rounds"
+    }
+  },
+  {
+    "check": "price502_sql",
+    "pass": true,
+    "detail": {
+      "actual": {
+        "invt(재고)": "None",
+        "crtr_ymd(기준일자)": "20260930",
+        "cmerc_prc(통상가격)": "22916.73",
+        "hghst_prc(최고가격)": "23057.47",
+        "lowst_prc(최저가격)": "22775.99"
+      },
+      "sql": {
+        "mnrl_prc_crtr_sn": "502",
+        "crtr_ymd": "20260930",
+        "cmerc_prc": "22916.73",
+        "lowst_prc": "22775.99",
+        "hghst_prc": "23057.47",
+        "status": "Y"
+      }
+    }
+  },
+  {
+    "check": "latest_snapshot_one_row",
+    "pass": true,
+    "detail": {
+      "success": [
+        "네오디뮴",
+        "니오븀",
+        "망간",
+        "몰리브덴",
+        "안티모니",
+        "크롬",
+        "티타늄"
+      ],
+      "failed": 9
+    }
+  },
+  {
+    "check": "saved_projection_turn-818b10f9f1b1",
+    "pass": true,
+    "detail": {
+      "values": [
+        "네오디뮴",
+        "니오븀",
+        "망간",
+        "몰리브덴",
+        "안티모니",
+        "크롬",
+        "티타늄"
+      ],
+      "operators": [
+        "entity",
+        "filter",
+        "project"
+      ],
+      "inputs": [
+        [],
+        [
+          {
+            "node_id": "ctx_686973746f72793a7475726e2d3938356433353335326664373a6d696e6572616c735f6c697374",
+            "selector": "all"
+          }
+        ],
+        [
+          {
+            "node_id": "filter_success_minerals",
+            "selector": "all"
+          }
+        ]
+      ],
+      "result_id_column": null
+    }
+  },
+  {
+    "check": "saved_projection_turn-c2e2a9839833",
+    "pass": true,
+    "detail": {
+      "values": [
+        "네오디뮴",
+        "니오븀",
+        "망간",
+        "몰리브덴",
+        "안티모니",
+        "크롬",
+        "티타늄"
+      ],
+      "operators": [
+        "entity",
+        "filter",
+        "project"
+      ],
+      "inputs": [
+        [],
+        [
+          {
+            "node_id": "ctx_686973746f72793a7475726e2d3938356433353335326664373a6d696e6572616c735f6c697374",
+            "selector": "all"
+          }
+        ],
+        [
+          {
+            "node_id": "filter_success_status",
+            "selector": "all"
+          }
+        ]
+      ],
+      "result_id_column": null
+    }
+  },
+  {
+    "check": "ownership_rejection",
+    "pass": true,
+    "detail": {
+      "events": [
+        {
+          "event": "error",
+          "data": {
+            "code": "invalid_session"
+          },
+          "elapsed": 0.016
+        },
+        {
+          "event": "done",
+          "data": {
+            "done": true,
+            "warnings": [
+              "invalid_session"
+            ]
+          },
+          "elapsed": 0.016
+        }
+      ]
+    }
+  }
+]

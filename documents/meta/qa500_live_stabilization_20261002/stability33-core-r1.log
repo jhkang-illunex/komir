@@ -1,0 +1,72 @@
+............................................................................................................................................................................................................ [ 14%]
+................................................................................................F.FF....... [ 22%]
+................................................................ [ 26%]
+..................................................................... [ 31%]
+................................................................... [ 36%]
+............................................................................................. [ 43%]
+........................................................................ [ 48%]
+........................................................................ [ 53%]
+........................................................................ [ 58%]
+........................................................................ [ 63%]
+........................................................................ [ 68%]
+........................................................................ [ 73%]
+........................................................................ [ 79%]
+........................................................................ [ 84%]
+........................................................................ [ 89%]
+........................................................................ [ 94%]
+..................................................................... [ 99%]
+........                                                                 [100%]
+=================================== FAILURES ===================================
+_ AdapterFailureDiagnosticsTests.test_missing_price_mapping_not_asserted_absent_observations _
+
+self = <test_live_adapter_failure_diagnostics.AdapterFailureDiagnosticsTests testMethod=test_missing_price_mapping_not_asserted_absent_observations>
+
+    def test_missing_price_mapping_not_asserted_absent_observations(self):
+        call = ActionCall(requirement_id="price", action_id="price.series", slots=ActionSlots(mineral="리튬"))
+        marker = "price_criterion_mapping_missing:TEST"
+        result, count = self.run_empty(call, marker)
+>       self.assertEqual(result.failure_reason, marker)
+E       AssertionError: 'advisor_rejected' != 'price_criterion_mapping_missing:TEST'
+E       - advisor_rejected
+E       + price_criterion_mapping_missing:TEST
+
+inhouse/rag_core/tests/test_live_adapter_failure_diagnostics.py:43: AssertionError
+_ AdapterFailureDiagnosticsTests.test_price_selection_is_preserved_not_invented_missing_data _
+
+self = <test_live_adapter_failure_diagnostics.AdapterFailureDiagnosticsTests testMethod=test_price_selection_is_preserved_not_invented_missing_data>
+
+    def test_price_selection_is_preserved_not_invented_missing_data(self):
+        call = ActionCall(requirement_id="price", action_id="price.series", slots=ActionSlots(mineral="텅스텐"))
+        marker = "price_criterion_selection_required:TEST:1=criterion A; 2=criterion B"
+        result, count = self.run_empty(call, marker)
+>       self.assertEqual(result.failure_reason, marker)
+E       AssertionError: 'advisor_rejected' != 'price_criterion_selection_required:TEST:1=criterion A; 2=criterion B'
+E       - advisor_rejected
+E       + price_criterion_selection_required:TEST:1=criterion A; 2=criterion B
+
+inhouse/rag_core/tests/test_live_adapter_failure_diagnostics.py:34: AssertionError
+_ AdapterFailureDiagnosticsTests.test_reserves_category_failure_not_advisor_rejection _
+
+self = <test_live_adapter_failure_diagnostics.AdapterFailureDiagnosticsTests testMethod=test_reserves_category_failure_not_advisor_rejection>
+
+    def test_reserves_category_failure_not_advisor_rejection(self):
+        call = ActionCall(requirement_id="reserves", action_id="resource.rank", slots=ActionSlots(
+            mineral="구리", metric="reserves", resource_population="all", period=Period(kind="calendar_year", calendar_year=2024)))
+        result, count = self.run_empty(call, "resource_population_unresolved_category")
+>       self.assertEqual(result.failure_reason, "resource_population_unresolved_category")
+E       AssertionError: 'advisor_rejected' != 'resource_population_unresolved_category'
+E       - advisor_rejected
+E       + resource_population_unresolved_category
+
+inhouse/rag_core/tests/test_live_adapter_failure_diagnostics.py:25: AssertionError
+=============================== warnings summary ===============================
+inhouse/rag_core/tests/test_live_resource_population.py::ResourcePopulationTests::test_graph_to_real_client_tool_and_sql_preserves_null_limit
+  /home/nuri/.local/lib/python3.10/site-packages/pydantic_settings/sources/utils.py:47: IncompleteFieldDefinitionWarning: Field 'lifespan' has an incomplete definition: its annotation contains an unresolved forward reference, so settings sources may fail to correctly resolve its value. Call `model_rebuild()` on the model where the field is defined, once all the referenced types are defined.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED inhouse/rag_core/tests/test_live_adapter_failure_diagnostics.py::AdapterFailureDiagnosticsTests::test_missing_price_mapping_not_asserted_absent_observations
+FAILED inhouse/rag_core/tests/test_live_adapter_failure_diagnostics.py::AdapterFailureDiagnosticsTests::test_price_selection_is_preserved_not_invented_missing_data
+FAILED inhouse/rag_core/tests/test_live_adapter_failure_diagnostics.py::AdapterFailureDiagnosticsTests::test_reserves_category_failure_not_advisor_rejection
+3 failed, 1398 passed, 1 warning, 695 subtests passed in 40.15s

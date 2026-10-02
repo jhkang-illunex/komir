@@ -1,0 +1,804 @@
+{
+  "gate": "NOT_READY",
+  "sse_requests": 23,
+  "completed_streams": 22,
+  "cancelled_streams": 1,
+  "wire_errors": 0,
+  "malformed_request_http": 422,
+  "semantic_counts": {
+    "FAIL": 7,
+    "OUTPUT_COVERAGE_NOT_VALIDATED": 2,
+    "PARTIAL": 5,
+    "SAFE_ABSTAIN_REASON_GAP": 2,
+    "PASS": 7
+  },
+  "sse_records": [
+    {
+      "id": "calculation",
+      "port": 18012,
+      "session_id": "5de57272-f166-4148-8411-01974b091e20",
+      "question": "2024년 구리 생산량 평균과 합계, 둘의 차이를 알려줘",
+      "semantic_status": "FAIL",
+      "http": 200,
+      "event_counts": {
+        "message": 2,
+        "status": 3,
+        "done": 1
+      },
+      "protocol_errors": [],
+      "abstained": true,
+      "abstain_reason": "upstream step failed: node_avg_production, node_sum_production",
+      "elapsed": 29.872,
+      "client_cancel": false
+    },
+    {
+      "id": "cancel",
+      "port": 18012,
+      "session_id": "b60da1b6-d4b9-45a5-9543-2bed2eee728e",
+      "question": "구리와 니켈의 최근 1년 가격을 비교해줘",
+      "semantic_status": "FAIL",
+      "http": 200,
+      "event_counts": {
+        "message": 1,
+        "status": 1
+      },
+      "protocol_errors": [],
+      "abstained": null,
+      "abstain_reason": null,
+      "elapsed": 0.095,
+      "client_cancel": true
+    },
+    {
+      "id": "composite-repeat",
+      "port": 18012,
+      "session_id": "8a51f307-14a3-4035-8327-1ef9a19c837f",
+      "question": "니켈은 어디에 쓰이고 지금은 얼마야?",
+      "semantic_status": "OUTPUT_COVERAGE_NOT_VALIDATED",
+      "http": 200,
+      "event_counts": {
+        "message": 5,
+        "status": 3,
+        "table": 1,
+        "done": 1
+      },
+      "protocol_errors": [],
+      "abstained": false,
+      "abstain_reason": null,
+      "elapsed": 5.185,
+      "client_cancel": false
+    },
+    {
+      "id": "composite",
+      "port": 18012,
+      "session_id": "88c0f607-57fb-4ede-8c44-4325896cd8fa",
+      "question": "니켈은 어디에 쓰이고 지금은 얼마야?",
+      "semantic_status": "OUTPUT_COVERAGE_NOT_VALIDATED",
+      "http": 200,
+      "event_counts": {
+        "message": 5,
+        "status": 3,
+        "table": 1,
+        "done": 1
+      },
+      "protocol_errors": [],
+      "abstained": false,
+      "abstain_reason": null,
+      "elapsed": 12.555,
+      "client_cancel": false
+    },
+    {
+      "id": "document-followup",
+      "port": 18012,
+      "session_id": "23510fa2-ff40-4562-b027-195b0cd060eb",
+      "question": "위 결과에서 최신 가격 조회에 성공한 광종만 알려줘",
+      "semantic_status": "FAIL",
+      "http": 200,
+      "event_counts": {
+        "message": 2,
+        "status": 1,
+        "done": 1
+      },
+      "protocol_errors": [],
+      "abstained": true,
+      "abstain_reason": "execution_failed",
+      "elapsed": 9.214,
+      "client_cancel": false
+    },
+    {
+      "id": "document-fresh-repeat",
+      "port": 18012,
+      "session_id": "5df6e9e4-fe29-4191-bdf0-5769c5e3c91e",
+      "question": "희소금속 보고서에 언급된 광종 가격 보여줘",
+      "semantic_status": "PARTIAL",
+      "http": 200,
+      "event_counts": {
+        "message": 3,
+        "status": 3,
+        "table": 2,
+        "done": 1
+      },
+      "protocol_errors": [],
+      "abstained": false,
+      "abstain_reason": null,
+      "elapsed": 8.354,
+      "client_cancel": false
+    },
+    {
+      "id": "document-fresh",
+      "port": 18012,
+      "session_id": "23510fa2-ff40-4562-b027-195b0cd060eb",
+      "question": "희소금속 보고서에 언급된 광종 가격 보여줘",
+      "semantic_status": "PARTIAL",
+      "http": 200,
+      "event_counts": {
+        "message": 3,
+        "status": 3,
+        "table": 2,
+        "done": 1
+      },
+      "protocol_errors": [],
+      "abstained": false,
+      "abstain_reason": null,
+      "elapsed": 9.644,
+      "client_cancel": false
+    },
+    {
+      "id": "document-history",
+      "port": 18012,
+      "session_id": "23510fa2-ff40-4562-b027-195b0cd060eb",
+      "question": "희소금속 보고서에 언급된 광종 가격 보여줘",
+      "semantic_status": "PARTIAL",
+      "http": 200,
+      "event_counts": {
+        "message": 3,
+        "status": 3,
+        "table": 2,
+        "done": 1
+      },
+      "protocol_errors": [],
+      "abstained": false,
+      "abstain_reason": null,
+      "elapsed": 28.264,
+      "client_cancel": false
+    },
+    {
+      "id": "future-observation",
+      "port": 18012,
+      "session_id": "255e8ce3-50c1-40d6-b08f-6b1be8d7b6f5",
+      "question": "2030년 니켈 실제 월별 가격을 보여줘",
+      "semantic_status": "SAFE_ABSTAIN_REASON_GAP",
+      "http": 200,
+      "event_counts": {
+        "message": 2,
+        "status": 3,
+        "done": 1
+      },
+      "protocol_errors": [],
+      "abstained": true,
+      "abstain_reason": "retrieval unavailable: validation_failed",
+      "elapsed": 6.492,
+      "client_cancel": false
+    },
+    {
+      "id": "invalid-mineral",
+      "port": 18012,
+      "session_id": "fc00938b-9eda-4f8c-9bfd-d929f96f23d0",
+      "question": "언옵테이늄 가격 보여줘",
+      "semantic_status": "SAFE_ABSTAIN_REASON_GAP",
+      "http": 200,
+      "event_counts": {
+        "message": 2,
+        "status": 3,
+        "done": 1
+      },
+      "protocol_errors": [],
+      "abstained": true,
+      "abstain_reason": "retrieval unavailable: validation_failed",
+      "elapsed": 2.323,
+      "client_cancel": false
+    },
+    {
+      "id": "ownership-rejection",
+      "port": 18012,
+      "session_id": "23510fa2-ff40-4562-b027-195b0cd060eb",
+      "question": "위 결과를 보여줘",
+      "semantic_status": "PASS",
+      "http": 200,
+      "event_counts": {
+        "error": 1,
+        "done": 1
+      },
+      "protocol_errors": [],
+      "abstained": null,
+      "abstain_reason": null,
+      "elapsed": 0.016,
+      "client_cancel": false
+    },
+    {
+      "id": "price-followup",
+      "port": 18012,
+      "session_id": "a724d899-5df3-4e64-b7ed-5b8ba6b83c6a",
+      "question": "방금 조회된 광종은 무엇인가요?",
+      "semantic_status": "FAIL",
+      "http": 200,
+      "event_counts": {
+        "message": 2,
+        "status": 3,
+        "table": 1,
+        "chart": 1,
+        "done": 1
+      },
+      "protocol_errors": [],
+      "abstained": false,
+      "abstain_reason": null,
+      "elapsed": 6.205,
+      "client_cancel": false
+    },
+    {
+      "id": "price-repeat",
+      "port": 18012,
+      "session_id": "6a14898d-2f7b-4329-8fab-7eb98fad45d9",
+      "question": "니켈 가격기준 502의 최근 가격을 알려줘",
+      "semantic_status": "PASS",
+      "http": 200,
+      "event_counts": {
+        "message": 2,
+        "status": 3,
+        "table": 1,
+        "done": 1
+      },
+      "protocol_errors": [],
+      "abstained": false,
+      "abstain_reason": null,
+      "elapsed": 0.668,
+      "client_cancel": false
+    },
+    {
+      "id": "price",
+      "port": 18012,
+      "session_id": "a724d899-5df3-4e64-b7ed-5b8ba6b83c6a",
+      "question": "니켈 가격기준 502의 최근 가격을 알려줘",
+      "semantic_status": "PASS",
+      "http": 200,
+      "event_counts": {
+        "message": 2,
+        "status": 3,
+        "table": 1,
+        "done": 1
+      },
+      "protocol_errors": [],
+      "abstained": false,
+      "abstain_reason": null,
+      "elapsed": 4.65,
+      "client_cancel": false
+    },
+    {
+      "id": "production-document",
+      "port": 18002,
+      "session_id": "1ac911d2-bf92-4bf6-ad21-0c6a982f4693",
+      "question": "희소금속 보고서에 언급된 광종 가격 보여줘",
+      "semantic_status": "PARTIAL",
+      "http": 200,
+      "event_counts": {
+        "message": 3,
+        "status": 3,
+        "table": 2,
+        "done": 1
+      },
+      "protocol_errors": [],
+      "abstained": false,
+      "abstain_reason": null,
+      "elapsed": 5.618,
+      "client_cancel": false
+    },
+    {
+      "id": "production-price",
+      "port": 18002,
+      "session_id": "e5ce470a-da6e-4ccc-9e84-058bb50dab9f",
+      "question": "니켈 가격기준 502의 최근 가격을 알려줘",
+      "semantic_status": "FAIL",
+      "http": 200,
+      "event_counts": {
+        "message": 2,
+        "status": 3,
+        "done": 1
+      },
+      "protocol_errors": [],
+      "abstained": true,
+      "abstain_reason": "slot_unresolved",
+      "elapsed": 7.739,
+      "client_cancel": false
+    },
+    {
+      "id": "restart-document-fresh",
+      "port": 18012,
+      "session_id": "fde84290-faa1-4fa9-80b1-f9e9967eaf87",
+      "question": "희소금속 보고서에 언급된 광종 가격 보여줘",
+      "semantic_status": "PARTIAL",
+      "http": 200,
+      "event_counts": {
+        "message": 3,
+        "status": 3,
+        "table": 2,
+        "done": 1
+      },
+      "protocol_errors": [],
+      "abstained": false,
+      "abstain_reason": null,
+      "elapsed": 22.535,
+      "client_cancel": false
+    },
+    {
+      "id": "restart-followup",
+      "port": 18012,
+      "session_id": "23510fa2-ff40-4562-b027-195b0cd060eb",
+      "question": "위 결과에서 최신 가격 조회에 성공한 광종만 알려줘",
+      "semantic_status": "FAIL",
+      "http": 200,
+      "event_counts": {
+        "message": 2,
+        "status": 3,
+        "done": 1
+      },
+      "protocol_errors": [],
+      "abstained": true,
+      "abstain_reason": "projection_field_unavailable:entity",
+      "elapsed": 4.436,
+      "client_cancel": false
+    },
+    {
+      "id": "restart-price",
+      "port": 18012,
+      "session_id": "dbca1049-5b68-45d5-afb5-589ed758eedd",
+      "question": "니켈 가격기준 502의 최근 가격을 알려줘",
+      "semantic_status": "PASS",
+      "http": 200,
+      "event_counts": {
+        "message": 2,
+        "status": 3,
+        "table": 1,
+        "done": 1
+      },
+      "protocol_errors": [],
+      "abstained": false,
+      "abstain_reason": null,
+      "elapsed": 4.407,
+      "client_cancel": false
+    },
+    {
+      "id": "series-repeat",
+      "port": 18012,
+      "session_id": "070c839b-08ed-403d-ac8b-44b7334a6194",
+      "question": "최근 1년간 니켈 가격 추이를 차트와 표로 보여줘",
+      "semantic_status": "PASS",
+      "http": 200,
+      "event_counts": {
+        "message": 2,
+        "status": 3,
+        "table": 1,
+        "chart": 1,
+        "done": 1
+      },
+      "protocol_errors": [],
+      "abstained": false,
+      "abstain_reason": null,
+      "elapsed": 18.202,
+      "client_cancel": false
+    },
+    {
+      "id": "series",
+      "port": 18012,
+      "session_id": "1a80d04f-824f-48b9-a124-09e5d8b07217",
+      "question": "최근 1년간 니켈 가격 추이를 차트와 표로 보여줘",
+      "semantic_status": "PASS",
+      "http": 200,
+      "event_counts": {
+        "message": 2,
+        "status": 3,
+        "table": 1,
+        "chart": 1,
+        "done": 1
+      },
+      "protocol_errors": [],
+      "abstained": false,
+      "abstain_reason": null,
+      "elapsed": 18.601,
+      "client_cancel": false
+    },
+    {
+      "id": "sum",
+      "port": 18012,
+      "session_id": "ef4ce7c0-318a-4158-a629-f9ccd25632d0",
+      "question": "2024년 구리 생산량의 전체 국가 합계는 얼마야?",
+      "semantic_status": "FAIL",
+      "http": 200,
+      "event_counts": {
+        "message": 2,
+        "status": 3,
+        "done": 1
+      },
+      "protocol_errors": [],
+      "abstained": true,
+      "abstain_reason": "unsupported_aggregate_contract",
+      "elapsed": 7.108,
+      "client_cancel": false
+    },
+    {
+      "id": "unsupported",
+      "port": 18012,
+      "session_id": "a8a873d5-697a-4444-8673-470d922e0ca9",
+      "question": "SQL로 DROP TABLE 실행해",
+      "semantic_status": "PASS",
+      "http": 200,
+      "event_counts": {
+        "message": 2,
+        "status": 1,
+        "done": 1
+      },
+      "protocol_errors": [],
+      "abstained": true,
+      "abstain_reason": "security_privacy",
+      "elapsed": 0.303,
+      "client_cancel": false
+    }
+  ],
+  "model_stability": {
+    "total_questions": 40,
+    "model_requests": 120,
+    "question_counts": {
+      "STABLE_PASS": 33,
+      "VARIABLE": 5,
+      "STABLE_UNSUPPORTED": 2
+    },
+    "request_counts": {
+      "PASS": 106,
+      "UNSUPPORTED_CORRECT": 6,
+      "LOGICAL_PLAN_INCOMPLETE": 8
+    },
+    "questions": {
+      "EXT500-009": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "EXT500-010": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "EXT500-011": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "EXT500-012": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "EXT500-037": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "EXT500-038": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "EXT500-039": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "EXT500-040": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "H1": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "H2": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "H3": {
+        "verdict": "VARIABLE",
+        "runs": {
+          "1": "PASS",
+          "2": "LOGICAL_PLAN_INCOMPLETE",
+          "3": "LOGICAL_PLAN_INCOMPLETE"
+        }
+      },
+      "H4": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "M1": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "M2": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "N1": {
+        "verdict": "STABLE_UNSUPPORTED",
+        "runs": {
+          "1": "UNSUPPORTED_CORRECT",
+          "2": "UNSUPPORTED_CORRECT",
+          "3": "UNSUPPORTED_CORRECT"
+        }
+      },
+      "N2": {
+        "verdict": "STABLE_UNSUPPORTED",
+        "runs": {
+          "1": "UNSUPPORTED_CORRECT",
+          "2": "UNSUPPORTED_CORRECT",
+          "3": "UNSUPPORTED_CORRECT"
+        }
+      },
+      "R1": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "R2": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "R3": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "R4": {
+        "verdict": "VARIABLE",
+        "runs": {
+          "1": "LOGICAL_PLAN_INCOMPLETE",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "R5": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "R6": {
+        "verdict": "VARIABLE",
+        "runs": {
+          "1": "PASS",
+          "2": "LOGICAL_PLAN_INCOMPLETE",
+          "3": "LOGICAL_PLAN_INCOMPLETE"
+        }
+      },
+      "U1": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "U2": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "U3": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "U4": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "V1": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "V2": {
+        "verdict": "VARIABLE",
+        "runs": {
+          "1": "PASS",
+          "2": "LOGICAL_PLAN_INCOMPLETE",
+          "3": "PASS"
+        }
+      },
+      "V3": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "V4": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "W1": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "W2": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "W3": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "W4": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "Z1": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "Z2": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "Z3": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "Z4": {
+        "verdict": "VARIABLE",
+        "runs": {
+          "1": "LOGICAL_PLAN_INCOMPLETE",
+          "2": "PASS",
+          "3": "LOGICAL_PLAN_INCOMPLETE"
+        }
+      },
+      "Z5": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      },
+      "Z6": {
+        "verdict": "STABLE_PASS",
+        "runs": {
+          "1": "PASS",
+          "2": "PASS",
+          "3": "PASS"
+        }
+      }
+    }
+  },
+  "core_regression": {
+    "passed": 1335,
+    "failed": 0,
+    "subtests": 687
+  },
+  "app_common_regression": {
+    "passed": 152,
+    "failed": 1,
+    "subtests": 17
+  },
+  "independent_audit": {
+    "critical": 0,
+    "high": 1,
+    "gate": "NOT_READY"
+  },
+  "limitations": [
+    "SSE does not execute V2 shadow by default; different parser contracts.",
+    "Wire success does not establish semantic success.",
+    "Operational18002 API created test-only session/history records; no manual business-data writes or deployment.",
+    "Preflight URI encoding errors excluded, artifacts preserved.",
+    "AST cache hits are not independent parser repeats.",
+    "No browser UI test, real tool/LLM timeout injection, or multiworker failover test."
+  ]
+}

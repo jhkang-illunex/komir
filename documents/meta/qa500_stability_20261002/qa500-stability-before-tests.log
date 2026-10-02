@@ -1,0 +1,42 @@
+FFF                                                                      [100%]
+=================================== FAILURES ===================================
+____ test_unknown_source_diagnostic_exposes_only_defined_symbols_and_fields ____
+
+    def test_unknown_source_diagnostic_exposes_only_defined_symbols_and_fields():
+        raw = monthly_plan()
+        raw["requested_outputs"][0]["source_node"] = "invented_join"
+        payload = rejected_payload(raw)
+        errors = " ".join(payload["contract_errors"])
+>       assert "defined_sources=" in errors
+E       AssertionError: assert 'defined_sources=' in 'requested_output_source_unknown: invented_join'
+
+inhouse/rag_core/tests/test_semantic_v2_repair_diagnostics.py:24: AssertionError
+_________ test_missing_compare_fields_diagnostic_preserves_input_roles _________
+
+    def test_missing_compare_fields_diagnostic_preserves_input_roles():
+        raw = monthly_plan()
+        raw["relationships"][0].update(kind="compare", operation="side_by_side", fields=[])
+        errors = " ".join(rejected_payload(raw)["contract_errors"])
+>       assert "operand_fields=" in errors
+E       AssertionError: assert 'operand_fields=' in 'summary: one or two comparison fields required'
+
+inhouse/rag_core/tests/test_semantic_v2_repair_diagnostics.py:35: AssertionError
+_________ test_diagnostic_is_invariant_to_requirement_symbol_renaming __________
+
+    def test_diagnostic_is_invariant_to_requirement_symbol_renaming():
+        raw = monthly_plan()
+        raw["requirements"][0]["requirement_id"] = "opaque_alpha"
+        raw["requirements"][1]["requirement_id"] = "opaque_beta"
+        raw["relationships"][0]["inputs"] = ["opaque_alpha", "opaque_beta"]
+        raw["relationships"][0]["relationship_id"] = "opaque_gamma"
+        raw["requested_outputs"][0]["source_node"] = "missing"
+        errors = " ".join(rejected_payload(raw)["contract_errors"])
+>       assert "defined_sources=" in errors and "opaque_gamma" in errors
+E       AssertionError: assert ('defined_sources=' in 'requested_output_source_unknown: missing')
+
+inhouse/rag_core/tests/test_semantic_v2_repair_diagnostics.py:48: AssertionError
+=========================== short test summary info ============================
+FAILED inhouse/rag_core/tests/test_semantic_v2_repair_diagnostics.py::test_unknown_source_diagnostic_exposes_only_defined_symbols_and_fields
+FAILED inhouse/rag_core/tests/test_semantic_v2_repair_diagnostics.py::test_missing_compare_fields_diagnostic_preserves_input_roles
+FAILED inhouse/rag_core/tests/test_semantic_v2_repair_diagnostics.py::test_diagnostic_is_invariant_to_requirement_symbol_renaming
+3 failed in 0.59s

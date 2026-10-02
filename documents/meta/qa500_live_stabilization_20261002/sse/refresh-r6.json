@@ -1,0 +1,74 @@
+{
+  "id": "refresh-r6",
+  "port": 18012,
+  "request": {
+    "user_id": "qa-sse31",
+    "session_id": "8862439d-b711-4fb3-b42b-b22608ba79a8",
+    "message": "그 광종들의 가격을 지금 다시 조회해줘",
+    "mode": "auto"
+  },
+  "started_at": "2026-10-02T02:38:47.187453+00:00",
+  "events": [
+    {
+      "event": "message",
+      "data": {
+        "session_id": "8862439d-b711-4fb3-b42b-b22608ba79a8"
+      },
+      "elapsed": 0.043
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 1,
+        "label": "질문 조건 확인"
+      },
+      "elapsed": 0.068
+    },
+    {
+      "event": "message",
+      "data": {
+        "delta": "질문을 처리할 실행 계획을 생성하지 못했습니다. 데이터가 없다는 의미는 아닙니다."
+      },
+      "elapsed": 8.564
+    },
+    {
+      "event": "done",
+      "data": {
+        "done": true,
+        "abstained": true,
+        "abstain_reason": "semantic_plan_incomplete",
+        "citations": []
+      },
+      "elapsed": 8.564
+    }
+  ],
+  "http_status": 200,
+  "content_type": "text/event-stream; charset=utf-8",
+  "elapsed": 8.565,
+  "text": "질문을 처리할 실행 계획을 생성하지 못했습니다. 데이터가 없다는 의미는 아닙니다.",
+  "event_counts": {
+    "message": 2,
+    "status": 1,
+    "done": 1
+  },
+  "done": {
+    "done": true,
+    "abstained": true,
+    "abstain_reason": "semantic_plan_incomplete",
+    "citations": []
+  },
+  "protocol_errors": [],
+  "deployment": {
+    "container_id": "6452a6334278e1f1adac912582e72216df5db989cd96b25ca06448f77d7bf5c0",
+    "port": 18012,
+    "image_tag": "komir-rag-chat:qa-live-stability33-r6",
+    "image_id": "sha256:03581f5a9fa2e9476a13f67bf49773299ad60503057f0e8da95660e7f1a1d38f",
+    "source_hashes": {
+      "inhouse/rag_core/ragkit/live_multihop.py": "da8a1e449e1f2c3a0b1b7b3f337cdd1d62d5c597318cf78d37beeca9d6626028",
+      "inhouse/rag_core/ragkit/chatbot.py": "71f5b2e77e6fd95a5df336190b0bfd532709b016e896d527560f13ea88557553",
+      "inhouse/rag_core/ragkit/chatbot_graph.py": "adaaacae8d021345abbbbc3b96d90318d6da98db933e3b42def50f7fee5caf8a",
+      "inhouse/rag_core/ragkit/chatbot_events.py": "0e6bb9e37b18913aac8ab97f95d6d3e772a992da7cba8bbc43738f7b7fcf03c5",
+      "inhouse/rag_core/ragkit/_mcp_tools_common.py": "96a7b909688af872bdab7f77ee186501ddb2206b00cc511d71f3a7bc11a3c4d6"
+    }
+  }
+}

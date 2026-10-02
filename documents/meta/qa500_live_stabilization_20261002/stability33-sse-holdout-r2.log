@@ -1,0 +1,5 @@
+metric-r2 200 5.104 {'message': 2, 'status': 3, 'done': 1} upstream step failed: node_2, node_3 []
+operation-r2 200 5.027 {'message': 2, 'status': 3, 'done': 1} no_comparable_rows []
+paraphrase-r2 200 4.915 {'message': 2, 'status': 3, 'table': 1, 'done': 1} None []
+series-r2 200 3.76 {'message': 2, 'status': 3, 'table': 1, 'chart': 1, 'done': 1} None []
+negative-r2 200 0.211 {'message': 2, 'status': 1, 'done': 1} security_privacy []

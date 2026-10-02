@@ -1,0 +1,78 @@
+{
+  "id": "chile-r2",
+  "port": 18012,
+  "request": {
+    "user_id": "qa-sse31",
+    "session_id": "2cb0e0fc-4fde-448e-b6d0-393517a9136c",
+    "message": "2024년 칠레의 구리 생산량은 얼마야?",
+    "mode": "auto"
+  },
+  "started_at": "2026-10-02T01:38:10.885316+00:00",
+  "events": [
+    {
+      "event": "message",
+      "data": {
+        "session_id": "2cb0e0fc-4fde-448e-b6d0-393517a9136c"
+      },
+      "elapsed": 0.049
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 1,
+        "label": "질문 조건 확인"
+      },
+      "elapsed": 0.073
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 3,
+        "label": "데이터 분석 중",
+        "status": "데이터 분석 중"
+      },
+      "elapsed": 4.606
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 4,
+        "label": "답변 생성 중"
+      },
+      "elapsed": 4.607
+    },
+    {
+      "event": "message",
+      "data": {
+        "delta": "presentation_unavailable"
+      },
+      "elapsed": 4.622
+    },
+    {
+      "event": "done",
+      "data": {
+        "done": true,
+        "abstained": true,
+        "abstain_reason": "presentation_unavailable",
+        "citations": []
+      },
+      "elapsed": 4.623
+    }
+  ],
+  "http_status": 200,
+  "content_type": "text/event-stream; charset=utf-8",
+  "elapsed": 4.624,
+  "text": "presentation_unavailable",
+  "event_counts": {
+    "message": 2,
+    "status": 3,
+    "done": 1
+  },
+  "done": {
+    "done": true,
+    "abstained": true,
+    "abstain_reason": "presentation_unavailable",
+    "citations": []
+  },
+  "protocol_errors": []
+}

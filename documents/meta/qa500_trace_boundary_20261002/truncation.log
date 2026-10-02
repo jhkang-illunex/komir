@@ -1,0 +1,3 @@
+semantic_requirement_v2: 1차 출력 검증 실패, 복구 재시도(JSONDecodeError: Unterminated string starting at: line 4 column 3 (char 84))
+semantic_requirement_v2: 1차 출력 검증 실패, 복구 재시도(JSONDecodeError: Unterminated string starting at: line 4 column 3 (char 84))
+semantic_requirement_v2: 복구 재시도 후에도 유효한 JSON 출력 실패(JSONDecodeError: Unterminated string starting at: line 4 column 3 (char 84)) — 호출부 폴백으로 처리됨

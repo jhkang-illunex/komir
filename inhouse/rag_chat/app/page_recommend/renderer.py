@@ -60,6 +60,10 @@ def build_recommendation(
     ]
     missing_keys = set(missing_required_filters or [])
     missing_labels = [item.label for item in page.filters if item.semantic_key in missing_keys]
+    screen_guidance = (
+        [control.description for control in page.screen.controls] if page.screen else []
+    )
+    screen_guidance.extend(_filter_guidance(page))
     return RecommendationItem(
         page_id=page.page_id,
         page_name=page.identity.name,
@@ -76,9 +80,7 @@ def build_recommendation(
         available_data=page.outputs.available_data_labels,
         presentation_summary=page.presentation.summary,
         presentation=page.presentation.panels,
-        screen_guidance=(
-            [control.description for control in page.screen.controls] if page.screen else []
-        ),
+        screen_guidance=screen_guidance,
         caveats=page.policies.caveats,
         login_required=page.identity.login_required,
         external=page.identity.external,
@@ -165,6 +167,25 @@ def _append_bullets(lines: list[str], heading: str, values: list[str]) -> None:
         lines.extend(f"  - {value}" for value in values)
 
 
+def _filter_guidance(page: PageDefinition) -> list[str]:
+    """Expose registered search controls when a page remains ambiguous.
+
+    Ambiguous recommendations previously rendered only page identity and URL,
+    dropping the typed filter contract.  Build this guidance from the page
+    registry so it applies uniformly to all board pages and does not inspect
+    the user's wording.
+    """
+
+    guidance: list[str] = []
+    for item in page.filters:
+        if item.semantic_key == "search_field" and item.options:
+            labels = "·".join(option.label for option in item.options)
+            guidance.append(f"검색 대상: {labels}")
+        elif item.semantic_key == "query" and item.type == "text":
+            guidance.append("검색어를 입력할 수 있다.")
+    return guidance
+
+
 def render_ambiguous(items: list[RecommendationItem]) -> str:
     """Render multiple plausible pages when selection remains ambiguous."""
 
@@ -175,6 +196,7 @@ def render_ambiguous(items: list[RecommendationItem]) -> str:
         lines.append(f"  주소: {item.url}")
         if item.navigation_method == "POST":
             lines.append(f"  이동 방법: KOMIS 마이페이지에서 `{item.page_name}` 선택")
+        _append_bullets(lines, "  검색 조건:", item.screen_guidance)
     lines.append("설명을 비교한 뒤 원하는 관점의 페이지에서 직접 확인해 주세요.")
     return "\n".join(lines)
 

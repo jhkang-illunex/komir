@@ -569,6 +569,7 @@ class RetrievalRoute(BaseModel):
     use_news: bool = False
     news_date: str | None = None
     use_inventory: bool = False
+    inventory_action_id: Literal["inventory.latest", "inventory.series"] = "inventory.latest"
     use_battery_minerals: bool = False
     use_production_concentration: bool = False
     use_cross_rank: bool = False
@@ -633,6 +634,7 @@ class RetrievalRoute(BaseModel):
     komis_ranking_top_n: int | None = None
     # 2026-09-18(RDB 결정적쿼리 후보리스트 1순위 — 매장량/생산량 국가랭킹)
     use_komis_mineral_ranking: bool = False
+    komis_resource_population: Literal["all"] | None = None
     use_komis_production_yoy: bool = False
     komis_production_yoy_end_year: int | None = None
     # 2026-09-18: 단일값(Literal)이던 걸 리스트로 확장 — "생산량과 매장량"
@@ -662,6 +664,7 @@ class RetrievalRoute(BaseModel):
     # 조회한다. 이 값은 ActionPlan의 Period(kind=latest)에서만 결정적으로 온다.
     komis_raw_limit: int | None = None
     price_criterion_serial: int | None = None
+    criterion_mode: Literal["REPRESENTATIVE", "EXPLICIT", "ALL"] = "REPRESENTATIVE"
     # 2026-09-07 — "최근 N개월"류 상대 기간 표현 전용(사용자 지시로 09-03엔
     # 미루고 null 처리만 하다가, verify 날짜그라운딩 버그를 고치고 나니 바로
     # 이 갭이 "니켈 최근 6개월 가격"에서 실제로 걸리는 걸 확인해 이번에
@@ -897,6 +900,7 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
         # 관측 2건만 가져오며, 렌더러는 최신 행만 표로 표시한다.
         "komis_raw_limit": 2 if period and period.kind == "latest" else None,
         "price_criterion_serial": criterion_serial,
+        "criterion_mode": s.criterion_mode,
     }
     document_topic = re.sub(r"\s+", "", s.topic or question)
     if (call.action_id == "document.retrieve" and "보고서" in document_topic and period
@@ -920,8 +924,8 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
             return RetrievalRoute(**common, use_komis_price_time_aggregate=True,
                                   komis_price_operation=s.price_operation)
         return RetrievalRoute(**common, use_komis_raw=True, komis_topic="price")
-    if call.action_id == "inventory.latest":
-        return RetrievalRoute(**common, use_inventory=True)
+    if call.action_id in {"inventory.latest", "inventory.series"}:
+        return RetrievalRoute(**common, use_inventory=True, inventory_action_id=call.action_id)
     if call.action_id == "price.overview":
         return RetrievalRoute(**common, use_komis_strategic_price_overview=True,
                               komis_strategic_price_groups=s.strategic_price_groups)
@@ -958,12 +962,16 @@ def _route_from_action_call(call, question: str) -> RetrievalRoute:
                               komis_partner_country=s.partner_country, komis_trade_flow=s.flow,
                               komis_dependency_denominator=s.denominator_scope)
     if call.action_id == "resource.rank":
-        if "생산집중도" in question.replace(" ", ""):
+        full_population = s.resource_population == "all" or (
+            s.resource_operation not in {None, "level", "first", "latest"} and s.top_n is None
+        )
+        if s.resource_population == "all" and s.top_n is not None:
+            raise ValueError("resource_population_conflict: all and explicit top_n")
+        if not full_population and "생산집중도" in question.replace(" ", ""):
             return RetrievalRoute(**common, use_production_concentration=True)
         ranking_top_n = s.top_n
-        if s.resource_operation not in {None, "level", "first", "latest"}:
-            ranking_top_n = max(ranking_top_n or 0, 100)
         return RetrievalRoute(**{**common, "komis_ranking_top_n": ranking_top_n}, use_komis_mineral_ranking=True,
+                              komis_resource_population="all" if full_population else None,
                               komis_mineral_ranking_metrics=[s.metric])
     if call.action_id == "resource.yoy":
         return RetrievalRoute(**common, use_komis_production_yoy=True,
@@ -2243,6 +2251,7 @@ def _retrieve_node(
                 hs_code=route.komis_hs_code,
                 index_type_code=route.komis_index_type_code,
                 price_criterion_serial=route.price_criterion_serial,
+                criterion_mode=route.criterion_mode,
                 start_period=start_period, end_period=end_period,
                 limit=route.komis_raw_limit,
             )
@@ -2342,8 +2351,8 @@ def _retrieve_node(
                 jobs[f"komis_mineral_ranking:{metric}"] = submit(
                     session.call_komis_mineral_ranking, komis_raw_mineral_code, metric,
                     start_period=route.komis_start_period, end_period=route.komis_end_period,
-                    top_n=route.komis_ranking_top_n or 5,
-                    share_only=share_comparison,
+                    top_n=None if route.komis_resource_population == "all" else (route.komis_ranking_top_n or 5),
+                    share_only=share_comparison and route.komis_resource_population != "all",
                 )
         if route.use_komis_production_yoy and komis_raw_mineral_code:
             jobs["komis_production_yoy"] = submit(
@@ -2425,10 +2434,18 @@ def _retrieve_node(
                 start=news_start, end=news_end, limit=route.komis_ranking_top_n or 5,
             )
         if route.use_inventory and (route.komis_mineral_name or route.price_criterion_serial):
+            inventory_start, inventory_end = _relative_period_bounds(route)
+            inventory_period = None
+            if route.komis_relative_months:
+                inventory_period = {"kind": "trailing_months", "trailing_months": route.komis_relative_months}
+            elif inventory_start or inventory_end:
+                inventory_period = {"kind": "range", "start": inventory_start, "end": inventory_end}
             jobs["inventory"] = submit(
                 inventory.fetch_inventory_evidence, route.komis_mineral_name,
                 basis=(state.get("action_call").slots.price_basis if state.get("action_call") else None),
                 price_criterion_serial=route.price_criterion_serial,
+                period=inventory_period,
+                action_id=route.inventory_action_id,
             )
         if route.use_battery_minerals:
             jobs["battery_minerals"] = submit(battery_minerals.fetch_battery_minerals_evidence)
@@ -2456,14 +2473,15 @@ def _retrieve_node(
         paired_population = route.use_komis_ranking and route.use_komis_mineral_ranking
         strict_aggregate = any((route.use_komis_monthly_trade,
                                 route.use_komis_explicit_hs_summary,
-                                route.use_komis_price_comparison, route.use_komis_price_time_aggregate, paired_population))
+                                route.use_komis_price_comparison, route.use_komis_price_time_aggregate, paired_population,
+                                route.komis_resource_population == "all"))
         use_dense_effective = not strict_aggregate and (route.use_dense or any((
             route.use_komis_ranking, route.use_komis_mineral_ranking,
             route.use_komis_price_volatility_ranking, route.use_komis_indicator_ranking,
         )))
         if use_dense_effective:
             jobs["dense"] = submit(session.call_hybrid_search, query, dense_k)
-        if route.use_pageindex:
+        if route.use_pageindex and route.komis_resource_population != "all":
             if route.pageindex_mode == "agentic":
                 jobs["pageindex"] = submit(
                     session.call_pageindex_agentic, query, history=_recent_history(state),
@@ -2501,6 +2519,10 @@ def _retrieve_node(
         required_aggregate_jobs.append("komis_strategic_price_overview")
     if route.use_komis_production_yoy and "komis_production_yoy" not in required_aggregate_jobs:
         required_aggregate_jobs.append("komis_production_yoy")
+    if route.komis_resource_population == "all":
+        required_aggregate_jobs.extend(
+            f"komis_mineral_ranking:{metric}" for metric in route.komis_mineral_ranking_metrics or []
+        )
     compact_question = re.sub(r"\s+", "", state.get("question", route.resolved_query))
     if "생산국비중" in compact_question and "수입국비중" in compact_question:
         required_aggregate_jobs.extend(("komis_ranking", "komis_mineral_ranking:production"))
@@ -3437,7 +3459,7 @@ def retrieve_evidence(
             status = "no_data"
         elif reason == "blocked":
             status = "blocked"
-        elif reason in {"advisor_rejected", "claim_not_supported"}:
+        elif reason in {"advisor_rejected", "claim_not_supported"} or reason.startswith("price_criterion_selection_required:"):
             status = "validation_failed"
         else:
             status = "failed"
@@ -3512,6 +3534,17 @@ def retrieve_evidence(
                 continue
             call_evidence = extracted.get("evidence", [])
             call_warnings = extracted.get("warnings", [])
+        # No evidence was produced: an explicit adapter failure/selection is
+        # not an Advisor judgement and must retain its original typed reason.
+        if not call_evidence:
+            adapter_failure = next((w for w in call_warnings if w.startswith((
+                "resource_population_", "price_criterion_mapping_missing:",
+                "price_criterion_selection_required:",
+            ))), None)
+            if adapter_failure:
+                source_failure = next((w for w in call_warnings if w.startswith(_SOURCE_UNAVAILABLE_WARNING_PREFIX)), None)
+                record_failure(call, call_warnings, source_failure or adapter_failure)
+                continue
         call_evidence = _filter_document_evidence_to_trailing_period(call_evidence, call)
         for ev in call_evidence:
             ev.requirement_id, ev.action_id, ev.source_id, ev.observed_period = (
@@ -3647,7 +3680,8 @@ def retrieve_evidence(
                         "warnings": call_warnings}
         elif (
             call.action_id == "resource.rank"
-            and call.slots.resource_operation not in {None, "level", "first", "latest"}
+            and (call.slots.resource_operation not in {None, "level", "first", "latest"}
+                 or call.slots.resource_population == "all")
         ):
             # Aggregate/country-value operations are deterministic typed
             # projections over the structured ranking evidence.  Re-sending

@@ -1,0 +1,70 @@
+{
+  "sql": "SELECT substr(crtr_ymd,1,4)||'-'||substr(crtr_ymd,5,2) AS month_key,\nAVG(cmerc_prc) average_price,COUNT(*) observation_count\nFROM public.ko_mnrl_prc WHERE mnrl_prc_crtr_sn=%s AND status='Y'\nAND last_del_dt IS NULL AND cmerc_prc IS NOT NULL AND crtr_ymd BETWEEN %s AND %s\nGROUP BY substr(crtr_ymd,1,4),substr(crtr_ymd,5,2) ORDER BY month_key",
+  "bindings": [
+    502,
+    "20251001",
+    "20260930"
+  ],
+  "rows": [
+    {
+      "month_key": "2025-10",
+      "average_price": "14307.413913043478",
+      "observation_count": 23
+    },
+    {
+      "month_key": "2025-11",
+      "average_price": "14301.934000000000",
+      "observation_count": 20
+    },
+    {
+      "month_key": "2025-12",
+      "average_price": "14654.210869565217",
+      "observation_count": 23
+    },
+    {
+      "month_key": "2026-01",
+      "average_price": "15340.083181818182",
+      "observation_count": 22
+    },
+    {
+      "month_key": "2026-02",
+      "average_price": "16133.414000000000",
+      "observation_count": 20
+    },
+    {
+      "month_key": "2026-03",
+      "average_price": "17328.787727272727",
+      "observation_count": 22
+    },
+    {
+      "month_key": "2026-04",
+      "average_price": "18840.948181818182",
+      "observation_count": 22
+    },
+    {
+      "month_key": "2026-05",
+      "average_price": "18564.696190476190",
+      "observation_count": 21
+    },
+    {
+      "month_key": "2026-06",
+      "average_price": "17207.430454545455",
+      "observation_count": 22
+    },
+    {
+      "month_key": "2026-07",
+      "average_price": "16784.268260869565",
+      "observation_count": 23
+    },
+    {
+      "month_key": "2026-08",
+      "average_price": "16691.974761904762",
+      "observation_count": 21
+    },
+    {
+      "month_key": "2026-09",
+      "average_price": "18977.023636363636",
+      "observation_count": 22
+    }
+  ]
+}

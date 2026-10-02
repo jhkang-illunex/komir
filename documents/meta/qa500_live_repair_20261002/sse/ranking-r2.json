@@ -1,0 +1,215 @@
+{
+  "id": "ranking-r2",
+  "port": 18012,
+  "request": {
+    "user_id": "qa-sse31",
+    "session_id": "d57b6135-f48c-4b79-92b9-614759beadc3",
+    "message": "2024년 구리 생산량 상위 5개국을 알려줘",
+    "mode": "auto"
+  },
+  "started_at": "2026-10-02T01:38:15.510304+00:00",
+  "events": [
+    {
+      "event": "message",
+      "data": {
+        "session_id": "d57b6135-f48c-4b79-92b9-614759beadc3"
+      },
+      "elapsed": 0.045
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 1,
+        "label": "질문 조건 확인"
+      },
+      "elapsed": 0.071
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 3,
+        "label": "데이터 분석 중",
+        "status": "데이터 분석 중"
+      },
+      "elapsed": 4.386
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 4,
+        "label": "답변 생성 중"
+      },
+      "elapsed": 4.387
+    },
+    {
+      "event": "message",
+      "data": {
+        "delta": "| country | production_volume |\n| --- | --- |\n| 페루 | 2740000.0 |\n| 러시아 | 1020000.0 |\n| 잠비아 | 823000.0 |\n| 카자흐스탄 | 724000.0 |\n| 멕시코 | 717000.0 |"
+      },
+      "elapsed": 4.403
+    },
+    {
+      "event": "table",
+      "data": {
+        "schema_version": 1,
+        "block_id": "multihop-table",
+        "columns": [
+          "country",
+          "production_volume"
+        ],
+        "rows": [
+          [
+            "페루",
+            "2740000.0"
+          ],
+          [
+            "러시아",
+            "1020000.0"
+          ],
+          [
+            "잠비아",
+            "823000.0"
+          ],
+          [
+            "카자흐스탄",
+            "724000.0"
+          ],
+          [
+            "멕시코",
+            "717000.0"
+          ]
+        ],
+        "columns_meta": [
+          {
+            "key": "country",
+            "label": "country",
+            "display": "country",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "production_volume",
+            "label": "production_volume",
+            "display": "production_volume",
+            "type": "number",
+            "unit": null
+          }
+        ],
+        "rows_typed": [
+          [
+            "페루",
+            2740000.0
+          ],
+          [
+            "러시아",
+            1020000.0
+          ],
+          [
+            "잠비아",
+            823000.0
+          ],
+          [
+            "카자흐스탄",
+            724000.0
+          ],
+          [
+            "멕시코",
+            717000.0
+          ]
+        ],
+        "markdown": "| country | production_volume |\n| --- | --- |\n| 페루 | 2740000.0 |\n| 러시아 | 1020000.0 |\n| 잠비아 | 823000.0 |\n| 카자흐스탄 | 724000.0 |\n| 멕시코 | 717000.0 |",
+        "chart_hint": {
+          "recommended": "bar",
+          "alternatives": [
+            "pie"
+          ],
+          "reason": "날짜열 없음 — country별 비교"
+        },
+        "meta": {
+          "source_index": 1,
+          "source": "public.KO_RSRC_PRDCTN_QUTY",
+          "as_of": null,
+          "unit": "톤",
+          "time_aggregation": null,
+          "menu_source": null,
+          "hidden_columns": []
+        },
+        "source_index": 1,
+        "source": "public.KO_RSRC_PRDCTN_QUTY"
+      },
+      "elapsed": 4.404
+    },
+    {
+      "event": "chart",
+      "data": {
+        "schema_version": 1,
+        "block_id": "multihop-chart",
+        "data_ref": "multihop-table",
+        "spec": {
+          "kind": "bar",
+          "alternatives": [
+            "pie"
+          ],
+          "x": "country",
+          "x_type": "category",
+          "x_format": null,
+          "series": [
+            "production_volume"
+          ],
+          "group": null,
+          "sort_x_ascending": false,
+          "title": "production_volume",
+          "y_unit": "톤",
+          "as_of": null,
+          "time_aggregation": null
+        },
+        "meta": {
+          "source_index": 1,
+          "source": "public.KO_RSRC_PRDCTN_QUTY",
+          "menu_source": null
+        },
+        "source_index": 1,
+        "source": "public.KO_RSRC_PRDCTN_QUTY"
+      },
+      "elapsed": 4.404
+    },
+    {
+      "event": "done",
+      "data": {
+        "done": true,
+        "abstained": false,
+        "citations": [
+          {
+            "index": 1,
+            "source": "public.KO_RSRC_PRDCTN_QUTY"
+          }
+        ],
+        "bogus_citations": []
+      },
+      "elapsed": 4.405
+    }
+  ],
+  "http_status": 200,
+  "content_type": "text/event-stream; charset=utf-8",
+  "elapsed": 4.406,
+  "text": "| country | production_volume |\n| --- | --- |\n| 페루 | 2740000.0 |\n| 러시아 | 1020000.0 |\n| 잠비아 | 823000.0 |\n| 카자흐스탄 | 724000.0 |\n| 멕시코 | 717000.0 |",
+  "event_counts": {
+    "message": 2,
+    "status": 3,
+    "table": 1,
+    "chart": 1,
+    "done": 1
+  },
+  "done": {
+    "done": true,
+    "abstained": false,
+    "citations": [
+      {
+        "index": 1,
+        "source": "public.KO_RSRC_PRDCTN_QUTY"
+      }
+    ],
+    "bogus_citations": []
+  },
+  "protocol_errors": []
+}

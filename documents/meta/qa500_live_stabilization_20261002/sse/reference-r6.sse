@@ -1,0 +1,20 @@
+data: {"session_id": "8862439d-b711-4fb3-b42b-b22608ba79a8"}
+
+event: status
+data: {"stage": 1, "label": "질문 조건 확인"}
+
+event: status
+data: {"stage": 3, "label": "데이터 분석 중", "status": "데이터 분석 중"}
+
+event: status
+data: {"stage": 4, "label": "답변 생성 중"}
+
+data: {"delta": "일부 결과만 확인되었습니다. 전체 모집단 결과는 아닙니다.\n"}
+
+data: {"delta": "| mineral |\n| --- |\n| 망간 |\n| 크롬 |\n| 티타늄 |\n| 안티모니 |\n| 몰리브덴 |\n| 니오븀 |\n| 네오디뮴 |"}
+
+event: table
+data: {"schema_version": 1, "block_id": "multihop-table", "columns": ["mineral"], "rows": [["망간"], ["크롬"], ["티타늄"], ["안티모니"], ["몰리브덴"], ["니오븀"], ["네오디뮴"]], "columns_meta": [{"key": "mineral", "label": "mineral", "display": "mineral", "type": "string", "unit": null}], "rows_typed": [["망간"], ["크롬"], ["티타늄"], ["안티모니"], ["몰리브덴"], ["니오븀"], ["네오디뮴"]], "markdown": "| mineral |\n| --- |\n| 망간 |\n| 크롬 |\n| 티타늄 |\n| 안티모니 |\n| 몰리브덴 |\n| 니오븀 |\n| 네오디뮴 |", "chart_hint": {"recommended": null, "alternatives": [], "reason": "행 2개 미만 또는 열 1개"}, "meta": {"source_index": 1, "source": "PageIndex 파생 사실 · 희소금속 월간동향", "as_of": null, "unit": null, "time_aggregation": null, "menu_source": null, "hidden_columns": []}, "source_index": 1, "source": "PageIndex 파생 사실 · 희소금속 월간동향"}
+
+event: done
+data: {"done": true, "abstained": false, "citations": [{"index": 1, "source": "PageIndex 파생 사실 · 희소금속 월간동향"}, {"index": 2, "source": "public.KO_MNRL_PRC"}], "bogus_citations": []}

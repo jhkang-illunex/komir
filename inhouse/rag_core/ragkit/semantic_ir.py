@@ -53,7 +53,14 @@ _METRIC_FIELDS: dict[str, set[str]] = {
     # same typed row fields at this boundary.
     "indicator": {"indicator", "value", "date", "unit", "series"},
     "series": {"indicator", "value", "date", "unit", "series"},
-    "price": {"price", "cmerc_prc", "value", "date", "hghst_prc", "lowst_prc", "high_price", "low_price", "status", "reason", "output"},
+    "price": {
+        "price", "cmerc_prc", "value", "date", "hghst_prc", "lowst_prc",
+        "high_price", "low_price", "status", "reason", "output",
+        # ALL price cardinality keeps source-owned measure/criterion identity
+        # alongside the common date/value fields.
+        "price_measure", "price_measure_label", "price_criterion",
+        "price_criterion_serial",
+    },
     "price_change": {"price_change", "price_change_rate", "pct_change", "change_pct", "date", "period"},
     "price_change_rate": {"price_change", "price_change_rate", "pct_change", "change_pct", "date", "period"},
     "price_volatility": {"price_volatility", "price_change", "pct_change", "change_pct", "date", "period"},
@@ -65,9 +72,14 @@ _METRIC_FIELDS: dict[str, set[str]] = {
     "import_amount": {"import_value", "import_amount", "import_amount_change", "value", "country", "period", "unit"},
     "import_change": {"import_change", "import_value_change", "import_amount_change", "change_pct", "country", "period", "unit"},
     "import_value_change": {"import_change", "import_value_change", "import_amount_change", "change_pct", "country", "period", "unit"},
-    "import_share": {"import_share", "share_percentage", "import_amount", "import_value", "country", "period", "unit"},
-    "country_share": {"country_share", "share_percentage", "import_amount", "import_value", "country", "period", "unit"},
-    "country_rank": {"country", "country_share", "share_percentage", "import_amount", "import_value", "period", "unit"},
+    "import_share": {"import_share", "share_percentage", "import_amount", "import_value", "value", "country", "period", "unit"},
+    "country_share": {"country_share", "share_percentage", "import_amount", "import_value", "value", "country", "period", "unit"},
+    "country_rank": {
+        "country", "country_share", "share_percentage",
+        "import_share", "import_amount", "import_value",
+        "export_share", "export_amount", "export_value",
+        "value", "period", "unit",
+    },
     "production": {"production", "production_volume", "value", "country", "country_code", "year", "period", "unit"},
     "production_volume": {"production", "production_volume", "value", "country", "country_code", "year", "period", "unit"},
     "reserves": {"reserves", "reserves_volume", "value", "country", "country_code", "year", "period", "unit"},

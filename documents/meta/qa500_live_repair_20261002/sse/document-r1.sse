@@ -1,0 +1,28 @@
+data: {"session_id": "b07771a1-64e6-49d6-b78d-1aa59bdc1cc8"}
+
+event: status
+data: {"stage": 1, "label": "질문 조건 확인"}
+
+: ping - 2026-10-02 01:35:12.100629+00:00
+
+event: status
+data: {"stage": 3, "label": "데이터 분석 중", "status": "데이터 분석 중"}
+
+event: status
+data: {"stage": 4, "label": "답변 생성 중"}
+
+data: {"delta": "리튬: 13335.89 USD/톤 (20260930 기준)\n희토류: 15541.34 USD/톤 (20260930 기준)"}
+
+event: table
+data: {"schema_version": 1, "block_id": "multihop-price-1", "columns": ["광종", "최근 가격", "기준일"], "rows": [["리튬", "13335.89", "20260930"]], "columns_meta": [{"key": "광종", "label": "광종", "display": "광종", "type": "string", "unit": null}, {"key": "최근 가격", "label": "최근 가격", "display": "최근 가격", "type": "number", "unit": null}, {"key": "기준일", "label": "기준일", "display": "기준일", "type": "number", "unit": null}], "rows_typed": [["리튬", 13335.89, 20260930.0]], "markdown": "| 광종 | 최근 가격 | 기준일 |\n| --- | --- | --- |\n| 리튬 | 13335.89 | 20260930 |", "chart_hint": {"recommended": null, "alternatives": [], "reason": "행 2개 미만 또는 열 1개"}, "meta": {"source_index": 1, "source": "PageIndex 파생 사실 · 희소금속 월간동향", "as_of": null, "unit": "USD/톤", "time_aggregation": null, "menu_source": null, "hidden_columns": []}, "source_index": 1, "source": "PageIndex 파생 사실 · 희소금속 월간동향"}
+
+event: table
+data: {"schema_version": 1, "block_id": "multihop-price-2", "columns": ["광종", "최근 가격", "기준일"], "rows": [["희토류", "15541.34", "20260930"]], "columns_meta": [{"key": "광종", "label": "광종", "display": "광종", "type": "string", "unit": null}, {"key": "최근 가격", "label": "최근 가격", "display": "최근 가격", "type": "number", "unit": null}, {"key": "기준일", "label": "기준일", "display": "기준일", "type": "number", "unit": null}], "rows_typed": [["희토류", 15541.34, 20260930.0]], "markdown": "| 광종 | 최근 가격 | 기준일 |\n| --- | --- | --- |\n| 희토류 | 15541.34 | 20260930 |", "chart_hint": {"recommended": null, "alternatives": [], "reason": "행 2개 미만 또는 열 1개"}, "meta": {"source_index": 1, "source": "PageIndex 파생 사실 · 희소금속 월간동향", "as_of": null, "unit": "USD/톤", "time_aggregation": null, "menu_source": null, "hidden_columns": []}, "source_index": 1, "source": "PageIndex 파생 사실 · 희소금속 월간동향"}
+
+data: {"delta": "\n일부 항목은 조회하지 못했습니다."}
+
+event: table
+data: {"schema_version": 1, "block_id": "multihop-item-outcomes", "columns": ["광종", "요청 결과", "상태", "사유"], "rows": [["망간", "latest_value", "empty", "retrieval unavailable: validation_failed"], ["코발트", "latest_value", "empty", "retrieval unavailable: validation_failed"], ["크롬", "latest_value", "empty", "retrieval unavailable: validation_failed"], ["티타늄", "latest_value", "empty", "retrieval unavailable: validation_failed"], ["텅스텐", "latest_value", "empty", "retrieval unavailable: validation_failed"], ["마그네슘", "latest_value", "empty", "retrieval unavailable: validation_failed"], ["안티모니", "latest_value", "empty", "retrieval unavailable: validation_failed"], ["몰리브덴", "latest_value", "empty", "retrieval unavailable: validation_failed"], ["니오븀", "latest_value", "empty", "retrieval unavailable: validation_failed"], ["인듐", "latest_value", "empty", "retrieval unavailable: validation_failed"], ["셀레늄", "latest_value", "empty", "retrieval unavailable: validation_failed"], ["갈륨", "latest_value", "empty", "retrieval unavailable: validation_failed"], ["네오디뮴", "latest_value", "empty", "retrieval unavailable: validation_failed"], ["동", "latest_value", "empty", "retrieval unavailable: validation_failed"]], "columns_meta": [{"key": "광종", "label": "광종", "display": "광종", "type": "string", "unit": null}, {"key": "요청 결과", "label": "요청 결과", "display": "요청 결과", "type": "string", "unit": null}, {"key": "상태", "label": "상태", "display": "상태", "type": "string", "unit": null}, {"key": "사유", "label": "사유", "display": "사유", "type": "string", "unit": null}], "rows_typed": [["망간", "latest_value", "empty", "retrieval unavailable: validation_failed"], ["코발트", "latest_value", "empty", "retrieval unavailable: validation_failed"], ["크롬", "latest_value", "empty", "retrieval unavailable: validation_failed"], ["티타늄", "latest_value", "empty", "retrieval unavailable: validation_failed"], ["텅스텐", "latest_value", "empty", "retrieval unavailable: validation_failed"], ["마그네슘", "latest_value", "empty", "retrieval unavailable: validation_failed"], ["안티모니", "latest_value", "empty", "retrieval unavailable: validation_failed"], ["몰리브덴", "latest_value", "empty", "retrieval unavailable: validation_failed"], ["니오븀", "latest_value", "empty", "retrieval unavailable: validation_failed"], ["인듐", "latest_value", "empty", "retrieval unavailable: validation_failed"], ["셀레늄", "latest_value", "empty", "retrieval unavailable: validation_failed"], ["갈륨", "latest_value", "empty", "retrieval unavailable: validation_failed"], ["네오디뮴", "latest_value", "empty", "retrieval unavailable: validation_failed"], ["동", "latest_value", "empty", "retrieval unavailable: validation_failed"]], "markdown": "", "chart_hint": {"recommended": null, "alternatives": [], "reason": "값이 갈리는 숫자 계열 없음"}, "meta": {"source_index": null, "source": null, "as_of": null, "unit": null, "time_aggregation": null, "menu_source": null, "hidden_columns": []}, "source_index": null, "source": null}
+
+event: done
+data: {"done": true, "abstained": false, "citations": [{"index": 1, "source": "PageIndex 파생 사실 · 희소금속 월간동향"}, {"index": 2, "source": "public.KO_MNRL_PRC"}], "bogus_citations": []}

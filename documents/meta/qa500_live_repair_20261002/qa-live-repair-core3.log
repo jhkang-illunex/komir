@@ -1,0 +1,396 @@
+............................................................................................................................................................................................................ [ 14%]
+........................................................................................................... [ 22%]
+..................................................................... [ 27%]
+........................................................................ [ 33%]
+........................................................... [ 37%]
+............................................. [ 40%]
+........................................................ [ 44%]
+..........................FFFF........FFFF.............................. [ 50%]
+........................................................................ [ 55%]
+......................................................................FF [ 60%]
+FF....................F.........................F.........F............. [ 65%]
+........................................................................ [ 71%]
+........................................................................ [ 76%]
+........................................................................ [ 81%]
+........................................................................ [ 86%]
+........................................................................ [ 92%]
+........................................................................ [ 97%]
+....................................                                  [100%]
+=================================== FAILURES ===================================
+___________________ test_independent_sql_oracle[EXT500-089] ____________________
+
+case = {'id': 'EXT500-089', 'source_id': 'SET1-094', 'pattern_id': 'PAT-023', 'variant_id': 'V1', ...}
+synthetic_db = <sqlite3.Connection object at 0x7ff487518440>
+
+    @pytest.mark.parametrize('case',[c for c in CASES if int(c['pattern_id'][4:]) in SUPPORTED],ids=lambda c:c['id'])
+    def test_independent_sql_oracle(case,synthetic_db):
+        record=asyncio.run(validate_case(case,synthetic_db))
+>       assert record['backend_executed'],record
+E       AssertionError: {'id': 'EXT500-089', 'pattern_id': 'PAT-023', 'backend_executed': False, 'physical_tool_executed': False, ...}
+E       assert False
+
+inhouse/rag_core/tests/test_qa500_backend.py:18: AssertionError
+___________________ test_independent_sql_oracle[EXT500-090] ____________________
+
+case = {'id': 'EXT500-090', 'source_id': 'SET1-094', 'pattern_id': 'PAT-023', 'variant_id': 'V2', ...}
+synthetic_db = <sqlite3.Connection object at 0x7ff487518440>
+
+    @pytest.mark.parametrize('case',[c for c in CASES if int(c['pattern_id'][4:]) in SUPPORTED],ids=lambda c:c['id'])
+    def test_independent_sql_oracle(case,synthetic_db):
+        record=asyncio.run(validate_case(case,synthetic_db))
+>       assert record['backend_executed'],record
+E       AssertionError: {'id': 'EXT500-090', 'pattern_id': 'PAT-023', 'backend_executed': False, 'physical_tool_executed': False, ...}
+E       assert False
+
+inhouse/rag_core/tests/test_qa500_backend.py:18: AssertionError
+___________________ test_independent_sql_oracle[EXT500-091] ____________________
+
+case = {'id': 'EXT500-091', 'source_id': 'SET1-094', 'pattern_id': 'PAT-023', 'variant_id': 'V3', ...}
+synthetic_db = <sqlite3.Connection object at 0x7ff487518440>
+
+    @pytest.mark.parametrize('case',[c for c in CASES if int(c['pattern_id'][4:]) in SUPPORTED],ids=lambda c:c['id'])
+    def test_independent_sql_oracle(case,synthetic_db):
+        record=asyncio.run(validate_case(case,synthetic_db))
+>       assert record['backend_executed'],record
+E       AssertionError: {'id': 'EXT500-091', 'pattern_id': 'PAT-023', 'backend_executed': False, 'physical_tool_executed': False, ...}
+E       assert False
+
+inhouse/rag_core/tests/test_qa500_backend.py:18: AssertionError
+___________________ test_independent_sql_oracle[EXT500-092] ____________________
+
+case = {'id': 'EXT500-092', 'source_id': 'SET1-094', 'pattern_id': 'PAT-023', 'variant_id': 'V4', ...}
+synthetic_db = <sqlite3.Connection object at 0x7ff487518440>
+
+    @pytest.mark.parametrize('case',[c for c in CASES if int(c['pattern_id'][4:]) in SUPPORTED],ids=lambda c:c['id'])
+    def test_independent_sql_oracle(case,synthetic_db):
+        record=asyncio.run(validate_case(case,synthetic_db))
+>       assert record['backend_executed'],record
+E       AssertionError: {'id': 'EXT500-092', 'pattern_id': 'PAT-023', 'backend_executed': False, 'physical_tool_executed': False, ...}
+E       assert False
+
+inhouse/rag_core/tests/test_qa500_backend.py:18: AssertionError
+___________________ test_independent_sql_oracle[EXT500-101] ____________________
+
+case = {'id': 'EXT500-101', 'source_id': 'SET1-094', 'pattern_id': 'PAT-026', 'variant_id': 'V1', ...}
+synthetic_db = <sqlite3.Connection object at 0x7ff487518440>
+
+    @pytest.mark.parametrize('case',[c for c in CASES if int(c['pattern_id'][4:]) in SUPPORTED],ids=lambda c:c['id'])
+    def test_independent_sql_oracle(case,synthetic_db):
+        record=asyncio.run(validate_case(case,synthetic_db))
+>       assert record['backend_executed'],record
+E       AssertionError: {'id': 'EXT500-101', 'pattern_id': 'PAT-026', 'backend_executed': False, 'physical_tool_executed': False, ...}
+E       assert False
+
+inhouse/rag_core/tests/test_qa500_backend.py:18: AssertionError
+___________________ test_independent_sql_oracle[EXT500-102] ____________________
+
+case = {'id': 'EXT500-102', 'source_id': 'SET1-094', 'pattern_id': 'PAT-026', 'variant_id': 'V2', ...}
+synthetic_db = <sqlite3.Connection object at 0x7ff487518440>
+
+    @pytest.mark.parametrize('case',[c for c in CASES if int(c['pattern_id'][4:]) in SUPPORTED],ids=lambda c:c['id'])
+    def test_independent_sql_oracle(case,synthetic_db):
+        record=asyncio.run(validate_case(case,synthetic_db))
+>       assert record['backend_executed'],record
+E       AssertionError: {'id': 'EXT500-102', 'pattern_id': 'PAT-026', 'backend_executed': False, 'physical_tool_executed': False, ...}
+E       assert False
+
+inhouse/rag_core/tests/test_qa500_backend.py:18: AssertionError
+___________________ test_independent_sql_oracle[EXT500-103] ____________________
+
+case = {'id': 'EXT500-103', 'source_id': 'SET1-094', 'pattern_id': 'PAT-026', 'variant_id': 'V3', ...}
+synthetic_db = <sqlite3.Connection object at 0x7ff487518440>
+
+    @pytest.mark.parametrize('case',[c for c in CASES if int(c['pattern_id'][4:]) in SUPPORTED],ids=lambda c:c['id'])
+    def test_independent_sql_oracle(case,synthetic_db):
+        record=asyncio.run(validate_case(case,synthetic_db))
+>       assert record['backend_executed'],record
+E       AssertionError: {'id': 'EXT500-103', 'pattern_id': 'PAT-026', 'backend_executed': False, 'physical_tool_executed': False, ...}
+E       assert False
+
+inhouse/rag_core/tests/test_qa500_backend.py:18: AssertionError
+___________________ test_independent_sql_oracle[EXT500-104] ____________________
+
+case = {'id': 'EXT500-104', 'source_id': 'SET1-094', 'pattern_id': 'PAT-026', 'variant_id': 'V4', ...}
+synthetic_db = <sqlite3.Connection object at 0x7ff487518440>
+
+    @pytest.mark.parametrize('case',[c for c in CASES if int(c['pattern_id'][4:]) in SUPPORTED],ids=lambda c:c['id'])
+    def test_independent_sql_oracle(case,synthetic_db):
+        record=asyncio.run(validate_case(case,synthetic_db))
+>       assert record['backend_executed'],record
+E       AssertionError: {'id': 'EXT500-104', 'pattern_id': 'PAT-026', 'backend_executed': False, 'physical_tool_executed': False, ...}
+E       assert False
+
+inhouse/rag_core/tests/test_qa500_backend.py:18: AssertionError
+___________________ test_registered_conversation[EXT500-477] ___________________
+
+case = {'id': 'EXT500-477', 'source_id': 'SET1-120', 'pattern_id': 'PAT-120', 'variant_id': 'V1', ...}
+report = {'TOTAL_CORPUS': 40, 'REGISTERED': 40, 'counts': {'PASS': 32, 'FAILED': 4, 'CAPABILITY_GAP': 4, 'UNSUPPORTED': 0, ...}, 'patterns': 10, ...}
+
+    @pytest.mark.parametrize('case', qa.MULTITURN_CASES, ids=lambda c: c['id'])
+    def test_registered_conversation(case, report):
+        r = next(r for r in report['records'] if r['id'] == case['id'])
+        assert r['question'] == case['question'] and r['turns'] == case['turns']
+        assert r['backend_executed'] and not r['parser_executed'] and not r['physical_tool_executed']
+>       assert not r['errors'], r
+E       AssertionError: {'id': 'EXT500-477', 'pattern_id': 'PAT-120', 'question': '① 2025년 한국의 니켈 수입액 상위 3개국을 보여줘. 동률은 국가코드 순으로 정해줘. → ② 그중 두 ...025년으로 비교해줘.'}, {'turn': 3, 'question': '생산량이 줄었다면 니켈의 같은 두 해 평균 가격도 비교해줘. 줄지 않았거나 생산량이 없으면 조건이 충족되지 않았다고 알려줘.'}], ...}
+E       assert not ['AssertionError: ']
+
+inhouse/rag_core/tests/test_qa500_multiturn.py:24: AssertionError
+___________________ test_registered_conversation[EXT500-478] ___________________
+
+case = {'id': 'EXT500-478', 'source_id': 'SET1-120', 'pattern_id': 'PAT-120', 'variant_id': 'V2', ...}
+report = {'TOTAL_CORPUS': 40, 'REGISTERED': 40, 'counts': {'PASS': 32, 'FAILED': 4, 'CAPABILITY_GAP': 4, 'UNSUPPORTED': 0, ...}, 'patterns': 10, ...}
+
+    @pytest.mark.parametrize('case', qa.MULTITURN_CASES, ids=lambda c: c['id'])
+    def test_registered_conversation(case, report):
+        r = next(r for r in report['records'] if r['id'] == case['id'])
+        assert r['question'] == case['question'] and r['turns'] == case['turns']
+        assert r['backend_executed'] and not r['parser_executed'] and not r['physical_tool_executed']
+>       assert not r['errors'], r
+E       AssertionError: {'id': 'EXT500-478', 'pattern_id': 'PAT-120', 'question': '① 2024년 한국의 구리 수입액 상위 3개국을 보여줘. 동률은 국가코드 순으로 정해줘. → ② 그중 두 ...024년으로 비교해줘.'}, {'turn': 3, 'question': '생산량이 줄었다면 구리의 같은 두 해 평균 가격도 비교해줘. 줄지 않았거나 생산량이 없으면 조건이 충족되지 않았다고 알려줘.'}], ...}
+E       assert not ['AssertionError: ']
+
+inhouse/rag_core/tests/test_qa500_multiturn.py:24: AssertionError
+___________________ test_registered_conversation[EXT500-479] ___________________
+
+case = {'id': 'EXT500-479', 'source_id': 'SET1-120', 'pattern_id': 'PAT-120', 'variant_id': 'V3', ...}
+report = {'TOTAL_CORPUS': 40, 'REGISTERED': 40, 'counts': {'PASS': 32, 'FAILED': 4, 'CAPABILITY_GAP': 4, 'UNSUPPORTED': 0, ...}, 'patterns': 10, ...}
+
+    @pytest.mark.parametrize('case', qa.MULTITURN_CASES, ids=lambda c: c['id'])
+    def test_registered_conversation(case, report):
+        r = next(r for r in report['records'] if r['id'] == case['id'])
+        assert r['question'] == case['question'] and r['turns'] == case['turns']
+        assert r['backend_executed'] and not r['parser_executed'] and not r['physical_tool_executed']
+>       assert not r['errors'], r
+E       AssertionError: {'id': 'EXT500-479', 'pattern_id': 'PAT-120', 'question': '① 2023년 한국의 리튬 수입액 상위 3개국을 보여줘. 동률은 국가코드 순으로 정해줘. → ② 그중 두 ...023년으로 비교해줘.'}, {'turn': 3, 'question': '생산량이 줄었다면 리튬의 같은 두 해 평균 가격도 비교해줘. 줄지 않았거나 생산량이 없으면 조건이 충족되지 않았다고 알려줘.'}], ...}
+E       assert not ['AssertionError: ']
+
+inhouse/rag_core/tests/test_qa500_multiturn.py:24: AssertionError
+___________________ test_registered_conversation[EXT500-480] ___________________
+
+case = {'id': 'EXT500-480', 'source_id': 'SET1-120', 'pattern_id': 'PAT-120', 'variant_id': 'V4', ...}
+report = {'TOTAL_CORPUS': 40, 'REGISTERED': 40, 'counts': {'PASS': 32, 'FAILED': 4, 'CAPABILITY_GAP': 4, 'UNSUPPORTED': 0, ...}, 'patterns': 10, ...}
+
+    @pytest.mark.parametrize('case', qa.MULTITURN_CASES, ids=lambda c: c['id'])
+    def test_registered_conversation(case, report):
+        r = next(r for r in report['records'] if r['id'] == case['id'])
+        assert r['question'] == case['question'] and r['turns'] == case['turns']
+        assert r['backend_executed'] and not r['parser_executed'] and not r['physical_tool_executed']
+>       assert not r['errors'], r
+E       AssertionError: {'id': 'EXT500-480', 'pattern_id': 'PAT-120', 'question': '① 2022년 한국의 코발트 수입액 상위 3개국을 보여줘. 동률은 국가코드 순으로 정해줘. → ② 그중 두...22년으로 비교해줘.'}, {'turn': 3, 'question': '생산량이 줄었다면 코발트의 같은 두 해 평균 가격도 비교해줘. 줄지 않았거나 생산량이 없으면 조건이 충족되지 않았다고 알려줘.'}], ...}
+E       assert not ['AssertionError: ']
+
+inhouse/rag_core/tests/test_qa500_multiturn.py:24: AssertionError
+__________________ test_numeric_accounting_and_json_contract ___________________
+
+report = {'TOTAL_CORPUS': 40, 'REGISTERED': 40, 'counts': {'PASS': 32, 'FAILED': 4, 'CAPABILITY_GAP': 4, 'UNSUPPORTED': 0, ...}, 'patterns': 10, ...}
+
+    def test_numeric_accounting_and_json_contract(report):
+        assert report['TOTAL_CORPUS'] == report['REGISTERED'] == sum(report['counts'].values()) == 40
+>       assert report['counts'] == {'PASS': 36, 'FAILED': 0, 'CAPABILITY_GAP': 4, 'UNSUPPORTED': 0, 'BLOCKED': 0, 'PENDING': 0}
+E       AssertionError: assert {'PASS': 32, ...RTED': 0, ...} == {'PASS': 36, ...RTED': 0, ...}
+E         
+E         Omitting 4 identical items, use -vv to show
+E         Differing items:
+E         {'PASS': 32} != {'PASS': 36}
+E         {'FAILED': 4} != {'FAILED': 0}
+E         Use -v to get more diff
+
+inhouse/rag_core/tests/test_qa500_multiturn.py:40: AssertionError
+_ test_explicit_role_binding_and_fail_closed_boundaries[valid-resource_country] _
+
+target = 'resource_country', mode = 'valid'
+
+    @pytest.mark.parametrize('target', ['reporter_country', 'partner_country', 'resource_country', 'bound_date'])
+    @pytest.mark.parametrize('mode', ['valid', 'ambiguous', 'conflicting'])
+    def test_explicit_role_binding_and_fail_closed_boundaries(target, mode):
+        async def scenario():
+            c = qa.MULTITURN_CASES[0]
+            conv = qa.Conversation(c)
+            value = '2025-12-05' if target == 'bound_date' else 'CL'
+            values = [{'selected': value}] * (2 if mode == 'ambiguous' else 1)
+            await conv.execute(1, [qa.retrieval('source', c)], ['source'], {'source': qa.typed(values, c)})
+            args = {'domain': 'resource' if target == 'resource_country' else 'trade',
+                    'metric': 'production' if target == 'resource_country' else 'import_value'}
+            if mode == 'conflicting':
+                args[target] = '2024-01-01' if target == 'bound_date' else 'KR'
+            op = qa.Operator.RETRIEVE_DOCUMENT if target == 'bound_date' else qa.Operator.RETRIEVE
+            result = await conv.execute(2, [qa.node('role', qa.Operator.PROJECT, 'history:t1:source',
+                fields=['selected'], aliases={'selected': target}),
+                qa.node('lookup', op, qa.InputRef('role', 'field', target), **args)], ['lookup'])
+            if mode == 'valid':
+                assert len(conv.action_calls) == 1
+                slots = conv.action_calls[0]['slots']
+                assert slots[target] == value
+                assert all(slots[name] is None for name in ('reporter_country', 'partner_country', 'resource_country', 'bound_date') if name != target)
+                assert result['lookup'].failure_reason == 'offline_action_boundary'
+            else:
+                assert not conv.action_calls
+                assert result['lookup'].failure_reason == ('conflicting_slot_binding' if mode == 'conflicting' else 'ambiguous_or_missing_slot_binding')
+>       asyncio.run(scenario())
+
+inhouse/rag_core/tests/test_qa500_multiturn.py:263: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.10/asyncio/runners.py:44: in run
+    return loop.run_until_complete(main)
+/usr/lib/python3.10/asyncio/base_events.py:649: in run_until_complete
+    return future.result()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    async def scenario():
+        c = qa.MULTITURN_CASES[0]
+        conv = qa.Conversation(c)
+        value = '2025-12-05' if target == 'bound_date' else 'CL'
+        values = [{'selected': value}] * (2 if mode == 'ambiguous' else 1)
+        await conv.execute(1, [qa.retrieval('source', c)], ['source'], {'source': qa.typed(values, c)})
+        args = {'domain': 'resource' if target == 'resource_country' else 'trade',
+                'metric': 'production' if target == 'resource_country' else 'import_value'}
+        if mode == 'conflicting':
+            args[target] = '2024-01-01' if target == 'bound_date' else 'KR'
+        op = qa.Operator.RETRIEVE_DOCUMENT if target == 'bound_date' else qa.Operator.RETRIEVE
+        result = await conv.execute(2, [qa.node('role', qa.Operator.PROJECT, 'history:t1:source',
+            fields=['selected'], aliases={'selected': target}),
+            qa.node('lookup', op, qa.InputRef('role', 'field', target), **args)], ['lookup'])
+        if mode == 'valid':
+>           assert len(conv.action_calls) == 1
+E           assert 0 == 1
+E            +  where 0 = len([])
+E            +    where [] = <inhouse.rag_core.tests.qa500_multiturn.Conversation object at 0x7ff4876a24a0>.action_calls
+
+inhouse/rag_core/tests/test_qa500_multiturn.py:255: AssertionError
+______ test_country_conditional_price_gold_uses_saved_comparison[decline] ______
+
+mode = 'decline'
+
+    @pytest.mark.parametrize('mode', ['decline', 'missing_production'])
+    def test_country_conditional_price_gold_uses_saved_comparison(mode):
+        async def scenario():
+            c = next(c for c in qa.MULTITURN_CASES if c['pattern_id'] == 'PAT-120')
+            b = c['semantic_requirement']['parameter_bindings']
+            db = qa.fixture()
+            try:
+                if mode == 'decline':
+                    db.execute("UPDATE observations SET value=value*0.25 WHERE domain='production' AND mineral=? AND year=?", (b['m'], b['y']))
+                else:
+                    db.execute("DELETE FROM observations WHERE domain='production' AND mineral=? AND year=?", (b['m'], b['y']))
+                db.execute('PRAGMA query_only=ON')
+                conv = qa.Conversation(c)
+                await qa.country_case(c, db, conv)
+                assert len(conv.turns) == 3 and not conv.common_path_gaps
+                assert conv.turns[-1]['gold_planner_decision']['production_declined'] == (mode == 'decline')
+                assert sum(call['action'] == 'price.series' for call in conv.action_calls) == (2 if mode == 'decline' else 0)
+            finally:
+                db.close()
+>       asyncio.run(scenario())
+
+inhouse/rag_core/tests/test_qa500_multiturn.py:285: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.10/asyncio/runners.py:44: in run
+    return loop.run_until_complete(main)
+/usr/lib/python3.10/asyncio/base_events.py:649: in run_until_complete
+    return future.result()
+inhouse/rag_core/tests/test_qa500_multiturn.py:279: in scenario
+    await qa.country_case(c, db, conv)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+c = {'id': 'EXT500-477', 'source_id': 'SET1-120', 'pattern_id': 'PAT-120', 'variant_id': 'V1', ...}
+db = <sqlite3.Connection object at 0x7ff48751b540>
+conv = <inhouse.rag_core.tests.qa500_multiturn.Conversation object at 0x7ff86781bac0>
+
+    async def country_case(c, db, conv):
+        b = c['semantic_requirement']['parameter_bindings']
+        year, mineral = b['y'], b['m']
+        trade = query(db, "SELECT country,SUM(value) value FROM observations WHERE domain='trade' AND mineral=? AND year=? GROUP BY country", (mineral, year))
+        trade = [{**r, 'country_code': COUNTRY_CODES[r['country']]} for r in trade]
+        k = 5 if c['pattern_id'] == 'PAT-085' else 3
+        t1 = await conv.execute(1, [retrieval('population', c, 'import_value'),
+            node('rank', Operator.SORT, 'population', field='value', order='desc', tie_breaker='country_code'),
+            node('top', Operator.TOP_K, 'rank', k=k)], ['top'],
+            {'population': typed(trade, c, metric='import_value', unit='USD', kind=ValueType.FACT_SET)})
+        expected = sorted(trade, key=lambda r: (-r['value'], r['country_code']))[:k]
+        assert_rows(t1['top'], expected)
+        selected = expected[1]
+        target = 'partner_country' if k == 5 else 'resource_country'
+        role = node('role', Operator.PROJECT, InputRef('history:t1:top', 'index', 1),
+                    fields=['country_code'], aliases={'country_code': target})
+    
+        def read(n, action, bound_mineral):
+            assert bound_mineral == mineral
+            slots = _action_slots(n, mineral=bound_mineral).model_dump(mode='json')
+            y = n.args['period']['calendar_year']
+            if action == 'trade.monthly':
+                assert slots['reporter_country'] == 'KR' and y == year
+                country = next((name for name, code in COUNTRY_CODES.items() if code == slots['partner_country']), None)
+                assert slots['partner_country'] in {None, selected['country_code']}
+                sql = "SELECT month,value,unit FROM observations WHERE domain='trade' AND mineral=? AND year=?"
+                params = (mineral, y)
+                if country:
+                    sql += ' AND country=?'; params += (country,)
+                return typed(query(db, sql, params), c, metric='import_value', unit='USD', kind=ValueType.FACT_SET)
+            if action == 'resource.rank':
+                assert slots['resource_country'] == selected['country_code']
+                assert slots['partner_country'] is None and slots['reporter_country'] is None
+                data = query(db, "SELECT value,unit FROM observations WHERE domain='production' AND mineral=? AND year=? AND country=?", (mineral, y, selected['country']))
+                if not data:
+                    return TypedResult.empty(ValueType.FACT_SET, 'no_data')
+                return replace(typed(data, c, metric='production', unit='t', kind=ValueType.FACT_SET), period=n.args['period'])
+            assert action == 'price.series'
+            assert slots['resource_country'] is None and slots['partner_country'] is None
+            data = query(db, "SELECT date,value,unit FROM observations WHERE domain='price' AND mineral=? AND year=?", (mineral, y))
+            return replace(typed(data, c), period=n.args['period'])
+    
+        if k == 5:
+            t2 = await conv.execute(2, [role,
+                node('target', Operator.RETRIEVE, InputRef('role', 'field', target), domain='trade', metric='import_value',
+                     reporter_country='KR', mineral=mineral, period={'kind': 'calendar_year', 'calendar_year': year}),
+                node('world', Operator.RETRIEVE, domain='trade', metric='import_value', reporter_country='KR', mineral=mineral,
+                     period={'kind': 'calendar_year', 'calendar_year': year}),
+                node('numerator', Operator.AGGREGATE, 'target', field='value', aggregation='sum', group_by=['month']),
+                node('denominator', Operator.AGGREGATE, 'world', field='value', aggregation='sum', group_by=['month']),
+                node('share', Operator.COMPARE, 'numerator', 'denominator', field='value', operation='ratio', join_key='month'),
+                node('monthly_share', Operator.PROJECT, 'share', fields=['month', 'ratio'])], ['monthly_share'], action_reader=read)
+            shares = query(db, "SELECT month,SUM(CASE WHEN country=? THEN value ELSE 0 END)*1.0/SUM(value) ratio FROM observations WHERE domain='trade' AND mineral=? AND year=? GROUP BY month ORDER BY month", (selected['country'], mineral, year))
+            assert_rows(t2['monthly_share'], shares)
+            assert t2['monthly_share'].unit == 'ratio'  # Fraction, never mislabeled %.
+            t3 = await conv.execute(3, [node('peak', Operator.ARG_MAX, 'history:t2:monthly_share', field='ratio', ties='all'),
+                node('answer', Operator.PROJECT, 'peak', fields=['month', 'ratio'])], ['answer'])
+            assert_rows(t3['answer'], [r for r in shares if r['ratio'] == max(x['ratio'] for x in shares)])
+            assert len(conv.action_calls) == 2
+        else:
+            nodes = [role]
+            for name, y in [('before', year-1), ('after', year)]:
+                nodes.append(node(name, Operator.RETRIEVE, InputRef('role', 'field', target), domain='resource', metric='production',
+                    mineral=mineral, period={'kind': 'calendar_year', 'calendar_year': y}))
+            nodes.append(node('production_change', Operator.COMPARE, 'after', 'before', field='value', operation='difference'))
+            t2 = await conv.execute(2, nodes, ['production_change'], action_reader=read)
+            actual = t2['production_change']
+            amounts = query(db, "SELECT year,value FROM observations WHERE domain='production' AND mineral=? AND country=? AND year IN (?,?) ORDER BY year", (mineral, selected['country'], year-1, year))
+            decline = len(amounts) == 2 and amounts[1]['value'] < amounts[0]['value']
+            if len(amounts) == 2:
+>               assert actual.status == ResultStatus.SUCCESS
+E               AssertionError
+
+inhouse/rag_core/tests/qa500_multiturn.py:439: AssertionError
+=============================== warnings summary ===============================
+inhouse/rag_core/tests/test_live_resource_population.py::ResourcePopulationTests::test_graph_to_real_client_tool_and_sql_preserves_null_limit
+  /home/nuri/.local/lib/python3.10/site-packages/pydantic_settings/sources/utils.py:47: IncompleteFieldDefinitionWarning: Field 'lifespan' has an incomplete definition: its annotation contains an unresolved forward reference, so settings sources may fail to correctly resolve its value. Call `model_rebuild()` on the model where the field is defined, once all the referenced types are defined.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED inhouse/rag_core/tests/test_qa500_backend.py::test_independent_sql_oracle[EXT500-089]
+FAILED inhouse/rag_core/tests/test_qa500_backend.py::test_independent_sql_oracle[EXT500-090]
+FAILED inhouse/rag_core/tests/test_qa500_backend.py::test_independent_sql_oracle[EXT500-091]
+FAILED inhouse/rag_core/tests/test_qa500_backend.py::test_independent_sql_oracle[EXT500-092]
+FAILED inhouse/rag_core/tests/test_qa500_backend.py::test_independent_sql_oracle[EXT500-101]
+FAILED inhouse/rag_core/tests/test_qa500_backend.py::test_independent_sql_oracle[EXT500-102]
+FAILED inhouse/rag_core/tests/test_qa500_backend.py::test_independent_sql_oracle[EXT500-103]
+FAILED inhouse/rag_core/tests/test_qa500_backend.py::test_independent_sql_oracle[EXT500-104]
+FAILED inhouse/rag_core/tests/test_qa500_multiturn.py::test_registered_conversation[EXT500-477]
+FAILED inhouse/rag_core/tests/test_qa500_multiturn.py::test_registered_conversation[EXT500-478]
+FAILED inhouse/rag_core/tests/test_qa500_multiturn.py::test_registered_conversation[EXT500-479]
+FAILED inhouse/rag_core/tests/test_qa500_multiturn.py::test_registered_conversation[EXT500-480]
+FAILED inhouse/rag_core/tests/test_qa500_multiturn.py::test_numeric_accounting_and_json_contract
+FAILED inhouse/rag_core/tests/test_qa500_multiturn.py::test_explicit_role_binding_and_fail_closed_boundaries[valid-resource_country]
+FAILED inhouse/rag_core/tests/test_qa500_multiturn.py::test_country_conditional_price_gold_uses_saved_comparison[decline]
+15 failed, 1353 passed, 1 warning, 687 subtests passed in 39.49s

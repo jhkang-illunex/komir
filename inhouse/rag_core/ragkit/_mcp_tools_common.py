@@ -133,6 +133,63 @@ def _concentration_metric_label(metric: str, grand_total: Any, hhi: Any, formula
 _PRICE_PAGES = frozenset({"price_base_metals", "price_minor_metals", "price_iron_energy", "price_other"})
 _HS_TRANSLATE_PAGES = frozenset({"map_korea", "map_global"})
 
+# A price criterion row can expose several independently named observations
+# (low/high/normal) in the same source row.  REPRESENTATIVE and EXPLICIT keep
+# the legacy raw-table shape; ALL must make those observations addressable as
+# separate series without inventing criterion serials.
+_ALL_PRICE_MEASURES: tuple[tuple[str, str, str], ...] = (
+    ("low_price", "lowst_prc", "최저가격"),
+    ("high_price", "hghst_prc", "최고가격"),
+    ("normal_price", "cmerc_prc", "통상가격"),
+)
+
+
+def _expand_all_price_measures(
+    dataset: RawDataset, *, serial: int, criterion: tuple[str | None, str | None, str | None] | None,
+) -> RawDataset:
+    """Normalize source price measures into typed ALL-series rows.
+
+    The source owns one criterion serial and may expose low/high/normal values
+    as columns.  They are measures, not fabricated criteria; serial and
+    criterion label remain attached to every normalized row.
+    """
+    source_date = next((column for column in dataset.columns
+                        if str(column).casefold() in {"date", "crtr_ymd", "obs_date"}), None)
+    if source_date is None:
+        return dataset
+    criterion_name = criterion[0] if criterion else None
+    rows: list[dict[str, Any]] = []
+    for raw in dataset.rows:
+        for measure, source_field, label in _ALL_PRICE_MEASURES:
+            value = raw.get(source_field)
+            if value is None or str(value).strip().casefold() in {"", "none", "nan"}:
+                continue
+            rows.append({
+                "date": raw.get(source_date),
+                "price": value,
+                "price_measure": measure,
+                "price_measure_label": label,
+                "price_criterion": criterion_name,
+                "price_criterion_serial": serial,
+            })
+    if not rows:
+        return dataset
+    return dataset.model_copy(update={
+        "columns": [
+            "date", "price", "price_measure", "price_measure_label",
+            "price_criterion", "price_criterion_serial",
+        ],
+        "column_labels": {
+            "date": "기준일자", "price": "가격", "price_measure": "가격 measure",
+            "price_measure_label": "가격 구분", "price_criterion": "가격기준",
+            "price_criterion_serial": "가격기준 serial",
+        },
+        "rows": rows,
+        "row_count": len(rows),
+        "metadata": {**dataset.metadata, "preserve_price_criterion_identity": True,
+                     "price_measure_expanded": True},
+    })
+
 #: 2026-09-07("니켈 최근 6개월 가격" 사용자 제보 후속) — start_period·
 #: end_period가 둘 다 있으면 그 범위 전체를 봐야 "추이" 질문에 답이 되는데,
 #: 일별 가격(~130행)도 다 못 온다. 기간이 명시된 조회는 `fetch_complete()`로
@@ -264,6 +321,7 @@ def register_common_tools(
         hs_code: str | None = None,
         index_type_code: str | None = None,
         price_criterion_serial: int | None = None,
+        criterion_mode: Literal["REPRESENTATIVE", "EXPLICIT", "ALL"] = "REPRESENTATIVE",
         start_period: str | None = None,
         end_period: str | None = None,
         limit: int = _max_timestamps,
@@ -323,6 +381,12 @@ def register_common_tools(
                 "warnings": [f"'{page_id}'는 private 전용 데이터입니다 — public 프로필에서는 조회할 수 없습니다."],
             }
 
+        if criterion_mode == "EXPLICIT" and price_criterion_serial is None:
+            return {"evidence": [], "warnings": ["EXPLICIT 가격기준에는 price_criterion_serial이 필요합니다."]}
+        if criterion_mode == "ALL" and price_criterion_serial is not None:
+            return {"evidence": [], "warnings": ["ALL 가격기준 조회에는 단일 price_criterion_serial을 함께 지정할 수 없습니다."]}
+
+        all_criterion_serials: list[int] | None = None
         try:
             request = AnalysisPreviewRequest(
                 page_id=page_id, mineral_code=mineral_code, hs_code=hs_code,
@@ -374,7 +438,8 @@ def register_common_tools(
             if not serials:
                 return {
                     "evidence": [],
-                    "warnings": [f"'{mineral_code}'에 대응하는 가격기준을 ai_prc_mnrl_map에서 찾지 못했습니다."],
+                    "warnings": [f"price_criterion_mapping_missing:{mineral_code}",
+                                 f"'{mineral_code}'에 대응하는 가격기준을 ai_prc_mnrl_map에서 찾지 못했습니다."],
                 }
             try:
                 dummy_status = repo.price_criteria_have_dummy_rows(serials)
@@ -389,29 +454,35 @@ def register_common_tools(
                         f"'{mineral_code}'에 비더미 가격기준이 없어 일반 챗봇 가격 조회를 제공할 수 없습니다."
                     ],
                 }
+            if criterion_mode == "ALL":
+                # ALL은 대표 기준 선택이나 첫 번째 기준 fallback을 거치지
+                # 않는다. 매핑되고 실제 관측이 있는 유효 기준 전체를 보존한다.
+                all_criterion_serials = serials
             # 기준을 생략한 경우에만 환경 독립적인 대표 기준 registry를 적용한다.
             # registry에 있지만 DB 광종 매핑에 없는 기준으로 조용히 대체하지 않는다.
-            mineral_meta = repo.resolve_mineral_meta(mineral_code)
-            representative = representative_price_criterion(
-                mineral_meta[0] if mineral_meta else mineral_code
-            )
-            if representative:
-                expected = representative["criterion"].strip().casefold()
-                matched = []
-                for serial in serials:
-                    metadata = repo.resolve_price_criterion_metadata(serial)
-                    if metadata and (metadata[0] or "").strip().casefold() == expected:
-                        matched.append(serial)
-                if not matched:
-                    return {
-                        "evidence": [],
-                        "warnings": [
-                            f"대표 가격기준 '{representative['criterion']}'이 "
-                            f"광종 {mineral_code}에 매핑되어 있지 않습니다."
-                        ],
-                    }
-                serials = matched
-            if len(serials) > 1:
+            if criterion_mode != "ALL":
+                mineral_meta = repo.resolve_mineral_meta(mineral_code)
+                representative = representative_price_criterion(
+                    mineral_meta[0] if mineral_meta else mineral_code
+                )
+                if representative:
+                    expected = representative["criterion"].strip().casefold()
+                    matched = []
+                    for serial in serials:
+                        metadata = repo.resolve_price_criterion_metadata(serial)
+                        if metadata and (metadata[0] or "").strip().casefold() == expected:
+                            matched.append(serial)
+                    if not matched:
+                        return {
+                            "evidence": [],
+                            "warnings": [
+                                f"대표 가격기준 '{representative['criterion']}'이 "
+                                f"광종 {mineral_code}에 매핑되어 있지 않습니다.",
+                                f"price_criterion_mapping_missing:{mineral_code}",
+                            ],
+                        }
+                    serials = matched
+            if criterion_mode != "ALL" and len(serials) > 1:
                 options: list[str] = []
                 for serial in serials:
                     metadata = repo.resolve_price_criterion_metadata(serial)
@@ -426,7 +497,8 @@ def register_common_tools(
                         + "; ".join(options)
                     ],
                 }
-            request = request.model_copy(update={"price_criterion_serial": serials[0]})
+            if criterion_mode != "ALL":
+                request = request.model_copy(update={"price_criterion_serial": serials[0]})
         elif mineral_code and page_id in _HS_TRANSLATE_PAGES and hs_code is None:
             try:
                 hs_codes = repo.resolve_hs_codes(mineral_code)
@@ -448,13 +520,58 @@ def register_common_tools(
         if not has_period_range and request.limit > _max_timestamps:
             request = request.model_copy(update={"limit": _max_timestamps})
         try:
-            datasets = repo.fetch_complete(request) if has_period_range else repo.fetch(request)
+            if all_criterion_serials:
+                datasets = []
+                for serial in all_criterion_serials:
+                    selected = request.model_copy(update={"price_criterion_serial": serial})
+                    datasets.extend(repo.fetch_complete(selected) if has_period_range else repo.fetch(selected))
+            else:
+                datasets = repo.fetch_complete(request) if has_period_range else repo.fetch(request)
         except RawDataAccessError as exc:
             return {"evidence": [], "warnings": [*warnings, str(exc)]}
+
+        if all_criterion_serials:
+            # Each dataset was fetched with one serial. Attach its canonical
+            # criterion/unit metadata without collapsing the series together.
+            decorated = []
+            for serial, dataset in zip(all_criterion_serials, datasets):
+                criterion = repo.resolve_price_criterion_metadata(serial)
+                if criterion:
+                    name, currency_code, weight_code = criterion
+                    unit = "; ".join(part for part in (
+                        f"가격기준={name}" if name else None,
+                        f"통화코드={currency_code}" if currency_code else None,
+                        f"중량단위코드={weight_code}" if weight_code else None,
+                    ) if part) or None
+                    dataset = dataset.model_copy(update={"unit": unit})
+                # ALL preserves every source-owned price measure (low/high/
+                # normal) as a separate typed series.  It does not create
+                # synthetic criterion serials.
+                if page_id in _PRICE_PAGES:
+                    dataset = _expand_all_price_measures(
+                        dataset, serial=serial, criterion=criterion,
+                    )
+                decorated.append(dataset)
+            datasets = decorated
 
         # 가격 기준·단위와 더미 상태는 광종 마스터가 아니라 실제 선택한
         # 가격기준에 귀속한다. 표시명 사전이 없으면 원시 코드를 보존한다.
         selected_price_dummy: bool | None = None
+        if all_criterion_serials:
+            # The single-criterion metadata path below cannot run because ALL
+            # intentionally has no request.price_criterion_serial.  Resolve
+            # provenance for the complete selected set instead; leaving this
+            # as None incorrectly turns known rows into an unverified source.
+            try:
+                all_dummy_status = repo.price_criteria_have_dummy_rows(all_criterion_serials)
+            except RawDataAccessError:
+                all_dummy_status = {}
+            if all_dummy_status and all(
+                serial in all_dummy_status for serial in all_criterion_serials
+            ):
+                statuses = {bool(all_dummy_status[serial]) for serial in all_criterion_serials}
+                if len(statuses) == 1:
+                    selected_price_dummy = statuses.pop()
         if page_id in _PRICE_PAGES and request.price_criterion_serial is not None:
             criterion_reader = getattr(repo, "resolve_price_criterion_metadata", None)
             dummy_reader = getattr(repo, "price_criteria_have_dummy_rows", None)
@@ -1138,7 +1255,7 @@ def register_common_tools(
         metric: str,
         start_period: str | None = None,
         end_period: str | None = None,
-        top_n: int = 5,
+        top_n: int | None = 5,
         share_only: bool = False,
     ) -> dict[str, Any]:
         """매장량/생산량 국가별 상위 N개(결정적 GROUP BY, 2026-09-18 신설) —
@@ -1154,6 +1271,10 @@ def register_common_tools(
         mineral_code는 `komis_resolve_mineral`로 먼저 얻은 값(예: "MNRL0002").
         {"evidence": [...], "warnings": [...]}."""
 
+        # Explicit null means complete country rows for runtime aggregation.
+        # Omitted top_n retains the legacy Top-5 contract.
+        if top_n is None and share_only:
+            return {"evidence": [], "warnings": ["resource_population_conflict: all and share_only"]}
         repo = KomisRawDataRepository()
         try:
             dataset = repo.fetch_mineral_country_ranking(
@@ -1192,11 +1313,15 @@ def register_common_tools(
                          for row in dataset.rows],
             })
 
-        evidence = from_komis_ranking(
-            dataset, mineral_code=mineral_label,
-            metric_label=_RESERVES_PRODUCTION_METRIC_LABELS.get(metric, metric), is_dummy=is_dummy,
-            menu_page_id="map_mineral",
-        )
+        if top_n is None:
+            evidence = from_komis_aggregate(dataset, label="전체 국가 원자료 (SU/OT 제외; 세계총계 아님)",
+                                           mineral_name=mineral_label, is_dummy=is_dummy, menu_page_id="map_mineral")
+        else:
+            evidence = from_komis_ranking(
+                dataset, mineral_code=mineral_label,
+                metric_label=_RESERVES_PRODUCTION_METRIC_LABELS.get(metric, metric), is_dummy=is_dummy,
+                menu_page_id="map_mineral",
+            )
         return {"evidence": [dataclasses.asdict(e) for e in evidence], "warnings": warnings}
 
     @mcp.tool()

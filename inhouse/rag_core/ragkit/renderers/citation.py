@@ -9,7 +9,7 @@ from ..official_sources import official_source, public_source_label
 _OPAQUE_PRICE_UNIT_CODE = re.compile(r"\b(?:PR|WT)\d+\b", re.IGNORECASE)
 _ACTION_SECTIONS = {
     "price.series": "광물가격", "price.compare": "광물가격 비교",
-    "forecast.price": "가격예측", "inventory.latest": "광물 재고량",
+    "forecast.price": "가격예측", "inventory.latest": "광물 재고량", "inventory.series": "광물 재고 시계열",
     "trade.country_rank": "수출입 국가 순위", "trade.monthly": "수출입 현황",
     "trade.concentration": "수출입 집중도", "resource.rank": "광물 생산·매장량",
     "indicator.series": "광물 지표",

@@ -90,19 +90,89 @@ def execute_relation(node: RequirementNode, inputs: Mapping[str, TypedResult],
         args = node.args
         compare = node.operator == Operator.COMPARE
         operation = args.get("operation", "side_by_side")
-        if compare and operation not in {"side_by_side", "difference", "ratio", "percent_change"}:
+        if compare and operation not in {"side_by_side", "difference", "ratio", "percent_change", "temporal_continuation"}:
             raise ValueError("unsupported_comparison_operation")
+
+        if compare and operation == "temporal_continuation":
+            # Historical observed rows and future forecast rows are concatenated
+            # on the time axis. They are not paired by equal dates and therefore
+            # must not use the generic side-by-side alignment path.
+            if not lrows or not rrows:
+                return TypedResult.empty(ValueType.TIME_SERIES, "temporal_continuation_no_rows", **metadata)
+            left_date = resolve_field(lrows, "date") or resolve_field(lrows, "crtr_ymd")
+            right_date = resolve_field(rrows, "forecast_date") or resolve_field(rrows, "date")
+            left_value = resolve_field(lrows, args.get("left_field") or "value")
+            right_value = resolve_field(rrows, args.get("right_field") or "predicted_price")
+            if not left_date or not right_date or not left_value or not right_value:
+                return TypedResult.abstain("temporal_continuation_field_required", ValueType.TIME_SERIES, **metadata)
+            if left.unit and right.unit and left.unit != right.unit:
+                return TypedResult.abstain("temporal_continuation_unit_mismatch", ValueType.TIME_SERIES, **metadata)
+            if left.entity and right.entity and set(left.entity) != set(right.entity):
+                return TypedResult.abstain("temporal_continuation_entity_mismatch", ValueType.TIME_SERIES, **metadata)
+
+            def normalized_date(value: Any) -> str:
+                return str(value).replace("-", "")[:8]
+
+            observed = sorted(lrows, key=lambda row: normalized_date(row.get(left_date)))
+            observed_end = normalized_date(observed[-1].get(left_date))
+            output = []
+            for row in observed:
+                item = dict(row)
+                item.update({"date": row.get(left_date), "value": row.get(left_value),
+                             "observation_type": "observed"})
+                output.append(item)
+            for row in sorted(rrows, key=lambda item: normalized_date(item.get(right_date))):
+                # The forecast source may include the as-of/base month. Keep the
+                # observed value at that boundary and append only future months.
+                if normalized_date(row.get(right_date)) <= observed_end:
+                    continue
+                item = dict(row)
+                item.update({"date": row.get(right_date), "value": row.get(right_value),
+                             "observation_type": "forecast"})
+                output.append(item)
+            if not output or not any(item.get("observation_type") == "forecast" for item in output):
+                return TypedResult.empty(ValueType.TIME_SERIES, "temporal_continuation_no_future_rows", **metadata)
+            unit = left.unit or right.unit
+            return TypedResult.success(
+                ValueType.TIME_SERIES, output, entity=metadata["entity"], metric="price",
+                period={"kind": "temporal_continuation", "observed": left.period, "forecast": right.period},
+                unit=unit, source=metadata["source"], evidence=metadata["evidence"],
+                provenance=metadata["provenance"], upstream_step_ids=metadata["upstream_step_ids"],
+                warnings=metadata["warnings"],
+            )
         common_key = args.get("join_key", args.get("on"))
         lkey = args.get("left_on", common_key)
         rkey = args.get("right_on", common_key)
-        if lkey is None and rkey is None:
-            if not compare:
-                raise ValueError("join_key_required")
-            if len(lrows) > 1 or len(rrows) > 1:
-                raise ValueError("comparison_alignment_required")
+        broadcast = args.get("broadcast")
+        if broadcast is not None:
+            if not compare or broadcast not in {"left", "right"} or lkey is not None or rkey is not None:
+                raise ValueError("invalid_scalar_broadcast")
+            scalar, scalar_rows = (left, lrows) if broadcast == "left" else (right, rrows)
+            if scalar.result_type != ValueType.SCALAR_METRIC or len(scalar_rows) != 1:
+                raise ValueError("broadcast_requires_typed_scalar")
+            if scalar.status != ResultStatus.SUCCESS or any(w.startswith("aggregate_nulls_excluded:") for w in scalar.warnings):
+                raise ValueError("incomplete_scalar_population")
             lkeys = []
-            li = {(): lrows[0]} if lrows else {}
-            ri = {(): rrows[0]} if rrows else {}
+            count = len(rrows) if broadcast == "left" else len(lrows)
+            li = {(i,): lrows[0] if broadcast == "left" else lrows[i] for i in range(count)}
+            ri = {(i,): rrows[0] if broadcast == "right" else rrows[i] for i in range(count)}
+        elif lkey is None and rkey is None:
+            if compare and operation == "side_by_side" and (len(lrows) > 1 or len(rrows) > 1):
+                # Independent populations can be presented side by side, but
+                # must not be paired by row position.  Arithmetic comparisons
+                # still require an explicit key (or scalar broadcast).
+                lkeys = rkeys = []
+                li = {("left", index): row for index, row in enumerate(lrows)}
+                ri = {("right", index): row for index, row in enumerate(rrows)}
+                keys = list(li) + list(ri)
+            elif not compare:
+                raise ValueError("join_key_required")
+            elif len(lrows) > 1 or len(rrows) > 1:
+                raise ValueError("comparison_alignment_required")
+            else:
+                lkeys = []
+                li = {(): lrows[0]} if lrows else {}
+                ri = {(): rrows[0]} if rrows else {}
         else:
             lkeys, rkeys = key_fields(lkey), key_fields(rkey)
             reserved = {"left_unit", "right_unit", "left_period", "right_period", "left_entity", "right_entity",
@@ -126,9 +196,46 @@ def execute_relation(node: RequirementNode, inputs: Mapping[str, TypedResult],
                 raise ValueError("invalid_comparison_fields")
             left_field = args.get("left_field", args.get("field", fields[0] if fields else None))
             right_field = args.get("right_field", args.get("field", fields[-1] if fields else None))
+            preferred = ("value", "production_volume", "reserves_volume",
+                         "import_value", "import_amount", "price", "inventory")
+            def infer(data):
+                for candidate in preferred:
+                    resolved = resolve_field(data, candidate)
+                    if resolved:
+                        return candidate
+                return None
+            if operation == "side_by_side" and (left_field is None or right_field is None):
+                # A presentation-only comparison may omit field names when
+                # each typed input exposes one canonical measure.  Infer only
+                # registered metric aliases, never an arbitrary numeric year
+                # or metadata column.  Arithmetic comparisons stay strict.
+                left_field = left_field or infer(lrows)
+                right_field = right_field or infer(rrows)
+            if operation == "side_by_side":
+                # Country/entity fields are join dimensions, not measures.
+                # If a model supplies one as the display field, keep the
+                # dimension in the source rows and compare the typed measure.
+                dimensions = {"country", "country_code", "country_name", "entity", "mineral", "year", "date"}
+                if str(left_field).casefold() in dimensions:
+                    left_field = infer(lrows)
+                if str(right_field).casefold() in dimensions:
+                    right_field = infer(rrows)
             if not isinstance(left_field, str) or not isinstance(right_field, str):
                 raise ValueError("comparison_field_required")
             lf, rf = resolve_field(lrows, left_field), resolve_field(rrows, right_field)
+            if operation == "side_by_side":
+                # Models sometimes copy one metric field to both sides of a
+                # presentation-only comparison.  Do not let that lexical
+                # mismatch discard otherwise valid typed measures; resolve
+                # each side against its own result contract.  Arithmetic
+                # comparisons remain strict because changing an operand
+                # there would change the calculation semantics.
+                if lrows and lf is None:
+                    left_field = infer(lrows)
+                    lf = resolve_field(lrows, left_field) if left_field else None
+                if rrows and rf is None:
+                    right_field = infer(rrows)
+                    rf = resolve_field(rrows, right_field) if right_field else None
             if not left_field or not right_field or lrows and not lf or rrows and not rf:
                 raise ValueError("comparison_field_required")
             if operation != "side_by_side":
@@ -148,6 +255,7 @@ def execute_relation(node: RequirementNode, inputs: Mapping[str, TypedResult],
             invalid_right = rrow is not None and rrow.get("status", "SUCCESS") != "SUCCESS"
             dependency_failed = invalid_left or invalid_right
             row = {field: value[1] for field, value in zip(lkeys, key)}
+            independent_side = key[0] if len(key) == 2 and key[0] in {"left", "right"} else None
             for side, data, invalid in (("left", lrow, invalid_left), ("right", rrow, invalid_right)):
                 # A failed row may contain a stale numeric payload. Preserve
                 # its status/reason but never expose that payload as evidence.
@@ -166,9 +274,16 @@ def execute_relation(node: RequirementNode, inputs: Mapping[str, TypedResult],
             else:
                 lv = lrow.get(lf) if lrow is not None and not invalid_left else None
                 rv = rrow.get(rf) if rrow is not None and not invalid_right else None
-                row.update(left_value=lv, right_value=rv, status="SUCCESS", reason=None)
+                if independent_side == "left":
+                    rv = None
+                elif independent_side == "right":
+                    lv = None
+                row.update(left_value=lv, right_value=rv, comparison_side=independent_side,
+                           status="SUCCESS", reason=None)
                 if dependency_failed:
                     row.update(status="DEPENDENCY_FAILED", reason="upstream_row_failed")
+                elif independent_side is not None:
+                    pass
                 elif lrow is None or rrow is None:
                     row.update(status="DATA_UNAVAILABLE", reason="unmatched_key")
                 elif lv is None or rv is None:

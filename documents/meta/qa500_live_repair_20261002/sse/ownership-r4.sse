@@ -1,0 +1,5 @@
+event: error
+data: {"code": "invalid_session"}
+
+event: done
+data: {"done": true, "warnings": ["invalid_session"]}

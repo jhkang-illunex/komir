@@ -23,6 +23,7 @@ from rag_core.ragkit.semantic_intent import (  # noqa: E402
     SemanticResolutionError,
     canonical_signature,
     _bind_price_context,
+    _normalize_semantic_plan,
     parse_and_resolve,
     resolve_semantic_plan,
 )
@@ -75,6 +76,44 @@ class SemanticIntentTest(unittest.TestCase):
             self.assertEqual(action_plan.actions[0].slots.mineral, "니켈")
             self.assertEqual(action_plan.actions[0].slots.flow, "import")
             self.assertEqual(intent_plan.requirements[0].intent, "trade_concentration")
+
+    def test_country_rank_share_does_not_create_duplicate_concentration_branch(self):
+        plan = SemanticPlan(requirements=[
+            SemanticRequirement(
+                domain="trade", metric="country_rank", flow="import",
+                mineral="리튬", scope="KR",
+            ),
+            SemanticRequirement(
+                domain="trade", metric="concentration", flow="import",
+                mineral="리튬", scope="KR",
+            ),
+        ])
+        normalized = _normalize_semantic_plan(
+            plan, "한국의 리튬 수입 상위국과 국가별 비중을 알려줘",
+        )
+        self.assertEqual(
+            [(item.domain, item.metric) for item in normalized.requirements],
+            [("trade", "country_rank")],
+        )
+
+    def test_explicit_concentration_remains_independent_from_country_rank(self):
+        plan = SemanticPlan(requirements=[
+            SemanticRequirement(
+                domain="trade", metric="country_rank", flow="import",
+                mineral="리튬", scope="KR",
+            ),
+            SemanticRequirement(
+                domain="trade", metric="concentration", flow="import",
+                mineral="리튬", scope="KR",
+            ),
+        ])
+        normalized = _normalize_semantic_plan(
+            plan, "한국의 리튬 수입 상위국과 수입 집중도를 알려줘",
+        )
+        self.assertEqual(
+            [item.metric for item in normalized.requirements],
+            ["country_rank", "concentration"],
+        )
 
     def test_enabled_mode_uses_semantic_parser_after_legacy_shortcut_miss(self):
         llm = SemanticLLM(_concentration_plan())
@@ -297,6 +336,24 @@ class SemanticIntentTest(unittest.TestCase):
         _, action_plan = resolve_semantic_plan(plan, "니켈 재고 알려줘")
         self.assertEqual(action_plan.actions[0].action_id, "inventory.latest")
 
+    def test_inventory_series_resolves_to_distinct_series_action(self):
+        plan = SemanticPlan(requirements=[SemanticRequirement(
+            domain="inventory", metric="series", mineral="니켈",
+            period={"kind": "trailing_months", "trailing_months": 12},
+        )])
+        _, action_plan = resolve_semantic_plan(plan, "최근 1년간 니켈 재고 추이를 보여줘")
+        action = action_plan.actions[0]
+        self.assertEqual(action.action_id, "inventory.series")
+        self.assertEqual(action.slots.period.kind, "trailing_months")
+
+    def test_inventory_latest_metric_with_bounded_period_is_normalized_to_series(self):
+        plan = SemanticPlan(requirements=[SemanticRequirement(
+            domain="inventory", metric="latest", mineral="니켈",
+            period={"kind": "trailing_months", "trailing_months": 12},
+        )])
+        _, action_plan = resolve_semantic_plan(plan, "최근 1년간 니켈 재고 추이를 보여줘")
+        self.assertEqual(action_plan.actions[0].action_id, "inventory.series")
+
     def test_price_forecast_resolves_to_existing_forecast_action(self):
         plan = SemanticPlan(requirements=[SemanticRequirement(
             domain="price", metric="price_forecast", mineral="니켈",
@@ -306,6 +363,14 @@ class SemanticIntentTest(unittest.TestCase):
         action = action_plan.actions[0]
         self.assertEqual(action.action_id, "forecast.price")
         self.assertEqual(action.slots.forecast_operation, "next_month_value")
+
+    def test_unbounded_price_trend_defaults_to_typed_rolling_series(self):
+        plan = SemanticPlan(requirements=[SemanticRequirement(
+            domain="price", metric="price_series", mineral="니켈",
+        )])
+        normalized = _normalize_semantic_plan(plan, "니켈 가격 추이 좀 보여줘")
+        period = normalized.requirements[0].period
+        self.assertEqual((period.kind, period.trailing_months), ("trailing_months", 12))
 
     def test_yearly_average_preserves_existing_price_operation_contract(self):
         plan = SemanticPlan(requirements=[SemanticRequirement(

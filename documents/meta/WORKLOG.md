@@ -2,6 +2,227 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-10-03 — Capability boundary Fast Regression r19, 운영 미배포
+
+`trade.country_rank`가 반환한 유일한 `total(<표시명>)` 물리 컬럼을 선언된
+`import/export_amount|weight` typed metric으로 정규화하여 GM01의
+`comparison_field_required`를 공통 Capability boundary에서 해결했다. 복수 total
+컬럼은 모호하므로 보정하지 않는다. 관련 unit 78 passed, 18012 실제 SSE에서 GM01
+회복 및 GM02·ADD16·MP03·MP01·ADD27·ADD15·GM08·Direct 회귀 없음. Navigation의
+기존 `semantic_plan_incomplete`는 재현됐으나 이번 계층과 무관하다. 전체 rag_core는
+1513 passed / 1 기존 parser history namespace failure / 695 subtests. 공식 33/57,
+Fast provisional 35/57 유지. 데이터·mapping 대기 목록은
+`CAPABILITY_DATA_AUDIT_PENDING_20261003.md`에 기록했다. 이미지
+`komir-rag-chat:capability-contract-r19`, 18012만 교체했고 18002는
+`current-session-r19` 그대로 유지했다.
+
+## 2026-10-02 — 후속 참조 국부 수정: root/output 경계, 운영 미배포
+
+iterative-audit으로 직전 선택7개 대신 inherited ENTITY16개를 참조하는 오류를 수정.
+모델 context의 최종 root 구분, active/explicit_history 검증, 다중 root 별칭 거부,
+가격 재조회 status/reason/output contract를 보완. 기존 원래 모집단 참조는 유지.
+질문별 분기·semantic regex·새 Action0. core1449PASS/695subtests,
+app/common163PASS/17subtests. 실제 Gemma 참조 선택15/15.
+검증 이미지 qa-reference-boundary34-r3, loopback18012에서 실제 SSE10요청.
+명시적 재조회는 선택7개 가격 반환. 단축표현은 repair 중 value를 삭제해 가격 없는
+성공 표를 반환하는 의미 실패가 남음. 이 실패를 PASS 또는 전체 완료로 집계하지 않음.
+운영18002/18011·업무DB 변경, 커밋/푸시 없음.
+근거: `REFERENCE_BOUNDARY_20261002.md`, `reference_boundary_20261002/`.
+
+## 2026-10-02 — repair 출력 계약 국부 수정: 검증 이미지 r6
+
+직전 결과를 단순 광종 목록으로 저장한 뒤 가격값을 표시해야 하는 후속 요청에서,
+Gemma repair가 root projection의 `value`를 삭제해 메타데이터만 성공 처리하던 공통
+경계를 수정했다. reference/refresh repair는 이전 root output field를 축소할 수 없고,
+누락 field는 동일 InputRef 기반 새 조회로 보완하며 새 조회 시 refresh를 사용한다.
+새 독립 query의 speculative field는 기존 validation이 처리하도록 예외가 아닌 범위 구분을
+유지했다. 질문별 분기/regex/Action0.
+
+검증 이미지 `qa-reference-boundary34-r6`에서 실제 Gemma/SSE 3개 표현(명시 재조회 2,
+단축 1)을 재실행: 모두 7개 선택 광물의 가격 value 반환, HTTP200/SSE table 완료,
+abstain=false. rag_core1450PASS/695subtests, app/common163PASS/17subtests,
+compileall/diff-check 통과. 운영18002/18011과 업무DB 변경 없음. 커밋/푸시 없음.
+
+## 2026-10-02 — 반복 감사: live 공통 계약·후속 참조 안정화
+
+iterative-audit 적용. 실제 Gemma/SSE에서 재현한 입력 arity·resource mineral 누락,
+History ID 길이/namespace, 다광종 price fan-out, typed metric/value 연결,
+ForEach envelope 필드 계약, PARTIAL projection status/output/unit 보존을 수정했다.
+단위 alias 우회 감사 반례를 차단하고 shared unit registry를 적용했다.
+계획 실패와 실제 category/mapping 실패를 구분; 새 Action/질문별 분기/semantic regex 없음.
+최종 core1430PASS/695subtests + app/common163PASS/17subtests, 잔존 회귀실패0.
+compileall/diff-check/build 통과, 독립 증분 감사 High/Critical 미발견.
+최종 이미지 qa-live-stability33-r10(75a96f09…)을 loopback18012에서 검증.
+최종24SSE: 응답완료14/PARTIAL7/매장량계약차단2/취소1. 독립SQL·대상·단위·재시작복원22/22.
+전 이미지 포함141SSE의 과거FAIL14·대상scope mismatch1도 보존하며 전체운영READY 선언 안 함.
+운영18002/18011·업무DB 변경 없음. 미확정category/가격mapping 및 반복모델잔여위험 별도기록.
+근거: `QA500_LIVE_STABILIZATION_20261002.md`, `qa500_live_stabilization_20261002/`.
+커밋/푸시하지 않음.
+
+## 2026-10-02 — live 공통 계약 repair / SSE 47회: 운영 배포 보류
+
+iterative-audit + qa-build 적용. 전체 국가 조회 top_n=None, resource typed metric/country,
+저장 결과 projection·권한 root 검증, PARTIAL 실패행 보존, ForEach latest snapshot,
+client cancellation을 공통 경로에서 수정. 질문별 분기/새 Action/semantic regex 없음.
+독립 증분 감사 High/Critical0. 최종 core1382PASS/695subtests, app+common163PASS/17subtests,
+기존 PASS→FAIL0. 130국가 fixture로 조회 상한 초과 보존 확인. 독립SQLassertions8/8.
+실제 SSE47: PASS23/PARTIAL4/차이방향모호4/FAIL11/정상거절2/소유권거절1/취소2, wire0.
+r4 이미지5b9b4e35…를 loopback18012에서 검증; 운영18002·18011은 변경하지 않음.
+최종 합계6998520.2·칠레2098.1·가격502 22916.73 SQL일치, coldrestart 후 저장 목록 복원.
+명시적 합계−평균 parser누락, 매장량 검증, 문서 가격 일부 검증/단위, refresh계획 실패는 남음.
+전체READY 선언 안 함. commit/push 없음. 진단 URI 오류 출력 노출 1회, 산출물redact 및
+자격증명 교체 권고. 근거: `QA500_LIVE_REPAIR_20261002.md`, `qa500_live_repair_20261002/`.
+
+## 2026-10-02 — 전체 회귀/반복 안정성/운영 SSE audit: NOT_READY
+
+iterative-audit 사전 격리·사후 독립 감사 수행. 현재 소스 이미지 qa-stability-sse31
+(952c21c5…)을 loopback18012에 빌드/기동, 세션은 별도Postgres, 업무PG는 읽기전용.
+40문항×3 actualGemma: 전회PASS33/변동5/정상거절2, 실행106PASS/8계획실패/6거절.
+실제SSE23회(운영18002 신규테스트세션2건 포함):22완료/1clientcancel, wire검사오류0.
+의미판정 PASS7/PARTIAL5/FAIL7/출력검증미확정2/안전기권사유부족2. 숫자·표는 독립SQL대조.
+후속projection→재조회 false success High1. 합계키불일치+Top5모집단, 후속필드,
+PARTIAL실패행생략, cancel후재시도 지속으로 독립감사 NOT_READY/Critical0.
+core1335PASS/0FAIL, app+common152PASS/1FAIL(실제MCP를 호출하는 composite_index test).
+production code수정0/새회귀손상0. Dockerbuild/compileall/diffcheck통과. 운영18002·기존18011
+재시작/교체없음. 정상운영API의 테스트history쓰기는 발생, 수동업무DB수정은 없음.
+검증18012만 coldrestart했고 history복원 후project entity/mineral불일치가 재현됐다.
+근거: `QA500_LIVE_STABILITY_20261002.md`, `qa500_live_stability_20261002/summary.json`.
+
+## 2026-10-02 — 남은7 QA 재계획 stage 계약 진단 보완 (미배포)
+
+집계 후 원시필드 참조4건·잘못된 출력 source1건·가격필드 모호성2건으로 분리했다.
+Aggregate→Select 생성 필드와 Project의 defined_sources를 오류 진단에 제공한다.
+필드/source 자동 변경·validator 완화·prompt/Action/operator/regex 추가 없음.
+동일 저장76 requirement replay의 판정 변화0. 신규 진단 테스트10 FAIL→10 PASS.
+실제 Gemma 기존7×2: 전회 성공4/변동3, 실행 PASS11/계획실패2/결과불일치1.
+새 holdout4×2는8/8 PASS. 이번11문항 PASS8/FAILED3/PENDING0.
+전체1325→1335 PASS/687 subtests/0 FAIL, 기존 PASS→FAIL0. 독립 감사 High/Critical0.
+가격필드 모호성은 Gold 수정으로 은폐하지 않았다. 전체 모델 안정성·운영/SSE 검증은
+이번 범위 제외. 서버/DB/배포/commit/push 불변.
+근거: `QA500_STAGE_REPAIR_20261002.md`, `qa500_stage_repair_20261002/summary.json`.
+
+## 2026-10-02 — 실패 원본 trace / 동일 모집단 집계 연결 검증 (미배포)
+
+LLM raw 출력·parsed JSON·finish_reason·실제 모델·오류 분류를 실패 시에도 보존했다.
+동일 모집단/기간/그룹의 side_by_side 집계만 생략된 join_key를 연결하며 명시 필드와
+서로 다른 기간은 덮어쓰지 않는다. 평가기의 extremum lineage false negative와
+output_field=value의 false positive를 독립 감사로 재현·수정했다.
+기존208회 동일 원본 replay PASS156→163(평가기 수정)→165(compiler 수정2회).
+실제 Gemma36문항/76실행: 전회 PASS27/변동6/모두실패1/정상거절2, PENDING0.
+실행별 PASS64/실패8/정상거절4. 모델 반복 안정성은 아직 미해결이다.
+전체1290→1325 PASS/687 subtests/0 FAIL, PASS→FAIL0, compileall/diff check PASS.
+신규 semantic regex/질문특례/Action/operator/prompt patch0. 최종 감사 High/Critical0.
+운영·검증 컨테이너/DB/배포/commit/push 변경 없음. production SSE 검증 결과 아님.
+근거: `QA500_TRACE_BOUNDARY_20261002.md`, `qa500_trace_boundary_20261002/summary.json`.
+
+## 2026-10-02 — 스키마 강제 생성/유일 집계 operand 연결 실험 (미배포)
+
+실제 Gemma json_schema 지원(반대값 지시3회 포함)을 확인하고 opt-in 전송을 추가했다.
+명시 모드의 4xx는 무제약 fallback 없이 실패한다. 기본 모드/프롬프트/운영 설정 불변.
+두 집계의 유일 수치 컬럼은 Planner가 생략된 Compare fields로 연결하며, 원시 다중
+측정값·잘못된 source·명시 필드는 추측/대체하지 않는다. 독립 SQL과 일치했다.
+기존28문항×3×2모드, 새4문항×5×2모드 총208실행+보조4smoke.
+전회 PASS: 기존28건 object17/schema16, 새4건 양쪽3. 강제모드 개선 근거 없어 기본 비활성.
+주평가32건: object PASS20/FAILED10/UNSUPPORTED2, schema19/11/2, PENDING0.
+전체1276→1290 PASS/687 subtests/0 FAIL. 기존 음성 계약 기대2개 조정을 보고서에 명시.
+질문별특례/semantic regex/Action/operator 추가0. 독립 감사 High/Critical0.
+운영18002·검증18011·DB·배포·commit/push 변경 없음. 모델 안정성 전체 해결은 미완료.
+근거: `QA500_CONSTRAINED_20261002.md`, `qa500_constrained_20261002/summary.json`.
+
+## 2026-10-02 — QA500 반복 안정성/평가기 격리 (미배포)
+
+compiler 재계획 진단에 실제 source ID/생산 필드·좌우 operand 후보를 제공했다.
+unknown source를 자동 대입하지 않는다. 기존 집계10종 상수를 runtime/validator가
+공유해 문자열 none 등 미지원 집계를 조회 전에 거절한다. Action/operator 추가0.
+ThreadPool에서 synthetic socket guard가 동시 Gemma를 차단한 39건을 발견, 해당 실행은
+비교에서 제외하고 spawn ProcessPool로 격리했다. average/mean oracle 동등성 오류도 수정.
+산술 컬럼 prompt 명확화 실험은 개선 근거 부족(PASS45→42/56)으로 되돌렸다.
+최종 동일 코드36문항×2: 안정 PASS23/변동7/모두실패4/정상거절2, PENDING0.
+모델의 반복 안정성은 미해결이며 best-of PASS로 집계하지 않았다.
+전체1265→1276 PASS/687 subtests/0 FAIL, 기존 PASS→FAIL0. compileall/diff check PASS.
+운영/DB/배포/commit/push 변경 없음. 기록: `QA500_STABILITY_20261002.md`,
+`qa500_stability_20261002/summary.json`.
+
+## 2026-10-02 — QA500 그룹 출력/후속 집계 계약 2차 보완 (미배포)
+
+저장 Gemma H1/H4/Z5 실패를 먼저 재현(8 FAIL/2 PASS)하고 그룹 identity 누락,
+중첩 reduction scope, source 없는 중복 requirement 진단을 공통 계약에 반영했다.
+감사에서 scalar selection 오거절·share identity/case 우회를 수정하고 indicator
+종류 미지정 시 기본 지수 대체도 차단했다. 기존 alias로 평가기 canonical 비교 수정.
+실제 Gemma 55요청/28질문, 동일 22건 17→18 PASS(정상 거절2, 실패3→2).
+추가 holdout 5/6 PASS. 최종 별도5건 4 PASS/1 FAIL: 모델 재실행 변동은 여전히 남는다.
+전체 1250→1265 PASS /687 subtests /0 FAIL, 기존 PASS→FAIL 0.
+원장·실패 전부 보존. 질문특례/semantic regex/Action/operator 추가0. 미커밋·미배포.
+상세: `QA500_REPAIR2_20261002.md`, `qa500_repair2_20261002/summary.json`.
+
+## 2026-10-02 — QA500 requirement/planner/output 연결 보완 (미배포)
+
+집계 output_field, 관계 ID/Compare 연산, requested output source/alias를 공통 계약으로
+연결했다. typed contract 오류는 최대 1회 Gemma 재계획하며 Gold/raw-query 규칙을
+사용하지 않는다. derived InputRef는 보존하지만 V2 materialization 미지원은 명시 거절한다.
+실제 Gemma 질의 78회(고유 22개), 기존 대상 8건 0→8 PASS. 최종 개발 검증 16건은
+12 PASS/2 unsupported 정상/2 실패, 별도 holdout 6건은 5 PASS/1 실패다.
+전체 1228→1250 PASS / 687 subtests / 0 FAIL. negative contract 3개 기대를 명시 변경했다.
+날짜 역할·행 단위·출처 훼손의 false PASS를 독립 감사로 잡고 strict oracle 재판정했다.
+500/245건 전체 해결 또는 운영 SSE 성공으로 해석하지 않는다. 기존 원장 보존.
+운영 18002·검증 18011·DB·배포·commit/push 변경 없음.
+상세: `QA500_LINKAGE_REPAIR_20261002.md`, `qa500_linkage_20261002/summary.json`.
+
+## 2026-10-02 — QA500 계약 부족 245건 분해와 독립 fixture 보완 (미배포)
+
+기존 FAILED를 실제 운영 실패율로 해석하지 않고 245개 계약 부족 사례를 8개 영역으로
+분해했다. 질문별 raw SHA/requirement/논리노드/실패/필수 계약을 보존하고 기존 원장은
+덮어쓰지 않았다. 신규 Gold·누락·충돌 34 tests, 저장된 245 QA/287턴 반복 replay.
+Project 일부 필드 누락, range placeholder/역전 날짜 통과, Join/Compare predicate
+묵시 누락을 재현 후 최소 수정했다. 감사 중 unit metadata 거절 회귀도 재현·수정했다.
+시작 전체 1194 PASS → 최종 1228 PASS / 687 subtests / 0 FAIL. 기존 PASS→FAIL 0.
+신규 실제 Gemma/SSE 호출 0, 질문 PASS 승격 0. 운영/DB/배포/commit/push 변경 없음.
+상세: `QA500_CONTRACT_FIXTURES_20261002.md`. 245건 기능 지원 완료라는 뜻이 아니다.
+
+## 2026-10-02 — QA500 qa-build: 실제 Gemma·독립 SQL·다중턴 검증 (미배포)
+
+500건 전체를 실제 Gemma V2 shadow로 호출하고, 공통 계약 수정 후 대표/실패 항목을
+반복 호출했다. 고유 500 QA·580 발화, 재호출 포함 651 QA 실행·751 발화.
+원문·원본 모델 출력·정규화 requirement·LogicalProgram·lowering·runtime·SQL 비교를
+분리 보존했다. endpoint 부재 또는 mock 성공으로 완료 처리하지 않았다.
+
+공통 Aggregate/Share/시계열 계산, 명시적 scalar 비교, 날짜·동률·projection,
+국가/날짜 InputRef 역할, history ID 충돌, V2 기간·Action slot 계약을 보완했다.
+독립 감사의 NULL 모집단 오염·fixture 기간 누락·oracle 검증 부족·국가가 광종을
+덮어쓰는 문제·history ID 충돌을 재현 후 수정했다. 질문별 production 분기와
+semantic regex 추가 0. 기존 Action/Tool/DB/SSE contract 및 운영 설정은 유지했다.
+
+Gold backend 전체 요구 검증 232 QA(일반 172 + 시계열 24 + 3턴 36).
+8건은 계산 부분만 통과/의미 계약 gap, 4건은 snapshot→InputRef bridge gap이다.
+별도 Gold 수치 계획이 없는 256건을 PASS로 세지 않았다. 실제 모델의 의미·계획
+누락은 별도 원장에 기록했으며 Gold 성공을 자연어 성공으로 승격하지 않았다.
+모든 QA의 호출·재생 시도·실패 분류를 완료했다. 상세 최종 집계와 남은 경계는
+`QA_ORDER2_4_500_VALIDATION_20261002.md` 및 `qa500_validation_20261002/` 참조.
+실제 Gemma + 합성 runtime 질문 전체 판정: PASS 4 / FAILED 468 / 평가·연결 gap 28,
+UNSUPPORTED 0 / BLOCKED 0 / PENDING 0 (합계 500). 마지막 독립 재감사 High/Critical 0.
+전체 rag_core 1,194 PASS / 687 subtests / 0 FAIL, 기존 PASS→FAIL 0.
+compileall / git diff --check 통과. 미생성 Project 필드의 NULL 거짓 성공과
+국가 수 oracle의 key-only 거짓 PASS도 재현 후 수정했다.
+
+운영 18002(audit-safety22)·검증 18011(audit-relations30) 및 운영 DB는 변경하지 않았다.
+실제 HTTP/SSE/새 이미지 배포 검증을 완료했다는 주장은 하지 않는다. 커밋·push 미실시.
+
+## 2026-10-01 — SET1 기반 order 2~4 질문 500개 생성 (실행 QA 아님)
+
+사용자 요청은 질문셋 생성으로 한정했다. qa-build의 원본 확인·의미 분해·corpus 등록·
+중복/무결성 검사를 적용하고 production 기능 개선이나 500건 live 호출은 수행하지 않았다.
+실제 원본 `/home/nuri/dev/git/ws/mine_ws/komir/qa_build_set1.txt`와 기존 SET1 185건을
+읽고 125개 연산 패턴을 4개 광종/기간/국가 조합으로 확장했다.
+총 500개: 2차 160 / 3차 180 / 4차 160. 단일 460, 3턴 시나리오 40, 총 발화 580.
+원본 대비 문자열 중복 0, 신규 내부 문자열 중복 0. 의미상 유사한 변형은 의도적으로 포함한다.
+TXT `qa_build_order2_4_500.txt`, JSON `inhouse/rag_core/tests/qa_build_order2_4_500.json`,
+패턴 원본과 corpus 테스트를 추가했다. 모든 신규 QA의 실행 상태는 NOT_EXECUTED이며
+수치 정답/모델 출력/실행 PASS를 조작하지 않았다. 등록 500, 미등록 0.
+corpus 무결성 6 PASS, 전체 rag_core 752 PASS / 146 subtests PASS / 0 FAIL.
+기존 PASS→FAIL 0. 새 질문의 의미 실행 성공률은 측정하지 않았다.
+운영/검증 서버·DB·production 코드는 변경하지 않았다.
+사용 방법·난이도 정의·검증 범위: `QA_ORDER2_4_500_20261001.md`.
+
 ## 2026-10-01 — PARTIAL 관계 연산만 제한 보완 (미배포)
 
 iterative-audit HIGH 범위로 PARTIAL 입력의 Join/Compare 일괄 기권을 보완했다.

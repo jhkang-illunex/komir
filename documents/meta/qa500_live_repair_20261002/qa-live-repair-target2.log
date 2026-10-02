@@ -1,0 +1,8 @@
+............................                                             [100%]
+=============================== warnings summary ===============================
+inhouse/rag_core/tests/test_live_resource_population.py::ResourcePopulationTests::test_graph_to_real_client_tool_and_sql_preserves_null_limit
+  /home/nuri/.local/lib/python3.10/site-packages/pydantic_settings/sources/utils.py:47: IncompleteFieldDefinitionWarning: Field 'lifespan' has an incomplete definition: its annotation contains an unresolved forward reference, so settings sources may fail to correctly resolve its value. Call `model_rebuild()` on the model where the field is defined, once all the referenced types are defined.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+28 passed, 1 warning in 1.09s

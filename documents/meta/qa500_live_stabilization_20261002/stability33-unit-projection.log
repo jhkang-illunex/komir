@@ -1,0 +1,24 @@
+..F                                                                      [100%]
+=================================== FAILURES ===================================
+____________ test_projection_cannot_hide_mixed_units_from_aggregate ____________
+
+    def test_projection_cannot_hide_mixed_units_from_aggregate():
+        factory,result=run()
+        for args in ({'fields':['mineral','price']}, {'fields':['mineral','price','unit'],'aliases':{'unit':'단위'}}):
+            projected=factory._derive(RequirementNode('p',Operator.PROJECT,args=args),{'source':result})
+            total=factory._derive(RequirementNode('a',Operator.AGGREGATE,args={'aggregation':'sum','field':'price'}),{'source':projected})
+            assert total.failure_reason=='unit_mismatch'
+            assert not any(e.type=='chart' for e in live._result_events(projected))
+        retained=factory._derive(RequirementNode('p',Operator.PROJECT,args={'fields':['mineral','price','unit']}),{'source':result})
+        filtered=factory._derive(RequirementNode('f',Operator.FILTER,args={'field':'mineral','operator':'equals','value':'A'}),{'source':retained})
+        total=factory._derive(RequirementNode('a',Operator.AGGREGATE,args={'aggregation':'sum','field':'price'}),{'source':filtered})
+>       assert total.status==ResultStatus.SUCCESS
+E       AssertionError: assert <ResultStatus...: 'abstained'> == <ResultStatus...SS: 'success'>
+E         
+E         - success
+E         + abstained
+
+inhouse/rag_core/tests/test_live_price_fanout.py:61: AssertionError
+=========================== short test summary info ============================
+FAILED inhouse/rag_core/tests/test_live_price_fanout.py::test_projection_cannot_hide_mixed_units_from_aggregate
+1 failed, 2 passed in 0.58s

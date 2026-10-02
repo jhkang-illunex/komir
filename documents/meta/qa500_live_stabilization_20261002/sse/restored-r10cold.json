@@ -1,0 +1,288 @@
+{
+  "id": "restored-r10cold",
+  "port": 18012,
+  "request": {
+    "user_id": "qa-sse31",
+    "session_id": "aba1439f-c0b7-4c52-88f7-ab89ade19fd1",
+    "message": "위 결과에서 최신 가격 조회에 성공한 광종만 알려줘",
+    "mode": "auto"
+  },
+  "started_at": "2026-10-02T02:51:55.974638+00:00",
+  "events": [
+    {
+      "event": "message",
+      "data": {
+        "session_id": "aba1439f-c0b7-4c52-88f7-ab89ade19fd1"
+      },
+      "elapsed": 0.042
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 1,
+        "label": "질문 조건 확인"
+      },
+      "elapsed": 0.066
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 3,
+        "label": "데이터 분석 중",
+        "status": "데이터 분석 중"
+      },
+      "elapsed": 2.313
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 4,
+        "label": "답변 생성 중"
+      },
+      "elapsed": 2.313
+    },
+    {
+      "event": "message",
+      "data": {
+        "delta": "표시된 7개 항목 중 7개 처리 완료, 0개 처리 불가.\n"
+      },
+      "elapsed": 2.331
+    },
+    {
+      "event": "message",
+      "data": {
+        "delta": "| mineral | status | reason | output | unit |\n| --- | --- | --- | --- | --- |\n| 망간 | success | None | latest_value | USD/톤 |\n| 크롬 | success | None | latest_value | USD/톤 |\n| 티타늄 | success | None | latest_value | USD/톤 |\n| 안티모니 | success | None | latest_value | USD/톤 |\n| 몰리브덴 | success | None | latest_value | USD/톤 |\n| 니오븀 | success | None | latest_value | USD/톤 |\n| 네오디뮴 | success | None | latest_value | USD/kg |"
+      },
+      "elapsed": 2.332
+    },
+    {
+      "event": "table",
+      "data": {
+        "schema_version": 1,
+        "block_id": "multihop-table",
+        "columns": [
+          "mineral",
+          "status",
+          "reason",
+          "output",
+          "unit"
+        ],
+        "rows": [
+          [
+            "망간",
+            "success",
+            "None",
+            "latest_value",
+            "USD/톤"
+          ],
+          [
+            "크롬",
+            "success",
+            "None",
+            "latest_value",
+            "USD/톤"
+          ],
+          [
+            "티타늄",
+            "success",
+            "None",
+            "latest_value",
+            "USD/톤"
+          ],
+          [
+            "안티모니",
+            "success",
+            "None",
+            "latest_value",
+            "USD/톤"
+          ],
+          [
+            "몰리브덴",
+            "success",
+            "None",
+            "latest_value",
+            "USD/톤"
+          ],
+          [
+            "니오븀",
+            "success",
+            "None",
+            "latest_value",
+            "USD/톤"
+          ],
+          [
+            "네오디뮴",
+            "success",
+            "None",
+            "latest_value",
+            "USD/kg"
+          ]
+        ],
+        "columns_meta": [
+          {
+            "key": "mineral",
+            "label": "mineral",
+            "display": "mineral",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "status",
+            "label": "status",
+            "display": "status",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "reason",
+            "label": "reason",
+            "display": "reason",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "output",
+            "label": "output",
+            "display": "output",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "unit",
+            "label": "unit",
+            "display": "unit",
+            "type": "string",
+            "unit": null
+          }
+        ],
+        "rows_typed": [
+          [
+            "망간",
+            "success",
+            null,
+            "latest_value",
+            "USD/톤"
+          ],
+          [
+            "크롬",
+            "success",
+            null,
+            "latest_value",
+            "USD/톤"
+          ],
+          [
+            "티타늄",
+            "success",
+            null,
+            "latest_value",
+            "USD/톤"
+          ],
+          [
+            "안티모니",
+            "success",
+            null,
+            "latest_value",
+            "USD/톤"
+          ],
+          [
+            "몰리브덴",
+            "success",
+            null,
+            "latest_value",
+            "USD/톤"
+          ],
+          [
+            "니오븀",
+            "success",
+            null,
+            "latest_value",
+            "USD/톤"
+          ],
+          [
+            "네오디뮴",
+            "success",
+            null,
+            "latest_value",
+            "USD/kg"
+          ]
+        ],
+        "markdown": "| mineral | status | reason | output | unit |\n| --- | --- | --- | --- | --- |\n| 망간 | success | None | latest_value | USD/톤 |\n| 크롬 | success | None | latest_value | USD/톤 |\n| 티타늄 | success | None | latest_value | USD/톤 |\n| 안티모니 | success | None | latest_value | USD/톤 |\n| 몰리브덴 | success | None | latest_value | USD/톤 |\n| 니오븀 | success | None | latest_value | USD/톤 |\n| 네오디뮴 | success | None | latest_value | USD/kg |",
+        "chart_hint": {
+          "recommended": null,
+          "alternatives": [],
+          "reason": "값이 갈리는 숫자 계열 없음"
+        },
+        "meta": {
+          "source_index": 1,
+          "source": "PageIndex 파생 사실 · 희소금속 월간동향",
+          "as_of": null,
+          "unit": null,
+          "time_aggregation": null,
+          "menu_source": null,
+          "hidden_columns": []
+        },
+        "source_index": 1,
+        "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+      },
+      "elapsed": 2.333
+    },
+    {
+      "event": "done",
+      "data": {
+        "done": true,
+        "abstained": false,
+        "citations": [
+          {
+            "index": 1,
+            "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+          },
+          {
+            "index": 2,
+            "source": "public.KO_MNRL_PRC"
+          }
+        ],
+        "bogus_citations": []
+      },
+      "elapsed": 2.333
+    }
+  ],
+  "http_status": 200,
+  "content_type": "text/event-stream; charset=utf-8",
+  "elapsed": 2.335,
+  "text": "표시된 7개 항목 중 7개 처리 완료, 0개 처리 불가.\n| mineral | status | reason | output | unit |\n| --- | --- | --- | --- | --- |\n| 망간 | success | None | latest_value | USD/톤 |\n| 크롬 | success | None | latest_value | USD/톤 |\n| 티타늄 | success | None | latest_value | USD/톤 |\n| 안티모니 | success | None | latest_value | USD/톤 |\n| 몰리브덴 | success | None | latest_value | USD/톤 |\n| 니오븀 | success | None | latest_value | USD/톤 |\n| 네오디뮴 | success | None | latest_value | USD/kg |",
+  "event_counts": {
+    "message": 3,
+    "status": 3,
+    "table": 1,
+    "done": 1
+  },
+  "done": {
+    "done": true,
+    "abstained": false,
+    "citations": [
+      {
+        "index": 1,
+        "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+      },
+      {
+        "index": 2,
+        "source": "public.KO_MNRL_PRC"
+      }
+    ],
+    "bogus_citations": []
+  },
+  "protocol_errors": [],
+  "deployment": {
+    "container_id": "2b3712ba5584bd370628e43156251272aaba48902dd26eaf5da86bfc19992b8f",
+    "port": 18012,
+    "image_tag": "komir-rag-chat:qa-live-stability33-r10",
+    "image_id": "sha256:75a96f09ffcc2f3dd591c5a413d0aadef815100d89e68636926b8267b9c79ed6",
+    "source_hashes": {
+      "inhouse/rag_core/ragkit/live_multihop.py": "64b9c71baba090cf03cadb7bfc8da9ea4d667d93a01e5e13438a63bf4f1261d7",
+      "inhouse/rag_core/ragkit/chatbot.py": "71f5b2e77e6fd95a5df336190b0bfd532709b016e896d527560f13ea88557553",
+      "inhouse/rag_core/ragkit/chatbot_graph.py": "adaaacae8d021345abbbbc3b96d90318d6da98db933e3b42def50f7fee5caf8a",
+      "inhouse/rag_core/ragkit/chatbot_events.py": "0e6bb9e37b18913aac8ab97f95d6d3e772a992da7cba8bbc43738f7b7fcf03c5",
+      "inhouse/rag_core/ragkit/_mcp_tools_common.py": "96a7b909688af872bdab7f77ee186501ddb2206b00cc511d71f3a7bc11a3c4d6"
+    }
+  }
+}

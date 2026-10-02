@@ -1,0 +1,289 @@
+{
+  "id": "difference-r5",
+  "port": 18012,
+  "request": {
+    "user_id": "qa-sse31",
+    "session_id": "4fcf9b17-b76b-412e-96eb-9c6983ce058c",
+    "message": "2024년 구리 생산량의 합계와 평균을 계산하고 합계에서 평균을 빼줘",
+    "mode": "auto"
+  },
+  "started_at": "2026-10-02T02:36:16.516173+00:00",
+  "events": [
+    {
+      "event": "message",
+      "data": {
+        "session_id": "4fcf9b17-b76b-412e-96eb-9c6983ce058c"
+      },
+      "elapsed": 0.05
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 1,
+        "label": "질문 조건 확인"
+      },
+      "elapsed": 0.075
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 3,
+        "label": "데이터 분석 중",
+        "status": "데이터 분석 중"
+      },
+      "elapsed": 5.672
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 4,
+        "label": "답변 생성 중"
+      },
+      "elapsed": 5.672
+    },
+    {
+      "event": "message",
+      "data": {
+        "delta": "| left.total_production | right.average_production | left_unit | right_unit | left_period | right_period | left_entity | right_entity | left_source | right_source | left_value | right_value | status | reason | difference |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| 6998520.2 | 411677.65882352943 | 톤 | 톤 | {'kind': 'calendar_year', 'trailing_months': None, 'calendar_year': 2024, 'start': None, 'end': None, 'future_horizon': None, 'frequency': None, 'explicit': False} | {'kind': 'calendar_year', 'trailing_months': None, 'calendar_year': 2024, 'start': None, 'end': None, 'future_horizon': None, 'frequency': None, 'explicit': False} | ['구리'] | ['구리'] | ['public.KO_RSRC_PRDCTN_QUTY'] | ['public.KO_RSRC_PRDCTN_QUTY'] | 6998520.2 | 411677.65882352943 | SUCCESS | None | 6586842.541176471 |"
+      },
+      "elapsed": 5.689
+    },
+    {
+      "event": "table",
+      "data": {
+        "schema_version": 1,
+        "block_id": "multihop-table",
+        "columns": [
+          "left.total_production",
+          "right.average_production",
+          "left_unit",
+          "right_unit",
+          "left_period",
+          "right_period",
+          "left_entity",
+          "right_entity",
+          "left_source",
+          "right_source",
+          "left_value",
+          "right_value",
+          "status",
+          "reason",
+          "difference"
+        ],
+        "rows": [
+          [
+            "6998520.2",
+            "411677.65882352943",
+            "톤",
+            "톤",
+            "{'kind': 'calendar_year', 'trailing_months': None, 'calendar_year': 2024, 'start': None, 'end': None, 'future_horizon': None, 'frequency': None, 'explicit': False}",
+            "{'kind': 'calendar_year', 'trailing_months': None, 'calendar_year': 2024, 'start': None, 'end': None, 'future_horizon': None, 'frequency': None, 'explicit': False}",
+            "['구리']",
+            "['구리']",
+            "['public.KO_RSRC_PRDCTN_QUTY']",
+            "['public.KO_RSRC_PRDCTN_QUTY']",
+            "6998520.2",
+            "411677.65882352943",
+            "SUCCESS",
+            "None",
+            "6586842.541176471"
+          ]
+        ],
+        "columns_meta": [
+          {
+            "key": "left.total_production",
+            "label": "left.total_production",
+            "display": "left.total_production",
+            "type": "number",
+            "unit": null
+          },
+          {
+            "key": "right.average_production",
+            "label": "right.average_production",
+            "display": "right.average_production",
+            "type": "number",
+            "unit": null
+          },
+          {
+            "key": "left_unit",
+            "label": "left_unit",
+            "display": "left_unit",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "right_unit",
+            "label": "right_unit",
+            "display": "right_unit",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "left_period",
+            "label": "left_period",
+            "display": "left_period",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "right_period",
+            "label": "right_period",
+            "display": "right_period",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "left_entity",
+            "label": "left_entity",
+            "display": "left_entity",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "right_entity",
+            "label": "right_entity",
+            "display": "right_entity",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "left_source",
+            "label": "left_source",
+            "display": "left_source",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "right_source",
+            "label": "right_source",
+            "display": "right_source",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "left_value",
+            "label": "left_value",
+            "display": "left_value",
+            "type": "number",
+            "unit": null
+          },
+          {
+            "key": "right_value",
+            "label": "right_value",
+            "display": "right_value",
+            "type": "number",
+            "unit": null
+          },
+          {
+            "key": "status",
+            "label": "status",
+            "display": "status",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "reason",
+            "label": "reason",
+            "display": "reason",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "difference",
+            "label": "difference",
+            "display": "difference",
+            "type": "number",
+            "unit": null
+          }
+        ],
+        "rows_typed": [
+          [
+            6998520.2,
+            411677.65882352943,
+            "톤",
+            "톤",
+            "{'kind': 'calendar_year', 'trailing_months': None, 'calendar_year': 2024, 'start': None, 'end': None, 'future_horizon': None, 'frequency': None, 'explicit': False}",
+            "{'kind': 'calendar_year', 'trailing_months': None, 'calendar_year': 2024, 'start': None, 'end': None, 'future_horizon': None, 'frequency': None, 'explicit': False}",
+            "['구리']",
+            "['구리']",
+            "['public.KO_RSRC_PRDCTN_QUTY']",
+            "['public.KO_RSRC_PRDCTN_QUTY']",
+            6998520.2,
+            411677.65882352943,
+            "SUCCESS",
+            null,
+            6586842.541176471
+          ]
+        ],
+        "markdown": "| left.total_production | right.average_production | left_unit | right_unit | left_period | right_period | left_entity | right_entity | left_source | right_source | left_value | right_value | status | reason | difference |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| 6998520.2 | 411677.65882352943 | 톤 | 톤 | {'kind': 'calendar_year', 'trailing_months': None, 'calendar_year': 2024, 'start': None, 'end': None, 'future_horizon': None, 'frequency': None, 'explicit': False} | {'kind': 'calendar_year', 'trailing_months': None, 'calendar_year': 2024, 'start': None, 'end': None, 'future_horizon': None, 'frequency': None, 'explicit': False} | ['구리'] | ['구리'] | ['public.KO_RSRC_PRDCTN_QUTY'] | ['public.KO_RSRC_PRDCTN_QUTY'] | 6998520.2 | 411677.65882352943 | SUCCESS | None | 6586842.541176471 |",
+        "chart_hint": {
+          "recommended": null,
+          "alternatives": [],
+          "reason": "행 2개 미만 또는 열 1개"
+        },
+        "meta": {
+          "source_index": 1,
+          "source": "public.KO_RSRC_PRDCTN_QUTY",
+          "as_of": null,
+          "unit": "톤",
+          "time_aggregation": null,
+          "menu_source": null,
+          "hidden_columns": []
+        },
+        "source_index": 1,
+        "source": "public.KO_RSRC_PRDCTN_QUTY"
+      },
+      "elapsed": 5.69
+    },
+    {
+      "event": "done",
+      "data": {
+        "done": true,
+        "abstained": false,
+        "citations": [
+          {
+            "index": 1,
+            "source": "public.KO_RSRC_PRDCTN_QUTY"
+          }
+        ],
+        "bogus_citations": []
+      },
+      "elapsed": 5.69
+    }
+  ],
+  "http_status": 200,
+  "content_type": "text/event-stream; charset=utf-8",
+  "elapsed": 5.691,
+  "text": "| left.total_production | right.average_production | left_unit | right_unit | left_period | right_period | left_entity | right_entity | left_source | right_source | left_value | right_value | status | reason | difference |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| 6998520.2 | 411677.65882352943 | 톤 | 톤 | {'kind': 'calendar_year', 'trailing_months': None, 'calendar_year': 2024, 'start': None, 'end': None, 'future_horizon': None, 'frequency': None, 'explicit': False} | {'kind': 'calendar_year', 'trailing_months': None, 'calendar_year': 2024, 'start': None, 'end': None, 'future_horizon': None, 'frequency': None, 'explicit': False} | ['구리'] | ['구리'] | ['public.KO_RSRC_PRDCTN_QUTY'] | ['public.KO_RSRC_PRDCTN_QUTY'] | 6998520.2 | 411677.65882352943 | SUCCESS | None | 6586842.541176471 |",
+  "event_counts": {
+    "message": 2,
+    "status": 3,
+    "table": 1,
+    "done": 1
+  },
+  "done": {
+    "done": true,
+    "abstained": false,
+    "citations": [
+      {
+        "index": 1,
+        "source": "public.KO_RSRC_PRDCTN_QUTY"
+      }
+    ],
+    "bogus_citations": []
+  },
+  "protocol_errors": [],
+  "deployment": {
+    "container_id": "851e2e79bf1ec477fdc998086e89c052e061de422adb08a39f2148e0e3ca4139",
+    "port": 18012,
+    "image_tag": "komir-rag-chat:qa-live-stability33-r5",
+    "image_id": "sha256:58c638418fc7368085b34832f97bb85d4952d858c9089d1432226fc5f6112cdb",
+    "source_hashes": {
+      "inhouse/rag_core/ragkit/live_multihop.py": "c22ba6373b49fdd2b591c639203689cb76f8853ad9edc71de69194c76690a5de",
+      "inhouse/rag_core/ragkit/chatbot.py": "71f5b2e77e6fd95a5df336190b0bfd532709b016e896d527560f13ea88557553",
+      "inhouse/rag_core/ragkit/chatbot_graph.py": "adaaacae8d021345abbbbc3b96d90318d6da98db933e3b42def50f7fee5caf8a",
+      "inhouse/rag_core/ragkit/chatbot_events.py": "0e6bb9e37b18913aac8ab97f95d6d3e772a992da7cba8bbc43738f7b7fcf03c5",
+      "inhouse/rag_core/ragkit/_mcp_tools_common.py": "96a7b909688af872bdab7f77ee186501ddb2206b00cc511d71f3a7bc11a3c4d6"
+    }
+  }
+}

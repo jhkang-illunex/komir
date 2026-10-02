@@ -1,0 +1,8 @@
+{
+  "requests": 47,
+  "http_200": 47,
+  "done": 45,
+  "cancelled": 2,
+  "wire_errors": 0,
+  "note": "Transport accounting only; semantic assessments are recorded separately."
+}

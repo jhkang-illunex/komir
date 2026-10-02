@@ -1,0 +1,7 @@
+{
+  "container_id": "e2d6b9910dec42adef443a5b75c031c18a35312160af8f4e24efb70360d40bdf",
+  "port": 18012,
+  "image_tag": "komir-rag-chat:qa-reference-boundary34-r3",
+  "image_id": "sha256:8caffeb62dd5e72073080b86cd2a03d20e13cf0ba27d5f52453a03b53299b3f3",
+  "source_sha256": "fc3e2556d10c7e649ecbc04eab488e0724077ddacfb87b3cfeae6d0c6d177347"
+}

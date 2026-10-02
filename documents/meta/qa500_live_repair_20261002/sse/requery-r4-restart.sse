@@ -1,0 +1,9 @@
+data: {"session_id": "c3ad9f3b-18e5-49ef-b0ec-32d72a6523d1"}
+
+event: status
+data: {"stage": 1, "label": "질문 조건 확인"}
+
+data: {"delta": "요청 처리 또는 결과 저장에 실패했습니다."}
+
+event: done
+data: {"done": true, "abstained": true, "abstain_reason": "execution_failed", "citations": []}

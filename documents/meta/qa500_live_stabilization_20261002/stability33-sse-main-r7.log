@@ -1,0 +1,6 @@
+difference-r7 200 5.417 {'message': 2, 'status': 3, 'table': 1, 'done': 1} None []
+sum-r7 200 1.482 {'message': 2, 'status': 3, 'done': 1} aggregate_input_incomplete []
+chile-r7 200 4.404 {'message': 2, 'status': 3, 'table': 1, 'done': 1} None []
+ranking-r7 200 4.827 {'message': 2, 'status': 3, 'table': 1, 'chart': 1, 'done': 1} None []
+price-r7 200 3.474 {'message': 2, 'status': 3, 'done': 1} projection_field_unavailable:value []
+reserves-r7 200 2.395 {'message': 2, 'status': 3, 'done': 1} upstream step failed: node_2 []

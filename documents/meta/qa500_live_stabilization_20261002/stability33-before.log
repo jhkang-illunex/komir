@@ -1,0 +1,34 @@
+FF.                                                                      [100%]
+=================================== FAILURES ===================================
+__________________ test_schema_declares_live_dependency_arity __________________
+
+    def test_schema_declares_live_dependency_arity():
+        schema = live.ASTNodeModel.model_json_schema()
+        rules = schema.get("allOf", [])
+>       aggregate = next(rule for rule in rules if "aggregate" in rule["if"]["properties"]["operator"]["enum"])
+E       StopIteration
+
+inhouse/rag_core/tests/test_live_parser_contract_feedback.py:13: StopIteration
+_______ test_repair_receives_structured_failed_plan_and_field_contracts ________
+
+    def test_repair_receives_structured_failed_plan_and_field_contracts():
+        live.clear_semantic_cache()
+        bad = {"nodes": [{"node_id": "a", "operator": "aggregate", "args": {"aggregation": "sum", "field": "production_volume"}}], "roots": ["a"]}
+        good = {"nodes": [{"node_id": "r", "operator": "retrieve", "args": {"metric": "production_volume"}},
+                          {"node_id": "a", "operator": "aggregate", "inputs": [{"node_id": "r"}], "args": {"aggregation": "sum", "field": "production_volume"}}], "roots": ["a"]}
+        calls = []
+        def invoke(**kwargs):
+            calls.append(kwargs)
+            return SimpleNamespace(output=live.ASTProgramModel.model_validate(bad if len(calls)==1 else good))
+        result = asyncio.run(live._parse_ast(SimpleNamespace(invoke=invoke), "opaque test utterance", ConversationContext("fixture")))
+        assert len(result.nodes) == 2
+>       repair = calls[1]["payload"]["repair"]
+E       KeyError: 'repair'
+
+inhouse/rag_core/tests/test_live_parser_contract_feedback.py:29: KeyError
+------------------------------ Captured log call -------------------------------
+WARNING  inhouse.rag_core.ragkit.live_multihop:live_multihop.py:379 multihop_ast_validation_failure attempt=1 reason=a requires an upstream result in live runtime
+=========================== short test summary info ============================
+FAILED inhouse/rag_core/tests/test_live_parser_contract_feedback.py::test_schema_declares_live_dependency_arity
+FAILED inhouse/rag_core/tests/test_live_parser_contract_feedback.py::test_repair_receives_structured_failed_plan_and_field_contracts
+2 failed, 1 passed in 0.55s

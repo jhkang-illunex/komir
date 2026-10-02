@@ -73,7 +73,9 @@ def test_c_price_top5_then_import_change_filter_keeps_dependency_nodes():
         LogicalNodeV2(node_id="filtered", op=Primitive.FILTER, inputs=[InputRefV2(node_id="import_change")], arguments={"field": "change_rate", "operator": ">", "value": 0}, output_type="FactSet", requested=True),
     ], roots=["filtered"])
     calls = LegacyActionLowerer().lower(logical)
-    assert [call.action_id for call in calls] == ["price.series", "trade.indicator"]
+    # import_value is a source series, not a BI trade.indicator request;
+    # the latter requires trade_metric (TSI/RCA/...) and cannot execute here.
+    assert [call.action_id for call in calls] == ["price.series", "trade.monthly"]
     assert logical.roots == ["filtered"]
 
 

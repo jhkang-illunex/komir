@@ -1,0 +1,542 @@
+{
+  "generated_at": "2026-10-02T04:30:41.463058+00:00",
+  "image": "komir-rag-chat:qa106-contract-r5",
+  "port": 18012,
+  "source": "qa106_grounded_comparison_20261002.csv",
+  "count": 34,
+  "results": [
+    {
+      "qa_id": "NEWS03",
+      "question": "최근 중국 수출통제 관련 뉴스 있어?",
+      "session_id": "cd67480b-a026-4560-a940-b7733973f20d",
+      "http": 200,
+      "abstained": true,
+      "reason": "semantic_plan_incomplete",
+      "events": [
+        "message",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "PF03",
+      "question": "니켈 지금 가격이 전망치 보다 높은 편이야?",
+      "session_id": "31dd232e-cb98-4689-8d0f-d8717b921173",
+      "http": 200,
+      "abstained": true,
+      "reason": "comparison_alignment_required",
+      "events": [
+        "message",
+        "status",
+        "status",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "IX01",
+      "question": "광물지수 오를때 같이 오른 광종은 뭐야?",
+      "session_id": "33671b54-686f-440a-8acc-ed9c85546c66",
+      "http": 200,
+      "abstained": true,
+      "reason": "semantic_plan_incomplete",
+      "events": [
+        "message",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "IX02",
+      "question": "니켈 가격 추세랑 광물 종합지수 추세 비교해주세요",
+      "session_id": "b3dda520-f4d3-451c-8612-75b5af5659e1",
+      "http": 200,
+      "abstained": true,
+      "reason": "dependency_unavailable",
+      "events": [
+        "message",
+        "status",
+        "status",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "MP04",
+      "question": "니켈 가격이랑 세계 생산량 변화 같이 보여줘",
+      "session_id": "52c3872f-ddc6-49a4-90c3-09fa6c6373c9",
+      "http": 200,
+      "abstained": true,
+      "reason": "projection_field_unavailable:date",
+      "events": [
+        "message",
+        "status",
+        "status",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "MP05",
+      "question": "생산 1위국 비중이 높은 광종들 가격 변동 어때?",
+      "session_id": "afbfd5b1-3b53-4306-b5b8-9c44779d1507",
+      "http": 200,
+      "abstained": true,
+      "reason": "semantic_plan_incomplete",
+      "events": [
+        "message",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "MP07",
+      "question": "전략광종 가격 현황 한눈에 보여줘",
+      "session_id": "34dfa175-8ac1-4487-a0c2-a550510f5d3f",
+      "http": 200,
+      "abstained": true,
+      "reason": "projection_field_unavailable:mineral",
+      "events": [
+        "message",
+        "status",
+        "status",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "CN04",
+      "question": "수입 의존도 높은 광종들 가격 전망 알려줘",
+      "session_id": "f814d0d7-a052-4e8f-b310-f55159fe67e1",
+      "http": 200,
+      "abstained": true,
+      "reason": "upstream step failed: node_price_forecast_retrieval",
+      "events": [
+        "message",
+        "status",
+        "status",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "CN05",
+      "question": "리튬 주요 수입국이랑 가격 전망 같이 보여줘",
+      "session_id": "30194d00-373d-467f-9882-b837ed9fbe23",
+      "http": 200,
+      "abstained": true,
+      "reason": "all_roots_failed",
+      "events": [
+        "message",
+        "status",
+        "status",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "CN08",
+      "question": "지난달 광물종합지수 변동이랑 월간동향 요약 같이 보여줘",
+      "session_id": "d61b8943-2cd3-42f6-8c7e-10f7e9fbb154",
+      "http": 200,
+      "abstained": true,
+      "reason": "all_roots_failed",
+      "events": [
+        "message",
+        "status",
+        "status",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "CN09",
+      "question": "광물종합지수 떨어진 주에 주요 뉴스 뭐 있었어?",
+      "session_id": "0345311a-4060-4b89-b9ab-04af72fdd17b",
+      "http": 200,
+      "abstained": true,
+      "reason": "semantic_plan_incomplete",
+      "events": [
+        "message",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "GM01",
+      "question": "코발트 세계 생산국이랑 우리나라 수입국 비교해줘",
+      "session_id": "aa2b4b3b-19df-4551-a02a-630c43e54a93",
+      "http": 200,
+      "abstained": true,
+      "reason": "upstream step failed: node_3, node_6",
+      "events": [
+        "message",
+        "status",
+        "status",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "GM02",
+      "question": "리튬 세계 생산 상위국 중 우리 수입 상위국에 들어가는 나라는?",
+      "session_id": "e917e0d2-3e83-4b04-a4bb-84729da33917",
+      "http": 200,
+      "abstained": true,
+      "reason": "projection_field_unavailable:country",
+      "events": [
+        "message",
+        "status",
+        "status",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "GM04",
+      "question": "2차전지 광물 수입국 구성 알려줘",
+      "session_id": "e04f757b-292c-4b80-a036-109bd8737758",
+      "http": 200,
+      "abstained": true,
+      "reason": "projection_field_unavailable:country",
+      "events": [
+        "message",
+        "status",
+        "status",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "GM05",
+      "question": "망간 용도랑 주요 수입국 알려줘",
+      "session_id": "f5b26645-96ed-408e-8e94-db60cbd89faa",
+      "http": 200,
+      "abstained": true,
+      "reason": "all_roots_failed",
+      "events": [
+        "message",
+        "status",
+        "status",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "GM11",
+      "question": "흑연 공급 현황 종합해서 알려줘",
+      "session_id": "c4c31fd2-0bca-40d1-b976-adc6cab4854b",
+      "http": 200,
+      "abstained": true,
+      "reason": "all_roots_failed",
+      "events": [
+        "message",
+        "status",
+        "status",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "GM13",
+      "question": "코발트 현황 브리핑해줘",
+      "session_id": "4e779223-a9ba-448c-b480-b45b7cc163fb",
+      "http": 200,
+      "abstained": true,
+      "reason": "all_roots_failed",
+      "events": [
+        "message",
+        "status",
+        "status",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "GM14",
+      "question": "중국 수출통제 대상 광종 가격이랑 수입 비중 같이 보여줘",
+      "session_id": "e59c952e-72c3-42dd-a1fd-3a87317c17da",
+      "http": 200,
+      "abstained": true,
+      "reason": "upstream step failed: final_join",
+      "events": [
+        "message",
+        "status",
+        "status",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "REG04",
+      "question": "니켈 가격 년도별 평균 가격을 알려줘",
+      "session_id": "9dcef965-f2b3-49c0-a397-98e4dd81ea3f",
+      "http": 200,
+      "abstained": false,
+      "reason": null,
+      "events": [
+        "message",
+        "status",
+        "status",
+        "status",
+        "message",
+        "table",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "REG05",
+      "question": "니켈 LME 재고량 알려줘",
+      "session_id": "2f6d55a5-ac49-4175-8039-16bfba46aa7f",
+      "http": 200,
+      "abstained": false,
+      "reason": null,
+      "events": [
+        "message",
+        "status",
+        "status",
+        "status",
+        "message",
+        "table",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "REG06",
+      "question": "니켈 텅스텐 가격 같이 비교해줘",
+      "session_id": "5103fa4a-79d3-4c3f-a5bb-f5f494f227ef",
+      "http": 200,
+      "abstained": true,
+      "reason": "dependency_unavailable",
+      "events": [
+        "message",
+        "status",
+        "status",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "ADD01",
+      "question": "리튬 최신 가격 얼마야?",
+      "session_id": "49b56fd8-11c1-471b-9e30-169116c84eca",
+      "http": 200,
+      "abstained": true,
+      "reason": "price_criterion_mapping_missing",
+      "events": [
+        "message",
+        "status",
+        "status",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "ADD03",
+      "question": "아연 가격 2010년 이후 최고가와 그 날짜 알려줘",
+      "session_id": "4514b69d-b644-4562-9225-3a67ff4e4879",
+      "http": 200,
+      "abstained": true,
+      "reason": "retrieval unavailable: validation_failed",
+      "events": [
+        "message",
+        "status",
+        "status",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "ADD06",
+      "question": "니켈 가격 전년 동월 대비 변화율은?",
+      "session_id": "7dc83542-3e46-4e67-bc09-3add78dafc87",
+      "http": 200,
+      "abstained": true,
+      "reason": "comparison_alignment_required",
+      "events": [
+        "message",
+        "status",
+        "status",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "ADD12",
+      "question": "방금 답변 원본 데이터는 KOMIS 어디서 확인해?",
+      "session_id": "a3a933f8-aa37-41c9-b2f2-9d71dbec2250",
+      "http": 200,
+      "abstained": true,
+      "reason": "adapter_unavailable",
+      "events": [
+        "message",
+        "status",
+        "status",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "ADD15",
+      "question": "희토류 생산량과 매장량 상위 5개국을 각각 차트로 보여줘",
+      "session_id": "44672092-3309-4ee6-94ac-05d36ceaf861",
+      "http": 200,
+      "abstained": true,
+      "reason": "all_roots_failed",
+      "events": [
+        "message",
+        "status",
+        "status",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "ADD16",
+      "question": "세계 리튬 매장량 중 칠레 비중은?",
+      "session_id": "67374a23-71f0-45f1-b871-91f77363f9a4",
+      "http": 200,
+      "abstained": true,
+      "reason": "upstream step failed: node_3, node_4",
+      "events": [
+        "message",
+        "status",
+        "status",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "ADD18",
+      "question": "광물종합지수 최근 12개월 추이 보여줘",
+      "session_id": "1c599eca-0b38-4dfe-ad7d-3630a127e648",
+      "http": 200,
+      "abstained": true,
+      "reason": "projection_field_unavailable:date",
+      "events": [
+        "message",
+        "status",
+        "status",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "ADD25",
+      "question": "구리, 니켈, 코발트 최근 1년 가격 추이 비교해줘",
+      "session_id": "272f9ba8-e868-4689-bdc4-4c72f8987caa",
+      "http": 200,
+      "abstained": true,
+      "reason": "dependency_unavailable",
+      "events": [
+        "message",
+        "status",
+        "status",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "ADD32",
+      "question": "중국 희토류 수출통제 관련 최신 내용 요약하고 출처 달아줘",
+      "session_id": "9f1b8f34-4949-422f-9b16-6f5200f5c644",
+      "http": 200,
+      "abstained": true,
+      "reason": "projection_field_unavailable:document",
+      "events": [
+        "message",
+        "status",
+        "status",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "ADD38",
+      "question": "7개 광종의 최신 가격, 기준일, 단위, 출처를 한 표로 정리해줘",
+      "session_id": "e6d78827-34f6-4bee-9432-cb78bdbe7939",
+      "http": 200,
+      "abstained": true,
+      "reason": "semantic_plan_incomplete",
+      "events": [
+        "message",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "ADD45",
+      "question": "리튬 가격 화면으로 가줘",
+      "session_id": "cfcc85c4-016f-4998-b43c-abe12b1029f5",
+      "http": 200,
+      "abstained": true,
+      "reason": "semantic_plan_incomplete",
+      "events": [
+        "message",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "ADD46",
+      "question": "수급지도 대한민국 페이지 어디서 봐?",
+      "session_id": "4288cec7-6c00-47d4-9b85-7f70790b0f18",
+      "http": 200,
+      "abstained": true,
+      "reason": "semantic_plan_incomplete",
+      "events": [
+        "message",
+        "status",
+        "message",
+        "done"
+      ]
+    },
+    {
+      "qa_id": "ADD49",
+      "question": "구리 가격 알려줘",
+      "session_id": "96ec6e1c-f32b-4005-a68b-04d9299e4cc1",
+      "http": 200,
+      "abstained": true,
+      "reason": "ambiguous",
+      "events": [
+        "message",
+        "status",
+        "status",
+        "status",
+        "status",
+        "message",
+        "done"
+      ]
+    }
+  ]
+}

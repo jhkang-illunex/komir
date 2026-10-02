@@ -1,0 +1,673 @@
+{
+  "total": 47,
+  "counts": {
+    "ARITHMETIC_PASS_DIRECTION_AMBIGUOUS": 4,
+    "CANCELLED": 2,
+    "FAIL": 11,
+    "PASS": 23,
+    "PARTIAL": 4,
+    "UNSUPPORTED_CORRECT": 2,
+    "ACCESS_DENIED_CORRECT": 1
+  },
+  "records": [
+    {
+      "id": "calculation-r1",
+      "status": "ARITHMETIC_PASS_DIRECTION_AMBIGUOUS",
+      "detail": "SQL operands and subtraction match; difference sign varies across rounds",
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "c2baae23-0aa8-4f54-9145-9fa45aa0a904",
+        "message": "2024년 구리 생산량 평균과 합계, 둘의 차이를 알려줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:33:00.438493+00:00",
+      "wire_errors": [],
+      "evidence": "sse/calculation-r1.json"
+    },
+    {
+      "id": "calculation-r2",
+      "status": "ARITHMETIC_PASS_DIRECTION_AMBIGUOUS",
+      "detail": "SQL operands and subtraction match; difference sign varies across rounds",
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "35f82b3d-f085-4d54-8422-220bb1ab612b",
+        "message": "2024년 구리 생산량 평균과 합계, 둘의 차이를 알려줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:38:00.526348+00:00",
+      "wire_errors": [],
+      "evidence": "sse/calculation-r2.json"
+    },
+    {
+      "id": "calculation-r3",
+      "status": "ARITHMETIC_PASS_DIRECTION_AMBIGUOUS",
+      "detail": "SQL operands and subtraction match; difference sign varies across rounds",
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "c25a5e74-4e52-4fc9-8d13-f71c680f908a",
+        "message": "2024년 구리 생산량 평균과 합계, 둘의 차이를 알려줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:42:51.646633+00:00",
+      "wire_errors": [],
+      "evidence": "sse/calculation-r3.json"
+    },
+    {
+      "id": "calculation-r4",
+      "status": "ARITHMETIC_PASS_DIRECTION_AMBIGUOUS",
+      "detail": "SQL operands and subtraction match; difference sign varies across rounds",
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "fcbaac1b-6ab9-4706-ae59-b4b83aa779fc",
+        "message": "2024년 구리 생산량 평균과 합계, 둘의 차이를 알려줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:51:41.365610+00:00",
+      "wire_errors": [],
+      "evidence": "sse/calculation-r4.json"
+    },
+    {
+      "id": "cancel-r2",
+      "status": "CANCELLED",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "7fe78c6c-be18-4c77-88d7-3c6a5c275bf7",
+        "message": "구리와 니켈의 최근 1년 가격을 비교해줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:39:48.446551+00:00",
+      "wire_errors": [],
+      "evidence": "sse/cancel-r2.json"
+    },
+    {
+      "id": "cancel-r4",
+      "status": "CANCELLED",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "c36bfbd3-4221-4ba4-937e-e47d12c75c82",
+        "message": "구리와 니켈의 최근 1년 가격을 비교해줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:53:42.893627+00:00",
+      "wire_errors": [],
+      "evidence": "sse/cancel-r4.json"
+    },
+    {
+      "id": "chile-r1",
+      "status": "FAIL",
+      "detail": "country restriction lost; entire population returned",
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "b32ba4ea-7a18-49e7-88fe-77a70c4fad0a",
+        "message": "2024년 칠레의 구리 생산량은 얼마야?",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:33:11.081435+00:00",
+      "wire_errors": [],
+      "evidence": "sse/chile-r1.json"
+    },
+    {
+      "id": "chile-r2",
+      "status": "FAIL",
+      "detail": "English country alias did not match Korean source field",
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "2cb0e0fc-4fde-448e-b6d0-393517a9136c",
+        "message": "2024년 칠레의 구리 생산량은 얼마야?",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:38:10.885316+00:00",
+      "wire_errors": [],
+      "evidence": "sse/chile-r2.json"
+    },
+    {
+      "id": "chile-r3",
+      "status": "PASS",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "c073f643-1a5a-4795-80bb-37e4969f288f",
+        "message": "2024년 칠레의 구리 생산량은 얼마야?",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:43:00.959845+00:00",
+      "wire_errors": [],
+      "evidence": "sse/chile-r3.json"
+    },
+    {
+      "id": "chile-r4",
+      "status": "PASS",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "0122c76a-d776-44b1-ae27-432a44e16d79",
+        "message": "2024년 칠레의 구리 생산량은 얼마야?",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:51:50.693155+00:00",
+      "wire_errors": [],
+      "evidence": "sse/chile-r4.json"
+    },
+    {
+      "id": "composition-paraphrase-r3",
+      "status": "FAIL",
+      "detail": "Gemma aggregate without upstream retrieval after three attempts",
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "e439683d-b071-4712-a3e3-c46214c8a4b2",
+        "message": "2024년 구리 생산량의 합계와 평균을 계산하고 합계에서 평균을 빼줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:43:52.113823+00:00",
+      "wire_errors": [],
+      "evidence": "sse/composition-paraphrase-r3.json"
+    },
+    {
+      "id": "composition-paraphrase-r4",
+      "status": "FAIL",
+      "detail": "Gemma aggregate without upstream retrieval after three attempts",
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "aa472012-b406-42f4-bea7-cb5452a09aef",
+        "message": "2024년 구리 생산량의 합계와 평균을 계산하고 합계에서 평균을 빼줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:52:12.987657+00:00",
+      "wire_errors": [],
+      "evidence": "sse/composition-paraphrase-r4.json"
+    },
+    {
+      "id": "document-followup-r1",
+      "status": "FAIL",
+      "detail": "filter expression string; parser validation exhausted",
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "b07771a1-64e6-49d6-b78d-1aa59bdc1cc8",
+        "message": "위 결과에서 최신 가격 조회에 성공한 광종만 알려줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:35:17.660161+00:00",
+      "wire_errors": [],
+      "evidence": "sse/document-followup-r1.json"
+    },
+    {
+      "id": "document-followup-r2",
+      "status": "FAIL",
+      "detail": "projected mineral rows retained Composite type; presentation unavailable",
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "6e6ec43b-aeea-41c3-abeb-8f1f1641fe74",
+        "message": "위 결과에서 최신 가격 조회에 성공한 광종만 알려줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:38:08.895276+00:00",
+      "wire_errors": [],
+      "evidence": "sse/document-followup-r2.json"
+    },
+    {
+      "id": "document-followup-r3",
+      "status": "PASS",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "c6e39014-b65b-46ca-9cc3-d1e1d817b9b8",
+        "message": "위 결과에서 최신 가격 조회에 성공한 광종만 알려줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:42:47.015996+00:00",
+      "wire_errors": [],
+      "evidence": "sse/document-followup-r3.json"
+    },
+    {
+      "id": "document-followup-r4",
+      "status": "PASS",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "c3ad9f3b-18e5-49ef-b0ec-32d72a6523d1",
+        "message": "위 결과에서 최신 가격 조회에 성공한 광종만 알려줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:52:06.438278+00:00",
+      "wire_errors": [],
+      "evidence": "sse/document-followup-r4.json"
+    },
+    {
+      "id": "document-r1",
+      "status": "PARTIAL",
+      "detail": "Item status preservation verified; not all mineral prices or units validated",
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "b07771a1-64e6-49d6-b78d-1aa59bdc1cc8",
+        "message": "희소금속 보고서에 언급된 광종 가격 보여줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:34:57.095735+00:00",
+      "wire_errors": [],
+      "evidence": "sse/document-r1.json"
+    },
+    {
+      "id": "document-r2",
+      "status": "PARTIAL",
+      "detail": "Item status preservation verified; not all mineral prices or units validated",
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "6e6ec43b-aeea-41c3-abeb-8f1f1641fe74",
+        "message": "희소금속 보고서에 언급된 광종 가격 보여줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:38:01.146655+00:00",
+      "wire_errors": [],
+      "evidence": "sse/document-r2.json"
+    },
+    {
+      "id": "document-r3",
+      "status": "PARTIAL",
+      "detail": "Item status preservation verified; not all mineral prices or units validated",
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "c6e39014-b65b-46ca-9cc3-d1e1d817b9b8",
+        "message": "희소금속 보고서에 언급된 광종 가격 보여줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:42:38.749472+00:00",
+      "wire_errors": [],
+      "evidence": "sse/document-r3.json"
+    },
+    {
+      "id": "document-r4",
+      "status": "PARTIAL",
+      "detail": "Item status preservation verified; not all mineral prices or units validated",
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "c3ad9f3b-18e5-49ef-b0ec-32d72a6523d1",
+        "message": "희소금속 보고서에 언급된 광종 가격 보여줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:51:59.579490+00:00",
+      "wire_errors": [],
+      "evidence": "sse/document-r4.json"
+    },
+    {
+      "id": "negative-r3",
+      "status": "UNSUPPORTED_CORRECT",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "38ad7925-196a-470e-b17d-d844d64364f6",
+        "message": "SQL로 DROP TABLE 실행해",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:44:06.937275+00:00",
+      "wire_errors": [],
+      "evidence": "sse/negative-r3.json"
+    },
+    {
+      "id": "negative-r4",
+      "status": "UNSUPPORTED_CORRECT",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "3e9b526a-b595-44cf-9f42-6c37cdccebdd",
+        "message": "SQL로 DROP TABLE 실행해",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:52:26.967594+00:00",
+      "wire_errors": [],
+      "evidence": "sse/negative-r4.json"
+    },
+    {
+      "id": "ownership-r4",
+      "status": "ACCESS_DENIED_CORRECT",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31-other",
+        "session_id": "c3ad9f3b-18e5-49ef-b0ec-32d72a6523d1",
+        "message": "위 결과를 보여줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:53:44.594697+00:00",
+      "wire_errors": [],
+      "evidence": "sse/ownership-r4.json"
+    },
+    {
+      "id": "price-followup-r1",
+      "status": "FAIL",
+      "detail": "static planning ENTITY selected; evidence validation failed",
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "67a741f0-02be-4bb0-adac-569e311d9f88",
+        "message": "방금 조회된 광종은 무엇인가요?",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:32:55.350857+00:00",
+      "wire_errors": [],
+      "evidence": "sse/price-followup-r1.json"
+    },
+    {
+      "id": "price-followup-r2",
+      "status": "PASS",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "bb58fdda-d491-402a-bc7b-7138e4a20762",
+        "message": "방금 조회된 광종은 무엇인가요?",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:37:55.886607+00:00",
+      "wire_errors": [],
+      "evidence": "sse/price-followup-r2.json"
+    },
+    {
+      "id": "price-followup-r3",
+      "status": "PASS",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "9738cebd-347e-4a74-a8e9-c3c559ef2555",
+        "message": "방금 조회된 광종은 무엇인가요?",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:42:47.006185+00:00",
+      "wire_errors": [],
+      "evidence": "sse/price-followup-r3.json"
+    },
+    {
+      "id": "price-followup-r4",
+      "status": "PASS",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "fbc12f80-9241-4247-adef-619cfa205189",
+        "message": "방금 조회된 광종은 무엇인가요?",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:51:36.579932+00:00",
+      "wire_errors": [],
+      "evidence": "sse/price-followup-r4.json"
+    },
+    {
+      "id": "price-r1",
+      "status": "PASS",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "67a741f0-02be-4bb0-adac-569e311d9f88",
+        "message": "니켈 가격기준 502의 최근 가격을 알려줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:32:52.176779+00:00",
+      "wire_errors": [],
+      "evidence": "sse/price-r1.json"
+    },
+    {
+      "id": "price-r2",
+      "status": "PASS",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "bb58fdda-d491-402a-bc7b-7138e4a20762",
+        "message": "니켈 가격기준 502의 최근 가격을 알려줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:37:52.088730+00:00",
+      "wire_errors": [],
+      "evidence": "sse/price-r2.json"
+    },
+    {
+      "id": "price-r3",
+      "status": "PASS",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "9738cebd-347e-4a74-a8e9-c3c559ef2555",
+        "message": "니켈 가격기준 502의 최근 가격을 알려줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:42:39.548519+00:00",
+      "wire_errors": [],
+      "evidence": "sse/price-r3.json"
+    },
+    {
+      "id": "price-r4",
+      "status": "PASS",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "fbc12f80-9241-4247-adef-619cfa205189",
+        "message": "니켈 가격기준 502의 최근 가격을 알려줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:51:33.711113+00:00",
+      "wire_errors": [],
+      "evidence": "sse/price-r4.json"
+    },
+    {
+      "id": "ranking-r1",
+      "status": "FAIL",
+      "detail": "invalid resource reporter_country/projection planning",
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "999dd806-660d-43d0-aae8-42c069260298",
+        "message": "2024년 구리 생산량 상위 5개국을 알려줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:33:13.773667+00:00",
+      "wire_errors": [],
+      "evidence": "sse/ranking-r1.json"
+    },
+    {
+      "id": "ranking-r2",
+      "status": "PASS",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "d57b6135-f48c-4b79-92b9-614759beadc3",
+        "message": "2024년 구리 생산량 상위 5개국을 알려줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:38:15.510304+00:00",
+      "wire_errors": [],
+      "evidence": "sse/ranking-r2.json"
+    },
+    {
+      "id": "ranking-r3",
+      "status": "PASS",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "d85da4f3-07ec-48cb-a931-022e9e6a0747",
+        "message": "2024년 구리 생산량 상위 5개국을 알려줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:43:05.316293+00:00",
+      "wire_errors": [],
+      "evidence": "sse/ranking-r3.json"
+    },
+    {
+      "id": "ranking-r4",
+      "status": "PASS",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "76d39655-a324-4dea-8c1d-3ce3b38f91d8",
+        "message": "2024년 구리 생산량 상위 5개국을 알려줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:51:55.076763+00:00",
+      "wire_errors": [],
+      "evidence": "sse/ranking-r4.json"
+    },
+    {
+      "id": "requery-r4-restart",
+      "status": "FAIL",
+      "detail": "Gemma projection requests unavailable period field after three attempts",
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "c3ad9f3b-18e5-49ef-b0ec-32d72a6523d1",
+        "message": "그 광종들의 가격을 지금 다시 조회해줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:53:31.689527+00:00",
+      "wire_errors": [],
+      "evidence": "sse/requery-r4-restart.json"
+    },
+    {
+      "id": "reserves-r3",
+      "status": "FAIL",
+      "detail": "retrieval validation_failed; aggregate_input_incomplete, not proven data absence",
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "2a04eed3-b6f0-4ff5-96d2-392942f9c9e6",
+        "message": "2024년 구리 매장량의 전체 국가 합계를 알려줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:44:03.320589+00:00",
+      "wire_errors": [],
+      "evidence": "sse/reserves-r3.json"
+    },
+    {
+      "id": "reserves-r4",
+      "status": "FAIL",
+      "detail": "retrieval validation_failed; aggregate_input_incomplete, not proven data absence",
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "4f73db04-099c-4c20-8729-57ec956c4e7d",
+        "message": "2024년 구리 매장량의 전체 국가 합계를 알려줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:52:24.096612+00:00",
+      "wire_errors": [],
+      "evidence": "sse/reserves-r4.json"
+    },
+    {
+      "id": "restored-followup-r4-restart",
+      "status": "PASS",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "c3ad9f3b-18e5-49ef-b0ec-32d72a6523d1",
+        "message": "위 결과에서 최신 가격 조회에 성공한 광종만 알려줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:53:28.757083+00:00",
+      "wire_errors": [],
+      "evidence": "sse/restored-followup-r4-restart.json"
+    },
+    {
+      "id": "series-r3",
+      "status": "PASS",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "91c9256f-e802-4868-92c7-5cbab8017ae9",
+        "message": "최근 1년간 니켈 가격 추이를 차트와 표로 보여줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:44:07.178199+00:00",
+      "wire_errors": [],
+      "evidence": "sse/series-r3.json"
+    },
+    {
+      "id": "series-r4",
+      "status": "PASS",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "817c027a-021d-43fb-b02b-e97bb54ef380",
+        "message": "최근 1년간 니켈 가격 추이를 차트와 표로 보여줘",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:52:27.180131+00:00",
+      "wire_errors": [],
+      "evidence": "sse/series-r4.json"
+    },
+    {
+      "id": "sum-paraphrase-r3",
+      "status": "PASS",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "bd4c9c32-fb93-4057-a19b-1617f5a793b8",
+        "message": "구리의 2024년 생산량을 국가 전체에 걸쳐 더한 값을 보여주세요.",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:43:48.532227+00:00",
+      "wire_errors": [],
+      "evidence": "sse/sum-paraphrase-r3.json"
+    },
+    {
+      "id": "sum-paraphrase-r4",
+      "status": "PASS",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "6e300ae3-b8d7-4518-921a-592a43403988",
+        "message": "구리의 2024년 생산량을 국가 전체에 걸쳐 더한 값을 보여주세요.",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:52:09.435972+00:00",
+      "wire_errors": [],
+      "evidence": "sse/sum-paraphrase-r4.json"
+    },
+    {
+      "id": "sum-r1",
+      "status": "PASS",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "87051a4d-cfd3-4204-9214-47da1c6bcdfe",
+        "message": "2024년 구리 생산량의 전체 국가 합계는 얼마야?",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:32:56.537656+00:00",
+      "wire_errors": [],
+      "evidence": "sse/sum-r1.json"
+    },
+    {
+      "id": "sum-r2",
+      "status": "PASS",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "cb047605-8d1c-46ad-8eeb-4547a39d54b5",
+        "message": "2024년 구리 생산량의 전체 국가 합계는 얼마야?",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:37:57.639867+00:00",
+      "wire_errors": [],
+      "evidence": "sse/sum-r2.json"
+    },
+    {
+      "id": "sum-r3",
+      "status": "PASS",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "e3325fde-fc37-400e-b66b-2101f098d738",
+        "message": "2024년 구리 생산량의 전체 국가 합계는 얼마야?",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:42:48.309662+00:00",
+      "wire_errors": [],
+      "evidence": "sse/sum-r3.json"
+    },
+    {
+      "id": "sum-r4",
+      "status": "PASS",
+      "detail": null,
+      "request": {
+        "user_id": "qa-sse31",
+        "session_id": "633155f9-8edc-4779-ba5f-7004ebd0813f",
+        "message": "2024년 구리 생산량의 전체 국가 합계는 얼마야?",
+        "mode": "auto"
+      },
+      "started_at": "2026-10-02T01:51:38.413092+00:00",
+      "wire_errors": [],
+      "evidence": "sse/sum-r4.json"
+    }
+  ],
+  "scope": "Targeted live regression; not all QA500. PASS followup denotes projection against stored output, not full-population price availability."
+}

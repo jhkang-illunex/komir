@@ -6,8 +6,9 @@
 """
 import sys
 import unittest
+from contextlib import ExitStack
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -89,7 +90,37 @@ class MineralSpecificCompositeIndexTest(unittest.TestCase):
 
 
 class PublicPrivateBoundaryTest(unittest.TestCase):
+    def setUp(self):
+        # MCP transport 직전만 격리한다. 실제 정책·요청 직렬화·Evidence 변환은 실행한다.
+        contexts = ExitStack()
+        self.addCleanup(contexts.close)
+        self.public_call = contexts.enter_context(patch.object(
+            graph.mcp_client.public, "_call", autospec=True,
+            side_effect=AssertionError("예상하지 않은 public MCP 호출"),
+        ))
+        self.private_call = contexts.enter_context(patch.object(
+            graph.mcp_client.private, "_call", autospec=True,
+            side_effect=AssertionError("접근 제한 테스트의 private MCP 호출"),
+        ))
+
+    def tearDown(self):
+        self.private_call.assert_not_called()
+
     def test_composite_index_is_publicly_allowed(self):
+        # 합성 fixture이며 실제 index/DB 값 또는 MCP E2E 검증이 아니다.
+        fixture_evidence = {
+            "kind": "structured", "source": "public.KO_MNRL_SNTHS_INDX",
+            "section": "synthetic composite index fixture",
+            "text": "| indx_se_cd | crtr_ymd | indx |\n| HI001 | 20250101 | 123.0 |",
+            "as_of": "2025-01-01", "unit": "index",
+            "menu_page_id": "indicator_composite",
+        }
+        responses = {
+            "komis_raw_lookup": {"evidence": [fixture_evidence], "warnings": []},
+            "hybrid_search": {"evidence": []},
+            "pageindex_lookup": {"nodes": []},
+        }
+        self.public_call.side_effect = lambda tool, arguments: responses[tool]
         route = graph.RetrievalRoute(
             resolved_query="광물종합지수 알려줘",
             use_structured=False, use_dense=True, use_pageindex=True,
@@ -101,6 +132,28 @@ class PublicPrivateBoundaryTest(unittest.TestCase):
              "action_assessment": _action_assessment("indicator.series", indicator="composite_index")}, dense_k=1, pageindex_k=1,
         )
         self.assertTrue(result["evidence"])
+        self.assertEqual(result["evidence"], [graph.Evidence(
+            **fixture_evidence, requirement_id="req_1", action_id="indicator.series",
+            source_id=fixture_evidence["source"], observed_period=fixture_evidence["as_of"],
+        )])
+        self.assertEqual(result["warnings"], [
+            "source_audit:rdb:queried:1", "source_audit:vector:queried:0",
+            "source_audit:pageindex:queried:0", "source_audit:okf:unavailable:0",
+        ])
+        self.assertEqual(self.public_call.call_count, 3)
+        self.public_call.assert_has_calls([
+            call("komis_raw_lookup", {
+                "page_id": "indicator_composite", "mineral_code": None,
+                "hs_code": None, "index_type_code": None,
+                "price_criterion_serial": None, "start_period": None,
+                "end_period": None,
+            }),
+            call("hybrid_search", {"query": route.resolved_query, "k": 1}),
+            call("pageindex_lookup", {
+                "query": route.resolved_query, "doc": None, "node_limit": 1,
+                "with_text": True, "body_fallback": False, "body_query": None,
+            }),
+        ], any_order=True)
         self.assertNotIn(graph._PRIVATE_ONLY_PROFILE_WARNING, result["warnings"])
         self.assertNotIn("access_denied", result["warnings"])
         self.assertEqual(graph._route_after_verify({"warnings": result["warnings"]}), "done")
@@ -133,6 +186,7 @@ class PublicPrivateBoundaryTest(unittest.TestCase):
                 reason, text = chatbot._resolve_abstain(question, result["warnings"], None)
                 self.assertEqual(reason, "access_denied")
                 self.assertEqual(text, "접근 권한이 없어 조회할 수 없습니다.")
+        self.public_call.assert_not_called()
 
     def test_restricted_indicator_without_mineral_cannot_fall_back_to_documents(self):
         route = graph.RetrievalRoute(
@@ -146,6 +200,7 @@ class PublicPrivateBoundaryTest(unittest.TestCase):
         )
         self.assertEqual(result["evidence"], [])
         self.assertIn("access_denied", result["warnings"])
+        self.public_call.assert_not_called()
 
     def test_restricted_indicator_is_rejected_before_action_llm_or_retrieval(self):
         class MustNotRun:
@@ -158,6 +213,7 @@ class PublicPrivateBoundaryTest(unittest.TestCase):
         )
         self.assertEqual(result.evidence, [])
         self.assertEqual(result.warnings, ["access_denied"])
+        self.public_call.assert_not_called()
 
 
 class ExplicitHsCodeTest(unittest.TestCase):

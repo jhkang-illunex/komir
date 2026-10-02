@@ -1,0 +1,1849 @@
+[
+  {
+    "id": "EXT500-037",
+    "repeat": 1,
+    "status": "PASS",
+    "errors": [],
+    "semantic_plan": {
+      "schema_version": "semantic-requirement-v2",
+      "request_class": "DATA_QUERY",
+      "unsupported_reason": null,
+      "requirements": [
+        {
+          "requirement_id": "req_max_price",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "니켈",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "period",
+            "value": null,
+            "start": "2025-03-01",
+            "end": "2025-03-31"
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": null,
+          "operation": null,
+          "aggregation": null,
+          "output_field": null,
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": {
+            "mode": "argmax",
+            "field": "high_price"
+          }
+        },
+        {
+          "requirement_id": "req_min_price",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "니켈",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "period",
+            "value": null,
+            "start": "2025-03-01",
+            "end": "2025-03-31"
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": null,
+          "operation": null,
+          "aggregation": null,
+          "output_field": null,
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": {
+            "mode": "argmin",
+            "field": "low_price"
+          }
+        }
+      ],
+      "requested_outputs": [
+        {
+          "name": "price_range_info",
+          "source_node": "rel_price_diff",
+          "fields": [
+            "left.high_price",
+            "left.date",
+            "right.low_price",
+            "right.date",
+            "difference"
+          ],
+          "aliases": {
+            "left.high_price": "최고가격",
+            "left.date": "최고가 날짜",
+            "right.low_price": "최저가격",
+            "right.date": "최저가 날짜",
+            "difference": "가격 범위"
+          }
+        }
+      ],
+      "presentation": {},
+      "relationships": [
+        {
+          "kind": "compare",
+          "relationship_id": "rel_price_diff",
+          "inputs": [
+            "req_max_price",
+            "req_min_price"
+          ],
+          "join_key": null,
+          "operation": "difference",
+          "predicate": null,
+          "fields": [
+            "high_price",
+            "low_price"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "EXT500-039",
+    "repeat": 1,
+    "status": "RESULT_MISMATCH",
+    "errors": [
+      "independent_sql_difference"
+    ],
+    "semantic_plan": {
+      "schema_version": "semantic-requirement-v2",
+      "request_class": "DATA_QUERY",
+      "unsupported_reason": null,
+      "requirements": [
+        {
+          "requirement_id": "req_max_price",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "리튬",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "period",
+            "value": null,
+            "start": "2023-09-01",
+            "end": "2023-09-30"
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": null,
+          "operation": null,
+          "aggregation": null,
+          "output_field": null,
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": {
+            "mode": "argmax",
+            "field": "value"
+          }
+        },
+        {
+          "requirement_id": "req_min_price",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "리튬",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "period",
+            "value": null,
+            "start": "2023-09-01",
+            "end": "2023-09-30"
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": null,
+          "operation": null,
+          "aggregation": null,
+          "output_field": null,
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": {
+            "mode": "argmin",
+            "field": "value"
+          }
+        }
+      ],
+      "requested_outputs": [
+        {
+          "name": "price_diff",
+          "source_node": "rel_price_diff",
+          "fields": [
+            "difference"
+          ],
+          "aliases": {
+            "difference": "가격차이"
+          }
+        },
+        {
+          "name": "max_price_info",
+          "source_node": "req_max_price",
+          "fields": [
+            "value",
+            "date"
+          ],
+          "aliases": {
+            "value": "최고가격",
+            "date": "최고가격 날짜"
+          }
+        },
+        {
+          "name": "min_price_info",
+          "source_node": "req_min_price",
+          "fields": [
+            "value",
+            "date"
+          ],
+          "aliases": {
+            "value": "최저가격",
+            "date": "최저가격 날짜"
+          }
+        }
+      ],
+      "presentation": {},
+      "relationships": [
+        {
+          "kind": "compare",
+          "relationship_id": "rel_price_diff",
+          "inputs": [
+            "req_max_price",
+            "req_min_price"
+          ],
+          "join_key": null,
+          "operation": "difference",
+          "predicate": null,
+          "fields": [
+            "left.value",
+            "right.value"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "H3",
+    "repeat": 1,
+    "status": "LOGICAL_PLAN_INCOMPLETE",
+    "errors": [
+      "req_max_price: selection field not produced by aggregate; available=['date', 'max_price', 'unit']; req_min_price: selection field not produced by aggregate; available=['date', 'min_price', 'unit']"
+    ],
+    "semantic_plan": {
+      "schema_version": "semantic-requirement-v2",
+      "request_class": "DATA_QUERY",
+      "unsupported_reason": null,
+      "requirements": [
+        {
+          "requirement_id": "req_max_price",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "알루미늄",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "calendar_year",
+            "value": 2020,
+            "start": null,
+            "end": null
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": "date",
+          "operation": null,
+          "aggregation": "max",
+          "output_field": "max_price",
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": {
+            "mode": "argmax",
+            "field": "value"
+          }
+        },
+        {
+          "requirement_id": "req_min_price",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "알루미늄",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "calendar_year",
+            "value": 2020,
+            "start": null,
+            "end": null
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": "date",
+          "operation": null,
+          "aggregation": "min",
+          "output_field": "min_price",
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": {
+            "mode": "argmin",
+            "field": "value"
+          }
+        }
+      ],
+      "requested_outputs": [
+        {
+          "name": "max_price_info",
+          "source_node": "req_max_price",
+          "fields": [
+            "max_price",
+            "date"
+          ],
+          "aliases": {
+            "max_price": "최대 통상가격",
+            "date": "최대값 날짜"
+          }
+        },
+        {
+          "name": "min_price_info",
+          "source_node": "req_min_price",
+          "fields": [
+            "min_price",
+            "date"
+          ],
+          "aliases": {
+            "min_price": "최소 통상가격",
+            "date": "최소값 날짜"
+          }
+        },
+        {
+          "name": "price_difference",
+          "source_node": "rel_price_diff",
+          "fields": [
+            "difference"
+          ],
+          "aliases": {
+            "difference": "가격 차이"
+          }
+        }
+      ],
+      "presentation": {},
+      "relationships": [
+        {
+          "kind": "compare",
+          "relationship_id": "rel_price_diff",
+          "inputs": [
+            "req_max_price",
+            "req_min_price"
+          ],
+          "join_key": null,
+          "operation": "difference",
+          "predicate": null,
+          "fields": [
+            "max_price",
+            "min_price"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "M1",
+    "repeat": 1,
+    "status": "LOGICAL_PLAN_INCOMPLETE",
+    "errors": [
+      "requested_output_field_unresolved: observation_count; available=['avg_price', 'month']"
+    ],
+    "semantic_plan": {
+      "schema_version": "semantic-requirement-v2",
+      "request_class": "DATA_QUERY",
+      "unsupported_reason": null,
+      "requirements": [
+        {
+          "requirement_id": "req_1",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "아연",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "calendar_year",
+            "value": 2022,
+            "start": null,
+            "end": null
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": "month",
+          "operation": null,
+          "aggregation": "mean",
+          "output_field": "avg_price",
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": null
+        },
+        {
+          "requirement_id": "req_2",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "아연",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "calendar_year",
+            "value": 2022,
+            "start": null,
+            "end": null
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": "month",
+          "operation": null,
+          "aggregation": "count",
+          "output_field": "observation_count",
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": null
+        }
+      ],
+      "requested_outputs": [
+        {
+          "name": "monthly_stats",
+          "source_node": "req_1",
+          "fields": [
+            "month",
+            "avg_price",
+            "observation_count"
+          ],
+          "aliases": {
+            "month": "월",
+            "avg_price": "월평균 가격",
+            "observation_count": "월별 관측 건수"
+          }
+        }
+      ],
+      "presentation": {
+        "chart_type": "bar"
+      },
+      "relationships": [
+        {
+          "kind": "join",
+          "relationship_id": "rel_1",
+          "inputs": [
+            "req_1",
+            "req_2"
+          ],
+          "join_key": [
+            "month"
+          ],
+          "operation": null,
+          "predicate": null,
+          "fields": []
+        }
+      ]
+    }
+  },
+  {
+    "id": "H4",
+    "repeat": 1,
+    "status": "PASS",
+    "errors": [],
+    "semantic_plan": {
+      "schema_version": "semantic-requirement-v2",
+      "request_class": "DATA_QUERY",
+      "unsupported_reason": null,
+      "requirements": [
+        {
+          "requirement_id": "req_max_price",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "망간",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "calendar_year",
+            "value": 2024,
+            "start": null,
+            "end": null
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": "date",
+          "operation": null,
+          "aggregation": null,
+          "output_field": null,
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": {
+            "mode": "argmax",
+            "field": "value"
+          }
+        },
+        {
+          "requirement_id": "req_min_price",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "망간",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "calendar_year",
+            "value": 2024,
+            "start": null,
+            "end": null
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": "date",
+          "operation": null,
+          "aggregation": null,
+          "output_field": null,
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": {
+            "mode": "argmin",
+            "field": "value"
+          }
+        }
+      ],
+      "requested_outputs": [
+        {
+          "name": "max_price_info",
+          "source_node": "req_max_price",
+          "fields": [
+            "value",
+            "date"
+          ],
+          "aliases": {
+            "value": "최고가격",
+            "date": "최고시점"
+          }
+        },
+        {
+          "name": "min_price_info",
+          "source_node": "req_min_price",
+          "fields": [
+            "value",
+            "date"
+          ],
+          "aliases": {
+            "value": "최저가격",
+            "date": "최저시점"
+          }
+        },
+        {
+          "name": "price_diff",
+          "source_node": "rel_diff",
+          "fields": [
+            "difference"
+          ],
+          "aliases": {
+            "difference": "가격차이"
+          }
+        }
+      ],
+      "presentation": {},
+      "relationships": [
+        {
+          "kind": "compare",
+          "relationship_id": "rel_diff",
+          "inputs": [
+            "req_max_price",
+            "req_min_price"
+          ],
+          "join_key": null,
+          "operation": "difference",
+          "predicate": null,
+          "fields": [
+            "value"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "R4",
+    "repeat": 1,
+    "status": "LOGICAL_PLAN_INCOMPLETE",
+    "errors": [
+      "req_max_price: selection field not produced by aggregate; available=['date', 'max_price', 'unit']; req_min_price: selection field not produced by aggregate; available=['date', 'min_price', 'unit']"
+    ],
+    "semantic_plan": {
+      "schema_version": "semantic-requirement-v2",
+      "request_class": "DATA_QUERY",
+      "unsupported_reason": null,
+      "requirements": [
+        {
+          "requirement_id": "req_max_price",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "흑연",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "calendar_year",
+            "value": 2022,
+            "start": null,
+            "end": null
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": "date",
+          "operation": null,
+          "aggregation": "max",
+          "output_field": "max_price",
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": {
+            "mode": "argmax",
+            "field": "value"
+          }
+        },
+        {
+          "requirement_id": "req_min_price",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "흑연",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "calendar_year",
+            "value": 2022,
+            "start": null,
+            "end": null
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": "date",
+          "operation": null,
+          "aggregation": "min",
+          "output_field": "min_price",
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": {
+            "mode": "argmin",
+            "field": "value"
+          }
+        }
+      ],
+      "requested_outputs": [
+        {
+          "name": "max_price_info",
+          "source_node": "req_max_price",
+          "fields": [
+            "date",
+            "max_price"
+          ],
+          "aliases": {
+            "date": "최대가격 날짜",
+            "max_price": "최대 통상가격"
+          }
+        },
+        {
+          "name": "min_price_info",
+          "source_node": "req_min_price",
+          "fields": [
+            "date",
+            "min_price"
+          ],
+          "aliases": {
+            "date": "최소가격 날짜",
+            "min_price": "최소 통상가격"
+          }
+        },
+        {
+          "name": "price_diff_result",
+          "source_node": "rel_diff",
+          "fields": [
+            "difference"
+          ],
+          "aliases": {
+            "difference": "가격 차이"
+          }
+        }
+      ],
+      "presentation": {},
+      "relationships": [
+        {
+          "kind": "compare",
+          "relationship_id": "rel_diff",
+          "inputs": [
+            "req_max_price",
+            "req_min_price"
+          ],
+          "join_key": null,
+          "operation": "difference",
+          "predicate": null,
+          "fields": [
+            "max_price",
+            "min_price"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "EXT500-037",
+    "repeat": 2,
+    "status": "RESULT_MISMATCH",
+    "errors": [
+      "independent_sql_difference"
+    ],
+    "semantic_plan": {
+      "schema_version": "semantic-requirement-v2",
+      "request_class": "DATA_QUERY",
+      "unsupported_reason": null,
+      "requirements": [
+        {
+          "requirement_id": "req_max_price",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "니켈",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "period",
+            "value": null,
+            "start": "2025-03-01",
+            "end": "2025-03-31"
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": null,
+          "operation": null,
+          "aggregation": null,
+          "output_field": null,
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": {
+            "mode": "argmax",
+            "field": "value"
+          }
+        },
+        {
+          "requirement_id": "req_min_price",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "니켈",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "period",
+            "value": null,
+            "start": "2025-03-01",
+            "end": "2025-03-31"
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": null,
+          "operation": null,
+          "aggregation": null,
+          "output_field": null,
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": {
+            "mode": "argmin",
+            "field": "value"
+          }
+        }
+      ],
+      "requested_outputs": [
+        {
+          "name": "price_range_result",
+          "source_node": "rel_diff",
+          "fields": [
+            "difference",
+            "left.date",
+            "right.date"
+          ],
+          "aliases": {
+            "difference": "가격 범위",
+            "left.date": "최고가 날짜",
+            "right.date": "최저가 날짜"
+          }
+        }
+      ],
+      "presentation": {},
+      "relationships": [
+        {
+          "kind": "compare",
+          "relationship_id": "rel_diff",
+          "inputs": [
+            "req_max_price",
+            "req_min_price"
+          ],
+          "join_key": null,
+          "operation": "difference",
+          "predicate": null,
+          "fields": [
+            "value",
+            "value"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "EXT500-039",
+    "repeat": 2,
+    "status": "PASS",
+    "errors": [],
+    "semantic_plan": {
+      "schema_version": "semantic-requirement-v2",
+      "request_class": "DATA_QUERY",
+      "unsupported_reason": null,
+      "requirements": [
+        {
+          "requirement_id": "req_max_price",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "리튬",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "period",
+            "value": null,
+            "start": "2023-09-01",
+            "end": "2023-09-30"
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": null,
+          "operation": null,
+          "aggregation": null,
+          "output_field": null,
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": {
+            "mode": "argmax",
+            "field": "high_price"
+          }
+        },
+        {
+          "requirement_id": "req_min_price",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "리튬",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "period",
+            "value": null,
+            "start": "2023-09-01",
+            "end": "2023-09-30"
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": null,
+          "operation": null,
+          "aggregation": null,
+          "output_field": null,
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": {
+            "mode": "argmin",
+            "field": "low_price"
+          }
+        }
+      ],
+      "requested_outputs": [
+        {
+          "name": "price_range_analysis",
+          "source_node": "rel_diff",
+          "fields": [
+            "left.high_price",
+            "right.low_price",
+            "left.date",
+            "right.date",
+            "difference"
+          ],
+          "aliases": {
+            "left.high_price": "최고가격",
+            "right.low_price": "최저가격",
+            "left.date": "최고가 날짜",
+            "right.date": "최저가 날짜",
+            "difference": "가격 차이"
+          }
+        }
+      ],
+      "presentation": {},
+      "relationships": [
+        {
+          "kind": "compare",
+          "relationship_id": "rel_diff",
+          "inputs": [
+            "req_max_price",
+            "req_min_price"
+          ],
+          "join_key": null,
+          "operation": "difference",
+          "predicate": null,
+          "fields": [
+            "high_price",
+            "low_price"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "H3",
+    "repeat": 2,
+    "status": "PASS",
+    "errors": [],
+    "semantic_plan": {
+      "schema_version": "semantic-requirement-v2",
+      "request_class": "DATA_QUERY",
+      "unsupported_reason": null,
+      "requirements": [
+        {
+          "requirement_id": "req_max_price",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "알루미늄",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "calendar_year",
+            "value": 2020,
+            "start": null,
+            "end": null
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": "date",
+          "operation": null,
+          "aggregation": null,
+          "output_field": null,
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": {
+            "mode": "argmax",
+            "field": "value"
+          }
+        },
+        {
+          "requirement_id": "req_min_price",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "알루미늄",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "calendar_year",
+            "value": 2020,
+            "start": null,
+            "end": null
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": "date",
+          "operation": null,
+          "aggregation": null,
+          "output_field": null,
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": {
+            "mode": "argmin",
+            "field": "value"
+          }
+        }
+      ],
+      "requested_outputs": [
+        {
+          "name": "price_diff_output",
+          "source_node": "rel_diff",
+          "fields": [
+            "left.value",
+            "right.value",
+            "difference"
+          ],
+          "aliases": {
+            "left.value": "최대 통상가격",
+            "right.value": "최소 통상가격",
+            "difference": "가격 차이"
+          }
+        },
+        {
+          "name": "max_date_output",
+          "source_node": "req_max_price",
+          "fields": [
+            "date"
+          ],
+          "aliases": {
+            "date": "최대값 날짜"
+          }
+        },
+        {
+          "name": "min_date_output",
+          "source_node": "req_min_price",
+          "fields": [
+            "date"
+          ],
+          "aliases": {
+            "date": "최소값 날짜"
+          }
+        }
+      ],
+      "presentation": {},
+      "relationships": [
+        {
+          "kind": "compare",
+          "relationship_id": "rel_diff",
+          "inputs": [
+            "req_max_price",
+            "req_min_price"
+          ],
+          "join_key": null,
+          "operation": "difference",
+          "predicate": null,
+          "fields": [
+            "value"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "H4",
+    "repeat": 2,
+    "status": "LOGICAL_PLAN_INCOMPLETE",
+    "errors": [
+      "req_max_price: selection field not produced by aggregate; available=['date', 'max_price', 'unit']; req_min_price: selection field not produced by aggregate; available=['date', 'min_price', 'unit']"
+    ],
+    "semantic_plan": {
+      "schema_version": "semantic-requirement-v2",
+      "request_class": "DATA_QUERY",
+      "unsupported_reason": null,
+      "requirements": [
+        {
+          "requirement_id": "req_max_price",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "망간",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "calendar_year",
+            "value": 2024,
+            "start": null,
+            "end": null
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": "date",
+          "operation": null,
+          "aggregation": "max",
+          "output_field": "max_price",
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": {
+            "mode": "argmax",
+            "field": "value"
+          }
+        },
+        {
+          "requirement_id": "req_min_price",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "망간",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "calendar_year",
+            "value": 2024,
+            "start": null,
+            "end": null
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": "date",
+          "operation": null,
+          "aggregation": "min",
+          "output_field": "min_price",
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": {
+            "mode": "argmin",
+            "field": "value"
+          }
+        }
+      ],
+      "requested_outputs": [
+        {
+          "name": "max_price_info",
+          "source_node": "req_max_price",
+          "fields": [
+            "max_price",
+            "date"
+          ],
+          "aliases": {
+            "max_price": "최고가격",
+            "date": "최고시점"
+          }
+        },
+        {
+          "name": "min_price_info",
+          "source_node": "req_min_price",
+          "fields": [
+            "min_price",
+            "date"
+          ],
+          "aliases": {
+            "min_price": "최저가격",
+            "date": "최저시점"
+          }
+        },
+        {
+          "name": "price_diff",
+          "source_node": "rel_diff",
+          "fields": [
+            "difference"
+          ],
+          "aliases": {
+            "difference": "가격차(최고-최저)"
+          }
+        }
+      ],
+      "presentation": {},
+      "relationships": [
+        {
+          "kind": "compare",
+          "relationship_id": "rel_diff",
+          "inputs": [
+            "req_max_price",
+            "req_min_price"
+          ],
+          "join_key": null,
+          "operation": "difference",
+          "predicate": null,
+          "fields": [
+            "max_price",
+            "min_price"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "M1",
+    "repeat": 2,
+    "status": "PASS",
+    "errors": [],
+    "semantic_plan": {
+      "schema_version": "semantic-requirement-v2",
+      "request_class": "DATA_QUERY",
+      "unsupported_reason": null,
+      "requirements": [
+        {
+          "requirement_id": "req_price_avg",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "아연",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "calendar_year",
+            "value": 2022,
+            "start": null,
+            "end": null
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": "month",
+          "operation": null,
+          "aggregation": "mean",
+          "output_field": "avg_price",
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": null
+        },
+        {
+          "requirement_id": "req_count",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "아연",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "calendar_year",
+            "value": 2022,
+            "start": null,
+            "end": null
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": "month",
+          "operation": null,
+          "aggregation": "count",
+          "output_field": "observation_count",
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": null
+        }
+      ],
+      "requested_outputs": [
+        {
+          "name": "monthly_price_stats",
+          "source_node": null,
+          "fields": [
+            "month",
+            "avg_price",
+            "observation_count"
+          ],
+          "aliases": {
+            "month": "월",
+            "avg_price": "월평균 가격",
+            "observation_count": "월별 관측 건수"
+          }
+        }
+      ],
+      "presentation": {},
+      "relationships": [
+        {
+          "kind": "join",
+          "relationship_id": null,
+          "inputs": [
+            "req_price_avg",
+            "req_count"
+          ],
+          "join_key": "month",
+          "operation": null,
+          "predicate": null,
+          "fields": []
+        }
+      ]
+    }
+  },
+  {
+    "id": "R4",
+    "repeat": 2,
+    "status": "LOGICAL_PLAN_INCOMPLETE",
+    "errors": [
+      "req_max_price: selection field not produced by aggregate; available=['date', 'max_price', 'unit']; req_min_price: selection field not produced by aggregate; available=['date', 'min_price', 'unit']"
+    ],
+    "semantic_plan": {
+      "schema_version": "semantic-requirement-v2",
+      "request_class": "DATA_QUERY",
+      "unsupported_reason": null,
+      "requirements": [
+        {
+          "requirement_id": "req_max_price",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "흑연",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "calendar_year",
+            "value": 2022,
+            "start": null,
+            "end": null
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": "date",
+          "operation": null,
+          "aggregation": "max",
+          "output_field": "max_price",
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": {
+            "mode": "argmax",
+            "field": "value"
+          }
+        },
+        {
+          "requirement_id": "req_min_price",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "흑연",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "calendar_year",
+            "value": 2022,
+            "start": null,
+            "end": null
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": "date",
+          "operation": null,
+          "aggregation": "min",
+          "output_field": "min_price",
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": {
+            "mode": "argmin",
+            "field": "value"
+          }
+        }
+      ],
+      "requested_outputs": [
+        {
+          "name": "max_info",
+          "source_node": "req_max_price",
+          "fields": [
+            "date",
+            "max_price"
+          ],
+          "aliases": {
+            "date": "최대 가격 날짜",
+            "max_price": "최대 통상가격"
+          }
+        },
+        {
+          "name": "min_info",
+          "source_node": "req_min_price",
+          "fields": [
+            "date",
+            "min_price"
+          ],
+          "aliases": {
+            "date": "최소 가격 날짜",
+            "min_price": "최소 통상가격"
+          }
+        },
+        {
+          "name": "price_diff",
+          "source_node": "rel_diff",
+          "fields": [
+            "difference"
+          ],
+          "aliases": {
+            "difference": "가격 차이"
+          }
+        }
+      ],
+      "presentation": {},
+      "relationships": [
+        {
+          "kind": "compare",
+          "relationship_id": "rel_diff",
+          "inputs": [
+            "req_max_price",
+            "req_min_price"
+          ],
+          "join_key": null,
+          "operation": "difference",
+          "predicate": null,
+          "fields": [
+            "max_price",
+            "min_price"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "V2",
+    "repeat": 1,
+    "status": "PASS",
+    "errors": [],
+    "semantic_plan": {
+      "schema_version": "semantic-requirement-v2",
+      "request_class": "DATA_QUERY",
+      "unsupported_reason": null,
+      "requirements": [
+        {
+          "requirement_id": "req_max_price",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "알루미늄",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "calendar_year",
+            "value": 2023,
+            "start": null,
+            "end": null
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": null,
+          "operation": null,
+          "aggregation": null,
+          "output_field": null,
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [
+            "value",
+            "date"
+          ],
+          "selection": {
+            "mode": "argmax",
+            "field": "value"
+          }
+        },
+        {
+          "requirement_id": "req_min_price",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "알루미늄",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "calendar_year",
+            "value": 2023,
+            "start": null,
+            "end": null
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": null,
+          "operation": null,
+          "aggregation": null,
+          "output_field": null,
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [
+            "value",
+            "date"
+          ],
+          "selection": {
+            "mode": "argmin",
+            "field": "value"
+          }
+        }
+      ],
+      "requested_outputs": [
+        {
+          "name": "max_price_info",
+          "source_node": "req_max_price",
+          "fields": [
+            "value",
+            "date"
+          ],
+          "aliases": {
+            "value": "최고가격",
+            "date": "최고가 관측 날짜"
+          }
+        },
+        {
+          "name": "min_price_info",
+          "source_node": "req_min_price",
+          "fields": [
+            "value",
+            "date"
+          ],
+          "aliases": {
+            "value": "최저가격",
+            "date": "최저가 관측 날짜"
+          }
+        },
+        {
+          "name": "price_diff",
+          "source_node": "rel_diff",
+          "fields": [
+            "difference"
+          ],
+          "aliases": {
+            "difference": "가격 차이(최고-최저)"
+          }
+        }
+      ],
+      "presentation": {},
+      "relationships": [
+        {
+          "kind": "compare",
+          "relationship_id": "rel_diff",
+          "inputs": [
+            "req_max_price",
+            "req_min_price"
+          ],
+          "join_key": null,
+          "operation": "difference",
+          "predicate": null,
+          "fields": [
+            "value"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "V2",
+    "repeat": 2,
+    "status": "PASS",
+    "errors": [],
+    "semantic_plan": {
+      "schema_version": "semantic-requirement-v2",
+      "request_class": "DATA_QUERY",
+      "unsupported_reason": null,
+      "requirements": [
+        {
+          "requirement_id": "req_max_price",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "알루미늄",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "calendar_year",
+            "value": 2023,
+            "start": null,
+            "end": null
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": "date",
+          "operation": null,
+          "aggregation": null,
+          "output_field": null,
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": {
+            "mode": "argmax",
+            "field": "value"
+          }
+        },
+        {
+          "requirement_id": "req_min_price",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "알루미늄",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "calendar_year",
+            "value": 2023,
+            "start": null,
+            "end": null
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": "date",
+          "operation": null,
+          "aggregation": null,
+          "output_field": null,
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": {
+            "mode": "argmin",
+            "field": "value"
+          }
+        }
+      ],
+      "requested_outputs": [
+        {
+          "name": "max_price_info",
+          "source_node": "req_max_price",
+          "fields": [
+            "date",
+            "value"
+          ],
+          "aliases": {
+            "date": "최고가 관측 날짜",
+            "value": "최고가"
+          }
+        },
+        {
+          "name": "min_price_info",
+          "source_node": "req_min_price",
+          "fields": [
+            "date",
+            "value"
+          ],
+          "aliases": {
+            "date": "최저가 관측 날짜",
+            "value": "최저가"
+          }
+        },
+        {
+          "name": "price_diff",
+          "source_node": "rel_diff",
+          "fields": [
+            "difference"
+          ],
+          "aliases": {
+            "difference": "최고가와 최저가의 차이"
+          }
+        }
+      ],
+      "presentation": {},
+      "relationships": [
+        {
+          "kind": "compare",
+          "relationship_id": "rel_diff",
+          "inputs": [
+            "req_max_price",
+            "req_min_price"
+          ],
+          "join_key": null,
+          "operation": "difference",
+          "predicate": null,
+          "fields": [
+            "value"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "id": "V2",
+    "repeat": 3,
+    "status": "LOGICAL_PLAN_INCOMPLETE",
+    "errors": [
+      "req_max_price: selection field not produced by aggregate; available=['date', 'max_price', 'unit']; req_min_price: selection field not produced by aggregate; available=['date', 'min_price', 'unit']"
+    ],
+    "semantic_plan": {
+      "schema_version": "semantic-requirement-v2",
+      "request_class": "DATA_QUERY",
+      "unsupported_reason": null,
+      "requirements": [
+        {
+          "requirement_id": "req_max_price",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "알루미늄",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "calendar_year",
+            "value": 2023,
+            "start": null,
+            "end": null
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": "date",
+          "operation": null,
+          "aggregation": "max",
+          "output_field": "max_price",
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": {
+            "mode": "argmax",
+            "field": "value"
+          }
+        },
+        {
+          "requirement_id": "req_min_price",
+          "entity": {
+            "entity_type": "mineral",
+            "value": "알루미늄",
+            "source_node": null,
+            "field": null
+          },
+          "metric": "price",
+          "time_range": {
+            "kind": "calendar_year",
+            "value": 2023,
+            "start": null,
+            "end": null
+          },
+          "flow": null,
+          "scope": null,
+          "indicator": null,
+          "dimension": "date",
+          "operation": null,
+          "aggregation": "min",
+          "output_field": "min_price",
+          "document_requirement": null,
+          "limit": null,
+          "constraints": [],
+          "requested_outputs": [],
+          "selection": {
+            "mode": "argmin",
+            "field": "value"
+          }
+        }
+      ],
+      "requested_outputs": [
+        {
+          "name": "max_price_info",
+          "source_node": "req_max_price",
+          "fields": [
+            "date",
+            "max_price"
+          ],
+          "aliases": {
+            "date": "최고가 날짜",
+            "max_price": "최고가"
+          }
+        },
+        {
+          "name": "min_price_info",
+          "source_node": "req_min_price",
+          "fields": [
+            "date",
+            "min_price"
+          ],
+          "aliases": {
+            "date": "최저가 날짜",
+            "min_price": "최저가"
+          }
+        },
+        {
+          "name": "price_difference",
+          "source_node": "rel_diff",
+          "fields": [
+            "difference"
+          ],
+          "aliases": {
+            "difference": "최고가와 최저가의 차이"
+          }
+        }
+      ],
+      "presentation": {},
+      "relationships": [
+        {
+          "kind": "compare",
+          "relationship_id": "rel_diff",
+          "inputs": [
+            "req_max_price",
+            "req_min_price"
+          ],
+          "join_key": null,
+          "operation": "difference",
+          "predicate": null,
+          "fields": [
+            "max_price",
+            "min_price"
+          ]
+        }
+      ]
+    }
+  }
+]

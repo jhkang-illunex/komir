@@ -1,0 +1,615 @@
+{
+  "scope": "Actual Gemma V2 shadow + shared synthetic SQLite runtime; not live SSE or production tools",
+  "rounds": {
+    "before": {
+      "total": 8,
+      "counts": {
+        "RUNTIME_FAIL": 6,
+        "SEMANTIC_MISMATCH": 2
+      },
+      "cases": [
+        {
+          "id": "EXT500-009",
+          "status": "RUNTIME_FAIL",
+          "errors": [
+            "relation_join_0_requested_output",
+            "upstream step failed: relation_join_0"
+          ]
+        },
+        {
+          "id": "EXT500-037",
+          "status": "RUNTIME_FAIL",
+          "errors": [
+            "relation_join_0",
+            "upstream step failed: req_max_price_select, req_min_price_select, req_price_range_diff_calculate"
+          ]
+        },
+        {
+          "id": "EXT500-010",
+          "status": "RUNTIME_FAIL",
+          "errors": [
+            "relation_join_0_requested_output",
+            "upstream step failed: relation_join_0"
+          ]
+        },
+        {
+          "id": "EXT500-011",
+          "status": "RUNTIME_FAIL",
+          "errors": [
+            "relation_join_0_requested_output",
+            "ACTUAL_PLAN_CONTRACT_GAP: LIVE_IR_CONTRACT ast_incomplete: relation_join_0_requested_output requires field(s) ['count', 'price'] not produced by upstream"
+          ]
+        },
+        {
+          "id": "EXT500-038",
+          "status": "SEMANTIC_MISMATCH",
+          "errors": [
+            "unrequested_constraints_or_limit"
+          ]
+        },
+        {
+          "id": "EXT500-012",
+          "status": "RUNTIME_FAIL",
+          "errors": [
+            "relation_join_0_requested_output",
+            "upstream step failed: relation_join_0"
+          ]
+        },
+        {
+          "id": "EXT500-039",
+          "status": "RUNTIME_FAIL",
+          "errors": [
+            "req_3_calculate",
+            "unsupported_calculation_contract"
+          ]
+        },
+        {
+          "id": "EXT500-040",
+          "status": "SEMANTIC_MISMATCH",
+          "errors": [
+            "unrequested_constraints_or_limit"
+          ]
+        }
+      ]
+    },
+    "after1": {
+      "total": 16,
+      "counts": {
+        "RUNTIME_FAIL": 10,
+        "SEMANTIC_MISMATCH": 1,
+        "PASS": 1,
+        "LOGICAL_PLAN_INCOMPLETE": 1,
+        "UNSUPPORTED_CORRECT": 2,
+        "OUTPUT_CONTRACT_FAIL": 1
+      },
+      "cases": [
+        {
+          "id": "EXT500-010",
+          "status": "RUNTIME_FAIL",
+          "errors": [
+            "rel_join_price_count_requested_output",
+            "ACTUAL_PLAN_CONTRACT_GAP: LIVE_IR_CONTRACT ast_incomplete: rel_join_price_count_requested_output requires field(s) ['avg_monthly_price', 'observation_count'] not produced by upstream"
+          ]
+        },
+        {
+          "id": "EXT500-009",
+          "status": "RUNTIME_FAIL",
+          "errors": [
+            "rel_price_count_join_requested_output",
+            "ACTUAL_PLAN_CONTRACT_GAP: LIVE_IR_CONTRACT ast_incomplete: rel_price_count_join_requested_output requires field(s) ['avg_monthly_price', 'observation_count'] not produced by upstream"
+          ]
+        },
+        {
+          "id": "EXT500-011",
+          "status": "RUNTIME_FAIL",
+          "errors": [
+            "rel_join_price_count_requested_output",
+            "ACTUAL_PLAN_CONTRACT_GAP: LIVE_IR_CONTRACT ast_incomplete: rel_join_price_count_requested_output requires field(s) ['avg_price', 'observation_count'] not produced by upstream"
+          ]
+        },
+        {
+          "id": "EXT500-012",
+          "status": "RUNTIME_FAIL",
+          "errors": [
+            "rel_join_price_count_requested_output",
+            "ACTUAL_PLAN_CONTRACT_GAP: LIVE_IR_CONTRACT ast_incomplete: rel_join_price_count_requested_output requires field(s) ['avg_price', 'observation_count'] not produced by upstream"
+          ]
+        },
+        {
+          "id": "EXT500-037",
+          "status": "RUNTIME_FAIL",
+          "errors": [
+            "rel_diff_requested_output",
+            "upstream step failed: rel_diff"
+          ]
+        },
+        {
+          "id": "EXT500-038",
+          "status": "RUNTIME_FAIL",
+          "errors": [
+            "rel_diff_requested_output",
+            "upstream step failed: rel_diff"
+          ]
+        },
+        {
+          "id": "EXT500-039",
+          "status": "SEMANTIC_MISMATCH",
+          "errors": [
+            "metric_or_entity"
+          ]
+        },
+        {
+          "id": "H1",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "EXT500-040",
+          "status": "LOGICAL_PLAN_INCOMPLETE",
+          "errors": [
+            "join: unknown relationship input; join: unknown relationship input"
+          ]
+        },
+        {
+          "id": "H2",
+          "status": "RUNTIME_FAIL",
+          "errors": [
+            "rel_join_stats_requested_output",
+            "ACTUAL_PLAN_CONTRACT_GAP: LIVE_IR_CONTRACT ast_incomplete: rel_join_stats_requested_output requires field(s) ['average_price', 'observation_count'] not produced by upstream"
+          ]
+        },
+        {
+          "id": "H3",
+          "status": "RUNTIME_FAIL",
+          "errors": [
+            "rel_diff_requested_output",
+            "upstream step failed: rel_diff"
+          ]
+        },
+        {
+          "id": "H4",
+          "status": "RUNTIME_FAIL",
+          "errors": [
+            "req_manganese_high_aggregate_calculate_select_requested_output",
+            "upstream step failed: req_manganese_high_aggregate_calculate_select"
+          ]
+        },
+        {
+          "id": "M1",
+          "status": "RUNTIME_FAIL",
+          "errors": [
+            "rel_join_price_count_requested_output",
+            "ACTUAL_PLAN_CONTRACT_GAP: LIVE_IR_CONTRACT ast_incomplete: rel_join_price_count_requested_output requires field(s) ['monthly_avg_price', 'monthly_observation_count'] not produced by upstream"
+          ]
+        },
+        {
+          "id": "N1",
+          "status": "UNSUPPORTED_CORRECT",
+          "errors": []
+        },
+        {
+          "id": "N2",
+          "status": "UNSUPPORTED_CORRECT",
+          "errors": []
+        },
+        {
+          "id": "M2",
+          "status": "OUTPUT_CONTRACT_FAIL",
+          "errors": [
+            "month_missing"
+          ]
+        }
+      ]
+    },
+    "after2": {
+      "total": 16,
+      "counts": {
+        "PASS": 7,
+        "SEMANTIC_MISMATCH": 2,
+        "RUNTIME_FAIL": 3,
+        "LOGICAL_PLAN_INCOMPLETE": 1,
+        "UNSUPPORTED_CORRECT": 2,
+        "OUTPUT_CONTRACT_FAIL": 1
+      },
+      "cases": [
+        {
+          "id": "EXT500-009",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "EXT500-010",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "EXT500-011",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "EXT500-012",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "EXT500-037",
+          "status": "SEMANTIC_MISMATCH",
+          "errors": [
+            "metric_or_entity"
+          ]
+        },
+        {
+          "id": "EXT500-038",
+          "status": "SEMANTIC_MISMATCH",
+          "errors": [
+            "metric_or_entity"
+          ]
+        },
+        {
+          "id": "EXT500-040",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "EXT500-039",
+          "status": "RUNTIME_FAIL",
+          "errors": [
+            "rel_diff_requested_output",
+            "upstream step failed: rel_diff"
+          ]
+        },
+        {
+          "id": "H2",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "H1",
+          "status": "RUNTIME_FAIL",
+          "errors": [
+            "rel_zinc_stats_requested_output",
+            "upstream step failed: rel_zinc_stats"
+          ]
+        },
+        {
+          "id": "H3",
+          "status": "RUNTIME_FAIL",
+          "errors": [
+            "rel_diff_requested_output",
+            "upstream step failed: rel_diff"
+          ]
+        },
+        {
+          "id": "M1",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "H4",
+          "status": "LOGICAL_PLAN_INCOMPLETE",
+          "errors": [
+            "requested_output_field_unresolved: value; available=['date', 'high_price', 'unit']"
+          ]
+        },
+        {
+          "id": "N1",
+          "status": "UNSUPPORTED_CORRECT",
+          "errors": []
+        },
+        {
+          "id": "N2",
+          "status": "UNSUPPORTED_CORRECT",
+          "errors": []
+        },
+        {
+          "id": "M2",
+          "status": "OUTPUT_CONTRACT_FAIL",
+          "errors": [
+            "month_missing"
+          ]
+        }
+      ]
+    },
+    "after3": {
+      "total": 16,
+      "counts": {
+        "PASS": 9,
+        "RESULT_MISMATCH": 1,
+        "RUNTIME_FAIL": 1,
+        "LOGICAL_PLAN_INCOMPLETE": 2,
+        "UNSUPPORTED_CORRECT": 2,
+        "OUTPUT_CONTRACT_FAIL": 1
+      },
+      "cases": [
+        {
+          "id": "EXT500-009",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "EXT500-010",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "EXT500-011",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "EXT500-012",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "EXT500-038",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "EXT500-037",
+          "status": "RESULT_MISMATCH",
+          "errors": [
+            "independent_sql_difference"
+          ]
+        },
+        {
+          "id": "EXT500-040",
+          "status": "RUNTIME_FAIL",
+          "errors": [
+            "rel_diff_result_requested_output",
+            "upstream step failed: rel_diff_result"
+          ]
+        },
+        {
+          "id": "EXT500-039",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "H2",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "H1",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "H3",
+          "status": "LOGICAL_PLAN_INCOMPLETE",
+          "errors": [
+            "req_max_price: selection field not produced by aggregate; available=['date', 'max_price_value', 'unit']; req_min_price: selection field not produced by aggregate; available=['date', 'min_price_value', 'unit']"
+          ]
+        },
+        {
+          "id": "M1",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "H4",
+          "status": "LOGICAL_PLAN_INCOMPLETE",
+          "errors": [
+            "req_manganese_high: selection field not produced by aggregate; available=['date', 'high_price', 'unit']; req_manganese_low: selection field not produced by aggregate; available=['date', 'low_price', 'unit']"
+          ]
+        },
+        {
+          "id": "N1",
+          "status": "UNSUPPORTED_CORRECT",
+          "errors": []
+        },
+        {
+          "id": "N2",
+          "status": "UNSUPPORTED_CORRECT",
+          "errors": []
+        },
+        {
+          "id": "M2",
+          "status": "OUTPUT_CONTRACT_FAIL",
+          "errors": [
+            "month_missing"
+          ]
+        }
+      ]
+    },
+    "after4": {
+      "total": 16,
+      "counts": {
+        "PASS": 12,
+        "OUTPUT_CONTRACT_FAIL": 1,
+        "LOGICAL_PLAN_INCOMPLETE": 1,
+        "UNSUPPORTED_CORRECT": 2
+      },
+      "cases": [
+        {
+          "id": "EXT500-010",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "EXT500-009",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "EXT500-011",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "EXT500-012",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "EXT500-037",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "EXT500-038",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "EXT500-040",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "EXT500-039",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "H2",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "H3",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "H1",
+          "status": "OUTPUT_CONTRACT_FAIL",
+          "errors": [
+            "month_missing"
+          ]
+        },
+        {
+          "id": "H4",
+          "status": "LOGICAL_PLAN_INCOMPLETE",
+          "errors": [
+            "req_manganese_diff: price requires static entity or explicit result reference"
+          ]
+        },
+        {
+          "id": "M1",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "N1",
+          "status": "UNSUPPORTED_CORRECT",
+          "errors": []
+        },
+        {
+          "id": "N2",
+          "status": "UNSUPPORTED_CORRECT",
+          "errors": []
+        },
+        {
+          "id": "M2",
+          "status": "PASS",
+          "errors": []
+        }
+      ]
+    },
+    "fresh-holdout": {
+      "total": 6,
+      "counts": {
+        "PASS": 5,
+        "RUNTIME_FAIL": 1
+      },
+      "cases": [
+        {
+          "id": "Z1",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "Z2",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "Z3",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "Z4",
+          "status": "PASS",
+          "errors": []
+        },
+        {
+          "id": "Z5",
+          "status": "RUNTIME_FAIL",
+          "errors": [
+            "join_req_requested_output",
+            "upstream step failed: join_req"
+          ]
+        },
+        {
+          "id": "Z6",
+          "status": "PASS",
+          "errors": []
+        }
+      ]
+    }
+  },
+  "captures": {
+    "qa500-linkage-before.jsonl.gz": {
+      "sha256_uncompressed": "3a9c7ba1021b45ff862bb13a1cab7efc6416a9800a823dbff0e710f228490c9e",
+      "records": 8
+    },
+    "qa500-linkage-before-strict.jsonl.gz": {
+      "sha256_uncompressed": "f550a0292af99b48fcca56daedb11af9cc383a81418360754c85fd595bf693fd",
+      "records": 8
+    },
+    "qa500-linkage-after1.jsonl.gz": {
+      "sha256_uncompressed": "44895be31e1610addd7981124aa935629d4123538af2210da5220e89233633b6",
+      "records": 16
+    },
+    "qa500-linkage-after1-strict.jsonl.gz": {
+      "sha256_uncompressed": "9e1ef704bcfffcb8d33dfea15abcb6e18b2bd710ac5335e0cf4a0db9a1b8dbaf",
+      "records": 16
+    },
+    "qa500-linkage-after2.jsonl.gz": {
+      "sha256_uncompressed": "404427db8d83e85140935bf64bf2fa77b214649f1b8d7652826de64a6e008048",
+      "records": 16
+    },
+    "qa500-linkage-after2-strict.jsonl.gz": {
+      "sha256_uncompressed": "912b3635f3260182222c46cb5ec4ad204f7165b1e9cc42f74b870c33775f509b",
+      "records": 16
+    },
+    "qa500-linkage-after3.jsonl.gz": {
+      "sha256_uncompressed": "76a04da3f8dd595e45ceb1289c8379b6733564b12a42943e4bf5dfff23c1f9da",
+      "records": 16
+    },
+    "qa500-linkage-after3-strict.jsonl.gz": {
+      "sha256_uncompressed": "fc2f084a129d0d83b96c85f396cfdbf87c9d9790f95eb605f8446ce0d08d8226",
+      "records": 16
+    },
+    "qa500-linkage-after4.jsonl.gz": {
+      "sha256_uncompressed": "372c03dfa1623ac1cc072290f9ec7f904291c2243435e710fbd756370ec788ef",
+      "records": 16
+    },
+    "qa500-linkage-after4-strict.jsonl.gz": {
+      "sha256_uncompressed": "c2e5a891d35758bb157991153f7afb44134b672d14469c9d0740e1dc5c4fea8d",
+      "records": 16
+    },
+    "qa500-linkage-fresh-holdout.jsonl.gz": {
+      "sha256_uncompressed": "36d73986bb2337bd0220d6fe4ed72cea20ec711efb3b2a59f91195830e81ec72",
+      "records": 6
+    },
+    "qa500-linkage-fresh-holdout-strict.jsonl.gz": {
+      "sha256_uncompressed": "f03920e54ca146f5d37f39ee9789bd6bb7721f077fac1571f2909a219c3612b0",
+      "records": 6
+    }
+  },
+  "semantic_regex_added": 0,
+  "question_specific_production_branches_added": 0,
+  "regression": {
+    "baseline_pass": 1228,
+    "final_pass": 1250,
+    "subtests_pass": 687,
+    "fail": 0,
+    "negative_contract_tests_intentionally_changed": 3
+  }
+}

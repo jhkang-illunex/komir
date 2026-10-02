@@ -1,0 +1,15 @@
+
+==================================== ERRORS ====================================
+___ ERROR collecting inhouse/rag_chat/tests/test_acceptance_integrations.py ____
+ImportError while importing test module '/home/nuri/.codex/worktrees/6ae2/komir/inhouse/rag_chat/tests/test_acceptance_integrations.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/lib/python3.10/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+inhouse/rag_chat/tests/test_acceptance_integrations.py:10: in <module>
+    from rag_chat.tests import acceptance_integrations as integration
+E   ModuleNotFoundError: No module named 'rag_chat'
+=========================== short test summary info ============================
+ERROR inhouse/rag_chat/tests/test_acceptance_integrations.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 5.52s

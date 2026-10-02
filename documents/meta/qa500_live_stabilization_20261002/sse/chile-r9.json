@@ -1,0 +1,149 @@
+{
+  "id": "chile-r9",
+  "port": 18012,
+  "request": {
+    "user_id": "qa-sse31",
+    "session_id": "486576c3-821a-4bad-a971-3c33c883e136",
+    "message": "2024년 칠레의 구리 생산량은 얼마야?",
+    "mode": "auto"
+  },
+  "started_at": "2026-10-02T02:46:10.621502+00:00",
+  "events": [
+    {
+      "event": "message",
+      "data": {
+        "session_id": "486576c3-821a-4bad-a971-3c33c883e136"
+      },
+      "elapsed": 0.048
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 1,
+        "label": "질문 조건 확인"
+      },
+      "elapsed": 0.073
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 3,
+        "label": "데이터 분석 중",
+        "status": "데이터 분석 중"
+      },
+      "elapsed": 17.749
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 4,
+        "label": "답변 생성 중"
+      },
+      "elapsed": 17.75
+    },
+    {
+      "event": "message",
+      "data": {
+        "delta": "| production_volume |\n| --- |\n| 2098.1 |"
+      },
+      "elapsed": 17.766
+    },
+    {
+      "event": "table",
+      "data": {
+        "schema_version": 1,
+        "block_id": "multihop-table",
+        "columns": [
+          "production_volume"
+        ],
+        "rows": [
+          [
+            "2098.1"
+          ]
+        ],
+        "columns_meta": [
+          {
+            "key": "production_volume",
+            "label": "production_volume",
+            "display": "production_volume",
+            "type": "number",
+            "unit": null
+          }
+        ],
+        "rows_typed": [
+          [
+            2098.1
+          ]
+        ],
+        "markdown": "| production_volume |\n| --- |\n| 2098.1 |",
+        "chart_hint": {
+          "recommended": null,
+          "alternatives": [],
+          "reason": "행 2개 미만 또는 열 1개"
+        },
+        "meta": {
+          "source_index": 1,
+          "source": "public.KO_RSRC_PRDCTN_QUTY",
+          "as_of": null,
+          "unit": "톤",
+          "time_aggregation": null,
+          "menu_source": null,
+          "hidden_columns": []
+        },
+        "source_index": 1,
+        "source": "public.KO_RSRC_PRDCTN_QUTY"
+      },
+      "elapsed": 17.767
+    },
+    {
+      "event": "done",
+      "data": {
+        "done": true,
+        "abstained": false,
+        "citations": [
+          {
+            "index": 1,
+            "source": "public.KO_RSRC_PRDCTN_QUTY"
+          }
+        ],
+        "bogus_citations": []
+      },
+      "elapsed": 17.767
+    }
+  ],
+  "http_status": 200,
+  "content_type": "text/event-stream; charset=utf-8",
+  "elapsed": 17.768,
+  "text": "| production_volume |\n| --- |\n| 2098.1 |",
+  "event_counts": {
+    "message": 2,
+    "status": 3,
+    "table": 1,
+    "done": 1
+  },
+  "done": {
+    "done": true,
+    "abstained": false,
+    "citations": [
+      {
+        "index": 1,
+        "source": "public.KO_RSRC_PRDCTN_QUTY"
+      }
+    ],
+    "bogus_citations": []
+  },
+  "protocol_errors": [],
+  "deployment": {
+    "container_id": "5a1a52a60888df6d221be121fa7cbf3abeb072536d94bcde7554bccc03a5d438",
+    "port": 18012,
+    "image_tag": "komir-rag-chat:qa-live-stability33-r9",
+    "image_id": "sha256:9336646f277ae2d73d7f6f8e62466480325f49c53114cdf71074a781fbcb2fa0",
+    "source_hashes": {
+      "inhouse/rag_core/ragkit/live_multihop.py": "8a53630b2086bae2fb4b00346816ea5e0f35cb9a35bc0aee4d12be227548f342",
+      "inhouse/rag_core/ragkit/chatbot.py": "71f5b2e77e6fd95a5df336190b0bfd532709b016e896d527560f13ea88557553",
+      "inhouse/rag_core/ragkit/chatbot_graph.py": "adaaacae8d021345abbbbc3b96d90318d6da98db933e3b42def50f7fee5caf8a",
+      "inhouse/rag_core/ragkit/chatbot_events.py": "0e6bb9e37b18913aac8ab97f95d6d3e772a992da7cba8bbc43738f7b7fcf03c5",
+      "inhouse/rag_core/ragkit/_mcp_tools_common.py": "96a7b909688af872bdab7f77ee186501ddb2206b00cc511d71f3a7bc11a3c4d6"
+    }
+  }
+}

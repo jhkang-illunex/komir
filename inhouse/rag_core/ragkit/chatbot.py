@@ -134,7 +134,7 @@ from .menu_catalog import menu_source
 from . import source_contract as _source_contract
 from .source_contract import assess_source_request
 from .generate import ABSTAIN_TEXT, _cfg_from_env, _strip_uncited_sentences
-from .live_multihop import live_run_events, multihop_mode, record_legacy_comparison, run_live_multihop
+from .live_multihop import LivePlanError, _action_plan_requirements, live_run_events, multihop_mode, record_legacy_comparison, run_live_multihop
 from .pipe_runtime import ResultStatus
 
 #: chatbot_graph._finalize_node가 "근거는 찾았지만 질문이 요구한 지표와는 다르다"고
@@ -1943,6 +1943,7 @@ async def chat_turn(
     chat: OpenAICompatChat | None = None,
     router_llm=None,
     action_plan=None,
+    execution_mode: Literal["default", "direct"] = "default",
     profile: Literal["public", "private"] = "public",
 ) -> AsyncIterator[ChatEvent]:
     """한 턴을 실행하고 이벤트를 순서대로 낸다: session -> status(1..3, retrieve_
@@ -2032,7 +2033,7 @@ async def chat_turn(
     # real Gemma→AST→Pipe→existing Action/Tool path and records a comparison,
     # while the established retrieval/render/SSE path remains authoritative.
     live_run = None
-    if multihop_mode() != "off":
+    if multihop_mode() != "off" and execution_mode != "direct":
         try:
             live_run = await run_live_multihop(
                 message=message,
@@ -2041,6 +2042,8 @@ async def chat_turn(
                 llm=router_llm or KomirJsonLLM(),
                 history=history,
                 legacy_action_ids=[call.action_id for call in getattr(action_plan, "actions", [])],
+                semantic_requirements=_action_plan_requirements(action_plan),
+                raw_action_plan=(action_plan.model_dump(mode="json") if hasattr(action_plan, "model_dump") else None),
             )
             if multihop_mode() == "enabled" and not live_run.skipped:
                 root = live_run.orchestration.root_result
@@ -2062,6 +2065,13 @@ async def chat_turn(
                 )
                 for event in emitted:
                     yield event
+                return
+        except LivePlanError:
+            _logger.exception("live multihop semantic plan generation failed")
+            if multihop_mode() == "enabled":
+                yield ChatEvent(type="delta", data={"delta": "질문을 처리할 실행 계획을 생성하지 못했습니다. 데이터가 없다는 의미는 아닙니다."})
+                yield ChatEvent(type="done", data={"done": True, "abstained": True,
+                    "abstain_reason": "semantic_plan_incomplete", "citations": []})
                 return
         except Exception:
             _logger.exception("live multihop orchestration failed")

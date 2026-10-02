@@ -1,0 +1,52 @@
+{
+  "id": "cancel-r4",
+  "port": 18012,
+  "request": {
+    "user_id": "qa-sse31",
+    "session_id": "bdbdd502-96a1-4e06-91dc-bd8ec6859a9a",
+    "message": "구리와 니켈의 최근 1년 가격을 비교해줘",
+    "mode": "auto"
+  },
+  "started_at": "2026-10-02T02:32:39.274153+00:00",
+  "events": [
+    {
+      "event": "message",
+      "data": {
+        "session_id": "bdbdd502-96a1-4e06-91dc-bd8ec6859a9a"
+      },
+      "elapsed": 0.047
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 1,
+        "label": "질문 조건 확인"
+      },
+      "elapsed": 0.071
+    }
+  ],
+  "http_status": 200,
+  "content_type": "text/event-stream; charset=utf-8",
+  "cancelled_by_client": true,
+  "elapsed": 0.071,
+  "text": "",
+  "event_counts": {
+    "message": 1,
+    "status": 1
+  },
+  "done": null,
+  "protocol_errors": [],
+  "deployment": {
+    "container_id": "83ea174aa4afd2dba7ea8be668615e18e3f5a9d5e77c88dfd8f7660b9c53bb2f",
+    "port": 18012,
+    "image_tag": "komir-rag-chat:qa-live-stability33-r4",
+    "image_id": "sha256:83d8dd231c458c06db55c24b823f815100be359eb731f983b1510ddc89651deb",
+    "source_hashes": {
+      "inhouse/rag_core/ragkit/live_multihop.py": "2cd6679c05a399386e7cd86a898cc4186b71ecb4ffc25d2a2648110ecd5c1b77",
+      "inhouse/rag_core/ragkit/chatbot.py": "71f5b2e77e6fd95a5df336190b0bfd532709b016e896d527560f13ea88557553",
+      "inhouse/rag_core/ragkit/chatbot_graph.py": "adaaacae8d021345abbbbc3b96d90318d6da98db933e3b42def50f7fee5caf8a",
+      "inhouse/rag_core/ragkit/chatbot_events.py": "0e6bb9e37b18913aac8ab97f95d6d3e772a992da7cba8bbc43738f7b7fcf03c5",
+      "inhouse/rag_core/ragkit/_mcp_tools_common.py": "96a7b909688af872bdab7f77ee186501ddb2206b00cc511d71f3a7bc11a3c4d6"
+    }
+  }
+}

@@ -1,0 +1,336 @@
+{
+  "total_questions": 40,
+  "model_requests": 120,
+  "question_counts": {
+    "STABLE_PASS": 33,
+    "VARIABLE": 5,
+    "STABLE_UNSUPPORTED": 2
+  },
+  "request_counts": {
+    "PASS": 106,
+    "UNSUPPORTED_CORRECT": 6,
+    "LOGICAL_PLAN_INCOMPLETE": 8
+  },
+  "questions": {
+    "EXT500-009": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "EXT500-010": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "EXT500-011": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "EXT500-012": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "EXT500-037": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "EXT500-038": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "EXT500-039": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "EXT500-040": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "H1": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "H2": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "H3": {
+      "verdict": "VARIABLE",
+      "runs": {
+        "1": "PASS",
+        "2": "LOGICAL_PLAN_INCOMPLETE",
+        "3": "LOGICAL_PLAN_INCOMPLETE"
+      }
+    },
+    "H4": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "M1": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "M2": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "N1": {
+      "verdict": "STABLE_UNSUPPORTED",
+      "runs": {
+        "1": "UNSUPPORTED_CORRECT",
+        "2": "UNSUPPORTED_CORRECT",
+        "3": "UNSUPPORTED_CORRECT"
+      }
+    },
+    "N2": {
+      "verdict": "STABLE_UNSUPPORTED",
+      "runs": {
+        "1": "UNSUPPORTED_CORRECT",
+        "2": "UNSUPPORTED_CORRECT",
+        "3": "UNSUPPORTED_CORRECT"
+      }
+    },
+    "R1": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "R2": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "R3": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "R4": {
+      "verdict": "VARIABLE",
+      "runs": {
+        "1": "LOGICAL_PLAN_INCOMPLETE",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "R5": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "R6": {
+      "verdict": "VARIABLE",
+      "runs": {
+        "1": "PASS",
+        "2": "LOGICAL_PLAN_INCOMPLETE",
+        "3": "LOGICAL_PLAN_INCOMPLETE"
+      }
+    },
+    "U1": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "U2": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "U3": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "U4": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "V1": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "V2": {
+      "verdict": "VARIABLE",
+      "runs": {
+        "1": "PASS",
+        "2": "LOGICAL_PLAN_INCOMPLETE",
+        "3": "PASS"
+      }
+    },
+    "V3": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "V4": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "W1": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "W2": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "W3": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "W4": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "Z1": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "Z2": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "Z3": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "Z4": {
+      "verdict": "VARIABLE",
+      "runs": {
+        "1": "LOGICAL_PLAN_INCOMPLETE",
+        "2": "PASS",
+        "3": "LOGICAL_PLAN_INCOMPLETE"
+      }
+    },
+    "Z5": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    },
+    "Z6": {
+      "verdict": "STABLE_PASS",
+      "runs": {
+        "1": "PASS",
+        "2": "PASS",
+        "3": "PASS"
+      }
+    }
+  }
+}

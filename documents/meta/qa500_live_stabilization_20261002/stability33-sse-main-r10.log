@@ -1,0 +1,6 @@
+difference-r10 200 5.655 {'message': 2, 'status': 3, 'table': 1, 'done': 1} None []
+sum-r10 200 5.36 {'message': 2, 'status': 3, 'table': 1, 'done': 1} None []
+chile-r10 200 4.461 {'message': 2, 'status': 3, 'table': 1, 'done': 1} None []
+ranking-r10 200 4.849 {'message': 2, 'status': 3, 'table': 1, 'chart': 1, 'done': 1} None []
+price-r10 200 3.562 {'message': 2, 'status': 3, 'table': 1, 'done': 1} None []
+reserves-r10 200 15.75 {'message': 2, 'status': 3, 'done': 1} upstream step failed: node_2 []

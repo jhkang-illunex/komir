@@ -1,0 +1,18 @@
+data: {"session_id": "9738cebd-347e-4a74-a8e9-c3c559ef2555"}
+
+event: status
+data: {"stage": 1, "label": "질문 조건 확인"}
+
+event: status
+data: {"stage": 3, "label": "데이터 분석 중", "status": "데이터 분석 중"}
+
+event: status
+data: {"stage": 4, "label": "답변 생성 중"}
+
+data: {"delta": "| crtr_ymd(기준일자) | lowst_prc(최저가격) | hghst_prc(최고가격) | cmerc_prc(통상가격) | invt(재고) |\n| --- | --- | --- | --- | --- |\n| 20260930 | 22775.99 | 23057.47 | 22916.73 | None |"}
+
+event: table
+data: {"schema_version": 1, "block_id": "multihop-table", "columns": ["crtr_ymd(기준일자)", "lowst_prc(최저가격)", "hghst_prc(최고가격)", "cmerc_prc(통상가격)", "invt(재고)"], "rows": [["20260930", "22775.99", "23057.47", "22916.73", "None"]], "columns_meta": [{"key": "crtr_ymd", "label": "crtr_ymd(기준일자)", "display": "기준일자", "type": "date", "unit": null}, {"key": "lowst_prc", "label": "lowst_prc(최저가격)", "display": "최저가격", "type": "number", "unit": null}, {"key": "hghst_prc", "label": "hghst_prc(최고가격)", "display": "최고가격", "type": "number", "unit": null}, {"key": "cmerc_prc", "label": "cmerc_prc(통상가격)", "display": "통상가격", "type": "number", "unit": null}, {"key": "invt", "label": "invt(재고)", "display": "재고", "type": "string", "unit": null}], "rows_typed": [["20260930", 22775.99, 23057.47, 22916.73, null]], "markdown": "| crtr_ymd(기준일자) | lowst_prc(최저가격) | hghst_prc(최고가격) | cmerc_prc(통상가격) | invt(재고) |\n| --- | --- | --- | --- | --- |\n| 20260930 | 22775.99 | 23057.47 | 22916.73 | None |", "chart_hint": {"recommended": null, "alternatives": [], "reason": "행 2개 미만 또는 열 1개"}, "meta": {"source_index": 1, "source": "public.KO_MNRL_PRC", "as_of": null, "unit": "USD/톤", "time_aggregation": null, "menu_source": null, "hidden_columns": []}, "source_index": 1, "source": "public.KO_MNRL_PRC"}
+
+event: done
+data: {"done": true, "abstained": false, "citations": [{"index": 1, "source": "public.KO_MNRL_PRC"}], "bogus_citations": []}

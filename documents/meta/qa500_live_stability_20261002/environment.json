@@ -1,0 +1,100 @@
+{
+  "checked_at": "2026-10-01T19:20:39.473003+00:00",
+  "containers": [
+    {
+      "name": "komir-rag-chat-18002",
+      "image": "sha256:31b7ed55fded35d8e4a7f172e5882fc394c05bded47075417e85894bc468e9e9",
+      "configured_image": "komir-rag-chat:audit-safety22",
+      "started": "2026-10-01T12:02:54.490338051Z",
+      "ports": {
+        "8002/tcp": [
+          {
+            "HostIp": "0.0.0.0",
+            "HostPort": "18002"
+          },
+          {
+            "HostIp": "::",
+            "HostPort": "18002"
+          }
+        ]
+      },
+      "safe_configuration": {
+        "LLM_MODEL": "gemma-4-26b-a4b",
+        "SEMANTIC_INTENT_MODE": "enabled",
+        "MULTIHOP_ORCHESTRATOR_MODE": "enabled",
+        "RAG_ALLOW_DUMMY": "1",
+        "MULTIHOP_HISTORY_BACKEND": null
+      }
+    },
+    {
+      "name": "komir-rag-chat-audit30",
+      "image": "sha256:5c7915c49aae9af85a5083a2a0351314545b67c3e08975caf800454f81e789b2",
+      "configured_image": "komir-rag-chat:audit-relations30",
+      "started": "2026-10-01T13:50:28.873315833Z",
+      "ports": {
+        "8002/tcp": [
+          {
+            "HostIp": "0.0.0.0",
+            "HostPort": "18011"
+          },
+          {
+            "HostIp": "::",
+            "HostPort": "18011"
+          }
+        ]
+      },
+      "safe_configuration": {
+        "LLM_MODEL": "gemma-4-26b-a4b",
+        "SEMANTIC_INTENT_MODE": "enabled",
+        "MULTIHOP_ORCHESTRATOR_MODE": "enabled",
+        "RAG_ALLOW_DUMMY": "1",
+        "MULTIHOP_HISTORY_BACKEND": null
+      }
+    },
+    {
+      "name": "komir-rag-chat-qa-sse31",
+      "image": "sha256:952c21c59e2968ec879c6e7e54512701d96f5283c4f4114b961c055703b40ada",
+      "configured_image": "komir-rag-chat:qa-stability-sse31",
+      "started": "2026-10-01T19:15:12.01619098Z",
+      "ports": {
+        "8002/tcp": [
+          {
+            "HostIp": "127.0.0.1",
+            "HostPort": "18012"
+          }
+        ]
+      },
+      "safe_configuration": {
+        "LLM_MODEL": "gemma-4-26b-a4b",
+        "SEMANTIC_INTENT_MODE": "enabled",
+        "MULTIHOP_ORCHESTRATOR_MODE": "enabled",
+        "RAG_ALLOW_DUMMY": "1",
+        "MULTIHOP_HISTORY_BACKEND": "postgres"
+      }
+    },
+    {
+      "name": "komir-qa-history31",
+      "image": "sha256:4bc6cc20ca7a7d56c3cefa8dd618dd6a5419827cef9a1133c49f3156b9436471",
+      "configured_image": "postgres:latest",
+      "started": "2026-10-01T19:06:27.568931468Z",
+      "ports": {
+        "5432/tcp": null
+      },
+      "safe_configuration": {
+        "LLM_MODEL": null,
+        "SEMANTIC_INTENT_MODE": null,
+        "MULTIHOP_ORCHESTRATOR_MODE": null,
+        "RAG_ALLOW_DUMMY": null,
+        "MULTIHOP_HISTORY_BACKEND": null
+      }
+    }
+  ],
+  "head": "0e77c59897f4bb68e6bfac7c1781f199dadcad95",
+  "source_sha256": {
+    "inhouse/rag_core/ragkit/semantic_v2.py": "53271c131b345b64244fe8ae723ada2aac5caa9d6072681a150ca19b2d62be16",
+    "inhouse/rag_core/ragkit/live_multihop.py": "aae98325e536c278a1691103ef28f8bf6572354a3408d3fa072f913d675ba81b",
+    "inhouse/rag_core/ragkit/semantic_ir.py": "563637e19d79cbdfa1a0879b068309ef68d365ff5b3f15703c3e5f1bc3bb76a6",
+    "inhouse/rag_core/ragkit/analytical_aggregate.py": "aecd99cfe64ec1526ab5640d47cc64ac92fbb8ee3832c23bbc8531f9251d961d",
+    "inhouse/rag_chat/app/routers/chat.py": "28eebba087bec6c8bf6db8175d06e87a2773a50fbf668fb9dddea2a3cdb3eb91"
+  }
+}

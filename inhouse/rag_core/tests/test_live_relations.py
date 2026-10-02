@@ -65,6 +65,29 @@ def test_compare_temporal_alignment_and_missing_counterpart():
     assert any(e.type == "table" and len(e.data["rows"]) == 2 for e in events)
 
 
+def test_temporal_continuation_concatenates_observed_then_forecast():
+    observed = source(
+        [{"date": "2026-08-01", "value": 100}, {"date": "2026-09-01", "value": 110}],
+        "observed", unit="USD/t", entity=("니켈",), metric="price",
+    )
+    forecast = source(
+        [{"forecast_date": "2026-09-01", "predicted_price": 111},
+         {"forecast_date": "2026-10-01", "predicted_price": 112}],
+        "forecast", unit="USD/t", entity=("니켈",), metric="price_forecast",
+    )
+    result = run(Operator.COMPARE, observed, forecast,
+                 operation="temporal_continuation", left_field="value",
+                 right_field="predicted_price")
+    assert result.status == ResultStatus.SUCCESS
+    assert [(row["date"], row["value"], row["observation_type"]) for row in result.value] == [
+        ("2026-08-01", 100, "observed"),
+        ("2026-09-01", 110, "observed"),
+        ("2026-10-01", 112, "forecast"),
+    ]
+    assert result.result_type == ValueType.TIME_SERIES
+    assert result.source == ("observed", "forecast")
+
+
 @pytest.mark.parametrize("rows,reason", [
     ([{"key": "A"}, {"key": "A"}], "ambiguous_join_cardinality"),
     ([{"key": None}], "null_join_key"),
@@ -186,6 +209,80 @@ def test_side_by_side_keeps_different_units_without_arithmetic():
     assert "difference" not in result.value[0]
 
 
+def test_side_by_side_keeps_independent_rank_populations_without_row_zip():
+    left = source([{"country": "A", "production": 10}, {"country": "B", "production": 8}], "production", unit="t")
+    right = source([{"country": "B", "import_value": 5}, {"country": "C", "import_value": 3}], "imports", unit="USD")
+    result = run(Operator.COMPARE, left, right, left_field="production", right_field="import_value",
+                 operation="side_by_side")
+    assert result.status == ResultStatus.SUCCESS
+    assert [row["comparison_side"] for row in result.value] == ["left", "left", "right", "right"]
+    assert [row["left_value"] for row in result.value] == [10, 8, None, None]
+    assert [row["right_value"] for row in result.value] == [None, None, 5, 3]
+
+
+def test_arithmetic_comparison_still_requires_alignment_for_multiple_rows():
+    result = run(Operator.COMPARE, source([{"value": 10}, {"value": 8}], "l"),
+                 source([{"value": 5}, {"value": 3}], "r"),
+                 field="value", operation="difference")
+    assert result.failure_reason == "comparison_alignment_required"
+
+
+def test_side_by_side_allows_one_scalar_against_an_independent_population():
+    result = run(Operator.COMPARE, source([{"country": "A", "value": 10}], "l"),
+                 source([{"country": "B", "value": 5}, {"country": "C", "value": 3}], "r"),
+                 field="value", operation="side_by_side")
+    assert result.status == ResultStatus.SUCCESS
+    assert len(result.value) == 3
+    assert [row["comparison_side"] for row in result.value] == ["left", "right", "right"]
+
+
+def test_side_by_side_infers_registered_metric_fields_only():
+    result = run(Operator.COMPARE,
+                 source([{"country": "A", "production_volume": 10}], "l"),
+                 source([{"country": "B", "import_value": 5}, {"country": "C", "import_value": 3}], "r"),
+                 operation="side_by_side")
+    assert result.status == ResultStatus.SUCCESS
+    assert result.value[0]["left_value"] == 10
+    assert result.value[1]["right_value"] == 5
+
+
+def test_side_by_side_re_resolves_invalid_cross_metric_field_per_input():
+    result = run(
+        Operator.COMPARE,
+        source([{"country": "A", "production_volume": 10}], "production"),
+        source([{"country": "B", "import_value": 5}], "imports"),
+        operation="side_by_side", left_field="import_value", right_field="import_value",
+    )
+    assert result.status == ResultStatus.SUCCESS
+    assert result.value[0]["left_value"] == 10
+    assert result.value[0]["right_value"] == 5
+
+
+def test_binary_ratio_uses_two_typed_scalar_inputs():
+    factory = LiveOperatorFactory(message="", session_id="fixture", profile="public", llm=None, history=[])
+    result = factory._derive(
+        RequirementNode("ratio", Operator.CALCULATE, args={"calculation": "ratio", "as_percentage": True}),
+        {
+            "numerator": source([{"value": 20}], "numerator"),
+            "denominator": source([{"value": 100}], "denominator"),
+        },
+    )
+    assert result.status == ResultStatus.SUCCESS
+    assert result.metric == "percentage"
+    assert result.value == [{"ratio": 20.0}]
+    assert result.unit == "%"
+
+
+def test_side_by_side_does_not_use_country_dimension_as_measure():
+    result = run(Operator.COMPARE,
+                 source([{"country": "A", "production_volume": 10}], "l"),
+                 source([{"country": "B", "import_value": 5}], "r"),
+                 operation="side_by_side", left_field="country", right_field="country")
+    assert result.status == ResultStatus.SUCCESS
+    assert result.value[0]["left_value"] == 10
+    assert result.value[0]["right_value"] == 5
+
+
 def test_composite_keys_and_distinct_field_names():
     result = run(Operator.JOIN, source([{"country": "A", "year": 2024, "value": 5}], "l"),
         source([{"partner": "A", "period": 2024, "value": 3}], "r"),
@@ -222,12 +319,28 @@ def test_join_does_not_guess_country_key_from_country_share_field():
     assert result.failure_reason == "missing_join_key"
 
 
+def test_join_prefers_canonical_country_over_secondary_country_alias():
+    result = run(
+        Operator.JOIN,
+        source([{"country": "A", "country_name_en": "Aland", "value": 1}], "l"),
+        source([{"country": "A", "country_name_en": "Aland", "value": 2}], "r"),
+        join_key="country",
+    )
+    assert result.status == ResultStatus.SUCCESS
+    assert result.value[0]["country"] == "A"
+
+
 def test_registered_price_and_date_aliases_match_real_tool_columns():
     left = source([{"crtr_ymd(기준일자)": "20260930", "cmerc_prc(통상가격)": "10.5"}], "l")
     right = source([{"crtr_ymd(기준일자)": "20260930", "cmerc_prc(통상가격)": "2.5"}], "r")
     result = run(Operator.COMPARE, left, right, join_key="date", field="price", operation="difference")
     assert result.status == ResultStatus.SUCCESS
     assert result.value[0]["difference"] == 8
+
+
+def test_annual_resource_year_is_a_valid_date_projection_alias():
+    from inhouse.rag_core.ragkit.live_multihop import _resolve_row_field
+    assert _resolve_row_field([{"country": "A", "year": 2025, "value": 10}], "date", strict=True) == "year"
 
 
 def test_verified_unit_codes_are_normalized_without_price_basis_comparison():

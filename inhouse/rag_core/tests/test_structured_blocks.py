@@ -11,6 +11,23 @@ from rag_core.retrieval.evidence import from_komis_raw
 
 
 class StructuredBlockPresentationTest(unittest.TestCase):
+    def test_forecast_canonical_rows_are_preserved_as_monthly_typed_columns(self):
+        dataset = SimpleNamespace(
+            source_table="AI_MNRL_PRC_FRCST",
+            columns=["forecast_date", "forecast_period", "current_price", "predicted_price", "unit"],
+            column_labels={}, rows=[{
+                "forecast_date": "2026-10-01", "forecast_period": "월별",
+                "current_price": 22916.73, "predicted_price": 20563.75, "unit": "USD/톤",
+            }], row_count=1, metadata={}, unit="USD/톤",
+        )
+
+        evidence = from_komis_raw("forecast_price", [dataset])[0]
+
+        self.assertIn("forecast_date", evidence.text)
+        self.assertIn("2026-10-01", evidence.text)
+        self.assertIn("20563.75", evidence.text)
+        self.assertEqual(evidence.as_of, "2026-10-01~2026-10-01, 최신순 1건만, 최신 일부 관측치 제공됨(요청한 전체 기간이 아닐 수 있음)")
+
     def test_raw_price_serial_is_not_in_prompt_table_but_raw_dataset_is_unchanged(self):
         rows = [
             {"mnrl_prc_crtr_sn": 502, "crtr_ymd": "20260902", "cmerc_prc": 15100},

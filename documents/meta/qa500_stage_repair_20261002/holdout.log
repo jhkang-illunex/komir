@@ -1,0 +1,17 @@
+semantic_requirement_v2: 1차 출력 검증 실패, 복구 재시도(ValidationError: 1 validation error for SemanticRequirementPlanV2
+requirements.2.relationships
+  Extra inputs are not permitted [type=extra_forbidden, input_value=[], input_type=list]
+    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden)
+W2 1 PASS
+W1 1 PASS
+W3 1 PASS
+W4 1 PASS
+semantic_requirement_v2: 1차 출력 검증 실패, 복구 재시도(ValidationError: 1 validation error for SemanticRequirementPlanV2
+requirements.2.relationships
+  Extra inputs are not permitted [type=extra_forbidden, input_value=[{'kind': 'compare', 'rel...h_price', 'low_price']}], input_type=list]
+    For further information visit https://errors.pydantic.dev/2.12/v/extra_forbidden)
+W1 2 PASS
+W2 2 PASS
+W3 2 PASS
+W4 2 PASS
+{"total_questions": 4, "model_requests": 8, "question_counts": {"STABLE_PASS": 4}, "request_counts": {"PASS": 8}, "questions": {"W1": {"verdict": "STABLE_PASS", "runs": {"1": "PASS", "2": "PASS"}}, "W2": {"verdict": "STABLE_PASS", "runs": {"1": "PASS", "2": "PASS"}}, "W3": {"verdict": "STABLE_PASS", "runs": {"1": "PASS", "2": "PASS"}}, "W4": {"verdict": "STABLE_PASS", "runs": {"1": "PASS", "2": "PASS"}}}}

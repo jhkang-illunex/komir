@@ -1,0 +1,1145 @@
+{
+  "requests": 141,
+  "classification": {
+    "RESPONSE_COMPLETED": 76,
+    "PARTIAL": 27,
+    "FAIL": 14,
+    "DATA_CONTRACT_BLOCKED": 14,
+    "SEMANTIC_MISMATCH_TARGET_SCOPE": 1,
+    "UNSUPPORTED_CORRECT": 3,
+    "CANCELLED": 3,
+    "EXPECTED_ABSTAIN_ZERO_DENOMINATOR": 3
+  },
+  "wire_error_requests": 0,
+  "records": [
+    {
+      "id": "ranking-r10",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:49:07.445108+00:00",
+      "image": "sha256:75a96f09ffcc2f3dd591c5a413d0aadef815100d89e68636926b8267b9c79ed6",
+      "wire_errors": []
+    },
+    {
+      "id": "sum-r5",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:36:22.209593+00:00",
+      "image": "sha256:58c638418fc7368085b34832f97bb85d4952d858c9089d1432226fc5f6112cdb",
+      "wire_errors": []
+    },
+    {
+      "id": "document-r3",
+      "status": "PARTIAL",
+      "reason": null,
+      "started_at": "2026-10-02T02:26:37.000874+00:00",
+      "image": "sha256:df5f4a2d7275d29bfc3e1adf43c23ee7960dd5ec111ec10d2a77c85023101a50",
+      "wire_errors": []
+    },
+    {
+      "id": "reference-r10cold",
+      "status": "PARTIAL",
+      "reason": null,
+      "started_at": "2026-10-02T02:51:49.364932+00:00",
+      "image": "sha256:75a96f09ffcc2f3dd591c5a413d0aadef815100d89e68636926b8267b9c79ed6",
+      "wire_errors": []
+    },
+    {
+      "id": "series-r1",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:15:43.548080+00:00",
+      "image": "sha256:952983d488bb6d3450d5a41f9cbb53a06c229bc2b16749f5307f53cf015cac3c",
+      "wire_errors": []
+    },
+    {
+      "id": "reference-r6",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:38:45.620677+00:00",
+      "image": "sha256:03581f5a9fa2e9476a13f67bf49773299ad60503057f0e8da95660e7f1a1d38f",
+      "wire_errors": []
+    },
+    {
+      "id": "document-r10b",
+      "status": "PARTIAL",
+      "reason": null,
+      "started_at": "2026-10-02T02:49:49.489270+00:00",
+      "image": "sha256:75a96f09ffcc2f3dd591c5a413d0aadef815100d89e68636926b8267b9c79ed6",
+      "wire_errors": []
+    },
+    {
+      "id": "repeat-difference-r7",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:41:56.332070+00:00",
+      "image": "sha256:7a1139a6fd34c124b1168201fe03c9ed864921b35f9c5f4b38ba4ded1a283abc",
+      "wire_errors": []
+    },
+    {
+      "id": "paraphrase-r3",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:26:59.340947+00:00",
+      "image": "sha256:df5f4a2d7275d29bfc3e1adf43c23ee7960dd5ec111ec10d2a77c85023101a50",
+      "wire_errors": []
+    },
+    {
+      "id": "refresh-r10b",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:50:09.072875+00:00",
+      "image": "sha256:75a96f09ffcc2f3dd591c5a413d0aadef815100d89e68636926b8267b9c79ed6",
+      "wire_errors": []
+    },
+    {
+      "id": "document-r5",
+      "status": "FAIL",
+      "reason": "semantic_plan_incomplete",
+      "started_at": "2026-10-02T02:35:36.714763+00:00",
+      "image": "sha256:58c638418fc7368085b34832f97bb85d4952d858c9089d1432226fc5f6112cdb",
+      "wire_errors": []
+    },
+    {
+      "id": "chile-r7",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:41:09.105956+00:00",
+      "image": "sha256:7a1139a6fd34c124b1168201fe03c9ed864921b35f9c5f4b38ba4ded1a283abc",
+      "wire_errors": []
+    },
+    {
+      "id": "reserves-r7",
+      "status": "DATA_CONTRACT_BLOCKED",
+      "reason": "upstream step failed: node_2",
+      "started_at": "2026-10-02T02:41:21.817742+00:00",
+      "image": "sha256:7a1139a6fd34c124b1168201fe03c9ed864921b35f9c5f4b38ba4ded1a283abc",
+      "wire_errors": []
+    },
+    {
+      "id": "reference-r8b",
+      "status": "PARTIAL",
+      "reason": null,
+      "started_at": "2026-10-02T02:44:14.364648+00:00",
+      "image": "sha256:130e55e404163e73dd038ce3b7d429df76251ba7ff611d028f090a61223c114f",
+      "wire_errors": []
+    },
+    {
+      "id": "difference-r10cold",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:50:57.628590+00:00",
+      "image": "sha256:75a96f09ffcc2f3dd591c5a413d0aadef815100d89e68636926b8267b9c79ed6",
+      "wire_errors": []
+    },
+    {
+      "id": "refresh-r7b",
+      "status": "FAIL",
+      "reason": "semantic_plan_incomplete",
+      "started_at": "2026-10-02T02:40:53.569442+00:00",
+      "image": "sha256:7a1139a6fd34c124b1168201fe03c9ed864921b35f9c5f4b38ba4ded1a283abc",
+      "wire_errors": []
+    },
+    {
+      "id": "refresh-r5b",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:36:11.111941+00:00",
+      "image": "sha256:58c638418fc7368085b34832f97bb85d4952d858c9089d1432226fc5f6112cdb",
+      "wire_errors": []
+    },
+    {
+      "id": "sum-r2",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:19:53.922912+00:00",
+      "image": "sha256:934d0f8e608de94a08b5724e189ecdaafb92108a496b7d0c10a8eb88135532a2",
+      "wire_errors": []
+    },
+    {
+      "id": "restored-r10cold",
+      "status": "PARTIAL",
+      "reason": null,
+      "started_at": "2026-10-02T02:51:55.974638+00:00",
+      "image": "sha256:75a96f09ffcc2f3dd591c5a413d0aadef815100d89e68636926b8267b9c79ed6",
+      "wire_errors": []
+    },
+    {
+      "id": "sum-r6",
+      "status": "FAIL",
+      "reason": "unsupported_aggregate_contract",
+      "started_at": "2026-10-02T02:39:14.675049+00:00",
+      "image": "sha256:03581f5a9fa2e9476a13f67bf49773299ad60503057f0e8da95660e7f1a1d38f",
+      "wire_errors": []
+    },
+    {
+      "id": "chile-r4",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:31:26.834330+00:00",
+      "image": "sha256:83d8dd231c458c06db55c24b823f815100be359eb731f983b1510ddc89651deb",
+      "wire_errors": []
+    },
+    {
+      "id": "difference-r8",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:42:59.967930+00:00",
+      "image": "sha256:130e55e404163e73dd038ce3b7d429df76251ba7ff611d028f090a61223c114f",
+      "wire_errors": []
+    },
+    {
+      "id": "reference-r5",
+      "status": "FAIL",
+      "reason": "semantic_plan_incomplete",
+      "started_at": "2026-10-02T02:35:48.214910+00:00",
+      "image": "sha256:58c638418fc7368085b34832f97bb85d4952d858c9089d1432226fc5f6112cdb",
+      "wire_errors": []
+    },
+    {
+      "id": "sum-r10cold",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:51:03.281728+00:00",
+      "image": "sha256:75a96f09ffcc2f3dd591c5a413d0aadef815100d89e68636926b8267b9c79ed6",
+      "wire_errors": []
+    },
+    {
+      "id": "difference-r1",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:14:43.322638+00:00",
+      "image": "sha256:952983d488bb6d3450d5a41f9cbb53a06c229bc2b16749f5307f53cf015cac3c",
+      "wire_errors": []
+    },
+    {
+      "id": "reserves-r9",
+      "status": "DATA_CONTRACT_BLOCKED",
+      "reason": "upstream step failed: node_2",
+      "started_at": "2026-10-02T02:46:36.761777+00:00",
+      "image": "sha256:9336646f277ae2d73d7f6f8e62466480325f49c53114cdf71074a781fbcb2fa0",
+      "wire_errors": []
+    },
+    {
+      "id": "chile-r3",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:26:15.744019+00:00",
+      "image": "sha256:df5f4a2d7275d29bfc3e1adf43c23ee7960dd5ec111ec10d2a77c85023101a50",
+      "wire_errors": []
+    },
+    {
+      "id": "reference-r3",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:26:43.854428+00:00",
+      "image": "sha256:df5f4a2d7275d29bfc3e1adf43c23ee7960dd5ec111ec10d2a77c85023101a50",
+      "wire_errors": []
+    },
+    {
+      "id": "price-r7",
+      "status": "FAIL",
+      "reason": "projection_field_unavailable:value",
+      "started_at": "2026-10-02T02:41:18.341390+00:00",
+      "image": "sha256:7a1139a6fd34c124b1168201fe03c9ed864921b35f9c5f4b38ba4ded1a283abc",
+      "wire_errors": []
+    },
+    {
+      "id": "difference-r9",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:45:59.171582+00:00",
+      "image": "sha256:9336646f277ae2d73d7f6f8e62466480325f49c53114cdf71074a781fbcb2fa0",
+      "wire_errors": []
+    },
+    {
+      "id": "reference-r5b",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:36:09.577502+00:00",
+      "image": "sha256:58c638418fc7368085b34832f97bb85d4952d858c9089d1432226fc5f6112cdb",
+      "wire_errors": []
+    },
+    {
+      "id": "refresh-r8",
+      "status": "SEMANTIC_MISMATCH_TARGET_SCOPE",
+      "reason": null,
+      "started_at": "2026-10-02T02:43:36.369317+00:00",
+      "image": "sha256:130e55e404163e73dd038ce3b7d429df76251ba7ff611d028f090a61223c114f",
+      "wire_errors": []
+    },
+    {
+      "id": "ranking-r9",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:46:28.390997+00:00",
+      "image": "sha256:9336646f277ae2d73d7f6f8e62466480325f49c53114cdf71074a781fbcb2fa0",
+      "wire_errors": []
+    },
+    {
+      "id": "reference-r4",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:31:55.145792+00:00",
+      "image": "sha256:83d8dd231c458c06db55c24b823f815100be359eb731f983b1510ddc89651deb",
+      "wire_errors": []
+    },
+    {
+      "id": "negative-r3",
+      "status": "UNSUPPORTED_CORRECT",
+      "reason": "security_privacy",
+      "started_at": "2026-10-02T02:27:08.013860+00:00",
+      "image": "sha256:df5f4a2d7275d29bfc3e1adf43c23ee7960dd5ec111ec10d2a77c85023101a50",
+      "wire_errors": []
+    },
+    {
+      "id": "refresh-r5",
+      "status": "FAIL",
+      "reason": "semantic_plan_incomplete",
+      "started_at": "2026-10-02T02:35:56.580162+00:00",
+      "image": "sha256:58c638418fc7368085b34832f97bb85d4952d858c9089d1432226fc5f6112cdb",
+      "wire_errors": []
+    },
+    {
+      "id": "repeat-difference-r10cold",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:51:58.310414+00:00",
+      "image": "sha256:75a96f09ffcc2f3dd591c5a413d0aadef815100d89e68636926b8267b9c79ed6",
+      "wire_errors": []
+    },
+    {
+      "id": "price-r10",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:49:12.296547+00:00",
+      "image": "sha256:75a96f09ffcc2f3dd591c5a413d0aadef815100d89e68636926b8267b9c79ed6",
+      "wire_errors": []
+    },
+    {
+      "id": "reserves-r5",
+      "status": "DATA_CONTRACT_BLOCKED",
+      "reason": "aggregate_input_incomplete",
+      "started_at": "2026-10-02T02:36:37.687224+00:00",
+      "image": "sha256:58c638418fc7368085b34832f97bb85d4952d858c9089d1432226fc5f6112cdb",
+      "wire_errors": []
+    },
+    {
+      "id": "document-r10cold",
+      "status": "PARTIAL",
+      "reason": null,
+      "started_at": "2026-10-02T02:51:23.967596+00:00",
+      "image": "sha256:75a96f09ffcc2f3dd591c5a413d0aadef815100d89e68636926b8267b9c79ed6",
+      "wire_errors": []
+    },
+    {
+      "id": "sum-r9",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:46:04.814315+00:00",
+      "image": "sha256:9336646f277ae2d73d7f6f8e62466480325f49c53114cdf71074a781fbcb2fa0",
+      "wire_errors": []
+    },
+    {
+      "id": "refresh-r10cold",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:51:52.222285+00:00",
+      "image": "sha256:75a96f09ffcc2f3dd591c5a413d0aadef815100d89e68636926b8267b9c79ed6",
+      "wire_errors": []
+    },
+    {
+      "id": "document-r6",
+      "status": "PARTIAL",
+      "reason": null,
+      "started_at": "2026-10-02T02:38:33.317645+00:00",
+      "image": "sha256:03581f5a9fa2e9476a13f67bf49773299ad60503057f0e8da95660e7f1a1d38f",
+      "wire_errors": []
+    },
+    {
+      "id": "document-r6b",
+      "status": "PARTIAL",
+      "reason": null,
+      "started_at": "2026-10-02T02:38:55.870983+00:00",
+      "image": "sha256:03581f5a9fa2e9476a13f67bf49773299ad60503057f0e8da95660e7f1a1d38f",
+      "wire_errors": []
+    },
+    {
+      "id": "difference-r10",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:48:51.962787+00:00",
+      "image": "sha256:75a96f09ffcc2f3dd591c5a413d0aadef815100d89e68636926b8267b9c79ed6",
+      "wire_errors": []
+    },
+    {
+      "id": "reserves-r10",
+      "status": "DATA_CONTRACT_BLOCKED",
+      "reason": "upstream step failed: node_2",
+      "started_at": "2026-10-02T02:49:15.861014+00:00",
+      "image": "sha256:75a96f09ffcc2f3dd591c5a413d0aadef815100d89e68636926b8267b9c79ed6",
+      "wire_errors": []
+    },
+    {
+      "id": "difference-r2",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:19:48.453059+00:00",
+      "image": "sha256:934d0f8e608de94a08b5724e189ecdaafb92108a496b7d0c10a8eb88135532a2",
+      "wire_errors": []
+    },
+    {
+      "id": "price-r1",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:15:00.515418+00:00",
+      "image": "sha256:952983d488bb6d3450d5a41f9cbb53a06c229bc2b16749f5307f53cf015cac3c",
+      "wire_errors": []
+    },
+    {
+      "id": "negative-r1",
+      "status": "UNSUPPORTED_CORRECT",
+      "reason": "security_privacy",
+      "started_at": "2026-10-02T02:15:47.315217+00:00",
+      "image": "sha256:952983d488bb6d3450d5a41f9cbb53a06c229bc2b16749f5307f53cf015cac3c",
+      "wire_errors": []
+    },
+    {
+      "id": "chile-r10",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:49:02.981992+00:00",
+      "image": "sha256:75a96f09ffcc2f3dd591c5a413d0aadef815100d89e68636926b8267b9c79ed6",
+      "wire_errors": []
+    },
+    {
+      "id": "ranking-r2",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:20:01.165070+00:00",
+      "image": "sha256:934d0f8e608de94a08b5724e189ecdaafb92108a496b7d0c10a8eb88135532a2",
+      "wire_errors": []
+    },
+    {
+      "id": "refresh-r1",
+      "status": "FAIL",
+      "reason": "projection_field_unavailable:mineral",
+      "started_at": "2026-10-02T02:15:16.304219+00:00",
+      "image": "sha256:952983d488bb6d3450d5a41f9cbb53a06c229bc2b16749f5307f53cf015cac3c",
+      "wire_errors": []
+    },
+    {
+      "id": "reference-r10",
+      "status": "PARTIAL",
+      "reason": null,
+      "started_at": "2026-10-02T02:49:43.650843+00:00",
+      "image": "sha256:75a96f09ffcc2f3dd591c5a413d0aadef815100d89e68636926b8267b9c79ed6",
+      "wire_errors": []
+    },
+    {
+      "id": "document-r9b",
+      "status": "PARTIAL",
+      "reason": null,
+      "started_at": "2026-10-02T02:46:56.644165+00:00",
+      "image": "sha256:9336646f277ae2d73d7f6f8e62466480325f49c53114cdf71074a781fbcb2fa0",
+      "wire_errors": []
+    },
+    {
+      "id": "chile-r8",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:43:07.191335+00:00",
+      "image": "sha256:130e55e404163e73dd038ce3b7d429df76251ba7ff611d028f090a61223c114f",
+      "wire_errors": []
+    },
+    {
+      "id": "sum-r3",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:26:12.894345+00:00",
+      "image": "sha256:df5f4a2d7275d29bfc3e1adf43c23ee7960dd5ec111ec10d2a77c85023101a50",
+      "wire_errors": []
+    },
+    {
+      "id": "sum-r4",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:31:23.972481+00:00",
+      "image": "sha256:83d8dd231c458c06db55c24b823f815100be359eb731f983b1510ddc89651deb",
+      "wire_errors": []
+    },
+    {
+      "id": "price-r2",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:20:05.579662+00:00",
+      "image": "sha256:934d0f8e608de94a08b5724e189ecdaafb92108a496b7d0c10a8eb88135532a2",
+      "wire_errors": []
+    },
+    {
+      "id": "sum-r7",
+      "status": "FAIL",
+      "reason": "aggregate_input_incomplete",
+      "started_at": "2026-10-02T02:41:07.622899+00:00",
+      "image": "sha256:7a1139a6fd34c124b1168201fe03c9ed864921b35f9c5f4b38ba4ded1a283abc",
+      "wire_errors": []
+    },
+    {
+      "id": "reserves-r10cold",
+      "status": "DATA_CONTRACT_BLOCKED",
+      "reason": "upstream step failed: node_2",
+      "started_at": "2026-10-02T02:51:21.460807+00:00",
+      "image": "sha256:75a96f09ffcc2f3dd591c5a413d0aadef815100d89e68636926b8267b9c79ed6",
+      "wire_errors": []
+    },
+    {
+      "id": "reference-r7b",
+      "status": "PARTIAL",
+      "reason": null,
+      "started_at": "2026-10-02T02:40:50.685950+00:00",
+      "image": "sha256:7a1139a6fd34c124b1168201fe03c9ed864921b35f9c5f4b38ba4ded1a283abc",
+      "wire_errors": []
+    },
+    {
+      "id": "metric-r1",
+      "status": "DATA_CONTRACT_BLOCKED",
+      "reason": "upstream step failed: node_2, node_3",
+      "started_at": "2026-10-02T02:15:22.095571+00:00",
+      "image": "sha256:952983d488bb6d3450d5a41f9cbb53a06c229bc2b16749f5307f53cf015cac3c",
+      "wire_errors": []
+    },
+    {
+      "id": "refresh-r8b",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:44:17.233597+00:00",
+      "image": "sha256:130e55e404163e73dd038ce3b7d429df76251ba7ff611d028f090a61223c114f",
+      "wire_errors": []
+    },
+    {
+      "id": "price-r4",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:31:35.729851+00:00",
+      "image": "sha256:83d8dd231c458c06db55c24b823f815100be359eb731f983b1510ddc89651deb",
+      "wire_errors": []
+    },
+    {
+      "id": "ranking-r3",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:26:20.154546+00:00",
+      "image": "sha256:df5f4a2d7275d29bfc3e1adf43c23ee7960dd5ec111ec10d2a77c85023101a50",
+      "wire_errors": []
+    },
+    {
+      "id": "cancel-r4",
+      "status": "CANCELLED",
+      "reason": null,
+      "started_at": "2026-10-02T02:32:39.274153+00:00",
+      "image": "sha256:83d8dd231c458c06db55c24b823f815100be359eb731f983b1510ddc89651deb",
+      "wire_errors": []
+    },
+    {
+      "id": "series-r2",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:20:46.450936+00:00",
+      "image": "sha256:934d0f8e608de94a08b5724e189ecdaafb92108a496b7d0c10a8eb88135532a2",
+      "wire_errors": []
+    },
+    {
+      "id": "price-r3",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:26:24.580636+00:00",
+      "image": "sha256:df5f4a2d7275d29bfc3e1adf43c23ee7960dd5ec111ec10d2a77c85023101a50",
+      "wire_errors": []
+    },
+    {
+      "id": "metric-r3",
+      "status": "DATA_CONTRACT_BLOCKED",
+      "reason": "upstream step failed: node_2, node_3",
+      "started_at": "2026-10-02T02:26:49.178025+00:00",
+      "image": "sha256:df5f4a2d7275d29bfc3e1adf43c23ee7960dd5ec111ec10d2a77c85023101a50",
+      "wire_errors": []
+    },
+    {
+      "id": "operation-r2",
+      "status": "EXPECTED_ABSTAIN_ZERO_DENOMINATOR",
+      "reason": "no_comparable_rows",
+      "started_at": "2026-10-02T02:20:36.503224+00:00",
+      "image": "sha256:934d0f8e608de94a08b5724e189ecdaafb92108a496b7d0c10a8eb88135532a2",
+      "wire_errors": []
+    },
+    {
+      "id": "reference-r1",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:15:14.805843+00:00",
+      "image": "sha256:952983d488bb6d3450d5a41f9cbb53a06c229bc2b16749f5307f53cf015cac3c",
+      "wire_errors": []
+    },
+    {
+      "id": "reserves-r4",
+      "status": "DATA_CONTRACT_BLOCKED",
+      "reason": "aggregate_input_incomplete",
+      "started_at": "2026-10-02T02:31:44.341679+00:00",
+      "image": "sha256:83d8dd231c458c06db55c24b823f815100be359eb731f983b1510ddc89651deb",
+      "wire_errors": []
+    },
+    {
+      "id": "chile-r1",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:14:51.680515+00:00",
+      "image": "sha256:952983d488bb6d3450d5a41f9cbb53a06c229bc2b16749f5307f53cf015cac3c",
+      "wire_errors": []
+    },
+    {
+      "id": "price-r9",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:46:33.231925+00:00",
+      "image": "sha256:9336646f277ae2d73d7f6f8e62466480325f49c53114cdf71074a781fbcb2fa0",
+      "wire_errors": []
+    },
+    {
+      "id": "reserves-r8",
+      "status": "DATA_CONTRACT_BLOCKED",
+      "reason": "upstream step failed: node_2",
+      "started_at": "2026-10-02T02:43:20.142054+00:00",
+      "image": "sha256:130e55e404163e73dd038ce3b7d429df76251ba7ff611d028f090a61223c114f",
+      "wire_errors": []
+    },
+    {
+      "id": "refresh-r9b",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:47:02.755638+00:00",
+      "image": "sha256:9336646f277ae2d73d7f6f8e62466480325f49c53114cdf71074a781fbcb2fa0",
+      "wire_errors": []
+    },
+    {
+      "id": "reference-r6b",
+      "status": "FAIL",
+      "reason": "presentation_unavailable",
+      "started_at": "2026-10-02T02:39:00.431836+00:00",
+      "image": "sha256:03581f5a9fa2e9476a13f67bf49773299ad60503057f0e8da95660e7f1a1d38f",
+      "wire_errors": []
+    },
+    {
+      "id": "chile-r5",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:36:25.290516+00:00",
+      "image": "sha256:58c638418fc7368085b34832f97bb85d4952d858c9089d1432226fc5f6112cdb",
+      "wire_errors": []
+    },
+    {
+      "id": "price-r8",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:43:16.539118+00:00",
+      "image": "sha256:130e55e404163e73dd038ce3b7d429df76251ba7ff611d028f090a61223c114f",
+      "wire_errors": []
+    },
+    {
+      "id": "reserves-r3",
+      "status": "DATA_CONTRACT_BLOCKED",
+      "reason": "aggregate_input_incomplete",
+      "started_at": "2026-10-02T02:26:33.231260+00:00",
+      "image": "sha256:df5f4a2d7275d29bfc3e1adf43c23ee7960dd5ec111ec10d2a77c85023101a50",
+      "wire_errors": []
+    },
+    {
+      "id": "sum-r1",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:14:48.805458+00:00",
+      "image": "sha256:952983d488bb6d3450d5a41f9cbb53a06c229bc2b16749f5307f53cf015cac3c",
+      "wire_errors": []
+    },
+    {
+      "id": "reserves-r1",
+      "status": "DATA_CONTRACT_BLOCKED",
+      "reason": "aggregate_input_incomplete",
+      "started_at": "2026-10-02T02:15:04.124603+00:00",
+      "image": "sha256:952983d488bb6d3450d5a41f9cbb53a06c229bc2b16749f5307f53cf015cac3c",
+      "wire_errors": []
+    },
+    {
+      "id": "reference-r9",
+      "status": "PARTIAL",
+      "reason": null,
+      "started_at": "2026-10-02T02:46:51.356600+00:00",
+      "image": "sha256:9336646f277ae2d73d7f6f8e62466480325f49c53114cdf71074a781fbcb2fa0",
+      "wire_errors": []
+    },
+    {
+      "id": "price-r10cold",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:51:17.912746+00:00",
+      "image": "sha256:75a96f09ffcc2f3dd591c5a413d0aadef815100d89e68636926b8267b9c79ed6",
+      "wire_errors": []
+    },
+    {
+      "id": "price-r6",
+      "status": "FAIL",
+      "reason": "projection_field_unavailable:value",
+      "started_at": "2026-10-02T02:39:23.343887+00:00",
+      "image": "sha256:03581f5a9fa2e9476a13f67bf49773299ad60503057f0e8da95660e7f1a1d38f",
+      "wire_errors": []
+    },
+    {
+      "id": "difference-r3",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:26:07.382297+00:00",
+      "image": "sha256:df5f4a2d7275d29bfc3e1adf43c23ee7960dd5ec111ec10d2a77c85023101a50",
+      "wire_errors": []
+    },
+    {
+      "id": "refresh-r3",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:26:45.397595+00:00",
+      "image": "sha256:df5f4a2d7275d29bfc3e1adf43c23ee7960dd5ec111ec10d2a77c85023101a50",
+      "wire_errors": []
+    },
+    {
+      "id": "document-r7",
+      "status": "PARTIAL",
+      "reason": null,
+      "started_at": "2026-10-02T02:40:28.883848+00:00",
+      "image": "sha256:7a1139a6fd34c124b1168201fe03c9ed864921b35f9c5f4b38ba4ded1a283abc",
+      "wire_errors": []
+    },
+    {
+      "id": "metric-r2",
+      "status": "DATA_CONTRACT_BLOCKED",
+      "reason": "upstream step failed: node_2, node_3",
+      "started_at": "2026-10-02T02:20:31.397575+00:00",
+      "image": "sha256:934d0f8e608de94a08b5724e189ecdaafb92108a496b7d0c10a8eb88135532a2",
+      "wire_errors": []
+    },
+    {
+      "id": "ranking-r4",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:31:31.276650+00:00",
+      "image": "sha256:83d8dd231c458c06db55c24b823f815100be359eb731f983b1510ddc89651deb",
+      "wire_errors": []
+    },
+    {
+      "id": "reference-r8",
+      "status": "PARTIAL",
+      "reason": null,
+      "started_at": "2026-10-02T02:43:34.846168+00:00",
+      "image": "sha256:130e55e404163e73dd038ce3b7d429df76251ba7ff611d028f090a61223c114f",
+      "wire_errors": []
+    },
+    {
+      "id": "paraphrase-r2",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:20:41.532392+00:00",
+      "image": "sha256:934d0f8e608de94a08b5724e189ecdaafb92108a496b7d0c10a8eb88135532a2",
+      "wire_errors": []
+    },
+    {
+      "id": "reference-r7",
+      "status": "PARTIAL",
+      "reason": null,
+      "started_at": "2026-10-02T02:40:39.153022+00:00",
+      "image": "sha256:7a1139a6fd34c124b1168201fe03c9ed864921b35f9c5f4b38ba4ded1a283abc",
+      "wire_errors": []
+    },
+    {
+      "id": "paraphrase-r1",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:15:32.234760+00:00",
+      "image": "sha256:952983d488bb6d3450d5a41f9cbb53a06c229bc2b16749f5307f53cf015cac3c",
+      "wire_errors": []
+    },
+    {
+      "id": "sum-r10",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:48:57.620664+00:00",
+      "image": "sha256:75a96f09ffcc2f3dd591c5a413d0aadef815100d89e68636926b8267b9c79ed6",
+      "wire_errors": []
+    },
+    {
+      "id": "chile-r2",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:19:56.766576+00:00",
+      "image": "sha256:934d0f8e608de94a08b5724e189ecdaafb92108a496b7d0c10a8eb88135532a2",
+      "wire_errors": []
+    },
+    {
+      "id": "difference-r5",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:36:16.516173+00:00",
+      "image": "sha256:58c638418fc7368085b34832f97bb85d4952d858c9089d1432226fc5f6112cdb",
+      "wire_errors": []
+    },
+    {
+      "id": "refresh-r4",
+      "status": "FAIL",
+      "reason": "semantic_plan_incomplete",
+      "started_at": "2026-10-02T02:31:56.673853+00:00",
+      "image": "sha256:83d8dd231c458c06db55c24b823f815100be359eb731f983b1510ddc89651deb",
+      "wire_errors": []
+    },
+    {
+      "id": "refresh-r2",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:20:27.690808+00:00",
+      "image": "sha256:934d0f8e608de94a08b5724e189ecdaafb92108a496b7d0c10a8eb88135532a2",
+      "wire_errors": []
+    },
+    {
+      "id": "ranking-r1",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:14:56.089177+00:00",
+      "image": "sha256:952983d488bb6d3450d5a41f9cbb53a06c229bc2b16749f5307f53cf015cac3c",
+      "wire_errors": []
+    },
+    {
+      "id": "restored-r4",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:32:31.593744+00:00",
+      "image": "sha256:83d8dd231c458c06db55c24b823f815100be359eb731f983b1510ddc89651deb",
+      "wire_errors": []
+    },
+    {
+      "id": "document-r8b",
+      "status": "PARTIAL",
+      "reason": null,
+      "started_at": "2026-10-02T02:43:42.799730+00:00",
+      "image": "sha256:130e55e404163e73dd038ce3b7d429df76251ba7ff611d028f090a61223c114f",
+      "wire_errors": []
+    },
+    {
+      "id": "refresh-r9",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:46:52.974963+00:00",
+      "image": "sha256:9336646f277ae2d73d7f6f8e62466480325f49c53114cdf71074a781fbcb2fa0",
+      "wire_errors": []
+    },
+    {
+      "id": "series-r3",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:27:04.257755+00:00",
+      "image": "sha256:df5f4a2d7275d29bfc3e1adf43c23ee7960dd5ec111ec10d2a77c85023101a50",
+      "wire_errors": []
+    },
+    {
+      "id": "cancel-r10cold",
+      "status": "CANCELLED",
+      "reason": null,
+      "started_at": "2026-10-02T02:51:58.754087+00:00",
+      "image": "sha256:75a96f09ffcc2f3dd591c5a413d0aadef815100d89e68636926b8267b9c79ed6",
+      "wire_errors": []
+    },
+    {
+      "id": "difference-r7",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:41:02.203763+00:00",
+      "image": "sha256:7a1139a6fd34c124b1168201fe03c9ed864921b35f9c5f4b38ba4ded1a283abc",
+      "wire_errors": []
+    },
+    {
+      "id": "difference-r6",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:39:08.895778+00:00",
+      "image": "sha256:03581f5a9fa2e9476a13f67bf49773299ad60503057f0e8da95660e7f1a1d38f",
+      "wire_errors": []
+    },
+    {
+      "id": "reference-r2",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:20:24.825248+00:00",
+      "image": "sha256:934d0f8e608de94a08b5724e189ecdaafb92108a496b7d0c10a8eb88135532a2",
+      "wire_errors": []
+    },
+    {
+      "id": "refresh-r7",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:40:42.005838+00:00",
+      "image": "sha256:7a1139a6fd34c124b1168201fe03c9ed864921b35f9c5f4b38ba4ded1a283abc",
+      "wire_errors": []
+    },
+    {
+      "id": "document-r7b",
+      "status": "PARTIAL",
+      "reason": null,
+      "started_at": "2026-10-02T02:40:46.140375+00:00",
+      "image": "sha256:7a1139a6fd34c124b1168201fe03c9ed864921b35f9c5f4b38ba4ded1a283abc",
+      "wire_errors": []
+    },
+    {
+      "id": "cancel-r7",
+      "status": "CANCELLED",
+      "reason": null,
+      "started_at": "2026-10-02T02:42:01.962904+00:00",
+      "image": "sha256:7a1139a6fd34c124b1168201fe03c9ed864921b35f9c5f4b38ba4ded1a283abc",
+      "wire_errors": []
+    },
+    {
+      "id": "refresh-r10",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:49:45.177872+00:00",
+      "image": "sha256:75a96f09ffcc2f3dd591c5a413d0aadef815100d89e68636926b8267b9c79ed6",
+      "wire_errors": []
+    },
+    {
+      "id": "ranking-r10cold",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:51:13.062477+00:00",
+      "image": "sha256:75a96f09ffcc2f3dd591c5a413d0aadef815100d89e68636926b8267b9c79ed6",
+      "wire_errors": []
+    },
+    {
+      "id": "document-r2",
+      "status": "PARTIAL",
+      "reason": null,
+      "started_at": "2026-10-02T02:20:17.953065+00:00",
+      "image": "sha256:934d0f8e608de94a08b5724e189ecdaafb92108a496b7d0c10a8eb88135532a2",
+      "wire_errors": []
+    },
+    {
+      "id": "operation-r1",
+      "status": "EXPECTED_ABSTAIN_ZERO_DENOMINATOR",
+      "reason": "no_comparable_rows",
+      "started_at": "2026-10-02T02:15:27.221690+00:00",
+      "image": "sha256:952983d488bb6d3450d5a41f9cbb53a06c229bc2b16749f5307f53cf015cac3c",
+      "wire_errors": []
+    },
+    {
+      "id": "reserves-r6",
+      "status": "DATA_CONTRACT_BLOCKED",
+      "reason": "aggregate_input_incomplete",
+      "started_at": "2026-10-02T02:39:26.862196+00:00",
+      "image": "sha256:03581f5a9fa2e9476a13f67bf49773299ad60503057f0e8da95660e7f1a1d38f",
+      "wire_errors": []
+    },
+    {
+      "id": "document-r9",
+      "status": "PARTIAL",
+      "reason": null,
+      "started_at": "2026-10-02T02:46:39.293386+00:00",
+      "image": "sha256:9336646f277ae2d73d7f6f8e62466480325f49c53114cdf71074a781fbcb2fa0",
+      "wire_errors": []
+    },
+    {
+      "id": "document-r5b",
+      "status": "PARTIAL",
+      "reason": null,
+      "started_at": "2026-10-02T02:36:02.440158+00:00",
+      "image": "sha256:58c638418fc7368085b34832f97bb85d4952d858c9089d1432226fc5f6112cdb",
+      "wire_errors": []
+    },
+    {
+      "id": "reference-r10b",
+      "status": "PARTIAL",
+      "reason": null,
+      "started_at": "2026-10-02T02:50:07.550124+00:00",
+      "image": "sha256:75a96f09ffcc2f3dd591c5a413d0aadef815100d89e68636926b8267b9c79ed6",
+      "wire_errors": []
+    },
+    {
+      "id": "ranking-r7",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:41:13.511838+00:00",
+      "image": "sha256:7a1139a6fd34c124b1168201fe03c9ed864921b35f9c5f4b38ba4ded1a283abc",
+      "wire_errors": []
+    },
+    {
+      "id": "refresh-r6",
+      "status": "FAIL",
+      "reason": "semantic_plan_incomplete",
+      "started_at": "2026-10-02T02:38:47.187453+00:00",
+      "image": "sha256:03581f5a9fa2e9476a13f67bf49773299ad60503057f0e8da95660e7f1a1d38f",
+      "wire_errors": []
+    },
+    {
+      "id": "document-r10",
+      "status": "PARTIAL",
+      "reason": null,
+      "started_at": "2026-10-02T02:49:31.732398+00:00",
+      "image": "sha256:75a96f09ffcc2f3dd591c5a413d0aadef815100d89e68636926b8267b9c79ed6",
+      "wire_errors": []
+    },
+    {
+      "id": "ranking-r8",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:43:11.626508+00:00",
+      "image": "sha256:130e55e404163e73dd038ce3b7d429df76251ba7ff611d028f090a61223c114f",
+      "wire_errors": []
+    },
+    {
+      "id": "document-r1",
+      "status": "PARTIAL",
+      "reason": null,
+      "started_at": "2026-10-02T02:15:07.980785+00:00",
+      "image": "sha256:952983d488bb6d3450d5a41f9cbb53a06c229bc2b16749f5307f53cf015cac3c",
+      "wire_errors": []
+    },
+    {
+      "id": "operation-r3",
+      "status": "EXPECTED_ABSTAIN_ZERO_DENOMINATOR",
+      "reason": "no_comparable_rows",
+      "started_at": "2026-10-02T02:26:54.305969+00:00",
+      "image": "sha256:df5f4a2d7275d29bfc3e1adf43c23ee7960dd5ec111ec10d2a77c85023101a50",
+      "wire_errors": []
+    },
+    {
+      "id": "price-r5",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:36:33.744147+00:00",
+      "image": "sha256:58c638418fc7368085b34832f97bb85d4952d858c9089d1432226fc5f6112cdb",
+      "wire_errors": []
+    },
+    {
+      "id": "chile-r10cold",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:51:08.625814+00:00",
+      "image": "sha256:75a96f09ffcc2f3dd591c5a413d0aadef815100d89e68636926b8267b9c79ed6",
+      "wire_errors": []
+    },
+    {
+      "id": "ranking-r5",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:36:28.988128+00:00",
+      "image": "sha256:58c638418fc7368085b34832f97bb85d4952d858c9089d1432226fc5f6112cdb",
+      "wire_errors": []
+    },
+    {
+      "id": "document-r4",
+      "status": "PARTIAL",
+      "reason": null,
+      "started_at": "2026-10-02T02:31:48.130245+00:00",
+      "image": "sha256:83d8dd231c458c06db55c24b823f815100be359eb731f983b1510ddc89651deb",
+      "wire_errors": []
+    },
+    {
+      "id": "document-r8",
+      "status": "PARTIAL",
+      "reason": null,
+      "started_at": "2026-10-02T02:43:22.675989+00:00",
+      "image": "sha256:130e55e404163e73dd038ce3b7d429df76251ba7ff611d028f090a61223c114f",
+      "wire_errors": []
+    },
+    {
+      "id": "restored-r7",
+      "status": "PARTIAL",
+      "reason": null,
+      "started_at": "2026-10-02T02:41:53.933412+00:00",
+      "image": "sha256:7a1139a6fd34c124b1168201fe03c9ed864921b35f9c5f4b38ba4ded1a283abc",
+      "wire_errors": []
+    },
+    {
+      "id": "chile-r9",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:46:10.621502+00:00",
+      "image": "sha256:9336646f277ae2d73d7f6f8e62466480325f49c53114cdf71074a781fbcb2fa0",
+      "wire_errors": []
+    },
+    {
+      "id": "refresh-r6b",
+      "status": "FAIL",
+      "reason": "semantic_plan_incomplete",
+      "started_at": "2026-10-02T02:39:01.958565+00:00",
+      "image": "sha256:03581f5a9fa2e9476a13f67bf49773299ad60503057f0e8da95660e7f1a1d38f",
+      "wire_errors": []
+    },
+    {
+      "id": "chile-r6",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:39:16.386762+00:00",
+      "image": "sha256:03581f5a9fa2e9476a13f67bf49773299ad60503057f0e8da95660e7f1a1d38f",
+      "wire_errors": []
+    },
+    {
+      "id": "ranking-r6",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:39:20.840352+00:00",
+      "image": "sha256:03581f5a9fa2e9476a13f67bf49773299ad60503057f0e8da95660e7f1a1d38f",
+      "wire_errors": []
+    },
+    {
+      "id": "repeat-difference-r4",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:32:33.824171+00:00",
+      "image": "sha256:83d8dd231c458c06db55c24b823f815100be359eb731f983b1510ddc89651deb",
+      "wire_errors": []
+    },
+    {
+      "id": "sum-r8",
+      "status": "FAIL",
+      "reason": "aggregate_input_incomplete",
+      "started_at": "2026-10-02T02:43:05.681894+00:00",
+      "image": "sha256:130e55e404163e73dd038ce3b7d429df76251ba7ff611d028f090a61223c114f",
+      "wire_errors": []
+    },
+    {
+      "id": "reference-r9b",
+      "status": "PARTIAL",
+      "reason": null,
+      "started_at": "2026-10-02T02:47:01.220986+00:00",
+      "image": "sha256:9336646f277ae2d73d7f6f8e62466480325f49c53114cdf71074a781fbcb2fa0",
+      "wire_errors": []
+    },
+    {
+      "id": "difference-r4",
+      "status": "RESPONSE_COMPLETED",
+      "reason": null,
+      "started_at": "2026-10-02T02:31:18.495397+00:00",
+      "image": "sha256:83d8dd231c458c06db55c24b823f815100be359eb731f983b1510ddc89651deb",
+      "wire_errors": []
+    },
+    {
+      "id": "reserves-r2",
+      "status": "DATA_CONTRACT_BLOCKED",
+      "reason": "aggregate_input_incomplete",
+      "started_at": "2026-10-02T02:20:14.169313+00:00",
+      "image": "sha256:934d0f8e608de94a08b5724e189ecdaafb92108a496b7d0c10a8eb88135532a2",
+      "wire_errors": []
+    },
+    {
+      "id": "negative-r2",
+      "status": "UNSUPPORTED_CORRECT",
+      "reason": "security_privacy",
+      "started_at": "2026-10-02T02:20:50.216524+00:00",
+      "image": "sha256:934d0f8e608de94a08b5724e189ecdaafb92108a496b7d0c10a8eb88135532a2",
+      "wire_errors": []
+    }
+  ],
+  "note": "Observed response accounting, not semantic PASS. Final SQL and typed-root checks stored in stability33-final-checks.json. Historical failed runs retained."
+}

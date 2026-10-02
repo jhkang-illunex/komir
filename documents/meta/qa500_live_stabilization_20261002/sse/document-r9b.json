@@ -1,0 +1,414 @@
+{
+  "id": "document-r9b",
+  "port": 18012,
+  "request": {
+    "user_id": "qa-sse31",
+    "session_id": "7483691c-099b-4147-8e24-7e92558dadd4",
+    "message": "희소금속 보고서에 언급된 광종 가격 보여줘",
+    "mode": "auto"
+  },
+  "started_at": "2026-10-02T02:46:56.644165+00:00",
+  "events": [
+    {
+      "event": "message",
+      "data": {
+        "session_id": "7483691c-099b-4147-8e24-7e92558dadd4"
+      },
+      "elapsed": 0.054
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 1,
+        "label": "질문 조건 확인"
+      },
+      "elapsed": 0.079
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 3,
+        "label": "데이터 분석 중",
+        "status": "데이터 분석 중"
+      },
+      "elapsed": 4.55
+    },
+    {
+      "event": "status",
+      "data": {
+        "stage": 4,
+        "label": "답변 생성 중"
+      },
+      "elapsed": 4.551
+    },
+    {
+      "event": "message",
+      "data": {
+        "delta": "표시된 16개 항목 중 7개 처리 완료, 9개 처리 불가.\n"
+      },
+      "elapsed": 4.571
+    },
+    {
+      "event": "message",
+      "data": {
+        "delta": "| mineral | value | status | reason | output |\n| --- | --- | --- | --- | --- |\n| 리튬 | None | empty | price_criterion_mapping_missing | latest_value |\n| 희토류 | None | empty | price_criterion_mapping_missing | latest_value |\n| 망간 | [{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '943.82', 'hghst_prc(최고가격)': '946.93', 'cmerc_prc(통상가격)': '945.37', 'invt(재고)': 'None', 'value': '945.37'}] | success | None | latest_value |\n| 코발트 | None | empty | price_criterion_mapping_missing | latest_value |\n| 크롬 | [{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '2159.25', 'hghst_prc(최고가격)': '2166.58', 'cmerc_prc(통상가격)': '2162.91', 'invt(재고)': 'None', 'value': '2162.91'}] | success | None | latest_value |\n| 티타늄 | [{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '7254.02', 'hghst_prc(최고가격)': '7357.34', 'cmerc_prc(통상가격)': '7305.68', 'invt(재고)': 'None', 'value': '7305.68'}] | success | None | latest_value |\n| 텅스텐 | None | empty | price_criterion_selection_required | latest_value |\n| 마그네슘 | None | empty | price_criterion_mapping_missing | latest_value |\n| 안티모니 | [{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '17038.37', 'hghst_prc(최고가격)': '17535.33', 'cmerc_prc(통상가격)': '17286.85', 'invt(재고)': 'None', 'value': '17286.85'}] | success | None | latest_value |\n| 몰리브덴 | [{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '16365.0', 'hghst_prc(최고가격)': '16584.47', 'cmerc_prc(통상가격)': '16474.73', 'invt(재고)': 'None', 'value': '16474.73'}] | success | None | latest_value |\n| 니오븀 | [{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '45842.19', 'hghst_prc(최고가격)': '47049.61', 'cmerc_prc(통상가격)': '46445.9', 'invt(재고)': 'None', 'value': '46445.9'}] | success | None | latest_value |\n| 인듐 | None | empty | price_criterion_mapping_missing | latest_value |\n| 셀레늄 | None | empty | price_criterion_mapping_missing | latest_value |\n| 갈륨 | None | empty | price_criterion_mapping_missing | latest_value |\n| 네오디뮴 | [{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '90.93', 'hghst_prc(최고가격)': '91.7', 'cmerc_prc(통상가격)': '91.32', 'invt(재고)': 'None', 'value': '91.32'}] | success | None | latest_value |\n| 동 | None | empty | price_criterion_mapping_missing | latest_value |"
+      },
+      "elapsed": 4.572
+    },
+    {
+      "event": "table",
+      "data": {
+        "schema_version": 1,
+        "block_id": "multihop-table",
+        "columns": [
+          "mineral",
+          "value",
+          "status",
+          "reason",
+          "output"
+        ],
+        "rows": [
+          [
+            "리튬",
+            "None",
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value"
+          ],
+          [
+            "희토류",
+            "None",
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value"
+          ],
+          [
+            "망간",
+            "[{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '943.82', 'hghst_prc(최고가격)': '946.93', 'cmerc_prc(통상가격)': '945.37', 'invt(재고)': 'None', 'value': '945.37'}]",
+            "success",
+            "None",
+            "latest_value"
+          ],
+          [
+            "코발트",
+            "None",
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value"
+          ],
+          [
+            "크롬",
+            "[{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '2159.25', 'hghst_prc(최고가격)': '2166.58', 'cmerc_prc(통상가격)': '2162.91', 'invt(재고)': 'None', 'value': '2162.91'}]",
+            "success",
+            "None",
+            "latest_value"
+          ],
+          [
+            "티타늄",
+            "[{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '7254.02', 'hghst_prc(최고가격)': '7357.34', 'cmerc_prc(통상가격)': '7305.68', 'invt(재고)': 'None', 'value': '7305.68'}]",
+            "success",
+            "None",
+            "latest_value"
+          ],
+          [
+            "텅스텐",
+            "None",
+            "empty",
+            "price_criterion_selection_required",
+            "latest_value"
+          ],
+          [
+            "마그네슘",
+            "None",
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value"
+          ],
+          [
+            "안티모니",
+            "[{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '17038.37', 'hghst_prc(최고가격)': '17535.33', 'cmerc_prc(통상가격)': '17286.85', 'invt(재고)': 'None', 'value': '17286.85'}]",
+            "success",
+            "None",
+            "latest_value"
+          ],
+          [
+            "몰리브덴",
+            "[{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '16365.0', 'hghst_prc(최고가격)': '16584.47', 'cmerc_prc(통상가격)': '16474.73', 'invt(재고)': 'None', 'value': '16474.73'}]",
+            "success",
+            "None",
+            "latest_value"
+          ],
+          [
+            "니오븀",
+            "[{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '45842.19', 'hghst_prc(최고가격)': '47049.61', 'cmerc_prc(통상가격)': '46445.9', 'invt(재고)': 'None', 'value': '46445.9'}]",
+            "success",
+            "None",
+            "latest_value"
+          ],
+          [
+            "인듐",
+            "None",
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value"
+          ],
+          [
+            "셀레늄",
+            "None",
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value"
+          ],
+          [
+            "갈륨",
+            "None",
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value"
+          ],
+          [
+            "네오디뮴",
+            "[{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '90.93', 'hghst_prc(최고가격)': '91.7', 'cmerc_prc(통상가격)': '91.32', 'invt(재고)': 'None', 'value': '91.32'}]",
+            "success",
+            "None",
+            "latest_value"
+          ],
+          [
+            "동",
+            "None",
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value"
+          ]
+        ],
+        "columns_meta": [
+          {
+            "key": "mineral",
+            "label": "mineral",
+            "display": "mineral",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "value",
+            "label": "value",
+            "display": "value",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "status",
+            "label": "status",
+            "display": "status",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "reason",
+            "label": "reason",
+            "display": "reason",
+            "type": "string",
+            "unit": null
+          },
+          {
+            "key": "output",
+            "label": "output",
+            "display": "output",
+            "type": "string",
+            "unit": null
+          }
+        ],
+        "rows_typed": [
+          [
+            "리튬",
+            null,
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value"
+          ],
+          [
+            "희토류",
+            null,
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value"
+          ],
+          [
+            "망간",
+            "[{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '943.82', 'hghst_prc(최고가격)': '946.93', 'cmerc_prc(통상가격)': '945.37', 'invt(재고)': 'None', 'value': '945.37'}]",
+            "success",
+            null,
+            "latest_value"
+          ],
+          [
+            "코발트",
+            null,
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value"
+          ],
+          [
+            "크롬",
+            "[{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '2159.25', 'hghst_prc(최고가격)': '2166.58', 'cmerc_prc(통상가격)': '2162.91', 'invt(재고)': 'None', 'value': '2162.91'}]",
+            "success",
+            null,
+            "latest_value"
+          ],
+          [
+            "티타늄",
+            "[{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '7254.02', 'hghst_prc(최고가격)': '7357.34', 'cmerc_prc(통상가격)': '7305.68', 'invt(재고)': 'None', 'value': '7305.68'}]",
+            "success",
+            null,
+            "latest_value"
+          ],
+          [
+            "텅스텐",
+            null,
+            "empty",
+            "price_criterion_selection_required",
+            "latest_value"
+          ],
+          [
+            "마그네슘",
+            null,
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value"
+          ],
+          [
+            "안티모니",
+            "[{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '17038.37', 'hghst_prc(최고가격)': '17535.33', 'cmerc_prc(통상가격)': '17286.85', 'invt(재고)': 'None', 'value': '17286.85'}]",
+            "success",
+            null,
+            "latest_value"
+          ],
+          [
+            "몰리브덴",
+            "[{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '16365.0', 'hghst_prc(최고가격)': '16584.47', 'cmerc_prc(통상가격)': '16474.73', 'invt(재고)': 'None', 'value': '16474.73'}]",
+            "success",
+            null,
+            "latest_value"
+          ],
+          [
+            "니오븀",
+            "[{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '45842.19', 'hghst_prc(최고가격)': '47049.61', 'cmerc_prc(통상가격)': '46445.9', 'invt(재고)': 'None', 'value': '46445.9'}]",
+            "success",
+            null,
+            "latest_value"
+          ],
+          [
+            "인듐",
+            null,
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value"
+          ],
+          [
+            "셀레늄",
+            null,
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value"
+          ],
+          [
+            "갈륨",
+            null,
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value"
+          ],
+          [
+            "네오디뮴",
+            "[{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '90.93', 'hghst_prc(최고가격)': '91.7', 'cmerc_prc(통상가격)': '91.32', 'invt(재고)': 'None', 'value': '91.32'}]",
+            "success",
+            null,
+            "latest_value"
+          ],
+          [
+            "동",
+            null,
+            "empty",
+            "price_criterion_mapping_missing",
+            "latest_value"
+          ]
+        ],
+        "markdown": "| mineral | value | status | reason | output |\n| --- | --- | --- | --- | --- |\n| 리튬 | None | empty | price_criterion_mapping_missing | latest_value |\n| 희토류 | None | empty | price_criterion_mapping_missing | latest_value |\n| 망간 | [{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '943.82', 'hghst_prc(최고가격)': '946.93', 'cmerc_prc(통상가격)': '945.37', 'invt(재고)': 'None', 'value': '945.37'}] | success | None | latest_value |\n| 코발트 | None | empty | price_criterion_mapping_missing | latest_value |\n| 크롬 | [{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '2159.25', 'hghst_prc(최고가격)': '2166.58', 'cmerc_prc(통상가격)': '2162.91', 'invt(재고)': 'None', 'value': '2162.91'}] | success | None | latest_value |\n| 티타늄 | [{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '7254.02', 'hghst_prc(최고가격)': '7357.34', 'cmerc_prc(통상가격)': '7305.68', 'invt(재고)': 'None', 'value': '7305.68'}] | success | None | latest_value |\n| 텅스텐 | None | empty | price_criterion_selection_required | latest_value |\n| 마그네슘 | None | empty | price_criterion_mapping_missing | latest_value |\n| 안티모니 | [{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '17038.37', 'hghst_prc(최고가격)': '17535.33', 'cmerc_prc(통상가격)': '17286.85', 'invt(재고)': 'None', 'value': '17286.85'}] | success | None | latest_value |\n| 몰리브덴 | [{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '16365.0', 'hghst_prc(최고가격)': '16584.47', 'cmerc_prc(통상가격)': '16474.73', 'invt(재고)': 'None', 'value': '16474.73'}] | success | None | latest_value |\n| 니오븀 | [{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '45842.19', 'hghst_prc(최고가격)': '47049.61', 'cmerc_prc(통상가격)': '46445.9', 'invt(재고)': 'None', 'value': '46445.9'}] | success | None | latest_value |\n| 인듐 | None | empty | price_criterion_mapping_missing | latest_value |\n| 셀레늄 | None | empty | price_criterion_mapping_missing | latest_value |\n| 갈륨 | None | empty | price_criterion_mapping_missing | latest_value |\n| 네오디뮴 | [{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '90.93', 'hghst_prc(최고가격)': '91.7', 'cmerc_prc(통상가격)': '91.32', 'invt(재고)': 'None', 'value': '91.32'}] | success | None | latest_value |\n| 동 | None | empty | price_criterion_mapping_missing | latest_value |",
+        "chart_hint": {
+          "recommended": null,
+          "alternatives": [],
+          "reason": "값이 갈리는 숫자 계열 없음"
+        },
+        "meta": {
+          "source_index": 1,
+          "source": "PageIndex 파생 사실 · 희소금속 월간동향",
+          "as_of": null,
+          "unit": null,
+          "time_aggregation": null,
+          "menu_source": null,
+          "hidden_columns": []
+        },
+        "source_index": 1,
+        "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+      },
+      "elapsed": 4.574
+    },
+    {
+      "event": "done",
+      "data": {
+        "done": true,
+        "abstained": false,
+        "citations": [
+          {
+            "index": 1,
+            "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+          },
+          {
+            "index": 2,
+            "source": "public.KO_MNRL_PRC"
+          }
+        ],
+        "bogus_citations": []
+      },
+      "elapsed": 4.574
+    }
+  ],
+  "http_status": 200,
+  "content_type": "text/event-stream; charset=utf-8",
+  "elapsed": 4.575,
+  "text": "표시된 16개 항목 중 7개 처리 완료, 9개 처리 불가.\n| mineral | value | status | reason | output |\n| --- | --- | --- | --- | --- |\n| 리튬 | None | empty | price_criterion_mapping_missing | latest_value |\n| 희토류 | None | empty | price_criterion_mapping_missing | latest_value |\n| 망간 | [{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '943.82', 'hghst_prc(최고가격)': '946.93', 'cmerc_prc(통상가격)': '945.37', 'invt(재고)': 'None', 'value': '945.37'}] | success | None | latest_value |\n| 코발트 | None | empty | price_criterion_mapping_missing | latest_value |\n| 크롬 | [{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '2159.25', 'hghst_prc(최고가격)': '2166.58', 'cmerc_prc(통상가격)': '2162.91', 'invt(재고)': 'None', 'value': '2162.91'}] | success | None | latest_value |\n| 티타늄 | [{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '7254.02', 'hghst_prc(최고가격)': '7357.34', 'cmerc_prc(통상가격)': '7305.68', 'invt(재고)': 'None', 'value': '7305.68'}] | success | None | latest_value |\n| 텅스텐 | None | empty | price_criterion_selection_required | latest_value |\n| 마그네슘 | None | empty | price_criterion_mapping_missing | latest_value |\n| 안티모니 | [{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '17038.37', 'hghst_prc(최고가격)': '17535.33', 'cmerc_prc(통상가격)': '17286.85', 'invt(재고)': 'None', 'value': '17286.85'}] | success | None | latest_value |\n| 몰리브덴 | [{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '16365.0', 'hghst_prc(최고가격)': '16584.47', 'cmerc_prc(통상가격)': '16474.73', 'invt(재고)': 'None', 'value': '16474.73'}] | success | None | latest_value |\n| 니오븀 | [{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '45842.19', 'hghst_prc(최고가격)': '47049.61', 'cmerc_prc(통상가격)': '46445.9', 'invt(재고)': 'None', 'value': '46445.9'}] | success | None | latest_value |\n| 인듐 | None | empty | price_criterion_mapping_missing | latest_value |\n| 셀레늄 | None | empty | price_criterion_mapping_missing | latest_value |\n| 갈륨 | None | empty | price_criterion_mapping_missing | latest_value |\n| 네오디뮴 | [{'crtr_ymd(기준일자)': '20260930', 'lowst_prc(최저가격)': '90.93', 'hghst_prc(최고가격)': '91.7', 'cmerc_prc(통상가격)': '91.32', 'invt(재고)': 'None', 'value': '91.32'}] | success | None | latest_value |\n| 동 | None | empty | price_criterion_mapping_missing | latest_value |",
+  "event_counts": {
+    "message": 3,
+    "status": 3,
+    "table": 1,
+    "done": 1
+  },
+  "done": {
+    "done": true,
+    "abstained": false,
+    "citations": [
+      {
+        "index": 1,
+        "source": "PageIndex 파생 사실 · 희소금속 월간동향"
+      },
+      {
+        "index": 2,
+        "source": "public.KO_MNRL_PRC"
+      }
+    ],
+    "bogus_citations": []
+  },
+  "protocol_errors": [],
+  "deployment": {
+    "container_id": "5a1a52a60888df6d221be121fa7cbf3abeb072536d94bcde7554bccc03a5d438",
+    "port": 18012,
+    "image_tag": "komir-rag-chat:qa-live-stability33-r9",
+    "image_id": "sha256:9336646f277ae2d73d7f6f8e62466480325f49c53114cdf71074a781fbcb2fa0",
+    "source_hashes": {
+      "inhouse/rag_core/ragkit/live_multihop.py": "8a53630b2086bae2fb4b00346816ea5e0f35cb9a35bc0aee4d12be227548f342",
+      "inhouse/rag_core/ragkit/chatbot.py": "71f5b2e77e6fd95a5df336190b0bfd532709b016e896d527560f13ea88557553",
+      "inhouse/rag_core/ragkit/chatbot_graph.py": "adaaacae8d021345abbbbc3b96d90318d6da98db933e3b42def50f7fee5caf8a",
+      "inhouse/rag_core/ragkit/chatbot_events.py": "0e6bb9e37b18913aac8ab97f95d6d3e772a992da7cba8bbc43738f7b7fcf03c5",
+      "inhouse/rag_core/ragkit/_mcp_tools_common.py": "96a7b909688af872bdab7f77ee186501ddb2206b00cc511d71f3a7bc11a3c4d6"
+    }
+  }
+}

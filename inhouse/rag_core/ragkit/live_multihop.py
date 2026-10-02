@@ -45,7 +45,7 @@ from .semantic_ir import Operator, RequirementNode, SemanticProgram, ValueType, 
 from .aast_coverage import CoverageReport, validate_aast
 from .relational_ops import execute_relation
 from .analytical_aggregate import aggregate as aggregate_rows, SUPPORTED_AGGREGATIONS
-from .analytical_share import calculate_share
+from .analytical_share import calculate_ratio, calculate_ratio_between, calculate_share
 from .analytical_series import CALCULATIONS as SERIES_CALCULATIONS, calculate_series
 from common.langfuse_tracing import LangfuseEventTracer
 
@@ -192,6 +192,13 @@ validate_evidence.
 - 사용자가 지정한 가격기준 번호는 args.price_criterion_serial 정수로 보존한다.
   기준국 reporter_country와 상대국 partner_country를 서로 바꾸지 않는다.
   통화 currency, 중량단위 weight_unit, 가격기준 price_basis는 명시한 경우 보존한다.
+  가격 기준 cardinality는 criterion_mode=REPRESENTATIVE|EXPLICIT|ALL로 보존한다.
+  기준 미지정 일반 질의는 REPRESENTATIVE, 특정 기준 지정은 EXPLICIT와
+  price_criterion_serial을 사용한다. "모든 가격" 또는 "전체 가격 기준"은
+  한 광종의 유효 기준 전체를 요구하는 ALL이며 대표 기준 하나로 축소하지 않는다.
+  ALL 시계열의 projection은 date, price와 함께 upstream이 제공하는
+  price_measure/price_measure_label, price_criterion, price_criterion_serial을
+  보존한다. 이 필드가 없는 source에는 새 기준을 만들어내지 않는다.
   최신값은 output=latest_value, 시계열은 output=time_series로 구분한다.
   period는 문자열이 아니라 구조화된 기간 객체 또는 null이다.
   기간 객체는 kind=trailing_months와 trailing_months 정수,
@@ -374,23 +381,296 @@ def _repair_output_fields(program: Mapping[str, Any] | None) -> set[str]:
     return _root_projection_fields(program)
 
 
-def _normalize_relation_contract(payload: dict[str, Any]) -> dict[str, Any]:
+def _normalize_relation_contract(
+    payload: dict[str, Any],
+    semantic_requirements: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     """Fill only deterministic relation metadata from typed upstream metrics.
 
     This is AST normalization, not natural-language interpretation.  It keeps
     a model's compare node from losing the value/date contract when both
     inputs already declare compatible metric types.
     """
-    nodes = {str(node.get("node_id")): node for node in payload.get("nodes", [])
+    raw_nodes = [dict(node) for node in payload.get("nodes", []) if isinstance(node, Mapping)]
+    nodes = {str(node.get("node_id")): node for node in raw_nodes
              if isinstance(node, Mapping) and node.get("node_id") is not None}
     value_fields = {
         "indicator": "value", "price": "value", "price_change": "change_pct",
         "price_change_rate": "change_pct", "price_volatility": "change_pct",
+        "price_forecast": "predicted_price", "forecast": "predicted_price",
         "import_value": "import_value", "import_amount": "import_amount",
         "production": "production_volume", "production_volume": "production_volume",
         "reserves": "reserves_volume", "reserves_volume": "reserves_volume",
     }
     series_metrics = {"indicator", "price", "price_change", "price_change_rate", "price_volatility"}
+
+    def upstream_retrieve(node_id: str) -> dict[str, Any] | None:
+        """Find a direct trade retrieval for deterministic contract repair."""
+        current = nodes.get(node_id)
+        seen: set[str] = set()
+        while current is not None and str(current.get("node_id")) not in seen:
+            current_id = str(current.get("node_id"))
+            seen.add(current_id)
+            operator = str(current.get("operator", ""))
+            if operator == Operator.RETRIEVE.value:
+                return current
+            inputs = current.get("inputs") or []
+            if len(inputs) != 1 or not isinstance(inputs[0], Mapping):
+                return None
+            current = nodes.get(str(inputs[0].get("node_id")))
+        return None
+
+    # A derived resource metric may be emitted as
+    # ``retrieve(resource production) -> calculate(yoy)``. ``resource.yoy``
+    # is already the typed executable capability for that operation; keep the
+    # semantic dependency but normalize this equivalent graph at the AST
+    # boundary so the runtime does not interpret free-form ``yoy`` locally.
+    # Apply only when the retrieve has this calculate as its sole consumer;
+    # shared inputs remain untouched and are validated normally.
+    yoy_rewrites: dict[str, str] = {}
+    consumers: dict[str, list[str]] = {}
+    for candidate in raw_nodes:
+        for ref in candidate.get("inputs", []) or []:
+            if isinstance(ref, Mapping) and ref.get("node_id") is not None:
+                consumers.setdefault(str(ref["node_id"]), []).append(str(candidate.get("node_id")))
+    for node in list(raw_nodes):
+        if str(node.get("operator")) != Operator.CALCULATE.value:
+            continue
+        args = node.get("args") or {}
+        calculation = str(args.get("calculation") or args.get("operation") or "").casefold()
+        if calculation not in {"yoy", "year_over_year", "annual_change"}:
+            continue
+        inputs = node.get("inputs") or []
+        if len(inputs) != 1 or not isinstance(inputs[0], Mapping):
+            continue
+        source_id = str(inputs[0].get("node_id"))
+        source = nodes.get(source_id)
+        # A model may insert a typed projection between the resource retrieve
+        # and the temporal operation.  That projection does not change the
+        # capability identity; walk through one-input structural nodes so the
+        # existing resource.yoy boundary remains usable.
+        structural_source = source
+        while (structural_source is not None
+               and str(structural_source.get("operator")) == Operator.PROJECT.value):
+            projection_inputs = structural_source.get("inputs") or []
+            if len(projection_inputs) != 1 or not isinstance(projection_inputs[0], Mapping):
+                structural_source = None
+                break
+            structural_source = nodes.get(str(projection_inputs[0].get("node_id")))
+        if structural_source is None or str(structural_source.get("operator")) != Operator.RETRIEVE.value:
+            continue
+        source_args = structural_source.setdefault("args", {})
+        domain = str(source_args.get("domain", "")).casefold()
+        metric = str(source_args.get("metric", "")).casefold()
+        if domain != "resource" or metric not in {"production", "production_volume", "resource", "resource_rank"}:
+            continue
+        if consumers.get(source_id) != [str(node.get("node_id"))]:
+            continue
+        source_args["domain"] = "resource"
+        source_args["metric"] = "production"
+        source_args["calculation"] = "yoy"
+        node_id = str(node.get("node_id"))
+        # Rewire consumers to the physical retrieve.  Any intermediate
+        # projection is presentation-only for this derived capability and is
+        # removed together with the calculate node below.
+        yoy_rewrites[node_id] = str(structural_source.get("node_id"))
+        if source is not structural_source:
+            yoy_rewrites[str(source.get("node_id"))] = str(structural_source.get("node_id"))
+
+    if yoy_rewrites:
+        for node in raw_nodes:
+            rewritten_inputs = []
+            for ref in node.get("inputs", []) or []:
+                item = dict(ref)
+                item_id = str(item.get("node_id"))
+                item["node_id"] = yoy_rewrites.get(item_id, item_id)
+                rewritten_inputs.append(item)
+            node["inputs"] = rewritten_inputs
+        payload["roots"] = [yoy_rewrites.get(str(root), root) for root in payload.get("roots", [])]
+        raw_nodes = [node for node in raw_nodes if str(node.get("node_id")) not in yoy_rewrites]
+        nodes = {str(node.get("node_id")): node for node in raw_nodes
+                 if node.get("node_id") is not None}
+
+    # ``country_rank`` is a semantic operation; the physical trade capability
+    # selects its amount metric from the declared flow.  Preserve export as
+    # export_amount instead of allowing the generic trade default to silently
+    # become import_amount.
+    for node in raw_nodes:
+        args = node.setdefault("args", {})
+        if str(args.get("domain", "")).casefold() != "trade":
+            continue
+        if str(args.get("metric", "")).casefold() != "country_rank":
+            continue
+        flow = str(args.get("flow", "")).casefold()
+        if flow == "export":
+            args["metric"] = "export_amount"
+            args["operation"] = "country_rank"
+        elif flow == "import":
+            args["metric"] = "import_amount"
+            args["operation"] = "country_rank"
+
+    # Trade scope is an input dimension, not a row dimension.  Gemma may
+    # express ``한국의 수입`` as a filter(reporter_country=한국) after a
+    # generic import retrieval.  Normalize that typed representation to the
+    # existing trade capability contract rather than aliasing it to the
+    # partner country column (which would return the wrong population).
+    scope_filter_replacements: dict[str, str] = {}
+    for node in raw_nodes:
+        if str(node.get("operator")) != Operator.FILTER.value:
+            continue
+        args = node.setdefault("args", {})
+        predicate = args.get("predicate")
+        if not isinstance(predicate, Mapping):
+            continue
+        field = str(predicate.get("field", "")).casefold()
+        slot = {"reporter_country": "reporter_country", "partner_country": "partner_country"}.get(field)
+        if slot is None:
+            continue
+        inputs = node.get("inputs") or []
+        if len(inputs) != 1 or not isinstance(inputs[0], Mapping):
+            continue
+        source = upstream_retrieve(str(inputs[0].get("node_id")))
+        if source is None or str(source.get("args", {}).get("domain", "")).casefold() != "trade":
+            continue
+        source.setdefault("args", {})[slot] = predicate.get("value")
+        scope_filter_replacements[str(node.get("node_id"))] = str(source.get("node_id"))
+
+    # A country-share projection is a capability/output contract, not a
+    # physical column that can be invented from an import-value series.  When
+    # the same trade query requests a share field, select the existing
+    # share-capable trade capability; it still returns the amount/value and
+    # country dimensions needed by the projection.
+    share_fields = {"import_share", "country_share", "share_percentage"}
+    for node in raw_nodes:
+        if str(node.get("operator")) != Operator.PROJECT.value:
+            continue
+        fields = {str(field).casefold() for field in (node.get("args", {}).get("fields") or [])}
+        if not fields.intersection(share_fields):
+            continue
+        source = upstream_retrieve(str((node.get("inputs") or [{}])[0].get("node_id")))
+        if source is not None and str(source.get("args", {}).get("domain", "")).casefold() == "trade":
+            metric = str(source.setdefault("args", {}).get("metric", "")).casefold()
+            if metric in {"", "import_value", "import_amount", "import_weight"}:
+                source["args"]["metric"] = "import_share"
+
+    if scope_filter_replacements:
+        for node in raw_nodes:
+            rewritten_inputs = []
+            for ref in node.get("inputs", []) or []:
+                item = dict(ref)
+                item_id = str(item.get("node_id"))
+                item["node_id"] = scope_filter_replacements.get(item_id, item_id)
+                rewritten_inputs.append(item)
+            node["inputs"] = rewritten_inputs
+        payload["roots"] = [scope_filter_replacements.get(str(root), root)
+                             for root in payload.get("roots", [])]
+        raw_nodes = [node for node in raw_nodes if str(node.get("node_id")) not in scope_filter_replacements]
+        nodes = {str(node.get("node_id")): node for node in raw_nodes
+                 if node.get("node_id") is not None}
+    # Forecast is a distinct typed output, even when the model only emits
+    # ``output=time_series``.  Use the already parsed requirement to recover
+    # the missing capability metric; do not infer it from the question text.
+    # Historical price series have a different period kind and are untouched.
+    forecast_requirements = [item for item in (semantic_requirements or [])
+                             if str(item.get("domain", "")).casefold() == "price"
+                             and str(item.get("metric", "")).casefold() == "price_forecast"
+                             and isinstance(item.get("period"), Mapping)
+                             and item["period"].get("kind") == "future_horizon"]
+    if forecast_requirements:
+        for node in raw_nodes:
+            if str(node.get("operator")) != Operator.RETRIEVE.value:
+                continue
+            args = node.setdefault("args", {})
+            period = args.get("period")
+            if (str(args.get("domain", "")).casefold() == "price"
+                    and isinstance(period, Mapping)
+                    and period.get("kind") == "future_horizon"
+                    and not args.get("metric")):
+                args["metric"] = "price_forecast"
+
+    payload["nodes"] = raw_nodes
+    def inferred_value_field(node_id: str, seen: set[str] | None = None) -> str | None:
+        """Infer a comparison value from the typed graph, not row order.
+
+        This is only used when a compare node omitted its fields.  It follows
+        the declared operator/metric contract through presentation and
+        calculation nodes; it never invents a value or reads the user text.
+        """
+        seen = set() if seen is None else seen
+        if node_id in seen:
+            return None
+        seen.add(node_id)
+        node = nodes.get(node_id)
+        if not node:
+            return None
+        args = node.get("args") or {}
+        operator = str(node.get("operator", ""))
+        if operator == Operator.RETRIEVE.value:
+            calculation = str(args.get("calculation") or "").casefold()
+            if calculation in {"yoy", "year_over_year", "annual_change", "change_pct", "percent_change"}:
+                return "change_pct"
+            metric = str(args.get("metric") or args.get("domain") or "").casefold()
+            return value_fields.get(metric)
+        if operator == Operator.PROJECT.value:
+            fields = [str(field) for field in (args.get("fields") or [])]
+            for field in ("value", "price", "production_volume", "reserves_volume", "change_pct"):
+                if field in fields:
+                    return field
+            refs = node.get("inputs") or []
+            return inferred_value_field(str(refs[0].get("node_id")), seen) if len(refs) == 1 and isinstance(refs[0], Mapping) else None
+        if operator == Operator.CALCULATE.value:
+            calculation = str(args.get("calculation") or args.get("operation") or "").casefold()
+            if calculation in {"yoy", "year_over_year", "annual_change", "change_pct", "percent_change"}:
+                return "change_pct"
+            output_field = args.get("output_field")
+            if isinstance(output_field, str) and output_field:
+                return output_field
+        if operator == Operator.AGGREGATE.value:
+            output_field = args.get("output_field") or args.get("field")
+            if isinstance(output_field, str) and output_field:
+                return output_field
+        refs = node.get("inputs") or []
+        if len(refs) == 1 and isinstance(refs[0], Mapping):
+            return inferred_value_field(str(refs[0].get("node_id")), seen)
+        return None
+
+    # A historical series followed by a future forecast is a temporal
+    # continuation when the graph expresses a generic join, not a user
+    # requested comparison.  Preserve explicit compare nodes; only normalize
+    # the untyped join shape when the two typed requirements provide the
+    # distinct trailing/future periods and the same mineral.
+    historical_requirements = [item for item in (semantic_requirements or [])
+                               if str(item.get("domain", "")).casefold() == "price"
+                               and isinstance(item.get("period"), Mapping)
+                               and item["period"].get("kind") == "trailing_months"]
+    explicit_comparison = any(
+        str(item.get("comparison_operation") or item.get("operation") or "").casefold()
+        in {"compare", "side_by_side", "difference", "ratio", "percent_change", "same_period", "same_period_compare"}
+        for item in (semantic_requirements or [])
+    )
+    if historical_requirements and forecast_requirements and not explicit_comparison:
+        for node in raw_nodes:
+            if str(node.get("operator")) not in {Operator.JOIN.value, Operator.COMPARE.value}:
+                continue
+            if (str(node.get("operator")) == Operator.COMPARE.value
+                    and str((node.get("args") or {}).get("operation", "side_by_side")).casefold()
+                    not in {"side_by_side", ""}):
+                continue
+            inputs = node.get("inputs") or []
+            if len(inputs) != 2 or any(not isinstance(ref, Mapping) for ref in inputs):
+                continue
+            upstream = [nodes.get(str(ref.get("node_id"))) for ref in inputs]
+            if any(item is None or str(item.get("operator")) != Operator.RETRIEVE.value for item in upstream):
+                continue
+            kinds = [((item.get("args") or {}).get("period") or {}).get("kind") for item in upstream]
+            metrics = [str((item.get("args") or {}).get("metric") or "").casefold() for item in upstream]
+            minerals = [str((item.get("args") or {}).get("mineral") or "") for item in upstream]
+            if (set(kinds) == {"trailing_months", "future_horizon"}
+                    and "price_forecast" in metrics
+                    and len(set(minerals)) == 1):
+                node["operator"] = Operator.COMPARE.value
+                node["args"] = {"operation": "temporal_continuation"}
+
     for node in payload.get("nodes", []):
         if not isinstance(node, dict) or node.get("operator") != Operator.COMPARE.value:
             continue
@@ -402,9 +682,22 @@ def _normalize_relation_contract(payload: dict[str, Any]) -> dict[str, Any]:
         metrics = [str(item.get("args", {}).get("metric") or item.get("args", {}).get("domain") or "").casefold()
                    for item in upstream]
         if not args.get("field") and not args.get("fields") and not (args.get("left_field") and args.get("right_field")):
-            left_field, right_field = (value_fields.get(metrics[0]), value_fields.get(metrics[1]))
+            left_field, right_field = (inferred_value_field(str(inputs[0]["node_id"])),
+                                       inferred_value_field(str(inputs[1]["node_id"])))
+            left_field = left_field or value_fields.get(metrics[0])
+            right_field = right_field or value_fields.get(metrics[1])
             if left_field and right_field:
                 args["left_field"], args["right_field"] = left_field, right_field
+        # A model can spell a forecast operand as ``value`` even though the
+        # forecast capability's canonical row exposes ``predicted_price``.
+        # Correct only this typed output-contract mismatch; explicit fields for
+        # other capabilities remain untouched.
+        for side, ref in (("left_field", inputs[0]), ("right_field", inputs[1])):
+            upstream = nodes.get(str(ref["node_id"]))
+            upstream_args = upstream.get("args", {}) if upstream else {}
+            if (str(upstream_args.get("metric", "")).casefold() == "price_forecast"
+                    and args.get(side) in {"value", "price"}):
+                args[side] = "predicted_price"
         if not args.get("join_key") and not args.get("on") and not args.get("left_on") and not args.get("right_on"):
             if all(metric in series_metrics for metric in metrics):
                 args["join_key"] = "date"
@@ -539,6 +832,9 @@ async def _coverage_repair(
     semantic_requirements: list[dict[str, Any]],
 ) -> ASTProgramModel:
     """Perform one bounded graph repair using only reported invariant violations."""
+    deterministic = _deterministic_coverage_repair(previous_program, report, semantic_requirements)
+    if deterministic is not None:
+        return deterministic
     invocation = await asyncio.to_thread(
         llm.invoke,
         task="semantic_ast_coverage_repair",
@@ -557,6 +853,106 @@ async def _coverage_repair(
         max_tokens=1400,
     )
     return ASTProgramModel.model_validate(_normalize_relation_contract(invocation.output.model_dump(mode="json")))
+
+
+def _deterministic_coverage_repair(
+    previous_program: Mapping[str, Any], report: CoverageReport,
+    semantic_requirements: list[dict[str, Any]],
+) -> ASTProgramModel | None:
+    """Repair only a canonical trade scope lost at the AST boundary.
+
+    This is deliberately narrower than a second planner: it copies an already
+    parsed typed dimension onto the matching trade retrieval and changes no
+    entity, metric, join, or branch.  If the graph has multiple candidates or
+    the violation is another kind, the normal single bounded LLM repair is
+    retained.
+    """
+    if not report.violations:
+        return None
+    reasons = {item.reason for item in report.violations}
+    if reasons <= {"CAPABILITY_SELECTION_MISMATCH", "ENTITY_PRESERVATION_FAILED"} \
+            and "CAPABILITY_SELECTION_MISMATCH" in reasons:
+        return _repair_trade_rank_output_contract(previous_program, report, semantic_requirements)
+    if any(item.reason != "ENTITY_PRESERVATION_FAILED" for item in report.violations):
+        return None
+    trade_requirements = [
+        item for item in semantic_requirements
+        if str(item.get("domain", "")).casefold() == "trade"
+        and item.get("scope") is not None
+    ]
+    if not trade_requirements:
+        return None
+    payload = {
+        "nodes": [dict(node) for node in previous_program.get("nodes", []) if isinstance(node, Mapping)],
+        "roots": list(previous_program.get("roots", [])),
+    }
+    candidates = []
+    for node in payload["nodes"]:
+        args = node.setdefault("args", {})
+        if (str(node.get("operator", "")) == Operator.RETRIEVE.value
+                and str(args.get("domain", "")).casefold() == "trade"):
+            candidates.append(node)
+    if len(candidates) != len(trade_requirements):
+        return None
+    for requirement, node in zip(trade_requirements, candidates):
+        scope = requirement.get("scope")
+        if scope is not None:
+            node.setdefault("args", {})["scope"] = scope
+    return ASTProgramModel.model_validate(_normalize_relation_contract(payload))
+
+
+def _repair_trade_rank_output_contract(
+    previous_program: Mapping[str, Any], report: CoverageReport,
+    semantic_requirements: list[dict[str, Any]],
+) -> ASTProgramModel | None:
+    """Promote an unambiguous trade series input to the rank capability.
+
+    This is a bounded contract repair, not a second planner.  It is allowed
+    only when the typed requirement already says ``trade.country_rank`` and
+    exactly one physical trade series retrieve is the incompatible candidate.
+    The existing scope/mineral and graph edges are preserved.
+    """
+    required = [item for item in semantic_requirements
+                if str(item.get("domain", "")).casefold() == "trade"
+                and str(item.get("metric", "")).casefold() in {"country_rank", "country_share", "import_share"}]
+    if not required or not all(item.details.get("required_capability") == "trade.country_rank"
+                               for item in report.violations):
+        if not required or any(item.reason != "ENTITY_PRESERVATION_FAILED"
+                               and item.details.get("required_capability") != "trade.country_rank"
+                               for item in report.violations):
+            return None
+    payload = {
+        "nodes": [dict(node) for node in previous_program.get("nodes", []) if isinstance(node, Mapping)],
+        "roots": list(previous_program.get("roots", [])),
+    }
+    candidates = []
+    for node in payload["nodes"]:
+        args = node.setdefault("args", {})
+        if (str(node.get("operator", "")) == Operator.RETRIEVE.value
+                and str(args.get("domain", "")).casefold() == "trade"
+                and str(args.get("metric", "")).casefold() in {"import_value", "export_value"}
+                and str(args.get("operation", "")).casefold() not in {"country_rank", "rank"}):
+            candidates.append(node)
+    if len(candidates) != len(required):
+        return None
+    for node in candidates:
+        args = node["args"]
+        flow = str(args.get("flow", "import")).casefold()
+        args["metric"] = "export_amount" if flow == "export" else "import_amount"
+        args["operation"] = "country_rank"
+        matching = next((item for item in required
+                         if str(item.get("flow", "import")).casefold() == flow), required[0])
+        if matching.get("scope") is not None:
+            args["scope"] = matching["scope"]
+        retrieve_id = str(node.get("node_id"))
+        for consumer in payload["nodes"]:
+            refs = consumer.get("inputs") or []
+            if (str(consumer.get("operator", "")) == Operator.RANK.value
+                    and any(isinstance(ref, Mapping) and str(ref.get("node_id")) == retrieve_id for ref in refs)):
+                field = str(consumer.get("args", {}).get("field", "")).casefold()
+                if field in {"import_value", "export_value"}:
+                    consumer.setdefault("args", {})["field"] = "export_amount" if flow == "export" else "import_amount"
+    return ASTProgramModel.model_validate(_normalize_relation_contract(payload))
 
 
 async def _parse_ast(
@@ -602,7 +998,11 @@ async def _parse_ast(
             "history:와 result:는 서로 다른 namespace이며 교체하거나 조합하지 않는다. "
             "reference_scope=active의 InputRef는 active_input_references에서만 선택한다. "
             "활성 출력이 하나이면 기존 previous 별칭을 사용해도 된다. "
-            "현재 AST 내부 참조는 생성한 node_id만 사용한다."
+            "현재 AST 내부 참조는 생성한 node_id만 사용한다. "
+            "파생 metric은 base metric과 temporal operation을 분리한다. "
+            "예를 들어 resource_yoy는 resource production 조회와 yoy 계산을 보존하거나, "
+            "기존 resource.yoy capability를 명시적 calculation=yoy로 호출한다. "
+            "production_yoy, price_yoy, inventory_yoy도 같은 규칙을 따르며 base metric만 남기지 않는다."
         )
         if attempt:
             instructions += (
@@ -648,7 +1048,7 @@ async def _parse_ast(
             parse_error = ValueError("semantic_requirements_empty")
             continue
         payload = invocation.output.model_dump(mode="json")
-        payload = _normalize_relation_contract(payload)
+        payload = _normalize_relation_contract(payload, semantic_requirements)
         declaration = ASTProgramModel.model_validate(payload)
         # Only preserve an already-established saved-result presentation
         # contract.  A new query's first model output may contain an invalid
@@ -966,8 +1366,10 @@ def _resolve_row_field(rows: list[Any], requested: str | None, *, strict: bool =
         "inventory": {"inventory", "invt", "inventory_qty", "재고", "재고량", "quantity"},
         "country": {"country", "country_name", "country_nm", "country_name_ko", "country_name_en", "국가", "국가명", "수입국", "상대국"},
         "country_code": {"country_code", "country_cd", "ntn_cd", "ntn_eng_cd", "국가코드"},
-        "share_pct": {"share_pct", "share_percentage", "share", "비중", "점유율", "수입비중", "수입 비중"},
-        "share_percentage": {"share_percentage", "share_pct", "share", "비중", "점유율", "수입비중", "수입 비중"},
+        "share_pct": {"share_pct", "share_percentage", "import_share", "country_share", "share", "비중", "점유율", "수입비중", "수입 비중"},
+        "share_percentage": {"share_percentage", "share_pct", "import_share", "country_share", "share", "비중", "점유율", "수입비중", "수입 비중"},
+        "import_share": {"import_share", "share_percentage", "share_pct", "country_share", "share", "비중", "점유율", "수입비중", "수입 비중"},
+        "country_share": {"country_share", "share_percentage", "import_share", "share_pct", "share", "비중", "점유율", "수입비중", "수입 비중"},
         "import_amount": {"import_amount", "수입액", "수입금액", "금액"},
         "import_value": {"import_value", "수입액", "수입금액", "금액"},
         "period": {"period", "기간", "대상기간", "기준기간", "기준연도"},
@@ -979,11 +1381,24 @@ def _resolve_row_field(rows: list[Any], requested: str | None, *, strict: bool =
         # a human-readable unit/period annotation, e.g. ``share_pct`` and
         # ``share_pct(수입금액 비중(...))``.  Treating both as ambiguous loses
         # an otherwise valid typed projection.
+        if requested in keys:
+            return requested
         exact_matches = [key for key in keys if key in requested_names]
         if len(exact_matches) == 1:
             return exact_matches[0]
         matches = [key for key in keys if key in requested_names or any(key.startswith(alias + "(") for alias in requested_names)]
-        return matches[0] if len(matches) == 1 else None
+        if len(matches) == 1:
+            return matches[0]
+        # Resource observations are annual and expose ``year`` rather than a
+        # day-level date.  Preserve that typed temporal value when a generic
+        # projection asks for date; do not synthesize a month/day or convert
+        # an ambiguous set of temporal columns.
+        if requested.casefold() == "date":
+            year_matches = [key for key in keys if key in aliases["year"] or
+                            any(key.startswith(alias + "(") for alias in aliases["year"])]
+            if len(year_matches) == 1:
+                return year_matches[0]
+        return None
     for key in keys:
         if key in requested_names or any(key.startswith(alias + "(") for alias in requested_names):
             return key
@@ -1006,7 +1421,7 @@ _CANONICAL_FIELD_ALIASES: dict[str, tuple[str, ...]] = {
     "production_volume": ("production_volume", "production", "prdctn_quty_ton", "생산량"),
     "reserves_volume": ("reserves_volume", "reserves", "burudg_quty_ton", "매장량"),
     "import_value": ("import_value", "import_amount", "수입액", "수입금액", "금액"),
-    "share_pct": ("share_pct", "share_percentage", "비중", "점유율", "수입비중", "수입 비중"),
+    "share_pct": ("share_pct", "share_percentage", "import_share", "country_share", "비중", "점유율", "수입비중", "수입 비중"),
     "unit": ("unit", "단위", "원시 단위 코드", "weight_unit_code", "mass_unit_cd"),
 }
 
@@ -1059,6 +1474,28 @@ def _capability_rows(rows: list[dict[str, Any]], action_id: str) -> list[dict[st
         and _resolve_row_field([row], "share_percentage", strict=True)
     ]
     return ranked or rows
+
+
+def _canonicalize_trade_rank_rows(rows: list[dict[str, Any]], metric: str | None) -> list[dict[str, Any]]:
+    """Expose the declared trade-rank measure at the capability boundary.
+
+    The structured trade adapter may label its aggregate column as
+    ``total(<display label>)``. That physical label is not a stable input for
+    compare/projection nodes. Only a typed ``trade.country_rank`` call may map
+    a unique total column to its declared measure.
+    """
+    canonical = str(metric or "").casefold()
+    if canonical not in {"import_amount", "export_amount", "import_weight", "export_weight"}:
+        return rows
+    normalized: list[dict[str, Any]] = []
+    for row in rows:
+        copied = dict(row)
+        if canonical not in copied:
+            total_keys = [key for key in copied if _base_column_name(key) in {"total", "총계"}]
+            if len(total_keys) == 1:
+                copied[canonical] = copied[total_keys[0]]
+        normalized.append(copied)
+    return normalized
 
 
 def _typed_unit(raw: str | None) -> str | None:
@@ -1145,6 +1582,8 @@ def _typed_from_retrieval(result: Any, action: ActionCall, *, input_entities: li
     rows = [_canonicalize_row(row) for row in _rows(list(evidence))]
     action_id = action.action_id
     rows = _capability_rows(rows, action_id)
+    if action_id == "trade.country_rank":
+        rows = _canonicalize_trade_rank_rows(rows, action.slots.metric)
     if action_id == "indicator.series":
         rows = _canonical_indicator_rows(rows, action)
     if os.getenv("MULTIHOP_INTERNAL_TRACE") == "1":
@@ -1177,7 +1616,7 @@ def _typed_from_retrieval(result: Any, action: ActionCall, *, input_entities: li
         metric = "price"
     elif action_id == "forecast.price":
         metric = "price_forecast"
-    elif action_id == "inventory.latest":
+    elif action_id in {"inventory.latest", "inventory.series"}:
         metric = "inventory"
     elif action_id == "indicator.series":
         metric = "indicator"
@@ -1200,6 +1639,7 @@ def _typed_from_retrieval(result: Any, action: ActionCall, *, input_entities: li
         "document.lookup": ValueType.DOCUMENT_EVIDENCE,
         "resource.rank": ValueType.FACT_SET,
         "inventory.latest": ValueType.FACT_SET,
+        "inventory.series": ValueType.TIME_SERIES,
         "indicator.series": ValueType.TIME_SERIES,
     }.get(action_id, ValueType.FACT_SET)
     status = getattr(action_result, "status", "success") if action_result else ("success" if evidence else "no_data")
@@ -1267,6 +1707,16 @@ def _canonical_indicator_rows(rows: list[dict[str, Any]], action: ActionCall) ->
     normalized: list[dict[str, Any]] = []
     for row in rows:
         copied = dict(row)
+        if "date" not in copied:
+            for source_field in ("crtr_ymd", "obs_date", "observed_date", "period"):
+                raw_date = copied.get(source_field)
+                if raw_date is None:
+                    continue
+                date_text = str(raw_date).strip()
+                if len(date_text) == 8 and date_text.isdigit():
+                    date_text = f"{date_text[:4]}-{date_text[4:6]}-{date_text[6:8]}"
+                copied["date"] = date_text
+                break
         if "value" not in copied:
             for source_field in ("series", "indx", "center"):
                 numeric = _numeric(copied.get(source_field))
@@ -1297,6 +1747,13 @@ def _action_id(node: Any) -> str:
         return "document.retrieve"
     domain = str(args.get("domain", "")).casefold()
     metric = str(args.get("metric", "")).casefold()
+    if domain == "trade" and str(args.get("operation", "")).casefold() in {"country_rank", "rank"}:
+        return "trade.country_rank"
+    if (domain == "resource" and metric in {"resource_yoy", "production_yoy", "reserves_yoy"}) or (
+        domain == "resource" and str(args.get("calculation") or args.get("operation") or "").casefold()
+        in {"yoy", "year_over_year", "annual_change"}
+    ):
+        return "resource.yoy"
     if domain == "forecast" or metric == "price_forecast":
         return "forecast.price"
     price_metrics = {"rank", "price_change", "price_change_rate", "price_growth_rate", "change", "volatility"}
@@ -1315,6 +1772,13 @@ def _action_id(node: Any) -> str:
     if domain in {"resource", "production", "reserves"} or metric in {"production", "production_volume", "reserves", "reserves_volume", "production_change"}:
         return "resource.rank"
     if domain == "inventory":
+        period = args.get("period")
+        period_kind = period.get("kind") if isinstance(period, Mapping) else None
+        metric_name = _canonical(metric)
+        if metric_name in {"series", "inventory_series", "trend", "time_series"} or period_kind in {
+            "trailing_months", "range", "calendar_year",
+        }:
+            return "inventory.series"
         return "inventory.latest"
     if domain == "indicator":
         return "indicator.series"
@@ -1344,6 +1808,13 @@ def _action_slots(node: Any, mineral: str | None = None, minerals: list[str] | N
         metric = metric if metric in {"import_amount", "import_weight", "export_amount", "export_weight"} else "import_amount"
     if domain == "resource" or metric in {"production_volume", "reserves_volume", "production_change"}:
         metric = {"production_volume": "production", "reserves_volume": "reserves", "production_change": "production"}.get(metric, metric)
+    if domain == "resource" and metric == "resource_rank":
+        # ``resource_rank`` is the semantic ranking operation, not a physical
+        # measure.  The default resource population is production; reserves
+        # must remain explicit through metric/selection.measure.
+        metric = "production"
+    if domain == "resource" and metric in {"resource_yoy", "production_yoy", "reserves_yoy"}:
+        metric = "production"
     if domain == "resource" and metric not in {"production", "reserves"}:
         raise ValueError("resource_metric_required")
     if _action_id(node) == "resource.rank" and any(args.get(name) for name in ("reporter_country", "partner_country")):
@@ -1474,6 +1945,12 @@ class LiveOperatorFactory:
     def _derive(self, node: Any, inputs: Mapping[str, TypedResult]) -> TypedResult:
         if node.operator in {Operator.JOIN, Operator.COMPARE}:
             return execute_relation(node, inputs, lambda rows, field: _resolve_row_field(rows, field, strict=True))
+        if node.operator == Operator.CALCULATE.value and str(node.args.get("calculation", "")).casefold() == "ratio" and len(inputs) == 2:
+            left, right = inputs.values()
+            return calculate_ratio_between(
+                left, right, node.args,
+                lambda rows, field: _resolve_row_field(rows, field, strict=True),
+            )
         if any(result.status == ResultStatus.PARTIAL for result in inputs.values()) and node.operator in {
             Operator.AGGREGATE, Operator.CALCULATE, Operator.RANK, Operator.TOP_K,
             Operator.ARG_MAX, Operator.ARG_MIN, Operator.COMPARE,
@@ -1645,6 +2122,35 @@ class LiveOperatorFactory:
                 source = replace(source, warnings=tuple(dict.fromkeys((*source.warnings, "heterogeneous_units"))))
             if source and source.result_type == ValueType.MINERAL_SET and rows and all(isinstance(row, str) for row in rows):
                 mappings = [{"mineral": row} for row in rows]
+            if source and source.metric == "price" and not any(
+                isinstance(row, Mapping) and "price_measure" in row for row in mappings
+            ):
+                # Criterion/measure identity is optional for legacy
+                # REPRESENTATIVE/EXPLICIT rows.  If the parser emits the ALL
+                # identity projection speculatively but the source does not
+                # provide those fields, do not turn an otherwise valid price
+                # series into a projection failure.
+                fields = [field for field in fields if field not in {
+                    "price_measure", "price_measure_label", "price_criterion",
+                    "price_criterion_serial",
+                }]
+            # ALL price cardinality carries source-owned measure identity.  A
+            # parser may still request the common date/price projection; do
+            # not silently collapse low/high/normal rows into an anonymous
+            # series.  Preserve identity columns only when the upstream
+            # canonical result actually provides them.
+            if any(
+                isinstance(row, Mapping) and "price_measure" in row for row in mappings
+            ):
+                fields = list(fields)
+                for identity_field in (
+                    "price_measure", "price_measure_label", "price_criterion",
+                    "price_criterion_serial",
+                ):
+                    if identity_field not in fields and _resolve_row_field(
+                        mappings, identity_field, strict=True
+                    ) is not None:
+                        fields.append(identity_field)
             resolved = {}
             metadata = {}
             for field in fields:
@@ -1709,8 +2215,17 @@ class LiveOperatorFactory:
             calculation = args.get("calculation")
             if calculation in SERIES_CALCULATIONS:
                 return calculate_series(source, args, lambda data, field: _resolve_row_field(data, field, strict=True))
-            if str(calculation).lower() in {"share", "hhi"}:
-                return calculate_share(source, args, lambda data, field: _resolve_row_field(data, field, strict=True))
+            normalized_calculation = str(calculation).lower()
+            if normalized_calculation in {"share", "hhi", "division", "percentage", "percent"}:
+                # ``division``/``percentage`` are accepted semantic aliases
+                # for a population-share calculation.  The operation still
+                # requires a complete upstream population and uses the same
+                # deterministic share implementation.
+                share_args = dict(args)
+                share_args["calculation"] = "hhi" if normalized_calculation == "hhi" else "share"
+                return calculate_share(source, share_args, lambda data, field: _resolve_row_field(data, field, strict=True))
+            if normalized_calculation == "ratio":
+                return calculate_ratio(source, args, lambda data, field: _resolve_row_field(data, field, strict=True))
             if calculation in {"change_pct", "percent_change"} and isinstance(value, Mapping):
                 start, end = _numeric(value.get("start")), _numeric(value.get("end"))
                 if start is not None and start != 0 and end is not None:

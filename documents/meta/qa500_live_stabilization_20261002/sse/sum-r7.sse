@@ -1,0 +1,15 @@
+data: {"session_id": "e65e5f34-562d-4811-9315-52e53c794d67"}
+
+event: status
+data: {"stage": 1, "label": "질문 조건 확인"}
+
+event: status
+data: {"stage": 3, "label": "데이터 분석 중", "status": "데이터 분석 중"}
+
+event: status
+data: {"stage": 3, "label": "데이터 분석 중", "status": "조회실패", "failure_reason": "aggregate_input_incomplete"}
+
+data: {"delta": "aggregate_input_incomplete"}
+
+event: done
+data: {"done": true, "abstained": true, "abstain_reason": "aggregate_input_incomplete", "citations": []}

@@ -119,6 +119,8 @@ class KomirJsonLLM:
     def __init__(self, cfg: dict | None = None) -> None:
         self._chat = get_chat_client(cfg)
         self._json_mode = True
+        # Opt-in per client: existing production callers retain their wire mode.
+        self._schema_constrained = (cfg or {}).get("structured_output_mode") == "json_schema"
 
     def invoke(
         self,
@@ -147,6 +149,7 @@ class KomirJsonLLM:
             "input": dict(payload),
             "output_schema": output_model.__name__,
             "max_tokens": max_tokens,
+            "structured_output_mode": "json_schema" if self._schema_constrained else "json_object",
             "attempts": [],
         }
         for attempt in range(2):
@@ -162,14 +165,20 @@ class KomirJsonLLM:
                     separators=(",", ":"),
                 )
             attempt_record: dict[str, Any] = {"attempt": attempt + 1}
+            completion_kwargs = {"json_schema": schema} if self._schema_constrained else {}
             try:
                 result = self._chat.complete(
                     system_prompt, user_content, max_tokens=max_tokens, trace_name=task,
+                    **completion_kwargs,
                 )
                 raw_content = result.text
                 attempt_record["raw_content"] = raw_content
+                attempt_record["finish_reason"] = getattr(result, "finish_reason", None)
+                attempt_record["model"] = getattr(result, "model", None)
+                attempt_record["usage"] = getattr(result, "usage", None)
                 previous_content = raw_content
                 parsed = parse_json_object(previous_content)
+                attempt_record["parsed_json"] = parsed
                 validated = output_model.model_validate(parsed)
                 attempt_record["parsed_output"] = validated.model_dump(mode="json")
                 call_record["attempts"].append(attempt_record)
@@ -179,6 +188,12 @@ class KomirJsonLLM:
                 previous_error = f"{type(exc).__name__}: {exc}"
                 attempt_record.setdefault("raw_content", previous_content)
                 attempt_record["error"] = previous_error
+                attempt_record["error_kind"] = (
+                    "OUTPUT_TRUNCATED" if attempt_record.get("finish_reason") == "length"
+                    else "SCHEMA_VALIDATION_ERROR" if isinstance(exc, ValidationError)
+                    else "JSON_PARSE_ERROR" if isinstance(exc, json.JSONDecodeError)
+                    else "OUTPUT_VALIDATION_ERROR"
+                )
                 call_record["attempts"].append(attempt_record)
                 # "LLM 경과" 로깅(사용자 요청, 2026-08-28) — 이 복구 재시도는
                 # 지금까지 call_record에만 남고 로거로는 안 나갔다. 모든

@@ -1,0 +1,20 @@
+data: {"session_id": "7483691c-099b-4147-8e24-7e92558dadd4"}
+
+event: status
+data: {"stage": 1, "label": "질문 조건 확인"}
+
+event: status
+data: {"stage": 3, "label": "데이터 분석 중", "status": "데이터 분석 중"}
+
+event: status
+data: {"stage": 4, "label": "답변 생성 중"}
+
+data: {"delta": "표시된 7개 항목 중 7개 처리 완료, 0개 처리 불가.\n"}
+
+data: {"delta": "| mineral | status | reason | output |\n| --- | --- | --- | --- |\n| 망간 | success | None | latest_value |\n| 크롬 | success | None | latest_value |\n| 티타늄 | success | None | latest_value |\n| 안티모니 | success | None | latest_value |\n| 몰리브덴 | success | None | latest_value |\n| 니오븀 | success | None | latest_value |\n| 네오디뮴 | success | None | latest_value |"}
+
+event: table
+data: {"schema_version": 1, "block_id": "multihop-table", "columns": ["mineral", "status", "reason", "output"], "rows": [["망간", "success", "None", "latest_value"], ["크롬", "success", "None", "latest_value"], ["티타늄", "success", "None", "latest_value"], ["안티모니", "success", "None", "latest_value"], ["몰리브덴", "success", "None", "latest_value"], ["니오븀", "success", "None", "latest_value"], ["네오디뮴", "success", "None", "latest_value"]], "columns_meta": [{"key": "mineral", "label": "mineral", "display": "mineral", "type": "string", "unit": null}, {"key": "status", "label": "status", "display": "status", "type": "string", "unit": null}, {"key": "reason", "label": "reason", "display": "reason", "type": "string", "unit": null}, {"key": "output", "label": "output", "display": "output", "type": "string", "unit": null}], "rows_typed": [["망간", "success", null, "latest_value"], ["크롬", "success", null, "latest_value"], ["티타늄", "success", null, "latest_value"], ["안티모니", "success", null, "latest_value"], ["몰리브덴", "success", null, "latest_value"], ["니오븀", "success", null, "latest_value"], ["네오디뮴", "success", null, "latest_value"]], "markdown": "| mineral | status | reason | output |\n| --- | --- | --- | --- |\n| 망간 | success | None | latest_value |\n| 크롬 | success | None | latest_value |\n| 티타늄 | success | None | latest_value |\n| 안티모니 | success | None | latest_value |\n| 몰리브덴 | success | None | latest_value |\n| 니오븀 | success | None | latest_value |\n| 네오디뮴 | success | None | latest_value |", "chart_hint": {"recommended": null, "alternatives": [], "reason": "값이 갈리는 숫자 계열 없음"}, "meta": {"source_index": 1, "source": "PageIndex 파생 사실 · 희소금속 월간동향", "as_of": null, "unit": null, "time_aggregation": null, "menu_source": null, "hidden_columns": []}, "source_index": 1, "source": "PageIndex 파생 사실 · 희소금속 월간동향"}
+
+event: done
+data: {"done": true, "abstained": false, "citations": [{"index": 1, "source": "PageIndex 파생 사실 · 희소금속 월간동향"}, {"index": 2, "source": "public.KO_MNRL_PRC"}], "bogus_citations": []}

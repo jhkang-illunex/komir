@@ -29,3 +29,11 @@ def test_extremum_price_selection_produces_value_and_date():
                    "return_fields": ["value", "date"]},
     )
     assert validate_requested_outputs([requirement], {"latest_price", "date"}) is None
+
+
+def test_bounded_inventory_legacy_latest_produces_series_output():
+    requirement = SemanticRequirement(
+        domain="inventory", metric="latest", mineral="니켈",
+        period={"kind": "trailing_months", "trailing_months": 12},
+    )
+    assert validate_requested_outputs([requirement], {"inventory_series", "date"}) is None

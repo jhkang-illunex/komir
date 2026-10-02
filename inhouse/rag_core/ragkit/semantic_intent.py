@@ -92,6 +92,7 @@ class SemanticRequirement(BaseModel):
     period: SemanticPeriod | None = None
     top_n: int | None = Field(default=None, ge=1, le=100)
     price_basis: str | None = None
+    criterion_mode: Literal["REPRESENTATIVE", "EXPLICIT", "ALL"] = "REPRESENTATIVE"
     currency: str | None = None
     price_group: Literal["strategic", "strategic_six", "strategic_ten", "battery_five"] | None = None
     metric_unit: Literal["amount", "weight"] | None = None
@@ -161,6 +162,11 @@ UNSUPPORTED_REQUEST와 적절한 unsupported_reason을 반환하고 requirements
 예: 용도와 최신 가격을 함께 요구하면 requested_outputs=["usage","latest_price"]로
 기록하고, requirements에도 concept/retrieve와 price/current를 각각 만든다.
 requested_outputs와 requirements의 output coverage가 맞지 않으면 불완전한 계획이다.
+
+가격 기준 cardinality는 criterion_mode로 보존한다. 기준을 지정하지 않은 일반 가격
+질의는 criterion_mode=REPRESENTATIVE, 특정 가격 기준을 지정한 질의는 EXPLICIT와
+price_basis를 함께 사용한다. "모든 가격", "전체 가격 기준"처럼 한 광종의 유효한
+가격 기준 전체를 요구한 경우에만 criterion_mode=ALL을 사용하며 price_basis는 비워 둔다.
 
 의미 요소는 조합 가능한 primitive로 분리한다.
 - 수입 집중도: domain=trade, metric=concentration, flow=import, scope=KR
@@ -565,6 +571,16 @@ def _normalize_semantic_plan(plan: SemanticPlan, message: str = "") -> SemanticP
             if len(item.minerals or []) < 2 and len(mentioned_minerals) >= 2:
                 updates["minerals"] = mentioned_minerals
             item = item.model_copy(update=updates)
+        # ``가격 추이/추세/흐름`` is a series request even when Gemma omits a
+        # period.  Use the established rolling-year default for an unbounded
+        # trend, while leaving explicit periods untouched.  This is a typed
+        # temporal normalization, not a question-specific shortcut.
+        if (item.domain == "price" and item.metric == "price_series"
+                and item.period is None
+                and any(marker in compact for marker in ("가격추이", "가격추세", "가격흐름"))):
+            item = item.model_copy(update={
+                "period": SemanticPeriod(kind="trailing_months", trailing_months=12),
+            })
         # Calendar years are lexical date fields. Preserve an explicit year
         # when the model omits period; never replace it with latest.
         if item.domain == "resource" and item.period is None:
@@ -612,6 +628,28 @@ def _normalize_semantic_plan(plan: SemanticPlan, message: str = "") -> SemanticP
             if start != item.period.start or end != item.period.end:
                 item = item.model_copy(update={"period": item.period.model_copy(update={"start": start, "end": end})})
         requirements.append(item)
+    # ``국가별 비중`` is a column of the country-rank result.  If the typed
+    # plan already contains that rank requirement, a second topic-less
+    # concentration requirement is an over-decomposition of the same output,
+    # not an independent HHI request.  Keep concentration when the user
+    # explicitly asks for concentration/HHI, or when no country-rank branch
+    # exists.  This is a semantic contract normalization, not a phrase or
+    # mineral-specific execution shortcut.
+    explicit_concentration = any(marker in message.casefold() for marker in ("hhi", "집중도", "집중도 지수"))
+    rank_keys = {
+        (item.domain, item.flow, item.mineral, item.scope)
+        for item in requirements
+        if item.domain == "trade" and item.metric == "country_rank"
+    }
+    if rank_keys and not explicit_concentration:
+        requirements = [
+            item for item in requirements
+            if not (
+                item.domain == "trade" and item.metric == "concentration"
+                and not item.topic
+                and (item.domain, item.flow, item.mineral, item.scope) in rank_keys
+            )
+        ]
     return plan.model_copy(update={"requirements": requirements})
 
 
@@ -747,8 +785,22 @@ def _to_intent_call(item: SemanticRequirement, index: int) -> Any:
                                             partner_country=item.partner_country,
                                             denominator_scope="reporter_product_trade" if item.trade_metric == "country_dependency" else None,
                                             period=_period_default(item.period)))
+    if item.domain == "inventory" and item.metric in {"series", "inventory_series", "trend", "time_series"}:
+        if not mineral:
+            raise SemanticResolutionError("inventory series requires mineral")
+        period = _period(item.period)
+        if period is None or period.kind == "latest":
+            raise SemanticResolutionError("inventory series requires a bounded period")
+        return IntentCall(requirement_id=_requirement_id(item, index), intent="inventory_series", role="data",
+                          slots=ActionSlots(mineral=mineral, period=period))
     if item.domain == "inventory" and item.metric in {"latest", "current"}:
         criterion_serial = int(mineral) if mineral and mineral.isdigit() else None
+        bounded_period = _period(item.period)
+        if bounded_period is not None and bounded_period.kind != "latest":
+            if not mineral or criterion_serial is not None:
+                raise SemanticResolutionError("inventory series requires mineral")
+            return IntentCall(requirement_id=_requirement_id(item, index), intent="inventory_series", role="data",
+                              slots=ActionSlots(mineral=mineral, period=bounded_period))
         if not mineral or criterion_serial is not None:
             if criterion_serial is None:
                 raise SemanticResolutionError("inventory requires mineral or criterion")
@@ -798,6 +850,7 @@ def _to_intent_call(item: SemanticRequirement, index: int) -> Any:
             mineral=mineral, period=price_period, price_operation=price_operation,
             price_yoy_basis=(item.aggregation or "monthly_average") if is_yoy else None,
             price_basis=item.price_basis, price_criterion_serial=(int(item.price_basis) if item.price_basis and item.price_basis.isdigit() else None), currency=item.currency,
+            criterion_mode=item.criterion_mode,
             selection_mode=selection.mode if selection is not None else None,
             selection_direction=selection.direction if selection is not None else None,
             selection_position=selection.position if selection is not None else None,
