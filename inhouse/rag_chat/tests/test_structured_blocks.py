@@ -75,6 +75,21 @@ class StructuredBlockTest(unittest.TestCase):
         self.assertEqual(s["title"], "최저가격 · 최고가격")
         self.assertEqual(spec["data_ref"], "t1-1")
 
+    def test_canonical_date_projection_is_x_axis_not_numeric_series(self):
+        table = {
+            "columns": ["date", "cmerc_prc", "hghst_prc", "lowst_prc", "mineral"],
+            "rows": [
+                ["20261001", "23111.69", "23623.44", "22599.94", "니켈"],
+                ["20260930", "22916.73", "23057.47", "22775.99", "니켈"],
+            ],
+        }
+        hint = recommend_chart(table)
+        self.assertEqual((hint["x"], hint["x_type"]), ("date", "date"))
+        self.assertEqual(hint["series"], ["cmerc_prc", "hghst_prc", "lowst_prc"])
+        self.assertNotIn("date", hint["series"])
+        spec = chart_spec(table, block_id="c", data_ref="t", source_index=1, source_label="fixture")
+        self.assertEqual((spec["spec"]["x"], spec["spec"]["x_type"]), ("date", "date"))
+
     def test_single_year_snapshot_bar_with_pie_alternative(self):
         table = extract_markdown_tables(_RESERVE_MD)[0]
         hint = recommend_chart(table)

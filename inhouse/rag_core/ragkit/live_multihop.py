@@ -9,8 +9,10 @@ from __future__ import annotations
 
 import asyncio
 import calendar
+import hashlib
 import json
 import logging
+import math
 import os
 import re
 from dataclasses import replace
@@ -26,9 +28,12 @@ from ._shared_root import ensure_shared_on_path
 
 ensure_shared_on_path(Path(__file__).resolve())
 
-from common.llm_client import KomirJsonLLM
+from common.llm_client import KomirJsonLLM, LLMOutputError
 
-from .action_contract import ActionCall, ActionPlan, ActionSlots, MINERAL_ALIASES, Period
+from .action_contract import (
+    ActionCall, ActionPlan, ActionSlots, ForecastCapabilityInput,
+    IndicatorSeriesInput, IndicatorSeriesRow, MINERAL_ALIASES, Period,
+)
 from .chatbot_events import ChatEvent, chart_spec, extract_markdown_tables, table_block, _verified_display_unit, _price_unit_from_codes
 from .chatbot_graph import retrieve_evidence
 from .history_context import ConversationContext, InMemoryHistoryStore, PostgresHistoryStore, Turn, UserUtterance
@@ -36,8 +41,12 @@ from .legacy_bridge import LegacyOperatorFactory
 from .lowering import PipeLowerer
 from .multihop_orchestrator import MultiHopOrchestrator
 from .pipe_runtime import ExecutionContext, ExecutionResult, FunctionStep, PipeRuntime, ResultStatus, TypedResult
-from .semantic_ir import Operator, RequirementNode, SemanticProgram, ValueType
+from .semantic_ir import Operator, RequirementNode, SemanticProgram, ValueType, _METRIC_FIELDS
+from .aast_coverage import CoverageReport, validate_aast
 from .relational_ops import execute_relation
+from .analytical_aggregate import aggregate as aggregate_rows, SUPPORTED_AGGREGATIONS
+from .analytical_share import calculate_share
+from .analytical_series import CALCULATIONS as SERIES_CALCULATIONS, calculate_series
 from common.langfuse_tracing import LangfuseEventTracer
 
 _logger = logging.getLogger(__name__)
@@ -50,17 +59,40 @@ def multihop_mode() -> str:
 
 class ASTInputModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    node_id: str = Field(min_length=1, max_length=80)
+    # A persisted reference contains turn_id plus a step_id, not just a local
+    # node id. Old hex-encoded history steps may also be longer than 80.
+    node_id: str = Field(min_length=1, max_length=2048)
     selector: str = "all"
     selector_value: str | int | None = None
 
 
 class ASTNodeModel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", json_schema_extra={
+        "allOf": [
+            {"if": {"properties": {"operator": {"enum": ["aggregate", "filter", "project"]}}, "required": ["operator"]},
+             "then": {"required": ["inputs"], "properties": {"inputs": {"minItems": 1, "maxItems": 1}}}},
+            {"if": {"properties": {"operator": {"enum": ["compare", "join"]}}, "required": ["operator"]},
+             "then": {"required": ["inputs"], "properties": {"inputs": {"minItems": 2, "maxItems": 2}}}},
+        ],
+    })
     node_id: str = Field(min_length=1, max_length=80)
     operator: str
     inputs: list[ASTInputModel] = []
-    args: dict[str, Any] = {}
+    args: dict[str, Any] = Field(default_factory=dict, json_schema_extra={
+        "properties": {
+            "aggregation": {"type": "string", "enum": sorted(SUPPORTED_AGGREGATIONS)},
+            "field": {"type": "string"}, "output_field": {"type": "string"},
+            "group_by": {"type": "array", "items": {"type": "string"}},
+            "fields": {"type": "array", "items": {"type": "string"}},
+            "left_field": {"type": "string"}, "right_field": {"type": "string"},
+            "predicate": {"type": "object", "properties": {
+                "field": {"type": "string"},
+                "operator": {"enum": ["equals", "not_equals", "greater_than", "less_than", "gte", "lte"]},
+                "value": {},
+            }, "required": ["field", "operator", "value"], "additionalProperties": False},
+        },
+        "description": "Flat operator arguments; no nested args object. One aggregate node = one aggregation.",
+    })
     expected_type: str = "unknown"
     constraints: dict[str, Any] = {}
     evidence_required: bool = True
@@ -69,6 +101,8 @@ class ASTNodeModel(BaseModel):
 class ASTProgramModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
     request_class: Literal["DATA_QUERY", "UNSUPPORTED_REQUEST"] = "DATA_QUERY"
+    result_access: Literal["query", "reference", "refresh"] = "query"
+    reference_scope: Literal["active", "explicit_history"] = "active"
     unsupported_reason: Literal[
         "PRIVILEGE_ESCALATION", "INTERNAL_DATA_REQUEST", "SYSTEM_CONTROL",
         "CODE_OR_SQL_EXECUTION", "EXTERNAL_RESOURCE_ACCESS", "OUTPUT_INJECTION",
@@ -76,6 +110,10 @@ class ASTProgramModel(BaseModel):
     ] | None = None
     nodes: list[ASTNodeModel] = Field(default_factory=list)
     roots: list[str] = Field(default_factory=list)
+
+
+class LivePlanError(ValueError):
+    """Semantic generation failed before data access; not missing source data."""
 
 
 AST_PROMPT = """자연어 BI 질문을 물리 Action 이름 없이 Typed Semantic AST JSON으로 변환한다.
@@ -93,6 +131,38 @@ nodes/roots는 빈 배열로 둔다. 정상 데이터 요구와 섞인 경우에
 validate_evidence.
 
 필수 원칙:
+- 먼저 데이터 입력(retrieve 또는 저장 결과 참조)을 만들고, 그 node_id를 연산의 inputs에
+  연결한다. aggregate의 args에 광종/기간을 넣는 것은 데이터 입력을 대체하지 않는다.
+  metric_fields는 조회가 제공하는 필드 계약이다. projection에는 해당 입력이 실제
+  제공하는 필드를 사용하고, 기간 메타데이터와 날짜별 date 필드를 혼동하지 않는다.
+- result_access=query는 새 독립 조회, reference는 저장 결과의 필터/목록/계산/표현 변경,
+  refresh는 저장 대상에 대한 명시적 새 관측 조회다. reference에서는 retrieve/retrieve_document/
+  for_each를 생성하지 않는다. 저장 값으로 project/filter/calculate를 수행한다.
+  refresh의 조회는 저장 결과의 광종 projection을 InputRef로 입력받는다. history 식별자를
+  predicate.value나 mineral 문자열로 넣거나, 저장 광종 목록을 정적 entity로 복사하지 않는다.
+- reference_scope=active는 현재 활성 턴의 최종 출력 참조다. 일반적인 후속 참조나 재조회는
+  active를 유지하며 이전 전체 모집단으로 범위를 넓히지 않는다. 사용자가 과거 턴 또는
+  원래 모집단을 명시적으로 선택한 경우만 explicit_history다. 다른 턴에 더 많은 필드가
+  있다는 것은 그 턴을 선택할 이유가 아니다. 의미를 바꾸지 말고 누락된 계약을 보고한다.
+- aggregate는 반드시 조회 또는 선행 연산 inputs를 가진다. args는 aggregation
+  (sum/average/count/min/max/first/last/stddev_pop/stddev_samp), field, 선택적 group_by와
+  output_field다. 계산 이름을 calculation에 넣지 않는다. first/last는 order_by도 필요하다.
+  평균과 합계는 같은 조회 입력의 별도 aggregate로 만들고 차이는 compare(operation=difference)로
+  연결한다. 전체 모집단 조회에 임의 top_n을 넣지 않는다. 정렬/TopK는 요청된 경우에만 적용한다.
+- project는 fields에 최종 요청 컬럼만 명시한다. 광종 식별 필드는 mineral이며
+  목록 중복 제거가 필요하면 distinct=true다. semantic_history의 fields를 그대로 사용한다.
+  실패 항목을 가진 결과에서 성공 목록을 선택할 때에는 status와 output을 각각 filter한다.
+  filter의 args.predicate는 field/operator/value 객체다. 문자열 표현식은 실행하지 않는다.
+  project/filter/aggregate는 입력 하나만 받는다. 여러 독립 결과를 함께 요청하면 각 최종
+  node_id를 roots에 나열한다. project에 여러 inputs를 넣어 결과를 합치지 않는다.
+- 생산량/매장량의 국가 dimension은 country(국가명), country_code(ISO 2자리)다.
+  국가 조건은 조회 입력 후 filter(field=country 또는 country_code)로 표현한다.
+  reporter_country/partner_country는 무역 전용이며 생산량/매장량 국가 슬롯이 아니다.
+  자원 수치 필드는 production_volume 또는 reserves_volume, 기간 필드는 year다.
+- capability registry에 이미 완결된 atomic capability가 있으면 내부 계산을
+  임의로 다시 펼치지 않는다. 특히 trade.concentration은 수입 원자료를
+  country_rank로 바꾸거나 country_code/import_share projection을 새로 만들지
+  말고, 해당 capability의 입력과 canonical 결과를 그대로 사용한다.
 - 이전 결과를 가리키는 '그중', '그 광물', '세 번째'는 inputs의 node_id와
   selector(index/field/all)로 표현한다.
 - 현재 질문의 node가 참조하는 모든 node_id는 같은 JSON의 nodes에 실제로 존재해야 한다.
@@ -115,6 +185,8 @@ validate_evidence.
   difference=left-right, ratio=left/right, percent_change=(left-right)/abs(right)*100이다.
   시계열 비교는 날짜 키, 국가별 비교는 국가 키를 유지한다. 서로 다른 단위는 계산하지 않는다.
   join 출력은 left.<field>/right.<field>, compare는 left_value/right_value 및 연산명 필드를 만든다.
+  compare에서 두 입력이 시계열이면 날짜/기간 키로 정렬키를 명시하고, 비교값은 양쪽에
+  공통으로 존재하는 value 또는 해당 metric field를 명시한다. 행 순서로 대응시키지 않는다.
 - 질문에 없는 광물·기간·단위·수치를 추정하지 않는다.
 - source, metric, period, unit 조건을 args에 보존한다.
 - 사용자가 지정한 가격기준 번호는 args.price_criterion_serial 정수로 보존한다.
@@ -131,6 +203,10 @@ validate_evidence.
   retrieve_document → for_each(inputs=[문서], item_type=mineral, operation=retrieve,
   domain=price, metric=price) 형태로 표현한다. 문서의 광종을 정적 광종으로
   복사하거나 price action을 하나로 축약하지 않는다.
+  for_each 출력은 mineral/metric/output/status/reason/value/period/unit/source/evidence/provenance/result_type
+  필드의 항목별 envelope다. 조회 수치는 value 내부에 있으며 price 같은 child 컬럼이
+  최상위에 있다고 가정하지 않는다. 개별 조회 전체를 요청하면 for_each 자체가 root이고,
+  항목 projection이 필요하면 실제 envelope 필드를 사용한다. 실패 상태도 보존한다.
 
 예: 가격 상승률 상위 3개 중 수입액이 가장 큰 광물
 rank(price_change) → top_k(3) → retrieve(import_value, input=top_k) → arg_max(import_value)
@@ -163,6 +239,35 @@ _AST_CACHE_HITS = 0
 _AST_CACHE_MISSES = 0
 
 
+def _turn_output_results(turn: Turn) -> dict[str, TypedResult]:
+    """Conversation references address requested outputs, not execution scratch.
+
+    Keep all persisted steps for provenance/debugging. Only declared roots are
+    reusable as conversational inputs; a legacy single-result turn is unambiguous.
+    """
+    if turn.result is None:
+        return {}
+    if turn.semantic_program is not None:
+        roots = {key: turn.result.results[key] for key in turn.semantic_program.roots
+                 if key in turn.result.results}
+        # Legacy comparison persistence may keep the semantic root under its
+        # requirement id (for example current_price) rather than the AAST
+        # node id. A single stored result is still unambiguous and remains a
+        # valid conversational root; multi-result turns stay strict.
+        return roots or (dict(turn.result.results) if len(turn.result.results) == 1 else {})
+    return dict(turn.result.results) if len(turn.result.results) == 1 else {}
+
+
+def _latest_completed_result_turn(context: ConversationContext) -> Turn | None:
+    """Return the newest turn with a persisted executable result.
+
+    ``context.latest`` can point at an in-progress turn while a follow-up is
+    being planned.  Conversational aliases must be scoped to the newest
+    completed result, not to list position or the current placeholder turn.
+    """
+    return next((turn for turn in reversed(context.turns) if turn.result is not None), None)
+
+
 def _semantic_context_payload(context: ConversationContext) -> list[dict[str, Any]]:
     """Return bounded typed history, excluding raw answer/table payloads.
 
@@ -175,9 +280,23 @@ def _semantic_context_payload(context: ConversationContext) -> list[dict[str, An
         result = turn.result
         roots: list[dict[str, Any]] = []
         if result:
-            for step_id, typed in result.results.items():
+            for step_id, typed in _turn_output_results(turn).items():
+                # Unexecuted static identifiers are planning inputs, not
+                # observed results. Advertising them let follow-ups select
+                # an evidence-free Entity instead of the retrieved root.
+                if not typed.evidence and typed.result_type == ValueType.MINERAL_SET:
+                    continue
+                rows = typed.value if isinstance(typed.value, list) else [typed.value]
+                fields = list(dict.fromkeys(str(key) for row in rows if isinstance(row, Mapping) for key in row))
+                if typed.entity and "mineral" not in fields:
+                    fields.append("mineral")
                 roots.append({
                     "step_id": step_id,
+                    "is_root": bool(turn.semantic_program and step_id in turn.semantic_program.roots),
+                    "reference": f"history:{turn.turn_id}:{step_id}",
+                    "fields": fields[:48],
+                    "output_kinds": list(dict.fromkeys(str(row["output"]) for row in rows if isinstance(row, Mapping) and row.get("output")))[:16],
+                    "statuses": list(dict.fromkeys(str(row["status"]) for row in rows if isinstance(row, Mapping) and row.get("status")))[:8],
                     "result_type": typed.result_type.value,
                     "status": typed.status.value,
                     "entity": list(typed.entity),
@@ -190,6 +309,7 @@ def _semantic_context_payload(context: ConversationContext) -> list[dict[str, An
         program = turn.semantic_program
         payload.append({
             "turn_id": turn.turn_id,
+            "is_active": turn is context.latest,
             "result_id": turn.result_id,
             "result_outputs": [
                 {
@@ -227,12 +347,228 @@ def _ast_cache_key(llm: KomirJsonLLM, message: str, context_payload: list[dict[s
     }, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
-async def _parse_ast(llm: KomirJsonLLM, message: str, context: ConversationContext) -> SemanticProgram:
+def _root_projection_fields(program: Mapping[str, Any] | None) -> set[str]:
+    """Return fields explicitly requested by the previous presentation roots.
+
+    This is a repair invariant, not a parser heuristic: a repair may change the
+    execution graph, but it must not silently reduce the user's already parsed
+    output contract.  Unknown/non-projection roots are left to normal runtime
+    validation.
+    """
+    if not isinstance(program, Mapping):
+        return set()
+    nodes = {str(node.get("node_id")): node for node in (program.get("nodes") or [])
+             if isinstance(node, Mapping) and node.get("node_id") is not None}
+    fields: set[str] = set()
+    for root in program.get("roots") or []:
+        node = nodes.get(str(root))
+        if node and node.get("operator") == Operator.PROJECT.value:
+            raw = node.get("args", {}).get("fields", [])
+            if isinstance(raw, list):
+                fields.update(str(field) for field in raw)
+    return fields
+
+
+def _repair_output_fields(program: Mapping[str, Any] | None) -> set[str]:
+    """Fields exposed by repaired presentation roots."""
+    return _root_projection_fields(program)
+
+
+def _normalize_relation_contract(payload: dict[str, Any]) -> dict[str, Any]:
+    """Fill only deterministic relation metadata from typed upstream metrics.
+
+    This is AST normalization, not natural-language interpretation.  It keeps
+    a model's compare node from losing the value/date contract when both
+    inputs already declare compatible metric types.
+    """
+    nodes = {str(node.get("node_id")): node for node in payload.get("nodes", [])
+             if isinstance(node, Mapping) and node.get("node_id") is not None}
+    value_fields = {
+        "indicator": "value", "price": "value", "price_change": "change_pct",
+        "price_change_rate": "change_pct", "price_volatility": "change_pct",
+        "import_value": "import_value", "import_amount": "import_amount",
+        "production": "production_volume", "production_volume": "production_volume",
+        "reserves": "reserves_volume", "reserves_volume": "reserves_volume",
+    }
+    series_metrics = {"indicator", "price", "price_change", "price_change_rate", "price_volatility"}
+    for node in payload.get("nodes", []):
+        if not isinstance(node, dict) or node.get("operator") != Operator.COMPARE.value:
+            continue
+        args = node.setdefault("args", {})
+        inputs = node.get("inputs") or []
+        if len(inputs) != 2 or any(str(ref.get("node_id")) not in nodes for ref in inputs if isinstance(ref, Mapping)):
+            continue
+        upstream = [nodes[str(ref["node_id"])] for ref in inputs]
+        metrics = [str(item.get("args", {}).get("metric") or item.get("args", {}).get("domain") or "").casefold()
+                   for item in upstream]
+        if not args.get("field") and not args.get("fields") and not (args.get("left_field") and args.get("right_field")):
+            left_field, right_field = (value_fields.get(metrics[0]), value_fields.get(metrics[1]))
+            if left_field and right_field:
+                args["left_field"], args["right_field"] = left_field, right_field
+        if not args.get("join_key") and not args.get("on") and not args.get("left_on") and not args.get("right_on"):
+            if all(metric in series_metrics for metric in metrics):
+                args["join_key"] = "date"
+    return payload
+
+
+def _validate_live_contract(program: SemanticProgram | None, declaration: ASTProgramModel,
+                            context: ConversationContext | None = None) -> None:
+    """Validate live runtime capabilities only; never reinterpret raw text."""
+    nodes = program.nodes if program is not None else declaration.nodes
+    if program is not None and context is not None:
+        all_refs = {_history_node_id(f"history:{turn.turn_id}:{step}")
+                    for turn in context.turns if turn.result for step in turn.result.results}
+        all_refs.update(_history_node_id(f"result:{turn.result_id}") for turn in context.turns if turn.result_id)
+        used = {node.node_id for node in program.nodes if node.operator == Operator.ENTITY and node.node_id in all_refs}
+        inherited_only = {_history_node_id(f"history:{turn.turn_id}:{node.node_id}")
+                          for turn in context.turns if turn.semantic_program
+                          for node in turn.semantic_program.nodes
+                          if node.operator == Operator.ENTITY and node.node_id not in turn.semantic_program.roots}
+        if used & inherited_only:
+            raise ValueError("intermediate entity binding is not a conversation output; reference its original output or current final output")
+        if used and declaration.reference_scope == "active":
+            latest = _latest_completed_result_turn(context)
+            allowed = {_history_node_id(f"history:{latest.turn_id}:{step}") for step in _turn_output_results(latest)} if latest else set()
+            if latest and latest.result_id and len(_turn_output_results(latest)) == 1:
+                allowed.add(_history_node_id(f"result:{latest.result_id}"))
+            if latest and len(_turn_output_results(latest)) == 1:
+                for step in _turn_output_results(latest):
+                    allowed.add(_history_node_id(f"result:{latest.turn_id}:{step}"))
+                    allowed.add(_history_node_id(f"result:{latest.turn_id}:legacy"))
+            if used - allowed:
+                references = [f"history:{latest.turn_id}:{step}" for step in _turn_output_results(latest)] if latest else []
+                raise ValueError(f"active reference must use current turn final outputs; allowed active references: {references}. Do not change semantic scope to accommodate an invalid identifier.")
+    if declaration.result_access in {"reference", "refresh"}:
+        retrievals = [node for node in nodes if node.operator in {Operator.RETRIEVE, Operator.RETRIEVE_DOCUMENT, Operator.FOR_EACH}]
+        if declaration.result_access == "reference" and retrievals:
+            raise ValueError("reference contract forbids retrieval; use saved input with filter/project/calculate")
+        if declaration.result_access == "refresh" and not retrievals:
+            raise ValueError("refresh contract requires a new retrieval using saved input binding")
+        if program is not None:
+            # Names supplied by a model are not proof of an authorized binding.
+            known = set()
+            for turn in context.turns if context else ():
+                if turn.result:
+                    outputs = _turn_output_results(turn)
+                    known.update(_history_node_id(f"history:{turn.turn_id}:{step}") for step, value in outputs.items() if value.evidence)
+                    if len(outputs) == 1:
+                        step = next(iter(outputs))
+                        value = outputs[step]
+                        if value.evidence and turn is _latest_completed_result_turn(context):
+                            known.add(_history_node_id(f"result:{turn.turn_id}:{step}"))
+                            known.add(_history_node_id(f"result:{turn.turn_id}:legacy"))
+                    if turn.result_id and turn.semantic_program and len(turn.semantic_program.roots) == 1 and turn.semantic_program.roots[0] in turn.result.results:
+                        if turn.result.results[turn.semantic_program.roots[0]].evidence:
+                            known.add(_history_node_id(f"result:{turn.result_id}"))
+            node_map = {node.node_id: node for node in program.nodes}
+            def bound(node_id):
+                if node_id in known and node_map[node_id].operator == Operator.ENTITY and not node_map[node_id].inputs:
+                    return True
+                return any(bound(ref.node_id) for ref in node_map[node_id].inputs)
+            if not program.roots or any(not bound(root) for root in program.roots):
+                raise ValueError(f"{declaration.result_access} contract requires every root to depend on an authorized saved result binding via InputRef")
+            if declaration.result_access == "refresh" and any(not bound(node.node_id) for node in retrievals):
+                raise ValueError("refresh retrieval must consume an authorized saved result via InputRef, not a literal identifier or copied entity")
+            if declaration.result_access == "refresh":
+                retrieval_ids = {node.node_id for node in retrievals}
+                def refreshed(node_id):
+                    return node_id in retrieval_ids or any(refreshed(ref.node_id) for ref in node_map[node_id].inputs)
+                if any(not refreshed(root) for root in program.roots):
+                    raise ValueError("refresh root must include a newly retrieved result, not just the saved snapshot")
+    for node in nodes:
+        if node.operator in {Operator.AGGREGATE, Operator.CALCULATE} and not node.inputs:
+            raise ValueError(f"{node.node_id} requires an upstream result in live runtime")
+        if node.operator == Operator.AGGREGATE:
+            if node.args.get("aggregation") not in SUPPORTED_AGGREGATIONS:
+                raise ValueError(f"{node.node_id}: aggregate requires aggregation from {sorted(SUPPORTED_AGGREGATIONS)}")
+            if not (node.args.get("field") or node.args.get("metric_field")):
+                raise ValueError(f"{node.node_id}: aggregate requires field")
+        if node.operator in {Operator.PROJECT, Operator.FILTER, Operator.AGGREGATE} and len(node.inputs) != 1:
+            raise ValueError(f"{node.node_id} requires exactly one upstream result; independent outputs belong in roots")
+        if node.operator == Operator.FILTER:
+            predicate = node.args.get("predicate")
+            if not isinstance(predicate, Mapping) and not (node.args.get("field") or node.args.get("metric_field")):
+                raise ValueError(f"{node.node_id}: filter requires predicate object with field/operator/value; expression strings are not executable")
+
+
+def _action_plan_requirements(action_plan: Any | None) -> list[dict[str, Any]]:
+    """Project the existing typed ActionPlan into validator requirements.
+
+    This is only a diagnostic/coverage view.  It does not select an action and
+    does not replace the legacy plan.  Keeping the projection here lets the
+    live AAST path compare against the contract already accepted by the
+    production semantic resolver without invoking a second LLM parser.
+    """
+    if action_plan is None:
+        return []
+    semantic_snapshot = getattr(action_plan, "_semantic_requirements", None)
+    if semantic_snapshot:
+        return [dict(item) for item in semantic_snapshot]
+    result: list[dict[str, Any]] = []
+    for index, action in enumerate(getattr(action_plan, "actions", ()) or ()):
+        slots = getattr(action, "slots", None)
+        raw = slots.model_dump(mode="json", exclude_none=True) if hasattr(slots, "model_dump") else dict(slots or {})
+        raw.update({
+            "requirement_id": getattr(action, "requirement_id", f"requirement_{index}"),
+            "action_id": getattr(action, "action_id", None),
+            "intent": getattr(action, "intent", None),
+        })
+        result.append(raw)
+    return result
+
+
+def _coverage_diagnostic(
+    *, message: str, requirements: list[dict[str, Any]], program: Mapping[str, Any] | SemanticProgram | None,
+    report: CoverageReport, repaired: bool, repair_result: Mapping[str, Any] | None = None,
+    raw_action_plan: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    raw_program = program.to_dict() if isinstance(program, SemanticProgram) else program
+    return {
+        "question": message,
+        "semantic_requirements": requirements,
+        "raw_action_plan": raw_action_plan,
+        "raw_aast": raw_program,
+        "validation": report.to_dict(),
+        "repair": {"attempted": repaired, "result": repair_result},
+    }
+
+
+async def _coverage_repair(
+    llm: KomirJsonLLM, message: str, context_payload: list[dict[str, Any]],
+    previous_program: Mapping[str, Any], report: CoverageReport,
+    semantic_requirements: list[dict[str, Any]],
+) -> ASTProgramModel:
+    """Perform one bounded graph repair using only reported invariant violations."""
+    invocation = await asyncio.to_thread(
+        llm.invoke,
+        task="semantic_ast_coverage_repair",
+        instructions=(AST_PROMPT + "\n"
+            "이 요청은 AAST coverage repair이다. 원문을 다시 해석하거나 물리 Action을 선택하지 말고, "
+            "semantic_requirements와 validation_violations에 명시된 invariant만 수정한다. "
+            "정상인 graph structure와 root projection은 유지하고, 수정 후 완전한 Typed AST JSON만 출력한다."),
+        payload={
+            "question": message,
+            "semantic_history": context_payload,
+            "semantic_requirements": semantic_requirements,
+            "previous_program": dict(previous_program),
+            "validation_violations": [item.to_dict() for item in report.violations],
+        },
+        output_model=ASTProgramModel,
+        max_tokens=1400,
+    )
+    return ASTProgramModel.model_validate(_normalize_relation_contract(invocation.output.model_dump(mode="json")))
+
+
+async def _parse_ast(
+    llm: KomirJsonLLM, message: str, context: ConversationContext,
+    semantic_requirements: list[dict[str, Any]] | None = None,
+    raw_action_plan: Mapping[str, Any] | None = None,
+) -> SemanticProgram:
     global _AST_CACHE_HITS, _AST_CACHE_MISSES
     context_payload = _semantic_context_payload(context)
     cache_key = _ast_cache_key(llm, message, context_payload)
     cached = _AST_CACHE.get(cache_key)
-    if cached is not None:
+    if cached is not None and not semantic_requirements:
         _AST_CACHE_HITS += 1
         _logger.info(
             "multihop_cache hit kind=semantic_ast context_turns=%d context_chars=%d",
@@ -242,46 +578,155 @@ async def _parse_ast(llm: KomirJsonLLM, message: str, context: ConversationConte
     _AST_CACHE_MISSES += 1
     invocation = None
     parse_error: ValueError | None = None
+    previous_program = None
     for attempt in range(3):
         instructions = AST_PROMPT
+        request_payload = {"question": message, "semantic_history": context_payload,
+                           # The semantic parser has already produced this
+                           # typed requirement snapshot. Keep AST generation
+                           # from rediscovering entity/scope/indicator fields.
+                           "semantic_requirements": list(semantic_requirements or []),
+                           "active_input_references": [row["reference"] for turn in context_payload if turn["is_active"] for row in turn["results"]],
+                           "available_input_references": [
+                               ref for turn in context_payload
+                               for ref in ([row["reference"] for row in turn["results"]]
+                                           + ([f"result:{turn['result_id']}"] if turn.get("result_id") else []))
+                           ],
+                           "metric_fields": {key: sorted(value) for key, value in _METRIC_FIELDS.items()}}
+        instructions += (
+            "\nsemantic_requirements는 정규화된 의미 계약이다. 각 requirement의 "
+            "entity/mineral, metric, scope/country, period, indicator와 requested output을 "
+            "보존하고 원문에서 다시 추측하지 않는다. 각 독립 requirement는 AST에 대응 "
+            "branch를 가져야 한다. "
+            "외부 InputRef는 available_input_references에 있는 식별자를 정확히 복사한다. "
+            "history:와 result:는 서로 다른 namespace이며 교체하거나 조합하지 않는다. "
+            "reference_scope=active의 InputRef는 active_input_references에서만 선택한다. "
+            "활성 출력이 하나이면 기존 previous 별칭을 사용해도 된다. "
+            "현재 AST 내부 참조는 생성한 node_id만 사용한다."
+        )
         if attempt:
             instructions += (
-                f"\n이전 출력은 AST 검증에 실패했다: {parse_error}. "
-                "원문 의미를 유지하되, "
+                "\n입력의 repair.previous_program은 실행 불가능한 이전 출력이며 정답이 아니다. "
+                "repair.validation_error를 해결하도록 전체 dependency graph를 재생성한다. 원문 의미를 유지하되, "
                 "입력 node가 실제로 존재하고 upstream output type이 downstream 요구 field를 "
                 "생성하는 완전한 AST만 다시 출력한다. 물리 Action이나 정적 광종 슬롯으로 "
-                "대체하지 않는다."
+                "대체하지 않는다. 이전 프로그램의 root projection fields는 사용자의 출력 요구이므로 "
+                "삭제하지 않는다. 저장 입력에 그 필드가 없으면 동일한 InputRef를 사용하는 새 조회를 "
+                "그래프에 추가해 해당 필드를 생성한다. 새 조회를 추가한 경우 result_access도 "
+                "reference가 아니라 refresh로 설정한다."
             )
+            request_payload["repair"] = {"validation_error": str(parse_error),
+                                         "previous_program": previous_program,
+                                         "required_output_fields": sorted(_root_projection_fields(previous_program))}
         invocation = await asyncio.to_thread(
             llm.invoke,
             task="semantic_ast",
             instructions=instructions,
-            payload={"question": message, "semantic_history": context_payload},
+            payload=request_payload,
             output_model=ASTProgramModel,
             max_tokens=1400,
         )
+        if os.getenv("MULTIHOP_INTERNAL_TRACE") == "1":
+            _logger.info("multihop_parser_trace session=%s attempt=%d output=%s record=%s",
+                context.session_id, attempt + 1,
+                invocation.output.model_dump_json(),
+                json.dumps(getattr(invocation, "record", {}), ensure_ascii=False, default=str))
         if invocation.output.request_class == "UNSUPPORTED_REQUEST":
             reason = invocation.output.unsupported_reason or "UNKNOWN_CAPABILITY"
             if invocation.output.nodes or invocation.output.roots:
                 raise ValueError("unsupported_request_with_ast")
+            # UNKNOWN_CAPABILITY is a model classification failure, not a
+            # safety decision. Give the bounded repair loop one opportunity
+            # to re-evaluate ordinary data/document/navigation requests.
+            # Explicit safety reasons remain terminal and are never relaxed.
+            if reason == "UNKNOWN_CAPABILITY" and attempt < 2:
+                parse_error = ValueError("unsupported_request_unknown_capability")
+                previous_program = None
+                continue
             raise ValueError(f"unsupported_request:{reason}")
         if not invocation.output.nodes or not invocation.output.roots:
             parse_error = ValueError("semantic_requirements_empty")
             continue
         payload = invocation.output.model_dump(mode="json")
+        payload = _normalize_relation_contract(payload)
+        declaration = ASTProgramModel.model_validate(payload)
+        # Only preserve an already-established saved-result presentation
+        # contract.  A new query's first model output may contain an invalid
+        # speculative field (for example a document envelope field); normal
+        # AST validation/repair must still be able to remove that field.
+        if (attempt and previous_program
+                and previous_program.get("result_access") in {"reference", "refresh"}):
+            required = _root_projection_fields(previous_program)
+            produced = _repair_output_fields(payload)
+            missing = required - produced
+            if missing:
+                parse_error = ValueError(
+                    "repair_output_contract_removed_fields:" + ",".join(sorted(missing))
+                )
+                _logger.warning(
+                    "multihop_repair_output_contract_failure attempt=%d missing=%s",
+                    attempt + 1, sorted(missing),
+                )
+                continue
+        previous_program = payload
         try:
+            _validate_live_contract(None, declaration)
             program = SemanticProgram.from_dict(_normalize_history_aliases(payload, context))
+            _validate_live_contract(program, declaration, context)
             for node in program.nodes:
                 if node.operator in {Operator.RETRIEVE, Operator.RETRIEVE_DOCUMENT, Operator.FOR_EACH}:
-                    _action_slots(node)
+                    slots = _action_slots(node)
+                    if (node.operator == Operator.RETRIEVE and _action_id(node) == "resource.rank"
+                            and not node.inputs and not slots.mineral and not slots.minerals):
+                        raise ValueError(f"{node.node_id} requires a mineral or an upstream mineral binding")
         except ValueError as exc:
-            parse_error = exc
+            parse_error = ValueError(str(exc))
             _logger.warning("multihop_ast_validation_failure attempt=%d reason=%s", attempt + 1, exc)
             continue
         break
     else:
         assert parse_error is not None
         raise parse_error
+    if len(_AST_CACHE) >= _AST_CACHE_MAX:
+        _AST_CACHE.pop(next(iter(_AST_CACHE)))
+    coverage_requirements = list(semantic_requirements or [])
+    if coverage_requirements:
+        report = validate_aast(coverage_requirements, program, canonical_plan=raw_action_plan)
+        diagnostic = _coverage_diagnostic(
+            message=message, requirements=coverage_requirements, program=program,
+            report=report, repaired=False, raw_action_plan=raw_action_plan,
+        )
+        _logger.info("aast_coverage_trace %s", json.dumps(diagnostic, ensure_ascii=False, default=str))
+        if not report.valid:
+            try:
+                repaired_program = await _coverage_repair(
+                    llm, message, context_payload, program.to_dict(), report, coverage_requirements,
+                )
+                repaired_payload = _normalize_relation_contract(repaired_program.model_dump(mode="json"))
+                repaired = SemanticProgram.from_dict(_normalize_history_aliases(repaired_payload, context))
+                _validate_live_contract(repaired, repaired_program, context)
+                repaired_report = validate_aast(coverage_requirements, repaired, canonical_plan=raw_action_plan)
+                repaired_diagnostic = _coverage_diagnostic(
+                    message=message, requirements=coverage_requirements, program=repaired,
+                    report=repaired_report, repaired=True, repair_result=repaired.to_dict(),
+                    raw_action_plan=raw_action_plan,
+                )
+                _logger.info("aast_coverage_trace %s", json.dumps(repaired_diagnostic, ensure_ascii=False, default=str))
+                if not repaired_report.valid:
+                    raise ValueError("aast_coverage_invalid:" + ";".join(item.reason for item in repaired_report.violations))
+                program = repaired
+            except Exception as exc:
+                # Preserve the original graph and the single bounded repair
+                # outcome.  The caller still uses the existing abstain/error
+                # contract; this record is the diagnostic boundary.
+                failed_repair = _coverage_diagnostic(
+                    message=message, requirements=coverage_requirements, program=program,
+                    report=report, repaired=True,
+                    repair_result={"success": False, "error": f"{type(exc).__name__}: {exc}"},
+                    raw_action_plan=raw_action_plan,
+                )
+                _logger.info("aast_coverage_trace %s", json.dumps(failed_repair, ensure_ascii=False, default=str))
+                raise
     if len(_AST_CACHE) >= _AST_CACHE_MAX:
         _AST_CACHE.pop(next(iter(_AST_CACHE)))
     _AST_CACHE[cache_key] = program
@@ -293,16 +738,21 @@ async def _parse_ast(llm: KomirJsonLLM, message: str, context: ConversationConte
 
 
 def _latest_history_binding(context: ConversationContext) -> tuple[str, TypedResult] | None:
-    latest = context.latest
-    if latest is None or latest.result is None:
+    latest = _latest_completed_result_turn(context)
+    if latest is None:
         return None
-    step_id = next(
-        (step_id for step_id in (latest.semantic_program.roots if latest.semantic_program else ()) if step_id in latest.result.results),
-        next(reversed(latest.result.results), None),
-    )
+    outputs = _turn_output_results(latest)
+    step_id = next(iter(outputs), None) if len(outputs) == 1 else None
     if step_id is None:
         return None
-    return f"history:{latest.turn_id}:{step_id}", latest.result.results[step_id]
+    return f"history:{latest.turn_id}:{step_id}", outputs[step_id]
+
+
+def _history_node_id(reference: str) -> str:
+    # Local materialization id only: keep persisted turn/step identifiers intact.
+    # Re-encoding a prior materialization as hex grows exponentially per turn.
+    # A digest keeps local ids bounded without collapsing punctuation aliases.
+    return "ctx_" + hashlib.sha256(reference.encode("utf-8")).hexdigest()
 
 
 def _normalize_history_aliases(payload: Mapping[str, Any], context: ConversationContext) -> dict[str, Any]:
@@ -310,18 +760,75 @@ def _normalize_history_aliases(payload: Mapping[str, Any], context: Conversation
     normalized = json.loads(json.dumps(payload, ensure_ascii=False))
     nodes = list(normalized.get("nodes", []))
     local_ids = {str(node.get("node_id")) for node in nodes}
+    latest_result_turn = _latest_completed_result_turn(context)
     binding = _latest_history_binding(context)
+    # Explicit older-turn references are valid even if they are not aliases
+    # of the latest root. Materialize only results already in this authorized
+    # context, before strict local-DAG validation rejects their external IDs.
+    known = {}
+    for turn in context.turns:
+        if turn.result:
+            root_outputs = _turn_output_results(turn)
+            for step_id, result in turn.result.results.items():
+                known[f"history:{turn.turn_id}:{step_id}"] = result
+                # Legacy turns have no SemanticProgram roots, but a single
+                # stored result is still an authorized conversational root.
+                # Preserve the result:<turn_id>:<step_id> alias emitted by
+                # the AST model without widening access to intermediate
+                # legacy steps.
+                if turn is latest_result_turn and len(root_outputs) == 1 and step_id in root_outputs:
+                    known[f"result:{turn.turn_id}:{step_id}"] = result
+                    # Older live model prompts used ``legacy`` as the
+                    # single-root label even when the persisted requirement
+                    # id was different (for example ``current_price``).
+                    # Keep this compatibility alias bounded to one latest
+                    # root; never apply it to multi-root or old turns.
+                    known[f"result:{turn.turn_id}:legacy"] = result
+                # Some model turns carry forward the local materialization
+                # id as a result reference (for example
+                # ``result:ctx_<digest>``).  It is still an authorized alias
+                # when it identifies a root output of the active saved turn.
+                # Register only root outputs, never arbitrary intermediate
+                # steps, so this does not widen history access.
+                if turn is latest_result_turn and turn.semantic_program and step_id in turn.semantic_program.roots:
+                    history_ref = f"history:{turn.turn_id}:{step_id}"
+                    known[f"result:{_history_node_id(history_ref)}"] = result
+            if turn.result_id and turn.semantic_program and len(turn.semantic_program.roots) == 1:
+                root = turn.result.results.get(turn.semantic_program.roots[0])
+                if root is not None:
+                    known[f"result:{turn.result_id}"] = root
+    additions = []
+    for node in nodes:
+        for ref in node.get("inputs", []) or []:
+            external_id = str(ref.get("node_id"))
+            if external_id in local_ids or external_id not in known:
+                continue
+            result = known[external_id]
+            resolved_id = _history_node_id(external_id)
+            ref["node_id"] = resolved_id
+            if resolved_id not in local_ids:
+                additions.append({"node_id": resolved_id, "operator": Operator.ENTITY.value,
+                    "inputs": [], "args": {"values": result.value, "entity": list(result.entity)},
+                    "expected_type": result.result_type.value, "evidence_required": False})
+                local_ids.add(resolved_id)
+    nodes = additions + nodes
+    normalized["nodes"] = nodes
     if binding is None:
         return normalized
     canonical_ref, typed = binding
-    synthetic_id = "ctx_" + re.sub(r"[^A-Za-z0-9_]+", "_", canonical_ref).strip("_")
+    synthetic_id = _history_node_id(canonical_ref)
     aliases = {"previous", "previous_turn", "latest", "latest_result", "history:0:0", "history:latest"}
     aliases.update({canonical_ref})
     # Gemma may use the latest root step as a local result alias instead of
     # repeating the opaque persisted result_id. Resolve only that latest-root
     # alias; arbitrary result references remain strict and cannot cross turns.
-    latest_roots = context.latest.semantic_program.roots if context.latest and context.latest.semantic_program else ()
+    latest_roots = (latest_result_turn.semantic_program.roots
+                    if latest_result_turn and latest_result_turn.semantic_program else ())
     aliases.update(f"result:{root}" for root in latest_roots)
+    # A real node in the current query wins over a shorthand history alias.
+    # For example Retrieve(node_id='latest') is not the previous result.
+    aliases.difference_update(str(node.get("node_id")) for node in nodes
+        if node.get("operator") not in {Operator.ENTITY.value, Operator.RESOLVE_REFERENCE.value})
 
     def is_alias(value: Any) -> bool:
         text = str(value)
@@ -396,7 +903,7 @@ def _resolve_history_references(program: SemanticProgram, context: ConversationC
             result = history_results.get(ref.node_id)
             if result is None:
                 raise ValueError(f"unresolved semantic history reference: {ref.node_id}")
-            synthetic = "ctx_" + re.sub(r"[^A-Za-z0-9_]+", "_", ref.node_id).strip("_")
+            synthetic = _history_node_id(ref.node_id)
             if synthetic not in nodes:
                 additions.append(RequirementNode(
                     node_id=synthetic,
@@ -430,7 +937,8 @@ def _numeric(value: Any) -> float | None:
     if value is None:
         return None
     try:
-        return float(str(value).replace(",", "").replace("%", "").strip())
+        number = float(str(value).replace(",", "").replace("%", "").strip())
+        return number if math.isfinite(number) else None
     except (TypeError, ValueError):
         return None
 
@@ -446,17 +954,34 @@ def _resolve_row_field(rows: list[Any], requested: str | None, *, strict: bool =
     if requested in keys:
         return requested
     aliases = {
-        "date": {"date", "crtr_ymd", "기준일자", "기준일", "observed_date"},
+        "mineral": {"mineral", "entity", "mineral_name", "광종", "광물", "원소", "광종명"},
+        "entity": {"mineral", "entity", "mineral_name", "광종", "광물", "원소", "광종명"},
+        "production": {"production", "production_volume", "production_qty", "prdctn_quty_ton", "생산량"},
+        "production_volume": {"production", "production_volume", "production_qty", "prdctn_quty_ton", "생산량"},
+        "reserves": {"reserves", "reserves_volume", "reserve", "burudg_quty_ton", "매장량"},
+        "reserves_volume": {"reserves", "reserves_volume", "reserve", "burudg_quty_ton", "매장량"},
+        "date": {"date", "obs_date", "observed_date", "obs_ymd", "crtr_ymd", "기준일자", "기준일", "관측일"},
+        "year": {"year", "crtr_yr", "기준연도", "연도"},
         "price": {"price", "cmerc_prc", "통상가격", "latest_price"},
-        "country": {"country", "국가", "국가명", "수입국", "상대국"},
-        "share_percentage": {"share_percentage", "비중", "점유율", "수입비중", "수입 비중"},
+        "inventory": {"inventory", "invt", "inventory_qty", "재고", "재고량", "quantity"},
+        "country": {"country", "country_name", "country_nm", "country_name_ko", "country_name_en", "국가", "국가명", "수입국", "상대국"},
+        "country_code": {"country_code", "country_cd", "ntn_cd", "ntn_eng_cd", "국가코드"},
+        "share_pct": {"share_pct", "share_percentage", "share", "비중", "점유율", "수입비중", "수입 비중"},
+        "share_percentage": {"share_percentage", "share_pct", "share", "비중", "점유율", "수입비중", "수입 비중"},
         "import_amount": {"import_amount", "수입액", "수입금액", "금액"},
         "import_value": {"import_value", "수입액", "수입금액", "금액"},
         "period": {"period", "기간", "대상기간", "기준기간", "기준연도"},
-        "unit": {"unit", "단위"},
+        "unit": {"unit", "단위", "원시 단위 코드", "weight_unit_code", "mass_unit_cd"},
     }
     requested_names = aliases.get(requested.casefold(), {requested})
     if strict:
+        # Prefer one exact canonical column over the same source column with
+        # a human-readable unit/period annotation, e.g. ``share_pct`` and
+        # ``share_pct(수입금액 비중(...))``.  Treating both as ambiguous loses
+        # an otherwise valid typed projection.
+        exact_matches = [key for key in keys if key in requested_names]
+        if len(exact_matches) == 1:
+            return exact_matches[0]
         matches = [key for key in keys if key in requested_names or any(key.startswith(alias + "(") for alias in requested_names)]
         return matches[0] if len(matches) == 1 else None
     for key in keys:
@@ -470,13 +995,70 @@ def _resolve_row_field(rows: list[Any], requested: str | None, *, strict: bool =
     return None
 
 
+_CANONICAL_FIELD_ALIASES: dict[str, tuple[str, ...]] = {
+    "mineral": ("mineral", "entity", "광종", "광물", "원소", "광종명"),
+    "country": ("country", "국가", "국가명", "수입국", "상대국"),
+    "country_code": ("country_code", "국가코드", "ntn_cd", "ntn_eng_cd"),
+    "date": ("date", "obs_date", "observed_date", "obs_ymd", "crtr_ymd", "기준일자", "기준일", "관측일"),
+    "year": ("year", "crtr_yr", "기준연도", "연도"),
+    "price": ("price", "cmerc_prc", "통상가격", "latest_price"),
+    "inventory": ("inventory", "invt", "재고", "재고량", "quantity"),
+    "production_volume": ("production_volume", "production", "prdctn_quty_ton", "생산량"),
+    "reserves_volume": ("reserves_volume", "reserves", "burudg_quty_ton", "매장량"),
+    "import_value": ("import_value", "import_amount", "수입액", "수입금액", "금액"),
+    "share_pct": ("share_pct", "share_percentage", "비중", "점유율", "수입비중", "수입 비중"),
+    "unit": ("unit", "단위", "원시 단위 코드", "weight_unit_code", "mass_unit_cd"),
+}
+
+
+def _base_column_name(key: Any) -> str:
+    return str(key).split("(", 1)[0].strip().casefold()
+
+
+def _canonicalize_row(row: Mapping[str, Any]) -> dict[str, Any]:
+    """Add stable semantic field aliases without changing raw evidence text."""
+    output = dict(row)
+    by_base = {_base_column_name(key): value for key, value in row.items()}
+    for canonical, aliases in _CANONICAL_FIELD_ALIASES.items():
+        if canonical in output:
+            continue
+        for alias in aliases:
+            if alias.casefold() in by_base:
+                output[canonical] = by_base[alias.casefold()]
+                break
+    if "value" not in output:
+        for candidate in ("price", "inventory", "production_volume", "reserves_volume", "import_value"):
+            if candidate in output:
+                output["value"] = output[candidate]
+                break
+    return output
+
+
 def _rows(evidence: list[Any]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for item in evidence:
         for table in extract_markdown_tables(getattr(item, "text", "")):
             for row in table["rows"]:
-                rows.append(dict(zip(table["columns"], row)))
+                rows.append(_canonicalize_row(dict(zip(table["columns"], row))))
     return rows
+
+
+def _capability_rows(rows: list[dict[str, Any]], action_id: str) -> list[dict[str, Any]]:
+    """Keep rows satisfying the capability's typed output contract.
+
+    A retrieval result can contain supplementary markdown tables from the same
+    evidence bundle.  For country ranking, only rows with both a country and a
+    share are members of the typed result; unrelated tables must not make a
+    valid projection look incomplete.
+    """
+    if action_id != "trade.country_rank":
+        return rows
+    ranked = [
+        row for row in rows
+        if _resolve_row_field([row], "country", strict=True)
+        and _resolve_row_field([row], "share_percentage", strict=True)
+    ]
+    return ranked or rows
 
 
 def _typed_unit(raw: str | None) -> str | None:
@@ -502,7 +1084,7 @@ def _entity_values(value: Any) -> list[str]:
                 values.append(item)
             elif isinstance(item, Mapping):
                 for key, candidate in item.items():
-                    if any(token in str(key).casefold() for token in ("광종", "광물", "mineral", "원소")):
+                    if str(key) == "entity" or any(token in str(key).casefold() for token in ("광종", "광물", "mineral", "원소")):
                         candidates = (candidate if isinstance(candidate, (list, tuple)) else
                                       str(candidate).split(",") if str(key) in {"광종 목록", "mineral_list", "minerals"} else [candidate])
                         for name in candidates:
@@ -560,8 +1142,55 @@ def _typed_from_retrieval(result: Any, action: ActionCall, *, input_entities: li
     evidence = tuple(getattr(result, "evidence", []) or [])
     if action_result is not None:
         evidence = tuple(action_result.evidence or evidence)
-    rows = _rows(list(evidence))
+    rows = [_canonicalize_row(row) for row in _rows(list(evidence))]
     action_id = action.action_id
+    rows = _capability_rows(rows, action_id)
+    if action_id == "indicator.series":
+        rows = _canonical_indicator_rows(rows, action)
+    if os.getenv("MULTIHOP_INTERNAL_TRACE") == "1":
+        _logger.info(
+            "multihop_typed_result_trace action=%s requirement=%s row_count=%d row_keys=%s share_keys=%s",
+            action_id,
+            action.requirement_id,
+            len(rows),
+            sorted({str(key) for row in rows for key in row}),
+            sorted({str(key) for row in rows for key in row if "share" in str(key).casefold() or "비중" in str(key)}),
+        )
+    if action_id == "resource.rank":
+        # Bind the complete reader's normalized mass column, not a ranking
+        # share or a summary value, to its explicitly declared metric.
+        metric_field = {"production": "production_volume", "reserves": "reserves_volume"}.get(action.slots.metric)
+        if metric_field:
+            normalized_rows = []
+            for row in rows:
+                copied = {(metric_field if key.split("(", 1)[0].casefold() in {"total", "총계"} else key): value
+                          for key, value in row.items()}
+                if metric_field not in copied:
+                    for alias in ("total", "총계"):
+                        if alias in copied:
+                            copied[metric_field] = copied[alias]
+                            break
+                normalized_rows.append(copied)
+            rows = normalized_rows
+    metric = action.slots.metric or action.slots.trade_metric
+    if action_id == "price.series":
+        metric = "price"
+    elif action_id == "forecast.price":
+        metric = "price_forecast"
+    elif action_id == "inventory.latest":
+        metric = "inventory"
+    elif action_id == "indicator.series":
+        metric = "indicator"
+    scalar_field = "price" if action_id == "price.series" else (
+        {"production": "production_volume", "reserves": "reserves_volume"}.get(metric)
+        if action_id == "resource.rank" else None
+    )
+    if scalar_field:
+        key = _resolve_row_field(rows, scalar_field, strict=True)
+        if key:
+            # The semantic contract advertises `value` for these single-metric
+            # observations. Bind only the declared metric, never any number.
+            rows = [{**row, "value": row[key]} if key in row and "value" not in row else row for row in rows]
     result_type = {
         "price.volatility_rank": ValueType.MINERAL_RANKING,
         "trade.country_rank": ValueType.COUNTRY_SHARE,
@@ -570,10 +1199,31 @@ def _typed_from_retrieval(result: Any, action: ActionCall, *, input_entities: li
         "document.retrieve": ValueType.DOCUMENT_EVIDENCE,
         "document.lookup": ValueType.DOCUMENT_EVIDENCE,
         "resource.rank": ValueType.FACT_SET,
+        "inventory.latest": ValueType.FACT_SET,
+        "indicator.series": ValueType.TIME_SERIES,
     }.get(action_id, ValueType.FACT_SET)
     status = getattr(action_result, "status", "success") if action_result else ("success" if evidence else "no_data")
     if status != "success" or not evidence:
-        return TypedResult.empty(result_type, f"retrieval unavailable: {status}", evidence=evidence)
+        reason = getattr(action_result, "failure_reason", None) if action_result else None
+        code = reason.split(":", 1)[0] if isinstance(reason, str) else None
+        # Only public contract codes cross into SSE; adapter exception text and
+        # candidate descriptions remain in internal Action diagnostics.
+        public_codes = {
+            "resource_population_unresolved_category", "resource_population_duplicate_country_year",
+            "resource_population_invalid_country_or_year", "resource_population_unit_unverified",
+            "resource_population_invalid_normalized_tonnes", "resource_population_country_master_unavailable",
+            "resource_population_ambiguous_country_master", "resource_population_invalid_top_n",
+            "resource_population_conflict", "price_criterion_mapping_missing", "price_criterion_selection_required",
+        }
+        return TypedResult.empty(result_type, code if code in public_codes else f"retrieval unavailable: {status}", evidence=evidence,
+                                 warnings=tuple(getattr(action_result, "warnings", []) or []))
+    if action_id == "indicator.series":
+        output_error = _validate_indicator_output(rows, action)
+        if output_error:
+            return TypedResult.empty(
+                result_type, output_error, evidence=evidence,
+                warnings=tuple(getattr(action_result, "warnings", []) or []),
+            )
     entities = list(input_entities)
     if not entities:
         entities = _entity_values(rows)
@@ -581,6 +1231,9 @@ def _typed_from_retrieval(result: Any, action: ActionCall, *, input_entities: li
         entities.append(action.slots.mineral)
     if action.slots.minerals:
         entities.extend(item for item in action.slots.minerals if item not in entities)
+    # Identifiers from semantic parsing and normalized Action slots describe
+    # the same dimension. Do not turn aliases into a two-entity population.
+    entities = list(dict.fromkeys(MINERAL_ALIASES.get(str(item).casefold(), str(item)) for item in entities))
     sources = tuple(dict.fromkeys(str(getattr(item, "source", "")) for item in evidence if getattr(item, "source", None)))
     provenance = tuple(dict.fromkeys(
         f"{action.requirement_id}:{getattr(item, 'source_id', None) or getattr(item, 'source', 'unknown')}"
@@ -590,7 +1243,7 @@ def _typed_from_retrieval(result: Any, action: ActionCall, *, input_entities: li
         result_type,
         rows or list(evidence),
         entity=tuple(entities),
-        metric=action.slots.metric or action.slots.trade_metric,
+        metric=metric,
         period=action.slots.period.model_dump(mode="json") if action.slots.period else None,
         unit=_typed_unit(next((getattr(item, "unit", None) for item in evidence if getattr(item, "unit", None)), None)),
         source=sources,
@@ -600,15 +1253,57 @@ def _typed_from_retrieval(result: Any, action: ActionCall, *, input_entities: li
     )
 
 
+def _canonical_indicator_rows(rows: list[dict[str, Any]], action: ActionCall) -> list[dict[str, Any]]:
+    """Normalize the existing indicator result to its typed row contract.
+
+    The source may call the numeric observation ``series`` or ``indx`` while
+    downstream AST projection uses the shared ``value`` field.  ``center``
+    is also accepted for the source's moving-average observation.  Only these
+    explicit physical aliases are admissible; arbitrary fields are never
+    selected.
+    Invalid rows remain visible to the boundary validator rather than being
+    silently dropped.
+    """
+    normalized: list[dict[str, Any]] = []
+    for row in rows:
+        copied = dict(row)
+        if "value" not in copied:
+            for source_field in ("series", "indx", "center"):
+                numeric = _numeric(copied.get(source_field))
+                if numeric is not None:
+                    copied["value"] = numeric
+                    break
+        if "indicator" not in copied and action.slots.indicator:
+            copied["indicator"] = action.slots.indicator
+        normalized.append(copied)
+    return normalized
+
+
+def _validate_indicator_output(rows: list[dict[str, Any]], action: ActionCall) -> str | None:
+    """Return a stable public contract error for malformed indicator rows."""
+    if not rows:
+        return None
+    for row in rows:
+        try:
+            IndicatorSeriesRow.model_validate(row)
+        except Exception:
+            return "indicator_output_contract_invalid"
+    return None
+
+
 def _action_id(node: Any) -> str:
     args = node.args
     if node.operator == Operator.RETRIEVE_DOCUMENT.value:
         return "document.retrieve"
     domain = str(args.get("domain", "")).casefold()
     metric = str(args.get("metric", "")).casefold()
+    if domain == "forecast" or metric == "price_forecast":
+        return "forecast.price"
     price_metrics = {"rank", "price_change", "price_change_rate", "price_growth_rate", "change", "volatility"}
     trade_series_metrics = {"import_value", "import_amount", "import_weight", "export_value", "export_amount", "export_weight", "trade_series"}
     trade_rank_metrics = {"import_share", "country_share", "country_rank"}
+    if metric in {"concentration", "hhi"}:
+        return "trade.concentration"
     if metric in price_metrics or (node.operator == Operator.RANK.value and domain == "price"):
         return "price.volatility_rank"
     if domain == "price" or metric == "price":
@@ -617,10 +1312,12 @@ def _action_id(node: Any) -> str:
         return "trade.monthly"
     if metric in trade_rank_metrics or domain == "trade":
         return "trade.country_rank"
-    if domain == "resource" or metric in {"production", "production_volume", "reserves", "reserves_volume", "production_change"}:
+    if domain in {"resource", "production", "reserves"} or metric in {"production", "production_volume", "reserves", "reserves_volume", "production_change"}:
         return "resource.rank"
     if domain == "inventory":
         return "inventory.latest"
+    if domain == "indicator":
+        return "indicator.series"
     return "document.retrieve"
 
 
@@ -628,6 +1325,12 @@ def _action_slots(node: Any, mineral: str | None = None, minerals: list[str] | N
     args = node.args
     metric = args.get("metric")
     domain = str(args.get("domain", "")).casefold()
+    if domain in {"production", "reserves"}:
+        if metric is None:
+            metric = domain
+        elif metric not in {domain, f"{domain}_volume"}:
+            raise ValueError("resource_domain_metric_conflict")
+        domain = "resource"
     def canonical_mineral(value: Any) -> str | None:
         if value is None:
             return None
@@ -642,8 +1345,10 @@ def _action_slots(node: Any, mineral: str | None = None, minerals: list[str] | N
     if domain == "resource" or metric in {"production_volume", "reserves_volume", "production_change"}:
         metric = {"production_volume": "production", "reserves_volume": "reserves", "production_change": "production"}.get(metric, metric)
     if domain == "resource" and metric not in {"production", "reserves"}:
-        metric = "production"
-    if domain == "price" or metric in {"price", "price_change", "price_change_rate", "price_growth_rate", "change", "volatility", "rank"}:
+        raise ValueError("resource_metric_required")
+    if _action_id(node) == "resource.rank" and any(args.get(name) for name in ("reporter_country", "partner_country")):
+        raise ValueError("resource_country_filter_required: use a downstream filter(field=country or country_code); reporter_country/partner_country are trade-only")
+    if domain in {"price", "inventory", "indicator"} or metric in {"price", "price_change", "price_change_rate", "price_growth_rate", "change", "volatility", "rank"}:
         metric = None
     scope = args.get("scope") or args.get("trade_scope") or args.get("country")
     if scope in {"country", "country_share", "world", "worldwide", "all"}:
@@ -652,6 +1357,7 @@ def _action_slots(node: Any, mineral: str | None = None, minerals: list[str] | N
         scope = "korea"
     if scope in {"WORLD", "GLOBAL", "global", "세계"}:
         scope = "global"
+    action_id = _action_id(node)
     slots = dict(
         mineral=resolved_mineral,
         minerals=resolved_minerals or None,
@@ -663,12 +1369,58 @@ def _action_slots(node: Any, mineral: str | None = None, minerals: list[str] | N
         topic=args.get("topic") or args.get("question"),
         requested_outputs={"text", "table", "chart"},
     )
+    if action_id == "forecast.price":
+        typed = ForecastCapabilityInput.model_validate({
+            "mineral": resolved_mineral,
+            "metric": "price_forecast",
+            "period": args.get("period"),
+            "operation": args.get("forecast_operation") or (
+                "next_month_value" if isinstance(args.get("period"), Mapping)
+                and args["period"].get("kind") == "future_horizon"
+                and args["period"].get("future_horizon") == 1
+                and args.get("output") == "latest_value" else "timeline"
+            ),
+        })
+        slots.update({"forecast_operation": typed.operation, "period": typed.period})
+    elif action_id == "indicator.series":
+        typed = IndicatorSeriesInput.model_validate({
+            "indicator": args.get("indicator"),
+            "period": args.get("period"),
+            "variant": args.get("indicator_variant"),
+            "operation": args.get("indicator_operation"),
+        })
+        slots.update({
+            "indicator": typed.indicator,
+            "period": typed.period,
+            "indicator_variant": typed.variant,
+            "indicator_operation": typed.operation,
+        })
+    if action_id == "resource.rank" and node.operator in {Operator.RETRIEVE, Operator.FOR_EACH} and slots["top_n"] is None:
+        # Logical retrieval is not an implicit Top-5 ranking. Explicit Top-N
+        # still selects the legacy limited reader; never inflate that limit.
+        slots["resource_population"] = "all"
     # Preserve registered typed constraints, without admitting arbitrary tool
     # arguments or letting raw args overwrite normalized entity/period fields.
     for name in ActionSlots.model_fields:
         if name not in slots and name in args:
             slots[name] = args[name]
     return ActionSlots.model_validate(slots)
+
+
+def _resolve_country_alias(rows: list[Any], expected: str) -> list[Mapping[str, Any]]:
+    """Match source-owned country namespaces; row count is not country count."""
+    target = expected.strip().casefold()
+    if not target:
+        return []
+    selected = [row for row in rows if isinstance(row, Mapping) and any(
+        isinstance(row.get(key), str) and row[key].strip().casefold() == target
+        for key in ("country", "country_code", "country_name_en")
+    )]
+    codes = {str(row["country_code"]).strip().casefold() for row in selected
+             if row.get("country_code") is not None and str(row["country_code"]).strip()}
+    if len(codes) > 1:
+        raise ValueError("country_alias_ambiguous")
+    return selected
 
 
 class LiveOperatorFactory:
@@ -685,12 +1437,12 @@ class LiveOperatorFactory:
                     continue
                 for step_id, result in turn.result.results.items():
                     ref = f"history:{turn.turn_id}:{step_id}"
-                    self.saved_results["ctx_" + re.sub(r"[^A-Za-z0-9_]+", "_", ref).strip("_")] = result
+                    self.saved_results[_history_node_id(ref)] = result
                 if turn.result_id and turn.semantic_program and len(turn.semantic_program.roots) == 1:
                     root = turn.result.results.get(turn.semantic_program.roots[0])
                     if root is not None:
                         ref = f"result:{turn.result_id}"
-                        self.saved_results["ctx_" + re.sub(r"[^A-Za-z0-9_]+", "_", ref).strip("_")] = root
+                        self.saved_results[_history_node_id(ref)] = root
 
     def build(self, *, node: Any, dependencies: tuple[str, ...], bindings: Mapping[str, Any]):
         if node.operator == Operator.ENTITY.value:
@@ -732,21 +1484,9 @@ class LiveOperatorFactory:
         rows = value if isinstance(value, list) else ([value] if isinstance(value, Mapping) else [])
         args = node.args
         if node.operator == Operator.AGGREGATE.value:
-            field = _resolve_row_field(rows, args.get("field") or args.get("metric_field"))
-            aggregation = args.get("aggregation")
-            if not field or aggregation not in {"sum", "average", "mean", "count", "min", "max"} or args.get("group_by"):
-                return TypedResult.abstain("unsupported_aggregate_contract")
-            values = [_numeric(row.get(field)) for row in rows if isinstance(row, Mapping)]
-            if not values or any(value is None for value in values):
-                return TypedResult.abstain("aggregate_input_incomplete")
-            units = {row.get("unit") for row in rows if isinstance(row, Mapping) and row.get("unit")}
-            if len(units) > 1:
-                return TypedResult.abstain("unit_mismatch")
-            operations = {"sum": sum, "average": lambda v: sum(v) / len(v),
-                          "mean": lambda v: sum(v) / len(v), "count": len, "min": min, "max": max}
-            return replace(source, result_type=ValueType.SCALAR_METRIC,
-                           value=[{field: operations[aggregation](values)}],
-                           unit=None if aggregation == "count" else source.unit)
+            if source is None:
+                return TypedResult.failed("missing_input")
+            return aggregate_rows(source, args, lambda data, field: _resolve_row_field(data, field, strict=True))
         elif node.operator == Operator.TOP_K.value:
             rows = rows[: int(args.get("k") or args.get("top_n") or 5)]
         elif node.operator in {Operator.SORT.value, Operator.RANK.value}:
@@ -755,21 +1495,28 @@ class LiveOperatorFactory:
                 field = next((key for key, item in rows[0].items() if _numeric(item) is not None), None)
             field = _resolve_row_field(rows, field) or field
             reverse = str(args.get("order", "desc")).casefold() in {"desc", "decreasing", "decrease"}
-            rows = sorted(
-                rows,
-                key=lambda row: (
-                    _numeric(row.get(field))
-                    if isinstance(row, Mapping) and field and _numeric(row.get(field)) is not None
-                    else float("-inf")
-                ),
-                reverse=reverse,
-            )
+            tie_breaker = args.get("tie_breaker")
+            if tie_breaker:
+                tie_field = _resolve_row_field(rows, tie_breaker, strict=True)
+                if not tie_field or any(not isinstance(row, Mapping) or row.get(tie_field) is None for row in rows):
+                    return TypedResult.abstain("sort_tie_field_unavailable")
+                rows = sorted(rows, key=lambda row: str(row[tie_field]))
+            valid = [row for row in rows if isinstance(row, Mapping) and field and row.get(field) is not None]
+            missing = [row for row in rows if row not in valid]
+            if valid and all(_numeric(row[field]) is not None for row in valid):
+                rows = sorted(valid, key=lambda row: _numeric(row[field]), reverse=reverse) + missing
+            elif all(isinstance(row[field], str) for row in valid):
+                # ISO dates and identifiers are ordered values too. Treating
+                # every non-numeric key as -inf silently made date sort a no-op.
+                rows = sorted(valid, key=lambda row: row[field], reverse=reverse) + missing
+            else:
+                return TypedResult.abstain("incompatible_sort_values")
         elif node.operator == Operator.FILTER.value:
             predicate = args.get("predicate") or {}
             if isinstance(predicate, Mapping):
                 field = predicate.get("field") or args.get("field") or args.get("metric_field")
-                operator = predicate.get("operator", "equals")
-                expected = predicate.get("value")
+                operator = predicate.get("operator", args.get("operator", "equals"))
+                expected = predicate.get("value", args.get("value"))
             else:
                 # Gemma's compact AST may emit predicate="greater_than" and
                 # keep the compared metric/value beside it. Normalize that
@@ -801,9 +1548,20 @@ class LiveOperatorFactory:
                         provenance=source.provenance if source else (),
                         upstream_step_ids=source.upstream_step_ids if source else (),
                     )
+            country_matches = None
+            if field == "country" and operator in {"equals", "not_equals"} and isinstance(expected, str):
+                try:
+                    country_matches = {id(row) for row in _resolve_country_alias(rows, expected)}
+                except ValueError as exc:
+                    return TypedResult.abstain(str(exc))
             def keep(row: Any) -> bool:
                 actual = row.get(field) if isinstance(row, Mapping) else None
+                if source and source.result_type == ValueType.MINERAL_SET and field in {"mineral", "entity", "광종"} and isinstance(row, str):
+                    actual = row
                 expected_value = expected
+                if country_matches is not None:
+                    matched = id(row) in country_matches
+                    return matched if operator == "equals" else not matched
                 left, right = _numeric(actual), _numeric(expected_value)
                 if left is not None and right is not None:
                     actual, expected_value = left, right
@@ -811,6 +1569,8 @@ class LiveOperatorFactory:
                     return actual == expected_value
                 if actual is None or expected_value is None:
                     return False
+                if operator == "not_equals":
+                    return actual != expected_value
                 if operator == "greater_than":
                     return actual > expected_value
                 if operator == "less_than":
@@ -827,7 +1587,16 @@ class LiveOperatorFactory:
             field = args.get("field") or args.get("metric_field")
             field = _resolve_row_field(rows, field) or field
             if rows and field:
-                if not any(isinstance(row, Mapping) and _numeric(row.get(field)) is not None for row in rows):
+                candidates = [row for row in rows if isinstance(row, Mapping) and row.get(field) is not None]
+                key = lambda row: _numeric(row[field])
+                if candidates and any(key(row) is None for row in candidates):
+                    try:
+                        for row in candidates:
+                            date.fromisoformat(row[field])
+                        key = lambda row: date.fromisoformat(row[field])
+                    except (ValueError, TypeError):
+                        return TypedResult.abstain("incompatible_extremum_values")
+                if not candidates:
                     return TypedResult.empty(
                         source.result_type if source else ValueType.FACT_SET,
                         f"arg field unavailable: {field}",
@@ -836,27 +1605,112 @@ class LiveOperatorFactory:
                         provenance=source.provenance if source else (),
                         upstream_step_ids=source.upstream_step_ids if source else (),
                     )
-                if node.operator == Operator.ARG_MAX.value:
-                    rows = [max(rows, key=lambda row: _numeric(row.get(field)) if isinstance(row, Mapping) and _numeric(row.get(field)) is not None else float("-inf"))]
-                else:
-                    rows = [min(rows, key=lambda row: _numeric(row.get(field)) if isinstance(row, Mapping) and _numeric(row.get(field)) is not None else float("inf"))]
+                select = max if node.operator == Operator.ARG_MAX.value else min
+                extremum = select(key(row) for row in candidates)
+                tied = [row for row in candidates if key(row) == extremum]
+                policy = args.get("ties", "first")
+                if policy not in {"all", "first", "error"}:
+                    return TypedResult.abstain("unsupported_tie_policy")
+                if policy == "error" and len(tied) > 1:
+                    return TypedResult.abstain("ambiguous_extremum_tie")
+                rows = tied if policy == "all" else tied[:1]
         elif node.operator == Operator.PROJECT.value:
             fields = args.get("fields") or ([args["field"]] if args.get("field") else [])
+            aliases = args.get("aliases") or {}
+            if not isinstance(aliases, Mapping) or any(key not in fields or not isinstance(value, str) or not value for key,value in aliases.items()):
+                return TypedResult.abstain("invalid_projection_alias")
+            if any(_resolve_row_field([{target: None}], "unit", strict=True) is not None
+                   and _resolve_row_field([{field: None}], "unit", strict=True) is None
+                   for field, target in aliases.items()):
+                # `unit` is execution metadata, not a free presentation label.
+                # A date/value renamed to unit must never validate arithmetic.
+                return TypedResult.abstain("projection_reserved_unit_alias")
+            if len({aliases.get(field,field) for field in fields}) != len(fields):
+                return TypedResult.abstain("projection_output_collision")
             if source and source.result_type == ValueType.DOCUMENT_EVIDENCE and fields in (["minerals"], ["mineral_list"]):
                 entities = _entity_values(rows) or _entity_values(_rows(list(source.evidence)))
                 if not entities:
                     return TypedResult.empty(ValueType.MINERAL_SET, "document_mineral_list_unavailable")
                 return replace(source, result_type=ValueType.MINERAL_SET, value=entities, entity=tuple(entities))
-            rows = [
-                {
-                    field: row.get(_resolve_row_field([row], str(field)) or str(field))
-                    for field in fields
-                }
-                for row in rows
-                if isinstance(row, Mapping)
-            ]
+            if not rows and source and isinstance(source.value, list):
+                # A valid filter may select zero rows (e.g. neither price
+                # declined). Project preserves that empty set; it does not
+                # manufacture missing values or erase the upstream status.
+                return replace(source, value=[], entity=())
+            mappings = [row for row in rows if isinstance(row, Mapping)]
+            if source and len({row.get("unit", source.unit) for row in mappings}) > 1:
+                # Column projection must not erase the fact that these values
+                # were expressed in different units. Existing typed warnings
+                # carry this constraint even when the unit column is omitted.
+                source = replace(source, warnings=tuple(dict.fromkeys((*source.warnings, "heterogeneous_units"))))
+            if source and source.result_type == ValueType.MINERAL_SET and rows and all(isinstance(row, str) for row in rows):
+                mappings = [{"mineral": row} for row in rows]
+            resolved = {}
+            metadata = {}
+            for field in fields:
+                key = _resolve_row_field(mappings, str(field), strict=True)
+                if key is None and field == "inventory" and source and source.metric == "inventory":
+                    # Inventory retrievals may expose the observation under
+                    # the shared scalar column ``value``. This translation is
+                    # limited to the typed inventory projection contract; the
+                    # generic field resolver must still reject a missing
+                    # source field for analytical operators.
+                    key = (_resolve_row_field(mappings, "재고량", strict=True)
+                           or _resolve_row_field(mappings, "value", strict=True))
+                if key is None and field == "value" and source:
+                    # `value` is a typed output alias. Resolve only through the
+                    # source metric contract, never through an arbitrary numeric
+                    # column. This keeps inventory/indicator/resource outputs
+                    # compatible with the shared projection schema.
+                    metric_value_fields = {
+                        "price": "price",
+                        "inventory": "재고량",
+                        "indicator": "value",
+                        "production": "production",
+                        "reserves": "reserves",
+                    }
+                    value_field = metric_value_fields.get(source.metric)
+                    if value_field:
+                        key = _resolve_row_field(mappings, value_field, strict=True)
+                        if key is None and source.metric == "inventory":
+                            key = _resolve_row_field(mappings, "inventory", strict=True)
+                if key is None and field == "unit" and source and source.unit is not None:
+                    resolved[field] = None  # validated TypedResult metadata
+                    metadata[field] = source.unit
+                elif key is None and field == "source" and source and len(source.source) == 1:
+                    # Source/citation is a typed result-level attribute, not
+                    # necessarily a row column. Expose it only when
+                    # unambiguous; arbitrary missing fields remain rejected.
+                    resolved[field] = None
+                    metadata[field] = source.source[0]
+                elif key is None and field in {"mineral", "entity"} and source and len(source.entity) == 1:
+                    # A single typed entity unambiguously owns these rows.
+                    # Never assign a multi-entity population by row position.
+                    resolved[field] = None
+                    metadata[field] = source.entity[0]
+                elif key is None:
+                    return TypedResult.abstain(f"projection_field_unavailable:{field}")
+                else:
+                    resolved[field] = key
+            if source and source.status == ResultStatus.SUCCESS and any(
+                key is not None and key not in row for row in mappings for key in resolved.values()
+            ):
+                return TypedResult.abstain("projection_input_incomplete")
+            rows = [{aliases.get(field, field): metadata[field] if key is None else row.get(key)
+                     for field, key in resolved.items()} for row in mappings]
+            if source and source.status == ResultStatus.PARTIAL:
+                for projected, original in zip(rows, mappings):
+                    # Success/failure and output identity remain queryable in
+                    # saved partial projections, not only in failed rows.
+                    projected.update({key: original[key] for key in ("status", "reason", "output", "unit") if key in original})
+            if args.get("distinct") is True:
+                rows = list({json.dumps(row, sort_keys=True, ensure_ascii=False): row for row in rows}.values())
         elif node.operator == Operator.CALCULATE.value:
             calculation = args.get("calculation")
+            if calculation in SERIES_CALCULATIONS:
+                return calculate_series(source, args, lambda data, field: _resolve_row_field(data, field, strict=True))
+            if str(calculation).lower() in {"share", "hhi"}:
+                return calculate_share(source, args, lambda data, field: _resolve_row_field(data, field, strict=True))
             if calculation in {"change_pct", "percent_change"} and isinstance(value, Mapping):
                 start, end = _numeric(value.get("start")), _numeric(value.get("end"))
                 if start is not None and start != 0 and end is not None:
@@ -865,8 +1719,14 @@ class LiveOperatorFactory:
                     return TypedResult.abstain("invalid_calculation_operands")
             else:
                 return TypedResult.abstain("unsupported_calculation_contract")
-        entities = _entity_values(rows) or (list(source.entity) if source else [])
-        result_type = ValueType.MINERAL_SET if node.operator == Operator.TOP_K.value else (source.result_type if source else ValueType.FACT_SET)
+        entities = _entity_values(rows)
+        if not entities and source and source.result_type != ValueType.MINERAL_SET:
+            entities = list(source.entity)
+        result_type = source.result_type if source else ValueType.FACT_SET
+        if node.operator == Operator.PROJECT and result_type == ValueType.COMPOSITE:
+            # Projection no longer contains per-output envelopes. Keeping
+            # COMPOSITE made the renderer treat mineral rows as failed prices.
+            result_type = ValueType.FACT_SET
         if source is None:
             return TypedResult.failed("missing_input")
         return replace(source, result_type=result_type, value=rows, entity=tuple(entities))
@@ -878,17 +1738,49 @@ class LiveOperatorFactory:
         return source
 
     async def _retrieve(self, node: Any, inputs: Mapping[str, TypedResult]) -> TypedResult:
+        # Explicit typed projections name their destination role. An unqualified
+        # `country` never silently becomes reporter_country or partner_country.
+        # InputRef remains the sole dependency edge; no parallel reference DTO.
+        bound_args = dict(node.args)
+        role_inputs = set()
+        for ref, (input_name, value) in zip(node.inputs, inputs.items()):
+            target = ref.selector_value if ref.selector == "field" else None
+            if target not in {"reporter_country", "partner_country", "resource_country", "bound_date"}:
+                continue
+            role_inputs.add(input_name)
+            if value.status != ResultStatus.SUCCESS or not value.sufficient:
+                return TypedResult.failed("dependency_failed")
+            candidates = value.value if isinstance(value.value, (list, tuple)) else [value.value]
+            if len(candidates) != 1 or not isinstance(candidates[0], str) or not candidates[0].strip():
+                return TypedResult.abstain("ambiguous_or_missing_slot_binding")
+            selected = candidates[0]
+            if bound_args.get(target) is not None and bound_args[target] != selected:
+                return TypedResult.abstain("conflicting_slot_binding")
+            if target == "bound_date":
+                try:
+                    date.fromisoformat(selected)
+                except ValueError:
+                    return TypedResult.abstain("invalid_bound_date")
+            bound_args[target] = selected
+        node = replace(node, args=bound_args)
         input_entities = []
-        for item in inputs.values():
+        for input_name, item in inputs.items():
+            if input_name in role_inputs:
+                continue
             input_entities.extend(entity for entity in (list(item.entity) or _entity_values(item.value)) if entity not in input_entities)
         action_id = _action_id(node)
         minerals = input_entities or list(node.args.get("minerals") or [])
         if not minerals and node.args.get("mineral"):
             minerals = [str(node.args["mineral"])]
-        if action_id in {"trade.country_rank", "trade.monthly", "resource.rank"} and len(minerals) > 1:
+        if action_id in {"trade.country_rank", "trade.monthly", "resource.rank", "price.series"} and len(minerals) > 1:
+            operation = node
+            if action_id == "price.series":
+                price_args = dict(node.args)
+                price_args.setdefault("output", "time_series" if price_args.get("period") else "latest_value")
+                operation = replace(node, args=price_args)
             async def retrieve_item(mineral: str) -> TypedResult:
                 try:
-                    return await self._call_action(node, action_id, mineral=mineral)
+                    return await self._call_action(operation, action_id, mineral=mineral, minerals=[mineral])
                 except Exception:
                     return TypedResult.failed("execution_failed")
             results = await asyncio.gather(*(retrieve_item(mineral) for mineral in minerals))
@@ -901,15 +1793,21 @@ class LiveOperatorFactory:
             for mineral, item in zip(minerals, results):
                 if item.status == ResultStatus.SUCCESS and item.sufficient:
                     if isinstance(item.value, list):
-                        merged_rows.extend({**row, "mineral": mineral} if isinstance(row, Mapping) else row for row in item.value)
+                        merged_rows.extend({**row, "mineral": mineral, "unit": row.get("unit", item.unit),
+                                            **({"status": "success", "reason": None, "output": operation.args.get("output")} if action_id == "price.series" else {})}
+                                           if isinstance(row, Mapping) else row for row in item.value)
                     evidences.extend(item.evidence)
                     sources.extend(item.source)
                     provenance.extend(item.provenance)
                 else:
-                    failed_items.append({"mineral": mineral, "status": item.status.value, "reason": item.failure_reason})
+                    failed_items.append({"mineral": mineral, "status": item.status.value, "reason": item.failure_reason,
+                                         **({"output": operation.args.get("output")} if action_id == "price.series" else {})})
             if evidences:
+                units = {row.get("unit") for row in merged_rows if isinstance(row, Mapping)}
                 merged = TypedResult(ValueType.FACT_SET, merged_rows + failed_items,
                     status=ResultStatus.PARTIAL if failed_items else ResultStatus.SUCCESS,
+                    unit=next(iter(units)) if len(units) == 1 else None,
+                    metric=node.args.get("metric") or node.args.get("domain"), period=node.args.get("period"),
                     entity=tuple(dict.fromkeys(minerals)), evidence=tuple(evidences), source=tuple(dict.fromkeys(sources)), provenance=tuple(dict.fromkeys(provenance)))
             elif failed_items:
                 merged = TypedResult(ValueType.FACT_SET, failed_items, status=ResultStatus.FAILED,
@@ -930,6 +1828,8 @@ class LiveOperatorFactory:
         operation_args = dict(node.args)
         operation_args.pop("item_type", None)
         operation_args.pop("operation", None)
+        if operation_args.get("domain") == "price" or operation_args.get("metric") == "price":
+            operation_args.setdefault("output", "time_series" if operation_args.get("period") else "latest_value")
         operation = type(node)(node_id=node.node_id, operator=Operator.RETRIEVE.value,
                                inputs=node.inputs, args=operation_args,
                                expected_type=node.expected_type, constraints=node.constraints,
@@ -944,18 +1844,18 @@ class LiveOperatorFactory:
         results = await asyncio.gather(*(execute_item(mineral) for mineral in dict.fromkeys(minerals)))
         minerals = list(dict.fromkeys(minerals))
         rows = []
-        evidence = []
-        sources = []
-        provenance = []
+        evidence = list(source.evidence) if source else []
+        sources = list(source.source) if source else []
+        provenance = list(source.provenance) if source else []
         for mineral, result in zip(minerals, results):
             rows.append({"mineral": mineral, "status": result.status.value,
                          "value": result.value, "reason": result.failure_reason,
                          "result_type": result.result_type.value,
                          "metric": node.args.get("metric") or node.args.get("domain"),
                          "output": node.args.get("output") or ("time_series" if node.args.get("period") else "latest_value"),
-                         "evidence": list(result.evidence), "unit": result.unit,
-                         "period": result.period, "source": list(result.source),
-                         "provenance": list(result.provenance)})
+                         "evidence": list((source.evidence if source else ()) + result.evidence), "unit": result.unit,
+                         "period": result.period, "source": list(dict.fromkeys((source.source if source else ()) + result.source)),
+                         "provenance": list(dict.fromkeys((source.provenance if source else ()) + result.provenance))})
             if result.status == ResultStatus.SUCCESS and result.sufficient:
                 evidence.extend(result.evidence)
                 sources.extend(result.source)
@@ -976,6 +1876,8 @@ class LiveOperatorFactory:
         if action_id == "document.retrieve" and not slots.topic:
             slots = slots.model_copy(update={"topic": self.message})
         call = ActionCall(requirement_id=node.node_id, action_id=action_id, slots=slots, requested_outputs={"text", "table", "chart"})
+        if os.getenv("MULTIHOP_INTERNAL_TRACE") == "1":
+            _logger.info("multihop_action_trace session=%s step=%s call=%s", self.session_id, node.node_id, call.model_dump_json())
         plan = ActionPlan(actions=[call])
         # Each hop is an independent primitive contract. Passing the complete
         # multi-hop user sentence to the legacy advisor makes it judge an
@@ -993,8 +1895,12 @@ class LiveOperatorFactory:
             primitive_question = f"{mineral or '해당 광종'}의 수입액 월별 현황을 조회해줘"
         elif action_id == "trade.country_rank":
             primitive_question = f"{mineral or '해당 광종'}의 국가별 수입 비중을 조회해줘"
+        elif action_id == "trade.concentration":
+            primitive_question = f"{mineral or '해당 광종'}의 수입 집중도를 조회해줘"
         elif action_id == "resource.rank":
-            primitive_question = f"{mineral or '해당 광종'}의 생산량 국가별 순위를 조회해줘"
+            metric_label = "생산량" if slots.metric == "production" else "매장량"
+            population_label = "전체 국가 원자료" if slots.resource_population == "all" else "국가별 순위"
+            primitive_question = f"{mineral or '해당 광종'}의 {metric_label} {population_label}를 조회해줘"
         result = await asyncio.to_thread(
             retrieve_evidence,
             primitive_question,
@@ -1011,6 +1917,15 @@ class LiveOperatorFactory:
             include_action_results=True,
         )
         typed = _typed_from_retrieval(result, call, input_entities=[mineral] if mineral else [])
+        if action_id == "resource.rank" and slots.resource_country and typed.status == ResultStatus.SUCCESS:
+            try:
+                selected = _resolve_country_alias(typed.value, slots.resource_country)
+            except ValueError as exc:
+                return TypedResult.abstain(str(exc))
+            if not selected:
+                return replace(typed, value=[], status=ResultStatus.EMPTY, sufficient=False,
+                               failure_reason="resource_country_unavailable")
+            typed = replace(typed, value=selected)
         if action_id == "price.series" and node.args.get("output") == "latest_value" and typed.status == ResultStatus.SUCCESS:
             as_of = date.fromisoformat(str(node.args["as_of"])) if node.args.get("as_of") else date.today()
             observations = [row for row in typed.value if isinstance(row, Mapping)
@@ -1019,6 +1934,9 @@ class LiveOperatorFactory:
                 return replace(typed, value=[], status=ResultStatus.EMPTY, sufficient=False,
                                failure_reason="no_observation_at_or_before_as_of")
             typed = replace(typed, value=[max(observations, key=_row_date)])
+        if action_id == "price.series" and typed.status == ResultStatus.SUCCESS and isinstance(typed.value, list):
+            typed = replace(typed, value=[{**row, "status": "success", "reason": None, "output": node.args.get("output")}
+                                         if isinstance(row, Mapping) else row for row in typed.value])
         return typed
 
 
@@ -1039,11 +1957,37 @@ async def run_live_multihop(
     llm: KomirJsonLLM,
     history: list[dict[str, str]],
     legacy_action_ids: list[str] | None = None,
+    semantic_requirements: list[dict[str, Any]] | None = None,
+    raw_action_plan: Mapping[str, Any] | None = None,
 ) -> LiveRun:
     if isinstance(_HISTORY, PostgresHistoryStore):
         await _HISTORY.ensure_schema()
     context = await _HISTORY.get_context(session_id)
-    program = await _parse_ast(llm, message, context)
+    semantic_action_plan = raw_action_plan
+    # Enabled live mode intentionally does not create the legacy ActionPlan
+    # before AAST.  Reuse the existing typed semantic parser only to obtain a
+    # WHAT snapshot for coverage validation; it never supplies physical calls
+    # or changes the production executor.
+    if not semantic_requirements:
+        try:
+            from .semantic_intent import parse_and_resolve
+            resolution = await asyncio.to_thread(parse_and_resolve, message, llm, history, None)
+            if resolution.semantic_plan is not None:
+                semantic_requirements = [
+                    item.model_dump(mode="json", exclude_none=True)
+                    for item in resolution.semantic_plan.requirements
+                ]
+            if semantic_action_plan is None and resolution.action_plan is not None:
+                semantic_action_plan = resolution.action_plan.model_dump(mode="json")
+        except Exception as exc:
+            _logger.info("aast semantic requirement snapshot unavailable: %s", type(exc).__name__)
+    try:
+        program = await _parse_ast(
+            llm, message, context, semantic_requirements=semantic_requirements,
+            raw_action_plan=semantic_action_plan,
+        )
+    except (ValueError, LLMOutputError) as exc:
+        raise LivePlanError("semantic_plan_incomplete") from exc
     program = _resolve_history_references(program, context)
     turn_id = f"turn-{uuid4().hex[:12]}"
     has_dependency = any(node.inputs for node in program.nodes) or len(program.nodes) > 1
@@ -1149,8 +2093,20 @@ def live_run_events(run: LiveRun) -> list[ChatEvent]:
 
 
 def _result_events(result: TypedResult) -> list[ChatEvent]:
+    # Failure rows are outcomes, not facts. Present their status without citing
+    # rejected evidence or promoting the whole composite to success.
+    failed_rows = []
+    if result.result_type == ValueType.COMPOSITE and isinstance(result.value, list):
+        failed_rows = [[str(item.get("mineral") or ""), str(item.get("output") or item.get("metric") or ""),
+                        str(item.get("status") or "unknown"), str(item.get("reason") or "unspecified_failure")]
+                       for item in result.value if isinstance(item, Mapping) and item.get("status") != "success"]
+    failure_events = []
+    if failed_rows:
+        failure_events = [ChatEvent("table", table_block(
+            {"columns": ["광종", "요청 결과", "상태", "사유"], "rows": failed_rows, "markdown": ""},
+            block_id="multihop-item-outcomes", source_index=None, source_label=None))]
     if result.status in {ResultStatus.ABSTAINED, ResultStatus.EMPTY, ResultStatus.FAILED, ResultStatus.DEPENDENCY_FAILED}:
-        return [
+        return failure_events + [
             ChatEvent("delta", {"delta": result.failure_reason or "확인 가능한 근거가 없어 답변할 수 없습니다."}),
             ChatEvent("done", {"done": True, "abstained": True, "abstain_reason": result.failure_reason or "source_unavailable", "citations": []}),
         ]
@@ -1249,11 +2205,12 @@ def _result_events(result: TypedResult) -> list[ChatEvent]:
                     unit=unit,
                 )))
         if not lines:
-            return [ChatEvent("delta", {"delta": "표시할 수 있는 검증된 결과가 없습니다."}),
+            return failure_events + [ChatEvent("delta", {"delta": "표시할 수 있는 검증된 결과가 없습니다."}),
                     ChatEvent("done", {"done": True, "abstained": True,
                                       "abstain_reason": "presentation_unavailable", "citations": []})]
         if result.status == ResultStatus.PARTIAL:
             events.append(ChatEvent("delta", {"delta": "\n일부 항목은 조회하지 못했습니다."}))
+        events.extend(failure_events)
         citations = [{"index": index, "source": source} for index, source in enumerate(result.source, 1)]
         events.append(ChatEvent("done", {"done": True, "abstained": False, "citations": citations, "bogus_citations": []}))
         return events
@@ -1283,13 +2240,15 @@ def _result_events(result: TypedResult) -> list[ChatEvent]:
         ])
         events.append(ChatEvent("delta", {"delta": table["markdown"]}))
         events.append(ChatEvent("table", table_block(table, block_id="multihop-table", source_index=1, source_label=(result.source[0] if result.source else None), unit=result.unit)))
-        chart = chart_spec(table, block_id="multihop-chart", data_ref="multihop-table", source_index=1, source_label=(result.source[0] if result.source else None), unit=result.unit)
+        row_units = {row.get("unit", result.unit) for row in result.value}
+        chart_units_valid = len(row_units) <= 1 and not ((result.metric == "price" or "heterogeneous_units" in result.warnings) and None in row_units)
+        chart = chart_spec(table, block_id="multihop-chart", data_ref="multihop-table", source_index=1, source_label=(result.source[0] if result.source else None), unit=result.unit) if chart_units_valid else None
         if chart:
             events.append(ChatEvent("chart", chart))
     if result.status == ResultStatus.PARTIAL and events:
         rows = result.value if isinstance(result.value, list) else []
         if rows and all(isinstance(row, Mapping) and "status" in row for row in rows):
-            completed = sum(row["status"] == "SUCCESS" for row in rows)
+            completed = sum(str(row["status"]).casefold() == "success" for row in rows)
             summary = f"표시된 {len(rows)}개 항목 중 {completed}개 처리 완료, {len(rows) - completed}개 처리 불가."
             if "incomplete_population" in result.warnings:
                 summary += " 선행 결과가 불완전하여 전체 모집단 결과는 아닙니다."

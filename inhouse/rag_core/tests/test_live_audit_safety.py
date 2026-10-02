@@ -51,6 +51,59 @@ class LiveAuditSafetyTests(unittest.IsolatedAsyncioTestCase):
         self.assertIs(restored, source)
         self.assertEqual(factory._derive(program.nodes[1], {"previous": restored}).status, ResultStatus.PARTIAL)
 
+    def test_localized_result_alias_resolves_to_latest_root_snapshot(self):
+        source = TypedResult(ValueType.TIME_SERIES, [{"price": 10}], status=ResultStatus.PARTIAL,
+            entity=("nickel",), evidence=(Evidence("structured", "fixture", "fixture", "price=10"),))
+        turn = Turn("old", "fixture", UserUtterance("previous"),
+            semantic_program=SemanticProgram((RequirementNode("root", Operator.ENTITY),), ("root",)),
+            result=ExecutionResult("pipe", ResultStatus.PARTIAL, {"root": source}, ()))
+        context = ConversationContext("fixture", (turn,))
+        alias = f"result:{live._history_node_id('history:old:root')}"
+        payload = {"nodes": [{"node_id": "next", "operator": "project",
+            "inputs": [{"node_id": alias}], "args": {"fields": ["price"]}}], "roots": ["next"]}
+        normalized = live._normalize_history_aliases(payload, context)
+        self.assertEqual(normalized["nodes"][1]["inputs"][0]["node_id"], live._history_node_id(alias))
+
+    def test_legacy_single_root_result_alias_resolves_for_followup(self):
+        source = TypedResult.success(ValueType.TIME_SERIES, [{"price": 10}], entity=("nickel",))
+        turn = Turn("old", "fixture", UserUtterance("previous"),
+                    semantic_program=None,
+                    result=ExecutionResult("pipe", ResultStatus.SUCCESS, {"legacy": source}, ()),
+                    result_id="old-result")
+        context = ConversationContext("fixture", (turn,))
+        alias = "result:old:legacy"
+        payload = {"nodes": [{"node_id": "next", "operator": "project",
+            "inputs": [{"node_id": alias}], "args": {"fields": ["price"]}}],
+                   "roots": ["next"]}
+        normalized = live._normalize_history_aliases(payload, context)
+        self.assertEqual(normalized["nodes"][0]["operator"], "entity")
+
+    def test_followup_ignores_in_progress_turn_without_result(self):
+        source = TypedResult.success(ValueType.TIME_SERIES, [{"price": 10}], entity=("nickel",))
+        previous = Turn("old", "fixture", UserUtterance("previous"),
+                        semantic_program=None,
+                        result=ExecutionResult("pipe", ResultStatus.SUCCESS, {"legacy": source}, ()),
+                        result_id="old-result")
+        current = Turn("current", "fixture", UserUtterance("followup"), result=None)
+        context = ConversationContext("fixture", (previous, current))
+        payload = {"nodes": [{"node_id": "next", "operator": "project",
+            "inputs": [{"node_id": "result:old:legacy"}], "args": {"fields": ["price"]}}],
+                   "roots": ["next"]}
+        normalized = live._normalize_history_aliases(payload, context)
+        self.assertEqual(normalized["nodes"][0]["operator"], "entity")
+
+    def test_legacy_compatibility_alias_maps_only_to_latest_single_root(self):
+        source = TypedResult.success(ValueType.TIME_SERIES, [{"price": 10}], entity=("nickel",))
+        turn = Turn("old", "fixture", UserUtterance("previous"),
+                    semantic_program=None,
+                    result=ExecutionResult("pipe", ResultStatus.SUCCESS, {"current_price": source}, ()))
+        context = ConversationContext("fixture", (turn,))
+        payload = {"nodes": [{"node_id": "next", "operator": "project",
+            "inputs": [{"node_id": "result:old:legacy"}], "args": {"fields": ["price"]}}],
+                   "roots": ["next"]}
+        normalized = live._normalize_history_aliases(payload, context)
+        self.assertEqual(normalized["nodes"][0]["operator"], "entity")
+
     def test_simple_legacy_delegation_does_not_construct_empty_plan(self):
         from unittest.mock import patch
         from inhouse.rag_core.ragkit import action_contract

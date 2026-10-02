@@ -93,7 +93,11 @@ def extract_markdown_tables(text: str) -> list[dict]:
 #: Y축은 가격이 아니라 crtr_ymd 자체로 그려짐). 이 열은 (1) 라벨(X축) 후보로
 #: 최우선하고 (2) 숫자열(Y축) 후보에서는 무조건 제외한다.
 _DATE_COLUMN_NAMES = {
-    "crtr_ymd", "crtr_yr", "first_date", "last_date", "price_date", "month",
+    # Canonical typed-result fields as well as physical KOMIS period columns.
+    # ``date`` is intentionally explicit: multihop projections use it even
+    # when the source table originally called the field crtr_ymd.
+    "date", "obs_date", "observed_date", "crtr_ymd", "crtr_yr", "year",
+    "first_date", "last_date", "price_date", "month",
 }
 _NON_MEASURE_KEYS = frozenset({
     "rank", "transaction_count", "record_count", "n", "count", "price_criterion_serial",
@@ -109,6 +113,9 @@ _PRICE_WEIGHTS = {"KG": "kg", "G": "g", "T": "톤", "TON": "톤", "MT": "톤", "
                   "LB": "lb", "OZ": "oz"}
 _PRICE_CURRENCY_CODES = {"PR001": "USD", **{code: code for code in _PRICE_CURRENCIES}}
 _PRICE_WEIGHT_CODES = {
+    # public.st_code_mst (WT000), read-only verified 2026-10-02.
+    # Source labels only; existing _PRICE_WEIGHTS handles mt -> 톤 normalization.
+    "WT001": "kg", "WT006": "lb", "WT007": "mt",
     "WT002": "톤", "KG": "kg", "G": "g", "T": "톤", "TON": "톤", "MT": "톤",
     "LB": "lb", "OZ": "oz", "kg": "kg", "g": "g", "톤": "톤",
 }

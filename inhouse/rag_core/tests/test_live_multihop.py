@@ -36,8 +36,34 @@ class LiveMultiHopBridgeTests(unittest.IsolatedAsyncioTestCase):
         program = SemanticProgram.from_dict(normalized)
 
         next_node = next(node for node in program.nodes if node.node_id == "next")
-        self.assertEqual(next_node.inputs[0].node_id, "ctx_history_turn_1_root")
-        self.assertTrue(any(node.node_id == "ctx_history_turn_1_root" and node.operator == Operator.ENTITY for node in program.nodes))
+        bound_id = live_multihop._history_node_id("history:turn-1:root")
+        self.assertEqual(next_node.inputs[0].node_id, bound_id)
+        self.assertTrue(any(node.node_id == bound_id and node.operator == Operator.ENTITY for node in program.nodes))
+
+    def test_legacy_followup_alias_passes_live_validator_with_in_progress_turn(self):
+        typed = TypedResult.success(
+            ValueType.TIME_SERIES, [{"price": 10, "date": "2026-10-01"}],
+            entity=("니켈",),
+            evidence=(Evidence("structured", "fixture", "fixture", "price=10"),),
+        )
+        previous = Turn(
+            "turn-1", "session-1", UserUtterance("니켈 현재 가격"),
+            semantic_program=None,
+            result=ExecutionResult("legacy-turn-1", ResultStatus.SUCCESS, {"current_price": typed}, ()),
+        )
+        in_progress = Turn("turn-2", "session-1", UserUtterance("후속"), result=None)
+        context = ConversationContext("session-1", (previous, in_progress))
+        payload = {
+            "result_access": "reference",
+            "reference_scope": "active",
+            "nodes": [{"node_id": "project_price", "operator": "project",
+                       "inputs": [{"node_id": "result:turn-1:legacy"}],
+                       "args": {"fields": ["price"], "aliases": {"price": "price"}}}],
+            "roots": ["project_price"],
+        }
+        model = live_multihop.ASTProgramModel.model_validate(payload)
+        program = SemanticProgram.from_dict(live_multihop._normalize_history_aliases(payload, context))
+        live_multihop._validate_live_contract(program, model, context)
 
     def test_parser_root_is_normalized_to_terminal_dependency_node(self):
         program = SemanticProgram.from_dict({
@@ -91,6 +117,25 @@ class LiveMultiHopBridgeTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(program.completeness_issues(), ())
 
+    def test_annotated_price_columns_match_canonical_projection_fields(self):
+        # Physical table adapters may annotate display labels on a canonical
+        # column name.  The semantic contract compares the field identity,
+        # not the display suffix.
+        program = SemanticProgram.from_dict({
+            "nodes": [
+                {"node_id": "prices", "operator": "retrieve",
+                 "args": {"metric": "price"}},
+                {"node_id": "table", "operator": "project",
+                 "inputs": [{"node_id": "prices"}],
+                 "args": {"fields": ["cmerc_prc", "hghst_prc", "lowst_prc"],
+                          "aliases": {"cmerc_prc": "cmerc_prc(통상가격)",
+                                      "hghst_prc": "hghst_prc(최고가격)",
+                                      "lowst_prc": "lowst_prc(최저가격)"}}},
+            ],
+            "roots": ["table"],
+        })
+        self.assertEqual(program.completeness_issues(), ())
+
     def test_ast_rejects_non_numeric_top_k_but_preserves_leaf_calculation_contract(self):
         with self.assertRaisesRegex(ValueError, "invalid top_k limit"):
             SemanticProgram.from_dict({
@@ -142,6 +187,120 @@ class LiveMultiHopBridgeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(live_multihop._action_slots(imports).metric, "import_amount")
         self.assertEqual(live_multihop._action_slots(price, mineral="nickel").mineral, "니켈")
         self.assertIsNone(live_multihop._action_slots(RequirementNode("price_query", Operator.RETRIEVE, args={"metric": "price"})).metric)
+
+    def test_indicator_series_metric_exposes_canonical_projection_fields(self):
+        program = SemanticProgram.from_dict({
+            "nodes": [
+                {"node_id": "series", "operator": "retrieve",
+                 "args": {"domain": "indicator", "metric": "series",
+                          "indicator": "composite_index"}},
+                {"node_id": "project", "operator": "project",
+                 "inputs": [{"node_id": "series"}],
+                 "args": {"fields": ["date", "indicator", "value"]}},
+            ],
+            "roots": ["project"],
+        })
+        self.assertEqual(program.completeness_issues(), ())
+
+    def test_concentration_metric_uses_existing_concentration_capability(self):
+        node = RequirementNode(
+            "concentration", Operator.RETRIEVE,
+            args={"domain": "trade", "metric": "concentration", "mineral": "니켈"},
+        )
+        self.assertEqual(live_multihop._action_id(node), "trade.concentration")
+
+    def test_forecast_boundary_preserves_metric_period_and_operation(self):
+        node = RequirementNode(
+            "forecast", Operator.RETRIEVE,
+            args={"domain": "price", "metric": "price_forecast",
+                  "period": {"kind": "future_horizon", "future_horizon": 1},
+                  "output": "latest_value"},
+        )
+        self.assertEqual(live_multihop._action_id(node), "forecast.price")
+        slots = live_multihop._action_slots(node, mineral="nickel")
+        self.assertEqual(slots.forecast_operation, "next_month_value")
+        self.assertEqual(slots.period.kind, "future_horizon")
+        self.assertEqual(slots.period.future_horizon, 1)
+
+    def test_forecast_boundary_rejects_non_future_period(self):
+        node = RequirementNode(
+            "forecast", Operator.RETRIEVE,
+            args={"metric": "price_forecast",
+                  "period": {"kind": "trailing_months", "trailing_months": 3}},
+        )
+        with self.assertRaisesRegex(ValueError, "forecast period"):
+            live_multihop._action_slots(node, mineral="nickel")
+
+    def test_indicator_boundary_preserves_selector_and_period(self):
+        node = RequirementNode(
+            "indicator", Operator.RETRIEVE,
+            args={"domain": "indicator", "metric": "series",
+                  "indicator": "composite_index", "indicator_variant": "composite",
+                  "indicator_operation": "period_change",
+                  "period": {"kind": "trailing_months", "trailing_months": 1}},
+        )
+        self.assertEqual(live_multihop._action_id(node), "indicator.series")
+        slots = live_multihop._action_slots(node)
+        self.assertEqual(slots.indicator, "composite_index")
+        self.assertEqual(slots.indicator_operation, "period_change")
+        self.assertEqual(slots.period.trailing_months, 1)
+
+    def test_indicator_output_normalizes_numeric_series_to_value(self):
+        call = live_multihop.ActionCall(
+            requirement_id="indicator", action_id="indicator.series",
+            slots=live_multihop.ActionSlots(
+                indicator="composite_index", indicator_variant="composite",
+            ),
+        )
+        evidence = Evidence(
+            "structured", "fixture", "fixture",
+            "| date | series |\n| --- | --- |\n| 2026-09-01 | 101.5 |",
+        )
+        raw = RetrievalResult(
+            ActionPlan(actions=[call]),
+            [ActionResult("indicator", "indicator.series", call.slots, "success", [evidence])],
+            [evidence], [],
+        )
+        result = live_multihop._typed_from_retrieval(raw, call, input_entities=[])
+        self.assertEqual(result.status.value, "success")
+        self.assertEqual(result.value[0]["indicator"], "composite_index")
+        self.assertEqual(result.value[0]["value"], 101.5)
+
+    def test_indicator_output_normalizes_index_source_alias_to_value(self):
+        call = live_multihop.ActionCall(
+            requirement_id="indicator", action_id="indicator.series",
+            slots=live_multihop.ActionSlots(indicator="composite_index"),
+        )
+        evidence = Evidence(
+            "structured", "fixture", "fixture",
+            "| date | indx |\n| --- | --- |\n| 2026-09-01 | 101.2 |",
+        )
+        raw = RetrievalResult(
+            ActionPlan(actions=[call]),
+            [ActionResult("indicator", "indicator.series", call.slots, "success", [evidence])],
+            [evidence], [],
+        )
+        result = live_multihop._typed_from_retrieval(raw, call, input_entities=[])
+        self.assertEqual(result.status.value, "success")
+        self.assertEqual(result.value[0]["value"], 101.2)
+
+    def test_indicator_output_contract_rejects_missing_date_or_value(self):
+        call = live_multihop.ActionCall(
+            requirement_id="indicator", action_id="indicator.series",
+            slots=live_multihop.ActionSlots(indicator="composite_index"),
+        )
+        evidence = Evidence(
+            "structured", "fixture", "fixture",
+            "| series |\n| --- |\n| 101.5 |",
+        )
+        raw = RetrievalResult(
+            ActionPlan(actions=[call]),
+            [ActionResult("indicator", "indicator.series", call.slots, "success", [evidence])],
+            [evidence], [],
+        )
+        result = live_multihop._typed_from_retrieval(raw, call, input_entities=[])
+        self.assertEqual(result.status.value, "empty")
+        self.assertEqual(result.failure_reason, "indicator_output_contract_invalid")
 
     def test_country_share_scope_normalizes_to_global_trade_scope(self):
         node = RequirementNode("country", Operator.RETRIEVE, args={"metric": "import_value", "scope": "country_share"})
@@ -215,7 +374,8 @@ class LiveMultiHopBridgeTests(unittest.IsolatedAsyncioTestCase):
         )
         payload = live_multihop._semantic_context_payload(ConversationContext("compact-session", turns))
         self.assertEqual(len(payload), 8)
-        self.assertNotIn("수입액", str(payload))
+        # Schema names are required for typed follow-ups, raw numeric payloads are not.
+        self.assertNotIn("999999999999999999999999", str(payload))
         self.assertIn("operators", payload[-1]["ast"])
         self.assertIn("provenance", payload[-1]["results"][0])
 

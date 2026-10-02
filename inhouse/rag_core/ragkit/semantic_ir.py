@@ -47,10 +47,16 @@ class ValueType(str, Enum):
 
 
 _METRIC_FIELDS: dict[str, set[str]] = {
-    "price": {"price", "cmerc_prc", "value", "date"},
-    "price_change": {"price_change", "price_change_rate", "pct_change", "change_pct"},
-    "price_change_rate": {"price_change", "price_change_rate", "pct_change", "change_pct"},
-    "price_volatility": {"price_volatility", "price_change", "pct_change", "change_pct"},
+    "inventory": {"inventory", "value", "date", "unit"},
+    # ``series`` is the semantic vocabulary emitted by the live AST parser;
+    # ``indicator`` is the canonical capability metric.  Both expose the
+    # same typed row fields at this boundary.
+    "indicator": {"indicator", "value", "date", "unit", "series"},
+    "series": {"indicator", "value", "date", "unit", "series"},
+    "price": {"price", "cmerc_prc", "value", "date", "hghst_prc", "lowst_prc", "high_price", "low_price", "status", "reason", "output"},
+    "price_change": {"price_change", "price_change_rate", "pct_change", "change_pct", "date", "period"},
+    "price_change_rate": {"price_change", "price_change_rate", "pct_change", "change_pct", "date", "period"},
+    "price_volatility": {"price_volatility", "price_change", "pct_change", "change_pct", "date", "period"},
     # Trade rows carry the dimensional metadata needed by downstream share,
     # period and unit projections.  Declaring it here keeps the AST contract
     # aligned with the existing RDB/tool result rather than allowing a later
@@ -62,10 +68,10 @@ _METRIC_FIELDS: dict[str, set[str]] = {
     "import_share": {"import_share", "share_percentage", "import_amount", "import_value", "country", "period", "unit"},
     "country_share": {"country_share", "share_percentage", "import_amount", "import_value", "country", "period", "unit"},
     "country_rank": {"country", "country_share", "share_percentage", "import_amount", "import_value", "period", "unit"},
-    "production": {"production", "production_volume", "value", "country", "period", "unit"},
-    "production_volume": {"production", "production_volume", "value", "country", "period", "unit"},
-    "reserves": {"reserves", "reserves_volume", "value", "country", "period", "unit"},
-    "reserves_volume": {"reserves", "reserves_volume", "value", "country", "period", "unit"},
+    "production": {"production", "production_volume", "value", "country", "country_code", "year", "period", "unit"},
+    "production_volume": {"production", "production_volume", "value", "country", "country_code", "year", "period", "unit"},
+    "reserves": {"reserves", "reserves_volume", "value", "country", "country_code", "year", "period", "unit"},
+    "reserves_volume": {"reserves", "reserves_volume", "value", "country", "country_code", "year", "period", "unit"},
 }
 
 _FIELD_ALIASES: dict[str, set[str]] = {
@@ -239,6 +245,24 @@ class SemanticProgram:
         def aliases(field: str) -> set[str]:
             return _FIELD_ALIASES.get(field.casefold(), {field}) | {field}
 
+        def field_matches(available: set[str], requested: str) -> bool:
+            """Compare semantic fields without losing annotated source columns.
+
+            Structured renderers may expose a physical column together with a
+            display annotation, e.g. ``cmerc_prc(통상가격)``.  The annotation
+            is not a different semantic field, so a projection requesting the
+            canonical ``cmerc_prc`` must be accepted.  Keep this comparison
+            bounded to the canonical prefix and the existing alias set; it is
+            not a free-form substring match.
+            """
+            candidates = aliases(requested)
+            for value in available:
+                text = str(value)
+                base = text.split("(", 1)[0].strip()
+                if text in candidates or base in candidates:
+                    return True
+            return False
+
         def metric_fields(metric: Any) -> set[str]:
             return set(_METRIC_FIELDS.get(str(metric).casefold(), {str(metric)})) if metric else set()
 
@@ -332,14 +356,22 @@ class SemanticProgram:
             if node.operator == Operator.FILTER.value and not isinstance(args.get("predicate"), Mapping) and not (args.get("field") or args.get("metric") or args.get("metric_field")):
                 issues.append(f"{node.node_id} requires a filter field or metric")
             if node.operator == Operator.ENTITY.value:
-                fields = fields_from_value(args.get("values") or args.get("minerals") or args.get("mineral"))
-                provided[node.node_id] = fields | ({"entity", "mineral", "광종"} if fields else set())
+                values = args.get("values") or args.get("minerals") or args.get("mineral")
+                fields = fields_from_value(values)
+                entity_values = isinstance(values, str) or isinstance(values, (list, tuple)) and bool(values) and all(isinstance(v, str) for v in values)
+                provided[node.node_id] = fields | ({"entity", "mineral", "광종"} if fields or entity_values or args.get("entity") else set())
             elif node.operator == Operator.RETRIEVE.value:
                 # Every retrieval carries an entity dimension even when the
                 # model did not spell it out in args.
-                provided[node.node_id] = {"entity", "mineral", "광종"} | metric_fields(args.get("metric"))
+                # Source/evidence are typed result metadata and may be
+                # projected without being physical row columns.
+                provided[node.node_id] = {"entity", "mineral", "광종", "source", "evidence"} | metric_fields(args.get("metric") or args.get("domain"))
             elif node.operator == Operator.RETRIEVE_DOCUMENT.value:
-                provided[node.node_id] = {"document", "evidence", "entity", "mineral", "광종"}
+                provided[node.node_id] = {"document", "evidence", "entity", "mineral", "광종", "mineral_list", "minerals", "title", "date", "publication_date"}
+            elif node.operator == Operator.FOR_EACH.value:
+                # Runtime returns per-item envelopes, not the input document
+                # fields nor flattened child metric columns.
+                provided[node.node_id] = {"mineral", "metric", "output", "status", "reason", "value", "period", "unit", "source", "evidence", "provenance", "result_type"}
             elif node.inputs:
                 input_sets = [upstream_fields(ref) for ref in node.inputs]
                 if any(item is None for item in input_sets):
@@ -348,8 +380,31 @@ class SemanticProgram:
                     merged = set().union(*(item or set() for item in input_sets))
                     if node.operator == Operator.PROJECT.value:
                         provided[node.node_id] = requested_fields(node)
+                        aliases_map = args.get("aliases") or {}
+                        if isinstance(aliases_map, Mapping) and all(isinstance(value, str) and value for value in aliases_map.values()):
+                            provided[node.node_id] = {aliases_map.get(field,field) for field in provided[node.node_id]}
+                        else:
+                            issues.append(f"{node.node_id} has invalid projection aliases")
+                        if args.get("fields") in (["minerals"], ["mineral_list"]):
+                            provided[node.node_id].update({"entity", "mineral", "광종"})
+                    elif node.operator == Operator.AGGREGATE.value:
+                        groups = args.get("group_by") or []
+                        groups = [groups] if isinstance(groups, str) else groups
+                        produced = set(groups) if isinstance(groups, list) and all(isinstance(g, str) for g in groups) else set()
+                        output_field = args.get("output_field") or args.get("field") or args.get("metric_field")
+                        if output_field:
+                            produced.add(output_field)
+                        if args.get("include_count"):
+                            produced.add("observation_count")
+                        if args.get("aggregation") in {"first", "last"} and args.get("order_by"):
+                            produced.add(args["order_by"])
+                        provided[node.node_id] = produced
                     elif node.operator == Operator.CALCULATE.value:
                         provided[node.node_id] = merged | ({"change_pct"} if args.get("calculation") in {"change_pct", "percent_change"} else set())
+                        if args.get("calculation") in {"endpoint_change", "periodic_return", "base100", "threshold_first", "correlation"}:
+                            groups = args.get("group_by") or []
+                            groups = [groups] if isinstance(groups, str) else groups
+                            provided[node.node_id] = set(groups) | {args.get("output_field", "value"), "date", "start_date", "end_date", "base_date", "start_value", "end_value", "base_value", "observation_count", "source_unit", "matched", "threshold", "left_only_count", "right_only_count", "neither_count"}
                     elif node.operator in {Operator.JOIN, Operator.COMPARE}:
                         keys = args.get("left_on", args.get("join_key", args.get("on"))) or []
                         keys = [keys] if isinstance(keys, str) else keys
@@ -372,13 +427,23 @@ class SemanticProgram:
             if not required or not node.inputs:
                 continue
             available = set().union(*(upstream_fields(ref) or set() for ref in node.inputs))
-            if not any(available.intersection(aliases(field)) for field in required for _ in (0,)):
+            if node.operator == Operator.PROJECT:
+                # Projection requests every named column, unlike an alias set
+                # describing one operand. A present column must not conceal a
+                # missing sibling. Unknown upstream schemas stay runtime-checked.
+                # Unit may live on TypedResult, not a row (e.g. Aggregate).
+                # The Project runtime explicitly materializes/validates it.
+                missing = {field for field in required
+                           if field != "unit" and not field_matches(available, field)}
+                if missing and all(upstream_fields(ref) is not None for ref in node.inputs):
+                    issues.append(f"{node.node_id} requires field(s) {sorted(missing)} not produced by upstream; available fields: {sorted(available)}")
+            elif not any(field_matches(available, field) for field in required for _ in (0,)):
                 issues.append(f"{node.node_id} requires field(s) {sorted(required)} not produced by upstream")
 
             for ref in node.inputs:
                 if ref.selector != "field" or ref.selector_value is None:
                     continue
                 source_fields = provided.get(ref.node_id)
-                if source_fields is not None and not source_fields.intersection(aliases(str(ref.selector_value))):
+                if source_fields is not None and not field_matches(source_fields, str(ref.selector_value)):
                     issues.append(f"{node.node_id} selects field {ref.selector_value!r} absent from {ref.node_id}")
         return tuple(dict.fromkeys(issues))
