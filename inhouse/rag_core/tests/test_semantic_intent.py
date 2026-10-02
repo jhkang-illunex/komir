@@ -372,6 +372,24 @@ class SemanticIntentTest(unittest.TestCase):
         period = normalized.requirements[0].period
         self.assertEqual((period.kind, period.trailing_months), ("trailing_months", 12))
 
+    def test_all_price_criteria_is_distinct_from_representative_series(self):
+        base = SemanticPlan(requirements=[SemanticRequirement(
+            domain="price", metric="price_series", mineral="니켈",
+        )])
+        representative = _normalize_semantic_plan(base, "최근 1년간 니켈 가격 추이를 보여줘")
+        all_criteria = _normalize_semantic_plan(base, "최근 1년간 니켈 모든 가격 추이를 보여줘")
+
+        self.assertEqual(representative.requirements[0].criterion_mode, "REPRESENTATIVE")
+        self.assertEqual(all_criteria.requirements[0].criterion_mode, "ALL")
+        _, representative_actions = resolve_semantic_plan(
+            representative, "최근 1년간 니켈 가격 추이를 보여줘"
+        )
+        _, all_actions = resolve_semantic_plan(
+            all_criteria, "최근 1년간 니켈 모든 가격 추이를 보여줘"
+        )
+        self.assertEqual(representative_actions.actions[0].slots.criterion_mode, "REPRESENTATIVE")
+        self.assertEqual(all_actions.actions[0].slots.criterion_mode, "ALL")
+
     def test_yearly_average_preserves_existing_price_operation_contract(self):
         plan = SemanticPlan(requirements=[SemanticRequirement(
             domain="price", metric="price_series", mineral="니켈",

@@ -32,6 +32,14 @@ class LiveMultiHopBridgeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(rows[0]["date"], "2026-10-01")
         self.assertEqual(rows[0]["value"], 123.4)
 
+    def test_indicator_rows_resolve_display_labeled_source_columns(self):
+        action = SimpleNamespace(slots=SimpleNamespace(indicator="composite_index"))
+        rows = live_multihop._canonical_indicator_rows(
+            [{"crtr_ymd(기준일자)": "20260905", "indx(지수)": "3651.45"}], action
+        )
+        self.assertEqual(rows[0]["date"], "2026-09-05")
+        self.assertEqual(rows[0]["value"], 3651.45)
+
     def test_trade_rank_does_not_guess_from_multiple_total_columns(self):
         rows = live_multihop._canonicalize_trade_rank_rows(
             [{"country": "중국", "total(import)": 12.5, "total(weight)": 2.0}],
@@ -178,6 +186,29 @@ class LiveMultiHopBridgeTests(unittest.IsolatedAsyncioTestCase):
                           "aliases": {"cmerc_prc": "cmerc_prc(통상가격)",
                                       "hghst_prc": "hghst_prc(최고가격)",
                                       "lowst_prc": "lowst_prc(최저가격)"}}},
+            ],
+            "roots": ["table"],
+        })
+        self.assertEqual(program.completeness_issues(), ())
+
+    def test_price_series_capability_name_exposes_all_criterion_fields(self):
+        # The live AST may use the capability-qualified metric name while the
+        # row contract is keyed by canonical ``price``.  ALL criterion output
+        # must therefore retain every source criterion identity field.
+        program = SemanticProgram.from_dict({
+            "nodes": [
+                {"node_id": "prices", "operator": "retrieve",
+                 "args": {"domain": "price", "metric": "price.series",
+                          "criterion_mode": "ALL"}},
+                {"node_id": "table", "operator": "project",
+                 "inputs": [{"node_id": "prices"}],
+                 "args": {"fields": [
+                     "date", "price", "price_measure_label",
+                     "price_criterion", "price_criterion_serial",
+                 ], "aliases": {field: field for field in (
+                     "date", "price", "price_measure_label",
+                     "price_criterion", "price_criterion_serial",
+                 )}}},
             ],
             "roots": ["table"],
         })

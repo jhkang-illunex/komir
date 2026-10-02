@@ -1708,8 +1708,13 @@ def _canonical_indicator_rows(rows: list[dict[str, Any]], action: ActionCall) ->
     for row in rows:
         copied = dict(row)
         if "date" not in copied:
-            for source_field in ("crtr_ymd", "obs_date", "observed_date", "period"):
-                raw_date = copied.get(source_field)
+            for source_field in ("date", "crtr_ymd", "obs_date", "observed_date", "period"):
+                # Evidence tables may expose DB comments in the display key,
+                # e.g. ``crtr_ymd(기준일자)``. Resolve the physical column through
+                # the shared canonical resolver instead of requiring an exact
+                # dictionary key.
+                source_key = _resolve_row_field([copied], source_field, strict=True)
+                raw_date = copied.get(source_key) if source_key else None
                 if raw_date is None:
                     continue
                 date_text = str(raw_date).strip()
@@ -1719,7 +1724,8 @@ def _canonical_indicator_rows(rows: list[dict[str, Any]], action: ActionCall) ->
                 break
         if "value" not in copied:
             for source_field in ("series", "indx", "center"):
-                numeric = _numeric(copied.get(source_field))
+                source_key = _resolve_row_field([copied], source_field, strict=True)
+                numeric = _numeric(copied.get(source_key)) if source_key else None
                 if numeric is not None:
                     copied["value"] = numeric
                     break

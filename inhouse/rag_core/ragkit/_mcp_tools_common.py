@@ -190,6 +190,38 @@ def _expand_all_price_measures(
                      "price_measure_expanded": True},
     })
 
+
+def _select_representative_price_measure(dataset: RawDataset) -> RawDataset:
+    """Keep only the canonical representative (normal) price measure.
+
+    A criterion such as ``LME CASH`` may contain low/high/normal observation
+    columns.  Those are measures within one criterion, not separate criteria.
+    The default REPRESENTATIVE/EXPLICIT contract exposes the normal measure;
+    ALL is the only mode that expands all three measures.
+    """
+    date_column = next((column for column in dataset.columns
+                        if str(column).casefold() in {"date", "crtr_ymd", "obs_date"}), None)
+    value_column = next((column for column in dataset.columns
+                         if str(column).casefold() in {"cmerc_prc", "normal_price", "price"}), None)
+    if date_column is None or value_column is None:
+        return dataset
+    columns = [date_column, value_column]
+    for optional in ("price_criterion", "price_criterion_serial"):
+        if optional in dataset.columns:
+            columns.append(optional)
+    rows = [
+        {column: row.get(column) for column in columns}
+        for row in dataset.rows
+        if row.get(value_column) is not None
+    ]
+    return dataset.model_copy(update={
+        "columns": columns,
+        "rows": rows,
+        "row_count": len(rows),
+        "metadata": {**dataset.metadata, "price_measure": "normal_price",
+                     "representative_price_measure": True},
+    })
+
 #: 2026-09-07("니켈 최근 6개월 가격" 사용자 제보 후속) — start_period·
 #: end_period가 둘 다 있으면 그 범위 전체를 봐야 "추이" 질문에 답이 되는데,
 #: 일별 가격(~130행)도 다 못 온다. 기간이 명시된 조회는 `fetch_complete()`로
@@ -553,6 +585,12 @@ def register_common_tools(
                     )
                 decorated.append(dataset)
             datasets = decorated
+        elif page_id in _PRICE_PAGES and criterion_mode != "ALL":
+            # REPRESENTATIVE/EXPLICIT selects one criterion, then exposes its
+            # canonical normal measure.  Do not leak low/high columns as extra
+            # series; ALL is the explicit opt-in for measure expansion.
+            datasets = [_select_representative_price_measure(dataset)
+                        for dataset in datasets]
 
         # 가격 기준·단위와 더미 상태는 광종 마스터가 아니라 실제 선택한
         # 가격기준에 귀속한다. 표시명 사전이 없으면 원시 코드를 보존한다.

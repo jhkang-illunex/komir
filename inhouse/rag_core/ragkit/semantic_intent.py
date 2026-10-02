@@ -581,6 +581,20 @@ def _normalize_semantic_plan(plan: SemanticPlan, message: str = "") -> SemanticP
             item = item.model_copy(update={
                 "period": SemanticPeriod(kind="trailing_months", trailing_months=12),
             })
+        # Price criterion cardinality is an independent semantic dimension.
+        # Do not rely on the model to preserve it: an explicit request for all
+        # criteria must remain ALL, while an ordinary series stays
+        # REPRESENTATIVE.  This applies to the generic price-series contract,
+        # not to a mineral or question-specific phrase.
+        if (item.domain == "price"
+                and item.metric in {"price_series", "current"}
+                and item.criterion_mode == "REPRESENTATIVE"
+                and item.price_basis is None
+                and any(marker in compact for marker in (
+                    "모든가격", "전체가격", "모든가격기준", "전체가격기준",
+                    "가격기준전체", "가격기준을모두",
+                ))):
+            item = item.model_copy(update={"criterion_mode": "ALL"})
         # Calendar years are lexical date fields. Preserve an explicit year
         # when the model omits period; never replace it with latest.
         if item.domain == "resource" and item.period is None:

@@ -276,7 +276,24 @@ class SemanticProgram:
             return False
 
         def metric_fields(metric: Any) -> set[str]:
-            return set(_METRIC_FIELDS.get(str(metric).casefold(), {str(metric)})) if metric else set()
+            if not metric:
+                return set()
+            # Capability-qualified names may cross this IR boundary (for
+            # example ``price.series``), while the row contract is keyed by
+            # its canonical metric (``price``).  Keep this normalization
+            # local to field inference so capability names are not leaked
+            # into downstream projection validation.
+            key = str(metric).strip().casefold()
+            key = {
+                "price.series": "price",
+                "price_series": "price",
+                "inventory.series": "inventory",
+                "inventory_series": "inventory",
+                "inventory.latest": "inventory",
+                "indicator.series": "indicator",
+                "indicator_series": "indicator",
+            }.get(key, key)
+            return set(_METRIC_FIELDS.get(key, {key}))
 
         def fields_from_value(value: Any) -> set[str]:
             if isinstance(value, Mapping):

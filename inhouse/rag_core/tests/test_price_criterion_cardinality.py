@@ -1,5 +1,8 @@
 from common.komis_raw import RawDataset
-from rag_core.ragkit._mcp_tools_common import _expand_all_price_measures
+from rag_core.ragkit._mcp_tools_common import (
+    _expand_all_price_measures,
+    _select_representative_price_measure,
+)
 from rag_core.ragkit.live_multihop import LiveOperatorFactory
 from rag_core.ragkit.pipe_runtime import TypedResult
 from rag_core.ragkit.semantic_ir import InputRef, Operator, RequirementNode, ValueType
@@ -55,6 +58,26 @@ def test_all_price_measures_skip_null_source_measure():
 
     assert len(expanded.rows) == 2
     assert all(row["price_measure"] != "low_price" for row in expanded.rows)
+
+
+def test_representative_price_keeps_only_normal_measure():
+    dataset = RawDataset(
+        source_table="KO_MNRL_PRC",
+        columns=["crtr_ymd", "lowst_prc", "hghst_prc", "cmerc_prc"],
+        rows=[{
+            "crtr_ymd": "20261001",
+            "lowst_prc": 10,
+            "hghst_prc": 20,
+            "cmerc_prc": 15,
+        }],
+        row_count=1,
+    )
+
+    representative = _select_representative_price_measure(dataset)
+
+    assert representative.columns == ["crtr_ymd", "cmerc_prc"]
+    assert representative.rows == [{"crtr_ymd": "20261001", "cmerc_prc": 15}]
+    assert representative.metadata["representative_price_measure"] is True
 
 
 def test_all_price_projection_preserves_series_identity_when_fields_are_implicit():
