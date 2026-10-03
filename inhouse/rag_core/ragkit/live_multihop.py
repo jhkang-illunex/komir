@@ -32,7 +32,7 @@ from common.llm_client import KomirJsonLLM, LLMOutputError
 
 from .action_contract import (
     ActionCall, ActionPlan, ActionSlots, ForecastCapabilityInput,
-    IndicatorSeriesInput, IndicatorSeriesRow, MINERAL_ALIASES, Period,
+    IndicatorSeriesInput, IndicatorSeriesRow, MINERAL_ALIASES, Period, history_is_required,
 )
 from .chatbot_events import ChatEvent, chart_spec, extract_markdown_tables, table_block, _verified_display_unit, _price_unit_from_codes
 from .chatbot_graph import retrieve_evidence
@@ -42,6 +42,7 @@ from .lowering import PipeLowerer
 from .multihop_orchestrator import MultiHopOrchestrator
 from .pipe_runtime import ExecutionContext, ExecutionResult, FunctionStep, PipeRuntime, ResultStatus, TypedResult
 from .semantic_ir import Operator, RequirementNode, SemanticProgram, ValueType, _METRIC_FIELDS
+from .semantic_capabilities import capability_identity_fields, resolve_canonical_capability
 from .aast_coverage import CoverageReport, validate_aast
 from .relational_ops import execute_relation
 from .analytical_aggregate import aggregate as aggregate_rows, SUPPORTED_AGGREGATIONS
@@ -275,6 +276,58 @@ def _latest_completed_result_turn(context: ConversationContext) -> Turn | None:
     return next((turn for turn in reversed(context.turns) if turn.result is not None), None)
 
 
+def _materialize_history_requirements(
+    requirements: list[dict[str, Any]] | None,
+    context: ConversationContext,
+) -> tuple[list[dict[str, Any]] | None, list[dict[str, Any]], str | None]:
+    """Resolve inherited semantic slots before AST generation.
+
+    This narrow adapter lets explicit current fields win and inherits only
+    missing typed slots. It never infers values from assistant prose or
+    manufactures a missing result; the typed result remains the execution
+    input for reference/refresh queries.
+    """
+    if not requirements:
+        return requirements, [], None
+    inherited_turn = _latest_completed_result_turn(context)
+    if inherited_turn is None:
+        needs_history = any(
+            item.get("relation") == "refine_previous" or item.get("context_ref")
+            for item in requirements
+        )
+        return requirements, [], "HISTORY_REFERENCE_UNRESOLVED" if needs_history else None
+    roots = _turn_output_results(inherited_turn)
+    typed_candidates = [value for value in roots.values()
+                       if value.status == ResultStatus.SUCCESS and value.sufficient]
+    if not typed_candidates:
+        return requirements, [], "HISTORY_BINDING_FAILURE"
+    typed = typed_candidates[0]
+    materialized: list[dict[str, Any]] = []
+    bindings: list[dict[str, Any]] = []
+    for raw in requirements:
+        item = dict(raw)
+        if item.get("relation") != "refine_previous" and not item.get("context_ref"):
+            materialized.append(item)
+            continue
+        updates: dict[str, Any] = {}
+        if not item.get("mineral") and typed.entity:
+            updates["mineral"] = typed.entity[0]
+        if not item.get("period") and typed.period:
+            updates["period"] = typed.period
+        # Explicit current fields remain authoritative. Clearing the relation
+        # marks the semantic boundary as complete for downstream validation.
+        updates.update({"relation": "independent", "context_ref": None})
+        item.update(updates)
+        bindings.append({
+            "source_turn": inherited_turn.turn_id,
+            "source_result": inherited_turn.result_id,
+            "inherited_fields": sorted(key for key in ("mineral", "period") if key in updates),
+            "result_type": typed.result_type.value,
+        })
+        materialized.append(item)
+    return materialized, bindings, None
+
+
 def _semantic_context_payload(context: ConversationContext) -> list[dict[str, Any]]:
     """Return bounded typed history, excluding raw answer/table payloads.
 
@@ -490,6 +543,83 @@ def _normalize_relation_contract(
         raw_nodes = [node for node in raw_nodes if str(node.get("node_id")) not in yoy_rewrites]
         nodes = {str(node.get("node_id")): node for node in raw_nodes
                  if node.get("node_id") is not None}
+
+    # ``indicator.series`` already owns the typed period-change operation.
+    # AAST generation may nevertheless spell the same semantic requirement as
+    # ``retrieve(indicator.series) -> calculate(period_change)``.  Resolve
+    # that representation at the AST boundary, using the parsed typed
+    # requirement as the authority; do not infer a new calculation from the
+    # question or teach the generic runtime another indicator algorithm.
+    indicator_period_change = [
+        item for item in (semantic_requirements or [])
+        if str(item.get("domain", "")).casefold() == "indicator"
+        and str(item.get("operation") or item.get("indicator_operation") or "").casefold()
+        == "period_change"
+    ]
+    if indicator_period_change:
+        consumers = {}
+        for candidate in raw_nodes:
+            for ref in candidate.get("inputs", []) or []:
+                if isinstance(ref, Mapping) and ref.get("node_id") is not None:
+                    consumers.setdefault(str(ref["node_id"]), []).append(str(candidate.get("node_id")))
+        indicator_rewrites: dict[str, str] = {}
+        for node in list(raw_nodes):
+            if str(node.get("operator")) != Operator.CALCULATE.value:
+                continue
+            args = node.get("args") or {}
+            calculation = str(args.get("calculation") or args.get("operation") or "").casefold()
+            if calculation != "period_change":
+                continue
+            inputs = node.get("inputs") or []
+            if len(inputs) != 1 or not isinstance(inputs[0], Mapping):
+                continue
+            source_id = str(inputs[0].get("node_id"))
+            source = nodes.get(source_id)
+            structural_source = source
+            while (structural_source is not None
+                   and str(structural_source.get("operator")) == Operator.PROJECT.value):
+                projection_inputs = structural_source.get("inputs") or []
+                if len(projection_inputs) != 1 or not isinstance(projection_inputs[0], Mapping):
+                    structural_source = None
+                    break
+                structural_source = nodes.get(str(projection_inputs[0].get("node_id")))
+            if (structural_source is None
+                    or str(structural_source.get("operator")) != Operator.RETRIEVE.value
+                    or consumers.get(source_id) != [str(node.get("node_id"))]):
+                continue
+            source_args = structural_source.setdefault("args", {})
+            if (str(source_args.get("domain", "")).casefold() != "indicator"
+                    or str(source_args.get("metric", "")).casefold() not in {"series", "indicator"}):
+                continue
+            requirement = next(
+                (item for item in indicator_period_change
+                 if not item.get("indicator")
+                 or str(item.get("indicator")).casefold()
+                 == str(source_args.get("indicator", "")).casefold()),
+                None,
+            )
+            if requirement is None:
+                continue
+            source_args["metric"] = "series"
+            source_args["indicator_operation"] = "period_change"
+            source_args.setdefault("indicator", requirement.get("indicator", "composite_index"))
+            source_args.setdefault("indicator_variant", requirement.get("indicator_variant", "composite"))
+            indicator_rewrites[str(node.get("node_id"))] = str(structural_source.get("node_id"))
+            if source is not structural_source:
+                indicator_rewrites[str(source.get("node_id"))] = str(structural_source.get("node_id"))
+
+        if indicator_rewrites:
+            for node in raw_nodes:
+                node["inputs"] = [
+                    {**dict(ref), "node_id": indicator_rewrites.get(str(ref.get("node_id")), ref.get("node_id"))}
+                    if isinstance(ref, Mapping) else ref
+                    for ref in (node.get("inputs", []) or [])
+                ]
+            payload["roots"] = [indicator_rewrites.get(str(root), root) for root in payload.get("roots", [])]
+            raw_nodes = [node for node in raw_nodes
+                         if str(node.get("node_id")) not in indicator_rewrites]
+            nodes = {str(node.get("node_id")): node for node in raw_nodes
+                     if node.get("node_id") is not None}
 
     # ``country_rank`` is a semantic operation; the physical trade capability
     # selects its amount metric from the declared flow.  Preserve export as
@@ -1360,10 +1490,17 @@ def _resolve_row_field(rows: list[Any], requested: str | None, *, strict: bool =
         "production_volume": {"production", "production_volume", "production_qty", "prdctn_quty_ton", "생산량"},
         "reserves": {"reserves", "reserves_volume", "reserve", "burudg_quty_ton", "매장량"},
         "reserves_volume": {"reserves", "reserves_volume", "reserve", "burudg_quty_ton", "매장량"},
-        "date": {"date", "obs_date", "observed_date", "obs_ymd", "crtr_ymd", "기준일자", "기준일", "관측일"},
+        "date": {"date", "price_date", "obs_date", "observed_date", "obs_ymd", "crtr_ymd", "기준일자", "기준일", "관측일"},
         "year": {"year", "crtr_yr", "기준연도", "연도"},
         "price": {"price", "cmerc_prc", "통상가격", "latest_price"},
+        "price_measure_label": {"price_measure_label", "price_measure", "price_criterion", "가격 구분", "가격기준"},
+        "price_criterion": {"price_criterion", "price_measure_label", "price_measure", "가격 구분", "가격기준"},
+        "price_criterion_serial": {"price_criterion_serial", "mnrl_prc_crtr_sn", "price_criterion_no", "가격기준 serial", "가격기준번호"},
         "inventory": {"inventory", "invt", "inventory_qty", "재고", "재고량", "quantity"},
+        # ``indicator.series`` exposes the observed numeric measure as the
+        # canonical ``value`` field.  ``series`` is the semantic projection
+        # vocabulary used by the AST, not a second physical value column.
+        "series": {"series", "value"},
         "country": {"country", "country_name", "country_nm", "country_name_ko", "country_name_en", "국가", "국가명", "수입국", "상대국"},
         "country_code": {"country_code", "country_cd", "ntn_cd", "ntn_eng_cd", "국가코드"},
         "share_pct": {"share_pct", "share_percentage", "import_share", "country_share", "share", "비중", "점유율", "수입비중", "수입 비중"},
@@ -1414,9 +1551,12 @@ _CANONICAL_FIELD_ALIASES: dict[str, tuple[str, ...]] = {
     "mineral": ("mineral", "entity", "광종", "광물", "원소", "광종명"),
     "country": ("country", "국가", "국가명", "수입국", "상대국"),
     "country_code": ("country_code", "국가코드", "ntn_cd", "ntn_eng_cd"),
-    "date": ("date", "obs_date", "observed_date", "obs_ymd", "crtr_ymd", "기준일자", "기준일", "관측일"),
+    "date": ("date", "price_date", "obs_date", "observed_date", "obs_ymd", "crtr_ymd", "기준일자", "기준일", "관측일"),
     "year": ("year", "crtr_yr", "기준연도", "연도"),
     "price": ("price", "cmerc_prc", "통상가격", "latest_price"),
+    "price_measure_label": ("price_measure_label", "price_measure", "price_criterion", "가격 구분", "가격기준"),
+    "price_criterion": ("price_criterion", "price_measure_label", "price_measure", "가격 구분", "가격기준"),
+    "price_criterion_serial": ("price_criterion_serial", "mnrl_prc_crtr_sn", "price_criterion_no", "가격기준 serial", "가격기준번호"),
     "inventory": ("inventory", "invt", "재고", "재고량", "quantity"),
     "production_volume": ("production_volume", "production", "prdctn_quty_ton", "생산량"),
     "reserves_volume": ("reserves_volume", "reserves", "burudg_quty_ton", "매장량"),
@@ -1612,7 +1752,7 @@ def _typed_from_retrieval(result: Any, action: ActionCall, *, input_entities: li
                 normalized_rows.append(copied)
             rows = normalized_rows
     metric = action.slots.metric or action.slots.trade_metric
-    if action_id == "price.series":
+    if action_id in {"price.series", "price.overview"}:
         metric = "price"
     elif action_id == "forecast.price":
         metric = "price_forecast"
@@ -1620,7 +1760,7 @@ def _typed_from_retrieval(result: Any, action: ActionCall, *, input_entities: li
         metric = "inventory"
     elif action_id == "indicator.series":
         metric = "indicator"
-    scalar_field = "price" if action_id == "price.series" else (
+    scalar_field = "price" if action_id in {"price.series", "price.overview"} else (
         {"production": "production_volume", "reserves": "reserves_volume"}.get(metric)
         if action_id == "resource.rank" else None
     )
@@ -1632,6 +1772,7 @@ def _typed_from_retrieval(result: Any, action: ActionCall, *, input_entities: li
             rows = [{**row, "value": row[key]} if key in row and "value" not in row else row for row in rows]
     result_type = {
         "price.volatility_rank": ValueType.MINERAL_RANKING,
+        "price.overview": ValueType.FACT_SET,
         "trade.country_rank": ValueType.COUNTRY_SHARE,
         "trade.monthly": ValueType.TRADE_SERIES,
         "price.series": ValueType.TIME_SERIES,
@@ -1707,7 +1848,11 @@ def _canonical_indicator_rows(rows: list[dict[str, Any]], action: ActionCall) ->
     normalized: list[dict[str, Any]] = []
     for row in rows:
         copied = dict(row)
-        if "date" not in copied:
+        if "date" in copied:
+            date_text = str(copied["date"]).strip()
+            if len(date_text) == 8 and date_text.isdigit():
+                copied["date"] = f"{date_text[:4]}-{date_text[4:6]}-{date_text[6:8]}"
+        else:
             for source_field in ("date", "crtr_ymd", "obs_date", "observed_date", "period"):
                 # Evidence tables may expose DB comments in the display key,
                 # e.g. ``crtr_ymd(기준일자)``. Resolve the physical column through
@@ -1753,6 +1898,10 @@ def _action_id(node: Any) -> str:
         return "document.retrieve"
     domain = str(args.get("domain", "")).casefold()
     metric = str(args.get("metric", "")).casefold()
+    # Derived resource operations are more specific than the base resource
+    # metric. Resolve them before registry surface-metric matching so adding a
+    # typed ``resource.rank`` spec cannot shadow the existing ``resource.yoy``
+    # capability.
     if domain == "trade" and str(args.get("operation", "")).casefold() in {"country_rank", "rank"}:
         return "trade.country_rank"
     if (domain == "resource" and metric in {"resource_yoy", "production_yoy", "reserves_yoy"}) or (
@@ -1760,6 +1909,9 @@ def _action_id(node: Any) -> str:
         in {"yoy", "year_over_year", "annual_change"}
     ):
         return "resource.yoy"
+    resolved = resolve_canonical_capability(domain, metric, args)
+    if resolved is not None:
+        return str(resolved["action_id"])
     if domain == "forecast" or metric == "price_forecast":
         return "forecast.price"
     price_metrics = {"rank", "price_change", "price_change_rate", "price_growth_rate", "change", "volatility"}
@@ -1780,7 +1932,11 @@ def _action_id(node: Any) -> str:
     if domain == "inventory":
         period = args.get("period")
         period_kind = period.get("kind") if isinstance(period, Mapping) else None
-        metric_name = _canonical(metric)
+        # Action routing must normalize the semantic metric locally.  The
+        # source-field canonicalizer is row-boundary logic and is not
+        # available here; calling it from this pre-execution boundary caused
+        # every inventory-series request to fail with NameError.
+        metric_name = str(metric or "").strip().casefold().replace("-", "_").replace(" ", "_")
         if metric_name in {"series", "inventory_series", "trend", "time_series"} or period_kind in {
             "trailing_months", "range", "calendar_year",
         }:
@@ -1795,6 +1951,10 @@ def _action_slots(node: Any, mineral: str | None = None, minerals: list[str] | N
     args = node.args
     metric = args.get("metric")
     domain = str(args.get("domain", "")).casefold()
+    # Resolve the surface metric before slot normalization. Price/current and
+    # inventory/latest are registry keys; the generic slot model clears their
+    # physical metric later, so resolving afterwards loses canonical args.
+    surface_metric = metric
     if domain in {"production", "reserves"}:
         if metric is None:
             metric = domain
@@ -1835,6 +1995,7 @@ def _action_slots(node: Any, mineral: str | None = None, minerals: list[str] | N
     if scope in {"WORLD", "GLOBAL", "global", "세계"}:
         scope = "global"
     action_id = _action_id(node)
+    canonical = resolve_canonical_capability(domain, surface_metric, args)
     slots = dict(
         mineral=resolved_mineral,
         minerals=resolved_minerals or None,
@@ -1846,6 +2007,8 @@ def _action_slots(node: Any, mineral: str | None = None, minerals: list[str] | N
         topic=args.get("topic") or args.get("question"),
         requested_outputs={"text", "table", "chart"},
     )
+    if canonical is not None:
+        slots.update(canonical.get("canonical_args", {}))
     if action_id == "forecast.price":
         typed = ForecastCapabilityInput.model_validate({
             "mineral": resolved_mineral,
@@ -1969,7 +2132,18 @@ class LiveOperatorFactory:
         if node.operator == Operator.AGGREGATE.value:
             if source is None:
                 return TypedResult.failed("missing_input")
-            return aggregate_rows(source, args, lambda data, field: _resolve_row_field(data, field, strict=True))
+            aggregate_args = dict(args)
+            # ``first``/``last`` are ordered operations. When the typed input
+            # exposes exactly one canonical date field, bind that field at the
+            # capability boundary instead of relying on row insertion order.
+            # If no unambiguous date exists, retain the aggregate contract's
+            # fail-closed ``aggregate_order_required`` behavior.
+            if aggregate_args.get("aggregation") in {"first", "last"} and not aggregate_args.get("order_by"):
+                source_rows = source.value if isinstance(source.value, list) else [source.value]
+                if source_rows and all(isinstance(row, Mapping) for row in source_rows):
+                    if _resolve_row_field(source_rows, "date", strict=True) is not None:
+                        aggregate_args["order_by"] = "date"
+            return aggregate_rows(source, aggregate_args, lambda data, field: _resolve_row_field(data, field, strict=True))
         elif node.operator == Operator.TOP_K.value:
             rows = rows[: int(args.get("k") or args.get("top_n") or 5)]
         elif node.operator in {Operator.SORT.value, Operator.RANK.value}:
@@ -2149,10 +2323,48 @@ class LiveOperatorFactory:
                 isinstance(row, Mapping) and "price_measure" in row for row in mappings
             ):
                 fields = list(fields)
+                # Criterion identity is an optional source-owned extension of
+                # the price observation. Preserve every identity field that
+                # exists, but do not make a missing serial/label a failure of
+                # an otherwise valid PriceOverview result.
+                identity_fields = {
+                    "price_measure", "price_measure_label", "price_criterion",
+                    "price_criterion_serial",
+                }
+                fields = [
+                    field for field in fields
+                    if field not in identity_fields
+                    or _resolve_row_field(mappings, field, strict=True) is not None
+                ]
                 for identity_field in (
                     "price_measure", "price_measure_label", "price_criterion",
                     "price_criterion_serial",
                 ):
+                    if identity_field not in fields and _resolve_row_field(
+                        mappings, identity_field, strict=True
+                    ) is not None:
+                        fields.append(identity_field)
+            # Apply the same optional-identity rule after all legacy
+            # compatibility branches.  Source adapters may expose annotated
+            # keys (for example ``price_measure(가격 구분)``), so checking the
+            # literal key above is not sufficient to decide whether a serial
+            # or label is available.
+            if source and source.metric == "price":
+                price_identity_fields = {
+                    "price_measure", "price_measure_label", "price_criterion",
+                    "price_criterion_serial",
+                }
+                fields = [
+                    field for field in fields
+                    if field not in price_identity_fields
+                    or _resolve_row_field(mappings, field, strict=True) is not None
+                ]
+                # Price identity is part of the registry-owned output
+                # contract, not an optional presentation-only field. Preserve
+                # every identity component that the canonical result actually
+                # provides, even when the candidate AAST requested only the
+                # common mineral/value/date fields.
+                for identity_field in capability_identity_fields("price", "price"):
                     if identity_field not in fields and _resolve_row_field(
                         mappings, identity_field, strict=True
                     ) is not None:
@@ -2438,6 +2650,25 @@ class LiveOperatorFactory:
             include_action_results=True,
         )
         typed = _typed_from_retrieval(result, call, input_entities=[mineral] if mineral else [])
+        if (action_id == "indicator.series"
+                and slots.indicator_operation == "period_change"
+                and typed.status == ResultStatus.SUCCESS):
+            # ``indicator.series`` owns the typed operation selector, while
+            # the generic, already-tested endpoint calculation owns the
+            # reduction semantics.  Keep both contracts explicit at this
+            # boundary; do not make the generic AST runtime interpret the
+            # indicator's physical source rows.
+            typed = calculate_series(
+                typed,
+                {
+                    "calculation": "endpoint_change",
+                    "field": "value",
+                    "time_field": "date",
+                    "output_field": "change_pct",
+                    "endpoint_policy": "inside",
+                },
+                lambda rows, field: _resolve_row_field(rows, field, strict=True),
+            )
         if action_id == "resource.rank" and slots.resource_country and typed.status == ResultStatus.SUCCESS:
             try:
                 selected = _resolve_country_alias(typed.value, slots.resource_country)
@@ -2483,7 +2714,19 @@ async def run_live_multihop(
 ) -> LiveRun:
     if isinstance(_HISTORY, PostgresHistoryStore):
         await _HISTORY.ensure_schema()
-    context = await _HISTORY.get_context(session_id)
+    stored_context = await _HISTORY.get_context(session_id)
+    history_used = bool(stored_context.turns) and history_is_required(message)
+    if not history_used:
+        # A self-contained query is authoritative. Keep the persisted store
+        # untouched, but prevent old typed turns from entering AST parsing,
+        # coverage repair, or reference materialization for this turn.
+        context = ConversationContext(session_id)
+    else:
+        context = stored_context
+    _logger.info(
+        "history_resolution session=%s history_used=%s source_turns=%d selected_turns=%d",
+        session_id, history_used, len(stored_context.turns), len(context.turns),
+    )
     semantic_action_plan = raw_action_plan
     # Enabled live mode intentionally does not create the legacy ActionPlan
     # before AAST.  Reuse the existing typed semantic parser only to obtain a
@@ -2492,7 +2735,12 @@ async def run_live_multihop(
     if not semantic_requirements:
         try:
             from .semantic_intent import parse_and_resolve
-            resolution = await asyncio.to_thread(parse_and_resolve, message, llm, history, None)
+            # The semantic parser receives only the bounded typed projection
+            # selected by the history boundary.  Passing the raw conversation
+            # here would let an old utterance compete with the materialized
+            # current requirement inside the LLM prompt.
+            parser_history = _semantic_context_payload(context) if history_used else []
+            resolution = await asyncio.to_thread(parse_and_resolve, message, llm, parser_history, None)
             if resolution.semantic_plan is not None:
                 semantic_requirements = [
                     item.model_dump(mode="json", exclude_none=True)
@@ -2501,15 +2749,41 @@ async def run_live_multihop(
             if semantic_action_plan is None and resolution.action_plan is not None:
                 semantic_action_plan = resolution.action_plan.model_dump(mode="json")
         except Exception as exc:
-            _logger.info("aast semantic requirement snapshot unavailable: %s", type(exc).__name__)
+            _logger.info(
+                "history_boundary failure=SEMANTIC_MATERIALIZATION_FAILURE "
+                "session=%s error=%s", session_id, type(exc).__name__,
+            )
+    semantic_requirements, history_bindings, history_failure = _materialize_history_requirements(
+        semantic_requirements, context,
+    )
+    if history_bindings:
+        _logger.info(
+            "history_boundary history_used=true materialized_requirements=%s bindings=%s",
+            json.dumps(semantic_requirements, ensure_ascii=False, default=str),
+            json.dumps(history_bindings, ensure_ascii=False, default=str),
+        )
+    if history_failure:
+        _logger.info("history_boundary failure=%s session=%s", history_failure, session_id)
+        if history_is_required(message) and not semantic_requirements:
+            raise LivePlanError(history_failure)
+    # Once the unresolved slot has been materialized into the current
+    # requirement, the planner must not see the old turn as a second source of
+    # semantic truth.  The persisted typed result remains available for audit
+    # provenance, while the AAST receives only the resolved current request.
+    ast_context = ConversationContext(session_id) if history_bindings else context
+    if history_bindings:
+        _logger.info(
+            "history_boundary complete=true ast_context_turns=0 source_turns=%d",
+            len(context.turns),
+        )
     try:
         program = await _parse_ast(
-            llm, message, context, semantic_requirements=semantic_requirements,
+            llm, message, ast_context, semantic_requirements=semantic_requirements,
             raw_action_plan=semantic_action_plan,
         )
     except (ValueError, LLMOutputError) as exc:
         raise LivePlanError("semantic_plan_incomplete") from exc
-    program = _resolve_history_references(program, context)
+    program = _resolve_history_references(program, ast_context)
     turn_id = f"turn-{uuid4().hex[:12]}"
     has_dependency = any(node.inputs for node in program.nodes) or len(program.nodes) > 1
     if not has_dependency:
@@ -2520,7 +2794,7 @@ async def run_live_multihop(
             semantic_program=program,
         ))
         return LiveRun(program, None, skipped=True, session_id=session_id, turn_id=turn_id)
-    factory = LiveOperatorFactory(message=message, session_id=session_id, profile=profile, llm=llm, history=history, context=context)
+    factory = LiveOperatorFactory(message=message, session_id=session_id, profile=profile, llm=llm, history=history, context=ast_context)
     lowerer = PipeLowerer(LegacyOperatorFactory({node.operator.value: factory.build for node in program.nodes}))
     pipe_id = f"pipe-{uuid4().hex[:12]}"
     orchestration = await MultiHopOrchestrator(

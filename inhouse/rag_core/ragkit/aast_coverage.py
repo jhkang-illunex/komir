@@ -261,9 +261,16 @@ def _node_metric(node: Any) -> str:
         return "document"
     args = node.args
     metric = args.get("metric")
+    domain = _canonical(args.get("domain"))
+    # ``latest`` is an operation within the inventory domain, not the generic
+    # latest-price alias. Keep the domain-qualified canonical metric so
+    # coverage compares InventoryObservation with inventory output.
+    if domain == "inventory" and _canonical(metric) in {
+        "latest", "inventory", "inventory_series", "series",
+    }:
+        return "inventory"
     if metric:
         return _canonical_metric(metric)
-    domain = _canonical(args.get("domain"))
     return {
         "price": "price", "document": "document", "indicator": "indicator",
         "inventory": "inventory", "production": "production", "reserves": "reserves",
@@ -547,7 +554,16 @@ def validate_aast(
             if required_metric == "resource":
                 aliases |= {"resource", "production", "reserves"}
             if required_metric in {"country_rank", "country_share", "import_share"}:
-                aliases |= {"country_rank", "country_share", "import_share", "import_value", "import_amount"}
+                # A ranked country set is an output semantic, not an import-only
+                # metric.  The same typed result can be built from either flow;
+                # the operation/capability check above still rejects a plain
+                # trade time series.
+                aliases |= {
+                    "country_rank", "country_share", "import_share",
+                    "import_value", "import_amount", "import_weight",
+                    "export_share", "export_value", "export_amount",
+                    "export_weight",
+                }
             derived_ok = _derived_metric_satisfied(required_metric, candidates, program)
             if not planned_metrics.intersection(aliases) and not derived_ok:
                 violations.append(CoverageViolation("METRIC_PRESERVATION_FAILED", f"required={required_metric}, planned={sorted(planned_metrics)}", requirement_id))

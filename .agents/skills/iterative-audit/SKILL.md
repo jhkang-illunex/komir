@@ -61,6 +61,171 @@ Use this order whenever it can establish correctness:
 
 Tests are the first-line auditor. Do not spend premium reasoning tokens rediscovering failures that deterministic checks can detect.
 
+## 3A. Architecture and complexity guard — mandatory every iteration
+
+Every iterative-audit iteration MUST evaluate all of the following in addition
+to behavioral correctness:
+
+- regression safety;
+- contract consistency;
+- architectural complexity;
+- responsibility growth.
+
+Passing tests alone is insufficient evidence of an acceptable change. This
+guard applies to LOW, MEDIUM, HIGH, and CRITICAL work, including changes that
+appear to be local repairs.
+
+### Responsibility and extension rules
+
+- Apply SRP: an existing module/class must retain one primary reason to change.
+  If a component begins to own independently changing concepts, record
+  `RESPONSIBILITY_GROWTH` and locate the proper boundary before adding more
+  behavior.
+- Apply OCP: new capabilities, operators, renderers, calculations, semantic
+  types, and adapters should normally be added as implementations/specs and
+  registered through the existing registry. Repeatedly extending a central
+  `if/elif`, `match`, mapping, or dispatcher is an architecture warning.
+- Apply DIP: orchestration and planning depend on canonical typed contracts,
+  not physical source schemas. Prefer
+  `Source → Adapter → Canonical Typed Contract → Runtime/AAST → Renderer`.
+- Apply KISS/YAGNI: do not add speculative frameworks, deep inheritance, or
+  generic abstractions without multiple current uses or an established
+  extension boundary.
+- Prefer shallow typed handlers/operators plus composition and registry lookup
+  over growing domain logic in a central dispatcher. A dispatcher should
+  resolve, validate, execute, and return a canonical result; it should not
+  accumulate domain-specific execution or projection rules.
+- When a typed handler/registry path exists, new behavior MUST use it. Legacy
+  paths may remain for compatibility but must not grow except with explicit
+  justification.
+
+### Single source of contract truth
+
+For every semantic change, identify the owning Contract/Spec/Registry. The
+canonical owner should declare, where applicable:
+
+- action/capability ID;
+- accepted and canonical metric/operation/mode;
+- input and output semantic types;
+- canonical output fields and aliases;
+- validation and failure contract;
+- unit, criterion/cardinality, and provenance rules.
+
+Planner, validator, TypedResult conversion, projection, and renderer must
+consume this metadata rather than independently redefining the same fact.
+During every audit, search for duplicate mappings or normalization in multiple
+layers. Record `DUPLICATED_CONTRACT_SOURCE` and at least `COMPLEXITY_WARN` when
+found; use `REFACTOR_CANDIDATE` when drift or inconsistent behavior has
+already occurred. Physical source fields must be normalized at the source or
+capability boundary and must not leak into generic orchestration/runtime.
+
+Projection operates on canonical TypedResults and is not a second domain
+runtime. Renderer remains presentation-only and must not infer business meaning
+from arbitrary rows.
+
+### Pre-change responsibility check
+
+Before modifying an existing component, answer and record:
+
+1. What is this component's current responsibility?
+2. Does the requested behavior belong there?
+3. Which contract owns the semantic rule?
+4. Is there already a Registry/Spec/Handler for it?
+5. Does the patch introduce a concept the component did not previously need?
+6. Is the semantic fact already defined elsewhere?
+7. Will this create a second source of truth?
+8. Is the rule reusable rather than QA/question/entity-specific?
+9. Can it be implemented without central branching growth?
+10. Is structural change actually necessary now?
+
+If the answers indicate contract duplication or responsibility leakage, stop and
+move the behavior to the owning boundary before implementation. New QA-specific
+branches, question-string branches, entity/mineral execution branches, and
+answer hardcoding have a default budget of zero; exceptions require explicit
+justification and are a `COMPLEXITY_WARN`.
+
+### Complexity thresholds and escalation
+
+Inspect responsibility before adding behavior when any warning threshold is
+crossed:
+
+- nesting depth greater than 3;
+- function/method greater than 80 LOC, or greater than 150 LOC (`HIGH`);
+- class greater than 500 LOC;
+- module greater than 1500 LOC;
+- central dispatch with 5 or more independently extensible variants;
+- identical normalization/alias/validation logic in 2 or more places;
+- one class owning 3 or more independently changing responsibilities;
+- repeated central-dispatcher modification;
+- physical schema leaking above the adapter boundary.
+
+Use these classifications:
+
+- `COMPLEXITY_PASS`: no material architecture warning;
+- `COMPLEXITY_WARN`: warning exists but a safe local repair is justified;
+- `REFACTOR_CANDIDATE`: repeated responsibility growth, duplicated contracts,
+  or a HIGH warning warrants later extraction;
+- `REFACTOR_REQUIRED`: multiple HIGH warnings, recurring drift, or architecture
+  prevents typed enforcement.
+
+`REFACTOR_REQUIRED` does not authorize uncontrolled refactoring during release-
+critical work. Record the debt, make the smallest safe repair, preserve the
+golden regression, and request human approval before structural refactoring.
+
+### Required audit accounting
+
+Every substantial iterative-audit completion report MUST include:
+
+```text
+Complexity Delta
+
+Files changed:
+New classes:
+New public contracts:
+New registry entries:
+New special-case branches:
+New central-dispatch branches:
+Removed branches:
+Duplicated contract sources added:
+Duplicated contract sources removed:
+Largest modified method LOC:
+Largest modified class LOC:
+Largest modified module LOC:
+Responsibility growth detected:
+```
+
+It must also include:
+
+```text
+Contract Delta
+
+New contracts:
+Modified contracts:
+Removed contracts:
+Canonical source of truth:
+Consumers of the contract:
+Duplicated mappings remaining:
+```
+
+The report must state the applicable `COMPLEXITY_PASS`,
+`COMPLEXITY_WARN`, `REFACTOR_CANDIDATE`, or `REFACTOR_REQUIRED` result even
+when no refactor is performed.
+
+### Architecture audit trigger and refactor protocol
+
+Run a Responsibility/Architecture Audit when a module repeatedly receives
+patches, a dispatcher repeatedly grows, thresholds are exceeded, the same
+mapping appears in multiple places, or debugging repeatedly crosses
+responsibilities. Record current/recent responsibilities, dependency
+direction, duplicated contract sources, dispatch growth, candidate extraction
+boundaries, handler/strategy/registry opportunities, risk, and whether to
+refactor now or after release.
+
+If a structural refactor is approved, first freeze and record the behavioral
+and strict QA baseline. Extract one responsibility at a time, run regression
+after every extraction, preserve semantics, and roll back on golden regression.
+Do not combine unrelated behavior repair with structural refactoring.
+
 ## 4. Conditional and batched audits
 
 Before creating an audit, ask:

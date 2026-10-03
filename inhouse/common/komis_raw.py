@@ -741,7 +741,15 @@ class KomisRawDataRepository:
         return str(row["mnrknd_unq_cd"]), str(row["mnrl_nm_ko"])
 
     def resolve_price_criterion_serials(self, mineral_code: str) -> list[int]:
-        """`ai_prc_mnrl_map`에서 광종의 가격기준일련번호(들)를 찾는다(오름차순)."""
+        """광종의 유효 가격기준 serial을 source contract로 해석한다.
+
+        운영 매핑 테이블이 채워진 환경에서는 ``ai_prc_mnrl_map``를
+        authoritative mapping으로 사용한다. 일부 현재 source snapshot에는 이
+        보조 매핑이 비어 있지만, ``KO_MNRL_PRC_CRTR``가 동일한 광종-기준
+        관계를 직접 보유한다. 그 경우에만 기준 메타데이터의 관계를
+        deterministic fallback으로 사용한다. 기준값을 추측하거나 첫 가격
+        행을 대표 기준으로 선택하지 않는다.
+        """
 
         code = _literal(mineral_code)
         frame = read_sql_pg(
@@ -749,7 +757,34 @@ class KomisRawDataRepository:
             f" WHERE mnrknd_unq_cd = {code} AND use_yn = 'Y'"
             f" ORDER BY mnrl_prc_crtr_sn"
         )
-        return [int(value) for value in frame["mnrl_prc_crtr_sn"]]
+        if not frame.empty:
+            return [int(value) for value in frame["mnrl_prc_crtr_sn"]]
+
+        # The criterion catalog is the source-owned fallback when the optional
+        # mineral-to-criterion projection is absent in a snapshot.  The caller
+        # still applies representative/ALL selection and dummy-row policy.
+        catalog = read_sql_pg(
+            f"SELECT mnrl_prc_crtr_sn FROM {KOMIS_SCHEMA}.KO_MNRL_PRC_CRTR"
+            f" WHERE mnrknd_unq_cd = {code}"
+            f" ORDER BY sort NULLS LAST, mnrl_prc_crtr_sn"
+        )
+        if catalog.empty:
+            # Some snapshots expose a short/legacy mineral code in the
+            # request while the criterion catalog keeps the canonical code.
+            # Resolve that identity through the mineral master; do not keep a
+            # second application-level alias table.
+            mineral = self.resolve_mineral(mineral_code)
+            if mineral is not None:
+                name = _literal(mineral[1])
+                catalog = read_sql_pg(
+                    f"SELECT c.mnrl_prc_crtr_sn"
+                    f" FROM {KOMIS_SCHEMA}.KO_MNRL_PRC_CRTR c"
+                    f" JOIN {KOMIS_SCHEMA}.ai_mnrl_mst m"
+                    f" ON m.mnrknd_unq_cd = c.mnrknd_unq_cd"
+                    f" WHERE m.mnrl_nm_ko = {name}"
+                    f" ORDER BY c.sort NULLS LAST, c.mnrl_prc_crtr_sn"
+                )
+        return [int(value) for value in catalog["mnrl_prc_crtr_sn"]]
 
     def price_criterion_belongs_to_mineral(self, serial: int, mineral_code: str) -> bool:
         """가격기준 serial이 명시 광종에 실제로 매핑되어 있는지 확인한다."""

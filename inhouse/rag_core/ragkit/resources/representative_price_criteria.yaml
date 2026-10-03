@@ -2,6 +2,7 @@
 # serial은 환경별 DB 매핑을 사용하므로 저장하지 않는다.
 criteria:
   니켈: {criterion: "LME CASH", unit: "USD/mt"}
+  리튬: {criterion: "99.5%min CIF China", unit: "USD/kg"}
   탄산리튬: {criterion: "99.5%min CIF China", unit: "USD/kg"}
   코발트: {criterion: "LME CASH", unit: "USD/mt"}
   페로망간: {criterion: "Mn 75%min, C 2%max EXW China", unit: "USD/mt"}

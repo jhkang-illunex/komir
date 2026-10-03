@@ -10,6 +10,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Mapping
 
+from .semantic_capabilities import capability_output_fields
+
 
 class Operator(str, Enum):
     ENTITY = "entity"
@@ -275,9 +277,13 @@ class SemanticProgram:
                     return True
             return False
 
-        def metric_fields(metric: Any) -> set[str]:
+        def metric_fields(metric: Any, args: Mapping[str, Any] | None = None) -> set[str]:
             if not metric:
                 return set()
+            domain = args.get("domain") if isinstance(args, Mapping) else None
+            declared = capability_output_fields(domain, metric, args)
+            if declared:
+                return set(declared)
             # Capability-qualified names may cross this IR boundary (for
             # example ``price.series``), while the row contract is keyed by
             # its canonical metric (``price``).  Keep this normalization
@@ -321,10 +327,10 @@ class SemanticProgram:
                     field = predicate.get("field")
                 else:
                     field = args.get("field") or args.get("metric_field")
-                return set(aliases(str(field))) if field else metric_fields(args.get("metric"))
+                return set(aliases(str(field))) if field else metric_fields(args.get("metric"), args)
             if node.operator in {Operator.SORT.value, Operator.RANK.value, Operator.ARG_MAX.value, Operator.ARG_MIN.value}:
                 field = args.get("field") or args.get("metric_field") or args.get("metric")
-                return set(aliases(str(field))) | metric_fields(field) if field else set()
+                return set(aliases(str(field))) | metric_fields(field, args) if field else set()
             if node.operator == Operator.PROJECT.value:
                 return {str(field) for field in (args.get("fields") or [])}
             if node.operator == Operator.CALCULATE.value:
@@ -394,7 +400,7 @@ class SemanticProgram:
                 # model did not spell it out in args.
                 # Source/evidence are typed result metadata and may be
                 # projected without being physical row columns.
-                provided[node.node_id] = {"entity", "mineral", "광종", "source", "evidence"} | metric_fields(args.get("metric") or args.get("domain"))
+                provided[node.node_id] = {"entity", "mineral", "광종", "source", "evidence"} | metric_fields(args.get("metric") or args.get("domain"), args)
             elif node.operator == Operator.RETRIEVE_DOCUMENT.value:
                 provided[node.node_id] = {"document", "evidence", "entity", "mineral", "광종", "mineral_list", "minerals", "title", "date", "publication_date"}
             elif node.operator == Operator.FOR_EACH.value:

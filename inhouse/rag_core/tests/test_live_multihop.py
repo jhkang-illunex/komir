@@ -72,6 +72,34 @@ class LiveMultiHopBridgeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(next_node.inputs[0].node_id, bound_id)
         self.assertTrue(any(node.node_id == bound_id and node.operator == Operator.ENTITY for node in program.nodes))
 
+    def test_history_requirement_materializes_only_missing_slots(self):
+        typed = TypedResult.success(
+            ValueType.TIME_SERIES, [{"date": "2026-10-01", "price": 10}],
+            entity=("니켈",), period={"kind": "trailing_months", "trailing_months": 12},
+            evidence=(Evidence("structured", "fixture", "fixture", "price=10"),),
+        )
+        previous = Turn(
+            "turn-1", "session-1", UserUtterance("니켈 최근 1년 가격"),
+            semantic_program=SemanticProgram(
+                (RequirementNode("root", Operator.RETRIEVE),), ("root",),
+            ),
+            result=ExecutionResult("pipe-1", ResultStatus.SUCCESS, {"root": typed}, ()),
+        )
+        requirements = [{
+            "domain": "price", "metric": "price_series", "relation": "refine_previous",
+            "context_ref": "previous_successful_price_series",
+            "period": {"kind": "trailing_months", "trailing_months": 3},
+        }]
+        materialized, bindings, failure = live_multihop._materialize_history_requirements(
+            requirements, ConversationContext("session-1", (previous,)),
+        )
+        self.assertIsNone(failure)
+        self.assertEqual(materialized[0]["mineral"], "니켈")
+        self.assertEqual(materialized[0]["period"]["trailing_months"], 3)
+        self.assertEqual(materialized[0]["relation"], "independent")
+        self.assertEqual(materialized[0]["context_ref"], None)
+        self.assertEqual(bindings[0]["inherited_fields"], ["mineral"])
+
     def test_legacy_followup_alias_passes_live_validator_with_in_progress_turn(self):
         typed = TypedResult.success(
             ValueType.TIME_SERIES, [{"price": 10, "date": "2026-10-01"}],
@@ -214,6 +242,26 @@ class LiveMultiHopBridgeTests(unittest.IsolatedAsyncioTestCase):
         })
         self.assertEqual(program.completeness_issues(), ())
 
+    def test_price_projection_preserves_registry_identity_when_ast_requests_core_fields(self):
+        source = TypedResult.success(
+            ValueType.TIME_SERIES,
+            [{"date": "2026-10-01", "price": 10, "price_criterion": "LME CASH"}],
+            entity=("니켈",),
+            metric="price",
+        )
+        node = RequirementNode(
+            node_id="project", operator=Operator.PROJECT,
+            inputs=(InputRef("source"),), args={"fields": ["mineral", "price", "date"]},
+        )
+
+        result = object.__new__(live_multihop.LiveOperatorFactory)._derive(node, {"source": source})
+
+        self.assertEqual(result.status.value, "success")
+        self.assertEqual(result.value[0]["price_criterion"], "LME CASH")
+        self.assertEqual(list(result.value[0]), [
+            "mineral", "price", "date", "price_criterion", "price_measure_label",
+        ])
+
     def test_ast_rejects_non_numeric_top_k_but_preserves_leaf_calculation_contract(self):
         with self.assertRaisesRegex(ValueError, "invalid top_k limit"):
             SemanticProgram.from_dict({
@@ -266,6 +314,37 @@ class LiveMultiHopBridgeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(live_multihop._action_slots(price, mineral="nickel").mineral, "니켈")
         self.assertIsNone(live_multihop._action_slots(RequirementNode("price_query", Operator.RETRIEVE, args={"metric": "price"})).metric)
 
+    def test_registry_surface_arguments_survive_slot_normalization(self):
+        strategic = RequirementNode(
+            "strategic", Operator.RETRIEVE,
+            args={"domain": "price", "metric": "current", "price_group": "strategic"},
+        )
+        inventory = RequirementNode(
+            "inventory", Operator.RETRIEVE,
+            args={"domain": "inventory", "metric": "latest"},
+        )
+        self.assertEqual(live_multihop._action_id(strategic), "price.overview")
+        self.assertEqual(
+            live_multihop._action_slots(strategic).strategic_price_groups,
+            ["strategic_six", "strategic_ten"],
+        )
+        self.assertEqual(live_multihop._action_id(inventory), "inventory.latest")
+        self.assertIsNone(live_multihop._action_slots(inventory).metric)
+
+    def test_price_output_contract_accepts_canonical_criterion_for_label(self):
+        self.assertEqual(
+            live_multihop._resolve_row_field(
+                [{"price_criterion": "LME CASH"}], "price_measure_label", strict=True
+            ),
+            "price_criterion",
+        )
+
+    def test_price_overview_treats_missing_serial_as_optional_identity(self):
+        rows = [{"price_measure": "cash", "price_criterion": "LME CASH"}]
+        self.assertIsNone(
+            live_multihop._resolve_row_field(rows, "price_criterion_serial", strict=True)
+        )
+
     def test_indicator_series_metric_exposes_canonical_projection_fields(self):
         program = SemanticProgram.from_dict({
             "nodes": [
@@ -279,6 +358,31 @@ class LiveMultiHopBridgeTests(unittest.IsolatedAsyncioTestCase):
             "roots": ["project"],
         })
         self.assertEqual(program.completeness_issues(), ())
+
+    def test_indicator_series_projection_alias_resolves_to_canonical_value(self):
+        self.assertEqual(
+            live_multihop._resolve_row_field(
+                [{"date": "2026-09-01", "value": 101.5}],
+                "series",
+                strict=True,
+            ),
+            "value",
+        )
+
+    def test_ordered_last_binds_unique_canonical_date(self):
+        source = TypedResult.success(
+            ValueType.TIME_SERIES,
+            [{"date": "2026-09-30", "value": 10}, {"date": "2026-10-01", "value": 12}],
+            metric="price", unit="USD/mt",
+        )
+        node = RequirementNode(
+            node_id="latest", operator=Operator.AGGREGATE,
+            inputs=(InputRef("source"),),
+            args={"aggregation": "last", "field": "value", "output_field": "current_value"},
+        )
+        result = object.__new__(live_multihop.LiveOperatorFactory)._derive(node, {"source": source})
+        self.assertEqual(result.status.value, "success")
+        self.assertEqual(result.value[0]["current_value"], 12)
 
     def test_trade_scope_filter_is_bound_to_query_input_and_share_output_capability(self):
         payload = {
@@ -355,6 +459,53 @@ class LiveMultiHopBridgeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(next(node for node in normalized["nodes"] if node["node_id"] == "result")["inputs"][0]["node_id"], "production")
         resource = next(node for node in normalized["nodes"] if node["node_id"] == "production")
         self.assertEqual(resource["args"]["calculation"], "yoy")
+
+    def test_indicator_period_change_uses_existing_typed_capability(self):
+        normalized = live_multihop._normalize_relation_contract(
+            {
+                "nodes": [
+                    {"node_id": "series", "operator": "retrieve",
+                     "args": {"domain": "indicator", "metric": "series",
+                              "indicator": "composite_index",
+                              "period": {"kind": "trailing_months", "trailing_months": 1}}},
+                    {"node_id": "change", "operator": "calculate",
+                     "inputs": [{"node_id": "series"}],
+                     "args": {"calculation": "period_change"}},
+                ],
+                "roots": ["change"],
+            },
+            [{"domain": "indicator", "metric": "series", "indicator": "composite_index",
+              "indicator_variant": "composite", "operation": "period_change",
+              "period": {"kind": "trailing_months", "trailing_months": 1}}],
+        )
+        ids = {node["node_id"] for node in normalized["nodes"]}
+        self.assertNotIn("change", ids)
+        series = next(node for node in normalized["nodes"] if node["node_id"] == "series")
+        self.assertEqual(series["args"]["indicator_operation"], "period_change")
+        self.assertEqual(series["args"]["indicator_variant"], "composite")
+        self.assertEqual(normalized["roots"], ["series"])
+
+    def test_indicator_period_change_does_not_rewrite_without_typed_requirement(self):
+        normalized = live_multihop._normalize_relation_contract({
+            "nodes": [
+                {"node_id": "series", "operator": "retrieve",
+                 "args": {"domain": "indicator", "metric": "series",
+                          "indicator": "composite_index"}},
+                {"node_id": "change", "operator": "calculate",
+                 "inputs": [{"node_id": "series"}],
+                 "args": {"calculation": "period_change"}},
+            ],
+            "roots": ["change"],
+        })
+        self.assertIn("change", {node["node_id"] for node in normalized["nodes"]})
+
+    def test_indicator_rows_normalize_existing_compact_date(self):
+        action = SimpleNamespace(slots=SimpleNamespace(indicator="composite_index"))
+        rows = live_multihop._canonical_indicator_rows(
+            [{"date": "20260905", "indx": "3651.45"}], action,
+        )
+        self.assertEqual(rows[0]["date"], "2026-09-05")
+        self.assertEqual(rows[0]["value"], 3651.45)
 
     def test_scope_repair_preserves_typed_trade_dimension(self):
         program = {

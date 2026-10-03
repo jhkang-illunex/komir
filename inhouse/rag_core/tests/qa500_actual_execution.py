@@ -55,7 +55,8 @@ OPERATOR_MAP = {
     Primitive.COMPARE: Operator.COMPARE, Primitive.PROJECT: Operator.PROJECT,
 }
 ACTION_DOMAINS = {'price.series':'price', 'trade.monthly':'trade',
-                  'resource.rank':'resource', 'inventory.latest':'inventory', 'indicator.series':'indicator'}
+                  'resource.rank':'resource', 'inventory.latest':'inventory',
+                  'inventory.series':'inventory', 'indicator.series':'indicator'}
 GAP_LAYERS = ('ACTUAL_PLAN_CONTRACT_GAP', 'IR_ADAPTER_GAP', 'FIXTURE_ADAPTER_GAP')
 
 
@@ -189,13 +190,13 @@ def fixture_contract(node, call):
         raise ValueError('FIXTURE_ADAPTER_GAP: fixture_trade_metric_or_flow_not_supported')
     if call.action_id == 'indicator.series' and slots.get('indicator') and not slots.get('indicator_variant'):
         raise ValueError('FIXTURE_ADAPTER_GAP: fixture_indicator_slot_not_consumed')
-    consumed = {'mineral','metric','flow','period','resource_country','indicator_variant','topic',
+    consumed = {'mineral','metric','flow','period','criterion_mode','resource_country','indicator_variant','topic',
                 'requested_outputs','indicator'}
     unhandled = [key for key, value in slots.items() if key not in consumed and value not in (None, [], {})]
     if unhandled:
         raise ValueError('FIXTURE_ADAPTER_GAP: fixture_unconsumed_slots '+','.join(sorted(unhandled)))
     roundtrip = _action_slots(node).model_dump(mode='json', exclude_none=True)
-    for key in ('mineral','metric','flow','period','resource_country','indicator_variant','indicator','topic'):
+    for key in ('mineral','metric','flow','period','criterion_mode','resource_country','indicator_variant','indicator','topic'):
         expected = canonical(slots.get(key)) if key == 'mineral' else slots.get(key)
         if roundtrip.get(key) != expected:
             raise ValueError('IR_ADAPTER_GAP: fixture_slot_roundtrip_changed '+key)

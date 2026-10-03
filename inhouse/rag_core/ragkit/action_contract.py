@@ -1172,9 +1172,7 @@ def _history_for_action_query(message: str, history: list[dict[str, str]] | None
     if not history:
         return history
     compact = re.sub(r"\s+", "", message).casefold()
-    if any(marker in compact for marker in (
-        "그중", "그나라", "그국가", "해당국가", "이중", "앞서", "이것도", "그광종", "이광종",
-    )):
+    if history_is_required(message):
         return history
     minerals = (
         "구리", "동", "copper", "cu", "니켈", "nickel", "코발트", "cobalt", "리튬", "lithium",
@@ -1187,6 +1185,21 @@ def _history_for_action_query(message: str, history: list[dict[str, str]] | None
     if any(token in compact for token in minerals) and any(token in compact for token in metrics):
         return []
     return history
+
+
+def history_is_required(message: str) -> bool:
+    """현재 질문이 과거 결과의 명시적/미해결 참조를 요구하는지 판정한다.
+
+    이 함수는 질문의 전체 의미를 재계획하지 않는다. 현재 질의에 명시된
+    entity/metric이 충분하면 history를 상속하지 않으며, 대명사·지시어처럼
+    현재 문장만으로 대상을 확정할 수 없는 표현이 있을 때만 기존 typed
+    history resolver를 사용할 수 있게 하는 경계다.
+    """
+    compact = re.sub(r"\s+", "", message).casefold()
+    return any(marker in compact for marker in (
+        "그중", "그나라", "그국가", "해당국가", "이중", "앞서", "이것도", "그광종", "이광종",
+        "그것", "방금결과", "방금답변", "아까", "같은기간", "이전결과", "앞에서말한",
+    ))
 
 
 def extract_action_plan(

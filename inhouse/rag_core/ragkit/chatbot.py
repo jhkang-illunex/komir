@@ -88,7 +88,7 @@ from collections.abc import AsyncIterator, Iterator
 from contextvars import copy_context
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from .action_contract import COMPOSITE_INDEX_VARIANTS
+from .action_contract import COMPOSITE_INDEX_VARIANTS, _history_for_action_query
 from typing import Literal
 
 from common.llm.openai_compat import OpenAICompatChat
@@ -1977,7 +1977,12 @@ async def chat_turn(
     # (실측 발견, 2026-08-13 실인프라 대상 라이브 검증 2턴에서 재현). role/content
     # 두 필드만 남긴 순수 dict로 정리해 아래 두 곳(_history_block·retrieve_evidence)
     # 모두에 넘긴다.
-    history = [_history_turn(row) for row in history_rows]
+    raw_history = [_history_turn(row) for row in history_rows]
+    history = _history_for_action_query(message, raw_history)
+    _logger.info(
+        "history_resolution session=%s history_used=%s source_turns=%d selected_turns=%d",
+        resolved_session_id, bool(history), len(raw_history), len(history or []),
+    )
     await asyncio.to_thread(append_message, resolved_session_id, "user", message, None, store_db_path)
 
     if _is_restricted_indicator_question(message):

@@ -145,7 +145,8 @@ class PublicPrivateBoundaryTest(unittest.TestCase):
             call("komis_raw_lookup", {
                 "page_id": "indicator_composite", "mineral_code": None,
                 "hs_code": None, "index_type_code": None,
-                "price_criterion_serial": None, "start_period": None,
+                "price_criterion_serial": None, "criterion_mode": "REPRESENTATIVE",
+                "start_period": None,
                 "end_period": None,
             }),
             call("hybrid_search", {"query": route.resolved_query, "k": 1}),

@@ -1,5 +1,6 @@
 from common.komis_raw import RawDataset
 from rag_core.ragkit._mcp_tools_common import (
+    _attach_selected_price_identity,
     _expand_all_price_measures,
     _select_representative_price_measure,
 )
@@ -80,6 +81,14 @@ def test_representative_price_keeps_only_normal_measure():
     assert representative.metadata["representative_price_measure"] is True
 
 
+def test_lithium_surface_name_uses_canonical_representative_criterion():
+    from rag_core.ragkit.representative_price_criteria import representative_price_criterion
+
+    assert representative_price_criterion("리튬") == {
+        "criterion": "99.5%min CIF China", "unit": "USD/kg"
+    }
+
+
 def test_all_price_projection_preserves_series_identity_when_fields_are_implicit():
     source = TypedResult.success(
         ValueType.TIME_SERIES,
@@ -100,3 +109,19 @@ def test_all_price_projection_preserves_series_identity_when_fields_are_implicit
     assert result.status.value == "success"
     assert result.value[0]["price_measure"] == "low_price"
     assert result.value[0]["price_criterion_serial"] == 502
+
+
+def test_selected_representative_price_materializes_criterion_identity():
+    dataset = RawDataset(
+        source_table="KO_MNRL_PRC",
+        columns=["date", "price"],
+        rows=[{"date": "2026-10-01", "price": 10}],
+        row_count=1,
+    )
+
+    selected = _attach_selected_price_identity(
+        dataset, serial=502, criterion=("LME CASH", "PR001", "WT002"),
+    )
+
+    assert selected.rows[0]["price_criterion"] == "LME CASH"
+    assert selected.rows[0]["price_criterion_serial"] == 502

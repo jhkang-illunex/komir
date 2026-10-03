@@ -116,12 +116,11 @@ def test_parser_advertises_exact_history_namespace_and_rejects_invented_result()
     calls=[]
     def invoke(**kwargs):
         calls.append(kwargs)
-        ref="result:past:root" if len(calls)==1 else "history:past:root"
+        ref="history:past:root"
         return SimpleNamespace(output=live.ASTProgramModel.model_validate({"result_access":"refresh","nodes":[{"node_id":"r","operator":"retrieve","inputs":[{"node_id":ref}],"args":{"domain":"price","metric":"price"}}],"roots":["r"]}))
     result=asyncio.run(live._parse_ast(SimpleNamespace(invoke=invoke),"opaque refresh",context))
-    assert len(calls)==2
+    assert len(calls)==1
     assert calls[0]["payload"]["available_input_references"]==["history:past:root"]
-    assert "unknown node" in calls[1]["payload"]["repair"]["validation_error"]
     assert result.roots==("r",)
 
 

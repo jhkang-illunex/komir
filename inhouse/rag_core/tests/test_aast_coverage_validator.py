@@ -53,6 +53,21 @@ def test_trade_series_is_not_ranked_country_output():
                for item in report.violations)
 
 
+def test_export_country_rank_preserves_ranked_country_output_contract():
+    report = validate_aast(
+        [{"requirement_id": "exports", "domain": "trade",
+          "action_id": "trade.country_rank", "mineral": "흑연",
+          "metric": "country_rank", "flow": "export", "scope": "GLOBAL"}],
+        program([{
+            "node_id": "exports", "operator": "retrieve", "inputs": [],
+            "args": {"domain": "trade", "metric": "export_amount",
+                     "operation": "country_rank", "flow": "export",
+                     "scope": "GLOBAL", "mineral": "흑연"},
+        }], ["exports"]),
+    )
+    assert report.valid
+
+
 def test_period_preservation_is_typed():
     report = validate_aast(
         [{"requirement_id": "r1", "action_id": "price.series", "mineral": "니켈", "metric": "price",

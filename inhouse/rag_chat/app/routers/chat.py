@@ -124,7 +124,7 @@ from common.langfuse_tracing import chat_trace, update_observation  # noqa: E402
 from rag_core.ragkit.chatbot import STATUS_STAGES, chat_turn, direct_faq_answer  # noqa: E402
 from rag_core.ragkit.action_contract import (  # noqa: E402
     ActionPlan, PlanAssessment, extract_action_plan, extract_legacy_action_plan, merge_trade_indicator_followup,
-    trade_indicator_plan_from_question,
+    trade_indicator_plan_from_question, _history_for_action_query,
     missing_trade_indicator_slots, validate_action_plan,
 )
 from rag_core.ragkit.direct_capability import (  # noqa: E402
@@ -462,7 +462,7 @@ class ChatRequest(BaseModel):
     mode: str = "auto"  # auto | document | page
 
 
-def _history_for_graph(session_id: str) -> list[dict]:
+def _history_for_graph(session_id: str, message: str | None = None) -> list[dict]:
     """직전 대화와 구조화된 기권 상태를 action planner에 전달한다."""
     history = []
     for row in session_store.list_messages(session_id, limit=10):
@@ -475,7 +475,7 @@ def _history_for_graph(session_id: str) -> list[dict]:
         except (TypeError, ValueError):
             pass
         history.append(turn)
-    return history
+    return _history_for_action_query(message, history) if message is not None else history
 
 
 def _load_multi_action_state(session_id: str, profile: Literal["public", "private"]):
@@ -681,7 +681,7 @@ def _run_page_recommend(request: ChatRequest, session_id: str, action_target: st
     # 히스토리·상태는 이번 질문을 저장하기 "전"에 읽어야 한다 — 먼저 저장하면
     # 그래프가 자기 질문을 직전 턴으로 오인하고, _finalize가 같은 질문을 한 번 더
     # 이어붙인다.
-    message_history = _history_for_graph(session_id)
+    message_history = _history_for_graph(session_id, request.message)
     active_artifact = _load_page_state(session_id)
     session_store.append_message(session_id, "user", request.message)
 
@@ -812,7 +812,7 @@ def _run_chat_session(
         # 만들지 않는다. FAQ는 기존 결정적 답변, navigation은 기존 페이지
         # registry 경로로 종료하며, 그 밖에는 기존 action/AST 경로로 승격한다.
         if gate_enabled() and request.mode == "auto":
-            gate_history = _history_for_graph(session_id)
+            gate_history = _history_for_graph(session_id, request.message)
             gate_decision = classify_query_gate(
                 request.message,
                 llm=KomirJsonLLM(),
@@ -940,7 +940,7 @@ def _run_chat_session(
                         return
                     action_plan = (merged.plan if merged is not None and merged.status == "merged" else
                                    extract_action_plan(
-                                       request.message, KomirJsonLLM(), history=_history_for_graph(session_id),
+                                       request.message, KomirJsonLLM(), history=_history_for_graph(session_id, request.message),
                                        semantic_context=(price_context if semantic_mode() == "enabled" else None),
                                    ))
             assessment = (PlanAssessment(approved=True, failure_reason=None)
@@ -998,7 +998,7 @@ def _run_chat_session(
                 legacy_plan = extract_legacy_action_plan(
                     request.message,
                     KomirJsonLLM(),
-                    history=_history_for_graph(session_id),
+                    history=_history_for_graph(session_id, request.message),
                 )
                 legacy_assessment = validate_action_plan(legacy_plan)
                 if legacy_assessment.failure_reason == "source_unavailable":

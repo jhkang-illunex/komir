@@ -121,6 +121,36 @@ class MineralCountryRankingTest(unittest.TestCase):
 
 
 class PriceComparisonAggregationTest(unittest.TestCase):
+    def test_price_criterion_catalog_fallback_when_projection_mapping_empty(self):
+        mapping = pd.DataFrame(columns=["mnrl_prc_crtr_sn"])
+        catalog = pd.DataFrame([(773,), (772,)], columns=["mnrl_prc_crtr_sn"])
+        queries: list[str] = []
+        with patch("common.komis_raw.read_sql_pg",
+                   side_effect=lambda query: (queries.append(query),
+                                               mapping if len(queries) == 1 else catalog)[1]):
+            result = KomisRawDataRepository().resolve_price_criterion_serials("MNRL0001")
+
+        self.assertEqual(result, [773, 772])
+        self.assertIn("ai_prc_mnrl_map", queries[0])
+        self.assertIn("KO_MNRL_PRC_CRTR", queries[1])
+
+    def test_price_criterion_catalog_resolves_short_mineral_code(self):
+        mapping = pd.DataFrame(columns=["mnrl_prc_crtr_sn"])
+        direct_catalog = pd.DataFrame(columns=["mnrl_prc_crtr_sn"])
+        master = pd.DataFrame([("MNRL0001", "리튬")],
+                              columns=["mnrknd_unq_cd", "mnrl_nm_ko"])
+        joined_catalog = pd.DataFrame([(773,)], columns=["mnrl_prc_crtr_sn"])
+        queries: list[str] = []
+        frames = [mapping, direct_catalog, master, joined_catalog]
+        with patch("common.komis_raw.read_sql_pg",
+                   side_effect=lambda query: (queries.append(query),
+                                               frames[len(queries) - 1])[1]):
+            result = KomisRawDataRepository().resolve_price_criterion_serials("LI")
+
+        self.assertEqual(result, [773])
+        self.assertIn("JOIN", queries[3])
+        self.assertIn("mnrl_nm_ko = '리튬'", queries[3])
+
     def test_price_dummy_status_uses_selected_criterion_not_mineral_master(self):
         captured: list[str] = []
         dummy_rows = pd.DataFrame([(900002,)], columns=["serial"])

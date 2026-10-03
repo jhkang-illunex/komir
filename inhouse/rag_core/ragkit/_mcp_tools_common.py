@@ -222,6 +222,34 @@ def _select_representative_price_measure(dataset: RawDataset) -> RawDataset:
                      "representative_price_measure": True},
     })
 
+
+def _attach_selected_price_identity(
+    dataset: RawDataset,
+    *,
+    serial: int,
+    criterion: tuple[str | None, str | None, str | None] | None,
+) -> RawDataset:
+    """Materialize selected criterion metadata into canonical price rows.
+
+    REPRESENTATIVE/EXPLICIT retrievals historically carried the criterion only
+    in ``unit`` metadata, while ALL already expanded it into row fields.  Keep
+    the source-owned identity at the adapter boundary so TypedResult and
+    projection see the same contract in all criterion modes.
+    """
+    if not criterion:
+        return dataset
+    name = criterion[0]
+    rows = [
+        {**row, "price_criterion": row.get("price_criterion") or name,
+         "price_criterion_serial": row.get("price_criterion_serial") or serial}
+        for row in dataset.rows
+    ]
+    columns = list(dataset.columns)
+    for field in ("price_criterion", "price_criterion_serial"):
+        if field not in columns:
+            columns.append(field)
+    return dataset.model_copy(update={"columns": columns, "rows": rows, "row_count": len(rows)})
+
 #: 2026-09-07("니켈 최근 6개월 가격" 사용자 제보 후속) — start_period·
 #: end_period가 둘 다 있으면 그 범위 전체를 봐야 "추이" 질문에 답이 되는데,
 #: 일별 가격(~130행)도 다 못 온다. 기간이 명시된 조회는 `fetch_complete()`로
@@ -561,6 +589,23 @@ def register_common_tools(
                 datasets = repo.fetch_complete(request) if has_period_range else repo.fetch(request)
         except RawDataAccessError as exc:
             return {"evidence": [], "warnings": [*warnings, str(exc)]}
+
+        if request.price_criterion_serial is not None and criterion_mode != "ALL":
+            # The selected criterion is already deterministic at this point;
+            # expose its source identity as row fields before the common
+            # representative selector reduces low/high/normal columns.
+            try:
+                selected_criterion = repo.resolve_price_criterion_metadata(
+                    request.price_criterion_serial
+                )
+            except RawDataAccessError:
+                selected_criterion = None
+            datasets = [
+                _attach_selected_price_identity(
+                    dataset, serial=request.price_criterion_serial, criterion=selected_criterion,
+                )
+                for dataset in datasets
+            ]
 
         if all_criterion_serials:
             # Each dataset was fetched with one serial. Attach its canonical

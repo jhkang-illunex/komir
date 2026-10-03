@@ -16,6 +16,7 @@ from rag_core.ragkit.action_contract import (  # noqa: E402
     _extract_action_plan_legacy,
     extract_action_plan,
     _history_for_action_query,
+    history_is_required,
 )
 from rag_core.ragkit.semantic_intent import (  # noqa: E402
     SemanticPlan,
@@ -317,6 +318,20 @@ class SemanticIntentTest(unittest.TestCase):
     def test_reference_followup_retains_history_for_dependency_resolution(self):
         history = [{"role": "assistant", "content": "코발트 상위 국가 표"}]
         self.assertEqual(_history_for_action_query("그중에 3번째 국가", history), history)
+
+    def test_explicit_query_blocks_history_even_after_unrelated_turn(self):
+        history = [{"role": "assistant", "content": "리튬 가격 전망"}]
+        self.assertFalse(history_is_required("니켈 최근 1년 가격 추이를 보여줘"))
+        self.assertEqual(_history_for_action_query("니켈 최근 1년 가격 추이를 보여줘", history), [])
+
+    def test_explicit_entity_overrides_previous_entity(self):
+        history = [{"role": "assistant", "content": "리튬 가격 알려줘"}]
+        self.assertEqual(_history_for_action_query("니켈 가격 알려줘", history), [])
+
+    def test_period_followup_retains_typed_history(self):
+        history = [{"role": "assistant", "content": "니켈 최근 1년 가격"}]
+        self.assertTrue(history_is_required("그중 최근 3개월만 보여줘"))
+        self.assertEqual(_history_for_action_query("그중 최근 3개월만 보여줘", history), history)
 
     def test_shadow_mode_records_semantic_call_but_returns_legacy_plan(self):
         llm = SemanticLLM(_concentration_plan())
