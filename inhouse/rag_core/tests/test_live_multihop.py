@@ -1,8 +1,11 @@
+from inhouse.rag_core.tests.registered_step_helpers import execute_registered
 import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 from inhouse.rag_core.ragkit import live_multihop
+from inhouse.rag_core.ragkit.indicator_result_adapter import canonical_indicator_rows
+from inhouse.rag_core.ragkit.trade_rank_result_adapter import canonicalize_trade_rank_rows
 from inhouse.rag_core.ragkit.action_contract import ActionPlan
 from inhouse.rag_core.ragkit.action_results import ActionResult, RetrievalResult
 from inhouse.rag_core.ragkit.history_context import ConversationContext, Turn, UserUtterance
@@ -17,33 +20,35 @@ class LiveMultiHopBridgeTests(unittest.IsolatedAsyncioTestCase):
         live_multihop.clear_semantic_cache()
 
     def test_trade_rank_total_column_is_normalized_to_declared_measure(self):
-        rows = live_multihop._canonicalize_trade_rank_rows(
+        rows = canonicalize_trade_rank_rows(
             [{"country": "중국", "total(수입금액합계(USD))": 12.5}],
-            "import_amount",
+            "import_amount", base_column_name=live_multihop._base_column_name,
         )
         self.assertEqual(rows[0]["import_amount"], 12.5)
         self.assertEqual(rows[0]["total(수입금액합계(USD))"], 12.5)
 
     def test_indicator_rows_normalize_source_date_to_canonical_date(self):
         action = SimpleNamespace(slots=SimpleNamespace(indicator="composite_index"))
-        rows = live_multihop._canonical_indicator_rows(
-            [{"crtr_ymd": "20261001", "indx": "123.4"}], action
+        rows = canonical_indicator_rows(
+            [{"crtr_ymd": "20261001", "indx": "123.4"}], action,
+            resolve_field=live_multihop._resolve_row_field, numeric=live_multihop._numeric,
         )
         self.assertEqual(rows[0]["date"], "2026-10-01")
         self.assertEqual(rows[0]["value"], 123.4)
 
     def test_indicator_rows_resolve_display_labeled_source_columns(self):
         action = SimpleNamespace(slots=SimpleNamespace(indicator="composite_index"))
-        rows = live_multihop._canonical_indicator_rows(
-            [{"crtr_ymd(기준일자)": "20260905", "indx(지수)": "3651.45"}], action
+        rows = canonical_indicator_rows(
+            [{"crtr_ymd(기준일자)": "20260905", "indx(지수)": "3651.45"}], action,
+            resolve_field=live_multihop._resolve_row_field, numeric=live_multihop._numeric,
         )
         self.assertEqual(rows[0]["date"], "2026-09-05")
         self.assertEqual(rows[0]["value"], 3651.45)
 
     def test_trade_rank_does_not_guess_from_multiple_total_columns(self):
-        rows = live_multihop._canonicalize_trade_rank_rows(
+        rows = canonicalize_trade_rank_rows(
             [{"country": "중국", "total(import)": 12.5, "total(weight)": 2.0}],
-            "import_amount",
+            "import_amount", base_column_name=live_multihop._base_column_name,
         )
         self.assertNotIn("import_amount", rows[0])
 
@@ -254,7 +259,7 @@ class LiveMultiHopBridgeTests(unittest.IsolatedAsyncioTestCase):
             inputs=(InputRef("source"),), args={"fields": ["mineral", "price", "date"]},
         )
 
-        result = object.__new__(live_multihop.LiveOperatorFactory)._derive(node, {"source": source})
+        result = execute_registered(object.__new__(live_multihop.LiveOperatorFactory), node, {"source": source})
 
         self.assertEqual(result.status.value, "success")
         self.assertEqual(result.value[0]["price_criterion"], "LME CASH")
@@ -380,7 +385,7 @@ class LiveMultiHopBridgeTests(unittest.IsolatedAsyncioTestCase):
             inputs=(InputRef("source"),),
             args={"aggregation": "last", "field": "value", "output_field": "current_value"},
         )
-        result = object.__new__(live_multihop.LiveOperatorFactory)._derive(node, {"source": source})
+        result = execute_registered(object.__new__(live_multihop.LiveOperatorFactory), node, {"source": source})
         self.assertEqual(result.status.value, "success")
         self.assertEqual(result.value[0]["current_value"], 12)
 
@@ -501,8 +506,9 @@ class LiveMultiHopBridgeTests(unittest.IsolatedAsyncioTestCase):
 
     def test_indicator_rows_normalize_existing_compact_date(self):
         action = SimpleNamespace(slots=SimpleNamespace(indicator="composite_index"))
-        rows = live_multihop._canonical_indicator_rows(
+        rows = canonical_indicator_rows(
             [{"date": "20260905", "indx": "3651.45"}], action,
+            resolve_field=live_multihop._resolve_row_field, numeric=live_multihop._numeric,
         )
         self.assertEqual(rows[0]["date"], "2026-09-05")
         self.assertEqual(rows[0]["value"], 3651.45)
@@ -787,7 +793,7 @@ class LiveMultiHopBridgeTests(unittest.IsolatedAsyncioTestCase):
             args={"metric": "price_change_rate", "predicate": "greater_than", "value": 0},
         )
 
-        result = factory._derive(node, {"rank": source})
+        result = execute_registered(factory, node, {"rank": source})
 
         self.assertEqual(result.status.value, "success")
         self.assertEqual(result.value, [{"광종": "니켈", "pct_change": "12.5"}])
@@ -801,7 +807,7 @@ class LiveMultiHopBridgeTests(unittest.IsolatedAsyncioTestCase):
             [{"국가": "중국", "import_amount": None}, {"국가": "호주", "import_amount": 10}],
         )
         node = RequirementNode("sorted", Operator.SORT, args={"field": "import_amount", "order": "desc"})
-        result = factory._derive(node, {"source": source})
+        result = execute_registered(factory, node, {"source": source})
         self.assertEqual([row["국가"] for row in result.value], ["호주", "중국"])
 
     def test_projection_binds_existing_korean_trade_columns_to_typed_fields(self):
@@ -817,7 +823,7 @@ class LiveMultiHopBridgeTests(unittest.IsolatedAsyncioTestCase):
             args={"fields": ["country", "share_percentage", "period", "unit"]},
         )
 
-        result = factory._derive(node, {"source": source})
+        result = execute_registered(factory, node, {"source": source})
 
         self.assertEqual(result.value, [{"country": "중국", "share_percentage": "45.0", "period": "2025", "unit": "USD"}])
 

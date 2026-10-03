@@ -4,8 +4,10 @@ These tests use typed synthetic rows only.  They do not define production
 answers and do not select a question-specific route.
 """
 
+from inhouse.rag_core.tests.registered_step_helpers import execute_registered
 from inhouse.rag_core.ragkit.analytical_aggregate import aggregate
-from inhouse.rag_core.ragkit.live_multihop import _capability_rows, _resolve_row_field
+from inhouse.rag_core.ragkit.live_multihop import _resolve_row_field
+from inhouse.rag_core.ragkit.trade_rank_result_adapter import select_country_rank_rows
 from inhouse.rag_core.ragkit.pipe_runtime import TypedResult
 from inhouse.rag_core.ragkit.semantic_ir import ValueType
 
@@ -40,8 +42,9 @@ def test_typed_projection_maps_inventory_observation_to_value():
         metric="inventory",
         unit="ton",
     )
-    result = factory._derive(
-        type("Node", (), {"operator": "project", "args": {"fields": ["date", "value", "unit"]}})(),
+    from inhouse.rag_core.ragkit.semantic_ir import Operator, RequirementNode
+    result = execute_registered(factory,
+        RequirementNode("project", Operator.PROJECT, args={"fields": ["date", "value", "unit"]}),
         {"source": source},
     )
     assert result.failure_reason is None
@@ -75,4 +78,4 @@ def test_country_rank_typed_result_excludes_unrelated_evidence_tables():
          "share_pct(수입금액 비중)": 25.47},
         {"기관": "자료원", "발표일": "2026-01-01"},
     ]
-    assert _capability_rows(rows, "trade.country_rank") == rows[:1]
+    assert select_country_rank_rows(rows, resolve_field=_resolve_row_field) == rows[:1]

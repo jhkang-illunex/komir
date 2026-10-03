@@ -7,8 +7,9 @@ import pytest
 
 from inhouse.rag_core.ragkit.analytical_series import CALCULATIONS, calculate_series
 from inhouse.rag_core.ragkit.live_multihop import LiveOperatorFactory, _resolve_row_field
-from inhouse.rag_core.ragkit.pipe_runtime import ResultStatus
+from inhouse.rag_core.ragkit.pipe_runtime import ExecutionContext, ResultStatus
 from inhouse.rag_core.ragkit.semantic_ir import Operator, RequirementNode
+from inhouse.rag_core.tests.registered_step_helpers import execute_registered
 from inhouse.rag_core.tests.qa500_series_backend import (
     CASES, SUPPORTED, CONTRACT_GAPS, execute, fixture, gold, typed_source,
 )
@@ -75,7 +76,7 @@ def test_population_division_alias_returns_share_percentage():
     source_result = replace(source_result, value=[{"country": "A", "value": 100}, {"country": "B", "value": 50}],
                             metric="reserves")
     factory = LiveOperatorFactory(message="", session_id="fixture", profile="public", llm=None, history=[])
-    result = factory._derive(RequirementNode("share", Operator.CALCULATE,
+    result = execute_registered(factory, RequirementNode("share", Operator.CALCULATE,
                                              args={"calculation": "division", "field": "value", "group_by": []}),
                              {"source": source_result})
     assert result.status.value == "success"
@@ -225,7 +226,7 @@ def test_full_join_missing_fields_correlation_uses_real_evidence_and_counts():
     right = source((3,6,9))
     right = replace(right,value=[{**r,'date':d,'unit':'t'} for r,d in zip(right.value,
                     ['2025-01-01','2025-02-01','2025-04-01'])],unit='t')
-    joined = factory._derive(RequirementNode('join',Operator.JOIN,args={'join_key':'date','how':'full'}),
+    joined = execute_registered(factory, RequirementNode('join',Operator.JOIN,args={'join_key':'date','how':'full'}),
                              {'left':left,'right':right})
     result = calculate_series(joined, {'calculation':'correlation','time_field':'date','field':'left.value',
         'other_field':'right.value','unit_field':'left_unit','other_unit_field':'right_unit','null_policy':'pairwise'},resolve)
@@ -275,7 +276,8 @@ def test_gold_plan_direct_helpers_against_independent_sql(case, synthetic_db):
             if node.operator == Operator.CALCULATE and node.args.get('calculation') in CALCULATIONS:
                 result = calculate_series(next(iter(inputs.values())),node.args,resolve)
             else:
-                result = factory._derive(node, inputs)
+                step = factory.build(node=node, dependencies=tuple(inputs), bindings={})
+                result = asyncio.run(step.execute(ExecutionContext(), inputs))
         assert result.status == ResultStatus.SUCCESS, (node, result.failure_reason)
         assert result.evidence
         results[node.node_id] = result
@@ -288,7 +290,7 @@ def delegate_installed():
     node = RequirementNode('calc', Operator.CALCULATE, args={
         'calculation':'endpoint_change','field':'value','time_field':'date'})
     # An installed but broken delegate must fail the runtime tests, not skip.
-    return factory._derive(node, {'source':source()}).failure_reason != 'unsupported_calculation_contract'
+    return execute_registered(factory, node, {'source':source()}).failure_reason != 'unsupported_calculation_contract'
 
 
 @pytest.mark.parametrize('case', SERIES_CASES, ids=lambda c:c['id'])

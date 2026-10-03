@@ -1,3 +1,4 @@
+from inhouse.rag_core.tests.registered_step_helpers import execute_registered
 from common.komis_raw import RawDataset
 from rag_core.ragkit._mcp_tools_common import (
     _attach_selected_price_identity,
@@ -104,7 +105,7 @@ def test_all_price_projection_preserves_series_identity_when_fields_are_implicit
         inputs=(InputRef("source"),), args={"fields": ["date", "price"]},
     )
 
-    result = object.__new__(LiveOperatorFactory)._derive(node, {"source": source})
+    result = execute_registered(object.__new__(LiveOperatorFactory), node, {"source": source})
 
     assert result.status.value == "success"
     assert result.value[0]["price_measure"] == "low_price"

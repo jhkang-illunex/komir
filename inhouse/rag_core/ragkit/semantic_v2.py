@@ -16,6 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from .action_contract import ActionCall, ActionSlots, Period
 from .analytical_aggregate import SUPPORTED_AGGREGATIONS
+from .output_coverage import diagnose_output_coverage
 
 _logger = logging.getLogger(__name__)
 
@@ -961,7 +962,7 @@ def validate_output_coverage(
     """Validate requested semantic outputs without reading the raw query."""
     required = {item.name for item in plan.requested_outputs}
     available = set().union(*(set(fields) for fields in produced.values())) if produced else set()
-    return tuple(sorted(required - available))
+    return diagnose_output_coverage(required, available).missing
 
 
 @dataclass(frozen=True)

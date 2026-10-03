@@ -1,4 +1,5 @@
 """Gold contracts are test oracles, never repairs of captured model plans."""
+from inhouse.rag_core.tests.registered_step_helpers import execute_registered
 import asyncio
 from copy import deepcopy
 
@@ -238,6 +239,6 @@ def test_projection_does_not_invent_absent_unit_metadata():
     from inhouse.rag_core.ragkit.semantic_ir import ValueType
     factory = LiveOperatorFactory(message="", session_id="contract-test", profile="public", llm=None, history=[])
     node = RequirementNode("out", Operator.PROJECT, args={"fields": ["value", "unit"]})
-    result = factory._derive(node, {"source": TypedResult.success(ValueType.FACT_SET, [{"value": 1}])})
+    result = execute_registered(factory, node, {"source": TypedResult.success(ValueType.FACT_SET, [{"value": 1}])})
     assert result.status == ResultStatus.ABSTAINED
     assert result.failure_reason == "projection_field_unavailable:unit"

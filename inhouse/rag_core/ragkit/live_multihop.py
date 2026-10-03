@@ -19,6 +19,7 @@ from dataclasses import replace
 from uuid import uuid4
 from dataclasses import dataclass
 from datetime import date
+from functools import partial
 from pathlib import Path
 from typing import Any, Literal, Mapping
 
@@ -32,22 +33,29 @@ from common.llm_client import KomirJsonLLM, LLMOutputError
 
 from .action_contract import (
     ActionCall, ActionPlan, ActionSlots, ForecastCapabilityInput,
-    IndicatorSeriesInput, IndicatorSeriesRow, MINERAL_ALIASES, Period, history_is_required,
+    IndicatorSeriesInput, MINERAL_ALIASES, Period, history_is_required,
 )
-from .chatbot_events import ChatEvent, chart_spec, extract_markdown_tables, table_block, _verified_display_unit, _price_unit_from_codes
+from .chatbot_events import ChatEvent, extract_markdown_tables, _verified_display_unit, _price_unit_from_codes
+from .presentation_events import result_events
 from .chatbot_graph import retrieve_evidence
 from .history_context import ConversationContext, InMemoryHistoryStore, PostgresHistoryStore, Turn, UserUtterance
 from .legacy_bridge import LegacyOperatorFactory
+from . import indicator_result_adapter, resource_rank_result_adapter, trade_rank_result_adapter
 from .lowering import PipeLowerer
 from .multihop_orchestrator import MultiHopOrchestrator
 from .pipe_runtime import ExecutionContext, ExecutionResult, FunctionStep, PipeRuntime, ResultStatus, TypedResult
 from .semantic_ir import Operator, RequirementNode, SemanticProgram, ValueType, _METRIC_FIELDS
-from .semantic_capabilities import capability_identity_fields, resolve_canonical_capability
+from .semantic_capabilities import resolve_canonical_capability
 from .aast_coverage import CoverageReport, validate_aast
-from .relational_ops import execute_relation
-from .analytical_aggregate import aggregate as aggregate_rows, SUPPORTED_AGGREGATIONS
-from .analytical_share import calculate_ratio, calculate_ratio_between, calculate_share
-from .analytical_series import CALCULATIONS as SERIES_CALCULATIONS, calculate_series
+from .operator_handlers.relation import build_relation_step
+from .analytical_aggregate import SUPPORTED_AGGREGATIONS
+from .operator_handlers.aggregate import build_aggregate_step
+from .operator_handlers.extremum import build_extremum_step
+from .operator_handlers.ordering import build_ordering_step
+from .operator_handlers.filtering import build_filter_step
+from .operator_handlers.calculation import build_calculation_step
+from .operator_handlers.projection import build_projection_step
+from .analytical_series import calculate_series
 from common.langfuse_tracing import LangfuseEventTracer
 
 _logger = logging.getLogger(__name__)
@@ -1598,46 +1606,6 @@ def _rows(evidence: list[Any]) -> list[dict[str, Any]]:
     return rows
 
 
-def _capability_rows(rows: list[dict[str, Any]], action_id: str) -> list[dict[str, Any]]:
-    """Keep rows satisfying the capability's typed output contract.
-
-    A retrieval result can contain supplementary markdown tables from the same
-    evidence bundle.  For country ranking, only rows with both a country and a
-    share are members of the typed result; unrelated tables must not make a
-    valid projection look incomplete.
-    """
-    if action_id != "trade.country_rank":
-        return rows
-    ranked = [
-        row for row in rows
-        if _resolve_row_field([row], "country", strict=True)
-        and _resolve_row_field([row], "share_percentage", strict=True)
-    ]
-    return ranked or rows
-
-
-def _canonicalize_trade_rank_rows(rows: list[dict[str, Any]], metric: str | None) -> list[dict[str, Any]]:
-    """Expose the declared trade-rank measure at the capability boundary.
-
-    The structured trade adapter may label its aggregate column as
-    ``total(<display label>)``. That physical label is not a stable input for
-    compare/projection nodes. Only a typed ``trade.country_rank`` call may map
-    a unique total column to its declared measure.
-    """
-    canonical = str(metric or "").casefold()
-    if canonical not in {"import_amount", "export_amount", "import_weight", "export_weight"}:
-        return rows
-    normalized: list[dict[str, Any]] = []
-    for row in rows:
-        copied = dict(row)
-        if canonical not in copied:
-            total_keys = [key for key in copied if _base_column_name(key) in {"total", "총계"}]
-            if len(total_keys) == 1:
-                copied[canonical] = copied[total_keys[0]]
-        normalized.append(copied)
-    return normalized
-
-
 def _typed_unit(raw: str | None) -> str | None:
     """Decode registered source unit codes; keep raw provenance in Evidence."""
     unit = _verified_display_unit(raw)
@@ -1721,11 +1689,15 @@ def _typed_from_retrieval(result: Any, action: ActionCall, *, input_entities: li
         evidence = tuple(action_result.evidence or evidence)
     rows = [_canonicalize_row(row) for row in _rows(list(evidence))]
     action_id = action.action_id
-    rows = _capability_rows(rows, action_id)
     if action_id == "trade.country_rank":
-        rows = _canonicalize_trade_rank_rows(rows, action.slots.metric)
+        rows = trade_rank_result_adapter.select_country_rank_rows(rows, resolve_field=_resolve_row_field)
+        rows = trade_rank_result_adapter.canonicalize_trade_rank_rows(
+            rows, action.slots.metric, base_column_name=_base_column_name,
+        )
     if action_id == "indicator.series":
-        rows = _canonical_indicator_rows(rows, action)
+        rows = indicator_result_adapter.canonical_indicator_rows(
+            rows, action, resolve_field=_resolve_row_field, numeric=_numeric,
+        )
     if os.getenv("MULTIHOP_INTERNAL_TRACE") == "1":
         _logger.info(
             "multihop_typed_result_trace action=%s requirement=%s row_count=%d row_keys=%s share_keys=%s",
@@ -1736,21 +1708,7 @@ def _typed_from_retrieval(result: Any, action: ActionCall, *, input_entities: li
             sorted({str(key) for row in rows for key in row if "share" in str(key).casefold() or "비중" in str(key)}),
         )
     if action_id == "resource.rank":
-        # Bind the complete reader's normalized mass column, not a ranking
-        # share or a summary value, to its explicitly declared metric.
-        metric_field = {"production": "production_volume", "reserves": "reserves_volume"}.get(action.slots.metric)
-        if metric_field:
-            normalized_rows = []
-            for row in rows:
-                copied = {(metric_field if key.split("(", 1)[0].casefold() in {"total", "총계"} else key): value
-                          for key, value in row.items()}
-                if metric_field not in copied:
-                    for alias in ("total", "총계"):
-                        if alias in copied:
-                            copied[metric_field] = copied[alias]
-                            break
-                normalized_rows.append(copied)
-            rows = normalized_rows
+        rows = resource_rank_result_adapter.canonicalize_resource_rank_rows(rows, action.slots.metric)
     metric = action.slots.metric or action.slots.trade_metric
     if action_id in {"price.series", "price.overview"}:
         metric = "price"
@@ -1799,7 +1757,7 @@ def _typed_from_retrieval(result: Any, action: ActionCall, *, input_entities: li
         return TypedResult.empty(result_type, code if code in public_codes else f"retrieval unavailable: {status}", evidence=evidence,
                                  warnings=tuple(getattr(action_result, "warnings", []) or []))
     if action_id == "indicator.series":
-        output_error = _validate_indicator_output(rows, action)
+        output_error = indicator_result_adapter.validate_indicator_output(rows, action)
         if output_error:
             return TypedResult.empty(
                 result_type, output_error, evidence=evidence,
@@ -1832,64 +1790,6 @@ def _typed_from_retrieval(result: Any, action: ActionCall, *, input_entities: li
         provenance=provenance,
         warnings=tuple(getattr(action_result, "warnings", []) or []),
     )
-
-
-def _canonical_indicator_rows(rows: list[dict[str, Any]], action: ActionCall) -> list[dict[str, Any]]:
-    """Normalize the existing indicator result to its typed row contract.
-
-    The source may call the numeric observation ``series`` or ``indx`` while
-    downstream AST projection uses the shared ``value`` field.  ``center``
-    is also accepted for the source's moving-average observation.  Only these
-    explicit physical aliases are admissible; arbitrary fields are never
-    selected.
-    Invalid rows remain visible to the boundary validator rather than being
-    silently dropped.
-    """
-    normalized: list[dict[str, Any]] = []
-    for row in rows:
-        copied = dict(row)
-        if "date" in copied:
-            date_text = str(copied["date"]).strip()
-            if len(date_text) == 8 and date_text.isdigit():
-                copied["date"] = f"{date_text[:4]}-{date_text[4:6]}-{date_text[6:8]}"
-        else:
-            for source_field in ("date", "crtr_ymd", "obs_date", "observed_date", "period"):
-                # Evidence tables may expose DB comments in the display key,
-                # e.g. ``crtr_ymd(기준일자)``. Resolve the physical column through
-                # the shared canonical resolver instead of requiring an exact
-                # dictionary key.
-                source_key = _resolve_row_field([copied], source_field, strict=True)
-                raw_date = copied.get(source_key) if source_key else None
-                if raw_date is None:
-                    continue
-                date_text = str(raw_date).strip()
-                if len(date_text) == 8 and date_text.isdigit():
-                    date_text = f"{date_text[:4]}-{date_text[4:6]}-{date_text[6:8]}"
-                copied["date"] = date_text
-                break
-        if "value" not in copied:
-            for source_field in ("series", "indx", "center"):
-                source_key = _resolve_row_field([copied], source_field, strict=True)
-                numeric = _numeric(copied.get(source_key)) if source_key else None
-                if numeric is not None:
-                    copied["value"] = numeric
-                    break
-        if "indicator" not in copied and action.slots.indicator:
-            copied["indicator"] = action.slots.indicator
-        normalized.append(copied)
-    return normalized
-
-
-def _validate_indicator_output(rows: list[dict[str, Any]], action: ActionCall) -> str | None:
-    """Return a stable public contract error for malformed indicator rows."""
-    if not rows:
-        return None
-    for row in rows:
-        try:
-            IndicatorSeriesRow.model_validate(row)
-        except Exception:
-            return "indicator_output_contract_invalid"
-    return None
 
 
 def _action_id(node: Any) -> str:
@@ -2085,12 +1985,55 @@ class LiveOperatorFactory:
                         self.saved_results[_history_node_id(ref)] = root
 
     def build(self, *, node: Any, dependencies: tuple[str, ...], bindings: Mapping[str, Any]):
+        extremum = partial(
+            build_extremum_step, resolve=_resolve_row_field, numeric=_numeric,
+            finalize=self._finalize_derived_rows,
+        )
+        ordering = partial(
+            build_ordering_step, resolve=_resolve_row_field, numeric=_numeric,
+            finalize=self._finalize_derived_rows, retrieve=self._retrieve,
+        )
+        relation = partial(
+            build_relation_step,
+            resolve=lambda rows, field: _resolve_row_field(rows, field, strict=True),
+        )
+        builders = {
+            Operator.PROJECT.value: partial(
+                build_projection_step, resolve=_resolve_row_field,
+                entity_values=_entity_values, evidence_rows=_rows,
+                finalize=self._finalize_derived_rows,
+            ),
+            Operator.JOIN.value: relation,
+            Operator.COMPARE.value: relation,
+            Operator.AGGREGATE.value: partial(
+                build_aggregate_step,
+                resolve=lambda rows, field: _resolve_row_field(rows, field, strict=True),
+            ),
+            Operator.ARG_MAX.value: extremum,
+            Operator.ARG_MIN.value: extremum,
+            Operator.SORT.value: ordering,
+            Operator.RANK.value: ordering,
+            Operator.TOP_K.value: ordering,
+            Operator.FILTER.value: partial(
+                build_filter_step, resolve=_resolve_row_field, numeric=_numeric,
+                filter_period=_filter_period, resolve_country=_resolve_country_alias,
+                finalize=self._finalize_derived_rows,
+            ),
+            Operator.CALCULATE.value: partial(
+                build_calculation_step,
+                resolve=lambda rows, field: _resolve_row_field(rows, field, strict=True),
+                numeric=_numeric, finalize=self._finalize_derived_rows,
+            ),
+        }
+        return builders.get(node.operator.value, self._build_legacy)(
+            node=node, dependencies=dependencies, bindings=bindings,
+        )
+
+    def _build_legacy(self, *, node: Any, dependencies: tuple[str, ...], bindings: Mapping[str, Any]):
         if node.operator == Operator.ENTITY.value:
             return FunctionStep(node.node_id, node.operator.value, lambda _c, _i: self._entity(node), dependencies=dependencies, bindings=bindings)
         if node.operator == Operator.FOR_EACH.value:
             return FunctionStep(node.node_id, node.operator.value, lambda _c, inputs: self._foreach(node, inputs), dependencies=dependencies, bindings=bindings)
-        if node.operator in {Operator.TOP_K.value, Operator.FILTER.value, Operator.SORT.value, Operator.RANK.value, Operator.ARG_MAX.value, Operator.ARG_MIN.value, Operator.PROJECT.value, Operator.CALCULATE.value, Operator.AGGREGATE.value, Operator.COMPARE.value, Operator.JOIN.value} and (dependencies or node.operator != Operator.RANK.value):
-            return FunctionStep(node.node_id, node.operator.value, lambda _c, inputs: self._derive(node, inputs), dependencies=dependencies, bindings=bindings)
         if node.operator == Operator.VALIDATE_EVIDENCE.value:
             return FunctionStep(node.node_id, node.operator.value, lambda _c, inputs: self._validate(inputs), dependencies=dependencies, bindings=bindings)
         return FunctionStep(node.node_id, node.operator.value, lambda _c, inputs: self._retrieve(node, inputs), dependencies=dependencies, bindings=bindings)
@@ -2112,346 +2055,13 @@ class LiveOperatorFactory:
         return next(iter(inputs.values())).value if inputs else None
 
     def _derive(self, node: Any, inputs: Mapping[str, TypedResult]) -> TypedResult:
-        if node.operator in {Operator.JOIN, Operator.COMPARE}:
-            return execute_relation(node, inputs, lambda rows, field: _resolve_row_field(rows, field, strict=True))
-        if node.operator == Operator.CALCULATE.value and str(node.args.get("calculation", "")).casefold() == "ratio" and len(inputs) == 2:
-            left, right = inputs.values()
-            return calculate_ratio_between(
-                left, right, node.args,
-                lambda rows, field: _resolve_row_field(rows, field, strict=True),
-            )
-        if any(result.status == ResultStatus.PARTIAL for result in inputs.values()) and node.operator in {
-            Operator.AGGREGATE, Operator.CALCULATE, Operator.RANK, Operator.TOP_K,
-            Operator.ARG_MAX, Operator.ARG_MIN, Operator.COMPARE,
-        }:
-            return TypedResult.abstain("incomplete_population")
         source = next(iter(inputs.values()), None)
         value = source.value if source else None
         rows = value if isinstance(value, list) else ([value] if isinstance(value, Mapping) else [])
-        args = node.args
-        if node.operator == Operator.AGGREGATE.value:
-            if source is None:
-                return TypedResult.failed("missing_input")
-            aggregate_args = dict(args)
-            # ``first``/``last`` are ordered operations. When the typed input
-            # exposes exactly one canonical date field, bind that field at the
-            # capability boundary instead of relying on row insertion order.
-            # If no unambiguous date exists, retain the aggregate contract's
-            # fail-closed ``aggregate_order_required`` behavior.
-            if aggregate_args.get("aggregation") in {"first", "last"} and not aggregate_args.get("order_by"):
-                source_rows = source.value if isinstance(source.value, list) else [source.value]
-                if source_rows and all(isinstance(row, Mapping) for row in source_rows):
-                    if _resolve_row_field(source_rows, "date", strict=True) is not None:
-                        aggregate_args["order_by"] = "date"
-            return aggregate_rows(source, aggregate_args, lambda data, field: _resolve_row_field(data, field, strict=True))
-        elif node.operator == Operator.TOP_K.value:
-            rows = rows[: int(args.get("k") or args.get("top_n") or 5)]
-        elif node.operator in {Operator.SORT.value, Operator.RANK.value}:
-            field = args.get("field") or args.get("metric_field")
-            if field is None and rows and isinstance(rows[0], Mapping):
-                field = next((key for key, item in rows[0].items() if _numeric(item) is not None), None)
-            field = _resolve_row_field(rows, field) or field
-            reverse = str(args.get("order", "desc")).casefold() in {"desc", "decreasing", "decrease"}
-            tie_breaker = args.get("tie_breaker")
-            if tie_breaker:
-                tie_field = _resolve_row_field(rows, tie_breaker, strict=True)
-                if not tie_field or any(not isinstance(row, Mapping) or row.get(tie_field) is None for row in rows):
-                    return TypedResult.abstain("sort_tie_field_unavailable")
-                rows = sorted(rows, key=lambda row: str(row[tie_field]))
-            valid = [row for row in rows if isinstance(row, Mapping) and field and row.get(field) is not None]
-            missing = [row for row in rows if row not in valid]
-            if valid and all(_numeric(row[field]) is not None for row in valid):
-                rows = sorted(valid, key=lambda row: _numeric(row[field]), reverse=reverse) + missing
-            elif all(isinstance(row[field], str) for row in valid):
-                # ISO dates and identifiers are ordered values too. Treating
-                # every non-numeric key as -inf silently made date sort a no-op.
-                rows = sorted(valid, key=lambda row: row[field], reverse=reverse) + missing
-            else:
-                return TypedResult.abstain("incompatible_sort_values")
-        elif node.operator == Operator.FILTER.value:
-            predicate = args.get("predicate") or {}
-            if isinstance(predicate, Mapping):
-                field = predicate.get("field") or args.get("field") or args.get("metric_field")
-                operator = predicate.get("operator", args.get("operator", "equals"))
-                expected = predicate.get("value", args.get("value"))
-            else:
-                # Gemma's compact AST may emit predicate="greater_than" and
-                # keep the compared metric/value beside it. Normalize that
-                # representation at the Pipe boundary; never call .get on a
-                # model-local scalar.
-                field = args.get("field") or args.get("metric_field")
-                operator = {"increase": "greater_than", "decrease": "less_than"}.get(str(predicate), str(predicate))
-                expected = args.get("value")
-            if not field and args.get("metric"):
-                metric_aliases = {
-                    "import_value_change": ("import_value_change", "import_amount_change", "change_pct"),
-                    "import_amount_change": ("import_amount_change", "import_value_change", "change_pct"),
-                    "price_change": ("price_change", "pct_change", "change_pct"),
-                    "price_change_rate": ("price_change_rate", "pct_change", "change_pct"),
-                }
-                candidates = metric_aliases.get(str(args["metric"]), (str(args["metric"]),))
-                field = next((candidate for candidate in candidates if any(
-                    isinstance(row, Mapping) and candidate in row for row in rows
-                )), None)
-                field = _resolve_row_field(rows, field)
-            if not field:
-                rows = _filter_period(rows, args.get("period"))
-                if args.get("metric") and rows:
-                    return TypedResult.empty(
-                        source.result_type if source else ValueType.FACT_SET,
-                        f"filter field unavailable: {args['metric']}",
-                        evidence=source.evidence if source else (),
-                        source=source.source if source else (),
-                        provenance=source.provenance if source else (),
-                        upstream_step_ids=source.upstream_step_ids if source else (),
-                    )
-            country_matches = None
-            if field == "country" and operator in {"equals", "not_equals"} and isinstance(expected, str):
-                try:
-                    country_matches = {id(row) for row in _resolve_country_alias(rows, expected)}
-                except ValueError as exc:
-                    return TypedResult.abstain(str(exc))
-            def keep(row: Any) -> bool:
-                actual = row.get(field) if isinstance(row, Mapping) else None
-                if source and source.result_type == ValueType.MINERAL_SET and field in {"mineral", "entity", "광종"} and isinstance(row, str):
-                    actual = row
-                expected_value = expected
-                if country_matches is not None:
-                    matched = id(row) in country_matches
-                    return matched if operator == "equals" else not matched
-                left, right = _numeric(actual), _numeric(expected_value)
-                if left is not None and right is not None:
-                    actual, expected_value = left, right
-                if operator == "equals":
-                    return actual == expected_value
-                if actual is None or expected_value is None:
-                    return False
-                if operator == "not_equals":
-                    return actual != expected_value
-                if operator == "greater_than":
-                    return actual > expected_value
-                if operator == "less_than":
-                    return actual < expected_value
-                if operator == "gte":
-                    return actual >= expected_value
-                if operator == "lte":
-                    return actual <= expected_value
-                raise ValueError(f"unsupported filter operator: {operator}")
-            if not field:
-                return replace(source, value=rows) if source else TypedResult.failed("missing_input")
-            rows = [row for row in rows if keep(row)]
-        elif node.operator in {Operator.ARG_MAX.value, Operator.ARG_MIN.value}:
-            field = args.get("field") or args.get("metric_field")
-            field = _resolve_row_field(rows, field) or field
-            if rows and field:
-                candidates = [row for row in rows if isinstance(row, Mapping) and row.get(field) is not None]
-                key = lambda row: _numeric(row[field])
-                if candidates and any(key(row) is None for row in candidates):
-                    try:
-                        for row in candidates:
-                            date.fromisoformat(row[field])
-                        key = lambda row: date.fromisoformat(row[field])
-                    except (ValueError, TypeError):
-                        return TypedResult.abstain("incompatible_extremum_values")
-                if not candidates:
-                    return TypedResult.empty(
-                        source.result_type if source else ValueType.FACT_SET,
-                        f"arg field unavailable: {field}",
-                        evidence=source.evidence if source else (),
-                        source=source.source if source else (),
-                        provenance=source.provenance if source else (),
-                        upstream_step_ids=source.upstream_step_ids if source else (),
-                    )
-                select = max if node.operator == Operator.ARG_MAX.value else min
-                extremum = select(key(row) for row in candidates)
-                tied = [row for row in candidates if key(row) == extremum]
-                policy = args.get("ties", "first")
-                if policy not in {"all", "first", "error"}:
-                    return TypedResult.abstain("unsupported_tie_policy")
-                if policy == "error" and len(tied) > 1:
-                    return TypedResult.abstain("ambiguous_extremum_tie")
-                rows = tied if policy == "all" else tied[:1]
-        elif node.operator == Operator.PROJECT.value:
-            fields = args.get("fields") or ([args["field"]] if args.get("field") else [])
-            aliases = args.get("aliases") or {}
-            if not isinstance(aliases, Mapping) or any(key not in fields or not isinstance(value, str) or not value for key,value in aliases.items()):
-                return TypedResult.abstain("invalid_projection_alias")
-            if any(_resolve_row_field([{target: None}], "unit", strict=True) is not None
-                   and _resolve_row_field([{field: None}], "unit", strict=True) is None
-                   for field, target in aliases.items()):
-                # `unit` is execution metadata, not a free presentation label.
-                # A date/value renamed to unit must never validate arithmetic.
-                return TypedResult.abstain("projection_reserved_unit_alias")
-            if len({aliases.get(field,field) for field in fields}) != len(fields):
-                return TypedResult.abstain("projection_output_collision")
-            if source and source.result_type == ValueType.DOCUMENT_EVIDENCE and fields in (["minerals"], ["mineral_list"]):
-                entities = _entity_values(rows) or _entity_values(_rows(list(source.evidence)))
-                if not entities:
-                    return TypedResult.empty(ValueType.MINERAL_SET, "document_mineral_list_unavailable")
-                return replace(source, result_type=ValueType.MINERAL_SET, value=entities, entity=tuple(entities))
-            if not rows and source and isinstance(source.value, list):
-                # A valid filter may select zero rows (e.g. neither price
-                # declined). Project preserves that empty set; it does not
-                # manufacture missing values or erase the upstream status.
-                return replace(source, value=[], entity=())
-            mappings = [row for row in rows if isinstance(row, Mapping)]
-            if source and len({row.get("unit", source.unit) for row in mappings}) > 1:
-                # Column projection must not erase the fact that these values
-                # were expressed in different units. Existing typed warnings
-                # carry this constraint even when the unit column is omitted.
-                source = replace(source, warnings=tuple(dict.fromkeys((*source.warnings, "heterogeneous_units"))))
-            if source and source.result_type == ValueType.MINERAL_SET and rows and all(isinstance(row, str) for row in rows):
-                mappings = [{"mineral": row} for row in rows]
-            if source and source.metric == "price" and not any(
-                isinstance(row, Mapping) and "price_measure" in row for row in mappings
-            ):
-                # Criterion/measure identity is optional for legacy
-                # REPRESENTATIVE/EXPLICIT rows.  If the parser emits the ALL
-                # identity projection speculatively but the source does not
-                # provide those fields, do not turn an otherwise valid price
-                # series into a projection failure.
-                fields = [field for field in fields if field not in {
-                    "price_measure", "price_measure_label", "price_criterion",
-                    "price_criterion_serial",
-                }]
-            # ALL price cardinality carries source-owned measure identity.  A
-            # parser may still request the common date/price projection; do
-            # not silently collapse low/high/normal rows into an anonymous
-            # series.  Preserve identity columns only when the upstream
-            # canonical result actually provides them.
-            if any(
-                isinstance(row, Mapping) and "price_measure" in row for row in mappings
-            ):
-                fields = list(fields)
-                # Criterion identity is an optional source-owned extension of
-                # the price observation. Preserve every identity field that
-                # exists, but do not make a missing serial/label a failure of
-                # an otherwise valid PriceOverview result.
-                identity_fields = {
-                    "price_measure", "price_measure_label", "price_criterion",
-                    "price_criterion_serial",
-                }
-                fields = [
-                    field for field in fields
-                    if field not in identity_fields
-                    or _resolve_row_field(mappings, field, strict=True) is not None
-                ]
-                for identity_field in (
-                    "price_measure", "price_measure_label", "price_criterion",
-                    "price_criterion_serial",
-                ):
-                    if identity_field not in fields and _resolve_row_field(
-                        mappings, identity_field, strict=True
-                    ) is not None:
-                        fields.append(identity_field)
-            # Apply the same optional-identity rule after all legacy
-            # compatibility branches.  Source adapters may expose annotated
-            # keys (for example ``price_measure(가격 구분)``), so checking the
-            # literal key above is not sufficient to decide whether a serial
-            # or label is available.
-            if source and source.metric == "price":
-                price_identity_fields = {
-                    "price_measure", "price_measure_label", "price_criterion",
-                    "price_criterion_serial",
-                }
-                fields = [
-                    field for field in fields
-                    if field not in price_identity_fields
-                    or _resolve_row_field(mappings, field, strict=True) is not None
-                ]
-                # Price identity is part of the registry-owned output
-                # contract, not an optional presentation-only field. Preserve
-                # every identity component that the canonical result actually
-                # provides, even when the candidate AAST requested only the
-                # common mineral/value/date fields.
-                for identity_field in capability_identity_fields("price", "price"):
-                    if identity_field not in fields and _resolve_row_field(
-                        mappings, identity_field, strict=True
-                    ) is not None:
-                        fields.append(identity_field)
-            resolved = {}
-            metadata = {}
-            for field in fields:
-                key = _resolve_row_field(mappings, str(field), strict=True)
-                if key is None and field == "inventory" and source and source.metric == "inventory":
-                    # Inventory retrievals may expose the observation under
-                    # the shared scalar column ``value``. This translation is
-                    # limited to the typed inventory projection contract; the
-                    # generic field resolver must still reject a missing
-                    # source field for analytical operators.
-                    key = (_resolve_row_field(mappings, "재고량", strict=True)
-                           or _resolve_row_field(mappings, "value", strict=True))
-                if key is None and field == "value" and source:
-                    # `value` is a typed output alias. Resolve only through the
-                    # source metric contract, never through an arbitrary numeric
-                    # column. This keeps inventory/indicator/resource outputs
-                    # compatible with the shared projection schema.
-                    metric_value_fields = {
-                        "price": "price",
-                        "inventory": "재고량",
-                        "indicator": "value",
-                        "production": "production",
-                        "reserves": "reserves",
-                    }
-                    value_field = metric_value_fields.get(source.metric)
-                    if value_field:
-                        key = _resolve_row_field(mappings, value_field, strict=True)
-                        if key is None and source.metric == "inventory":
-                            key = _resolve_row_field(mappings, "inventory", strict=True)
-                if key is None and field == "unit" and source and source.unit is not None:
-                    resolved[field] = None  # validated TypedResult metadata
-                    metadata[field] = source.unit
-                elif key is None and field == "source" and source and len(source.source) == 1:
-                    # Source/citation is a typed result-level attribute, not
-                    # necessarily a row column. Expose it only when
-                    # unambiguous; arbitrary missing fields remain rejected.
-                    resolved[field] = None
-                    metadata[field] = source.source[0]
-                elif key is None and field in {"mineral", "entity"} and source and len(source.entity) == 1:
-                    # A single typed entity unambiguously owns these rows.
-                    # Never assign a multi-entity population by row position.
-                    resolved[field] = None
-                    metadata[field] = source.entity[0]
-                elif key is None:
-                    return TypedResult.abstain(f"projection_field_unavailable:{field}")
-                else:
-                    resolved[field] = key
-            if source and source.status == ResultStatus.SUCCESS and any(
-                key is not None and key not in row for row in mappings for key in resolved.values()
-            ):
-                return TypedResult.abstain("projection_input_incomplete")
-            rows = [{aliases.get(field, field): metadata[field] if key is None else row.get(key)
-                     for field, key in resolved.items()} for row in mappings]
-            if source and source.status == ResultStatus.PARTIAL:
-                for projected, original in zip(rows, mappings):
-                    # Success/failure and output identity remain queryable in
-                    # saved partial projections, not only in failed rows.
-                    projected.update({key: original[key] for key in ("status", "reason", "output", "unit") if key in original})
-            if args.get("distinct") is True:
-                rows = list({json.dumps(row, sort_keys=True, ensure_ascii=False): row for row in rows}.values())
-        elif node.operator == Operator.CALCULATE.value:
-            calculation = args.get("calculation")
-            if calculation in SERIES_CALCULATIONS:
-                return calculate_series(source, args, lambda data, field: _resolve_row_field(data, field, strict=True))
-            normalized_calculation = str(calculation).lower()
-            if normalized_calculation in {"share", "hhi", "division", "percentage", "percent"}:
-                # ``division``/``percentage`` are accepted semantic aliases
-                # for a population-share calculation.  The operation still
-                # requires a complete upstream population and uses the same
-                # deterministic share implementation.
-                share_args = dict(args)
-                share_args["calculation"] = "hhi" if normalized_calculation == "hhi" else "share"
-                return calculate_share(source, share_args, lambda data, field: _resolve_row_field(data, field, strict=True))
-            if normalized_calculation == "ratio":
-                return calculate_ratio(source, args, lambda data, field: _resolve_row_field(data, field, strict=True))
-            if calculation in {"change_pct", "percent_change"} and isinstance(value, Mapping):
-                start, end = _numeric(value.get("start")), _numeric(value.get("end"))
-                if start is not None and start != 0 and end is not None:
-                    rows = [{**value, "change_pct": (end - start) / abs(start) * 100}]
-                else:
-                    return TypedResult.abstain("invalid_calculation_operands")
-            else:
-                return TypedResult.abstain("unsupported_calculation_contract")
+        return self._finalize_derived_rows(node, source, rows)
+
+    @staticmethod
+    def _finalize_derived_rows(node: Any, source: TypedResult | None, rows: list[Any]) -> TypedResult:
         entities = _entity_values(rows)
         if not entities and source and source.result_type != ValueType.MINERAL_SET:
             entities = list(source.entity)
@@ -2888,170 +2498,4 @@ def live_run_events(run: LiveRun) -> list[ChatEvent]:
 
 
 def _result_events(result: TypedResult) -> list[ChatEvent]:
-    # Failure rows are outcomes, not facts. Present their status without citing
-    # rejected evidence or promoting the whole composite to success.
-    failed_rows = []
-    if result.result_type == ValueType.COMPOSITE and isinstance(result.value, list):
-        failed_rows = [[str(item.get("mineral") or ""), str(item.get("output") or item.get("metric") or ""),
-                        str(item.get("status") or "unknown"), str(item.get("reason") or "unspecified_failure")]
-                       for item in result.value if isinstance(item, Mapping) and item.get("status") != "success"]
-    failure_events = []
-    if failed_rows:
-        failure_events = [ChatEvent("table", table_block(
-            {"columns": ["광종", "요청 결과", "상태", "사유"], "rows": failed_rows, "markdown": ""},
-            block_id="multihop-item-outcomes", source_index=None, source_label=None))]
-    if result.status in {ResultStatus.ABSTAINED, ResultStatus.EMPTY, ResultStatus.FAILED, ResultStatus.DEPENDENCY_FAILED}:
-        return failure_events + [
-            ChatEvent("delta", {"delta": result.failure_reason or "확인 가능한 근거가 없어 답변할 수 없습니다."}),
-            ChatEvent("done", {"done": True, "abstained": True, "abstain_reason": result.failure_reason or "source_unavailable", "citations": []}),
-        ]
-    events: list[ChatEvent] = []
-    if result.result_type == ValueType.COMPOSITE and isinstance(result.value, list) and any(
-        isinstance(item, Mapping) and (item.get("output") == "time_series" or item.get("metric") not in {None, "price"})
-        for item in result.value
-    ):
-        children = {}
-        for index, item in enumerate(result.value):
-            if not isinstance(item, Mapping):
-                continue
-            key = f"{item.get('mineral', index)}:{item.get('output', 'result')}"
-            children[key] = TypedResult(
-                ValueType(item.get("result_type", "fact_set")), item.get("value"),
-                status=ResultStatus(item.get("status", "failed")),
-                sufficient=item.get("status") in {"success", "partial"},
-                unit=item.get("unit"), period=item.get("period"),
-                evidence=tuple(item.get("evidence") or ()), source=tuple(item.get("source") or ()),
-                provenance=tuple(item.get("provenance") or ()), failure_reason=item.get("reason"))
-        return _result_events(replace(result, value=children))
-    if result.result_type == ValueType.COMPOSITE and isinstance(result.value, Mapping):
-        sources = list(dict.fromkeys(source for child in result.value.values()
-                       if isinstance(child, TypedResult) for source in child.source))
-        citations = [{"index": index, "source": source} for index, source in enumerate(sources, 1)]
-        completed = 0
-        for output_id, child in result.value.items():
-            if not isinstance(child, TypedResult):
-                continue
-            events.append(ChatEvent("delta", {"delta": f"\n{output_id}\n"}))
-            for event in _result_events(child):
-                if event.type == "done":
-                    completed += not event.data.get("abstained", True)
-                else:
-                    data = dict(event.data)
-                    source_index = data.get("source_index")
-                    if isinstance(source_index, int) and 0 < source_index <= len(child.source):
-                        data["source_index"] = sources.index(child.source[source_index - 1]) + 1
-                    if "block_id" in data:
-                        data["block_id"] = f"{output_id}-{data['block_id']}"
-                    if "data_ref" in data:
-                        data["data_ref"] = f"{output_id}-{data['data_ref']}"
-                    events.append(ChatEvent(event.type, data))
-        if result.status == ResultStatus.PARTIAL or completed < len(result.value):
-            events.append(ChatEvent("delta", {"delta": "\n일부 요청 결과만 확인되었습니다."}))
-        events.append(ChatEvent("done", {"done": True, "abstained": not bool(completed),
-            "citations": citations, "bogus_citations": []}))
-        return events
-    # A document→ForEach→price query is a per-entity latest-value request.
-    # Do not promote failed items or raw retrieval rows to the final table: the
-    # composite result is an execution snapshot, while presentation selects
-    # only successful latest observations.
-    if result.result_type == ValueType.COMPOSITE and isinstance(result.value, list):
-        lines: list[str] = []
-        latest_rows: list[tuple[str, Any, Any, str | None, str | None]] = []
-        for item in result.value:
-            if not isinstance(item, Mapping) or str(item.get("status", "")).casefold() != "success":
-                continue
-            mineral = str(item.get("mineral") or "").strip()
-            value = item.get("value")
-            dated_rows = [row for row in value if isinstance(row, Mapping) and _row_date(row) is not None and _row_date(row) <= date.today()] if isinstance(value, list) else []
-            if isinstance(value, list) and not dated_rows and any(isinstance(row, Mapping) and _row_date(row) is not None for row in value):
-                continue
-            row = max(dated_rows, key=_row_date) if dated_rows else (value[0] if isinstance(value, list) and value and isinstance(value[0], Mapping) else value)
-            if not mineral or not isinstance(row, Mapping):
-                continue
-            date_key = next((key for key in row if "기준일" in str(key) or str(key).casefold() in {"date", "observed_date", "crtr_ymd"}), None)
-            price_key = next((key for key in row if "통상가격" in str(key)), None)
-            price_key = price_key or next((key for key in row if str(key).casefold() in {"price", "value", "latest_price"}), None)
-            if price_key is None or row.get(price_key) in (None, "None", ""):
-                continue
-            observed = f" ({row[date_key]} 기준)" if date_key and row.get(date_key) not in (None, "") else ""
-            raw_unit = item.get("unit") or row.get("단위")
-            unit = _verified_display_unit(raw_unit)
-            if not unit and isinstance(raw_unit, str):
-                unit_fields = dict(part.strip().split("=", 1) for part in raw_unit.split(";") if "=" in part)
-                currency, weight = unit_fields.get("통화코드"), unit_fields.get("중량단위코드")
-                if currency and weight:
-                    unit = _price_unit_from_codes([currency.strip()], [weight.strip()])
-            item_source = next(iter(item.get("source") or []), None)
-            lines.append(f"{mineral}: {row[price_key]}{(' ' + str(unit)) if unit else ''}{observed}")
-            latest_rows.append((mineral, row[price_key], row.get(date_key) if date_key else None, unit, item_source))
-        if lines:
-            events.append(ChatEvent("delta", {"delta": "\n".join(lines)}))
-            for index, (mineral, price, observed_date, unit, item_source) in enumerate(latest_rows, 1):
-                table = {
-                    "columns": ["광종", "최근 가격", "기준일"],
-                    "rows": [[mineral, str(price), str(observed_date or "")]],
-                    "markdown": f"| 광종 | 최근 가격 | 기준일 |\n| --- | --- | --- |\n| {mineral} | {price} | {observed_date or ''} |",
-                }
-                events.append(ChatEvent("table", table_block(
-                    table,
-                    block_id=f"multihop-price-{index}",
-                    source_index=(result.source.index(item_source) + 1 if item_source in result.source else None),
-                    source_label=item_source,
-                    unit=unit,
-                )))
-        if not lines:
-            return failure_events + [ChatEvent("delta", {"delta": "표시할 수 있는 검증된 결과가 없습니다."}),
-                    ChatEvent("done", {"done": True, "abstained": True,
-                                      "abstain_reason": "presentation_unavailable", "citations": []})]
-        if result.status == ResultStatus.PARTIAL:
-            events.append(ChatEvent("delta", {"delta": "\n일부 항목은 조회하지 못했습니다."}))
-        events.extend(failure_events)
-        citations = [{"index": index, "source": source} for index, source in enumerate(result.source, 1)]
-        events.append(ChatEvent("done", {"done": True, "abstained": False, "citations": citations, "bogus_citations": []}))
-        return events
-    if isinstance(result.value, Mapping):
-        result = replace(result, value=[result.value])
-    if result.result_type == ValueType.DOCUMENT_EVIDENCE and isinstance(result.value, list):
-        texts = [getattr(item, "text", "") for item in result.value]
-        if texts and all(texts):
-            result = replace(result, value="\n\n".join(texts))
-    if not result.value:
-        return _result_events(TypedResult.abstain("presentation_unavailable"))
-    if isinstance(result.value, str):
-        events.append(ChatEvent("delta", {"delta": result.value}))
-    elif isinstance(result.value, list) and all(isinstance(row, str) for row in result.value):
-        events.append(ChatEvent("delta", {"delta": "\n".join(result.value)}))
-    if isinstance(result.value, list) and result.value and all(isinstance(row, Mapping) for row in result.value):
-        columns = list(dict.fromkeys(key for row in result.value for key in row.keys()))
-        table = {
-            "columns": columns,
-            "rows": [[str(row.get(column, "")) for column in columns] for row in result.value],
-            "markdown": "",
-        }
-        table["markdown"] = "\n".join([
-            "| " + " | ".join(columns) + " |",
-            "| " + " | ".join("---" for _ in columns) + " |",
-            *["| " + " | ".join(row) + " |" for row in table["rows"]],
-        ])
-        events.append(ChatEvent("delta", {"delta": table["markdown"]}))
-        events.append(ChatEvent("table", table_block(table, block_id="multihop-table", source_index=1, source_label=(result.source[0] if result.source else None), unit=result.unit)))
-        row_units = {row.get("unit", result.unit) for row in result.value}
-        chart_units_valid = len(row_units) <= 1 and not ((result.metric == "price" or "heterogeneous_units" in result.warnings) and None in row_units)
-        chart = chart_spec(table, block_id="multihop-chart", data_ref="multihop-table", source_index=1, source_label=(result.source[0] if result.source else None), unit=result.unit) if chart_units_valid else None
-        if chart:
-            events.append(ChatEvent("chart", chart))
-    if result.status == ResultStatus.PARTIAL and events:
-        rows = result.value if isinstance(result.value, list) else []
-        if rows and all(isinstance(row, Mapping) and "status" in row for row in rows):
-            completed = sum(str(row["status"]).casefold() == "success" for row in rows)
-            summary = f"표시된 {len(rows)}개 항목 중 {completed}개 처리 완료, {len(rows) - completed}개 처리 불가."
-            if "incomplete_population" in result.warnings:
-                summary += " 선행 결과가 불완전하여 전체 모집단 결과는 아닙니다."
-        else:
-            summary = "일부 결과만 확인되었습니다. 전체 모집단 결과는 아닙니다."
-        events.insert(0, ChatEvent("delta", {"delta": summary + "\n"}))
-    if not events:
-        return _result_events(TypedResult.abstain("unsupported_presentation_type"))
-    citations = [{"index": index, "source": source} for index, source in enumerate(result.source, 1)]
-    events.append(ChatEvent("done", {"done": True, "abstained": False, "citations": citations, "bogus_citations": []}))
-    return events
+    return result_events(result, row_date=_row_date, today=date.today)

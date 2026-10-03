@@ -1,4 +1,5 @@
 """Live-contract regressions, independent of question wording and mineral identity."""
+from inhouse.rag_core.tests.registered_step_helpers import execute_registered
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -24,7 +25,7 @@ def context(result):
 @pytest.mark.parametrize("field", ["mineral", "entity"])
 def test_projection_resolves_entity_dimension_without_new_retrieval(field):
     source = TypedResult.success(ValueType.TIME_SERIES, [{"date": "2024-01-01", "price": 10}], entity=("A",))
-    result = factory()._derive(RequirementNode("project", Operator.PROJECT, args={"fields": [field]}), {"in": source})
+    result = execute_registered(factory(), RequirementNode("project", Operator.PROJECT, args={"fields": [field]}), {"in": source})
     assert result.status == ResultStatus.SUCCESS
     assert result.value == [{field: "A"}]
 
@@ -32,7 +33,7 @@ def test_projection_resolves_entity_dimension_without_new_retrieval(field):
 def test_entity_alias_uses_filtered_row_not_all_snapshot_entities():
     source = TypedResult(ValueType.COMPOSITE, [{"mineral": "B", "status": "success"}],
                          status=ResultStatus.PARTIAL, entity=("A", "B", "C"))
-    result = factory()._derive(RequirementNode("project", Operator.PROJECT, args={"fields": ["entity"]}), {"in": source})
+    result = execute_registered(factory(), RequirementNode("project", Operator.PROJECT, args={"fields": ["entity"]}), {"in": source})
     # Partial snapshots retain row status for later success projections.
     assert result.value == [{"entity": "B", "status": "success"}]
     assert result.entity == ("B",)
@@ -43,7 +44,7 @@ def test_entity_alias_uses_filtered_row_not_all_snapshot_entities():
 
 def test_ambiguous_entity_metadata_is_not_broadcast_to_rows():
     source = TypedResult.success(ValueType.FACT_SET, [{"price": 10}], entity=("A", "B"))
-    result = factory()._derive(RequirementNode("p", Operator.PROJECT, args={"fields": ["entity"]}), {"in": source})
+    result = execute_registered(factory(), RequirementNode("p", Operator.PROJECT, args={"fields": ["entity"]}), {"in": source})
     assert result.status == ResultStatus.ABSTAINED
 
 
@@ -108,7 +109,7 @@ def test_composite_sse_preserves_failed_items_and_reasons(all_failed):
 
 def test_production_column_alias_preserves_units_and_aggregate_value():
     source = TypedResult.success(ValueType.FACT_SET, [{"국가": "A", "생산량(톤)": "7"}, {"국가": "B", "생산량(톤)": "11"}], unit="톤")
-    out = factory()._derive(RequirementNode("s", Operator.AGGREGATE,
+    out = execute_registered(factory(), RequirementNode("s", Operator.AGGREGATE,
         args={"aggregation": "sum", "field": "production_volume"}), {"in": source})
     assert out.value == [{"생산량(톤)": 18}]
     assert out.unit == "톤"
@@ -142,7 +143,7 @@ def test_multisource_project_rejected_in_live_instead_of_dropping_inputs():
 
 def test_projection_distinct_does_not_duplicate_timeseries_entity():
     source = TypedResult.success(ValueType.TIME_SERIES, [{"price": 10}, {"price": 11}], entity=("A",))
-    out = factory()._derive(RequirementNode("p", Operator.PROJECT,
+    out = execute_registered(factory(), RequirementNode("p", Operator.PROJECT,
         args={"fields": ["mineral"], "distinct": True}), {"in": source})
     assert out.value == [{"mineral": "A"}]
 
@@ -152,7 +153,7 @@ def test_saved_mineral_set_projection_compiles_and_preserves_identity():
     payload = {"nodes": [{"node_id": "p", "operator": "project", "inputs": [{"node_id": "history:prior:root"}],
                            "args": {"fields": ["mineral"]}}], "roots": ["p"]}
     program = SemanticProgram.from_dict(live._normalize_history_aliases(payload, context(source)))
-    result = factory()._derive(program.nodes[-1], {"saved": source})
+    result = execute_registered(factory(), program.nodes[-1], {"saved": source})
     assert result.value == [{"mineral": "A"}, {"mineral": "B"}]
 
 
@@ -160,6 +161,6 @@ def test_saved_mineral_set_projection_compiles_and_preserves_identity():
 def test_country_filter_uses_source_owned_names_without_role_replacement(name):
     source = TypedResult.success(ValueType.FACT_SET, [{"country": "칠레", "country_code": "CL", "country_name_en": "Chile", "value": 7},
                                                     {"country": "다른국가", "country_code": "ZZ", "value": 11}])
-    result = factory()._derive(RequirementNode("f", Operator.FILTER,
+    result = execute_registered(factory(), RequirementNode("f", Operator.FILTER,
         args={"predicate": {"field": "country", "operator": "equals", "value": name}}), {"in": source})
     assert len(result.value) == 1 and result.value[0]["country_code"] == "CL"

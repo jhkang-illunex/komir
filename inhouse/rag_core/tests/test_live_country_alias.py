@@ -1,5 +1,6 @@
 """Source alias ambiguity: one code across years is not multiple countries."""
 import unittest
+from inhouse.rag_core.tests.registered_step_helpers import execute_registered
 from unittest.mock import patch
 
 from inhouse.rag_core.ragkit import live_multihop as live
@@ -18,7 +19,7 @@ class CountryAliasTests(unittest.IsolatedAsyncioTestCase):
 
     def derive(self, rows, expected="Chile", operator="equals", field="country"):
         node = RequirementNode("filter", Operator.FILTER, args={"predicate": {"field": field, "operator": operator, "value": expected}})
-        return self.factory._derive(node, {"input": TypedResult.success(ValueType.FACT_SET, rows)})
+        return execute_registered(self.factory, node, {"input": TypedResult.success(ValueType.FACT_SET, rows)})
 
     def test_same_country_multiple_years_and_all_namespaces(self):
         for alias in ("칠레", " CL ", "cHiLe"):

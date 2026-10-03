@@ -1,3 +1,4 @@
+from inhouse.rag_core.tests.registered_step_helpers import execute_registered
 from dataclasses import replace
 from types import SimpleNamespace
 
@@ -17,7 +18,7 @@ def source(rows, name, unit="USD/t", **kwargs):
 
 def run(operator, left, right, **args):
     factory = LiveOperatorFactory(message="", session_id="fixture", profile="public", llm=None, history=[])
-    return factory._derive(RequirementNode("relation", operator, args=args), {"input_0": left, "input_1": right})
+    return execute_registered(factory, RequirementNode("relation", operator, args=args), {"input_0": left, "input_1": right})
 
 
 def test_join_matches_keys_not_row_position_and_preserves_both_sources():
@@ -155,10 +156,10 @@ def test_partial_inner_join_and_projection_do_not_erase_population_gap():
     assert len(result.value) == 1
     assert result.status == ResultStatus.PARTIAL
     factory = LiveOperatorFactory(message="", session_id="fixture", profile="public", llm=None, history=[])
-    projected = factory._derive(RequirementNode("p", Operator.PROJECT, args={"fields": ["left.value"]}), {"input": result})
+    projected = execute_registered(factory, RequirementNode("p", Operator.PROJECT, args={"fields": ["left.value"]}), {"input": result})
     assert projected.status == ResultStatus.PARTIAL
     for op in (Operator.AGGREGATE, Operator.RANK, Operator.TOP_K):
-        blocked = factory._derive(RequirementNode("a", op, args={"field": "left.value", "aggregation": "sum"}), {"input": projected})
+        blocked = execute_registered(factory, RequirementNode("a", op, args={"field": "left.value", "aggregation": "sum"}), {"input": projected})
         assert blocked.failure_reason == "incomplete_population"
 
 
@@ -260,7 +261,7 @@ def test_side_by_side_re_resolves_invalid_cross_metric_field_per_input():
 
 def test_binary_ratio_uses_two_typed_scalar_inputs():
     factory = LiveOperatorFactory(message="", session_id="fixture", profile="public", llm=None, history=[])
-    result = factory._derive(
+    result = execute_registered(factory,
         RequirementNode("ratio", Operator.CALCULATE, args={"calculation": "ratio", "as_percentage": True}),
         {
             "numerator": source([{"value": 20}], "numerator"),

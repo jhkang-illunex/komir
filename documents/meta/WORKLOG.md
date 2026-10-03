@@ -2,6 +2,19 @@
 
 > 커밋 해시는 `git log --oneline` 기준. 최신이 위.
 
+## 2026-10-04 — Architecture V1 Step 12 완료, READY_WITH_KNOWN_DEBT
+
+Step1–11의 등록형 handler/adapter/catalog/coverage migration에 이어 Presentation
+selection·canonical presenter·ChatEvent assembly·legacy compatibility를 분리했다.
+Step12 frozen-old/new 2048 cases와 saved graph17건 동일; 신규 characterization86건
+old/new 통과. rag_core2334 passed/0 failed, rag_chat155 passed/동일 known legacy1건.
+live3057→2501 LOC, Factory627→337, `_derive`352→5, central operator conditions15→4,
+`_result_events`168→2. 의미/QA oracle 변경 없이 기존 실패와 contamination도 보존한다.
+Architecture V1 `READY_WITH_KNOWN_DEBT`; Product Golden은 미인증 상태 그대로다.
+이번 Step에서 18002/18012·image·DB 미변경, FullQA57/Strict 갱신 없음.
+사용자 승인 범위의 누적 architecture source/tests/artifacts만 commit/push 대상이다.
+근거: `PRESENTATION_SEAM_STEP12_20261004.md`, 외부 immutable evidence manifest.
+
 ## 2026-10-03 — Capability boundary Fast Regression r19, 운영 미배포
 
 `trade.country_rank`가 반환한 유일한 `total(<표시명>)` 물리 컬럼을 선언된

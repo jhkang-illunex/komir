@@ -1,3 +1,4 @@
+from inhouse.rag_core.tests.registered_step_helpers import execute_registered
 import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -49,7 +50,7 @@ class LiveAuditSafetyTests(unittest.IsolatedAsyncioTestCase):
         program = SemanticProgram.from_dict(live._normalize_history_aliases(payload, context))
         restored = factory._entity(program.nodes[0])
         self.assertIs(restored, source)
-        self.assertEqual(factory._derive(program.nodes[1], {"previous": restored}).status, ResultStatus.PARTIAL)
+        self.assertEqual(execute_registered(factory, program.nodes[1], {"previous": restored}).status, ResultStatus.PARTIAL)
 
     def test_localized_result_alias_resolves_to_latest_root_snapshot(self):
         source = TypedResult(ValueType.TIME_SERIES, [{"price": 10}], status=ResultStatus.PARTIAL,
@@ -114,7 +115,7 @@ class LiveAuditSafetyTests(unittest.IsolatedAsyncioTestCase):
 
     def test_aggregate_executes_instead_of_returning_input_rows(self):
         source = TypedResult.success(ValueType.FACT_SET, [{"price": 10}, {"price": 20}], unit="USD/t")
-        result = self.factory()._derive(RequirementNode("sum", Operator.AGGREGATE,
+        result = execute_registered(self.factory(), RequirementNode("sum", Operator.AGGREGATE,
             args={"field": "price", "aggregation": "sum"}), {"source": source})
         self.assertEqual(result.value, [{"price": 30}])
         self.assertEqual(result.unit, "USD/t")
@@ -123,7 +124,7 @@ class LiveAuditSafetyTests(unittest.IsolatedAsyncioTestCase):
         source = TypedResult.success(ValueType.FACT_SET, [{"price": 10}])
         for operator in (Operator.CALCULATE, Operator.JOIN, Operator.COMPARE):
             with self.subTest(operator=operator):
-                result = self.factory()._derive(RequirementNode("op", operator), {"source": source})
+                result = execute_registered(self.factory(), RequirementNode("op", operator), {"source": source})
                 self.assertNotEqual(result.status, ResultStatus.SUCCESS)
 
     def test_multi_root_sse_contains_values_and_one_completion(self):
@@ -158,18 +159,18 @@ class LiveAuditSafetyTests(unittest.IsolatedAsyncioTestCase):
         source = TypedResult.success(ValueType.FACT_SET, [{"value": None}, {"value": 10}])
         node = RequirementNode("filter", Operator.FILTER, args={
             "predicate": {"field": "value", "operator": "equals", "value": None}})
-        self.assertEqual(self.factory()._derive(node, {"source": source}).value, [{"value": None}])
+        self.assertEqual(execute_registered(self.factory(), node, {"source": source}).value, [{"value": None}])
 
     def test_projection_preserves_partial_metadata_and_blocks_aggregate(self):
         source = TypedResult(ValueType.FACT_SET, [{"price": 10}], status=ResultStatus.PARTIAL,
                             period={"year": 2024}, unit="USD/t", warnings=("missing entity",))
-        projected = self.factory()._derive(RequirementNode("project", Operator.PROJECT,
+        projected = execute_registered(self.factory(), RequirementNode("project", Operator.PROJECT,
             args={"fields": ["price"]}), {"source": source})
         self.assertEqual(projected.status, ResultStatus.PARTIAL)
         self.assertEqual(projected.period, source.period)
         self.assertEqual(projected.unit, source.unit)
         self.assertEqual(projected.warnings, source.warnings)
-        total = self.factory()._derive(RequirementNode("sum", Operator.AGGREGATE), {"source": projected})
+        total = execute_registered(self.factory(), RequirementNode("sum", Operator.AGGREGATE), {"source": projected})
         self.assertEqual(total.failure_reason, "incomplete_population")
 
     async def test_multi_mineral_trade_binds_each_entity(self):
@@ -198,7 +199,7 @@ class LiveAuditSafetyTests(unittest.IsolatedAsyncioTestCase):
         ev = Evidence("pageindex", "fixture", "fixture", "mineral_list")
         source = TypedResult.success(ValueType.DOCUMENT_EVIDENCE, [{"광종 목록": "니켈, 리튬"}], evidence=(ev,), provenance=("doc:fixture",))
         node = RequirementNode("minerals", Operator.PROJECT, args={"field": "minerals"})
-        result = factory._derive(node, {"doc": source})
+        result = execute_registered(factory, node, {"doc": source})
         self.assertEqual(result.result_type, ValueType.MINERAL_SET)
         self.assertEqual(result.entity, ("니켈", "리튬"))
         self.assertEqual(result.evidence, source.evidence)
@@ -216,7 +217,7 @@ class LiveAuditSafetyTests(unittest.IsolatedAsyncioTestCase):
     def test_partial_population_cannot_be_aggregated(self):
         factory = live.LiveOperatorFactory(message="", session_id="fixture", profile="public", llm=None, history=[])
         partial = TypedResult(ValueType.FACT_SET, [{"price": 1}], status=ResultStatus.PARTIAL)
-        result = factory._derive(RequirementNode("sum", Operator.AGGREGATE), {"source": partial})
+        result = execute_registered(factory, RequirementNode("sum", Operator.AGGREGATE), {"source": partial})
         self.assertEqual(result.failure_reason, "incomplete_population")
 
     def test_null_grounding_reason_does_not_change_rejection(self):

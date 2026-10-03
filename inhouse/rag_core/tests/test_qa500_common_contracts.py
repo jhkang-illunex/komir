@@ -1,3 +1,4 @@
+from inhouse.rag_core.tests.registered_step_helpers import execute_registered
 from types import SimpleNamespace
 import pytest
 from inhouse.rag_core.ragkit.live_multihop import LiveOperatorFactory
@@ -7,7 +8,7 @@ from inhouse.rag_core.ragkit.semantic_ir import RequirementNode, Operator, Value
 
 def execute(op, args, rows):
     factory = LiveOperatorFactory(message="", session_id="qa500", profile="public", llm=None, history=[])
-    return factory._derive(RequirementNode("op", op, args=args), {
+    return execute_registered(factory, RequirementNode("op", op, args=args), {
         "source": TypedResult.success(ValueType.FACT_SET, rows, unit="t")})
 
 
@@ -97,7 +98,7 @@ def test_null_excluded_sum_cannot_become_complete_share_denominator():
     assert result.warnings==('aggregate_nulls_excluded:1',)
     factory=LiveOperatorFactory(message='',session_id='qa500',profile='public',llm=None,history=[])
     for calculation in ('share','hhi'):
-        shares=factory._derive(RequirementNode('share',Operator.CALCULATE,args={'field':'value','calculation':calculation}),{'source':result})
+        shares=execute_registered(factory,RequirementNode('share',Operator.CALCULATE,args={'field':'value','calculation':calculation}),{'source':result})
         assert shares.status==ResultStatus.ABSTAINED
         assert shares.failure_reason=='incomplete_population'
     stale=execute(Operator.AGGREGATE,{'aggregation':'sum','field':'value'},[
@@ -142,19 +143,19 @@ def test_project_explicit_alias_preserves_join_namespaces_without_collisions():
 def test_topk_keeps_document_type_for_mineral_projection():
     factory=LiveOperatorFactory(message='',session_id='qa500',profile='public',llm=None,history=[])
     source=TypedResult.success(ValueType.DOCUMENT_EVIDENCE,[{'mineral_list':['니켈','리튬']}])
-    selected=factory._derive(RequirementNode('top',Operator.TOP_K,args={'k':1}),{'source':source})
+    selected=execute_registered(factory, RequirementNode('top',Operator.TOP_K,args={'k':1}),{'source':source})
     assert selected.result_type==ValueType.DOCUMENT_EVIDENCE
-    projected=factory._derive(RequirementNode('list',Operator.PROJECT,args={'fields':['mineral_list']}),{'source':selected})
+    projected=execute_registered(factory, RequirementNode('list',Operator.PROJECT,args={'fields':['mineral_list']}),{'source':selected})
     assert projected.value==['니켈','리튬']
 
 
 def test_filtered_mineral_set_does_not_restore_stale_entity_binding():
     factory=LiveOperatorFactory(message='',session_id='qa500',profile='public',llm=None,history=[])
     source=TypedResult.success(ValueType.MINERAL_SET,['니켈','리튬'],entity=('니켈','리튬'))
-    result=factory._derive(RequirementNode('filter',Operator.FILTER,args={
+    result=execute_registered(factory,RequirementNode('filter',Operator.FILTER,args={
         'predicate':{'field':'mineral','operator':'not_equals','value':'니켈'}}),{'source':source})
     assert result.value==['리튬'] and result.entity==('리튬',)
-    empty=factory._derive(RequirementNode('filter2',Operator.FILTER,args={
+    empty=execute_registered(factory,RequirementNode('filter2',Operator.FILTER,args={
         'predicate':{'field':'mineral','operator':'equals','value':'없는 광종'}}),{'source':result})
     assert empty.value==[] and empty.entity==()
 
@@ -201,13 +202,13 @@ def test_scalar_broadcast_requires_explicit_direction_and_typed_scalar():
     data=TypedResult.success(ValueType.FACT_SET,[{'month':'01','value':10},{'month':'02','value':20}],unit='t',evidence=evidence)
     mean=TypedResult.success(ValueType.SCALAR_METRIC,[{'value':15}],unit='t',evidence=evidence)
     args={'field':'value','operation':'difference'}
-    refused=factory._derive(RequirementNode('compare',Operator.COMPARE,args=args),{'data':data,'mean':mean})
+    refused=execute_registered(factory,RequirementNode('compare',Operator.COMPARE,args=args),{'data':data,'mean':mean})
     assert refused.failure_reason=='comparison_alignment_required'
-    accepted=factory._derive(RequirementNode('compare',Operator.COMPARE,args={**args,'broadcast':'right'}),{'data':data,'mean':mean})
+    accepted=execute_registered(factory,RequirementNode('compare',Operator.COMPARE,args={**args,'broadcast':'right'}),{'data':data,'mean':mean})
     assert [r['difference'] for r in accepted.value]==[-5,5]
     assert [r['left.month'] for r in accepted.value]==['01','02']
     assert accepted.unit=='t' and accepted.evidence==evidence+evidence
-    refused=factory._derive(RequirementNode('compare',Operator.COMPARE,args={**args,'broadcast':'left'}),{'data':data,'mean':mean})
+    refused=execute_registered(factory,RequirementNode('compare',Operator.COMPARE,args={**args,'broadcast':'left'}),{'data':data,'mean':mean})
     assert refused.failure_reason=='broadcast_requires_typed_scalar'
 
 

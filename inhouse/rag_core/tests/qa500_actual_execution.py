@@ -345,7 +345,9 @@ async def run_program(logical, db):
                 return TypedResult.abstain('empty_upstream_contract_failure: '+str(failed_empty[0].failure_reason))
             if empty:
                 return TypedResult.empty(ValueType.UNKNOWN, 'DATA_UNAVAILABLE: empty upstream')
-            return factory._derive(node, inputs)
+            return await factory.build(
+                node=node, dependencies=dependencies, bindings=bindings,
+            ).execute(_context, inputs)
         return FunctionStep(node.node_id,node.operator.value,invoke,dependencies=dependencies,bindings=bindings)
     pipe = PipeLowerer(build).lower(program,pipe_id='actual-offline')
     # Hard tripwire: neither ActionTool nor a network fallback is allowed here.

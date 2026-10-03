@@ -11,6 +11,10 @@ from enum import Enum
 from typing import Any, Mapping
 
 from .semantic_capabilities import capability_output_fields
+from .capability_specs.indicator import INDICATOR_IR_FIELDS
+from .capability_specs.price import PRICE_CHANGE_IR_FIELDS
+from .capability_specs.resource import PRODUCTION_IR_FIELDS, RESERVES_IR_FIELDS
+from .capability_specs.trade import IMPORT_AMOUNT_IR_FIELDS, IMPORT_CHANGE_IR_FIELDS
 
 
 class Operator(str, Enum):
@@ -53,8 +57,8 @@ _METRIC_FIELDS: dict[str, set[str]] = {
     # ``series`` is the semantic vocabulary emitted by the live AST parser;
     # ``indicator`` is the canonical capability metric.  Both expose the
     # same typed row fields at this boundary.
-    "indicator": {"indicator", "value", "date", "unit", "series"},
-    "series": {"indicator", "value", "date", "unit", "series"},
+    "indicator": set(INDICATOR_IR_FIELDS),
+    "series": set(INDICATOR_IR_FIELDS),
     "price": {
         "price", "cmerc_prc", "value", "date", "hghst_prc", "lowst_prc",
         "high_price", "low_price", "status", "reason", "output",
@@ -63,17 +67,17 @@ _METRIC_FIELDS: dict[str, set[str]] = {
         "price_measure", "price_measure_label", "price_criterion",
         "price_criterion_serial",
     },
-    "price_change": {"price_change", "price_change_rate", "pct_change", "change_pct", "date", "period"},
-    "price_change_rate": {"price_change", "price_change_rate", "pct_change", "change_pct", "date", "period"},
+    "price_change": set(PRICE_CHANGE_IR_FIELDS),
+    "price_change_rate": set(PRICE_CHANGE_IR_FIELDS),
     "price_volatility": {"price_volatility", "price_change", "pct_change", "change_pct", "date", "period"},
     # Trade rows carry the dimensional metadata needed by downstream share,
     # period and unit projections.  Declaring it here keeps the AST contract
     # aligned with the existing RDB/tool result rather than allowing a later
     # project/filter node to discover the dependency at runtime.
-    "import_value": {"import_value", "import_amount", "import_amount_change", "value", "country", "period", "unit"},
-    "import_amount": {"import_value", "import_amount", "import_amount_change", "value", "country", "period", "unit"},
-    "import_change": {"import_change", "import_value_change", "import_amount_change", "change_pct", "country", "period", "unit"},
-    "import_value_change": {"import_change", "import_value_change", "import_amount_change", "change_pct", "country", "period", "unit"},
+    "import_value": set(IMPORT_AMOUNT_IR_FIELDS),
+    "import_amount": set(IMPORT_AMOUNT_IR_FIELDS),
+    "import_change": set(IMPORT_CHANGE_IR_FIELDS),
+    "import_value_change": set(IMPORT_CHANGE_IR_FIELDS),
     "import_share": {"import_share", "share_percentage", "import_amount", "import_value", "value", "country", "period", "unit"},
     "country_share": {"country_share", "share_percentage", "import_amount", "import_value", "value", "country", "period", "unit"},
     "country_rank": {
@@ -82,10 +86,10 @@ _METRIC_FIELDS: dict[str, set[str]] = {
         "export_share", "export_amount", "export_value",
         "value", "period", "unit",
     },
-    "production": {"production", "production_volume", "value", "country", "country_code", "year", "period", "unit"},
-    "production_volume": {"production", "production_volume", "value", "country", "country_code", "year", "period", "unit"},
-    "reserves": {"reserves", "reserves_volume", "value", "country", "country_code", "year", "period", "unit"},
-    "reserves_volume": {"reserves", "reserves_volume", "value", "country", "country_code", "year", "period", "unit"},
+    "production": set(PRODUCTION_IR_FIELDS),
+    "production_volume": set(PRODUCTION_IR_FIELDS),
+    "reserves": set(RESERVES_IR_FIELDS),
+    "reserves_volume": set(RESERVES_IR_FIELDS),
 }
 
 _FIELD_ALIASES: dict[str, set[str]] = {

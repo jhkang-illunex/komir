@@ -1,3 +1,4 @@
+from inhouse.rag_core.tests.registered_step_helpers import execute_registered
 import asyncio
 from unittest.mock import AsyncMock
 
@@ -26,28 +27,28 @@ def test_multi_price_retrieval_materializes_each_entity_and_unit():
     assert factory._call_action.await_count==2
     assert result.status==ResultStatus.SUCCESS
     assert [(r['mineral'],r['price'],r['unit']) for r in result.value]==[('A',10,'USD/kg'),('B',20,'USD/톤')]
-    projected=factory._derive(RequirementNode('project',Operator.PROJECT,args={'fields':['mineral','price','value','date','unit']}),{'source':result})
+    projected=execute_registered(factory, RequirementNode('project',Operator.PROJECT,args={'fields':['mineral','price','value','date','unit']}),{'source':result})
     assert projected.status==ResultStatus.SUCCESS and len(projected.value)==2
     assert [row['value'] for row in projected.value]==[10,20]
     events=live._result_events(projected)
     assert any(event.type=='table' for event in events)
     assert not any(event.type=='chart' for event in events)
-    aggregate=factory._derive(RequirementNode('sum',Operator.AGGREGATE,args={'aggregation':'sum','field':'price'}),{'source':result})
+    aggregate=execute_registered(factory, RequirementNode('sum',Operator.AGGREGATE,args={'aggregation':'sum','field':'price'}),{'source':result})
     assert aggregate.failure_reason=='unit_mismatch'
 
 
 def test_failed_price_entity_is_not_erased_by_projection():
     factory,result=run(True)
     assert result.status==ResultStatus.PARTIAL
-    projected=factory._derive(RequirementNode('project',Operator.PROJECT,args={'fields':['mineral','price','date','unit']}),{'source':result})
+    projected=execute_registered(factory, RequirementNode('project',Operator.PROJECT,args={'fields':['mineral','price','date','unit']}),{'source':result})
     assert projected.status==ResultStatus.PARTIAL
     failed=next(r for r in projected.value if r['mineral']=='B')
     assert failed['status']=='empty' and failed['reason']=='price_criterion_selection_required'
-    successful=factory._derive(RequirementNode('f',Operator.FILTER,args={'field':'status','operator':'equals','value':'success'}),{'source':projected})
+    successful=execute_registered(factory,RequirementNode('f',Operator.FILTER,args={'field':'status','operator':'equals','value':'success'}),{'source':projected})
     assert [row['mineral'] for row in successful.value]==['A']
-    compact=factory._derive(RequirementNode('p',Operator.PROJECT,args={'fields':['mineral','price']}),{'source':result})
+    compact=execute_registered(factory, RequirementNode('p',Operator.PROJECT,args={'fields':['mineral','price']}),{'source':result})
     assert next(row for row in compact.value if row['mineral']=='A')['unit']=='USD/kg'
-    with_status=factory._derive(RequirementNode('project',Operator.PROJECT,args={'fields':['mineral','price','status']}),{'source':result})
+    with_status=execute_registered(factory, RequirementNode('project',Operator.PROJECT,args={'fields':['mineral','price','status']}),{'source':result})
     events=live._result_events(with_status)
     assert '1개 처리 완료' in str(events)
 
@@ -58,7 +59,7 @@ def test_refresh_preserves_per_output_metadata_for_downstream_projection():
     fields=['mineral','price','status','reason','output','unit']
     SemanticProgram((RequirementNode('r',Operator.RETRIEVE,args={'metric':'price'}),
                      RequirementNode('p',Operator.PROJECT,inputs=(InputRef('r'),),args={'fields':fields})),('p',))
-    projected=factory._derive(RequirementNode('p',Operator.PROJECT,args={'fields':fields}),{'r':result})
+    projected=execute_registered(factory, RequirementNode('p',Operator.PROJECT,args={'fields':fields}),{'r':result})
     assert projected.status==ResultStatus.PARTIAL
     success,failed=projected.value
     assert success['status']=='success' and success['reason'] is None
@@ -70,19 +71,19 @@ def test_refresh_preserves_per_output_metadata_for_downstream_projection():
 def test_projection_cannot_hide_mixed_units_from_aggregate():
     factory,result=run()
     for args in ({'fields':['mineral','price']}, {'fields':['mineral','price','unit'],'aliases':{'unit':'단위'}}):
-        projected=factory._derive(RequirementNode('p',Operator.PROJECT,args=args),{'source':result})
-        total=factory._derive(RequirementNode('a',Operator.AGGREGATE,args={'aggregation':'sum','field':'price'}),{'source':projected})
+        projected=execute_registered(factory, RequirementNode('p',Operator.PROJECT,args=args),{'source':result})
+        total=execute_registered(factory, RequirementNode('a',Operator.AGGREGATE,args={'aggregation':'sum','field':'price'}),{'source':projected})
         assert total.failure_reason=='unit_mismatch'
         assert not any(e.type=='chart' for e in live._result_events(projected))
-    retained=factory._derive(RequirementNode('p',Operator.PROJECT,args={'fields':['mineral','price','unit']}),{'source':result})
-    filtered=factory._derive(RequirementNode('f',Operator.FILTER,args={'field':'mineral','operator':'equals','value':'A'}),{'source':retained})
-    total=factory._derive(RequirementNode('a',Operator.AGGREGATE,args={'aggregation':'sum','field':'price'}),{'source':filtered})
+    retained=execute_registered(factory, RequirementNode('p',Operator.PROJECT,args={'fields':['mineral','price','unit']}),{'source':result})
+    filtered=execute_registered(factory,RequirementNode('f',Operator.FILTER,args={'field':'mineral','operator':'equals','value':'A'}),{'source':retained})
+    total=execute_registered(factory, RequirementNode('a',Operator.AGGREGATE,args={'aggregation':'sum','field':'price'}),{'source':filtered})
     assert total.status==ResultStatus.SUCCESS
     assert total.unit=='USD/kg'
-    fabricated=factory._derive(RequirementNode('p',Operator.PROJECT,args={'fields':['mineral','price','date'],'aliases':{'date':'unit'}}),{'source':result})
+    fabricated=execute_registered(factory, RequirementNode('p',Operator.PROJECT,args={'fields':['mineral','price','date'],'aliases':{'date':'unit'}}),{'source':result})
     assert fabricated.failure_reason=='projection_reserved_unit_alias'
-    indirect=factory._derive(RequirementNode('p',Operator.PROJECT,args={'fields':['mineral','price','date'],'aliases':{'date':'단위'}}),{'source':result})
+    indirect=execute_registered(factory, RequirementNode('p',Operator.PROJECT,args={'fields':['mineral','price','date'],'aliases':{'date':'단위'}}),{'source':result})
     assert indirect.failure_reason=='projection_reserved_unit_alias'
     for reserved in ('unit(label)', '단위(label)'):
-        first=factory._derive(RequirementNode('p',Operator.PROJECT,args={'fields':['mineral','price','date'],'aliases':{'date':reserved}}),{'source':result})
+        first=execute_registered(factory, RequirementNode('p',Operator.PROJECT,args={'fields':['mineral','price','date'],'aliases':{'date':reserved}}),{'source':result})
         assert first.failure_reason=='projection_reserved_unit_alias'

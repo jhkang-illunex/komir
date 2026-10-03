@@ -172,6 +172,60 @@ Use these classifications:
 critical work. Record the debt, make the smallest safe repair, preserve the
 golden regression, and request human approval before structural refactoring.
 
+### Decomposition & Composition Guard — mandatory every iteration
+
+복잡도 증가는 LOC 자체보다 **독립적인 변경 이유와 중앙 집중된 책임**을 기준으로 판단한다.
+이 guard는 특정 프로젝트/QA에 한정하지 않고 모든 iterative audit에 적용한다.
+기존 80 LOC warning / 150 LOC HIGH 기준은 유지한다. 아래 200 LOC 기준은 별도의
+분해 검토 trigger이며 기존 경고·회귀·안전성 규칙을 대체하거나 완화하지 않는다.
+
+다음은 `DECOMPOSITION_REVIEW_REQUIRED` trigger다.
+
+- Method / Function > **200 LOC**
+- Class > **500 LOC**
+- Module > **1500 LOC**
+- LOC와 무관하게 독립적인 변경 이유가 **3개 이상**
+- 하나의 중앙 dispatcher가 독립적인 type/operator/domain branch를 **5개 이상** 직접 처리
+- failure owning boundary를 식별하기 위해 monolithic implementation 내부의 다단계 branch를 추적해야 함
+
+Trigger 발생이 자동 refactor를 의미하지는 않는다. 승인된 범위와 기존 refactor
+승인·Golden 보존 절차를 그대로 적용한다.
+
+분해 전 반드시 다음을 확인한다.
+
+1. 기존 Handler / Registry / Strategy / Pipeline / pure helper 등 재사용 가능한 경계가 있는가.
+2. 독립적으로 테스트 가능한 책임인가.
+3. 분해 후 명시적인 Input / Output / Failure Contract를 가질 수 있는가.
+4. 큰 동작을 작은 component의 composition으로 동일하게 재구성할 수 있는가.
+
+분해 시 다음 원칙을 적용한다.
+
+```text
+Complex Responsibility
+→ Single-Responsibility Components
+→ Explicit Contracts
+→ Registry / Pipeline / Composition
+```
+
+금지:
+
+- LOC 감소만을 위한 의미 없는 함수 분할
+- God Function을 여러 파일의 God Function으로 복제
+- 기존 abstraction이 있는데 병렬 framework 생성
+- 분해 후에도 중앙 dispatcher가 domain semantics를 계속 소유
+- behavior-preserving refactor와 semantic feature 변경을 동일 iteration에서 수행
+
+분해 완료 후 다음을 확인한다.
+
+- failure의 owning component를 monolithic implementation 전체를 읽지 않고 식별 가능한가
+- 동일 계열 기능을 중앙 dispatcher 수정 없이 등록 또는 조합으로 확장 가능한가
+- central branch와 responsibility count가 실제 감소했는가
+
+그렇지 않으면 구조 개선이 충분하지 않은 것으로 기록한다.
+매 audit에서 trigger 해당 여부와 근거를 기록하고, 분해한 경우 책임/중앙 branch의
+before/after 및 위 완료 검사를 Complexity Delta와 함께 보고한다.
+이 상태는 기존 `COMPLEXITY_*` / `REFACTOR_*` 판정에 추가하며 대체하지 않는다.
+
 ### Required audit accounting
 
 Every substantial iterative-audit completion report MUST include:

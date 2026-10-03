@@ -7,6 +7,10 @@ from __future__ import annotations
 
 from typing import Any, Final, Mapping
 
+from .capability_specs.inventory import INVENTORY_SERIES_SEMANTIC_OUTPUTS
+from .capability_specs.price import PRICE_ALLOWED_OUTPUT_FIELDS, PRICE_CRITERION_MODES, PRICE_IDENTITY_FIELDS
+from .output_coverage import diagnose_output_coverage
+
 
 # Outputs are semantic capabilities, not presentation formats.  A renderer may
 # still choose text/table/chart for a produced output later.
@@ -21,8 +25,8 @@ CAPABILITY_OUTPUTS: Final[dict[tuple[str, str], frozenset[str]]] = {
     }),
     ("resource", "resource_rank"): frozenset({"resource_rank", "production", "reserves", "value", "country", "period", "unit"}),
     ("inventory", "latest"): frozenset({"latest_inventory", "inventory"}),
-    ("inventory", "series"): frozenset({"inventory_series", "inventory", "date", "period", "unit"}),
-    ("inventory", "inventory_series"): frozenset({"inventory_series", "inventory", "date", "period", "unit"}),
+    ("inventory", "series"): INVENTORY_SERIES_SEMANTIC_OUTPUTS,
+    ("inventory", "inventory_series"): INVENTORY_SERIES_SEMANTIC_OUTPUTS,
     ("resource", "resource_yoy"): frozenset({"resource_change", "value", "period", "unit", "provenance"}),
     ("indicator", "series"): frozenset({"indicator_series", "indicator", "value", "date", "period", "unit", "provenance"}),
 }
@@ -31,12 +35,10 @@ CAPABILITY_OUTPUTS: Final[dict[tuple[str, str], frozenset[str]]] = {
 CAPABILITY_ARGUMENTS: Final[dict[str, dict[str, Any]]] = {
     "price.overview": {
         "domain": "price", "metric": "current", "canonical_metric": "price",
-        "output_type": "PriceOverview", "criterion_modes": frozenset({"REPRESENTATIVE", "EXPLICIT", "ALL"}),
-        "identity_fields": ("price_measure", "price_criterion", "price_measure_label", "price_criterion_serial"),
+        "output_type": "PriceOverview", "criterion_modes": PRICE_CRITERION_MODES,
+        "identity_fields": PRICE_IDENTITY_FIELDS,
         "required": frozenset({"price_group"}),
-        "output_fields": frozenset({"mineral", "price", "date", "unit", "price_criterion",
-                                     "price_criterion_serial", "price_measure", "price_measure_label",
-                                     "source", "provenance"}),
+        "output_fields": PRICE_ALLOWED_OUTPUT_FIELDS,
         "group_map": {
             "strategic": ("strategic_six", "strategic_ten"),
             "strategic_six": ("strategic_six",),
@@ -46,11 +48,9 @@ CAPABILITY_ARGUMENTS: Final[dict[str, dict[str, Any]]] = {
     },
     "price.series": {
         "domain": "price", "metric": "price_series", "canonical_metric": "price",
-        "output_type": "PriceSeries", "criterion_modes": frozenset({"REPRESENTATIVE", "EXPLICIT", "ALL"}),
-        "identity_fields": ("price_measure", "price_criterion", "price_measure_label", "price_criterion_serial"),
-        "output_fields": frozenset({"mineral", "price", "date", "unit", "price_criterion",
-                                     "price_criterion_serial", "price_measure", "price_measure_label",
-                                     "source", "provenance"}),
+        "output_type": "PriceSeries", "criterion_modes": PRICE_CRITERION_MODES,
+        "identity_fields": PRICE_IDENTITY_FIELDS,
+        "output_fields": PRICE_ALLOWED_OUTPUT_FIELDS,
     },
     "inventory.latest": {
         "domain": "inventory", "metric": "latest",
@@ -189,7 +189,7 @@ def produced_outputs(requirements: list[object]) -> frozenset[str]:
             if isinstance(period, dict):
                 period_kind = period.get("kind")
             if period_kind in {"trailing_months", "range", "calendar_year"}:
-                outputs.update({"inventory_series", "inventory", "date", "period", "unit"})
+                outputs.update(INVENTORY_SERIES_SEMANTIC_OUTPUTS)
         if key == ("resource", "resource_rank"):
             operation = getattr(requirement, "resource_operation", None)
             outputs.update({"production", "reserves", "value", "country", "period", "unit"})
@@ -228,7 +228,7 @@ def validate_requested_outputs(requirements: list[object], requested: set[str] |
 
     aliases = {"current_price": "latest_price"}
     normalized_requested = {aliases.get(str(item), str(item)) for item in requested}
-    missing = sorted(normalized_requested - produced_outputs(requirements))
+    missing = diagnose_output_coverage(normalized_requested, produced_outputs(requirements)).missing
     return "requested_output_not_produced:" + ",".join(missing) if missing else None
 
 
